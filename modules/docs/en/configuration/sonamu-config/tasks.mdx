@@ -1,0 +1,520 @@
+---
+title: 'Task'
+description: 'Workflow 및 백그라운드 작업 설정'
+---
+
+Sonamu는 비동기 백그라운드 작업을 처리하는 Workflow 시스템을 제공합니다. 긴 작업을 백그라운드로 분리하여 API 응답 속도를 개선하고, Worker 프로세스로 작업을 분산 처리할 수 있습니다.
+
+## 기본 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      concurrency: 1,
+      usePubSub: true,
+      listenDelay: 500,
+    },
+    contextProvider: (defaultContext) => ({
+      ...defaultContext,
+      ip: "127.0.0.1",
+      session: {},
+    }),
+  },
+  // ...
+});
+```
+
+## enableWorker
+
+Worker 프로세스를 활성화할지 결정합니다.
+
+**타입**: `boolean` (선택적)
+
+**기본값**: `false`
+
+```typescript
+export default defineConfig({
+  tasks: {
+    enableWorker: true,  // Worker 활성화
+  },
+});
+```
+
+**Worker란?**
+- 별도 프로세스에서 작업을 처리
+- 메인 API 서버에 영향 없음
+- 여러 Worker를 실행하여 분산 처리 가능
+
+<Tip>
+프로덕션 환경에서는 `enableWorker: true`로 설정하여 Worker 전용 프로세스를 실행하는 것을 권장합니다.
+</Tip>
+
+### 환경 변수로 제어
+
+```typescript
+export default defineConfig({
+  tasks: {
+    enableWorker: !["true", "1"].includes(
+      process.env.DISABLE_WORKER ?? "false"
+    ),
+  },
+});
+```
+
+**.env**:
+
+```bash
+# Worker 비활성화 (개발)
+DISABLE_WORKER=true
+
+# Worker 활성화 (프로덕션)
+DISABLE_WORKER=false
+```
+
+## workerOptions
+
+Worker의 동작 방식을 설정합니다.
+
+**타입**: `WorkflowOptions` (선택적)
+
+```typescript
+type WorkflowOptions = {
+  concurrency?: number;
+  usePubSub?: boolean;
+  listenDelay?: number;
+};
+```
+
+### concurrency
+
+Worker가 동시에 처리할 작업 수입니다.
+
+**타입**: `number`
+
+**기본값**: `1`
+
+```typescript
+export default defineConfig({
+  tasks: {
+    workerOptions: {
+      concurrency: 1,  // 한 번에 1개 작업만
+    },
+  },
+});
+```
+
+**권장값**:
+- `1` - 단순한 작업, 순차 처리 필요
+- `2-5` - 일반적인 백그라운드 작업
+- `10+` - 가벼운 I/O 위주 작업
+
+<Note>
+`concurrency`를 높이면 더 많은 작업을 동시에 처리하지만, CPU와 메모리 사용량이 증가합니다.
+</Note>
+
+### usePubSub
+
+다중 Worker 간 작업 분산을 위해 Pub/Sub을 사용합니다.
+
+**타입**: `boolean`
+
+**기본값**: `false`
+
+```typescript
+export default defineConfig({
+  tasks: {
+    workerOptions: {
+      usePubSub: true,  // Redis Pub/Sub 사용
+    },
+  },
+});
+```
+
+**동작 방식**:
+- `false`: 각 Worker가 독립적으로 작업 풀링
+- `true`: Redis Pub/Sub으로 작업 알림 전파
+
+<Tip>
+여러 Worker를 실행하는 경우 `usePubSub: true`를 권장합니다. 작업 할당이 더 효율적입니다.
+</Tip>
+
+### listenDelay
+
+작업을 확인하는 주기(밀리초)입니다.
+
+**타입**: `number` (ms)
+
+**기본값**: `500` (0.5초)
+
+```typescript
+export default defineConfig({
+  tasks: {
+    workerOptions: {
+      listenDelay: 500,  // 0.5초마다 작업 확인
+    },
+  },
+});
+```
+
+**권장값**:
+- `100-500ms` - 빠른 응답이 필요한 작업
+- `500-1000ms` - 일반적인 백그라운드 작업
+- `1000-5000ms` - 긴급하지 않은 작업
+
+## contextProvider
+
+Worker에서 실행되는 작업의 Context를 생성합니다.
+
+**타입**: `(defaultContext) => Context | Promise<Context>`
+
+```typescript
+export default defineConfig({
+  tasks: {
+    contextProvider: (defaultContext) => {
+      return {
+        ...defaultContext,
+        ip: "127.0.0.1",
+        session: {},
+      };
+    },
+  },
+});
+```
+
+**defaultContext 포함 필드**:
+- `reply` - Fastify reply 객체 (null in worker)
+- `request` - Fastify request 객체 (null in worker)
+- `headers` - 요청 헤더
+- `createSSE` - SSE 스트림 생성
+- `naiteStore` - Naite 로깅 스토어
+
+### 커스텀 Context
+
+```typescript
+export default defineConfig({
+  tasks: {
+    contextProvider: (defaultContext) => {
+      return {
+        ...defaultContext,
+        ip: "worker",
+        session: {},
+        config: {
+          apiUrl: process.env.API_URL,
+        },
+        logger: console,
+      };
+    },
+  },
+});
+```
+
+<Warning>
+Worker Context에서는 `request`와 `reply`가 `null`입니다. HTTP 관련 기능은 사용할 수 없습니다.
+</Warning>
+
+## 기본 예시
+
+### 단일 Worker (개발)
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  tasks: {
+    enableWorker: process.env.NODE_ENV === "production",
+    workerOptions: {
+      concurrency: 1,
+      usePubSub: false,  // 단일 Worker
+      listenDelay: 500,
+    },
+    contextProvider: (defaultContext) => ({
+      ...defaultContext,
+      ip: "127.0.0.1",
+      session: {},
+    }),
+  },
+});
+```
+
+### 다중 Worker (프로덕션)
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      concurrency: 5,
+      usePubSub: true,   // Redis Pub/Sub으로 분산
+      listenDelay: 500,
+    },
+    contextProvider: (defaultContext) => ({
+      ...defaultContext,
+      ip: "worker",
+      session: {},
+    }),
+  },
+});
+```
+
+## 실전 예시
+
+### 환경별 설정
+
+```typescript
+import { defineConfig } from "sonamu";
+
+const isDev = process.env.NODE_ENV === "development";
+const isProd = process.env.NODE_ENV === "production";
+
+export default defineConfig({
+  tasks: {
+    // 개발: Worker 없음 (메인 프로세스에서 처리)
+    // 프로덕션: Worker 활성화
+    enableWorker: isProd,
+    
+    workerOptions: {
+      concurrency: isProd ? 5 : 1,
+      usePubSub: isProd,
+      listenDelay: isDev ? 100 : 500,  // 개발: 빠른 응답
+    },
+    
+    contextProvider: (defaultContext) => ({
+      ...defaultContext,
+      ip: isProd ? "worker" : "127.0.0.1",
+      session: {},
+    }),
+  },
+});
+```
+
+### 고부하 워크플로우
+
+```typescript
+export default defineConfig({
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      concurrency: 10,   // 동시에 10개 작업
+      usePubSub: true,   // 다중 Worker 지원
+      listenDelay: 1000, // 1초 간격
+    },
+    contextProvider: (defaultContext) => ({
+      ...defaultContext,
+      ip: "worker",
+      session: {},
+      logger: {
+        info: (msg) => console.log(`[Worker] ${msg}`),
+        error: (msg) => console.error(`[Worker Error] ${msg}`),
+      },
+    }),
+  },
+});
+```
+
+### 커스텀 Context
+
+```typescript
+export default defineConfig({
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      concurrency: 3,
+      usePubSub: true,
+      listenDelay: 500,
+    },
+    contextProvider: async (defaultContext) => {
+      // 비동기 초기화
+      const config = await loadConfig();
+      
+      return {
+        ...defaultContext,
+        ip: "worker",
+        session: {},
+        config,
+        services: {
+          email: new EmailService(),
+          notification: new NotificationService(),
+        },
+      };
+    },
+  },
+});
+```
+
+## Workflow 사용
+
+tasks 설정 후 `@workflow` 데코레이터로 백그라운드 작업을 정의합니다.
+
+```typescript
+import { workflow, step } from "sonamu";
+
+export class EmailModel {
+  @workflow()
+  static async sendWelcomeEmail(userId: number) {
+    const user = await step("fetch-user", async () => {
+      return UserModel.findById(userId);
+    });
+    
+    await step("send-email", async () => {
+      return sendEmail(user.email, "Welcome!");
+    });
+  }
+}
+```
+
+**호출**:
+
+```typescript
+// 백그라운드에서 실행
+await EmailModel.sendWelcomeEmail(123);
+```
+
+→ [Workflow 사용법](/advanced-features/workflows/workflow-decorator)
+
+## Worker 실행
+
+### 개발 환경
+
+개발 환경에서는 `enableWorker: false`로 두고 메인 프로세스에서 처리:
+
+```bash
+pnpm dev
+```
+
+### 프로덕션 환경
+
+Worker 전용 프로세스를 별도로 실행:
+
+```bash
+# API 서버
+pnpm start
+
+# Worker 프로세스 (별도 터미널)
+pnpm start:worker
+```
+
+**package.json**:
+
+```json
+{
+  "scripts": {
+    "start": "node dist/server.js",
+    "start:worker": "ENABLE_WORKER=true node dist/worker.js"
+  }
+}
+```
+
+### 다중 Worker
+
+여러 Worker를 실행하여 처리량 증가:
+
+```bash
+# Worker 1
+ENABLE_WORKER=true node dist/worker.js
+
+# Worker 2
+ENABLE_WORKER=true node dist/worker.js
+
+# Worker 3
+ENABLE_WORKER=true node dist/worker.js
+```
+
+<Tip>
+PM2나 Docker를 사용하면 여러 Worker를 쉽게 관리할 수 있습니다.
+</Tip>
+
+## Redis 설정 (usePubSub: true)
+
+`usePubSub: true`를 사용하려면 Redis가 필요합니다.
+
+### Redis 연결
+
+Redis는 cache 설정에서 구성됩니다:
+
+```typescript
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+    },
+  },
+  
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      usePubSub: true,  // Redis Pub/Sub 사용
+    },
+  },
+});
+```
+
+## 주의사항
+
+### 1. Worker Context 제한
+
+```typescript
+// ❌ 나쁜 예: Worker에서 HTTP 응답 시도
+@workflow()
+static async processData() {
+  const ctx = getContext();
+  ctx.reply.send({ done: true });  // Worker에서는 null!
+}
+
+// ✅ 좋은 예: 결과를 DB에 저장
+@workflow()
+static async processData() {
+  const result = await heavyProcessing();
+  await ResultModel.save({ data: result });
+}
+```
+
+### 2. enableWorker 설정
+
+```typescript
+// ❌ 나쁜 예: 프로덕션에서 Worker 없음
+enableWorker: false  // 모든 작업이 메인 프로세스에서!
+
+// ✅ 좋은 예: 환경별로 다르게
+enableWorker: process.env.NODE_ENV === "production"
+```
+
+### 3. concurrency 과다 설정
+
+```typescript
+// ❌ 나쁜 예: 너무 높은 동시성
+workerOptions: {
+  concurrency: 100,  // CPU와 메모리 부족 위험
+}
+
+// ✅ 좋은 예: 적절한 수준
+workerOptions: {
+  concurrency: 5,  // 서버 리소스에 맞게
+}
+```
+
+## 다음 단계
+
+Task 설정을 완료했다면:
+
+- [workflows](/advanced-features/workflows/workflow-decorator) - Workflow 정의하기
+- [steps](/advanced-features/workflows/steps) - Step으로 작업 분리
+- [error-handling](/advanced-features/workflows/error-handling) - 에러 처리 및 재시도

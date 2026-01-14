@@ -1,0 +1,507 @@
+---
+title: 'Authentication'
+description: 'Passport.js-based authentication settings'
+---
+
+Sonamu provides an authentication system based on Passport.js. It supports session-based authentication and allows customization of user serialization/deserialization.
+
+## Basic Structure
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    auth: true,  // Enable default authentication
+    
+    // Or customize
+    auth: {
+      userSerializer: async (user, request) => {
+        // Data to store in session
+        return { id: user.id, email: user.email };
+      },
+      userDeserializer: async (serialized, request) => {
+        // Restore user from session
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+  // ...
+});
+```
+
+## auth Settings
+
+### Simple Activation
+
+**Type**: `boolean | AuthOptions`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: true,  // Enable with default settings
+  },
+});
+```
+
+**Disable**:
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: false,  // Disable authentication
+  },
+});
+```
+
+<Note>
+Setting `auth: true` uses Sonamu's default serialization/deserialization.
+</Note>
+
+### Custom Configuration
+
+```typescript
+type AuthOptions = {
+  userSerializer: SerializeFunction<unknown, unknown>;
+  userDeserializer: DeserializeFunction<unknown, unknown>;
+};
+```
+
+## userSerializer
+
+Converts the user object to a form that can be stored in the session.
+
+**Type**: `(user, request) => SerializedUser | Promise<SerializedUser>`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, request) => {
+        // Store only minimal information in session
+        return {
+          id: user.id,
+          email: user.email,
+        };
+      },
+      // ...
+    },
+  },
+});
+```
+
+**user**: User object passed during login  
+**request**: Fastify request object  
+**Returns**: Serialized data to be stored in session
+
+<Tip>
+Store only essential information to reduce session size. Usually just `id` is sufficient.
+</Tip>
+
+## userDeserializer
+
+Restores user information from the session.
+
+**Type**: `(serialized, request) => User | Promise<User>`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userDeserializer: async (serialized, request) => {
+        // Query full user information from DB
+        return UserModel.findById(serialized.id);
+      },
+      // ...
+    },
+  },
+});
+```
+
+**serialized**: Data returned by `userSerializer`  
+**request**: Fastify request object  
+**Returns**: Restored user object
+
+<Warning>
+`userDeserializer` is called on every request, so it can affect performance. Consider caching.
+</Warning>
+
+## Basic Examples
+
+### Store Only ID (Recommended)
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return user.id;  // Store only ID
+      },
+      
+      userDeserializer: async (userId, _request) => {
+        return UserModel.findById(userId);
+      },
+    },
+  },
+});
+```
+
+### Store Basic Information
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        };
+      },
+      
+      userDeserializer: async (serialized, _request) => {
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+});
+```
+
+### Adding Caching
+
+```typescript
+import { cache } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return user.id;
+      },
+      
+      userDeserializer: async (userId, _request) => {
+        // Cache user info (1 minute)
+        const cacheKey = `user:${userId}`;
+        
+        let user = await cache.get(cacheKey);
+        if (!user) {
+          user = await UserModel.findById(userId);
+          await cache.set(cacheKey, user, { ttl: "1m" });
+        }
+        
+        return user;
+      },
+    },
+  },
+});
+```
+
+## Login/Logout
+
+Implement login/logout APIs after authentication setup.
+
+### Login
+
+```typescript
+import { api } from "sonamu";
+import { login } from "sonamu/auth";
+import bcrypt from "bcrypt";
+
+export class AuthModel {
+  @api({ httpMethod: "POST" })
+  static async login(email: string, password: string) {
+    // Find user
+    const user = await UserModel.findByEmail(email);
+    if (!user) {
+      throw new BadRequestError("Invalid credentials");
+    }
+    
+    // Verify password
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new BadRequestError("Invalid credentials");
+    }
+    
+    // Login (create session)
+    await login(user);
+    
+    return { success: true, user };
+  }
+}
+```
+
+### Logout
+
+```typescript
+import { api } from "sonamu";
+import { logout } from "sonamu/auth";
+
+export class AuthModel {
+  @api({ httpMethod: "POST" })
+  static async logout() {
+    await logout();
+    return { success: true };
+  }
+}
+```
+
+### Current User
+
+```typescript
+import { api, getUser } from "sonamu";
+
+export class AuthModel {
+  @api()
+  static async me() {
+    const user = getUser();
+    if (!user) {
+      throw new UnauthorizedError("Not authenticated");
+    }
+    
+    return user;
+  }
+}
+```
+
+→ [Authentication API Implementation Guide](/api-development/authentication/setup)
+
+## Practical Examples
+
+### Basic Configuration
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30 days
+        },
+      },
+    },
+    
+    auth: {
+      userSerializer: async (user) => user.id,
+      userDeserializer: async (userId) => {
+        return UserModel.findById(userId);
+      },
+    },
+  },
+});
+```
+
+### Role-Based Authentication
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => ({
+        id: user.id,
+        role: user.role,
+      }),
+      
+      userDeserializer: async (serialized) => {
+        const user = await UserModel.findById(serialized.id);
+        
+        // Detect role changes
+        if (user.role !== serialized.role) {
+          // Session refresh needed
+          await updateSession(user);
+        }
+        
+        return user;
+      },
+    },
+  },
+});
+```
+
+### Combining JWT and Session
+
+```typescript
+import jwt from "jsonwebtoken";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => {
+        // Generate JWT token
+        const token = jwt.sign(
+          { userId: user.id },
+          process.env.JWT_SECRET!,
+          { expiresIn: "7d" }
+        );
+        
+        return { id: user.id, token };
+      },
+      
+      userDeserializer: async (serialized) => {
+        // Verify JWT
+        try {
+          jwt.verify(serialized.token, process.env.JWT_SECRET!);
+        } catch {
+          throw new UnauthorizedError("Invalid token");
+        }
+        
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+});
+```
+
+### Permission Checking
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => user.id,
+      
+      userDeserializer: async (userId) => {
+        const user = await UserModel.findById(userId);
+        
+        // Deactivated user
+        if (!user.isActive) {
+          throw new UnauthorizedError("Account deactivated");
+        }
+        
+        // Expired account
+        if (user.expiresAt && user.expiresAt < new Date()) {
+          throw new UnauthorizedError("Account expired");
+        }
+        
+        return user;
+      },
+    },
+    
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const user = request.user;
+        
+        if (guard === "admin" && user?.role !== "admin") {
+          throw new UnauthorizedError("Admin access required");
+        }
+        
+        if (guard === "premium" && !user?.isPremium) {
+          throw new UnauthorizedError("Premium subscription required");
+        }
+      },
+    },
+  },
+});
+```
+
+## Session Configuration
+
+Authentication works based on sessions, so the session plugin is required.
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30 days
+          secure: process.env.NODE_ENV === "production",
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+    
+    auth: true,
+  },
+});
+```
+
+→ [Session configuration](/configuration/sonamu-config/server#session)
+
+## Important Notes
+
+### 1. Session Size
+
+```typescript
+// ❌ Bad example: Storing too much data
+userSerializer: async (user) => ({
+  id: user.id,
+  email: user.email,
+  profile: user.profile,  // Large object
+  preferences: user.preferences,
+  history: user.history,
+})
+
+// ✅ Good example: Store only ID
+userSerializer: async (user) => user.id
+```
+
+### 2. userDeserializer Performance
+
+```typescript
+// ❌ Bad example: DB query every time
+userDeserializer: async (userId) => {
+  return UserModel.findById(userId);  // On every request!
+}
+
+// ✅ Good example: Add caching
+userDeserializer: async (userId) => {
+  const cached = await cache.get(`user:${userId}`);
+  if (cached) return cached;
+  
+  const user = await UserModel.findById(userId);
+  await cache.set(`user:${userId}`, user, { ttl: "1m" });
+  return user;
+}
+```
+
+### 3. Session Secret
+
+```typescript
+// ❌ Bad example: Hardcoded secret
+session: {
+  secret: "my-secret-key",
+  salt: "my-salt",
+}
+
+// ✅ Good example: Use environment variables
+session: {
+  secret: process.env.SESSION_SECRET!,
+  salt: process.env.SESSION_SALT!,
+}
+```
+
+### 4. Null Handling
+
+```typescript
+// ✅ User might not exist
+userDeserializer: async (userId) => {
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    // Session exists but user was deleted
+    throw new UnauthorizedError("User not found");
+  }
+  return user;
+}
+```
+
+## Next Steps
+
+After completing authentication setup:
+
+- [authentication](/api-development/authentication/setup) - Implement login/logout
+- [session-management](/api-development/authentication/session-management) - Session management
+- [protected-routes](/api-development/authentication/protected-routes) - Protected routes

@@ -1,0 +1,556 @@
+---
+title: "에러 처리"
+description: "Workflow 에러 처리 및 재시도 전략"
+---
+
+Workflow 실행 중 발생하는 에러를 처리하는 방법을 다룹니다. 외부 API 호출, 네트워크 문제, 일시적 장애 등으로 인한 실패를 안전하게 처리하고, 필요한 경우 자동으로 재시도하는 패턴을 구현할 수 있습니다.
+
+## 기본 에러 처리
+
+Workflow에서 발생한 에러는 일반적인 try-catch 문으로 처리합니다. 에러를 로깅하고, 필요한 경우 재발생시켜 workflow를 실패 상태로 만듭니다.
+
+```typescript
+import { workflow } from "sonamu";
+
+export const processPayment = workflow(
+  { name: "process_payment" },
+  async ({ input, step, logger }) => {
+    try {
+      await step.define({ name: "charge" }, async () => {
+        await paymentGateway.charge(input.amount);
+      }).run();
+      
+      return { success: true };
+    } catch (error) {
+      logger.error("Payment failed", { error, input });
+      
+      // 에러 재발생 (workflow 실패)
+      throw error;
+    }
+  }
+);
+```
+
+**핵심 개념**:
+- `logger.error()`로 에러 기록
+- `throw error`로 workflow 실패 처리
+- 실패한 workflow는 Worker가 자동으로 재시도
+
+## Step별 에러 처리
+
+모든 step이 필수는 아닙니다. 일부 step은 실패해도 workflow를 계속 진행할 수 있습니다. 이런 **선택적 step**은 try-catch로 감싸서 에러를 흡수합니다.
+
+```typescript
+export const syncData = workflow(
+  { name: "sync_data" },
+  async ({ input, step, logger }) => {
+    // Step 1: 필수 작업
+    const data = await step.define({ name: "fetch_data" }, async () => {
+      return await fetchFromAPI(input.url);
+    }).run();
+    
+    // Step 2: 선택적 작업 (실패해도 계속 진행)
+    let cached = false;
+    try {
+      await step.define({ name: "cache_data" }, async () => {
+        await cacheData(data);
+      }).run();
+      cached = true;
+    } catch (error) {
+      logger.warn("Cache failed, continuing...", { error });
+    }
+    
+    // Step 3: 최종 저장
+    await step.define({ name: "save_data" }, async () => {
+      await saveToDatabase(data);
+    }).run();
+    
+    return { saved: true, cached };
+  }
+);
+```
+
+**사용 시나리오**:
+- 캐싱 실패 (데이터는 저장되어야 함)
+- 알림 발송 실패 (주문은 완료되어야 함)
+- 로그 기록 실패 (비즈니스 로직은 계속)
+
+## 재시도 패턴
+
+### 수동 재시도
+
+외부 API나 네트워크 요청은 일시적으로 실패할 수 있습니다. 이런 경우 **여러 번 재시도**하여 성공률을 높일 수 있습니다.
+
+```typescript
+export const fetchWithRetry = workflow(
+  { name: "fetch_with_retry" },
+  async ({ input, step, logger }) => {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const data = await step.define(
+          { name: `fetch_attempt_${attempt}` },
+          async () => {
+            return await unstableAPICall(input.url);
+          }
+        ).run();
+        
+        logger.info("Fetch succeeded", { attempt });
+        return { data, attempts: attempt };
+      } catch (error) {
+        lastError = error;
+        logger.warn("Fetch failed", { attempt, error });
+        
+        // 마지막 시도 전에는 대기
+        if (attempt < maxRetries) {
+          await step.sleep("retry_delay", "5s");
+        }
+      }
+    }
+    
+    // 모든 시도 실패
+    throw new Error(`Failed after ${maxRetries} attempts: ${lastError?.message}`);
+  }
+);
+```
+
+**재시도 전략**:
+1. 최대 3번 시도
+2. 시도 사이에 5초 대기
+3. 모든 시도 실패 시 에러 발생
+
+### 지수 백오프
+
+재시도 간격을 점점 늘리는 **지수 백오프(Exponential Backoff)** 전략은 서버 과부하를 방지하면서 재시도 성공률을 높입니다.
+
+```typescript
+export const fetchWithBackoff = workflow(
+  { name: "fetch_with_backoff" },
+  async ({ input, step, logger }) => {
+    const maxRetries = 5;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await step.define(
+          { name: `attempt_${attempt}` },
+          async () => {
+            return await externalAPI.fetch(input.url);
+          }
+        ).run();
+      } catch (error) {
+        logger.warn("Attempt failed", { attempt, error });
+        
+        if (attempt < maxRetries) {
+          // 지수 백오프: 2초, 4초, 8초, 16초
+          const delay = Math.pow(2, attempt);
+          await step.sleep(`backoff_${attempt}`, `${delay}s`);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+);
+```
+
+**백오프 간격**:
+- 1차 실패 → 2초 대기
+- 2차 실패 → 4초 대기
+- 3차 실패 → 8초 대기
+- 4차 실패 → 16초 대기
+
+**장점**:
+- 일시적 과부하에서 회복할 시간 제공
+- 서버 부하 분산
+- 재시도 성공률 향상
+
+## 보상 트랜잭션
+
+분산 트랜잭션에서는 일부 작업이 실패하면 **이미 완료된 작업을 되돌려야** 합니다. 이를 보상 트랜잭션(Compensating Transaction)이라고 합니다.
+
+```typescript
+export const processOrder = workflow(
+  { name: "process_order" },
+  async ({ input, step, logger }) => {
+    let paymentId: string | null = null;
+    let inventoryReserved = false;
+    
+    try {
+      // Step 1: 결제
+      paymentId = await step.define({ name: "charge_payment" }, async () => {
+        return await paymentService.charge(input.amount);
+      }).run();
+      
+      // Step 2: 재고 확보
+      await step.define({ name: "reserve_inventory" }, async () => {
+        await inventoryService.reserve(input.items);
+      }).run();
+      inventoryReserved = true;
+      
+      // Step 3: 주문 생성
+      const orderId = await step.define({ name: "create_order" }, async () => {
+        return await orderService.create({
+          paymentId,
+          items: input.items,
+        });
+      }).run();
+      
+      return { orderId, success: true };
+    } catch (error) {
+      logger.error("Order processing failed, rolling back...", { error });
+      
+      // 보상: 재고 해제
+      if (inventoryReserved) {
+        await step.define({ name: "rollback_inventory" }, async () => {
+          await inventoryService.release(input.items);
+        }).run();
+      }
+      
+      // 보상: 결제 취소
+      if (paymentId) {
+        await step.define({ name: "rollback_payment" }, async () => {
+          await paymentService.refund(paymentId);
+        }).run();
+      }
+      
+      throw error;
+    }
+  }
+);
+```
+
+**보상 트랜잭션 패턴**:
+1. 각 작업의 완료 상태 추적
+2. 실패 발생 시 완료된 작업 확인
+3. 역순으로 작업 취소
+4. 에러 재발생
+
+**실전 사용**:
+- 결제 취소
+- 재고 복원
+- 예약 취소
+- 파일 삭제
+
+## 타임아웃 처리
+
+외부 API가 응답하지 않으면 workflow가 무한정 대기할 수 있습니다. **타임아웃**을 설정하여 일정 시간 후 실패 처리합니다.
+
+```typescript
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+    ),
+  ]);
+}
+
+export const fetchWithTimeout = workflow(
+  { name: "fetch_with_timeout" },
+  async ({ input, step, logger }) => {
+    try {
+      const data = await step.define({ name: "fetch" }, async () => {
+        return await withTimeout(
+          externalAPI.fetch(input.url),
+          30000  // 30초
+        );
+      }).run();
+      
+      return { data };
+    } catch (error) {
+      if (error.message === "Timeout") {
+        logger.error("Request timed out");
+      }
+      throw error;
+    }
+  }
+);
+```
+
+**타임아웃 전략**:
+- 짧은 타임아웃 (5-10초): 빠른 API
+- 중간 타임아웃 (30-60초): 일반 API
+- 긴 타임아웃 (5-10분): 파일 처리
+
+## 에러 타입별 처리
+
+에러의 종류에 따라 **다른 처리 전략**을 사용합니다. 네트워크 에러는 재시도하지만, 데이터 검증 에러는 즉시 실패 처리합니다.
+
+```typescript
+export const processData = workflow(
+  { name: "process_data" },
+  async ({ input, step, logger }) => {
+    try {
+      await step.define({ name: "process" }, async () => {
+        await dataService.process(input.data);
+      }).run();
+    } catch (error) {
+      // 네트워크 에러: 재시도
+      if (error.code === 'ECONNREFUSED') {
+        logger.warn("Connection refused, retrying...");
+        await step.sleep("retry_delay", "10s");
+        throw error;  // 재시도
+      }
+      
+      // 검증 에러: 즉시 실패
+      if (error.code === 'VALIDATION_ERROR') {
+        logger.error("Validation failed", { error });
+        throw new Error("Invalid data, not retrying");
+      }
+      
+      // 기타 에러
+      throw error;
+    }
+  }
+);
+```
+
+**에러 분류**:
+
+| 에러 타입 | 처리 방법 | 예시 |
+|-----------|-----------|------|
+| 일시적 에러 | 재시도 | 네트워크, 타임아웃, 503 |
+| 영구적 에러 | 즉시 실패 | 검증, 인증, 404 |
+| 부분 실패 | 선택적 처리 | 일부 데이터 손상 |
+
+## 실전 예제
+
+### 1. 이메일 발송 with Dead Letter Queue
+
+이메일 발송이 3번 실패하면 **Dead Letter Queue**에 추가하여 나중에 수동으로 처리합니다.
+
+```typescript
+export const sendEmail = workflow(
+  { name: "send_email" },
+  async ({ input, step, logger }) => {
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await step.define(
+          { name: `send_attempt_${attempt}` },
+          async () => {
+            await emailService.send({
+              to: input.email,
+              subject: input.subject,
+              body: input.body,
+            });
+          }
+        ).run();
+        
+        logger.info("Email sent", { attempt });
+        return { success: true, attempts: attempt };
+      } catch (error) {
+        logger.warn("Email send failed", { attempt, error });
+        
+        if (attempt < maxRetries) {
+          await step.sleep("retry_delay", "30s");
+        } else {
+          // 최종 실패: Dead Letter Queue로
+          await step.define({ name: "move_to_dlq" }, async () => {
+            await deadLetterQueue.add({
+              type: "email",
+              data: input,
+              error: error.message,
+            });
+          }).run();
+          
+          throw error;
+        }
+      }
+    }
+  }
+);
+```
+
+**DLQ 패턴**:
+- 3번 재시도 실패
+- DLQ에 추가 (나중에 처리)
+- 관리자에게 알림
+
+### 2. API 호출 with Circuit Breaker
+
+외부 API가 계속 실패하면 **회로 차단기(Circuit Breaker)**로 요청을 차단하여 시스템을 보호합니다.
+
+```typescript
+class CircuitBreaker {
+  private failures = 0;
+  private lastFailureTime = 0;
+  private readonly threshold = 5;
+  private readonly timeout = 60000;  // 1분
+  
+  async call<T>(fn: () => Promise<T>): Promise<T> {
+    // 회로가 열린 상태
+    if (this.failures >= this.threshold) {
+      const elapsed = Date.now() - this.lastFailureTime;
+      if (elapsed < this.timeout) {
+        throw new Error("Circuit breaker is open");
+      }
+      // 타임아웃 후 재시도
+      this.failures = 0;
+    }
+    
+    try {
+      const result = await fn();
+      this.failures = 0;  // 성공 시 리셋
+      return result;
+    } catch (error) {
+      this.failures++;
+      this.lastFailureTime = Date.now();
+      throw error;
+    }
+  }
+}
+
+const circuitBreaker = new CircuitBreaker();
+
+export const callAPI = workflow(
+  { name: "call_api" },
+  async ({ input, step, logger }) => {
+    try {
+      const data = await step.define({ name: "api_call" }, async () => {
+        return await circuitBreaker.call(() =>
+          fetch(input.url).then(r => r.json())
+        );
+      }).run();
+      
+      return { data };
+    } catch (error) {
+      if (error.message === "Circuit breaker is open") {
+        logger.error("Circuit breaker open, API unavailable");
+      }
+      throw error;
+    }
+  }
+);
+```
+
+**Circuit Breaker 상태**:
+- **Closed**: 정상 작동
+- **Open**: 5번 실패 후 차단 (1분간)
+- **Half-Open**: 1분 후 재시도
+
+### 3. 파일 업로드 with 부분 재시도
+
+여러 파일을 업로드할 때, 각 파일을 **독립적으로 재시도**하여 일부 실패해도 나머지는 성공하도록 합니다.
+
+```typescript
+export const uploadFiles = workflow(
+  { name: "upload_files" },
+  async ({ input, step, logger }) => {
+    const results = [];
+    
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      let uploaded = false;
+      
+      // 각 파일별로 재시도
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await step.define(
+            { name: `upload_${i}_attempt_${attempt}` },
+            async () => {
+              await s3.upload(file.key, file.content);
+            }
+          ).run();
+          
+          uploaded = true;
+          results.push({ file: file.key, success: true });
+          break;
+        } catch (error) {
+          logger.warn("Upload failed", { file: file.key, attempt, error });
+          
+          if (attempt < 3) {
+            await step.sleep(`retry_${i}_${attempt}`, "5s");
+          }
+        }
+      }
+      
+      if (!uploaded) {
+        results.push({ file: file.key, success: false });
+      }
+    }
+    
+    const failed = results.filter(r => !r.success);
+    if (failed.length > 0) {
+      logger.error("Some uploads failed", { failed });
+    }
+    
+    return {
+      total: input.files.length,
+      succeeded: results.filter(r => r.success).length,
+      failed: failed.length,
+    };
+  }
+);
+```
+
+**부분 재시도 전략**:
+- 각 파일이 독립적인 step들
+- 파일별 3번 재시도
+- 일부 실패해도 workflow 성공
+- 실패한 파일 목록 반환
+
+## 주의사항
+
+<Warning>
+**에러 처리 시 주의사항**:
+
+1. **에러 로깅**: 항상 에러를 로깅하여 문제를 추적할 수 있어야 합니다.
+   ```typescript
+   catch (error) {
+     logger.error("Operation failed", { error, context });
+   }
+   ```
+
+2. **재시도 제한**: 무한 재시도를 방지하고 최대 횟수를 설정하세요.
+   ```typescript
+   const maxRetries = 3;  // 명확한 제한
+   ```
+
+3. **보상 트랜잭션**: 실패 시 이미 완료된 작업을 정리하세요.
+   ```typescript
+   catch (error) {
+     await rollbackCompletedSteps();
+     throw error;
+   }
+   ```
+
+4. **타임아웃 설정**: 무한 대기를 방지하세요.
+   ```typescript
+   await withTimeout(promise, 30000);
+   ```
+
+5. **Dead Letter Queue**: 최종 실패 시 수동 처리를 위해 별도로 저장하세요.
+   ```typescript
+   await deadLetterQueue.add(failedItem);
+   ```
+
+6. **에러 타입 구분**: 재시도 가능한 에러와 불가능한 에러를 구분하세요.
+   ```typescript
+   if (isRetryable(error)) {
+     throw error;  // 재시도
+   } else {
+     throw new NonRetryableError();  // 즉시 실패
+   }
+   ```
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="@workflow 데코레이터" icon="code" href="/advanced-features/workflows/workflow-decorator">
+    Workflow 정의와 스케줄링 배우기
+  </Card>
+  <Card title="Step" icon="list" href="/advanced-features/workflows/steps">
+    Step으로 작업을 나누고 관리하기
+  </Card>
+  <Card title="Worker 설정" icon="gear" href="/advanced-features/workflows/worker-setup">
+    Worker 프로세스 설정하기
+  </Card>
+</CardGroup>

@@ -1,0 +1,650 @@
+---
+title: "UploadedFile Class"
+description: "File info access and saveToDisk() method"
+---
+
+The UploadedFile class provides information about uploaded files and saves files using the `saveToDisk()` method.
+
+## UploadedFile Overview
+
+<CardGroup cols={2}>
+  <Card title="File Info" icon="circle-info">
+    filename, mimetype, size
+    
+    extname, md5
+  </Card>
+  <Card title="saveToDisk()" icon="floppy-disk">
+    Save to storage
+    
+    Auto URL generation
+  </Card>
+  <Card title="toBuffer()" icon="memory">
+    Buffer conversion
+    
+    Caching support
+  </Card>
+  <Card title="URL Properties" icon="link">
+    url, signedUrl
+    
+    Auto-set after saving
+  </Card>
+</CardGroup>
+
+## Basic Properties
+
+### File Information
+
+```typescript
+import type { UploadedFile } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<any> {
+    const { file } = params;
+    
+    // Access file info
+    console.log({
+      filename: file.filename,      // Original filename: "photo.jpg"
+      mimetype: file.mimetype,      // MIME type: "image/jpeg"
+      size: file.size,              // File size (bytes): 524288
+      extname: file.extname,        // Extension: "jpg" (without dot)
+    });
+    
+    return {
+      filename: file.filename,
+      mimetype: file.mimetype,
+      size: file.size,
+      extname: file.extname,
+    };
+  }
+}
+```
+
+**Property List**:
+- `filename: string` - Original filename
+- `mimetype: string` - MIME type
+- `size: number` - File size (bytes)
+- `extname: string | false` - Extension (without dot)
+- `url: string | undefined` - Public URL after saving
+- `signedUrl: string | undefined` - Signed URL after saving
+
+## saveToDisk() Method
+
+### Basic Usage
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save file (using default disk)
+    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    
+    // Automatically saved to url property
+    console.log(file.url);        // Public URL
+    console.log(file.signedUrl);  // Signed URL
+    
+    return { url };
+  }
+}
+```
+
+### Save to Specific Disk
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadToS3(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save to S3 disk
+    const url = await file.saveToDisk(
+      `uploads/${Date.now()}-${file.filename}`,
+      "s3" // Disk name
+    );
+    
+    return { url };
+  }
+  
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadPublic(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save to public disk
+    const url = await file.saveToDisk(
+      `public/${Date.now()}-${file.filename}`,
+      "public"
+    );
+    
+    return { url };
+  }
+}
+```
+
+## Buffer Conversion
+
+### toBuffer() Method
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async processImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    // Convert to Buffer (cached)
+    const buffer = await image.toBuffer();
+    
+    console.log("Buffer size:", buffer.length);
+    
+    // Image processing using Buffer
+    const sharp = require("sharp");
+    const resized = await sharp(buffer)
+      .resize(800, 600)
+      .toBuffer();
+    
+    // Save processed image
+    // (saveToDisk saves original file,
+    // use Storage Manager directly for processed Buffer)
+    const disk = Sonamu.storage.use();
+    const key = `images/${Date.now()}.jpg`;
+    
+    await disk.put(key, new Uint8Array(resized), {
+      contentType: "image/jpeg",
+    });
+    
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+<Info>
+`toBuffer()` caches the result, so calling multiple times only reads once.
+</Info>
+
+## MD5 Hash
+
+### md5() Method
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithHash(params: {
+    file: UploadedFile;
+  }): Promise<{
+    url: string;
+    md5: string;
+  }> {
+    const { file } = params;
+    
+    // Calculate MD5 hash
+    const md5Hash = await file.md5();
+    console.log("MD5:", md5Hash); // "abc123def456..."
+    
+    // Check for duplicate files
+    const rdb = this.getPuri("r");
+    const existing = await rdb
+      .table("files")
+      .where("md5_hash", md5Hash)
+      .first();
+    
+    if (existing) {
+      // Same file already exists
+      return {
+        url: existing.url,
+        md5: md5Hash,
+      };
+    }
+    
+    // Save new file
+    const url = await file.saveToDisk(`uploads/${md5Hash}.${file.extname}`);
+    
+    // Save to DB
+    const wdb = this.getPuri("w");
+    await wdb.table("files").insert({
+      filename: file.filename,
+      mime_type: file.mimetype,
+      size: file.size,
+      md5_hash: md5Hash,
+      url,
+    });
+    
+    return { url, md5: md5Hash };
+  }
+}
+```
+
+## File Validation
+
+### Size Validation
+
+```typescript
+class FileValidator {
+  static validateSize(file: UploadedFile, maxSize: number): void {
+    if (file.size > maxSize) {
+      throw new Error(
+        `File too large: ${file.size} bytes (max ${maxSize} bytes)`
+      );
+    }
+  }
+}
+
+// Usage
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Size validation (10MB)
+    FileValidator.validateSize(file, 10 * 1024 * 1024);
+    
+    const url = await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+### MIME Type Validation
+
+```typescript
+class FileValidator {
+  static validateMimeType(
+    file: UploadedFile,
+    allowedTypes: string[]
+  ): void {
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(
+        `Invalid file type: ${file.mimetype}. ` +
+        `Allowed: ${allowedTypes.join(", ")}`
+      );
+    }
+  }
+}
+
+// Usage
+class ImageModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    // MIME type validation
+    FileValidator.validateMimeType(image, [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]);
+    
+    const url = await image.saveToDisk(`images/${Date.now()}.${image.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+### Extension Validation
+
+```typescript
+class FileValidator {
+  static validateExtension(
+    file: UploadedFile,
+    allowedExtensions: string[]
+  ): void {
+    const ext = file.extname;
+    
+    if (!ext || !allowedExtensions.includes(ext.toLowerCase())) {
+      throw new Error(
+        `Invalid file extension: ${ext}. ` +
+        `Allowed: ${allowedExtensions.join(", ")}`
+      );
+    }
+  }
+}
+
+// Usage
+class DocumentModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadDocument(params: {
+    document: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { document } = params;
+    
+    // Extension validation
+    FileValidator.validateExtension(document, [
+      "pdf",
+      "doc",
+      "docx",
+      "txt",
+    ]);
+    
+    const url = await document.saveToDisk(
+      `documents/${Date.now()}.${document.extname}`
+    );
+    
+    return { url };
+  }
+}
+```
+
+### Integrated Validation Class
+
+```typescript
+class FileValidator {
+  static validateImage(file: UploadedFile): void {
+    // Check size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("Image too large (max 5MB)");
+    }
+    
+    // Check MIME type
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid image type: ${file.mimetype}`);
+    }
+    
+    // Check extension
+    const allowedExtensions = ["jpg", "jpeg", "png", "gif", "webp"];
+    if (!file.extname || !allowedExtensions.includes(file.extname.toLowerCase())) {
+      throw new Error(`Invalid image extension: ${file.extname}`);
+    }
+  }
+  
+  static validateDocument(file: UploadedFile): void {
+    // Check size (20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error("Document too large (max 20MB)");
+    }
+    
+    // Check MIME type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
+    
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid document type: ${file.mimetype}`);
+    }
+  }
+  
+  static validateVideo(file: UploadedFile): void {
+    // Check size (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      throw new Error("Video too large (max 100MB)");
+    }
+    
+    // Check MIME type
+    const allowedTypes = [
+      "video/mp4",
+      "video/mpeg",
+      "video/quicktime",
+      "video/x-msvideo",
+    ];
+    
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid video type: ${file.mimetype}`);
+    }
+  }
+}
+
+// Usage
+class MediaModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    FileValidator.validateImage(image);
+    
+    const url = await image.saveToDisk(`images/${Date.now()}.${image.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+## Practical Examples
+
+### Profile Image Upload
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadProfileImage(params: {
+    image: UploadedFile;
+  }): Promise<{
+    imageId: number;
+    url: string;
+    thumbnailUrl: string;
+  }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { image } = params;
+    
+    // Validation
+    FileValidator.validateImage(image);
+    
+    // Original image Buffer
+    const buffer = await image.toBuffer();
+    
+    // Create thumbnail
+    const sharp = require("sharp");
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(200, 200, { fit: "cover" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    
+    // Save original
+    const originalKey = `profiles/${context.user.id}/original-${Date.now()}.${image.extname}`;
+    const originalUrl = await image.saveToDisk(originalKey);
+    
+    // Save thumbnail (using Storage Manager directly)
+    const disk = Sonamu.storage.use();
+    const thumbnailKey = `profiles/${context.user.id}/thumb-${Date.now()}.jpg`;
+    await disk.put(thumbnailKey, new Uint8Array(thumbnailBuffer), {
+      contentType: "image/jpeg",
+    });
+    const thumbnailUrl = await disk.getUrl(thumbnailKey);
+    
+    // Save to DB
+    const wdb = this.getPuri("w");
+    const [record] = await wdb
+      .table("profile_images")
+      .insert({
+        user_id: context.user.id,
+        original_key: originalKey,
+        thumbnail_key: thumbnailKey,
+        original_url: originalUrl,
+        thumbnail_url: thumbnailUrl,
+        mime_type: image.mimetype,
+        size: image.size,
+      })
+      .returning({ id: "id" });
+    
+    return {
+      imageId: record.id,
+      url: originalUrl,
+      thumbnailUrl,
+    };
+  }
+}
+```
+
+### Batch Processing Multiple Files
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "multiple" })
+  async uploadMultiple(params: {
+    files: UploadedFile[];
+    category?: string;
+  }): Promise<{
+    uploadedFiles: Array<{
+      fileId: number;
+      filename: string;
+      url: string;
+      md5: string;
+    }>;
+  }> {
+    const { files, category } = params;
+    
+    if (!files || files.length === 0) {
+      throw new Error("At least one file is required");
+    }
+    
+    if (files.length > 10) {
+      throw new Error("Maximum 10 files allowed");
+    }
+    
+    const uploadedFiles = [];
+    const wdb = this.getPuri("w");
+    
+    for (const file of files) {
+      // Validation
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error(`File ${file.filename} too large (max 20MB)`);
+      }
+      
+      // MD5 hash
+      const md5Hash = await file.md5();
+      
+      // Duplicate check
+      const rdb = this.getPuri("r");
+      const existing = await rdb
+        .table("files")
+        .where("md5_hash", md5Hash)
+        .first();
+      
+      if (existing) {
+        // File already exists
+        uploadedFiles.push({
+          fileId: existing.id,
+          filename: existing.filename,
+          url: existing.url,
+          md5: md5Hash,
+        });
+        continue;
+      }
+      
+      // Save new file
+      const key = `uploads/${category}/${Date.now()}.${file.extname}`;
+      const url = await file.saveToDisk(key);
+      
+      // Save to DB
+      const [record] = await wdb
+        .table("files")
+        .insert({
+          key,
+          filename: file.filename,
+          mime_type: file.mimetype,
+          size: file.size,
+          md5_hash: md5Hash,
+          url,
+          category,
+        })
+        .returning({ id: "id" });
+      
+      uploadedFiles.push({
+        fileId: record.id,
+        filename: file.filename,
+        url,
+        md5: md5Hash,
+      });
+    }
+    
+    return { uploadedFiles };
+  }
+}
+```
+
+## Accessing Original MultipartFile
+
+### raw Property
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadAdvanced(params: {
+    file: UploadedFile;
+  }): Promise<any> {
+    const { file } = params;
+    
+    // Access original Fastify MultipartFile
+    const rawFile = file.raw;
+    
+    console.log({
+      encoding: rawFile.encoding,
+      fieldname: rawFile.fieldname,
+      // ...
+    });
+    
+    const url = await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using UploadedFile**:
+1. Validation is required before calling `saveToDisk()`
+2. `toBuffer()` is cached so can be called multiple times
+3. `url`, `signedUrl` are only available after saving
+4. Consider streaming for large files
+5. Verify Storage configuration
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="File Upload Setup" icon="gear" href="/api-development/file-upload/setup">
+    @upload decorator setup
+  </Card>
+  <Card title="Saving Files" icon="floppy-disk" href="/api-development/file-upload/saving-files">
+    Using Storage Manager
+  </Card>
+  <Card title="URL Generation" icon="link" href="/api-development/file-upload/url-generation">
+    Generating URLs
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    API basic usage
+  </Card>
+</CardGroup>

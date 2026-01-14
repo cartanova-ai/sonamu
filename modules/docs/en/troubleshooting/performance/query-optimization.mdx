@@ -1,0 +1,487 @@
+---
+title: '쿼리 최적화'
+description: '데이터베이스 쿼리 최적화하기'
+---
+
+Puri 쿼리 빌더를 활용한 효과적인 쿼리 최적화 방법을 다룹니다.
+
+## 쿼리 성능 기본 원칙
+
+### 1. 필요한 컬럼만 선택
+
+```typescript
+// ❌ 나쁜 예 - 모든 컬럼 조회
+const users = await UserModel.getPuri().select("*");
+
+// ✅ 좋은 예 - 필요한 컬럼만 조회
+const users = await UserModel.getPuri().select("id", "email", "name");
+```
+
+**성능 차이:**
+- 네트워크 전송량 감소
+- 메모리 사용량 감소
+- 인덱스 온리 스캔 가능
+
+### 2. WHERE 절 최적화
+
+```typescript
+// ✅ 인덱스를 활용한 쿼리
+const activeUsers = await UserModel.getPuri()
+  .select("id", "email")
+  .where({ status: "active" });  // status 컬럼에 인덱스 필요
+
+// ❌ 인덱스를 사용할 수 없는 쿼리
+const users = await UserModel.getPuri()
+  .select("id", "email")
+  .whereRaw("LOWER(email) = ?", ["test@example.com"]);  // 함수 사용
+```
+
+### 3. LIMIT 사용
+
+```typescript
+// ✅ LIMIT으로 결과 제한
+const recentUsers = await UserModel.getPuri()
+  .select("id", "name", "created_at")
+  .orderBy("created_at", "desc")
+  .limit(10);  // 상위 10개만
+```
+
+## 인덱스 활용
+
+### 단일 컬럼 인덱스
+
+```typescript
+// Entity 정의에서 인덱스 추가
+{
+  "name": "User",
+  "properties": [
+    {
+      "name": "email",
+      "type": "varchar",
+      "index": true  // 인덱스 생성
+    },
+    {
+      "name": "status",
+      "type": "varchar",
+      "index": true
+    }
+  ]
+}
+```
+
+```typescript
+// 인덱스를 활용한 쿼리
+const user = await UserModel.getPuri()
+  .select("id", "name")
+  .where({ email: "test@example.com" })  // email 인덱스 사용
+  .first();
+```
+
+### 복합 인덱스
+
+```typescript
+// Entity 정의
+{
+  "name": "Order",
+  "properties": [
+    {
+      "name": "user_id",
+      "type": "int"
+    },
+    {
+      "name": "status",
+      "type": "varchar"
+    }
+  ],
+  "indexes": [
+    {
+      "fields": ["user_id", "status"],  // 복합 인덱스
+      "unique": false
+    }
+  ]
+}
+```
+
+```typescript
+// ✅ 복합 인덱스 활용
+const userOrders = await OrderModel.getPuri()
+  .select("id", "total")
+  .where({ 
+    user_id: 1,
+    status: "completed"  // user_id + status 복합 인덱스 사용
+  });
+```
+
+### 인덱스 효과 확인
+
+```typescript
+// PostgreSQL EXPLAIN으로 실행 계획 확인
+const query = UserModel.getPuri()
+  .select("id", "email")
+  .where({ status: "active" })
+  .toQuery();
+
+console.log(query);
+
+// psql에서 실행
+// EXPLAIN ANALYZE SELECT id, email FROM users WHERE status = 'active';
+```
+
+## JOIN 최적화
+
+### INNER JOIN vs LEFT JOIN
+
+```typescript
+// ✅ INNER JOIN - 관계가 있는 데이터만
+const ordersWithUser = await OrderModel.getPuri()
+  .select("orders.id", "orders.total", "users.name")
+  .join("users", "users.id", "orders.user_id");  // INNER JOIN
+
+// ✅ LEFT JOIN - 관계가 없어도 포함
+const usersWithOrders = await UserModel.getPuri()
+  .select("users.id", "users.name", "orders.total")
+  .leftJoin("orders", "orders.user_id", "users.id");  // LEFT JOIN
+```
+
+### JOIN 조건 최적화
+
+```typescript
+// ❌ 나쁜 예 - 조인 후 필터링
+const result = await OrderModel.getPuri()
+  .select("orders.*", "users.name")
+  .join("users", "users.id", "orders.user_id")
+  .where({ "users.status": "active" });  // 조인 후 필터링
+
+// ✅ 좋은 예 - 조인 전 필터링
+const result = await OrderModel.getPuri()
+  .select("orders.*", "users.name")
+  .join(
+    knex.raw("users ON users.id = orders.user_id AND users.status = ?", ["active"])
+  );  // 조인 조건에 포함
+```
+
+## 집계 쿼리 최적화
+
+### COUNT 최적화
+
+```typescript
+// ❌ 비효율적 - 모든 행 가져온 후 카운트
+const users = await UserModel.getPuri().select("*");
+const count = users.length;
+
+// ✅ 효율적 - DB에서 카운트
+const result = await UserModel.getPuri()
+  .select({ count: Puri.count() })
+  .where({ status: "active" });
+const count = result[0].count;
+```
+
+### GROUP BY 최적화
+
+```typescript
+// 주문 통계
+const orderStats = await OrderModel.getPuri()
+  .select(
+    "user_id",
+    knex.raw("COUNT(*) as order_count"),
+    knex.raw("SUM(total) as total_amount")
+  )
+  .where({ status: "completed" })
+  .groupBy("user_id")
+  .having(knex.raw("COUNT(*) > ?", [10]));  // 주문 10개 이상
+```
+
+## 페이지네이션 최적화
+
+### Offset 기반 (작은 데이터셋)
+
+```typescript
+// 기본 페이지네이션
+async function getUsers(page: number, limit: number) {
+  const offset = (page - 1) * limit;
+  
+  return UserModel.getPuri()
+    .select("id", "name", "email")
+    .orderBy("created_at", "desc")
+    .offset(offset)
+    .limit(limit);
+}
+```
+
+### Cursor 기반 (큰 데이터셋)
+
+```typescript
+// ✅ 커서 기반 페이지네이션 (더 빠름)
+async function getUsersCursor(lastId?: number, limit: number = 20) {
+  const query = UserModel.getPuri()
+    .select("id", "name", "email", "created_at")
+    .orderBy("id", "desc")
+    .limit(limit);
+  
+  if (lastId) {
+    query.where("id", "<", lastId);  // 마지막 ID 이후
+  }
+  
+  return query;
+}
+
+// 사용
+const firstPage = await getUsersCursor(undefined, 20);
+const secondPage = await getUsersCursor(firstPage[firstPage.length - 1].id, 20);
+```
+
+**장점:**
+- OFFSET이 커져도 성능 일정
+- 인덱스 스캔만 사용
+- 실시간 데이터 변경에 안정적
+
+## 서브쿼리 최적화
+
+### EXISTS vs IN
+
+```typescript
+// ❌ IN - 서브쿼리 결과를 메모리에 로드
+const usersWithOrders = await UserModel.getPuri()
+  .select("id", "name")
+  .whereIn("id", 
+    knex.select("user_id").from("orders").where({ status: "completed" })
+  );
+
+// ✅ EXISTS - 존재 여부만 확인 (더 빠름)
+const usersWithOrders = await UserModel.getPuri()
+  .select("id", "name")
+  .whereRaw(
+    "EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id AND orders.status = ?)",
+    ["completed"]
+  );
+```
+
+### 서브쿼리 대신 JOIN
+
+```typescript
+// ❌ 서브쿼리
+const users = await UserModel.getPuri()
+  .select(
+    "id",
+    "name",
+    knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count")
+  );
+
+// ✅ LEFT JOIN + GROUP BY (더 빠름)
+const users = await UserModel.getPuri()
+  .select(
+    "users.id",
+    "users.name",
+    knex.raw("COUNT(orders.id) as order_count")
+  )
+  .leftJoin("orders", "orders.user_id", "users.id")
+  .groupBy("users.id");
+```
+
+## 배치 처리
+
+### 대량 조회 최적화
+
+```typescript
+// ❌ 루프 안에서 개별 조회
+async function getUsersWithDetails(userIds: number[]) {
+  const results = [];
+  for (const id of userIds) {
+    const user = await UserModel.findById(id);
+    results.push(user);
+  }
+  return results;
+}
+
+// ✅ whereIn으로 한 번에 조회
+async function getUsersWithDetails(userIds: number[]) {
+  return UserModel.getPuri()
+    .select("*")
+    .whereIn("id", userIds);
+}
+```
+
+### 청크 처리
+
+```typescript
+// 대량 데이터 처리
+async function processAllUsers() {
+  const chunkSize = 1000;
+  let offset = 0;
+  
+  while (true) {
+    const users = await UserModel.getPuri()
+      .select("id", "email")
+      .offset(offset)
+      .limit(chunkSize);
+    
+    if (users.length === 0) break;
+    
+    // 처리 로직
+    await processUsers(users);
+    
+    offset += chunkSize;
+  }
+}
+```
+
+## 쿼리 캐싱
+
+### 자주 사용되는 쿼리 캐싱
+
+```typescript
+import { cache } from "sonamu";
+
+class UserModelClass extends BaseModel {
+  @cache({ ttl: '5m' })  // 5분 캐싱
+  async getActiveUsersCount(): Promise<number> {
+    const result = await this.getPuri()
+      .select({ count: Puri.count() })
+      .where({ status: "active" });
+    return result[0].count;
+  }
+}
+```
+
+### 수동 캐시 관리
+
+```typescript
+import { Sonamu } from "sonamu";
+
+async function getCachedUsers() {
+  const cacheKey = "users:active";
+  
+  // 캐시 확인
+  const cached = await Sonamu.cache.get(cacheKey);
+  if (cached) return cached;
+  
+  // 캐시 미스 - DB 조회
+  const users = await UserModel.getPuri()
+    .select("id", "name")
+    .where({ status: "active" });
+  
+  // 캐시 저장 (5분)
+  await Sonamu.cache.set(cacheKey, users, { ttl: '5m' });
+  
+  return users;
+}
+```
+
+## 실행 계획 분석
+
+### EXPLAIN 사용
+
+```typescript
+// 쿼리 생성
+const query = UserModel.getPuri()
+  .select("users.id", "users.name", "orders.total")
+  .join("orders", "orders.user_id", "users.id")
+  .where({ "users.status": "active" })
+  .toQuery();
+
+console.log("SQL:", query);
+
+// PostgreSQL에서 실행
+// EXPLAIN ANALYZE {query}
+```
+
+**주요 확인 사항:**
+- Seq Scan vs Index Scan
+- 예상 rows vs 실제 rows
+- 실행 시간 (Execution Time)
+- Join 방식 (Nested Loop, Hash Join, Merge Join)
+
+## 성능 모니터링
+
+### 쿼리 로깅
+
+```typescript
+// sonamu.config.ts
+export default {
+  database: {
+    defaultOptions: {
+      debug: process.env.NODE_ENV === "development"  // 쿼리 로깅
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+### 느린 쿼리 탐지
+
+```typescript
+class UserModelClass extends BaseModel {
+  async findActiveUsers() {
+    const start = Date.now();
+    
+    const users = await this.getPuri()
+      .select("*")
+      .where({ status: "active" });
+    
+    const duration = Date.now() - start;
+    
+    if (duration > 1000) {
+      this.logger.warn("느린 쿼리 감지", { 
+        method: "findActiveUsers",
+        duration: `${duration}ms`
+      });
+    }
+    
+    return users;
+  }
+}
+```
+
+## Best Practices
+
+### 1. 인덱스 전략
+
+```typescript
+// ✅ 자주 조회되는 컬럼에 인덱스
+// ✅ WHERE, JOIN, ORDER BY에 사용되는 컬럼
+// ✅ 선택도가 높은 컬럼 (값이 다양한 컬럼)
+// ❌ 거의 사용하지 않는 컬럼
+// ❌ 선택도가 낮은 컬럼 (boolean 등)
+```
+
+### 2. 쿼리 패턴
+
+```typescript
+// ✅ 단순하고 명확한 쿼리
+// ✅ 필요한 데이터만 조회
+// ✅ 인덱스 활용
+// ❌ 복잡한 서브쿼리
+// ❌ 과도한 JOIN
+// ❌ SELECT *
+```
+
+### 3. 데이터베이스 설정
+
+```sql
+-- PostgreSQL 설정 최적화
+-- shared_buffers = 4GB  (RAM의 25%)
+-- effective_cache_size = 12GB  (RAM의 75%)
+-- work_mem = 50MB
+-- maintenance_work_mem = 1GB
+```
+
+## 성능 체크리스트
+
+쿼리를 작성할 때 확인하세요:
+
+- [ ] 필요한 컬럼만 SELECT
+- [ ] WHERE 절에 인덱스 활용
+- [ ] LIMIT으로 결과 제한
+- [ ] 불필요한 JOIN 제거
+- [ ] N+1 문제 확인
+- [ ] 서브쿼리 대신 JOIN 고려
+- [ ] 집계 함수는 DB에서 처리
+- [ ] 대량 처리는 배치로
+- [ ] 자주 사용되는 쿼리는 캐싱
+- [ ] EXPLAIN으로 실행 계획 확인
+
+## 관련 문서
+
+- [N+1 문제](/troubleshooting/performance/n-plus-one-problems)
+- [캐싱 전략](/troubleshooting/performance/caching-strategies)
+- [Puri 쿼리 빌더](/database/puri/basic-queries)
+- [인덱스 설정](/database/migrations/migration-strategies)

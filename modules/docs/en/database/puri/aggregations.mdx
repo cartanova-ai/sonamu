@@ -1,0 +1,625 @@
+---
+title: "Aggregate Functions"
+description: "Using COUNT, SUM, AVG and other aggregate functions"
+---
+
+Puri lets you use SQL's powerful aggregate functions in a type-safe manner. This document explains COUNT, SUM, AVG, MAX, MIN along with GROUP BY and HAVING.
+
+## Aggregate Function Overview
+
+<CardGroup cols={2}>
+  <Card title="COUNT" icon="hashtag">
+    Count records
+    
+    Puri.count()
+  </Card>
+  <Card title="SUM/AVG" icon="calculator">
+    Calculate sum and average
+    
+    Puri.sum(), Puri.avg()
+  </Card>
+  <Card title="MAX/MIN" icon="arrow-up-wide-short">
+    Find max and min values
+    
+    Puri.max(), Puri.min()
+  </Card>
+  <Card title="GROUP BY" icon="layer-group">
+    Aggregate by group
+    
+    groupBy(), having()
+  </Card>
+</CardGroup>
+
+## COUNT - Counting Records
+
+### Basic COUNT
+
+<CodeGroup>
+```typescript title="Total record count"
+const result = await db
+  .table("employees")
+  .select({
+    total: Puri.count(),
+  })
+  .first();
+
+console.log(result.total); // 150
+// Type: { total: number }
+```
+
+```typescript title="COUNT specific column"
+const result = await db
+  .table("employees")
+  .select({
+    total: Puri.count("id"),
+  })
+  .first();
+
+// COUNT(id) - excludes NULL
+```
+
+```typescript title="DISTINCT COUNT"
+const result = await db
+  .table("employees")
+  .select({
+    uniqueDepts: Puri.rawNumber("COUNT(DISTINCT department_id)"),
+  })
+  .first();
+
+// Count after removing duplicates
+```
+</CodeGroup>
+
+<Info>
+`Puri.count()` generates `COUNT(*)`. It counts all rows including NULL.
+`Puri.count("column")` counts only rows where that column is not NULL.
+</Info>
+
+### COUNT with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    employeeCount: Puri.count("id"),
+  })
+  .groupBy("department_id");
+
+// Employee count per department
+// [
+//   { departmentId: 1, employeeCount: 20 },
+//   { departmentId: 2, employeeCount: 15 },
+//   ...
+// ]
+```
+
+## SUM - Sum
+
+Calculate the sum of a numeric column.
+
+<CodeGroup>
+```typescript title="Basic SUM"
+const result = await db
+  .table("employees")
+  .select({
+    totalSalary: Puri.sum("salary"),
+  })
+  .first();
+
+console.log(result.totalSalary); // 5000000
+// Type: { totalSalary: number }
+```
+
+```typescript title="Conditional SUM"
+const result = await db
+  .table("employees")
+  .select({
+    totalSalary: Puri.sum("salary"),
+  })
+  .where("department_id", 1)
+  .first();
+
+// Total salary for specific department
+```
+</CodeGroup>
+
+### SUM with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    totalSalary: Puri.sum("salary"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id")
+  .orderBy("totalSalary", "desc");
+
+// Total and average salary per department
+```
+
+## AVG - Average
+
+Calculate the average of a numeric column.
+
+<CodeGroup>
+```typescript title="Basic AVG"
+const result = await db
+  .table("employees")
+  .select({
+    avgSalary: Puri.avg("salary"),
+  })
+  .first();
+
+console.log(result.avgSalary); // 65000
+// Type: { avgSalary: number }
+```
+
+```typescript title="With ROUND"
+const result = await db
+  .table("employees")
+  .select({
+    avgSalary: Puri.rawNumber("ROUND(AVG(salary), 2)"),
+  })
+  .first();
+
+// Round to 2 decimal places
+```
+</CodeGroup>
+
+## MAX / MIN - Maximum / Minimum
+
+### Maximum
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    highestSalary: Puri.max("salary"),
+    latestHireDate: Puri.max("hire_date"),
+  })
+  .first();
+
+// Highest salary, most recent hire date
+```
+
+### Minimum
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    lowestSalary: Puri.min("salary"),
+    earliestHireDate: Puri.min("hire_date"),
+  })
+  .first();
+
+// Lowest salary, oldest hire date
+```
+
+### MAX/MIN with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    minSalary: Puri.min("salary"),
+    maxSalary: Puri.max("salary"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+
+// Min/max/avg salary per department
+```
+
+## GROUP BY - Grouping
+
+Group data by specific columns for aggregation.
+
+### Single Column GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+
+// Statistics per department
+```
+
+### Multiple Column GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    hireYear: Puri.rawNumber("EXTRACT(YEAR FROM hire_date)"),
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id", "hireYear")
+  .orderBy("department_id", "asc")
+  .orderBy("hireYear", "asc");
+
+// New employee count by department + year
+```
+
+<Warning>
+**GROUP BY rules**:
+- All columns in SELECT that are not aggregate functions must be in GROUP BY
+- Columns not in GROUP BY cannot be SELECTed (except aggregate functions)
+</Warning>
+
+### GROUP BY with JOIN
+
+```typescript
+const results = await db
+  .table("departments")
+  .leftJoin("employees", "departments.id", "employees.department_id")
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    empCount: Puri.count("employees.id"),
+    avgSalary: Puri.avg("employees.salary"),
+  })
+  .groupBy("departments.id", "departments.name")
+  .orderBy("empCount", "desc");
+
+// Employee count & average salary per department
+```
+
+## HAVING - Filtering Aggregate Results
+
+HAVING filters aggregate results after GROUP BY.
+
+### Basic HAVING
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id")
+  .having("count", ">=", 10);
+
+// Only departments with 10+ employees
+```
+
+<Info>
+**WHERE vs HAVING**:
+- `WHERE`: Filters **before** GROUP BY (on individual rows)
+- `HAVING`: Filters **after** GROUP BY (on aggregate results)
+</Info>
+
+### HAVING with Aggregate Functions
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id")
+  .having("avgSalary", ">", 70000)
+  .having("count", ">=", 5);
+
+// Departments with avg salary > 70k AND 5+ employees
+```
+
+### WHERE + HAVING Combined
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+  })
+  .where("hire_date", ">=", "2020-01-01")  // Row filter
+  .groupBy("department_id")
+  .having("avgSalary", ">", 65000);         // Aggregate filter
+
+// Among employees hired since 2020, avg salary > 65k by department
+```
+
+## Complex Aggregation Examples
+
+### Detailed Department Statistics
+
+```typescript
+const stats = await db
+  .table("departments")
+  .leftJoin("employees", "departments.id", "employees.department_id")
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    
+    // Employee count
+    empCount: Puri.count("employees.id"),
+    
+    // Salary statistics
+    minSalary: Puri.min("employees.salary"),
+    maxSalary: Puri.max("employees.salary"),
+    avgSalary: Puri.avg("employees.salary"),
+    totalSalary: Puri.sum("employees.salary"),
+    
+    // Hire date statistics
+    earliestHire: Puri.min("employees.hire_date"),
+    latestHire: Puri.max("employees.hire_date"),
+  })
+  .groupBy("departments.id", "departments.name")
+  .having("empCount", ">", 0)
+  .orderBy("empCount", "desc");
+```
+
+### Project Progress Status
+
+```typescript
+const projectStats = await db
+  .table("projects")
+  .leftJoin("projects__employees", "projects.id", "projects__employees.project_id")
+  .select({
+    projectId: "projects.id",
+    projectName: "projects.name",
+    status: "projects.status",
+    memberCount: Puri.count("projects__employees.employee_id"),
+  })
+  .groupBy("projects.id", "projects.name", "projects.status")
+  .orderBy("status", "asc")
+  .orderBy("memberCount", "desc");
+
+// Member count per project (sorted by status)
+```
+
+### Monthly Sales Analysis
+
+```typescript
+const monthlySales = await db
+  .table("orders")
+  .select({
+    year: Puri.rawNumber("EXTRACT(YEAR FROM created_at)"),
+    month: Puri.rawNumber("EXTRACT(MONTH FROM created_at)"),
+    orderCount: Puri.count("id"),
+    totalAmount: Puri.sum("amount"),
+    avgAmount: Puri.avg("amount"),
+  })
+  .where("status", "completed")
+  .groupBy("year", "month")
+  .orderBy("year", "desc")
+  .orderBy("month", "desc");
+
+// Monthly order statistics
+```
+
+## Conditional Aggregation
+
+Conditional aggregation using CASE WHEN.
+
+### Count by Status
+
+```typescript
+const stats = await db
+  .table("projects")
+  .select({
+    totalProjects: Puri.count("id"),
+    
+    activeProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'in_progress' THEN 1 END)
+    `),
+    
+    completedProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'completed' THEN 1 END)
+    `),
+    
+    cancelledProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'cancelled' THEN 1 END)
+    `),
+  })
+  .first();
+
+// Total/in-progress/completed/cancelled project counts
+```
+
+### Range-based Aggregation
+
+```typescript
+const salaryRanges = await db
+  .table("employees")
+  .select({
+    under50k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary < 50000 THEN 1 END)
+    `),
+    
+    range50to70k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary BETWEEN 50000 AND 70000 THEN 1 END)
+    `),
+    
+    above70k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary > 70000 THEN 1 END)
+    `),
+  })
+  .first();
+
+// Employee count by salary range
+```
+
+## Practical Examples
+
+### Dashboard Statistics
+
+```typescript
+async getDashboardStats() {
+  // Overall statistics
+  const overall = await this.getPuri("r")
+    .table("employees")
+    .select({
+      totalEmployees: Puri.count("id"),
+      avgSalary: Puri.avg("salary"),
+      maxSalary: Puri.max("salary"),
+      minSalary: Puri.min("salary"),
+    })
+    .first();
+
+  // Statistics by department
+  const byDepartment = await this.getPuri("r")
+    .table("departments")
+    .leftJoin("employees", "departments.id", "employees.department_id")
+    .select({
+      deptName: "departments.name",
+      empCount: Puri.count("employees.id"),
+      avgSalary: Puri.avg("employees.salary"),
+    })
+    .groupBy("departments.id", "departments.name")
+    .orderBy("empCount", "desc")
+    .limit(10);
+
+  return {
+    overall,
+    byDepartment,
+  };
+}
+```
+
+### Hire Year Statistics
+
+```typescript
+async getHiringTrends() {
+  const trends = await this.getPuri("r")
+    .table("employees")
+    .select({
+      year: Puri.rawNumber("EXTRACT(YEAR FROM hire_date)"),
+      hireCount: Puri.count("id"),
+      avgSalary: Puri.avg("salary"),
+    })
+    .groupBy("year")
+    .orderBy("year", "desc")
+    .limit(5);
+
+  return trends;
+}
+```
+
+### Top 5 Departments
+
+```typescript
+async getTop5Departments() {
+  const top5 = await this.getPuri("r")
+    .table("departments")
+    .leftJoin("employees", "departments.id", "employees.department_id")
+    .select({
+      deptId: "departments.id",
+      deptName: "departments.name",
+      empCount: Puri.count("employees.id"),
+      totalSalary: Puri.sum("employees.salary"),
+      avgSalary: Puri.avg("employees.salary"),
+    })
+    .groupBy("departments.id", "departments.name")
+    .having("empCount", ">", 0)
+    .orderBy("totalSalary", "desc")
+    .limit(5);
+
+  return top5;
+}
+```
+
+## Performance Optimization
+
+### Index Usage
+
+```sql
+-- Index columns in GROUP BY
+CREATE INDEX idx_employees_department_id ON employees(department_id);
+CREATE INDEX idx_employees_hire_date ON employees(hire_date);
+
+-- Index columns being aggregated (optional)
+CREATE INDEX idx_employees_salary ON employees(salary);
+```
+
+### Only Perform Necessary Aggregations
+
+```typescript
+// ❌ Bad: Unnecessary aggregations
+await db
+  .table("employees")
+  .select({
+    count: Puri.count("id"),
+    sum: Puri.sum("salary"),
+    avg: Puri.avg("salary"),
+    max: Puri.max("salary"),
+    min: Puri.min("salary"),
+    // ... more aggregations
+  })
+  .groupBy("department_id");
+
+// ✅ Good: Only needed ones
+await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+```
+
+### Filter with WHERE First
+
+```typescript
+// ✅ Good: Remove unnecessary rows before aggregation
+await db
+  .table("employees")
+  .where("is_active", true)        // Filter first
+  .where("hire_date", ">=", "2020-01-01")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+```
+
+## Type Safety
+
+Result types of aggregate functions are automatically inferred.
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    count: Puri.count("id"),           // number
+    avgSalary: Puri.avg("salary"),     // number
+    maxDate: Puri.max("hire_date"),    // string (dates return as string)
+  })
+  .first();
+
+result.count;      // number
+result.avgSalary;  // number
+result.maxDate;    // string
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Raw Queries" icon="code" href="/database/puri/raw-queries">
+    Write complex SQL directly
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    Window functions and advanced patterns
+  </Card>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    Aggregate with joins
+  </Card>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    Type safety of aggregate functions
+  </Card>
+</CardGroup>

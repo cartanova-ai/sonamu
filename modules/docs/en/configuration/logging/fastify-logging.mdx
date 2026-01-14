@@ -1,0 +1,974 @@
+---
+title: 'Fastify Logging'
+description: 'Customizing HTTP request/response logging'
+---
+
+Sonamu automatically logs Fastify HTTP requests and responses. It's integrated with LogTape through the `@logtape/fastify` package.
+
+## Why HTTP Logging is Important
+
+HTTP logs are essential for web service operations.
+
+### 1. Troubleshooting
+
+**Error tracking:**
+```
+[ERROR] POST /api/order → 500
+→ Which API failed?
+→ When did it occur?
+→ Which users were affected?
+```
+
+**Bug reproduction:**
+```
+User report: "Payment isn't working"
+→ Check logs: POST /api/payment → 500
+→ Error content: "card_declined"
+→ Problem identified: Card payment system issue
+```
+
+### 2. Performance Monitoring
+
+**Discovering slow requests:**
+```
+[WARN] GET /api/user/list → 200 (3500ms)
+→ Takes 3.5 seconds, too slow!
+→ Query optimization needed
+```
+
+**Detecting bottlenecks:**
+```
+[INFO] GET /api/product/123 → 200 (100ms)
+[INFO] GET /api/product/123 → 200 (100ms)
+[INFO] GET /api/product/123 → 200 (100ms)
+→ Same request repeated
+→ Caching needed
+```
+
+### 3. Security Monitoring
+
+**Detecting abnormal access:**
+```
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+→ Repeated unauthorized access attempts
+→ Potential security threat
+```
+
+**Discovering attack patterns:**
+```
+[ERROR] POST /api/login → 401
+[ERROR] POST /api/login → 401
+[ERROR] POST /api/login → 401
+→ Possible brute force attack
+```
+
+### 4. Business Analysis
+
+**Usage pattern analysis:**
+```
+Today's logs:
+GET /api/product/* → 1,000 requests
+GET /api/user/* → 500 requests
+POST /api/order → 200 requests
+
+→ Product views are most common
+→ Order conversion rate 20%
+```
+
+## What Should Be Logged?
+
+### Essential Logging Items
+
+**1. Request Information**
+- HTTP method (GET, POST, PUT, DELETE)
+- URL path
+- Timestamp
+
+```typescript
+[INFO] GET /api/user/list
+[INFO] POST /api/order
+```
+
+**2. Response Information**
+- Status code (200, 404, 500)
+- Response time
+
+```typescript
+[INFO] GET /api/user/list → 200 (123ms)
+[ERROR] POST /api/order → 500 (456ms)
+```
+
+**3. Error Information**
+- Error message
+- Stack trace
+
+```typescript
+[ERROR] POST /api/payment → 500
+Error: Card declined
+  at PaymentService.charge
+  at OrderController.create
+```
+
+### Things NOT to Log
+
+**Security information:**
+```typescript
+// ❌ Never log
+POST /api/login
+{ password: "user-password-123" }  // Password!
+
+// ✅ Safe
+POST /api/login
+{ userId: "user@example.com" }  // Exclude password
+```
+
+**Personal information:**
+```typescript
+// ❌ Exposing sensitive info
+[INFO] SSN: 123-45-6789
+[INFO] Card number: 1234-5678-9012-3456
+
+// ✅ Masked
+[INFO] SSN: ***-**-6789
+[INFO] Card number: 1234-****-****-3456
+```
+
+### Log Level Selection
+
+**info - Normal requests**
+```typescript
+[INFO] GET /api/user/list → 200 (100ms)
+[INFO] POST /api/order → 201 (200ms)
+```
+- 2xx, 3xx status codes
+- Normal business flow
+
+**warning - Needs attention**
+```typescript
+[WARN] GET /api/user/list → 200 (3500ms)  // Slow
+[WARN] POST /api/order → 429 (50ms)      // Rate limit
+```
+- Slow responses (>1 second)
+- 4xx status codes (client errors)
+- Rate limiting
+
+**error - Server errors**
+```typescript
+[ERROR] POST /api/payment → 500
+[ERROR] GET /api/user/123 → 500
+```
+- 5xx status codes
+- Exceptions occurred
+- DB connection failures
+
+## Using responseTime
+
+`responseTime` is the time taken for API response (in milliseconds).
+
+### Performance Criteria
+
+| Time | Rating | Action |
+|------|--------|--------|
+| < 100ms | Very fast | Maintain |
+| 100-500ms | Acceptable | Monitor |
+| 500ms-1s | Slow | Review optimization |
+| > 1s | Very slow | Optimize immediately |
+
+### Performance Monitoring Configuration
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "fast": (record) => {
+        const time = record.properties.responseTime as number | undefined;
+        return time ? time < 100 : false;
+      },
+      "slow": (record) => {
+        const time = record.properties.responseTime as number | undefined;
+        return time ? time > 1000 : false;
+      },
+    },
+    
+    loggers: [
+      // Fast requests: debug level
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        filters: ["fast"],
+        lowestLevel: "debug",
+      },
+      // Slow requests: warning level
+      {
+        category: ["fastify"],
+        sinks: ["console", "slowLog"],
+        filters: ["slow"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Performance Analysis
+
+```typescript
+// Statistics from log data
+/api/user/list
+- Average: 150ms
+- Min: 50ms
+- Max: 500ms
+
+/api/order/create
+- Average: 800ms
+- Min: 300ms  
+- Max: 2000ms  // Problem!
+
+→ order/create API needs optimization
+```
+
+## Automatic Logging
+
+HTTP logging is automatically enabled without additional configuration.
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**Automatically logged information:**
+- HTTP method (GET, POST, PUT, DELETE, etc.)
+- Request URL
+- Response code (200, 404, 500, etc.)
+- Response time
+- Error stack trace (when errors occur)
+
+## Default Log Format
+
+```
+[2025-01-09 12:34:56] [fastify] INFO: [GET:200] /api/user/list - Request completed
+[2025-01-09 12:34:57] [fastify] INFO: [POST:201] /api/user - User created
+[2025-01-09 12:34:58] [fastify] ERROR: [POST:500] /api/order - Internal server error
+```
+
+**Format structure:**
+```
+[timestamp] [category] level: [method:code] URL - message
+```
+
+## Default Behavior
+
+### 1. Logging Target
+
+By default, only paths starting with `/api` are logged.
+
+```typescript
+// ✅ Logged
+GET /api/user/list
+POST /api/order
+PUT /api/company/123
+
+// ❌ Not logged
+GET /                      // Not an API
+GET /assets/logo.png       // Static file
+GET /api/healthcheck       // Healthcheck excluded
+```
+
+### 2. Default sink
+
+Sonamu automatically creates a `"fastify-console"` sink.
+
+**Features:**
+- Console output
+- Pretty format (pretty formatter)
+- HTTP method and response code display
+- Timestamp, category display
+
+### 3. Default filter
+
+A `"fastify-console"` filter is automatically created.
+
+**Conditions:**
+- URL starts with `/api`
+- Excludes `/api/healthcheck`
+
+### 4. Default logger
+
+```typescript
+{
+  category: ["fastify"],
+  sinks: ["fastify-console"],
+  lowestLevel: "info",
+  filters: ["fastify-console"],
+}
+```
+
+## Customizing fastifyCategory
+
+You can change the category used for Fastify logging.
+
+```typescript
+export default defineConfig({
+  logging: {
+    fastifyCategory: ["app", "server", "http"],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**Log output:**
+```
+[2025-01-09 12:34:56] [app.server.http] INFO: [GET:200] /api/user/list - Request completed
+```
+
+## LogRecord Properties
+
+Fastify logs include special properties.
+
+```typescript
+type FastifyLogRecord = LogRecord & {
+  properties: {
+    req?: FastifyRequest;      // Request info
+    res?: FastifyReply;         // Response info
+    responseTime?: number;      // Response time (ms)
+  };
+};
+```
+
+### req Property
+
+```typescript
+{
+  method: "GET",
+  url: "/api/user/list?page=1",
+  originalUrl: "/api/user/list?page=1",
+  headers: { ... },
+  params: { ... },
+  query: { page: "1" },
+  body: { ... },
+}
+```
+
+### res Property
+
+```typescript
+{
+  statusCode: 200,
+  request: FastifyRequest,  // Associated request
+}
+```
+
+### responseTime Property
+
+```typescript
+{
+  responseTime: 123  // Milliseconds (ms)
+}
+```
+
+## Custom Filters
+
+### URL Pattern Filtering
+
+```typescript
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+export default defineConfig({
+  logging: {
+    filters: {
+      "admin-only": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/admin") ?? false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["admin-only"],  // /api/admin/* only
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Status Code Filtering
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "errors-only": (record: LogRecord) => {
+        const res = record.properties.res as FastifyReply | undefined;
+        return res ? res.statusCode >= 400 : false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["errors-only"],  // 4xx, 5xx only
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Slow Request Filtering
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "slow-requests": (record: LogRecord) => {
+        const responseTime = record.properties.responseTime as number | undefined;
+        return responseTime ? responseTime > 1000 : false;  // Over 1 second
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["slow-requests"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## Custom Formatters
+
+### Simple Format
+
+```typescript
+import { getConsoleSink, type LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const simpleFormatter = (record: LogRecord): string => {
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  
+  if (req) {
+    return `${req.method} ${req.url}`;
+  }
+  
+  if (res) {
+    return `${res.request.method} ${res.request.url} → ${res.statusCode}`;
+  }
+  
+  return record.message.join(" ");
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      simple: getConsoleSink({ formatter: simpleFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["simple"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**Output:**
+```
+GET /api/user/list
+POST /api/user → 201
+GET /api/order/123 → 200
+```
+
+### Detailed Format
+
+```typescript
+import { getConsoleSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const detailedFormatter = (record: LogRecord): string => {
+  const timestamp = record.timestamp.toISOString();
+  const level = record.level.toUpperCase();
+  
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  const responseTime = record.properties.responseTime as number | undefined;
+  
+  if (res) {
+    const time = responseTime ? ` (${responseTime}ms)` : "";
+    return `[${timestamp}] ${level}: ${res.request.method} ${res.request.url} → ${res.statusCode}${time}`;
+  }
+  
+  if (req) {
+    return `[${timestamp}] ${level}: ${req.method} ${req.url}`;
+  }
+  
+  return `[${timestamp}] ${level}: ${record.message.join(" ")}`;
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      detailed: getConsoleSink({ formatter: detailedFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["detailed"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**Output:**
+```
+[2025-01-09T03:34:56.123Z] INFO: GET /api/user/list
+[2025-01-09T03:34:56.456Z] INFO: GET /api/user/list → 200 (123ms)
+[2025-01-09T03:34:57.789Z] ERROR: POST /api/order → 500 (456ms)
+```
+
+### JSON Format
+
+```typescript
+import { getConsoleSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const jsonFormatter = (record: LogRecord): string => {
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  const responseTime = record.properties.responseTime as number | undefined;
+  
+  const log = {
+    timestamp: record.timestamp.toISOString(),
+    level: record.level,
+    category: record.category,
+    method: req?.method ?? res?.request.method,
+    url: req?.url ?? res?.request.url,
+    statusCode: res?.statusCode,
+    responseTime,
+  };
+  
+  return JSON.stringify(log);
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      json: getConsoleSink({ formatter: jsonFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["json"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**Output:**
+```json
+{"timestamp":"2025-01-09T03:34:56.123Z","level":"info","category":["fastify"],"method":"GET","url":"/api/user/list","statusCode":200,"responseTime":123}
+```
+
+## Practical Examples
+
+### Development Environment Configuration
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  logging: {
+    fastifyCategory: ["fastify"],
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        lowestLevel: "debug",  // Detailed logs
+        filters: ["fastify-console"],
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Production Configuration
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getConsoleSink, getFileSink } from "@logtape/logtape";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      console: getConsoleSink(),
+      accessLog: getFileSink("logs/access.log"),
+      errorLog: getFileSink("logs/errors.log"),
+    },
+    
+    filters: {
+      "errors": (record) => {
+        const res = record.properties.res;
+        return res ? res.statusCode >= 400 : false;
+      },
+    },
+    
+    loggers: [
+      // Console: warning and above
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        lowestLevel: "warning",
+      },
+      // access.log: all requests
+      {
+        category: ["fastify"],
+        sinks: ["accessLog"],
+        lowestLevel: "info",
+      },
+      // error.log: errors only
+      {
+        category: ["fastify"],
+        sinks: ["errorLog"],
+        filters: ["errors"],
+        lowestLevel: "error",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Log Separation by Path
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getFileSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      adminLog: getFileSink("logs/admin.log"),
+      userLog: getFileSink("logs/user.log"),
+      publicLog: getFileSink("logs/public.log"),
+    },
+    
+    filters: {
+      "admin": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/admin") ?? false;
+      },
+      "user": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/user") ?? false;
+      },
+      "public": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/public") ?? false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["adminLog"],
+        filters: ["admin"],
+        lowestLevel: "info",
+      },
+      {
+        category: ["fastify"],
+        sinks: ["userLog"],
+        filters: ["user"],
+        lowestLevel: "info",
+      },
+      {
+        category: ["fastify"],
+        sinks: ["publicLog"],
+        filters: ["public"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Slow Request Monitoring
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getConsoleSink, getFileSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      console: getConsoleSink(),
+      slowLog: getFileSink("logs/slow-requests.log"),
+    },
+    
+    filters: {
+      "slow": (record: LogRecord) => {
+        const responseTime = record.properties.responseTime as number | undefined;
+        return responseTime ? responseTime > 1000 : false;
+      },
+    },
+    
+    loggers: [
+      // General logs
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        lowestLevel: "info",
+      },
+      // Slow requests (over 1 second)
+      {
+        category: ["fastify"],
+        sinks: ["slowLog"],
+        filters: ["slow"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## Disabling Logging
+
+### Complete Disable
+
+```typescript
+export default defineConfig({
+  logging: false,  // Disable all logging
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Disable Only Fastify Logging
+
+```typescript
+export default defineConfig({
+  logging: {
+    loggers: [
+      // Don't add logger for fastifyCategory
+      // → Fastify logging disabled
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Exclude Specific Paths
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "exclude-healthcheck": (record) => {
+        const req = record.properties.req;
+        const res = record.properties.res;
+        const url = req?.url ?? res?.request.url;
+        return url !== "/api/healthcheck";  // Exclude healthcheck
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["exclude-healthcheck"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## Important Notes
+
+### 1. req vs res Properties
+
+```typescript
+// ✅ Check both
+const req = record.properties.req as FastifyRequest | undefined;
+const res = record.properties.res as FastifyReply | undefined;
+const url = req?.url ?? res?.request.url;
+
+// ❌ Checking only one may cause misses
+const req = record.properties.req;
+const url = req.url;  // Error if only res exists
+```
+
+### 2. responseTime Only Exists in res
+
+```typescript
+// ✅ Correct check
+const responseTime = record.properties.responseTime as number | undefined;
+if (responseTime) {
+  // Use responseTime
+}
+
+// ❌ Not found in req
+const req = record.properties.req;
+const responseTime = req?.responseTime;  // undefined
+```
+
+### 3. Caution When Overwriting fastify-console
+
+```typescript
+// ❌ Losing default sink
+sinks: {
+  "fastify-console": getConsoleSink(),  // Loses default formatter
+}
+
+// ✅ Use different name
+sinks: {
+  "my-console": getConsoleSink(),
+}
+```
+
+### 4. Fastify logger Option Conflict
+
+```typescript
+// ❌ Conflict occurs
+logging: false,
+server: {
+  fastify: {
+    logger: true,  // Conflicts with logging: false
+  },
+}
+
+// ✅ Maintain consistency
+logging: false,
+server: {
+  fastify: {
+    // Don't set logger
+  },
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card 
+    title="Category Logging" 
+    icon="folder-tree" 
+    href="/configuration/logging/category-logging"
+  >
+    Manage logs systematically with the category system
+  </Card>
+  
+  <Card 
+    title="Sinks & Filters" 
+    icon="filter" 
+    href="/configuration/logging/sinks-and-filters"
+  >
+    Control log output with custom Sinks and Filters
+  </Card>
+  
+  <Card 
+    title="LogTape Setup" 
+    icon="gear" 
+    href="/configuration/logging/logtape-setup"
+  >
+    Learn basic logging configuration and concepts
+  </Card>
+  
+  <Card 
+    title="LogTape Official Documentation" 
+    icon="book-open" 
+    href="https://github.com/dahlia/logtape"
+  >
+    Check advanced features including Fastify integration
+  </Card>
+</CardGroup>

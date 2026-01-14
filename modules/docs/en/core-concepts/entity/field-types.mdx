@@ -1,0 +1,817 @@
+---
+title: "Field Types"
+description: "All available field types and options in Entity"
+---
+
+Sonamu supports various data types, and each type is appropriately mapped to PostgreSQL, TypeScript, and JSON.
+
+## Common Options
+
+Options that apply to all field types.
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `name` | string | Field name (snake_case) | *required* |
+| `type` | string | Data type | *required* |
+| `desc` | string | Field description | - |
+| `nullable` | boolean | Allow NULL | `false` |
+| `toFilter` | boolean | Enable search filtering | `false` |
+| `dbDefault` | string | Database default value | - |
+| `generated` | GeneratedColumn | Computed column setting | - |
+
+### Generated Column
+
+A column that automatically generates computed values.
+
+```json
+{
+  "name": "full_name",
+  "type": "string",
+  "generated": {
+    "type": "STORED",
+    "expression": "first_name || ' ' || last_name"
+  }
+}
+```
+
+**Options**:
+- `type`: `STORED` | `VIRTUAL`
+  - `STORED`: Physically stored (can create indexes)
+  - `VIRTUAL`: Calculated only on query (saves memory)
+- `expression`: SQL expression
+
+<Warning>
+- `VIRTUAL` type cannot be used with array types, json, or vector
+- `generated` and `dbDefault` cannot be used together
+</Warning>
+
+## Numeric Types
+
+### integer / integer[]
+
+32-bit integer type.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "age",
+      "type": "integer",
+      "desc": "Age"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `integer`
+    - TypeScript: `number`
+    - JSON: `number`
+    
+    **Range**: -2,147,483,648 ~ 2,147,483,647
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "years",
+      "type": "integer[]",
+      "desc": "Year list"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `integer[]`
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**Use cases**: ID, count, age, order, year
+</Tip>
+
+### bigInteger / bigInteger[]
+
+64-bit integer type.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "transaction_id",
+      "type": "bigInteger",
+      "desc": "Transaction ID"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `bigint`
+    - TypeScript: `bigint`
+    - JSON: `bigint` (serialized as string)
+    
+    **Range**: -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "large_ids",
+      "type": "bigInteger[]"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `bigint[]`
+    - TypeScript: `bigint[]`
+    - JSON: `bigint[]`
+  </Tab>
+</Tabs>
+
+<Warning>
+Values exceeding JavaScript's `Number.MAX_SAFE_INTEGER` (2^53 - 1) must use `bigint` to maintain accuracy.
+</Warning>
+
+### number / number[]
+
+Floating-point or fixed-point numeric type.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "price",
+      "type": "number",
+      "precision": 10,
+      "scale": 2,
+      "desc": "Price"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `numeric(10, 2)` (default)
+    - TypeScript: `number`
+    - JSON: `number`
+    
+    **Additional Options**:
+    - `precision`: Total digits (default: none = unlimited)
+    - `scale`: Decimal places (default: 0)
+    - `numberType`: `numeric` | `real` | `double precision` (default: `numeric`)
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "prices",
+      "type": "number[]",
+      "precision": 10,
+      "scale": 2
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `numeric(10, 2)[]`
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+  </Tab>
+</Tabs>
+
+**numberType Selection Guide**:
+
+| Type | Precision | Memory | Use Cases |
+|------|-----------|--------|-----------|
+| `numeric` | Exact (recommended) | High | Money, currency |
+| `real` | Approximate (6 digits) | 4 bytes | Scientific data |
+| `double precision` | Approximate (15 digits) | 8 bytes | Coordinates, measurements |
+
+<Tip>
+**Money handling**: Setting `precision: 10, scale: 2` allows storing up to 99,999,999.99
+</Tip>
+
+### numeric / numeric[]
+
+High-precision numeric type. Processed as **string** in TypeScript.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "precise_amount",
+      "type": "numeric",
+      "precision": 20,
+      "scale": 10,
+      "desc": "High-precision amount"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `numeric(20, 10)`
+    - TypeScript: `string` ⚠️
+    - JSON: `string`
+    
+    **Additional Options**:
+    - `precision`: Total digits
+    - `scale`: Decimal places
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "precise_values",
+      "type": "numeric[]",
+      "precision": 20,
+      "scale": 10
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `numeric(20, 10)[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Warning>
+**Difference between number and numeric**:
+- `number`: `number` type in TypeScript (possible precision loss)
+- `numeric`: `string` type in TypeScript (maintains precision)
+
+Use `numeric` when you need large numbers or very precise decimal calculations.
+</Warning>
+
+## String Types
+
+### string / string[]
+
+Variable-length string type.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "email",
+      "type": "string",
+      "length": 255,
+      "desc": "Email"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `varchar(255)` (when length specified) or `text`
+    - TypeScript: `string`
+    - JSON: `string`
+    
+    **Additional Options**:
+    - `length`: Maximum length (uses `text` type when omitted)
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "tags",
+      "type": "string[]",
+      "desc": "Tag list"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `text[]` or `varchar(n)[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**length Setting Guide**:
+- Short text (name, email): `255`
+- Long text (description, content): omit (text type)
+- Fixed length (zip code, phone number): specify exact length
+</Tip>
+
+### enum / enum[]
+
+Enumeration type. Only values defined in the Entity's `enums` are allowed.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "role",
+      "type": "enum",
+      "id": "UserRole",
+      "desc": "User role"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `text`
+    - TypeScript: `"admin" | "normal"` (Union of Enum keys)
+    - JSON: `string`
+    
+    **Additional Options**:
+    - `id`: Enum type ID (must be defined in Entity's `enums`)
+    - `length`: String max length (optional)
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "roles",
+      "type": "enum[]",
+      "id": "UserRole",
+      "desc": "User role list"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `text[]`
+    - TypeScript: `("admin" | "normal")[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+**Enum Definition Example**:
+
+<CodeGroup>
+```json title="entity.json"
+{
+  "props": [
+    {
+      "name": "role",
+      "type": "enum",
+      "id": "UserRole"
+    }
+  ],
+  "enums": {
+    "UserRole": {
+      "admin": "Administrator",
+      "normal": "Normal User"
+    }
+  }
+}
+```
+
+```typescript title="Generated Type"
+import { UserRole } from "./user.types";
+
+// Zod Schema
+const UserRole = z.enum(["admin", "normal"]);
+
+// TypeScript Type
+type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
+```
+</CodeGroup>
+
+<Info>
+**Learn More**
+- [Enums](/en/core-concepts/entity/enums) - Detailed Enum guide
+</Info>
+
+## Boolean Type
+
+### boolean / boolean[]
+
+Type for storing true/false values.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "dbDefault": "true",
+      "desc": "Active status"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `boolean`
+    - TypeScript: `boolean`
+    - JSON: `boolean`
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "flags",
+      "type": "boolean[]"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `boolean[]`
+    - TypeScript: `boolean[]`
+    - JSON: `boolean[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**Default value setting**: `dbDefault: "true"` or `dbDefault: "false"`
+</Tip>
+
+## Date/Time Types
+
+### date / date[]
+
+Type for storing date and time.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "created_at",
+      "type": "date",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "desc": "Created at"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `timestamptz` (with timezone)
+    - TypeScript: `Date`
+    - JSON: `string` (ISO 8601 format)
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "event_dates",
+      "type": "date[]"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `timestamptz[]`
+    - TypeScript: `Date[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**Commonly used default values**:
+- `CURRENT_TIMESTAMP`: Current time
+- `CURRENT_DATE`: Current date (time 00:00:00)
+</Tip>
+
+## UUID Type
+
+### uuid / uuid[]
+
+Universally Unique Identifier (UUID) type.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "session_id",
+      "type": "uuid",
+      "dbDefault": "gen_random_uuid()",
+      "desc": "Session ID"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `uuid`
+    - TypeScript: `string`
+    - JSON: `string`
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "related_ids",
+      "type": "uuid[]"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `uuid[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Info>
+**UUID Generation**: Using PostgreSQL's `gen_random_uuid()` function as `dbDefault` enables auto-generation.
+</Info>
+
+## Structured Data Types
+
+### json
+
+Type for storing structured data in JSON format.
+
+```json
+{
+  "name": "metadata",
+  "type": "json",
+  "id": "ProductMetadata",
+  "nullable": true,
+  "desc": "Product metadata"
+}
+```
+
+**Mapping**:
+- PostgreSQL: `json`
+- TypeScript: User-defined type (`ProductMetadata`)
+- JSON: `any`
+
+**Additional Options**:
+- `id`: TypeScript type ID (defined in `.types.ts`)
+
+**Type Definition Example**:
+
+<CodeGroup>
+```json title="entity.json"
+{
+  "name": "metadata",
+  "type": "json",
+  "id": "ProductMetadata"
+}
+```
+
+```typescript title="{entity}.types.ts"
+export type ProductMetadata = {
+  weight: number;
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+  };
+  tags: string[];
+};
+```
+</CodeGroup>
+
+<Warning>
+JSON types can be difficult to index and may have lower performance. It's recommended to separate frequently searched fields into separate columns.
+</Warning>
+
+### virtual
+
+Virtual fields not stored in the database.
+
+```json
+{
+  "name": "full_name",
+  "type": "virtual",
+  "id": "string",
+  "virtualType": "code",
+  "desc": "Full name"
+}
+```
+
+**Mapping**:
+- PostgreSQL: Not stored
+- TypeScript: User-defined type (or `string`, `number`, etc.)
+- JSON: Included (after calculation)
+
+**Additional Options**:
+- `id`: TypeScript type ID
+- `virtualType`: `code` | `query` (default: `code`)
+  - `code`: Calculated with TypeScript code
+  - `query`: Calculated with SQL appendSelect
+
+**virtualType Comparison**:
+
+<Tabs>
+  <Tab title="code">
+    Calculated with TypeScript code in Model.
+    
+    ```typescript
+    // {entity}.model.ts
+    enhanceRow(row: User): User {
+      return {
+        ...row,
+        full_name: `${row.first_name} ${row.last_name}`
+      };
+    }
+    ```
+    
+    **Pros**: Can implement complex logic, can call external APIs
+    **Cons**: Cannot filter/sort at database level
+  </Tab>
+  
+  <Tab title="query">
+    Calculated with SQL using Puri query's appendSelect.
+    
+    ```typescript
+    // {entity}.model.ts
+    async findAll() {
+      return this.puri()
+        .appendSelect({
+          full_name: this.puri().knex.raw("first_name || ' ' || last_name")
+        })
+        .many();
+    }
+    ```
+    
+    **Pros**: Database-level calculation, can filter/sort
+    **Cons**: Limited to logic expressible in SQL
+  </Tab>
+</Tabs>
+
+<Tip>
+**virtualType Selection Guide**:
+- Simple string concatenation, arithmetic calculations → `query`
+- Complex business logic, external API calls → `code`
+</Tip>
+
+## Vector Types
+
+### vector / vector[]
+
+Type for storing vector embeddings. Requires pgvector extension.
+
+<Tabs>
+  <Tab title="Single Value">
+    ```json
+    {
+      "name": "embedding",
+      "type": "vector",
+      "dimensions": 1536,
+      "desc": "Text embedding"
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `vector(1536)` (pgvector extension)
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+    
+    **Additional Options**:
+    - `dimensions`: Vector dimensions (required, e.g., 1536)
+  </Tab>
+  
+  <Tab title="Array">
+    ```json
+    {
+      "name": "embeddings",
+      "type": "vector[]",
+      "dimensions": 1536
+    }
+    ```
+    
+    **Mapping**:
+    - PostgreSQL: `vector(1536)[]`
+    - TypeScript: `number[][]`
+    - JSON: `number[][]`
+  </Tab>
+</Tabs>
+
+**Vector Search Example**:
+
+```typescript
+// Search by cosine similarity
+async searchSimilar(queryEmbedding: number[]) {
+  return this.puri()
+    .whereRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
+    .orderByRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
+    .limit(10)
+    .many();
+}
+```
+
+**Vector Index**:
+
+```json
+{
+  "indexes": [
+    {
+      "type": "hnsw",
+      "name": "posts_embedding_idx",
+      "columns": [
+        {
+          "name": "embedding",
+          "vectorOps": "vector_cosine_ops"
+        }
+      ],
+      "m": 16,
+      "efConstruction": 64
+    }
+  ]
+}
+```
+
+<Info>
+**Learn More**
+- [Vector Search](/en/advanced-features/vector-search/setup) - Detailed vector search guide
+- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector extension
+</Info>
+
+### tsvector
+
+Type for PostgreSQL Full-Text Search.
+
+```json
+{
+  "name": "search_vector",
+  "type": "tsvector",
+  "generated": {
+    "type": "STORED",
+    "expression": "to_tsvector('english', title || ' ' || content)"
+  }
+}
+```
+
+**Mapping**:
+- PostgreSQL: `tsvector`
+- TypeScript: `string`
+- JSON: `string`
+
+**Full-Text Search Index**:
+
+```json
+{
+  "indexes": [
+    {
+      "type": "index",
+      "name": "posts_search_vector_idx",
+      "columns": [{ "name": "search_vector" }],
+      "using": "gin"
+    }
+  ]
+}
+```
+
+<Info>
+**Full-Text Search**: A type optimized for keyword searching in natural language text. Supports morphological analysis, stemming, etc.
+</Info>
+
+## Relation Type
+
+Type for defining relationships with other Entities.
+
+```json
+{
+  "type": "relation",
+  "name": "user",
+  "with": "User",
+  "relationType": "BelongsToOne",
+  "desc": "Author"
+}
+```
+
+**Relation Types**:
+- `BelongsToOne`: N:1 relationship
+- `OneToOne`: 1:1 relationship
+- `HasMany`: 1:N relationship
+- `ManyToMany`: N:M relationship
+
+<Info>
+**Learn More**
+- [Relations](/en/core-concepts/entity/relations) - Detailed Relation guide
+</Info>
+
+## Type Selection Guide
+
+### Storing Numbers
+
+| Data | Type | Reason |
+|------|------|--------|
+| ID, age, count | `integer` | Common integers |
+| Large ID, timestamp | `bigInteger` | Large range needed |
+| Money, price | `number` (precision, scale) | Precise decimals |
+| Scientific measurements | `number` (numberType: real) | Approximate values allowed |
+| High-precision calculations | `numeric` | Prevent precision loss |
+
+### Storing Strings
+
+| Data | Type | Reason |
+|------|------|--------|
+| Name, email | `string` (length: 255) | Common text |
+| Description, content | `string` (omit length) | Long text |
+| Status, role | `enum` | Limited value list |
+| UUID, token | `uuid` | Unique identifier |
+
+### Storing Date/Time
+
+| Data | Type | Setting |
+|------|------|---------|
+| Created at | `date` | `dbDefault: "CURRENT_TIMESTAMP"` |
+| Updated at | `date` | Update trigger needed |
+| Date only | `date` | Time is 00:00:00 |
+
+### Complex Data
+
+| Data | Type | Reason |
+|------|------|--------|
+| Settings, metadata | `json` | Structured data |
+| Computed fields | `virtual` | No storage needed |
+| Text embeddings | `vector` | AI search |
+| Full-text search | `tsvector` | Keyword search |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Relations" icon="arrows-split-up-and-left" href="/en/core-concepts/entity/relations">
+    Define Entity relationships
+  </Card>
+  <Card title="Enums" icon="hashtag" href="/en/core-concepts/entity/enums">
+    Using Enum types
+  </Card>
+  <Card title="Indexes" icon="magnifying-glass" href="/en/database/migrations/indexes">
+    Improve search performance with indexes
+  </Card>
+  <Card title="Vector Search" icon="brain" href="/en/advanced-features/vector-search/setup">
+    Setting up Vector search
+  </Card>
+</CardGroup>

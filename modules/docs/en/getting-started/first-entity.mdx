@@ -1,0 +1,475 @@
+---
+title: "Creating Your First Entity"
+description: "Create your first entity with Sonamu UI and build an API"
+---
+
+In this guide, you'll learn how to create a `Post` entity using Sonamu UI, create a database table, and auto-generate Model files through scaffolding.
+
+## Prerequisites
+
+- You must have completed the [Quick Start](/en/getting-started/quick-start) guide and have the development server running.
+- The API server must be running at http://localhost:1028.
+
+<Tip>
+  When the API server (`pnpm dev`) is running, Sonamu UI is automatically served
+  at http://localhost:1028/sonamu-ui.
+</Tip>
+
+## Step 1: Access Sonamu UI
+
+Open http://localhost:1028/sonamu-ui in your browser.
+
+<Frame caption="Sonamu UI main screen (Entity, Migration, Scaffolding tabs)">
+  <img
+    src="/images/sonamuUI1.png"
+    alt="Sonamu UI main screen"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+Sonamu UI is a web interface for visually managing entities. Here you can:
+
+- Create and edit entities
+- Add/modify/delete props
+- Define relations
+- Manage Enum types
+- Define Subsets
+- Create and run migrations
+- Scaffolding (auto-generate Model files)
+
+## Step 2: Create a New Entity
+
+<Steps>
+<Step title="Click Entity Tab">
+Click the **Entity** tab in the Sonamu UI top menu to see existing entities.
+
+<Frame caption="Entity tab screen">
+  <img src="/images/sonamuUI1.png" alt="Entity tab" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Click New Entity Button">
+Click the **New Entity** button at the bottom of the left sidebar.
+
+<Frame caption="Entity creation modal">
+  <img src="/images/sonamuUI-create-entity.png" alt="Entity creation modal" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Enter Basic Information and Create">
+Enter the basic information for the new entity and click the **Create** button:
+
+- **Entity ID**: `Post` (starts with uppercase, singular)
+- **Table Name**: `posts` (lowercase, plural)
+- **Title**: `Post`
+
+<Frame caption="Post entity screen after clicking Create button">
+  <img
+    src="/images/sonamuUI-created-entity.png"
+    alt="Created Post entity"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+<Note>
+**Entity ID** is used as the TypeScript class name, and **Table Name** is the actual database table name.
+</Note>
+</Step>
+</Steps>
+
+## Step 3: Define Props
+
+Now add props to the `Post` entity:
+
+<Steps>
+<Step title="Add Basic Props">
+
+Click the **Add a prop** button to add the following props:
+
+| Prop Name    | Type    | Description  | Options                         |
+| ------------ | ------- | ------------ | ------------------------------- |
+| `id`         | integer | ID           | Primary Key                     |
+| `created_at` | date    | Created At   | DB Default: `CURRENT_TIMESTAMP` |
+| `title`      | string  | Title        | Length: 255                     |
+| `content`    | string  | Content      | -                               |
+| `author`     | string  | Author       | Length: 100                     |
+| `view_count` | integer | View Count   | DB Default: `0`                 |
+
+<Accordion title="How to Configure Each Prop">
+
+**id prop**
+
+- Name: `id`
+- Type: `integer`
+- Description: `ID`
+
+**created_at prop**
+
+- Name: `created_at`
+- Type: `date`
+- Description: `Created At`
+- DB Default: `CURRENT_TIMESTAMP`
+
+**title prop**
+
+- Name: `title`
+- Type: `string`
+- Description: `Title`
+- Length: `255`
+
+**content prop**
+
+- Name: `content`
+- Type: `string`
+- Description: `Content`
+- Length: empty (creates TEXT type)
+
+**author prop**
+
+- Name: `author`
+- Type: `string`
+- Description: `Author`
+- Length: `100`
+
+**view_count prop**
+
+- Name: `view_count`
+- Type: `integer`
+- Description: `View Count`
+- DB Default: `0`
+
+</Accordion>
+
+<Frame caption="Prop addition UI (Add a prop button and prop list with all props added)">
+  <img
+    src="/images/sonamuUI-add-a-prop.png"
+    alt="Prop addition UI"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+</Step>
+
+<Step title="Define Subsets">
+
+In the **Subsets** section, define data query forms:
+
+- **Subset A** (Admin): `id`, `created_at`, `title`, `content`, `author`, `view_count` - Full information
+- **Subset P** (Public): `id`, `title`, `author`, `created_at` - Public information
+- **Subset SS** (Secure Short): `id`, `title`, `author` - Summary information
+
+<Frame caption="Subset editing screen (with Subset A, P, SS defined)">
+  <img
+    src="/images/sonamuUI-subsets.png"
+    alt="Subset editing screen"
+    style={{ width: "400px", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+<Note>
+  Subsets pre-define which props to include when querying data through APIs.
+  For details, see the [Subset Guide](/en/database/subsets/what-are-subsets).
+</Note>
+
+</Step>
+
+<Step title="Define Enums">
+
+In the **Enums** section, define sorting and search options:
+
+**PostOrderBy**
+
+- `id-desc`: ID newest first
+- `created_at-desc`: Created at newest first
+- `view_count-desc`: Highest view count first
+
+**PostSearchField**
+
+- `id`: ID
+- `title`: Title
+- `author`: Author
+
+<Frame caption="Enum editing screen (with PostOrderBy, PostSearchField defined)">
+  <img
+    src="/images/sonamuUI-enums.png"
+    alt="Enum editing screen"
+    style={{ width: "800px", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+</Step>
+</Steps>
+
+## Step 4: Database Migration
+
+Now you need to apply the entity definition to the database.
+
+<Steps>
+<Step title="Go to Migration Tab">
+Click the **Migration** tab in Sonamu UI.
+
+<Frame caption="Migration tab screen (migration list or Generate Migration button)">
+  <img src="/images/sonamuUI-db-migration2.png" alt="Migration tab screen" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Generate Migration">
+Click the **Generate** button to auto-generate a new migration Code File.
+
+Click the `<>` button in the generated file list to open the migration file page in Cursor. The file content looks like this:
+
+<Frame caption="Migration file opened in Cursor">
+  <img src="/images/sonamuUI-db-migration3.png" alt="Migration file opened in Cursor" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Run Migration">
+You can see pending migrations in the Migration tab.
+
+Click the **all** button, then click **Apply to Latest** to see migration targets in the modal.
+
+Select **Shadow DB Testing** and click the **commit** button to create the database table.
+
+<Frame caption="Migration execution complete">
+  <video 
+    autoPlay 
+    muted 
+    loop 
+    playsInline 
+    controls 
+    className="w-full rounded-xl" 
+    src="/images/sonamuUi-db-migration2-generate.mp4"
+  ></video>
+</Frame>
+</Step>
+
+<Step title="Verify">
+Connect to the database using a PostgreSQL client or pgAdmin to verify the `posts` table was created.
+</Step>
+</Steps>
+
+## Step 5: Scaffolding (Auto-Generate Model Files)
+
+After migration is complete, you can auto-generate Model files using Sonamu's scaffolding feature.
+
+<Steps>
+<Step title="Go to Scaffolding Tab">
+Click the **Scaffolding** tab in Sonamu UI.
+
+<Frame caption="Scaffolding tab screen (entity list and template selection UI)">
+  <img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding tab screen" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Select Post Entity">Select **Post** as the entity to scaffold.</Step>
+
+<Step title="Select Templates">
+Select templates to generate:
+
+- ✅ **Model** - `post.model.ts` (business logic and API endpoints)
+- ✅ **Model Test** - `post.model.test.ts` (test file)
+
+<Frame caption="Template selection UI (with Model, Model Test checkboxes selected)">
+  <img
+    src="/images/sonamuUI-scaffolding2.png"
+    alt="Template selection UI"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+<Note>
+Scaffolding auto-generates template files, so you don't need to write code from scratch. Generated files can be modified to fit your project.
+</Note>
+</Step>
+
+<Step title="Preview (Optional)">
+Click the **Preview** button to preview the code that will be generated.
+
+<Frame caption="Code preview modal (model.ts code to be generated)">
+  <img src="/images/sonamuUI-scaffolding3.png" alt="Code preview modal" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+</Step>
+
+<Step title="Generate">
+Click the **Generate** button to create the files.
+
+<Frame caption="Generated file list">
+  <img
+    src="/images/sonamuUI-scaffolding5.png"
+    alt="Generated file list"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+The following files are generated:
+
+- `api/src/application/post/post.model.ts`
+- `api/src/application/post/post.model.test.ts`
+
+You can also run this from the terminal:
+
+```bash
+cd api
+pnpm sonamu scaffold model Post
+pnpm sonamu scaffold model_test Post
+```
+
+</Step>
+</Steps>
+
+## Step 6: Review Generated Model File
+
+Let's check the `post.model.ts` file generated by scaffolding:
+
+<Frame caption="post.model.ts file opened in VS Code">
+  <img
+    src="/images/afterScaffolding-model.png"
+    alt="post.model.ts file opened in VS Code"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+<Info>
+  The generated Model file includes basic CRUD APIs. You can add or modify
+  business logic as needed.
+</Info>
+
+The API server automatically restarts via HMR (Hot Module Replacement):
+
+<Frame caption="HMR restart logs in terminal">
+  <img
+    src="/images/sonamuUI-scaffolding4.png"
+    alt="HMR restart logs in terminal"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+## Step 7: Auto-Generate Frontend Service
+
+When you write APIs, frontend Service files are automatically generated.
+
+<Frame caption="📸 Needed: VS Code screen showing web/src/services/PostService.ts file created"></Frame>
+
+```typescript title="web/src/services/PostService.ts (auto-generated)"
+export class PostService {
+  static async findById(subset: PostSubsetKey, id: number) {
+    const res = await axios.get(`/api/posts/${id}`, {
+      params: { subset },
+    });
+    return res.data;
+  }
+
+  static async findMany(subset: PostSubsetKey, params?: PostListParams) {
+    const res = await axios.get("/api/posts", {
+      params: { subset, ...params },
+    });
+    return res.data;
+  }
+
+  static async save(params: PostSaveParams) {
+    const res = await axios.post("/api/posts", params);
+    return res.data;
+  }
+
+  static async del(id: number) {
+    await axios.delete(`/api/posts/${id}`);
+  }
+}
+```
+
+## Step 8: Test the API
+
+Now let's test if the API is working correctly.
+
+### Test with REST Client
+
+<CodeGroup>
+```bash title="Create Post (POST)"
+curl -X POST http://localhost:1028/api/posts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "First Post",
+    "content": "This is my first post created with Sonamu.",
+    "author": "John Doe"
+  }'
+```
+
+```bash title="List Posts (GET)"
+curl http://localhost:1028/api/posts?subset=C
+```
+
+```bash title="Get Post Detail (GET)"
+curl http://localhost:1028/api/posts/1?subset=A
+```
+
+```bash title="Delete Post (DELETE)"
+curl -X DELETE http://localhost:1028/api/posts/1
+```
+
+</CodeGroup>
+
+### Test in Browser
+
+Navigate to http://localhost:1028/api/posts?subset=C to view the JSON response.
+
+<Frame caption="📸 Needed: Browser screen showing API response JSON (post list data)"></Frame>
+
+## Complete! 🎉
+
+Congratulations! You've successfully created your first entity.
+
+You've completed the following:
+
+- ✅ Defined entity with Sonamu UI
+- ✅ Created database table
+- ✅ Auto-generated types and schemas
+- ✅ Auto-generated Model and Test files with scaffolding
+- ✅ Auto-generated REST API
+- ✅ Auto-generated frontend Service
+- ✅ Tested the API
+
+<Warning>
+  **Benefits of Scaffolding**
+
+  Using scaffolding:
+
+  - Basic CRUD APIs are auto-generated without writing Model files from scratch
+  - Test file templates are generated together, making test writing easier
+  - Maintains consistent code style across the project
+  - Generated code can be modified anytime to add business logic
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Development Workflow"
+    icon="diagram-project"
+    href="/en/getting-started/development-workflow"
+  >
+    Understand Sonamu's complete development workflow and learn how to work
+    efficiently.
+  </Card>
+  <Card
+    title="Defining Relations"
+    icon="link"
+    href="/en/core-concepts/entity/relations"
+  >
+    Learn how to define relationships between entities and write JOIN queries.
+  </Card>
+  <Card
+    title="Puri Query Builder"
+    icon="database"
+    href="/en/database/puri/basic-queries"
+  >
+    Learn how to write complex database queries with the type-safe query builder.
+  </Card>
+  <Card
+    title="Writing Tests"
+    icon="flask"
+    href="/en/testing/writing-tests/test-structure"
+  >
+    Learn how to test Model business logic based on the auto-generated test
+    templates.
+  </Card>
+</CardGroup>

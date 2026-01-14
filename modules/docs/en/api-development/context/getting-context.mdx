@@ -1,0 +1,741 @@
+---
+title: "Getting Context"
+description: "Accessing request context with Sonamu.getContext()"
+---
+
+You can get the current request's Context by calling `Sonamu.getContext()` within API methods.
+
+## Basic Usage
+
+### Getting Context
+
+```typescript
+import { BaseModelClass, api, Sonamu } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+  
+  @api({ httpMethod: "GET" })
+  async getCurrentUser(): Promise<User> {
+    // Get Context
+    const context = Sonamu.getContext();
+    
+    // Access user info
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", context.user.id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+```
+
+<Info>
+`Sonamu.getContext()` returns the Context of the currently executing API request.
+It returns the correct Context even during async operations.
+</Info>
+
+## When to Use?
+
+### 1. Check Authenticated User
+
+```typescript
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
+  @api({ httpMethod: "POST" })
+  async create(params: PostSaveParams): Promise<{ postId: number }> {
+    const context = Sonamu.getContext();
+    
+    // Check login
+    if (!context.user) {
+      throw new Error("Login required");
+    }
+    
+    // Set current user as author
+    const wdb = this.getPuri("w");
+    const [post] = await wdb
+      .table("posts")
+      .insert({
+        ...params,
+        user_id: context.user.id,
+        author: context.user.username,
+      })
+      .returning({ id: "id" });
+    
+    return { postId: post.id };
+  }
+}
+```
+
+### 2. Check Permissions
+
+```typescript
+class AdminModelClass extends BaseModelClass<
+  AdminSubsetKey,
+  AdminSubsetMapping,
+  typeof adminSubsetQueries,
+  typeof adminLoaderQueries
+> {
+  constructor() {
+    super("Admin", adminSubsetQueries, adminLoaderQueries);
+  }
+
+  @api({ httpMethod: "DELETE" })
+  async deleteUser(userId: number): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    // Check authentication
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    // Check permission
+    if (context.user.role !== "admin") {
+      throw new Error("Admin permission required");
+    }
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", userId).delete();
+  }
+}
+```
+
+### 3. Check Ownership
+
+```typescript
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
+  @api({ httpMethod: "PUT" })
+  async update(
+    postId: number,
+    params: PostSaveParams
+  ): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const rdb = this.getPuri("r");
+    
+    // Get post
+    const post = await rdb
+      .table("posts")
+      .where("id", postId)
+      .first();
+    
+    if (!post) {
+      throw new Error("Post not found");
+    }
+    
+    // Check ownership (author or admin only)
+    const isOwner = post.user_id === context.user.id;
+    const isAdmin = context.user.role === "admin";
+    
+    if (!isOwner && !isAdmin) {
+      throw new Error("Permission denied");
+    }
+    
+    // Update
+    const wdb = this.getPuri("w");
+    await wdb.table("posts").where("id", postId).update(params);
+  }
+}
+```
+
+### 4. Access Request Info
+
+```typescript
+class AnalyticsModelClass extends BaseModelClass<
+  AnalyticsSubsetKey,
+  AnalyticsSubsetMapping,
+  typeof analyticsSubsetQueries,
+  typeof analyticsLoaderQueries
+> {
+  constructor() {
+    super("Analytics", analyticsSubsetQueries, analyticsLoaderQueries);
+  }
+
+  @api({ httpMethod: "POST" })
+  async trackEvent(params: EventParams): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    const wdb = this.getPuri("w");
+    
+    // Record Request info
+    await wdb.table("analytics").insert({
+      ...params,
+      user_id: context.user?.id,
+      ip_address: context.request.ip,
+      user_agent: context.request.headers["user-agent"],
+      referer: context.request.headers.referer,
+      timestamp: new Date(),
+    });
+  }
+}
+```
+
+### 5. Set Response Headers
+
+```typescript
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
+> {
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
+
+  @api({ httpMethod: "GET" })
+  async download(fileId: number): Promise<Buffer> {
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Set download headers
+    context.reply.header("Content-Type", file.mime_type);
+    context.reply.header(
+      "Content-Disposition",
+      `attachment; filename="${file.filename}"`
+    );
+    
+    return Buffer.from(file.content);
+  }
+}
+```
+
+## Helper Function Patterns
+
+### Reusable Auth Check
+
+```typescript
+class BaseModelClass {
+  // Auth check helper
+  protected requireAuth(): ContextUser {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      context.reply.status(401);
+      throw new Error("Authentication required");
+    }
+    
+    return context.user;
+  }
+  
+  // Role check helper
+  protected requireRole(role: UserRole): ContextUser {
+    const user = this.requireAuth();
+    
+    if (user.role !== role) {
+      const context = Sonamu.getContext();
+      context.reply.status(403);
+      throw new Error(`${role} permission required`);
+    }
+    
+    return user;
+  }
+  
+  // Admin check helper
+  protected requireAdmin(): ContextUser {
+    return this.requireRole("admin");
+  }
+}
+
+// Usage
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "DELETE" })
+  async remove(userId: number): Promise<void> {
+    // Simple permission check
+    this.requireAdmin();
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", userId).delete();
+  }
+  
+  @api({ httpMethod: "GET" })
+  async getMyProfile(): Promise<User> {
+    // Just check login
+    const user = this.requireAuth();
+    
+    const rdb = this.getPuri("r");
+    return rdb.table("users").where("id", user.id).first();
+  }
+}
+```
+
+### Ownership Check Helper
+
+```typescript
+class BaseModelClass {
+  protected async requireOwnership(
+    tableName: string,
+    itemId: number,
+    userIdField: string = "user_id"
+  ): Promise<void> {
+    const user = this.requireAuth();
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const item = await rdb
+      .table(tableName)
+      .where("id", itemId)
+      .first();
+    
+    if (!item) {
+      context.reply.status(404);
+      throw new Error("Item not found");
+    }
+    
+    // Allow owner or admin only
+    const isOwner = item[userIdField] === user.id;
+    const isAdmin = user.role === "admin";
+    
+    if (!isOwner && !isAdmin) {
+      context.reply.status(403);
+      throw new Error("Permission denied");
+    }
+  }
+}
+
+// Usage
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
+  @api({ httpMethod: "DELETE" })
+  async remove(postId: number): Promise<void> {
+    // Auto ownership check
+    await this.requireOwnership("posts", postId);
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("posts").where("id", postId).delete();
+  }
+}
+```
+
+## Usage in Multiple Locations
+
+### In Model Methods
+
+```typescript
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "GET" })
+  async getCurrentUser(): Promise<User> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    return this.getUserById(context.user.id);
+  }
+  
+  // Also available in private methods
+  private async getUserById(userId: number): Promise<User> {
+    const context = Sonamu.getContext();
+    
+    // Request logging
+    console.log("getUserById called from IP:", context.request.ip);
+    
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", userId).first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+```
+
+### In Frames
+
+```typescript
+class AnalyticsFrame extends BaseFrameClass {
+  frameName = "Analytics";
+  
+  @api({ httpMethod: "POST" })
+  async track(params: TrackParams): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("analytics").insert({
+      event_type: params.eventType,
+      event_data: JSON.stringify(params.data),
+      user_id: context.user?.id,
+      ip_address: context.request.ip,
+      user_agent: context.request.headers["user-agent"],
+      timestamp: new Date(),
+    });
+  }
+}
+```
+
+### In Async Operations
+
+```typescript
+class NotificationModelClass extends BaseModelClass<
+  NotificationSubsetKey,
+  NotificationSubsetMapping,
+  typeof notificationSubsetQueries,
+  typeof notificationLoaderQueries
+> {
+  constructor() {
+    super("Notification", notificationSubsetQueries, notificationLoaderQueries);
+  }
+
+  @api({ httpMethod: "POST" })
+  async sendBulk(params: {
+    userIds: number[];
+    message: string;
+  }): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    // Context accessible in async operations
+    const promises = params.userIds.map(async (userId) => {
+      const innerContext = Sonamu.getContext();
+      
+      // Same Context
+      console.log(innerContext.user?.id === context.user?.id); // true
+      
+      return this.sendNotification(userId, params.message);
+    });
+    
+    await Promise.all(promises);
+  }
+  
+  private async sendNotification(
+    userId: number,
+    message: string
+  ): Promise<void> {
+    const context = Sonamu.getContext();
+    
+    // Same Context here too
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("notifications").insert({
+      user_id: userId,
+      message,
+      sender_id: context.user?.id,
+      created_at: new Date(),
+    });
+  }
+}
+```
+
+## Practical Patterns
+
+### Audit Log
+
+```typescript
+class BaseModelClass {
+  protected async logAudit(action: string, details: any): Promise<void> {
+    const context = Sonamu.getContext();
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("audit_logs").insert({
+      user_id: context.user?.id,
+      action,
+      details: JSON.stringify(details),
+      ip_address: context.request.ip,
+      user_agent: context.request.headers["user-agent"],
+      timestamp: new Date(),
+    });
+  }
+}
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "DELETE" })
+  async remove(userId: number): Promise<void> {
+    this.requireAdmin();
+    
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", userId).first();
+    
+    // Record audit log
+    await this.logAudit("USER_DELETE", {
+      targetUserId: userId,
+      targetUsername: user.username,
+    });
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", userId).delete();
+  }
+}
+```
+
+### Rate Limit Check
+
+```typescript
+class ApiModelClass extends BaseModelClass<
+  ApiSubsetKey,
+  ApiSubsetMapping,
+  typeof apiSubsetQueries,
+  typeof apiLoaderQueries
+> {
+  constructor() {
+    super("Api", apiSubsetQueries, apiLoaderQueries);
+  }
+
+  private async checkRateLimit(): Promise<void> {
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const key = context.user
+      ? `user:${context.user.id}`
+      : `ip:${context.request.ip}`;
+    
+    const oneMinuteAgo = new Date(Date.now() - 60000);
+    
+    const [{ count }] = await rdb
+      .table("request_logs")
+      .where("key", key)
+      .where("timestamp", ">=", oneMinuteAgo)
+      .count({ count: "*" });
+    
+    if (count >= 100) {
+      context.reply.status(429);
+      throw new Error("Too many requests");
+    }
+    
+    // Log request
+    const wdb = this.getPuri("w");
+    await wdb.table("request_logs").insert({
+      key,
+      timestamp: new Date(),
+    });
+  }
+  
+  @api({ httpMethod: "GET" })
+  async list(): Promise<any[]> {
+    await this.checkRateLimit();
+    
+    const rdb = this.getPuri("r");
+    return rdb.table("items").select("*");
+  }
+}
+```
+
+### Internationalization Support
+
+```typescript
+class I18nModelClass extends BaseModelClass<
+  I18nSubsetKey,
+  I18nSubsetMapping,
+  typeof i18nSubsetQueries,
+  typeof i18nLoaderQueries
+> {
+  constructor() {
+    super("I18n", i18nSubsetQueries, i18nLoaderQueries);
+  }
+
+  private getLanguage(): string {
+    const context = Sonamu.getContext();
+    
+    // Extract language from Accept-Language header
+    const acceptLanguage = context.request.headers["accept-language"];
+    
+    if (acceptLanguage) {
+      const lang = acceptLanguage.split(",")[0].split("-")[0];
+      return lang;
+    }
+    
+    return "en"; // Default
+  }
+  
+  @api({ httpMethod: "GET" })
+  async getMessages(): Promise<Record<string, string>> {
+    const language = this.getLanguage();
+    const rdb = this.getPuri("r");
+    
+    const messages = await rdb
+      .table("translations")
+      .where("language", language)
+      .select("*");
+    
+    return messages.reduce((acc, msg) => {
+      acc[msg.key] = msg.value;
+      return acc;
+    }, {} as Record<string, string>);
+  }
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Context**:
+1. Can only be called within API methods
+2. Cannot be called in constructors or class fields
+3. Same Context maintained across async boundaries
+4. Multiple calls return the same object
+5. Recommended to treat Context as read-only
+</Warning>
+
+### Common Mistakes
+
+```typescript
+// ❌ Wrong: Calling in constructor
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  private currentUser?: ContextUser;
+  
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+    // No Context in constructor
+    const context = Sonamu.getContext(); // ← Error
+    this.currentUser = context.user;
+  }
+}
+
+// ❌ Wrong: Calling in class field
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  // No Context at class field initialization
+  private context = Sonamu.getContext(); // ← Error
+}
+
+// ❌ Wrong: Calling outside API method
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  private getContext() {
+    // Private methods are okay, but
+    // calling outside API request context causes error
+    return Sonamu.getContext();
+  }
+}
+
+// ✅ Correct: Calling within API method
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "GET" })
+  async getCurrentUser(): Promise<User> {
+    const context = Sonamu.getContext(); // ← OK
+    // ...
+  }
+  
+  private async helperMethod(): Promise<void> {
+    // OK when called from API method
+    const context = Sonamu.getContext(); // ← OK
+    // ...
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SonamuContext" icon="cube" href="/api-development/context/sonamu-context">
+    Understanding Context structure
+  </Card>
+  <Card title="Custom Context" icon="puzzle-piece" href="/api-development/context/custom-context">
+    Extending Context
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    API basic usage
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/api-development/error-handling">
+    API error handling
+  </Card>
+</CardGroup>

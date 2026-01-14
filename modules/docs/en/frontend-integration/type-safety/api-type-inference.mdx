@@ -1,0 +1,573 @@
+---
+title: "API Type Inference"
+description: "Complete type inference from backend to frontend"
+---
+
+Learn how Sonamu automatically infers backend API types in the frontend to provide complete type safety.
+
+## API Type Inference Overview
+
+<CardGroup cols={2}>
+  <Card title="Auto Type Generation" icon="wand-magic-sparkles">
+    Backend → Frontend
+    
+    No manual work needed
+  </Card>
+  <Card title="Complete Inference" icon="shield-check">
+    Parameters to responses
+    
+    All types guaranteed
+  </Card>
+  <Card title="Real-time Sync" icon="arrows-rotate">
+    On API changes
+    
+    Auto updates
+  </Card>
+  <Card title="IDE Support" icon="code">
+    Auto-completion
+    
+    Type hints
+  </Card>
+</CardGroup>
+
+## What is Type Inference?
+
+### Problem: Difficulty of Manual Type Definition
+
+In traditional development, types for backend and frontend must be **manually defined separately**.
+
+```typescript
+// ❌ Backend (Node.js + Express)
+app.get("/api/user/:id", async (req, res) => {
+  const user = await db.users.findById(req.params.id);
+  res.json({ user });
+});
+
+// ❌ Frontend (manual type definition)
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  // Need manual sync when fields added/changed
+}
+
+async function getUser(id: number): Promise<{ user: User }> {
+  const response = await fetch(`/api/user/${id}`);
+  return response.json();
+}
+```
+
+**Problems**:
+1. **Duplicate work**: Define same type twice in backend and frontend
+2. **Sync missed**: Frontend type update missed when backend changes
+3. **Runtime errors**: Type mismatch discovered only at runtime
+4. **Hard to maintain**: Management complexity increases with more types
+
+### Solution: Automatic Type Inference
+
+Sonamu **automatically infers backend types** and passes them to frontend.
+
+```typescript
+// ✅ Backend (Sonamu)
+@api({ httpMethod: "GET" })
+async getUser(userId: number): Promise<{
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}> {
+  const user = await this.findById(userId);
+  return { user };
+}
+
+// ✅ Frontend (auto-generated)
+export namespace UserService {
+  export async function getUser(
+    userId: number
+  ): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getUser?${qs.stringify({ userId })}`,
+    });
+  }
+}
+```
+
+**Benefits**:
+- Backend types are **automatically copied** to frontend
+- **Automatically synced** when API changes
+- **Single source of truth** (backend is the only type source)
+
+## Type Inference Process
+
+### Step 1: Backend API Definition
+
+Define API with TypeScript types.
+
+```typescript
+// backend/models/user.model.ts
+import { BaseModelClass, api } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+  
+  @api({ httpMethod: "GET" })
+  async getProfile(userId: number): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+      role: "admin" | "user";
+      createdAt: Date;
+    };
+    stats: {
+      postCount: number;
+      followerCount: number;
+    };
+  }> {
+    const user = await this.findById(userId);
+    const stats = await this.getStats(userId);
+    
+    return { user, stats };
+  }
+}
+```
+
+**Using TypeScript's type system**:
+- Explicitly declare return types
+- Nested objects, union types, literal types all supported
+- All TypeScript type features available
+
+### Step 2: AST Parsing
+
+Sonamu uses TypeScript Compiler API to analyze code.
+
+```typescript
+// Sonamu internal operation (pseudocode)
+import * as ts from "typescript";
+
+function extractApiType(methodNode: ts.MethodDeclaration) {
+  // 1. Extract return type
+  const returnType = typeChecker.getTypeAtLocation(methodNode.type);
+  
+  // 2. Convert type info to TypeScript code
+  const typeString = typeChecker.typeToString(returnType);
+  
+  // 3. Extract parameter types
+  const parameters = methodNode.parameters.map(param => ({
+    name: param.name.getText(),
+    type: typeChecker.getTypeAtLocation(param.type),
+  }));
+  
+  return {
+    returnType: typeString,
+    parameters,
+  };
+}
+```
+
+**AST (Abstract Syntax Tree)**:
+- Represents TypeScript code as tree structure
+- Allows programmatic extraction of type information
+- Obtains 100% accurate type information
+
+### Step 3: Service Type Generation
+
+Insert extracted types into Service code.
+
+```typescript
+// services.generated.ts (auto-generated)
+export namespace UserService {
+  // Parameter types also accurately inferred
+  export async function getProfile(
+    userId: number  // ← Same type as backend
+  ): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+      role: "admin" | "user";  // ← Literal types preserved
+      createdAt: Date;
+    };
+    stats: {
+      postCount: number;
+      followerCount: number;
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getProfile?${qs.stringify({ userId })}`,
+    });
+  }
+}
+```
+
+**Type preservation**:
+- Union types (`"admin" | "user"`)
+- Nested objects
+- Array types
+- Date, null, undefined and all TypeScript types
+
+### Step 4: TanStack Query Hook Generation
+
+Types are accurately passed to React Hooks as well.
+
+```typescript
+// services.generated.ts (continued)
+export namespace UserService {
+  export const getProfileQueryOptions = (userId: number) =>
+    queryOptions({
+      queryKey: ["User", "getProfile", userId],
+      queryFn: () => getProfile(userId),
+    });
+  
+  export const useProfile = (
+    userId: number,
+    options?: { enabled?: boolean }
+  ) =>
+    useQuery({
+      ...getProfileQueryOptions(userId),
+      ...options,
+    });
+}
+```
+
+**Type chain**:
+```
+Backend Method
+  → TypeScript AST
+  → Service Function
+  → Query Options
+  → React Hook
+  → Component
+```
+
+Types are 100% preserved at every step!
+
+## Advanced Type Inference
+
+### Generic Types
+
+APIs using generics are also accurately inferred.
+
+```typescript
+// Backend
+@api({ httpMethod: "GET" })
+async getList<T extends "posts" | "comments">(
+  entityType: T
+): Promise<{
+  items: T extends "posts" ? Post[] : Comment[];
+}> {
+  // Implementation...
+}
+
+// Frontend (auto-generated)
+export namespace DataService {
+  export async function getList<T extends "posts" | "comments">(
+    entityType: T
+  ): Promise<{
+    items: T extends "posts" ? Post[] : Comment[];
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/data/getList?${qs.stringify({ entityType })}`,
+    });
+  }
+}
+
+// Usage
+const { items } = await DataService.getList("posts");
+// items type: Post[]
+```
+
+### Subset System
+
+Subset types are also automatically generated.
+
+```typescript
+// Subset extracted from Entity definition
+export type UserSubsetKey = "A" | "B" | "C";
+
+export type UserSubsetMapping = {
+  A: { id: number; username: string; email: string };
+  B: { id: number; username: string; email: string; bio: string };
+  C: User; // All fields
+};
+
+// Usage in Service
+export namespace UserService {
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+}
+
+// Type-safe usage
+const basicUser = await UserService.getUser("A", 123);
+// Type: { id: number; username: string; email: string }
+
+const fullUser = await UserService.getUser("C", 123);
+// Type: User
+```
+
+**Mapped Types**:
+- Return exact type based on Subset with `UserSubsetMapping[T]`
+- Uses TypeScript's conditional types
+
+### Complex Nested Structures
+
+Deeply nested types are also accurately inferred.
+
+```typescript
+// Backend
+@api({ httpMethod: "GET" })
+async getDashboard(): Promise<{
+  user: {
+    profile: {
+      name: string;
+      avatar: string;
+    };
+    settings: {
+      notifications: {
+        email: boolean;
+        push: boolean;
+      };
+      privacy: {
+        profileVisibility: "public" | "private";
+      };
+    };
+  };
+  stats: {
+    posts: { count: number; latest: Post[] };
+    followers: { count: number; recent: User[] };
+  };
+}> {
+  // Implementation...
+}
+
+// Frontend (auto-generated)
+export namespace DashboardService {
+  export async function getDashboard(): Promise<{
+    user: {
+      profile: {
+        name: string;
+        avatar: string;
+      };
+      settings: {
+        notifications: {
+          email: boolean;
+          push: boolean;
+        };
+        privacy: {
+          profileVisibility: "public" | "private";
+        };
+      };
+    };
+    stats: {
+      posts: { count: number; latest: Post[] };
+      followers: { count: number; recent: User[] };
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: "/api/dashboard/getDashboard",
+    });
+  }
+}
+
+// Usage (complete type safety)
+const dashboard = await DashboardService.getDashboard();
+console.log(dashboard.user.settings.notifications.email); // ✅ boolean
+console.log(dashboard.stats.posts.latest[0].title); // ✅ string
+```
+
+## Practical Usage
+
+### React Components
+
+Types are automatically inferred with IDE support.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+function UserProfile({ userId }: { userId: number }) {
+  const { data, isLoading } = UserService.useProfile(userId);
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  // data's type is automatically inferred
+  return (
+    <div>
+      <h1>{data.user.username}</h1>
+      <p>Role: {data.user.role}</p>
+      <p>Posts: {data.stats.postCount}</p>
+      <p>Followers: {data.stats.followerCount}</p>
+    </div>
+  );
+}
+```
+
+**IDE auto-completion**:
+- When typing `data.`, `user`, `stats` are auto-suggested
+- When typing `data.user.`, all fields are auto-suggested
+- Immediate error display on wrong field access
+
+### Type Reuse
+
+Generated types can be reused elsewhere.
+
+```typescript
+import type { UserService } from "@/services/services.generated";
+
+// Extract Service function return type
+type UserProfile = Awaited<ReturnType<typeof UserService.getProfile>>;
+
+// Use type
+function processProfile(profile: UserProfile) {
+  console.log(profile.user.username);
+  console.log(profile.stats.postCount);
+}
+```
+
+### Form Data Types
+
+API parameter types are also inferred.
+
+```typescript
+// Backend
+@api({ httpMethod: "POST" })
+async createPost(params: {
+  title: string;
+  content: string;
+  tags: string[];
+  published: boolean;
+}): Promise<{ post: Post }> {
+  // Implementation...
+}
+
+// Frontend (auto-generated)
+export namespace PostService {
+  export async function createPost(params: {
+    title: string;
+    content: string;
+    tags: string[];
+    published: boolean;
+  }): Promise<{ post: Post }> {
+    return fetch({
+      method: "POST",
+      url: "/api/post/createPost",
+      data: params,
+    });
+  }
+}
+
+// Usage (parameter type validation)
+function CreatePostForm() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    
+    await PostService.createPost({
+      title: "Hello",
+      content: "World",
+      tags: ["typescript", "sonamu"],
+      published: true,
+      // author: "John" // ❌ Compile error: non-existent field
+    });
+  }
+}
+```
+
+## Type Safety Guarantees
+
+### 1. Parameter Validation
+
+Wrong parameters are detected at compile time.
+
+```typescript
+// ❌ Compile error
+await UserService.getProfile("123"); // number required instead of string
+
+// ✅ Correct
+await UserService.getProfile(123);
+```
+
+### 2. Response Type Guarantee
+
+API response types are guaranteed.
+
+```typescript
+const { user } = await UserService.getProfile(123);
+
+console.log(user.username); // ✅ string
+console.log(user.age); // ❌ Compile error: no age field
+```
+
+### 3. null/undefined Handling
+
+Optional fields are accurately represented.
+
+```typescript
+// Backend
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    bio?: string; // Optional
+  };
+}> {
+  // Implementation...
+}
+
+// Frontend
+const { user } = await UserService.getUser();
+console.log(user.bio?.length); // ✅ Optional chaining required
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using API type inference**:
+1. **Explicit type declaration required** in backend API
+2. Don't use `any` type (type inference impossible)
+3. Run `pnpm generate` to update types
+4. **Don't manually modify** generated type files
+5. Recommended to **separate complex types into interfaces**
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Compile-time Errors" icon="triangle-exclamation" href="/frontend-integration/type-safety/compile-time-errors">
+    API change detection
+  </Card>
+  <Card title="Shared Types" icon="share-nodes" href="/frontend-integration/type-safety/shared-types">
+    Type file structure
+  </Card>
+  <Card title="How Services Work" icon="diagram-project" href="/frontend-integration/generated-services/how-services-work">
+    Understanding auto-generation
+  </Card>
+  <Card title="Using Services" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service usage
+  </Card>
+</CardGroup>

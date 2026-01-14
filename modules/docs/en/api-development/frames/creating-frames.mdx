@@ -1,0 +1,619 @@
+---
+title: "Creating Frames"
+description: "Creating independent APIs with BaseFrameClass"
+---
+
+Learn how to create Frames and their structure.
+
+## Basic Structure
+
+### Creating Frame File
+
+```typescript
+// api/src/frames/health/health.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+class HealthFrame extends BaseFrameClass {
+  // Frame name (used in URL path)
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{
+    status: string;
+    timestamp: Date;
+  }> {
+    return {
+      status: "ok",
+      timestamp: new Date(),
+    };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+**Generated endpoint**:
+- `GET /api/health/check`
+
+<Info>
+Frame URL path is determined by the `frameName` property.
+It's converted to lowercase and becomes `/api/{frameName}/{methodName}`.
+</Info>
+
+## Required Elements
+
+### 1. Extend BaseFrameClass
+
+```typescript
+import { BaseFrameClass } from "sonamu";
+
+class MyFrame extends BaseFrameClass {
+  // Frame implementation
+}
+```
+
+### 2. Define frameName
+
+```typescript
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health"; // ← Required!
+}
+
+// URL: /api/health/...
+```
+
+### 3. @api Decorator
+
+```typescript
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  // @api decorator required
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{ status: string }> {
+    return { status: "ok" };
+  }
+}
+```
+
+### 4. Export Instance
+
+```typescript
+export const HealthFrameInstance = new HealthFrame();
+```
+
+## Practical Examples
+
+### Health Check Frame
+
+```typescript
+// health.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+interface HealthCheckResponse {
+  status: "ok" | "error";
+  timestamp: Date;
+  uptime: number;
+  memory: {
+    total: number;
+    used: number;
+    free: number;
+  };
+  database: "connected" | "disconnected";
+}
+
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<HealthCheckResponse> {
+    // DB connection check
+    let dbStatus: "connected" | "disconnected" = "disconnected";
+    
+    try {
+      const rdb = this.getPuri("r");
+      await rdb.raw("SELECT 1");
+      dbStatus = "connected";
+    } catch (error) {
+      console.error("Database connection failed:", error);
+    }
+    
+    // Memory info
+    const memoryUsage = process.memoryUsage();
+    
+    return {
+      status: dbStatus === "connected" ? "ok" : "error",
+      timestamp: new Date(),
+      uptime: process.uptime(),
+      memory: {
+        total: memoryUsage.heapTotal,
+        used: memoryUsage.heapUsed,
+        free: memoryUsage.heapTotal - memoryUsage.heapUsed,
+      },
+      database: dbStatus,
+    };
+  }
+  
+  @api({ httpMethod: "GET" })
+  async ping(): Promise<{ message: string; timestamp: Date }> {
+    return {
+      message: "pong",
+      timestamp: new Date(),
+    };
+  }
+  
+  @api({ httpMethod: "GET" })
+  async version(): Promise<{
+    version: string;
+    buildDate: string;
+    nodeVersion: string;
+  }> {
+    return {
+      version: process.env.APP_VERSION || "1.0.0",
+      buildDate: process.env.BUILD_DATE || new Date().toISOString(),
+      nodeVersion: process.version,
+    };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+### Utility Frame
+
+```typescript
+// utils.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import crypto from "crypto";
+
+interface HashParams {
+  text: string;
+  algorithm: "md5" | "sha256" | "sha512";
+}
+
+interface EncryptParams {
+  text: string;
+  key: string;
+}
+
+interface DecryptParams {
+  encrypted: string;
+  key: string;
+}
+
+class UtilsFrame extends BaseFrameClass {
+  frameName = "Utils";
+  
+  @api({ httpMethod: "POST" })
+  async hash(params: HashParams): Promise<{ hash: string }> {
+    const hash = crypto
+      .createHash(params.algorithm)
+      .update(params.text)
+      .digest("hex");
+    
+    return { hash };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async uuid(): Promise<{ uuid: string }> {
+    return {
+      uuid: crypto.randomUUID(),
+    };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.key, "salt", 32);
+    const iv = crypto.randomBytes(16);
+    
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    
+    let encrypted = cipher.update(params.text, "utf8", "hex");
+    encrypted += cipher.final("hex");
+    
+    // Return IV together (needed for decryption)
+    return {
+      encrypted: iv.toString("hex") + ":" + encrypted,
+    };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.key, "salt", 32);
+    
+    // Separate IV and ciphertext
+    const [ivHex, encrypted] = params.encrypted.split(":");
+    const iv = Buffer.from(ivHex, "hex");
+    
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    
+    return { decrypted };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async randomString(params: {
+    length: number;
+    charset?: "alphanumeric" | "hex" | "base64";
+  }): Promise<{ random: string }> {
+    const length = Math.min(params.length, 1024); // Max 1024 chars
+    const charset = params.charset || "alphanumeric";
+    
+    let random: string;
+    
+    switch (charset) {
+      case "hex":
+        random = crypto.randomBytes(Math.ceil(length / 2)).toString("hex").slice(0, length);
+        break;
+      case "base64":
+        random = crypto.randomBytes(Math.ceil(length * 3 / 4)).toString("base64").slice(0, length);
+        break;
+      case "alphanumeric":
+      default:
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        random = Array.from(crypto.randomBytes(length))
+          .map((byte) => chars[byte % chars.length])
+          .join("");
+        break;
+    }
+    
+    return { random };
+  }
+}
+
+export const UtilsFrameInstance = new UtilsFrame();
+```
+
+### External API Proxy Frame
+
+```typescript
+// weather.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import axios from "axios";
+
+interface WeatherParams {
+  city: string;
+  country?: string;
+}
+
+interface WeatherResponse {
+  city: string;
+  temperature: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  timestamp: Date;
+}
+
+class WeatherFrame extends BaseFrameClass {
+  frameName = "Weather";
+  
+  private apiKey = process.env.WEATHER_API_KEY || "";
+  private baseUrl = "https://api.openweathermap.org/data/2.5";
+  
+  @api({ httpMethod: "GET" })
+  async current(params: WeatherParams): Promise<WeatherResponse> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/weather`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: "metric",
+        },
+      });
+      
+      const data = response.data;
+      
+      return {
+        city: data.name,
+        temperature: data.main.temp,
+        condition: data.weather[0].description,
+        humidity: data.main.humidity,
+        windSpeed: data.wind.speed,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch weather data");
+    }
+  }
+  
+  @api({ httpMethod: "GET" })
+  async forecast(params: WeatherParams): Promise<{
+    city: string;
+    forecast: Array<{
+      date: string;
+      temperature: number;
+      condition: string;
+    }>;
+  }> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/forecast`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: "metric",
+          cnt: 5, // 5-day forecast
+        },
+      });
+      
+      const data = response.data;
+      
+      return {
+        city: data.city.name,
+        forecast: data.list.map((item: any) => ({
+          date: item.dt_txt,
+          temperature: item.main.temp,
+          condition: item.weather[0].description,
+        })),
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch forecast data");
+    }
+  }
+}
+
+export const WeatherFrameInstance = new WeatherFrame();
+```
+
+## DB Access
+
+Frame can also access DB.
+
+### Read Operations
+
+```typescript
+class StatsFrame extends BaseFrameClass {
+  frameName = "Stats";
+  
+  @api({ httpMethod: "GET" })
+  async dashboard(): Promise<{
+    totalUsers: number;
+    totalPosts: number;
+    totalComments: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const [{ userCount }] = await rdb
+      .table("users")
+      .count({ userCount: "*" });
+    
+    const [{ postCount }] = await rdb
+      .table("posts")
+      .count({ postCount: "*" });
+    
+    const [{ commentCount }] = await rdb
+      .table("comments")
+      .count({ commentCount: "*" });
+    
+    return {
+      totalUsers: userCount,
+      totalPosts: postCount,
+      totalComments: commentCount,
+    };
+  }
+}
+```
+
+### Write Operations (@transactional)
+
+```typescript
+class AdminFrame extends BaseFrameClass {
+  frameName = "Admin";
+  
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async clearOldLogs(params: {
+    beforeDate: Date;
+  }): Promise<{
+    deletedCount: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    const deletedCount = await wdb
+      .table("logs")
+      .where("created_at", "<", params.beforeDate)
+      .delete();
+    
+    return { deletedCount };
+  }
+}
+```
+
+## Error Handling
+
+### try-catch Pattern
+
+```typescript
+class ExternalApiFrame extends BaseFrameClass {
+  frameName = "External";
+  
+  @api({ httpMethod: "GET" })
+  async fetchData(params: { url: string }): Promise<any> {
+    try {
+      const response = await axios.get(params.url, {
+        timeout: 5000,
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(`External API error: ${error.message}`);
+      }
+      
+      throw new Error("Unknown error occurred");
+    }
+  }
+}
+```
+
+### Validation Logic
+
+```typescript
+class ValidationFrame extends BaseFrameClass {
+  frameName = "Validation";
+  
+  @api({ httpMethod: "POST" })
+  async validateEmail(params: {
+    email: string;
+  }): Promise<{
+    valid: boolean;
+    message?: string;
+  }> {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(params.email)) {
+      return {
+        valid: false,
+        message: "Invalid email format",
+      };
+    }
+    
+    // Additional validation (domain check, etc.)
+    const domain = params.email.split("@")[1];
+    const blockedDomains = ["tempmail.com", "throwaway.com"];
+    
+    if (blockedDomains.includes(domain)) {
+      return {
+        valid: false,
+        message: "Domain not allowed",
+      };
+    }
+    
+    return { valid: true };
+  }
+}
+```
+
+## File Structure
+
+### Recommended Structure
+
+```
+api/src/frames/
+├── health/
+│   └── health.frame.ts
+├── utils/
+│   └── utils.frame.ts
+├── weather/
+│   └── weather.frame.ts
+└── stats/
+    └── stats.frame.ts
+```
+
+### Separate Types File (Optional)
+
+```
+api/src/frames/
+├── health/
+│   ├── health.frame.ts
+│   └── health.types.ts      # ← Types only
+├── utils/
+│   ├── utils.frame.ts
+│   └── utils.types.ts
+```
+
+```typescript
+// utils.types.ts
+export interface HashParams {
+  text: string;
+  algorithm: "md5" | "sha256" | "sha512";
+}
+
+export interface HashResponse {
+  hash: string;
+}
+
+// utils.frame.ts
+import { HashParams, HashResponse } from "./utils.types";
+
+class UtilsFrame extends BaseFrameClass {
+  @api({ httpMethod: "POST" })
+  async hash(params: HashParams): Promise<HashResponse> {
+    // ...
+  }
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Frame**:
+1. `frameName` property is required
+2. Methods must be `async` functions
+3. Instance must be exported
+4. Consider Model for complex logic
+5. Convert to Model if Entity is needed
+</Warning>
+
+### Common Mistakes
+
+```typescript
+// ❌ Wrong: No frameName
+class HealthFrame extends BaseFrameClass {
+  // frameName = "Health"; // ← Required!
+  
+  @api({ httpMethod: "GET" })
+  async check() { /* ... */ }
+}
+
+// ❌ Wrong: No instance export
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  // ...
+}
+// export const HealthFrameInstance = new HealthFrame(); // ← Required!
+
+// ❌ Wrong: Not async
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  check(): { status: string } { // ← async needed
+    return { status: "ok" };
+  }
+}
+
+// ✅ Correct
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{ status: string }> {
+    return { status: "ok" };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Use Cases" icon="lightbulb" href="/api-development/frames/use-cases">
+    Practical Frame examples
+  </Card>
+  <Card title="What are Frames?" icon="circle-question" href="/api-development/frames/what-are-frames">
+    Understanding Frame concept
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    API basic usage
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/api-development/error-handling">
+    API error handling
+  </Card>
+</CardGroup>

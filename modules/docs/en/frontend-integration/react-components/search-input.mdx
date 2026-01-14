@@ -1,0 +1,722 @@
+---
+title: "Search Input"
+description: "Search autocomplete component"
+---
+
+Learn how to implement real-time search and autocomplete functionality with Sonamu's Search Input component.
+
+## Search Input Overview
+
+<CardGroup cols={2}>
+  <Card title="Real-time Search" icon="bolt">
+    Search while typing
+    
+    Immediate results
+  </Card>
+  <Card title="Autocomplete" icon="wand-magic-sparkles">
+    Suggested search terms
+    
+    Quick selection
+  </Card>
+  <Card title="Debounce" icon="clock">
+    API call optimization
+    
+    Remove unnecessary requests
+  </Card>
+  <Card title="Highlighting" icon="highlighter">
+    Search term emphasis
+    
+    Improved readability
+  </Card>
+</CardGroup>
+
+## What is Search Input?
+
+### Problem: Limitations of Basic Search
+
+The basic HTML `<input type="search">` requires clicking a search button to execute the search.
+
+```typescript
+// ❌ Traditional search - inconvenient
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const { results } = await searchService.search({ query });
+    setResults(results);
+  }
+  
+  return (
+    <form onSubmit={handleSearch}>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button type="submit">Search</button>
+    </form>
+  );
+}
+```
+
+**Problems**:
+1. **Button click required**: Need to press enter or button to search
+2. **Delayed feedback**: Need to execute search to see results
+3. **No autocomplete**: User has to type everything
+4. **Hard to fix typos**: Can't discover typos until seeing results
+
+### Solution: Search Input Component
+
+Sonamu's Search Input provides **real-time search while typing** and **autocomplete**.
+
+```typescript
+// ✅ Real-time search - convenient
+<SearchInput
+  onSearch={(query) => {
+    // Automatically called while typing
+  }}
+  placeholder="Search..."
+  showSuggestions
+/>
+```
+
+**Benefits**:
+1. ✨ **Immediate feedback**: See results while typing
+2. ✨ **Autocomplete**: Quick input with suggested search terms
+3. ✨ **Debounce**: Minimize unnecessary API calls
+4. ✨ **Keyboard navigation**: Select suggestions with arrow keys
+
+## Basic Usage
+
+### Simple Search
+
+The most basic search functionality.
+
+```typescript
+import { SearchInput } from "@/components/common/SearchInput";
+import { useState } from "react";
+
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search posts..."
+      />
+      
+      {query && (
+        <div>Searching for: {query}</div>
+      )}
+    </div>
+  );
+}
+```
+
+### With Autocomplete
+
+Display suggestion items.
+
+```typescript
+function SearchWithSuggestions() {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  // Load suggestions on query change
+  useEffect(() => {
+    if (query) {
+      searchService.getSuggestions({ query }).then(({ suggestions }) => {
+        setSuggestions(suggestions);
+      });
+    } else {
+      setSuggestions([]);
+    }
+  }, [query]);
+  
+  return (
+    <SearchInput
+      value={query}
+      onChange={setQuery}
+      suggestions={suggestions}
+      onSelectSuggestion={(suggestion) => {
+        setQuery(suggestion);
+        // Execute search with selected suggestion
+      }}
+      placeholder="Type to search..."
+    />
+  );
+}
+```
+
+### Integration with Service
+
+Search using Sonamu Service.
+
+```typescript
+import { searchService } from "@/services/search.service";
+import { useDebounce } from "@/hooks/useDebounce";
+
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const debouncedQuery = useDebounce(query, 300);
+  
+  // Search with debounced query
+  useEffect(() => {
+    if (debouncedQuery) {
+      searchService.search({ query: debouncedQuery }).then(({ results }) => {
+        setResults(results);
+      });
+    } else {
+      setResults([]);
+    }
+  }, [debouncedQuery]);
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search..."
+      />
+      
+      <div className="results">
+        {results.map((result) => (
+          <div key={result.id}>{result.title}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## Advanced Features
+
+### Entity-specific Search
+
+Search specific entities.
+
+```typescript
+function EntitySearch() {
+  const [entityType, setEntityType] = useState<"users" | "posts">("users");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  
+  useEffect(() => {
+    if (query) {
+      const service = entityType === "users" ? userService : postService;
+      service.search({ query }).then(({ results }) => {
+        setResults(results);
+      });
+    }
+  }, [query, entityType]);
+  
+  return (
+    <div>
+      <div className="entity-selector">
+        <button
+          className={entityType === "users" ? "active" : ""}
+          onClick={() => setEntityType("users")}
+        >
+          Users
+        </button>
+        <button
+          className={entityType === "posts" ? "active" : ""}
+          onClick={() => setEntityType("posts")}
+        >
+          Posts
+        </button>
+      </div>
+      
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder={`Search ${entityType}...`}
+      />
+      
+      <div className="results">
+        {results.map((result) => (
+          <div key={result.id}>
+            {entityType === "users" 
+              ? result.username 
+              : result.title
+            }
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### Integration with Filters
+
+Apply filters along with search terms.
+
+```typescript
+function AdvancedSearch() {
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({
+    category: null,
+    dateRange: null,
+    author: null,
+  });
+  
+  const { results, isLoading } = useSearch({
+    query,
+    ...filters,
+  });
+  
+  return (
+    <div>
+      <div className="search-bar">
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search posts..."
+        />
+      </div>
+      
+      <div className="filters">
+        <select
+          value={filters.category || ""}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value || null })}
+        >
+          <option value="">All Categories</option>
+          <option value="tech">Tech</option>
+          <option value="news">News</option>
+        </select>
+      </div>
+      
+      <div className="results">
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : (
+          results.map((result) => (
+            <div key={result.id}>{result.title}</div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### Search History
+
+Save and display recent search terms.
+
+```typescript
+function SearchWithHistory() {
+  const [query, setQuery] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  
+  // Load history from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem("search-history");
+    if (saved) {
+      setHistory(JSON.parse(saved));
+    }
+  }, []);
+  
+  function handleSearch(searchQuery: string) {
+    // Add to history
+    const newHistory = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem("search-history", JSON.stringify(newHistory));
+    
+    // Execute search
+    setQuery(searchQuery);
+  }
+  
+  return (
+    <SearchInput
+      value={query}
+      onChange={setQuery}
+      onSearch={handleSearch}
+      suggestions={query ? [] : history} // Show history when no input
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+### Highlighting
+
+Highlight search terms in results.
+
+```typescript
+function SearchResults({ results, query }: { 
+  results: any[]; 
+  query: string;
+}) {
+  function highlightText(text: string, highlight: string) {
+    if (!highlight) return text;
+    
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    return parts.map((part, i) => 
+      part.toLowerCase() === highlight.toLowerCase() ? (
+        <mark key={i}>{part}</mark>
+      ) : (
+        part
+      )
+    );
+  }
+  
+  return (
+    <div>
+      {results.map((result) => (
+        <div key={result.id}>
+          <h3>{highlightText(result.title, query)}</h3>
+          <p>{highlightText(result.content, query)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Custom Hook Patterns
+
+### useSearch Hook
+
+Abstract search logic into a reusable Hook.
+
+```typescript
+// hooks/useSearch.ts
+import { useState, useEffect } from "react";
+import { useDebounce } from "./useDebounce";
+
+export function useSearch<T>(
+  searchFn: (query: string) => Promise<T[]>,
+  debounceMs: number = 300
+) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<T[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const debouncedQuery = useDebounce(query, debounceMs);
+  
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setResults([]);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    searchFn(debouncedQuery)
+      .then(setResults)
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, [debouncedQuery]);
+  
+  return {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    error,
+  };
+}
+```
+
+**Usage**:
+
+```typescript
+function SearchPage() {
+  const { query, setQuery, results, isLoading } = useSearch(
+    (q) => postService.search({ query: q }).then(r => r.posts)
+  );
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search posts..."
+      />
+      
+      {isLoading ? (
+        <div>Searching...</div>
+      ) : (
+        <div>
+          {results.map((post) => (
+            <div key={post.id}>{post.title}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### useSearchSuggestions Hook
+
+Manage autocomplete suggestions.
+
+```typescript
+// hooks/useSearchSuggestions.ts
+import { useState, useEffect } from "react";
+import { useDebounce } from "./useDebounce";
+
+export function useSearchSuggestions(
+  getSuggestionsFn: (query: string) => Promise<string[]>,
+  minLength: number = 2
+) {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  const debouncedQuery = useDebounce(query, 200);
+  
+  useEffect(() => {
+    if (debouncedQuery.length < minLength) {
+      setSuggestions([]);
+      return;
+    }
+    
+    getSuggestionsFn(debouncedQuery).then(setSuggestions);
+  }, [debouncedQuery]);
+  
+  return {
+    query,
+    setQuery,
+    suggestions,
+  };
+}
+```
+
+## Practical Examples
+
+### Global Search
+
+Search across the entire site.
+
+```typescript
+function GlobalSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{
+    users: User[];
+    posts: Post[];
+    comments: Comment[];
+  }>({
+    users: [],
+    posts: [],
+    comments: [],
+  });
+  
+  const debouncedQuery = useDebounce(query, 300);
+  
+  useEffect(() => {
+    if (debouncedQuery) {
+      // Search multiple entities simultaneously
+      Promise.all([
+        userService.search({ query: debouncedQuery }),
+        postService.search({ query: debouncedQuery }),
+        commentService.search({ query: debouncedQuery }),
+      ]).then(([users, posts, comments]) => {
+        setResults({
+          users: users.users,
+          posts: posts.posts,
+          comments: comments.comments,
+        });
+      });
+    }
+  }, [debouncedQuery]);
+  
+  return (
+    <div className="global-search">
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search everything..."
+      />
+      
+      {query && (
+        <div className="results">
+          {results.users.length > 0 && (
+            <div className="result-section">
+              <h3>Users ({results.users.length})</h3>
+              {results.users.map((user) => (
+                <div key={user.id}>{user.username}</div>
+              ))}
+            </div>
+          )}
+          
+          {results.posts.length > 0 && (
+            <div className="result-section">
+              <h3>Posts ({results.posts.length})</h3>
+              {results.posts.map((post) => (
+                <div key={post.id}>{post.title}</div>
+              ))}
+            </div>
+          )}
+          
+          {results.comments.length > 0 && (
+            <div className="result-section">
+              <h3>Comments ({results.comments.length})</h3>
+              {results.comments.map((comment) => (
+                <div key={comment.id}>{comment.content}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Navigation Search
+
+Search integrated in header.
+
+```typescript
+function Header() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { query, setQuery, results, isLoading } = useSearch(
+    (q) => searchService.globalSearch({ query: q })
+  );
+  
+  return (
+    <header>
+      <div className="logo">My App</div>
+      
+      <div className="search-container">
+        {/* Search icon */}
+        <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          🔍
+        </button>
+        
+        {/* Search modal */}
+        {isSearchOpen && (
+          <div className="search-modal">
+            <SearchInput
+              value={query}
+              onChange={setQuery}
+              placeholder="Search..."
+              autoFocus
+            />
+            
+            {isLoading && <div>Loading...</div>}
+            
+            {results.length > 0 && (
+              <div className="quick-results">
+                {results.slice(0, 5).map((result) => (
+                  <a
+                    key={result.id}
+                    href={`/${result.type}/${result.id}`}
+                    onClick={() => setIsSearchOpen(false)}
+                  >
+                    {result.title}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <nav>{/* Navigation menu */}</nav>
+    </header>
+  );
+}
+```
+
+## Performance Optimization
+
+### Debounce Optimization
+
+Adjust debounce time according to search frequency.
+
+```typescript
+// Fast typing: Short debounce
+const fastDebounce = useDebounce(query, 200);
+
+// Slow typing: Long debounce
+const slowDebounce = useDebounce(query, 500);
+
+// Slow API response: Even longer debounce
+const longDebounce = useDebounce(query, 1000);
+```
+
+### Caching Strategy
+
+Cache search results with TanStack Query.
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+
+function useSearchWithCache(query: string) {
+  const debouncedQuery = useDebounce(query, 300);
+  
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["search", debouncedQuery],
+    queryFn: () => searchService.search({ query: debouncedQuery }),
+    enabled: !!debouncedQuery,
+    staleTime: 5000, // Stay fresh for 5 seconds
+    refetchOnWindowFocus: false, // Don't revalidate on focus
+  });
+  
+  return {
+    results: data?.results || [],
+    isLoading,
+    error,
+  };
+}
+```
+
+### Request Cancellation
+
+Cancel ongoing requests when component unmounts.
+
+```typescript
+useEffect(() => {
+  const abortController = new AbortController();
+  
+  if (debouncedQuery) {
+    searchService.search(
+      { query: debouncedQuery },
+      { signal: abortController.signal }
+    ).then(setResults);
+  }
+  
+  return () => {
+    abortController.abort();
+  };
+}, [debouncedQuery]);
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Search Input**:
+1. **Debounce required**: 300~500ms recommended
+2. Set minimum search length (usually 2-3 characters)
+3. **Handle empty string**: Prevent returning all results
+4. Support **keyboard navigation** (accessibility)
+5. Search API requires **index optimization**
+6. Consider **pagination** for many results
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="ID Async Select" icon="list-dropdown" href="/frontend-integration/react-components/id-async-select">
+    Relational data selection
+  </Card>
+  <Card title="Custom Components" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    Component customization
+  </Card>
+  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/frontend-integration/react-components/scaffolding-views">
+    Auto view generation
+  </Card>
+  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/frontend-integration/generated-services/tanstack-query">
+    Data caching
+  </Card>
+</CardGroup>

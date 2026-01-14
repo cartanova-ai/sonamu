@@ -1,0 +1,391 @@
+---
+title: "runWithMockContext"
+description: "Running tests with Mock Context"
+---
+
+Learn how to isolate tests and control authentication state using Mock Context.
+
+## What is runWithMockContext?
+
+**runWithMockContext** is a function that provides isolated Context in Sonamu's test environment. Sonamu uses AsyncLocalStorage to maintain independent Context per request, and the same mechanism is used in tests.
+
+### Context Components
+
+Mock Context includes the following properties:
+
+```typescript
+type Context = {
+  ip: string;              // Client IP address
+  session: object;         // Session data
+  user: PassportUser | null;  // Authenticated user info
+  passport: {
+    login: (user: PassportUser) => Promise<void>;
+    logout: () => void;
+  };
+  naiteStore: NaiteStore;  // Naite log storage
+  request: FastifyRequest;
+  reply: FastifyReply;
+  headers: IncomingHttpHeaders;
+  // ... other properties
+};
+```
+
+A simplified Mock Context is provided in tests:
+
+```typescript
+{
+  ip: "127.0.0.1",
+  session: {},
+  user: null,
+  passport: {
+    login: async () => {},
+    logout: () => {},
+  },
+  naiteStore: Naite.createStore(),
+}
+```
+
+## Basic Usage
+
+### Regular Tests (Unauthenticated)
+
+Sonamu's `test()` function automatically runs `runWithMockContext`.
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("Context access test", async () => {
+  // test() function automatically calls runWithMockContext
+  // so you can access Context directly
+  const context = Sonamu.getContext();
+  
+  expect(context.ip).toBe("127.0.0.1");
+  expect(context.user).toBeNull();
+  expect(context.session).toEqual({});
+});
+```
+
+### Direct Usage
+
+You can also call `runWithMockContext` directly:
+
+```typescript
+import { runWithMockContext } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+await runWithMockContext(async () => {
+  const context = Sonamu.getContext();
+  
+  // Mock Context is active within this block
+  console.log(context.ip); // "127.0.0.1"
+});
+```
+
+## Testing as Authenticated User
+
+### Using testAs()
+
+Use `testAs()` to simulate logged-in state as a specific user:
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, username: "john" },  // User info
+  "authenticated user test",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    expect(context.user).toEqual({ id: 1, username: "john" });
+  }
+);
+```
+
+### Type Safety
+
+`testAs()` supports generics for type safety:
+
+```typescript
+type MyUser = {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+};
+
+testAs<MyUser>(
+  { id: 1, username: "admin", role: "admin" },
+  "admin permission test",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    // context.user is inferred as MyUser | null
+    expect(context.user?.role).toBe("admin");
+  }
+);
+```
+
+## Practical Examples
+
+### Model Method Test
+
+```typescript
+import { test, testAs } from "sonamu/test";
+import { userModel } from "../application/user/user.model";
+import { expect } from "vitest";
+
+test("user list query (unauthenticated)", async () => {
+  // Mock Context is provided automatically
+  const users = await userModel.findMany({});
+  
+  expect(Array.isArray(users)).toBe(true);
+});
+
+testAs(
+  { id: 1, username: "john" },
+  "my profile query (authenticated)",
+  async () => {
+    // context.user = { id: 1, username: "john" }
+    const profile = await userModel.getMyProfile();
+    
+    expect(profile.username).toBe("john");
+  }
+);
+```
+
+### Permission Verification Test
+
+```typescript
+import { testAs } from "sonamu/test";
+import { postModel } from "../application/post/post.model";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, role: "admin" },
+  "admin can delete any post",
+  async () => {
+    const result = await postModel.delete({ id: 999 });
+    expect(result.success).toBe(true);
+  }
+);
+
+testAs(
+  { id: 2, role: "user" },
+  "regular user cannot delete others' posts",
+  async () => {
+    await expect(
+      postModel.delete({ id: 999 })
+    ).rejects.toThrow("Permission denied");
+  }
+);
+```
+
+### Context Property Manipulation
+
+You can modify Context properties to test specific scenarios:
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("specific IP access test", async () => {
+  const context = Sonamu.getContext();
+  
+  // Modify Context property
+  context.ip = "192.168.1.100";
+  
+  const result = await someService.checkIPRestriction();
+  expect(result.allowed).toBe(true);
+});
+```
+
+## test() vs testAs() Comparison
+
+<Tabs>
+  <Tab title="test()" icon="circle">
+    **Unauthenticated test**
+    
+    ```typescript
+    test("title", async () => {
+      // context.user === null
+    });
+    ```
+    
+    **When to use**:
+    - Testing public APIs that don't require authentication
+    - Testing logic regardless of authentication status
+    - Testing Model's basic CRUD operations
+  </Tab>
+  
+  <Tab title="testAs()" icon="user">
+    **Authenticated user test**
+    
+    ```typescript
+    testAs(user, "title", async () => {
+      // context.user === user
+    });
+    ```
+    
+    **When to use**:
+    - Testing APIs that require login
+    - Testing user-specific permissions
+    - Testing features that require ownership verification
+  </Tab>
+</Tabs>
+
+## Internal Structure
+
+### getMockContext()
+
+Mock Context is created as follows:
+
+```typescript
+function getMockContext(): Context {
+  return {
+    ip: "127.0.0.1",
+    session: {},
+    user: null,
+    passport: {
+      login: async () => {},
+      logout: () => {},
+    },
+    naiteStore: Naite.createStore(),
+  } as unknown as Context;
+}
+```
+
+**Features**:
+- `ip`: `127.0.0.1` representing local environment
+- `session`: Initialized as empty object
+- `user`: Default is `null` (unauthenticated state)
+- `passport`: Mock functions, actual auth logic doesn't execute
+- `naiteStore`: Independent log storage per test
+
+### AsyncLocalStorage Isolation
+
+Sonamu uses Node.js `AsyncLocalStorage` to isolate Context:
+
+```typescript
+export async function runWithContext(
+  context: Context | null, 
+  fn: () => Promise<void>
+) {
+  await Sonamu.asyncLocalStorage.run(
+    { context: context ?? getMockContext() }, 
+    fn
+  );
+}
+
+export async function runWithMockContext(fn: () => Promise<void>) {
+  await runWithContext(getMockContext(), fn);
+}
+```
+
+**Benefits of isolation**:
+- Context doesn't mix between tests
+- Safe for parallel test execution
+- Each test has independent Naite log storage
+
+## How test() Wrapper Works
+
+Sonamu's `test()` function wraps Vitest's `test()` to automatically provide Mock Context:
+
+```typescript
+export const test = async (
+  title: string, 
+  fn: TestFunction<object>, 
+  options?: TestOptions
+) => {
+  return vitestTest(title, options, async (context) => {
+    await runWithMockContext(async () => {
+      try {
+        await fn(context);
+        context.task.meta.traces = Naite.getAllTraces();
+      } catch (e: unknown) {
+        context.task.meta.traces = Naite.getAllTraces();
+        throw e;
+      }
+    });
+  });
+};
+```
+
+**Process**:
+1. Execute Vitest's `test()`
+2. Create and activate Mock Context with `runWithMockContext()`
+3. Execute test function
+4. Collect Naite logs regardless of success/failure
+5. Automatic Context cleanup
+
+### testAs() Structure
+
+`testAs()` receives additional user info to extend Context:
+
+```typescript
+export const testAs = async <User extends AuthContext["user"]>(
+  user: User,
+  title: string,
+  fn: TestFunction<object>,
+  options?: TestOptions,
+) => {
+  return vitestTest(title, options, async (context) => {
+    await runWithContext(
+      {
+        ...getMockContext(),
+        user,  // Add user info
+      },
+      async () => {
+        try {
+          await fn(context);
+          context.task.meta.traces = Naite.getAllTraces();
+        } catch (e: unknown) {
+          context.task.meta.traces = Naite.getAllTraces();
+          throw e;
+        }
+      },
+    );
+  });
+};
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Context**:
+
+1. **Cannot access Context outside test()**: `Sonamu.getContext()` should only be called inside test functions. Returns `undefined` if called outside.
+
+2. **Scope of Context modifications**: Modifying Context affects the entire test. Automatically cleaned up when test ends.
+
+3. **testAs() parameter order**: User info is the **first** parameter.
+   ```typescript
+   // ✅ Correct usage
+   testAs(user, "title", async () => {});
+   
+   // ❌ Wrong usage
+   testAs("title", user, async () => {});
+   ```
+
+4. **Type safety**: User type for `testAs()` must extend `AuthContext["user"]`.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Mocking" icon="database" href="/testing/mocking/database-mocking">
+    Isolating DB tests with transactions
+  </Card>
+  <Card title="API Mocking" icon="code" href="/testing/mocking/api-mocking">
+    Mocking external API calls
+  </Card>
+  <Card title="Naite Logging" icon="pen" href="/testing/naite/recording-logs">
+    Recording and tracking test logs
+  </Card>
+  <Card title="Bootstrap" icon="gear" href="/testing/getting-started/bootstrap">
+    Test environment initialization
+  </Card>
+</CardGroup>

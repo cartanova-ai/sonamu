@@ -1,0 +1,681 @@
+---
+title: "ID Async Select"
+description: "Async select component for selecting relational data"
+---
+
+Learn how to use the ID Async Select component for handling foreign key relationships.
+
+## ID Async Select Overview
+
+<CardGroup cols={2}>
+  <Card title="Async Loading" icon="clock">
+    API calls
+    
+    Autocomplete
+  </Card>
+  <Card title="Type Safe" icon="shield-check">
+    Entity based
+    
+    ID type guaranteed
+  </Card>
+  <Card title="Search Support" icon="magnifying-glass">
+    Real-time filtering
+    
+    Debounce
+  </Card>
+  <Card title="Multiple Selection" icon="list-check">
+    Single/Multiple modes
+    
+    Array return
+  </Card>
+</CardGroup>
+
+## What is ID Async Select?
+
+### Problem: Complexity of Foreign Key Selection
+
+When handling foreign key relationships in databases, the frontend needs to **select related entities**.
+
+**Problems with traditional approach**:
+```typescript
+// ❌ Load all users at once (inefficient)
+const [users, setUsers] = useState([]);
+
+useEffect(() => {
+  userService.list({ pageSize: 1000 }).then(({ users }) => {
+    setUsers(users); // Load all 1000 users!
+  });
+}, []);
+
+return (
+  <select>
+    {users.map((user) => (
+      <option key={user.id} value={user.id}>
+        {user.username}
+      </option>
+    ))}
+  </select>
+);
+```
+
+**Problems**:
+1. **Performance**: Loading time increases with more data
+2. **Memory**: All unnecessary data loaded into memory
+3. **UX**: Hard for users to find desired items
+4. **Scalability**: Can't handle continuous data growth
+
+### Solution: ID Async Select
+
+Sonamu's ID Async Select **loads asynchronously only when needed** and provides **search functionality**.
+
+```typescript
+// ✅ Load only needed data based on search terms
+<IdAsyncSelect
+  entity="User"
+  value={selectedUserId}
+  onChange={(userId) => setSelectedUserId(userId)}
+  searchField="username"
+/>
+```
+
+**Benefits**:
+1. ✨ **Performance**: Load minimum initially, only what's needed on search
+2. ✨ **User experience**: Quick selection with autocomplete
+3. ✨ **Type safe**: Entity type automatically applied
+4. ✨ **Scalability**: No problem regardless of data volume
+
+## Basic Usage
+
+### Single Selection
+
+Select one entity.
+
+```typescript
+import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { useState } from "react";
+
+function PostForm() {
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      <label>Author</label>
+      <IdAsyncSelect
+        entity="User"
+        value={authorId}
+        onChange={setAuthorId}
+        searchField="username"
+        placeholder="Select author..."
+      />
+    </div>
+  );
+}
+```
+
+**How it works**:
+1. Load initial options on component mount (usually 10 most recent)
+2. Call search API when user types
+3. Display search results in dropdown
+4. Only save ID when selected (memory efficient)
+
+### Multiple Selection
+
+Select multiple entities.
+
+```typescript
+function PostForm() {
+  const [tagIds, setTagIds] = useState<number[]>([]);
+  
+  return (
+    <div>
+      <label>Tags</label>
+      <IdAsyncSelect
+        entity="Tag"
+        value={tagIds}
+        onChange={setTagIds}
+        searchField="name"
+        multiple
+        placeholder="Select tags..."
+      />
+    </div>
+  );
+}
+```
+
+**Multiple selection features**:
+- Display selected items as tags
+- Remove individually with X button
+- Return IDs as array (`number[]`)
+
+### Setting Initial Values
+
+Set initial values when editing existing data.
+
+```typescript
+function EditPostForm({ post }: { post: Post }) {
+  const [authorId, setAuthorId] = useState(post.author_id);
+  
+  return (
+    <IdAsyncSelect
+      entity="User"
+      value={authorId}
+      onChange={setAuthorId}
+      searchField="username"
+    />
+  );
+}
+```
+
+**Initial value handling**:
+- Passing ID to `value` automatically loads the entity
+- Background single query for label display
+- Display only ID while loading
+
+## Advanced Usage
+
+### Custom Search Logic
+
+Use custom logic instead of default search.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  // Custom search function
+  onSearch={async (query) => {
+    const { users } = await userService.search({
+      query,
+      role: "admin", // Search only admins
+      isActive: true, // Only active users
+    });
+    return users;
+  }}
+  // Label format
+  getLabel={(user) => `${user.username} (${user.email})`}
+/>
+```
+
+**Use cases for custom search**:
+- Filtering by specific conditions (role, status, etc.)
+- Complex search logic
+- Using different API endpoints
+
+### Label Customization
+
+Change the displayed label to desired format.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // Label format: "Name (email)"
+  getLabel={(user) => `${user.username} (${user.email})`}
+  
+  // Or render as component
+  renderOption={(user) => (
+    <div className="user-option">
+      <img src={user.avatar} alt="" />
+      <div>
+        <div>{user.username}</div>
+        <div className="email">{user.email}</div>
+      </div>
+    </div>
+  )}
+/>
+```
+
+### Conditional Option Filtering
+
+Make only items matching certain conditions selectable.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // Condition: Only users with role 'editor' or 'admin'
+  filterOption={(user) => 
+    user.role === "editor" || user.role === "admin"
+  }
+  // Disable condition
+  isOptionDisabled={(user) => !user.isActive}
+/>
+```
+
+### Debounce Settings
+
+Control the frequency of search API calls.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 500ms debounce (default: 300ms)
+  debounceMs={500}
+  // Minimum input characters (default: 1)
+  minSearchLength={2}
+/>
+```
+
+**Debounce explanation**:
+- Search executes after specified time passes since user stopped typing
+- Reduces API calls to decrease server load
+- Also improves user experience (reduces unnecessary loading)
+
+## Type Safety
+
+### Auto Type Inference
+
+Types are automatically inferred when Entity name is specified.
+
+```typescript
+// When entity="User" is specified
+<IdAsyncSelect
+  entity="User"
+  value={userId}  // number | null
+  onChange={(id) => {
+    // id type is auto-inferred as number | null
+  }}
+  onSearch={async (query) => {
+    // Return type must be User[]
+    return users;
+  }}
+  getLabel={(user) => {
+    // user type is auto-inferred as User
+    return user.username;
+  }}
+/>
+```
+
+**Type chain**:
+```
+Entity Definition 
+  → Type Generation 
+  → IdAsyncSelect Props 
+  → Type-safe Callbacks
+```
+
+### Using Generics
+
+You can also explicitly specify types.
+
+```typescript
+import type { User } from "@/types/user.types";
+
+<IdAsyncSelect<User>
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+/>
+```
+
+## Practical Examples
+
+### Post Creation Form
+
+```typescript
+import { useState } from "react";
+import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { postService } from "@/services/post.service";
+
+function CreatePostForm() {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [tagIds, setTagIds] = useState<number[]>([]);
+  
+  async function handleSubmit() {
+    if (!authorId || !categoryId) {
+      alert("Please select author and category");
+      return;
+    }
+    
+    await postService.create({
+      title,
+      content,
+      author_id: authorId,
+      category_id: categoryId,
+      tag_ids: tagIds,
+    });
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Title</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+      
+      <div>
+        <label>Content</label>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+      </div>
+      
+      {/* Author selection (single) */}
+      <div>
+        <label>Author *</label>
+        <IdAsyncSelect
+          entity="User"
+          value={authorId}
+          onChange={setAuthorId}
+          searchField="username"
+          placeholder="Select author..."
+        />
+      </div>
+      
+      {/* Category selection (single) */}
+      <div>
+        <label>Category *</label>
+        <IdAsyncSelect
+          entity="Category"
+          value={categoryId}
+          onChange={setCategoryId}
+          searchField="name"
+          placeholder="Select category..."
+        />
+      </div>
+      
+      {/* Tag selection (multiple) */}
+      <div>
+        <label>Tags</label>
+        <IdAsyncSelect
+          entity="Tag"
+          value={tagIds}
+          onChange={setTagIds}
+          searchField="name"
+          multiple
+          placeholder="Select tags..."
+        />
+      </div>
+      
+      <button type="submit">Create Post</button>
+    </form>
+  );
+}
+```
+
+### Post Edit Form
+
+```typescript
+function EditPostForm({ postId }: { postId: number }) {
+  const { post, isLoading } = usePost(postId);
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  
+  // Set initial value when post loads
+  useEffect(() => {
+    if (post) {
+      setAuthorId(post.author_id);
+    }
+  }, [post]);
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  return (
+    <form>
+      {/* With initial value */}
+      <IdAsyncSelect
+        entity="User"
+        value={authorId}
+        onChange={setAuthorId}
+        searchField="username"
+      />
+    </form>
+  );
+}
+```
+
+### Conditional Filtering
+
+```typescript
+function AssignTaskForm() {
+  const [assigneeId, setAssigneeId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      <label>Assign To</label>
+      <IdAsyncSelect
+        entity="User"
+        value={assigneeId}
+        onChange={setAssigneeId}
+        searchField="username"
+        // Only active users selectable
+        filterOption={(user) => user.isActive}
+        // Only users with role 'developer'
+        onSearch={async (query) => {
+          const { users } = await userService.search({
+            query,
+            role: "developer",
+            isActive: true,
+          });
+          return users;
+        }}
+        getLabel={(user) => `${user.username} (${user.role})`}
+      />
+    </div>
+  );
+}
+```
+
+### Hierarchical Selection
+
+Pattern of selecting child after parent.
+
+```typescript
+function ProductForm() {
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      {/* Step 1: Category selection */}
+      <div>
+        <label>Category</label>
+        <IdAsyncSelect
+          entity="Category"
+          value={categoryId}
+          onChange={(id) => {
+            setCategoryId(id);
+            setSubcategoryId(null); // Reset child when parent changes
+          }}
+          searchField="name"
+        />
+      </div>
+      
+      {/* Step 2: Subcategory selection (only after category selected) */}
+      {categoryId && (
+        <div>
+          <label>Subcategory</label>
+          <IdAsyncSelect
+            entity="Subcategory"
+            value={subcategoryId}
+            onChange={setSubcategoryId}
+            searchField="name"
+            // Only those belonging to parent category
+            onSearch={async (query) => {
+              const { subcategories } = await subcategoryService.search({
+                query,
+                category_id: categoryId,
+              });
+              return subcategories;
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Internal Implementation
+
+### Service Integration
+
+Internally uses generated Services.
+
+```typescript
+// components/common/IdAsyncSelect.tsx (internal implementation)
+import { useQuery } from "@tanstack/react-query";
+
+interface IdAsyncSelectProps<T> {
+  entity: string;
+  value: number | number[] | null;
+  onChange: (value: number | number[] | null) => void;
+  searchField: keyof T;
+  multiple?: boolean;
+}
+
+export function IdAsyncSelect<T extends { id: number }>({
+  entity,
+  value,
+  onChange,
+  searchField,
+  multiple = false,
+}: IdAsyncSelectProps<T>) {
+  const [inputValue, setInputValue] = useState("");
+  const [debouncedInput] = useDebounce(inputValue, 300);
+  
+  // Dynamic Service import
+  const service = getServiceByEntity(entity); // userService, postService, etc.
+  
+  // Load search results
+  const { data: options } = useQuery({
+    queryKey: [entity, "search", debouncedInput],
+    queryFn: () => service.search({
+      query: debouncedInput,
+      searchField,
+    }),
+    enabled: !!debouncedInput,
+  });
+  
+  // Load initial value (when value exists but not in options)
+  const { data: initialValues } = useQuery({
+    queryKey: [entity, value as number],
+    queryFn: () => service.get(value as number),
+    enabled: !!value && !multiple,
+  });
+  
+  // Display selected items
+  const selectedOptions = multiple
+    ? options?.filter((opt: any) => (value as number[]).includes(opt.id))
+    : initialValues || options?.find((opt: any) => opt.id === value);
+  
+  return (
+    <Select
+      options={options}
+      value={selectedOptions}
+      onChange={(selected) => {
+        if (multiple) {
+          onChange(selected.map((s: any) => s.id));
+        } else {
+          onChange(selected?.id || null);
+        }
+      }}
+      onInputChange={setInputValue}
+      isMulti={multiple}
+    />
+  );
+}
+```
+
+### Caching Strategy
+
+Uses TanStack Query to cache search results.
+
+```typescript
+// Same search terms return immediately from cache
+const { data } = useQuery({
+  queryKey: [entity, "search", debouncedInput],
+  queryFn: () => service.search({ query: debouncedInput }),
+  staleTime: 5000, // Stay fresh for 5 seconds
+  refetchOnWindowFocus: false, // Don't revalidate on focus
+});
+```
+
+## Performance Optimization
+
+### 1. Minimize API Calls with Debounce
+
+```typescript
+const [inputValue, setInputValue] = useState("");
+const [debouncedInput] = useDebounce(inputValue, 300);
+
+// Only call API when debouncedInput changes
+useQuery({
+  queryKey: ["search", debouncedInput],
+  queryFn: fetcher,
+  enabled: !!debouncedInput,
+});
+```
+
+### 2. Virtual Scrolling
+
+Improve performance with virtual scrolling when there are many options:
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  virtualScroll // Auto-enabled when 1000+ items
+  virtualiRowHeight={40}
+/>
+```
+
+### 3. Minimize Initial Loading
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // Don't load initially
+  loadOnMount={false}
+  // Minimum search length
+  minSearchLength={2}
+/>
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using ID Async Select**:
+1. `searchField` must match actual Entity field name
+2. **Search endpoint required in API** (`search` method)
+3. Verify **array type** for multiple selection
+4. Adjust debounce time according to API response speed
+5. Consider **pagination** for large data
+6. Error handling required for initial value loading failure
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/frontend-integration/react-components/scaffolding-views">
+    Auto view generation
+  </Card>
+  <Card title="Search Input" icon="magnifying-glass" href="/frontend-integration/react-components/search-input">
+    Search component
+  </Card>
+  <Card title="Custom Components" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    Component customization
+  </Card>
+  <Card title="Using Services" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service integration
+  </Card>
+</CardGroup>

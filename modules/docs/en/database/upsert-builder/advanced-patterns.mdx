@@ -1,0 +1,628 @@
+---
+title: "Advanced Patterns"
+description: "Handling complex data structures and special cases"
+---
+
+UpsertBuilder's advanced features allow efficient handling of complex data structures.
+
+## Advanced Patterns Overview
+
+<CardGroup cols={2}>
+  <Card title="Conditional Registration" icon="code-branch">
+    Dynamic data creation
+    
+    if/else branching
+  </Card>
+  <Card title="Nested Relations" icon="diagram-nested">
+    3+ level relations
+    
+    Deep hierarchies
+  </Card>
+  <Card title="Upsert Behavior" icon="code-merge">
+    Update on duplicate
+    
+    onConflict usage
+  </Card>
+  <Card title="Composite Keys" icon="key">
+    Multiple field combinations
+    
+    UNIQUE constraints
+  </Card>
+</CardGroup>
+
+## Conditional Data Creation
+
+### Create Data Based on Role
+
+```typescript
+async function createUserWithRole(data: {
+  email: string;
+  username: string;
+  role: "admin" | "normal";
+}) {
+  return await db.transaction(async (trx) => {
+    // 1. Register User
+    const userRef = trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: "password",
+      role: data.role,
+    });
+    
+    // 2. Conditional Profile creation
+    if (data.role === "admin") {
+      // Create AdminProfile only for Admin
+      trx.ubRegister("admin_profiles", {
+        user_id: userRef,
+        permissions: "full_access",
+      });
+    } else {
+      // Create regular Profile for Normal
+      trx.ubRegister("profiles", {
+        user_id: userRef,
+        bio: "",
+      });
+    }
+    
+    // 3. Save
+    const [userId] = await trx.ubUpsert("users");
+    
+    if (data.role === "admin") {
+      await trx.ubUpsert("admin_profiles");
+    } else {
+      await trx.ubUpsert("profiles");
+    }
+    
+    return userId;
+  });
+}
+```
+
+### Optional Relations
+
+```typescript
+async function createEmployee(data: {
+  email: string;
+  username: string;
+  departmentId?: number; // Optional
+  mentorEmail?: string; // Optional
+}) {
+  return await db.transaction(async (trx) => {
+    // User
+    const userRef = trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: "pass",
+      role: "normal",
+    });
+    
+    // Find Mentor (if provided)
+    let mentorId: number | null = null;
+    if (data.mentorEmail) {
+      const mentor = await trx
+        .table("employees")
+        .join("users", "employees.user_id", "users.id")
+        .select({ emp_id: "employees.id" })
+        .where("users.email", data.mentorEmail)
+        .first();
+      
+      mentorId = mentor?.emp_id || null;
+    }
+    
+    // Employee
+    trx.ubRegister("employees", {
+      user_id: userRef,
+      department_id: data.departmentId || null,
+      mentor_id: mentorId,
+      employee_number: `E${Date.now()}`,
+    });
+    
+    await trx.ubUpsert("users");
+    const [empId] = await trx.ubUpsert("employees");
+    
+    return empId;
+  });
+}
+```
+
+## Deep Hierarchical Structures
+
+### 4-Level Relationship (Company → Dept → Team → Employee)
+
+```typescript
+await db.transaction(async (trx) => {
+  // 1. Company
+  const companyRef = trx.ubRegister("companies", {
+    name: "Tech Corp",
+  });
+  
+  // 2. Department (under Company)
+  const deptRef = trx.ubRegister("departments", {
+    name: "Engineering",
+    company_id: companyRef,
+  });
+  
+  // 3. Team (under Department)
+  const teamRef = trx.ubRegister("teams", {
+    name: "Backend Team",
+    department_id: deptRef,
+  });
+  
+  // 4. User
+  const userRef = trx.ubRegister("users", {
+    email: "dev@test.com",
+    username: "developer",
+    password: "pass",
+    role: "normal",
+  });
+  
+  // 5. Employee (under Team)
+  trx.ubRegister("employees", {
+    user_id: userRef,
+    team_id: teamRef,
+    employee_number: "E001",
+  });
+  
+  // 6. Save in order
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("departments");
+  await trx.ubUpsert("teams");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+```
+
+<Frame>
+  <img src="/images/upsert-builder/deep-hierarchy.png" alt="Deep hierarchy structure" />
+</Frame>
+
+## Upsert Behavior (ON CONFLICT)
+
+### Update on Duplicate
+
+```typescript
+await db.transaction(async (trx) => {
+  // If email already exists, update username
+  trx.ubRegister(
+    "users",
+    {
+      email: "john@test.com",
+      username: "john_updated",
+      password: "new_pass",
+      role: "normal",
+    },
+    {
+      onConflict: {
+        columns: ["email"],
+        update: ["username", "password"],
+      },
+    }
+  );
+  
+  await trx.ubUpsert("users");
+});
+```
+
+### Composite UNIQUE Key
+
+```typescript
+await db.transaction(async (trx) => {
+  // If (project_id, employee_id) combination exists, update role
+  trx.ubRegister(
+    "projects__employees",
+    {
+      project_id: 1,
+      employee_id: 5,
+      role: "lead",
+    },
+    {
+      onConflict: {
+        columns: ["project_id", "employee_id"],
+        update: ["role"],
+      },
+    }
+  );
+  
+  await trx.ubUpsert("projects__employees");
+});
+```
+
+### DO NOTHING
+
+```typescript
+await db.transaction(async (trx) => {
+  // Ignore if duplicate (no error)
+  trx.ubRegister(
+    "users",
+    {
+      email: "john@test.com",
+      username: "john",
+      password: "pass",
+      role: "normal",
+    },
+    {
+      onConflict: {
+        columns: ["email"],
+        action: "nothing",
+      },
+    }
+  );
+  
+  await trx.ubUpsert("users");
+});
+```
+
+## Complex ManyToMany
+
+### Junction Table with Additional Fields
+
+```typescript
+await db.transaction(async (trx) => {
+  const projectRef = trx.ubRegister("projects", {
+    name: "Project Alpha",
+    status: "in_progress",
+  });
+  
+  const empRefs = ["John", "Jane"].map((name) => {
+    const userRef = trx.ubRegister("users", {
+      email: `${name.toLowerCase()}@test.com`,
+      username: name,
+      password: "pass",
+      role: "normal",
+    });
+    
+    return trx.ubRegister("employees", {
+      user_id: userRef,
+      employee_number: `E${name}`,
+    });
+  });
+  
+  // Junction table with role, assigned_at fields
+  empRefs.forEach((empRef, i) => {
+    trx.ubRegister("projects__employees", {
+      project_id: projectRef,
+      employee_id: empRef,
+      role: i === 0 ? "lead" : "member",
+      assigned_at: new Date(),
+    });
+  });
+  
+  await trx.ubUpsert("projects");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+  await trx.ubUpsert("projects__employees");
+});
+```
+
+## Dynamic Table Selection
+
+### Using Table Name as Variable
+
+```typescript
+async function createRecordInTable(
+  tableName: string,
+  data: Record<string, any>
+) {
+  return await db.transaction(async (trx) => {
+    trx.ubRegister(tableName as any, data);
+    const [id] = await trx.ubUpsert(tableName as any);
+    return id;
+  });
+}
+
+// Usage
+await createRecordInTable("users", {
+  email: "test@test.com",
+  username: "test",
+  password: "pass",
+  role: "normal",
+});
+```
+
+## Preventing Circular References
+
+### Circular References Not Possible
+
+```typescript
+// ❌ Error: Circular reference
+await db.transaction(async (trx) => {
+  const dept1Ref = trx.ubRegister("departments", {
+    name: "Dept A",
+    parent_id: dept2Ref, // ← References dept2Ref first
+  });
+  
+  const dept2Ref = trx.ubRegister("departments", {
+    name: "Dept B",
+    parent_id: dept1Ref, // ← References dept1Ref first
+  });
+  
+  // Cannot save (circular reference)
+});
+```
+
+### Solution: Two-Step Save
+
+```typescript
+// ✅ Solution: Sequential save
+await db.transaction(async (trx) => {
+  // 1. Create first without parent_id
+  trx.ubRegister("departments", {
+    name: "Dept A",
+    parent_id: null,
+  });
+  
+  const [deptAId] = await trx.ubUpsert("departments");
+  
+  // 2. Set relationship with created ID
+  await trx
+    .table("departments")
+    .insert({
+      name: "Dept B",
+      parent_id: deptAId,
+    });
+});
+```
+
+## Data Transformation and Validation
+
+### Transform Input Data
+
+```typescript
+async function importUsers(csvData: any[]) {
+  return await db.transaction(async (trx) => {
+    for (const row of csvData) {
+      // Data transformation
+      const userData = {
+        email: row.email.toLowerCase().trim(),
+        username: row.username.trim(),
+        password: hashPassword(row.password),
+        role: row.role === "1" ? "admin" : "normal",
+        is_verified: row.verified === "true",
+      };
+      
+      // Validation
+      if (!isValidEmail(userData.email)) {
+        console.warn(`Invalid email: ${userData.email}`);
+        continue;
+      }
+      
+      trx.ubRegister("users", userData);
+    }
+    
+    const userIds = await trx.ubUpsert("users");
+    return { imported: userIds.length };
+  });
+}
+```
+
+## Bulk Relationship Updates
+
+### Remove Existing + Add New Relationships
+
+```typescript
+async function updateProjectMembers(
+  projectId: number,
+  newMemberIds: number[]
+) {
+  return await db.transaction(async (trx) => {
+    // 1. Remove all existing relationships
+    await trx
+      .table("projects__employees")
+      .where("project_id", projectId)
+      .delete();
+    
+    // 2. Register new relationships
+    for (const empId of newMemberIds) {
+      trx.ubRegister("projects__employees", {
+        project_id: projectId,
+        employee_id: empId,
+        assigned_at: new Date(),
+      });
+    }
+    
+    // 3. Save
+    await trx.ubUpsert("projects__employees");
+    
+    return { memberCount: newMemberIds.length };
+  });
+}
+```
+
+## Practical Examples
+
+### Complex Data Migration
+
+```typescript
+async function migrateFromLegacySystem(legacyData: {
+  companies: Array<{ id: number; name: string }>;
+  users: Array<{
+    id: number;
+    email: string;
+    companyId: number;
+  }>;
+}) {
+  return await db.transaction(async (trx) => {
+    // 1. Legacy Company ID → UBRef mapping
+    const companyRefMap = new Map<number, any>();
+    
+    for (const company of legacyData.companies) {
+      const ref = trx.ubRegister("companies", {
+        name: company.name,
+        legacy_id: company.id,
+      });
+      companyRefMap.set(company.id, ref);
+    }
+    
+    // 2. Migrate Users
+    for (const user of legacyData.users) {
+      const companyRef = companyRefMap.get(user.companyId);
+      
+      trx.ubRegister("users", {
+        email: user.email,
+        username: user.email.split("@")[0],
+        password: "temp_password",
+        role: "normal",
+        legacy_id: user.id,
+      });
+    }
+    
+    // 3. Save
+    const companyIds = await trx.ubUpsert("companies");
+    const userIds = await trx.ubUpsert("users");
+    
+    return {
+      companies: companyIds.length,
+      users: userIds.length,
+    };
+  });
+}
+```
+
+### Department Reorganization
+
+```typescript
+async function reorganizeDepartments(changes: Array<{
+  departmentId: number;
+  newParentId: number | null;
+  newName?: string;
+}>) {
+  return await db.transaction(async (trx) => {
+    for (const change of changes) {
+      await trx
+        .table("departments")
+        .where("id", change.departmentId)
+        .update({
+          parent_id: change.newParentId,
+          ...(change.newName && { name: change.newName }),
+        });
+    }
+    
+    return { updated: changes.length };
+  });
+}
+```
+
+### Complex Initial Data Creation
+
+```typescript
+async function createInitialData() {
+  await db.transaction(async (trx) => {
+    // 1. System User
+    const systemUserRef = trx.ubRegister("users", {
+      email: "system@internal",
+      username: "system",
+      password: "n/a",
+      role: "admin",
+    });
+    
+    // 2. Default Company
+    const companyRef = trx.ubRegister("companies", {
+      name: "Default Company",
+    });
+    
+    // 3. Departments
+    const depts = ["Engineering", "Sales", "HR"];
+    const deptRefs = depts.map((name) =>
+      trx.ubRegister("departments", {
+        name,
+        company_id: companyRef,
+      })
+    );
+    
+    // 4. Default Projects
+    const projects = [
+      { name: "Onboarding", status: "active" },
+      { name: "Training", status: "active" },
+    ];
+    
+    for (const project of projects) {
+      trx.ubRegister("projects", project);
+    }
+    
+    // 5. Save
+    await trx.ubUpsert("users");
+    await trx.ubUpsert("companies");
+    await trx.ubUpsert("departments");
+    await trx.ubUpsert("projects");
+    
+    console.log("✅ Initial data created");
+  });
+}
+```
+
+## Error Handling Patterns
+
+### Retry After Rollback
+
+```typescript
+async function createWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      
+      console.warn(`Retry ${i + 1}/${maxRetries}:`, error.message);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
+// Usage
+await createWithRetry(async () => {
+  return await db.transaction(async (trx) => {
+    trx.ubRegister("users", { ... });
+    await trx.ubUpsert("users");
+  });
+});
+```
+
+### Partial Success Handling
+
+```typescript
+async function importWithPartialSuccess(data: any[]) {
+  const results = {
+    success: [] as number[],
+    failed: [] as { data: any; error: string }[],
+  };
+  
+  for (const item of data) {
+    try {
+      const id = await db.transaction(async (trx) => {
+        trx.ubRegister("users", item);
+        const [userId] = await trx.ubUpsert("users");
+        return userId;
+      });
+      results.success.push(id);
+    } catch (error) {
+      results.failed.push({
+        data: item,
+        error: error.message,
+      });
+    }
+  }
+  
+  return results;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Basic Usage" icon="play" href="/database/upsert-builder/basic-usage">
+    UpsertBuilder basics
+  </Card>
+  <Card title="Relational Data" icon="link" href="/database/upsert-builder/relations">
+    Handle relationships with UBRef
+  </Card>
+  <Card title="Batch Operations" icon="layer-group" href="/database/upsert-builder/batch-operations">
+    Bulk data registration
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/database/transactions">
+    Transaction detailed guide
+  </Card>
+</CardGroup>

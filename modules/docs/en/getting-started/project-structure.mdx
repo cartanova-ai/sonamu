@@ -1,0 +1,470 @@
+---
+title: "Project Structure"
+description: "Directory structure and key files of a Sonamu project"
+---
+
+A Sonamu project is structured as a monorepo that manages both the backend (api) and frontend (web) together.
+
+## Overall Structure
+
+import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+
+<FileTree>
+  <FileItem name="my_app/" description="Sonamu monorepo root">
+    <FileItem name="api/" description="Backend API server" />
+    <FileItem name="web/" description="Frontend web application" />
+    <FileItem name="README.md" description="Project documentation" />
+  </FileItem>
+</FileTree>
+
+<Frame caption="Complete directory structure of a Sonamu project opened in VS Code">
+  <img src="/images/projectStructure1.png" alt="Complete project structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+## API Directory (Backend)
+
+### Root Files
+
+<FileTree>
+  <FileItem name="api/">
+    <FileItem name="src/" description="Source code" />
+    <FileItem name="database/" description="Database related files" />
+    <FileItem name="package.json" description="Dependencies and scripts" />
+    <FileItem name="tsconfig.json" description="TypeScript configuration" />
+    <FileItem name="tsconfig.schemas.json" description="Schema generation config" />
+    <FileItem name="tsconfig.types.json" description="Type generation config" />
+    <FileItem name="vite.config.ts" description="Sonamu UI build config" />
+    <FileItem name=".swcrc" description="SWC compiler configuration" />
+    <FileItem name=".env" description="Environment variables (auto-generated)" />
+  </FileItem>
+</FileTree>
+
+<Frame caption="Actual file structure of api directory">
+  <img src="/images/projectStructure2.png" alt="api directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+<Accordion title="Key File Descriptions">
+
+**package.json**
+
+- Backend dependency management
+- npm scripts: `dev`, `build`, `test`, `docker:up/down`, `dump`, `seed`, etc.
+
+**tsconfig.json**
+
+- Main TypeScript compiler configuration
+- `tsconfig.schemas.json`: Dedicated for Zod schema generation
+- `tsconfig.types.json`: Dedicated for type definition generation
+
+**vite.config.ts**
+
+- Sonamu UI development server configuration (`pnpm sonamu ui`)
+- HMR (Hot Module Replacement) configuration
+
+**.env**
+
+- Database connection information
+- Project configuration variables
+- Auto-generated when running `pnpm create sonamu`
+
+</Accordion>
+
+### src/ Directory
+
+<FileTree>
+  <FileItem name="api/src/">
+    <FileItem name="index.ts" description="Server entry point" />
+    <FileItem name="sonamu.config.ts" description="Sonamu configuration file" />
+    <FileItem name="application/" description="Per-entity folders (auto-generated)">
+      <FileItem name="{entity}/">
+        <FileItem name="{entity}.entity.json" description="Entity definition" />
+        <FileItem name="{entity}.model.ts" description="Business logic" />
+        <FileItem name="{entity}.types.ts" description="Types + Zod schemas" />
+        <FileItem name="{entity}.model.test.ts" description="Tests (optional)" />
+      </FileItem>
+      <FileItem
+        name="sonamu.generated.ts"
+        description="Base schemas (auto-generated)"
+      />
+    </FileItem>
+    <FileItem name="testing/" description="Test configuration">
+      <FileItem name="global.ts" description="Global test setup" />
+      <FileItem name="fixture.ts" description="Fixture management" />
+    </FileItem>
+    <FileItem name="typings/" description="Type definitions">
+      <FileItem name="sonamu.d.ts" description="Sonamu global types" />
+      <FileItem name="fastify.d.ts" description="Fastify extension types" />
+    </FileItem>
+    <FileItem name="utils/" description="Utility functions">
+      <FileItem name="subset-loaders.ts" description="Subset loaders" />
+    </FileItem>
+  </FileItem>
+</FileTree>
+
+<Frame caption="api/src directory structure (with application folder expanded)">
+  <img src="/images/projectStructure3.png" alt="api/src directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+<Note>
+**Entity File Creation Process**
+
+Files in the `application/{entity}/` folder are created when you create an entity through Sonamu UI and scaffold:
+
+- **{entity}.entity.json**: Auto-generated when defining entity in Sonamu UI
+- **{entity}.model.ts**: Generated via `pnpm scaffold model` or Sonamu UI's Scaffolding tab
+- **{entity}.types.ts**: Auto-generated when saving entity
+- **{entity}.model.test.ts**: Generated via `pnpm scaffold model_test` or Sonamu UI's Scaffolding tab (optional)
+
+When you first create a project, the `application/` folder is empty. The folder is created when you create your first entity.
+</Note>
+
+<Accordion title="Key Directory Descriptions">
+
+**application/**
+
+- Auto-created when creating the first entity
+- Separate directory for each entity
+- Example: `User` entity → `application/user/` directory
+
+**application/{entity}/{entity}.entity.json**
+
+- Entity definition file
+- Created in Sonamu UI
+- Source of database schema
+
+**application/{entity}/{entity}.model.ts**
+
+- Business logic implementation
+- API endpoint definitions (`@api` decorator)
+- File you write directly
+
+**application/{entity}/{entity}.types.ts**
+
+- TypeScript type definitions
+- Zod validation schemas
+- Auto-generated but extensible
+- Shared with frontend
+
+**application/sonamu.generated.ts**
+
+- Auto-generated Base schemas for all entities
+- Enum types and label definitions
+- Do not modify directly
+
+**testing/**
+
+- Vitest test environment configuration
+- Fixture data management
+- Test utilities
+
+</Accordion>
+
+<Info>
+**Learn More - Entity Files**
+- [Defining Entities](/en/core-concepts/entity/defining-entities) - How to write entity.json
+- [Creating Models](/en/core-concepts/model/creating-models) - model.ts writing guide
+- [Type System](/en/core-concepts/type-system/entity-types) - Understanding types.ts
+- [What Gets Generated](/en/core-concepts/auto-generation/what-gets-generated) - Which files are auto-generated
+- [Writing Tests](/en/testing/writing-tests/test-structure) - Test file structure
+</Info>
+
+### database/ Directory
+
+<FileTree>
+  <FileItem name="api/database/">
+    <FileItem
+      name="docker-compose.yml"
+      description="PostgreSQL container configuration"
+    />
+    <FileItem name="fixtures/">
+      <FileItem name="init.sql" description="Database initialization SQL" />
+    </FileItem>
+    <FileItem name="dumps/" description="Data dump files" />
+    <FileItem name="scripts/">
+      <FileItem name="dump.sh" description="Data backup script" />
+      <FileItem name="seed.sh" description="Data restore script" />
+    </FileItem>
+  </FileItem>
+</FileTree>
+
+<Accordion title="Key File Descriptions">
+
+**docker-compose.yml**
+
+- PostgreSQL + pgvector image
+- Container name, port, environment variable configuration
+- Run with `pnpm docker:up`
+
+**fixtures/init.sql**
+
+- Database initial setup
+- Extension installation (pgvector, etc.)
+- Auto-generated when running `pnpm create sonamu`
+
+**dumps/**
+
+- SQL files generated by `pnpm dump` command
+- Data backup storage
+
+**scripts/**
+
+- `dump.sh`: Backs up current DB data to dumps/
+- `seed.sh`: Restores data from dumps/ to DB
+
+</Accordion>
+
+<Info>
+**Learn More - Configuration Files**
+- [sonamu.config.ts Settings](/en/configuration/sonamu-config/project-settings) - Overall project configuration
+- [Database Configuration](/en/configuration/sonamu-config/database) - DB connection and settings
+- [Server Configuration](/en/configuration/sonamu-config/server) - Fastify server settings
+- [TypeScript Configuration](/en/configuration/typescript/tsconfig) - Compiler options
+- [Environment Variables](/en/configuration/environment-variables/env-setup) - .env file management
+</Info>
+
+## Web Directory (Frontend)
+
+### Root Files
+
+<FileTree>
+  <FileItem name="web/">
+    <FileItem name="src/" description="Source code" />
+    <FileItem name="index.html" description="HTML entry point" />
+    <FileItem name="package.json" description="Dependencies and scripts" />
+    <FileItem name="vite.config.ts" description="Vite configuration" />
+    <FileItem name="tsconfig.json" description="TypeScript configuration" />
+    <FileItem name="tsconfig.node.json" description="Node environment config" />
+    <FileItem name=".sonamu.env" description="Environment variables" />
+  </FileItem>
+</FileTree>
+
+<Frame caption="Actual file structure of web directory">
+  <img src="/images/projectStructure4.png" alt="web directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+<Accordion title="Key File Descriptions">
+
+**vite.config.ts**
+
+- Vite development server configuration
+- API proxy settings (`/api` → `http://localhost:1028`)
+- Path alias (`@` → `./src`)
+
+**.sonamu.env**
+
+- API server connection information
+- `API_HOST`, `API_PORT` settings
+
+</Accordion>
+
+### src/ Directory
+
+<FileTree>
+  <FileItem name="web/src/">
+    <FileItem name="main.tsx" description="React entry point" />
+    <FileItem name="App.tsx" description="Root component" />
+    <FileItem name="App.css" description="Global styles" />
+    <FileItem name="index.css" description="Base styles" />
+    <FileItem name="pages/" description="Page components">
+      <FileItem name="index.tsx" description="Home page" />
+    </FileItem>
+    <FileItem name="services/" description="API services (auto-generated)">
+      <FileItem name="{Entity}Service.ts" />
+    </FileItem>
+    <FileItem name="admin-common/" description="Common components">
+      <FileItem name="ApiLogViewer.tsx" />
+      <FileItem name="CommonModal.tsx" />
+    </FileItem>
+    <FileItem name="assets/" description="Static resources" />
+    <FileItem name="vite-env.d.ts" description="Vite type definitions" />
+  </FileItem>
+</FileTree>
+
+<Accordion title="Key Directory Descriptions">
+
+**pages/**
+
+- Routing-based page components
+- Uses React Router
+
+**services/**
+
+- Service layer for communicating with the API server
+- Auto-generated for each entity
+- Type-safe API client
+
+**admin-common/**
+
+- Reusable common components
+- Sonamu UI related components
+
+</Accordion>
+
+<Info>
+**Learn More - Frontend**
+- [How Services Work](/en/frontend-integration/generated-services/how-services-work) - Auto-generation mechanism
+- [Using Services](/en/frontend-integration/generated-services/using-services) - How to call APIs
+- [Shared Types](/en/frontend-integration/type-safety/shared-types) - Backend-frontend type synchronization
+</Info>
+
+## Example File Structure After Creating an Entity
+
+When you create a User entity, the following structure is created:
+
+<FileTree>
+  <FileItem name="api/src/application/">
+    <FileItem name="user/">
+      <FileItem name="user.entity.json" description="Created in Sonamu UI" />
+      <FileItem name="user.model.ts" description="Manually written" />
+      <FileItem name="user.types.ts" description="Auto-generated (extensible)" />
+      <FileItem name="user.model.test.ts" description="Manually written (optional)" />
+    </FileItem>
+    <FileItem name="sonamu.generated.ts" description="Auto-updated" />
+  </FileItem>
+  <FileItem name="database/migrations/">
+    <FileItem name="20250106120000_create_user.sql" description="Auto-generated" />
+  </FileItem>
+  <FileItem name="web/src/services/">
+    <FileItem name="UserService.ts" description="Auto-generated" />
+  </FileItem>
+</FileTree>
+
+<Frame caption="Actual file structure of api/src/application/user folder after creating User entity">
+  <div className="grid grid-cols-2 gap-4">
+    <img src="/images/projectStructure5.png" alt="user folder structure 1" style={{borderRadius: '0.75rem'}} />
+    <img src="/images/projectStructure6.png" alt="user folder structure 2" style={{borderRadius: '0.75rem'}} />
+  </div>
+</Frame>
+
+### Role of Each File
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "properties": [
+    {
+      "name": "id",
+      "type": "int",
+      "isPrimary": true
+    },
+    {
+      "name": "email",
+      "type": "varchar"
+    },
+    {
+      "name": "name",
+      "type": "varchar"
+    }
+  ]
+}
+```
+
+```typescript title="user.model.ts"
+// File you write directly
+import { BaseModel } from "sonamu";
+
+export class UserModel extends BaseModel {
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    // Business logic
+  }
+}
+```
+
+```typescript title="user.types.ts"
+// Auto-generated + extensible
+import { z } from "zod";
+import { UserBaseSchema } from "../sonamu.generated";
+
+// Base type (auto-generated)
+export type User = z.infer<typeof UserBaseSchema>;
+
+// Extensible custom types
+export const UserSaveParams = UserBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+```
+
+```typescript title="sonamu.generated.ts"
+// Auto-generated - do not modify directly
+export const UserBaseSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  name: z.string(),
+  created_at: z.date(),
+});
+
+export const UserOrderBy = z.enum(["id-desc", "name-asc"]);
+export type UserOrderBy = z.infer<typeof UserOrderBy>;
+```
+
+```typescript title="UserService.ts (web)"
+// Auto-generated
+export class UserService {
+  static async findById(id: number): Promise<User> {
+    const res = await axios.get(`/api/users/${id}`);
+    return res.data;
+  }
+}
+```
+
+</CodeGroup>
+
+<Frame caption="VS Code screen with user.entity.json, user.model.ts, user.types.ts files open side by side (split view)">
+  <img src="/images/projectStructure7.png" alt="VS Code split view" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+<Note>
+  **Auto-generated vs Manually Written** - `.entity.json`: Written in Sonamu UI - `.model.ts`:
+  Manually written - `.types.ts`: Auto-generated but extensible - `sonamu.generated.ts`:
+  Auto-generated - do not modify - `{Entity}Service.ts`: Auto-generated - do not modify
+</Note>
+
+<Info>
+**Learn More - Per-File Guides**
+- [Defining Entities](/en/core-concepts/entity/defining-entities) - How to write entity.json
+- [@api Decorator](/en/core-concepts/model/api-decorator) - Defining APIs in model.ts
+- [Entity Types](/en/core-concepts/type-system/entity-types) - Using types.ts
+- [Generated Types](/en/core-concepts/type-system/generated-types) - Understanding sonamu.generated.ts
+</Info>
+
+## Key Work Locations During Development
+
+| Task                | Location                                              | Method         |
+| ------------------- | ----------------------------------------------------- | -------------- |
+| Entity Definition   | `api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI      |
+| Business Logic      | `api/src/application/{entity}/{entity}.model.ts`      | Manual writing |
+| Custom Types        | `api/src/application/{entity}/{entity}.types.ts`      | Manual extension |
+| API Endpoints       | `@api` decorator in Model file                        | Manual writing |
+| Database Config     | `api/src/sonamu.config.ts`                            | Manual writing |
+| Server Config       | `api/src/sonamu.config.ts`                            | Manual writing |
+| Writing Tests       | `api/src/application/{entity}/{entity}.model.test.ts` | Manual writing |
+| Page Components     | `web/src/pages/`                                      | Manual writing |
+| Common Components   | `web/src/admin-common/`                               | Manual writing |
+
+<Warning>
+  **Auto-generated File Cautions** - `sonamu.generated.ts`: Never modify - `{Entity}Service.ts`: Never modify - `{entity}.types.ts`: Extension is possible but do not modify auto-generated parts
+</Warning>
+
+## Next Steps
+
+Now that you understand the project structure, create your first entity:
+
+<CardGroup cols={2}>
+  <Card
+    title="Creating Your First Entity"
+    icon="database"
+    href="/en/getting-started/first-entity"
+  >
+    Use Sonamu UI to create your first entity and define the database schema.
+  </Card>
+  <Card
+    title="Development Workflow"
+    icon="diagram-project"
+    href="/en/getting-started/development-workflow"
+  >
+    Understand Sonamu's complete development cycle and learn how to work efficiently.
+  </Card>
+</CardGroup>

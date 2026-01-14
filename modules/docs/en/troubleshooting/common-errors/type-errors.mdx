@@ -1,0 +1,505 @@
+---
+title: '타입 오류'
+description: '타입 에러 해결하기'
+---
+
+Sonamu에서 자주 발생하는 TypeScript 타입 관련 오류와 해결 방법을 다룹니다.
+
+## Reserved Keywords 충돌
+
+### 증상
+
+```typescript
+class UserModelClass extends BaseModel {
+  async delete(id: number) {  // ❌
+    // delete는 JavaScript 예약어
+  }
+}
+```
+
+런타임 에러:
+
+```bash
+Unexpected token 'delete'
+```
+
+또는 Sonamu sync 시:
+
+```bash
+Error: Reserved keyword 'delete' cannot be used as method name
+```
+
+### 원인
+
+JavaScript/TypeScript의 예약어를 메서드명이나 속성명으로 사용했습니다.
+
+### 해결 방법
+
+예약어 사용을 피하거나 다른 이름 사용:
+
+```typescript
+// ❌ 예약어 사용
+async delete() { }
+async switch() { }
+async return() { }
+
+// ✅ 다른 이름 사용
+async remove() { }
+async del() { }
+async toggle() { }
+async getReturn() { }
+```
+
+**Sonamu가 검증하는 72개 예약어:**
+
+```typescript
+const RESERVED_KEYWORDS = [
+  "break", "case", "catch", "class", "const", "continue", "debugger",
+  "default", "delete", "do", "else", "enum", "export", "extends",
+  "false", "finally", "for", "function", "if", "import", "in",
+  "instanceof", "new", "null", "return", "super", "switch",
+  "this", "throw", "true", "try", "typeof", "var", "void",
+  "while", "with", "yield", "let", "static", "implements",
+  "interface", "package", "private", "protected", "public",
+  "await", "abstract", "as", "asserts", "any", "async",
+  "boolean", "constructor", "declare", "get", "infer", "is",
+  "keyof", "module", "namespace", "never", "readonly", "require",
+  "number", "object", "set", "string", "symbol", "type",
+  "undefined", "unique", "unknown", "from", "of"
+];
+```
+
+## 타입 추론 실패
+
+### 증상
+
+```typescript
+const users = await UserModel.findMany();
+// Type: any[]  ❌ 타입이 제대로 추론되지 않음
+```
+
+### 원인
+
+1. Sonamu syncer가 제대로 실행되지 않음
+2. `.generated` 파일이 오래됨
+3. TypeScript 서버 캐시 문제
+
+### 해결 방법
+
+#### 1. Syncer 재실행
+
+```bash
+pnpm sonamu sync
+```
+
+#### 2. TypeScript 서버 재시작
+
+**VSCode:**
+```
+Command Palette (Cmd+Shift+P)
+> TypeScript: Restart TS Server
+```
+
+#### 3. Generated 파일 확인
+
+```typescript
+// src/application/sonamu.generated.ts
+export type UserSave = {
+  id?: number;
+  email: string;
+  name: string;
+  // ...
+};
+```
+
+파일이 없거나 오래되었다면 sync 재실행.
+
+## BaseModel 메서드 타입 오류
+
+### 증상
+
+```typescript
+class UserModelClass extends BaseModel {
+  async findByEmail(email: string) {
+    return this.findOne({ email });
+    // Error: Property 'findOne' does not exist on type 'UserModelClass'
+  }
+}
+```
+
+### 원인
+
+BaseModel의 auto-generated 메서드 타입이 제대로 적용되지 않았습니다.
+
+### 해결 방법
+
+#### 1. entity.json 확인
+
+```json
+{
+  "properties": {
+    "id": { "type": "id" },
+    "email": { "type": "string" },
+    "name": { "type": "string" }
+  }
+}
+```
+
+#### 2. Model 클래스 정의 확인
+
+```typescript
+class UserModelClass extends BaseModel<User, UserSave> {
+  entityName = "User" as const;
+  // ...
+}
+
+export const UserModel = new UserModelClass();
+```
+
+#### 3. Syncer로 타입 재생성
+
+```bash
+pnpm sonamu sync
+```
+
+## Union 타입 오류
+
+### 증상
+
+```typescript
+type OrderStatus = "pending" | "processing" | "completed";
+
+class OrderModelClass extends BaseModel {
+  async updateStatus(id: number, status: string) {  // ❌
+    // status는 OrderStatus여야 함
+  }
+}
+```
+
+타입 안전성이 보장되지 않습니다.
+
+### 해결 방법
+
+명확한 타입 지정:
+
+```typescript
+type OrderStatus = "pending" | "processing" | "completed";
+
+class OrderModelClass extends BaseModel {
+  async updateStatus(id: number, status: OrderStatus) {  // ✅
+    return this.updateOne(
+      { id },
+      { status }
+    );
+  }
+}
+```
+
+## Zod 스키마 타입 불일치
+
+### 증상
+
+```typescript
+const UserSchema = z.object({
+  email: z.string(),
+  age: z.number()
+});
+
+@api()
+async createUser(email: string, age: string) {  // ❌ age는 number여야 함
+  // ...
+}
+```
+
+### 원인
+
+API 메서드 파라미터 타입과 Zod 스키마가 일치하지 않습니다.
+
+### 해결 방법
+
+#### 1. 파라미터 타입 수정
+
+```typescript
+@api()
+async createUser(email: string, age: number) {  // ✅
+  // Sonamu가 자동으로 Zod 검증
+}
+```
+
+#### 2. 명시적 Zod 스키마 사용
+
+```typescript
+const CreateUserSchema = z.object({
+  email: z.string().email(),
+  age: z.number().int().positive()
+});
+
+@api({ schema: CreateUserSchema })
+async createUser(data: z.infer<typeof CreateUserSchema>) {
+  // 타입 안전성 보장
+}
+```
+
+## Intersection 타입 오류
+
+### 증상
+
+```typescript
+type WithTimestamps = {
+  created_at: Date;
+  updated_at: Date;
+};
+
+type User = {
+  id: number;
+  email: string;
+} & WithTimestamps;  // Intersection 타입
+
+// 타입이 복잡하게 표시됨
+```
+
+### 해결 방법
+
+Sonamu 0.7.29+부터는 intersection/union 타입을 자동으로 괄호로 감쌉니다:
+
+```typescript
+// 생성된 타입
+type User = {
+  id: number;
+  email: string;
+} & (WithTimestamps);  // 괄호 추가로 명확성 향상
+```
+
+업데이트 후 sync 재실행:
+
+```bash
+pnpm add sonamu@latest
+pnpm sonamu sync
+```
+
+## Template Literal 타입 오류
+
+### 증상
+
+```typescript
+type EventName = `user:${string}`;
+
+// Zod v4에서 template literal 타입 사용 시 오류
+```
+
+### 원인
+
+Zod v4에서 template literal 타입 처리 방식이 변경되었습니다.
+
+### 해결 방법
+
+Sonamu는 자동으로 backslash escaping 처리:
+
+```typescript
+// entity.json
+{
+  "columns": {
+    "event_name": {
+      "type": "string",
+      "literalType": "user:${string}"  // 자동으로 처리됨
+    }
+  }
+}
+```
+
+생성된 Zod 스키마:
+
+```typescript
+z.literal(`user:$\{string}`)  // 올바르게 escape됨
+```
+
+## 순환 참조 타입 오류
+
+### 증상
+
+```typescript
+// user.model.ts
+export class UserModelClass extends BaseModel {
+  // ...
+}
+export type User = { ... posts: Post[] };
+
+// post.model.ts
+export class PostModelClass extends BaseModel {
+  // ...
+}
+export type Post = { ... author: User };
+
+// Error: Circular dependency detected
+```
+
+### 원인
+
+두 entity가 서로를 참조하여 순환 의존성이 발생했습니다.
+
+### 해결 방법
+
+#### 1. Type-only import 사용
+
+```typescript
+// user.model.ts
+import type { Post } from "../post/post.model";
+
+export type User = {
+  id: number;
+  email: string;
+  posts: Post[];
+};
+```
+
+```typescript
+// post.model.ts
+import type { User } from "../user/user.model";
+
+export type Post = {
+  id: number;
+  title: string;
+  author: User;
+};
+```
+
+#### 2. 공통 타입 파일 생성
+
+```typescript
+// types/index.ts
+export type { User } from "../application/user/user.model";
+export type { Post } from "../application/post/post.model";
+```
+
+```typescript
+// 다른 파일에서 사용
+import type { User, Post } from "@/types";
+```
+
+## 파일 타입 오류 (@upload)
+
+### 증상
+
+```typescript
+@api()
+@upload({ mode: "single" })
+async uploadFile() {
+  const { file } = Sonamu.getUploadContext();
+  // Type: UploadedFile | undefined
+  
+  const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
+}
+```
+
+### 원인
+
+`UploadedFile` 클래스에 `buffer` 속성이 없습니다. `toBuffer()` 메서드를 사용해야 합니다.
+
+### 해결 방법
+
+```typescript
+@api()
+@upload({ mode: "single" })
+async uploadFile() {
+  const { file } = Sonamu.getUploadContext();
+  
+  if (!file) {
+    throw new BadRequestException("파일이 필요합니다");
+  }
+  
+  // ✅ toBuffer() 메서드 사용
+  const buffer = await file.toBuffer();
+  
+  // 또는 파일 저장
+  const url = await file.saveToDisk(`uploads/${file.filename}`);
+  
+  return { url, size: file.size };
+}
+```
+
+## 타입 가드 오류
+
+### 증상
+
+```typescript
+function isUser(value: any): boolean {  // ❌
+  return value && typeof value.id === "number";
+}
+
+if (isUser(data)) {
+  console.log(data.email);  // Error: Property 'email' does not exist
+}
+```
+
+### 원인
+
+타입 가드 함수가 타입 좁히기(type narrowing)를 하지 않습니다.
+
+### 해결 방법
+
+Type predicate 사용:
+
+```typescript
+function isUser(value: any): value is User {  // ✅
+  return (
+    value &&
+    typeof value.id === "number" &&
+    typeof value.email === "string"
+  );
+}
+
+if (isUser(data)) {
+  console.log(data.email);  // ✅ 타입 안전
+}
+```
+
+## 제네릭 타입 추론 실패
+
+### 증상
+
+```typescript
+async function fetchData<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  return response.json();  // Type: any
+}
+
+const users = await fetchData("/api/users");
+// Type: unknown  ❌
+```
+
+### 해결 방법
+
+명시적 타입 지정:
+
+```typescript
+const users = await fetchData<User[]>("/api/users");
+// Type: User[]  ✅
+```
+
+또는 타입 검증:
+
+```typescript
+async function fetchData<T>(
+  url: string,
+  validator: (data: unknown) => data is T
+): Promise<T> {
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  if (!validator(data)) {
+    throw new Error("Invalid data format");
+  }
+  
+  return data;
+}
+
+// 사용
+const users = await fetchData("/api/users", isUserArray);
+```
+
+## 관련 문서
+
+- [TypeScript 설정](/configuration/typescript/tsconfig)
+- [타입 체킹](/configuration/typescript/type-checking)
+- [Zod 검증](/api-development/validation)
+- [자동 생성 Services](/frontend-integration/generated-services/how-services-work)

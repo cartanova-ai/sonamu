@@ -1,0 +1,263 @@
+---
+title: "Installation"
+description: "Installing Sonamu and setting up the development environment"
+---
+
+Sonamu allows you to easily start a project using the `create-sonamu` package.
+
+## System Requirements
+
+The following environment is required to use Sonamu:
+
+- **Node.js** v22 or higher
+- **pnpm** v10.23 or higher
+- **Docker** (for running the database)
+
+<Tip>
+  If pnpm is not installed, you can enable it with the `corepack enable` command.
+</Tip>
+
+<Frame caption="Running node --version, pnpm --version, docker --version in terminal">
+  <img src="/images/installation1.png" alt="Checking Node.js, pnpm, Docker versions" />
+</Frame>
+
+## Creating a Project
+
+Run the following command in your terminal to create a new Sonamu project:
+
+```bash
+pnpm create sonamu
+```
+
+<Frame caption="Complete process from running pnpm create sonamu to completing all prompts">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/installation2.mp4"
+  ></video>
+</Frame>
+
+When the interactive prompt appears, enter your project information:
+
+```bash
+? Project name: my_app
+? Would you like to set up pnpm? Yes
+? Would you like to set up a database using Docker? Yes
+? Enter the Docker project name: my-app-container
+? Enter the database user: postgres
+? Enter the container name: my-app-pg
+? Enter the database name: my_app
+? Enter the database password: ****
+```
+
+<Steps>
+<Step title="Enter Project Name">
+Enter the name of the project to create. A directory will be created with this name.
+
+<Warning>
+**Spaces** and **hyphens (`-`)** cannot be used in the project name. Use underscores (`_`) instead.
+</Warning>
+</Step>
+
+<Step title="pnpm Setup">
+  Choose whether to automatically set up pnpm. This is the recommended option.
+</Step>
+
+<Step title="Database Setup">
+Choose whether to set up a PostgreSQL database using Docker. If you select Yes:
+- Docker Compose project name
+- Database username
+- Container name
+- Database name
+- Database password
+
+will be requested, and the `api/.env` file will be automatically generated with this information.
+
+</Step>
+</Steps>
+
+<Frame caption="Project creation completion message and generated directory structure">
+  <img src="/images/installation3.png" alt="Project creation complete" />
+</Frame>
+
+## Generated Project Structure
+
+`create-sonamu` creates the following monorepo structure:
+
+<Frame caption="Directory tree structure of the project opened in VS Code">
+  <img
+    src="/images/installation4.png"
+    alt="VS Code Explorer sidebar"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+<Tree>
+  <Tree.Folder name="my_app" defaultOpen>
+    <Tree.Folder name="api  (Backend API server)">
+      <Tree.Folder name="src">
+        <Tree.File name="index.ts  (Server entry point)" />
+        <Tree.File name="sonamu.config.ts  (Sonamu configuration)" />
+        <Tree.Folder name="testing  (Test utilities)" />
+        <Tree.Folder name="typings  (Type definitions)" />
+        <Tree.Folder name="utils  (Utility functions)" />
+      </Tree.Folder>
+      <Tree.Folder name="database">
+        <Tree.File name="docker-compose.yml  (PostgreSQL container)" />
+        <Tree.Folder name="fixtures  (DB initialization scripts)" />
+        <Tree.Folder name="dumps  (Data dump files)" />
+        <Tree.Folder name="scripts  (dump, seed scripts)" />
+      </Tree.Folder>
+      <Tree.File name="package.json" />
+      <Tree.File name="tsconfig.json" />
+      <Tree.File name=".env  (Environment variables, auto-generated)" />
+    </Tree.Folder>
+    <Tree.Folder name="web  (Frontend web app)">
+      <Tree.Folder name="src">
+        <Tree.File name="main.tsx  (React entry point)" />
+        <Tree.File name="App.tsx  (Root component)" />
+        <Tree.Folder name="pages  (Page components)" />
+        <Tree.Folder name="services  (API services, auto-generated)" />
+        <Tree.Folder name="admin-common  (Common components)" />
+      </Tree.Folder>
+      <Tree.File name="package.json" />
+      <Tree.File name="vite.config.ts  (Vite configuration)" />
+      <Tree.File name=".sonamu.env  (Environment variables)" />
+    </Tree.Folder>
+    <Tree.File name="README.md" />
+  </Tree.Folder>
+</Tree>
+
+## Key Configuration Files
+
+### API Server Entry Point
+
+The entry point of the generated API server is as follows:
+
+<Frame caption="api/src/index.ts file opened in VS Code">
+  <img
+    src="/images/installation5.png"
+    alt="api/src/index.ts file"
+    style={{ maxWidth: "800px", width: "100%", borderRadius: "0.75rem" }}
+  />
+</Frame>
+
+### Sonamu Configuration
+
+Manage your project's main settings in `sonamu.config.ts`:
+
+```typescript title="api/src/sonamu.config.ts"
+import path from "node:path";
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "SonamuProject",
+  api: {
+    dir: "api",
+    timezone: "Asia/Seoul",
+    route: {
+      prefix: "/api",
+    },
+  },
+  sync: {
+    targets: ["web"],
+  },
+  database: {
+    database: "pg",
+    name: process.env.DATABASE_NAME ?? "database_name",
+    defaultOptions: {
+      connection: {
+        host: process.env.DB_HOST || "0.0.0.0",
+        port: Number(process.env.DB_PORT) || 5432,
+        user: process.env.DB_USER || "postgres",
+        password: process.env.DB_PASSWORD,
+      },
+    },
+  },
+  server: {
+    listen: { port, host },
+    // ... additional server configuration
+  },
+});
+```
+
+### Docker Compose Configuration
+
+PostgreSQL database is managed with Docker:
+
+```yaml title="api/database/docker-compose.yml"
+version: "3.8"
+name: ${CONTAINER_NAME}
+services:
+  pg:
+    platform: linux/arm64
+    image: pgvector/pgvector:pg18
+    container_name: ${CONTAINER_NAME}
+    volumes:
+      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_DB: template1
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "${DB_PORT}:5432"
+```
+
+### Frontend Configuration
+
+A Vite-based React application is generated:
+
+```typescript title="web/vite.config.ts"
+import react from "@vitejs/plugin-react-swc";
+import dotenv from "dotenv";
+import path from "path";
+import { defineConfig } from "vite";
+
+dotenv.config({ path: ".sonamu.env" });
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 3028,
+    proxy: {
+      "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
+    },
+  },
+});
+```
+
+## Port Configuration
+
+Default ports are configured as follows:
+
+| Service    | Port | Description                  |
+| ---------- | ---- | ---------------------------- |
+| API Server | 1028 | Fastify-based REST API       |
+| Sonamu UI  | 2028 | Entity management interface  |
+| Web App    | 3028 | Vite development server      |
+| PostgreSQL | 5432 | Database                     |
+
+<Note>
+- API server port: Modify the `port` constant in `api/src/sonamu.config.ts` (in this case, also modify `API_PORT` in `web/.sonamu.env`)
+- Web app port: Modify `server.port` in `web/vite.config.ts`
+- Database port: Set environment variable in `database.defaultOptions.connection.port` in `api/src/sonamu.config.ts` (e.g., `MIOMOCK_DB_PORT`)
+</Note>
+
+## Next Steps
+
+Once installation is complete, follow the [Quick Start](/en/getting-started/quick-start) guide to create your first entity and build an API.

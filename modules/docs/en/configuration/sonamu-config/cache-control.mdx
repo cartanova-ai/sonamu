@@ -1,0 +1,463 @@
+---
+title: 'Cache-Control'
+description: 'HTTP Cache-Control header configuration'
+---
+
+Sonamu can automatically set HTTP Cache-Control headers to control caching behavior in browsers and CDNs. You can apply appropriate caching strategies for each resource type including API responses, static files, and SSR pages.
+
+## Basic Structure
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            return CachePresets.immutable;
+          case "api":
+            return CachePresets.noCache;
+          case "ssr":
+            return CachePresets.ssr;
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+  // ...
+});
+```
+
+## cacheControlHandler
+
+A function that dynamically generates Cache-Control headers for each request.
+
+**Type**: `(req: CacheControlRequest) => string | undefined`
+
+```typescript
+type CacheControlRequest = {
+  type: "assets" | "api" | "ssr" | "csr";
+  method: string;
+  path: string;
+};
+```
+
+### Request Types
+
+**type**:
+- `"assets"` - Static files (JS, CSS, images, etc.)
+- `"api"` - API endpoints
+- `"ssr"` - SSR pages
+- `"csr"` - CSR entry point (index.html)
+
+**method**: HTTP method (`GET`, `POST`, `PUT`, `DELETE`, etc.)
+
+**path**: Request path (`/api/user/list`, `/assets/main.js`, etc.)
+
+## CachePresets
+
+Predefined caching strategies provided by Sonamu.
+
+```typescript
+import { CachePresets } from "sonamu";
+```
+
+### Available Presets
+
+**CachePresets.noCache**
+```
+Cache-Control: no-cache, no-store, must-revalidate
+```
+- Always verify latest version from origin server
+- Use for: Real-time data, APIs requiring authentication
+
+**CachePresets.shortLived** (1 minute)
+```
+Cache-Control: public, max-age=60
+```
+- Cache for 1 minute
+- Use for: Frequently changing data, CSR entry point
+
+**CachePresets.mediumLived** (5 minutes)
+```
+Cache-Control: public, max-age=300
+```
+- Cache for 5 minutes
+- Use for: Data that changes at moderate intervals
+
+**CachePresets.longLived** (1 hour)
+```
+Cache-Control: public, max-age=3600
+```
+- Cache for 1 hour
+- Use for: Rarely changing static data
+
+**CachePresets.immutable** (1 year)
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+- Cache for 1 year, never changes
+- Use for: Build files with hash in filename
+
+**CachePresets.ssr** (10 seconds)
+```
+Cache-Control: public, max-age=10, stale-while-revalidate=60
+```
+- Cache for 10 seconds, refresh in background
+- Use for: SSR pages
+
+## Basic Examples
+
+### Simple Configuration
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // No cache for all APIs
+        if (req.type === "api") {
+          return CachePresets.noCache;
+        }
+        
+        // Long cache for static files
+        if (req.type === "assets") {
+          return CachePresets.longLived;
+        }
+        
+        // Short cache for SSR pages
+        if (req.type === "ssr") {
+          return CachePresets.ssr;
+        }
+      },
+    },
+  },
+});
+```
+
+### Detailed Assets Configuration
+
+Permanent cache for files with hash, regular cache for others:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "assets") {
+          // Files with hash (e.g., main-a3f2b1c.js)
+          if (req.path.match(/-[a-f0-9]+\./)) {
+            return CachePresets.immutable;
+          }
+          // Regular static files
+          return CachePresets.longLived;
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+### Path-based API Caching
+
+Cache only GET requests selectively:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "api") {
+          // Consider caching only GET requests
+          if (req.method === "GET") {
+            // Short cache for specific paths
+            if (req.path.startsWith("/api/static-data")) {
+              return CachePresets.shortLived;
+            }
+            
+            // Medium cache for terms, etc.
+            if (req.path.startsWith("/api/terms")) {
+              return CachePresets.mediumLived;
+            }
+          }
+          
+          // Default: no cache
+          return CachePresets.noCache;
+        }
+      },
+    },
+  },
+});
+```
+
+## Practical Examples
+
+### Standard Web App
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            // Files with hash: permanent cache
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            // Cache only GET requests
+            if (req.method === "GET") {
+              // Static data
+              if (req.path.startsWith("/api/static")) {
+                return CachePresets.mediumLived;
+              }
+            }
+            return CachePresets.noCache;
+          
+          case "ssr":
+            // SSR pages: 10 second cache
+            return CachePresets.ssr;
+          
+          case "csr":
+            // index.html: 1 minute cache
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+### CDN Optimization
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            // Long cache at CDN edge
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            // Don't cache APIs in CDN
+            return CachePresets.noCache;
+          
+          case "ssr":
+            // Short cache for SSR in CDN
+            return "public, max-age=30, stale-while-revalidate=120";
+          
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+### Development vs Production
+
+```typescript
+const isDev = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // Development: disable caching
+        if (isDev) {
+          return CachePresets.noCache;
+        }
+        
+        // Production: normal caching strategy
+        switch (req.type) {
+          case "assets":
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            if (req.method === "GET") {
+              return CachePresets.shortLived;
+            }
+            return CachePresets.noCache;
+          
+          case "ssr":
+            return CachePresets.ssr;
+          
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+## Custom Cache-Control
+
+You can also return header values directly instead of using presets:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "api" && req.path.startsWith("/api/feed")) {
+          // Feed: 5 minute cache + stale-while-revalidate
+          return "public, max-age=300, stale-while-revalidate=600";
+        }
+        
+        if (req.type === "assets" && req.path.endsWith(".woff2")) {
+          // Fonts: 1 year cache
+          return "public, max-age=31536000, immutable";
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+## Understanding Cache-Control
+
+### Key Directives
+
+**public**
+- Can be cached by CDN and intermediate proxies
+- Suitable for static files, public APIs
+
+**private**
+- Can only be cached by browser
+- Suitable for personalized data
+
+**no-cache**
+- Cache but always verify with origin
+- Conditional requests (304 Not Modified) possible
+
+**no-store**
+- Don't cache anywhere
+- Use for sensitive data
+
+**max-age=N**
+- Fresh state for N seconds
+- Use cache without revalidation during this period
+
+**immutable**
+- Will never change
+- Browser skips revalidation
+- Optimal for hash-based files
+
+**stale-while-revalidate=N**
+- Return stale version for N seconds after expiration
+- Refresh in background
+- Useful for SSR pages
+
+### Example Combinations
+
+```typescript
+// Permanent cache (build files)
+"public, max-age=31536000, immutable"
+
+// Short cache + background refresh (SSR)
+"public, max-age=10, stale-while-revalidate=60"
+
+// Browser-only short cache (auth API)
+"private, max-age=60"
+
+// No cache (real-time data)
+"no-cache, no-store, must-revalidate"
+```
+
+## Returning undefined
+
+Return `undefined` if you don't want to set the header:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // No Cache-Control header for internal APIs
+        if (req.path.startsWith("/api/internal")) {
+          return undefined;
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+## Important Notes
+
+### 1. APIs Requiring Authentication
+
+```typescript
+// ❌ Bad: public cache for auth API
+if (req.path.startsWith("/api/user/profile")) {
+  return "public, max-age=300";  // Risk of exposing other user's data!
+}
+
+// ✅ Good: private or no-cache
+if (req.path.startsWith("/api/user/profile")) {
+  return "private, max-age=60";  // Or CachePresets.noCache
+}
+```
+
+### 2. Don't Cache POST/PUT/DELETE
+
+```typescript
+if (req.type === "api") {
+  // Only cache GET
+  if (req.method === "GET") {
+    return CachePresets.shortLived;
+  }
+  // POST, PUT, DELETE always no-cache
+  return CachePresets.noCache;
+}
+```
+
+### 3. Detecting Hash-based Files
+
+```typescript
+// Common build tool hash patterns
+const hashPatterns = [
+  /-[a-f0-9]{8,}\./,  // Vite: main-a3f2b1c4.js
+  /\.[a-f0-9]{20}\./,  // Webpack: main.a3f2b1c4d5e6f7a8b9c0.js
+];
+
+if (req.type === "assets") {
+  if (hashPatterns.some(p => p.test(req.path))) {
+    return CachePresets.immutable;
+  }
+}
+```
+
+## Next Steps
+
+After completing Cache-Control configuration:
+
+- [cache](/configuration/sonamu-config/cache) - Server-side caching (BentoCache)
+- [compress](/configuration/sonamu-config/compress) - Response compression settings
+- [advanced-features/ssr](/frontend-integration/ssr/cache-control) - Using Cache-Control in SSR

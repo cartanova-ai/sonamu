@@ -1,0 +1,331 @@
+---
+title: 'Project Settings'
+description: 'Configuring projectName, api, and i18n'
+---
+
+This covers basic project settings in `sonamu.config.ts`. You can configure project name, API paths, timezone, internationalization support, and more.
+
+## Basic Structure
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MyProject",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",
+    },
+    timezone: "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  
+  // ... other settings
+});
+```
+
+## projectName
+
+Defines the name of the project. Displayed in logs, error messages, Sonamu UI, etc.
+
+**Type**: `string` (optional)
+
+**Default**: `SonamuProject` if not set
+
+### Usage Example
+
+```typescript
+export default defineConfig({
+  projectName: "Ecommerce",
+  // ...
+});
+```
+
+**Setting via environment variable**:
+
+```typescript
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
+  // ...
+});
+```
+
+<Tip>
+Use environment variables to have different project names per environment (e.g., `MyProject-Dev`, `MyProject-Prod`).
+</Tip>
+
+## api Settings
+
+Defines basic API-related settings.
+
+### api.dir
+
+The directory name where API code is located.
+
+**Type**: `string`
+
+**Default**: `"api"`
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",  // Directory containing src/application folder
+    // ...
+  },
+});
+```
+
+<Note>
+Most projects use `"api"` as is. Keep the default unless there's a specific reason to change it.
+</Note>
+
+### api.route.prefix
+
+Sets the common prefix for all API endpoints.
+
+**Type**: `string`
+
+**Default**: `"/api"`
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",  // All APIs start with /api/* path
+    },
+  },
+});
+```
+
+**Example**:
+
+With `prefix: "/api"`:
+
+- `UserModel.list` → `GET /api/user/list`
+- `PostModel.detail` → `GET /api/post/detail`
+- `OrderModel.create` → `POST /api/order/create`
+
+<Warning>
+Changing the `prefix` will also update the generated Service code on the frontend. Therefore, it's recommended to only change this early in the project.
+</Warning>
+
+**Other prefix examples**:
+
+```typescript
+export default defineConfig({
+  api: {
+    route: {
+      prefix: "/v1",  // GET /v1/user/list
+    },
+  },
+});
+```
+
+```typescript
+export default defineConfig({
+  api: {
+    route: {
+      prefix: "/graphql",  // Different routing strategy
+    },
+  },
+});
+```
+
+### api.timezone
+
+Sets the server's default timezone. Affects date/time processing.
+
+**Type**: `string` (optional)
+
+**Default**: System default
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",
+    route: { prefix: "/api" },
+    timezone: "Asia/Seoul",  // Korea time
+  },
+});
+```
+
+**Supported timezone format**: [IANA Time Zone Database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+**Common timezone examples**:
+
+- `"Asia/Seoul"` - Korea
+- `"America/New_York"` - US Eastern
+- `"Europe/London"` - UK
+- `"Asia/Tokyo"` - Japan
+- `"UTC"` - Coordinated Universal Time
+
+<Tip>
+For global services, it's recommended to use `"UTC"` and convert to user timezone on the client.
+</Tip>
+
+## i18n Settings
+
+Internationalization (i18n) settings for multilingual support.
+
+**Type**: `SonamuI18nOptions` (optional)
+
+```typescript
+export type SonamuI18nOptions = {
+  /** Default locale (key definition basis + runtime default) */
+  defaultLocale: string;
+  /** List of supported locales */
+  supportedLocales: string[];
+};
+```
+
+### Basic Configuration
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  // ...
+});
+```
+
+### defaultLocale
+
+Sets the default language. Serves two roles:
+
+1. **Key definition basis**: The language used as the standard when writing Entity's `label`, `enumLabel`, etc.
+2. **Runtime default**: The language to use when the user doesn't specify a locale
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",  // Korean as default
+    supportedLocales: ["ko", "en", "ja"],
+  },
+});
+```
+
+### supportedLocales
+
+List of all languages to support. Must include `defaultLocale`.
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en", "ja", "zh"],  // Support 4 languages
+  },
+});
+```
+
+<Warning>
+An error will occur if `defaultLocale` is not included in `supportedLocales`.
+</Warning>
+
+### Disabling i18n
+
+If you don't need multilingual support, simply omit the `i18n` setting:
+
+```typescript
+export default defineConfig({
+  projectName: "MyProject",
+  api: { /* ... */ },
+  // i18n: undefined  ← Omit
+  // ...
+});
+```
+
+## Practical Examples
+
+### Basic Project Configuration
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MyEcommerce",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",
+    },
+    timezone: "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  
+  // ... database, server and other settings
+});
+```
+
+### Using Environment Variables
+
+```typescript
+import { defineConfig } from "sonamu";
+
+const isDev = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: process.env.API_PREFIX ?? "/api",
+    },
+    timezone: process.env.TIMEZONE ?? "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en", "ja"],
+  },
+  
+  // ...
+});
+```
+
+### Global Service
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "GlobalService",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api/v1",  // Including versioning
+    },
+    timezone: "UTC",  // UTC recommended for global services
+  },
+  
+  i18n: {
+    defaultLocale: "en",
+    supportedLocales: ["en", "ko", "ja", "zh", "es", "fr"],
+  },
+  
+  // ...
+});
+```
+
+## Next Steps
+
+After completing basic project settings, proceed with these configurations:
+
+- [database](/configuration/sonamu-config/database) - Database connection settings
+- [server](/configuration/sonamu-config/server) - Server options and plugin settings
+- [sync-targets](/configuration/sonamu-config/sync-targets) - Frontend synchronization target settings

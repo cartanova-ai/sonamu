@@ -1,0 +1,770 @@
+---
+title: "BaseModel Methods"
+description: "All methods provided by BaseModelClass and their usage"
+---
+
+`BaseModelClass` is the base class that all Models inherit from, providing core functionality for database access, query execution, and transaction management.
+
+## Database Access Methods
+
+### getDB(preset)
+
+Returns a Knex database connection.
+
+```typescript
+getDB(preset: DBPreset): Knex
+```
+
+**Parameters**:
+- `preset`: `"r"` (read) or `"w"` (write)
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Read-only connection"
+async findCustomQuery(): Promise<User[]> {
+  const rdb = this.getDB("r");
+  
+  return rdb("users")
+    .select("*")
+    .where("is_active", true);
+}
+```
+
+```typescript title="Write connection"
+async deleteOldRecords(): Promise<number> {
+  const wdb = this.getDB("w");
+  
+  return wdb("users")
+    .where("created_at", "<", new Date("2020-01-01"))
+    .delete();
+}
+```
+
+```typescript title="Raw query"
+async customQuery(): Promise<any[]> {
+  const rdb = this.getDB("r");
+  
+  const [rows] = await rdb.raw(`
+    SELECT u.*, COUNT(p.id) as post_count
+    FROM users u
+    LEFT JOIN posts p ON p.user_id = u.id
+    GROUP BY u.id
+    HAVING post_count > 10
+  `);
+  
+  return rows;
+}
+```
+</CodeGroup>
+
+<Info>
+**DBPreset types**:
+- `"r"`: Read - Read-only (SELECT)
+- `"w"`: Write - Writable (INSERT, UPDATE, DELETE)
+
+Separating read/write allows distributing read load in database replication.
+</Info>
+
+### getPuri(preset)
+
+Returns a Puri query builder. Automatically uses transaction connection when a transaction is active.
+
+```typescript
+getPuri(preset: DBPreset): PuriWrapper
+```
+
+**Parameters**:
+- `preset`: `"r"` (read) or `"w"` (write)
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Basic query"
+async findActive(): Promise<User[]> {
+  const rdb = this.getPuri("r");
+  
+  return rdb
+    .table("users")
+    .where("is_active", true)
+    .orderBy("created_at", "desc")
+    .many();
+}
+```
+
+```typescript title="Auto transaction usage"
+@transactional()
+async updateWithTransaction(id: number, data: any): Promise<void> {
+  // Automatically uses transaction connection when transaction is active
+  const wdb = this.getPuri("w");
+  
+  await wdb
+    .table("users")
+    .where("id", id)
+    .update(data);
+}
+```
+
+```typescript title="Upsert Builder"
+async save(params: UserSaveParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+  
+  params.forEach(p => wdb.ubRegister("users", p));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("users");
+  });
+}
+```
+</CodeGroup>
+
+<Tip>
+`getPuri()` automatically detects transaction context. When called within `@transactional()` decorator, it returns the transaction connection.
+</Tip>
+
+## Subset Query Methods
+
+### getSubsetQueries(subset)
+
+Returns a query builder for a specific Subset.
+
+```typescript
+getSubsetQueries<T extends TSubsetKey>(
+  subset: T
+): {
+  qb: Puri;
+  onSubset: <S>(subset: S) => Puri;
+}
+```
+
+**Return values**:
+- `qb`: Query builder (for adding conditions)
+- `onSubset`: Subset-specific type casting function
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Basic usage"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  // Add conditions
+  if (params.keyword) {
+    qb.whereLike("users.email", `%${params.keyword}%`);
+  }
+  
+  // Execute
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+```typescript title="Type-safe conditions with onSubset"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+  
+  // Access fields only in subset "P"
+  if (params.departmentName) {
+    // TypeScript checks employee__department.name type
+    onSubset("P").where("employee__department.name", params.departmentName);
+  }
+  
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+```typescript title="Intersection of multiple subsets"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+  
+  // Only access fields in both A and P
+  if (params.id) {
+    onSubset(["A", "P"]).whereIn("users.id", asArray(params.id));
+  }
+  
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+</CodeGroup>
+
+<Warning>
+`onSubset()` is for type checking. It actually returns the same `qb` object, so it doesn't affect performance.
+
+```typescript
+// These two codes are identical
+qb.where("users.id", 1);
+onSubset("A").where("users.id", 1);
+```
+</Warning>
+
+### executeSubsetQuery(params)
+
+Executes a Subset query and returns results. Automatically handles pagination, Loader, Hydration, and Enhancer.
+
+```typescript
+executeSubsetQuery<T extends TSubsetKey>(
+  params: {
+    subset: T;
+    qb: Puri;
+    params: {
+      num: number;
+      page: number;
+      queryMode?: "list" | "count" | "both";
+    };
+    enhancers?: EnhancerMap;
+    debug?: boolean;
+    optimizeCountQuery?: boolean;
+  }
+): Promise<ListResult<TSubsetMapping[T]>>
+```
+
+**Parameters**:
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `subset` | string | Subset key | *required* |
+| `qb` | Puri | Query builder | *required* |
+| `params.num` | number | Page size | *required* |
+| `params.page` | number | Page number (starts from 1) | *required* |
+| `params.queryMode` | string | Query mode | `"both"` |
+| `enhancers` | object | Virtual field calculation functions | - |
+| `debug` | boolean | Query debugging output | `false` |
+| `optimizeCountQuery` | boolean | COUNT query optimization | `false` |
+
+**queryMode options**:
+
+| Mode | Return Value | Use Case |
+|------|--------------|----------|
+| `"both"` | `{ rows, total }` | Normal list query (default) |
+| `"list"` | `{ rows }` | When total is not needed |
+| `"count"` | `{ total }` | When only count is needed |
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Basic usage"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  if (params.keyword) {
+    qb.whereLike("users.email", `%${params.keyword}%`);
+  }
+  
+  const enhancers = this.createEnhancers({
+    A: (row) => row,
+    SS: (row) => row,
+  });
+  
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params: {
+      num: params.num ?? 24,
+      page: params.page ?? 1,
+    },
+    enhancers,
+  });
+}
+```
+
+```typescript title="Using queryMode"
+// Only need list (don't calculate total)
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1, queryMode: "list" },
+});
+// result = { rows: [...] }
+
+// Only need count
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 0, page: 1, queryMode: "count" },
+});
+// result = { total: 100 }
+```
+
+```typescript title="Debugging"
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1 },
+  debug: true,  // Output query to console
+});
+```
+
+```typescript title="COUNT query optimization"
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1 },
+  optimizeCountQuery: true,  // Remove LEFT JOINs not in WHERE
+});
+```
+</CodeGroup>
+
+<Info>
+**Execution order**:
+1. Execute COUNT query (calculate total)
+2. Execute LIST query (apply pagination)
+3. Execute Loader (load HasMany, ManyToMany data)
+4. Hydrate (flat object → nested object conversion)
+5. Apply Enhancer (calculate virtual fields)
+6. Remove Internal fields
+</Info>
+
+### createEnhancers(enhancers)
+
+Helper function to create Enhancer objects. Provides type validation and inference.
+
+```typescript
+createEnhancers<T extends TSubsetKey>(
+  enhancers: EnhancerMap<T>
+): EnhancerMap<T>
+```
+
+**What is an Enhancer?**
+
+An Enhancer is a function that adds virtual fields to query results or transforms data.
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Basic Enhancer"
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    full_name: `${row.first_name} ${row.last_name}`,
+    age: calculateAge(row.birth_date),
+  }),
+  SS: (row) => row,  // No transformation
+});
+
+await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params,
+  enhancers,
+});
+```
+
+```typescript title="Async Enhancer"
+const enhancers = this.createEnhancers({
+  A: async (row) => {
+    // External API call
+    const additionalData = await fetchFromExternalAPI(row.id);
+    
+    return {
+      ...row,
+      external_data: additionalData,
+    };
+  },
+  SS: (row) => row,
+});
+```
+
+```typescript title="Conditional transformation"
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    status_label: row.is_active ? "Active" : "Inactive",
+    is_premium: row.subscription_level === "premium",
+    days_since_created: Math.floor(
+      (Date.now() - row.created_at.getTime()) / (1000 * 60 * 60 * 24)
+    ),
+  }),
+  SS: (row) => row,
+});
+```
+</CodeGroup>
+
+<Tip>
+Enhancers are called for each row, so avoid heavy operations. If needed, use Loaders or separate APIs.
+</Tip>
+
+## Utility Methods
+
+### getInsertedIds(wdb, rows, tableName, unqKeyFields, chunkSize)
+
+Retrieves IDs of inserted records. Useful after upsert since it queries based on Unique keys.
+
+```typescript
+getInsertedIds(
+  wdb: Knex,
+  rows: Record<string, unknown>[],
+  tableName: string,
+  unqKeyFields: string[],
+  chunkSize?: number
+): Promise<number[]>
+```
+
+**Parameters**:
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `wdb` | Knex | Database connection | - |
+| `rows` | object[] | Inserted records | - |
+| `tableName` | string | Table name | - |
+| `unqKeyFields` | string[] | Unique key field names | - |
+| `chunkSize` | number | Number to query at once | `500` |
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Single Unique key"
+async saveUsers(users: User[]): Promise<number[]> {
+  const wdb = this.getDB("w");
+  
+  // Upsert by email
+  await wdb("users")
+    .insert(users)
+    .onConflict("email")
+    .merge();
+  
+  // Query IDs by email
+  const ids = await this.getInsertedIds(
+    wdb,
+    users,
+    "users",
+    ["email"]
+  );
+  
+  return ids;
+}
+```
+
+```typescript title="Composite Unique key"
+async saveOrderItems(items: OrderItem[]): Promise<number[]> {
+  const wdb = this.getDB("w");
+  
+  await wdb("order_items")
+    .insert(items)
+    .onConflict(["order_id", "product_id"])
+    .merge();
+  
+  // Query IDs by order_id + product_id combination
+  const ids = await this.getInsertedIds(
+    wdb,
+    items,
+    "order_items",
+    ["order_id", "product_id"]
+  );
+  
+  return ids;
+}
+```
+</CodeGroup>
+
+### hydrate(rows)
+
+Converts flat records to nested objects. Transforms `table__field` format from JOIN results to objects.
+
+```typescript
+hydrate<T>(rows: T[]): T[]
+```
+
+**Conversion rules**:
+- `user__name` → `{ user: { name } }`
+- `user__profile__bio` → `{ user: { profile: { bio } } }`
+- If nullable relation's id is null, the entire object becomes null
+
+**Usage examples**:
+
+<CodeGroup>
+```typescript title="Basic usage"
+// Flat data
+const flatRows = [
+  {
+    id: 1,
+    name: "John",
+    user__id: 10,
+    user__email: "john@test.com",
+    user__profile__bio: "Hello",
+  }
+];
+
+// Convert to nested object
+const nested = this.hydrate(flatRows);
+// [
+//   {
+//     id: 1,
+//     name: "John",
+//     user: {
+//       id: 10,
+//       email: "john@test.com",
+//       profile: {
+//         bio: "Hello"
+//       }
+//     }
+//   }
+// ]
+```
+
+```typescript title="Nullable relation"
+const flatRows = [
+  {
+    id: 1,
+    name: "John",
+    parent__id: null,
+    parent__name: null,
+  }
+];
+
+const nested = this.hydrate(flatRows);
+// [
+//   {
+//     id: 1,
+//     name: "John",
+//     parent: null  // Entire object is null
+//   }
+// ]
+```
+</CodeGroup>
+
+<Info>
+`hydrate()` is automatically called inside `executeSubsetQuery()`, so you rarely need to call it directly.
+</Info>
+
+### omitInternalFields(row, fields)
+
+Removes Internal fields from an object. Also handles nested fields and arrays.
+
+```typescript
+omitInternalFields<T extends object>(
+  row: T,
+  fields: string[]
+): T
+```
+
+**Usage example**:
+
+```typescript
+const row = {
+  id: 1,
+  email: "test@test.com",
+  password: "hashed_password",
+  employee: {
+    id: 10,
+    salary: 50000,
+    department: { name: "IT" }
+  }
+};
+
+// Remove Internal fields
+const cleaned = this.omitInternalFields(row, [
+  "password",
+  "employee.salary"
+]);
+
+// {
+//   id: 1,
+//   email: "test@test.com",
+//   employee: {
+//     id: 10,
+//     department: { name: "IT" }
+//   }
+// }
+```
+
+<Info>
+Fields specified with the `internal` option in Subset are automatically removed in `executeSubsetQuery()`.
+
+```json
+{
+  "subsets": {
+    "A": [
+      "id",
+      "email",
+      { "field": "password", "internal": true },
+      { "field": "employee.salary", "internal": true }
+    ]
+  }
+}
+```
+</Info>
+
+### destroy()
+
+Closes database connections. Usually called when the application terminates.
+
+```typescript
+async destroy(): Promise<void>
+```
+
+**Usage example**:
+
+```typescript
+// When application terminates
+process.on("SIGTERM", async () => {
+  await UserModel.destroy();
+  process.exit(0);
+});
+```
+
+<Warning>
+Calling `destroy()` closes DB connections for all Models. Use only in test environments.
+</Warning>
+
+## Practical Usage Patterns
+
+### Standard findMany Pattern
+
+```typescript
+async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+  subset: T,
+  rawParams?: LP
+): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+  // 1. Set defaults
+  const params = {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    orderBy: "id-desc" as const,
+    ...rawParams,
+  };
+
+  // 2. Get Subset query
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+
+  // 3. Add filtering conditions
+  if (params.id) {
+    qb.whereIn("users.id", asArray(params.id));
+  }
+
+  if (params.keyword && params.search) {
+    if (params.search === "email") {
+      qb.whereLike("users.email", `%${params.keyword}%`);
+    } else if (params.search === "username") {
+      qb.whereLike("users.username", `%${params.keyword}%`);
+    }
+  }
+
+  // 4. Sorting
+  if (params.orderBy === "id-desc") {
+    qb.orderBy("users.id", "desc");
+  } else if (params.orderBy === "created_at-desc") {
+    qb.orderBy("users.created_at", "desc");
+  }
+
+  // 5. Define Enhancers
+  const enhancers = this.createEnhancers({
+    A: (row) => ({
+      ...row,
+      full_name: `${row.first_name} ${row.last_name}`,
+    }),
+    SS: (row) => row,
+  });
+
+  // 6. Execute query
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params,
+    enhancers,
+  });
+}
+```
+
+### Complex Filtering Pattern
+
+```typescript
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+
+  // Date range filter
+  if (params.created_after || params.created_before) {
+    if (params.created_after) {
+      qb.where("users.created_at", ">=", params.created_after);
+    }
+    if (params.created_before) {
+      qb.where("users.created_at", "<=", params.created_before);
+    }
+  }
+
+  // Multi-value filter
+  if (params.roles && params.roles.length > 0) {
+    qb.whereIn("users.role", params.roles);
+  }
+
+  // OR conditions
+  if (params.keyword) {
+    qb.where((builder) => {
+      builder
+        .whereLike("users.email", `%${params.keyword}%`)
+        .orWhereLike("users.username", `%${params.keyword}%`)
+        .orWhereLike("users.phone", `%${params.keyword}%`);
+    });
+  }
+
+  // Complex conditions
+  if (params.is_premium_or_admin) {
+    qb.where((builder) => {
+      builder
+        .where("users.role", "admin")
+        .orWhere("users.subscription_level", "premium");
+    });
+  }
+
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params: { num: params.num ?? 24, page: params.page ?? 1 },
+  });
+}
+```
+
+### Custom Aggregation Query
+
+```typescript
+async getStatistics(): Promise<UserStatistics> {
+  const rdb = this.getDB("r");
+
+  const [stats] = await rdb("users")
+    .select([
+      rdb.raw("COUNT(*) as total_users"),
+      rdb.raw("COUNT(CASE WHEN is_active THEN 1 END) as active_users"),
+      rdb.raw("COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count"),
+      rdb.raw("AVG(age) as average_age"),
+    ])
+    .first();
+
+  return {
+    total_users: Number(stats.total_users),
+    active_users: Number(stats.active_users),
+    admin_count: Number(stats.admin_count),
+    average_age: Number(stats.average_age),
+  };
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Puri Query Builder" icon="database" href="/en/database/puri/basic-queries">
+    Type-safe query builder usage
+  </Card>
+  <Card title="Subset" icon="layer-group" href="/en/core-concepts/model/using-subsets">
+    Data retrieval using Subsets
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/en/database/transactions/using-transactions">
+    Detailed transaction management guide
+  </Card>
+  <Card title="Testing" icon="flask" href="/en/testing/model-testing/unit-tests">
+    Writing Model tests
+  </Card>
+</CardGroup>

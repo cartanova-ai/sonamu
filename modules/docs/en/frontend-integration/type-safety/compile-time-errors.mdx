@@ -1,0 +1,566 @@
+---
+title: "Compile-time Errors"
+description: "Instantly detect API changes to prevent runtime errors"
+---
+
+Learn how Sonamu detects API changes at compile time to prevent runtime errors in advance.
+
+## Compile-time Errors Overview
+
+<CardGroup cols={2}>
+  <Card title="Instant Detection" icon="bolt">
+    On API changes
+    
+    Compile-time errors
+  </Card>
+  <Card title="Runtime Safety" icon="shield-check">
+    Discover before deploy
+    
+    Production stability
+  </Card>
+  <Card title="IDE Integration" icon="code">
+    Red underlines
+    
+    Immediate feedback
+  </Card>
+  <Card title="Safe Refactoring" icon="rotate">
+    Large-scale changes
+    
+    Impact range visibility
+  </Card>
+</CardGroup>
+
+## What are Compile-time Errors?
+
+### Problem: Errors Only Discovered at Runtime
+
+In traditional development, API changes are only discovered **at runtime**.
+
+```typescript
+// ❌ Field name changed in backend
+// username → displayName
+
+// Frontend (unaware of change)
+function UserProfile({ userId }: { userId: number }) {
+  const user = await fetchUser(userId);
+  
+  return (
+    <div>
+      {/* Runtime error! username field doesn't exist */}
+      <h1>{user.username}</h1>
+    </div>
+  );
+}
+```
+
+**Problems with runtime errors**:
+1. **Occurs in production**: Users experience directly
+2. **Delayed discovery**: Only discovered via QA or user reports
+3. **Hard to debug**: Need to trace where problem occurred
+4. **Trust degradation**: Service stability decreases
+
+### Solution: Compile-time Errors
+
+Sonamu detects API changes **immediately at compile time**.
+
+```typescript
+// ✅ Field name changed in backend
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    displayName: string; // username → displayName
+    email: string;
+  };
+}> {
+  // Implementation...
+}
+
+// Run pnpm generate → Service regenerated
+
+// Frontend (compile-time error occurs!)
+function UserProfile({ userId }: { userId: number }) {
+  const { data } = UserService.useUser("A", userId);
+  
+  return (
+    <div>
+      {/* ❌ Compile error! Property 'username' does not exist */}
+      <h1>{data.user.username}</h1>
+      
+      {/* ✅ After fix */}
+      <h1>{data.user.displayName}</h1>
+    </div>
+  );
+}
+```
+
+**Benefits of compile-time errors**:
+1. ✨ **Instant discovery**: IDE shows immediately while coding
+2. ✨ **Fix before deploy**: Resolve all issues before production deploy
+3. ✨ **Impact range visibility**: See all places affected by change
+4. ✨ **Auto refactoring**: Use IDE's Rename feature
+
+## Error Detection Scenarios
+
+### 1. Field Name Change
+
+```typescript
+// Backend: username → displayName
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: { id: number; displayName: string; }
+}> {
+  // Implementation...
+}
+
+// After pnpm generate
+// Frontend: error at all user.username usage points
+const { data } = await UserService.getUser("A", 123);
+console.log(data.user.username); // ❌ Compile error
+```
+
+**IDE error message**:
+```
+Property 'username' does not exist on type '{ id: number; displayName: string; }'.
+Did you mean 'displayName'?
+```
+
+### 2. Field Type Change
+
+```typescript
+// Backend: changed age from number to string
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: { id: number; age: string; } // number → string
+}> {
+  // Implementation...
+}
+
+// Frontend
+const { data } = await UserService.getUser("A", 123);
+const nextYear = data.user.age + 1; 
+// ❌ Compile error: string + number
+```
+
+**IDE error message**:
+```
+Operator '+' cannot be applied to types 'string' and 'number'.
+```
+
+### 3. Required/Optional Change
+
+```typescript
+// Backend: changed bio from required to optional
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    bio?: string; // string → string | undefined
+  };
+}> {
+  // Implementation...
+}
+
+// Frontend
+const { data } = await UserService.getUser("C", 123);
+const bioLength = data.user.bio.length;
+// ❌ Compile error: bio could be undefined
+```
+
+**IDE error message**:
+```
+Object is possibly 'undefined'.
+```
+
+**Fix**:
+```typescript
+// ✅ Use optional chaining
+const bioLength = data.user.bio?.length;
+
+// ✅ Or null check
+if (data.user.bio) {
+  const bioLength = data.user.bio.length;
+}
+```
+
+### 4. Field Deletion
+
+```typescript
+// Backend: profile field removed
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    username: string;
+    // profile field deleted
+  };
+}> {
+  // Implementation...
+}
+
+// Frontend
+const { data } = await UserService.getUser("C", 123);
+console.log(data.user.profile.avatar);
+// ❌ Compile error: Property 'profile' does not exist
+```
+
+### 5. Parameter Change
+
+```typescript
+// Backend: parameter type changed
+@api({ httpMethod: "GET" })
+async searchUsers(query: {
+  keyword: string;
+  limit: number; // string → number
+}): Promise<{ users: User[] }> {
+  // Implementation...
+}
+
+// Frontend
+await UserService.searchUsers({
+  keyword: "john",
+  limit: "10", // ❌ Compile error: string not assignable to number
+});
+```
+
+**IDE error message**:
+```
+Type 'string' is not assignable to type 'number'.
+```
+
+### 6. Return Type Change
+
+```typescript
+// Backend: changed from single object to array
+@api({ httpMethod: "GET" })
+async getPosts(): Promise<{
+  posts: Post[]; // Post → Post[]
+}> {
+  // Implementation...
+}
+
+// Frontend
+const { data } = await PostService.getPosts();
+console.log(data.posts.title);
+// ❌ Compile error: Property 'title' does not exist on type 'Post[]'
+```
+
+**Fix**:
+```typescript
+// ✅ Handle array
+data.posts.forEach((post) => {
+  console.log(post.title);
+});
+```
+
+## Refactoring Support
+
+### Large-scale Changes are Safe
+
+You can immediately identify all locations affected by API changes.
+
+```typescript
+// Scenario: Major restructuring of User entity
+
+// Backend (before)
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}> {
+  // ...
+}
+
+// Backend (after)
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    profile: {
+      displayName: string;
+      contactEmail: string;
+    };
+  };
+}> {
+  // ...
+}
+```
+
+**After running pnpm generate**:
+
+All error locations are displayed in IDE:
+```
+src/components/UserProfile.tsx:15 - Property 'name' does not exist
+src/components/UserCard.tsx:8 - Property 'name' does not exist
+src/pages/users/[id].tsx:42 - Property 'email' does not exist
+... (23 locations total)
+```
+
+**Fix process**:
+1. Check all errors in IDE's "Problems" panel
+2. Visit each location and fix to match new structure
+3. When all errors are resolved, compilation succeeds
+4. Deploy safely
+
+### Leverage IDE's Auto Refactoring
+
+You can utilize TypeScript's powerful refactoring features.
+
+**Example: Batch Field Name Change**
+
+1. Check type definition in Service file
+2. Position cursor on field name
+3. F2 (Rename Symbol) or right-click → Rename
+4. Enter new name
+5. All usages are automatically changed
+
+```typescript
+// ✅ Batch change username → displayName
+// IDE automatically changes throughout project
+
+// Before
+data.user.username
+
+// After (auto-changed)
+data.user.displayName
+```
+
+## Practical Workflow
+
+### 1. Backend API Change
+
+```typescript
+// backend/models/user.model.ts
+@api({ httpMethod: "GET" })
+async getProfile(): Promise<{
+  user: {
+    id: number;
+    displayName: string; // Changed: username → displayName
+    email: string;
+  };
+}> {
+  // Implementation...
+}
+```
+
+### 2. Service Regeneration
+
+```bash
+pnpm generate
+```
+
+**Output**:
+```
+✓ Analyzing API methods...
+✓ Generating services.generated.ts...
+✓ Generating types...
+✓ Done!
+```
+
+### 3. TypeScript Compile
+
+```bash
+pnpm tsc --noEmit
+```
+
+**Output (error occurs)**:
+```
+src/components/UserProfile.tsx:15:23 - error TS2339: 
+Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
+
+15     <h1>{data.user.username}</h1>
+                      ~~~~~~~~
+
+src/components/UserCard.tsx:8:35 - error TS2339: 
+Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
+
+8   const name = user.username;
+                      ~~~~~~~~
+
+Found 2 errors.
+```
+
+### 4. Fix Errors
+
+```typescript
+// src/components/UserProfile.tsx
+- <h1>{data.user.username}</h1>
++ <h1>{data.user.displayName}</h1>
+
+// src/components/UserCard.tsx
+- const name = user.username;
++ const name = user.displayName;
+```
+
+### 5. Re-verify
+
+```bash
+pnpm tsc --noEmit
+```
+
+**Output (success)**:
+```
+✓ No errors found!
+```
+
+### 6. Deploy Safely
+
+All type errors are resolved, so you can deploy safely.
+
+## CI/CD Integration
+
+### Add TypeScript Check to CI
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Generate Services
+        run: pnpm generate
+      
+      - name: TypeScript Check
+        run: pnpm tsc --noEmit
+```
+
+**Benefits**:
+- Auto-detect type errors in Pull Requests
+- Block merge if type errors exist
+- Ensure code quality across the team
+
+## Best Practices
+
+### 1. Regular Service Regeneration
+
+```bash
+# When starting development
+pnpm generate
+
+# After backend changes
+pnpm generate
+
+# After pull
+pnpm generate
+```
+
+### 2. Pre-commit Hook Setup
+
+```json
+// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "pnpm tsc --noEmit"
+    }
+  }
+}
+```
+
+Blocks commit if type errors exist.
+
+### 3. VSCode Settings
+
+```json
+// .vscode/settings.json
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
+}
+```
+
+### 4. Don't Ignore Type Errors
+
+```typescript
+// ❌ Ignoring type error (dangerous!)
+// @ts-ignore
+console.log(data.user.username);
+
+// ✅ Correct fix
+console.log(data.user.displayName);
+```
+
+**Never use** `@ts-ignore`. Type errors indicate real problems.
+
+## Understanding Error Messages
+
+### Common Error Messages
+
+**1. Property does not exist**
+```
+Property 'username' does not exist on type 'User'.
+```
+→ Field was deleted or renamed
+
+**2. Type is not assignable**
+```
+Type 'string' is not assignable to type 'number'.
+```
+→ Type was changed
+
+**3. Object is possibly undefined**
+```
+Object is possibly 'undefined'.
+```
+→ Changed from required to optional
+
+**4. Cannot find name**
+```
+Cannot find name 'UserService'.
+```
+→ Service not regenerated or import missing
+
+**5. Expected N arguments, but got M**
+```
+Expected 2 arguments, but got 1.
+```
+→ API parameters added/removed
+
+## Cautions
+
+<Warning>
+**Cautions when handling compile-time errors**:
+1. **pnpm generate required**: Always run after API changes
+2. **No @ts-ignore**: Don't ignore type errors
+3. **No any type**: Breaks type safety
+4. **Fix all errors**: Even one left can cause runtime error
+5. **CI/CD integration**: Set up auto type checking
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Type Inference" icon="wand-magic-sparkles" href="/frontend-integration/type-safety/api-type-inference">
+    Understanding type inference
+  </Card>
+  <Card title="Shared Types" icon="share-nodes" href="/frontend-integration/type-safety/shared-types">
+    Type file structure
+  </Card>
+  <Card title="Using Services" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service usage
+  </Card>
+  <Card title="Testing" icon="vial" href="/testing/overview">
+    Writing tests
+  </Card>
+</CardGroup>

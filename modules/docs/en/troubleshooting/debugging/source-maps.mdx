@@ -1,0 +1,462 @@
+---
+title: '소스 맵'
+description: '소스 맵 사용하기'
+---
+
+import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
+
+TypeScript 소스 맵을 활용한 효과적인 디버깅 방법을 다룹니다.
+
+## 소스 맵이란?
+
+소스 맵(Source Map)은 컴파일된 JavaScript 코드를 원본 TypeScript 코드로 매핑하는 파일입니다. 이를 통해 에러 스택 트레이스와 디버거에서 원본 TypeScript 코드를 볼 수 있습니다.
+
+**활용:**
+- 에러 스택 트레이스에서 원본 TypeScript 위치 확인
+- 디버거에서 TypeScript 코드에 브레이크포인트 설정
+- 프로덕션 에러를 원본 코드와 매핑
+
+## 소스 맵 활성화
+
+### tsconfig.json 설정
+
+```json
+{
+  "compilerOptions": {
+    "sourceMap": true,           // 소스 맵 생성
+    "inlineSourceMap": false,    // 별도 파일로 생성
+    "inlineSources": false,      // 원본 소스 포함 안 함
+    "outDir": "dist"
+  }
+}
+```
+
+**생성되는 파일:**
+
+<FileTree>
+  <FileItem name="dist/">
+    <FileItem name="index.js" />
+    <FileItem name="index.js.map" description="소스 맵 파일" />
+    <FileItem name="models/">
+      <FileItem name="user.model.js" />
+      <FileItem name="user.model.js.map" />
+    </FileItem>
+  </FileItem>
+</FileTree>
+
+### inlineSourceMap vs sourceMap
+
+```json
+// ✅ 권장: 별도 파일 (개발/프로덕션 모두)
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "inlineSourceMap": false
+  }
+}
+
+// ❌ 인라인 (번들 크기 증가)
+{
+  "compilerOptions": {
+    "sourceMap": false,
+    "inlineSourceMap": true  // .js 파일 내 포함
+  }
+}
+```
+
+## 에러 스택 트레이스
+
+### 소스 맵 없이
+
+```bash
+Error: User not found
+    at UserModelClass.findById (dist/models/user.model.js:45:15)
+    at processUser (dist/services/user.service.js:12:28)
+    at async main (dist/index.js:8:20)
+```
+
+컴파일된 JavaScript 위치만 표시되어 디버깅이 어렵습니다.
+
+### 소스 맵 있을 때
+
+```bash
+Error: User not found
+    at UserModelClass.findById (src/models/user.model.ts:32:11)
+    at processUser (src/services/user.service.ts:8:24)
+    at async main (src/index.ts:5:15)
+```
+
+원본 TypeScript 파일과 라인 번호를 정확히 표시합니다.
+
+## Node.js에서 소스 맵 사용
+
+### --enable-source-maps 플래그
+
+```bash
+# Node.js 12.12.0 이상
+node --enable-source-maps dist/index.js
+```
+
+또는 `package.json`:
+
+```json
+{
+  "scripts": {
+    "start": "node --enable-source-maps dist/index.js",
+    "dev": "node --enable-source-maps --watch dist/index.js"
+  }
+}
+```
+
+### tsx 사용 (권장)
+
+```bash
+# tsx는 자동으로 소스 맵 지원
+pnpm dev
+```
+
+Sonamu는 tsx를 사용하므로 별도 설정 없이 소스 맵이 작동합니다.
+
+## VSCode 디버거 설정
+
+### launch.json
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Sonamu Dev Server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Test",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["test", "${file}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true
+    }
+  ]
+}
+```
+
+### 디버깅 단계
+
+1. **브레이크포인트 설정**
+   - TypeScript 파일(`.ts`)에서 줄 번호 왼쪽 클릭
+
+2. **디버거 시작**
+   - F5 또는 "Run and Debug" 패널에서 실행
+
+3. **변수 검사**
+   - 브레이크포인트에서 멈추면 변수 값 확인
+   - Watch 패널에서 표현식 평가
+
+4. **단계별 실행**
+   - F10: Step Over (다음 줄)
+   - F11: Step Into (함수 내부로)
+   - Shift+F11: Step Out (함수 밖으로)
+
+## 프로덕션 소스 맵
+
+### 보안 고려사항
+
+```json
+// 개발 환경
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "inlineSources": false  // 원본 소스 포함 안 함
+  }
+}
+```
+
+**프로덕션 배포 시:**
+```bash
+# 소스 맵 파일 제외
+dist/
+├── index.js           ✅ 배포
+├── index.js.map       ❌ 제외 (또는 별도 저장)
+```
+
+### 에러 추적 서비스 연동
+
+소스 맵을 Sentry 같은 에러 추적 서비스에 업로드:
+
+```bash
+# Sentry CLI 예시
+sentry-cli releases files VERSION upload-sourcemaps ./dist
+```
+
+## 소스 맵 문제 해결
+
+### 1. 소스 맵이 생성되지 않음
+
+**확인 사항:**
+
+```bash
+# tsconfig.json 확인
+cat tsconfig.json | grep sourceMap
+
+# 빌드 후 .map 파일 확인
+ls -la dist/**/*.map
+```
+
+**해결:**
+
+```json
+{
+  "compilerOptions": {
+    "sourceMap": true  // 명시적으로 활성화
+  }
+}
+```
+
+### 2. 스택 트레이스가 여전히 .js 파일을 가리킴
+
+**원인:** Node.js가 소스 맵을 인식하지 못함
+
+**해결:**
+
+```bash
+# --enable-source-maps 플래그 추가
+node --enable-source-maps dist/index.js
+
+# 또는 tsx 사용 (자동 지원)
+pnpm tsx dist/index.js
+```
+
+### 3. VSCode 디버거가 작동하지 않음
+
+**확인 사항:**
+
+```json
+// launch.json
+{
+  "sourceMaps": true,  // 활성화 확인
+  "outFiles": [
+    "${workspaceFolder}/dist/**/*.js"  // 올바른 경로
+  ]
+}
+```
+
+**해결:**
+
+1. `.vscode/launch.json` 재설정
+2. TypeScript 서버 재시작: `Cmd+Shift+P` → "TypeScript: Restart TS Server"
+3. 디버거 재시작
+
+### 4. 잘못된 라인 번호
+
+**원인:** 소스 맵과 코드가 동기화되지 않음
+
+**해결:**
+
+```bash
+# 클린 빌드
+rm -rf dist/
+pnpm build
+
+# 또는 개발 모드 재시작
+pnpm dev
+```
+
+## 소스 맵 검증
+
+### 수동 검증
+
+```bash
+# 소스 맵 파일 확인
+cat dist/index.js.map | jq .sources
+
+# 출력 예시:
+# [
+#   "../src/index.ts",
+#   "../src/models/user.model.ts"
+# ]
+```
+
+### source-map 패키지로 검증
+
+```typescript
+import { SourceMapConsumer } from "source-map";
+import fs from "fs";
+
+const rawSourceMap = JSON.parse(
+  fs.readFileSync("dist/index.js.map", "utf-8")
+);
+
+SourceMapConsumer.with(rawSourceMap, null, (consumer) => {
+  // 컴파일된 위치 -> 원본 위치
+  const pos = consumer.originalPositionFor({
+    line: 45,
+    column: 15
+  });
+  
+  console.log(pos);
+  // {
+  //   source: '../src/index.ts',
+  //   line: 32,
+  //   column: 11,
+  //   name: 'findUser'
+  // }
+});
+```
+
+## 브라우저에서 소스 맵
+
+### Vite 개발 서버
+
+Vite는 자동으로 소스 맵을 생성하고 제공합니다:
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  build: {
+    sourcemap: true  // 프로덕션 빌드에도 포함
+  }
+});
+```
+
+### Chrome DevTools
+
+1. **소스 탭 열기**
+   - F12 → Sources 탭
+
+2. **TypeScript 파일 확인**
+   - `webpack://` 또는 `src/` 아래 `.ts` 파일
+
+3. **브레이크포인트 설정**
+   - TypeScript 파일에서 줄 번호 클릭
+
+4. **디버깅**
+   - 페이지 새로고침하여 브레이크포인트 도달
+
+## Best Practices
+
+### 1. 항상 개발 환경에서 활성화
+
+```json
+{
+  "compilerOptions": {
+    "sourceMap": true  // 개발 시 필수
+  }
+}
+```
+
+### 2. Git에서 .map 파일 제외
+
+```.gitignore
+# 소스 맵은 빌드 시 생성
+dist/**/*.map
+
+# 프로덕션 소스 맵은 별도 관리
+production-sourcemaps/
+```
+
+### 3. 프로덕션에서 선택적 사용
+
+```typescript
+// 환경별 tsconfig
+// tsconfig.prod.json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": false  // 프로덕션에서는 비활성화
+  }
+}
+```
+
+```json
+// package.json
+{
+  "scripts": {
+    "build:dev": "tsc",
+    "build:prod": "tsc -p tsconfig.prod.json"
+  }
+}
+```
+
+### 4. 에러 모니터링 통합
+
+프로덕션에서는 소스 맵을 에러 추적 서비스에만 제공:
+
+```typescript
+// 에러 발생 시 원본 위치 매핑
+import { SourceMapConsumer } from "source-map";
+
+async function mapError(error: Error) {
+  // 스택 트레이스 파싱
+  const match = error.stack?.match(/dist\/(.+):(\d+):(\d+)/);
+  if (!match) return error;
+  
+  const [, file, line, column] = match;
+  const mapFile = `sourcemaps/${file}.map`;
+  
+  // 소스 맵으로 원본 위치 찾기
+  const rawMap = JSON.parse(fs.readFileSync(mapFile, "utf-8"));
+  const consumer = await new SourceMapConsumer(rawMap);
+  
+  const original = consumer.originalPositionFor({
+    line: parseInt(line),
+    column: parseInt(column)
+  });
+  
+  return {
+    ...error,
+    originalFile: original.source,
+    originalLine: original.line,
+    originalColumn: original.column
+  };
+}
+```
+
+## 관련 도구
+
+### 1. source-map-support
+
+런타임에 소스 맵 자동 적용:
+
+```bash
+pnpm add source-map-support
+```
+
+```typescript
+// index.ts 상단
+import "source-map-support/register";
+```
+
+### 2. @esbuild-kit/core-utils
+
+esbuild 기반 빌드 도구의 소스 맵 지원:
+
+```typescript
+import { installSourceMapSupport } from "@esbuild-kit/core-utils";
+installSourceMapSupport();
+```
+
+### 3. Chrome DevTools
+
+- Elements 탭에서 컴파일된 CSS를 원본 SCSS/LESS로 매핑
+- Network 탭에서 소스 맵 다운로드 확인
+- Console에서 원본 파일 링크 클릭
+
+## 관련 문서
+
+- [TypeScript 설정](/configuration/typescript/tsconfig)
+- [Vitest 디버그](/troubleshooting/debugging/vitest-debug)
+- [콘솔 로깅](/troubleshooting/debugging/console-logging)

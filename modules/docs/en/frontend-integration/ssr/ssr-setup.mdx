@@ -1,0 +1,385 @@
+---
+title: "SSR Setup"
+description: "Sonamu's TanStack Router + Vite SSR configuration"
+---
+
+Learn how to set up and use Server-Side Rendering (SSR) in Sonamu.
+
+## SSR Overview
+
+<CardGroup cols={2}>
+  <Card title="TanStack Router" icon="route">
+    File-based routing
+    
+    Type-safe navigation
+  </Card>
+  <Card title="Vite SSR" icon="bolt">
+    Fast builds
+    
+    HMR support
+  </Card>
+  <Card title="Direct API Call" icon="server">
+    No HTTP overhead
+    
+    Fast response
+  </Card>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    Automated Hydration
+    
+    Caching integration
+  </Card>
+</CardGroup>
+
+## Sonamu SSR Architecture
+
+Sonamu implements SSR using **TanStack Router + Vite**.
+
+### Core Components
+
+```
+web/src/
+├── entry-server.generated.tsx    # Server rendering entry (auto-generated)
+├── entry-client.tsx               # Client hydration entry
+├── routeTree.gen.ts              # TanStack Router route tree (auto-generated)
+└── routes/                        # File-based routes
+    ├── __root.tsx                # Root layout
+    ├── index.tsx                 # / path
+    └── users/
+        └── $id.tsx               # /users/:id path
+```
+
+### entry-server.generated.tsx
+
+Entry point for rendering React on the server (auto-generated):
+
+```typescript
+// web/src/entry-server.generated.tsx
+import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { Suspense } from "react";
+import { renderToString } from "react-dom/server";
+import { routeTree } from "./routeTree.gen";
+
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
+};
+
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  // Create QueryClient
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5000,
+        retry: false,
+      },
+    },
+  });
+
+  // Inject preloaded data directly into queryClient
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate
+  const dehydratedState = dehydrate(queryClient);
+
+  // Create memory history for SSR
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [url],
+  });
+
+  // Create Router (SSR mode)
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+    history: memoryHistory,
+    defaultPreload: "intent",
+  });
+
+  // Initialize router: Must call await router.load() in SSR
+  await router.load();
+
+  // Render only RouterProvider (wrapped in Suspense - prevents hydration mismatch)
+  const appHtml = renderToString(
+    <Suspense fallback={null}>
+      <RouterProvider router={router} />
+    </Suspense>,
+  );
+
+  return {
+    html: appHtml,
+    dehydratedState,
+  };
+}
+```
+
+### entry-client.tsx
+
+Entry point for hydrating React on the client:
+
+```typescript
+// web/src/entry-client.tsx
+import { hydrate, QueryClient } from "@tanstack/react-query";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import ReactDOM from "react-dom/client";
+import { routeTree } from "./routeTree.gen";
+import { dateReviver } from "./services/sonamu.shared";
+
+// SSR data type
+declare global {
+  interface Window {
+    __SONAMU_SSR__?: any;
+    __SONAMU_SSR_CONFIG__?: {
+      disableHydrate?: boolean;
+    };
+  }
+}
+
+// Create QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,
+      retry: false,
+      refetchOnMount: true,
+    },
+  },
+});
+
+// Restore SSR data
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+if (dehydratedState) {
+  hydrate(queryClient, dehydratedState);
+}
+
+// Create Router
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  defaultPreload: "intent",
+});
+
+await router.load();
+
+// Hydration
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR page - Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  // Pure CSR page - Render new
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+## TanStack Router Route Structure
+
+### Root Route
+
+```typescript
+// web/src/routes/__root.tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1.0" },
+      { title: "My App" },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="root">
+          <QueryClientProvider client={queryClient}>
+            <Outlet />
+          </QueryClientProvider>
+        </div>
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+### File Route
+
+```typescript
+// web/src/routes/index.tsx
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/")({
+  component: HomePage,
+});
+
+function HomePage() {
+  return (
+    <div>
+      <h1>Home Page</h1>
+    </div>
+  );
+}
+```
+
+### Dynamic Route
+
+```typescript
+// web/src/routes/users/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { UserService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/users/$id")({
+  component: UserPage,
+});
+
+function UserPage() {
+  const { id } = Route.useParams();
+  const { data } = UserService.useUser("C", parseInt(id));
+
+  return (
+    <div>
+      <h1>{data?.user.username}</h1>
+      <p>{data?.user.email}</p>
+    </div>
+  );
+}
+```
+
+## Vite Configuration
+
+```typescript
+// web/vite.config.ts
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vite";
+
+export default defineConfig(({ isSsrBuild }) => ({
+  plugins: [
+    react(),
+    tanstackRouter({
+      autoCodeSplitting: true,
+      generatedRouteTree: "./src/routeTree.gen.ts",
+    }),
+  ],
+  build: {
+    outDir: "dist/client",
+    rollupOptions: {
+      output: isSsrBuild
+        ? {}
+        : {
+            manualChunks: {
+              "vendor-react": ["react", "react-dom"],
+              "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
+            },
+          },
+    },
+  },
+  ssr: {
+    noExternal: true, // Include all dependencies in bundle for production build
+  },
+}));
+```
+
+## SSR vs CSR
+
+Sonamu uses a **hybrid approach**:
+
+### SSR Rendering (when data preloading)
+
+```typescript
+// Routes registered with registerSSR
+// → Generate HTML on server + include data
+// → Hydration on client
+```
+
+**Benefits**:
+- Fast First Contentful Paint
+- SEO optimization
+- Immediate display of initial data
+
+### CSR Rendering (default)
+
+```typescript
+// Routes without registerSSR
+// → Render directly on client
+// → Load data via API call
+```
+
+**Benefits**:
+- Reduced server load
+- Simple implementation
+- Fast development
+
+## Development vs Production
+
+### Development Mode
+
+```bash
+pnpm dev
+```
+
+- Uses Vite Dev Server
+- HMR (Hot Module Replacement) support
+- Vite loads `entry-server.generated.tsx` in real-time
+
+### Production Build
+
+```bash
+pnpm build
+```
+
+**Build output**:
+```
+api/
+├── dist/ssr/
+│   └── entry-server.generated.js    # SSR bundle
+└── public/web/
+    ├── index.html                    # HTML template
+    └── assets/                       # Client bundle
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Sonamu SSR**:
+1. **TanStack Router based**: Not Next.js App Router
+2. **entry-server.generated.tsx is auto-generated**: Don't modify directly
+3. **Be careful with window object**: window doesn't exist on server
+4. **dateReviver required**: Handles Date object serialization/deserialization
+5. **Use registerSSR**: See next document for data preloading
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Preloading" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    How to use registerSSR
+  </Card>
+  <Card title="Hydration Strategies" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    Hydration optimization
+  </Card>
+  <Card title="Cache Control" icon="database" href="/frontend-integration/ssr/cache-control">
+    TanStack Query caching
+  </Card>
+  <Card title="TanStack Router Docs" icon="external-link" href="https://tanstack.com/router">
+    Router detailed guide
+  </Card>
+</CardGroup>

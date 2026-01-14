@@ -1,0 +1,714 @@
+---
+title: "클라이언트 통합"
+description: "프론트엔드에서 SSE 사용하기"
+---
+
+Sonamu의 SSE 엔드포인트를 프론트엔드에서 사용하는 방법을 설명합니다. 브라우저의 **EventSource API**를 사용하여 실시간 이벤트를 수신할 수 있습니다.
+
+## EventSource API
+
+브라우저 내장 API로 SSE 연결을 관리합니다.
+
+### 기본 사용법
+
+```typescript
+// SSE 연결 생성
+const source = new EventSource('/stream/notifications?userId=1');
+
+// 이벤트 리스너 등록
+source.addEventListener('notification', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Notification:', data);
+});
+
+// 연결 종료 이벤트
+source.addEventListener('end', () => {
+  source.close();
+});
+
+// 에러 처리
+source.onerror = (error) => {
+  console.error('SSE Error:', error);
+  source.close();
+};
+```
+
+## React 통합
+
+### 기본 Hook
+
+```typescript
+import { useEffect, useState } from 'react';
+
+function useSSE<T>(url: string, eventName: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const source = new EventSource(url);
+
+    source.onopen = () => {
+      setIsConnected(true);
+    };
+
+    source.addEventListener(eventName, (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        setData(parsed);
+      } catch (err) {
+        setError(err as Error);
+      }
+    });
+
+    source.addEventListener('end', () => {
+      source.close();
+      setIsConnected(false);
+    });
+
+    source.onerror = (err) => {
+      setError(new Error('SSE connection failed'));
+      setIsConnected(false);
+      source.close();
+    };
+
+    return () => {
+      source.close();
+      setIsConnected(false);
+    };
+  }, [url, eventName]);
+
+  return { data, error, isConnected };
+}
+```
+
+### 사용 예제
+
+```typescript
+function NotificationList() {
+  const { data: notification, isConnected } = useSSE<{
+    id: number;
+    message: string;
+  }>('/stream/notifications?userId=1', 'notification');
+
+  return (
+    <div>
+      <div>Status: {isConnected ? 'Connected' : 'Disconnected'}</div>
+      {notification && (
+        <div>
+          <strong>#{notification.id}</strong>: {notification.message}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## 실전 예제
+
+### 1. 실시간 알림
+
+```typescript
+import { useEffect, useState } from 'react';
+
+type Notification = {
+  id: number;
+  type: 'like' | 'comment' | 'follow';
+  message: string;
+  createdAt: string;
+};
+
+function NotificationCenter({ userId }: { userId: number }) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const source = new EventSource(
+      `/stream/notifications?userId=${userId}`
+    );
+
+    source.onopen = () => {
+      setIsConnected(true);
+    };
+
+    source.addEventListener('notification', (event) => {
+      const notification = JSON.parse(event.data) as Notification;
+      setNotifications(prev => [notification, ...prev].slice(0, 10));
+      
+      // 브라우저 알림
+      if (Notification.permission === 'granted') {
+        new Notification(notification.message);
+      }
+    });
+
+    source.addEventListener('end', () => {
+      source.close();
+      setIsConnected(false);
+    });
+
+    source.onerror = () => {
+      setIsConnected(false);
+      source.close();
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [userId]);
+
+  return (
+    <div>
+      <div className="status">
+        {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+      </div>
+      <div className="notifications">
+        {notifications.map(noti => (
+          <div key={noti.id} className={`notification ${noti.type}`}>
+            <span>{noti.message}</span>
+            <time>{new Date(noti.createdAt).toLocaleTimeString()}</time>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### 2. 작업 진행률
+
+```typescript
+import { useEffect, useState } from 'react';
+
+type Progress = {
+  current: number;
+  total: number;
+  percentage: number;
+};
+
+function TaskProgress({ taskId }: { taskId: number }) {
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const source = new EventSource(`/stream/taskProgress?taskId=${taskId}`);
+
+    source.addEventListener('progress', (event) => {
+      const data = JSON.parse(event.data) as Progress;
+      setProgress(data);
+    });
+
+    source.addEventListener('complete', (event) => {
+      const data = JSON.parse(event.data);
+      setIsComplete(true);
+      source.close();
+    });
+
+    source.addEventListener('error', (event) => {
+      const data = JSON.parse(event.data);
+      setError(data.message);
+      source.close();
+    });
+
+    source.addEventListener('end', () => {
+      source.close();
+    });
+
+    return () => {
+      source.close();
+    };
+  }, [taskId]);
+
+  if (error) {
+    return <div className="error">Error: {error}</div>;
+  }
+
+  if (isComplete) {
+    return <div className="success">Task completed!</div>;
+  }
+
+  return (
+    <div className="progress-bar">
+      <div
+        className="progress-fill"
+        style={{ width: `${progress?.percentage || 0}%` }}
+      />
+      <span>{progress?.current || 0} / {progress?.total || 0}</span>
+    </div>
+  );
+}
+```
+
+### 3. 라이브 피드
+
+```typescript
+import { useEffect, useState } from 'react';
+
+type Post = {
+  id: number;
+  title: string;
+  author: string;
+  createdAt: string;
+};
+
+function LiveFeed() {
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    const source = new EventSource('/stream/newPosts');
+
+    source.addEventListener('newPost', (event) => {
+      const post = JSON.parse(event.data) as Post;
+      
+      // 새 게시물을 상단에 추가
+      setPosts(prev => [post, ...prev]);
+      
+      // 알림 표시
+      showToast(`New post: ${post.title}`);
+    });
+
+    source.addEventListener('end', () => {
+      source.close();
+    });
+
+    return () => {
+      source.close();
+    };
+  }, []);
+
+  return (
+    <div className="live-feed">
+      <h2>Live Feed 📡</h2>
+      {posts.map(post => (
+        <article key={post.id}>
+          <h3>{post.title}</h3>
+          <p>by {post.author}</p>
+          <time>{new Date(post.createdAt).toLocaleString()}</time>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+### 4. 다중 이벤트 처리
+
+```typescript
+import { useEffect, useState } from 'react';
+
+type Message = {
+  id: number;
+  text: string;
+  sender: string;
+};
+
+type TypingStatus = {
+  userId: number;
+  isTyping: boolean;
+};
+
+function ChatRoom({ roomId }: { roomId: number }) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [typingUsers, setTypingUsers] = useState<number[]>([]);
+
+  useEffect(() => {
+    const source = new EventSource(`/stream/chatRoom?roomId=${roomId}`);
+
+    // 메시지 이벤트
+    source.addEventListener('message', (event) => {
+      const message = JSON.parse(event.data) as Message;
+      setMessages(prev => [...prev, message]);
+    });
+
+    // 타이핑 상태 이벤트
+    source.addEventListener('typing', (event) => {
+      const data = JSON.parse(event.data) as TypingStatus;
+      setTypingUsers(prev => 
+        data.isTyping
+          ? [...prev, data.userId]
+          : prev.filter(id => id !== data.userId)
+      );
+    });
+
+    // 입장 이벤트
+    source.addEventListener('joined', (event) => {
+      const data = JSON.parse(event.data);
+      showToast(`${data.username} joined the room`);
+    });
+
+    // 퇴장 이벤트
+    source.addEventListener('left', (event) => {
+      const data = JSON.parse(event.data);
+      showToast(`User ${data.userId} left the room`);
+    });
+
+    source.addEventListener('end', () => {
+      source.close();
+    });
+
+    return () => {
+      source.close();
+    };
+  }, [roomId]);
+
+  return (
+    <div className="chat-room">
+      <div className="messages">
+        {messages.map(msg => (
+          <div key={msg.id}>
+            <strong>{msg.sender}:</strong> {msg.text}
+          </div>
+        ))}
+      </div>
+      {typingUsers.length > 0 && (
+        <div className="typing-indicator">
+          {typingUsers.length} user(s) typing...
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 5. 자동 재연결
+
+```typescript
+import { useEffect, useState, useRef } from 'react';
+
+function useSSEWithReconnect<T>(
+  url: string,
+  eventName: string,
+  maxRetries = 5
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const retriesRef = useRef(0);
+
+  useEffect(() => {
+    let source: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    const connect = () => {
+      source = new EventSource(url);
+
+      source.onopen = () => {
+        setIsConnected(true);
+        retriesRef.current = 0;  // 재시도 카운터 리셋
+      };
+
+      source.addEventListener(eventName, (event) => {
+        const parsed = JSON.parse(event.data);
+        setData(parsed);
+      });
+
+      source.addEventListener('end', () => {
+        source?.close();
+        setIsConnected(false);
+      });
+
+      source.onerror = () => {
+        source?.close();
+        setIsConnected(false);
+
+        // 재연결 시도
+        if (retriesRef.current < maxRetries) {
+          retriesRef.current += 1;
+          const delay = Math.min(1000 * Math.pow(2, retriesRef.current), 30000);
+          
+          reconnectTimeout = setTimeout(() => {
+            console.log(`Reconnecting... (${retriesRef.current}/${maxRetries})`);
+            connect();
+          }, delay);
+        } else {
+          console.error('Max retries reached. Giving up.');
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      source?.close();
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
+  }, [url, eventName, maxRetries]);
+
+  return { data, isConnected };
+}
+
+// 사용
+function ReconnectingNotifications() {
+  const { data, isConnected } = useSSEWithReconnect<{
+    message: string;
+  }>('/stream/notifications?userId=1', 'notification');
+
+  return (
+    <div>
+      <div>Status: {isConnected ? 'Connected' : 'Reconnecting...'}</div>
+      {data && <div>{data.message}</div>}
+    </div>
+  );
+}
+```
+
+## Vue 통합
+
+```typescript
+import { ref, onMounted, onUnmounted } from 'vue';
+
+export function useSSE<T>(url: string, eventName: string) {
+  const data = ref<T | null>(null);
+  const isConnected = ref(false);
+  let source: EventSource | null = null;
+
+  onMounted(() => {
+    source = new EventSource(url);
+
+    source.onopen = () => {
+      isConnected.value = true;
+    };
+
+    source.addEventListener(eventName, (event) => {
+      data.value = JSON.parse(event.data);
+    });
+
+    source.addEventListener('end', () => {
+      source?.close();
+      isConnected.value = false;
+    });
+
+    source.onerror = () => {
+      source?.close();
+      isConnected.value = false;
+    };
+  });
+
+  onUnmounted(() => {
+    source?.close();
+  });
+
+  return { data, isConnected };
+}
+
+// 사용
+// <script setup>
+// const { data, isConnected } = useSSE('/stream/notifications', 'notification');
+// </script>
+```
+
+## 인증 처리
+
+### 쿠키 기반 인증
+
+```typescript
+// EventSource는 자동으로 쿠키를 전송합니다
+const source = new EventSource('/stream/notifications');
+```
+
+**주의**: CORS 사용 시 `credentials: 'include'` 불필요 (자동)
+
+### Bearer Token 인증
+
+EventSource는 커스텀 헤더를 지원하지 않으므로, URL 파라미터를 사용합니다:
+
+```typescript
+const token = localStorage.getItem('token');
+const source = new EventSource(`/stream/notifications?token=${token}`);
+```
+
+**서버 측**:
+```typescript
+@stream({
+  type: 'sse',
+  events: z.object({
+    notification: z.string(),
+  })
+})
+@api({ compress: false })
+async *streamNotifications(token: string, ctx: Context) {
+  // 토큰 검증
+  const user = await this.verifyToken(token);
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+  
+  // ...
+}
+```
+
+## 에러 처리
+
+### 연결 실패
+
+```typescript
+const source = new EventSource('/stream/data');
+
+source.onerror = (error) => {
+  console.error('Connection failed:', error);
+  
+  // 상태 코드 확인 (EventSource는 제공하지 않음)
+  // 대신 서버에서 에러 이벤트 전송
+};
+
+// 서버에서 에러 이벤트 전송
+source.addEventListener('error', (event) => {
+  const data = JSON.parse(event.data);
+  console.error('Server error:', data.message);
+  source.close();
+});
+```
+
+### 타임아웃 처리
+
+```typescript
+const source = new EventSource('/stream/data');
+let timeoutId: NodeJS.Timeout;
+
+// 타임아웃 설정 (30초)
+const resetTimeout = () => {
+  clearTimeout(timeoutId);
+  timeoutId = setTimeout(() => {
+    console.log('Connection timeout');
+    source.close();
+  }, 30000);
+};
+
+source.addEventListener('message', () => {
+  resetTimeout();
+});
+
+source.addEventListener('end', () => {
+  clearTimeout(timeoutId);
+  source.close();
+});
+```
+
+## 디버깅
+
+### 브라우저 개발자 도구
+
+```
+Network 탭 → EventStream 타입 필터
+
+Request:
+  GET /stream/notifications?userId=1
+  Accept: text/event-stream
+
+Response:
+  Content-Type: text/event-stream
+  
+EventStream 탭:
+  event: notification
+  data: {"id": 1, "message": "Hello"}
+  
+  event: notification
+  data: {"id": 2, "message": "World"}
+  
+  event: end
+  data: END
+```
+
+### 로깅
+
+```typescript
+const source = new EventSource('/stream/data');
+
+source.onopen = () => {
+  console.log('[SSE] Connected');
+};
+
+source.addEventListener('message', (event) => {
+  console.log('[SSE] Message:', event.data);
+});
+
+source.addEventListener('end', () => {
+  console.log('[SSE] End');
+  source.close();
+});
+
+source.onerror = (error) => {
+  console.error('[SSE] Error:', error);
+};
+```
+
+## 주의사항
+
+<Warning>
+**클라이언트 SSE 사용 시 주의사항**:
+
+1. **연결 정리**: 컴포넌트 언마운트 시 반드시 close()
+   ```typescript
+   useEffect(() => {
+     const source = new EventSource('/stream/data');
+     return () => {
+       source.close();  // 필수!
+     };
+   }, []);
+   ```
+
+2. **이벤트 이름 일치**: 서버와 클라이언트 이벤트 이름 동일해야 함
+   ```typescript
+   // 서버: sse.publish('notification', ...)
+   // 클라이언트: source.addEventListener('notification', ...)
+   ```
+
+3. **JSON 파싱**: 데이터는 항상 문자열로 전달됨
+   ```typescript
+   source.addEventListener('data', (event) => {
+     const data = JSON.parse(event.data);  // 파싱 필수
+   });
+   ```
+
+4. **브라우저 제한**: 동시 연결 수 제한 (도메인당 6개)
+   - 해결: 연결 재사용 또는 HTTP/2 사용
+
+5. **재연결 처리**: 네트워크 끊김 시 자동 재연결 구현
+   ```typescript
+   source.onerror = () => {
+     setTimeout(() => {
+       // 재연결 로직
+     }, 1000);
+   };
+   ```
+
+6. **메모리 누수**: 오래된 데이터 정리
+   ```typescript
+   setNotifications(prev => prev.slice(0, 100));  // 최대 100개
+   ```
+
+7. **CORS 설정**: 다른 도메인에서 사용 시 서버 CORS 설정 필요
+   ```typescript
+   // 서버: cors: { origin: 'https://example.com' }
+   ```
+</Warning>
+
+## Polyfill (IE 지원)
+
+IE 11 등 구형 브라우저 지원:
+
+```bash
+npm install event-source-polyfill
+```
+
+```typescript
+import { EventSourcePolyfill } from 'event-source-polyfill';
+
+const source = new EventSourcePolyfill('/stream/data', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="SSE 설정" icon="gear" href="/advanced-features/sse/sse-setup">
+    SSE 플러그인 설정하기
+  </Card>
+  <Card title="SSE 엔드포인트 만들기" icon="code" href="/advanced-features/sse/creating-sse-endpoints">
+    @stream 데코레이터로 SSE API 구축
+  </Card>
+</CardGroup>

@@ -1,0 +1,711 @@
+---
+title: "Protected Routes"
+description: "Controlling API permissions with Guards"
+---
+
+Learn how to implement role-based access control for API endpoints using Sonamu's Guards system.
+
+## Guards System Overview
+
+<CardGroup cols={2}>
+  <Card title="Declarative Permissions" icon="shield-check">
+    @api guards option
+    
+    Simple permission setup
+  </Card>
+  <Card title="Built-in Guards" icon="shield-halved">
+    admin, user, query
+    
+    Provided by default
+  </Card>
+  <Card title="Custom Guards" icon="wand-magic-sparkles">
+    Business logic
+    
+    Flexible extension
+  </Card>
+  <Card title="Hierarchical Permissions" icon="sitemap">
+    Role-based control
+    
+    RBAC implementation
+  </Card>
+</CardGroup>
+
+## Understanding Guards
+
+### What are Guards?
+
+Guards are **functions that verify permissions before an API method executes**. They are used in the following situations:
+
+- APIs accessible only to logged-in users
+- APIs accessible only to administrators
+- APIs accessible only to users meeting specific conditions
+
+**Advantages of Guards**:
+1. **Declarative**: Simply declare like `@api({ guards: ["admin"] })`
+2. **Reusable**: Use the same Guards across multiple APIs
+3. **Testable**: Test Guards independently
+4. **Separation of Concerns**: Permission logic separated from business logic
+
+### Guards Execution Flow
+
+```
+1. Client → API request
+2. Sonamu → Create Context (including user info)
+3. Guards → Permission verification
+   ↓ Success
+4. API method execution
+   ↓
+5. Return response
+
+   ↓ Failure
+3. 403 Forbidden response
+```
+
+## Built-in Guards
+
+Sonamu provides three Guards by default.
+
+### user Guard
+
+**`user` Guard** allows only logged-in users to access. It's the most basic authentication Guard.
+
+```typescript
+class PostModel extends BaseModelClass {
+  /**
+   * Get my posts list
+   * 
+   * user Guard: Login required
+   */
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async getMyPosts(): Promise<{
+    posts: Post[];
+  }> {
+    const context = Sonamu.getContext();
+    
+    // Thanks to user Guard, context.user is guaranteed to exist
+    const userId = context.user!.id;
+    
+    const rdb = this.getPuri("r");
+    const posts = await rdb
+      .table("posts")
+      .where("user_id", userId)
+      .orderBy("created_at", "desc")
+      .select("*");
+    
+    return { posts };
+  }
+  
+  /**
+   * Create post
+   */
+  @api({ httpMethod: "POST", guards: ["user"] })
+  async create(params: {
+    title: string;
+    content: string;
+  }): Promise<{ postId: number }> {
+    const context = Sonamu.getContext();
+    const { title, content } = params;
+    
+    const wdb = this.getPuri("w");
+    const [post] = await wdb
+      .table("posts")
+      .insert({
+        user_id: context.user!.id,
+        title,
+        content,
+        created_at: new Date(),
+      })
+      .returning({ id: "id" });
+    
+    return { postId: post.id };
+  }
+}
+```
+
+**When to use?**
+- All APIs that require login
+- APIs handling user-specific data (my profile, my orders, etc.)
+- Content creation/modification/deletion
+
+### admin Guard
+
+**`admin` Guard** allows only administrators to access. Used for sensitive administrative functions.
+
+```typescript
+class UserModel extends BaseModelClass {
+  /**
+   * All users list (admin only)
+   */
+  @api({ httpMethod: "GET", guards: ["admin"] })
+  async getAllUsers(params: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    const { page = 1, pageSize = 20 } = params;
+    
+    const rdb = this.getPuri("r");
+    
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb
+      .table("users")
+      .count("* as count");
+    
+    return {
+      users,
+      total: count,
+    };
+  }
+  
+  /**
+   * Force deactivate user (admin only)
+   */
+  @api({ httpMethod: "POST", guards: ["admin"] })
+  async deactivateUser(userId: number): Promise<{ success: boolean }> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", userId)
+      .update({
+        is_active: false,
+        deactivated_at: new Date(),
+      });
+    
+    return { success: true };
+  }
+}
+```
+
+**When to use?**
+- System settings changes
+- Accessing all user data
+- User management (activation/deactivation, permission changes)
+- Statistics and analytics data
+- Sensitive business logic
+
+### query Guard
+
+**`query` Guard** implements simple authentication via query string parameters. Mainly used for public APIs or temporary links.
+
+```typescript
+class FileModel extends BaseModelClass {
+  /**
+   * File download (query token authentication)
+   * 
+   * Usage: GET /api/file/download?fileId=123&token=abc...
+   */
+  @api({ httpMethod: "GET", guards: ["query"] })
+  async download(params: {
+    fileId: number;
+    token: string;
+  }): Promise<{
+    url: string;
+  }> {
+    const { fileId, token } = params;
+    
+    // Verify token
+    const rdb = this.getPuri("r");
+    const downloadToken = await rdb
+      .table("download_tokens")
+      .where("file_id", fileId)
+      .where("token", token)
+      .where("expires_at", ">", new Date())
+      .first();
+    
+    if (!downloadToken) {
+      throw new Error("Invalid or expired download token");
+    }
+    
+    // Query file info
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Generate Signed URL
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getSignedUrl(file.key, 3600);
+    
+    return { url };
+  }
+}
+```
+
+**When to use?**
+- Temporary download links sent via email
+- Shareable public APIs
+- Webhook callbacks (API key verification)
+- Cases requiring simple authentication
+
+<Info>
+The specific implementation of `query` Guard may vary by project. It can be extended with various methods like API keys, tokens, signatures, etc.
+</Info>
+
+## Combining Multiple Guards
+
+You can apply multiple Guards to a single API. All Guards must pass for the API to execute.
+
+```typescript
+class ReportModel extends BaseModelClass {
+  /**
+   * Generate sensitive report (admin + additional verification)
+   */
+  @api({ httpMethod: "POST", guards: ["admin", "superAdmin"] })
+  async generateSensitiveReport(): Promise<{ reportId: number }> {
+    // Executes only after passing both admin Guard and superAdmin Guard
+    // ...
+  }
+}
+```
+
+## Implementing Custom Guards
+
+You can create custom Guards that match your project's business logic.
+
+### Registering Guards
+
+```typescript
+// guards/index.ts
+import type { AppContext } from "../types/context";
+
+export type GuardFunction = (context: AppContext) => Promise<boolean> | boolean;
+
+/**
+ * Guards registry
+ */
+export const guards: Record<string, GuardFunction> = {
+  /**
+   * user Guard: Login required
+   */
+  user: (context) => {
+    return context.user !== null;
+  },
+  
+  /**
+   * admin Guard: Admin permission required
+   */
+  admin: (context) => {
+    return context.user?.role === "admin";
+  },
+  
+  /**
+   * query Guard: Query parameter verification
+   */
+  query: (context) => {
+    // Implementation varies by project
+    // Example: API key verification
+    const apiKey = context.request.query.apiKey;
+    return apiKey === process.env.API_KEY;
+  },
+  
+  /**
+   * verified Guard: Email verified users only
+   */
+  verified: (context) => {
+    if (!context.user) return false;
+    return context.user.email_verified === true;
+  },
+  
+  /**
+   * premium Guard: Premium members only
+   */
+  premium: (context) => {
+    if (!context.user) return false;
+    return context.user.subscription_tier === "premium";
+  },
+  
+  /**
+   * owner Guard: Resource ownership check (dynamic)
+   */
+  owner: async (context) => {
+    // This Guard needs resource ID as parameter
+    // So verifying inside API method is more appropriate
+    return true;
+  },
+};
+```
+
+### Guards Middleware
+
+Create middleware to integrate Guards with Fastify.
+
+```typescript
+// middleware/guards.middleware.ts
+import type { FastifyRequest, FastifyReply } from "fastify";
+import { Sonamu } from "sonamu";
+import { guards } from "../guards";
+import { registeredApis } from "sonamu";
+
+/**
+ * Guards middleware
+ * 
+ * Checks API's guards option and executes each Guard function.
+ */
+export async function guardsMiddleware(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  // Find API by current request path and method
+  const path = request.url.split("?")[0];
+  const method = request.method;
+  
+  const api = registeredApis.find(
+    (api) => api.path === path && api.options.httpMethod === method
+  );
+  
+  if (!api || !api.options.guards || api.options.guards.length === 0) {
+    // Pass if no Guards
+    return;
+  }
+  
+  const context = Sonamu.getContext();
+  
+  // Execute all Guards
+  for (const guardKey of api.options.guards) {
+    const guardFn = guards[guardKey];
+    
+    if (!guardFn) {
+      console.warn(`Guard "${guardKey}" not found`);
+      continue;
+    }
+    
+    const passed = await guardFn(context);
+    
+    if (!passed) {
+      return reply.status(403).send({
+        error: "Forbidden",
+        message: `Guard "${guardKey}" failed`,
+      });
+    }
+  }
+}
+```
+
+### Registering Middleware on Server
+
+```typescript
+// server.ts
+import { guardsMiddleware } from "./middleware/guards.middleware";
+
+app.addHook("preHandler", guardsMiddleware);
+```
+
+## Role-Based Access Control (RBAC)
+
+Use RBAC (Role-Based Access Control) for more complex permission systems.
+
+### Defining Roles and Permissions
+
+```typescript
+// types/permissions.ts
+export enum Permission {
+  // User management
+  USER_READ = "user:read",
+  USER_WRITE = "user:write",
+  USER_DELETE = "user:delete",
+  
+  // Post management
+  POST_READ = "post:read",
+  POST_WRITE = "post:write",
+  POST_DELETE = "post:delete",
+  
+  // Administration
+  ADMIN_DASHBOARD = "admin:dashboard",
+  ADMIN_SETTINGS = "admin:settings",
+}
+
+export const rolePermissions: Record<string, Permission[]> = {
+  admin: [
+    Permission.USER_READ,
+    Permission.USER_WRITE,
+    Permission.USER_DELETE,
+    Permission.POST_READ,
+    Permission.POST_WRITE,
+    Permission.POST_DELETE,
+    Permission.ADMIN_DASHBOARD,
+    Permission.ADMIN_SETTINGS,
+  ],
+  moderator: [
+    Permission.POST_READ,
+    Permission.POST_WRITE,
+    Permission.POST_DELETE,
+  ],
+  user: [
+    Permission.POST_READ,
+    Permission.POST_WRITE,
+  ],
+  guest: [
+    Permission.POST_READ,
+  ],
+};
+
+/**
+ * Check if user has specific permission
+ */
+export function hasPermission(
+  user: User | null,
+  permission: Permission
+): boolean {
+  if (!user) return false;
+  
+  const permissions = rolePermissions[user.role] || [];
+  return permissions.includes(permission);
+}
+```
+
+### Permission-Based Guard
+
+```typescript
+// guards/permission.guard.ts
+import { Permission, hasPermission } from "../types/permissions";
+
+/**
+ * Permission-based Guard creation function
+ */
+export function createPermissionGuard(permission: Permission) {
+  return (context: AppContext) => {
+    return hasPermission(context.user, permission);
+  };
+}
+
+// Register Guards
+guards["user:write"] = createPermissionGuard(Permission.USER_WRITE);
+guards["post:delete"] = createPermissionGuard(Permission.POST_DELETE);
+guards["admin:settings"] = createPermissionGuard(Permission.ADMIN_SETTINGS);
+```
+
+### Using Permission Guard
+
+```typescript
+class UserModel extends BaseModelClass {
+  /**
+   * Update user info (admin or self)
+   */
+  @api({ httpMethod: "PUT", guards: ["user:write"] })
+  async updateUser(params: {
+    userId: number;
+    username?: string;
+    email?: string;
+  }): Promise<{ user: User }> {
+    const context = Sonamu.getContext();
+    const { userId, username, email } = params;
+    
+    // Deny if not self and not admin
+    if (
+      context.user!.id !== userId &&
+      !hasPermission(context.user, Permission.USER_WRITE)
+    ) {
+      throw new Error("Permission denied");
+    }
+    
+    const wdb = this.getPuri("w");
+    await wdb
+      .table("users")
+      .where("id", userId)
+      .update({
+        username,
+        email,
+        updated_at: new Date(),
+      });
+    
+    const rdb = this.getPuri("r");
+    const user = await rdb
+      .table("users")
+      .where("id", userId)
+      .first();
+    
+    return { user };
+  }
+}
+```
+
+## Resource-Based Permission Control
+
+Pattern for verifying ownership of specific resources.
+
+```typescript
+class PostModel extends BaseModelClass {
+  /**
+   * Update post (author or admin only)
+   */
+  @api({ httpMethod: "PUT", guards: ["user"] })
+  async update(params: {
+    postId: number;
+    title?: string;
+    content?: string;
+  }): Promise<{ post: Post }> {
+    const context = Sonamu.getContext();
+    const { postId, title, content } = params;
+    
+    // Query post
+    const rdb = this.getPuri("r");
+    const post = await rdb
+      .table("posts")
+      .where("id", postId)
+      .first();
+    
+    if (!post) {
+      throw new Error("Post not found");
+    }
+    
+    // Verify ownership
+    const isOwner = post.user_id === context.user!.id;
+    const isAdmin = context.user!.role === "admin";
+    
+    if (!isOwner && !isAdmin) {
+      throw new Error("You can only edit your own posts");
+    }
+    
+    // Update
+    const wdb = this.getPuri("w");
+    await wdb
+      .table("posts")
+      .where("id", postId)
+      .update({
+        title,
+        content,
+        updated_at: new Date(),
+      });
+    
+    const updatedPost = await rdb
+      .table("posts")
+      .where("id", postId)
+      .first();
+    
+    return { post: updatedPost };
+  }
+  
+  /**
+   * Delete post (author or admin only)
+   */
+  @api({ httpMethod: "DELETE", guards: ["user"] })
+  async remove(postId: number): Promise<{ success: boolean }> {
+    const context = Sonamu.getContext();
+    
+    const rdb = this.getPuri("r");
+    const post = await rdb
+      .table("posts")
+      .where("id", postId)
+      .first();
+    
+    if (!post) {
+      throw new Error("Post not found");
+    }
+    
+    // Verify ownership
+    if (
+      post.user_id !== context.user!.id &&
+      context.user!.role !== "admin"
+    ) {
+      throw new Error("Permission denied");
+    }
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("posts").where("id", postId).delete();
+    
+    return { success: true };
+  }
+}
+```
+
+## Testing Guards
+
+You can test Guards independently.
+
+```typescript
+// guards/__tests__/guards.test.ts
+import { describe, it, expect } from "vitest";
+import { guards } from "../index";
+import type { AppContext } from "../../types/context";
+
+describe("Guards", () => {
+  describe("user guard", () => {
+    it("passes logged in user", () => {
+      const context: Partial<AppContext> = {
+        user: {
+          id: 1,
+          email: "test@example.com",
+          role: "user",
+        } as any,
+      };
+      
+      expect(guards.user(context as AppContext)).toBe(true);
+    });
+    
+    it("blocks non-logged in user", () => {
+      const context: Partial<AppContext> = {
+        user: null,
+      };
+      
+      expect(guards.user(context as AppContext)).toBe(false);
+    });
+  });
+  
+  describe("admin guard", () => {
+    it("passes admin", () => {
+      const context: Partial<AppContext> = {
+        user: {
+          id: 1,
+          email: "admin@example.com",
+          role: "admin",
+        } as any,
+      };
+      
+      expect(guards.admin(context as AppContext)).toBe(true);
+    });
+    
+    it("blocks regular user", () => {
+      const context: Partial<AppContext> = {
+        user: {
+          id: 2,
+          email: "user@example.com",
+          role: "user",
+        } as any,
+      };
+      
+      expect(guards.admin(context as AppContext)).toBe(false);
+    });
+  });
+});
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Guards**:
+1. Guards only handle Authentication, Authorization should be handled in business logic
+2. Additional verification required for sensitive data even after passing Guards
+3. Return 403 Forbidden on Guard failure (not 401 Unauthorized)
+4. Consider order when using multiple Guards (general to specific)
+5. Avoid complex business logic in Guards (simple permission checks only)
+6. Resource ownership verification should be handled inside API methods
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Setup" icon="gear" href="/api-development/authentication/setup">
+    Building authentication system
+  </Card>
+  <Card title="Session Management" icon="clock-rotate-left" href="/api-development/authentication/session-management">
+    Session and token management
+  </Card>
+  <Card title="Context" icon="diagram-project" href="/api-development/context/sonamu-context">
+    Learn more about Context
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    API decorator options
+  </Card>
+</CardGroup>

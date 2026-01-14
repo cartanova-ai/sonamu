@@ -1,0 +1,704 @@
+---
+title: "캐시 무효화"
+description: "Tag 기반 캐시 무효화 및 관리"
+---
+
+캐시를 효과적으로 관리하려면 적절한 시점에 무효화(Invalidation)해야 합니다. Sonamu는 다양한 무효화 방법을 제공합니다.
+
+## 무효화가 필요한 이유
+
+캐시는 성능을 향상시키지만, **오래된 데이터(Stale Data)**를 반환할 수 있습니다.
+
+```typescript
+// 1. 게시글 조회 (캐싱됨)
+const post = await postModel.findById(1);
+// { id: 1, title: "Original Title", views: 100 }
+
+// 2. 게시글 수정
+await postModel.update(1, { title: "Updated Title" });
+
+// 3. 다시 조회
+const updatedPost = await postModel.findById(1);
+// 여전히 { id: 1, title: "Original Title", views: 100 } ❌
+```
+
+**해결책**: 데이터 변경 시 관련 캐시를 무효화
+
+## 무효화 방법
+
+### 1. 특정 키 삭제
+
+가장 기본적인 방법입니다.
+
+```typescript
+class PostModelClass extends BaseModel {
+  @cache({ ttl: "10m" })
+  @api()
+  async findById(id: number) {
+    return this.findOne(['id', id]);
+  }
+  
+  @api()
+  async update(id: number, data: Partial<PostSave>) {
+    const result = await this.updateOne(['id', id], data);
+    
+    // 특정 키 삭제
+    await Sonamu.cache.delete({ key: `Post.findById:${id}` });
+    
+    return result;
+  }
+}
+```
+
+**문제점**: 키를 정확히 알아야 하고, 관련된 모든 캐시를 일일이 삭제해야 함
+
+### 2. Tag 기반 무효화 (권장)
+
+태그를 사용하면 **관련 캐시를 그룹으로 삭제**할 수 있습니다.
+
+```typescript
+class PostModelClass extends BaseModel {
+  // 태그 지정
+  @cache({ ttl: "10m", tags: ["post"] })
+  @api()
+  async findById(id: number) {
+    return this.findOne(['id', id]);
+  }
+  
+  @cache({ ttl: "5m", tags: ["post", "list"] })
+  @api()
+  async findAll() {
+    return this.findMany({});
+  }
+  
+  @api()
+  async update(id: number, data: Partial<PostSave>) {
+    const result = await this.updateOne(['id', id], data);
+    
+    // "post" 태그가 있는 모든 캐시 삭제
+    await Sonamu.cache.deleteByTag({ tags: ["post"] });
+    
+    return result;
+  }
+}
+```
+
+**결과**: `findById()`와 `findAll()` 캐시가 모두 삭제됨
+
+### 3. 여러 키 삭제
+
+```typescript
+await Sonamu.cache.deleteMany({ 
+  keys: ["user:1", "user:2", "user:3"] 
+});
+```
+
+### 4. 전체 캐시 삭제
+
+```typescript
+// 모든 캐시 삭제
+await Sonamu.cache.clear();
+```
+
+**주의**: 프로덕션에서는 신중하게 사용
+
+## Tag 전략
+
+### 계층적 태그 설계
+
+```typescript
+class ProductModelClass extends BaseModel {
+  // 상품 상세 (가장 구체적)
+  @cache({ ttl: "1h", tags: ["product", "product:detail"] })
+  @api()
+  async findById(id: number) {
+    return this.findOne(['id', id]);
+  }
+  
+  // 상품 목록
+  @cache({ ttl: "30m", tags: ["product", "product:list"] })
+  @api()
+  async findAll() {
+    return this.findMany({});
+  }
+  
+  // 카테고리별 목록
+  @cache({ ttl: "30m", tags: ["product", "product:list", "product:category"] })
+  @api()
+  async findByCategory(categoryId: number) {
+    return this.findMany({ where: [['category_id', categoryId]] });
+  }
+  
+  // 인기 상품
+  @cache({ ttl: "1h", tags: ["product", "product:popular"] })
+  @api()
+  async findPopular() {
+    return this.findMany({ 
+      where: [['view_count', '>', 1000]],
+      order: [['view_count', 'desc']],
+      num: 10
+    });
+  }
+}
+```
+
+### 선택적 무효화
+
+```typescript
+class ProductModelClass extends BaseModel {
+  @api()
+  async create(data: ProductSave) {
+    const result = await this.saveOne(data);
+    
+    // 목록만 무효화 (상세는 유지)
+    await Sonamu.cache.deleteByTag({ tags: ["product:list"] });
+    
+    return result;
+  }
+  
+  @api()
+  async update(id: number, data: Partial<ProductSave>) {
+    const result = await this.updateOne(['id', id], data);
+    
+    // 상세 + 목록 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["product:detail", "product:list"] });
+    
+    return result;
+  }
+  
+  @api()
+  async updateViewCount(id: number) {
+    const result = await this.updateOne(['id', id], { 
+      view_count: this.raw('view_count + 1') 
+    });
+    
+    // 조회수 변경은 인기 상품 캐시만 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["product:popular"] });
+    
+    return result;
+  }
+  
+  @api()
+  async deleteProduct(id: number) {
+    const result = await this.deleteOne(['id', id]);
+    
+    // 모든 product 관련 캐시 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["product"] });
+    
+    return result;
+  }
+}
+```
+
+### 동적 태그
+
+특정 엔티티에만 영향을 주는 태그를 동적으로 생성합니다.
+
+```typescript
+class CommentModelClass extends BaseModel {
+  @cache({ 
+    key: (postId: number) => `comments:post:${postId}`,
+    ttl: "10m",
+    tags: (postId: number) => [`comment`, `comment:post:${postId}`]
+  })
+  @api()
+  async findByPostId(postId: number) {
+    return this.findMany({ where: [['post_id', postId]] });
+  }
+  
+  @api()
+  async create(data: CommentSave) {
+    const result = await this.saveOne(data);
+    
+    // 특정 게시글의 댓글 캐시만 무효화
+    await Sonamu.cache.deleteByTag({ 
+      tags: [`comment:post:${data.post_id}`] 
+    });
+    
+    return result;
+  }
+}
+```
+
+**주의**: BentoCache의 `@cache` 데코레이터는 정적 태그만 지원합니다. 동적 태그가 필요하면 직접 캐시를 조작해야 합니다:
+
+```typescript
+@api()
+async findByPostId(postId: number) {
+  const cacheKey = `comments:post:${postId}`;
+  const cacheTags = [`comment`, `comment:post:${postId}`];
+  
+  return Sonamu.cache.getOrSet({
+    key: cacheKey,
+    ttl: "10m",
+    tags: cacheTags,
+    factory: () => this.findMany({ where: [['post_id', postId]] })
+  });
+}
+```
+
+## 실전 예제
+
+### 1. 게시글 + 댓글 무효화
+
+```typescript
+class PostModelClass extends BaseModel {
+  @cache({ ttl: "10m", tags: ["post"] })
+  @api()
+  async findById(id: number) {
+    const post = await this.findOne(['id', id]);
+    const comments = await commentModel.findByPostId(id);
+    return { ...post, comments };
+  }
+  
+  @cache({ ttl: "5m", tags: ["post", "list"] })
+  @api()
+  async findAll() {
+    return this.findMany({});
+  }
+}
+
+class CommentModelClass extends BaseModel {
+  @cache({ ttl: "10m", tags: ["comment"] })
+  @api()
+  async findByPostId(postId: number) {
+    return this.findMany({ where: [['post_id', postId]] });
+  }
+  
+  @api()
+  async create(data: CommentSave) {
+    const result = await this.saveOne(data);
+    
+    // 댓글 생성 시: 댓글 캐시 + 게시글 캐시 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["comment", "post"] });
+    
+    return result;
+  }
+}
+```
+
+### 2. 사용자 + 권한 무효화
+
+```typescript
+class UserModelClass extends BaseModel {
+  @cache({ ttl: "1h", tags: ["user"] })
+  @api()
+  async findById(id: number) {
+    const user = await this.findOne(['id', id]);
+    const roles = await userRoleModel.findByUserId(id);
+    return { ...user, roles };
+  }
+}
+
+class UserRoleModelClass extends BaseModel {
+  @cache({ ttl: "1h", tags: ["user", "role"] })
+  @api()
+  async findByUserId(userId: number) {
+    return this.findMany({ where: [['user_id', userId]] });
+  }
+  
+  @api()
+  async assign(userId: number, roleId: number) {
+    const result = await this.saveOne({ user_id: userId, role_id: roleId });
+    
+    // 사용자 캐시 전체 무효화 (권한 정보 포함)
+    await Sonamu.cache.deleteByTag({ tags: ["user"] });
+    
+    return result;
+  }
+}
+```
+
+### 3. 카테고리 계층 구조
+
+```typescript
+class CategoryModelClass extends BaseModel {
+  @cache({ ttl: "1h", tags: ["category", "category:tree"] })
+  @api()
+  async getTree() {
+    return this.buildTree(await this.findMany({}));
+  }
+  
+  @cache({ ttl: "30m", tags: ["category", "category:products"] })
+  @api()
+  async getWithProducts(id: number) {
+    const category = await this.findOne(['id', id]);
+    const products = await productModel.findByCategory(id);
+    return { ...category, products };
+  }
+  
+  @api()
+  async update(id: number, data: Partial<CategorySave>) {
+    const result = await this.updateOne(['id', id], data);
+    
+    // 카테고리 트리만 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["category:tree"] });
+    
+    return result;
+  }
+}
+
+class ProductModelClass extends BaseModel {
+  @api()
+  async updateCategory(productId: number, categoryId: number) {
+    const result = await this.updateOne(['id', productId], { category_id: categoryId });
+    
+    // 카테고리-상품 연결 캐시 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["category:products", "product"] });
+    
+    return result;
+  }
+}
+```
+
+### 4. 집계 데이터 무효화
+
+```typescript
+class OrderModelClass extends BaseModel {
+  @cache({ ttl: "10m", tags: ["order", "order:stats"] })
+  @api()
+  async getStats() {
+    const [total, pending, completed] = await Promise.all([
+      this.count(),
+      this.count({ where: [['status', 'pending']] }),
+      this.count({ where: [['status', 'completed']] }),
+    ]);
+    return { total, pending, completed };
+  }
+  
+  @api()
+  async updateStatus(id: number, status: string) {
+    const result = await this.updateOne(['id', id], { status });
+    
+    // 통계 캐시 무효화
+    await Sonamu.cache.deleteByTag({ tags: ["order:stats"] });
+    
+    return result;
+  }
+}
+```
+
+## Namespace를 활용한 격리
+
+Namespace를 사용하면 **사용자별, 테넌트별**로 캐시를 격리할 수 있습니다.
+
+### 사용자별 캐시
+
+```typescript
+class UserDataModelClass extends BaseModel {
+  @api()
+  async getMyData(ctx: Context) {
+    const userId = ctx.user.id;
+    const userCache = Sonamu.cache.namespace(`user:${userId}`);
+    
+    return userCache.getOrSet({
+      key: "my-data",
+      ttl: "10m",
+      factory: async () => {
+        return this.findMany({ where: [['user_id', userId]] });
+      }
+    });
+  }
+  
+  @api()
+  async updateMyData(ctx: Context, data: any) {
+    const userId = ctx.user.id;
+    const result = await this.saveOne({ ...data, user_id: userId });
+    
+    // 해당 사용자의 캐시만 무효화
+    const userCache = Sonamu.cache.namespace(`user:${userId}`);
+    await userCache.clear();
+    
+    return result;
+  }
+}
+```
+
+### 멀티 테넌트
+
+```typescript
+class TenantDataModelClass extends BaseModel {
+  @api()
+  async getData(tenantId: number) {
+    const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
+    
+    return tenantCache.getOrSet({
+      key: "data",
+      ttl: "1h",
+      tags: ["tenant-data"],
+      factory: async () => {
+        return this.findMany({ where: [['tenant_id', tenantId]] });
+      }
+    });
+  }
+  
+  @api()
+  async clearTenantCache(tenantId: number) {
+    const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
+    
+    // 특정 테넌트의 모든 캐시 삭제
+    await tenantCache.clear();
+  }
+}
+```
+
+## 무효화 전략
+
+### 1. Eager Invalidation (즉시 무효화)
+
+데이터 변경 **즉시** 캐시를 삭제합니다.
+
+```typescript
+@api()
+async update(id: number, data: Partial<PostSave>) {
+  const result = await this.updateOne(['id', id], data);
+  
+  // 즉시 무효화
+  await Sonamu.cache.deleteByTag({ tags: ["post"] });
+  
+  return result;
+}
+```
+
+**장점**:
+- 간단하고 명확
+- 오래된 데이터 없음
+
+**단점**:
+- 캐시가 자주 삭제되어 히트율 감소
+
+### 2. Lazy Invalidation (지연 무효화)
+
+TTL에 의존하여 자동 만료를 기다립니다.
+
+```typescript
+@cache({ ttl: "5m", tags: ["post"] })  // 5분 후 자동 만료
+@api()
+async findById(id: number) {
+  return this.findOne(['id', id]);
+}
+
+@api()
+async update(id: number, data: Partial<PostSave>) {
+  const result = await this.updateOne(['id', id], data);
+  
+  // 무효화 없음 (5분 후 자동 만료)
+  
+  return result;
+}
+```
+
+**장점**:
+- 높은 캐시 히트율
+- 간단한 코드
+
+**단점**:
+- 최대 5분간 오래된 데이터 가능
+
+### 3. Hybrid (하이브리드)
+
+중요한 변경은 즉시 무효화, 사소한 변경은 TTL 의존:
+
+```typescript
+@api()
+async update(id: number, data: Partial<PostSave>) {
+  const result = await this.updateOne(['id', id], data);
+  
+  // 제목/내용 변경 시에만 즉시 무효화
+  if (data.title || data.content) {
+    await Sonamu.cache.deleteByTag({ tags: ["post"] });
+  }
+  // 조회수 등은 TTL 의존
+  
+  return result;
+}
+```
+
+### 4. Write-Through (쓰기 시 갱신)
+
+캐시를 삭제하지 않고 **갱신**합니다.
+
+```typescript
+@api()
+async update(id: number, data: Partial<PostSave>) {
+  const result = await this.updateOne(['id', id], data);
+  
+  // 캐시 갱신
+  const cacheKey = `Post.findById:${id}`;
+  await Sonamu.cache.set({ 
+    key: cacheKey, 
+    value: result,
+    ttl: "10m",
+    tags: ["post"]
+  });
+  
+  return result;
+}
+```
+
+**장점**:
+- 캐시가 항상 최신 상태
+- 높은 히트율
+
+**단점**:
+- 복잡한 캐시 키 관리
+- 쓰기 성능 저하
+
+## 분산 환경에서의 무효화
+
+### Bus를 사용한 동기화
+
+여러 서버가 있을 때, **Bus**를 사용하면 무효화가 모든 서버에 전파됩니다.
+
+```typescript
+// sonamu.config.ts
+import Redis from "ioredis";
+
+const redis = new Redis({ host: "localhost", port: 6379 });
+
+export const config: SonamuConfig = {
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "200mb" }))
+          .useL2Layer(drivers.redis({ connection: redis }))
+          .useBus(drivers.redisBus({ connection: redis })),  // Bus 추가
+      },
+    },
+  },
+};
+```
+
+**작동 방식**:
+```
+Server 1: deleteByTag("product")
+  ↓
+Bus: "product 태그 무효화" 메시지 발행
+  ↓
+Server 2, 3, 4: Bus 메시지 수신 → L1 캐시 삭제
+```
+
+### Bus 없이 사용하는 경우
+
+Bus가 없으면 각 서버의 L1은 독립적입니다:
+
+```typescript
+// Bus 없는 설정
+store()
+  .useL1Layer(drivers.memory({ maxSize: "200mb" }))
+  .useL2Layer(drivers.redis({ connection: redis }))
+// Bus 없음
+```
+
+**문제**:
+```
+Server 1: deleteByTag("product") → L1/L2 삭제
+Server 2: L1에 여전히 오래된 캐시 존재 ❌
+```
+
+**해결책**:
+1. Bus 추가 (권장)
+2. L1 없이 L2만 사용 (느림)
+3. 짧은 TTL 사용 (오래된 데이터 허용)
+
+## 모니터링
+
+### 캐시 키 확인
+
+```typescript
+// 특정 키 존재 확인
+const exists = await Sonamu.cache.has({ key: "post:1" });
+console.log(exists);  // true or false
+
+// 값 가져오기
+const value = await Sonamu.cache.get({ key: "post:1" });
+console.log(value);
+```
+
+### 태그로 무효화 전 확인
+
+무효화 전에 영향받는 키를 확인할 수는 없지만, 태그를 일관되게 사용하면 예측 가능합니다.
+
+```typescript
+// 태그 명명 규칙
+const tags = {
+  post: ["post"],                    // 모든 게시글
+  postDetail: ["post", "detail"],    // 게시글 상세
+  postList: ["post", "list"],        // 게시글 목록
+  comment: ["comment"],              // 모든 댓글
+};
+
+// 무효화 시 명확한 의도
+await Sonamu.cache.deleteByTag({ tags: ["post", "list"] });  // 목록만
+await Sonamu.cache.deleteByTag({ tags: ["post"] });          // 모든 게시글
+```
+
+## 주의사항
+
+<Warning>
+**캐시 무효화 시 주의사항**:
+
+1. **과도한 무효화 지양**: 너무 자주 무효화하면 캐시 효과가 감소
+   ```typescript
+   // ❌ 나쁜 예: 조회수 증가마다 모든 캐시 삭제
+   async incrementViewCount(id: number) {
+     await this.updateOne(['id', id], { views: this.raw('views + 1') });
+     await Sonamu.cache.deleteByTag({ tags: ["post"] });  // 너무 과함
+   }
+   
+   // ✅ 좋은 예: 조회수는 TTL에 의존
+   async incrementViewCount(id: number) {
+     await this.updateOne(['id', id], { views: this.raw('views + 1') });
+     // 무효화 없음, TTL로 자동 만료
+   }
+   ```
+
+2. **태그 일관성 유지**: 태그를 일관되게 사용해야 무효화가 정확함
+   ```typescript
+   // ❌ 일관성 없음
+   @cache({ tags: ["Post"] })  // 대문자
+   @cache({ tags: ["post"] })  // 소문자
+   
+   // ✅ 일관성 있음
+   @cache({ tags: ["post"] })
+   @cache({ tags: ["post", "list"] })
+   ```
+
+3. **순환 무효화 방지**: A가 B를 무효화하고 B가 A를 무효화하면 무한 루프
+   ```typescript
+   // ❌ 위험: 순환 무효화
+   class AModel {
+     @api()
+     async update() {
+       // ...
+       await Sonamu.cache.deleteByTag({ tags: ["b"] });
+     }
+   }
+   
+   class BModel {
+     @api()
+     async update() {
+       // ...
+       await Sonamu.cache.deleteByTag({ tags: ["a"] });
+     }
+   }
+   ```
+
+4. **분산 환경에서는 Bus 필수**: Bus 없이 여러 서버를 운영하면 불일치 발생
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="캐시 설정" icon="gear" href="/advanced-features/caching/cache-configuration">
+    Stores와 Drivers 설정하기
+  </Card>
+  <Card title="@cache 데코레이터" icon="at" href="/advanced-features/caching/cache-decorator">
+    메서드에 캐시 적용하기
+  </Card>
+  <Card title="캐시 전략" icon="chess" href="/advanced-features/caching/cache-strategies">
+    TTL, Grace, Namespace 활용
+  </Card>
+</CardGroup>

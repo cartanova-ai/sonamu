@@ -1,0 +1,734 @@
+---
+title: "Zod Validation"
+description: "Runtime data validation guide using Zod"
+---
+
+Sonamu uses Zod to validate TypeScript types at runtime. This document explains all features and patterns of Zod validation.
+
+## What is Zod?
+
+<CardGroup cols={2}>
+  <Card title="Type-Safe Schema" icon="shield">
+    Auto TypeScript type inference - No separate type definition needed
+  </Card>
+  <Card title="Runtime Validation" icon="play">
+    Actual data validation at execution - Block invalid data
+  </Card>
+  <Card title="Detailed Errors" icon="triangle-exclamation">
+    Field-by-field error messages - Easy debugging
+  </Card>
+  <Card title="Transform & Defaults" icon="wand-magic-sparkles">
+    Data transformation and defaults - Flexible handling
+  </Card>
+</CardGroup>
+
+## Basic Usage
+
+Zod schemas are auto-generated from Entities, but you can also define them manually.
+
+### Schema Definition
+
+<CodeGroup>
+```typescript title="Auto-generated (user.types.ts)"
+import { z } from "zod";
+
+// Auto-generated from Entity
+export const User = z.object({
+  id: z.number().int(),
+  email: z.string().max(100),
+  age: z.number().int(),
+  role: z.enum(["admin", "normal"]),
+});
+
+export type User = z.infer<typeof User>;
+```
+
+```typescript title="Manual definition (custom.types.ts)"
+import { z } from "zod";
+
+// Custom schema
+export const LoginParams = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  rememberMe: z.boolean().optional(),
+});
+
+export type LoginParams = z.infer<typeof LoginParams>;
+```
+
+</CodeGroup>
+
+### Data Validation
+
+<CodeGroup>
+```typescript title="parse (throws error)"
+import { User } from "./user.types";
+
+try {
+  const user = User.parse({
+    id: 1,
+    email: "john@test.com",
+    age: 30,
+    role: "admin",
+  });
+  // ✅ Validation success, user is User type
+  console.log(user.email);
+} catch (error) {
+  // ❌ ZodError on validation failure
+  console.error(error);
+}
+```
+
+```typescript title="safeParse (error-safe)"
+import { User } from "./user.types";
+
+const result = User.safeParse({
+  id: 1,
+  email: "invalid-email",
+  age: "30",
+  role: "guest",
+});
+
+if (result.success) {
+  // ✅ Validation success
+  console.log(result.data.email);
+} else {
+  // ❌ Validation failure
+  console.error(result.error.issues);
+  // [
+  //   { path: ["email"], message: "Invalid email" },
+  //   { path: ["age"], message: "Expected number, received string" },
+  //   { path: ["role"], message: "Invalid enum value" }
+  // ]
+}
+```
+
+</CodeGroup>
+
+<Info>
+**parse vs safeParse**:
+- `parse()`: Throws errors. Handle with try-catch
+- `safeParse()`: Returns errors. Check with result.success
+
+Use `parse()` in API handlers to automatically return 400 errors, and use `safeParse()` in UI for safe handling.
+
+</Info>
+
+## Basic Type Validation
+
+Zod validation for each Entity type.
+
+### String Validation
+
+<CodeGroup>
+```typescript title="Basic string"
+const email = z.string();
+email.parse("john@test.com");  // ✅
+
+const withLength = z.string().max(100);
+withLength.parse("a".repeat(100)); // ✅
+withLength.parse("a".repeat(101)); // ❌
+```
+
+```typescript title="Email validation"
+const email = z.string().email();
+email.parse("john@test.com");  // ✅
+email.parse("invalid-email");  // ❌
+```
+
+```typescript title="URL validation"
+const url = z.string().url();
+url.parse("https://example.com"); // ✅
+url.parse("not-a-url"); // ❌
+```
+
+```typescript title="UUID validation"
+const uuid = z.string().uuid();
+uuid.parse("550e8400-e29b-41d4-a716-446655440000"); // ✅
+uuid.parse("invalid-uuid"); // ❌
+```
+
+```typescript title="Pattern validation"
+const username = z.string().regex(/^[a-zA-Z0-9_]+$/);
+username.parse("john_doe"); // ✅
+username.parse("john@doe"); // ❌
+```
+
+</CodeGroup>
+
+### Number Validation
+
+<CodeGroup>
+```typescript title="Integer"
+const age = z.number().int();
+age.parse(30);  // ✅
+age.parse(30.5);  // ❌ Must be integer
+```
+
+```typescript title="Range validation"
+const age = z.number().int().min(0).max(120);
+age.parse(30); // ✅
+age.parse(-1); // ❌ Number must be greater than or equal to 0
+age.parse(150); // ❌ Number must be less than or equal to 120
+```
+
+```typescript title="Positive validation"
+const price = z.number().positive();
+price.parse(100); // ✅
+price.parse(0); // ❌
+price.parse(-10); // ❌
+```
+
+```typescript title="Non-negative"
+const count = z.number().nonnegative();
+count.parse(0); // ✅
+count.parse(10); // ✅
+count.parse(-1); // ❌
+```
+
+</CodeGroup>
+
+### Date Validation
+
+<CodeGroup>
+```typescript title="Basic date"
+const birthDate = z.date();
+birthDate.parse(new Date());  // ✅
+birthDate.parse("2024-01-01");  // ❌ Expected Date, received string
+```
+
+```typescript title="Date range"
+const birthDate = z.date().min(new Date("1900-01-01")).max(new Date());
+
+birthDate.parse(new Date("2000-01-01")); // ✅
+birthDate.parse(new Date("1800-01-01")); // ❌
+```
+
+```typescript title="String → Date conversion"
+// Commonly used in APIs
+const dateSchema = z
+  .string()
+  .datetime()
+  .transform((val) => new Date(val));
+
+dateSchema.parse("2024-01-01T00:00:00.000Z"); // ✅ Returns Date object
+```
+
+</CodeGroup>
+
+### Boolean Validation
+
+```typescript
+const isActive = z.boolean();
+isActive.parse(true); // ✅
+isActive.parse(false); // ✅
+isActive.parse("true"); // ❌ Expected boolean, received string
+
+// Coerce: string → boolean
+const coerced = z.coerce.boolean();
+coerced.parse("true"); // ✅ true
+coerced.parse("false"); // ✅ false
+coerced.parse(1); // ✅ true
+coerced.parse(0); // ✅ false
+```
+
+## Complex Type Validation
+
+### Arrays
+
+<CodeGroup>
+```typescript title="Basic array"
+const tags = z.string().array();
+tags.parse(["typescript", "nodejs"]);  // ✅
+tags.parse(["typescript", 123]);  // ❌
+```
+
+```typescript title="Array length validation"
+const tags = z.string().array().min(1).max(5);
+tags.parse(["tag1"]); // ✅
+tags.parse([]); // ❌ Array must contain at least 1 element(s)
+tags.parse(["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"]); // ❌
+```
+
+```typescript title="Non-empty array"
+const tags = z.string().array().nonempty();
+tags.parse(["tag1"]); // ✅
+tags.parse([]); // ❌ Array must contain at least 1 element(s)
+```
+
+</CodeGroup>
+
+### Objects
+
+<CodeGroup>
+```typescript title="Nested object"
+const user = z.object({
+  name: z.string(),
+  profile: z.object({
+    bio: z.string(),
+    website: z.string().url().optional(),
+  }),
+});
+
+user.parse({
+  name: "John",
+  profile: {
+    bio: "Hello",
+    website: "https://john.com",
+  },
+}); // ✅
+```
+
+```typescript title="Optional fields"
+const user = z.object({
+  name: z.string(),
+  nickname: z.string().optional(),  // Allow undefined
+  bio: z.string().nullable(),       // Allow null
+});
+
+user.parse({ name: "John" });  // ✅ (nickname is undefined)
+user.parse({ name: "John", nickname: "JD" });  // ✅
+user.parse({ name: "John", bio: null });  // ✅
+```
+
+</CodeGroup>
+
+### Enums
+
+<CodeGroup>
+```typescript title="Enum validation"
+const role = z.enum(["admin", "moderator", "normal"]);
+
+role.parse("admin"); // ✅
+role.parse("guest"); // ❌ Invalid enum value
+```
+
+```typescript title="Enum array"
+const roles = z.enum(["admin", "moderator", "normal"]).array();
+
+roles.parse(["admin", "normal"]);  // ✅
+roles.parse(["admin", "guest"]);  // ❌
+```
+
+</CodeGroup>
+
+### Union (one of multiple types)
+
+```typescript
+const idOrEmail = z.union([z.number().int(), z.string().email()]);
+
+idOrEmail.parse(123); // ✅
+idOrEmail.parse("john@test.com"); // ✅
+idOrEmail.parse("not-an-email"); // ❌
+```
+
+## Advanced Validation Patterns
+
+### Conditional Validation
+
+<CodeGroup>
+```typescript title="refine (custom validation)"
+const password = z.string()
+  .min(8)
+  .refine(
+    (val) => /[A-Z]/.test(val),
+    { message: "Must contain uppercase letter" }
+  )
+  .refine(
+    (val) => /[0-9]/.test(val),
+    { message: "Must contain number" }
+  )
+  .refine(
+    (val) => /[!@#$%^&*]/.test(val),
+    { message: "Must contain special character" }
+  );
+
+password.parse("Abc12345!"); // ✅
+password.parse("abc12345"); // ❌ No uppercase
+```
+
+```typescript title="superRefine (multiple errors)"
+const user = z.object({
+  password: z.string(),
+  passwordConfirm: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.passwordConfirm) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Passwords do not match",
+      path: ["passwordConfirm"],
+    });
+  }
+
+  if (data.password.length < 8) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Password must be at least 8 characters",
+      path: ["password"],
+    });
+  }
+});
+```
+
+</CodeGroup>
+
+### Data Transformation
+
+<CodeGroup>
+```typescript title="transform (value conversion)"
+const age = z.string().transform(val => parseInt(val, 10));
+
+age.parse("30"); // ✅ 30 (number)
+```
+
+```typescript title="preprocess (preprocessing)"
+const email = z.preprocess(
+  (val) => String(val).toLowerCase().trim(),
+  z.string().email()
+);
+
+email.parse("  JOHN@TEST.COM  ");  // ✅ "john@test.com"
+```
+
+```typescript title="coerce (type coercion)"
+const age = z.coerce.number();
+
+age.parse("30"); // ✅ 30 (converted to number)
+age.parse("abc"); // ❌ NaN passes as number but validation fails
+```
+
+</CodeGroup>
+
+### Default Values
+
+<CodeGroup>
+```typescript title="default (default value)"
+const settings = z.object({
+  theme: z.enum(["light", "dark"]).default("light"),
+  notifications: z.boolean().default(true),
+});
+
+settings.parse({}); // ✅ { theme: "light", notifications: true }
+settings.parse({ theme: "dark" }); // ✅ { theme: "dark", notifications: true }
+```
+
+```typescript title="catch (default on error)"
+const count = z.number().catch(0);
+
+count.parse(10);  // ✅ 10
+count.parse("invalid");  // ✅ 0 (default instead of error)
+```
+
+</CodeGroup>
+
+## Practical Validation Patterns
+
+### API Parameter Validation
+
+<CodeGroup>
+```typescript title="ListParams validation"
+export const UserListParams = z.object({
+  num: z.number().int().min(1).max(100).default(24),
+  page: z.number().int().min(1).default(1),
+  search: z.enum(["id", "email", "username"]).optional(),
+  keyword: z.string().trim().optional(),
+  orderBy: z.enum(["id-desc", "id-asc", "created_at-desc"]).optional(),
+}).refine(
+  (data) => {
+    // keyword requires search
+    if (data.keyword && !data.search) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "keyword and search must be used together",
+    path: ["search"],
+  }
+);
+```
+
+```typescript title="SaveParams validation"
+export const UserSaveParams = z
+  .object({
+    id: z.number().int().optional(),
+    email: z.string().email().max(100),
+    username: z
+      .string()
+      .min(2)
+      .max(50)
+      .regex(/^[a-zA-Z0-9_]+$/),
+    password: z.string().min(8).optional(),
+    role: z.enum(["admin", "normal"]).default("normal"),
+  })
+  .refine(
+    (data) => {
+      // Password required for new users
+      if (!data.id && !data.password) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Password is required for new users",
+      path: ["password"],
+    }
+  );
+```
+
+</CodeGroup>
+
+### Business Logic Validation
+
+<CodeGroup>
+```typescript title="Date range validation"
+const dateRange = z.object({
+  startDate: z.date(),
+  endDate: z.date(),
+}).refine(
+  (data) => data.endDate > data.startDate,
+  {
+    message: "End date must be after start date",
+    path: ["endDate"],
+  }
+).refine(
+  (data) => {
+    const diff = data.endDate.getTime() - data.startDate.getTime();
+    const days = diff / (1000 * 60 * 60 * 24);
+    return days <= 365;
+  },
+  {
+    message: "Period can be maximum 1 year",
+    path: ["endDate"],
+  }
+);
+```
+
+```typescript title="Amount validation"
+const payment = z
+  .object({
+    amount: z.number().positive(),
+    discount: z.number().nonnegative().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.discount && data.discount > data.amount) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Discount cannot exceed payment amount",
+      path: ["discount"],
+    }
+  );
+```
+
+</CodeGroup>
+
+### Form Validation
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UserSaveParams } from "@/services/user/user.types";
+
+function UserForm() {
+  const form = useForm({
+    resolver: zodResolver(UserSaveParams),
+    defaultValues: {
+      email: "",
+      username: "",
+      role: "normal",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    // data is automatically UserSaveParams type
+    console.log(data);
+  });
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input {...form.register("email")} />
+      {form.formState.errors.email && (
+        <span>{form.formState.errors.email.message}</span>
+      )}
+
+      <input {...form.register("username")} />
+      {form.formState.errors.username && (
+        <span>{form.formState.errors.username.message}</span>
+      )}
+
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
+
+## Error Handling
+
+### ZodError Structure
+
+```typescript
+try {
+  User.parse(invalidData);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    console.log(error.issues);
+    // [
+    //   {
+    //     code: "invalid_type",
+    //     expected: "string",
+    //     received: "number",
+    //     path: ["email"],
+    //     message: "Expected string, received number"
+    //   },
+    //   {
+    //     code: "too_small",
+    //     minimum: 8,
+    //     type: "string",
+    //     inclusive: true,
+    //     path: ["password"],
+    //     message: "String must contain at least 8 character(s)"
+    //   }
+    // ]
+  }
+}
+```
+
+### Custom Error Messages
+
+<CodeGroup>
+```typescript title="Per-field custom messages"
+const user = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  age: z.number()
+    .int("Age must be an integer")
+    .min(0, "Age must be 0 or greater")
+    .max(120, "Age must be 120 or less"),
+});
+```
+
+```typescript title="Global error message setting"
+import { z } from "zod";
+
+// Custom error messages
+const customErrorMap: z.ZodErrorMap = (issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    if (issue.expected === "string") {
+      return { message: "Please enter a string" };
+    }
+    if (issue.expected === "number") {
+      return { message: "Please enter a number" };
+    }
+  }
+  if (issue.code === z.ZodIssueCode.too_small) {
+    return { message: `Please enter at least ${issue.minimum} characters` };
+  }
+  return { message: ctx.defaultError };
+};
+
+z.setErrorMap(customErrorMap);
+```
+
+</CodeGroup>
+
+### Error Formatting
+
+```typescript
+const result = User.safeParse(invalidData);
+
+if (!result.success) {
+  // Flat errors (by field)
+  const flatErrors = result.error.flatten();
+  console.log(flatErrors.fieldErrors);
+  // {
+  //   email: ["Invalid email"],
+  //   age: ["Number must be greater than 0"]
+  // }
+
+  // Form errors (React Hook Form format)
+  const formErrors = result.error.format();
+  console.log(formErrors.email?._errors); // ["Invalid email"]
+}
+```
+
+## Performance Optimization
+
+### Schema Reuse
+
+```typescript
+// ❌ Create new each time (slow)
+function validate(data: unknown) {
+  const schema = z.object({
+    name: z.string(),
+    age: z.number(),
+  });
+  return schema.parse(data);
+}
+
+// ✅ Reuse schema (fast)
+const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+function validate(data: unknown) {
+  return schema.parse(data);
+}
+```
+
+### Partial Validation
+
+```typescript
+// Partial validation when full validation is not needed
+const user = z.object({
+  id: z.number(),
+  email: z.string().email(),
+  profile: z.object({
+    bio: z.string(),
+    website: z.string().url(),
+  }),
+});
+
+// Validate only email
+const emailOnly = user.pick({ email: true });
+emailOnly.parse({ email: "john@test.com" }); // ✅ Fast
+
+// Validate only profile
+const profileOnly = user.pick({ profile: true });
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/en/core-concepts/type-system/e2e-type-safety"
+  >
+    End-to-end type safety
+  </Card>
+  <Card
+    title="Entity Types"
+    icon="database"
+    href="/en/core-concepts/type-system/entity-types"
+  >
+    Entity type conversion
+  </Card>
+  <Card
+    title="Generated Types"
+    icon="file-lines"
+    href="/en/core-concepts/type-system/generated-types"
+  >
+    Using generated types
+  </Card>
+  <Card
+    title="Model Testing"
+    icon="flask"
+    href="/en/testing/model-testing/unit-tests"
+  >
+    Testing Zod validation
+  </Card>
+</CardGroup>

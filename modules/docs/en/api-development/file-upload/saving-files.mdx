@@ -1,0 +1,617 @@
+---
+title: "Saving Files"
+description: "Storage Manager and various storage drivers"
+---
+
+Learn how to save files to local, S3, GCS, and other storage using Sonamu's Storage Manager.
+
+## Storage Manager Overview
+
+<CardGroup cols={2}>
+  <Card title="Unified Interface" icon="layer-group">
+    Single API
+    
+    Multiple storage support
+  </Card>
+  <Card title="Driver System" icon="plug">
+    local, s3, gcs
+    
+    Extensible
+  </Card>
+  <Card title="saveToDisk()" icon="floppy-disk">
+    Easy saving
+    
+    Auto URL generation
+  </Card>
+  <Card title="Disk Management" icon="hard-drive">
+    Multiple disk configuration
+    
+    Purpose-based separation
+  </Card>
+</CardGroup>
+
+## saveToDisk() Method (Recommended)
+
+### Basic Usage
+
+The `saveToDisk()` method of `UploadedFile` is the simplest way to save files.
+
+```typescript
+import type { UploadedFile } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save file (default disk)
+    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    
+    return { url };
+  }
+}
+```
+
+### Disk Selection
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadToS3(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save to S3 disk
+    const url = await file.saveToDisk(
+      `uploads/${Date.now()}-${file.filename}`,
+      "s3" // Disk name
+    );
+    
+    return { url };
+  }
+}
+```
+
+## Using Storage Manager Directly
+
+### Basic Usage
+
+You can use Storage Manager directly when `saveToDisk()` cannot be used.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async uploadBuffer(params: {
+    buffer: Buffer;
+    filename: string;
+    mimetype: string;
+  }): Promise<{ url: string }> {
+    const { buffer, filename, mimetype } = params;
+    
+    // Get default disk
+    const disk = Sonamu.storage.use();
+    
+    // Save file
+    const key = `uploads/${Date.now()}-${filename}`;
+    await disk.put(key, new Uint8Array(buffer), {
+      contentType: mimetype,
+    });
+    
+    // Generate URL
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+### Using Specific Disk
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async uploadToS3(params: {
+    buffer: Buffer;
+    filename: string;
+  }): Promise<{ url: string }> {
+    const { buffer, filename } = params;
+    
+    // Get S3 disk
+    const s3Disk = Sonamu.storage.use("s3");
+    
+    // Save file
+    const key = `uploads/${Date.now()}-${filename}`;
+    await s3Disk.put(key, new Uint8Array(buffer), {
+      contentType: "application/octet-stream",
+    });
+    
+    // Generate URL
+    const url = await s3Disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+## Storage Configuration
+
+### storage.config.ts
+
+```typescript
+// storage.config.ts
+import type { StorageConfig } from "sonamu";
+
+export const storageConfig: StorageConfig = {
+  default: "local", // Default disk
+  
+  disks: {
+    // Local storage
+    local: {
+      driver: "local",
+      root: "uploads",
+      url: process.env.APP_URL || "http://localhost:3000",
+    },
+    
+    // AWS S3
+    s3: {
+      driver: "s3",
+      bucket: process.env.S3_BUCKET!,
+      region: process.env.S3_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+      endpoint: process.env.S3_ENDPOINT, // MinIO, etc.
+    },
+    
+    // Google Cloud Storage
+    gcs: {
+      driver: "gcs",
+      bucket: process.env.GCS_BUCKET!,
+      projectId: process.env.GCS_PROJECT_ID!,
+      keyFilename: process.env.GCS_KEY_FILENAME!,
+    },
+    
+    // For public files
+    public: {
+      driver: "s3",
+      bucket: process.env.PUBLIC_S3_BUCKET!,
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+    },
+    
+    // For private files
+    private: {
+      driver: "s3",
+      bucket: process.env.PRIVATE_S3_BUCKET!,
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+    },
+  },
+};
+```
+
+## Storage Driver API
+
+### put() - Save File
+
+```typescript
+const disk = Sonamu.storage.use();
+
+await disk.put(key, data, options);
+```
+
+**Parameters**:
+- `key: string` - Storage path
+- `data: Uint8Array` - File data
+- `options: { contentType?: string }` - Options
+
+### get() - Read File
+
+```typescript
+const buffer = await disk.get(key);
+```
+
+### delete() - Delete File
+
+```typescript
+await disk.delete(key);
+```
+
+### exists() - Check File Existence
+
+```typescript
+const exists = await disk.exists(key);
+```
+
+### getUrl() - Generate Public URL
+
+```typescript
+const url = await disk.getUrl(key);
+```
+
+### getSignedUrl() - Generate Signed URL
+
+```typescript
+const signedUrl = await disk.getSignedUrl(key, expiresIn);
+```
+
+## Practical Examples
+
+### Date-based Folder Structure
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Generate date-based path
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    
+    const key = `uploads/${year}/${month}/${day}/${Date.now()}.${file.extname}`;
+    
+    const url = await file.saveToDisk(key);
+    
+    return { url };
+  }
+}
+```
+
+### User-based Folder Structure
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { file } = params;
+    
+    // User-specific path
+    const key = `users/${context.user.id}/${Date.now()}.${file.extname}`;
+    
+    const url = await file.saveToDisk(key);
+    
+    return { url };
+  }
+}
+```
+
+### Category-based Disk Selection
+
+```typescript
+class MediaModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadMedia(params: {
+    file: UploadedFile;
+    category: "public" | "private";
+  }): Promise<{ url: string }> {
+    const { file, category } = params;
+    
+    // Select disk by category
+    const diskName = category === "public" ? "public" : "private";
+    
+    const key = `media/${Date.now()}.${file.extname}`;
+    const url = await file.saveToDisk(key, diskName);
+    
+    return { url };
+  }
+}
+```
+
+### Image Optimization Before Saving
+
+```typescript
+import sharp from "sharp";
+
+class ImageModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadOptimized(params: {
+    image: UploadedFile;
+  }): Promise<{
+    originalUrl: string;
+    thumbnailUrl: string;
+    mediumUrl: string;
+  }> {
+    const { image } = params;
+    
+    // Original image Buffer
+    const buffer = await image.toBuffer();
+    
+    const timestamp = Date.now();
+    const ext = image.extname;
+    
+    // Save original
+    const originalKey = `images/original/${timestamp}.${ext}`;
+    const originalUrl = await image.saveToDisk(originalKey);
+    
+    // Get Storage Manager
+    const disk = Sonamu.storage.use();
+    
+    // Create and save thumbnail (200x200)
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(200, 200, { fit: "cover" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    
+    const thumbnailKey = `images/thumbnail/${timestamp}.jpg`;
+    await disk.put(thumbnailKey, new Uint8Array(thumbnailBuffer), {
+      contentType: "image/jpeg",
+    });
+    const thumbnailUrl = await disk.getUrl(thumbnailKey);
+    
+    // Create and save medium size (800x800)
+    const mediumBuffer = await sharp(buffer)
+      .resize(800, 800, { fit: "inside" })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    
+    const mediumKey = `images/medium/${timestamp}.jpg`;
+    await disk.put(mediumKey, new Uint8Array(mediumBuffer), {
+      contentType: "image/jpeg",
+    });
+    const mediumUrl = await disk.getUrl(mediumKey);
+    
+    return {
+      originalUrl,
+      thumbnailUrl,
+      mediumUrl,
+    };
+  }
+}
+```
+
+### Save to Multiple Disks Simultaneously
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithBackup(params: {
+    file: UploadedFile;
+  }): Promise<{
+    primaryUrl: string;
+    backupUrl: string;
+  }> {
+    const { file } = params;
+    
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    const buffer = await file.toBuffer();
+    
+    // Save to primary disk
+    const primaryUrl = await file.saveToDisk(key, "s3");
+    
+    // Also save to backup disk
+    const backupDisk = Sonamu.storage.use("backup");
+    await backupDisk.put(key, new Uint8Array(buffer), {
+      contentType: file.mimetype,
+    });
+    const backupUrl = await backupDisk.getUrl(key);
+    
+    return {
+      primaryUrl,
+      backupUrl,
+    };
+  }
+}
+```
+
+## File Deletion
+
+### Delete File
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  async remove(fileId: number): Promise<void> {
+    const rdb = this.getPuri("r");
+    
+    // Query file info
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Delete from Storage
+    const disk = Sonamu.storage.use(file.disk_name);
+    await disk.delete(file.key);
+    
+    // Delete from DB
+    const wdb = this.getPuri("w");
+    await wdb.table("files").where("id", fileId).delete();
+  }
+}
+```
+
+### Check Existence Before Deletion
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  async removeSafe(fileId: number): Promise<void> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    const disk = Sonamu.storage.use(file.disk_name);
+    
+    // Check file existence
+    const exists = await disk.exists(file.key);
+    
+    if (exists) {
+      await disk.delete(file.key);
+    } else {
+      console.warn(`File not found in storage: ${file.key}`);
+    }
+    
+    // Delete from DB
+    const wdb = this.getPuri("w");
+    await wdb.table("files").where("id", fileId).delete();
+  }
+}
+```
+
+## Advanced Usage
+
+### Streaming Upload (Large Files)
+
+For large files, you can use streaming instead of Buffer.
+
+```typescript
+import { pipeline } from "stream/promises";
+import fs from "fs";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadLarge(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Save to temp file
+    const tempPath = `/tmp/${Date.now()}.${file.extname}`;
+    const writeStream = fs.createWriteStream(tempPath);
+    
+    await pipeline(file.raw.file, writeStream);
+    
+    // Upload temp file to Storage
+    const disk = Sonamu.storage.use();
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    
+    const buffer = await fs.promises.readFile(tempPath);
+    await disk.put(key, new Uint8Array(buffer), {
+      contentType: file.mimetype,
+    });
+    
+    // Delete temp file
+    await fs.promises.unlink(tempPath);
+    
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+### Saving File Metadata
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithMetadata(params: {
+    file: UploadedFile;
+    title?: string;
+    description?: string;
+    tags?: string[];
+  }): Promise<{ fileId: number; url: string }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { file, title, description, tags } = params;
+    
+    // Calculate MD5 hash
+    const md5Hash = await file.md5();
+    
+    // Save file
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    const url = await file.saveToDisk(key);
+    
+    // Save metadata to DB
+    const wdb = this.getPuri("w");
+    const [record] = await wdb
+      .table("files")
+      .insert({
+        user_id: context.user.id,
+        key,
+        filename: file.filename,
+        mime_type: file.mimetype,
+        size: file.size,
+        md5_hash: md5Hash,
+        url,
+        title,
+        description,
+        tags: tags ? JSON.stringify(tags) : null,
+        uploaded_at: new Date(),
+      })
+      .returning({ id: "id" });
+    
+    return {
+      fileId: record.id,
+      url,
+    };
+  }
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when saving files**:
+1. `saveToDisk()` is the simplest method
+2. Verify disk configuration
+3. Set file size limits
+4. Error handling is essential
+5. Consider streaming for large files
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="File Upload Setup" icon="gear" href="/api-development/file-upload/setup">
+    @upload decorator
+  </Card>
+  <Card title="UploadedFile Class" icon="file" href="/api-development/file-upload/uploaded-file-class">
+    File info access
+  </Card>
+  <Card title="URL Generation" icon="link" href="/api-development/file-upload/url-generation">
+    Generating URLs
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    API basic usage
+  </Card>
+</CardGroup>

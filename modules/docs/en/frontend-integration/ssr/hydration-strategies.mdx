@@ -1,0 +1,476 @@
+---
+title: "Hydration Strategies"
+description: "Passing server data to client with TanStack Query Hydration"
+---
+
+Learn hydration strategies for making server-rendered HTML interactive on the client in Sonamu.
+
+## Hydration Overview
+
+<CardGroup cols={2}>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    dehydrate/hydrate
+    
+    Automatic state restoration
+  </Card>
+  <Card title="Full Document Hydration" icon="file">
+    Document level
+    
+    Complete SSR
+  </Card>
+  <Card title="Date Serialization" icon="calendar">
+    dateReviver
+    
+    Automatic conversion
+  </Card>
+  <Card title="Selective Disable" icon="power-off">
+    disableHydrate
+    
+    CSR transition
+  </Card>
+</CardGroup>
+
+## Sonamu Hydration Process
+
+### 1. Server: Dehydration
+
+Serialize Query state on the server.
+
+```typescript
+// entry-server.generated.tsx
+import { dehydrate } from "@tanstack/react-query";
+
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  const queryClient = new QueryClient();
+
+  // Inject data
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate: Serialize QueryClient state to JSON
+  const dehydratedState = dehydrate(queryClient);
+
+  const appHtml = renderToString(<RouterProvider router={router} />);
+
+  return {
+    html: appHtml,
+    dehydratedState,  // Serialized state
+  };
+}
+```
+
+### 2. Data Injection into HTML
+
+```typescript
+// sonamu/src/ssr/renderer.ts
+const ssrDataScript = dehydratedState
+  ? `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")};</script>`
+  : "";
+
+// Inject before </body>
+const finalHtml = fullDocHtml.replace(
+  "</body>",
+  `${ssrDataScript}\n${viteScripts}\n</body>`,
+);
+```
+
+**Generated HTML**:
+```html
+<!DOCTYPE html>
+<html>
+  <head>...</head>
+  <body>
+    <div id="root">
+      <!-- Server rendered HTML -->
+      <div>Welcome, John</div>
+    </div>
+    
+    <!-- SSR data -->
+    <script>
+      window.__SONAMU_SSR__ = {
+        "queries": [{
+          "queryKey": ["User", "getUser", "C", 123],
+          "queryHash": "[\"User\",\"getUser\",\"C\",123]",
+          "state": {
+            "data": {
+              "user": {
+                "id": 123,
+                "username": "John",
+                "createdAt": "2024-01-01T00:00:00.000Z"
+              }
+            },
+            "dataUpdateCount": 1,
+            "dataUpdatedAt": 1704067200000,
+            "status": "success"
+          }
+        }]
+      };
+    </script>
+    
+    <!-- Vite scripts -->
+    <script type="module" src="/src/entry-client.tsx"></script>
+  </body>
+</html>
+```
+
+### 3. Client: Hydration
+
+Restore state and activate React on client.
+
+```typescript
+// entry-client.tsx
+import { hydrate } from "@tanstack/react-query";
+import { dateReviver } from "./services/sonamu.shared";
+
+// 1. Get data from window.__SONAMU_SSR__
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+// 2. Hydrate into QueryClient
+if (dehydratedState) {
+  hydrate(queryClient, dehydratedState);
+}
+
+// 3. React Hydration
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR page - Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  // Pure CSR page - Render new
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+## Date Serialization Handling
+
+### Problem: Date objects become strings with JSON.stringify
+
+```typescript
+const user = {
+  id: 123,
+  username: "John",
+  createdAt: new Date("2024-01-01"),  // Date object
+};
+
+// Serialized on server
+JSON.stringify(user);
+// '{"id":123,"username":"John","createdAt":"2024-01-01T00:00:00.000Z"}'
+//                                          ↑ String!
+
+// Deserialized on client
+JSON.parse(json);
+// { id: 123, username: "John", createdAt: "2024-01-01T00:00:00.000Z" }
+//                                          ↑ Still string!
+```
+
+### Solution: dateReviver
+
+Sonamu automatically converts ISO date strings to Date objects.
+
+```typescript
+// services/sonamu.shared.ts
+export function dateReviver(_key: string, value: unknown): unknown {
+  if (typeof value === "string") {
+    // ISO 8601 date string pattern
+    const isoDatePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+    if (isoDatePattern.test(value)) {
+      return new Date(value);  // Convert to Date object
+    }
+  }
+  return value;
+}
+```
+
+```typescript
+// entry-client.tsx
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+// ✅ createdAt is restored as Date object!
+```
+
+## Preventing Hydration Mismatch
+
+### Problem: Error when server and client HTML differ
+
+```typescript
+// ❌ Hydration Mismatch occurs
+function Clock() {
+  const [time, setTime] = useState(new Date());
+  // Server and client times differ!
+  
+  return <div>{time.toLocaleTimeString()}</div>;
+}
+```
+
+**Error message**:
+```
+Warning: Text content did not match. Server: "10:30:45" Client: "10:30:47"
+```
+
+### Solution 1: Use useEffect
+
+```typescript
+// ✅ Execute only on client
+function Clock() {
+  const [time, setTime] = useState<Date | null>(null);
+  
+  useEffect(() => {
+    setTime(new Date());
+    const interval = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  if (!time) return <div>--:--:--</div>;  // Server render
+  return <div>{time.toLocaleTimeString()}</div>;  // Client only
+}
+```
+
+### Solution 2: suppressHydrationWarning
+
+Use when server/client intentionally differ.
+
+```typescript
+function RandomQuote() {
+  const [quote] = useState(() => getRandomQuote());
+  
+  return (
+    <div suppressHydrationWarning>
+      {quote}  {/* Server and client may differ */}
+    </div>
+  );
+}
+```
+
+## disableHydrate Option
+
+### Disable Hydration and Switch to CSR
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/admin/realtime-dashboard",
+  preload: (params) => [/* ... */],
+  disableHydrate: true,  // Disable Hydration
+});
+```
+
+**How it works**:
+```typescript
+// entry-client.tsx
+const ssrConfig = window.__SONAMU_SSR_CONFIG__;
+
+if (ssrConfig?.disableHydrate) {
+  // Render new instead of Hydration
+  console.log("[Sonamu] Hydration disabled, rendering as CSR");
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+} else {
+  // Normal Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+}
+```
+
+**Use cases**:
+- When real-time data is important (dashboards, chat, etc.)
+- When server/client rendering results intentionally differ
+- When Hydration mismatch is hard to resolve
+
+## Full Document Hydration
+
+Sonamu **hydrates the entire document** (not just div#root).
+
+```typescript
+// ❌ Typical React app (div#root only)
+ReactDOM.hydrateRoot(
+  document.getElementById("root"),
+  <App />
+);
+
+// ✅ Sonamu (entire document)
+ReactDOM.hydrateRoot(
+  document,
+  <RouterProvider router={router} />
+);
+```
+
+**Reason**:
+- TanStack Router manages up to `<html>`, `<head>` tags
+- `<HeadContent />`, `<Scripts />` components modify head/body
+- Can dynamically change SEO meta tags
+
+```typescript
+// web/src/routes/__root.tsx
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { title: "My App" },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />  {/* Dynamic head tag generation */}
+      </head>
+      <body>
+        <div id="root">
+          <Outlet />
+        </div>
+        <Scripts />  {/* Dynamic script tag generation */}
+      </body>
+    </html>
+  );
+}
+```
+
+## Suspense and Hydration
+
+You can render Suspense fallback on server and load actual content on client.
+
+```typescript
+// entry-server.generated.tsx
+const appHtml = renderToString(
+  <Suspense fallback={null}>  {/* Prevents hydration mismatch */}
+    <RouterProvider router={router} />
+  </Suspense>,
+);
+```
+
+**Why use fallback={null}**:
+- All data is already loaded in SSR
+- Fallback won't be visible
+- Prevents Hydration mismatch
+
+## QueryClient Configuration
+
+### Server Configuration
+
+```typescript
+// entry-server.generated.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,  // 5 seconds
+      retry: false,      // No retry on server
+    },
+  },
+});
+```
+
+### Client Configuration
+
+```typescript
+// entry-client.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,        // 5 seconds
+      retry: false,            // No retry
+      refetchOnMount: true,    // Revalidate on mount
+    },
+  },
+});
+```
+
+**Note**: It's good to set the same `staleTime` for server and client.
+
+## Router Context
+
+Pass QueryClient via Router Context.
+
+```typescript
+// web/src/routes/__root.tsx
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <html>
+      <body>
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```typescript
+// entry-server.generated.tsx & entry-client.tsx
+const router = createRouter({
+  routeTree,
+  context: { queryClient },  // Pass via Context
+  defaultPreload: "intent",
+});
+```
+
+## Debugging
+
+### Verify Hydration
+
+```typescript
+// entry-client.tsx
+if (document.documentElement.innerHTML && dehydratedState) {
+  console.log("[Sonamu] Hydrating with SSR data");
+  console.log("Queries:", Object.keys(dehydratedState.queries || {}));
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  console.log("[Sonamu] Rendering as CSR (no SSR data)");
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+### Check QueryClient State
+
+```typescript
+// Chrome Extension support
+window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+
+// Check in console
+window.__TANSTACK_QUERY_CLIENT__.getQueryCache().getAll();
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Hydration**:
+1. **Server/client HTML must match**: Prevent Hydration mismatch
+2. **Careful with window object**: window doesn't exist on server
+3. **Date objects**: dateReviver handles automatically but verify
+4. **Same QueryClient settings**: Match staleTime between server and client
+5. **Minimize disableHydrate**: Use only in special cases
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSR Setup" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR basic structure
+  </Card>
+  <Card title="Data Preloading" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    How to use registerSSR
+  </Card>
+  <Card title="Cache Control" icon="database" href="/frontend-integration/ssr/cache-control">
+    TanStack Query caching
+  </Card>
+  <Card title="TanStack Query Docs" icon="external-link" href="https://tanstack.com/query">
+    Query detailed guide
+  </Card>
+</CardGroup>

@@ -1,0 +1,229 @@
+---
+title: 'AuthContext'
+description: 'Sonamu 인증 컨텍스트 레퍼런스'
+---
+
+AuthContext는 Context의 일부로, 사용자 인증 상태와 인증 관련 메서드를 제공합니다. Fastify Passport를 기반으로 구현되어 있습니다.
+
+## 타입 정의
+
+```typescript
+type AuthContext = {
+  user: PassportUser | null;
+  passport: {
+    login: (user: PassportUser) => Promise<void>;
+    logout: () => void;
+  };
+};
+```
+
+## 속성
+
+### user
+
+```typescript
+user: PassportUser | null
+```
+
+현재 인증된 사용자 정보입니다. 로그인하지 않은 경우 `null`입니다.
+
+`PassportUser` 타입은 `@fastify/passport`에서 제공하는 타입으로, 프로젝트에서 커스터마이징할 수 있습니다.
+
+**사용 예시:**
+
+```typescript
+class UserModelClass extends BaseModel {
+  @api()
+  async getMyProfile(ctx: Context) {
+    if (!ctx.user) {
+      throw new UnauthorizedException("로그인이 필요합니다");
+    }
+
+    return {
+      id: ctx.user.id,
+      email: ctx.user.email,
+      name: ctx.user.name
+    };
+  }
+}
+```
+
+### passport.login
+
+```typescript
+login: (user: PassportUser) => Promise<void>
+```
+
+사용자를 로그인 처리합니다. 세션에 사용자 정보를 저장하고, 이후 요청에서 `ctx.user`를 통해 접근할 수 있게 합니다.
+
+**사용 예시:**
+
+```typescript
+class AuthModelClass extends BaseModel {
+  @api()
+  async login(
+    ctx: Context,
+    email: string,
+    password: string
+  ) {
+    // 사용자 인증 로직
+    const user = await this.validateCredentials(email, password);
+    
+    if (!user) {
+      throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다");
+    }
+
+    // 세션에 사용자 정보 저장
+    await ctx.passport.login(user);
+
+    return { success: true, user };
+  }
+
+  private async validateCredentials(email: string, password: string) {
+    // 실제 인증 로직 구현
+    const user = await this.findByEmail(email);
+    if (!user) return null;
+    
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    return isValid ? user : null;
+  }
+}
+```
+
+### passport.logout
+
+```typescript
+logout: () => void
+```
+
+현재 사용자를 로그아웃 처리합니다. 세션에서 사용자 정보를 제거합니다.
+
+**사용 예시:**
+
+```typescript
+class AuthModelClass extends BaseModel {
+  @api()
+  async logout(ctx: Context) {
+    ctx.passport.logout();
+    return { success: true, message: "로그아웃되었습니다" };
+  }
+}
+```
+
+## 설정
+
+AuthContext를 사용하려면 `sonamu.config.ts`에서 인증 설정을 해야 합니다.
+
+### 기본 설정
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    plugins: {
+      // 세션 플러그인 필수
+      session: {
+        secret: process.env.SESSION_SECRET || "your-secret-key-here",
+        cookie: {
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7일
+        }
+      }
+    },
+    auth: true // 기본 직렬화/역직렬화 사용
+  }
+} satisfies SonamuConfig;
+```
+
+### 커스텀 직렬화/역직렬화
+
+사용자 정보를 세션에 저장하고 복원하는 방식을 커스터마이징할 수 있습니다:
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET || "your-secret-key-here",
+      }
+    },
+    auth: {
+      userSerializer: async (user, request) => {
+        // 세션에 저장할 최소한의 정보만 반환
+        return { id: user.id };
+      },
+      userDeserializer: async (serialized, request) => {
+        // 세션에서 복원된 정보로 전체 사용자 객체 재구성
+        const user = await UserModel.findById(serialized.id);
+        return user;
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+## Guards를 통한 접근 제어
+
+API 메서드에 인증을 요구하려면 `guards` 옵션을 사용할 수 있습니다:
+
+```typescript
+class UserModelClass extends BaseModel {
+  @api({ guards: ["user"] })
+  async getMyData(ctx: Context) {
+    // guards: ["user"]로 인해 ctx.user가 보장됨
+    return this.findById(ctx.user!.id);
+  }
+
+  @api({ guards: ["admin"] })
+  async getAllUsers(ctx: Context) {
+    // guards: ["admin"]으로 관리자만 접근 가능
+    return this.findAll();
+  }
+}
+```
+
+Guard 처리 로직은 `guardHandler`에서 구현합니다:
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        if (guard === "user" && !request.user) {
+          throw new UnauthorizedException("로그인이 필요합니다");
+        }
+        
+        if (guard === "admin" && (!request.user || !request.user.isAdmin)) {
+          throw new UnauthorizedException("관리자 권한이 필요합니다");
+        }
+        
+        return true;
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+## PassportUser 타입 확장
+
+프로젝트의 사용자 정보 구조에 맞게 `PassportUser` 타입을 확장할 수 있습니다:
+
+```typescript
+// src/types.ts
+declare module "fastify" {
+  interface PassportUser {
+    id: number;
+    email: string;
+    name: string;
+    isAdmin: boolean;
+    createdAt: Date;
+  }
+}
+```
+
+## 관련 문서
+
+- [Context](/api-reference/context/sonamu-context)
+- [Context 메서드](/api-reference/context/methods)
+- [Guards 사용하기](/api-development/guards)

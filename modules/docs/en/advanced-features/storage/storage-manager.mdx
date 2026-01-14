@@ -1,0 +1,533 @@
+---
+title: "Storage Manager"
+description: "파일 스토리지 시스템 소개"
+---
+
+Sonamu는 **Flydrive** 기반의 통합 파일 스토리지 시스템을 제공합니다. 로컬 파일 시스템(fs)과 AWS S3를 동일한 인터페이스로 사용할 수 있으며, 필요에 따라 여러 디스크를 관리할 수 있습니다.
+
+## 왜 Storage Manager가 필요한가?
+
+### 문제 상황
+
+```typescript
+// ❌ 각 드라이버마다 다른 API
+if (env === 'local') {
+  fs.writeFileSync('uploads/avatar.png', buffer);
+  url = '/uploads/avatar.png';
+} else {
+  await s3.putObject({
+    Bucket: 'my-bucket',
+    Key: 'uploads/avatar.png',
+    Body: buffer
+  });
+  url = 'https://s3.amazonaws.com/my-bucket/uploads/avatar.png';
+}
+```
+
+**문제점**:
+- 환경마다 다른 코드 작성
+- 드라이버 변경 시 코드 수정 필요
+- URL 생성 로직이 분산됨
+
+### Storage Manager 사용
+
+```typescript
+// ✅ 통합된 인터페이스
+await Sonamu.storage.use().put('uploads/avatar.png', buffer);
+const url = await Sonamu.storage.use().getUrl('uploads/avatar.png');
+```
+
+**장점**:
+- 드라이버 독립적인 코드
+- 설정만 변경하면 드라이버 교체 가능
+- 일관된 URL 생성
+
+## 기본 개념
+
+### Storage Manager
+
+여러 **디스크(Disk)**를 관리하는 매니저입니다.
+
+```mermaid
+graph TD
+    SM[Storage Manager] --> D1[Disk: fs<br/>로컬 파일시스템]
+    SM --> D2[Disk: s3<br/>AWS S3]
+    SM --> D3[Disk: r2<br/>Cloudflare R2]
+    
+    D1 --> F1[/uploads/avatar.png]
+    D2 --> F2[s3://bucket/uploads/avatar.png]
+    D3 --> F3[r2://bucket/uploads/avatar.png]
+```
+
+### Disk
+
+**디스크**는 파일을 저장하는 하나의 드라이버 인스턴스입니다.
+
+```typescript
+// 기본 디스크 사용
+const disk = Sonamu.storage.use();
+
+// 특정 디스크 사용
+const s3Disk = Sonamu.storage.use('s3');
+const fsDisk = Sonamu.storage.use('fs');
+```
+
+## 기본 설정
+
+### sonamu.config.ts
+
+```typescript
+import { drivers, type SonamuConfig } from "sonamu";
+
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'fs',  // 기본 디스크
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',  // 저장 위치
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**설정 요소**:
+- `default`: 기본으로 사용할 디스크 이름
+- `drivers`: 디스크 이름별 드라이버 팩토리
+
+## 디스크 사용
+
+### 기본 디스크
+
+```typescript
+// 기본 디스크 사용 (config.default)
+const disk = Sonamu.storage.use();
+
+// 파일 저장
+await disk.put('avatar.png', buffer);
+
+// URL 가져오기
+const url = await disk.getUrl('avatar.png');
+// => '/uploads/avatar.png' (fs)
+// => 'https://bucket.s3.amazonaws.com/avatar.png' (s3)
+```
+
+### 특정 디스크
+
+```typescript
+// fs 디스크
+const fsDisk = Sonamu.storage.use('fs');
+await fsDisk.put('temp/file.txt', 'content');
+
+// s3 디스크
+const s3Disk = Sonamu.storage.use('s3');
+await s3Disk.put('backup/file.txt', 'content');
+```
+
+## 여러 디스크 관리
+
+### 다중 디스크 설정
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: process.env.STORAGE_DISK || 'fs',
+      drivers: {
+        // 로컬 개발용
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+        
+        // 프로덕션용 (S3)
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: process.env.AWS_REGION!,
+          bucket: process.env.AWS_BUCKET!,
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://${process.env.AWS_BUCKET}.s3.amazonaws.com/${key}`,
+          }
+        }),
+        
+        // 공개 파일용
+        public: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: process.env.AWS_REGION!,
+          bucket: process.env.AWS_PUBLIC_BUCKET!,
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://${process.env.AWS_PUBLIC_BUCKET}.s3.amazonaws.com/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+### 용도별 디스크 사용
+
+```typescript
+class UserModelClass extends BaseModel {
+  // 프로필 사진 → 공개 디스크
+  async uploadAvatar(ctx: UploadContext) {
+    const file = ctx.file;
+    const url = await file.saveToDisk(
+      `avatars/${ctx.user.id}.png`,
+      'public'  // 공개 디스크
+    );
+    return url;
+  }
+  
+  // 개인 문서 → 기본 디스크 (private)
+  async uploadDocument(ctx: UploadContext) {
+    const file = ctx.file;
+    const url = await file.saveToDisk(
+      `documents/${ctx.user.id}/${file.filename}`
+      // 기본 디스크 사용
+    );
+    return url;
+  }
+  
+  // 백업 → 별도 디스크
+  async backupData(data: any) {
+    const json = JSON.stringify(data);
+    await Sonamu.storage
+      .use('backup')
+      .put(`backups/${Date.now()}.json`, json);
+  }
+}
+```
+
+## 환경별 전략
+
+### 개발/프로덕션 분리
+
+<Tabs>
+  <Tab title="개발 환경" icon="laptop-code">
+    **로컬 파일 시스템 사용**
+    
+    ```typescript
+    // .env.development
+    STORAGE_DISK=fs
+    
+    // sonamu.config.ts
+    storage: {
+      default: process.env.STORAGE_DISK || 'fs',
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+    ```
+    
+    **장점**:
+    - AWS 계정 불필요
+    - 빠른 개발
+    - 비용 없음
+  </Tab>
+  
+  <Tab title="프로덕션 환경" icon="server">
+    **S3 사용**
+    
+    ```typescript
+    // .env.production
+    STORAGE_DISK=s3
+    AWS_ACCESS_KEY_ID=AKIA...
+    AWS_SECRET_ACCESS_KEY=...
+    AWS_REGION=ap-northeast-2
+    AWS_BUCKET=my-app-uploads
+    
+    // sonamu.config.ts
+    storage: {
+      default: process.env.STORAGE_DISK || 's3',
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: process.env.AWS_REGION!,
+          bucket: process.env.AWS_BUCKET!,
+        }),
+      }
+    }
+    ```
+    
+    **장점**:
+    - 무제한 용량
+    - CDN 연동 가능
+    - 안정적인 서비스
+  </Tab>
+</Tabs>
+
+### 하이브리드 전략
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        // 메인 저장소: S3
+        s3: drivers.s3({ /* ... */ }),
+        
+        // 임시 파일: 로컬
+        fs: drivers.fs({
+          location: './temp',
+          urlBuilder: {
+            generateURL: (key) => `/temp/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+
+// 사용
+class FileModelClass extends BaseModel {
+  // 영구 저장 → S3
+  async upload(ctx: UploadContext) {
+    return ctx.file.saveToDisk('uploads/file.pdf');  // S3
+  }
+  
+  // 임시 처리 → 로컬
+  async processTempFile(ctx: UploadContext) {
+    const tempPath = `temp/${Date.now()}.tmp`;
+    await ctx.file.saveToDisk(tempPath, 'fs');  // 로컬
+    
+    // 처리 후 삭제
+    await Sonamu.storage.use('fs').delete(tempPath);
+  }
+}
+```
+
+## 실전 예제
+
+### 1. 프로필 사진 업로드
+
+```typescript
+class UserModelClass extends BaseModel {
+  @upload({ mode: 'single' })
+  @api({ httpMethod: 'POST' })
+  async uploadAvatar(ctx: Context) {
+    const { file } = Sonamu.getUploadContext();
+    
+    if (!file) {
+      throw new Error('파일이 없습니다');
+    }
+    
+    // 파일명: user-{id}-{timestamp}.{ext}
+    const filename = `user-${ctx.user.id}-${Date.now()}.${file.extname}`;
+    const key = `avatars/${filename}`;
+    
+    // 기본 디스크에 저장
+    const url = await file.saveToDisk(key);
+    
+    // DB 업데이트
+    await this.updateOne(['id', ctx.user.id], { avatar_url: url });
+    
+    return { url };
+  }
+}
+```
+
+### 2. 다중 파일 업로드
+
+```typescript
+class PostModelClass extends BaseModel {
+  @upload({ mode: 'multiple' })
+  @api({ httpMethod: 'POST' })
+  async uploadImages(postId: number) {
+    const { files } = Sonamu.getUploadContext();
+    
+    const urls = await Promise.all(
+      files.map(async (file, index) => {
+        const key = `posts/${postId}/image-${index}.${file.extname}`;
+        return await file.saveToDisk(key);
+      })
+    );
+    
+    return { urls };
+  }
+}
+```
+
+### 3. 디스크별 분리
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ mode: 'single' })
+  @api({ httpMethod: 'POST' })
+  async upload(type: 'public' | 'private') {
+    const { file } = Sonamu.getUploadContext();
+    
+    if (!file) {
+      throw new Error('파일이 없습니다');
+    }
+    
+    // 타입에 따라 다른 디스크 사용
+    const disk = type === 'public' ? 'public' : undefined;
+    const key = `${type}/${Date.now()}-${file.filename}`;
+    
+    const url = await file.saveToDisk(key, disk);
+    
+    return { url, type };
+  }
+}
+```
+
+## Storage Manager API
+
+### use(diskName?)
+
+디스크 인스턴스를 반환합니다.
+
+```typescript
+// 기본 디스크
+const disk = Sonamu.storage.use();
+
+// 특정 디스크
+const s3 = Sonamu.storage.use('s3');
+const fs = Sonamu.storage.use('fs');
+```
+
+**반환값**: `Disk` 인스턴스 (Flydrive)
+
+### defaultDisk
+
+기본 디스크 이름을 반환합니다.
+
+```typescript
+const defaultName = Sonamu.storage.defaultDisk;
+// => 'fs' 또는 's3' 등
+```
+
+## Disk API (Flydrive)
+
+Storage Manager가 반환하는 Disk는 Flydrive의 Disk 인스턴스입니다.
+
+### 주요 메서드
+
+```typescript
+const disk = Sonamu.storage.use();
+
+// 파일 저장
+await disk.put('path/to/file.txt', 'content');
+await disk.put('path/to/file.txt', buffer);
+
+// 파일 읽기
+const content = await disk.get('path/to/file.txt');
+
+// 파일 존재 확인
+const exists = await disk.exists('path/to/file.txt');
+
+// 파일 삭제
+await disk.delete('path/to/file.txt');
+
+// URL 가져오기
+const url = await disk.getUrl('path/to/file.txt');
+
+// Signed URL 가져오기 (S3)
+const signedUrl = await disk.getSignedUrl('path/to/file.txt', {
+  expiresIn: '1h'
+});
+```
+
+## 주의사항
+
+<Warning>
+**Storage Manager 사용 시 주의사항**:
+
+1. **환경변수 필수**: S3 사용 시 AWS 자격증명 필요
+   ```typescript
+   // ❌ 하드코딩 금지
+   credentials: {
+     accessKeyId: 'AKIA...',
+     secretAccessKey: '...',
+   }
+   
+   // ✅ 환경변수 사용
+   credentials: {
+     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+   }
+   ```
+
+2. **디스크 이름 오타**: 존재하지 않는 디스크 사용 시 에러
+   ```typescript
+   // ❌ 오타
+   Sonamu.storage.use('S3')  // 에러!
+   
+   // ✅ 정확한 이름
+   Sonamu.storage.use('s3')
+   ```
+
+3. **경로 구분자**: 플랫폼 독립적으로 `/` 사용
+   ```typescript
+   // ✅ 항상 슬래시
+   await disk.put('uploads/avatar.png', buffer);
+   
+   // ❌ 백슬래시 사용 금지
+   await disk.put('uploads\\avatar.png', buffer);
+   ```
+
+4. **URL 빌더 필수**: fs 드라이버는 urlBuilder 설정 필요
+   ```typescript
+   // ❌ urlBuilder 없음
+   fs: drivers.fs({
+     location: './uploads',
+   })
+   
+   // ✅ urlBuilder 설정
+   fs: drivers.fs({
+     location: './uploads',
+     urlBuilder: {
+       generateURL: (key) => `/uploads/${key}`,
+     }
+   })
+   ```
+
+5. **Lazy Initialization**: 디스크는 첫 사용 시 초기화됨
+   ```typescript
+   // 설정 오류는 use() 호출 시 발견됨
+   try {
+     const disk = Sonamu.storage.use('s3');
+   } catch (error) {
+     // 잘못된 S3 설정 등
+   }
+   ```
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="스토리지 드라이버" icon="hard-drive" href="/advanced-features/storage/storage-drivers">
+    fs, S3 드라이버 상세 설정
+  </Card>
+  <Card title="파일 저장 및 조회" icon="upload" href="/advanced-features/storage/file-operations">
+    파일 업로드 및 다운로드
+  </Card>
+  <Card title="URL 빌더" icon="link" href="/advanced-features/storage/url-builder">
+    파일 URL 생성하기
+  </Card>
+</CardGroup>

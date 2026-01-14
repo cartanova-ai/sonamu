@@ -1,0 +1,593 @@
+---
+title: "Basic Queries"
+description: "Basic CRUD query usage with Puri"
+---
+
+Puri is a type-safe query builder that lets you write SQL queries safely in TypeScript. This document explains the basic usage of SELECT, INSERT, UPDATE, and DELETE.
+
+## Getting Started with Queries
+
+<CardGroup cols={2}>
+  <Card title="SELECT" icon="magnifying-glass">
+    Query data
+    
+    select, selectAll, first
+  </Card>
+  <Card title="INSERT" icon="plus">
+    Add data
+    
+    insert, upsert, returning
+  </Card>
+  <Card title="UPDATE" icon="pen">
+    Modify data
+    
+    update, increment, decrement
+  </Card>
+  <Card title="DELETE" icon="trash">
+    Delete data
+    
+    delete, truncate
+  </Card>
+</CardGroup>
+
+## SELECT - Querying Data
+
+### Basic SELECT
+
+<CodeGroup>
+```typescript title="Select specific columns"
+const users = await db.table("users").select({
+  id: "id",
+  name: "username",
+  email: "email",
+});
+// Result: { id: number; name: string; email: string; }[]
+```
+
+```typescript title="Select all columns"
+const users = await db.table("users").selectAll();
+// Result: User[]
+```
+
+```typescript title="Query single record"
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("id", 1)
+  .first();
+// Result: { id: number; name: string; } | undefined
+```
+</CodeGroup>
+
+<Info>
+The `select` method uses an **object form** to select columns. Keys are result field names, values are actual table column names.
+</Info>
+
+### Column Aliases
+
+```typescript
+const posts = await db.table("posts").select({
+  postId: "id",              // Using alias
+  postTitle: "title",
+  authorName: "author_name", // snake_case → camelCase
+  createdDate: "created_at",
+});
+
+// Result type is automatically inferred
+const firstPost = posts[0];
+console.log(firstPost.postId);      // number
+console.log(firstPost.postTitle);   // string
+```
+
+### appendSelect - Add Columns
+
+You can add more columns to an already selected set.
+
+```typescript
+const query = db.table("users").select({
+  id: "id",
+  name: "username",
+});
+
+const users = await query.appendSelect({
+  email: "email",
+  role: "role",
+});
+
+// Result: { id, name, email, role }
+```
+
+## WHERE - Filtering Conditions
+
+### Basic WHERE
+
+<CodeGroup>
+```typescript title="Single condition"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin");
+```
+
+```typescript title="Comparison operators"
+const users = await db
+  .table("users")
+  .select({ id: "id", age: "age" })
+  .where("age", ">=", 18);
+// Supported: =, !=, <, <=, >, >=
+```
+
+```typescript title="NULL check"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .where("deleted_at", "!=", null);
+```
+</CodeGroup>
+
+### Multiple Conditions (AND)
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin")
+  .where("is_active", true)
+  .where("age", ">=", 18);
+
+// SQL: WHERE role = 'admin' AND is_active = true AND age >= 18
+```
+
+### OR Conditions
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin")
+  .orWhere("role", "moderator");
+
+// SQL: WHERE role = 'admin' OR role = 'moderator'
+```
+
+<Warning>
+`orWhere` is a simple OR condition. For complex condition groups, use `whereGroup`.
+See [Advanced Patterns](/database/puri/advanced-patterns) for details.
+</Warning>
+
+### IN / NOT IN
+
+<CodeGroup>
+```typescript title="whereIn"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereIn("role", ["admin", "moderator"]);
+```
+
+```typescript title="whereNotIn"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereNotIn("status", ["deleted", "banned"]);
+```
+</CodeGroup>
+
+### LIKE Search
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("username", "like", "%john%");
+
+// SQL: WHERE username LIKE '%john%'
+```
+
+## INSERT - Adding Data
+
+### Insert Single Record
+
+```typescript
+const result = await db.table("users").insert({
+  username: "john",
+  email: "john@example.com",
+  password: "hashed_password",
+  role: "normal",
+});
+
+// result: number (number of inserted records)
+```
+
+### Get Inserted Data with RETURNING
+
+```typescript
+const inserted = await db
+  .table("users")
+  .insert({
+    username: "john",
+    email: "john@example.com",
+    password: "hashed_password",
+    role: "normal",
+  })
+  .returning({ id: "id", name: "username" });
+
+console.log(inserted);
+// [{ id: 1, name: "john" }]
+```
+
+### Insert Multiple Records
+
+```typescript
+const result = await db.table("users").insert([
+  {
+    username: "john",
+    email: "john@example.com",
+    password: "hash1",
+    role: "normal",
+  },
+  {
+    username: "jane",
+    email: "jane@example.com",
+    password: "hash2",
+    role: "normal",
+  },
+]);
+```
+
+## UPDATE - Modifying Data
+
+### Basic UPDATE
+
+```typescript
+const count = await db
+  .table("users")
+  .where("id", 1)
+  .update({
+    username: "updated_name",
+    updated_at: new Date(),
+  });
+
+console.log(`${count} rows updated`);
+```
+
+<Warning>
+**WHERE clause required**: UPDATE must always be used with a WHERE condition. Modifying all data without conditions may cause errors.
+</Warning>
+
+### increment / decrement
+
+You can increase/decrease numeric columns.
+
+<CodeGroup>
+```typescript title="increment"
+await db
+  .table("posts")
+  .where("id", 1)
+  .increment("view_count", 1);
+
+// SQL: UPDATE posts SET view_count = view_count + 1 WHERE id = 1
+```
+
+```typescript title="decrement"
+await db
+  .table("users")
+  .where("id", 1)
+  .decrement("credit", 100);
+
+// SQL: UPDATE users SET credit = credit - 100 WHERE id = 1
+```
+</CodeGroup>
+
+### Update Multiple Columns
+
+```typescript
+await db
+  .table("users")
+  .where("id", 1)
+  .update({
+    username: "new_name",
+    email: "new@example.com",
+    updated_at: new Date(),
+  });
+```
+
+## DELETE - Deleting Data
+
+### Basic DELETE
+
+```typescript
+const count = await db
+  .table("users")
+  .where("id", 1)
+  .delete();
+
+console.log(`${count} rows deleted`);
+```
+
+<Warning>
+**WHERE clause required**: DELETE must also be used with a WHERE condition.
+</Warning>
+
+### Delete Multiple Records
+
+```typescript
+const count = await db
+  .table("users")
+  .whereIn("status", ["deleted", "banned"])
+  .delete();
+```
+
+## LIMIT & OFFSET - Pagination
+
+### LIMIT - Restrict Result Count
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .limit(10);
+
+// Query at most 10 records
+```
+
+### OFFSET - Skip Records
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .limit(10)
+  .offset(20);
+
+// Skip 20 and get next 10 (records 21-30)
+```
+
+### Pagination Example
+
+```typescript
+function getUsers(page: number, pageSize: number) {
+  return db
+    .table("users")
+    .select({ id: "id", name: "username" })
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+}
+
+// Page 1 (1-10)
+await getUsers(1, 10);
+
+// Page 2 (11-20)
+await getUsers(2, 10);
+```
+
+## ORDER BY - Sorting
+
+### Basic Sorting
+
+<CodeGroup>
+```typescript title="Ascending (ASC)"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .orderBy("created_at", "asc");
+```
+
+```typescript title="Descending (DESC)"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .orderBy("created_at", "desc");
+```
+</CodeGroup>
+
+### Multiple Column Sorting
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username", age: "age" })
+  .orderBy("age", "desc")      // Primary: age descending
+  .orderBy("created_at", "asc"); // Secondary: creation date ascending
+```
+
+## first() - Query Single Result
+
+`first()` returns only the first result.
+
+```typescript
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("email", "john@example.com")
+  .first();
+
+if (user) {
+  console.log(user.name); // string
+} else {
+  console.log("User not found");
+}
+
+// Type: { id: number; name: string; } | undefined
+```
+
+<Info>
+`first()` returns `undefined` if no result. Always check for existence.
+</Info>
+
+## pluck() - Extract Single Column
+
+Get only values from a specific column as an array.
+
+<CodeGroup>
+```typescript title="Basic usage"
+const userIds = await db
+  .table("users")
+  .where("role", "admin")
+  .pluck("id");
+
+// [1, 2, 3, 4, 5]
+// Type: number[]
+```
+
+```typescript title="With select"
+const emails = await db
+  .table("users")
+  .select({ userId: "id", userEmail: "email" })
+  .where("role", "admin")
+  .pluck("email");
+
+// ["admin1@test.com", "admin2@test.com"]
+// Type: string[]
+```
+</CodeGroup>
+
+## count() - Count Records
+
+Quickly query record count.
+
+```typescript
+const count = await db
+  .table("users")
+  .where("role", "admin")
+  .count();
+
+console.log(`Total admins: ${count}`);
+// Type: number
+```
+
+<Tip>
+`count()` is a simple count method, not an aggregate function. 
+For complex aggregations, see [Aggregations](/database/puri/aggregations).
+</Tip>
+
+## Practical Examples
+
+### User List Query API
+
+```typescript
+async findUsers(params: {
+  role?: string;
+  search?: string;
+  page: number;
+  pageSize: number;
+}) {
+  const { role, search, page, pageSize } = params;
+  
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      username: "username",
+      email: "email",
+      role: "role",
+      createdAt: "created_at",
+    });
+  
+  // Add conditions
+  if (role) {
+    query = query.where("role", role);
+  }
+  
+  if (search) {
+    query = query.where("username", "like", `%${search}%`);
+  }
+  
+  // Pagination
+  const users = await query
+    .orderBy("created_at", "desc")
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+  
+  // Total count
+  const total = await this.getPuri("r")
+    .table("users")
+    .where("role", role)
+    .count();
+  
+  return { users, total };
+}
+```
+
+### Create Post API
+
+```typescript
+async createPost(data: {
+  title: string;
+  content: string;
+  userId: number;
+}) {
+  const inserted = await this.getPuri("w")
+    .table("posts")
+    .insert({
+      title: data.title,
+      content: data.content,
+      user_id: data.userId,
+      status: "draft",
+      created_at: new Date(),
+    })
+    .returning({
+      id: "id",
+      title: "title",
+      createdAt: "created_at",
+    });
+  
+  return inserted[0];
+}
+```
+
+### Increment View Count
+
+```typescript
+async incrementViewCount(postId: number) {
+  await this.getPuri("w")
+    .table("posts")
+    .where("id", postId)
+    .increment("view_count", 1);
+}
+```
+
+## Query Debugging
+
+### debug() - Output SQL
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .where("role", "admin")
+  .debug(); // Output SQL to console
+
+// Output:
+// SELECT "users"."id" AS `id` FROM "users" WHERE "role" = 'admin'
+```
+
+### rawQuery() - Get Knex QueryBuilder
+
+Access the internal Knex query builder.
+
+```typescript
+const knexQuery = db
+  .table("users")
+  .select({ id: "id" })
+  .rawQuery();
+
+console.log(knexQuery.toQuery());
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    Joining tables
+  </Card>
+  <Card title="Aggregations" icon="calculator" href="/database/puri/aggregations">
+    Using aggregate functions
+  </Card>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    Understanding type safety
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    Learning advanced patterns
+  </Card>
+</CardGroup>

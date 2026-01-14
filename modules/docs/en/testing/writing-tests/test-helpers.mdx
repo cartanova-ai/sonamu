@@ -1,0 +1,506 @@
+---
+title: "Test Helpers"
+description: "Fixture system and test utilities"
+---
+
+Learn how to efficiently manage test data using Sonamu's Fixture system.
+
+## Test Helpers Overview
+
+<CardGroup cols={2}>
+  <Card title="Fixture Loader" icon="box">
+    Test data reuse
+    
+    Type-safe loading
+  </Card>
+  <Card title="Fixture Manager" icon="database">
+    Copy data between DBs
+    
+    Auto relationship handling
+  </Card>
+  <Card title="Easy Setup" icon="wand-magic-sparkles">
+    Define once
+    
+    Share across tests
+  </Card>
+  <Card title="Auto Cleanup" icon="broom">
+    Transaction based
+    
+    Auto rollback
+  </Card>
+</CardGroup>
+
+## Fixture Loader
+
+### createFixtureLoader
+
+Pre-define fixtures for tests and load when needed.
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "@/models/user.model";
+import { PostModel } from "@/models/post.model";
+
+export const loadFixtures = createFixtureLoader({
+  // User fixtures
+  user01: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "john",
+      email: "john@example.com",
+      password: "password123",
+    });
+    return user;
+  },
+  
+  user02: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "jane",
+      email: "jane@example.com",
+      password: "password456",
+    });
+    return user;
+  },
+  
+  admin: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "admin",
+      email: "admin@example.com",
+      password: "admin123",
+      role: "admin",
+    });
+    return user;
+  },
+  
+  // Post fixtures
+  post01: async () => {
+    const postModel = new PostModel();
+    const { post } = await postModel.create({
+      title: "First Post",
+      content: "Content of first post",
+      author_id: 1,
+    });
+    return post;
+  },
+});
+```
+
+### Using in Tests
+
+```typescript
+// api/src/models/post.model.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { PostModel } from "./post.model";
+import { loadFixtures } from "@/testing/fixture";
+
+bootstrap(vi);
+
+test("Get user's posts", async () => {
+  // Load fixtures
+  const { user01, post01 } = await loadFixtures(["user01", "post01"]);
+  
+  // Test
+  const postModel = new PostModel();
+  const { posts } = await postModel.getPostsByUser(user01.id);
+  
+  expect(posts).toHaveLength(1);
+  expect(posts[0].id).toBe(post01.id);
+});
+
+test("Admin permission test", async () => {
+  // Load only needed fixtures
+  const { admin } = await loadFixtures(["admin"]);
+  
+  expect(admin.role).toBe("admin");
+});
+```
+
+### Benefits
+
+**Type safety**:
+```typescript
+// ✅ Type safe: IDE provides auto-completion
+const { user01 } = await loadFixtures(["user01"]);
+user01.username; // string
+
+// ❌ Non-existent fixture
+const { user999 } = await loadFixtures(["user999"]); // Type error!
+```
+
+**Reusability**:
+```typescript
+// Use same fixture in multiple tests
+test("Test 1", async () => {
+  const { user01 } = await loadFixtures(["user01"]);
+  // ...
+});
+
+test("Test 2", async () => {
+  const { user01 } = await loadFixtures(["user01"]);
+  // ...
+});
+```
+
+**Selective loading**:
+```typescript
+// Load only what's needed
+const { user01, user02 } = await loadFixtures(["user01", "user02"]);
+
+// admin not loaded → Save creation cost
+```
+
+## Complex Fixture Patterns
+
+### Fixtures with Relationships
+
+```typescript
+// api/src/testing/fixture.ts
+export const loadFixtures = createFixtureLoader({
+  author: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "author",
+      email: "author@example.com",
+      password: "password",
+    });
+    return user;
+  },
+  
+  authorPost: async () => {
+    // Load author fixture first
+    const { author } = await loadFixtures(["author"]);
+    
+    const postModel = new PostModel();
+    const { post } = await postModel.create({
+      title: "Author's Post",
+      content: "Content",
+      author_id: author.id, // Set relationship
+    });
+    return post;
+  },
+});
+```
+
+```typescript
+// Using in test
+test("Author and post relationship", async () => {
+  const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
+  
+  expect(authorPost.author_id).toBe(author.id);
+});
+```
+
+### Dynamic Fixtures
+
+```typescript
+// api/src/testing/fixture.ts
+export const loadFixtures = createFixtureLoader({
+  // Fixture that takes parameters
+  userWithEmail: async (email: string) => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: email.split("@")[0],
+      email,
+      password: "password",
+    });
+    return user;
+  },
+  
+  // Create multiple data
+  users10: async () => {
+    const userModel = new UserModel();
+    const users = [];
+    
+    for (let i = 1; i <= 10; i++) {
+      const { user } = await userModel.create({
+        username: `user${i}`,
+        email: `user${i}@example.com`,
+        password: "password",
+      });
+      users.push(user);
+    }
+    
+    return users;
+  },
+});
+```
+
+## Fixture Manager
+
+### Overview
+
+`FixtureManager` provides functionality to copy real data from production DB to test DB.
+
+**Key features**:
+- Extract data from Production → Fixture DB
+- Sync Fixture DB → Test DB
+- Auto relationship resolution (BelongsTo, HasMany, ManyToMany)
+- Duplicate data handling
+
+### DB sync
+
+Sync Fixture DB data to Test DB.
+
+```typescript
+// api/src/application/sonamu.ts
+import { FixtureManager } from "sonamu/test";
+
+// Fixture DB → Test DB sync
+await FixtureManager.sync();
+```
+
+**Execution process**:
+1. Initialize Test DB (delete existing data)
+2. Fixture DB dump (`pg_dump`)
+3. Restore to Test DB (`pg_restore`)
+
+### importFixture
+
+Import specific data from Production DB to Fixture DB.
+
+```typescript
+import { FixtureManager } from "sonamu/test";
+
+// Initialize
+FixtureManager.init();
+
+// Import User ID 1, 2, 3 to Fixture DB
+await FixtureManager.importFixture("User", [1, 2, 3]);
+
+// Auto import all related data (Posts, Comments, etc.)
+```
+
+**Auto relationship resolution**:
+```typescript
+// Even if only User ID 1 requested...
+await FixtureManager.importFixture("User", [1]);
+
+// Auto imports:
+// - User #1
+// - User #1's Profile (OneToOne)
+// - User #1's Posts (HasMany)
+// - Post's Comments (HasMany)
+// - Comment's Author (BelongsTo)
+```
+
+## Practical Examples
+
+### Basic Fixture Pattern
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "@/models/user.model";
+import { PostModel } from "@/models/post.model";
+
+export const loadFixtures = createFixtureLoader({
+  // 1. Simple data
+  guestUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "guest",
+      email: "guest@example.com",
+      password: "password",
+      role: "guest",
+    });
+    return user;
+  },
+  
+  // 2. Multiple data
+  testUsers: async () => {
+    const userModel = new UserModel();
+    const users = await Promise.all([
+      userModel.create({
+        username: "user1",
+        email: "user1@example.com",
+        password: "password",
+      }),
+      userModel.create({
+        username: "user2",
+        email: "user2@example.com",
+        password: "password",
+      }),
+    ]);
+    return users.map(({ user }) => user);
+  },
+  
+  // 3. Data with relationships
+  userWithPosts: async () => {
+    const userModel = new UserModel();
+    const postModel = new PostModel();
+    
+    const { user } = await userModel.create({
+      username: "blogger",
+      email: "blogger@example.com",
+      password: "password",
+    });
+    
+    const posts = await Promise.all([
+      postModel.create({
+        title: "Post 1",
+        content: "Content 1",
+        author_id: user.id,
+      }),
+      postModel.create({
+        title: "Post 2",
+        content: "Content 2",
+        author_id: user.id,
+      }),
+    ]);
+    
+    return {
+      user,
+      posts: posts.map(({ post }) => post),
+    };
+  },
+});
+```
+
+### Complex Scenario
+
+```typescript
+// api/src/models/comment.model.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { CommentModel } from "./comment.model";
+import { loadFixtures } from "@/testing/fixture";
+
+bootstrap(vi);
+
+test("Create and retrieve comments", async () => {
+  // Load needed fixtures
+  const { userWithPosts } = await loadFixtures(["userWithPosts"]);
+  const { user, posts } = userWithPosts;
+  
+  const commentModel = new CommentModel();
+  
+  // Create comment
+  const { comment } = await commentModel.create({
+    content: "Great post!",
+    post_id: posts[0].id,
+    author_id: user.id,
+  });
+  
+  // Get comments
+  const { comments } = await commentModel.getCommentsByPost(posts[0].id);
+  
+  expect(comments).toHaveLength(1);
+  expect(comments[0].content).toBe("Great post!");
+  expect(comments[0].author_id).toBe(user.id);
+});
+```
+
+## Best Practices
+
+### 1. Fixture Naming Convention
+
+```typescript
+// ✅ Correct: Clear names
+export const loadFixtures = createFixtureLoader({
+  adminUser: async () => { /* ... */ },
+  guestUser: async () => { /* ... */ },
+  publishedPost: async () => { /* ... */ },
+  draftPost: async () => { /* ... */ },
+});
+
+// ❌ Wrong: Unclear names
+export const loadFixtures = createFixtureLoader({
+  user1: async () => { /* ... */ },
+  user2: async () => { /* ... */ },
+  post1: async () => { /* ... */ },
+});
+```
+
+### 2. Minimal Data
+
+```typescript
+// ✅ Correct: Only needed fields
+export const loadFixtures = createFixtureLoader({
+  basicUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+    });
+    return user;
+  },
+});
+
+// ❌ Wrong: Unnecessary fields
+export const loadFixtures = createFixtureLoader({
+  complexUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+      bio: "Long bio...",
+      avatar: "https://...",
+      preferences: { /* ... */ },
+      // ... too many fields
+    });
+    return user;
+  },
+});
+```
+
+### 3. Fixture Reuse
+
+```typescript
+// ✅ Correct: Reuse in other fixtures
+export const loadFixtures = createFixtureLoader({
+  user: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+    });
+    return user;
+  },
+  
+  userPost: async () => {
+    const { user } = await loadFixtures(["user"]);
+    const postModel = new PostModel();
+    const { post } = await postModel.create({
+      title: "Post",
+      content: "Content",
+      author_id: user.id,
+    });
+    return post;
+  },
+});
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using Fixtures**:
+1. **Transaction based**: Auto rollback for each test
+2. **Minimal data**: Create only minimum data needed for tests
+3. **Independence**: Each test should run independently
+4. **Type safety**: Ensure type safety with createFixtureLoader
+5. **Clear names**: Fixture names should clearly express purpose
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Test Structure" icon="sitemap" href="/testing/writing-tests/test-structure">
+    bootstrap, test, testAs
+  </Card>
+  <Card title="Test Scaffolding" icon="wand-magic-sparkles" href="/testing/writing-tests/scaffolding-tests">
+    Auto test generation
+  </Card>
+  <Card title="Model System" icon="cube" href="/core-concepts/model-system/overview">
+    Understanding Models
+  </Card>
+  <Card title="Vitest Docs" icon="external-link" href="https://vitest.dev">
+    Vitest guide
+  </Card>
+</CardGroup>

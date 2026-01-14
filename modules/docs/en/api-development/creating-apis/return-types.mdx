@@ -1,0 +1,872 @@
+---
+title: "Return Types"
+description: "Defining API response types"
+---
+
+Clearly defining API return types makes the contract between client and server explicit and ensures type safety.
+
+## Return Types Overview
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield">
+    Compile-time validation
+    
+    Prevent runtime errors
+  </Card>
+  <Card title="Autocomplete" icon="wand-magic-sparkles">
+    IDE support
+    
+    Improved developer productivity
+  </Card>
+  <Card title="Clear Contract" icon="file-contract">
+    Automated API spec
+    
+    Client guide
+  </Card>
+  <Card title="Safe Refactoring" icon="code">
+    Track type changes
+    
+    Understand impact scope
+  </Card>
+</CardGroup>
+
+## Basic Return Types
+
+### Single Object
+
+```typescript
+interface User {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  createdAt: Date;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+
+// Response:
+// {
+//   "id": 1,
+//   "email": "test@example.com",
+//   "username": "testuser",
+//   "role": "normal",
+//   "createdAt": "2025-01-07T00:00:00.000Z"
+// }
+```
+
+### Array
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<User[]> {
+    const rdb = this.getPuri("r");
+    return rdb.table("users").select("*");
+  }
+}
+
+// Response:
+// [
+//   { "id": 1, "email": "user1@test.com", ... },
+//   { "id": 2, "email": "user2@test.com", ... }
+// ]
+```
+
+### void (No Response)
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).delete();
+    // No return value → HTTP 204 No Content
+  }
+  
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).update(params);
+    // No return value
+  }
+}
+```
+
+### Primitive Types
+
+```typescript
+class UserModel extends BaseModelClass {
+  // Return number
+  @api({ httpMethod: "GET" })
+  async count(): Promise<number> {
+    const rdb = this.getPuri("r");
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    return count;
+  }
+  
+  // Return boolean
+  @api({ httpMethod: "GET" })
+  async exists(email: string): Promise<boolean> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("email", email).first();
+    return !!user;
+  }
+  
+  // Return string
+  @api({ httpMethod: "GET" })
+  async getStatus(id: number): Promise<string> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    return user.status;
+  }
+}
+```
+
+## Structured Responses
+
+### Creation Result
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{
+    userId: number;
+    message: string;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    const [user] = await wdb
+      .table("users")
+      .insert(params)
+      .returning({ id: "id" });
+    
+    return {
+      userId: user.id,
+      message: "User created successfully",
+    };
+  }
+}
+
+// Response:
+// {
+//   "userId": 123,
+//   "message": "User created successfully"
+// }
+```
+
+### Pagination Response
+
+```typescript
+interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<PaginatedResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    // Retrieve data
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    // Total count
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      data: users,
+      pagination: {
+        page,
+        pageSize,
+        total: count,
+        totalPages: Math.ceil(count / pageSize),
+      },
+    };
+  }
+}
+
+// Response:
+// {
+//   "data": [...],
+//   "pagination": {
+//     "page": 1,
+//     "pageSize": 20,
+//     "total": 150,
+//     "totalPages": 8
+//   }
+// }
+```
+
+### Including Metadata
+
+```typescript
+interface UserDetailResponse {
+  user: User;
+  profile: Profile | null;
+  stats: {
+    postCount: number;
+    followerCount: number;
+    followingCount: number;
+  };
+  meta: {
+    isOwner: boolean;
+    isFollowing: boolean;
+    lastSeen: Date | null;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getDetail(
+    userId: number,
+    currentUserId?: number
+  ): Promise<UserDetailResponse> {
+    const rdb = this.getPuri("r");
+    
+    // Get User
+    const user = await rdb.table("users").where("id", userId).first();
+    if (!user) throw new Error("User not found");
+    
+    // Get Profile
+    const profile = await rdb.table("profiles").where("user_id", userId).first();
+    
+    // Statistics
+    const [{ postCount }] = await rdb
+      .table("posts")
+      .where("user_id", userId)
+      .count({ postCount: "*" });
+    
+    const [{ followerCount }] = await rdb
+      .table("follows")
+      .where("following_id", userId)
+      .count({ followerCount: "*" });
+    
+    const [{ followingCount }] = await rdb
+      .table("follows")
+      .where("follower_id", userId)
+      .count({ followingCount: "*" });
+    
+    // Meta information
+    const isOwner = currentUserId === userId;
+    
+    const isFollowing = currentUserId
+      ? !!(await rdb
+          .table("follows")
+          .where("follower_id", currentUserId)
+          .where("following_id", userId)
+          .first())
+      : false;
+    
+    return {
+      user,
+      profile: profile || null,
+      stats: {
+        postCount,
+        followerCount,
+        followingCount,
+      },
+      meta: {
+        isOwner,
+        isFollowing,
+        lastSeen: user.last_seen_at,
+      },
+    };
+  }
+}
+```
+
+## Union Types
+
+### Conditional Response
+
+```typescript
+type UserResponse = 
+  | { success: true; user: User }
+  | { success: false; error: string };
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByEmail(email: string): Promise<UserResponse> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("email", email)
+      .first();
+    
+    if (!user) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
+    
+    return {
+      success: true,
+      user,
+    };
+  }
+}
+
+// Success response:
+// { "success": true, "user": { ... } }
+
+// Failure response:
+// { "success": false, "error": "User not found" }
+```
+
+### Nullable Response
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByUsername(username: string): Promise<User | null> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("username", username)
+      .first();
+    
+    return user || null;
+  }
+}
+
+// If exists: { "id": 1, "username": "test", ... }
+// If not: null
+```
+
+## Generic Response Types
+
+### Common Response Wrapper
+
+```typescript
+// Success response
+interface SuccessResponse<T> {
+  success: true;
+  data: T;
+  timestamp: Date;
+}
+
+// Error response
+interface ErrorResponse {
+  success: false;
+  error: {
+    message: string;
+    code: string;
+  };
+  timestamp: Date;
+}
+
+type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<ApiResponse<User>> {
+    try {
+      const rdb = this.getPuri("r");
+      
+      const user = await rdb
+        .table("users")
+        .where("id", id)
+        .first();
+      
+      if (!user) {
+        return {
+          success: false,
+          error: {
+            message: "User not found",
+            code: "USER_NOT_FOUND",
+          },
+          timestamp: new Date(),
+        };
+      }
+      
+      return {
+        success: true,
+        data: user,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : "Unknown error",
+          code: "INTERNAL_ERROR",
+        },
+        timestamp: new Date(),
+      };
+    }
+  }
+}
+```
+
+### List Response Wrapper
+
+```typescript
+interface ListResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<ListResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      items: users,
+      total: count,
+      page,
+      pageSize,
+      hasMore: page * pageSize < count,
+    };
+  }
+}
+```
+
+## Partial Types
+
+### Update Response
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: Partial<User>
+  ): Promise<{
+    updated: Partial<User>;
+    timestamp: Date;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("users").where("id", id).update(params);
+    
+    return {
+      updated: params,
+      timestamp: new Date(),
+    };
+  }
+}
+
+// Response:
+// {
+//   "updated": {
+//     "username": "newname",
+//     "bio": "Updated bio"
+//   },
+//   "timestamp": "2025-01-07T12:00:00.000Z"
+// }
+```
+
+## Nested Types
+
+### Including Related Data
+
+```typescript
+interface UserWithRelations {
+  user: User;
+  profile: Profile | null;
+  posts: Post[];
+  followers: Array<{
+    id: number;
+    username: string;
+    avatarUrl: string | null;
+  }>;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getWithRelations(id: number): Promise<UserWithRelations> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+    
+    const posts = await rdb
+      .table("posts")
+      .where("user_id", id)
+      .select("*");
+    
+    const followers = await rdb
+      .table("follows")
+      .join("users", "follows.follower_id", "users.id")
+      .where("follows.following_id", id)
+      .select({
+        id: "users.id",
+        username: "users.username",
+        avatarUrl: "users.avatar_url",
+      });
+    
+    return {
+      user,
+      profile: profile || null,
+      posts,
+      followers,
+    };
+  }
+}
+```
+
+## Batch Operation Responses
+
+### Batch Creation
+
+```typescript
+interface BatchCreateResponse {
+  created: number[];
+  failed: Array<{
+    index: number;
+    error: string;
+  }>;
+  summary: {
+    total: number;
+    success: number;
+    failed: number;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async createBatch(
+    users: CreateUserParams[]
+  ): Promise<BatchCreateResponse> {
+    const wdb = this.getPuri("w");
+    
+    const created: number[] = [];
+    const failed: Array<{ index: number; error: string }> = [];
+    
+    for (let i = 0; i < users.length; i++) {
+      try {
+        const [user] = await wdb
+          .table("users")
+          .insert(users[i])
+          .returning({ id: "id" });
+        
+        created.push(user.id);
+      } catch (error) {
+        failed.push({
+          index: i,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+    
+    return {
+      created,
+      failed,
+      summary: {
+        total: users.length,
+        success: created.length,
+        failed: failed.length,
+      },
+    };
+  }
+}
+```
+
+## Subset Returns
+
+### Using Subset Types
+
+```typescript
+// Subset definition (defined in Entity)
+interface UserListSubset {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  // Excludes sensitive info like password
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<UserListSubset[]> {
+    const rdb = this.getPuri("r");
+    
+    // Using Subset retrieves only needed fields
+    return rdb
+      .table("users")
+      .select({
+        id: "id",
+        email: "email",
+        username: "username",
+        role: "role",
+      });
+  }
+}
+```
+
+## Type Reuse Patterns
+
+### Extending Base Types
+
+```typescript
+// Base response type
+interface BaseResponse {
+  timestamp: Date;
+  requestId: string;
+}
+
+// Data response
+interface DataResponse<T> extends BaseResponse {
+  data: T;
+}
+
+// Error response
+interface ErrorResponse extends BaseResponse {
+  error: {
+    message: string;
+    code: string;
+    details?: any;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<DataResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    
+    return {
+      data: user,
+      timestamp: new Date(),
+      requestId: crypto.randomUUID(),
+    };
+  }
+}
+```
+
+## Practical Patterns
+
+### CRUD Response Patterns
+
+```typescript
+class UserModel extends BaseModelClass {
+  // Create - Return created ID
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{
+    userId: number;
+  }> {
+    // ...
+    return { userId };
+  }
+  
+  // Read - Return full object
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    // ...
+    return user;
+  }
+  
+  // Update - void or update summary
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    // ...
+  }
+  
+  // Delete - void
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    // ...
+  }
+  
+  // List - Pagination response
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    // ...
+    return { users, total };
+  }
+}
+```
+
+### Statistics Response
+
+```typescript
+interface UserStatsResponse {
+  totalUsers: number;
+  activeUsers: number;
+  newUsersToday: number;
+  usersByRole: {
+    admin: number;
+    manager: number;
+    normal: number;
+  };
+  userGrowth: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getStats(): Promise<UserStatsResponse> {
+    const rdb = this.getPuri("r");
+    
+    // Total users
+    const [{ total }] = await rdb.table("users").count({ total: "*" });
+    
+    // Active users
+    const [{ active }] = await rdb
+      .table("users")
+      .where("is_active", true)
+      .count({ active: "*" });
+    
+    // New users today
+    const [{ newToday }] = await rdb
+      .table("users")
+      .where("created_at", ">=", new Date().toISOString().split("T")[0])
+      .count({ newToday: "*" });
+    
+    // Stats by role
+    const roleStats = await rdb
+      .table("users")
+      .select({ role: "role" })
+      .count({ count: "*" })
+      .groupBy("role");
+    
+    const usersByRole = {
+      admin: roleStats.find((s) => s.role === "admin")?.count || 0,
+      manager: roleStats.find((s) => s.role === "manager")?.count || 0,
+      normal: roleStats.find((s) => s.role === "normal")?.count || 0,
+    };
+    
+    // Growth trend (last 7 days)
+    const userGrowth = []; // ... implementation
+    
+    return {
+      totalUsers: total,
+      activeUsers: active,
+      newUsersToday: newToday,
+      usersByRole,
+      userGrowth,
+    };
+  }
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when defining return types**:
+1. Always define types explicitly
+2. Avoid using `any` type
+3. Distinguish null and undefined
+4. Exclude sensitive information (password, etc.)
+5. Maintain consistent response structure
+</Warning>
+
+### Common Mistakes
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ❌ Bad: any type
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<any> {
+    // No type safety
+  }
+  
+  // ❌ Bad: No type specified
+  @api({ httpMethod: "GET" })
+  async list() {
+    // Inferred as Promise<unknown>
+  }
+  
+  // ❌ Bad: Includes sensitive information
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    // User includes password field → Security risk
+    return fullUser;
+  }
+  
+  // ✅ Good: Explicit type, excludes sensitive info
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<UserPublicInfo> {
+    const user = await this.getFullUser(id);
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      // password excluded
+    };
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    Basic usage
+  </Card>
+  <Card title="Parameters" icon="sliders" href="/api-development/creating-apis/parameters">
+    Type definitions and validation
+  </Card>
+  <Card title="HTTP Methods" icon="globe" href="/api-development/creating-apis/http-methods">
+    GET, POST, PUT, DELETE
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/api-development/error-handling">
+    API error handling
+  </Card>
+</CardGroup>

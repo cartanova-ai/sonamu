@@ -1,0 +1,505 @@
+---
+title: "Data Preloading"
+description: "Preload data on server with registerSSR"
+---
+
+Learn how to preload data on the server and pass it to the client using Sonamu's `registerSSR`.
+
+## Data Preloading Overview
+
+<CardGroup cols={2}>
+  <Card title="registerSSR" icon="code">
+    Per-route preload config
+    
+    Direct backend call
+  </Card>
+  <Card title="SSRQuery" icon="brackets-curly">
+    Type-safe queries
+    
+    Model/method specification
+  </Card>
+  <Card title="Auto Injection" icon="droplet">
+    Auto inject to QueryClient
+    
+    Hydration handling
+  </Card>
+  <Card title="No HTTP" icon="bolt">
+    No network overhead
+    
+    Fast response
+  </Card>
+</CardGroup>
+
+## How to Use registerSSR
+
+### Basic Structure
+
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
+
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
+```
+
+**Process**:
+1. Server receives request for `/users/123`
+2. `path` matching: `/users/:id` → `params = { id: "123" }`
+3. Execute `preload` function → returns `SSRQuery[]`
+4. Direct backend call to `UserModel.getUser("C", 123)` (no HTTP!)
+5. Inject result with `QueryClient.setQueryData(["User", "getUser", "C", 123], result)`
+6. Send HTML + dehydratedState to client
+7. Client hydrates and immediately uses data
+
+### SSRQuery Type
+
+```typescript
+type SSRQuery = {
+  modelName: string;        // "UserModel" - Backend model class name
+  methodName: string;       // "getUser" - Model method name
+  params: unknown[];        // ["C", 123] - Method parameters (excluding Context)
+  serviceKey: [string, string]; // ["User", "getUser"] - React Query queryKey prefix
+};
+```
+
+**Important**: `params` follows the **backend method's parameter order** (excluding Context).
+
+## Practical Examples
+
+### Single Data Loading
+
+Preload user information on user detail page.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],  // subset, id order
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
+```
+
+```typescript
+// web/src/routes/users/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { UserService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/users/$id")({
+  component: UserPage,
+});
+
+function UserPage() {
+  const { id } = Route.useParams();
+  
+  // Automatically uses data preloaded from server
+  // isLoading: false (data already exists)
+  const { data } = UserService.useUser("C", parseInt(id));
+
+  return (
+    <div>
+      <h1>{data?.user.username}</h1>
+      <p>{data?.user.email}</p>
+      <p>Bio: {data?.user.bio}</p>
+    </div>
+  );
+}
+```
+
+### Multiple Data Simultaneous Loading
+
+Preload both post and comments on post detail page.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [
+    // Post data
+    {
+      modelName: "PostModel",
+      methodName: "getPost",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["Post", "getPost"],
+    },
+    // Comment list
+    {
+      modelName: "CommentModel",
+      methodName: "getCommentsByPost",
+      params: [parseInt(params.id)],
+      serviceKey: ["Comment", "getCommentsByPost"],
+    },
+  ],
+});
+```
+
+```typescript
+// web/src/routes/posts/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { PostService, CommentService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/posts/$id")({
+  component: PostPage,
+});
+
+function PostPage() {
+  const { id } = Route.useParams();
+  
+  // Both data are preloaded
+  const { data: post } = PostService.usePost("C", parseInt(id));
+  const { data: comments } = CommentService.useCommentsByPost(parseInt(id));
+
+  return (
+    <div>
+      <article>
+        <h1>{post?.post.title}</h1>
+        <p>{post?.post.content}</p>
+      </article>
+      
+      <section>
+        <h2>Comments ({comments?.comments.length})</h2>
+        {comments?.comments.map((comment) => (
+          <div key={comment.id}>{comment.content}</div>
+        ))}
+      </section>
+    </div>
+  );
+}
+```
+
+### Parameter Processing
+
+You can process URL parameters before use.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/categories/:slug/posts",
+  preload: (params) => {
+    // Logic to convert slug to id
+    const categoryId = getCategoryIdBySlug(params.slug);
+    
+    return [
+      {
+        modelName: "CategoryModel",
+        methodName: "getCategory",
+        params: [categoryId],
+        serviceKey: ["Category", "getCategory"],
+      },
+      {
+        modelName: "PostModel",
+        methodName: "getPostsByCategory",
+        params: [categoryId, { page: 1, pageSize: 20 }],
+        serviceKey: ["Post", "getPostsByCategory"],
+      },
+    ];
+  },
+});
+```
+
+### Conditional Preloading
+
+Load different data based on conditions.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/dashboard/:tab",
+  preload: (params) => {
+    const queries: SSRQuery[] = [
+      // Common data: User info
+      {
+        modelName: "UserModel",
+        methodName: "getCurrentUser",
+        params: [],
+        serviceKey: ["User", "getCurrentUser"],
+      },
+    ];
+
+    // Load additional data based on tab
+    if (params.tab === "posts") {
+      queries.push({
+        modelName: "PostModel",
+        methodName: "getMyPosts",
+        params: [{ page: 1, pageSize: 20 }],
+        serviceKey: ["Post", "getMyPosts"],
+      });
+    } else if (params.tab === "settings") {
+      queries.push({
+        modelName: "SettingsModel",
+        methodName: "getUserSettings",
+        params: [],
+        serviceKey: ["Settings", "getUserSettings"],
+      });
+    }
+
+    return queries;
+  },
+});
+```
+
+## Query Key Matching
+
+For preloaded data to match the client's useQuery, **queryKey must match exactly**.
+
+### Correct Matching
+
+```typescript
+// Server: registerSSR
+{
+  modelName: "UserModel",
+  methodName: "getUser",
+  params: ["C", 123],
+  serviceKey: ["User", "getUser"],  // Stored as ["User", "getUser", "C", 123]
+}
+
+// Client: useQuery
+UserService.useUser("C", 123);  // queryKey: ["User", "getUser", "C", 123]
+// ✅ Match successful!
+```
+
+### Incorrect Matching
+
+```typescript
+// Server: Preloaded with Subset "C"
+{
+  params: ["C", 123],
+  serviceKey: ["User", "getUser"],
+}
+
+// Client: Requesting Subset "A"
+UserService.useUser("A", 123);  // queryKey: ["User", "getUser", "A", 123]
+// ❌ Match failed - Client makes new API call
+```
+
+## SSRRoute Options
+
+### disableHydrate
+
+Disable Hydration and render new on client.
+
+```typescript
+registerSSR({
+  path: "/admin/report",
+  preload: (params) => [/* ... */],
+  disableHydrate: true,  // Disable Hydration
+});
+```
+
+**Use cases**:
+- When server/client rendering results may differ
+- When real-time data is important
+- Resolving Hydration mismatch
+
+### cacheControl
+
+Set Cache-Control header for SSR response.
+
+```typescript
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [/* ... */],
+  cacheControl: {
+    maxAge: 3600,        // 1 hour cache
+    sMaxAge: 7200,       // 2 hour CDN cache
+    staleWhileRevalidate: 86400,  // Serve stale content for 1 day
+  },
+});
+```
+
+## Internal Operation Principle
+
+### 1. Server Rendering Process
+
+```typescript
+// sonamu/src/ssr/renderer.ts (simplified)
+export async function renderSSR(url: string, route: SSRRoute, params: Record<string, string>) {
+  // 1. Execute preload
+  const preloadConfig = route.preload ? route.preload(params) : [];
+  const preloadedData: PreloadedData[] = [];
+
+  // 2. Execute each SSRQuery
+  for (const { modelName, methodName, params: apiParams, serviceKey } of preloadConfig) {
+    const api = Sonamu.syncer.apis.find(
+      (a) => a.modelName === modelName && a.methodName === methodName,
+    );
+
+    // 3. Direct backend API call (no HTTP!)
+    const result = await Sonamu.invokeApiForSSR(api, apiParams);
+    
+    // 4. Save PreloadedData
+    preloadedData.push({
+      queryKey: [...serviceKey, ...apiParams],
+      data: result,
+    });
+  }
+
+  // 5. Call entry-server.generated.tsx's render()
+  const { html, dehydratedState } = await render(url, preloadedData);
+
+  // 6. Inject data into HTML
+  const ssrDataScript = `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState)};</script>`;
+  
+  return html.replace("</body>", `${ssrDataScript}\n</body>`);
+}
+```
+
+### 2. Data Injection in entry-server
+
+```typescript
+// entry-server.generated.tsx
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  const queryClient = new QueryClient();
+
+  // Inject PreloadedData into QueryClient
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate (serialize)
+  const dehydratedState = dehydrate(queryClient);
+
+  // React rendering
+  const appHtml = renderToString(<RouterProvider router={router} />);
+
+  return { html: appHtml, dehydratedState };
+}
+```
+
+### 3. Client Hydration
+
+```typescript
+// entry-client.tsx
+// Restore data from window.__SONAMU_SSR__
+const dehydratedState = window.__SONAMU_SSR__;
+
+if (dehydratedState) {
+  // Hydrate into QueryClient
+  hydrate(queryClient, dehydratedState);
+}
+
+// React Hydration
+ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+```
+
+## Error Handling
+
+### Handling Preload Failures
+
+```typescript
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => {
+    try {
+      return [
+        {
+          modelName: "PostModel",
+          methodName: "getPost",
+          params: ["C", parseInt(params.id)],
+          serviceKey: ["Post", "getPost"],
+        },
+      ];
+    } catch (error) {
+      // Parameter parsing failure etc.
+      console.error("Preload error:", error);
+      return [];
+    }
+  },
+});
+```
+
+**Server log**:
+```
+Failed to preload PostModel.getPost: Post not found
+```
+
+Individual query failure doesn't stop the entire SSR. Only failed data is reloaded on client.
+
+## Performance Optimization
+
+### 1. Use Subsets
+
+Load only needed fields to reduce transfer size.
+
+```typescript
+// ❌ All fields (slow)
+params: ["C", userId]  // All fields
+
+// ✅ Only needed fields (fast)
+params: ["A", userId]  // Only id, username, email
+```
+
+### 2. Parallel Loading
+
+Execute multiple queries simultaneously (automatically parallelized).
+
+```typescript
+preload: (params) => [
+  // These queries execute in parallel
+  { modelName: "UserModel", methodName: "getUser", ... },
+  { modelName: "PostModel", methodName: "getPosts", ... },
+  { modelName: "CommentModel", methodName: "getComments", ... },
+]
+```
+
+### 3. Conditional Loading
+
+Selectively load only necessary data.
+
+```typescript
+preload: (params) => {
+  const queries = [];
+  
+  // Base data
+  queries.push({ modelName: "PageModel", methodName: "getPage", ... });
+  
+  // Authenticated users only
+  if (hasAuth(params)) {
+    queries.push({ modelName: "UserModel", methodName: "getProfile", ... });
+  }
+  
+  return queries;
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using registerSSR**:
+1. **Match queryKey exactly**: Server and client queryKey must be identical
+2. **Careful with params order**: Must follow backend method parameter order exactly
+3. **Exclude Context**: params doesn't include Context
+4. **Type conversion caution**: Type conversion like `parseInt(params.id)` needed
+5. **Errors are logged**: Individual query failure doesn't stop entire SSR
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSR Setup" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR basic structure
+  </Card>
+  <Card title="Hydration Strategies" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    Hydration optimization
+  </Card>
+  <Card title="Cache Control" icon="database" href="/frontend-integration/ssr/cache-control">
+    Caching strategies
+  </Card>
+  <Card title="Subset System" icon="layer-group" href="/core-concepts/entity-system/subset-system">
+    Data optimization
+  </Card>
+</CardGroup>

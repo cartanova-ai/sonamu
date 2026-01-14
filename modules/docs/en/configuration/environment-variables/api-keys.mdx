@@ -1,0 +1,689 @@
+---
+title: 'API Key Management'
+description: 'Safely configuring external service API keys'
+---
+
+When using external services (AWS S3, OpenAI, etc.) in Sonamu projects, API keys are managed as environment variables. This guide explains how to securely store them without hardcoding in your code.
+
+<Danger>
+API keys should **never be committed to Git!** If leaked, immediately invalidate and reissue the keys.
+</Danger>
+
+## Common API Keys
+
+These are frequently used external service API keys in Sonamu.
+
+### AWS (S3 Storage)
+
+```bash title=".env"
+# AWS Credentials
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+
+# S3 Configuration
+S3_REGION=ap-northeast-2
+S3_BUCKET=my-project-uploads
+```
+
+**sonamu.config.ts:**
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
+
+export default defineConfig({
+  server: {
+    storage: {
+      default: process.env.DRIVE_DISK ?? "fs",
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+          },
+          region: process.env.S3_REGION ?? "ap-northeast-2",
+          bucket: process.env.S3_BUCKET ?? "default-bucket",
+          visibility: "private",
+        }),
+      },
+    },
+  },
+});
+```
+
+### OpenAI
+
+```bash title=".env"
+# OpenAI API Key
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_ORG_ID=your-openai-org-id  # Organization ID (optional)
+```
+
+**Usage example:**
+
+```typescript
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID,
+});
+
+const completion = await openai.chat.completions.create({
+  model: "gpt-4",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+```
+
+### Optional External Service Integrations
+
+Sonamu can integrate with various external services. Below are environment variable examples for commonly used services.
+
+<Info>
+These services are not part of Sonamu's default configuration. Add them only when needed for your project.
+</Info>
+
+<Tabs>
+  <Tab title="Stripe" icon="stripe">
+    ```bash
+    # Stripe Payments
+    STRIPE_SECRET_KEY=your-stripe-secret-key
+    STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+    STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+    ```
+  </Tab>
+
+  <Tab title="SendGrid" icon="envelope">
+    ```bash
+    # SendGrid Email
+    SENDGRID_API_KEY=your-sendgrid-api-key
+    SENDGRID_FROM_EMAIL=noreply@example.com
+    ```
+  </Tab>
+
+  <Tab title="Twilio" icon="phone">
+    ```bash
+    # Twilio SMS
+    TWILIO_ACCOUNT_SID=your-twilio-account-sid
+    TWILIO_AUTH_TOKEN=your-twilio-auth-token
+    TWILIO_PHONE_NUMBER=+1234567890
+    ```
+  </Tab>
+
+  <Tab title="Firebase" icon="fire">
+    ```bash
+    # Firebase
+    FIREBASE_API_KEY=your-firebase-api-key
+    FIREBASE_PROJECT_ID=my-project
+    FIREBASE_APP_ID=your-firebase-app-id
+    ```
+  </Tab>
+</Tabs>
+
+## Environment-Specific Key Management
+
+<Warning>
+**Never use production keys in development environments!** Use separate keys for each environment.
+</Warning>
+
+<Tabs>
+  <Tab title="Development" icon="laptop-code">
+    ```bash title=".env.development"
+    # Test or sandbox keys
+    OPENAI_API_KEY=your-test-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-test-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-test-aws-secret-key
+    S3_BUCKET=myproject-dev
+    
+    STRIPE_SECRET_KEY=your-test-stripe-key
+    ```
+
+    **Characteristics:**
+    - Uses test mode keys
+    - No or minimal charges
+    - Limited permissions
+  </Tab>
+
+  <Tab title="Staging" icon="flask">
+    ```bash title=".env.staging"
+    # Staging-specific keys
+    OPENAI_API_KEY=your-staging-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-staging-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key
+    S3_BUCKET=myproject-staging
+    
+    STRIPE_SECRET_KEY=your-test-stripe-key  # Still test mode
+    ```
+
+    **Characteristics:**
+    - Separate resources from production
+    - May incur actual charges
+    - Same permissions as production
+  </Tab>
+
+  <Tab title="Production" icon="server">
+    ```bash title=".env.production"
+    # Production keys (manage very strictly)
+    OPENAI_API_KEY=your-production-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-production-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-production-aws-secret-key
+    S3_BUCKET=myproject-production
+    
+    STRIPE_SECRET_KEY=your-live-stripe-key  # Live mode
+    ```
+
+    **Characteristics:**
+    - Highest level of security
+    - Apply principle of least privilege
+    - Periodic rotation
+  </Tab>
+</Tabs>
+
+## Creating AWS IAM User
+
+<Steps>
+  <Step title="Access IAM Console" icon="aws">
+    Go to [AWS IAM Console](https://console.aws.amazon.com/iam/)
+  </Step>
+
+  <Step title="Create User" icon="user-plus">
+    1. Users → Add users
+    2. User name: `sonamu-s3-user`
+    3. Access type: Select **Programmatic access**
+  </Step>
+
+  <Step title="Set Permissions" icon="shield">
+    **Option 1: Attach Existing Policy**
+    
+    ```
+    AmazonS3FullAccess  ❌ (too broad)
+    ```
+
+    **Option 2: Custom Policy (recommended)**
+
+    ```json title="sonamu-s3-policy.json"
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:PutObject",
+            "s3:GetObject",
+            "s3:DeleteObject",
+            "s3:ListBucket"
+          ],
+          "Resource": [
+            "arn:aws:s3:::myproject-uploads/*",
+            "arn:aws:s3:::myproject-uploads"
+          ]
+        }
+      ]
+    }
+    ```
+
+    <Tip>
+    Enhance security by allowing only specific buckets and actions.
+    </Tip>
+  </Step>
+
+  <Step title="Issue Access Keys" icon="key">
+    After user creation completes:
+    - Access key ID: `your-aws-access-key-id`
+    - Secret access key: `your-aws-secret-access-key`
+
+    <Danger>
+    The secret access key is displayed only once! Save it to a secure location immediately.
+    </Danger>
+  </Step>
+
+  <Step title="Add to .env File" icon="file-code">
+    ```bash
+    AWS_ACCESS_KEY_ID=your-aws-access-key-id
+    AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+    ```
+  </Step>
+</Steps>
+
+## Issuing OpenAI API Key
+
+<Steps>
+  <Step title="Access OpenAI Platform" icon="robot">
+    Log in to [OpenAI API Platform](https://platform.openai.com/)
+  </Step>
+
+  <Step title="Create API Key" icon="key">
+    1. API keys → Create new secret key
+    2. Name: `sonamu-production`
+    3. Permissions: **All** or **Restricted** (recommended)
+  </Step>
+
+  <Step title="Set Usage Limits" icon="gauge-high">
+    Settings → Billing → Set Usage limits
+
+    ```
+    Hard limit: $100/month (automatically blocked when exceeded)
+    Soft limit: $80/month (notification)
+    ```
+
+    <Warning>
+    Unexpected charges may occur if you don't set usage limits!
+    </Warning>
+  </Step>
+
+  <Step title="Save Key" icon="save">
+    ```bash
+    OPENAI_API_KEY=your-openai-api-key
+    ```
+
+    Save to a secure location immediately after issuance (cannot be viewed again)
+  </Step>
+</Steps>
+
+## Security Best Practices
+
+<Accordion title="Key Rotation" icon="rotate">
+  ### Regular Key Replacement
+
+  **Recommended Frequency:**
+  - Production: Every 3 months
+  - Staging: Every 6 months
+  - Development: Yearly or as needed
+
+  ### Rotation Procedure
+
+  <Steps>
+    <Step title="Create New Key">
+      Create a new key while keeping the existing one active.
+    </Step>
+
+    <Step title="Deploy New Key">
+      ```bash
+      # Add new key to environment variables
+      AWS_ACCESS_KEY_ID=your-new-aws-key-id
+      AWS_SECRET_ACCESS_KEY=your-new-aws-secret-key
+      
+      # Restart application
+      ```
+    </Step>
+
+    <Step title="Monitor">
+      Verify it works without errors for 24 hours
+    </Step>
+
+    <Step title="Delete Old Key">
+      Deactivate/delete the old key if no issues
+    </Step>
+  </Steps>
+
+  <Info>
+  To perform key rotation without downtime, use a blue-green approach that maintains both new and old keys simultaneously.
+  </Info>
+</Accordion>
+
+<Accordion title="Principle of Least Privilege" icon="user-shield">
+  ### Minimize IAM Policies
+
+  ```json
+  // ❌ Bad example: All permissions
+  {
+    "Effect": "Allow",
+    "Action": "s3:*",
+    "Resource": "*"
+  }
+
+  // ✅ Good example: Only necessary permissions
+  {
+    "Effect": "Allow",
+    "Action": [
+      "s3:PutObject",
+      "s3:GetObject"
+    ],
+    "Resource": "arn:aws:s3:::my-bucket/uploads/*"
+  }
+  ```
+
+  ### Separate Read-Only Keys
+
+  ```bash
+  # Write permissions (application)
+  AWS_WRITE_ACCESS_KEY_ID=your-write-key-id
+  AWS_WRITE_SECRET_ACCESS_KEY=your-write-secret-key
+
+  # Read permissions (analytics/backup)
+  AWS_READ_ACCESS_KEY_ID=your-read-key-id
+  AWS_READ_SECRET_ACCESS_KEY=your-read-secret-key
+  ```
+</Accordion>
+
+<Accordion title="Key Leak Response" icon="triangle-exclamation">
+  ### Immediate Actions
+
+  <Steps>
+    <Step title="Invalidate Key Immediately" icon="ban">
+      ```bash
+      # AWS CLI
+      aws iam delete-access-key \
+        --access-key-id your-leaked-access-key-id \
+        --user-name sonamu-user
+
+      # OpenAI Platform
+      # API keys → Click Revoke
+      ```
+    </Step>
+
+    <Step title="Issue and Deploy New Key" icon="key">
+      Issue a new key immediately and deploy to production
+    </Step>
+
+    <Step title="Check Usage History" icon="magnifying-glass">
+      ```bash
+      # Check for suspicious activity in AWS CloudTrail
+      # Check for abnormal calls on OpenAI Usage page
+      ```
+    </Step>
+
+    <Step title="Clean Git History" icon="git-alt">
+      ```bash
+      # Remove key from commit history (carefully!)
+      git filter-branch --force --index-filter \
+        "git rm --cached --ignore-unmatch .env" \
+        --prune-empty --tag-name-filter cat -- --all
+      
+      # Force push
+      git push origin --force --all
+      ```
+
+      <Danger>
+      Cleaning Git history affects collaborating team members. Coordinate with your team before proceeding.
+      </Danger>
+    </Step>
+  </Steps>
+
+  ### Leak Detection Tools
+
+  ```bash
+  # Install git-secrets
+  brew install git-secrets
+
+  # Apply to project
+  git secrets --install
+  git secrets --register-aws
+
+  # Scan
+  git secrets --scan
+  ```
+</Accordion>
+
+<Accordion title="Environment Variable Encryption" icon="lock">
+  ### Development Environment
+
+  ```bash
+  # Using dotenv-vault
+  npm install -g dotenv-vault
+
+  # Encrypt
+  npx dotenv-vault encrypt
+
+  # Decrypt (team members)
+  DOTENV_KEY=your-dotenv-vault-key npx dotenv-vault decrypt
+  ```
+
+  ### Production Environment
+
+  **AWS Systems Manager Parameter Store:**
+
+  ```typescript
+  import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+  const client = new SSMClient({ region: "ap-northeast-2" });
+  
+  async function getSecret(name: string) {
+    const command = new GetParameterCommand({
+      Name: name,
+      WithDecryption: true,
+    });
+    const response = await client.send(command);
+    return response.Parameter?.Value;
+  }
+
+  // Usage
+  const apiKey = await getSecret("/myproject/prod/openai-api-key");
+  ```
+
+  **HashiCorp Vault:**
+
+  ```typescript
+  import vault from "node-vault";
+
+  const client = vault({
+    endpoint: "https://vault.example.com:8200",
+    token: process.env.VAULT_TOKEN,
+  });
+
+  const { data } = await client.read("secret/data/myproject/prod");
+  const apiKey = data.data.OPENAI_API_KEY;
+  ```
+</Accordion>
+
+## Key Usage Monitoring
+
+### AWS CloudWatch
+
+```typescript
+// Monitor usage with AWS SDK
+import { CloudWatchClient, GetMetricStatisticsCommand } from "@aws-sdk/client-cloudwatch";
+
+const client = new CloudWatchClient({ region: "ap-northeast-2" });
+
+const stats = await client.send(
+  new GetMetricStatisticsCommand({
+    Namespace: "AWS/S3",
+    MetricName: "NumberOfObjects",
+    Dimensions: [{
+      Name: "BucketName",
+      Value: "my-project-uploads",
+    }],
+    StartTime: new Date(Date.now() - 86400000), // 24 hours ago
+    EndTime: new Date(),
+    Period: 3600, // 1 hour
+    Statistics: ["Average"],
+  })
+);
+```
+
+### OpenAI Usage Alerts
+
+```typescript
+// Check usage and send alerts
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Run periodically (cron job)
+async function checkUsage() {
+  const usage = await fetch("https://api.openai.com/v1/usage", {
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+  }).then(r => r.json());
+
+  const totalCost = usage.total_usage * 0.0001; // Example rate
+
+  if (totalCost > 80) {
+    // Send warning notification (Slack, Email, etc.)
+    console.warn(`⚠️ OpenAI usage warning: $${totalCost}`);
+  }
+}
+```
+
+## Test Environment Key Management
+
+<CodeGroup>
+```bash Jest
+# .env.test
+OPENAI_API_KEY=test-mock-key
+AWS_ACCESS_KEY_ID=test-key-id
+AWS_SECRET_ACCESS_KEY=test-secret-key
+```
+
+```typescript Mock
+// __mocks__/openai.ts
+export const OpenAI = jest.fn().mockImplementation(() => ({
+  chat: {
+    completions: {
+      create: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "Mocked response" } }],
+      }),
+    },
+  },
+}));
+```
+
+```typescript Env Override
+// test/setup.ts
+process.env.OPENAI_API_KEY = "test-mock-key";
+process.env.AWS_ACCESS_KEY_ID = "test-key-id";
+process.env.AWS_SECRET_ACCESS_KEY = "test-secret-key";
+```
+</CodeGroup>
+
+<Tip>
+Use mocks in tests to avoid calling actual APIs. This reduces test costs and improves speed.
+</Tip>
+
+## Troubleshooting
+
+<Accordion title="AWS 401 Unauthorized" icon="ban">
+  **Symptoms:**
+  ```
+  Error: The AWS Access Key Id you provided does not exist in our records
+  ```
+
+  **Causes:**
+  1. Incorrect Access Key ID
+  2. Key has been deleted or deactivated
+  3. Typos (spaces, line breaks)
+
+  **Solution:**
+  ```bash
+  # Verify key
+  echo $AWS_ACCESS_KEY_ID
+  
+  # Check .env file
+  cat .env | grep AWS
+  
+  # Check key status in IAM console
+  # Verify it's in Active status
+  ```
+</Accordion>
+
+<Accordion title="OpenAI Rate Limit" icon="gauge-high">
+  **Symptoms:**
+  ```
+  RateLimitError: Rate limit reached for gpt-4
+  ```
+
+  **Causes:**
+  - API request limit exceeded (RPM, TPM)
+
+  **Solution:**
+
+  ```typescript
+  // Implement retry logic
+  import { RateLimiter } from "limiter";
+
+  const limiter = new RateLimiter({
+    tokensPerInterval: 10,
+    interval: "minute",
+  });
+
+  async function callOpenAI(prompt: string) {
+    await limiter.removeTokens(1);
+    
+    try {
+      return await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+      });
+    } catch (error) {
+      if (error.status === 429) {
+        // Retry after 1 minute
+        await new Promise(resolve => setTimeout(resolve, 60000));
+        return callOpenAI(prompt);
+      }
+      throw error;
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="S3 403 Forbidden" icon="lock">
+  **Symptoms:**
+  ```
+  Access Denied: You do not have permission to perform this action
+  ```
+
+  **Causes:**
+  - IAM policy missing required permissions
+  - Blocked by bucket policy
+
+  **Solution:**
+
+  ```json
+  // Add permissions to IAM policy
+  {
+    "Effect": "Allow",
+    "Action": [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject"
+    ],
+    "Resource": "arn:aws:s3:::my-bucket/*"
+  }
+  ```
+
+  ```bash
+  # Test permissions
+  aws s3 ls s3://my-bucket --profile myproject
+  ```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card 
+    title=".env Setup" 
+    icon="file-code" 
+    href="/configuration/environment-variables/env-setup"
+  >
+    Learn environment variable basics
+  </Card>
+  
+  <Card 
+    title="Database Credentials" 
+    icon="database" 
+    href="/configuration/environment-variables/database-credentials"
+  >
+    Safely manage DB connection information
+  </Card>
+  
+  <Card 
+    title="Storage Configuration" 
+    icon="cloud" 
+    href="/configuration/sonamu-config/storage"
+  >
+    Configure S3 storage
+  </Card>
+  
+  <Card 
+    title="Session Settings" 
+    icon="shield" 
+    href="/configuration/sonamu-config/server"
+  >
+    Check session and security settings
+  </Card>
+</CardGroup>

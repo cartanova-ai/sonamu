@@ -1,0 +1,668 @@
+---
+title: '@cache'
+description: '메서드 결과 캐싱 데코레이터'
+---
+
+`@cache` 데코레이터는 메서드의 실행 결과를 캐시하여 성능을 향상시킵니다. BentoCache를 기반으로 메모리, Redis, DynamoDB 등 다양한 스토리지를 지원합니다.
+
+## 기본 사용법
+
+```typescript
+import { BaseModelClass, api, cache } from "sonamu";
+
+class ProductModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  @cache({ ttl: "10m" })
+  async findById(id: number) {
+    const rdb = this.getPuri("r");
+    return rdb.table("products").where("id", id).first();
+  }
+
+  @api({ httpMethod: "GET" })
+  @cache({ ttl: "1h", tags: ["products"] })
+  async list() {
+    const rdb = this.getPuri("r");
+    return rdb.table("products").select();
+  }
+}
+```
+
+## 설정 (sonamu.config.ts)
+
+캐시를 사용하려면 `sonamu.config.ts`에서 설정이 필요합니다.
+
+```typescript
+import { bentostore } from "bentocache";
+import { memoryDriver } from "bentocache/drivers/memory";
+import { redisDriver } from "bentocache/drivers/redis";
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  cache: {
+    default: "multi",  // 기본 스토어
+    stores: {
+      // 메모리 전용
+      memory: bentostore()
+        .useL1Layer(memoryDriver({ maxItems: 1000 })),
+      
+      // Redis 전용
+      redis: bentostore()
+        .useL1Layer(redisDriver({
+          connection: { host: "127.0.0.1", port: 6379 }
+        })),
+      
+      // Multi-tier (메모리 + Redis)
+      multi: bentostore()
+        .useL1Layer(memoryDriver({ maxItems: 1000 }))
+        .useL2Layer(redisDriver({
+          connection: { host: "127.0.0.1", port: 6379 }
+        }))
+    }
+  }
+});
+```
+
+<Info>
+캐시 설정이 없으면 `@cache` 사용 시 에러가 발생합니다.
+</Info>
+
+## 옵션
+
+### ttl
+
+캐시 유효 시간을 지정합니다.
+
+```typescript
+type TTL = string | number;  // "10s", "5m", "1h", "1d" 또는 밀리초
+```
+
+```typescript
+@cache({ ttl: "10m" })     // 10분
+async getData() {}
+
+@cache({ ttl: "1h" })      // 1시간
+async getReport() {}
+
+@cache({ ttl: "1d" })      // 1일
+async getDailySummary() {}
+
+@cache({ ttl: 60000 })     // 60초 (밀리초)
+async getQuickData() {}
+```
+
+<Tip>
+문자열 형식을 사용하면 가독성이 좋습니다: `"10s"`, `"5m"`, `"1h"`, `"1d"`
+</Tip>
+
+### key
+
+캐시 키를 지정합니다.
+
+**기본값:** `"{ModelName}.{methodName}:{serializedArgs}"`
+
+<Tabs>
+  <Tab title="자동 생성 (기본)" icon="wand-magic-sparkles">
+    ```typescript
+    @cache({ ttl: "10m" })
+    async findById(id: number) {
+      // 캐시 키: "Product.findById:123"
+    }
+
+    @cache({ ttl: "10m" })
+    async search(query: string, page: number) {
+      // 캐시 키: "Product.search:["search term",1]"
+    }
+    ```
+  </Tab>
+
+  <Tab title="고정 키" icon="key">
+    ```typescript
+    @cache({ ttl: "1h", key: "products:featured" })
+    async getFeatured() {
+      // 캐시 키: "products:featured"
+      // 인자가 없으므로 항상 같은 키
+    }
+
+    @cache({ ttl: "10m", key: "user:profile" })
+    async getProfile(userId: number) {
+      // 캐시 키: "user:profile:123"
+      // 인자가 자동으로 suffix로 추가됨
+    }
+    ```
+  </Tab>
+
+  <Tab title="함수로 생성" icon="code">
+    ```typescript
+    @cache({
+      ttl: "10m",
+      key: (subset: string, id: number) => `product:${subset}:${id}`
+    })
+    async findById(subset: string, id: number) {
+      // 캐시 키: "product:A:123"
+    }
+
+    @cache({
+      ttl: "1h",
+      key: (filters: FilterParams) => {
+        const sorted = Object.keys(filters).sort();
+        return `search:${sorted.map(k => `${k}=${filters[k]}`).join(":")}`;
+      }
+    })
+    async search(filters: FilterParams) {
+      // 캐시 키: "search:category=electronics:price=100"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### store
+
+사용할 캐시 스토어를 지정합니다.
+
+**기본값:** `sonamu.config.ts`의 `default` 스토어
+
+```typescript
+@cache({ ttl: "1h", store: "redis" })
+async getSharedData() {
+  // Redis 스토어 사용
+}
+
+@cache({ ttl: "5m", store: "memory" })
+async getLocalData() {
+  // 메모리 스토어 사용
+}
+```
+
+### tags
+
+캐시 태그를 지정합니다. 태그별로 캐시를 일괄 무효화할 때 사용합니다.
+
+```typescript
+@cache({ ttl: "1h", tags: ["products", "featured"] })
+async getFeatured() {
+  // tags로 묶어서 관리
+}
+
+@cache({ ttl: "10m", tags: ["products"] })
+async findById(id: number) {
+  // "products" 태그로 무효화 가능
+}
+
+// 캐시 무효화
+await Sonamu.cache.deleteByTags(["products"]);
+```
+
+### gracePeriod
+
+캐시가 만료된 후에도 일정 시간 동안 이전 값을 반환하는 유예 기간입니다.
+
+```typescript
+@cache({
+  ttl: "10m",
+  gracePeriod: { enabled: true, duration: "5m" }
+})
+async getData() {
+  // TTL 만료 후 5분간은 기존 캐시 반환
+  // 백그라운드에서 새로운 값 갱신
+}
+```
+
+### timeouts
+
+캐시 작업의 타임아웃을 설정합니다.
+
+```typescript
+@cache({
+  ttl: "10m",
+  timeouts: {
+    soft: "100ms",   // 이 시간 내에 캐시 없으면 factory 실행
+    hard: "1s"       // 최대 대기 시간
+  }
+})
+async getData() {
+  // 100ms 내에 캐시가 없으면 즉시 factory 실행
+}
+```
+
+## 캐시 무효화
+
+### 태그로 무효화
+
+```typescript
+class ProductModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  @cache({ ttl: "1h", tags: ["products"] })
+  async list() {
+    const rdb = this.getPuri("r");
+    return rdb.table("products").select();
+  }
+
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(data: ProductCreateParams) {
+    const wdb = this.getDB("w");
+    const result = await this.insert(wdb, data);
+    
+    // "products" 태그의 모든 캐시 무효화
+    await Sonamu.cache.deleteByTags(["products"]);
+    
+    return result;
+  }
+}
+```
+
+### 키로 무효화
+
+```typescript
+// 특정 키 삭제
+await Sonamu.cache.delete("Product.findById:123");
+
+// 패턴 매칭으로 삭제
+await Sonamu.cache.deleteMany("Product.findById:*");
+```
+
+### 전체 무효화
+
+```typescript
+// 모든 캐시 삭제
+await Sonamu.cache.clear();
+```
+
+## 다른 데코레이터와 함께 사용
+
+### @api와 함께
+
+```typescript
+@api({ httpMethod: "GET" })
+@cache({ ttl: "10m" })
+async getData() {
+  // API 엔드포인트 + 캐싱
+}
+```
+
+### @transactional과 함께
+
+```typescript
+@api({ httpMethod: "GET" })
+@cache({ ttl: "10m" })
+@transactional({ readOnly: true })
+async getComplexData() {
+  // 읽기 전용 트랜잭션 + 캐싱
+  const rdb = this.getPuri("r");
+  
+  const users = await rdb.table("users").select();
+  const posts = await rdb.table("posts").select();
+  
+  return { users, posts };
+}
+```
+
+<Warning>
+데코레이터 순서: `@api` → `@cache` → `@transactional`
+</Warning>
+
+## 캐시 작동 방식
+
+### 1. 캐시 히트
+
+```typescript
+@cache({ ttl: "10m" })
+async findById(id: number) {
+  // 첫 번째 호출: DB 조회 + 캐시 저장
+  // 두 번째 호출: 캐시에서 즉시 반환 (DB 조회 없음)
+}
+```
+
+### 2. 캐시 미스
+
+```typescript
+@cache({ ttl: "10m" })
+async findById(id: number) {
+  // 캐시에 없음 → factory 실행 (메서드 실행)
+  const result = await this.queryDB(id);
+  // 결과를 캐시에 저장
+  return result;
+}
+```
+
+### 3. 캐시 갱신
+
+```typescript
+@cache({ ttl: "10m" })
+async getData() {
+  // TTL 만료 후 첫 호출: factory 실행 + 새로운 값 캐시
+  // 이후 10분간: 캐시된 값 반환
+}
+```
+
+## 주의사항
+
+### 1. CacheManager 초기화 필요
+
+```typescript
+// ❌ 에러 발생
+@cache({ ttl: "10m" })
+async getData() {}
+// CacheManager is not initialized
+```
+
+**해결:** `sonamu.config.ts`에서 `cache` 설정 추가
+
+### 2. 인자 직렬화
+
+복잡한 객체는 자동으로 JSON 직렬화됩니다:
+
+```typescript
+@cache({ ttl: "10m" })
+async search(params: { name: string; age: number }) {
+  // 캐시 키: "User.search:{"name":"Alice","age":30}"
+}
+```
+
+<Tip>
+직렬화가 어려운 객체는 `key` 함수로 직접 키를 생성하세요.
+</Tip>
+
+### 3. null/undefined 캐싱
+
+`null`과 `undefined`도 캐시됩니다:
+
+```typescript
+@cache({ ttl: "10m" })
+async findById(id: number) {
+  const result = await this.queryDB(id);
+  // result가 null이어도 캐시됨
+  return result;  // null
+}
+```
+
+### 4. 부작용이 있는 메서드
+
+캐시는 **순수 함수**에만 사용하세요:
+
+```typescript
+// ❌ 나쁜 예: 부작용이 있음
+@cache({ ttl: "10m" })
+async incrementCounter() {
+  this.counter++;  // 부작용
+  return this.counter;
+}
+
+// ✅ 좋은 예: 순수 함수
+@cache({ ttl: "10m" })
+async getCounter() {
+  return this.counter;  // 읽기만
+}
+```
+
+## 성능 최적화
+
+### Multi-tier 캐싱
+
+빠른 메모리 캐시 + 영속적인 Redis 캐시:
+
+```typescript
+// sonamu.config.ts
+export default defineConfig({
+  cache: {
+    stores: {
+      multi: bentostore()
+        .useL1Layer(memoryDriver({ maxItems: 1000 }))  // 빠름
+        .useL2Layer(redisDriver({ /* ... */ }))        // 영속적
+    }
+  }
+});
+
+// L1 (메모리)에 있으면 즉시 반환
+// L1에 없으면 L2 (Redis) 조회
+// L2에 없으면 factory 실행
+@cache({ ttl: "1h", store: "multi" })
+async getData() {}
+```
+
+### 캐시 웜업
+
+미리 캐시를 채워두기:
+
+```typescript
+class ProductModelClass extends BaseModelClass {
+  async warmupCache() {
+    // 인기 상품 미리 캐싱
+    const popularIds = [1, 2, 3, 4, 5];
+    await Promise.all(
+      popularIds.map(id => this.findById(id))
+    );
+  }
+
+  @cache({ ttl: "1h" })
+  async findById(id: number) {
+    const rdb = this.getPuri("r");
+    return rdb.table("products").where("id", id).first();
+  }
+}
+```
+
+## 로깅
+
+캐시 히트/미스를 로깅하려면 BentoCache 설정 사용:
+
+```typescript
+export default defineConfig({
+  cache: {
+    stores: {
+      memory: bentostore()
+        .useL1Layer(memoryDriver({ maxItems: 1000 }))
+        .options({
+          logger: {
+            log: (level, message) => {
+              console.log(`[${level}] ${message}`);
+            }
+          }
+        })
+    }
+  }
+});
+```
+
+## 예시 모음
+
+<Tabs>
+  <Tab title="API 응답 캐싱" icon="bolt">
+    ```typescript
+    class ProductModelClass extends BaseModelClass {
+      @api({ httpMethod: "GET" })
+      @cache({ ttl: "5m", tags: ["products"] })
+      async list(params: ProductListParams) {
+        const rdb = this.getPuri("r");
+        return rdb.table("products")
+          .where("active", true)
+          .paginate(params);
+      }
+
+      @api({ httpMethod: "GET" })
+      @cache({ ttl: "1h", tags: ["products"] })
+      async getFeatured() {
+        const rdb = this.getPuri("r");
+        return rdb.table("products")
+          .where("featured", true)
+          .limit(10);
+      }
+
+      @api({ httpMethod: "POST" })
+      @transactional()
+      async create(data: ProductCreateParams) {
+        const wdb = this.getDB("w");
+        const result = await this.insert(wdb, data);
+        
+        // 캐시 무효화
+        await Sonamu.cache.deleteByTags(["products"]);
+        
+        return result;
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="사용자 프로필" icon="user">
+    ```typescript
+    class UserModelClass extends BaseModelClass {
+      @api({ httpMethod: "GET" })
+      @cache({
+        ttl: "10m",
+        key: (id: number) => `user:profile:${id}`,
+        tags: ["users"]
+      })
+      async getProfile(id: number) {
+        const rdb = this.getPuri("r");
+        
+        const user = await rdb.table("users")
+          .where("id", id)
+          .first();
+        
+        const posts = await rdb.table("posts")
+          .where("user_id", id)
+          .limit(5)
+          .select();
+        
+        return { user, posts };
+      }
+
+      @api({ httpMethod: "PUT" })
+      @transactional()
+      async updateProfile(id: number, data: UserUpdateParams) {
+        const wdb = this.getDB("w");
+        await this.upsert(wdb, { id, ...data });
+        
+        // 해당 사용자 캐시만 무효화
+        await Sonamu.cache.delete(`user:profile:${id}`);
+        
+        return this.getProfile(id);
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="집계 데이터" icon="chart-line">
+    ```typescript
+    class AnalyticsModelClass extends BaseModelClass {
+      @api({ httpMethod: "GET" })
+      @cache({ ttl: "1h", key: "analytics:dashboard" })
+      async getDashboard() {
+        const rdb = this.getPuri("r");
+        
+        const [users, orders, revenue] = await Promise.all([
+          rdb.table("users").count("* as count"),
+          rdb.table("orders").count("* as count"),
+          rdb.table("orders").sum("total_amount as total")
+        ]);
+        
+        return {
+          totalUsers: users[0].count,
+          totalOrders: orders[0].count,
+          totalRevenue: revenue[0].total
+        };
+      }
+
+      @api({ httpMethod: "GET" })
+      @cache({
+        ttl: "1d",
+        key: (date: string) => `analytics:daily:${date}`
+      })
+      async getDailyStats(date: string) {
+        const rdb = this.getPuri("r");
+        
+        return rdb.table("orders")
+          .whereRaw("DATE(created_at) = ?", [date])
+          .select(
+            rdb.raw("COUNT(*) as order_count"),
+            rdb.raw("SUM(total_amount) as revenue"),
+            rdb.raw("AVG(total_amount) as avg_order_value")
+          )
+          .first();
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="검색 결과" icon="magnifying-glass">
+    ```typescript
+    class SearchModelClass extends BaseModelClass {
+      @api({ httpMethod: "GET" })
+      @cache({
+        ttl: "15m",
+        key: (query: string, filters: SearchFilters) => {
+          const filterStr = Object.entries(filters)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}:${v}`)
+            .join(",");
+          return `search:${query}:${filterStr}`;
+        },
+        tags: ["search"]
+      })
+      async search(query: string, filters: SearchFilters) {
+        const rdb = this.getPuri("r");
+        
+        let qb = rdb.table("products")
+          .where("name", "like", `%${query}%`);
+        
+        if (filters.category) {
+          qb = qb.where("category", filters.category);
+        }
+        
+        if (filters.minPrice) {
+          qb = qb.where("price", ">=", filters.minPrice);
+        }
+        
+        if (filters.maxPrice) {
+          qb = qb.where("price", "<=", filters.maxPrice);
+        }
+        
+        return qb.limit(20).select();
+      }
+
+      @api({ httpMethod: "DELETE" })
+      async clearSearchCache() {
+        // 검색 캐시 전체 무효화
+        await Sonamu.cache.deleteByTags(["search"]);
+        return { success: true };
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="@api" 
+    icon="plug" 
+    href="/api-reference/decorators/api"
+  >
+    API 엔드포인트 만들기
+  </Card>
+  
+  <Card 
+    title="@transactional" 
+    icon="arrows-rotate" 
+    href="/api-reference/decorators/transactional"
+  >
+    트랜잭션 사용하기
+  </Card>
+  
+  <Card 
+    title="BentoCache" 
+    icon="book" 
+    href="https://bentocache.dev"
+  >
+    BentoCache 공식 문서
+  </Card>
+  
+  <Card 
+    title="성능 최적화" 
+    icon="gauge-high" 
+    href="/guides/performance"
+  >
+    성능 최적화 가이드
+  </Card>
+</CardGroup>

@@ -1,0 +1,375 @@
+---
+title: "Loading Fixtures"
+description: "Import production data to Fixture DB"
+---
+
+Learn how to import actual production data to Fixture DB for use in tests.
+
+## Loading Fixtures Overview
+
+<CardGroup cols={2}>
+  <Card title="Real Data" icon="database">
+    Production data
+    Realistic testing
+  </Card>
+  <Card title="Auto Relation Resolution" icon="link">
+    Auto BelongsTo tracking
+    Related data together
+  </Card>
+  <Card title="Duplicate Prevention" icon="shield-check">
+    ID-based management
+    Safe import
+  </Card>
+  <Card title="Simple Command" icon="terminal">
+    One-line execution
+    Auto sync
+  </Card>
+</CardGroup>
+
+## pnpm sonamu fixture import
+
+Import specific records from production DB to Fixture DB.
+
+### Basic Usage
+
+```bash
+pnpm sonamu fixture import [entityId] [recordIds]
+```
+
+**Parameters**:
+
+- `entityId`: Entity name (e.g., "User", "Post")
+- `recordIds`: Array of record IDs to import (comma-separated)
+
+### Examples
+
+```bash
+# Import User ID 1, 2, 3 to Fixture DB
+pnpm sonamu fixture import User 1,2,3
+
+# Import Post ID 42 to Fixture DB
+pnpm sonamu fixture import Post 42
+```
+
+## How It Works
+
+### 1. Record Extraction
+
+```typescript
+// sonamu/src/testing/fixture-manager.ts
+async function importFixture(entityId: string, ids: number[]) {
+  const queries = await Promise.all(
+    ids.map(async (id) => {
+      // Generate import query for each ID
+      return await this.getImportQueries(entityId, "id", id);
+    })
+  );
+
+  // Execute queries
+  const wdb = BaseModel.getDB("w");
+  for (const query of queries) {
+    await wdb.raw(query);
+  }
+}
+```
+
+### 2. Auto Relation Tracking
+
+Automatically tracks BelongsTo relations to import all necessary data.
+
+```bash
+# When importing User #1...
+pnpm sonamu fixture import User 1
+
+# Automatically imports:
+# - User #1
+# - User #1's Profile (OneToOne)
+# - Profile's related data
+```
+
+**Internal operation**:
+
+```typescript
+async function getImportQueries(
+  entityId: string,
+  field: string,
+  id: number
+): Promise<string[]> {
+  // Prevent circular references
+  const recordKey = `${entityId}#${field}#${id}`;
+  if (this.visitedRecords.has(recordKey)) {
+    return [];
+  }
+  this.visitedRecords.add(recordKey);
+
+  // Fetch record
+  const entity = EntityManager.get(entityId);
+  const [row] = await wdb(entity.table).where(field, id).limit(1);
+
+  if (!row) {
+    throw new Error(`Cannot find ${entityId}#${id} row.`);
+  }
+
+  // Handle BelongsTo relations
+  const relatedQueries = [];
+  for (const [, relation] of Object.entries(entity.relations)) {
+    if (isBelongsToOneRelationProp(relation)) {
+      const relatedId = row[`${relation.name}_id`];
+      if (relatedId) {
+        // Recursively import related data
+        relatedQueries.push(
+          ...(await this.getImportQueries(relation.with, "id", relatedId))
+        );
+      }
+    }
+  }
+
+  // Generate INSERT query
+  const selfQuery = `INSERT IGNORE INTO fixture.${entity.table} 
+    (SELECT * FROM production.${entity.table} WHERE id = ${id})`;
+
+  return [...relatedQueries, selfQuery];
+}
+```
+
+### 3. Auto Sync
+
+After `import`, Fixture DB → Test DB sync is automatically executed.
+
+```typescript
+async function fixture_import(entityId: string, recordIds: number[]) {
+  await setupFixtureManager();
+
+  // 1. Production → Fixture DB
+  await FixtureManager.importFixture(entityId, recordIds);
+
+  // 2. Fixture DB → Test DB
+  await FixtureManager.sync();
+}
+```
+
+## Execution Examples
+
+### Import Users
+
+```bash
+pnpm sonamu fixture import User 1,2,3
+
+{ entityId: 'User', field: 'id', id: 1 }
+{ entityId: 'Profile', field: 'id', id: 1 }
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
+
+{ entityId: 'User', field: 'id', id: 2 }
+{ entityId: 'Profile', field: 'id', id: 2 }
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
+
+✅ Import complete! Syncing to test DB...
+```
+
+### Import Posts
+
+```bash
+$ pnpm sonamu fixture import Post 42
+
+{ entityId: 'Post', field: 'id', id: 42 }
+{ entityId: 'User', field: 'id', id: 5 }
+{ entityId: 'Profile', field: 'id', id: 5 }
+{ entityId: 'Category', field: 'id', id: 10 }
+
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
+INSERT IGNORE INTO fixture.categories ...
+INSERT IGNORE INTO fixture.posts ...
+
+✅ Import complete!
+```
+
+## Complex Relation Handling
+
+### HasMany Relations
+
+```bash
+# To import User #1 and all their Posts
+# 1. Import User
+pnpm sonamu fixture import User 1
+
+# 2. Import User's Posts separately
+pnpm sonamu fixture import Post 10,11,12
+
+# HasMany is not automatically tracked
+# (could import too much data)
+```
+
+### ManyToMany Relations
+
+```bash
+# To import Post #1 and related Tags
+# 1. Import Post
+pnpm sonamu fixture import Post 1
+
+# 2. Handle junction table data manually
+# (or create directly in fixture.ts)
+```
+
+## Duplicate Handling
+
+Uses `INSERT IGNORE` to prevent duplicates.
+
+```bash
+# Safe to import User #1 twice
+pnpm sonamu fixture import User 1
+pnpm sonamu fixture import User 1
+
+# Result: User #1 saved only once
+```
+
+## Circular Reference Prevention
+
+Tracks visited records to prevent circular references.
+
+```typescript
+// Circular reference example:
+// User #1 → Profile #1
+// Profile #1 → User #1 (back reference)
+
+// Prevented with visit tracking
+private visitedRecords = new Set<string>();
+
+const recordKey = `${entityId}#${field}#${id}`;
+if (this.visitedRecords.has(recordKey)) {
+  return []; // Already visited - skip
+}
+this.visitedRecords.add(recordKey);
+```
+
+## Best Practices
+
+### 1. Minimal Data
+
+```bash
+# ✅ Correct: Only what's needed
+pnpm sonamu fixture import User 1,2
+
+# ❌ Wrong: Too much data
+pnpm sonamu fixture import User 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+```
+
+### 2. Representative Cases
+
+```bash
+# Select data including various cases
+pnpm sonamu fixture import User 1    # Regular user
+pnpm sonamu fixture import User 100  # Admin
+pnpm sonamu fixture import User 500  # Premium user
+```
+
+### 3. Use with fixture.ts
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+
+export const loadFixtures = createFixtureLoader({
+  // Use real data imported from production
+  realUser01: async () => {
+    const userModel = new UserModel();
+    // Assuming ID 1 already exists in fixture DB
+    const { user } = await userModel.getUser("C", 1);
+    return user;
+  },
+
+  // Create new data for testing
+  testUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "test",
+      email: "test@example.com",
+      password: "password",
+    });
+    return user;
+  },
+});
+```
+
+## Troubleshooting
+
+### Record Not Found
+
+```bash
+Error: Cannot find User#999 row.
+```
+
+**Solution**:
+
+- Verify the ID exists in production DB
+- Use correct Entity name
+
+### Permission Error
+
+```bash
+Error: Access denied for user 'readonly'
+```
+
+**Solution**:
+
+```sql
+-- Grant write permission to Fixture DB user
+GRANT ALL PRIVILEGES ON fixture.* TO 'user'@'%';
+```
+
+### Too Much Data
+
+```bash
+# Slow when importing too many IDs at once
+pnpm sonamu fixture import User 1,2,3,...,100
+
+# Solution: Split into multiple executions
+pnpm sonamu fixture import User 1,2,3,4,5
+pnpm sonamu fixture import User 6,7,8,9,10
+```
+
+## Cautions
+
+<Warning>
+  **Cautions when loading fixtures**:
+  1. **Minimal data**: Import only minimum necessary records
+  2. **Check relations**: BelongsTo is automatic, HasMany is manual
+  3. **Duplicate safe**: INSERT IGNORE prevents duplicates
+  4. **Circular references**: Handled automatically
+  5. **Check permissions**: Write permission needed for Fixture DB
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Test DB"
+    icon="database"
+    href="/testing/fixtures/test-database"
+  >
+    Test DB setup
+  </Card>
+  <Card
+    title="Creating Fixtures"
+    icon="plus"
+    href="/testing/fixtures/creating-fixtures"
+  >
+    Writing fixture.ts
+  </Card>
+  <Card
+    title="Syncing Fixtures"
+    icon="arrows-rotate"
+    href="/testing/fixtures/syncing-fixtures"
+  >
+    Fixture → Test DB
+  </Card>
+  <Card
+    title="Writing Tests"
+    icon="vial"
+    href="/testing/writing-tests/test-structure"
+  >
+    Understanding test structure
+  </Card>
+</CardGroup>

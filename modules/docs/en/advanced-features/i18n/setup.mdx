@@ -1,0 +1,157 @@
+---
+title: "i18n 설정"
+description: "Sonamu 프로젝트에서 다국어 지원 활성화하기"
+---
+
+import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+
+## sonamu.config.ts 설정
+
+`sonamu.config.ts`에서 i18n 옵션을 활성화합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  // ... 기타 설정
+  
+  i18n: {
+    defaultLocale: "ko",           // 기본 언어
+    supportedLocales: ["ko", "en"], // 지원 언어 목록
+  },
+});
+```
+
+| 옵션 | 타입 | 설명 |
+|------|------|------|
+| `defaultLocale` | `string` | 기본 언어 코드 (fallback) |
+| `supportedLocales` | `string[]` | 지원하는 모든 언어 코드 |
+
+## 디렉토리 구조
+
+i18n을 활성화하면 `api/src/i18n/` 디렉토리가 필요합니다:
+
+<FileTree>
+  <FileItem name="api/">
+    <FileItem name="src/">
+      <FileItem name="i18n/">
+        <FileItem name="ko.ts" description="한국어 딕셔너리 (defaultLocale)" />
+        <FileItem name="en.ts" description="영어 딕셔너리" />
+        <FileItem name="sd.generated.ts" description="자동 생성 파일" />
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
+
+## 딕셔너리 파일 생성
+
+### defaultLocale 딕셔너리 (ko.ts)
+
+```typescript
+import { createFormat, josa } from "sonamu/dict";
+
+const format = createFormat("ko");
+
+export default {
+  // 공통 UI
+  "common.save": "저장",
+  "common.cancel": "취소",
+  "common.delete": "삭제",
+  "common.results": (count: number) => `${count}개 결과`,
+  
+  // 에러 메시지
+  "error.notFound": "찾을 수 없습니다",
+  "error.unauthorized": "인증이 필요합니다",
+  
+  // 검증 메시지 (함수형)
+  "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
+  "validation.email": "올바른 이메일 형식이 아닙니다",
+  
+  // 단순 키도 사용 가능 (단, 네임스페이스 패턴 권장)
+  notFound: (name: string, id: number) => `존재하지 않는 ${name} ID ${id}`,
+  test: (date: Date) => format.date(date),
+} as const;
+```
+
+<Tip>
+**키 네이밍 권장 패턴**: `"도메인.항목"` 형식의 네임스페이스 패턴을 사용하면 키를 체계적으로 관리할 수 있고 IDE 자동완성도 편리합니다.
+- `"common.*"` - 공통 UI
+- `"error.*"` - 에러 메시지
+- `"validation.*"` - 검증 메시지
+- `"entity.*"` - Entity 관련
+</Tip>
+
+### 다른 locale 딕셔너리 (en.ts)
+
+```typescript
+import { plural } from "sonamu/dict";
+import { defineLocale } from "./sd.generated";
+
+export default defineLocale({
+  // 공통 UI
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+  "common.results": (count: number) =>
+    plural(count, { one: `${count} result`, other: `${count} results` }),
+  
+  // 에러 메시지
+  "error.notFound": "Not found",
+  "error.unauthorized": "Authentication required",
+  
+  // 검증 메시지
+  "validation.required": (field: string) => `${field} is required`,
+  "validation.email": "Invalid email format",
+  
+  // 단순 키 (네임스페이스 패턴 권장)
+  notFound: (name: string, id: number) => `${name} ID ${id} not found`,
+});
+```
+
+<Note>
+`defineLocale`은 `sd.generated.ts`에서 export되며, defaultLocale의 키를 기준으로 타입 체크를 제공합니다.
+</Note>
+
+## Context에서 Locale 설정
+
+요청별로 locale을 설정하려면 미들웨어에서 Context를 구성합니다:
+
+```typescript
+// api/src/middlewares/locale.ts
+import { Sonamu } from "sonamu";
+
+export async function localeMiddleware(request: FastifyRequest) {
+  // Accept-Language 헤더 또는 쿼리 파라미터에서 locale 추출
+  const locale = request.headers["accept-language"]?.split(",")[0]?.split("-")[0] 
+    || request.query.locale 
+    || "ko";
+  
+  // Context에 locale 설정
+  const ctx = Sonamu.getContext();
+  ctx.locale = locale;
+}
+```
+
+## 초기화 확인
+
+설정이 완료되면 `pnpm sync`를 실행하여 `sd.generated.ts`가 생성되는지 확인합니다:
+
+```bash
+cd api
+pnpm sync
+```
+
+생성된 `sd.generated.ts`에는 다음이 포함됩니다:
+- Entity에서 추출한 라벨 (`entityLabels`)
+- `SD()` 함수
+- `localizedColumn()` 함수
+- `defineLocale()` 함수
+
+<CardGroup cols={2}>
+  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
+    딕셔너리 작성 및 사용
+  </Card>
+  <Card title="Entity 라벨" icon="tag" href="/advanced-features/i18n/entity-labels">
+    자동 추출되는 라벨
+  </Card>
+</CardGroup>

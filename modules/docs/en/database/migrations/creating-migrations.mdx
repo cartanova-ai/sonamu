@@ -1,0 +1,440 @@
+---
+title: "Creating Migrations"
+description: "Auto-generate migrations in Sonamu UI"
+---
+
+Sonamu detects Entity changes and automatically generates Migration files.
+
+## Generation Workflow
+
+<CardGroup cols={2}>
+  <Card title="Modify Entity" icon="pen">
+    Edit JSON file
+    
+    Fields, types, indexes
+  </Card>
+  <Card title="Sonamu UI" icon="wand-magic-sparkles">
+    Generate button
+    
+    Auto compare and generate
+  </Card>
+  <Card title="Review Migration" icon="file-code">
+    src/migrations/*.ts
+    
+    Review up/down
+  </Card>
+  <Card title="Execute" icon="play">
+    pnpm sonamu migrate
+    
+    Apply to DB
+  </Card>
+</CardGroup>
+
+## Generating in Sonamu UI
+
+### 1. Modify Entity
+
+First, modify the Entity JSON file:
+
+```json
+// src/application/user/user.entity.json
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 255 },
+    { "name": "username", "type": "string", "length": 255 },
+    { "name": "phone", "type": "string", "length": 20, "nullable": true }  // ← New field added
+  ]
+}
+```
+
+### 2. Open Sonamu UI
+
+```bash
+pnpm sonamu ui
+```
+
+<Frame>
+  <img src="/images/migrations/sonamu-ui-main.png" alt="Sonamu UI Main Screen" />
+</Frame>
+
+### 3. Click Generate Button
+
+Click the **Generate** button in the Entity tab.
+
+<Frame>
+  <img src="/images/migrations/generate-button.png" alt="Generate Button" />
+</Frame>
+
+### 4. Review Migration
+
+Review the automatically generated Migration file:
+
+```typescript
+// src/migrations/20251220143022_alter_users_add1.ts
+import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("phone", 20).nullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("phone");
+  });
+}
+```
+
+<Info>
+Sonamu compares Entity with the current DB schema and generates migrations only for differences.
+</Info>
+
+## Generated Migration Types
+
+### New Table Creation
+
+**Adding Entity**:
+```json
+// src/application/post/post.entity.json
+{
+  "id": "Post",
+  "table": "posts",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "title", "type": "string", "length": 200 },
+    { "name": "content", "type": "string" }
+  ]
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143100_create__posts.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("posts", (table) => {
+    table.increments().primary();
+    table.string("title", 200).notNullable();
+    table.text("content").notNullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.dropTable("posts");
+}
+```
+
+### Adding Column
+
+**Entity Change**:
+```json
+{
+  "props": [
+    // ... existing fields
+    { "name": "bio", "type": "string", "nullable": true }  // ← Added
+  ]
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143200_alter_users_add1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.text("bio").nullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("bio");
+  });
+}
+```
+
+### Dropping Column
+
+**Entity Change**:
+```json
+{
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" }
+    // "old_field" removed
+  ]
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143300_alter_users_drop1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("old_field");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // Re-add on rollback (type info required)
+    table.string("old_field", 100).nullable();
+  });
+}
+```
+
+<Warning>
+**Column deletion caution!**
+
+Data cannot be recovered on rollback. 
+Proceed carefully in production.
+</Warning>
+
+### Changing Column Type
+
+**Entity Change**:
+```json
+{
+  "name": "age",
+  "type": "integer"  // Changed from string to integer
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143400_alter_users_modify1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN age TYPE integer USING age::integer`
+  );
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN age TYPE varchar(255)`
+  );
+}
+```
+
+### Adding Index
+
+**Entity Change**:
+```json
+{
+  "indexes": [
+    { "type": "unique", "column": "email" },
+    { "type": "index", "column": "username" }  // ← Added
+  ]
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143500_alter_users_index1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.index(["username"], "users_username_index");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropIndex(["username"], "users_username_index");
+  });
+}
+```
+
+### Adding Foreign Key
+
+**Entity Change**:
+```json
+{
+  "props": [
+    {
+      "type": "relation",
+      "name": "department",
+      "with": "Department",
+      "relationType": "BelongsTo"
+    }
+  ]
+}
+```
+
+**Generated Migration**:
+```typescript
+// 20251220143600_foreign__employees__department_id.ts
+export async function up(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("employees", (table) => {
+    table
+      .foreign("department_id")
+      .references("departments.id")
+      .onUpdate("CASCADE")
+      .onDelete("SET NULL");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("employees", (table) => {
+    table.dropForeign(["department_id"]);
+  });
+}
+```
+
+## Composite Changes
+
+Multiple changes result in multiple migrations:
+
+**Entity Changes**:
+```json
+{
+  "props": [
+    { "name": "phone", "type": "string", "nullable": true },  // Added
+    { "name": "bio", "type": "string", "nullable": true }     // Added
+  ],
+  "indexes": [
+    { "type": "index", "column": "phone" }  // Added
+  ]
+}
+```
+
+**Generated Migrations**:
+```
+20251220143700_alter_users_add1.ts      (2 columns added)
+20251220143701_alter_users_index1.ts    (index added)
+```
+
+<Info>
+Sonamu separates migrations by change type for easier management.
+</Info>
+
+## Migration Filename Convention
+
+```
+{timestamp}_{action}_{table_name}[_{number}].ts
+```
+
+- **timestamp**: `YYYYMMDDHHmmss`
+- **action**: `create`, `alter`, `foreign`, `drop`
+- **table_name**: underscore-separated
+- **number**: `add1`, `add2`, etc. when multiple of the same action
+
+**Examples**:
+```
+20251220143022_create__users.ts
+20251220143100_alter_users_add1.ts
+20251220143101_foreign__users__department_id.ts
+```
+
+## Pre-generation Checklist
+
+### 1. Verify DB Connection
+
+```bash
+# Check if DB is running
+psql -U postgres -h localhost -p 5432 -d mydb
+```
+
+### 2. Check Existing Migration Status
+
+```bash
+# Check executed migrations
+pnpm sonamu migrate status
+```
+
+### 3. Validate Entity
+
+```bash
+# Validate Entity syntax
+pnpm sonamu validate
+```
+
+## Manual Modification
+
+You can manually modify auto-generated migrations:
+
+```typescript
+// 20251220143022_alter_users_add1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("phone", 20).nullable();
+    
+    // Manual addition: set default value
+    table.string("country_code", 3).notNullable().defaultTo("+82");
+  });
+}
+```
+
+<Warning>
+**Manual modification cautions**:
+- Also modify the down function
+- May be overwritten on next Generate
+- Separate complex logic into separate migrations
+</Warning>
+
+## Special Cases
+
+### Generated Columns
+
+```typescript
+// Use raw SQL directly
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE "users" 
+     ADD COLUMN "full_name" varchar(510) 
+     GENERATED ALWAYS AS (first_name || ' ' || last_name) 
+     STORED`
+  );
+}
+```
+
+### Data Migration
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 1. Add column
+  await knex.schema.alterTable("users", (table) => {
+    table.string("status", 20).nullable();
+  });
+  
+  // 2. Migrate data
+  await knex("users").update({
+    status: knex.raw("CASE WHEN is_active THEN 'active' ELSE 'inactive' END"),
+  });
+  
+  // 3. nullable → notNullable
+  await knex.raw(`ALTER TABLE users ALTER COLUMN status SET NOT NULL`);
+}
+```
+
+### Conditional Execution
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  const hasColumn = await knex.schema.hasColumn("users", "phone");
+  
+  if (!hasColumn) {
+    await knex.schema.alterTable("users", (table) => {
+      table.string("phone", 20).nullable();
+    });
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Running Migrations" icon="play" href="/database/migrations/running-migrations">
+    Apply with migrate run
+  </Card>
+  <Card title="Rolling Back" icon="rotate-left" href="/database/migrations/rolling-back">
+    Undo changes
+  </Card>
+  <Card title="How It Works" icon="gear" href="/database/migrations/how-migrations-work">
+    Understanding auto-generation
+  </Card>
+  <Card title="Strategies" icon="chess" href="/database/migrations/migration-strategies">
+    Safe migration practices
+  </Card>
+</CardGroup>

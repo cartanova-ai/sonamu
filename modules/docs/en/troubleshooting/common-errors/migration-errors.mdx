@@ -1,0 +1,443 @@
+---
+title: '마이그레이션 오류'
+description: '마이그레이션 문제 해결하기'
+---
+
+Sonamu에서 자주 발생하는 데이터베이스 마이그레이션 관련 문제와 해결 방법을 다룹니다.
+
+## 체크섬 파일 파싱 오류
+
+### 증상
+
+```bash
+pnpm sonamu sync
+
+또는
+
+pnpm dev
+```
+
+실행 시 다음과 같은 오류가 발생합니다:
+
+```bash
+SyntaxError: Unexpected token } in JSON at position 1
+    at JSON.parse (<anonymous>)
+    at getPreviousChecksums (checksum.ts:109)
+```
+
+### 원인
+
+`sonamu.lock` 파일이 손상되었습니다. 일반적인 원인:
+
+1. Sync 중단 (Ctrl+C)으로 파일이 불완전하게 저장됨
+2. 파일이 빈 파일이거나 잘못된 JSON 형식
+3. 여러 프로세스가 동시에 파일을 수정함
+
+### 해결 방법
+
+#### 1. 체크섬 파일 삭제 (권장)
+
+```bash
+rm sonamu.lock
+pnpm sonamu sync
+```
+
+파일을 삭제하면 전체 재동기화가 진행됩니다. 이는 안전하며 모든 파일이 다시 생성됩니다.
+
+#### 2. 파일 내용 확인
+
+```bash
+cat sonamu.lock
+```
+
+파일이 비어있거나 `{}`만 있다면 삭제 후 재생성하세요.
+
+#### 3. 예방 방법
+
+- Sync 중단 시 반드시 완료될 때까지 기다리기
+- 여러 터미널에서 동시에 `pnpm dev` 실행하지 않기
+
+## 마이그레이션 파일 충돌
+
+### 증상
+
+```bash
+Error: Migration files conflict: 
+  - 20240115_create_users.ts
+  - 20240115_add_email_column.ts
+Both have timestamp: 20240115
+```
+
+### 원인
+
+같은 날짜에 여러 마이그레이션을 생성하여 타임스탬프가 중복되었습니다.
+
+### 해결 방법
+
+#### 1. 파일명 수동 변경
+
+```bash
+# migrations 디렉토리에서
+mv 20240115_add_email_column.ts 20240115_001_add_email_column.ts
+mv 20240115_create_users.ts 20240115_002_create_users.ts
+```
+
+#### 2. 타임스탬프 형식 사용
+
+Sonamu는 `YYYYMMDD_HHMMSS` 형식을 지원합니다:
+
+```bash
+pnpm sonamu migrate create add_email_column
+# 생성: 20240115_143022_add_email_column.ts
+```
+
+## Generated Column 오류
+
+### 증상
+
+```bash
+Error: column "full_name" cannot be cast automatically to type text
+HINT: You might need to specify "USING full_name::text"
+```
+
+### 원인
+
+PostgreSQL의 Generated Column을 수정하려 할 때 발생합니다. Generated Column은 다른 컬럼의 값으로 자동 계산되는 컬럼으로, 직접 수정할 수 없습니다.
+
+### 해결 방법
+
+#### 1. Generated Column 삭제 후 재생성
+
+```typescript
+// migrations/20240115_modify_generated_column.ts
+import { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // Generated Column 삭제
+    table.dropColumn("full_name");
+  });
+
+  await knex.schema.alterTable("users", (table) => {
+    // 새로운 정의로 재생성
+    table.specificType(
+      "full_name",
+      "TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED"
+    );
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumn("full_name");
+  });
+
+  // 이전 정의로 복원
+  await knex.schema.alterTable("users", (table) => {
+    table.specificType(
+      "full_name",
+      "TEXT GENERATED ALWAYS AS (first_name || last_name) STORED"
+    );
+  });
+}
+```
+
+#### 2. entity.json 수정
+
+```json
+{
+  "columns": {
+    "full_name": {
+      "type": "string",
+      "generated": "ALWAYS AS (first_name || ' ' || last_name) STORED",
+      "nullable": true
+    }
+  }
+}
+```
+
+## 타임스탬프 Precision 오류
+
+### 증상
+
+```bash
+column "created_at" is of type timestamp without time zone but default 
+expression is of type timestamp with time zone
+```
+
+### 원인
+
+PostgreSQL에서 `timestamp` 타입의 precision이 명시되지 않아 기본값과 불일치합니다.
+
+### 해결 방법
+
+#### 1. entity.json에서 precision 명시
+
+```json
+{
+  "columns": {
+    "created_at": {
+      "type": "datetime",
+      "precision": 6,
+      "nullable": false,
+      "default": "CURRENT_TIMESTAMP(6)"
+    },
+    "updated_at": {
+      "type": "datetime",
+      "precision": 6,
+      "nullable": false,
+      "default": "CURRENT_TIMESTAMP(6)"
+    }
+  }
+}
+```
+
+#### 2. 마이그레이션 파일에서 수정
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.specificType("created_at", "TIMESTAMP(6)").notNullable()
+      .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
+    table.specificType("updated_at", "TIMESTAMP(6)").notNullable()
+      .defaultTo(knex.raw("CURRENT_TIMESTAMP(6)"));
+  });
+}
+```
+
+## 외래 키 제약 오류
+
+### 증상
+
+```bash
+Error: update or delete on table "users" violates foreign key constraint 
+"posts_user_id_foreign" on table "posts"
+```
+
+### 원인
+
+참조되고 있는 레코드를 삭제하거나 수정하려 했습니다.
+
+### 해결 방법
+
+#### 1. CASCADE 옵션 사용
+
+```typescript
+// entity.json
+{
+  "props": {
+    "user_id": {
+      "type": "id",
+      "refer": "User",
+      "onDelete": "CASCADE",  // 부모 삭제 시 자식도 삭제
+      "onUpdate": "CASCADE"   // 부모 수정 시 자식도 수정
+    }
+  }
+}
+```
+
+#### 2. 마이그레이션으로 수정
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 기존 외래 키 제거
+  await knex.schema.alterTable("posts", (table) => {
+    table.dropForeign(["user_id"]);
+  });
+
+  // CASCADE 옵션으로 재생성
+  await knex.schema.alterTable("posts", (table) => {
+    table.foreign("user_id")
+      .references("id")
+      .inTable("users")
+      .onDelete("CASCADE")
+      .onUpdate("CASCADE");
+  });
+}
+```
+
+## 마이그레이션 롤백 실패
+
+### 증상
+
+```bash
+pnpm sonamu migrate rollback
+
+Error: Migration 20240115_create_users.ts has no down() function
+```
+
+### 원인
+
+마이그레이션 파일에 `down()` 함수가 없거나 잘못 구현되었습니다.
+
+### 해결 방법
+
+#### 1. down() 함수 구현
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("users", (table) => {
+    table.bigIncrements("id").primary();
+    table.string("email").notNullable().unique();
+    table.string("name").notNullable();
+    table.timestamps(true, true);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTableIfExists("users");
+}
+```
+
+#### 2. 복잡한 마이그레이션 롤백
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 컬럼 추가
+  await knex.schema.alterTable("users", (table) => {
+    table.string("phone").nullable();
+  });
+
+  // 데이터 이전
+  await knex.raw(`
+    UPDATE users 
+    SET phone = contact_number 
+    WHERE contact_number IS NOT NULL
+  `);
+
+  // 기존 컬럼 삭제
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumn("contact_number");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  // 기존 컬럼 복원
+  await knex.schema.alterTable("users", (table) => {
+    table.string("contact_number").nullable();
+  });
+
+  // 데이터 복원
+  await knex.raw(`
+    UPDATE users 
+    SET contact_number = phone 
+    WHERE phone IS NOT NULL
+  `);
+
+  // 새 컬럼 삭제
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumn("phone");
+  });
+}
+```
+
+## 마이그레이션 상태 불일치
+
+### 증상
+
+```bash
+pnpm sonamu migrate status
+
+Error: Migration table is corrupted
+```
+
+또는
+
+```bash
+Migration 20240115_create_users.ts was applied but file is missing
+```
+
+### 원인
+
+1. 마이그레이션 파일이 삭제되었으나 DB에는 기록이 남아있음
+2. 여러 환경에서 마이그레이션을 다르게 적용함
+
+### 해결 방법
+
+#### 1. 마이그레이션 테이블 확인
+
+```sql
+SELECT * FROM knex_migrations ORDER BY migration_time;
+```
+
+#### 2. 잘못된 기록 제거
+
+```sql
+-- 특정 마이그레이션 제거
+DELETE FROM knex_migrations 
+WHERE name = '20240115_create_users.ts';
+
+-- 또는 테이블 초기화 (주의!)
+TRUNCATE knex_migrations;
+```
+
+#### 3. 마이그레이션 재적용
+
+```bash
+# 테이블 초기화 후
+pnpm sonamu migrate latest
+```
+
+## MySQL에서 PostgreSQL로 마이그레이션
+
+### 증상
+
+기존 MySQL 기반 프로젝트를 PostgreSQL로 전환 시 다양한 오류 발생
+
+### 해결 방법
+
+#### 1. 데이터 타입 변경
+
+```typescript
+// MySQL
+table.integer("status").unsigned();
+
+// PostgreSQL
+table.integer("status");  // PostgreSQL은 unsigned 없음
+```
+
+#### 2. Auto Increment 변경
+
+```typescript
+// MySQL
+table.increments("id");
+
+// PostgreSQL
+table.bigIncrements("id");  // BIGSERIAL 사용 권장
+```
+
+#### 3. 문자열 타입
+
+```typescript
+// MySQL - TEXT 타입 크기 지정
+table.text("content", "mediumtext");
+
+// PostgreSQL - TEXT는 크기 제한 없음
+table.text("content");
+```
+
+#### 4. Boolean 타입
+
+```typescript
+// MySQL - TINYINT(1)
+table.boolean("is_active");
+
+// PostgreSQL - 실제 BOOLEAN
+table.boolean("is_active");
+```
+
+#### 5. JSON 타입
+
+```typescript
+// MySQL
+table.json("metadata");
+
+// PostgreSQL - JSONB 권장 (인덱싱 가능)
+table.jsonb("metadata");
+```
+
+## 관련 문서
+
+- [데이터베이스 연결](/troubleshooting/common-errors/database-connection)
+- [Sonamu CLI: migrate](/tools-and-cli/sonamu-cli/migrate)
+- [데이터베이스 설정](/configuration/sonamu-config/database)

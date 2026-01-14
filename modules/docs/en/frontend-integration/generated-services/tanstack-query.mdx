@@ -1,0 +1,654 @@
+---
+title: "TanStack Query Hook"
+description: "Sonamu Service and TanStack Query integration"
+---
+
+Learn how to efficiently manage data in React with type safety using Sonamu's auto-generated TanStack Query Hooks.
+
+## Sonamu + TanStack Query Overview
+
+<CardGroup cols={2}>
+  <Card title="Auto-generated" icon="wand-magic-sparkles">
+    useUser, usePost Hooks
+    
+    No code writing needed
+  </Card>
+  <Card title="Type Safe" icon="shield-check">
+    Service types preserved
+    
+    Complete type chain
+  </Card>
+  <Card title="Auto Caching" icon="database">
+    Memory cache
+    
+    Duplicate request removal
+  </Card>
+  <Card title="Auto Revalidation" icon="arrows-rotate">
+    Refresh on focus
+    
+    Periodic polling
+  </Card>
+</CardGroup>
+
+## Using TanStack Query Hooks in Sonamu
+
+### Hook Auto-generation
+
+Sonamu **auto-generates TanStack Query Hooks** for each Service function.
+
+**Generated Hooks (services.generated.ts)**:
+```typescript
+import { useQuery, queryOptions } from "@tanstack/react-query";
+import qs from "qs";
+
+export namespace UserService {
+  // 1. Regular function
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+  
+  // 2. Query Options (reusable)
+  export const getUserQueryOptions = <T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ) =>
+    queryOptions({
+      queryKey: ["User", "getUser", subset, id],
+      queryFn: () => getUser(subset, id),
+    });
+  
+  // 3. React Hook (auto-generated)
+  export const useUser = <T extends UserSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean }
+  ) =>
+    useQuery({
+      ...getUserQueryOptions(subset, id),
+      ...options,
+    });
+}
+```
+
+**Generation rules**:
+- Function name: `get{Entity}` → Hook name: `use{Entity}`
+- Query Key: `["{Entity}", "{methodName}", ...params]`
+- Types fully preserved (Subset support)
+
+## Basic Usage
+
+### useUser Hook
+
+The most basic data fetching Hook.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+function UserProfile({ userId }: { userId: number }) {
+  // Use auto-generated Hook
+  const { data, error, isLoading } = UserService.useUser("A", userId);
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!data) return <div>User not found</div>;
+  
+  return (
+    <div>
+      <h1>{data.username}</h1>
+      <p>{data.email}</p>
+    </div>
+  );
+}
+```
+
+**Features**:
+- `data` is of type `UserSubsetMapping["A"] | undefined`
+- Auto caching: Uses cache when called with same userId again
+- Auto revalidation: Auto refresh on focus, reconnection
+- Deduplication: Even if multiple components call simultaneously, API is called only once
+
+### Subset and Type Safety
+
+Accurate types are returned according to Subset.
+
+```typescript
+function UserProfile({ userId }: { userId: number }) {
+  // Subset "A": Basic info
+  const { data: basicUser } = UserService.useUser("A", userId);
+  console.log(basicUser?.id);       // ✅ OK
+  console.log(basicUser?.username); // ✅ OK
+  console.log(basicUser?.bio);      // ❌ Compile error (not in Subset A)
+  
+  // Subset "B": Including bio
+  const { data: userWithBio } = UserService.useUser("B", userId);
+  console.log(userWithBio?.bio);    // ✅ OK
+  
+  // Subset "C": All fields
+  const { data: fullUser } = UserService.useUser("C", userId);
+  console.log(fullUser?.createdAt); // ✅ OK
+}
+```
+
+**Type chain**:
+```
+Backend Entity 
+  → Subset Mapping 
+  → Service Function 
+  → TanStack Query Hook 
+  → React Component
+```
+
+Types are preserved at every step!
+
+## Advanced Usage
+
+### Conditional Fetching
+
+Fetch data only under certain conditions.
+
+```typescript
+function UserProfile({ userId }: { userId: number | null }) {
+  const { data, isLoading } = UserService.useUser(
+    "A",
+    userId!,
+    { enabled: userId !== null } // Don't call if userId is null
+  );
+  
+  if (!userId) return <div>Please select a user</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (!data) return <div>User not found</div>;
+  
+  return <div>{data.username}</div>;
+}
+```
+
+**enabled option**:
+- `true`: Load data immediately (default)
+- `false`: Don't load data
+- Use cases: Login status, parameter existence, etc.
+
+### Dependent Fetching
+
+Use previous data for the next request.
+
+```typescript
+function UserDashboard({ userId }: { userId: number }) {
+  // Step 1: User info
+  const { data: user } = UserService.useUser("A", userId);
+  
+  // Step 2: User's posts (only when user exists)
+  const { data: posts } = PostService.usePosts(
+    "A",
+    user ? user.id : 0,
+    { enabled: !!user } // Only call when user exists
+  );
+  
+  return (
+    <div>
+      <h1>{user?.username}</h1>
+      <div>Posts: {posts?.length || 0}</div>
+    </div>
+  );
+}
+```
+
+### Query Options Reuse
+
+Reuse the same Query Options in multiple places.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+import { useQueryClient } from "@tanstack/react-query";
+
+function UserProfile({ userId }: { userId: number }) {
+  const queryClient = useQueryClient();
+  
+  // Reuse options
+  const queryOptions = UserService.getUserQueryOptions("A", userId);
+  
+  // 1. Use in Hook
+  const { data } = useQuery(queryOptions);
+  
+  // 2. Manual refetch
+  function handleRefresh() {
+    queryClient.invalidateQueries(queryOptions);
+  }
+  
+  // 3. Prefetch
+  function handleMouseEnter() {
+    queryClient.prefetchQuery(queryOptions);
+  }
+  
+  return <div onMouseEnter={handleMouseEnter}>{data?.username}</div>;
+}
+```
+
+## Mutation (Data Changes)
+
+### Create/Update/Delete with useMutation
+
+Change data with TanStack Query's `useMutation`.
+
+```typescript
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { UserService } from "@/services/services.generated";
+
+function EditProfile({ userId }: { userId: number }) {
+  const queryClient = useQueryClient();
+  
+  // Define Mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: { username?: string; bio?: string }) =>
+      UserService.updateProfile(data),
+    onSuccess: () => {
+      // Invalidate User query on success
+      queryClient.invalidateQueries({
+        queryKey: ["User"],
+      });
+    },
+  });
+  
+  async function handleSubmit(data: { username: string; bio: string }) {
+    await updateMutation.mutateAsync(data);
+    alert("Updated!");
+  }
+  
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      handleSubmit({/* data */});
+    }}>
+      <input name="username" />
+      <textarea name="bio" />
+      <button type="submit" disabled={updateMutation.isPending}>
+        {updateMutation.isPending ? "Saving..." : "Save"}
+      </button>
+    </form>
+  );
+}
+```
+
+### Optimistic Updates
+
+Update UI immediately without waiting for API response.
+
+```typescript
+function EditProfile({ userId }: { userId: number }) {
+  const queryClient = useQueryClient();
+  
+  const updateMutation = useMutation({
+    mutationFn: (data: { username: string }) =>
+      UserService.updateProfile(data),
+    
+    // 1. Before Mutation starts (optimistic update)
+    onMutate: async (newData) => {
+      // Cancel ongoing queries
+      await queryClient.cancelQueries(
+        UserService.getUserQueryOptions("A", userId)
+      );
+      
+      // Backup previous data
+      const previousUser = queryClient.getQueryData(
+        UserService.getUserQueryOptions("A", userId).queryKey
+      );
+      
+      // Optimistically update cache
+      queryClient.setQueryData(
+        UserService.getUserQueryOptions("A", userId).queryKey,
+        (old: any) => ({ ...old, username: newData.username })
+      );
+      
+      return { previousUser };
+    },
+    
+    // 2. On success
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["User"],
+      });
+    },
+    
+    // 3. On failure (rollback)
+    onError: (err, newData, context) => {
+      queryClient.setQueryData(
+        UserService.getUserQueryOptions("A", userId).queryKey,
+        context?.previousUser
+      );
+    },
+  });
+  
+  return (
+    <button onClick={() => updateMutation.mutate({ username: "newname" })}>
+      Update Username
+    </button>
+  );
+}
+```
+
+**User experience**:
+- Button click → UI updates immediately (no waiting)
+- API call in background
+- Confirmed with server data on success
+- Auto rollback on failure
+
+## Cache Management
+
+### Cache Invalidation
+
+Invalidate cache of specific queries to reload.
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { UserService } from "@/services/services.generated";
+
+function SomeComponent({ userId }: { userId: number }) {
+  const queryClient = useQueryClient();
+  
+  function handleUpdate() {
+    // 1. Invalidate only specific User query
+    queryClient.invalidateQueries(
+      UserService.getUserQueryOptions("A", userId)
+    );
+    
+    // 2. Invalidate all User queries
+    queryClient.invalidateQueries({
+      queryKey: ["User"],
+    });
+    
+    // 3. Invalidate all queries of specific method
+    queryClient.invalidateQueries({
+      queryKey: ["User", "getUser"],
+    });
+  }
+}
+```
+
+### Direct Cache Modification
+
+Modify cache directly without API call.
+
+```typescript
+function LikeButton({ postId }: { postId: number }) {
+  const queryClient = useQueryClient();
+  
+  function handleLike() {
+    // Modify cache directly
+    queryClient.setQueryData(
+      PostService.getPostQueryOptions("A", postId).queryKey,
+      (old: any) => ({
+        ...old,
+        likes: old.likes + 1,
+        isLiked: true,
+      })
+    );
+    
+    // Call API in background
+    PostService.likePost(postId);
+  }
+  
+  return <button onClick={handleLike}>Like</button>;
+}
+```
+
+### Prefetching
+
+Preload data to improve user experience.
+
+```typescript
+function UserList({ userIds }: { userIds: number[] }) {
+  const queryClient = useQueryClient();
+  
+  // Preload on hover
+  function handleMouseEnter(userId: number) {
+    queryClient.prefetchQuery(
+      UserService.getUserQueryOptions("A", userId)
+    );
+  }
+  
+  return (
+    <ul>
+      {userIds.map((id) => (
+        <li
+          key={id}
+          onMouseEnter={() => handleMouseEnter(id)}
+        >
+          <Link to={`/users/${id}`}>User {id}</Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## Practical Examples
+
+### Infinite Scroll
+
+Implement infinite scroll instead of pagination.
+
+```typescript
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { PostService } from "@/services/services.generated";
+
+function PostList() {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["Post", "list"],
+    queryFn: ({ pageParam = 1 }) =>
+      PostService.getPosts("A", { page: pageParam, pageSize: 20 }),
+    getNextPageParam: (lastPage, pages) => {
+      return lastPage.length === 20 ? pages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
+  
+  // Flatten posts from all pages
+  const posts = data?.pages.flat() || [];
+  
+  return (
+    <div>
+      {posts.map((post) => (
+        <div key={post.id}>{post.title}</div>
+      ))}
+      
+      {hasNextPage && (
+        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+          {isFetchingNextPage ? "Loading..." : "Load More"}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+### Real-time Polling
+
+Refresh data periodically.
+
+```typescript
+function RealtimeFeed() {
+  const { data } = FeedService.useLatest(
+    "A",
+    {},
+    {
+      refetchInterval: 3000, // Refresh every 3 seconds
+      refetchIntervalInBackground: false, // Don't refresh in background
+    }
+  );
+  
+  return (
+    <div>
+      {data?.items.map((item) => (
+        <div key={item.id}>{item.content}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Combining Multiple Hooks
+
+```typescript
+function UserDashboard({ userId }: { userId: number }) {
+  // Load multiple data in parallel
+  const userQuery = UserService.useUser("A", userId);
+  const postsQuery = PostService.usePostsByUser("A", userId);
+  const statsQuery = UserService.useStats(userId);
+  
+  // Wait until all queries are loaded
+  if (userQuery.isLoading || postsQuery.isLoading || statsQuery.isLoading) {
+    return <div>Loading...</div>;
+  }
+  
+  // Show error if any has error
+  if (userQuery.error || postsQuery.error || statsQuery.error) {
+    return <div>Error loading data</div>;
+  }
+  
+  return (
+    <div>
+      <h1>{userQuery.data?.username}</h1>
+      <div>Posts: {postsQuery.data?.length}</div>
+      <div>Views: {statsQuery.data?.totalViews}</div>
+    </div>
+  );
+}
+```
+
+## TanStack Query Configuration
+
+### Global Configuration
+
+```typescript
+// app/providers.tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Time until data is considered stale (5 seconds)
+      staleTime: 5000,
+      
+      // Revalidate on focus
+      refetchOnWindowFocus: true,
+      
+      // Revalidate on reconnect
+      refetchOnReconnect: true,
+      
+      // Error retry
+      retry: 1,
+      
+      // Unused data cache retention time (5 minutes)
+      gcTime: 5 * 60 * 1000,
+    },
+  },
+});
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+```
+
+### DevTools
+
+Visually check cache state during development.
+
+```typescript
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+```
+
+## Performance Optimization
+
+### Optimization with Subset
+
+Choose appropriate Subset for the situation to reduce network cost:
+
+```typescript
+// List view: Only minimum info
+const { data: users } = UserService.useUsers("A");
+
+// Detail view: All info
+const { data: user } = UserService.useUser("C", userId);
+```
+
+### Selective Revalidation
+
+Prevent unnecessary revalidation:
+
+```typescript
+// Data that doesn't change often
+const { data } = UserService.useUser("A", userId, {
+  staleTime: Infinity, // Fresh forever
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});
+```
+
+### Parallel Requests
+
+Load multiple data simultaneously:
+
+```typescript
+function Dashboard({ userId }: { userId: number }) {
+  // All Hooks execute in parallel
+  const { data: user } = UserService.useUser("A", userId);
+  const { data: posts } = PostService.usePosts("A", { userId });
+  const { data: stats } = StatsService.useUserStats(userId);
+  
+  // All three requests execute simultaneously for speed!
+}
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using TanStack Query Hooks**:
+1. Hooks should only be called **inside components** (React rules)
+2. **Subset parameter required**: `useUser("A", userId)`
+3. Implement **conditional fetching** with `enabled: false`
+4. **Cache invalidation required** on Mutation success
+5. Query Key is **auto-generated** so don't write manually
+6. **Never modify** generated Hooks (overwritten on regeneration)
+7. Wrap entire app with `QueryClientProvider`
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="How Services Work" icon="diagram-project" href="/frontend-integration/generated-services/how-services-work">
+    Understanding auto-generation
+  </Card>
+  <Card title="Using Services" icon="code" href="/frontend-integration/generated-services/using-services">
+    Basic Service usage
+  </Card>
+  <Card title="TanStack Query Docs" icon="book" href="https://tanstack.com/query/latest">
+    Learn more about TanStack Query
+  </Card>
+  <Card title="Subset System" icon="layer-group" href="/core-concepts/entity-system/subset-system">
+    Subset system
+  </Card>
+</CardGroup>

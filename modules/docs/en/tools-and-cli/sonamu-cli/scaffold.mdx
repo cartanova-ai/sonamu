@@ -1,0 +1,510 @@
+---
+title: "scaffold"
+description: "Entity 기반 코드 자동 생성하기"
+---
+
+`pnpm scaffold` 명령어는 Entity 정의를 기반으로 **보일러플레이트 코드를 자동 생성**합니다. Model 클래스와 테스트 파일을 몇 초 만에 생성하여 개발 시간을 크게 단축합니다.
+
+## 기본 개념
+
+Scaffold는 **Entity를 코드로 변환**하는 자동화 도구입니다:
+
+- **Entity 기반**: Entity 정의에서 타입과 구조 파악
+- **타입 안전**: TypeScript 타입이 자동으로 생성됨
+- **일관성**: 모든 코드가 같은 패턴을 따름
+- **수정 가능**: 생성 후 자유롭게 커스터마이징
+
+## 명령어
+
+### model - Model 클래스 생성
+
+Entity를 위한 Model 클래스를 생성합니다.
+
+```bash
+pnpm scaffold model
+```
+
+대화형 프롬프트가 표시됩니다:
+
+```
+? Please select entity: (Use arrow keys)
+❯ User
+  Post
+  Comment
+```
+
+**생성되는 파일**:
+
+import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
+
+<FileTree>
+  <FileItem name="src/models/">
+    <FileItem name="User.model.ts" description="User Model 클래스" />
+  </FileItem>
+</FileTree>
+
+**생성된 코드**:
+```typescript title="src/models/User.model.ts"
+import { BaseModelClass } from "sonamu";
+import type { InferSelectModel } from "sonamu";
+import { UserEntity } from "../entities/User.entity";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+
+export type User = InferSelectModel<typeof UserEntity>;
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+  
+  // TODO: Model 메서드 추가
+}
+
+export const UserModel = new UserModelClass();
+```
+
+### model_test - 테스트 파일 생성
+
+Model을 위한 테스트 파일을 생성합니다.
+
+```bash
+pnpm scaffold model_test
+```
+
+**생성되는 파일**:
+
+<FileTree>
+  <FileItem name="src/models/">
+    <FileItem name="User.model.test.ts" description="User Model 테스트" />
+  </FileItem>
+</FileTree>
+
+**생성된 코드**:
+```typescript title="src/models/User.model.test.ts"
+import { beforeAll, describe, test } from "bun:test";
+import { expect } from "@jest/globals";
+import { FixtureManager } from "sonamu/test";
+import { UserModel } from "./User.model";
+
+describe("User Model", () => {
+  beforeAll(async () => {
+    await FixtureManager.sync();
+  });
+
+  test("findById", async () => {
+    const user = await UserModel.findById(1);
+    expect(user).toBeDefined();
+    expect(user?.id).toBe(1);
+  });
+
+  test("findMany", async () => {
+    const users = await UserModel.findMany({
+      num: 10,
+      page: 1,
+    });
+    expect(users.rows.length).toBeGreaterThan(0);
+  });
+
+  // TODO: 추가 테스트 작성
+});
+```
+
+## View 스캐폴딩 (개발 중)
+
+<Info>
+View 컴포넌트 자동 생성 기능은 현재 개발 중입니다. 
+**Sonamu UI**를 통해 React 컴포넌트를 생성할 수 있습니다.
+
+```bash
+# Sonamu UI 실행
+pnpm sonamu ui
+
+# Scaffolding 탭에서 View 생성
+```
+</Info>
+
+## 생성된 코드 구조
+
+### Model 클래스
+
+생성된 Model 클래스는 다음 구조를 가집니다:
+
+```typescript
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+  
+  // Entity 타입
+  entity = UserEntity;
+  
+  // 메서드 추가 위치
+  async findByEmail(email: string): Promise<User | null> {
+    return this.getPuri("r")
+      .where("email", email)
+      .first();
+  }
+}
+```
+
+**자동 생성되는 기능**:
+- ✅ TypeScript 타입
+- ✅ Entity 연결
+- ✅ BaseModel 상속
+- ✅ 기본 CRUD 메서드
+
+**직접 추가해야 하는 것**:
+- 비즈니스 로직 메서드
+- 복잡한 쿼리
+- 데이터 검증
+- 관계 로딩
+
+### 테스트 파일
+
+생성된 테스트 파일은 기본 테스트를 포함합니다:
+
+```typescript
+describe("User Model", () => {
+  beforeAll(async () => {
+    await FixtureManager.sync();  // Fixture 로드
+  });
+
+  test("findById", async () => {
+    // 기본 CRUD 테스트
+  });
+
+  test("findMany", async () => {
+    // 목록 조회 테스트
+  });
+});
+```
+
+**확장 가능**:
+- 비즈니스 로직 테스트 추가
+- Edge case 테스트
+- 성능 테스트
+- 통합 테스트
+
+## 개발 워크플로우
+
+### 1. Entity 정의
+
+```typescript title="src/entities/Product.entity.ts"
+export const ProductEntity = {
+  properties: [
+    { name: "id", type: "int", primaryKey: true, autoIncrement: true },
+    { name: "title", type: "string", length: 255 },
+    { name: "price", type: "decimal", precision: 10, scale: 2 },
+    { name: "category_id", type: "int" },
+    { name: "created_at", type: "datetime" },
+  ],
+  belongsTo: [
+    { entityId: "Category", as: "category" },
+  ],
+} satisfies EntityType;
+```
+
+### 2. 마이그레이션
+
+```bash
+# 마이그레이션 생성 및 적용
+pnpm migrate run
+```
+
+### 3. Model 생성
+
+```bash
+# Model 클래스 생성
+pnpm scaffold model
+
+# Entity: Product 선택
+```
+
+### 4. 비즈니스 로직 추가
+
+```typescript title="src/models/Product.model.ts"
+class ProductModelClass extends BaseModelClass<
+  ProductSubsetKey,
+  ProductSubsetMapping,
+  typeof productSubsetQueries,
+  typeof productLoaderQueries
+> {
+  constructor() {
+    super("Product", productSubsetQueries, productLoaderQueries);
+  }
+  
+  // 카테고리별 상품 조회
+  async findByCategory(categoryId: number) {
+    return this.getPuri("r")
+      .where("category_id", categoryId)
+      .where("deleted_at", null);
+  }
+  
+  // 가격대별 상품 조회
+  async findByPriceRange(min: number, max: number) {
+    return this.getPuri("r")
+      .whereBetween("price", [min, max]);
+  }
+}
+```
+
+### 5. 테스트 생성
+
+```bash
+# 테스트 파일 생성
+pnpm scaffold model_test
+
+# Entity: Product 선택
+```
+
+### 6. 테스트 작성
+
+```typescript title="src/models/Product.model.test.ts"
+describe("Product Model", () => {
+  beforeAll(async () => {
+    await FixtureManager.sync();
+  });
+
+  test("findByCategory", async () => {
+    const products = await ProductModel.findByCategory(1);
+    expect(products.length).toBeGreaterThan(0);
+    expect(products[0].category_id).toBe(1);
+  });
+
+  test("findByPriceRange", async () => {
+    const products = await ProductModel.findByPriceRange(10000, 50000);
+    products.forEach(product => {
+      expect(product.price).toBeGreaterThanOrEqual(10000);
+      expect(product.price).toBeLessThanOrEqual(50000);
+    });
+  });
+});
+```
+
+### 7. API 추가
+
+```typescript title="src/models/Product.model.ts"
+class ProductModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByCategory(categoryId: number) {
+    const { qb } = this.getSubsetQueries("A");
+    qb.where("category_id", categoryId);
+    
+    return this.executeSubsetQuery({
+      subset: "A",
+      qb,
+      params: { num: 20, page: 1 },
+    });
+  }
+}
+```
+
+## 커스터마이징
+
+### Model 메서드 추가
+
+생성된 Model에 비즈니스 로직을 추가합니다:
+
+```typescript
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  // 이메일로 사용자 찾기
+  async findByEmail(email: string): Promise<User | null> {
+    return this.getPuri("r")
+      .where("email", email)
+      .first();
+  }
+  
+  // 활성 사용자만 조회
+  async findActiveUsers() {
+    return this.getPuri("r")
+      .where("is_active", true)
+      .where("deleted_at", null);
+  }
+  
+  // 사용자 통계
+  async getUserStats(userId: number) {
+    const [stats] = await this.getPuri("r")
+      .select({
+        postCount: this.raw("COUNT(posts.id)"),
+        commentCount: this.raw("COUNT(comments.id)"),
+      })
+      .leftJoin("posts", "posts.user_id", "users.id")
+      .leftJoin("comments", "comments.user_id", "users.id")
+      .where("users.id", userId)
+      .groupBy("users.id");
+    
+    return stats;
+  }
+}
+```
+
+### 테스트 확장
+
+더 많은 테스트 케이스를 추가합니다:
+
+```typescript
+describe("User Model - Extended", () => {
+  test("findByEmail - 존재하는 이메일", async () => {
+    const user = await UserModel.findByEmail("user1@example.com");
+    expect(user).toBeDefined();
+  });
+
+  test("findByEmail - 존재하지 않는 이메일", async () => {
+    const user = await UserModel.findByEmail("notexist@example.com");
+    expect(user).toBeNull();
+  });
+
+  test("findActiveUsers", async () => {
+    const users = await UserModel.findActiveUsers();
+    users.forEach(user => {
+      expect(user.is_active).toBe(true);
+      expect(user.deleted_at).toBeNull();
+    });
+  });
+
+  test("getUserStats", async () => {
+    const stats = await UserModel.getUserStats(1);
+    expect(stats.postCount).toBeGreaterThanOrEqual(0);
+    expect(stats.commentCount).toBeGreaterThanOrEqual(0);
+  });
+});
+```
+
+## 여러 Entity 일괄 생성
+
+### 스크립트 활용
+
+```bash
+# 모든 Entity에 대해 Model 생성
+for entity in User Post Comment Category; do
+  echo $entity | pnpm scaffold model
+done
+```
+
+### 테스트 일괄 생성
+
+```bash
+# 모든 Model에 대해 테스트 생성
+for entity in User Post Comment Category; do
+  echo $entity | pnpm scaffold model_test
+done
+```
+
+## 실전 팁
+
+### 1. Entity 먼저 완성하기
+
+```typescript
+// ✅ Entity를 완전히 정의한 후 scaffold
+export const UserEntity = {
+  properties: [
+    // 모든 필드 정의
+  ],
+  indexes: [
+    // 인덱스 정의
+  ],
+  belongsTo: [
+    // 관계 정의
+  ],
+} satisfies EntityType;
+```
+
+### 2. 점진적 확장
+
+```typescript
+// 1. 기본 Model 생성
+pnpm scaffold model
+
+// 2. 간단한 메서드부터 추가
+async findById(id: number) { ... }
+
+// 3. 복잡한 로직 추가
+async complexQuery() { ... }
+
+// 4. 테스트 작성
+pnpm scaffold model_test
+```
+
+### 3. 컨벤션 준수
+
+```typescript
+// ✅ 일관된 명명 규칙
+async findByEmail(email: string) { }     // find + By + Field
+async findActiveUsers() { }               // find + Adjective + Entities
+async getUserStats(userId: number) { }   // get + Noun + Type
+
+// ✅ 일관된 반환 타입
+Promise<User | null>      // 단일 레코드 (nullable)
+Promise<User[]>           // 다중 레코드
+Promise<ListResult<User>> // 페이지네이션
+```
+
+### 4. Git 관리
+
+```bash
+# 생성된 파일 커밋
+git add src/models/User.model.ts
+git add src/models/User.model.test.ts
+git commit -m "Add User model and tests"
+```
+
+## 문제 해결
+
+### Model 재생성
+
+**문제**: Model을 다시 생성하고 싶음
+
+**해결**:
+```bash
+# 기존 파일 백업
+cp src/models/User.model.ts src/models/User.model.ts.bak
+
+# 재생성
+pnpm scaffold model
+
+# 필요한 코드 복원
+```
+
+### Entity 변경 후 동기화
+
+**문제**: Entity 변경 후 Model 업데이트
+
+**해결**:
+```bash
+# 1. 마이그레이션 적용
+pnpm migrate run
+
+# 2. Model은 수동 업데이트
+# (타입은 자동으로 동기화됨)
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Model" icon="database" href="/core-concepts/model">
+    Model 클래스 자세히 알아보기
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/naite">
+    테스트 작성하기
+  </Card>
+</CardGroup>

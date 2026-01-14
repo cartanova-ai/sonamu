@@ -1,0 +1,452 @@
+---
+title: "Type Safety"
+description: "Understanding Puri's complete type safety"
+---
+
+Puri maximizes TypeScript's type system to catch SQL query errors at compile time.
+
+## Type Safety Overview
+
+<CardGroup cols={2}>
+  <Card title="Automatic Type Inference" icon="wand-magic-sparkles">
+    Query result types auto-inferred
+    
+    Compile-time validation
+  </Card>
+  <Card title="Column Autocomplete" icon="keyboard">
+    IDE autocomplete support
+    
+    Prevent typos
+  </Card>
+  <Card title="JOIN Type Inference" icon="link">
+    Auto-expanded types after join
+    
+    LEFT JOIN nullable
+  </Card>
+  <Card title="Raw Function Types" icon="code">
+    Raw SQL is also type-safe
+    
+    Explicit return types
+  </Card>
+</CardGroup>
+
+## Basic Type Inference
+
+### SELECT Type Inference
+
+```typescript
+const users = await db
+  .table("users")
+  .select({
+    id: "id",              // number
+    name: "username",      // string
+    email: "email",        // string
+    isActive: "is_active", // boolean
+    createdAt: "created_at", // Date
+  });
+
+// Types are automatically inferred
+const first = users[0];
+first.id;        // number
+first.name;      // string
+first.email;     // string
+first.isActive;  // boolean
+first.createdAt; // Date
+
+// ❌ Compile error
+first.nonExistent; // Error: Property 'nonExistent' does not exist
+```
+
+### WHERE Type Validation
+
+```typescript
+// ✅ Correct types
+await db
+  .table("users")
+  .where("id", 1)              // number
+  .where("username", "john")   // string
+  .where("is_active", true);   // boolean
+
+// ❌ Compile error
+await db
+  .table("users")
+  .where("id", "not-a-number"); // Error: Type 'string' is not assignable to type 'number'
+```
+
+## JOIN Type Extension
+
+### INNER JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .select({
+    employeeId: "employees.id",  // number
+    userName: "users.username",   // string
+  });
+
+// After join, columns from both tables are available
+results[0].employeeId;  // number
+results[0].userName;    // string
+```
+
+### LEFT JOIN - nullable Types
+
+```typescript
+const results = await db
+  .table("employees")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",      // number
+    departmentName: "departments.name", // string | null (LEFT JOIN)
+  });
+
+// Columns from LEFT JOIN are nullable
+const first = results[0];
+first.employeeId;      // number
+first.departmentName;  // string | null
+
+// Null check required
+if (first.departmentName) {
+  console.log(first.departmentName.toUpperCase()); // ✅ OK
+}
+```
+
+<Info>
+**LEFT JOIN type safety**:
+- INNER JOIN: Value always exists → `T`
+- LEFT JOIN: Value may not exist → `T | null`
+
+TypeScript automatically enforces null checks.
+</Info>
+
+## Column Autocomplete
+
+### IDE Autocomplete
+
+```typescript
+await db
+  .table("users")
+  .select({
+    id: "users.", // ← IDE provides autocomplete
+    // users.id
+    // users.username
+    // users.email
+    // ...
+  });
+```
+
+### Prevent Invalid Columns
+
+```typescript
+// ❌ Compile error
+await db
+  .table("users")
+  .select({
+    id: "users.nonexistent", // Error: Column does not exist
+  });
+```
+
+## Raw Function Type Safety
+
+### Explicit Type Specification
+
+```typescript
+const results = await db
+  .table("users")
+  .select({
+    id: "id",
+    // Each Raw function specifies return type
+    fullName: Puri.rawString("CONCAT(first_name, last_name)"),  // string
+    age: Puri.rawNumber("EXTRACT(YEAR FROM AGE(birth_date))"),  // number
+    isAdmin: Puri.rawBoolean("role = 'admin'"),                 // boolean
+    tags: Puri.rawStringArray("string_to_array(tags, ',')"),    // string[]
+  });
+
+// Types are accurately inferred
+results[0].fullName;  // string
+results[0].age;       // number
+results[0].isAdmin;   // boolean
+results[0].tags;      // string[]
+```
+
+## Aggregate Function Types
+
+```typescript
+const stats = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",  // number
+    count: Puri.count("id"),         // number
+    avgSalary: Puri.avg("salary"),   // number
+    maxSalary: Puri.max("salary"),   // number
+  })
+  .groupBy("department_id");
+
+stats[0].count;      // number
+stats[0].avgSalary;  // number
+```
+
+## first() Types
+
+`first()` returns a single result or `undefined`.
+
+```typescript
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("id", 1)
+  .first();
+
+// Type: { id: number; name: string; } | undefined
+
+if (user) {
+  // ✅ Safe to use after null check
+  console.log(user.name.toUpperCase());
+} else {
+  console.log("User not found");
+}
+
+// ❌ Compile error (using without null check)
+console.log(user.name); // Error: Object is possibly 'undefined'
+```
+
+## pluck() Types
+
+```typescript
+// Array of single column
+const ids = await db
+  .table("users")
+  .where("role", "admin")
+  .pluck("id");
+
+// Type: number[]
+ids[0]; // number
+
+const names = await db
+  .table("users")
+  .pluck("username");
+
+// Type: string[]
+names[0]; // string
+```
+
+## Type-safe Parameters
+
+### Params Type Definition
+
+```typescript
+// user.types.ts
+export const UserListParams = z.object({
+  role: z.enum(["admin", "normal"]).optional(),
+  search: z.string().optional(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(100),
+});
+export type UserListParams = z.infer<typeof UserListParams>;
+```
+
+### Using in API Methods
+
+```typescript
+async findUsers(params: UserListParams) {
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      name: "username",
+      role: "role",
+    });
+
+  // Type-safe condition additions
+  if (params.role) {
+    query = query.where("role", params.role);
+  }
+
+  if (params.search) {
+    query = query.where("username", "like", `%${params.search}%`);
+  }
+
+  const users = await query
+    .orderBy("created_at", "desc")
+    .limit(params.pageSize)
+    .offset((params.page - 1) * params.pageSize);
+
+  return users;
+}
+```
+
+## Subquery Types
+
+```typescript
+// Subquery result types are also safe
+const adminUsers = db
+  .table("users")
+  .where("role", "admin")
+  .select({
+    id: "id",
+    name: "username",
+  });
+
+// adminUsers type: Puri<Schema, { users: User }, { id: number; name: string; }>
+
+const results = await db
+  .table({ admins: adminUsers })
+  .select({
+    adminId: "admins.id",      // number
+    adminName: "admins.name",  // string
+  });
+```
+
+## Practical Examples
+
+### Type-safe Search Filter
+
+```typescript
+interface SearchFilters {
+  departmentId?: number;
+  minSalary?: number;
+  maxSalary?: number;
+  isActive?: boolean;
+  search?: string;
+}
+
+async searchEmployees(filters: SearchFilters) {
+  let query = this.getPuri("r")
+    .table("employees")
+    .join("users", "employees.user_id", "users.id")
+    .leftJoin("departments", "employees.department_id", "departments.id")
+    .select({
+      employeeId: "employees.id",
+      userName: "users.username",
+      salary: "employees.salary",
+      departmentName: "departments.name", // string | null
+      isActive: "users.is_active",
+    });
+
+  // All conditions are type-safe
+  if (filters.departmentId !== undefined) {
+    query = query.where("employees.department_id", filters.departmentId);
+  }
+
+  if (filters.minSalary !== undefined) {
+    query = query.where("employees.salary", ">=", filters.minSalary);
+  }
+
+  if (filters.maxSalary !== undefined) {
+    query = query.where("employees.salary", "<=", filters.maxSalary);
+  }
+
+  if (filters.isActive !== undefined) {
+    query = query.where("users.is_active", filters.isActive);
+  }
+
+  if (filters.search) {
+    query = query.where("users.username", "like", `%${filters.search}%`);
+  }
+
+  return await query.orderBy("employees.id", "asc");
+}
+```
+
+### Using Generics
+
+```typescript
+interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+async paginate<T>(
+  query: Puri<any, any, T>,
+  params: PaginationParams
+): Promise<PaginatedResult<T>> {
+  const { page, pageSize } = params;
+
+  // Total count
+  const countQuery = query.clone();
+  const total = await countQuery.count();
+
+  // Page data
+  const data = await query
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  return {
+    data,
+    total,
+    page,
+    pageSize,
+  };
+}
+
+// Usage
+const userQuery = db.table("users").select({ id: "id", name: "username" });
+const result = await this.paginate(userQuery, { page: 1, pageSize: 20 });
+// result.data type: { id: number; name: string; }[]
+```
+
+## Type Guards
+
+### Narrowing Result Types
+
+```typescript
+interface AdminUser {
+  id: number;
+  username: string;
+  role: "admin";
+  permissions: string[];
+}
+
+interface NormalUser {
+  id: number;
+  username: string;
+  role: "normal";
+}
+
+type User = AdminUser | NormalUser;
+
+function isAdmin(user: User): user is AdminUser {
+  return user.role === "admin";
+}
+
+const user = await db
+  .table("users")
+  .select({
+    id: "id",
+    username: "username",
+    role: "role",
+  })
+  .where("id", 1)
+  .first();
+
+if (user && isAdmin(user)) {
+  // TypeScript recognizes user as AdminUser
+  console.log(user.permissions); // ✅ OK
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    Learn advanced patterns
+  </Card>
+  <Card title="Basic Queries" icon="magnifying-glass" href="/database/puri/basic-queries">
+    Back to basic queries
+  </Card>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    Type safety in joins
+  </Card>
+  <Card title="Model" icon="cube" href="/core-concepts/model/what-is-model">
+    Using Puri in Models
+  </Card>
+</CardGroup>

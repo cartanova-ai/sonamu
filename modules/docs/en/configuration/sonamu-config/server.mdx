@@ -1,0 +1,787 @@
+---
+title: 'Server'
+description: 'Fastify server basic settings and plugins'
+---
+
+Sonamu is a high-performance HTTP server based on Fastify. You can configure server port, host, plugins, lifecycle hooks, and more.
+
+## Basic Structure
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    listen: { port, host },
+    
+    plugins: {
+      formbody: true,
+      qs: true,
+      multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+      },
+      session: {
+        secret: process.env.SESSION_SECRET,
+        salt: process.env.SESSION_SALT,
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+      }),
+    },
+    
+    lifecycle: {
+      onStart: () => console.log(`🌲 Server listening on http://${host}:${port}`),
+      onShutdown: () => console.log("graceful shutdown"),
+    },
+  },
+  // ...
+});
+```
+
+## baseUrl
+
+Specifies the full URL where the server is externally accessible.
+
+**Type**: `string` (optional)
+
+**Default**: `http://{listen.host}:{listen.port}`
+
+```typescript
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    // ...
+  },
+});
+```
+
+**Using actual domain**:
+
+```typescript
+export default defineConfig({
+  server: {
+    baseUrl: "https://api.myapp.com",  // Production URL
+    listen: { port: 3000, host: "0.0.0.0" },
+  },
+});
+```
+
+<Tip>
+`baseUrl` is used for URLs generated during file uploads, SSR meta tags, etc.
+</Tip>
+
+## listen
+
+Configures the port and host the server listens on.
+
+**Type**: (optional)
+
+```typescript
+listen?: {
+  port: number;
+  host?: string;
+}
+```
+
+### port
+
+The port number the server listens on.
+
+**Type**: `number`
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,  // Listen on this port
+    },
+  },
+});
+```
+
+**Setting port via environment variable**:
+
+```typescript
+const port = Number(process.env.PORT ?? 1028);
+
+export default defineConfig({
+  server: {
+    listen: { port },
+  },
+});
+```
+
+### host
+
+The host address the server binds to.
+
+**Type**: `string` (optional)
+
+**Default**: `"localhost"`
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,
+      host: "localhost",  // Only accessible locally
+    },
+  },
+});
+```
+
+**Listen on all network interfaces**:
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,
+      host: "0.0.0.0",  // Allow external access
+    },
+  },
+});
+```
+
+<Warning>
+When using `0.0.0.0` in production, verify your firewall settings.
+</Warning>
+
+## fastify
+
+Configures Fastify server options.
+
+**Type**: `Omit<FastifyServerOptions, "logger">` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    fastify: {
+      connectionTimeout: 30000,
+      keepAliveTimeout: 5000,
+      maxParamLength: 200,
+      trustProxy: true,  // When behind a proxy
+    },
+    // ...
+  },
+});
+```
+
+<Note>
+Logging is configured separately through Sonamu's `logging` settings.
+</Note>
+
+## plugins
+
+Enables and configures Fastify plugins.
+
+### formbody
+
+Parses `application/x-www-form-urlencoded` request bodies.
+
+**Type**: `boolean | FastifyFormbodyOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      formbody: true,  // Enable with default settings
+    },
+  },
+});
+```
+
+**With options**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      formbody: {
+        bodyLimit: 1048576,  // 1MB
+      },
+    },
+  },
+});
+```
+
+### qs
+
+Parses query strings. Supports nested objects and arrays.
+
+**Type**: `boolean | QsPluginOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      qs: true,  // Parses ?filter[status]=active&sort[name]=asc
+    },
+  },
+});
+```
+
+### multipart
+
+Handles file uploads (`multipart/form-data`).
+
+**Type**: `boolean | FastifyMultipartOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 30,  // 30MB
+          files: 10,  // Maximum 10 files
+        },
+      },
+    },
+  },
+});
+```
+
+**Allowing larger files**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 100,  // 100MB
+          files: 20,
+        },
+      },
+    },
+  },
+});
+```
+
+### static
+
+Serves static files.
+
+**Type**: `boolean | FastifyStaticOptions` (optional)
+
+```typescript
+import path from "path";
+
+export default defineConfig({
+  server: {
+    plugins: {
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",  // Served at /api/public/* path
+      },
+    },
+  },
+});
+```
+
+**Example**: `/api/public/images/logo.png` → `public/images/logo.png` file
+
+### session
+
+Enables session management.
+
+**Type**: `boolean | SecureSessionPluginOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET || "change-this-secret",
+        salt: process.env.SESSION_SALT || "change-this-salt",
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365 * 10,  // 10 years
+        },
+      },
+    },
+  },
+});
+```
+
+<Warning>
+In production environments, you must set `secret` and `salt` via environment variables!
+</Warning>
+
+**Production settings**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30 days
+          secure: true,  // HTTPS only
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+  },
+});
+```
+
+### compress
+
+Compresses responses. See separate documentation for details.
+
+**Type**: `boolean | FastifyCompressOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      compress: {
+        global: false,  // Control per API
+        threshold: 1024,  // Only compress above 1KB
+        encodings: ["gzip"],
+      },
+    },
+  },
+});
+```
+
+→ [compress detailed settings](/configuration/sonamu-config/compress)
+
+### cors
+
+Configures CORS (Cross-Origin Resource Sharing).
+
+**Type**: `boolean | FastifyCorsOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: {
+        origin: ["http://localhost:3000", "https://myapp.com"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+      },
+    },
+  },
+});
+```
+
+**Allow all origins in development**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: process.env.NODE_ENV === "development" 
+        ? { origin: true }  // Allow all origins
+        : {
+            origin: ["https://myapp.com"],
+            credentials: true,
+          },
+    },
+  },
+});
+```
+
+### sse
+
+Supports Server-Sent Events.
+
+**Type**: `boolean | SsePluginOptions` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      sse: true,
+    },
+  },
+});
+```
+
+→ [SSE usage](/advanced-features/sse/sse-setup)
+
+### custom
+
+Registers custom Fastify plugins.
+
+**Type**: `(server: FastifyInstance) => void` (optional)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      custom: (server) => {
+        // Register custom hooks
+        server.addHook("onRequest", async (request, reply) => {
+          console.log(`${request.method} ${request.url}`);
+        });
+        
+        // Register custom plugins
+        server.register(myCustomPlugin);
+      },
+    },
+  },
+});
+```
+
+## apiConfig
+
+Configures API behavior.
+
+### contextProvider
+
+A function that creates Context for each API call.
+
+**Type**: `(defaultContext, request) => Context`
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext, request) => {
+        return {
+          ...defaultContext,
+          ip: request.ip,
+          session: request.session,
+          body: request.body,
+        };
+      },
+    },
+  },
+});
+```
+
+→ [Context detailed explanation](/api-development/context/custom-context)
+
+### guardHandler
+
+A function called when Guard decorators execute.
+
+**Type**: `(guard, request, api) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        // Permission check logic
+        if (guard === "admin" && !request.session.isAdmin) {
+          throw new UnauthorizedError("Admin only");
+        }
+      },
+    },
+  },
+});
+```
+
+### cacheControlHandler
+
+A function that sets Cache-Control headers.
+
+**Type**: `(req) => string | undefined`
+
+```typescript
+import { CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "assets") {
+          return CachePresets.immutable;
+        }
+        if (req.type === "api" && req.method === "GET") {
+          return CachePresets.shortLived;
+        }
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+→ [Cache-Control detailed explanation](/configuration/sonamu-config/cache-control)
+
+## lifecycle
+
+Registers hooks for server lifecycle events.
+
+### onStart
+
+Executes when the server starts.
+
+**Type**: `(server: FastifyInstance) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onStart: (server) => {
+        console.log(`🌲 Server listening on http://localhost:1028`);
+        console.log(`📊 Routes registered: ${server.printRoutes()}`);
+      },
+    },
+  },
+});
+```
+
+### onShutdown
+
+Executes when the server shuts down (graceful shutdown).
+
+**Type**: `(server: FastifyInstance) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onShutdown: async (server) => {
+        console.log("Closing database connections...");
+        await closeAllConnections();
+        console.log("Graceful shutdown complete");
+      },
+    },
+  },
+});
+```
+
+### onError
+
+Executes when an unhandled error occurs.
+
+**Type**: `(error, request, reply) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onError: (error, request, reply) => {
+        console.error(`[ERROR] ${request.method} ${request.url}`, error);
+        
+        reply.status(500).send({
+          error: "Internal Server Error",
+          message: process.env.NODE_ENV === "development" 
+            ? error.message 
+            : undefined,
+        });
+      },
+    },
+  },
+});
+```
+
+## Practical Examples
+
+### Basic Development Server
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    listen: { port, host },
+    
+    plugins: {
+      formbody: true,
+      qs: true,
+      multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+      },
+      session: {
+        secret: "dev-secret-change-in-production",
+        salt: "dev-salt-change-in-production",
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+        },
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+        session: request.session,
+      }),
+    },
+    
+    lifecycle: {
+      onStart: () => console.log(`🌲 Server started at http://${host}:${port}`),
+    },
+  },
+  // ...
+});
+```
+
+### Production Server
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const port = Number(process.env.PORT ?? 3000);
+const host = "0.0.0.0";
+
+export default defineConfig({
+  server: {
+    baseUrl: process.env.BASE_URL ?? "https://api.myapp.com",
+    
+    listen: { port, host },
+    
+    fastify: {
+      trustProxy: true,
+      connectionTimeout: 60000,
+      keepAliveTimeout: 30000,
+    },
+    
+    plugins: {
+      compress: {
+        global: false,
+        threshold: 1024,
+        encodings: ["gzip", "br"],
+      },
+      
+      cors: {
+        origin: [process.env.FRONTEND_URL ?? "https://myapp.com"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+      },
+      
+      formbody: true,
+      qs: true,
+      
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 50,  // 50MB
+          files: 20,
+        },
+      },
+      
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+        maxAge: 86400000,  // 1 day
+      },
+      
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30 days
+          secure: true,
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+        session: request.session,
+        userAgent: request.headers["user-agent"],
+      }),
+      
+      guardHandler: (guard, request) => {
+        if (guard === "admin" && !request.session.isAdmin) {
+          throw new UnauthorizedError("Admin access required");
+        }
+      },
+    },
+    
+    lifecycle: {
+      onStart: () => {
+        console.log(`🌲 Production server started`);
+        console.log(`   Port: ${port}`);
+        console.log(`   Base URL: ${process.env.BASE_URL}`);
+      },
+      
+      onShutdown: async () => {
+        console.log("Shutting down gracefully...");
+      },
+      
+      onError: (error, request, reply) => {
+        console.error(`[ERROR] ${request.method} ${request.url}`, {
+          message: error.message,
+          stack: error.stack,
+        });
+        
+        reply.status(500).send({
+          error: "Internal Server Error",
+        });
+      },
+    },
+  },
+  // ...
+});
+```
+
+### Docker Container Environment
+
+```typescript
+import { defineConfig } from "sonamu";
+
+const port = Number(process.env.PORT ?? 3000);
+
+export default defineConfig({
+  server: {
+    baseUrl: process.env.BASE_URL ?? `http://localhost:${port}`,
+    
+    listen: {
+      port,
+      host: "0.0.0.0",  // Allow access from outside container
+    },
+    
+    fastify: {
+      trustProxy: true,  // When behind reverse proxy
+    },
+    
+    // ... plugin settings
+  },
+  // ...
+});
+```
+
+## Next Steps
+
+After completing basic server settings:
+
+- [auth](/configuration/sonamu-config/auth) - Authentication settings
+- [storage](/configuration/sonamu-config/storage) - File storage settings
+- [cache](/configuration/sonamu-config/cache) - Cache settings
+- [compress](/configuration/sonamu-config/compress) - Response compression settings

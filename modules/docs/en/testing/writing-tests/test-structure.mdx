@@ -1,0 +1,447 @@
+---
+title: "Test Structure"
+description: "Vitest-based Sonamu test system"
+---
+
+Learn about Sonamu's Vitest-based test system and structure.
+
+## Test System Overview
+
+<CardGroup cols={2}>
+  <Card title="Vitest" icon="vial">
+    Fast test execution
+    
+    Vite integration
+  </Card>
+  <Card title="Context Based" icon="user">
+    Authentication testing
+    
+    Permission simulation
+  </Card>
+  <Card title="Transaction" icon="database">
+    Auto rollback
+    
+    Isolated tests
+  </Card>
+  <Card title="Fixture System" icon="box">
+    Test data
+    
+    Reusable
+  </Card>
+</CardGroup>
+
+## bootstrap Function
+
+Sonamu initializes the test environment with the `bootstrap` function.
+
+```typescript
+// api/src/application/sonamu.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+
+// Initialize test environment
+bootstrap(vi);
+
+test("Create user", async () => {
+  // Test code
+});
+```
+
+### What bootstrap Does
+
+```typescript
+// sonamu/src/testing/bootstrap.ts
+export function bootstrap(vi: VitestUtils) {
+  beforeAll(async () => {
+    // Initialize Sonamu in test mode
+    await Sonamu.initForTesting();
+  });
+  
+  beforeEach(async () => {
+    // Start Transaction for each test
+    await DB.createTestTransaction();
+  });
+  
+  afterEach(async () => {
+    // Reset timers
+    vi.useRealTimers();
+    
+    // Rollback Transaction (auto cleanup)
+    await DB.clearTestTransaction();
+  });
+  
+  afterAll(() => {
+    // Cleanup
+  });
+}
+```
+
+**Key features**:
+1. **Sonamu initialization**: Initialize framework in test mode
+2. **Transaction management**: Auto rollback for each test
+3. **Timer reset**: Reset Vitest's fake timers
+4. **Test reporting**: Pass results to Naite system
+
+## test Function
+
+Sonamu provides a custom `test` function that wraps Vitest's `test`.
+
+### Basic Usage
+
+```typescript
+import { test } from "sonamu/test";
+import { expect } from "vitest";
+import { UserModel } from "@/models/user.model";
+
+test("Create user", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({
+    username: "john",
+    email: "john@example.com",
+    password: "password123",
+  });
+  
+  expect(user.id).toBeGreaterThan(0);
+  expect(user.username).toBe("john");
+});
+
+test("Get user", async () => {
+  const userModel = new UserModel();
+  
+  // Create test data
+  const { user } = await userModel.create({
+    username: "jane",
+    email: "jane@example.com",
+    password: "password123",
+  });
+  
+  // Retrieve
+  const { user: found } = await userModel.getUser("C", user.id);
+  
+  expect(found.id).toBe(user.id);
+  expect(found.username).toBe("jane");
+});
+```
+
+### Context Injection
+
+The `test` function automatically injects Mock Context.
+
+```typescript
+// Internal operation
+function getMockContext(): Context {
+  return {
+    ip: "127.0.0.1",
+    session: {},
+    user: null,  // Default: not logged in
+    passport: {
+      login: async () => {},
+      logout: () => {},
+    },
+    naiteStore: Naite.createStore(),
+  };
+}
+
+export const test = async (title: string, fn: TestFunction) => {
+  return vitestTest(title, async (context) => {
+    await runWithMockContext(async () => {
+      await fn(context);
+    });
+  });
+};
+```
+
+## testAs Function
+
+Test in an authenticated state as a specific user.
+
+### Basic Usage
+
+```typescript
+import { testAs } from "sonamu/test";
+import { expect } from "vitest";
+import { PostModel } from "@/models/post.model";
+
+testAs(
+  { id: 1, username: "admin", role: "admin" },  // Authenticated user
+  "Admin can delete any post",
+  async () => {
+    const postModel = new PostModel();
+    
+    // Context.user is set to above user
+    await postModel.deletePost(123);
+    
+    // Verify deletion
+    const deleted = await postModel.findById("C", 123);
+    expect(deleted).toBeNull();
+  }
+);
+
+testAs(
+  { id: 2, username: "user", role: "user" },  // Regular user
+  "Regular user can only delete own posts",
+  async () => {
+    const postModel = new PostModel();
+    
+    // Context.user.id === 2
+    await expect(
+      postModel.deletePost(999)  // Another user's post
+    ).rejects.toThrow("Permission denied");
+  }
+);
+```
+
+### Permission Testing
+
+```typescript
+import { testAs } from "sonamu/test";
+
+// Admin test
+testAs(
+  { id: 1, role: "admin" },
+  "Admin can view user list",
+  async () => {
+    const userModel = new UserModel();
+    const { users } = await userModel.getUsers({ page: 1, pageSize: 10 });
+    
+    expect(users.length).toBeGreaterThan(0);
+  }
+);
+
+// Regular user test
+testAs(
+  { id: 2, role: "user" },
+  "Regular user cannot view user list",
+  async () => {
+    const userModel = new UserModel();
+    
+    await expect(
+      userModel.getUsers({ page: 1, pageSize: 10 })
+    ).rejects.toThrow();
+  }
+);
+```
+
+## test.skip, test.only, test.todo
+
+You can use Vitest's features as-is.
+
+```typescript
+import { test } from "sonamu/test";
+
+// Skip
+test.skip("Test not yet implemented", async () => {
+  // This test will not run
+});
+
+// Run only this test
+test.only("Run only this test", async () => {
+  // Other tests are ignored and only this runs
+});
+
+// TODO marker
+test.todo("Test to write later");
+```
+
+## test.each
+
+Repeat the same test with multiple input values.
+
+```typescript
+import { test } from "sonamu/test";
+import { expect } from "vitest";
+
+test.each([
+  { input: "user1@example.com", expected: true },
+  { input: "invalid-email", expected: false },
+  { input: "user@domain", expected: false },
+  { input: "user@example.co.kr", expected: true },
+])("Email validation: $input → $expected", async ({ input, expected }) => {
+  const isValid = validateEmail(input);
+  expect(isValid).toBe(expected);
+});
+```
+
+## Transaction Auto Rollback
+
+Each test runs in an isolated Transaction and **automatically rolls back**.
+
+```typescript
+import { test } from "sonamu/test";
+
+test("User creation test", async () => {
+  const userModel = new UserModel();
+  
+  // Insert data into database
+  await userModel.create({
+    username: "test-user",
+    email: "test@example.com",
+    password: "password",
+  });
+  
+  // Auto rollback after test ends
+  // → Database maintains clean state
+});
+
+test("Next test starts with clean DB", async () => {
+  const userModel = new UserModel();
+  
+  // "test-user" from previous test doesn't exist
+  const { users } = await userModel.getUsers({ page: 1, pageSize: 10 });
+  expect(users.find(u => u.username === "test-user")).toBeUndefined();
+});
+```
+
+**Benefits**:
+- Isolation between tests
+- No cleanup needed
+- Fast execution (no actual INSERT/DELETE)
+
+## Test File Structure
+
+```typescript
+// api/src/models/user.model.test.ts
+import { bootstrap, test, testAs } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { UserModel } from "./user.model";
+
+// 1. Initialize test environment with bootstrap
+bootstrap(vi);
+
+// 2. Test groups (describe is optional)
+test("Create user", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({
+    username: "john",
+    email: "john@example.com",
+    password: "password123",
+  });
+  
+  expect(user.id).toBeGreaterThan(0);
+  expect(user.username).toBe("john");
+});
+
+test("Duplicate email validation", async () => {
+  const userModel = new UserModel();
+  
+  // Create first user
+  await userModel.create({
+    username: "user1",
+    email: "duplicate@example.com",
+    password: "password",
+  });
+  
+  // Try to create with same email
+  await expect(
+    userModel.create({
+      username: "user2",
+      email: "duplicate@example.com",
+      password: "password",
+    })
+  ).rejects.toThrow("Email already exists");
+});
+
+testAs(
+  { id: 1, role: "admin" },
+  "Admin can delete users",
+  async () => {
+    const userModel = new UserModel();
+    
+    // Create user
+    const { user } = await userModel.create({
+      username: "temp",
+      email: "temp@example.com",
+      password: "password",
+    });
+    
+    // Delete
+    await userModel.deleteUser(user.id);
+    
+    // Verify
+    const deleted = await userModel.findById("C", user.id);
+    expect(deleted).toBeNull();
+  }
+);
+```
+
+## Accessing Context
+
+You can directly use Context within tests.
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+test("Check user info in Context", async () => {
+  const context = Sonamu.getContext();
+  
+  // Mock context so user is null
+  expect(context.user).toBeNull();
+  expect(context.ip).toBe("127.0.0.1");
+});
+```
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+testAs(
+  { id: 1, username: "admin" },
+  "Check authenticated Context",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    expect(context.user).not.toBeNull();
+    expect(context.user?.id).toBe(1);
+    expect(context.user?.username).toBe("admin");
+  }
+);
+```
+
+## Async Tests
+
+All tests must be `async` functions.
+
+```typescript
+import { test } from "sonamu/test";
+
+// ✅ Correct usage
+test("Async test", async () => {
+  const result = await someAsyncFunction();
+  expect(result).toBe("expected");
+});
+
+// ❌ Wrong usage
+test("Sync test", () => {  // No async!
+  const result = someAsyncFunction();  // No await!
+  expect(result).toBe("expected");  // Compared with Promise object
+});
+```
+
+## Cautions
+
+<Warning>
+**Cautions when writing tests**:
+1. **bootstrap(vi) required**: Call in every test file
+2. **async required**: All test functions must be async
+3. **Transaction based**: Auto rollback after test ends
+4. **Context injection**: test/testAs auto-configure Context
+5. **Isolated tests**: No dependencies between tests
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Test Scaffolding" icon="wand-magic-sparkles" href="/testing/writing-tests/scaffolding-tests">
+    Auto test generation
+  </Card>
+  <Card title="Test Helpers" icon="wrench" href="/testing/writing-tests/test-helpers">
+    Fixtures and utilities
+  </Card>
+  <Card title="Vitest Docs" icon="external-link" href="https://vitest.dev">
+    Vitest guide
+  </Card>
+  <Card title="Model System" icon="cube" href="/core-concepts/model-system/overview">
+    Understanding Models
+  </Card>
+</CardGroup>

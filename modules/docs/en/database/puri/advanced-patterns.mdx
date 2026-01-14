@@ -1,0 +1,734 @@
+---
+title: "Advanced Patterns"
+description: "Transactions, subqueries, vector search, and other advanced features"
+---
+
+You can perform complex database operations using Puri's advanced features.
+
+## Advanced Features Overview
+
+<CardGroup cols={2}>
+  <Card title="Transaction" icon="arrows-rotate">
+    Ensure data consistency with transactions
+    
+    ACID properties
+  </Card>
+  <Card title="Subqueries" icon="layer-group">
+    Express complex conditions with nested queries
+    
+    FROM, WHERE, SELECT
+  </Card>
+  <Card title="Upsert" icon="code-merge">
+    INSERT OR UPDATE at once
+    
+    ON CONFLICT
+  </Card>
+  <Card title="Vector Search" icon="magnifying-glass-chart">
+    AI embedding similarity search
+    
+    pgvector
+  </Card>
+</CardGroup>
+
+## Transaction
+
+Transactions bundle multiple queries into one unit to ensure data consistency.
+
+### Basic Transaction
+
+```typescript
+await db.transaction(async (trx) => {
+  // 1. Create user
+  const [userId] = await trx
+    .table("users")
+    .insert({
+      username: "john",
+      email: "john@test.com",
+      password: "hashed",
+      role: "normal",
+    })
+    .returning("id");
+
+  // 2. Create profile
+  await trx.table("profiles").insert({
+    user_id: userId.id,
+    bio: "Hello world",
+  });
+
+  // 3. Create initial settings
+  await trx.table("user_settings").insert({
+    user_id: userId.id,
+    theme: "dark",
+    language: "ko",
+  });
+
+  // Auto-commit if all operations succeed
+  // Auto-rollback if any fails
+});
+```
+
+<Info>
+**ACID properties of transactions**:
+- **Atomicity**: All succeed or all fail
+- **Consistency**: Maintain data consistency
+- **Isolation**: Isolate concurrent executions
+- **Durability**: Permanent storage
+</Info>
+
+### Explicit Rollback
+
+```typescript
+await db.transaction(async (trx) => {
+  // Insert data
+  await trx.table("users").insert({
+    username: "test",
+    email: "test@test.com",
+    password: "pass",
+    role: "normal",
+  });
+
+  // Rollback based on condition
+  const existingUser = await trx
+    .table("users")
+    .where("email", "test@test.com")
+    .first();
+
+  if (existingUser) {
+    // Manual rollback
+    await trx.rollback();
+    return;
+  }
+
+  // Auto-commit if not rolled back
+});
+```
+
+### Transaction Error Handling
+
+```typescript
+try {
+  await db.transaction(async (trx) => {
+    await trx.table("users").insert({
+      username: "john",
+      email: "john@test.com",
+      password: "pass",
+      role: "normal",
+    });
+
+    // Auto-rollback on error
+    throw new Error("Something went wrong");
+  });
+} catch (error) {
+  console.error("Transaction failed:", error);
+  // All changes are rolled back
+}
+```
+
+## Subqueries
+
+Use subqueries to write complex queries.
+
+### FROM Clause Subquery
+
+```typescript
+// Define subquery
+const activeUsers = db
+  .table("users")
+  .where("is_active", true)
+  .select({
+    id: "id",
+    username: "username",
+    email: "email",
+  });
+
+// Use subquery as a table
+const results = await db
+  .table({ active: activeUsers })
+  .join("posts", "active.id", "posts.user_id")
+  .select({
+    userId: "active.id",
+    username: "active.username",
+    postCount: Puri.count("posts.id"),
+  })
+  .groupBy("active.id", "active.username");
+```
+
+### WHERE Clause Subquery
+
+```typescript
+// Employees with salary above average
+const results = await db
+  .table("employees")
+  .select({
+    id: "id",
+    name: "username",
+    salary: "salary",
+  })
+  .whereRaw(`
+    salary > (SELECT AVG(salary) FROM employees)
+  `);
+```
+
+### SELECT Clause Subquery
+
+```typescript
+const results = await db
+  .table("users")
+  .select({
+    id: "id",
+    username: "username",
+    postCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+    `),
+    commentCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM comments WHERE comments.user_id = users.id)
+    `),
+  });
+```
+
+## WHERE Groups - Complex Conditions
+
+### whereGroup - AND/OR Combination
+
+```typescript
+const results = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .whereGroup((g) =>
+    g
+      .where("role", "admin")
+      .orWhere("role", "moderator")
+  )
+  .where("is_active", true);
+
+// SQL: WHERE (role = 'admin' OR role = 'moderator') AND is_active = true
+```
+
+### Nested Groups
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", name: "username" })
+  .whereGroup((g) =>
+    g
+      .whereGroup((g2) =>
+        g2
+          .where("department_id", 1)
+          .where("salary", ">", 50000)
+      )
+      .orWhereGroup((g2) =>
+        g2
+          .where("department_id", 2)
+          .where("salary", ">", 60000)
+      )
+  );
+
+// SQL: WHERE (
+//   (department_id = 1 AND salary > 50000)
+//   OR
+//   (department_id = 2 AND salary > 60000)
+// )
+```
+
+### Practical Example - Search Filter
+
+```typescript
+async searchUsers(params: {
+  search?: string;
+  role?: string[];
+  isActive?: boolean;
+  minAge?: number;
+}) {
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      username: "username",
+      email: "email",
+    });
+
+  // Search term (multiple fields)
+  if (params.search) {
+    query = query.whereGroup((g) =>
+      g
+        .where("username", "like", `%${params.search}%`)
+        .orWhere("email", "like", `%${params.search}%`)
+        .orWhere("bio", "like", `%${params.search}%`)
+    );
+  }
+
+  // Role filter
+  if (params.role && params.role.length > 0) {
+    query = query.whereIn("role", params.role);
+  }
+
+  // Active status
+  if (params.isActive !== undefined) {
+    query = query.where("is_active", params.isActive);
+  }
+
+  // Age filter
+  if (params.minAge !== undefined) {
+    query = query.whereRaw(
+      "EXTRACT(YEAR FROM AGE(birth_date)) >= ?",
+      [params.minAge]
+    );
+  }
+
+  return await query.orderBy("created_at", "desc");
+}
+```
+
+## UPSERT - ON CONFLICT
+
+Perform INSERT and UPDATE at once.
+
+### Basic UPSERT
+
+```typescript
+await db
+  .table("users")
+  .insert({
+    email: "john@test.com",
+    username: "john",
+    password: "hashed",
+    role: "normal",
+  })
+  .onConflict("email", {
+    update: ["username", "password"],
+  });
+
+// If email already exists, update only username and password
+// If not exists, insert new row
+```
+
+### Selective Update
+
+```typescript
+await db
+  .table("user_stats")
+  .insert({
+    user_id: 1,
+    login_count: 1,
+    last_login: new Date(),
+  })
+  .onConflict("user_id", {
+    update: {
+      login_count: Puri.rawNumber("user_stats.login_count + 1"),
+      last_login: new Date(),
+    },
+  });
+
+// login_count is existing value + 1
+// last_login is updated to new value
+```
+
+### DO NOTHING
+
+```typescript
+await db
+  .table("users")
+  .insert({
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  })
+  .onConflict("email", "nothing");
+
+// Do nothing if email already exists
+```
+
+### Multiple Column UNIQUE
+
+```typescript
+await db
+  .table("user_preferences")
+  .insert({
+    user_id: 1,
+    key: "theme",
+    value: "dark",
+  })
+  .onConflict(["user_id", "key"], {
+    update: ["value"],
+  });
+
+// If (user_id, key) combination exists, update only value
+```
+
+## UpsertBuilder - Complex Relationship Saving
+
+Use when saving relationships across multiple tables at once.
+
+### Basic Usage
+
+```typescript
+await db.transaction(async (trx) => {
+  // 1. Register Company
+  const companyRef = trx.ubRegister("companies", {
+    name: "Tech Corp",
+  });
+
+  // 2. Register Department (reference Company)
+  const deptRef = trx.ubRegister("departments", {
+    name: "Engineering",
+    company_id: companyRef, // Use UBRef
+  });
+
+  // 3. Register User
+  const userRef = trx.ubRegister("users", {
+    email: "dev@tech.com",
+    username: "developer",
+    password: "hashed",
+    role: "normal",
+  });
+
+  // 4. Register Employee (reference User, Department)
+  trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: deptRef,
+    employee_number: "E001",
+    salary: "70000",
+  });
+
+  // 5. Save in order
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("departments");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+```
+
+<Info>
+**Benefits of UBRef**:
+- Define relationships without worrying about foreign keys
+- Automatically resolves dependency order
+- Auto-assigns IDs within transaction
+</Info>
+
+### Many-to-Many Relationships
+
+```typescript
+await db.transaction(async (trx) => {
+  // Create Project
+  const projectRef = trx.ubRegister("projects", {
+    name: "New Feature",
+    status: "in_progress",
+  });
+
+  // Create multiple Employees
+  const emp1Ref = trx.ubRegister("employees", {
+    employee_number: "E100",
+    salary: "60000",
+  });
+
+  const emp2Ref = trx.ubRegister("employees", {
+    employee_number: "E101",
+    salary: "65000",
+  });
+
+  // Set M:N relationships
+  trx.ubRegister("projects__employees", {
+    project_id: projectRef,
+    employee_id: emp1Ref,
+  });
+
+  trx.ubRegister("projects__employees", {
+    project_id: projectRef,
+    employee_id: emp2Ref,
+  });
+
+  // Save
+  await trx.ubUpsert("projects");
+  await trx.ubUpsert("employees");
+  await trx.ubUpsert("projects__employees");
+});
+```
+
+### Bulk Registration
+
+```typescript
+await db.transaction(async (trx) => {
+  const companyRef = trx.ubRegister("companies", {
+    name: "Startup Inc",
+  });
+
+  // Register 10 employees
+  for (let i = 0; i < 10; i++) {
+    const userRef = trx.ubRegister("users", {
+      email: `user${i}@startup.com`,
+      username: `user${i}`,
+      password: "pass",
+      role: "normal",
+    });
+
+    trx.ubRegister("employees", {
+      user_id: userRef,
+      employee_number: `E${1000 + i}`,
+      salary: String(50000 + i * 5000),
+    });
+  }
+
+  // Batch save
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+```
+
+## Vector Search - Vector Similarity Search
+
+Semantic search using AI embeddings.
+
+### Cosine Similarity (Default)
+
+```typescript
+const queryEmbedding = [0.1, 0.2, 0.3, ...]; // 1536-dimensional vector
+
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "cosine",
+    threshold: 0.7, // 70%+ similarity
+  })
+  .select({
+    id: "id",
+    title: "title",
+    similarity: "similarity", // Auto-added
+  })
+  .limit(10);
+
+// Results sorted by similarity descending
+results[0].similarity; // 0.95 (higher = more similar)
+```
+
+### L2 Distance
+
+```typescript
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "l2",
+    threshold: 1.0, // Distance 1.0 or less
+  })
+  .select({
+    id: "id",
+    title: "title",
+    similarity: "similarity", // Distance value (lower = more similar)
+  })
+  .limit(10);
+```
+
+### Inner Product
+
+```typescript
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "inner_product",
+    threshold: 0.5,
+  })
+  .select({
+    id: "id",
+    content: "content",
+    similarity: "similarity",
+  })
+  .limit(20);
+```
+
+<Tip>
+**Vector Search method selection**:
+- **cosine**: General embedding search (OpenAI, Cohere, etc.)
+- **l2**: Distance-based search
+- **inner_product**: Suitable for normalized vectors
+</Tip>
+
+## Full-text Search
+
+### PGroonga (Excellent for CJK languages)
+
+```typescript
+// Single column search
+const results = await db
+  .table("posts")
+  .whereSearch("title", "search term")
+  .select({
+    id: "id",
+    title: "title",
+    score: Puri.score(), // Search score
+  })
+  .orderBy("score", "desc");
+
+// Multi-column search (with weights)
+const results = await db
+  .table("posts")
+  .whereSearch(["title", "content"], "search term", {
+    weights: [10, 1], // title is 10x more important
+  })
+  .select({
+    id: "id",
+    title: "title",
+    highlightedTitle: Puri.highlight("title", "search term"),
+    score: Puri.score(),
+  })
+  .orderBy("score", "desc");
+```
+
+### PostgreSQL tsvector
+
+```typescript
+// Basic search
+const results = await db
+  .table("documents")
+  .whereTsSearch("title", "search query", "simple")
+  .select({
+    id: "id",
+    title: "title",
+    highlighted: Puri.tsHighlight("title", "search query"),
+    rank: Puri.tsRank("to_tsvector('simple', title)", "search query"),
+  })
+  .orderBy("rank", "desc");
+
+// Advanced search options
+const results = await db
+  .table("documents")
+  .whereTsSearch("content", "important keywords", {
+    config: "english",
+    parser: "plainto_tsquery",
+  })
+  .select({
+    id: "id",
+    content: Puri.tsHighlight("content", "important keywords", {
+      startSel: "<mark>",
+      stopSel: "</mark>",
+      maxFragments: 3,
+    }),
+    rank: Puri.tsRankCd("to_tsvector('english', content)", "important keywords"),
+  })
+  .orderBy("rank", "desc");
+```
+
+## Batch Operations
+
+### Batch Insert
+
+```typescript
+const users = [
+  { username: "user1", email: "user1@test.com", password: "pass", role: "normal" },
+  { username: "user2", email: "user2@test.com", password: "pass", role: "normal" },
+  { username: "user3", email: "user3@test.com", password: "pass", role: "normal" },
+];
+
+await db.table("users").insert(users);
+```
+
+### Batch Update
+
+```typescript
+await db.transaction(async (trx) => {
+  for (const userId of userIds) {
+    await trx
+      .table("users")
+      .where("id", userId)
+      .update({ is_active: true });
+  }
+});
+```
+
+### Batch Delete
+
+```typescript
+// Using IN
+await db
+  .table("users")
+  .whereIn("id", [1, 2, 3, 4, 5])
+  .delete();
+
+// With condition
+await db
+  .table("users")
+  .where("last_login", "<", "2023-01-01")
+  .delete();
+```
+
+## Performance Optimization
+
+### Index Usage
+
+```sql
+-- Index frequently queried columns
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+
+-- Composite index
+CREATE INDEX idx_users_role_active ON users(role, is_active);
+
+-- Vector index (HNSW)
+CREATE INDEX idx_documents_embedding ON documents 
+USING hnsw (embedding vector_cosine_ops);
+
+-- Full-text index
+CREATE INDEX idx_posts_content_pgroonga ON posts 
+USING pgroonga (content);
+```
+
+### SELECT Optimization
+
+```typescript
+// ❌ Bad: Query unnecessary columns
+await db.table("users").selectAll();
+
+// ✅ Good: Only needed columns
+await db
+  .table("users")
+  .select({
+    id: "id",
+    name: "username",
+  });
+```
+
+### JOIN Optimization
+
+```typescript
+// ✅ Small table → Large table order
+await db
+  .table("departments")      // 10 rows
+  .join("employees", ...)    // 100 rows
+  .join("user_logs", ...);   // 10000 rows
+```
+
+### Pagination Optimization
+
+```typescript
+// ✅ Cursor-based pagination (for large data)
+async function getCursorPage(lastId: number, limit: number) {
+  return await db
+    .table("posts")
+    .select({ id: "id", title: "title" })
+    .where("id", ">", lastId)
+    .orderBy("id", "asc")
+    .limit(limit);
+}
+
+// Usage
+const page1 = await getCursorPage(0, 20);
+const page2 = await getCursorPage(page1[page1.length - 1].id, 20);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Model" icon="cube" href="/core-concepts/model/what-is-model">
+    Using Puri in Models
+  </Card>
+  <Card title="API Development" icon="code" href="/api-development/controllers/basic-routing">
+    Using Puri in APIs
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/unit-testing">
+    Testing Puri queries
+  </Card>
+  <Card title="Basic Queries" icon="magnifying-glass" href="/database/puri/basic-queries">
+    Back to basic queries
+  </Card>
+</CardGroup>

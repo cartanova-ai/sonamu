@@ -1,0 +1,503 @@
+---
+title: "Raw Queries"
+description: "Writing SQL expressions and complex queries"
+---
+
+Puri is a type-safe query builder, but when complex SQL expressions are needed, you can use Raw SQL.
+
+## Raw Function Overview
+
+<CardGroup cols={2}>
+  <Card title="Raw Type Functions" icon="code">
+    Type-specific Raw functions rawString, rawNumber
+  </Card>
+  <Card title="WHERE Raw" icon="filter">
+    Complex conditions whereRaw
+  </Card>
+  <Card title="CASE WHEN" icon="code-branch">
+    Conditional value selection CASE expressions
+  </Card>
+  <Card title="Subqueries" icon="layer-group">
+    Writing nested queries Subquery
+  </Card>
+</CardGroup>
+
+## Raw Type Functions
+
+### rawString - Returns String
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  fullName: Puri.rawString("CONCAT(first_name, ' ', last_name)"),
+  upperName: Puri.upper("username"),
+  lowerEmail: Puri.lower("email"),
+});
+
+// Type: { id: number; fullName: string; upperName: string; lowerEmail: string; }[]
+```
+
+### rawNumber - Returns Number
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  salary: "salary",
+  yearsSince: Puri.rawNumber("EXTRACT(YEAR FROM AGE(NOW(), hire_date))"),
+  roundedSalary: Puri.rawNumber("ROUND(salary, -3)"),
+});
+
+// Type: { id: number; salary: string; yearsSince: number; roundedSalary: number; }[]
+```
+
+### rawBoolean - Returns Boolean
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  isActive: "is_active",
+  isAdmin: Puri.rawBoolean("role = 'admin'"),
+  hasEmail: Puri.rawBoolean("email IS NOT NULL"),
+});
+
+// Type: { id: number; isActive: boolean; isAdmin: boolean; hasEmail: boolean; }[]
+```
+
+### rawDate - Returns Date
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  createdAt: "created_at",
+  nextWeek: Puri.rawDate("created_at + INTERVAL '7 days'"),
+});
+
+// Type: { id: number; createdAt: Date; nextWeek: Date; }[]
+```
+
+### rawStringArray - Returns String Array
+
+```typescript
+const results = await db
+  .table("projects")
+  .join("projects__employees", "projects.id", "projects__employees.project_id")
+  .join("users", "projects__employees.employee_id", "users.id")
+  .select({
+    projectId: "projects.id",
+    memberNames: Puri.rawStringArray("ARRAY_AGG(users.username)"),
+  })
+  .groupBy("projects.id");
+
+// Type: { projectId: number; memberNames: string[]; }[]
+```
+
+## Static SQL Functions
+
+Built-in SQL functions provided by Puri.
+
+### String Functions
+
+<CodeGroup>
+```typescript title="CONCAT"
+const results = await db
+  .table("users")
+  .select({
+    fullName: Puri.concat("first_name", "' '", "last_name"),
+  });
+```
+
+```typescript title="UPPER / LOWER"
+const results = await db.table("users").select({
+  upperName: Puri.upper("username"),
+  lowerEmail: Puri.lower("email"),
+});
+```
+
+</CodeGroup>
+
+### Aggregate Functions
+
+```typescript
+const results = await db.table("employees").select({
+  total: Puri.count("id"),
+  totalSalary: Puri.sum("salary"),
+  avgSalary: Puri.avg("salary"),
+  maxSalary: Puri.max("salary"),
+  minSalary: Puri.min("salary"),
+});
+```
+
+## WHERE Raw
+
+You can write complex WHERE conditions directly.
+
+### Basic WHERE Raw
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", salary: "salary" })
+  .whereRaw("salary > ?", [50000])
+  .whereRaw("EXTRACT(YEAR FROM hire_date) = ?", [2023]);
+```
+
+<Warning>
+  **SQL Injection Warning**: Always use bindings (`?`) with `whereRaw`.
+  Never put user input directly in strings.
+</Warning>
+
+### Complex Conditions
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", name: "username" })
+  .whereRaw(
+    `
+    (department_id = ? AND salary > ?)
+    OR (department_id = ? AND salary > ?)
+  `,
+    [1, 60000, 2, 70000]
+  );
+```
+
+### Date Functions
+
+```typescript
+// Data from last 30 days
+const results = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereRaw("created_at > NOW() - INTERVAL '30 days'");
+
+// Specific year
+const results = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024]);
+```
+
+## CASE WHEN - Conditional Values
+
+CASE WHEN expressions can return different values based on conditions.
+
+### Basic CASE WHEN
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salaryLevel: Puri.rawString(`
+      CASE
+        WHEN salary < 50000 THEN 'Junior'
+        WHEN salary < 70000 THEN 'Mid'
+        ELSE 'Senior'
+      END
+    `),
+});
+```
+
+### Numeric Calculations
+
+```typescript
+const results = await db.table("products").select({
+  id: "id",
+  name: "name",
+  price: "price",
+  discountedPrice: Puri.rawNumber(`
+      CASE
+        WHEN category = 'sale' THEN price * 0.8
+        WHEN category = 'clearance' THEN price * 0.5
+        ELSE price
+      END
+    `),
+});
+```
+
+### Boolean Results
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  name: "username",
+  isPremium: Puri.rawBoolean(`
+      CASE
+        WHEN subscription_tier IN ('gold', 'platinum') THEN TRUE
+        ELSE FALSE
+      END
+    `),
+});
+```
+
+## Subqueries and Raw SQL
+
+### Scalar Subqueries
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  name: "username",
+  postCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+    `),
+});
+```
+
+### COALESCE - NULL Handling
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  departmentName: Puri.rawString(`
+      COALESCE(
+        (SELECT name FROM departments WHERE id = employees.department_id),
+        'No Department'
+      )
+    `),
+});
+```
+
+## Practical Examples
+
+### User Statistics Dashboard
+
+```typescript
+async getUserStats(userId: number) {
+  const stats = await this.getPuri("r")
+    .table("users")
+    .select({
+      userId: "users.id",
+      username: "users.username",
+
+      // Post statistics
+      totalPosts: Puri.rawNumber(`
+        (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+      `),
+
+      recentPosts: Puri.rawNumber(`
+        (SELECT COUNT(*)
+         FROM posts
+         WHERE posts.user_id = users.id
+         AND posts.created_at > NOW() - INTERVAL '30 days')
+      `),
+
+      // Activity level
+      activityLevel: Puri.rawString(`
+        CASE
+          WHEN (SELECT COUNT(*) FROM posts WHERE user_id = users.id) > 100 THEN 'High'
+          WHEN (SELECT COUNT(*) FROM posts WHERE user_id = users.id) > 10 THEN 'Medium'
+          ELSE 'Low'
+        END
+      `),
+
+      // Days since joined
+      daysSinceJoined: Puri.rawNumber(`
+        EXTRACT(DAY FROM AGE(NOW(), users.created_at))
+      `),
+    })
+    .where("users.id", userId)
+    .first();
+
+  return stats;
+}
+```
+
+### Hourly Statistics
+
+```typescript
+async getHourlyStats(date: string) {
+  const stats = await this.getPuri("r")
+    .table("events")
+    .select({
+      hour: Puri.rawNumber("EXTRACT(HOUR FROM created_at)"),
+      date: Puri.rawDate("DATE(created_at)"),
+      eventCount: Puri.count("id"),
+      uniqueUsers: Puri.rawNumber("COUNT(DISTINCT user_id)"),
+    })
+    .whereRaw("DATE(created_at) = ?", [date])
+    .groupBy("hour", "date")
+    .orderBy("hour", "asc");
+
+  return stats;
+}
+```
+
+### Ranking Calculation
+
+```typescript
+async getTopUsers() {
+  const results = await this.getPuri("r")
+    .table("users")
+    .select({
+      userId: "users.id",
+      username: "users.username",
+      postCount: Puri.rawNumber(`
+        (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+      `),
+      rank: Puri.rawNumber(`
+        RANK() OVER (ORDER BY
+          (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id) DESC
+        )
+      `),
+    })
+    .whereRaw(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id) > 0
+    `)
+    .orderBy("rank", "asc")
+    .limit(10);
+
+  return results;
+}
+```
+
+## Window Functions
+
+### ROW_NUMBER
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salary: "salary",
+  rowNumber: Puri.rawNumber(`
+      ROW_NUMBER() OVER (ORDER BY salary DESC)
+    `),
+});
+```
+
+### RANK / DENSE_RANK
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  departmentId: "department_id",
+  salary: "salary",
+  rankInDept: Puri.rawNumber(`
+      RANK() OVER (PARTITION BY department_id ORDER BY salary DESC)
+    `),
+});
+```
+
+### LAG / LEAD - Previous/Next Row
+
+```typescript
+const results = await db
+  .table("sales")
+  .select({
+    id: "id",
+    month: "month",
+    amount: "amount",
+    previousMonth: Puri.rawNumber(`
+      LAG(amount, 1) OVER (ORDER BY month)
+    `),
+    nextMonth: Puri.rawNumber(`
+      LEAD(amount, 1) OVER (ORDER BY month)
+    `),
+  })
+  .orderBy("month", "asc");
+```
+
+## JSON Functions (PostgreSQL)
+
+### JSON Field Extraction
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  city: Puri.rawString("metadata->>'city'"),
+  age: Puri.rawNumber("(metadata->>'age')::integer"),
+  tags: Puri.rawStringArray(
+    "ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"
+  ),
+});
+```
+
+### JSON Aggregation
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    employees: Puri.rawString(`
+      JSON_AGG(JSON_BUILD_OBJECT(
+        'id', id,
+        'name', username,
+        'salary', salary
+      ))
+    `),
+  })
+  .groupBy("department_id");
+```
+
+## Performance Optimization
+
+### Using EXPLAIN
+
+```typescript
+// Check query execution plan
+const plan = await db
+  .table("employees")
+  .select({ id: "id" })
+  .where("department_id", 1)
+  .rawQuery()
+  .explain();
+
+console.log(plan);
+```
+
+### Index Hints (Not supported in PostgreSQL)
+
+PostgreSQL's optimizer automatically selects indexes. Instead, update statistics:
+
+```sql
+ANALYZE employees;
+```
+
+## Type Safety
+
+Raw functions specify return types.
+
+```typescript
+const results = await db.table("users").select({
+  stringValue: Puri.rawString("'test'"), // string
+  numberValue: Puri.rawNumber("123"), // number
+  boolValue: Puri.rawBoolean("TRUE"), // boolean
+  dateValue: Puri.rawDate("NOW()"), // Date
+  arrayValue: Puri.rawStringArray("'{}'"), // string[]
+});
+
+// Types are automatically inferred
+results[0].stringValue; // string
+results[0].numberValue; // number
+results[0].boolValue; // boolean
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    Understanding Puri's type safety
+  </Card>
+  <Card
+    title="Advanced Patterns"
+    icon="wand-magic-sparkles"
+    href="/database/puri/advanced-patterns"
+  >
+    Subqueries and transactions
+  </Card>
+  <Card
+    title="Aggregations"
+    icon="calculator"
+    href="/database/puri/aggregations"
+  >
+    Using aggregate functions
+  </Card>
+  <Card
+    title="Basic Queries"
+    icon="magnifying-glass"
+    href="/database/puri/basic-queries"
+  >
+    Back to basic queries
+  </Card>
+</CardGroup>

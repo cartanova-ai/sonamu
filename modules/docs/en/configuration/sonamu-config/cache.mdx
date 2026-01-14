@@ -1,0 +1,551 @@
+---
+title: 'Cache (BentoCache)'
+description: 'BentoCache-based caching configuration'
+---
+
+Sonamu provides a powerful caching system based on BentoCache. It supports various drivers including memory and Redis, and supports multi-layer caching (L1/L2) and distributed invalidation.
+
+## Basic Structure
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "5m",
+      prefix: "myapp:",
+    },
+  },
+  // ...
+});
+```
+
+## default
+
+Specifies the default cache store to use.
+
+**Type**: `string`
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",  // Use stores.main
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+    },
+  },
+});
+```
+
+## stores
+
+Defines the cache stores to use.
+
+**Type**: `Record<string, BentoCacheStore>`
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
+        
+        distributed: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+    },
+  },
+});
+```
+
+### Single Layer: Memory
+
+The simplest configuration, storing cache only in memory.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+      ttl: "5m",
+    },
+  },
+});
+```
+
+**Pros**: Fast speed, simple configuration  
+**Cons**: Cache lost on server restart, cannot share between multiple servers
+
+### Multi-layer Cache: L1 (Memory) + L2 (Redis)
+
+L1 caches quickly in memory, L2 caches persistently in Redis.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "1h",
+    },
+  },
+});
+```
+
+**How it works**:
+1. Check L1 (memory) first when querying cache
+2. If not in L1, check L2 (Redis)
+3. If found in L2, also store in L1
+4. If not in both, query original data and store in L1, L2
+
+### Distributed Cache: L1 + L2 + Bus
+
+Synchronizes cache invalidation across multiple servers.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+      ttl: "1h",
+    },
+  },
+});
+```
+
+**How it works**:
+- When cache is invalidated on one server
+- Propagated to all other servers via Bus
+- L1 cache on all servers is also automatically invalidated
+
+<Tip>
+If running multiple servers (behind a load balancer), enable Bus. Cache consistency is guaranteed.
+</Tip>
+
+## ttl
+
+Sets the default Time To Live for cache.
+
+**Type**: `string` (optional)
+
+**Default**: `"5m"` (5 minutes)
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: { /* ... */ },
+      ttl: "1h",  // 1 hour
+    },
+  },
+});
+```
+
+**Time formats**:
+- `"5s"` - 5 seconds
+- `"1m"` - 1 minute
+- `"1h"` - 1 hour
+- `"1d"` - 1 day
+
+**Using different TTL per API**:
+
+```typescript
+import { cache } from "sonamu";
+
+export class ProductModel {
+  @cache({ ttl: "10m" })  // 10 minute cache
+  @api()
+  static async list() {
+    // ...
+  }
+  
+  @cache({ ttl: "1h" })  // 1 hour cache
+  @api()
+  static async detail(id: number) {
+    // ...
+  }
+}
+```
+
+## prefix
+
+Sets a prefix to be added to all cache keys.
+
+**Type**: `string` (optional)
+
+**Default**: `""`
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: { /* ... */ },
+      prefix: "myapp:",  // Add "myapp:" to all keys
+    },
+  },
+});
+```
+
+**Example**:
+
+```typescript
+// When prefix: "myapp:" is set
+await cache.set("user:123", data);
+// Actual Redis key: "myapp:user:123"
+```
+
+<Tip>
+If multiple apps share the same Redis instance, set a prefix to prevent key collisions.
+</Tip>
+
+## Driver Options
+
+### memory driver
+
+Stores cache in memory.
+
+```typescript
+drivers.memory({
+  maxSize: "100mb",  // Maximum memory size
+})
+```
+
+**Options**:
+- `maxSize`: Maximum memory usage (`"50mb"`, `"100mb"`, `"1gb"`, etc.)
+
+### redis driver
+
+Stores cache in Redis.
+
+```typescript
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  password: process.env.REDIS_PASSWORD,
+});
+
+drivers.redis({
+  connection: redisConnection,
+})
+```
+
+**connection configuration**:
+
+```typescript
+const redisConnection = createClient({
+  url: "redis://localhost:6379",
+  password: "your-password",
+  socket: {
+    connectTimeout: 10000,
+  },
+});
+
+await redisConnection.connect();
+```
+
+### redisBus driver
+
+Propagates cache invalidation using Redis Pub/Sub.
+
+```typescript
+drivers.redisBus({
+  connection: redisConnection,
+})
+```
+
+<Note>
+`redisBus` can use the same connection as the `redis` driver.
+</Note>
+
+## Practical Examples
+
+### Single Server: Memory Only
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+      ttl: "5m",
+    },
+  },
+  // ...
+});
+```
+
+**Use case**: Small apps, single server
+
+### Multi-layer Cache: Memory + Redis
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "1h",
+      prefix: "myapp:",
+    },
+  },
+  // ...
+});
+```
+
+**Use case**: Medium apps, single server, persistent cache needed
+
+### Distributed Environment: Memory + Redis + Bus
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  password: process.env.REDIS_PASSWORD,
+});
+
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+      ttl: "1h",
+      prefix: "prod:",
+    },
+  },
+  // ...
+});
+```
+
+**Use case**: Large apps, multiple servers (load balancer), cache consistency needed
+
+### Multiple Stores: Separated by Purpose
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "short",
+      stores: {
+        // Short cache (API responses)
+        short: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" })),
+        
+        // Long cache (static data)
+        long: store()
+          .useL1Layer(drivers.memory({ maxSize: "30mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "5m",
+    },
+  },
+  // ...
+});
+```
+
+**Usage example**:
+
+```typescript
+import { cache } from "sonamu";
+
+export class DataModel {
+  // Short cache (default store)
+  @cache({ ttl: "1m" })
+  @api()
+  static async list() { /* ... */ }
+  
+  // Long cache (long store)
+  @cache({ store: "long", ttl: "1d" })
+  @api()
+  static async staticData() { /* ... */ }
+}
+```
+
+## Using Cache
+
+After configuration, use the `@cache` decorator in APIs.
+
+```typescript
+import { api, cache } from "sonamu";
+
+export class ProductModel {
+  @cache({ ttl: "10m" })
+  @api()
+  static async list() {
+    // First call: Query DB and store in cache
+    // Next 10 minutes: Return from cache
+    return this.getPuri().select("*");
+  }
+  
+  @cache({ key: (id) => `product:${id}`, ttl: "1h" })
+  @api()
+  static async detail(id: number) {
+    // 1 hour cache per product
+    return this.findById(id);
+  }
+}
+```
+
+→ [Cache Decorator Usage](/advanced-features/caching/cache-decorator)
+
+## Installing Redis
+
+Redis must be installed before using it.
+
+### Docker
+
+```bash
+docker run -d \
+  --name redis \
+  -p 6379:6379 \
+  redis:7
+```
+
+### macOS
+
+```bash
+brew install redis
+brew services start redis
+```
+
+### Linux
+
+```bash
+sudo apt-get install redis-server
+sudo systemctl start redis
+```
+
+### Connection Verification
+
+```bash
+redis-cli ping
+# PONG
+```
+
+## Important Notes
+
+### 1. Redis Connection Management
+
+```typescript
+// ✅ Good: Reuse connection
+const redisConnection = createClient({ /* ... */ });
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      stores: {
+        main: store()
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+    },
+  },
+});
+```
+
+### 2. Memory Size Configuration
+
+```typescript
+// Set considering server memory
+drivers.memory({
+  maxSize: "100mb",  // About 10-20% of server memory
+})
+```
+
+### 3. TTL Selection
+
+```typescript
+// Adjust based on data change frequency
+ttl: "1m"   // Frequently changing data
+ttl: "10m"  // Typical API responses
+ttl: "1h"   // Rarely changing data
+ttl: "1d"   // Static data
+```
+
+## Next Steps
+
+After completing cache configuration:
+
+- [cache decorator](/advanced-features/caching/cache-decorator) - Apply caching to APIs
+- [cache-control](/configuration/sonamu-config/cache-control) - HTTP cache control
+- [cache strategies](/advanced-features/caching/cache-strategies) - Advanced caching strategies

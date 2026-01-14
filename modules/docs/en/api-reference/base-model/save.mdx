@@ -1,0 +1,825 @@
+---
+title: 'save'
+description: '레코드 저장 및 수정'
+---
+
+`save`는 레코드를 저장하거나 수정하는 메서드입니다. UpsertBuilder를 사용하여 INSERT/UPDATE를 자동으로 처리하며, 트랜잭션 내에서 안전하게 실행됩니다.
+
+<Info>
+`save`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에 자동으로 생성하는 **표준 패턴**입니다.
+</Info>
+
+## 타입 시그니처
+
+```typescript
+async save(
+  saveParams: SaveParams[]
+): Promise<number[]>
+```
+
+## 자동 생성 코드
+
+Sonamu는 Entity를 기반으로 다음 코드를 자동으로 생성합니다:
+
+```typescript
+// src/application/user/user.model.ts (자동 생성)
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async save(spa: UserSaveParams[]): Promise<number[]> {
+    const wdb = this.getPuri("w");
+
+    // 1. UpsertBuilder에 레코드 등록
+    spa.forEach((sp) => {
+      wdb.ubRegister("users", sp);
+    });
+
+    // 2. 트랜잭션 내에서 Upsert 실행
+    return wdb.transaction(async (trx) => {
+      const ids = await trx.ubUpsert("users");
+      return ids;
+    });
+  }
+}
+```
+
+**내부 동작:**
+1. **getPuri("w")**: BaseModelClass 메서드로 쓰기용 Puri 획득
+2. **ubRegister()**: UpsertBuilder에 레코드 등록
+3. **transaction()**: 트랜잭션 시작
+4. **ubUpsert()**: INSERT/UPDATE 자동 처리 및 ID 반환
+
+## 매개변수
+
+### saveParams
+
+저장할 레코드 데이터 배열입니다.
+
+**타입:** `SaveParams[]`
+
+```typescript
+type UserSaveParams = {
+  id?: number;         // 있으면 UPDATE, 없으면 INSERT
+  email: string;
+  name: string;
+  status?: string;
+  // ... 기타 필드
+}
+
+// 단일 레코드 저장
+await UserModel.save([
+  { email: "john@example.com", name: "John" }
+]);
+
+// 여러 레코드 저장
+await UserModel.save([
+  { email: "john@example.com", name: "John" },
+  { email: "jane@example.com", name: "Jane" }
+]);
+```
+
+### id의 역할
+
+- **id가 있으면:** 해당 ID의 레코드를 **UPDATE**
+- **id가 없으면:** 새 레코드를 **INSERT**
+
+```typescript
+// INSERT (id 없음)
+await UserModel.save([
+  { email: "new@example.com", name: "New User" }
+]);
+
+// UPDATE (id 있음)
+await UserModel.save([
+  { id: 1, email: "updated@example.com", name: "Updated Name" }
+]);
+```
+
+## 반환값
+
+**타입:** `Promise<number[]>`
+
+저장된 레코드의 ID 배열을 반환합니다.
+
+```typescript
+// INSERT
+const [id] = await UserModel.save([
+  { email: "john@example.com", name: "John" }
+]);
+console.log("Created ID:", id);  // 123
+
+// UPDATE
+const [id] = await UserModel.save([
+  { id: 123, name: "John Smith" }
+]);
+console.log("Updated ID:", id);  // 123
+
+// 여러 레코드
+const ids = await UserModel.save([
+  { email: "a@example.com", name: "A" },
+  { email: "b@example.com", name: "B" }
+]);
+console.log("Created IDs:", ids);  // [124, 125]
+```
+
+## 기본 사용법
+
+### 새 레코드 생성 (INSERT)
+
+```typescript
+import { UserModel } from "./user/user.model";
+
+class UserService {
+  async createUser(email: string, name: string) {
+    const [id] = await UserModel.save([
+      {
+        email,
+        name,
+        status: "active",
+        created_at: new Date()
+      }
+    ]);
+    
+    return { id };
+  }
+}
+```
+
+### 레코드 수정 (UPDATE)
+
+```typescript
+async updateUser(userId: number, name: string) {
+  const [id] = await UserModel.save([
+    {
+      id: userId,
+      name,
+      updated_at: new Date()
+    }
+  ]);
+  
+  return { id };
+}
+```
+
+### Upsert (INSERT or UPDATE)
+
+```typescript
+async upsertUser(userData: { id?: number; email: string; name: string }) {
+  const [id] = await UserModel.save([userData]);
+  
+  return { id };
+}
+```
+
+## UpsertBuilder 동작 원리
+
+### 1. 레코드 등록 (ubRegister)
+
+```typescript
+async save(spa: UserSaveParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+
+  // 각 레코드를 UpsertBuilder에 등록
+  spa.forEach((sp) => {
+    wdb.ubRegister("users", sp);
+  });
+  
+  // ...
+}
+```
+
+### 2. 트랜잭션 실행
+
+```typescript
+// 트랜잭션 내에서 upsert 실행
+return wdb.transaction(async (trx) => {
+  const ids = await trx.ubUpsert("users");
+  return ids;
+});
+```
+
+### 3. INSERT/UPDATE 자동 처리
+
+UpsertBuilder는 `id` 필드의 유무에 따라 자동으로 INSERT 또는 UPDATE를 수행합니다:
+
+```sql
+-- id 없음: INSERT
+INSERT INTO users (email, name, status) 
+VALUES ('john@example.com', 'John', 'active')
+RETURNING id;
+
+-- id 있음: UPDATE
+INSERT INTO users (id, email, name) 
+VALUES (123, 'john@example.com', 'John Smith')
+ON CONFLICT (id) 
+DO UPDATE SET 
+  email = EXCLUDED.email,
+  name = EXCLUDED.name
+RETURNING id;
+```
+
+## 배치 저장
+
+여러 레코드를 한 번에 저장할 수 있습니다.
+
+```typescript
+async bulkCreateUsers(users: { email: string; name: string }[]) {
+  const ids = await UserModel.save(
+    users.map(user => ({
+      email: user.email,
+      name: user.name,
+      status: "active",
+      created_at: new Date()
+    }))
+  );
+  
+  return { count: ids.length, ids };
+}
+```
+
+## 관계 데이터 저장
+
+### 1:N 관계
+
+```typescript
+// 게시물 + 댓글 저장
+const postId = await PostModel.save([
+  {
+    title: "My Post",
+    content: "Content here"
+  }
+]);
+
+await CommentModel.save([
+  {
+    post_id: postId[0],
+    content: "First comment"
+  },
+  {
+    post_id: postId[0],
+    content: "Second comment"
+  }
+]);
+```
+
+### N:M 관계
+
+```typescript
+// 사용자 + 역할 할당
+const userId = await UserModel.save([
+  {
+    email: "admin@example.com",
+    name: "Admin User"
+  }
+]);
+
+await UserRoleModel.save([
+  {
+    user_id: userId[0],
+    role_id: 1  // Admin
+  },
+  {
+    user_id: userId[0],
+    role_id: 2  // Editor
+  }
+]);
+```
+
+## 실전 예시
+
+<Tabs>
+  <Tab title="회원가입" icon="user-plus">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api, BadRequestException } from "sonamu";
+    import bcrypt from "bcrypt";
+
+    class AuthFrame {
+      @api({ httpMethod: "POST" })
+      async signup(params: {
+        email: string;
+        password: string;
+        name: string;
+      }) {
+        // 이메일 중복 확인
+        const existing = await UserModel.findOne("A", {
+          email: params.email
+        });
+        
+        if (existing) {
+          throw new BadRequestException("이미 사용 중인 이메일입니다");
+        }
+        
+        // 비밀번호 해싱
+        const hashedPassword = await bcrypt.hash(params.password, 10);
+        
+        // 사용자 생성
+        const [id] = await UserModel.save([
+          {
+            email: params.email,
+            password: hashedPassword,
+            name: params.name,
+            status: "active",
+            email_verified: false,
+            created_at: new Date()
+          }
+        ]);
+        
+        return {
+          id,
+          email: params.email,
+          name: params.name
+        };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="프로필 수정" icon="pen-to-square">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { Sonamu, api, UnauthorizedException } from "sonamu";
+
+    class UserFrame {
+      @api({ httpMethod: "POST" })
+      async updateProfile(params: {
+        name?: string;
+        bio?: string;
+        avatar_url?: string;
+      }) {
+        const { user } = Sonamu.getContext();
+        
+        if (!user) {
+          throw new UnauthorizedException("로그인이 필요합니다");
+        }
+        
+        // 프로필 업데이트
+        const [id] = await UserModel.save([
+          {
+            id: user.id,
+            ...params,
+            updated_at: new Date()
+          }
+        ]);
+        
+        // 업데이트된 사용자 정보 조회
+        const updated = await UserModel.findById("A", id);
+        
+        return updated;
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="게시물 작성" icon="file-pen">
+    ```typescript
+    import { PostModel } from "./post/post.model";
+    import { Sonamu, api } from "sonamu";
+
+    class PostFrame {
+      @api({ httpMethod: "POST" })
+      async createPost(params: {
+        title: string;
+        content: string;
+        tags?: string[];
+      }) {
+        const { user } = Sonamu.getContext();
+        
+        // 게시물 생성
+        const [postId] = await PostModel.save([
+          {
+            user_id: user.id,
+            title: params.title,
+            content: params.content,
+            status: "draft",
+            created_at: new Date()
+          }
+        ]);
+        
+        // 태그 저장
+        if (params.tags && params.tags.length > 0) {
+          await TagModel.save(
+            params.tags.map(tag => ({
+              post_id: postId,
+              name: tag
+            }))
+          );
+        }
+        
+        return {
+          id: postId,
+          title: params.title
+        };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="주문 생성" icon="cart-shopping">
+    ```typescript
+    import { OrderModel, OrderItemModel } from "./models";
+    import { Sonamu, api, transactional } from "sonamu";
+
+    class OrderFrame {
+      @api({ httpMethod: "POST" })
+      @transactional()
+      async createOrder(params: {
+        items: Array<{
+          product_id: number;
+          quantity: number;
+          price: number;
+        }>;
+        shipping_address: string;
+      }) {
+        const { user } = Sonamu.getContext();
+        
+        // 총액 계산
+        const total = params.items.reduce(
+          (sum, item) => sum + (item.price * item.quantity),
+          0
+        );
+        
+        // 주문 생성
+        const [orderId] = await OrderModel.save([
+          {
+            user_id: user.id,
+            total_amount: total,
+            status: "pending",
+            shipping_address: params.shipping_address,
+            created_at: new Date()
+          }
+        ]);
+        
+        // 주문 항목 생성
+        const itemIds = await OrderItemModel.save(
+          params.items.map(item => ({
+            order_id: orderId,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        );
+        
+        return {
+          orderId,
+          itemCount: itemIds.length,
+          total
+        };
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 부분 업데이트
+
+지정한 필드만 업데이트할 수 있습니다.
+
+```typescript
+// 이름만 업데이트
+await UserModel.save([
+  {
+    id: 123,
+    name: "New Name"
+    // 다른 필드는 그대로 유지
+  }
+]);
+
+// 여러 필드 업데이트
+await UserModel.save([
+  {
+    id: 123,
+    name: "New Name",
+    email: "new@example.com",
+    updated_at: new Date()
+  }
+]);
+```
+
+<Info>
+지정하지 않은 필드는 변경되지 않습니다. NULL로 설정하려면 명시적으로 `null`을 전달하세요.
+</Info>
+
+## 트랜잭션
+
+`save`는 자동으로 트랜잭션 내에서 실행됩니다.
+
+```typescript
+// 자동 트랜잭션
+return wdb.transaction(async (trx) => {
+  const ids = await trx.ubUpsert("users");
+  return ids;
+});
+```
+
+### @transactional과 함께
+
+```typescript
+import { api, transactional } from "sonamu";
+
+class UserFrame {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async createUserWithProfile(params: {
+    email: string;
+    name: string;
+    bio: string;
+  }) {
+    // User 생성
+    const [userId] = await UserModel.save([
+      {
+        email: params.email,
+        name: params.name
+      }
+    ]);
+    
+    // Profile 생성
+    await ProfileModel.save([
+      {
+        user_id: userId,
+        bio: params.bio
+      }
+    ]);
+    
+    // 둘 다 성공하거나 둘 다 실패 (원자성)
+    return { userId };
+  }
+}
+```
+
+## 검증
+
+### 1. Zod 자동 검증
+
+SaveParams는 Entity 정의에서 Zod 스키마로 자동 생성됩니다.
+
+```typescript
+// 자동으로 검증됨
+await UserModel.save([
+  {
+    email: "invalid-email",  // ❌ 이메일 형식 검증 실패
+    name: "John"
+  }
+]);
+```
+
+### 2. 커스텀 검증
+
+```typescript
+async createUser(params: UserSaveParams) {
+  // 이메일 중복 확인
+  const existing = await UserModel.findOne("A", {
+    email: params.email
+  });
+  
+  if (existing) {
+    throw new BadRequestException("이미 사용 중인 이메일입니다");
+  }
+  
+  // 비밀번호 강도 확인
+  if (params.password.length < 8) {
+    throw new BadRequestException("비밀번호는 8자 이상이어야 합니다");
+  }
+  
+  return await UserModel.save([params]);
+}
+```
+
+## API에서 사용
+
+### 자동 생성된 save API
+
+```typescript
+// Model 클래스
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async save(spa: UserSaveParams[]): Promise<number[]> {
+    // 자동 생성된 코드
+  }
+}
+```
+
+### 클라이언트 코드
+
+```typescript
+import { UserService } from "@/services/UserService";
+
+// 사용자 생성
+const ids = await UserService.save([
+  {
+    email: "john@example.com",
+    name: "John"
+  }
+]);
+```
+
+### React (TanStack Query)
+
+```typescript
+import { useMutation } from "@tanstack/react-query";
+import { UserService } from "@/services/UserService";
+
+function CreateUserForm() {
+  const createUser = useMutation({
+    mutationFn: (params: { email: string; name: string }) =>
+      UserService.save([params])
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    createUser.mutate({
+      email: formData.get("email") as string,
+      name: formData.get("name") as string
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="email" type="email" required />
+      <input name="name" required />
+      <button type="submit" disabled={createUser.isPending}>
+        {createUser.isPending ? "Creating..." : "Create User"}
+      </button>
+      
+      {createUser.isSuccess && (
+        <p>User created with ID: {createUser.data[0]}</p>
+      )}
+      
+      {createUser.isError && (
+        <p>Error: {createUser.error.message}</p>
+      )}
+    </form>
+  );
+}
+```
+
+## 고급 기능
+
+### Unique 제약조건 처리
+
+UpsertBuilder는 Unique 제약조건을 자동으로 처리합니다.
+
+```typescript
+// email이 unique인 경우
+await UserModel.save([
+  { email: "john@example.com", name: "John" }  // INSERT
+]);
+
+await UserModel.save([
+  { email: "john@example.com", name: "John Smith" }  // UPDATE (동일 이메일)
+]);
+```
+
+### JSON 컬럼
+
+```typescript
+await UserModel.save([
+  {
+    id: 1,
+    metadata: {
+      preferences: {
+        theme: "dark",
+        language: "ko"
+      },
+      tags: ["vip", "premium"]
+    }
+  }
+]);
+```
+
+### 배열 컬럼 (PostgreSQL)
+
+```typescript
+await PostModel.save([
+  {
+    id: 1,
+    tags: ["typescript", "node", "database"]
+  }
+]);
+```
+
+## 성능 최적화
+
+### 배치 크기 제한
+
+```typescript
+// 대량 데이터 저장 시 청크 단위로 나누기
+const users = [/* 10000개 */];
+
+// 500개씩 나눠서 저장
+for (let i = 0; i < users.length; i += 500) {
+  const chunk = users.slice(i, i + 500);
+  await UserModel.save(chunk);
+}
+```
+
+### 트랜잭션 재사용
+
+```typescript
+@api({ httpMethod: "POST" })
+@transactional()
+async bulkOperation(data: LargeDataSet) {
+  // 같은 트랜잭션 내에서 여러 save 실행
+  await UserModel.save(data.users);
+  await PostModel.save(data.posts);
+  await CommentModel.save(data.comments);
+  
+  // 모두 성공하거나 모두 실패
+}
+```
+
+## 주의사항
+
+### 1. 배열로 전달
+
+`save`는 **반드시 배열**을 받습니다.
+
+```typescript
+// ❌ 잘못됨
+await UserModel.save({ email: "john@example.com" });
+
+// ✅ 올바름
+await UserModel.save([{ email: "john@example.com" }]);
+```
+
+### 2. 반환값은 ID 배열
+
+```typescript
+// 단일 레코드
+const [id] = await UserModel.save([{ ... }]);
+
+// 여러 레코드
+const [id1, id2, id3] = await UserModel.save([{ ... }, { ... }, { ... }]);
+```
+
+### 3. 부분 업데이트 시 주의
+
+```typescript
+// ❌ 이메일이 null로 변경됨
+await UserModel.save([
+  {
+    id: 1,
+    name: "New Name"
+    // email 필드 없음 → null로 변경되지 않음 (기존 값 유지)
+  }
+]);
+
+// ✅ 명시적으로 null 설정
+await UserModel.save([
+  {
+    id: 1,
+    email: null  // 명시적 null
+  }
+]);
+```
+
+### 4. 관계 데이터 순서
+
+부모 레코드를 먼저 저장한 후 자식 레코드를 저장하세요.
+
+```typescript
+// ✅ 올바른 순서
+const [postId] = await PostModel.save([{ ... }]);
+await CommentModel.save([{ post_id: postId, ... }]);
+
+// ❌ 잘못된 순서 (post_id가 없음)
+await CommentModel.save([{ post_id: undefined, ... }]);
+const [postId] = await PostModel.save([{ ... }]);
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="findById" 
+    icon="magnifying-glass" 
+    href="/api-reference/base-model/find-by-id"
+  >
+    저장된 레코드 조회하기
+  </Card>
+  
+  <Card 
+    title="del" 
+    icon="trash" 
+    href="/api-reference/base-model/del"
+  >
+    레코드 삭제하기
+  </Card>
+  
+  <Card 
+    title="UpsertBuilder" 
+    icon="layer-group" 
+    href="/database/upsert-builder/basic-usage"
+  >
+    UpsertBuilder 상세 가이드
+  </Card>
+  
+  <Card 
+    title="@transactional" 
+    icon="arrows-rotate" 
+    href="/api-reference/decorators/transactional"
+  >
+    트랜잭션 사용하기
+  </Card>
+</CardGroup>

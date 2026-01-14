@@ -1,0 +1,360 @@
+---
+title: 'SoException'
+description: 'Sonamu 예외 처리 시스템 기본 클래스'
+---
+
+`SoException`은 Sonamu의 모든 예외 클래스가 상속하는 추상 기본 클래스입니다. HTTP 상태 코드와 메시지, 추가 페이로드를 포함할 수 있습니다.
+
+## 타입 정의
+
+```typescript
+abstract class SoException extends Error {
+  constructor(
+    public readonly statusCode: number,
+    public message: string,
+    public payload?: unknown,
+  );
+}
+```
+
+## 속성
+
+### statusCode
+
+```typescript
+readonly statusCode: number
+```
+
+HTTP 응답 상태 코드입니다. 예외가 발생하면 Fastify가 이 코드로 응답합니다.
+
+### message
+
+```typescript
+message: string
+```
+
+예외 메시지입니다. 클라이언트에게 전달되는 오류 설명입니다.
+
+### payload
+
+```typescript
+payload?: unknown
+```
+
+선택적 추가 데이터입니다. 예외와 관련된 상세 정보를 전달할 때 사용합니다.
+
+**사용 예시:**
+
+```typescript
+throw new BadRequestException("유효하지 않은 이메일 형식입니다", {
+  field: "email",
+  providedValue: "invalid-email",
+  expectedFormat: "user@example.com"
+});
+```
+
+## 유틸리티 함수
+
+### isSoException()
+
+주어진 값이 `SoException` 인스턴스인지 확인합니다.
+
+```typescript
+function isSoException(err: unknown): err is SoException
+```
+
+**사용 예시:**
+
+```typescript
+try {
+  // 어떤 작업
+} catch (err) {
+  if (isSoException(err)) {
+    console.log(`Status: ${err.statusCode}`);
+    console.log(`Message: ${err.message}`);
+    console.log(`Payload:`, err.payload);
+  } else {
+    // 다른 타입의 에러 처리
+  }
+}
+```
+
+## 내장 예외 클래스
+
+Sonamu는 일반적인 HTTP 오류 상황을 위한 여러 내장 예외 클래스를 제공합니다.
+
+### BadRequestException (400)
+
+잘못된 매개변수 등 요청사항에 문제가 있는 경우 사용합니다.
+
+```typescript
+class BadRequestException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async createUser(email: string, password: string) {
+  if (!email.includes("@")) {
+    throw new BadRequestException("유효하지 않은 이메일 형식입니다");
+  }
+  
+  if (password.length < 8) {
+    throw new BadRequestException("비밀번호는 최소 8자 이상이어야 합니다", {
+      minLength: 8,
+      providedLength: password.length
+    });
+  }
+  
+  // 사용자 생성 로직
+}
+```
+
+### UnauthorizedException (401)
+
+로그인이 필요한 경우 로그아웃 상태이거나 접근 권한이 없는 요청 시 사용합니다.
+
+```typescript
+class UnauthorizedException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async getMyProfile(ctx: Context) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  return this.findById(ctx.user.id);
+}
+```
+
+### NotFoundException (404)
+
+존재하지 않는 레코드에 접근 시 사용합니다.
+
+```typescript
+class NotFoundException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async getUserById(id: number) {
+  const user = await this.findById(id);
+  
+  if (!user) {
+    throw new NotFoundException(`사용자를 찾을 수 없습니다 (ID: ${id})`);
+  }
+  
+  return user;
+}
+```
+
+### InternalServerErrorException (500)
+
+내부 처리 로직(외부 API 호출 포함) 오류 발생 시 사용합니다.
+
+```typescript
+class InternalServerErrorException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async processPayment(orderId: number) {
+  try {
+    const result = await externalPaymentAPI.charge(orderId);
+    return result;
+  } catch (err) {
+    throw new InternalServerErrorException(
+      "결제 처리 중 오류가 발생했습니다",
+      { orderId, originalError: err }
+    );
+  }
+}
+```
+
+### ServiceUnavailableException (503)
+
+현재 상태에서 처리가 불가능한 경우 사용합니다.
+
+```typescript
+class ServiceUnavailableException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async getRecommendations() {
+  if (!this.mlServiceAvailable) {
+    throw new ServiceUnavailableException(
+      "추천 서비스가 일시적으로 사용 불가능합니다"
+    );
+  }
+  
+  return this.fetchRecommendations();
+}
+```
+
+### TargetNotFoundException (520)
+
+작업 대상이 없는 경우 사용합니다.
+
+```typescript
+class TargetNotFoundException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async deleteUserPosts(userId: number) {
+  const posts = await this.findByUserId(userId);
+  
+  if (posts.length === 0) {
+    throw new TargetNotFoundException(
+      `삭제할 게시물이 없습니다 (사용자 ID: ${userId})`
+    );
+  }
+  
+  await this.deleteMany(posts.map(p => p.id));
+}
+```
+
+### AlreadyProcessedException (541)
+
+이미 처리된 요청에 대한 중복 처리 시도 시 사용합니다.
+
+```typescript
+class AlreadyProcessedException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async processOrder(orderId: number) {
+  const order = await this.findById(orderId);
+  
+  if (order.status === "processed") {
+    throw new AlreadyProcessedException(
+      `주문이 이미 처리되었습니다 (ID: ${orderId})`,
+      { processedAt: order.processedAt }
+    );
+  }
+  
+  // 주문 처리 로직
+}
+```
+
+### DuplicateRowException (542)
+
+중복을 허용하지 않는 경우 중복 요청 시 사용합니다.
+
+```typescript
+class DuplicateRowException extends SoException
+```
+
+**사용 예시:**
+
+```typescript
+@api()
+async createUser(email: string, username: string) {
+  const existingUser = await this.findByEmail(email);
+  
+  if (existingUser) {
+    throw new DuplicateRowException(
+      "이미 등록된 이메일입니다",
+      { field: "email", value: email }
+    );
+  }
+  
+  // 사용자 생성 로직
+}
+```
+
+## 예외 처리 흐름
+
+Sonamu는 발생한 예외를 자동으로 처리하여 적절한 HTTP 응답으로 변환합니다:
+
+```typescript
+// API 메서드에서 예외 발생
+@api()
+async createPost(title: string) {
+  if (!title) {
+    throw new BadRequestException("제목은 필수입니다");
+  }
+  // ...
+}
+
+// 클라이언트는 다음과 같은 응답을 받음:
+// HTTP 400 Bad Request
+// {
+//   "statusCode": 400,
+//   "message": "제목은 필수입니다"
+// }
+```
+
+payload가 있는 경우:
+
+```typescript
+throw new BadRequestException("유효하지 않은 데이터", {
+  errors: [
+    { field: "email", message: "이메일 형식이 올바르지 않습니다" },
+    { field: "age", message: "나이는 0보다 커야 합니다" }
+  ]
+});
+
+// 클라이언트 응답:
+// HTTP 400 Bad Request
+// {
+//   "statusCode": 400,
+//   "message": "유효하지 않은 데이터",
+//   "payload": {
+//     "errors": [
+//       { "field": "email", "message": "이메일 형식이 올바르지 않습니다" },
+//       { "field": "age", "message": "나이는 0보다 커야 합니다" }
+//     ]
+//   }
+// }
+```
+
+## 예외 vs Guards
+
+간단한 인증 체크의 경우 Guards를 사용하는 것이 좋습니다:
+
+```typescript
+// Guards 사용 (권장)
+@api({ guards: ["user"] })
+async getMyData(ctx: Context) {
+  // ctx.user가 보장됨
+  return this.findById(ctx.user!.id);
+}
+
+// 수동 체크 (더 복잡한 로직에 사용)
+@api()
+async updateProfile(ctx: Context, data: ProfileData) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  if (ctx.user.id !== data.userId) {
+    throw new UnauthorizedException("본인의 프로필만 수정할 수 있습니다");
+  }
+  
+  // 프로필 업데이트 로직
+}
+```
+
+## 관련 문서
+
+- [커스텀 예외 만들기](/api-reference/exceptions/custom-errors)
+- [Guards 사용하기](/api-development/guards)
+- [에러 핸들링](/api-development/error-handling)

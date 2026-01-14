@@ -1,0 +1,506 @@
+---
+title: "Nested Relations"
+description: "Loading 1:N, N:M relation data with LoaderQuery"
+---
+
+LoaderQuery is a system for efficiently loading 1:N and N:M relation data.
+
+## LoaderQuery Overview
+
+<CardGroup cols={2}>
+  <Card title="1:N Relations" icon="arrow-right-to-bracket">
+    Parent → Multiple children
+    
+    HasMany
+  </Card>
+  <Card title="N:M Relations" icon="diagram-project">
+    Bidirectional many-to-many
+    
+    ManyToMany
+  </Card>
+  <Card title="N+1 Solution" icon="gauge-high">
+    Efficient data loading
+    
+    Batch Loading
+  </Card>
+  <Card title="Nested Loaders" icon="layer-group">
+    Recursive relation loading
+    
+    Nested Relations
+  </Card>
+</CardGroup>
+
+## LoaderQuery vs SubsetQuery
+
+<Frame>
+  <img src="/images/subsets/loader-vs-subset-query.png" alt="LoaderQuery vs SubsetQuery comparison" />
+</Frame>
+
+### SubsetQuery (JOIN)
+
+Suitable for OneToOne or BelongsTo relations:
+
+```typescript
+// SubsetQuery: Handled with LEFT JOIN
+{
+  "subsets": {
+    "P": [
+      "id",
+      "username",
+      "employee.salary",           // ← OneToOne
+      "employee.department.name"   // ← BelongsTo
+    ]
+  }
+}
+
+// SQL: LEFT JOIN employees, LEFT JOIN departments
+// Result: 1 employee per row
+```
+
+### LoaderQuery (Separate Query)
+
+Suitable for HasMany or ManyToMany relations:
+
+```typescript
+// LoaderQuery: Handled with separate query
+{
+  loaders: [
+    {
+      as: "posts",
+      refId: "user_id",
+      qb: (qb, fromIds) => 
+        qb.table("posts")
+          .whereIn("user_id", fromIds)
+    }
+  ]
+}
+
+// SQL: SELECT * FROM posts WHERE user_id IN (1, 2, 3)
+// Result: N posts array per user
+```
+
+## Defining LoaderQuery
+
+LoaderQuery is defined in `subset-loaders.ts` files:
+
+```typescript
+// src/application/user/user.subset-loaders.ts
+
+import type { SubsetLoaderMap } from "sonamu";
+
+export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
+  // Add posts loader to Subset A
+  A: [
+    {
+      as: "posts",              // Result field name
+      refId: "user_id",         // Reference field (posts.user_id)
+      qb: (qb, fromIds) => 
+        qb.table("posts")
+          .whereIn("user_id", fromIds)
+          .select({
+            id: "id",
+            title: "title",
+            created_at: "created_at",
+          })
+          .orderBy("created_at", "desc"),
+    },
+  ],
+};
+```
+
+<Info>
+LoaderQuery automatically performs **Batch Loading** to solve the N+1 problem.
+</Info>
+
+## 1:N Relations (HasMany)
+
+### Department → Employees
+
+```typescript
+// Department Entity
+export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+  P: [
+    {
+      as: "employees",
+      refId: "department_id",
+      qb: (qb, fromIds) => 
+        qb.table("employees")
+          .whereIn("department_id", fromIds)
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            employee_number: "employees.employee_number",
+            username: "users.username",
+            salary: "employees.salary",
+          })
+          .orderBy("employees.employee_number", "asc"),
+    },
+  ],
+};
+```
+
+**Usage Example**:
+
+```typescript
+const dept = await DepartmentModel.findById(1, ["P"]);
+
+// Type:
+// {
+//   id: number;
+//   name: string;
+//   employees: Array<{
+//     id: number;
+//     employee_number: string;
+//     username: string;
+//     salary: string;
+//   }>;
+// }
+
+console.log(`${dept.name} department employees: ${dept.employees.length}`);
+dept.employees.forEach(emp => {
+  console.log(`- ${emp.username} (${emp.employee_number})`);
+});
+```
+
+## N:M Relations (ManyToMany)
+
+### Project ↔ Employee
+
+```typescript
+// Project Entity
+export const ProjectSubsetLoaders: SubsetLoaderMap<"Project"> = {
+  P: [
+    {
+      as: "members",
+      refId: "project_id",
+      qb: (qb, fromIds) => 
+        qb.table("projects__employees")
+          .whereIn("project_id", fromIds)
+          .join("employees", "projects__employees.employee_id", "employees.id")
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            username: "users.username",
+            employee_number: "employees.employee_number",
+            role: "projects__employees.role",  // Junction table field
+          }),
+    },
+  ],
+};
+```
+
+**Usage Example**:
+
+```typescript
+const project = await ProjectModel.findById(1, ["P"]);
+
+// Type:
+// {
+//   id: number;
+//   name: string;
+//   members: Array<{
+//     id: number;
+//     username: string;
+//     employee_number: string;
+//     role: string;  // role from junction table
+//   }>;
+// }
+
+console.log(`Project: ${project.name}`);
+console.log(`${project.members.length} participants:`);
+project.members.forEach(member => {
+  console.log(`- ${member.username} (${member.role})`);
+});
+```
+
+## Nested LoaderQuery
+
+<Frame>
+  <img src="/images/subsets/nested-loader.png" alt="Nested LoaderQuery structure" />
+</Frame>
+
+LoaderQuery can be **nested recursively**:
+
+```typescript
+// Department Entity
+export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+  P: [
+    {
+      as: "employees",
+      refId: "department_id",
+      qb: (qb, fromIds) => 
+        qb.table("employees")
+          .whereIn("department_id", fromIds)
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            username: "users.username",
+            user_id: "users.id",  // ← refId for next Loader
+          }),
+      
+      // Nested Loader: Employee → Projects
+      loaders: [
+        {
+          as: "projects",
+          refId: "employee_id",
+          qb: (qb, fromIds) => 
+            qb.table("projects__employees")
+              .whereIn("employee_id", fromIds)
+              .join("projects", "projects__employees.project_id", "projects.id")
+              .select({
+                id: "projects.id",
+                name: "projects.name",
+                status: "projects.status",
+              }),
+        },
+      ],
+    },
+  ],
+};
+```
+
+**Result Structure**:
+
+```typescript
+{
+  id: 1,
+  name: "Engineering",
+  employees: [
+    {
+      id: 1,
+      username: "john",
+      projects: [
+        { id: 1, name: "Project A", status: "in_progress" },
+        { id: 2, name: "Project B", status: "completed" }
+      ]
+    },
+    {
+      id: 2,
+      username: "jane",
+      projects: [
+        { id: 3, name: "Project C", status: "in_progress" }
+      ]
+    }
+  ]
+}
+```
+
+## How Batch Loading Works
+
+<Frame>
+  <img src="/images/subsets/batch-loading-solution.png" alt="N+1 problem and Batch Loading solution" />
+</Frame>
+
+### N+1 Problem
+
+```typescript
+// ❌ N+1 problem occurs
+const users = await UserModel.findMany({ subsetKey: "L" }); // 1 query
+
+for (const user of users) {
+  const posts = await PostModel.findMany({
+    where: [["user_id", user.id]],
+    subsetKey: "L",
+  }); // N queries (one per user)
+  
+  console.log(`${user.username}: ${posts.length} posts`);
+}
+
+// Total queries: 1 + N
+```
+
+### Batch Loading Solution
+
+```typescript
+// ✅ Solved with Batch Loading
+const users = await UserModel.findMany({
+  subsetKey: "A",  // A Subset includes posts Loader
+});
+
+// Query 1: SELECT * FROM users
+// Query 2: SELECT * FROM posts WHERE user_id IN (1, 2, 3, ...)
+
+users.forEach(user => {
+  console.log(`${user.username}: ${user.posts.length} posts`);
+});
+
+// Total queries: 2 (regardless of user count)
+```
+
+## Practical Examples
+
+### Department Employee List
+
+```typescript
+async getDepartmentWithEmployees(deptId: number) {
+  const dept = await DepartmentModel.findById(deptId, ["P"]);
+  
+  if (!dept) {
+    throw new NotFoundException("Department not found");
+  }
+  
+  return {
+    id: dept.id,
+    name: dept.name,
+    employeeCount: dept.employees.length,
+    employees: dept.employees.map(emp => ({
+      id: emp.id,
+      name: emp.username,
+      number: emp.employee_number,
+      salary: emp.salary,
+    })),
+  };
+}
+```
+
+### Project Dashboard
+
+```typescript
+async getProjectDashboard(projectId: number) {
+  const project = await ProjectModel.findById(projectId, ["Dashboard"]);
+  
+  if (!project) {
+    throw new NotFoundException("Project not found");
+  }
+  
+  return {
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    
+    // Members from LoaderQuery
+    members: project.members.map(m => ({
+      id: m.id,
+      name: m.username,
+      role: m.role,
+    })),
+    
+    // Tasks from LoaderQuery
+    tasks: project.tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      assignee: t.assignee_name,
+    })),
+    
+    stats: {
+      memberCount: project.members.length,
+      taskCount: project.tasks.length,
+      completedTasks: project.tasks.filter(t => t.status === "completed").length,
+    },
+  };
+}
+```
+
+### User Activity Summary
+
+```typescript
+// User Subset with posts and comments
+const user = await UserModel.findById(userId, ["Activity"]);
+
+const summary = {
+  user: {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+  },
+  
+  activity: {
+    totalPosts: user.posts.length,
+    recentPosts: user.posts.slice(0, 5).map(p => ({
+      id: p.id,
+      title: p.title,
+      createdAt: p.created_at,
+    })),
+    
+    totalComments: user.comments.length,
+    recentComments: user.comments.slice(0, 5).map(c => ({
+      id: c.id,
+      content: c.content,
+      postTitle: c.post_title,
+      createdAt: c.created_at,
+    })),
+  },
+};
+```
+
+## LoaderQuery Design Principles
+
+### 1. SELECT Only Needed Fields
+
+```typescript
+// ❌ Bad: Loading all fields
+{
+  as: "employees",
+  refId: "department_id",
+  qb: (qb, fromIds) => 
+    qb.table("employees")
+      .whereIn("department_id", fromIds)
+      .selectAll(),  // All fields (including password, etc.)
+}
+
+// ✅ Good: Only needed fields
+{
+  as: "employees",
+  refId: "department_id",
+  qb: (qb, fromIds) => 
+    qb.table("employees")
+      .whereIn("department_id", fromIds)
+      .select({
+        id: "id",
+        username: "username",
+        employee_number: "employee_number",
+      }),
+}
+```
+
+### 2. Sorting and Limiting
+
+```typescript
+// Only 5 recent posts
+{
+  as: "recentPosts",
+  refId: "user_id",
+  qb: (qb, fromIds) => 
+    qb.table("posts")
+      .whereIn("user_id", fromIds)
+      .orderBy("created_at", "desc")
+      .limit(5),
+}
+```
+
+### 3. Condition Filtering
+
+```typescript
+// Only completed projects
+{
+  as: "completedProjects",
+  refId: "employee_id",
+  qb: (qb, fromIds) => 
+    qb.table("projects__employees")
+      .whereIn("employee_id", fromIds)
+      .join("projects", "projects__employees.project_id", "projects.id")
+      .where("projects.status", "completed")
+      .select({
+        id: "projects.id",
+        name: "projects.name",
+      }),
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Defining Subsets" icon="pen" href="/database/subsets/defining-subsets">
+    Create Subsets in Entity
+  </Card>
+  <Card title="Using Subsets" icon="code" href="/database/subsets/using-subsets">
+    Use Subsets in Model
+  </Card>
+  <Card title="Model Methods" icon="cube" href="/core-concepts/model/model-methods">
+    Model CRUD methods
+  </Card>
+  <Card title="Puri Joins" icon="link" href="/database/puri/joins">
+    Puri JOIN queries
+  </Card>
+</CardGroup>

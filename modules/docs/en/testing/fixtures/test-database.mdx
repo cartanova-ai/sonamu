@@ -1,0 +1,381 @@
+---
+title: "Test Database"
+description: "Setting up isolated test DB"
+---
+
+Learn about Sonamu's test database system and how to configure it.
+
+## Test DB Overview
+
+<CardGroup cols={2}>
+  <Card title="Isolated Environment" icon="shield">
+    Separate from production
+    
+    Safe testing
+  </Card>
+  <Card title="Auto Rollback" icon="rotate-left">
+    Transaction-based
+    
+    Auto cleanup after tests
+  </Card>
+  <Card title="Fixture Support" icon="database">
+    Copy real data
+    
+    Consistent test environment
+  </Card>
+  <Card title="Easy Initialization" icon="wand-magic-sparkles">
+    Single command setup
+    
+    Auto schema copy
+  </Card>
+</CardGroup>
+
+## DB Structure
+
+Sonamu uses multiple databases:
+
+```
+┌─────────────────────┐
+│ development_master  │  ← Development DB (local)
+│ (local dev data)    │
+└─────────────────────┘
+         ↓ pnpm sonamu fixture init
+┌─────────────────────┐
+│     fixture DB      │  ← Fixture DB (can be remote)
+│ (shared test data)  │
+└─────────────────────┘
+         ↓ pnpm sonamu fixture sync
+┌─────────────────────┐
+│      test DB        │  ← Test DB (local)
+│ (test execution)    │
+└─────────────────────┘
+```
+
+**Roles**:
+- **development_master**: DB used during development
+- **fixture**: Stores common data for testing (team shareable)
+- **test**: DB where actual tests run (transaction-based)
+
+## DB Configuration
+
+### sonamu.config.json
+
+```json
+{
+  "db": {
+    "development_master": {
+      "client": "pg",
+      "connection": {
+        "host": "localhost",
+        "port": 5432,
+        "user": "postgres",
+        "password": "postgres",
+        "database": "myapp_dev"
+      }
+    },
+    "fixture": {
+      "client": "pg",
+      "connection": {
+        "host": "fixture-db.example.com",
+        "port": 5432,
+        "user": "postgres",
+        "password": "postgres",
+        "database": "myapp_fixture"
+      }
+    },
+    "test": {
+      "client": "pg",
+      "connection": {
+        "host": "localhost",
+        "port": 5432,
+        "user": "postgres",
+        "password": "postgres",
+        "database": "myapp_test"
+      }
+    }
+  }
+}
+```
+
+**Warning**:
+- `test` and `production_master` must **never use the same DB**
+- Sonamu automatically validates this during initialization
+
+```typescript
+// sonamu/src/testing/fixture-manager.ts
+if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
+  const tConn = Sonamu.dbConfig.test.connection;
+  const pConn = Sonamu.dbConfig.production_master.connection;
+  
+  if (`${tConn.host}:${tConn.port}/${tConn.database}` ===
+      `${pConn.host}:${pConn.port}/${pConn.database}`) {
+    throw new Error('Test DB and Production DB use the same database.');
+  }
+}
+```
+
+## Fixture Initialization
+
+### pnpm sonamu fixture init
+
+Copies the development DB schema to Fixture DB and Test DB.
+
+```bash
+pnpm sonamu fixture init
+```
+
+**Process**:
+
+1. **Development DB Dump**
+   ```bash
+   # Dump schema only (no data)
+   pg_dump -d myapp_dev -s > /tmp/schema.sql
+   
+   # Dump migration records
+   pg_dump myapp_dev knex_migrations knex_migrations_lock > /tmp/migrations.sql
+   ```
+
+2. **Create Fixture DB**
+   ```bash
+   # Create DB
+   psql -c "DROP DATABASE IF EXISTS myapp_fixture"
+   psql -c "CREATE DATABASE myapp_fixture"
+   
+   # Restore schema
+   psql myapp_fixture < /tmp/schema.sql
+   psql myapp_fixture < /tmp/migrations.sql
+   ```
+
+3. **Create Test DB**
+   ```bash
+   # Create DB
+   psql -c "DROP DATABASE IF EXISTS myapp_test"
+   psql -c "CREATE DATABASE myapp_test"
+   
+   # Restore schema
+   psql myapp_test < /tmp/schema.sql
+   psql myapp_test < /tmp/migrations.sql
+   ```
+
+**Result**:
+- Fixture DB: Empty schema (add data later)
+- Test DB: Empty schema (sync from Fixture per test)
+
+### Execution Example
+
+```bash
+$ pnpm sonamu fixture init
+
+DUMP...
+SYNC to (REMOTE) Fixture DB...
+DROP DATABASE IF EXISTS `myapp_fixture`
+CREATE DATABASE `myapp_fixture`
+# Schema restore...
+
+SYNC to (LOCAL) Testing DB...
+DROP DATABASE IF EXISTS `myapp_test`
+CREATE DATABASE `myapp_test`
+# Schema restore...
+
+✅ Fixture initialization complete!
+```
+
+### Skip Condition
+
+Skips Test DB creation if Fixture DB and Test DB are the same:
+
+```typescript
+// CLI code
+const toSkip = (() => {
+  const remoteConn = Sonamu.dbConfig.fixture.connection;
+  const localConn = Sonamu.dbConfig.test.connection;
+  return remoteConn.host === localConn.host && 
+         remoteConn.database === localConn.database;
+})();
+```
+
+```bash
+$ pnpm sonamu fixture init
+
+SYNC to (REMOTE) Fixture DB...
+✅ Complete
+
+SYNC to (LOCAL) Testing DB...
+⚠️  Skipped! (Same as Fixture DB)
+```
+
+## Test DB Operation
+
+### Transaction-Based
+
+Each test runs in an isolated Transaction:
+
+```typescript
+// sonamu/src/testing/bootstrap.ts
+export function bootstrap(vi: VitestUtils) {
+  beforeEach(async () => {
+    // Before each test: Start transaction
+    await DB.createTestTransaction();
+  });
+  
+  afterEach(async () => {
+    // After each test: Auto rollback
+    await DB.clearTestTransaction();
+  });
+}
+```
+
+**Flow**:
+```typescript
+// Test 1 starts
+BEGIN TRANSACTION;
+  INSERT INTO users (...);  // Create test data
+  SELECT * FROM users;      // Test verification
+ROLLBACK;  // Auto rollback - data disappears
+
+// Test 2 starts
+BEGIN TRANSACTION;
+  // Starts with clean DB state
+  INSERT INTO posts (...);
+ROLLBACK;
+```
+
+### Benefits
+
+**Isolation**:
+```typescript
+test("create user", async () => {
+  const userModel = new UserModel();
+  await userModel.create({ username: "john" });
+  // Auto deleted after test
+});
+
+test("next test has clean DB", async () => {
+  const userModel = new UserModel();
+  const { users } = await userModel.getUsers();
+  expect(users).toHaveLength(0);  // john from previous test is gone
+});
+```
+
+**Fast execution**:
+- No actual DELETE → just ROLLBACK
+- Saves DB cleanup time
+
+## Best Practices
+
+### 1. DB Separation
+
+```json
+// ✅ Correct: Separate DBs
+{
+  "development_master": { "database": "myapp_dev" },
+  "fixture": { "database": "myapp_fixture" },
+  "test": { "database": "myapp_test" }
+}
+
+// ❌ Wrong: Same DB
+{
+  "development_master": { "database": "myapp" },
+  "test": { "database": "myapp" }  // Dangerous!
+}
+```
+
+### 2. Shared Fixture DB
+
+Team can maintain consistent test environment by using the same Fixture DB:
+
+```json
+{
+  "fixture": {
+    "client": "pg",
+    "connection": {
+      "host": "fixture-db.company.com",  // Team shared server
+      "database": "myapp_fixture"
+    }
+  },
+  "test": {
+    "client": "pg",
+    "connection": {
+      "host": "localhost",  // Local
+      "database": "myapp_test"
+    }
+  }
+}
+```
+
+### 3. Regular Initialization
+
+Re-initialize Fixture when schema changes:
+
+```bash
+# After running migrations
+pnpm sonamu migrate run
+
+# Initialize Fixture
+pnpm sonamu fixture init
+```
+
+## Troubleshooting
+
+### Connection Failed
+
+```bash
+Error: connect ECONNREFUSED 127.0.0.1:5432
+```
+
+**Solution**:
+- Check if PostgreSQL server is running
+- Verify connection info in `sonamu.config.json`
+
+### Permission Error
+
+```bash
+Error: permission denied for database myapp_test
+```
+
+**Solution**:
+```sql
+-- Grant permissions to DB user
+GRANT ALL PRIVILEGES ON DATABASE myapp_test TO postgres;
+```
+
+### DB Already Exists
+
+```bash
+⚠️  Database "myapp_test" Already exists
+```
+
+**Solution**:
+```bash
+# Manually drop to force recreate
+psql -c "DROP DATABASE myapp_test"
+pnpm sonamu fixture init
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using test DB**:
+1. **Never use production DB**: test DB must be completely separate from production
+2. **Schema sync**: Run fixture init after migrations
+3. **Transaction-based**: Isolation between tests is handled automatically
+4. **Shared Fixture**: Recommend using same Fixture DB with team
+5. **Regular initialization**: Re-initialize when dev DB schema changes
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Fixtures" icon="plus" href="/testing/fixtures/creating-fixtures">
+    Writing fixture.ts
+  </Card>
+  <Card title="Loading Fixtures" icon="download" href="/testing/fixtures/loading-fixtures">
+    Import production data
+  </Card>
+  <Card title="Syncing Fixtures" icon="arrows-rotate" href="/testing/fixtures/syncing-fixtures">
+    Fixture → Test DB
+  </Card>
+  <Card title="Writing Tests" icon="vial" href="/testing/writing-tests/test-structure">
+    Understanding test structure
+  </Card>
+</CardGroup>

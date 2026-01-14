@@ -1,0 +1,412 @@
+---
+title: "Basic Usage"
+description: "Saving data with UpsertBuilder"
+---
+
+UpsertBuilder is a tool for efficiently saving complex relational data within transactions.
+
+## UpsertBuilder Overview
+
+<CardGroup cols={2}>
+  <Card title="Transaction Required" icon="arrows-rotate">
+    Always used within transactions
+    
+    Guarantees data consistency
+  </Card>
+  <Card title="UBRef References" icon="link">
+    Automatic foreign key resolution
+    
+    Define relationships without IDs
+  </Card>
+  <Card title="Sequential Saving" icon="list-ol">
+    Save in dependency order
+    
+    Satisfy foreign key constraints
+  </Card>
+  <Card title="Type Safety" icon="shield">
+    Compile-time validation
+    
+    Table schema verification
+  </Card>
+</CardGroup>
+
+## Basic Concept
+
+### Problems with Regular INSERT
+
+```typescript
+// ❌ Problem: Cannot know foreign key values in advance
+await db.transaction(async (trx) => {
+  // 1. Create Company
+  const [companyId] = await trx
+    .table("companies")
+    .insert({ name: "Tech Corp" })
+    .returning("id");
+  
+  // 2. Create Department (needs company_id)
+  const [deptId] = await trx
+    .table("departments")
+    .insert({
+      name: "Engineering",
+      company_id: companyId, // ← Use ID from above
+    })
+    .returning("id");
+  
+  // 3. Create User
+  const [userId] = await trx
+    .table("users")
+    .insert({
+      email: "john@test.com",
+      username: "john",
+      password: "pass",
+      role: "normal",
+    })
+    .returning("id");
+  
+  // 4. Create Employee (needs user_id, department_id)
+  await trx.table("employees").insert({
+    user_id: userId, // ← ID from above
+    department_id: deptId, // ← ID from above
+    employee_number: "E001",
+  });
+});
+
+// Code is long and complex
+// Need to track IDs every time
+```
+
+### UpsertBuilder Solution
+
+```typescript
+// ✅ Solution: Define relationships with UBRef
+await db.transaction(async (trx) => {
+  // 1. Register data (get UBRef)
+  const companyRef = trx.ubRegister("companies", {
+    name: "Tech Corp",
+  });
+  
+  const deptRef = trx.ubRegister("departments", {
+    name: "Engineering",
+    company_id: companyRef, // ← Use UBRef
+  });
+  
+  const userRef = trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  });
+  
+  trx.ubRegister("employees", {
+    user_id: userRef, // ← Use UBRef
+    department_id: deptRef, // ← Use UBRef
+    employee_number: "E001",
+  });
+  
+  // 2. Save in order
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("departments");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+
+// Clean and clear
+// No ID tracking needed
+```
+
+```mermaid
+graph LR
+    A[ubRegister call] --> B[Create UBRef object]
+    B --> C[{_type: UBRef<br/>table: users<br/>index: 0}]
+    C --> D[Used as reference<br/>in ubRegister]
+    D --> E[Execute ubUpsert]
+    E --> F[Convert to actual ID]
+    F --> G[Save to DB]
+```
+
+## ubRegister - Data Registration
+
+`ubRegister` registers data to save and returns a **UBRef**.
+
+### Basic Usage
+
+```typescript
+await db.transaction(async (trx) => {
+  // Specify table and data
+  const userRef = trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "hashed_password",
+    role: "normal",
+  });
+  
+  // userRef is UBRef type
+  // A reference object, not an actual ID
+});
+```
+
+### Type Safety
+
+```typescript
+// ✅ OK: Correct fields
+trx.ubRegister("users", {
+  email: "john@test.com",
+  username: "john",
+  password: "pass",
+  role: "normal",
+});
+
+// ❌ Type Error: Invalid field
+trx.ubRegister("users", {
+  email: "john@test.com",
+  invalid_field: "value", // Property 'invalid_field' does not exist
+});
+
+// ❌ Type Error: Missing required field
+trx.ubRegister("users", {
+  email: "john@test.com",
+  // username missing → Type Error
+});
+```
+
+## ubUpsert - Actual Save
+
+`ubUpsert` actually saves registered data to the DB.
+
+### Basic Usage
+
+```typescript
+await db.transaction(async (trx) => {
+  trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  });
+  
+  // Save to DB and return array of created IDs
+  const userIds = await trx.ubUpsert("users");
+  
+  console.log(userIds); // [1]
+});
+```
+
+### Return Value
+
+```typescript
+// Single record
+const [userId] = await trx.ubUpsert("users");
+console.log(userId); // 1
+
+// Multiple records
+const userIds = await trx.ubUpsert("users");
+console.log(userIds); // [1, 2, 3]
+```
+
+### Save Order
+
+```typescript
+await db.transaction(async (trx) => {
+  // Registration (order doesn't matter)
+  const userRef = trx.ubRegister("users", { ... });
+  const companyRef = trx.ubRegister("companies", { ... });
+  const deptRef = trx.ubRegister("departments", {
+    company_id: companyRef,
+  });
+  const empRef = trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: deptRef,
+  });
+  
+  // Save (dependency order required)
+  await trx.ubUpsert("companies");   // 1. No dependencies
+  await trx.ubUpsert("departments"); // 2. Needs company_id
+  await trx.ubUpsert("users");       // 3. No dependencies
+  await trx.ubUpsert("employees");   // 4. Needs user_id, department_id
+});
+```
+
+<Warning>
+**Save Order Matters!**
+
+Tables referenced by foreign keys must be saved first.
+Wrong order will cause foreign key constraint violation errors.
+</Warning>
+
+## Practical Examples
+
+### User Registration
+
+```typescript
+async createUser(data: {
+  email: string;
+  username: string;
+  password: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // Register User
+    trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: data.password,
+      role: "normal",
+      is_verified: false,
+    });
+    
+    // Save
+    const [userId] = await trx.ubUpsert("users");
+    
+    return userId;
+  });
+}
+```
+
+### Create Company + Department
+
+```typescript
+async createCompanyWithDepartment(data: {
+  companyName: string;
+  departmentName: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // 1. Register Company
+    const companyRef = trx.ubRegister("companies", {
+      name: data.companyName,
+    });
+    
+    // 2. Register Department (references Company)
+    trx.ubRegister("departments", {
+      name: data.departmentName,
+      company_id: companyRef,
+    });
+    
+    // 3. Save in order
+    const [companyId] = await trx.ubUpsert("companies");
+    const [departmentId] = await trx.ubUpsert("departments");
+    
+    return { companyId, departmentId };
+  });
+}
+```
+
+### Create Employee (User + Employee)
+
+```typescript
+async createEmployee(data: {
+  email: string;
+  username: string;
+  password: string;
+  departmentId: number;
+  employeeNumber: string;
+  salary: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // 1. Register User
+    const userRef = trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: data.password,
+      role: "normal",
+    });
+    
+    // 2. Register Employee
+    trx.ubRegister("employees", {
+      user_id: userRef,
+      department_id: data.departmentId, // Use existing ID
+      employee_number: data.employeeNumber,
+      salary: data.salary,
+    });
+    
+    // 3. Save
+    const [userId] = await trx.ubUpsert("users");
+    const [employeeId] = await trx.ubUpsert("employees");
+    
+    return { userId, employeeId };
+  });
+}
+```
+
+## UBRef Type
+
+UBRef is a **reference object**, not an actual ID:
+
+```typescript
+// UBRef type
+type UBRef = {
+  _type: "UBRef";
+  table: string;
+  index: number;
+};
+
+// Usage example
+const userRef = trx.ubRegister("users", { ... });
+console.log(userRef);
+// { _type: "UBRef", table: "users", index: 0 }
+
+// ❌ Cannot use directly
+const userId = userRef; // Type Error
+await db.table("posts").insert({
+  user_id: userRef, // ❌ Runtime Error
+});
+
+// ✅ Only usable within UpsertBuilder
+trx.ubRegister("employees", {
+  user_id: userRef, // ✅ OK
+});
+```
+
+## Error Handling
+
+### Transaction Rollback
+
+```typescript
+try {
+  await db.transaction(async (trx) => {
+    trx.ubRegister("users", { ... });
+    trx.ubRegister("employees", { ... });
+    
+    await trx.ubUpsert("users");
+    
+    // Auto rollback on error
+    throw new Error("Something went wrong");
+  });
+} catch (error) {
+  console.error("Transaction failed:", error);
+  // users insert also rolled back
+}
+```
+
+### Foreign Key Constraint Violation
+
+```typescript
+await db.transaction(async (trx) => {
+  const userRef = trx.ubRegister("users", { ... });
+  trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: 999, // Non-existent ID
+  });
+  
+  await trx.ubUpsert("users");
+  
+  // ❌ Foreign key constraint violation error
+  await trx.ubUpsert("employees");
+  // Error: FOREIGN KEY constraint failed
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Relational Data" icon="link" href="/database/upsert-builder/relations">
+    Handle complex relationships with UBRef
+  </Card>
+  <Card title="Batch Operations" icon="layer-group" href="/database/upsert-builder/batch-operations">
+    Bulk data registration
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/upsert-builder/advanced-patterns">
+    Complex data structures
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/database/transactions">
+    Transaction detailed guide
+  </Card>
+</CardGroup>

@@ -1,0 +1,246 @@
+---
+title: "dev"
+description: "HMR 지원 개발 서버 시작하기"
+---
+
+`pnpm dev` 명령어는 **Hot Module Replacement(HMR)**를 지원하는 개발 서버를 시작합니다. 코드를 수정하면 서버를 재시작하지 않고도 변경사항이 즉시 반영됩니다.
+
+## 기본 사용법
+
+```bash
+pnpm dev
+```
+
+개발 서버가 시작되면 다음 기능을 사용할 수 있습니다:
+- **자동 재시작**: 코드 변경 시 자동으로 서버 재시작
+- **TypeScript 지원**: .ts 파일을 바로 실행
+- **소스맵 지원**: 에러 발생 시 정확한 줄 번호 표시
+- **키보드 단축키**: 빠른 작업을 위한 단축키
+
+## 동작 원리
+
+`pnpm dev`는 내부적으로 다음 도구들을 사용합니다:
+
+| 도구 | 역할 | 제공 |
+|------|------|------|
+| `@sonamu-kit/hmr-runner` | HMR 실행 엔진 | Sonamu |
+| `@sonamu-kit/ts-loader` | TypeScript 로더 | Sonamu |
+| `@sonamu-kit/hmr-hook` | HMR 훅 | Sonamu |
+
+**중요**: 이 패키지들은 Sonamu가 자동으로 제공하므로 **별도로 설치할 필요가 없습니다**.
+
+### 실행 과정
+
+1. `src/index.ts`를 엔트리포인트로 실행
+2. TypeScript 파일을 즉시 변환하여 실행
+3. 파일 변경 감지
+4. 변경된 모듈만 교체 (HMR)
+5. 전체 재시작이 필요한 경우에만 재시작
+
+## 키보드 단축키
+
+개발 서버 실행 중 다음 단축키를 사용할 수 있습니다:
+
+| 단축키 | 기능 | 설명 |
+|--------|------|------|
+| `r` | 재시작 | 서버를 수동으로 재시작합니다 |
+| `f` | 강제 재시작 | `sonamu.lock` 파일을 삭제하고 재시작합니다 |
+| `Enter` | 테스트 | 키 바인딩 테스트용 |
+| `Ctrl+F Ctrl+F` | 업데이트 | Git pull, 패키지 설치, 빌드 후 재시작 |
+
+### 단축키 사용 예시
+
+**서버 재시작**:
+```
+# 터미널에서 개발 서버 실행 중
+[서버 실행 중...]
+
+# 'r' 키 입력
+r
+
+# 서버 재시작됨
+🔄 Restarting server...
+```
+
+**강제 재시작 (캐시 초기화)**:
+```
+# 'f' 키 입력
+f
+
+# sonamu.lock 삭제 후 재시작
+🗑️  Removing sonamu.lock...
+🔄 Restarting server...
+```
+
+## 환경 변수
+
+개발 서버는 다음 환경 변수를 자동으로 설정합니다:
+
+| 변수 | 값 | 설명 |
+|------|-----|------|
+| `NODE_ENV` | `development` | 개발 모드 표시 |
+| `HOT` | `yes` | HMR 활성화 플래그 |
+| `API_ROOT_PATH` | 프로젝트 경로 | HMR 루트 디렉토리 |
+
+코드에서 환경 변수를 확인할 수 있습니다:
+
+```typescript
+if (process.env.NODE_ENV === 'development') {
+  console.log('개발 모드입니다');
+}
+
+if (process.env.HOT === 'yes') {
+  console.log('HMR이 활성화되어 있습니다');
+}
+```
+
+## HMR 동작 방식
+
+### 자동 재시작되는 경우
+
+다음 파일을 수정하면 서버가 **자동으로 재시작**됩니다:
+
+- Entity 파일 (`*.entity.ts`)
+- Model 파일 (`*.model.ts`)
+- Config 파일 (`sonamu.config.ts`)
+- Migration 파일
+
+```typescript
+// user.model.ts 수정
+class UserModelClass extends BaseModel {
+  @api({ httpMethod: "GET" })
+  async findById(id: number) {
+    return this.getPuri("r").where("id", id).first();
+  }
+}
+
+// 파일 저장 → 서버 자동 재시작
+```
+
+### 즉시 반영되는 경우 (HMR)
+
+다음 파일을 수정하면 서버 재시작 **없이 즉시 반영**됩니다:
+
+- 일반 비즈니스 로직
+- 유틸리티 함수
+- 서비스 레이어
+
+```typescript
+// utils/helper.ts 수정
+export function formatDate(date: Date) {
+  return date.toISOString();
+}
+
+// 파일 저장 → 즉시 반영 (재시작 없음)
+```
+
+## 문제 해결
+
+### 서버가 시작되지 않는 경우
+
+**문제**: 포트가 이미 사용 중
+```
+Error: listen EADDRINUSE: address already in use :::3000
+```
+
+**해결**:
+```bash
+# 포트 사용 중인 프로세스 종료
+lsof -ti:3000 | xargs kill -9
+
+# 다시 시작
+pnpm dev
+```
+
+### HMR이 작동하지 않는 경우
+
+**문제**: 코드 변경이 반영되지 않음
+
+**해결**:
+```bash
+# 1. 강제 재시작 (f 키)
+f
+
+# 2. 또는 수동 재시작
+pnpm dev
+```
+
+### TypeScript 오류가 발생하는 경우
+
+**문제**: 타입 에러로 서버 실행 실패
+
+**해결**:
+```bash
+# 타입 체크
+pnpm tsc --noEmit
+
+# 문제 수정 후 다시 시작
+pnpm dev
+```
+
+## 실전 팁
+
+### 1. 빠른 개발 사이클
+
+코드를 수정하고 바로 테스트할 수 있습니다:
+
+```typescript
+// API 엔드포인트 수정
+@api({ httpMethod: "GET" })
+async getUsers() {
+  return this.findMany({ num: 10, page: 1 });
+}
+
+// 저장 → 자동 재시작 → 바로 테스트
+```
+
+### 2. 로그 확인
+
+개발 서버는 모든 로그를 콘솔에 출력합니다:
+
+```typescript
+console.log('사용자 조회:', user);
+logger.info('API 호출', { method, path });
+logger.error('에러 발생', { error });
+```
+
+### 3. 디버깅
+
+소스맵이 활성화되어 있어 정확한 줄 번호를 확인할 수 있습니다:
+
+```
+Error: User not found
+    at UserModel.findById (user.model.ts:42:15)
+    at API.handler (index.ts:28:20)
+```
+
+## 프로덕션과의 차이점
+
+| 기능 | 개발 서버 | 프로덕션 |
+|------|-----------|----------|
+| HMR | ✅ 활성화 | ❌ 비활성화 |
+| TypeScript | 즉시 실행 | 컴파일 필요 |
+| 소스맵 | 원본 파일 | 압축된 파일 |
+| 성능 | 느림 | 빠름 |
+| 에러 표시 | 상세함 | 간략함 |
+
+<Warning>
+**개발 서버는 프로덕션에서 사용하지 마세요!**
+
+- 성능이 느림
+- 메모리 사용량이 많음
+- 보안에 취약
+
+프로덕션에서는 `pnpm build` 후 `pnpm start`를 사용하세요.
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="build" icon="hammer" href="/tools-and-cli/sonamu-cli/build">
+    프로덕션 빌드하기
+  </Card>
+  <Card title="HMR" icon="bolt" href="/tools-and-cli/hmr">
+    HMR 시스템 자세히 알아보기
+  </Card>
+</CardGroup>

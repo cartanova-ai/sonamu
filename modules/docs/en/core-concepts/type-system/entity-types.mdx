@@ -1,0 +1,680 @@
+---
+title: "Entity Types"
+description: "TypeScript types auto-generated from Entity definitions"
+---
+
+Sonamu automatically generates TypeScript types that provide complete type safety based on Entity definitions. This document explains how each Entity field type is converted to TypeScript types.
+
+## Type Conversion Overview
+
+<CardGroup cols={2}>
+  <Card title="Field Types" icon="arrows-left-right">
+    Entity Prop → TypeScript Type auto-conversion and type safety
+  </Card>
+  <Card title="Nullable Support" icon="circle-question">
+    nullable: true → T | null optional null handling
+  </Card>
+  <Card title="Array Types" icon="list">
+    type[] → T[] array type auto-generation
+  </Card>
+  <Card title="Relation Types" icon="link">
+    BelongsToOne → number (FK) relation field type conversion
+  </Card>
+</CardGroup>
+
+## Basic Type Conversion
+
+Shows how each Entity field type is converted to TypeScript types.
+
+### Numeric Types
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "view_count", "type": "integer", "nullable": true },
+    { "name": "user_id", "type": "bigInteger" }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type Post = {
+  id: number; // integer → number
+  view_count: number | null; // integer + nullable → number | null
+  user_id: bigint; // bigInteger → bigint
+};
+```
+
+</CodeGroup>
+
+| Entity Type    | TypeScript Type | Description        |
+| -------------- | --------------- | ------------------ |
+| `integer`      | `number`        | 32bit integer      |
+| `integer[]`    | `number[]`      | Integer array      |
+| `bigInteger`   | `bigint`        | 64bit integer (large numbers) |
+| `bigInteger[]` | `bigint[]`      | Large integer array |
+
+<Info>
+  **bigInteger vs integer**: `integer` is sufficient for IDs or counts, but use `bigInteger` for timestamps (milliseconds) or very large numbers.
+</Info>
+
+### String Types
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "email", "type": "string", "length": 100 },
+    { "name": "bio", "type": "string" },
+    { "name": "tags", "type": "string[]" }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type User = {
+  email: string; // string + length → string (validation in Zod)
+  bio: string; // string → string
+  tags: string[]; // string[] → string[]
+};
+```
+
+</CodeGroup>
+
+| Entity Type | TypeScript Type | Description    |
+| ----------- | --------------- | -------------- |
+| `string`    | `string`        | String         |
+| `string[]`  | `string[]`      | String array   |
+
+<Tip>
+  The `length` attribute doesn't affect TypeScript types, but is converted to `.max(length)` validation in Zod.
+</Tip>
+
+### Boolean Types
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "is_active", "type": "boolean" },
+    { "name": "permissions", "type": "boolean[]" }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type User = {
+  is_active: boolean; // boolean → boolean
+  permissions: boolean[]; // boolean[] → boolean[]
+};
+```
+
+</CodeGroup>
+
+### Date Types
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "created_at", "type": "date" },
+    { "name": "login_history", "type": "date[]", "nullable": true }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type User = {
+  created_at: Date; // date → Date
+  login_history: Date[] | null; // date[] + nullable → Date[] | null
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**JSON Serialization**: In API responses, `Date` is transmitted as an ISO string (`string`). Zod's `z.date()` automatically converts the string to a Date object.
+
+```typescript
+// API Response (JSON)
+{ "created_at": "2024-01-01T00:00:00.000Z" }
+
+// After Zod parsing
+{ created_at: Date }  // Automatically converted to Date object
+```
+
+</Warning>
+
+### UUID Types
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "uuid", "type": "uuid" },
+    { "name": "related_ids", "type": "uuid[]" }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type Document = {
+  uuid: string; // uuid → string
+  related_ids: string[]; // uuid[] → string[]
+};
+```
+
+</CodeGroup>
+
+<Info>
+  TypeScript doesn't have a dedicated UUID type, so it's represented as `string`. Format is validated with `.uuid()` in Zod validation.
+</Info>
+
+## Numeric Precision Types
+
+Two types for handling PostgreSQL high-precision numbers.
+
+### number vs numeric
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { 
+      "name": "price", 
+      "type": "number",
+      "precision": 10,
+      "scale": 2
+    },
+    { 
+      "name": "balance", 
+      "type": "numeric",
+      "precision": 20,
+      "scale": 8
+    }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type Product = {
+  price: number; // number → number (floating point)
+  balance: string; // numeric → string (precision preserved)
+};
+```
+
+</CodeGroup>
+
+| Entity Type | TypeScript Type | PostgreSQL Type                       | Use Case                 |
+| ----------- | --------------- | ------------------------------------- | ------------------------ |
+| `number`    | `number`        | `real`, `double precision`, `numeric` | General calculations (floating point) |
+| `numeric`   | `string`        | `numeric`                             | Financial calculations (fixed point) |
+
+<Warning>
+**Choosing number vs numeric**:
+
+✅ **Use number when**:
+
+- General numeric calculations
+- Decimal precision is not critical
+- Scientific calculations, statistics
+
+❌ **Use numeric when**:
+
+- Financial calculations (money, prices, balances)
+- Exact decimals are required
+- Cryptocurrency amounts
+
+```typescript
+// number - floating point errors possible
+0.1 + 0.2 === 0.3; // false (0.30000000000000004)
+
+// numeric - exact value preserved as string
+import Decimal from "decimal.js";
+new Decimal("0.1").plus("0.2").equals("0.3"); // true
+```
+
+</Warning>
+
+## Enum Types
+
+Entity Enums are converted to TypeScript Union types.
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "enums": {
+    "UserRole": {
+      "admin": "Administrator",
+      "moderator": "Moderator",
+      "normal": "Normal User"
+    }
+  },
+  "props": [
+    { "name": "role", "type": "enum", "id": "UserRole" },
+    { "name": "badges", "type": "enum[]", "id": "UserBadge" }
+  ]
+}
+```
+
+```typescript title="Generated Type (sonamu.generated.ts)"
+// Enum type generation
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+// type UserRole = "admin" | "moderator" | "normal"
+
+// Included in Entity type
+type User = {
+  role: UserRole; // enum → UserRole
+  badges: UserBadge[]; // enum[] → UserBadge[]
+};
+```
+
+</CodeGroup>
+
+**Benefits**:
+
+- Autocomplete support
+- Type safety guaranteed
+- Compile errors for invalid values
+
+```typescript
+// ✅ Correct usage
+const user: User = {
+  role: "admin", // Autocompleted
+};
+
+// ❌ Compile error
+const user: User = {
+  role: "guest", // Error: Type '"guest"' is not assignable
+};
+```
+
+## JSON Type
+
+Used when storing complex object structures as JSON.
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "metadata", "type": "json", "id": "PostMetadata" }
+  ]
+}
+```
+
+```typescript title="Define in types file"
+// user.types.ts
+export const PostMetadata = z.object({
+  author: z.string(),
+  tags: z.string().array(),
+  view_count: z.number(),
+});
+export type PostMetadata = z.infer<typeof PostMetadata>;
+
+// Generated type
+type Post = {
+  metadata: PostMetadata; // json → PostMetadata (custom type)
+};
+```
+
+</CodeGroup>
+
+<Info>
+  The `json` type references the Zod schema specified by `id`. This schema must be defined directly in `{entity}.types.ts`.
+</Info>
+
+## Virtual Type
+
+Computed fields not stored in the database.
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "full_name", "type": "virtual", "id": "UserFullName" }
+  ]
+}
+```
+
+```typescript title="Define in types file"
+// user.types.ts
+export const UserFullName = z.string();
+export type UserFullName = z.infer<typeof UserFullName>;
+
+// Generated type
+type User = {
+  full_name: UserFullName; // virtual → UserFullName
+};
+```
+
+</CodeGroup>
+
+Virtual fields are computed in Model's Enhancer:
+
+```typescript
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    full_name: `${row.first_name} ${row.last_name}`,
+  }),
+});
+```
+
+## Vector Type
+
+Type for vector search (pgvector).
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "embedding", "type": "vector", "dimensions": 1536 },
+    { "name": "embeddings_history", "type": "vector[]", "dimensions": 1536 }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type Document = {
+  embedding: number[]; // vector → number[]
+  embeddings_history: number[][]; // vector[] → number[][]
+};
+```
+
+</CodeGroup>
+
+<Info>
+`dimensions` doesn't affect TypeScript types, but is used in PostgreSQL schema and Zod validation.
+
+```typescript
+// Zod validation
+z.array(z.number()).length(1536); // dimensions validation
+```
+
+</Info>
+
+## Relation Types
+
+Fields representing relationships between Entities.
+
+### BelongsToOne (Many-to-One)
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    {
+      "name": "user",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "User"
+    }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type Post = {
+  user_id: number; // BelongsToOne → {name}_id: number
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**Field name transformation**: `user` → `user_id`
+
+In Entity, you define as `user`, but the actual TypeScript type becomes `user_id`.
+
+</Warning>
+
+### OneToOne (One-to-One)
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    {
+      "name": "profile",
+      "type": "relation",
+      "relationType": "OneToOne",
+      "with": "Profile",
+      "hasJoinColumn": true
+    }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type User = {
+  profile_id: number; // OneToOne + hasJoinColumn → {name}_id: number
+};
+```
+
+</CodeGroup>
+
+### HasMany / ManyToMany
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    {
+      "name": "posts",
+      "type": "relation",
+      "relationType": "HasMany",
+      "with": "Post",
+      "joinColumn": "user_id"
+    }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+// HasMany and ManyToMany are not included in base type
+// Only used in Subsets
+```
+
+</CodeGroup>
+
+<Info>
+  `HasMany` and `ManyToMany` are not included in base types. When you define a Subset, those types are included in the Subset type.
+</Info>
+
+## Nullable Handling
+
+`nullable: true` is converted to TypeScript Union type.
+
+<CodeGroup>
+```json title="Entity Definition"
+{
+  "props": [
+    { "name": "nickname", "type": "string", "nullable": true },
+    { "name": "tags", "type": "string[]", "nullable": true },
+    {
+      "name": "manager",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "User",
+      "nullable": true
+    }
+  ]
+}
+```
+
+```typescript title="Generated Type"
+type User = {
+  nickname: string | null; // nullable → T | null
+  tags: string[] | null; // nullable array → T[] | null
+  manager_id: number | null; // nullable relation → number | null
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**Array nullable**: `nullable: true` for `string[]` means **the array itself** can be null.
+
+```typescript
+// nullable: true
+tags: string[] | null
+
+// ✅ Possible
+const user = { tags: null };
+const user = { tags: [] };
+const user = { tags: ["a", "b"] };
+
+// ❌ Not possible
+const user = { tags: undefined };
+
+// If array elements should be nullable, you need a custom type
+tags: (string | null)[]  // Define as custom type
+```
+
+</Warning>
+
+## Complete Type Mapping Table
+
+Mapping table of all Entity Prop types to TypeScript types.
+
+| Entity Type                | TypeScript Type | Notes                              |
+| -------------------------- | --------------- | ---------------------------------- |
+| `integer`                  | `number`        | 32bit integer                      |
+| `integer[]`                | `number[]`      | Integer array                      |
+| `bigInteger`               | `bigint`        | 64bit integer                      |
+| `bigInteger[]`             | `bigint[]`      | Large integer array                |
+| `string`                   | `string`        | String                             |
+| `string[]`                 | `string[]`      | String array                       |
+| `number`                   | `number`        | Floating point                     |
+| `number[]`                 | `number[]`      | Floating point array               |
+| `numeric`                  | `string`        | Fixed point (precision as string)  |
+| `numeric[]`                | `string[]`      | Fixed point array                  |
+| `boolean`                  | `boolean`       | Boolean                            |
+| `boolean[]`                | `boolean[]`     | Boolean array                      |
+| `date`                     | `Date`          | Date (string in JSON)              |
+| `date[]`                   | `Date[]`        | Date array                         |
+| `uuid`                     | `string`        | UUID string                        |
+| `uuid[]`                   | `string[]`      | UUID array                         |
+| `enum`                     | `EnumType`      | Union type                         |
+| `enum[]`                   | `EnumType[]`    | Union type array                   |
+| `json`                     | `CustomType`    | Custom object type                 |
+| `virtual`                  | `CustomType`    | Computed field                     |
+| `vector`                   | `number[]`      | Vector (pgvector)                  |
+| `vector[]`                 | `number[][]`    | Vector array                       |
+| `tsvector`                 | `string`        | Full-text search (PostgreSQL)      |
+| `BelongsToOne`             | `number`        | Foreign Key (FK)                   |
+| `OneToOne` (hasJoinColumn) | `number`        | Foreign Key (FK)                   |
+| `HasMany`                  | -               | Not in Base type                   |
+| `ManyToMany`               | -               | Not in Base type                   |
+
+## Practical Example
+
+Type conversion example for an actual User Entity.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 100 },
+    { "name": "username", "type": "string", "length": 50 },
+    { "name": "role", "type": "enum", "id": "UserRole" },
+    { "name": "is_active", "type": "boolean" },
+    { "name": "bio", "type": "string", "nullable": true },
+    { "name": "follower_count", "type": "integer" },
+    { "name": "created_at", "type": "date" },
+    { "name": "updated_at", "type": "date" },
+    {
+      "name": "profile",
+      "type": "relation",
+      "relationType": "OneToOne",
+      "with": "Profile",
+      "hasJoinColumn": true,
+      "nullable": true
+    }
+  ],
+  "enums": {
+    "UserRole": {
+      "admin": "Administrator",
+      "moderator": "Moderator",
+      "normal": "Normal User"
+    }
+  }
+}
+```
+
+```typescript title="Generated Type (user.types.ts)"
+import { z } from "zod";
+
+// Enum type (import from sonamu.generated.ts)
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+// Base type
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  is_active: boolean;
+  bio: string | null;
+  follower_count: number;
+  created_at: Date;
+  updated_at: Date;
+  profile_id: number | null;
+};
+
+// Zod schema
+export const User = z.object({
+  id: z.number().int(),
+  email: z.string().max(100),
+  username: z.string().max(50),
+  role: UserRole,
+  is_active: z.boolean(),
+  bio: z.string().nullable(),
+  follower_count: z.number().int(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  profile_id: z.number().int().nullable(),
+});
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Generated Types"
+    icon="file-lines"
+    href="/en/core-concepts/type-system/generated-types"
+  >
+    Types of generated types and their uses
+  </Card>
+  <Card
+    title="Zod Validation"
+    icon="shield-check"
+    href="/en/core-concepts/type-system/zod-validation"
+  >
+    Runtime validation with Zod
+  </Card>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/en/core-concepts/type-system/e2e-type-safety"
+  >
+    End-to-end type safety
+  </Card>
+  <Card
+    title="Field Types"
+    icon="list"
+    href="/en/core-concepts/entity/field-types"
+  >
+    Complete Entity field type reference
+  </Card>
+</CardGroup>

@@ -1,0 +1,677 @@
+---
+title: "Generated Types"
+description: "Types of auto-generated types by Sonamu and how to use them"
+---
+
+Sonamu automatically generates various types from Entity definitions. Not only base types, but also API parameters, Subset types, Enums, and more are auto-generated to provide complete type safety.
+
+## Generated Types Overview
+
+<CardGroup cols={2}>
+  <Card title="Base Types" icon="database">
+    Entity's basic types: User, Post, Comment
+  </Card>
+  <Card title="Subset Types" icon="layer-group">
+    Partial query types: UserA, UserP, UserSS
+  </Card>
+  <Card title="Params Types" icon="sliders">
+    API parameter types: ListParams, SaveParams
+  </Card>
+  <Card title="Enum Types" icon="list-check">
+    Enums and helper functions: UserRole, userRoleLabel
+  </Card>
+</CardGroup>
+
+## Base Types
+
+Basic types including all fields of the Entity.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "id": "User",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" },
+    { "name": "username", "type": "string" },
+    { "name": "created_at", "type": "date" }
+  ]
+}
+```
+
+```typescript title="user.types.ts (auto-generated)"
+// Base type
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+};
+
+// Zod schema
+export const User = z.object({
+  id: z.number().int(),
+  email: z.string(),
+  username: z.string(),
+  created_at: z.date(),
+});
+```
+
+</CodeGroup>
+
+**Characteristics**:
+
+- HasMany, ManyToMany Relations are excluded
+- BelongsToOne, OneToOne(hasJoinColumn) are included as `{name}_id` format
+- Virtual fields only have type definition, values are computed in Enhancer
+
+## Subset Types
+
+Types that include only partial fields of the Entity.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "subsets": {
+    "A": ["id", "email", "username", "created_at"],
+    "P": ["id", "email", "employee.id", "employee.department.name"],
+    "SS": ["id", "email"]
+  }
+}
+```
+
+```typescript title="sonamu.generated.ts (auto-generated)"
+// Subset key Union
+export type UserSubsetKey = "A" | "P" | "SS";
+
+// Subset type mapping
+export type UserSubsetMapping = {
+  A: UserA;
+  P: UserP;
+  SS: UserSS;
+};
+
+// Each Subset type
+export type UserA = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+};
+
+export type UserP = {
+  id: number;
+  email: string;
+  employee: {
+    id: number;
+    department: {
+      name: string;
+    };
+  };
+};
+
+export type UserSS = {
+  id: number;
+  email: string;
+};
+```
+
+</CodeGroup>
+
+**Usage example**:
+
+```typescript
+import type { UserSubsetKey, UserSubsetMapping } from "./sonamu.generated";
+
+// Select Subset type with generics
+async function findMany<T extends UserSubsetKey>(
+  subset: T
+): Promise<UserSubsetMapping[T][]> {
+  // ...
+}
+
+const users = await findMany("A"); // UserA[] type
+const profiles = await findMany("P"); // UserP[] type
+```
+
+## ListParams Types
+
+Parameter types for list query APIs.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "props": [
+    { "name": "email", "type": "string", "toFilter": true },
+    { "name": "username", "type": "string", "toFilter": true }
+  ]
+}
+```
+
+```typescript title="user.types.ts (auto-generated)"
+// Search field Enum
+export const UserSearchField = z.enum(["id", "email", "username"]);
+export type UserSearchField = z.infer<typeof UserSearchField>;
+
+// OrderBy Enum
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+  "created_at-desc",
+  "created_at-asc",
+]);
+export type UserOrderBy = z.infer<typeof UserOrderBy>;
+
+// ListParams
+export const UserListParams = z.object({
+  num: z.number().int().optional(),
+  page: z.number().int().optional(),
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+  orderBy: UserOrderBy.optional(),
+
+  // Fields with toFilter: true are auto-added
+  email: zArrayable(z.string()).optional(),
+  username: zArrayable(z.string()).optional(),
+});
+export type UserListParams = z.infer<typeof UserListParams>;
+```
+
+</CodeGroup>
+
+**Usage example**:
+
+```typescript
+// API call
+const result = await findManyUsers({
+  num: 20,
+  page: 1,
+  search: "email",
+  keyword: "john",
+  orderBy: "created_at-desc",
+  email: ["john@test.com", "jane@test.com"], // Arrays also possible
+});
+```
+
+<Info>
+**zArrayable**: A helper that allows both single values and arrays.
+
+```typescript
+// Both possible
+{
+  email: "john@test.com";
+}
+{
+  email: ["john@test.com", "jane@test.com"];
+}
+```
+
+</Info>
+
+## SaveParams Types
+
+Parameter types for save APIs.
+
+<CodeGroup>
+```typescript title="user.types.ts (auto-generated)"
+// SaveParams = Base type with id as optional
+export const UserSaveParams = User.partial({ id: true });
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+
+// Equivalent to:
+// type UserSaveParams = {
+//   id?: number;
+//   email: string;
+//   username: string;
+//   created_at: Date;
+// }
+```
+
+```typescript title="Usage example"
+// Create new (no id)
+await saveUser([
+  {
+    email: "new@test.com",
+    username: "newuser",
+    created_at: new Date(),
+  }
+]);
+
+// Update (with id)
+await saveUser([
+  {
+    id: 1,
+    email: "updated@test.com",
+    username: "updateduser",
+    created_at: new Date(),
+  }
+]);
+```
+
+</CodeGroup>
+
+**Characteristics**:
+
+- Only `id` is optional, other fields are required
+- With `id` → UPDATE, without → INSERT
+- Can save multiple records simultaneously with array
+
+## Enum Types
+
+Entity Enums are auto-generated.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "enums": {
+    "UserRole": {
+      "admin": "Administrator",
+      "moderator": "Moderator",
+      "normal": "Normal User"
+    }
+  }
+}
+```
+
+```typescript title="sonamu.generated.ts (auto-generated)"
+// Zod Enum
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+// Label helper function
+export function userRoleLabel(role: UserRole): string {
+  return {
+    admin: "Administrator",
+    moderator: "Moderator",
+    normal: "Normal User",
+  }[role];
+}
+
+// Reverse mapping (label → key)
+export function userRoleLabelToKey(label: string): UserRole | undefined {
+  const map: Record<string, UserRole> = {
+    "Administrator": "admin",
+    "Moderator": "moderator",
+    "Normal User": "normal",
+  };
+  return map[label];
+}
+```
+
+</CodeGroup>
+
+**Usage example**:
+
+```typescript
+import { UserRole, userRoleLabel } from "./sonamu.generated";
+
+// Type-safe Enum usage
+const role: UserRole = "admin";
+
+// Display label
+console.log(userRoleLabel(role)); // "Administrator"
+
+// Generate selection options in UI
+const options = UserRole.options.map((value) => ({
+  value,
+  label: userRoleLabel(value),
+}));
+// [
+//   { value: "admin", label: "Administrator" },
+//   { value: "moderator", label: "Moderator" },
+//   { value: "normal", label: "Normal User" }
+// ]
+```
+
+## Custom Params Types
+
+Define custom parameter types when creating additional APIs in Model.
+
+<CodeGroup>
+```typescript title="user.types.ts"
+// Add custom parameters
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  rememberMe: z.boolean().optional(),
+});
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+
+export const UserRegisterParams = User.pick({
+  email: true,
+  username: true,
+}).extend({
+  password: z.string().min(8),
+  passwordConfirm: z.string().min(8),
+}).refine(
+  (data) => data.password === data.passwordConfirm,
+  { message: "Passwords do not match", path: ["passwordConfirm"] }
+);
+export type UserRegisterParams = z.infer<typeof UserRegisterParams>;
+```
+
+```typescript title="user.model.ts"
+@api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+  // ...
+}
+
+@api({ httpMethod: "POST" })
+async register(params: UserRegisterParams): Promise<{ userId: number; token: string }> {
+  // ...
+}
+```
+
+</CodeGroup>
+
+**Auto-generated**:
+
+```typescript
+// services.generated.ts
+export async function loginUser(
+  params: UserLoginParams
+): Promise<{ user: User; token: string }> {
+  const { data } = await axios.post("/user/login", { params });
+  return data;
+}
+
+export function useLoginUser() {
+  return useMutation({
+    mutationFn: (params: UserLoginParams) => loginUser(params),
+  });
+}
+```
+
+## Action Params Types
+
+Parameter types for specific actions.
+
+<CodeGroup>
+```typescript title="user.types.ts"
+// ID array parameters
+export const UserBulkDeleteParams = z.object({
+  ids: z.number().int().array().min(1),
+});
+export type UserBulkDeleteParams = z.infer<typeof UserBulkDeleteParams>;
+
+// Status change parameters
+export const UserStatusUpdateParams = z.object({
+  ids: z.number().int().array().min(1),
+  status: z.enum(["active", "suspended", "deleted"]),
+  reason: z.string().optional(),
+});
+export type UserStatusUpdateParams = z.infer<typeof UserStatusUpdateParams>;
+```
+
+```typescript title="user.model.ts"
+@api({ httpMethod: "DELETE" })
+async bulkDelete(params: UserBulkDeleteParams): Promise<number> {
+  const { ids } = params;
+  return this.getPuri("w")
+    .table("users")
+    .whereIn("id", ids)
+    .delete();
+}
+
+@api({ httpMethod: "POST" })
+async updateStatus(params: UserStatusUpdateParams): Promise<void> {
+  const { ids, status, reason } = params;
+  await this.getPuri("w")
+    .table("users")
+    .whereIn("id", ids)
+    .update({ status, status_reason: reason });
+}
+```
+
+</CodeGroup>
+
+## ListResult Type
+
+Type for list query results.
+
+```typescript title="sonamu.shared.ts"
+export type ListResult<
+  LP extends { num?: number; page?: number; queryMode?: string },
+  T
+> = LP["queryMode"] extends "list"
+  ? { rows: T[] }
+  : LP["queryMode"] extends "count"
+  ? { total: number }
+  : { rows: T[]; total: number };
+```
+
+**Usage example**:
+
+```typescript
+// Type is automatically determined based on queryMode
+
+// queryMode: "both" (default)
+const result = await findManyUsers({ num: 10, page: 1 });
+// ListResult<UserListParams, User> = { rows: User[]; total: number }
+
+// queryMode: "list"
+const result = await findManyUsers({ num: 10, page: 1, queryMode: "list" });
+// ListResult<UserListParams, User> = { rows: User[] }
+
+// queryMode: "count"
+const result = await findManyUsers({ queryMode: "count" });
+// ListResult<UserListParams, User> = { total: number }
+```
+
+<Info>
+  **Conditional types**: `ListResult` uses TypeScript conditional types to return different types based on `queryMode`.
+</Info>
+
+## Type Exports
+
+Generated types are automatically exported.
+
+```typescript title="sonamu.generated.ts"
+// Re-export all types per Entity
+export * from "./user/user.model";
+export * from "./post/post.model";
+export * from "./comment/comment.model";
+
+// Model instances are also exported
+export { UserModel } from "./user/user.model";
+export { PostModel } from "./post/post.model";
+```
+
+**Usage**:
+
+```typescript
+// Import from one place
+import {
+  User,
+  UserListParams,
+  UserSaveParams,
+  UserRole,
+} from "./sonamu.generated";
+
+// Or individual imports
+import type { User } from "./user/user.types";
+import { UserModel } from "./user/user.model";
+```
+
+## Type Utilities
+
+Useful type utilities provided by Sonamu.
+
+### zArrayable
+
+Type that allows both single values and arrays.
+
+```typescript
+import { zArrayable } from "sonamu";
+
+const UserListParams = z.object({
+  id: zArrayable(z.number().int()).optional(),
+  email: zArrayable(z.string()).optional(),
+});
+
+// Both possible
+{
+  id: 1;
+}
+{
+  id: [1, 2, 3];
+}
+```
+
+### DistributiveOmit
+
+Safer than regular `Omit` for Union types.
+
+```typescript
+import type { DistributiveOmit } from "sonamu";
+
+type UserOrAdmin =
+  | { type: "user"; userId: number }
+  | { type: "admin"; adminId: number };
+
+// DistributiveOmit is applied to each type individually
+type WithoutId = DistributiveOmit<UserOrAdmin, "userId" | "adminId">;
+// = { type: "user" } | { type: "admin" }
+```
+
+## Customizing Type Generation
+
+You can extend or modify auto-generated types.
+
+### Extending Params
+
+```typescript title="user.types.ts"
+// Extend basic ListParams
+export const ExtendedUserListParams = UserListParams.extend({
+  includeDeleted: z.boolean().optional(),
+  dateRange: z
+    .object({
+      from: z.date(),
+      to: z.date(),
+    })
+    .optional(),
+});
+export type ExtendedUserListParams = z.infer<typeof ExtendedUserListParams>;
+```
+
+### Extending Subset Types
+
+```typescript title="user.types.ts"
+// Add computed fields to Subset type
+export type UserAWithStats = UserA & {
+  post_count: number;
+  follower_count: number;
+};
+```
+
+### Creating Conditional Types
+
+```typescript title="user.types.ts"
+// Different types based on role
+export type UserByRole<T extends UserRole> = T extends "admin"
+  ? UserA & { permissions: string[] }
+  : T extends "normal"
+  ? UserSS
+  : User;
+```
+
+## Practical Example
+
+Example of using generated types in a real project.
+
+<CodeGroup>
+```typescript title="user.model.ts"
+import type {
+  UserSubsetKey,
+  UserSubsetMapping,
+  UserListParams,
+  UserSaveParams,
+  UserLoginParams,
+} from "./user.types";
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  @api({ httpMethod: "GET" })
+  async findMany<T extends UserSubsetKey>(
+    subset: T,
+    params?: UserListParams
+  ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+    // Type-safe implementation
+  }
+
+  @api({ httpMethod: "POST" })
+  async save(params: UserSaveParams[]): Promise<number[]> {
+    // Type-safe implementation
+  }
+
+  @api({ httpMethod: "POST" })
+  async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+    // Type-safe implementation
+  }
+}
+```
+
+```tsx title="UserList.tsx"
+import { useUsers } from "@/services/services.generated";
+import type { UserListParams, UserA } from "@/services/user/user.types";
+
+export function UserList() {
+  const [params, setParams] = useState<UserListParams>({
+    num: 20,
+    page: 1,
+    orderBy: "created_at-desc",
+  });
+
+  // Type is automatically inferred
+  const { data, isLoading } = useUsers(params);
+  // data: { rows: UserA[]; total: number } | undefined
+
+  return (
+    <table>
+      <tbody>
+        {data?.rows.map((user) => (
+          <tr key={user.id}>
+            <td>{user.email}</td>
+            <td>{user.username}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/en/core-concepts/type-system/e2e-type-safety"
+  >
+    Understanding end-to-end type safety
+  </Card>
+  <Card
+    title="Zod Validation"
+    icon="shield-check"
+    href="/en/core-concepts/type-system/zod-validation"
+  >
+    Runtime validation with Zod
+  </Card>
+  <Card
+    title="Entity Types"
+    icon="database"
+    href="/en/core-concepts/type-system/entity-types"
+  >
+    Entity type conversion in detail
+  </Card>
+  <Card title="Model" icon="cube" href="/en/core-concepts/model/what-is-model">
+    Using types in Model
+  </Card>
+</CardGroup>

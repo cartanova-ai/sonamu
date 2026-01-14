@@ -1,0 +1,1112 @@
+---
+title: '@workflow'
+description: '워크플로우 정의 데코레이터'
+---
+
+`@workflow` 데코레이터는 장기 실행 작업, 백그라운드 작업, 스케줄링 작업을 정의합니다. OpenWorkflow를 기반으로 내구성 있는 실행, 재시도, 모니터링을 제공합니다.
+
+## 기본 사용법
+
+```typescript
+import { workflow } from "sonamu";
+
+export const processOrder = workflow(
+  {
+    name: "process_order",
+    version: "1.0"
+  },
+  async ({ input, step, logger }) => {
+    logger.info("Processing order", { orderId: input.orderId });
+
+    // Step 1: 결제 처리
+    const payment = await step.define(
+      { name: "process-payment" },
+      async () => {
+        return await PaymentService.charge(input.amount);
+      }
+    ).run();
+
+    // Step 2: 재고 업데이트
+    await step.define(
+      { name: "update-inventory" },
+      async () => {
+        return await InventoryModel.decrease(input.productId, input.quantity);
+      }
+    ).run();
+
+    // Step 3: 배송 시작
+    const shipping = await step.define(
+      { name: "start-shipping" },
+      async () => {
+        return await ShippingService.ship(input.address);
+      }
+    ).run();
+
+    return {
+      orderId: input.orderId,
+      paymentId: payment.id,
+      trackingNumber: shipping.trackingNumber
+    };
+  }
+);
+```
+
+## 설정 (sonamu.config.ts)
+
+워크플로우를 사용하려면 PostgreSQL 설정이 필요합니다.
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  tasks: {
+    dbConfig: {
+      client: "pg",
+      connection: {
+        host: process.env.DB_HOST,
+        port: 5432,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD
+      }
+    },
+    worker: {
+      concurrency: 4,      // 동시 실행 수
+      usePubSub: true,     // Pub/Sub 사용
+      listenDelay: 500     // 수신 지연 (ms)
+    }
+  }
+});
+```
+
+## 옵션
+
+### name
+
+워크플로우 이름을 지정합니다.
+
+**기본값:** 함수 이름을 snake_case로 변환
+
+```typescript
+// 명시적 이름
+export const myTask = workflow(
+  { name: "process_order" },
+  async ({ input }) => { /* ... */ }
+);
+
+// 자동 이름 (함수 이름 사용)
+export const processOrder = workflow(
+  {},  // name 생략 → "process_order"
+  async ({ input }) => { /* ... */ }
+);
+```
+
+### version
+
+워크플로우 버전을 지정합니다.
+
+**기본값:** `null`
+
+```typescript
+export const processOrder = workflow(
+  {
+    name: "process_order",
+    version: "1.0"
+  },
+  async ({ input }) => { /* ... */ }
+);
+
+// 버전 업데이트 시
+export const processOrderV2 = workflow(
+  {
+    name: "process_order",
+    version: "2.0"
+  },
+  async ({ input }) => { /* ... */ }
+);
+```
+
+<Info>
+같은 이름에 다른 버전의 워크플로우를 병렬로 실행할 수 있습니다.
+</Info>
+
+### schema
+
+입력 데이터의 Zod 스키마를 정의합니다.
+
+```typescript
+import { z } from "zod";
+
+const OrderInputSchema = z.object({
+  orderId: z.number(),
+  productId: z.number(),
+  quantity: z.number(),
+  amount: z.number(),
+  address: z.string()
+});
+
+export const processOrder = workflow(
+  {
+    name: "process_order",
+    schema: OrderInputSchema
+  },
+  async ({ input }) => {
+    // input은 자동으로 타입 검증됨
+    input.orderId;  // number
+    input.address;  // string
+  }
+);
+```
+
+### schedules
+
+Cron 표현식으로 스케줄을 정의합니다.
+
+```typescript
+export const dailyReport = workflow(
+  {
+    name: "daily_report",
+    schedules: [
+      {
+        name: "daily-at-midnight",
+        expression: "0 0 * * *",  // 매일 자정
+        input: { date: new Date().toISOString().split('T')[0] }
+      }
+    ]
+  },
+  async ({ input, logger }) => {
+    logger.info("Generating daily report", { date: input.date });
+    // 보고서 생성
+  }
+);
+
+// 동적 input
+export const weeklyBackup = workflow(
+  {
+    name: "weekly_backup",
+    schedules: [
+      {
+        name: "weekly-sunday",
+        expression: "0 2 * * 0",  // 매주 일요일 2시
+        input: () => ({
+          timestamp: new Date().toISOString(),
+          backupPath: `/backups/${Date.now()}`
+        })
+      }
+    ]
+  },
+  async ({ input }) => {
+    // 백업 수행
+  }
+);
+```
+
+**Cron 표현식 예시:**
+```
+* * * * *    - 매분
+0 * * * *    - 매시간
+0 0 * * *    - 매일 자정
+0 0 * * 0    - 매주 일요일 자정
+0 0 1 * *    - 매월 1일 자정
+0 9 * * 1-5  - 평일 오전 9시
+*/5 * * * *  - 5분마다
+```
+
+## 워크플로우 함수
+
+워크플로우 함수는 4개의 매개변수를 받습니다:
+
+```typescript
+async function workflowFn({ input, step, logger, version }) {
+  // input: 입력 데이터
+  // step: Step API
+  // logger: LogTape Logger
+  // version: 워크플로우 버전
+}
+```
+
+### input
+
+워크플로우 실행 시 전달된 입력 데이터입니다.
+
+```typescript
+export const processOrder = workflow(
+  { name: "process_order" },
+  async ({ input }) => {
+    console.log("Order ID:", input.orderId);
+    console.log("Amount:", input.amount);
+  }
+);
+
+// 실행
+await WorkflowManager.run(
+  { name: "process_order" },
+  { orderId: 123, amount: 50000 }
+);
+```
+
+### step
+
+Step API는 워크플로우의 각 단계를 정의합니다. 각 step은 독립적으로 재시도되고 복구될 수 있습니다.
+
+```typescript
+export const processOrder = workflow(
+  { name: "process_order" },
+  async ({ step }) => {
+    // Step 1
+    const payment = await step.define(
+      { name: "charge-payment" },
+      async () => {
+        return await PaymentService.charge(100);
+      }
+    ).run();
+
+    // Step 2
+    const inventory = await step.define(
+      { name: "update-inventory" },
+      async () => {
+        return await InventoryModel.decrease(1);
+      }
+    ).run();
+
+    // Step 3
+    await step.define(
+      { name: "send-email" },
+      async () => {
+        return await EmailService.send({
+          to: "user@example.com",
+          subject: "Order confirmed"
+        });
+      }
+    ).run();
+
+    return { success: true };
+  }
+);
+```
+
+**Step의 장점:**
+- 각 step은 한 번만 실행됨 (멱등성)
+- 실패 시 해당 step만 재시도
+- 이미 완료된 step은 건너뜀
+
+### logger
+
+LogTape Logger 인스턴스입니다.
+
+```typescript
+export const processData = workflow(
+  { name: "process_data" },
+  async ({ logger }) => {
+    logger.info("Starting workflow");
+    logger.debug("Processing item", { itemId: 123 });
+    logger.warn("High memory usage", { usage: "80%" });
+    logger.error("Failed to process", { error: "Connection timeout" });
+  }
+);
+```
+
+### version
+
+현재 워크플로우의 버전입니다.
+
+```typescript
+export const processOrder = workflow(
+  {
+    name: "process_order",
+    version: "2.0"
+  },
+  async ({ version }) => {
+    console.log("Running version:", version);  // "2.0"
+  }
+);
+```
+
+## 워크플로우 실행
+
+### 수동 실행
+
+```typescript
+// WorkflowManager 사용
+import { Sonamu } from "sonamu";
+
+const handle = await Sonamu.workflowManager.run(
+  {
+    name: "process_order",
+    version: "1.0"
+  },
+  {
+    orderId: 123,
+    amount: 50000
+  }
+);
+
+// 결과 대기
+const result = await handle.result();
+console.log("Result:", result);
+```
+
+### 스케줄 실행
+
+```typescript
+export const dailyReport = workflow(
+  {
+    name: "daily_report",
+    schedules: [
+      {
+        name: "daily-at-midnight",
+        expression: "0 0 * * *",
+        input: { date: new Date().toISOString().split('T')[0] }
+      }
+    ]
+  },
+  async ({ input, logger }) => {
+    logger.info("Generating report", { date: input.date });
+    // 자동으로 매일 자정 실행됨
+  }
+);
+```
+
+## Step API 상세
+
+### step.define().run()
+
+함수를 step으로 감싸서 실행합니다.
+
+```typescript
+const result = await step.define(
+  { name: "step-name" },
+  async () => {
+    // 작업 수행
+    return { data: "result" };
+  }
+).run();
+```
+
+**사용 예시:**
+
+```typescript
+export const processOrder = workflow(
+  { name: "process_order" },
+  async ({ step }) => {
+    // 결제 처리
+    const payment = await step.define(
+      { name: "process-payment" },
+      async () => {
+        return await PaymentService.charge(100);
+      }
+    ).run();
+
+    // 재고 업데이트
+    await step.define(
+      { name: "update-inventory" },
+      async () => {
+        return await InventoryModel.decrease(1);
+      }
+    ).run();
+
+    return { paymentId: payment.id };
+  }
+);
+```
+
+### step.get().run()
+
+Model 메서드를 step으로 실행합니다.
+
+```typescript
+// name 명시
+const result = await step.get(
+  { name: "fetch-users" },
+  UserModel,
+  "list"
+).run({ limit: 10 });
+
+// name 생략 (메서드 이름 자동 사용: "list")
+const result = await step.get(
+  UserModel,
+  "list"
+).run({ limit: 10 });
+```
+
+**사용 예시:**
+
+```typescript
+export const processUsers = workflow(
+  { name: "process_users" },
+  async ({ step }) => {
+    // Model 메서드를 step으로 실행
+    const users = await step.get(
+      { name: "fetch-users" },
+      UserModel,
+      "list"
+    ).run({ limit: 100 });
+
+    // 각 사용자 처리
+    for (const user of users) {
+      await step.define(
+        { name: `process-user-${user.id}` },
+        async () => {
+          return await UserModel.updateStatus(user.id, "processed");
+        }
+      ).run();
+    }
+
+    return { processed: users.length };
+  }
+);
+```
+
+### step.sleep()
+
+지정된 시간 동안 대기합니다.
+
+```typescript
+await step.sleep("wait-1-hour", "1h");
+await step.sleep("wait-30-minutes", "30m");
+await step.sleep("wait-10-seconds", "10s");
+```
+
+**시간 형식:** `"10s"`, `"5m"`, `"1h"`, `"1d"`
+
+**사용 예시:**
+
+```typescript
+export const delayedTask = workflow(
+  { name: "delayed_task" },
+  async ({ step, logger }) => {
+    logger.info("Starting task");
+    
+    // 1시간 대기
+    await step.sleep("wait-1-hour", "1h");
+    
+    logger.info("Continuing after 1 hour");
+    
+    // 30분 대기
+    await step.sleep("wait-30-minutes", "30m");
+    
+    logger.info("Task complete");
+  }
+);
+```
+
+### 재시도 정책
+
+<Info>
+Step의 재시도는 OpenWorkflow 백엔드에서 자동으로 처리됩니다. 별도의 retry 옵션 설정이 필요하지 않습니다.
+</Info>
+
+```typescript
+export const resilientTask = workflow(
+  { name: "resilient_task" },
+  async ({ step }) => {
+    // Step이 실패하면 자동으로 재시도됨
+    const result = await step.define(
+      { name: "flaky-operation" },
+      async () => {
+        const response = await fetch("https://api.example.com");
+        return response.json();
+      }
+    ).run();
+
+    return result;
+  }
+);
+```
+
+## 데이터베이스 접근
+
+워크플로우 내에서 Sonamu Model을 자유롭게 사용할 수 있습니다.
+
+```typescript
+export const processUsers = workflow(
+  { name: "process_users" },
+  async ({ step, logger }) => {
+    // Step 1: 사용자 조회
+    const users = await step.get(
+      { name: "fetch-users" },
+      UserModel,
+      "list"
+    ).run({ limit: 100 });
+
+    logger.info("Found users", { count: users.length });
+
+    // Step 2: 각 사용자 처리
+    for (const user of users) {
+      await step.define(
+        { name: `process-user-${user.id}` },
+        async () => {
+          return await UserModel.processUser(user.id);
+        }
+      ).run();
+    }
+
+    return { processed: users.length };
+  }
+);
+```
+
+## 에러 처리
+
+### 자동 재시도
+
+Step이 실패하면 자동으로 재시도됩니다.
+
+```typescript
+export const resilientTask = workflow(
+  { name: "resilient_task" },
+  async ({ step }) => {
+    const result = await step.define(
+      { name: "flaky-operation" },
+      async () => {
+        // 실패할 수 있는 작업
+        const response = await fetch("https://api.example.com");
+        return response.json();
+      }
+    ).run();
+
+    return result;
+  }
+);
+```
+
+### 수동 에러 처리
+
+```typescript
+export const handleErrors = workflow(
+  { name: "handle_errors" },
+  async ({ step, logger }) => {
+    try {
+      await step.define(
+        { name: "risky-operation" },
+        async () => {
+          throw new Error("Something went wrong");
+        }
+      ).run();
+    } catch (error) {
+      logger.error("Operation failed", { error });
+      
+      // 대체 로직
+      await step.define(
+        { name: "fallback" },
+        async () => {
+          return await AlternativeService.process();
+        }
+      ).run();
+    }
+  }
+);
+```
+
+## 데코레이터 스타일 (TypeScript Decorator)
+
+함수 스타일 대신 데코레이터 스타일도 사용 가능합니다:
+
+```typescript
+@workflow({
+  name: "process_order",
+  version: "1.0"
+})
+async function processOrder({ input, step, logger }) {
+  logger.info("Processing order", { orderId: input.orderId });
+  
+  const payment = await step.define(
+    { name: "charge" },
+    async () => {
+      return await PaymentService.charge(input.amount);
+    }
+  ).run();
+  
+  return { paymentId: payment.id };
+}
+```
+
+## 주의사항
+
+### 1. 멱등성
+
+Step은 멱등해야 합니다. 같은 입력으로 여러 번 실행해도 같은 결과를 보장해야 합니다.
+
+```typescript
+// ❌ 나쁜 예: 멱등하지 않음
+await step.define(
+  { name: "increment-counter" },
+  async () => {
+    counter++;  // 재시도 시 중복 증가
+  }
+).run();
+
+// ✅ 좋은 예: 멱등함
+await step.define(
+  { name: "set-counter" },
+  async () => {
+    return await CounterModel.set(10);  // 항상 같은 값
+  }
+).run();
+```
+
+### 2. 긴 작업은 step으로 나누기
+
+```typescript
+// ❌ 나쁜 예: 거대한 step
+await step.define(
+  { name: "process-all" },
+  async () => {
+    // 1시간 걸리는 작업
+    for (let i = 0; i < 1000000; i++) {
+      await processItem(i);
+    }
+  }
+).run();
+
+// ✅ 좋은 예: 작은 step들
+for (let i = 0; i < 1000; i += 100) {
+  await step.define(
+    { name: `process-batch-${i}` },
+    async () => {
+      const batch = items.slice(i, i + 100);
+      await processBatch(batch);
+    }
+  ).run();
+}
+```
+
+### 3. Step 이름 고유성
+
+Step 이름은 워크플로우 내에서 고유해야 합니다.
+
+```typescript
+// ❌ 나쁜 예: 중복된 이름
+await step.define({ name: "process" }, async () => { /* ... */ }).run();
+await step.define({ name: "process" }, async () => { /* ... */ }).run();  // 에러!
+
+// ✅ 좋은 예: 고유한 이름
+await step.define({ name: "process-payment" }, async () => { /* ... */ }).run();
+await step.define({ name: "process-shipping" }, async () => { /* ... */ }).run();
+```
+
+## 모니터링
+
+### 실행 상태 확인
+
+```typescript
+const handle = await Sonamu.workflowManager.run(
+  { name: "process_order" },
+  { orderId: 123 }
+);
+
+// 상태 확인
+console.log("Status:", handle.status);
+
+// 결과 대기 (완료될 때까지)
+const result = await handle.result();
+console.log("Result:", result);
+```
+
+### 로그 확인
+
+워크플로우는 자동으로 LogTape를 통해 로깅됩니다:
+
+```
+[INFO] [workflow:process_order] Processing order {"orderId":123}
+[DEBUG] [workflow:process_order] Step: charge-payment
+[INFO] [workflow:process_order] Payment successful {"paymentId":"pay_123"}
+```
+
+## 예시 모음
+
+<Tabs>
+  <Tab title="주문 처리" icon="cart-shopping">
+    ```typescript
+    import { workflow } from "sonamu";
+    import { z } from "zod";
+
+    const OrderSchema = z.object({
+      orderId: z.number(),
+      userId: z.number(),
+      items: z.array(z.object({
+        productId: z.number(),
+        quantity: z.number(),
+        price: z.number()
+      })),
+      totalAmount: z.number(),
+      shippingAddress: z.string()
+    });
+
+    export const processOrder = workflow(
+      {
+        name: "process_order",
+        version: "1.0",
+        schema: OrderSchema
+      },
+      async ({ input, step, logger }) => {
+        logger.info("Processing order", { orderId: input.orderId });
+
+        // Step 1: 재고 확인
+        const inventory = await step.define(
+          { name: "check-inventory" },
+          async () => {
+            for (const item of input.items) {
+              const available = await InventoryModel.check(
+                item.productId,
+                item.quantity
+              );
+              if (!available) {
+                throw new Error(`Product ${item.productId} out of stock`);
+              }
+            }
+            return { available: true };
+          }
+        ).run();
+
+        // Step 2: 결제 처리
+        const payment = await step.define(
+          { name: "process-payment" },
+          async () => {
+            return await PaymentService.charge({
+              userId: input.userId,
+              amount: input.totalAmount,
+              orderId: input.orderId
+            });
+          }
+        ).run();
+
+        logger.info("Payment successful", { paymentId: payment.id });
+
+        // Step 3: 재고 차감
+        await step.define(
+          { name: "decrease-inventory" },
+          async () => {
+            for (const item of input.items) {
+              await InventoryModel.decrease(item.productId, item.quantity);
+            }
+          }
+        ).run();
+
+        // Step 4: 배송 시작
+        const shipping = await step.define(
+          { name: "start-shipping" },
+          async () => {
+            return await ShippingService.createShipment({
+              orderId: input.orderId,
+              address: input.shippingAddress,
+              items: input.items
+            });
+          }
+        ).run();
+
+        // Step 5: 알림 전송
+        await step.define(
+          { name: "send-notifications" },
+          async () => {
+            await NotificationService.send({
+              userId: input.userId,
+              type: "order_confirmed",
+              data: {
+                orderId: input.orderId,
+                trackingNumber: shipping.trackingNumber
+              }
+            });
+          }
+        ).run();
+
+        return {
+          orderId: input.orderId,
+          paymentId: payment.id,
+          trackingNumber: shipping.trackingNumber,
+          status: "completed"
+        };
+      }
+    );
+    ```
+  </Tab>
+
+  <Tab title="데이터 동기화" icon="arrows-rotate">
+    ```typescript
+    export const syncUserData = workflow(
+      {
+        name: "sync_user_data",
+        schedules: [
+          {
+            name: "hourly-sync",
+            expression: "0 * * * *",  // 매시간
+            input: () => ({
+              timestamp: new Date().toISOString()
+            })
+          }
+        ]
+      },
+      async ({ input, step, logger }) => {
+        logger.info("Starting user data sync", { timestamp: input.timestamp });
+
+        // Step 1: 외부 API에서 사용자 가져오기
+        const users = await step.define(
+          { name: "fetch-external-users" },
+          async () => {
+            const response = await fetch("https://api.external.com/users");
+            return response.json();
+          }
+        ).run();
+
+        logger.info("Fetched users", { count: users.length });
+
+        // Step 2: 배치로 처리
+        const batchSize = 100;
+        const batches = Math.ceil(users.length / batchSize);
+
+        for (let i = 0; i < batches; i++) {
+          await step.define(
+            { name: `process-batch-${i}` },
+            async () => {
+              const batch = users.slice(i * batchSize, (i + 1) * batchSize);
+              
+              for (const user of batch) {
+                await UserModel.upsert({
+                  external_id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  synced_at: new Date()
+                });
+              }
+
+              return { processed: batch.length };
+            }
+          ).run();
+
+          // 배치 간 1초 대기
+          await step.sleep(`wait-after-batch-${i}`, "1s");
+        }
+
+        return {
+          totalUsers: users.length,
+          batches,
+          timestamp: input.timestamp
+        };
+      }
+    );
+    ```
+  </Tab>
+
+  <Tab title="보고서 생성" icon="file-chart-line">
+    ```typescript
+    export const generateMonthlyReport = workflow(
+      {
+        name: "generate_monthly_report",
+        schedules: [
+          {
+            name: "first-of-month",
+            expression: "0 3 1 * *",  // 매월 1일 3시
+            input: () => {
+              const now = new Date();
+              const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+              return {
+                year: lastMonth.getFullYear(),
+                month: lastMonth.getMonth() + 1
+              };
+            }
+          }
+        ]
+      },
+      async ({ input, step, logger }) => {
+        logger.info("Generating monthly report", input);
+
+        // Step 1: 주문 데이터 집계
+        const orderStats = await step.define(
+          { name: "aggregate-orders" },
+          async () => {
+            const rdb = OrderModel.getPuri("r");
+            return rdb.table("orders")
+              .whereRaw("YEAR(created_at) = ?", [input.year])
+              .whereRaw("MONTH(created_at) = ?", [input.month])
+              .select(
+                rdb.raw("COUNT(*) as total_orders"),
+                rdb.raw("SUM(total_amount) as total_revenue"),
+                rdb.raw("AVG(total_amount) as avg_order_value")
+              )
+              .first();
+          }
+        ).run();
+
+        // Step 2: 사용자 통계
+        const userStats = await step.define(
+          { name: "aggregate-users" },
+          async () => {
+            const rdb = UserModel.getPuri("r");
+            return rdb.table("users")
+              .whereRaw("YEAR(created_at) = ?", [input.year])
+              .whereRaw("MONTH(created_at) = ?", [input.month])
+              .count("* as new_users")
+              .first();
+          }
+        ).run();
+
+        // Step 3: 상품 순위
+        const topProducts = await step.define(
+          { name: "rank-products" },
+          async () => {
+            const rdb = OrderModel.getPuri("r");
+            return rdb.table("order_items")
+              .join("orders", "orders.id", "order_items.order_id")
+              .whereRaw("YEAR(orders.created_at) = ?", [input.year])
+              .whereRaw("MONTH(orders.created_at) = ?", [input.month])
+              .groupBy("order_items.product_id")
+              .select(
+                "order_items.product_id",
+                rdb.raw("SUM(order_items.quantity) as total_quantity"),
+                rdb.raw("SUM(order_items.price * order_items.quantity) as total_sales")
+              )
+              .orderBy("total_sales", "desc")
+              .limit(10);
+          }
+        ).run();
+
+        // Step 4: 보고서 저장
+        const report = await step.define(
+          { name: "save-report" },
+          async () => {
+            const wdb = ReportModel.getDB("w");
+            return wdb.table("reports").insert({
+              type: "monthly",
+              year: input.year,
+              month: input.month,
+              data: JSON.stringify({
+                orders: orderStats,
+                users: userStats,
+                products: topProducts
+              }),
+              created_at: new Date()
+            }).returning("*");
+          }
+        ).run();
+
+        // Step 5: 관리자에게 이메일 전송
+        await step.define(
+          { name: "send-email" },
+          async () => {
+            await EmailService.send({
+              to: "admin@example.com",
+              subject: `Monthly Report - ${input.year}/${input.month}`,
+              html: generateReportHTML({
+                orders: orderStats,
+                users: userStats,
+                products: topProducts
+              })
+            });
+          }
+        ).run();
+
+        logger.info("Report generated", { reportId: report[0].id });
+
+        return {
+          reportId: report[0].id,
+          year: input.year,
+          month: input.month
+        };
+      }
+    );
+    ```
+  </Tab>
+
+  <Tab title="리마인더" icon="bell">
+    ```typescript
+    export const sendReminders = workflow(
+      {
+        name: "send_reminders",
+        schedules: [
+          {
+            name: "daily-9am",
+            expression: "0 9 * * *",  // 매일 오전 9시
+            input: () => ({
+              date: new Date().toISOString().split('T')[0]
+            })
+          }
+        ]
+      },
+      async ({ input, step, logger }) => {
+        logger.info("Sending reminders", { date: input.date });
+
+        // Step 1: 리마인더 대상 조회
+        const tasks = await step.get(
+          { name: "fetch-tasks" },
+          TaskModel,
+          "findPendingReminders"
+        ).run();
+
+        logger.info("Found tasks", { count: tasks.length });
+
+        if (tasks.length === 0) {
+          return { sent: 0 };
+        }
+
+        // Step 2: 각 작업에 대해 리마인더 전송
+        for (const task of tasks) {
+          await step.define(
+            { name: `send-reminder-${task.id}` },
+            async () => {
+              // 알림 전송
+              await NotificationService.send({
+                userId: task.user_id,
+                type: "task_reminder",
+                data: {
+                  taskId: task.id,
+                  title: task.title,
+                  dueDate: task.due_date
+                }
+              });
+
+              // 상태 업데이트
+              const wdb = TaskModel.getDB("w");
+              await wdb.table("tasks")
+                .where("id", task.id)
+                .update({ reminder_sent: true });
+
+              return { taskId: task.id };
+            }
+          ).run();
+
+          // 각 리마인더 사이 0.5초 대기 (rate limiting)
+          await step.sleep(`wait-after-${task.id}`, "500ms");
+        }
+
+        return { sent: tasks.length };
+      }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="@api" 
+    icon="plug" 
+    href="/api-reference/decorators/api"
+  >
+    API 엔드포인트 만들기
+  </Card>
+  
+  <Card 
+    title="@transactional" 
+    icon="arrows-rotate" 
+    href="/api-reference/decorators/transactional"
+  >
+    트랜잭션 사용하기
+  </Card>
+  
+  <Card 
+    title="스케줄링" 
+    icon="clock" 
+    href="/core-concepts/tasks/scheduling"
+  >
+    작업 스케줄링 가이드
+  </Card>
+  
+  <Card 
+    title="OpenWorkflow" 
+    icon="book" 
+    href="https://github.com/sonamu-kit/tasks"
+  >
+    OpenWorkflow 문서
+  </Card>
+</CardGroup>

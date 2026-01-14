@@ -1,0 +1,633 @@
+---
+title: "@api Decorator"
+description: "Using the @api decorator to auto-generate HTTP API endpoints"
+---
+
+The `@api` decorator automatically converts Model methods into HTTP API endpoints. Adding the decorator to a method auto-generates routing, type validation, and client code.
+
+## Basic Usage
+
+```typescript
+import { api } from "sonamu";
+
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    return this.getPuri("r").where("id", id).first();
+  }
+}
+```
+
+**What gets generated**:
+- HTTP endpoint: `GET /user/findById?id=1`
+- TypeScript client function
+- TanStack Query hooks (when selected)
+- API documentation
+
+## Decorator Options
+
+### All Options
+
+```typescript
+@api({
+  httpMethod: "GET",                    // HTTP method
+  contentType: "application/json",      // Content-Type
+  clients: ["axios", "tanstack-query"], // Clients to generate
+  path: "/custom/path",                 // Custom path
+  resourceName: "Users",                // Resource name
+  guards: ["admin", "user"],            // Auth/permission guards
+  description: "User retrieval API",    // API description
+  timeout: 5000,                        // Timeout (ms)
+  cacheControl: { maxAge: 60 },         // Cache settings
+  compress: false,                      // Disable response compression
+})
+```
+
+### httpMethod
+
+Specifies the HTTP method.
+
+| Method | Use | Examples |
+|--------|-----|----------|
+| `GET` | Data retrieval | `findById`, `findMany` |
+| `POST` | Data create/modify | `save`, `login` |
+| `PUT` | Data update | `update` |
+| `DELETE` | Data deletion | `del`, `remove` |
+| `PATCH` | Partial update | `updateProfile` |
+
+<CodeGroup>
+```typescript title="GET - Retrieval"
+@api({ httpMethod: "GET" })
+async findById(id: number): Promise<User> {
+  // ...
+}
+// Endpoint: GET /user/findById?id=1
+```
+
+```typescript title="POST - Create/Modify"
+@api({ httpMethod: "POST" })
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // ...
+}
+// Endpoint: POST /user/save
+// Body: { params: [...] }
+```
+
+```typescript title="DELETE - Deletion"
+@api({ httpMethod: "DELETE" })
+async del(ids: number[]): Promise<number> {
+  // ...
+}
+// Endpoint: DELETE /user/del
+// Body: { ids: [1, 2, 3] }
+```
+</CodeGroup>
+
+<Tip>
+**Default**: If `httpMethod` is omitted, `GET` is the default.
+
+```typescript
+@api()  // httpMethod: "GET"
+async findById(id: number) { }
+```
+</Tip>
+
+### clients
+
+Specifies which client code types to generate.
+
+| Client | Description | Use Case |
+|--------|-------------|----------|
+| `axios` | Axios-based function | General API calls |
+| `axios-multipart` | Axios for file uploads | Image uploads |
+| `tanstack-query` | Query hook | Data retrieval |
+| `tanstack-mutation` | Mutation hook | Data modification |
+| `window-fetch` | Fetch API | Browser native |
+
+<CodeGroup>
+```typescript title="Retrieval API - Query"
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "tanstack-query"],
+})
+async findById(id: number): Promise<User> {
+  // ...
+}
+```
+
+```typescript title="Modification API - Mutation"
+@api({
+  httpMethod: "POST",
+  clients: ["axios", "tanstack-mutation"],
+})
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // ...
+}
+```
+
+```typescript title="File Upload"
+@api({
+  httpMethod: "POST",
+  clients: ["axios-multipart"],
+})
+@upload({ mode: "single" })
+async uploadAvatar(): Promise<{ url: string }> {
+  // ...
+}
+```
+</CodeGroup>
+
+**Generated client code**:
+
+<CodeGroup>
+```typescript title="axios"
+// services/user.service.ts
+export async function findUserById(id: number): Promise<User> {
+  const { data } = await axios.get("/user/findById", { params: { id } });
+  return data;
+}
+```
+
+```typescript title="tanstack-query"
+// hooks/useUserQuery.ts
+export function useUserById(id: number) {
+  return useQuery({
+    queryKey: ["user", "findById", id],
+    queryFn: () => findUserById(id),
+  });
+}
+
+// Usage
+const { data: user } = useUserById(1);
+```
+
+```typescript title="tanstack-mutation"
+// hooks/useUserMutation.ts
+export function useSaveUser() {
+  return useMutation({
+    mutationFn: (params: UserSaveParams[]) => saveUser(params),
+  });
+}
+
+// Usage
+const { mutate } = useSaveUser();
+mutate([{ email: "test@test.com" }]);
+```
+</CodeGroup>
+
+<Tip>
+**Default**: If `clients` is omitted, `["axios"]` is the default.
+</Tip>
+
+### path
+
+Specifies a custom API path.
+
+```typescript
+// Default path
+@api({ httpMethod: "GET" })
+async findById(id: number) { }
+// Path: /user/findById
+
+// Custom path
+@api({ httpMethod: "GET", path: "/api/v1/users/:id" })
+async findById(id: number) { }
+// Path: /api/v1/users/:id
+```
+
+**Path parameters**:
+
+```typescript
+@api({ httpMethod: "GET", path: "/posts/:postId/comments/:commentId" })
+async findComment(postId: number, commentId: number): Promise<Comment> {
+  // ...
+}
+// Call: GET /posts/123/comments/456
+```
+
+<Info>
+If path is omitted, it's auto-generated in `/{model}/{method}` format.
+- Model: `UserModel` → `user`
+- Method: `findById` → `findById`
+- Result: `/user/findById`
+</Info>
+
+### resourceName
+
+Specifies the API resource name. Used in TanStack Query's queryKey.
+
+```typescript
+@api({
+  httpMethod: "GET",
+  resourceName: "Users",  // Plural
+  clients: ["tanstack-query"],
+})
+async findMany(): Promise<User[]> {
+  // ...
+}
+
+// Generated Query Hook
+export function useUsers() {
+  return useQuery({
+    queryKey: ["Users", "findMany"],  // Uses resourceName
+    queryFn: () => findManyUsers(),
+  });
+}
+```
+
+**Naming guide**:
+
+| API Type | resourceName | Example |
+|----------|--------------|---------|
+| Single retrieval | Singular | `User` |
+| List retrieval | Plural | `Users` |
+| Create/update | Singular | `User` |
+| Delete | Plural | `Users` |
+
+### guards
+
+Sets up authentication and permission checks.
+
+```typescript
+// Authentication only
+@api({ guards: ["user"] })
+async getMyProfile(): Promise<User> {
+  // Only logged-in users can access
+}
+
+// Admin permission required
+@api({ guards: ["admin"] })
+async deleteUser(id: number): Promise<void> {
+  // Only admins can access
+}
+
+// Multiple guards combination
+@api({ guards: ["user", "admin"] })
+async someAdminAction(): Promise<void> {
+  // Must satisfy both user AND admin
+}
+```
+
+**Guard types**:
+
+| Guard | Description | Checks |
+|-------|-------------|--------|
+| `user` | Requires login | `context.user` existence |
+| `admin` | Admin permission | `context.user.role === "admin"` |
+| `query` | Custom check | User-defined logic |
+
+<Info>
+Guard logic is defined in `guardHandler` in `sonamu.config.ts`.
+
+```typescript title="sonamu.config.ts"
+export default {
+  guardHandler: (guard, request, api) => {
+    if (guard === "user" && !request.user) {
+      throw new UnauthorizedException("Login required");
+    }
+    if (guard === "admin" && request.user?.role !== "admin") {
+      throw new ForbiddenException("Admin permission required");
+    }
+  },
+};
+```
+</Info>
+
+### contentType
+
+Specifies the response Content-Type.
+
+```typescript
+// JSON (default)
+@api({ contentType: "application/json" })
+async getUser(): Promise<User> {
+  return { id: 1, name: "John" };
+}
+
+// HTML
+@api({ contentType: "text/html" })
+async renderProfile(): Promise<string> {
+  return "<html><body>Profile</body></html>";
+}
+
+// Plain Text
+@api({ contentType: "text/plain" })
+async getLog(): Promise<string> {
+  return "Log content...";
+}
+
+// Binary (file download)
+@api({ contentType: "application/octet-stream" })
+async downloadFile(): Promise<Buffer> {
+  return fileBuffer;
+}
+```
+
+### timeout
+
+Specifies API timeout in milliseconds.
+
+```typescript
+@api({ 
+  httpMethod: "GET",
+  timeout: 5000,  // 5 seconds
+})
+async longRunningQuery(): Promise<r> {
+  // Times out if takes more than 5 seconds
+}
+```
+
+<Warning>
+Timeout is a **client-side** setting. The server may continue executing, so you may need to set server-side timeout separately.
+</Warning>
+
+### cacheControl
+
+Sets HTTP Cache-Control headers.
+
+```typescript
+// 1 minute caching
+@api({
+  cacheControl: {
+    maxAge: 60,  // seconds
+  },
+})
+async getStaticData(): Promise<Data> {
+  // ...
+}
+
+// Disable caching
+@api({
+  cacheControl: {
+    maxAge: 0,
+    noCache: true,
+  },
+})
+async getDynamicData(): Promise<Data> {
+  // ...
+}
+```
+
+**CacheControl options**:
+
+| Option | Type | Description | Example |
+|--------|------|-------------|---------|
+| `maxAge` | number | Max cache time (seconds) | `60` |
+| `noCache` | boolean | Don't use cache | `true` |
+| `noStore` | boolean | Don't store | `true` |
+| `private` | boolean | Per-user cache | `true` |
+| `public` | boolean | Public cache | `true` |
+
+### compress
+
+Controls response compression settings.
+
+```typescript
+// Enable compression (default)
+@api({ compress: true })
+async getData(): Promise<LargeData> {
+  // Response is gzip compressed
+}
+
+// Disable compression
+@api({ compress: false })
+async streamData(): Promise<StreamData> {
+  // Send without compression (suitable for streaming)
+}
+```
+
+## Combining Multiple Decorators
+
+### @api + @transactional
+
+Execute API within a transaction.
+
+```typescript
+@api({ httpMethod: "POST" })
+@transactional()
+async updateUserAndProfile(
+  userId: number,
+  userData: UserData,
+  profileData: ProfileData
+): Promise<void> {
+  await this.save([userData]);
+  await ProfileModel.save([profileData]);
+  // Auto commit or rollback
+}
+```
+
+### @api + @upload
+
+Create file upload API.
+
+```typescript
+@api({
+  httpMethod: "POST",
+  clients: ["axios-multipart"],
+})
+@upload({ mode: "single" })
+async uploadAvatar(): Promise<{ url: string }> {
+  const { file } = Sonamu.getUploadContext();
+  
+  if (!file) {
+    throw new BadRequestException("No file provided");
+  }
+  
+  // Process file...
+  const url = await saveToS3(file);
+  
+  return { url };
+}
+```
+
+**Upload options**:
+
+| Option | Description | Use Case |
+|--------|-------------|----------|
+| `mode: "single"` | Single file | Profile image |
+| `mode: "multiple"` | Multiple files | Gallery upload |
+
+## API Path Rules
+
+Default paths are generated with the following rules:
+
+```
+/{modelName}/{methodName}
+```
+
+**Conversion rules**:
+- Model name: PascalCase → camelCase
+  - `UserModel` → `user`
+  - `BlogPostModel` → `blogPost`
+- Method name: Used as-is
+  - `findById` → `findById`
+
+**Examples**:
+
+| Model | Method | Path |
+|-------|--------|------|
+| `UserModel` | `findById` | `/user/findById` |
+| `BlogPostModel` | `findMany` | `/blogPost/findMany` |
+| `CommentModel` | `save` | `/comment/save` |
+
+## Practical Examples
+
+### Basic CRUD API
+
+<CodeGroup>
+```typescript title="Retrieval API"
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "tanstack-query"],
+  resourceName: "User",
+})
+async findById(id: number): Promise<User> {
+  const user = await this.getPuri("r")
+    .where("id", id)
+    .first();
+    
+  if (!user) {
+    throw new NotFoundException(`User not found: ${id}`);
+  }
+  
+  return user;
+}
+```
+
+```typescript title="List API"
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "tanstack-query"],
+  resourceName: "Users",
+  cacheControl: { maxAge: 30 },
+})
+async findMany(params: UserListParams): Promise<ListResult<User>> {
+  const { qb } = this.getSubsetQueries("A");
+  
+  if (params.keyword) {
+    qb.whereLike("email", `%${params.keyword}%`);
+  }
+  
+  return this.executeSubsetQuery({
+    subset: "A",
+    qb,
+    params,
+  });
+}
+```
+
+```typescript title="Create/Update API"
+@api({
+  httpMethod: "POST",
+  clients: ["axios", "tanstack-mutation"],
+})
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Validation
+  for (const param of params) {
+    const existing = await this.getPuri("r")
+      .where("email", param.email)
+      .whereNot("id", param.id ?? 0)
+      .first();
+      
+    if (existing) {
+      throw new BadRequestException("Email already in use");
+    }
+  }
+  
+  // Save
+  const wdb = this.getPuri("w");
+  params.forEach(p => wdb.ubRegister("users", p));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("users");
+  });
+}
+```
+
+```typescript title="Delete API"
+@api({
+  httpMethod: "DELETE",
+  clients: ["axios", "tanstack-mutation"],
+  guards: ["admin"],
+})
+async del(ids: number[]): Promise<number> {
+  const wdb = this.getPuri("w");
+  
+  await wdb.transaction(async (trx) => {
+    await trx.table("users")
+      .whereIn("id", ids)
+      .delete();
+  });
+  
+  return ids.length;
+}
+```
+</CodeGroup>
+
+### Authentication API
+
+```typescript
+@api({
+  httpMethod: "POST",
+  clients: ["axios", "tanstack-mutation"],
+})
+async login(params: LoginParams): Promise<{ user: User; token: string }> {
+  const { email, password } = params;
+  
+  // Find user
+  const user = await this.getPuri("r")
+    .where("email", email)
+    .first();
+    
+  if (!user) {
+    throw new UnauthorizedException("Email or password does not match");
+  }
+  
+  // Verify password
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    throw new UnauthorizedException("Email or password does not match");
+  }
+  
+  // Create session
+  const context = Sonamu.getContext();
+  await context.passport.login(user);
+  
+  // Generate token (optional)
+  const token = jwt.sign({ userId: user.id }, SECRET_KEY);
+  
+  return { user, token };
+}
+
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "tanstack-query"],
+  guards: ["user"],
+})
+async me(): Promise<User | null> {
+  const context = Sonamu.getContext();
+  
+  if (!context.user) {
+    return null;
+  }
+  
+  return this.findById(context.user.id);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Business Logic" icon="lightbulb" href="/en/core-concepts/model/business-logic">
+    Learn business logic writing patterns
+  </Card>
+  <Card title="Stream Decorator" icon="broadcast-tower" href="/en/api-development/streaming/sse">
+    Send real-time events with @stream
+  </Card>
+  <Card title="Upload Decorator" icon="upload" href="/en/api-development/file-upload/handling-uploads">
+    Handle file uploads with @upload
+  </Card>
+  <Card title="Guards" icon="shield" href="/en/api-development/authentication/guards">
+    Implementing authentication and authorization
+  </Card>
+</CardGroup>

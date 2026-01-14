@@ -1,0 +1,192 @@
+---
+title: "주요 기능들"
+description: "Sonamu VS Code Extension의 주요 기능"
+---
+
+Sonamu Extension은 Naite 테스트 프레임워크와 통합되어 다양한 개발 지원 기능을 제공합니다.
+
+## Naite 키 자동완성
+
+`Naite.t("`, `Naite.del("`, `Naite.get("` 입력 시 프로젝트의 모든 Naite 키를 자동완성합니다.
+
+<Frame caption="Naite 키 자동완성">
+  {/* 자동완성 동작 화면 */}
+</Frame>
+
+### 동작 방식
+
+Extension은 워크스페이스의 모든 TypeScript 파일을 스캔하여 `Naite.t()` 호출에서 사용된 키들을 수집합니다. 이 키 목록이 자동완성 후보로 제공됩니다.
+
+## 키 네비게이션
+
+Naite 키 문자열에서 정의와 참조 위치로 빠르게 이동할 수 있습니다.
+
+### 정의로 이동 (Go to Definition)
+
+- **단축키**: F12
+- **동작**: `Naite.t("key")` 위치로 이동
+
+<Frame caption="정의로 이동">
+  {/* F12로 정의 위치 이동 화면 */}
+</Frame>
+
+### 참조로 이동 (Go to References)
+
+- **단축키**: Shift+F12
+- **동작**: `Naite.get("key")`, `Naite.del("key")` 위치 목록 표시
+
+<Frame caption="참조로 이동">
+  {/* Shift+F12로 참조 목록 표시 화면 */}
+</Frame>
+
+### Cmd+Click
+
+Cmd+Click 동작은 VS Code 설정에 따라 정의 또는 참조로 이동합니다:
+
+- `editor.gotoLocation.multipleDefinitions`: 여러 정의가 있을 때 동작
+- `editor.gotoLocation.multipleReferences`: 여러 참조가 있을 때 동작
+
+## 키 하이라이팅
+
+Naite 키 문자열에 시각적 데코레이션을 적용하여 코드에서 쉽게 식별할 수 있습니다.
+
+<Frame caption="키 하이라이팅">
+  {/* 데코레이션이 적용된 Naite 키들 */}
+</Frame>
+
+### 설정
+
+`sonamu.naite.decoration.enabled`로 활성화/비활성화할 수 있으며, `sonamu.naite.decoration.style`로 스타일을 변경할 수 있습니다:
+
+- `underline` (기본값)
+- `bold`
+- `italic`
+- `underline bold`
+- `underline italic`
+- `none`
+
+## 호버 정보
+
+Naite 키 위에 마우스를 올리면 해당 키의 사용 정보를 표시합니다.
+
+<Frame caption="호버 정보">
+  {/* 호버 시 정보 표시 화면 */}
+</Frame>
+
+## 인라인 값 표시
+
+테스트 실행 후 `Naite.t()` 호출 옆에 기록된 값을 인라인으로 표시합니다.
+
+```typescript
+Naite.t("result", data);  // → { id: 1, name: "test" }
+```
+
+<Frame caption="인라인 값 표시">
+  {/* 인라인 값이 표시된 화면 */}
+</Frame>
+
+### 설정
+
+- `sonamu.naite.runtimeValue.enabled`: 기능 활성화/비활성화 (기본값: `true`)
+- `sonamu.naite.runtimeValue.maxLength`: 표시할 값의 최대 길이 (기본값: `50`)
+
+값이 너무 길면 자동으로 잘립니다.
+
+## Naite Trace Viewer
+
+테스트 실행 중 `Naite.t()`로 기록한 모든 값을 실시간으로 확인할 수 있는 전용 뷰어입니다.
+
+<Frame caption="Naite Trace Viewer">
+  {/* Trace Viewer 전체 화면 */}
+</Frame>
+
+### 열기
+
+Command Palette에서 `Sonamu: Open Naite Trace Viewer`를 실행하거나, 테스트 실행 시 자동으로 열립니다.
+
+### 주요 기능
+
+**테스트별 그룹화**
+
+테스트 suite와 case별로 trace가 그룹화되어 표시됩니다.
+
+<Frame caption="테스트별 그룹화">
+  {/* Suite/Case 그룹화 구조 */}
+</Frame>
+
+**Trace 정보 표시**
+
+각 trace는 다음 정보를 포함합니다:
+- 키 이름
+- 기록된 값 (JSON 형식)
+- 파일 경로 및 라인 번호
+- 기록 시간
+
+**코드 위치로 이동**
+
+Trace를 클릭하면 해당 `Naite.t()` 호출 위치로 이동합니다.
+
+<Frame caption="코드 위치로 이동">
+  {/* Trace 클릭 시 코드로 이동 */}
+</Frame>
+
+**검색 기능**
+
+Trace 뷰어 내에서 키나 값으로 검색할 수 있습니다.
+
+<Frame caption="Trace 검색">
+  {/* 검색 기능 사용 화면 */}
+</Frame>
+
+**Follow Mode**
+
+코드에서 Naite 호출을 선택하면 Trace Viewer에서 자동으로 해당 항목으로 스크롤됩니다.
+
+### Vitest 설정
+
+테스트 케이스의 라인 번호를 표시하려면 `vitest.config.ts`에서 `includeTaskLocation: true`를 설정해야 합니다:
+
+```typescript
+export default defineConfig({
+  test: {
+    includeTaskLocation: true,
+  },
+});
+```
+
+## 심볼 검색
+
+Workspace Symbol Search에서 Naite 키를 검색할 수 있습니다.
+
+- **단축키**: Cmd+T
+- **사용법**: 키 이름 입력하여 모든 사용 위치 찾기
+
+<Frame caption="심볼 검색">
+  {/* Workspace Symbol Search 화면 */}
+</Frame>
+
+## 미사용 키 경고
+
+정의되었지만 사용되지 않는 Naite 키에 대해 경고를 표시합니다.
+
+<Frame caption="미사용 키 경고">
+  {/* Diagnostic 경고 표시 화면 */}
+</Frame>
+
+이 기능은 테스트 코드를 정리할 때 유용합니다.
+
+## View Container
+
+Extension은 패널 영역에 "Naite" View Container를 추가합니다.
+
+<Frame caption="Naite View Container">
+  {/* View Container 화면 */}
+</Frame>
+
+이 패널에서 Trace 정보를 빠르게 확인할 수 있습니다.
+
+## 상태바 메시지
+
+Naite tracker 액션(키 추가, 삭제 등) 발생 시 상태바에 알림 메시지를 표시합니다.
+
+`sonamu.naite.statusBarMessages.enabled` 설정으로 활성화/비활성화할 수 있습니다 (기본값: `true`).

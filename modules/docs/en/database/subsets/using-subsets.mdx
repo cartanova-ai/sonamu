@@ -1,0 +1,334 @@
+---
+title: "Using Subsets"
+description: "Using Subsets in Model"
+---
+
+Subsets are used through Model methods.
+
+## Model Methods and Subsets
+
+### findById - Single Record Query
+
+```typescript
+// Single Subset
+const user = await UserModel.findById(1, ["P"]);
+// Type: UserSubsetMapping["P"]
+
+// Multiple Subsets (Union)
+const user = await UserModel.findById(1, ["A", "P"]);
+// Type: UserSubsetMapping["A"] | UserSubsetMapping["P"]
+```
+
+### findOne - Single Record by Condition
+
+```typescript
+const user = await UserModel.findOne({
+  where: [["email", "john@test.com"]],
+  subsetKey: "P",
+});
+// Type: UserSubsetMapping["P"] | undefined
+```
+
+### findMany - Multiple Records Query
+
+```typescript
+const users = await UserModel.findMany({
+  listParams: {
+    page: 1,
+    pageSize: 20,
+  },
+  subsetKey: "L",
+});
+// Type: UserSubsetMapping["L"][]
+```
+
+## Starting Subset Queries with getPuri
+
+Use `getPuri` to start a Subset-based query:
+
+```typescript
+// Start query with Subset P
+const query = UserModel.getPuri("r", ["P"]);
+
+// Apply additional conditions
+const users = await query
+  .where("users.role", "admin")
+  .where("users.is_verified", true)
+  .orderBy("users.created_at", "desc");
+
+// Type: UserSubsetMapping["P"][]
+```
+
+<Info>
+`getPuri("r", ["P"])` automatically applies the JOIN and SELECT defined in Subset P.
+</Info>
+
+## Extending Subset Queries
+
+### Adding WHERE Conditions
+
+```typescript
+const admins = await UserModel.getPuri("r", ["L"])
+  .where("users.role", "admin")
+  .where("users.is_verified", true);
+
+// Subset L base fields + WHERE conditions
+```
+
+### ORDER BY Sorting
+
+```typescript
+const recentUsers = await UserModel.getPuri("r", ["L"])
+  .orderBy("users.created_at", "desc")
+  .limit(10);
+```
+
+### Complex Conditions
+
+```typescript
+const activeEngineers = await UserModel.getPuri("r", ["P"])
+  .where("users.role", "normal")
+  .where("employee__department.name", "Engineering")
+  .where("employee.salary", ">", "60000")
+  .orderBy("employee.salary", "desc");
+
+// Subset P includes employee.department.name,
+// so JOIN is automatically configured
+```
+
+## Subset Type Safety
+
+<Frame>
+  <img src="/images/subsets/type-safety.png" alt="Subset type safety" />
+</Frame>
+
+### Compile-Time Validation
+
+```typescript
+// ✅ OK: Subset P includes employee__department table
+await UserModel.getPuri("r", ["P"])
+  .where("employee__department.name", "Engineering");
+
+// ❌ Type Error: Subset L doesn't include employee table
+await UserModel.getPuri("r", ["L"])
+  .where("employee__department.name", "Engineering");
+//     ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+```
+
+### Automatic Type Inference
+
+```typescript
+const user = await UserModel.findById(1, ["P"]);
+
+// TypeScript automatically infers types
+user.id;        // number
+user.username;  // string
+user.employee;  // { salary: string; department: { name: string } } | null
+
+// ❌ Compile Error
+user.password;  // Property 'password' does not exist
+```
+
+## Practical Examples
+
+### User List API
+
+```typescript
+// Controller
+class UserController {
+  async list(req: TypedRequest<UserListParams>) {
+    const { page, pageSize, role, search } = req.body;
+    
+    let query = UserModel.getPuri("r", ["L"]);
+    
+    // Role filter
+    if (role) {
+      query = query.where("users.role", role);
+    }
+    
+    // Search
+    if (search) {
+      query = query.where("users.username", "like", `%${search}%`);
+    }
+    
+    const users = await query
+      .orderBy("users.created_at", "desc")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+    
+    return users;
+  }
+}
+```
+
+### Profile Query API
+
+```typescript
+async getProfile(userId: number) {
+  const user = await UserModel.findById(userId, ["P"]);
+  
+  if (!user) {
+    throw new NotFoundException("User not found");
+  }
+  
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    bio: user.bio,
+    department: user.employee?.department?.name,
+    salary: user.employee?.salary,
+  };
+}
+```
+
+### Complex Search API
+
+```typescript
+async searchUsers(params: {
+  role?: UserRole;
+  departmentName?: string;
+  minSalary?: number;
+}) {
+  let query = UserModel.getPuri("r", ["P"]);
+  
+  if (params.role) {
+    query = query.where("users.role", params.role);
+  }
+  
+  if (params.departmentName) {
+    query = query.where(
+      "employee__department.name",
+      "like",
+      `%${params.departmentName}%`
+    );
+  }
+  
+  if (params.minSalary) {
+    query = query.where("employee.salary", ">=", String(params.minSalary));
+  }
+  
+  return await query.orderBy("users.username", "asc");
+}
+```
+
+## Combining Subsets
+
+### Using Multiple Subsets (Union)
+
+```typescript
+// Use different Subsets based on situation
+async getUser(userId: number, detailed: boolean) {
+  if (detailed) {
+    return await UserModel.findById(userId, ["P"]);
+    // Type: UserSubsetMapping["P"] | undefined
+  } else {
+    return await UserModel.findById(userId, ["SS"]);
+    // Type: UserSubsetMapping["SS"] | undefined
+  }
+}
+```
+
+### Conditional Subset Selection
+
+```typescript
+async getUserData(userId: number, role: UserRole) {
+  const subsets = role === "admin" ? ["A"] : ["P"];
+  
+  return await UserModel.findById(userId, subsets);
+  // Type: UserSubsetMapping["A"] | UserSubsetMapping["P"] | undefined
+}
+```
+
+## Performance Optimization
+
+### Use Only Needed Subsets
+
+```typescript
+// ❌ Bad: Using Subset A for lists (excessive data)
+const users = await UserModel.findMany({
+  listParams: { page: 1, pageSize: 20 },
+  subsetKey: "A",  // Loading all fields
+});
+
+// ✅ Good: Use Subset L for lists
+const users = await UserModel.findMany({
+  listParams: { page: 1, pageSize: 20 },
+  subsetKey: "L",  // Only needed fields
+});
+```
+
+### Minimize JOINs
+
+```typescript
+// ❌ Bad: Unnecessary JOINs (Subset P)
+const userIds = await UserModel.getPuri("r", ["P"])
+  .pluck("users.id");
+// employee, department tables are also JOINed
+
+// ✅ Good: Subset without JOINs (SS)
+const userIds = await UserModel.getPuri("r", ["SS"])
+  .pluck("users.id");
+// Only users table is queried
+```
+
+## Subset vs Raw Puri Comparison
+
+### Using Subset
+
+```typescript
+// ✅ Subset - type safe, concise
+const users = await UserModel.getPuri("r", ["P"])
+  .where("users.role", "admin");
+
+// Type: UserSubsetMapping["P"][]
+// JOIN auto-configured
+// SELECT auto-configured
+```
+
+### Using Raw Puri
+
+```typescript
+// ⚠️ Raw Puri - manual configuration
+const users = await UserModel.getPuri("r")
+  .table("users")
+  .leftJoin("employees", "users.id", "employees.user_id")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__salary: "employees.salary",
+    employee__department__name: "departments.name",
+  })
+  .where("users.role", "admin");
+
+// Type: { id: number; username: string; ... }[]
+// JOIN manual configuration
+// SELECT manual configuration
+// Hydrate manual application required
+```
+
+<Tip>
+**Use Subsets!**
+- Guaranteed type safety
+- Improved code reusability
+- Easy maintenance
+- Query consistency
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Nested Relations" icon="diagram-project" href="/database/subsets/nested-relations">
+    Load 1:N, N:M with LoaderQuery
+  </Card>
+  <Card title="Defining Subsets" icon="pen" href="/database/subsets/defining-subsets">
+    Create Subsets in Entity
+  </Card>
+  <Card title="Model Methods" icon="cube" href="/core-concepts/model/model-methods">
+    Model CRUD methods
+  </Card>
+  <Card title="Puri Queries" icon="database" href="/database/puri/basic-queries">
+    Puri query builder
+  </Card>
+</CardGroup>

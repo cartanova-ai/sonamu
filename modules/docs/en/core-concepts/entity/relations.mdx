@@ -1,0 +1,609 @@
+---
+title: "Relations"
+description: "Defining and utilizing relationships between Entities"
+---
+
+Relations define associations between Entities to ensure database referential integrity and enable type-safe join queries.
+
+## Relation Types Overview
+
+Sonamu supports 4 Relation types:
+
+<CardGroup cols={2}>
+  <Card title="BelongsToOne" icon="arrow-right">
+    N:1 relationship - Many reference one
+    
+    Example: Post → User (multiple posts belong to one user)
+  </Card>
+  <Card title="OneToOne" icon="arrows-left-right">
+    1:1 relationship - One references one
+    
+    Example: User ↔ Employee (user and employee info are 1:1 matched)
+  </Card>
+  <Card title="HasMany" icon="arrow-right-arrow-left">
+    1:N relationship - One owns many
+    
+    Example: User → Posts (one user owns multiple posts)
+  </Card>
+  <Card title="ManyToMany" icon="arrows-split-up-and-left">
+    N:M relationship - Many-to-many
+    
+    Example: Post ↔ Tag (many-to-many between posts and tags)
+  </Card>
+</CardGroup>
+
+## BelongsToOne
+
+**N:1 relationship** - The current Entity belongs to another Entity.
+
+### Basic Usage
+
+```json title="post.entity.json"
+{
+  "id": "Post",
+  "props": [
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "relationType": "BelongsToOne",
+      "desc": "Author"
+    }
+  ]
+}
+```
+
+**Generated column**: `user_id` (integer, not null)
+
+**Database structure**:
+
+<FileTree>
+  <FileTree.Folder name="Database" defaultOpen>
+    <FileTree.Folder name="users" defaultOpen>
+      <FileTree.File name="id (PK)" />
+      <FileTree.File name="username" />
+    </FileTree.Folder>
+    <FileTree.Folder name="posts" defaultOpen>
+      <FileTree.File name="id (PK)" />
+      <FileTree.File name="user_id (FK → users.id)" highlight />
+      <FileTree.File name="title" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+### Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `nullable` | boolean | Allow NULL | `false` |
+| `useConstraint` | boolean | Use Foreign Key constraint | `true` |
+| `onUpdate` | RelationOn | Action on referenced record update | `RESTRICT` |
+| `onDelete` | RelationOn | Action on referenced record delete | `RESTRICT` |
+| `customJoinClause` | string | Custom JOIN condition | - |
+
+### RelationOn Options
+
+| Value | Description | Use Case |
+|-------|-------------|----------|
+| `CASCADE` | Change/delete child when parent changes | Delete posts when user is deleted |
+| `SET NULL` | Set child's FK to NULL when parent deleted | Set employee's department to NULL when department deleted |
+| `RESTRICT` | Prevent parent change/delete if children exist | Cannot delete user if posts exist |
+| `NO ACTION` | Similar to RESTRICT, different check timing | - |
+| `SET DEFAULT` | Set to default value when parent deleted | - |
+
+### Example: nullable and CASCADE
+
+```json
+{
+  "type": "relation",
+  "name": "department",
+  "with": "Department",
+  "relationType": "BelongsToOne",
+  "nullable": true,
+  "onDelete": "SET NULL",
+  "desc": "Department"
+}
+```
+
+**Behavior**:
+- `department_id` allows `NULL`
+- When department is deleted, employee's `department_id` is set to `NULL`
+
+### TypeScript Usage
+
+<CodeGroup>
+```typescript title="Query"
+// Include relation in Subset
+const posts = await this.puri()
+  .select<PostSubsetA>("A")
+  .many();
+
+// Can access posts[0].user.username
+```
+
+```typescript title="Type (auto-generated)"
+type PostSubsetA = {
+  id: number;
+  title: string;
+  user: {
+    id: number;
+    username: string;
+  };
+};
+```
+</CodeGroup>
+
+## OneToOne
+
+**1:1 relationship** - Two Entities reference each other exactly once.
+
+### Basic Usage
+
+OneToOne can be defined in two ways:
+
+<Tabs>
+  <Tab title="hasJoinColumn: true">
+    FK column is created in the current Entity.
+    
+    ```json title="employee.entity.json"
+    {
+      "id": "Employee",
+      "props": [
+        {
+          "type": "relation",
+          "name": "user",
+          "with": "User",
+          "relationType": "OneToOne",
+          "hasJoinColumn": true,
+          "onDelete": "CASCADE",
+          "desc": "User account"
+        }
+      ]
+    }
+    ```
+    
+    **Generated column**: `user_id` (integer, unique, not null)
+    
+    **Database structure**:
+    ```
+    users: id, username
+    employees: id, user_id (FK, UNIQUE), employee_number
+    ```
+  </Tab>
+  
+  <Tab title="hasJoinColumn: false">
+    The FK column must exist in the other Entity.
+    
+    ```json title="user.entity.json"
+    {
+      "id": "User",
+      "props": [
+        {
+          "type": "relation",
+          "name": "employee",
+          "with": "Employee",
+          "relationType": "OneToOne",
+          "hasJoinColumn": false,
+          "nullable": true,
+          "desc": "Employee info"
+        }
+      ]
+    }
+    ```
+    
+    **No column created** - Uses `user_id` from Employee table
+  </Tab>
+</Tabs>
+
+### Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `hasJoinColumn` | boolean | Whether to create FK column | *required* |
+| `nullable` | boolean | Allow NULL (when hasJoinColumn: true) | `false` |
+| `useConstraint` | boolean | FK constraint (when hasJoinColumn: true) | `true` |
+| `onUpdate` | RelationOn | Action on update (when hasJoinColumn: true) | `RESTRICT` |
+| `onDelete` | RelationOn | Action on delete (when hasJoinColumn: true) | `RESTRICT` |
+| `customJoinClause` | string | Custom JOIN condition | - |
+
+### Example: Bidirectional OneToOne
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "type": "relation",
+  "name": "employee",
+  "with": "Employee",
+  "relationType": "OneToOne",
+  "hasJoinColumn": false,
+  "nullable": true
+}
+```
+
+```json title="employee.entity.json"
+{
+  "type": "relation",
+  "name": "user",
+  "with": "User",
+  "relationType": "OneToOne",
+  "hasJoinColumn": true,
+  "onDelete": "CASCADE"
+}
+```
+</CodeGroup>
+
+**Relationship explained**:
+- User can optionally have an Employee (nullable)
+- Employee must have a User (not null)
+- When User is deleted, Employee is also deleted (CASCADE)
+
+## HasMany
+
+**1:N relationship** - One Entity owns multiple other Entities.
+
+### Basic Usage
+
+```json title="user.entity.json"
+{
+  "id": "User",
+  "props": [
+    {
+      "type": "relation",
+      "name": "posts",
+      "with": "Post",
+      "relationType": "HasMany",
+      "joinColumn": "user_id",
+      "desc": "Written posts"
+    }
+  ]
+}
+```
+
+**Requirements**:
+- `Post` Entity must have a `user_id` column
+- Usually defined with `BelongsToOne` in reverse on `Post`
+
+### Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `joinColumn` | string | FK column name in the other table | *required* |
+| `fromColumn` | string | Reference column name in current table | `id` |
+| `nullable` | boolean | Nullable for the relation itself (optional) | `false` |
+
+### Example: Using fromColumn
+
+```json
+{
+  "type": "relation",
+  "name": "childPosts",
+  "with": "Post",
+  "relationType": "HasMany",
+  "joinColumn": "parent_post_id",
+  "fromColumn": "id",
+  "desc": "Child posts"
+}
+```
+
+**JOIN query**:
+```sql
+SELECT * FROM posts
+WHERE posts.parent_post_id = {user.id}
+```
+
+### TypeScript Usage
+
+<CodeGroup>
+```typescript title="Subset Definition"
+{
+  "subsets": {
+    "A": [
+      "id",
+      "username",
+      "posts.id",
+      "posts.title",
+      "posts.created_at"
+    ]
+  }
+}
+```
+
+```typescript title="Type (auto-generated)"
+type UserSubsetA = {
+  id: number;
+  username: string;
+  posts: Array<{
+    id: number;
+    title: string;
+    created_at: Date;
+  }>;
+};
+```
+
+```typescript title="Query"
+const users = await this.puri()
+  .select<UserSubsetA>("A")
+  .many();
+
+// users[0].posts is an array
+console.log(users[0].posts.length);
+```
+</CodeGroup>
+
+<Info>
+HasMany is automatically optimized using the **DataLoader pattern**. N+1 query problems don't occur.
+</Info>
+
+## ManyToMany
+
+**N:M relationship** - Many-to-many relationship implemented through a join table.
+
+### Basic Usage
+
+```json title="post.entity.json"
+{
+  "id": "Post",
+  "props": [
+    {
+      "type": "relation",
+      "name": "tags",
+      "with": "Tag",
+      "relationType": "ManyToMany",
+      "joinTable": "posts__tags",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "Tags"
+    }
+  ]
+}
+```
+
+**Auto-generated Join Table**:
+
+```sql
+CREATE TABLE posts__tags (
+  id INTEGER PRIMARY KEY,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  UNIQUE(post_id, tag_id)
+);
+```
+
+### Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `joinTable` | string | Join table name (`{table1}__${table2}`) | *required* |
+| `onUpdate` | RelationOn | Action on referenced record update | *required* |
+| `onDelete` | RelationOn | Action on referenced record delete | *required* |
+| `nullable` | boolean | Nullable for the relation itself (optional) | `false` |
+
+<Warning>
+**Join Table Naming Convention**: Sort two table names alphabetically and connect with `__`.
+- Correct: `posts__tags`
+- Wrong: `tags__posts` (not alphabetical order)
+</Warning>
+
+### Bidirectional Definition
+
+<CodeGroup>
+```json title="post.entity.json"
+{
+  "type": "relation",
+  "name": "tags",
+  "with": "Tag",
+  "relationType": "ManyToMany",
+  "joinTable": "posts__tags",
+  "onUpdate": "CASCADE",
+  "onDelete": "CASCADE"
+}
+```
+
+```json title="tag.entity.json"
+{
+  "type": "relation",
+  "name": "posts",
+  "with": "Post",
+  "relationType": "ManyToMany",
+  "joinTable": "posts__tags",
+  "onUpdate": "CASCADE",
+  "onDelete": "CASCADE"
+}
+```
+</CodeGroup>
+
+### TypeScript Usage
+
+<CodeGroup>
+```typescript title="Subset Definition"
+{
+  "subsets": {
+    "A": [
+      "id",
+      "title",
+      "tags.id",
+      "tags.name"
+    ]
+  }
+}
+```
+
+```typescript title="Type (auto-generated)"
+type PostSubsetA = {
+  id: number;
+  title: string;
+  tags: Array<{
+    id: number;
+    name: string;
+  }>;
+};
+```
+
+```typescript title="Query"
+const posts = await this.puri()
+  .select<PostSubsetA>("A")
+  .many();
+
+// posts[0].tags is an array
+posts[0].tags.forEach(tag => {
+  console.log(tag.name);
+});
+```
+</CodeGroup>
+
+## Custom Join Clause
+
+You can write SQL expressions directly when complex JOIN conditions are needed.
+
+```json
+{
+  "type": "relation",
+  "name": "latestPost",
+  "with": "Post",
+  "relationType": "OneToOne",
+  "hasJoinColumn": false,
+  "customJoinClause": "users.id = posts.user_id AND posts.is_published = true",
+  "desc": "Latest published post"
+}
+```
+
+<Warning>
+`customJoinClause` is an advanced feature. Use standard Relations when possible.
+</Warning>
+
+## Relation Usage Patterns
+
+### 1. Selecting Relation Fields in Subsets
+
+```json
+{
+  "subsets": {
+    "A": [
+      "id",
+      "title",
+      "user.username",
+      "user.email",
+      "tags.name"
+    ]
+  }
+}
+```
+
+**Auto-generated queries**:
+- `user`: LEFT JOIN
+- `tags`: Separate query via DataLoader
+
+### 2. Nested Relations
+
+```json
+{
+  "subsets": {
+    "A": [
+      "id",
+      "title",
+      "user.id",
+      "user.username",
+      "user.employee.department.name"
+    ]
+  }
+}
+```
+
+Sonamu automatically generates the necessary JOINs:
+```sql
+FROM posts
+LEFT JOIN users ON posts.user_id = users.id
+LEFT JOIN employees ON users.id = employees.user_id
+LEFT JOIN departments ON employees.department_id = departments.id
+```
+
+### 3. Filtering Relations
+
+<CodeGroup>
+```typescript title="BelongsToOne Filter"
+const posts = await this.puri()
+  .where("user.role", "admin")
+  .many();
+```
+
+```typescript title="HasMany Filter"
+// HasMany included in Subset cannot be filtered
+// Use separate query instead
+const user = await UserModel.findById(userId);
+const activePosts = await PostModel.puri()
+  .where("user_id", userId)
+  .where("status", "active")
+  .many();
+```
+</CodeGroup>
+
+### 4. Sorting by Relations
+
+```typescript
+const posts = await this.puri()
+  .orderBy("user.username", "asc")
+  .many();
+```
+
+## Relation Design Guide
+
+### BelongsToOne vs OneToOne
+
+| Situation | Recommended Type | Reason |
+|-----------|------------------|--------|
+| Post → Author | `BelongsToOne` | Multiple posts belong to one user |
+| User ↔ Profile | `OneToOne` | 1:1 matching relationship |
+| Order → Customer | `BelongsToOne` | Multiple orders belong to one customer |
+
+### CASCADE vs RESTRICT
+
+| Situation | Recommended Action | Reason |
+|-----------|-------------------|--------|
+| User delete → Posts | `CASCADE` | Delete together |
+| Category delete → Posts | `RESTRICT` | Cannot delete if posts exist |
+| Department delete → Employees | `SET NULL` | Keep employees, set department to NULL |
+
+### nullable Setting
+
+| Situation | nullable | Reason |
+|-----------|----------|--------|
+| Required relationship | `false` | Reference always needed |
+| Optional relationship | `true` | May not exist |
+| Temporary state | `true` | Set later |
+
+## Cautions
+
+<Warning>
+**Avoid Circular References**
+
+Avoid circular references like A → B → C → A. This can cause problems when creating data.
+</Warning>
+
+<Warning>
+**JOIN Depth Limit**
+
+Too deep nested Relations (3+ levels) can cause performance issues. Separate into different queries when needed.
+</Warning>
+
+<Tip>
+**ManyToMany Join Table**
+
+Sonamu automatically manages Join Tables, so you don't need to create a separate Entity. Only separate into an Entity when additional columns are needed.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Enums" icon="hashtag" href="/en/core-concepts/entity/enums">
+    Define and use Enum types
+  </Card>
+  <Card title="Subset" icon="layer-group" href="/en/core-concepts/model/using-subsets">
+    Type-safe queries with Subsets
+  </Card>
+  <Card title="Puri Query Builder" icon="database" href="/en/database/puri/basic-queries">
+    Write queries using Relations
+  </Card>
+  <Card title="Performance" icon="gauge-high" href="/en/database/performance/query-optimization">
+    Optimize Relation queries
+  </Card>
+</CardGroup>

@@ -1,0 +1,619 @@
+---
+title: "스토리지 드라이버"
+description: "fs, S3 드라이버 설정 가이드"
+---
+
+Sonamu는 **Flydrive** 기반으로 여러 스토리지 드라이버를 지원합니다. 로컬 파일 시스템(fs)과 AWS S3를 동일한 인터페이스로 사용할 수 있습니다.
+
+## 지원 드라이버
+
+<CardGroup cols={2}>
+  <Card title="fs (File System)" icon="folder">
+    로컬 파일 시스템
+  </Card>
+  <Card title="s3 (AWS S3)" icon="cloud">
+    AWS S3 호환 스토리지
+  </Card>
+</CardGroup>
+
+## fs 드라이버
+
+**로컬 파일 시스템**에 파일을 저장합니다.
+
+### 기본 설정
+
+```typescript
+import { drivers, type SonamuConfig } from "sonamu";
+
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'fs',
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',  // 파일 저장 위치
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+### 설정 옵션
+
+<Tabs>
+  <Tab title="location" icon="folder">
+    **파일 저장 위치**
+    
+    ```typescript
+    fs: drivers.fs({
+      location: './uploads',  // 상대 경로
+    })
+    
+    fs: drivers.fs({
+      location: '/var/app/uploads',  // 절대 경로
+    })
+    ```
+    
+    **권장**: 프로젝트 루트 기준 상대 경로
+  </Tab>
+  
+  <Tab title="urlBuilder" icon="link">
+    **URL 생성 규칙**
+    
+    ```typescript
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => `/uploads/${key}`,
+      }
+    })
+    ```
+    
+    **필수**: fs 드라이버는 반드시 urlBuilder 설정 필요
+    
+    **예시**:
+    ```typescript
+    // key: 'avatars/user-1.png'
+    // URL: '/uploads/avatars/user-1.png'
+    ```
+  </Tab>
+  
+  <Tab title="visibility" icon="eye">
+    **파일 접근 권한** (Unix 권한)
+    
+    ```typescript
+    fs: drivers.fs({
+      location: './uploads',
+      visibility: 'public',  // 또는 'private'
+      urlBuilder: {
+        generateURL: (key) => `/uploads/${key}`,
+      }
+    })
+    ```
+    
+    **기본값**: `public` (0644)
+    - `public`: 모든 사용자 읽기 가능
+    - `private`: 소유자만 읽기 가능 (0600)
+  </Tab>
+</Tabs>
+
+### 실전 예제
+
+#### 개발 환경
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'fs',
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**사용**:
+```typescript
+await disk.put('avatars/user-1.png', buffer);
+// 파일 위치: ./uploads/avatars/user-1.png
+// URL: /uploads/avatars/user-1.png
+```
+
+#### 정적 파일 서빙
+
+Fastify에서 정적 파일을 서빙해야 합니다:
+
+```typescript
+// sonamu.config.ts
+import path from "path";
+
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      static: {
+        root: path.join(process.cwd(), 'uploads'),
+        prefix: '/uploads/',
+      }
+    },
+    storage: {
+      default: 'fs',
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**결과**:
+```
+http://localhost:3000/uploads/avatars/user-1.png
+→ ./uploads/avatars/user-1.png 파일 서빙
+```
+
+## s3 드라이버
+
+**AWS S3** 또는 호환 스토리지에 파일을 저장합니다.
+
+### 기본 설정
+
+```typescript
+import { drivers, type SonamuConfig } from "sonamu";
+
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: process.env.AWS_REGION!,
+          bucket: process.env.AWS_BUCKET!,
+        }),
+      }
+    }
+  }
+};
+```
+
+### 필수 환경변수
+
+```.env
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=ap-northeast-2
+AWS_BUCKET=my-app-uploads
+```
+
+### 설정 옵션
+
+<Tabs>
+  <Tab title="credentials" icon="key">
+    **AWS 자격증명**
+    
+    ```typescript
+    s3: drivers.s3({
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+      // ...
+    })
+    ```
+    
+    **획득 방법**:
+    1. AWS Console → IAM
+    2. 사용자 생성
+    3. S3 권한 부여 (`AmazonS3FullAccess`)
+    4. Access Key 생성
+  </Tab>
+  
+  <Tab title="region" icon="globe">
+    **AWS 리전**
+    
+    ```typescript
+    s3: drivers.s3({
+      region: 'ap-northeast-2',  // 서울
+      // ...
+    })
+    ```
+    
+    **주요 리전**:
+    - `ap-northeast-2`: 서울
+    - `ap-northeast-1`: 도쿄
+    - `us-east-1`: 버지니아 북부
+    - `us-west-2`: 오레곤
+  </Tab>
+  
+  <Tab title="bucket" icon="bucket">
+    **S3 버킷 이름**
+    
+    ```typescript
+    s3: drivers.s3({
+      bucket: 'my-app-uploads',
+      // ...
+    })
+    ```
+    
+    **버킷 생성**:
+    1. AWS Console → S3
+    2. "버킷 만들기" 클릭
+    3. 고유한 이름 입력
+    4. 리전 선택
+    5. 퍼블릭 액세스 차단 설정
+  </Tab>
+  
+  <Tab title="urlBuilder" icon="link">
+    **URL 생성 규칙** (선택)
+    
+    ```typescript
+    s3: drivers.s3({
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => 
+          `https://my-bucket.s3.amazonaws.com/${key}`,
+      }
+    })
+    ```
+    
+    **기본값**: S3의 기본 URL 사용
+    ```
+    https://bucket.s3.region.amazonaws.com/key
+    ```
+    
+    **CloudFront 사용 시**:
+    ```typescript
+    urlBuilder: {
+      generateURL: (key) => 
+        `https://d111111abcdef8.cloudfront.net/${key}`,
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### 실전 예제
+
+#### 기본 S3 설정
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: 'ap-northeast-2',
+          bucket: 'my-app-uploads',
+        }),
+      }
+    }
+  }
+};
+```
+
+**사용**:
+```typescript
+await disk.put('avatars/user-1.png', buffer);
+// S3 위치: s3://my-app-uploads/avatars/user-1.png
+// URL: https://my-app-uploads.s3.ap-northeast-2.amazonaws.com/avatars/user-1.png
+```
+
+#### CloudFront CDN 연동
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: 'ap-northeast-2',
+          bucket: 'my-app-uploads',
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+```.env
+CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
+```
+
+**장점**:
+- 빠른 전송 속도 (엣지 로케이션)
+- 대역폭 비용 절감
+- 캐싱
+
+#### 퍼블릭 버킷 설정
+
+S3 버킷을 퍼블릭으로 설정하려면:
+
+```json
+// S3 버킷 정책 (AWS Console → S3 → 버킷 → 권한 → 버킷 정책)
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::my-app-uploads/*"
+    }
+  ]
+}
+```
+
+**주의**: 민감한 데이터는 private 버킷 사용
+
+## S3 호환 스토리지
+
+### Cloudflare R2
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'r2',
+      drivers: {
+        r2: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+          },
+          endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          region: 'auto',
+          bucket: process.env.R2_BUCKET!,
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**특징**:
+- 무료 egress (전송 비용 없음)
+- S3 API 호환
+- Cloudflare 네트워크
+
+### MinIO (Self-hosted)
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'minio',
+      drivers: {
+        minio: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.MINIO_ACCESS_KEY!,
+            secretAccessKey: process.env.MINIO_SECRET_KEY!,
+          },
+          endpoint: 'http://localhost:9000',
+          region: 'us-east-1',
+          bucket: 'uploads',
+          forcePathStyle: true,  // MinIO 필수
+        }),
+      }
+    }
+  }
+};
+```
+
+## 드라이버 비교
+
+| 특징 | fs | S3 |
+|------|----|----|
+| 비용 | 무료 (디스크 공간) | 유료 (저장 + 전송) |
+| 확장성 | 제한적 (서버 디스크) | 무제한 |
+| 속도 | 매우 빠름 | 빠름 (네트워크) |
+| 백업 | 수동 | 자동 (버전 관리) |
+| CDN | 별도 설정 필요 | CloudFront 연동 |
+| 용도 | 개발, 소규모 | 프로덕션, 대규모 |
+
+## 실전 전략
+
+### 개발/프로덕션 분리
+
+```typescript
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: isDevelopment ? 'fs' : 's3',
+      drivers: {
+        // 개발: 로컬
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+        
+        // 프로덕션: S3
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: process.env.AWS_REGION!,
+          bucket: process.env.AWS_BUCKET!,
+        }),
+      }
+    }
+  }
+};
+```
+
+### 다중 버킷 전략
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 'private',
+      drivers: {
+        // 개인 문서 (private)
+        private: drivers.s3({
+          credentials: { /* ... */ },
+          region: 'ap-northeast-2',
+          bucket: 'my-app-private',
+        }),
+        
+        // 공개 파일 (public)
+        public: drivers.s3({
+          credentials: { /* ... */ },
+          region: 'ap-northeast-2',
+          bucket: 'my-app-public',
+        }),
+        
+        // 백업
+        backup: drivers.s3({
+          credentials: { /* ... */ },
+          region: 'ap-northeast-2',
+          bucket: 'my-app-backup',
+        }),
+      }
+    }
+  }
+};
+```
+
+**사용**:
+```typescript
+// 프로필 사진 → public
+await file.saveToDisk('avatars/user-1.png', 'public');
+
+// 개인 문서 → private (기본)
+await file.saveToDisk('documents/user-1/doc.pdf');
+
+// 백업 → backup
+await Sonamu.storage.use('backup').put('backup.json', data);
+```
+
+## 주의사항
+
+<Warning>
+**드라이버 설정 시 주의사항**:
+
+1. **환경변수 관리**: 절대 하드코딩 금지
+   ```typescript
+   // ❌ 하드코딩
+   credentials: {
+     accessKeyId: 'AKIA...',
+     secretAccessKey: '...',
+   }
+   
+   // ✅ 환경변수
+   credentials: {
+     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+   }
+   ```
+
+2. **fs urlBuilder 필수**: fs 드라이버는 반드시 urlBuilder 필요
+   ```typescript
+   // ❌ urlBuilder 없음
+   fs: drivers.fs({
+     location: './uploads',
+   })
+   
+   // ✅ urlBuilder 설정
+   fs: drivers.fs({
+     location: './uploads',
+     urlBuilder: {
+       generateURL: (key) => `/uploads/${key}`,
+     }
+   })
+   ```
+
+3. **S3 권한 확인**: IAM 사용자에게 S3 권한 부여
+   ```json
+   // 최소 권한
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "s3:PutObject",
+           "s3:GetObject",
+           "s3:DeleteObject"
+         ],
+         "Resource": "arn:aws:s3:::my-bucket/*"
+       }
+     ]
+   }
+   ```
+
+4. **버킷 이름 고유성**: S3 버킷 이름은 전역적으로 고유해야 함
+   ```typescript
+   // ❌ 이미 사용 중인 이름
+   bucket: 'uploads'  // 에러!
+   
+   // ✅ 고유한 이름
+   bucket: 'my-app-uploads-prod-2024'
+   ```
+
+5. **리전 일치**: bucket과 region이 일치해야 함
+   ```typescript
+   // ❌ 리전 불일치
+   region: 'us-east-1',
+   bucket: 'my-bucket'  // ap-northeast-2에 생성됨
+   
+   // ✅ 리전 확인
+   region: 'ap-northeast-2',
+   bucket: 'my-bucket'  // ap-northeast-2에 생성됨
+   ```
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Storage Manager" icon="database" href="/advanced-features/storage/storage-manager">
+    여러 디스크 관리하기
+  </Card>
+  <Card title="파일 저장 및 조회" icon="upload" href="/advanced-features/storage/file-operations">
+    파일 업로드 및 다운로드
+  </Card>
+  <Card title="URL 빌더" icon="link" href="/advanced-features/storage/url-builder">
+    파일 URL 생성하기
+  </Card>
+</CardGroup>

@@ -1,0 +1,646 @@
+---
+title: "Parameters"
+description: "API parameter type definitions and validation"
+---
+
+Properly defining API parameters provides type safety and clear API documentation.
+
+## Parameters Overview
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield">
+    Compile-time validation
+    
+    Autocomplete support
+  </Card>
+  <Card title="Clear Contract" icon="file-contract">
+    Auto-generated API spec
+    
+    Client guide
+  </Card>
+  <Card title="Validation" icon="check-double">
+    Automatic type validation
+    
+    Early error detection
+  </Card>
+  <Card title="Documentation" icon="book">
+    Add descriptions with comments
+    
+    Easy maintenance
+  </Card>
+</CardGroup>
+
+## Basic Types
+
+### Primitive Types
+
+```typescript
+class UserModel extends BaseModelClass {
+  // Number
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // GET /api/user/getUser?id=1
+    // ...
+  }
+  
+  // String
+  @api({ httpMethod: "GET" })
+  async findByEmail(email: string): Promise<User | null> {
+    // GET /api/user/findByEmail?email=test@example.com
+    // ...
+  }
+  
+  // Boolean
+  @api({ httpMethod: "GET" })
+  async listActive(active: boolean): Promise<User[]> {
+    // GET /api/user/listActive?active=true
+    // ...
+  }
+  
+  // Date
+  @api({ httpMethod: "GET" })
+  async listByDate(fromDate: Date, toDate: Date): Promise<User[]> {
+    // GET /api/user/listByDate?fromDate=2025-01-01&toDate=2025-12-31
+    // ...
+  }
+}
+```
+
+### Array Types
+
+```typescript
+class UserModel extends BaseModelClass {
+  // Number array
+  @api({ httpMethod: "GET" })
+  async getMultiple(ids: number[]): Promise<User[]> {
+    // GET /api/user/getMultiple?ids=1,2,3
+    const rdb = this.getPuri("r");
+    return rdb.table("users").whereIn("id", ids).select("*");
+  }
+  
+  // String array
+  @api({ httpMethod: "GET" })
+  async findByRoles(roles: UserRole[]): Promise<User[]> {
+    // GET /api/user/findByRoles?roles=admin,manager
+    const rdb = this.getPuri("r");
+    return rdb.table("users").whereIn("role", roles).select("*");
+  }
+}
+```
+
+## Interface Definitions
+
+### Simple Interface
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  role: "admin" | "manager" | "normal";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    // Autocomplete available for params.email, params.username, etc.
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        email: params.email,
+        username: params.username,
+        password: params.password,
+        role: params.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+
+// Call: POST /api/user/create
+// Body: {
+//   "email": "test@example.com",
+//   "username": "testuser",
+//   "password": "hashedpass",
+//   "role": "normal"
+// }
+```
+
+### Optional Fields
+
+```typescript
+interface UserListParams {
+  // Required parameters
+  page: number;
+  pageSize: number;
+  
+  // Optional parameters
+  search?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  sortBy?: "created_at" | "username" | "email";
+  sortOrder?: "asc" | "desc";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    // Handle optional parameters
+    if (params.search) {
+      query = query.where("username", "like", `%${params.search}%`);
+    }
+    
+    if (params.role) {
+      query = query.where("role", params.role);
+    }
+    
+    if (params.isActive !== undefined) {
+      query = query.where("is_active", params.isActive);
+    }
+    
+    // Sorting (provide defaults)
+    const sortBy = params.sortBy || "created_at";
+    const sortOrder = params.sortOrder || "desc";
+    query = query.orderBy(sortBy, sortOrder);
+    
+    // Pagination
+    const users = await query
+      .limit(params.pageSize)
+      .offset((params.page - 1) * params.pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return { users, total: count };
+  }
+}
+```
+
+### Nested Objects
+
+```typescript
+interface RegisterParams {
+  // User info
+  email: string;
+  username: string;
+  password: string;
+  
+  // Profile info (nested)
+  profile: {
+    bio: string;
+    avatarUrl?: string;
+    socialLinks?: {
+      twitter?: string;
+      github?: string;
+      linkedin?: string;
+    };
+  };
+  
+  // Settings (nested)
+  preferences: {
+    theme: "light" | "dark";
+    language: "ko" | "en";
+    notifications: {
+      email: boolean;
+      push: boolean;
+    };
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async register(params: RegisterParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    // Create User
+    const userRef = wdb.ubRegister("users", {
+      email: params.email,
+      username: params.username,
+      password: params.password,
+      role: "normal",
+    });
+    
+    // Create Profile
+    wdb.ubRegister("profiles", {
+      user_id: userRef,
+      bio: params.profile.bio,
+      avatar_url: params.profile.avatarUrl || null,
+      social_links: JSON.stringify(params.profile.socialLinks || {}),
+    });
+    
+    // Create Preferences
+    wdb.ubRegister("user_preferences", {
+      user_id: userRef,
+      theme: params.preferences.theme,
+      language: params.preferences.language,
+      email_notifications: params.preferences.notifications.email,
+      push_notifications: params.preferences.notifications.push,
+    });
+    
+    const [userId] = await wdb.ubUpsert("users");
+    await wdb.ubUpsert("profiles");
+    await wdb.ubUpsert("user_preferences");
+    
+    return { userId };
+  }
+}
+```
+
+## Union Types and Enums
+
+### Using Enums
+
+```typescript
+// Enum definitions
+enum UserRole {
+  Admin = "admin",
+  Manager = "manager",
+  Normal = "normal",
+}
+
+enum UserStatus {
+  Active = "active",
+  Inactive = "inactive",
+  Suspended = "suspended",
+}
+
+interface UpdateUserParams {
+  role?: UserRole;
+  status?: UserStatus;
+  bio?: string;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: UpdateUserParams
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const updateData: any = {};
+    
+    if (params.role) {
+      // Enum value validation is automatic
+      updateData.role = params.role;
+    }
+    
+    if (params.status) {
+      updateData.status = params.status;
+    }
+    
+    if (params.bio !== undefined) {
+      updateData.bio = params.bio;
+    }
+    
+    await wdb.table("users").where("id", id).update(updateData);
+  }
+}
+```
+
+### Literal Union Types
+
+```typescript
+interface SearchParams {
+  query: string;
+  // Literal union type
+  searchIn: "username" | "email" | "bio" | "all";
+  sortBy: "relevance" | "created_at" | "username";
+  order: "asc" | "desc";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async search(params: SearchParams): Promise<User[]> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    // Determine search field based on searchIn
+    switch (params.searchIn) {
+      case "username":
+        query = query.where("username", "like", `%${params.query}%`);
+        break;
+      case "email":
+        query = query.where("email", "like", `%${params.query}%`);
+        break;
+      case "bio":
+        query = query.where("bio", "like", `%${params.query}%`);
+        break;
+      case "all":
+        query = query.where((qb) => {
+          qb.where("username", "like", `%${params.query}%`)
+            .orWhere("email", "like", `%${params.query}%`)
+            .orWhere("bio", "like", `%${params.query}%`);
+        });
+        break;
+    }
+    
+    return query.orderBy(params.sortBy, params.order).select("*");
+  }
+}
+```
+
+## Generic Types
+
+### Common List Parameters
+
+```typescript
+// Reusable generic interface
+interface ListParams<T> {
+  page: number;
+  pageSize: number;
+  sortBy?: keyof T;
+  sortOrder?: "asc" | "desc";
+}
+
+// Extended for User
+interface UserListParams extends ListParams<User> {
+  search?: string;
+  role?: UserRole;
+}
+
+// Extended for Product
+interface ProductListParams extends ListParams<Product> {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<User[]> {
+    // sortBy can only be User keys (type safe)
+    // ...
+  }
+}
+```
+
+## Validation Logic
+
+### Custom Validation
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  age?: number;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // Validate parameters
+    this.validateCreateParams(params);
+    
+    const wdb = this.getPuri("w");
+    
+    // ...
+  }
+  
+  private validateCreateParams(params: CreateUserParams): void {
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(params.email)) {
+      throw new Error("Invalid email format");
+    }
+    
+    // Username length validation
+    if (params.username.length < 3 || params.username.length > 20) {
+      throw new Error("Username must be between 3 and 20 characters");
+    }
+    
+    // Password strength validation
+    if (params.password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    
+    // Age validation
+    if (params.age !== undefined && (params.age < 18 || params.age > 120)) {
+      throw new Error("Age must be between 18 and 120");
+    }
+  }
+}
+```
+
+### Validation with Zod
+
+```typescript
+import { z } from "zod";
+
+// Zod schema definition
+const CreateUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  username: z.string().min(3).max(20),
+  password: z.string().min(8),
+  age: z.number().min(18).max(120).optional(),
+  role: z.enum(["admin", "manager", "normal"]),
+});
+
+type CreateUserParams = z.infer<typeof CreateUserSchema>;
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // Validate with Zod
+    const validated = CreateUserSchema.parse(params);
+    
+    const wdb = this.getPuri("w");
+    
+    // validated has guaranteed types
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        email: validated.email,
+        username: validated.username,
+        password: validated.password,
+        age: validated.age,
+        role: validated.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+```
+
+## Parameter Documentation
+
+### JSDoc Comments
+
+```typescript
+/**
+ * Retrieves a list of users.
+ */
+interface UserListParams {
+  /**
+   * Page number (starts from 1)
+   * @example 1
+   */
+  page: number;
+  
+  /**
+   * Number of items per page
+   * @example 20
+   * @min 1
+   * @max 100
+   */
+  pageSize: number;
+  
+  /**
+   * Search keyword (searches in username, email)
+   * @example "john"
+   */
+  search?: string;
+  
+  /**
+   * User role filter
+   * @example "admin"
+   */
+  role?: "admin" | "manager" | "normal";
+  
+  /**
+   * Sort field
+   * @default "created_at"
+   */
+  sortBy?: "created_at" | "username" | "email";
+  
+  /**
+   * Sort order
+   * @default "desc"
+   */
+  sortOrder?: "asc" | "desc";
+}
+```
+
+## Practical Patterns
+
+### Pagination Parameters
+
+```typescript
+interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+interface UserListParams extends PaginationParams {
+  search?: string;
+  role?: UserRole;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    data: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const rdb = this.getPuri("r");
+    
+    // Default value handling
+    const page = Math.max(1, params.page);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize));
+    
+    // ...
+  }
+}
+```
+
+### Filter Parameters
+
+```typescript
+interface ProductFilterParams {
+  // Category
+  category?: string;
+  
+  // Price range
+  minPrice?: number;
+  maxPrice?: number;
+  
+  // Stock status
+  inStock?: boolean;
+  
+  // Brands
+  brands?: string[];
+  
+  // Tags
+  tags?: string[];
+  
+  // Search
+  search?: string;
+}
+
+class ProductModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async search(
+    params: ProductFilterParams & PaginationParams
+  ): Promise<Product[]> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("products");
+    
+    if (params.category) {
+      query = query.where("category", params.category);
+    }
+    
+    if (params.minPrice !== undefined) {
+      query = query.where("price", ">=", params.minPrice);
+    }
+    
+    if (params.maxPrice !== undefined) {
+      query = query.where("price", "<=", params.maxPrice);
+    }
+    
+    if (params.inStock !== undefined) {
+      if (params.inStock) {
+        query = query.where("stock", ">", 0);
+      } else {
+        query = query.where("stock", "=", 0);
+      }
+    }
+    
+    if (params.brands && params.brands.length > 0) {
+      query = query.whereIn("brand", params.brands);
+    }
+    
+    // ...
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Return Types" icon="arrow-turn-down-left" href="/api-development/creating-apis/return-types">
+    Defining response types
+  </Card>
+  <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
+    Basic usage
+  </Card>
+  <Card title="HTTP Methods" icon="globe" href="/api-development/creating-apis/http-methods">
+    GET, POST, PUT, DELETE
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/api-development/error-handling">
+    API error handling
+  </Card>
+</CardGroup>

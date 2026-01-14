@@ -1,0 +1,450 @@
+---
+title: "Running Migrations"
+description: "Apply to database with pnpm sonamu migrate"
+---
+
+How to apply generated Migration files to the database.
+
+## Execution Commands
+
+<CardGroup cols={2}>
+  <Card title="migrate run" icon="play">
+    Run all migrations
+    
+    Update DB to latest
+  </Card>
+  <Card title="migrate status" icon="list-check">
+    Check execution status
+    
+    Pending list
+  </Card>
+  <Card title="migrate latest" icon="forward">
+    Run to latest
+    
+    Same as run
+  </Card>
+  <Card title="migrate up" icon="arrow-up">
+    One at a time
+    
+    Step-by-step execution
+  </Card>
+</CardGroup>
+
+## Basic Execution
+
+### Run All Migrations
+
+```bash
+pnpm sonamu migrate run
+```
+
+**Execution Result**:
+```
+Batch 1 run: 3 migrations
+✅ 20251220143022_create__users.ts
+✅ 20251220143100_create__posts.ts
+✅ 20251220143200_foreign__posts__user_id.ts
+```
+
+<Info>
+`migrate run` executes all pending migrations in order.
+</Info>
+
+### Check Execution Status
+
+```bash
+pnpm sonamu migrate status
+```
+
+**Example Output**:
+```
+Executed migrations:
+  ✅ 20251220143022_create__users.ts
+  ✅ 20251220143100_create__posts.ts
+
+Pending migrations:
+  ⏳ 20251220143200_alter_users_add1.ts
+  ⏳ 20251220143300_alter_posts_add1.ts
+```
+
+## Execution Order
+
+Migrations are executed in **filename timestamp order**:
+
+```
+1. 20251209160740_create__companies.ts
+2. 20251209160741_create__departments.ts
+3. 20251209160742_create__employees.ts
+4. 20251209160750_foreign__departments__company_id.ts
+5. 20251209160751_foreign__employees__user_id.ts
+```
+
+```mermaid
+flowchart TD
+    A["1. create__companies.ts<br/>(batch 1)"] --> B["2. create__departments.ts<br/>(batch 1)"]
+    B --> C["3. create__employees.ts<br/>(batch 1)"]
+    C --> D["4. foreign__departments.ts<br/>(batch 1)"]
+    D --> E["5. foreign__employees.ts<br/>(batch 1)"]
+    
+    style A fill:#e3f2fd
+    style B fill:#e3f2fd
+    style C fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+```
+
+## Step-by-step Execution
+
+### One at a Time
+
+```bash
+pnpm sonamu migrate up
+```
+
+**First Run**:
+```
+Batch 1 run: 1 migration
+✅ 20251220143022_create__users.ts
+```
+
+**Second Run**:
+```
+Batch 2 run: 1 migration
+✅ 20251220143100_create__posts.ts
+```
+
+<Info>
+`migrate up` executes only the oldest pending migration.
+</Info>
+
+## Batch System
+
+### What is a Batch?
+
+A group of migrations executed together:
+
+```sql
+SELECT * FROM knex_migrations ORDER BY id;
+```
+
+| id | name | batch | migration_time |
+|----|------|-------|----------------|
+| 1 | 20251220143022_create__users.ts | 1 | 2025-12-20 14:30:22 |
+| 2 | 20251220143100_create__posts.ts | 1 | 2025-12-20 14:30:22 |
+| 3 | 20251220143200_alter_users_add1.ts | 2 | 2025-12-20 15:00:00 |
+
+### Role of Batches
+
+- **Rollback unit**: Migrations in the same batch are rolled back together
+- **Execution group**: Running `migrate run` once puts them in the same batch
+
+```bash
+# Batch 1: Run 2 at once
+pnpm sonamu migrate run
+✅ 20251220143022_create__users.ts     (batch 1)
+✅ 20251220143100_create__posts.ts     (batch 1)
+
+# Batch 2: Run 1 more later
+pnpm sonamu migrate run
+✅ 20251220143200_alter_users_add1.ts  (batch 2)
+```
+
+## Environment-specific Execution
+
+### Development Environment
+
+```bash
+# .env.development
+DATABASE_URL=postgresql://user:pass@localhost:5432/dev_db
+
+pnpm sonamu migrate run
+```
+
+### Staging Environment
+
+```bash
+# .env.staging
+DATABASE_URL=postgresql://user:pass@staging-db:5432/staging_db
+
+NODE_ENV=staging pnpm sonamu migrate run
+```
+
+### Production Environment
+
+```bash
+# .env.production
+DATABASE_URL=postgresql://user:pass@prod-db:5432/prod_db
+
+NODE_ENV=production pnpm sonamu migrate run
+```
+
+<Warning>
+**Before running in production**:
+1. Test in staging first
+2. Confirm backup is complete
+3. Plan for downtime
+4. Prepare rollback plan
+</Warning>
+
+## Transactions
+
+### Automatic Transactions
+
+Each migration runs in a **separate transaction**:
+
+```typescript
+// 20251220143022_create__users.ts
+export async function up(knex: Knex): Promise<void> {
+  // This entire function is one transaction
+  await knex.schema.createTable("users", (table) => {
+    table.increments().primary();
+    table.string("email", 255).notNullable();
+  });
+  
+  // On error, the CREATE TABLE above is also rolled back
+  await knex.schema.createTable("profiles", (table) => {
+    table.increments().primary();
+    table.integer("user_id").notNullable();
+  });
+}
+```
+
+### Disabling Transactions
+
+```typescript
+// Configure in knexfile.ts
+export default {
+  migrations: {
+    disableTransactions: true,  // Disable transactions
+  },
+};
+```
+
+<Info>
+Some DDL operations may not support transactions.
+</Info>
+
+## Error Handling
+
+### Error During Execution
+
+```bash
+pnpm sonamu migrate run
+```
+
+**Error Occurred**:
+```
+Batch 1 run: 3 migrations
+✅ 20251220143022_create__users.ts
+✅ 20251220143100_create__posts.ts
+❌ 20251220143200_alter_users_add1.ts
+   Error: column "phone" already exists
+```
+
+**Handling**:
+1. Fix the migration file
+2. Retry execution
+
+### Partial Failure
+
+```
+Batch 1 run: 2 migrations (1 successful, 1 failed)
+✅ 20251220143022_create__users.ts     (committed)
+❌ 20251220143100_create__posts.ts     (rolled back)
+```
+
+<Warning>
+When a migration fails:
+- Only that migration is rolled back
+- Previous migrations are retained
+- Not recorded in knex_migrations table
+</Warning>
+
+## Checking Execution Logs
+
+### Verbose Logs
+
+```bash
+pnpm sonamu migrate run --verbose
+```
+
+**Output**:
+```
+Running migration: 20251220143022_create__users.ts
+SQL: CREATE TABLE "users" (
+  "id" serial primary key,
+  "email" varchar(255) not null
+)
+✅ Completed in 45ms
+
+Running migration: 20251220143100_create__posts.ts
+SQL: CREATE TABLE "posts" (
+  "id" serial primary key,
+  "title" varchar(200) not null
+)
+✅ Completed in 32ms
+
+Total time: 77ms
+```
+
+### Querying Execution History
+
+```sql
+-- All execution history
+SELECT * FROM knex_migrations 
+ORDER BY migration_time DESC;
+
+-- Recent batch
+SELECT * FROM knex_migrations 
+WHERE batch = (SELECT MAX(batch) FROM knex_migrations);
+
+-- Check specific migration
+SELECT * FROM knex_migrations 
+WHERE name LIKE '%users%';
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm sonamu migrate run
+```
+
+### Docker
+
+```dockerfile
+# Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
+
+COPY . .
+
+# Run migrations
+CMD ["pnpm", "sonamu", "migrate", "run"]
+```
+
+## Minimizing Downtime
+
+### Blue-Green Deployment
+
+```bash
+# 1. Blue environment (currently running)
+DATABASE_URL=postgresql://blue-db pnpm start
+
+# 2. Apply migration to Green environment
+DATABASE_URL=postgresql://green-db pnpm sonamu migrate run
+
+# 3. Test Green environment
+DATABASE_URL=postgresql://green-db pnpm test
+
+# 4. Switch traffic (Blue → Green)
+# 5. Update Blue environment
+DATABASE_URL=postgresql://blue-db pnpm sonamu migrate run
+```
+
+### Maintaining Compatibility
+
+```typescript
+// Step 1: Add new column (nullable)
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("new_field").nullable();  // ← nullable
+  });
+}
+
+// Step 2: Deploy application (use new_field)
+
+// Step 3: Data migration
+
+// Step 4: Add NOT NULL constraint
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN new_field SET NOT NULL`
+  );
+}
+```
+
+## Practical Tips
+
+### 1. Pre-execution Checks
+
+```bash
+# Check status
+pnpm sonamu migrate status
+
+# Review pending migration
+cat src/migrations/20251220143200_alter_users_add1.ts
+
+# Test in staging
+NODE_ENV=staging pnpm sonamu migrate run
+```
+
+### 2. Backup
+
+```bash
+# PostgreSQL backup
+pg_dump -U postgres -d mydb > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Run migration
+pnpm sonamu migrate run
+
+# Restore if issues occur
+psql -U postgres -d mydb < backup_20251220_143000.sql
+```
+
+### 3. Monitoring
+
+```typescript
+// Measure migration execution time
+const startTime = Date.now();
+
+await knex.migrate.latest();
+
+const duration = Date.now() - startTime;
+console.log(`Migration completed in ${duration}ms`);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Rolling Back" icon="rotate-left" href="/database/migrations/rolling-back">
+    Undo with migrate rollback
+  </Card>
+  <Card title="Strategies" icon="chess" href="/database/migrations/migration-strategies">
+    Safe migration practices
+  </Card>
+  <Card title="Creating Migrations" icon="plus" href="/database/migrations/creating-migrations">
+    Generate in Sonamu UI
+  </Card>
+  <Card title="How It Works" icon="gear" href="/database/migrations/how-migrations-work">
+    Understanding auto-generation
+  </Card>
+</CardGroup>

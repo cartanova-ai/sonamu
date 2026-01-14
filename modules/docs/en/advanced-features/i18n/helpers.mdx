@@ -1,0 +1,179 @@
+---
+title: "헬퍼 함수"
+description: "josa, plural, format 등 i18n 유틸리티"
+---
+
+Sonamu는 다국어 메시지 작성을 돕는 헬퍼 함수들을 제공합니다.
+
+## josa - 한국어 조사 처리
+
+`josa()` 함수는 앞 단어의 받침 유무에 따라 적절한 조사를 선택합니다:
+
+```typescript
+import { josa } from "sonamu/dict";
+
+josa("사람", "은는")  // "사람은"
+josa("나", "은는")    // "나는"
+
+josa("물", "이가")    // "물이"
+josa("바다", "이가")  // "바다가"
+
+josa("밥", "을를")    // "밥을"
+josa("커피", "을를")  // "커피를"
+
+josa("빵", "과와")    // "빵과"
+josa("우유", "과와")  // "우유와"
+
+josa("집", "으로")    // "집으로"
+josa("학교", "으로")  // "학교로"
+```
+
+### 지원하는 조사
+
+| 조사 | 받침 있을 때 | 받침 없을 때 |
+|------|-------------|-------------|
+| `은는` | 은 | 는 |
+| `이가` | 이 | 가 |
+| `을를` | 을 | 를 |
+| `과와` | 과 | 와 |
+| `으로` | 으로 | 로 |
+
+### 딕셔너리에서 사용
+
+```typescript
+// ko.ts
+import { josa } from "sonamu/dict";
+
+export default {
+  "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
+  "validation.duplicate": (field: string) => `이미 사용중인 ${josa(field, "이가")} 있습니다`,
+  "error.notFound": (name: string) => `${josa(name, "을를")} 찾을 수 없습니다`,
+} as const;
+
+// 사용
+SD("validation.required")("이메일")  // "이메일은 필수입니다"
+SD("validation.required")("이름")    // "이름은 필수입니다"
+```
+
+## plural - 복수형 처리
+
+`plural()` 함수는 숫자에 따라 다른 텍스트를 반환합니다:
+
+```typescript
+import { plural } from "sonamu/dict";
+
+plural(0, { zero: "없음", one: "1개", other: "여러 개" })  // "없음"
+plural(1, { zero: "없음", one: "1개", other: "여러 개" })  // "1개"
+plural(5, { zero: "없음", one: "1개", other: "여러 개" })  // "여러 개"
+
+// other에 함수 사용
+plural(5, { other: (n) => `${n}개` })  // "5개"
+
+// zero나 one이 없으면 other로 폴백
+plural(0, { other: "기본값" })  // "기본값"
+plural(1, { other: "기본값" })  // "기본값"
+```
+
+### 옵션
+
+| 옵션 | 조건 | 설명 |
+|------|------|------|
+| `zero` | n === 0 | 0일 때 텍스트 |
+| `one` | n === 1 | 1일 때 텍스트 |
+| `other` | 그 외 | 기본 텍스트 (필수) |
+
+### 딕셔너리에서 사용
+
+```typescript
+// ko.ts
+import { plural } from "sonamu/dict";
+
+export default {
+  "items.count": (count: number) => plural(count, {
+    zero: "항목이 없습니다",
+    one: "1개 항목",
+    other: (n) => `${n}개 항목`,
+  }),
+  
+  "cart.items": (count: number) => plural(count, {
+    zero: "장바구니가 비어있습니다",
+    other: (n) => `장바구니에 ${n}개 상품`,
+  }),
+} as const;
+```
+
+## createFormat - 숫자/날짜 포맷
+
+`createFormat()` 함수는 locale에 맞는 숫자와 날짜 포맷터를 생성합니다:
+
+```typescript
+import { createFormat } from "sonamu/dict";
+
+const format = createFormat("ko");
+
+format.number(1234567)  // "1,234,567"
+format.date(new Date("2024-01-15"))  // "2024. 1. 15."
+
+const enFormat = createFormat("en");
+enFormat.number(1234567)  // "1,234,567"
+enFormat.date(new Date("2024-01-15"))  // "1/15/2024"
+```
+
+### 딕셔너리에서 사용
+
+```typescript
+// ko.ts
+import { createFormat } from "sonamu/dict";
+
+const format = createFormat("ko");
+
+export default {
+  "price.display": (price: number) => `${format.number(price)}원`,
+  "date.created": (date: Date) => `${format.date(date)} 등록`,
+  "validation.range": (field: string, min: number, max: number) =>
+    `${field}은(는) ${format.number(min)}~${format.number(max)} 사이여야 합니다`,
+} as const;
+```
+
+## 여러 헬퍼 조합
+
+복잡한 메시지는 여러 헬퍼를 조합해서 작성합니다:
+
+```typescript
+// ko.ts
+import { createFormat, josa, plural } from "sonamu/dict";
+
+const format = createFormat("ko");
+
+export default {
+  // josa + plural
+  "search.results": (keyword: string, count: number) =>
+    `'${keyword}'${josa(keyword, "으로")} 검색한 결과 ` +
+    plural(count, {
+      zero: "없음",
+      other: (n) => `${format.number(n)}건`,
+    }),
+  
+  // format + josa
+  "order.total": (itemCount: number, total: number) =>
+    `${itemCount}개 상품, 총 ${format.number(total)}원`,
+    
+  // 복합 메시지
+  "dashboard.summary": (userName: string, taskCount: number, date: Date) =>
+    `${userName}님, ${format.date(date)} 기준 ` +
+    plural(taskCount, {
+      zero: "처리할 작업이 없습니다",
+      one: "1개의 작업이 대기 중입니다",
+      other: (n) => `${n}개의 작업이 대기 중입니다`,
+    }),
+} as const;
+```
+
+<CardGroup cols={2}>
+  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
+    딕셔너리 작성 및 사용
+  </Card>
+  <Card title="다국어 컬럼" icon="database" href="/advanced-features/i18n/localized-columns">
+    DB 컬럼 다국어 지원
+  </Card>
+</CardGroup>

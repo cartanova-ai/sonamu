@@ -1,0 +1,515 @@
+---
+title: '데이터베이스'
+description: '데이터베이스와 쿼리 관련 질문'
+---
+
+## Puri 쿼리 빌더
+
+<AccordionGroup>
+<Accordion title="Puri는 Promise를 직접 구현하나요?">
+
+네, Puri는 `Promise` 인터페이스를 직접 구현합니다.
+
+```typescript
+// puri.ts 내부 구현
+export class Puri<TSchema, TTables, TResult> implements Promise<TResult[]> {
+  then<TResult1 = TResult[], TResult2 = never>(
+    onfulfilled?: ((value: TResult[]) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.knexQuery.then(onfulfilled, onrejected);
+  }
+  
+  catch<TResult2 = never>(...): Promise<TResult[] | TResult2> { }
+  finally(onfinally?: (() => void) | null): Promise<TResult[]> { }
+}
+```
+
+**사용 방법:**
+
+```typescript
+// ✅ await를 직접 사용 (배열 반환)
+const users = await UserModel.getPuri().select("id", "name");
+
+// ✅ .first()로 단일 객체 조회
+const user = await UserModel.getPuri()
+  .select("id", "name")
+  .where({ id: 1 })
+  .first();
+
+// ✅ Puri.count()로 카운트
+const result = await UserModel.getPuri()
+  .select({ count: Puri.count() })
+  .where({ status: "active" });
+const count = result[0].count;
+```
+
+**주의:**
+
+- `.getMany()`, `.getOne()`, `.getScalar()` 같은 메서드는 **존재하지 않습니다**
+- 항상 배열을 반환합니다 (`Expand<TResult>[]`)
+- 단일 객체는 `.first()` 사용
+
+</Accordion>
+
+<Accordion title="Puri에서 집계 함수를 사용하려면?">
+
+`Puri.count()`, `Puri.sum()`, `Puri.avg()` 등의 static 메서드를 사용합니다.
+
+```typescript
+// COUNT
+const result = await UserModel.getPuri()
+  .select({ count: Puri.count() })
+  .where({ status: "active" });
+const count = result[0].count;
+
+// SUM
+const result = await OrderModel.getPuri()
+  .select({ total: Puri.sum("amount") })
+  .where({ status: "completed" });
+const total = result[0].total;
+
+// AVG
+const result = await ProductModel.getPuri()
+  .select({ avg_price: Puri.avg("price") });
+const avgPrice = result[0].avg_price;
+
+// COUNT + GROUP BY
+const stats = await OrderModel.getPuri()
+  .select(
+    "user_id",
+    { count: Puri.count(), total: Puri.sum("amount") }
+  )
+  .groupBy("user_id");
+```
+
+</Accordion>
+
+<Accordion title="Puri에서 JOIN을 사용하려면?">
+
+**INNER JOIN:**
+
+```typescript
+const ordersWithUser = await OrderModel.getPuri()
+  .select("orders.id", "orders.total", "users.name")
+  .join("users", "users.id", "orders.user_id");
+```
+
+**LEFT JOIN:**
+
+```typescript
+const usersWithOrders = await UserModel.getPuri()
+  .select("users.id", "users.name", "orders.total")
+  .leftJoin("orders", "orders.user_id", "users.id");
+```
+
+**복잡한 JOIN 조건 (콜백 방식):**
+
+```typescript
+const result = await UserModel.getPuri()
+  .select("users.*", "orders.total")
+  .leftJoin("orders", (j) => {
+    j.on("orders.user_id", "users.id")
+     .on("orders.status", "=", "completed");
+  });
+```
+
+</Accordion>
+
+<Accordion title="Puri에서 서브쿼리를 사용하려면?">
+
+**WHERE IN 서브쿼리:**
+
+```typescript
+const activeUserIds = UserModel.getPuri("r")
+  .select("id")
+  .where({ status: "active" });
+
+const orders = await OrderModel.getPuri()
+  .select("*")
+  .whereIn("user_id", activeUserIds);
+```
+
+**FROM 서브쿼리:**
+
+```typescript
+const subquery = UserModel.getPuri("r")
+  .select("user_id", { count: Puri.count() })
+  .groupBy("user_id");
+
+const result = await new Puri(knex, { sq: subquery })
+  .select("sq.user_id", "sq.count")
+  .where("sq.count", ">", 10);
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 마이그레이션
+
+<AccordionGroup>
+<Accordion title="마이그레이션을 생성하고 실행하려면?">
+
+**1. Entity 수정**
+
+Sonamu UI에서 Entity 편집
+
+**2. 마이그레이션 생성**
+
+```bash
+# Sonamu UI의 DB Migration 탭
+# → Prepared Migration Codes 확인
+# → Generate 클릭
+```
+
+또는 CLI:
+
+```bash
+pnpm sonamu migrate status
+# → 생성 필요한 마이그레이션 확인
+```
+
+**3. 마이그레이션 실행**
+
+```bash
+# 개발 환경
+pnpm sonamu migrate run
+
+# 프로덕션
+NODE_ENV=production pnpm sonamu migrate run
+
+# 롤백
+pnpm sonamu migrate rollback
+```
+
+</Accordion>
+
+<Accordion title="마이그레이션을 안전하게 테스트하려면?">
+
+Shadow DB를 사용하여 테스트합니다:
+
+```bash
+# Shadow DB 테스트
+pnpm sonamu migrate shadow-test
+# → 임시 Shadow DB 생성
+# → Migration 적용
+# → 성공 확인
+# → Shadow DB 삭제
+```
+
+Shadow DB 설정:
+
+```typescript
+// sonamu.config.ts
+export default {
+  database: {
+    connections: {
+      main: {
+        // ...
+      },
+      shadow: {
+        host: "localhost",
+        port: 5432,
+        database: "myapp_shadow",
+        user: "postgres",
+        password: "password"
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+</Accordion>
+
+<Accordion title="컬럼 타입을 변경할 때 기존 데이터를 안전하게 마이그레이션하려면?">
+
+임시 컬럼을 활용하여 데이터를 변환한 후 원본 컬럼을 교체합니다.
+
+**예시: string → integer 변환**
+
+```typescript
+// migrations/20250115_change_status_type.ts
+import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("products", (table) => {
+    // 1. 임시 컬럼 생성 (새 타입)
+    table.integer("status_new");
+  });
+
+  // 2. 데이터 변환
+  await knex.raw(`
+    UPDATE products 
+    SET status_new = CASE 
+      WHEN status = 'active' THEN 1
+      WHEN status = 'inactive' THEN 2
+      WHEN status = 'pending' THEN 3
+      ELSE 0
+    END
+  `);
+
+  // 3. 기존 컬럼 삭제
+  await knex.schema.alterTable("products", (table) => {
+    table.dropColumn("status");
+  });
+
+  // 4. 새 컬럼 이름 변경
+  await knex.schema.alterTable("products", (table) => {
+    table.renameColumn("status_new", "status");
+  });
+
+  // 5. NOT NULL 제약 추가 (선택사항)
+  await knex.schema.alterTable("products", (table) => {
+    table.integer("status").notNullable().alter();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  // 롤백: 역순으로 복원
+  await knex.schema.alterTable("products", (table) => {
+    table.string("status_old", 20);
+  });
+
+  await knex.raw(`
+    UPDATE products 
+    SET status_old = CASE 
+      WHEN status = 1 THEN 'active'
+      WHEN status = 2 THEN 'inactive'
+      WHEN status = 3 THEN 'pending'
+      ELSE 'unknown'
+    END
+  `);
+
+  await knex.schema.alterTable("products", (table) => {
+    table.dropColumn("status");
+    table.renameColumn("status_old", "status");
+  });
+}
+```
+
+</Accordion>
+
+<Accordion title="컬럼명을 변경할 때 데이터를 보존하려면?">
+
+Entity 자동 생성 시 DROP/ADD로 생성되므로 **수동으로 RENAME 사용**:
+
+```typescript
+// Entity 변경 후 자동 생성된 Migration 파일 수정
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // ❌ table.dropColumn("old_name");
+    // ❌ table.string("new_name");
+    
+    // ✅ RENAME 사용 (데이터 보존)
+    table.renameColumn("old_name", "new_name");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.renameColumn("new_name", "old_name");
+  });
+}
+```
+
+</Accordion>
+
+<Accordion title="FK 제약조건이 있는 컬럼을 변경하려면?">
+
+FK 제약을 삭제한 후 컬럼 변경, 다시 FK 재생성:
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("orders", (table) => {
+    // 1. FK 제약 삭제
+    table.dropForeign(["user_id"]);
+  });
+
+  // 2. 컬럼 타입 변경
+  await knex.raw(`
+    ALTER TABLE orders 
+    ALTER COLUMN user_id TYPE BIGINT USING user_id::BIGINT
+  `);
+
+  await knex.schema.alterTable("orders", (table) => {
+    // 3. FK 제약 재생성
+    table.foreign("user_id")
+      .references("id")
+      .inTable("users")
+      .onDelete("CASCADE")
+      .onUpdate("CASCADE");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("orders", (table) => {
+    table.dropForeign(["user_id"]);
+  });
+
+  await knex.raw(`
+    ALTER TABLE orders 
+    ALTER COLUMN user_id TYPE INTEGER USING user_id::INTEGER
+  `);
+
+  await knex.schema.alterTable("orders", (table) => {
+    table.foreign("user_id")
+      .references("id")
+      .inTable("users");
+  });
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## PostgreSQL 특화
+
+<AccordionGroup>
+<Accordion title="PostgreSQL의 JSONB 연산자를 Puri에서 사용하려면?">
+
+`Puri.rawString()`과 `.whereRaw()`로 JSONB 연산자를 사용합니다.
+
+**JSONB 속성 조회 (->>, ->):**
+
+```typescript
+// metadata->>'brand' = 'Samsung'
+const products = await ProductModel.getPuri("r")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    brand: Puri.rawString("products.metadata->>'brand'"),
+    tags: Puri.rawStringArray("products.metadata->'tags'"),
+  })
+  .whereRaw("products.metadata->>'brand' = ?", ["Samsung"]);
+```
+
+**JSONB 포함 연산자 (@>):**
+
+```typescript
+// metadata @> '{"warranty": 2}'
+const productsWithWarranty = await ProductModel.getPuri("r")
+  .select("*")
+  .whereRaw("products.metadata @> ?", [JSON.stringify({ warranty: 2 })]);
+```
+
+**JSONB 키 존재 여부 (?):**
+
+```typescript
+// metadata ? 'discount'
+const productsWithDiscount = await ProductModel.getPuri("r")
+  .select("*")
+  .whereRaw("products.metadata ?? 'discount'");  // ? 대신 ?? 사용
+```
+
+**중첩 JSONB 속성:**
+
+```typescript
+// metadata->'specs'->>'cpu'
+const laptops = await ProductModel.getPuri("r")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    cpu: Puri.rawString("products.metadata->'specs'->>'cpu'"),
+    ram: Puri.rawString("products.metadata->'specs'->>'ram'"),
+  })
+  .whereRaw("products.metadata->'specs'->>'cpu' LIKE ?", ["%Intel%"]);
+```
+
+**주의사항:**
+
+- `->>` 는 텍스트 반환, `->` 는 JSONB 반환
+- SQL Injection 방지를 위해 파라미터 바인딩 사용
+- GIN 인덱스 생성 권장: `CREATE INDEX ON products USING gin(metadata);`
+
+</Accordion>
+
+<Accordion title="PostgreSQL의 Full-Text Search를 사용하려면?">
+
+**ts_vector 컬럼 생성:**
+
+```typescript
+// Entity 정의
+{
+  "name": "search_vector",
+  "type": "customType",
+  "id": "TsVectorType",
+  "nullable": true
+}
+```
+
+**검색 쿼리:**
+
+```typescript
+const posts = await PostModel.getPuri()
+  .select("*")
+  .whereTsSearch("search_vector", "typescript database", {
+    parser: "websearch_to_tsquery",
+    config: "simple"
+  });
+```
+
+**하이라이팅:**
+
+```typescript
+const posts = await PostModel.getPuri()
+  .select({
+    id: "posts.id",
+    title: Puri.tsHighlight("posts.title", "typescript"),
+    content: Puri.tsHighlight("posts.content", "typescript", {
+      startSel: "<mark>",
+      stopSel: "</mark>",
+      maxFragments: 3
+    })
+  })
+  .whereTsSearch("search_vector", "typescript");
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 트랜잭션
+
+<AccordionGroup>
+<Accordion title="트랜잭션을 사용하려면?">
+
+**방법 1: Model의 transaction 메서드**
+
+```typescript
+await UserModel.transaction(async (trx) => {
+  const user = await UserModel.save({ name: "John" }, { trx });
+  const profile = await ProfileModel.save({ user_id: user.id }, { trx });
+  return user;
+});
+```
+
+**방법 2: DB.transact**
+
+```typescript
+import { DB } from "sonamu";
+
+await DB.transact("w", async (trx) => {
+  await trx("users").insert({ name: "John" });
+  await trx("profiles").insert({ user_id: 1 });
+});
+```
+
+**에러 발생 시 자동 롤백됩니다.**
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 관련 문서
+
+- [Puri 쿼리 빌더](/database/puri/basic-queries)
+- [Puri 고급 쿼리](/database/puri/advanced-queries)
+- [마이그레이션 기본](/database/migrations/migration-basics)
+- [마이그레이션 전략](/database/migrations/migration-strategies)
+- [트랜잭션](/database/transactions)

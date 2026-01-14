@@ -1,0 +1,701 @@
+---
+title: "Session Management"
+description: "Managing session and token lifecycle"
+---
+
+Learn how to effectively manage the lifecycle of sessions and JWT tokens. Session management is an important topic that directly affects user experience and security.
+
+## Session Management Overview
+
+<CardGroup cols={2}>
+  <Card title="Session Store" icon="database">
+    Redis, PostgreSQL
+    
+    Scalable storage
+  </Card>
+  <Card title="Session Expiration" icon="clock">
+    Auto expiration
+    
+    Sliding expiration
+  </Card>
+  <Card title="Token Refresh" icon="arrows-rotate">
+    Refresh Token
+    
+    Access Token reissue
+  </Card>
+  <Card title="Logout" icon="right-from-bracket">
+    Session invalidation
+    
+    Token blacklist
+  </Card>
+</CardGroup>
+
+## Session-Based Authentication
+
+### How Sessions Work
+
+Session-based authentication is a method where the server **stores the user's login state on the server side**. Understanding how it works helps you better handle security and scalability issues.
+
+**Session Authentication Flow**:
+1. When user logs in, server generates a session ID
+2. Session data (user ID, etc.) is stored in session store
+3. Session ID is sent to client as a cookie
+4. Each subsequent request authenticates user via session ID in cookie
+
+**Advantages**:
+- Server has full control over sessions (can invalidate anytime)
+- Sensitive information is not exposed to client
+- Simple to implement and well-proven method
+
+**Disadvantages**:
+- Stores state on server, requiring scalability considerations
+- Session store can become a single point of failure (SPOF)
+
+### Session Store Configuration
+
+**Memory Store (Development Only)**:
+
+Memory store should only be used in development environments. All sessions are lost when the server restarts, and sessions cannot be shared across multiple server instances.
+
+```typescript
+// server.ts (Development environment)
+import fastify from "fastify";
+import fastifySession from "@fastify/session";
+import fastifyCookie from "@fastify/cookie";
+
+const app = fastify();
+
+app.register(fastifyCookie);
+
+app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET!,
+  cookie: {
+    secure: false, // Allow HTTP in development
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24, // 1 day
+  },
+  saveUninitialized: false,
+  // Uses memory store if store is not specified
+});
+```
+
+<Warning>
+**Problems with Memory Store**:
+- All sessions lost on server restart
+- Cannot share sessions across multiple server instances
+- Memory usage growth can degrade performance
+- **Never use in production**
+</Warning>
+
+**Redis Store (Production)**:
+
+Using Redis as a session store is the industry standard for production environments. Redis is fast, scalable, and supports session sharing across multiple server instances.
+
+```bash
+npm install @fastify/redis connect-redis
+# or
+pnpm add @fastify/redis connect-redis
+```
+
+```typescript
+// server.ts (Production)
+import fastify from "fastify";
+import fastifySession from "@fastify/session";
+import fastifyCookie from "@fastify/cookie";
+import fastifyRedis from "@fastify/redis";
+import RedisStore from "connect-redis";
+
+const app = fastify();
+
+// Redis connection
+app.register(fastifyRedis, {
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379"),
+  password: process.env.REDIS_PASSWORD,
+  // Connection pool settings
+  lazyConnect: false,
+  enableReadyCheck: true,
+});
+
+app.register(fastifyCookie);
+
+// Use Redis as session store
+app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET!,
+  store: new RedisStore({
+    client: app.redis, // Use Fastify Redis client
+    prefix: "sess:", // Session key prefix
+    ttl: 60 * 60 * 24 * 7, // 7 days (in seconds)
+  }),
+  cookie: {
+    secure: true, // HTTPS required
+    httpOnly: true, // XSS prevention
+    sameSite: "strict", // CSRF prevention
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  },
+  saveUninitialized: false,
+  resave: false,
+});
+```
+
+**Redis Configuration Explained**:
+- `prefix`: Prefix for session keys to distinguish from other data
+- `ttl`: Time To Live, automatic session expiration time (in seconds)
+- `client`: Redis client instance
+
+<Info>
+Redis supports cluster mode for implementing high availability (HA). Using managed services like AWS ElastiCache or Azure Cache for Redis makes operations more convenient.
+</Info>
+
+**PostgreSQL Store (Alternative)**:
+
+If you're already using PostgreSQL, you can use PostgreSQL as a session store without a separate Redis. However, performance is lower than Redis.
+
+```bash
+npm install connect-pg-simple
+# or
+pnpm add connect-pg-simple
+```
+
+```typescript
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
+
+const PgStore = connectPgSimple(session);
+const pgPool = new pg.Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || "5432"),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET!,
+  store: new PgStore({
+    pool: pgPool,
+    tableName: "sessions", // Session table name
+  }),
+  cookie: {
+    secure: true,
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
+});
+```
+
+### Session Expiration Strategies
+
+**Fixed Expiration**:
+
+Session expires unconditionally after a set time from creation. High security but may result in poor user experience.
+
+```typescript
+app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET!,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 2, // Unconditional expiration after 2 hours
+  },
+  rolling: false, // Disable sliding expiration
+});
+```
+
+**Sliding Expiration**:
+
+Session expiration time is renewed with each user activity. Suitable for "Remember Me" functionality with good user experience.
+
+```typescript
+app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET!,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  },
+  rolling: true, // Renew expiration time on each request
+  resave: false, // Save even if session unchanged
+});
+```
+
+**Hybrid Strategy**:
+
+Set short expiration time initially, and apply longer expiration when "Remember Me" is selected.
+
+```typescript
+class AuthModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async login(params: {
+    email: string;
+    password: string;
+    rememberMe?: boolean;
+  }): Promise<{ user: User }> {
+    const { email, password, rememberMe } = params;
+    const context = Sonamu.getContext();
+    
+    // Authentication logic...
+    const user = await this.authenticateUser(email, password);
+    
+    // Adjust session expiration based on Remember Me
+    if (rememberMe) {
+      context.request.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 30; // 30 days
+    } else {
+      context.request.session.cookie.maxAge = 1000 * 60 * 60 * 2; // 2 hours
+    }
+    
+    // Save login info to session
+    await this.loginToSession(user);
+    
+    return { user };
+  }
+}
+```
+
+### Session Data Management
+
+Store only minimal information in sessions. Large session size degrades performance and increases storage costs.
+
+```typescript
+// ✅ Good example: Store only minimal info
+context.request.session.userId = user.id;
+context.request.session.role = user.role;
+
+// ❌ Bad example: Storing too much info
+context.request.session.user = {
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  bio: user.bio,
+  profileImage: user.profileImage,
+  preferences: user.preferences,
+  // ... many fields
+};
+```
+
+**Accessing Session Data**:
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getProfile(): Promise<{ user: User }> {
+    const context = Sonamu.getContext();
+    
+    // Get user ID from session
+    const userId = context.request.session.userId;
+    
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+    
+    // Query latest info from database
+    const rdb = this.getPuri("r");
+    const user = await rdb
+      .table("users")
+      .where("id", userId)
+      .first();
+    
+    return { user };
+  }
+}
+```
+
+## JWT Token Management
+
+### How JWT Works
+
+JWT (JSON Web Token) is a **stateless** authentication method. After the server creates a token, all information is contained within the token itself, so the server doesn't need to store anything separately.
+
+**JWT Structure**:
+```
+header.payload.signature
+```
+
+- **Header**: Token type and algorithm (e.g., `{"alg": "HS256", "typ": "JWT"}`)
+- **Payload**: User information and claims (e.g., `{"userId": 123, "role": "user"}`)
+- **Signature**: Signature to verify token integrity
+
+**JWT Advantages**:
+- Good scalability as server doesn't store state
+- Suitable for microservice environments
+- No separate lookup needed as information is contained in token itself
+
+**JWT Disadvantages**:
+- Difficult to forcibly invalidate token from server
+- Token size is larger than cookies
+- If token is stolen, it can be used until expiration
+
+### Access Token and Refresh Token
+
+**Access Token** is a **short-lived token** used for API requests. Usually has a short validity period of 15 minutes to 1 hour. Even if stolen, damage is minimized.
+
+**Refresh Token** is a **long-lived token** used to reissue Access Tokens. Usually has a validity period of 7 to 30 days and is stored on the server for management.
+
+**Why use two tokens?**
+
+If Access Token validity is set to 30 days:
+- If stolen, it can be abused for 30 days
+- User permission changes are not immediately reflected
+
+With short Access Token and Refresh Token renewal:
+- Stolen Access Token is only valid for a short time
+- Permission changes can be reflected quickly
+- Refresh Token can be stored on server and invalidated
+
+```typescript
+// auth/jwt.ts
+import jwt from "jsonwebtoken";
+
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
+
+/**
+ * Generate Access Token (short-lived)
+ */
+export function generateAccessToken(user: User): string {
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    },
+    ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: "15m", // 15 minutes
+    }
+  );
+}
+
+/**
+ * Generate Refresh Token (long-lived)
+ */
+export function generateRefreshToken(user: User): string {
+  return jwt.sign(
+    {
+      userId: user.id,
+      // Minimal info in Refresh Token
+    },
+    REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: "7d", // 7 days
+    }
+  );
+}
+
+/**
+ * Verify Access Token
+ */
+export function verifyAccessToken(token: string) {
+  try {
+    return jwt.verify(token, ACCESS_TOKEN_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Verify Refresh Token
+ */
+export function verifyRefreshToken(token: string) {
+  try {
+    return jwt.verify(token, REFRESH_TOKEN_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+```
+
+<Warning>
+**Security Notes**:
+- **Must use different** secrets for Access Token and Refresh Token
+- Store Refresh Token on server to enable invalidation
+- To prevent XSS attacks, store tokens in httpOnly cookies instead of localStorage
+</Warning>
+
+### Refresh Token Database Schema
+
+```sql
+CREATE TABLE refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  INDEX idx_user_id (user_id),
+  INDEX idx_token (token),
+  INDEX idx_expires_at (expires_at)
+);
+```
+
+### Token Refresh Implementation
+
+```typescript
+class AuthModel extends BaseModelClass {
+  /**
+   * Refresh Access Token
+   * 
+   * Receives Refresh Token and issues new Access Token.
+   * Verifies both token validity and database storage.
+   */
+  @api({ httpMethod: "POST" })
+  async refreshToken(params: {
+    refreshToken: string;
+  }): Promise<{
+    accessToken: string;
+    refreshToken?: string; // For Refresh Token Rotation
+  }> {
+    const { refreshToken } = params;
+    
+    // 1. Verify Refresh Token
+    const payload = verifyRefreshToken(refreshToken);
+    
+    if (!payload || typeof payload === "string") {
+      throw new Error("Invalid refresh token");
+    }
+    
+    // 2. Verify Refresh Token in database
+    const rdb = this.getPuri("r");
+    const storedToken = await rdb
+      .table("refresh_tokens")
+      .where("token", refreshToken)
+      .where("user_id", payload.userId)
+      .where("expires_at", ">", new Date())
+      .first();
+    
+    if (!storedToken) {
+      throw new Error("Refresh token not found or expired");
+    }
+    
+    // 3. Query user info
+    const user = await rdb
+      .table("users")
+      .where("id", payload.userId)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 4. Generate new Access Token
+    const accessToken = generateAccessToken(user);
+    
+    // 5. Refresh Token Rotation (optional)
+    // Renew Refresh Token together for enhanced security
+    const newRefreshToken = generateRefreshToken(user);
+    
+    const wdb = this.getPuri("w");
+    
+    // Delete existing Refresh Token
+    await wdb
+      .table("refresh_tokens")
+      .where("token", refreshToken)
+      .delete();
+    
+    // Save new Refresh Token
+    await wdb.table("refresh_tokens").insert({
+      user_id: user.id,
+      token: newRefreshToken,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+    
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+}
+```
+
+**Refresh Token Rotation** is a technique that issues a new Refresh Token each time one is used, enhancing security. Even if a token is stolen, only one of the thief or legitimate user can receive a new token, enabling quick detection of theft.
+
+### Token Invalidation (Logout)
+
+JWT is valid until expiration by default, but can be forcibly invalidated using a blacklist.
+
+```typescript
+class AuthModel extends BaseModelClass {
+  /**
+   * Logout
+   * 
+   * Deletes Refresh Token from database and
+   * adds Access Token to blacklist.
+   */
+  @api({ httpMethod: "POST" })
+  async logout(): Promise<{ success: boolean }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Not authenticated");
+    }
+    
+    const wdb = this.getPuri("w");
+    
+    // 1. Delete all Refresh Tokens
+    await wdb
+      .table("refresh_tokens")
+      .where("user_id", context.user.id)
+      .delete();
+    
+    // 2. Add current Access Token to blacklist
+    const authHeader = context.request.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      
+      // Calculate remaining validity time of Access Token
+      const decoded = jwt.decode(token) as any;
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      
+      // Add to Redis blacklist (TTL is remaining token time)
+      const redis = getRedisClient();
+      await redis.setex(`blacklist:${token}`, expiresIn, "1");
+    }
+    
+    return { success: true };
+  }
+  
+  /**
+   * Logout all sessions (including other devices)
+   */
+  @api({ httpMethod: "POST" })
+  async logoutAll(): Promise<{ success: boolean }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Not authenticated");
+    }
+    
+    const wdb = this.getPuri("w");
+    
+    // Delete all Refresh Tokens
+    await wdb
+      .table("refresh_tokens")
+      .where("user_id", context.user.id)
+      .delete();
+    
+    return { success: true };
+  }
+}
+```
+
+### Token Blacklist Middleware
+
+```typescript
+// auth/jwt.middleware.ts
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+export async function checkTokenBlacklist(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const authHeader = request.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return;
+  }
+  
+  const token = authHeader.substring(7);
+  
+  // Check blacklist in Redis
+  const redis = getRedisClient();
+  const isBlacklisted = await redis.exists(`blacklist:${token}`);
+  
+  if (isBlacklisted) {
+    return reply.status(401).send({
+      error: "Token has been revoked",
+    });
+  }
+}
+```
+
+## Practical Patterns
+
+### Concurrent Login Restriction
+
+How to restrict concurrent access from multiple devices with one account.
+
+```typescript
+class AuthModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async login(params: {
+    email: string;
+    password: string;
+  }): Promise<{ accessToken: string }> {
+    const { email, password } = params;
+    
+    // Authentication...
+    const user = await this.authenticateUser(email, password);
+    
+    const wdb = this.getPuri("w");
+    
+    // Delete all existing sessions (force logout)
+    await wdb
+      .table("refresh_tokens")
+      .where("user_id", user.id)
+      .delete();
+    
+    // Issue new tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    
+    await wdb.table("refresh_tokens").insert({
+      user_id: user.id,
+      token: refreshToken,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+    
+    return { accessToken };
+  }
+}
+```
+
+### Cleanup Expired Sessions
+
+Periodically delete expired Refresh Tokens to manage database size.
+
+```typescript
+// tasks/cleanup-tokens.ts
+import { task } from "sonamu";
+
+/**
+ * Delete expired Refresh Tokens at midnight every day
+ */
+@task({ cron: "0 0 * * *" })
+export async function cleanupExpiredTokens() {
+  const db = getDatabase();
+  
+  const result = await db
+    .table("refresh_tokens")
+    .where("expires_at", "<", new Date())
+    .delete();
+  
+  console.log(`Deleted ${result} expired refresh tokens`);
+}
+```
+
+## Cautions
+
+<Warning>
+**Session/Token Management Cautions**:
+1. Manage Session Secret and JWT Secret via environment variables
+2. External session store like Redis is required for production
+3. Store Refresh Token in database to enable invalidation
+4. Set Access Token short, Refresh Token long
+5. Set `secure: true` only when using HTTPS
+6. `httpOnly: true` is required for XSS prevention
+7. Use Redis TTL feature for blacklist
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Setup" icon="gear" href="/api-development/authentication/setup">
+    Building authentication system
+  </Card>
+  <Card title="Protected Routes" icon="shield-halved" href="/api-development/authentication/protected-routes">
+    Permission control with Guards
+  </Card>
+  <Card title="Context" icon="diagram-project" href="/api-development/context/sonamu-context">
+    Learn more about Context
+  </Card>
+  <Card title="Workflows" icon="diagram-next" href="/advanced-features/workflows/overview">
+    Task scheduling
+  </Card>
+</CardGroup>

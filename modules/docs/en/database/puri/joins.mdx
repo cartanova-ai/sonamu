@@ -1,0 +1,573 @@
+---
+title: "Joins"
+description: "Joining tables with Puri"
+---
+
+Puri can join multiple tables to query related data together. This document explains INNER JOIN, LEFT JOIN, and complex join patterns.
+
+## Join Overview
+
+<CardGroup cols={2}>
+  <Card title="INNER JOIN" icon="link">
+    Data existing in both tables
+    
+    join()
+  </Card>
+  <Card title="LEFT JOIN" icon="arrow-left">
+    Left table based, right is Optional
+    
+    leftJoin()
+  </Card>
+  <Card title="Self JOIN" icon="repeat">
+    Join same table
+    
+    Using alias
+  </Card>
+  <Card title="M:N JOIN" icon="diagram-project">
+    Many-to-many relationship join
+    
+    Using junction table
+  </Card>
+</CardGroup>
+
+## INNER JOIN
+
+Queries only data that **exists in both** tables.
+
+### Basic JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .select({
+    employeeId: "employees.id",
+    employeeNumber: "employees.employee_number",
+    userName: "users.username",
+    userEmail: "users.email",
+  });
+
+// SQL:
+// SELECT ...
+// FROM employees
+// INNER JOIN users ON employees.user_id = users.id
+```
+
+<Info>
+**When to use INNER JOIN**: 
+- When the relationship is **required** (NOT NULL foreign key)
+- When data must exist in both tables
+- Example: employees → users (all employees must have a user account)
+</Info>
+
+### Multiple Table JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .join("departments", "employees.department_id", "departments.id")
+  .join("companies", "departments.company_id", "companies.id")
+  .select({
+    employeeName: "users.username",
+    departmentName: "departments.name",
+    companyName: "companies.name",
+  });
+
+// employees → users (required)
+// employees → departments (required)
+// departments → companies (required)
+```
+
+## LEFT JOIN
+
+Includes all data from the left table, and **includes if available** from the right table.
+
+### Basic LEFT JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",
+    employeeNumber: "employees.employee_number",
+    departmentName: "departments.name", // Can be null
+  });
+
+// SQL:
+// SELECT ...
+// FROM employees
+// LEFT JOIN departments ON employees.department_id = departments.id
+```
+
+<Info>
+**When to use LEFT JOIN**:
+- When the relationship is **optional** (NULLABLE foreign key)
+- When all data from the left table is needed
+- Example: employees → departments (some employees may not have a department)
+</Info>
+
+### INNER JOIN vs LEFT JOIN Comparison
+
+<CodeGroup>
+```typescript title="INNER JOIN - Only matching both"
+const results = await db
+  .table("employees")
+  .join("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",
+    departmentName: "departments.name",
+  });
+
+// Only employees with departments (excludes employees without department)
+```
+
+```typescript title="LEFT JOIN - All left + right if exists"
+const results = await db
+  .table("employees")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",
+    departmentName: "departments.name", // Can be null
+  });
+
+// All employees (includes those without department, department_name is null)
+```
+</CodeGroup>
+
+### Complex LEFT JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .leftJoin("companies", "departments.company_id", "companies.id")
+  .select({
+    employeeId: "employees.id",
+    employeeNumber: "employees.employee_number",
+    departmentName: "departments.name",  // Can be null
+    companyName: "companies.name",       // Can be null
+  });
+
+// employees (required)
+// → departments (optional)
+// → companies (optional)
+```
+
+## Mixed INNER + LEFT JOIN
+
+Use INNER JOIN for required relationships, LEFT JOIN for optional ones.
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")              // Required: all employees have users
+  .leftJoin("departments", "employees.department_id", "departments.id") // Optional: may not have department
+  .select({
+    employeeName: "users.username",           // Always exists
+    departmentName: "departments.name",       // Can be null
+  });
+```
+
+<Tip>
+**Join type selection guide**:
+1. Check database schema (NOT NULL vs NULLABLE)
+2. NOT NULL foreign key → INNER JOIN
+3. NULLABLE foreign key → LEFT JOIN
+4. Consider business requirements
+</Tip>
+
+## Self JOIN - Self Reference
+
+Use **aliases** when joining the same table.
+
+### Department Hierarchy Example
+
+```typescript
+const results = await db
+  .table({ child: "departments" })
+  .leftJoin(
+    { parent: "departments" },
+    "child.parent_id",
+    "parent.id"
+  )
+  .select({
+    childId: "child.id",
+    childName: "child.name",
+    parentId: "parent.id",
+    parentName: "parent.name", // Can be null (top-level department)
+  });
+
+// departments (child) LEFT JOIN departments (parent)
+// child.parent_id = parent.id
+```
+
+**Example Results**:
+| childId | childName | parentId | parentName |
+|---------|-----------|----------|------------|
+| 1 | Headquarters | null | null |
+| 2 | Dev Team | 1 | Headquarters |
+| 3 | Design Team | 1 | Headquarters |
+| 4 | Backend Team | 2 | Dev Team |
+
+### User Referrer Example
+
+```typescript
+const results = await db
+  .table({ user: "users" })
+  .leftJoin(
+    { referrer: "users" },
+    "user.referrer_id",
+    "referrer.id"
+  )
+  .select({
+    userId: "user.id",
+    userName: "user.username",
+    referrerId: "referrer.id",
+    referrerName: "referrer.username", // Can be null
+  })
+  .where("user.role", "normal");
+
+// Normal users + referrer info
+```
+
+## Many-to-Many Join
+
+Many-to-many (M:N) relationships are joined through **junction tables**.
+
+### Projects ↔ Employees Example
+
+```typescript
+const results = await db
+  .table("projects")
+  .leftJoin("projects__employees", "projects.id", "projects__employees.project_id")
+  .leftJoin("employees", "projects__employees.employee_id", "employees.id")
+  .leftJoin("users", "employees.user_id", "users.id")
+  .select({
+    projectId: "projects.id",
+    projectName: "projects.name",
+    projectStatus: "projects.status",
+    employeeId: "employees.id",
+    employeeName: "users.username",
+  })
+  .where("projects.status", "in_progress");
+
+// projects ↔ projects__employees ↔ employees ↔ users
+```
+
+**Result characteristics**:
+- 1 project with N employees → N rows
+- Projects without employees → 1 row (employee fields are null)
+
+<Warning>
+**M:N join considerations**:
+1. Results are duplicated (rows created per employee per project)
+2. Be careful with aggregations (use `COUNT(DISTINCT ...)`)
+3. Pagination becomes complex
+</Warning>
+
+### M:N Grouped by Employee
+
+```typescript
+const results = await db
+  .table("employees")
+  .leftJoin("projects__employees", "employees.id", "projects__employees.employee_id")
+  .leftJoin("projects", "projects__employees.project_id", "projects.id")
+  .leftJoin("users", "employees.user_id", "users.id")
+  .select({
+    employeeId: "employees.id",
+    employeeName: "users.username",
+    projectCount: Puri.count("projects.id"),
+  })
+  .groupBy("employees.id", "users.username")
+  .having("projectCount", ">", 0);
+
+// Project count per employee
+```
+
+## Subquery Join
+
+Join subqueries as if they were tables.
+
+### Department Statistics Join
+
+```typescript
+// Subquery for employee count per department
+const empStats = db
+  .table("employees")
+  .select({
+    department_id: "department_id",
+    emp_count: Puri.count("id"),
+    avg_salary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+
+// Join departments + statistics
+const results = await db
+  .table("departments")
+  .leftJoin(
+    { stats: empStats },
+    "departments.id",
+    "stats.department_id"
+  )
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    empCount: "stats.emp_count",
+    avgSalary: "stats.avg_salary",
+  });
+```
+
+### Latest Login Join
+
+```typescript
+// Subquery for latest login per user
+const latestLogins = db
+  .table("login_logs")
+  .select({
+    user_id: "user_id",
+    latest_login: Puri.max("logged_in_at"),
+  })
+  .groupBy("user_id");
+
+// Join users + latest login
+const results = await db
+  .table("users")
+  .leftJoin(
+    { latest: latestLogins },
+    "users.id",
+    "latest.user_id"
+  )
+  .select({
+    userId: "users.id",
+    userName: "users.username",
+    latestLogin: "latest.latest_login",
+  });
+```
+
+## Join + WHERE Conditions
+
+### Pre-join Filtering
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",
+    userName: "users.username",
+    deptName: "departments.name",
+  })
+  .where("users.is_active", true)          // users filter
+  .where("employees.salary", ">=", 50000)  // employees filter
+  .where("departments.name", "like", "%dev%"); // departments filter
+```
+
+### Post-join Aggregation
+
+```typescript
+const results = await db
+  .table("departments")
+  .leftJoin("employees", "departments.id", "employees.department_id")
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    empCount: Puri.count("employees.id"),
+  })
+  .groupBy("departments.id", "departments.name")
+  .having("empCount", ">", 5)
+  .orderBy("empCount", "desc");
+```
+
+## Practical Examples
+
+### User Profile Query
+
+```typescript
+async getUserProfile(userId: number) {
+  const profile = await this.getPuri("r")
+    .table("users")
+    .join("employees", "users.id", "employees.user_id")
+    .leftJoin("departments", "employees.department_id", "departments.id")
+    .leftJoin("companies", "departments.company_id", "companies.id")
+    .select({
+      userId: "users.id",
+      username: "users.username",
+      email: "users.email",
+      employeeNumber: "employees.employee_number",
+      departmentName: "departments.name",
+      companyName: "companies.name",
+      salary: "employees.salary",
+    })
+    .where("users.id", userId)
+    .first();
+
+  if (!profile) {
+    throw new Error("User not found");
+  }
+
+  return profile;
+}
+```
+
+### Project Details + Member List
+
+```typescript
+async getProjectDetails(projectId: number) {
+  const project = await this.getPuri("r")
+    .table("projects")
+    .select({
+      id: "projects.id",
+      name: "projects.name",
+      status: "projects.status",
+      description: "projects.description",
+    })
+    .where("projects.id", projectId)
+    .first();
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  // Member list
+  const members = await this.getPuri("r")
+    .table("projects__employees")
+    .join("employees", "projects__employees.employee_id", "employees.id")
+    .join("users", "employees.user_id", "users.id")
+    .leftJoin("departments", "employees.department_id", "departments.id")
+    .select({
+      employeeId: "employees.id",
+      employeeName: "users.username",
+      employeeNumber: "employees.employee_number",
+      departmentName: "departments.name",
+      role: "projects__employees.role",
+    })
+    .where("projects__employees.project_id", projectId);
+
+  return {
+    ...project,
+    members,
+  };
+}
+```
+
+### Department Hierarchy Query
+
+```typescript
+async getDepartmentHierarchy(companyId: number) {
+  const departments = await this.getPuri("r")
+    .table({ dept: "departments" })
+    .leftJoin(
+      { parent: "departments" },
+      "dept.parent_id",
+      "parent.id"
+    )
+    .leftJoin("companies", "dept.company_id", "companies.id")
+    .select({
+      id: "dept.id",
+      name: "dept.name",
+      parentId: "parent.id",
+      parentName: "parent.name",
+      companyName: "companies.name",
+      level: Puri.rawNumber(`
+        CASE
+          WHEN dept.parent_id IS NULL THEN 0
+          WHEN parent.parent_id IS NULL THEN 1
+          ELSE 2
+        END
+      `),
+    })
+    .where("dept.company_id", companyId)
+    .orderBy("level", "asc")
+    .orderBy("dept.name", "asc");
+
+  return departments;
+}
+```
+
+## Type Safety
+
+Puri's joins are type-safe.
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",        // number
+    userName: "users.username",         // string
+    departmentName: "departments.name", // string | null (LEFT JOIN)
+  });
+
+// Types are automatically inferred
+const first = results[0];
+first.employeeId;     // number
+first.userName;        // string
+first.departmentName;  // string | null
+```
+
+<Info>
+**LEFT JOIN and types**:
+- Columns from LEFT JOIN tables are `T | null` type
+- Columns from INNER JOIN tables are `T` type
+- TypeScript automatically enforces null checks
+</Info>
+
+## Performance Optimization
+
+### Index Usage
+
+```sql
+-- Create indexes on join keys
+CREATE INDEX idx_employees_user_id ON employees(user_id);
+CREATE INDEX idx_employees_department_id ON employees(department_id);
+```
+
+### Select Only Needed Columns
+
+```typescript
+// ❌ Bad: Query all columns
+await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .selectAll();
+
+// ✅ Good: Select only needed columns
+await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .select({
+    id: "employees.id",
+    name: "users.username",
+  });
+```
+
+### Optimize JOIN Order
+
+```typescript
+// Small table → Large table order
+await db
+  .table("departments")        // 10 rows
+  .join("employees", ...)      // 100 rows
+  .join("projects__employees", ...); // 1000 rows
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Aggregations" icon="calculator" href="/database/puri/aggregations">
+    Analyze data with aggregate functions
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    Subqueries and complex patterns
+  </Card>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    Type safety in joins
+  </Card>
+  <Card title="Basic Queries" icon="magnifying-glass" href="/database/puri/basic-queries">
+    Back to basic queries
+  </Card>
+</CardGroup>

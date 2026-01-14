@@ -1,0 +1,574 @@
+---
+title: 'API 개발'
+description: 'API 개발과 데코레이터 관련 질문'
+---
+
+## @api 데코레이터
+
+<AccordionGroup>
+<Accordion title="@api 데코레이터는 어떻게 사용하나요?">
+
+`@api` 데코레이터를 Model이나 Frame 클래스의 메서드에 붙여 REST API 엔드포인트를 생성합니다.
+
+**기본 사용:**
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    return this.findById(id);
+  }
+
+  @api({ httpMethod: "POST" })
+  async createUser(params: UserSaveParams): Promise<User> {
+    return this.save(params);
+  }
+
+  @api({ httpMethod: "PUT" })
+  async updateUser(id: number, params: UserSaveParams): Promise<User> {
+    return this.save({ id, ...params });
+  }
+
+  @api({ httpMethod: "DELETE" })
+  async deleteUser(id: number): Promise<void> {
+    await this.del(id);
+  }
+}
+```
+
+**자동 생성되는 엔드포인트:**
+
+```
+GET    /user/findById?id=1
+POST   /user/createUser
+PUT    /user/updateUser
+DELETE /user/deleteUser?id=1
+```
+
+</Accordion>
+
+<Accordion title="@api 데코레이터의 옵션들은 무엇인가요?">
+
+**httpMethod (필수):**
+```typescript
+@api({ httpMethod: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" })
+```
+
+**guards (인증/권한):**
+```typescript
+@api({ 
+  httpMethod: "POST",
+  guards: ["user", "admin"]  // user 로그인 필요, admin 권한 필요
+})
+async adminOnly() { }
+```
+
+**noAuth (인증 불필요):**
+```typescript
+@api({ 
+  httpMethod: "GET",
+  noAuth: true  // 로그인 없이 접근 가능
+})
+async publicApi() { }
+```
+
+**path (커스텀 경로):**
+```typescript
+@api({ 
+  httpMethod: "GET",
+  path: "/custom/path"  // /user/method 대신 /custom/path 사용
+})
+async customPath() { }
+```
+
+</Accordion>
+
+<Accordion title="GET 요청에서 파라미터를 받으려면?">
+
+**쿼리 파라미터 (단일 값):**
+
+```typescript
+@api({ httpMethod: "GET" })
+async getUser(id: number, includeProfile?: boolean): Promise<User> {
+  // GET /user/getUser?id=1&includeProfile=true
+}
+```
+
+**쿼리 파라미터 (객체):**
+
+```typescript
+@api({ httpMethod: "GET" })
+async listUsers(listParams: UserListParams): Promise<ListResult<User>> {
+  // GET /user/listUsers?num=20&page=1&orderBy=id-desc
+  return this.list("A", listParams);
+}
+```
+
+</Accordion>
+
+<Accordion title="POST 요청에서 body를 받으려면?">
+
+**단일 객체:**
+
+```typescript
+@api({ httpMethod: "POST" })
+async createUser(params: UserSaveParams): Promise<User> {
+  // POST /user/createUser
+  // Body: { name: "John", email: "john@example.com" }
+  return this.save(params);
+}
+```
+
+**다중 파라미터:**
+
+```typescript
+@api({ httpMethod: "POST" })
+async updateProfile(
+  userId: number, 
+  profile: ProfileSaveParams
+): Promise<Profile> {
+  // POST /user/updateProfile
+  // Body: { userId: 1, profile: { bio: "..." } }
+  return ProfileModel.save({ user_id: userId, ...profile });
+}
+```
+
+</Accordion>
+
+<Accordion title="파일 업로드 API를 만들려면?">
+
+**단일 파일:**
+
+```typescript
+import { api, upload, Sonamu } from "sonamu";
+
+@api({ httpMethod: "POST" })
+@upload({ mode: "single" })
+async uploadAvatar(): Promise<{ url: string; filename: string }> {
+  // POST /user/uploadAvatar
+  // Content-Type: multipart/form-data
+  
+  const { file } = Sonamu.getUploadContext();
+  
+  const key = `avatars/${Date.now()}_${file.filename}`;
+  const url = await file.saveToDisk(key);
+  
+  return { url, filename: file.filename };
+}
+```
+
+**다중 파일:**
+
+```typescript
+import { api, upload, Sonamu } from "sonamu";
+
+@api({ httpMethod: "POST" })
+@upload({ mode: "multiple" })
+async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }> {
+  // POST /user/uploadFiles
+  // Content-Type: multipart/form-data
+  
+  const { files } = Sonamu.getUploadContext();
+  
+  const results = [];
+  for (const file of files) {
+    const key = `files/${Date.now()}_${file.filename}`;
+    const url = await file.saveToDisk(key);
+    results.push({ url, filename: file.filename });
+  }
+  
+  return { files: results };
+}
+```
+
+</Accordion>
+
+<Accordion title="에러를 반환하려면?">
+
+**BadRequestException (400):**
+
+```typescript
+import { BadRequestException } from "sonamu";
+
+@api({ httpMethod: "POST" })
+async createUser(params: UserSaveParams): Promise<User> {
+  if (!params.email) {
+    throw new BadRequestException("이메일은 필수입니다");
+  }
+  return this.save(params);
+}
+```
+
+**UnauthorizedException (401):**
+
+```typescript
+import { UnauthorizedException } from "sonamu";
+
+@api({ httpMethod: "GET" })
+async getMyProfile(): Promise<User> {
+  const userId = Sonamu.getContext().user?.id;
+  if (!userId) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  return this.findById(userId);
+}
+```
+
+**권한 오류 (403):**
+
+```typescript
+import { UnauthorizedException } from "sonamu";
+
+@api({ httpMethod: "DELETE" })
+async deleteUser(id: number): Promise<void> {
+  const currentUser = Sonamu.getContext().user;
+  if (currentUser?.role !== "admin") {
+    throw new UnauthorizedException("관리자 권한이 필요합니다");
+  }
+  await this.del(id);
+}
+```
+
+**NotFoundException (404):**
+
+```typescript
+import { NotFoundException } from "sonamu";
+
+@api({ httpMethod: "GET" })
+async getUserById(id: number): Promise<User> {
+  const user = await this.findById(id);
+  if (!user) {
+    throw new NotFoundException("사용자를 찾을 수 없습니다");
+  }
+  return user;
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## Context와 세션
+
+<AccordionGroup>
+<Accordion title="현재 로그인한 사용자 정보를 가져오려면?">
+
+```typescript
+import { Sonamu } from "sonamu";
+
+@api({ httpMethod: "GET" })
+async getMyProfile(): Promise<User> {
+  const context = Sonamu.getContext();
+  const userId = context.user?.id;
+  
+  if (!userId) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  return this.findById(userId);
+}
+```
+
+</Accordion>
+
+<Accordion title="Context에는 어떤 정보가 있나요?">
+
+```typescript
+const context = Sonamu.getContext();
+
+// 사용자 정보
+context.user           // 로그인한 사용자 객체
+context.userId         // 사용자 ID
+
+// 요청 정보
+context.ip             // 클라이언트 IP
+context.userAgent      // User-Agent 헤더
+
+// Fastify 객체
+context.request        // Fastify Request
+context.reply          // Fastify Reply
+
+// 세션
+context.session        // 세션 객체
+```
+
+</Accordion>
+
+<Accordion title="세션을 사용하려면?">
+
+**세션 설정:**
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    session: {
+      secret: process.env.SESSION_SECRET || "my-secret",
+      cookie: {
+        maxAge: 24 * 60 * 60 * 1000,  // 24시간
+        secure: process.env.NODE_ENV === "production"
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+**세션 저장:**
+
+```typescript
+@api({ httpMethod: "POST", noAuth: true })
+async login(email: string, password: string): Promise<User> {
+  const user = await this.findOne("A", { email });
+  
+  if (!user || !await bcrypt.compare(password, user.password)) {
+    throw new UnauthorizedException("이메일 또는 비밀번호가 잘못되었습니다");
+  }
+  
+  const context = Sonamu.getContext();
+  context.session.userId = user.id;
+  context.session.role = user.role;
+  
+  return user;
+}
+```
+
+**세션 조회:**
+
+```typescript
+@api({ httpMethod: "GET" })
+async getMyInfo(): Promise<User> {
+  const context = Sonamu.getContext();
+  const userId = context.session.userId;
+  
+  if (!userId) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  return this.findById(userId);
+}
+```
+
+**세션 삭제:**
+
+```typescript
+@api({ httpMethod: "POST" })
+async logout(): Promise<{ success: boolean }> {
+  const context = Sonamu.getContext();
+  context.session.destroy();
+  return { success: true };
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 인증과 권한
+
+<AccordionGroup>
+<Accordion title="Guards를 사용하여 권한을 제어하려면?">
+
+**Guard 설정:**
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    auth: {
+      guards: {
+        user: async (request) => {
+          const userId = request.session.userId;
+          if (!userId) return null;
+          return UserModel.findById(userId);
+        },
+        admin: async (request) => {
+          const user = request.session.user;
+          if (!user || user.role !== "admin") return null;
+          return user;
+        }
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+**Guard 사용:**
+
+```typescript
+// user 로그인 필요
+@api({ httpMethod: "GET", guards: ["user"] })
+async getMyProfile(): Promise<User> {
+  const userId = Sonamu.getContext().user?.id;
+  return this.findById(userId!);
+}
+
+// admin 권한 필요
+@api({ httpMethod: "DELETE", guards: ["admin"] })
+async deleteUser(id: number): Promise<void> {
+  await this.del(id);
+}
+
+// user 또는 admin
+@api({ httpMethod: "GET", guards: ["user", "admin"] })
+async viewStats(): Promise<Stats> {
+  // ...
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 응답 형식
+
+<AccordionGroup>
+<Accordion title="API 응답을 커스터마이징하려면?">
+
+**기본 응답:**
+
+```typescript
+@api({ httpMethod: "GET" })
+async getUser(id: number): Promise<User> {
+  return this.findById(id);
+}
+
+// 응답:
+// {
+//   "id": 1,
+//   "name": "John",
+//   "email": "john@example.com"
+// }
+```
+
+**커스텀 응답:**
+
+```typescript
+@api({ httpMethod: "GET" })
+async getUserWithStats(id: number): Promise<{
+  user: User;
+  stats: { postCount: number; commentCount: number };
+}> {
+  const user = await this.findById(id);
+  const postCount = await PostModel.count({ user_id: id });
+  const commentCount = await CommentModel.count({ user_id: id });
+  
+  return {
+    user,
+    stats: { postCount, commentCount }
+  };
+}
+```
+
+**헤더 설정:**
+
+```typescript
+@api({ httpMethod: "GET" })
+async downloadFile(id: number): Promise<Buffer> {
+  const file = await FileModel.findById(id);
+  
+  const context = Sonamu.getContext();
+  context.reply.header("Content-Type", "application/pdf");
+  context.reply.header("Content-Disposition", `attachment; filename="${file.name}"`);
+  
+  return file.buffer;
+}
+```
+
+</Accordion>
+
+<Accordion title="페이지네이션 응답을 반환하려면?">
+
+**ListResult 사용:**
+
+```typescript
+@api({ httpMethod: "GET" })
+async listUsers(listParams: UserListParams): Promise<ListResult<UserA>> {
+  // ListResult = { rows: T[], total: number }
+  return this.list("A", listParams);
+}
+
+// 응답:
+// {
+//   "rows": [
+//     { "id": 1, "name": "John" },
+//     { "id": 2, "name": "Jane" }
+//   ],
+//   "total": 100
+// }
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 프론트엔드 연동
+
+<AccordionGroup>
+<Accordion title="자동 생성된 클라이언트 코드를 사용하려면?">
+
+**서비스 파일 자동 생성:**
+
+Model 파일이 변경되면 `{entity}.service.ts`가 자동으로 생성됩니다.
+
+```typescript
+// web/src/services/user/user.service.ts (자동 생성)
+export const UserService = {
+  async findById(id: number): Promise<User> {
+    const response = await axios.get("/user/findById", { params: { id } });
+    return response.data;
+  },
+  
+  async createUser(params: UserSaveParams): Promise<User> {
+    const response = await axios.post("/user/createUser", params);
+    return response.data;
+  }
+};
+```
+
+**React에서 사용:**
+
+```typescript
+import { UserService } from "@/services/user/user.service";
+
+function UserProfile({ userId }: { userId: number }) {
+  const [user, setUser] = useState<User | null>(null);
+  
+  useEffect(() => {
+    UserService.findById(userId).then(setUser);
+  }, [userId]);
+  
+  return <div>{user?.name}</div>;
+}
+```
+
+**TanStack Query hook 사용:**
+
+```typescript
+import { useUserFindById } from "@/services/user/user.service";
+
+function UserProfile({ userId }: { userId: number }) {
+  const { data: user, error, isLoading } = useUserFindById({ id: userId });
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return <div>{user?.name}</div>;
+}
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 관련 문서
+
+- [API 데코레이터](/api-development/api-decorator)
+- [Context와 세션](/api-development/context-session)
+- [인증과 권한](/api-development/authentication)
+- [에러 처리](/api-development/error-handling)
+- [프론트엔드 통합](/frontend-integration/using-services)

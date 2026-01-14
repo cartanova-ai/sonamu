@@ -1,0 +1,432 @@
+---
+title: "Defining Entities"
+description: "entity.json structure and how to define Entities"
+---
+
+Entity is a core component of Sonamu projects, defining both database tables and TypeScript types together.
+
+## What is an Entity?
+
+An Entity is a data model definition that includes:
+
+- **Database Schema** - Table structure, columns, indexes
+- **TypeScript Types** - Type definitions for type safety
+- **Relations** - Connections with other Entities
+- **Subsets** - Field combinations for API responses
+- **Enums** - Enumeration types and labels
+
+## How to Define an Entity
+
+<Note>
+It's recommended to visually define Entities in **Sonamu UI** (`http://localhost:1028/sonamu-ui`). Sonamu UI provides auto-completion, validation, and real-time preview features.
+</Note>
+
+### entity.json File Structure
+
+Entities are saved as `entity.json` files with the following structure:
+
+```json
+{
+  "id": "User",
+  "table": "users", 
+  "title": "User",
+  "props": [...],
+  "indexes": [...],
+  "subsets": {...},
+  "enums": {...}
+}
+```
+
+**File Location**: `api/src/application/{entity}/{entity}.entity.json`
+
+## Required Fields
+
+### id
+
+The unique identifier for the Entity. Written in **PascalCase**.
+
+```json
+{
+  "id": "User"
+}
+```
+
+<Info>
+- Used for Entity class names and type names
+- Example: `UserModel`, `User`, `UserBaseSchema`
+</Info>
+
+### table
+
+The database table name. Written in **snake_case**.
+
+```json
+{
+  "table": "users"
+}
+```
+
+<Tip>
+If the table name is omitted, it's auto-generated based on the Entity ID:
+- `User` → `users`
+- `BlogPost` → `blog_posts`
+</Tip>
+
+### title
+
+The display name for the Entity.
+
+```json
+{
+  "title": "User"
+}
+```
+
+### props
+
+An array of Entity properties (columns). Each property defines its type and options.
+
+```json
+{
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "email", "type": "string", "length": 255, "desc": "Email" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }
+  ]
+}
+```
+
+**Basic Property Options**:
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `name` | string | Property name (snake_case) | *required* |
+| `type` | string | Data type | *required* |
+| `desc` | string | Description | - |
+| `nullable` | boolean | Allow NULL | `false` |
+| `dbDefault` | string | DB default value | - |
+
+<Info>
+**Learn More**
+- [Field Types](/en/core-concepts/entity/field-types) - All available data types
+- [Relations](/en/core-concepts/entity/relations) - Defining Entity relationships
+</Info>
+
+## Optional Fields
+
+### parentId
+
+Used when inheriting from another Entity.
+
+```json
+{
+  "id": "Admin",
+  "parentId": "User",
+  "title": "Administrator"
+}
+```
+
+<Warning>
+Using parentId inherits all props from the parent Entity. Use carefully.
+</Warning>
+
+### indexes
+
+Defines database indexes.
+
+```json
+{
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "users_email_unique",
+      "columns": [{ "name": "email" }]
+    },
+    {
+      "type": "index", 
+      "name": "users_created_at_idx",
+      "columns": [{ "name": "created_at" }]
+    }
+  ]
+}
+```
+
+**Index Types**:
+- `index` - Regular index (improves search performance)
+- `unique` - Unique index (prevents duplicates)
+- `hnsw` - HNSW index for Vector search
+- `ivfflat` - IVFFlat index for Vector search
+
+### subsets
+
+Defines field combinations for API responses.
+
+```json
+{
+  "subsets": {
+    "A": ["id", "email", "username", "created_at"],
+    "P": ["id", "email", "username", "role"],
+    "SS": ["id", "email"]
+  }
+}
+```
+
+**Subset Usage**:
+
+<CodeGroup>
+```typescript title="Usage in Model"
+async findAll(): Promise<UserSubsetA[]> {
+  return this.puri()
+    .select<UserSubsetA>("A")
+    .many();
+}
+```
+
+```typescript title="Type Inference"
+// UserSubsetA type is auto-generated
+type UserSubsetA = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+}
+```
+</CodeGroup>
+
+**Including Relation Fields**:
+
+```json
+{
+  "subsets": {
+    "P": [
+      "id",
+      "username",
+      "employee.id",
+      "employee.department.name"
+    ]
+  }
+}
+```
+
+<Info>
+Using dot notation in Subsets, you can include fields from related Entities. Sonamu automatically generates JOINs.
+</Info>
+
+### enums
+
+Defines enumeration types and labels.
+
+```json
+{
+  "enums": {
+    "UserRole": {
+      "normal": "Normal",
+      "admin": "Administrator"
+    },
+    "UserOrderBy": {
+      "id-desc": "ID Newest First",
+      "created_at-desc": "Created At Newest First"
+    },
+    "UserSearchField": {
+      "email": "Email",
+      "username": "Name"
+    }
+  }
+}
+```
+
+**Enum Usage**:
+
+```typescript
+// Auto-generated Zod schema and TypeScript type
+import { UserRole } from "./user.types";
+
+// "normal" | "admin"
+type Role = z.infer<typeof UserRole>;
+
+// Usage in API
+async updateRole(userId: number, role: Role) {
+  // ...
+}
+```
+
+## Practical Examples
+
+### Basic Entity Example
+
+```json title="user.entity.json"
+{
+  "id": "User",
+  "table": "users",
+  "title": "User",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "Created At", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "email", "type": "string", "length": 255, "desc": "Email" },
+    { "name": "username", "type": "string", "length": 255, "desc": "Name" },
+    { "name": "password", "type": "string", "length": 255, "desc": "Password" },
+    { "name": "birth_date", "type": "date", "nullable": true, "desc": "Birth Date" },
+    { "name": "role", "type": "enum", "id": "UserRole", "desc": "Role" },
+    { "name": "is_verified", "type": "boolean", "desc": "Verified", "dbDefault": "false" },
+    { "name": "deleted_at", "type": "date", "nullable": true, "desc": "Deleted At" }
+  ],
+  "indexes": [
+    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }
+  ],
+  "subsets": {
+    "A": ["id", "email", "username", "role", "created_at"],
+    "P": ["id", "email", "username", "role"]
+  },
+  "enums": {
+    "UserRole": { "normal": "Normal", "admin": "Administrator" },
+    "UserOrderBy": { "id-desc": "ID Newest First" }
+  }
+}
+```
+
+### Example with Relations
+
+```json title="employee.entity.json"
+{
+  "id": "Employee",
+  "table": "employees",
+  "title": "Employee",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "Created At", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "desc": "User",
+      "relationType": "OneToOne",
+      "hasJoinColumn": true,
+      "onDelete": "CASCADE"
+    },
+    {
+      "type": "relation",
+      "name": "department",
+      "with": "Department",
+      "nullable": true,
+      "desc": "Department",
+      "relationType": "BelongsToOne",
+      "onDelete": "SET NULL"
+    },
+    { "name": "employee_number", "type": "string", "length": 32, "desc": "Employee Number" },
+    { "name": "salary", "type": "numeric", "precision": 10, "scale": 2, "nullable": true, "desc": "Salary" },
+    { "name": "hire_date", "type": "date", "nullable": true, "desc": "Hire Date" }
+  ],
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "employees_user_id_unique",
+      "columns": [{ "name": "user_id" }]
+    }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "user.username",
+      "department.name",
+      "employee_number",
+      "salary",
+      "hire_date"
+    ]
+  },
+  "enums": {
+    "EmployeeOrderBy": { "id-desc": "ID Newest First" }
+  }
+}
+```
+
+## Defining Entities in Sonamu UI
+
+1. **Access Sonamu UI**
+   ```bash
+   # After running API server
+   http://localhost:1028/sonamu-ui
+   ```
+
+2. **Create Entity**
+   - Click "Entities" tab
+   - Click "Create Entity" button
+   - Enter Entity ID, table name, Title
+
+3. **Add Properties (Props)**
+   - Click "Add Property" button to add new properties
+   - Select type and configure options
+   - Change order with drag and drop
+
+4. **Define Subsets**
+   - Add subset keys in "Subsets" tab
+   - Select fields to include with checkboxes
+   - Relation fields expand as a tree structure
+
+5. **Save and Generate**
+   - Click "Save" button
+   - Entity file auto-generated
+   - Migration auto-generated
+
+<Frame caption="📸 Needed: Complete process of creating Entity in Sonamu UI (screenshot or GIF)">
+</Frame>
+
+<Info>
+**Learn More**
+- [Using Sonamu UI](/en/core-concepts/entity/using-sonamu-ui) - Detailed UI guide
+</Info>
+
+## What Gets Auto-Generated After Entity Definition
+
+When you define and save an Entity, Sonamu automatically generates the following:
+
+<CardGroup cols={2}>
+  <Card title="TypeScript Types" icon="code">
+    Types and Zod schemas generated in `{entity}.types.ts` file
+  </Card>
+  <Card title="Database Migration" icon="database">
+    Migration file generated with table creation SQL
+  </Card>
+  <Card title="Base Schemas" icon="layer-group">
+    Base schemas and Enums added to `sonamu.generated.ts`
+  </Card>
+  <Card title="Model Scaffold" icon="file-code">
+    `{entity}.model.ts` template generated (when selected)
+  </Card>
+</CardGroup>
+
+## Cautions
+
+<Warning>
+**Be Careful When Modifying Entity Definitions**
+- Be cautious when deleting columns or changing types on deployed tables
+- Recommend making changes gradually through migrations
+- Consider referential integrity when changing Relations
+</Warning>
+
+<Tip>
+**Entity Design Tips**
+- Always start IDs with `integer` type
+- Include `created_at`, `updated_at` fields
+- Explicitly specify indexes for fields requiring unique constraints
+- Add indexes to frequently searched fields
+</Tip>
+
+## Next Steps
+
+After completing Entity definition, learn the following topics:
+
+<CardGroup cols={2}>
+  <Card title="Using Sonamu UI" icon="browser" href="/en/core-concepts/entity/using-sonamu-ui">
+    Learn all Sonamu UI features and shortcuts
+  </Card>
+  <Card title="Field Types" icon="list" href="/en/core-concepts/entity/field-types">
+    Learn all available field types and options
+  </Card>
+  <Card title="Relations" icon="arrows-split-up-and-left" href="/en/core-concepts/entity/relations">
+    Learn how to define Entity relationships
+  </Card>
+  <Card title="Enums" icon="hashtag" href="/en/core-concepts/entity/enums">
+    Learn how to define and use Enum types
+  </Card>
+</CardGroup>

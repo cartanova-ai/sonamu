@@ -1,0 +1,596 @@
+---
+title: "Business Logic"
+description: "Patterns and examples for writing business logic in Model"
+---
+
+Model is the center of business logic. All business logic including data validation, complex queries, transactions, and domain rules is handled in Model.
+
+## What is Business Logic?
+
+Business logic is the core rules and processes of an application:
+
+<CardGroup cols={2}>
+  <Card title="Data Validation" icon="circle-check">
+    Input value validation
+    
+    Duplicate checks, format validation
+  </Card>
+  <Card title="Data Transformation" icon="arrows-rotate">
+    Data processing and calculation
+    
+    Encryption, format conversion
+  </Card>
+  <Card title="Domain Rules" icon="scale-balanced">
+    Business constraints
+    
+    Permissions, state transition rules
+  </Card>
+  <Card title="Workflows" icon="diagram-project">
+    Complex processes
+    
+    Orchestrating multi-step operations
+  </Card>
+</CardGroup>
+
+## Business Logic Writing Principles
+
+### 1. Focus on Model
+
+**Write business logic only in Model**.
+
+<CodeGroup>
+```typescript title="✅ Correct location - Model"
+class UserModelClass extends BaseModelClass {
+  async save(params: UserSaveParams[]): Promise<number[]> {
+    // ✅ Business logic: Write in Model
+    for (const param of params) {
+      if (param.age < 18) {
+        throw new BadRequestException("Users under 18 cannot register");
+      }
+      
+      const existing = await this.puri()
+        .where("email", param.email)
+        .first();
+        
+      if (existing) {
+        throw new BadRequestException("Email already in use");
+      }
+    }
+    
+    // Save...
+  }
+}
+```
+
+```typescript title="❌ Wrong location - Controller/Route"
+// ❌ Don't write business logic in API layer
+app.post("/user/save", async (req, res) => {
+  const params = req.body;
+  
+  // ❌ Validation logic here cannot be reused
+  if (params.age < 18) {
+    return res.status(400).json({ error: "..." });
+  }
+  
+  // ❌ Same logic needs to be repeated in other APIs
+  await UserModel.save(params);
+});
+```
+</CodeGroup>
+
+### 2. Type Safety
+
+Validate types with Zod schemas.
+
+```typescript title="types.ts"
+export const UserSaveParams = z.object({
+  id: z.number().optional(),
+  email: z.string().email("Invalid email format"),
+  username: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name can be up to 50 characters"),
+  age: z.number()
+    .int("Age must be an integer")
+    .min(0, "Age must be 0 or greater")
+    .max(150, "Invalid age"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Must contain uppercase letter")
+    .regex(/[0-9]/, "Must contain number"),
+});
+```
+
+```typescript title="model.ts"
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Zod validates automatically
+  // Types are also inferred automatically
+}
+```
+
+### 3. Use Transactions
+
+Wrap related operations in transactions.
+
+```typescript
+@transactional()
+async createUserWithProfile(
+  userData: UserData,
+  profileData: ProfileData
+): Promise<{ userId: number; profileId: number }> {
+  // All operations in one transaction
+  const [userId] = await this.save([userData]);
+  const [profileId] = await ProfileModel.save([
+    { ...profileData, user_id: userId }
+  ]);
+  
+  // Auto commit on success
+  // Auto rollback on failure
+  return { userId, profileId };
+}
+```
+
+## Data Validation Patterns
+
+### Duplicate Check
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Email duplicate check
+  for (const param of params) {
+    const existing = await this.puri()
+      .where("email", param.email)
+      .whereNot("id", param.id ?? 0)  // Exclude self when updating
+      .first();
+      
+    if (existing) {
+      throw new BadRequestException(
+        `Email already in use: ${param.email}`
+      );
+    }
+  }
+  
+  // Save...
+}
+```
+
+### Conditional Validation
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  for (const param of params) {
+    // New users need email verification
+    if (!param.id && !param.is_verified) {
+      throw new BadRequestException(
+        "Email verification required"
+      );
+    }
+    
+    // Only admins can change other users' roles
+    if (param.role && param.role !== "normal") {
+      const context = Sonamu.getContext();
+      if (context.user?.role !== "admin") {
+        throw new ForbiddenException(
+          "Only admins can change roles"
+        );
+      }
+    }
+  }
+  
+  // Save...
+}
+```
+
+### Range Validation
+
+```typescript
+async save(params: ProductSaveParams[]): Promise<number[]> {
+  for (const param of params) {
+    // Price range validation
+    if (param.price < 0) {
+      throw new BadRequestException("Price must be 0 or greater");
+    }
+    
+    if (param.price > 1000000) {
+      throw new BadRequestException("Price must be 1,000,000 or less");
+    }
+    
+    // Discount rate validation
+    if (param.discount_rate && (param.discount_rate < 0 || param.discount_rate > 100)) {
+      throw new BadRequestException("Discount rate must be between 0-100");
+    }
+  }
+  
+  // Save...
+}
+```
+
+## Data Transformation Patterns
+
+### Encryption
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Password hashing
+  const hashedParams = params.map(p => ({
+    ...p,
+    password: bcrypt.hashSync(p.password, 10),
+  }));
+  
+  const wdb = this.getPuri("w");
+  hashedParams.forEach(p => wdb.ubRegister("users", p));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("users");
+  });
+}
+```
+
+### Normalization
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Data normalization
+  const normalizedParams = params.map(p => ({
+    ...p,
+    email: p.email.toLowerCase().trim(),  // Lowercase email
+    username: p.username.trim(),           // Trim whitespace
+    phone: p.phone?.replace(/[^0-9]/g, ""), // Numbers only for phone
+  }));
+  
+  // Save...
+}
+```
+
+### Calculated Fields
+
+```typescript
+async save(params: ProductSaveParams[]): Promise<number[]> {
+  // Auto-calculate discounted price
+  const calculatedParams = params.map(p => ({
+    ...p,
+    discounted_price: p.price * (1 - (p.discount_rate ?? 0) / 100),
+    final_price: Math.floor(p.price * (1 - (p.discount_rate ?? 0) / 100)),
+  }));
+  
+  // Save...
+}
+```
+
+## State Transition Patterns
+
+### State Machine
+
+```typescript
+const OrderStatusTransitions = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["shipping", "cancelled"],
+  shipping: ["delivered", "cancelled"],
+  delivered: ["returned"],
+  cancelled: [],
+  returned: [],
+};
+
+async updateStatus(
+  orderId: number,
+  newStatus: OrderStatus
+): Promise<void> {
+  const order = await this.findById("A", orderId);
+  
+  // Validate state transition
+  const allowedTransitions = OrderStatusTransitions[order.status];
+  if (!allowedTransitions.includes(newStatus)) {
+    throw new BadRequestException(
+      `Cannot change from ${order.status} to ${newStatus}`
+    );
+  }
+  
+  // Change status
+  await this.getPuri("w")
+    .table("orders")
+    .where("id", orderId)
+    .update({ status: newStatus });
+}
+```
+
+### Permission-Based State Changes
+
+```typescript
+async updateStatus(
+  orderId: number,
+  newStatus: OrderStatus
+): Promise<void> {
+  const context = Sonamu.getContext();
+  const order = await this.findById("A", orderId);
+  
+  // Permission validation
+  if (newStatus === "cancelled") {
+    // Users can only cancel pending orders
+    if (order.status !== "pending" && context.user?.role !== "admin") {
+      throw new ForbiddenException(
+        "Only admins can cancel confirmed orders"
+      );
+    }
+  }
+  
+  if (newStatus === "delivered") {
+    // Only delivery staff can mark as delivered
+    if (context.user?.role !== "delivery") {
+      throw new ForbiddenException(
+        "Only delivery staff can mark as delivered"
+      );
+    }
+  }
+  
+  // Change status...
+}
+```
+
+## Complex Query Patterns
+
+### Conditional Query Building
+
+```typescript
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  // Conditional filtering
+  if (params.role) {
+    qb.whereIn("users.role", asArray(params.role));
+  }
+  
+  if (params.is_active !== undefined) {
+    qb.where("users.is_active", params.is_active);
+  }
+  
+  if (params.created_after) {
+    qb.where("users.created_at", ">=", params.created_after);
+  }
+  
+  if (params.keyword) {
+    qb.where((builder) => {
+      builder
+        .whereLike("users.email", `%${params.keyword}%`)
+        .orWhereLike("users.username", `%${params.keyword}%`);
+    });
+  }
+  
+  // Execute...
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+### Complex JOINs
+
+```typescript
+async findUsersWithStats(): Promise<UserWithStats[]> {
+  const rdb = this.getDB("r");
+  
+  return rdb("users")
+    .select([
+      "users.*",
+      rdb.raw("COUNT(DISTINCT posts.id) as post_count"),
+      rdb.raw("COUNT(DISTINCT comments.id) as comment_count"),
+      rdb.raw("AVG(posts.views) as avg_post_views"),
+    ])
+    .leftJoin("posts", "posts.user_id", "users.id")
+    .leftJoin("comments", "comments.user_id", "users.id")
+    .groupBy("users.id");
+}
+```
+
+### Subquery Usage
+
+```typescript
+async findTopUsers(limit: number): Promise<User[]> {
+  const rdb = this.getDB("r");
+  
+  const subquery = rdb("orders")
+    .select("user_id")
+    .sum("total_price as total_spent")
+    .groupBy("user_id")
+    .orderBy("total_spent", "desc")
+    .limit(limit)
+    .as("top_users");
+  
+  return rdb("users")
+    .select("users.*", "top_users.total_spent")
+    .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
+}
+```
+
+## Transaction Patterns
+
+### Basic Transaction
+
+```typescript
+@transactional()
+async transferPoints(
+  fromUserId: number,
+  toUserId: number,
+  points: number
+): Promise<void> {
+  // Deduct points
+  const fromUser = await this.findById("A", fromUserId);
+  if (fromUser.points < points) {
+    throw new BadRequestException("Insufficient points");
+  }
+  
+  await this.getPuri("w")
+    .table("users")
+    .where("id", fromUserId)
+    .decrement("points", points);
+  
+  // Add points
+  await this.getPuri("w")
+    .table("users")
+    .where("id", toUserId)
+    .increment("points", points);
+  
+  // Both succeed or both rollback
+}
+```
+
+### Manual Transaction
+
+```typescript
+async complexOperation(): Promise<void> {
+  const wdb = this.getPuri("w");
+  
+  await wdb.transaction(async (trx) => {
+    // Step 1
+    const [userId] = await trx
+      .table("users")
+      .insert({ email: "test@test.com" });
+    
+    // Step 2
+    await trx
+      .table("profiles")
+      .insert({ user_id: userId, bio: "Hello" });
+    
+    // Step 3
+    await trx
+      .table("settings")
+      .insert({ user_id: userId, theme: "dark" });
+    
+    // Commit if all succeed
+    // Rollback entire transaction if any fails
+  });
+}
+```
+
+### Nested Transactions
+
+```typescript
+@transactional()
+async outerTransaction(): Promise<void> {
+  // Outer transaction
+  await this.save([{ email: "user1@test.com" }]);
+  
+  // Inner transaction (reuses same transaction)
+  await this.innerTransaction();
+}
+
+@transactional()
+async innerTransaction(): Promise<void> {
+  // Reuses existing transaction if present
+  await this.save([{ email: "user2@test.com" }]);
+}
+```
+
+## Error Handling Patterns
+
+### Clear Error Messages
+
+```typescript
+async login(params: LoginParams): Promise<{ user: User }> {
+  const user = await this.puri()
+    .where("email", params.email)
+    .first();
+  
+  if (!user) {
+    throw new UnauthorizedException(
+      "Email or password does not match"
+    );
+  }
+  
+  const isValid = await bcrypt.compare(params.password, user.password);
+  if (!isValid) {
+    throw new UnauthorizedException(
+      "Email or password does not match"
+    );
+  }
+  
+  if (!user.is_verified) {
+    throw new ForbiddenException(
+      "Email verification not complete. Please check your verification email."
+    );
+  }
+  
+  return { user };
+}
+```
+
+### Custom Exceptions
+
+```typescript
+class InsufficientPointsException extends BadRequestException {
+  constructor(required: number, current: number) {
+    super(`Insufficient points. Required: ${required}, Current: ${current}`);
+  }
+}
+
+async purchaseItem(userId: number, itemId: number): Promise<void> {
+  const user = await this.findById("A", userId);
+  const item = await ItemModel.findById("A", itemId);
+  
+  if (user.points < item.price) {
+    throw new InsufficientPointsException(item.price, user.points);
+  }
+  
+  // Process purchase...
+}
+```
+
+## Async Processing Patterns
+
+### Parallel Processing
+
+```typescript
+async getUserDashboard(userId: number): Promise<Dashboard> {
+  // Execute in parallel
+  const [user, posts, comments, followers] = await Promise.all([
+    this.findById("A", userId),
+    PostModel.findMany("SS", { user_id: userId, num: 10 }),
+    CommentModel.findMany("SS", { user_id: userId, num: 10 }),
+    FollowerModel.countFollowers(userId),
+  ]);
+  
+  return {
+    user,
+    posts: posts.rows,
+    comments: comments.rows,
+    follower_count: followers,
+  };
+}
+```
+
+### Sequential Processing
+
+```typescript
+async processOrder(orderId: number): Promise<void> {
+  // Execute sequentially
+  const order = await this.findById("A", orderId);
+  
+  // Check inventory
+  await InventoryModel.checkStock(order.product_id, order.quantity);
+  
+  // Process payment
+  await PaymentModel.charge(order.user_id, order.total_price);
+  
+  // Confirm order
+  await this.updateStatus(orderId, "confirmed");
+  
+  // Start shipping
+  await DeliveryModel.startShipping(orderId);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="BaseModel Methods" icon="book" href="/en/core-concepts/model/basemodel-methods">
+    Learn about methods provided by BaseModel
+  </Card>
+  <Card title="Puri Query Builder" icon="database" href="/en/database/puri/basic-queries">
+    Writing type-safe queries
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/en/database/transactions/using-transactions">
+    Detailed transaction guide
+  </Card>
+  <Card title="Testing" icon="flask" href="/en/testing/model-testing/unit-tests">
+    Testing business logic
+  </Card>
+</CardGroup>

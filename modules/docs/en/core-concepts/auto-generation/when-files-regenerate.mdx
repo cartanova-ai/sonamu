@@ -1,0 +1,569 @@
+---
+title: "When Files Regenerate"
+description: "Complete guide on which files get regenerated when you change different files"
+---
+
+Sonamu automatically regenerates related files based on file changes. This document clearly explains which files are regenerated when you change each file.
+
+## Regeneration Flow Diagram
+
+```mermaid
+flowchart TD
+    A[Entity Save] --> B[*.types.ts generation]
+    A --> C[sonamu.generated.ts]
+    A --> D[sonamu.generated.sso.ts]
+    
+    E[Model Save] --> F[services.generated.ts]
+    E --> G[sonamu.generated.http]
+    E --> H[queries.generated.ts]
+    E --> I[entry-server.generated.tsx]
+    
+    J[Types Save] --> K[Target copy]
+    
+    C --> K
+    D --> K
+    B --> K
+    
+    style A fill:#4f46e5,color:#fff
+    style E fill:#4f46e5,color:#fff
+    style J fill:#4f46e5,color:#fff
+```
+
+## On Entity Save
+
+When you save an `.entity.json` file, the following files are regenerated.
+
+### Regenerated Files
+
+<Steps>
+<Step title="1. {Entity}.types.ts">
+TypeScript types and Zod schemas per Entity
+
+**Location**: `api/src/application/{entity}/{entity}.types.ts`
+
+**Generation condition**: Only when Entity is first created (not auto-regenerated afterwards)
+
+```typescript title="user.types.ts"
+// Base type
+export type User = {
+  id: number;
+  email: string;
+  // ...
+};
+
+// Zod schema
+export const User = z.object({
+  id: z.number(),
+  email: z.string(),
+  // ...
+});
+```
+</Step>
+
+<Step title="2. sonamu.generated.ts">
+Base types and Enums for the entire project
+
+**Location**: `api/src/application/sonamu.generated.ts`
+
+**Always regenerated**: ✅
+
+```typescript
+// All Entity Enums
+export const UserRole = z.enum(["admin", "normal"]);
+
+// Subset types
+export type UserSubsetKey = "A" | "P" | "SS";
+export type UserSubsetMapping = { ... };
+
+// Model exports
+export * from "./user/user.model";
+```
+</Step>
+
+<Step title="3. sonamu.generated.sso.ts">
+Subset query functions
+
+**Location**: `api/src/application/sonamu.generated.sso.ts`
+
+**Always regenerated**: ✅
+
+```typescript
+export const userSubsetQueries = {
+  A: (puri) => puri.table("users").select([...]),
+  P: (puri) => puri.table("users").leftJoin(...).select([...]),
+};
+
+export const userLoaderQueries = { ... };
+```
+</Step>
+
+<Step title="4. Target Copy">
+Above files are copied to target projects
+
+**Locations**:
+- `web/src/services/user/user.types.ts`
+- `web/src/services/sonamu.generated.ts`
+- `web/src/services/sonamu.generated.sso.ts`
+- `app/src/services/...` (same)
+</Step>
+</Steps>
+
+### Trigger Example
+
+<CodeGroup>
+```json title="user.entity.json save"
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" }
+  ],
+  "subsets": {
+    "A": ["id", "email"]
+  },
+  "enums": {
+    "UserRole": {
+      "admin": "Administrator",
+      "normal": "Normal User"
+    }
+  }
+}
+```
+
+```bash title="Execution result"
+✅ Generated: user.types.ts (first creation only)
+✅ Generated: sonamu.generated.ts
+✅ Generated: sonamu.generated.sso.ts
+✅ Copied: web/src/services/user/user.types.ts
+✅ Copied: web/src/services/sonamu.generated.ts
+✅ Copied: web/src/services/sonamu.generated.sso.ts
+```
+</CodeGroup>
+
+<Warning>
+`{entity}.types.ts` is **only auto-generated when Entity is first created**. It must be manually managed afterwards.
+
+To regenerate an existing `user.types.ts`:
+```bash
+rm api/src/application/user/user.types.ts
+# Re-save Entity
+```
+</Warning>
+
+## On Model Save
+
+When you save a `.model.ts` file, the following files are regenerated.
+
+### Regenerated Files
+
+<Steps>
+<Step title="1. services.generated.ts">
+API client functions and TanStack Query hooks
+
+**Locations**:
+- `web/src/services/services.generated.ts`
+- `app/src/services/services.generated.ts`
+
+**Always regenerated**: ✅
+
+```typescript
+// Axios clients
+export async function findUserById(id: number): Promise<User> { ... }
+
+// TanStack Query hooks
+export function useUserById(id: number) { ... }
+export function useSaveUser() { ... }
+```
+
+**Generation criteria**: Methods with `@api` decorator in Model
+</Step>
+
+<Step title="2. sonamu.generated.http">
+HTTP test file for REST Client
+
+**Location**: `api/sonamu.generated.http`
+
+**Always regenerated**: ✅
+
+```http
+### User.findById
+GET http://localhost:3000/user/findById?id=1
+
+### User.save
+POST http://localhost:3000/user/save
+Content-Type: application/json
+
+{ "params": [...] }
+```
+</Step>
+
+<Step title="3. queries.generated.ts">
+Query Options for SSR
+
+**Location**: `web/src/queries.generated.ts`
+
+**Always regenerated**: ✅
+
+```typescript
+export const userQueries = {
+  findById: (id: number) => queryOptions({
+    queryKey: ["User", "findById", id],
+    queryFn: () => findUserById(id),
+  }),
+};
+```
+</Step>
+
+<Step title="4. entry-server.generated.tsx">
+SSR Entry Server code
+
+**Location**: `web/src/entry-server.generated.tsx`
+
+**Always regenerated**: ✅
+
+```tsx
+export async function loader({ params }) {
+  const queryClient = new QueryClient();
+  
+  // SSR data prefetching
+  if (params.userId) {
+    await queryClient.prefetchQuery(
+      userQueries.findById(Number(params.userId))
+    );
+  }
+  
+  return { dehydratedState: dehydrate(queryClient) };
+}
+```
+</Step>
+</Steps>
+
+### Trigger Example
+
+<CodeGroup>
+```typescript title="user.model.ts save"
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findById(id: number): Promise<User> {
+    // ...
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async save(params: UserSaveParams[]): Promise<number[]> {
+    // ...
+  }
+}
+```
+
+```bash title="Execution result"
+🔄 Invalidated:
+- src/application/user/user.model.ts (with 2 APIs)
+
+✅ Generated: services.generated.ts
+✅ Generated: sonamu.generated.http
+✅ Generated: queries.generated.ts
+✅ Generated: entry-server.generated.tsx
+
+✨ HMR completed in 234ms
+```
+</CodeGroup>
+
+## On Types Save
+
+When you save a `.types.ts` file, it's copied to targets.
+
+### Regenerated Files
+
+<Steps>
+<Step title="Target Copy">
+Modified Types file is copied to target projects
+
+**Locations**:
+- `web/src/services/{entity}/{entity}.types.ts`
+- `app/src/services/{entity}/{entity}.types.ts`
+
+**Always copied**: ✅
+
+**import transformation**: `sonamu` → `./sonamu.shared`
+</Step>
+</Steps>
+
+### Trigger Example
+
+<CodeGroup>
+```typescript title="user.types.ts modification"
+import { z } from "zod";
+
+// Custom type added
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+```
+
+```bash title="Execution result"
+✅ Copied: web/src/services/user/user.types.ts
+✅ Copied: app/src/services/user/user.types.ts
+```
+</CodeGroup>
+
+## On Config Save
+
+When you save `sonamu.config.ts`, environment variables are synchronized.
+
+### Regenerated Files
+
+<Steps>
+<Step title=".sonamu.env">
+Environment variable file containing API server info
+
+**Locations**:
+- `web/.sonamu.env`
+- `app/.sonamu.env`
+
+**Always regenerated**: ✅
+
+```env
+API_HOST=localhost
+API_PORT=3000
+```
+</Step>
+</Steps>
+
+### Trigger Example
+
+<CodeGroup>
+```typescript title="sonamu.config.ts modification"
+export default {
+  server: {
+    listen: {
+      host: "0.0.0.0",  // changed
+      port: 4000,       // changed
+    },
+  },
+};
+```
+
+```bash title="Execution result"
+✅ Updated: web/.sonamu.env
+✅ Updated: app/.sonamu.env
+```
+</CodeGroup>
+
+## On i18n File Save
+
+When you save `src/i18n/**/*.ts`, SD files are regenerated.
+
+### Regenerated Files
+
+<Steps>
+<Step title="1. Locale File Copy">
+i18n files are copied to targets
+
+**Locations**:
+- `web/src/i18n/{locale}.ts`
+- `app/src/i18n/{locale}.ts`
+</Step>
+
+<Step title="2. sd.generated.ts">
+Sonamu Dictionary file generation
+
+**Locations**:
+- `api/src/sd.generated.ts`
+- `web/src/sd.generated.ts`
+- `app/src/sd.generated.ts`
+
+**Always regenerated**: ✅
+
+```typescript
+export const SD = {
+  User: "User",
+  user: {
+    id: "ID",
+    email: "Email",
+  },
+} as const;
+```
+</Step>
+</Steps>
+
+## Regeneration Matrix
+
+A table showing file changes and regeneration relationships at a glance.
+
+| Changed File | {entity}.types.ts | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | entry-server.generated.tsx | .sonamu.env | sd.generated.ts |
+|--------------|-------------------|---------------------|-------------------------|----------------------|----------------------|---------------------|---------------------------|-------------|-----------------|
+| **{entity}.entity.json** | ✅ (first creation) | ✅ | ✅ | - | - | - | - | - | - |
+| **{entity}.model.ts** | - | - | - | ✅ | ✅ | ✅ | ✅ | - | - |
+| **{entity}.types.ts** | *copy* | - | - | - | - | - | - | - | - |
+| **sonamu.config.ts** | - | - | - | - | - | - | - | ✅ | - |
+| **i18n/{locale}.ts** | - | - | - | - | - | - | - | - | ✅ |
+
+**Legend**:
+- ✅ = Always regenerated
+- ✅ (first creation) = Only on first creation
+- *copy* = Copied to targets
+- - = Not regenerated
+
+## Preventing Regeneration
+
+Modifying generated files will be overwritten on next regeneration.
+
+### ❌ Wrong Way
+
+```typescript title="Directly modifying services.generated.ts"
+// ❌ Don't do this!
+export async function findUserById(id: number): Promise<User> {
+  // Custom logic added
+  console.log("Finding user:", id);
+  
+  const { data } = await axios.get("/user/findById", { params: { id } });
+  return data;
+}
+// → Gets overwritten on Model change 💥
+```
+
+### ✅ Right Way
+
+<Tabs>
+<Tab title="Create Separate File">
+```typescript title="services/user/user.custom.ts"
+import { findUserById } from "../services.generated";
+
+// Create wrapper function
+export async function findUserByIdWithLog(id: number) {
+  console.log("Finding user:", id);
+  return findUserById(id);
+}
+```
+
+**Advantage**: Doesn't touch generated files
+</Tab>
+
+<Tab title="Use Types File">
+```typescript title="api/src/application/user/user.types.ts"
+// Add custom types beyond Entity base types
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+// This file is not regenerated!
+```
+
+**Advantage**: Managed together with Types
+</Tab>
+
+<Tab title="Handle in Model">
+```typescript title="api/src/application/user/user.model.ts"
+@api({ httpMethod: "GET" })
+async findByIdWithLog(id: number): Promise<User> {
+  this.logger.info("Finding user:", id);
+  return this.findById("A", id);
+}
+```
+
+**Advantage**: Automatically exposed as API
+</Tab>
+</Tabs>
+
+## Forcing Regeneration
+
+How to force regeneration when files aren't being regenerated.
+
+### Checksum Reset
+
+```bash
+# Delete checksum file
+rm .sonamu-checksums.json
+
+# Full re-sync
+pnpm sonamu sync
+```
+
+### Specific File Regeneration
+
+```bash
+# Re-save Entity file (in Sonamu UI)
+# Or modify and save file content
+
+# Re-save Model file
+# → services.generated.ts etc. auto-regenerated
+```
+
+### Force Overwrite
+
+```typescript
+import { Sonamu } from "sonamu";
+
+// Force regeneration with overwrite option
+await Sonamu.syncer.generateTemplate(
+  "services",
+  {},
+  { overwrite: true }  // Overwrite existing file
+);
+```
+
+## Regeneration Optimization
+
+Tips to reduce regeneration time.
+
+<AccordionGroup>
+  <Accordion title="Change Only Necessary Files">
+    If you only modified Types, no need to re-save Entity
+    
+    - Types change → Target copy only (fast)
+    - Entity change → All schemas regenerated (slow)
+  </Accordion>
+  
+  <Accordion title="Remove Unnecessary Targets">
+    Remove unused targets from `sonamu.config.ts`
+    
+    ```typescript
+    export default {
+      sync: {
+        targets: ["web"],  // Remove app
+      },
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Minimize @api Decorators">
+    Add `@api` only to necessary methods
+    
+    - Internal methods don't need `@api`
+    - Fewer APIs = faster regeneration
+  </Accordion>
+  
+  <Accordion title="HMR Optimization">
+    Use Node.js v22+ and SSD
+    
+    ```json
+    {
+      "engines": {
+        "node": ">=22.0.0"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Customizing Generated Code" icon="pen-to-square" href="/en/core-concepts/auto-generation/customizing-generated-code">
+    Safely customize generated code
+  </Card>
+  <Card title="Syncer" icon="rotate" href="/en/core-concepts/auto-generation/syncer">
+    Deep understanding of Syncer system
+  </Card>
+  <Card title="Templates" icon="file-code" href="/en/advanced/templates/creating-templates">
+    Create custom templates
+  </Card>
+  <Card title="Testing" icon="flask" href="/en/testing/model-testing/unit-tests">
+    Test generated code
+  </Card>
+</CardGroup>

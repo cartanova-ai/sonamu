@@ -1,0 +1,523 @@
+---
+title: "Cache Control"
+description: "TanStack Query caching and SSR Cache-Control settings"
+---
+
+Learn how to configure TanStack Query's client caching and HTTP caching for SSR responses in Sonamu.
+
+## Cache Control Overview
+
+<CardGroup cols={2}>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    Client memory caching
+    
+    staleTime/gcTime
+  </Card>
+  <Card title="HTTP Cache" icon="server">
+    Cache-Control headers
+    
+    CDN/Browser caching
+  </Card>
+  <Card title="Revalidation" icon="refresh">
+    Auto/manual refresh
+    
+    Keep data fresh
+  </Card>
+  <Card title="Performance" icon="gauge-high">
+    Fast response
+    
+    Reduced server load
+  </Card>
+</CardGroup>
+
+## TanStack Query Client Caching
+
+### Basic Configuration
+
+```typescript
+// entry-client.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Cache settings
+      staleTime: 5000,             // 5 seconds (time data is fresh)
+      gcTime: 5 * 60 * 1000,       // 5 minutes (garbage collection time)
+      
+      // Revalidation settings
+      refetchOnWindowFocus: false, // Don't revalidate on window focus
+      refetchOnMount: true,        // Revalidate on mount
+      refetchOnReconnect: true,    // Revalidate on reconnect
+      
+      // Retry settings
+      retry: false,                // Don't retry on failure
+    },
+  },
+});
+```
+
+### staleTime vs gcTime
+
+```typescript
+// staleTime: Time data is "fresh"
+// → No re-requests during this time
+// → Default is 0 (always stale)
+
+// gcTime: Time to keep in cache (formerly cacheTime)
+// → Kept in memory during this time
+// → Default is 5 minutes (300000ms)
+
+const { data } = useQuery({
+  queryKey: ["user", userId],
+  queryFn: fetchUser,
+  staleTime: 5000,        // Fresh for 5 seconds
+  gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes
+});
+
+// Timeline:
+// 0 sec: Data fetch → fresh
+// 5 sec: Transition to stale state
+//        (but still in cache)
+//        Background refetch on re-request
+// 10 min: Removed from cache (garbage collection)
+```
+
+### Per-Query Cache Settings
+
+Pass options to Service Hook for individual settings.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+function UserProfile({ userId }: { userId: number }) {
+  const { data } = UserService.useUser("C", userId, {
+    // Settings for this query only
+    staleTime: 10 * 60 * 1000,    // 10 min fresh
+    gcTime: 30 * 60 * 1000,       // 30 min cache retention
+    refetchOnWindowFocus: true,   // Revalidate on focus
+  });
+
+  return <div>{data?.user.username}</div>;
+}
+```
+
+### Caching Strategy by Data Type
+
+```typescript
+// 1. Real-time data (stocks, chat, etc.)
+const { data } = useQuery({
+  queryKey: ["stock", symbol],
+  queryFn: fetchStock,
+  staleTime: 0,             // Always stale
+  refetchInterval: 5000,    // Auto refetch every 5 seconds
+});
+
+// 2. Frequently changing data (feed, notifications, etc.)
+const { data } = useQuery({
+  queryKey: ["feed"],
+  queryFn: fetchFeed,
+  staleTime: 60 * 1000,     // 1 min fresh
+  refetchOnWindowFocus: true,
+});
+
+// 3. Occasionally changing data (profile, settings, etc.)
+const { data } = useQuery({
+  queryKey: ["profile"],
+  queryFn: fetchProfile,
+  staleTime: 5 * 60 * 1000, // 5 min fresh
+  refetchOnWindowFocus: false,
+});
+
+// 4. Rarely changing data (categories, country list, etc.)
+const { data } = useQuery({
+  queryKey: ["categories"],
+  queryFn: fetchCategories,
+  staleTime: Infinity,      // Forever fresh
+  gcTime: Infinity,         // Forever cached
+});
+```
+
+## Manual Cache Control
+
+### Cache Invalidation
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { PostService } from "@/services/services.generated";
+
+export function CreatePostForm() {
+  const queryClient = useQueryClient();
+
+  async function handleSubmit(data: any) {
+    // Create post
+    await PostService.createPost(data);
+
+    // Invalidate related cache
+    queryClient.invalidateQueries({
+      queryKey: ["Post", "list"], // Invalidate post list
+    });
+
+    // Or only specific query
+    queryClient.invalidateQueries({
+      queryKey: ["Post", "list", { page: 1 }],
+    });
+  }
+
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+```
+
+### Direct Cache Update
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+
+export function LikeButton({ postId }: { postId: number }) {
+  const queryClient = useQueryClient();
+
+  async function handleLike() {
+    // 1. Get current cache
+    const queryKey = ["Post", "getPost", "C", postId];
+    const previousPost = queryClient.getQueryData(queryKey);
+
+    // 2. Optimistic update
+    queryClient.setQueryData(queryKey, (old: any) => ({
+      ...old,
+      post: {
+        ...old.post,
+        likes: old.post.likes + 1,
+      },
+    }));
+
+    try {
+      // 3. Request to server
+      await PostService.likePost(postId);
+    } catch (error) {
+      // 4. Rollback on failure
+      queryClient.setQueryData(queryKey, previousPost);
+    }
+  }
+
+  return <button onClick={handleLike}>Like</button>;
+}
+```
+
+### Cache Query
+
+```typescript
+const queryClient = useQueryClient();
+
+// Query single cache
+const userData = queryClient.getQueryData(["User", "getUser", "C", 123]);
+
+// Query all caches
+const allQueries = queryClient.getQueryCache().getAll();
+
+// Query specific pattern caches
+const postQueries = queryClient.getQueryCache()
+  .findAll({ queryKey: ["Post"] });
+```
+
+## SSR Cache-Control
+
+You can set HTTP Cache-Control headers in registerSSR.
+
+### Individual Route Caching
+
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
+
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [/* ... */],
+  cacheControl: {
+    maxAge: 3600,                // 1 hour (browser cache)
+    sMaxAge: 7200,               // 2 hours (CDN cache)
+    staleWhileRevalidate: 86400, // Serve stale content for 1 day
+    public: true,                // Allow public cache
+  },
+});
+```
+
+**Generated header**:
+```
+Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
+```
+
+### Caching Strategy Examples
+
+```typescript
+// 1. Static content (long caching)
+registerSSR({
+  path: "/about",
+  cacheControl: {
+    maxAge: 86400,    // 1 day
+    sMaxAge: 604800,  // 7 days (CDN)
+    public: true,
+  },
+});
+
+// 2. Dynamic content (short caching)
+registerSSR({
+  path: "/posts/:id",
+  cacheControl: {
+    maxAge: 300,      // 5 minutes
+    sMaxAge: 600,     // 10 minutes (CDN)
+    staleWhileRevalidate: 3600,
+    public: true,
+  },
+});
+
+// 3. Personalized content (no caching)
+registerSSR({
+  path: "/dashboard",
+  cacheControl: {
+    noStore: true,    // Completely disable cache
+    private: true,    // Private only
+  },
+});
+
+// 4. No cache (revalidate every time)
+registerSSR({
+  path: "/live-feed",
+  cacheControl: {
+    noCache: true,    // Revalidation required
+  },
+});
+```
+
+### CacheControlConfig Type
+
+```typescript
+type CacheControlConfig = {
+  maxAge?: number;              // Browser cache time (seconds)
+  sMaxAge?: number;             // CDN cache time (seconds)
+  staleWhileRevalidate?: number; // Stale content serve time (seconds)
+  staleIfError?: number;        // Stale content serve time on error (seconds)
+  public?: boolean;             // Allow public cache
+  private?: boolean;            // Private only (no CDN cache)
+  noCache?: boolean;            // Revalidation required
+  noStore?: boolean;            // Completely disable cache
+  mustRevalidate?: boolean;     // Force revalidation
+  immutable?: boolean;          // Immutable resource
+};
+```
+
+### Global Caching Handler
+
+Set a global handler that applies to all SSR routes.
+
+```typescript
+// api/src/application/sonamu.ts
+import { SonamuFastifyConfig } from "sonamu";
+
+const config: SonamuFastifyConfig = {
+  cacheControlHandler: (req) => {
+    // SSR request info
+    const { type, url, path, method } = req;
+
+    // Static pages
+    if (path === "/about" || path === "/terms") {
+      return {
+        maxAge: 86400,    // 1 day
+        public: true,
+      };
+    }
+
+    // Dynamic pages
+    if (path.startsWith("/posts/")) {
+      return {
+        maxAge: 300,      // 5 minutes
+        staleWhileRevalidate: 3600,
+        public: true,
+      };
+    }
+
+    // Default: no caching
+    return {
+      noCache: true,
+    };
+  },
+};
+```
+
+## Hybrid Caching
+
+Use SSR and client caching together.
+
+```typescript
+// Server: HTTP caching (1 hour)
+registerSSR({
+  path: "/posts/:id",
+  cacheControl: {
+    maxAge: 3600,
+  },
+});
+
+// Client: Memory caching (5 minutes)
+const { data } = PostService.usePost("C", postId, {
+  staleTime: 5 * 60 * 1000,
+});
+```
+
+**Caching layers**:
+1. **Browser HTTP cache**: 1 hour (max-age=3600)
+2. **TanStack Query memory**: 5 minutes (staleTime)
+3. **Server SSR rendering**: Render on cache miss
+
+**Flow**:
+1. First visit: SSR → HTML + data → Store in browser cache
+2. Re-visit within 5 min: Use TanStack Query memory cache
+3. 5 min ~ 1 hour: Use browser HTTP cache
+4. After 1 hour: New request to server
+
+## Development Environment Debugging
+
+### React Query Devtools
+
+```typescript
+// web/src/routes/__root.tsx
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+function RootComponent() {
+  return (
+    <html>
+      <body>
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### Check Cache State
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+
+export function CacheDebugger() {
+  const queryClient = useQueryClient();
+
+  function showCache() {
+    const cache = queryClient.getQueryCache();
+    console.log("Total queries:", cache.getAll().length);
+
+    cache.getAll().forEach((query) => {
+      console.log({
+        queryKey: query.queryKey,
+        state: query.state.status,
+        dataUpdatedAt: new Date(query.state.dataUpdatedAt),
+        staleTime: query.options.staleTime,
+      });
+    });
+  }
+
+  return <button onClick={showCache}>Show Cache</button>;
+}
+```
+
+### Check HTTP Cache Headers
+
+Check response headers in Browser Developer Tools → Network tab:
+
+```
+Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
+Age: 1234
+X-Cache: HIT
+```
+
+## Performance Optimization Strategies
+
+### 1. Use Subsets
+
+Cache only needed fields to save memory:
+
+```typescript
+// ❌ Cache all fields (large)
+UserService.useUser("C", userId, {
+  staleTime: 5 * 60 * 1000,
+});
+
+// ✅ Cache only needed fields (small)
+UserService.useUser("A", userId, {
+  staleTime: 5 * 60 * 1000,
+});
+```
+
+### 2. Selective Revalidation
+
+Actively revalidate only important data:
+
+```typescript
+// Important data
+const { data: user } = UserService.useUser("C", userId, {
+  refetchOnWindowFocus: true,
+  refetchOnMount: true,
+});
+
+// Less important data
+const { data: posts } = PostService.usePosts("A", {
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+});
+```
+
+### 3. Cache Prefetching
+
+Pre-cache data that will be needed next:
+
+```typescript
+const queryClient = useQueryClient();
+
+function prefetchPost(postId: number) {
+  queryClient.prefetchQuery({
+    queryKey: ["Post", "getPost", "C", postId],
+    queryFn: () => PostService.getPost("C", postId),
+  });
+}
+
+// Prefetch on link hover
+<Link
+  to={`/posts/${postId}`}
+  onMouseEnter={() => prefetchPost(postId)}
+>
+  Read more
+</Link>
+```
+
+## Cautions
+
+<Warning>
+**Cautions when using cache**:
+1. **staleTime setting required**: Default 0 always refetches
+2. **Private for personal data**: No public caching
+3. **Sensitive data**: Disable caching with noStore
+4. **SSR cacheControl**: Individual settings take precedence over global handler
+5. **Memory management**: Remove unnecessary cache with gcTime
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSR Setup" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR basic structure
+  </Card>
+  <Card title="Data Preloading" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    How to use registerSSR
+  </Card>
+  <Card title="Hydration Strategies" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    Hydration optimization
+  </Card>
+  <Card title="TanStack Query Docs" icon="external-link" href="https://tanstack.com/query">
+    Query detailed guide
+  </Card>
+</CardGroup>

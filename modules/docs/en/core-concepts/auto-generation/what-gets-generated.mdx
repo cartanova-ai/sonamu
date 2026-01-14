@@ -1,0 +1,561 @@
+---
+title: "Generated Files"
+description: "Complete list of files auto-generated from Entity definitions by Sonamu"
+---
+
+Sonamu automatically generates TypeScript types, Zod schemas, API clients, React components, and more from Entity definitions. This document describes the types and purposes of all generated files.
+
+## Generated Files Overview
+
+<CardGroup cols={2}>
+  <Card title="Types & Schemas" icon="brackets-curly">
+    TypeScript types and Zod schemas
+    
+    *.types.ts, sonamu.generated.ts
+  </Card>
+  <Card title="API Clients" icon="code">
+    HTTP client functions
+    
+    services.generated.ts
+  </Card>
+  <Card title="Query Helpers" icon="database">
+    Subset query functions
+    
+    sonamu.generated.sso.ts
+  </Card>
+  <Card title="React Components" icon="react">
+    Form, List, Select components
+    
+    view_*.tsx
+  </Card>
+</CardGroup>
+
+## Core Generated Files
+
+### 1. Entity Types (`{entity}.types.ts`)
+
+TypeScript types and Zod schemas are generated per Entity.
+
+```typescript title="api/src/application/user/user.types.ts (auto-generated)"
+import { z } from "zod";
+
+// Base type
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  role: "admin" | "normal";
+  created_at: Date;
+};
+
+// Zod schema
+export const User = z.object({
+  id: z.number(),
+  email: z.string(),
+  username: z.string(),
+  role: z.enum(["admin", "normal"]),
+  created_at: z.date(),
+});
+
+// List parameters
+export const UserListParams = z.object({
+  num: z.number().optional(),
+  page: z.number().optional(),
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+  orderBy: UserOrderBy.optional(),
+});
+
+// Save parameters
+export const UserSaveParams = User.partial({ id: true });
+```
+
+**Generated when**: Entity save or `pnpm sonamu sync`
+
+**Editable**: ❌ Auto-regenerated (custom types in separate file)
+
+### 2. Generated Base (`sonamu.generated.ts`)
+
+Base types and Enums for the entire project.
+
+```typescript title="api/src/application/sonamu.generated.ts (auto-generated)"
+import { z } from "zod";
+
+// All Entity Enums
+export const UserRole = z.enum(["admin", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+export const UserSearchField = z.enum(["id", "email", "username"]);
+export const UserOrderBy = z.enum(["id-desc", "id-asc", "created_at-desc"]);
+
+// Subset types
+export type UserSubsetKey = "A" | "P" | "SS";
+export type UserSubsetMapping = {
+  A: UserA;
+  P: UserP;
+  SS: UserSS;
+};
+
+// Enum label helpers
+export function userRoleLabel(role: UserRole): string {
+  return {
+    admin: "Administrator",
+    normal: "Normal User",
+  }[role];
+}
+
+// Export all models
+export * from "./user/user.model";
+export * from "./post/post.model";
+```
+
+**Generated when**: Entity save or `pnpm sonamu sync`
+
+**Editable**: ❌ Auto-regenerated
+
+### 3. Subset Queries (`sonamu.generated.sso.ts`)
+
+Query functions per Subset.
+
+```typescript title="api/src/application/sonamu.generated.sso.ts (auto-generated)"
+import type { PuriWrapper } from "sonamu";
+
+// Subset query functions
+export const userSubsetQueries = {
+  A: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select([
+        "users.id",
+        "users.email",
+        "users.username",
+        "users.role",
+        "users.created_at",
+      ]),
+      
+  P: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select([
+        "users.id",
+        "users.email",
+        "users.username",
+      ])
+      .leftJoin("employees", "employees.user_id", "users.id")
+      .select([
+        "employees.id as employee__id",
+        "employees.department_id as employee__department_id",
+      ]),
+      
+  SS: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select(["users.id", "users.email"]),
+};
+
+// Loader query functions (HasMany, ManyToMany)
+export const userLoaderQueries = {
+  P: [
+    {
+      as: "posts",
+      refId: "id",
+      qb: (puri: PuriWrapper, ids: number[]) =>
+        puri
+          .table("posts")
+          .whereIn("posts.user_id", ids)
+          .select([
+            "posts.id",
+            "posts.user_id as refId",
+            "posts.title",
+          ]),
+    },
+  ],
+};
+```
+
+**Generated when**: Entity Subset changes
+
+**Editable**: ❌ Auto-regenerated
+
+### 4. API Services (`services.generated.ts`)
+
+API client functions.
+
+```typescript title="web/src/services/services.generated.ts (auto-generated)"
+import axios from "axios";
+import type { ListResult } from "./sonamu.shared";
+import type { User, UserListParams, UserSaveParams } from "./user/user.types";
+
+// Axios clients
+export async function findUserById(id: number): Promise<User> {
+  const { data } = await axios.get("/user/findById", { params: { id } });
+  return data;
+}
+
+export async function findManyUsers(
+  params?: UserListParams
+): Promise<ListResult<UserListParams, User>> {
+  const { data } = await axios.get("/user/findMany", { params });
+  return data;
+}
+
+export async function saveUser(params: UserSaveParams[]): Promise<number[]> {
+  const { data } = await axios.post("/user/save", { params });
+  return data;
+}
+
+// TanStack Query Hooks
+export function useUserById(id: number) {
+  return useQuery({
+    queryKey: ["User", "findById", id],
+    queryFn: () => findUserById(id),
+  });
+}
+
+export function useUsers(params?: UserListParams) {
+  return useQuery({
+    queryKey: ["Users", "findMany", params],
+    queryFn: () => findManyUsers(params),
+  });
+}
+
+// TanStack Mutation Hooks
+export function useSaveUser() {
+  return useMutation({
+    mutationFn: (params: UserSaveParams[]) => saveUser(params),
+  });
+}
+```
+
+**Generated when**: Model's `@api` decorator changes
+
+**Editable**: ❌ Auto-regenerated
+
+<Info>
+**Target-specific generation**: Copied to each target specified in `sync.targets` in `sonamu.config.ts` (`web`, `app`, etc.).
+</Info>
+
+### 5. HTTP Test File (`sonamu.generated.http`)
+
+HTTP test file for REST Client.
+
+```http title="api/sonamu.generated.http (auto-generated)"
+@baseUrl = http://localhost:3000
+
+### User.findById
+GET {{baseUrl}}/user/findById?id=1
+
+### User.findMany
+GET {{baseUrl}}/user/findMany?num=10&page=1
+
+### User.save
+POST {{baseUrl}}/user/save
+Content-Type: application/json
+
+{
+  "params": [
+    {
+      "email": "test@test.com",
+      "username": "Test User"
+    }
+  ]
+}
+
+### User.del
+DELETE {{baseUrl}}/user/del
+Content-Type: application/json
+
+{
+  "ids": [1, 2, 3]
+}
+```
+
+**Generated when**: Model file changes
+
+**Editable**: ❌ Auto-regenerated
+
+**Usage**: Install VS Code's REST Client extension and execute requests
+
+## React Components
+
+React UI components can be generated via Scaffold.
+
+### 6. List Component
+
+<CodeGroup>
+```tsx title="web/src/pages/user/UserList.tsx"
+import { useUsers } from "@/services/services.generated";
+
+export function UserList() {
+  const [params, setParams] = useState({ num: 20, page: 1 });
+  const { data, isLoading } = useUsers(params);
+
+  return (
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Username</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.rows.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.email}</td>
+              <td>{user.username}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      <Pagination
+        total={data?.total ?? 0}
+        page={params.page}
+        onChange={(page) => setParams({ ...params, page })}
+      />
+    </div>
+  );
+}
+```
+
+```tsx title="web/src/pages/user/UserSearchInput.tsx"
+export function UserSearchInput({
+  value,
+  onChange,
+}: {
+  value: UserSearchField;
+  onChange: (value: UserSearchField) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="id">ID</option>
+      <option value="email">Email</option>
+      <option value="username">Username</option>
+    </select>
+  );
+}
+```
+</CodeGroup>
+
+**Generated when**: `pnpm sonamu generate view_list --entity User`
+
+**Editable**: ✅ Editable after initial generation
+
+### 7. Form Component
+
+```tsx title="web/src/pages/user/UserForm.tsx"
+import { useSaveUser } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
+
+export function UserForm({ userId }: { userId?: number }) {
+  const { data: user } = useUserById(userId);
+  const { mutate: save } = useSaveUser();
+  
+  const handleSubmit = (values: UserSaveParams) => {
+    save([values], {
+      onSuccess: () => {
+        alert("Saved");
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        name="email"
+        type="email"
+        defaultValue={user?.email}
+        required
+      />
+      <input
+        name="username"
+        defaultValue={user?.username}
+        required
+      />
+      <select name="role" defaultValue={user?.role ?? "normal"}>
+        <option value="admin">Administrator</option>
+        <option value="normal">Normal User</option>
+      </select>
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
+
+**Generated when**: `pnpm sonamu generate view_form --entity User`
+
+**Editable**: ✅ Editable after initial generation
+
+### 8. Select Components
+
+<CodeGroup>
+```tsx title="web/src/components/user/UserIdAsyncSelect.tsx"
+// Async Select (searchable)
+export function UserIdAsyncSelect({
+  value,
+  onChange,
+}: {
+  value?: number;
+  onChange: (value: number) => void;
+}) {
+  const [keyword, setKeyword] = useState("");
+  const { data } = useUsers({ keyword, num: 10 });
+
+  return (
+    <AsyncSelect
+      value={value}
+      onChange={onChange}
+      onSearch={setKeyword}
+      options={data?.rows.map((u) => ({
+        value: u.id,
+        label: u.email,
+      }))}
+    />
+  );
+}
+```
+
+```tsx title="web/src/components/user/UserRoleSelect.tsx"
+// Enum Select
+export function UserRoleSelect({
+  value,
+  onChange,
+}: {
+  value?: UserRole;
+  onChange: (value: UserRole) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="admin">Administrator</option>
+      <option value="normal">Normal User</option>
+    </select>
+  );
+}
+```
+</CodeGroup>
+
+## SSR Related Files
+
+Files for Server-Side Rendering are auto-generated.
+
+### 9. Queries (`queries.generated.ts`)
+
+```typescript title="web/src/queries.generated.ts (auto-generated)"
+import { queryOptions } from "@tanstack/react-query";
+import { findUserById, findManyUsers } from "./services/services.generated";
+
+export const userQueries = {
+  findById: (id: number) =>
+    queryOptions({
+      queryKey: ["User", "findById", id],
+      queryFn: () => findUserById(id),
+    }),
+    
+  findMany: (params?: UserListParams) =>
+    queryOptions({
+      queryKey: ["Users", "findMany", params],
+      queryFn: () => findManyUsers(params),
+    }),
+};
+```
+
+**Generated when**: Model file changes
+
+**Editable**: ❌ Auto-regenerated
+
+### 10. Entry Server (`entry-server.generated.tsx`)
+
+```tsx title="web/src/entry-server.generated.tsx (auto-generated)"
+import { dehydrate, QueryClient } from "@tanstack/react-query";
+import { userQueries } from "./queries.generated";
+
+export async function loader({ params }) {
+  const queryClient = new QueryClient();
+
+  // SSR data prefetching
+  if (params.userId) {
+    await queryClient.prefetchQuery(
+      userQueries.findById(Number(params.userId))
+    );
+  }
+
+  return {
+    dehydratedState: dehydrate(queryClient),
+  };
+}
+```
+
+**Generated when**: Model file changes
+
+**Editable**: ❌ Auto-regenerated
+
+## Internationalization Files
+
+Generated when i18n configuration exists.
+
+### 11. Sonamu Dictionary (`sd.generated.ts`)
+
+```typescript title="api/src/sd.generated.ts (auto-generated)"
+export const SD = {
+  User: "User",
+  user: {
+    id: "ID",
+    email: "Email",
+    username: "Username",
+    role: "Role",
+    created_at: "Created At",
+  },
+  UserRole: {
+    admin: "Administrator",
+    normal: "Normal User",
+  },
+} as const;
+```
+
+**Generated when**: Entity or i18n file changes
+
+**Editable**: ❌ Auto-regenerated
+
+**Targets**: Generated for `api`, `web`, `app` each
+
+## Generated Files Summary Table
+
+| File | Location | Generated When | Editable |
+|------|----------|----------------|----------|
+| `{entity}.types.ts` | `api/src/application/{entity}/` | Entity save | ❌ |
+| `sonamu.generated.ts` | `api/src/application/` | Entity save | ❌ |
+| `sonamu.generated.sso.ts` | `api/src/application/` | Entity save | ❌ |
+| `services.generated.ts` | `web/src/services/` | Model change | ❌ |
+| `sonamu.generated.http` | `api/` | Model change | ❌ |
+| `queries.generated.ts` | `web/src/` | Model change | ❌ |
+| `entry-server.generated.tsx` | `web/src/` | Model change | ❌ |
+| `sd.generated.ts` | `api/src/`, `web/src/`, `app/src/` | Entity/i18n change | ❌ |
+| `{Entity}List.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}Form.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}SearchInput.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}IdAsyncSelect.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+| `{EnumId}Select.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+
+<Warning>
+**Auto-regenerated files**: Never modify `*.generated.*` files. Changes will be automatically overwritten.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Syncer" icon="rotate" href="/en/core-concepts/auto-generation/syncer">
+    Understanding the core Syncer system
+  </Card>
+  <Card title="When Files Regenerate" icon="clock" href="/en/core-concepts/auto-generation/when-files-regenerate">
+    Learn when files are regenerated
+  </Card>
+  <Card title="Customizing Generated Code" icon="pen-to-square" href="/en/core-concepts/auto-generation/customizing-generated-code">
+    How to customize generated code
+  </Card>
+  <Card title="Creating Entities" icon="plus" href="/en/core-concepts/entity/defining-entities">
+    Define Entities and generate files
+  </Card>
+</CardGroup>
