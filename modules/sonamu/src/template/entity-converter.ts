@@ -1,5 +1,6 @@
 import assert from "assert";
 import z from "zod";
+import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import type { EntityPropNode, RenderingNode } from "../types/types";
@@ -14,7 +15,7 @@ export async function getColumnsNode(entityId: string, subsetKey: string): Promi
   const entity = EntityManager.get(entityId);
   const subset = entity.subsets[subsetKey];
   if (subset === undefined) {
-    throw new ServiceUnavailableException(`Subset ${subsetKey} 가 없습니다.`);
+    throw new ServiceUnavailableException(SD("sonamu.error.subsetNotFound")(subsetKey));
   }
   const propNodes = entity.fieldExprsToPropNodes(subset);
   const rootPropNode: EntityPropNode = {

@@ -54,4 +54,23 @@ export default {
   // 에러 메시지 (템플릿 함수)
   "error.entityNotFound": (name: string, id: number) => `존재하지 않는 ${name} ID ${id}`,
   "error.unknownSearchField": (field: string) => `구현되지 않은 검색 필드 ${field}`,
+
+  // Sonamu 내부 에러 메시지
+  "sonamu.error.entityIdCamelCase": "entityId는 CamelCase 형식이어야 합니다.",
+  "sonamu.error.subsetNotFound": (subset: string) => `Subset ${subset} 가 없습니다.`,
+  "sonamu.error.shadowDbTestFailed": "Shadow DB 테스트 진행 중 에러",
+  "sonamu.error.allFilesExist": "이미 경로에 모든 파일이 존재합니다.",
+  "sonamu.error.allFilesGenerated": "이미 모든 파일이 생성된 상태입니다.",
+  "sonamu.error.fixtureRecordRequired": "픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.",
+  "sonamu.error.presetOrAbsPathRequired": "preset or absPath must be provided",
+  "sonamu.error.entityIdsRequired": "entityIds must be provided",
+  "sonamu.error.templateKeysRequired": "templateKeys must be provided",
+  "sonamu.error.enumIdsRequired": "enumIds must be provided",
+  "sonamu.error.optionsRequired": "options must be provided",
+  "sonamu.error.fileNotUploaded": "파일이 업로드되지 않았습니다",
+  "sonamu.error.headerRowNotFound":
+    "헤더 행을 찾을 수 없습니다. 첫 번째 컬럼이 'key'인 행이 필요합니다.",
+  "sonamu.error.keyRequired": "키를 입력해주세요",
+  "sonamu.error.keyAlreadyExists": (key: string) => `이미 존재하는 키입니다: ${key}`,
+  "sonamu.error.keyNotFound": (key: string) => `키를 찾을 수 없습니다: ${key}`,
 } as const;

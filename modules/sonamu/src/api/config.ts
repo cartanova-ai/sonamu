@@ -167,7 +167,10 @@ export type SonamuTaskOptions = {
   enableWorker?: boolean;
   workerOptions?: WorkflowOptions;
   contextProvider: (
-    defaultContext: Pick<Context, "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale"> &
+    defaultContext: Pick<
+      Context,
+      "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale"
+    > &
       AuthContext,
   ) => Context | Promise<Context>;
 };

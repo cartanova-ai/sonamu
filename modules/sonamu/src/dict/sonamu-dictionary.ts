@@ -7,6 +7,7 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import { formatCode } from "../utils/formatter";
+import { SD } from "./sd";
 import type {
   DictEntry,
   DictionaryResult,
@@ -703,9 +704,7 @@ export class SonamuDictionary {
     }
 
     if (headerRowNum === 0) {
-      throw new BadRequestException(
-        "헤더 행을 찾을 수 없습니다. 첫 번째 컬럼이 'key'인 행이 필요합니다.",
-      );
+      throw new BadRequestException(SD("sonamu.error.headerRowNotFound"));
     }
 
     const headerRow = worksheet.getRow(headerRowNum);
@@ -848,7 +847,7 @@ export class SonamuDictionary {
     const { key, values } = params;
 
     if (!key?.trim()) {
-      throw new BadRequestException("키를 입력해주세요");
+      throw new BadRequestException(SD("sonamu.error.keyRequired"));
     }
 
     const { defaultLocale, supportedLocales } = this.getI18nConfig();
@@ -858,7 +857,7 @@ export class SonamuDictionary {
     for (const locale of locales) {
       const { entries } = this.loadProjectDict(locale);
       if (entries.some((e) => e.key === key)) {
-        throw new BadRequestException(`이미 존재하는 키입니다: ${key}`);
+        throw new BadRequestException(SD("sonamu.error.keyAlreadyExists")(key));
       }
     }
 
@@ -883,7 +882,7 @@ export class SonamuDictionary {
    */
   async deleteEntry(key: string): Promise<void> {
     if (!key) {
-      throw new BadRequestException("키를 입력해주세요");
+      throw new BadRequestException(SD("sonamu.error.keyRequired"));
     }
 
     const { defaultLocale, supportedLocales } = this.getI18nConfig();
@@ -902,7 +901,7 @@ export class SonamuDictionary {
     }
 
     if (!deleted) {
-      throw new BadRequestException(`키를 찾을 수 없습니다: ${key}`);
+      throw new BadRequestException(SD("sonamu.error.keyNotFound")(key));
     }
   }
 

@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { unique } from "radashi";
 import { Sonamu } from "../api/sonamu";
+import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
@@ -62,7 +63,7 @@ export async function generateTemplate<T extends TemplateKey>(
   })();
 
   if (filteredPathAndCodes.length === 0) {
-    throw new AlreadyProcessedException("이미 경로에 모든 파일이 존재합니다.");
+    throw new AlreadyProcessedException(SD("sonamu.error.allFilesExist"));
   }
 
   return (

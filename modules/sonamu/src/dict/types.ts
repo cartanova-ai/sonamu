@@ -63,3 +63,5 @@ export type I18nConfig = {
   defaultLocale: string;
   supportedLocales: string[];
 };
+
+export type LocalizedString = string & { __brand: "LocalizedString" };

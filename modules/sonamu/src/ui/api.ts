@@ -6,6 +6,7 @@ import path from "path";
 import { range } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import type { SonamuDBConfig } from "../database/db";
+import { SD } from "../dict/sd";
 import { sonamuDictionary } from "../dict/sonamu-dictionary";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
@@ -92,7 +93,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             return `${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`;
           } else {
             if (!absPath) {
-              throw new BadRequestException("preset or absPath must be provided");
+              throw new BadRequestException(SD("sonamu.error.presetOrAbsPathRequired"));
             }
             return absPath;
           }
@@ -636,11 +637,11 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }>("/api/scaffolding/getStatus", async (request) => {
         const { templateGroupName, entityIds, templateKeys: _templateKeys, enumIds } = request.body;
         if ((entityIds ?? []).length === 0) {
-          throw new BadRequestException("entityIds must be provided");
+          throw new BadRequestException(SD("sonamu.error.entityIdsRequired"));
         } else if ((_templateKeys ?? []).length === 0) {
-          throw new BadRequestException("templateKeys must be provided");
+          throw new BadRequestException(SD("sonamu.error.templateKeysRequired"));
         } else if (templateGroupName === "Enums" && (enumIds ?? []).length === 0) {
-          throw new BadRequestException("enumIds must be provided");
+          throw new BadRequestException(SD("sonamu.error.enumIdsRequired"));
         }
 
         // sorting
@@ -696,7 +697,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }>("/api/scaffolding/generate", async (request) => {
         const { options } = request.body;
         if (options.length === 0) {
-          throw new BadRequestException("options must be provided");
+          throw new BadRequestException(SD("sonamu.error.optionsRequired"));
         }
 
         // 1. 모든 템플릿에서 필요한 dict 키를 수집
@@ -737,7 +738,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         );
 
         if (result.filter(nonNullable).length === 0) {
-          throw new ServiceUnavailableException("이미 모든 파일이 생성된 상태입니다.");
+          throw new ServiceUnavailableException(SD("sonamu.error.allFilesGenerated"));
         }
         return result;
       });
@@ -811,7 +812,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post("/api/i18n/import", async (request) => {
         const data = await request.file();
         if (!data) {
-          throw new BadRequestException("파일이 업로드되지 않았습니다");
+          throw new BadRequestException(SD("sonamu.error.fileNotUploaded"));
         }
         const buffer = await data.toBuffer();
         return sonamuDictionary.importFromExcel(buffer);

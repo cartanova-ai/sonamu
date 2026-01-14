@@ -15,6 +15,7 @@ import type { CacheControlConfig, CacheControlRequest } from "../cache-control/t
 import { toFastifyCompressOption } from "../compress/compress";
 import type { CompressOptions } from "../compress/types";
 import type { SonamuDBConfig } from "../database/db";
+import type { LocalizedString } from "../dict/types";
 import { Naite } from "../naite/naite";
 import type { StorageManager } from "../storage/storage-manager";
 import type { Syncer } from "../syncer/syncer";
@@ -724,7 +725,7 @@ class SonamuClass {
             .map((issue) => issue.message)
             .join(" ");
           const { BadRequestException } = await import("../exceptions/so-exceptions");
-          throw new BadRequestException(messages, {
+          throw new BadRequestException(messages as LocalizedString, {
             zodError: e,
           });
         } else {

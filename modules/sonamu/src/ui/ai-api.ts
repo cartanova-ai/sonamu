@@ -1,5 +1,6 @@
 import { convertToModelMessages, type UIMessage } from "ai";
 import type { FastifyInstance } from "fastify";
+import { SD } from "../dict/sd";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import type { FixtureRecord } from "../types/types";
 import { aiClient } from "./ai-client";
@@ -14,7 +15,7 @@ export async function setAiApi(server: FastifyInstance) {
     };
 
     if (!fixtureRecords || fixtureRecords.length === 0) {
-      throw new BadRequestException("픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.");
+      throw new BadRequestException(SD("sonamu.error.fixtureRecordRequired"));
     }
 
     const result = aiClient.handleFixture(await convertToModelMessages(messages), fixtureRecords);

@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { rm } from "fs/promises";
 import { Sonamu } from "../api/sonamu";
+import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import type { TemplateOptions } from "../types/types";
@@ -16,7 +17,7 @@ export async function createEntity(
   form: Omit<TemplateOptions["entity"], "title"> & { title: string },
 ) {
   if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
-    throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
+    throw new BadRequestException(SD("sonamu.error.entityIdCamelCase"));
   }
 
   await generateTemplate("entity", form);

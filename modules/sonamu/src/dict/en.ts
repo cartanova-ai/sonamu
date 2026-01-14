@@ -54,4 +54,22 @@ export default {
   // Error messages (template functions)
   "error.entityNotFound": (name: string, id: number) => `${name} ID ${id} not found`,
   "error.unknownSearchField": (field: string) => `Unknown search field: ${field}`,
+
+  // Sonamu internal error messages
+  "sonamu.error.entityIdCamelCase": "entityId must be in CamelCase format.",
+  "sonamu.error.subsetNotFound": (subset: string) => `Subset ${subset} not found.`,
+  "sonamu.error.shadowDbTestFailed": "Error during Shadow DB test",
+  "sonamu.error.allFilesExist": "All files already exist at the path.",
+  "sonamu.error.allFilesGenerated": "All files have already been generated.",
+  "sonamu.error.fixtureRecordRequired": "Fixture record not found. Please fetch fixtures first.",
+  "sonamu.error.presetOrAbsPathRequired": "preset or absPath must be provided",
+  "sonamu.error.entityIdsRequired": "entityIds must be provided",
+  "sonamu.error.templateKeysRequired": "templateKeys must be provided",
+  "sonamu.error.enumIdsRequired": "enumIds must be provided",
+  "sonamu.error.optionsRequired": "options must be provided",
+  "sonamu.error.fileNotUploaded": "File not uploaded",
+  "sonamu.error.headerRowNotFound": "Header row not found. The first column must be 'key'.",
+  "sonamu.error.keyRequired": "Key is required",
+  "sonamu.error.keyAlreadyExists": (key: string) => `Key already exists: ${key}`,
+  "sonamu.error.keyNotFound": (key: string) => `Key not found: ${key}`,
 } as const;

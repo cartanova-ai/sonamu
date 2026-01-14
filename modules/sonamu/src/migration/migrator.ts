@@ -7,6 +7,7 @@ import { group, sum, unique } from "radashi";
 import { Sonamu } from "../api";
 import { DB, type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
+import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
@@ -444,7 +445,7 @@ export class Migrator {
       ];
     } catch (e) {
       console.error(e);
-      throw new ServiceUnavailableException("Shadow DB 테스트 진행 중 에러");
+      throw new ServiceUnavailableException(SD("sonamu.error.shadowDbTestFailed"));
     } finally {
       // Shadow DB 연결 종료
       await sdb.destroy();
