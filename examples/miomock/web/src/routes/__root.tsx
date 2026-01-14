@@ -3,9 +3,7 @@ import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type React from "react";
 import App from "@/App";
-import { AuthProvider } from "@/admin-common/auth";
-import { FileService } from "@/services/services.generated";
-import type { SonamuFile } from "@/services/sonamu.shared";
+import { createSonamuConfig } from "@/config/sonamu-provider.config";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -34,13 +32,11 @@ function RootComponent() {
       <body>
         <div id="root">
           <QueryClientProvider client={queryClient}>
-            <SonamuProviderWithUploader>
-              <AuthProvider>
-                <App>
-                  <Outlet />
-                </App>
-              </AuthProvider>
-            </SonamuProviderWithUploader>
+            <SonamuProviderWrapper>
+              <App>
+                <Outlet />
+              </App>
+            </SonamuProviderWrapper>
           </QueryClientProvider>
         </div>
         <Scripts />
@@ -49,17 +45,7 @@ function RootComponent() {
   );
 }
 
-function SonamuProviderWithUploader({ children }: { children: React.ReactNode }) {
-  const uploadMutation = FileService.useUploadMutation();
-
-  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
-    if (files.length === 0) {
-      return [];
-    }
-
-    const result = await uploadMutation.mutateAsync({ files });
-    return result.files;
-  };
-
-  return <SonamuProvider uploader={uploader}>{children}</SonamuProvider>;
+function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
+  const sonamuConfig = createSonamuConfig();
+  return <SonamuProvider {...sonamuConfig}>{children}</SonamuProvider>;
 }
