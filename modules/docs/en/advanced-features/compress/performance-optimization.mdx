@@ -1,191 +1,191 @@
 ---
-title: "성능 최적화"
-description: "압축을 통한 성능 최적화 전략"
+title: "Performance Optimization"
+description: "Performance optimization strategies through compression"
 ---
 
-압축은 네트워크 성능을 크게 개선하지만, **잘못 사용하면 오히려 성능이 저하**될 수 있습니다. 이 문서는 압축을 효과적으로 사용하는 최적화 전략을 설명합니다.
+Compression can significantly improve network performance, but **improper use can actually degrade performance**. This document explains optimization strategies for using compression effectively.
 
-## 압축의 트레이드오프
+## The Trade-offs of Compression
 
-압축은 **CPU 시간**과 **네트워크 시간**을 교환합니다.
+Compression trades **CPU time** for **network time**.
 
 ```mermaid
 graph LR
-    A[원본 데이터] -->|압축| B[CPU 시간 소비]
-    B --> C[압축 데이터]
-    C -->|전송| D[네트워크 시간 절약]
-    D -->|압축 해제| E[CPU 시간 소비]
-    E --> F[원본 데이터]
+    A[Original Data] -->|Compress| B[CPU Time Consumed]
+    B --> C[Compressed Data]
+    C -->|Transfer| D[Network Time Saved]
+    D -->|Decompress| E[CPU Time Consumed]
+    E --> F[Original Data]
 ```
 
-### 손익분기점
+### Break-even Point
 
 ```typescript
-// 압축 없이
-총 시간 = 네트워크 시간
-       = 100KB ÷ 1MB/s = 100ms
+// Without compression
+Total time = Network time
+           = 100KB / 1MB/s = 100ms
 
-// 압축 사용
-총 시간 = 압축 시간 + 네트워크 시간 + 압축 해제 시간
-       = 5ms + (10KB ÷ 1MB/s) + 2ms
-       = 5ms + 10ms + 2ms = 17ms
+// With compression
+Total time = Compression time + Network time + Decompression time
+           = 5ms + (10KB / 1MB/s) + 2ms
+           = 5ms + 10ms + 2ms = 17ms
 
-이득 = 100ms - 17ms = 83ms (83% 개선)
+Benefit = 100ms - 17ms = 83ms (83% improvement)
 ```
 
-**결론**: 네트워크가 느릴수록, 데이터가 클수록 압축 효과 큼
+**Conclusion**: The slower the network and larger the data, the greater the compression benefit
 
-## 최적의 Threshold 찾기
+## Finding the Optimal Threshold
 
-Threshold는 압축할 최소 크기입니다.
+Threshold is the minimum size to compress.
 
-### Threshold별 효과
+### Effects by Threshold
 
-| 크기 | Threshold: 256 | Threshold: 1024 | Threshold: 4096 |
+| Size | Threshold: 256 | Threshold: 1024 | Threshold: 4096 |
 |------|---------------|----------------|----------------|
-| 100B | 압축 ❌ (오버헤드) | 압축 ❌ | 압축 ❌ |
-| 500B | 압축 ⚠️ (효과 작음) | 압축 ❌ | 압축 ❌ |
-| 2KB | 압축 ✅ | 압축 ✅ | 압축 ❌ |
-| 10KB | 압축 ✅ | 압축 ✅ | 압축 ✅ |
+| 100B | No compression (overhead) | No compression | No compression |
+| 500B | Compress (small effect) | No compression | No compression |
+| 2KB | Compress | Compress | No compression |
+| 10KB | Compress | Compress | Compress |
 
-### 권장 Threshold
+### Recommended Thresholds
 
 <Tabs>
-  <Tab title="적극적 (256B)" icon="fire">
+  <Tab title="Aggressive (256B)" icon="fire">
     ```typescript
     compress: {
       threshold: 256,
       encodings: ["br", "gzip", "deflate"],
     }
     ```
-    
-    **적합한 경우**:
-    - 모바일 네트워크 (느린 속도)
-    - 대역폭 비용이 비쌈
-    - 대부분 응답이 작음 (< 10KB)
-    
-    **단점**: CPU 사용량 증가
+
+    **Suitable for**:
+    - Mobile networks (slow speeds)
+    - Expensive bandwidth costs
+    - Most responses are small (< 10KB)
+
+    **Disadvantage**: Increased CPU usage
   </Tab>
-  
-  <Tab title="기본 (1KB)" icon="check">
+
+  <Tab title="Default (1KB)" icon="check">
     ```typescript
     compress: {
       threshold: 1024,
       encodings: ["br", "gzip", "deflate"],
     }
     ```
-    
-    **적합한 경우**:
-    - 일반적인 경우 (권장)
-    - 균형잡힌 성능
-    
-    **장점**: 압축 효과와 오버헤드 균형
+
+    **Suitable for**:
+    - General cases (recommended)
+    - Balanced performance
+
+    **Advantage**: Balance between compression benefit and overhead
   </Tab>
-  
-  <Tab title="보수적 (4KB)" icon="shield">
+
+  <Tab title="Conservative (4KB)" icon="shield">
     ```typescript
     compress: {
       threshold: 4096,
       encodings: ["gzip", "deflate"],
     }
     ```
-    
-    **적합한 경우**:
-    - CPU 리소스 제한적
-    - 빠른 네트워크 (LAN, 5G)
-    - 대부분 응답이 큼 (> 100KB)
-    
-    **장점**: CPU 사용량 최소화
+
+    **Suitable for**:
+    - Limited CPU resources
+    - Fast networks (LAN, 5G)
+    - Most responses are large (> 100KB)
+
+    **Advantage**: Minimized CPU usage
   </Tab>
 </Tabs>
 
-### 실험으로 최적값 찾기
+### Finding Optimal Value Through Experimentation
 
 ```typescript
-// 테스트 설정
+// Test configuration
 const thresholds = [256, 512, 1024, 2048, 4096];
 
 for (const threshold of thresholds) {
   console.time(`threshold-${threshold}`);
-  
-  // 100번 요청
+
+  // 100 requests
   for (let i = 0; i < 100; i++) {
     await fetch('/api/products', {
       headers: { 'Accept-Encoding': 'gzip' }
     });
   }
-  
+
   console.timeEnd(`threshold-${threshold}`);
 }
 
-// 결과 분석: 가장 빠른 threshold 선택
+// Analyze results: Select the fastest threshold
 ```
 
-## 알고리즘 선택 전략
+## Algorithm Selection Strategy
 
 ### Brotli vs Gzip
 
-| 기준 | Brotli (br) | Gzip |
+| Criteria | Brotli (br) | Gzip |
 |------|------------|------|
-| 압축률 | 최고 (15~20% 더 압축) | 중간 |
-| 압축 속도 | 느림 (CPU 사용 ↑) | 빠름 |
-| 압축 해제 속도 | 빠름 | 빠름 |
-| 브라우저 지원 | 모던 브라우저 | 모든 브라우저 |
+| Compression ratio | Best (15-20% better) | Medium |
+| Compression speed | Slow (higher CPU usage) | Fast |
+| Decompression speed | Fast | Fast |
+| Browser support | Modern browsers | All browsers |
 
-### 사용 전략
+### Usage Strategies
 
 <Tabs>
-  <Tab title="정적 콘텐츠" icon="file">
-    **사전 압축 → Brotli 사용**
-    
+  <Tab title="Static Content" icon="file">
+    **Pre-compression -> Use Brotli**
+
     ```bash
-    # 빌드 시 brotli로 사전 압축
-    brotli -q 11 bundle.js  # 최고 품질
-    # → bundle.js.br 생성
-    
-    # 서버에서 사전 압축된 파일 제공
+    # Pre-compress with brotli at build time
+    brotli -q 11 bundle.js  # Highest quality
+    # -> Creates bundle.js.br
+
+    # Serve pre-compressed files from server
     ```
-    
-    **장점**:
-    - 압축 시간 걱정 없음 (미리 압축)
-    - 최고 압축률 (quality 11)
-    - 런타임 CPU 부하 없음
+
+    **Advantages**:
+    - No compression time concerns (pre-compressed)
+    - Best compression ratio (quality 11)
+    - No runtime CPU load
   </Tab>
-  
-  <Tab title="동적 API" icon="bolt">
-    **실시간 압축 → Gzip 사용**
-    
+
+  <Tab title="Dynamic API" icon="bolt">
+    **Real-time compression -> Use Gzip**
+
     ```typescript
     compress: {
       threshold: 1024,
-      encodings: ["gzip"],  // 빠른 gzip
+      encodings: ["gzip"],  // Fast gzip
     }
     ```
-    
-    **이유**:
-    - API 응답은 매번 다름 (사전 압축 불가)
-    - Gzip이 Brotli보다 빠름
-    - 충분한 압축률 (70~80%)
+
+    **Reasons**:
+    - API responses differ each time (cannot pre-compress)
+    - Gzip is faster than Brotli
+    - Sufficient compression ratio (70-80%)
   </Tab>
-  
-  <Tab title="하이브리드" icon="layer-group">
-    **정적 + 동적 혼합**
-    
+
+  <Tab title="Hybrid" icon="layer-group">
+    **Mixed static + dynamic**
+
     ```typescript
-    // 정적 파일: brotli (사전 압축)
+    // Static files: brotli (pre-compressed)
     server.get('/assets/:filename', (req, reply) => {
       const filename = req.params.filename;
       const brFile = `${filename}.br`;
-      
+
       if (fs.existsSync(brFile)) {
         reply.header('Content-Encoding', 'br');
         return reply.sendFile(brFile);
       }
-      
+
       return reply.sendFile(filename);
     });
-    
-    // API: gzip (실시간 압축)
+
+    // API: gzip (real-time compression)
     plugins: {
       compress: {
         encodings: ["gzip"],
@@ -195,7 +195,7 @@ for (const threshold of thresholds) {
   </Tab>
 </Tabs>
 
-### 환경별 전략
+### Environment-Based Strategy
 
 ```typescript
 const isProduction = process.env.NODE_ENV === 'production';
@@ -207,38 +207,38 @@ export const config: SonamuConfig = {
       compress: isProduction
         ? isFastNetwork
           ? {
-              // 빠른 네트워크: 보수적
+              // Fast network: conservative
               threshold: 4096,
               encodings: ["gzip"],
             }
           : {
-              // 느린 네트워크: 적극적
+              // Slow network: aggressive
               threshold: 256,
               encodings: ["br", "gzip", "deflate"],
             }
-        : false  // 개발: 압축 없음
+        : false  // Development: no compression
     }
   }
 };
 ```
 
-## 캐싱과 압축 조합
+## Combining Caching and Compression
 
-압축과 캐싱을 함께 사용하면 최고의 성능을 얻습니다.
+Using compression with caching achieves the best performance.
 
 ```typescript
-@cache({ ttl: "10m" })  // 서버 캐시
+@cache({ ttl: "10m" })  // Server cache
 @api({
   httpMethod: 'GET',
-  cacheControl: { maxAge: 60 },  // HTTP 캐시
-  compress: CompressPresets.aggressive,  // 압축
+  cacheControl: { maxAge: 60 },  // HTTP cache
+  compress: CompressPresets.aggressive,  // Compression
 })
 async getProducts() {
   return this.findMany({});
 }
 ```
 
-### 효과
+### Effect
 
 ```mermaid
 sequenceDiagram
@@ -249,55 +249,55 @@ sequenceDiagram
     participant Cache
     participant DB
 
-    Note over Browser: 1차 요청 (Cold)
+    Note over Browser: 1st Request (Cold)
     User->>Server: GET /api/products
     Server->>DB: SELECT * FROM products
-    DB-->>Server: 100KB 데이터
-    Server->>Server: BentoCache 저장
-    Server->>Server: 압축 (10KB)
+    DB-->>Server: 100KB data
+    Server->>Server: Save to BentoCache
+    Server->>Server: Compress (10KB)
     Server-->>CDN: 10KB (gzip)
-    CDN->>CDN: CDN 캐시 저장
+    CDN->>CDN: Save to CDN cache
     CDN-->>Browser: 10KB
-    Browser->>Browser: 브라우저 캐시 저장
-    Browser-->>User: 데이터 표시
+    Browser->>Browser: Save to browser cache
+    Browser-->>User: Display data
 
-    Note over Browser: 2차 요청 (60초 이내)
+    Note over Browser: 2nd Request (within 60 seconds)
     User->>Browser: GET /api/products
-    Browser-->>User: 캐시 반환 (0ms, 네트워크 없음)
+    Browser-->>User: Return from cache (0ms, no network)
 
-    Note over Browser: 3차 요청 (60초~10분)
+    Note over Browser: 3rd Request (60 seconds to 10 minutes)
     User->>CDN: GET /api/products
-    CDN-->>User: CDN 캐시 (10ms, 서버 없음)
+    CDN-->>User: CDN cache (10ms, no server)
 
-    Note over Browser: 4차 요청 (10분 이후)
+    Note over Browser: 4th Request (after 10 minutes)
     User->>Server: GET /api/products
-    Server->>Cache: BentoCache 조회
-    Cache-->>Server: 100KB (캐시 히트)
-    Server->>Server: 압축 (10KB)
-    Server-->>User: 10KB (50ms, DB 없음)
+    Server->>Cache: Query BentoCache
+    Cache-->>Server: 100KB (cache hit)
+    Server->>Server: Compress (10KB)
+    Server-->>User: 10KB (50ms, no DB)
 ```
 
-**레이어별 최적화**:
-1. **브라우저 캐시**: 0ms (가장 빠름)
-2. **CDN 캐시**: 10ms (네트워크만)
-3. **서버 캐시**: 50ms (압축만, DB 없음)
-4. **DB 조회**: 500ms (압축 + DB)
+**Per-layer optimization**:
+1. **Browser cache**: 0ms (fastest)
+2. **CDN cache**: 10ms (network only)
+3. **Server cache**: 50ms (compression only, no DB)
+4. **DB query**: 500ms (compression + DB)
 
-## CDN과 압축
+## CDN and Compression
 
-### CloudFront 최적화
+### CloudFront Optimization
 
 ```typescript
 @api({
   httpMethod: 'GET',
   cacheControl: {
     visibility: 'public',
-    maxAge: 60,        // 브라우저: 1분
-    sMaxAge: 300,      // CDN: 5분
+    maxAge: 60,        // Browser: 1 minute
+    sMaxAge: 300,      // CDN: 5 minutes
   },
   compress: {
     threshold: 1024,
-    encodings: ["br", "gzip"],  // CloudFront는 brotli 지원
+    encodings: ["br", "gzip"],  // CloudFront supports brotli
   }
 })
 async getData() {
@@ -305,19 +305,19 @@ async getData() {
 }
 ```
 
-**CloudFront 설정**:
-- Origin에서 압축된 응답 수신
-- CloudFront가 그대로 캐싱
-- 엣지에서 빠르게 제공
+**CloudFront configuration**:
+- Receive compressed response from origin
+- CloudFront caches as-is
+- Serve quickly from edge
 
-### Vary 헤더 주의
+### Vary Header Consideration
 
-압축 사용 시 `Accept-Encoding`에 따라 다른 응답이므로:
+When using compression, responses differ based on `Accept-Encoding`:
 
 ```typescript
 @api({
   cacheControl: {
-    vary: ['Accept-Encoding'],  // 인코딩별 캐시 분리
+    vary: ['Accept-Encoding'],  // Separate cache by encoding
   },
   compress: true,
 })
@@ -326,11 +326,11 @@ async getData() {
 }
 ```
 
-## 사전 압축 (Pre-compression)
+## Pre-compression
 
-빌드 시 정적 파일을 미리 압축하면 런타임 CPU 부하가 없습니다.
+Pre-compressing static files at build time eliminates runtime CPU load.
 
-### 빌드 스크립트
+### Build Script
 
 ```typescript
 // scripts/compress-assets.ts
@@ -343,33 +343,33 @@ const files = readdirSync(assetsDir);
 for (const file of files) {
   if (/\.(js|css|html|json|svg)$/.test(file)) {
     const content = readFileSync(`${assetsDir}/${file}`);
-    
-    // Brotli (최고 압축률)
+
+    // Brotli (best compression ratio)
     const br = brotliCompressSync(content, {
       params: {
-        [zlib.constants.BROTLI_PARAM_QUALITY]: 11  // 최고 품질
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 11  // Highest quality
       }
     });
     writeFileSync(`${assetsDir}/${file}.br`, br);
-    
-    // Gzip (호환성)
+
+    // Gzip (compatibility)
     const gz = gzipSync(content, { level: 9 });
     writeFileSync(`${assetsDir}/${file}.gz`, gz);
-    
-    console.log(`${file}: ${content.length} → br: ${br.length}, gz: ${gz.length}`);
+
+    console.log(`${file}: ${content.length} -> br: ${br.length}, gz: ${gz.length}`);
   }
 }
 ```
 
-### 서버 설정
+### Server Configuration
 
 ```typescript
-// 사전 압축된 파일 제공
+// Serve pre-compressed files
 server.get('/assets/:filename', async (req, reply) => {
   const { filename } = req.params;
   const acceptEncoding = req.headers['accept-encoding'] || '';
-  
-  // Brotli 지원
+
+  // Brotli support
   if (acceptEncoding.includes('br')) {
     const brFile = `./dist/assets/${filename}.br`;
     if (fs.existsSync(brFile)) {
@@ -377,8 +377,8 @@ server.get('/assets/:filename', async (req, reply) => {
       return reply.sendFile(`${filename}.br`, { root: './dist/assets' });
     }
   }
-  
-  // Gzip 지원
+
+  // Gzip support
   if (acceptEncoding.includes('gzip')) {
     const gzFile = `./dist/assets/${filename}.gz`;
     if (fs.existsSync(gzFile)) {
@@ -386,34 +386,34 @@ server.get('/assets/:filename', async (req, reply) => {
       return reply.sendFile(`${filename}.gz`, { root: './dist/assets' });
     }
   }
-  
-  // 압축 없음
+
+  // No compression
   return reply.sendFile(filename, { root: './dist/assets' });
 });
 ```
 
-**장점**:
-- 런타임 CPU 부하 없음
-- 최고 압축률 (quality 11)
-- 즉시 응답
+**Advantages**:
+- No runtime CPU load
+- Best compression ratio (quality 11)
+- Instant response
 
-## 성능 측정
+## Performance Measurement
 
-### 1. 브라우저 개발자 도구
+### 1. Browser Developer Tools
 
 ```
-Network 탭 → 요청 선택
+Network tab -> Select request
 
 Size:
-  1.2 KB (transferred)  ← 압축된 크기
-  10.5 KB (size)        ← 원본 크기
+  1.2 KB (transferred)  <- Compressed size
+  10.5 KB (size)        <- Original size
 
 Time:
-  Waiting (TTFB): 50ms  ← 서버 처리 (압축 포함)
-  Content Download: 10ms ← 네트워크 전송
+  Waiting (TTFB): 50ms  <- Server processing (including compression)
+  Content Download: 10ms <- Network transfer
 ```
 
-### 2. 서버 로깅
+### 2. Server Logging
 
 ```typescript
 import { performance } from "perf_hooks";
@@ -426,78 +426,78 @@ async getData() {
   const start = performance.now();
   const data = await this.findMany({});
   const dbTime = performance.now() - start;
-  
+
   console.log(`DB: ${dbTime.toFixed(2)}ms`);
-  // 압축 시간은 Fastify가 자동 처리
-  
+  // Compression time is handled automatically by Fastify
+
   return data;
 }
 ```
 
-### 3. 부하 테스트
+### 3. Load Testing
 
 ```bash
-# Apache Bench로 부하 테스트
+# Load test with Apache Bench
 ab -n 1000 -c 10 -H "Accept-Encoding: gzip" http://localhost:3000/api/products
 
-# 압축 없이
+# Without compression
 ab -n 1000 -c 10 http://localhost:3000/api/products
 
-# 결과 비교:
-# - Time per request (평균 응답 시간)
-# - Transfer rate (전송 속도)
+# Compare results:
+# - Time per request (average response time)
+# - Transfer rate
 ```
 
-## 실전 최적화 체크리스트
+## Practical Optimization Checklist
 
 <Tabs>
-  <Tab title="초기 설정" icon="1">
-    **✅ 전역 압축 활성화**
+  <Tab title="Initial Setup" icon="1">
+    **Enable global compression**
     ```typescript
     plugins: {
       compress: CompressPresets.default
     }
     ```
-    
-    **✅ Threshold 설정**
-    - 일반: 1024 (1KB)
-    - 모바일: 256 (256B)
-    - 고성능: 4096 (4KB)
-    
-    **✅ 알고리즘 선택**
-    - 정적: brotli (사전 압축)
-    - 동적: gzip (실시간)
+
+    **Set threshold**
+    - General: 1024 (1KB)
+    - Mobile: 256 (256B)
+    - High-performance: 4096 (4KB)
+
+    **Select algorithm**
+    - Static: brotli (pre-compressed)
+    - Dynamic: gzip (real-time)
   </Tab>
-  
-  <Tab title="API 최적화" icon="2">
-    **✅ 큰 응답은 적극적 압축**
+
+  <Tab title="API Optimization" icon="2">
+    **Aggressive compression for large responses**
     ```typescript
     @api({ compress: CompressPresets.aggressive })
     async exportData() { ... }
     ```
-    
-    **✅ 작은 응답은 압축 비활성화**
+
+    **Disable compression for small responses**
     ```typescript
     @api({ compress: false })
     async getStatus() { ... }
     ```
-    
-    **✅ 이미 압축된 파일은 제외**
+
+    **Exclude already compressed files**
     ```typescript
     @api({ compress: false })
     async getImage() { ... }
     ```
   </Tab>
-  
-  <Tab title="캐싱 조합" icon="3">
-    **✅ 서버 캐시 추가**
+
+  <Tab title="Combining Caching" icon="3">
+    **Add server cache**
     ```typescript
     @cache({ ttl: "10m" })
     @api({ compress: true })
     async getData() { ... }
     ```
-    
-    **✅ HTTP 캐시 설정**
+
+    **Configure HTTP cache**
     ```typescript
     @api({
       cacheControl: { maxAge: 60 },
@@ -505,115 +505,115 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
     })
     async getData() { ... }
     ```
-    
-    **✅ Vary 헤더 설정**
+
+    **Set Vary header**
     ```typescript
     cacheControl: {
       vary: ['Accept-Encoding']
     }
     ```
   </Tab>
-  
-  <Tab title="모니터링" icon="4">
-    **✅ 압축률 확인**
-    - 개발자 도구에서 크기 비교
-    - 70% 이상 압축되는지 확인
-    
-    **✅ CPU 사용량 모니터링**
-    - 압축으로 인한 CPU 증가 확인
-    - 30% 이상 증가 시 threshold 조정
-    
-    **✅ 응답 시간 측정**
-    - 압축 전후 비교
-    - 느려지면 설정 재검토
+
+  <Tab title="Monitoring" icon="4">
+    **Check compression ratio**
+    - Compare sizes in developer tools
+    - Verify 70% or more compression
+
+    **Monitor CPU usage**
+    - Check CPU increase due to compression
+    - Adjust threshold if over 30% increase
+
+    **Measure response time**
+    - Compare before and after compression
+    - Review settings if slower
   </Tab>
 </Tabs>
 
-## 일반적인 실수
+## Common Mistakes
 
 <Warning>
-**피해야 할 실수**:
+**Mistakes to avoid**:
 
-1. **모든 응답을 압축**: 작은 응답은 비효율적
+1. **Compressing all responses**: Inefficient for small responses
    ```typescript
-   // ❌ 잘못된 예
-   threshold: 0  // 모든 응답 압축
-   
-   // ✅ 올바른 예
-   threshold: 1024  // 1KB 이상만
+   // Bad example
+   threshold: 0  // Compress all responses
+
+   // Good example
+   threshold: 1024  // Only 1KB or larger
    ```
 
-2. **이미 압축된 파일 재압축**: 효과 없음
+2. **Re-compressing already compressed files**: No benefit
    ```typescript
-   // ❌ JPEG, PNG, MP4 압축
+   // Compressing JPEG, PNG, MP4
    @api({ compress: true })
    async getImage() { ... }
-   
-   // ✅ 압축 제외
+
+   // Exclude from compression
    @api({ compress: false })
    async getImage() { ... }
    ```
 
-3. **스트리밍 압축**: 지연 발생
+3. **Compressing streams**: Causes delays
    ```typescript
-   // ❌ SSE 압축
+   // SSE compression
    @stream({ type: 'sse' })
    @api({ compress: true })
    async *streamData() { ... }
-   
-   // ✅ 압축 비활성화
+
+   // Disable compression
    @api({ compress: false })
    async *streamData() { ... }
    ```
 
-4. **개발 환경에서 압축**: 디버깅 어려움
+4. **Compression in development environment**: Difficult debugging
    ```typescript
-   // ✅ 환경별 설정
+   // Environment-based settings
    compress: process.env.NODE_ENV === 'production'
      ? CompressPresets.default
      : false
    ```
 
-5. **Brotli를 실시간 압축**: CPU 부하 높음
+5. **Brotli for real-time compression**: High CPU load
    ```typescript
-   // ⚠️ 주의: API 응답에 brotli
+   // Warning: brotli for API responses
    compress: {
-     encodings: ["br"]  // 느림
+     encodings: ["br"]  // Slow
    }
-   
-   // ✅ gzip 사용
+
+   // Use gzip
    compress: {
-     encodings: ["gzip"]  // 빠름
+     encodings: ["gzip"]  // Fast
    }
    ```
 </Warning>
 
-## 성능 벤치마크
+## Performance Benchmark
 
-실제 100KB JSON 응답 기준:
+Based on actual 100KB JSON response:
 
-| 설정 | 압축 시간 | 전송 크기 | 네트워크 시간 | 총 시간 |
+| Configuration | Compression Time | Transfer Size | Network Time | Total Time |
 |------|----------|----------|-------------|---------|
-| 압축 없음 | 0ms | 100KB | 1000ms | 1000ms |
+| No compression | 0ms | 100KB | 1000ms | 1000ms |
 | Gzip | 2ms | 14KB | 140ms | 142ms |
 | Brotli | 5ms | 12KB | 120ms | 125ms |
 | Pre-compressed | 0ms | 12KB | 120ms | 120ms |
 
-**결론**: 
-- Gzip: 85% 시간 절약
-- Brotli: 87% 시간 절약
-- Pre-compressed: 88% 시간 절약 (최고)
+**Conclusion**:
+- Gzip: 85% time savings
+- Brotli: 87% time savings
+- Pre-compressed: 88% time savings (best)
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="압축 설정" icon="gear" href="/advanced-features/compress/compress-configuration">
-    전역 압축 플러그인 설정
+  <Card title="Compression Configuration" icon="gear" href="/advanced-features/compress/compress-configuration">
+    Global compression plugin settings
   </Card>
-  <Card title="압축 프리셋" icon="list" href="/advanced-features/compress/compress-presets">
-    사전 정의된 압축 설정
+  <Card title="Compression Presets" icon="list" href="/advanced-features/compress/compress-presets">
+    Predefined compression settings
   </Card>
-  <Card title="API별 제어" icon="code" href="/advanced-features/compress/per-api-control">
-    @api 데코레이터에 압축 설정
+  <Card title="Per-API Control" icon="code" href="/advanced-features/compress/per-api-control">
+    Compression settings in @api decorator
   </Card>
 </CardGroup>

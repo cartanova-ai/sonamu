@@ -1,45 +1,45 @@
 ---
-title: '데이터베이스 연결'
-description: 'DB 연결 문제 해결하기'
+title: 'Database Connection'
+description: 'Troubleshooting DB connection issues'
 ---
 
-Sonamu에서 자주 발생하는 데이터베이스 연결 관련 문제와 해결 방법을 다룹니다.
+This covers common database connection-related problems in Sonamu and how to resolve them.
 
-## DB 연결 리소스 누수
+## DB Connection Resource Leak
 
-### 증상
+### Symptoms
 
 ```bash
 Error: remaining connection slots are reserved for non-replication superuser connections
 ```
 
-또는
+Or
 
 ```bash
 Error: too many connections for database
 ```
 
-장시간 개발 서버를 실행하거나, Fixture 작업을 반복할 때 발생합니다.
+This occurs when running development server for a long time or repeating Fixture operations.
 
-### 원인
+### Cause
 
-DB 연결을 생성한 후 에러가 발생하면 `destroy()`가 호출되지 않아 연결이 정리되지 않고 누적됩니다.
+When DB connections are created and an error occurs, `destroy()` is not called, causing connections to accumulate without being cleaned up.
 
-**문제가 있던 코드 패턴:**
+**Problematic code pattern:**
 
 ```typescript
 const db = createKnexInstance(config);
 
-// 여러 작업 수행
+// Perform multiple operations
 await db.raw("SELECT ...");
-await db.raw("UPDATE ...");  // 여기서 에러 발생
+await db.raw("UPDATE ...");  // Error occurs here
 
-await db.destroy();  // 도달하지 못함
+await db.destroy();  // Never reached
 ```
 
-### 해결 방법
+### Solutions
 
-#### 1. try-finally 패턴 사용
+#### 1. Use try-finally Pattern
 
 ```typescript
 const db = createKnexInstance(config);
@@ -49,18 +49,18 @@ try {
   await db.raw("UPDATE ...");
   return result;
 } finally {
-  await db.destroy();  // 에러 발생 여부와 관계없이 실행
+  await db.destroy();  // Executes regardless of error
 }
 ```
 
-#### 2. 여러 DB 연결 정리
+#### 2. Clean Up Multiple DB Connections
 
 ```typescript
 const sourceDB = createKnexInstance(sourceConfig);
 const targetDB = createKnexInstance(targetConfig);
 
 try {
-  // 작업 수행
+  // Perform operations
   const data = await sourceDB.select("*").from("users");
   await targetDB.insert(data).into("users");
   return data;
@@ -70,12 +70,12 @@ try {
 }
 ```
 
-#### 3. 현재 연결 수 확인
+#### 3. Check Current Connection Count
 
-PostgreSQL에서 현재 연결 상태를 확인하려면:
+To check current connection status in PostgreSQL:
 
 ```sql
-SELECT 
+SELECT
   datname,
   count(*) as connections,
   max_conn
@@ -85,29 +85,29 @@ WHERE pg_database.datname = 'your_database_name'
 GROUP BY datname, max_conn;
 ```
 
-### 예방 방법
+### Prevention
 
-- DB 연결을 직접 생성하는 경우 반드시 try-finally 사용
-- BaseModel의 메서드를 사용하면 자동으로 연결 관리됨
-- Fixture 작업 시 FixtureManager의 메서드 사용 (자동 정리 포함)
+- Always use try-finally when creating DB connections directly
+- Using BaseModel methods automatically manages connections
+- Use FixtureManager methods for Fixture operations (includes automatic cleanup)
 
-## 연결 설정 오류
+## Connection Configuration Error
 
-### 증상
+### Symptoms
 
 ```bash
 Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
-### 원인
+### Causes
 
-1. PostgreSQL 서버가 실행되지 않음
-2. `.env` 파일의 DB 설정이 잘못됨
-3. 포트 번호가 틀림
+1. PostgreSQL server is not running
+2. DB configuration in `.env` file is incorrect
+3. Port number is wrong
 
-### 해결 방법
+### Solutions
 
-#### 1. PostgreSQL 실행 확인
+#### 1. Check PostgreSQL Running
 
 ```bash
 # macOS (Homebrew)
@@ -119,9 +119,9 @@ sudo systemctl status postgresql
 sudo systemctl start postgresql
 ```
 
-#### 2. 연결 정보 확인
+#### 2. Check Connection Information
 
-`.env` 파일 확인:
+Check `.env` file:
 
 ```bash
 DB_HOST=localhost
@@ -131,31 +131,31 @@ DB_PASSWORD=your_password
 DB_NAME=your_database
 ```
 
-#### 3. 수동 연결 테스트
+#### 3. Manual Connection Test
 
 ```bash
 psql -h localhost -p 5432 -U postgres -d your_database
 ```
 
-성공하면 비밀번호 입력 후 psql 프롬프트가 나타납니다.
+If successful, psql prompt appears after password input.
 
-## 타임아웃 오류
+## Timeout Error
 
-### 증상
+### Symptoms
 
 ```bash
 Error: Timeout acquiring a connection. The pool is probably full.
 ```
 
-### 원인
+### Causes
 
-1. DB 연결 풀이 고갈됨
-2. 장시간 실행되는 쿼리가 연결을 점유
-3. 연결 풀 설정이 너무 작음
+1. DB connection pool exhausted
+2. Long-running queries holding connections
+3. Connection pool settings too small
 
-### 해결 방법
+### Solutions
 
-#### 1. 연결 풀 설정 조정
+#### 1. Adjust Connection Pool Settings
 
 `sonamu.config.ts`:
 
@@ -170,8 +170,8 @@ export default {
       database: "miomock",
       pool: {
         min: 2,
-        max: 10,  // 기본값보다 증가
-        acquireTimeoutMillis: 30000,  // 타임아웃 증가
+        max: 10,  // Increase from default
+        acquireTimeoutMillis: 30000,  // Increase timeout
         idleTimeoutMillis: 30000
       }
     }
@@ -179,11 +179,11 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-#### 2. 장시간 쿼리 확인
+#### 2. Check Long-Running Queries
 
 ```sql
--- 현재 실행 중인 쿼리 확인
-SELECT 
+-- Check currently running queries
+SELECT
   pid,
   now() - query_start as duration,
   query
@@ -191,16 +191,16 @@ FROM pg_stat_activity
 WHERE state = 'active'
 ORDER BY duration DESC;
 
--- 특정 쿼리 종료
-SELECT pg_cancel_backend(pid);  -- 부드럽게 종료
-SELECT pg_terminate_backend(pid);  -- 강제 종료
+-- Kill specific query
+SELECT pg_cancel_backend(pid);  -- Graceful termination
+SELECT pg_terminate_backend(pid);  -- Force termination
 ```
 
-#### 3. 트랜잭션 미정리 확인
+#### 3. Check Uncommitted Transactions
 
 ```sql
--- 오래된 트랜잭션 확인
-SELECT 
+-- Check old transactions
+SELECT
   pid,
   now() - xact_start as duration,
   state,
@@ -210,58 +210,58 @@ WHERE xact_start IS NOT NULL
 ORDER BY duration DESC;
 ```
 
-## 권한 오류
+## Permission Error
 
-### 증상
+### Symptoms
 
 ```bash
 Error: permission denied for table users
 ```
 
-### 해결 방법
+### Solution
 
 ```sql
--- 데이터베이스 소유자 확인
+-- Check database owner
 SELECT d.datname, u.usename
 FROM pg_database d
 JOIN pg_user u ON d.datdba = u.usesysid
 WHERE d.datname = 'your_database';
 
--- 스키마 권한 부여
+-- Grant schema permissions
 GRANT ALL ON SCHEMA public TO your_user;
 
--- 테이블 권한 부여
+-- Grant table permissions
 GRANT ALL ON ALL TABLES IN SCHEMA public TO your_user;
 
--- 시퀀스 권한 부여
+-- Grant sequence permissions
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO your_user;
 ```
 
-## 테스트 환경 DB 충돌
+## Test Environment DB Conflict
 
-### 증상
+### Symptoms
 
 ```bash
 Error: database "miomock_test" already exists
 ```
 
-또는
+Or
 
 ```bash
 Error: database "miomock_test" is being accessed by other users
 ```
 
-### 원인
+### Causes
 
-- 이전 테스트가 정상 종료되지 않아 테스트 DB가 남아있음
-- 여러 테스트 프로세스가 동시에 실행됨
+- Previous test didn't terminate properly, leaving test DB
+- Multiple test processes running simultaneously
 
-### 해결 방법
+### Solutions
 
-#### 1. 테스트 DB 강제 삭제
+#### 1. Force Delete Test DB
 
 ```bash
-# 모든 연결 종료 후 DB 삭제
+# Terminate all connections and delete DB
 psql -U postgres -c "
   SELECT pg_terminate_backend(pid)
   FROM pg_stat_activity
@@ -271,7 +271,7 @@ psql -U postgres -c "
 psql -U postgres -c "DROP DATABASE IF EXISTS miomock_test;"
 ```
 
-#### 2. 테스트 실행 시 격리
+#### 2. Isolate Test Execution
 
 `package.json`:
 
@@ -283,7 +283,7 @@ psql -U postgres -c "DROP DATABASE IF EXISTS miomock_test;"
 }
 ```
 
-#### 3. 테스트 전후 정리 확인
+#### 3. Check Test Setup/Teardown
 
 ```typescript
 // vitest.config.ts
@@ -303,8 +303,8 @@ export default async function teardown() {
 }
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [마이그레이션 오류](/troubleshooting/common-errors/migration-errors)
-- [Fixture 사용하기](/testing/fixtures/test-database)
-- [데이터베이스 설정](/configuration/sonamu-config/database)
+- [Migration Errors](/troubleshooting/common-errors/migration-errors)
+- [Using Fixtures](/testing/fixtures/test-database)
+- [Database Configuration](/configuration/sonamu-config/database)

@@ -1,25 +1,25 @@
 ---
-title: "설치하기"
-description: "Sonamu VS Code Extension 설치 방법"
+title: "Installation"
+description: "How to install Sonamu VS Code Extension"
 ---
 
-Sonamu 개발을 위한 VS Code 확장을 설치하는 방법입니다.
+Here's how to install the VS Code extension for Sonamu development.
 
-## Marketplace에서 설치
+## Install from Marketplace
 
-[VS Code Marketplace](https://marketplace.cursorapi.com/items/?itemName=CartaNova.sonamu)에서 직접 설치할 수 있습니다.
+You can install directly from the [VS Code Marketplace](https://marketplace.cursorapi.com/items/?itemName=CartaNova.sonamu).
 
-1. VS Code에서 Extensions 탭 열기 (Cmd+Shift+X)
-2. "Sonamu" 검색
-3. Install 버튼 클릭
+1. Open Extensions tab in VS Code (Cmd+Shift+X)
+2. Search for "Sonamu"
+3. Click Install button
 
-<Frame caption="Marketplace에서 Sonamu Extension 검색">
-  {/* Marketplace 검색 결과 스크린샷 */}
+<Frame caption="Search Sonamu Extension in Marketplace">
+  {/* Marketplace search result screenshot */}
 </Frame>
 
-## 직접 빌드하여 설치
+## Build and Install Manually
 
-소스코드를 직접 빌드하여 설치할 수도 있습니다:
+You can also build from source code and install:
 
 ```bash
 cd ~/Projects/vscode-sonamu
@@ -28,24 +28,24 @@ cd packages/extension && pnpm package
 code --install-extension sonamu-*.vsix
 ```
 
-### 업데이트
+### Update
 
-이미 설치된 Extension을 업데이트하려면 `--force` 옵션을 추가합니다:
+To update an already installed Extension, add the `--force` option:
 
 ```bash
 code --install-extension sonamu-*.vsix --force
 ```
 
-## 활성화 확인
+## Verify Activation
 
-Extension이 제대로 설치되면 워크스페이스에 `sonamu.config.ts` 파일이 있을 때 자동으로 활성화됩니다.
+Once the Extension is properly installed, it automatically activates when there's a `sonamu.config.ts` file in the workspace.
 
-활성화 여부는 다음과 같이 확인할 수 있습니다:
+You can verify activation as follows:
 
-1. Command Palette 열기 (Cmd+Shift+P)
-2. "Sonamu" 입력
-3. Sonamu 관련 명령어들이 표시되는지 확인
+1. Open Command Palette (Cmd+Shift+P)
+2. Type "Sonamu"
+3. Check if Sonamu-related commands are displayed
 
-<Frame caption="Sonamu 명령어 확인">
-  {/* Command Palette에서 Sonamu 명령어 목록 스크린샷 */}
+<Frame caption="Verify Sonamu Commands">
+  {/* Screenshot of Sonamu commands list in Command Palette */}
 </Frame>

@@ -1,104 +1,104 @@
 ---
-title: '시작하기'
-description: 'Sonamu UI 실행 및 접속하기'
+title: 'Getting Started'
+description: 'Running and accessing Sonamu UI'
 ---
 
-Sonamu UI는 **Entity, Migration, Scaffolding, Fixture 관리를 위한 웹 기반 개발 도구**입니다. CLI로 수행하던 작업들을 시각적인 인터페이스로 더 쉽게 할 수 있습니다.
+Sonamu UI is a **web-based development tool for managing Entities, Migrations, Scaffolding, and Fixtures**. You can perform tasks that were done via CLI with a more intuitive visual interface.
 
-## Sonamu UI란?
+## What is Sonamu UI?
 
-Sonamu UI는 다음 기능을 제공합니다:
+Sonamu UI provides the following features:
 
-| 기능 | 설명 | CLI 대체 |
-|------|------|----------|
-| **Entity 관리** | Entity 생성, 수정, 삭제 | `pnpm stub entity` |
-| **DB Migration** | 마이그레이션 생성 및 실행 | `pnpm migrate` |
-| **Scaffolding** | Model, 테스트 자동 생성 | `pnpm scaffold` |
-| **Fixture** | 테스트 데이터 관리 | `pnpm fixture` |
-| **i18n** | 국제화 문자열 관리 | 수동 편집 |
+| Feature | Description | CLI Equivalent |
+|---------|-------------|----------------|
+| **Entity Management** | Create, edit, delete Entities | `pnpm stub entity` |
+| **DB Migration** | Create and run migrations | `pnpm migrate` |
+| **Scaffolding** | Auto-generate Models, tests | `pnpm scaffold` |
+| **Fixture** | Manage test data | `pnpm fixture` |
+| **i18n** | Manage internationalization strings | Manual editing |
 
-## 실행 방법
+## How to Run
 
-### 개발 환경에서 실행
+### Running in Development Environment
 
-Sonamu UI는 **API 서버에 내장**되어 있습니다. 별도의 명령어가 필요 없습니다.
+Sonamu UI is **built into the API server**. No separate command is needed.
 
 ```bash
-# API 서버 실행
+# Run API server
 cd api
 pnpm dev
 ```
 
-API 서버가 실행되면 Sonamu UI가 자동으로 함께 제공됩니다.
+When the API server starts, Sonamu UI is automatically served alongside it.
 
-**기본 URL**: `http://localhost:1028/sonamu-ui`
+**Default URL**: `http://localhost:1028/sonamu-ui`
 
 <Info>
-Sonamu UI는 별도의 포트 없이 **API 서버의 `/sonamu-ui` 경로**에서 제공됩니다.
+Sonamu UI is served at the **`/sonamu-ui` path of the API server** without a separate port.
 </Info>
 
-### 일반적인 개발 워크플로우
+### Typical Development Workflow
 
 ```bash
-# API 서버 실행 (Sonamu UI 포함)
+# Run API server (includes Sonamu UI)
 cd api
 pnpm dev
 
-# 브라우저에서 접속
+# Access in browser
 # http://localhost:1028/sonamu-ui
 ```
 
-## 인터페이스 구조
+## Interface Structure
 
-<Frame caption="Sonamu UI 전체 화면">
-  {/* TODO: Sonamu UI 전체 스크린샷 추가 */}
+<Frame caption="Sonamu UI Full Screen">
+  {/* TODO: Add Sonamu UI full screenshot */}
 </Frame>
 
-Sonamu UI는 크게 세 가지 영역으로 구성됩니다:
+Sonamu UI consists of three main areas:
 
 ### 1. Global Navigation Bar (GNB)
 
-화면 상단에 위치하며 주요 기능에 빠르게 접근할 수 있습니다.
+Located at the top of the screen for quick access to main features.
 
-| 메뉴 | 기능 |
-|------|------|
-| **Entities** | Entity 생성 및 편집 |
-| **DB Migration** | 마이그레이션 관리 |
-| **Scaffolding** | Model/Test 코드 생성 |
-| **Fixture** | 테스트 데이터 관리 |
-| **i18n** | 국제화 문자열 관리 |
-| **Search** (`⌘K`) | 전체 검색 |
+| Menu | Function |
+|------|----------|
+| **Entities** | Create and edit Entities |
+| **DB Migration** | Manage migrations |
+| **Scaffolding** | Generate Model/Test code |
+| **Fixture** | Manage test data |
+| **i18n** | Manage internationalization strings |
+| **Search** (`⌘K`) | Global search |
 
 ### 2. Sidebar
 
-화면 왼쪽에 위치하며 현재 선택한 메뉴의 항목 목록을 표시합니다.
+Located on the left side, displays the item list for the currently selected menu.
 
-- **Entities 탭**: 모든 Entity 목록 표시
-- **Migrations 탭**: 마이그레이션 파일 목록
-- **하단 버튼**: 새 항목 추가 버튼 (예: New Entity)
+- **Entities tab**: Display all Entity list
+- **Migrations tab**: Migration file list
+- **Bottom button**: Add new item button (e.g., New Entity)
 
 ### 3. Main Content Area
 
-화면 중앙의 넓은 영역으로 선택한 항목의 상세 정보를 표시하고 편집합니다.
+The wide area in the center where you view and edit details of selected items.
 
-- Entity 속성 편집
-- 마이그레이션 미리보기
-- 코드 생성 옵션 등
+- Edit Entity properties
+- Preview migrations
+- Code generation options, etc.
 
-## 키보드 단축키
+## Keyboard Shortcuts
 
-| 단축키 | 기능 |
-|--------|------|
-| `⌘K` (Mac) / `Ctrl+K` (Windows) | 검색 모달 열기 |
-| `Esc` | 모달 닫기 |
+| Shortcut | Function |
+|----------|----------|
+| `⌘K` (Mac) / `Ctrl+K` (Windows) | Open search modal |
+| `Esc` | Close modal |
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Entity 관리" icon="cube" href="/tools-and-cli/sonamu-ui/entity-management">
-    Entity 생성 및 편집하기
+  <Card title="Entity Management" icon="cube" href="/tools-and-cli/sonamu-ui/entity-management">
+    Create and edit Entities
   </Card>
   <Card title="Scaffolding" icon="wand-magic-sparkles" href="/tools-and-cli/sonamu-ui/scaffolding-tab">
-    코드 자동 생성하기
+    Auto-generate code
   </Card>
 </CardGroup>

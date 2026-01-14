@@ -1,11 +1,11 @@
 ---
-title: '압축'
-description: 'HTTP 응답 압축 설정'
+title: 'Compression'
+description: 'HTTP response compression settings'
 ---
 
-Sonamu는 `@fastify/compress`를 사용하여 HTTP 응답을 자동으로 압축할 수 있습니다. gzip, deflate, brotli 등 다양한 압축 알고리즘을 지원하며, API별로 압축 여부를 제어할 수 있습니다.
+Sonamu can automatically compress HTTP responses using `@fastify/compress`. It supports various compression algorithms like gzip, deflate, and brotli, and you can control compression per API.
 
-## 기본 구조
+## Basic Structure
 
 ```typescript
 import { defineConfig } from "sonamu";
@@ -14,9 +14,9 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // API별로 제어
-        threshold: 1024,    // 1KB 이상만 압축
-        encodings: ["gzip", "br"],  // 지원 알고리즘
+        global: false,      // Control per API
+        threshold: 1024,    // Compress only above 1KB
+        encodings: ["gzip", "br"],  // Supported algorithms
       },
     },
   },
@@ -24,126 +24,126 @@ export default defineConfig({
 });
 ```
 
-## compress 설정
+## compress Settings
 
-### 활성화/비활성화
+### Enable/Disable
 
-**타입**: `boolean | FastifyCompressOptions`
-
-```typescript
-export default defineConfig({
-  server: {
-    plugins: {
-      compress: true,  // 기본 설정으로 활성화
-    },
-  },
-});
-```
-
-**비활성화**:
+**Type**: `boolean | FastifyCompressOptions`
 
 ```typescript
 export default defineConfig({
   server: {
     plugins: {
-      compress: false,  // 압축 비활성화
+      compress: true,  // Enable with default settings
     },
   },
 });
 ```
 
-## 주요 옵션
+**Disable**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      compress: false,  // Disable compression
+    },
+  },
+});
+```
+
+## Key Options
 
 ### global
 
-모든 응답에 자동으로 압축을 적용할지 결정합니다.
+Determines whether to automatically apply compression to all responses.
 
-**타입**: `boolean`
+**Type**: `boolean`
 
-**기본값**: `true`
+**Default**: `true`
 
 ```typescript
 export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,  // API별로 수동 제어
+        global: false,  // Manual control per API
       },
     },
   },
 });
 ```
 
-- `true`: 모든 응답을 자동 압축 (기본값)
-- `false`: `@compress()` 데코레이터로 API별 제어
+- `true`: Auto-compress all responses (default)
+- `false`: Control per API with `@compress()` decorator
 
 <Tip>
-`global: false`를 권장합니다. 작은 응답이나 이미 압축된 파일(이미지, 동영상)은 압축할 필요가 없기 때문입니다.
+We recommend `global: false`. Small responses or already compressed files (images, videos) don't need compression.
 </Tip>
 
 ### threshold
 
-압축을 시작할 최소 응답 크기입니다.
+Minimum response size to start compression.
 
-**타입**: `number` (bytes)
+**Type**: `number` (bytes)
 
-**기본값**: `1024` (1KB)
+**Default**: `1024` (1KB)
 
 ```typescript
 export default defineConfig({
   server: {
     plugins: {
       compress: {
-        threshold: 1024,  // 1KB 이상만 압축
+        threshold: 1024,  // Compress only above 1KB
       },
     },
   },
 });
 ```
 
-**권장값**:
-- `1024` (1KB) - 일반적인 웹 앱
-- `512` (512B) - 작은 JSON 응답도 압축
-- `5120` (5KB) - 큰 응답만 압축
+**Recommended values**:
+- `1024` (1KB) - General web apps
+- `512` (512B) - Compress small JSON responses too
+- `5120` (5KB) - Compress only large responses
 
 <Note>
-너무 작은 응답을 압축하면 오버헤드가 더 클 수 있습니다.
+Compressing very small responses may have more overhead than benefit.
 </Note>
 
 ### encodings
 
-지원할 압축 알고리즘 목록입니다.
+List of compression algorithms to support.
 
-**타입**: `string[]`
+**Type**: `string[]`
 
-**기본값**: `["gzip", "deflate"]`
+**Default**: `["gzip", "deflate"]`
 
 ```typescript
 export default defineConfig({
   server: {
     plugins: {
       compress: {
-        encodings: ["gzip", "br"],  // gzip과 brotli만
+        encodings: ["gzip", "br"],  // gzip and brotli only
       },
     },
   },
 });
 ```
 
-**지원 알고리즘**:
-- `"gzip"` - 가장 널리 지원됨, 빠른 압축
-- `"deflate"` - gzip과 유사
-- `"br"` (brotli) - 높은 압축률, 느린 압축
+**Supported algorithms**:
+- `"gzip"` - Most widely supported, fast compression
+- `"deflate"` - Similar to gzip
+- `"br"` (brotli) - High compression ratio, slower compression
 
-**우선순위**: 배열 순서대로 클라이언트가 지원하는 첫 번째 알고리즘 사용
+**Priority**: Uses the first algorithm in the array that the client supports
 
 <Tip>
-Brotli는 압축률이 높지만 CPU를 더 사용합니다. 정적 파일은 미리 압축하고, 동적 응답은 gzip 사용을 권장합니다.
+Brotli has a higher compression ratio but uses more CPU. We recommend pre-compressing static files and using gzip for dynamic responses.
 </Tip>
 
-## 기본 예시
+## Basic Examples
 
-### 권장 설정
+### Recommended Settings
 
 ```typescript
 import { defineConfig } from "sonamu";
@@ -152,16 +152,16 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // API별로 제어
-        threshold: 1024,    // 1KB 이상만
-        encodings: ["gzip"], // gzip만 (빠름)
+        global: false,      // Control per API
+        threshold: 1024,    // Above 1KB only
+        encodings: ["gzip"], // gzip only (fast)
       },
     },
   },
 });
 ```
 
-### Brotli 포함
+### Including Brotli
 
 ```typescript
 export default defineConfig({
@@ -170,22 +170,22 @@ export default defineConfig({
       compress: {
         global: false,
         threshold: 1024,
-        encodings: ["br", "gzip"],  // Brotli 우선, gzip 대체
+        encodings: ["br", "gzip"],  // Brotli preferred, gzip fallback
       },
     },
   },
 });
 ```
 
-### 자동 압축 (모든 응답)
+### Auto Compression (All Responses)
 
 ```typescript
 export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: true,       // 모든 응답 자동 압축
-        threshold: 512,     // 512B 이상
+        global: true,       // Auto-compress all responses
+        threshold: 512,     // Above 512B
         encodings: ["gzip"],
       },
     },
@@ -193,24 +193,24 @@ export default defineConfig({
 });
 ```
 
-## API별 압축 제어
+## Per-API Compression Control
 
-`global: false`로 설정했다면 `@compress()` 데코레이터로 API별로 압축을 제어할 수 있습니다.
+If you set `global: false`, you can control compression per API with the `@compress()` decorator.
 
 ```typescript
 import { api, compress } from "sonamu";
 
 export class DataModel {
-  // 압축 적용
+  // Apply compression
   @compress()
   @api()
   static async getLargeData() {
     return {
-      // 큰 데이터...
+      // Large data...
     };
   }
-  
-  // 압축 안 함 (작은 응답)
+
+  // No compression (small response)
   @api()
   static async getSmallData() {
     return { status: "ok" };
@@ -218,11 +218,11 @@ export class DataModel {
 }
 ```
 
-→ [Compress 데코레이터 사용법](/advanced-features/compress/per-api-control)
+→ [Compress Decorator Usage](/advanced-features/compress/per-api-control)
 
-## 실전 예시
+## Practical Examples
 
-### 표준 웹 API
+### Standard Web API
 
 ```typescript
 import { defineConfig } from "sonamu";
@@ -231,8 +231,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // @compress() 데코레이터로 제어
-        threshold: 1024,    // 1KB 이상만
+        global: false,      // Control with @compress() decorator
+        threshold: 1024,    // Above 1KB only
         encodings: ["gzip"],
       },
     },
@@ -240,30 +240,30 @@ export default defineConfig({
 });
 ```
 
-**사용**:
+**Usage**:
 
 ```typescript
 export class ArticleModel {
-  @compress()  // 큰 목록 응답
+  @compress()  // Large list response
   @api()
   static async list() {
     return this.getPuri().select("*");
   }
-  
-  @compress()  // 큰 상세 데이터
+
+  @compress()  // Large detail data
   @api()
   static async detail(id: number) {
     return this.findById(id, ["**"]);
   }
-  
-  @api()  // 작은 응답은 압축 안 함
+
+  @api()  // Don't compress small responses
   static async save(data) {
     return { id: 123 };
   }
 }
 ```
 
-### CDN 최적화
+### CDN Optimization
 
 ```typescript
 export default defineConfig({
@@ -271,15 +271,15 @@ export default defineConfig({
     plugins: {
       compress: {
         global: false,
-        threshold: 2048,    // 2KB 이상만 (CDN 고려)
-        encodings: ["br", "gzip"],  // Brotli 우선
+        threshold: 2048,    // Above 2KB only (considering CDN)
+        encodings: ["br", "gzip"],  // Brotli preferred
       },
     },
   },
 });
 ```
 
-### 개발 vs 프로덕션
+### Development vs Production
 
 ```typescript
 const isDev = process.env.NODE_ENV === "development";
@@ -288,7 +288,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: isDev
-        ? false  // 개발: 압축 비활성화 (디버깅 편의)
+        ? false  // Development: disable compression (easier debugging)
         : {
             global: false,
             threshold: 1024,
@@ -299,7 +299,7 @@ export default defineConfig({
 });
 ```
 
-### 고압축률 설정
+### High Compression Settings
 
 ```typescript
 export default defineConfig({
@@ -307,11 +307,11 @@ export default defineConfig({
     plugins: {
       compress: {
         global: false,
-        threshold: 512,     // 작은 응답도 압축
-        encodings: ["br"],  // Brotli만 (최고 압축률)
+        threshold: 512,     // Compress small responses too
+        encodings: ["br"],  // Brotli only (highest compression ratio)
         brotliOptions: {
           params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: 11,  // 최대 품질
+            [zlib.constants.BROTLI_PARAM_QUALITY]: 11,  // Maximum quality
           },
         },
       },
@@ -321,12 +321,12 @@ export default defineConfig({
 ```
 
 <Warning>
-Brotli 품질을 높이면 압축률은 좋아지지만 CPU 사용량이 크게 증가합니다. 프로덕션에서는 테스트 후 사용하세요.
+Increasing Brotli quality improves compression ratio but significantly increases CPU usage. Test before using in production.
 </Warning>
 
-## 추가 옵션
+## Additional Options
 
-### gzip 레벨
+### gzip Level
 
 ```typescript
 import zlib from "zlib";
@@ -339,7 +339,7 @@ export default defineConfig({
         threshold: 1024,
         encodings: ["gzip"],
         zlibOptions: {
-          level: zlib.constants.Z_BEST_COMPRESSION,  // 최대 압축
+          level: zlib.constants.Z_BEST_COMPRESSION,  // Maximum compression
         },
       },
     },
@@ -347,12 +347,12 @@ export default defineConfig({
 });
 ```
 
-**gzip 레벨**:
-- `Z_BEST_SPEED` (1) - 빠른 압축
-- `Z_DEFAULT_COMPRESSION` (6) - 기본값 (권장)
-- `Z_BEST_COMPRESSION` (9) - 최대 압축
+**gzip levels**:
+- `Z_BEST_SPEED` (1) - Fast compression
+- `Z_DEFAULT_COMPRESSION` (6) - Default (recommended)
+- `Z_BEST_COMPRESSION` (9) - Maximum compression
 
-### 특정 Content-Type만 압축
+### Compress Specific Content-Types Only
 
 ```typescript
 export default defineConfig({
@@ -362,14 +362,14 @@ export default defineConfig({
         global: true,
         threshold: 1024,
         encodings: ["gzip"],
-        customTypes: /^text\/|json$/,  // text/* 와 json만
+        customTypes: /^text\/|json$/,  // text/* and json only
       },
     },
   },
 });
 ```
 
-### 압축 제외
+### Compression Exclusion
 
 ```typescript
 export default defineConfig({
@@ -391,114 +391,114 @@ export default defineConfig({
 });
 ```
 
-## 압축 확인
+## Verifying Compression
 
-응답이 압축되었는지 확인하는 방법:
+How to verify if responses are compressed:
 
-### 브라우저 개발자 도구
+### Browser Developer Tools
 
-1. Network 탭 열기
-2. 응답 헤더에서 확인:
+1. Open Network tab
+2. Check response headers:
    ```
    Content-Encoding: gzip
    ```
-3. Size 확인:
+3. Check Size:
    ```
    Size: 2.5 KB (transferred)
    Size: 10 KB (uncompressed)
    ```
 
-### curl 테스트
+### curl Test
 
 ```bash
-# gzip 압축 요청
+# Request gzip compression
 curl -H "Accept-Encoding: gzip" http://localhost:1028/api/data -i
 
-# 응답 헤더 확인
+# Check response headers
 # Content-Encoding: gzip
 # Content-Length: 1234
 
-# Brotli 압축 요청
+# Request Brotli compression
 curl -H "Accept-Encoding: br" http://localhost:1028/api/data -i
 ```
 
-## 성능 영향
+## Performance Impact
 
-### 압축의 트레이드오프
+### Compression Trade-offs
 
-**장점**:
-- 대역폭 절감 (50-80% 감소)
-- 빠른 전송 시간 (특히 느린 네트워크)
-- CDN 비용 절감
+**Benefits**:
+- Bandwidth savings (50-80% reduction)
+- Faster transfer time (especially on slow networks)
+- CDN cost savings
 
-**단점**:
-- CPU 사용량 증가
-- 첫 바이트까지 시간 증가 (TTFB)
-- 메모리 사용량 증가
+**Drawbacks**:
+- Increased CPU usage
+- Increased Time To First Byte (TTFB)
+- Increased memory usage
 
-### 권장 사항
+### Recommendations
 
-**압축해야 하는 것**:
-- JSON 응답 (API)
+**Should compress**:
+- JSON responses (API)
 - HTML, CSS, JavaScript
 - SVG, XML
-- 텍스트 파일
+- Text files
 
-**압축하지 말아야 하는 것**:
-- 이미지 (JPEG, PNG, WebP) - 이미 압축됨
-- 동영상 (MP4, WebM) - 이미 압축됨
-- 압축 파일 (ZIP, GZ) - 이미 압축됨
-- 매우 작은 응답 (< 1KB)
+**Should not compress**:
+- Images (JPEG, PNG, WebP) - Already compressed
+- Videos (MP4, WebM) - Already compressed
+- Compressed files (ZIP, GZ) - Already compressed
+- Very small responses (< 1KB)
 
-## 주의사항
+## Cautions
 
-### 1. 이미 압축된 파일
+### 1. Already Compressed Files
 
 ```typescript
-// ❌ 나쁜 예: 이미지도 압축
+// ❌ Bad: Compress images too
 compress: {
-  global: true,  // 모든 것을 압축
+  global: true,  // Compress everything
 }
 
-// ✅ 좋은 예: API별로 제어
+// ✅ Good: Control per API
 compress: {
-  global: false,  // 필요한 것만 @compress()
+  global: false,  // Only @compress() where needed
 }
 ```
 
-### 2. CPU 사용량
+### 2. CPU Usage
 
 ```typescript
-// ❌ 나쁜 예: Brotli 최대 품질
+// ❌ Bad: Maximum Brotli quality
 compress: {
   encodings: ["br"],
   brotliOptions: {
     params: {
-      [zlib.constants.BROTLI_PARAM_QUALITY]: 11,  // 너무 느림!
+      [zlib.constants.BROTLI_PARAM_QUALITY]: 11,  // Too slow!
     },
   },
 }
 
-// ✅ 좋은 예: 적절한 균형
+// ✅ Good: Appropriate balance
 compress: {
-  encodings: ["gzip"],  // 빠르고 충분한 압축률
+  encodings: ["gzip"],  // Fast with good compression ratio
 }
 ```
 
-### 3. threshold 설정
+### 3. threshold Setting
 
 ```typescript
-// ❌ 나쁜 예: 너무 낮은 threshold
-threshold: 100  // 100B - 오버헤드가 더 클 수 있음
+// ❌ Bad: Too low threshold
+threshold: 100  // 100B - Overhead may be larger
 
-// ✅ 좋은 예: 적절한 크기
+// ✅ Good: Appropriate size
 threshold: 1024  // 1KB
 ```
 
-## 다음 단계
+## Next Steps
 
-응답 압축 설정을 완료했다면:
+After completing response compression settings:
 
-- [compress decorator](/advanced-features/compress/per-api-control) - API별 압축 제어
-- [cache-control](/configuration/sonamu-config/cache-control) - 캐시와 압축 함께 사용
-- [performance](/troubleshooting/performance/query-optimization) - 성능 최적화
+- [compress decorator](/advanced-features/compress/per-api-control) - Per-API compression control
+- [cache-control](/configuration/sonamu-config/cache-control) - Using cache with compression
+- [performance](/troubleshooting/performance/query-optimization) - Performance optimization

@@ -1,41 +1,41 @@
 ---
-title: "클라이언트 통합"
-description: "프론트엔드에서 SSE 사용하기"
+title: "Client Integration"
+description: "Using SSE in the frontend"
 ---
 
-Sonamu의 SSE 엔드포인트를 프론트엔드에서 사용하는 방법을 설명합니다. 브라우저의 **EventSource API**를 사용하여 실시간 이벤트를 수신할 수 있습니다.
+This guide explains how to use Sonamu's SSE endpoints in the frontend. You can receive real-time events using the browser's **EventSource API**.
 
 ## EventSource API
 
-브라우저 내장 API로 SSE 연결을 관리합니다.
+A built-in browser API for managing SSE connections.
 
-### 기본 사용법
+### Basic Usage
 
 ```typescript
-// SSE 연결 생성
+// Create SSE connection
 const source = new EventSource('/stream/notifications?userId=1');
 
-// 이벤트 리스너 등록
+// Register event listener
 source.addEventListener('notification', (event) => {
   const data = JSON.parse(event.data);
   console.log('Notification:', data);
 });
 
-// 연결 종료 이벤트
+// Connection end event
 source.addEventListener('end', () => {
   source.close();
 });
 
-// 에러 처리
+// Error handling
 source.onerror = (error) => {
   console.error('SSE Error:', error);
   source.close();
 };
 ```
 
-## React 통합
+## React Integration
 
-### 기본 Hook
+### Basic Hook
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -82,7 +82,7 @@ function useSSE<T>(url: string, eventName: string) {
 }
 ```
 
-### 사용 예제
+### Usage Example
 
 ```typescript
 function NotificationList() {
@@ -104,9 +104,9 @@ function NotificationList() {
 }
 ```
 
-## 실전 예제
+## Practical Examples
 
-### 1. 실시간 알림
+### 1. Real-time Notifications
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -134,8 +134,8 @@ function NotificationCenter({ userId }: { userId: number }) {
     source.addEventListener('notification', (event) => {
       const notification = JSON.parse(event.data) as Notification;
       setNotifications(prev => [notification, ...prev].slice(0, 10));
-      
-      // 브라우저 알림
+
+      // Browser notification
       if (Notification.permission === 'granted') {
         new Notification(notification.message);
       }
@@ -174,7 +174,7 @@ function NotificationCenter({ userId }: { userId: number }) {
 }
 ```
 
-### 2. 작업 진행률
+### 2. Task Progress
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -239,7 +239,7 @@ function TaskProgress({ taskId }: { taskId: number }) {
 }
 ```
 
-### 3. 라이브 피드
+### 3. Live Feed
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -259,11 +259,11 @@ function LiveFeed() {
 
     source.addEventListener('newPost', (event) => {
       const post = JSON.parse(event.data) as Post;
-      
-      // 새 게시물을 상단에 추가
+
+      // Add new post to the top
       setPosts(prev => [post, ...prev]);
-      
-      // 알림 표시
+
+      // Show notification
       showToast(`New post: ${post.title}`);
     });
 
@@ -291,7 +291,7 @@ function LiveFeed() {
 }
 ```
 
-### 4. 다중 이벤트 처리
+### 4. Multiple Event Handling
 
 ```typescript
 import { useEffect, useState } from 'react';
@@ -314,29 +314,29 @@ function ChatRoom({ roomId }: { roomId: number }) {
   useEffect(() => {
     const source = new EventSource(`/stream/chatRoom?roomId=${roomId}`);
 
-    // 메시지 이벤트
+    // Message event
     source.addEventListener('message', (event) => {
       const message = JSON.parse(event.data) as Message;
       setMessages(prev => [...prev, message]);
     });
 
-    // 타이핑 상태 이벤트
+    // Typing status event
     source.addEventListener('typing', (event) => {
       const data = JSON.parse(event.data) as TypingStatus;
-      setTypingUsers(prev => 
+      setTypingUsers(prev =>
         data.isTyping
           ? [...prev, data.userId]
           : prev.filter(id => id !== data.userId)
       );
     });
 
-    // 입장 이벤트
+    // Join event
     source.addEventListener('joined', (event) => {
       const data = JSON.parse(event.data);
       showToast(`${data.username} joined the room`);
     });
 
-    // 퇴장 이벤트
+    // Leave event
     source.addEventListener('left', (event) => {
       const data = JSON.parse(event.data);
       showToast(`User ${data.userId} left the room`);
@@ -370,7 +370,7 @@ function ChatRoom({ roomId }: { roomId: number }) {
 }
 ```
 
-### 5. 자동 재연결
+### 5. Auto Reconnection
 
 ```typescript
 import { useEffect, useState, useRef } from 'react';
@@ -393,7 +393,7 @@ function useSSEWithReconnect<T>(
 
       source.onopen = () => {
         setIsConnected(true);
-        retriesRef.current = 0;  // 재시도 카운터 리셋
+        retriesRef.current = 0;  // Reset retry counter
       };
 
       source.addEventListener(eventName, (event) => {
@@ -410,11 +410,11 @@ function useSSEWithReconnect<T>(
         source?.close();
         setIsConnected(false);
 
-        // 재연결 시도
+        // Attempt reconnection
         if (retriesRef.current < maxRetries) {
           retriesRef.current += 1;
           const delay = Math.min(1000 * Math.pow(2, retriesRef.current), 30000);
-          
+
           reconnectTimeout = setTimeout(() => {
             console.log(`Reconnecting... (${retriesRef.current}/${maxRetries})`);
             connect();
@@ -438,7 +438,7 @@ function useSSEWithReconnect<T>(
   return { data, isConnected };
 }
 
-// 사용
+// Usage
 function ReconnectingNotifications() {
   const { data, isConnected } = useSSEWithReconnect<{
     message: string;
@@ -453,7 +453,7 @@ function ReconnectingNotifications() {
 }
 ```
 
-## Vue 통합
+## Vue Integration
 
 ```typescript
 import { ref, onMounted, onUnmounted } from 'vue';
@@ -492,33 +492,33 @@ export function useSSE<T>(url: string, eventName: string) {
   return { data, isConnected };
 }
 
-// 사용
+// Usage
 // <script setup>
 // const { data, isConnected } = useSSE('/stream/notifications', 'notification');
 // </script>
 ```
 
-## 인증 처리
+## Authentication Handling
 
-### 쿠키 기반 인증
+### Cookie-based Authentication
 
 ```typescript
-// EventSource는 자동으로 쿠키를 전송합니다
+// EventSource automatically sends cookies
 const source = new EventSource('/stream/notifications');
 ```
 
-**주의**: CORS 사용 시 `credentials: 'include'` 불필요 (자동)
+**Note**: When using CORS, `credentials: 'include'` is not needed (automatic)
 
-### Bearer Token 인증
+### Bearer Token Authentication
 
-EventSource는 커스텀 헤더를 지원하지 않으므로, URL 파라미터를 사용합니다:
+Since EventSource does not support custom headers, use URL parameters:
 
 ```typescript
 const token = localStorage.getItem('token');
 const source = new EventSource(`/stream/notifications?token=${token}`);
 ```
 
-**서버 측**:
+**Server side**:
 ```typescript
 @stream({
   type: 'sse',
@@ -528,31 +528,31 @@ const source = new EventSource(`/stream/notifications?token=${token}`);
 })
 @api({ compress: false })
 async *streamNotifications(token: string, ctx: Context) {
-  // 토큰 검증
+  // Verify token
   const user = await this.verifyToken(token);
   if (!user) {
     throw new Error('Unauthorized');
   }
-  
+
   // ...
 }
 ```
 
-## 에러 처리
+## Error Handling
 
-### 연결 실패
+### Connection Failure
 
 ```typescript
 const source = new EventSource('/stream/data');
 
 source.onerror = (error) => {
   console.error('Connection failed:', error);
-  
-  // 상태 코드 확인 (EventSource는 제공하지 않음)
-  // 대신 서버에서 에러 이벤트 전송
+
+  // EventSource doesn't provide status codes
+  // Instead, the server sends error events
 };
 
-// 서버에서 에러 이벤트 전송
+// Handle server-sent error events
 source.addEventListener('error', (event) => {
   const data = JSON.parse(event.data);
   console.error('Server error:', data.message);
@@ -560,13 +560,13 @@ source.addEventListener('error', (event) => {
 });
 ```
 
-### 타임아웃 처리
+### Timeout Handling
 
 ```typescript
 const source = new EventSource('/stream/data');
 let timeoutId: NodeJS.Timeout;
 
-// 타임아웃 설정 (30초)
+// Set timeout (30 seconds)
 const resetTimeout = () => {
   clearTimeout(timeoutId);
   timeoutId = setTimeout(() => {
@@ -585,12 +585,12 @@ source.addEventListener('end', () => {
 });
 ```
 
-## 디버깅
+## Debugging
 
-### 브라우저 개발자 도구
+### Browser Developer Tools
 
 ```
-Network 탭 → EventStream 타입 필터
+Network tab → Filter by EventStream type
 
 Request:
   GET /stream/notifications?userId=1
@@ -598,19 +598,19 @@ Request:
 
 Response:
   Content-Type: text/event-stream
-  
-EventStream 탭:
+
+EventStream tab:
   event: notification
   data: {"id": 1, "message": "Hello"}
-  
+
   event: notification
   data: {"id": 2, "message": "World"}
-  
+
   event: end
   data: END
 ```
 
-### 로깅
+### Logging
 
 ```typescript
 const source = new EventSource('/stream/data');
@@ -633,60 +633,60 @@ source.onerror = (error) => {
 };
 ```
 
-## 주의사항
+## Important Notes
 
 <Warning>
-**클라이언트 SSE 사용 시 주의사항**:
+**Important considerations when using SSE on the client**:
 
-1. **연결 정리**: 컴포넌트 언마운트 시 반드시 close()
+1. **Connection cleanup**: Always call close() when component unmounts
    ```typescript
    useEffect(() => {
      const source = new EventSource('/stream/data');
      return () => {
-       source.close();  // 필수!
+       source.close();  // Required!
      };
    }, []);
    ```
 
-2. **이벤트 이름 일치**: 서버와 클라이언트 이벤트 이름 동일해야 함
+2. **Event name matching**: Server and client event names must be identical
    ```typescript
-   // 서버: sse.publish('notification', ...)
-   // 클라이언트: source.addEventListener('notification', ...)
+   // Server: sse.publish('notification', ...)
+   // Client: source.addEventListener('notification', ...)
    ```
 
-3. **JSON 파싱**: 데이터는 항상 문자열로 전달됨
+3. **JSON parsing**: Data is always transmitted as strings
    ```typescript
    source.addEventListener('data', (event) => {
-     const data = JSON.parse(event.data);  // 파싱 필수
+     const data = JSON.parse(event.data);  // Parsing required
    });
    ```
 
-4. **브라우저 제한**: 동시 연결 수 제한 (도메인당 6개)
-   - 해결: 연결 재사용 또는 HTTP/2 사용
+4. **Browser limitations**: Concurrent connection limit (6 per domain)
+   - Solution: Reuse connections or use HTTP/2
 
-5. **재연결 처리**: 네트워크 끊김 시 자동 재연결 구현
+5. **Reconnection handling**: Implement auto-reconnection for network disconnections
    ```typescript
    source.onerror = () => {
      setTimeout(() => {
-       // 재연결 로직
+       // Reconnection logic
      }, 1000);
    };
    ```
 
-6. **메모리 누수**: 오래된 데이터 정리
+6. **Memory leaks**: Clean up old data
    ```typescript
-   setNotifications(prev => prev.slice(0, 100));  // 최대 100개
+   setNotifications(prev => prev.slice(0, 100));  // Max 100 items
    ```
 
-7. **CORS 설정**: 다른 도메인에서 사용 시 서버 CORS 설정 필요
+7. **CORS configuration**: Server CORS settings required when using from different domains
    ```typescript
-   // 서버: cors: { origin: 'https://example.com' }
+   // Server: cors: { origin: 'https://example.com' }
    ```
 </Warning>
 
-## Polyfill (IE 지원)
+## Polyfill (IE Support)
 
-IE 11 등 구형 브라우저 지원:
+For legacy browser support like IE 11:
 
 ```bash
 npm install event-source-polyfill
@@ -702,13 +702,13 @@ const source = new EventSourcePolyfill('/stream/data', {
 });
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="SSE 설정" icon="gear" href="/advanced-features/sse/sse-setup">
-    SSE 플러그인 설정하기
+  <Card title="SSE Setup" icon="gear" href="/advanced-features/sse/sse-setup">
+    Configure the SSE plugin
   </Card>
-  <Card title="SSE 엔드포인트 만들기" icon="code" href="/advanced-features/sse/creating-sse-endpoints">
-    @stream 데코레이터로 SSE API 구축
+  <Card title="Creating SSE Endpoints" icon="code" href="/advanced-features/sse/creating-sse-endpoints">
+    Build SSE APIs with the @stream decorator
   </Card>
 </CardGroup>

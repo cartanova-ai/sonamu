@@ -1,50 +1,50 @@
 ---
-title: 'N+1 문제'
-description: 'N+1 쿼리 문제 해결하기'
+title: 'N+1 Problems'
+description: 'Solving N+1 query problems'
 ---
 
-N+1 쿼리 문제를 이해하고 Sonamu의 Subset과 Relation 기능으로 해결하는 방법을 다룹니다.
+This guide covers understanding N+1 query problems and how to solve them using Sonamu's Subset and Relation features.
 
-## N+1 문제란?
+## What is the N+1 Problem?
 
-N+1 문제는 1개의 메인 쿼리 후, N개의 추가 쿼리가 발생하는 성능 문제입니다.
+The N+1 problem is a performance issue where 1 main query triggers N additional queries.
 
-### 문제 예시
+### Problem Example
 
 ```typescript
-// ❌ N+1 문제 발생
+// N+1 problem occurring
 async function getUsersWithOrders() {
-  // 1. 사용자 조회 (1번 쿼리)
-  const users = await UserModel.getPuri().select("id", "name");  // 100명의 사용자
-  
-  // 2. 각 사용자의 주문 조회 (N번 쿼리)
+  // 1. Fetch users (1 query)
+  const users = await UserModel.getPuri().select("id", "name");  // 100 users
+
+  // 2. Fetch orders for each user (N queries)
   for (const user of users) {
     const orders = await OrderModel.getPuri()
       .select("*")
       .where({ user_id: user.id });
-    
-    user.orders = orders;  // 100번 쿼리!
+
+    user.orders = orders;  // 100 queries!
   }
-  
+
   return users;
 }
 
-// 총 쿼리: 1 + 100 = 101번
+// Total queries: 1 + 100 = 101
 ```
 
-**성능 영향:**
-- 100명 사용자 → 101번 쿼리
-- 1000명 사용자 → 1001번 쿼리
-- 네트워크 왕복 시간 누적
-- 데이터베이스 부하 증가
+**Performance Impact:**
+- 100 users = 101 queries
+- 1000 users = 1001 queries
+- Accumulated network round-trip time
+- Increased database load
 
-## Sonamu의 해결 방법
+## Sonamu's Solution
 
-Sonamu는 **Subset**을 통해 N+1 문제를 자동으로 해결합니다.
+Sonamu automatically solves the N+1 problem through **Subsets**.
 
-### 1. Subset 정의
+### 1. Define Subset
 
-Entity에서 Subset을 정의합니다:
+Define a Subset in the Entity:
 
 ```json
 // user.entity.json
@@ -78,38 +78,38 @@ Entity에서 Subset을 정의합니다:
 }
 ```
 
-### 2. Subset 사용
+### 2. Use Subset
 
 ```typescript
-// ✅ Subset으로 N+1 해결
+// Solving N+1 with Subset
 async function getUsersWithOrders() {
-  // getSubsetQueries로 쿼리 빌더 얻기
+  // Get query builder with getSubsetQueries
   const { qb } = UserModel.getSubsetQueries("WithOrders");
-  
-  // 자동으로 최적화된 쿼리 실행
+
+  // Execute automatically optimized query
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb,
     params: { num: 100, page: 1 }
   });
-  
-  // result.rows[0].orders는 이미 로드됨
-  // 추가 쿼리 없음!
-  
+
+  // result.rows[0].orders is already loaded
+  // No additional queries!
+
   return result.rows;
 }
 
-// 총 쿼리: 2번 (users 1번 + orders 1번)
+// Total queries: 2 (users 1 + orders 1)
 ```
 
-**내부 동작:**
-1. 사용자 조회 (1번)
-2. 모든 사용자 ID로 주문 일괄 조회 (1번)
-3. 메모리에서 조인
+**Internal Operation:**
+1. Fetch users (1 query)
+2. Fetch all orders with user IDs in batch (1 query)
+3. Join in memory
 
-## Subset 활용 패턴
+## Subset Usage Patterns
 
-### 단일 Relation
+### Single Relation
 
 ```json
 // post.entity.json
@@ -130,7 +130,7 @@ async function getUsersWithOrders() {
 ```
 
 ```typescript
-// 게시글과 작성자 조회
+// Fetch posts with authors
 const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
@@ -143,7 +143,7 @@ result.rows.forEach(post => {
 });
 ```
 
-### 다중 Relations
+### Multiple Relations
 
 ```json
 // order.entity.json
@@ -172,7 +172,7 @@ result.rows.forEach(post => {
 ```
 
 ```typescript
-// 주문 + 사용자 + 아이템 + 결제 정보
+// Order + user + items + payment info
 const { qb } = OrderModel.getSubsetQueries("Detail");
 const result = await OrderModel.executeSubsetQuery({
   subset: "Detail",
@@ -180,7 +180,7 @@ const result = await OrderModel.executeSubsetQuery({
   params: { num: 20, page: 1 }
 });
 
-// 모든 관계가 이미 로드됨
+// All relations are already loaded
 result.rows.forEach(order => {
   console.log(`Order ${order.id}`);
   console.log(`User: ${order.user.name}`);
@@ -189,7 +189,7 @@ result.rows.forEach(order => {
 });
 ```
 
-### 중첩 Relations
+### Nested Relations
 
 ```json
 // comment.entity.json
@@ -205,7 +205,7 @@ result.rows.forEach(order => {
         },
         {
           "name": "post",
-          "subset": "WithAuthor"  // 중첩: 게시글 + 게시글 작성자
+          "subset": "WithAuthor"  // Nested: post + post author
         }
       ]
     }
@@ -214,7 +214,7 @@ result.rows.forEach(order => {
 ```
 
 ```typescript
-// 댓글 + 댓글 작성자 + 게시글 + 게시글 작성자
+// Comment + comment author + post + post author
 const { qb } = CommentModel.getSubsetQueries("WithAll");
 const result = await CommentModel.executeSubsetQuery({
   subset: "WithAll",
@@ -227,80 +227,80 @@ result.rows.forEach(comment => {
   console.log(`  on "${comment.post.title}" by ${comment.post.author.name}`);
 });
 
-// 쿼리 4번만 실행:
+// Only 4 queries executed:
 // 1. comments
 // 2. comment authors
 // 3. posts
 // 4. post authors
 ```
 
-## whereIn을 활용한 수동 해결
+## Manual Solution with whereIn
 
-Subset이 없는 경우 whereIn으로 최적화할 수 있습니다:
+When Subsets are not available, you can optimize with whereIn:
 
 ```typescript
-// ❌ N+1 문제
+// N+1 problem
 async function getUsersWithOrders() {
   const users = await UserModel.getPuri().select("id", "name");
-  
+
   for (const user of users) {
     user.orders = await OrderModel.getPuri()
       .select("*")
       .where({ user_id: user.id });
   }
-  
+
   return users;
 }
 
-// ✅ whereIn으로 최적화
+// Optimized with whereIn
 async function getUsersWithOrders() {
-  // 1. 사용자 조회
+  // 1. Fetch users
   const users = await UserModel.getPuri().select("id", "name");
-  
+
   const userIds = users.map(u => u.id);
-  
-  // 2. 모든 주문 한 번에 조회
+
+  // 2. Fetch all orders at once
   const orders = await OrderModel.getPuri()
     .select("*")
     .whereIn("user_id", userIds);
-  
-  // 3. 메모리에서 매핑
+
+  // 3. Map in memory
   const ordersByUserId = orders.reduce((acc, order) => {
     if (!acc[order.user_id]) acc[order.user_id] = [];
     acc[order.user_id].push(order);
     return acc;
   }, {} as Record<number, Order[]>);
-  
+
   users.forEach(user => {
     user.orders = ordersByUserId[user.id] || [];
   });
-  
+
   return users;
 }
 
-// 쿼리 2번: users + orders
+// 2 queries: users + orders
 ```
 
-## DataLoader 패턴
+## DataLoader Pattern
 
-반복적인 조회가 필요한 경우 DataLoader 패턴을 사용합니다:
+Use the DataLoader pattern when repeated queries are needed:
 
 ```typescript
 class OrderModelClass extends BaseModel {
-  // 사용자별 주문 로더
+  // Orders loader by user
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
     const orders = await this.getPuri()
       .select("*")
       .whereIn("user_id", userIds);
-    
-    // user_id별로 그룹화
-    const grouped = userIds.map(userId => 
+
+    // Group by user_id
+    const grouped = userIds.map(userId =>
       orders.filter(o => o.user_id === userId)
     );
-    
+
     return grouped;
   });
-  
+
   async getOrdersByUserId(userId: number): Promise<Order[]> {
     return this.userOrdersLoader.load(userId);
   }
@@ -308,43 +308,43 @@ class OrderModelClass extends BaseModel {
 ```
 
 ```typescript
-// 사용
+// Usage
 async function processUsers(users: User[]) {
   for (const user of users) {
-    // DataLoader가 자동으로 배치 처리
+    // DataLoader automatically batches
     const orders = await OrderModel.getOrdersByUserId(user.id);
     console.log(`${user.name}: ${orders.length} orders`);
   }
 }
 
-// 내부적으로 whereIn으로 한 번에 조회
+// Internally queries all at once with whereIn
 ```
 
-## 실전 예제
+## Practical Examples
 
-### API 엔드포인트 최적화
+### API Endpoint Optimization
 
 ```typescript
 class PostModelClass extends BaseModel {
-  // ❌ N+1 발생
+  // N+1 occurring
   @api({ httpMethod: "GET" })
   async listPostsSlow() {
     const posts = await this.getPuri().select("id", "title", "content");
-    
-    // N+1 발생!
+
+    // N+1 occurring!
     for (const post of posts) {
       post.author = await UserModel.findById(post.author_id);
       post.comments = await CommentModel.getPuri().where({ post_id: post.id });
     }
-    
+
     return posts;
   }
-  
-  // ✅ Subset으로 최적화
+
+  // Optimized with Subset
   @api({ httpMethod: "GET" })
   async listPostsFast() {
     const { qb } = this.getSubsetQueries("WithAuthorAndComments");
-    
+
     return this.executeSubsetQuery({
       subset: "WithAuthorAndComments",
       qb: qb.orderBy("created_at", "desc"),
@@ -354,35 +354,35 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### 대시보드 데이터
+### Dashboard Data
 
 ```typescript
 class DashboardService {
-  // ❌ N+1 발생
+  // N+1 occurring
   async getDashboardSlow() {
     const users = await UserModel.getPuri().select("id", "name");
-    
+
     const stats = [];
     for (const user of users) {
       const orderCount = await OrderModel.getPuri()
         .select({ count: Puri.count() })
         .where({ user_id: user.id });
-      
+
       const totalSpent = await OrderModel.getPuri()
         .select({ total: Puri.sum("total") })
         .where({ user_id: user.id });
-      
+
       stats.push({
         user: user.name,
         orderCount: orderCount[0].count,
         totalSpent: totalSpent[0].total
       });
     }
-    
+
     return stats;
   }
-  
-  // ✅ JOIN으로 최적화
+
+  // Optimized with JOIN
   async getDashboardFast() {
     return UserModel.getPuri()
       .select(
@@ -397,22 +397,22 @@ class DashboardService {
 }
 ```
 
-## N+1 감지하기
+## Detecting N+1
 
-### 쿼리 로깅
+### Query Logging
 
 ```typescript
 // sonamu.config.ts
 export default {
   database: {
     defaultOptions: {
-      debug: true  // 모든 쿼리 출력
+      debug: true  // Output all queries
     }
   }
 } satisfies SonamuConfig;
 ```
 
-실행 후 콘솔을 확인하세요:
+Check the console after execution:
 ```
 SELECT * FROM users;
 SELECT * FROM orders WHERE user_id = 1;
@@ -421,60 +421,60 @@ SELECT * FROM orders WHERE user_id = 3;
 ...
 ```
 
-반복적인 비슷한 쿼리가 보이면 N+1 문제입니다!
+Repetitive similar queries indicate an N+1 problem!
 
-### 테스트로 감지
+### Detection with Tests
 
 ```typescript
-test("N+1 문제 확인", async () => {
-  // 쿼리 카운터
+test("N+1 problem check", async () => {
+  // Query counter
   let queryCount = 0;
-  
+
   const db = UserModel.getPuri().getDB();
   db.on("query", () => queryCount++);
-  
-  // 테스트
+
+  // Test
   const { qb } = UserModel.getSubsetQueries("WithOrders");
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb: qb.limit(10),
     params: { num: 10, page: 1 }
   });
-  
-  // 쿼리 수 검증
-  expect(queryCount).toBeLessThan(5);  // N+1이면 11번 이상
+
+  // Verify query count
+  expect(queryCount).toBeLessThan(5);  // Would be 11+ with N+1
   expect(result.rows).toHaveLength(10);
 });
 ```
 
-## 성능 비교
+## Performance Comparison
 
-### N+1 문제가 있는 경우
-
-```
-100명 사용자 조회:
-- 쿼리: 101번
-- 시간: ~2000ms
-- DB 커넥션: 101번 획득/반환
-```
-
-### Subset으로 최적화한 경우
+### With N+1 Problem
 
 ```
-100명 사용자 조회:
-- 쿼리: 2번
-- 시간: ~50ms
-- DB 커넥션: 2번 획득/반환
+Querying 100 users:
+- Queries: 101
+- Time: ~2000ms
+- DB connections: 101 acquire/release
 ```
 
-**40배 이상 성능 향상!**
+### Optimized with Subset
+
+```
+Querying 100 users:
+- Queries: 2
+- Time: ~50ms
+- DB connections: 2 acquire/release
+```
+
+**Over 40x performance improvement!**
 
 ## Best Practices
 
-### 1. 항상 Subset 먼저 고려
+### 1. Always Consider Subset First
 
 ```typescript
-// ✅ Subset 사용
+// Using Subset
 const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
@@ -482,14 +482,14 @@ const result = await PostModel.executeSubsetQuery({
   params: { num: 20, page: 1 }
 });
 
-// ❌ 수동 로딩
+// Manual loading - avoid
 const posts = await PostModel.getPuri();
 for (const post of posts) {
   post.author = await UserModel.findById(post.author_id);
 }
 ```
 
-### 2. API 응답에는 필요한 Subset 정의
+### 2. Define Necessary Subsets for API Responses
 
 ```json
 {
@@ -508,19 +508,19 @@ for (const post of posts) {
 }
 ```
 
-### 3. 복잡한 쿼리는 JOIN 고려
+### 3. Consider JOIN for Complex Queries
 
 ```typescript
-// Subset보다 JOIN이 나은 경우:
-// - 집계 함수 필요
-// - 복잡한 필터링
-// - 대량 데이터
+// Cases where JOIN is better than Subset:
+// - Aggregation functions needed
+// - Complex filtering
+// - Large datasets
 ```
 
-### 4. 개발 중 쿼리 모니터링
+### 4. Monitor Queries During Development
 
 ```typescript
-// 개발 환경에서만 쿼리 로깅
+// Query logging only in development
 export default {
   database: {
     defaultOptions: {
@@ -530,22 +530,22 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-## 체크리스트
+## Checklist
 
-N+1 문제를 방지하려면:
+To prevent N+1 problems:
 
-- [ ] 반복문 안에서 DB 조회하지 않기
-- [ ] Subset으로 관계 데이터 미리 로드
-- [ ] whereIn으로 일괄 조회
-- [ ] JOIN을 활용한 집계
-- [ ] 개발 중 쿼리 로깅 활성화
-- [ ] 테스트로 쿼리 수 검증
-- [ ] API 응답 시간 모니터링
+- [ ] Avoid DB queries inside loops
+- [ ] Pre-load relation data with Subset
+- [ ] Use whereIn for bulk queries
+- [ ] Use JOIN for aggregations
+- [ ] Enable query logging during development
+- [ ] Verify query count with tests
+- [ ] Monitor API response times
 
-## 관련 문서
+## Related Documentation
 
-- [Subset 정의하기](/database/subsets/defining-subsets)
-- [Subset 사용하기](/database/subsets/using-subsets)
-- [중첩 Relations](/database/subsets/nested-relations)
-- [쿼리 최적화](/troubleshooting/performance/query-optimization)
-- [캐싱 전략](/troubleshooting/performance/caching-strategies)
+- [Defining Subsets](/database/subsets/defining-subsets)
+- [Using Subsets](/database/subsets/using-subsets)
+- [Nested Relations](/database/subsets/nested-relations)
+- [Query Optimization](/troubleshooting/performance/query-optimization)
+- [Caching Strategies](/troubleshooting/performance/caching-strategies)

@@ -1,20 +1,20 @@
 ---
-title: '일반 질문'
-description: 'Sonamu 사용에 관한 일반적인 질문'
+title: 'General Questions'
+description: 'General questions about using Sonamu'
 ---
 
-## 시작하기
+## Getting Started
 
 <AccordionGroup>
-<Accordion title="Sonamu를 사용하여 새 프로젝트를 시작하려면 어떻게 해야 하나요?">
+<Accordion title="How do I start a new project with Sonamu?">
 
-다음 명령어로 새 프로젝트를 생성합니다:
+Create a new project with the following command:
 
 ```bash
 pnpm create sonamu
 ```
 
-대화형 프롬프트에 따라 프로젝트 설정:
+Follow the interactive prompts to configure your project:
 
 ```bash
 ? Project name: my-app
@@ -27,22 +27,22 @@ pnpm create sonamu
 ? Enter the database password: ****
 ```
 
-프로젝트 실행:
+Run the project:
 
 ```bash
-# 1. 데이터베이스 시작
+# 1. Start the database
 cd my-app/api
 pnpm db:up
 
-# 2. API 서버 시작 (Sonamu UI 포함)
+# 2. Start the API server (includes Sonamu UI)
 pnpm dev
 
-# 3. 새 터미널에서 Web 서버 시작
+# 3. In a new terminal, start the Web server
 cd my-app/web
 pnpm dev
 ```
 
-접속 가능한 URL:
+Accessible URLs:
 
 ```
 API: http://localhost:1028
@@ -50,17 +50,17 @@ Sonamu UI: http://localhost:1028/sonamu-ui
 Web: http://localhost:3028
 ```
 
-요구사항: `Node.js >= 18`, `pnpm >= 10`, `Docker`
+Requirements: `Node.js >= 18`, `pnpm >= 10`, `Docker`
 
 </Accordion>
 
-<Accordion title="Sonamu는 어떤 기술 스택을 사용하나요?">
+<Accordion title="What tech stack does Sonamu use?">
 
 ```
-백엔드: TypeScript, Node.js, Fastify, Knex.js, PostgreSQL, Zod
-프론트엔드: React, TanStack Query, Axios, Tailwind CSS
-개발 도구: pnpm, Docker
-자동 생성: 마이그레이션 파일, TypeScript 타입, API 엔드포인트, React hooks
+Backend: TypeScript, Node.js, Fastify, Knex.js, PostgreSQL, Zod
+Frontend: React, TanStack Query, Axios, Tailwind CSS
+Development Tools: pnpm, Docker
+Auto-generated: Migration files, TypeScript types, API endpoints, React hooks
 ```
 
 </Accordion>
@@ -68,51 +68,51 @@ Web: http://localhost:3028
 
 ---
 
-## 개발 환경
+## Development Environment
 
 <AccordionGroup>
-<Accordion title="pnpm dev 명령어를 실행하면 정확히 어떤 일이 일어나나요?">
+<Accordion title="What exactly happens when I run pnpm dev?">
 
-1. **TypeScript 파일 즉시 실행**
-   - `@sonamu-kit/ts-loader`로 TypeScript 파일을 런타임에 즉시 변환
-   - Node.js의 `--import` 플래그로 등록
+1. **Instant TypeScript execution**
+   - Transforms TypeScript files at runtime with `@sonamu-kit/ts-loader`
+   - Registered via Node.js `--import` flag
 
-2. **Sonamu 초기화 (`Sonamu.init`)**
-   - DB 설정 로드
-   - Entity 파일 로드
-   - Syncer 생성 및 Types/Models/APIs 자동 로드
-   - 초기 싱크 실행 (`syncer.sync()`)
-   - 파일 감시 시작 (`startWatcher()`)
+2. **Sonamu initialization (`Sonamu.init`)**
+   - Load DB configuration
+   - Load Entity files
+   - Create Syncer and auto-load Types/Models/APIs
+   - Run initial sync (`syncer.sync()`)
+   - Start file watcher (`startWatcher()`)
 
-3. **Fastify 서버 생성 및 설정**
-   - 플러그인 등록 (`formbody`, `multipart`, `session` 등)
-   - Auth 설정 (필요시)
-   - `@api` 데코레이터가 붙은 메서드들을 API 엔드포인트로 등록
+3. **Fastify server creation and configuration**
+   - Register plugins (`formbody`, `multipart`, `session`, etc.)
+   - Auth setup (if needed)
+   - Register methods with `@api` decorator as API endpoints
 
-4. **서버 리스닝 시작**
-   - 설정된 포트에서 Fastify 서버 시작
+4. **Server starts listening**
+   - Fastify server starts on the configured port
 
-5. **HMR 활성화**
-   - 파일 변경 감지 시 자동으로 타입 재생성 및 모듈 리로드
+5. **HMR enabled**
+   - Automatically regenerates types and reloads modules when files change
 
 </Accordion>
 
-<Accordion title='pnpm dev를 실행했는데 "Port 1028 is already in use" 에러가 발생합니다'>
+<Accordion title='I ran pnpm dev and got "Port 1028 is already in use" error'>
 
-**방법 1: 포트 변경**
+**Method 1: Change the port**
 
 ```typescript
 // api/src/sonamu.config.ts
 export default {
   server: {
     listen: {
-      port: 2028,  // 원하는 포트로 변경
+      port: 2028,  // Change to desired port
     }
   }
 } satisfies SonamuConfig;
 ```
 
-**방법 2: 기존 프로세스 종료 (macOS/Linux)**
+**Method 2: Kill existing process (macOS/Linux)**
 
 ```bash
 lsof -ti:1028 | xargs kill -9
@@ -123,170 +123,170 @@ lsof -ti:1028 | xargs kill -9
 
 ---
 
-## 파일 생성
+## File Generation
 
 <AccordionGroup>
-<Accordion title="Sonamu가 생성하는 코드에는 어떤 것들이 있나요?">
+<Accordion title="What code does Sonamu generate?">
 
 ```
-타입 파일: {entity}.types.ts, sonamu.generated.ts
-마이그레이션: migrations/{timestamp}_{entity}_create.ts
-Model 클래스: {entity}.model.ts (Scaffolding)
-테스트 파일: {entity}.model.test.ts
-View 파일: React 컴포넌트 (목록, 상세, 편집)
-클라이언트 코드: Axios 클라이언트, TanStack Query hooks
+Type files: {entity}.types.ts, sonamu.generated.ts
+Migrations: migrations/{timestamp}_{entity}_create.ts
+Model classes: {entity}.model.ts (Scaffolding)
+Test files: {entity}.model.test.ts
+View files: React components (list, detail, edit)
+Client code: Axios client, TanStack Query hooks
 ```
 
 </Accordion>
 
-<Accordion title="Sonamu가 생성하는 각 파일은 무엇이고 언제 생성되나요?">
+<Accordion title="What files does Sonamu generate and when?">
 
-**1. 자동 생성 (Entity 생성/수정 시)**
+**1. Auto-generated (on Entity creation/modification)**
 
 - `{entity}.entity.json`
-  - Entity의 테이블 구조, 필드, 관계, 인덱스, Subset 정의
-  - 생성: Sonamu UI에서 Entity 생성 시
+  - Entity table structure, fields, relations, indexes, Subset definitions
+  - Created: When Entity is created in Sonamu UI
 
 - `{entity}.types.ts`
-  - Entity의 커스텀 타입 정의
-  - 생성: Entity 생성 시 (초기 템플릿만, 이후 개발자가 수정)
+  - Custom type definitions for the Entity
+  - Created: When Entity is created (initial template only, modified by developer afterwards)
 
 - `sonamu.generated.ts`
-  - 모든 Entity의 `BaseSchema`, `Enum`, `Subset` 타입 자동 생성
-  - 생성: Entity 또는 타입 파일 변경 시마다 자동 재생성
+  - Auto-generates all Entity `BaseSchema`, `Enum`, `Subset` types
+  - Created: Auto-regenerated whenever Entity or type files change
 
 - `sonamu.generated.sso.ts`
-  - Subset별 쿼리 빌더와 서버 전용 타입
-  - 생성: Entity 변경 시마다 자동 재생성
+  - Subset-specific query builders and server-only types
+  - Created: Auto-regenerated whenever Entity changes
 
-**2. 수동 생성 (Sonamu UI에서 Generate 클릭)**
+**2. Manually generated (click Generate in Sonamu UI)**
 
 - `migrations/{timestamp}_{action}.ts`
-  - 데이터베이스 스키마 변경을 위한 마이그레이션 파일
-  - 생성: DB Migration 탭에서 Generate 클릭 시
+  - Migration files for database schema changes
+  - Created: When clicking Generate in DB Migration tab
 
 - `{entity}.model.ts`
-  - Entity의 비즈니스 로직과 `@api` 데코레이터로 API 정의
-  - 생성: Scaffolding 탭에서 Model 템플릿 Generate 시 (1회만)
+  - Entity business logic and API definitions with `@api` decorator
+  - Created: When generating Model template in Scaffolding tab (once only)
 
 - `{entity}.model.test.ts`
-  - Model 메서드의 단위 테스트 파일
-  - 생성: Scaffolding 탭에서 Test 템플릿 Generate 시
+  - Unit test files for Model methods
+  - Created: When generating Test template in Scaffolding tab
 
 - `*.view.tsx`
-  - React 기반 백오피스 UI 컴포넌트
-  - 생성: Scaffolding 탭에서 View 템플릿 Generate 시
+  - React-based back-office UI components
+  - Created: When generating View template in Scaffolding tab
 
-**3. 자동 생성 (API 서버 실행 중)**
+**3. Auto-generated (during API server runtime)**
 
 - `{entity}.service.ts`
-  - 백엔드 API를 호출하는 프론트엔드 클라이언트 코드
-  - 생성: Model 파일 변경 감지 시
+  - Frontend client code that calls backend APIs
+  - Created: When Model file changes are detected
 
 - `sonamu.generated.http`
-  - VSCode REST Client용 API 테스트 템플릿
-  - 생성: `@api` 데코레이터가 있는 메서드 추가/변경 시
+  - API test templates for VSCode REST Client
+  - Created: When methods with `@api` decorator are added/changed
 
-- 프론트엔드 파일 복사
-  - `types.ts`, `generated.ts` 등이 `web/src/services/`로 자동 복사
-  - 생성: 백엔드 파일 변경 시 sync.targets에 정의된 경로로 자동 복사
+- Frontend file copy
+  - `types.ts`, `generated.ts`, etc. auto-copied to `web/src/services/`
+  - Created: Auto-copied to paths defined in sync.targets when backend files change
 
 - `sonamu.lock`
-  - 파일 변경 추적을 위한 체크섬 파일
-  - 생성: 파일 변경 추적을 위해 자동 갱신
+  - Checksum file for tracking file changes
+  - Created: Auto-updated for file change tracking
 
 </Accordion>
 
-<Accordion title="Sonamu에 의해 생성된 코드를 직접 수정하면 어떻게 되나요?">
+<Accordion title="What happens if I directly modify code generated by Sonamu?">
 
-**항상 덮어쓰기 (overwrite: true)**
+**Always overwritten (overwrite: true)**
 
-다음 파일들은 재생성 시 항상 덮어쓰기되므로 **수정하지 마세요**:
+The following files are always overwritten on regeneration, so **do not modify**:
 
-- `sonamu.generated.ts` - Entity 변경 시 항상 재생성
-- `sonamu.generated.sso.ts` - Entity 변경 시 항상 재생성
-- `{entity}.service.ts` - Model 변경 시 항상 재생성
-- `sonamu.generated.http` - `@api` 메서드 변경 시 항상 재생성
+- `sonamu.generated.ts` - Always regenerated on Entity changes
+- `sonamu.generated.sso.ts` - Always regenerated on Entity changes
+- `{entity}.service.ts` - Always regenerated on Model changes
+- `sonamu.generated.http` - Always regenerated on `@api` method changes
 
-**재생성 시 보호 (overwrite: false, 기본값)**
+**Protected on regeneration (overwrite: false, default)**
 
-다음 파일들은 재생성해도 덮어쓰이지 않으므로 **자유롭게 수정 가능**:
+The following files are not overwritten on regeneration, so **feel free to modify**:
 
-- `{entity}.types.ts` - 커스텀 타입 추가 가능
-- `{entity}.model.ts` - 비즈니스 로직 추가/수정 가능
-- `{entity}.model.test.ts` - 테스트 케이스 추가/수정 가능
-- `*.view.tsx` - UI 커스터마이징 가능
+- `{entity}.types.ts` - Can add custom types
+- `{entity}.model.ts` - Can add/modify business logic
+- `{entity}.model.test.ts` - Can add/modify test cases
+- `*.view.tsx` - Can customize UI
 
-**Best Practice:**
+**Best Practices:**
 
-- 커스텀 타입은 `{entity}.types.ts`에 추가
-- 비즈니스 로직은 `{entity}.model.ts`에 구현
-- Entity 정의는 Sonamu UI 사용
+- Add custom types in `{entity}.types.ts`
+- Implement business logic in `{entity}.model.ts`
+- Use Sonamu UI for Entity definitions
 
 </Accordion>
 
-<Accordion title="Sonamu가 관리하는 lock 파일과 생성 코드는 버전 컨트롤의 대상인가요?">
+<Accordion title="Should lock files and generated code managed by Sonamu be version controlled?">
 
-**반드시 커밋해야 하는 파일:**
+**Files that must be committed:**
 
-- `sonamu.lock` - Entity 스키마 변경 추적, 팀 동기화
-- `sonamu.generated.ts` - 타입 동기화, 프론트엔드에서 즉시 사용 가능
-- `{entity}.types.ts` - 커스텀 타입 정의
-- `migrations/*.ts` - DB 스키마 변경 이력
-- `{entity}.model.ts` - 비즈니스 로직
+- `sonamu.lock` - Entity schema change tracking, team synchronization
+- `sonamu.generated.ts` - Type synchronization, immediately usable by frontend
+- `{entity}.types.ts` - Custom type definitions
+- `migrations/*.ts` - DB schema change history
+- `{entity}.model.ts` - Business logic
 
-**이유:**
+**Reasons:**
 
-- 타입 동기화로 프론트엔드 개발자가 즉시 사용 가능
-- 빌드 시간 단축
-- 코드 리뷰 용이
+- Type synchronization allows frontend developers to use immediately
+- Reduces build time
+- Easier code review
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## 스캐폴딩
+## Scaffolding
 
 <AccordionGroup>
-<Accordion title="스캐폴딩이란 무엇이고, 왜 필요한가요?">
+<Accordion title="What is scaffolding and why do I need it?">
 
-템플릿 기반으로 반복적인 기본 코드(보일러플레이트)를 자동 생성하는 기능입니다.
+Scaffolding is a feature that auto-generates repetitive boilerplate code based on templates.
 
-**생성 가능한 것:**
+**What can be generated:**
 
-- Model 클래스 (`{entity}.model.ts`)
-- Test 파일 (`{entity}.model.test.ts`)
-- View 컴포넌트 (`*.view.tsx`)
+- Model classes (`{entity}.model.ts`)
+- Test files (`{entity}.model.test.ts`)
+- View components (`*.view.tsx`)
 
-**실행 방법:**
+**How to run:**
 
-1. Sonamu UI 접속
-2. Scaffolding 탭 이동
-3. Entity 선택
-4. Template 선택 (model/model_test/view_list/view_form)
-5. Generate 클릭
+1. Access Sonamu UI
+2. Go to Scaffolding tab
+3. Select Entity
+4. Select Template (model/model_test/view_list/view_form)
+5. Click Generate
 
-**필요한 이유:**
+**Why you need it:**
 
-- 반복적인 CRUD 코드 자동 생성으로 개발 시간 단축
-- 일관된 코드 구조 유지
-- 오타나 누락 방지
-- 초보자도 표준 패턴 학습 가능
+- Saves development time by auto-generating repetitive CRUD code
+- Maintains consistent code structure
+- Prevents typos and omissions
+- Beginners can learn standard patterns
 
-**overwrite 옵션:**
+**overwrite option:**
 
-- `overwrite: false` (기본값): 파일이 이미 존재하면 생성하지 않음 (model, test, view 템플릿)
-- `overwrite: true`: 파일이 존재해도 항상 덮어쓰기 (generated, service 템플릿)
+- `overwrite: false` (default): Does not generate if file already exists (model, test, view templates)
+- `overwrite: true`: Always overwrites even if file exists (generated, service templates)
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## 관련 문서
+## Related Documentation
 
-- [프로젝트 시작하기](/getting-started/quick-start)
-- [Entity 정의하기](/core-concepts/entities/defining-entities)
-- [스캐폴딩 사용하기](/tools-and-cli/scaffolding)
-- [마이그레이션 관리](/database/migrations/migration-basics)
+- [Getting Started](/getting-started/quick-start)
+- [Defining Entities](/core-concepts/entities/defining-entities)
+- [Using Scaffolding](/tools-and-cli/scaffolding)
+- [Managing Migrations](/database/migrations/migration-basics)

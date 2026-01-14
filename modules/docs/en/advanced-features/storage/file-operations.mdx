@@ -1,11 +1,11 @@
 ---
-title: "파일 저장 및 조회"
-description: "파일 업로드, 다운로드, 조회 가이드"
+title: "File Operations"
+description: "Guide for file upload, download, and retrieval"
 ---
 
-Sonamu는 **@upload** 데코레이터와 **UploadedFile** 클래스를 통해 파일 업로드를 쉽게 처리할 수 있습니다.
+Sonamu makes file uploads easy to handle with the **@upload** decorator and **UploadedFile** class.
 
-## 파일 업로드 흐름
+## File Upload Flow
 
 ```mermaid
 sequenceDiagram
@@ -16,22 +16,22 @@ sequenceDiagram
     participant Storage
 
     Client->>API: POST /upload (multipart/form-data)
-    API->>API: @upload 데코레이터 실행
+    API->>API: @upload decorator execution
     API->>UploadedFile: new UploadedFile(rawFile)
-    UploadedFile->>UploadedFile: 메타데이터 추출
+    UploadedFile->>UploadedFile: Extract metadata
     API->>UploadedFile: saveToDisk(key, disk)
     UploadedFile->>Disk: put(key, buffer)
-    Disk->>Storage: 파일 저장
-    Disk-->>UploadedFile: URL 반환
+    Disk->>Storage: Save file
+    Disk-->>UploadedFile: Return URL
     UploadedFile-->>API: URL
     API-->>Client: { url }
 ```
 
-## @upload 데코레이터
+## @upload Decorator
 
-파일 업로드 API를 만들 때 사용합니다.
+Used when creating file upload APIs.
 
-### 단일 파일 업로드
+### Single File Upload
 
 ```typescript
 import { BaseModel, api, upload, Sonamu } from "sonamu";
@@ -41,20 +41,20 @@ class UserModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No file provided');
     }
-    
-    // 파일 저장
+
+    // Save file
     const url = await file.saveToDisk(`avatars/${ctx.user.id}.png`);
-    
+
     return { url };
   }
 }
 ```
 
-**클라이언트 요청**:
+**Client request**:
 ```typescript
 const formData = new FormData();
 formData.append('file', file);
@@ -65,7 +65,7 @@ await fetch('/api/user/uploadAvatar', {
 });
 ```
 
-### 다중 파일 업로드
+### Multiple File Upload
 
 ```typescript
 class PostModelClass extends BaseModel {
@@ -73,25 +73,25 @@ class PostModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
     const { files } = Sonamu.getUploadContext();
-    
+
     if (files.length === 0) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No files provided');
     }
-    
-    // 모든 파일 저장
+
+    // Save all files
     const urls = await Promise.all(
       files.map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
         return await file.saveToDisk(key);
       })
     );
-    
+
     return { urls };
   }
 }
 ```
 
-**클라이언트 요청**:
+**Client request**:
 ```typescript
 const formData = new FormData();
 formData.append('file', file1);
@@ -106,55 +106,55 @@ await fetch('/api/post/uploadImages?postId=1', {
 
 ## UploadContext
 
-**Sonamu.getUploadContext()**로 업로드된 파일에 접근합니다.
+Access uploaded files with **Sonamu.getUploadContext()**.
 
 ```typescript
 type UploadContext = {
-  file?: UploadedFile;     // single 모드
-  files: UploadedFile[];   // multiple 모드
+  file?: UploadedFile;     // single mode
+  files: UploadedFile[];   // multiple mode
 };
 ```
 
-### 사용 예제
+### Usage Example
 
 ```typescript
 @upload({ mode: 'single' })
 @api({ httpMethod: 'POST' })
 async upload() {
   const { file } = Sonamu.getUploadContext();
-  
+
   if (!file) {
-    throw new Error('파일이 필요합니다');
+    throw new Error('File is required');
   }
-  
-  // file은 UploadedFile 인스턴스
-  console.log(file.filename);   // 원본 파일명
-  console.log(file.mimetype);   // MIME 타입
-  console.log(file.size);       // 파일 크기
-  
+
+  // file is an UploadedFile instance
+  console.log(file.filename);   // Original filename
+  console.log(file.mimetype);   // MIME type
+  console.log(file.size);       // File size
+
   return await file.saveToDisk('uploads/file.pdf');
 }
 ```
 
-## UploadedFile 클래스
+## UploadedFile Class
 
-업로드된 파일을 래핑하는 클래스입니다.
+A class that wraps uploaded files.
 
-### 속성
+### Properties
 
 <Tabs>
   <Tab title="filename" icon="file">
-    **원본 파일명**
-    
+    **Original filename**
+
     ```typescript
     const { file } = Sonamu.getUploadContext();
     console.log(file.filename);  // 'avatar.png'
     ```
   </Tab>
-  
+
   <Tab title="mimetype" icon="file-code">
-    **MIME 타입**
-    
+    **MIME type**
+
     ```typescript
     console.log(file.mimetype);
     // 'image/png'
@@ -162,31 +162,31 @@ async upload() {
     // 'video/mp4'
     ```
   </Tab>
-  
+
   <Tab title="size" icon="weight">
-    **파일 크기** (바이트)
-    
+    **File size** (bytes)
+
     ```typescript
     console.log(file.size);  // 1024000 (1MB)
     console.log(`${(file.size / 1024 / 1024).toFixed(2)}MB`);  // '0.98MB'
     ```
   </Tab>
-  
+
   <Tab title="extname" icon="file-zipper">
-    **확장자** (점 제외)
-    
+    **Extension** (without dot)
+
     ```typescript
     console.log(file.extname);
     // 'png'
     // 'pdf'
     // 'mp4'
-    // false (확장자 없음)
+    // false (no extension)
     ```
   </Tab>
-  
+
   <Tab title="url" icon="link">
-    **저장 후 URL** (unsigned)
-    
+    **URL after saving** (unsigned)
+
     ```typescript
     await file.saveToDisk('uploads/file.pdf');
     console.log(file.url);
@@ -194,39 +194,39 @@ async upload() {
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf' (s3)
     ```
   </Tab>
-  
+
   <Tab title="signedUrl" icon="lock">
-    **저장 후 서명된 URL** (S3)
-    
+    **Signed URL after saving** (S3)
+
     ```typescript
     await file.saveToDisk('uploads/file.pdf');
     console.log(file.signedUrl);
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf?X-Amz-...'
     ```
-    
-    **용도**: 임시 접근 URL (만료 시간 있음)
+
+    **Use case**: Temporary access URL (with expiration)
   </Tab>
 </Tabs>
 
-### 메서드
+### Methods
 
 #### toBuffer()
 
-파일을 Buffer로 변환합니다.
+Converts the file to a Buffer.
 
 ```typescript
 const { file } = Sonamu.getUploadContext();
 const buffer = await file.toBuffer();
 
 console.log(buffer instanceof Buffer);  // true
-console.log(buffer.length);  // 파일 크기 (바이트)
+console.log(buffer.length);  // File size (bytes)
 ```
 
-**캐싱**: 한 번 호출하면 캐싱됨 (재호출 시 빠름)
+**Caching**: Cached after first call (fast on subsequent calls)
 
 #### md5()
 
-파일의 MD5 해시를 계산합니다.
+Calculates the MD5 hash of the file.
 
 ```typescript
 const { file } = Sonamu.getUploadContext();
@@ -235,30 +235,30 @@ const hash = await file.md5();
 console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
 ```
 
-**용도**:
-- 파일 중복 체크
-- 파일 무결성 검증
-- 고유한 파일명 생성
+**Use cases**:
+- File deduplication check
+- File integrity verification
+- Unique filename generation
 
 #### saveToDisk(key, diskName?)
 
-파일을 디스크에 저장합니다.
+Saves the file to disk.
 
 ```typescript
 const { file } = Sonamu.getUploadContext();
 
-// 기본 디스크에 저장
+// Save to default disk
 const url = await file.saveToDisk('uploads/file.pdf');
 
-// 특정 디스크에 저장
+// Save to specific disk
 const url = await file.saveToDisk('uploads/file.pdf', 's3');
 ```
 
-**반환값**: 저장된 파일의 URL (unsigned)
+**Return value**: URL of the saved file (unsigned)
 
-## 실전 예제
+## Practical Examples
 
-### 1. 프로필 사진 업로드
+### 1. Profile Photo Upload
 
 ```typescript
 class UserModelClass extends BaseModel {
@@ -266,42 +266,42 @@ class UserModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No file provided');
     }
-    
-    // 이미지 파일만 허용
+
+    // Allow only image files
     if (!file.mimetype.startsWith('image/')) {
-      throw new Error('이미지 파일만 업로드 가능합니다');
+      throw new Error('Only image files can be uploaded');
     }
-    
-    // 파일 크기 제한 (5MB)
+
+    // File size limit (5MB)
     const maxSize = 5 * 1024 * 1024;  // 5MB
     if (file.size > maxSize) {
-      throw new Error('파일 크기는 5MB 이하여야 합니다');
+      throw new Error('File size must be 5MB or less');
     }
-    
-    // 파일명: user-{id}-{timestamp}.{ext}
+
+    // Filename: user-{id}-{timestamp}.{ext}
     const timestamp = Date.now();
     const ext = file.extname || 'png';
     const key = `avatars/user-${ctx.user.id}-${timestamp}.${ext}`;
-    
-    // 저장
+
+    // Save
     const url = await file.saveToDisk(key);
-    
-    // DB 업데이트
+
+    // Update DB
     await this.updateOne(['id', ctx.user.id], {
       avatar_url: url,
       updated_at: new Date(),
     });
-    
+
     return { url };
   }
 }
 ```
 
-### 2. 다중 이미지 업로드
+### 2. Multiple Image Upload
 
 ```typescript
 class PostModelClass extends BaseModel {
@@ -309,22 +309,22 @@ class PostModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
     const { files } = Sonamu.getUploadContext();
-    
-    // 파일 개수 제한
+
+    // Limit number of files
     if (files.length > 10) {
-      throw new Error('최대 10개까지 업로드 가능합니다');
+      throw new Error('Maximum 10 files can be uploaded');
     }
-    
-    // 이미지만 필터링
-    const imageFiles = files.filter(file => 
+
+    // Filter images only
+    const imageFiles = files.filter(file =>
       file.mimetype.startsWith('image/')
     );
-    
+
     if (imageFiles.length === 0) {
-      throw new Error('이미지 파일이 없습니다');
+      throw new Error('No image files found');
     }
-    
-    // 모든 이미지 저장
+
+    // Save all images
     const urls = await Promise.all(
       imageFiles.map(async (file, index) => {
         const timestamp = Date.now();
@@ -333,13 +333,13 @@ class PostModelClass extends BaseModel {
         return await file.saveToDisk(key);
       })
     );
-    
+
     return { urls, count: urls.length };
   }
 }
 ```
 
-### 3. 파일 타입별 검증
+### 3. File Type Validation
 
 ```typescript
 class FileModelClass extends BaseModel {
@@ -347,12 +347,12 @@ class FileModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No file provided');
     }
-    
-    // MIME 타입 검증
+
+    // MIME type validation
     const allowedMimeTypes = {
       pdf: ['application/pdf'],
       excel: [
@@ -364,21 +364,21 @@ class FileModelClass extends BaseModel {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ],
     };
-    
+
     if (!allowedMimeTypes[type].includes(file.mimetype)) {
-      throw new Error(`${type} 파일만 업로드 가능합니다`);
+      throw new Error(`Only ${type} files can be uploaded`);
     }
-    
-    // 파일 저장
+
+    // Save file
     const key = `documents/${type}/${Date.now()}-${file.filename}`;
     const url = await file.saveToDisk(key);
-    
+
     return { url, type, filename: file.filename };
   }
 }
 ```
 
-### 4. MD5 해시로 중복 체크
+### 4. Deduplication Check with MD5 Hash
 
 ```typescript
 class MediaModelClass extends BaseModel {
@@ -386,30 +386,30 @@ class MediaModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async uploadMedia() {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No file provided');
     }
-    
-    // MD5 해시 계산
+
+    // Calculate MD5 hash
     const hash = await file.md5();
-    
-    // 이미 존재하는 파일인지 확인
+
+    // Check if file already exists
     const existing = await this.findOne(['md5_hash', hash]);
-    
+
     if (existing) {
-      // 이미 존재하면 기존 URL 반환
+      // Return existing URL if already exists
       return {
         url: existing.url,
         duplicate: true,
       };
     }
-    
-    // 새 파일 저장
+
+    // Save new file
     const key = `media/${hash}.${file.extname}`;
     const url = await file.saveToDisk(key);
-    
-    // DB에 저장
+
+    // Save to DB
     await this.saveOne({
       md5_hash: hash,
       url,
@@ -417,13 +417,13 @@ class MediaModelClass extends BaseModel {
       size: file.size,
       mimetype: file.mimetype,
     });
-    
+
     return { url, duplicate: false };
   }
 }
 ```
 
-### 5. 디스크 선택
+### 5. Disk Selection
 
 ```typescript
 class FileModelClass extends BaseModel {
@@ -431,36 +431,36 @@ class FileModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async upload(visibility: 'public' | 'private', ctx: Context) {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('파일이 없습니다');
+      throw new Error('No file provided');
     }
-    
-    // visibility에 따라 다른 디스크 사용
+
+    // Use different disk based on visibility
     const disk = visibility === 'public' ? 'public' : 'private';
     const key = `${visibility}/${ctx.user.id}/${Date.now()}-${file.filename}`;
-    
-    // 저장
+
+    // Save
     const url = await file.saveToDisk(key, disk);
-    
-    // DB에 저장
+
+    // Save to DB
     await this.saveOne({
       user_id: ctx.user.id,
       url,
       visibility,
       filename: file.filename,
     });
-    
+
     return { url, visibility };
   }
 }
 ```
 
-## 파일 조회
+## File Retrieval
 
-Storage Manager를 사용하여 저장된 파일을 조회합니다.
+Use Storage Manager to retrieve saved files.
 
-### 파일 읽기
+### Reading Files
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -468,21 +468,21 @@ import { Sonamu } from "sonamu";
 @api({ httpMethod: 'GET' })
 async getFile(key: string) {
   const disk = Sonamu.storage.use();
-  
-  // 파일 존재 확인
+
+  // Check file existence
   const exists = await disk.exists(key);
   if (!exists) {
-    throw new Error('파일이 없습니다');
+    throw new Error('File not found');
   }
-  
-  // 파일 읽기
+
+  // Read file
   const content = await disk.get(key);
-  
+
   return content;  // Buffer
 }
 ```
 
-### 파일 다운로드 API
+### File Download API
 
 ```typescript
 @api({
@@ -491,42 +491,42 @@ async getFile(key: string) {
 })
 async downloadFile(key: string, ctx: Context) {
   const disk = Sonamu.storage.use();
-  
-  // 파일 존재 확인
+
+  // Check file existence
   const exists = await disk.exists(key);
   if (!exists) {
-    throw new Error('파일이 없습니다');
+    throw new Error('File not found');
   }
-  
-  // 파일 읽기
+
+  // Read file
   const buffer = await disk.get(key);
-  
-  // 파일명 추출
+
+  // Extract filename
   const filename = key.split('/').pop() || 'download';
-  
-  // 다운로드 헤더 설정
+
+  // Set download headers
   ctx.reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-  
+
   return buffer;
 }
 ```
 
-### URL 가져오기
+### Getting URL
 
 ```typescript
 @api({ httpMethod: 'GET' })
 async getFileUrl(key: string) {
   const disk = Sonamu.storage.use();
-  
-  // 파일 존재 확인
+
+  // Check file existence
   const exists = await disk.exists(key);
   if (!exists) {
-    throw new Error('파일이 없습니다');
+    throw new Error('File not found');
   }
-  
-  // URL 가져오기
+
+  // Get URL
   const url = await disk.getUrl(key);
-  
+
   return { url };
 }
 ```
@@ -537,101 +537,101 @@ async getFileUrl(key: string) {
 @api({ httpMethod: 'GET' })
 async getSignedUrl(key: string) {
   const disk = Sonamu.storage.use('s3');
-  
-  // Signed URL 생성 (1시간 유효)
+
+  // Generate Signed URL (valid for 1 hour)
   const signedUrl = await disk.getSignedUrl(key, {
     expiresIn: '1h'
   });
-  
+
   return { url: signedUrl };
 }
 ```
 
-## 파일 삭제
+## File Deletion
 
 ```typescript
 @api({ httpMethod: 'DELETE' })
 async deleteFile(key: string) {
   const disk = Sonamu.storage.use();
-  
-  // 파일 존재 확인
+
+  // Check file existence
   const exists = await disk.exists(key);
   if (!exists) {
-    throw new Error('파일이 없습니다');
+    throw new Error('File not found');
   }
-  
-  // 파일 삭제
+
+  // Delete file
   await disk.delete(key);
-  
+
   return { success: true };
 }
 ```
 
-## 주의사항
+## Cautions
 
 <Warning>
-**파일 업로드 시 주의사항**:
+**Cautions when uploading files**:
 
-1. **파일 검증 필수**: 타입, 크기, 확장자 검증
+1. **File validation is required**: Validate type, size, and extension
    ```typescript
-   // ✅ 검증
+   // ✅ Validation
    if (!file.mimetype.startsWith('image/')) {
-     throw new Error('이미지만 가능');
+     throw new Error('Images only');
    }
    if (file.size > 5 * 1024 * 1024) {
-     throw new Error('5MB 이하');
+     throw new Error('5MB or less');
    }
    ```
 
-2. **고유한 파일명 사용**: 덮어쓰기 방지
+2. **Use unique filenames**: Prevent overwrites
    ```typescript
-   // ❌ 원본 파일명 사용
+   // ❌ Using original filename
    await file.saveToDisk(`uploads/${file.filename}`);
-   
-   // ✅ 타임스탬프 추가
+
+   // ✅ Add timestamp
    await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
-   
-   // ✅ UUID 사용
+
+   // ✅ Use UUID
    await file.saveToDisk(`uploads/${uuid()}.${file.extname}`);
    ```
 
-3. **경로 검증**: 디렉토리 트래버설 방지
+3. **Path validation**: Prevent directory traversal
    ```typescript
-   // ❌ 위험: 상위 디렉토리 접근 가능
+   // ❌ Dangerous: Can access parent directories
    const key = userInput;  // '../../../etc/passwd'
-   
-   // ✅ 안전: 경로 검증
+
+   // ✅ Safe: Path validation
    const key = `uploads/${userInput.replace(/\.\./g, '')}`;
    ```
 
-4. **파일 크기 제한**: 메모리 초과 방지
+4. **File size limit**: Prevent memory overflow
    ```typescript
    const maxSize = 10 * 1024 * 1024;  // 10MB
    if (file.size > maxSize) {
-     throw new Error('파일이 너무 큽니다');
+     throw new Error('File is too large');
    }
    ```
 
-5. **MIME 타입 검증**: 확장자만 믿지 말 것
+5. **MIME type validation**: Don't trust only the extension
    ```typescript
-   // ❌ 확장자만 체크
+   // ❌ Only checking extension
    if (file.filename.endsWith('.png')) { ... }
-   
-   // ✅ MIME 타입 체크
+
+   // ✅ Check MIME type
    if (file.mimetype === 'image/png') { ... }
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Storage Manager" icon="database" href="/advanced-features/storage/storage-manager">
-    여러 디스크 관리하기
+    Managing multiple disks
   </Card>
-  <Card title="스토리지 드라이버" icon="hard-drive" href="/advanced-features/storage/storage-drivers">
-    fs, S3 드라이버 설정
+  <Card title="Storage Drivers" icon="hard-drive" href="/advanced-features/storage/storage-drivers">
+    fs, S3 driver configuration
   </Card>
-  <Card title="URL 빌더" icon="link" href="/advanced-features/storage/url-builder">
-    파일 URL 생성하기
+  <Card title="URL Builder" icon="link" href="/advanced-features/storage/url-builder">
+    Generating file URLs
   </Card>
 </CardGroup>

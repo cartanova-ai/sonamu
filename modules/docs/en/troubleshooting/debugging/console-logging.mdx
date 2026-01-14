@@ -1,68 +1,68 @@
 ---
-title: '콘솔 로깅'
-description: '로그로 디버깅하기'
+title: 'Console Logging'
+description: 'Debugging with logs'
 ---
 
-Sonamu의 LogTape 기반 로깅 시스템을 활용한 디버깅 방법을 다룹니다.
+This covers debugging methods using Sonamu's LogTape-based logging system.
 
-## LogTape란?
+## What is LogTape?
 
-Sonamu는 [@logtape/logtape](https://github.com/dahlia/logtape)를 사용하여 구조화된 로깅을 제공합니다.
+Sonamu provides structured logging using [@logtape/logtape](https://github.com/dahlia/logtape).
 
-**주요 특징:**
-- 카테고리 기반 로깅
-- 다양한 로그 레벨 (debug, info, warn, error, fatal)
-- 커스텀 Sink/Filter 지원
-- Fastify 통합
+**Key features:**
+- Category-based logging
+- Various log levels (debug, info, warn, error, fatal)
+- Custom Sink/Filter support
+- Fastify integration
 
-## 기본 로깅
+## Basic Logging
 
-### getLogger 사용
+### Using getLogger
 
 ```typescript
 import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger(["myapp", "user"]);
 
-logger.info("사용자 생성 시작", { email: "user@example.com" });
-logger.debug("상세 정보", { step: 1, data: someData });
-logger.error("에러 발생", { error: err.message });
+logger.info("Starting user creation", { email: "user@example.com" });
+logger.debug("Detailed information", { step: 1, data: someData });
+logger.error("Error occurred", { error: err.message });
 ```
 
-### 로그 레벨
+### Log Levels
 
 ```typescript
 const logger = getLogger(["myapp", "api"]);
 
-logger.debug("디버그 정보");     // 개발 중에만
-logger.info("일반 정보");        // 프로덕션에서도
-logger.warn("경고");            // 주의 필요
-logger.error("에러");           // 에러 발생
-logger.fatal("치명적 에러");     // 복구 불가능한 에러
+logger.debug("Debug information");     // Development only
+logger.info("General information");    // Production as well
+logger.warn("Warning");               // Needs attention
+logger.error("Error");                // Error occurred
+logger.fatal("Fatal error");          // Unrecoverable error
 ```
 
-## 로깅 설정
+## Logging Configuration
 
-### sonamu.config.ts 설정
+### sonamu.config.ts Configuration
 
 ```typescript
 export default {
   logging: {
-    // Fastify 로깅 카테고리 (기본값: ["fastify"])
+    // Fastify logging category (default: ["fastify"])
     fastifyCategory: ["api", "request"],
-    
-    // 커스텀 Sink 추가
+
+    // Add custom Sinks
     sinks: {
       "file": getFileSink("logs/app.log")
     },
-    
-    // 커스텀 Filter 추가
+
+    // Add custom Filters
     filters: {
-      "production-only": (record) => 
+      "production-only": (record) =>
         process.env.NODE_ENV === "production"
     },
-    
-    // Logger 설정
+
+    // Logger configuration
     loggers: [
       {
         category: ["myapp"],
@@ -74,42 +74,42 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-### 로깅 비활성화
+### Disabling Logging
 
 ```typescript
 export default {
-  logging: false  // 모든 로깅 비활성화
+  logging: false  // Disable all logging
 } satisfies SonamuConfig;
 ```
 
-## 카테고리 기반 로깅
+## Category-Based Logging
 
-### 계층적 카테고리
+### Hierarchical Categories
 
 ```typescript
-// 카테고리: ["myapp", "user", "auth"]
+// Category: ["myapp", "user", "auth"]
 const authLogger = getLogger(["myapp", "user", "auth"]);
 
-authLogger.info("로그인 시도", { email });
-authLogger.error("인증 실패", { reason });
+authLogger.info("Login attempt", { email });
+authLogger.error("Authentication failed", { reason });
 
-// 카테고리: ["myapp", "order", "payment"]
+// Category: ["myapp", "order", "payment"]
 const paymentLogger = getLogger(["myapp", "order", "payment"]);
 
-paymentLogger.info("결제 시작", { orderId, amount });
-paymentLogger.warn("결제 지연", { orderId });
+paymentLogger.info("Payment started", { orderId, amount });
+paymentLogger.warn("Payment delayed", { orderId });
 ```
 
-### Model/Frame별 자동 카테고리
+### Automatic Categories for Model/Frame
 
-Sonamu는 Model과 Frame에 자동으로 카테고리를 할당합니다:
+Sonamu automatically assigns categories to Models and Frames:
 
 ```typescript
 // UserModel -> ["sonamu", "model", "user"]
 class UserModelClass extends BaseModel {
   async createUser(email: string) {
-    // 자동 로거 사용
-    this.logger.info("사용자 생성", { email });
+    // Use automatic logger
+    this.logger.info("Creating user", { email });
     return this.save({ email });
   }
 }
@@ -117,103 +117,103 @@ class UserModelClass extends BaseModel {
 // PaymentFrame -> ["sonamu", "frame", "payment"]
 class PaymentFrameClass extends BaseFrame {
   async processPayment(amount: number) {
-    this.logger.info("결제 처리", { amount });
+    this.logger.info("Processing payment", { amount });
     // ...
   }
 }
 ```
 
-## Fastify 로깅
+## Fastify Logging
 
-### API 요청 로깅
+### API Request Logging
 
-Sonamu는 자동으로 `/api` 경로의 요청을 로깅합니다:
+Sonamu automatically logs requests to `/api` paths:
 
 ```bash
-# 로그 출력 예시
+# Log output example
 [api] [GET:200] /api/users?page=1 - Request completed
 [api] [POST:201] /api/users - Request completed
 [api] [PUT:400] /api/users/123 - Request completed
 ```
 
-### Healthcheck 제외
+### Excluding Healthcheck
 
-`/api/healthcheck`는 자동으로 로깅에서 제외됩니다.
+`/api/healthcheck` is automatically excluded from logging.
 
-## 디버깅 패턴
+## Debugging Patterns
 
-### 함수 진입/종료 로깅
+### Function Entry/Exit Logging
 
 ```typescript
 async function complexOperation(params: Params) {
   const logger = getLogger(["myapp", "operation"]);
-  
-  logger.debug("작업 시작", { params });
-  
+
+  logger.debug("Operation started", { params });
+
   try {
     const result = await doSomething(params);
-    logger.debug("작업 완료", { result });
+    logger.debug("Operation completed", { result });
     return result;
   } catch (error) {
-    logger.error("작업 실패", { error, params });
+    logger.error("Operation failed", { error, params });
     throw error;
   }
 }
 ```
 
-### 조건부 상세 로깅
+### Conditional Verbose Logging
 
 ```typescript
 const DEBUG = process.env.DEBUG === "true";
 
 async function processData(data: Data[]) {
   const logger = getLogger(["myapp", "processor"]);
-  
-  logger.info("데이터 처리 시작", { count: data.length });
-  
+
+  logger.info("Data processing started", { count: data.length });
+
   for (const item of data) {
     if (DEBUG) {
-      logger.debug("항목 처리 중", { item });
+      logger.debug("Processing item", { item });
     }
-    
+
     await processItem(item);
   }
-  
-  logger.info("데이터 처리 완료");
+
+  logger.info("Data processing completed");
 }
 ```
 
-### 에러 추적
+### Error Tracking
 
 ```typescript
 async function apiCall() {
   const logger = getLogger(["myapp", "api"]);
-  
+
   try {
     const response = await fetch(url);
-    
+
     if (!response.ok) {
-      logger.warn("API 응답 실패", { 
+      logger.warn("API response failed", {
         status: response.status,
-        url 
+        url
       });
     }
-    
+
     return response.json();
   } catch (error) {
-    logger.error("API 호출 에러", { 
+    logger.error("API call error", {
       error: error.message,
       stack: error.stack,
-      url 
+      url
     });
     throw error;
   }
 }
 ```
 
-## 커스텀 Sink
+## Custom Sinks
 
-### 파일 Sink
+### File Sink
 
 ```typescript
 import { getFileSink } from "@logtape/logtape";
@@ -227,14 +227,14 @@ export default {
       {
         category: ["myapp"],
         sinks: ["error-file"],
-        lowestLevel: "error"  // 에러만 파일에 기록
+        lowestLevel: "error"  // Only log errors to file
       }
     ]
   }
 } satisfies SonamuConfig;
 ```
 
-### 커스텀 Formatter
+### Custom Formatter
 
 ```typescript
 import { getConsoleSink } from "@logtape/logtape";
@@ -242,10 +242,10 @@ import { getPrettyFormatter } from "@logtape/pretty";
 
 const customSink = getConsoleSink({
   formatter: getPrettyFormatter({
-    timestamp: "date-time-timezone",  // 타임존 포함
-    categoryWidth: 30,                 // 카테고리 너비
-    categoryTruncate: "end",          // 말줄임 위치
-    colors: true                       // 컬러 활성화
+    timestamp: "date-time-timezone",  // Include timezone
+    categoryWidth: 30,                 // Category width
+    categoryTruncate: "end",          // Truncation position
+    colors: true                       // Enable colors
   })
 });
 
@@ -258,9 +258,9 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-## 커스텀 Filter
+## Custom Filters
 
-### 환경별 필터링
+### Environment-Based Filtering
 
 ```typescript
 export default {
@@ -286,7 +286,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-### 카테고리 필터링
+### Category Filtering
 
 ```typescript
 const apiOnlyFilter = (record: LogRecord) => {
@@ -309,9 +309,9 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-## 로깅 레벨 제어
+## Logging Level Control
 
-### 개발/프로덕션 분리
+### Separating Development/Production
 
 ```typescript
 const isDev = process.env.NODE_ENV === "development";
@@ -321,14 +321,14 @@ export default {
     loggers: [
       {
         category: ["myapp"],
-        lowestLevel: isDev ? "debug" : "info"  // 개발: debug, 프로덕션: info
+        lowestLevel: isDev ? "debug" : "info"  // Development: debug, Production: info
       }
     ]
   }
 } satisfies SonamuConfig;
 ```
 
-### 카테고리별 레벨
+### Category-Specific Levels
 
 ```typescript
 export default {
@@ -336,29 +336,29 @@ export default {
     loggers: [
       {
         category: ["myapp", "critical"],
-        lowestLevel: "warn"  // 경고 이상만
+        lowestLevel: "warn"  // Warnings and above only
       },
       {
         category: ["myapp", "debug"],
-        lowestLevel: "debug"  // 디버그 포함
+        lowestLevel: "debug"  // Include debug
       },
       {
         category: ["myapp"],
-        lowestLevel: "info"  // 기본값
+        lowestLevel: "info"  // Default
       }
     ]
   }
 } satisfies SonamuConfig;
 ```
 
-## 구조화된 로깅
+## Structured Logging
 
-### 컨텍스트 포함
+### Including Context
 
 ```typescript
 const logger = getLogger(["myapp", "user"]);
 
-logger.info("사용자 작업", {
+logger.info("User action", {
   userId: user.id,
   action: "create",
   timestamp: new Date().toISOString(),
@@ -369,13 +369,13 @@ logger.info("사용자 작업", {
 });
 ```
 
-### 에러 객체 로깅
+### Logging Error Objects
 
 ```typescript
 try {
   await riskyOperation();
 } catch (error) {
-  logger.error("작업 실패", {
+  logger.error("Operation failed", {
     error: {
       name: error.name,
       message: error.message,
@@ -386,99 +386,99 @@ try {
 }
 ```
 
-## 성능 로깅
+## Performance Logging
 
-### 실행 시간 측정
+### Measuring Execution Time
 
 ```typescript
 async function measureOperation() {
   const logger = getLogger(["myapp", "perf"]);
   const start = performance.now();
-  
+
   try {
     const result = await operation();
     const duration = performance.now() - start;
-    
-    logger.info("작업 완료", { 
+
+    logger.info("Operation completed", {
       duration: `${duration.toFixed(2)}ms`,
-      result 
+      result
     });
-    
+
     if (duration > 1000) {
-      logger.warn("느린 작업 감지", { duration });
+      logger.warn("Slow operation detected", { duration });
     }
-    
+
     return result;
   } catch (error) {
     const duration = performance.now() - start;
-    logger.error("작업 실패", { duration, error });
+    logger.error("Operation failed", { duration, error });
     throw error;
   }
 }
 ```
 
-## 로깅 Best Practices
+## Logging Best Practices
 
-### 1. 의미 있는 메시지
+### 1. Meaningful Messages
 
 ```typescript
-// ❌ 나쁜 예
+// Bad example
 logger.info("done");
 logger.error("error");
 
-// ✅ 좋은 예
-logger.info("사용자 생성 완료", { userId, email });
-logger.error("데이터베이스 연결 실패", { 
-  host, 
-  error: err.message 
+// Good example
+logger.info("User creation completed", { userId, email });
+logger.error("Database connection failed", {
+  host,
+  error: err.message
 });
 ```
 
-### 2. 적절한 로그 레벨
+### 2. Appropriate Log Levels
 
 ```typescript
-// ✅ 레벨별 적절한 사용
-logger.debug("변수 값 확인", { value });           // 개발 중에만
-logger.info("API 요청 완료", { statusCode });      // 일반 정보
-logger.warn("재시도 필요", { attempt, maxRetries }); // 주의 필요
-logger.error("처리 실패", { error });              // 에러
-logger.fatal("서버 종료", { reason });             // 치명적
+// Appropriate usage by level
+logger.debug("Variable value check", { value });           // Development only
+logger.info("API request completed", { statusCode });      // General information
+logger.warn("Retry needed", { attempt, maxRetries }); // Needs attention
+logger.error("Processing failed", { error });              // Error
+logger.fatal("Server shutdown", { reason });             // Fatal
 ```
 
-### 3. 민감 정보 제외
+### 3. Excluding Sensitive Information
 
 ```typescript
-// ❌ 민감 정보 로깅
-logger.info("로그인", { 
+// Logging sensitive information
+logger.info("Login", {
   email,
-  password  // ❌
+  password  // Bad
 });
 
-// ✅ 민감 정보 마스킹
-logger.info("로그인", { 
+// Masking sensitive information
+logger.info("Login", {
   email,
-  hasPassword: !!password  // ✅
+  hasPassword: !!password  // Good
 });
 ```
 
-### 4. 카테고리 일관성
+### 4. Category Consistency
 
 ```typescript
-// ✅ 계층적 카테고리 구조
+// Hierarchical category structure
 ["myapp", "user", "auth"]
 ["myapp", "user", "profile"]
 ["myapp", "order", "payment"]
 ["myapp", "order", "shipping"]
 
-// ❌ 불규칙한 카테고리
+// Inconsistent categories
 ["auth"]
 ["user-profile"]
 ["payments"]
 ```
 
-## 디버깅 팁
+## Debugging Tips
 
-### 1. 환경 변수로 레벨 제어
+### 1. Controlling Level with Environment Variables
 
 ```bash
 # .env
@@ -498,10 +498,10 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-### 2. 조건부 상세 로깅
+### 2. Conditional Verbose Logging
 
 ```bash
-# 특정 기능만 디버그
+# Debug specific features only
 DEBUG=user,payment pnpm dev
 ```
 
@@ -513,23 +513,23 @@ function shouldDebug(module: string) {
 }
 
 if (shouldDebug("user")) {
-  logger.debug("상세 사용자 정보", { user });
+  logger.debug("Detailed user information", { user });
 }
 ```
 
-### 3. 로그 그룹화
+### 3. Grouping Logs
 
 ```typescript
-logger.info("=== 주문 처리 시작 ===", { orderId });
-logger.info("1. 재고 확인", { available });
-logger.info("2. 결제 처리", { amount });
-logger.info("3. 배송 준비", { address });
-logger.info("=== 주문 처리 완료 ===", { orderId });
+logger.info("=== Order Processing Started ===", { orderId });
+logger.info("1. Checking inventory", { available });
+logger.info("2. Processing payment", { amount });
+logger.info("3. Preparing shipment", { address });
+logger.info("=== Order Processing Completed ===", { orderId });
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [LogTape 설정](/configuration/logging/logtape-setup)
+- [LogTape Setup](/configuration/logging/logtape-setup)
 - [Sinks & Filters](/configuration/logging/sinks-and-filters)
-- [카테고리별 로깅](/configuration/logging/category-logging)
-- [Fastify 로깅](/configuration/logging/fastify-logging)
+- [Category Logging](/configuration/logging/category-logging)
+- [Fastify Logging](/configuration/logging/fastify-logging)

@@ -1,13 +1,13 @@
 ---
-title: "AI SDK 사용하기"
-description: "Vercel AI SDK와 커스텀 프로바이더 활용하기"
+title: "Using the AI SDK"
+description: "Leveraging the Vercel AI SDK and custom providers"
 ---
 
-Sonamu는 **Vercel AI SDK**를 기반으로 하며, 다양한 AI 기능을 제공합니다. 텍스트 생성, 스트리밍, 도구 호출, 음성 인식 등을 쉽게 구현할 수 있습니다.
+Sonamu is built on the **Vercel AI SDK** and provides various AI capabilities. You can easily implement text generation, streaming, tool calling, speech recognition, and more.
 
 ## Vercel AI SDK
 
-Sonamu가 사용하는 AI 프레임워크입니다.
+This is the AI framework that Sonamu uses.
 
 ```mermaid
 graph LR
@@ -17,21 +17,21 @@ graph LR
     SDK --> Rtzr[Rtzr Provider]
     OpenAI --> GPT[GPT-4o]
     Anthropic --> Claude[Claude 3.5]
-    Rtzr --> STT[음성 인식]
+    Rtzr --> STT[Speech Recognition]
 ```
 
-**주요 기능**:
-- 텍스트 생성 (Text Generation)
-- 스트리밍 응답 (Streaming)
-- 도구 호출 (Tool Calling)
-- 구조화된 출력 (Structured Output)
-- 음성 인식 (Transcription)
+**Key Features**:
+- Text Generation
+- Streaming Responses
+- Tool Calling
+- Structured Output
+- Transcription
 
-## 텍스트 생성
+## Text Generation
 
 ### generateText()
 
-일반 텍스트를 생성합니다.
+Generates plain text.
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -39,32 +39,32 @@ import { generateText } from 'ai';
 
 const result = await generateText({
   model: openai('gpt-4o'),
-  prompt: 'TypeScript로 Express 서버를 만드는 방법을 알려줘',
+  prompt: 'Tell me how to create an Express server with TypeScript',
 });
 
 console.log(result.text);
-// => "Express 서버를 만들려면..."
+// => "To create an Express server..."
 ```
 
-### 메시지 기반 대화
+### Message-Based Conversation
 
 ```typescript
 const result = await generateText({
   model: openai('gpt-4o'),
   messages: [
-    { role: 'system', content: '당신은 친절한 프로그래밍 도우미입니다.' },
-    { role: 'user', content: 'TypeScript란?' },
-    { role: 'assistant', content: 'TypeScript는 JavaScript에 타입을 추가한...' },
-    { role: 'user', content: '장점이 뭐야?' },
+    { role: 'system', content: 'You are a friendly programming assistant.' },
+    { role: 'user', content: 'What is TypeScript?' },
+    { role: 'assistant', content: 'TypeScript is JavaScript with types added...' },
+    { role: 'user', content: 'What are its advantages?' },
   ],
 });
 ```
 
-## 스트리밍 응답
+## Streaming Responses
 
 ### streamText()
 
-실시간으로 텍스트를 스트리밍합니다.
+Streams text in real-time.
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -72,16 +72,16 @@ import { streamText } from 'ai';
 
 const result = streamText({
   model: openai('gpt-4o'),
-  prompt: '긴 이야기를 들려줘',
+  prompt: 'Tell me a long story',
 });
 
-// 스트림 처리
+// Process stream
 for await (const chunk of result.textStream) {
   process.stdout.write(chunk);
 }
 ```
 
-### SSE와 통합
+### Integration with SSE
 
 ```typescript
 import { BaseModel, stream, api } from "sonamu";
@@ -113,7 +113,7 @@ class ChatModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       const result = streamText({
         model: openai('gpt-4o'),
@@ -121,13 +121,13 @@ class ChatModelClass extends BaseModel {
           { role: 'user', content: message },
         ],
       });
-      
-      // 실시간 전송
+
+      // Real-time transmission
       for await (const chunk of result.textStream) {
         sse.publish('chunk', { text: chunk });
       }
-      
-      // 완료 통계
+
+      // Completion statistics
       const usage = await result.usage;
       sse.publish('complete', {
         totalTokens: usage.totalTokens,
@@ -139,9 +139,9 @@ class ChatModelClass extends BaseModel {
 }
 ```
 
-## 도구 호출
+## Tool Calling
 
-### 단일 도구
+### Single Tool
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -150,15 +150,15 @@ import { z } from 'zod';
 
 const result = await generateText({
   model: openai('gpt-4o'),
-  prompt: '서울의 현재 날씨를 알려줘',
+  prompt: 'Tell me the current weather in Seoul',
   tools: {
     getWeather: tool({
-      description: '특정 도시의 현재 날씨를 조회합니다',
+      description: 'Fetches the current weather for a specific city',
       parameters: z.object({
-        city: z.string().describe('도시 이름'),
+        city: z.string().describe('City name'),
       }),
       execute: async ({ city }) => {
-        // 날씨 API 호출
+        // Call weather API
         const weather = await fetchWeather(city);
         return {
           temperature: weather.temp,
@@ -167,22 +167,22 @@ const result = await generateText({
       },
     }),
   },
-  maxSteps: 5,  // 최대 도구 호출 횟수
+  maxSteps: 5,  // Maximum number of tool calls
 });
 
 console.log(result.text);
-// => "서울의 현재 날씨는 맑고 기온은 15도입니다."
+// => "The current weather in Seoul is clear with a temperature of 15 degrees."
 ```
 
-### 다중 도구
+### Multiple Tools
 
 ```typescript
 const result = await generateText({
   model: openai('gpt-4o'),
-  prompt: '서울의 날씨를 보고 우산이 필요한지 알려줘',
+  prompt: 'Check the weather in Seoul and tell me if I need an umbrella',
   tools: {
     getWeather: tool({
-      description: '날씨 조회',
+      description: 'Get weather information',
       parameters: z.object({
         city: z.string(),
       }),
@@ -191,9 +191,9 @@ const result = await generateText({
       },
     }),
     checkUmbrella: tool({
-      description: '날씨 정보를 기반으로 우산 필요 여부 판단',
+      description: 'Determine if an umbrella is needed based on weather information',
       parameters: z.object({
-        condition: z.string().describe('날씨 상태'),
+        condition: z.string().describe('Weather condition'),
       }),
       execute: async ({ condition }) => {
         return {
@@ -206,11 +206,11 @@ const result = await generateText({
 });
 ```
 
-## 구조화된 출력
+## Structured Output
 
 ### generateObject()
 
-JSON 형식의 구조화된 데이터를 생성합니다.
+Generates structured data in JSON format.
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -228,22 +228,22 @@ const result = await generateObject({
       country: z.string(),
     }),
   }),
-  prompt: '홍길동에 대한 정보를 생성해줘',
+  prompt: 'Generate information about John Doe',
 });
 
 console.log(result.object);
 // {
-//   name: "홍길동",
+//   name: "John Doe",
 //   age: 30,
-//   hobbies: ["독서", "여행"],
+//   hobbies: ["reading", "traveling"],
 //   address: {
-//     city: "서울",
-//     country: "대한민국"
+//     city: "New York",
+//     country: "USA"
 //   }
 // }
 ```
 
-### 실전 예제
+### Practical Example
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -263,10 +263,10 @@ class ProductModelClass extends BaseModel {
         price: z.number(),
         tags: z.array(z.string()),
       }),
-      prompt: `${productName}에 대한 상품 설명을 생성해줘`,
+      prompt: `Generate a product description for ${productName}`,
     });
-    
-    // DB에 저장
+
+    // Save to DB
     const product = await this.saveOne({
       name: result.object.title,
       description: result.object.description,
@@ -274,24 +274,24 @@ class ProductModelClass extends BaseModel {
       price: result.object.price,
       tags: result.object.tags,
     });
-    
+
     return product;
   }
 }
 ```
 
-## Rtzr Provider (음성 인식)
+## Rtzr Provider (Speech Recognition)
 
-Sonamu는 **Rtzr** (한국어 음성 인식 서비스)를 기본 제공합니다.
+Sonamu provides built-in support for **Rtzr** (a Korean speech recognition service).
 
-### 설정
+### Configuration
 
 ```.env
 RTZR_CLIENT_ID=your_client_id
 RTZR_CLIENT_SECRET=your_client_secret
 ```
 
-### 기본 사용법
+### Basic Usage
 
 ```typescript
 import { rtzr } from 'sonamu/ai/providers/rtzr';
@@ -299,21 +299,21 @@ import { rtzr } from 'sonamu/ai/providers/rtzr';
 const model = rtzr.transcription('whisper');
 
 const result = await model.doGenerate({
-  audio: audioBuffer,  // Uint8Array 또는 Base64
+  audio: audioBuffer,  // Uint8Array or Base64
   mediaType: 'audio/wav',
 });
 
 console.log(result.text);
-// => "안녕하세요, 오늘 날씨가 좋네요"
+// => "Hello, the weather is nice today"
 
 console.log(result.segments);
 // [
-//   { text: "안녕하세요", startSecond: 0, endSecond: 1 },
-//   { text: "오늘 날씨가 좋네요", startSecond: 1, endSecond: 3 }
+//   { text: "Hello", startSecond: 0, endSecond: 1 },
+//   { text: "the weather is nice today", startSecond: 1, endSecond: 3 }
 // ]
 ```
 
-### 파일 업로드 + 음성 인식
+### File Upload + Speech Recognition
 
 ```typescript
 import { BaseModel, upload, api } from "sonamu";
@@ -324,21 +324,21 @@ class TranscriptionModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async transcribeAudio() {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file) {
-      throw new Error('오디오 파일이 없습니다');
+      throw new Error('No audio file provided');
     }
-    
-    // 음성 인식
+
+    // Speech recognition
     const model = rtzr.transcription('whisper');
     const buffer = await file.toBuffer();
-    
+
     const result = await model.doGenerate({
       audio: buffer,
       mediaType: file.mimetype,
     });
-    
-    // DB에 저장
+
+    // Save to DB
     await this.saveOne({
       audio_url: file.url,
       transcription: result.text,
@@ -346,7 +346,7 @@ class TranscriptionModelClass extends BaseModel {
       language: result.language,
       duration: result.durationInSeconds,
     });
-    
+
     return {
       text: result.text,
       segments: result.segments,
@@ -355,7 +355,7 @@ class TranscriptionModelClass extends BaseModel {
 }
 ```
 
-### Rtzr 옵션
+### Rtzr Options
 
 ```typescript
 const result = await model.doGenerate({
@@ -365,17 +365,17 @@ const result = await model.doGenerate({
     rtzr: {
       domain: 'GENERAL',  // 'CALL' | 'GENERAL'
       language: 'ko',
-      diarization: true,  // 화자 분리
-      wordTimestamp: true,  // 단어별 타임스탬프
-      profanityFilter: false,  // 욕설 필터
+      diarization: true,  // Speaker separation
+      wordTimestamp: true,  // Word-level timestamps
+      profanityFilter: false,  // Profanity filter
     }
   }
 });
 ```
 
-## 멀티모달 (이미지 처리)
+## Multimodal (Image Processing)
 
-GPT-4o는 이미지를 입력으로 받을 수 있습니다.
+GPT-4o can accept images as input.
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -387,10 +387,10 @@ const result = await generateText({
     {
       role: 'user',
       content: [
-        { type: 'text', text: '이 이미지에 무엇이 있나요?' },
+        { type: 'text', text: 'What is in this image?' },
         {
           type: 'image',
-          image: imageBuffer,  // Uint8Array 또는 URL
+          image: imageBuffer,  // Uint8Array or URL
         },
       ],
     },
@@ -398,10 +398,10 @@ const result = await generateText({
 });
 
 console.log(result.text);
-// => "이미지에는 고양이가 있습니다..."
+// => "The image contains a cat..."
 ```
 
-### 이미지 업로드 + 분석
+### Image Upload + Analysis
 
 ```typescript
 import { BaseModel, upload, api } from "sonamu";
@@ -413,26 +413,26 @@ class ImageAnalysisModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async analyzeImage() {
     const { file } = Sonamu.getUploadContext();
-    
+
     if (!file || !file.mimetype.startsWith('image/')) {
-      throw new Error('이미지 파일이 필요합니다');
+      throw new Error('An image file is required');
     }
-    
+
     const buffer = await file.toBuffer();
-    
+
     const result = await generateText({
       model: openai('gpt-4o'),
       messages: [
         {
           role: 'user',
           content: [
-            { type: 'text', text: '이 이미지를 자세히 분석해줘' },
+            { type: 'text', text: 'Analyze this image in detail' },
             { type: 'image', image: buffer },
           ],
         },
       ],
     });
-    
+
     return {
       analysis: result.text,
       imageUrl: file.url,
@@ -441,7 +441,7 @@ class ImageAnalysisModelClass extends BaseModel {
 }
 ```
 
-## 에러 처리
+## Error Handling
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -452,26 +452,26 @@ try {
     model: openai('gpt-4o'),
     prompt: '...',
   });
-  
+
   return result.text;
 } catch (error) {
   if (error.name === 'AI_APICallError') {
-    // API 호출 에러
+    // API call error
     console.error('API Error:', error.message);
     console.error('Status:', error.statusCode);
   } else if (error.name === 'AI_InvalidPromptError') {
-    // 프롬프트 에러
+    // Prompt error
     console.error('Invalid Prompt:', error.message);
   } else {
-    // 기타 에러
+    // Other errors
     console.error('Unknown Error:', error);
   }
-  
+
   throw error;
 }
 ```
 
-## 비용 추적
+## Cost Tracking
 
 ```typescript
 const result = await generateText({
@@ -479,20 +479,20 @@ const result = await generateText({
   prompt: '...',
 });
 
-// 토큰 사용량
+// Token usage
 console.log('Prompt Tokens:', result.usage.promptTokens);
 console.log('Completion Tokens:', result.usage.completionTokens);
 console.log('Total Tokens:', result.usage.totalTokens);
 
-// 비용 계산 (예시)
-const costPerToken = 0.00003;  // GPT-4o 가격
+// Cost calculation (example)
+const costPerToken = 0.00003;  // GPT-4o pricing
 const cost = result.usage.totalTokens * costPerToken;
 console.log('Cost:', cost);
 ```
 
-## 실전 통합 예제
+## Practical Integration Example
 
-### AI 채팅 API
+### AI Chat API
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -507,44 +507,44 @@ class ChatModelClass extends BaseModel {
     conversationId: number | null,
     ctx: Context
   ) {
-    // 대화 이력 조회
+    // Retrieve conversation history
     const history = conversationId
       ? await ConversationModel.findById(conversationId)
       : null;
-    
+
     const messages = history?.messages || [];
     messages.push({
       role: 'user',
       content: message,
     });
-    
-    // AI 응답 생성
+
+    // Generate AI response
     const result = await generateText({
       model: openai('gpt-4o'),
       messages: [
         {
           role: 'system',
-          content: '당신은 친절한 고객 지원 챗봇입니다.',
+          content: 'You are a friendly customer support chatbot.',
         },
         ...messages,
       ],
       temperature: 0.7,
       maxTokens: 500,
     });
-    
-    // 응답 저장
+
+    // Save response
     messages.push({
       role: 'assistant',
       content: result.text,
     });
-    
+
     const conversation = await ConversationModel.saveOne({
       id: conversationId,
       user_id: ctx.user.id,
       messages,
       token_usage: result.usage.totalTokens,
     });
-    
+
     return {
       conversationId: conversation.id,
       message: result.text,
@@ -554,21 +554,21 @@ class ChatModelClass extends BaseModel {
 }
 ```
 
-## 주의사항
+## Precautions
 
 <Warning>
-**AI SDK 사용 시 주의사항**:
+**Important considerations when using the AI SDK**:
 
-1. **API 키 보안**: 환경변수 사용
+1. **API Key Security**: Use environment variables
    ```typescript
-   // ❌ 하드코딩
+   // ❌ Hardcoded
    const model = openai('gpt-4o', { apiKey: 'sk-...' });
-   
-   // ✅ 환경변수
-   const model = openai('gpt-4o');  // OPENAI_API_KEY 자동 사용
+
+   // ✅ Environment variable
+   const model = openai('gpt-4o');  // Automatically uses OPENAI_API_KEY
    ```
 
-2. **에러 처리**: 항상 try-catch
+2. **Error Handling**: Always use try-catch
    ```typescript
    try {
      const result = await generateText({ ... });
@@ -577,57 +577,57 @@ class ChatModelClass extends BaseModel {
    }
    ```
 
-3. **토큰 제한**: maxTokens 설정
+3. **Token Limits**: Set maxTokens
    ```typescript
    generateText({
      model: openai('gpt-4o'),
      prompt: '...',
-     maxTokens: 1000,  // 비용 제어
+     maxTokens: 1000,  // Cost control
    });
    ```
 
-4. **스트리밍 정리**: 에러 시에도 스트림 종료
+4. **Streaming Cleanup**: Terminate stream even on errors
    ```typescript
    try {
      for await (const chunk of result.textStream) {
        // ...
      }
    } finally {
-     // 정리 작업
+     // Cleanup work
    }
    ```
 
-5. **Rtzr 파일 크기**: 큰 파일은 청킹 필요
+5. **Rtzr File Size**: Large files require chunking
    ```typescript
    if (file.size > 10 * 1024 * 1024) {
-     throw new Error('파일 크기는 10MB 이하여야 합니다');
+     throw new Error('File size must be 10MB or less');
    }
    ```
 
-6. **이미지 크기**: GPT-4o 이미지 제한 확인
+6. **Image Size**: Check GPT-4o image limits
    ```typescript
-   // 이미지 크기 제한 (20MB)
+   // Image size limit (20MB)
    if (imageBuffer.length > 20 * 1024 * 1024) {
-     throw new Error('이미지가 너무 큽니다');
+     throw new Error('Image is too large');
    }
    ```
 </Warning>
 
-## Vercel AI SDK 문서
+## Vercel AI SDK Documentation
 
-더 많은 기능은 공식 문서를 참고하세요:
+For more features, refer to the official documentation:
 
-- [Vercel AI SDK 문서](https://sdk.vercel.ai/docs)
+- [Vercel AI SDK Documentation](https://sdk.vercel.ai/docs)
 - [OpenAI Provider](https://sdk.vercel.ai/providers/ai-sdk-providers/openai)
 - [Anthropic Provider](https://sdk.vercel.ai/providers/ai-sdk-providers/anthropic)
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Agent 설정" icon="gear" href="/advanced-features/ai-agents/agent-configuration">
-    Agent 기본 설정하기
+  <Card title="Agent Configuration" icon="gear" href="/advanced-features/ai-agents/agent-configuration">
+    Configure agent basics
   </Card>
-  <Card title="Agent 생성하기" icon="robot" href="/advanced-features/ai-agents/creating-agents">
-    BaseAgentClass로 에이전트 구축
+  <Card title="Creating Agents" icon="robot" href="/advanced-features/ai-agents/creating-agents">
+    Build agents with BaseAgentClass
   </Card>
 </CardGroup>

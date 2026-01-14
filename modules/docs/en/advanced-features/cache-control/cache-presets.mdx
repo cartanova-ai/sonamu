@@ -1,87 +1,87 @@
 ---
 title: "Cache Presets"
-description: "사전 정의된 캐시 설정 활용하기"
+description: "Using predefined cache configurations"
 ---
 
-Sonamu는 자주 사용하는 Cache-Control 패턴을 **CachePresets**으로 제공합니다. 직접 설정을 작성하는 대신 프리셋을 사용하면 일관되고 검증된 캐시 전략을 쉽게 적용할 수 있습니다.
+Sonamu provides frequently used Cache-Control patterns as **CachePresets**. Using presets instead of writing configurations manually allows you to easily apply consistent and validated caching strategies.
 
-## CachePresets 개요
+## CachePresets Overview
 
 ```typescript
 import { CachePresets } from "sonamu";
 
-// API에서 사용
+// Using in API
 @api({
   httpMethod: 'GET',
   cacheControl: CachePresets.shortLived,
 })
 
-// SSR에서 사용
+// Using in SSR
 registerSSR({
   path: '/products',
   cacheControl: CachePresets.ssr,
 });
 ```
 
-## 전체 프리셋 목록
+## Complete Preset List
 
 <CardGroup cols={2}>
   <Card title="noStore" icon="ban">
-    캐시 저장 금지
+    No cache storage
   </Card>
   <Card title="noCache" icon="rotate">
-    매번 재검증
+    Revalidate every time
   </Card>
   <Card title="shortLived" icon="clock">
-    1분 캐시
+    1 minute cache
   </Card>
   <Card title="ssr" icon="window">
-    SSR 최적화 (10초 + SWR)
+    SSR optimized (10 seconds + SWR)
   </Card>
   <Card title="mediumLived" icon="hourglass-half">
-    5분 캐시
+    5 minute cache
   </Card>
   <Card title="longLived" icon="hourglass">
-    1시간 캐시
+    1 hour cache
   </Card>
   <Card title="immutable" icon="lock">
-    영구 캐시 (정적 파일)
+    Permanent cache (static files)
   </Card>
   <Card title="private" icon="user-lock">
-    개인화 데이터
+    Personalized data
   </Card>
 </CardGroup>
 
-## 프리셋 상세
+## Preset Details
 
 ### noStore
 
-**캐시 저장을 완전히 금지**합니다.
+**Completely prohibits cache storage**.
 
 ```typescript
 CachePresets.noStore
-// 생성되는 헤더: Cache-Control: no-store
+// Generated header: Cache-Control: no-store
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       noStore: true
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 민감한 데이터 (개인정보, 결제 정보)
-    - Mutation 요청 (POST, PUT, DELETE)
-    - 실시간 데이터 (주식 가격, 경매)
-    - 일회용 토큰, OTP
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Sensitive data (personal information, payment info)
+    - Mutation requests (POST, PUT, DELETE)
+    - Real-time data (stock prices, auctions)
+    - One-time tokens, OTP
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 결제 API
+    // Payment API
     @api({
       httpMethod: 'POST',
       cacheControl: CachePresets.noStore,
@@ -89,8 +89,8 @@ CachePresets.noStore
     async createPayment(data: PaymentSave) {
       return this.processPayment(data);
     }
-    
-    // 개인 정보 조회
+
+    // Private data retrieval
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.noStore,
@@ -104,31 +104,31 @@ CachePresets.noStore
 
 ### noCache
 
-**캐시는 저장하되 매번 재검증**합니다.
+**Stores cache but revalidates every time**.
 
 ```typescript
 CachePresets.noCache
-// 생성되는 헤더: Cache-Control: no-cache
+// Generated header: Cache-Control: no-cache
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       noCache: true
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 최신 상태 확인이 중요한 데이터
-    - 자주 변경되지만 서버 부하는 줄이고 싶을 때
-    - 조건부 요청 (ETag, Last-Modified) 활용
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Data where freshness verification is important
+    - When you want to reduce server load but data changes frequently
+    - Using conditional requests (ETag, Last-Modified)
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 재고 정보 (자주 변경)
+    // Inventory info (frequently changes)
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.noCache,
@@ -140,42 +140,42 @@ CachePresets.noCache
   </Tab>
 </Tabs>
 
-**no-cache의 장점**:
+**Benefits of no-cache**:
 ```
-1차 요청: GET /api/data → 200 OK + ETag: "abc123"
-2차 요청: GET /api/data (If-None-Match: "abc123")
-→ 304 Not Modified (body 없음, 빠름)
+1st request: GET /api/data → 200 OK + ETag: "abc123"
+2nd request: GET /api/data (If-None-Match: "abc123")
+→ 304 Not Modified (no body, fast)
 ```
 
 ### shortLived
 
-**1분 캐시** - 자주 변경되는 데이터에 적합합니다.
+**1 minute cache** - Suitable for frequently changing data.
 
 ```typescript
 CachePresets.shortLived
-// 생성되는 헤더: Cache-Control: public, max-age=60
+// Generated header: Cache-Control: public, max-age=60
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'public',
-      maxAge: 60  // 60초 = 1분
+      maxAge: 60  // 60 seconds = 1 minute
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 자주 변경되는 API 응답
-    - 실시간성이 중요하지 않은 데이터
-    - CSR fallback 페이지
-    - 게시글 목록
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Frequently changing API responses
+    - Data where real-time accuracy is not critical
+    - CSR fallback pages
+    - Post lists
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 게시글 목록
+    // Post list
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.shortLived,
@@ -183,7 +183,7 @@ CachePresets.shortLived
     async getPosts(page: number) {
       return this.findMany({ page, num: 20 });
     }
-    
+
     // CSR fallback
     registerSSR({
       path: '/*',  // catch-all
@@ -195,52 +195,52 @@ CachePresets.shortLived
 
 ### ssr
 
-**SSR 페이지 최적화** - 10초 캐시 + Stale-While-Revalidate 30초
+**SSR page optimization** - 10 second cache + Stale-While-Revalidate 30 seconds
 
 ```typescript
 CachePresets.ssr
-// 생성되는 헤더: Cache-Control: public, max-age=10, stale-while-revalidate=30
+// Generated header: Cache-Control: public, max-age=10, stale-while-revalidate=30
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'public',
-      maxAge: 10,  // 10초 동안 Fresh
-      staleWhileRevalidate: 30  // 이후 30초 동안 Stale 사용
+      maxAge: 10,  // Fresh for 10 seconds
+      staleWhileRevalidate: 30  // Use stale for the next 30 seconds
     }
     ```
   </Tab>
-  
-  <Tab title="작동 방식" icon="diagram-project">
-    **0~10초**: 신선한 캐시
-    - 사용자: 캐시에서 즉시 응답
-    
-    **10~40초**: Stale 상태
-    - 사용자: Stale 캐시 즉시 반환
-    - CDN: 백그라운드에서 서버 요청 → 캐시 갱신
-    
-    **40초 이후**: 만료
-    - 서버 요청 필요
+
+  <Tab title="How It Works" icon="diagram-project">
+    **0-10 seconds**: Fresh cache
+    - User: Instant response from cache
+
+    **10-40 seconds**: Stale state
+    - User: Instant return of stale cache
+    - CDN: Background server request → Cache update
+
+    **After 40 seconds**: Expired
+    - Server request required
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - SSR 페이지 (상품 상세, 블로그 글)
-    - 동적 콘텐츠이지만 약간의 지연 허용
-    - CDN 효율 극대화
+
+  <Tab title="When to Use" icon="lightbulb">
+    - SSR pages (product details, blog posts)
+    - Dynamic content where slight delay is acceptable
+    - Maximize CDN efficiency
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 상품 상세 페이지
+    // Product detail page
     registerSSR({
       path: '/products/:id',
       cacheControl: CachePresets.ssr,
       Component: ProductDetail,
     });
-    
-    // 블로그 글
+
+    // Blog post
     registerSSR({
       path: '/blog/:slug',
       cacheControl: CachePresets.ssr,
@@ -252,33 +252,33 @@ CachePresets.ssr
 
 ### mediumLived
 
-**5분 캐시** - 거의 변경되지 않는 데이터에 적합합니다.
+**5 minute cache** - Suitable for rarely changing data.
 
 ```typescript
 CachePresets.mediumLived
-// 생성되는 헤더: Cache-Control: public, max-age=300
+// Generated header: Cache-Control: public, max-age=300
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'public',
-      maxAge: 300  // 300초 = 5분
+      maxAge: 300  // 300 seconds = 5 minutes
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 설정 데이터 (약관, 정책)
-    - 카테고리 목록
-    - 통계 데이터 (일 단위 갱신)
-    - FAQ, 공지사항
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Configuration data (terms, policies)
+    - Category lists
+    - Statistical data (daily updates)
+    - FAQ, announcements
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 카테고리 트리
+    // Category tree
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.mediumLived,
@@ -286,8 +286,8 @@ CachePresets.mediumLived
     async getCategoryTree() {
       return this.buildTree();
     }
-    
-    // 약관
+
+    // Terms of service
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.mediumLived,
@@ -301,32 +301,32 @@ CachePresets.mediumLived
 
 ### longLived
 
-**1시간 캐시** - 정적 컨텐츠에 적합합니다.
+**1 hour cache** - Suitable for static content.
 
 ```typescript
 CachePresets.longLived
-// 생성되는 헤더: Cache-Control: public, max-age=3600
+// Generated header: Cache-Control: public, max-age=3600
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'public',
-      maxAge: 3600  // 3600초 = 1시간
+      maxAge: 3600  // 3600 seconds = 1 hour
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 거의 변경되지 않는 정적 콘텐츠
-    - 이미지, 폰트 (해시 없는 파일)
-    - 참조 데이터 (국가 목록, 통화 코드)
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Static content that rarely changes
+    - Images, fonts (files without hash)
+    - Reference data (country list, currency codes)
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 국가 목록
+    // Country list
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.longLived,
@@ -334,8 +334,8 @@ CachePresets.longLived
     async getCountries() {
       return this.findMany({});
     }
-    
-    // 정적 설정
+
+    // Static configuration
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.longLived,
@@ -349,64 +349,64 @@ CachePresets.longLived
 
 ### immutable
 
-**영구 캐시** - 해시가 포함된 정적 파일용
+**Permanent cache** - For static files with hash
 
 ```typescript
 CachePresets.immutable
-// 생성되는 헤더: Cache-Control: public, max-age=31536000, immutable
+// Generated header: Cache-Control: public, max-age=31536000, immutable
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'public',
-      maxAge: 31536000,  // 1년 (초 단위)
-      immutable: true  // 절대 변경 안됨
+      maxAge: 31536000,  // 1 year (in seconds)
+      immutable: true  // Never changes
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 해시가 포함된 파일명
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Filenames with hash
       - `bundle-abc123.js`
       - `styles-def456.css`
       - `image-789xyz.png`
-    - 내용이 변경되면 파일명도 변경되는 경우
+    - When filename changes if content changes
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 빌드된 정적 파일
+    // Built static files
     server.get('/assets/:filename', (req, reply) => {
       const filename = req.params.filename;
-      
-      // 해시 포함 파일은 immutable
+
+      // Files with hash use immutable
       if (/\-[a-f0-9]{8,}\.(js|css|png)$/.test(filename)) {
         applyCacheHeaders(reply, CachePresets.immutable);
       }
-      
+
       return reply.sendFile(filename);
     });
     ```
   </Tab>
 </Tabs>
 
-**immutable의 장점**:
-- 재검증 없이 캐시만 사용 (가장 빠름)
-- 파일이 변경되면 새 해시 → 새 파일명 → 자동 캐시 갱신
+**Benefits of immutable**:
+- Uses only cache without revalidation (fastest)
+- When file changes → new hash → new filename → automatic cache update
 
 ### private
 
-**개인화 데이터** - 사용자별로 다른 응답
+**Personalized data** - Different response per user
 
 ```typescript
 CachePresets.private
-// 생성되는 헤더: Cache-Control: private, no-cache
+// Generated header: Cache-Control: private, no-cache
 ```
 
 <Tabs>
-  <Tab title="설정" icon="gear">
+  <Tab title="Configuration" icon="gear">
     ```typescript
     {
       visibility: 'private',
@@ -414,17 +414,17 @@ CachePresets.private
     }
     ```
   </Tab>
-  
-  <Tab title="사용 시기" icon="lightbulb">
-    - 로그인 사용자별 데이터
-    - 마이페이지, 프로필
-    - 장바구니, 주문 내역
-    - 맞춤 추천
+
+  <Tab title="When to Use" icon="lightbulb">
+    - Per-user data after login
+    - My page, profile
+    - Shopping cart, order history
+    - Personalized recommendations
   </Tab>
-  
-  <Tab title="예제" icon="code">
+
+  <Tab title="Example" icon="code">
     ```typescript
-    // 내 프로필
+    // My profile
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.private,
@@ -432,15 +432,15 @@ CachePresets.private
     async getMyProfile(ctx: Context) {
       return this.findOne(['id', ctx.user.id]);
     }
-    
-    // 내 주문 목록
+
+    // My order list
     @api({
       httpMethod: 'GET',
       cacheControl: CachePresets.private,
     })
     async getMyOrders(ctx: Context) {
-      return this.findMany({ 
-        where: [['user_id', ctx.user.id]] 
+      return this.findMany({
+        where: [['user_id', ctx.user.id]]
       });
     }
     ```
@@ -448,33 +448,33 @@ CachePresets.private
 </Tabs>
 
 **private vs public**:
-- `private`: 브라우저에만 캐싱 (CDN에는 안 됨)
-- `public`: 모든 캐시(브라우저 + CDN)에 캐싱
+- `private`: Cached only in browser (not on CDN)
+- `public`: Cached everywhere (browser + CDN)
 
-## 프리셋 비교표
+## Preset Comparison Table
 
-| 프리셋 | 헤더 | 용도 | TTL |
-|--------|------|------|-----|
-| `noStore` | `no-store` | 민감한 데이터, Mutation | 없음 |
-| `noCache` | `no-cache` | 매번 재검증 필요 | 없음 (재검증) |
-| `shortLived` | `public, max-age=60` | 자주 변경 | 1분 |
-| `ssr` | `public, max-age=10, stale-while-revalidate=30` | SSR 페이지 | 10초 + SWR 30초 |
-| `mediumLived` | `public, max-age=300` | 거의 변경 안됨 | 5분 |
-| `longLived` | `public, max-age=3600` | 정적 콘텐츠 | 1시간 |
-| `immutable` | `public, max-age=31536000, immutable` | 해시 파일 | 1년 (영구) |
-| `private` | `private, no-cache` | 개인화 데이터 | 없음 (private) |
+| Preset | Header | Use Case | TTL |
+|--------|--------|----------|-----|
+| `noStore` | `no-store` | Sensitive data, Mutations | None |
+| `noCache` | `no-cache` | Requires revalidation | None (revalidate) |
+| `shortLived` | `public, max-age=60` | Frequently changes | 1 minute |
+| `ssr` | `public, max-age=10, stale-while-revalidate=30` | SSR pages | 10 seconds + SWR 30 seconds |
+| `mediumLived` | `public, max-age=300` | Rarely changes | 5 minutes |
+| `longLived` | `public, max-age=3600` | Static content | 1 hour |
+| `immutable` | `public, max-age=31536000, immutable` | Hashed files | 1 year (permanent) |
+| `private` | `private, no-cache` | Personalized data | None (private) |
 
-## 커스텀 설정
+## Custom Configuration
 
-프리셋이 맞지 않으면 직접 설정을 작성할 수 있습니다.
+If presets don't fit, you can write your own configuration.
 
 ```typescript
-// CDN 최적화 (브라우저: 1분, CDN: 5분)
+// CDN optimization (Browser: 1 minute, CDN: 5 minutes)
 @api({
   httpMethod: 'GET',
   cacheControl: {
     visibility: 'public',
-    maxAge: 60,      // 브라우저
+    maxAge: 60,      // Browser
     sMaxAge: 300,    // CDN
   }
 })
@@ -482,13 +482,13 @@ async getData() {
   return this.findMany({});
 }
 
-// Stale-If-Error 추가
+// Adding Stale-If-Error
 @api({
   httpMethod: 'GET',
   cacheControl: {
     visibility: 'public',
     maxAge: 300,
-    staleIfError: 86400,  // 오류 시 1일간 Stale 사용
+    staleIfError: 86400,  // Use stale for 1 day on error
   }
 })
 async getCriticalData() {
@@ -496,9 +496,9 @@ async getCriticalData() {
 }
 ```
 
-## 전역 핸들러
+## Global Handler
 
-모든 요청에 대해 동적으로 Cache-Control을 설정할 수 있습니다.
+You can dynamically set Cache-Control for all requests.
 
 ```typescript
 // sonamu.config.ts
@@ -506,41 +506,41 @@ export const config: SonamuConfig = {
   server: {
     apiConfig: {
       cacheControlHandler: (req) => {
-        // API 요청
+        // API requests
         if (req.type === 'api') {
           if (req.method !== 'GET') {
-            return CachePresets.noStore;  // Mutation은 no-store
+            return CachePresets.noStore;  // Mutations use no-store
           }
-          return CachePresets.shortLived;  // GET은 1분 캐시
+          return CachePresets.shortLived;  // GET uses 1 minute cache
         }
-        
-        // 정적 파일
+
+        // Static files
         if (req.type === 'assets') {
-          if (req.path.includes('-')) {  // 해시 포함
+          if (req.path.includes('-')) {  // Contains hash
             return CachePresets.immutable;
           }
           return CachePresets.longLived;
         }
-        
+
         // SSR
         if (req.type === 'ssr') {
           return CachePresets.ssr;
         }
-        
-        return undefined;  // 기본값
+
+        return undefined;  // Default
       }
     }
   }
 };
 ```
 
-## 실전 활용
+## Practical Usage
 
-### API별 전략
+### Strategy by API
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // 목록: 자주 변경 → 짧은 캐시
+  // List: Frequently changes → Short cache
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.shortLived,
@@ -548,8 +548,8 @@ class ProductModelClass extends BaseModel {
   async findAll() {
     return this.findMany({});
   }
-  
-  // 상세: 덜 변경 → 중간 캐시
+
+  // Detail: Less frequent changes → Medium cache
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.mediumLived,
@@ -557,8 +557,8 @@ class ProductModelClass extends BaseModel {
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
-  // 카테고리: 거의 변경 안됨 → 긴 캐시
+
+  // Categories: Rarely changes → Long cache
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.longLived,
@@ -566,8 +566,8 @@ class ProductModelClass extends BaseModel {
   async getCategories() {
     return this.categories;
   }
-  
-  // 생성/수정: Mutation → no-store
+
+  // Create/Update: Mutation → no-store
   @api({
     httpMethod: 'POST',
     cacheControl: CachePresets.noStore,
@@ -578,24 +578,24 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-### SSR 페이지
+### SSR Pages
 
 ```typescript
-// 홈페이지: SSR 최적화
+// Homepage: SSR optimized
 registerSSR({
   path: '/',
   cacheControl: CachePresets.ssr,
   Component: HomePage,
 });
 
-// 상품 목록: 짧은 캐시
+// Product list: Short cache
 registerSSR({
   path: '/products',
   cacheControl: CachePresets.shortLived,
   Component: ProductList,
 });
 
-// 약관: 긴 캐시
+// Terms: Long cache
 registerSSR({
   path: '/terms',
   cacheControl: CachePresets.longLived,
@@ -603,72 +603,72 @@ registerSSR({
 });
 ```
 
-## 주의사항
+## Precautions
 
 <Warning>
-**프리셋 사용 시 주의사항**:
+**Precautions when using presets**:
 
-1. **프리셋은 출발점**: 상황에 맞게 커스터마이징 필요
+1. **Presets are starting points**: Customize as needed
    ```typescript
-   // ✅ 상황에 맞게 조정
+   // ✅ Adjust for your situation
    cacheControl: {
      ...CachePresets.shortLived,
-     maxAge: 120,  // 1분 → 2분으로 조정
+     maxAge: 120,  // Adjusted 1 minute → 2 minutes
    }
    ```
 
-2. **GET만 캐싱**: POST, PUT, DELETE는 `noStore` 사용
+2. **Only cache GET**: Use `noStore` for POST, PUT, DELETE
    ```typescript
-   // ❌ 잘못된 예
+   // ❌ Wrong example
    @api({
      httpMethod: 'POST',
      cacheControl: CachePresets.shortLived,
    })
-   
-   // ✅ 올바른 예
+
+   // ✅ Correct example
    @api({
      httpMethod: 'POST',
      cacheControl: CachePresets.noStore,
    })
    ```
 
-3. **개인 데이터는 private**: CDN 캐싱 방지
+3. **Private data must be private**: Prevent CDN caching
    ```typescript
-   // ❌ 위험: CDN에 개인 데이터 캐싱
+   // ❌ Dangerous: Personal data cached on CDN
    @api({
      cacheControl: CachePresets.shortLived,  // public
    })
    async getMyData() { ... }
-   
-   // ✅ 안전
+
+   // ✅ Safe
    @api({
      cacheControl: CachePresets.private,
    })
    async getMyData() { ... }
    ```
 
-4. **immutable은 해시 파일만**: 파일명이 바뀌어야 갱신됨
+4. **immutable only for hashed files**: Must change filename to update
    ```typescript
-   // ❌ 잘못된 사용
-   // main.js (해시 없음) → 내용 변경해도 캐시 유지
+   // ❌ Wrong usage
+   // main.js (no hash) → Cache persists even if content changes
    cacheControl: CachePresets.immutable
-   
-   // ✅ 올바른 사용
-   // main-abc123.js (해시 있음) → 내용 변경 시 파일명도 변경
+
+   // ✅ Correct usage
+   // main-abc123.js (has hash) → Filename changes when content changes
    cacheControl: CachePresets.immutable
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache-Control이란?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
-    HTTP 캐싱 기본 개념
+  <Card title="What is Cache-Control?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
+    HTTP caching fundamentals
   </Card>
-  <Card title="API에서 사용하기" icon="code" href="/advanced-features/cache-control/using-in-apis">
-    @api 데코레이터에 적용
+  <Card title="Using in APIs" icon="code" href="/advanced-features/cache-control/using-in-apis">
+    Apply to @api decorators
   </Card>
-  <Card title="SSR에서 사용하기" icon="window" href="/advanced-features/cache-control/using-in-ssr">
-    SSR 페이지에 적용
+  <Card title="Using in SSR" icon="window" href="/advanced-features/cache-control/using-in-ssr">
+    Apply to SSR pages
   </Card>
 </CardGroup>

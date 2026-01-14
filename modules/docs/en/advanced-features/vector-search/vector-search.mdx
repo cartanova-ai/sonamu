@@ -1,54 +1,54 @@
 ---
-title: "벡터 검색"
-description: "Sonamu Model에서 pgvector 유사도 검색 구현하기"
+title: "Vector Search"
+description: "Implementing pgvector similarity search in Sonamu Model"
 ---
 
-## Sonamu에서 검색 API 만들기
+## Building Search API in Sonamu
 
-임베딩을 생성하고 DB에 저장했습니다. 이제 검색 API를 만들 차례입니다.
+You've generated embeddings and stored them in the database. Now it's time to build the search API.
 
 ```typescript
-// 문서를 저장했습니다
+// You've saved documents
 await DocumentModel.saveOne({
-  title: "Sonamu 시작하기",
+  title: "Getting Started with Sonamu",
   content: "...",
-  embedding: [0.2, 0.8, ...],  // 1024개
+  embedding: [0.2, 0.8, ...],  // 1024 dimensions
 });
 
-// 이제 검색하고 싶습니다
-// "TypeScript 프레임워크" 검색 시
-// → "Sonamu 시작하기" 찾아야 함
+// Now you want to search
+// When searching "TypeScript framework"
+// -> Should find "Getting Started with Sonamu"
 ```
 
-**목표**: Sonamu BaseModel에서 벡터 검색 API를 구현합니다.
+**Goal**: Implement vector search API in Sonamu BaseModel.
 
-## 벡터 검색 원리
+## How Vector Search Works
 
 ```mermaid
 flowchart TD
-    Q["사용자 쿼리:<br/>TypeScript 프레임워크"] --> E[Embedding API]
-    E --> QV["쿼리 벡터:<br/>[0.3, 0.7, ...]"]
-    
-    DB[(PostgreSQL)] --> D1["문서 1:<br/>[0.2, 0.8, ...]"]
-    DB --> D2["문서 2:<br/>[-0.5, 0.1, ...]"]
-    DB --> D3["문서 3:<br/>[0.4, 0.6, ...]"]
-    
-    QV --> S[유사도 계산]
+    Q["User query:<br/>TypeScript framework"] --> E[Embedding API]
+    E --> QV["Query vector:<br/>[0.3, 0.7, ...]"]
+
+    DB[(PostgreSQL)] --> D1["Document 1:<br/>[0.2, 0.8, ...]"]
+    DB --> D2["Document 2:<br/>[-0.5, 0.1, ...]"]
+    DB --> D3["Document 3:<br/>[0.4, 0.6, ...]"]
+
+    QV --> S[Similarity calculation]
     D1 --> S
     D2 --> S
     D3 --> S
-    
-    S --> R["결과:<br/>1. 문서 1: 0.92<br/>2. 문서 3: 0.78<br/>3. 문서 2: 0.21"]
+
+    S --> R["Results:<br/>1. Document 1: 0.92<br/>2. Document 3: 0.78<br/>3. Document 2: 0.21"]
 ```
 
-**핵심**:
-1. 쿼리를 임베딩으로 변환
-2. DB의 모든 문서 벡터와 거리/유사도 계산
-3. 가까운 순서대로 정렬
+**Key points**:
+1. Convert query to embedding
+2. Calculate distance/similarity with all document vectors in DB
+3. Sort by proximity
 
-## Sonamu Model에서 구현
+## Implementation in Sonamu Model
 
-### 기본 검색 API
+### Basic Search API
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -57,16 +57,16 @@ import { Embedding } from "sonamu/vector";
 class DocumentModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async search(query: string, limit: number = 10) {
-    // 1. 쿼리를 임베딩으로 변환
+    // 1. Convert query to embedding
     const embedding = await Embedding.embedOne(
       query,
       'voyage',
-      'query'  // 검색용
+      'query'  // for search
     );
-    
-    // 2. Puri로 벡터 검색 SQL 작성
+
+    // 2. Write vector search SQL with Puri
     const results = await this.getPuri().raw(`
-      SELECT 
+      SELECT
         id,
         title,
         content,
@@ -80,102 +80,102 @@ class DocumentModelClass extends BaseModel {
       JSON.stringify(embedding.embedding),
       limit,
     ]);
-    
+
     return results.rows;
   }
 }
 ```
 
-**흐름**:
-1. `POST /api/documents/search` → Sonamu API
-2. 쿼리 임베딩 생성 (Voyage AI)
-3. PostgreSQL에서 유사도 계산 (pgvector)
-4. 상위 N개 반환
+**Flow**:
+1. `POST /api/documents/search` -> Sonamu API
+2. Generate query embedding (Voyage AI)
+3. Calculate similarity in PostgreSQL (pgvector)
+4. Return top N results
 
-### 왜 Puri의 raw()를 쓰나요?
+### Why Use Puri's raw()?
 
-pgvector의 특수 연산자(`<=>`)는 Knex가 직접 지원하지 않습니다:
+Knex doesn't directly support pgvector's special operators (`<=>`):
 
 ```typescript
-// ❌ Knex로는 어려움
+// Hard with Knex
 await this.findMany({
-  wq: [/* pgvector 연산자 어떻게? */]
+  wq: [/* how to use pgvector operators? */]
 });
 
-// ✅ Puri.raw()로 SQL 직접 작성
+// Write SQL directly with Puri.raw()
 await this.getPuri().raw(`
   SELECT * FROM docs
   WHERE embedding <=> ? < 0.5
 `);
 ```
 
-Sonamu의 `Puri`는 Knex를 감싸므로 `raw()` 메서드를 제공합니다.
+Sonamu's `Puri` wraps Knex and provides the `raw()` method.
 
-## 유사도 함수 이해하기
+## Understanding Similarity Functions
 
-pgvector는 세 가지 방식으로 벡터 간 거리/유사도를 계산합니다.
+pgvector calculates distance/similarity between vectors in three ways.
 
-### 1. 코사인 유사도 (권장)
+### 1. Cosine Similarity (Recommended)
 
-**벡터 간 각도로 측정**
+**Measures by angle between vectors**
 
 ```sql
-SELECT 
+SELECT
   id, title,
   1 - (embedding <=> ?) AS similarity
 FROM documents
 ORDER BY embedding <=> ?;
 ```
 
-**연산자**: `<=>` (코사인 거리)
-**범위**: 0.0 (동일) ~ 2.0 (정반대)
-**유사도 변환**: `1 - distance`
+**Operator**: `<=>` (cosine distance)
+**Range**: 0.0 (identical) ~ 2.0 (opposite)
+**Similarity conversion**: `1 - distance`
 
-**장점**:
-- 벡터 크기 영향 없음 (방향만 비교)
-- 대부분의 임베딩 모델에 최적
-- **Sonamu 권장**
+**Advantages**:
+- Not affected by vector magnitude (compares direction only)
+- Optimal for most embedding models
+- **Recommended for Sonamu**
 
-### 2. 유클리드 거리 (L2)
+### 2. Euclidean Distance (L2)
 
-**벡터 간 직선 거리**
+**Straight-line distance between vectors**
 
 ```sql
-SELECT 
+SELECT
   id, title,
   embedding <-> ? AS distance
 FROM documents
 ORDER BY embedding <-> ?;
 ```
 
-**연산자**: `<->` (L2 거리)
-**범위**: 0.0 (동일) ~ ∞
+**Operator**: `<->` (L2 distance)
+**Range**: 0.0 (identical) ~ infinity
 
-**용도**: 벡터 크기도 중요한 경우
+**Use case**: When vector magnitude also matters
 
-### 3. 내적 (Dot Product)
+### 3. Inner Product (Dot Product)
 
-**벡터 내적 (음수)**
+**Vector inner product (negative)**
 
 ```sql
-SELECT 
+SELECT
   id, title,
   (embedding <#> ?) * -1 AS score
 FROM documents
 ORDER BY embedding <#> ?;
 ```
 
-**연산자**: `<#>` (음의 내적)
-**범위**: -∞ ~ ∞
+**Operator**: `<#>` (negative inner product)
+**Range**: -infinity ~ infinity
 
-**용도**: 특수한 임베딩 모델
+**Use case**: Specialized embedding models
 
-### Sonamu에서는 코사인 유사도 사용
+### Use Cosine Similarity in Sonamu
 
 ```typescript
-// ✅ 권장: 코사인 유사도
+// Recommended: Cosine similarity
 const results = await this.getPuri().raw(`
-  SELECT 
+  SELECT
     id, title, content,
     1 - (embedding <=> ?) AS similarity
   FROM documents
@@ -189,25 +189,25 @@ const results = await this.getPuri().raw(`
 ]);
 ```
 
-## 임계값 필터링
+## Threshold Filtering
 
-유사도가 낮은 결과는 제외합니다:
+Exclude results with low similarity:
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async searchWithThreshold(
   query: string,
-  threshold: number = 0.5,  // 0.5 이상만
+  threshold: number = 0.5,  // only 0.5 and above
   limit: number = 10
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
+
   const results = await this.getPuri().raw(`
-    SELECT 
+    SELECT
       id, title, content,
       1 - (embedding <=> ?) AS similarity
     FROM documents
-    WHERE 
+    WHERE
       embedding IS NOT NULL
       AND 1 - (embedding <=> ?) > ?
     ORDER BY embedding <=> ?
@@ -219,20 +219,20 @@ async searchWithThreshold(
     JSON.stringify(embedding.embedding),
     limit,
   ]);
-  
+
   return results.rows;
 }
 ```
 
-**임계값 기준**:
-- `0.8~1.0`: 매우 유사 (거의 동일)
-- `0.6~0.8`: 유사
-- `0.4~0.6`: 관련 있음
-- `< 0.4`: 관련 없음
+**Threshold criteria**:
+- `0.8~1.0`: Very similar (almost identical)
+- `0.6~0.8`: Similar
+- `0.4~0.6`: Related
+- `< 0.4`: Unrelated
 
-## 실전 예제
+## Practical Examples
 
-### 1. 지식 베이스 검색
+### 1. Knowledge Base Search
 
 ```typescript
 class KnowledgeBaseModelClass extends BaseModel {
@@ -243,19 +243,19 @@ class KnowledgeBaseModelClass extends BaseModel {
     limit: number = 5
   ) {
     const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-    
-    // 카테고리 필터 (선택)
-    const categoryFilter = category 
+
+    // Category filter (optional)
+    const categoryFilter = category
       ? `AND category = '${category}'`
       : '';
-    
+
     const results = await this.getPuri().raw(`
-      SELECT 
+      SELECT
         id, title, content, category,
         1 - (embedding <=> ?) AS similarity,
         created_at
       FROM knowledge_base
-      WHERE 
+      WHERE
         embedding IS NOT NULL
         ${categoryFilter}
       ORDER BY embedding <=> ?
@@ -265,7 +265,7 @@ class KnowledgeBaseModelClass extends BaseModel {
       JSON.stringify(embedding.embedding),
       limit,
     ]);
-    
+
     return results.rows.map(row => ({
       id: row.id,
       title: row.title,
@@ -278,18 +278,18 @@ class KnowledgeBaseModelClass extends BaseModel {
 }
 ```
 
-**사용**:
+**Usage**:
 ```typescript
-// 전체 검색
-await KnowledgeBaseModel.searchKnowledge("환불 방법");
+// Full search
+await KnowledgeBaseModel.searchKnowledge("refund method");
 
-// 카테고리 필터
-await KnowledgeBaseModel.searchKnowledge("환불 방법", "FAQ");
+// With category filter
+await KnowledgeBaseModel.searchKnowledge("refund method", "FAQ");
 ```
 
-### 2. 상품 추천
+### 2. Product Recommendations
 
-"이 상품과 유사한 제품"을 구현합니다:
+Implementing "Products similar to this":
 
 ```typescript
 class ProductModelClass extends BaseModel {
@@ -298,20 +298,20 @@ class ProductModelClass extends BaseModel {
     productId: number,
     limit: number = 10
   ) {
-    // 기준 상품 조회
+    // Get base product
     const baseProduct = await this.findById(productId);
-    
+
     if (!baseProduct.embedding) {
-      throw new Error('상품 임베딩이 없습니다');
+      throw new Error('Product embedding does not exist');
     }
-    
-    // 유사 상품 검색 (자기 자신 제외)
+
+    // Search similar products (exclude self)
     const results = await this.getPuri().raw(`
-      SELECT 
+      SELECT
         id, name, description, price,
         1 - (embedding <=> ?) AS similarity
       FROM products
-      WHERE 
+      WHERE
         embedding IS NOT NULL
         AND id != ?
       ORDER BY embedding <=> ?
@@ -322,18 +322,18 @@ class ProductModelClass extends BaseModel {
       JSON.stringify(baseProduct.embedding),
       limit,
     ]);
-    
+
     return results.rows;
   }
 }
 ```
 
-**API 응답**:
+**API response**:
 ```json
 [
   {
     "id": 123,
-    "name": "비슷한 상품 1",
+    "name": "Similar Product 1",
     "price": 29000,
     "similarity": 0.89
   },
@@ -341,9 +341,9 @@ class ProductModelClass extends BaseModel {
 ]
 ```
 
-### 3. 다중 필터 검색
+### 3. Multi-Filter Search
 
-여러 조건을 조합합니다:
+Combining multiple conditions:
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -358,19 +358,19 @@ async advancedSearch(
   limit: number = 10
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
-  // WHERE 조건 동적 생성
+
+  // Dynamic WHERE conditions
   const conditions = ['embedding IS NOT NULL'];
   const params: any[] = [
     JSON.stringify(embedding.embedding),
     JSON.stringify(embedding.embedding),
   ];
-  
+
   if (filters.category) {
     conditions.push(`category = ?`);
     params.push(filters.category);
   }
-  
+
   if (filters.minSimilarity) {
     conditions.push(`1 - (embedding <=> ?) > ?`);
     params.push(
@@ -378,21 +378,21 @@ async advancedSearch(
       filters.minSimilarity
     );
   }
-  
+
   if (filters.dateFrom) {
     conditions.push(`created_at >= ?`);
     params.push(filters.dateFrom);
   }
-  
+
   if (filters.dateTo) {
     conditions.push(`created_at <= ?`);
     params.push(filters.dateTo);
   }
-  
+
   params.push(limit);
-  
+
   const results = await this.getPuri().raw(`
-    SELECT 
+    SELECT
       id, title, content, category,
       1 - (embedding <=> ?) AS similarity,
       created_at
@@ -401,14 +401,14 @@ async advancedSearch(
     ORDER BY embedding <=> ?
     LIMIT ?
   `, params);
-  
+
   return results.rows;
 }
 ```
 
-### 4. 청크 검색 + 통합
+### 4. Chunk Search + Aggregation
 
-문서를 청크로 나눠서 저장한 경우:
+When documents are stored as chunks:
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -417,10 +417,10 @@ async searchDocumentChunks(
   limit: number = 5
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
-  // 청크별 검색 (더 많이 가져옴)
+
+  // Search by chunk (fetch more)
   const chunks = await this.getPuri().raw(`
-    SELECT 
+    SELECT
       id, parent_id, title, content, chunk_index,
       1 - (embedding <=> ?) AS similarity
     FROM document_chunks
@@ -432,13 +432,13 @@ async searchDocumentChunks(
     JSON.stringify(embedding.embedding),
     limit * 3,
   ]);
-  
-  // 부모 문서별로 그룹화
+
+  // Group by parent document
   const grouped = new Map();
-  
+
   for (const chunk of chunks.rows) {
     const parentId = chunk.parent_id;
-    
+
     if (!grouped.has(parentId)) {
       grouped.set(parentId, {
         parentId,
@@ -447,43 +447,43 @@ async searchDocumentChunks(
         chunks: [],
       });
     }
-    
+
     grouped.get(parentId).chunks.push({
       chunkIndex: chunk.chunk_index,
       content: chunk.content,
       similarity: chunk.similarity,
     });
   }
-  
-  // 상위 N개 문서 반환
+
+  // Return top N documents
   return Array.from(grouped.values())
     .sort((a, b) => b.bestSimilarity - a.bestSimilarity)
     .slice(0, limit);
 }
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 인덱스가 있나요?
+### Do You Have an Index?
 
-벡터 검색은 인덱스가 없으면 매우 느립니다:
+Vector search is very slow without an index:
 
 ```sql
--- 인덱스 확인
+-- Check index
 SELECT indexname, indexdef
 FROM pg_indexes
 WHERE tablename = 'documents'
   AND indexdef LIKE '%hnsw%';
 ```
 
-없다면 생성합니다 (데이터 100개 이상 후):
+Create one if missing (after 100+ data entries):
 ```sql
 CREATE INDEX idx_docs_embedding
 ON documents
 USING hnsw (embedding vector_cosine_ops);
 ```
 
-### EXPLAIN ANALYZE로 확인
+### Verify with EXPLAIN ANALYZE
 
 ```typescript
 const explain = await this.getPuri().raw(`
@@ -501,103 +501,103 @@ const explain = await this.getPuri().raw(`
 console.log(explain.rows);
 ```
 
-**확인 사항**:
-- `Index Scan using hnsw_...` → 좋음
-- `Seq Scan` → 나쁨 (인덱스 없음)
+**What to check**:
+- `Index Scan using hnsw_...` -> Good
+- `Seq Scan` -> Bad (no index)
 
-### 인덱스 파라미터 조정
+### Adjusting Index Parameters
 
-검색 정확도 vs 속도:
+Search accuracy vs speed:
 
 ```sql
--- 세션별 설정
-SET LOCAL hnsw.ef_search = 100;  -- 기본: 40
+-- Per-session setting
+SET LOCAL hnsw.ef_search = 100;  -- default: 40
 
--- 높을수록: 정확, 느림
--- 낮을수록: 빠름, 부정확
+-- Higher: more accurate, slower
+-- Lower: faster, less accurate
 ```
 
-Sonamu에서:
+In Sonamu:
 ```typescript
 await this.getPuri().raw('SET LOCAL hnsw.ef_search = 100');
 const results = await this.getPuri().raw(`SELECT ...`);
 ```
 
-## 벤치마크
+## Benchmarks
 
-### 인덱스 효과
+### Index Effect
 
-| 문서 수 | 순차 스캔 | HNSW 인덱스 | 속도 향상 |
-|---------|----------|-------------|-----------|
-| 1K | 50ms | 2ms | 25배 |
-| 10K | 500ms | 5ms | 100배 |
-| 100K | 5s | 8ms | 625배 |
-| 1M | 50s | 12ms | 4166배 |
+| Documents | Sequential Scan | HNSW Index | Speed Improvement |
+|-----------|-----------------|------------|-------------------|
+| 1K | 50ms | 2ms | 25x |
+| 10K | 500ms | 5ms | 100x |
+| 100K | 5s | 8ms | 625x |
+| 1M | 50s | 12ms | 4166x |
 
-**결론**: 인덱스 필수!
+**Conclusion**: Index is essential!
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Sonamu에서 벡터 검색 시 주의사항**:
+**Cautions for vector search in Sonamu**:
 
-1. **NULL 체크 필수**: 임베딩 없는 문서 제외
+1. **NULL check required**: Exclude documents without embeddings
    ```sql
    WHERE embedding IS NOT NULL
    ```
 
-2. **차원 일치**: 쿼리와 DB 벡터 차원 같아야 함
+2. **Dimension match**: Query and DB vector dimensions must match
    ```typescript
-   // ❌ 차원 불일치
+   // Dimension mismatch
    // DB: vector(1024) - Voyage
-   // 쿼리: OpenAI (1536) - 에러!
-   
-   // ✅ 차원 일치
+   // Query: OpenAI (1536) - Error!
+
+   // Dimension match
    // DB: vector(1024)
-   // 쿼리: Voyage (1024)
+   // Query: Voyage (1024)
    ```
 
-3. **JSON.stringify 필수**: 배열을 JSON 문자열로
+3. **JSON.stringify required**: Convert array to JSON string
    ```typescript
    JSON.stringify(embedding.embedding)
    ```
 
-4. **연산자 두 번 사용**: WHERE와 ORDER BY
+4. **Operator used twice**: In WHERE and ORDER BY
    ```sql
    WHERE 1 - (embedding <=> ?) > 0.5
    ORDER BY embedding <=> ?
    ```
 
-5. **Puri.raw() 사용**: Knex의 wq로는 안 됨
+5. **Use Puri.raw()**: Cannot use Knex's wq
    ```typescript
    await this.getPuri().raw(`SELECT ...`);
    ```
 
-6. **인덱스 생성 시점**: 데이터 후
+6. **Index creation timing**: After data
    ```sql
-   -- 1. 데이터 먼저
+   -- 1. Data first
    INSERT INTO docs ...
-   
-   -- 2. 인덱스 나중에
+
+   -- 2. Index later
    CREATE INDEX ...
    ```
 
-7. **LIMIT 적절히**: 너무 많이 가져오지 않기
+7. **Appropriate LIMIT**: Don't fetch too many
    ```sql
    LIMIT 10  -- OK
-   -- LIMIT 1000  -- 느림
+   -- LIMIT 1000  -- Slow
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
-Sonamu Model에서 벡터 검색을 구현했습니다. 더 정확한 검색을 위해 하이브리드 검색(벡터 + 키워드)을 추가할 수 있습니다.
+You've implemented vector search in Sonamu Model. For more accurate search, you can add hybrid search (vector + keyword).
 
 <CardGroup cols={2}>
-  <Card title="하이브리드 검색" icon="layer-group" href="/advanced-features/vector-search/hybrid-search">
-    벡터 + FTS 결합하여 정확도 향상
+  <Card title="Hybrid Search" icon="layer-group" href="/advanced-features/vector-search/hybrid-search">
+    Combining vector + FTS for improved accuracy
   </Card>
-  <Card title="청킹" icon="scissors" href="/advanced-features/vector-search/chunking">
-    긴 문서 분할하기
+  <Card title="Chunking" icon="scissors" href="/advanced-features/vector-search/chunking">
+    Splitting long documents
   </Card>
 </CardGroup>

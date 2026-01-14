@@ -1,13 +1,13 @@
 ---
-title: "헬퍼 함수"
-description: "josa, plural, format 등 i18n 유틸리티"
+title: "Helper Functions"
+description: "i18n utilities: josa, plural, format, and more"
 ---
 
-Sonamu는 다국어 메시지 작성을 돕는 헬퍼 함수들을 제공합니다.
+Sonamu provides helper functions to assist with writing multilingual messages.
 
-## josa - 한국어 조사 처리
+## josa - Korean Particle Handling
 
-`josa()` 함수는 앞 단어의 받침 유무에 따라 적절한 조사를 선택합니다:
+The `josa()` function selects the appropriate Korean particle based on whether the preceding word ends with a consonant (batchim):
 
 ```typescript
 import { josa } from "sonamu/dict";
@@ -28,17 +28,17 @@ josa("집", "으로")    // "집으로"
 josa("학교", "으로")  // "학교로"
 ```
 
-### 지원하는 조사
+### Supported Particles
 
-| 조사 | 받침 있을 때 | 받침 없을 때 |
-|------|-------------|-------------|
+| Particle | With final consonant | Without final consonant |
+|----------|---------------------|------------------------|
 | `은는` | 은 | 는 |
 | `이가` | 이 | 가 |
 | `을를` | 을 | 를 |
 | `과와` | 과 | 와 |
 | `으로` | 으로 | 로 |
 
-### 딕셔너리에서 사용
+### Using in Dictionary
 
 ```typescript
 // ko.ts
@@ -50,39 +50,39 @@ export default {
   "error.notFound": (name: string) => `${josa(name, "을를")} 찾을 수 없습니다`,
 } as const;
 
-// 사용
+// Usage
 SD("validation.required")("이메일")  // "이메일은 필수입니다"
 SD("validation.required")("이름")    // "이름은 필수입니다"
 ```
 
-## plural - 복수형 처리
+## plural - Pluralization Handling
 
-`plural()` 함수는 숫자에 따라 다른 텍스트를 반환합니다:
+The `plural()` function returns different text based on the number:
 
 ```typescript
 import { plural } from "sonamu/dict";
 
-plural(0, { zero: "없음", one: "1개", other: "여러 개" })  // "없음"
-plural(1, { zero: "없음", one: "1개", other: "여러 개" })  // "1개"
-plural(5, { zero: "없음", one: "1개", other: "여러 개" })  // "여러 개"
+plural(0, { zero: "none", one: "1 item", other: "multiple items" })  // "none"
+plural(1, { zero: "none", one: "1 item", other: "multiple items" })  // "1 item"
+plural(5, { zero: "none", one: "1 item", other: "multiple items" })  // "multiple items"
 
-// other에 함수 사용
-plural(5, { other: (n) => `${n}개` })  // "5개"
+// Using a function for other
+plural(5, { other: (n) => `${n} items` })  // "5 items"
 
-// zero나 one이 없으면 other로 폴백
-plural(0, { other: "기본값" })  // "기본값"
-plural(1, { other: "기본값" })  // "기본값"
+// Falls back to other if zero or one is not defined
+plural(0, { other: "default" })  // "default"
+plural(1, { other: "default" })  // "default"
 ```
 
-### 옵션
+### Options
 
-| 옵션 | 조건 | 설명 |
-|------|------|------|
-| `zero` | n === 0 | 0일 때 텍스트 |
-| `one` | n === 1 | 1일 때 텍스트 |
-| `other` | 그 외 | 기본 텍스트 (필수) |
+| Option | Condition | Description |
+|--------|-----------|-------------|
+| `zero` | n === 0 | Text when count is 0 |
+| `one` | n === 1 | Text when count is 1 |
+| `other` | otherwise | Default text (required) |
 
-### 딕셔너리에서 사용
+### Using in Dictionary
 
 ```typescript
 // ko.ts
@@ -94,7 +94,7 @@ export default {
     one: "1개 항목",
     other: (n) => `${n}개 항목`,
   }),
-  
+
   "cart.items": (count: number) => plural(count, {
     zero: "장바구니가 비어있습니다",
     other: (n) => `장바구니에 ${n}개 상품`,
@@ -102,9 +102,9 @@ export default {
 } as const;
 ```
 
-## createFormat - 숫자/날짜 포맷
+## createFormat - Number/Date Formatting
 
-`createFormat()` 함수는 locale에 맞는 숫자와 날짜 포맷터를 생성합니다:
+The `createFormat()` function creates number and date formatters for a specific locale:
 
 ```typescript
 import { createFormat } from "sonamu/dict";
@@ -119,7 +119,7 @@ enFormat.number(1234567)  // "1,234,567"
 enFormat.date(new Date("2024-01-15"))  // "1/15/2024"
 ```
 
-### 딕셔너리에서 사용
+### Using in Dictionary
 
 ```typescript
 // ko.ts
@@ -135,9 +135,9 @@ export default {
 } as const;
 ```
 
-## 여러 헬퍼 조합
+## Combining Multiple Helpers
 
-복잡한 메시지는 여러 헬퍼를 조합해서 작성합니다:
+Complex messages can be written by combining multiple helpers:
 
 ```typescript
 // ko.ts
@@ -153,12 +153,12 @@ export default {
       zero: "없음",
       other: (n) => `${format.number(n)}건`,
     }),
-  
+
   // format + josa
   "order.total": (itemCount: number, total: number) =>
     `${itemCount}개 상품, 총 ${format.number(total)}원`,
-    
-  // 복합 메시지
+
+  // Complex message
   "dashboard.summary": (userName: string, taskCount: number, date: Date) =>
     `${userName}님, ${format.date(date)} 기준 ` +
     plural(taskCount, {
@@ -170,10 +170,10 @@ export default {
 ```
 
 <CardGroup cols={2}>
-  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
-    딕셔너리 작성 및 사용
+  <Card title="Using the SD Function" icon="code" href="/advanced-features/i18n/dictionary">
+    Writing and using dictionaries
   </Card>
-  <Card title="다국어 컬럼" icon="database" href="/advanced-features/i18n/localized-columns">
-    DB 컬럼 다국어 지원
+  <Card title="Localized Columns" icon="database" href="/advanced-features/i18n/localized-columns">
+    Multilingual DB column support
   </Card>
 </CardGroup>

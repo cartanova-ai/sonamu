@@ -1,15 +1,15 @@
 ---
-title: "SSE 엔드포인트 만들기"
-description: "@stream 데코레이터로 SSE API 구축하기"
+title: "Creating SSE Endpoints"
+description: "Building SSE APIs with the @stream decorator"
 ---
 
-Sonamu는 **@stream** 데코레이터를 통해 SSE 엔드포인트를 쉽게 만들 수 있습니다. Generator 함수를 사용하여 이벤트를 순차적으로 전송합니다.
+Sonamu makes it easy to create SSE endpoints using the **@stream** decorator. Generator functions are used to send events sequentially.
 
-## @stream 데코레이터
+## @stream Decorator
 
-SSE 엔드포인트를 정의하는 데코레이터입니다.
+A decorator for defining SSE endpoints.
 
-### 기본 사용법
+### Basic Usage
 
 ```typescript
 import { BaseModel, stream, api, z } from "sonamu";
@@ -24,7 +24,7 @@ class NotificationModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })  // 압축 비활성화 필수
+  @api({ compress: false })  // Compression must be disabled
   async *streamNotifications(userId: number, ctx: Context) {
     const sse = ctx.createSSE(
       z.object({
@@ -34,39 +34,39 @@ class NotificationModelClass extends BaseModel {
         }),
       })
     );
-    
-    // 이벤트 전송
+
+    // Send event
     sse.publish('notification', {
       id: 1,
       message: 'Hello, World!'
     });
-    
-    // 연결 종료
+
+    // Close connection
     await sse.end();
   }
 }
 ```
 
-## @stream 옵션
+## @stream Options
 
 <Tabs>
   <Tab title="type" icon="plug">
-    **스트림 타입**
-    
+    **Stream type**
+
     ```typescript
     @stream({
-      type: 'sse',  // 현재는 SSE만 지원
+      type: 'sse',  // Currently only SSE is supported
     })
     ```
-    
-    **지원 타입**:
+
+    **Supported types**:
     - `'sse'`: Server-Sent Events
-    - (향후 WebSocket 지원 예정)
+    - (WebSocket support planned for future)
   </Tab>
-  
+
   <Tab title="events" icon="calendar">
-    **이벤트 스키마**
-    
+    **Event schema**
+
     ```typescript
     @stream({
       type: 'sse',
@@ -82,13 +82,13 @@ class NotificationModelClass extends BaseModel {
       })
     })
     ```
-    
-    **역할**: 타입 안전성 보장 + 자동 코드 생성
+
+    **Purpose**: Ensures type safety + automatic code generation
   </Tab>
-  
+
   <Tab title="path" icon="route">
-    **커스텀 경로** (선택)
-    
+    **Custom path** (optional)
+
     ```typescript
     @stream({
       type: 'sse',
@@ -98,20 +98,20 @@ class NotificationModelClass extends BaseModel {
       path: '/custom/stream'
     })
     ```
-    
-    **기본값**: `/{modelName}/{methodName}`
+
+    **Default**: `/{modelName}/{methodName}`
   </Tab>
-  
+
   <Tab title="guards" icon="shield">
-    **인증/권한** (선택)
-    
+    **Authentication/Authorization** (optional)
+
     ```typescript
     @stream({
       type: 'sse',
       events: z.object({
         message: z.string(),
       }),
-      guards: ['user']  // 로그인 사용자만
+      guards: ['user']  // Logged-in users only
     })
     ```
   </Tab>
@@ -119,11 +119,11 @@ class NotificationModelClass extends BaseModel {
 
 ## SSEConnection API
 
-`ctx.createSSE()`로 생성된 SSE 연결 객체입니다.
+The SSE connection object created by `ctx.createSSE()`.
 
 ### publish(event, data)
 
-이벤트를 클라이언트로 전송합니다.
+Sends an event to the client.
 
 ```typescript
 sse.publish('notification', {
@@ -132,31 +132,31 @@ sse.publish('notification', {
 });
 ```
 
-**타입 안전성**:
+**Type safety**:
 ```typescript
-// ✅ 올바른 이벤트
+// ✅ Correct event
 sse.publish('notification', { id: 1, message: 'Hi' });
 
-// ❌ 잘못된 이벤트 (컴파일 에러)
+// ❌ Wrong event (compile error)
 sse.publish('unknown', { ... });
 
-// ❌ 잘못된 데이터 (컴파일 에러)
+// ❌ Wrong data (compile error)
 sse.publish('notification', { id: 'wrong' });
 ```
 
 ### end()
 
-연결을 종료합니다.
+Closes the connection.
 
 ```typescript
 await sse.end();
 ```
 
-**자동 전송**: `event: end`, `data: END`
+**Auto-sends**: `event: end`, `data: END`
 
-## 실전 예제
+## Practical Examples
 
-### 1. 실시간 알림
+### 1. Real-time Notifications
 
 ```typescript
 class NotificationModelClass extends BaseModel {
@@ -183,20 +183,20 @@ class NotificationModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
-      // 실시간 알림 감지 (예: 폴링 또는 이벤트 리스너)
+      // Real-time notification detection (e.g., polling or event listener)
       while (true) {
-        // DB에서 새 알림 조회
+        // Query new notifications from DB
         const notifications = await this.findMany({
           wq: [
             ['user_id', userId],
-            ['created_at', '>', new Date(Date.now() - 5000)],  // 최근 5초
+            ['created_at', '>', new Date(Date.now() - 5000)],  // Last 5 seconds
           ],
           num: 10,
         });
-        
-        // 알림 전송
+
+        // Send notifications
         for (const notification of notifications.data) {
           sse.publish('notification', {
             id: notification.id,
@@ -205,8 +205,8 @@ class NotificationModelClass extends BaseModel {
             createdAt: notification.created_at.toISOString(),
           });
         }
-        
-        // 5초 대기
+
+        // Wait 5 seconds
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     } finally {
@@ -216,7 +216,7 @@ class NotificationModelClass extends BaseModel {
 }
 ```
 
-### 2. 작업 진행률
+### 2. Task Progress
 
 ```typescript
 class TaskModelClass extends BaseModel {
@@ -253,28 +253,28 @@ class TaskModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       const total = 100;
-      
+
       for (let current = 0; current <= total; current += 10) {
-        // 진행률 전송
+        // Send progress
         sse.publish('progress', {
           current,
           total,
           percentage: Math.round((current / total) * 100),
         });
-        
-        // 작업 수행 (예: 파일 처리)
+
+        // Perform work (e.g., file processing)
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
-      // 완료 이벤트
+
+      // Completion event
       sse.publish('complete', {
         result: 'Task completed successfully'
       });
     } catch (error) {
-      // 에러 이벤트
+      // Error event
       sse.publish('error', {
         message: error.message
       });
@@ -285,7 +285,7 @@ class TaskModelClass extends BaseModel {
 }
 ```
 
-### 3. 라이브 피드
+### 3. Live Feed
 
 ```typescript
 class PostModelClass extends BaseModel {
@@ -312,19 +312,19 @@ class PostModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       let lastCheckTime = new Date();
-      
+
       while (true) {
-        // 새 게시물 조회
+        // Query new posts
         const posts = await this.findMany({
           wq: [['created_at', '>', lastCheckTime]],
           num: 20,
           order: [['created_at', 'DESC']],
         });
-        
-        // 새 게시물 전송
+
+        // Send new posts
         for (const post of posts.data) {
           sse.publish('newPost', {
             id: post.id,
@@ -333,13 +333,13 @@ class PostModelClass extends BaseModel {
             createdAt: post.created_at.toISOString(),
           });
         }
-        
-        // 마지막 체크 시간 업데이트
+
+        // Update last check time
         if (posts.data.length > 0) {
           lastCheckTime = posts.data[0].created_at;
         }
-        
-        // 10초 대기
+
+        // Wait 10 seconds
         await new Promise(resolve => setTimeout(resolve, 10000));
       }
     } finally {
@@ -349,7 +349,7 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### 4. 다중 이벤트
+### 4. Multiple Events
 
 ```typescript
 class ChatModelClass extends BaseModel {
@@ -396,18 +396,18 @@ class ChatModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
-      // 입장 이벤트
+      // Join event
       sse.publish('joined', {
         userId: ctx.user.id,
         username: ctx.user.name,
       });
-      
-      // 메시지 스트리밍
+
+      // Message streaming
       while (true) {
         const messages = await this.getNewMessages(roomId);
-        
+
         for (const msg of messages) {
           sse.publish('message', {
             id: msg.id,
@@ -415,22 +415,22 @@ class ChatModelClass extends BaseModel {
             sender: msg.sender_name,
           });
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } finally {
-      // 퇴장 이벤트
+      // Leave event
       sse.publish('left', {
         userId: ctx.user.id,
       });
-      
+
       await sse.end();
     }
   }
 }
 ```
 
-### 5. 조건부 전송
+### 5. Conditional Sending
 
 ```typescript
 class MonitorModelClass extends BaseModel {
@@ -463,19 +463,19 @@ class MonitorModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       while (true) {
         const status = await this.getServerStatus();
-        
-        // 상태 전송
+
+        // Send status
         sse.publish('status', {
           cpu: status.cpu,
           memory: status.memory,
           disk: status.disk,
         });
-        
-        // 임계값 초과 시 알림
+
+        // Alert on threshold exceeded
         if (status.cpu > 90) {
           sse.publish('alert', {
             level: 'critical',
@@ -487,7 +487,7 @@ class MonitorModelClass extends BaseModel {
             message: `CPU usage is ${status.cpu}%`,
           });
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     } finally {
@@ -497,9 +497,9 @@ class MonitorModelClass extends BaseModel {
 }
 ```
 
-## 연결 관리
+## Connection Management
 
-### 클라이언트 연결 종료 감지
+### Detecting Client Disconnection
 
 ```typescript
 @stream({
@@ -515,12 +515,12 @@ async *streamData(ctx: Context) {
       message: z.string(),
     })
   );
-  
-  // 클라이언트 연결 종료 감지
+
+  // Detect client disconnection
   ctx.request.socket.on('close', () => {
     console.log('Client disconnected');
   });
-  
+
   try {
     while (true) {
       sse.publish('message', 'Hello');
@@ -534,7 +534,7 @@ async *streamData(ctx: Context) {
 
 ### Keep-Alive
 
-SSE는 자동으로 Keep-Alive를 전송하지만, 커스텀 구현도 가능합니다:
+SSE automatically sends keep-alive signals, but custom implementation is also possible:
 
 ```typescript
 @stream({
@@ -552,12 +552,12 @@ async *streamWithKeepAlive(ctx: Context) {
       keepalive: z.object({}),
     })
   );
-  
-  // Keep-alive 전송 (30초마다)
+
+  // Send keep-alive (every 30 seconds)
   const keepAliveInterval = setInterval(() => {
     sse.publish('keepalive', {});
   }, 30000);
-  
+
   try {
     while (true) {
       sse.publish('message', 'Data');
@@ -570,7 +570,7 @@ async *streamWithKeepAlive(ctx: Context) {
 }
 ```
 
-## 에러 처리
+## Error Handling
 
 ```typescript
 @stream({
@@ -596,12 +596,12 @@ async *streamWithErrorHandling(ctx: Context) {
       }),
     })
   );
-  
+
   try {
     const value = await this.getSomeData();
     sse.publish('data', { value });
   } catch (error) {
-    // 에러를 이벤트로 전송
+    // Send error as event
     sse.publish('error', {
       message: error.message
     });
@@ -611,73 +611,73 @@ async *streamWithErrorHandling(ctx: Context) {
 }
 ```
 
-## 주의사항
+## Important Notes
 
 <Warning>
-**SSE 엔드포인트 작성 시 주의사항**:
+**Important considerations when writing SSE endpoints**:
 
-1. **압축 비활성화 필수**: SSE는 스트리밍이므로 압축 금지
+1. **Compression must be disabled**: SSE is streaming, so compression is prohibited
    ```typescript
    @api({ compress: false })
    ```
 
-2. **Generator 함수 사용**: `async *` 키워드 필요
+2. **Use generator function**: `async *` keyword required
    ```typescript
-   // ✅ Generator 함수
+   // ✅ Generator function
    async *streamData() { ... }
-   
-   // ❌ 일반 함수
+
+   // ❌ Regular function
    async streamData() { ... }
    ```
 
-3. **반드시 end() 호출**: 연결 종료 필수
+3. **Always call end()**: Connection closure is required
    ```typescript
    try {
-     // 이벤트 전송
+     // Send events
    } finally {
-     await sse.end();  // 필수!
+     await sse.end();  // Required!
    }
    ```
 
-4. **무한 루프 주의**: 적절한 대기 시간 필요
+4. **Beware of infinite loops**: Appropriate wait time needed
    ```typescript
    while (true) {
      sse.publish('data', ...);
-     await new Promise(resolve => setTimeout(resolve, 1000));  // 1초 대기
+     await new Promise(resolve => setTimeout(resolve, 1000));  // Wait 1 second
    }
    ```
 
-5. **이벤트 스키마 일치**: events와 publish 이벤트 이름 일치 필수
+5. **Event schema matching**: events and publish event names must match
    ```typescript
-   // ✅ 일치
+   // ✅ Match
    events: z.object({
      message: z.string(),
    })
    sse.publish('message', 'Hi');
-   
-   // ❌ 불일치 (컴파일 에러)
+
+   // ❌ Mismatch (compile error)
    sse.publish('msg', 'Hi');
    ```
 
-6. **메모리 누수 방지**: 타이머/리스너 정리
+6. **Prevent memory leaks**: Clean up timers/listeners
    ```typescript
    const interval = setInterval(() => { ... }, 1000);
    try {
      // ...
    } finally {
-     clearInterval(interval);  // 정리
+     clearInterval(interval);  // Cleanup
      await sse.end();
    }
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="SSE 설정" icon="gear" href="/advanced-features/sse/sse-setup">
-    SSE 플러그인 설정하기
+  <Card title="SSE Setup" icon="gear" href="/advanced-features/sse/sse-setup">
+    Configure the SSE plugin
   </Card>
-  <Card title="클라이언트 통합" icon="browser" href="/advanced-features/sse/client-integration">
-    프론트엔드에서 SSE 사용하기
+  <Card title="Client Integration" icon="browser" href="/advanced-features/sse/client-integration">
+    Using SSE in the frontend
   </Card>
 </CardGroup>

@@ -1,13 +1,13 @@
 ---
-title: "@cache 데코레이터"
-description: "메서드에 캐시 적용하기"
+title: "@cache Decorator"
+description: "Applying caching to methods"
 ---
 
-`@cache` 데코레이터를 사용하여 Model이나 Frame 메서드의 결과를 자동으로 캐싱할 수 있습니다.
+You can use the `@cache` decorator to automatically cache the results of Model or Frame methods.
 
-## 기본 사용법
+## Basic Usage
 
-### 간단한 예제
+### Simple Example
 
 ```typescript
 import { BaseModel, cache, api } from "sonamu";
@@ -16,38 +16,38 @@ class UserModelClass extends BaseModel {
   @cache({ ttl: "10m" })
   @api()
   async findById(id: number) {
-    // 이 메서드는 10분간 캐싱됨
+    // This method is cached for 10 minutes
     return this.findOne(['id', id]);
   }
 }
 ```
 
-**작동 방식**:
-1. 첫 번째 호출: DB 조회 → 결과 캐싱
-2. 두 번째 호출 (10분 내): 캐시에서 반환 (DB 조회 없음)
-3. 10분 경과 후: 다시 DB 조회 → 캐시 갱신
+**How It Works**:
+1. First call: DB query → Cache result
+2. Second call (within 10 minutes): Return from cache (no DB query)
+3. After 10 minutes: Query DB again → Refresh cache
 
-## 데코레이터 옵션
+## Decorator Options
 
-### 전체 옵션
+### All Options
 
 ```typescript
 @cache({
-  key?: string | ((...args: unknown[]) => string),  // 캐시 키
-  store?: string,           // 사용할 스토어
-  ttl?: string | number,    // 만료 시간
+  key?: string | ((...args: unknown[]) => string),  // Cache key
+  store?: string,           // Store to use
+  ttl?: string | number,    // Expiration time
   grace?: string | number,  // Grace period (Stale-While-Revalidate)
-  tags?: string[],          // 태그 목록
-  forceFresh?: boolean,     // 캐시 무시하고 강제 갱신
+  tags?: string[],          // Tag list
+  forceFresh?: boolean,     // Ignore cache and force refresh
 })
 ```
 
-### key: 캐시 키 설정
+### key: Cache Key Configuration
 
-키를 지정하지 않으면 **자동으로 생성**됩니다.
+If no key is specified, it is **automatically generated**.
 
 <Tabs>
-  <Tab title="자동 생성 (기본)" icon="wand-magic-sparkles">
+  <Tab title="Auto-generated (Default)" icon="wand-magic-sparkles">
     ```typescript
     class UserModelClass extends BaseModel {
       @cache({ ttl: "10m" })
@@ -55,105 +55,105 @@ class UserModelClass extends BaseModel {
         return this.findOne(['id', id]);
       }
     }
-    
-    // 호출: userModel.findById(123)
-    // 자동 생성 키: "User.findById:123"
+
+    // Call: userModel.findById(123)
+    // Auto-generated key: "User.findById:123"
     ```
-    
-    **패턴**: `ModelName.methodName:serializedArgs`
-    
-    **인자 직렬화 규칙**:
-    - 단일 primitive (string/number/boolean): 그대로 사용
-    - 복잡한 객체: JSON.stringify 사용
-    - 인자 없음: suffix 없이 `ModelName.methodName`
+
+    **Pattern**: `ModelName.methodName:serializedArgs`
+
+    **Argument Serialization Rules**:
+    - Single primitive (string/number/boolean): Used as-is
+    - Complex objects: Uses JSON.stringify
+    - No arguments: `ModelName.methodName` without suffix
   </Tab>
-  
-  <Tab title="문자열 키" icon="text">
+
+  <Tab title="String Key" icon="text">
     ```typescript
     @cache({ key: "user-list", ttl: "5m" })
     async findAll() {
       return this.findMany({});
     }
-    
-    // 호출: userModel.findAll()
-    // 키: "user-list"
-    
+
+    // Call: userModel.findAll()
+    // Key: "user-list"
+
     @cache({ key: "user", ttl: "10m" })
     async findById(id: number) {
       return this.findOne(['id', id]);
     }
-    
-    // 호출: userModel.findById(123)
-    // 키: "user:123" (인자가 suffix로 자동 추가)
+
+    // Call: userModel.findById(123)
+    // Key: "user:123" (arguments auto-appended as suffix)
     ```
-    
-    **인자가 있으면**: `key:args` 형태로 자동 생성
+
+    **When arguments exist**: Auto-generated in `key:args` format
   </Tab>
-  
-  <Tab title="함수 키" icon="code">
+
+  <Tab title="Function Key" icon="code">
     ```typescript
-    @cache({ 
+    @cache({
       key: (userId: number, status: string) => `user:${userId}:${status}`,
       ttl: "10m"
     })
     async findByStatus(userId: number, status: string) {
       return this.findMany({ user_id: userId, status });
     }
-    
-    // 호출: model.findByStatus(123, "active")
-    // 키: "user:123:active"
+
+    // Call: model.findByStatus(123, "active")
+    // Key: "user:123:active"
     ```
-    
-    **복잡한 키 생성 시 유용**
+
+    **Useful for complex key generation**
   </Tab>
 </Tabs>
 
-### ttl: 만료 시간
+### ttl: Expiration Time
 
-TTL(Time To Live)은 캐시가 유효한 시간입니다.
+TTL (Time To Live) is the duration the cache remains valid.
 
 ```typescript
-// 문자열 형식 (권장)
-@cache({ ttl: "10s" })   // 10초
-@cache({ ttl: "5m" })    // 5분
-@cache({ ttl: "1h" })    // 1시간
-@cache({ ttl: "1d" })    // 1일
-@cache({ ttl: "1w" })    // 1주
-@cache({ ttl: "forever" }) // 영구
+// String format (recommended)
+@cache({ ttl: "10s" })   // 10 seconds
+@cache({ ttl: "5m" })    // 5 minutes
+@cache({ ttl: "1h" })    // 1 hour
+@cache({ ttl: "1d" })    // 1 day
+@cache({ ttl: "1w" })    // 1 week
+@cache({ ttl: "forever" }) // Permanent
 
-// 숫자 형식 (밀리초)
-@cache({ ttl: 60000 })  // 60000ms = 1분
+// Number format (milliseconds)
+@cache({ ttl: 60000 })  // 60000ms = 1 minute
 ```
 
-**TTL 없이 사용하면**: BentoCache 기본값 적용 (일반적으로 무제한)
+**Without TTL**: BentoCache default value applies (typically unlimited)
 
 ### grace: Stale-While-Revalidate
 
-Grace period는 TTL 만료 후에도 **오래된 캐시(Stale)를 반환**하면서 백그라운드에서 갱신하는 기능입니다.
+Grace period is a feature that **returns stale cache** after TTL expiration while refreshing in the background.
 
 ```typescript
-@cache({ 
-  ttl: "1m",      // 1분 후 만료
-  grace: "10m"    // 만료 후 10분간 Stale 값 반환
+@cache({
+  ttl: "1m",      // Expires after 1 minute
+  grace: "10m"    // Return stale value for 10 minutes after expiration
 })
 async getExpensiveData() {
-  // 시간이 오래 걸리는 작업
+  // Long-running operation
   return await this.heavyComputation();
 }
 ```
 
-**작동 방식**:
-1. **0~1분**: 신선한 캐시 반환
-2. **1~11분**: Stale 캐시 즉시 반환 + 백그라운드 갱신
-3. **11분 이후**: 캐시 미스, 새로 계산
+**How It Works**:
+1. **0~1 minute**: Return fresh cache
+2. **1~11 minutes**: Immediately return stale cache + background refresh
+3. **After 11 minutes**: Cache miss, recalculate
 
-**장점**:
-- 사용자는 항상 빠른 응답 (Stale이라도 즉시 반환)
-- 백그라운드에서 갱신되어 다음 사용자는 신선한 데이터 받음
+**Advantages**:
+- Users always get fast response (even if stale, returns immediately)
+- Refreshed in background so next user gets fresh data
 
-### tags: 태그 기반 무효화
+### tags: Tag-based Invalidation
 
-태그를 사용하여 관련 캐시를 그룹으로 무효화할 수 있습니다.
+You can use tags to invalidate related caches as a group.
 
 ```typescript
 class ProductModelClass extends BaseModel {
@@ -162,41 +162,41 @@ class ProductModelClass extends BaseModel {
   async findAll() {
     return this.findMany({});
   }
-  
+
   @cache({ ttl: "1h", tags: ["product"] })
   @api()
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
+
   @api()
   async update(id: number, data: Partial<Product>) {
     const result = await this.updateOne(['id', id], data);
-    
-    // product 태그가 있는 모든 캐시 무효화
+
+    // Invalidate all caches with product tag
     await Sonamu.cache.deleteByTag({ tags: ["product"] });
-    
+
     return result;
   }
 }
 ```
 
-**무효화 패턴**:
+**Invalidation Pattern**:
 ```typescript
-// update() 호출 시
+// When update() is called
 await Sonamu.cache.deleteByTag({ tags: ["product"] });
 
-// 결과: findAll()과 findById() 캐시 모두 삭제됨
+// Result: Both findAll() and findById() caches are deleted
 ```
 
-자세한 내용은 [캐시 무효화](/advanced-features/caching/cache-invalidation)를 참고하세요.
+For more details, see [Cache Invalidation](/advanced-features/caching/cache-invalidation).
 
-### store: 특정 스토어 사용
+### store: Using a Specific Store
 
-여러 스토어를 설정한 경우, 특정 스토어를 지정할 수 있습니다.
+When multiple stores are configured, you can specify a particular store.
 
 ```typescript
-// sonamu.config.ts에 여러 스토어 정의
+// Define multiple stores in sonamu.config.ts
 export const config: SonamuConfig = {
   server: {
     cache: {
@@ -211,16 +211,16 @@ export const config: SonamuConfig = {
   },
 };
 
-// Model에서 스토어 지정
+// Specify store in Model
 class UserModelClass extends BaseModel {
-  // api 스토어 사용 (기본)
+  // Use api store (default)
   @cache({ ttl: "5m" })
   @api()
   async findAll() {
     return this.findMany({});
   }
-  
-  // database 스토어 사용 (Redis 공유)
+
+  // Use database store (Redis shared)
   @cache({ store: "database", ttl: "1h" })
   @api()
   async findById(id: number) {
@@ -229,51 +229,51 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-### forceFresh: 캐시 무시
+### forceFresh: Ignore Cache
 
-항상 새로운 데이터를 가져오고 싶을 때 사용합니다.
+Use when you always want to fetch fresh data.
 
 ```typescript
-@cache({ 
+@cache({
   ttl: "1h",
-  forceFresh: true  // 캐시를 무시하고 항상 factory 실행
+  forceFresh: true  // Ignore cache and always run factory
 })
 async getRealTimeData() {
   return await this.fetchFromExternalAPI();
 }
 ```
 
-**용도**: 디버깅이나 특수한 경우에만 사용 (일반적으로 불필요)
+**Use Case**: Only for debugging or special cases (generally unnecessary)
 
-## 실전 예제
+## Practical Examples
 
-### 1. API 응답 캐싱
+### 1. API Response Caching
 
 ```typescript
 class PostModelClass extends BaseModel {
-  // 게시글 목록 (5분 캐시)
+  // Post list (5 minute cache)
   @cache({ ttl: "5m", tags: ["post", "list"] })
   @api()
   async findAll(page: number = 1) {
-    return this.findMany({ 
-      num: 20, 
+    return this.findMany({
+      num: 20,
       page,
       order: [['created_at', 'desc']]
     });
   }
-  
-  // 게시글 상세 (10분 캐시)
+
+  // Post detail (10 minute cache)
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
-  // 인기 게시글 (1시간 캐시)
-  @cache({ 
+
+  // Popular posts (1 hour cache)
+  @cache({
     key: "popular-posts",
-    ttl: "1h", 
-    tags: ["post", "popular"] 
+    ttl: "1h",
+    tags: ["post", "popular"]
   })
   @api()
   async findPopular() {
@@ -286,7 +286,7 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### 2. 데이터 변경 시 캐시 무효화
+### 2. Cache Invalidation on Data Change
 
 ```typescript
 class ProductModelClass extends BaseModel {
@@ -295,41 +295,41 @@ class ProductModelClass extends BaseModel {
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
+
   @cache({ ttl: "30m", tags: ["product", "list"] })
   @api()
   async findAll() {
     return this.findMany({});
   }
-  
+
   @api()
   async create(data: ProductSave) {
     const result = await this.saveOne(data);
-    
-    // list 태그만 무효화 (목록에 새 항목 추가됨)
+
+    // Invalidate only list tag (new item added to list)
     await Sonamu.cache.deleteByTag({ tags: ["list"] });
-    
+
     return result;
   }
-  
+
   @api()
   async update(id: number, data: Partial<ProductSave>) {
     const result = await this.updateOne(['id', id], data);
-    
-    // product 태그 전체 무효화 (상세 + 목록)
+
+    // Invalidate all product tags (detail + list)
     await Sonamu.cache.deleteByTag({ tags: ["product"] });
-    
+
     return result;
   }
 }
 ```
 
-### 3. 복잡한 키 생성
+### 3. Complex Key Generation
 
 ```typescript
 class OrderModelClass extends BaseModel {
-  @cache({ 
-    key: (userId: number, status: string, startDate: string) => 
+  @cache({
+    key: (userId: number, status: string, startDate: string) =>
       `order:user:${userId}:${status}:${startDate}`,
     ttl: "10m",
     tags: ["order"]
@@ -350,115 +350,115 @@ class OrderModelClass extends BaseModel {
   }
 }
 
-// 호출: model.findByUserAndStatus(123, "pending", "2025-01-01")
-// 키: "order:user:123:pending:2025-01-01"
+// Call: model.findByUserAndStatus(123, "pending", "2025-01-01")
+// Key: "order:user:123:pending:2025-01-01"
 ```
 
-### 4. Stale-While-Revalidate 활용
+### 4. Using Stale-While-Revalidate
 
 ```typescript
 class AnalyticsModelClass extends BaseModel {
-  @cache({ 
-    ttl: "5m",      // 5분 후 만료
-    grace: "1h",    // 1시간 동안 Stale 값 사용
+  @cache({
+    ttl: "5m",      // Expires after 5 minutes
+    grace: "1h",    // Use stale value for 1 hour
     tags: ["analytics"]
   })
   @api()
   async getDashboardStats() {
-    // 무거운 집계 쿼리
+    // Heavy aggregation query
     const [users, orders, revenue] = await Promise.all([
       this.countUsers(),
       this.countOrders(),
       this.calculateRevenue(),
     ]);
-    
+
     return { users, orders, revenue };
   }
 }
 ```
 
-**시나리오**:
-- 0~5분: 신선한 캐시
-- 5~65분: Stale 캐시 즉시 반환 + 백그라운드 재계산
-- 65분 이후: 캐시 미스, 새로 계산
+**Scenario**:
+- 0~5 minutes: Fresh cache
+- 5~65 minutes: Immediately return stale cache + background recalculation
+- After 65 minutes: Cache miss, recalculate
 
-### 5. 설정값 영구 캐싱
+### 5. Permanent Caching for Configuration Values
 
 ```typescript
 class ConfigModelClass extends BaseModel {
-  @cache({ 
+  @cache({
     key: "app-config",
-    ttl: "forever",  // 영구 캐싱
+    ttl: "forever",  // Permanent caching
     tags: ["config"]
   })
   @api()
   async getAppConfig() {
     return this.findOne(['key', 'app_config']);
   }
-  
+
   @api()
   async updateConfig(data: ConfigSave) {
     const result = await this.saveOne(data);
-    
-    // 설정 변경 시 캐시 무효화
+
+    // Invalidate cache on config change
     await Sonamu.cache.deleteByTag({ tags: ["config"] });
-    
+
     return result;
   }
 }
 ```
 
-## 내부 메서드 호출과 캐시 공유
+## Internal Method Calls and Cache Sharing
 
-Model 내부에서 다른 메서드를 호출할 때도 캐시가 공유됩니다.
+Cache is also shared when calling other methods within a Model.
 
 ```typescript
 class UserModelClass extends BaseModel {
-  // findMany에 캐시 적용
+  // Apply cache to findMany
   @cache({ ttl: "10m", tags: ["user"] })
   @api()
   async findMany(params: FindManyParams<User>) {
     return super.findMany(params);
   }
-  
-  // findById는 내부적으로 findMany를 호출
+
+  // findById internally calls findMany
   async findById(id: number) {
-    const { rows } = await this.findMany({ 
-      where: [['id', id]], 
-      num: 1 
+    const { rows } = await this.findMany({
+      where: [['id', id]],
+      num: 1
     });
     return rows[0];
   }
 }
 ```
 
-**작동 방식**:
+**How It Works**:
 ```typescript
-// 첫 번째 호출
+// First call
 await userModel.findById(123);
-// → findMany({ where: [['id', 123]], num: 1 }) 호출
-// → DB 조회 및 캐싱
+// → Calls findMany({ where: [['id', 123]], num: 1 })
+// → DB query and caching
 
-// 두 번째 호출 (같은 파라미터)
+// Second call (same parameters)
 await userModel.findById(123);
-// → findMany({ where: [['id', 123]], num: 1 }) 호출
-// → 캐시에서 반환 (DB 조회 없음)
+// → Calls findMany({ where: [['id', 123]], num: 1 })
+// → Return from cache (no DB query)
 
-// findMany를 직접 호출해도 같은 캐시 사용
+// Direct findMany call also uses same cache
 await userModel.findMany({ where: [['id', 123]], num: 1 });
-// → 캐시에서 반환
+// → Return from cache
 ```
 
-## 캐시 키 생성 로직
+## Cache Key Generation Logic
 
-### 인자 직렬화
+### Argument Serialization
 
 ```typescript
-// decorator.ts 내부
+// Inside decorator.ts
 function serializeArgs(args: unknown[]): string {
   if (args.length === 0) return "";
 
-  // 단일 primitive 값
+  // Single primitive value
   if (args.length === 1) {
     const arg = args[0];
     if (arg === null || arg === undefined) return "";
@@ -467,30 +467,30 @@ function serializeArgs(args: unknown[]): string {
     }
   }
 
-  // 복잡한 값은 JSON 직렬화
+  // Complex values are JSON serialized
   try {
     return JSON.stringify(args);
   } catch {
-    // 직렬화 실패 시 toString 사용
+    // Use toString on serialization failure
     return args.map((arg) => String(arg)).join(":");
   }
 }
 ```
 
-**예시**:
+**Examples**:
 ```typescript
-// 단일 primitive
+// Single primitive
 serializeArgs([123]) → "123"
 serializeArgs(["hello"]) → "hello"
 
-// 복잡한 객체
+// Complex object
 serializeArgs([{ id: 1, name: "test" }]) → '[{"id":1,"name":"test"}]'
 
-// 여러 인자
+// Multiple arguments
 serializeArgs([123, "active"]) → '[123,"active"]'
 ```
 
-### 전체 키 생성
+### Full Key Generation
 
 ```typescript
 function generateCacheKey(
@@ -499,27 +499,27 @@ function generateCacheKey(
   args: unknown[],
   keyOption?: string | Function,
 ): string {
-  // 1. 커스텀 키 함수
+  // 1. Custom key function
   if (typeof keyOption === "function") {
     return keyOption(...args);
   }
 
-  // 2. 문자열 키 + args suffix
+  // 2. String key + args suffix
   if (typeof keyOption === "string") {
     const argsSuffix = serializeArgs(args);
     return argsSuffix ? `${keyOption}:${argsSuffix}` : keyOption;
   }
 
-  // 3. 자동 생성
+  // 3. Auto-generated
   const baseKey = `${modelName}.${methodName}`;
   const argsSuffix = serializeArgs(args);
   return argsSuffix ? `${baseKey}:${argsSuffix}` : baseKey;
 }
 ```
 
-## 직접 캐시 조작
+## Direct Cache Manipulation
 
-데코레이터 없이 직접 캐시를 조작할 수도 있습니다.
+You can also manipulate the cache directly without decorators.
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -528,81 +528,81 @@ class UserModelClass extends BaseModel {
   @api()
   async findById(id: number) {
     const cacheKey = `user:${id}`;
-    
-    // 캐시 확인
+
+    // Check cache
     const cached = await Sonamu.cache.get({ key: cacheKey });
     if (cached) {
       return cached;
     }
-    
-    // DB 조회
+
+    // DB query
     const user = await this.findOne(['id', id]);
-    
-    // 캐싱
-    await Sonamu.cache.set({ 
-      key: cacheKey, 
+
+    // Cache
+    await Sonamu.cache.set({
+      key: cacheKey,
       value: user,
       ttl: "10m",
       tags: ["user"]
     });
-    
+
     return user;
   }
 }
 ```
 
-**데코레이터 vs 직접 조작**:
-- **데코레이터**: 간결, 선언적, 자동 키 생성
-- **직접 조작**: 복잡한 로직, 조건부 캐싱, 세밀한 제어
+**Decorator vs Direct Manipulation**:
+- **Decorator**: Concise, declarative, automatic key generation
+- **Direct Manipulation**: Complex logic, conditional caching, fine-grained control
 
-## 주의사항
+## Cautions
 
 <Warning>
-**@cache 데코레이터 사용 시 주의사항**:
+**@cache Decorator Cautions**:
 
-1. **캐시 매니저 초기화 필수**: `sonamu.config.ts`에 캐시 설정이 없으면 에러 발생
+1. **Cache Manager Initialization Required**: Error if no cache configuration in `sonamu.config.ts`
    ```typescript
-   // 에러: CacheManager is not initialized
+   // Error: CacheManager is not initialized
    @cache({ ttl: "10m" })
    async findById(id: number) { ... }
    ```
 
-2. **비동기 메서드만 가능**: 동기 메서드에는 사용 불가
+2. **Async Methods Only**: Cannot be used with synchronous methods
    ```typescript
-   // ❌ 에러
+   // ❌ Error
    @cache({ ttl: "10m" })
    findByIdSync(id: number) { ... }
-   
-   // ✅ 정상
+
+   // ✅ OK
    @cache({ ttl: "10m" })
    async findById(id: number) { ... }
    ```
 
-3. **스토어 이름 일치**: `store` 옵션은 설정에 정의된 이름과 일치해야 함
+3. **Store Name Matching**: The `store` option must match names defined in configuration
    ```typescript
    // sonamu.config.ts
    stores: {
      myStore: store()...
    }
-   
-   // ❌ 에러
+
+   // ❌ Error
    @cache({ store: "wrongName", ttl: "10m" })
-   
-   // ✅ 정상
+
+   // ✅ OK
    @cache({ store: "myStore", ttl: "10m" })
    ```
 
-4. **직렬화 가능한 값만**: 함수, Symbol 등은 캐싱 불가
+4. **Serializable Values Only**: Functions, Symbols, etc. cannot be cached
    ```typescript
-   // ❌ 잘못된 예
+   // ❌ Bad example
    @cache({ ttl: "10m" })
    async getProcessor() {
      return {
-       process: () => { ... }  // 함수는 직렬화 안됨
+       process: () => { ... }  // Functions cannot be serialized
      };
    }
-   
-   // ✅ 올바른 예
+
+   // ✅ Good example
    @cache({ ttl: "10m" })
    async getData() {
      return {
@@ -613,26 +613,26 @@ class UserModelClass extends BaseModel {
    }
    ```
 
-5. **인자 순서 중요**: 같은 값이라도 순서가 다르면 다른 키
+5. **Argument Order Matters**: Same values in different order result in different keys
    ```typescript
    @cache({ ttl: "10m" })
    async find(name: string, age: number) { ... }
-   
-   find("John", 30)  // 키: "Model.find:["John",30]"
-   find(30, "John")  // 키: "Model.find:[30,"John"]" (다른 키!)
+
+   find("John", 30)  // Key: "Model.find:["John",30]"
+   find(30, "John")  // Key: "Model.find:[30,"John"]" (different key!)
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="캐시 설정" icon="gear" href="/advanced-features/caching/cache-configuration">
-    Stores와 Drivers 설정하기
+  <Card title="Cache Configuration" icon="gear" href="/advanced-features/caching/cache-configuration">
+    Configure Stores and Drivers
   </Card>
-  <Card title="캐시 무효화" icon="trash" href="/advanced-features/caching/cache-invalidation">
-    Tag 기반 캐시 무효화
+  <Card title="Cache Invalidation" icon="trash" href="/advanced-features/caching/cache-invalidation">
+    Tag-based cache invalidation
   </Card>
-  <Card title="캐시 전략" icon="chess" href="/advanced-features/caching/cache-strategies">
-    TTL, Grace, Namespace 활용
+  <Card title="Cache Strategies" icon="chess" href="/advanced-features/caching/cache-strategies">
+    TTL, Grace, Namespace usage
   </Card>
 </CardGroup>

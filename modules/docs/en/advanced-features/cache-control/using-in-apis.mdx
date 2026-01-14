@@ -1,13 +1,13 @@
 ---
-title: "API에서 사용하기"
-description: "@api 데코레이터에 Cache-Control 적용하기"
+title: "Using in APIs"
+description: "Applying Cache-Control to @api decorators"
 ---
 
-Sonamu의 `@api` 데코레이터에 `cacheControl` 옵션을 추가하여 **API 응답에 Cache-Control 헤더**를 설정할 수 있습니다.
+You can set **Cache-Control headers on API responses** by adding the `cacheControl` option to Sonamu's `@api` decorator.
 
-## 기본 사용법
+## Basic Usage
 
-### @api 데코레이터에 추가
+### Adding to @api Decorator
 
 ```typescript
 import { BaseModel, api, CachePresets } from "sonamu";
@@ -15,7 +15,7 @@ import { BaseModel, api, CachePresets } from "sonamu";
 class ProductModelClass extends BaseModel {
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1분 캐시
+    cacheControl: CachePresets.shortLived,  // 1 minute cache
   })
   async findAll() {
     return this.findMany({});
@@ -23,7 +23,7 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-**결과**:
+**Result**:
 ```http
 HTTP/1.1 200 OK
 Cache-Control: public, max-age=60
@@ -32,41 +32,41 @@ Content-Type: application/json
 [{"id": 1, "name": "Product A"}, ...]
 ```
 
-## 설정 방법
+## Configuration Methods
 
 <Tabs>
-  <Tab title="프리셋 사용" icon="list">
-    **가장 간단한 방법**
-    
+  <Tab title="Using Presets" icon="list">
+    **The simplest approach**
+
     ```typescript
     @api({
       httpMethod: 'GET',
-      cacheControl: CachePresets.mediumLived,  // 5분 캐시
+      cacheControl: CachePresets.mediumLived,  // 5 minute cache
     })
     async getCategories() {
       return this.categories;
     }
     ```
-    
-    **사용 가능한 프리셋**:
-    - `noStore`: 캐시 금지
-    - `noCache`: 매번 재검증
-    - `shortLived`: 1분
-    - `mediumLived`: 5분
-    - `longLived`: 1시간
-    - `private`: 개인화 데이터
+
+    **Available presets**:
+    - `noStore`: No caching
+    - `noCache`: Revalidate every time
+    - `shortLived`: 1 minute
+    - `mediumLived`: 5 minutes
+    - `longLived`: 1 hour
+    - `private`: Personalized data
   </Tab>
-  
-  <Tab title="커스텀 설정" icon="screwdriver-wrench">
-    **세밀한 제어가 필요할 때**
-    
+
+  <Tab title="Custom Configuration" icon="screwdriver-wrench">
+    **When you need fine-grained control**
+
     ```typescript
     @api({
       httpMethod: 'GET',
       cacheControl: {
         visibility: 'public',
-        maxAge: 120,  // 2분
-        staleWhileRevalidate: 300,  // 5분간 Stale 사용
+        maxAge: 120,  // 2 minutes
+        staleWhileRevalidate: 300,  // Use stale for 5 minutes
       }
     })
     async getData() {
@@ -74,10 +74,10 @@ Content-Type: application/json
     }
     ```
   </Tab>
-  
-  <Tab title="전역 핸들러" icon="globe">
-    **모든 API에 일괄 적용**
-    
+
+  <Tab title="Global Handler" icon="globe">
+    **Apply to all APIs at once**
+
     ```typescript
     // sonamu.config.ts
     export const config: SonamuConfig = {
@@ -85,13 +85,13 @@ Content-Type: application/json
         apiConfig: {
           cacheControlHandler: (req) => {
             if (req.type !== 'api') return undefined;
-            
-            // GET 요청만 캐싱
+
+            // Only cache GET requests
             if (req.method === 'GET') {
               return CachePresets.shortLived;
             }
-            
-            // POST, PUT, DELETE는 no-store
+
+            // POST, PUT, DELETE use no-store
             return CachePresets.noStore;
           }
         }
@@ -101,80 +101,80 @@ Content-Type: application/json
   </Tab>
 </Tabs>
 
-## 우선순위
+## Priority Order
 
-Cache-Control 설정은 다음 순서로 적용됩니다:
+Cache-Control settings are applied in the following order:
 
 ```mermaid
 graph LR
-    A[@api 데코레이터] -->|1순위| D[적용]
-    B[cacheControlHandler] -->|2순위| D
-    C[기본값: 없음] -->|3순위| D
+    A[@api decorator] -->|1st priority| D[Applied]
+    B[cacheControlHandler] -->|2nd priority| D
+    C[Default: none] -->|3rd priority| D
 ```
 
-1. **@api 데코레이터의 cacheControl** (가장 우선)
-2. **cacheControlHandler 반환값**
-3. **기본값** (Cache-Control 헤더 없음)
+1. **@api decorator's cacheControl** (highest priority)
+2. **cacheControlHandler return value**
+3. **Default** (no Cache-Control header)
 
-### 예시
+### Example
 
 ```typescript
 // sonamu.config.ts
 cacheControlHandler: (req) => {
   if (req.type === 'api' && req.method === 'GET') {
-    return CachePresets.shortLived;  // 기본 1분
+    return CachePresets.shortLived;  // Default 1 minute
   }
 }
 
 // Model
 @api({
   httpMethod: 'GET',
-  cacheControl: CachePresets.mediumLived,  // 5분으로 오버라이드
+  cacheControl: CachePresets.mediumLived,  // Override to 5 minutes
 })
 async getData() { ... }
 ```
 
-**결과**: `mediumLived` 적용 (데코레이터가 우선)
+**Result**: `mediumLived` applied (decorator takes priority)
 
-## HTTP 메서드별 전략
+## Strategies by HTTP Method
 
-### GET 요청
+### GET Requests
 
-**조회 API는 캐싱 가능**합니다.
+**Read APIs can be cached**.
 
 <Tabs>
-  <Tab title="자주 변경" icon="bolt">
+  <Tab title="Frequently Changed" icon="bolt">
     ```typescript
-    // 게시글 목록 (자주 추가됨)
+    // Post list (frequently added)
     @api({
       httpMethod: 'GET',
-      cacheControl: CachePresets.shortLived,  // 1분
+      cacheControl: CachePresets.shortLived,  // 1 minute
     })
     async getPosts(page: number) {
       return this.findMany({ page, num: 20 });
     }
     ```
   </Tab>
-  
-  <Tab title="가끔 변경" icon="clock">
+
+  <Tab title="Occasionally Changed" icon="clock">
     ```typescript
-    // 상품 정보 (가끔 수정)
+    // Product info (occasionally modified)
     @api({
       httpMethod: 'GET',
-      cacheControl: CachePresets.mediumLived,  // 5분
+      cacheControl: CachePresets.mediumLived,  // 5 minutes
     })
     async getProduct(id: number) {
       return this.findOne(['id', id]);
     }
     ```
   </Tab>
-  
-  <Tab title="거의 변경 안됨" icon="lock">
+
+  <Tab title="Rarely Changed" icon="lock">
     ```typescript
-    // 카테고리 (거의 변경 안됨)
+    // Categories (rarely changed)
     @api({
       httpMethod: 'GET',
-      cacheControl: CachePresets.longLived,  // 1시간
+      cacheControl: CachePresets.longLived,  // 1 hour
     })
     async getCategories() {
       return this.categories;
@@ -183,15 +183,15 @@ async getData() { ... }
   </Tab>
 </Tabs>
 
-### POST, PUT, DELETE 요청
+### POST, PUT, DELETE Requests
 
-**Mutation 요청은 캐싱하면 안 됩니다**.
+**Mutation requests should not be cached**.
 
 ```typescript
-// ✅ 올바른 예
+// ✅ Correct example
 @api({
   httpMethod: 'POST',
-  cacheControl: CachePresets.noStore,  // 캐시 금지
+  cacheControl: CachePresets.noStore,  // No caching
 })
 async create(data: ProductSave) {
   return this.saveOne(data);
@@ -215,34 +215,34 @@ async delete(id: number) {
 ```
 
 <Warning>
-**Mutation 요청에 캐싱을 설정하면 안 되는 이유**:
+**Why you should not cache mutation requests**:
 
-- 같은 POST 요청을 여러 번 보내면 **중복 생성** 발생
-- 브라우저가 이전 응답을 재사용 → 실제로는 생성되지 않은 것처럼 보임
+- Sending the same POST request multiple times causes **duplicate creations**
+- Browser reuses previous response → appears as if nothing was actually created
 
 ```typescript
-// ❌ 절대 이렇게 하지 마세요
+// ❌ Never do this
 @api({
   httpMethod: 'POST',
-  cacheControl: { maxAge: 60 },  // 위험!
+  cacheControl: { maxAge: 60 },  // Dangerous!
 })
 async create(data: ProductSave) { ... }
 ```
 </Warning>
 
-## 데이터 특성별 전략
+## Strategies by Data Characteristics
 
-### 공개 데이터 (public)
+### Public Data (public)
 
-모든 사용자에게 동일한 응답입니다.
+Same response for all users.
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // 상품 목록
+  // Product list
   @api({
     httpMethod: 'GET',
     cacheControl: {
-      visibility: 'public',  // CDN 캐싱 가능
+      visibility: 'public',  // CDN cacheable
       maxAge: 60,
     }
   })
@@ -252,44 +252,44 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-**특징**:
-- 브라우저 + CDN에서 캐싱
-- 네트워크 트래픽 최소화
-- 서버 부하 감소
+**Characteristics**:
+- Cached by browser + CDN
+- Minimizes network traffic
+- Reduces server load
 
-### 개인 데이터 (private)
+### Private Data (private)
 
-사용자별로 다른 응답입니다.
+Different response for each user.
 
 ```typescript
 class OrderModelClass extends BaseModel {
-  // 내 주문 내역
+  // My order history
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // 브라우저만 캐싱
+    cacheControl: CachePresets.private,  // Browser only caching
   })
   async getMyOrders(ctx: Context) {
-    return this.findMany({ 
-      where: [['user_id', ctx.user.id]] 
+    return this.findMany({
+      where: [['user_id', ctx.user.id]]
     });
   }
 }
 ```
 
-**특징**:
-- 브라우저에만 캐싱 (CDN 불가)
-- 다른 사용자에게 노출 방지
+**Characteristics**:
+- Cached only in browser (not CDN)
+- Prevents exposure to other users
 
-### 민감한 데이터 (no-store)
+### Sensitive Data (no-store)
 
-캐싱하면 안 되는 데이터입니다.
+Data that should not be cached.
 
 ```typescript
 class PaymentModelClass extends BaseModel {
-  // 결제 정보
+  // Payment information
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.noStore,  // 캐시 금지
+    cacheControl: CachePresets.noStore,  // No caching
   })
   async getPaymentInfo(id: number) {
     return this.findOne(['id', id]);
@@ -297,61 +297,61 @@ class PaymentModelClass extends BaseModel {
 }
 ```
 
-## 실전 예제
+## Practical Examples
 
-### 1. 전자상거래 API
+### 1. E-commerce API
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // 상품 목록 (자주 변경, public)
+  // Product list (frequently changed, public)
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1분
+    cacheControl: CachePresets.shortLived,  // 1 minute
   })
   async findAll(page: number) {
     return this.findMany({ page, num: 20 });
   }
-  
-  // 상품 상세 (가끔 변경, public)
+
+  // Product detail (occasionally changed, public)
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.mediumLived,  // 5분
+    cacheControl: CachePresets.mediumLived,  // 5 minutes
   })
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
-  // 카테고리 (거의 안 변함, public)
+
+  // Categories (rarely changed, public)
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.longLived,  // 1시간
+    cacheControl: CachePresets.longLived,  // 1 hour
   })
   async getCategories() {
     return this.categories;
   }
-  
-  // 재고 (실시간, no-cache)
+
+  // Stock (real-time, no-cache)
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.noCache,  // 매번 재검증
+    cacheControl: CachePresets.noCache,  // Revalidate every time
   })
   async getStock(productId: number) {
     return this.checkStock(productId);
   }
-  
-  // 장바구니 (개인, private)
+
+  // Shopping cart (personal, private)
   @api({
     httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // 브라우저만
+    cacheControl: CachePresets.private,  // Browser only
   })
   async getMyCart(ctx: Context) {
     return this.getCart(ctx.user.id);
   }
-  
-  // 주문 생성 (Mutation, no-store)
+
+  // Order creation (Mutation, no-store)
   @api({
     httpMethod: 'POST',
-    cacheControl: CachePresets.noStore,  // 캐시 금지
+    cacheControl: CachePresets.noStore,  // No caching
   })
   async createOrder(data: OrderSave) {
     return this.saveOne(data);
@@ -359,11 +359,11 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-### 2. 블로그 API
+### 2. Blog API
 
 ```typescript
 class PostModelClass extends BaseModel {
-  // 게시글 목록 (자주 추가, 5분)
+  // Post list (frequently added, 5 minutes)
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.mediumLived,
@@ -371,21 +371,21 @@ class PostModelClass extends BaseModel {
   async findAll(page: number) {
     return this.findMany({ page, num: 10 });
   }
-  
-  // 게시글 상세 (가끔 수정, 10분)
+
+  // Post detail (occasionally modified, 10 minutes)
   @api({
     httpMethod: 'GET',
     cacheControl: {
       visibility: 'public',
-      maxAge: 600,  // 10분
-      staleWhileRevalidate: 1800,  // 30분간 Stale 사용
+      maxAge: 600,  // 10 minutes
+      staleWhileRevalidate: 1800,  // Use stale for 30 minutes
     }
   })
   async findById(id: number) {
     return this.findOne(['id', id]);
   }
-  
-  // 인기 게시글 (1시간)
+
+  // Popular posts (1 hour)
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.longLived,
@@ -396,11 +396,11 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### 3. 사용자 API
+### 3. User API
 
 ```typescript
 class UserModelClass extends BaseModel {
-  // 공개 프로필 (public, 5분)
+  // Public profile (public, 5 minutes)
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.mediumLived,
@@ -408,8 +408,8 @@ class UserModelClass extends BaseModel {
   async getPublicProfile(username: string) {
     return this.findOne(['username', username]);
   }
-  
-  // 내 프로필 (private, 재검증)
+
+  // My profile (private, revalidate)
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.private,
@@ -417,8 +417,8 @@ class UserModelClass extends BaseModel {
   async getMyProfile(ctx: Context) {
     return this.findOne(['id', ctx.user.id]);
   }
-  
-  // 프로필 업데이트 (no-store)
+
+  // Profile update (no-store)
   @api({
     httpMethod: 'PUT',
     cacheControl: CachePresets.noStore,
@@ -429,19 +429,19 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-## CDN 최적화
+## CDN Optimization
 
-### s-maxage 활용
+### Using s-maxage
 
-브라우저와 CDN에 다른 TTL을 적용할 수 있습니다.
+You can apply different TTLs for browser and CDN.
 
 ```typescript
 @api({
   httpMethod: 'GET',
   cacheControl: {
     visibility: 'public',
-    maxAge: 60,       // 브라우저: 1분
-    sMaxAge: 300,     // CDN: 5분
+    maxAge: 60,       // Browser: 1 minute
+    sMaxAge: 300,     // CDN: 5 minutes
   }
 })
 async getData() {
@@ -449,14 +449,14 @@ async getData() {
 }
 ```
 
-**효과**:
-- 브라우저: 1분마다 CDN에 요청
-- CDN: 5분마다 서버에 요청
-- 서버 부하 최소화
+**Effect**:
+- Browser: Requests CDN every minute
+- CDN: Requests server every 5 minutes
+- Minimizes server load
 
 ### Stale-While-Revalidate
 
-CDN에서 Stale 응답을 즉시 반환하면서 백그라운드 갱신:
+CDN returns stale response immediately while updating in background:
 
 ```typescript
 @api({
@@ -464,7 +464,7 @@ CDN에서 Stale 응답을 즉시 반환하면서 백그라운드 갱신:
   cacheControl: {
     visibility: 'public',
     maxAge: 60,
-    staleWhileRevalidate: 300,  // 5분간 Stale 허용
+    staleWhileRevalidate: 300,  // Allow stale for 5 minutes
   }
 })
 async getProducts() {
@@ -472,11 +472,11 @@ async getProducts() {
 }
 ```
 
-**CloudFront 지원**: AWS CloudFront는 `stale-while-revalidate`를 지원합니다.
+**CloudFront Support**: AWS CloudFront supports `stale-while-revalidate`.
 
-## Vary 헤더
+## Vary Header
 
-요청 헤더에 따라 다른 캐시를 사용합니다.
+Uses different caches based on request headers.
 
 ```typescript
 @api({
@@ -484,24 +484,24 @@ async getProducts() {
   cacheControl: {
     visibility: 'public',
     maxAge: 300,
-    vary: ['Accept-Language'],  // 언어별 캐시 분리
+    vary: ['Accept-Language'],  // Separate cache by language
   }
 })
 async getProducts(ctx: Context) {
-  const locale = ctx.locale;  // 'ko' 또는 'en'
+  const locale = ctx.locale;  // 'ko' or 'en'
   return this.getLocalizedProducts(locale);
 }
 ```
 
-**결과**:
+**Result**:
 ```
-GET /api/products (Accept-Language: ko) → 한국어 응답 캐싱
-GET /api/products (Accept-Language: en) → 영어 응답 캐싱
+GET /api/products (Accept-Language: ko) → Korean response cached
+GET /api/products (Accept-Language: en) → English response cached
 ```
 
-## 전역 핸들러
+## Global Handler
 
-모든 API에 일괄적으로 Cache-Control을 적용할 수 있습니다.
+You can apply Cache-Control to all APIs at once.
 
 ```typescript
 // sonamu.config.ts
@@ -511,26 +511,26 @@ export const config: SonamuConfig = {
   server: {
     apiConfig: {
       cacheControlHandler: (req) => {
-        // API 요청만 처리
+        // Only handle API requests
         if (req.type !== 'api') {
           return undefined;
         }
-        
-        // HTTP 메서드별 처리
+
+        // Handle by HTTP method
         if (req.method !== 'GET') {
-          return CachePresets.noStore;  // Mutation은 no-store
+          return CachePresets.noStore;  // Mutations use no-store
         }
-        
-        // API 경로별 처리
+
+        // Handle by API path
         if (req.path.includes('/admin/')) {
-          return CachePresets.noStore;  // 관리자 API는 no-store
+          return CachePresets.noStore;  // Admin APIs use no-store
         }
-        
+
         if (req.path.includes('/private/')) {
-          return CachePresets.private;  // 개인 API는 private
+          return CachePresets.private;  // Private APIs use private
         }
-        
-        // 기본값: 1분 캐시
+
+        // Default: 1 minute cache
         return CachePresets.shortLived;
       }
     }
@@ -538,118 +538,118 @@ export const config: SonamuConfig = {
 };
 ```
 
-### API 객체 활용
+### Using API Object
 
 ```typescript
 cacheControlHandler: (req) => {
   if (req.type !== 'api') return undefined;
-  
-  // ExtendedApi 정보 활용
+
+  // Use ExtendedApi information
   if (req.api) {
     const { modelName, methodName } = req.api;
-    
-    // 특정 Model만 긴 캐시
+
+    // Long cache for specific Model only
     if (modelName === 'ConfigModel') {
       return CachePresets.longLived;
     }
-    
-    // 특정 메서드는 캐시 금지
+
+    // No caching for specific methods
     if (methodName.startsWith('create') || methodName.startsWith('update')) {
       return CachePresets.noStore;
     }
   }
-  
+
   return CachePresets.shortLived;
 }
 ```
 
-## BentoCache와 함께 사용
+## Using with BentoCache
 
-서버 캐시와 HTTP 캐시를 조합하면 최대 성능을 얻을 수 있습니다.
+Combining server cache with HTTP cache provides maximum performance.
 
 ```typescript
-@cache({ ttl: "10m", tags: ["product"] })  // 서버 캐시: 10분
+@cache({ ttl: "10m", tags: ["product"] })  // Server cache: 10 minutes
 @api({
   httpMethod: 'GET',
-  cacheControl: { maxAge: 60 }  // HTTP 캐시: 1분
+  cacheControl: { maxAge: 60 }  // HTTP cache: 1 minute
 })
 async getProducts() {
   return this.findMany({});
 }
 ```
 
-**효과**:
-1. **0~60초**: 브라우저 캐시 (서버 요청 없음)
-2. **60초~10분**: 서버 요청하지만 BentoCache 사용 (DB 조회 없음)
-3. **10분 이후**: DB 조회 → 다시 캐싱
+**Effect**:
+1. **0-60 seconds**: Browser cache (no server request)
+2. **60 seconds - 10 minutes**: Server request but uses BentoCache (no DB query)
+3. **After 10 minutes**: DB query → cache again
 
 ```mermaid
 graph LR
-    A[브라우저] -->|60초| B[HTTP 캐시]
-    B -->|만료| C[서버]
-    C -->|10분| D[BentoCache]
-    D -->|만료| E[DB]
+    A[Browser] -->|60 seconds| B[HTTP Cache]
+    B -->|Expired| C[Server]
+    C -->|10 minutes| D[BentoCache]
+    D -->|Expired| E[DB]
 ```
 
-## 주의사항
+## Precautions
 
 <Warning>
-**API Cache-Control 사용 시 주의사항**:
+**Precautions when using API Cache-Control**:
 
-1. **GET만 캐싱**: POST, PUT, DELETE는 반드시 `noStore` 사용
+1. **Only cache GET**: POST, PUT, DELETE must use `noStore`
    ```typescript
-   // ❌ 위험
+   // ❌ Dangerous
    @api({ httpMethod: 'POST', cacheControl: { maxAge: 60 } })
-   
-   // ✅ 안전
+
+   // ✅ Safe
    @api({ httpMethod: 'POST', cacheControl: CachePresets.noStore })
    ```
 
-2. **개인 데이터는 private**: CDN 캐싱 방지
+2. **Private data must be private**: Prevent CDN caching
    ```typescript
-   // ❌ 위험: CDN에 개인 데이터 캐싱
+   // ❌ Dangerous: Personal data cached on CDN
    @api({ cacheControl: { visibility: 'public', maxAge: 60 } })
    async getMyOrders(ctx: Context) { ... }
-   
-   // ✅ 안전
+
+   // ✅ Safe
    @api({ cacheControl: CachePresets.private })
    async getMyOrders(ctx: Context) { ... }
    ```
 
-3. **자주 변경되는 데이터는 짧은 TTL**: 오래된 데이터 방지
+3. **Short TTL for frequently changing data**: Prevent stale data
    ```typescript
-   // ❌ 재고가 실시간인데 1시간 캐싱
+   // ❌ Stock is real-time but cached for 1 hour
    @api({ cacheControl: CachePresets.longLived })
    async getStock() { ... }
-   
-   // ✅ 짧은 TTL 또는 no-cache
+
+   // ✅ Short TTL or no-cache
    @api({ cacheControl: CachePresets.noCache })
    async getStock() { ... }
    ```
 
-4. **인증 필요한 API는 조심**: Authorization 헤더 고려
+4. **Be careful with authenticated APIs**: Consider Authorization header
    ```typescript
    @api({
      cacheControl: {
-       visibility: 'private',  // private 필수
+       visibility: 'private',  // private required
        maxAge: 60,
-       vary: ['Authorization'],  // 인증 토큰별 캐시 분리
+       vary: ['Authorization'],  // Separate cache by auth token
      }
    })
    async getMyData(ctx: Context) { ... }
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache-Control이란?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
-    HTTP 캐싱 기본 개념
+  <Card title="What is Cache-Control?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
+    HTTP caching fundamentals
   </Card>
   <Card title="Cache Presets" icon="list" href="/advanced-features/cache-control/cache-presets">
-    사전 정의된 캐시 설정
+    Predefined cache configurations
   </Card>
-  <Card title="SSR에서 사용하기" icon="window" href="/advanced-features/cache-control/using-in-ssr">
-    SSR 페이지에 Cache-Control 적용
+  <Card title="Using in SSR" icon="window" href="/advanced-features/cache-control/using-in-ssr">
+    Apply Cache-Control to SSR pages
   </Card>
 </CardGroup>

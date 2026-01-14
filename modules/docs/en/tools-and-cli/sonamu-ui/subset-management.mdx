@@ -1,90 +1,90 @@
 ---
-title: 'Subset 관리'
-description: 'Entity Subset 정의 및 관리하기'
+title: 'Subset Management'
+description: 'Define and manage Entity Subsets'
 ---
 
-Subset은 **Entity의 특정 필드 조합을 미리 정의**하여 API 응답을 효율적으로 관리하는 기능입니다. Sonamu UI의 Subset 관리 기능을 사용하면 시각적으로 Subset을 정의하고 편집할 수 있습니다.
+Subset is a feature that **pre-defines specific field combinations of an Entity** to efficiently manage API responses. Sonamu UI's Subset management feature allows you to visually define and edit Subsets.
 
-## Subset이란?
+## What is a Subset?
 
-Subset은 Entity의 **일부 필드만 선택적으로 가져오는 사전 정의된 필드 그룹**입니다.
+A Subset is a **predefined field group that selectively retrieves only some fields** of an Entity.
 
-### 사용 이유
+### Why Use Subsets
 
-| 문제 | Subset 해결책 |
-|------|--------------|
-| 불필요한 데이터 전송 | 필요한 필드만 선택 |
-| 일관성 없는 응답 | 표준화된 필드 조합 |
-| 복잡한 JOIN | 관계 데이터 포함 여부 제어 |
-| 성능 저하 | 최소 데이터만 조회 |
+| Problem | Subset Solution |
+|---------|-----------------|
+| Unnecessary data transfer | Select only needed fields |
+| Inconsistent responses | Standardized field combinations |
+| Complex JOINs | Control relationship data inclusion |
+| Performance degradation | Query minimum data only |
 
-### 예시
+### Example
 
 ```typescript
-// ❌ 모든 필드 조회 (비효율적)
+// ❌ Query all fields (inefficient)
 const users = await UserModel.findMany();
 
-// ✅ Subset으로 필요한 필드만 조회
+// ✅ Query only needed fields with Subset
 const users = await UserModel.findMany({ subset: "A" });
-// → id, email, name만 반환
+// → Returns only id, email, name
 ```
 
-## Subset 관리 화면
+## Subset Management Screen
 
-<Frame caption="Subset 관리 화면">
-  {/* TODO: Subset 관리 탭 스크린샷 추가 */}
+<Frame caption="Subset Management Screen">
+  {/* TODO: Add Subset management tab screenshot */}
 </Frame>
 
-Subset 관리 화면은 두 가지 주요 영역으로 구성됩니다:
+The Subset management screen consists of two main areas:
 
-- **왼쪽 Sidebar**: Entity 목록과 각 Entity의 Subset 목록
-- **오른쪽 Content**: 선택한 Subset의 필드 선택 체크박스
+- **Left Sidebar**: Entity list and each Entity's Subset list
+- **Right Content**: Field selection checkboxes for the selected Subset
 
-## Subset 생성
+## Creating a Subset
 
-### 1. Entity 선택
+### 1. Select Entity
 
-왼쪽 목록에서 Subset을 추가할 Entity를 선택합니다.
+Select the Entity to add a Subset to from the left list.
 
-### 2. Subset 추가
+### 2. Add Subset
 
-**[Add Subset]** 버튼을 클릭하여 새 Subset을 생성합니다.
+Click the **[Add Subset]** button to create a new Subset.
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| **Subset ID** | Subset 식별자 (A-Z) | `A`, `B`, `C` |
-| **Description** | Subset 설명 | `기본 목록용`, `상세 조회용` |
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Subset ID** | Subset identifier (A-Z) | `A`, `B`, `C` |
+| **Description** | Subset description | `For list`, `For detail` |
 
 <Info>
-Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합니다.
+Subset IDs typically use **single alphabet letters** (A, B, C...).
 </Info>
 
-### 3. 필드 선택
+### 3. Select Fields
 
-생성된 Subset에서 포함할 필드를 선택합니다:
+Select the fields to include in the created Subset:
 
-**기본 필드**:
+**Basic fields**:
 ```
-☑ id          ← 필수 (항상 포함)
+☑ id          ← Required (always included)
 ☑ email
 ☑ name
-□ password    ← 민감 정보 제외
+□ password    ← Exclude sensitive info
 □ bio
 ☑ created_at
 ```
 
-**관계 필드**:
+**Relation fields**:
 ```
 ☐ posts → Post.Subset A
 ☐ profile → Profile.Subset B
 ```
 
-## Subset 종류
+## Subset Types
 
-### Subset A (기본 목록)
+### Subset A (Basic List)
 
-**용도**: 목록 조회 시 사용
-**포함**: 필수 정보 + 요약 정보
+**Purpose**: Used for list queries
+**Includes**: Required info + summary info
 
 ```typescript
 // User.Subset A
@@ -96,16 +96,16 @@ Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합�
 }
 ```
 
-**사용 예시**:
+**Usage example**:
 ```typescript
-// 사용자 목록
+// User list
 const users = await UserModel.findMany({ subset: "A" });
 ```
 
-### Subset B (상세 조회)
+### Subset B (Detail View)
 
-**용도**: 단일 레코드 상세 조회
-**포함**: 모든 일반 정보 (민감 정보 제외)
+**Purpose**: Single record detail query
+**Includes**: All general info (excluding sensitive info)
 
 ```typescript
 // User.Subset B
@@ -120,16 +120,16 @@ const users = await UserModel.findMany({ subset: "A" });
 }
 ```
 
-**사용 예시**:
+**Usage example**:
 ```typescript
-// 사용자 상세
+// User detail
 const user = await UserModel.findById(1, { subset: "B" });
 ```
 
-### Subset C (관계 포함)
+### Subset C (With Relations)
 
-**용도**: 관계 데이터를 포함한 조회
-**포함**: 기본 정보 + 관계 Entity
+**Purpose**: Query including related data
+**Includes**: Basic info + related Entities
 
 ```typescript
 // Post.Subset C
@@ -137,32 +137,32 @@ const user = await UserModel.findById(1, { subset: "B" });
   id: true,
   title: true,
   content: true,
-  author: "User.B",     // User의 Subset B 포함
-  comments: "Comment.A", // Comment의 Subset A 포함
+  author: "User.B",     // Include User's Subset B
+  comments: "Comment.A", // Include Comment's Subset A
   created_at: true,
 }
 ```
 
-**사용 예시**:
+**Usage example**:
 ```typescript
-// 게시글 + 작성자 + 댓글
+// Post + author + comments
 const post = await PostModel.findById(1, { subset: "C" });
 ```
 
-## 관계 필드 설정
+## Relation Field Settings
 
-### belongsTo 관계
+### belongsTo Relation
 
-**예시**: Post → User (작성자)
+**Example**: Post → User (author)
 
 ```
 ☐ author → User.Subset B
 ```
 
-선택하면 Post를 조회할 때 작성자(User) 정보도 함께 가져옵니다:
+When selected, querying Post also fetches author (User) info:
 
 ```typescript
-// 결과
+// Result
 {
   id: 1,
   title: "Hello World",
@@ -170,23 +170,23 @@ const post = await PostModel.findById(1, { subset: "C" });
     id: 10,
     email: "user@example.com",
     name: "John Doe",
-    // User.Subset B의 나머지 필드...
+    // Rest of User.Subset B fields...
   }
 }
 ```
 
-### hasMany 관계
+### hasMany Relation
 
-**예시**: User → Post[] (작성한 글 목록)
+**Example**: User → Post[] (authored posts list)
 
 ```
 ☐ posts → Post.Subset A
 ```
 
-선택하면 User를 조회할 때 작성한 Post 목록도 함께 가져옵니다:
+When selected, querying User also fetches authored Post list:
 
 ```typescript
-// 결과
+// Result
 {
   id: 10,
   email: "user@example.com",
@@ -199,42 +199,42 @@ const post = await PostModel.findById(1, { subset: "C" });
 ```
 
 <Warning>
-**N+1 문제 주의**: hasMany 관계를 Subset에 포함하면 추가 쿼리가 발생할 수 있습니다.
-필요한 경우에만 포함하세요.
+**N+1 problem caution**: Including hasMany relations in Subsets may cause additional queries.
+Only include when necessary.
 </Warning>
 
-## Subset 수정
+## Editing Subsets
 
-### 필드 추가/제거
+### Add/Remove Fields
 
-1. Subset 선택
-2. 필드 체크박스 클릭
-3. **[Save]** 버튼 클릭
+1. Select Subset
+2. Click field checkbox
+3. Click **[Save]** button
 
-**변경사항 즉시 반영**:
+**Changes applied immediately**:
 ```
 Before: { id, email, name }
 After:  { id, email, name, bio, created_at }
 ```
 
-### Subset 삭제
+### Delete Subset
 
-1. Subset 선택
-2. **[Delete]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
+1. Select Subset
+2. Click **[Delete]** button
+3. Click **[Confirm]** in the confirmation modal
 
 <Warning>
-**사용 중인 Subset 삭제**: 삭제하려는 Subset을 사용하는 API가 있다면 오류가 발생할 수 있습니다.
+**Deleting used Subset**: If there are APIs using the Subset you're deleting, errors may occur.
 </Warning>
 
-## 실전 예제
+## Practical Examples
 
-### 사용자 관리 시스템
+### User Management System
 
 ```typescript
 // User Entity Subsets
 
-// Subset A: 목록용 (최소 정보)
+// Subset A: For list (minimal info)
 {
   id: true,
   email: true,
@@ -243,7 +243,7 @@ After:  { id, email, name, bio, created_at }
   is_active: true,
 }
 
-// Subset B: 상세용 (전체 정보, 민감 정보 제외)
+// Subset B: For detail (full info, excluding sensitive)
 {
   id: true,
   email: true,
@@ -257,7 +257,7 @@ After:  { id, email, name, bio, created_at }
   updated_at: true,
 }
 
-// Subset C: 관리자용 (모든 정보)
+// Subset C: For admin (all info)
 {
   ...Subset B,
   last_login_at: true,
@@ -266,12 +266,12 @@ After:  { id, email, name, bio, created_at }
 }
 ```
 
-### 블로그 시스템
+### Blog System
 
 ```typescript
 // Post Entity Subsets
 
-// Subset A: 목록용 (요약)
+// Subset A: For list (summary)
 {
   id: true,
   title: true,
@@ -281,7 +281,7 @@ After:  { id, email, name, bio, created_at }
   created_at: true,
 }
 
-// Subset B: 상세용 (전체 내용)
+// Subset B: For detail (full content)
 {
   id: true,
   title: true,
@@ -294,25 +294,25 @@ After:  { id, email, name, bio, created_at }
   updated_at: true,
 }
 
-// Subset C: 댓글 포함
+// Subset C: With comments
 {
   ...Subset B,
   comments: "Comment.A",
 }
 ```
 
-## Model에서 사용
+## Using in Models
 
-Subset을 정의하면 Model API에서 자동으로 사용할 수 있습니다.
+Once Subsets are defined, they can be automatically used in Model APIs.
 
-### findMany에서 사용
+### Using in findMany
 
 ```typescript
 class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findMany(params: ListParams<User>) {
     const { qb } = this.getSubsetQueries("A");
-    
+
     return this.executeSubsetQuery({
       subset: "A",
       qb,
@@ -322,7 +322,7 @@ class UserModelClass extends BaseModelClass {
 }
 ```
 
-### findById에서 사용
+### Using in findById
 
 ```typescript
 class UserModelClass extends BaseModelClass {
@@ -330,7 +330,7 @@ class UserModelClass extends BaseModelClass {
   async findById(id: number) {
     const { qb } = this.getSubsetQueries("B");
     qb.where("id", id);
-    
+
     return this.executeSubsetQuery({
       subset: "B",
       qb,
@@ -340,39 +340,39 @@ class UserModelClass extends BaseModelClass {
 }
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 필요한 필드만 선택
+### Select Only Needed Fields
 
 ```typescript
-// ❌ 모든 필드 조회 (느림)
+// ❌ Query all fields (slow)
 SELECT * FROM users
 
-// ✅ Subset A 사용 (빠름)
+// ✅ Use Subset A (fast)
 SELECT id, email, name FROM users
 ```
 
-### 관계 로딩 최소화
+### Minimize Relation Loading
 
 ```typescript
-// ❌ 불필요한 관계 포함
+// ❌ Include unnecessary relations
 {
-  posts: "Post.C",  // Post의 모든 관계까지 로딩
+  posts: "Post.C",  // Loads all Post relations too
 }
 
-// ✅ 필요한 관계만
+// ✅ Only needed relations
 {
-  posts: "Post.A",  // Post의 기본 정보만
+  posts: "Post.A",  // Only basic Post info
 }
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Model" icon="database" href="/core-concepts/model">
-    Model에서 Subset 사용하기
+    Using Subsets in Models
   </Card>
-  <Card title="API 개발" icon="code" href="/core-concepts/api">
-    API에서 Subset 활용하기
+  <Card title="API Development" icon="code" href="/core-concepts/api">
+    Using Subsets in APIs
   </Card>
 </CardGroup>

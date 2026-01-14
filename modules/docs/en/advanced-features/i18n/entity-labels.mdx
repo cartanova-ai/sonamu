@@ -1,15 +1,15 @@
 ---
-title: "Entity 라벨 자동 추출"
-description: "Entity 정의에서 자동으로 추출되는 i18n 라벨"
+title: "Auto-extracted Entity Labels"
+description: "i18n labels automatically extracted from Entity definitions"
 ---
 
-Sonamu는 Entity 정의에서 라벨을 자동으로 추출하여 `sd.generated.ts`에 포함시킵니다. 이를 통해 Entity 관련 텍스트를 별도로 딕셔너리에 작성할 필요가 없습니다.
+Sonamu automatically extracts labels from Entity definitions and includes them in `sd.generated.ts`. This eliminates the need to manually write Entity-related text in the dictionary.
 
-## 자동 추출되는 항목
+## Auto-extracted Items
 
-### 1. Entity 타이틀
+### 1. Entity Title
 
-Entity의 `title` 속성이 `entity.{EntityId}` 키로 추출됩니다:
+The Entity's `title` property is extracted as the `entity.{EntityId}` key:
 
 ```json
 // entity.json
@@ -22,19 +22,19 @@ Entity의 `title` 속성이 `entity.{EntityId}` 키로 추출됩니다:
 ```
 
 ```typescript
-// sd.generated.ts (자동 생성)
+// sd.generated.ts (auto-generated)
 const entityLabels = {
   "entity.User": "사용자",
   // ...
 };
 
-// 사용
+// Usage
 SD("entity.User")  // "사용자"
 ```
 
-### 2. Prop 라벨
+### 2. Prop Labels
 
-각 prop의 `desc` 속성이 `entity.{EntityId}.{propName}` 키로 추출됩니다:
+Each prop's `desc` property is extracted as the `entity.{EntityId}.{propName}` key:
 
 ```json
 // entity.json
@@ -50,7 +50,7 @@ SD("entity.User")  // "사용자"
 ```
 
 ```typescript
-// sd.generated.ts (자동 생성)
+// sd.generated.ts (auto-generated)
 const entityLabels = {
   "entity.User": "USER",
   "entity.User.id": "ID",
@@ -60,13 +60,13 @@ const entityLabels = {
   // ...
 };
 
-// 사용
+// Usage
 SD("entity.User.email")  // "이메일"
 ```
 
-### 3. Enum 라벨
+### 3. Enum Labels
 
-Entity에 정의된 `enumLabels`가 `enum.{EnumId}.{value}` 키로 추출됩니다:
+`enumLabels` defined in the Entity are extracted as `enum.{EnumId}.{value}` keys:
 
 ```json
 // entity.json
@@ -85,24 +85,24 @@ Entity에 정의된 `enumLabels`가 `enum.{EnumId}.{value}` 키로 추출됩니�
 ```
 
 ```typescript
-// sd.generated.ts (자동 생성)
+// sd.generated.ts (auto-generated)
 const entityLabels = {
   "enum.UserRole.admin": "관리자",
   "enum.UserRole.normal": "일반",
   // ...
 };
 
-// 사용
+// Usage
 SD("enum.UserRole.admin")  // "관리자"
 SD.enumLabels("UserRole")["admin"]  // "관리자"
 ```
 
-### 4. OrderBy / SearchField 라벨
+### 4. OrderBy / SearchField Labels
 
-ListParams에서 사용되는 enum들도 자동으로 추출됩니다:
+Enums used in ListParams are also automatically extracted:
 
 ```typescript
-// sd.generated.ts (자동 생성)
+// sd.generated.ts (auto-generated)
 const entityLabels = {
   "enum.UserOrderBy.id-desc": "ID최신순",
   "enum.UserSearchField.id": "ID",
@@ -111,49 +111,49 @@ const entityLabels = {
 };
 ```
 
-## Sonamu UI에서 라벨 편집
+## Editing Labels in Sonamu UI
 
-Sonamu UI의 Entity 편집 화면에서 직접 라벨을 수정할 수 있습니다:
+You can directly edit labels in Sonamu UI's Entity edit screen:
 
-1. **Entity 타이틀**: Entity 상세 페이지에서 수정
-2. **Prop 라벨**: 각 prop의 `desc` 필드 수정
-3. **Enum 라벨**: Enum 편집 모달에서 수정
+1. **Entity Title**: Edit on the Entity detail page
+2. **Prop Labels**: Edit each prop's `desc` field
+3. **Enum Labels**: Edit in the Enum edit modal
 
-수정 후 저장하면 `entity.json`이 업데이트되고, `pnpm sync` 시 `sd.generated.ts`에 반영됩니다.
+After saving, `entity.json` is updated, and it will be reflected in `sd.generated.ts` upon `pnpm sync`.
 
-## 다국어 Entity 라벨
+## Multilingual Entity Labels
 
-Entity 라벨은 `defaultLocale`에만 저장됩니다. 다른 locale의 번역은 해당 locale의 딕셔너리 파일에 직접 작성합니다:
+Entity labels are stored only in `defaultLocale`. Translations for other locales should be written directly in the respective locale's dictionary file:
 
 ```typescript
 // en.ts
 import { defineLocale } from "./sd.generated";
 
 export default defineLocale({
-  // Entity 라벨 번역
+  // Entity label translations
   "entity.User": "User",
   "entity.User.email": "Email",
   "entity.User.username": "Username",
-  
-  // Enum 라벨 번역
+
+  // Enum label translations
   "enum.UserRole.admin": "Administrator",
   "enum.UserRole.normal": "Normal User",
-  
-  // 나머지 프로젝트 딕셔너리
+
+  // Rest of project dictionary
   "common.save": "Save",
   // ...
 });
 ```
 
-## Excel로 일괄 번역
+## Bulk Translation via Excel
 
-Sonamu UI의 i18n 관리 페이지에서 Entity 라벨을 포함한 모든 키를 Excel로 export하고, 번역 후 import할 수 있습니다.
+You can export all keys including Entity labels as Excel from Sonamu UI's i18n management page, translate them, and import back.
 
 <CardGroup cols={2}>
   <Card title="Excel Import/Export" icon="file-excel" href="/advanced-features/i18n/excel-import">
-    번역 파일 일괄 관리
+    Bulk translation file management
   </Card>
-  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
-    딕셔너리 작성 및 사용
+  <Card title="Using the SD Function" icon="code" href="/advanced-features/i18n/dictionary">
+    Writing and using dictionaries
   </Card>
 </CardGroup>
