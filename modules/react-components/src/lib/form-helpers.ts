@@ -3,7 +3,8 @@
 import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
-import { type SonamuFile, useSonamuContext } from "@/contexts/sonamu-context";
+import type { SonamuFile } from "@/contexts";
+import { useSonamuContext } from "@/contexts";
 import type { ErrorObj } from "./types";
 
 /**

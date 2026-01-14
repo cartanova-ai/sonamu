@@ -5,10 +5,10 @@ import {
   CardHeader,
   CardTitle,
   Input,
-} from "@sonamu-kit/react-components/components";
+  useSonamuContext,
+} from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useAuth } from "@/admin-common/auth";
 import { SD } from "@/i18n/sd.generated";
 import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
@@ -26,7 +26,8 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const { login, user } = useAuth();
+  const { auth } = useSonamuContext();
+  const { login, user } = auth;
 
   const handleSubmit = () => {
     login({ email, password });

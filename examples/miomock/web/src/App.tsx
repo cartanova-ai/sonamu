@@ -1,7 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { type ReactNode, Suspense, useEffect } from "react";
-import { useAuth } from "./admin-common/auth";
 import Sidebar from "./components/Sidebar";
 import { setLocale } from "./i18n/sd.generated";
 
@@ -19,7 +18,6 @@ function App({ children }: AppProps) {
   }, []);
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user: _ } = useAuth();
 
   const isLoginPage = pathname === "/admin/login" || pathname === "/admin/login-test";
 

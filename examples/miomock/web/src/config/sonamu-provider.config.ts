@@ -7,18 +7,6 @@ import type { UserSubsetSS } from "@/services/sonamu.generated";
 import type { UserLoginParams } from "@/services/user/user.types";
 
 export function createSonamuConfig() {
-  // Uploader 설정
-  const uploadMutation = FileService.useUploadMutation();
-
-  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
-    if (files.length === 0) {
-      return [];
-    }
-
-    const result = await uploadMutation.mutateAsync({ files });
-    return result.files;
-  };
-
   // Auth 설정
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -60,5 +48,17 @@ export function createSonamuConfig() {
     refetch,
   };
 
-  return { uploader, auth };
+  // Uploader 설정
+  const uploadMutation = FileService.useUploadMutation();
+
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
+    if (files.length === 0) {
+      return [];
+    }
+
+    const result = await uploadMutation.mutateAsync({ files });
+    return result.files;
+  };
+
+  return { auth, uploader };
 }

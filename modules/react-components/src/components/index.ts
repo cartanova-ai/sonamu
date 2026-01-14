@@ -2,13 +2,6 @@
 
 // UI Components - Form & Input
 export type { DateRange } from "react-day-picker";
-// Contexts
-export {
-  type SonamuContextValue,
-  SonamuProvider,
-  type SonamuProviderProps,
-  useSonamuContext,
-} from "../contexts/sonamu-context";
 // Hooks
 export { toast, useToast } from "../hooks/use-toast";
 export {

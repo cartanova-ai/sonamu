@@ -1,4 +1,4 @@
-import { Button } from "@sonamu-kit/react-components/components";
+import { Button, useSonamuContext } from "@sonamu-kit/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
 import { SD } from "@/i18n/sd.generated";
@@ -11,7 +11,6 @@ import LogOutIcon from "~icons/lucide/log-out";
 import TagIcon from "~icons/lucide/tag";
 import UploadIcon from "~icons/lucide/upload";
 import UsersIcon from "~icons/lucide/users";
-import { useAuth } from "../admin-common/auth";
 
 interface SidebarProps {
   className?: string;
@@ -46,7 +45,8 @@ const menuItems: MenuItemProps[] = [
 
 export default function Sidebar({ className }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, logout } = useAuth();
+  const { auth } = useSonamuContext();
+  const { user, logout } = auth;
 
   const isActive = (path: string) => {
     if (path === "/admin") {

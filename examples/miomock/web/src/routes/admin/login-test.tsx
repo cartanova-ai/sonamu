@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
   Input,
-} from "@sonamu-kit/react-components/components";
+  useSonamuContext,
+} from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
 import HomeIcon from "~icons/lucide/home";
@@ -19,13 +20,12 @@ import MailIcon from "~icons/lucide/mail";
 
 export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
 
-import { useAuth } from "@/admin-common/auth";
-
 function LoginTestPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
-  const { login, logout, user } = useAuth();
+  const { auth } = useSonamuContext();
+  const { login, logout, user } = auth;
   const navigate = useNavigate();
 
   const handleSubmit = () => {

@@ -1,5 +1,5 @@
 // Main entry point
 export * from "./components";
-export * from "./contexts/sonamu-context";
+export * from "./contexts";
 export * from "./hooks";
 export * from "./lib";

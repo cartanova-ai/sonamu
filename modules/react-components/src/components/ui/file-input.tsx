@@ -1,6 +1,7 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { type SonamuFile, useSonamuContext } from "@/contexts/sonamu-context";
+import type { SonamuFile } from "@/contexts";
+import { useSonamuContext } from "@/contexts";
 import { cn, useObjectUrls } from "@/lib/utils";
 import FileIcon from "~icons/lucide/file";
 import ImageIcon from "~icons/lucide/image";
@@ -9,7 +10,6 @@ import UploadIcon from "~icons/lucide/upload";
 import XIcon from "~icons/lucide/x";
 import { Button } from "./button";
 
-export type { SonamuFile } from "@/contexts/sonamu-context";
 export type PreviewSize = "sm" | "md" | "lg" | "xl";
 
 // 이미지용: 정사각형

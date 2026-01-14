@@ -4,9 +4,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@sonamu-kit/react-components/components";
+  useSonamuContext,
+} from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/admin-common/auth";
 import { SD } from "@/i18n/sd.generated";
 
 export const Route = createFileRoute("/admin/")({
@@ -14,7 +14,8 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminIndexPage() {
-  const { user, logout } = useAuth();
+  const { auth } = useSonamuContext();
+  const { user, logout } = auth;
   const navigate = useNavigate();
 
   const handleLogout = () => {
