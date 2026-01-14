@@ -75,7 +75,7 @@ import { useToast } from "@sonamu-kit/react-components/hooks";
 필요시 아래 컴포넌트들을 추가로 설치할 수 있습니다:
 
 ```bash
-cd packages/react-components
+cd modules/react-components
 
 # Navigation
 npx shadcn@latest add navigation-menu
@@ -110,5 +110,5 @@ npx shadcn@latest add carousel
 ## 📚 참고
 
 - 공식 문서: https://ui.shadcn.com/docs/components
-- 패키지 위치: `/packages/react-components/src/components/ui/`
-- Export: `/packages/react-components/src/components/index.ts`
+- 패키지 위치: `/modules/react-components/src/components/ui/`
+- Export: `/modules/react-components/src/components/index.ts`
