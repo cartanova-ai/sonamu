@@ -1,6 +1,9 @@
 import { NaiteVitestReporter } from "sonamu/test";
 import { defineConfig } from "vitest/config";
 
+// CPU 코어 수 기반 worker 수 결정 (최소 1, 최대 코어 수의 절반)
+const maxWorkers = 4;
+
 export default defineConfig({
   plugins: [],
   test: {
@@ -11,8 +14,8 @@ export default defineConfig({
     setupFiles: ["./src/testing/setup-mocks.ts"],
     reporters: ["default", NaiteVitestReporter],
     pool: "forks",
-    maxWorkers: 1,
-    isolate: false,
+    maxWorkers,
+    isolate: true,
     restoreMocks: true,
     typecheck: {
       enabled: true,
@@ -26,5 +29,9 @@ export default defineConfig({
       exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
     },
     includeTaskLocation: true,
+    // 병렬 테스트 환경변수를 worker에 전달
+    env: {
+      SONAMU_PARALLEL_TEST: maxWorkers > 1 ? "true" : "false",
+    },
   },
 });
