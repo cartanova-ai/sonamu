@@ -28,6 +28,7 @@ export type SonamuDBConfig = {
 export class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
+  private workerDBs: Map<number, Knex> = new Map();
 
   public transactionStorage = new AsyncLocalStorage<TransactionContext>();
 
@@ -44,6 +45,12 @@ export class DBClass {
 
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
+      // 병렬 테스트 모드: worker별 DB 사용
+      if (process.env.SONAMU_PARALLEL_TEST === "true") {
+        return this.getWorkerDB(dbConfig);
+      }
+
+      // 기존 단일 테스트 로직
       if (this.testTransaction) {
         return this.testTransaction;
       } else if (this.wdb) {
@@ -69,6 +76,39 @@ export class DBClass {
     }
 
     return this[instanceName];
+  }
+
+  /**
+   * 병렬 테스트에서 worker별 DB 인스턴스를 반환합니다.
+   * VITEST_POOL_ID 환경변수로 worker를 식별하여 해당 DB에 연결합니다.
+   */
+  private getWorkerDB(dbConfig: SonamuDBConfig): Knex {
+    // 트랜잭션이 있으면 트랜잭션 반환
+    if (this.testTransaction) {
+      return this.testTransaction;
+    }
+
+    const workerId = parseInt(process.env.VITEST_POOL_ID ?? "1", 10);
+
+    // Worker별 DB 인스턴스 캐싱
+    if (!this.workerDBs.has(workerId)) {
+      const baseTestConfig = dbConfig.test;
+      const connection = baseTestConfig.connection as { database: string };
+      const workerDbName = `${connection.database}_${workerId}`;
+
+      const workerConfig = {
+        ...baseTestConfig,
+        connection: {
+          ...connection,
+          database: workerDbName,
+        },
+        pool: { min: 1, max: 1 },
+      };
+
+      this.workerDBs.set(workerId, createKnexInstance(workerConfig));
+    }
+
+    return this.workerDBs.get(workerId)!;
   }
 
   getDBConfig(which: DBPreset): Knex.Config {
@@ -107,6 +147,11 @@ export class DBClass {
       await this.rdb.destroy();
       this.rdb = undefined;
     }
+    // 병렬 테스트용 worker DB들도 정리
+    for (const db of this.workerDBs.values()) {
+      await db.destroy();
+    }
+    this.workerDBs.clear();
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
