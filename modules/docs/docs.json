@@ -23,55 +23,55 @@
             "group": "시작하기",
             "icon": "rocket",
             "pages": [
-              "getting-started/introduction",
-              "getting-started/installation",
-              "getting-started/quick-start",
-              "getting-started/project-structure",
-              "getting-started/first-entity",
-              "getting-started/development-workflow"
+              "ko/getting-started/introduction",
+              "ko/getting-started/installation",
+              "ko/getting-started/quick-start",
+              "ko/getting-started/project-structure",
+              "ko/getting-started/first-entity",
+              "ko/getting-started/development-workflow"
             ]
           },
           {
             "group": "핵심 개념",
             "icon": "lightbulb",
             "pages": [
-              "core-concepts/how-sonamu-works",
+              "ko/core-concepts/how-sonamu-works",
               {
                 "group": "Entity",
                 "pages": [
-                  "core-concepts/entity/defining-entities",
-                  "core-concepts/entity/using-sonamu-ui",
-                  "core-concepts/entity/field-types",
-                  "core-concepts/entity/relations",
-                  "core-concepts/entity/enums"
+                  "ko/core-concepts/entity/defining-entities",
+                  "ko/core-concepts/entity/using-sonamu-ui",
+                  "ko/core-concepts/entity/field-types",
+                  "ko/core-concepts/entity/relations",
+                  "ko/core-concepts/entity/enums"
                 ]
               },
               {
                 "group": "Model",
                 "pages": [
-                  "core-concepts/model/what-is-model",
-                  "core-concepts/model/creating-models",
-                  "core-concepts/model/api-decorator",
-                  "core-concepts/model/business-logic",
-                  "core-concepts/model/basemodel-methods"
+                  "ko/core-concepts/model/what-is-model",
+                  "ko/core-concepts/model/creating-models",
+                  "ko/core-concepts/model/api-decorator",
+                  "ko/core-concepts/model/business-logic",
+                  "ko/core-concepts/model/basemodel-methods"
                 ]
               },
               {
                 "group": "자동 생성",
                 "pages": [
-                  "core-concepts/auto-generation/what-gets-generated",
-                  "core-concepts/auto-generation/syncer",
-                  "core-concepts/auto-generation/when-files-regenerate",
-                  "core-concepts/auto-generation/customizing-generated-code"
+                  "ko/core-concepts/auto-generation/what-gets-generated",
+                  "ko/core-concepts/auto-generation/syncer",
+                  "ko/core-concepts/auto-generation/when-files-regenerate",
+                  "ko/core-concepts/auto-generation/customizing-generated-code"
                 ]
               },
               {
                 "group": "타입 시스템",
                 "pages": [
-                  "core-concepts/type-system/entity-types",
-                  "core-concepts/type-system/generated-types",
-                  "core-concepts/type-system/e2e-type-safety",
-                  "core-concepts/type-system/zod-validation"
+                  "ko/core-concepts/type-system/entity-types",
+                  "ko/core-concepts/type-system/generated-types",
+                  "ko/core-concepts/type-system/e2e-type-safety",
+                  "ko/core-concepts/type-system/zod-validation"
                 ]
               }
             ]
@@ -83,48 +83,48 @@
               {
                 "group": "Puri 쿼리 빌더",
                 "pages": [
-                  "database/puri/basic-queries",
-                  "database/puri/joins",
-                  "database/puri/aggregations",
-                  "database/puri/raw-queries",
-                  "database/puri/type-safety",
-                  "database/puri/advanced-patterns"
+                  "ko/database/puri/basic-queries",
+                  "ko/database/puri/joins",
+                  "ko/database/puri/aggregations",
+                  "ko/database/puri/raw-queries",
+                  "ko/database/puri/type-safety",
+                  "ko/database/puri/advanced-patterns"
                 ]
               },
               {
                 "group": "Subset",
                 "pages": [
-                  "database/subsets/what-are-subsets",
-                  "database/subsets/defining-subsets",
-                  "database/subsets/using-subsets",
-                  "database/subsets/nested-relations"
+                  "ko/database/subsets/what-are-subsets",
+                  "ko/database/subsets/defining-subsets",
+                  "ko/database/subsets/using-subsets",
+                  "ko/database/subsets/nested-relations"
                 ]
               },
               {
                 "group": "UpsertBuilder",
                 "pages": [
-                  "database/upsert-builder/basic-usage",
-                  "database/upsert-builder/relations",
-                  "database/upsert-builder/batch-operations",
-                  "database/upsert-builder/advanced-patterns"
+                  "ko/database/upsert-builder/basic-usage",
+                  "ko/database/upsert-builder/relations",
+                  "ko/database/upsert-builder/batch-operations",
+                  "ko/database/upsert-builder/advanced-patterns"
                 ]
               },
               {
                 "group": "마이그레이션",
                 "pages": [
-                  "database/migrations/how-migrations-work",
-                  "database/migrations/creating-migrations",
-                  "database/migrations/running-migrations",
-                  "database/migrations/rolling-back",
-                  "database/migrations/migration-strategies"
+                  "ko/database/migrations/how-migrations-work",
+                  "ko/database/migrations/creating-migrations",
+                  "ko/database/migrations/running-migrations",
+                  "ko/database/migrations/rolling-back",
+                  "ko/database/migrations/migration-strategies"
                 ]
               },
               {
                 "group": "트랜잭션",
                 "pages": [
-                  "database/transactions/transactional-decorator",
-                  "database/transactions/manual-transactions",
-                  "database/transactions/best-practices"
+                  "ko/database/transactions/transactional-decorator",
+                  "ko/database/transactions/manual-transactions",
+                  "ko/database/transactions/best-practices"
                 ]
               }
             ]
@@ -136,51 +136,51 @@
               {
                 "group": "API 만들기",
                 "pages": [
-                  "api-development/creating-apis/api-decorator",
-                  "api-development/creating-apis/http-methods",
-                  "api-development/creating-apis/parameters",
-                  "api-development/creating-apis/return-types"
+                  "ko/api-development/creating-apis/api-decorator",
+                  "ko/api-development/creating-apis/http-methods",
+                  "ko/api-development/creating-apis/parameters",
+                  "ko/api-development/creating-apis/return-types"
                 ]
               },
               {
                 "group": "Frame",
                 "pages": [
-                  "api-development/frames/what-are-frames",
-                  "api-development/frames/creating-frames",
-                  "api-development/frames/use-cases"
+                  "ko/api-development/frames/what-are-frames",
+                  "ko/api-development/frames/creating-frames",
+                  "ko/api-development/frames/use-cases"
                 ]
               },
               {
                 "group": "Context",
                 "pages": [
-                  "api-development/context/sonamu-context",
-                  "api-development/context/getting-context",
-                  "api-development/context/custom-context"
+                  "ko/api-development/context/sonamu-context",
+                  "ko/api-development/context/getting-context",
+                  "ko/api-development/context/custom-context"
                 ]
               },
               {
                 "group": "검증",
                 "pages": [
-                  "api-development/validation/automatic-validation",
-                  "api-development/validation/custom-validation",
-                  "api-development/validation/error-handling"
+                  "ko/api-development/validation/automatic-validation",
+                  "ko/api-development/validation/custom-validation",
+                  "ko/api-development/validation/error-handling"
                 ]
               },
               {
                 "group": "파일 업로드",
                 "pages": [
-                  "api-development/file-upload/setup",
-                  "api-development/file-upload/uploaded-file-class",
-                  "api-development/file-upload/saving-files",
-                  "api-development/file-upload/url-generation"
+                  "ko/api-development/file-upload/setup",
+                  "ko/api-development/file-upload/uploaded-file-class",
+                  "ko/api-development/file-upload/saving-files",
+                  "ko/api-development/file-upload/url-generation"
                 ]
               },
               {
                 "group": "인증",
                 "pages": [
-                  "api-development/authentication/setup",
-                  "api-development/authentication/session-management",
-                  "api-development/authentication/protected-routes"
+                  "ko/api-development/authentication/setup",
+                  "ko/api-development/authentication/session-management",
+                  "ko/api-development/authentication/protected-routes"
                 ]
               }
             ]
@@ -192,35 +192,35 @@
               {
                 "group": "자동 생성 Service",
                 "pages": [
-                  "frontend-integration/generated-services/how-services-work",
-                  "frontend-integration/generated-services/using-services",
-                  "frontend-integration/generated-services/tanstack-query"
+                  "ko/frontend-integration/generated-services/how-services-work",
+                  "ko/frontend-integration/generated-services/using-services",
+                  "ko/frontend-integration/generated-services/tanstack-query"
                 ]
               },
               {
                 "group": "React 컴포넌트",
                 "pages": [
-                  "frontend-integration/react-components/scaffolding-views",
-                  "frontend-integration/react-components/id-async-select",
-                  "frontend-integration/react-components/search-input",
-                  "frontend-integration/react-components/custom-components"
+                  "ko/frontend-integration/react-components/scaffolding-views",
+                  "ko/frontend-integration/react-components/id-async-select",
+                  "ko/frontend-integration/react-components/search-input",
+                  "ko/frontend-integration/react-components/custom-components"
                 ]
               },
               {
                 "group": "타입 안전성",
                 "pages": [
-                  "frontend-integration/type-safety/shared-types",
-                  "frontend-integration/type-safety/api-type-inference",
-                  "frontend-integration/type-safety/compile-time-errors"
+                  "ko/frontend-integration/type-safety/shared-types",
+                  "ko/frontend-integration/type-safety/api-type-inference",
+                  "ko/frontend-integration/type-safety/compile-time-errors"
                 ]
               },
               {
                 "group": "SSR",
                 "pages": [
-                  "frontend-integration/ssr/ssr-setup",
-                  "frontend-integration/ssr/preloading-data",
-                  "frontend-integration/ssr/hydration-strategies",
-                  "frontend-integration/ssr/cache-control"
+                  "ko/frontend-integration/ssr/ssr-setup",
+                  "ko/frontend-integration/ssr/preloading-data",
+                  "ko/frontend-integration/ssr/hydration-strategies",
+                  "ko/frontend-integration/ssr/cache-control"
                 ]
               }
             ]
@@ -232,36 +232,36 @@
               {
                 "group": "테스트 작성하기",
                 "pages": [
-                  "testing/writing-tests/test-structure",
-                  "testing/writing-tests/scaffolding-tests",
-                  "testing/writing-tests/test-helpers"
+                  "ko/testing/writing-tests/test-structure",
+                  "ko/testing/writing-tests/scaffolding-tests",
+                  "ko/testing/writing-tests/test-helpers"
                 ]
               },
               {
                 "group": "Fixture",
                 "pages": [
-                  "testing/fixtures/creating-fixtures",
-                  "testing/fixtures/loading-fixtures",
-                  "testing/fixtures/syncing-fixtures",
-                  "testing/fixtures/test-database"
+                  "ko/testing/fixtures/creating-fixtures",
+                  "ko/testing/fixtures/loading-fixtures",
+                  "ko/testing/fixtures/syncing-fixtures",
+                  "ko/testing/fixtures/test-database"
                 ]
               },
               {
                 "group": "Naite",
                 "pages": [
-                  "testing/naite/what-is-naite",
-                  "testing/naite/recording-logs",
-                  "testing/naite/querying-logs",
-                  "testing/naite/debugging-tests",
-                  "testing/naite/naite-viewer"
+                  "ko/testing/naite/what-is-naite",
+                  "ko/testing/naite/recording-logs",
+                  "ko/testing/naite/querying-logs",
+                  "ko/testing/naite/debugging-tests",
+                  "ko/testing/naite/naite-viewer"
                 ]
               },
               {
                 "group": "Mocking",
                 "pages": [
-                  "testing/mocking/api-mocking",
-                  "testing/mocking/database-mocking",
-                  "testing/mocking/run-with-mock-context"
+                  "ko/testing/mocking/api-mocking",
+                  "ko/testing/mocking/database-mocking",
+                  "ko/testing/mocking/run-with-mock-context"
                 ]
               }
             ]
@@ -273,84 +273,84 @@
               {
                 "group": "캐싱 (BentoCache)",
                 "pages": [
-                  "advanced-features/caching/cache-configuration",
-                  "advanced-features/caching/cache-decorator",
-                  "advanced-features/caching/cache-strategies",
-                  "advanced-features/caching/cache-invalidation"
+                  "ko/advanced-features/caching/cache-configuration",
+                  "ko/advanced-features/caching/cache-decorator",
+                  "ko/advanced-features/caching/cache-strategies",
+                  "ko/advanced-features/caching/cache-invalidation"
                 ]
               },
               {
                 "group": "Cache-Control",
                 "pages": [
-                  "advanced-features/cache-control/what-is-cache-control",
-                  "advanced-features/cache-control/cache-presets",
-                  "advanced-features/cache-control/using-in-apis",
-                  "advanced-features/cache-control/using-in-ssr"
+                  "ko/advanced-features/cache-control/what-is-cache-control",
+                  "ko/advanced-features/cache-control/cache-presets",
+                  "ko/advanced-features/cache-control/using-in-apis",
+                  "ko/advanced-features/cache-control/using-in-ssr"
                 ]
               },
               {
                 "group": "응답 압축",
                 "pages": [
-                  "advanced-features/compress/compress-configuration",
-                  "advanced-features/compress/compress-presets",
-                  "advanced-features/compress/per-api-control",
-                  "advanced-features/compress/performance-optimization"
+                  "ko/advanced-features/compress/compress-configuration",
+                  "ko/advanced-features/compress/compress-presets",
+                  "ko/advanced-features/compress/per-api-control",
+                  "ko/advanced-features/compress/performance-optimization"
                 ]
               },
               {
                 "group": "파일 스토리지",
                 "pages": [
-                  "advanced-features/storage/storage-drivers",
-                  "advanced-features/storage/storage-manager",
-                  "advanced-features/storage/file-operations",
-                  "advanced-features/storage/url-builder"
+                  "ko/advanced-features/storage/storage-drivers",
+                  "ko/advanced-features/storage/storage-manager",
+                  "ko/advanced-features/storage/file-operations",
+                  "ko/advanced-features/storage/url-builder"
                 ]
               },
               {
                 "group": "Server-Sent Events",
                 "pages": [
-                  "advanced-features/sse/sse-setup",
-                  "advanced-features/sse/creating-sse-endpoints",
-                  "advanced-features/sse/client-integration"
+                  "ko/advanced-features/sse/sse-setup",
+                  "ko/advanced-features/sse/creating-sse-endpoints",
+                  "ko/advanced-features/sse/client-integration"
                 ]
               },
               {
                 "group": "AI 에이전트",
                 "pages": [
-                  "advanced-features/ai-agents/agent-configuration",
-                  "advanced-features/ai-agents/creating-agents",
-                  "advanced-features/ai-agents/using-ai-sdk"
+                  "ko/advanced-features/ai-agents/agent-configuration",
+                  "ko/advanced-features/ai-agents/creating-agents",
+                  "ko/advanced-features/ai-agents/using-ai-sdk"
                 ]
               },
               {
                 "group": "벡터 검색",
                 "pages": [
-                  "advanced-features/vector-search/pgvector-setup",
-                  "advanced-features/vector-search/embeddings",
-                  "advanced-features/vector-search/chunking",
-                  "advanced-features/vector-search/vector-search",
-                  "advanced-features/vector-search/hybrid-search"
+                  "ko/advanced-features/vector-search/pgvector-setup",
+                  "ko/advanced-features/vector-search/embeddings",
+                  "ko/advanced-features/vector-search/chunking",
+                  "ko/advanced-features/vector-search/vector-search",
+                  "ko/advanced-features/vector-search/hybrid-search"
                 ]
               },
               {
                 "group": "Workflow",
                 "pages": [
-                  "advanced-features/workflows/workflow-decorator",
-                  "advanced-features/workflows/steps",
-                  "advanced-features/workflows/worker-setup",
-                  "advanced-features/workflows/error-handling"
+                  "ko/advanced-features/workflows/workflow-decorator",
+                  "ko/advanced-features/workflows/steps",
+                  "ko/advanced-features/workflows/worker-setup",
+                  "ko/advanced-features/workflows/error-handling"
                 ]
               },
               {
                 "group": "다국어 (i18n)",
                 "pages": [
-                  "advanced-features/i18n/overview",
-                  "advanced-features/i18n/setup",
-                  "advanced-features/i18n/dictionary",
-                  "advanced-features/i18n/entity-labels",
-                  "advanced-features/i18n/helpers",
-                  "advanced-features/i18n/excel-import",
-                  "advanced-features/i18n/localized-columns"
+                  "ko/advanced-features/i18n/overview",
+                  "ko/advanced-features/i18n/setup",
+                  "ko/advanced-features/i18n/dictionary",
+                  "ko/advanced-features/i18n/entity-labels",
+                  "ko/advanced-features/i18n/helpers",
+                  "ko/advanced-features/i18n/excel-import",
+                  "ko/advanced-features/i18n/localized-columns"
                 ]
               }
             ]
@@ -362,39 +362,39 @@
               {
                 "group": "Sonamu CLI",
                 "pages": [
-                  "tools-and-cli/sonamu-cli/dev",
-                  "tools-and-cli/sonamu-cli/build",
-                  "tools-and-cli/sonamu-cli/migrate",
-                  "tools-and-cli/sonamu-cli/fixture",
-                  "tools-and-cli/sonamu-cli/stub",
-                  "tools-and-cli/sonamu-cli/scaffold"
+                  "ko/tools-and-cli/sonamu-cli/dev",
+                  "ko/tools-and-cli/sonamu-cli/build",
+                  "ko/tools-and-cli/sonamu-cli/migrate",
+                  "ko/tools-and-cli/sonamu-cli/fixture",
+                  "ko/tools-and-cli/sonamu-cli/stub",
+                  "ko/tools-and-cli/sonamu-cli/scaffold"
                 ]
               },
               {
                 "group": "Sonamu UI",
                 "pages": [
-                  "tools-and-cli/sonamu-ui/getting-started",
-                  "tools-and-cli/sonamu-ui/entity-management",
-                  "tools-and-cli/sonamu-ui/migration-tab",
-                  "tools-and-cli/sonamu-ui/scaffolding-tab",
-                  "tools-and-cli/sonamu-ui/subset-management",
-                  "tools-and-cli/sonamu-ui/tips-and-tricks"
+                  "ko/tools-and-cli/sonamu-ui/getting-started",
+                  "ko/tools-and-cli/sonamu-ui/entity-management",
+                  "ko/tools-and-cli/sonamu-ui/migration-tab",
+                  "ko/tools-and-cli/sonamu-ui/scaffolding-tab",
+                  "ko/tools-and-cli/sonamu-ui/subset-management",
+                  "ko/tools-and-cli/sonamu-ui/tips-and-tricks"
                 ]
               },
               {
                 "group": "VSCode Extension",
                 "pages": [
-                  "tools-and-cli/vscode-extension/installation",
-                  "tools-and-cli/vscode-extension/features",
-                  "tools-and-cli/vscode-extension/shortcuts"
+                  "ko/tools-and-cli/vscode-extension/installation",
+                  "ko/tools-and-cli/vscode-extension/features",
+                  "ko/tools-and-cli/vscode-extension/shortcuts"
                 ]
               },
               {
                 "group": "Hot Module Replacement",
                 "pages": [
-                  "tools-and-cli/hmr/how-hmr-works",
-                  "tools-and-cli/hmr/boundaries",
-                  "tools-and-cli/hmr/troubleshooting"
+                  "ko/tools-and-cli/hmr/how-hmr-works",
+                  "ko/tools-and-cli/hmr/boundaries",
+                  "ko/tools-and-cli/hmr/troubleshooting"
                 ]
               }
             ]
@@ -406,41 +406,41 @@
               {
                 "group": "sonamu.config.ts",
                 "pages": [
-                  "configuration/sonamu-config/project-settings",
-                  "configuration/sonamu-config/database",
-                  "configuration/sonamu-config/server",
-                  "configuration/sonamu-config/sync-targets",
-                  "configuration/sonamu-config/storage",
-                  "configuration/sonamu-config/cache",
-                  "configuration/sonamu-config/cache-control",
-                  "configuration/sonamu-config/compress",
-                  "configuration/sonamu-config/tasks",
-                  "configuration/sonamu-config/auth"
+                  "ko/configuration/sonamu-config/project-settings",
+                  "ko/configuration/sonamu-config/database",
+                  "ko/configuration/sonamu-config/server",
+                  "ko/configuration/sonamu-config/sync-targets",
+                  "ko/configuration/sonamu-config/storage",
+                  "ko/configuration/sonamu-config/cache",
+                  "ko/configuration/sonamu-config/cache-control",
+                  "ko/configuration/sonamu-config/compress",
+                  "ko/configuration/sonamu-config/tasks",
+                  "ko/configuration/sonamu-config/auth"
                 ]
               },
               {
                 "group": "로깅",
                 "pages": [
-                  "configuration/logging/logtape-setup",
-                  "configuration/logging/sinks-and-filters",
-                  "configuration/logging/category-logging",
-                  "configuration/logging/fastify-logging"
+                  "ko/configuration/logging/logtape-setup",
+                  "ko/configuration/logging/sinks-and-filters",
+                  "ko/configuration/logging/category-logging",
+                  "ko/configuration/logging/fastify-logging"
                 ]
               },
               {
                 "group": "환경 변수",
                 "pages": [
-                  "configuration/environment-variables/env-setup",
-                  "configuration/environment-variables/database-credentials",
-                  "configuration/environment-variables/api-keys"
+                  "ko/configuration/environment-variables/env-setup",
+                  "ko/configuration/environment-variables/database-credentials",
+                  "ko/configuration/environment-variables/api-keys"
                 ]
               },
               {
                 "group": "TypeScript 설정",
                 "pages": [
-                  "configuration/typescript/tsconfig",
-                  "configuration/typescript/path-mappings",
-                  "configuration/typescript/type-checking"
+                  "ko/configuration/typescript/tsconfig",
+                  "ko/configuration/typescript/path-mappings",
+                  "ko/configuration/typescript/type-checking"
                 ]
               }
             ]
@@ -452,50 +452,50 @@
               {
                 "group": "데코레이터",
                 "pages": [
-                  "api-reference/decorators/api",
-                  "api-reference/decorators/stream",
-                  "api-reference/decorators/transactional",
-                  "api-reference/decorators/upload",
-                  "api-reference/decorators/cache",
-                  "api-reference/decorators/workflow"
+                  "ko/api-reference/decorators/api",
+                  "ko/api-reference/decorators/stream",
+                  "ko/api-reference/decorators/transactional",
+                  "ko/api-reference/decorators/upload",
+                  "ko/api-reference/decorators/cache",
+                  "ko/api-reference/decorators/workflow"
                 ]
               },
               {
                 "group": "BaseModel",
                 "pages": [
-                  "api-reference/base-model/find-by-id",
-                  "api-reference/base-model/find-many",
-                  "api-reference/base-model/save",
-                  "api-reference/base-model/del",
-                  "api-reference/base-model/get-puri"
+                  "ko/api-reference/base-model/find-by-id",
+                  "ko/api-reference/base-model/find-many",
+                  "ko/api-reference/base-model/save",
+                  "ko/api-reference/base-model/del",
+                  "ko/api-reference/base-model/get-puri"
                 ]
               },
               {
                 "group": "Puri 메서드",
                 "pages": [
-                  "api-reference/puri-methods/select",
-                  "api-reference/puri-methods/where",
-                  "api-reference/puri-methods/join",
-                  "api-reference/puri-methods/order-by",
-                  "api-reference/puri-methods/limit",
-                  "api-reference/puri-methods/advanced-methods"
+                  "ko/api-reference/puri-methods/select",
+                  "ko/api-reference/puri-methods/where",
+                  "ko/api-reference/puri-methods/join",
+                  "ko/api-reference/puri-methods/order-by",
+                  "ko/api-reference/puri-methods/limit",
+                  "ko/api-reference/puri-methods/advanced-methods"
                 ]
               },
               {
                 "group": "Context",
                 "pages": [
-                  "api-reference/context/sonamu-context",
-                  "api-reference/context/auth-context",
-                  "api-reference/context/methods"
+                  "ko/api-reference/context/sonamu-context",
+                  "ko/api-reference/context/auth-context",
+                  "ko/api-reference/context/methods"
                 ]
               },
               {
                 "group": "예외 처리",
                 "pages": [
-                  "api-reference/exceptions/sonamu-error",
-                  "api-reference/exceptions/bad-request-error",
-                  "api-reference/exceptions/unauthorized-error",
-                  "api-reference/exceptions/custom-errors"
+                  "ko/api-reference/exceptions/sonamu-error",
+                  "ko/api-reference/exceptions/bad-request-error",
+                  "ko/api-reference/exceptions/unauthorized-error",
+                  "ko/api-reference/exceptions/custom-errors"
                 ]
               }
             ]
@@ -507,29 +507,29 @@
               {
                 "group": "자주 발생하는 오류",
                 "pages": [
-                  "troubleshooting/common-errors/port-in-use",
-                  "troubleshooting/common-errors/migration-errors",
-                  "troubleshooting/common-errors/type-errors",
-                  "troubleshooting/common-errors/hmr-issues",
-                  "troubleshooting/common-errors/database-connection",
-                  "troubleshooting/common-errors/pnpm-workspace"
+                  "ko/troubleshooting/common-errors/port-in-use",
+                  "ko/troubleshooting/common-errors/migration-errors",
+                  "ko/troubleshooting/common-errors/type-errors",
+                  "ko/troubleshooting/common-errors/hmr-issues",
+                  "ko/troubleshooting/common-errors/database-connection",
+                  "ko/troubleshooting/common-errors/pnpm-workspace"
                 ]
               },
               {
                 "group": "디버깅",
                 "pages": [
-                  "troubleshooting/debugging/using-naite",
-                  "troubleshooting/debugging/console-logging",
-                  "troubleshooting/debugging/source-maps",
-                  "troubleshooting/debugging/vitest-debug"
+                  "ko/troubleshooting/debugging/using-naite",
+                  "ko/troubleshooting/debugging/console-logging",
+                  "ko/troubleshooting/debugging/source-maps",
+                  "ko/troubleshooting/debugging/vitest-debug"
                 ]
               },
               {
                 "group": "성능",
                 "pages": [
-                  "troubleshooting/performance/query-optimization",
-                  "troubleshooting/performance/n-plus-one-problems",
-                  "troubleshooting/performance/caching-strategies"
+                  "ko/troubleshooting/performance/query-optimization",
+                  "ko/troubleshooting/performance/n-plus-one-problems",
+                  "ko/troubleshooting/performance/caching-strategies"
                 ]
               }
             ]
@@ -538,12 +538,546 @@
             "group": "자주 묻는 질문",
             "icon": "message-question",
             "pages": [
-              "faq/general",
-              "faq/entity-and-model",
-              "faq/database",
-              "faq/api",
-              "faq/testing",
-              "faq/deployment"
+              "ko/faq/general",
+              "ko/faq/entity-and-model",
+              "ko/faq/database",
+              "ko/faq/api",
+              "ko/faq/testing",
+              "ko/faq/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "language": "en",
+        "label": "English",
+        "default": false,
+        "groups": [
+          {
+            "group": "Get Started",
+            "icon": "rocket",
+            "pages": [
+              "en/getting-started/introduction",
+              "en/getting-started/installation",
+              "en/getting-started/quick-start",
+              "en/getting-started/project-structure",
+              "en/getting-started/first-entity",
+              "en/getting-started/development-workflow"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "icon": "lightbulb",
+            "pages": [
+              "en/core-concepts/how-sonamu-works",
+              {
+                "group": "Entity",
+                "pages": [
+                  "en/core-concepts/entity/defining-entities",
+                  "en/core-concepts/entity/using-sonamu-ui",
+                  "en/core-concepts/entity/field-types",
+                  "en/core-concepts/entity/relations",
+                  "en/core-concepts/entity/enums"
+                ]
+              },
+              {
+                "group": "Model",
+                "pages": [
+                  "en/core-concepts/model/what-is-model",
+                  "en/core-concepts/model/creating-models",
+                  "en/core-concepts/model/api-decorator",
+                  "en/core-concepts/model/business-logic",
+                  "en/core-concepts/model/basemodel-methods"
+                ]
+              },
+              {
+                "group": "Auto Generation",
+                "pages": [
+                  "en/core-concepts/auto-generation/what-gets-generated",
+                  "en/core-concepts/auto-generation/syncer",
+                  "en/core-concepts/auto-generation/when-files-regenerate",
+                  "en/core-concepts/auto-generation/customizing-generated-code"
+                ]
+              },
+              {
+                "group": "Type System",
+                "pages": [
+                  "en/core-concepts/type-system/entity-types",
+                  "en/core-concepts/type-system/generated-types",
+                  "en/core-concepts/type-system/e2e-type-safety",
+                  "en/core-concepts/type-system/zod-validation"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Database",
+            "icon": "database",
+            "pages": [
+              {
+                "group": "Puri Query Builder",
+                "pages": [
+                  "en/database/puri/basic-queries",
+                  "en/database/puri/joins",
+                  "en/database/puri/aggregations",
+                  "en/database/puri/raw-queries",
+                  "en/database/puri/type-safety",
+                  "en/database/puri/advanced-patterns"
+                ]
+              },
+              {
+                "group": "Subset",
+                "pages": [
+                  "en/database/subsets/what-are-subsets",
+                  "en/database/subsets/defining-subsets",
+                  "en/database/subsets/using-subsets",
+                  "en/database/subsets/nested-relations"
+                ]
+              },
+              {
+                "group": "UpsertBuilder",
+                "pages": [
+                  "en/database/upsert-builder/basic-usage",
+                  "en/database/upsert-builder/relations",
+                  "en/database/upsert-builder/batch-operations",
+                  "en/database/upsert-builder/advanced-patterns"
+                ]
+              },
+              {
+                "group": "Migrations",
+                "pages": [
+                  "en/database/migrations/how-migrations-work",
+                  "en/database/migrations/creating-migrations",
+                  "en/database/migrations/running-migrations",
+                  "en/database/migrations/rolling-back",
+                  "en/database/migrations/migration-strategies"
+                ]
+              },
+              {
+                "group": "Transactions",
+                "pages": [
+                  "en/database/transactions/transactional-decorator",
+                  "en/database/transactions/manual-transactions",
+                  "en/database/transactions/best-practices"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "API Development",
+            "icon": "code",
+            "pages": [
+              {
+                "group": "Creating APIs",
+                "pages": [
+                  "en/api-development/creating-apis/api-decorator",
+                  "en/api-development/creating-apis/http-methods",
+                  "en/api-development/creating-apis/parameters",
+                  "en/api-development/creating-apis/return-types"
+                ]
+              },
+              {
+                "group": "Frame",
+                "pages": [
+                  "en/api-development/frames/what-are-frames",
+                  "en/api-development/frames/creating-frames",
+                  "en/api-development/frames/use-cases"
+                ]
+              },
+              {
+                "group": "Context",
+                "pages": [
+                  "en/api-development/context/sonamu-context",
+                  "en/api-development/context/getting-context",
+                  "en/api-development/context/custom-context"
+                ]
+              },
+              {
+                "group": "Validation",
+                "pages": [
+                  "en/api-development/validation/automatic-validation",
+                  "en/api-development/validation/custom-validation",
+                  "en/api-development/validation/error-handling"
+                ]
+              },
+              {
+                "group": "File Upload",
+                "pages": [
+                  "en/api-development/file-upload/setup",
+                  "en/api-development/file-upload/uploaded-file-class",
+                  "en/api-development/file-upload/saving-files",
+                  "en/api-development/file-upload/url-generation"
+                ]
+              },
+              {
+                "group": "Authentication",
+                "pages": [
+                  "en/api-development/authentication/setup",
+                  "en/api-development/authentication/session-management",
+                  "en/api-development/authentication/protected-routes"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Frontend Integration",
+            "icon": "browser",
+            "pages": [
+              {
+                "group": "Generated Services",
+                "pages": [
+                  "en/frontend-integration/generated-services/how-services-work",
+                  "en/frontend-integration/generated-services/using-services",
+                  "en/frontend-integration/generated-services/tanstack-query"
+                ]
+              },
+              {
+                "group": "React Components",
+                "pages": [
+                  "en/frontend-integration/react-components/scaffolding-views",
+                  "en/frontend-integration/react-components/id-async-select",
+                  "en/frontend-integration/react-components/search-input",
+                  "en/frontend-integration/react-components/custom-components"
+                ]
+              },
+              {
+                "group": "Type Safety",
+                "pages": [
+                  "en/frontend-integration/type-safety/shared-types",
+                  "en/frontend-integration/type-safety/api-type-inference",
+                  "en/frontend-integration/type-safety/compile-time-errors"
+                ]
+              },
+              {
+                "group": "SSR",
+                "pages": [
+                  "en/frontend-integration/ssr/ssr-setup",
+                  "en/frontend-integration/ssr/preloading-data",
+                  "en/frontend-integration/ssr/hydration-strategies",
+                  "en/frontend-integration/ssr/cache-control"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Testing",
+            "icon": "flask",
+            "pages": [
+              {
+                "group": "Writing Tests",
+                "pages": [
+                  "en/testing/writing-tests/test-structure",
+                  "en/testing/writing-tests/scaffolding-tests",
+                  "en/testing/writing-tests/test-helpers"
+                ]
+              },
+              {
+                "group": "Fixture",
+                "pages": [
+                  "en/testing/fixtures/creating-fixtures",
+                  "en/testing/fixtures/loading-fixtures",
+                  "en/testing/fixtures/syncing-fixtures",
+                  "en/testing/fixtures/test-database"
+                ]
+              },
+              {
+                "group": "Naite",
+                "pages": [
+                  "en/testing/naite/what-is-naite",
+                  "en/testing/naite/recording-logs",
+                  "en/testing/naite/querying-logs",
+                  "en/testing/naite/debugging-tests",
+                  "en/testing/naite/naite-viewer"
+                ]
+              },
+              {
+                "group": "Mocking",
+                "pages": [
+                  "en/testing/mocking/api-mocking",
+                  "en/testing/mocking/database-mocking",
+                  "en/testing/mocking/run-with-mock-context"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "icon": "sparkles",
+            "pages": [
+              {
+                "group": "Caching (BentoCache)",
+                "pages": [
+                  "en/advanced-features/caching/cache-configuration",
+                  "en/advanced-features/caching/cache-decorator",
+                  "en/advanced-features/caching/cache-strategies",
+                  "en/advanced-features/caching/cache-invalidation"
+                ]
+              },
+              {
+                "group": "Cache-Control",
+                "pages": [
+                  "en/advanced-features/cache-control/what-is-cache-control",
+                  "en/advanced-features/cache-control/cache-presets",
+                  "en/advanced-features/cache-control/using-in-apis",
+                  "en/advanced-features/cache-control/using-in-ssr"
+                ]
+              },
+              {
+                "group": "Response Compression",
+                "pages": [
+                  "en/advanced-features/compress/compress-configuration",
+                  "en/advanced-features/compress/compress-presets",
+                  "en/advanced-features/compress/per-api-control",
+                  "en/advanced-features/compress/performance-optimization"
+                ]
+              },
+              {
+                "group": "File Storage",
+                "pages": [
+                  "en/advanced-features/storage/storage-drivers",
+                  "en/advanced-features/storage/storage-manager",
+                  "en/advanced-features/storage/file-operations",
+                  "en/advanced-features/storage/url-builder"
+                ]
+              },
+              {
+                "group": "Server-Sent Events",
+                "pages": [
+                  "en/advanced-features/sse/sse-setup",
+                  "en/advanced-features/sse/creating-sse-endpoints",
+                  "en/advanced-features/sse/client-integration"
+                ]
+              },
+              {
+                "group": "AI Agents",
+                "pages": [
+                  "en/advanced-features/ai-agents/agent-configuration",
+                  "en/advanced-features/ai-agents/creating-agents",
+                  "en/advanced-features/ai-agents/using-ai-sdk"
+                ]
+              },
+              {
+                "group": "Vector Search",
+                "pages": [
+                  "en/advanced-features/vector-search/pgvector-setup",
+                  "en/advanced-features/vector-search/embeddings",
+                  "en/advanced-features/vector-search/chunking",
+                  "en/advanced-features/vector-search/vector-search",
+                  "en/advanced-features/vector-search/hybrid-search"
+                ]
+              },
+              {
+                "group": "Workflow",
+                "pages": [
+                  "en/advanced-features/workflows/workflow-decorator",
+                  "en/advanced-features/workflows/steps",
+                  "en/advanced-features/workflows/worker-setup",
+                  "en/advanced-features/workflows/error-handling"
+                ]
+              },
+              {
+                "group": "Internationalization (i18n)",
+                "pages": [
+                  "en/advanced-features/i18n/overview",
+                  "en/advanced-features/i18n/setup",
+                  "en/advanced-features/i18n/dictionary",
+                  "en/advanced-features/i18n/entity-labels",
+                  "en/advanced-features/i18n/helpers",
+                  "en/advanced-features/i18n/excel-import",
+                  "en/advanced-features/i18n/localized-columns"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Tools & CLI",
+            "icon": "wrench",
+            "pages": [
+              {
+                "group": "Sonamu CLI",
+                "pages": [
+                  "en/tools-and-cli/sonamu-cli/dev",
+                  "en/tools-and-cli/sonamu-cli/build",
+                  "en/tools-and-cli/sonamu-cli/migrate",
+                  "en/tools-and-cli/sonamu-cli/fixture",
+                  "en/tools-and-cli/sonamu-cli/stub",
+                  "en/tools-and-cli/sonamu-cli/scaffold"
+                ]
+              },
+              {
+                "group": "Sonamu UI",
+                "pages": [
+                  "en/tools-and-cli/sonamu-ui/getting-started",
+                  "en/tools-and-cli/sonamu-ui/entity-management",
+                  "en/tools-and-cli/sonamu-ui/migration-tab",
+                  "en/tools-and-cli/sonamu-ui/scaffolding-tab",
+                  "en/tools-and-cli/sonamu-ui/subset-management",
+                  "en/tools-and-cli/sonamu-ui/tips-and-tricks"
+                ]
+              },
+              {
+                "group": "VSCode Extension",
+                "pages": [
+                  "en/tools-and-cli/vscode-extension/installation",
+                  "en/tools-and-cli/vscode-extension/features",
+                  "en/tools-and-cli/vscode-extension/shortcuts"
+                ]
+              },
+              {
+                "group": "Hot Module Replacement",
+                "pages": [
+                  "en/tools-and-cli/hmr/how-hmr-works",
+                  "en/tools-and-cli/hmr/boundaries",
+                  "en/tools-and-cli/hmr/troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Configuration",
+            "icon": "gear",
+            "pages": [
+              {
+                "group": "sonamu.config.ts",
+                "pages": [
+                  "en/configuration/sonamu-config/project-settings",
+                  "en/configuration/sonamu-config/database",
+                  "en/configuration/sonamu-config/server",
+                  "en/configuration/sonamu-config/sync-targets",
+                  "en/configuration/sonamu-config/storage",
+                  "en/configuration/sonamu-config/cache",
+                  "en/configuration/sonamu-config/cache-control",
+                  "en/configuration/sonamu-config/compress",
+                  "en/configuration/sonamu-config/tasks",
+                  "en/configuration/sonamu-config/auth"
+                ]
+              },
+              {
+                "group": "Logging",
+                "pages": [
+                  "en/configuration/logging/logtape-setup",
+                  "en/configuration/logging/sinks-and-filters",
+                  "en/configuration/logging/category-logging",
+                  "en/configuration/logging/fastify-logging"
+                ]
+              },
+              {
+                "group": "Environment Variables",
+                "pages": [
+                  "en/configuration/environment-variables/env-setup",
+                  "en/configuration/environment-variables/database-credentials",
+                  "en/configuration/environment-variables/api-keys"
+                ]
+              },
+              {
+                "group": "TypeScript Config",
+                "pages": [
+                  "en/configuration/typescript/tsconfig",
+                  "en/configuration/typescript/path-mappings",
+                  "en/configuration/typescript/type-checking"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "API Reference",
+            "icon": "book",
+            "pages": [
+              {
+                "group": "Decorators",
+                "pages": [
+                  "en/api-reference/decorators/api",
+                  "en/api-reference/decorators/stream",
+                  "en/api-reference/decorators/transactional",
+                  "en/api-reference/decorators/upload",
+                  "en/api-reference/decorators/cache",
+                  "en/api-reference/decorators/workflow"
+                ]
+              },
+              {
+                "group": "BaseModel",
+                "pages": [
+                  "en/api-reference/base-model/find-by-id",
+                  "en/api-reference/base-model/find-many",
+                  "en/api-reference/base-model/save",
+                  "en/api-reference/base-model/del",
+                  "en/api-reference/base-model/get-puri"
+                ]
+              },
+              {
+                "group": "Puri Methods",
+                "pages": [
+                  "en/api-reference/puri-methods/select",
+                  "en/api-reference/puri-methods/where",
+                  "en/api-reference/puri-methods/join",
+                  "en/api-reference/puri-methods/order-by",
+                  "en/api-reference/puri-methods/limit",
+                  "en/api-reference/puri-methods/advanced-methods"
+                ]
+              },
+              {
+                "group": "Context",
+                "pages": [
+                  "en/api-reference/context/sonamu-context",
+                  "en/api-reference/context/auth-context",
+                  "en/api-reference/context/methods"
+                ]
+              },
+              {
+                "group": "Exceptions",
+                "pages": [
+                  "en/api-reference/exceptions/sonamu-error",
+                  "en/api-reference/exceptions/bad-request-error",
+                  "en/api-reference/exceptions/unauthorized-error",
+                  "en/api-reference/exceptions/custom-errors"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "icon": "life-ring",
+            "pages": [
+              {
+                "group": "Common Errors",
+                "pages": [
+                  "en/troubleshooting/common-errors/port-in-use",
+                  "en/troubleshooting/common-errors/migration-errors",
+                  "en/troubleshooting/common-errors/type-errors",
+                  "en/troubleshooting/common-errors/hmr-issues",
+                  "en/troubleshooting/common-errors/database-connection",
+                  "en/troubleshooting/common-errors/pnpm-workspace"
+                ]
+              },
+              {
+                "group": "Debugging",
+                "pages": [
+                  "en/troubleshooting/debugging/using-naite",
+                  "en/troubleshooting/debugging/console-logging",
+                  "en/troubleshooting/debugging/source-maps",
+                  "en/troubleshooting/debugging/vitest-debug"
+                ]
+              },
+              {
+                "group": "Performance",
+                "pages": [
+                  "en/troubleshooting/performance/query-optimization",
+                  "en/troubleshooting/performance/n-plus-one-problems",
+                  "en/troubleshooting/performance/caching-strategies"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "FAQ",
+            "icon": "message-question",
+            "pages": [
+              "en/faq/general",
+              "en/faq/entity-and-model",
+              "en/faq/database",
+              "en/faq/api",
+              "en/faq/testing",
+              "en/faq/deployment"
             ]
           }
         ]
