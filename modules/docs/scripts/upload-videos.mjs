@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * 20MB 초과 mp4 → S3 업로드 + mdx 경로 치환 + 로컬 파일 이동
+ * - autoPlay 제거, preload="metadata" 추가 (대용량 영상 최적화)
  * Usage: pnpm upload-videos [--dry-run]
  */
 
@@ -98,6 +99,40 @@ async function moveToArchive(filePath, filename) {
   }
 }
 
+/**
+ * 20MB 초과 영상의 video 태그에서 autoPlay 제거 + preload="metadata" 추가
+ */
+function optimizeVideoTag(content, cdnUrl) {
+  // video 태그에서 해당 CDN URL을 src로 가진 것 찾기
+  // 멀티라인 video 태그도 처리
+  const videoRegex = /<video[\s\S]*?>/g;
+  
+  return content.replace(videoRegex, (videoTag) => {
+    // 이 video 태그가 해당 CDN URL을 포함하는지 확인
+    if (!videoTag.includes(cdnUrl)) {
+      return videoTag;
+    }
+    
+    let updated = videoTag;
+    
+    // autoPlay 제거 (대소문자 무관)
+    updated = updated.replace(/\s+autoPlay/gi, '');
+    updated = updated.replace(/autoPlay\s+/gi, '');
+    updated = updated.replace(/autoPlay/gi, '');
+    
+    // preload 속성 처리
+    if (updated.includes('preload=')) {
+      // 기존 preload 값을 metadata로 변경
+      updated = updated.replace(/preload="[^"]*"/i, 'preload="metadata"');
+    } else {
+      // preload 속성이 없으면 추가
+      updated = updated.replace(/<video\s+/, '<video\n    preload="metadata"\n    ');
+    }
+    
+    return updated;
+  });
+}
+
 async function replaceInMdxFiles(filename) {
   const cdnUrl = `${CDN_BASE}/${filename}`;
   const mdxFiles = await findMdxFiles(DOCS_DIR);
@@ -114,11 +149,17 @@ async function replaceInMdxFiles(filename) {
     let content = await readFile(mdxPath, "utf-8");
     let modified = false;
 
+    // 경로 치환
     for (const pattern of localPatterns) {
       if (content.includes(pattern)) {
         content = content.split(pattern).join(cdnUrl);
         modified = true;
       }
+    }
+
+    // 20MB 초과 영상: autoPlay 제거 + preload="metadata" 추가
+    if (modified) {
+      content = optimizeVideoTag(content, cdnUrl);
     }
 
     if (modified) {
@@ -156,7 +197,7 @@ async function main() {
     const uploaded = await uploadToS3(video.path, video.name);
     if (!uploaded) continue;
 
-    // mdx 치환
+    // mdx 치환 + video 태그 최적화
     const replacedCount = await replaceInMdxFiles(video.name);
     if (replacedCount === 0) {
       console.log(`  ⚠️  mdx에서 참조 없음`);
