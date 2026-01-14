@@ -350,7 +350,7 @@ async findById(id: number) {
 
 ```typescript
 @api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar() {
   const { file } = Sonamu.getUploadContext();
   // 파일 처리

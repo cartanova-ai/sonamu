@@ -41,7 +41,7 @@ import type { UploadedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -60,7 +60,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadToS3(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -256,7 +256,7 @@ const signedUrl = await disk.getSignedUrl(key, expiresIn);
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -282,7 +282,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -309,7 +309,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class MediaModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadMedia(params: {
     file: UploadedFile;
     category: "public" | "private";
@@ -334,7 +334,7 @@ import sharp from "sharp";
 
 class ImageModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadOptimized(params: {
     image: UploadedFile;
   }): Promise<{
@@ -395,7 +395,7 @@ class ImageModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadWithBackup(params: {
     file: UploadedFile;
   }): Promise<{
@@ -503,7 +503,7 @@ import fs from "fs";
 
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadLarge(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -539,7 +539,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadWithMetadata(params: {
     file: UploadedFile;
     title?: string;

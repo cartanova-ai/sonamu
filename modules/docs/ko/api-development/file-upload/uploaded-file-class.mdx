@@ -39,7 +39,7 @@ import type { UploadedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<any> {
@@ -78,7 +78,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -101,7 +101,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadToS3(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -117,7 +117,7 @@ class FileModel extends BaseModelClass {
   }
   
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadPublic(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -141,7 +141,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async processImage(params: {
     image: UploadedFile;
   }): Promise<{ url: string }> {
@@ -186,7 +186,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadWithHash(params: {
     file: UploadedFile;
   }): Promise<{
@@ -250,7 +250,7 @@ class FileValidator {
 // 사용
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async upload(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -286,7 +286,7 @@ class FileValidator {
 // 사용
 class ImageModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadImage(params: {
     image: UploadedFile;
   }): Promise<{ url: string }> {
@@ -329,7 +329,7 @@ class FileValidator {
 // 사용
 class DocumentModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadDocument(params: {
     document: UploadedFile;
   }): Promise<{ url: string }> {
@@ -417,7 +417,7 @@ class FileValidator {
 // 사용
 class MediaModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadImage(params: {
     image: UploadedFile;
   }): Promise<{ url: string }> {
@@ -439,7 +439,7 @@ class MediaModel extends BaseModelClass {
 ```typescript
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadProfileImage(params: {
     image: UploadedFile;
   }): Promise<{
@@ -509,7 +509,7 @@ class UserModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadMultiple(params: {
     files: UploadedFile[];
     category?: string;
@@ -599,7 +599,7 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadAdvanced(params: {
     file: UploadedFile;
   }): Promise<any> {

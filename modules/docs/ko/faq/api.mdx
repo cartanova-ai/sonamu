@@ -143,7 +143,7 @@ async updateProfile(
 import { api, upload, Sonamu } from "sonamu";
 
 @api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
@@ -163,7 +163,7 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
 import { api, upload, Sonamu } from "sonamu";
 
 @api({ httpMethod: "POST" })
-@upload({ mode: "multiple" })
+@upload()
 async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }> {
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data

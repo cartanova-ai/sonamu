@@ -382,7 +382,7 @@ import type { User, Post } from "@/types";
 
 ```typescript
 @api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   // Type: UploadedFile | undefined
@@ -399,7 +399,7 @@ async uploadFile() {
 
 ```typescript
 @api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   

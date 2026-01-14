@@ -52,7 +52,7 @@ class FileModelClass extends BaseModelClass<
   
   // 단일 파일 업로드
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadSingle(params: {
     file: UploadedFile;
     title?: string;
@@ -111,7 +111,7 @@ class FileModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadMultiple(params: {
     files: UploadedFile[];
     category?: string;
@@ -255,7 +255,7 @@ class FileModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadToS3(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -271,7 +271,7 @@ class FileModelClass extends BaseModelClass<
   }
   
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadPublic(params: {
     file: UploadedFile;
   }): Promise<{ url: string }> {
@@ -336,7 +336,7 @@ class ImageModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadImage(params: {
     image: UploadedFile;
   }): Promise<{ imageId: number; url: string }> {
@@ -404,7 +404,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadProfileImage(params: {
     image: UploadedFile;
   }): Promise<{
@@ -494,7 +494,7 @@ class PostModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  @upload({ mode: "multiple" })
+  @upload()
   async createWithAttachments(params: {
     title: string;
     content: string;

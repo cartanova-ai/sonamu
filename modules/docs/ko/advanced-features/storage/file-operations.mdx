@@ -37,7 +37,7 @@ sequenceDiagram
 import { BaseModel, api, upload, Sonamu } from "sonamu";
 
 class UserModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
@@ -69,7 +69,7 @@ await fetch('/api/user/uploadAvatar', {
 
 ```typescript
 class PostModelClass extends BaseModel {
-  @upload({ mode: 'multiple' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
     const { files } = Sonamu.getUploadContext();
@@ -118,7 +118,7 @@ type UploadContext = {
 ### 사용 예제
 
 ```typescript
-@upload({ mode: 'single' })
+@upload()
 @api({ httpMethod: 'POST' })
 async upload() {
   const { file } = Sonamu.getUploadContext();
@@ -262,7 +262,7 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 
 ```typescript
 class UserModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
@@ -305,7 +305,7 @@ class UserModelClass extends BaseModel {
 
 ```typescript
 class PostModelClass extends BaseModel {
-  @upload({ mode: 'multiple' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
     const { files } = Sonamu.getUploadContext();
@@ -343,7 +343,7 @@ class PostModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
     const { file } = Sonamu.getUploadContext();
@@ -382,7 +382,7 @@ class FileModelClass extends BaseModel {
 
 ```typescript
 class MediaModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadMedia() {
     const { file } = Sonamu.getUploadContext();
@@ -427,7 +427,7 @@ class MediaModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async upload(visibility: 'public' | 'private', ctx: Context) {
     const { file } = Sonamu.getUploadContext();

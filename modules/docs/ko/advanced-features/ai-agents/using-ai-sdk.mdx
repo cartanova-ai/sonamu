@@ -320,7 +320,7 @@ import { BaseModel, upload, api } from "sonamu";
 import { rtzr } from 'sonamu/ai/providers/rtzr';
 
 class TranscriptionModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async transcribeAudio() {
     const { file } = Sonamu.getUploadContext();
@@ -409,7 +409,7 @@ import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
 class ImageAnalysisModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async analyzeImage() {
     const { file } = Sonamu.getUploadContext();

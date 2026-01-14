@@ -328,7 +328,7 @@ Sonamu로 고객 지원 시스템을 만들고 있습니다.
 **1단계: 문서 업로드 API**
 ```typescript
 class KnowledgeBaseModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadDocument() {
     const { file } = Sonamu.getUploadContext();

@@ -130,7 +130,7 @@ async save(params: UserSaveParams[]): Promise<number[]> {
   httpMethod: "POST",
   clients: ["axios-multipart"],
 })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string }> {
   // ...
 }
@@ -425,7 +425,7 @@ async updateUserAndProfile(
   httpMethod: "POST",
   clients: ["axios-multipart"],
 })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string }> {
   const { file } = Sonamu.getUploadContext();
   
@@ -444,8 +444,10 @@ async uploadAvatar(): Promise<{ url: string }> {
 
 | 옵션 | 설명 | 사용 예시 |
 |------|------|-----------|
-| `mode: "single"` | 단일 파일 | 프로필 이미지 |
-| `mode: "multiple"` | 여러 파일 | 갤러리 업로드 |
+| `limits.fileSize` | 최대 파일 크기 (bytes) | `10 * 1024 * 1024` (10MB) |
+| `limits.files` | 최대 파일 개수 | `5` |
+
+단일/다중 파일 여부는 파라미터 타입(`UploadedFile` vs `UploadedFile[]`)으로 결정됩니다.
 
 ## API 경로 규칙
 

@@ -137,7 +137,7 @@ async transferMoney(
 
 ```typescript
 @api()
-@upload({ mode: "single" })
+@upload()
 async uploadProfileImage(ctx: Context) {
   const { file } = Sonamu.getUploadContext();
 

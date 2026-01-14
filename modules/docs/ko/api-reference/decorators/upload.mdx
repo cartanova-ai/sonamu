@@ -3,19 +3,22 @@ title: '@upload'
 description: '파일 업로드 API 생성 데코레이터'
 ---
 
-`@upload` 데코레이터는 파일 업로드를 처리하는 API를 생성합니다. Multipart form-data 요청을 자동으로 파싱하고, 파일 객체를 제공합니다.
+`@upload` 데코레이터는 파일 업로드를 처리하는 API를 생성합니다. Multipart form-data 요청을 자동으로 파싱하고, 파일 객체를 제공합니다. `@api` 데코레이터 없이도 독립적으로 사용할 수 있으며, 자동으로 `POST` 메서드와 multipart 클라이언트(`axios-multipart`, `tanstack-mutation-multipart`)를 설정합니다.
 
 ## 기본 사용법
 
+단일/다중 파일 여부는 메서드의 파라미터 타입으로 결정됩니다. `UploadedFile` 타입은 단일 파일, `UploadedFile[]` 타입은 다중 파일입니다.
+
 ```typescript
-import { BaseModelClass, api, upload } from "sonamu";
+import { BaseModelClass, upload } from "sonamu";
+import type { UploadedFile } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadAvatar() {
-    const { file } = Sonamu.getUploadContext();
-    
+  // 단일 파일 업로드 - UploadedFile 타입 사용
+  @upload()
+  async uploadAvatar(params: { file: UploadedFile }) {
+    const { file } = params;
+
     if (!file) {
       throw new Error("No file uploaded");
     }
@@ -23,7 +26,7 @@ class FileModelClass extends BaseModelClass {
     // 파일 저장
     const key = `avatars/${Date.now()}_${file.filename}`;
     const url = await file.saveToDisk(key);
-    
+
     return { url, filename: file.filename, size: file.size };
   }
 }
@@ -31,25 +34,42 @@ class FileModelClass extends BaseModelClass {
 
 ## 옵션
 
-### mode
+### limits
 
-파일 업로드 모드를 지정합니다.
+파일 업로드 제한을 설정합니다. Fastify multipart의 `limits` 옵션을 그대로 받습니다.
 
 ```typescript
-type UploadMode = "single" | "multiple";
+type UploadDecoratorOptions = {
+  limits?: {
+    fileSize?: number;    // 최대 파일 크기 (bytes)
+    files?: number;       // 최대 파일 개수
+    fields?: number;      // 최대 필드 개수
+    fieldSize?: number;   // 최대 필드 크기
+    parts?: number;       // 최대 파트 개수
+  };
+};
 ```
 
-**기본값:** `"single"`
+```typescript
+@upload({
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 5,                    // 최대 5개 파일
+  }
+})
+async uploadWithLimits(params: { files: UploadedFile[] }) {
+  // ...
+}
+```
 
 <Tabs>
-  <Tab title="single (단일 파일)" icon="file">
+  <Tab title="단일 파일" icon="file">
     ```typescript
-    @api({ httpMethod: "POST" })
-    @upload({ mode: "single" })
-    async uploadAvatar() {
-      const { file } = Sonamu.getUploadContext();
-      
-      // file: UploadedFile | undefined
+    // 파라미터 타입이 UploadedFile이면 단일 파일
+    @upload()
+    async uploadAvatar(params: { file: UploadedFile }) {
+      const { file } = params;
+
       if (!file) {
         throw new Error("No file");
       }
@@ -62,14 +82,13 @@ type UploadMode = "single" | "multiple";
     ```
   </Tab>
 
-  <Tab title="multiple (여러 파일)" icon="files">
+  <Tab title="다중 파일" icon="files">
     ```typescript
-    @api({ httpMethod: "POST" })
-    @upload({ mode: "multiple" })
-    async uploadDocuments() {
-      const { files } = Sonamu.getUploadContext();
-      
-      // files: UploadedFile[]
+    // 파라미터 타입이 UploadedFile[]이면 다중 파일
+    @upload()
+    async uploadDocuments(params: { files: UploadedFile[] }) {
+      const { files } = params;
+
       if (files.length === 0) {
         throw new Error("No files");
       }
@@ -90,16 +109,9 @@ type UploadMode = "single" | "multiple";
   </Tab>
 </Tabs>
 
-## UploadContext 사용법
+## 파라미터로 파일 접근
 
-`Sonamu.getUploadContext()`로 업로드된 파일에 접근합니다.
-
-```typescript
-interface UploadContext {
-  file: UploadedFile | undefined;    // single 모드
-  files: UploadedFile[];             // multiple 모드
-}
-```
+파일은 메서드의 파라미터로 직접 전달됩니다. 파라미터 이름과 타입에 따라 단일/다중 파일이 결정됩니다.
 
 ### UploadedFile 객체
 
@@ -140,7 +152,7 @@ class UploadedFile {
 ### 파일 정보 확인
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   
@@ -160,7 +172,7 @@ async uploadFile() {
 ### 파일 읽기
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async processImage() {
   const { file } = Sonamu.getUploadContext();
   
@@ -179,7 +191,7 @@ async processImage() {
 ### 파일 저장
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadDocument() {
   const { file } = Sonamu.getUploadContext();
   
@@ -198,7 +210,7 @@ async uploadDocument() {
 ### MD5 해시 계산
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadWithHash() {
   const { file } = Sonamu.getUploadContext();
   
@@ -218,7 +230,7 @@ async uploadWithHash() {
 Sonamu는 여러 스토리지 드라이버를 제공합니다.
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadToS3() {
   const { file } = Sonamu.getUploadContext();
   
@@ -243,7 +255,7 @@ async uploadToS3() {
   httpMethod: "POST",
   clients: ["axios-multipart"]
 })
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   // 파일 업로드 API
 }
@@ -257,7 +269,7 @@ async uploadFile() {
 
 ```typescript
 @api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 @transactional()
 async uploadAndSave() {
   const { file } = Sonamu.getUploadContext();
@@ -396,7 +408,7 @@ function FileUploader() {
 ### MIME 타입 검증
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadImage() {
   const { file } = Sonamu.getUploadContext();
   
@@ -412,7 +424,7 @@ async uploadImage() {
 ### 파일 크기 검증
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadDocument() {
   const { file } = Sonamu.getUploadContext();
   
@@ -428,7 +440,7 @@ async uploadDocument() {
 ### 파일 확장자 검증
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   
@@ -448,7 +460,7 @@ async uploadFile() {
 ```typescript
 import sharp from "sharp";
 
-@upload({ mode: "single" })
+@upload()
 async uploadAndResizeImage() {
   const { file } = Sonamu.getUploadContext();
   const buffer = await file.toBuffer();
@@ -487,11 +499,11 @@ async uploadAndResizeImage() {
 ```typescript
 // ✅ 권장
 @api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {}
 
 // ⚠️ 동작하지만 권장하지 않음
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {}
 ```
 
@@ -509,18 +521,11 @@ async uploadFile() {
 
 ### 3. clients 자동 설정
 
-`@upload`를 사용하면 `clients` 옵션이 자동으로 설정됩니다:
+`@upload`를 사용하면 `clients` 옵션이 자동으로 `["axios-multipart", "tanstack-mutation-multipart"]`로 설정됩니다:
 
 ```typescript
-// mode: "single"
-@upload({ mode: "single" })
-async uploadFile() {
-  // clients: ["axios-multipart", "tanstack-mutation-multipart"]
-}
-
-// mode: "multiple"
-@upload({ mode: "multiple" })
-async uploadFiles() {
+@upload()
+async uploadFile(params: { file: UploadedFile }) {
   // clients: ["axios-multipart", "tanstack-mutation-multipart"]
 }
 ```
@@ -530,7 +535,7 @@ async uploadFiles() {
 `@upload` 데코레이터는 자동으로 로그를 남깁니다:
 
 ```typescript
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   // 자동 로그:
   // [DEBUG] upload: FileModel.uploadFile
@@ -544,7 +549,7 @@ async uploadFile() {
     ```typescript
     class UserModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
-      @upload({ mode: "single" })
+      @upload()
       @transactional()
       async uploadAvatar() {
         const { user } = Sonamu.getContext();
@@ -588,7 +593,7 @@ async uploadFile() {
     ```typescript
     class DocumentModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
-      @upload({ mode: "multiple" })
+      @upload()
       @transactional()
       async uploadDocuments(projectId: number) {
         const { files } = Sonamu.getUploadContext();
@@ -641,7 +646,7 @@ async uploadFile() {
 
     class ImportModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
-      @upload({ mode: "single" })
+      @upload()
       @transactional()
       async importUsers() {
         const { file } = Sonamu.getUploadContext();
@@ -699,7 +704,7 @@ async uploadFile() {
     ```typescript
     class FileModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
-      @upload({ mode: "multiple" })
+      @upload()
       async uploadWithDeduplication() {
         const { files } = Sonamu.getUploadContext();
         
