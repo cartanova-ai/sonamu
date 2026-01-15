@@ -3,27 +3,12 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { type DateRange, DayPicker, type Matcher } from "react-day-picker";
+import { useSonamuContext } from "@/contexts";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
-
-// 상수
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
 
 const YEAR_RANGE = {
   START: 1900,
@@ -155,9 +140,14 @@ function CalendarCaption({
   isSecondCalendar = false,
   baseMonth,
 }: CalendarCaptionProps) {
+  const { SD } = useSonamuContext();
   const displayYear = displayMonth.getFullYear();
   const displayMonthIndex = displayMonth.getMonth();
   const years = React.useMemo(() => generateYears().reverse(), []);
+
+  const monthNames = React.useMemo(() => {
+    return Array.from({ length: 12 }, (_, month) => SD(`component.calendar.month.${month}`));
+  }, [SD]);
 
   const handleMonthChange = React.useCallback(
     (value: string | undefined | null) => {
@@ -186,7 +176,7 @@ function CalendarCaption({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {MONTH_NAMES.map((month, monthIndex) => {
+          {monthNames.map((month, monthIndex) => {
             const isDisabled =
               isSecondCalendar &&
               baseMonth &&
@@ -194,7 +184,7 @@ function CalendarCaption({
               monthIndex <= baseMonth.getMonth();
 
             return (
-              <SelectItem key={month} value={monthIndex.toString()} disabled={isDisabled}>
+              <SelectItem key={monthIndex} value={monthIndex.toString()} disabled={isDisabled}>
                 {month}
               </SelectItem>
             );

@@ -161,4 +161,16 @@ export default defineLocale({
   "component.pagination.previous": "Previous",
   "component.pagination.showing": (start: number, end: number, total: number) =>
     `Showing ${start}-${end} of ${total} ${plural(total, { one: "result", other: "results" })}`,
+  "component.calendar.month.0": "January",
+  "component.calendar.month.1": "February",
+  "component.calendar.month.2": "March",
+  "component.calendar.month.3": "April",
+  "component.calendar.month.4": "May",
+  "component.calendar.month.5": "June",
+  "component.calendar.month.6": "July",
+  "component.calendar.month.7": "August",
+  "component.calendar.month.8": "September",
+  "component.calendar.month.9": "October",
+  "component.calendar.month.10": "November",
+  "component.calendar.month.11": "December",
 });

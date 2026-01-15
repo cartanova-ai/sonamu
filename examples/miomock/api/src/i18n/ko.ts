@@ -125,4 +125,16 @@ export default {
   "component.pagination.previous": "이전",
   "component.pagination.showing": (start: number, end: number, total: number) =>
     `${total}개 중 ${start}-${end} 표시`,
+  "component.calendar.month.0": "1월",
+  "component.calendar.month.1": "2월",
+  "component.calendar.month.2": "3월",
+  "component.calendar.month.3": "4월",
+  "component.calendar.month.4": "5월",
+  "component.calendar.month.5": "6월",
+  "component.calendar.month.6": "7월",
+  "component.calendar.month.7": "8월",
+  "component.calendar.month.8": "9월",
+  "component.calendar.month.9": "10월",
+  "component.calendar.month.10": "11월",
+  "component.calendar.month.11": "12월",
 } as const;
