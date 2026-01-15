@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "license": "MIT",
+  "description": "Miomock API 서버입니다. 프로젝트의 모든 명령은 여기서 실행해주세요 :)",
   "scripts": {
     "dev": "sonamu dev",
     "build": "sonamu build",

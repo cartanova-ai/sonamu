@@ -3,13 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build:all": "run-p build:client build:server",
-    "build:client": "tsc && vite build --outDir dist/client",
-    "build:server": "vite build --ssr src/entry-server.generated.tsx --outDir dist/server",
-    "preview": "vite preview"
-  },
+  "description": "Miomock web 프로젝트입니다. 개발 서버와 빌드 명령은 api 프로젝트에서 실행해주세요 :)",
   "dependencies": {
     "@sonamu-kit/react-components": "workspace:^",
     "@tanstack/react-query": "catalog:",
