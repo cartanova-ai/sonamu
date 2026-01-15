@@ -1,21 +1,15 @@
 import { NaiteVitestReporter } from "sonamu/test";
 import { defineConfig } from "vitest/config";
 
-// CPU 코어 수 기반 worker 수 결정 (최소 1, 최대 코어 수의 절반)
-const maxWorkers = 4;
+const maxWorkers = 6;
 
 export default defineConfig({
   plugins: [],
   test: {
-    include: ["src/**/*.test.ts"],
-    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
-    globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
     reporters: ["default", NaiteVitestReporter],
-    pool: "forks",
-    maxWorkers,
-    isolate: true,
     restoreMocks: true,
     typecheck: {
       enabled: true,
@@ -29,9 +23,26 @@ export default defineConfig({
       exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
     },
     includeTaskLocation: true,
-    // 병렬 테스트 환경변수를 worker에 전달
-    env: {
-      SONAMU_PARALLEL_TEST: maxWorkers > 1 ? "true" : "false",
-    },
+    // 단일 프로젝트로 모든 테스트를 병렬 실행합니다.
+    // forTesting: false는 테스트 파일 내 bootstrap 옵션으로 처리됩니다.
+    // migrator 테스트의 runShadowTest()는 병렬 모드에서 DB.destroy()를 스킵하여
+    // worker DB 연결을 유지합니다.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "parallel",
+          include: ["src/**/*.test.ts"],
+          exclude: ["src/**/*.test-hold.ts", "**/node_modules/**"],
+          pool: "forks",
+          maxWorkers,
+          isolate: false, // worker 재사용 → 초기화 오버헤드 감소
+          globalSetup: ["./src/testing/global.ts"],
+          env: {
+            SONAMU_PARALLEL_TEST: "true",
+          },
+        },
+      },
+    ],
   },
 });
