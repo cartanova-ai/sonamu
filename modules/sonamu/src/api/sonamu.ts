@@ -5,6 +5,7 @@ import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fs from "fs/promises";
 import type { IncomingMessage, Server, ServerResponse } from "http";
+import { lookup as mimeLookup } from "mime-types";
 import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
@@ -624,7 +625,7 @@ class SonamuClass {
       }
     }
 
-    // CSR fallback (SSR 라우트에 매칭되지 않는 모든 요청)
+    // CSR or Static File Fallback (SSR 라우트에 매칭되지 않는 모든 요청)
     server.route({
       method: ["GET", "HEAD"],
       url: "*",
@@ -634,9 +635,6 @@ class SonamuClass {
           reply.code(404).send({ error: "Not Found" });
           return;
         }
-
-        const indexPath = path.join(webDistPath, "index.html");
-        const html = await fs.readFile(indexPath, "utf-8");
 
         // CSR용 Cache-Control 헤더 설정
         if (config.cacheControlHandler) {
@@ -652,8 +650,17 @@ class SonamuClass {
             applyCacheHeaders(reply, csrCacheConfig);
           }
         }
-        reply.type("text/html");
-        return html;
+
+        // 정적 파일이 존재할 경우, 정적 파일을 먼저 서빙해야함
+        const filePath = path.join(webDistPath, request.url);
+        if (await exists(filePath)) {
+          const content = await fs.readFile(filePath);
+          return reply.type(mimeLookup(filePath) || "application/octet-stream").send(content);
+        }
+
+        // CSR fallback: index.html 서빙
+        const indexPath = path.join(webDistPath, "index.html");
+        return reply.type("text/html").send(await fs.readFile(indexPath, "utf-8"));
       },
     });
 
