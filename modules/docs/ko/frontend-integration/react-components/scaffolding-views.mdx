@@ -392,6 +392,97 @@ export default function UsersPage() {
 }
 ```
 
+### useTypeForm으로 폼 업그레이드 (권장)
+
+자동 생성된 폼은 기본적으로 `useState`와 직접 이벤트 핸들러를 사용합니다. 이를 `useTypeForm`으로 업그레이드하면 훨씬 간결하고 타입 안전한 코드가 됩니다.
+
+**생성된 코드 (기본)**:
+```typescript
+// admin/users/form.tsx (자동 생성)
+const [formData, setFormData] = useState({
+  email: "",
+  username: "",
+  bio: "",
+});
+
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setSaving(true);
+
+  try {
+    if (userId) {
+      await UserService.update(parseInt(userId), formData);
+    } else {
+      await UserService.create(formData);
+    }
+    navigate("/admin/users");
+  } catch (error) {
+    alert("Failed to save");
+  } finally {
+    setSaving(false);
+  }
+}
+
+return (
+  <form onSubmit={handleSubmit}>
+    <input
+      value={formData.email}
+      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+    />
+    {/* ... */}
+  </form>
+);
+```
+
+**useTypeForm으로 업그레이드**:
+```typescript
+// admin/users/form.tsx (개선)
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input, Button } from "@sonamu-kit/react-components/components";
+import { UserSaveParams } from "@/services/user/user.types";
+
+const { register, submit, errors } = useTypeForm(UserSaveParams, {
+  email: "",
+  username: "",
+  bio: "",
+});
+
+const saveMutation = UserService.useSaveMutation();
+
+const handleSubmit = submit(async (form) => {
+  saveMutation.mutate(
+    { spa: [form] },
+    {
+      onSuccess: () => navigate("/admin/users"),
+      onError: () => alert("Failed to save"),
+    }
+  );
+});
+
+return (
+  <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+    <div>
+      <Input {...register("email")} placeholder="Email" />
+      {errors.email && <span className="error">{errors.email.message}</span>}
+    </div>
+    {/* ... */}
+    <Button type="submit" disabled={saveMutation.isPending}>
+      {saveMutation.isPending ? "Saving..." : "Save"}
+    </Button>
+  </form>
+);
+```
+
+**개선 효과**:
+- ✅ **코드량 50% 감소**: useState, 이벤트 핸들러 제거
+- ✅ **자동 유효성 검사**: SaveParams 스키마 기반
+- ✅ **타입 안전**: 컴파일 타임 에러 감지
+- ✅ **에러 처리 통합**: 필드별 에러 메시지 자동 표시
+
+<Tip>
+자동 생성된 파일을 Git에 커밋한 후 `useTypeForm`으로 업그레이드하면, 변경 사항을 쉽게 추적할 수 있습니다.
+</Tip>
+
 ### 별도 컴포넌트로 분리
 
 필요하면 수동으로 컴포넌트를 분리할 수 있습니다:

@@ -1,0 +1,568 @@
+---
+title: "프론트엔드 설정"
+description: "SonamuProvider로 프론트엔드 초기 설정하기"
+---
+
+Sonamu 프론트엔드 통합의 시작점인 `SonamuProvider` 설정 방법을 알아봅니다. 인증, 파일 업로드, 다국어 지원을 한 곳에서 구성할 수 있습니다.
+
+## 설정 개요
+
+<CardGroup cols={2}>
+  <Card title="인증 통합" icon="key">
+    UserService.useMe 연결
+
+    로그인/로그아웃 흐름
+  </Card>
+  <Card title="파일 업로드" icon="upload">
+    FileService 통합
+
+    useTypeForm 자동 연결
+  </Card>
+  <Card title="다국어 지원" icon="language">
+    SD 함수 제공
+
+    타입 안전한 번역
+  </Card>
+  <Card title="전역 상태" icon="globe">
+    Context API 기반
+
+    모든 컴포넌트에서 접근
+  </Card>
+</CardGroup>
+
+## 기본 설정
+
+### 1. 설정 파일 생성
+
+프로젝트의 `src/config/sonamu-provider.config.ts` 파일을 생성합니다.
+
+```typescript
+// src/config/sonamu-provider.config.ts
+import type { SonamuAuth, SonamuContextValue, SonamuFile } from "@sonamu-kit/react-components";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
+import { SD } from "@/i18n/sd.generated";
+import { FileService, UserService } from "@/services/services.generated";
+import type { UserSubsetSS } from "@/services/sonamu.generated";
+import type { UserLoginParams } from "@/services/user/user.types";
+
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  // Auth 설정
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: user, isLoading, refetch } = UserService.useMe();
+  const loginMutation = UserService.useLoginMutation();
+  const logoutMutation = UserService.useLogoutMutation();
+
+  const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+    user: user ?? null,
+    loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
+    login: (loginParams: UserLoginParams) => {
+      loginMutation.mutate(
+        { params: loginParams },
+        {
+          onSuccess: async ({ user: _user }) => {
+            await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+            await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+            navigate({ to: "/admin", replace: true });
+          },
+          onError: (error) => {
+            console.error("Login failed:", error);
+            alert(SD("user.login.failed"));
+          },
+        },
+      );
+    },
+    logout: () => {
+      logoutMutation.mutate(undefined, {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+        },
+        onError: (error) => {
+          console.error("Logout failed:", error);
+          alert(SD("user.logout.failed"));
+        },
+      });
+    },
+    refetch,
+  };
+
+  // Uploader 설정
+  const uploadMutation = FileService.useUploadMutation();
+
+  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+    if (files.length === 0) {
+      return [];
+    }
+
+    const result = await uploadMutation.mutateAsync({ files });
+    return result.files;
+  };
+
+  // SD 설정
+  const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+
+  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+}
+```
+
+### 2. App에 적용
+
+`__root.tsx`에서 `SonamuProvider`를 설정합니다.
+
+```typescript
+// src/routes/__root.tsx
+import { SonamuProvider } from "@sonamu-kit/react-components";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createSonamuConfig } from "@/config/sonamu-provider.config";
+import type { MergedDictionary } from "@/i18n/sd.generated";
+
+export const Route = createRootRouteWithContext()({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SonamuProviderWrapper>
+        <Outlet />
+      </SonamuProviderWrapper>
+    </QueryClientProvider>
+  );
+}
+
+function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
+  const sonamuConfig = createSonamuConfig();
+  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
+}
+```
+
+<Info>
+**왜 SonamuProviderWrapper를 별도로 만드나요?**
+
+`createSonamuConfig`는 React 훅(`useQueryClient`, `useNavigate` 등)을 사용하므로 컴포넌트 안에서 호출되어야 합니다.
+따라서 별도 컴포넌트로 분리하여 `QueryClientProvider` 아래에 배치합니다.
+</Info>
+
+## 인증 설정
+
+### Auth 인터페이스
+
+```typescript
+export type SonamuAuth<TUser = any, TLoginParams = any> = {
+  user: TUser | null;
+  loading: boolean;
+  login: (params: TLoginParams) => void;
+  logout: () => void;
+  refetch: () => void;
+};
+```
+
+### User 타입 지정
+
+자동 생성된 User Subset을 사용합니다.
+
+```typescript
+import type { UserSubsetSS } from "@/services/sonamu.generated";
+
+const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+  // UserSubsetSS: Session Summary (세션용 최소 정보)
+  // 예: { id, username, email, role }
+  user: user ?? null,
+  // ...
+};
+```
+
+<Info>
+**Subset "SS"란?**
+
+Session Summary의 약자로, 세션 관리에 필요한 최소한의 사용자 정보만 포함합니다.
+전체 사용자 정보(Subset "A")를 로드하는 것보다 가볍고 빠릅니다.
+</Info>
+
+### 로그인 흐름
+
+```typescript
+login: (loginParams: UserLoginParams) => {
+  loginMutation.mutate(
+    { params: loginParams },
+    {
+      onSuccess: async ({ user: _user }) => {
+        // 1. 캐시 무효화
+        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+
+        // 2. 최신 사용자 정보 리패칭
+        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+
+        // 3. 관리자 페이지로 이동
+        navigate({ to: "/admin", replace: true });
+      },
+      onError: (error) => {
+        console.error("Login failed:", error);
+        alert(SD("user.login.failed"));
+      },
+    },
+  );
+},
+```
+
+**핵심 단계**:
+1. `loginMutation.mutate`: 백엔드 로그인 API 호출
+2. `invalidateQueries`: 기존 사용자 정보 캐시 무효화
+3. `refetchQueries`: 새로운 사용자 정보 가져오기
+4. `navigate`: 성공 시 페이지 이동
+
+### 로그아웃 흐름
+
+```typescript
+logout: () => {
+  logoutMutation.mutate(undefined, {
+    onSuccess: async () => {
+      // 사용자 정보 리패칭 (null로 바뀜)
+      await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+      await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+    },
+    onError: (error) => {
+      console.error("Logout failed:", error);
+      alert(SD("user.logout.failed"));
+    },
+  });
+},
+```
+
+### Auth 사용하기
+
+컴포넌트에서 `useSonamuContext`로 auth에 접근합니다.
+
+```typescript
+import { useSonamuContext } from "@sonamu-kit/react-components";
+
+export function Header() {
+  const { auth } = useSonamuContext();
+
+  if (auth.loading) {
+    return <div>로딩 중...</div>;
+  }
+
+  if (!auth.user) {
+    return (
+      <button onClick={() => auth.login({ email: "user@example.com", password: "password" })}>
+        로그인
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <span>환영합니다, {auth.user.username}님</span>
+      <button onClick={() => auth.logout()}>로그아웃</button>
+    </div>
+  );
+}
+```
+
+## 파일 업로드 설정
+
+### Uploader 인터페이스
+
+```typescript
+type Uploader = (files: File[]) => Promise<SonamuFile[]>;
+
+type SonamuFile = {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+};
+```
+
+### FileService 통합
+
+```typescript
+const uploadMutation = FileService.useUploadMutation();
+
+const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  if (files.length === 0) {
+    return [];
+  }
+
+  const result = await uploadMutation.mutateAsync({ files });
+  return result.files;
+};
+```
+
+**동작**:
+1. `mutateAsync`로 파일을 백엔드에 업로드
+2. 업로드된 파일 정보 (`SonamuFile[]`) 반환
+3. `useTypeForm`이 자동으로 이 uploader를 사용
+
+### useTypeForm 자동 통합
+
+`uploader`를 설정하면 `useTypeForm`의 `submit`이 자동으로 파일을 업로드합니다.
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { FileInput } from "@sonamu-kit/react-components/components";
+
+export function UserForm() {
+  const { form, setForm, register, submit } = useTypeForm(UserSaveParams, {
+    username: "",
+    avatar: null,  // SonamuFile | null
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(async (formData) => {
+          // formData.avatar는 이미 업로드되어 SonamuFile 객체
+          await UserService.save({ params: formData });
+        });
+      }}
+    >
+      <Input {...register("username")} />
+
+      {/* FileInput: File → SonamuFile 변환은 submit이 자동 처리 */}
+      <FileInput {...register("avatar")} />
+
+      <button type="submit">저장</button>
+    </form>
+  );
+}
+```
+
+<Info>
+**자동 업로드 메커니즘**
+
+`submit` 함수는 내부적으로 `traverseAndUploadFiles`를 호출하여 모든 `File` 객체를 찾아 업로드합니다.
+중첩된 객체나 배열 안의 파일도 자동으로 처리됩니다.
+</Info>
+
+### 커스텀 업로드 로직
+
+다른 업로드 서비스를 사용하려면 직접 구현할 수 있습니다.
+
+```typescript
+// AWS S3 직접 업로드 예시
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3Client = new S3Client({ region: "ap-northeast-2" });
+
+const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  const uploadPromises = files.map(async (file) => {
+    const key = `uploads/${Date.now()}-${file.name}`;
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: "my-bucket",
+        Key: key,
+        Body: file,
+        ContentType: file.type,
+      })
+    );
+
+    return {
+      name: file.name,
+      url: `https://my-bucket.s3.amazonaws.com/${key}`,
+      mime_type: file.type,
+      size: file.size,
+    };
+  });
+
+  return Promise.all(uploadPromises);
+};
+```
+
+## 다국어 설정 (SD)
+
+### SD 함수
+
+`SD` (Sonamu Dictionary) 함수는 타입 안전한 다국어 번역을 제공합니다.
+
+```typescript
+const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+```
+
+### 사용 예시
+
+```typescript
+import { useSonamuContext } from "@sonamu-kit/react-components";
+
+export function WelcomeMessage() {
+  const { SD } = useSonamuContext();
+
+  return (
+    <div>
+      <h1>{SD("common.welcome")}</h1>
+      <p>{SD("user.login.prompt")}</p>
+    </div>
+  );
+}
+```
+
+<Info>
+**왜 Context를 통해 SD를 제공하나요?**
+
+직접 import해서 사용해도 되지만, Context를 통하면 미래에 런타임 locale 전환이나 동적 dictionary 로딩을 쉽게 추가할 수 있습니다.
+</Info>
+
+## 타입 안전성
+
+### 제네릭 타입 지정
+
+`SonamuProvider`에 Dictionary 타입을 지정하면 `SD` 함수가 타입 안전해집니다.
+
+```typescript
+import type { MergedDictionary } from "@/i18n/sd.generated";
+
+<SonamuProvider<MergedDictionary> {...sonamuConfig}>
+  {children}
+</SonamuProvider>
+```
+
+### 자동 완성
+
+```typescript
+const { SD } = useSonamuContext<MergedDictionary>();
+
+SD("
+    ↓
+    common.welcome
+    common.save
+    common.cancel
+    user.login.failed
+    user.logout.failed
+    entity.User.email
+    ...
+```
+
+## 고급 설정
+
+### 최소 설정 (Auth만)
+
+파일 업로드가 필요 없다면 `uploader`를 생략할 수 있습니다.
+
+```typescript
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  const auth_config = { /* ... */ };
+  const sd_config = SD;
+
+  return { auth: auth_config, SD: sd_config };
+  // uploader 생략 (fallback 함수가 자동으로 설정됨)
+}
+```
+
+<Warning>
+`uploader`를 생략하면 `FileInput` 사용 시 에러가 발생합니다.
+파일 업로드 기능이 필요하다면 반드시 설정하세요.
+</Warning>
+
+### Auth 없이 사용
+
+인증이 필요 없는 프로젝트라면 `auth`도 생략 가능합니다.
+
+```typescript
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  const sd_config = SD;
+
+  return { SD: sd_config };
+}
+```
+
+### 로딩 상태 표시
+
+```typescript
+export function App({ children }: { children: React.ReactNode }) {
+  const { auth } = useSonamuContext();
+
+  // 초기 로딩 중
+  if (auth.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // 인증 필요
+  if (!auth.user) {
+    return <LoginPage />;
+  }
+
+  // 인증 완료
+  return children;
+}
+```
+
+### Redirect 커스터마이징
+
+로그인 성공 후 이동 경로를 동적으로 결정할 수 있습니다.
+
+```typescript
+login: (loginParams: UserLoginParams) => {
+  loginMutation.mutate(
+    { params: loginParams },
+    {
+      onSuccess: async ({ user: _user }) => {
+        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+
+        // 역할에 따라 다른 페이지로 이동
+        if (_user.role === "admin") {
+          navigate({ to: "/admin", replace: true });
+        } else {
+          navigate({ to: "/dashboard", replace: true });
+        }
+      },
+    },
+  );
+},
+```
+
+## 문제 해결
+
+### "uploader is not configured" 에러
+
+```
+Error: [SonamuProvider] uploader is not configured.
+Please provide uploader configuration to SonamuProvider.
+```
+
+**해결**: `createSonamuConfig`에서 `uploader_config`를 반환하세요.
+
+### "auth is not configured" 에러
+
+```
+Error: [SonamuProvider] auth is not configured.
+Please provide auth configuration to SonamuProvider.
+```
+
+**해결**: `createSonamuConfig`에서 `auth_config`를 반환하세요.
+
+### QueryClient를 찾을 수 없음
+
+```
+Error: useQueryClient must be used within a QueryClientProvider
+```
+
+**해결**: `SonamuProvider`를 `QueryClientProvider` 안에 배치하세요.
+
+```typescript
+<QueryClientProvider client={queryClient}>
+  <SonamuProvider {...config}>
+    {children}
+  </SonamuProvider>
+</QueryClientProvider>
+```
+
+## 다음 단계
+
+- [useTypeForm](/frontend-integration/generated-services/using-services#usetypeform) - 폼 관리와 파일 업로드
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - 리스트 필터링
+- [인증 API 개발](/api-development/authentication/setup) - 백엔드 인증 설정
+- [파일 업로드 API](/advanced-features/storage/file-operations) - 백엔드 스토리지 설정

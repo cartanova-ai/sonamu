@@ -56,21 +56,24 @@ DELETE /user/deleteUser?id=1
 
 **guards (인증/권한):**
 ```typescript
-@api({ 
+// 인증 및 권한 필요
+@api({
   httpMethod: "POST",
   guards: ["user", "admin"]  // user 로그인 필요, admin 권한 필요
 })
 async adminOnly() { }
-```
 
-**noAuth (인증 불필요):**
-```typescript
-@api({ 
-  httpMethod: "GET",
-  noAuth: true  // 로그인 없이 접근 가능
+// 공개 API (인증 불필요)
+@api({
+  httpMethod: "GET"
+  // guards를 생략하면 인증 없이 접근 가능
 })
 async publicApi() { }
 ```
+
+<Info>
+**공개 API 만들기**: `guards` 옵션을 생략하면 인증 없이 누구나 접근할 수 있는 공개 API가 됩니다. 로그인이나 권한 체크가 필요 없는 경우에 사용하세요.
+</Info>
 
 **path (커스텀 경로):**
 ```typescript
@@ -149,7 +152,8 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
 
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
 
   const key = `avatars/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key);
@@ -168,7 +172,7 @@ async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
 
   const results = [];
   for (const file of files) {
@@ -317,18 +321,18 @@ export default {
 **세션 저장:**
 
 ```typescript
-@api({ httpMethod: "POST", noAuth: true })
+@api({ httpMethod: "POST" })  // guards 생략 = 공개 API
 async login(email: string, password: string): Promise<User> {
   const user = await this.findOne("A", { email });
-  
+
   if (!user || !await bcrypt.compare(password, user.password)) {
     throw new UnauthorizedException("이메일 또는 비밀번호가 잘못되었습니다");
   }
-  
+
   const context = Sonamu.getContext();
   context.session.userId = user.id;
   context.session.role = user.role;
-  
+
   return user;
 }
 ```

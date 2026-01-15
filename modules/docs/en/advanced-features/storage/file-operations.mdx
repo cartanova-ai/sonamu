@@ -40,7 +40,8 @@ class UserModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -72,7 +73,7 @@ class PostModelClass extends BaseModel {
   @upload({ mode: 'multiple' })
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
 
     if (files.length === 0) {
       throw new Error('No files provided');
@@ -106,7 +107,7 @@ await fetch('/api/post/uploadImages?postId=1', {
 
 ## UploadContext
 
-Access uploaded files with **Sonamu.getUploadContext()**.
+Access uploaded files with **Sonamu.getContext()**.
 
 ```typescript
 type UploadContext = {
@@ -121,7 +122,8 @@ type UploadContext = {
 @upload({ mode: 'single' })
 @api({ httpMethod: 'POST' })
 async upload() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
 
   if (!file) {
     throw new Error('File is required');
@@ -147,7 +149,8 @@ A class that wraps uploaded files.
     **Original filename**
 
     ```typescript
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
     console.log(file.filename);  // 'avatar.png'
     ```
   </Tab>
@@ -215,7 +218,8 @@ A class that wraps uploaded files.
 Converts the file to a Buffer.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // Use first file
 const buffer = await file.toBuffer();
 
 console.log(buffer instanceof Buffer);  // true
@@ -229,7 +233,8 @@ console.log(buffer.length);  // File size (bytes)
 Calculates the MD5 hash of the file.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // Use first file
 const hash = await file.md5();
 
 console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
@@ -245,7 +250,8 @@ console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
 Saves the file to disk.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // Use first file
 
 // Save to default disk
 const url = await file.saveToDisk('uploads/file.pdf');
@@ -265,7 +271,8 @@ class UserModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -308,7 +315,7 @@ class PostModelClass extends BaseModel {
   @upload({ mode: 'multiple' })
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
-    const { files } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
 
     // Limit number of files
     if (files.length > 10) {
@@ -346,7 +353,8 @@ class FileModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -385,7 +393,8 @@ class MediaModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadMedia() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -430,7 +439,8 @@ class FileModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async upload(visibility: 'public' | 'private', ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');

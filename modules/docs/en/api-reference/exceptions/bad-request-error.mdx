@@ -139,7 +139,8 @@ async transferMoney(
 @api()
 @upload({ mode: "single" })
 async uploadProfileImage(ctx: Context) {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
 
   if (!file) {
     throw new BadRequestException("파일이 필요합니다");

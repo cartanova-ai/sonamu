@@ -32,9 +32,35 @@ LoaderQuery는 1:N, N:M 관계의 데이터를 효율적으로 로딩하는 시�
 
 ## LoaderQuery vs SubsetQuery
 
-<Frame>
-  <img src="/images/subsets/loader-vs-subset-query.png" alt="LoaderQuery vs SubsetQuery 비교" />
-</Frame>
+```mermaid
+flowchart TD
+    T1["🔵 SubsetQuery (JOIN 방식)"]
+    SQ1["OneToOne / BelongsTo"]
+    SQ2["LEFT JOIN으로 처리"]
+    SQ3["단일 쿼리"]
+    SQ4["1행당 1개 관계"]
+
+    T2["🟣 LoaderQuery (별도 쿼리 방식)"]
+    LQ1["HasMany / ManyToMany"]
+    LQ2["별도 쿼리로 처리"]
+    LQ3["Batch Loading"]
+    LQ4["1행당 N개 관계"]
+
+    T1 --> SQ1 --> SQ2 --> SQ3 --> SQ4
+    T2 --> LQ1 --> LQ2 --> LQ3 --> LQ4
+
+    style T1 fill:#1976d2,color:#fff,stroke:#1976d2,stroke-width:3px
+    style SQ1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ3 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ4 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+    style T2 fill:#9c27b0,color:#fff,stroke:#9c27b0,stroke-width:3px
+    style LQ1 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ2 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ3 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ4 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+```
 
 ### SubsetQuery (JOIN)
 
@@ -476,7 +502,7 @@ const summary = {
 {
   as: "completedProjects",
   refId: "employee_id",
-  qb: (qb, fromIds) => 
+  qb: (qb, fromIds) =>
     qb.table("projects__employees")
       .whereIn("employee_id", fromIds)
       .join("projects", "projects__employees.project_id", "projects.id")
@@ -487,6 +513,475 @@ const summary = {
       }),
 }
 ```
+
+## 실전 복잡한 시나리오
+
+실무에서 자주 마주치는 복잡한 Subset 패턴과 해결 방법입니다.
+
+### 시나리오 1: 동적 Subset 선택
+
+사용자 권한에 따라 다른 Subset을 사용하는 패턴
+
+```typescript
+class PostModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findMany<T extends PostSubsetKey>(
+    subset: T,
+    params: PostListParams
+  ): Promise<ListResult<PostListParams, PostSubsetMapping[T]>> {
+    const context = Sonamu.getContext();
+
+    // 사용자 권한에 따라 Subset 동적 결정
+    let effectiveSubset: PostSubsetKey;
+
+    if (context.user?.role === "admin") {
+      // 관리자: 모든 정보 포함 (작성자 상세, 통계 등)
+      effectiveSubset = "AdminList" as T;
+    } else if (context.user?.role === "normal") {
+      // 일반 사용자: 기본 정보만
+      effectiveSubset = "List" as T;
+    } else {
+      // 게스트: 공개 정보만
+      effectiveSubset = "PublicList" as T;
+    }
+
+    const { qb, onSubset } = this.getSubsetQueries(effectiveSubset);
+
+    // 권한별 추가 필터링
+    if (context.user?.role !== "admin") {
+      // 비공개 게시글 제외
+      qb.where("posts.is_public", true);
+    }
+
+    return this.executeSubsetQuery({
+      subset: effectiveSubset,
+      qb,
+      params,
+    });
+  }
+}
+```
+
+**핵심 포인트**:
+- 사용자 Context를 확인하여 적절한 Subset 선택
+- 타입 단언(`as T`)으로 타입 안전성 유지
+- 권한별 추가 필터링 적용
+
+### 시나리오 2: 깊은 중첩 관계 (3단계 이상)
+
+여러 단계로 중첩된 데이터를 효율적으로 로드
+
+```typescript
+// Entity 정의: Comment Subset
+export const commentSubsetQueries = {
+  // 대댓글 포함 (3단계: Post → Comment → Reply)
+  WithReplies: {
+    _one: {
+      id: "comments.id",
+      content: "comments.content",
+      created_at: "comments.created_at",
+      // 작성자 (2단계)
+      author__id: "users.id",
+      author__username: "users.username",
+    },
+    _many: {
+      // 대댓글 (3단계)
+      replies: {
+        as: "replies",
+        refId: "parent_id",
+        qb: (qb, fromIds) =>
+          qb.table("comments")
+            .whereIn("parent_id", fromIds)
+            .where("deleted_at", null)
+            .leftJoin("users", "comments.user_id", "users.id")
+            .select({
+              id: "comments.id",
+              content: "comments.content",
+              created_at: "comments.created_at",
+              // 대댓글 작성자
+              author__id: "users.id",
+              author__username: "users.username",
+              author__profile__avatar: "profiles.avatar_url",
+            })
+            .leftJoin("profiles", "users.id", "profiles.user_id")
+            .orderBy("comments.created_at", "asc"),
+      },
+    },
+  },
+} as const;
+
+// Model 사용
+class PostModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByIdWithComments(id: number): Promise<Post> {
+    // Post → Comment → Reply → Author까지 한 번에 로드
+    const post = await this.findById("DetailWithComments", id);
+
+    // 타입 안전하게 접근
+    post.comments?.forEach((comment) => {
+      console.log(comment.author?.username); // 댓글 작성자
+
+      comment.replies?.forEach((reply) => {
+        console.log(reply.author?.username); // 대댓글 작성자
+        console.log(reply.author?.profile?.avatar); // 프로필 이미지
+      });
+    });
+
+    return post;
+  }
+}
+```
+
+**성능 고려사항**:
+- 3단계 이상 중첩 시 쿼리 수 증가 (N+1 문제 주의)
+- 필요한 경우에만 깊은 중첩 사용
+- 페이지네이션과 함께 사용하여 데이터 양 제한
+
+### 시나리오 3: 조건부 중첩 로딩
+
+특정 조건일 때만 중첩 데이터를 로드
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findManyWithOptionalPosts<T extends UserSubsetKey>(
+    subset: T,
+    params: UserListParams,
+    includePosts: boolean = false
+  ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
+    // 기본 쿼리 구성
+    qb.where("users.deleted_at", null);
+
+    // 조건부 중첩 데이터 로딩
+    if (includePosts) {
+      onSubset({
+        List: () => {
+          // List Subset에 게시글 동적 추가
+          qb.onExecute(async (rows) => {
+            const userIds = rows.map((row) => row.id);
+
+            // 게시글 별도 조회
+            const posts = await this.getPuri("r")
+              .table("posts")
+              .whereIn("user_id", userIds)
+              .where("is_public", true)
+              .select({
+                id: "id",
+                user_id: "user_id",
+                title: "title",
+                created_at: "created_at",
+              })
+              .orderBy("created_at", "desc");
+
+            // 사용자별로 게시글 그룹화
+            const postsByUser = posts.reduce((acc, post) => {
+              if (!acc[post.user_id]) {
+                acc[post.user_id] = [];
+              }
+              acc[post.user_id].push(post);
+              return acc;
+            }, {} as Record<number, typeof posts>);
+
+            // 결과에 게시글 추가
+            return rows.map((row) => ({
+              ...row,
+              posts: postsByUser[row.id] || [],
+            }));
+          });
+        },
+      });
+    }
+
+    return this.executeSubsetQuery({ subset, qb, params });
+  }
+}
+```
+
+**활용 사례**:
+- 모바일 vs 웹에서 다른 데이터 로드
+- 사용자 설정에 따른 선택적 데이터 로드
+- 성능 최적화를 위한 필요시에만 로드
+
+### 시나리오 4: N+1 문제 해결
+
+여러 관계를 효율적으로 로드하여 N+1 문제 방지
+
+```typescript
+// ❌ 나쁜 예: N+1 문제 발생
+class PostModelClass extends BaseModelClass {
+  async getPostsWithAuthorsBad(): Promise<PostWithAuthor[]> {
+    const posts = await this.getPuri("r")
+      .table("posts")
+      .select({ id: "id", title: "title", user_id: "user_id" });
+
+    // 각 게시글마다 작성자 조회 → N+1 문제!
+    const results = [];
+    for (const post of posts) {
+      const author = await UserModel.findById("Simple", post.user_id);
+      results.push({ ...post, author });
+    }
+
+    return results;
+  }
+}
+
+// ✅ 좋은 예: Subset으로 한 번에 로드
+class PostModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getPostsWithAuthorsGood(): Promise<PostSubsetMapping["WithAuthor"][]> {
+    // Subset 정의에 author 관계 포함
+    const { rows } = await this.findMany("WithAuthor", { num: 100 });
+
+    // 2개의 쿼리로 완료:
+    // 1. SELECT * FROM posts ...
+    // 2. SELECT * FROM users WHERE id IN (...)
+
+    return rows;
+  }
+}
+
+// Subset 정의
+export const postSubsetQueries = {
+  WithAuthor: {
+    _one: {
+      id: "posts.id",
+      title: "posts.title",
+      content: "posts.content",
+      // 작성자 정보
+      author__id: "users.id",
+      author__username: "users.username",
+      author__email: "users.email",
+    },
+  },
+} as const;
+```
+
+**N+1 문제 비교**:
+
+| 방식 | 쿼리 수 | 성능 | 문제점 |
+|------|---------|------|--------|
+| **나쁜 예** (반복문 조회) | N+1개 (게시글 100개 → 101개 쿼리) | 매우 느림 | DB 부하 증가 |
+| **좋은 예** (Subset) | 2개 (posts + users) | 빠름 | 없음 |
+
+### 시나리오 5: 순환 참조 처리 (자기 참조)
+
+댓글 대댓글, 조직도 등 자기 참조 관계 처리
+
+```typescript
+// Entity: 조직도 (상사-부하 관계)
+export const employeeSubsetQueries = {
+  // 직속 부하 포함
+  WithDirectReports: {
+    _one: {
+      id: "employees.id",
+      username: "employees.username",
+      position: "employees.position",
+      manager_id: "employees.manager_id",
+    },
+    _many: {
+      // 직속 부하들 (1단계만)
+      directReports: {
+        as: "directReports",
+        refId: "manager_id",
+        qb: (qb, fromIds) =>
+          qb.table("employees")
+            .whereIn("manager_id", fromIds)
+            .where("deleted_at", null)
+            .select({
+              id: "id",
+              username: "username",
+              position: "position",
+            })
+            .orderBy("position", "asc"),
+      },
+    },
+  },
+} as const;
+
+// Model: 전체 조직도 트리 구성
+class EmployeeModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getOrganizationTree(
+    rootId: number,
+    maxDepth: number = 3
+  ): Promise<EmployeeTreeNode> {
+    // 재귀적으로 조직도 구성
+    return this.buildTreeRecursive(rootId, 0, maxDepth);
+  }
+
+  private async buildTreeRecursive(
+    employeeId: number,
+    currentDepth: number,
+    maxDepth: number
+  ): Promise<EmployeeTreeNode> {
+    // 최대 깊이 제한
+    if (currentDepth >= maxDepth) {
+      const employee = await this.findById("Simple", employeeId);
+      return { ...employee, children: [] };
+    }
+
+    // 직속 부하 포함 조회
+    const employee = await this.findById("WithDirectReports", employeeId);
+
+    // 각 부하에 대해 재귀 호출
+    const children = await Promise.all(
+      (employee.directReports || []).map((report) =>
+        this.buildTreeRecursive(report.id, currentDepth + 1, maxDepth)
+      )
+    );
+
+    return {
+      ...employee,
+      children,
+      depth: currentDepth,
+    };
+  }
+
+  @api({ httpMethod: "GET" })
+  async getOrganizationTreeOptimized(
+    rootId: number
+  ): Promise<EmployeeTreeNode> {
+    // 최적화: 한 번에 모든 직원 조회 후 메모리에서 트리 구성
+    const allEmployees = await this.findMany("WithDirectReports", {
+      num: 10000,
+    });
+
+    // Map으로 빠른 조회
+    const employeeMap = new Map(
+      allEmployees.rows.map((emp) => [emp.id, emp])
+    );
+
+    // 트리 구성
+    return this.buildTreeFromMap(rootId, employeeMap);
+  }
+
+  private buildTreeFromMap(
+    employeeId: number,
+    employeeMap: Map<number, Employee>
+  ): EmployeeTreeNode {
+    const employee = employeeMap.get(employeeId);
+    if (!employee) {
+      throw new NotFoundError(`직원 ${employeeId}를 찾을 수 없습니다`);
+    }
+
+    // 직속 부하 찾기
+    const children = Array.from(employeeMap.values())
+      .filter((emp) => emp.manager_id === employeeId)
+      .map((emp) => this.buildTreeFromMap(emp.id, employeeMap));
+
+    return {
+      ...employee,
+      children,
+    };
+  }
+}
+
+interface EmployeeTreeNode extends Employee {
+  children: EmployeeTreeNode[];
+  depth?: number;
+}
+```
+
+**자기 참조 패턴 비교**:
+
+| 방식 | 장점 | 단점 | 사용 시점 |
+|------|------|------|-----------|
+| **재귀 조회** | 간단한 구현 | 쿼리 수 많음 (깊이만큼) | 작은 트리 |
+| **일괄 조회 + 메모리 구성** | 쿼리 1개로 완료 | 메모리 사용 많음 | 큰 트리 |
+| **깊이 제한** | 성능 예측 가능 | 전체 트리 못 봄 | 매우 깊은 트리 |
+
+<Warning>
+**순환 참조 주의사항**:
+1. **무한 루프 방지**: 최대 깊이 제한 필수
+2. **순환 데이터**: A → B → A 같은 잘못된 데이터 검증
+3. **성능**: 깊이가 깊어질수록 재귀 호출 증가
+4. **메모리**: 큰 트리는 메모리 사용량 주의
+</Warning>
+
+### 시나리오 6: 동적 필터링 with Subset
+
+사용자 입력에 따라 동적으로 필터를 적용하면서 Subset 활용
+
+```typescript
+interface ProductSearchParams {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  tags?: string[];
+  inStock?: boolean;
+  sortBy?: "price" | "popularity" | "recent";
+}
+
+class ProductModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async search<T extends ProductSubsetKey>(
+    subset: T,
+    searchParams: ProductSearchParams,
+    listParams: ProductListParams
+  ): Promise<ListResult<ProductListParams, ProductSubsetMapping[T]>> {
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
+    // 동적 필터 적용
+    if (searchParams.category) {
+      qb.where("products.category", searchParams.category);
+    }
+
+    if (searchParams.minPrice !== undefined) {
+      qb.where("products.price", ">=", searchParams.minPrice);
+    }
+
+    if (searchParams.maxPrice !== undefined) {
+      qb.where("products.price", "<=", searchParams.maxPrice);
+    }
+
+    if (searchParams.tags && searchParams.tags.length > 0) {
+      // PostgreSQL array contains
+      qb.whereRaw("products.tags @> ?", [JSON.stringify(searchParams.tags)]);
+    }
+
+    if (searchParams.inStock === true) {
+      qb.where("products.stock", ">", 0);
+    }
+
+    // 동적 정렬
+    switch (searchParams.sortBy) {
+      case "price":
+        qb.orderBy("products.price", "asc");
+        break;
+      case "popularity":
+        qb.orderBy("products.view_count", "desc");
+        break;
+      case "recent":
+        qb.orderBy("products.created_at", "desc");
+        break;
+      default:
+        qb.orderBy("products.id", "desc");
+    }
+
+    // Subset별 추가 로직
+    onSubset({
+      ListWithReviews: () => {
+        // 리뷰 포함 시 평균 평점 계산
+        qb.select({
+          avg_rating: qb.raw(
+            "(SELECT AVG(rating) FROM reviews WHERE product_id = products.id)"
+          ),
+        });
+      },
+    });
+
+    return this.executeSubsetQuery({ subset, qb, params: listParams });
+  }
+}
+```
+
+**동적 필터링 Best Practice**:
+1. **선택적 필터**: undefined 체크로 조건부 적용
+2. **타입 안전성**: TypeScript로 필터 파라미터 정의
+3. **SQL Injection 방지**: 파라미터 바인딩 사용
+4. **성능 최적화**: 인덱스가 있는 컬럼 우선 필터링
 
 ## 다음 단계
 

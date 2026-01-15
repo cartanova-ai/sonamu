@@ -14,7 +14,8 @@ type Context = {
   headers: IncomingHttpHeaders;
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;
-  locale?: string;
+  locale: string;
+  files?: UploadedFile[];
 } & AuthContext & ContextExtend;
 ```
 
@@ -94,12 +95,12 @@ Naite 테스팅 프레임워크에서 사용하는 저장소입니다. 테스트
 ### locale
 
 ```typescript
-locale?: string
+locale: string
 ```
 
-현재 요청의 locale(언어 설정)입니다. `sonamu.config.ts`에서 i18n 설정이 활성화되어 있을 때만 존재합니다.
+현재 요청의 locale(언어 설정)입니다. 항상 값이 존재합니다.
 
-`Accept-Language` 헤더를 파싱하여 지원하는 locale 중 하나를 자동으로 선택합니다.
+`Accept-Language` 헤더를 파싱하여 지원하는 locale 중 하나를 자동으로 선택하며, 일치하는 locale이 없으면 `defaultLocale`이 사용됩니다.
 
 **설정 예시:**
 
@@ -112,6 +113,154 @@ export default {
   }
 } satisfies SonamuConfig;
 ```
+
+**사용 예시:**
+
+```typescript
+class PostModelClass extends BaseModel {
+  @api({ httpMethod: "GET" })
+  async findMany(ctx: Context) {
+    const locale = ctx.locale; // "ko", "en", "ja" 중 하나
+
+    // locale에 따라 다른 응답
+    const posts = await this.getPuri("r")
+      .table("posts")
+      .where("locale", locale)
+      .select("*");
+
+    return posts;
+  }
+}
+```
+
+### files
+
+```typescript
+files?: UploadedFile[]
+```
+
+업로드된 파일 목록입니다. `@upload` 데코레이터가 적용된 메서드에서만 존재합니다.
+
+각 파일은 `UploadedFile` 객체로 제공되며, 파일 처리를 위한 다양한 메서드를 제공합니다.
+
+**UploadedFile 주요 속성 및 메서드:**
+
+```typescript
+interface UploadedFile {
+  // 파일 정보
+  filename: string;       // 파일명
+  mimetype: string;       // MIME 타입 (예: "image/png", "application/pdf")
+  size: number;           // 파일 크기 (bytes)
+  extname: string;        // 확장자 (예: "png", "pdf")
+
+  // 파일 처리 메서드
+  md5(): Promise<string>;                    // MD5 해시 생성
+  saveToDisk(key: string): Promise<string>;  // 파일 저장 후 URL 반환
+  toBuffer(): Promise<Buffer>;               // Buffer로 읽기
+}
+```
+
+**기본 사용 예시:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ limits: { files: 10 } })
+  async upload(): Promise<{ files: SonamuFile[] }> {
+    const { files } = Sonamu.getContext();
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("파일이 업로드되지 않았습니다");
+    }
+
+    const processedFiles = await Promise.all(
+      files.map(async (file) => {
+        const md5 = await file.md5();
+        const key = `${md5}.${file.extname}`;
+        return {
+          name: file.filename,
+          url: await file.saveToDisk(key),
+          mime_type: file.mimetype,
+          size: file.size,
+        };
+      })
+    );
+
+    return { files: processedFiles };
+  }
+}
+```
+
+**파라미터와 함께 사용:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ limits: { files: 5 } })
+  async uploadWithCategory(params: { category: string }): Promise<{
+    category: string;
+    files: SonamuFile[];
+  }> {
+    const { files } = Sonamu.getContext();
+    const { category } = params;
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("파일이 업로드되지 않았습니다");
+    }
+
+    return {
+      category,
+      files: await Promise.all(
+        files.map(async (file) => ({
+          name: file.filename,
+          url: await file.saveToDisk(`${category}/${await file.md5()}`),
+          mime_type: file.mimetype,
+          size: file.size,
+        }))
+      ),
+    };
+  }
+}
+```
+
+**이미지 처리 예시:**
+
+```typescript
+import sharp from "sharp";
+
+class ImageModelClass extends BaseModel {
+  @upload({ limits: { files: 1 } })
+  async uploadThumbnail(): Promise<{ url: string }> {
+    const { files } = Sonamu.getContext();
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("이미지가 업로드되지 않았습니다");
+    }
+
+    const file = files[0];
+
+    // Buffer로 읽어서 이미지 처리
+    const buffer = await file.toBuffer();
+    const thumbnail = await sharp(buffer)
+      .resize(200, 200)
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // 처리된 이미지 저장
+    const disk = Sonamu.storage.use();
+    const key = `thumbnails/${await file.md5()}.jpg`;
+    await disk.put(key, thumbnail);
+
+    return { url: await disk.getUrl(key) };
+  }
+}
+```
+
+<Info>
+**파일 업로드 처리**:
+- `@upload` 데코레이터와 함께 사용해야 합니다
+- 파일은 설정된 storage에 자동으로 저장됩니다
+- `files` 배열의 순서는 폼에서 전송한 순서와 동일합니다
+- 자세한 내용은 [@upload 데코레이터](/api-reference/decorators/upload) 문서를 참고하세요
+</Info>
 
 ### AuthContext 속성
 

@@ -190,20 +190,37 @@
             "icon": "browser",
             "pages": [
               {
+                "group": "시작하기",
+                "pages": [
+                  "ko/frontend-integration/getting-started/setup"
+                ]
+              },
+              {
                 "group": "자동 생성 Service",
                 "pages": [
                   "ko/frontend-integration/generated-services/how-services-work",
                   "ko/frontend-integration/generated-services/using-services",
-                  "ko/frontend-integration/generated-services/tanstack-query"
+                  "ko/frontend-integration/generated-services/tanstack-query",
+                  "ko/frontend-integration/generated-services/useSSEStream"
                 ]
               },
               {
                 "group": "React 컴포넌트",
                 "pages": [
+                  "ko/frontend-integration/react-components/auto-generated-overview",
                   "ko/frontend-integration/react-components/scaffolding-views",
                   "ko/frontend-integration/react-components/id-async-select",
                   "ko/frontend-integration/react-components/search-input",
+                  "ko/frontend-integration/react-components/search-components",
+                  "ko/frontend-integration/react-components/order-by-select",
                   "ko/frontend-integration/react-components/custom-components"
+                ]
+              },
+              {
+                "group": "Core Hooks",
+                "pages": [
+                  "ko/frontend-integration/core-hooks/use-list-params",
+                  "ko/frontend-integration/core-hooks/use-selection"
                 ]
               },
               {
@@ -724,20 +741,37 @@
             "icon": "browser",
             "pages": [
               {
+                "group": "Getting Started",
+                "pages": [
+                  "en/frontend-integration/getting-started/setup"
+                ]
+              },
+              {
                 "group": "Generated Services",
                 "pages": [
                   "en/frontend-integration/generated-services/how-services-work",
                   "en/frontend-integration/generated-services/using-services",
-                  "en/frontend-integration/generated-services/tanstack-query"
+                  "en/frontend-integration/generated-services/tanstack-query",
+                  "en/frontend-integration/generated-services/useSSEStream"
                 ]
               },
               {
                 "group": "React Components",
                 "pages": [
+                  "en/frontend-integration/react-components/auto-generated-overview",
                   "en/frontend-integration/react-components/scaffolding-views",
                   "en/frontend-integration/react-components/id-async-select",
                   "en/frontend-integration/react-components/search-input",
+                  "en/frontend-integration/react-components/search-components",
+                  "en/frontend-integration/react-components/order-by-select",
                   "en/frontend-integration/react-components/custom-components"
+                ]
+              },
+              {
+                "group": "Core Hooks",
+                "pages": [
+                  "en/frontend-integration/core-hooks/use-list-params",
+                  "en/frontend-integration/core-hooks/use-selection"
                 ]
               },
               {

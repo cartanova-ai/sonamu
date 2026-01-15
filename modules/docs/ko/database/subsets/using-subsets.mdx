@@ -98,10 +98,6 @@ const activeEngineers = await UserModel.getPuri("r", ["P"])
 
 ## Subset 타입 안전성
 
-<Frame>
-  <img src="/images/subsets/type-safety.png" alt="Subset 타입 안전성" />
-</Frame>
-
 ### 컴파일 타임 검증
 
 ```typescript
@@ -128,6 +124,156 @@ user.employee;  // { salary: string; department: { name: string } } | null
 // ❌ Compile Error
 user.password;  // Property 'password' does not exist
 ```
+
+### Subset 교집합 (Multiple Subsets)
+
+여러 Subset을 동시에 지정하면, TypeScript는 **교집합 타입**을 자동으로 계산합니다.
+
+#### 기본 교집합
+
+```typescript
+// Subset A와 P의 교집합
+const user = await UserModel.findById(1, ["A", "P"]);
+
+// 타입: 두 Subset에 공통으로 있는 필드만 사용 가능
+user.id;        // ✅ OK (A, P 모두 포함)
+user.username;  // ✅ OK (A, P 모두 포함)
+user.email;     // ✅ OK (A, P 모두 포함)
+
+user.employee;  // ❌ Type Error (A에는 없음, P에만 있음)
+user.bio;       // ❌ Type Error (P에는 없음, A에만 있음)
+```
+
+**교집합이 동작하는 이유**:
+- `["A", "P"]`는 Union이 아닌 **Intersection** 타입을 생성
+- 런타임에는 두 Subset 중 **더 큰 Subset**의 데이터가 반환됨
+- 하지만 타입 시스템은 **공통 필드만 보장**
+
+#### 쿼리에서의 교집합
+
+```typescript
+// 쿼리 시작: A와 P 교집합
+const query = UserModel.getPuri("r", ["A", "P"]);
+
+// ✅ OK: 공통 필드만 WHERE 조건 가능
+await query.where("users.username", "like", "%john%");
+await query.where("users.email", "john@example.com");
+
+// ❌ Type Error: employee는 교집합에 없음
+await query.where("employee__department.name", "Engineering");
+//                ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+```
+
+#### 실전 예제: 조건부 Subset 선택
+
+```typescript
+async getUserData(userId: number, includeEmployeeInfo: boolean) {
+  // 조건에 따라 Subset 선택
+  const subsets = includeEmployeeInfo ? ["P"] : ["A"];
+
+  const user = await UserModel.findById(userId, subsets);
+
+  // TypeScript 타입:
+  // - includeEmployeeInfo가 true면: UserSubsetMapping["P"]
+  // - includeEmployeeInfo가 false면: UserSubsetMapping["A"]
+  // - 하지만 변수 subsets의 타입이 ["P"] | ["A"]이므로
+  //   실제로는 교집합 타입이 추론됨
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    // employee 필드는 타입 체크 통과 안됨 (교집합에 없음)
+  };
+}
+```
+
+**교집합 우회 방법**:
+
+```typescript
+// 방법 1: 타입 가드 사용
+async getUserDataWithGuard(userId: number, includeEmployeeInfo: boolean) {
+  if (includeEmployeeInfo) {
+    const user = await UserModel.findById(userId, ["P"]);
+    // 여기서 user는 UserSubsetMapping["P"] 타입
+    return {
+      ...user,
+      department: user.employee?.department?.name,
+    };
+  } else {
+    const user = await UserModel.findById(userId, ["A"]);
+    // 여기서 user는 UserSubsetMapping["A"] 타입
+    return user;
+  }
+}
+
+// 방법 2: 제네릭 사용
+async getUserDataGeneric<T extends UserSubsetKey>(
+  userId: number,
+  subset: T
+): Promise<UserSubsetMapping[T]> {
+  const user = await UserModel.findById(userId, [subset]);
+  return user;
+}
+
+// 사용
+const userA = await getUserDataGeneric(1, "A");  // 타입: UserSubsetMapping["A"]
+const userP = await getUserDataGeneric(1, "P");  // 타입: UserSubsetMapping["P"]
+```
+
+#### onSubset 메서드와 교집합
+
+`onSubset` 메서드로 Subset 조건을 동적으로 적용할 때도 교집합이 계산됩니다:
+
+```typescript
+const query = UserModel.getPuri("r", ["A"]);
+
+// Subset A와 P 조건 모두 적용
+const result = await query
+  .onSubset(["A", "P"], (qb) => {
+    // 이 블록 내에서는 A와 P의 교집합 필드만 사용 가능
+    qb.where("users.username", "like", "%john%");  // ✅ OK
+
+    // ❌ Type Error: employee는 교집합에 없음
+    // qb.where("employee__department.name", "Engineering");
+  });
+```
+
+**onSubset의 타입 추론**:
+
+```typescript
+// 단일 Subset
+query.onSubset(["A"], (qb) => {
+  // qb는 Subset A의 모든 필드 사용 가능
+});
+
+// 복수 Subset (교집합)
+query.onSubset(["A", "P"], (qb) => {
+  // qb는 A와 P의 교집합 필드만 사용 가능
+});
+
+// 교집합이 비어있으면?
+query.onSubset(["L", "P"], (qb) => {
+  // L과 P의 공통 필드만 사용 가능
+  // 만약 공통 필드가 거의 없다면, 사용 가능한 필드가 매우 제한적
+});
+```
+
+<Warning>
+**교집합 사용 시 주의사항**:
+1. **런타임 데이터 ≠ 타입**: 런타임에는 더 큰 Subset의 모든 필드가 반환되지만, 타입 시스템은 교집합만 보장
+2. **의도하지 않은 교집합**: 여러 Subset을 배열로 전달할 때 실수로 교집합이 발생할 수 있음
+3. **타입 가드 권장**: 조건부로 Subset을 선택할 때는 타입 가드를 사용하여 정확한 타입 추론
+</Warning>
+
+<Info>
+**언제 교집합을 사용하나요?**
+- 여러 API에서 공통으로 필요한 필드만 조회할 때
+- 타입 안전성을 극대화하고 싶을 때
+- 불필요한 필드 노출을 방지하고 싶을 때
+
+대부분의 경우 **단일 Subset** 사용을 권장합니다.
+</Info>
 
 ## 실전 예제
 

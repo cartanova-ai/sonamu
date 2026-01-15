@@ -192,20 +192,30 @@ async findById(id: number) {
 await Sonamu.cache.deleteByTags(["products"]);
 ```
 
-### gracePeriod
+### grace
 
-캐시가 만료된 후에도 일정 시간 동안 이전 값을 반환하는 유예 기간입니다.
+캐시가 만료된 후에도 일정 시간 동안 이전 값(Stale)을 반환하는 유예 기간입니다 (Stale-While-Revalidate 패턴).
 
 ```typescript
 @cache({
   ttl: "10m",
-  gracePeriod: { enabled: true, duration: "5m" }
+  grace: "5m"  // TTL 만료 후 5분 동안 Stale 값 반환
 })
 async getData() {
-  // TTL 만료 후 5분간은 기존 캐시 반환
-  // 백그라운드에서 새로운 값 갱신
+  // 0~10분: 신선한 캐시 반환
+  // 10~15분: Stale 캐시 즉시 반환 + 백그라운드 갱신
+  // 15분 이후: 캐시 미스, 새로 계산
 }
 ```
+
+**작동 방식**:
+- TTL 내: 신선한 캐시 반환
+- TTL 만료 후 grace 기간 내: Stale 캐시 즉시 반환, 백그라운드에서 갱신
+- grace 기간 경과 후: 캐시 미스
+
+<Info>
+Stale-While-Revalidate는 사용자에게 빠른 응답(Stale이라도 즉시)을 제공하면서, 백그라운드에서 갱신하여 다음 사용자는 신선한 데이터를 받게 하는 패턴입니다.
+</Info>
 
 ### timeouts
 

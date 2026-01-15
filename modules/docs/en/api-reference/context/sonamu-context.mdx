@@ -14,7 +14,8 @@ type Context = {
   headers: IncomingHttpHeaders;
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;
-  locale?: string;
+  locale: string;
+  files?: UploadedFile[];
 } & AuthContext & ContextExtend;
 ```
 
@@ -94,24 +95,172 @@ Naite 테스팅 프레임워크에서 사용하는 저장소입니다. 테스트
 ### locale
 
 ```typescript
-locale?: string
+locale: string
 ```
 
-현재 요청의 locale(언어 설정)입니다. `sonamu.config.ts`에서 i18n 설정이 활성화되어 있을 때만 존재합니다.
+The locale (language setting) of the current request. This property always has a value.
 
-`Accept-Language` 헤더를 파싱하여 지원하는 locale 중 하나를 자동으로 선택합니다.
+Parses the `Accept-Language` header and automatically selects one of the supported locales. If no match is found, the `defaultLocale` is used.
 
-**설정 예시:**
+**Configuration example:**
 
 ```typescript
 // sonamu.config.ts
 export default {
   i18n: {
-    defaultLocale: "ko",
-    supportedLocales: ["ko", "en", "ja"]
+    defaultLocale: "en",
+    supportedLocales: ["en", "ko", "ja"]
   }
 } satisfies SonamuConfig;
 ```
+
+**Usage example:**
+
+```typescript
+class PostModelClass extends BaseModel {
+  @api({ httpMethod: "GET" })
+  async findMany(ctx: Context) {
+    const locale = ctx.locale; // "en", "ko", or "ja"
+
+    // Return different responses based on locale
+    const posts = await this.getPuri("r")
+      .table("posts")
+      .where("locale", locale)
+      .select("*");
+
+    return posts;
+  }
+}
+```
+
+### files
+
+```typescript
+files?: UploadedFile[]
+```
+
+List of uploaded files. This property only exists in methods with the `@upload` decorator.
+
+Each file is provided as an `UploadedFile` object with various methods for file processing.
+
+**UploadedFile key properties and methods:**
+
+```typescript
+interface UploadedFile {
+  // File information
+  filename: string;       // File name
+  mimetype: string;       // MIME type (e.g., "image/png", "application/pdf")
+  size: number;           // File size in bytes
+  extname: string;        // Extension (e.g., "png", "pdf")
+
+  // File processing methods
+  md5(): Promise<string>;                    // Generate MD5 hash
+  saveToDisk(key: string): Promise<string>;  // Save file and return URL
+  toBuffer(): Promise<Buffer>;               // Read as Buffer
+}
+```
+
+**Basic usage example:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ limits: { files: 10 } })
+  async upload(): Promise<{ files: SonamuFile[] }> {
+    const { files } = Sonamu.getContext();
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    const processedFiles = await Promise.all(
+      files.map(async (file) => {
+        const md5 = await file.md5();
+        const key = `${md5}.${file.extname}`;
+        return {
+          name: file.filename,
+          url: await file.saveToDisk(key),
+          mime_type: file.mimetype,
+          size: file.size,
+        };
+      })
+    );
+
+    return { files: processedFiles };
+  }
+}
+```
+
+**Usage with parameters:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ limits: { files: 5 } })
+  async uploadWithCategory(params: { category: string }): Promise<{
+    category: string;
+    files: SonamuFile[];
+  }> {
+    const { files } = Sonamu.getContext();
+    const { category } = params;
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    return {
+      category,
+      files: await Promise.all(
+        files.map(async (file) => ({
+          name: file.filename,
+          url: await file.saveToDisk(`${category}/${await file.md5()}`),
+          mime_type: file.mimetype,
+          size: file.size,
+        }))
+      ),
+    };
+  }
+}
+```
+
+**Image processing example:**
+
+```typescript
+import sharp from "sharp";
+
+class ImageModelClass extends BaseModel {
+  @upload({ limits: { files: 1 } })
+  async uploadThumbnail(): Promise<{ url: string }> {
+    const { files } = Sonamu.getContext();
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No image uploaded");
+    }
+
+    const file = files[0];
+
+    // Read as Buffer and process image
+    const buffer = await file.toBuffer();
+    const thumbnail = await sharp(buffer)
+      .resize(200, 200)
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // Save processed image
+    const disk = Sonamu.storage.use();
+    const key = `thumbnails/${await file.md5()}.jpg`;
+    await disk.put(key, thumbnail);
+
+    return { url: await disk.getUrl(key) };
+  }
+}
+```
+
+<Info>
+**File Upload Handling**:
+- Must be used with the `@upload` decorator
+- Files are automatically saved to the configured storage
+- The order of the `files` array matches the order they were sent in the form
+- See [@upload decorator](/api-reference/decorators/upload) documentation for more details
+</Info>
 
 ### AuthContext 속성
 

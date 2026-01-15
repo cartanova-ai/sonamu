@@ -3,7 +3,11 @@ title: 'Subset Management'
 description: 'Define and manage Entity Subsets'
 ---
 
-Subset is a feature that **pre-defines specific field combinations of an Entity** to efficiently manage API responses. Sonamu UI's Subset management feature allows you to visually define and edit Subsets.
+Subset is a feature that **pre-defines specific field combinations of an Entity** to efficiently manage API responses. You can visually define and edit Subsets in the **Entity tab** of Sonamu UI.
+
+<Info>
+Subsets are not managed in a separate tab. They are managed in the **Subsets sheet within the Entity tab**. After selecting an Entity, you work in the Subsets sheet alongside Properties, Indexes, Relations, and Enums.
+</Info>
 
 ## What is a Subset?
 
@@ -31,22 +35,43 @@ const users = await UserModel.findMany({ subset: "A" });
 
 ## Subset Management Screen
 
-<Frame caption="Subset Management Screen">
-  {/* TODO: Add Subset management tab screenshot */}
+### Accessing from Entity Tab
+
+To manage Subsets in Sonamu UI:
+
+1. Click the **Entity tab**
+2. Select the **desired Entity** from the left sidebar
+3. Click **Subsets** among the sheet tabs at the top
+
+<Frame caption="Managing Subsets in the Subsets sheet of Entity tab">
+  <img src="/images/sonamuUI-relation-result.png" alt="Entity Relations Screen" />
+  <img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets Screen" />
 </Frame>
 
-The Subset management screen consists of two main areas:
+### Screen Layout
 
-- **Left Sidebar**: Entity list and each Entity's Subset list
-- **Right Content**: Field selection checkboxes for the selected Subset
+The Subsets sheet is organized as follows:
+
+- **Left Sidebar**: Entity list (showing currently selected Entity)
+- **Top Sheet Tabs**: Properties, Indexes, Relations, Enums, **Subsets**
+- **Subset List**: All Subsets of the current Entity (A, B, C, etc.)
+- **Field Selection Area**: Checkboxes for fields to include in the selected Subset
 
 ## Creating a Subset
 
-### 1. Select Entity
+### 1. Navigate to Entity Tab
 
-Select the Entity to add a Subset to from the left list.
+Click the **Entity tab** in Sonamu UI.
 
-### 2. Add Subset
+### 2. Select Entity
+
+Select the Entity to add a Subset to from the left sidebar.
+
+### 3. Open Subsets Sheet
+
+Click **Subsets** among the sheet tabs at the top.
+
+### 4. Add Subset
 
 Click the **[Add Subset]** button to create a new Subset.
 
@@ -59,7 +84,7 @@ Click the **[Add Subset]** button to create a new Subset.
 Subset IDs typically use **single alphabet letters** (A, B, C...).
 </Info>
 
-### 3. Select Fields
+### 5. Select Fields
 
 Select the fields to include in the created Subset:
 
@@ -207,9 +232,10 @@ Only include when necessary.
 
 ### Add/Remove Fields
 
-1. Select Subset
-2. Click field checkbox
-3. Click **[Save]** button
+1. Navigate to the Entity's **Subsets sheet** in the Entity tab
+2. Select the **Subset to edit**
+3. Click field checkboxes to **change inclusion/exclusion**
+4. Click **[Save]** button
 
 **Changes applied immediately**:
 ```
@@ -219,9 +245,10 @@ After:  { id, email, name, bio, created_at }
 
 ### Delete Subset
 
-1. Select Subset
-2. Click **[Delete]** button
-3. Click **[Confirm]** in the confirmation modal
+1. Navigate to the Entity's **Subsets sheet** in the Entity tab
+2. Select the **Subset to delete**
+3. Click **[Delete]** button
+4. Click **[Confirm]** in the confirmation modal
 
 <Warning>
 **Deleting used Subset**: If there are APIs using the Subset you're deleting, errors may occur.

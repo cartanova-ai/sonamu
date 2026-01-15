@@ -384,7 +384,8 @@ import type { User, Post } from "@/types";
 @api()
 @upload({ mode: "single" })
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
   // Type: UploadedFile | undefined
 
   const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
@@ -401,7 +402,8 @@ async uploadFile() {
 @api()
 @upload({ mode: "single" })
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
 
   if (!file) {
     throw new BadRequestException("File is required");

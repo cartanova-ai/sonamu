@@ -9,24 +9,38 @@ Sonamu는 파일 변경에 따라 관련 파일을 자동으로 재생성합니�
 
 ```mermaid
 flowchart TD
-    A[Entity 저장] --> B[*.types.ts 생성]
-    A --> C[sonamu.generated.ts]
-    A --> D[sonamu.generated.sso.ts]
-    
-    E[Model 저장] --> F[services.generated.ts]
-    E --> G[sonamu.generated.http]
-    E --> H[queries.generated.ts]
-    E --> I[entry-server.generated.tsx]
-    
-    J[Types 저장] --> K[타겟 복사]
-    
-    C --> K
-    D --> K
-    B --> K
-    
-    style A fill:#4f46e5,color:#fff
-    style E fill:#4f46e5,color:#fff
-    style J fill:#4f46e5,color:#fff
+    A["📝 *.entity.json 저장"]
+    E["📝 *.model.ts 저장"]
+    J["📝 *.types.ts 저장"]
+
+    A --> A1["*.types.ts 생성<br/>(첫 생성시만)"]
+    A --> A2[sonamu.generated.ts]
+    A --> A3[sonamu.generated.sso.ts]
+
+    E --> E1[services.generated.ts]
+    E --> E2[sonamu.generated.http]
+    E --> E3[queries.generated.ts]
+    E --> E4[entry-server.generated.tsx]
+
+    A1 --> W["🌐 Web/App 프로젝트로<br/>파일 복사"]
+    A2 --> W
+    A3 --> W
+    J --> W
+
+    style A fill:#4f46e5,color:#fff,stroke:#4f46e5,stroke-width:3px
+    style E fill:#059669,color:#fff,stroke:#059669,stroke-width:3px
+    style J fill:#dc2626,color:#fff,stroke:#dc2626,stroke-width:3px
+
+    style A1 fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px
+    style A2 fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px
+    style A3 fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px
+
+    style E1 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+    style E2 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+    style E3 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+    style E4 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+
+    style W fill:#e0f2f1,stroke:#0097a7,stroke-width:3px
 ```
 
 ## Entity 저장 시

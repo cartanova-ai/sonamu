@@ -1,0 +1,638 @@
+---
+title: "Auto-generated Components Overview"
+description: "Frontend components automatically generated from Entity definitions"
+---
+
+Sonamu automatically generates frontend components based on backend Entity definitions. This document explains what components are generated and when to use them.
+
+## Component Types
+
+<CardGroup cols={2}>
+  <Card title="IdAsyncSelect" icon="magnifying-glass">
+    Entity record search selection
+
+    Server search support
+  </Card>
+  <Card title="OrderBySelect" icon="arrow-down-up-across-line">
+    Sort option selection
+
+    Enum based
+  </Card>
+  <Card title="SearchFieldSelect" icon="list-check">
+    Search target field selection
+
+    Dynamic search criteria
+  </Card>
+  <Card title="StatusSelect" icon="circle-check">
+    Status/role selection
+
+    Enum based
+  </Card>
+</CardGroup>
+
+## 1. IdAsyncSelect
+
+### Generation Condition
+
+Auto-generated for all Entities.
+
+### File Location
+
+```
+web/src/components/{entity}/{Entity}IdAsyncSelect.tsx
+```
+
+**Examples**:
+- `UserIdAsyncSelect.tsx`
+- `ProjectIdAsyncSelect.tsx`
+- `CompanyIdAsyncSelect.tsx`
+
+### Code Structure
+
+```typescript
+// UserIdAsyncSelect.tsx
+import { AsyncSelect } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import type { UserSubsetA } from "@/services/sonamu.generated";
+
+export type UserIdAsyncSelectProps = {
+  value?: number | number[];
+  onValueChange?: (value: number | number[] | null | undefined) => void;
+  placeholder?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+  multiple?: boolean;
+};
+
+export function UserIdAsyncSelect({
+  value,
+  onValueChange,
+  placeholder,
+  clearable,
+  disabled,
+  className,
+  multiple = false,
+}: UserIdAsyncSelectProps) {
+  const loadOptions = async (keyword: string) => {
+    const { rows } = await UserService.getUsers("A", {
+      num: 20,
+      page: 1,
+      search: "id",
+      keyword,
+    });
+    return rows.map((row) => ({
+      label: `${row.username} (${row.email})`,
+      value: row.id,
+    }));
+  };
+
+  return (
+    <AsyncSelect
+      value={value}
+      onValueChange={onValueChange}
+      loadOptions={loadOptions}
+      placeholder={placeholder ?? "Select user"}
+      clearable={clearable}
+      disabled={disabled}
+      className={className}
+      multiple={multiple}
+    />
+  );
+}
+```
+
+### Usage Example
+
+```typescript
+import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+
+export function ProjectForm() {
+  const { register } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    manager_id: null,
+  });
+
+  return (
+    <form>
+      <label>Project Manager</label>
+      <UserIdAsyncSelect {...register("manager_id")} clearable />
+    </form>
+  );
+}
+```
+
+### Key Features
+
+**1. Server Search**:
+- Calls backend API with user-entered keyword
+- Display real-time search results
+- Fast search even with large datasets
+
+**2. Single/Multi Selection**:
+```typescript
+// Single selection (default)
+<UserIdAsyncSelect
+  value={userId}
+  onValueChange={setUserId}
+/>
+
+// Multi-selection
+<UserIdAsyncSelect
+  value={userIds}
+  onValueChange={setUserIds}
+  multiple
+/>
+```
+
+**3. Custom Labels**:
+
+By default, it's in `username (email)` format, but you can modify the component file directly.
+
+```typescript
+// Modification example
+return rows.map((row) => ({
+  label: `${row.id}. ${row.username}`,  // "1. admin"
+  value: row.id,
+}));
+```
+
+<Info>
+**IdAsyncSelect vs Regular Select**
+
+- **IdAsyncSelect**: Hundreds~thousands+ records (search required)
+- **Regular Select**: 10~50 or fewer fixed options
+
+Example: Use IdAsyncSelect for user selection, regular Select for role selection (admin/normal)
+</Info>
+
+## 2. OrderBySelect
+
+### Generation Condition
+
+Auto-generated when Entity's `OrderBy` enum is defined.
+
+### File Location
+
+```
+web/src/components/{entity}/{Entity}OrderBySelect.tsx
+```
+
+### Code Structure
+
+```typescript
+// UserOrderBySelect.tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import { UserOrderBy, UserOrderByLabel } from "@/services/sonamu.generated";
+
+export type UserOrderBySelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function UserOrderBySelect({
+  value,
+  onValueChange,
+  placeholder,
+  textPrefix,
+  clearable,
+  disabled,
+  className,
+}: UserOrderBySelectProps) {
+  const validOptions = UserOrderBy.options.filter((key) => (key as string) !== "");
+
+  return (
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder ?? "Sort"} />
+      </SelectTrigger>
+      <SelectContent>
+        {clearable && <SelectItem value="">All</SelectItem>}
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + UserOrderByLabel[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### Usage Example
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    orderBy: "id-desc" as const,
+  });
+
+  return (
+    <div className="flex gap-2">
+      <UserOrderBySelect {...register("orderBy")} />
+    </div>
+  );
+}
+```
+
+### OrderBy Enum Definition
+
+Defined in the backend.
+
+```typescript
+// user.types.ts (backend)
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+  "created_at-desc",
+  "created_at-asc",
+  "username-asc",
+  "username-desc",
+]);
+```
+
+Auto-generated labels:
+
+```typescript
+// sonamu.generated.ts (frontend)
+export const UserOrderByLabel = {
+  "id-desc": "ID Latest",
+  "id-asc": "ID Oldest",
+  "created_at-desc": "Created Latest",
+  "created_at-asc": "Created Oldest",
+  "username-asc": "Name Ascending",
+  "username-desc": "Name Descending",
+};
+```
+
+## 3. SearchFieldSelect
+
+### Generation Condition
+
+Auto-generated when Entity's `SearchField` enum is defined.
+
+### File Location
+
+```
+web/src/components/{entity}/{Entity}SearchFieldSelect.tsx
+```
+
+### Usage Example
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    search: "id" as const,
+    keyword: "",
+  });
+
+  return (
+    <div className="flex gap-2">
+      {/* Search target field selection */}
+      <UserSearchFieldSelect {...register("search")} className="w-32" />
+
+      {/* Search keyword input */}
+      <Input {...register("keyword")} placeholder="Enter keyword" />
+    </div>
+  );
+}
+```
+
+### SearchField Enum Definition
+
+```typescript
+// user.types.ts (backend)
+export const UserSearchField = z.enum([
+  "id",
+  "username",
+  "email",
+]);
+```
+
+Auto-generated labels:
+
+```typescript
+// sonamu.generated.ts (frontend)
+export const UserSearchFieldLabel = {
+  id: "ID",
+  username: "Name",
+  email: "Email",
+};
+```
+
+<Info>
+**SearchField vs SearchInput**
+
+- **SearchFieldSelect**: Select search target field (ID, name, email, etc.)
+- **Input (keyword)**: Enter actual search term
+
+Using both together enables dynamic search criteria.
+</Info>
+
+## 4. StatusSelect (Enum Select)
+
+### Generation Condition
+
+Auto-generated when Entity has enum-type fields defined.
+
+### File Location
+
+```
+web/src/components/{entity}/{Entity}{EnumName}Select.tsx
+```
+
+**Examples**:
+- `ProjectStatusSelect.tsx` (Project's status field)
+- `UserRoleSelect.tsx` (User's role field)
+
+### Usage Examples
+
+#### List Filtering
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+
+export function ProjectListPage() {
+  const { register } = useListParams(ProjectListParams, {
+    status: undefined,  // All
+  });
+
+  return (
+    <div>
+      <ProjectStatusSelect {...register("status")} clearable />
+    </div>
+  );
+}
+```
+
+#### Form Input
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+
+export function ProjectForm() {
+  const { register } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    status: "planning",
+  });
+
+  return (
+    <form>
+      <label>Project Status</label>
+      <ProjectStatusSelect {...register("status")} />
+    </form>
+  );
+}
+```
+
+### Enum Definition
+
+Defined in backend Entity.
+
+```json
+// project.entity.json
+{
+  "props": [
+    {
+      "name": "status",
+      "type": "enum",
+      "enum": ["planning", "in_progress", "completed", "cancelled"],
+      "enumLabels": {
+        "planning": "Planning",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
+    }
+  ]
+}
+```
+
+Auto-generated types:
+
+```typescript
+// sonamu.generated.ts
+export const ProjectStatus = z.enum(["planning", "in_progress", "completed", "cancelled"]);
+
+export const ProjectStatusLabel = {
+  planning: "Planning",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+```
+
+## Component Customization
+
+### When to Modify?
+
+Auto-generated components are **initial templates** and can be modified to fit project requirements.
+
+**When modification is needed**:
+1. Change IdAsyncSelect label format
+2. Change search target Subset
+3. Change defaults like placeholder, className
+4. Add additional filtering logic
+
+### Modification Example 1: IdAsyncSelect Label
+
+```typescript
+// Modify UserIdAsyncSelect.tsx
+const loadOptions = async (keyword: string) => {
+  const { rows } = await UserService.getUsers("A", {
+    num: 20,
+    page: 1,
+    search: "id",
+    keyword,
+  });
+
+  return rows.map((row) => ({
+    // Default: "admin (admin@example.com)"
+    label: `${row.username} (${row.email})`,
+
+    // Modification 1: Include ID
+    // label: `[${row.id}] ${row.username}`,
+
+    // Modification 2: Show role
+    // label: `${row.username} (${row.role})`,
+
+    // Modification 3: Complex format
+    // label: `${row.username} - ${row.email} [${row.role}]`,
+
+    value: row.id,
+  }));
+};
+```
+
+### Modification Example 2: Change Search Subset
+
+By default uses Subset "A", but can be changed if more info is needed.
+
+```typescript
+// Change Subset "A" → "B"
+const { rows } = await UserService.getUsers("B", {
+  num: 20,
+  page: 1,
+  search: "id",
+  keyword,
+});
+
+// Can use fields only in Subset "B"
+return rows.map((row) => ({
+  label: `${row.username} - ${row.department?.name}`,  // department only in Subset B
+  value: row.id,
+}));
+```
+
+<Warning>
+**Caution When Changing Subset**
+
+Using larger Subsets can degrade search performance.
+It's better to create custom Subsets with only necessary fields.
+</Warning>
+
+### Modification Example 3: Additional Filtering
+
+To search only users meeting certain conditions:
+
+```typescript
+const loadOptions = async (keyword: string) => {
+  const { rows } = await UserService.getUsers("A", {
+    num: 20,
+    page: 1,
+    search: "id",
+    keyword,
+    role: "admin",  // Search only admins
+  });
+
+  return rows.map((row) => ({
+    label: `${row.username} (${row.email})`,
+    value: row.id,
+  }));
+};
+```
+
+## Regeneration Policy
+
+### Are these auto-generated files?
+
+**No.** Generated once and not regenerated afterward.
+
+### When regeneration is needed
+
+1. Entity structure significantly changed
+2. Want to delete existing component and start from scratch
+
+**Method**:
+```bash
+# Delete component
+rm web/src/components/user/UserIdAsyncSelect.tsx
+
+# Restart dev server (auto-regenerates)
+pnpm dev
+```
+
+<Info>
+**Scaffolding Files**
+
+These components are "scaffolding files". They provide initial templates and developers freely modify them afterward.
+Different from "real-time sync files" like `sonamu.generated.ts`.
+</Info>
+
+## Usage Patterns
+
+### List Page Filters
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { Input } from "@sonamu-kit/react-components/components";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+    orderBy: "id-desc" as const,
+    role: undefined,
+  });
+
+  return (
+    <div className="flex gap-2 mb-4">
+      {/* Search */}
+      <UserSearchFieldSelect {...register("search")} className="w-32" />
+      <Input {...register("keyword")} placeholder="Keyword" className="w-64" />
+
+      {/* Filter */}
+      <UserRoleSelect {...register("role")} clearable />
+
+      {/* Sort */}
+      <UserOrderBySelect {...register("orderBy")} />
+    </div>
+  );
+}
+```
+
+### Form Input
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+import { Input } from "@sonamu-kit/react-components/components";
+
+export function ProjectForm() {
+  const { register, submit } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    status: "planning",
+    manager_id: null,
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(async (formData) => {
+          await ProjectService.save({ params: formData });
+        });
+      }}
+    >
+      <Input {...register("title")} placeholder="Project title" />
+      <ProjectStatusSelect {...register("status")} />
+      <UserIdAsyncSelect {...register("manager_id")} placeholder="Select manager" clearable />
+
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
+
+## Related Documentation
+
+- [IdAsyncSelect Details](/frontend-integration/react-components/id-async-select) - Advanced IdAsyncSelect usage
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - List filtering hook
+- [Using Services](/frontend-integration/generated-services/using-services) - API calls
+- [Defining Entities](/core-concepts/entity/defining-entities) - Backend Entity structure

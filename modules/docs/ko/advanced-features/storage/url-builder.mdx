@@ -311,15 +311,16 @@ https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expire
 ```typescript
 @upload()
 async uploadPrivateFile() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   if (!file) {
     throw new Error('파일이 없습니다');
   }
-  
+
   // 저장
   await file.saveToDisk('private/doc.pdf', 's3');
-  
+
   return {
     url: file.url,           // Unsigned URL
     signedUrl: file.signedUrl  // Signed URL

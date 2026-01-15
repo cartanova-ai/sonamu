@@ -12,7 +12,8 @@ class DocumentModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
     const content = await file.toBuffer().then(b => b.toString());
 
     // Attempting to generate embedding
@@ -89,7 +90,8 @@ class DocumentModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadLongDocument() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
     const content = await file.toBuffer().then(b => b.toString());
 
     // 1. Chunking
@@ -243,7 +245,8 @@ You're building a development documentation search system with Sonamu.
 @upload({ mode: 'single' })
 @api({ httpMethod: 'POST' })
 async uploadTechDoc() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
   const content = await file.toBuffer().then(b => b.toString());
 
   const chunking = new Chunking({

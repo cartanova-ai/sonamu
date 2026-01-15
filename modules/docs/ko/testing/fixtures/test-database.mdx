@@ -34,21 +34,18 @@ Sonamu의 테스트 데이터베이스 시스템과 설정 방법을 알아봅�
 
 Sonamu는 여러 데이터베이스를 사용합니다:
 
-```
-┌─────────────────────┐
-│ development_master  │  ← 개발 DB (로컬)
-│ (로컬 개발 데이터)   │
-└─────────────────────┘
-         ↓ pnpm sonamu fixture init
-┌─────────────────────┐
-│     fixture DB      │  ← Fixture DB (원격 가능)
-│  (공유 테스트 데이터)│
-└─────────────────────┘
-         ↓ pnpm sonamu fixture sync
-┌─────────────────────┐
-│      test DB        │  ← 테스트 DB (로컬)
-│  (테스트 실행 환경)  │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    D["💾 development_master<br/>━━━━━━━━━━<br/>(로컬 개발 데이터)"]
+    F["📦 fixture DB<br/>━━━━━━━━━━<br/>(공유 테스트 데이터)"]
+    T["🧪 test DB<br/>━━━━━━━━━━<br/>(테스트 실행 환경)"]
+
+    D -->|pnpm sonamu<br/>fixture init| F
+    F -->|pnpm sonamu<br/>fixture sync| T
+
+    style D fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style F fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style T fill:#d4edda,stroke:#198754,stroke-width:2px
 ```
 
 **역할**:

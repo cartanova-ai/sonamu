@@ -383,9 +383,10 @@ import type { User, Post } from "@/types";
 ```typescript
 @upload()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   // Type: UploadedFile | undefined
-  
+
   const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
 }
 ```
@@ -399,18 +400,19 @@ async uploadFile() {
 ```typescript
 @upload()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   if (!file) {
     throw new BadRequestException("파일이 필요합니다");
   }
-  
+
   // ✅ toBuffer() 메서드 사용
   const buffer = await file.toBuffer();
-  
+
   // 또는 파일 저장
   const url = await file.saveToDisk(`uploads/${file.filename}`);
-  
+
   return { url, size: file.size };
 }
 ```

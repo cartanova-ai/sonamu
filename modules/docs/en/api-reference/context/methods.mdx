@@ -159,8 +159,9 @@ class FileModelClass extends BaseModel {
   @api()
   @upload({ mode: "single" })
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
+
     if (!file) {
       throw new BadRequestException("파일이 필요합니다");
     }
@@ -187,8 +188,8 @@ class FileModelClass extends BaseModel {
   @api()
   @upload({ mode: "multiple" })
   async uploadDocuments(ctx: Context, folderId: number) {
-    const { files } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+
     if (files.length === 0) {
       throw new BadRequestException("최소 1개 이상의 파일이 필요합니다");
     }
@@ -223,12 +224,12 @@ class FileModelClass extends BaseModel {
 import { Sonamu } from "sonamu";
 
 export function getUploadedFiles() {
-  const { files } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
   return files;
 }
 
 export function validateFileTypes(allowedTypes: string[]) {
-  const { files } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
   
   for (const file of files) {
     if (!allowedTypes.includes(file.mimetype)) {
@@ -345,13 +346,14 @@ class PostModelClass extends BaseModel {
 @api()
 @upload()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext(); // OK
+  const { files } = Sonamu.getContext(); // OK
+  const file = files?.[0]; // Use first file
 }
 
 // ❌ 잘못된 사용
 @api()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext(); // Error!
+  const { files } = Sonamu.getContext(); // Error! @upload 데코레이터가 없으면 files가 undefined
 }
 ```
 

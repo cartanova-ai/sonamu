@@ -185,8 +185,9 @@ export const config: SonamuConfig = {
 ```typescript
 class UserModelClass extends BaseModel {
   // 프로필 사진 → 공개 디스크
-  async uploadAvatar(ctx: UploadContext) {
-    const file = ctx.file;
+  async uploadAvatar(ctx: Context) {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     const url = await file.saveToDisk(
       `avatars/${ctx.user.id}.png`,
       'public'  // 공개 디스크
@@ -195,8 +196,9 @@ class UserModelClass extends BaseModel {
   }
   
   // 개인 문서 → 기본 디스크 (private)
-  async uploadDocument(ctx: UploadContext) {
-    const file = ctx.file;
+  async uploadDocument(ctx: Context) {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     const url = await file.saveToDisk(
       `documents/${ctx.user.id}/${file.filename}`
       // 기본 디스크 사용
@@ -306,14 +308,18 @@ export const config: SonamuConfig = {
 // 사용
 class FileModelClass extends BaseModel {
   // 영구 저장 → S3
-  async upload(ctx: UploadContext) {
-    return ctx.file.saveToDisk('uploads/file.pdf');  // S3
+  async upload(ctx: Context) {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+    return file.saveToDisk('uploads/file.pdf');  // S3
   }
-  
+
   // 임시 처리 → 로컬
-  async processTempFile(ctx: UploadContext) {
+  async processTempFile(ctx: Context) {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     const tempPath = `temp/${Date.now()}.tmp`;
-    await ctx.file.saveToDisk(tempPath, 'fs');  // 로컬
+    await file.saveToDisk(tempPath, 'fs');  // 로컬
     
     // 처리 후 삭제
     await Sonamu.storage.use('fs').delete(tempPath);
@@ -329,22 +335,23 @@ class FileModelClass extends BaseModel {
 class UserModelClass extends BaseModel {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }
-    
+
     // 파일명: user-{id}-{timestamp}.{ext}
     const filename = `user-${ctx.user.id}-${Date.now()}.${file.extname}`;
     const key = `avatars/${filename}`;
-    
+
     // 기본 디스크에 저장
     const url = await file.saveToDisk(key);
-    
+
     // DB 업데이트
     await this.updateOne(['id', ctx.user.id], { avatar_url: url });
-    
+
     return { url };
   }
 }
@@ -356,8 +363,8 @@ class UserModelClass extends BaseModel {
 class PostModelClass extends BaseModel {
   @upload()
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+
     const urls = await Promise.all(
       files.map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
@@ -376,8 +383,9 @@ class PostModelClass extends BaseModel {
 class FileModelClass extends BaseModel {
   @upload()
   async upload(type: 'public' | 'private') {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }

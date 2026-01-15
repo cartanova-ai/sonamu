@@ -138,48 +138,28 @@ pnpm sonamu fixture sync
 
 ## Database Comparison
 
-### Before Sync
+```mermaid
+flowchart TD
+    subgraph before["🔴 Before Sync"]
+        direction TB
+        F1["📦 Fixture DB (Remote Server)<br/>━━━━━━━━━━<br/>Users: 10 rows<br/>Posts: 50 rows<br/>Comments: 200 rows"]
+        T1["💻 Test DB (Local)<br/>━━━━━━━━━━<br/>Users: 5 rows ❌<br/>Posts: 20 rows ❌<br/>Comments: 80 rows ❌"]
+    end
 
-```
-┌─────────────────────┐
-│   Fixture DB        │
-│ (Remote server)     │
-├─────────────────────┤
-│ Users: 10 rows      │
-│ Posts: 50 rows      │
-│ Comments: 200 rows  │
-└─────────────────────┘
+    subgraph after["🟢 After Sync"]
+        direction TB
+        F2["📦 Fixture DB (Remote Server)<br/>━━━━━━━━━━<br/>Users: 10 rows<br/>Posts: 50 rows<br/>Comments: 200 rows"]
+        T2["💻 Test DB (Local)<br/>━━━━━━━━━━<br/>Users: 10 rows ✅<br/>Posts: 50 rows ✅<br/>Comments: 200 rows ✅"]
 
-┌─────────────────────┐
-│    Test DB          │
-│ (Local)             │
-├─────────────────────┤
-│ Users: 5 rows       │  ← Outdated data
-│ Posts: 20 rows      │
-│ Comments: 80 rows   │
-└─────────────────────┘
-```
+        F2 -->|pnpm sonamu<br/>fixture sync| T2
+    end
 
-### After Sync
-
-```
-┌─────────────────────┐
-│   Fixture DB        │
-│ (Remote server)     │
-├─────────────────────┤
-│ Users: 10 rows      │
-│ Posts: 50 rows      │
-│ Comments: 200 rows  │
-└─────────────────────┘
-         ↓
-┌─────────────────────┐
-│    Test DB          │
-│ (Local)             │
-├─────────────────────┤
-│ Users: 10 rows      │  ← Synced!
-│ Posts: 50 rows      │
-│ Comments: 200 rows  │
-└─────────────────────┘
+    style F1 fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style T1 fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style F2 fill:#d1ecf1,stroke:#0dcaf0,stroke-width:2px
+    style T2 fill:#d4edda,stroke:#198754,stroke-width:2px
+    style before fill:#fff,stroke:#999,stroke-width:1px
+    style after fill:#fff,stroke:#999,stroke-width:1px
 ```
 
 ## pg_dump Options

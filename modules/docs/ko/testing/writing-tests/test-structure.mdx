@@ -151,6 +151,173 @@ export const test = async (title: string, fn: TestFunction) => {
 };
 ```
 
+### Mock Context 전체 속성
+
+Mock Context는 실제 HTTP 요청 Context와 동일한 인터페이스를 제공합니다:
+
+#### 기본 속성
+
+| 속성 | 타입 | Mock 값 | 설명 |
+|------|------|---------|------|
+| `ip` | `string` | `"127.0.0.1"` | 클라이언트 IP 주소 |
+| `userAgent` | `string` | `"test-agent"` | User-Agent 헤더 |
+| `origin` | `string` | `"http://localhost"` | 요청 Origin |
+| `referer` | `string \| undefined` | `undefined` | Referer 헤더 |
+| `acceptLanguage` | `string` | `"ko-KR"` | Accept-Language 헤더 |
+
+#### 인증 관련
+
+| 속성 | 타입 | Mock 값 | 설명 |
+|------|------|---------|------|
+| `user` | `User \| null` | `null` | 인증된 사용자 (`testAs`로 설정) |
+| `session` | `Record<string, any>` | `{}` | 세션 데이터 |
+| `passport` | `Passport` | Mock 객체 | 인증 헬퍼 |
+
+#### 요청 메타데이터
+
+| 속성 | 타입 | Mock 값 | 설명 |
+|------|------|---------|------|
+| `requestId` | `string` | 자동 생성 UUID | 요청 고유 ID |
+| `timestamp` | `Date` | 현재 시각 | 요청 시각 |
+| `method` | `string` | `"GET"` | HTTP 메서드 |
+| `path` | `string` | `"/test"` | 요청 경로 |
+
+#### 테스트 전용
+
+| 속성 | 타입 | Mock 값 | 설명 |
+|------|------|---------|------|
+| `naiteStore` | `NaiteStore` | `Naite.createStore()` | Naite 로그 저장소 |
+| `isMock` | `boolean` | `true` | Mock Context 여부 |
+
+#### Passport 객체 상세
+
+```typescript
+interface Passport {
+  // 로그인 (testAs에서 자동 호출됨)
+  login: (user: User) => Promise<void>;
+
+  // 로그아웃
+  logout: () => void;
+
+  // 세션 저장
+  save: () => Promise<void>;
+
+  // 세션 ID
+  sessionID?: string;
+}
+
+// Mock Passport (test 함수)
+const mockPassport: Passport = {
+  login: async (user) => {
+    // Mock: 아무 동작 안함
+  },
+  logout: () => {
+    // Mock: 아무 동작 안함
+  },
+  save: async () => {
+    // Mock: 아무 동작 안함
+  },
+  sessionID: undefined,
+};
+```
+
+#### Context 사용 예제
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("Context 속성 접근", async () => {
+  const context = Sonamu.getContext();
+
+  // 기본 속성
+  expect(context.ip).toBe("127.0.0.1");
+  expect(context.userAgent).toBe("test-agent");
+  expect(context.origin).toBe("http://localhost");
+  expect(context.acceptLanguage).toBe("ko-KR");
+
+  // 인증 상태
+  expect(context.user).toBeNull();  // test()는 비인증 상태
+  expect(context.session).toEqual({});
+
+  // 메타데이터
+  expect(context.requestId).toBeDefined();
+  expect(context.timestamp).toBeInstanceOf(Date);
+  expect(context.method).toBe("GET");
+  expect(context.path).toBe("/test");
+
+  // 테스트 전용
+  expect(context.isMock).toBe(true);
+  expect(context.naiteStore).toBeDefined();
+});
+```
+
+#### testAs에서의 Context
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, username: "testuser", role: "admin" },
+  "인증된 Context 확인",
+  async () => {
+    const context = Sonamu.getContext();
+
+    // user가 설정됨
+    expect(context.user).not.toBeNull();
+    expect(context.user?.id).toBe(1);
+    expect(context.user?.username).toBe("testuser");
+    expect(context.user?.role).toBe("admin");
+
+    // passport도 user를 포함
+    expect(context.passport).toBeDefined();
+
+    // 나머지는 동일
+    expect(context.ip).toBe("127.0.0.1");
+    expect(context.isMock).toBe(true);
+  }
+);
+```
+
+#### 커스텀 Context 설정
+
+특수한 경우 Context를 직접 설정할 수 있습니다:
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+test("커스텀 IP 설정", async () => {
+  const context = Sonamu.getContext();
+
+  // Context 속성 직접 수정 (주의: 권장하지 않음)
+  (context as any).ip = "192.168.1.100";
+  (context as any).userAgent = "Custom Agent";
+
+  // 수정된 Context 사용
+  console.log(context.ip);  // "192.168.1.100"
+});
+```
+
+<Warning>
+**주의사항**:
+1. **Mock Context는 테스트용**: 실제 HTTP 요청과 다를 수 있음
+2. **Passport 동작 안함**: `login()`, `logout()` 호출은 무시됨
+3. **세션 유지 안됨**: 테스트 종료 시 모든 상태 초기화
+4. **Context 수정 비권장**: 직접 수정보다 `testAs()` 사용 권장
+</Warning>
+
+<Info>
+**Context 속성 요약**:
+- **기본**: ip, userAgent, origin, referer, acceptLanguage
+- **인증**: user, session, passport
+- **메타데이터**: requestId, timestamp, method, path
+- **테스트**: naiteStore, isMock
+</Info>
+
 ## testAs 함수
 
 특정 사용자로 인증된 상태에서 테스트할 수 있습니다.

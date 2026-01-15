@@ -39,15 +39,16 @@ import { BaseModel, api, upload, Sonamu } from "sonamu";
 class UserModelClass extends BaseModel {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }
-    
+
     // 파일 저장
     const url = await file.saveToDisk(`avatars/${ctx.user.id}.png`);
-    
+
     return { url };
   }
 }
@@ -70,8 +71,8 @@ await fetch('/api/user/uploadAvatar', {
 class PostModelClass extends BaseModel {
   @upload()
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+
     if (files.length === 0) {
       throw new Error('파일이 없습니다');
     }
@@ -104,7 +105,7 @@ await fetch('/api/post/uploadImages?postId=1', {
 
 ## UploadContext
 
-**Sonamu.getUploadContext()**로 업로드된 파일에 접근합니다.
+**Sonamu.getContext()**의 `files` 속성으로 업로드된 파일에 접근합니다.
 
 ```typescript
 type UploadContext = {
@@ -118,17 +119,18 @@ type UploadContext = {
 ```typescript
 @upload()
 async upload() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   if (!file) {
     throw new Error('파일이 필요합니다');
   }
-  
+
   // file은 UploadedFile 인스턴스
   console.log(file.filename);   // 원본 파일명
   console.log(file.mimetype);   // MIME 타입
   console.log(file.size);       // 파일 크기
-  
+
   return await file.saveToDisk('uploads/file.pdf');
 }
 ```
@@ -144,7 +146,8 @@ async upload() {
     **원본 파일명**
     
     ```typescript
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     console.log(file.filename);  // 'avatar.png'
     ```
   </Tab>
@@ -212,7 +215,8 @@ async upload() {
 파일을 Buffer로 변환합니다.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // 첫 번째 파일 사용
 const buffer = await file.toBuffer();
 
 console.log(buffer instanceof Buffer);  // true
@@ -226,7 +230,8 @@ console.log(buffer.length);  // 파일 크기 (바이트)
 파일의 MD5 해시를 계산합니다.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // 첫 번째 파일 사용
 const hash = await file.md5();
 
 console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
@@ -242,7 +247,8 @@ console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
 파일을 디스크에 저장합니다.
 
 ```typescript
-const { file } = Sonamu.getUploadContext();
+const { files } = Sonamu.getContext();
+const file = files?.[0]; // 첫 번째 파일 사용
 
 // 기본 디스크에 저장
 const url = await file.saveToDisk('uploads/file.pdf');
@@ -261,37 +267,38 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 class UserModelClass extends BaseModel {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }
-    
+
     // 이미지 파일만 허용
     if (!file.mimetype.startsWith('image/')) {
       throw new Error('이미지 파일만 업로드 가능합니다');
     }
-    
+
     // 파일 크기 제한 (5MB)
     const maxSize = 5 * 1024 * 1024;  // 5MB
     if (file.size > maxSize) {
       throw new Error('파일 크기는 5MB 이하여야 합니다');
     }
-    
+
     // 파일명: user-{id}-{timestamp}.{ext}
     const timestamp = Date.now();
     const ext = file.extname || 'png';
     const key = `avatars/user-${ctx.user.id}-${timestamp}.${ext}`;
-    
+
     // 저장
     const url = await file.saveToDisk(key);
-    
+
     // DB 업데이트
     await this.updateOne(['id', ctx.user.id], {
       avatar_url: url,
       updated_at: new Date(),
     });
-    
+
     return { url };
   }
 }
@@ -303,8 +310,8 @@ class UserModelClass extends BaseModel {
 class PostModelClass extends BaseModel {
   @upload()
   async uploadImages(postId: number, ctx: Context) {
-    const { files } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+
     // 파일 개수 제한
     if (files.length > 10) {
       throw new Error('최대 10개까지 업로드 가능합니다');
@@ -340,8 +347,9 @@ class PostModelClass extends BaseModel {
 class FileModelClass extends BaseModel {
   @upload()
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }
@@ -378,8 +386,9 @@ class FileModelClass extends BaseModel {
 class MediaModelClass extends BaseModel {
   @upload()
   async uploadMedia() {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }
@@ -422,8 +431,9 @@ class MediaModelClass extends BaseModel {
 class FileModelClass extends BaseModel {
   @upload()
   async upload(visibility: 'public' | 'private', ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('파일이 없습니다');
     }

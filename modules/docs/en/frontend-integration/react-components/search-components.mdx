@@ -1,0 +1,553 @@
+---
+title: "Search Components"
+description: "SearchFieldSelect + Input dynamic search pattern"
+---
+
+Learn how to implement dynamic field search by combining `SearchFieldSelect` with `Input`. Users can select a search field (ID, name, email, etc.) and enter keywords.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Search" icon="magnifying-glass">
+    Select field + keyword combination
+
+    Flexible search conditions
+  </Card>
+  <Card title="Auto-generated" icon="wand-magic-sparkles">
+    SearchField enum based
+
+    Auto label mapping
+  </Card>
+  <Card title="useListParams Integration" icon="link">
+    register pattern support
+
+    Auto URL sync
+  </Card>
+  <Card title="Backend Pattern" icon="database">
+    exhaustive pattern
+
+    Type-safe implementation
+  </Card>
+</CardGroup>
+
+## Auto-generation Conditions
+
+SearchFieldSelect is auto-generated when the `SearchField` enum is defined in the backend.
+
+### Backend Definition
+
+```typescript
+// user.types.ts (backend)
+import { z } from "zod";
+
+export const UserSearchField = z.enum([
+  "id",
+  "username",
+  "email",
+]);
+
+export const UserListParams = UserBaseListParams.extend({
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+});
+```
+
+### Auto-generated Files
+
+**Component location**: `web/src/components/user/UserSearchFieldSelect.tsx`
+
+**Auto-generated labels**: `web/src/services/sonamu.generated.ts`
+```typescript
+export const UserSearchFieldLabel = {
+  id: "ID",
+  username: "Name",
+  email: "Email",
+};
+```
+
+<Info>
+**SearchField vs keyword**
+
+- `search`: Search target field selection (ID, name, email, etc.)
+- `keyword`: Actual search term input
+
+Both must be used together to implement search functionality.
+</Info>
+
+## Basic Usage
+
+### SearchFieldSelect + Input Combination
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserService } from "@/services/services.generated";
+
+export function UserListPage() {
+  const { listParams, register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+  });
+
+  const { data } = UserService.useUsers("A", listParams);
+
+  return (
+    <div className="flex gap-2">
+      {/* Search field selection */}
+      <UserSearchFieldSelect
+        {...register("search")}
+        className="w-32"
+      />
+
+      {/* Keyword input */}
+      <Input
+        {...register("keyword")}
+        placeholder="Enter keyword"
+        className="w-64"
+      />
+    </div>
+  );
+}
+```
+
+**How it works**:
+1. User selects search field (ID, name, email)
+2. User enters keyword
+3. `listParams` is updated and API is called
+4. Backend searches the specified field with the keyword
+
+## Props
+
+### UserSearchFieldSelect Props
+
+```typescript
+export type UserSearchFieldSelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+```
+
+### Common Props
+
+```typescript
+// placeholder
+<UserSearchFieldSelect
+  {...register("search")}
+  placeholder="Search by"  // Default: "Search"
+/>
+
+// textPrefix
+<UserSearchFieldSelect
+  {...register("search")}
+  textPrefix="Field: "
+/>
+
+// clearable: Add "All" option
+<UserSearchFieldSelect
+  {...register("search")}
+  clearable
+/>
+```
+
+## Backend Implementation
+
+### Handling in Model
+
+```typescript
+// user.model.ts (backend)
+async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+  subset: T,
+  rawParams?: LP,
+): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+  const params = {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+    ...rawParams,
+  };
+
+  const { qb } = this.getSubsetQueries(subset);
+
+  // Search processing
+  if (params.search && params.keyword) {
+    if (params.search === "id") {
+      qb.where("users.id", Number(params.keyword));
+    } else if (params.search === "username") {
+      qb.where("users.username", "like", `%${params.keyword}%`);
+    } else if (params.search === "email") {
+      qb.where("users.email", "like", `%${params.keyword}%`);
+    } else {
+      exhaustive(params.search);
+    }
+  }
+
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+**Key Points**:
+1. **Check both `search` and `keyword`**: Search only when both exist
+2. **Different processing per field**:
+   - ID: Exact match with number conversion
+   - Name/Email: Partial match with LIKE
+3. **Type safety with exhaustive()**: Compile error if case is missing
+
+<Info>
+**exhaustive Pattern**
+
+```typescript
+exhaustive(params.search);
+```
+
+If a new option is added to SearchField enum, this line will cause a compile error, ensuring the developer doesn't forget to handle it.
+</Info>
+
+## Real-world Examples
+
+### Complete Search Filter
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input, Button } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+
+export function UserListPage() {
+  const { listParams, register, setListParams } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+    orderBy: "id-desc" as const,
+    role: undefined,
+  });
+
+  const { data, isLoading } = UserService.useUsers("A", listParams);
+
+  // Reset all filters
+  const handleReset = () => {
+    setListParams({
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      keyword: "",
+      orderBy: "id-desc" as const,
+      role: undefined,
+    });
+  };
+
+  return (
+    <div>
+      {/* Filter section */}
+      <div className="flex gap-2 mb-4">
+        {/* Search */}
+        <UserSearchFieldSelect
+          {...register("search")}
+          className="w-32"
+        />
+        <Input
+          {...register("keyword")}
+          placeholder="Enter keyword"
+          className="w-64"
+        />
+
+        {/* Additional filters */}
+        <UserRoleSelect
+          {...register("role")}
+          clearable
+        />
+
+        {/* Sort */}
+        <UserOrderBySelect
+          {...register("orderBy")}
+        />
+
+        {/* Reset button */}
+        <Button variant="outline" onClick={handleReset}>
+          Reset
+        </Button>
+      </div>
+
+      {/* Search results */}
+      {isLoading ? (
+        <div>Loading...</div>
+      ) : (
+        <div>
+          <div className="mb-2 text-sm text-gray-600">
+            {data?.total ?? 0} results found
+          </div>
+          <table>
+            {/* ... */}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Search Button (Manual Search)
+
+By default, search occurs automatically as you type. To search only when button is clicked:
+
+```typescript
+import { useState } from "react";
+
+export function UserListPage() {
+  // Local state for keyword input
+  const [localKeyword, setLocalKeyword] = useState("");
+
+  const { listParams, setListParams, register } = useListParams(UserListParams, {
+    search: "id" as const,
+    keyword: "",
+  });
+
+  // Apply search on button click
+  const handleSearch = () => {
+    setListParams({
+      ...listParams,
+      page: 1,
+      keyword: localKeyword,
+    });
+  };
+
+  return (
+    <div className="flex gap-2">
+      <UserSearchFieldSelect {...register("search")} />
+
+      {/* Don't use register for keyword */}
+      <Input
+        value={localKeyword}
+        onChange={(e) => setLocalKeyword(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSearch();
+          }
+        }}
+        placeholder="Enter keyword"
+      />
+
+      <Button onClick={handleSearch}>Search</Button>
+    </div>
+  );
+}
+```
+
+### Conditional Placeholder
+
+Change placeholder based on selected search field:
+
+```typescript
+export function UserListPage() {
+  const { listParams, register } = useListParams(UserListParams, {
+    search: "id" as const,
+    keyword: "",
+  });
+
+  const placeholders = {
+    id: "Enter ID",
+    username: "Enter name",
+    email: "Enter email",
+  };
+
+  return (
+    <div className="flex gap-2">
+      <UserSearchFieldSelect {...register("search")} />
+      <Input
+        {...register("keyword")}
+        placeholder={placeholders[listParams.search ?? "id"]}
+      />
+    </div>
+  );
+}
+```
+
+### Display Current Search Condition
+
+```typescript
+export function UserListPage() {
+  const { listParams } = useListParams(UserListParams, {
+    search: "id" as const,
+    keyword: "",
+  });
+
+  const { data } = UserService.useUsers("A", listParams);
+
+  return (
+    <div>
+      {/* Display current search */}
+      {listParams.keyword && (
+        <div className="mb-4 p-2 bg-blue-50 rounded">
+          Searching in <strong>{UserSearchFieldLabel[listParams.search ?? "id"]}</strong>
+          : "{listParams.keyword}"
+        </div>
+      )}
+
+      {/* Search components */}
+      <div className="flex gap-2">
+        <UserSearchFieldSelect {...register("search")} />
+        <Input {...register("keyword")} />
+      </div>
+    </div>
+  );
+}
+```
+
+## Advanced Search
+
+### Multi-field Search
+
+To search multiple fields simultaneously:
+
+```typescript
+// Backend: user.types.ts
+export const UserSearchField = z.enum([
+  "id",
+  "username",
+  "email",
+  "all",  // Add "All" option
+]);
+```
+
+```typescript
+// Backend: user.model.ts
+if (params.search && params.keyword) {
+  if (params.search === "all") {
+    // Search all fields
+    qb.where((qb) => {
+      qb.where("users.username", "like", `%${params.keyword}%`)
+        .orWhere("users.email", "like", `%${params.keyword}%`)
+        .orWhere("users.id", Number(params.keyword) || 0);
+    });
+  } else if (params.search === "id") {
+    qb.where("users.id", Number(params.keyword));
+  }
+  // ...
+}
+```
+
+### Case-insensitive Search
+
+```typescript
+// PostgreSQL
+qb.where("users.username", "ilike", `%${params.keyword}%`);
+
+// MySQL
+qb.whereRaw("LOWER(users.username) LIKE ?", [`%${params.keyword.toLowerCase()}%`]);
+```
+
+### Regular Expression Search
+
+```typescript
+// PostgreSQL
+if (params.search === "email") {
+  qb.whereRaw("users.email ~ ?", [params.keyword]);
+}
+```
+
+## Customization
+
+SearchFieldSelect is a **scaffolding file**, so you can modify it freely.
+
+### Change Labels
+
+```typescript
+// Modify UserSearchFieldSelect.tsx
+const customLabels = {
+  ...UserSearchFieldLabel,
+  id: "User ID",
+  username: "Username",
+  email: "Email Address",
+};
+```
+
+### Hide Specific Options
+
+```typescript
+// Show only "username" and "email"
+const visibleOptions = UserSearchField.options.filter(key =>
+  ["username", "email"].includes(key)
+);
+
+<SelectContent>
+  {visibleOptions.map((key) => (
+    <SelectItem key={key} value={key}>
+      {UserSearchFieldLabel[key]}
+    </SelectItem>
+  ))}
+</SelectContent>
+```
+
+### Add Icons
+
+```typescript
+import UserIcon from "~icons/lucide/user";
+import MailIcon from "~icons/lucide/mail";
+import HashIcon from "~icons/lucide/hash";
+
+const icons = {
+  id: <HashIcon className="w-4 h-4" />,
+  username: <UserIcon className="w-4 h-4" />,
+  email: <MailIcon className="w-4 h-4" />,
+};
+
+<SelectItem key={key} value={key}>
+  <div className="flex items-center gap-2">
+    {icons[key]}
+    {UserSearchFieldLabel[key]}
+  </div>
+</SelectItem>
+```
+
+## Troubleshooting
+
+### SearchFieldSelect Not Generated
+
+**Cause**: `SearchField` enum not defined in backend
+
+**Solution**:
+```typescript
+// Add to user.types.ts (backend)
+export const UserSearchField = z.enum(["id", "username", "email"]);
+
+export const UserListParams = UserBaseListParams.extend({
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+});
+```
+
+### Search Not Working
+
+**Cause**: Backend Model missing `search` and `keyword` handling
+
+**Solution**: Add search logic to `user.model.ts`'s `findMany`.
+
+### ID Search Returns No Results
+
+**Cause**: Keyword not converted to number
+
+**Solution**:
+```typescript
+if (params.search === "id") {
+  const idNum = Number(params.keyword);
+  if (!isNaN(idNum)) {
+    qb.where("users.id", idNum);
+  }
+}
+```
+
+## Related Documentation
+
+- [auto-generated-overview](/frontend-integration/react-components/auto-generated-overview) - Auto-generated components overview
+- [OrderBySelect](/frontend-integration/react-components/order-by-select) - Sort selection
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - List filtering hook

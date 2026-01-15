@@ -56,21 +56,24 @@ DELETE /user/deleteUser?id=1
 
 **guards (authentication/authorization):**
 ```typescript
+// Authentication and authorization required
 @api({
   httpMethod: "POST",
   guards: ["user", "admin"]  // user login required, admin permission required
 })
 async adminOnly() { }
-```
 
-**noAuth (authentication not required):**
-```typescript
+// Public API (no authentication required)
 @api({
-  httpMethod: "GET",
-  noAuth: true  // Accessible without login
+  httpMethod: "GET"
+  // Omit guards to allow access without authentication
 })
 async publicApi() { }
 ```
+
+<Info>
+**Creating Public APIs**: Omit the `guards` option to create a public API accessible to anyone without authentication. Use this for endpoints that don't require login or permission checks.
+</Info>
 
 **path (custom path):**
 ```typescript
@@ -148,7 +151,8 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
 
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
 
   const key = `avatars/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key);
@@ -168,7 +172,7 @@ async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
 
   const results = [];
   for (const file of files) {
@@ -317,7 +321,7 @@ export default {
 **Save session:**
 
 ```typescript
-@api({ httpMethod: "POST", noAuth: true })
+@api({ httpMethod: "POST" })  // Omit guards = public API
 async login(email: string, password: string): Promise<User> {
   const user = await this.findOne("A", { email });
 

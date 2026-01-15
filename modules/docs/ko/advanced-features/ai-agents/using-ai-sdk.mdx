@@ -322,8 +322,9 @@ import { rtzr } from 'sonamu/ai/providers/rtzr';
 class TranscriptionModelClass extends BaseModel {
   @upload()
   async transcribeAudio() {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file) {
       throw new Error('오디오 파일이 없습니다');
     }
@@ -410,8 +411,9 @@ import { generateText } from 'ai';
 class ImageAnalysisModelClass extends BaseModel {
   @upload()
   async analyzeImage() {
-    const { file } = Sonamu.getUploadContext();
-    
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
+
     if (!file || !file.mimetype.startsWith('image/')) {
       throw new Error('이미지 파일이 필요합니다');
     }

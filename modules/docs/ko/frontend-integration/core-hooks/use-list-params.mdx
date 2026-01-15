@@ -1,0 +1,451 @@
+---
+title: "useListParams"
+description: "URL 기반 리스트 필터링과 페이지네이션 관리"
+---
+
+`useListParams`는 목록 페이지의 필터링, 정렬, 페이지네이션 상태를 URL 검색 파라미터와 동기화하는 훅입니다. 북마크 가능한 상태 관리와 타입 안전한 폼 바인딩을 제공합니다.
+
+## 핵심 기능
+
+<CardGroup cols={2}>
+  <Card title="URL 동기화" icon="link">
+    검색 파라미터를 URL에 저장
+
+    북마크 가능한 상태
+  </Card>
+  <Card title="타입 안전" icon="shield-check">
+    Zod 스키마 기반
+
+    자동 타입 추론
+  </Card>
+  <Card title="자동 페이지 리셋" icon="rotate">
+    필터 변경 시 1페이지로
+
+    사용자 경험 개선
+  </Card>
+  <Card title="register 패턴" icon="hand-pointer">
+    폼 컴포넌트 간편 연결
+
+    보일러플레이트 제거
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+### Import 및 초기화
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserService } from "@/services/services.generated";
+import { UserListParams } from "@/services/sonamu.generated";
+
+export function UserListPage() {
+  // URL에서 파라미터 파싱 및 초기화
+  const { listParams, setListParams, register } = useListParams(
+    UserListParams,
+    {
+      num: 24,
+      page: 1,
+      orderBy: "id-desc" as const,
+      search: "id" as const,
+      keyword: "",
+    }
+  );
+
+  // API 호출 (listParams를 그대로 전달)
+  const { data, isLoading } = UserService.useUsers("A", listParams);
+
+  // ...
+}
+```
+
+**파라미터 설명**:
+- `UserListParams`: Zod 스키마 (자동 생성됨)
+- 기본값 객체: URL에 값이 없을 때 사용할 초기값
+
+<Info>
+**왜 Zod 스키마가 필요한가요?**
+
+URL 검색 파라미터는 문자열이므로, 숫자나 boolean으로 파싱하려면 스키마가 필요합니다.
+`UserListParams`는 `sonamu.generated.ts`에 자동 생성되며, 백엔드의 타입 정의와 항상 동기화됩니다.
+</Info>
+
+### listParams 사용
+
+현재 필터링 상태를 담고 있는 객체입니다.
+
+```typescript
+const { listParams } = useListParams(UserListParams, defaultValue);
+
+// API 호출 시 그대로 전달
+const { data } = UserService.useUsers("A", listParams);
+
+// 또는 특정 값 확인
+console.log(listParams.page);     // 1
+console.log(listParams.keyword);  // "admin"
+console.log(listParams.orderBy);  // "id-desc"
+```
+
+**타입**:
+```typescript
+listParams: Partial<z.infer<UserListParams>> & DefaultValue
+```
+
+### setListParams로 상태 변경
+
+필터 상태를 변경하고 URL을 업데이트합니다.
+
+```typescript
+const { listParams, setListParams } = useListParams(UserListParams, defaultValue);
+
+// 페이지 변경
+setListParams({ ...listParams, page: 2 });
+
+// 정렬 변경
+setListParams({ ...listParams, page: 1, orderBy: "created_at-desc" });
+
+// 검색 키워드 변경
+setListParams({
+  ...listParams,
+  page: 1,  // 검색 시 항상 1페이지로
+  keyword: "admin"
+});
+```
+
+**동작**:
+1. `listParams`와 `newParams`를 deep equal 비교
+2. 변경이 있으면 TanStack Router의 `navigate`로 URL 업데이트
+3. URL 변경 → `useSearch` 훅 재실행 → `listParams` 자동 갱신
+
+<Warning>
+**주의: 항상 spread operator 사용**
+
+```typescript
+// ❌ 잘못된 사용 (기존 값 손실)
+setListParams({ page: 2 });
+
+// ✅ 올바른 사용
+setListParams({ ...listParams, page: 2 });
+```
+
+기존 필터 값을 유지하려면 반드시 spread operator를 사용하세요.
+</Warning>
+
+### register로 폼 바인딩
+
+`register` 함수는 폼 컴포넌트에 `value`와 `onValueChange`를 자동으로 제공합니다.
+
+```typescript
+import { Input, Select } from "@sonamu-kit/react-components/components";
+
+const { register } = useListParams(UserListParams, defaultValue);
+
+return (
+  <div>
+    {/* 검색 키워드 입력 */}
+    <Input {...register("keyword")} placeholder="검색어 입력" />
+
+    {/* 정렬 선택 */}
+    <UserOrderBySelect {...register("orderBy")} />
+
+    {/* 페이지 선택 */}
+    <Pagination {...register("page")} total={data?.total ?? 0} />
+  </div>
+);
+```
+
+**register가 반환하는 값**:
+```typescript
+{
+  value: listParams[name] ?? defaultValue[name] ?? (name === "page" ? 1 : ""),
+  onValueChange: (value) => {
+    if (name === "page") {
+      // 페이지 변경은 다른 필터 유지
+      setListParams({ ...listParams, page: value });
+    } else {
+      // 다른 필터 변경은 페이지를 1로 리셋
+      setListParams({
+        ...listParams,
+        page: 1,
+        [name]: value === "" ? undefined : value
+      });
+    }
+  }
+}
+```
+
+**자동 페이지 리셋의 이유**:
+
+사용자가 3페이지에서 검색어를 바꾸면 결과가 적어서 3페이지가 존재하지 않을 수 있습니다.
+따라서 `page`를 제외한 모든 필터 변경 시 자동으로 1페이지로 돌아갑니다.
+
+## 실전 예제
+
+### 완전한 목록 페이지
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input, Pagination } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import { UserListParams } from "@/services/sonamu.generated";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+
+export function UserListPage() {
+  const { listParams, register } = useListParams(
+    UserListParams,
+    {
+      num: 24,
+      page: 1,
+      orderBy: "id-desc" as const,
+      search: "id" as const,
+      keyword: "",
+    }
+  );
+
+  const { data, isLoading } = UserService.useUsers("A", listParams);
+
+  if (isLoading) return <div>로딩 중...</div>;
+
+  return (
+    <div>
+      {/* 필터 섹션 */}
+      <div className="flex gap-2 mb-4">
+        <UserSearchFieldSelect {...register("search")} />
+        <Input {...register("keyword")} placeholder="검색어 입력" />
+        <UserOrderBySelect {...register("orderBy")} />
+      </div>
+
+      {/* 테이블 */}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>이름</th>
+            <th>이메일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.rows.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.username}</td>
+              <td>{user.email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* 페이지네이션 */}
+      <Pagination {...register("page")} total={data?.total ?? 0} />
+    </div>
+  );
+}
+```
+
+### 커스텀 필터 추가
+
+백엔드에서 커스텀 필터를 추가한 경우:
+
+```typescript
+// 백엔드: user.types.ts
+export const UserListParams = UserBaseListParams.extend({
+  role: z.enum(["admin", "normal"]).optional(),
+  isVerified: z.boolean().optional(),
+});
+```
+
+프론트엔드에서 사용:
+
+```typescript
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { Switch } from "@sonamu-kit/react-components/components";
+
+const { register } = useListParams(UserListParams, {
+  num: 24,
+  page: 1,
+  role: undefined,
+  isVerified: undefined,
+});
+
+return (
+  <div>
+    <UserRoleSelect {...register("role")} clearable />
+
+    <div className="flex items-center gap-2">
+      <label>인증된 사용자만</label>
+      <Switch {...register("isVerified")} />
+    </div>
+  </div>
+);
+```
+
+### URL 공유 및 북마크
+
+`useListParams`의 가장 큰 장점은 필터 상태가 URL에 저장된다는 것입니다.
+
+```
+# 사용자가 필터를 설정한 후 URL
+https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admin
+
+# 이 URL을 복사해서 공유하거나 북마크하면
+# 나중에 접속할 때 동일한 필터가 적용됨
+```
+
+**북마크 가능한 상태의 이점**:
+- 사용자가 자주 사용하는 필터 조합을 북마크
+- URL을 공유하여 동료에게 동일한 뷰 전달
+- 브라우저 뒤로가기/앞으로가기로 필터 히스토리 탐색
+
+## 옵션
+
+### disableSearchParams
+
+URL 동기화를 비활성화하고 로컬 상태로만 관리합니다.
+
+```typescript
+const { listParams, setListParams, register } = useListParams(
+  UserListParams,
+  defaultValue,
+  { disableSearchParams: true }
+);
+```
+
+**사용 케이스**:
+- 모달 안의 목록 (URL을 변경하고 싶지 않을 때)
+- 임베디드 위젯 (독립적인 상태 관리가 필요할 때)
+- 테스트 환경
+
+<Warning>
+`disableSearchParams: true`를 사용하면 북마크와 URL 공유 기능이 동작하지 않습니다.
+</Warning>
+
+## 타입 안전성
+
+### 컴파일 타임 검증
+
+```typescript
+const { register } = useListParams(UserListParams, defaultValue);
+
+// ✅ OK: UserListParams에 정의된 필드
+register("keyword");
+register("orderBy");
+register("page");
+
+// ❌ 컴파일 에러: 존재하지 않는 필드
+register("invalidField");
+```
+
+### 자동 완성
+
+IDE에서 `register("` 입력 시 사용 가능한 모든 필드가 자동 완성됩니다.
+
+```typescript
+register("
+        ↓
+        keyword
+        orderBy
+        page
+        search
+        num
+        role          // 커스텀 필드
+        isVerified    // 커스텀 필드
+```
+
+## TanStack Router 통합
+
+`useListParams`는 내부적으로 TanStack Router의 훅을 사용합니다:
+- `useSearch`: URL 검색 파라미터 읽기
+- `useNavigate`: URL 업데이트
+
+```typescript
+// useListParams 내부 구조 (단순화)
+export function useListParams<U, T>(zType: U, defaultValue: T) {
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  const listParams = zType.safeParse(search).success
+    ? { ...defaultValue, ...zType.parse(search) }
+    : defaultValue;
+
+  const setListParams = (newParams: T) => {
+    navigate({ search: newParams });
+  };
+
+  // ...
+}
+```
+
+<Info>
+**strict: false의 의미**
+
+`useSearch({ strict: false })`는 현재 라우트에 정의되지 않은 검색 파라미터도 읽을 수 있게 합니다.
+이를 통해 동적으로 추가되는 필터를 유연하게 처리할 수 있습니다.
+</Info>
+
+## 주의사항
+
+### 1. 초기값 설정
+
+```typescript
+// ❌ 잘못된 초기값 (num, page 누락)
+const { listParams } = useListParams(UserListParams, {});
+
+// ✅ 올바른 초기값 (필수 필드 포함)
+const { listParams } = useListParams(UserListParams, {
+  num: 24,
+  page: 1,
+  orderBy: "id-desc" as const,
+  search: "id" as const,
+});
+```
+
+**필수 필드**:
+- `num`: 페이지당 항목 수
+- `page`: 현재 페이지 (1부터 시작)
+
+### 2. Enum 필드의 타입 단언
+
+```typescript
+// ❌ 컴파일 에러: string을 enum에 할당 불가
+const defaultValue = {
+  orderBy: "id-desc",
+};
+
+// ✅ OK: as const로 literal 타입 만들기
+const defaultValue = {
+  orderBy: "id-desc" as const,
+};
+```
+
+### 3. register와 커스텀 onChange 함께 사용
+
+```typescript
+// ❌ register의 onValueChange가 무시됨
+<Input
+  {...register("keyword")}
+  onChange={(e) => console.log(e.target.value)}
+/>
+
+// ✅ OK: register의 onValueChange를 직접 호출
+<Input
+  {...register("keyword")}
+  onValueChange={(value) => {
+    console.log(value);
+    register("keyword").onValueChange(value);
+  }}
+/>
+
+// 또는 더 나은 방법: 별도 이벤트 핸들러
+const handleKeywordChange = (value: string) => {
+  console.log(value);
+  setListParams({ ...listParams, page: 1, keyword: value });
+};
+```
+
+## 관련 문서
+
+- [Service 사용하기](/frontend-integration/generated-services/using-services) - API 호출 방법
+- [TanStack Query 통합](/frontend-integration/generated-services/tanstack-query) - 캐싱과 리패칭
+- [auto-generated-overview](/frontend-integration/react-components/auto-generated-overview) - 자동 생성 컴포넌트들
+- [useSelection](/frontend-integration/core-hooks/use-selection) - 다중 선택 관리

@@ -288,7 +288,8 @@ async findWithRelations(id: number) {
 @upload({ mode: "single" })
 @transactional()
 async uploadAvatar() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
   const wdb = this.getDB("w");
   
   // 파일 저장 + DB 업데이트를 트랜잭션으로

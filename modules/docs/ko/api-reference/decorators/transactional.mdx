@@ -287,15 +287,16 @@ async findWithRelations(id: number) {
 @upload()
 @transactional()
 async uploadAvatar() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   const wdb = this.getDB("w");
-  
+
   // 파일 저장 + DB 업데이트를 트랜잭션으로
   const url = await this.saveFile(file);
   await wdb.table("users")
     .where("id", userId)
     .update({ avatar_url: url });
-  
+
   return { url };
 }
 ```

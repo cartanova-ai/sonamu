@@ -1,0 +1,568 @@
+---
+title: "Frontend Setup"
+description: "Initial frontend setup with SonamuProvider"
+---
+
+Learn how to configure `SonamuProvider`, the starting point for Sonamu frontend integration. Configure authentication, file uploads, and internationalization in one place.
+
+## Setup Overview
+
+<CardGroup cols={2}>
+  <Card title="Auth Integration" icon="key">
+    Connect UserService.useMe
+
+    Login/logout flow
+  </Card>
+  <Card title="File Upload" icon="upload">
+    FileService integration
+
+    Auto-connect to useTypeForm
+  </Card>
+  <Card title="Internationalization" icon="language">
+    SD function provider
+
+    Type-safe translations
+  </Card>
+  <Card title="Global State" icon="globe">
+    Context API based
+
+    Access from all components
+  </Card>
+</CardGroup>
+
+## Basic Setup
+
+### 1. Create Config File
+
+Create `src/config/sonamu-provider.config.ts` in your project.
+
+```typescript
+// src/config/sonamu-provider.config.ts
+import type { SonamuAuth, SonamuContextValue, SonamuFile } from "@sonamu-kit/react-components";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
+import { SD } from "@/i18n/sd.generated";
+import { FileService, UserService } from "@/services/services.generated";
+import type { UserSubsetSS } from "@/services/sonamu.generated";
+import type { UserLoginParams } from "@/services/user/user.types";
+
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  // Auth config
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: user, isLoading, refetch } = UserService.useMe();
+  const loginMutation = UserService.useLoginMutation();
+  const logoutMutation = UserService.useLogoutMutation();
+
+  const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+    user: user ?? null,
+    loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
+    login: (loginParams: UserLoginParams) => {
+      loginMutation.mutate(
+        { params: loginParams },
+        {
+          onSuccess: async ({ user: _user }) => {
+            await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+            await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+            navigate({ to: "/admin", replace: true });
+          },
+          onError: (error) => {
+            console.error("Login failed:", error);
+            alert(SD("user.login.failed"));
+          },
+        },
+      );
+    },
+    logout: () => {
+      logoutMutation.mutate(undefined, {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+        },
+        onError: (error) => {
+          console.error("Logout failed:", error);
+          alert(SD("user.logout.failed"));
+        },
+      });
+    },
+    refetch,
+  };
+
+  // Uploader config
+  const uploadMutation = FileService.useUploadMutation();
+
+  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+    if (files.length === 0) {
+      return [];
+    }
+
+    const result = await uploadMutation.mutateAsync({ files });
+    return result.files;
+  };
+
+  // SD config
+  const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+
+  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+}
+```
+
+### 2. Apply to App
+
+Configure `SonamuProvider` in `__root.tsx`.
+
+```typescript
+// src/routes/__root.tsx
+import { SonamuProvider } from "@sonamu-kit/react-components";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createSonamuConfig } from "@/config/sonamu-provider.config";
+import type { MergedDictionary } from "@/i18n/sd.generated";
+
+export const Route = createRootRouteWithContext()({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SonamuProviderWrapper>
+        <Outlet />
+      </SonamuProviderWrapper>
+    </QueryClientProvider>
+  );
+}
+
+function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
+  const sonamuConfig = createSonamuConfig();
+  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
+}
+```
+
+<Info>
+**Why create a separate SonamuProviderWrapper?**
+
+`createSonamuConfig` uses React hooks (`useQueryClient`, `useNavigate`, etc.), so it must be called inside a component.
+Therefore, it's separated into a component and placed under `QueryClientProvider`.
+</Info>
+
+## Auth Configuration
+
+### Auth Interface
+
+```typescript
+export type SonamuAuth<TUser = any, TLoginParams = any> = {
+  user: TUser | null;
+  loading: boolean;
+  login: (params: TLoginParams) => void;
+  logout: () => void;
+  refetch: () => void;
+};
+```
+
+### Specify User Type
+
+Use the auto-generated User Subset.
+
+```typescript
+import type { UserSubsetSS } from "@/services/sonamu.generated";
+
+const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+  // UserSubsetSS: Session Summary (minimal info for session)
+  // Example: { id, username, email, role }
+  user: user ?? null,
+  // ...
+};
+```
+
+<Info>
+**What is Subset "SS"?**
+
+Short for Session Summary, it includes only the minimal user information needed for session management.
+It's lighter and faster than loading the complete user information (Subset "A").
+</Info>
+
+### Login Flow
+
+```typescript
+login: (loginParams: UserLoginParams) => {
+  loginMutation.mutate(
+    { params: loginParams },
+    {
+      onSuccess: async ({ user: _user }) => {
+        // 1. Invalidate cache
+        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+
+        // 2. Refetch latest user info
+        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+
+        // 3. Navigate to admin page
+        navigate({ to: "/admin", replace: true });
+      },
+      onError: (error) => {
+        console.error("Login failed:", error);
+        alert(SD("user.login.failed"));
+      },
+    },
+  );
+},
+```
+
+**Key Steps**:
+1. `loginMutation.mutate`: Call backend login API
+2. `invalidateQueries`: Invalidate existing user info cache
+3. `refetchQueries`: Fetch new user info
+4. `navigate`: Redirect on success
+
+### Logout Flow
+
+```typescript
+logout: () => {
+  logoutMutation.mutate(undefined, {
+    onSuccess: async () => {
+      // Refetch user info (becomes null)
+      await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+      await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+    },
+    onError: (error) => {
+      console.error("Logout failed:", error);
+      alert(SD("user.logout.failed"));
+    },
+  });
+},
+```
+
+### Using Auth
+
+Access auth via `useSonamuContext` in components.
+
+```typescript
+import { useSonamuContext } from "@sonamu-kit/react-components";
+
+export function Header() {
+  const { auth } = useSonamuContext();
+
+  if (auth.loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!auth.user) {
+    return (
+      <button onClick={() => auth.login({ email: "user@example.com", password: "password" })}>
+        Login
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <span>Welcome, {auth.user.username}</span>
+      <button onClick={() => auth.logout()}>Logout</button>
+    </div>
+  );
+}
+```
+
+## File Upload Configuration
+
+### Uploader Interface
+
+```typescript
+type Uploader = (files: File[]) => Promise<SonamuFile[]>;
+
+type SonamuFile = {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+};
+```
+
+### FileService Integration
+
+```typescript
+const uploadMutation = FileService.useUploadMutation();
+
+const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  if (files.length === 0) {
+    return [];
+  }
+
+  const result = await uploadMutation.mutateAsync({ files });
+  return result.files;
+};
+```
+
+**How it works**:
+1. Upload files to backend with `mutateAsync`
+2. Return uploaded file info (`SonamuFile[]`)
+3. `useTypeForm` automatically uses this uploader
+
+### Auto-integration with useTypeForm
+
+When `uploader` is configured, `useTypeForm`'s `submit` automatically uploads files.
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { FileInput } from "@sonamu-kit/react-components/components";
+
+export function UserForm() {
+  const { form, setForm, register, submit } = useTypeForm(UserSaveParams, {
+    username: "",
+    avatar: null,  // SonamuFile | null
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(async (formData) => {
+          // formData.avatar is already uploaded as SonamuFile
+          await UserService.save({ params: formData });
+        });
+      }}
+    >
+      <Input {...register("username")} />
+
+      {/* FileInput: File → SonamuFile conversion handled by submit */}
+      <FileInput {...register("avatar")} />
+
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
+
+<Info>
+**Auto-upload Mechanism**
+
+The `submit` function internally calls `traverseAndUploadFiles` to find and upload all `File` objects.
+Files in nested objects or arrays are automatically handled.
+</Info>
+
+### Custom Upload Logic
+
+You can implement your own if using a different upload service.
+
+```typescript
+// AWS S3 direct upload example
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3Client = new S3Client({ region: "ap-northeast-2" });
+
+const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  const uploadPromises = files.map(async (file) => {
+    const key = `uploads/${Date.now()}-${file.name}`;
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: "my-bucket",
+        Key: key,
+        Body: file,
+        ContentType: file.type,
+      })
+    );
+
+    return {
+      name: file.name,
+      url: `https://my-bucket.s3.amazonaws.com/${key}`,
+      mime_type: file.type,
+      size: file.size,
+    };
+  });
+
+  return Promise.all(uploadPromises);
+};
+```
+
+## Internationalization (SD)
+
+### SD Function
+
+The `SD` (Sonamu Dictionary) function provides type-safe translations.
+
+```typescript
+const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+```
+
+### Usage Example
+
+```typescript
+import { useSonamuContext } from "@sonamu-kit/react-components";
+
+export function WelcomeMessage() {
+  const { SD } = useSonamuContext();
+
+  return (
+    <div>
+      <h1>{SD("common.welcome")}</h1>
+      <p>{SD("user.login.prompt")}</p>
+    </div>
+  );
+}
+```
+
+<Info>
+**Why provide SD through Context?**
+
+While you can import and use it directly, using Context makes it easy to add runtime locale switching or dynamic dictionary loading in the future.
+</Info>
+
+## Type Safety
+
+### Specify Generic Type
+
+Specifying the Dictionary type in `SonamuProvider` makes the `SD` function type-safe.
+
+```typescript
+import type { MergedDictionary } from "@/i18n/sd.generated";
+
+<SonamuProvider<MergedDictionary> {...sonamuConfig}>
+  {children}
+</SonamuProvider>
+```
+
+### Auto-completion
+
+```typescript
+const { SD } = useSonamuContext<MergedDictionary>();
+
+SD("
+    ↓
+    common.welcome
+    common.save
+    common.cancel
+    user.login.failed
+    user.logout.failed
+    entity.User.email
+    ...
+```
+
+## Advanced Configuration
+
+### Minimal Setup (Auth Only)
+
+You can omit `uploader` if file uploads are not needed.
+
+```typescript
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  const auth_config = { /* ... */ };
+  const sd_config = SD;
+
+  return { auth: auth_config, SD: sd_config };
+  // uploader omitted (fallback function auto-configured)
+}
+```
+
+<Warning>
+Omitting `uploader` will cause errors when using `FileInput`.
+Always configure it if file upload functionality is needed.
+</Warning>
+
+### Using Without Auth
+
+If authentication isn't needed, `auth` can also be omitted.
+
+```typescript
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
+  const sd_config = SD;
+
+  return { SD: sd_config };
+}
+```
+
+### Display Loading State
+
+```typescript
+export function App({ children }: { children: React.ReactNode }) {
+  const { auth } = useSonamuContext();
+
+  // Initial loading
+  if (auth.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // Authentication required
+  if (!auth.user) {
+    return <LoginPage />;
+  }
+
+  // Authenticated
+  return children;
+}
+```
+
+### Customize Redirect
+
+You can dynamically determine the redirect path after successful login.
+
+```typescript
+login: (loginParams: UserLoginParams) => {
+  loginMutation.mutate(
+    { params: loginParams },
+    {
+      onSuccess: async ({ user: _user }) => {
+        await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+        await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+
+        // Navigate to different pages based on role
+        if (_user.role === "admin") {
+          navigate({ to: "/admin", replace: true });
+        } else {
+          navigate({ to: "/dashboard", replace: true });
+        }
+      },
+    },
+  );
+},
+```
+
+## Troubleshooting
+
+### "uploader is not configured" Error
+
+```
+Error: [SonamuProvider] uploader is not configured.
+Please provide uploader configuration to SonamuProvider.
+```
+
+**Solution**: Return `uploader_config` in `createSonamuConfig`.
+
+### "auth is not configured" Error
+
+```
+Error: [SonamuProvider] auth is not configured.
+Please provide auth configuration to SonamuProvider.
+```
+
+**Solution**: Return `auth_config` in `createSonamuConfig`.
+
+### Cannot Find QueryClient
+
+```
+Error: useQueryClient must be used within a QueryClientProvider
+```
+
+**Solution**: Place `SonamuProvider` inside `QueryClientProvider`.
+
+```typescript
+<QueryClientProvider client={queryClient}>
+  <SonamuProvider {...config}>
+    {children}
+  </SonamuProvider>
+</QueryClientProvider>
+```
+
+## Next Steps
+
+- [useTypeForm](/frontend-integration/generated-services/using-services#usetypeform) - Form management and file uploads
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - List filtering
+- [Auth API Development](/api-development/authentication/setup) - Backend auth setup
+- [File Upload API](/advanced-features/storage/file-operations) - Backend storage setup

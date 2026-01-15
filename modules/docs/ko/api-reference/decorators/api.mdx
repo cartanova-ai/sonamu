@@ -93,16 +93,62 @@ type ContentType =
 ```
 
 ```typescript
+// CSV 파일 다운로드
 @api({ contentType: "text/plain" })
 async exportCsv() {
   return "id,name,email\n1,Alice,alice@example.com";
 }
 
+// HTML 렌더링
 @api({ contentType: "text/html" })
 async renderTemplate() {
   return "<html><body>Hello</body></html>";
 }
+
+// 바이너리 파일 다운로드 (이미지, PDF 등)
+@api({ contentType: "application/octet-stream" })
+async downloadFile(fileId: number, ctx: Context) {
+  // 파일 조회
+  const file = await this.getPuri("r")
+    .table("files")
+    .where("id", fileId)
+    .first();
+
+  if (!file) {
+    throw new NotFoundError("파일을 찾을 수 없습니다");
+  }
+
+  // Storage에서 파일 읽기
+  const disk = Sonamu.storage.use();
+  const buffer = await disk.get(file.path);
+
+  // Content-Disposition 헤더로 다운로드 파일명 지정
+  ctx.reply.header(
+    "Content-Disposition",
+    `attachment; filename="${encodeURIComponent(file.original_name)}"`
+  );
+
+  return buffer;
+}
 ```
+
+**contentType 사용 케이스**:
+
+| Content-Type | 사용 케이스 | 반환 타입 |
+|--------------|------------|----------|
+| `text/plain` | CSV, TXT 파일 다운로드 | `string` |
+| `text/html` | HTML 렌더링 (SSR) | `string` |
+| `text/xml` | XML 데이터 반환 | `string` |
+| `application/json` | JSON 데이터 (기본값) | `object` |
+| `application/octet-stream` | 바이너리 파일 (이미지, PDF, ZIP 등) | `Buffer` or `Uint8Array` |
+
+<Info>
+**application/octet-stream 사용 시 주의사항**:
+- 반드시 `Buffer` 또는 `Uint8Array`를 반환해야 합니다
+- `Content-Disposition` 헤더로 다운로드 파일명을 지정할 수 있습니다
+- 파일명에 한글이 포함된 경우 `encodeURIComponent()`로 인코딩하세요
+- 대용량 파일은 스트리밍 방식을 고려하세요
+</Info>
 
 ### clients
 
@@ -353,7 +399,8 @@ async findById(id: number) {
 ```typescript
 @upload()
 async uploadAvatar() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   // 파일 처리
 }
 ```

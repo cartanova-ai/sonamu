@@ -699,6 +699,449 @@ async simpleTransaction(): Promise<void> {
 }
 ```
 
+## 실전 복잡한 시나리오
+
+실무에서 자주 마주치는 복잡한 트랜잭션 패턴과 해결 방법입니다.
+
+### 시나리오 1: 다중 Model 간 트랜잭션 공유
+
+여러 Model의 메서드를 하나의 트랜잭션으로 묶어야 할 때
+
+```typescript
+class OrderModelClass extends BaseModelClass {
+  @transactional()
+  async createOrderWithPayment(
+    userId: number,
+    items: OrderItem[],
+    paymentInfo: PaymentInfo
+  ): Promise<{ orderId: number; paymentId: number }> {
+    const wdb = this.getPuri("w");
+
+    // 1. 재고 확인 및 차감 (InventoryModel 호출)
+    //    @transactional이 있으므로 같은 트랜잭션 컨텍스트 공유
+    await InventoryModel.reserveStock(items);
+
+    // 2. 주문 생성
+    const orderRef = wdb.ubRegister("orders", {
+      user_id: userId,
+      status: "pending",
+      total_amount: this.calculateTotal(items),
+    });
+
+    items.forEach((item) => {
+      wdb.ubRegister("order_items", {
+        order_id: orderRef,
+        product_id: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+      });
+    });
+
+    const [orderId] = await wdb.ubUpsert("orders");
+    await wdb.ubUpsert("order_items");
+
+    // 3. 결제 처리 (PaymentModel 호출)
+    //    같은 트랜잭션 컨텍스트 공유
+    const paymentId = await PaymentModel.processPayment({
+      orderId,
+      userId,
+      ...paymentInfo,
+    });
+
+    // 4. 주문 상태 업데이트
+    await wdb
+      .table("orders")
+      .where("id", orderId)
+      .update({ status: "paid", payment_id: paymentId });
+
+    return { orderId, paymentId };
+  }
+}
+
+class InventoryModelClass extends BaseModelClass {
+  @transactional()
+  async reserveStock(items: OrderItem[]): Promise<void> {
+    const wdb = this.getPuri("w");
+
+    for (const item of items) {
+      // 현재 재고 확인
+      const product = await wdb
+        .table("products")
+        .where("id", item.productId)
+        .first();
+
+      if (!product || product.stock < item.quantity) {
+        throw new BadRequestError(
+          `상품 ${item.productId}의 재고가 부족합니다.`
+        );
+      }
+
+      // 재고 차감
+      await wdb
+        .table("products")
+        .where("id", item.productId)
+        .decrement("stock", item.quantity);
+    }
+  }
+}
+
+class PaymentModelClass extends BaseModelClass {
+  @transactional()
+  async processPayment(params: ProcessPaymentParams): Promise<number> {
+    const wdb = this.getPuri("w");
+
+    // 외부 결제 API 호출 (트랜잭션 밖에서 해야 하지만 여기선 예시)
+    const paymentResult = await this.callPaymentGateway(params);
+
+    // 결제 기록 저장
+    const [paymentId] = await wdb
+      .table("payments")
+      .insert({
+        order_id: params.orderId,
+        user_id: params.userId,
+        amount: params.amount,
+        status: paymentResult.status,
+        transaction_id: paymentResult.transactionId,
+      })
+      .returning("id");
+
+    return paymentId.id;
+  }
+}
+```
+
+**트랜잭션 컨텍스트 공유**:
+- `createOrderWithPayment`가 최상위 트랜잭션 시작
+- `InventoryModel.reserveStock`, `PaymentModel.processPayment`는 같은 트랜잭션 컨텍스트 공유
+- 어느 단계에서든 에러 발생 시 전체 롤백 (재고 차감도 취소됨)
+
+### 시나리오 2: 부분 롤백 with Savepoint
+
+일부 작업만 롤백하고 나머지는 유지하고 싶을 때
+
+```typescript
+class OrderModelClass extends BaseModelClass {
+  @transactional()
+  async createOrderWithOptionalDiscount(
+    userId: number,
+    items: OrderItem[],
+    couponCode?: string
+  ): Promise<number> {
+    const wdb = this.getPuri("w");
+
+    // 1. 주문 생성 (반드시 성공해야 함)
+    const orderRef = wdb.ubRegister("orders", {
+      user_id: userId,
+      status: "pending",
+      total_amount: this.calculateTotal(items),
+      discount_amount: 0,
+    });
+
+    items.forEach((item) => {
+      wdb.ubRegister("order_items", {
+        order_id: orderRef,
+        product_id: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+      });
+    });
+
+    const [orderId] = await wdb.ubUpsert("orders");
+    await wdb.ubUpsert("order_items");
+
+    // 2. 쿠폰 적용 시도 (실패해도 주문은 유지)
+    if (couponCode) {
+      try {
+        // Savepoint 생성
+        await wdb.raw("SAVEPOINT coupon_apply");
+
+        const coupon = await wdb
+          .table("coupons")
+          .where("code", couponCode)
+          .where("used", false)
+          .first();
+
+        if (!coupon) {
+          throw new Error("유효하지 않은 쿠폰");
+        }
+
+        // 쿠폰 사용 처리
+        await wdb.table("coupons").where("id", coupon.id).update({ used: true });
+
+        // 할인 금액 업데이트
+        await wdb
+          .table("orders")
+          .where("id", orderId)
+          .update({ discount_amount: coupon.amount });
+
+        // Savepoint 해제
+        await wdb.raw("RELEASE SAVEPOINT coupon_apply");
+
+        this.logger.info("쿠폰 적용 성공", { orderId, couponCode });
+      } catch (error) {
+        // 쿠폰 적용 실패 시 이 부분만 롤백
+        await wdb.raw("ROLLBACK TO SAVEPOINT coupon_apply");
+        this.logger.warn("쿠폰 적용 실패, 주문은 유지", { orderId, error });
+      }
+    }
+
+    return orderId;
+  }
+}
+```
+
+**Savepoint 활용**:
+- 주문 생성은 반드시 성공
+- 쿠폰 적용 실패 시 쿠폰 관련 작업만 롤백
+- 전체 트랜잭션은 계속 진행
+
+<Warning>
+**Savepoint 주의사항**:
+- Savepoint는 수동으로 생성/관리해야 합니다 (자동 생성 안 됨)
+- 중첩 레벨이 깊어질수록 복잡도 증가
+- 대부분의 경우 전체 롤백이 더 안전하고 단순합니다
+</Warning>
+
+### 시나리오 3: 동시성 제어 - 비관적 락
+
+여러 사용자가 동시에 같은 데이터를 수정할 때
+
+```typescript
+class ProductModelClass extends BaseModelClass {
+  @transactional()
+  async purchaseProduct(
+    productId: number,
+    quantity: number,
+    userId: number
+  ): Promise<number> {
+    const wdb = this.getPuri("w");
+
+    // 비관적 락: SELECT ... FOR UPDATE
+    const product = await wdb
+      .table("products")
+      .where("id", productId)
+      .forUpdate() // ← 다른 트랜잭션이 이 행을 수정하지 못하도록 락
+      .first();
+
+    if (!product) {
+      throw new NotFoundError("상품을 찾을 수 없습니다");
+    }
+
+    if (product.stock < quantity) {
+      throw new BadRequestError("재고가 부족합니다");
+    }
+
+    // 재고 차감
+    await wdb
+      .table("products")
+      .where("id", productId)
+      .decrement("stock", quantity);
+
+    // 주문 생성
+    const [orderId] = await wdb
+      .table("orders")
+      .insert({
+        user_id: userId,
+        product_id: productId,
+        quantity,
+        amount: product.price * quantity,
+      })
+      .returning("id");
+
+    return orderId.id;
+  }
+}
+```
+
+**동시성 제어 비교**:
+
+| 방식 | 사용 시점 | 장점 | 단점 |
+|------|----------|------|------|
+| **비관적 락** (`FOR UPDATE`) | 충돌이 자주 발생하는 경우 | 데이터 일관성 보장 확실 | 대기 시간 증가, 처리량 감소 |
+| **낙관적 락** (version 컬럼) | 충돌이 드문 경우 | 높은 처리량 | 충돌 시 재시도 필요 |
+
+### 시나리오 4: 데드락 재시도 패턴
+
+데드락 발생 시 자동 재시도
+
+```typescript
+class OrderModelClass extends BaseModelClass {
+  async createOrderWithRetry(
+    userId: number,
+    items: OrderItem[],
+    maxRetries: number = 3
+  ): Promise<number> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // 트랜잭션 시도
+        return await this.createOrder(userId, items);
+      } catch (error) {
+        // 데드락 에러 체크
+        if (this.isDeadlockError(error)) {
+          lastError = error as Error;
+          this.logger.warn(`데드락 발생, 재시도 ${attempt}/${maxRetries}`, {
+            userId,
+            error,
+          });
+
+          // 지수 백오프: 100ms, 200ms, 400ms...
+          await this.sleep(100 * Math.pow(2, attempt - 1));
+          continue;
+        }
+
+        // 데드락이 아닌 다른 에러는 즉시 throw
+        throw error;
+      }
+    }
+
+    // 최대 재시도 횟수 초과
+    throw new Error(
+      `주문 생성 실패: 최대 재시도 횟수 초과 (${maxRetries}회)`,
+      { cause: lastError }
+    );
+  }
+
+  @transactional()
+  private async createOrder(
+    userId: number,
+    items: OrderItem[]
+  ): Promise<number> {
+    // 실제 주문 생성 로직
+    // ...
+  }
+
+  private isDeadlockError(error: unknown): boolean {
+    if (error instanceof Error) {
+      // PostgreSQL 데드락 에러 코드: 40P01
+      return error.message.includes("deadlock") ||
+             error.message.includes("40P01");
+    }
+    return false;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
+```
+
+**재시도 전략**:
+1. 데드락 에러만 재시도 (다른 에러는 즉시 실패)
+2. 지수 백오프로 재시도 간격 증가 (100ms → 200ms → 400ms)
+3. 최대 재시도 횟수 제한
+
+### 시나리오 5: 외부 API 호출과 트랜잭션 분리
+
+외부 API는 트랜잭션 밖에서 호출
+
+```typescript
+class PaymentModelClass extends BaseModelClass {
+  async processOrderPayment(
+    orderId: number,
+    paymentInfo: PaymentInfo
+  ): Promise<PaymentResult> {
+    // 1. 주문 정보 조회 (읽기 전용)
+    const order = await this.findOrderById(orderId);
+    if (!order) {
+      throw new NotFoundError("주문을 찾을 수 없습니다");
+    }
+
+    // 2. 외부 결제 API 호출 (트랜잭션 밖)
+    let paymentResult: ExternalPaymentResult;
+    try {
+      paymentResult = await this.callPaymentGateway({
+        orderId,
+        amount: order.total_amount,
+        ...paymentInfo,
+      });
+    } catch (error) {
+      // 결제 실패 시 주문 상태 업데이트
+      await this.updateOrderStatus(orderId, "payment_failed");
+      throw new PaymentError("결제 처리 실패", { cause: error });
+    }
+
+    // 3. 결제 성공 시 DB 업데이트 (트랜잭션)
+    try {
+      return await this.recordPaymentSuccess(orderId, paymentResult);
+    } catch (error) {
+      // DB 업데이트 실패 시 결제 취소 시도
+      await this.cancelPaymentGateway(paymentResult.transactionId);
+      throw error;
+    }
+  }
+
+  @transactional()
+  private async recordPaymentSuccess(
+    orderId: number,
+    paymentResult: ExternalPaymentResult
+  ): Promise<PaymentResult> {
+    const wdb = this.getPuri("w");
+
+    // 결제 기록 저장
+    const [paymentId] = await wdb
+      .table("payments")
+      .insert({
+        order_id: orderId,
+        status: "success",
+        transaction_id: paymentResult.transactionId,
+        amount: paymentResult.amount,
+      })
+      .returning("id");
+
+    // 주문 상태 업데이트
+    await wdb
+      .table("orders")
+      .where("id", orderId)
+      .update({
+        status: "paid",
+        payment_id: paymentId.id,
+        paid_at: new Date(),
+      });
+
+    return {
+      paymentId: paymentId.id,
+      transactionId: paymentResult.transactionId,
+      status: "success",
+    };
+  }
+
+  private async callPaymentGateway(
+    params: PaymentParams
+  ): Promise<ExternalPaymentResult> {
+    // 외부 결제 API 호출
+    // 이 작업은 트랜잭션 안에서 하면 안 됨
+    // ...
+  }
+
+  private async cancelPaymentGateway(transactionId: string): Promise<void> {
+    // 결제 취소 API 호출
+    // ...
+  }
+}
+```
+
+**패턴 설명**:
+1. **외부 API 호출은 트랜잭션 밖에서**
+   - 외부 API는 느리고 롤백 불가능
+   - 트랜잭션 시간을 최소화해야 함
+
+2. **보상 트랜잭션(Saga 패턴)**
+   - 외부 API 성공 후 DB 업데이트 실패 시
+   - 외부 API 취소 호출 (보상 작업)
+
+3. **에러 처리**
+   - 각 단계별로 명확한 에러 처리
+   - 실패 지점에 따라 다른 복구 전략
+
+<Info>
+**분산 트랜잭션 Best Practice**:
+- 외부 시스템과 통신할 때는 Saga 패턴 사용
+- 각 단계마다 실패 시 보상 작업 정의
+- 멱등성(Idempotency) 보장으로 재시도 안전성 확보
+</Info>
+
 ## 다음 단계
 
 <CardGroup cols={2}>

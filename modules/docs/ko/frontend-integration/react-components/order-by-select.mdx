@@ -1,0 +1,526 @@
+---
+title: "OrderBySelect"
+description: "정렬 옵션 선택 컴포넌트 사용법"
+---
+
+`OrderBySelect`는 목록 페이지에서 정렬 기준을 선택하는 자동 생성 컴포넌트입니다. 백엔드의 `OrderBy` enum을 기반으로 생성되며, 한글 레이블이 자동으로 매핑됩니다.
+
+## 핵심 기능
+
+<CardGroup cols={2}>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    Entity 정의에서 자동 생성
+
+    OrderBy enum 기반
+  </Card>
+  <Card title="한글 레이블" icon="language">
+    자동 레이블 매핑
+
+    "ID최신순", "생성일오름차순" 등
+  </Card>
+  <Card title="useListParams 통합" icon="link">
+    register 패턴 지원
+
+    URL 동기화 자동
+  </Card>
+  <Card title="커스터마이징" icon="gear">
+    스캐폴딩 파일
+
+    자유로운 수정 가능
+  </Card>
+</CardGroup>
+
+## 자동 생성 조건
+
+OrderBySelect는 백엔드에 `OrderBy` enum이 정의되면 자동으로 생성됩니다.
+
+### 백엔드 정의
+
+```typescript
+// user.types.ts (백엔드)
+import { z } from "zod";
+
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+  "created_at-desc",
+  "created_at-asc",
+  "username-asc",
+  "username-desc",
+]);
+
+export const UserListParams = UserBaseListParams.extend({
+  orderBy: UserOrderBy.optional(),
+});
+```
+
+### 자동 생성되는 파일
+
+**위치**: `web/src/components/user/UserOrderBySelect.tsx`
+
+**자동 생성되는 레이블**: `web/src/services/sonamu.generated.ts`
+```typescript
+export const UserOrderByLabel = {
+  "id-desc": "ID최신순",
+  "id-asc": "ID오래된순",
+  "created_at-desc": "생성일최신순",
+  "created_at-asc": "생성일오래된순",
+  "username-asc": "이름오름차순",
+  "username-desc": "이름내림차순",
+};
+```
+
+<Info>
+**레이블 생성 규칙**
+
+- `id-desc` → "ID최신순"
+- `created_at-asc` → "생성일오래된순"
+- `username-desc` → "이름내림차순"
+
+필드명과 정렬 방향(`asc`/`desc`)을 조합하여 자동 생성됩니다.
+</Info>
+
+## 기본 사용법
+
+### useListParams와 함께 사용
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserOrderBy } from "@/services/sonamu.generated";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    orderBy: UserOrderBy.options[0],  // 기본값: "id-desc"
+  });
+
+  return (
+    <div className="flex gap-2">
+      <UserOrderBySelect {...register("orderBy")} />
+    </div>
+  );
+}
+```
+
+**동작**:
+1. 사용자가 정렬 옵션 선택
+2. `register("orderBy")`가 자동으로 URL 업데이트
+3. API 호출 시 `listParams.orderBy`가 전달됨
+4. 백엔드에서 정렬 적용
+
+### Props
+
+```typescript
+export type UserOrderBySelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+```
+
+### 기본 사용 (register 없이)
+
+```typescript
+import { useState } from "react";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+
+export function UserListPage() {
+  const [orderBy, setOrderBy] = useState<string>("id-desc");
+
+  return (
+    <UserOrderBySelect
+      value={orderBy}
+      onValueChange={(value) => setOrderBy(value ?? "id-desc")}
+      placeholder="정렬 기준"
+    />
+  );
+}
+```
+
+## Props 상세
+
+### placeholder
+
+선택되지 않았을 때 표시되는 텍스트입니다.
+
+```typescript
+<UserOrderBySelect
+  {...register("orderBy")}
+  placeholder="정렬 선택"  // 기본값: "정렬"
+/>
+```
+
+### textPrefix
+
+각 옵션 앞에 붙는 접두사입니다.
+
+```typescript
+<UserOrderBySelect
+  {...register("orderBy")}
+  textPrefix="정렬: "
+/>
+
+// 렌더링 결과:
+// - 정렬: ID최신순
+// - 정렬: ID오래된순
+// - 정렬: 생성일최신순
+```
+
+<Info>
+**textPrefix 활용 예시**
+
+목록 페이지 상단에 현재 정렬을 명확히 표시하고 싶을 때 유용합니다:
+```
+[정렬: ID최신순 ▼]
+```
+</Info>
+
+### clearable
+
+"전체" 옵션을 추가하여 정렬을 초기화할 수 있습니다.
+
+```typescript
+<UserOrderBySelect
+  {...register("orderBy")}
+  clearable
+/>
+
+// 렌더링 결과:
+// - 전체           ← clearable로 추가됨
+// - ID최신순
+// - ID오래된순
+// - ...
+```
+
+**사용 시나리오**:
+- 기본 정렬로 돌아가고 싶을 때
+- 정렬 없이 데이터베이스 순서대로 보고 싶을 때
+
+### disabled
+
+컴포넌트를 비활성화합니다.
+
+```typescript
+<UserOrderBySelect
+  {...register("orderBy")}
+  disabled={isLoading}  // 로딩 중에는 변경 불가
+/>
+```
+
+### className
+
+Tailwind CSS 클래스를 추가합니다.
+
+```typescript
+<UserOrderBySelect
+  {...register("orderBy")}
+  className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+/>
+```
+
+## 실전 예제
+
+### 완전한 목록 필터
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+
+export function UserListPage() {
+  const { listParams, register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+    orderBy: "id-desc" as const,
+    role: undefined,
+  });
+
+  const { data } = UserService.useUsers("A", listParams);
+
+  return (
+    <div>
+      {/* 필터 섹션 */}
+      <div className="flex gap-2 mb-4">
+        {/* 검색 */}
+        <UserSearchFieldSelect
+          {...register("search")}
+          className="w-32"
+        />
+        <Input
+          {...register("keyword")}
+          placeholder="검색어"
+          className="w-64"
+        />
+
+        {/* 역할 필터 */}
+        <UserRoleSelect
+          {...register("role")}
+          clearable
+        />
+
+        {/* 정렬 */}
+        <UserOrderBySelect
+          {...register("orderBy")}
+          textPrefix="정렬: "
+          className="w-[200px]"
+        />
+      </div>
+
+      {/* 테이블 */}
+      <table>
+        {/* ... */}
+      </table>
+    </div>
+  );
+}
+```
+
+### 모바일 반응형
+
+```typescript
+<div className="flex flex-col sm:flex-row gap-2">
+  <UserOrderBySelect
+    {...register("orderBy")}
+    className="w-full sm:w-[200px]"  // 모바일: 전체 너비, 데스크탑: 200px
+  />
+</div>
+```
+
+### 정렬 옵션 수 표시
+
+```typescript
+import { UserOrderBy } from "@/services/sonamu.generated";
+
+<div className="flex items-center gap-2">
+  <span className="text-sm text-gray-500">
+    {UserOrderBy.options.length}개 정렬 옵션
+  </span>
+  <UserOrderBySelect {...register("orderBy")} />
+</div>
+```
+
+## 커스터마이징
+
+OrderBySelect는 **스캐폴딩 파일**이므로 자유롭게 수정할 수 있습니다.
+
+### 레이블 변경
+
+```typescript
+// UserOrderBySelect.tsx 수정
+import { UserOrderByLabel } from "@/services/sonamu.generated";
+
+// 커스텀 레이블 객체 생성
+const customLabels = {
+  ...UserOrderByLabel,
+  "id-desc": "최신 등록순",  // 기본: "ID최신순"
+  "created_at-asc": "오래된 순",  // 기본: "생성일오래된순"
+};
+
+export function UserOrderBySelect({ ... }) {
+  return (
+    <Select ...>
+      <SelectContent>
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + customLabels[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### 아이콘 추가
+
+```typescript
+import ArrowUpIcon from "~icons/lucide/arrow-up";
+import ArrowDownIcon from "~icons/lucide/arrow-down";
+
+const getIcon = (key: string) => {
+  if (key.endsWith("-asc")) return <ArrowUpIcon className="w-3 h-3" />;
+  if (key.endsWith("-desc")) return <ArrowDownIcon className="w-3 h-3" />;
+  return null;
+};
+
+<SelectItem key={key} value={key}>
+  <div className="flex items-center gap-2">
+    {getIcon(key)}
+    {customLabels[key]}
+  </div>
+</SelectItem>
+```
+
+### 특정 옵션 숨기기
+
+```typescript
+// "username" 정렬 옵션만 표시
+const visibleOptions = validOptions.filter(key =>
+  key.includes("username")
+);
+
+<SelectContent>
+  {visibleOptions.map((key) => (
+    <SelectItem key={key} value={key}>
+      {UserOrderByLabel[key]}
+    </SelectItem>
+  ))}
+</SelectContent>
+```
+
+### 그룹화
+
+```typescript
+const groupedOptions = {
+  "기본": ["id-desc", "id-asc"],
+  "날짜": ["created_at-desc", "created_at-asc"],
+  "이름": ["username-asc", "username-desc"],
+};
+
+<SelectContent>
+  {Object.entries(groupedOptions).map(([group, options]) => (
+    <Fragment key={group}>
+      <SelectLabel>{group}</SelectLabel>
+      {options.map((key) => (
+        <SelectItem key={key} value={key}>
+          {UserOrderByLabel[key]}
+        </SelectItem>
+      ))}
+    </Fragment>
+  ))}
+</SelectContent>
+```
+
+## 백엔드 처리
+
+OrderBySelect에서 선택한 값은 백엔드로 전달되어 실제 정렬이 적용됩니다.
+
+### Model에서 처리
+
+```typescript
+// user.model.ts (백엔드)
+async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+  subset: T,
+  rawParams?: LP,
+): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+  const params = {
+    num: 24,
+    page: 1,
+    orderBy: "id-desc" as const,
+    ...rawParams,
+  };
+
+  const { qb } = this.getSubsetQueries(subset);
+
+  // orderBy 처리
+  if (params.orderBy === "id-desc") {
+    qb.orderBy("users.id", "desc");
+  } else if (params.orderBy === "id-asc") {
+    qb.orderBy("users.id", "asc");
+  } else if (params.orderBy === "created_at-desc") {
+    qb.orderBy("users.created_at", "desc");
+  } else if (params.orderBy === "created_at-asc") {
+    qb.orderBy("users.created_at", "asc");
+  } else if (params.orderBy === "username-asc") {
+    qb.orderBy("users.username", "asc");
+  } else if (params.orderBy === "username-desc") {
+    qb.orderBy("users.username", "desc");
+  } else {
+    exhaustive(params.orderBy);  // 타입 안전성 보장
+  }
+
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+### exhaustive 패턴
+
+`exhaustive()`는 모든 경우를 처리했는지 컴파일 타임에 검증합니다.
+
+```typescript
+import { exhaustive } from "sonamu";
+
+// OrderBy enum에 새 옵션 "email-asc"를 추가하면
+// 컴파일 에러 발생 → 개발자가 누락을 즉시 알 수 있음
+else {
+  exhaustive(params.orderBy);  // ❌ 타입 에러: "email-asc" 미처리
+}
+```
+
+## 재생성
+
+OrderBySelect는 초기 생성 후 자동 재생성되지 않습니다.
+
+### 재생성이 필요한 경우
+
+1. 컴포넌트 파일을 삭제한 경우
+2. Entity의 OrderBy enum이 크게 변경된 경우
+
+### 재생성 방법
+
+```bash
+# 컴포넌트 삭제
+rm web/src/components/user/UserOrderBySelect.tsx
+
+# 개발 서버 재시작 (자동 재생성)
+pnpm dev
+```
+
+<Warning>
+**재생성 시 주의**
+
+커스터마이징한 내용은 재생성 시 사라집니다. 중요한 수정 사항은 별도로 백업하거나 문서화하세요.
+</Warning>
+
+## 문제 해결
+
+### OrderBySelect가 생성되지 않음
+
+**원인**: 백엔드에 `OrderBy` enum이 정의되지 않음
+
+**해결**:
+```typescript
+// user.types.ts (백엔드)에 추가
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+]);
+
+export const UserListParams = UserBaseListParams.extend({
+  orderBy: UserOrderBy.optional(),
+});
+```
+
+### 레이블이 한글로 표시되지 않음
+
+**원인**: `sonamu.generated.ts`가 재생성되지 않음
+
+**해결**:
+```bash
+# sonamu.lock 삭제 후 재동기화
+rm api/sonamu.lock
+pnpm sonamu sync
+```
+
+### 선택해도 정렬이 적용되지 않음
+
+**원인**: 백엔드 Model에서 `orderBy` 처리 누락
+
+**해결**: `user.model.ts`의 `findMany`에서 `params.orderBy`를 처리하세요.
+
+## 관련 문서
+
+- [auto-generated-overview](/frontend-integration/react-components/auto-generated-overview) - 자동 생성 컴포넌트 개요
+- [SearchFieldSelect](/frontend-integration/react-components/search-components) - 검색 필드 선택
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - 목록 필터링 훅

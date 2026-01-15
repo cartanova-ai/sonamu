@@ -423,7 +423,8 @@ async updateUserAndProfile(
 ```typescript
 @upload()
 async uploadAvatar(): Promise<{ url: string }> {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
 
   if (!file) {
     throw new BadRequestException("파일이 없습니다");

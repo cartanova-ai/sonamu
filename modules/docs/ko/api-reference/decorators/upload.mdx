@@ -154,8 +154,9 @@ class UploadedFile {
 ```typescript
 @upload()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   if (!file) {
     throw new Error("No file");
   }
@@ -164,7 +165,7 @@ async uploadFile() {
   console.log("MIME type:", file.mimetype);
   console.log("Size:", file.size);
   console.log("Extension:", file.extname);
-  
+
   return { uploaded: true };
 }
 ```
@@ -174,16 +175,17 @@ async uploadFile() {
 ```typescript
 @upload()
 async processImage() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   // Buffer로 읽기
   const buffer = await file.toBuffer();
-  
+
   // 이미지 처리
   const processed = await sharp(buffer)
     .resize(300, 300)
     .toBuffer();
-  
+
   return { size: processed.length };
 }
 ```
@@ -193,16 +195,17 @@ async processImage() {
 ```typescript
 @upload()
 async uploadDocument() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   // 디스크에 저장
   const key = `uploads/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key);
-  
+
   // 저장된 URL 접근
   console.log("URL:", file.url);
   console.log("Signed URL:", file.signedUrl);
-  
+
   return { url, filename: file.filename, size: file.size };
 }
 ```
@@ -212,15 +215,16 @@ async uploadDocument() {
 ```typescript
 @upload()
 async uploadWithHash() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   // MD5 해시 계산
   const hash = await file.md5();
-  
+
   // 해시를 파일명에 포함
   const key = `uploads/${hash}${file.extname ? `.${file.extname}` : ''}`;
   const url = await file.saveToDisk(key);
-  
+
   return { url, hash };
 }
 ```
@@ -232,12 +236,13 @@ Sonamu는 여러 스토리지 드라이버를 제공합니다.
 ```typescript
 @upload()
 async uploadToS3() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   // S3 디스크에 저장 (sonamu.config.ts에서 설정)
   const key = `avatars/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key, "s3");
-  
+
   return { url };
 }
 ```
@@ -254,7 +259,8 @@ async uploadToS3() {
 @upload()
 @transactional()
 async uploadAndSave() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   const wdb = this.getDB("w");
 
   // 파일 저장 + DB 업데이트를 트랜잭션으로
@@ -392,8 +398,9 @@ function FileUploader() {
 ```typescript
 @upload()
 async uploadImage() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
   if (!allowedTypes.includes(file.mimetype)) {
     throw new Error(`Invalid file type: ${file.mimetype}`);
@@ -408,8 +415,9 @@ async uploadImage() {
 ```typescript
 @upload()
 async uploadDocument() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
     throw new Error("File too large");
@@ -424,8 +432,9 @@ async uploadDocument() {
 ```typescript
 @upload()
 async uploadFile() {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
+
   const allowedExtensions = ["jpg", "png", "pdf"];
   if (!file.extname || !allowedExtensions.includes(file.extname)) {
     throw new Error(`Invalid file extension: ${file.extname}`);
@@ -444,7 +453,8 @@ import sharp from "sharp";
 
 @upload()
 async uploadAndResizeImage() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   const buffer = await file.toBuffer();
 
   // 이미지 리사이징
@@ -525,9 +535,9 @@ async uploadFile() {
       @upload()
       @transactional()
       async uploadAvatar() {
-        const { user } = Sonamu.getContext();
-        const { file } = Sonamu.getUploadContext();
-        
+        const { user, files } = Sonamu.getContext();
+        const file = files?.[0]; // 첫 번째 파일 사용
+
         if (!file) {
           throw new Error("No file uploaded");
         }
@@ -568,8 +578,8 @@ async uploadFile() {
       @upload()
       @transactional()
       async uploadDocuments(projectId: number) {
-        const { files } = Sonamu.getUploadContext();
-        
+        const { files } = Sonamu.getContext();
+
         if (files.length === 0) {
           throw new Error("No files uploaded");
         }
@@ -620,8 +630,9 @@ async uploadFile() {
       @upload()
       @transactional()
       async importUsers() {
-        const { file } = Sonamu.getUploadContext();
-        
+        const { files } = Sonamu.getContext();
+        const file = files?.[0]; // 첫 번째 파일 사용
+
         if (file.mimetype !== "text/csv") {
           throw new Error("CSV file required");
         }
@@ -676,8 +687,8 @@ async uploadFile() {
     class FileModelClass extends BaseModelClass {
       @upload()
       async uploadWithDeduplication() {
-        const { files } = Sonamu.getUploadContext();
-        
+        const { files } = Sonamu.getContext();
+
         const results = [];
         for (const file of files) {
           // MD5 해시 계산

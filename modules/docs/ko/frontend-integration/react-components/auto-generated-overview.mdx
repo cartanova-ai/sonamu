@@ -1,0 +1,742 @@
+---
+title: "자동 생성 컴포넌트 개요"
+description: "Entity 정의에서 자동 생성되는 프론트엔드 컴포넌트들"
+---
+
+Sonamu는 백엔드 Entity 정의를 기반으로 프론트엔드 컴포넌트를 자동으로 생성합니다. 이 문서는 어떤 컴포넌트들이 생성되고 언제 사용하는지 설명합니다.
+
+## 생성되는 컴포넌트 종류
+
+<CardGroup cols={2}>
+  <Card title="IdAsyncSelect" icon="magnifying-glass">
+    Entity 레코드 검색 선택
+
+    서버 검색 지원
+  </Card>
+  <Card title="OrderBySelect" icon="arrow-down-up-across-line">
+    정렬 옵션 선택
+
+    Enum 기반
+  </Card>
+  <Card title="SearchFieldSelect" icon="list-check">
+    검색 대상 필드 선택
+
+    동적 검색 조건
+  </Card>
+  <Card title="StatusSelect" icon="circle-check">
+    상태/역할 선택
+
+    Enum 기반
+  </Card>
+</CardGroup>
+
+## 1. IdAsyncSelect
+
+### 생성 조건
+
+모든 Entity에 대해 자동 생성됩니다.
+
+### 파일 위치
+
+```
+web/src/components/{entity}/{Entity}IdAsyncSelect.tsx
+```
+
+**예시**:
+- `UserIdAsyncSelect.tsx`
+- `ProjectIdAsyncSelect.tsx`
+- `CompanyIdAsyncSelect.tsx`
+
+### 코드 구조
+
+```typescript
+// UserIdAsyncSelect.tsx
+import { AsyncSelect } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import type { UserSubsetA } from "@/services/sonamu.generated";
+
+export type UserIdAsyncSelectProps = {
+  value?: number | number[];
+  onValueChange?: (value: number | number[] | null | undefined) => void;
+  placeholder?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+  multiple?: boolean;
+};
+
+export function UserIdAsyncSelect({
+  value,
+  onValueChange,
+  placeholder,
+  clearable,
+  disabled,
+  className,
+  multiple = false,
+}: UserIdAsyncSelectProps) {
+  const loadOptions = async (keyword: string) => {
+    const { rows } = await UserService.getUsers("A", {
+      num: 20,
+      page: 1,
+      search: "id",
+      keyword,
+    });
+    return rows.map((row) => ({
+      label: `${row.username} (${row.email})`,
+      value: row.id,
+    }));
+  };
+
+  return (
+    <AsyncSelect
+      value={value}
+      onValueChange={onValueChange}
+      loadOptions={loadOptions}
+      placeholder={placeholder ?? "사용자 선택"}
+      clearable={clearable}
+      disabled={disabled}
+      className={className}
+      multiple={multiple}
+    />
+  );
+}
+```
+
+### 사용 예시
+
+```typescript
+import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+
+export function ProjectForm() {
+  const { register } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    manager_id: null,
+  });
+
+  return (
+    <form>
+      <label>프로젝트 관리자</label>
+      <UserIdAsyncSelect {...register("manager_id")} clearable />
+    </form>
+  );
+}
+```
+
+### 주요 기능
+
+**1. 서버 검색**:
+- 사용자가 입력한 키워드로 백엔드 API 호출
+- 실시간 검색 결과 표시
+- 대용량 데이터에도 빠른 검색
+
+**2. 단일/다중 선택**:
+```typescript
+// 단일 선택 (기본)
+<UserIdAsyncSelect
+  value={userId}
+  onValueChange={setUserId}
+/>
+
+// 다중 선택
+<UserIdAsyncSelect
+  value={userIds}
+  onValueChange={setUserIds}
+  multiple
+/>
+```
+
+**3. 커스텀 레이블**:
+
+기본적으로 `username (email)` 형식이지만, 컴포넌트 파일을 직접 수정하여 변경 가능합니다.
+
+```typescript
+// 수정 예시
+return rows.map((row) => ({
+  label: `${row.id}. ${row.username}`,  // "1. admin"
+  value: row.id,
+}));
+```
+
+<Info>
+**IdAsyncSelect vs 일반 Select**
+
+- **IdAsyncSelect**: 수백~수천 개 이상의 레코드 (검색 필수)
+- **일반 Select**: 10~50개 이하의 고정된 옵션
+
+예: 회원 선택은 IdAsyncSelect, 역할 선택(admin/normal)은 일반 Select
+</Info>
+
+## 2. OrderBySelect
+
+### 생성 조건
+
+Entity의 `OrderBy` enum이 정의되면 자동 생성됩니다.
+
+### 파일 위치
+
+```
+web/src/components/{entity}/{Entity}OrderBySelect.tsx
+```
+
+### 코드 구조
+
+```typescript
+// UserOrderBySelect.tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import { UserOrderBy, UserOrderByLabel } from "@/services/sonamu.generated";
+
+export type UserOrderBySelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function UserOrderBySelect({
+  value,
+  onValueChange,
+  placeholder,
+  textPrefix,
+  clearable,
+  disabled,
+  className,
+}: UserOrderBySelectProps) {
+  const validOptions = UserOrderBy.options.filter((key) => (key as string) !== "");
+
+  return (
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder ?? "정렬"} />
+      </SelectTrigger>
+      <SelectContent>
+        {clearable && <SelectItem value="">전체</SelectItem>}
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + UserOrderByLabel[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### 사용 예시
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    orderBy: "id-desc" as const,
+  });
+
+  return (
+    <div className="flex gap-2">
+      <UserOrderBySelect {...register("orderBy")} />
+    </div>
+  );
+}
+```
+
+### OrderBy Enum 정의
+
+백엔드에서 정의됩니다.
+
+```typescript
+// user.types.ts (백엔드)
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+  "created_at-desc",
+  "created_at-asc",
+  "username-asc",
+  "username-desc",
+]);
+```
+
+자동 생성되는 레이블:
+
+```typescript
+// sonamu.generated.ts (프론트엔드)
+export const UserOrderByLabel = {
+  "id-desc": "ID최신순",
+  "id-asc": "ID오래된순",
+  "created_at-desc": "생성일최신순",
+  "created_at-asc": "생성일오래된순",
+  "username-asc": "이름오름차순",
+  "username-desc": "이름내림차순",
+};
+```
+
+## 3. SearchFieldSelect
+
+### 생성 조건
+
+Entity의 `SearchField` enum이 정의되면 자동 생성됩니다.
+
+### 파일 위치
+
+```
+web/src/components/{entity}/{Entity}SearchFieldSelect.tsx
+```
+
+### 코드 구조
+
+```typescript
+// UserSearchFieldSelect.tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import { UserSearchField, UserSearchFieldLabel } from "@/services/sonamu.generated";
+
+export type UserSearchFieldSelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function UserSearchFieldSelect({
+  value,
+  onValueChange,
+  placeholder,
+  textPrefix,
+  clearable,
+  disabled,
+  className,
+}: UserSearchFieldSelectProps) {
+  const validOptions = UserSearchField.options.filter((key) => (key as string) !== "");
+
+  return (
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder ?? "검색"} />
+      </SelectTrigger>
+      <SelectContent>
+        {clearable && <SelectItem value="">전체</SelectItem>}
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + UserSearchFieldLabel[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### 사용 예시
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    search: "id" as const,
+    keyword: "",
+  });
+
+  return (
+    <div className="flex gap-2">
+      {/* 검색 대상 필드 선택 */}
+      <UserSearchFieldSelect {...register("search")} className="w-32" />
+
+      {/* 검색 키워드 입력 */}
+      <Input {...register("keyword")} placeholder="검색어 입력" />
+    </div>
+  );
+}
+```
+
+### SearchField Enum 정의
+
+```typescript
+// user.types.ts (백엔드)
+export const UserSearchField = z.enum([
+  "id",
+  "username",
+  "email",
+]);
+```
+
+자동 생성되는 레이블:
+
+```typescript
+// sonamu.generated.ts (프론트엔드)
+export const UserSearchFieldLabel = {
+  id: "ID",
+  username: "이름",
+  email: "이메일",
+};
+```
+
+<Info>
+**SearchField vs SearchInput**
+
+- **SearchFieldSelect**: 검색 대상 필드 선택 (ID, 이름, 이메일 등)
+- **Input (keyword)**: 실제 검색어 입력
+
+두 개를 함께 사용하면 동적 검색 조건을 구현할 수 있습니다.
+</Info>
+
+## 4. StatusSelect (Enum Select)
+
+### 생성 조건
+
+Entity에 Enum 타입의 필드가 정의되면 자동 생성됩니다.
+
+### 파일 위치
+
+```
+web/src/components/{entity}/{Entity}{EnumName}Select.tsx
+```
+
+**예시**:
+- `ProjectStatusSelect.tsx` (Project의 status 필드)
+- `UserRoleSelect.tsx` (User의 role 필드)
+
+### 코드 구조
+
+```typescript
+// ProjectStatusSelect.tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import { ProjectStatus, ProjectStatusLabel } from "@/services/sonamu.generated";
+
+export type ProjectStatusSelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function ProjectStatusSelect({
+  value,
+  onValueChange,
+  placeholder,
+  textPrefix,
+  clearable,
+  disabled,
+  className,
+}: ProjectStatusSelectProps) {
+  const validOptions = ProjectStatus.options.filter((key) => (key as string) !== "");
+
+  return (
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder ?? "상태"} />
+      </SelectTrigger>
+      <SelectContent>
+        {clearable && <SelectItem value="">전체</SelectItem>}
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + ProjectStatusLabel[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### 사용 예시
+
+#### 목록 필터링
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+
+export function ProjectListPage() {
+  const { register } = useListParams(ProjectListParams, {
+    status: undefined,  // 전체
+  });
+
+  return (
+    <div>
+      <ProjectStatusSelect {...register("status")} clearable />
+    </div>
+  );
+}
+```
+
+#### 폼 입력
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+
+export function ProjectForm() {
+  const { register } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    status: "planning",
+  });
+
+  return (
+    <form>
+      <label>프로젝트 상태</label>
+      <ProjectStatusSelect {...register("status")} />
+    </form>
+  );
+}
+```
+
+### Enum 정의
+
+백엔드 Entity에서 정의합니다.
+
+```json
+// project.entity.json
+{
+  "props": [
+    {
+      "name": "status",
+      "type": "enum",
+      "enum": ["planning", "in_progress", "completed", "cancelled"],
+      "enumLabels": {
+        "planning": "기획 중",
+        "in_progress": "진행 중",
+        "completed": "완료",
+        "cancelled": "취소"
+      }
+    }
+  ]
+}
+```
+
+자동 생성되는 타입:
+
+```typescript
+// sonamu.generated.ts
+export const ProjectStatus = z.enum(["planning", "in_progress", "completed", "cancelled"]);
+
+export const ProjectStatusLabel = {
+  planning: "기획 중",
+  in_progress: "진행 중",
+  completed: "완료",
+  cancelled: "취소",
+};
+```
+
+## 컴포넌트 커스터마이징
+
+### 언제 수정해야 하나요?
+
+자동 생성된 컴포넌트는 **초기 템플릿**이므로 프로젝트 요구사항에 맞게 수정할 수 있습니다.
+
+**수정이 필요한 경우**:
+1. IdAsyncSelect의 레이블 포맷 변경
+2. 검색 대상 Subset 변경
+3. placeholder, className 등 기본 스타일 변경
+4. 추가 필터링 로직
+
+### 수정 예시 1: IdAsyncSelect 레이블
+
+```typescript
+// UserIdAsyncSelect.tsx 수정
+const loadOptions = async (keyword: string) => {
+  const { rows } = await UserService.getUsers("A", {
+    num: 20,
+    page: 1,
+    search: "id",
+    keyword,
+  });
+
+  return rows.map((row) => ({
+    // 기본: "admin (admin@example.com)"
+    label: `${row.username} (${row.email})`,
+
+    // 수정 1: ID 포함
+    // label: `[${row.id}] ${row.username}`,
+
+    // 수정 2: 역할 표시
+    // label: `${row.username} (${row.role})`,
+
+    // 수정 3: 복잡한 포맷
+    // label: `${row.username} - ${row.email} [${row.role}]`,
+
+    value: row.id,
+  }));
+};
+```
+
+### 수정 예시 2: 검색 Subset 변경
+
+기본적으로 Subset "A"를 사용하지만, 더 많은 정보가 필요하면 변경 가능합니다.
+
+```typescript
+// Subset "A" → "B"로 변경
+const { rows } = await UserService.getUsers("B", {
+  num: 20,
+  page: 1,
+  search: "id",
+  keyword,
+});
+
+// Subset "B"에만 있는 필드 사용 가능
+return rows.map((row) => ({
+  label: `${row.username} - ${row.department?.name}`,  // department는 Subset B에만 있음
+  value: row.id,
+}));
+```
+
+<Warning>
+**Subset 변경 시 주의**
+
+더 큰 Subset을 사용하면 검색 성능이 저하될 수 있습니다.
+필요한 필드만 포함된 커스텀 Subset을 만드는 것이 좋습니다.
+</Warning>
+
+### 수정 예시 3: 추가 필터링
+
+특정 조건의 사용자만 검색하려면:
+
+```typescript
+const loadOptions = async (keyword: string) => {
+  const { rows } = await UserService.getUsers("A", {
+    num: 20,
+    page: 1,
+    search: "id",
+    keyword,
+    role: "admin",  // 관리자만 검색
+  });
+
+  return rows.map((row) => ({
+    label: `${row.username} (${row.email})`,
+    value: row.id,
+  }));
+};
+```
+
+## 재생성 정책
+
+### 자동 생성 파일인가요?
+
+**아니오.** 한 번만 생성되고 이후에는 재생성되지 않습니다.
+
+### 재생성이 필요한 경우
+
+1. Entity 구조가 크게 변경됨
+2. 기존 컴포넌트를 삭제하고 처음부터 다시 시작하고 싶음
+
+**방법**:
+```bash
+# 컴포넌트 삭제
+rm web/src/components/user/UserIdAsyncSelect.tsx
+
+# 개발 서버 재시작 (자동 재생성)
+pnpm dev
+```
+
+<Info>
+**스캐폴딩 파일**
+
+이 컴포넌트들은 "스캐폴딩 파일"입니다. 즉, 초기 템플릿을 제공하고 이후에는 개발자가 자유롭게 수정하는 파일입니다.
+`sonamu.generated.ts` 같은 "실시간 동기화 파일"과는 다릅니다.
+</Info>
+
+## 사용 패턴
+
+### 목록 페이지 필터
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { Input } from "@sonamu-kit/react-components/components";
+
+export function UserListPage() {
+  const { register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    keyword: "",
+    orderBy: "id-desc" as const,
+    role: undefined,
+  });
+
+  return (
+    <div className="flex gap-2 mb-4">
+      {/* 검색 */}
+      <UserSearchFieldSelect {...register("search")} className="w-32" />
+      <Input {...register("keyword")} placeholder="검색어" className="w-64" />
+
+      {/* 필터 */}
+      <UserRoleSelect {...register("role")} clearable />
+
+      {/* 정렬 */}
+      <UserOrderBySelect {...register("orderBy")} />
+    </div>
+  );
+}
+```
+
+### 폼 입력
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+import { Input } from "@sonamu-kit/react-components/components";
+
+export function ProjectForm() {
+  const { register, submit } = useTypeForm(ProjectSaveParams, {
+    title: "",
+    status: "planning",
+    manager_id: null,
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(async (formData) => {
+          await ProjectService.save({ params: formData });
+        });
+      }}
+    >
+      <Input {...register("title")} placeholder="프로젝트 제목" />
+      <ProjectStatusSelect {...register("status")} />
+      <UserIdAsyncSelect {...register("manager_id")} placeholder="담당자 선택" clearable />
+
+      <button type="submit">저장</button>
+    </form>
+  );
+}
+```
+
+## 관련 문서
+
+- [IdAsyncSelect 상세](/frontend-integration/react-components/id-async-select) - IdAsyncSelect 심화 사용법
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - 목록 필터링 훅
+- [Service 사용하기](/frontend-integration/generated-services/using-services) - API 호출
+- [Entity 정의](/core-concepts/entity/defining-entities) - 백엔드 Entity 구조

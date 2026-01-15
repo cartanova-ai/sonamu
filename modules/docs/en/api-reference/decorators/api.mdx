@@ -352,7 +352,8 @@ async findById(id: number) {
 @api({ httpMethod: "POST" })
 @upload({ mode: "single" })
 async uploadAvatar() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
   // 파일 처리
 }
 ```

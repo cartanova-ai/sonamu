@@ -257,6 +257,134 @@ export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProp
 - 비밀번호 확인
 - 비밀번호 강도 표시
 
+### useTypeForm으로 더 간편하게 (권장)
+
+`@sonamu-kit/react-components`의 `useTypeForm`을 사용하면 위의 복잡한 코드를 훨씬 간결하게 작성할 수 있습니다.
+
+```typescript
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input, Button } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
+
+export function UserFormSimple({ initialValues, onSubmit }: UserFormProps) {
+  // useTypeForm이 타입, 유효성 검사, 에러 처리를 모두 자동화
+  const { register, submit, errors } = useTypeForm(UserSaveParams,
+    initialValues || {
+      email: "",
+      username: "",
+      password: "",
+    }
+  );
+
+  const saveMutation = UserService.useSaveMutation();
+
+  const handleSubmit = submit(async (form) => {
+    saveMutation.mutate({ spa: [form] }, {
+      onSuccess: onSubmit,
+    });
+  });
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+      <div className="form-field">
+        <label>Email *</label>
+        <Input {...register("email")} placeholder="example@email.com" />
+        {errors.email && <span className="error">{errors.email.message}</span>}
+      </div>
+
+      <div className="form-field">
+        <label>Username *</label>
+        <Input {...register("username")} placeholder="username" />
+        {errors.username && <span className="error">{errors.username.message}</span>}
+      </div>
+
+      <div className="form-field">
+        <label>Password *</label>
+        <Input type="password" {...register("password")} />
+        {errors.password && <span className="error">{errors.password.message}</span>}
+      </div>
+
+      <div className="form-actions">
+        <Button type="submit" disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Save"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+```
+
+**useTypeForm vs react-hook-form 비교**:
+
+| 기능 | useTypeForm | react-hook-form + zodResolver |
+|------|-------------|-------------------------------|
+| 코드량 | ⭐️⭐️⭐️ 매우 적음 | ⭐️ 많음 |
+| 타입 안전 | ✅ 자동 추론 | ⚠️ 수동 설정 |
+| 유효성 검사 | ✅ Zod 통합 | ✅ Zod 통합 (수동) |
+| 에러 처리 | ✅ 자동 | ⚠️ 수동 |
+| Sonamu 통합 | ✅ SaveParams 직접 사용 | ❌ 별도 스키마 필요 |
+| 학습 곡선 | ⭐️⭐️⭐️ 낮음 | ⭐️ 높음 |
+
+**useTypeForm의 주요 장점**:
+1. **자동 타입 추론**: `UserSaveParams`에서 폼 타입이 자동으로 결정됨
+2. **통합 유효성 검사**: 백엔드 SaveParams 스키마를 그대로 사용
+3. **간결한 코드**: `zodResolver`, `useForm` 설정 불필요
+4. **Sonamu 최적화**: Service와 완벽하게 통합됨
+
+<Info>
+**권장 사항**: 새로운 폼을 작성할 때는 `useTypeForm`을 먼저 고려하세요. 대부분의 경우 이것만으로 충분하며, 특별한 요구사항이 있을 때만 `react-hook-form`을 직접 사용하세요.
+</Info>
+
+**고급 기능 예제**:
+
+```typescript
+// 커스텀 유효성 검사 추가
+function UserFormAdvanced() {
+  const { register, submit, errors, watch, setError } = useTypeForm(
+    UserSaveParams,
+    defaultValues
+  );
+
+  const password = watch("password");
+  const saveMutation = UserService.useSaveMutation();
+
+  const handleSubmit = submit(async (form) => {
+    // 비동기 유효성 검사 (이메일 중복 확인)
+    const { exists } = await UserService.checkEmail({ email: form.email });
+    if (exists) {
+      setError("email", { message: "이미 사용 중인 이메일입니다." });
+      return;
+    }
+
+    saveMutation.mutate({ spa: [form] });
+  });
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+      <div>
+        <Input {...register("email")} />
+        {errors.email && <span className="error">{errors.email.message}</span>}
+      </div>
+
+      <div>
+        <Input type="password" {...register("password")} />
+        {errors.password && <span className="error">{errors.password.message}</span>}
+
+        {/* 비밀번호 강도 표시 */}
+        {password && (
+          <div className="password-strength">
+            강도: {getPasswordStrength(password)}
+          </div>
+        )}
+      </div>
+
+      <Button type="submit">Save</Button>
+    </form>
+  );
+}
+```
+
 ### 테이블 커스터마이징
 
 테이블에 기능을 추가합니다.

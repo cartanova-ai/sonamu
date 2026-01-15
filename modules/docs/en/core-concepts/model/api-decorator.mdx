@@ -427,8 +427,9 @@ Create file upload API.
 })
 @upload({ mode: "single" })
 async uploadAvatar(): Promise<{ url: string }> {
-  const { file } = Sonamu.getUploadContext();
-  
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
+
   if (!file) {
     throw new BadRequestException("No file provided");
   }

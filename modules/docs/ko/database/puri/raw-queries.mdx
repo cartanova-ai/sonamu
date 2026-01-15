@@ -473,6 +473,235 @@ results[0].numberValue; // number
 results[0].boolValue; // boolean
 ```
 
+## Raw 쿼리와 Hydrate
+
+Raw SQL을 사용할 때는 **hydrate()**를 수동으로 호출하거나, 필드 네이밍 규칙을 따라야 JOIN된 데이터를 올바르게 구조화할 수 있습니다.
+
+### Subset vs Raw Puri의 차이
+
+| 기능 | Subset 쿼리 (`getPuri("r", ["A"])`) | Raw Puri 쿼리 (`getPuri("r")`) |
+|------|-------------------------------------|-------------------------------|
+| **Hydrate** | ✅ 자동 호출 | ❌ 수동 호출 필요 |
+| **JOIN** | ✅ 자동 설정 | ⚠️ 수동 설정 |
+| **타입 추론** | ✅ Subset 타입 | ⚠️ 수동 정의 |
+| **필드 구조화** | ✅ 자동 (중첩 객체) | ❌ 수동 (flat) |
+
+### Hydrate가 하는 일
+
+`hydrate()`는 **flat한 쿼리 결과를 중첩된 객체 구조로 변환**합니다.
+
+**Before hydrate (Flat)**:
+```typescript
+{
+  id: 1,
+  username: "john",
+  employee__id: 10,
+  employee__salary: "60000",
+  employee__department__id: 5,
+  employee__department__name: "Engineering"
+}
+```
+
+**After hydrate (Nested)**:
+```typescript
+{
+  id: 1,
+  username: "john",
+  employee: {
+    id: 10,
+    salary: "60000",
+    department: {
+      id: 5,
+      name: "Engineering"
+    }
+  }
+}
+```
+
+### 필드 네이밍 규칙: 언더바(`__`) 사용
+
+JOIN된 테이블의 필드는 **`테이블명__필드명`** 형식으로 선택해야 합니다.
+
+```typescript
+// ✅ 올바른 네이밍
+const results = await db
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .join("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__id: "employees.id",                    // 언더바 2개
+    employee__salary: "employees.salary",
+    employee__department__id: "departments.id",      // 중첩 시 언더바 2개씩
+    employee__department__name: "departments.name",
+  });
+
+// hydrate 호출
+const hydrated = results.map(row => UserModel.hydrate(row));
+
+// 결과: 중첩된 객체 구조
+hydrated[0].employee.department.name; // "Engineering"
+```
+
+```typescript
+// ❌ 잘못된 네이밍 (언더바 1개)
+const results = await db
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee_id: "employees.id",        // ❌ 잘못됨 (언더바 1개)
+    employee_salary: "employees.salary", // ❌ 잘못됨
+  });
+
+// hydrate 호출해도 중첩 구조 생성 안됨
+const hydrated = results.map(row => UserModel.hydrate(row));
+hydrated[0].employee; // undefined
+```
+
+### 자동 Hydrate vs 수동 Hydrate
+
+#### Subset 쿼리 (자동 Hydrate)
+
+```typescript
+// Subset 쿼리는 hydrate 자동 호출
+const users = await UserModel.getPuri("r", ["P"])
+  .where("users.role", "normal");
+
+// 이미 hydrate되어 중첩 구조
+users[0].employee.department.name; // ✅ OK
+```
+
+#### Raw Puri 쿼리 (수동 Hydrate)
+
+```typescript
+// Raw 쿼리는 hydrate 수동 호출 필요
+const users = await UserModel.getPuri("r")
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .join("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__id: "employees.id",
+    employee__salary: "employees.salary",
+    employee__department__id: "departments.id",
+    employee__department__name: "departments.name",
+  });
+
+// ❌ hydrate 전: flat 구조
+users[0].employee; // undefined
+users[0].employee__id; // 10 (flat)
+
+// ✅ hydrate 후: 중첩 구조
+const hydrated = users.map(row => UserModel.hydrate(row));
+hydrated[0].employee.id; // 10
+hydrated[0].employee.department.name; // "Engineering"
+```
+
+### executeSubsetQuery에서의 자동 Hydrate
+
+`executeSubsetQuery()`는 내부적으로 hydrate를 자동 호출합니다.
+
+```typescript
+class UserModelClass extends BaseModelClass<...> {
+  async getUsersWithDepartment() {
+    const { qb } = this.getSubsetQueries("P");
+
+    qb.where("users.role", "normal");
+
+    // executeSubsetQuery는 hydrate를 자동 호출
+    const users = await this.executeSubsetQuery({
+      subset: "P",
+      qb,
+      params: { num: 20, page: 1 },
+    });
+
+    // 이미 hydrate되어 있음
+    return users.rows.map(user => ({
+      id: user.id,
+      username: user.username,
+      department: user.employee?.department?.name, // ✅ OK
+    }));
+  }
+}
+```
+
+### Hydrate 호출 시점 정리
+
+| 메서드 | Hydrate 자동 호출 | 설명 |
+|--------|------------------|------|
+| `getPuri("r", ["A"])` | ✅ Yes | Subset 쿼리는 자동 |
+| `executeSubsetQuery()` | ✅ Yes | 내부에서 자동 호출 |
+| `getPuri("r")` | ❌ No | Raw 쿼리는 수동 |
+| `findById()` | ✅ Yes | BaseModel 메서드는 자동 |
+| `findOne()` | ✅ Yes | BaseModel 메서드는 자동 |
+| `findMany()` | ✅ Yes | BaseModel 메서드는 자동 |
+
+### 실전 예제: Raw 쿼리 + Hydrate
+
+```typescript
+class UserModelClass extends BaseModelClass<...> {
+  // Raw 쿼리로 복잡한 조인
+  async getTopUsersWithStats() {
+    const results = await this.getPuri("r")
+      .table("users")
+      .join("employees", "users.id", "employees.user_id")
+      .join("departments", "employees.department_id", "departments.id")
+      .select({
+        // 기본 필드
+        id: "users.id",
+        username: "users.username",
+        email: "users.email",
+
+        // JOIN 필드 (언더바 2개 규칙)
+        employee__id: "employees.id",
+        employee__salary: "employees.salary",
+        employee__hire_date: "employees.hire_date",
+        employee__department__id: "departments.id",
+        employee__department__name: "departments.name",
+
+        // 집계 필드
+        postCount: Puri.rawNumber(`
+          (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+        `),
+      })
+      .whereRaw("employees.salary > ?", [60000])
+      .orderBy("employees.salary", "desc")
+      .limit(10);
+
+    // Hydrate 호출로 중첩 구조 생성
+    const hydrated = results.map(row => this.hydrate(row));
+
+    // 중첩 구조로 안전하게 접근
+    return hydrated.map(user => ({
+      id: user.id,
+      username: user.username,
+      department: user.employee.department.name,  // ✅ OK
+      salary: user.employee.salary,
+      postCount: user.postCount,
+    }));
+  }
+}
+```
+
+<Warning>
+**Hydrate 사용 시 주의사항**:
+1. **필드 네이밍**: JOIN 필드는 반드시 `__`(언더바 2개) 사용
+2. **수동 호출**: Raw Puri 쿼리는 hydrate() 수동 호출 필수
+3. **타입 안전성**: hydrate 후 타입은 수동으로 정의 필요
+4. **성능**: hydrate는 런타임 오버헤드가 있으므로, 간단한 쿼리는 Subset 사용 권장
+</Warning>
+
+<Info>
+**권장 사항**:
+- 가능하면 **Subset 쿼리**를 사용하세요 (hydrate 자동)
+- 복잡한 Raw SQL이 필요할 때만 수동 hydrate 사용
+- 필드 네이밍 규칙(`__`)을 일관되게 적용
+</Info>
+
 ## 다음 단계
 
 <CardGroup cols={2}>

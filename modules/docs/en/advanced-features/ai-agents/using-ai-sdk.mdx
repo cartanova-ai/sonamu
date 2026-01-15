@@ -323,7 +323,8 @@ class TranscriptionModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async transcribeAudio() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No audio file provided');
@@ -412,7 +413,8 @@ class ImageAnalysisModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async analyzeImage() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file || !file.mimetype.startsWith('image/')) {
       throw new Error('An image file is required');

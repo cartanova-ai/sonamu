@@ -368,6 +368,223 @@ flowchart TD
 - 트랜잭션 경계 자동 관리
 </Info>
 
+### 중첩 트랜잭션 메커니즘 상세
+
+Sonamu의 중첩 트랜잭션은 **트랜잭션 컨텍스트 공유** 방식으로 동작합니다.
+
+#### 트랜잭션 컨텍스트 공유
+
+```typescript
+// 외부 트랜잭션
+@transactional()
+async outerMethod() {
+  const wdb = this.getPuri("w");
+
+  // 여기서 트랜잭션 A가 시작됨
+  await wdb.table("users").insert({ ... });
+
+  // 내부 메서드 호출
+  await this.innerMethod();  // ← 트랜잭션 A를 공유
+
+  await wdb.table("logs").insert({ ... });
+
+  // 여기서 트랜잭션 A가 커밋됨
+}
+
+@transactional()
+async innerMethod() {
+  const wdb = this.getPuri("w");
+
+  // 새 트랜잭션을 시작하지 않고, 외부 트랜잭션 A를 재사용
+  await wdb.table("profiles").insert({ ... });
+
+  // 여기서 커밋하지 않음 (외부 트랜잭션이 커밋)
+}
+```
+
+**동작 원리**:
+1. `outerMethod` 실행 → 트랜잭션 A 시작
+2. `innerMethod` 호출 → 기존 트랜잭션 A 감지
+3. `innerMethod`는 새 트랜잭션을 시작하지 않고 A를 재사용
+4. `innerMethod` 종료 → 커밋하지 않음
+5. `outerMethod` 종료 → 트랜잭션 A 커밋
+
+#### Savepoint는 생성되지 않음
+
+Sonamu는 **Savepoint를 자동으로 생성하지 않습니다**. 모든 중첩된 메서드가 같은 트랜잭션을 공유하므로:
+
+```typescript
+@transactional()
+async methodA() {
+  const wdb = this.getPuri("w");
+
+  await wdb.table("users").insert({ id: 1 });
+
+  try {
+    await this.methodB();  // ← 실패하면?
+  } catch (error) {
+    // ⚠️ methodB가 실패해도 이미 전체 트랜잭션이 롤백됨
+    // Savepoint가 없으므로 users INSERT도 함께 롤백
+    console.error("Failed:", error);
+  }
+
+  // ❌ 여기는 실행되지 않음 (트랜잭션이 이미 롤백됨)
+  await wdb.table("logs").insert({ ... });
+}
+
+@transactional()
+async methodB() {
+  const wdb = this.getPuri("w");
+
+  throw new Error("Failed!");  // ← 전체 트랜잭션 롤백
+}
+```
+
+**결과**:
+- `methodB`에서 에러 발생 → 전체 트랜잭션 롤백
+- `methodA`의 users INSERT도 롤백됨
+- Savepoint가 없으므로 부분 롤백 불가
+
+#### Savepoint가 필요한 경우
+
+부분 롤백이 필요하면 **수동으로 Savepoint를 관리**해야 합니다:
+
+```typescript
+@transactional()
+async methodWithSavepoint() {
+  const wdb = this.getPuri("w");
+
+  // 기본 데이터 삽입
+  await wdb.table("users").insert({ id: 1, name: "John" });
+
+  // Savepoint 생성
+  await wdb.raw("SAVEPOINT sp1");
+
+  try {
+    // 위험한 작업
+    await wdb.table("profiles").insert({ user_id: 1, bio: "..." });
+
+    // 성공 시 Savepoint 해제
+    await wdb.raw("RELEASE SAVEPOINT sp1");
+  } catch (error) {
+    // 실패 시 Savepoint까지만 롤백
+    await wdb.raw("ROLLBACK TO SAVEPOINT sp1");
+    console.error("Profile creation failed, but user is saved");
+  }
+
+  // 로그는 항상 삽입
+  await wdb.table("logs").insert({ action: "user_created" });
+
+  // 전체 커밋
+}
+```
+
+**Savepoint 사용 시나리오**:
+- 선택적 작업이 실패해도 메인 작업은 성공시켜야 할 때
+- 여러 단계의 작업 중 일부만 롤백하고 싶을 때
+- 복잡한 비즈니스 로직에서 부분 실패 처리가 필요할 때
+
+#### 트랜잭션 컨텍스트 확인
+
+현재 실행 중인 트랜잭션이 있는지 확인하는 방법:
+
+```typescript
+import { DB } from "sonamu";
+
+@transactional()
+async checkContext() {
+  const wdb = this.getPuri("w");
+
+  // 트랜잭션 컨텍스트 가져오기
+  const txContext = DB.getTransactionContext();
+  const transaction = txContext.getTransaction("w");
+
+  if (transaction) {
+    console.log("현재 트랜잭션이 활성화되어 있습니다.");
+  } else {
+    console.log("트랜잭션이 없습니다.");
+  }
+}
+```
+
+#### 중첩 레벨 제한 없음
+
+Sonamu는 중첩 레벨에 제한이 없습니다:
+
+```typescript
+@transactional()
+async level1() {
+  await this.level2();  // OK
+}
+
+@transactional()
+async level2() {
+  await this.level3();  // OK
+}
+
+@transactional()
+async level3() {
+  await this.level4();  // OK
+}
+
+// 모두 같은 트랜잭션 컨텍스트 공유
+```
+
+#### 커밋 시점
+
+**오직 최상위 트랜잭션만** 커밋합니다:
+
+```typescript
+@transactional()
+async topLevel() {
+  // 트랜잭션 시작
+
+  await this.middleLevel();
+
+  // ✅ 여기서 커밋 (최상위)
+}
+
+@transactional()
+async middleLevel() {
+  await this.bottomLevel();
+
+  // ❌ 여기서 커밋하지 않음 (중첩)
+}
+
+@transactional()
+async bottomLevel() {
+  // 작업 수행
+
+  // ❌ 여기서도 커밋하지 않음 (중첩)
+}
+```
+
+**정리**:
+
+| 항목 | 동작 |
+|------|------|
+| **트랜잭션 생성** | 최상위 메서드만 생성 |
+| **트랜잭션 공유** | 모든 중첩 메서드가 공유 |
+| **Savepoint** | 자동 생성 안됨 (수동 관리 필요) |
+| **커밋** | 최상위 메서드만 커밋 |
+| **롤백** | 어디서든 에러 발생 시 전체 롤백 |
+| **중첩 레벨** | 제한 없음 |
+
+<Warning>
+**중첩 트랜잭션 주의사항**:
+1. **전체 롤백**: 중첩된 메서드에서 에러 발생 시 전체 트랜잭션이 롤백됨
+2. **Savepoint 없음**: 부분 롤백이 필요하면 수동으로 Savepoint 관리
+3. **커밋 시점**: 중첩된 메서드 종료 시 커밋되지 않음 (최상위만 커밋)
+4. **에러 처리**: try-catch로 잡아도 트랜잭션은 이미 롤백된 상태
+</Warning>
+
+<Info>
+**권장 사항**:
+- 간단한 중첩: `@transactional` 자동 공유 사용
+- 복잡한 로직: 수동 Savepoint 관리 고려
+- 에러 처리: 최상위 메서드에서 처리
+</Info>
+
 ## @api와 함께 사용
 
 ### 데코레이터 조합

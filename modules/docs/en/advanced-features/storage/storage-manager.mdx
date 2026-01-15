@@ -330,7 +330,8 @@ class UserModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -358,7 +359,7 @@ class PostModelClass extends BaseModel {
   @upload({ mode: 'multiple' })
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
 
     const urls = await Promise.all(
       files.map(async (file, index) => {
@@ -379,7 +380,8 @@ class FileModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async upload(type: 'public' | 'private') {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');

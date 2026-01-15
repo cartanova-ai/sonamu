@@ -1,0 +1,451 @@
+---
+title: "useListParams"
+description: "URL-based list filtering and pagination management"
+---
+
+`useListParams` is a hook that synchronizes list page filtering, sorting, and pagination state with URL search parameters. It provides bookmarkable state management and type-safe form binding.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="URL Sync" icon="link">
+    Store search params in URL
+
+    Bookmarkable state
+  </Card>
+  <Card title="Type Safety" icon="shield-check">
+    Zod schema based
+
+    Automatic type inference
+  </Card>
+  <Card title="Auto Page Reset" icon="rotate">
+    Reset to page 1 on filter change
+
+    Improved UX
+  </Card>
+  <Card title="register Pattern" icon="hand-pointer">
+    Easy form component binding
+
+    Remove boilerplate
+  </Card>
+</CardGroup>
+
+## Basic Usage
+
+### Import and Initialization
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { UserService } from "@/services/services.generated";
+import { UserListParams } from "@/services/sonamu.generated";
+
+export function UserListPage() {
+  // Parse and initialize parameters from URL
+  const { listParams, setListParams, register } = useListParams(
+    UserListParams,
+    {
+      num: 24,
+      page: 1,
+      orderBy: "id-desc" as const,
+      search: "id" as const,
+      keyword: "",
+    }
+  );
+
+  // API call (pass listParams directly)
+  const { data, isLoading } = UserService.useUsers("A", listParams);
+
+  // ...
+}
+```
+
+**Parameter Explanation**:
+- `UserListParams`: Zod schema (auto-generated)
+- Default value object: Initial values when URL has no values
+
+<Info>
+**Why is a Zod schema needed?**
+
+URL search parameters are strings, so a schema is needed to parse them into numbers or booleans.
+`UserListParams` is auto-generated in `sonamu.generated.ts` and always stays in sync with backend type definitions.
+</Info>
+
+### Using listParams
+
+An object containing the current filtering state.
+
+```typescript
+const { listParams } = useListParams(UserListParams, defaultValue);
+
+// Pass directly to API calls
+const { data } = UserService.useUsers("A", listParams);
+
+// Or check specific values
+console.log(listParams.page);     // 1
+console.log(listParams.keyword);  // "admin"
+console.log(listParams.orderBy);  // "id-desc"
+```
+
+**Type**:
+```typescript
+listParams: Partial<z.infer<UserListParams>> & DefaultValue
+```
+
+### Changing State with setListParams
+
+Change filter state and update URL.
+
+```typescript
+const { listParams, setListParams } = useListParams(UserListParams, defaultValue);
+
+// Change page
+setListParams({ ...listParams, page: 2 });
+
+// Change sorting
+setListParams({ ...listParams, page: 1, orderBy: "created_at-desc" });
+
+// Change search keyword
+setListParams({
+  ...listParams,
+  page: 1,  // Always reset to page 1 on search
+  keyword: "admin"
+});
+```
+
+**How it works**:
+1. Deep equal comparison between `listParams` and `newParams`
+2. If changed, update URL with TanStack Router's `navigate`
+3. URL change → `useSearch` hook re-runs → `listParams` automatically updated
+
+<Warning>
+**Important: Always use spread operator**
+
+```typescript
+// ❌ Wrong usage (existing values lost)
+setListParams({ page: 2 });
+
+// ✅ Correct usage
+setListParams({ ...listParams, page: 2 });
+```
+
+Always use spread operator to preserve existing filter values.
+</Warning>
+
+### Form Binding with register
+
+The `register` function automatically provides `value` and `onValueChange` to form components.
+
+```typescript
+import { Input, Select } from "@sonamu-kit/react-components/components";
+
+const { register } = useListParams(UserListParams, defaultValue);
+
+return (
+  <div>
+    {/* Search keyword input */}
+    <Input {...register("keyword")} placeholder="Enter keyword" />
+
+    {/* Sort selection */}
+    <UserOrderBySelect {...register("orderBy")} />
+
+    {/* Page selection */}
+    <Pagination {...register("page")} total={data?.total ?? 0} />
+  </div>
+);
+```
+
+**What register returns**:
+```typescript
+{
+  value: listParams[name] ?? defaultValue[name] ?? (name === "page" ? 1 : ""),
+  onValueChange: (value) => {
+    if (name === "page") {
+      // Preserve other filters on page change
+      setListParams({ ...listParams, page: value });
+    } else {
+      // Reset page to 1 on other filter changes
+      setListParams({
+        ...listParams,
+        page: 1,
+        [name]: value === "" ? undefined : value
+      });
+    }
+  }
+}
+```
+
+**Why auto page reset?**:
+
+If a user changes the search keyword on page 3, there may be fewer results and page 3 may not exist.
+Therefore, all filter changes except `page` automatically return to page 1.
+
+## Real-world Examples
+
+### Complete List Page
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input, Pagination } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import { UserListParams } from "@/services/sonamu.generated";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+
+export function UserListPage() {
+  const { listParams, register } = useListParams(
+    UserListParams,
+    {
+      num: 24,
+      page: 1,
+      orderBy: "id-desc" as const,
+      search: "id" as const,
+      keyword: "",
+    }
+  );
+
+  const { data, isLoading } = UserService.useUsers("A", listParams);
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {/* Filter section */}
+      <div className="flex gap-2 mb-4">
+        <UserSearchFieldSelect {...register("search")} />
+        <Input {...register("keyword")} placeholder="Enter keyword" />
+        <UserOrderBySelect {...register("orderBy")} />
+      </div>
+
+      {/* Table */}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.rows.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.username}</td>
+              <td>{user.email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination */}
+      <Pagination {...register("page")} total={data?.total ?? 0} />
+    </div>
+  );
+}
+```
+
+### Adding Custom Filters
+
+When custom filters are added in the backend:
+
+```typescript
+// Backend: user.types.ts
+export const UserListParams = UserBaseListParams.extend({
+  role: z.enum(["admin", "normal"]).optional(),
+  isVerified: z.boolean().optional(),
+});
+```
+
+Frontend usage:
+
+```typescript
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { Switch } from "@sonamu-kit/react-components/components";
+
+const { register } = useListParams(UserListParams, {
+  num: 24,
+  page: 1,
+  role: undefined,
+  isVerified: undefined,
+});
+
+return (
+  <div>
+    <UserRoleSelect {...register("role")} clearable />
+
+    <div className="flex items-center gap-2">
+      <label>Verified users only</label>
+      <Switch {...register("isVerified")} />
+    </div>
+  </div>
+);
+```
+
+### URL Sharing and Bookmarking
+
+The biggest advantage of `useListParams` is that filter state is stored in the URL.
+
+```
+# URL after user sets filters
+https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admin
+
+# If you copy and share this URL or bookmark it
+# The same filters will be applied when accessed later
+```
+
+**Benefits of bookmarkable state**:
+- Users can bookmark frequently used filter combinations
+- Share URL to show colleagues the same view
+- Navigate through filter history with browser back/forward
+
+## Options
+
+### disableSearchParams
+
+Disable URL synchronization and manage state locally only.
+
+```typescript
+const { listParams, setListParams, register } = useListParams(
+  UserListParams,
+  defaultValue,
+  { disableSearchParams: true }
+);
+```
+
+**Use cases**:
+- List inside a modal (when you don't want to change URL)
+- Embedded widget (when independent state management is needed)
+- Test environment
+
+<Warning>
+Using `disableSearchParams: true` will disable bookmark and URL sharing functionality.
+</Warning>
+
+## Type Safety
+
+### Compile-time Validation
+
+```typescript
+const { register } = useListParams(UserListParams, defaultValue);
+
+// ✅ OK: Fields defined in UserListParams
+register("keyword");
+register("orderBy");
+register("page");
+
+// ❌ Compile error: Non-existent field
+register("invalidField");
+```
+
+### Auto-completion
+
+When typing `register("` in IDE, all available fields are auto-completed.
+
+```typescript
+register("
+        ↓
+        keyword
+        orderBy
+        page
+        search
+        num
+        role          // Custom field
+        isVerified    // Custom field
+```
+
+## TanStack Router Integration
+
+`useListParams` internally uses TanStack Router hooks:
+- `useSearch`: Read URL search parameters
+- `useNavigate`: Update URL
+
+```typescript
+// useListParams internal structure (simplified)
+export function useListParams<U, T>(zType: U, defaultValue: T) {
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  const listParams = zType.safeParse(search).success
+    ? { ...defaultValue, ...zType.parse(search) }
+    : defaultValue;
+
+  const setListParams = (newParams: T) => {
+    navigate({ search: newParams });
+  };
+
+  // ...
+}
+```
+
+<Info>
+**Meaning of strict: false**
+
+`useSearch({ strict: false })` allows reading search parameters not defined in the current route.
+This enables flexible handling of dynamically added filters.
+</Info>
+
+## Cautions
+
+### 1. Setting Initial Values
+
+```typescript
+// ❌ Wrong initial value (missing num, page)
+const { listParams } = useListParams(UserListParams, {});
+
+// ✅ Correct initial value (including required fields)
+const { listParams } = useListParams(UserListParams, {
+  num: 24,
+  page: 1,
+  orderBy: "id-desc" as const,
+  search: "id" as const,
+});
+```
+
+**Required fields**:
+- `num`: Items per page
+- `page`: Current page (starts from 1)
+
+### 2. Type Assertion for Enum Fields
+
+```typescript
+// ❌ Compile error: Cannot assign string to enum
+const defaultValue = {
+  orderBy: "id-desc",
+};
+
+// ✅ OK: Create literal type with as const
+const defaultValue = {
+  orderBy: "id-desc" as const,
+};
+```
+
+### 3. Using register with Custom onChange
+
+```typescript
+// ❌ register's onValueChange is ignored
+<Input
+  {...register("keyword")}
+  onChange={(e) => console.log(e.target.value)}
+/>
+
+// ✅ OK: Call register's onValueChange directly
+<Input
+  {...register("keyword")}
+  onValueChange={(value) => {
+    console.log(value);
+    register("keyword").onValueChange(value);
+  }}
+/>
+
+// Or better: Separate event handler
+const handleKeywordChange = (value: string) => {
+  console.log(value);
+  setListParams({ ...listParams, page: 1, keyword: value });
+};
+```
+
+## Related Documentation
+
+- [Using Services](/frontend-integration/generated-services/using-services) - API call methods
+- [TanStack Query Integration](/frontend-integration/generated-services/tanstack-query) - Caching and refetching
+- [auto-generated-overview](/frontend-integration/react-components/auto-generated-overview) - Auto-generated components
+- [useSelection](/frontend-integration/core-hooks/use-selection) - Multi-select management

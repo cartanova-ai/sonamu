@@ -1,0 +1,445 @@
+---
+title: "useSelection"
+description: "테이블 다중 선택 및 벌크 작업 관리"
+---
+
+`useSelection`은 목록 페이지에서 체크박스를 통한 다중 선택을 관리하는 훅입니다. Shift+클릭 범위 선택, 전체 선택/해제 등의 기능을 제공합니다.
+
+## 핵심 기능
+
+<CardGroup cols={2}>
+  <Card title="다중 선택" icon="check-double">
+    개별/전체 선택 관리
+
+    Set 기반 효율적 상태
+  </Card>
+  <Card title="범위 선택" icon="hand-pointer">
+    Shift+클릭 지원
+
+    연속된 항목 한번에 선택
+  </Card>
+  <Card title="자동 검증" icon="shield-check">
+    페이지 변경 시 자동 정리
+
+    존재하는 항목만 유지
+  </Card>
+  <Card title="타입 안전" icon="code">
+    제네릭 타입 지원
+
+    any 타입 키 사용 가능
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+### Import 및 초기화
+
+```typescript
+import { useSelection } from "@sonamu-kit/react-components";
+
+export function UserListPage() {
+  const { data } = UserService.useUsers("A", listParams);
+  const allIds = data?.rows.map(row => row.id) ?? [];
+
+  // useSelection 초기화
+  const {
+    selectedKeys,      // 선택된 키 배열
+    getSelected,       // 특정 키가 선택되었는지 확인
+    toggle,            // 개별 항목 선택/해제 토글
+    selectAll,         // 전체 선택
+    deselectAll,       // 전체 해제
+    isAllSelected,     // 전체 선택 여부
+    handleCheckboxClick, // Shift+클릭 범위 선택
+  } = useSelection(allIds, []);  // allIds: 전체 키, []: 초기 선택
+
+  // ...
+}
+```
+
+**파라미터 설명**:
+- `allIds`: 현재 페이지의 모든 키 배열 (예: `[1, 2, 3, 4, 5]`)
+- `defaultSelectedKeys`: 초기 선택 상태 (선택 사항, 기본값: `[]`)
+
+### 개별 항목 선택
+
+```typescript
+import { Checkbox } from "@sonamu-kit/react-components/components";
+
+const { getSelected, toggle } = useSelection(allIds, []);
+
+<Checkbox
+  checked={getSelected(row.id)}
+  onValueChange={() => toggle(row.id)}
+/>
+```
+
+**동작**:
+- `getSelected(key)`: 해당 키가 선택되었으면 `true`, 아니면 `false`
+- `toggle(key)`: 선택 상태를 반대로 변경
+
+### 전체 선택/해제
+
+```typescript
+const { isAllSelected, selectAll, deselectAll } = useSelection(allIds, []);
+
+<Checkbox
+  checked={isAllSelected}
+  onValueChange={(checked) => {
+    if (checked) {
+      selectAll();
+    } else {
+      deselectAll();
+    }
+  }}
+/>
+```
+
+**동작**:
+- `isAllSelected`: 현재 페이지의 모든 항목이 선택되었는지
+- `selectAll()`: 현재 페이지의 모든 항목 선택
+- `deselectAll()`: 모든 선택 해제
+
+### Shift+클릭 범위 선택
+
+```typescript
+const { handleCheckboxClick } = useSelection(allIds, []);
+
+{rows.map((row, index) => (
+  <tr key={row.id}>
+    <td onClick={(e) => handleCheckboxClick(e, index)}>
+      <Checkbox
+        checked={getSelected(row.id)}
+        onValueChange={() => toggle(row.id)}
+      />
+    </td>
+    {/* ... */}
+  </tr>
+))}
+```
+
+**동작**:
+1. 일반 클릭: 개별 항목 선택/해제
+2. Shift+클릭: 마지막 선택 위치부터 현재 위치까지 모두 선택
+
+<Info>
+**Shift+클릭 동작 원리**
+
+`handleCheckboxClick`은 마지막 클릭 인덱스를 기억하고, Shift+클릭 시 그 사이의 모든 항목을 선택합니다.
+
+```
+항목: [A, B, C, D, E]
+1. A 클릭 → A 선택
+2. D에 Shift+클릭 → A, B, C, D 모두 선택
+```
+</Info>
+
+## 실전 예제
+
+### 완전한 테이블 구현
+
+```typescript
+import { useSelection } from "@sonamu-kit/react-components";
+import { Checkbox, Button, Table } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+
+export function UserListPage() {
+  const { data } = UserService.useUsers("A", listParams);
+  const { rows } = data ?? {};
+  const allIds = rows?.map(row => row.id) ?? [];
+
+  const {
+    selectedKeys,
+    getSelected,
+    toggle,
+    selectAll,
+    deselectAll,
+    isAllSelected,
+    handleCheckboxClick,
+  } = useSelection(allIds, []);
+
+  // 벌크 삭제
+  const handleBulkDelete = async () => {
+    if (selectedKeys.length === 0) {
+      alert("삭제할 항목을 선택하세요");
+      return;
+    }
+
+    if (confirm(`${selectedKeys.length}개 항목을 삭제하시겠습니까?`)) {
+      await UserService.del(selectedKeys);
+      deselectAll();  // 삭제 후 선택 해제
+    }
+  };
+
+  return (
+    <div>
+      {/* 벌크 작업 버튼 */}
+      {selectedKeys.length > 0 && (
+        <div className="mb-4 flex gap-2">
+          <span>{selectedKeys.length}개 선택됨</span>
+          <Button variant="red" onClick={handleBulkDelete}>
+            선택 항목 삭제
+          </Button>
+        </div>
+      )}
+
+      <Table>
+        <thead>
+          <tr>
+            {/* 전체 선택 체크박스 */}
+            <th className="w-[40px]">
+              <Checkbox
+                checked={isAllSelected}
+                onValueChange={(checked) => {
+                  if (checked) {
+                    selectAll();
+                  } else {
+                    deselectAll();
+                  }
+                }}
+              />
+            </th>
+            <th>ID</th>
+            <th>이름</th>
+            <th>이메일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows?.map((row, index) => (
+            <tr key={row.id}>
+              {/* 개별 선택 체크박스 (Shift+클릭 지원) */}
+              <td onClick={(e) => handleCheckboxClick(e, index)}>
+                <Checkbox
+                  checked={getSelected(row.id)}
+                  onValueChange={() => toggle(row.id)}
+                />
+              </td>
+              <td>{row.id}</td>
+              <td>{row.username}</td>
+              <td>{row.email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+}
+```
+
+### 페이지 변경 시 자동 검증
+
+`useSelection`은 `allIds`가 변경되면 자동으로 선택 상태를 검증합니다.
+
+```typescript
+// 1페이지: rows = [1, 2, 3]
+const selection1 = useSelection([1, 2, 3], []);
+selection1.toggle(1);  // 1 선택
+selection1.toggle(2);  // 2 선택
+// selectedKeys = [1, 2]
+
+// 2페이지로 이동: rows = [4, 5, 6]
+const selection2 = useSelection([4, 5, 6], []);
+// selectedKeys는 자동으로 []로 정리됨 (1, 2가 allIds에 없음)
+```
+
+**검증 로직**:
+```typescript
+// useSelection 내부 (list-helpers.ts:84-91)
+useEffect(() => {
+  const selectionKeys = Array.from(selection.keys());
+  const validKeys = intersection(allKeys, selectionKeys);
+
+  // 변경이 필요한 경우에만 상태 업데이트
+  if (validKeys.length !== selectionKeys.length) {
+    setSelection(new Map(validKeys.map(key => [key, true])));
+  }
+}, [allKeys, selection]);
+```
+
+<Info>
+**왜 자동 검증이 필요한가요?**
+
+페이지를 넘기거나 필터를 변경하면 `rows`가 바뀝니다. 이전 페이지에서 선택한 항목이 새 페이지에 없을 수 있으므로, 자동으로 유효하지 않은 선택을 제거합니다.
+</Info>
+
+### 선택된 항목으로 작업
+
+```typescript
+const { selectedKeys } = useSelection(allIds, []);
+
+// 선택된 항목의 정보 가져오기
+const selectedRows = rows?.filter(row => selectedKeys.includes(row.id)) ?? [];
+
+// 벌크 수정
+const handleBulkUpdate = async () => {
+  await UserService.save({
+    params: selectedRows.map(row => ({
+      id: row.id,
+      status: "active",
+    }))
+  });
+};
+
+// 벌크 내보내기
+const handleBulkExport = () => {
+  const csv = selectedRows.map(row =>
+    `${row.id},${row.username},${row.email}`
+  ).join("\n");
+
+  // CSV 다운로드
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "users.csv";
+  a.click();
+};
+```
+
+## 고급 사용
+
+### 초기 선택 상태
+
+```typescript
+// URL 파라미터에서 선택 상태 복원
+const searchParams = new URLSearchParams(window.location.search);
+const preselectedIds = searchParams.get("selected")?.split(",").map(Number) ?? [];
+
+const { selectedKeys } = useSelection(allIds, preselectedIds);
+```
+
+### 선택 상태 저장
+
+```typescript
+const { selectedKeys } = useSelection(allIds, []);
+
+// 선택 상태를 localStorage에 저장
+useEffect(() => {
+  localStorage.setItem("selectedUserIds", JSON.stringify(selectedKeys));
+}, [selectedKeys]);
+
+// 다음 방문 시 복원
+const savedIds = JSON.parse(localStorage.getItem("selectedUserIds") ?? "[]");
+const { selectedKeys } = useSelection(allIds, savedIds);
+```
+
+### 조건부 선택 제한
+
+```typescript
+const { toggle } = useSelection(allIds, []);
+
+// 특정 조건의 항목만 선택 가능
+const handleToggle = (row: UserRow) => {
+  if (row.role === "admin") {
+    alert("관리자는 선택할 수 없습니다");
+    return;
+  }
+  toggle(row.id);
+};
+
+<Checkbox
+  checked={getSelected(row.id)}
+  onValueChange={() => handleToggle(row)}
+  disabled={row.role === "admin"}
+/>
+```
+
+## 내부 구조
+
+`useSelection`은 `Map<T, boolean>` 구조로 선택 상태를 관리합니다.
+
+```typescript
+// 내부 상태 (단순화)
+const [selection, setSelection] = useState<Map<number, boolean>>(
+  new Map([
+    [1, true],   // ID 1 선택됨
+    [2, false],  // ID 2 선택 안 됨
+    [3, true],   // ID 3 선택됨
+  ])
+);
+
+// selectedKeys 추출
+const selectedKeys = Array.from(selection)
+  .filter(([key, value]) => value === true)
+  .map(([key]) => key);
+// 결과: [1, 3]
+```
+
+**Map을 사용하는 이유**:
+- O(1) 시간 복잡도로 빠른 조회
+- 키의 타입 제약 없음 (number, string, object 모두 가능)
+- Set보다 확장성 높음 (추가 메타데이터 저장 가능)
+
+## 타입 안전성
+
+`useSelection`은 제네릭으로 키 타입을 지정할 수 있습니다.
+
+```typescript
+// number 타입
+const selection1 = useSelection<number>([1, 2, 3], []);
+selection1.toggle(1);  // ✅ OK
+selection1.toggle("1");  // ❌ 타입 에러
+
+// string 타입
+const selection2 = useSelection<string>(["a", "b", "c"], []);
+selection2.toggle("a");  // ✅ OK
+selection2.toggle(1);  // ❌ 타입 에러
+
+// 복잡한 객체 타입
+type UserKey = { id: number; email: string };
+const keys: UserKey[] = [
+  { id: 1, email: "a@example.com" },
+  { id: 2, email: "b@example.com" },
+];
+const selection3 = useSelection<UserKey>(keys, []);
+```
+
+## 주의사항
+
+### 1. allIds는 반드시 제공
+
+```typescript
+// ❌ 잘못된 사용
+const { selectedKeys } = useSelection([], []);  // 빈 배열
+
+// ✅ 올바른 사용
+const allIds = rows?.map(row => row.id) ?? [];
+const { selectedKeys } = useSelection(allIds, []);
+```
+
+### 2. 페이지 변경 시 선택 유지하고 싶다면
+
+기본적으로 페이지를 넘기면 선택이 초기화됩니다. 유지하려면 별도 관리가 필요합니다.
+
+```typescript
+// 페이지 전체 선택 상태 (useState로 별도 관리)
+const [globalSelectedIds, setGlobalSelectedIds] = useState<Set<number>>(new Set());
+
+// 현재 페이지 선택과 동기화
+useEffect(() => {
+  const currentPageSelected = allIds.filter(id => globalSelectedIds.has(id));
+  // useSelection의 상태와 동기화
+}, [allIds, globalSelectedIds]);
+```
+
+### 3. handleCheckboxClick 사용 시 주의
+
+`handleCheckboxClick`은 `<td>`나 체크박스 컨테이너에 연결해야 합니다.
+
+```typescript
+// ✅ 올바른 사용
+<td onClick={(e) => handleCheckboxClick(e, index)}>
+  <Checkbox ... />
+</td>
+
+// ❌ 잘못된 사용 (클릭 이벤트가 전파되지 않음)
+<Checkbox
+  onClick={(e) => handleCheckboxClick(e, index)}
+  ...
+/>
+```
+
+## 관련 문서
+
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - 목록 필터링과 함께 사용
+- [Table 컴포넌트](/frontend-integration/react-components/ui-library-overview) - 테이블 UI
+- [목록 페이지 구현](/frontend-integration/guides/building-list-page) - 완전한 예제

@@ -11,9 +11,10 @@ Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들�
 class DocumentModelClass extends BaseModel {
   @upload()
   async uploadDocument() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     const content = await file.toBuffer().then(b => b.toString());
-    
+
     // 임베딩 생성 시도
     const embedding = await Embedding.embedOne(content, 'voyage', 'document');
     // ❌ 에러: 토큰 제한 초과 (32,000 토큰)
@@ -87,7 +88,8 @@ const chunks = chunking.chunk("긴 텍스트...");
 class DocumentModelClass extends BaseModel {
   @upload()
   async uploadLongDocument() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
     const content = await file.toBuffer().then(b => b.toString());
     
     // 1. 청킹
@@ -241,7 +243,8 @@ Sonamu로 개발 문서 검색 시스템을 만들고 있습니다.
 @upload()
 @api({ httpMethod: 'POST' })
 async uploadTechDoc() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
   const content = await file.toBuffer().then(b => b.toString());
   
   const chunking = new Chunking({

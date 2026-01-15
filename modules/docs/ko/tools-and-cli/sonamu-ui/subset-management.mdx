@@ -3,7 +3,11 @@ title: 'Subset 관리'
 description: 'Entity Subset 정의 및 관리하기'
 ---
 
-Subset은 **Entity의 특정 필드 조합을 미리 정의**하여 API 응답을 효율적으로 관리하는 기능입니다. Sonamu UI의 Subset 관리 기능을 사용하면 시각적으로 Subset을 정의하고 편집할 수 있습니다.
+Subset은 **Entity의 특정 필드 조합을 미리 정의**하여 API 응답을 효율적으로 관리하는 기능입니다. Sonamu UI의 **Entity 탭**에서 Subset을 시각적으로 정의하고 편집할 수 있습니다.
+
+<Info>
+Subset은 별도의 탭이 아니라 **Entity 탭 내부의 Subsets 시트**에서 관리됩니다. Entity를 선택한 후 Properties, Indexes, Relations, Enums와 함께 Subsets 시트에서 작업합니다.
+</Info>
 
 ## Subset이란?
 
@@ -31,22 +35,43 @@ const users = await UserModel.findMany({ subset: "A" });
 
 ## Subset 관리 화면
 
-<Frame caption="Subset 관리 화면">
-  {/* TODO: Subset 관리 탭 스크린샷 추가 */}
+### Entity 탭에서 접근하기
+
+Sonamu UI에서 Subset을 관리하려면:
+
+1. **Entity 탭**을 클릭합니다
+2. 왼쪽 사이드바에서 **원하는 Entity**를 선택합니다
+3. 상단의 시트 탭 중 **Subsets**를 클릭합니다
+
+<Frame caption="Entity 탭의 Subsets 시트에서 Subset 관리">
+  <img src="/images/sonamuUI-relation-result.png" alt="Entity Relations 화면" />
+  <img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets 화면" />
 </Frame>
 
-Subset 관리 화면은 두 가지 주요 영역으로 구성됩니다:
+### 화면 구성
 
-- **왼쪽 Sidebar**: Entity 목록과 각 Entity의 Subset 목록
-- **오른쪽 Content**: 선택한 Subset의 필드 선택 체크박스
+Subsets 시트는 다음과 같이 구성됩니다:
+
+- **왼쪽 Sidebar**: Entity 목록 (현재 선택된 Entity 표시)
+- **상단 시트 탭**: Properties, Indexes, Relations, Enums, **Subsets**
+- **Subset 목록**: 현재 Entity의 모든 Subset (A, B, C 등)
+- **필드 선택 영역**: 선택한 Subset에 포함할 필드 체크박스
 
 ## Subset 생성
 
-### 1. Entity 선택
+### 1. Entity 탭으로 이동
 
-왼쪽 목록에서 Subset을 추가할 Entity를 선택합니다.
+Sonamu UI에서 **Entity 탭**을 클릭합니다.
 
-### 2. Subset 추가
+### 2. Entity 선택
+
+왼쪽 사이드바에서 Subset을 추가할 Entity를 선택합니다.
+
+### 3. Subsets 시트 열기
+
+상단 시트 탭에서 **Subsets**를 클릭합니다.
+
+### 4. Subset 추가
 
 **[Add Subset]** 버튼을 클릭하여 새 Subset을 생성합니다.
 
@@ -59,7 +84,7 @@ Subset 관리 화면은 두 가지 주요 영역으로 구성됩니다:
 Subset ID는 일반적으로 **알파벳 한 글자**(A, B, C...)를 사용합니다.
 </Info>
 
-### 3. 필드 선택
+### 5. 필드 선택
 
 생성된 Subset에서 포함할 필드를 선택합니다:
 
@@ -207,9 +232,10 @@ const post = await PostModel.findById(1, { subset: "C" });
 
 ### 필드 추가/제거
 
-1. Subset 선택
-2. 필드 체크박스 클릭
-3. **[Save]** 버튼 클릭
+1. Entity 탭에서 해당 Entity의 **Subsets 시트**로 이동
+2. 수정할 **Subset 선택**
+3. 필드 체크박스 클릭하여 **포함/제외 변경**
+4. **[Save]** 버튼 클릭
 
 **변경사항 즉시 반영**:
 ```
@@ -219,9 +245,10 @@ After:  { id, email, name, bio, created_at }
 
 ### Subset 삭제
 
-1. Subset 선택
-2. **[Delete]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
+1. Entity 탭에서 해당 Entity의 **Subsets 시트**로 이동
+2. 삭제할 **Subset 선택**
+3. **[Delete]** 버튼 클릭
+4. 확인 모달에서 **[Confirm]** 클릭
 
 <Warning>
 **사용 중인 Subset 삭제**: 삭제하려는 Subset을 사용하는 API가 있다면 오류가 발생할 수 있습니다.

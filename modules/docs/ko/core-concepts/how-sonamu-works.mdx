@@ -201,8 +201,48 @@ export const UserModel = new UserModelClass();
 
 **Syncer**는 Sonamu의 핵심 엔진입니다. 파일 변경을 감지하고 자동으로 코드를 생성합니다.
 
-<Frame caption="📸 필요: Syncer 작동 흐름도 (파일 변경 감지 → 코드 생성 → 동기화)">
-</Frame>
+```mermaid
+graph TD
+    A[파일 시스템 변경] --> B{체크섬 비교}
+    B -->|변경 감지| C[변경된 파일 분류]
+    B -->|변경 없음| Z[동기화 완료]
+
+    C --> D{파일 타입 판별}
+
+    D -->|entity.json| E1[Entity 처리]
+    D -->|model.ts| E2[Model 처리]
+    D -->|types.ts| E3[Types 처리]
+    D -->|workflow.ts| E4[Workflow 처리]
+
+    E1 --> F1[타입 생성<br/>sonamu.generated.ts]
+    E1 --> F2[서브셋 쿼리 생성<br/>sonamu.generated.sso.ts]
+
+    E2 --> G1[API 메타데이터 추출]
+    G1 --> G2[Service 클라이언트 생성<br/>services.generated.ts]
+
+    E3 --> H1[타입 파일 분석]
+    H1 --> H2[Web으로 복사]
+
+    E4 --> I1[Workflow 메타데이터 추출]
+    I1 --> I2[Workflow 등록]
+
+    F1 --> J[파일 동기화]
+    F2 --> J
+    G2 --> J
+    H2 --> J
+    I2 --> J
+
+    J --> K[체크섬 갱신<br/>sonamu.lock]
+    K --> L[HMR 알림]
+    L --> Z
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#fff4e6
+    style J fill:#e7f5e7
+    style K fill:#e7f5e7
+    style Z fill:#f0f0f0
+```
 
 ```typescript
 // Syncer의 주요 역할
@@ -356,8 +396,7 @@ console.log(post.invalid); // ❌ 컴파일 에러!
 </Step>
 </Steps>
 
-<Frame caption="🎬 필요: 위 4단계 플로우를 실제로 보여주는 애니메이션 또는 영상">
-</Frame>
+<Frame caption="Development Flow"><video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"></video></Frame>
 
 ## HMR (Hot Module Replacement)
 
@@ -374,7 +413,8 @@ hmr-hook이 의존성 그래프 분석
 user.model.ts와 의존 모듈들 invalidate
 
 // 3. 재생성 (Syncer)
-- UserService.ts 재생성
+- services.generated.ts 재생성 (프론트엔드)
+- sonamu.generated.ts 업데이트 (타입)
 - API 라우트 재등록
 
 // 4. 서버 재시작
@@ -388,7 +428,8 @@ graceful shutdown → reload
 - ✅ **자동 동기화** - 프론트엔드 Service 자동 업데이트
 </Check>
 
-<Frame caption="📸 필요: HMR 동작하는 터미널 로그 (파일 변경 → invalidate → 재시작)">
+<Frame caption="HMR in Action">
+<video muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="/images/introduction3.mp4"></video>
 </Frame>
 
 ## 자동 생성 메커니즘

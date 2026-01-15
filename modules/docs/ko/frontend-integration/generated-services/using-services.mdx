@@ -240,6 +240,115 @@ function EditProfile({ userId }: { userId: number }) {
 }
 ```
 
+### useTypeForm으로 폼 처리하기 (권장)
+
+`@sonamu-kit/react-components`의 `useTypeForm`을 사용하면 타입 안전한 폼을 더 간편하게 작성할 수 있습니다.
+
+```tsx
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input, Button } from "@sonamu-kit/react-components/components";
+import { UserService } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
+
+function RegisterForm() {
+  // Zod 스키마 기반 타입 안전 폼
+  const { register, submit } = useTypeForm(UserSaveParams, {
+    email: "",
+    username: "",
+    password: "",
+  });
+
+  const saveMutation = UserService.useSaveMutation();
+
+  const handleSubmit = submit(async (form) => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: ([userId]) => {
+          console.log("Registered:", userId); // ✅ 타입 안전
+        },
+        onError: (error) => {
+          console.error("Registration failed:", error);
+        },
+      }
+    );
+  });
+
+  return (
+    <div>
+      <Input placeholder="이메일" {...register("email")} />
+      <Input placeholder="이름" {...register("username")} />
+      <Input type="password" placeholder="비밀번호" {...register("password")} />
+      <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
+        {saveMutation.isPending ? "등록 중..." : "등록"}
+      </Button>
+    </div>
+  );
+}
+```
+
+**useTypeForm의 장점**:
+- ✅ **타입 안전**: Zod 스키마에서 타입 자동 추론
+- ✅ **자동 유효성 검사**: 스키마 규칙 자동 적용
+- ✅ **간결한 코드**: `useState` + 이벤트 핸들러 불필요
+- ✅ **에러 처리**: 필드별 에러 메시지 자동 관리
+- ✅ **통합 컴포넌트**: Input, Button 등 즉시 사용 가능
+
+<Info>
+**권장**: 새로운 폼을 작성할 때는 `useTypeForm`을 사용하세요. 보일러플레이트 코드를 크게 줄이고 타입 안전성을 보장합니다.
+</Info>
+
+**에러 표시 예제**:
+
+```tsx
+function RegisterFormWithErrors() {
+  const { register, submit, errors } = useTypeForm(UserSaveParams, {
+    email: "",
+    username: "",
+    password: "",
+  });
+
+  const saveMutation = UserService.useSaveMutation();
+
+  const handleSubmit = submit(async (form) => {
+    saveMutation.mutate({ spa: [form] });
+  });
+
+  return (
+    <div>
+      <div>
+        <Input placeholder="이메일" {...register("email")} />
+        {errors.email && <span className="error">{errors.email.message}</span>}
+      </div>
+
+      <div>
+        <Input placeholder="이름" {...register("username")} />
+        {errors.username && <span className="error">{errors.username.message}</span>}
+      </div>
+
+      <div>
+        <Input type="password" placeholder="비밀번호" {...register("password")} />
+        {errors.password && <span className="error">{errors.password.message}</span>}
+      </div>
+
+      <Button onClick={handleSubmit}>등록</Button>
+    </div>
+  );
+}
+```
+
+**패턴 비교**:
+
+| 패턴 | 코드량 | 타입 안전 | 유효성 검사 | 권장도 |
+|------|--------|----------|------------|--------|
+| **useTypeForm** | ⭐️⭐️⭐️ 적음 | ✅ 완벽 | ✅ 자동 | ⭐️⭐️⭐️ 최고 |
+| useEffect + useState | ⭐️ 많음 | ⚠️ 수동 | ❌ 수동 | ⭐️ 낮음 |
+| 이벤트 핸들러 | ⭐️⭐️ 보통 | ⚠️ 수동 | ❌ 수동 | ⭐️⭐️ 보통 |
+
+<Tip>
+`@sonamu-kit/react-components`는 Material-UI, Ant Design 등 다른 UI 라이브러리와도 함께 사용할 수 있습니다.
+</Tip>
+
 ## Next.js에서 사용하기
 
 ### Server Components (App Router)
@@ -280,6 +389,198 @@ export default async function UserPage({ params }: { params: { id: string } }) {
 
 <Info>
 **권장 방식**: Server Components에서는 백엔드 모델을 직접 사용하세요. HTTP 요청 오버헤드가 없고, 타입 안전성도 동일하게 보장됩니다.
+</Info>
+
+### Service 생성 메커니즘 이해하기
+
+Service는 **Namespace 기반의 정적 함수 모음**입니다.
+
+#### Service는 클래스가 아닌 Namespace
+
+```typescript
+// services.generated.ts (자동 생성)
+
+// ❌ 클래스가 아님
+// class UserService { ... }
+
+// ✅ Namespace임
+export namespace UserService {
+  // 정적 함수들
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getUser?${qs.stringify({ subset, id })}`
+    });
+  }
+
+  export async function save(spa: UserSaveParams[]): Promise<number[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/user/save`,
+      data: { spa }
+    });
+  }
+
+  // TanStack Query Hook
+  export const useUser = <T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ) => useQuery({
+    queryKey: ["User", "getUser", subset, id],
+    queryFn: () => getUser(subset, id)
+  });
+}
+```
+
+**Namespace의 특징**:
+- **무상태 (Stateless)**: 인스턴스를 생성하지 않음
+- **정적 호출**: `UserService.getUser()` 직접 호출
+- **타입 안전**: TypeScript Namespace로 완벽한 타입 추론
+- **트리 셰이킹**: 사용하지 않는 함수는 번들에 포함 안됨
+
+#### Service는 의존성 주입(DI)이 없음
+
+Service는 **순수 함수**이므로 의존성이 주입되지 않습니다:
+
+```typescript
+// ❌ DI가 없음 (클래스가 아니므로)
+// new UserService(dependencies)
+
+// ✅ 직접 호출
+const user = await UserService.getUser("A", 123);
+```
+
+**Context는 어떻게 전달되나요?**
+
+Service는 **HTTP 요청으로 Context를 전달**합니다:
+
+```typescript
+// Service 내부 (간략화)
+export async function getUser(subset: string, id: number) {
+  return fetch({
+    method: "GET",
+    url: `/api/user/getUser?subset=${subset}&id=${id}`,
+    // Context는 HTTP 헤더로 전달됨
+    headers: {
+      "Authorization": `Bearer ${getToken()}`,
+      "Cookie": document.cookie,  // 세션 정보
+    }
+  });
+}
+```
+
+백엔드에서는 **HTTP 요청에서 Context를 자동 추출**:
+
+```typescript
+// Backend Model
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getUser(subset: string, id: number) {
+    // Context는 HTTP 요청에서 자동 파싱됨
+    const context = Sonamu.getContext();
+
+    console.log(context.user);      // 인증된 사용자
+    console.log(context.session);   // 세션 정보
+    console.log(context.ip);        // 클라이언트 IP
+
+    // 권한 체크 등 가능
+    if (!context.user) {
+      throw new UnauthorizedError();
+    }
+
+    return this.findById(id, [subset]);
+  }
+}
+```
+
+#### Service 생성 과정
+
+```mermaid
+flowchart LR
+    A[Model @api] --> B[Sonamu Sync]
+    B --> C[services.generated.ts]
+    C --> D[Namespace 함수]
+    C --> E[TanStack Query Hook]
+
+    style A fill:#e3f2fd
+    style B fill:#fff9c4
+    style C fill:#e8f5e9
+    style D fill:#c8e6c9
+    style E fill:#f3e5f5
+```
+
+**생성 단계**:
+1. **백엔드**: Model에 `@api` 데코레이터 작성
+2. **Sonamu Sync**: `pnpm sonamu sync` 실행
+3. **자동 생성**: `services.generated.ts` 파일 생성
+4. **Namespace 함수**: 각 API 메서드가 Namespace 함수로 변환
+5. **Hook 생성**: GET 메서드는 `useQuery` Hook 자동 생성
+
+#### Model Instance는 어디에 있나요?
+
+**Server Components에서 직접 생성**:
+
+```typescript
+// Server Component
+export default async function UserPage() {
+  // ✅ 서버에서 Model을 직접 인스턴스화
+  const userModel = new UserModel();
+  const user = await userModel.findById(1, ["A"]);
+
+  return <div>{user.username}</div>;
+}
+```
+
+**왜 `new UserModel()`을 해도 되나요?**
+- Model은 **무상태**이므로 매번 새로 생성해도 안전
+- Constructor에서 초기화하는 것은 Subset 쿼리뿐
+- Context는 `Sonamu.getContext()`로 동적으로 가져옴
+
+```typescript
+// Model 내부
+class UserModelClass extends BaseModelClass {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+    // 상태를 저장하지 않음
+  }
+
+  async findById(id: number, subsets: string[]) {
+    // Context는 여기서 동적으로 가져옴
+    const context = Sonamu.getContext();
+
+    // DB 쿼리 실행
+    return this.getPuri("r", subsets).where("id", id).first();
+  }
+}
+```
+
+#### Service vs Model 비교
+
+| 항목 | Service (Frontend) | Model (Backend) |
+|------|-------------------|-----------------|
+| **타입** | Namespace | Class Instance |
+| **호출 방식** | `UserService.getUser()` | `userModel.findById()` |
+| **상태** | 무상태 (Stateless) | 무상태 (Stateless) |
+| **의존성** | 없음 | BaseModelClass |
+| **Context** | HTTP 헤더로 전달 | `Sonamu.getContext()` |
+| **사용 위치** | Client Component | Server Component / API |
+| **생성 방법** | 자동 생성 | 개발자 작성 |
+
+<Warning>
+**Model 인스턴스 생성 시 주의사항**:
+1. **Server Components에서만**: Client Component에서는 Model을 import할 수 없음
+2. **매번 생성**: 싱글톤 패턴 사용 불필요 (무상태이므로)
+3. **Context 접근**: `Sonamu.getContext()`는 요청 컨텍스트에서 자동으로 가져옴
+</Warning>
+
+<Info>
+**권장 패턴**:
+- **Client Component**: Service 사용
+- **Server Component**: Model 직접 사용
+- **API 엔드포인트**: Model에 `@api` 데코레이터
 </Info>
 
 ### Client Components

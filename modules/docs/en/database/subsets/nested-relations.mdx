@@ -32,9 +32,35 @@ LoaderQuery is a system for efficiently loading 1:N and N:M relation data.
 
 ## LoaderQuery vs SubsetQuery
 
-<Frame>
-  <img src="/images/subsets/loader-vs-subset-query.png" alt="LoaderQuery vs SubsetQuery comparison" />
-</Frame>
+```mermaid
+flowchart TD
+    T1["🔵 SubsetQuery (JOIN approach)"]
+    SQ1["OneToOne / BelongsTo"]
+    SQ2["Handled with LEFT JOIN"]
+    SQ3["Single query"]
+    SQ4["1 relation per row"]
+
+    T2["🟣 LoaderQuery (Separate query approach)"]
+    LQ1["HasMany / ManyToMany"]
+    LQ2["Handled with separate query"]
+    LQ3["Batch Loading"]
+    LQ4["N relations per row"]
+
+    T1 --> SQ1 --> SQ2 --> SQ3 --> SQ4
+    T2 --> LQ1 --> LQ2 --> LQ3 --> LQ4
+
+    style T1 fill:#1976d2,color:#fff,stroke:#1976d2,stroke-width:3px
+    style SQ1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ3 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style SQ4 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+    style T2 fill:#9c27b0,color:#fff,stroke:#9c27b0,stroke-width:3px
+    style LQ1 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ2 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ3 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style LQ4 fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+```
 
 ### SubsetQuery (JOIN)
 

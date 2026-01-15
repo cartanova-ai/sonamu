@@ -138,7 +138,8 @@ async transferMoney(
 ```typescript
 @upload()
 async uploadProfileImage(ctx: Context) {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // 첫 번째 파일 사용
 
   if (!file) {
     throw new BadRequestException("파일이 필요합니다");

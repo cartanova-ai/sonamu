@@ -331,7 +331,8 @@ class KnowledgeBaseModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument() {
-    const { file } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
 
     // Read file
     const content = await file.toBuffer().then(b => b.toString());

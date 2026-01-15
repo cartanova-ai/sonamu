@@ -291,7 +291,7 @@ class UserModelClass extends BaseModelClass {
 import { BaseFrameClass, api } from "sonamu";
 
 class HealthFrameClass extends BaseFrameClass {
-  @api({ httpMethod: "GET", noAuth: true })
+  @api({ httpMethod: "GET" })  // Omit guards = public API
   async healthCheck(): Promise<{
     status: string;
     timestamp: Date;

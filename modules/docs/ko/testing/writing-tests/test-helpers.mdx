@@ -477,6 +477,180 @@ export const loadFixtures = createFixtureLoader({
 });
 ```
 
+## 에러 처리
+
+Fixture 로딩 중 에러가 발생할 수 있습니다. 적절한 에러 처리로 테스트를 안정적으로 작성하세요.
+
+### 기본 에러 처리
+
+```typescript
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { loadFixtures } from "@/testing/fixture";
+
+bootstrap(vi);
+
+describe("PostModel with error handling", () => {
+  test("fixture 로딩 실패 처리", async () => {
+    // 잘못된 fixture 키 사용
+    await expect(
+      loadFixtures(["nonexistent"])
+    ).rejects.toThrow();
+
+    // 올바른 에러 메시지 확인
+    await expect(
+      loadFixtures(["nonexistent"])
+    ).rejects.toThrow("Fixture 'nonexistent' not found");
+  });
+
+  test("DB 에러 처리", async () => {
+    // DB 연결 실패 등의 에러 처리
+    try {
+      const { user } = await loadFixtures(["user01"]);
+      // 테스트 로직
+    } catch (error) {
+      // 에러 로깅
+      console.error("Fixture loading failed:", error);
+      throw error; // 테스트 실패로 처리
+    }
+  });
+});
+```
+
+### Fixture 생성 실패 처리
+
+```typescript
+export const loadFixtures = createFixtureLoader({
+  user01: async () => {
+    try {
+      const userModel = new UserModel();
+      const { user } = await userModel.create({
+        username: "john",
+        email: "john@example.com",
+        password: "password123",
+      });
+      return user;
+    } catch (error) {
+      // 에러 로깅 및 재전파
+      console.error("Failed to create user01 fixture:", error);
+      throw new Error(`user01 fixture creation failed: ${error.message}`);
+    }
+  },
+
+  // 의존성이 있는 fixture의 에러 처리
+  userPost: async () => {
+    let user;
+    try {
+      ({ user } = await loadFixtures(["user"]));
+    } catch (error) {
+      throw new Error(`Failed to load user fixture: ${error.message}`);
+    }
+
+    try {
+      const postModel = new PostModel();
+      const { post } = await postModel.create({
+        title: "Post",
+        content: "Content",
+        author_id: user.id,
+      });
+      return post;
+    } catch (error) {
+      throw new Error(`Failed to create post: ${error.message}`);
+    }
+  },
+});
+```
+
+### 타임아웃 설정
+
+Fixture 로딩이 오래 걸리는 경우 타임아웃을 설정할 수 있습니다.
+
+```typescript
+import { describe, test, vi } from "vitest";
+
+describe("PostModel", () => {
+  test("느린 fixture 로딩", async () => {
+    // 5초 타임아웃 설정
+    const { user } = await loadFixtures(["user01"]);
+    // 테스트 로직
+  }, { timeout: 5000 }); // Vitest 타임아웃 옵션
+
+  test("매우 느린 작업", async () => {
+    const fixtures = await loadFixtures(["user01", "user02", "admin"]);
+    // 많은 fixture 로딩
+  }, { timeout: 10000 });
+});
+```
+
+### 조건부 Fixture 로딩
+
+환경에 따라 다른 fixture를 로드할 수 있습니다.
+
+```typescript
+test("환경별 fixture", async () => {
+  const env = process.env.NODE_ENV;
+
+  let user;
+  if (env === "test") {
+    // 테스트 환경용 fixture
+    ({ user } = await loadFixtures(["testUser"]));
+  } else if (env === "development") {
+    // 개발 환경용 fixture
+    ({ user } = await loadFixtures(["devUser"]));
+  } else {
+    throw new Error("Unknown environment");
+  }
+
+  expect(user).toBeDefined();
+  expect(user.email).toContain("@");
+});
+```
+
+### 에러 복구 전략
+
+```typescript
+export const loadFixtures = createFixtureLoader({
+  resilientUser: async () => {
+    const userModel = new UserModel();
+
+    // 재시도 로직
+    const maxRetries = 3;
+    let lastError;
+
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const { user } = await userModel.create({
+          username: `user_${Date.now()}`, // 충돌 방지
+          email: `user_${Date.now()}@example.com`,
+          password: "password123",
+        });
+        return user;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Retry ${i + 1}/${maxRetries} failed:`, error);
+
+        // 짧은 대기 후 재시도
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // 모든 재시도 실패
+    throw new Error(
+      `Failed to create user after ${maxRetries} retries: ${lastError.message}`
+    );
+  },
+});
+```
+
+<Info>
+**에러 처리 Best Practice**:
+- Fixture 생성 실패 시 명확한 에러 메시지 제공
+- 의존성 있는 fixture는 각 단계별로 에러 처리
+- 타임아웃 설정으로 무한 대기 방지
+- 재시도 로직은 신중하게 사용 (DB 상태 일관성 고려)
+- 에러 로깅으로 디버깅 용이성 확보
+</Info>
+
 ## 주의사항
 
 <Warning>
@@ -486,6 +660,7 @@ export const loadFixtures = createFixtureLoader({
 3. **독립성**: 각 테스트는 독립적으로 실행되어야 함
 4. **타입 안전**: createFixtureLoader로 타입 안전성 보장
 5. **명확한 이름**: fixture 이름은 용도를 명확하게 표현
+6. **에러 처리**: Fixture 로딩 실패에 대비한 에러 처리 필수
 </Warning>
 
 ## 다음 단계

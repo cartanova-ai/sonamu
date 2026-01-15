@@ -1,0 +1,620 @@
+---
+title: "검색 컴포넌트"
+description: "SearchFieldSelect + Input으로 동적 검색 구현하기"
+---
+
+Sonamu의 검색 기능은 **SearchFieldSelect** (검색 대상 필드)와 **Input** (검색 키워드)를 조합하여 구현합니다. 이를 통해 사용자가 ID, 이름, 이메일 등 다양한 필드에서 검색할 수 있습니다.
+
+## 핵심 기능
+
+<CardGroup cols={2}>
+  <Card title="동적 검색" icon="magnifying-glass">
+    다양한 필드에서 검색
+
+    사용자가 필드 선택
+  </Card>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    SearchField enum 기반
+
+    레이블 자동 매핑
+  </Card>
+  <Card title="URL 동기화" icon="link">
+    useListParams 통합
+
+    북마크 가능한 검색
+  </Card>
+  <Card title="타입 안전" icon="shield-check">
+    백엔드와 자동 동기화
+
+    컴파일 타임 검증
+  </Card>
+</CardGroup>
+
+## 자동 생성 조건
+
+SearchFieldSelect는 백엔드에 `SearchField` enum이 정의되면 자동으로 생성됩니다.
+
+### 백엔드 정의
+
+```typescript
+// user.types.ts (백엔드)
+import { z } from "zod";
+
+export const UserSearchField = z.enum([
+  "id",
+  "username",
+  "email",
+]);
+
+export const UserListParams = UserBaseListParams.extend({
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+});
+```
+
+### 자동 생성되는 파일
+
+**컴포넌트**: `web/src/components/user/UserSearchFieldSelect.tsx`
+
+**레이블**: `web/src/services/sonamu.generated.ts`
+```typescript
+export const UserSearchFieldLabel = {
+  id: "ID",
+  username: "이름",
+  email: "이메일",
+};
+```
+
+## 기본 사용법
+
+### SearchFieldSelect + Input 조합
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { UserService } from "@/services/services.generated";
+import { UserSearchField } from "@/services/sonamu.generated";
+
+export function UserListPage() {
+  const { listParams, register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    search: UserSearchField.options[0],  // 기본값: "id"
+    keyword: "",
+  });
+
+  const { data } = UserService.useUsers("A", listParams);
+
+  return (
+    <div className="flex gap-2">
+      {/* 검색 대상 필드 선택 */}
+      <UserSearchFieldSelect
+        {...register("search")}
+        className="w-32"
+      />
+
+      {/* 검색 키워드 입력 */}
+      <Input
+        {...register("keyword")}
+        placeholder="검색어 입력"
+        className="w-64"
+      />
+    </div>
+  );
+}
+```
+
+**동작 흐름**:
+1. 사용자가 SearchFieldSelect에서 "이메일" 선택
+2. Input에 "admin" 입력
+3. URL 업데이트: `?search=email&keyword=admin`
+4. API 호출: `UserService.useUsers("A", { search: "email", keyword: "admin" })`
+5. 백엔드에서 이메일 필드를 "admin"으로 검색
+
+## SearchFieldSelect 상세
+
+### Props
+
+```typescript
+export type UserSearchFieldSelectProps = {
+  value?: string;
+  onValueChange?: (value: string | null | undefined) => void;
+  placeholder?: string;
+  textPrefix?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+```
+
+### 기본 사용
+
+```typescript
+<UserSearchFieldSelect
+  value={searchField}
+  onValueChange={setSearchField}
+  placeholder="검색 필드"
+/>
+```
+
+### textPrefix
+
+각 옵션 앞에 텍스트를 추가합니다.
+
+```typescript
+<UserSearchFieldSelect
+  {...register("search")}
+  textPrefix="검색: "
+/>
+
+// 렌더링 결과:
+// - 검색: ID
+// - 검색: 이름
+// - 검색: 이메일
+```
+
+### clearable
+
+"전체" 옵션을 추가합니다.
+
+```typescript
+<UserSearchFieldSelect
+  {...register("search")}
+  clearable
+/>
+
+// 렌더링 결과:
+// - 전체  ← clearable로 추가됨
+// - ID
+// - 이름
+// - 이메일
+```
+
+<Info>
+**clearable 사용 시나리오**
+
+검색 필드를 선택하지 않고 전체 필드에서 검색하고 싶을 때 유용합니다. 단, 백엔드에서 전체 검색 로직을 별도로 구현해야 합니다.
+</Info>
+
+## 검색 패턴
+
+### 완전 일치 검색 (ID)
+
+```typescript
+// 백엔드: user.model.ts
+if (params.search && params.keyword) {
+  if (params.search === "id") {
+    qb.where("users.id", Number(params.keyword));
+  }
+}
+```
+
+**사용자 경험**:
+- 검색 필드: ID
+- 키워드: "123"
+- 결과: ID가 정확히 123인 사용자
+
+### 부분 일치 검색 (문자열)
+
+```typescript
+// 백엔드: user.model.ts
+if (params.search && params.keyword) {
+  if (params.search === "email") {
+    qb.where("users.email", "like", `%${params.keyword}%`);
+  } else if (params.search === "username") {
+    qb.where("users.username", "like", `%${params.keyword}%`);
+  }
+}
+```
+
+**사용자 경험**:
+- 검색 필드: 이메일
+- 키워드: "admin"
+- 결과: "admin@example.com", "super.admin@test.com" 등
+
+### 대소문자 무시 검색
+
+```typescript
+// PostgreSQL: ILIKE 사용
+qb.where("users.email", "ilike", `%${params.keyword}%`);
+
+// MySQL: LOWER 함수 사용
+qb.whereRaw("LOWER(users.email) LIKE ?", [`%${params.keyword.toLowerCase()}%`]);
+```
+
+### 여러 필드 동시 검색
+
+```typescript
+if (params.search === "all" && params.keyword) {
+  qb.where((qb) => {
+    qb.where("users.username", "like", `%${params.keyword}%`)
+      .orWhere("users.email", "like", `%${params.keyword}%`)
+      .orWhere("users.bio", "like", `%${params.keyword}%`);
+  });
+}
+```
+
+## 실전 예제
+
+### 완전한 검색 UI
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components";
+import { Input, Button } from "@sonamu-kit/react-components/components";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+
+import SearchIcon from "~icons/lucide/search";
+import XIcon from "~icons/lucide/x";
+
+export function UserListPage() {
+  const { listParams, setListParams, register } = useListParams(
+    UserListParams,
+    {
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      keyword: "",
+    }
+  );
+
+  const { data } = UserService.useUsers("A", listParams);
+
+  // 검색 초기화
+  const handleClearSearch = () => {
+    setListParams({
+      ...listParams,
+      keyword: "",
+      page: 1,
+    });
+  };
+
+  return (
+    <div>
+      {/* 검색 바 */}
+      <div className="flex gap-2 mb-4">
+        <UserSearchFieldSelect
+          {...register("search")}
+          className="w-32"
+        />
+
+        <div className="relative flex-1 max-w-md">
+          <Input
+            {...register("keyword")}
+            placeholder="검색어 입력"
+            className="pr-20"
+          />
+
+          {/* 검색 버튼 (엔터로도 가능) */}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<SearchIcon />}
+            className="absolute right-10 top-0 h-full"
+          />
+
+          {/* 초기화 버튼 */}
+          {listParams.keyword && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<XIcon />}
+              onClick={handleClearSearch}
+              className="absolute right-0 top-0 h-full"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* 검색 결과 표시 */}
+      {listParams.keyword && (
+        <div className="mb-4 text-sm text-gray-600">
+          "{listParams.keyword}" 검색 결과: {data?.total ?? 0}건
+        </div>
+      )}
+
+      {/* 테이블 */}
+      <table>
+        {/* ... */}
+      </table>
+    </div>
+  );
+}
+```
+
+### 검색 히스토리
+
+```typescript
+import { useEffect, useState } from "react";
+
+export function UserListPage() {
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const { listParams, register } = useListParams(UserListParams, defaultValue);
+
+  // 검색어를 히스토리에 저장
+  useEffect(() => {
+    if (listParams.keyword && listParams.keyword.length > 0) {
+      setSearchHistory((prev) => {
+        const newHistory = [listParams.keyword, ...prev.filter(k => k !== listParams.keyword)];
+        return newHistory.slice(0, 5);  // 최근 5개만 유지
+      });
+    }
+  }, [listParams.keyword]);
+
+  return (
+    <div>
+      <Input
+        {...register("keyword")}
+        placeholder="검색어 입력"
+      />
+
+      {/* 최근 검색어 */}
+      {searchHistory.length > 0 && (
+        <div className="mt-2">
+          <span className="text-xs text-gray-500">최근 검색:</span>
+          <div className="flex gap-2 mt-1">
+            {searchHistory.map((keyword) => (
+              <button
+                key={keyword}
+                onClick={() => setListParams({ ...listParams, keyword, page: 1 })}
+                className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+              >
+                {keyword}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 자동완성
+
+```typescript
+import { AsyncSelect } from "@sonamu-kit/react-components/components";
+
+export function UserListPage() {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // 입력 시 자동완성 목록 로드
+  const loadSuggestions = async (keyword: string) => {
+    if (keyword.length < 2) return [];
+
+    const { rows } = await UserService.getUsers("A", {
+      num: 10,
+      page: 1,
+      search: listParams.search,
+      keyword,
+    });
+
+    return rows.map(row => {
+      if (listParams.search === "email") return row.email;
+      if (listParams.search === "username") return row.username;
+      return String(row.id);
+    });
+  };
+
+  return (
+    <AsyncSelect
+      value={listParams.keyword}
+      onValueChange={(value) => setListParams({ ...listParams, keyword: value, page: 1 })}
+      loadOptions={loadSuggestions}
+      placeholder="검색어 입력"
+    />
+  );
+}
+```
+
+## 고급 기능
+
+### 빈 검색어 처리
+
+```typescript
+// 백엔드: user.model.ts
+if (params.search && params.keyword && params.keyword.length > 0) {
+  // 검색어가 있을 때만 처리
+  if (params.search === "email") {
+    qb.where("users.email", "like", `%${params.keyword}%`);
+  }
+}
+```
+
+**이유**: 빈 문자열로 검색하면 모든 결과가 나와 의도치 않은 동작이 발생할 수 있습니다.
+
+### 최소 길이 제한
+
+```typescript
+// 프론트엔드
+const handleKeywordChange = (value: string) => {
+  if (value.length > 0 && value.length < 2) {
+    // 2글자 미만이면 검색하지 않음
+    return;
+  }
+  setListParams({ ...listParams, keyword: value, page: 1 });
+};
+
+<Input
+  {...register("keyword")}
+  onValueChange={handleKeywordChange}
+  placeholder="최소 2글자 이상 입력"
+/>
+```
+
+### SQL 인젝션 방어
+
+Puri 쿼리 빌더는 자동으로 파라미터 바인딩을 사용하므로 안전합니다.
+
+```typescript
+// ✅ 안전: 파라미터 바인딩
+qb.where("users.email", "like", `%${params.keyword}%`);
+// SQL: WHERE users.email LIKE ? → ['%admin%']
+
+// ❌ 위험: 문자열 연결 (사용 금지)
+qb.whereRaw(`users.email LIKE '%${params.keyword}%'`);
+// SQL: WHERE users.email LIKE '%admin%' (인젝션 가능)
+```
+
+### 특수문자 이스케이프
+
+LIKE 검색 시 `%`, `_` 같은 특수문자를 이스케이프해야 합니다.
+
+```typescript
+function escapeLike(keyword: string): string {
+  return keyword.replace(/[%_]/g, "\\$&");
+}
+
+// 사용
+if (params.search === "email") {
+  const escaped = escapeLike(params.keyword);
+  qb.where("users.email", "like", `%${escaped}%`);
+}
+```
+
+## 커스터마이징
+
+### SearchFieldSelect 레이블 변경
+
+```typescript
+// UserSearchFieldSelect.tsx 수정
+import { UserSearchFieldLabel } from "@/services/sonamu.generated";
+
+const customLabels = {
+  ...UserSearchFieldLabel,
+  id: "ID 번호",        // 기본: "ID"
+  email: "이메일 주소",  // 기본: "이메일"
+};
+
+<SelectItem key={key} value={key}>
+  {(textPrefix ?? "") + customLabels[key]}
+</SelectItem>
+```
+
+### 검색 필드 그룹화
+
+```typescript
+const fieldGroups = {
+  "기본 정보": ["id", "username"],
+  "연락처": ["email", "phone"],
+};
+
+<SelectContent>
+  {Object.entries(fieldGroups).map(([group, fields]) => (
+    <Fragment key={group}>
+      <SelectLabel>{group}</SelectLabel>
+      {fields.map((key) => (
+        <SelectItem key={key} value={key}>
+          {UserSearchFieldLabel[key]}
+        </SelectItem>
+      ))}
+    </Fragment>
+  ))}
+</SelectContent>
+```
+
+### 검색 필드별 placeholder 변경
+
+```typescript
+const placeholders = {
+  id: "ID 번호를 입력하세요",
+  username: "이름을 입력하세요",
+  email: "이메일을 입력하세요",
+};
+
+<Input
+  {...register("keyword")}
+  placeholder={placeholders[listParams.search] ?? "검색어 입력"}
+/>
+```
+
+## 백엔드 처리
+
+### exhaustive 패턴
+
+모든 검색 필드를 처리했는지 컴파일 타임에 검증합니다.
+
+```typescript
+import { exhaustive } from "sonamu";
+
+if (params.search && params.keyword) {
+  if (params.search === "id") {
+    qb.where("users.id", Number(params.keyword));
+  } else if (params.search === "email") {
+    qb.where("users.email", "like", `%${params.keyword}%`);
+  } else if (params.search === "username") {
+    qb.where("users.username", "like", `%${params.keyword}%`);
+  } else {
+    exhaustive(params.search);  // 컴파일 타임 검증
+  }
+}
+```
+
+**장점**: SearchField enum에 새 필드를 추가하면 컴파일 에러가 발생하여 누락을 방지합니다.
+
+### Fulltext 검색
+
+대량의 텍스트 검색이 필요하면 Fulltext 인덱스를 사용합니다.
+
+```typescript
+// Entity에 fulltext 인덱스 추가
+{
+  "indexes": [
+    {
+      "columns": ["username", "bio"],
+      "type": "fulltext"
+    }
+  ]
+}
+```
+
+```typescript
+// 백엔드: user.model.ts
+if (params.search === "fulltext" && params.keyword) {
+  qb.whereRaw(
+    "MATCH(users.username, users.bio) AGAINST(? IN NATURAL LANGUAGE MODE)",
+    [params.keyword]
+  );
+}
+```
+
+## 문제 해결
+
+### SearchFieldSelect가 생성되지 않음
+
+**원인**: 백엔드에 `SearchField` enum이 없음
+
+**해결**:
+```typescript
+// user.types.ts (백엔드)
+export const UserSearchField = z.enum(["id", "username", "email"]);
+
+export const UserListParams = UserBaseListParams.extend({
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+});
+```
+
+### 검색이 동작하지 않음
+
+**원인**: 백엔드 Model에서 `search`와 `keyword` 처리 누락
+
+**해결**: `user.model.ts`의 `findMany`에서 검색 로직을 추가하세요.
+
+### 한글 검색이 안됨
+
+**원인**: 데이터베이스 charset/collation 설정
+
+**해결**:
+```sql
+-- MySQL
+ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- PostgreSQL (기본적으로 UTF-8 지원)
+```
+
+## 관련 문서
+
+- [OrderBySelect](/frontend-integration/react-components/order-by-select) - 정렬 컴포넌트
+- [useListParams](/frontend-integration/core-hooks/use-list-params) - 목록 필터링 훅
+- [auto-generated-overview](/frontend-integration/react-components/auto-generated-overview) - 자동 생성 컴포넌트

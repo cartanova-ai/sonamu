@@ -312,7 +312,8 @@ https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expire
 @upload({ mode: 'single' })
 @api({ httpMethod: 'POST' })
 async uploadPrivateFile() {
-  const { file } = Sonamu.getUploadContext();
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // Use first file
 
   if (!file) {
     throw new Error('No file provided');
