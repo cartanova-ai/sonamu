@@ -381,8 +381,7 @@ import type { User, Post } from "@/types";
 ### 증상
 
 ```typescript
-@api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   // Type: UploadedFile | undefined
@@ -398,8 +397,7 @@ async uploadFile() {
 ### 해결 방법
 
 ```typescript
-@api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   

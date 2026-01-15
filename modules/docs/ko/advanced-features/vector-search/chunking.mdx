@@ -9,8 +9,7 @@ Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들�
 
 ```typescript
 class DocumentModelClass extends BaseModel {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());
@@ -86,8 +85,7 @@ const chunks = chunking.chunk("긴 텍스트...");
 
 ```typescript
 class DocumentModelClass extends BaseModel {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadLongDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());
@@ -240,7 +238,7 @@ Sonamu로 개발 문서 검색 시스템을 만들고 있습니다.
 **1단계: 조건부 청킹**
 
 ```typescript
-@upload({ mode: 'single' })
+@upload()
 @api({ httpMethod: 'POST' })
 async uploadTechDoc() {
   const { file } = Sonamu.getUploadContext();

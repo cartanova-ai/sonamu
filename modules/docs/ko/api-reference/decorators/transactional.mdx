@@ -284,8 +284,7 @@ async findWithRelations(id: number) {
 ### @upload와 함께
 
 ```typescript
-@api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 @transactional()
 async uploadAvatar() {
   const { file } = Sonamu.getUploadContext();

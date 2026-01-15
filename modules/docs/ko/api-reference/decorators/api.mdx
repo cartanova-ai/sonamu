@@ -348,9 +348,10 @@ async findById(id: number) {
 
 ### @upload
 
+`@upload`은 `@api` 없이 독립적으로 사용합니다.
+
 ```typescript
-@api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar() {
   const { file } = Sonamu.getUploadContext();
   // 파일 처리

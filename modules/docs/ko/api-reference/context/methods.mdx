@@ -143,8 +143,8 @@ type UploadContext = {
 };
 ```
 
-- **file**: 단일 파일 업로드 시 파일 객체 (`@upload({ mode: "single" })`)
-- **files**: 다중 파일 업로드 시 파일 배열 (`@upload({ mode: "multiple" })`)
+- **file**: 단일 파일 업로드 시 파일 객체 (`@upload()`)
+- **files**: 다중 파일 업로드 시 파일 배열 (`@upload()`)
 
 ### 예외
 
@@ -156,8 +156,7 @@ type UploadContext = {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
-  @upload({ mode: "single" })
+  @upload()
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
     
@@ -184,8 +183,7 @@ class FileModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
     const { files } = Sonamu.getUploadContext();
     
@@ -243,7 +241,7 @@ export function validateFileTypes(allowedTypes: string[]) {
 ```typescript
 class FileModelClass extends BaseModel {
   @api()
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadImages(ctx: Context) {
     // 이미지 파일만 허용
     validateFileTypes([
