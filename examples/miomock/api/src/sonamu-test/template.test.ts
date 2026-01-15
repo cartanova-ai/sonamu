@@ -1,5 +1,4 @@
 import {
-  Sonamu,
   Template,
   type TemplateKey,
   TemplateManager,
@@ -7,16 +6,13 @@ import {
   type TemplateOptions,
 } from "sonamu";
 import { bootstrap } from "sonamu/test";
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-bootstrap(vi);
+bootstrap(vi, { forTesting: false });
 
 describe("TemplateManager", () => {
-  beforeAll(async () => {
-    TemplateManager.reset();
-    Sonamu.isInitialized = false;
-    await Sonamu.init(true, false, undefined, false);
-  });
+  // bootstrap에서 forTesting: false로 Sonamu.init()이 호출되어 템플릿이 이미 로드됨
+  // 별도의 reset()은 필요하지 않음
   // ============================================
   // 1. 기본 기능
   // ============================================
@@ -120,12 +116,23 @@ describe("TemplateManager", () => {
     describe("reload()", () => {
       // 목적: reload()가 템플릿을 다시 로드하는지 확인
       test("템플릿 재로드", async () => {
-        const initialSize = TemplateManager.size;
+        // 커스텀 템플릿을 추가하여 reload 전후 변화 확인
+        const customTemplate = {
+          key: "reload-test-custom",
+          render: vi.fn(),
+          getTargetAndPath: vi.fn(),
+          getRequiredDictKeys: vi.fn(),
+        };
+        TemplateManager.register(customTemplate as Template);
+        expect(TemplateManager.exists("reload-test-custom")).toBe(true);
 
+        // reload 후 커스텀 템플릿은 사라지고 빌트인만 남아야 함
         await TemplateManager.reload();
 
         expect(TemplateManager.isAutoloaded).toBe(true);
-        expect(TemplateManager.size).toBe(initialSize);
+        expect(TemplateManager.exists("reload-test-custom")).toBe(false);
+        expect(TemplateManager.size).toBeGreaterThanOrEqual(15); // 빌트인 최소 개수
+        expect(TemplateManager.exists("entity")).toBe(true); // 빌트인은 유지
       });
     });
   });

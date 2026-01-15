@@ -67,16 +67,13 @@ class MockTemplateClass extends Template {
   }
 }
 
-bootstrap(vi);
+bootstrap(vi, { forTesting: false });
 
 describe("Syncer", () => {
   let apiRootPath: string;
   let syncer: typeof Sonamu.syncer;
 
   beforeAll(async () => {
-    Sonamu.isInitialized = false;
-    await Sonamu.init(true, false, undefined, false);
-
     apiRootPath = join(Sonamu.appRootPath, "api");
     syncer = Sonamu.syncer;
     expect(syncer).toBeDefined();

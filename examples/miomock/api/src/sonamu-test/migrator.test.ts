@@ -10,14 +10,10 @@ import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
-bootstrap(vi);
+bootstrap(vi, { forTesting: false });
 describe("Migrator test", () => {
   let migrator: Migrator;
   beforeAll(async () => {
-    // Sonamu가 테스팅 로드된 상태이므로 다시 초기화
-    Sonamu.isInitialized = false;
-    await Sonamu.init(true, false, undefined, false);
-
     migrator = new Migrator();
     expect(migrator).toBeDefined();
   });
