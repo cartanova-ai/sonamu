@@ -1,17 +1,20 @@
 import { NaiteVitestReporter } from "sonamu/test";
 import { defineConfig } from "vitest/config";
+import { PrioritySequencer } from "./custom-sequencer";
 
 const maxWorkers = 4;
 
 export default defineConfig({
   plugins: [],
   test: {
-    // migrator, syncer 등 오래 걸리는 테스트를 먼저 시작하여 병렬화 효율을 높입니다.
-    include: ["src/**/migrator*.test.ts", "src/**/syncer*.test.ts", "src/**/*.test.ts"],
+    include: ["src/**/*.test.ts"],
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
+    sequence: {
+      sequencer: PrioritySequencer,
+    },
     reporters: ["default", NaiteVitestReporter],
     restoreMocks: true,
     pool: "forks",
