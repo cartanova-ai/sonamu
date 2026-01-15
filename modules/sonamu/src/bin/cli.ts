@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { execSync, spawn } from "child_process";
-import { cp, mkdir, readdir, rm, writeFile } from "fs/promises";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -20,13 +20,13 @@ import {
   printBuildSummary,
   printTaskFailed,
   printTaskHeader,
-  printTaskSkipped,
   printTaskStart,
   printTaskSuccess,
 } from "../utils/console-util";
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
-import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
+import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config";
+import assert from "assert";
 
 let migrator: Migrator;
 
@@ -192,32 +192,6 @@ async function dev() {
 async function build() {
   const appRoot = findAppRootPath();
 
-  // 출력 디렉토리를 제거합니다.
-  try {
-    for (const artifact of API_ARTIFACTS) {
-      if (await exists(path.join(appRoot, artifact.outputDir))) {
-        // API 프로젝트 자체의 빌드 결과물
-        await rm(path.join(appRoot, artifact.outputDir), { recursive: true, force: true });
-      }
-    }
-
-    for (const artifact of WEB_ARTIFACTS) {
-      if (await exists(path.join(appRoot, artifact.outputDir))) {
-        // Web 프로젝트 자체의 빌드 결과물
-        await rm(path.join(appRoot, artifact.outputDir), { recursive: true, force: true });
-      }
-      if (await exists(path.join(appRoot, artifact.destDir))) {
-        // API 프로젝트로 복사되어 온 Web 빌드 결과물
-        await rm(path.join(appRoot, artifact.destDir), { recursive: true, force: true });
-      }
-    }
-
-    console.log(chalk.green("\nBuild artifacts removed successfully."));
-  } catch (error) {
-    console.error(chalk.red("Remove build directories failed."), error);
-    process.exit(1);
-  }
-
   // .swcrc 파일을 지정합니다.
   let swcFilePath = ".swcrc";
   try {
@@ -239,20 +213,9 @@ async function build() {
   try {
     for (const artifact of API_ARTIFACTS) {
       const cwd = path.join(appRoot, artifact.projectPath);
-      const cmd = artifact.buildCommand(swcFilePath);
-
       printTaskHeader(artifact.name, artifact.description, cwd);
 
-      // build
-      try {
-        printTaskStart("build", cmd, true);
-        // cmd를 spawn해서 build를 수행하는데, 이때 명령의 출력(stdout, stderr) 라인 앞에 들여쓰기를 붙여서 출력합니다.
-        await execWithLinePrefix(cmd, { cwd });
-        printTaskSuccess("build", true);
-      } catch {
-        printTaskFailed("build", true);
-        throw new Error("build failed");
-      }
+      await runBuildSteps(artifact, { cwd, buildCommandArgs: { configFilePath: swcFilePath } });
     }
     printBuildSummary("API", true, Date.now() - apiStartedAt);
   } catch {
@@ -265,43 +228,43 @@ async function build() {
   try {
     for (const artifact of WEB_ARTIFACTS) {
       const cwd = path.join(appRoot, artifact.projectPath);
-      const cmd = artifact.buildCommand();
-      const outputDirFull = path.join(appRoot, artifact.outputDir);
-      const destDirFull = path.join(appRoot, artifact.destDir);
-
       printTaskHeader(artifact.name, artifact.description, cwd);
 
-      // build
-      try {
-        printTaskStart("build", cmd);
-        // cmd를 spawn해서 build를 수행하는데, 이때 명령의 출력(stdout, stderr) 라인 앞에 들여쓰기를 붙여서 출력합니다.
-        await execWithLinePrefix(cmd, { cwd });
-        printTaskSuccess("build");
-      } catch {
-        printTaskFailed("build");
-        printTaskSkipped("copy", true);
-        throw new Error("build failed");
-      }
-
-      // copy
-      try {
-        printTaskStart("copy", `${artifact.outputDir} → ${artifact.destDir}`, true);
-        // Web 아티팩트는 빌드 결과물(outputDir)을 다른 위치(destDir)로 복사하는 작업이 추가로 필요합니다.
-        if (await exists(destDirFull)) {
-          await rm(destDirFull, { recursive: true, force: true });
-        }
-        await mkdir(destDirFull, { recursive: true });
-        await cp(outputDirFull, destDirFull, { recursive: true });
-        printTaskSuccess("copy", true);
-      } catch {
-        printTaskFailed("copy", true);
-        throw new Error("copy failed");
-      }
+      await runBuildSteps(artifact, { cwd, buildCommandArgs: {} });
     }
     printBuildSummary("Web", true, Date.now() - webStartedAt);
   } catch {
     printBuildSummary("Web", false, Date.now() - webStartedAt);
     process.exit(1);
+  }
+}
+
+/**
+ * pre-build, build, post-build 단계를 순차적으로 실행합니다.
+ */
+async function runBuildSteps<T>(
+  artifact: BuildArtifact<T>,
+  options: { cwd: string; buildCommandArgs: T },
+) {
+  const steps = [
+    { name: "pre-build", cmd: artifact.preBuildCommand?.() },
+    { name: "build", cmd: artifact.buildCommand(options.buildCommandArgs) },
+    { name: "post-build", cmd: artifact.postBuildCommand?.() },
+  ].filter((step) => step.cmd);
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const isLast = i === steps.length - 1;
+
+    try {
+      assert(step.cmd);
+      printTaskStart(step.name, step.cmd, isLast);
+      await execWithLinePrefix(step.cmd, { cwd: options.cwd });
+      printTaskSuccess(step.name, isLast);
+    } catch {
+      printTaskFailed(step.name, isLast);
+      throw new Error(`${step.name} failed`);
+    }
   }
 }
 
