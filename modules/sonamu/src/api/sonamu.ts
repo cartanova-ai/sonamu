@@ -465,7 +465,6 @@ class SonamuClass {
         compress: toFastifyCompressOption(route.compress ?? true, globalCompressOptions),
         handler: async (request, reply) => {
           const url = request.url;
-          console.log(`[SSR] Matched route: ${route.path}`);
 
           const params = this.extractPathParams(route.path, url);
           const html = await renderSSR(url, route, params, request, reply, config, this.viteServer);
@@ -616,7 +615,6 @@ class SonamuClass {
           compress: toFastifyCompressOption(route.compress ?? true, globalCompressOptions),
           handler: async (request, reply) => {
             const url = request.url;
-            console.log(`[SSR] Matched route: ${route.path}`);
 
             const params = this.extractPathParams(route.path, url);
             const html = await renderSSR(url, route, params, request, reply, config);
@@ -786,7 +784,8 @@ class SonamuClass {
 
     for (let i = 0; i < patternParts.length; i++) {
       if (patternParts[i].startsWith(":")) {
-        params[patternParts[i].slice(1)] = urlParts[i];
+        // URL이 패턴보다 짧은 경우에 대비하여 빈 문자열을 기본값으로 설정합니다.
+        params[patternParts[i].slice(1)] = urlParts[i] ?? "";
       }
     }
     return params;
