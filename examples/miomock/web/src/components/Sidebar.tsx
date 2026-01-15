@@ -9,6 +9,7 @@ import HandshakeIcon from "~icons/lucide/handshake";
 import HomeIcon from "~icons/lucide/home";
 import LogOutIcon from "~icons/lucide/log-out";
 import TagIcon from "~icons/lucide/tag";
+import TestTubeIcon from "~icons/lucide/test-tube";
 import UploadIcon from "~icons/lucide/upload";
 import UsersIcon from "~icons/lucide/users";
 
@@ -24,7 +25,8 @@ type MenuKey =
   | "menu.employee"
   | "menu.project"
   | "menu.tag"
-  | "menu.file";
+  | "menu.file"
+  | "menu.components";
 
 interface MenuItemProps {
   titleKey: MenuKey;
@@ -41,6 +43,7 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.project", path: "/admin/projects", icon: FolderIcon },
   { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
+  { titleKey: "menu.components", path: "/admin/components", icon: TestTubeIcon },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {

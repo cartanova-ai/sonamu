@@ -62,6 +62,7 @@ export default {
   "menu.department": "부서 관리",
   "menu.employee": "직원 관리",
   "menu.file": "파일 업로드",
+  "menu.components": "컴포넌트 테스트",
   "menu.home": "홈",
   "menu.project": "프로젝트 관리",
   "menu.tag": "태그 관리",
