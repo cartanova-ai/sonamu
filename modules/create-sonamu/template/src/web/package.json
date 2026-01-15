@@ -22,7 +22,8 @@
     "semantic-ui-react": "catalog:",
     "swr": "catalog:",
     "zod": "catalog:",
-    "classnames": "catalog:"
+    "classnames": "catalog:",
+    "eventsource": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

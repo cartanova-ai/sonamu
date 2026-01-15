@@ -8,6 +8,8 @@ import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
 import { type core, z } from "zod";
+import { EventSource } from 'eventsource'
+import { getCurrentLocale } from "../i18n/sd.generated";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
 export function dateReviver(_key: string, value: any): any {
@@ -241,7 +243,14 @@ export function useSSEStream<T extends Record<string, any>>(
       const queryString = qs.stringify(params);
       const fullUrl = queryString ? `${url}?${queryString}` : url;
 
-      const eventSource = new EventSource(fullUrl);
+      const eventSource = new EventSource(fullUrl, {
+        fetch: (url, options) => 
+          fetch({ url: url.toString(), ...options, headers: {
+            ...options?.headers,
+            "Accept-Language": getCurrentLocale(),
+          },
+        }),
+      });
       eventSourceRef.current = eventSource;
 
       // 연결 시도 중 상태 표시

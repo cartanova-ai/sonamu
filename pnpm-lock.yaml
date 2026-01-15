@@ -366,6 +366,9 @@ catalogs:
     esbuild:
       specifier: ^0.27.0
       version: 0.27.2
+    eventsource:
+      specifier: ^4.1.0
+      version: 4.1.0
     exceljs:
       specifier: ^4.4.0
       version: 4.4.0
@@ -742,6 +745,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
+      eventsource:
+        specifier: 'catalog:'
+        version: 4.1.0
       jotai:
         specifier: 'catalog:'
         version: 2.16.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@19.2.3)
@@ -6396,6 +6402,10 @@ packages:
   eventsource-parser@3.0.6:
     resolution: {integrity: sha512-Vo1ab+QXPzZ4tCa8SwIHJFaSzy4R6SHf7BY79rFBDf0idraZWAkYrDjDj8uWaSm3S2TK+hJ7/t1CEmZ7jXw+pg==}
     engines: {node: '>=18.0.0'}
+
+  eventsource@4.1.0:
+    resolution: {integrity: sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==}
+    engines: {node: '>=20.0.0'}
 
   exceljs@4.4.0:
     resolution: {integrity: sha512-XctvKaEMaj1Ii9oDOqbW/6e1gXknSY4g/aLCDicOXqBE4M0nRWkUu0PTp++UPNzoFY12BNHMfs/VadKIS6llvg==}
@@ -15403,6 +15413,10 @@ snapshots:
   events@3.3.0: {}
 
   eventsource-parser@3.0.6: {}
+
+  eventsource@4.1.0:
+    dependencies:
+      eventsource-parser: 3.0.6
 
   exceljs@4.4.0:
     dependencies:
