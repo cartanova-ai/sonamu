@@ -7,6 +7,7 @@ import {
   type ListResult,
   NotFoundException,
   Sonamu,
+  type SonamuFile,
   upload,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
@@ -136,7 +137,7 @@ class FileModelClass extends BaseModelClass<
 
   @upload({ limits: { files: 10 } })
   async upload(): Promise<{
-    files: { name: string; url: string; mime_type: string; size: number }[];
+    files: SonamuFile[];
   }> {
     const { files: _files } = Sonamu.getContext();
 
@@ -166,7 +167,7 @@ class FileModelClass extends BaseModelClass<
   @upload({ limits: { files: 5 } })
   async inlineUpload(params: { category: string }): Promise<{
     category: string;
-    files: { name: string; url: string; mime_type: string; size: number }[];
+    files: SonamuFile[];
   }> {
     const { files } = Sonamu.getContext();
     const { category } = params;

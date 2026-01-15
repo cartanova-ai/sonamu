@@ -11,7 +11,7 @@ import type { TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";
-import { zodTypeToTsTypeDef } from "../zod-converter";
+import { BUILT_IN_TYPES, zodTypeToTsTypeDef } from "../zod-converter";
 
 export class Template__services extends Template {
   constructor() {
@@ -298,10 +298,30 @@ ${functions.join("\n\n")}
       );
     }
 
+    // BUILT_IN_TYPES에서 사용되는 타입들을 확인하여 동적으로 import 구성
+    const builtInTypeImports = Object.keys(BUILT_IN_TYPES)
+      .filter((typeKey) => importKeys.includes(typeKey))
+      .map((typeKey) => `type ${typeKey}`);
+
+    // sonamu.shared에서 import할 항목들을 동적으로 구성
+    const sonamuSharedImports = [
+      "type ListResult",
+      ...builtInTypeImports,
+      "fetch",
+      "type EventHandlers",
+      "type SSEStreamOptions",
+      "useSSEStream",
+      "toFormData",
+    ].join(", ");
+
     return {
       ...this.getTargetAndPath(),
       body: namespaces.join("\n\n"),
-      importKeys: diff(unique(importKeys), [...typeParamNames, "ListResult"]),
+      importKeys: diff(unique(importKeys), [
+        ...typeParamNames,
+        "ListResult",
+        ...Object.keys(BUILT_IN_TYPES),
+      ]),
       customHeaders: [
         "/** biome-ignore-all lint: generated는 무시 */",
         "/** biome-ignore-all assist: generated는 무시 */",
@@ -309,7 +329,7 @@ ${functions.join("\n\n")}
         `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
-        `import { type ListResult, fetch, type EventHandlers, type SSEStreamOptions, useSSEStream, toFormData } from './sonamu.shared';`,
+        `import { ${sonamuSharedImports} } from './sonamu.shared';`,
       ],
     };
   }

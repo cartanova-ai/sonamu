@@ -43,6 +43,7 @@ import {
   type EventHandlers,
   fetch,
   type ListResult,
+  type SonamuFile,
   type SSEStreamOptions,
   toFormData,
   useSSEStream,
@@ -647,7 +648,7 @@ export namespace FileService {
   export async function upload(
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ files: { name: string; url: string; mime_type: string; size: number }[] }> {
+  ): Promise<{ files: SonamuFile[] }> {
     const formData = new FormData();
     files.forEach((f) => {
       formData.append("files", f);
@@ -665,11 +666,7 @@ export namespace FileService {
   }
 
   export const useUploadMutation = (
-    options?: UseMutationOptions<
-      { files: { name: string; url: string; mime_type: string; size: number }[] },
-      Error,
-      { files: File[] }
-    > & {
+    options?: UseMutationOptions<{ files: SonamuFile[] }, Error, { files: File[] }> & {
       onUploadProgress?: (e: AxiosProgressEvent) => void;
     },
   ) =>
@@ -683,10 +680,7 @@ export namespace FileService {
     params: { category: string },
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{
-    category: string;
-    files: { name: string; url: string; mime_type: string; size: number }[];
-  }> {
+  ): Promise<{ category: string; files: SonamuFile[] }> {
     const formData = new FormData();
     files.forEach((f) => {
       formData.append("files", f);
@@ -705,7 +699,7 @@ export namespace FileService {
 
   export const useInlineUploadMutation = (
     options?: UseMutationOptions<
-      { category: string; files: { name: string; url: string; mime_type: string; size: number }[] },
+      { category: string; files: SonamuFile[] },
       Error,
       { params: { category: string }; files: File[] }
     > & {
