@@ -1,5 +1,5 @@
 import { constants, type PathLike } from "fs";
-import { access, readFile, writeFile } from "fs/promises";
+import { access, readFile, stat, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 
 /**
@@ -12,6 +12,16 @@ export async function exists(path: PathLike): Promise<boolean> {
   try {
     await access(path, constants.F_OK);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+// 디렉토리가 아니라 파일만 존재하는지 확인합니다.
+export async function fileExists(path: PathLike): Promise<boolean> {
+  try {
+    const stats = await stat(path);
+    return stats.isFile();
   } catch {
     return false;
   }

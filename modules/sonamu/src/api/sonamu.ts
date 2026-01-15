@@ -22,7 +22,7 @@ import type { StorageManager } from "../storage/storage-manager";
 import type { Syncer } from "../syncer/syncer";
 import type { WorkflowManager } from "../tasks/workflow-manager";
 import type { SonamuFastifyConfig } from "../types/types";
-import { exists } from "../utils/fs-utils";
+import { exists, fileExists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
 import type { AuthContext, Context } from "./context";
@@ -653,7 +653,7 @@ class SonamuClass {
 
         // 정적 파일이 존재할 경우, 정적 파일을 먼저 서빙해야함
         const filePath = path.join(webDistPath, request.url);
-        if (await exists(filePath)) {
+        if (await fileExists(filePath)) {
           const content = await fs.readFile(filePath);
           return reply.type(mimeLookup(filePath) || "application/octet-stream").send(content);
         }
