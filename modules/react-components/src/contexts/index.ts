@@ -1,4 +1,5 @@
 export {
+  type SonamuContextValue,
   SonamuProvider,
   useSonamuContext,
 } from "./sonamu-context";

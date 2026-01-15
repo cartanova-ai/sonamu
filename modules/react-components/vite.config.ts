@@ -39,6 +39,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom", "@tanstack/react-router"],
   },
   build: {
+    sourcemap: true,
     lib: {
       entry: path.resolve(__dirname, "src/index.tsx"),
       name: "@sonamu-kit/react-components",

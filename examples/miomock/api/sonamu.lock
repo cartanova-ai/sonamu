@@ -117,15 +117,15 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "f489bdd84f2156eaace0632495846c8625c00868"
+    "checksum": "7a1c40876bada0107f5da28b0f08872bc7453d13"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "2af3ca55a769b5aa4aecbf865cbd9a272004145f"
+    "checksum": "7e62cf56fd001ab2862d0c9beeebc81febcd72eb"
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "9f69e5c67fc6e3e7086bc19396f0be6135ad29be"
+    "checksum": "7c20114cd5aed76bcb2e727d853f98e85851675d"
   },
   {
     "path": "src/sonamu.config.ts",

@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
+import { useSonamuContext } from "@/contexts";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -44,6 +45,8 @@ export function DateSelectorMultiple({
   numberOfMonths = 2,
   defaultRangeMode = false,
 }: DateSelectorMultipleProps) {
+  const { SD } = useSonamuContext();
+
   // Popover open state
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -142,7 +145,7 @@ export function DateSelectorMultiple({
                 onClick={() => handleModeChange(false)}
                 className="flex-1 h-7 text-xs"
               >
-                Single Date
+                {SD("component.dateSelectorMultiple.singleDate")}
               </Button>
               <Button
                 variant={tempIsRangeMode ? "default" : "outline"}
@@ -150,7 +153,7 @@ export function DateSelectorMultiple({
                 onClick={() => handleModeChange(true)}
                 className="flex-1 h-7 text-xs"
               >
-                Date Range
+                {SD("component.dateSelectorMultiple.dateRange")}
               </Button>
             </div>
           </div>
@@ -178,7 +181,7 @@ export function DateSelectorMultiple({
           )}
           <div className="p-3 border-t flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
-              Cancel
+              {SD("common.cancel")}
             </Button>
             <Button
               variant="default"
@@ -187,7 +190,7 @@ export function DateSelectorMultiple({
               disabled={!isSaveEnabled()}
               className="h-8 text-xs"
             >
-              Save
+              {SD("common.save")}
             </Button>
           </div>
         </PopoverContent>

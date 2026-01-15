@@ -4,6 +4,7 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanst
 import type React from "react";
 import App from "@/App";
 import { createSonamuConfig } from "@/config/sonamu-provider.config";
+import type { MergedDictionary } from "@/i18n/sd.generated";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -47,5 +48,5 @@ function RootComponent() {
 
 function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
   const sonamuConfig = createSonamuConfig();
-  return <SonamuProvider {...sonamuConfig}>{children}</SonamuProvider>;
+  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
 }

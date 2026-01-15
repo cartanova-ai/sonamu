@@ -1,33 +1,41 @@
 import { createContext, type ReactNode, useContext } from "react";
-import type { SonamuAuth, SonamuFile } from "./types";
+import type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";
 
-export interface SonamuContextValue {
+export interface SonamuContextValue<D extends Dictionary = Dictionary> {
   uploader?: (files: File[]) => Promise<SonamuFile[]>;
   auth?: SonamuAuth;
+  SD: <K extends keyof D>(key: K) => SDReturnType<D, K>;
 }
 
 const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
 
-export interface SonamuProviderProps extends SonamuContextValue {
+export interface SonamuProviderProps<D extends Dictionary = Dictionary>
+  extends SonamuContextValue<D> {
   children: ReactNode;
 }
 
-export function SonamuProvider({ children, ...value }: SonamuProviderProps) {
-  const normalizedValue: SonamuContextValue = {
+export function SonamuProvider<D extends Dictionary = Dictionary>({
+  children,
+  ...value
+}: SonamuProviderProps<D>) {
+  const normalizedValue: SonamuContextValue<D> = {
     ...value,
     uploader: value.uploader ?? createUploaderFallback(),
     auth: value.auth ?? createAuthFallback(),
+    SD: value.SD,
   };
 
   return <SonamuContext.Provider value={normalizedValue}>{children}</SonamuContext.Provider>;
 }
 
-export function useSonamuContext(): Required<SonamuContextValue> {
-  return useContext(SonamuContext) as Required<SonamuContextValue>;
+export function useSonamuContext<D extends Dictionary = Dictionary>(): Required<
+  SonamuContextValue<D>
+> {
+  return useContext(SonamuContext) as Required<SonamuContextValue<D>>;
 }
 
 const SONAMU_CONTEXT_ERROR_MESSAGE = (key: string) =>
-  `[SonamuProvider] ${key}가 설정되지 않았습니다. SonamuProvider에 ${key} 설정을 제공해주세요.`;
+  `[SonamuProvider] ${key} is not configured. Please provide ${key} configuration to SonamuProvider.`;
 
 const createUploaderFallback = () => {
   return () => {

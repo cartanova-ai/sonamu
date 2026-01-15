@@ -1,12 +1,13 @@
-import type { SonamuAuth, SonamuFile } from "@sonamu-kit/react-components";
+import type { SonamuAuth, SonamuContextValue, SonamuFile } from "@sonamu-kit/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 import { FileService, UserService } from "@/services/services.generated";
 import type { UserSubsetSS } from "@/services/sonamu.generated";
 import type { UserLoginParams } from "@/services/user/user.types";
 
-export function createSonamuConfig() {
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   // Auth 설정
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export function createSonamuConfig() {
   const loginMutation = UserService.useLoginMutation();
   const logoutMutation = UserService.useLogoutMutation();
 
-  const auth: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+  const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
     user: user ?? null,
     loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
     login: (loginParams: UserLoginParams) => {
@@ -49,16 +50,17 @@ export function createSonamuConfig() {
   };
 
   // Uploader 설정
-  const uploadMutation = FileService.useUploadMutation();
-
-  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
+  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
     if (files.length === 0) {
       return [];
     }
 
-    const result = await uploadMutation.mutateAsync({ files });
+    const result = await FileService.useUploadMutation().mutateAsync({ files });
     return result.files;
   };
 
-  return { auth, uploader };
+  // SD 설정
+  const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+
+  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
 }

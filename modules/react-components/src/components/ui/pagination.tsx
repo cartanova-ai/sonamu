@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useSonamuContext } from "../../contexts";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
@@ -13,14 +14,22 @@ export interface PaginationProps {
 
 export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
   ({ value, onValueChange, total, itemsPerPage, className, maxVisible = 6 }, ref) => {
+    const { SD } = useSonamuContext();
     const totalPages = Math.ceil(total / itemsPerPage);
     const currentPage = value;
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, total);
 
     return (
       <div ref={ref} className={cn("flex items-center justify-between pt-6", className)}>
         <div className="text-xs text-muted-foreground">
-          Showing {(currentPage - 1) * itemsPerPage + 1}-
-          {Math.min(currentPage * itemsPerPage, total)} of {total} results
+          {(
+            SD("component.pagination.showing") as unknown as (
+              start: number,
+              end: number,
+              total: number,
+            ) => string
+          )(startItem, endItem, total)}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -30,7 +39,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             disabled={currentPage === 1}
             onClick={() => onValueChange(currentPage - 1)}
           >
-            Previous
+            {SD("component.pagination.previous")}
           </Button>
           <div className="flex items-center gap-1">
             {(() => {
@@ -61,7 +70,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             disabled={currentPage === totalPages}
             onClick={() => onValueChange(currentPage + 1)}
           >
-            Next
+            {SD("component.pagination.next")}
           </Button>
         </div>
       </div>

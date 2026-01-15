@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useSonamuContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
 import XCircleIcon from "~icons/lucide/x-circle";
-
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import {
@@ -44,17 +44,23 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
       value,
       onValueChange,
       onBlur,
-      placeholder = "Select option...",
-      searchPlaceholder = "Search...",
-      emptyText = "No option found.",
+      placeholder,
+      searchPlaceholder,
+      emptyText,
       disabled = false,
       className,
       clearable = false,
     },
     ref,
   ) => {
+    const { SD } = useSonamuContext();
     const [open, setOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
+
+    // SD 기본값 설정
+    const finalPlaceholder = placeholder ?? SD("component.combobox.selectPlaceholder");
+    const finalSearchPlaceholder = searchPlaceholder ?? SD("common.searchPlaceholder");
+    const finalEmptyText = emptyText ?? SD("component.combobox.noResults");
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
@@ -87,7 +93,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
               className={cn("w-full justify-between", className)}
             >
               <span className="flex-1 truncate text-left">
-                {value ? options.find((option) => option.value === value)?.label : placeholder}
+                {value ? options.find((option) => option.value === value)?.label : finalPlaceholder}
               </span>
               <div className="flex items-center gap-1 shrink-0 pl-2">
                 {clearable && hasValue && (
@@ -105,9 +111,9 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
           </PopoverTrigger>
           <PopoverContent className="w-full p-0">
             <Command>
-              <CommandInput placeholder={searchPlaceholder} className="h-9" />
+              <CommandInput placeholder={finalSearchPlaceholder} className="h-9" />
               <CommandList>
-                <CommandEmpty>{emptyText}</CommandEmpty>
+                <CommandEmpty>{finalEmptyText}</CommandEmpty>
                 <CommandGroup>
                   {options.map((option) => (
                     <CommandItem key={option.value} value={option.value} onSelect={handleSelect}>

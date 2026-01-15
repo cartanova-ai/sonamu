@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useSonamuContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
 import Loader2Icon from "~icons/lucide/loader2";
 import XCircleIcon from "~icons/lucide/x-circle";
-
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import {
@@ -57,18 +57,25 @@ export function AsyncSelect<T = number>({
   value,
   onValueChange,
   isLoading = false,
-  placeholder = "Select...",
-  searchPlaceholder = "Search...",
-  emptyText = "No results found.",
-  loadingText = "Loading...",
+  placeholder,
+  searchPlaceholder,
+  emptyText,
+  loadingText,
   clearable = false,
   disabled = false,
   className,
   onSearch,
   searchDebounce = 300,
 }: AsyncSelectProps<T>) {
+  const { SD } = useSonamuContext();
   const [open, setOpen] = React.useState(false);
   const [keyword, setKeyword] = React.useState("");
+
+  // SD 기본값 설정
+  const finalPlaceholder = placeholder ?? SD("component.asyncSelect.selectPlaceholder");
+  const finalSearchPlaceholder = searchPlaceholder ?? SD("common.searchPlaceholder");
+  const finalEmptyText = emptyText ?? SD("component.asyncSelect.noResults");
+  const finalLoadingText = loadingText ?? SD("component.asyncSelect.loading");
 
   // 검색어 디바운스
   React.useEffect(() => {
@@ -120,7 +127,7 @@ export function AsyncSelect<T = number>({
             ) : selectedOption ? (
               selectedOption.label
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground">{finalPlaceholder}</span>
             )}
           </span>
           <div className="flex items-center gap-1 shrink-0 pl-2">
@@ -140,12 +147,12 @@ export function AsyncSelect<T = number>({
       <PopoverContent className="w-full p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder={searchPlaceholder}
+            placeholder={finalSearchPlaceholder}
             value={keyword}
             onValueChange={setKeyword}
           />
           <CommandList>
-            <CommandEmpty>{isLoading ? loadingText : emptyText}</CommandEmpty>
+            <CommandEmpty>{isLoading ? finalLoadingText : finalEmptyText}</CommandEmpty>
             <CommandGroup>
               {clearable && (
                 <CommandItem
@@ -156,7 +163,7 @@ export function AsyncSelect<T = number>({
                   <CheckIcon
                     className={cn("mr-2 h-4 w-4", !hasValue ? "opacity-100" : "opacity-0")}
                   />
-                  ALL
+                  {SD("common.all")}
                 </CommandItem>
               )}
               {options.map((option) => (

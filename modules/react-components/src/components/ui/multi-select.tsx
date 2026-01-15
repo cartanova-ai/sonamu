@@ -1,11 +1,11 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
+import { useSonamuContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import WandSparklesIcon from "~icons/lucide/wand-sparkles";
 import XIcon from "~icons/lucide/x";
 import XCircleIcon from "~icons/lucide/x-circle";
-
 import { cn } from "../../lib/utils";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -302,7 +302,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       onValueChange,
       variant,
       defaultValue = [],
-      placeholder = "Select options",
+      placeholder,
       animation = 0,
       animationConfig,
       maxCount = 3,
@@ -326,6 +326,11 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     },
     ref,
   ) => {
+    const { SD } = useSonamuContext();
+
+    // SD 기본값 설정
+    const finalPlaceholder = placeholder ?? SD("component.multiSelect.selectPlaceholder");
+
     const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
@@ -737,7 +742,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
           </div>
           <div id={selectedCountId} className="sr-only" aria-live="polite">
             {selectedValues.length === 0
-              ? "No options selected"
+              ? SD("component.multiSelect.noOptionsSelected")
               : `${selectedValues.length} option${
                   selectedValues.length === 1 ? "" : "s"
                 } selected: ${selectedValues
@@ -759,7 +764,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
               aria-describedby={`${triggerDescriptionId} ${selectedCountId}`}
               aria-label={`Multi-select: ${selectedValues.length} of ${
                 getAllOptions().length
-              } options selected. ${placeholder}`}
+              } options selected. ${finalPlaceholder}`}
               className={cn(
                 "flex p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto",
                 autoSize ? "w-auto" : "w-full",
@@ -884,7 +889,11 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                           animationDelay: `${animationConfig?.delay || 0}s`,
                         }}
                       >
-                        {`+ ${selectedValues.length - responsiveSettings.maxCount} more`}
+                        {(
+                          SD("component.multiSelect.moreItems") as unknown as (
+                            count: number,
+                          ) => string
+                        )(selectedValues.length - responsiveSettings.maxCount)}
                         <XCircleIcon
                           className={cn(
                             "ml-2 h-4 w-4 cursor-pointer",
@@ -959,7 +968,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
             <Command>
               {searchable && (
                 <CommandInput
-                  placeholder="Search options..."
+                  placeholder={SD("common.searchPlaceholder")}
                   onKeyDown={handleInputKeyDown}
                   value={searchValue}
                   onValueChange={setSearchValue}
@@ -979,7 +988,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                   "overscroll-behavior-y-contain",
                 )}
               >
-                <CommandEmpty>{emptyIndicator || "No results found."}</CommandEmpty>{" "}
+                <CommandEmpty>
+                  {emptyIndicator || SD("component.multiSelect.noResults")}
+                </CommandEmpty>{" "}
                 {!hideSelectAll && !searchValue && (
                   <CommandGroup>
                     <CommandItem
@@ -1006,8 +1017,11 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                         <CheckIcon className="h-4 w-4" />
                       </div>
                       <span>
-                        (Select All
-                        {getAllOptions().length > 20 ? ` - ${getAllOptions().length} options` : ""})
+                        ({SD("component.multiSelect.selectAll")}
+                        {getAllOptions().length > 20
+                          ? ` - ${(SD("component.multiSelect.optionsCount") as unknown as (count: number) => string)(getAllOptions().length)}`
+                          : ""}
+                        )
                       </span>
                     </CommandItem>
                   </CommandGroup>
@@ -1108,7 +1122,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                           onSelect={handleClear}
                           className="flex-1 justify-center cursor-pointer"
                         >
-                          Clear
+                          {SD("component.multiSelect.clear")}
                         </CommandItem>
                         <Separator orientation="vertical" className="flex min-h-6 h-full" />
                       </>
@@ -1117,7 +1131,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                       onSelect={() => setIsPopoverOpen(false)}
                       className="flex-1 justify-center cursor-pointer max-w-full"
                     >
-                      Close
+                      {SD("component.multiSelect.close")}
                     </CommandItem>
                   </div>
                 </CommandGroup>

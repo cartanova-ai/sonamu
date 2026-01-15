@@ -81,12 +81,12 @@ type EntityLabels = typeof entityLabels;
 type RawMergedDictionary = Omit<EntityLabels, keyof ProjectDictionary> & ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
-type MergedDictionary = {
+export type MergedDictionary = {
   [K in keyof RawMergedDictionary]: RawMergedDictionary[K] extends (...args: infer P) => string
     ? (...args: P) => string
     : string;
 };
-type DictKey = keyof MergedDictionary;
+export type DictKey = keyof MergedDictionary;
 export type LocalizedString = string & { __brand: "LocalizedString" };
 
 export function defineLocale(dict: Partial<MergedDictionary>) {

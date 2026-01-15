@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import * as React from "react";
+import { useSonamuContext } from "@/contexts";
 import CalendarIcon from "~icons/lucide/calendar";
-
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
@@ -32,10 +32,13 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onValueChange,
-  placeholder = "Pick a date",
+  placeholder,
   disabled = false,
   className,
 }: DatePickerProps) {
+  const { SD } = useSonamuContext();
+  const finalPlaceholder = placeholder ?? SD("component.datePicker.pickDate");
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -50,7 +53,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon />
-          {value ? format(value, "PPP") : <span>{placeholder}</span>}
+          {value ? format(value, "PPP") : <span>{finalPlaceholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -74,10 +77,12 @@ export function DatePicker({
 export function DatePickerWithDropdown({
   value,
   onValueChange,
-  placeholder = "Select date",
+  placeholder,
   disabled = false,
   className,
 }: DatePickerProps) {
+  const { SD } = useSonamuContext();
+  const finalPlaceholder = placeholder ?? SD("component.datePicker.selectDate");
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -92,7 +97,7 @@ export function DatePickerWithDropdown({
             className,
           )}
         >
-          {value ? value.toLocaleDateString() : placeholder}
+          {value ? value.toLocaleDateString() : finalPlaceholder}
           <CalendarIcon />
         </Button>
       </PopoverTrigger>
