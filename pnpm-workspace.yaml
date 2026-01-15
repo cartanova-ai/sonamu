@@ -42,10 +42,10 @@ catalog:
   "@japa/snapshot": ^2.0.9
   "@julr/tooling-configs": ^4.0.0
   "@loaderkit/resolve": ^1.0.4
-  "@logtape/fastify": 1.3.5
-  "@logtape/logtape": 1.3.5
-  "@logtape/pretty": 1.3.5
-  "@logtape/redaction": 1.3.5
+  "@logtape/fastify": 2.0.0
+  "@logtape/logtape": 2.0.0
+  "@logtape/pretty": 2.0.0
+  "@logtape/redaction": 2.0.0
   "@radix-ui/react-accordion": ^1.2.12
   "@radix-ui/react-alert-dialog": ^1.1.15
   "@radix-ui/react-aspect-ratio": ^1.1.8

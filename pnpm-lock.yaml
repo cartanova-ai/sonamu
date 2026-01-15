@@ -115,17 +115,17 @@ catalogs:
       specifier: ^1.0.4
       version: 1.0.4
     '@logtape/fastify':
-      specifier: 1.3.5
-      version: 1.3.5
+      specifier: 2.0.0
+      version: 2.0.0
     '@logtape/logtape':
-      specifier: 1.3.5
-      version: 1.3.5
+      specifier: 2.0.0
+      version: 2.0.0
     '@logtape/pretty':
-      specifier: 1.3.5
-      version: 1.3.5
+      specifier: 2.0.0
+      version: 2.0.0
     '@logtape/redaction':
-      specifier: 1.3.5
-      version: 1.3.5
+      specifier: 2.0.0
+      version: 2.0.0
     '@radix-ui/react-accordion':
       specifier: ^1.2.12
       version: 1.2.12
@@ -638,13 +638,13 @@ importers:
         version: 4.0.1(zod@4.2.1)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.3.5
+        version: 2.0.0
       '@logtape/pretty':
         specifier: 'catalog:'
-        version: 1.3.5(@logtape/logtape@1.3.5)
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@logtape/redaction':
         specifier: 'catalog:'
-        version: 1.3.5(@logtape/logtape@1.3.5)
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.7(@swc/helpers@0.5.18)
@@ -1406,16 +1406,16 @@ importers:
         version: 7.0.4
       '@logtape/fastify':
         specifier: 'catalog:'
-        version: 1.3.5(@logtape/logtape@1.3.5)
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.3.5
+        version: 2.0.0
       '@logtape/pretty':
         specifier: 'catalog:'
-        version: 1.3.5(@logtape/logtape@1.3.5)
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@logtape/redaction':
         specifier: 'catalog:'
-        version: 1.3.5(@logtape/logtape@1.3.5)
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@sonamu-kit/hmr-hook':
         specifier: workspace:^
         version: link:../hmr-hook
@@ -1660,7 +1660,7 @@ importers:
     dependencies:
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 1.3.5
+        version: 2.0.0
       c12:
         specifier: 'catalog:'
         version: 3.3.3(magicast@0.5.1)
@@ -2751,23 +2751,23 @@ packages:
   '@loaderkit/resolve@1.0.4':
     resolution: {integrity: sha512-rJzYKVcV4dxJv+vW6jlvagF8zvGxHJ2+HTr1e2qOejfmGhAApgJHl8Aog4mMszxceTRiKTTbnpgmTO1bEZHV/A==}
 
-  '@logtape/fastify@1.3.5':
-    resolution: {integrity: sha512-e0tEqKmkIp/k/w0jgGNiqOni7c+g26GnaQ/9p3eK8+1adN2bw/RE1QgoQ3lbfGu6neGh7f408+6UPJ/ZFjfdcg==}
+  '@logtape/fastify@2.0.0':
+    resolution: {integrity: sha512-MHrGc5cjJZYGZu5oI+YAUlF2o4ezbFD5+62ECXyd3ZGDHYdSXtCeuHh7zWYnHHKd5fNcLxfHMDLdg1p3dm0bvg==}
     peerDependencies:
-      '@logtape/logtape': ^1.3.5
+      '@logtape/logtape': ^2.0.0
 
-  '@logtape/logtape@1.3.5':
-    resolution: {integrity: sha512-G+MxWB7Tbv/2764519+Cp6rKXUdRbe/GiRwTvlm/Wv/sNsiquRnx9Hzr9eXaIpAYLT4PrBlkthjJ4gmqdSPrFg==}
+  '@logtape/logtape@2.0.0':
+    resolution: {integrity: sha512-z9Hp44mIRXAzgxSyQfFQiRuJ78EMnZa6g43UCxyGOO3RgHjn/7q+5OhdbhypkeHjiJRPxv6RmRsyF0S+OOYWnA==}
 
-  '@logtape/pretty@1.3.5':
-    resolution: {integrity: sha512-b554wA36+jqMhorB2AVb7vmjhIryGUFtPlv0GBEig3eY8Jf0rSunVitReDXfO3s0iG4aqFdvAXQ1WfMllXMqaA==}
+  '@logtape/pretty@2.0.0':
+    resolution: {integrity: sha512-S92TWceFNA5ThnTAFsTeXPg0xwlEK6Ysro7L2hFm6L+ihmxLH7eqZb++ahRZoErCSHIAz4ZeBDW04hqdRQZ10w==}
     peerDependencies:
-      '@logtape/logtape': ^1.3.5
+      '@logtape/logtape': ^2.0.0
 
-  '@logtape/redaction@1.3.5':
-    resolution: {integrity: sha512-6SQUPocQM6XpuOFTaIth1CCdlF42UPLu1Yz6IgoxyVneD74fAparYzrEhNMSRW8GMJYFcC0RkW5ncH7FrzEf5A==}
+  '@logtape/redaction@2.0.0':
+    resolution: {integrity: sha512-dbxeEpRMFaKMzJSCIfELQzImSNf4RAehxX5yu0hCX58PMCbSvmUgThKCsIvbNzE5xqeT55VF0hDcjQikzATIpw==}
     peerDependencies:
-      '@logtape/logtape': ^1.3.5
+      '@logtape/logtape': ^2.0.0
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -11482,19 +11482,19 @@ snapshots:
     dependencies:
       '@braidai/lang': 1.1.2
 
-  '@logtape/fastify@1.3.5(@logtape/logtape@1.3.5)':
+  '@logtape/fastify@2.0.0(@logtape/logtape@2.0.0)':
     dependencies:
-      '@logtape/logtape': 1.3.5
+      '@logtape/logtape': 2.0.0
 
-  '@logtape/logtape@1.3.5': {}
+  '@logtape/logtape@2.0.0': {}
 
-  '@logtape/pretty@1.3.5(@logtape/logtape@1.3.5)':
+  '@logtape/pretty@2.0.0(@logtape/logtape@2.0.0)':
     dependencies:
-      '@logtape/logtape': 1.3.5
+      '@logtape/logtape': 2.0.0
 
-  '@logtape/redaction@1.3.5(@logtape/logtape@1.3.5)':
+  '@logtape/redaction@2.0.0(@logtape/logtape@2.0.0)':
     dependencies:
-      '@logtape/logtape': 1.3.5
+      '@logtape/logtape': 2.0.0
 
   '@lukeed/ms@2.0.2': {}
 
