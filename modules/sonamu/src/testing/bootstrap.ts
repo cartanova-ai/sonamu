@@ -14,9 +14,26 @@ import { DB } from "../database/db";
 import { Naite } from "../naite/naite";
 import { NaiteReporter } from "../naite/naite-reporter";
 
-export function bootstrap(vi: VitestUtils) {
+export interface BootstrapOptions {
+  /**
+   * Sonamu 초기화 모드를 지정합니다.
+   * - true (기본값): 테스팅 모드로 초기화 (빠름, Syncer/Task 생략)
+   * - false: 전체 초기화 (Syncer, Task, EntityManager 등 모두 로드)
+   *
+   * migrator, syncer, template 등의 테스트에서는 false를 사용합니다.
+   */
+  forTesting?: boolean;
+}
+
+export function bootstrap(vi: VitestUtils, options?: BootstrapOptions) {
+  const forTesting = options?.forTesting ?? true;
+
   beforeAll(async () => {
-    await Sonamu.initForTesting();
+    if (!forTesting) {
+      // forTesting: false인 경우 재초기화가 필요하므로 플래그 해제
+      Sonamu.isInitialized = false;
+    }
+    await Sonamu.init(true, false, undefined, forTesting);
   });
   beforeEach(async () => {
     await DB.createTestTransaction();
