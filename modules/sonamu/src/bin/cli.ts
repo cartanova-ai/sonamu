@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+import assert from "assert";
 import { execSync, spawn } from "child_process";
 import { mkdir, readdir, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
@@ -26,7 +27,6 @@ import {
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config";
-import assert from "assert";
 
 let migrator: Migrator;
 

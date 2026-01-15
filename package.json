@@ -1,6 +1,6 @@
 {
   "private": true,
-  "version": "0.7.34",
+  "version": "0.7.35",
   "type": "module",
   "scripts": {
     "build:tools:ts-loader": "pnpm --filter @sonamu-kit/ts-loader build",
