@@ -1,3 +1,4 @@
+import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import type { Knex } from "knex";
 import { assign } from "radashi";
@@ -46,9 +47,9 @@ export class DBClass {
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
       // 병렬 테스트 모드: worker별 DB 사용
-      // Sonamu.forTesting이 true인 경우에만 병렬 테스트 로직을 사용합니다.
-      // migrator.test.ts처럼 forTesting: false로 재초기화하는 경우를 위해 필요합니다.
-      if (process.env.SONAMU_PARALLEL_TEST === "true" && Sonamu.forTesting) {
+      // SONAMU_PARALLEL_TEST 환경변수만으로 판단합니다.
+      // forTesting: false인 테스트(migrator, syncer 등)도 병렬로 실행할 수 있습니다.
+      if (process.env.SONAMU_PARALLEL_TEST === "true") {
         return this.getWorkerDB(dbConfig);
       }
 
@@ -110,7 +111,9 @@ export class DBClass {
       this.workerDBs.set(workerId, createKnexInstance(workerConfig));
     }
 
-    return this.workerDBs.get(workerId)!;
+    const db = this.workerDBs.get(workerId);
+    assert(db, `Worker DB ${workerId} not found`);
+    return db;
   }
 
   getDBConfig(which: DBPreset): Knex.Config {
