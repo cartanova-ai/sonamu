@@ -1,11 +1,11 @@
 ---
-title: "청킹"
-description: "Sonamu에서 긴 문서를 작은 조각으로 분할하기"
+title: "Chunking"
+description: "Splitting long documents into smaller pieces in Sonamu"
 ---
 
-## Sonamu에서 긴 문서 처리하기
+## Handling Long Documents in Sonamu
 
-Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들고 있습니다:
+You're building a feature to upload blog posts or manuals to your Sonamu app:
 
 ```typescript
 class DocumentModelClass extends BaseModel {
@@ -14,75 +14,75 @@ class DocumentModelClass extends BaseModel {
   async uploadDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());
-    
-    // 임베딩 생성 시도
+
+    // Attempting to generate embedding
     const embedding = await Embedding.embedOne(content, 'voyage', 'document');
-    // ❌ 에러: 토큰 제한 초과 (32,000 토큰)
+    // Error: Token limit exceeded (32,000 tokens)
   }
 }
 ```
 
-**문제**:
-- 긴 문서 (10,000단어 이상)
-- 임베딩 API 토큰 제한 초과
-- 전체를 한 번에 임베딩 불가능
+**Problem**:
+- Long documents (10,000+ words)
+- Exceeds embedding API token limit
+- Cannot embed the entire document at once
 
-**해결책**: **청킹(Chunking)** - 문서를 작은 조각으로 나누기
+**Solution**: **Chunking** - splitting documents into smaller pieces
 
-## 청킹이란?
+## What is Chunking?
 
 ```mermaid
 flowchart LR
-    D["긴 문서<br/>(10,000 단어)"] --> C[Chunking]
-    C --> C1["청크 1<br/>(500 단어)"]
-    C --> C2["청크 2<br/>(500 단어)"]
-    C --> C3["청크 3<br/>(500 단어)"]
+    D["Long document<br/>(10,000 words)"] --> C[Chunking]
+    C --> C1["Chunk 1<br/>(500 words)"]
+    C --> C2["Chunk 2<br/>(500 words)"]
+    C --> C3["Chunk 3<br/>(500 words)"]
     C --> C4["..."]
-    
-    C1 --> E1[임베딩 1]
-    C2 --> E2[임베딩 2]
-    C3 --> E3[임베딩 3]
+
+    C1 --> E1[Embedding 1]
+    C2 --> E2[Embedding 2]
+    C3 --> E3[Embedding 3]
 ```
 
-**핵심**:
-- 긴 문서 → 여러 청크
-- 각 청크 → 개별 임베딩
-- 검색 시 → 가장 관련 있는 청크 반환
+**Key points**:
+- Long document -> multiple chunks
+- Each chunk -> individual embedding
+- During search -> return the most relevant chunks
 
-### 왜 필요한가?
+### Why is it Necessary?
 
-**1. 토큰 제한**
-- Voyage AI: 32,000 토큰
-- OpenAI: 8,191 토큰
-- 긴 문서는 제한 초과
+**1. Token Limits**
+- Voyage AI: 32,000 tokens
+- OpenAI: 8,191 tokens
+- Long documents exceed limits
 
-**2. 검색 정확도**
-- 짧은 청크가 더 정확한 결과
-- "환불 방법"검색 시 → 환불 섹션만 반환
+**2. Search Accuracy**
+- Shorter chunks yield more accurate results
+- Searching "refund method" -> returns only the refund section
 
-**3. 컨텍스트 보존**
-- 관련 정보를 함께 유지
-- 문장이 끊기지 않게 분할
+**3. Context Preservation**
+- Keep related information together
+- Split without breaking sentences
 
-## Sonamu의 Chunking 클래스
+## Sonamu's Chunking Class
 
 ```typescript
 import { Chunking } from "sonamu/vector";
 
 const chunking = new Chunking({
-  chunkSize: 500,        // 청크 크기 (문자)
-  chunkOverlap: 50,      // 중복 크기
-  minChunkSize: 50,      // 최소 크기
-  skipThreshold: 200,    // 짧으면 분할 스킵
-  separators: ['\n\n', '\n', '. '],  // 구분자
+  chunkSize: 500,        // chunk size (characters)
+  chunkOverlap: 50,      // overlap size
+  minChunkSize: 50,      // minimum size
+  skipThreshold: 200,    // skip splitting if short
+  separators: ['\n\n', '\n', '. '],  // separators
 });
 
-const chunks = chunking.chunk("긴 텍스트...");
+const chunks = chunking.chunk("Long text...");
 ```
 
-## Sonamu Model에서 사용하기
+## Using in Sonamu Model
 
-### 긴 문서 업로드 + 청킹
+### Long Document Upload + Chunking
 
 ```typescript
 class DocumentModelClass extends BaseModel {
@@ -91,32 +91,32 @@ class DocumentModelClass extends BaseModel {
   async uploadLongDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());
-    
-    // 1. 청킹
+
+    // 1. Chunking
     const chunking = new Chunking({
       chunkSize: 500,
       chunkOverlap: 50,
     });
-    
+
     const chunks = chunking.chunk(content);
-    
-    // 2. 각 청크별 임베딩
+
+    // 2. Embedding per chunk
     const embeddings = await Embedding.embed(
       chunks.map(c => c.text),
       'voyage',
       'document'
     );
-    
-    // 3. 부모 문서 생성
+
+    // 3. Create parent document
     const parent = await this.saveOne({
       title: file.filename,
       content,
       chunk_count: chunks.length,
     });
-    
-    // 4. 청크별 저장
+
+    // 4. Save each chunk
     const savedChunks = await Promise.all(
-      chunks.map((chunk, i) => 
+      chunks.map((chunk, i) =>
         DocumentChunkModel.saveOne({
           parent_id: parent.id,
           chunk_index: chunk.index,
@@ -127,7 +127,7 @@ class DocumentModelClass extends BaseModel {
         })
       )
     );
-    
+
     return {
       parentId: parent.id,
       chunkCount: chunks.length,
@@ -136,10 +136,10 @@ class DocumentModelClass extends BaseModel {
 }
 ```
 
-### 테이블 구조
+### Table Structure
 
 ```sql
--- 부모 문서
+-- Parent documents
 CREATE TABLE documents (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
@@ -148,7 +148,7 @@ CREATE TABLE documents (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 청크 (임베딩 저장)
+-- Chunks (store embeddings)
 CREATE TABLE document_chunks (
   id SERIAL PRIMARY KEY,
   parent_id INTEGER REFERENCES documents(id),
@@ -164,26 +164,26 @@ CREATE INDEX ON document_chunks (parent_id);
 CREATE INDEX ON document_chunks USING hnsw (embedding vector_cosine_ops);
 ```
 
-## 설정 옵션 이해하기
+## Understanding Configuration Options
 
-### chunkSize: 청크 크기
+### chunkSize: Chunk Size
 
 ```typescript
 const chunking = new Chunking({
-  chunkSize: 500,  // 500자
+  chunkSize: 500,  // 500 characters
 });
 ```
 
-**권장 값**:
-- 짧은 검색: 200-300자
-- 일반적: 400-600자
-- 긴 컨텍스트: 800-1000자
+**Recommended values**:
+- Short search: 200-300 characters
+- General: 400-600 characters
+- Long context: 800-1000 characters
 
-**고려 사항**:
-- 한국어: ~1자 = ~1토큰
-- 영어: ~1자 = ~0.7토큰
+**Considerations**:
+- Korean: ~1 character = ~1 token
+- English: ~1 character = ~0.7 tokens
 
-### chunkOverlap: 중복 크기
+### chunkOverlap: Overlap Size
 
 ```typescript
 const chunking = new Chunking({
@@ -192,52 +192,52 @@ const chunking = new Chunking({
 });
 ```
 
-**역할**: 청크 경계에서 문맥 유지
+**Purpose**: Maintain context at chunk boundaries
 
 ```
-청크 1: [..............................]
-청크 2:                    [...........]
-                           ↑ 중복 영역
+Chunk 1: [..............................]
+Chunk 2:                    [...........]
+                           ^ overlap area
 ```
 
-**권장**: chunkSize의 10-20%
+**Recommended**: 10-20% of chunkSize
 
-### skipThreshold: 분할 스킵
+### skipThreshold: Skip Splitting
 
 ```typescript
 const chunking = new Chunking({
   skipThreshold: 200,
 });
 
-// 200자 이하는 분할 안 함
-const text = "짧은 글";  // 50자
-const chunks = chunking.chunk(text);  // [전체 텍스트 1개]
+// Don't split if 200 characters or less
+const text = "Short text";  // 50 characters
+const chunks = chunking.chunk(text);  // [entire text as 1 chunk]
 ```
 
-**효율**: 짧은 문서는 청킹 불필요
+**Efficiency**: No chunking needed for short documents
 
-### separators: 구분자 우선순위
+### separators: Separator Priority
 
 ```typescript
 const chunking = new Chunking({
   separators: [
-    '\n\n',  // 1순위: 단락
-    '\n',    // 2순위: 줄
-    '. ',    // 3순위: 문장
-    ', ',    // 4순위: 쉼표
+    '\n\n',  // 1st priority: paragraph
+    '\n',    // 2nd priority: line
+    '. ',    // 3rd priority: sentence
+    ', ',    // 4th priority: comma
   ],
 });
 ```
 
-**동작**: 왼쪽부터 시도
+**Behavior**: Tries from left to right
 
-## 실전 시나리오
+## Practical Scenarios
 
-### 시나리오: 기술 문서 지식 베이스
+### Scenario: Technical Documentation Knowledge Base
 
-Sonamu로 개발 문서 검색 시스템을 만들고 있습니다.
+You're building a development documentation search system with Sonamu.
 
-**1단계: 조건부 청킹**
+**Step 1: Conditional Chunking**
 
 ```typescript
 @upload({ mode: 'single' })
@@ -245,13 +245,13 @@ Sonamu로 개발 문서 검색 시스템을 만들고 있습니다.
 async uploadTechDoc() {
   const { file } = Sonamu.getUploadContext();
   const content = await file.toBuffer().then(b => b.toString());
-  
+
   const chunking = new Chunking({
     chunkSize: 500,
     skipThreshold: 300,
   });
-  
-  // 짧으면 그대로, 길면 청킹
+
+  // Keep as-is if short, chunk if long
   if (chunking.needsChunking(content)) {
     return await this.uploadWithChunking(file.filename, content);
   } else {
@@ -265,7 +265,7 @@ private async uploadSimple(title: string, content: string) {
     'voyage',
     'document'
   );
-  
+
   return await this.saveOne({
     title,
     content,
@@ -274,23 +274,23 @@ private async uploadSimple(title: string, content: string) {
 }
 
 private async uploadWithChunking(title: string, content: string) {
-  // 위의 예제와 동일
+  // Same as the example above
   const chunking = new Chunking({ chunkSize: 500 });
   const chunks = chunking.chunk(content);
   // ...
 }
 ```
 
-**2단계: 검색 (청크 기반)**
+**Step 2: Search (Chunk-based)**
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async searchDocs(query: string, limit: number = 5) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
-  // 청크 검색
+
+  // Search chunks
   const chunks = await this.getPuri().raw(`
-    SELECT 
+    SELECT
       c.id, c.parent_id, c.content, c.chunk_index,
       d.title,
       1 - (c.embedding <=> ?) AS similarity
@@ -304,13 +304,13 @@ async searchDocs(query: string, limit: number = 5) {
     JSON.stringify(embedding.embedding),
     limit * 2,
   ]);
-  
-  // 부모 문서별 그룹화
+
+  // Group by parent document
   const grouped = new Map();
-  
+
   for (const chunk of chunks.rows) {
     const parentId = chunk.parent_id;
-    
+
     if (!grouped.has(parentId)) {
       grouped.set(parentId, {
         parentId,
@@ -319,30 +319,30 @@ async searchDocs(query: string, limit: number = 5) {
         relevantChunks: [],
       });
     }
-    
+
     grouped.get(parentId).relevantChunks.push({
       content: chunk.content,
       chunkIndex: chunk.chunk_index,
       similarity: chunk.similarity,
     });
   }
-  
+
   return Array.from(grouped.values())
     .sort((a, b) => b.bestSimilarity - a.bestSimilarity)
     .slice(0, limit);
 }
 ```
 
-**응답 예시**:
+**Response example**:
 ```json
 [
   {
     "parentId": 123,
-    "title": "TypeScript 시작하기",
+    "title": "Getting Started with TypeScript",
     "bestSimilarity": 0.89,
     "relevantChunks": [
       {
-        "content": "TypeScript는 타입이 있는 JavaScript입니다...",
+        "content": "TypeScript is JavaScript with types...",
         "chunkIndex": 2,
         "similarity": 0.89
       }
@@ -351,27 +351,27 @@ async searchDocs(query: string, limit: number = 5) {
 ]
 ```
 
-## 마크다운 문서에 최적화
+## Optimizing for Markdown Documents
 
 ```typescript
 const markdownChunking = new Chunking({
   chunkSize: 600,
   separators: [
-    '\n## ',   // 헤딩 2
-    '\n### ',  // 헤딩 3
-    '\n\n',    // 단락
-    '\n',      // 줄
-    '. ',      // 문장
+    '\n## ',   // Heading 2
+    '\n### ',  // Heading 3
+    '\n\n',    // Paragraph
+    '\n',      // Line
+    '. ',      // Sentence
   ],
 });
 
 const markdown = `
 # Sonamu
 
-## 개요
-Sonamu는 TypeScript 프레임워크입니다.
+## Overview
+Sonamu is a TypeScript framework.
 
-## 설치
+## Installation
 \`\`\`bash
 pnpm add sonamu
 \`\`\`
@@ -380,93 +380,93 @@ pnpm add sonamu
 const chunks = markdownChunking.chunk(markdown);
 ```
 
-**효과**: 헤딩 단위로 분할 → 문맥 보존
+**Effect**: Splits by headings -> preserves context
 
-## 청킹 vs 전체 문서
+## Chunking vs Full Document
 
-### 언제 청킹이 필요한가?
+### When is Chunking Necessary?
 
-| 문서 타입 | 평균 길이 | 청킹 필요 | 이유 |
-|-----------|----------|----------|------|
-| FAQ 항목 | < 200자 | ❌ | 짧음 |
-| 블로그 글 | 1,000자 | 선택 | 중간 |
-| 기술 문서 | 5,000자 | ✅ | 김 |
-| 매뉴얼 | 20,000자 | ✅ 필수 | 매우 김 |
-| 채팅 메시지 | < 100자 | ❌ | 짧음 |
+| Document Type | Average Length | Chunking Needed | Reason |
+|---------------|----------------|-----------------|--------|
+| FAQ items | < 200 chars | No | Short |
+| Blog posts | 1,000 chars | Optional | Medium |
+| Technical docs | 5,000 chars | Yes | Long |
+| Manuals | 20,000 chars | Required | Very long |
+| Chat messages | < 100 chars | No | Short |
 
-### Sonamu에서의 판단
+### Decision in Sonamu
 
 ```typescript
 const chunking = new Chunking({
-  skipThreshold: 300,  // 300자 이하는 스킵
+  skipThreshold: 300,  // Skip if 300 chars or less
 });
 
 if (chunking.needsChunking(content)) {
-  // 청킹 처리
+  // Process with chunking
 } else {
-  // 그대로 처리
+  // Process as-is
 }
 ```
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Sonamu에서 청킹 사용 시 주의사항**:
+**Cautions when using chunking in Sonamu**:
 
-1. **chunkSize 너무 작지 않게**
+1. **Don't make chunkSize too small**
    ```typescript
-   // ❌ 너무 작음
+   // Too small
    chunkSize: 50
-   
-   // ✅ 적절
+
+   // Appropriate
    chunkSize: 400-600
    ```
 
-2. **chunkOverlap 적절히**
+2. **Keep chunkOverlap reasonable**
    ```typescript
-   // 권장: 10-20%
+   // Recommended: 10-20%
    chunkSize: 500,
    chunkOverlap: 50,
    ```
 
-3. **separators 순서 중요**
+3. **Separator order matters**
    ```typescript
-   // ✅ 큰 단위부터
+   // Correct: larger units first
    separators: ['\n\n', '\n', '. ']
-   
-   // ❌ 작은 단위부터
+
+   // Wrong: smaller units first
    separators: [' ', '.', '\n']
    ```
 
-4. **부모-자식 관계 유지**
+4. **Maintain parent-child relationship**
    ```sql
-   -- parent_id로 연결
+   -- Connect with parent_id
    CREATE TABLE document_chunks (
      parent_id INTEGER REFERENCES documents(id)
    );
    ```
 
-5. **검색 시 중복 제거**
+5. **Remove duplicates when searching**
    ```typescript
-   // 같은 문서의 여러 청크 → 하나로 그룹화
+   // Multiple chunks from same document -> group into one
    const grouped = new Map();
    ```
 
-6. **offset 저장** (선택)
+6. **Store offsets** (optional)
    ```typescript
-   // 원본 위치 추적
+   // Track original position
    start_offset: chunk.startOffset,
    end_offset: chunk.endOffset,
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="벡터 검색" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
-    청크 기반 검색 API 구현
+  <Card title="Vector Search" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
+    Implementing chunk-based search API
   </Card>
-  <Card title="임베딩" icon="brain" href="/advanced-features/vector-search/embeddings">
-    배치 임베딩 생성하기
+  <Card title="Embeddings" icon="brain" href="/advanced-features/vector-search/embeddings">
+    Generating batch embeddings
   </Card>
 </CardGroup>

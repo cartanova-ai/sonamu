@@ -1,13 +1,13 @@
 ---
-title: "SSR에서 사용하기"
-description: "SSR 페이지에 Cache-Control 적용하기"
+title: "Using in SSR"
+description: "Applying Cache-Control to SSR pages"
 ---
 
-Sonamu의 SSR 라우트에 `cacheControl` 옵션을 추가하여 **SSR 페이지 응답에 Cache-Control 헤더**를 설정할 수 있습니다.
+You can set **Cache-Control headers on SSR page responses** by adding the `cacheControl` option to Sonamu's SSR routes.
 
-## 기본 사용법
+## Basic Usage
 
-### registerSSR에 추가
+### Adding to registerSSR
 
 ```typescript
 import { registerSSR, CachePresets } from "sonamu";
@@ -16,11 +16,11 @@ import ProductList from "./pages/ProductList";
 registerSSR({
   path: '/products',
   Component: ProductList,
-  cacheControl: CachePresets.ssr,  // SSR 최적화
+  cacheControl: CachePresets.ssr,  // SSR optimized
 });
 ```
 
-**결과**:
+**Result**:
 ```http
 HTTP/1.1 200 OK
 Cache-Control: public, max-age=10, stale-while-revalidate=30
@@ -30,11 +30,11 @@ Content-Type: text/html
 <html>...</html>
 ```
 
-## SSR 캐싱 전략
+## SSR Caching Strategy
 
-### SSR 프리셋
+### SSR Preset
 
-**가장 권장하는 방법**은 `CachePresets.ssr`을 사용하는 것입니다.
+**The most recommended approach** is using `CachePresets.ssr`.
 
 ```typescript
 registerSSR({
@@ -48,12 +48,12 @@ registerSSR({
 ```typescript
 {
   visibility: 'public',
-  maxAge: 10,  // 10초 동안 Fresh
-  staleWhileRevalidate: 30  // 이후 30초 동안 Stale 사용
+  maxAge: 10,  // Fresh for 10 seconds
+  staleWhileRevalidate: 30  // Use stale for the next 30 seconds
 }
 ```
 
-### 작동 방식
+### How It Works
 
 ```mermaid
 sequenceDiagram
@@ -61,161 +61,161 @@ sequenceDiagram
     participant CDN
     participant Server
 
-    Note over CDN: Fresh (0~10초)
+    Note over CDN: Fresh (0-10 seconds)
     User->>CDN: GET /products/1
-    CDN-->>User: HTML 반환 (즉시)
+    CDN-->>User: Return HTML (instant)
 
-    Note over CDN: Stale (10~40초)
+    Note over CDN: Stale (10-40 seconds)
     User->>CDN: GET /products/1
-    CDN-->>User: Stale HTML 반환 (즉시)
-    CDN->>Server: 백그라운드 갱신
-    Server-->>CDN: 새 HTML
-    CDN->>CDN: 캐시 업데이트
+    CDN-->>User: Return stale HTML (instant)
+    CDN->>Server: Background update
+    Server-->>CDN: New HTML
+    CDN->>CDN: Update cache
 
-    Note over CDN: Expired (40초 이후)
+    Note over CDN: Expired (after 40 seconds)
     User->>CDN: GET /products/1
-    CDN->>Server: 서버 요청
-    Server-->>CDN: 새 HTML
-    CDN-->>User: HTML 반환
+    CDN->>Server: Server request
+    Server-->>CDN: New HTML
+    CDN-->>User: Return HTML
 ```
 
-**장점**:
-- 대부분의 요청이 즉시 응답 (CDN 캐시)
-- Stale 기간에도 빠른 응답
-- 백그라운드 갱신으로 항상 최신 상태 유지
+**Benefits**:
+- Most requests get instant response (CDN cache)
+- Fast response even during stale period
+- Background updates keep content fresh
 
-## 페이지 유형별 전략
+## Strategies by Page Type
 
 <Tabs>
-  <Tab title="동적 페이지" icon="bolt">
-    **자주 변경되는 콘텐츠**
-    
+  <Tab title="Dynamic Pages" icon="bolt">
+    **Frequently changing content**
+
     ```typescript
-    // 게시글 목록
+    // Post list
     registerSSR({
       path: '/posts',
       Component: PostList,
-      cacheControl: CachePresets.shortLived,  // 1분
+      cacheControl: CachePresets.shortLived,  // 1 minute
     });
-    
-    // 실시간 대시보드
+
+    // Real-time dashboard
     registerSSR({
       path: '/dashboard',
       Component: Dashboard,
-      cacheControl: CachePresets.noCache,  // 매번 재검증
+      cacheControl: CachePresets.noCache,  // Revalidate every time
     });
     ```
   </Tab>
-  
-  <Tab title="준동적 페이지" icon="clock">
-    **가끔 변경되는 콘텐츠**
-    
+
+  <Tab title="Semi-dynamic Pages" icon="clock">
+    **Occasionally changing content**
+
     ```typescript
-    // 상품 상세
+    // Product detail
     registerSSR({
       path: '/products/:id',
       Component: ProductDetail,
-      cacheControl: CachePresets.ssr,  // 10초 + SWR 30초
+      cacheControl: CachePresets.ssr,  // 10 seconds + SWR 30 seconds
     });
-    
-    // 블로그 글
+
+    // Blog post
     registerSSR({
       path: '/blog/:slug',
       Component: BlogPost,
       cacheControl: {
         visibility: 'public',
-        maxAge: 300,  // 5분
-        staleWhileRevalidate: 900,  // 15분
+        maxAge: 300,  // 5 minutes
+        staleWhileRevalidate: 900,  // 15 minutes
       }
     });
     ```
   </Tab>
-  
-  <Tab title="정적 페이지" icon="file">
-    **거의 변경되지 않는 콘텐츠**
-    
+
+  <Tab title="Static Pages" icon="file">
+    **Rarely changing content**
+
     ```typescript
-    // 회사 소개
+    // About page
     registerSSR({
       path: '/about',
       Component: About,
-      cacheControl: CachePresets.longLived,  // 1시간
+      cacheControl: CachePresets.longLived,  // 1 hour
     });
-    
-    // 이용 약관
+
+    // Terms of service
     registerSSR({
       path: '/terms',
       Component: Terms,
       cacheControl: {
         visibility: 'public',
-        maxAge: 86400,  // 1일
+        maxAge: 86400,  // 1 day
       }
     });
     ```
   </Tab>
-  
-  <Tab title="개인화 페이지" icon="user">
-    **사용자별로 다른 콘텐츠**
-    
+
+  <Tab title="Personalized Pages" icon="user">
+    **Different content per user**
+
     ```typescript
-    // 마이페이지
+    // My profile page
     registerSSR({
       path: '/my/profile',
       Component: MyProfile,
-      cacheControl: CachePresets.private,  // 브라우저만 캐싱
+      cacheControl: CachePresets.private,  // Browser only caching
     });
-    
-    // 장바구니
+
+    // Shopping cart
     registerSSR({
       path: '/cart',
       Component: Cart,
-      cacheControl: CachePresets.noStore,  // 캐시 금지
+      cacheControl: CachePresets.noStore,  // No caching
     });
     ```
   </Tab>
 </Tabs>
 
-## 실전 예제
+## Practical Examples
 
-### 1. 전자상거래 사이트
+### 1. E-commerce Site
 
 ```typescript
-// 홈페이지: SSR 최적화
+// Homepage: SSR optimized
 registerSSR({
   path: '/',
   Component: HomePage,
-  cacheControl: CachePresets.ssr,  // 10초 + SWR 30초
+  cacheControl: CachePresets.ssr,  // 10 seconds + SWR 30 seconds
 });
 
-// 상품 목록: 짧은 캐시
+// Product list: Short cache
 registerSSR({
   path: '/products',
   Component: ProductList,
-  cacheControl: CachePresets.shortLived,  // 1분
+  cacheControl: CachePresets.shortLived,  // 1 minute
 });
 
-// 상품 상세: SSR 최적화
+// Product detail: SSR optimized
 registerSSR({
   path: '/products/:id',
   Component: ProductDetail,
   cacheControl: CachePresets.ssr,
 });
 
-// 카테고리: 긴 캐시
+// Category: Long cache
 registerSSR({
   path: '/categories/:id',
   Component: CategoryPage,
-  cacheControl: CachePresets.mediumLived,  // 5분
+  cacheControl: CachePresets.mediumLived,  // 5 minutes
 });
 
-// 장바구니: 개인화
+// Shopping cart: Personalized
 registerSSR({
   path: '/cart',
   Component: Cart,
   cacheControl: CachePresets.private,
 });
 
-// 주문 완료: 캐시 금지
+// Order complete: No caching
 registerSSR({
   path: '/orders/:id/complete',
   Component: OrderComplete,
@@ -223,93 +223,93 @@ registerSSR({
 });
 ```
 
-### 2. 블로그
+### 2. Blog
 
 ```typescript
-// 홈페이지
+// Homepage
 registerSSR({
   path: '/',
   Component: HomePage,
   cacheControl: {
     visibility: 'public',
-    maxAge: 300,  // 5분
-    staleWhileRevalidate: 900,  // 15분
+    maxAge: 300,  // 5 minutes
+    staleWhileRevalidate: 900,  // 15 minutes
   }
 });
 
-// 카테고리별 목록
+// Category posts
 registerSSR({
   path: '/category/:slug',
   Component: CategoryPosts,
-  cacheControl: CachePresets.mediumLived,  // 5분
+  cacheControl: CachePresets.mediumLived,  // 5 minutes
 });
 
-// 게시글 상세
+// Post detail
 registerSSR({
   path: '/posts/:slug',
   Component: PostDetail,
   cacheControl: {
     visibility: 'public',
-    maxAge: 600,  // 10분
-    staleWhileRevalidate: 1800,  // 30분
+    maxAge: 600,  // 10 minutes
+    staleWhileRevalidate: 1800,  // 30 minutes
   }
 });
 
-// 검색 결과
+// Search results
 registerSSR({
   path: '/search',
   Component: SearchResults,
-  cacheControl: CachePresets.shortLived,  // 1분
+  cacheControl: CachePresets.shortLived,  // 1 minute
 });
 ```
 
-### 3. SaaS 대시보드
+### 3. SaaS Dashboard
 
 ```typescript
-// 공개 랜딩 페이지
+// Public landing page
 registerSSR({
   path: '/',
   Component: Landing,
-  cacheControl: CachePresets.longLived,  // 1시간
+  cacheControl: CachePresets.longLived,  // 1 hour
 });
 
-// 로그인 후 대시보드
+// Dashboard after login
 registerSSR({
   path: '/dashboard',
   Component: Dashboard,
-  cacheControl: CachePresets.private,  // 브라우저만
+  cacheControl: CachePresets.private,  // Browser only
 });
 
-// 사용자 설정
+// User settings
 registerSSR({
   path: '/settings',
   Component: Settings,
-  cacheControl: CachePresets.noStore,  // 캐시 금지
+  cacheControl: CachePresets.noStore,  // No caching
 });
 ```
 
 ## CSR Fallback
 
-SSR 라우트에 매칭되지 않는 모든 요청은 CSR fallback으로 처리됩니다.
+All requests that don't match SSR routes are handled by CSR fallback.
 
 ```typescript
-// CSR fallback 라우트 (catch-all)
+// CSR fallback route (catch-all)
 registerSSR({
   path: '/*',
   Component: App,
-  cacheControl: CachePresets.shortLived,  // 1분
+  cacheControl: CachePresets.shortLived,  // 1 minute
 });
 ```
 
-**작동 방식**:
+**How it works**:
 ```
-/products/1 → SSR 라우트 매칭 → 해당 cacheControl 사용
-/random-page → SSR 라우트 미매칭 → fallback cacheControl 사용
+/products/1 → SSR route matched → Uses that cacheControl
+/random-page → SSR route not matched → Uses fallback cacheControl
 ```
 
-## 전역 핸들러
+## Global Handler
 
-모든 SSR 페이지에 일괄적으로 Cache-Control을 적용할 수 있습니다.
+You can apply Cache-Control to all SSR pages at once.
 
 ```typescript
 // sonamu.config.ts
@@ -319,25 +319,25 @@ export const config: SonamuConfig = {
   server: {
     apiConfig: {
       cacheControlHandler: (req) => {
-        // SSR 요청만 처리
+        // Only handle SSR requests
         if (req.type !== 'ssr') {
           return undefined;
         }
-        
-        // 경로별 처리
+
+        // Handle by path
         if (req.path === '/') {
-          return CachePresets.ssr;  // 홈페이지
+          return CachePresets.ssr;  // Homepage
         }
-        
+
         if (req.path.startsWith('/admin/')) {
-          return CachePresets.noStore;  // 관리 페이지
+          return CachePresets.noStore;  // Admin pages
         }
-        
+
         if (req.path.startsWith('/my/')) {
-          return CachePresets.private;  // 개인 페이지
+          return CachePresets.private;  // Personal pages
         }
-        
-        // 기본값: SSR 프리셋
+
+        // Default: SSR preset
         return CachePresets.ssr;
       }
     }
@@ -345,47 +345,47 @@ export const config: SonamuConfig = {
 };
 ```
 
-### SSRRoute 객체 활용
+### Using SSRRoute Object
 
 ```typescript
 cacheControlHandler: (req) => {
   if (req.type !== 'ssr') return undefined;
-  
-  // SSRRoute 정보 활용
+
+  // Use SSRRoute information
   if (req.route) {
     const { path } = req.route;
-    
-    // 동적 라우트 체크
+
+    // Check for dynamic routes
     if (path.includes(':')) {
-      return CachePresets.ssr;  // 상세 페이지
+      return CachePresets.ssr;  // Detail pages
     }
-    
-    // 정적 라우트
-    return CachePresets.mediumLived;  // 목록 페이지
+
+    // Static routes
+    return CachePresets.mediumLived;  // List pages
   }
-  
+
   return CachePresets.shortLived;
 }
 ```
 
-## 우선순위
+## Priority Order
 
-SSR Cache-Control 설정은 다음 순서로 적용됩니다:
+SSR Cache-Control settings are applied in the following order:
 
 ```mermaid
 graph LR
-    A[registerSSR의 cacheControl] -->|1순위| D[적용]
-    B[cacheControlHandler] -->|2순위| D
-    C[기본값: 없음] -->|3순위| D
+    A[registerSSR's cacheControl] -->|1st priority| D[Applied]
+    B[cacheControlHandler] -->|2nd priority| D
+    C[Default: none] -->|3rd priority| D
 ```
 
-1. **registerSSR의 cacheControl** (가장 우선)
-2. **cacheControlHandler 반환값**
-3. **기본값** (Cache-Control 헤더 없음)
+1. **registerSSR's cacheControl** (highest priority)
+2. **cacheControlHandler return value**
+3. **Default** (no Cache-Control header)
 
-## Vary 헤더
+## Vary Header
 
-다국어 SSR 페이지에서 Vary 헤더를 사용합니다.
+Use Vary header for multi-language SSR pages.
 
 ```typescript
 registerSSR({
@@ -394,22 +394,22 @@ registerSSR({
   cacheControl: {
     visibility: 'public',
     maxAge: 300,
-    vary: ['Accept-Language'],  // 언어별 캐시 분리
+    vary: ['Accept-Language'],  // Separate cache by language
   }
 });
 ```
 
-**결과**:
+**Result**:
 ```
-GET /products/1 (Accept-Language: ko) → 한국어 HTML 캐싱
-GET /products/1 (Accept-Language: en) → 영어 HTML 캐싱
+GET /products/1 (Accept-Language: ko) → Korean HTML cached
+GET /products/1 (Accept-Language: en) → English HTML cached
 ```
 
-## CDN 최적화
+## CDN Optimization
 
 ### CloudFront + Stale-While-Revalidate
 
-AWS CloudFront는 `stale-while-revalidate`를 지원합니다.
+AWS CloudFront supports `stale-while-revalidate`.
 
 ```typescript
 registerSSR({
@@ -417,43 +417,43 @@ registerSSR({
   Component: ProductDetail,
   cacheControl: {
     visibility: 'public',
-    maxAge: 60,  // 1분
-    sMaxAge: 300,  // CDN: 5분
-    staleWhileRevalidate: 600,  // 10분간 Stale 사용
+    maxAge: 60,  // 1 minute
+    sMaxAge: 300,  // CDN: 5 minutes
+    staleWhileRevalidate: 600,  // Use stale for 10 minutes
   }
 });
 ```
 
-**효과**:
-- 브라우저: 1분마다 CDN 요청
-- CDN: 5분마다 서버 요청
-- Stale: 최대 15분(5분 + 10분) 동안 빠른 응답
+**Effect**:
+- Browser: Requests CDN every minute
+- CDN: Requests server every 5 minutes
+- Stale: Fast response for up to 15 minutes (5 min + 10 min)
 
-### 정적 자산과 조합
+### Combining with Static Assets
 
 ```typescript
-// SSR 페이지
+// SSR page
 registerSSR({
   path: '/products/:id',
-  cacheControl: CachePresets.ssr,  // 10초
+  cacheControl: CachePresets.ssr,  // 10 seconds
 });
 
-// 정적 파일 (별도 설정)
+// Static files (separate configuration)
 server.get('/assets/:filename', (req, reply) => {
-  if (req.params.filename.includes('-')) {  // 해시 포함
-    applyCacheHeaders(reply, CachePresets.immutable);  // 1년
+  if (req.params.filename.includes('-')) {  // Contains hash
+    applyCacheHeaders(reply, CachePresets.immutable);  // 1 year
   }
   return reply.sendFile(req.params.filename);
 });
 ```
 
-**결과**:
-- HTML: 10초마다 갱신 (최신 콘텐츠)
-- JS/CSS: 1년 캐시 (빠른 로딩)
+**Result**:
+- HTML: Updates every 10 seconds (fresh content)
+- JS/CSS: 1 year cache (fast loading)
 
-## 프리로딩과 캐싱
+## Preloading and Caching
 
-SSR의 `preload` 기능과 Cache-Control을 조합합니다.
+Combine SSR's `preload` feature with Cache-Control.
 
 ```typescript
 registerSSR({
@@ -471,24 +471,24 @@ registerSSR({
 });
 ```
 
-**효과**:
-1. **SSR 시**: 서버에서 데이터 프리로드 → HTML 생성 → 캐싱
-2. **캐시 히트**: CDN에서 즉시 HTML 반환 (빠름)
-3. **Hydration**: 클라이언트에서 프리로드된 데이터 사용
+**Effect**:
+1. **During SSR**: Preload data on server → Generate HTML → Cache
+2. **Cache hit**: CDN returns HTML instantly (fast)
+3. **Hydration**: Client uses preloaded data
 
-## 개인화 페이지 처리
+## Handling Personalized Pages
 
-### 인증 필요한 페이지
+### Pages Requiring Authentication
 
 ```typescript
-// 로그인 필요한 페이지
+// Pages requiring login
 registerSSR({
   path: '/my/profile',
   Component: MyProfile,
-  cacheControl: CachePresets.private,  // 브라우저만 캐싱
+  cacheControl: CachePresets.private,  // Browser only caching
 });
 
-// 또는 캐시 금지
+// Or no caching
 registerSSR({
   path: '/my/orders',
   Component: MyOrders,
@@ -496,72 +496,72 @@ registerSSR({
 });
 ```
 
-### 조건부 SSR
+### Conditional SSR
 
-사용자 상태에 따라 다른 페이지를 렌더링하는 경우:
+When rendering different pages based on user state:
 
 ```typescript
 registerSSR({
   path: '/dashboard',
   Component: Dashboard,
   cacheControl: {
-    visibility: 'private',  // private 필수
-    noCache: true,  // 매번 재검증
-    vary: ['Cookie'],  // 쿠키별 캐시 분리
+    visibility: 'private',  // private required
+    noCache: true,  // Revalidate every time
+    vary: ['Cookie'],  // Separate cache by cookie
   }
 });
 ```
 
-## 주의사항
+## Precautions
 
 <Warning>
-**SSR Cache-Control 사용 시 주의사항**:
+**Precautions when using SSR Cache-Control**:
 
-1. **개인화 페이지는 private 또는 no-store**: CDN 캐싱 방지
+1. **Personalized pages must be private or no-store**: Prevent CDN caching
    ```typescript
-   // ❌ 위험: 개인 페이지가 CDN에 캐싱
+   // ❌ Dangerous: Personal page cached on CDN
    registerSSR({
      path: '/my/profile',
      cacheControl: { visibility: 'public', maxAge: 60 }
    })
-   
-   // ✅ 안전
+
+   // ✅ Safe
    registerSSR({
      path: '/my/profile',
      cacheControl: CachePresets.private
    })
    ```
 
-2. **동적 콘텐츠는 짧은 TTL**: 오래된 HTML 방지
+2. **Short TTL for dynamic content**: Prevent stale HTML
    ```typescript
-   // ❌ 실시간 대시보드인데 1시간 캐싱
+   // ❌ Real-time dashboard but cached for 1 hour
    registerSSR({
      path: '/dashboard',
      cacheControl: CachePresets.longLived
    })
-   
-   // ✅ 짧은 TTL 또는 no-cache
+
+   // ✅ Short TTL or no-cache
    registerSSR({
      path: '/dashboard',
      cacheControl: CachePresets.shortLived
    })
    ```
 
-3. **인증 쿠키 고려**: Vary 헤더로 분리
+3. **Consider authentication cookies**: Separate with Vary header
    ```typescript
    registerSSR({
      path: '/dashboard',
      cacheControl: {
        visibility: 'private',
        maxAge: 60,
-       vary: ['Cookie'],  // 쿠키별 캐시 분리
+       vary: ['Cookie'],  // Separate cache by cookie
      }
    })
    ```
 
-4. **CSR fallback 설정**: 매칭되지 않는 라우트 처리
+4. **Configure CSR fallback**: Handle unmatched routes
    ```typescript
-   // 마지막에 catch-all 라우트 추가
+   // Add catch-all route at the end
    registerSSR({
      path: '/*',
      Component: App,
@@ -570,22 +570,22 @@ registerSSR({
    ```
 </Warning>
 
-## 디버깅
+## Debugging
 
-### Cache-Control 헤더 확인
+### Checking Cache-Control Header
 
-브라우저 개발자 도구에서 확인:
+Check in browser developer tools:
 
 ```
-Network 탭 → 요청 선택 → Headers 탭
+Network tab → Select request → Headers tab
 Response Headers:
   Cache-Control: public, max-age=10, stale-while-revalidate=30
   Vary: Accept-Language
 ```
 
-### CDN 캐시 상태
+### CDN Cache Status
 
-CDN별로 캐시 상태 헤더를 제공합니다:
+CDNs provide cache status headers:
 
 **CloudFront**:
 ```
@@ -599,16 +599,16 @@ CF-Cache-Status: HIT
 Age: 5
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache-Control이란?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
-    HTTP 캐싱 기본 개념
+  <Card title="What is Cache-Control?" icon="circle-question" href="/advanced-features/cache-control/what-is-cache-control">
+    HTTP caching fundamentals
   </Card>
   <Card title="Cache Presets" icon="list" href="/advanced-features/cache-control/cache-presets">
-    사전 정의된 캐시 설정
+    Predefined cache configurations
   </Card>
-  <Card title="API에서 사용하기" icon="code" href="/advanced-features/cache-control/using-in-apis">
-    @api 데코레이터에 적용
+  <Card title="Using in APIs" icon="code" href="/advanced-features/cache-control/using-in-apis">
+    Apply to @api decorators
   </Card>
 </CardGroup>

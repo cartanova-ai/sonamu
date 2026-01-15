@@ -1,38 +1,38 @@
 ---
-title: 'HMR 문제'
-description: 'HMR 문제 해결하기'
+title: 'HMR Issues'
+description: 'Troubleshooting HMR problems'
 ---
 
-Sonamu의 Hot Module Replacement (HMR) 시스템에서 발생하는 문제와 해결 방법을 다룹니다.
+This covers problems that occur in Sonamu's Hot Module Replacement (HMR) system and how to solve them.
 
-## HMR이 작동하지 않음
+## HMR Not Working
 
-### 증상
+### Symptoms
 
-파일을 수정해도 서버가 자동으로 재시작되지 않습니다.
+The server doesn't automatically restart when you modify files.
 
 ```bash
-# 파일 수정 후 아무 일도 일어나지 않음
+# Nothing happens after file modification
 ```
 
-### 원인
+### Causes
 
-1. HMR 경계(boundary)가 올바르게 설정되지 않음
-2. 파일 감시자가 파일 변경을 감지하지 못함
-3. 순환 의존성으로 인한 HMR 실패
+1. HMR boundary not properly configured
+2. File watcher not detecting file changes
+3. HMR failure due to circular dependencies
 
-### 해결 방법
+### Solutions
 
-#### 1. 개발 서버 재시작
+#### 1. Restart Development Server
 
 ```bash
-# Ctrl+C로 중단 후 재시작
+# Stop with Ctrl+C and restart
 pnpm dev
 ```
 
-#### 2. HMR 경계 확인
+#### 2. Check HMR Boundary
 
-HMR 경계는 `hmr-hook-register.ts`에서 설정됩니다:
+HMR boundary is configured in `hmr-hook-register.ts`:
 
 ```typescript
 // src/bin/hmr-hook-register.ts
@@ -41,83 +41,83 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
-    boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일
+    boundaries: [`./src/**/*.ts`],  // All .ts files
   });
 
   console.log("🔥 HMR-hook initialized");
 }
 ```
 
-HMR 경계를 변경하려면 이 파일을 수정하세요.
+Modify this file to change HMR boundaries.
 
-#### 3. 파일 감시자 한도 증가 (Linux/macOS)
+#### 3. Increase File Watcher Limit (Linux/macOS)
 
 ```bash
 # Linux
 echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
-# macOS - 일반적으로 필요 없음
+# macOS - Usually not needed
 ```
 
-#### 4. .gitignore 패턴 확인
+#### 4. Check .gitignore Patterns
 
-HMR이 `node_modules`나 `dist` 같은 디렉토리를 감시하면 성능 문제가 발생할 수 있습니다.
+Performance issues can occur if HMR watches directories like `node_modules` or `dist`.
 
-## 파일 변경 후 에러 발생
+## Error After File Change
 
-### 증상
+### Symptoms
 
-파일을 수정하면 HMR이 동작하지만 에러가 발생합니다:
+HMR works when you modify files but errors occur:
 
 ```bash
 Error: Cannot import module /src/application/user/user.model.ts
 ```
 
-### 원인
+### Causes
 
-1. 순환 의존성 (circular dependency)
-2. 동적 import가 올바르게 처리되지 않음
-3. ESM/CommonJS 혼용
+1. Circular dependency
+2. Dynamic import not properly handled
+3. ESM/CommonJS mixing
 
-### 해결 방법
+### Solutions
 
-#### 1. 순환 의존성 확인
+#### 1. Check Circular Dependencies
 
 ```bash
-# madge 설치
+# Install madge
 pnpm add -D madge
 
-# 순환 의존성 검사
+# Check circular dependencies
 pnpm madge --circular --extensions ts src/
 ```
 
-발견된 순환 의존성을 제거하세요:
+Remove discovered circular dependencies:
 
 ```typescript
-// ❌ 순환 의존성
+// ❌ Circular dependency
 // user.model.ts
 import { PostModel } from "../post/post.model";
 
 // post.model.ts
 import { UserModel } from "../user/user.model";
 
-// ✅ 해결: 타입만 import
+// ✅ Solution: Import types only
 // user.model.ts
 import type { PostModel } from "../post/post.model";
 
-// 또는 공통 타입 파일 생성
+// Or create common types file
 // types.ts
 export type { UserModel } from "./user/user.model";
 export type { PostModel } from "./post/post.model";
 ```
 
-#### 2. 동적 import 확인
+#### 2. Check Dynamic Imports
 
-HMR 경계 내에서는 동적 import를 피하세요:
+Avoid dynamic imports within HMR boundaries:
 
 ```typescript
-// ❌ HMR 경계 내에서 동적 import
+// ❌ Dynamic import within HMR boundary
 class UserModelClass extends BaseModel {
   async getRelated() {
     const { PostModel } = await import("../post/post.model");
@@ -125,7 +125,7 @@ class UserModelClass extends BaseModel {
   }
 }
 
-// ✅ 정적 import 사용
+// ✅ Use static import
 import { PostModel } from "../post/post.model";
 
 class UserModelClass extends BaseModel {
@@ -135,38 +135,38 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-## HMR 후 타입 에러
+## Type Error After HMR
 
-### 증상
+### Symptoms
 
-HMR이 동작한 후 TypeScript 타입 에러가 발생합니다:
+TypeScript type errors occur after HMR runs:
 
 ```bash
 Property 'newMethod' does not exist on type 'UserModel'
 ```
 
-### 원인
+### Cause
 
-TypeScript 서버가 HMR 변경사항을 인식하지 못했습니다.
+TypeScript server didn't recognize HMR changes.
 
-### 해결 방법
+### Solutions
 
-#### 1. TypeScript 서버 재시작
+#### 1. Restart TypeScript Server
 
 **VSCode:**
 ```
-Command Palette (Cmd+Shift+P 또는 Ctrl+Shift+P)
+Command Palette (Cmd+Shift+P or Ctrl+Shift+P)
 > TypeScript: Restart TS Server
 ```
 
-#### 2. 에디터 재시작
+#### 2. Restart Editor
 
 ```
 Command Palette
 > Developer: Reload Window
 ```
 
-#### 3. tsconfig.json 확인
+#### 3. Check tsconfig.json
 
 ```json
 {
@@ -177,23 +177,23 @@ Command Palette
 }
 ```
 
-## HMR 성능 저하
+## HMR Performance Degradation
 
-### 증상
+### Symptoms
 
-파일을 저장할 때마다 HMR이 느리거나 서버가 멈춥니다.
+HMR is slow or server freezes every time you save a file.
 
-### 원인
+### Causes
 
-1. 너무 많은 파일이 HMR 경계에 포함됨
-2. 무거운 연산이 모듈 로딩 시점에 실행됨
-3. 메모리 누수
+1. Too many files included in HMR boundary
+2. Heavy computations running at module loading time
+3. Memory leak
 
-### 해결 방법
+### Solutions
 
-#### 1. HMR 경계 최적화
+#### 1. Optimize HMR Boundary
 
-`hmr-hook-register.ts`에서 경계 패턴 수정:
+Modify boundary pattern in `hmr-hook-register.ts`:
 
 ```typescript
 // src/bin/hmr-hook-register.ts
@@ -203,7 +203,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
     boundaries: [
-      // 자주 변경되는 파일만 포함
+      // Include only frequently changed files
       `./src/application/**/*.model.ts`,
       `./src/application/**/*.helper.ts`
     ],
@@ -211,19 +211,19 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 }
 ```
 
-#### 2. 모듈 초기화 최적화
+#### 2. Optimize Module Initialization
 
-무거운 연산은 lazy loading으로:
+Use lazy loading for heavy computations:
 
 ```typescript
-// ❌ 모듈 로딩 시 즉시 실행
+// ❌ Execute immediately on module load
 const heavyData = processLargeDataset();
 
 export class UserModelClass extends BaseModel {
   // ...
 }
 
-// ✅ 필요할 때만 실행
+// ✅ Execute only when needed
 let heavyData: any;
 
 export class UserModelClass extends BaseModel {
@@ -236,104 +236,104 @@ export class UserModelClass extends BaseModel {
 }
 ```
 
-#### 3. 메모리 프로파일링
+#### 3. Memory Profiling
 
 ```bash
-# Node.js 메모리 사용량 확인
+# Check Node.js memory usage
 node --expose-gc --inspect node_modules/.bin/sonamu dev
 
-# Chrome DevTools에서 메모리 프로파일링
+# Memory profiling in Chrome DevTools
 chrome://inspect
 ```
 
-## HMR 경계 설정 오류
+## HMR Boundary Configuration Error
 
-### 증상
+### Symptoms
 
 ```bash
 Error: HMR boundary pattern is invalid: /src/**/*.model.ts
 ```
 
-### 원인
+### Cause
 
-HMR 경계 패턴이 올바르지 않습니다.
+HMR boundary pattern is incorrect.
 
-### 해결 방법
+### Solution
 
-`hmr-hook-register.ts`에서 올바른 glob 패턴 사용:
+Use correct glob patterns in `hmr-hook-register.ts`:
 
 ```typescript
 // src/bin/hmr-hook-register.ts
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
   boundaries: [
-    // ✅ 올바른 패턴 (상대 경로)
+    // ✅ Correct patterns (relative paths)
     `./src/application/**/*.model.ts`,
     `./src/application/**/*.helper.ts`,
-    
-    // ❌ 잘못된 패턴
-    // "/src/**/*.ts",  // 절대 경로는 작동하지 않음
-    // "./src/**/*.{ts,js}",  // brace expansion 미지원
+
+    // ❌ Invalid patterns
+    // "/src/**/*.ts",  // Absolute paths don't work
+    // "./src/**/*.{ts,js}",  // Brace expansion not supported
   ],
 });
 ```
 
-## 특정 파일만 HMR이 작동하지 않음
+## HMR Not Working for Specific Files
 
-### 증상
+### Symptoms
 
-대부분의 파일은 HMR이 잘 작동하는데, 특정 파일만 변경 시 재시작되지 않습니다.
+HMR works fine for most files, but specific files don't restart when changed.
 
-### 원인
+### Causes
 
-1. 파일이 HMR 경계 패턴과 일치하지 않음
-2. 파일이 명시적으로 제외됨
-3. 파일이 다른 모듈에서 캐시됨
+1. File doesn't match HMR boundary pattern
+2. File is explicitly excluded
+3. File is cached by other modules
 
-### 해결 방법
+### Solutions
 
-#### 1. 파일이 경계에 포함되는지 확인
+#### 1. Check If File Is Included in Boundary
 
 ```bash
-# HMR 로깅 활성화
+# Enable HMR logging
 DEBUG=hmr:* pnpm dev
 ```
 
-파일 저장 시 로그 확인:
+Check logs when saving file:
 
 ```bash
 hmr:boundary /src/application/user/user.model.ts matched +0ms
 hmr:reload Reloading module: user.model +5ms
 ```
 
-#### 2. 캐시 클리어
+#### 2. Clear Cache
 
 ```typescript
-// 모듈 캐시 문제가 있다면 서버 재시작
+// Restart server if there's a module cache issue
 ```
 
-#### 3. 파일 이름 패턴 확인
+#### 3. Check Filename Pattern
 
 ```typescript
-// HMR 경계에 맞게 파일 이름 변경
+// Change filename to match HMR boundary
 // user-service.ts → user.helper.ts
 ```
 
-## ESM/CommonJS 혼용 문제
+## ESM/CommonJS Mixing Issues
 
-### 증상
+### Symptoms
 
 ```bash
 Error [ERR_REQUIRE_ESM]: require() of ES Module not supported
 ```
 
-### 원인
+### Cause
 
-HMR 시스템이 ESM 모듈을 CommonJS로 로딩하려 했습니다.
+HMR system tried to load ESM module as CommonJS.
 
-### 해결 방법
+### Solutions
 
-#### 1. package.json 설정
+#### 1. package.json Configuration
 
 ```json
 {
@@ -341,17 +341,17 @@ HMR 시스템이 ESM 모듈을 CommonJS로 로딩하려 했습니다.
 }
 ```
 
-#### 2. 파일 확장자 명시
+#### 2. Specify File Extension
 
 ```typescript
 // ❌
 import { UserModel } from "./user.model";
 
 // ✅
-import { UserModel } from "./user.model.js";  // ESM에서는 .js 사용
+import { UserModel } from "./user.model.js";  // Use .js for ESM
 ```
 
-#### 3. tsconfig.json 설정
+#### 3. tsconfig.json Configuration
 
 ```json
 {
@@ -362,8 +362,8 @@ import { UserModel } from "./user.model.js";  // ESM에서는 .js 사용
 }
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [HMR 작동 원리](/tools-and-cli/hmr/how-hmr-works)
-- [HMR 경계 설정](/tools-and-cli/hmr/boundaries)
-- [HMR 트러블슈팅](/tools-and-cli/hmr/troubleshooting)
+- [How HMR Works](/tools-and-cli/hmr/how-hmr-works)
+- [HMR Boundary Configuration](/tools-and-cli/hmr/boundaries)
+- [HMR Troubleshooting](/tools-and-cli/hmr/troubleshooting)

@@ -1,74 +1,74 @@
 ---
-title: "로그 기록하기"
-description: "Naite.t()로 테스트 데이터 추적하기"
+title: "Recording Logs"
+description: "Tracking test data with Naite.t()"
 ---
 
-Naite.t()를 사용하여 테스트 실행 중 데이터를 기록하는 방법을 알아봅니다.
+Learn how to record data during test execution using Naite.t().
 
-## Naite.t() 개요
+## Naite.t() Overview
 
 <CardGroup cols={2}>
-  <Card title="간단한 API" icon="code">
-    두 개의 파라미터
-    
-    직관적인 사용
+  <Card title="Simple API" icon="code">
+    Two parameters
+
+    Intuitive usage
   </Card>
-  <Card title="자동 추적" icon="route">
-    콜스택 자동 수집
-    
-    호출 경로 파악
+  <Card title="Automatic Tracking" icon="route">
+    Automatic callstack collection
+
+    Call path identification
   </Card>
-  <Card title="Any 타입" icon="wand-magic-sparkles">
-    모든 값 허용
-    
-    유연한 로깅
+  <Card title="Any Type" icon="wand-magic-sparkles">
+    All values allowed
+
+    Flexible logging
   </Card>
-  <Card title="테스트 전용" icon="vial">
-    NODE_ENV 체크
-    
-    프로덕션 영향 없음
+  <Card title="Test-Only" icon="vial">
+    NODE_ENV check
+
+    No production impact
   </Card>
 </CardGroup>
 
-## Naite.t()란?
+## What is Naite.t()?
 
-`Naite.t()`는 테스트 실행 중 특정 시점의 데이터를 기록하는 함수입니다. 첫 번째 인자로 고유한 키(key)를, 두 번째 인자로 기록할 값(value)을 받습니다.
+`Naite.t()` is a function that records data at specific points during test execution. It takes a unique key as the first argument and the value to record as the second argument.
 
 ```typescript
 import { Naite } from "sonamu";
 
-// 기본 사용
+// Basic usage
 Naite.t("user:create", { userId: 123, username: "john" });
 ```
 
-이렇게 기록된 데이터는:
-- 테스트 실행 중 언제든 `Naite.get()`으로 조회 가능
-- VSCode Extension으로 실시간 전송
-- 콜스택과 시간 정보와 함께 저장
+Data recorded this way:
+- Can be queried at any time during test execution with `Naite.get()`
+- Transmitted in real-time to VSCode Extension
+- Stored with callstack and time information
 
-## 기본 사용법
+## Basic Usage
 
-### 단순 로깅
+### Simple Logging
 
-가장 기본적인 사용법은 함수의 입출력을 기록하는 것입니다.
+The most basic usage is recording function inputs and outputs.
 
 <CodeGroup>
 
-```typescript 예시 1: 사용자 생성
-test("사용자 생성 흐름", async () => {
+```typescript Example 1: User Creation
+test("user creation flow", async () => {
   const userModel = new UserModel();
-  
-  // 입력 데이터 기록
+
+  // Record input data
   const input = {
     username: "john",
     email: "john@example.com",
   };
   Naite.t("user:create:input", input);
-  
-  // 사용자 생성
+
+  // Create user
   const { user } = await userModel.create(input);
-  
-  // 출력 데이터 기록
+
+  // Record output data
   Naite.t("user:create:output", {
     userId: user.id,
     username: user.username,
@@ -76,17 +76,17 @@ test("사용자 생성 흐름", async () => {
 });
 ```
 
-```typescript 예시 2: 게시글 업데이트
-test("게시글 업데이트", async () => {
+```typescript Example 2: Post Update
+test("post update", async () => {
   const postModel = new PostModel();
-  
+
   Naite.t("post:update:before", {
     id: 1,
     title: "Old Title",
   });
-  
+
   await postModel.update(1, { title: "New Title" });
-  
+
   Naite.t("post:update:after", {
     id: 1,
     title: "New Title",
@@ -97,57 +97,57 @@ test("게시글 업데이트", async () => {
 </CodeGroup>
 
 <Tip>
-**입출력 패턴**: `:input`/`:output` 또는 `:before`/`:after` 패턴을 사용하면 데이터 변환 과정을 명확히 추적할 수 있습니다.
+**Input/Output Pattern**: Using `:input`/`:output` or `:before`/`:after` patterns helps clearly track data transformation processes.
 </Tip>
 
-### 단계별 로깅
+### Step-by-Step Logging
 
-복잡한 프로세스는 단계별로 로그를 남겨 흐름을 추적합니다.
+Track the flow of complex processes by logging step by step.
 
 ```typescript
-test("주문 처리 전체 흐름", async () => {
+test("full order processing flow", async () => {
   const orderId = 123;
-  
-  // 1단계: 주문 검증
+
+  // Step 1: Order validation
   Naite.t("order:validate:start", { orderId });
   await validateOrder(orderId);
   Naite.t("order:validate:done", { valid: true });
-  
-  // 2단계: 재고 확인
+
+  // Step 2: Inventory check
   Naite.t("order:inventory:check", { orderId });
   const available = await checkInventory(orderId);
   Naite.t("order:inventory:result", { available });
-  
-  // 3단계: 결제 처리
+
+  // Step 3: Payment processing
   Naite.t("order:payment:start", { orderId });
   await processPayment(orderId);
   Naite.t("order:payment:done", { transactionId: "tx_123" });
-  
-  // 4단계: 배송 시작
+
+  // Step 4: Start shipping
   Naite.t("order:shipping:start", { orderId });
   await startShipping(orderId);
   Naite.t("order:shipping:done", { trackingNumber: "TRK_001" });
 });
 ```
 
-**장점**:
-- 어느 단계에서 실패했는지 명확히 파악
-- 각 단계의 소요 시간 측정 가능
-- wildcard 패턴으로 특정 단계만 필터링 (`order:payment:*`)
+**Benefits**:
+- Clearly identify which step failed
+- Measure time spent at each step
+- Filter specific steps with wildcard patterns (`order:payment:*`)
 
 <Info>
-**start/done 패턴**: 각 작업의 시작과 완료를 `:start`/`:done`으로 기록하면, 나중에 소요 시간을 계산하거나 완료 여부를 확인하기 쉽습니다.
+**start/done Pattern**: Recording the start and completion of each operation with `:start`/`:done` makes it easier to calculate elapsed time or verify completion status later.
 </Info>
 
-## 내부 동작 이해하기
+## Understanding Internal Behavior
 
-### 1. 환경 체크
+### 1. Environment Check
 
-`Naite.t()`는 가장 먼저 실행 환경을 체크합니다.
+`Naite.t()` first checks the execution environment.
 
 ```typescript
 t(name: string, value: any) {
-  // 테스트 환경이 아니면 즉시 종료
+  // Immediately return if not in test environment
   if (process.env.NODE_ENV !== "test") {
     return;
   }
@@ -155,39 +155,39 @@ t(name: string, value: any) {
 }
 ```
 
-**이유**:
-- 프로덕션 코드에 `Naite.t()`가 있어도 안전
-- 테스트 전용 기능
-- 런타임 오버헤드 없음
+**Reasons**:
+- Safe even if `Naite.t()` exists in production code
+- Test-only feature
+- No runtime overhead
 
 <Tip>
-프로덕션 배포 전 `Naite.t()` 호출을 제거할 필요가 없습니다. 환경 변수로 자동 제어됩니다.
+You don't need to remove `Naite.t()` calls before production deployment. It's automatically controlled by environment variables.
 </Tip>
 
-### 2. Context 확인
+### 2. Context Check
 
-Naite는 Sonamu의 Context 시스템을 사용합니다.
+Naite uses Sonamu's Context system.
 
 ```typescript
 try {
   const context = Sonamu.getContext();
   const store = context?.naiteStore;
-  
+
   if (!store) {
-    return; // Context 없으면 무시
+    return; // Ignore if no Context
   }
   // ...
 } catch {
-  // Context 없는 상황
+  // No Context situation
 }
 ```
 
-**Context의 역할**:
-- 각 테스트마다 독립된 `naiteStore` 제공
-- 테스트 격리 보장
-- AsyncLocalStorage로 비동기 작업에서도 Context 유지
+**Role of Context**:
+- Provides independent `naiteStore` for each test
+- Ensures test isolation
+- Maintains Context in async operations with AsyncLocalStorage
 
-<Accordion title="Context 생성 과정">
+<Accordion title="Context Creation Process">
 
 ```typescript
 // bootstrap.ts
@@ -196,16 +196,16 @@ function getMockContext(): Context {
     ip: "127.0.0.1",
     session: {},
     user: null,
-    naiteStore: Naite.createStore(), // 새로운 Map 생성
+    naiteStore: Naite.createStore(), // Create new Map
     // ...
   };
 }
 
-// test() 실행 시마다 새로운 Context
+// New Context for each test() execution
 export const test = async (title, fn, options) => {
   return vitestTest(title, options, async (context) => {
     await runWithMockContext(async () => {
-      // 이 안에서 Naite.t() 호출 가능
+      // Naite.t() can be called here
       await fn(context);
     });
   });
@@ -214,51 +214,51 @@ export const test = async (title, fn, options) => {
 
 </Accordion>
 
-### 3. 콜스택 수집
+### 3. Callstack Collection
 
-`Naite.t()` 호출 시점의 콜스택을 자동으로 수집합니다.
+Automatically collects the callstack at the time of `Naite.t()` call.
 
 ```typescript
-// 콜스택 수집
+// Callstack collection
 const stack = extractCallStack();
 
 function extractCallStack(): StackFrame[] {
   const stack = new Error().stack;
-  
-  // "Error", "extractCallStack", "Naite.t" 제외
+
+  // Exclude "Error", "extractCallStack", "Naite.t"
   const frames = stack.split("\n")
     .slice(3)
     .map(parseStackFrame)
     .filter(frame => frame !== null);
-  
-  // runWithContext 발견 시 종료
+
+  // Stop when runWithContext is found
   const contextIndex = frames.findIndex(
     f => f.functionName?.includes("runWithContext")
   );
-  
-  return contextIndex >= 0 
-    ? frames.slice(0, contextIndex + 1) 
+
+  return contextIndex >= 0
+    ? frames.slice(0, contextIndex + 1)
     : frames;
 }
 ```
 
-**수집되는 정보**:
-- 함수명 (`createUser`)
-- 파일 경로 (`/Users/.../user.model.ts`)
-- 라인 번호 (`123`)
+**Collected Information**:
+- Function name (`createUser`)
+- File path (`/Users/.../user.model.ts`)
+- Line number (`123`)
 
-<Accordion title="콜스택 예시">
+<Accordion title="Callstack Example">
 
 ```typescript
 async function createUser() {
   Naite.t("user:create", { username: "john" });
 }
 
-test("사용자 생성", async () => {
+test("create user", async () => {
   await createUser();
 });
 
-// 수집되는 콜스택:
+// Collected callstack:
 // [
 //   {
 //     functionName: "createUser",
@@ -280,9 +280,9 @@ test("사용자 생성", async () => {
 
 </Accordion>
 
-### 4. Trace 생성 및 저장
+### 4. Trace Creation and Storage
 
-수집한 정보로 `NaiteTrace` 객체를 생성하고 Store에 저장합니다.
+Creates a `NaiteTrace` object with collected information and stores it in the Store.
 
 ```typescript
 const trace: NaiteTrace = {
@@ -292,32 +292,32 @@ const trace: NaiteTrace = {
   at: new Date(),
 };
 
-// Store에 추가 (항상 배열로 관리)
+// Add to Store (always managed as array)
 const existing = store.get(name) ?? [];
 store.set(name, [...existing, trace]);
 ```
 
-**배열로 관리하는 이유**:
-- 같은 키로 여러 번 호출 가능
-- 시간 순서대로 추적
-- 반복 작업 로깅 지원
+**Reason for Array Management**:
+- Same key can be called multiple times
+- Track in chronological order
+- Support for loop operation logging
 
 <Tabs>
-  <Tab title="단일 호출">
+  <Tab title="Single Call">
     ```typescript
     Naite.t("user:create", { userId: 1 });
-    
+
     // Store:
     // "user:create" => [{ key, data: { userId: 1 }, ... }]
     ```
   </Tab>
-  
-  <Tab title="여러 호출">
+
+  <Tab title="Multiple Calls">
     ```typescript
     Naite.t("user:create", { userId: 1 });
     Naite.t("user:create", { userId: 2 });
     Naite.t("user:create", { userId: 3 });
-    
+
     // Store:
     // "user:create" => [
     //   { key, data: { userId: 1 }, ... },
@@ -328,59 +328,59 @@ store.set(name, [...existing, trace]);
   </Tab>
 </Tabs>
 
-## 키 네이밍 전략
+## Key Naming Strategy
 
-### 계층적 구조
+### Hierarchical Structure
 
-콜론(`:`)으로 계층을 구분하면 나중에 wildcard 패턴으로 쉽게 조회할 수 있습니다.
+Separating hierarchies with colons (`:`) makes it easy to query later with wildcard patterns.
 
 <Tabs>
-  <Tab title="올바른 방법" icon="check">
+  <Tab title="Correct Way" icon="check">
     ```typescript
-    // ✅ 계층적 구조
+    // ✅ Hierarchical structure
     Naite.t("user:create", { /* ... */ });
     Naite.t("user:update", { /* ... */ });
     Naite.t("user:delete", { /* ... */ });
-    
+
     Naite.t("syncer:renderTemplate", { /* ... */ });
     Naite.t("syncer:writeFile", { /* ... */ });
-    
-    // wildcard로 쉽게 조회
-    Naite.get("user:*").result();         // 모든 user 관련
-    Naite.get("syncer:*").result();       // 모든 syncer 관련
-    Naite.get("*:create").result();       // 모든 create 작업
+
+    // Easy query with wildcards
+    Naite.get("user:*").result();         // All user related
+    Naite.get("syncer:*").result();       // All syncer related
+    Naite.get("*:create").result();       // All create operations
     ```
   </Tab>
-  
-  <Tab title="잘못된 방법" icon="xmark">
+
+  <Tab title="Wrong Way" icon="xmark">
     ```typescript
-    // ❌ 평면적 구조
+    // ❌ Flat structure
     Naite.t("userCreate", { /* ... */ });
     Naite.t("userUpdate", { /* ... */ });
     Naite.t("syncerRender", { /* ... */ });
-    
-    // wildcard 사용 불가
-    // "user*"로는 매칭 안 됨
+
+    // Can't use wildcards
+    // "user*" won't match
     ```
   </Tab>
 </Tabs>
 
-### 권장 패턴
+### Recommended Patterns
 
 <Steps>
   <Step title="module:function">
-    가장 기본적인 패턴입니다.
-    
+    The most basic pattern.
+
     ```typescript
     Naite.t("user:create", { /* ... */ });
     Naite.t("post:update", { /* ... */ });
     Naite.t("syncer:render", { /* ... */ });
     ```
   </Step>
-  
+
   <Step title="module:function:action">
-    더 상세한 추적이 필요할 때 사용합니다.
-    
+    Use when more detailed tracking is needed.
+
     ```typescript
     Naite.t("user:create:input", { /* ... */ });
     Naite.t("user:create:validation", { /* ... */ });
@@ -388,10 +388,10 @@ store.set(name, [...existing, trace]);
     Naite.t("user:create:done", { /* ... */ });
     ```
   </Step>
-  
+
   <Step title="module:function:action:detail">
-    매우 복잡한 흐름에서 사용합니다.
-    
+    Use for very complex flows.
+
     ```typescript
     Naite.t("order:payment:card:charge:start", { /* ... */ });
     Naite.t("order:payment:card:charge:done", { /* ... */ });
@@ -402,22 +402,22 @@ store.set(name, [...existing, trace]);
 </Steps>
 
 <Warning>
-너무 깊은 계층(5단계 이상)은 오히려 가독성을 떨어뜨립니다. 대부분의 경우 3단계면 충분합니다.
+Too deep hierarchies (5+ levels) actually reduce readability. In most cases, 3 levels are sufficient.
 </Warning>
 
-## 실전 패턴
+## Practical Patterns
 
-### 1. 조건부 추적
+### 1. Conditional Tracking
 
-비즈니스 로직의 분기를 명확히 추적합니다.
+Clearly track business logic branches.
 
 ```typescript
 async function processPayment(order: Order) {
-  Naite.t("payment:start", { 
+  Naite.t("payment:start", {
     orderId: order.id,
-    method: order.payment_method 
+    method: order.payment_method
   });
-  
+
   if (order.payment_method === "card") {
     Naite.t("payment:card:selected", { cardNumber: "****1234" });
     await chargeCard(order);
@@ -427,49 +427,49 @@ async function processPayment(order: Order) {
     await transferBank(order);
     Naite.t("payment:bank:success", { transferId: "tf_456" });
   }
-  
+
   Naite.t("payment:done", { orderId: order.id });
 }
 
-test("카드 결제", async () => {
+test("card payment", async () => {
   const order = { id: 1, payment_method: "card" };
   await processPayment(order);
-  
-  // 카드 결제 경로가 실행되었는지 확인
+
+  // Verify card payment path was executed
   const cardLogs = Naite.get("payment:card:*").result();
   expect(cardLogs.length).toBeGreaterThan(0);
-  
-  // 계좌 이체는 실행 안 됨
+
+  // Bank transfer was not executed
   const bankLogs = Naite.get("payment:bank:*").result();
   expect(bankLogs).toHaveLength(0);
 });
 ```
 
-**활용**:
-- A/B 테스트 경로 확인
-- 권한 분기 검증
-- 에러 핸들링 경로 추적
+**Usage**:
+- A/B testing path verification
+- Permission branch verification
+- Error handling path tracking
 
-### 2. 에러 추적
+### 2. Error Tracking
 
-에러 발생 시 상세 정보를 기록합니다.
+Record detailed information when errors occur.
 
 ```typescript
 async function createUser(data: UserCreateInput) {
   Naite.t("user:create:input", data);
-  
+
   try {
-    // 유효성 검사
+    // Validation
     await validateUser(data);
     Naite.t("user:create:validation:pass", {});
-    
-    // DB 저장
+
+    // DB save
     const user = await db.insert("users").values(data);
     Naite.t("user:create:success", { userId: user.id });
-    
+
     return user;
   } catch (error) {
-    // 에러 상세 기록
+    // Record error details
     Naite.t("user:create:error", {
       errorType: error.constructor.name,
       errorMessage: error.message,
@@ -481,19 +481,19 @@ async function createUser(data: UserCreateInput) {
   }
 }
 
-test("잘못된 입력 처리", async () => {
+test("invalid input handling", async () => {
   try {
-    await createUser({ username: "" }); // 빈 값
+    await createUser({ username: "" }); // Empty value
     throw new Error("Should have failed");
   } catch (error) {
-    // 에러 로그 확인
+    // Check error log
     const errorLog = Naite.get("user:create:error").first();
-    
+
     expect(errorLog).toBeDefined();
     expect(errorLog.errorType).toBe("ValidationError");
     expect(errorLog.errorMessage).toContain("username");
-    
-    // 유효성 검사를 통과하지 못했는지 확인
+
+    // Verify validation was not passed
     const validationPass = Naite.get("user:create:validation:pass").result();
     expect(validationPass).toHaveLength(0);
   }
@@ -501,95 +501,95 @@ test("잘못된 입력 처리", async () => {
 ```
 
 <Tip>
-**에러 추적 패턴**: try-catch의 catch 블록에서 `Naite.t()`를 호출하면, 에러 발생 시점의 모든 컨텍스트를 캡처할 수 있습니다. 콜스택과 함께 저장되어 디버깅이 매우 쉬워집니다.
+**Error Tracking Pattern**: Calling `Naite.t()` in the catch block allows you to capture all context at the time of error. Combined with callstack storage, debugging becomes much easier.
 </Tip>
 
-### 3. 성능 측정
+### 3. Performance Measurement
 
-시간 정보를 기록하여 병목 지점을 파악합니다.
+Record time information to identify bottlenecks.
 
 ```typescript
-test("데이터 처리 성능", async () => {
+test("data processing performance", async () => {
   Naite.t("process:start", { timestamp: Date.now() });
-  
-  // 단계 1: 데이터 조회
+
+  // Step 1: Data fetch
   Naite.t("process:fetch:start", { timestamp: Date.now() });
   const data = await fetchLargeData();
-  Naite.t("process:fetch:done", { 
+  Naite.t("process:fetch:done", {
     timestamp: Date.now(),
-    dataSize: data.length 
+    dataSize: data.length
   });
-  
-  // 단계 2: 데이터 처리
+
+  // Step 2: Data processing
   Naite.t("process:transform:start", { timestamp: Date.now() });
   const processed = await transformData(data);
-  Naite.t("process:transform:done", { 
+  Naite.t("process:transform:done", {
     timestamp: Date.now(),
-    processedCount: processed.length 
+    processedCount: processed.length
   });
-  
-  // 단계 3: DB 저장
+
+  // Step 3: DB save
   Naite.t("process:save:start", { timestamp: Date.now() });
   await saveToDatabase(processed);
   Naite.t("process:save:done", { timestamp: Date.now() });
-  
+
   Naite.t("process:end", { timestamp: Date.now() });
-  
-  // 각 단계별 소요 시간 계산
+
+  // Calculate time for each step
   const logs = Naite.get("process:*").result();
   const start = logs.find(l => l.timestamp).timestamp;
   const fetchDone = logs.find(l => l.timestamp && l.dataSize).timestamp;
   const transformDone = logs.find(l => l.timestamp && l.processedCount).timestamp;
   const saveDone = logs[logs.length - 2].timestamp;
-  
+
   console.log(`Fetch: ${fetchDone - start}ms`);
   console.log(`Transform: ${transformDone - fetchDone}ms`);
   console.log(`Save: ${saveDone - transformDone}ms`);
 });
 ```
 
-### 4. 반복 작업 추적
+### 4. Loop Operation Tracking
 
-루프나 배치 작업에서는 요약 정보만 기록합니다.
+For loops or batch operations, record only summary information.
 
 <Tabs>
-  <Tab title="나쁜 예" icon="xmark">
+  <Tab title="Bad Example" icon="xmark">
     ```typescript
-    // ❌ 루프 안에서 로깅
+    // ❌ Logging inside loop
     for (let i = 0; i < 10000; i++) {
       Naite.t("loop:iteration", { i, value: data[i] });
-      // 10,000개의 trace 생성!
+      // Creates 10,000 traces!
     }
     ```
   </Tab>
-  
-  <Tab title="좋은 예" icon="check">
+
+  <Tab title="Good Example" icon="check">
     ```typescript
-    // ✅ 요약 정보만
-    Naite.t("loop:start", { 
+    // ✅ Only summary information
+    Naite.t("loop:start", {
       count: 10000,
-      timestamp: Date.now() 
+      timestamp: Date.now()
     });
-    
+
     for (let i = 0; i < 10000; i++) {
-      // 로깅 없음
+      // No logging
       processItem(data[i]);
     }
-    
-    Naite.t("loop:done", { 
+
+    Naite.t("loop:done", {
       count: 10000,
       duration: Date.now() - startTime,
       successCount: results.filter(r => r.success).length
     });
     ```
   </Tab>
-  
-  <Tab title="조건부 로깅" icon="toggle-on">
+
+  <Tab title="Conditional Logging" icon="toggle-on">
     ```typescript
-    // ✅ 문제가 있을 때만
+    // ✅ Only when there's a problem
     for (let i = 0; i < 10000; i++) {
       const result = processItem(data[i]);
-      
+
       if (!result.success) {
         Naite.t("loop:error", {
           index: i,
@@ -601,14 +601,14 @@ test("데이터 처리 성능", async () => {
   </Tab>
 </Tabs>
 
-## 값 타입과 직렬화
+## Value Types and Serialization
 
-### Any 타입 허용
+### Any Type Allowed
 
-`Naite.t()`는 any 타입을 받아 모든 JavaScript 값을 기록할 수 있습니다.
+`Naite.t()` accepts any type, allowing all JavaScript values to be recorded.
 
 ```typescript
-// ✅ 모든 타입 가능
+// ✅ All types possible
 Naite.t("key", "string");
 Naite.t("key", 123);
 Naite.t("key", true);
@@ -619,19 +619,19 @@ Naite.t("key", null);
 Naite.t("key", undefined);
 ```
 
-**설계 이유**:
-- TypeScript 타입 안정성보다 사용 편의성 우선
-- 테스트 작성 중 타입 에러로 방해받지 않음
-- expect()와 같은 철학
+**Design Reasons**:
+- Ease of use prioritized over TypeScript type safety
+- No interruption from type errors while writing tests
+- Same philosophy as expect()
 
-### 직렬화 경고
+### Serialization Warning
 
-VSCode Extension으로 전송하려면 JSON 직렬화가 필요합니다. 직렬화 불가능한 값은 경고가 표시됩니다.
+JSON serialization is required to transmit to VSCode Extension. Non-serializable values will show a warning.
 
 <Tabs>
-  <Tab title="권장" icon="check">
+  <Tab title="Recommended" icon="check">
     ```typescript
-    // ✅ 직렬화 가능
+    // ✅ Serializable
     Naite.t("key", { data: "value" });
     Naite.t("key", [1, 2, 3]);
     Naite.t("key", "string");
@@ -639,10 +639,10 @@ VSCode Extension으로 전송하려면 JSON 직렬화가 필요합니다. 직렬
     Naite.t("key", true);
     ```
   </Tab>
-  
-  <Tab title="경고" icon="triangle-exclamation">
+
+  <Tab title="Warning" icon="triangle-exclamation">
     ```typescript
-    // ⚠️ 직렬화 불가능 (경고 표시)
+    // ⚠️ Non-serializable (warning displayed)
     Naite.t("key", functionValue);      // Function
     Naite.t("key", symbolValue);        // Symbol
     Naite.t("key", circularRef);        // Circular reference
@@ -651,7 +651,7 @@ VSCode Extension으로 전송하려면 JSON 직렬화가 필요합니다. 직렬
   </Tab>
 </Tabs>
 
-<Accordion title="직렬화 경고 메시지">
+<Accordion title="Serialization Warning Message">
 
 ```bash
 ╔════════════════════════════════════════════════════════════════╗
@@ -667,39 +667,39 @@ VSCode Extension으로 전송하려면 JSON 직렬화가 필요합니다. 직렬
 ╚════════════════════════════════════════════════════════════════╝
 ```
 
-경고가 표시되어도 테스트는 정상 실행됩니다. 단, VSCode Extension에서 해당 값을 볼 수 없습니다.
+Tests run normally even with warnings. However, you won't be able to see those values in VSCode Extension.
 
 </Accordion>
 
-## 성능 고려사항
+## Performance Considerations
 
-### 1. 테스트 환경만 동작
+### 1. Test Environment Only
 
 ```typescript
 if (process.env.NODE_ENV !== "test") {
-  return; // 즉시 종료, 비용 없음
+  return; // Immediate return, no cost
 }
 ```
 
-프로덕션 코드에 `Naite.t()`가 있어도 성능 영향이 전혀 없습니다.
+Even if `Naite.t()` exists in production code, there's no performance impact.
 
-### 2. 과도한 로깅 주의
+### 2. Avoid Excessive Logging
 
 <Warning>
-루프 안에서 `Naite.t()`를 호출하면 수천 개의 trace가 생성되어:
-- 메모리 사용량 증가
-- 테스트 속도 저하
-- VSCode Extension 느려짐
+Calling `Naite.t()` inside loops creates thousands of traces, causing:
+- Increased memory usage
+- Slower test speed
+- Slower VSCode Extension
 </Warning>
 
-**권장사항**:
-- 루프 시작/종료만 기록
-- 문제 발생 시에만 기록
-- 요약 정보 활용
+**Recommendations**:
+- Record only loop start/end
+- Record only when problems occur
+- Use summary information
 
-### 3. 조건부 로깅
+### 3. Conditional Logging
 
-디버깅이 필요할 때만 상세 로깅을 활성화합니다.
+Enable detailed logging only when debugging is needed.
 
 ```typescript
 const DEBUG = process.env.DEBUG_NAITE === "true";
@@ -708,67 +708,67 @@ function processItem(item: any) {
   if (DEBUG) {
     Naite.t("process:detail", item);
   }
-  
-  // 처리 로직
+
+  // Processing logic
 }
 
-// 사용:
+// Usage:
 // DEBUG_NAITE=true pnpm test
 ```
 
-## 베스트 프랙티스
+## Best Practices
 
 <Steps>
-  <Step title="명확한 키 사용">
+  <Step title="Use Clear Keys">
     ```typescript
-    // ✅ 올바른 방법
+    // ✅ Correct way
     Naite.t("user:create:input", { username: "john" });
     Naite.t("user:create:validation", { valid: true });
     Naite.t("user:create:db", { query: "INSERT..." });
-    
-    // ❌ 잘못된 방법
+
+    // ❌ Wrong way
     Naite.t("data1", { username: "john" });
     Naite.t("data2", { valid: true });
     Naite.t("data3", { query: "INSERT..." });
     ```
   </Step>
-  
-  <Step title="일관된 구조">
+
+  <Step title="Consistent Structure">
     ```typescript
-    // ✅ 올바른 방법: 일관된 계층
+    // ✅ Correct way: Consistent hierarchy
     Naite.t("user:create", { /* ... */ });
     Naite.t("user:update", { /* ... */ });
     Naite.t("user:delete", { /* ... */ });
-    
+
     Naite.t("post:create", { /* ... */ });
     Naite.t("post:update", { /* ... */ });
     Naite.t("post:delete", { /* ... */ });
     ```
   </Step>
-  
-  <Step title="최소 정보">
+
+  <Step title="Minimal Information">
     ```typescript
-    // ✅ 올바른 방법: 필요한 정보만
+    // ✅ Correct way: Only necessary information
     Naite.t("user:create", {
       userId: user.id,
       username: user.username,
     });
-    
-    // ❌ 잘못된 방법: 불필요한 정보까지
+
+    // ❌ Wrong way: Including unnecessary information
     Naite.t("user:create", {
-      ...user,              // 모든 필드
-      ...request,           // Request 전체
-      ...context,           // Context 전체
+      ...user,              // All fields
+      ...request,           // Entire Request
+      ...context,           // Entire Context
     });
     ```
   </Step>
-  
-  <Step title="의미 있는 위치에 로깅">
+
+  <Step title="Log at Meaningful Locations">
     ```typescript
-    // ✅ 올바른 방법: 중요한 분기점에
+    // ✅ Correct way: At important branch points
     async function processUser(user: User) {
       Naite.t("user:process:start", { userId: user.id });
-      
+
       if (user.isAdmin) {
         Naite.t("user:process:admin", { userId: user.id });
         await processAdmin(user);
@@ -776,42 +776,42 @@ function processItem(item: any) {
         Naite.t("user:process:regular", { userId: user.id });
         await processRegular(user);
       }
-      
+
       Naite.t("user:process:done", { userId: user.id });
     }
     ```
   </Step>
 </Steps>
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Naite.t() 사용 시 주의사항**:
+**Cautions when using Naite.t()**:
 
-1. **테스트 전용**: `NODE_ENV === "test"`에서만 동작합니다.
+1. **Test-only**: Only works when `NODE_ENV === "test"`.
 
-2. **Context 필요**: `Sonamu.getContext()`가 있어야 합니다. bootstrap의 `runWithMockContext()` 안에서만 사용하세요.
+2. **Context required**: `Sonamu.getContext()` must exist. Only use within bootstrap's `runWithMockContext()`.
 
-3. **직렬화 권장**: VSCode Extension 전송을 위해 직렬화 가능한 값을 권장합니다.
+3. **Serializable values recommended**: Serializable values are recommended for VSCode Extension transmission.
 
-4. **과도한 로깅 금지**: 루프 안에서 호출하면 성능이 저하됩니다.
+4. **No excessive logging**: Calling inside loops degrades performance.
 
-5. **키 규칙**: `module:function:action` 형식을 권장합니다.
+5. **Key convention**: The `module:function:action` format is recommended.
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="로그 조회하기" icon="magnifying-glass" href="/testing/naite/querying-logs">
-    Naite.get()으로 기록한 로그를 조회하는 방법을 배웁니다.
+  <Card title="Querying Logs" icon="magnifying-glass" href="/testing/naite/querying-logs">
+    Learn how to query recorded logs with Naite.get().
   </Card>
   <Card title="Naite Viewer" icon="eye" href="/testing/naite/naite-viewer">
-    VSCode Extension으로 로그를 시각화하는 방법을 알아봅니다.
+    Learn how to visualize logs with VSCode Extension.
   </Card>
-  <Card title="테스트 디버깅" icon="bug" href="/testing/naite/debugging-tests">
-    콜스택 추적으로 버그를 찾는 방법을 배웁니다.
+  <Card title="Debugging Tests" icon="bug" href="/testing/naite/debugging-tests">
+    Learn how to find bugs with callstack tracking.
   </Card>
-  <Card title="Naite란?" icon="circle-info" href="/testing/naite/what-is-naite">
-    Naite 전체 개요로 돌아갑니다.
+  <Card title="What is Naite?" icon="circle-info" href="/testing/naite/what-is-naite">
+    Return to Naite overview.
   </Card>
 </CardGroup>

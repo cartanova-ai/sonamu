@@ -1,13 +1,13 @@
 ---
-title: "SSE 설정"
-description: "Server-Sent Events 플러그인 설정하기"
+title: "SSE Setup"
+description: "Configuring the Server-Sent Events plugin"
 ---
 
-Sonamu는 **fastify-sse-v2** 플러그인을 기반으로 **Server-Sent Events (SSE)**를 지원합니다. SSE를 사용하면 서버에서 클라이언트로 실시간 데이터를 푸시할 수 있습니다.
+Sonamu supports **Server-Sent Events (SSE)** based on the **fastify-sse-v2** plugin. With SSE, you can push real-time data from the server to the client.
 
-## SSE란?
+## What is SSE?
 
-**Server-Sent Events**는 서버에서 클라이언트로 **단방향 실시간 통신**을 제공하는 기술입니다.
+**Server-Sent Events** is a technology that provides **unidirectional real-time communication** from server to client.
 
 ### HTTP vs SSE vs WebSocket
 
@@ -16,18 +16,18 @@ sequenceDiagram
     participant C as Client
     participant S as Server
 
-    Note over C,S: HTTP (단방향, 요청-응답)
+    Note over C,S: HTTP (unidirectional, request-response)
     C->>S: GET /api/data
     S-->>C: Response
-    
-    Note over C,S: SSE (서버→클라이언트 스트리밍)
+
+    Note over C,S: SSE (server→client streaming)
     C->>S: GET /stream/updates
     S-->>C: event: message
     S-->>C: event: message
     S-->>C: event: message
     S-->>C: event: end
-    
-    Note over C,S: WebSocket (양방향)
+
+    Note over C,S: WebSocket (bidirectional)
     C->>S: connect
     C->>S: message
     S-->>C: message
@@ -35,34 +35,34 @@ sequenceDiagram
     S-->>C: message
 ```
 
-### 비교표
+### Comparison Table
 
-| 특징 | HTTP | SSE | WebSocket |
-|------|------|-----|-----------|
-| 방향 | 요청→응답 | 서버→클라이언트 | 양방향 |
-| 프로토콜 | HTTP | HTTP | WebSocket |
-| 재연결 | X | 자동 | 수동 |
-| 복잡도 | 낮음 | 중간 | 높음 |
-| 용도 | 일반 API | 실시간 푸시 | 실시간 채팅 |
+| Feature | HTTP | SSE | WebSocket |
+|---------|------|-----|-----------|
+| Direction | Request→Response | Server→Client | Bidirectional |
+| Protocol | HTTP | HTTP | WebSocket |
+| Reconnection | X | Automatic | Manual |
+| Complexity | Low | Medium | High |
+| Use case | General API | Real-time push | Real-time chat |
 
-### SSE 사용 사례
+### SSE Use Cases
 
 <CardGroup cols={2}>
-  <Card title="실시간 알림" icon="bell">
-    새 메시지, 좋아요, 댓글 등
+  <Card title="Real-time Notifications" icon="bell">
+    New messages, likes, comments, etc.
   </Card>
-  <Card title="진행 상황" icon="spinner">
-    파일 업로드, 작업 처리 진행률
+  <Card title="Progress Updates" icon="spinner">
+    File uploads, task processing progress
   </Card>
-  <Card title="라이브 피드" icon="rss">
-    뉴스 피드, 소셜 미디어 업데이트
+  <Card title="Live Feeds" icon="rss">
+    News feeds, social media updates
   </Card>
-  <Card title="모니터링" icon="chart-line">
-    서버 상태, 로그 스트리밍
+  <Card title="Monitoring" icon="chart-line">
+    Server status, log streaming
   </Card>
 </CardGroup>
 
-## 기본 설정
+## Basic Setup
 
 ### sonamu.config.ts
 
@@ -72,51 +72,51 @@ import { type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // SSE 플러그인 활성화
+      sse: true,  // Enable SSE plugin
     }
   }
 };
 ```
 
-**기본 동작**:
-- SSE 엔드포인트 자동 등록
-- 자동 재연결 지원
-- Keep-alive 자동 전송
+**Default behavior**:
+- Automatic SSE endpoint registration
+- Automatic reconnection support
+- Automatic keep-alive sending
 
-## SSE 플러그인 옵션
+## SSE Plugin Options
 
 <Tabs>
   <Tab title="boolean" icon="toggle-on">
-    **간단한 활성화/비활성화**
-    
+    **Simple enable/disable**
+
     ```typescript
     plugins: {
-      sse: true,   // 활성화
-      sse: false,  // 비활성화
+      sse: true,   // Enable
+      sse: false,  // Disable
     }
     ```
   </Tab>
-  
+
   <Tab title="SsePluginOptions" icon="gear">
-    **세부 설정**
-    
+    **Detailed configuration**
+
     ```typescript
     import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 
     plugins: {
       sse: {
-        // 옵션 설정 (필요시)
+        // Configure options (if needed)
       } as SsePluginOptions
     }
     ```
-    
-    **참고**: 대부분의 경우 기본 설정으로 충분합니다.
+
+    **Note**: Default settings are sufficient in most cases.
   </Tab>
 </Tabs>
 
-## SSE 작동 방식
+## How SSE Works
 
-### 연결 흐름
+### Connection Flow
 
 ```mermaid
 sequenceDiagram
@@ -124,21 +124,21 @@ sequenceDiagram
     participant Server
 
     Browser->>Server: GET /stream/updates
-    Note over Server: SSE 연결 수립
+    Note over Server: SSE connection established
     Server->>Browser: Headers (text/event-stream)
-    
-    loop 이벤트 발생 시
+
+    loop On event occurrence
         Server->>Browser: event: notification<br/>data: {"message": "New"}
         Server->>Browser: event: update<br/>data: {"count": 5}
     end
-    
+
     Server->>Browser: event: end<br/>data: END
-    Note over Browser: 연결 종료
+    Note over Browser: Connection closed
 ```
 
-### HTTP 헤더
+### HTTP Headers
 
-SSE는 특수한 HTTP 헤더를 사용합니다:
+SSE uses special HTTP headers:
 
 ```http
 Content-Type: text/event-stream
@@ -146,26 +146,26 @@ Cache-Control: no-cache
 Connection: keep-alive
 ```
 
-**특징**:
-- `text/event-stream`: SSE 전용 Content-Type
-- `no-cache`: 캐싱 방지
-- `keep-alive`: 연결 유지
+**Characteristics**:
+- `text/event-stream`: SSE-specific Content-Type
+- `no-cache`: Prevents caching
+- `keep-alive`: Maintains connection
 
-## 실전 설정 예제
+## Practical Configuration Examples
 
-### 1. 기본 설정 (권장)
+### 1. Basic Setup (Recommended)
 
 ```typescript
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: true,  // 간단하게 활성화
+      sse: true,  // Simply enable
     }
   }
 };
 ```
 
-### 2. 개발/프로덕션 분리
+### 2. Development/Production Separation
 
 ```typescript
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -173,15 +173,15 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      sse: !isDevelopment,  // 프로덕션에서만 활성화
+      sse: !isDevelopment,  // Enable only in production
     }
   }
 };
 ```
 
-**이유**: 개발 환경에서는 HMR로 인해 연결이 자주 끊김
+**Reason**: In development, connections frequently disconnect due to HMR
 
-### 3. 조건부 활성화
+### 3. Conditional Activation
 
 ```typescript
 export const config: SonamuConfig = {
@@ -197,9 +197,9 @@ export const config: SonamuConfig = {
 ENABLE_SSE=true
 ```
 
-## 압축 비활성화
+## Disabling Compression
 
-SSE는 스트리밍 응답이므로 **압축을 비활성화**해야 합니다.
+SSE is a streaming response, so **compression must be disabled**.
 
 ```typescript
 export const config: SonamuConfig = {
@@ -207,7 +207,7 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       compress: {
-        global: true,  // 전역 압축 활성화
+        global: true,  // Enable global compression
         threshold: 1024,
         encodings: ["gzip"],
       }
@@ -216,7 +216,7 @@ export const config: SonamuConfig = {
 };
 ```
 
-**@stream 데코레이터에서 자동 처리**:
+**Handled automatically in @stream decorator**:
 ```typescript
 @stream({
   type: 'sse',
@@ -225,16 +225,16 @@ export const config: SonamuConfig = {
   })
 })
 @api({
-  compress: false,  // 자동으로 압축 비활성화 (권장)
+  compress: false,  // Automatically disable compression (recommended)
 })
 async *streamUpdates() {
   // ...
 }
 ```
 
-## CORS 설정
+## CORS Configuration
 
-SSE를 다른 도메인에서 사용하려면 CORS 설정이 필요합니다.
+CORS configuration is required to use SSE from different domains.
 
 ```typescript
 export const config: SonamuConfig = {
@@ -250,11 +250,11 @@ export const config: SonamuConfig = {
 };
 ```
 
-**주의**: SSE는 인증 쿠키 등을 전송할 수 있으므로 `credentials: true` 설정 필요
+**Note**: SSE can send authentication cookies, so `credentials: true` is required
 
-## 환경별 전략
+## Environment-specific Strategies
 
-### 개발 환경
+### Development Environment
 
 ```typescript
 export const config: SonamuConfig = {
@@ -262,7 +262,7 @@ export const config: SonamuConfig = {
     plugins: {
       sse: true,
       cors: {
-        origin: 'http://localhost:5173',  // Vite 개발 서버
+        origin: 'http://localhost:5173',  // Vite dev server
         credentials: true,
       }
     }
@@ -270,7 +270,7 @@ export const config: SonamuConfig = {
 };
 ```
 
-### 프로덕션 환경
+### Production Environment
 
 ```typescript
 export const config: SonamuConfig = {
@@ -290,16 +290,16 @@ export const config: SonamuConfig = {
 FRONTEND_URL=https://app.example.com
 ```
 
-## 타임아웃 설정
+## Timeout Configuration
 
-SSE 연결은 장시간 유지되므로 타임아웃 설정이 중요합니다.
+SSE connections are maintained for long periods, so timeout configuration is important.
 
 ```typescript
 export const config: SonamuConfig = {
   server: {
     fastify: {
-      connectionTimeout: 0,  // 타임아웃 비활성화
-      keepAliveTimeout: 5000,  // Keep-alive: 5초
+      connectionTimeout: 0,  // Disable timeout
+      keepAliveTimeout: 5000,  // Keep-alive: 5 seconds
     },
     plugins: {
       sse: true,
@@ -308,13 +308,13 @@ export const config: SonamuConfig = {
 };
 ```
 
-**설정 값**:
-- `connectionTimeout: 0`: 연결 타임아웃 비활성화 (SSE는 장시간 유지)
-- `keepAliveTimeout`: Keep-alive 간격 (기본값: 5초)
+**Configuration values**:
+- `connectionTimeout: 0`: Disable connection timeout (SSE maintains long connections)
+- `keepAliveTimeout`: Keep-alive interval (default: 5 seconds)
 
-## 프록시 설정 (Nginx)
+## Proxy Configuration (Nginx)
 
-Nginx를 사용하는 경우 SSE를 위한 설정이 필요합니다.
+When using Nginx, SSE-specific configuration is required.
 
 ```nginx
 server {
@@ -323,58 +323,58 @@ server {
 
     location /stream/ {
         proxy_pass http://localhost:3000;
-        
-        # SSE 필수 설정
+
+        # SSE required settings
         proxy_set_header Connection '';
         proxy_http_version 1.1;
         chunked_transfer_encoding off;
-        
-        # 버퍼링 비활성화
+
+        # Disable buffering
         proxy_buffering off;
         proxy_cache off;
-        
-        # 타임아웃
+
+        # Timeout
         proxy_read_timeout 24h;
         proxy_send_timeout 24h;
     }
 }
 ```
 
-**핵심 설정**:
-- `proxy_buffering off`: 버퍼링 비활성화 (즉시 전송)
-- `proxy_cache off`: 캐싱 비활성화
-- `proxy_read_timeout 24h`: 읽기 타임아웃 (장시간)
+**Key settings**:
+- `proxy_buffering off`: Disable buffering (immediate transmission)
+- `proxy_cache off`: Disable caching
+- `proxy_read_timeout 24h`: Read timeout (long duration)
 
-## 디버깅
+## Debugging
 
-### 브라우저 개발자 도구
+### Browser Developer Tools
 
 ```
-Network 탭 → 스트림 요청 선택 → Headers 탭
+Network tab → Select stream request → Headers tab
 
 Request Headers:
   Accept: text/event-stream
-  
+
 Response Headers:
   Content-Type: text/event-stream
   Cache-Control: no-cache
   Connection: keep-alive
 
-EventStream 탭:
+EventStream tab:
   event: message
   data: {"text": "Hello"}
-  
+
   event: update
   data: {"count": 5}
 ```
 
-### curl 테스트
+### curl Test
 
 ```bash
-# SSE 연결 테스트
+# Test SSE connection
 curl -N http://localhost:3000/stream/updates
 
-# 결과:
+# Result:
 # event: message
 # data: {"text": "Hello"}
 #
@@ -385,28 +385,28 @@ curl -N http://localhost:3000/stream/updates
 # data: END
 ```
 
-**옵션**:
-- `-N`: 버퍼링 비활성화 (즉시 출력)
+**Options**:
+- `-N`: Disable buffering (immediate output)
 
-## 주의사항
+## Important Notes
 
 <Warning>
-**SSE 설정 시 주의사항**:
+**Important considerations when configuring SSE**:
 
-1. **압축 비활성화**: SSE는 스트리밍이므로 압축 금지
+1. **Disable compression**: SSE is streaming, so compression is prohibited
    ```typescript
    @api({ compress: false })
    async *streamData() { ... }
    ```
 
-2. **타임아웃 설정**: 장시간 연결 유지
+2. **Timeout settings**: Maintain long connections
    ```typescript
    fastify: {
      connectionTimeout: 0,
    }
    ```
 
-3. **CORS 설정**: 다른 도메인에서 사용 시 필요
+3. **CORS configuration**: Required when using from different domains
    ```typescript
    cors: {
      origin: 'https://example.com',
@@ -414,42 +414,42 @@ curl -N http://localhost:3000/stream/updates
    }
    ```
 
-4. **재연결 처리**: 클라이언트는 자동 재연결 구현 필요
+4. **Reconnection handling**: Clients need to implement auto-reconnection
    ```typescript
-   // EventSource가 자동으로 처리
+   // EventSource handles this automatically
    const source = new EventSource('/stream/updates');
    ```
 
-5. **브라우저 제한**: 동시 SSE 연결 수 제한 (도메인당 6개)
-   - 해결: HTTP/2 사용 또는 연결 재사용
+5. **Browser limitations**: Concurrent SSE connection limit (6 per domain)
+   - Solution: Use HTTP/2 or reuse connections
 
-6. **프록시 버퍼링**: Nginx 등 버퍼링 비활성화 필요
+6. **Proxy buffering**: Must disable buffering in Nginx, etc.
    ```nginx
    proxy_buffering off;
    ```
 </Warning>
 
-## 브라우저 지원
+## Browser Support
 
-SSE는 모든 모던 브라우저에서 지원됩니다:
+SSE is supported in all modern browsers:
 
-| 브라우저 | 지원 |
-|---------|------|
+| Browser | Support |
+|---------|---------|
 | Chrome | ✅ |
 | Firefox | ✅ |
 | Safari | ✅ |
 | Edge | ✅ |
-| IE 11 | ❌ (polyfill 필요) |
+| IE 11 | ❌ (polyfill required) |
 
-**IE 11 지원**: [event-source-polyfill](https://www.npmjs.com/package/event-source-polyfill)
+**IE 11 support**: [event-source-polyfill](https://www.npmjs.com/package/event-source-polyfill)
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="SSE 엔드포인트 만들기" icon="code" href="/advanced-features/sse/creating-sse-endpoints">
-    @stream 데코레이터로 SSE API 구축
+  <Card title="Creating SSE Endpoints" icon="code" href="/advanced-features/sse/creating-sse-endpoints">
+    Build SSE APIs with the @stream decorator
   </Card>
-  <Card title="클라이언트 통합" icon="browser" href="/advanced-features/sse/client-integration">
-    프론트엔드에서 SSE 사용하기
+  <Card title="Client Integration" icon="browser" href="/advanced-features/sse/client-integration">
+    Using SSE in the frontend
   </Card>
 </CardGroup>

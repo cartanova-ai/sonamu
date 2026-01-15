@@ -1,20 +1,20 @@
 ---
 title: "Boundaries"
-description: "HMR Boundary 개념과 실전 활용법"
+description: "Understanding HMR Boundary concepts and practical usage"
 ---
 
 import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
 
-Boundary는 HMR 시스템이 모듈을 안전하게 교체할 수 있는 경계를 정의합니다. Sonamu로 개발할 때 Boundary를 제대로 이해하면 HMR을 최대한 활용할 수 있습니다.
+Boundaries define the limits where the HMR system can safely replace modules. Understanding Boundaries properly when developing with Sonamu allows you to maximize HMR benefits.
 
-## Boundary란?
+## What is a Boundary?
 
-Boundary는 "재로드 가능한 경계"를 의미합니다. HMR 시스템은 다음과 같은 규칙으로 동작합니다:
+A Boundary means a "reloadable limit". The HMR system operates by the following rules:
 
-- **Boundary 파일**: 변경 시 다시 로드될 수 있는 파일 (Model, API, Entity 등)
-- **Non-boundary 파일**: 변경 시 전체 서버 재시작이 필요한 파일 (설정, 환경변수 등)
+- **Boundary files**: Files that can be reloaded on change (Model, API, Entity, etc.)
+- **Non-boundary files**: Files that require a full server restart on change (config, environment variables, etc.)
 
-**✅ Boundary 파일**: 수정 시 HMR로 즉시 반영
+**✅ Boundary files**: Changes are instantly reflected via HMR
 
 ```mermaid
 graph TB
@@ -25,20 +25,20 @@ graph TB
         B3["user.entity.ts<br/>📋 Entity"]
         B4["helpers.ts<br/>🛠️ Utils"]
     end
-    
-    B1 -.-> R1["⚡ 2초"]:::fast
-    
+
+    B1 -.-> R1["⚡ 2s"]:::fast
+
     style B1 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B2 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B3 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B4 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
-    
+
     style boundary fill:#F1F8E9,stroke:#7CB342,stroke-width:3px
-    
+
     classDef fast fill:#90EE90,stroke:#2E7D32,stroke-width:2px
 ```
 
-**❌ Non-boundary 파일**: 수정 시 서버 재시작 필요
+**❌ Non-boundary files**: Require server restart on change
 
 ```mermaid
 graph TB
@@ -48,120 +48,120 @@ graph TB
         N2[".env<br/>🔑 Env"]
         N3["package.json<br/>📦 Deps"]
     end
-    
-    N1 -.-> R2["🔄 30초"]:::slow
-    
+
+    N1 -.-> R2["🔄 30s"]:::slow
+
     style N1 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
     style N2 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
     style N3 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
-    
+
     style nonboundary fill:#FFF3E0,stroke:#FB8C00,stroke-width:3px
-    
+
     classDef slow fill:#FFD700,stroke:#F57F17,stroke-width:2px
 ```
 
-### 왜 Boundary가 필요한가?
+### Why are Boundaries Necessary?
 
-정적 import는 Node.js 시작 시 한 번만 실행되므로 런타임에 교체할 수 없습니다:
+Static imports execute only once when Node.js starts, so they cannot be replaced at runtime:
 
 ```typescript
-// ❌ 정적 import - HMR 불가
+// ❌ Static import - HMR not possible
 import { UserModel } from "./user.model";
 
-// ✅ 동적 import - HMR 가능
+// ✅ Dynamic import - HMR possible
 const { UserModel } = await import("./user.model");
 ```
 
-Boundary로 지정된 파일은 **반드시 동적으로 import**되어야 하며, 그래야만 변경 시 최신 코드를 가져올 수 있습니다.
+Files designated as Boundaries **must be imported dynamically**, so that the latest code can be fetched on change.
 
-## Sonamu의 Boundary 설정
+## Sonamu's Boundary Configuration
 
-Sonamu는 기본적으로 프로젝트의 모든 TypeScript 파일을 Boundary로 설정합니다:
+By default, Sonamu sets all TypeScript files in the project as Boundaries:
 
 ```typescript
 // hmr-hook-register.ts
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
-  boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일이 boundary
+  boundaries: [`./src/**/*.ts`],  // All .ts files are boundaries
 });
 ```
 
-이 설정으로 인해 `src/` 아래의 모든 파일은 HMR이 가능하며, 변경 시 자동으로 재로드됩니다.
+With this configuration, all files under `src/` are HMR-capable and automatically reload on change.
 
-### Boundary 파일 예시
+### Boundary File Examples
 
-**Boundary 파일들 (HMR 가능):**
+**Boundary files (HMR capable):**
 
-- `user.model.ts` - Model 파일
-- `user.api.ts` - API 파일
-- `user.entity.ts` - Entity 정의
-- `helpers.ts` - 유틸리티 함수
-- `constants.ts` - 상수 정의
+- `user.model.ts` - Model file
+- `user.api.ts` - API file
+- `user.entity.ts` - Entity definition
+- `helpers.ts` - Utility functions
+- `constants.ts` - Constants definition
 
-**Non-boundary 파일들 (재시작 필요):**
+**Non-boundary files (restart required):**
 
-- `sonamu.config.ts` - Sonamu 설정
-- `.env` - 환경변수
-- `package.json` - 의존성
+- `sonamu.config.ts` - Sonamu configuration
+- `.env` - Environment variables
+- `package.json` - Dependencies
 
-## Boundary 규칙
+## Boundary Rules
 
-### 1. 동적 Import 필수
+### 1. Dynamic Import Required
 
-Boundary 파일은 반드시 동적으로 import되어야 합니다.
+Boundary files must be imported dynamically.
 
-**❌ 잘못된 예: 정적 import**
+**❌ Wrong: Static import**
 
 ```typescript
 // server.ts
 import { UserModel } from "./application/user/user.model";
 
-// UserModel을 수정해도 반영되지 않음!
+// Changes to UserModel won't be reflected!
 app.get("/users", async (req, res) => {
   const users = await UserModel.findMany();
   res.json(users);
 });
 ```
 
-**✅ 올바른 예: 동적 import**
+**✅ Correct: Dynamic import**
 
 ```typescript
 // server.ts
 app.get("/users", async (req, res) => {
   const { UserModel } = await import("./application/user/user.model");
-  
-  // UserModel을 수정하면 다음 요청 시 최신 코드가 로드됨!
+
+  // When UserModel is modified, latest code is loaded on next request!
   const users = await UserModel.findMany();
   res.json(users);
 });
 ```
 
-### Sonamu는 자동으로 처리합니다
+### Sonamu Handles This Automatically
 
-다행히 Sonamu의 Syncer는 Entity 기반 파일들을 자동으로 동적 import합니다:
+Fortunately, Sonamu's Syncer automatically handles dynamic imports for Entity-based files:
 
 ```typescript
 // syncer.ts - autoloadModels()
 async autoloadModels() {
   for (const entity of entities) {
     const modelPath = `${entity.path}/${entity.id}.model`;
-    
-    // 동적 import로 로드 ✅
+
+    // Loaded via dynamic import ✅
     const module = await import(modelPath);
     this.models[entity.id] = module[`${entity.id}Model`];
   }
 }
 ```
 
-**즉, 일반적인 Sonamu 개발에서는 신경 쓸 필요가 없습니다!**
+**In other words, you don't need to worry about this in typical Sonamu development!**
 
-### 2. Boundary 간 정적 Import 허용
+### 2. Static Imports Between Boundaries Allowed
 
-Boundary 파일끼리는 정적 import가 가능합니다 (Sonamu의 개선사항):
+Static imports between Boundary files are allowed (Sonamu's enhancement):
 
 ```typescript
 // user.model.ts (boundary)
-import { PostModel } from "./post.model";  // ✅ OK - 둘 다 boundary
+import { PostModel } from "./post.model";  // ✅ OK - both are boundaries
 
 export class UserModel extends BaseModel {
   async getPosts() {
@@ -170,44 +170,44 @@ export class UserModel extends BaseModel {
 }
 ```
 
-이것이 가능한 이유:
-- 두 파일 모두 Boundary이므로
-- 둘 다 Syncer에 의해 동적으로 로드됨
-- 서로 참조해도 HMR이 정상 작동함
+This works because:
+- Both files are Boundaries
+- Both are dynamically loaded by Syncer
+- HMR works correctly even when they reference each other
 
-### 3. Non-boundary의 Boundary Import 제한
+### 3. Non-boundary to Boundary Import Restriction
 
-Non-boundary 파일이 Boundary를 정적 import하면 HMR이 작동하지 않습니다:
+HMR won't work if a non-boundary file statically imports a Boundary:
 
 ```typescript
 // server.ts (non-boundary)
-import { UserModel } from "./user.model";  // ❌ 전체 재시작 필요
+import { UserModel } from "./user.model";  // ❌ Full restart required
 
-// server.ts (non-boundary) - 올바른 방법
+// server.ts (non-boundary) - correct approach
 async function loadModels() {
   const { UserModel } = await import("./user.model");  // ✅ OK
 }
 ```
 
-## 실전 시나리오
+## Practical Scenarios
 
-### User-Post 관계에서 HMR 활용하기
+### Using HMR in User-Post Relationship
 
-**상황**: User Entity의 `role` 필드를 추가하고, Post API에서 작성자 권한 체크를 추가하려고 합니다.
+**Situation**: Adding a `role` field to User Entity and adding author permission check in Post API.
 
-**1단계: Entity 수정**
+**Step 1: Modify Entity**
 
 ```typescript
-// Sonamu UI에서 User에 role 추가
+// Add role to User in Sonamu UI
 role: EnumProp<"admin" | "user">
 ```
 
-저장하면 HMR이 자동으로:
-- `user.entity.ts` 업데이트
-- `user.types.ts` 재생성
-- `UserModel` 재로드
+On save, HMR automatically:
+- Updates `user.entity.ts`
+- Regenerates `user.types.ts`
+- Reloads `UserModel`
 
-콘솔 출력:
+Console output:
 
 ```bash
 🔄 Invalidated:
@@ -215,7 +215,7 @@ role: EnumProp<"admin" | "user">
 - src/application/user/user.model.ts
 ```
 
-**2단계: Model 로직 추가**
+**Step 2: Add Model Logic**
 
 ```typescript
 // user.model.ts
@@ -223,38 +223,38 @@ export class UserModel extends BaseModel {
   isAdmin(): boolean {
     return this.role === "admin";
   }
-  
+
   canCreatePost(): boolean {
     return this.isAdmin() || this.role === "user";
   }
 }
 ```
 
-저장하면 HMR이:
-- `UserModel` 재로드
-- `UserModel`을 사용하는 모든 API 재로드
+On save, HMR:
+- Reloads `UserModel`
+- Reloads all APIs that use `UserModel`
 
-**3단계: API에 권한 체크 추가**
+**Step 3: Add Permission Check to API**
 
 ```typescript
 // post.api.ts
-import { UserModel } from "../user/user.model";  // ✅ 둘 다 boundary
+import { UserModel } from "../user/user.model";  // ✅ Both are boundaries
 
 @api({ httpMethod: "POST" })
 async create(body: PostForm) {
   const user = await UserModel.findById(body.userId);
-  
-  if (!user.canCreatePost()) {  // 👈 방금 추가한 메서드 바로 사용!
+
+  if (!user.canCreatePost()) {  // 👈 Use the method just added!
     throw new UnauthorizedError("You don't have permission to create posts");
   }
-  
+
   return PostModel.save(body);
 }
 ```
 
-저장하면 HMR이:
-- `PostApi.create` 재등록
-- **서버 재시작 없이 바로 테스트 가능!**
+On save, HMR:
+- Re-registers `PostApi.create`
+- **Testable immediately without server restart!**
 
 ```bash
 🔄 Invalidated:
@@ -265,52 +265,52 @@ async create(body: PostForm) {
 
 ---
 
-**전통적 방식이라면:**
+**Traditional approach:**
 
-1. Entity 수정
-2. Types 파일 수동 생성
-3. Model 파일 수정
-4. 서버 재시작 (30초)
-5. API 파일 수정
-6. 서버 재시작 (30초)
-7. 테스트
+1. Modify Entity
+2. Manually generate Types file
+3. Modify Model file
+4. Server restart (30 seconds)
+5. Modify API file
+6. Server restart (30 seconds)
+7. Test
 
 **Sonamu + HMR:**
 
-1. Entity 수정 (자동 생성)
-2. Model 파일 수정 (자동 재로드)
-3. API 파일 수정 (자동 재로드)
-4. 테스트 ✅
+1. Modify Entity (auto-generated)
+2. Modify Model file (auto-reload)
+3. Modify API file (auto-reload)
+4. Test ✅
 
-**3번의 재시작(90초)이 0번으로!**
+**3 restarts (90 seconds) reduced to 0!**
 
-### 복잡한 비즈니스 로직 개발
+### Complex Business Logic Development
 
-**상황**: 주문 생성 시 재고 확인, 결제 처리, 알림 발송을 구현합니다.
+**Situation**: Implementing inventory check, payment processing, and notification on order creation.
 
-**파일 구조:**
+**File structure:**
 
 <Card>
 <FileTree>
   <FileItem name="src/application/">
     <FileItem name="product/">
-      <FileItem name="product.model.ts" description="재고 체크" />
+      <FileItem name="product.model.ts" description="Inventory check" />
     </FileItem>
     <FileItem name="order/">
-      <FileItem name="order.model.ts" description="주문 생성" />
-      <FileItem name="order.api.ts" description="API 엔드포인트" />
+      <FileItem name="order.model.ts" description="Order creation" />
+      <FileItem name="order.api.ts" description="API endpoint" />
     </FileItem>
     <FileItem name="payment/">
-      <FileItem name="payment.service.ts" description="결제 처리" />
+      <FileItem name="payment.service.ts" description="Payment processing" />
     </FileItem>
     <FileItem name="notification/">
-      <FileItem name="notification.service.ts" description="알림 발송" />
+      <FileItem name="notification.service.ts" description="Send notifications" />
     </FileItem>
   </FileItem>
 </FileTree>
 </Card>
 
-**1단계: 재고 체크 로직**
+**Step 1: Inventory Check Logic**
 
 ```typescript
 // product.model.ts
@@ -318,20 +318,20 @@ export class ProductModel extends BaseModel {
   hasStock(quantity: number): boolean {
     return this.stock >= quantity;
   }
-  
+
   async reserveStock(quantity: number) {
     if (!this.hasStock(quantity)) {
       throw new BadRequestError("Out of stock");
     }
-    
+
     await this.update({ stock: this.stock - quantity });
   }
 }
 ```
 
-저장 → 2초 후 → 즉시 반영 ✅
+Save → 2 seconds later → Instantly reflected ✅
 
-**2단계: 주문 생성 로직**
+**Step 2: Order Creation Logic**
 
 ```typescript
 // order.model.ts
@@ -341,10 +341,10 @@ import { PaymentService } from "../payment/payment.service";
 export class OrderModel extends BaseModel {
   static async createOrder(productId: number, quantity: number, userId: number) {
     const product = await ProductModel.findById(productId);
-    
-    // ProductModel.reserveStock()을 바로 사용 가능!
+
+    // Can use ProductModel.reserveStock() immediately!
     await product.reserveStock(quantity);
-    
+
     const order = await this.save({
       productId,
       quantity,
@@ -352,15 +352,15 @@ export class OrderModel extends BaseModel {
       totalPrice: product.price * quantity,
       status: "pending",
     });
-    
+
     return order;
   }
 }
 ```
 
-저장 → ProductModel 의존성도 자동 재로드 ✅
+Save → ProductModel dependency also auto-reloaded ✅
 
-**3단계: API 엔드포인트**
+**Step 3: API Endpoint**
 
 ```typescript
 // order.api.ts
@@ -369,21 +369,21 @@ import { OrderModel } from "./order.model";
 @api({ httpMethod: "POST" })
 async create(body: { productId: number; quantity: number }) {
   const userId = getSonamuContext().userId!;
-  
-  // OrderModel.createOrder()를 바로 사용!
+
+  // Can use OrderModel.createOrder() immediately!
   const order = await OrderModel.createOrder(
     body.productId,
     body.quantity,
     userId
   );
-  
+
   return order;
 }
 ```
 
-저장 → API 재등록 → **즉시 Postman에서 테스트!**
+Save → API re-registered → **Test immediately in Postman!**
 
-**HMR 로그:**
+**HMR log:**
 
 ```bash
 🔄 Invalidated:
@@ -398,17 +398,17 @@ async create(body: { productId: number; quantity: number }) {
 
 ## import.meta.hot API
 
-Boundary 파일에서는 `import.meta.hot` API를 사용하여 HMR 동작을 세밀하게 제어할 수 있습니다.
+In Boundary files, you can use the `import.meta.hot` API to finely control HMR behavior.
 
-### dispose() - 리소스 정리
+### dispose() - Resource Cleanup
 
-모듈이 재로드되기 전에 정리 작업을 수행합니다:
+Perform cleanup before module reload:
 
 ```typescript
 // notification.service.ts
 export class NotificationService {
   private static timer: NodeJS.Timeout;
-  
+
   static startPolling() {
     this.timer = setInterval(() => {
       console.log("Checking notifications...");
@@ -416,28 +416,28 @@ export class NotificationService {
   }
 }
 
-// 재로드 전 타이머 정리
+// Cleanup timer before reload
 import.meta.hot?.dispose(() => {
   clearInterval(NotificationService.timer);
   console.log("Cleaned up notification polling timer");
 });
 ```
 
-**리소스 정리가 필요한 경우:**
+**Cases requiring resource cleanup:**
 
-- 타이머/인터벌 정리
-- 이벤트 리스너 제거
-- WebSocket 연결 종료
-- 데이터베이스 커넥션 풀 정리
-- 파일 핸들 닫기
+- Clear timers/intervals
+- Remove event listeners
+- Close WebSocket connections
+- Clean up database connection pools
+- Close file handles
 
-**실제 사용 예시:**
+**Practical usage example:**
 
 ```typescript
 // websocket-manager.ts
 class WebSocketManager {
   private static connections = new Map<string, WebSocket>();
-  
+
   static connect(url: string) {
     const ws = new WebSocket(url);
     this.connections.set(url, ws);
@@ -446,7 +446,7 @@ class WebSocketManager {
 }
 
 import.meta.hot?.dispose(() => {
-  // 모든 WebSocket 연결 종료
+  // Close all WebSocket connections
   for (const [url, ws] of WebSocketManager.connections) {
     ws.close();
     console.log(`Closed WebSocket: ${url}`);
@@ -455,9 +455,9 @@ import.meta.hot?.dispose(() => {
 });
 ```
 
-### decline() - 전체 재시작 요구
+### decline() - Require Full Restart
 
-특정 모듈을 HMR에서 제외하고 전체 재시작을 요구합니다:
+Exclude specific modules from HMR and require full restart:
 
 ```typescript
 // config.ts
@@ -472,18 +472,18 @@ export const config = {
   },
 };
 
-// 이 파일이 변경되면 전체 재시작
+// Full restart when this file changes
 import.meta.hot?.decline();
 ```
 
-**decline()을 사용해야 하는 경우:**
+**When to use decline():**
 
-- 전역 설정 파일
-- 데이터베이스 연결 설정
-- 초기화가 복잡한 싱글톤
-- 상태 관리가 까다로운 모듈
+- Global configuration files
+- Database connection settings
+- Singletons with complex initialization
+- Modules with difficult state management
 
-**실제 사용 예시:**
+**Practical usage example:**
 
 ```typescript
 // database.config.ts
@@ -497,13 +497,13 @@ export const dbPool = new Pool({
   database: Sonamu.config.database.database,
 });
 
-// DB 연결 설정 변경은 재시작 필요
+// DB connection config changes require restart
 import.meta.hot?.decline();
 ```
 
-### boundary 객체 - 상태 공유
+### boundary Object - State Sharing
 
-Boundary 간 데이터를 공유하여 재로드 후에도 상태를 유지합니다:
+Share data between Boundaries to maintain state after reload:
 
 ```typescript
 // cache-manager.ts
@@ -513,17 +513,17 @@ export class CacheManager {
   static set(key: string, value: any) {
     cache.set(key, value);
   }
-  
+
   static get(key: string) {
     return cache.get(key);
   }
 }
 
-// 재로드 시에도 캐시 유지
+// Maintain cache even after reload
 import.meta.hot?.boundary.userCache = cache;
 ```
 
-**실제 사용 예시:**
+**Practical usage example:**
 
 ```typescript
 // rate-limiter.ts
@@ -532,27 +532,27 @@ const requestCounts = import.meta.hot?.boundary.requestCounts || new Map<string,
 export class RateLimiter {
   static check(userId: string): boolean {
     const count = requestCounts.get(userId) || 0;
-    
+
     if (count >= 100) {
       return false;  // Rate limit exceeded
     }
-    
+
     requestCounts.set(userId, count + 1);
     return true;
   }
 }
 
-// HMR 후에도 요청 카운트 유지
+// Maintain request counts after HMR
 import.meta.hot?.boundary.requestCounts = requestCounts;
 ```
 
 <Warning>
-`boundary` 객체는 HMR 사이클 간 데이터를 유지하지만, 서버 재시작 시에는 초기화됩니다. 영구 저장이 필요한 데이터는 데이터베이스나 Redis를 사용하세요.
+The `boundary` object maintains data between HMR cycles, but is reset on server restart. Use database or Redis for data requiring persistent storage.
 </Warning>
 
-## 타입 정의
+## Type Definitions
 
-TypeScript에서 `import.meta.hot`을 사용하려면 타입 정의가 필요합니다:
+To use `import.meta.hot` in TypeScript, type definitions are needed:
 
 ```typescript
 // src/types/import-meta.d.ts
@@ -565,13 +565,13 @@ interface ImportMeta {
 }
 ```
 
-Sonamu 프로젝트에는 이미 타입 정의가 포함되어 있으므로 별도 설정이 필요 없습니다.
+Sonamu projects already include type definitions, so no separate configuration is needed.
 
-## 디버깅
+## Debugging
 
-### Boundary 설정 확인
+### Check Boundary Configuration
 
-특정 파일이 Boundary로 설정되어 있는지 확인:
+Verify if a specific file is configured as a Boundary:
 
 ```typescript
 const dump = await hot.dump();
@@ -579,10 +579,10 @@ const userModel = dump.find(d => d.nodePath.includes("user.model.ts"));
 
 console.log(`Boundary: ${userModel?.boundary}`);       // true
 console.log(`Reloadable: ${userModel?.reloadable}`);   // true
-console.log(`Children:`, userModel?.children);          // 의존하는 파일들
+console.log(`Children:`, userModel?.children);          // Dependent files
 ```
 
-출력 예시:
+Output example:
 
 ```json
 {
@@ -597,7 +597,7 @@ console.log(`Children:`, userModel?.children);          // 의존하는 파일�
 }
 ```
 
-### 의존성 트리 시각화
+### Visualize Dependency Tree
 
 ```typescript
 const dump = await hot.dump();
@@ -605,7 +605,7 @@ const dump = await hot.dump();
 for (const node of dump) {
   if (node.boundary) {
     console.log(`📦 ${node.nodePath}`);
-    
+
     for (const child of node.children || []) {
       console.log(`   └─ ${child}`);
     }
@@ -613,7 +613,7 @@ for (const node of dump) {
 }
 ```
 
-출력:
+Output:
 
 ```
 📦 /project/src/application/user/user.model.ts
@@ -625,24 +625,24 @@ for (const node of dump) {
 ```
 
 <Tip>
-개발 중 HMR이 작동하지 않는다면:
-1. 해당 파일이 Boundary로 지정되어 있는지 확인
-2. 동적으로 import되는지 확인
-3. 순환 의존성이 없는지 확인
+If HMR isn't working during development:
+1. Verify the file is designated as a Boundary
+2. Check if it's being imported dynamically
+3. Check for circular dependencies
 </Tip>
 
-## 성능 최적화
+## Performance Optimization
 
-### 불필요한 Boundary 제외
+### Exclude Unnecessary Boundaries
 
-모든 파일을 Boundary로 설정하면 의존성 트리가 커져서 느려질 수 있습니다:
+Setting all files as Boundaries can slow things down due to a large dependency tree:
 
 ```typescript
 // hmr-hook-register.ts
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
   boundaries: [
-    // 자주 변경되는 파일만 Boundary로
+    // Only frequently changed files as Boundaries
     "./src/**/*.model.ts",
     "./src/**/*.api.ts",
     "./src/**/*.service.ts",
@@ -650,28 +650,28 @@ await hot.init({
 });
 ```
 
-### 의존성 최소화
+### Minimize Dependencies
 
-Model 간 순환 참조를 피하고, 필요한 것만 import:
+Avoid circular references between Models and only import what's needed:
 
 ```typescript
-// ❌ 나쁜 예
+// ❌ Bad example
 import { UserModel } from "../user/user.model";
 import { PostModel } from "../post/post.model";
 import { CommentModel } from "../comment/comment.model";
-// ... 많은 import
+// ... many imports
 
-// ✅ 좋은 예
-import { UserModel } from "../user/user.model";  // 실제로 사용하는 것만
+// ✅ Good example
+import { UserModel } from "../user/user.model";  // Only what's actually used
 ```
 
-## 요약
+## Summary
 
-Sonamu의 Boundary 시스템:
+Sonamu's Boundary system:
 
-✅ **자동 처리**: Syncer가 Entity 기반 파일을 자동으로 동적 import  
-✅ **Boundary 간 참조 가능**: Model끼리 정적 import 허용  
-✅ **세밀한 제어**: `import.meta.hot` API로 리소스 정리, 상태 유지  
-✅ **디버깅 도구**: `hot.dump()`로 의존성 트리 확인
+✅ **Automatic handling**: Syncer automatically handles dynamic imports for Entity-based files
+✅ **Cross-boundary references allowed**: Static imports between Models permitted
+✅ **Fine-grained control**: Resource cleanup and state maintenance via `import.meta.hot` API
+✅ **Debugging tools**: Check dependency tree with `hot.dump()`
 
-대부분의 경우 Boundary를 신경 쓸 필요 없이 Sonamu가 자동으로 처리합니다!
+In most cases, you don't need to worry about Boundaries - Sonamu handles it automatically!

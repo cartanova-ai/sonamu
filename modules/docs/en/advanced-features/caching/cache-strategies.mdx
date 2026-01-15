@@ -1,149 +1,149 @@
 ---
-title: "캐시 전략"
-description: "TTL, Grace, Namespace 활용 전략"
+title: "Cache Strategies"
+description: "TTL, Grace, and Namespace usage strategies"
 ---
 
-효과적인 캐싱을 위해서는 데이터 특성에 맞는 전략을 선택해야 합니다. 이 가이드에서는 다양한 캐시 전략과 활용 방법을 알아봅니다.
+Effective caching requires choosing strategies that match data characteristics. This guide covers various cache strategies and how to use them.
 
-## TTL (Time To Live) 전략
+## TTL (Time To Live) Strategy
 
-### TTL이란?
+### What is TTL?
 
-TTL은 캐시가 **유효한 시간**을 의미합니다. TTL이 지나면 캐시가 만료되어 새로운 데이터를 가져옵니다.
+TTL is the **duration a cache remains valid**. Once TTL expires, the cache is invalidated and fresh data is fetched.
 
 ```typescript
-@cache({ ttl: "10m" })  // 10분 후 만료
+@cache({ ttl: "10m" })  // Expires after 10 minutes
 async getData() {
   return await this.expensiveQuery();
 }
 ```
 
-### 데이터 특성별 TTL 설정
+### TTL Settings by Data Characteristics
 
 <Tabs>
-  <Tab title="정적 데이터" icon="lock">
-    **변경이 거의 없는 데이터**
-    
+  <Tab title="Static Data" icon="lock">
+    **Data that rarely changes**
+
     ```typescript
-    // 설정 데이터 (거의 변경 안됨)
+    // Configuration data (almost never changes)
     @cache({ ttl: "forever", tags: ["config"] })
     async getConfig() {
       return this.findOne(['key', 'app_config']);
     }
-    
-    // 카테고리 (가끔 변경)
+
+    // Categories (occasionally changes)
     @cache({ ttl: "1d", tags: ["category"] })
     async getCategoryTree() {
       return this.buildCategoryTree();
     }
     ```
-    
+
     **TTL**: `"forever"`, `"1d"`, `"1w"`
   </Tab>
-  
-  <Tab title="준정적 데이터" icon="hourglass-half">
-    **주기적으로 변경되는 데이터**
-    
+
+  <Tab title="Semi-static Data" icon="hourglass-half">
+    **Data that changes periodically**
+
     ```typescript
-    // 사용자 프로필 (가끔 변경)
+    // User profile (occasionally changes)
     @cache({ ttl: "1h", tags: ["user"] })
     async getUserProfile(id: number) {
       return this.findOne(['id', id]);
     }
-    
-    // 상품 정보 (재고/가격 변경)
+
+    // Product info (inventory/price changes)
     @cache({ ttl: "30m", tags: ["product"] })
     async getProduct(id: number) {
       return this.findOne(['id', id]);
     }
     ```
-    
+
     **TTL**: `"30m"`, `"1h"`, `"6h"`
   </Tab>
-  
-  <Tab title="동적 데이터" icon="bolt">
-    **자주 변경되는 데이터**
-    
+
+  <Tab title="Dynamic Data" icon="bolt">
+    **Data that changes frequently**
+
     ```typescript
-    // 게시글 목록 (자주 추가)
+    // Post list (frequently added)
     @cache({ ttl: "5m", tags: ["post", "list"] })
     async getPostList() {
       return this.findMany({ num: 20, page: 1 });
     }
-    
-    // 실시간 통계 (계속 변경)
+
+    // Real-time stats (constantly changing)
     @cache({ ttl: "1m", tags: ["stats"] })
     async getLiveStats() {
       return this.calculateStats();
     }
     ```
-    
+
     **TTL**: `"1m"`, `"5m"`, `"10m"`
   </Tab>
-  
-  <Tab title="초단기 데이터" icon="gauge-high">
-    **초 단위로 변경되는 데이터**
-    
+
+  <Tab title="Very Short-lived Data" icon="gauge-high">
+    **Data that changes by the second**
+
     ```typescript
-    // API 레이트 리미팅
+    // API rate limiting
     @cache({ ttl: "10s" })
     async getRateLimitStatus(userId: number) {
       return this.checkRateLimit(userId);
     }
-    
-    // 실시간 순위
+
+    // Real-time ranking
     @cache({ ttl: "5s", tags: ["ranking"] })
     async getRealtimeRanking() {
       return this.calculateRanking();
     }
     ```
-    
+
     **TTL**: `"5s"`, `"10s"`, `"30s"`
   </Tab>
 </Tabs>
 
-### TTL 단위
+### TTL Units
 
 ```typescript
-// 초 (seconds)
+// Seconds
 @cache({ ttl: "30s" })
 
-// 분 (minutes)
+// Minutes
 @cache({ ttl: "10m" })
 
-// 시간 (hours)
+// Hours
 @cache({ ttl: "2h" })
 
-// 일 (days)
+// Days
 @cache({ ttl: "7d" })
 
-// 주 (weeks)
+// Weeks
 @cache({ ttl: "2w" })
 
-// 영구
+// Permanent
 @cache({ ttl: "forever" })
 
-// 밀리초 (숫자)
-@cache({ ttl: 60000 })  // 60000ms = 1분
+// Milliseconds (number)
+@cache({ ttl: 60000 })  // 60000ms = 1 minute
 ```
 
 ## Grace Period (Stale-While-Revalidate)
 
-### Grace란?
+### What is Grace?
 
-Grace는 TTL 만료 후에도 **오래된 캐시(Stale)를 반환**하면서 백그라운드에서 갱신하는 전략입니다.
+Grace is a strategy that **returns stale cache** even after TTL expiration while refreshing in the background.
 
 ```typescript
-@cache({ 
-  ttl: "5m",     // 5분 후 만료
-  grace: "1h"    // 만료 후 1시간 동안 Stale 값 사용
+@cache({
+  ttl: "5m",     // Expires after 5 minutes
+  grace: "1h"    // Use stale value for 1 hour after expiration
 })
 async getExpensiveData() {
   return await this.heavyComputation();
 }
 ```
 
-### 작동 방식
+### How It Works
 
 ```mermaid
 sequenceDiagram
@@ -152,57 +152,57 @@ sequenceDiagram
     participant Background
     participant DB
 
-    Note over Cache: Fresh (0~5분)
-    User->>Cache: 요청
-    Cache-->>User: 캐시 반환 (빠름)
+    Note over Cache: Fresh (0~5 min)
+    User->>Cache: Request
+    Cache-->>User: Return cache (fast)
 
-    Note over Cache: Stale (5~65분)
-    User->>Cache: 요청
-    Cache-->>User: Stale 반환 (즉시)
-    Cache->>Background: 백그라운드 갱신 시작
-    Background->>DB: 데이터 조회
-    DB-->>Background: 새 데이터
-    Background->>Cache: 캐시 갱신
+    Note over Cache: Stale (5~65 min)
+    User->>Cache: Request
+    Cache-->>User: Return stale (immediately)
+    Cache->>Background: Start background refresh
+    Background->>DB: Query data
+    DB-->>Background: New data
+    Background->>Cache: Update cache
 
-    Note over Cache: Expired (65분 이후)
-    User->>Cache: 요청
-    Cache->>DB: 데이터 조회 (느림)
-    DB-->>Cache: 새 데이터
-    Cache-->>User: 반환
+    Note over Cache: Expired (after 65 min)
+    User->>Cache: Request
+    Cache->>DB: Query data (slow)
+    DB-->>Cache: New data
+    Cache-->>User: Return
 ```
 
-### Grace 사용 시기
+### When to Use Grace
 
 <CardGroup cols={2}>
-  <Card title="Grace 사용 ✅" icon="check">
-    **무거운 계산/쿼리**
-    
-    - 집계 통계
-    - 복잡한 Join 쿼리
-    - 외부 API 호출
-    - 대용량 데이터 처리
-    
+  <Card title="Use Grace ✅" icon="check">
+    **Heavy computations/queries**
+
+    - Aggregate statistics
+    - Complex join queries
+    - External API calls
+    - Large data processing
+
     ```typescript
-    @cache({ 
-      ttl: "10m", 
-      grace: "1h" 
+    @cache({
+      ttl: "10m",
+      grace: "1h"
     })
     async getDashboard() {
       return await this.complexAggregation();
     }
     ```
   </Card>
-  
-  <Card title="Grace 불필요 ❌" icon="xmark">
-    **빠른 조회**
-    
-    - 단순 SELECT
-    - 인덱스 조회
-    - 캐시된 데이터
-    
+
+  <Card title="Grace Unnecessary ❌" icon="xmark">
+    **Fast queries**
+
+    - Simple SELECT
+    - Index lookups
+    - Cached data
+
     ```typescript
     @cache({ ttl: "5m" })
-    // grace 없음
+    // No grace
     async getUser(id: number) {
       return this.findOne(['id', id]);
     }
@@ -210,14 +210,14 @@ sequenceDiagram
   </Card>
 </CardGroup>
 
-### Grace 실전 예제
+### Grace Practical Examples
 
 ```typescript
 class AnalyticsModelClass extends BaseModel {
-  // 대시보드 통계 (무거운 집계)
-  @cache({ 
-    ttl: "5m",      // 5분마다 갱신
-    grace: "2h",    // 2시간 동안 Stale 허용
+  // Dashboard stats (heavy aggregation)
+  @cache({
+    ttl: "5m",      // Refresh every 5 minutes
+    grace: "2h",    // Allow stale for 2 hours
     tags: ["analytics"]
   })
   @api()
@@ -227,54 +227,54 @@ class AnalyticsModelClass extends BaseModel {
       this.countOrders(),
       this.calculateRevenue(),
     ]);
-    
+
     return { userCount, orderCount, revenue };
   }
-  
-  // 실시간 순위 (매우 무거움)
-  @cache({ 
-    ttl: "1m",      // 1분마다 갱신
-    grace: "10m",   // 10분 동안 Stale 허용
+
+  // Real-time ranking (very heavy)
+  @cache({
+    ttl: "1m",      // Refresh every minute
+    grace: "10m",   // Allow stale for 10 minutes
     tags: ["ranking"]
   })
   @api()
   async getRealTimeRanking() {
-    // 수백만 건의 데이터 집계
+    // Aggregate millions of records
     return await this.calculateRankingWithHeavyComputation();
   }
 }
 ```
 
-### Grace vs 긴 TTL
+### Grace vs Long TTL
 
-**Grace 전략**:
+**Grace Strategy**:
 ```typescript
 @cache({ ttl: "5m", grace: "1h" })
 ```
-- 대부분 신선한 데이터 (5분 이내)
-- 만료 시 Stale 즉시 반환 (빠름)
-- 백그라운드 갱신
+- Mostly fresh data (within 5 minutes)
+- Returns stale immediately on expiration (fast)
+- Background refresh
 
-**긴 TTL**:
+**Long TTL**:
 ```typescript
 @cache({ ttl: "1h" })
 ```
-- 최대 1시간 오래된 데이터
-- 만료 시 새로 계산 (느림)
+- Data up to 1 hour old
+- Recalculates on expiration (slow)
 
-**권장**: 무거운 작업은 Grace 사용
+**Recommendation**: Use Grace for heavy operations
 
-## Namespace 전략
+## Namespace Strategy
 
-### Namespace란?
+### What is Namespace?
 
-Namespace는 캐시를 **논리적으로 분리**하는 기능입니다.
+Namespace is a feature that **logically isolates** caches.
 
 ```typescript
 const userCache = Sonamu.cache.namespace("user:123");
 const adminCache = Sonamu.cache.namespace("admin");
 
-// 같은 키라도 다른 namespace면 다른 캐시
+// Same key but different namespace means different cache
 await userCache.set({ key: "data", value: "user data" });
 await adminCache.set({ key: "data", value: "admin data" });
 
@@ -282,17 +282,17 @@ await userCache.get({ key: "data" });   // "user data"
 await adminCache.get({ key: "data" });  // "admin data"
 ```
 
-### 사용자별 격리
+### Per-User Isolation
 
 ```typescript
 class UserDataModelClass extends BaseModel {
   @api()
   async getMyData(ctx: Context) {
     const userId = ctx.user.id;
-    
-    // 사용자별 namespace
+
+    // Per-user namespace
     const userCache = Sonamu.cache.namespace(`user:${userId}`);
-    
+
     return userCache.getOrSet({
       key: "preferences",
       ttl: "1h",
@@ -301,177 +301,177 @@ class UserDataModelClass extends BaseModel {
       }
     });
   }
-  
+
   @api()
   async updateMyData(ctx: Context, data: any) {
     const userId = ctx.user.id;
     const result = await this.saveUserData(userId, data);
-    
-    // 해당 사용자의 캐시만 삭제
+
+    // Delete only that user's cache
     const userCache = Sonamu.cache.namespace(`user:${userId}`);
     await userCache.clear();
-    
+
     return result;
   }
 }
 ```
 
-**장점**:
-- 사용자 A의 변경이 사용자 B에 영향 없음
-- 선택적 무효화 가능
+**Advantages**:
+- User A's changes don't affect User B
+- Selective invalidation possible
 
-### 멀티 테넌트
+### Multi-Tenant
 
 ```typescript
 class TenantServiceModelClass extends BaseModel {
   @api()
   async getData(tenantId: number) {
-    // 테넌트별 namespace
+    // Per-tenant namespace
     const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
-    
+
     return tenantCache.getOrSet({
       key: "service-data",
       ttl: "1h",
       tags: ["service"],
       factory: async () => {
-        return this.findMany({ 
-          where: [['tenant_id', tenantId]] 
+        return this.findMany({
+          where: [['tenant_id', tenantId]]
         });
       }
     });
   }
-  
+
   @api()
   async clearTenantCache(tenantId: number) {
     const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);
-    
-    // 특정 테넌트 캐시만 삭제
+
+    // Delete only specific tenant's cache
     await tenantCache.clear();
   }
 }
 ```
 
-### 기능별 격리
+### Per-Feature Isolation
 
 ```typescript
-// 인증 관련
+// Authentication related
 const authCache = Sonamu.cache.namespace("auth");
 await authCache.set({ key: `session:${sessionId}`, value: session, ttl: "1h" });
 
-// 통계 관련
+// Statistics related
 const statsCache = Sonamu.cache.namespace("stats");
 await statsCache.set({ key: "daily", value: stats, ttl: "1d" });
 
-// API 레이트 리밋
+// API rate limiting
 const rateLimitCache = Sonamu.cache.namespace("ratelimit");
 await rateLimitCache.set({ key: `user:${userId}`, value: count, ttl: "1m" });
 ```
 
-## 캐시 패턴
+## Cache Patterns
 
 ### 1. Cache-Aside (Lazy Loading)
 
-**가장 기본적인 패턴**: 필요할 때 조회하고 캐싱
+**Most basic pattern**: Query and cache when needed
 
 ```typescript
 async getData(id: number) {
-  // 1. 캐시 확인
+  // 1. Check cache
   const cached = await Sonamu.cache.get({ key: `data:${id}` });
   if (cached) return cached;
-  
-  // 2. DB 조회
+
+  // 2. DB query
   const data = await this.findOne(['id', id]);
-  
-  // 3. 캐싱
-  await Sonamu.cache.set({ 
-    key: `data:${id}`, 
-    value: data, 
-    ttl: "10m" 
+
+  // 3. Cache
+  await Sonamu.cache.set({
+    key: `data:${id}`,
+    value: data,
+    ttl: "10m"
   });
-  
+
   return data;
 }
 ```
 
-**@cache 데코레이터가 이 패턴을 자동 구현**
+**@cache decorator automatically implements this pattern**
 
 ### 2. Write-Through
 
-**쓰기 시 캐시도 갱신**: 데이터 변경과 동시에 캐시 업데이트
+**Update cache on write**: Update cache simultaneously with data change
 
 ```typescript
 @api()
 async update(id: number, data: Partial<DataSave>) {
-  // 1. DB 업데이트
+  // 1. DB update
   const result = await this.updateOne(['id', id], data);
-  
-  // 2. 캐시 갱신
-  await Sonamu.cache.set({ 
-    key: `data:${id}`, 
-    value: result, 
+
+  // 2. Cache refresh
+  await Sonamu.cache.set({
+    key: `data:${id}`,
+    value: result,
     ttl: "10m",
     tags: ["data"]
   });
-  
+
   return result;
 }
 ```
 
-**장점**: 캐시 항상 최신 상태
-**단점**: 쓰기 성능 저하
+**Advantage**: Cache always up-to-date
+**Disadvantage**: Write performance degradation
 
 ### 3. Write-Behind (Write-Back)
 
-**쓰기를 캐시에 먼저**: 캐시 업데이트 후 비동기로 DB 저장
+**Write to cache first**: Update cache then asynchronously save to DB
 
 ```typescript
 @api()
 async updateCounter(id: number) {
   const key = `counter:${id}`;
-  
-  // 1. 캐시 증가
+
+  // 1. Increment cache
   let count = await Sonamu.cache.get({ key });
   count = (count ?? 0) + 1;
   await Sonamu.cache.set({ key, value: count, ttl: "10m" });
-  
-  // 2. 비동기 DB 저장 (큐에 넣기)
+
+  // 2. Async DB save (queue it)
   await this.queueCounterUpdate(id, count);
-  
+
   return count;
 }
 ```
 
-**장점**: 빠른 응답
-**단점**: 구현 복잡, 데이터 유실 가능
+**Advantage**: Fast response
+**Disadvantage**: Complex implementation, potential data loss
 
 ### 4. Refresh-Ahead
 
-**만료 전 미리 갱신**: TTL이 거의 끝날 때 미리 새 데이터 준비
+**Pre-refresh before expiration**: Prepare fresh data before TTL ends
 
 ```typescript
-@cache({ 
+@cache({
   ttl: "10m",
-  grace: "1h"  // Grace가 Refresh-Ahead와 유사
+  grace: "1h"  // Grace is similar to Refresh-Ahead
 })
 async getData() {
   return await this.expensiveQuery();
 }
 ```
 
-**Grace period가 이 역할을 수행**
+**Grace period serves this role**
 
-## 조합 전략
+## Combined Strategies
 
-### 레이어별 TTL
+### TTL by Layer
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // L1 (메모리): 짧은 TTL
-  // L2 (Redis): 긴 TTL
-  @cache({ 
-    ttl: "5m",      // L1은 5분
-    // L2는 자동으로 더 길게 유지됨
-    tags: ["product"] 
+  // L1 (memory): Short TTL
+  // L2 (Redis): Long TTL
+  @cache({
+    ttl: "5m",      // L1 is 5 minutes
+    // L2 automatically retained longer
+    tags: ["product"]
   })
   @api()
   async findById(id: number) {
@@ -480,56 +480,56 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-### 중요도별 전략
+### Strategies by Priority
 
 <Tabs>
   <Tab title="Critical Data" icon="exclamation-triangle">
-    **항상 정확해야 하는 데이터**
-    
+    **Data that must always be accurate**
+
     ```typescript
-    // 결제 정보 (캐싱 없음 또는 짧은 TTL)
+    // Payment info (no caching or short TTL)
     @cache({ ttl: "30s", grace: false })
     async getPaymentInfo(id: number) {
       return this.findOne(['id', id]);
     }
-    
-    // 재고 정보 (짧은 TTL + 즉시 무효화)
+
+    // Inventory info (short TTL + immediate invalidation)
     @cache({ ttl: "1m", tags: ["inventory"] })
     async getInventory(productId: number) {
       return this.getStock(productId);
     }
     ```
   </Tab>
-  
+
   <Tab title="Important Data" icon="star">
-    **정확성이 중요하지만 약간의 지연 허용**
-    
+    **Accuracy important but slight delay acceptable**
+
     ```typescript
-    // 사용자 프로필 (적당한 TTL)
+    // User profile (moderate TTL)
     @cache({ ttl: "10m", tags: ["user"] })
     async getUserProfile(id: number) {
       return this.findOne(['id', id]);
     }
-    
-    // 주문 상태 (짧은 TTL + Grace)
+
+    // Order status (short TTL + Grace)
     @cache({ ttl: "2m", grace: "10m", tags: ["order"] })
     async getOrderStatus(id: number) {
       return this.findOne(['id', id]);
     }
     ```
   </Tab>
-  
+
   <Tab title="Nice-to-have Data" icon="circle-check">
-    **오래되어도 괜찮은 데이터**
-    
+    **Data that can be stale**
+
     ```typescript
-    // 통계 (긴 TTL + 긴 Grace)
+    // Statistics (long TTL + long Grace)
     @cache({ ttl: "1h", grace: "6h", tags: ["stats"] })
     async getStatistics() {
       return this.calculateStats();
     }
-    
-    // 인기 게시글 (긴 TTL)
+
+    // Popular posts (long TTL)
     @cache({ ttl: "6h", tags: ["popular"] })
     async getPopularPosts() {
       return this.findPopular();
@@ -538,17 +538,17 @@ class ProductModelClass extends BaseModel {
   </Tab>
 </Tabs>
 
-### 시간대별 전략
+### Time-Based Strategy
 
 ```typescript
 class DynamicCacheModelClass extends BaseModel {
   @api()
   async getData() {
     const hour = new Date().getHours();
-    
-    // 피크 시간 (오전 9시~오후 6시): 짧은 TTL
+
+    // Peak hours (9 AM ~ 6 PM): Short TTL
     const ttl = (hour >= 9 && hour <= 18) ? "5m" : "30m";
-    
+
     return Sonamu.cache.getOrSet({
       key: "dynamic-data",
       ttl,
@@ -561,98 +561,98 @@ class DynamicCacheModelClass extends BaseModel {
 }
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 캐시 워밍
+### Cache Warming
 
-서버 시작 시 미리 캐시를 채웁니다.
+Pre-populate cache on server start.
 
 ```typescript
 class CacheWarmerModelClass extends BaseModel {
   async warmupCache() {
     console.log("Warming up cache...");
-    
-    // 자주 사용되는 데이터 미리 캐싱
+
+    // Pre-cache frequently used data
     await Promise.all([
-      this.getCategoryTree(),  // @cache 적용됨
+      this.getCategoryTree(),  // @cache applied
       this.getPopularProducts(),
       this.getConfig(),
     ]);
-    
+
     console.log("Cache warmed up!");
   }
-  
+
   @cache({ ttl: "1d", tags: ["category"] })
   async getCategoryTree() {
     return this.buildTree();
   }
-  
+
   @cache({ ttl: "1h", tags: ["popular"] })
   async getPopularProducts() {
     return this.findPopular();
   }
 }
 
-// 서버 시작 시 실행
+// Run on server start
 await cacheWarmerModel.warmupCache();
 ```
 
-### 배치 캐싱
+### Batch Caching
 
-여러 항목을 한 번에 캐싱합니다.
+Cache multiple items at once.
 
 ```typescript
 class BatchCacheModelClass extends BaseModel {
   async batchCache(ids: number[]) {
-    // 1. 캐시되지 않은 ID 찾기
+    // 1. Find uncached IDs
     const cacheKeys = ids.map(id => `item:${id}`);
     const cached = await Promise.all(
       cacheKeys.map(key => Sonamu.cache.get({ key }))
     );
-    
+
     const uncachedIds = ids.filter((_, i) => !cached[i]);
-    
+
     if (uncachedIds.length === 0) {
       return cached.filter(Boolean);
     }
-    
-    // 2. DB에서 조회
-    const items = await this.findMany({ 
-      where: [['id', 'in', uncachedIds]] 
+
+    // 2. Query from DB
+    const items = await this.findMany({
+      where: [['id', 'in', uncachedIds]]
     });
-    
-    // 3. 배치 캐싱
+
+    // 3. Batch cache
     await Promise.all(
       items.rows.map(item =>
-        Sonamu.cache.set({ 
-          key: `item:${item.id}`, 
-          value: item, 
-          ttl: "10m" 
+        Sonamu.cache.set({
+          key: `item:${item.id}`,
+          value: item,
+          ttl: "10m"
         })
       )
     );
-    
-    // 4. 결과 반환
+
+    // 4. Return results
     return [...cached.filter(Boolean), ...items.rows];
   }
 }
 ```
 
-### 선택적 캐싱
+### Conditional Caching
 
-조건에 따라 캐싱 여부를 결정합니다.
+Decide whether to cache based on conditions.
 
 ```typescript
 class ConditionalCacheModelClass extends BaseModel {
   @api()
   async getData(id: number, useCache: boolean = true) {
     const cacheKey = `data:${id}`;
-    
-    // 캐시 사용 여부 선택
+
+    // Choose whether to use cache
     if (!useCache) {
       return this.findOne(['id', id]);
     }
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
       ttl: "10m",
@@ -664,77 +664,77 @@ class ConditionalCacheModelClass extends BaseModel {
 }
 ```
 
-## 주의사항
+## Cautions
 
 <Warning>
-**캐시 전략 선택 시 주의사항**:
+**Cache Strategy Selection Cautions**:
 
-1. **TTL이 너무 길면**: 오래된 데이터 제공
+1. **TTL Too Long**: Serves stale data
    ```typescript
-   // ❌ 자주 변경되는데 TTL이 너무 김
-   @cache({ ttl: "1d" })  
+   // ❌ Frequently changing but TTL too long
+   @cache({ ttl: "1d" })
    async getLiveStock() { ... }
-   
-   // ✅ 적절한 TTL
+
+   // ✅ Appropriate TTL
    @cache({ ttl: "1m" })
    async getLiveStock() { ... }
    ```
 
-2. **TTL이 너무 짧으면**: 캐시 효과 감소
+2. **TTL Too Short**: Reduced cache effectiveness
    ```typescript
-   // ❌ 거의 변경 안 되는데 TTL이 너무 짧음
+   // ❌ Rarely changes but TTL too short
    @cache({ ttl: "10s" })
    async getConfig() { ... }
-   
-   // ✅ 적절한 TTL
+
+   // ✅ Appropriate TTL
    @cache({ ttl: "1d", tags: ["config"] })
    async getConfig() { ... }
    ```
 
-3. **Grace 오남용**: 빠른 쿼리에 Grace 불필요
+3. **Grace Overuse**: Grace unnecessary for fast queries
    ```typescript
-   // ❌ 불필요한 Grace
+   // ❌ Unnecessary Grace
    @cache({ ttl: "5m", grace: "1h" })
    async getUser(id: number) {
-     return this.findOne(['id', id]);  // 빠른 조회
+     return this.findOne(['id', id]);  // Fast query
    }
-   
-   // ✅ Grace 없이 충분
+
+   // ✅ Sufficient without Grace
    @cache({ ttl: "5m" })
    async getUser(id: number) { ... }
    ```
 
-4. **Namespace 남용**: 너무 많은 namespace는 관리 어려움
+4. **Namespace Overuse**: Too many namespaces are hard to manage
    ```typescript
-   // ❌ 과도한 namespace
+   // ❌ Excessive namespace
    const cache1 = Sonamu.cache.namespace("a:b:c:d:e");
-   
-   // ✅ 적절한 namespace
+
+   // ✅ Appropriate namespace
    const userCache = Sonamu.cache.namespace(`user:${userId}`);
    ```
 </Warning>
 
-## 전략 요약표
+## Strategy Summary Table
 
-| 데이터 유형 | TTL | Grace | Tags | 무효화 |
-|------------|-----|-------|------|--------|
-| 정적 설정 | `forever` | ❌ | `["config"]` | 수동 |
-| 사용자 프로필 | `1h` | ❌ | `["user"]` | 변경 시 |
-| 상품 정보 | `30m` | `1h` | `["product"]` | 변경 시 |
-| 게시글 목록 | `5m` | `30m` | `["post", "list"]` | 생성/수정 시 |
-| 실시간 통계 | `1m` | `10m` | `["stats"]` | TTL 의존 |
-| 집계 대시보드 | `10m` | `2h` | `["dashboard"]` | TTL 의존 |
+| Data Type | TTL | Grace | Tags | Invalidation |
+|-----------|-----|-------|------|--------------|
+| Static Config | `forever` | ❌ | `["config"]` | Manual |
+| User Profile | `1h` | ❌ | `["user"]` | On change |
+| Product Info | `30m` | `1h` | `["product"]` | On change |
+| Post List | `5m` | `30m` | `["post", "list"]` | On create/update |
+| Real-time Stats | `1m` | `10m` | `["stats"]` | TTL dependent |
+| Aggregated Dashboard | `10m` | `2h` | `["dashboard"]` | TTL dependent |
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="캐시 설정" icon="gear" href="/advanced-features/caching/cache-configuration">
-    Stores와 Drivers 설정하기
+  <Card title="Cache Configuration" icon="gear" href="/advanced-features/caching/cache-configuration">
+    Configure Stores and Drivers
   </Card>
-  <Card title="@cache 데코레이터" icon="at" href="/advanced-features/caching/cache-decorator">
-    메서드에 캐시 적용하기
+  <Card title="@cache Decorator" icon="at" href="/advanced-features/caching/cache-decorator">
+    Apply caching to methods
   </Card>
-  <Card title="캐시 무효화" icon="trash" href="/advanced-features/caching/cache-invalidation">
-    Tag 기반 캐시 무효화
+  <Card title="Cache Invalidation" icon="trash" href="/advanced-features/caching/cache-invalidation">
+    Tag-based cache invalidation
   </Card>
 </CardGroup>

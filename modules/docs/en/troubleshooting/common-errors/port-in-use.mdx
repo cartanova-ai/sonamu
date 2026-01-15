@@ -1,13 +1,13 @@
 ---
-title: '포트가 이미 사용 중'
-description: '포트 충돌 해결하기'
+title: 'Port Already in Use'
+description: 'Resolving port conflicts'
 ---
 
-포트 충돌 문제와 해결 방법을 다룹니다.
+This covers port conflict issues and how to resolve them.
 
-## 개발 서버 포트 충돌
+## Development Server Port Conflict
 
-### 증상
+### Symptoms
 
 ```bash
 pnpm dev
@@ -15,35 +15,35 @@ pnpm dev
 Error: listen EADDRINUSE: address already in use :::10280
 ```
 
-### 원인
+### Cause
 
-지정된 포트에서 다른 프로세스가 이미 실행 중입니다.
+Another process is already running on the specified port.
 
-### 해결 방법
+### Solutions
 
-#### 1. 프로세스 확인 및 종료
+#### 1. Find and Kill Process
 
 **macOS/Linux:**
 
 ```bash
-# 포트 사용 중인 프로세스 확인
+# Find process using the port
 lsof -i :10280
 
-# 프로세스 종료
+# Kill process
 kill -9 <PID>
 ```
 
 **Windows:**
 
 ```bash
-# 포트 사용 중인 프로세스 확인
+# Find process using the port
 netstat -ano | findstr :10280
 
-# 프로세스 종료
-taskkill /PID <프로세스ID> /F
+# Kill process
+taskkill /PID <ProcessID> /F
 ```
 
-#### 2. 포트 수동 지정
+#### 2. Manually Specify Port
 
 `sonamu.config.ts`:
 
@@ -51,21 +51,21 @@ taskkill /PID <프로세스ID> /F
 export default {
   server: {
     listen: {
-      port: 10281,  // 다른 포트 사용
+      port: 10281,  // Use different port
       host: "localhost"
     }
   }
 } satisfies SonamuConfig;
 ```
 
-## Sonamu UI 접근
+## Sonamu UI Access
 
-### 설명
+### Description
 
-Sonamu UI는 API 서버와 같은 포트를 사용하며, `/sonamu-ui` 경로로 접근합니다.
+Sonamu UI uses the same port as the API server and is accessed via the `/sonamu-ui` path.
 
 ```bash
-# API 서버 포트 변경
+# Changing API server port
 ```
 
 ```typescript
@@ -78,19 +78,19 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-Sonamu UI 접근: `http://localhost:10280/sonamu-ui`
+Sonamu UI access: `http://localhost:10280/sonamu-ui`
 
-## 여러 프로젝트 동시 실행
+## Running Multiple Projects Simultaneously
 
-### 증상
+### Symptoms
 
-여러 Sonamu 프로젝트를 동시에 실행하려는데 포트가 충돌합니다.
+Ports conflict when trying to run multiple Sonamu projects simultaneously.
 
-### 해결 방법
+### Solution
 
-각 프로젝트마다 다른 포트 사용:
+Use different ports for each project:
 
-**프로젝트 A:**
+**Project A:**
 
 ```typescript
 // sonamu.config.ts
@@ -103,7 +103,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-**프로젝트 B:**
+**Project B:**
 
 ```typescript
 // sonamu.config.ts
@@ -116,9 +116,9 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-## PostgreSQL 포트 충돌
+## PostgreSQL Port Conflict
 
-### 증상
+### Symptoms
 
 ```bash
 Error: could not connect to server: Connection refused
@@ -126,13 +126,13 @@ Error: could not connect to server: Connection refused
   TCP/IP connections on port 5432?
 ```
 
-### 원인
+### Cause
 
-PostgreSQL이 실행되지 않았거나, 다른 프로세스가 5432 포트를 사용 중입니다.
+PostgreSQL is not running, or another process is using port 5432.
 
-### 해결 방법
+### Solutions
 
-#### 1. PostgreSQL 실행 확인
+#### 1. Check PostgreSQL Running
 
 ```bash
 # macOS
@@ -144,27 +144,27 @@ sudo systemctl status postgresql
 sudo systemctl start postgresql
 ```
 
-#### 2. 다른 포트로 PostgreSQL 실행
+#### 2. Run PostgreSQL on Different Port
 
-PostgreSQL 설정 파일(`postgresql.conf`)에서:
+In PostgreSQL config file (`postgresql.conf`):
 
 ```conf
-port = 5433  # 다른 포트 사용
+port = 5433  # Use different port
 ```
 
-재시작 후 `.env` 파일 업데이트:
+After restart, update `.env` file:
 
 ```bash
 DB_PORT=5433
 ```
 
-#### 3. 포트 충돌 프로세스 확인
+#### 3. Check Port Conflict Process
 
 ```bash
 lsof -i :5432
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [서버 설정](/configuration/sonamu-config/server)
-- [개발 환경 설정](/getting-started/development-setup)
+- [Server Configuration](/configuration/sonamu-config/server)
+- [Development Environment Setup](/getting-started/development-setup)

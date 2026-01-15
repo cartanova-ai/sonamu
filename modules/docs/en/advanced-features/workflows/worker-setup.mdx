@@ -1,11 +1,11 @@
 ---
-title: "Worker 설정"
-description: "Workflow Worker 설정 및 시작하기"
+title: "Worker Setup"
+description: "Configuring and starting the Workflow Worker"
 ---
 
-Workflow는 **백그라운드 작업**을 실행하는 시스템입니다. 이메일 발송, 데이터 처리, 스케줄 작업 등에 사용합니다.
+Workflow is a system for executing **background tasks**. Use it for email sending, data processing, scheduled jobs, and more.
 
-## Tasks 설정
+## Tasks Configuration
 
 ```typescript
 // sonamu.config.ts
@@ -14,38 +14,38 @@ import { defineConfig } from "sonamu";
 export default defineConfig({
   // ...
   tasks: {
-    enableWorker: true,  // Worker 활성화
+    enableWorker: true,  // Enable Worker
     workerOptions: {
-      concurrency: 4,      // 동시 실행 수
-      usePubSub: true,     // Pub/Sub 사용
-      listenDelay: 500,    // 수신 지연 (ms)
+      concurrency: 4,      // Concurrent execution count
+      usePubSub: true,     // Use Pub/Sub
+      listenDelay: 500,    // Listen delay (ms)
     },
     contextProvider: async (baseContext) => {
-      // Workflow에서 사용할 Context 설정
+      // Configure Context used in Workflows
       return {
         ...baseContext,
-        // 커스텀 데이터 추가 가능
+        // Custom data can be added
       };
     },
   },
 });
 ```
 
-**옵션**:
-- `enableWorker`: Worker 활성화 여부 (기본: daemon 모드에서만 true)
-- `workerOptions.concurrency`: 동시 실행 작업 수 (기본: CPU 코어 - 1)
-- `workerOptions.usePubSub`: PostgreSQL LISTEN/NOTIFY 사용 (기본: true)
-- `workerOptions.listenDelay`: Pub/Sub 메시지 수신 후 대기 시간 (기본: 500ms)
-- `contextProvider`: Workflow 내에서 사용할 Context 생성 함수
+**Options**:
+- `enableWorker`: Whether to enable Worker (default: true only in daemon mode)
+- `workerOptions.concurrency`: Number of concurrent tasks (default: CPU cores - 1)
+- `workerOptions.usePubSub`: Use PostgreSQL LISTEN/NOTIFY (default: true)
+- `workerOptions.listenDelay`: Wait time after receiving Pub/Sub message (default: 500ms)
+- `contextProvider`: Function to create Context used within Workflows
 
 ## WorkflowManager
 
-Sonamu는 `WorkflowManager`를 자동으로 생성하고 관리합니다. `Sonamu.workflows`로 접근할 수 있습니다.
+Sonamu automatically creates and manages the `WorkflowManager`. Access it via `Sonamu.workflows`.
 
 ```typescript
 import { Sonamu } from "sonamu";
 
-// Workflow 실행
+// Run Workflow
 const workflowManager = Sonamu.workflows;
 const handle = await workflowManager.run(
   {
@@ -55,22 +55,22 @@ const handle = await workflowManager.run(
   { email: "user@example.com" }
 );
 
-// 결과 대기
+// Wait for result
 const result = await handle.result();
 ```
 
-## Worker 모드
+## Worker Modes
 
-### 1. Daemon 모드 (자동 활성화)
+### 1. Daemon Mode (Auto-enabled)
 
 ```bash
-# Worker가 자동으로 시작됨
+# Worker starts automatically
 pnpm sonamu daemon
 ```
 
-Daemon 모드에서는 `enableWorker: true`가 기본값입니다.
+In daemon mode, `enableWorker: true` is the default.
 
-### 2. 별도 Worker 프로세스
+### 2. Separate Worker Process
 
 ```typescript
 // src/worker.ts
@@ -78,18 +78,18 @@ import { Sonamu } from "sonamu";
 
 async function startWorker() {
   await Sonamu.init(true, false);
-  
+
   await Sonamu.workflows.startWorker();
-  
+
   console.log("Worker started");
-  
+
   // Graceful shutdown
   const shutdown = async () => {
     console.log("Stopping worker...");
     await Sonamu.workflows.stopWorker();
     process.exit(0);
   };
-  
+
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
 }
@@ -108,28 +108,28 @@ startWorker();
 ```
 
 ```bash
-# Worker 실행
+# Run Worker
 pnpm worker
 ```
 
-### 3. API 서버 + Worker
+### 3. API Server + Worker
 
 ```typescript
 // sonamu.config.ts
 export default defineConfig({
   tasks: {
-    enableWorker: true,  // API 서버에서도 Worker 실행
+    enableWorker: true,  // Run Worker in API server too
     workerOptions: {
-      concurrency: 2,  // API 서버는 적은 concurrency
+      concurrency: 2,  // Lower concurrency for API server
     },
     contextProvider: async (baseContext) => baseContext,
   },
 });
 ```
 
-## 분산 Worker
+## Distributed Workers
 
-여러 서버에서 Worker를 실행할 수 있습니다.
+You can run Workers on multiple servers.
 
 ```typescript
 // Server 1, 2, 3...
@@ -142,22 +142,22 @@ tasks: {
 }
 ```
 
-PostgreSQL이 작업 큐 역할을 하며, Pub/Sub으로 Worker 간 통신합니다.
+PostgreSQL acts as the task queue, and Workers communicate via Pub/Sub.
 
 ## Context Provider
 
-Workflow에서 사용할 Context를 커스터마이징합니다.
+Customize the Context used in Workflows.
 
 ```typescript
 // sonamu.config.ts
 tasks: {
   enableWorker: true,
   contextProvider: async (baseContext) => {
-    // 시스템 사용자 조회
+    // Fetch system user
     const systemUser = await UserModel.findOne({
       wq: [['email', '=', 'system@example.com']],
     });
-    
+
     return {
       ...baseContext,
       user: systemUser,
@@ -167,7 +167,7 @@ tasks: {
 }
 ```
 
-Workflow 함수 내에서 `Sonamu.getContext()`로 접근:
+Access via `Sonamu.getContext()` within a Workflow function:
 
 ```typescript
 import { workflow } from "sonamu";
@@ -182,12 +182,12 @@ export const myWorkflow = workflow(
 );
 ```
 
-## 테이블 구조
+## Table Structure
 
-Sonamu는 다음 테이블을 자동 생성합니다:
+Sonamu automatically creates the following tables:
 
 ```sql
--- Workflow 정의
+-- Workflow definitions
 CREATE TABLE workflows (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE workflows (
   ...
 );
 
--- Workflow 실행 기록
+-- Workflow execution records
 CREATE TABLE workflow_runs (
   id UUID PRIMARY KEY,
   workflow_id UUID REFERENCES workflows(id),
@@ -207,7 +207,7 @@ CREATE TABLE workflow_runs (
   ...
 );
 
--- Step 실행 기록
+-- Step execution records
 CREATE TABLE workflow_steps (
   id UUID PRIMARY KEY,
   workflow_run_id UUID REFERENCES workflow_runs(id),
@@ -217,12 +217,12 @@ CREATE TABLE workflow_steps (
 );
 ```
 
-## 모니터링
+## Monitoring
 
-### 실행 중인 Workflow 확인
+### Check Running Workflows
 
 ```typescript
-// DB 직접 조회
+// Direct DB query
 import { DB } from "sonamu";
 
 const knex = DB.getDB();
@@ -231,7 +231,7 @@ const runs = await knex('workflow_runs')
   .select('*');
 ```
 
-### 로그
+### Logging
 
 ```typescript
 export const myWorkflow = workflow(
@@ -243,13 +243,13 @@ export const myWorkflow = workflow(
 );
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="@workflow 데코레이터" icon="code" href="/advanced-features/workflows/workflow-decorator">
-    Workflow 정의하기
+  <Card title="@workflow Decorator" icon="code" href="/advanced-features/workflows/workflow-decorator">
+    Define Workflows
   </Card>
   <Card title="Step" icon="list" href="/advanced-features/workflows/steps">
-    Step으로 작업 나누기
+    Divide tasks with Steps
   </Card>
 </CardGroup>

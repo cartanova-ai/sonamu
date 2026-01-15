@@ -1,11 +1,11 @@
 ---
-title: "다국어 DB 컬럼"
-description: "name_ko, name_en 같은 locale별 컬럼 처리"
+title: "Localized DB Columns"
+description: "Handling locale-specific columns like name_ko, name_en"
 ---
 
-데이터베이스에 다국어 값을 저장해야 할 때, `name`, `name_ko`, `name_en`처럼 locale별 컬럼을 사용할 수 있습니다. Sonamu는 `localizedColumn()` 함수로 현재 locale에 맞는 값을 자동으로 선택합니다.
+When you need to store multilingual values in the database, you can use locale-specific columns like `name`, `name_ko`, `name_en`. Sonamu automatically selects the appropriate value for the current locale using the `localizedColumn()` function.
 
-## localizedColumn 함수
+## localizedColumn Function
 
 ```typescript
 import { localizedColumn } from "../i18n/sd.generated";
@@ -17,30 +17,30 @@ const tag = {
   name_en: "Tag",
 };
 
-// Context locale이 "ko"일 때
+// When Context locale is "ko"
 localizedColumn(tag, "name")  // "태그"
 
-// Context locale이 "en"일 때
+// When Context locale is "en"
 localizedColumn(tag, "name")  // "Tag"
 
-// Context locale이 "ja"일 때 (지원하지 않는 locale)
-localizedColumn(tag, "name")  // "default" (기본 컬럼으로 폴백)
+// When Context locale is "ja" (unsupported locale)
+localizedColumn(tag, "name")  // "default" (falls back to base column)
 ```
 
-## 우선순위
+## Priority Order
 
-`localizedColumn()`은 다음 순서로 값을 찾습니다:
+`localizedColumn()` looks for values in the following order:
 
-| 현재 locale | 우선순위 |
-|------------|---------|
+| Current locale | Priority |
+|---------------|----------|
 | `ko` | `name_ko` → `name` → `name_en` |
 | `en` | `name_en` → `name` → `name_ko` |
 
-빈 문자열(`""`)이나 `null`은 건너뛰고 다음 우선순위를 확인합니다.
+Empty strings (`""`) and `null` are skipped, and the next priority is checked.
 
-## Entity 정의
+## Entity Definition
 
-다국어 컬럼을 가진 Entity 예시:
+Example of an Entity with multilingual columns:
 
 ```json
 {
@@ -48,18 +48,18 @@ localizedColumn(tag, "name")  // "default" (기본 컬럼으로 폴백)
   "table": "tags",
   "props": [
     { "name": "id", "type": "integer" },
-    { "name": "name", "type": "string", "length": 100, "desc": "기본 이름" },
-    { "name": "name_ko", "type": "string", "length": 100, "nullable": true, "desc": "한국어 이름" },
-    { "name": "name_en", "type": "string", "length": 100, "nullable": true, "desc": "영어 이름" }
+    { "name": "name", "type": "string", "length": 100, "desc": "Default name" },
+    { "name": "name_ko", "type": "string", "length": 100, "nullable": true, "desc": "Korean name" },
+    { "name": "name_en", "type": "string", "length": 100, "nullable": true, "desc": "English name" }
   ]
 }
 ```
 
-## Model에서 사용
+## Using in Models
 
-### Subset에서 가공
+### Processing in Subset
 
-Subset의 enhancer에서 `localizedColumn`을 사용하여 클라이언트에 단일 `name` 필드만 전달할 수 있습니다:
+You can use `localizedColumn` in a Subset's enhancer to deliver only a single `name` field to the client:
 
 ```typescript
 import { localizedColumn } from "../i18n/sd.generated";
@@ -67,27 +67,27 @@ import { localizedColumn } from "../i18n/sd.generated";
 class TagModelClass extends BaseModelClass {
   async findMany<T extends TagSubsetKey>(subset: T, params: TagListParams) {
     // ...
-    
+
     const enhancers = this.createEnhancers({
       A: (row) => ({
         ...row,
-        // locale에 맞는 이름으로 대체
+        // Replace with locale-appropriate name
         displayName: localizedColumn(row, "name"),
       }),
     });
-    
+
     return this.executeSubsetQuery({ subset, qb, params, enhancers });
   }
 }
 ```
 
-### API 응답에서 사용
+### Using in API Response
 
 ```typescript
 @api({ httpMethod: "GET" })
 async getTagOptions(): Promise<{ id: number; label: string }[]> {
   const tags = await this.findMany("A", { num: 100 });
-  
+
   return tags.rows.map(tag => ({
     id: tag.id,
     label: localizedColumn(tag, "name") ?? tag.name,
@@ -95,9 +95,9 @@ async getTagOptions(): Promise<{ id: number; label: string }[]> {
 }
 ```
 
-## 프론트엔드에서 사용
+## Using in Frontend
 
-프론트엔드에서도 동일한 함수를 사용할 수 있습니다 (web의 sd.generated.ts에서 export):
+The same function can be used in the frontend (exported from web's sd.generated.ts):
 
 ```tsx
 import { localizedColumn } from "@/i18n/sd.generated";
@@ -111,30 +111,30 @@ function TagBadge({ tag }: { tag: Tag }) {
 }
 ```
 
-## 컬럼 네이밍 패턴
+## Column Naming Patterns
 
-| 기본 컬럼 | locale 컬럼 | 설명 |
-|----------|------------|------|
-| `name` | `name_ko`, `name_en` | 이름 |
-| `title` | `title_ko`, `title_en` | 제목 |
-| `description` | `description_ko`, `description_en` | 설명 |
-| `content` | `content_ko`, `content_en` | 내용 |
+| Base column | Locale columns | Description |
+|-------------|----------------|-------------|
+| `name` | `name_ko`, `name_en` | Name |
+| `title` | `title_ko`, `title_en` | Title |
+| `description` | `description_ko`, `description_en` | Description |
+| `content` | `content_ko`, `content_en` | Content |
 
 <Note>
-컬럼 이름은 반드시 `{기본컬럼}_{locale}` 형식이어야 합니다. 예: `name_ko`, `title_en`
+Column names must follow the `{base_column}_{locale}` format. Example: `name_ko`, `title_en`
 </Note>
 
-## 주의사항
+## Important Notes
 
-- `localizedColumn`은 단순히 컬럼 값을 선택하는 함수입니다. 쿼리 최적화(필요한 컬럼만 SELECT)는 별도로 처리해야 합니다.
-- 모든 locale 컬럼이 `null`이고 기본 컬럼도 빈 값이면 `undefined`를 반환합니다.
-- Context에 locale이 설정되지 않으면 `defaultLocale`을 사용합니다.
+- `localizedColumn` is simply a function that selects column values. Query optimization (SELECTing only necessary columns) must be handled separately.
+- If all locale columns are `null` and the base column is also empty, `undefined` is returned.
+- If locale is not set in Context, `defaultLocale` is used.
 
 <CardGroup cols={2}>
-  <Card title="i18n 설정" icon="gear" href="/advanced-features/i18n/setup">
-    i18n 초기 설정
+  <Card title="i18n Setup" icon="gear" href="/advanced-features/i18n/setup">
+    Initial i18n configuration
   </Card>
-  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
-    딕셔너리 작성 및 사용
+  <Card title="Using the SD Function" icon="code" href="/advanced-features/i18n/dictionary">
+    Writing and using dictionaries
   </Card>
 </CardGroup>

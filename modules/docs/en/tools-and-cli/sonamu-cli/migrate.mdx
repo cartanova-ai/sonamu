@@ -1,30 +1,30 @@
 ---
 title: "migrate"
-description: "데이터베이스 마이그레이션 관리하기"
+description: "Managing database migrations"
 ---
 
-`pnpm migrate` 명령어는 데이터베이스 스키마 변경을 안전하게 관리합니다. Entity 정의를 기반으로 자동으로 마이그레이션을 생성하고, 여러 데이터베이스에 일관되게 적용할 수 있습니다.
+The `pnpm migrate` command safely manages database schema changes. It automatically generates migrations based on Entity definitions and can apply them consistently across multiple databases.
 
-## 기본 개념
+## Basic Concept
 
-마이그레이션은 데이터베이스 스키마 변경을 **버전 관리**하는 시스템입니다:
+Migration is a system for **version controlling** database schema changes:
 
-- **Entity 기반**: Entity 정의에서 자동으로 마이그레이션 생성
-- **순차 실행**: 생성 순서대로 마이그레이션 적용
-- **다중 DB 지원**: 여러 데이터베이스를 동시에 관리
-- **자동 감지**: Entity 변경사항 자동 감지 및 코드 생성
+- **Entity-based**: Auto-generate migrations from Entity definitions
+- **Sequential execution**: Apply migrations in creation order
+- **Multi-DB support**: Manage multiple databases simultaneously
+- **Auto-detection**: Automatically detect Entity changes and generate code
 
-## 명령어
+## Commands
 
-### status - 상태 확인
+### status - Check Status
 
-현재 마이그레이션 상태를 확인합니다.
+Check the current migration status.
 
 ```bash
 pnpm migrate status
 ```
 
-**출력 예시**:
+**Output example**:
 ```
 Development Master: ✓ Up to date (v20240115_143022)
 Testing: ⚠ 2 pending migrations
@@ -35,20 +35,20 @@ Prepared migrations:
   • 20240116_102045_create_posts_table
 ```
 
-**상태 종류**:
-- `✓ Up to date`: 모든 마이그레이션 적용 완료
-- `⚠ N pending`: N개의 미적용 마이그레이션
-- `❌ Error`: 데이터베이스 연결 실패
+**Status types**:
+- `✓ Up to date`: All migrations applied
+- `⚠ N pending`: N migrations not yet applied
+- `❌ Error`: Database connection failed
 
-### run - 마이그레이션 실행
+### run - Run Migrations
 
-대기 중인 마이그레이션을 모두 적용합니다.
+Apply all pending migrations.
 
 ```bash
 pnpm migrate run
 ```
 
-**실행 과정**:
+**Execution process**:
 ```
 Running migrations...
 
@@ -63,23 +63,23 @@ Testing:
 All migrations completed successfully!
 ```
 
-**자동 생성 및 적용**:
-- Entity 변경사항을 감지
-- 마이그레이션 코드 자동 생성
-- 모든 대상 DB에 순차 적용
+**Auto-generation and application**:
+- Detect Entity changes
+- Auto-generate migration code
+- Apply sequentially to all target DBs
 
 <Info>
-Sonamu는 Entity 정의를 분석하여 필요한 마이그레이션을 **자동으로 생성**합니다. 수동으로 마이그레이션 파일을 작성할 필요가 없습니다.
+Sonamu analyzes Entity definitions and **automatically generates** necessary migrations. No need to manually write migration files.
 </Info>
 
-## 마이그레이션 생성
+## Migration Generation
 
-### 자동 생성
+### Auto-generation
 
-Entity를 수정하면 Sonamu가 자동으로 마이그레이션을 생성합니다.
+When you modify an Entity, Sonamu automatically generates a migration.
 
 ```typescript title="user.entity.ts"
-// Entity 정의 변경
+// Change Entity definition
 const UserEntity = {
   properties: [
     {
@@ -87,7 +87,7 @@ const UserEntity = {
       type: "string",
       length: 255,
     },
-    // 새 필드 추가
+    // Add new field
     {
       name: "phone",
       type: "string",
@@ -99,20 +99,20 @@ const UserEntity = {
 ```
 
 ```bash
-# 상태 확인
+# Check status
 pnpm migrate status
 
-# 출력:
+# Output:
 # Prepared migrations:
 #   • 20240116_103045_add_phone_to_users
 
-# 적용
+# Apply
 pnpm migrate run
 ```
 
-### 마이그레이션 파일
+### Migration Files
 
-생성된 마이그레이션 파일은 `src/migrations/` 디렉토리에 저장됩니다.
+Generated migration files are stored in the `src/migrations/` directory.
 
 ```typescript title="src/migrations/20240116_103045_add_phone_to_users.ts"
 import type { Knex } from "knex";
@@ -130,33 +130,33 @@ export async function down(knex: Knex): Promise<void> {
 }
 ```
 
-**구조**:
-- `up()`: 마이그레이션 적용 (테이블 생성, 컬럼 추가 등)
-- `down()`: 마이그레이션 롤백 (변경사항 되돌리기)
+**Structure**:
+- `up()`: Apply migration (create tables, add columns, etc.)
+- `down()`: Rollback migration (revert changes)
 
-## 지원하는 변경사항
+## Supported Changes
 
-Sonamu가 자동으로 감지하고 마이그레이션을 생성하는 변경사항:
+Changes that Sonamu auto-detects and generates migrations for:
 
-| 변경 타입 | 설명 | 예시 |
-|-----------|------|------|
-| 테이블 생성 | 새 Entity 추가 | `PostEntity` 생성 |
-| 컬럼 추가 | 새 프로퍼티 추가 | `phone` 필드 추가 |
-| 컬럼 수정 | 타입/길이 변경 | `varchar(100)` → `varchar(255)` |
-| 컬럼 삭제 | 프로퍼티 제거 | `deprecated_field` 삭제 |
-| 인덱스 추가 | 인덱스 정의 | `indexes` 배열 |
-| 외래키 추가 | 관계 정의 | `belongsTo` 관계 |
+| Change Type | Description | Example |
+|-------------|-------------|---------|
+| Table creation | Add new Entity | Create `PostEntity` |
+| Column addition | Add new property | Add `phone` field |
+| Column modification | Change type/length | `varchar(100)` → `varchar(255)` |
+| Column deletion | Remove property | Delete `deprecated_field` |
+| Index addition | Define index | `indexes` array |
+| Foreign key addition | Define relationship | `belongsTo` relation |
 
-## 다중 데이터베이스 관리
+## Multi-Database Management
 
-Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
+Sonamu can manage multiple databases simultaneously.
 
-### 데이터베이스 구성
+### Database Configuration
 
 ```typescript title="sonamu.config.ts"
 export default {
   database: {
-    // 개발 환경 - 마스터
+    // Development environment - master
     development_master: {
       client: "mysql2",
       connection: {
@@ -166,11 +166,11 @@ export default {
         password: "password",
       },
     },
-    // 개발 환경 - 슬레이브 (읽기 전용)
+    // Development environment - slave (read-only)
     development_slave: {
-      // 슬레이브는 자동으로 무시됨
+      // Slaves are automatically ignored
     },
-    // 테스트 환경
+    // Test environment
     test: {
       client: "mysql2",
       connection: {
@@ -180,7 +180,7 @@ export default {
         password: "password",
       },
     },
-    // 프로덕션 환경
+    // Production environment
     production: {
       client: "mysql2",
       connection: {
@@ -194,30 +194,30 @@ export default {
 };
 ```
 
-**마이그레이션 대상**:
-- `_master`로 끝나는 데이터베이스
-- `_slave`가 아닌 모든 데이터베이스
+**Migration targets**:
+- Databases ending with `_master`
+- All databases not ending with `_slave`
 
-### 일괄 적용
+### Batch Application
 
 ```bash
-# 모든 데이터베이스에 적용
+# Apply to all databases
 pnpm migrate run
 
-# 출력:
+# Output:
 # Development Master: ✓ 2 migrations applied
 # Testing: ✓ 2 migrations applied
 # Production: ✓ 2 migrations applied
 ```
 
-## 실전 워크플로우
+## Practical Workflow
 
-### 1. Entity 변경
+### 1. Change Entity
 
 ```typescript title="user.entity.ts"
 const UserEntity = {
   properties: [
-    // 기존 필드...
+    // Existing fields...
     {
       name: "profile_image",
       type: "string",
@@ -227,7 +227,7 @@ const UserEntity = {
 };
 ```
 
-### 2. 상태 확인
+### 2. Check Status
 
 ```bash
 pnpm migrate status
@@ -238,7 +238,7 @@ Prepared migrations:
   • 20240116_110230_add_profile_image_to_users
 ```
 
-### 3. 마이그레이션 적용
+### 3. Apply Migration
 
 ```bash
 pnpm migrate run
@@ -248,7 +248,7 @@ pnpm migrate run
 ✓ All migrations applied successfully!
 ```
 
-### 4. 코드 업데이트
+### 4. Update Code
 
 ```typescript title="user.model.ts"
 class UserModelClass extends BaseModel {
@@ -260,163 +260,163 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-## 고급 사용법 (프로그래매틱)
+## Advanced Usage (Programmatic)
 
-CLI 명령어로 제공되지 않는 고급 기능은 `Migrator` 클래스를 직접 사용하여 구현할 수 있습니다.
+Advanced features not provided via CLI commands can be implemented using the `Migrator` class directly.
 
-### Migrator 클래스 사용
+### Using Migrator Class
 
 ```typescript title="src/scripts/migration-tools.ts"
 import { Migrator } from "sonamu";
 
 const migrator = new Migrator();
 
-// 롤백 (마지막 배치)
+// Rollback (last batch)
 await migrator.runAction("rollback", ["development_master"]);
 
-// 특정 데이터베이스만 선택
+// Select specific databases only
 await migrator.runAction("apply", ["test"]);
 
-// 상태 확인 (프로그래매틱)
+// Check status (programmatic)
 const status = await migrator.getStatus();
 console.log(status);
 ```
 
-### 롤백 스크립트
+### Rollback Script
 
 ```typescript title="src/scripts/rollback-migration.ts"
 import { Migrator, Sonamu } from "sonamu";
 
 Sonamu.runScript(async () => {
   const migrator = new Migrator();
-  
+
   console.log("Rolling back last migration batch...");
   await migrator.runAction("rollback", ["development_master", "test"]);
   console.log("Rollback completed!");
 });
 ```
 
-**실행**:
+**Run**:
 ```bash
 pnpm tsx src/scripts/rollback-migration.ts
 ```
 
 <Warning>
-**데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **프로덕션에서는 매우 신중하게** 사용하세요.
+**Data loss risk**: Rollback can delete tables or columns, so use **very carefully in production**.
 </Warning>
 
-### 사용 가능한 액션
+### Available Actions
 
-`Migrator.runAction()` 메서드가 지원하는 액션:
+Actions supported by `Migrator.runAction()`:
 
-| 액션 | 설명 | 사용 예시 |
-|------|------|----------|
-| `apply` | 마이그레이션 적용 | 새 스키마 변경 적용 |
-| `rollback` | 마지막 배치 롤백 | 실수한 마이그레이션 되돌리기 |
+| Action | Description | Use Case |
+|--------|-------------|----------|
+| `apply` | Apply migrations | Apply new schema changes |
+| `rollback` | Rollback last batch | Revert mistaken migrations |
 
-## 문제 해결
+## Troubleshooting
 
-### 마이그레이션 충돌
+### Migration Conflict
 
-**문제**: 여러 개발자가 동시에 마이그레이션 생성
+**Problem**: Multiple developers create migrations simultaneously
 ```
 Error: Migration conflict detected
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 1. 최신 코드 가져오기
+# 1. Get latest code
 git pull
 
-# 2. 마이그레이션 상태 확인
+# 2. Check migration status
 pnpm migrate status
 
-# 3. 필요 시 마이그레이션 재생성
+# 3. Regenerate migrations if needed
 pnpm migrate run
 ```
 
-### 데이터베이스 연결 실패
+### Database Connection Failed
 
-**문제**: DB 연결 실패
+**Problem**: DB connection failed
 ```
 Error: connect ECONNREFUSED 127.0.0.1:3306
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 1. MySQL 실행 확인
+# 1. Check MySQL is running
 mysql -u root -p -e "SHOW DATABASES;"
 
-# 2. 연결 정보 확인
+# 2. Check connection info
 cat sonamu.config.ts
 
-# 3. 데이터베이스 생성
+# 3. Create database
 mysql -u root -p -e "CREATE DATABASE myapp_dev;"
 ```
 
-### 마이그레이션 순서 오류
+### Migration Order Error
 
-**문제**: 잘못된 순서로 적용됨
+**Problem**: Applied in wrong order
 ```
 Error: Foreign key constraint violation
 ```
 
-**해결**:
+**Solution**:
 
-외래키 참조 관계가 있는 경우, 참조되는 테이블이 먼저 생성되어야 합니다.
+When there are foreign key references, referenced tables must be created first.
 
-**수정 방법 1: 프로그래매틱 롤백 후 재적용**
+**Fix method 1: Programmatic rollback and reapply**
 ```typescript
-// 롤백
+// Rollback
 const migrator = new Migrator();
 await migrator.runAction("rollback", ["development_master"]);
 
-// 마이그레이션 파일명 수정 (타임스탬프 조정)
+// Modify migration filename (adjust timestamp)
 // 20240116_110230_*.ts → 20240116_110231_*.ts
 
-// 재적용
+// Reapply
 await migrator.runAction("apply", ["development_master"]);
 ```
 
-**수정 방법 2: Entity 정의 순서 조정**
+**Fix method 2: Adjust Entity definition order**
 ```typescript
-// users 테이블을 먼저 생성하도록 Entity 파일 순서 조정
-// 그 후 pnpm migrate run
+// Adjust Entity file order to create users table first
+// Then run pnpm migrate run
 ```
 
-## 베스트 프랙티스
+## Best Practices
 
-### 1. 자주 적용하기
+### 1. Apply Frequently
 
 ```bash
-# 작은 단위로 자주 마이그레이션
-pnpm migrate run  # 매일
+# Migrate frequently in small units
+pnpm migrate run  # Daily
 ```
 
-### 2. 프로덕션 전 테스트
+### 2. Test Before Production
 
 ```bash
-# 테스트 DB에서 먼저 확인
+# Verify in test DB first
 pnpm migrate status
 pnpm migrate run
 
-# 문제없으면 프로덕션 적용
+# Apply to production if no issues
 ```
 
-### 3. 백업 필수
+### 3. Backup Required
 
 ```bash
-# 프로덕션 마이그레이션 전 백업
+# Backup before production migration
 mysqldump -u root -p myapp_prod > backup_$(date +%Y%m%d).sql
 
-# 마이그레이션 적용
+# Apply migration
 pnpm migrate run
 ```
 
-### 4. 롤백 가능성 고려
+### 4. Consider Rollback Possibility
 
 ```typescript
-// ✅ 롤백 가능 - down() 함수가 제대로 정의됨
+// ✅ Rollback possible - down() function properly defined
 export async function up(knex: Knex) {
   await knex.schema.alterTable("users", (table) => {
     table.string("phone").nullable();
@@ -430,24 +430,24 @@ export async function down(knex: Knex) {
 }
 ```
 
-### 5. Git으로 버전 관리
+### 5. Version Control with Git
 
 ```bash
-# 마이그레이션 파일을 Git에 커밋
+# Commit migration files to Git
 git add src/migrations/
 git commit -m "Add phone field to users table"
 
-# 팀원들과 공유
+# Share with team
 git push
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="fixture" icon="database" href="/tools-and-cli/sonamu-cli/fixture">
-    테스트 데이터 관리하기
+    Manage test data
   </Card>
   <Card title="Entity" icon="cube" href="/core-concepts/entity">
-    Entity 정의 자세히 알아보기
+    Learn more about Entity definitions
   </Card>
 </CardGroup>

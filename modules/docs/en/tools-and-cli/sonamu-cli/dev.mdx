@@ -1,112 +1,112 @@
 ---
 title: "dev"
-description: "HMR 지원 개발 서버 시작하기"
+description: "Start development server with HMR support"
 ---
 
-`pnpm dev` 명령어는 **Hot Module Replacement(HMR)**를 지원하는 개발 서버를 시작합니다. 코드를 수정하면 서버를 재시작하지 않고도 변경사항이 즉시 반영됩니다.
+The `pnpm dev` command starts a development server with **Hot Module Replacement (HMR)** support. When you modify code, changes are instantly reflected without restarting the server.
 
-## 기본 사용법
+## Basic Usage
 
 ```bash
 pnpm dev
 ```
 
-개발 서버가 시작되면 다음 기능을 사용할 수 있습니다:
-- **자동 재시작**: 코드 변경 시 자동으로 서버 재시작
-- **TypeScript 지원**: .ts 파일을 바로 실행
-- **소스맵 지원**: 에러 발생 시 정확한 줄 번호 표시
-- **키보드 단축키**: 빠른 작업을 위한 단축키
+Once the development server starts, you can use the following features:
+- **Auto-restart**: Automatic server restart on code changes
+- **TypeScript support**: Run .ts files directly
+- **Source map support**: Accurate line numbers on errors
+- **Keyboard shortcuts**: Shortcuts for quick actions
 
-## 동작 원리
+## How It Works
 
-`pnpm dev`는 내부적으로 다음 도구들을 사용합니다:
+`pnpm dev` internally uses the following tools:
 
-| 도구 | 역할 | 제공 |
-|------|------|------|
-| `@sonamu-kit/hmr-runner` | HMR 실행 엔진 | Sonamu |
-| `@sonamu-kit/ts-loader` | TypeScript 로더 | Sonamu |
-| `@sonamu-kit/hmr-hook` | HMR 훅 | Sonamu |
+| Tool | Role | Provider |
+|------|------|----------|
+| `@sonamu-kit/hmr-runner` | HMR execution engine | Sonamu |
+| `@sonamu-kit/ts-loader` | TypeScript loader | Sonamu |
+| `@sonamu-kit/hmr-hook` | HMR hook | Sonamu |
 
-**중요**: 이 패키지들은 Sonamu가 자동으로 제공하므로 **별도로 설치할 필요가 없습니다**.
+**Important**: These packages are automatically provided by Sonamu, so **no separate installation is needed**.
 
-### 실행 과정
+### Execution Process
 
-1. `src/index.ts`를 엔트리포인트로 실행
-2. TypeScript 파일을 즉시 변환하여 실행
-3. 파일 변경 감지
-4. 변경된 모듈만 교체 (HMR)
-5. 전체 재시작이 필요한 경우에만 재시작
+1. Execute `src/index.ts` as entry point
+2. Transform and execute TypeScript files immediately
+3. Detect file changes
+4. Replace only changed modules (HMR)
+5. Full restart only when necessary
 
-## 키보드 단축키
+## Keyboard Shortcuts
 
-개발 서버 실행 중 다음 단축키를 사용할 수 있습니다:
+You can use the following shortcuts while the development server is running:
 
-| 단축키 | 기능 | 설명 |
-|--------|------|------|
-| `r` | 재시작 | 서버를 수동으로 재시작합니다 |
-| `f` | 강제 재시작 | `sonamu.lock` 파일을 삭제하고 재시작합니다 |
-| `Enter` | 테스트 | 키 바인딩 테스트용 |
-| `Ctrl+F Ctrl+F` | 업데이트 | Git pull, 패키지 설치, 빌드 후 재시작 |
+| Shortcut | Function | Description |
+|----------|----------|-------------|
+| `r` | Restart | Manually restart the server |
+| `f` | Force restart | Delete `sonamu.lock` file and restart |
+| `Enter` | Test | Key binding test |
+| `Ctrl+F Ctrl+F` | Update | Git pull, install packages, build, and restart |
 
-### 단축키 사용 예시
+### Shortcut Usage Examples
 
-**서버 재시작**:
+**Server restart**:
 ```
-# 터미널에서 개발 서버 실행 중
-[서버 실행 중...]
+# While development server is running in terminal
+[Server running...]
 
-# 'r' 키 입력
+# Press 'r' key
 r
 
-# 서버 재시작됨
+# Server restarts
 🔄 Restarting server...
 ```
 
-**강제 재시작 (캐시 초기화)**:
+**Force restart (cache reset)**:
 ```
-# 'f' 키 입력
+# Press 'f' key
 f
 
-# sonamu.lock 삭제 후 재시작
+# Delete sonamu.lock and restart
 🗑️  Removing sonamu.lock...
 🔄 Restarting server...
 ```
 
-## 환경 변수
+## Environment Variables
 
-개발 서버는 다음 환경 변수를 자동으로 설정합니다:
+The development server automatically sets the following environment variables:
 
-| 변수 | 값 | 설명 |
-|------|-----|------|
-| `NODE_ENV` | `development` | 개발 모드 표시 |
-| `HOT` | `yes` | HMR 활성화 플래그 |
-| `API_ROOT_PATH` | 프로젝트 경로 | HMR 루트 디렉토리 |
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `NODE_ENV` | `development` | Development mode indicator |
+| `HOT` | `yes` | HMR activation flag |
+| `API_ROOT_PATH` | Project path | HMR root directory |
 
-코드에서 환경 변수를 확인할 수 있습니다:
+You can check environment variables in code:
 
 ```typescript
 if (process.env.NODE_ENV === 'development') {
-  console.log('개발 모드입니다');
+  console.log('Development mode');
 }
 
 if (process.env.HOT === 'yes') {
-  console.log('HMR이 활성화되어 있습니다');
+  console.log('HMR is enabled');
 }
 ```
 
-## HMR 동작 방식
+## How HMR Works
 
-### 자동 재시작되는 경우
+### Cases That Auto-restart
 
-다음 파일을 수정하면 서버가 **자동으로 재시작**됩니다:
+The server **automatically restarts** when modifying these files:
 
-- Entity 파일 (`*.entity.ts`)
-- Model 파일 (`*.model.ts`)
-- Config 파일 (`sonamu.config.ts`)
-- Migration 파일
+- Entity files (`*.entity.ts`)
+- Model files (`*.model.ts`)
+- Config files (`sonamu.config.ts`)
+- Migration files
 
 ```typescript
-// user.model.ts 수정
+// Modifying user.model.ts
 class UserModelClass extends BaseModel {
   @api({ httpMethod: "GET" })
   async findById(id: number) {
@@ -114,99 +114,99 @@ class UserModelClass extends BaseModel {
   }
 }
 
-// 파일 저장 → 서버 자동 재시작
+// Save file → Server auto-restarts
 ```
 
-### 즉시 반영되는 경우 (HMR)
+### Cases Reflected Instantly (HMR)
 
-다음 파일을 수정하면 서버 재시작 **없이 즉시 반영**됩니다:
+Changes to these files are reflected **instantly without server restart**:
 
-- 일반 비즈니스 로직
-- 유틸리티 함수
-- 서비스 레이어
+- General business logic
+- Utility functions
+- Service layer
 
 ```typescript
-// utils/helper.ts 수정
+// Modifying utils/helper.ts
 export function formatDate(date: Date) {
   return date.toISOString();
 }
 
-// 파일 저장 → 즉시 반영 (재시작 없음)
+// Save file → Instantly reflected (no restart)
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### 서버가 시작되지 않는 경우
+### Server Won't Start
 
-**문제**: 포트가 이미 사용 중
+**Problem**: Port already in use
 ```
 Error: listen EADDRINUSE: address already in use :::3000
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 포트 사용 중인 프로세스 종료
+# Kill process using the port
 lsof -ti:3000 | xargs kill -9
 
-# 다시 시작
+# Restart
 pnpm dev
 ```
 
-### HMR이 작동하지 않는 경우
+### HMR Not Working
 
-**문제**: 코드 변경이 반영되지 않음
+**Problem**: Code changes not reflected
 
-**해결**:
+**Solution**:
 ```bash
-# 1. 강제 재시작 (f 키)
+# 1. Force restart (f key)
 f
 
-# 2. 또는 수동 재시작
+# 2. Or manual restart
 pnpm dev
 ```
 
-### TypeScript 오류가 발생하는 경우
+### TypeScript Errors
 
-**문제**: 타입 에러로 서버 실행 실패
+**Problem**: Server won't start due to type errors
 
-**해결**:
+**Solution**:
 ```bash
-# 타입 체크
+# Type check
 pnpm tsc --noEmit
 
-# 문제 수정 후 다시 시작
+# Fix issues and restart
 pnpm dev
 ```
 
-## 실전 팁
+## Practical Tips
 
-### 1. 빠른 개발 사이클
+### 1. Fast Development Cycle
 
-코드를 수정하고 바로 테스트할 수 있습니다:
+Modify code and test immediately:
 
 ```typescript
-// API 엔드포인트 수정
+// Modify API endpoint
 @api({ httpMethod: "GET" })
 async getUsers() {
   return this.findMany({ num: 10, page: 1 });
 }
 
-// 저장 → 자동 재시작 → 바로 테스트
+// Save → Auto-restart → Test immediately
 ```
 
-### 2. 로그 확인
+### 2. Check Logs
 
-개발 서버는 모든 로그를 콘솔에 출력합니다:
+Development server outputs all logs to console:
 
 ```typescript
-console.log('사용자 조회:', user);
-logger.info('API 호출', { method, path });
-logger.error('에러 발생', { error });
+console.log('User query:', user);
+logger.info('API call', { method, path });
+logger.error('Error occurred', { error });
 ```
 
-### 3. 디버깅
+### 3. Debugging
 
-소스맵이 활성화되어 있어 정확한 줄 번호를 확인할 수 있습니다:
+Source maps are enabled for accurate line numbers:
 
 ```
 Error: User not found
@@ -214,33 +214,33 @@ Error: User not found
     at API.handler (index.ts:28:20)
 ```
 
-## 프로덕션과의 차이점
+## Differences from Production
 
-| 기능 | 개발 서버 | 프로덕션 |
-|------|-----------|----------|
-| HMR | ✅ 활성화 | ❌ 비활성화 |
-| TypeScript | 즉시 실행 | 컴파일 필요 |
-| 소스맵 | 원본 파일 | 압축된 파일 |
-| 성능 | 느림 | 빠름 |
-| 에러 표시 | 상세함 | 간략함 |
+| Feature | Development Server | Production |
+|---------|-------------------|------------|
+| HMR | ✅ Enabled | ❌ Disabled |
+| TypeScript | Immediate execution | Compilation needed |
+| Source maps | Original files | Compressed files |
+| Performance | Slower | Faster |
+| Error display | Detailed | Brief |
 
 <Warning>
-**개발 서버는 프로덕션에서 사용하지 마세요!**
+**Don't use development server in production!**
 
-- 성능이 느림
-- 메모리 사용량이 많음
-- 보안에 취약
+- Slow performance
+- High memory usage
+- Security vulnerabilities
 
-프로덕션에서는 `pnpm build` 후 `pnpm start`를 사용하세요.
+Use `pnpm build` then `pnpm start` for production.
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="build" icon="hammer" href="/tools-and-cli/sonamu-cli/build">
-    프로덕션 빌드하기
+    Build for production
   </Card>
   <Card title="HMR" icon="bolt" href="/tools-and-cli/hmr">
-    HMR 시스템 자세히 알아보기
+    Learn more about HMR system
   </Card>
 </CardGroup>

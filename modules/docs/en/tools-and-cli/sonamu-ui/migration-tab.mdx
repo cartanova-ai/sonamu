@@ -1,36 +1,36 @@
 ---
-title: 'Migration 탭'
-description: '마이그레이션 생성 및 실행하기'
+title: 'Migration Tab'
+description: 'Create and run migrations'
 ---
 
-Migration 탭에서는 **Entity 변경사항을 데이터베이스에 반영**하기 위한 마이그레이션을 시각적으로 관리할 수 있습니다. CLI의 `pnpm migrate` 명령어를 UI로 대체합니다.
+In the Migration tab, you can visually manage migrations to **reflect Entity changes in the database**. It replaces the CLI `pnpm migrate` command with a UI.
 
-## Migration 탭 구조
+## Migration Tab Structure
 
-<Frame caption="Migration 관리 화면">
-  {/* TODO: Migration 탭 스크린샷 추가 */}
+<Frame caption="Migration Management Screen">
+  {/* TODO: Add Migration tab screenshot */}
 </Frame>
 
-Migration 탭은 두 가지 주요 영역으로 구성됩니다:
+The Migration tab consists of two main areas:
 
-- **왼쪽 Sidebar**: 마이그레이션 목록 (Pending/Applied 상태별로 그룹화)
-- **오른쪽 Content**: 선택한 마이그레이션의 상세 정보와 Preview
+- **Left Sidebar**: Migration list (grouped by Pending/Applied status)
+- **Right Content**: Selected migration details and Preview
 
-## 마이그레이션 상태 확인
+## Checking Migration Status
 
-### Status 확인
+### Check Status
 
-**[Check Status]** 버튼을 클릭하면 현재 마이그레이션 상태를 확인할 수 있습니다.
+Click the **[Check Status]** button to check the current migration status.
 
-| 상태 | 설명 | 표시 |
-|------|------|------|
-| **Pending** | 아직 적용되지 않은 마이그레이션 | 📋 노란색 |
-| **Applied** | 이미 적용된 마이그레이션 | ✅ 초록색 |
-| **Failed** | 실행 중 오류 발생 | ❌ 빨간색 |
+| Status | Description | Display |
+|--------|-------------|---------|
+| **Pending** | Migrations not yet applied | 📋 Yellow |
+| **Applied** | Already applied migrations | ✅ Green |
+| **Failed** | Error occurred during execution | ❌ Red |
 
-### 데이터베이스별 상태
+### Per-Database Status
 
-여러 데이터베이스가 설정된 경우 각 DB의 상태를 개별적으로 확인할 수 있습니다:
+When multiple databases are configured, you can check status for each DB individually:
 
 ```
 Development Master: ✅ Up to date (v20240115_143022)
@@ -38,26 +38,26 @@ Testing: ⚠️ 2 pending migrations
 Production: ✅ Up to date (v20240115_143022)
 ```
 
-## 마이그레이션 생성
+## Creating Migrations
 
-Entity를 수정하면 Sonamu가 자동으로 마이그레이션을 생성합니다.
+Sonamu automatically generates migrations when you modify an Entity.
 
-### 자동 생성되는 경우
+### Auto-generated Cases
 
-다음과 같은 Entity 변경사항이 있을 때:
+When there are Entity changes like:
 
-| 변경 타입 | 예시 |
-|----------|------|
-| **테이블 생성** | 새 Entity 추가 |
-| **컬럼 추가** | Property 추가 |
-| **컬럼 수정** | 타입/길이 변경 |
-| **컬럼 삭제** | Property 삭제 |
-| **인덱스 추가** | Index 추가 |
-| **외래키 추가** | belongsTo 관계 추가 |
+| Change Type | Example |
+|-------------|---------|
+| **Table creation** | Add new Entity |
+| **Column addition** | Add Property |
+| **Column modification** | Change type/length |
+| **Column deletion** | Delete Property |
+| **Index addition** | Add Index |
+| **Foreign key addition** | Add belongsTo relation |
 
-### 마이그레이션 파일 확인
+### Checking Migration Files
 
-생성된 마이그레이션 파일을 클릭하면 내용을 미리 볼 수 있습니다:
+Click on a generated migration file to preview its contents:
 
 ```typescript
 import type { Knex } from "knex";
@@ -75,15 +75,15 @@ export async function down(knex: Knex): Promise<void> {
 }
 ```
 
-## 마이그레이션 실행
+## Running Migrations
 
-### 단일 마이그레이션 실행
+### Run Single Migration
 
-1. 마이그레이션 파일 선택
-2. **[Apply]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
+1. Select migration file
+2. Click **[Apply]** button
+3. Click **[Confirm]** in the confirmation modal
 
-**실행 과정**:
+**Execution process**:
 ```
 Development Master:
   ✓ 20240116_101530_add_user_phone (0.2s)
@@ -94,23 +94,23 @@ Testing:
 All migrations applied successfully!
 ```
 
-### 모든 Pending 마이그레이션 실행
+### Run All Pending Migrations
 
-**[Run All]** 버튼을 클릭하면 대기 중인 모든 마이그레이션을 순서대로 실행합니다.
+Click the **[Run All]** button to run all pending migrations in order.
 
 <Warning>
-**프로덕션 주의**: 프로덕션 데이터베이스에 마이그레이션을 실행하기 전에는 **반드시 백업**하세요.
+**Production caution**: **Always backup** before running migrations on production databases.
 </Warning>
 
-## 마이그레이션 롤백
+## Rolling Back Migrations
 
-### 단일 롤백
+### Single Rollback
 
-1. Applied 상태의 마이그레이션 선택
-2. **[Rollback]** 버튼 클릭
-3. 확인 모달에서 **[Confirm]** 클릭
+1. Select an Applied status migration
+2. Click **[Rollback]** button
+3. Click **[Confirm]** in the confirmation modal
 
-**롤백 과정**:
+**Rollback process**:
 ```
 Rolling back last migration...
 
@@ -121,14 +121,14 @@ Rollback completed successfully!
 ```
 
 <Warning>
-**데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **데이터가 손실**될 수 있습니다.
+**Data loss risk**: Rollback can delete tables or columns, which may result in **data loss**.
 </Warning>
 
 ## Migration Preview
 
-마이그레이션을 실행하기 전에 어떤 변경이 발생할지 미리 확인할 수 있습니다.
+You can preview what changes will occur before running a migration.
 
-### Preview 내용
+### Preview Contents
 
 ```
 📋 Migration: 20240116_101530_add_user_profile
@@ -138,131 +138,131 @@ Changes:
      + column: profile_image (string, nullable)
      + column: bio (text, nullable)
      + index: (email) unique
-  
+
   ⚠️ Table: posts
      - column: deprecated_field
      ⚠️ Warning: Data in this column will be lost!
 ```
 
-**아이콘 의미**:
-- ✅ 추가: 새로운 테이블/컬럼/인덱스
-- 🔄 수정: 기존 컬럼 타입/길이 변경
-- ⚠️ 삭제: 테이블/컬럼 삭제 (데이터 손실 가능)
+**Icon meanings**:
+- ✅ Addition: New tables/columns/indexes
+- 🔄 Modification: Existing column type/length changes
+- ⚠️ Deletion: Table/column deletion (potential data loss)
 
-## 다중 데이터베이스 관리
+## Multi-Database Management
 
-Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
+Sonamu can manage multiple databases simultaneously.
 
-### 데이터베이스 선택
+### Database Selection
 
-마이그레이션 실행 시 대상 데이터베이스를 선택할 수 있습니다:
+You can select target databases when running migrations:
 
 - ☑️ Development Master
 - ☑️ Testing
-- ☐ Production (수동 선택)
+- ☐ Production (manual selection)
 
 <Info>
-기본적으로 `_master`로 끝나는 데이터베이스와 `test` 데이터베이스에 자동으로 적용됩니다.
-프로덕션 데이터베이스는 **명시적으로 선택**해야 적용됩니다.
+By default, migrations are automatically applied to databases ending with `_master` and the `test` database.
+Production databases require **explicit selection** to apply.
 </Info>
 
-## 마이그레이션 순서
+## Migration Order
 
-마이그레이션은 **파일명의 타임스탬프 순서**대로 실행됩니다:
+Migrations are executed in **timestamp order of filenames**:
 
 ```
 ✅ 20240115_120000_create_users_table.ts
 ✅ 20240115_130000_create_posts_table.ts
-📋 20240116_101530_add_user_phone.ts      ← 다음 실행
+📋 20240116_101530_add_user_phone.ts      ← Next to run
 📋 20240116_102045_add_post_tags.ts
 ```
 
-### 순서 변경
+### Changing Order
 
-순서를 변경해야 하는 경우:
+If you need to change the order:
 
-1. 마이그레이션 파일명의 타임스탬프 수정
-2. 파일 시스템에서 직접 변경
-3. UI에서 새로고침
+1. Modify the timestamp in the migration filename
+2. Change directly in the file system
+3. Refresh in the UI
 
 <Warning>
-**외래키 관계 주의**: 참조하는 테이블이 먼저 생성되어야 합니다.
-예: `posts.user_id` → `users.id` 관계라면 `users` 테이블을 먼저 생성해야 함
+**Foreign key caution**: Referenced tables must be created first.
+Example: For `posts.user_id` → `users.id` relationship, `users` table must be created first
 </Warning>
 
-## 문제 해결
+## Troubleshooting
 
-### 마이그레이션 실패
+### Migration Failed
 
-**증상**: 마이그레이션 실행 중 오류 발생
+**Symptom**: Error during migration execution
 
-**원인 및 해결**:
+**Causes and solutions**:
 
-| 오류 | 원인 | 해결 방법 |
-|------|------|----------|
-| Foreign key constraint | 참조 테이블이 없음 | 참조 테이블을 먼저 생성 |
-| Column already exists | 이미 존재하는 컬럼 | 마이그레이션 파일 확인 |
-| Cannot drop column | 데이터가 있거나 제약조건 존재 | 제약조건 먼저 삭제 |
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Foreign key constraint | Referenced table doesn't exist | Create referenced table first |
+| Column already exists | Column already exists | Check migration file |
+| Cannot drop column | Data exists or constraints exist | Delete constraints first |
 
-### 마이그레이션 기록 불일치
+### Migration Record Mismatch
 
-**증상**: 실제 DB 상태와 마이그레이션 기록이 다름
+**Symptom**: Actual DB state differs from migration records
 
-**해결**:
+**Solution**:
 ```bash
-# CLI에서 실행
-pnpm migrate clear  # 마이그레이션 기록 삭제
-pnpm migrate status # 현재 상태 확인
+# Run in CLI
+pnpm migrate clear  # Delete migration records
+pnpm migrate status # Check current status
 ```
 
-### 롤백 불가능
+### Cannot Rollback
 
-**증상**: 롤백 시도 시 오류 발생
+**Symptom**: Error when attempting rollback
 
-**원인**: `down()` 함수가 제대로 정의되지 않음
+**Cause**: `down()` function not properly defined
 
-**해결**: 마이그레이션 파일을 열어 `down()` 함수를 수정
+**Solution**: Open migration file and fix the `down()` function
 
-## 실전 팁
+## Practical Tips
 
-### 1. 작은 단위로 마이그레이션
+### 1. Migrate in Small Units
 
 ```bash
-# ❌ 나쁜 예: 모든 변경사항을 한 번에
-- 10개 Entity 동시 수정
-- 한 번에 마이그레이션 실행
+# ❌ Bad example: All changes at once
+- Modify 10 Entities simultaneously
+- Run migration once
 
-# ✅ 좋은 예: 작은 단위로 나누기
-- Entity 1개씩 수정
-- 마이그레이션 생성 및 실행
-- 테스트 후 다음 Entity 진행
+# ✅ Good example: Break into small units
+- Modify 1 Entity at a time
+- Create and run migration
+- Test, then proceed to next Entity
 ```
 
-### 2. 프로덕션 전 테스트
+### 2. Test Before Production
 
 ```
-1. Development DB에서 테스트
+1. Test on Development DB
    ↓
-2. Testing DB에서 검증
+2. Verify on Testing DB
    ↓
-3. 데이터 백업
+3. Backup data
    ↓
-4. Production DB에 적용
+4. Apply to Production DB
 ```
 
-### 3. 마이그레이션 기록 관리
+### 3. Migration Record Management
 
-- Git에 마이그레이션 파일 커밋
-- 커밋 메시지에 변경 내용 명시
-- 팀원들과 마이그레이션 순서 공유
+- Commit migration files to Git
+- Specify changes in commit messages
+- Share migration order with team members
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Scaffolding 탭" icon="wand-magic-sparkles" href="/tools-and-cli/sonamu-ui/scaffolding-tab">
-    Model 코드 자동 생성
+  <Card title="Scaffolding Tab" icon="wand-magic-sparkles" href="/tools-and-cli/sonamu-ui/scaffolding-tab">
+    Auto-generate Model code
   </Card>
   <Card title="migrate CLI" icon="terminal" href="/tools-and-cli/sonamu-cli/migrate">
-    CLI로 마이그레이션 관리
+    Manage migrations via CLI
   </Card>
 </CardGroup>

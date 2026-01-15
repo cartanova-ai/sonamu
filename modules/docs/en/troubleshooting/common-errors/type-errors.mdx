@@ -1,56 +1,56 @@
 ---
-title: '타입 오류'
-description: '타입 에러 해결하기'
+title: 'Type Errors'
+description: 'Resolving type errors'
 ---
 
-Sonamu에서 자주 발생하는 TypeScript 타입 관련 오류와 해결 방법을 다룹니다.
+This covers common TypeScript type-related errors in Sonamu and how to resolve them.
 
-## Reserved Keywords 충돌
+## Reserved Keywords Collision
 
-### 증상
+### Symptoms
 
 ```typescript
 class UserModelClass extends BaseModel {
   async delete(id: number) {  // ❌
-    // delete는 JavaScript 예약어
+    // delete is a JavaScript reserved keyword
   }
 }
 ```
 
-런타임 에러:
+Runtime error:
 
 ```bash
 Unexpected token 'delete'
 ```
 
-또는 Sonamu sync 시:
+Or during Sonamu sync:
 
 ```bash
 Error: Reserved keyword 'delete' cannot be used as method name
 ```
 
-### 원인
+### Cause
 
-JavaScript/TypeScript의 예약어를 메서드명이나 속성명으로 사용했습니다.
+Used JavaScript/TypeScript reserved keywords as method or property names.
 
-### 해결 방법
+### Solution
 
-예약어 사용을 피하거나 다른 이름 사용:
+Avoid using reserved keywords or use different names:
 
 ```typescript
-// ❌ 예약어 사용
+// ❌ Using reserved keywords
 async delete() { }
 async switch() { }
 async return() { }
 
-// ✅ 다른 이름 사용
+// ✅ Use different names
 async remove() { }
 async del() { }
 async toggle() { }
 async getReturn() { }
 ```
 
-**Sonamu가 검증하는 72개 예약어:**
+**72 reserved keywords validated by Sonamu:**
 
 ```typescript
 const RESERVED_KEYWORDS = [
@@ -69,30 +69,30 @@ const RESERVED_KEYWORDS = [
 ];
 ```
 
-## 타입 추론 실패
+## Type Inference Failure
 
-### 증상
+### Symptoms
 
 ```typescript
 const users = await UserModel.findMany();
-// Type: any[]  ❌ 타입이 제대로 추론되지 않음
+// Type: any[]  ❌ Type not properly inferred
 ```
 
-### 원인
+### Causes
 
-1. Sonamu syncer가 제대로 실행되지 않음
-2. `.generated` 파일이 오래됨
-3. TypeScript 서버 캐시 문제
+1. Sonamu syncer didn't run properly
+2. `.generated` file is outdated
+3. TypeScript server cache issue
 
-### 해결 방법
+### Solutions
 
-#### 1. Syncer 재실행
+#### 1. Re-run Syncer
 
 ```bash
 pnpm sonamu sync
 ```
 
-#### 2. TypeScript 서버 재시작
+#### 2. Restart TypeScript Server
 
 **VSCode:**
 ```
@@ -100,7 +100,7 @@ Command Palette (Cmd+Shift+P)
 > TypeScript: Restart TS Server
 ```
 
-#### 3. Generated 파일 확인
+#### 3. Check Generated Files
 
 ```typescript
 // src/application/sonamu.generated.ts
@@ -112,11 +112,11 @@ export type UserSave = {
 };
 ```
 
-파일이 없거나 오래되었다면 sync 재실행.
+If file is missing or outdated, re-run sync.
 
-## BaseModel 메서드 타입 오류
+## BaseModel Method Type Error
 
-### 증상
+### Symptoms
 
 ```typescript
 class UserModelClass extends BaseModel {
@@ -127,13 +127,13 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-### 원인
+### Cause
 
-BaseModel의 auto-generated 메서드 타입이 제대로 적용되지 않았습니다.
+BaseModel's auto-generated method types are not properly applied.
 
-### 해결 방법
+### Solutions
 
-#### 1. entity.json 확인
+#### 1. Check entity.json
 
 ```json
 {
@@ -145,7 +145,7 @@ BaseModel의 auto-generated 메서드 타입이 제대로 적용되지 않았습
 }
 ```
 
-#### 2. Model 클래스 정의 확인
+#### 2. Check Model Class Definition
 
 ```typescript
 class UserModelClass extends BaseModel<User, UserSave> {
@@ -156,31 +156,31 @@ class UserModelClass extends BaseModel<User, UserSave> {
 export const UserModel = new UserModelClass();
 ```
 
-#### 3. Syncer로 타입 재생성
+#### 3. Regenerate Types with Syncer
 
 ```bash
 pnpm sonamu sync
 ```
 
-## Union 타입 오류
+## Union Type Error
 
-### 증상
+### Symptoms
 
 ```typescript
 type OrderStatus = "pending" | "processing" | "completed";
 
 class OrderModelClass extends BaseModel {
   async updateStatus(id: number, status: string) {  // ❌
-    // status는 OrderStatus여야 함
+    // status should be OrderStatus
   }
 }
 ```
 
-타입 안전성이 보장되지 않습니다.
+Type safety is not guaranteed.
 
-### 해결 방법
+### Solution
 
-명확한 타입 지정:
+Specify explicit type:
 
 ```typescript
 type OrderStatus = "pending" | "processing" | "completed";
@@ -195,9 +195,9 @@ class OrderModelClass extends BaseModel {
 }
 ```
 
-## Zod 스키마 타입 불일치
+## Zod Schema Type Mismatch
 
-### 증상
+### Symptoms
 
 ```typescript
 const UserSchema = z.object({
@@ -206,27 +206,27 @@ const UserSchema = z.object({
 });
 
 @api()
-async createUser(email: string, age: string) {  // ❌ age는 number여야 함
+async createUser(email: string, age: string) {  // ❌ age should be number
   // ...
 }
 ```
 
-### 원인
+### Cause
 
-API 메서드 파라미터 타입과 Zod 스키마가 일치하지 않습니다.
+API method parameter type doesn't match Zod schema.
 
-### 해결 방법
+### Solutions
 
-#### 1. 파라미터 타입 수정
+#### 1. Fix Parameter Type
 
 ```typescript
 @api()
 async createUser(email: string, age: number) {  // ✅
-  // Sonamu가 자동으로 Zod 검증
+  // Sonamu automatically validates with Zod
 }
 ```
 
-#### 2. 명시적 Zod 스키마 사용
+#### 2. Use Explicit Zod Schema
 
 ```typescript
 const CreateUserSchema = z.object({
@@ -236,13 +236,13 @@ const CreateUserSchema = z.object({
 
 @api({ schema: CreateUserSchema })
 async createUser(data: z.infer<typeof CreateUserSchema>) {
-  // 타입 안전성 보장
+  // Type safety guaranteed
 }
 ```
 
-## Intersection 타입 오류
+## Intersection Type Error
 
-### 증상
+### Symptoms
 
 ```typescript
 type WithTimestamps = {
@@ -253,47 +253,47 @@ type WithTimestamps = {
 type User = {
   id: number;
   email: string;
-} & WithTimestamps;  // Intersection 타입
+} & WithTimestamps;  // Intersection type
 
-// 타입이 복잡하게 표시됨
+// Type displayed complexly
 ```
 
-### 해결 방법
+### Solution
 
-Sonamu 0.7.29+부터는 intersection/union 타입을 자동으로 괄호로 감쌉니다:
+From Sonamu 0.7.29+, intersection/union types are automatically wrapped with parentheses:
 
 ```typescript
-// 생성된 타입
+// Generated type
 type User = {
   id: number;
   email: string;
-} & (WithTimestamps);  // 괄호 추가로 명확성 향상
+} & (WithTimestamps);  // Parentheses added for clarity
 ```
 
-업데이트 후 sync 재실행:
+Re-run sync after update:
 
 ```bash
 pnpm add sonamu@latest
 pnpm sonamu sync
 ```
 
-## Template Literal 타입 오류
+## Template Literal Type Error
 
-### 증상
+### Symptoms
 
 ```typescript
 type EventName = `user:${string}`;
 
-// Zod v4에서 template literal 타입 사용 시 오류
+// Error when using template literal type with Zod v4
 ```
 
-### 원인
+### Cause
 
-Zod v4에서 template literal 타입 처리 방식이 변경되었습니다.
+Zod v4 changed how template literal types are handled.
 
-### 해결 방법
+### Solution
 
-Sonamu는 자동으로 backslash escaping 처리:
+Sonamu automatically handles backslash escaping:
 
 ```typescript
 // entity.json
@@ -301,21 +301,21 @@ Sonamu는 자동으로 backslash escaping 처리:
   "columns": {
     "event_name": {
       "type": "string",
-      "literalType": "user:${string}"  // 자동으로 처리됨
+      "literalType": "user:${string}"  // Automatically handled
     }
   }
 }
 ```
 
-생성된 Zod 스키마:
+Generated Zod schema:
 
 ```typescript
-z.literal(`user:$\{string}`)  // 올바르게 escape됨
+z.literal(`user:$\{string}`)  // Properly escaped
 ```
 
-## 순환 참조 타입 오류
+## Circular Reference Type Error
 
-### 증상
+### Symptoms
 
 ```typescript
 // user.model.ts
@@ -333,13 +333,13 @@ export type Post = { ... author: User };
 // Error: Circular dependency detected
 ```
 
-### 원인
+### Cause
 
-두 entity가 서로를 참조하여 순환 의존성이 발생했습니다.
+Two entities reference each other, causing circular dependency.
 
-### 해결 방법
+### Solutions
 
-#### 1. Type-only import 사용
+#### 1. Use Type-only Import
 
 ```typescript
 // user.model.ts
@@ -363,7 +363,7 @@ export type Post = {
 };
 ```
 
-#### 2. 공통 타입 파일 생성
+#### 2. Create Common Types File
 
 ```typescript
 // types/index.ts
@@ -372,13 +372,13 @@ export type { Post } from "../application/post/post.model";
 ```
 
 ```typescript
-// 다른 파일에서 사용
+// Use in other files
 import type { User, Post } from "@/types";
 ```
 
-## 파일 타입 오류 (@upload)
+## File Type Error (@upload)
 
-### 증상
+### Symptoms
 
 ```typescript
 @api()
@@ -386,40 +386,40 @@ import type { User, Post } from "@/types";
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
   // Type: UploadedFile | undefined
-  
+
   const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
 }
 ```
 
-### 원인
+### Cause
 
-`UploadedFile` 클래스에 `buffer` 속성이 없습니다. `toBuffer()` 메서드를 사용해야 합니다.
+`UploadedFile` class doesn't have a `buffer` property. You need to use the `toBuffer()` method.
 
-### 해결 방법
+### Solution
 
 ```typescript
 @api()
 @upload({ mode: "single" })
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
-  
+
   if (!file) {
-    throw new BadRequestException("파일이 필요합니다");
+    throw new BadRequestException("File is required");
   }
-  
-  // ✅ toBuffer() 메서드 사용
+
+  // ✅ Use toBuffer() method
   const buffer = await file.toBuffer();
-  
-  // 또는 파일 저장
+
+  // Or save file
   const url = await file.saveToDisk(`uploads/${file.filename}`);
-  
+
   return { url, size: file.size };
 }
 ```
 
-## 타입 가드 오류
+## Type Guard Error
 
-### 증상
+### Symptoms
 
 ```typescript
 function isUser(value: any): boolean {  // ❌
@@ -431,13 +431,13 @@ if (isUser(data)) {
 }
 ```
 
-### 원인
+### Cause
 
-타입 가드 함수가 타입 좁히기(type narrowing)를 하지 않습니다.
+Type guard function doesn't perform type narrowing.
 
-### 해결 방법
+### Solution
 
-Type predicate 사용:
+Use type predicate:
 
 ```typescript
 function isUser(value: any): value is User {  // ✅
@@ -449,13 +449,13 @@ function isUser(value: any): value is User {  // ✅
 }
 
 if (isUser(data)) {
-  console.log(data.email);  // ✅ 타입 안전
+  console.log(data.email);  // ✅ Type safe
 }
 ```
 
-## 제네릭 타입 추론 실패
+## Generic Type Inference Failure
 
-### 증상
+### Symptoms
 
 ```typescript
 async function fetchData<T>(url: string): Promise<T> {
@@ -467,16 +467,16 @@ const users = await fetchData("/api/users");
 // Type: unknown  ❌
 ```
 
-### 해결 방법
+### Solution
 
-명시적 타입 지정:
+Specify explicit type:
 
 ```typescript
 const users = await fetchData<User[]>("/api/users");
 // Type: User[]  ✅
 ```
 
-또는 타입 검증:
+Or type validation:
 
 ```typescript
 async function fetchData<T>(
@@ -485,21 +485,21 @@ async function fetchData<T>(
 ): Promise<T> {
   const response = await fetch(url);
   const data = await response.json();
-  
+
   if (!validator(data)) {
     throw new Error("Invalid data format");
   }
-  
+
   return data;
 }
 
-// 사용
+// Usage
 const users = await fetchData("/api/users", isUserArray);
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [TypeScript 설정](/configuration/typescript/tsconfig)
-- [타입 체킹](/configuration/typescript/type-checking)
-- [Zod 검증](/api-development/validation)
-- [자동 생성 Services](/frontend-integration/generated-services/how-services-work)
+- [TypeScript Configuration](/configuration/typescript/tsconfig)
+- [Type Checking](/configuration/typescript/type-checking)
+- [Zod Validation](/api-development/validation)
+- [Auto-generated Services](/frontend-integration/generated-services/how-services-work)

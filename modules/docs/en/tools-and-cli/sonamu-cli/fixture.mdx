@@ -1,30 +1,30 @@
 ---
 title: "fixture"
-description: "테스트 데이터 관리하기"
+description: "Managing test data"
 ---
 
-`pnpm fixture` 명령어는 테스트에 사용할 **일관된 데이터 세트**를 관리합니다. 개발 환경의 실제 데이터를 테스트 환경으로 복사하여, 안정적이고 반복 가능한 테스트를 수행할 수 있습니다.
+The `pnpm fixture` command manages **consistent data sets** for testing. You can copy actual data from the development environment to the test environment for stable and repeatable tests.
 
-## 기본 개념
+## Basic Concept
 
-Fixture는 테스트용 **고정된 데이터 세트**입니다:
+Fixture is a **fixed data set** for testing:
 
-- **일관성**: 모든 테스트가 같은 초기 데이터로 시작
-- **격리**: 테스트 DB와 개발 DB 분리
-- **재현성**: 같은 조건에서 반복 테스트 가능
-- **관계 보존**: 외래키 관계가 유지됨
+- **Consistency**: All tests start with the same initial data
+- **Isolation**: Separate test DB from development DB
+- **Reproducibility**: Repeatable tests under same conditions
+- **Relationship preservation**: Foreign key relationships maintained
 
-## 명령어
+## Commands
 
-### init - 테스트 DB 초기화
+### init - Initialize Test DB
 
-개발 DB의 스키마를 테스트 DB로 복사합니다.
+Copy development DB schema to test DB.
 
 ```bash
 pnpm fixture init
 ```
 
-**실행 과정**:
+**Execution process**:
 ```
 DUMP...
   ✓ Schema dumped from development_master
@@ -40,30 +40,30 @@ SYNC to (LOCAL) Testing DB...
 Fixture initialization completed!
 ```
 
-**생성되는 데이터베이스**:
-- **Fixture DB** (원격): 공유 fixture 저장소
-- **Test DB** (로컬): 로컬 테스트용 DB
+**Databases created**:
+- **Fixture DB** (remote): Shared fixture storage
+- **Test DB** (local): Local testing DB
 
 <Info>
-`init`은 **스키마만** 복사합니다. 데이터는 포함되지 않습니다.
+`init` copies **schema only**. Data is not included.
 </Info>
 
-### import - 데이터 가져오기
+### import - Import Data
 
-개발 DB에서 특정 레코드를 fixture로 저장합니다.
+Save specific records from development DB as fixtures.
 
 ```bash
 pnpm fixture import
 ```
 
-대화형 프롬프트가 표시됩니다:
+Interactive prompt appears:
 
 ```
 ? Please select entity: (Use arrow keys)
 ❯ User
   Post
   Comment
-  
+
 ? Enter record IDs (comma-separated): 1,2,3
 
 Importing fixtures...
@@ -75,20 +75,20 @@ Importing fixtures...
 Fixture import completed!
 ```
 
-**자동으로 포함되는 관련 데이터**:
-- 외래키로 참조되는 레코드
-- 관계 테이블의 레코드
-- 역참조 레코드 (선택 가능)
+**Related data automatically included**:
+- Records referenced by foreign keys
+- Relationship table records
+- Reverse reference records (optional)
 
-### sync - 동기화
+### sync - Synchronize
 
-저장된 fixture를 테스트 DB에 적용합니다.
+Apply saved fixtures to test DB.
 
 ```bash
 pnpm fixture sync
 ```
 
-**실행 과정**:
+**Execution process**:
 ```
 Syncing fixtures...
 
@@ -105,62 +105,62 @@ Fixture sync completed!
 ```
 
 <Tip>
-테스트 실행 전에 `sync`를 호출하면 항상 깨끗한 상태에서 시작할 수 있습니다.
+Calling `sync` before test execution ensures you always start with a clean state.
 </Tip>
 
-## 사용 워크플로우
+## Usage Workflow
 
-### 1. 초기 설정
+### 1. Initial Setup
 
-프로젝트 시작 시 한 번만 실행합니다.
+Run once when starting the project.
 
 ```bash
-# 테스트 DB 생성 및 스키마 복사
+# Create test DB and copy schema
 pnpm fixture init
 ```
 
-### 2. 필요한 데이터 선택
+### 2. Select Needed Data
 
-테스트에 필요한 실제 데이터를 가져옵니다.
+Import actual data needed for testing.
 
 ```bash
-# User #1, #2, #3 가져오기
+# Import User #1, #2, #3
 pnpm fixture import
 
 # Entity: User
 # IDs: 1,2,3
 ```
 
-### 3. 테스트 작성
+### 3. Write Tests
 
 ```typescript title="user.model.test.ts"
 import { FixtureManager } from "sonamu/test";
 
 beforeAll(async () => {
-  // Fixture 동기화
+  // Sync fixtures
   await FixtureManager.sync();
 });
 
-test("User를 이메일로 찾기", async () => {
-  // Fixture의 User #1 사용
+test("Find User by email", async () => {
+  // Use User #1 from fixture
   const user = await UserModel.findByEmail("user1@example.com");
-  
+
   expect(user).toBeDefined();
   expect(user.id).toBe(1);
 });
 ```
 
-### 4. 테스트 실행
+### 4. Run Tests
 
 ```bash
 pnpm test
 ```
 
-테스트가 실행될 때마다 fixture가 자동으로 동기화됩니다.
+Fixtures are automatically synced each time tests run.
 
-## Fixture 파일
+## Fixture Files
 
-### 저장 위치
+### Storage Location
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
@@ -174,36 +174,36 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-### 파일 형식
+### File Format
 
 ```json title="src/fixtures/users.json"
 [
   {
     "id": 1,
     "email": "user1@example.com",
-    "name": "홍길동",
+    "name": "John Doe",
     "created_at": "2024-01-15T00:00:00.000Z"
   },
   {
     "id": 2,
     "email": "user2@example.com",
-    "name": "김철수",
+    "name": "Jane Smith",
     "created_at": "2024-01-16T00:00:00.000Z"
   }
 ]
 ```
 
-**특징**:
-- JSON 형식
-- Entity별로 파일 분리
-- 관계 데이터 자동 포함
-- Git으로 버전 관리
+**Features**:
+- JSON format
+- Separate files per Entity
+- Related data automatically included
+- Version controlled with Git
 
-## 관계 데이터 처리
+## Relationship Data Handling
 
-### 외래키 자동 포함
+### Automatic Foreign Key Inclusion
 
-Post를 import하면 연결된 User도 자동으로 포함됩니다.
+When importing a Post, connected Users are automatically included.
 
 ```bash
 pnpm fixture import
@@ -211,15 +211,15 @@ pnpm fixture import
 # Entity: Post
 # IDs: 1
 
-# 자동으로 포함됨:
+# Automatically included:
 # ✓ Post #1
 # ✓ User #5 (author)
 # ✓ Category #2 (category)
 ```
 
-### N:M 관계 처리
+### N:M Relationship Handling
 
-다대다 관계 테이블도 자동으로 포함됩니다.
+Many-to-many relationship tables are also automatically included.
 
 ```bash
 pnpm fixture import
@@ -227,65 +227,65 @@ pnpm fixture import
 # Entity: Post
 # IDs: 1
 
-# 자동으로 포함됨:
+# Automatically included:
 # ✓ Post #1
-# ✓ post_tags (중간 테이블)
-# ✓ Tag #1, #2, #3 (연결된 태그들)
+# ✓ post_tags (junction table)
+# ✓ Tag #1, #2, #3 (connected tags)
 ```
 
-## 테스트 격리
+## Test Isolation
 
-### 각 테스트마다 초기화
+### Reset Before Each Test
 
 ```typescript
 describe("User CRUD", () => {
   beforeEach(async () => {
-    // 각 테스트 전에 fixture 재적용
+    // Reapply fixture before each test
     await FixtureManager.sync();
   });
 
-  test("사용자 생성", async () => {
+  test("Create user", async () => {
     const user = await UserModel.create({
       email: "new@example.com",
-      name: "신규사용자",
+      name: "New User",
     });
-    
+
     expect(user.id).toBeDefined();
   });
 
-  test("사용자 삭제", async () => {
+  test("Delete user", async () => {
     await UserModel.deleteById(1);
-    
+
     const user = await UserModel.findById(1);
     expect(user).toBeNull();
   });
 });
 ```
 
-**격리 효과**:
-- 각 테스트가 독립적
-- 테스트 순서 무관
-- 병렬 실행 가능
+**Isolation effect**:
+- Each test is independent
+- Test order doesn't matter
+- Parallel execution possible
 
-### 트랜잭션 격리
+### Transaction Isolation
 
 ```typescript
 import { Sonamu } from "sonamu";
 
-test("트랜잭션 테스트", async () => {
+test("Transaction test", async () => {
   await Sonamu.runScript(async () => {
-    // 트랜잭션 내에서 실행
+    // Execute within transaction
     const user = await UserModel.create({...});
     const post = await PostModel.create({...});
-    
-    // 테스트 완료 후 자동 롤백
+
+    // Auto-rollback after test completes
   });
 });
 ```
 
-## 실전 예제
+## Practical Examples
 
-### 복잡한 관계 테스트
+### Complex Relationship Testing
 
 ```typescript
 describe("Post with Comments", () => {
@@ -294,53 +294,53 @@ describe("Post with Comments", () => {
     await FixtureManager.sync();
   });
 
-  test("댓글이 있는 Post 조회", async () => {
+  test("Get Post with comments", async () => {
     const post = await PostModel.findById(1, {
       include: ["comments"],
     });
-    
+
     expect(post.comments).toHaveLength(3);
     expect(post.comments[0].author_id).toBe(2);
   });
 });
 ```
 
-### 특정 시나리오 데이터
+### Specific Scenario Data
 
 ```typescript
 describe("Premium User Features", () => {
   beforeAll(async () => {
-    // Premium user만 import
+    // Import only premium users
     await FixtureManager.importFixture("User", [10, 11, 12]);
     await FixtureManager.sync();
   });
 
-  test("프리미엄 기능 접근", async () => {
+  test("Premium feature access", async () => {
     const user = await UserModel.findById(10);
-    
+
     expect(user.isPremium).toBe(true);
     expect(await user.canAccessFeature("advanced")).toBe(true);
   });
 });
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### Fixture DB 연결 실패
+### Fixture DB Connection Failed
 
-**문제**: 원격 fixture DB에 접근 불가
+**Problem**: Cannot access remote fixture DB
 ```
 Error: connect ECONNREFUSED
 ```
 
-**해결**:
+**Solution**:
 ```typescript title="sonamu.config.ts"
 export default {
   database: {
     fixture: {
       client: "pg",
       connection: {
-        host: "fixture-db.example.com",  // 올바른 호스트
+        host: "fixture-db.example.com",  // Correct host
         database: "myapp_fixture",
         user: "postgres",
         password: process.env.FIXTURE_DB_PASSWORD,
@@ -350,82 +350,82 @@ export default {
 };
 ```
 
-### 관계 데이터 누락
+### Missing Relationship Data
 
-**문제**: 외래키 에러 발생
+**Problem**: Foreign key error occurs
 ```
 Error: Foreign key constraint violation
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 관련 데이터를 먼저 import
+# Import related data first
 pnpm fixture import
 # Entity: User
 # IDs: 1,2,3
 
 pnpm fixture import
 # Entity: Post
-# IDs: 1,2,3  # User 1,2,3을 참조
+# IDs: 1,2,3  # References User 1,2,3
 ```
 
-### Fixture 충돌
+### Fixture Conflict
 
-**문제**: ID 중복
+**Problem**: ID duplication
 ```
 Error: Duplicate entry '1' for key 'PRIMARY'
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# Test DB 초기화
+# Reinitialize Test DB
 pnpm fixture init
 
-# Fixture 재동기화
+# Resync fixtures
 pnpm fixture sync
 ```
 
-## 베스트 프랙티스
+## Best Practices
 
-### 1. 최소한의 데이터
+### 1. Minimal Data
 
 ```bash
-# ❌ 모든 데이터 import
+# ❌ Import all data
 pnpm fixture import
 # IDs: 1-1000
 
-# ✅ 필요한 데이터만
+# ✅ Only necessary data
 pnpm fixture import
-# IDs: 1,2,3  # 대표 케이스만
+# IDs: 1,2,3  # Representative cases only
 ```
 
-### 2. 의미있는 데이터
+### 2. Meaningful Data
 
 ```json
-// ✅ 테스트 목적이 명확한 데이터
+// ✅ Data with clear test purpose
 {
   "id": 1,
   "email": "admin@example.com",
   "role": "admin",
-  "name": "관리자"
+  "name": "Admin User"
 }
 {
   "id": 2,
   "email": "user@example.com",
   "role": "user",
-  "name": "일반사용자"
+  "name": "Regular User"
 }
 ```
 
-### 3. 버전 관리
+### 3. Version Control
 
 ```bash
-# Fixture 파일을 Git에 포함
+# Include fixture files in Git
 git add src/fixtures/
 git commit -m "Update test fixtures"
 ```
 
-### 4. CI/CD 통합
+### 4. CI/CD Integration
 
 ```yaml title=".github/workflows/test.yml"
 jobs:
@@ -435,18 +435,18 @@ jobs:
         run: |
           pnpm fixture init
           pnpm fixture sync
-      
+
       - name: Run Tests
         run: pnpm test
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Testing" icon="flask" href="/testing/naite">
-    Naite 테스트 프레임워크 알아보기
+    Learn about Naite test framework
   </Card>
   <Card title="migrate" icon="database" href="/tools-and-cli/sonamu-cli/migrate">
-    마이그레이션 관리하기
+    Manage migrations
   </Card>
 </CardGroup>

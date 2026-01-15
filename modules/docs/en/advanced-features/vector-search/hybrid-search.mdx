@@ -1,17 +1,17 @@
 ---
-title: "하이브리드 검색"
-description: "Sonamu에서 벡터 검색과 키워드 검색을 결합하여 정확도 향상하기"
+title: "Hybrid Search"
+description: "Combining vector search and keyword search in Sonamu for improved accuracy"
 ---
 
-## 벡터 검색만으로는 부족합니다
+## Vector Search Alone Isn't Enough
 
-Sonamu로 상품 검색 API를 만들었습니다:
+You've built a product search API with Sonamu:
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async searchProducts(query: string) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
+
   const results = await this.getPuri().raw(`
     SELECT name, description,
       1 - (embedding <=> ?) AS similarity
@@ -22,56 +22,56 @@ async searchProducts(query: string) {
     JSON.stringify(embedding.embedding),
     JSON.stringify(embedding.embedding),
   ]);
-  
+
   return results.rows;
 }
 ```
 
-**문제 발생**:
+**Problem encountered**:
 
-사용자가 "MacBook Pro 14"로 검색하면?
-- ✅ "MacBook" → 찾음 (의미 유사)
-- ✅ "맥북 프로" → 찾음 (한글도 OK)
-- ❌ "**MBP14**" → 못 찾음 (**정확한 모델명**)
-- ❌ "**SKU-12345**" → 못 찾음 (**상품 코드**)
+When a user searches for "MacBook Pro 14":
+- "MacBook" - Found (semantically similar)
+- "MacBook Pro" - Found (Korean also works)
+- "**MBP14**" - Not found (**exact model name**)
+- "**SKU-12345**" - Not found (**product code**)
 
-**벡터 검색의 한계**:
-- 정확한 제품명, 모델명에 약함
-- 상품 코드, SKU 같은 고유 식별자 못 찾음
-- 기술 용어, 약어에 취약
+**Limitations of vector search**:
+- Weak with exact product names, model names
+- Can't find unique identifiers like product codes, SKUs
+- Vulnerable to technical terms, abbreviations
 
-## 하이브리드 검색이란?
+## What is Hybrid Search?
 
-**벡터 검색**(의미) + **전문 검색/FTS**(키워드)를 결합합니다.
+Combines **vector search** (semantics) + **full-text search/FTS** (keywords).
 
 ```mermaid
 flowchart TD
-    Q["쿼리: MacBook Pro 14"]
-    
-    Q --> V["벡터 검색<br/>(의미 이해)"]
-    Q --> F["전문 검색 FTS<br/>(키워드 매칭)"]
-    
-    V --> R1["1. MacBook Air: 0.85<br/>2. 맥북 프로: 0.82<br/>3. iPad Pro: 0.70"]
+    Q["Query: MacBook Pro 14"]
+
+    Q --> V["Vector Search<br/>(semantic understanding)"]
+    Q --> F["Full-Text Search FTS<br/>(keyword matching)"]
+
+    V --> R1["1. MacBook Air: 0.85<br/>2. MacBook Pro: 0.82<br/>3. iPad Pro: 0.70"]
     F --> R2["1. MacBook Pro 14: 1.0<br/>2. MacBook Pro 16: 0.95<br/>3. Pro Display: 0.50"]
-    
-    R1 --> H["하이브리드 결합<br/>(가중 평균)"]
+
+    R1 --> H["Hybrid Combination<br/>(weighted average)"]
     R2 --> H
-    
-    H --> Final["최종 결과:<br/>1. MacBook Pro 14<br/>2. MacBook Pro 16<br/>3. MacBook Air"]
+
+    H --> Final["Final Results:<br/>1. MacBook Pro 14<br/>2. MacBook Pro 16<br/>3. MacBook Air"]
 ```
 
-**장점**:
-- 벡터: 의미 이해, 동의어, 오타
-- FTS: 정확한 키워드, 부분 매칭
-- **결합**: 최고의 정확도
+**Advantages**:
+- Vector: Semantic understanding, synonyms, typos
+- FTS: Exact keywords, partial matching
+- **Combined**: Best accuracy
 
-## Sonamu에서 구현하기
+## Implementation in Sonamu
 
-### 1. PostgreSQL FTS 설정
+### 1. PostgreSQL FTS Setup
 
-먼저 전문 검색(FTS)을 준비합니다.
+First, prepare full-text search (FTS).
 
-#### tsvector 컬럼 추가
+#### Add tsvector Column
 
 ```typescript
 // migrations/20240101_add_fts.ts
@@ -79,16 +79,16 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.table('products', (table) => {
     table.specificType('search_vector', 'tsvector');
   });
-  
-  // 초기 데이터 생성
+
+  // Generate initial data
   await knex.raw(`
     UPDATE products
-    SET search_vector = 
+    SET search_vector =
       setweight(to_tsvector('simple', coalesce(name, '')), 'A') ||
       setweight(to_tsvector('simple', coalesce(description, '')), 'B')
   `);
-  
-  // GIN 인덱스
+
+  // GIN index
   await knex.raw(`
     CREATE INDEX idx_products_search
     ON products USING GIN (search_vector)
@@ -96,16 +96,16 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-**포인트**:
-- `'simple'`: 한국어 + 영어 처리
-- `setweight`: 제목(A)에 더 높은 가중치
-- GIN 인덱스: 빠른 검색
+**Key points**:
+- `'simple'`: Handles Korean + English
+- `setweight`: Higher weight for title (A)
+- GIN index: Fast search
 
-#### 자동 업데이트 트리거
+#### Auto-Update Trigger
 
 ```typescript
 export async function up(knex: Knex): Promise<void> {
-  // 트리거 함수
+  // Trigger function
   await knex.raw(`
     CREATE FUNCTION products_search_trigger() RETURNS trigger AS $$
     BEGIN
@@ -116,8 +116,8 @@ export async function up(knex: Knex): Promise<void> {
     END;
     $$ LANGUAGE plpgsql;
   `);
-  
-  // 트리거 생성
+
+  // Create trigger
   await knex.raw(`
     CREATE TRIGGER tsvector_update
     BEFORE INSERT OR UPDATE ON products
@@ -126,9 +126,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-이제 상품 추가/수정 시 자동으로 search_vector가 업데이트됩니다.
+Now search_vector is automatically updated when products are added/modified.
 
-### 2. Sonamu Model에서 하이브리드 검색
+### 2. Hybrid Search in Sonamu Model
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -142,26 +142,26 @@ class ProductModelClass extends BaseModel {
     ftsWeight: number = 0.3,
     limit: number = 10
   ) {
-    // 1. 쿼리 임베딩
+    // 1. Query embedding
     const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-    
-    // 2. 하이브리드 검색 SQL
+
+    // 2. Hybrid search SQL
     const results = await this.getPuri().raw(`
       WITH vector_results AS (
-        SELECT 
+        SELECT
           id,
           1 - (embedding <=> ?) AS vector_score
         FROM products
         WHERE embedding IS NOT NULL
       ),
       fts_results AS (
-        SELECT 
+        SELECT
           id,
           ts_rank(search_vector, plainto_tsquery('simple', ?)) AS fts_score
         FROM products
         WHERE search_vector @@ plainto_tsquery('simple', ?)
       )
-      SELECT 
+      SELECT
         p.id,
         p.name,
         p.description,
@@ -183,7 +183,7 @@ class ProductModelClass extends BaseModel {
       ftsWeight,      // 0.3
       limit,
     ]);
-    
+
     return results.rows.map(row => ({
       id: row.id,
       name: row.name,
@@ -196,72 +196,72 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-**SQL 설명**:
-1. `vector_results`: 벡터 유사도 계산
-2. `fts_results`: FTS 점수 계산
-3. `LEFT JOIN`: 둘 중 하나라도 매칭되면 포함
-4. 가중 평균: `(벡터 * 0.7) + (FTS * 0.3)`
+**SQL explanation**:
+1. `vector_results`: Calculate vector similarity
+2. `fts_results`: Calculate FTS score
+3. `LEFT JOIN`: Include if either matches
+4. Weighted average: `(vector * 0.7) + (FTS * 0.3)`
 
-## 가중치 전략
+## Weight Strategies
 
-### 언제 어떤 가중치를?
+### When to Use Which Weights?
 
-**균형형** (기본)
+**Balanced** (default)
 ```typescript
 vectorWeight: 0.7,
 ftsWeight: 0.3
 ```
-- **용도**: 일반적인 검색
-- **예**: 블로그, 문서, 지식 베이스
+- **Use case**: General search
+- **Examples**: Blogs, documents, knowledge bases
 
-**의미 중심**
+**Semantic-focused**
 ```typescript
 vectorWeight: 0.9,
 ftsWeight: 0.1
 ```
-- **용도**: 의미 이해가 중요한 경우
-- **예**: Q&A, 고객 지원, 추천
+- **Use case**: When semantic understanding is important
+- **Examples**: Q&A, customer support, recommendations
 
-**키워드 중심**
+**Keyword-focused**
 ```typescript
 vectorWeight: 0.3,
 ftsWeight: 0.7
 ```
-- **용도**: 정확한 매칭이 중요한 경우
-- **예**: 상품 코드, 모델명, 기술 용어
+- **Use case**: When exact matching is important
+- **Examples**: Product codes, model names, technical terms
 
-### Sonamu에서 동적 조정
+### Dynamic Adjustment in Sonamu
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async smartSearch(query: string, limit: number = 10) {
-  // 쿼리 길이에 따라 자동 조정
+  // Auto-adjust based on query length
   let vectorWeight = 0.7;
   let ftsWeight = 0.3;
-  
+
   if (query.length < 10) {
-    // 짧은 쿼리: 키워드 우선
-    // 예: "MBP", "SKU-123"
+    // Short query: keyword priority
+    // e.g., "MBP", "SKU-123"
     vectorWeight = 0.3;
     ftsWeight = 0.7;
   } else if (query.length > 50) {
-    // 긴 쿼리: 의미 우선
-    // 예: "노트북 추천해주세요..."
+    // Long query: semantic priority
+    // e.g., "Please recommend a laptop..."
     vectorWeight = 0.8;
     ftsWeight = 0.2;
   }
-  
+
   return await this.hybridSearch(query, vectorWeight, ftsWeight, limit);
 }
 ```
 
-## 실전 시나리오
+## Practical Scenario
 
-### 시나리오: 이커머스 상품 검색
+### Scenario: E-commerce Product Search
 
-Sonamu로 쇼핑몰을 만들고 있습니다.
+You're building an online store with Sonamu.
 
-**1단계: 테이블 준비**
+**Step 1: Prepare Tables**
 
 ```typescript
 // migrations/20240101_products.ts
@@ -272,26 +272,26 @@ export async function up(knex: Knex): Promise<void> {
     table.text('description');
     table.string('sku').unique();
     table.decimal('price', 10, 2);
-    
-    // 벡터 + FTS
+
+    // Vector + FTS
     table.specificType('embedding', 'vector(1024)');
     table.specificType('search_vector', 'tsvector');
-    
+
     table.timestamps(true, true);
   });
-  
-  // 인덱스
+
+  // Indexes
   await knex.raw(`
     CREATE INDEX idx_products_embedding
     ON products USING hnsw (embedding vector_cosine_ops)
   `);
-  
+
   await knex.raw(`
     CREATE INDEX idx_products_search
     ON products USING GIN (search_vector)
   `);
-  
-  // FTS 트리거
+
+  // FTS trigger
   await knex.raw(`
     CREATE FUNCTION products_search_trigger() RETURNS trigger AS $$
     BEGIN
@@ -302,7 +302,7 @@ export async function up(knex: Knex): Promise<void> {
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-    
+
     CREATE TRIGGER tsvector_update
     BEFORE INSERT OR UPDATE ON products
     FOR EACH ROW EXECUTE FUNCTION products_search_trigger();
@@ -310,7 +310,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-**2단계: 상품 추가 API**
+**Step 2: Add Product API**
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -320,14 +320,14 @@ async addProduct(
   sku: string,
   price: number
 ) {
-  // 임베딩 생성
+  // Generate embedding
   const embedding = await Embedding.embedOne(
     `${name}\n\n${description}`,
     'voyage',
     'document'
   );
-  
-  // 저장 (search_vector는 트리거가 자동 생성)
+
+  // Save (search_vector is auto-generated by trigger)
   const product = await this.saveOne({
     name,
     description,
@@ -335,12 +335,12 @@ async addProduct(
     price,
     embedding: embedding.embedding,
   });
-  
+
   return product;
 }
 ```
 
-**3단계: 하이브리드 검색 API**
+**Step 3: Hybrid Search API**
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -354,8 +354,8 @@ async searchProducts(
   limit: number = 20
 ) {
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
-  // 필터 조건
+
+  // Filter conditions
   const conditions: string[] = [];
   const params: any[] = [
     JSON.stringify(embedding.embedding),
@@ -364,44 +364,44 @@ async searchProducts(
     0.6,  // vectorWeight
     0.4,  // ftsWeight
   ];
-  
+
   if (filters.minPrice) {
     conditions.push(`p.price >= ?`);
     params.push(filters.minPrice);
   }
-  
+
   if (filters.maxPrice) {
     conditions.push(`p.price <= ?`);
     params.push(filters.maxPrice);
   }
-  
+
   if (filters.category) {
     conditions.push(`p.category = ?`);
     params.push(filters.category);
   }
-  
+
   const whereClause = conditions.length > 0
     ? `AND ${conditions.join(' AND ')}`
     : '';
-  
+
   params.push(limit);
-  
+
   const results = await this.getPuri().raw(`
     WITH vector_results AS (
-      SELECT 
+      SELECT
         id,
         1 - (embedding <=> ?) AS vector_score
       FROM products
       WHERE embedding IS NOT NULL
     ),
     fts_results AS (
-      SELECT 
+      SELECT
         id,
         ts_rank(search_vector, plainto_tsquery('simple', ?)) AS fts_score
       FROM products
       WHERE search_vector @@ plainto_tsquery('simple', ?)
     )
-    SELECT 
+    SELECT
       p.id,
       p.name,
       p.description,
@@ -418,114 +418,114 @@ async searchProducts(
     ORDER BY hybrid_score DESC
     LIMIT ?
   `, params);
-  
+
   return results.rows;
 }
 ```
 
-**사용 예시**:
+**Usage examples**:
 ```typescript
-// 일반 검색
+// General search
 await ProductModel.searchProducts("MacBook Pro");
 
-// 필터 적용
-await ProductModel.searchProducts("노트북", {
+// With filters
+await ProductModel.searchProducts("laptop", {
   minPrice: 1000000,
   maxPrice: 2000000,
   category: "laptop",
 });
 ```
 
-## 벤치마크
+## Benchmarks
 
-### 검색 정확도 비교
+### Search Accuracy Comparison
 
-실제 1000개 상품 DB에서 테스트:
+Tested on an actual 1000-product DB:
 
-| 방식 | 정확도 (MAP@10) | 장점 | 단점 |
-|------|----------------|------|------|
-| 키워드만 (LIKE) | 0.45 | 빠름 | 의미 못 찾음 |
-| FTS만 | 0.68 | 부분 매칭 | 동의어 약함 |
-| 벡터만 | 0.72 | 의미 이해 | 정확한 매칭 약함 |
-| **하이브리드** | **0.85** | **양쪽 장점** | 복잡함 |
+| Method | Accuracy (MAP@10) | Pros | Cons |
+|--------|-------------------|------|------|
+| Keyword only (LIKE) | 0.45 | Fast | Can't find semantics |
+| FTS only | 0.68 | Partial matching | Weak on synonyms |
+| Vector only | 0.72 | Semantic understanding | Weak on exact matching |
+| **Hybrid** | **0.85** | **Best of both** | Complex |
 
-**결론**: 하이브리드가 15-20% 더 정확합니다.
+**Conclusion**: Hybrid is 15-20% more accurate.
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Sonamu에서 하이브리드 검색 시 주의사항**:
+**Cautions for hybrid search in Sonamu**:
 
-1. **두 인덱스 필수**: 벡터 + FTS
+1. **Both indexes required**: Vector + FTS
    ```sql
    CREATE INDEX ... USING hnsw (embedding vector_cosine_ops);
    CREATE INDEX ... USING GIN (search_vector);
    ```
 
-2. **tsvector 업데이트**: 트리거로 자동화
+2. **tsvector update**: Automate with trigger
    ```sql
    CREATE TRIGGER tsvector_update ...
    ```
 
-3. **가중치 합 = 1**: 정규화
+3. **Weight sum = 1**: Normalization
    ```typescript
    const total = vectorWeight + ftsWeight;
    vectorWeight = vectorWeight / total;
    ftsWeight = ftsWeight / total;
    ```
 
-4. **NULL 처리**: COALESCE 사용
+4. **NULL handling**: Use COALESCE
    ```sql
    COALESCE(v.vector_score, 0)
    ```
 
-5. **LEFT JOIN**: 한쪽만 매칭도 OK
+5. **LEFT JOIN**: OK if only one side matches
    ```sql
    WHERE v.id IS NOT NULL OR f.id IS NOT NULL
    ```
 
-6. **한국어는 'simple'**: FTS 언어 설정
+6. **Use 'simple' for Korean**: FTS language setting
    ```sql
    to_tsvector('simple', text)
    ```
 
-7. **성능 모니터링**: EXPLAIN ANALYZE
+7. **Performance monitoring**: EXPLAIN ANALYZE
    ```sql
-   EXPLAIN ANALYZE [하이브리드 쿼리]
+   EXPLAIN ANALYZE [hybrid query]
    ```
 </Warning>
 
-## 언제 하이브리드를 쓰나요?
+## When to Use Hybrid Search?
 
-### 하이브리드 추천
+### Recommend Hybrid
 
-✅ **이커머스 상품 검색**
-- 의미 + 모델명, SKU
+- **E-commerce product search**
+  - Semantics + model names, SKUs
 
-✅ **기술 문서 검색**
-- 개념 + 함수명, 코드
+- **Technical documentation search**
+  - Concepts + function names, code
 
-✅ **고객 지원**
-- 문제 설명 + 정확한 용어
+- **Customer support**
+  - Problem descriptions + exact terms
 
-### 벡터만으로 충분
+### Vector Only is Sufficient
 
-❌ **추천 시스템**
-- 키워드 불필요
+- **Recommendation systems**
+  - Keywords not needed
 
-❌ **이미지 검색**
-- 텍스트 키워드 없음
+- **Image search**
+  - No text keywords
 
-❌ **유사 문서 찾기**
-- 의미만 중요
+- **Finding similar documents**
+  - Only semantics matter
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="벡터 검색" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
-    기본 벡터 검색 구현
+  <Card title="Vector Search" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
+    Basic vector search implementation
   </Card>
-  <Card title="청킹" icon="scissors" href="/advanced-features/vector-search/chunking">
-    긴 문서 분할하기
+  <Card title="Chunking" icon="scissors" href="/advanced-features/vector-search/chunking">
+    Splitting long documents
   </Card>
 </CardGroup>

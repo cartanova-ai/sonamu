@@ -1,92 +1,92 @@
 ---
 title: "build"
-description: "프로덕션 빌드하기"
+description: "Building for production"
 ---
 
-`pnpm build` 명령어는 프로젝트를 프로덕션 환경에 배포할 수 있도록 **최적화된 코드로 빌드**합니다. TypeScript를 JavaScript로 컴파일하고, 불필요한 코드를 제거하여 실행 속도를 높입니다.
+The `pnpm build` command **builds the project into optimized code** for deployment to production environments. It compiles TypeScript to JavaScript and removes unnecessary code to improve execution speed.
 
-## 기본 사용법
+## Basic Usage
 
 ```bash
 pnpm build
 ```
 
-빌드가 완료되면 `dist` 디렉토리에 최적화된 JavaScript 파일이 생성됩니다.
+Once the build completes, optimized JavaScript files are generated in the `dist` directory.
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
   <FileItem name="my-project/">
-    <FileItem name="dist/" description="빌드 결과물">
+    <FileItem name="dist/" description="Build output">
       <FileItem name="index.js" />
       <FileItem name="models/" />
       <FileItem name="api/" />
     </FileItem>
-    <FileItem name="src/" description="원본 소스" />
+    <FileItem name="src/" description="Original source" />
     <FileItem name="package.json" />
   </FileItem>
 </FileTree>
 
-## 빌드 과정
+## Build Process
 
-빌드는 다음 단계로 진행됩니다:
+The build proceeds in the following steps:
 
-### 1. 기존 빌드 결과물 제거
+### 1. Remove Existing Build Artifacts
 
-이전 빌드의 잔여 파일을 깨끗하게 제거합니다.
+Cleanly removes residual files from previous builds.
 
 ```
 ✓ Build artifacts removed successfully.
 ```
 
-**제거되는 디렉토리**:
-- `dist/` - API 빌드 결과물
-- `web/dist/` - Web 빌드 결과물  
-- `web-build/` - 복사된 Web 결과물
+**Directories removed**:
+- `dist/` - API build output
+- `web/dist/` - Web build output
+- `web-build/` - Copied Web output
 
-### 2. SWC 설정 파일 준비
+### 2. Prepare SWC Configuration
 
-빌드에 사용할 SWC 설정 파일을 결정합니다.
+Determines the SWC configuration file to use for the build.
 
 ```typescript
-// 우선순위
-// 1. 프로젝트 루트의 .swcrc (커스텀 설정)
-// 2. Sonamu 기본 .swcrc (없을 경우)
+// Priority
+// 1. .swcrc in project root (custom config)
+// 2. Sonamu default .swcrc (if none exists)
 ```
 
-**커스텀 설정 사용**:
+**Using custom config**:
 ```bash
-# 프로젝트 루트에 .swcrc 생성
+# Create .swcrc in project root
 touch .swcrc
 ```
 
-**기본 설정 사용**:
+**Using default config**:
 ```
 Using default .swcrc from sonamu package...
 ```
 
-### 3. API 프로젝트 빌드
+### 3. Build API Project
 
-TypeScript를 JavaScript로 컴파일합니다.
+Compiles TypeScript to JavaScript.
 
 <Steps>
-  <Step title="빌드 시작">
+  <Step title="Build start">
     ```
     📦 API Server
     Building production-ready API
     /path/to/project
     ```
   </Step>
-  
-  <Step title="컴파일 실행">
+
+  <Step title="Run compilation">
     ```bash
     swc src -d dist --config-file .swcrc
     ```
-    
-    **빌드 도구**: [SWC](https://swc.rs/) - Rust 기반 초고속 TypeScript 컴파일러
+
+    **Build tool**: [SWC](https://swc.rs/) - Rust-based ultra-fast TypeScript compiler
   </Step>
-  
-  <Step title="완료">
+
+  <Step title="Complete">
     ```
     ✓ build completed (2.5s)
     ✓ API build completed in 2.5s
@@ -94,36 +94,36 @@ TypeScript를 JavaScript로 컴파일합니다.
   </Step>
 </Steps>
 
-### 4. Web 프로젝트 빌드 (선택)
+### 4. Build Web Project (Optional)
 
-Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니다.
+If a Web project exists, builds it and copies to the API project.
 
 <Steps>
-  <Step title="빌드 시작">
+  <Step title="Build start">
     ```
     🌐 Web Application
     Building static web assets
     /path/to/project/web
     ```
   </Step>
-  
-  <Step title="Vite 빌드">
+
+  <Step title="Vite build">
     ```bash
     vite build
     ```
-    
-    정적 에셋을 최적화하고 번들링합니다.
+
+    Optimizes and bundles static assets.
   </Step>
-  
-  <Step title="파일 복사">
+
+  <Step title="Copy files">
     ```bash
     web/dist → web-build
     ```
-    
-    API 서버에서 서빙할 수 있도록 복사합니다.
+
+    Copies for serving from API server.
   </Step>
-  
-  <Step title="완료">
+
+  <Step title="Complete">
     ```
     ✓ build completed (8.2s)
     ✓ copy completed (0.1s)
@@ -132,15 +132,15 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
   </Step>
 </Steps>
 
-**Web 빌드 결과물**:
-- `web/dist/` - 원본 빌드 결과
-- `web-build/` - API 서버에서 서빙할 복사본
+**Web build output**:
+- `web/dist/` - Original build result
+- `web-build/` - Copy for serving from API server
 
-## 빌드 설정
+## Build Configuration
 
-### SWC 설정 커스터마이징
+### Customizing SWC Configuration
 
-프로젝트 루트에 `.swcrc` 파일을 생성하여 빌드를 커스터마이징할 수 있습니다.
+Create a `.swcrc` file in the project root to customize the build.
 
 ```json title=".swcrc"
 {
@@ -166,54 +166,54 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
 }
 ```
 
-**주요 옵션**:
+**Key options**:
 
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `target` | 컴파일 타겟 | `es2022` |
-| `decorators` | 데코레이터 지원 | `true` |
-| `sourceMaps` | 소스맵 생성 | `true` |
-| `keepClassNames` | 클래스명 보존 | `true` |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `target` | Compilation target | `es2022` |
+| `decorators` | Decorator support | `true` |
+| `sourceMaps` | Generate source maps | `true` |
+| `keepClassNames` | Preserve class names | `true` |
 
 <Tip>
-`.swcrc` 파일이 없으면 Sonamu가 제공하는 **최적화된 기본 설정**을 사용합니다.
+If no `.swcrc` file exists, **optimized default configuration** provided by Sonamu is used.
 </Tip>
 
-## 빌드 결과물
+## Build Output
 
-### API 빌드 결과
+### API Build Result
 
 <FileTree>
   <FileItem name="dist/">
-    <FileItem name="index.js" description="엔트리포인트" />
-    <FileItem name="models/" description="Model 파일들">
+    <FileItem name="index.js" description="Entry point" />
+    <FileItem name="models/" description="Model files">
       <FileItem name="user.model.js" />
       <FileItem name="post.model.js" />
     </FileItem>
-    <FileItem name="api/" description="API 로직">
+    <FileItem name="api/" description="API logic">
       <FileItem name="sonamu.js" />
     </FileItem>
-    <FileItem name="entities/" description="Entity 정의">
+    <FileItem name="entities/" description="Entity definitions">
       <FileItem name="entities.js" />
     </FileItem>
-    <FileItem name="practices/" description="Practice 스크립트">
+    <FileItem name="practices/" description="Practice scripts">
       <FileItem name="p1-test.js" />
     </FileItem>
   </FileItem>
 </FileTree>
 
-**특징**:
-- TypeScript → JavaScript 변환
-- 데코레이터 변환 완료
-- 소스맵 포함 (`.js.map`)
-- Import 경로 해석 완료
+**Features**:
+- TypeScript → JavaScript conversion
+- Decorator transformation complete
+- Source maps included (`.js.map`)
+- Import path resolution complete
 
-### Web 빌드 결과 (선택)
+### Web Build Result (Optional)
 
 <FileTree>
   <FileItem name="web-build/">
-    <FileItem name="index.html" description="HTML 엔트리" />
-    <FileItem name="assets/" description="최적화된 에셋">
+    <FileItem name="index.html" description="HTML entry" />
+    <FileItem name="assets/" description="Optimized assets">
       <FileItem name="index-abc123.js" />
       <FileItem name="index-def456.css" />
     </FileItem>
@@ -221,238 +221,238 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
   </FileItem>
 </FileTree>
 
-**특징**:
-- 코드 압축 (minification)
-- 에셋 해싱 (cache busting)
-- Tree shaking (사용하지 않는 코드 제거)
+**Features**:
+- Code minification
+- Asset hashing (cache busting)
+- Tree shaking (remove unused code)
 
-## 빌드 최적화
+## Build Optimization
 
-### 1. 타입 체크 분리
+### 1. Separate Type Checking
 
-빌드 속도를 높이려면 타입 체크를 별도로 수행하세요.
+To speed up builds, perform type checking separately.
 
 ```bash
-# 타입 체크만 수행 (빠름)
+# Type check only (fast)
 pnpm tsc --noEmit
 
-# 빌드만 수행 (타입 체크 없음)
+# Build only (no type check)
 pnpm build
 ```
 
-### 2. 증분 빌드
+### 2. Incremental Builds
 
-변경된 파일만 재빌드하려면 개발 서버를 사용하세요.
+Use the development server to rebuild only changed files.
 
 ```bash
-# 전체 빌드 (느림)
+# Full build (slow)
 pnpm build
 
-# HMR 개발 서버 (빠름)
+# HMR development server (fast)
 pnpm dev
 ```
 
-### 3. 캐시 활용
+### 3. Cache Utilization
 
-SWC는 자동으로 빌드 캐시를 사용합니다.
+SWC automatically uses build cache.
 
 ```bash
-# 첫 빌드 (느림)
-pnpm build  # 5초
+# First build (slow)
+pnpm build  # 5 seconds
 
-# 두 번째 빌드 (빠름)
-pnpm build  # 2초
+# Second build (fast)
+pnpm build  # 2 seconds
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### 빌드 실패
+### Build Failure
 
-**문제**: TypeScript 에러로 빌드 실패
+**Problem**: Build fails with TypeScript error
 ```
 Error: Cannot find module 'some-module'
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 1. 타입 체크
+# 1. Type check
 pnpm tsc --noEmit
 
-# 2. 의존성 확인
+# 2. Check dependencies
 pnpm install
 
-# 3. node_modules 재설치
+# 3. Reinstall node_modules
 rm -rf node_modules
 pnpm install
 ```
 
-### SWC 설정 에러
+### SWC Configuration Error
 
-**문제**: `.swcrc` 설정 오류
+**Problem**: `.swcrc` configuration error
 ```
 Error: Invalid .swcrc configuration
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# 기본 설정으로 복구
+# Restore to default config
 rm .swcrc
 pnpm build
 ```
 
-### Web 빌드 실패
+### Web Build Failure
 
-**문제**: Vite 빌드 에러
+**Problem**: Vite build error
 ```
 Error: Could not resolve './some-file'
 ```
 
-**해결**:
+**Solution**:
 ```bash
-# Web 프로젝트 디렉토리로 이동
+# Move to Web project directory
 cd web
 
-# 의존성 확인
+# Check dependencies
 pnpm install
 
-# Web만 빌드 테스트
+# Test Web build only
 pnpm build
 
-# 루트로 돌아와 전체 빌드
+# Return to root and build all
 cd ..
 pnpm build
 ```
 
-## 빌드 후 실행
+## Running After Build
 
-빌드가 완료되면 `start` 명령어로 프로덕션 서버를 실행합니다.
+After build completes, run the production server with the `start` command.
 
 ```bash
-# 빌드
+# Build
 pnpm build
 
-# 실행
+# Run
 pnpm start
 ```
 
-**프로덕션 실행의 특징**:
-- **빠른 시작**: 컴파일이 완료된 JavaScript 실행
-- **낮은 메모리**: TypeScript 변환 오버헤드 없음
-- **소스맵 지원**: 에러 발생 시 원본 파일 위치 표시
+**Production execution features**:
+- **Fast startup**: Run pre-compiled JavaScript
+- **Low memory**: No TypeScript transformation overhead
+- **Source map support**: Show original file location on errors
 
-### 직접 실행
+### Direct Execution
 
-`pnpm start` 대신 Node.js로 직접 실행할 수도 있습니다:
+You can also run directly with Node.js instead of `pnpm start`:
 
 ```bash
 node --enable-source-maps dist/index.js
 ```
 
-**옵션 설명**:
-- `--enable-source-maps`: 에러 발생 시 원본 TypeScript 파일 위치 표시
-- `dist/index.js`: 빌드된 엔트리포인트
+**Option description**:
+- `--enable-source-maps`: Show original TypeScript file location on errors
+- `dist/index.js`: Built entry point
 
-### 환경 변수 로드
+### Loading Environment Variables
 
-환경 변수가 필요한 경우:
+When environment variables are needed:
 
 ```bash
-# dotenv로 .env 파일 로드
+# Load .env file with dotenv
 node -r dotenv/config --enable-source-maps dist/index.js
 
-# 또는 직접 지정
+# Or specify directly
 NODE_ENV=production PORT=3000 node --enable-source-maps dist/index.js
 ```
 
-## CI/CD 설정
+## CI/CD Configuration
 
-CI/CD 파이프라인을 구성하면 코드를 푸시할 때마다 **자동으로 빌드하고 배포**할 수 있습니다. GitHub Actions, GitLab CI, Jenkins 등 다양한 도구를 사용할 수 있습니다.
+Setting up CI/CD pipelines enables **automatic building and deployment** whenever code is pushed. Various tools like GitHub Actions, GitLab CI, Jenkins, etc. can be used.
 
-### 왜 CI/CD가 필요한가?
+### Why is CI/CD Needed?
 
-| 이점 | 설명 |
-|------|------|
-| **자동화** | 수동 빌드/배포 작업 제거 |
-| **일관성** | 항상 같은 방식으로 빌드 |
-| **빠른 피드백** | 빌드 실패를 즉시 확인 |
-| **안전성** | 테스트 통과 후에만 배포 |
-| **추적성** | 모든 배포 기록 보존 |
+| Benefit | Description |
+|---------|-------------|
+| **Automation** | Eliminate manual build/deploy tasks |
+| **Consistency** | Always build the same way |
+| **Fast feedback** | Immediately detect build failures |
+| **Safety** | Deploy only after tests pass |
+| **Traceability** | Preserve all deployment records |
 
 ### GitHub Actions
 
-GitHub Actions는 GitHub에 통합된 CI/CD 플랫폼입니다. `.github/workflows/` 디렉토리에 YAML 파일을 작성하여 워크플로우를 정의합니다.
+GitHub Actions is a CI/CD platform integrated with GitHub. Define workflows by writing YAML files in the `.github/workflows/` directory.
 
 ```yaml title=".github/workflows/deploy.yml"
 name: Deploy
 
 on:
   push:
-    branches: [main]  # main 브랜치에 푸시할 때 실행
+    branches: [main]  # Run when pushing to main branch
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # 1. 코드 체크아웃
+      # 1. Checkout code
       - uses: actions/checkout@v3
-      
-      # 2. pnpm 설치
+
+      # 2. Install pnpm
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      
-      # 3. Node.js 설정 (pnpm 캐시 활성화)
+
+      # 3. Setup Node.js (enable pnpm cache)
       - uses: actions/setup-node@v3
         with:
           node-version: 20
           cache: 'pnpm'
-      
-      # 4. 의존성 설치
+
+      # 4. Install dependencies
       - run: pnpm install
-      
-      # 5. 빌드
+
+      # 5. Build
       - run: pnpm build
-      
-      # 6. 배포
+
+      # 6. Deploy
       - name: Deploy
         run: |
-          # rsync로 빌드 결과물 업로드
+          # Upload build output with rsync
           rsync -avz dist/ server:/app/
 ```
 
-**주요 단계 설명**:
+**Key step descriptions**:
 
 <Steps>
-  <Step title="코드 체크아웃">
-    `actions/checkout@v3`을 사용하여 저장소 코드를 가져옵니다.
+  <Step title="Code checkout">
+    Use `actions/checkout@v3` to fetch repository code.
   </Step>
-  
-  <Step title="pnpm 설치">
-    `pnpm/action-setup@v2`로 pnpm 패키지 매니저를 설치합니다.
+
+  <Step title="Install pnpm">
+    Install pnpm package manager with `pnpm/action-setup@v2`.
   </Step>
-  
-  <Step title="Node.js 설정">
-    `actions/setup-node@v3`으로 Node.js를 설치하고 pnpm 캐시를 활성화합니다.
-    캐시 덕분에 의존성 설치가 훨씬 빠릅니다.
+
+  <Step title="Setup Node.js">
+    Install Node.js and enable pnpm cache with `actions/setup-node@v3`.
+    Cache makes dependency installation much faster.
   </Step>
-  
-  <Step title="의존성 설치">
-    `pnpm install`로 프로젝트 의존성을 설치합니다.
+
+  <Step title="Install dependencies">
+    Install project dependencies with `pnpm install`.
   </Step>
-  
-  <Step title="빌드">
-    `pnpm build`로 프로덕션 빌드를 수행합니다.
+
+  <Step title="Build">
+    Perform production build with `pnpm build`.
   </Step>
-  
-  <Step title="배포">
-    빌드 결과물을 서버로 업로드합니다. rsync, scp, FTP 등 다양한 방법 사용 가능.
+
+  <Step title="Deploy">
+    Upload build output to server. Various methods like rsync, scp, FTP can be used.
   </Step>
 </Steps>
 
-### 테스트 추가
+### Adding Tests
 
-배포 전에 테스트를 실행하여 버그를 조기에 발견할 수 있습니다:
+Run tests before deployment to catch bugs early:
 
 ```yaml title=".github/workflows/deploy.yml"
 jobs:
@@ -468,38 +468,38 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - run: pnpm install
-      - run: pnpm test  # 테스트 실행
-  
+      - run: pnpm test  # Run tests
+
   build:
-    needs: test  # 테스트 통과 후에만 빌드
+    needs: test  # Build only after tests pass
     runs-on: ubuntu-latest
     steps:
-      # ... 빌드 스텝
+      # ... build steps
 ```
 
-### 환경별 배포
+### Environment-based Deployment
 
-Staging과 Production 환경을 분리할 수 있습니다:
+Separate Staging and Production environments:
 
 ```yaml
 on:
   push:
     branches:
-      - develop    # Staging으로 배포
-      - main       # Production으로 배포
+      - develop    # Deploy to Staging
+      - main       # Deploy to Production
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      # ... 빌드 스텝
-      
+      # ... build steps
+
       - name: Deploy to Staging
         if: github.ref == 'refs/heads/develop'
         run: |
           rsync -avz dist/ staging-server:/app/
-      
+
       - name: Deploy to Production
         if: github.ref == 'refs/heads/main'
         run: |
@@ -508,64 +508,64 @@ jobs:
 
 ### Docker
 
-Docker를 사용하면 **일관된 실행 환경**을 보장할 수 있습니다. 개발, 스테이징, 프로덕션 모두 같은 환경에서 실행됩니다.
+Using Docker guarantees a **consistent execution environment**. Development, staging, and production all run in the same environment.
 
 ```dockerfile title="Dockerfile"
-# Stage 1: 빌드 스테이지
+# Stage 1: Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# pnpm 설치
+# Install pnpm
 RUN npm install -g pnpm
 
-# 의존성 설치 (package.json만 먼저 복사하여 캐시 활용)
+# Install dependencies (copy only package.json first for caching)
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# 소스 코드 복사
+# Copy source code
 COPY . .
 
-# 빌드
+# Build
 RUN pnpm build
 
-# Stage 2: 프로덕션 스테이지
+# Stage 2: Production stage
 FROM node:20-alpine
 
 WORKDIR /app
 
-# pnpm 설치
+# Install pnpm
 RUN npm install -g pnpm
 
-# 프로덕션 의존성만 설치
+# Install production dependencies only
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
-# 빌드 결과물 복사
+# Copy build output
 COPY --from=builder /app/dist ./dist
 
-# 환경 변수
+# Environment variables
 ENV NODE_ENV=production
 
-# 포트 노출
+# Expose port
 EXPOSE 3000
 
-# 실행
+# Run
 CMD ["pnpm", "start"]
 ```
 
-**멀티스테이지 빌드의 장점**:
+**Benefits of multi-stage builds**:
 
-| 장점 | 설명 |
-|------|------|
-| **작은 이미지 크기** | 빌드 도구를 최종 이미지에서 제외 |
-| **빠른 배포** | 작은 이미지는 pull/push가 빠름 |
-| **보안** | 불필요한 개발 도구 제거 |
-| **레이어 캐싱** | 의존성이 변경되지 않으면 재사용 |
+| Benefit | Description |
+|---------|-------------|
+| **Small image size** | Exclude build tools from final image |
+| **Fast deployment** | Smaller images have faster pull/push |
+| **Security** | Remove unnecessary development tools |
+| **Layer caching** | Reuse if dependencies unchanged |
 
 ### Docker Compose
 
-데이터베이스와 함께 실행하려면 Docker Compose를 사용합니다:
+Use Docker Compose to run with database:
 
 ```yaml title="docker-compose.yml"
 version: '3.8'
@@ -580,7 +580,7 @@ services:
       - DATABASE_URL=postgresql://postgres:password@db:5432/myapp
     depends_on:
       - db
-  
+
   db:
     image: pgvector/pgvector:pg16
     environment:
@@ -595,66 +595,66 @@ volumes:
   postgres_data:
 ```
 
-**실행**:
+**Run**:
 ```bash
-# 빌드 및 실행
+# Build and run
 docker-compose up --build
 
-# 백그라운드 실행
+# Run in background
 docker-compose up -d
 
-# 중지
+# Stop
 docker-compose down
 ```
 
-## 성능 비교
+## Performance Comparison
 
-프로덕션 빌드는 개발 서버보다 **훨씬 빠르고 효율적**입니다.
+Production builds are **much faster and more efficient** than development server.
 
-| 측정 항목 | 개발 서버 | 프로덕션 빌드 | 차이 |
-|-----------|-----------|---------------|------|
-| 시작 시간 | 2-3초 | 0.5초 | **4-6배 빠름** |
-| 메모리 사용 | 200MB | 100MB | **50% 절감** |
-| 요청 처리 | 느림 | 빠름 | **2-3배 빠름** |
-| 파일 크기 | 원본 | 압축됨 | **30-50% 작음** |
+| Metric | Development Server | Production Build | Difference |
+|--------|-------------------|------------------|------------|
+| Startup time | 2-3s | 0.5s | **4-6x faster** |
+| Memory usage | 200MB | 100MB | **50% reduction** |
+| Request handling | Slower | Faster | **2-3x faster** |
+| File size | Original | Compressed | **30-50% smaller** |
 
-**프로덕션이 빠른 이유**:
+**Why production is faster**:
 
-1. **미리 컴파일됨**: TypeScript를 실시간으로 변환하지 않음
-2. **코드 최적화**: 불필요한 코드 제거, 압축
-3. **HMR 오버헤드 없음**: 파일 감시 및 재로딩 비용 없음
-4. **프로덕션 모드**: Node.js와 의존성들이 최적화 모드로 실행
+1. **Pre-compiled**: Don't transform TypeScript in real-time
+2. **Code optimization**: Remove unnecessary code, compression
+3. **No HMR overhead**: No file watching and reloading costs
+4. **Production mode**: Node.js and dependencies run in optimized mode
 
-### 실제 성능 측정
+### Actual Performance Measurement
 
-개발 서버와 프로덕션 빌드의 성능을 직접 비교해보세요:
+Compare development server and production build performance directly:
 
 ```bash
-# 개발 서버 시작 시간 측정
+# Measure development server startup time
 time pnpm dev
 
-# 프로덕션 빌드 + 시작 시간 측정
+# Measure production build + startup time
 time (pnpm build && pnpm start)
 ```
 
-**API 응답 시간 비교**:
+**API response time comparison**:
 ```bash
-# 개발 서버
+# Development server
 curl -w "\n%{time_total}s\n" http://localhost:3000/api/users
-# 예: 0.05초
+# Example: 0.05s
 
-# 프로덕션
+# Production
 curl -w "\n%{time_total}s\n" http://localhost:3000/api/users
-# 예: 0.02초
+# Example: 0.02s
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="start" icon="play" href="/tools-and-cli/sonamu-cli/start">
-    빌드된 서버 실행하기
+    Run the built server
   </Card>
   <Card title="dev" icon="code" href="/tools-and-cli/sonamu-cli/dev">
-    개발 서버로 돌아가기
+    Return to development server
   </Card>
 </CardGroup>

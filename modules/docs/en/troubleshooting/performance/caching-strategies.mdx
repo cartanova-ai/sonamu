@@ -1,24 +1,24 @@
 ---
-title: '캐싱 전략'
-description: '캐싱으로 성능 개선하기'
+title: 'Caching Strategies'
+description: 'Improving performance with caching'
 ---
 
-Sonamu의 BentoCache를 활용한 효과적인 캐싱 전략을 다룹니다.
+This guide covers effective caching strategies using BentoCache in Sonamu.
 
-## BentoCache란?
+## What is BentoCache?
 
-Sonamu는 [BentoCache](https://bentocache.dev/)를 사용하여 강력한 캐싱 기능을 제공합니다.
+Sonamu provides powerful caching capabilities using [BentoCache](https://bentocache.dev/).
 
-**주요 특징:**
-- 다양한 드라이버 (메모리, Redis, PostgreSQL 등)
-- TTL (Time To Live) 설정
-- 네임스페이스 기반 관리
-- 캐시 워밍 (Cache Warming)
-- 태그 기반 무효화
+**Key Features:**
+- Multiple drivers (memory, Redis, PostgreSQL, etc.)
+- TTL (Time To Live) configuration
+- Namespace-based management
+- Cache Warming
+- Tag-based invalidation
 
-## 캐시 설정
+## Cache Configuration
 
-### sonamu.config.ts 설정
+### sonamu.config.ts Setup
 
 ```typescript
 import { bentostore } from "bentocache";
@@ -30,7 +30,7 @@ export default {
       default: "memory",
       stores: {
         memory: bentostore()
-          .useL1Layer(memoryDriver({ 
+          .useL1Layer(memoryDriver({
             maxItems: 10_000,
             maxSize: 100_000_000  // 100MB
           }))
@@ -40,7 +40,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-### Redis 드라이버
+### Redis Driver
 
 ```typescript
 import { bentostore } from "bentocache";
@@ -65,7 +65,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-### 다중 드라이버
+### Multiple Drivers
 
 ```typescript
 export default {
@@ -85,15 +85,15 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-## @cache 데코레이터
+## @cache Decorator
 
-### 기본 사용법
+### Basic Usage
 
 ```typescript
 import { cache, Puri } from "sonamu";
 
 class UserModelClass extends BaseModel {
-  // 5분간 캐싱
+  // Cache for 5 minutes
   @cache({ ttl: '5m' })
   async getActiveUsersCount(): Promise<number> {
     const result = await this.getPuri()
@@ -104,27 +104,27 @@ class UserModelClass extends BaseModel {
 }
 ```
 
-### TTL 설정
+### TTL Configuration
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // 1시간 캐싱
+  // Cache for 1 hour
   @cache({ ttl: '1h' })
   async getFeaturedProducts() {
     return this.getPuri()
       .select("*")
       .where({ featured: true });
   }
-  
-  // 1일 캐싱
+
+  // Cache for 1 day
   @cache({ ttl: '1d' })
   async getCategoryCounts() {
     return this.getPuri()
       .select("category", knex.raw("COUNT(*) as count"))
       .groupBy("category");
   }
-  
-  // 영구 캐싱 (수동 무효화 필요)
+
+  // Permanent cache (requires manual invalidation)
   @cache({ ttl: 0 })
   async getProductCategories() {
     return this.getPuri()
@@ -133,18 +133,18 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-**TTL 형식:**
-- `'5s'`: 5초
-- `'5m'`: 5분
-- `'1h'`: 1시간
-- `'1d'`: 1일
-- `0`: 영구 (무효화 필요)
+**TTL Formats:**
+- `'5s'`: 5 seconds
+- `'5m'`: 5 minutes
+- `'1h'`: 1 hour
+- `'1d'`: 1 day
+- `0`: Permanent (requires invalidation)
 
-### 파라미터 기반 캐싱
+### Parameter-based Caching
 
 ```typescript
 class UserModelClass extends BaseModel {
-  // 파라미터별로 다른 캐시 생성
+  // Creates different cache entries per parameter
   @cache({ ttl: '5m' })
   async getUsersByStatus(status: string) {
     return this.getPuri()
@@ -153,16 +153,16 @@ class UserModelClass extends BaseModel {
   }
 }
 
-// 각각 다른 캐시 키로 저장됨
+// Each is stored with a different cache key
 await UserModel.getUsersByStatus("active");   // UserModel.getUsersByStatus:active
 await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inactive
 ```
 
-### 캐시 키 커스터마이징
+### Custom Cache Keys
 
 ```typescript
 class PostModelClass extends BaseModel {
-  @cache({ 
+  @cache({
     ttl: '10m',
     key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`
   })
@@ -176,9 +176,9 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-## 수동 캐시 관리
+## Manual Cache Management
 
-### Sonamu.cache 사용
+### Using Sonamu.cache
 
 ```typescript
 import { Sonamu, Puri } from "sonamu";
@@ -186,26 +186,26 @@ import { Sonamu, Puri } from "sonamu";
 class StatisticsService {
   async getDailyStats(date: string) {
     const cacheKey = `stats:daily:${date}`;
-    
-    // 캐시 확인
+
+    // Check cache
     const cached = await Sonamu.cache.get(cacheKey);
     if (cached) {
-      console.log("캐시 히트!");
+      console.log("Cache hit!");
       return cached;
     }
-    
-    // 캐시 미스 - 계산
-    console.log("캐시 미스, 계산 중...");
+
+    // Cache miss - calculate
+    console.log("Cache miss, calculating...");
     const stats = await this.calculateDailyStats(date);
-    
-    // 캐시 저장 (24시간)
+
+    // Store in cache (24 hours)
     await Sonamu.cache.set(cacheKey, stats, { ttl: '24h' });
-    
+
     return stats;
   }
-  
+
   private async calculateDailyStats(date: string) {
-    // 복잡한 통계 계산
+    // Complex statistics calculation
     const [userCount, orderCount, revenue] = await Promise.all([
       UserModel.getPuri()
         .select({ count: Puri.count() })
@@ -219,7 +219,7 @@ class StatisticsService {
         .where("created_at", ">=", date)
         .then(r => r[0].total)
     ]);
-    
+
     return {
       date,
       userCount,
@@ -230,32 +230,32 @@ class StatisticsService {
 }
 ```
 
-### 캐시 무효화
+### Cache Invalidation
 
 ```typescript
 class UserModelClass extends BaseModel {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams) {
     const user = await this.save(params);
-    
-    // 관련 캐시 무효화
+
+    // Invalidate related caches
     await Sonamu.cache.delete("users:active:count");
     await Sonamu.cache.delete("users:stats");
-    
+
     return user;
   }
-  
+
   @api({ httpMethod: "PUT" })
   async updateUserStatus(id: number, status: string) {
     await this.save({ id, status });
-    
-    // 패턴 매칭으로 관련 캐시 무효화
-    await Sonamu.cache.clear();  // 주의: 전체 캐시 삭제
+
+    // Invalidate related caches with pattern matching
+    await Sonamu.cache.clear();  // Caution: deletes entire cache
   }
 }
 ```
 
-### getOrSet 패턴
+### getOrSet Pattern
 
 ```typescript
 class CacheService {
@@ -266,7 +266,7 @@ class CacheService {
       factory
     });
   }
-  
+
   async getUser(userId: number) {
     return this.getWithCache(
       `user:${userId}`,
@@ -276,15 +276,15 @@ class CacheService {
 }
 ```
 
-## 캐싱 전략
+## Caching Strategies
 
-### 1. Read-Through 패턴
+### 1. Read-Through Pattern
 
 ```typescript
 class ProductModelClass extends BaseModel {
   async getProductWithCache(id: number): Promise<Product> {
     const cacheKey = `product:${id}`;
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
       ttl: '1h',
@@ -294,39 +294,39 @@ class ProductModelClass extends BaseModel {
 }
 ```
 
-### 2. Write-Through 패턴
+### 2. Write-Through Pattern
 
 ```typescript
 class ProductModelClass extends BaseModel {
   async updateProduct(id: number, params: ProductSaveParams) {
-    // DB 업데이트
+    // Update DB
     const product = await this.save({ id, ...params });
-    
-    // 캐시도 함께 업데이트
+
+    // Update cache as well
     await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
-    
+
     return product;
   }
 }
 ```
 
-### 3. Cache-Aside 패턴
+### 3. Cache-Aside Pattern
 
 ```typescript
 class ProductModelClass extends BaseModel {
   async getProduct(id: number) {
-    // 1. 캐시 확인
+    // 1. Check cache
     const cached = await Sonamu.cache.get(`product:${id}`);
     if (cached) return cached;
-    
-    // 2. DB 조회
+
+    // 2. Query DB
     const product = await this.findById(id);
-    
-    // 3. 캐시 저장 (응답 후 비동기)
+
+    // 3. Store in cache (async after response)
     setImmediate(async () => {
       await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
     });
-    
+
     return product;
   }
 }
@@ -336,13 +336,13 @@ class ProductModelClass extends BaseModel {
 
 ```typescript
 class ProductModelClass extends BaseModel {
-  // 서버 시작 시 인기 상품 캐시 워밍
+  // Warm popular products cache on server start
   async warmPopularProducts() {
     const popularProducts = await this.getPuri()
       .select("*")
       .where({ featured: true })
       .orWhere("view_count", ">", 1000);
-    
+
     for (const product of popularProducts) {
       await Sonamu.cache.set(
         `product:${product.id}`,
@@ -350,19 +350,19 @@ class ProductModelClass extends BaseModel {
         { ttl: '1h' }
       );
     }
-    
-    console.log(`${popularProducts.length}개 상품 캐시 워밍 완료`);
+
+    console.log(`Cache warming complete for ${popularProducts.length} products`);
   }
 }
 ```
 
-## 실전 예제
+## Practical Examples
 
-### API 응답 캐싱
+### API Response Caching
 
 ```typescript
 class PostModelClass extends BaseModel {
-  // 목록 API - 10분 캐싱
+  // List API - 10 minute cache
   @cache({ ttl: '10m' })
   @api({ httpMethod: "GET" })
   async listPosts(page: number = 1) {
@@ -372,8 +372,8 @@ class PostModelClass extends BaseModel {
       .offset((page - 1) * 20)
       .limit(20);
   }
-  
-  // 상세 API - 5분 캐싱
+
+  // Detail API - 5 minute cache
   @cache({ ttl: '5m' })
   @api({ httpMethod: "GET" })
   async getPost(id: number) {
@@ -385,33 +385,33 @@ class PostModelClass extends BaseModel {
     });
     return result.rows[0];
   }
-  
-  // 생성 API - 관련 캐시 무효화
+
+  // Create API - invalidate related caches
   @api({ httpMethod: "POST" })
   async createPost(params: PostSaveParams) {
     const post = await this.save(params);
-    
-    // 목록 캐시 무효화는 자동으로 처리됨 (키가 다르므로)
-    // 특정 캐시만 무효화하려면 수동으로 처리
-    
+
+    // List cache invalidation is handled automatically (different keys)
+    // For specific cache invalidation, handle manually
+
     return post;
   }
 }
 ```
 
-### 집계 데이터 캐싱
+### Aggregation Data Caching
 
 ```typescript
 class DashboardService {
-  // 대시보드 통계 - 5분 캐싱
+  // Dashboard stats - 5 minute cache
   async getDashboardStats() {
     const cacheKey = "dashboard:stats";
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
       ttl: '5m',
       factory: async () => {
-        // 여러 집계 쿼리 병렬 실행
+        // Execute multiple aggregation queries in parallel
         const [
           totalUsers,
           activeUsers,
@@ -433,7 +433,7 @@ class DashboardService {
             .where("created_at", ">=", new Date().toISOString().split("T")[0])
             .then(r => r[0].total)
         ]);
-        
+
         return {
           totalUsers,
           activeUsers,
@@ -447,44 +447,44 @@ class DashboardService {
 }
 ```
 
-### 사용자 세션 캐싱
+### User Session Caching
 
 ```typescript
 class AuthService {
-  // 세션 저장 (Redis 권장)
+  // Store session (Redis recommended)
   async saveSession(userId: number, token: string) {
     const sessionData = {
       userId,
       token,
       createdAt: new Date()
     };
-    
+
     await Sonamu.cache.set(
       `session:${token}`,
       sessionData,
       { ttl: '24h' }
     );
   }
-  
-  // 세션 조회
+
+  // Get session
   async getSession(token: string) {
     return Sonamu.cache.get(`session:${token}`);
   }
-  
-  // 로그아웃
+
+  // Logout
   async logout(token: string) {
     await Sonamu.cache.delete(`session:${token}`);
   }
 }
 ```
 
-## 캐시 무효화 전략
+## Cache Invalidation Strategies
 
 ### 1. Time-Based (TTL)
 
 ```typescript
-// 가장 간단 - TTL로 자동 만료
-@cache({ ttl: '5m' })  // 5분 후 자동 만료
+// Simplest - auto-expire with TTL
+@cache({ ttl: '5m' })  // Auto-expire after 5 minutes
 async getData() {
   return this.getPuri();
 }
@@ -497,15 +497,15 @@ class ProductModelClass extends BaseModel {
   @api({ httpMethod: "POST" })
   async createProduct(params: ProductSaveParams) {
     const product = await this.save(params);
-    
-    // 관련 캐시 무효화
+
+    // Invalidate related caches
     await this.invalidateProductCaches();
-    
+
     return product;
   }
-  
+
   private async invalidateProductCaches() {
-    // 개별 삭제
+    // Delete individually
     await Sonamu.cache.delete("featured:products");
     await Sonamu.cache.delete("stats:products");
   }
@@ -514,127 +514,127 @@ class ProductModelClass extends BaseModel {
 
 ## Best Practices
 
-### 1. 적절한 TTL 설정
+### 1. Set Appropriate TTL
 
 ```typescript
-// ✅ 자주 변경되는 데이터 - 짧은 TTL
-@cache({ ttl: '1m' })  // 1분
+// Frequently changing data - short TTL
+@cache({ ttl: '1m' })  // 1 minute
 async getCurrentOnlineUsers() { }
 
-// ✅ 거의 변경되지 않는 데이터 - 긴 TTL
-@cache({ ttl: '1d' })  // 1일
+// Rarely changing data - long TTL
+@cache({ ttl: '1d' })  // 1 day
 async getCountries() { }
 
-// ✅ 정적 데이터 - 영구
+// Static data - permanent
 @cache({ ttl: 0 })
 async getAppConfig() { }
 ```
 
-### 2. 캐시 키 네이밍
+### 2. Cache Key Naming
 
 ```typescript
-// ✅ 명확하고 계층적인 키
+// Clear and hierarchical keys
 "user:123"
 "user:123:posts"
 "stats:daily:2025-01-11"
 "product:category:electronics"
 
-// ❌ 불명확한 키
+// Unclear keys - avoid
 "u123"
 "data"
 "temp"
 ```
 
-### 3. 캐시 크기 관리
+### 3. Cache Size Management
 
 ```typescript
-// 큰 객체는 필요한 필드만 캐싱
+// Cache only necessary fields for large objects
 async cacheUser(user: User) {
   const lightUser = {
     id: user.id,
     name: user.name,
     email: user.email
-    // 대용량 필드 제외
+    // Exclude large fields
   };
-  
+
   await Sonamu.cache.set(`user:${user.id}`, lightUser, { ttl: '1h' });
 }
 ```
 
-### 4. 캐시 워밍
+### 4. Cache Warming
 
 ```typescript
-// 서버 시작 시 중요 데이터 미리 캐싱
+// Pre-cache important data on server start
 export default {
   server: {
     lifecycle: {
       async onStart() {
         await ProductModel.warmPopularProducts();
         await CategoryModel.warmAllCategories();
-        console.log("캐시 워밍 완료");
+        console.log("Cache warming complete");
       }
     }
   }
 } satisfies SonamuConfig;
 ```
 
-### 5. 실패 대응
+### 5. Failure Handling
 
 ```typescript
 async getDataWithFallback(id: number) {
   try {
-    // 캐시 시도
+    // Try cache
     const cached = await Sonamu.cache.get(`data:${id}`);
     if (cached) return cached;
   } catch (error) {
-    console.error("캐시 오류:", error);
-    // 캐시 실패해도 계속 진행
+    console.error("Cache error:", error);
+    // Continue even if cache fails
   }
-  
-  // DB 조회 (캐시 없거나 실패 시)
+
+  // Query DB (when cache is missing or failed)
   return this.findById(id);
 }
 ```
 
-## 성능 비교
+## Performance Comparison
 
-### 캐싱 전
-
-```
-요청 100회:
-- 평균 응답 시간: 150ms
-- DB 쿼리: 100회
-- 총 처리 시간: 15초
-```
-
-### 캐싱 후
+### Before Caching
 
 ```
-요청 100회:
-- 평균 응답 시간: 5ms (캐시 히트)
-- DB 쿼리: 1회 (첫 요청)
-- 총 처리 시간: 0.5초
+100 requests:
+- Average response time: 150ms
+- DB queries: 100
+- Total processing time: 15 seconds
 ```
 
-**30배 이상 성능 향상!**
+### After Caching
 
-## 체크리스트
+```
+100 requests:
+- Average response time: 5ms (cache hit)
+- DB queries: 1 (first request)
+- Total processing time: 0.5 seconds
+```
 
-효과적인 캐싱을 위해:
+**Over 30x performance improvement!**
 
-- [ ] 자주 조회되는 데이터 파악
-- [ ] 적절한 TTL 설정 (문자열 형식)
-- [ ] 명확한 캐시 키 네이밍
-- [ ] 데이터 변경 시 캐시 무효화
-- [ ] 메모리 사용량 모니터링
-- [ ] 캐시 워밍 전략
-- [ ] 실패 대응 로직
+## Checklist
 
-## 관련 문서
+For effective caching:
 
-- [캐시 설정](/advanced-features/caching/cache-configuration)
-- [@cache 데코레이터](/advanced-features/caching/cache-decorator)
-- [캐시 전략](/advanced-features/caching/cache-strategies)
-- [캐시 무효화](/advanced-features/caching/cache-invalidation)
-- [쿼리 최적화](/troubleshooting/performance/query-optimization)
-- [N+1 문제](/troubleshooting/performance/n-plus-one-problems)
+- [ ] Identify frequently queried data
+- [ ] Set appropriate TTL (string format)
+- [ ] Use clear cache key naming
+- [ ] Invalidate cache on data changes
+- [ ] Monitor memory usage
+- [ ] Implement cache warming strategy
+- [ ] Add failure handling logic
+
+## Related Documentation
+
+- [Cache Configuration](/advanced-features/caching/cache-configuration)
+- [@cache Decorator](/advanced-features/caching/cache-decorator)
+- [Cache Strategies](/advanced-features/caching/cache-strategies)
+- [Cache Invalidation](/advanced-features/caching/cache-invalidation)
+- [Query Optimization](/troubleshooting/performance/query-optimization)
+- [N+1 Problems](/troubleshooting/performance/n-plus-one-problems)

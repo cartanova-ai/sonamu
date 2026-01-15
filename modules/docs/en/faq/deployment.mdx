@@ -1,51 +1,51 @@
 ---
-title: '배포'
-description: '프로덕션 배포와 운영에 관한 질문'
+title: 'Deployment'
+description: 'Questions about production deployment and operations'
 ---
 
-## 빌드와 배포
+## Build and Deployment
 
 <AccordionGroup>
-<Accordion title="프로덕션 빌드를 만들려면?">
+<Accordion title="How do I create a production build?">
 
-**API 서버 빌드:**
+**API server build:**
 
 ```bash
 cd api
 pnpm build
 ```
 
-빌드 결과물은 `api/dist` 디렉터리에 생성됩니다.
+Build output is generated in the `api/dist` directory.
 
-**Web 프론트엔드 빌드:**
+**Web frontend build:**
 
 ```bash
 cd web
 pnpm build
 ```
 
-빌드 결과물은 `web/dist` 디렉터리에 생성됩니다.
+Build output is generated in the `web/dist` directory.
 
 </Accordion>
 
-<Accordion title="프로덕션 환경에서 실행하려면?">
+<Accordion title="How do I run in a production environment?">
 
-**API 서버:**
+**API server:**
 
 ```bash
 cd api
 NODE_ENV=production node dist/index.js
 ```
 
-또는 PM2 사용:
+Or using PM2:
 
 ```bash
 pm2 start dist/index.js --name sonamu-api
 ```
 
-**Web 서버:**
+**Web server:**
 
-Nginx나 Apache로 정적 파일 서빙:
+Serve static files with Nginx or Apache:
 
 ```nginx
 # nginx.conf
@@ -76,12 +76,12 @@ server {
 
 ---
 
-## 환경 변수
+## Environment Variables
 
 <AccordionGroup>
-<Accordion title="환경 변수를 설정하려면?">
+<Accordion title="How do I set environment variables?">
 
-**.env 파일 생성:**
+**Create .env file:**
 
 ```bash
 # api/.env.production
@@ -107,7 +107,7 @@ REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 ```
 
-**sonamu.config.ts에서 사용:**
+**Use in sonamu.config.ts:**
 
 ```typescript
 export default {
@@ -135,24 +135,24 @@ export default {
 
 </Accordion>
 
-<Accordion title="민감한 정보를 안전하게 관리하려면?">
+<Accordion title="How do I securely manage sensitive information?">
 
-**방법 1: 환경 변수**
+**Method 1: Environment Variables**
 
 ```bash
-# .env 파일은 .gitignore에 추가
+# Add .env files to .gitignore
 echo ".env" >> .gitignore
 echo ".env.*" >> .gitignore
 ```
 
-**방법 2: Secret 관리 도구**
+**Method 2: Secret Management Tools**
 
 - AWS Secrets Manager
 - HashiCorp Vault
 - Azure Key Vault
 
 ```typescript
-// AWS Secrets Manager 예시
+// AWS Secrets Manager example
 import { SecretsManager } from "@aws-sdk/client-secrets-manager";
 
 const client = new SecretsManager({ region: "us-east-1" });
@@ -170,30 +170,30 @@ const dbSecret = await getSecret("prod/database");
 
 ---
 
-## 데이터베이스
+## Database
 
 <AccordionGroup>
-<Accordion title="프로덕션 데이터베이스 마이그레이션을 실행하려면?">
+<Accordion title="How do I run production database migrations?">
 
-**1. 마이그레이션 상태 확인:**
+**1. Check migration status:**
 
 ```bash
 NODE_ENV=production pnpm sonamu migrate status
 ```
 
-**2. Shadow DB에서 테스트 (권장):**
+**2. Test on Shadow DB (recommended):**
 
 ```bash
 NODE_ENV=production pnpm sonamu migrate shadow-test
 ```
 
-**3. 실제 DB에 적용:**
+**3. Apply to actual DB:**
 
 ```bash
 NODE_ENV=production pnpm sonamu migrate run
 ```
 
-**4. 롤백 (필요시):**
+**4. Rollback (if needed):**
 
 ```bash
 NODE_ENV=production pnpm sonamu migrate rollback
@@ -201,29 +201,29 @@ NODE_ENV=production pnpm sonamu migrate rollback
 
 </Accordion>
 
-<Accordion title="데이터베이스 백업을 설정하려면?">
+<Accordion title="How do I set up database backups?">
 
-**PostgreSQL 백업:**
+**PostgreSQL backup:**
 
 ```bash
-# 수동 백업
+# Manual backup
 pg_dump -h prod-db.example.com -U postgres -d sonamu_prod > backup.sql
 
-# 압축 백업
+# Compressed backup
 pg_dump -h prod-db.example.com -U postgres -d sonamu_prod | gzip > backup.sql.gz
 
-# 복원
+# Restore
 gunzip < backup.sql.gz | psql -h prod-db.example.com -U postgres -d sonamu_prod
 ```
 
-**자동 백업 (Cron):**
+**Automatic backup (Cron):**
 
 ```bash
 # crontab -e
-# 매일 새벽 2시 백업
+# Daily backup at 2 AM
 0 2 * * * /usr/bin/pg_dump -h prod-db.example.com -U postgres sonamu_prod | gzip > /backups/sonamu_$(date +\%Y\%m\%d).sql.gz
 
-# 30일 이상 된 백업 삭제
+# Delete backups older than 30 days
 0 3 * * * find /backups -name "sonamu_*.sql.gz" -mtime +30 -delete
 ```
 
@@ -232,12 +232,12 @@ gunzip < backup.sql.gz | psql -h prod-db.example.com -U postgres -d sonamu_prod
 
 ---
 
-## 모니터링과 로깅
+## Monitoring and Logging
 
 <AccordionGroup>
-<Accordion title="로그를 설정하려면?">
+<Accordion title="How do I set up logging?">
 
-**Winston 사용:**
+**Using Winston:**
 
 ```typescript
 // sonamu.config.ts
@@ -262,14 +262,14 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-**로그 사용:**
+**Using the logger:**
 
 ```typescript
 class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams): Promise<User> {
     this.logger.info("Creating user", { email: params.email });
-    
+
     try {
       const user = await this.save(params);
       this.logger.info("User created", { userId: user.id });
@@ -284,7 +284,7 @@ class UserModelClass extends BaseModelClass {
 
 </Accordion>
 
-<Accordion title="헬스체크 엔드포인트를 만들려면?">
+<Accordion title="How do I create a health check endpoint?">
 
 ```typescript
 // health.frame.ts
@@ -298,14 +298,14 @@ class HealthFrameClass extends BaseFrameClass {
     uptime: number;
     database: string;
   }> {
-    // DB 연결 확인
+    // Check DB connection
     let databaseStatus = "ok";
     try {
       await this.getDB("r").raw("SELECT 1");
     } catch (error) {
       databaseStatus = "error";
     }
-    
+
     return {
       status: databaseStatus === "ok" ? "healthy" : "unhealthy",
       timestamp: new Date(),
@@ -320,9 +320,9 @@ export const HealthFrame = new HealthFrameClass();
 
 </Accordion>
 
-<Accordion title="에러 모니터링을 설정하려면?">
+<Accordion title="How do I set up error monitoring?">
 
-**Sentry 통합:**
+**Sentry integration:**
 
 ```typescript
 // sonamu.config.ts
@@ -357,12 +357,12 @@ export default {
 
 ---
 
-## 성능 최적화
+## Performance Optimization
 
 <AccordionGroup>
-<Accordion title="프로덕션 성능을 최적화하려면?">
+<Accordion title="How do I optimize production performance?">
 
-**1. Connection Pool 설정:**
+**1. Connection Pool settings:**
 
 ```typescript
 export default {
@@ -381,7 +381,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-**2. 캐싱 활성화:**
+**2. Enable caching:**
 
 ```typescript
 import { bentostore } from "bentocache";
@@ -405,7 +405,7 @@ export default {
 } satisfies SonamuConfig;
 ```
 
-**3. 압축 활성화:**
+**3. Enable compression:**
 
 ```typescript
 import compress from "@fastify/compress";
@@ -423,14 +423,14 @@ export default {
 
 </Accordion>
 
-<Accordion title="정적 파일 캐싱을 설정하려면?">
+<Accordion title="How do I set up static file caching?">
 
-**Nginx 설정:**
+**Nginx configuration:**
 
 ```nginx
 server {
   # ...
-  
+
   location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$ {
     expires 1y;
     add_header Cache-Control "public, immutable";
@@ -446,9 +446,9 @@ server {
 ## Docker
 
 <AccordionGroup>
-<Accordion title="Docker로 배포하려면?">
+<Accordion title="How do I deploy with Docker?">
 
-**Dockerfile 생성:**
+**Create Dockerfile:**
 
 ```dockerfile
 # api/Dockerfile
@@ -456,20 +456,20 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# pnpm 설치
+# Install pnpm
 RUN npm install -g pnpm
 
-# Dependencies 복사 및 설치
+# Copy and install dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# 소스 코드 복사
+# Copy source code
 COPY . .
 
-# 빌드
+# Build
 RUN pnpm build
 
-# 프로덕션 모드로 실행
+# Run in production mode
 ENV NODE_ENV=production
 EXPOSE 1028
 
@@ -526,7 +526,7 @@ volumes:
   postgres_data:
 ```
 
-**실행:**
+**Run:**
 
 ```bash
 docker-compose up -d
@@ -540,7 +540,7 @@ docker-compose up -d
 ## CI/CD
 
 <AccordionGroup>
-<Accordion title="GitHub Actions로 자동 배포를 설정하려면?">
+<Accordion title="How do I set up automatic deployment with GitHub Actions?">
 
 **.github/workflows/deploy.yml:**
 
@@ -554,27 +554,27 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      
+
       - name: Install pnpm
         run: npm install -g pnpm
-      
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Run tests
         run: pnpm test
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         with:
@@ -594,25 +594,25 @@ jobs:
 
 ---
 
-## 보안
+## Security
 
 <AccordionGroup>
-<Accordion title="HTTPS를 설정하려면?">
+<Accordion title="How do I set up HTTPS?">
 
 **Let's Encrypt + Nginx:**
 
 ```bash
-# Certbot 설치
+# Install Certbot
 sudo apt install certbot python3-certbot-nginx
 
-# 인증서 발급
+# Issue certificate
 sudo certbot --nginx -d example.com -d www.example.com
 
-# 자동 갱신 테스트
+# Test automatic renewal
 sudo certbot renew --dry-run
 ```
 
-**Nginx HTTPS 설정:**
+**Nginx HTTPS configuration:**
 
 ```nginx
 server {
@@ -628,7 +628,7 @@ server {
   # ...
 }
 
-# HTTP to HTTPS 리다이렉트
+# HTTP to HTTPS redirect
 server {
   listen 80;
   server_name example.com;
@@ -638,7 +638,7 @@ server {
 
 </Accordion>
 
-<Accordion title="CORS를 설정하려면?">
+<Accordion title="How do I configure CORS?">
 
 ```typescript
 // sonamu.config.ts
@@ -655,7 +655,7 @@ export default {
 
 </Accordion>
 
-<Accordion title="Rate Limiting을 설정하려면?">
+<Accordion title="How do I set up Rate Limiting?">
 
 ```typescript
 import rateLimit from "@fastify/rate-limit";
@@ -682,43 +682,43 @@ export default {
 ## Best Practices
 
 <AccordionGroup>
-<Accordion title="프로덕션 체크리스트">
+<Accordion title="Production checklist">
 
-**보안:**
-- [ ] HTTPS 설정
-- [ ] 환경 변수로 민감 정보 관리
-- [ ] CORS 올바르게 설정
-- [ ] Rate Limiting 설정
-- [ ] SQL Injection 방지 (Puri 사용)
-- [ ] XSS 방지 (입력 검증)
+**Security:**
+- [ ] HTTPS configured
+- [ ] Sensitive info managed via environment variables
+- [ ] CORS properly configured
+- [ ] Rate Limiting set up
+- [ ] SQL Injection prevention (using Puri)
+- [ ] XSS prevention (input validation)
 
-**성능:**
-- [ ] Connection Pool 최적화
-- [ ] Redis 캐싱 활성화
-- [ ] 정적 파일 캐싱
-- [ ] DB 인덱스 최적화
-- [ ] N+1 쿼리 제거
+**Performance:**
+- [ ] Connection Pool optimized
+- [ ] Redis caching enabled
+- [ ] Static file caching
+- [ ] DB indexes optimized
+- [ ] N+1 queries eliminated
 
-**모니터링:**
-- [ ] 헬스체크 엔드포인트
-- [ ] 에러 모니터링 (Sentry)
-- [ ] 로그 수집 (Winston)
-- [ ] DB 백업 자동화
+**Monitoring:**
+- [ ] Health check endpoint
+- [ ] Error monitoring (Sentry)
+- [ ] Log collection (Winston)
+- [ ] DB backup automation
 
-**배포:**
-- [ ] 프로덕션 환경 변수 설정
-- [ ] 마이그레이션 테스트 (Shadow DB)
-- [ ] CI/CD 파이프라인
-- [ ] 롤백 계획
+**Deployment:**
+- [ ] Production environment variables set
+- [ ] Migration tested (Shadow DB)
+- [ ] CI/CD pipeline
+- [ ] Rollback plan
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## 관련 문서
+## Related Documentation
 
-- [환경 설정](/configuration/environment-variables)
-- [보안](/advanced-features/security)
-- [성능 최적화](/troubleshooting/performance/query-optimization)
-- [Docker 배포](/deployment/docker)
+- [Environment Configuration](/configuration/environment-variables)
+- [Security](/advanced-features/security)
+- [Performance Optimization](/troubleshooting/performance/query-optimization)
+- [Docker Deployment](/deployment/docker)

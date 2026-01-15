@@ -1,17 +1,17 @@
 ---
-title: "임베딩"
-description: "Sonamu에서 Voyage AI, OpenAI로 텍스트 임베딩 생성하기"
+title: "Embeddings"
+description: "Generating text embeddings with Voyage AI and OpenAI in Sonamu"
 ---
 
-## Sonamu 검색 API의 문제
+## The Problem with Sonamu Search API
 
-Sonamu로 지식 베이스 앱을 만들고 있습니다:
+You're building a knowledge base app with Sonamu:
 
 ```typescript
 class DocumentModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
-    // 키워드 검색
+    // Keyword search
     const results = await this.findMany({
       wq: [
         ['title', 'LIKE', `%${query}%`],
@@ -23,131 +23,131 @@ class DocumentModelClass extends BaseModel {
 }
 ```
 
-사용자가 "TypeScript 프레임워크"로 검색하면?
-- ✅ "Sonamu는 **TypeScript 프레임워크**입니다" → 찾음
-- ❌ "Sonamu는 Node.js API **라이브러리**입니다" → 못 찾음 (키워드 다름)
-- ❌ "Sonamu is a **TS framework**" → 못 찾음 (영어)
-- ❌ "타입스크립트 **프래임워크**" → 못 찾음 (오타)
+What happens when a user searches for "TypeScript framework"?
+- "Sonamu is a **TypeScript framework**" - Found
+- "Sonamu is a Node.js API **library**" - Not found (different keywords)
+- "Sonamu is a **TS framework**" - Not found (abbreviation)
+- "TypeScript **framwork**" - Not found (typo)
 
-**키워드 검색의 한계**:
-- 동의어 처리 안 됨
-- 표현 방식이 달라지면 못 찾음
-- 오타에 취약
-- 의미는 같은데 단어가 다르면 실패
+**Limitations of keyword search**:
+- Doesn't handle synonyms
+- Fails when expressions differ
+- Vulnerable to typos
+- Fails when meaning is the same but words differ
 
-## 의미 기반 검색이 필요합니다
+## Semantic Search is Needed
 
-"TypeScript 프레임워크"와 "Node.js API 라이브러리"는 **의미가 유사**합니다. 키워드는 달라도 말이죠.
+"TypeScript framework" and "Node.js API library" are **semantically similar**, even though the keywords are different.
 
-이런 의미를 컴퓨터가 이해하려면? → **임베딩(Embedding)**
+How can computers understand this meaning? **Embeddings**
 
-## 임베딩이란?
+## What are Embeddings?
 
-**임베딩**은 텍스트를 고차원 숫자 배열(벡터)로 변환하는 과정입니다. 의미가 유사한 텍스트는 벡터 공간에서 가까운 위치에 배치됩니다.
+**Embeddings** convert text into high-dimensional numerical arrays (vectors). Semantically similar texts are placed close together in vector space.
 
 ```mermaid
 flowchart LR
-    T1["TypeScript 프레임워크"] --> E1[Embedding API]
-    T2["Node.js 라이브러리"] --> E2[Embedding API]
-    T3["날씨가 좋네요"] --> E3[Embedding API]
-    
-    E1 --> V1["[0.2, 0.8, -0.3, ...]<br/>(1024개)"]
-    E2 --> V2["[0.3, 0.7, -0.2, ...]<br/>(유사)"]
-    E3 --> V3["[-0.5, 0.1, 0.8, ...]<br/>(다름)"]
+    T1["TypeScript framework"] --> E1[Embedding API]
+    T2["Node.js library"] --> E2[Embedding API]
+    T3["The weather is nice"] --> E3[Embedding API]
+
+    E1 --> V1["[0.2, 0.8, -0.3, ...]<br/>(1024 dimensions)"]
+    E2 --> V2["[0.3, 0.7, -0.2, ...]<br/>(similar)"]
+    E3 --> V3["[-0.5, 0.1, 0.8, ...]<br/>(different)"]
 ```
 
-**핵심**:
-- 숫자로 변환하면 **거리 계산** 가능
-- 가까운 벡터 = 의미가 유사한 텍스트
-- 먼 벡터 = 의미가 다른 텍스트
+**Key points**:
+- Converting to numbers enables **distance calculation**
+- Close vectors = semantically similar texts
+- Distant vectors = semantically different texts
 
-### Sonamu에서의 흐름
+### Flow in Sonamu
 
 ```typescript
-// 1. 문서 저장 시: 텍스트 → 임베딩 → DB
+// 1. When saving a document: text -> embedding -> DB
 await DocumentModel.saveOne({
-  title: "Sonamu 시작하기",
+  title: "Getting Started with Sonamu",
   content: "...",
-  embedding: [0.2, 0.8, -0.3, ...],  // 1024개
+  embedding: [0.2, 0.8, -0.3, ...],  // 1024 dimensions
 });
 
-// 2. 검색 시: 쿼리 → 임베딩 → 유사도 계산
+// 2. When searching: query -> embedding -> similarity calculation
 const queryEmbedding = [0.3, 0.7, -0.2, ...];
 const results = await searchSimilar(queryEmbedding);
 ```
 
-## Embedding 클래스
+## The Embedding Class
 
-Sonamu는 임베딩을 쉽게 만들 수 있는 `Embedding` 클래스를 제공합니다:
+Sonamu provides an `Embedding` class to easily create embeddings:
 
 ```typescript
 import { Embedding } from "sonamu/vector";
 
-// 단일 텍스트 임베딩
+// Single text embedding
 const result = await Embedding.embedOne(
-  "Sonamu는 TypeScript 프레임워크입니다",
+  "Sonamu is a TypeScript framework",
   'voyage'  // 'voyage' | 'openai'
 );
 
-console.log(result.embedding);  // [0.123, -0.456, ...] (1024개)
+console.log(result.embedding);  // [0.123, -0.456, ...] (1024 dimensions)
 console.log(result.model);      // "voyage-3"
 console.log(result.tokenCount); // 8
 ```
 
-## 어떤 프로바이더를 선택할까?
+## Which Provider Should You Choose?
 
 ### Voyage AI vs OpenAI
 
-Sonamu는 두 가지 임베딩 프로바이더를 지원합니다:
+Sonamu supports two embedding providers:
 
-| 항목 | Voyage AI | OpenAI |
+| Item | Voyage AI | OpenAI |
 |------|-----------|--------|
-| **한국어 성능** | ⭐⭐⭐⭐⭐ 최고 | ⭐⭐⭐⭐ 좋음 |
-| **영어 성능** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **차원** | 1024 | 1536 |
-| **최대 토큰** | 32,000 | 8,191 |
-| **배치 크기** | 128 | 100 |
-| **비대칭 임베딩** | ✅ (document/query 구분) | ❌ |
-| **Sonamu 추천** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **Korean performance** | Excellent | Good |
+| **English performance** | Excellent | Excellent |
+| **Dimensions** | 1024 | 1536 |
+| **Max tokens** | 32,000 | 8,191 |
+| **Batch size** | 128 | 100 |
+| **Asymmetric embeddings** | Yes (document/query distinction) | No |
+| **Sonamu recommendation** | Highly recommended | Recommended |
 
-### Sonamu 프로젝트 기준 선택
+### Selection Criteria for Sonamu Projects
 
-**Voyage AI 추천**:
-- ✅ 한국어 서비스 (한국어 성능 우수)
-- ✅ 긴 문서 처리 (32,000 토큰)
-- ✅ 검색 정확도 중요 (비대칭 임베딩)
+**Recommend Voyage AI**:
+- Korean services (excellent Korean performance)
+- Long document processing (32,000 tokens)
+- Search accuracy matters (asymmetric embeddings)
 
-**OpenAI 추천**:
-- ✅ 글로벌 서비스 (다국어 균형)
-- ✅ 이미 OpenAI API 사용 중
+**Recommend OpenAI**:
+- Global services (balanced multilingual support)
+- Already using OpenAI API
 
-## 환경 설정
+## Environment Setup
 
-### 1. 패키지 설치
+### 1. Install Packages
 
 ```bash
 pnpm add voyageai
-# 또는
+# or
 pnpm add @ai-sdk/openai
 ```
 
-### 2. API 키 설정
+### 2. Configure API Keys
 
 ```.env
-# Voyage AI (권장)
+# Voyage AI (recommended)
 VOYAGE_API_KEY=pa-...
 
-# OpenAI (대안)
+# OpenAI (alternative)
 OPENAI_API_KEY=sk-...
 ```
 
-API 키는 각 프로바이더 웹사이트에서 발급받습니다:
+Get API keys from each provider's website:
 - Voyage AI: https://www.voyageai.com/
 - OpenAI: https://platform.openai.com/
 
-## Sonamu Model에서 사용하기
+## Using in Sonamu Model
 
-### 문서 저장 시 임베딩 생성
+### Generating Embeddings When Saving Documents
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -156,44 +156,44 @@ import { Embedding } from "sonamu/vector";
 class DocumentModelClass extends BaseModel {
   @api({ httpMethod: 'POST' })
   async createDocument(title: string, content: string) {
-    // 1. 임베딩 생성
+    // 1. Generate embedding
     const result = await Embedding.embedOne(
       `${title}\n\n${content}`,
       'voyage',
-      'document'  // 문서용 임베딩
+      'document'  // document embedding
     );
-    
-    // 2. DB에 저장 (Sonamu의 saveOne)
+
+    // 2. Save to DB (Sonamu's saveOne)
     const doc = await this.saveOne({
       title,
       content,
-      embedding: result.embedding,  // 1024개 숫자 배열
+      embedding: result.embedding,  // array of 1024 numbers
       token_count: result.tokenCount,
     });
-    
+
     return doc;
   }
 }
 ```
 
-**흐름**:
-1. 사용자가 POST /documents에 문서 업로드
-2. Sonamu API에서 Voyage AI로 임베딩 생성
-3. PostgreSQL에 텍스트 + 임베딩 함께 저장
+**Flow**:
+1. User uploads document via POST /documents
+2. Sonamu API generates embedding via Voyage AI
+3. PostgreSQL stores text + embedding together
 
-### 검색 API (나중에 구현)
+### Search API (to be implemented later)
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async search(query: string) {
-  // 1. 쿼리 임베딩 생성
+  // 1. Generate query embedding
   const result = await Embedding.embedOne(
     query,
     'voyage',
-    'query'  // 검색용 임베딩
+    'query'  // search embedding
   );
-  
-  // 2. 벡터 검색 (vector-search.mdx 참고)
+
+  // 2. Vector search (see vector-search.mdx)
   const results = await this.getPuri().raw(`
     SELECT title, content,
       1 - (embedding <=> ?) AS similarity
@@ -202,56 +202,56 @@ async search(query: string) {
     ORDER BY similarity DESC
     LIMIT 10
   `, [JSON.stringify(result.embedding)]);
-  
+
   return results.rows;
 }
 ```
 
-## 비대칭 임베딩 (Voyage AI)
+## Asymmetric Embeddings (Voyage AI)
 
-Voyage AI는 **문서**와 **쿼리**를 구분하여 임베딩합니다.
+Voyage AI distinguishes between **document** and **query** embeddings.
 
-### 왜 구분할까?
+### Why the Distinction?
 
-**문서 (document)**:
-- 긴 텍스트
-- 상세 정보
-- 저장 목적
+**Document**:
+- Long text
+- Detailed information
+- Storage purpose
 
-**쿼리 (query)**:
-- 짧은 텍스트
-- 검색어
-- 검색 목적
+**Query**:
+- Short text
+- Search terms
+- Search purpose
 
-문서와 쿼리는 **성격이 다릅니다**. Voyage AI는 이를 고려하여 더 정확한 검색 결과를 제공합니다 (10-15% 향상).
+Documents and queries have **different characteristics**. Voyage AI considers this to provide more accurate search results (10-15% improvement).
 
-### Sonamu에서 사용
+### Usage in Sonamu
 
 ```typescript
-// 문서 저장 시: document
+// When saving documents: document
 const docEmbedding = await Embedding.embedOne(
-  "Sonamu는 TypeScript 풀스택 프레임워크입니다. API, DB, 인증 등을 제공합니다.",
+  "Sonamu is a TypeScript full-stack framework. It provides API, DB, authentication, and more.",
   'voyage',
-  'document'  // 문서용
+  'document'  // for documents
 );
 
-// 검색 시: query
+// When searching: query
 const queryEmbedding = await Embedding.embedOne(
-  "TypeScript 프레임워크",
+  "TypeScript framework",
   'voyage',
-  'query'  // 검색용
+  'query'  // for search
 );
 ```
 
-**OpenAI는 비대칭 임베딩을 지원하지 않습니다**:
+**OpenAI does not support asymmetric embeddings**:
 ```typescript
-// OpenAI는 inputType이 무시됨
-await Embedding.embedOne(text, 'openai', 'document');  // 'document' 무시
+// OpenAI ignores inputType
+await Embedding.embedOne(text, 'openai', 'document');  // 'document' is ignored
 ```
 
-## 배치 처리
+## Batch Processing
 
-여러 문서를 한 번에 처리할 때:
+When processing multiple documents at once:
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -259,21 +259,21 @@ async batchCreateDocuments(documents: Array<{
   title: string;
   content: string;
 }>) {
-  // 1. 텍스트 배열 준비
-  const texts = documents.map(doc => 
+  // 1. Prepare text array
+  const texts = documents.map(doc =>
     `${doc.title}\n\n${doc.content}`
   );
-  
-  // 2. 배치 임베딩 (자동으로 128개씩 분할)
+
+  // 2. Batch embedding (automatically splits into batches of 128)
   const embeddings = await Embedding.embed(
     texts,
     'voyage',
     'document'
   );
-  
-  // 3. DB에 저장
+
+  // 3. Save to DB
   const savedDocs = await Promise.all(
-    documents.map((doc, i) => 
+    documents.map((doc, i) =>
       this.saveOne({
         title: doc.title,
         content: doc.content,
@@ -282,26 +282,26 @@ async batchCreateDocuments(documents: Array<{
       })
     )
   );
-  
+
   return savedDocs;
 }
 ```
 
-**자동 분할**:
-- Voyage AI: 128개씩
-- OpenAI: 100개씩
+**Automatic splitting**:
+- Voyage AI: 128 at a time
+- OpenAI: 100 at a time
 
-1000개 문서도 자동으로 나눠서 처리합니다.
+Even 1000 documents are automatically split and processed.
 
-## 진행률 표시
+## Progress Display
 
-많은 문서를 처리할 때 진행률을 보여줄 수 있습니다:
+You can show progress when processing many documents:
 
 ```typescript
 @api({ httpMethod: 'POST' })
 async importDocuments(files: string[]) {
   const texts = files.map(f => readFile(f));
-  
+
   const embeddings = await Embedding.embed(
     texts,
     'voyage',
@@ -311,7 +311,7 @@ async importDocuments(files: string[]) {
       console.log(`Progress: ${processed}/${total} (${percent}%)`);
     }
   );
-  
+
   // Progress: 128/1000 (13%)
   // Progress: 256/1000 (26%)
   // ...
@@ -319,31 +319,31 @@ async importDocuments(files: string[]) {
 }
 ```
 
-## 실전 시나리오
+## Practical Scenario
 
-### 시나리오: 고객 지원 지식 베이스
+### Scenario: Customer Support Knowledge Base
 
-Sonamu로 고객 지원 시스템을 만들고 있습니다.
+You're building a customer support system with Sonamu.
 
-**1단계: 문서 업로드 API**
+**Step 1: Document Upload API**
 ```typescript
 class KnowledgeBaseModelClass extends BaseModel {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument() {
     const { file } = Sonamu.getUploadContext();
-    
-    // 파일 읽기
+
+    // Read file
     const content = await file.toBuffer().then(b => b.toString());
-    
-    // 임베딩 생성
+
+    // Generate embedding
     const embedding = await Embedding.embedOne(
       content,
       'voyage',
       'document'
     );
-    
-    // 저장
+
+    // Save
     return await this.saveOne({
       title: file.filename,
       content,
@@ -353,14 +353,14 @@ class KnowledgeBaseModelClass extends BaseModel {
 }
 ```
 
-**2단계: 검색 API**
+**Step 2: Search API**
 ```typescript
 @api({ httpMethod: 'POST' })
 async searchSimilar(query: string) {
-  // 쿼리 임베딩
+  // Query embedding
   const embedding = await Embedding.embedOne(query, 'voyage', 'query');
-  
-  // 유사 문서 검색
+
+  // Search similar documents
   const results = await this.getPuri().raw(`
     SELECT id, title, content,
       1 - (embedding <=> ?) AS similarity
@@ -369,24 +369,24 @@ async searchSimilar(query: string) {
     ORDER BY similarity DESC
     LIMIT 5
   `, [JSON.stringify(embedding.embedding)]);
-  
+
   return results.rows;
 }
 ```
 
-**3단계: 사용자 요청 처리**
+**Step 3: Handling User Requests**
 ```
 POST /api/knowledge-base/search
-{ "query": "환불 정책이 궁금해요" }
+{ "query": "What is the refund policy?" }
 
-→ 유사 문서 5개 반환:
-1. "환불 및 교환 안내" (similarity: 0.89)
-2. "구매 취소 방법" (similarity: 0.82)
-3. "결제 수단별 환불 기간" (similarity: 0.78)
+-> Returns 5 similar documents:
+1. "Refund and Exchange Guide" (similarity: 0.89)
+2. "How to Cancel a Purchase" (similarity: 0.82)
+3. "Refund Periods by Payment Method" (similarity: 0.78)
 ...
 ```
 
-## 에러 처리
+## Error Handling
 
 ```typescript
 @api({ httpMethod: 'POST' })
@@ -397,7 +397,7 @@ async createDocument(title: string, content: string) {
       'voyage',
       'document'
     );
-    
+
     return await this.saveOne({
       title,
       content,
@@ -405,48 +405,48 @@ async createDocument(title: string, content: string) {
     });
   } catch (error) {
     if (error.message.includes('API_KEY')) {
-      throw new Error('Voyage API 키를 설정하세요: VOYAGE_API_KEY');
+      throw new Error('Please set your Voyage API key: VOYAGE_API_KEY');
     } else if (error.message.includes('token')) {
-      throw new Error('텍스트가 너무 깁니다 (최대 32,000 토큰)');
+      throw new Error('Text is too long (max 32,000 tokens)');
     } else {
-      throw new Error(`임베딩 생성 실패: ${error.message}`);
+      throw new Error(`Failed to generate embedding: ${error.message}`);
     }
   }
 }
 ```
 
-## 비용 고려
+## Cost Considerations
 
-### 토큰 계산
+### Token Calculation
 
 ```typescript
 const result = await Embedding.embedOne(
-  "Sonamu는 TypeScript 풀스택 프레임워크입니다",
+  "Sonamu is a TypeScript full-stack framework",
   'voyage'
 );
 
 console.log(`Tokens: ${result.tokenCount}`);  // 12
 ```
 
-### 비용 예측
+### Cost Estimation
 
 **Voyage AI** ($0.13 per 1M tokens):
 ```typescript
-// 1000개 문서, 평균 500토큰
-// = 500,000 토큰
+// 1000 documents, average 500 tokens
+// = 500,000 tokens
 // = $0.065
 ```
 
 **OpenAI** ($0.02 per 1M tokens):
 ```typescript
-// 1000개 문서, 평균 500토큰
-// = 500,000 토큰
+// 1000 documents, average 500 tokens
+// = 500,000 tokens
 // = $0.01
 ```
 
-### 비용 절감 팁
+### Cost Reduction Tips
 
-**1. 캐싱**
+**1. Caching**
 ```typescript
 const cache = new Map<string, number[]>();
 
@@ -454,75 +454,75 @@ async function getCachedEmbedding(text: string) {
   if (cache.has(text)) {
     return cache.get(text)!;
   }
-  
+
   const result = await Embedding.embedOne(text, 'voyage');
   cache.set(text, result.embedding);
   return result.embedding;
 }
 ```
 
-**2. 중복 제거**
+**2. Deduplication**
 ```typescript
-// 같은 텍스트는 한 번만 임베딩
+// Embed identical texts only once
 const uniqueTexts = [...new Set(texts)];
 const embeddings = await Embedding.embed(uniqueTexts, 'voyage');
 ```
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Sonamu에서 임베딩 사용 시 주의사항**:
+**Cautions when using embeddings in Sonamu**:
 
-1. **API 키 필수**: 환경변수 설정
+1. **API key required**: Set environment variables
    ```bash
    VOYAGE_API_KEY=pa-...
    ```
 
-2. **차원 수 일치**: DB 스키마와 맞춰야 함
+2. **Dimension match**: Must match DB schema
    ```sql
    -- Voyage AI
    CREATE TABLE docs (embedding vector(1024));
-   
+
    -- OpenAI
    CREATE TABLE docs (embedding vector(1536));
    ```
 
-3. **document vs query**: Voyage는 구분, OpenAI는 무시
+3. **document vs query**: Voyage distinguishes, OpenAI ignores
    ```typescript
-   // 저장 시
+   // When saving
    await Embedding.embedOne(text, 'voyage', 'document');
-   
-   // 검색 시
+
+   // When searching
    await Embedding.embedOne(text, 'voyage', 'query');
    ```
 
-4. **토큰 제한**: 너무 긴 텍스트는 청킹 필요
-   - Voyage AI: 32,000 토큰
-   - OpenAI: 8,191 토큰
+4. **Token limits**: Chunking needed for very long texts
+   - Voyage AI: 32,000 tokens
+   - OpenAI: 8,191 tokens
 
-5. **NULL 처리**: 임베딩 실패 시 NULL 저장 가능
+5. **NULL handling**: Can store NULL on embedding failure
    ```typescript
    embedding: result?.embedding || null
    ```
 
-6. **비용 모니터링**: 토큰 사용량 추적
+6. **Cost monitoring**: Track token usage
    ```typescript
    console.log(`Total tokens: ${result.tokenCount}`);
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
-임베딩 생성이 완료되었습니다. 이제 Sonamu Model에서 검색 API를 구현할 차례입니다.
+Embedding generation is complete. Now it's time to implement the search API in Sonamu Model.
 
 <CardGroup cols={3}>
-  <Card title="pgvector 설정" icon="database" href="/advanced-features/vector-search/pgvector-setup">
-    PostgreSQL 벡터 테이블 만들기
+  <Card title="pgvector Setup" icon="database" href="/advanced-features/vector-search/pgvector-setup">
+    Creating PostgreSQL vector tables
   </Card>
-  <Card title="벡터 검색" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
-    Sonamu Model에서 검색 API 구현
+  <Card title="Vector Search" icon="magnifying-glass" href="/advanced-features/vector-search/vector-search">
+    Implementing search API in Sonamu Model
   </Card>
-  <Card title="청킹" icon="scissors" href="/advanced-features/vector-search/chunking">
-    긴 문서 분할하기
+  <Card title="Chunking" icon="scissors" href="/advanced-features/vector-search/chunking">
+    Splitting long documents
   </Card>
 </CardGroup>

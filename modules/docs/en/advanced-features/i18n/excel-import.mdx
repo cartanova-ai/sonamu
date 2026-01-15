@@ -1,38 +1,38 @@
 ---
 title: "Excel Import/Export"
-description: "Sonamu UI에서 번역 파일 일괄 관리하기"
+description: "Bulk management of translation files through Sonamu UI"
 ---
 
-Sonamu UI는 i18n 딕셔너리를 Excel로 내보내고 가져오는 기능을 제공합니다. 번역가나 기획자가 스프레드시트에서 작업한 후 한 번에 반영할 수 있습니다.
+Sonamu UI provides functionality to export and import i18n dictionaries as Excel files. Translators or planners can work in spreadsheets and apply changes all at once.
 
 ## Excel Export
 
-### Sonamu UI에서 내보내기
+### Exporting from Sonamu UI
 
-1. Sonamu UI 접속 (`http://localhost:1028/sonamu-ui`)
-2. 좌측 메뉴에서 **i18n** 클릭
-3. 우측 상단 **Export** 버튼 클릭
-4. Excel 파일 다운로드
+1. Access Sonamu UI (`http://localhost:1028/sonamu-ui`)
+2. Click **i18n** in the left menu
+3. Click the **Export** button in the top right
+4. Download the Excel file
 
-### Excel 파일 구조
+### Excel File Structure
 
 ```mermaid
 block-beta
     columns 4
-    
+
     block:header:4
         A1["Sonamu Dictionary"]
     end
-    
+
     space:4
-    
+
     H1["key"] H2["source"] H3["ko"] H4["en"]
-    
+
     D1["entity.User"] D2["entity"] D3["사용자"] D4["User"]
     D5["entity.User.email"] D6["entity"] D7["이메일"] D8["Email"]
     D9["common.save"] D10["project"] D11["저장"] D12["Save"]
     D13["error.notFound"] D14["project"] D15["찾을 수 없습니다"] D16["Not found"]
-    
+
     style A1 fill:#e2e8f0,stroke:#64748b
     style H1 fill:#f1f5f9,stroke:#64748b
     style H2 fill:#f1f5f9,stroke:#64748b
@@ -40,77 +40,77 @@ block-beta
     style H4 fill:#f1f5f9,stroke:#64748b
 ```
 
-| 컬럼 | 설명 |
-|------|------|
-| `key` | 딕셔너리 키 |
-| `source` | `entity` (자동 추출) 또는 `project` (수동 작성) |
-| `ko`, `en`, ... | 각 locale의 번역 값 |
+| Column | Description |
+|--------|-------------|
+| `key` | Dictionary key |
+| `source` | `entity` (auto-extracted) or `project` (manually written) |
+| `ko`, `en`, ... | Translation values for each locale |
 
 ## Excel Import
 
-### 번역 작업 후 가져오기
+### Importing After Translation Work
 
-1. Export한 Excel 파일에서 번역 작업
-2. Sonamu UI의 i18n 페이지에서 **Import** 버튼 클릭
-3. Excel 파일 선택
-4. 변경 사항 확인 후 적용
+1. Perform translation work in the exported Excel file
+2. Click the **Import** button on the i18n page in Sonamu UI
+3. Select the Excel file
+4. Review and apply the changes
 
-### Import 동작 방식
+### Import Behavior
 
-| source | defaultLocale (ko) | 다른 locale (en) |
-|--------|-------------------|------------------|
-| `entity` | `entity.json` 업데이트 | `en.ts`에 저장 |
-| `project` | `ko.ts`에 저장 | `en.ts`에 저장 |
+| source | defaultLocale (ko) | Other locales (en) |
+|--------|-------------------|-------------------|
+| `entity` | Updates `entity.json` | Saved to `en.ts` |
+| `project` | Saved to `ko.ts` | Saved to `en.ts` |
 
 <Note>
-`entity` source의 defaultLocale 값은 Entity의 title, prop.desc, enumLabels를 직접 수정합니다.
+The defaultLocale values for `entity` source directly modify the Entity's title, prop.desc, and enumLabels.
 </Note>
 
-## 번역 워크플로우
+## Translation Workflow
 
 ```mermaid
 flowchart TD
-    A[개발자: Entity 정의] --> B[pnpm sync]
-    B --> C[sd.generated.ts 생성]
+    A[Developer: Define Entity] --> B[pnpm sync]
+    B --> C[Generate sd.generated.ts]
     C --> D[Sonamu UI: Export]
-    D --> E[번역가: Excel 작업]
+    D --> E[Translator: Excel work]
     E --> F[Sonamu UI: Import]
-    F --> G[ko.ts, en.ts 업데이트]
-    G --> H[entity.json 업데이트]
-    
+    F --> G[Update ko.ts, en.ts]
+    G --> H[Update entity.json]
+
     style D fill:#10b981,color:#fff
     style F fill:#10b981,color:#fff
 ```
 
-### 권장 워크플로우
+### Recommended Workflow
 
-1. **개발 단계**: Entity 정의 시 defaultLocale(ko) 라벨만 작성
-2. **번역 단계**: Excel export → 번역팀에 전달 → 번역 완료 후 import
-3. **유지보수**: 새 키 추가 시 동일 과정 반복
+1. **Development phase**: Only write defaultLocale (ko) labels when defining Entities
+2. **Translation phase**: Excel export -> Deliver to translation team -> Import after translation is complete
+3. **Maintenance**: Repeat the same process when adding new keys
 
-## 함수형 값 처리
+## Handling Function Values
 
-Excel에서 함수형 값도 그대로 유지됩니다:
+Function values are preserved as-is in Excel:
 
 | key | ko |
 |-----|----|
 | `common.results` | `(count: number) => \`${count}개 결과\`` |
 | `validation.required` | `(field: string) => \`${field}은(는) 필수\`` |
 
-Import 시 화살표 함수 패턴(`(...) => ...`)을 자동으로 감지하여 함수로 저장합니다.
+During import, arrow function patterns (`(...) => ...`) are automatically detected and saved as functions.
 
-## 주의사항
+## Important Notes
 
-- **키 변경**: 기존 키를 변경하면 새 키로 추가되고 기존 키는 유지됩니다
-- **키 삭제**: Excel에서 행을 삭제해도 기존 딕셔너리에서 삭제되지 않습니다
-- **source 변경 불가**: `entity` → `project` 변경은 무시됩니다
-- **빈 값**: 빈 셀은 해당 locale에서 키가 제거되지 않고 무시됩니다
+- **Key changes**: Changing an existing key adds it as a new key; the original key is retained
+- **Key deletion**: Deleting a row in Excel does not remove it from the existing dictionary
+- **Source change not allowed**: Changes from `entity` to `project` are ignored
+- **Empty values**: Empty cells are ignored (the key is not removed from that locale)
 
 <CardGroup cols={2}>
-  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
-    딕셔너리 작성 및 사용
+  <Card title="Using the SD Function" icon="code" href="/advanced-features/i18n/dictionary">
+    Writing and using dictionaries
   </Card>
-  <Card title="Entity 라벨" icon="tag" href="/advanced-features/i18n/entity-labels">
-    자동 추출되는 라벨
+  <Card title="Entity Labels" icon="tag" href="/advanced-features/i18n/entity-labels">
+    Auto-extracted labels
   </Card>
 </CardGroup>

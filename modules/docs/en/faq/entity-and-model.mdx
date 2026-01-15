@@ -1,54 +1,54 @@
 ---
-title: 'Entity와 Model'
-description: 'Entity와 Model 정의에 관한 질문'
+title: 'Entity and Model'
+description: 'Questions about Entity and Model definitions'
 ---
 
-## Entity 기본
+## Entity Basics
 
 <AccordionGroup>
-<Accordion title="Entity 이름을 product로 지으면 자동으로 생성되는 이름들은 무엇인가요?">
+<Accordion title="What names are automatically generated when I name an Entity 'product'?">
 
-Entity ID는 CamelCase로 강제되며, 이를 기반으로 여러 이름이 자동 생성됩니다.
+Entity ID is enforced as CamelCase, and various names are auto-generated based on it.
 
-**입력: Product**
+**Input: Product**
 
-**자동 생성되는 이름들:**
+**Auto-generated names:**
 
 1. **Entity ID (id)**
-   - `Product` (입력값 그대로)
-   - 검증: `/^[A-Z][a-zA-Z0-9]*$/` (CamelCase 필수)
+   - `Product` (same as input)
+   - Validation: `/^[A-Z][a-zA-Z0-9]*$/` (CamelCase required)
 
-2. **테이블명 (table)**
-   - `products` (자동 복수형 변환)
-   - 커스텀 가능 (Sonamu UI에서 직접 입력)
+2. **Table name (table)**
+   - `products` (auto-pluralized)
+   - Customizable (direct input in Sonamu UI)
 
-3. **파일/디렉터리명 (`names.fs`)**
-   - `product` (소문자 + 대시)
-   - 사용: 디렉터리명, 파일명
+3. **File/directory name (`names.fs`)**
+   - `product` (lowercase + dash)
+   - Used for: directory names, file names
 
-4. **모듈명 (`names.module`)**
-   - `Product` (입력값 그대로)
-   - 사용: 클래스명, 타입명
+4. **Module name (`names.module`)**
+   - `Product` (same as input)
+   - Used for: class names, type names
 
-**생성되는 파일들:**
+**Generated files:**
 
 ```
 api/src/application/product/product.entity.json
 api/src/application/product/product.types.ts
-api/src/application/product/product.model.ts (Scaffolding 시)
+api/src/application/product/product.model.ts (via Scaffolding)
 ```
 
-**생성되는 타입/클래스명:**
+**Generated type/class names:**
 
 ```typescript
 ProductBaseSchema
 ProductBaseListParams
 ProductSubsetMapping
-ProductModel (Model 클래스)
-ProductService (프론트엔드)
+ProductModel (Model class)
+ProductService (frontend)
 ```
 
-**변환 규칙:**
+**Conversion rules:**
 
 - ID → `table`: `inflection.underscore(inflection.pluralize(id))`
   - `Product` → `products`
@@ -58,135 +58,135 @@ ProductService (프론트엔드)
   - `Product` → `product`
   - `OrderItem` → `order-item`
 
-**주의:**
+**Note:**
 
-- Entity ID는 반드시 대문자로 시작 (CamelCase)
-- 테이블명은 자동 생성되지만 커스텀 가능
-
-</Accordion>
-
-<Accordion title="Entity를 수정했을 때 마이그레이션이 자동 생성되는 조건은?">
-
-Entity 수정 시 마이그레이션은 **자동 생성되지 않고**, Sonamu UI의 DB Migration 탭에서 **수동으로 Generate**해야 합니다.
-
-**마이그레이션 생성 대상 (Prepared Migration Codes에 표시):**
-
-**Props 변경:**
-- 프롭 추가/삭제
-- 프롭 타입 변경 (`string` → `numeric` 등)
-- `StringProp` 길이 변경 (`length`)
-- `nullable` 변경
-- `dbDefault` 변경
-- `NumberProp`이 `numberType: "numeric"`인 경우 `precision`, `scale` 변경
-
-**관계(relation) 변경:**
-- BelongsToOne 추가/삭제 (FK 컬럼 생성/삭제)
-- OneToOne 추가/삭제 (`hasJoinColumn: true`인 경우)
-- ManyToMany 추가/삭제 (조인 테이블 생성/삭제)
-- onUpdate, onDelete 변경
-
-**인덱스(indexes) 변경:**
-- 인덱스 추가/삭제
-- unique, index, fulltext 타입 변경
-- 인덱스 컬럼 변경
-
-**테이블 변경:**
-- 테이블명 변경
-
-**마이그레이션 생성하지 않는 변경:**
-
-- Subset 추가/수정/삭제
-- Enum labels 변경
-- Virtual 프롭 추가/수정/삭제
-- HasMany 관계 추가/수정 (FK가 상대편에 있음)
-- Title, Description 변경
-
-**주의:**
-
-- Entity 수정 후 자동으로 마이그레이션 파일이 생성되지 않음
-- DB Migration 탭 → Prepared Migration Codes 확인
-- Generate 버튼 클릭하여 수동 생성 필요
+- Entity ID must start with uppercase (CamelCase)
+- Table name is auto-generated but customizable
 
 </Accordion>
 
-<Accordion title="Sonamu UI에서 새 Entity를 만들면 어떤 순서로 파일들이 생성되나요?">
+<Accordion title="What are the conditions for auto-generating migrations when Entity is modified?">
 
-**1. Entity JSON 파일 생성**
+When Entity is modified, migrations are **not auto-generated**. You must **manually Generate** in the Sonamu UI's DB Migration tab.
+
+**Migration generation targets (shown in Prepared Migration Codes):**
+
+**Props changes:**
+- Prop add/delete
+- Prop type change (`string` → `numeric`, etc.)
+- `StringProp` length change (`length`)
+- `nullable` change
+- `dbDefault` change
+- `precision`, `scale` change when `NumberProp` has `numberType: "numeric"`
+
+**Relation changes:**
+- BelongsToOne add/delete (FK column create/delete)
+- OneToOne add/delete (when `hasJoinColumn: true`)
+- ManyToMany add/delete (join table create/delete)
+- onUpdate, onDelete changes
+
+**Index changes:**
+- Index add/delete
+- unique, index, fulltext type changes
+- Index column changes
+
+**Table changes:**
+- Table name change
+
+**Changes that don't generate migrations:**
+
+- Subset add/modify/delete
+- Enum labels change
+- Virtual prop add/modify/delete
+- HasMany relation add/modify (FK is on the other side)
+- Title, Description changes
+
+**Note:**
+
+- Migration files are not auto-generated after Entity modification
+- Check DB Migration tab → Prepared Migration Codes
+- Manual generation required by clicking Generate button
+
+</Accordion>
+
+<Accordion title="What order are files created when I create a new Entity in Sonamu UI?">
+
+**1. Entity JSON file created**
 - `{entity}.entity.json`
-- 위치: `api/src/application/{entity}/{entity}.entity.json`
+- Location: `api/src/application/{entity}/{entity}.entity.json`
 
-**2. 타입 파일 자동 생성**
+**2. Type file auto-generated**
 - `{entity}.types.ts`
-- 위치: `api/src/application/{entity}/{entity}.types.ts`
+- Location: `api/src/application/{entity}/{entity}.types.ts`
 
-**3. 생성 파일 갱신**
+**3. Generated files updated**
 - `sonamu.generated.sso.ts`
 - `sonamu.generated.ts`
-- 위치: `api/src/application/`
+- Location: `api/src/application/`
 
-**4. 프론트엔드 파일 복사**
+**4. Frontend files copied**
 - `user.types.ts` → `web/src/services/user/user.types.ts`
 - `sonamu.generated.ts` → `web/src/services/sonamu.generated.ts`
 
-**5. `sonamu.lock` 갱신**
-- 새로 생성된 파일들의 체크섬 저장
+**5. `sonamu.lock` updated**
+- Stores checksums of newly created files
 
-**주의:**
+**Note:**
 
-- 마이그레이션 파일은 자동 생성되지 않음
-- DB Migration 탭에서 별도로 Generate 클릭 필요
-- `model`, `model_test`, `view`는 Scaffolding 탭에서 별도 생성
+- Migration files are not auto-generated
+- Separate Generate click required in DB Migration tab
+- `model`, `model_test`, `view` are generated separately in Scaffolding tab
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## Entity 프로퍼티
+## Entity Properties
 
 <AccordionGroup>
-<Accordion title="Entity의 enums는 어떻게 정의하나요?">
+<Accordion title="How do I define Entity enums?">
 
-`enums` 객체에 enum ID를 키로, 값-라벨 쌍을 객체로 정의합니다:
+Define in the `enums` object with enum ID as key and value-label pairs as object:
 
 ```json
 {
   "enums": {
-    "UserRole": { 
-      "normal": "노멀", 
-      "admin": "관리자" 
+    "UserRole": {
+      "normal": "Normal",
+      "admin": "Admin"
     },
     "UserOrderBy": {
-      "id-desc": "ID최신순"
+      "id-desc": "ID Newest"
     }
   }
 }
 ```
 
-- **키** (`normal`, `admin`): DB에 저장되는 실제 값
-- **값** (노멀, 관리자): UI에 표시되는 라벨
-- **enum ID** (`UserRole`): TypeScript 타입명으로 사용됨
+- **Key** (`normal`, `admin`): Actual value stored in DB
+- **Value** (Normal, Admin): Label displayed in UI
+- **Enum ID** (`UserRole`): Used as TypeScript type name
 
-**Best Practice:**
+**Best Practices:**
 
-- DB 값은 영문으로 (국제화와 마이그레이션 용이성)
-- UI 라벨은 사용자 언어로 작성
+- DB values in English (for internationalization and migration ease)
+- UI labels in user's language
 
 </Accordion>
 
-<Accordion title="virtual 필드는 무엇이고 언제 사용하나요?">
+<Accordion title="What is a virtual field and when do I use it?">
 
-DB에 컬럼은 없지만 조회 결과에 포함되는 계산 필드입니다.
+A calculated field that is included in query results but has no DB column.
 
-**생성 방법 (Sonamu UI):**
+**How to create (Sonamu UI):**
 
-1. Entity 상세 → Add a prop 클릭
-2. Type: `virtual` 선택
-3. Name: 필드명 입력 (예: `company_stats`)
-4. `Nullable: true` 체크
-5. CustomType ID: 타입 선택 (예: `CompanyStatsType`)
+1. Entity detail → Click Add a prop
+2. Type: Select `virtual`
+3. Name: Enter field name (e.g., `company_stats`)
+4. Check `Nullable: true`
+5. CustomType ID: Select type (e.g., `CompanyStatsType`)
 
-**타입 정의 (`{entity}.types.ts`):**
+**Type definition (`{entity}.types.ts`):**
 
 ```typescript
 export const CompanyStatsType = z.object({
@@ -203,7 +203,7 @@ export const CompanyStatsType = z.object({
 export type CompanyStatsType = z.infer<typeof CompanyStatsType>;
 ```
 
-**구현 (Enhancer 방식):**
+**Implementation (Enhancer approach):**
 
 ```typescript
 // company.model.ts
@@ -212,7 +212,7 @@ const enhancers = this.createEnhancers({
     const departments = await DepartmentModel.findMany('P', {
       company_id: row.id,
     });
-    
+
     return {
       ...row,
       company_stats: {
@@ -230,65 +230,65 @@ const enhancers = this.createEnhancers({
 });
 ```
 
-**주요 사용 사례:**
+**Main use cases:**
 
-- 관계 데이터 집계 (직원 수, 댓글 수)
-- 복잡한 통계 객체 (부서별 통계, 회사 대시보드)
-- 사용자별 상태 (좋아요 여부, 권한 정보)
-- 중첩된 JSON 구조 (메타데이터, 설정 객체)
+- Relation data aggregation (employee count, comment count)
+- Complex statistics objects (department stats, company dashboard)
+- User-specific status (like status, permission info)
+- Nested JSON structures (metadata, config objects)
 
-**주의:**
+**Note:**
 
-- `SaveParams`에서 `.omit({ virtual_field: true })` 필수
-- Enhancer에서 계산 로직 구현
-- 복잡한 계산은 성능 고려 필요
+- `.omit({ virtual_field: true })` required in `SaveParams`
+- Implement calculation logic in Enhancer
+- Consider performance for complex calculations
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## Entity 관계
+## Entity Relations
 
 <AccordionGroup>
-<Accordion title="Entity 간 관계는 어떻게 정의하나요?">
+<Accordion title="How do I define relations between Entities?">
 
-`relation` 타입의 필드로 정의합니다:
+Define with `relation` type fields:
 
-**OneToOne:** 1:1 관계
-- `hasJoinColumn`으로 FK 소유 지정
+**OneToOne:** 1:1 relation
+- Specify FK owner with `hasJoinColumn`
 
-**BelongsToOne:** N:1 관계 (Many-to-One)
-- FK 키를 가진 Entity에서 정의
+**BelongsToOne:** N:1 relation (Many-to-One)
+- Defined in Entity that has the FK
 
-**HasMany:** 1:N 관계 (One-to-Many)
-- virtual 관계 (FK가 상대편에 있음)
+**HasMany:** 1:N relation (One-to-Many)
+- virtual relation (FK is on the other side)
 
-**ManyToMany:** N:M 관계
-- `joinTable` 필요
+**ManyToMany:** N:M relation
+- Requires `joinTable`
 
-각 관계는 FK 키가 있는 Entity에서 `onUpdate`, `onDelete` 옵션으로 참조 무결성을 설정할 수 있습니다.
+Each relation can set referential integrity with `onUpdate`, `onDelete` options in the Entity that has the FK.
 
 </Accordion>
 
-<Accordion title="BelongsToOne 관계는 어떻게 정의하나요?">
+<Accordion title="How do I define a BelongsToOne relation?">
 
-N:1 관계(Many-to-One)를 나타냅니다.
+Represents an N:1 (Many-to-One) relation.
 
-**설정 방법 (Sonamu UI):**
+**How to configure (Sonamu UI):**
 
-1. Entity 상세 → Add a prop 클릭
-2. Type: `relation` 선택
-3. Relation Type: `BelongsToOne` 선택
-4. Name: 관계 필드명 (예: `department`)
-5. With: 연결할 Entity ID (예: `Department`)
-6. Nullable: 선택적 관계면 `true`
-7. ON UPDATE/ON DELETE: `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION` 등 선택
+1. Entity detail → Click Add a prop
+2. Type: Select `relation`
+3. Relation Type: Select `BelongsToOne`
+4. Name: Relation field name (e.g., `department`)
+5. With: Entity ID to connect (e.g., `Department`)
+6. Nullable: `true` for optional relations
+7. ON UPDATE/ON DELETE: Select `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`, etc.
 
-**생성 결과:**
+**Result:**
 
-- 외래키 컬럼 자동 생성 (예: `department_id`)
-- 타입에 `department?: Department` 포함
+- Foreign key column auto-created (e.g., `department_id`)
+- Type includes `department?: Department`
 
 ```json
 {
@@ -307,19 +307,19 @@ N:1 관계(Many-to-One)를 나타냅니다.
 
 ---
 
-## Model 클래스
+## Model Classes
 
 <AccordionGroup>
-<Accordion title="DB와 연결된 Entity 없이 단독으로 API route를 만들려면?">
+<Accordion title="How do I create an API route without an Entity connected to DB?">
 
-Entity 없이 독립적인 API를 만드는 방법은 두 가지입니다.
+There are two ways to create independent APIs without an Entity.
 
-**방법 1: 기존 Model에 @api 데코레이터 추가**
+**Method 1: Add @api decorator to existing Model**
 
 ```typescript
 // api/src/application/user/user.model.ts
 class UserModelClass extends BaseModelClass {
-  // 기존 CRUD 메서드들...
+  // Existing CRUD methods...
 
   @api({ httpMethod: "GET" })
   async getMyIP(): Promise<{ ip: string }> {
@@ -329,15 +329,15 @@ class UserModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async sendEmail(params: { to: string; subject: string }): Promise<boolean> {
-    // 외부 API 호출 (DB 조회 없음)
+    // External API call (no DB query)
     return true;
   }
 }
 ```
 
-**방법 2: Frame 사용**
+**Method 2: Use Frame**
 
-Frame은 Entity 없이 독립적인 API를 만들기 위한 클래스입니다.
+Frame is a class for creating independent APIs without an Entity.
 
 ```typescript
 // api/src/application/util/util.frame.ts
@@ -353,89 +353,89 @@ class UtilFrameClass extends BaseFrameClass {
 export const UtilFrame = new UtilFrameClass();
 ```
 
-**Frame 특징:**
+**Frame characteristics:**
 
-- `BaseFrameClass` 상속
-- `getDB()`, `getUpsertBuilder()` 메서드 제공
-- Entity, Subset, Model 메서드 없음
-- 파일명: `{name}.frame.ts`
+- Extends `BaseFrameClass`
+- Provides `getDB()`, `getUpsertBuilder()` methods
+- No Entity, Subset, Model methods
+- Filename: `{name}.frame.ts`
 
-**선택 기준:**
+**Selection criteria:**
 
-- 기존 Entity와 관련: 해당 Model에 메서드 추가
-- 완전히 독립적: Frame 클래스 생성
+- Related to existing Entity: Add method to that Model
+- Completely independent: Create Frame class
 
 </Accordion>
 
-<Accordion title="Model 클래스가 비대해지면 어떻게 리팩토링하는 것이 추천되나요?">
+<Accordion title="How should I refactor when Model class becomes too large?">
 
-Model 클래스가 커지면 **Frame 클래스로 독립 로직 분리**할 수 있습니다.
+When Model class grows, you can **separate independent logic into Frame classes**.
 
-**문제: user.model.ts가 비대해짐**
+**Problem: user.model.ts becomes large**
 
 ```typescript
 class UserModelClass extends BaseModelClass {
   async findById() { ... }
   async save() { ... }
-  // Entity와 무관한 로직들
+  // Logic unrelated to Entity
   async sendEmail() { ... }
   async uploadAvatar() { ... }
   async generateReport() { ... }
 }
 ```
 
-**개선: user-util.frame.ts로 분리**
+**Improvement: Separate into user-util.frame.ts**
 
 ```typescript
 // user-util.frame.ts
 class UserUtilFrameClass extends BaseFrameClass {
   @api({ httpMethod: "POST" })
   async sendEmail(params: EmailParams): Promise<boolean> {
-    // 이메일 전송 로직
+    // Email sending logic
     return true;
   }
 
   @api({ httpMethod: "POST" })
   async uploadAvatar(file: File): Promise<string> {
-    // 파일 업로드 로직
+    // File upload logic
     return "url";
   }
 }
 ```
 
-**분리 기준:**
+**Separation criteria:**
 
-- User Entity와 직접 연관: `user.model.ts`에 유지
-- 유틸리티성 기능: `user-util.frame.ts`로 분리
-- 완전히 독립적: 별도 Frame 클래스 생성
+- Directly related to User Entity: Keep in `user.model.ts`
+- Utility-type features: Separate to `user-util.frame.ts`
+- Completely independent: Create separate Frame class
 
 </Accordion>
 
-<Accordion title="EntityManager 클래스는 무엇을 하는 클래스인가요?">
+<Accordion title="What does the EntityManager class do?">
 
-모든 Entity를 중앙에서 관리하는 싱글톤 클래스입니다.
+A singleton class that centrally manages all Entities.
 
-**주요 기능:**
+**Main features:**
 
-- Entity 조회
-- 이름 자동 생성 (table, fs, module)
-- 스키마 검증
-- Subset 조회
-- Subset 필드 전개
+- Entity lookup
+- Auto-generate names (table, fs, module)
+- Schema validation
+- Subset lookup
+- Subset field expansion
 
-**사용처:**
+**Used in:**
 
-- Model 클래스
-- API 데코레이터
+- Model classes
+- API decorators
 - Syncer
-- 마이그레이션 생성기
+- Migration generator
 
 </Accordion>
 
-<Accordion title="Entity의 스키마를 검증하려면 어떻게 하나요?">
+<Accordion title="How do I validate Entity schemas?">
 
 **Sonamu UI:**
-- Entity 편집 시 실시간 오류 표시
+- Real-time error display when editing Entity
 
 **EntityManager:**
 
@@ -444,24 +444,24 @@ const errors = EntityManager.schemaValidate(entity);
 ```
 
 **Syncer:**
-- `pnpm dev` 실행 시 자동 검증 및 에러 출력
+- Auto-validates and outputs errors when running `pnpm dev`
 
-**검증 항목:**
+**Validation items:**
 
-- 필수 필드 존재
-- 타입 유효성
-- Subset 참조
-- Enum 유효성
+- Required fields exist
+- Type validity
+- Subset references
+- Enum validity
 
 </Accordion>
 </AccordionGroup>
 
 ---
 
-## 관련 문서
+## Related Documentation
 
-- [Entity 정의하기](/core-concepts/entities/defining-entities)
-- [프로퍼티 타입](/core-concepts/entities/property-types)
-- [Entity 관계](/core-concepts/entities/entity-relationships)
-- [Model 클래스](/core-concepts/model-classes/basemodel)
-- [Frame 클래스](/core-concepts/model-classes/frame-classes)
+- [Defining Entities](/core-concepts/entities/defining-entities)
+- [Property Types](/core-concepts/entities/property-types)
+- [Entity Relations](/core-concepts/entities/entity-relationships)
+- [Model Classes](/core-concepts/model-classes/basemodel)
+- [Frame Classes](/core-concepts/model-classes/frame-classes)

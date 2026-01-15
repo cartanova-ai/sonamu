@@ -1,118 +1,118 @@
 ---
-title: '타입 체크'
-description: '컴파일러 옵션 설정하기'
+title: 'Type Checking'
+description: 'Configuring compiler options'
 ---
 
-TypeScript의 타입 체크 옵션은 코드의 안정성을 결정합니다. Sonamu는 **strict 모드를 기본으로 활성화**하여 최대한의 타입 안정성을 제공합니다.
+TypeScript's type checking options determine the stability of your code. Sonamu **enables strict mode by default** to provide maximum type safety.
 
-## Strict 모드
+## Strict Mode
 
-Sonamu는 모든 strict 옵션을 활성화합니다.
+Sonamu enables all strict options.
 
 ```json
 {
   "compilerOptions": {
-    "strict": true,                          // 모든 strict 옵션 활성화
-    "noImplicitAny": true,                   // any 타입 명시 필요
-    "strictNullChecks": true,                // null/undefined 엄격 체크
-    "strictFunctionTypes": true,             // 함수 타입 엄격 체크
-    "strictBindCallApply": true,             // bind/call/apply 엄격 체크
-    "strictPropertyInitialization": true,    // 클래스 프로퍼티 초기화 필요
-    "noImplicitThis": true,                  // this 타입 명시 필요
-    "alwaysStrict": true                     // 'use strict' 자동 추가
+    "strict": true,                          // Enable all strict options
+    "noImplicitAny": true,                   // Require explicit any type
+    "strictNullChecks": true,                // Strict null/undefined checking
+    "strictFunctionTypes": true,             // Strict function type checking
+    "strictBindCallApply": true,             // Strict bind/call/apply checking
+    "strictPropertyInitialization": true,    // Require class property initialization
+    "noImplicitThis": true,                  // Require explicit this type
+    "alwaysStrict": true                     // Auto-add 'use strict'
   }
 }
 ```
 
 <Info>
-`strict: true`는 위의 모든 옵션을 한 번에 활성화하는 단축 설정입니다.
+`strict: true` is a shortcut that enables all the above options at once.
 </Info>
 
-## Strict 옵션 상세
+## Strict Options in Detail
 
 <Tabs>
   <Tab title="noImplicitAny" icon="question">
-    ### any 타입 명시 필요
+    ### Require Explicit any Type
 
-    **기능:**
-    - 타입을 추론할 수 없을 때 `any`를 암묵적으로 사용하지 못하도록 방지
+    **Function:**
+    - Prevents implicit use of `any` when type cannot be inferred
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ 에러 발생
+    // ❌ Error
     function log(message) {
       //         ^^^^^^^ Parameter 'message' implicitly has an 'any' type
       console.log(message);
     }
 
-    // ✅ 올바른 코드
+    // ✅ Correct code
     function log(message: string) {
       console.log(message);
     }
 
-    // ✅ 제네릭 사용
+    // ✅ Using generics
     function log<T>(message: T) {
       console.log(message);
     }
     ```
 
     <Tip>
-    타입을 명시하기 어려운 경우 `unknown`을 사용하세요. `any`보다 안전합니다.
+    If typing is difficult, use `unknown`. It's safer than `any`.
     </Tip>
   </Tab>
 
   <Tab title="strictNullChecks" icon="ban">
-    ### null/undefined 엄격 체크
+    ### Strict null/undefined Checking
 
-    **기능:**
-    - `null`과 `undefined`를 다른 타입에 할당할 수 없도록 방지
-    - 모든 타입이 기본적으로 non-nullable
+    **Function:**
+    - Prevents assigning `null` and `undefined` to other types
+    - All types are non-nullable by default
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ 에러 발생
+    // ❌ Error
     let name: string = null;
     //                 ^^^^ Type 'null' is not assignable to type 'string'
 
-    // ✅ Union 타입 사용
+    // ✅ Using union type
     let name: string | null = null;
     name = "Alice";
 
-    // ✅ Optional 체이닝
+    // ✅ Optional chaining
     interface User {
       email?: string;
     }
 
     function sendEmail(user: User) {
-      // ❌ 에러 발생
+      // ❌ Error
       const length = user.email.length;
       //                  ^^^^^ Object is possibly 'undefined'
 
-      // ✅ Optional 체이닝
+      // ✅ Optional chaining
       const length = user.email?.length;
 
-      // ✅ null 체크
+      // ✅ Null check
       if (user.email !== undefined) {
         const length = user.email.length;
       }
     }
     ```
 
-    **Sonamu에서:**
+    **In Sonamu:**
 
     ```typescript
-    // entity.json으로 정의된 Entity 사용
+    // Entity defined via entity.json
     interface User {
       id: number;
-      name: string;           // null이 될 수 없음
-      bio: string | null;     // null 허용
-      email?: string;         // undefined 허용
+      name: string;           // Cannot be null
+      bio: string | null;     // Allows null
+      email?: string;         // Allows undefined
       created_at: Date;
     }
 
-    // Model 클래스에서 타입 안정성 확보
+    // Ensure type safety in Model class
     class UserModelClass extends BaseModelClass {
       @api({ httpMethod: "GET" })
       async findById(
@@ -121,12 +121,12 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       ): Promise<UserSubsetMapping[typeof subset] | null> {
         const rdb = this.getPuri("r");
         const user = await rdb.table("users").where("id", id).first();
-        
-        // strictNullChecks가 null 체크를 강제함
+
+        // strictNullChecks enforces null check
         if (!user) {
           return null;
         }
-        
+
         return user;
       }
     }
@@ -134,13 +134,13 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
   </Tab>
 
   <Tab title="strictFunctionTypes" icon="function">
-    ### 함수 타입 엄격 체크
+    ### Strict Function Type Checking
 
-    **기능:**
-    - 함수 파라미터의 contravariance(반공변성) 체크
-    - 더 안전한 함수 타입 호환성
+    **Function:**
+    - Checks contravariance of function parameters
+    - Safer function type compatibility
 
-    **예시:**
+    **Example:**
 
     ```typescript
     interface Animal {
@@ -151,102 +151,102 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
       bark(): void;
     }
 
-    // ❌ 에러 발생 (strictFunctionTypes: true)
+    // ❌ Error (strictFunctionTypes: true)
     let animalHandler: (animal: Animal) => void;
     let dogHandler: (dog: Dog) => void;
 
     animalHandler = dogHandler;
     // ^^^^^^^^^ Type '(dog: Dog) => void' is not assignable to type '(animal: Animal) => void'
 
-    // ✅ 올바른 방향
+    // ✅ Correct direction
     dogHandler = animalHandler;  // OK
     ```
 
     <Info>
-    이 옵션은 함수의 타입 안정성을 크게 향상시키지만, 일부 라이브러리와 호환성 문제가 있을 수 있습니다.
+    This option significantly improves function type safety, but may have compatibility issues with some libraries.
     </Info>
   </Tab>
 
   <Tab title="strictBindCallApply" icon="link">
-    ### bind/call/apply 엄격 체크
+    ### Strict bind/call/apply Checking
 
-    **기능:**
-    - `bind`, `call`, `apply` 메서드의 파라미터 타입 체크
+    **Function:**
+    - Type checks parameters of `bind`, `call`, `apply` methods
 
-    **예시:**
+    **Example:**
 
     ```typescript
     function greet(name: string, age: number) {
       console.log(`Hello, ${name}! You are ${age} years old.`);
     }
 
-    // ❌ 에러 발생
+    // ❌ Error
     greet.call(null, "Alice", "30");
     //                        ^^^^ Argument of type 'string' is not assignable to parameter of type 'number'
 
-    // ✅ 올바른 타입
+    // ✅ Correct types
     greet.call(null, "Alice", 30);
 
-    // ❌ 에러 발생
+    // ❌ Error
     greet.apply(null, ["Alice"]);
     //                ^^^^^^^^^ Argument of type '[string]' is not assignable to parameter of type '[string, number]'
 
-    // ✅ 올바른 인자 수
+    // ✅ Correct argument count
     greet.apply(null, ["Alice", 30]);
     ```
   </Tab>
 
   <Tab title="strictPropertyInitialization" icon="check-circle">
-    ### 클래스 프로퍼티 초기화 필수
+    ### Require Class Property Initialization
 
-    **기능:**
-    - 클래스 프로퍼티가 생성자에서 초기화되었는지 확인
+    **Function:**
+    - Verifies that class properties are initialized in the constructor
 
-    **예시:**
+    **Example:**
 
     ```typescript
     class User {
-      // ❌ 에러 발생
+      // ❌ Error
       name: string;
       // ^^^^ Property 'name' has no initializer and is not definitely assigned in the constructor
 
-      // ✅ 생성자에서 초기화
+      // ✅ Initialized in constructor
       email: string;
 
       constructor(email: string) {
         this.email = email;
       }
 
-      // ✅ 기본값 제공
+      // ✅ Default value provided
       age: number = 0;
 
       // ✅ Optional
       bio?: string;
 
-      // ✅ null 허용
+      // ✅ Allows null
       avatar: string | null = null;
 
-      // ✅ Definite assignment assertion (확실한 경우만)
+      // ✅ Definite assignment assertion (only when certain)
       id!: number;
     }
     ```
 
-    **Sonamu에서:**
+    **In Sonamu:**
 
     ```typescript
-    // Generated 타입은 모두 초기화됨
+    // Generated types are all initialized
     interface UserRow {
-      id: number;              // DB에서 자동 생성
-      email: string;           // 필수 필드
-      name: string;            // 기본값 "guest"
-      created_at: Date;        // 기본값 CURRENT_TIMESTAMP
+      id: number;              // Auto-generated by DB
+      email: string;           // Required field
+      name: string;            // Default value "guest"
+      created_at: Date;        // Default value CURRENT_TIMESTAMP
     }
 
-    // Model 클래스에서 Definite Assignment Assertion 사용
+    // Using Definite Assignment Assertion in Model class
     class UserModelClass extends BaseModelClass {
-      // 생성자에서 초기화되므로 !
+      // ! because initialized in constructor
       private readonly tableName!: string;
-      
+
       constructor() {
         super();
         this.tableName = "users";
@@ -254,7 +254,7 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
 
       @api({ httpMethod: "POST" })
       async create(data: UserSaveParams) {
-        // data는 반드시 필수 필드를 포함해야 함
+        // data must include required fields
         const wdb = this.getDB("w");
         return this.insert(wdb, data);
       }
@@ -263,31 +263,31 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
   </Tab>
 
   <Tab title="noImplicitThis" icon="cursor-arrow-rays">
-    ### this 타입 명시 필요
+    ### Require Explicit this Type
 
-    **기능:**
-    - `this`의 타입이 명확하지 않을 때 에러 발생
+    **Function:**
+    - Error when `this` type is unclear
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ 에러 발생
+    // ❌ Error
     function onClick() {
       console.log(this.textContent);
       //          ^^^^ 'this' implicitly has type 'any'
     }
 
-    // ✅ this 타입 명시
+    // ✅ Explicit this type
     function onClick(this: HTMLElement) {
       console.log(this.textContent);
     }
 
-    // ✅ 화살표 함수 (this 바인딩 없음)
+    // ✅ Arrow function (no this binding)
     const onClick = () => {
-      // 외부 this 사용
+      // Uses outer this
     };
 
-    // ✅ 클래스 메서드
+    // ✅ Class method
     class Button {
       text: string = "Click me";
 
@@ -299,9 +299,9 @@ Sonamu는 모든 strict 옵션을 활성화합니다.
   </Tab>
 </Tabs>
 
-## 추가 타입 체크 옵션
+## Additional Type Check Options
 
-Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
+Sonamu enables additional check options beyond strict mode.
 
 ```json
 {
@@ -317,8 +317,8 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
 ```
 
 <Tabs>
-  <Tab title="Unused 체크" icon="trash">
-    ### 사용하지 않는 코드 경고
+  <Tab title="Unused Check" icon="trash">
+    ### Warn About Unused Code
 
     ```json
     {
@@ -327,35 +327,35 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ noUnusedLocals 에러
+    // ❌ noUnusedLocals error
     function greet(name: string) {
-      const message = "Hello";  // 사용되지 않음
+      const message = "Hello";  // Unused
       //    ^^^^^^^ 'message' is declared but its value is never read
       return name;
     }
 
-    // ❌ noUnusedParameters 에러
+    // ❌ noUnusedParameters error
     function add(a: number, b: number) {
       //                     ^ 'b' is declared but its value is never read
       return a;
     }
 
-    // ✅ 의도적으로 무시할 때는 _ 사용
+    // ✅ Use _ to intentionally ignore
     function onClick(_event: MouseEvent) {
       console.log("Clicked!");
     }
     ```
 
     <Tip>
-    사용하지 않는 파라미터는 `_`로 시작하면 경고가 발생하지 않습니다.
+    Parameters starting with `_` don't trigger warnings.
     </Tip>
   </Tab>
 
-  <Tab title="Return 체크" icon="arrow-uturn-left">
-    ### 모든 경로에서 return 필요
+  <Tab title="Return Check" icon="arrow-uturn-left">
+    ### Require Return in All Code Paths
 
     ```json
     {
@@ -363,10 +363,10 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ 에러 발생
+    // ❌ Error
     function getStatus(code: number): string {
       if (code === 200) {
         return "OK";
@@ -376,7 +376,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
       // ^^^^ Not all code paths return a value
     }
 
-    // ✅ 모든 경로에서 return
+    // ✅ Return in all paths
     function getStatus(code: number): string {
       if (code === 200) {
         return "OK";
@@ -386,7 +386,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
       return "Unknown";
     }
 
-    // ✅ 또는 명시적 에러
+    // ✅ Or explicit error
     function getStatus(code: number): string {
       if (code === 200) {
         return "OK";
@@ -398,8 +398,8 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     ```
   </Tab>
 
-  <Tab title="Switch 체크" icon="list-bullet">
-    ### Switch문 Fallthrough 방지
+  <Tab title="Switch Check" icon="list-bullet">
+    ### Prevent Switch Statement Fallthrough
 
     ```json
     {
@@ -407,10 +407,10 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    **예시:**
+    **Example:**
 
     ```typescript
-    // ❌ 에러 발생
+    // ❌ Error
     function getDay(day: number): string {
       switch (day) {
         case 0:
@@ -425,14 +425,14 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
       }
     }
 
-    // ✅ break 또는 return 추가
+    // ✅ Add break or return
     function getDay(day: number): string {
       switch (day) {
         case 0:
           return "Sunday";
         case 1:
           console.log("Monday");
-          return "Monday";  // 또는 break;
+          return "Monday";  // or break;
         case 2:
           return "Tuesday";
         default:
@@ -442,8 +442,8 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     ```
   </Tab>
 
-  <Tab title="Catch 변수" icon="exclamation-triangle">
-    ### catch 블록 변수는 unknown
+  <Tab title="Catch Variables" icon="exclamation-triangle">
+    ### catch Block Variables are unknown
 
     ```json
     {
@@ -451,36 +451,36 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    **예시:**
+    **Example:**
 
     ```typescript
     try {
       throw new Error("Something went wrong");
     } catch (error) {
-      // error는 unknown 타입
+      // error is unknown type
 
-      // ❌ 에러 발생
+      // ❌ Error
       console.log(error.message);
       //          ^^^^^ Object is of type 'unknown'
 
-      // ✅ 타입 가드 사용
+      // ✅ Use type guard
       if (error instanceof Error) {
         console.log(error.message);
       }
 
-      // ✅ 타입 단언 (확실한 경우만)
+      // ✅ Type assertion (only when certain)
       const err = error as Error;
       console.log(err.message);
     }
     ```
 
     <Tip>
-    `any` 대신 `unknown`을 사용하면 타입 체크를 강제할 수 있습니다.
+    Using `unknown` instead of `any` enforces type checking.
     </Tip>
   </Tab>
 
-  <Tab title="인덱스 접근" icon="hashtag">
-    ### 배열/객체 접근 시 undefined 체크
+  <Tab title="Index Access" icon="hashtag">
+    ### Require undefined Check for Array/Object Access
 
     ```json
     {
@@ -488,31 +488,31 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    **예시:**
+    **Example:**
 
     ```typescript
     const users = ["Alice", "Bob"];
 
-    // ❌ 에러 발생 (noUncheckedIndexedAccess)
+    // ❌ Error (noUncheckedIndexedAccess)
     const firstUser = users[0];
     //    ^^^^^^^^^ Type 'string | undefined'
 
     const name = firstUser.toUpperCase();
     //                     ^^^^^^^^^^^ Object is possibly 'undefined'
 
-    // ✅ undefined 체크
+    // ✅ undefined check
     const firstUser = users[0];
     if (firstUser !== undefined) {
       const name = firstUser.toUpperCase();
     }
 
-    // ✅ Optional 체이닝
+    // ✅ Optional chaining
     const name = users[0]?.toUpperCase();
 
-    // ✅ Non-null assertion (확실한 경우만)
+    // ✅ Non-null assertion (only when certain)
     const name = users[0]!.toUpperCase();
 
-    // 객체도 마찬가지
+    // Same for objects
     type UserMap = { [key: string]: string };
     const userMap: UserMap = { alice: "Alice" };
 
@@ -521,14 +521,14 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     ```
 
     <Warning>
-    이 옵션은 모든 배열/객체 접근을 `T | undefined`로 만듭니다. 많은 코드 수정이 필요할 수 있습니다.
+    This option makes all array/object access return `T | undefined`. May require many code changes.
     </Warning>
   </Tab>
 </Tabs>
 
-## 더 엄격한 옵션 (선택)
+## Stricter Options (Optional)
 
-필요에 따라 추가할 수 있는 옵션들입니다.
+Options you can add as needed.
 
 ```json
 {
@@ -541,7 +541,7 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
 ```
 
 <Accordion title="noPropertyAccessFromIndexSignature" icon="key">
-  **인덱스 시그니처는 대괄호로만 접근**
+  **Index signatures can only be accessed with brackets**
 
   ```typescript
   interface Options {
@@ -550,101 +550,101 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
 
   const options: Options = { color: "red" };
 
-  // ❌ 에러 발생
+  // ❌ Error
   const color = options.color;
 
-  // ✅ 대괄호 사용
+  // ✅ Use brackets
   const color = options["color"];
   ```
 
-  **언제 사용:**
-  - 동적 프로퍼티 접근을 명시적으로 만들고 싶을 때
+  **When to use:**
+  - When you want to make dynamic property access explicit
 </Accordion>
 
 <Accordion title="exactOptionalPropertyTypes" icon="question-circle">
-  **Optional 프로퍼티는 undefined만 허용**
+  **Optional properties only allow undefined**
 
   ```typescript
   interface User {
     name?: string;
   }
 
-  // ❌ 에러 발생
+  // ❌ Error
   const user: User = { name: undefined };
 
-  // ✅ 프로퍼티 생략
+  // ✅ Omit property
   const user: User = {};
 
-  // ✅ 명시적 undefined 허용하려면
+  // ✅ To explicitly allow undefined
   interface User {
     name: string | undefined;
   }
   ```
 
-  **언제 사용:**
-  - Optional과 `| undefined`를 엄격히 구분하고 싶을 때
+  **When to use:**
+  - When you want to strictly distinguish between optional and `| undefined`
 
   <Warning>
-  많은 라이브러리와 호환성 문제가 있을 수 있습니다.
+  May have compatibility issues with many libraries.
   </Warning>
 </Accordion>
 
-## 타입 체크 비활성화
+## Disabling Type Checks
 
-특정 상황에서 타입 체크를 우회해야 할 때가 있습니다.
+Sometimes you need to bypass type checks in specific situations.
 
 <Tabs>
-  <Tab title="파일 전체" icon="file">
+  <Tab title="Entire File" icon="file">
     ```typescript
     // @ts-nocheck
-    // 이 파일의 모든 타입 체크 무시
+    // Ignore all type checks in this file
 
     const value = "hello";
-    value = 123;  // 에러 발생 안 함
+    value = 123;  // No error
     ```
   </Tab>
 
-  <Tab title="한 줄" icon="minus">
+  <Tab title="Single Line" icon="minus">
     ```typescript
     // @ts-ignore
     const value = someUntypedLibrary();
 
-    // 또는 에러 설명 추가
-    // @ts-expect-error - 외부 라이브러리 타입 불일치
+    // Or add error explanation
+    // @ts-expect-error - External library type mismatch
     const value = someUntypedLibrary();
     ```
 
     <Tip>
-    `@ts-ignore` 대신 `@ts-expect-error`를 사용하면 에러가 실제로 발생하지 않을 때 경고를 받을 수 있습니다.
+    Use `@ts-expect-error` instead of `@ts-ignore` to get a warning when no error actually occurs.
     </Tip>
   </Tab>
 
-  <Tab title="타입 단언" icon="exclamation">
+  <Tab title="Type Assertion" icon="exclamation">
     ```typescript
-    // as를 사용한 타입 단언
+    // Type assertion with as
     const value = someValue as string;
 
     // Non-null assertion
     const element = document.getElementById("root")!;
 
-    // Double assertion (최후의 수단)
+    // Double assertion (last resort)
     const value = someValue as unknown as TargetType;
     ```
 
     <Danger>
-    타입 단언은 타입 안정성을 깨뜨립니다. 정말 확실한 경우에만 사용하세요.
+    Type assertions break type safety. Use only when absolutely certain.
     </Danger>
   </Tab>
 </Tabs>
 
-## 권장 설정
+## Recommended Settings
 
 <Tabs>
-  <Tab title="신규 프로젝트" icon="sparkles">
+  <Tab title="New Projects" icon="sparkles">
     ```json
     {
       "compilerOptions": {
-        // Sonamu 기본 설정 사용
+        // Use Sonamu default settings
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
@@ -656,31 +656,31 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    신규 프로젝트는 **모든 옵션을 활성화**하세요.
+    For new projects, **enable all options**.
   </Tab>
 
-  <Tab title="기존 프로젝트" icon="arrow-path">
+  <Tab title="Existing Projects" icon="arrow-path">
     ```json
     {
       "compilerOptions": {
         "strict": true,
-        // 점진적으로 추가
+        // Add gradually
         // "noUnusedLocals": true,
         // "noUncheckedIndexedAccess": true
       }
     }
     ```
 
-    기존 프로젝트는 **점진적으로 옵션을 추가**하세요.
+    For existing projects, **add options gradually**.
 
-    **추천 순서:**
+    **Recommended order:**
     1. `strict: true`
     2. `noUnusedLocals`, `noUnusedParameters`
     3. `noImplicitReturns`
-    4. `noUncheckedIndexedAccess` (많은 수정 필요)
+    4. `noUncheckedIndexedAccess` (requires many changes)
   </Tab>
 
-  <Tab title="라이브러리" icon="cube">
+  <Tab title="Libraries" icon="cube">
     ```json
     {
       "compilerOptions": {
@@ -693,67 +693,67 @@ Sonamu는 strict 모드 외에도 추가 체크 옵션을 활성화합니다.
     }
     ```
 
-    라이브러리는 **타입 정의 생성**도 필수입니다.
+    For libraries, **type definition generation** is also essential.
   </Tab>
 </Tabs>
 
-## 성능 고려사항
+## Performance Considerations
 
-타입 체크 옵션이 많을수록 컴파일 시간이 증가할 수 있습니다.
+More type check options can increase compilation time.
 
-<Accordion title="타입 체크 속도 향상" icon="bolt">
+<Accordion title="Improving Type Check Speed" icon="bolt">
   ```json
   {
     "compilerOptions": {
-      "skipLibCheck": true,           // node_modules 타입 체크 생략
-      "incremental": true,             // 증분 컴파일
+      "skipLibCheck": true,           // Skip node_modules type check
+      "incremental": true,             // Incremental compilation
       "tsBuildInfoFile": ".tsbuildinfo"
     }
   }
   ```
 
   **skipLibCheck**
-  - `node_modules`의 `.d.ts` 파일을 체크하지 않음
-  - 컴파일 시간 크게 단축
-  - Sonamu 기본 활성화
+  - Don't check `.d.ts` files in `node_modules`
+  - Significantly reduces compilation time
+  - Enabled by default in Sonamu
 
   **incremental**
-  - 변경된 파일만 재컴파일
-  - `.tsbuildinfo` 파일에 캐시 저장
+  - Only recompile changed files
+  - Cache stored in `.tsbuildinfo` file
 </Accordion>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="tsconfig.json" 
-    icon="file-code" 
+  <Card
+    title="tsconfig.json"
+    icon="file-code"
     href="/configuration/typescript/tsconfig"
   >
-    전체 TypeScript 설정을 확인하세요
+    Check the complete TypeScript configuration
   </Card>
-  
-  <Card 
-    title="Path Mapping" 
-    icon="route" 
+
+  <Card
+    title="Path Mapping"
+    icon="route"
     href="/configuration/typescript/path-mappings"
   >
-    절대 경로 import를 설정하세요
+    Set up absolute path imports
   </Card>
-  
-  <Card 
-    title="Entity 정의" 
-    icon="database" 
+
+  <Card
+    title="Entity Definition"
+    icon="database"
     href="/core-concepts/entity/defining-entities"
   >
-    타입 안전한 Entity를 작성하세요
+    Write type-safe Entities
   </Card>
-  
-  <Card 
-    title="테스트 작성" 
-    icon="flask" 
+
+  <Card
+    title="Writing Tests"
+    icon="flask"
     href="/testing/writing-tests/basic-testing"
   >
-    타입 안전한 테스트를 작성하세요
+    Write type-safe tests
   </Card>
 </CardGroup>

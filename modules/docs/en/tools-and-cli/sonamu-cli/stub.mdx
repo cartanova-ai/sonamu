@@ -1,31 +1,31 @@
 ---
 title: "stub"
-description: "빠른 개발을 위한 코드 스텁 생성하기"
+description: "Generate code stubs for rapid development"
 ---
 
-`pnpm stub` 명령어는 반복 작업을 줄이기 위한 **코드 템플릿**을 자동 생성합니다. Practice 스크립트나 새 Entity를 빠르게 만들 수 있어 개발 속도를 높입니다.
+The `pnpm stub` command auto-generates **code templates** to reduce repetitive work. You can quickly create Practice scripts or new Entities to speed up development.
 
-## 명령어
+## Commands
 
-### practice - Practice 스크립트 생성
+### practice - Generate Practice Script
 
-임시 실험이나 데이터 처리를 위한 스크립트를 생성합니다.
+Generate scripts for temporary experiments or data processing.
 
 ```bash
 pnpm stub practice <name>
 ```
 
-**예시**:
+**Example**:
 ```bash
 pnpm stub practice test-api
 
-# 생성됨:
+# Generated:
 # src/practices/p1-test-api.ts
-# VS Code에서 자동으로 열림
-# 실행 명령어가 클립보드에 복사됨
+# Automatically opens in VS Code
+# Run command copied to clipboard
 ```
 
-**생성된 파일**:
+**Generated file**:
 ```typescript title="src/practices/p1-test-api.ts"
 import { Sonamu } from "sonamu";
 
@@ -37,29 +37,29 @@ Sonamu.runScript(async () => {
 });
 ```
 
-**실행**:
+**Run**:
 ```bash
-# 클립보드에서 붙여넣기 (Cmd+V)
+# Paste from clipboard (Cmd+V)
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
 ```
 
-### entity - Entity 생성
+### entity - Generate Entity
 
-새로운 Entity를 생성합니다.
+Create a new Entity.
 
 ```bash
 pnpm stub entity <entityId>
 ```
 
-**예시**:
+**Example**:
 ```bash
 pnpm stub entity Product
 
-# 생성됨:
+# Generated:
 # src/entities/Product.entity.ts
 ```
 
-**생성된 파일**:
+**Generated file**:
 ```typescript title="src/entities/Product.entity.ts"
 import type { EntityType } from "sonamu";
 
@@ -85,23 +85,23 @@ export const ProductEntity = {
 } satisfies EntityType;
 ```
 
-## Practice 스크립트
+## Practice Scripts
 
-### 사용 시나리오
+### Use Cases
 
-Practice 스크립트는 다음과 같은 작업에 활용됩니다:
+Practice scripts are useful for these tasks:
 
-| 용도 | 설명 | 예시 |
-|------|------|------|
-| API 테스트 | 외부 API 호출 테스트 | `p1-test-payment-api.ts` |
-| 데이터 마이그레이션 | 일회성 데이터 변환 | `p2-migrate-user-data.ts` |
-| 디버깅 | 특정 로직 검증 | `p3-debug-cache-issue.ts` |
-| 데이터 생성 | 테스트 데이터 생성 | `p4-create-sample-posts.ts` |
-| 분석 | 데이터 통계 확인 | `p5-analyze-user-activity.ts` |
+| Purpose | Description | Example |
+|---------|-------------|---------|
+| API Testing | Test external API calls | `p1-test-payment-api.ts` |
+| Data Migration | One-time data transformation | `p2-migrate-user-data.ts` |
+| Debugging | Validate specific logic | `p3-debug-cache-issue.ts` |
+| Data Generation | Create test data | `p4-create-sample-posts.ts` |
+| Analysis | Check data statistics | `p5-analyze-user-activity.ts` |
 
-### 순서 관리
+### Automatic Numbering
 
-Practice 파일은 **자동으로 번호가 부여**됩니다:
+Practice files are **automatically numbered**:
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
@@ -109,15 +109,15 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   <FileItem name="src/practices/">
     <FileItem name="p1-first-practice.ts" />
     <FileItem name="p2-second-practice.ts" />
-    <FileItem name="p3-third-practice.ts" description="다음은 p4" />
+    <FileItem name="p3-third-practice.ts" description="Next is p4" />
   </FileItem>
 </FileTree>
 
-새 practice를 생성하면 가장 큰 번호 + 1이 자동으로 할당됩니다.
+When you create a new practice, it automatically gets the highest number + 1.
 
-### 실전 예제
+### Practical Examples
 
-#### 1. API 테스트
+#### 1. API Testing
 
 ```typescript title="src/practices/p1-test-payment-api.ts"
 import { Sonamu } from "sonamu";
@@ -127,18 +127,18 @@ console.log("p1-test-payment-api.ts");
 
 Sonamu.runScript(async () => {
   const paymentService = new PaymentService();
-  
-  // 테스트 결제 시도
+
+  // Test payment attempt
   const result = await paymentService.charge({
     amount: 10000,
     orderId: "TEST-001",
   });
-  
-  console.log("결제 결과:", result);
+
+  console.log("Payment result:", result);
 });
 ```
 
-#### 2. 데이터 마이그레이션
+#### 2. Data Migration
 
 ```typescript title="src/practices/p2-migrate-user-data.ts"
 import { Sonamu } from "sonamu";
@@ -148,23 +148,23 @@ console.clear();
 console.log("p2-migrate-user-data.ts");
 
 Sonamu.runScript(async () => {
-  // 모든 사용자 조회
+  // Get all users
   const users = await UserModel.findAll();
-  
+
   for (const user of users) {
-    // legacy 필드를 새 필드로 마이그레이션
+    // Migrate legacy field to new field
     await UserModel.update(user.id, {
       new_field: transformData(user.legacy_field),
     });
-    
+
     console.log(`✓ Migrated user ${user.id}`);
   }
-  
+
   console.log(`\n✓ Total: ${users.length} users migrated`);
 });
 ```
 
-#### 3. 배치 작업
+#### 3. Batch Jobs
 
 ```typescript title="src/practices/p3-send-welcome-emails.ts"
 import { Sonamu } from "sonamu";
@@ -174,13 +174,13 @@ console.clear();
 console.log("p3-send-welcome-emails.ts");
 
 Sonamu.runScript(async () => {
-  // 신규 가입 사용자
+  // New users
   const newUsers = await UserModel.findMany({
     where: { welcome_email_sent: false },
   });
-  
+
   console.log(`Sending welcome emails to ${newUsers.length} users...`);
-  
+
   for (const user of newUsers) {
     try {
       await sendWelcomeEmail(user.email);
@@ -195,11 +195,11 @@ Sonamu.runScript(async () => {
 });
 ```
 
-## Entity 생성
+## Entity Generation
 
-### 기본 구조
+### Basic Structure
 
-`stub entity`로 생성된 Entity는 기본 필드들을 포함합니다:
+Entities generated with `stub entity` include basic fields:
 
 ```typescript
 export const ProductEntity = {
@@ -211,101 +211,101 @@ export const ProductEntity = {
 } satisfies EntityType;
 ```
 
-### 커스터마이징
+### Customization
 
-생성 후 필요한 필드를 추가합니다:
+Add needed fields after generation:
 
 ```typescript
 export const ProductEntity = {
   properties: [
-    // 기본 필드
+    // Basic fields
     { name: "id", type: "int", primaryKey: true, autoIncrement: true },
     { name: "title", type: "string", length: 255 },
-    
-    // 추가 필드
+
+    // Additional fields
     { name: "description", type: "text", nullable: true },
     { name: "price", type: "decimal", precision: 10, scale: 2 },
     { name: "stock", type: "int", default: 0 },
     { name: "category_id", type: "int" },
-    
-    // 타임스탬프
+
+    // Timestamps
     { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
     { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
   ],
-  
+
   indexes: [
     { fields: ["category_id"] },
     { fields: ["title"], type: "fulltext" },
   ],
-  
+
   belongsTo: [
     { entityId: "Category", as: "category" },
   ],
 } satisfies EntityType;
 ```
 
-## 개발 워크플로우
+## Development Workflow
 
-### 1. 아이디어 검증
+### 1. Validate Ideas
 
 ```bash
-# 빠르게 practice 생성
+# Quickly create practice
 pnpm stub practice test-idea
 
-# 코드 작성 및 실행
+# Write code and run
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-idea.js
 
-# 동작 확인 후 삭제 또는 보관
+# Delete or keep after verification
 ```
 
-### 2. Entity 추가
+### 2. Add Entity
 
 ```bash
-# Entity 생성
+# Generate Entity
 pnpm stub entity Order
 
-# Entity 정의 작성
+# Write Entity definition
 # src/entities/Order.entity.ts
 
-# 마이그레이션 생성 및 적용
+# Create and apply migration
 pnpm migrate run
 
-# Model 스캐폴딩
+# Scaffold Model
 pnpm scaffold model Order
 ```
 
-### 3. 데이터 작업
+### 3. Data Operations
 
 ```bash
-# Practice 스크립트 생성
+# Generate Practice script
 pnpm stub practice import-orders
 
-# 데이터 처리 로직 작성
+# Write data processing logic
 # src/practices/p1-import-orders.ts
 
-# 실행
+# Run
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-import-orders.js
 ```
 
-## 실전 팁
+## Practical Tips
 
-### 1. Practice 스크립트 재사용
+### 1. Reuse Practice Scripts
 
 ```typescript
-// ✅ 재사용 가능하도록 함수화
+// ✅ Make functions reusable
 async function processUsers(filter: any) {
   const users = await UserModel.findMany({ where: filter });
-  // 처리 로직...
+  // Processing logic...
 }
 
 Sonamu.runScript(async () => {
-  // 다양한 필터로 재사용
+  // Reuse with various filters
   await processUsers({ role: "admin" });
   await processUsers({ role: "user" });
 });
 ```
 
-### 2. 에러 처리
+### 2. Error Handling
 
 ```typescript
 Sonamu.runScript(async () => {
@@ -313,56 +313,56 @@ Sonamu.runScript(async () => {
     await riskyOperation();
   } catch (error) {
     console.error("Error occurred:", error);
-    process.exit(1);  // 실패 시 종료
+    process.exit(1);  // Exit on failure
   }
 });
 ```
 
-### 3. 진행 상황 표시
+### 3. Progress Display
 
 ```typescript
 Sonamu.runScript(async () => {
   const users = await UserModel.findAll();
-  
+
   for (let i = 0; i < users.length; i++) {
     await processUser(users[i]);
-    
-    // 진행률 표시
+
+    // Show progress
     const progress = Math.round(((i + 1) / users.length) * 100);
     console.log(`Progress: ${progress}% (${i + 1}/${users.length})`);
   }
 });
 ```
 
-### 4. Practice 정리
+### 4. Cleanup Practices
 
 ```bash
-# 완료된 practice는 삭제
+# Delete completed practices
 rm src/practices/p1-old-practice.ts
 
-# 또는 보관용 디렉토리로 이동
+# Or move to archive directory
 mkdir src/practices/archived
 mv src/practices/p1-*.ts src/practices/archived/
 ```
 
-## 주의사항
+## Cautions
 
 <Warning>
-**Practice 스크립트 사용 시 주의사항**:
+**Cautions when using Practice scripts**:
 
-1. **프로덕션 데이터**: Practice는 실제 DB를 사용합니다. 조심하세요!
-2. **백업**: 중요한 데이터 작업 전에는 반드시 백업하세요.
-3. **트랜잭션**: 데이터 변경 시 트랜잭션을 사용하세요.
-4. **테스트**: 프로덕션 실행 전 개발 환경에서 먼저 테스트하세요.
+1. **Production data**: Practice uses real DB. Be careful!
+2. **Backup**: Always backup before important data operations.
+3. **Transactions**: Use transactions when modifying data.
+4. **Testing**: Test in development environment before production run.
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
   <Card title="scaffold" icon="wand-magic-sparkles" href="/tools-and-cli/sonamu-cli/scaffold">
-    코드 스캐폴딩으로 Model 자동 생성하기
+    Auto-generate Models with code scaffolding
   </Card>
   <Card title="Entity" icon="cube" href="/core-concepts/entity">
-    Entity 정의 자세히 알아보기
+    Learn more about Entity definitions
   </Card>
 </CardGroup>

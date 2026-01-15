@@ -1,15 +1,15 @@
 ---
-title: "Agent 생성하기"
-description: "BaseAgentClass로 커스텀 AI 에이전트 구축하기"
+title: "Creating Agents"
+description: "Building custom AI agents with BaseAgentClass"
 ---
 
-Sonamu는 **BaseAgentClass**를 상속하여 커스텀 AI 에이전트를 만들 수 있습니다. **@tools** 데코레이터로 도구(tools)를 정의하면 LLM이 상황에 맞게 도구를 선택하여 실행합니다.
+Sonamu allows you to create custom AI agents by extending **BaseAgentClass**. By defining tools using the **@tools** decorator, the LLM can select and execute appropriate tools based on the context.
 
 ## BaseAgentClass
 
-AI 에이전트의 베이스 클래스입니다.
+This is the base class for AI agents.
 
-### 기본 구조
+### Basic Structure
 
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
@@ -22,9 +22,9 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
   constructor() {
     super('CustomerSupportAgent');
   }
-  
+
   @tools({
-    description: "주문 정보를 조회합니다",
+    description: "Retrieves order information",
     schema: {
       input: z.object({
         orderId: z.number(),
@@ -37,7 +37,7 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
     }
   })
   async getOrder(input: { orderId: number }) {
-    // 주문 조회 로직
+    // Order retrieval logic
     return {
       orderId: input.orderId,
       status: 'shipped',
@@ -49,55 +49,55 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
 export const CustomerSupportAgent = new CustomerSupportAgentClass();
 ```
 
-## @tools 데코레이터
+## @tools Decorator
 
-도구를 정의하는 데코레이터입니다.
+A decorator for defining tools.
 
-### 기본 사용법
+### Basic Usage
 
 ```typescript
 @tools({
-  description: "도구 설명",
+  description: "Tool description",
   schema: {
     input: z.object({
-      // 입력 스키마
+      // Input schema
     }),
     output: z.object({
-      // 출력 스키마 (선택)
+      // Output schema (optional)
     }),
   }
 })
 async toolMethod(input: InputType) {
-  // 도구 로직
+  // Tool logic
   return output;
 }
 ```
 
-### 옵션
+### Options
 
 <Tabs>
   <Tab title="description" icon="book">
-    **도구 설명** (필수)
-    
+    **Tool Description** (required)
+
     ```typescript
     @tools({
-      description: "사용자의 주문 내역을 조회합니다. 주문 ID를 입력받아 주문 정보를 반환합니다.",
+      description: "Retrieves user order history. Takes an order ID and returns order information.",
       schema: { /* ... */ }
     })
     ```
-    
-    **중요**: LLM이 이 설명을 읽고 도구 사용 여부를 결정합니다.
+
+    **Important**: The LLM reads this description to decide whether to use the tool.
   </Tab>
-  
+
   <Tab title="schema" icon="code">
-    **입출력 스키마** (필수)
-    
+    **Input/Output Schema** (required)
+
     ```typescript
     @tools({
-      description: "주문 조회",
+      description: "Order lookup",
       schema: {
         input: z.object({
-          orderId: z.number().describe("주문 ID"),
+          orderId: z.number().describe("Order ID"),
         }),
         output: z.object({
           status: z.string(),
@@ -106,41 +106,41 @@ async toolMethod(input: InputType) {
       }
     })
     ```
-    
-    **input**: 필수
-    **output**: 선택 (타입 추론에 도움)
+
+    **input**: Required
+    **output**: Optional (helps with type inference)
   </Tab>
-  
+
   <Tab title="name" icon="tag">
-    **커스텀 이름** (선택)
-    
+    **Custom Name** (optional)
+
     ```typescript
     @tools({
-      name: 'order_lookup',  // 기본값: 메서드 이름
-      description: "주문 조회",
+      name: 'order_lookup',  // Default: method name
+      description: "Order lookup",
       schema: { /* ... */ }
     })
     ```
   </Tab>
-  
+
   <Tab title="needsApproval" icon="check">
-    **승인 필요** (선택)
-    
+    **Requires Approval** (optional)
+
     ```typescript
     @tools({
-      description: "주문 취소 (위험한 작업)",
+      description: "Cancel order (dangerous operation)",
       schema: { /* ... */ },
-      needsApproval: true,  // 사용자 승인 필요
+      needsApproval: true,  // Requires user approval
     })
     ```
-    
-    **용도**: 데이터 삭제, 결제 등 위험한 작업
+
+    **Use Case**: Dangerous operations like data deletion or payments
   </Tab>
 </Tabs>
 
-## 실전 예제
+## Practical Examples
 
-### 1. 호텔 예약 에이전트
+### 1. Hotel Booking Agent
 
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
@@ -153,15 +153,15 @@ class HotelBookingAgentClass extends BaseAgentClass<{
   constructor() {
     super('HotelBookingAgent');
   }
-  
+
   @tools({
-    description: "도시와 날짜로 사용 가능한 호텔을 검색합니다",
+    description: "Searches for available hotels by city and date",
     schema: {
       input: z.object({
-        city: z.string().describe("도시 이름"),
-        checkIn: z.string().describe("체크인 날짜 (YYYY-MM-DD)"),
-        checkOut: z.string().describe("체크아웃 날짜 (YYYY-MM-DD)"),
-        guests: z.number().describe("투숙객 수"),
+        city: z.string().describe("City name"),
+        checkIn: z.string().describe("Check-in date (YYYY-MM-DD)"),
+        checkOut: z.string().describe("Check-out date (YYYY-MM-DD)"),
+        guests: z.number().describe("Number of guests"),
       }),
       output: z.array(z.object({
         hotelId: z.number(),
@@ -177,7 +177,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
     checkOut: string;
     guests: number;
   }) {
-    // DB에서 호텔 검색
+    // Search hotels from DB
     const hotels = await HotelModel.findMany({
       wq: [
         ['city', input.city],
@@ -186,7 +186,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         ['capacity', '>=', input.guests],
       ],
     });
-    
+
     return hotels.data.map(hotel => ({
       hotelId: hotel.id,
       name: hotel.name,
@@ -194,12 +194,12 @@ class HotelBookingAgentClass extends BaseAgentClass<{
       rating: hotel.rating,
     }));
   }
-  
+
   @tools({
-    description: "호텔을 예약합니다",
+    description: "Books a hotel",
     schema: {
       input: z.object({
-        hotelId: z.number().describe("호텔 ID"),
+        hotelId: z.number().describe("Hotel ID"),
         checkIn: z.string(),
         checkOut: z.string(),
         guests: z.number(),
@@ -210,7 +210,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         totalPrice: z.number(),
       }),
     },
-    needsApproval: true,  // 예약 전 사용자 승인
+    needsApproval: true,  // User approval before booking
   })
   async bookHotel(input: {
     hotelId: number;
@@ -219,8 +219,8 @@ class HotelBookingAgentClass extends BaseAgentClass<{
     guests: number;
   }) {
     const userId = this.store?.userId;
-    
-    // 예약 생성
+
+    // Create booking
     const booking = await BookingModel.saveOne({
       user_id: userId,
       hotel_id: input.hotelId,
@@ -229,38 +229,38 @@ class HotelBookingAgentClass extends BaseAgentClass<{
       guests: input.guests,
       status: 'confirmed',
     });
-    
+
     return {
       bookingId: booking.id,
       confirmationNumber: booking.confirmation_number,
       totalPrice: booking.total_price,
     };
   }
-  
+
   @tools({
-    description: "예약을 취소합니다",
+    description: "Cancels a booking",
     schema: {
       input: z.object({
-        bookingId: z.number().describe("예약 ID"),
+        bookingId: z.number().describe("Booking ID"),
       }),
       output: z.object({
         success: z.boolean(),
         refundAmount: z.number(),
       }),
     },
-    needsApproval: true,  // 취소 전 사용자 승인
+    needsApproval: true,  // User approval before cancellation
   })
   async cancelBooking(input: { bookingId: number }) {
     const booking = await BookingModel.findById(input.bookingId);
-    
-    // 취소 처리
+
+    // Process cancellation
     await BookingModel.updateOne(['id', booking.id], {
       status: 'cancelled',
     });
-    
-    // 환불 처리
-    const refundAmount = booking.total_price * 0.9;  // 10% 수수료
-    
+
+    // Process refund
+    const refundAmount = booking.total_price * 0.9;  // 10% fee
+
     return {
       success: true,
       refundAmount,
@@ -271,7 +271,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
 export const HotelBookingAgent = new HotelBookingAgentClass();
 ```
 
-### 2. 데이터 분석 에이전트
+### 2. Data Analysis Agent
 
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
@@ -283,12 +283,12 @@ class DataAnalystAgentClass extends BaseAgentClass<{
   constructor() {
     super('DataAnalystAgent');
   }
-  
+
   @tools({
-    description: "SQL 쿼리를 실행하여 데이터를 조회합니다",
+    description: "Executes a SQL query to retrieve data",
     schema: {
       input: z.object({
-        query: z.string().describe("실행할 SQL 쿼리"),
+        query: z.string().describe("SQL query to execute"),
       }),
       output: z.object({
         rows: z.array(z.record(z.any())),
@@ -297,26 +297,26 @@ class DataAnalystAgentClass extends BaseAgentClass<{
     }
   })
   async executeQuery(input: { query: string }) {
-    // 안전성 검증 (SELECT만 허용)
+    // Safety validation (only allow SELECT)
     if (!/^SELECT/i.test(input.query.trim())) {
-      throw new Error('SELECT 쿼리만 허용됩니다');
+      throw new Error('Only SELECT queries are allowed');
     }
-    
+
     const result = await DB.query(input.query);
-    
+
     return {
       rows: result.rows,
       rowCount: result.rowCount,
     };
   }
-  
+
   @tools({
-    description: "데이터를 시각화하기 위한 차트 설정을 생성합니다",
+    description: "Creates chart configuration for data visualization",
     schema: {
       input: z.object({
         data: z.array(z.record(z.any())),
-        xAxis: z.string().describe("X축 컬럼명"),
-        yAxis: z.string().describe("Y축 컬럼명"),
+        xAxis: z.string().describe("X-axis column name"),
+        yAxis: z.string().describe("Y-axis column name"),
         chartType: z.enum(['bar', 'line', 'pie']),
       }),
       output: z.object({
@@ -332,8 +332,8 @@ class DataAnalystAgentClass extends BaseAgentClass<{
     chartType: 'bar' | 'line' | 'pie';
   }) {
     const chartId = `chart_${Date.now()}`;
-    
-    // 차트 설정 생성
+
+    // Create chart configuration
     const config = {
       type: input.chartType,
       data: {
@@ -344,12 +344,12 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         }],
       },
     };
-    
+
     return { chartId, config };
   }
-  
+
   @tools({
-    description: "통계 요약을 계산합니다 (평균, 중앙값, 표준편차 등)",
+    description: "Calculates statistical summary (mean, median, standard deviation, etc.)",
     schema: {
       input: z.object({
         data: z.array(z.number()),
@@ -367,15 +367,15 @@ class DataAnalystAgentClass extends BaseAgentClass<{
     const sorted = [...input.data].sort((a, b) => a - b);
     const sum = input.data.reduce((a, b) => a + b, 0);
     const mean = sum / input.data.length;
-    
+
     const median = sorted.length % 2 === 0
       ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
       : sorted[Math.floor(sorted.length / 2)];
-    
-    const variance = input.data.reduce((acc, val) => 
+
+    const variance = input.data.reduce((acc, val) =>
       acc + Math.pow(val - mean, 2), 0) / input.data.length;
     const stdDev = Math.sqrt(variance);
-    
+
     return {
       mean,
       median,
@@ -389,7 +389,7 @@ class DataAnalystAgentClass extends BaseAgentClass<{
 export const DataAnalystAgent = new DataAnalystAgentClass();
 ```
 
-### 3. 이메일 자동화 에이전트
+### 3. Email Automation Agent
 
 ```typescript
 import { BaseAgentClass, tools } from "sonamu/ai";
@@ -401,12 +401,12 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
   constructor() {
     super('EmailAutomationAgent');
   }
-  
+
   @tools({
-    description: "받은 편지함에서 이메일을 검색합니다",
+    description: "Searches for emails in the inbox",
     schema: {
       input: z.object({
-        query: z.string().describe("검색 쿼리"),
+        query: z.string().describe("Search query"),
         limit: z.number().default(10),
       }),
       output: z.array(z.object({
@@ -427,7 +427,7 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
       num: input.limit,
       order: [['received_at', 'DESC']],
     });
-    
+
     return emails.data.map(email => ({
       id: email.id,
       from: email.from_address,
@@ -436,9 +436,9 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
       receivedAt: email.received_at.toISOString(),
     }));
   }
-  
+
   @tools({
-    description: "이메일을 특정 폴더로 이동합니다",
+    description: "Moves an email to a specific folder",
     schema: {
       input: z.object({
         emailId: z.number(),
@@ -453,12 +453,12 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
     await EmailModel.updateOne(['id', input.emailId], {
       folder: input.folder,
     });
-    
+
     return { success: true };
   }
-  
+
   @tools({
-    description: "이메일에 라벨을 추가합니다",
+    description: "Adds labels to an email",
     schema: {
       input: z.object({
         emailId: z.number(),
@@ -472,16 +472,16 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
   async addLabels(input: { emailId: number; labels: string[] }) {
     const email = await EmailModel.findById(input.emailId);
     const currentLabels = email.labels || [];
-    
+
     await EmailModel.updateOne(['id', input.emailId], {
       labels: [...currentLabels, ...input.labels],
     });
-    
+
     return { success: true };
   }
-  
+
   @tools({
-    description: "이메일을 보냅니다",
+    description: "Sends an email",
     schema: {
       input: z.object({
         to: z.string().email(),
@@ -493,16 +493,16 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
         sentAt: z.string(),
       }),
     },
-    needsApproval: true,  // 전송 전 승인
+    needsApproval: true,  // Approval before sending
   })
   async sendEmail(input: {
     to: string;
     subject: string;
     body: string;
   }) {
-    // 이메일 전송 로직
+    // Email sending logic
     const result = await sendEmailService(input);
-    
+
     return {
       messageId: result.messageId,
       sentAt: new Date().toISOString(),
@@ -513,11 +513,11 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
 export const EmailAutomationAgent = new EmailAutomationAgentClass();
 ```
 
-## 에이전트 사용하기
+## Using Agents
 
-### use() 메서드
+### use() Method
 
-에이전트를 실행하는 메서드입니다.
+This method executes the agent.
 
 ```typescript
 import { HotelBookingAgent } from "./agents/hotel-booking";
@@ -526,22 +526,22 @@ import { openai } from "@ai-sdk/openai";
 const result = await HotelBookingAgent.use(
   {
     model: openai('gpt-4o'),
-    instructions: "당신은 호텔 예약 도우미입니다.",
+    instructions: "You are a hotel booking assistant.",
     toolChoice: 'auto',
   },
-  { userId: 123, locale: 'ko' },  // store 초기값
+  { userId: 123, locale: 'en' },  // Initial store values
   async (agent) => {
-    // 에이전트 실행
+    // Execute agent
     const response = await agent.generateText({
-      prompt: "서울에서 내일부터 3일간 묵을 호텔을 찾아줘",
+      prompt: "Find me a hotel in Seoul for 3 nights starting tomorrow",
     });
-    
+
     return response.text;
   }
 );
 ```
 
-### API에서 사용
+### Usage in API
 
 ```typescript
 import { BaseModel, api } from "sonamu";
@@ -554,19 +554,19 @@ class ChatModelClass extends BaseModel {
     const result = await HotelBookingAgent.use(
       {
         model: openai('gpt-4o'),
-        instructions: "당신은 호텔 예약 도우미입니다.",
+        instructions: "You are a hotel booking assistant.",
         toolChoice: 'auto',
       },
-      { userId: ctx.user.id, locale: ctx.locale || 'ko' },
+      { userId: ctx.user.id, locale: ctx.locale || 'en' },
       async (agent) => {
         const response = await agent.generateText({
           prompt: message,
         });
-        
+
         return response;
       }
     );
-    
+
     return {
       text: result.text,
       toolCalls: result.toolCalls,
@@ -575,11 +575,11 @@ class ChatModelClass extends BaseModel {
 }
 ```
 
-## Store (상태 관리)
+## Store (State Management)
 
-에이전트의 상태를 관리합니다.
+Manages the agent's state.
 
-### 정의
+### Definition
 
 ```typescript
 class MyAgentClass extends BaseAgentClass<{
@@ -594,11 +594,11 @@ class MyAgentClass extends BaseAgentClass<{
 }
 ```
 
-### 사용
+### Usage
 
 ```typescript
 @tools({
-  description: "사용자 프로필 조회",
+  description: "Retrieves user profile",
   schema: {
     input: z.object({}),
     output: z.object({
@@ -608,12 +608,12 @@ class MyAgentClass extends BaseAgentClass<{
   }
 })
 async getUserProfile() {
-  // store 접근
+  // Access store
   const userId = this.store?.userId;
   const language = this.store?.preferences.language;
-  
+
   const user = await UserModel.findById(userId);
-  
+
   return {
     userId: user.id,
     name: user.name,
@@ -621,72 +621,72 @@ async getUserProfile() {
 }
 ```
 
-## 주의사항
+## Precautions
 
 <Warning>
-**Agent 작성 시 주의사항**:
+**Important considerations when writing agents**:
 
-1. **도구 설명 명확성**: LLM이 이해할 수 있도록 자세히 작성
+1. **Tool Description Clarity**: Write detailed descriptions that the LLM can understand
    ```typescript
-   // ❌ 불명확
-   description: "주문 조회"
-   
-   // ✅ 명확
-   description: "주문 ID를 입력받아 해당 주문의 상세 정보(상태, 아이템, 가격)를 반환합니다"
+   // ❌ Unclear
+   description: "Order lookup"
+
+   // ✅ Clear
+   description: "Takes an order ID and returns detailed order information (status, items, price)"
    ```
 
-2. **입력 스키마 상세 설명**: describe() 사용
+2. **Detailed Input Schema**: Use describe()
    ```typescript
    input: z.object({
-     orderId: z.number().describe("조회할 주문의 고유 ID"),
-     includeItems: z.boolean().describe("주문 아이템 목록 포함 여부"),
+     orderId: z.number().describe("Unique ID of the order to retrieve"),
+     includeItems: z.boolean().describe("Whether to include the list of order items"),
    })
    ```
 
-3. **위험한 작업은 승인 필요**: needsApproval
+3. **Require Approval for Dangerous Operations**: needsApproval
    ```typescript
    @tools({
-     description: "주문 취소",
+     description: "Cancel order",
      schema: { /* ... */ },
-     needsApproval: true,  // 필수!
+     needsApproval: true,  // Required!
    })
    ```
 
-4. **에러 처리**: 명확한 에러 메시지
+4. **Error Handling**: Clear error messages
    ```typescript
    async getOrder(input: { orderId: number }) {
      const order = await OrderModel.findById(input.orderId);
      if (!order) {
-       throw new Error(`주문 ID ${input.orderId}를 찾을 수 없습니다`);
+       throw new Error(`Order ID ${input.orderId} not found`);
      }
      return order;
    }
    ```
 
-5. **store 접근 시 undefined 체크**
+5. **Check for Undefined When Accessing Store**
    ```typescript
    const userId = this.store?.userId;
    if (!userId) {
-     throw new Error('사용자 정보가 없습니다');
+     throw new Error('User information not available');
    }
    ```
 
-6. **도구 이름 충돌 방지**: 명확한 이름 사용
+6. **Avoid Tool Name Conflicts**: Use clear names
    ```typescript
    @tools({
-     name: 'hotel_search',  // 명확한 이름
+     name: 'hotel_search',  // Clear name
      // ...
    })
    ```
 </Warning>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Agent 설정" icon="gear" href="/advanced-features/ai-agents/agent-configuration">
-    Agent 기본 설정하기
+  <Card title="Agent Configuration" icon="gear" href="/advanced-features/ai-agents/agent-configuration">
+    Configure agent basics
   </Card>
-  <Card title="AI SDK 사용하기" icon="code" href="/advanced-features/ai-agents/using-ai-sdk">
-    Vercel AI SDK 활용하기
+  <Card title="Using the AI SDK" icon="code" href="/advanced-features/ai-agents/using-ai-sdk">
+    Leverage the Vercel AI SDK
   </Card>
 </CardGroup>

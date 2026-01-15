@@ -1,13 +1,13 @@
 ---
-title: '스토리지'
-description: '파일 저장소 드라이버 설정'
+title: 'Storage'
+description: 'File storage driver settings'
 ---
 
 import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
 
-Sonamu는 파일 업로드와 저장을 위한 통합 스토리지 시스템을 제공합니다. 로컬 파일 시스템(fs)과 AWS S3를 지원하며, 환경에 따라 쉽게 전환할 수 있습니다.
+Sonamu provides an integrated storage system for file uploads and storage. It supports local file system (fs) and AWS S3, and you can easily switch between them based on the environment.
 
-## 기본 구조
+## Basic Structure
 
 ```typescript
 import path from "path";
@@ -30,28 +30,28 @@ export default defineConfig({
 
 ## default
 
-기본으로 사용할 스토리지 드라이버를 지정합니다.
+Specifies the default storage driver to use.
 
-**타입**: `string`
+**Type**: `string`
 
 ```typescript
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",  // fs 드라이버 사용
+      default: "fs",  // Use fs driver
       // ...
     },
   },
 });
 ```
 
-**환경 변수로 전환**:
+**Switching with environment variables**:
 
 ```typescript
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // 환경에 따라 전환
+      default: process.env.DRIVE_DISK ?? "fs",  // Switch based on environment
       // ...
     },
   },
@@ -61,22 +61,22 @@ export default defineConfig({
 **.env**:
 
 ```bash
-# 개발: 로컬 파일 시스템
+# Development: Local file system
 DRIVE_DISK=fs
 
-# 프로덕션: AWS S3
+# Production: AWS S3
 DRIVE_DISK=s3
 ```
 
 <Tip>
-환경 변수를 사용하면 코드 변경 없이 스토리지를 전환할 수 있습니다.
+Using environment variables allows you to switch storage without code changes.
 </Tip>
 
 ## drivers
 
-사용할 스토리지 드라이버들을 정의합니다.
+Defines the storage drivers to use.
 
-**타입**: `Record<string, Driver>`
+**Type**: `Record<string, Driver>`
 
 ```typescript
 import { drivers } from "sonamu/storage";
@@ -86,7 +86,7 @@ export default defineConfig({
     storage: {
       default: "fs",
       drivers: {
-        fs: drivers.fs({ /* ... */ }),    // 로컬 파일 시스템
+        fs: drivers.fs({ /* ... */ }),    // Local file system
         s3: drivers.s3({ /* ... */ }),    // AWS S3
       },
     },
@@ -94,9 +94,9 @@ export default defineConfig({
 });
 ```
 
-### fs 드라이버
+### fs Driver
 
-로컬 파일 시스템에 파일을 저장합니다. 개발 환경에 적합합니다.
+Stores files on the local file system. Suitable for development environments.
 
 ```typescript
 import path from "path";
@@ -126,9 +126,9 @@ export default defineConfig({
 
 #### location
 
-파일이 저장될 디렉토리 경로입니다.
+The directory path where files will be stored.
 
-**타입**: `string` (필수)
+**Type**: `string` (required)
 
 ```typescript
 drivers.fs({
@@ -137,18 +137,18 @@ drivers.fs({
 })
 ```
 
-**경로 예시**:
+**Path example**:
 
 <Card>
 <FileTree>
   <FileItem name="project-root/">
     <FileItem name="api/">
       <FileItem name="src/">
-        <FileItem name="sonamu.config.ts" description="여기서 실행" />
+        <FileItem name="sonamu.config.ts" description="Runs here" />
       </FileItem>
     </FileItem>
     <FileItem name="public/">
-      <FileItem name="uploaded/" description="파일 저장 위치">
+      <FileItem name="uploaded/" description="File storage location">
         <FileItem name="profile-images/" />
         <FileItem name="documents/" />
       </FileItem>
@@ -159,57 +159,57 @@ drivers.fs({
 
 #### visibility
 
-파일의 접근 권한을 설정합니다.
+Sets the access permissions for files.
 
-**타입**: `"public" | "private"`
+**Type**: `"public" | "private"`
 
-- `"public"`: 누구나 URL로 접근 가능
-- `"private"`: 인증된 사용자만 접근 가능
+- `"public"`: Anyone can access via URL
+- `"private"`: Only authenticated users can access
 
 ```typescript
 drivers.fs({
   location: path.join(import.meta.dirname, "/../public/uploaded"),
-  visibility: "public",  // 공개 파일
+  visibility: "public",  // Public files
   // ...
 })
 ```
 
 #### urlBuilder
 
-파일 URL을 생성하는 함수들을 정의합니다.
+Defines functions to generate file URLs.
 
 ```typescript
 drivers.fs({
   // ...
   urlBuilder: {
-    // 일반 URL 생성
+    // Generate regular URL
     generateURL(key) {
       return `/api/public/uploaded/${key}`;
     },
-    
-    // 서명된 URL 생성 (임시 접근)
+
+    // Generate signed URL (temporary access)
     generateSignedURL(key, expiresIn) {
-      // fs에서는 보통 일반 URL과 동일
+      // In fs, usually same as regular URL
       return `/api/public/uploaded/${key}`;
     },
   },
 })
 ```
 
-**generateURL**: 파일의 공개 URL을 생성합니다.
+**generateURL**: Generates the public URL for a file.
 
-- **key**: 파일의 고유 키 (예: `"profile-images/user-123.jpg"`)
-- **반환**: 접근 가능한 URL
+- **key**: Unique key for the file (e.g., `"profile-images/user-123.jpg"`)
+- **Returns**: Accessible URL
 
-**generateSignedURL**: 임시로 접근 가능한 서명된 URL을 생성합니다.
+**generateSignedURL**: Generates a temporarily accessible signed URL.
 
-- **key**: 파일의 고유 키
-- **expiresIn**: 만료 시간 (초, 선택적)
-- **반환**: 임시 URL
+- **key**: Unique key for the file
+- **expiresIn**: Expiration time (seconds, optional)
+- **Returns**: Temporary URL
 
-### s3 드라이버
+### s3 Driver
 
-AWS S3에 파일을 저장합니다. 프로덕션 환경에 적합합니다.
+Stores files on AWS S3. Suitable for production environments.
 
 ```typescript
 import { drivers } from "sonamu/storage";
@@ -235,9 +235,9 @@ export default defineConfig({
 
 #### credentials
 
-AWS 인증 정보를 설정합니다.
+Sets AWS authentication credentials.
 
-**타입**: (필수)
+**Type**: (required)
 
 ```typescript
 credentials: {
@@ -257,7 +257,7 @@ drivers.s3({
 ```
 
 <Warning>
-AWS 인증 정보는 반드시 환경 변수로 관리하세요. 코드에 직접 작성하지 마세요!
+Always manage AWS credentials via environment variables. Never write them directly in code!
 </Warning>
 
 **.env**:
@@ -269,30 +269,30 @@ AWS_SECRET_ACCESS_KEY=your_secret_key_here
 
 #### region
 
-S3 버킷이 위치한 AWS 리전입니다.
+The AWS region where the S3 bucket is located.
 
-**타입**: `string` (필수)
+**Type**: `string` (required)
 
 ```typescript
 drivers.s3({
   // ...
-  region: "ap-northeast-2",  // 서울 리전
+  region: "ap-northeast-2",  // Seoul region
 })
 ```
 
-**주요 리전**:
+**Major regions**:
 
-- `ap-northeast-2` - 서울
-- `us-east-1` - 버지니아 북부
-- `us-west-2` - 오레곤
-- `eu-west-1` - 아일랜드
-- `ap-southeast-1` - 싱가포르
+- `ap-northeast-2` - Seoul
+- `us-east-1` - N. Virginia
+- `us-west-2` - Oregon
+- `eu-west-1` - Ireland
+- `ap-southeast-1` - Singapore
 
 #### bucket
 
-파일을 저장할 S3 버킷 이름입니다.
+The S3 bucket name for storing files.
 
-**타입**: `string` (필수)
+**Type**: `string` (required)
 
 ```typescript
 drivers.s3({
@@ -301,7 +301,7 @@ drivers.s3({
 })
 ```
 
-**환경별로 다른 버킷 사용**:
+**Using different buckets per environment**:
 
 ```typescript
 drivers.s3({
@@ -312,23 +312,23 @@ drivers.s3({
 
 #### visibility
 
-S3 객체의 ACL(Access Control List)을 설정합니다.
+Sets the ACL (Access Control List) for S3 objects.
 
-**타입**: `"public" | "private"`
+**Type**: `"public" | "private"`
 
 ```typescript
 drivers.s3({
   // ...
-  visibility: "private",  // 인증 필요
+  visibility: "private",  // Authentication required
 })
 ```
 
-- `"public"`: 퍼블릭 읽기 허용 (`public-read` ACL)
-- `"private"`: 프라이빗 (`private` ACL, 기본값)
+- `"public"`: Public read allowed (`public-read` ACL)
+- `"private"`: Private (`private` ACL, default)
 
-## 실전 예시
+## Practical Examples
 
-### 개발 환경: fs만 사용
+### Development Environment: fs Only
 
 ```typescript
 import path from "path";
@@ -359,7 +359,7 @@ export default defineConfig({
 });
 ```
 
-### fs + S3 (환경별 전환)
+### fs + S3 (Environment-based Switching)
 
 ```typescript
 import path from "path";
@@ -369,10 +369,10 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // 환경 변수로 전환
-      
+      default: process.env.DRIVE_DISK ?? "fs",  // Switch via environment variable
+
       drivers: {
-        // 개발: 로컬 파일 시스템
+        // Development: Local file system
         fs: drivers.fs({
           location: path.join(import.meta.dirname, "/../public/uploaded"),
           visibility: "public",
@@ -385,8 +385,8 @@ export default defineConfig({
             },
           },
         }),
-        
-        // 프로덕션: AWS S3
+
+        // Production: AWS S3
         s3: drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
@@ -419,9 +419,9 @@ AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 ```
 
-### 다중 S3 버킷
+### Multiple S3 Buckets
 
-용도별로 여러 S3 버킷을 사용하는 경우:
+When using multiple S3 buckets for different purposes:
 
 ```typescript
 import { defineConfig } from "sonamu";
@@ -431,9 +431,9 @@ export default defineConfig({
   server: {
     storage: {
       default: "s3-public",
-      
+
       drivers: {
-        // 공개 파일용 (프로필 이미지 등)
+        // For public files (profile images, etc.)
         "s3-public": drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
@@ -443,8 +443,8 @@ export default defineConfig({
           bucket: "my-app-public",
           visibility: "public",
         }),
-        
-        // 프라이빗 파일용 (문서, 영수증 등)
+
+        // For private files (documents, receipts, etc.)
         "s3-private": drivers.s3({
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
@@ -461,21 +461,21 @@ export default defineConfig({
 });
 ```
 
-**사용 예시**:
+**Usage example**:
 
 ```typescript
 import { StorageManager } from "sonamu/storage";
 
-// 공개 이미지 업로드
+// Upload public image
 await StorageManager.use("s3-public").put("profile.jpg", buffer);
 
-// 프라이빗 문서 업로드
+// Upload private document
 await StorageManager.use("s3-private").put("invoice.pdf", buffer);
 ```
 
-## 파일 업로드 사용
+## File Upload Usage
 
-스토리지 설정 후 API에서 파일을 업로드할 수 있습니다.
+After storage configuration, you can upload files in your API.
 
 ```typescript
 import { api } from "sonamu";
@@ -485,36 +485,36 @@ import type { UploadedFile } from "sonamu";
 export class FileModel {
   @api({ httpMethod: "POST" })
   static async upload(file: UploadedFile) {
-    // 파일 저장
+    // Save file
     const key = `uploads/${Date.now()}-${file.filename}`;
     await StorageManager.put(key, file.buffer);
-    
-    // URL 생성
+
+    // Generate URL
     const url = await StorageManager.url(key);
-    
+
     return { key, url };
   }
 }
 ```
 
-→ [파일 업로드 가이드](/api-development/file-upload/setup)
+→ [File Upload Guide](/api-development/file-upload/setup)
 
-## S3 버킷 설정
+## S3 Bucket Setup
 
-S3를 사용하기 전에 AWS 콘솔에서 버킷을 생성하고 설정해야 합니다.
+Before using S3, you need to create and configure a bucket in AWS Console.
 
-### 1. 버킷 생성
+### 1. Create Bucket
 
 ```bash
-# AWS CLI로 버킷 생성
+# Create bucket with AWS CLI
 aws s3 mb s3://my-app-uploads --region ap-northeast-2
 ```
 
-### 2. CORS 설정
+### 2. CORS Configuration
 
-프론트엔드에서 직접 업로드하려면 CORS를 설정합니다.
+Configure CORS to allow direct uploads from frontend.
 
-**S3 콘솔 → 버킷 → 권한 → CORS 구성**:
+**S3 Console → Bucket → Permissions → CORS configuration**:
 
 ```json
 [
@@ -527,11 +527,11 @@ aws s3 mb s3://my-app-uploads --region ap-northeast-2
 ]
 ```
 
-### 3. IAM 권한
+### 3. IAM Permissions
 
-Sonamu가 S3에 접근하려면 적절한 IAM 권한이 필요합니다.
+Sonamu needs appropriate IAM permissions to access S3.
 
-**최소 권한 정책**:
+**Minimum permissions policy**:
 
 ```json
 {
@@ -554,12 +554,12 @@ Sonamu가 S3에 접근하려면 적절한 IAM 권한이 필요합니다.
 }
 ```
 
-## 주의사항
+## Cautions
 
-### 1. 환경 변수 보안
+### 1. Environment Variable Security
 
 ```typescript
-// ❌ 나쁜 예: 코드에 인증 정보 직접 작성
+// ❌ Bad: Credentials written directly in code
 drivers.s3({
   credentials: {
     accessKeyId: "AKIAXXXXXXXXXXXXXXXX",
@@ -567,7 +567,7 @@ drivers.s3({
   },
 })
 
-// ✅ 좋은 예: 환경 변수 사용
+// ✅ Good: Use environment variables
 drivers.s3({
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
@@ -576,31 +576,31 @@ drivers.s3({
 })
 ```
 
-### 2. visibility 선택
+### 2. Choosing visibility
 
 ```typescript
-// 공개 파일 (프로필 이미지, 상품 이미지 등)
+// Public files (profile images, product images, etc.)
 visibility: "public"
 
-// 프라이빗 파일 (개인 문서, 영수증, 계약서 등)
+// Private files (personal documents, receipts, contracts, etc.)
 visibility: "private"
 ```
 
-### 3. 파일 경로 설계
+### 3. File Path Design
 
 ```typescript
-// ✅ 좋은 예: 체계적인 경로 구조
+// ✅ Good: Systematic path structure
 const key = `users/${userId}/profile/${Date.now()}.jpg`;
 const key = `documents/${year}/${month}/${documentId}.pdf`;
 
-// ❌ 나쁜 예: 평평한 구조
+// ❌ Bad: Flat structure
 const key = `${Date.now()}.jpg`;
 ```
 
-## 다음 단계
+## Next Steps
 
-스토리지 설정을 완료했다면:
+After completing storage configuration:
 
-- [file-upload](/api-development/file-upload/setup) - API에서 파일 업로드 구현
-- [cache](/configuration/sonamu-config/cache) - 캐시 설정
-- [advanced-features/storage](/advanced-features/storage/storage-drivers) - 고급 스토리지 기능
+- [file-upload](/api-development/file-upload/setup) - Implement file upload in API
+- [cache](/configuration/sonamu-config/cache) - Cache settings
+- [advanced-features/storage](/advanced-features/storage/storage-drivers) - Advanced storage features
