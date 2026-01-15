@@ -89,13 +89,6 @@ export function DateSelectorMultiple({
     return `${format(value.from, dateFormat)} - ${format(value.to, dateFormat)}`;
   };
 
-  const isSaveEnabled = () => {
-    if (tempIsRangeMode) {
-      return !!(tempDateRange?.from && tempDateRange?.to);
-    }
-    return tempSingleDate !== undefined;
-  };
-
   const handleModeChange = (isRangeMode: boolean) => {
     setTempIsRangeMode(isRangeMode);
     if (isRangeMode) {
@@ -107,17 +100,15 @@ export function DateSelectorMultiple({
 
   const handleSave = () => {
     if (onChange) {
+      let newValue: DateSelectorValue | undefined;
+
       if (tempIsRangeMode && tempDateRange?.from && tempDateRange?.to) {
-        onChange(null, {
-          value: {
-            type: "range",
-            from: tempDateRange.from,
-            to: tempDateRange.to,
-          },
-        });
+        newValue = { type: "range", from: tempDateRange.from, to: tempDateRange.to };
       } else if (!tempIsRangeMode && tempSingleDate) {
-        onChange(null, { value: { type: "single", date: tempSingleDate } });
+        newValue = { type: "single", date: tempSingleDate };
       }
+
+      onChange(null, { value: newValue });
     }
     setIsOpen(false);
   };
@@ -183,13 +174,7 @@ export function DateSelectorMultiple({
             <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
               {SD("common.cancel")}
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleSave}
-              disabled={!isSaveEnabled()}
-              className="h-8 text-xs"
-            >
+            <Button variant="default" size="sm" onClick={handleSave} className="h-8 text-xs">
               {SD("common.save")}
             </Button>
           </div>

@@ -1,190 +1,342 @@
 "use client";
 
 import * as React from "react";
-import { type DateRange, DayPicker } from "react-day-picker";
+import { useEffect } from "react";
+import { type DateRange, DayPicker, type Matcher } from "react-day-picker";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
-
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
+// 상수
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+const YEAR_RANGE = {
+  START: 1900,
+  END_OFFSET: 10,
+} as const;
+
+const RANGE_CALENDAR_COUNT = 2;
+
+// 공통 아이콘 컴포넌트
+const iconComponents = {
+  IconLeft: ({ className, ...props }: { className?: string }) => (
+    <ChevronLeftIcon className={cn("size-4", className)} {...props} />
+  ),
+  IconRight: ({ className, ...props }: { className?: string }) => (
+    <ChevronRightIcon className={cn("size-4", className)} {...props} />
+  ),
+};
+
+// 타입 정의
+type CalendarMode = "single" | "range";
+
+interface UseCalendarMonthsProps {
+  mode?: CalendarMode;
+  selected?: Matcher | Matcher[];
+  month?: Date;
+  onMonthChange?: (date: Date) => void;
+}
+
+interface CalendarCaptionProps {
+  displayMonth: Date;
+  onMonthChange: (date: Date) => void;
+  isSecondCalendar?: boolean;
+  baseMonth?: Date;
+}
+
+// 유틸리티 함수
+function getNextMonth(date: Date): Date {
+  const next = new Date(date);
+  next.setMonth(date.getMonth() + 1);
+  return next;
+}
+
+function generateYears(): number[] {
+  const currentYear = new Date().getFullYear();
+  const length = currentYear - YEAR_RANGE.START + YEAR_RANGE.END_OFFSET + 1;
+  return Array.from({ length }, (_, i) => YEAR_RANGE.START + i);
+}
+
+// 캘린더 월 상태 관리 훅
+function useCalendarMonths({
+  mode,
+  selected,
+  month: controlledMonth,
+  onMonthChange,
+}: UseCalendarMonthsProps) {
+  const isRangeMode = mode === "range";
+
+  // 두 번째 캘린더의 월 상태만 관리 (첫 번째는 항상 부모가 관리)
+  const [secondMonth, setSecondMonth] = React.useState<Date>(() => {
+    if (!controlledMonth) {
+      return new Date();
+    }
+    if (isRangeMode) {
+      const rangeValue = selected as DateRange | undefined;
+      if (rangeValue?.to) {
+        return rangeValue.to;
+      }
+    }
+    return getNextMonth(controlledMonth);
+  });
+
+  // selected 값 변경시 두 번째 캘린더 월 상태 업데이트
+  useEffect(() => {
+    if (!selected || !isRangeMode || !controlledMonth) return;
+
+    const rangeValue = selected as DateRange | undefined;
+    if (rangeValue?.to) {
+      setSecondMonth(rangeValue.to);
+    } else if (rangeValue?.from) {
+      setSecondMonth(getNextMonth(rangeValue.from));
+    }
+  }, [selected, isRangeMode, controlledMonth]);
+
+  // 월 변경 핸들러 생성
+  const createMonthChangeHandler = React.useCallback(
+    (index: number) => (date: Date) => {
+      if (!onMonthChange) return;
+
+      if (index === 0) {
+        // 첫 번째 캘린더 변경
+        const newBaseMonth = new Date(date);
+
+        // 두 번째 캘린더가 첫 번째보다 이전이면 자동 조정
+        if (secondMonth <= newBaseMonth) {
+          setSecondMonth(getNextMonth(newBaseMonth));
+        }
+
+        onMonthChange(newBaseMonth);
+      } else if (index === 1) {
+        // 두 번째 캘린더 변경 (첫 번째보다 이후여야 함)
+        const newSecondMonth = new Date(date);
+        if (controlledMonth && newSecondMonth > controlledMonth) {
+          setSecondMonth(newSecondMonth);
+        }
+      }
+    },
+    [controlledMonth, secondMonth, onMonthChange],
+  );
+
+  const getMonthForIndex = React.useCallback(
+    (index: number): Date => {
+      return index === 0 ? controlledMonth || new Date() : secondMonth;
+    },
+    [controlledMonth, secondMonth],
+  );
+
+  return {
+    baseMonth: controlledMonth || new Date(),
+    secondMonth,
+    createMonthChangeHandler,
+    getMonthForIndex,
+  };
+}
+
+// Caption 컴포넌트
+function CalendarCaption({
+  displayMonth,
+  onMonthChange,
+  isSecondCalendar = false,
+  baseMonth,
+}: CalendarCaptionProps) {
+  const displayYear = displayMonth.getFullYear();
+  const displayMonthIndex = displayMonth.getMonth();
+  const years = React.useMemo(() => generateYears().reverse(), []);
+
+  const handleMonthChange = React.useCallback(
+    (value: string | undefined | null) => {
+      if (!value) return;
+      const newDate = new Date(displayMonth);
+      newDate.setMonth(parseInt(value));
+      onMonthChange(newDate);
+    },
+    [displayMonth, onMonthChange],
+  );
+
+  const handleYearChange = React.useCallback(
+    (value: string | undefined | null) => {
+      if (!value) return;
+      const newDate = new Date(displayMonth);
+      newDate.setFullYear(parseInt(value));
+      onMonthChange(newDate);
+    },
+    [displayMonth, onMonthChange],
+  );
+
+  return (
+    <div className="flex justify-center pt-1 relative items-center w-full gap-2 px-10">
+      <Select value={displayMonthIndex.toString()} onValueChange={handleMonthChange}>
+        <SelectTrigger className="h-7 text-xs w-[110px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MONTH_NAMES.map((month, monthIndex) => {
+            const isDisabled =
+              isSecondCalendar &&
+              baseMonth &&
+              displayYear === baseMonth.getFullYear() &&
+              monthIndex <= baseMonth.getMonth();
+
+            return (
+              <SelectItem key={month} value={monthIndex.toString()} disabled={isDisabled}>
+                {month}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+      <Select value={displayYear.toString()} onValueChange={handleYearChange}>
+        <SelectTrigger className="h-7 text-xs w-[90px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-h-[200px]">
+          {years.map((year) => {
+            const isDisabled = isSecondCalendar && baseMonth && year < baseMonth.getFullYear();
+
+            return (
+              <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
+                {year}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// 메인 컴포넌트
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
-  const getInitialMonth = () => {
-    if (props.mode === "range") {
-      const rangeValue = props.selected as DateRange | undefined;
-      return rangeValue?.from || new Date();
-    }
-    return (props.selected as Date | undefined) || new Date();
-  };
+  const isRangeMode = props.mode === "range";
 
-  const getInitialSecondMonth = () => {
-    const firstMonth = getInitialMonth();
-    const secondMonth = new Date(firstMonth);
-    secondMonth.setMonth(secondMonth.getMonth() + 1);
-    return secondMonth;
-  };
+  const { baseMonth, createMonthChangeHandler, getMonthForIndex } = useCalendarMonths({
+    mode: props.mode as CalendarMode,
+    selected: props.selected,
+    month: props.month,
+    onMonthChange: props.onMonthChange,
+  });
 
-  const [firstMonth, setFirstMonth] = React.useState<Date>(getInitialMonth());
-  const [secondMonth, setSecondMonth] = React.useState<Date>(getInitialSecondMonth());
+  // 공통 classNames 정의
+  const sharedClassNames = React.useMemo(
+    () => ({
+      months: "flex flex-col sm:flex-row gap-2",
+      month: "flex flex-col gap-4",
+      caption: "flex justify-center pt-1 relative items-center w-full",
+      caption_label: "text-sm font-medium hidden",
+      nav: "flex items-center gap-1",
+      nav_button: cn(
+        buttonVariants({ variant: "outline" }),
+        "size-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+      ),
+      nav_button_previous: "absolute left-1",
+      nav_button_next: "absolute right-1",
+      table: "w-full border-collapse mx-auto",
+      head_row: "flex justify-center",
+      head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
+      row: "flex w-full mt-2 justify-center",
+      cell: cn(
+        "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
+        isRangeMode
+          ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
+          : "[&:has([aria-selected])]:rounded-md",
+      ),
+      day: cn(
+        buttonVariants({ variant: "ghost" }),
+        "size-8 p-0 font-normal aria-selected:opacity-100",
+      ),
+      day_range_start:
+        "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
+      day_range_end: "day-range-end aria-selected:bg-primary aria-selected:text-primary-foreground",
+      day_selected:
+        "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+      day_today: "bg-accent text-accent-foreground",
+      day_outside:
+        "day-outside text-muted-foreground aria-selected:text-muted-foreground opacity-30",
+      day_disabled: "text-muted-foreground opacity-50",
+      day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+      day_hidden: "invisible",
+      ...classNames,
+    }),
+    [isRangeMode, classNames],
+  );
 
-  React.useEffect(() => {
-    if (props.selected) {
-      if (props.mode === "range") {
-        const rangeValue = props.selected as DateRange | undefined;
-        if (rangeValue?.from) {
-          setFirstMonth(rangeValue.from);
-          const newSecondMonth = new Date(rangeValue.from);
-          newSecondMonth.setMonth(newSecondMonth.getMonth() + 1);
-          setSecondMonth(newSecondMonth);
-        }
-      } else {
-        const dateValue = props.selected as Date | undefined;
-        if (dateValue) {
-          setFirstMonth(dateValue);
-        }
-      }
-    }
-  }, [props.selected, props.mode]);
+  // Caption 컴포넌트 생성 함수
+  const createCaptionComponent = React.useCallback(
+    (handleChange: (date: Date) => void, index: number) => {
+      return ({ displayMonth }: { displayMonth: Date }) => (
+        <CalendarCaption
+          displayMonth={displayMonth}
+          onMonthChange={handleChange}
+          isSecondCalendar={index === 1}
+          baseMonth={baseMonth}
+        />
+      );
+    },
+    [baseMonth],
+  );
 
-  // Generate years from 1900 to current year + 10
-  const years = Array.from({ length: new Date().getFullYear() - 1900 + 11 }, (_, i) => 1900 + i);
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  // range 모드
+  if (isRangeMode) {
+    const { numberOfMonths: _numberOfMonths, mode, month, onMonthChange, ...restProps } = props;
 
-  const isRangeMode = props.mode === "range" && props.numberOfMonths === 2;
+    return (
+      <div className={cn("flex gap-2", className)}>
+        {Array.from({ length: RANGE_CALENDAR_COUNT }, (_, index) => (
+          <DayPicker
+            key={index}
+            showOutsideDays={showOutsideDays}
+            className="p-3"
+            mode="range"
+            month={getMonthForIndex(index)}
+            onMonthChange={createMonthChangeHandler(index)}
+            classNames={sharedClassNames}
+            components={{
+              ...iconComponents,
+              Caption: createCaptionComponent(createMonthChangeHandler(index), index),
+            }}
+            {...restProps}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // single 모드
+  const { month: _month, onMonthChange: _onMonthChange, ...restProps } = props;
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
-      month={firstMonth}
-      onMonthChange={setFirstMonth}
-      classNames={{
-        months: "flex flex-col sm:flex-row gap-2",
-        month: "flex flex-col gap-4",
-        caption: "flex justify-center pt-1 relative items-center w-full",
-        caption_label: "text-sm font-medium hidden",
-        nav: "flex items-center gap-1",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "size-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse mx-auto",
-        head_row: "flex justify-center",
-        head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2 justify-center",
-        cell: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
-          props.mode === "range"
-            ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
-            : "[&:has([aria-selected])]:rounded-md",
-        ),
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "size-8 p-0 font-normal aria-selected:opacity-100",
-        ),
-        day_range_start:
-          "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
-        day_range_end:
-          "day-range-end aria-selected:bg-primary aria-selected:text-primary-foreground",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside: "day-outside text-muted-foreground aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
+      month={baseMonth}
+      onMonthChange={props.onMonthChange}
+      classNames={sharedClassNames}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeftIcon className={cn("size-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRightIcon className={cn("size-4", className)} {...props} />
-        ),
-        Caption: ({ displayMonth, displayIndex }) => {
-          // Determine which month state to use based on displayIndex
-          const currentDisplayMonth =
-            isRangeMode && displayIndex === 1 ? secondMonth : displayMonth;
-          const displayYear = currentDisplayMonth.getFullYear();
-          const displayMonthIndex = currentDisplayMonth.getMonth();
-
-          const handleMonthChange = (value: string | undefined | null) => {
-            if (!value) return;
-            const newDate = new Date(currentDisplayMonth);
-            newDate.setMonth(parseInt(value));
-
-            if (isRangeMode && displayIndex === 1) {
-              setSecondMonth(newDate);
-            } else {
-              setFirstMonth(newDate);
-            }
-          };
-
-          const handleYearChange = (value: string | undefined | null) => {
-            if (!value) return;
-            const newDate = new Date(currentDisplayMonth);
-            newDate.setFullYear(parseInt(value));
-
-            if (isRangeMode && displayIndex === 1) {
-              setSecondMonth(newDate);
-            } else {
-              setFirstMonth(newDate);
-            }
-          };
-
-          return (
-            <div className="flex justify-center pt-1 relative items-center w-full gap-2 px-10">
-              <Select value={displayMonthIndex.toString()} onValueChange={handleMonthChange}>
-                <SelectTrigger className="h-7 text-xs w-[110px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, index) => (
-                    <SelectItem key={month} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={displayYear.toString()} onValueChange={handleYearChange}>
-                <SelectTrigger className="h-7 text-xs w-[90px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {years.reverse().map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        },
+        ...iconComponents,
+        Caption: createCaptionComponent(props.onMonthChange || (() => {}), 0),
       }}
-      {...props}
+      {...restProps}
     />
   );
 }

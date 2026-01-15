@@ -1,5 +1,4 @@
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -117,14 +116,6 @@ function ComponentsTestPage() {
                 onChange={(_, data) => setEmptyDateValue(data.value)}
                 placeholder="날짜를 선택하세요"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEmptyDateValue(undefined)}
-                className="shrink-0"
-              >
-                Reset
-              </Button>
             </div>
             <div className="text-xs font-mono bg-muted p-2 rounded">
               {emptyDateValue ? JSON.stringify(emptyDateValue, null, 2) : "None"}
