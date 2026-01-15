@@ -235,13 +235,12 @@ const CodeBlock = ({
                   {lineSelection && (
                     <Checkbox
                       checked={selectedLines.every((line) => line)}
+                      label={selectedLines.every((line) => line) ? "전체 해제" : "전체 선택"}
                       onCheckedChange={() => {
                         const allSelected = selectedLines.every((line) => line);
                         setSelectedLines(selectedLines.map(() => !allSelected));
                       }}
-                    >
-                      {selectedLines.every((line) => line) ? "전체 해제" : "전체 선택"}
-                    </Checkbox>
+                    />
                   )}
                   <Button
                     size="xs"

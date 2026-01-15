@@ -293,6 +293,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           <div className="flex items-center pb-2" key={entity.id} id={entity.id}>
             <Checkbox
               checked={selected.entityIds.includes(entity.id)}
+              label={entity.id}
               onCheckedChange={(checked) => {
                 if (checked) {
                   setEntityIds([...selected.entityIds, entity.id]);
@@ -301,7 +302,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                 }
               }}
             />
-            <span className="ml-2">{entity.id}</span>
           </div>
         ))}
       </div>
@@ -331,6 +331,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                     selected.templateGroupName === group.name &&
                     selected.templateKeys.includes(templateKey)
                   }
+                  label={templateKey}
                   onCheckedChange={(checked) => {
                     if (checked) {
                       setTemplateKeys(group.name, [...selected.templateKeys, templateKey]);
@@ -342,7 +343,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                     }
                   }}
                 />
-                <span className="ml-2">{templateKey}</span>
               </div>
             ))}
           </div>
@@ -366,6 +366,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
             <div className="flex items-center pb-2" key={enumId}>
               <Checkbox
                 checked={selected.enumIds.includes(enumId)}
+                label={enumId}
                 onCheckedChange={(checked) => {
                   if (checked) {
                     setEnumIds([...selected.enumIds, enumId]);
@@ -374,7 +375,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   }
                 }}
               />
-              <span className="ml-2">{enumId}</span>
             </div>
           ))}
         </div>

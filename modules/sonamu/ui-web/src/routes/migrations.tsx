@@ -274,6 +274,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                       <Checkbox
                         disabled={conn.status === "error" || !!migrationStatusError}
                         checked={selectedConnKeys.includes(conn.connKey)}
+                        label={`${conn.name} / ${conn.status}`}
                         onCheckedChange={(checked) => {
                           if (checked) {
                             setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));
@@ -284,7 +285,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                           }
                         }}
                       />
-                      <span className="ml-2">{`${conn.name} / ${conn.status}`}</span>
                     </TableHead>
                   ))}
                 </TableRow>
@@ -308,6 +308,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                       <TableCell className="flex items-center gap-1">
                         <Checkbox
                           checked={selectedCodeNames.includes(code.name)}
+                          label={code.name}
                           onCheckedChange={(checked) => {
                             if (checked) {
                               setSelectedCodeNames(unique([...selectedCodeNames, code.name]));
@@ -318,7 +319,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                             }
                           }}
                         />
-                        <span className="ml-2">{code.name}</span>
                         &nbsp;{" "}
                         <Button
                           size="xs"
