@@ -5,7 +5,7 @@ dotenv.config();
 
 // 이 파일은 vitest.config.ts의 parallel 프로젝트 전용 globalSetup입니다.
 // parallel 프로젝트에서만 실행되므로 환경변수 체크 없이 바로 worker DB를 생성합니다.
-const WORKER_COUNT = 6;
+const WORKER_COUNT = 4;
 const TEMPLATE_DB = "miomock_test";
 
 const connectionConfig = {

@@ -41,25 +41,34 @@ export class ParallelDBManager {
     });
 
     try {
-      for (let i = 1; i <= workerCount; i++) {
-        const workerDbName = `${templateDb}_${i}`;
+      const workerDbNames = Array.from({ length: workerCount }, (_, i) => `${templateDb}_${i + 1}`);
 
-        // 기존 DB가 있으면 연결 끊고 삭제
-        await adminDb.raw(
-          `
-          SELECT pg_terminate_backend(pg_stat_activity.pid)
-          FROM pg_stat_activity
-          WHERE pg_stat_activity.datname = ?
-          AND pid <> pg_backend_pid()
-        `,
-          [workerDbName],
-        );
+      // 1. 기존 연결 종료 (병렬)
+      await Promise.all(
+        workerDbNames.map((dbName) =>
+          adminDb.raw(
+            `
+            SELECT pg_terminate_backend(pg_stat_activity.pid)
+            FROM pg_stat_activity
+            WHERE pg_stat_activity.datname = ?
+            AND pid <> pg_backend_pid()
+          `,
+            [dbName],
+          ),
+        ),
+      );
 
-        await adminDb.raw(`DROP DATABASE IF EXISTS "${workerDbName}"`);
+      // 2. 기존 DB 삭제 (병렬)
+      await Promise.all(
+        workerDbNames.map((dbName) => adminDb.raw(`DROP DATABASE IF EXISTS "${dbName}"`)),
+      );
 
-        // 템플릿에서 복제
-        await adminDb.raw(`CREATE DATABASE "${workerDbName}" TEMPLATE "${templateDb}"`);
-      }
+      // 3. 템플릿에서 복제 (병렬)
+      await Promise.all(
+        workerDbNames.map((dbName) =>
+          adminDb.raw(`CREATE DATABASE "${dbName}" TEMPLATE "${templateDb}"`),
+        ),
+      );
     } finally {
       await adminDb.destroy();
     }
@@ -81,22 +90,27 @@ export class ParallelDBManager {
     });
 
     try {
-      for (let i = 1; i <= workerCount; i++) {
-        const workerDbName = `${templateDb}_${i}`;
+      const workerDbNames = Array.from({ length: workerCount }, (_, i) => `${templateDb}_${i + 1}`);
 
-        // 연결 끊기
-        await adminDb.raw(
-          `
-          SELECT pg_terminate_backend(pg_stat_activity.pid)
-          FROM pg_stat_activity
-          WHERE pg_stat_activity.datname = ?
-          AND pid <> pg_backend_pid()
-        `,
-          [workerDbName],
-        );
+      // 연결 종료 (병렬)
+      await Promise.all(
+        workerDbNames.map((dbName) =>
+          adminDb.raw(
+            `
+            SELECT pg_terminate_backend(pg_stat_activity.pid)
+            FROM pg_stat_activity
+            WHERE pg_stat_activity.datname = ?
+            AND pid <> pg_backend_pid()
+          `,
+            [dbName],
+          ),
+        ),
+      );
 
-        await adminDb.raw(`DROP DATABASE IF EXISTS "${workerDbName}"`);
-      }
+      // DB 삭제 (병렬)
+      await Promise.all(
+        workerDbNames.map((dbName) => adminDb.raw(`DROP DATABASE IF EXISTS "${dbName}"`)),
+      );
     } finally {
       await adminDb.destroy();
     }
