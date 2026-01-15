@@ -399,12 +399,10 @@ export class Migrator {
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
 
-    // 테스트 상황에서는 트랜잭션을 초기화해야 합니다.
-    // 병렬 테스트 모드에서는 DB.destroy()를 호출하지 않습니다.
-    // pg_terminate_backend가 템플릿 DB 연결을 처리하고,
-    // worker DB 연결은 유지되어야 다른 워커 테스트가 정상 동작합니다.
+    // 테스트 상황에서는 트랜잭션을 초기화하고, 새 데이터베이스 커넥션을 가져와야 함
     if (isTest()) {
       await DB.clearTestTransaction();
+      // 병렬 테스트 모드에서는 worker DB 연결 유지
       if (process.env.SONAMU_PARALLEL_TEST !== "true") {
         await DB.destroy();
       }

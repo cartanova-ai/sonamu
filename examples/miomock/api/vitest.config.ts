@@ -16,7 +16,7 @@ export default defineConfig({
     restoreMocks: true,
     pool: "forks",
     maxWorkers,
-    isolate: false, // worker 재사용 → 초기화 오버헤드 감소
+    isolate: false,
     typecheck: {
       enabled: true,
       tsconfig: "./tsconfig.json",

@@ -31,10 +31,6 @@ import { getSecrets, type SonamuSecrets } from "./secret";
 
 class SonamuClass {
   public isInitialized: boolean = false;
-  /**
-   * Sonamu가 테스팅 모드로 초기화되었는지 여부입니다.
-   * 병렬 테스트에서 worker DB 사용 여부를 결정할 때 참조됩니다.
-   */
   public forTesting: boolean = false;
   public asyncLocalStorage: AsyncLocalStorage<{
     context: Context;
@@ -158,8 +154,6 @@ class SonamuClass {
     apiRootPath?: AbsolutePath,
     forTesting: boolean = false,
   ) {
-    // forTesting 상태를 먼저 저장합니다. (isInitialized 체크 전에)
-    // migrator.test.ts처럼 forTesting: false로 재초기화하는 경우를 위해 필요합니다.
     this.forTesting = forTesting;
 
     if (this.isInitialized) {

@@ -47,8 +47,6 @@ export class DBClass {
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
       // 병렬 테스트 모드: worker별 DB 사용
-      // SONAMU_PARALLEL_TEST 환경변수만으로 판단합니다.
-      // forTesting: false인 테스트(migrator, syncer 등)도 병렬로 실행할 수 있습니다.
       if (process.env.SONAMU_PARALLEL_TEST === "true") {
         return this.getWorkerDB(dbConfig);
       }
