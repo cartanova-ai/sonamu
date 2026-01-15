@@ -666,24 +666,39 @@ async register(params: {
 ### 4. React에서 즉시 사용
 
 ```tsx
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input, Button } from "@sonamu-kit/react-components/components";
 import { UserService } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
 
 function RegisterForm() {
-  const registerMutation = useMutation({
-    mutationFn: UserService.register,
+  const { register, submit } = useTypeForm(UserSaveParams, {
+    email: "",
+    username: "",
+    password: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    const { user } = await registerMutation.mutateAsync({
-      email: formData.get("email") as string,
-      username: formData.get("username") as string,
-      password: formData.get("password") as string,
-    });
+  const saveMutation = UserService.useSaveMutation();
 
-    console.log("Registered:", user.username); // ✅ 타입 안전
-  };
+  const handleSubmit = submit(async (form) => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: ([userId]) => {
+          console.log("Registered:", userId); // ✅ 타입 안전
+        },
+      },
+    );
+  });
 
-  return <form onSubmit={handleSubmit}>...</form>;
+  return (
+    <div>
+      <Input placeholder="이메일" {...register("email")} />
+      <Input placeholder="이름" {...register("username")} />
+      <Input type="password" placeholder="비밀번호" {...register("password")} />
+      <Button onClick={handleSubmit}>등록</Button>
+    </div>
+  );
 }
 ```
 
