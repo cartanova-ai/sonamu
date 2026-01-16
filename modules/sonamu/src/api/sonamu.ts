@@ -675,103 +675,106 @@ class SonamuClass {
     config: SonamuFastifyConfig,
   ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
     return async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
-      (api.options.guards ?? []).every((guard) => config.guardHandler(guard, request, api));
-
-      // 파라미터 정보로 zod 스키마 빌드
-      const { getZodObjectFromApi } = await import("./code-converters");
-      const ReqType = getZodObjectFromApi(api, this.syncer.types);
-
-      // request 파싱
-      const which = api.options.httpMethod === "GET" ? "query" : "body";
-      let reqBody: {
-        [key: string]: unknown;
-      };
-      // 파일 업로드 있는 경우 임시 데이터
-      const { UploadedFile } = await import("../storage/uploaded-file");
-      const uploaded: {
-        files: InstanceType<typeof UploadedFile>[];
-      } = {
-        files: [] as InstanceType<typeof UploadedFile>[],
-      };
-
-      try {
-        const body = (request[which] ?? {}) as Record<string, unknown>;
-        if (api.uploadOptions) {
-          // 업로드 옵션이 있는 경우 파트로 분리하여 file 또는 field로 구분 처리
-          // file은 UploadedFile 인스턴스로 변환
-          // field는 body에 추가
-          const parts = request.parts({
-            limits: api.uploadOptions.limits,
-          });
-
-          // FormData의 field들을 임시로 저장
-          const fields: Record<string, string> = {};
-
-          for await (const part of parts) {
-            if (part.type === "file") {
-              const uploadedFile = new UploadedFile(part);
-              // CRITICAL: 파일 스트림을 즉시 consume해야 다음 part로 넘어갈 수 있음
-              // 이 호출이 없으면 종종 multipart 파싱이 pending 상태로 타임아웃 발생
-              await uploadedFile.toBuffer();
-              uploaded.files.push(uploadedFile);
-            } else if (part.type === "field") {
-              fields[part.fieldname] = String(part.value);
-            }
-          }
-
-          // qs로 중첩 구조 파싱: params[category] → { params: { category: "test" } }
-          const qs = await import("qs");
-          const parsed = qs.default.parse(fields);
-          Object.assign(body, parsed);
-        }
-
-        const { fastifyCaster } = await import("./caster");
-        reqBody = fastifyCaster(ReqType).parse(body);
-      } catch (e) {
-        const { ZodError } = await import("zod");
-        if (e instanceof ZodError) {
-          const { humanizeZodError } = await import("../utils/zod-error");
-          const messages = humanizeZodError(e)
-            .map((issue) => issue.message)
-            .join(" ");
-          const { BadRequestException } = await import("../exceptions/so-exceptions");
-          throw new BadRequestException(messages as LocalizedString, {
-            zodError: e,
-          });
-        } else {
-          throw e;
-        }
-      }
-
-      // Content-Type
-      reply.type(api.options.contentType ?? "application/json");
-
-      // Cache-Control 헤더 설정
-      const apiCacheConfig = this.getApiCacheControl(api, request, config);
-      if (apiCacheConfig) {
-        applyCacheHeaders(reply, apiCacheConfig);
-      }
-
       // Context 생성
       const context: Context = await this.createContext(config, request, reply);
 
-      // 업로드 옵션이 있는 경우 파일 데이터를 Context에 추가
-      if (api.uploadOptions) {
-        context.files = uploaded.files;
-      }
+      return this.asyncLocalStorage.run({ context }, async () => {
+        // guards 처리
+        (api.options.guards ?? []).every((guard) => config.guardHandler(guard, request, api));
 
-      // 모델 메소드 args 생성하여 호출
-      const { ApiParamType } = await import("../types/types");
-      const args = api.parameters.map((param) => {
-        // Context 인젝션
-        if (ApiParamType.isContext(param.type)) {
-          return context;
-        } else {
-          return reqBody[param.name];
+        // 파라미터 정보로 zod 스키마 빌드
+        const { getZodObjectFromApi } = await import("./code-converters");
+        const ReqType = getZodObjectFromApi(api, this.syncer.types);
+
+        // request 파싱
+        const which = api.options.httpMethod === "GET" ? "query" : "body";
+        let reqBody: {
+          [key: string]: unknown;
+        };
+        // 파일 업로드 있는 경우 임시 데이터
+        const { UploadedFile } = await import("../storage/uploaded-file");
+        const uploaded: {
+          files: InstanceType<typeof UploadedFile>[];
+        } = {
+          files: [] as InstanceType<typeof UploadedFile>[],
+        };
+
+        try {
+          const body = (request[which] ?? {}) as Record<string, unknown>;
+          if (api.uploadOptions) {
+            // 업로드 옵션이 있는 경우 파트로 분리하여 file 또는 field로 구분 처리
+            // file은 UploadedFile 인스턴스로 변환
+            // field는 body에 추가
+            const parts = request.parts({
+              limits: api.uploadOptions.limits,
+            });
+
+            // FormData의 field들을 임시로 저장
+            const fields: Record<string, string> = {};
+
+            for await (const part of parts) {
+              if (part.type === "file") {
+                const uploadedFile = new UploadedFile(part);
+                // CRITICAL: 파일 스트림을 즉시 consume해야 다음 part로 넘어갈 수 있음
+                // 이 호출이 없으면 종종 multipart 파싱이 pending 상태로 타임아웃 발생
+                await uploadedFile.toBuffer();
+                uploaded.files.push(uploadedFile);
+              } else if (part.type === "field") {
+                fields[part.fieldname] = String(part.value);
+              }
+            }
+
+            // qs로 중첩 구조 파싱: params[category] → { params: { category: "test" } }
+            const qs = await import("qs");
+            const parsed = qs.default.parse(fields);
+            Object.assign(body, parsed);
+          }
+
+          const { fastifyCaster } = await import("./caster");
+          reqBody = fastifyCaster(ReqType).parse(body);
+        } catch (e) {
+          const { ZodError } = await import("zod");
+          if (e instanceof ZodError) {
+            const { humanizeZodError } = await import("../utils/zod-error");
+            const messages = humanizeZodError(e)
+              .map((issue) => issue.message)
+              .join(" ");
+            const { BadRequestException } = await import("../exceptions/so-exceptions");
+            throw new BadRequestException(messages as LocalizedString, {
+              zodError: e,
+            });
+          } else {
+            throw e;
+          }
         }
-      });
 
-      return this.invokeModelMethod(api, args, context, reply);
+        // Content-Type
+        reply.type(api.options.contentType ?? "application/json");
+
+        // Cache-Control 헤더 설정
+        const apiCacheConfig = this.getApiCacheControl(api, request, config);
+        if (apiCacheConfig) {
+          applyCacheHeaders(reply, apiCacheConfig);
+        }
+
+        if (api.uploadOptions) {
+          // 업로드 옵션이 있는 경우 파일 데이터를 Context에 추가 (mutable 하게 추가함)
+          context.files = uploaded.files;
+        }
+
+        // 모델 메소드 args 생성하여 호출
+        const { ApiParamType } = await import("../types/types");
+        const args = api.parameters.map((param) => {
+          // Context 인젝션
+          if (ApiParamType.isContext(param.type)) {
+            return context;
+          } else {
+            return reqBody[param.name];
+          }
+        });
+
+        return this.invokeModelMethod(api, args, reply);
+      });
     };
   }
 
@@ -837,34 +840,33 @@ class SonamuClass {
     // Context 생성 (기존 메소드 재사용)
     const context = await this.createContext(config, request, reply);
 
-    // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
-    const { ApiParamType } = await import("../types/types");
-    let paramsIndex = 0;
-    const args = api.parameters.map((param) => {
-      if (ApiParamType.isContext(param.type)) {
-        return context;
-      }
-      return params[paramsIndex++];
-    });
+    return this.asyncLocalStorage.run({ context }, async () => {
+      // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
+      const { ApiParamType } = await import("../types/types");
+      let paramsIndex = 0;
+      const args = api.parameters.map((param) => {
+        if (ApiParamType.isContext(param.type)) {
+          return context;
+        }
+        return params[paramsIndex++];
+      });
 
-    // 모델 메서드 호출 (기존 메서드 재사용)
-    return this.invokeModelMethod(api, args, context, reply);
+      // 모델 메서드 호출 (기존 메서드 재사용)
+      return this.invokeModelMethod(api, args, reply);
+    });
   }
 
   async invokeModelMethod(
     api: ExtendedApi,
     args: unknown[],
-    context: Context,
     reply: FastifyReply,
   ): Promise<unknown> {
     const model = this.syncer.models[api.modelName];
-    return this.asyncLocalStorage.run({ context }, async () => {
-      // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
-      const result = await (model as any)[api.methodName].apply(model, args);
-      reply.type(api.options.contentType ?? "application/json");
+    // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
+    const result = await (model as any)[api.methodName].apply(model, args);
+    reply.type(api.options.contentType ?? "application/json");
 
-      return result;
-    });
+    return result;
   }
 
   async createContext(
@@ -898,8 +900,8 @@ class SonamuClass {
             // auth
             user: request.user ?? null,
             passport: {
-              login: request.login.bind(request) as AuthContext["passport"]["login"],
-              logout: request.logout.bind(request) as AuthContext["passport"]["logout"],
+              login: request.login?.bind(request) as AuthContext["passport"]["login"],
+              logout: request.logout?.bind(request) as AuthContext["passport"]["logout"],
             },
           },
           request,
