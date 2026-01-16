@@ -41,8 +41,12 @@ import { Sonamu } from "sonamu";
 const DEFAULT_LOCALE = "${defaultLocale}";
 const SUPPORTED_LOCALES = ${JSON.stringify(supportedLocales)};
 function getCurrentLocale(): string {
-  const ctx = Sonamu.getContext();
-  return ctx?.locale ?? DEFAULT_LOCALE;
+  try {
+    const ctx = Sonamu.getContext();
+    return ctx.locale ?? DEFAULT_LOCALE;
+  } catch (_) {
+    return DEFAULT_LOCALE;
+  }
 }
 `.trim()
         : `

@@ -3,8 +3,12 @@ import { Sonamu } from "sonamu";
 const DEFAULT_LOCALE = "ko";
 const SUPPORTED_LOCALES = ["ko", "en"];
 function getCurrentLocale(): string {
-  const ctx = Sonamu.getContext();
-  return ctx?.locale ?? DEFAULT_LOCALE;
+  try {
+    const ctx = Sonamu.getContext();
+    return ctx.locale ?? DEFAULT_LOCALE;
+  } catch (_) {
+    return DEFAULT_LOCALE;
+  }
 }
 
 import en from "./en";
