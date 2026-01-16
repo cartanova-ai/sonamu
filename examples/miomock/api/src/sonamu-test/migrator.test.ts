@@ -553,7 +553,6 @@ describe("Migrator test", () => {
         const status = await migrator.getStatus();
 
         const alterCode = status.preparedCodes.find((code) => code.table === "users");
-        console.log(alterCode);
         expect(alterCode).toBeDefined();
         expect(alterCode?.title).toBe("alter_users_alter4");
 
