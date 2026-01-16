@@ -1,6 +1,12 @@
-import type { SonamuAuth, SonamuContextValue, SonamuFile } from "@sonamu-kit/react-components";
+import {
+  type SonamuAuth,
+  type SonamuContextValue,
+  type SonamuFile,
+  SonamuProvider,
+} from "@sonamu-kit/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 import { FileService, UserService } from "@/services/services.generated";
@@ -51,11 +57,13 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 
   // Uploader 설정
   const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+    const uploadMutation = FileService.useUploadMutation();
+
     if (files.length === 0) {
       return [];
     }
 
-    const result = await FileService.useUploadMutation().mutateAsync({ files });
+    const result = await uploadMutation.mutateAsync({ files });
     return result.files;
   };
 
@@ -63,4 +71,9 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
 
   return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+}
+
+export function SonamuProviderWrapper({ children }: { children: ReactNode }) {
+  const sonamuConfig = createSonamuConfig();
+  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
 }

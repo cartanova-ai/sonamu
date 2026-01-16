@@ -1,10 +1,7 @@
-import { SonamuProvider } from "@sonamu-kit/react-components";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import type React from "react";
 import App from "@/App";
-import { createSonamuConfig } from "@/config/sonamu-provider.config";
-import type { MergedDictionary } from "@/i18n/sd.generated";
+import { SonamuProviderWrapper } from "@/contexts/sonamu-provider";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -44,9 +41,4 @@ function RootComponent() {
       </body>
     </html>
   );
-}
-
-function SonamuProviderWrapper({ children }: { children: React.ReactNode }) {
-  const sonamuConfig = createSonamuConfig();
-  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
 }
