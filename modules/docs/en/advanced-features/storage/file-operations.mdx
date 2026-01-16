@@ -37,8 +37,7 @@ Used when creating file upload APIs.
 import { BaseModel, api, upload, Sonamu } from "sonamu";
 
 class UserModelClass extends BaseModel {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
@@ -70,8 +69,7 @@ await fetch('/api/user/uploadAvatar', {
 
 ```typescript
 class PostModelClass extends BaseModel {
-  @upload({ mode: 'multiple' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadImages(postId: number) {
     const { files } = Sonamu.getContext();
 
@@ -105,22 +103,37 @@ await fetch('/api/post/uploadImages?postId=1', {
 });
 ```
 
-## UploadContext
+## Accessing Files
 
-Access uploaded files with **Sonamu.getContext()**.
+Access uploaded files through the `files` property of **Sonamu.getContext()**.
 
 ```typescript
-type UploadContext = {
-  file?: UploadedFile;     // single mode
-  files: UploadedFile[];   // multiple mode
+// Access uploaded files from Context
+const { files } = Sonamu.getContext();
+
+// files is UploadedFile[] (optional array)
+type Context = {
+  // ...
+  files?: UploadedFile[];
 };
+```
+
+**Single file access**: Use the first element of the array
+```typescript
+const file = files?.[0];  // First file
+```
+
+**Multiple file access**: Iterate through the array
+```typescript
+for (const file of files) {
+  // Process each file
+}
 ```
 
 ### Usage Example
 
 ```typescript
-@upload({ mode: 'single' })
-@api({ httpMethod: 'POST' })
+@upload()
 async upload() {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // Use first file
@@ -268,7 +281,7 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 
 ```typescript
 class UserModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -312,7 +325,7 @@ class UserModelClass extends BaseModel {
 
 ```typescript
 class PostModelClass extends BaseModel {
-  @upload({ mode: 'multiple' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -350,7 +363,7 @@ class PostModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
     const { files } = Sonamu.getContext();
@@ -390,7 +403,7 @@ class FileModelClass extends BaseModel {
 
 ```typescript
 class MediaModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async uploadMedia() {
     const { files } = Sonamu.getContext();
@@ -436,7 +449,7 @@ class MediaModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @upload({ mode: 'single' })
+  @upload()
   @api({ httpMethod: 'POST' })
   async upload(visibility: 'public' | 'private', ctx: Context) {
     const { files } = Sonamu.getContext();

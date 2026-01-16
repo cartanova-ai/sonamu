@@ -103,15 +103,31 @@ await fetch('/api/post/uploadImages?postId=1', {
 });
 ```
 
-## UploadContext
+## 파일 접근
 
 **Sonamu.getContext()**의 `files` 속성으로 업로드된 파일에 접근합니다.
 
 ```typescript
-type UploadContext = {
-  file?: UploadedFile;     // single 모드
-  files: UploadedFile[];   // multiple 모드
+// Context에서 업로드된 파일 접근
+const { files } = Sonamu.getContext();
+
+// files는 UploadedFile[] (optional 배열)
+type Context = {
+  // ...
+  files?: UploadedFile[];
 };
+```
+
+**단일 파일 접근**: 배열의 첫 번째 요소 사용
+```typescript
+const file = files?.[0];  // 첫 번째 파일
+```
+
+**다중 파일 접근**: 배열 순회
+```typescript
+for (const file of files) {
+  // 각 파일 처리
+}
 ```
 
 ### 사용 예제
