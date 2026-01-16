@@ -136,16 +136,7 @@ Typically, when building backend APIs and using them on the frontend, type synch
 
 Sonamu provides Puri, a type-safe query builder based on Knex. Table names, column names, and relationships are all type-checked.
 
-<Frame caption="🎬 Writing type-safe queries with Puri - table name, column name autocomplete">
-  <video
-    autoPlay
-    muted
-    loop
-    playsInline
-    controls
-    className="w-full rounded-xl"
-    src="/images/introduction-puri.mp4"
-  ></video>
+<Frame caption="🎬 Needed: Writing type-safe queries with Puri - table name, column name autocomplete">
 </Frame>
 
 ```typescript
@@ -285,27 +276,25 @@ Sonamu includes powerful built-in tools for testing.
 
 ### Fixture System
 
-Easily create and reuse test data.
+Easily load pre-seeded test data from Fixture DB with `createFixtureLoader`.
 
 ```typescript
-// Define Fixtures
-export const UserFixtures = {
-  admin: {
-    email: "admin@test.com",
-    username: "admin",
-    role: "admin",
-  },
-  user: {
-    email: "user@test.com",
-    username: "user",
-    role: "user",
-  },
-};
+// fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "../application/user/user.model";
+
+export const loadFixtures = createFixtureLoader({
+  adminUser: async () => UserModel.findById("A", 1),
+  normalUser: async () => UserModel.findById("A", 2),
+});
 
 // Use in tests
+import { loadFixtures } from "./fixture";
+
 test("Admin can view all users", async () => {
-  const admin = await createUser(UserFixtures.admin);
-  // ...
+  const f = await loadFixtures(["adminUser"]);
+
+  expect(f.adminUser.role).toBe("admin");
 });
 ```
 
