@@ -20,6 +20,7 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   const { data: user, isLoading, refetch } = UserService.useMe();
   const loginMutation = UserService.useLoginMutation();
   const logoutMutation = UserService.useLogoutMutation();
+  const uploadMutation = FileService.useUploadMutation();
 
   const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
     user: user ?? null,
@@ -57,8 +58,6 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
 
   // Uploader 설정
   const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
-    const uploadMutation = FileService.useUploadMutation();
-
     if (files.length === 0) {
       return [];
     }
