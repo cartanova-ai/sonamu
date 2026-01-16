@@ -221,22 +221,22 @@ Search for Naite keys in Workspace Symbol Search.
   ></video>
 </Frame>
 
-## Unused Key Warnings
+## Undefined Key Warnings
 
-Displays warnings for Naite keys that are defined but not used.
+Displays warnings when `Naite.get()` or `Naite.del()` references a key that hasn't been defined with `Naite.t()`. Warnings can be viewed in the VS Code Problems panel (Cmd+Shift+M).
 
-<Frame caption="Unused Key Warnings">
-  {/* Diagnostic warning display screen */}
+<Frame caption="Undefined Key Warnings">
+  <img src="/images/vscode-extension15.png" alt="Undefined Key Warnings" style={{ width: '70%', borderRadius: '8px' }} />
 </Frame>
 
-This feature is useful when cleaning up test code.
+This feature is useful for quickly finding typos or missing keys.
 
 ## View Container
 
 The Extension adds a "Naite" View Container to the panel area.
 
 <Frame caption="Naite View Container">
-  {/* View Container screen */}
+  <img src="/images/vscode-extension16.png" alt="Naite View Container" style={{ width: '70%', borderRadius: '8px' }} />
 </Frame>
 
 You can quickly check Trace information from this panel.
