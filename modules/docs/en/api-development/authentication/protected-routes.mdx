@@ -13,10 +13,10 @@ Learn how to implement role-based access control for API endpoints using Sonamu'
     
     Simple permission setup
   </Card>
-  <Card title="Built-in Guards" icon="shield-halved">
+  <Card title="Guard Types" icon="shield-halved">
     admin, user, query
-    
-    Provided by default
+
+    Type definitions provided
   </Card>
   <Card title="Custom Guards" icon="wand-magic-sparkles">
     Business logic
@@ -61,9 +61,9 @@ Guards are **functions that verify permissions before an API method executes**. 
 3. 403 Forbidden response
 ```
 
-## Built-in Guards
+## Guard Types
 
-Sonamu provides three Guards by default.
+Sonamu has three Guard types (`user`, `admin`, `query`) defined. These are type-safe keys, and **the actual verification logic must be implemented in `guardHandler` in `sonamu.config.ts`**.
 
 ### user Guard
 
@@ -270,137 +270,177 @@ class ReportModel extends BaseModelClass {
 }
 ```
 
-## Implementing Custom Guards
+## Implementing Guards
 
-You can create custom Guards that match your project's business logic.
+Guards are implemented in `guardHandler` in `sonamu.config.ts`. Sonamu automatically executes `guardHandler` for each API call.
 
-### Registering Guards
+### Implementing guardHandler
 
 ```typescript
-// guards/index.ts
-import type { AppContext } from "../types/context";
+// sonamu.config.ts
+import type { GuardKey } from "sonamu";
+import type { FastifyRequest } from "fastify";
+import { Sonamu } from "sonamu";
 
-export type GuardFunction = (context: AppContext) => Promise<boolean> | boolean;
+export default {
+  // ... other settings
 
-/**
- * Guards registry
- */
-export const guards: Record<string, GuardFunction> = {
-  /**
-   * user Guard: Login required
-   */
-  user: (context) => {
-    return context.user !== null;
-  },
-  
-  /**
-   * admin Guard: Admin permission required
-   */
-  admin: (context) => {
-    return context.user?.role === "admin";
-  },
-  
-  /**
-   * query Guard: Query parameter verification
-   */
-  query: (context) => {
-    // Implementation varies by project
-    // Example: API key verification
-    const apiKey = context.request.query.apiKey;
-    return apiKey === process.env.API_KEY;
-  },
-  
-  /**
-   * verified Guard: Email verified users only
-   */
-  verified: (context) => {
-    if (!context.user) return false;
-    return context.user.email_verified === true;
-  },
-  
-  /**
-   * premium Guard: Premium members only
-   */
-  premium: (context) => {
-    if (!context.user) return false;
-    return context.user.subscription_tier === "premium";
-  },
-  
-  /**
-   * owner Guard: Resource ownership check (dynamic)
-   */
-  owner: async (context) => {
-    // This Guard needs resource ID as parameter
-    // So verifying inside API method is more appropriate
-    return true;
+  api: {
+    route: {
+      prefix: "/api",
+    },
+    server: {
+      custom: (server) => {
+        // Fastify server customization
+      },
+    },
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        // Context extension
+      }),
+
+      /**
+       * Guards verification logic
+       *
+       * @param guard - Guard key ("user", "admin", "query", etc.)
+       * @param request - Fastify Request object
+       * @param api - API metadata
+       * @returns true to pass, false or throw exception to block
+       */
+      guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
+        // Get user information from Sonamu Context
+        const context = Sonamu.getContext();
+
+        switch (guard) {
+          case "user":
+            // Only logged-in users can access
+            if (!context.user) {
+              throw new Error("Authentication required");
+            }
+            return true;
+
+          case "admin":
+            // Only administrators can access
+            if (!context.user || context.user.role !== "admin") {
+              throw new Error("Admin access required");
+            }
+            return true;
+
+          case "query":
+            // Verify API key from query parameter
+            const apiKey = request.query.apiKey;
+            if (apiKey !== process.env.API_KEY) {
+              throw new Error("Invalid API key");
+            }
+            return true;
+
+          default:
+            // Block unknown Guards
+            throw new Error(`Unknown guard: ${guard}`);
+        }
+      },
+    },
   },
 };
 ```
 
-### Guards Middleware
+### Adding Custom Guard Types
 
-Create middleware to integrate Guards with Fastify.
+To add project-specific Guards, extend the `GuardKeys` interface.
 
 ```typescript
-// middleware/guards.middleware.ts
-import type { FastifyRequest, FastifyReply } from "fastify";
-import { Sonamu } from "sonamu";
-import { guards } from "../guards";
-import { registeredApis } from "sonamu";
-
-/**
- * Guards middleware
- * 
- * Checks API's guards option and executes each Guard function.
- */
-export async function guardsMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  // Find API by current request path and method
-  const path = request.url.split("?")[0];
-  const method = request.method;
-  
-  const api = registeredApis.find(
-    (api) => api.path === path && api.options.httpMethod === method
-  );
-  
-  if (!api || !api.options.guards || api.options.guards.length === 0) {
-    // Pass if no Guards
-    return;
-  }
-  
-  const context = Sonamu.getContext();
-  
-  // Execute all Guards
-  for (const guardKey of api.options.guards) {
-    const guardFn = guards[guardKey];
-    
-    if (!guardFn) {
-      console.warn(`Guard "${guardKey}" not found`);
-      continue;
-    }
-    
-    const passed = await guardFn(context);
-    
-    if (!passed) {
-      return reply.status(403).send({
-        error: "Forbidden",
-        message: `Guard "${guardKey}" failed`,
-      });
-    }
+// types/guards.ts
+declare module "sonamu" {
+  interface GuardKeys {
+    verified: true;      // Email verified users
+    premium: true;       // Premium members
+    moderator: true;     // Moderators
   }
 }
 ```
 
-### Registering Middleware on Server
+Now implement new Guards in `guardHandler`.
 
 ```typescript
-// server.ts
-import { guardsMiddleware } from "./middleware/guards.middleware";
+// sonamu.config.ts
+guardHandler: (guard, request, api) => {
+  const context = Sonamu.getContext();
 
-app.addHook("preHandler", guardsMiddleware);
+  switch (guard) {
+    case "user":
+      if (!context.user) {
+        throw new Error("Authentication required");
+      }
+      return true;
+
+    case "admin":
+      if (!context.user || context.user.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      return true;
+
+    case "verified":
+      // Email verified users only
+      if (!context.user || !context.user.email_verified) {
+        throw new Error("Email verification required");
+      }
+      return true;
+
+    case "premium":
+      // Premium members only
+      if (!context.user || context.user.subscription_tier !== "premium") {
+        throw new Error("Premium subscription required");
+      }
+      return true;
+
+    case "moderator":
+      // Moderators or administrators
+      if (!context.user ||
+          (context.user.role !== "moderator" && context.user.role !== "admin")) {
+        throw new Error("Moderator access required");
+      }
+      return true;
+
+    default:
+      throw new Error(`Unknown guard: ${guard}`);
+  }
+},
 ```
+
+### Dynamic Verification
+
+When you need to verify permissions dynamically based on API parameters, you can use the `api` parameter in `guardHandler`.
+
+```typescript
+guardHandler: (guard, request, api) => {
+  const context = Sonamu.getContext();
+
+  if (guard === "owner") {
+    // Dynamic verification using API metadata
+    // Example: Check if post ID exists in parameters
+    const postId = request.query.postId || request.body?.postId;
+
+    if (!postId) {
+      throw new Error("Resource ID required");
+    }
+
+    // Only perform simple verification here
+    // Complex ownership verification should be done inside API methods
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+
+    return true;
+  }
+
+  // ... other Guards
+},
+```
+
+<Warning>
+**Note**: For permission verification requiring complex business logic or database queries, it's better to handle it inside API methods rather than in Guards. Guards should only handle simple authentication/authorization checks.
+</Warning>
 
 ## Role-Based Access Control (RBAC)
 
@@ -465,25 +505,77 @@ export function hasPermission(
 }
 ```
 
-### Permission-Based Guard
+### Implementing Permission-Based Guards
+
+To integrate the RBAC system with Guards, verify permissions in `guardHandler`.
 
 ```typescript
-// guards/permission.guard.ts
-import { Permission, hasPermission } from "../types/permissions";
+// sonamu.config.ts
+import { Permission, hasPermission } from "./types/permissions";
 
-/**
- * Permission-based Guard creation function
- */
-export function createPermissionGuard(permission: Permission) {
-  return (context: AppContext) => {
-    return hasPermission(context.user, permission);
-  };
+// Add permission-based Guards to GuardKeys
+declare module "sonamu" {
+  interface GuardKeys {
+    "user:write": true;
+    "user:delete": true;
+    "post:delete": true;
+    "admin:settings": true;
+  }
 }
 
-// Register Guards
-guards["user:write"] = createPermissionGuard(Permission.USER_WRITE);
-guards["post:delete"] = createPermissionGuard(Permission.POST_DELETE);
-guards["admin:settings"] = createPermissionGuard(Permission.ADMIN_SETTINGS);
+export default {
+  // ... settings
+  api: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const context = Sonamu.getContext();
+
+        // Basic Guards
+        switch (guard) {
+          case "user":
+            if (!context.user) {
+              throw new Error("Authentication required");
+            }
+            return true;
+
+          case "admin":
+            if (!context.user || context.user.role !== "admin") {
+              throw new Error("Admin access required");
+            }
+            return true;
+
+          // Permission-based Guards
+          case "user:write":
+            if (!hasPermission(context.user, Permission.USER_WRITE)) {
+              throw new Error("USER_WRITE permission required");
+            }
+            return true;
+
+          case "user:delete":
+            if (!hasPermission(context.user, Permission.USER_DELETE)) {
+              throw new Error("USER_DELETE permission required");
+            }
+            return true;
+
+          case "post:delete":
+            if (!hasPermission(context.user, Permission.POST_DELETE)) {
+              throw new Error("POST_DELETE permission required");
+            }
+            return true;
+
+          case "admin:settings":
+            if (!hasPermission(context.user, Permission.ADMIN_SETTINGS)) {
+              throw new Error("ADMIN_SETTINGS permission required");
+            }
+            return true;
+
+          default:
+            throw new Error(`Unknown guard: ${guard}`);
+        }
+      },
+    },
+  },
+};
 ```
 
 ### Using Permission Guard

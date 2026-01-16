@@ -13,10 +13,10 @@ Sonamu의 Guards 시스템을 사용하여 API 엔드포인트에 권한 기반 
     
     간단한 권한 설정
   </Card>
-  <Card title="내장 Guards" icon="shield-halved">
+  <Card title="Guard 타입" icon="shield-halved">
     admin, user, query
-    
-    기본 제공
+
+    타입 정의 제공
   </Card>
   <Card title="커스텀 Guards" icon="wand-magic-sparkles">
     비즈니스 로직
@@ -61,9 +61,9 @@ Guards는 **API 메서드가 실행되기 전에 권한을 검증하는 함수**
 3. 403 Forbidden 응답
 ```
 
-## 내장 Guards
+## Guard 타입
 
-Sonamu는 기본적으로 세 가지 Guards를 제공합니다.
+Sonamu는 세 가지 Guard 타입(`user`, `admin`, `query`)이 정의되어 있습니다. 이들은 타입 안전성을 위한 키이며, **실제 검증 로직은 `sonamu.config.ts`의 `guardHandler`에서 구현**해야 합니다.
 
 ### user Guard
 
@@ -270,137 +270,177 @@ class ReportModel extends BaseModelClass {
 }
 ```
 
-## 커스텀 Guards 구현
+## Guards 구현
 
-프로젝트의 비즈니스 로직에 맞는 커스텀 Guards를 만들 수 있습니다.
+Guards는 `sonamu.config.ts`의 `guardHandler`에서 구현합니다. Sonamu가 각 API 호출 시 자동으로 `guardHandler`를 실행합니다.
 
-### Guards 등록
+### guardHandler 구현
 
 ```typescript
-// guards/index.ts
-import type { AppContext } from "../types/context";
+// sonamu.config.ts
+import type { GuardKey } from "sonamu";
+import type { FastifyRequest } from "fastify";
+import { Sonamu } from "sonamu";
 
-export type GuardFunction = (context: AppContext) => Promise<boolean> | boolean;
+export default {
+  // ... 다른 설정
 
-/**
- * Guards 레지스트리
- */
-export const guards: Record<string, GuardFunction> = {
-  /**
-   * user Guard: 로그인 필수
-   */
-  user: (context) => {
-    return context.user !== null;
-  },
-  
-  /**
-   * admin Guard: 관리자 권한 필수
-   */
-  admin: (context) => {
-    return context.user?.role === "admin";
-  },
-  
-  /**
-   * query Guard: 쿼리 파라미터 검증
-   */
-  query: (context) => {
-    // 구현은 프로젝트마다 다름
-    // 예: API 키 검증
-    const apiKey = context.request.query.apiKey;
-    return apiKey === process.env.API_KEY;
-  },
-  
-  /**
-   * verified Guard: 이메일 인증된 사용자만
-   */
-  verified: (context) => {
-    if (!context.user) return false;
-    return context.user.email_verified === true;
-  },
-  
-  /**
-   * premium Guard: 프리미엄 회원만
-   */
-  premium: (context) => {
-    if (!context.user) return false;
-    return context.user.subscription_tier === "premium";
-  },
-  
-  /**
-   * owner Guard: 리소스 소유자 확인 (동적)
-   */
-  owner: async (context) => {
-    // 이 Guard는 리소스 ID를 파라미터로 받아야 하므로
-    // 실제로는 API 메서드 내부에서 검증하는 것이 더 적합
-    return true;
+  api: {
+    route: {
+      prefix: "/api",
+    },
+    server: {
+      custom: (server) => {
+        // Fastify 서버 커스터마이징
+      },
+    },
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        // Context 확장
+      }),
+
+      /**
+       * Guards 검증 로직
+       *
+       * @param guard - Guard 키 ("user", "admin", "query" 등)
+       * @param request - Fastify Request 객체
+       * @param api - API 메타데이터
+       * @returns true면 통과, false나 예외 발생 시 차단
+       */
+      guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
+        // Sonamu Context에서 사용자 정보 가져오기
+        const context = Sonamu.getContext();
+
+        switch (guard) {
+          case "user":
+            // 로그인한 사용자만 접근 가능
+            if (!context.user) {
+              throw new Error("Authentication required");
+            }
+            return true;
+
+          case "admin":
+            // 관리자만 접근 가능
+            if (!context.user || context.user.role !== "admin") {
+              throw new Error("Admin access required");
+            }
+            return true;
+
+          case "query":
+            // 쿼리 파라미터로 API 키 검증
+            const apiKey = request.query.apiKey;
+            if (apiKey !== process.env.API_KEY) {
+              throw new Error("Invalid API key");
+            }
+            return true;
+
+          default:
+            // 알 수 없는 Guard는 차단
+            throw new Error(`Unknown guard: ${guard}`);
+        }
+      },
+    },
   },
 };
 ```
 
-### Guards 미들웨어
+### 커스텀 Guard 타입 추가
 
-Fastify에 Guards를 통합하는 미들웨어를 만듭니다.
+프로젝트에 특화된 Guard를 추가하려면 `GuardKeys` 인터페이스를 확장합니다.
 
 ```typescript
-// middleware/guards.middleware.ts
-import type { FastifyRequest, FastifyReply } from "fastify";
-import { Sonamu } from "sonamu";
-import { guards } from "../guards";
-import { registeredApis } from "sonamu";
-
-/**
- * Guards 미들웨어
- * 
- * API의 guards 옵션을 확인하고, 각 Guard 함수를 실행합니다.
- */
-export async function guardsMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  // 현재 요청의 경로와 메서드로 API 찾기
-  const path = request.url.split("?")[0];
-  const method = request.method;
-  
-  const api = registeredApis.find(
-    (api) => api.path === path && api.options.httpMethod === method
-  );
-  
-  if (!api || !api.options.guards || api.options.guards.length === 0) {
-    // Guards가 없으면 통과
-    return;
-  }
-  
-  const context = Sonamu.getContext();
-  
-  // 모든 Guards 실행
-  for (const guardKey of api.options.guards) {
-    const guardFn = guards[guardKey];
-    
-    if (!guardFn) {
-      console.warn(`Guard "${guardKey}" not found`);
-      continue;
-    }
-    
-    const passed = await guardFn(context);
-    
-    if (!passed) {
-      return reply.status(403).send({
-        error: "Forbidden",
-        message: `Guard "${guardKey}" failed`,
-      });
-    }
+// types/guards.ts
+declare module "sonamu" {
+  interface GuardKeys {
+    verified: true;      // 이메일 인증된 사용자
+    premium: true;       // 프리미엄 회원
+    moderator: true;     // 중재자
   }
 }
 ```
 
-### 서버에 미들웨어 등록
+이제 `guardHandler`에서 새로운 Guard를 구현합니다.
 
 ```typescript
-// server.ts
-import { guardsMiddleware } from "./middleware/guards.middleware";
+// sonamu.config.ts
+guardHandler: (guard, request, api) => {
+  const context = Sonamu.getContext();
 
-app.addHook("preHandler", guardsMiddleware);
+  switch (guard) {
+    case "user":
+      if (!context.user) {
+        throw new Error("Authentication required");
+      }
+      return true;
+
+    case "admin":
+      if (!context.user || context.user.role !== "admin") {
+        throw new Error("Admin access required");
+      }
+      return true;
+
+    case "verified":
+      // 이메일 인증된 사용자만
+      if (!context.user || !context.user.email_verified) {
+        throw new Error("Email verification required");
+      }
+      return true;
+
+    case "premium":
+      // 프리미엄 회원만
+      if (!context.user || context.user.subscription_tier !== "premium") {
+        throw new Error("Premium subscription required");
+      }
+      return true;
+
+    case "moderator":
+      // 중재자 또는 관리자
+      if (!context.user ||
+          (context.user.role !== "moderator" && context.user.role !== "admin")) {
+        throw new Error("Moderator access required");
+      }
+      return true;
+
+    default:
+      throw new Error(`Unknown guard: ${guard}`);
+  }
+},
 ```
+
+### 동적 검증이 필요한 경우
+
+API 파라미터에 따라 동적으로 권한을 검증해야 하는 경우, `guardHandler`에서 `api` 파라미터를 활용할 수 있습니다.
+
+```typescript
+guardHandler: (guard, request, api) => {
+  const context = Sonamu.getContext();
+
+  if (guard === "owner") {
+    // API 메타데이터를 활용한 동적 검증
+    // 예: 게시글 ID가 파라미터에 있는지 확인
+    const postId = request.query.postId || request.body?.postId;
+
+    if (!postId) {
+      throw new Error("Resource ID required");
+    }
+
+    // 여기서는 간단한 검증만 수행
+    // 복잡한 소유권 검증은 API 메서드 내부에서 수행하는 것이 좋습니다
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+
+    return true;
+  }
+
+  // ... 다른 Guards
+},
+```
+
+<Warning>
+**주의**: 복잡한 비즈니스 로직이나 데이터베이스 조회가 필요한 권한 검증은 Guards가 아닌 API 메서드 내부에서 처리하는 것이 좋습니다. Guards는 간단한 인증/권한 확인만 담당해야 합니다.
+</Warning>
 
 ## 역할 기반 접근 제어 (RBAC)
 
@@ -465,25 +505,77 @@ export function hasPermission(
 }
 ```
 
-### 권한 기반 Guard
+### 권한 기반 Guard 구현
+
+RBAC 시스템을 Guard에 통합하려면 `guardHandler`에서 권한을 검증합니다.
 
 ```typescript
-// guards/permission.guard.ts
-import { Permission, hasPermission } from "../types/permissions";
+// sonamu.config.ts
+import { Permission, hasPermission } from "./types/permissions";
 
-/**
- * 권한 기반 Guard 생성 함수
- */
-export function createPermissionGuard(permission: Permission) {
-  return (context: AppContext) => {
-    return hasPermission(context.user, permission);
-  };
+// GuardKeys에 권한 기반 Guard 추가
+declare module "sonamu" {
+  interface GuardKeys {
+    "user:write": true;
+    "user:delete": true;
+    "post:delete": true;
+    "admin:settings": true;
+  }
 }
 
-// Guards 등록
-guards["user:write"] = createPermissionGuard(Permission.USER_WRITE);
-guards["post:delete"] = createPermissionGuard(Permission.POST_DELETE);
-guards["admin:settings"] = createPermissionGuard(Permission.ADMIN_SETTINGS);
+export default {
+  // ... 설정
+  api: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const context = Sonamu.getContext();
+
+        // 기본 Guards
+        switch (guard) {
+          case "user":
+            if (!context.user) {
+              throw new Error("Authentication required");
+            }
+            return true;
+
+          case "admin":
+            if (!context.user || context.user.role !== "admin") {
+              throw new Error("Admin access required");
+            }
+            return true;
+
+          // 권한 기반 Guards
+          case "user:write":
+            if (!hasPermission(context.user, Permission.USER_WRITE)) {
+              throw new Error("USER_WRITE permission required");
+            }
+            return true;
+
+          case "user:delete":
+            if (!hasPermission(context.user, Permission.USER_DELETE)) {
+              throw new Error("USER_DELETE permission required");
+            }
+            return true;
+
+          case "post:delete":
+            if (!hasPermission(context.user, Permission.POST_DELETE)) {
+              throw new Error("POST_DELETE permission required");
+            }
+            return true;
+
+          case "admin:settings":
+            if (!hasPermission(context.user, Permission.ADMIN_SETTINGS)) {
+              throw new Error("ADMIN_SETTINGS permission required");
+            }
+            return true;
+
+          default:
+            throw new Error(`Unknown guard: ${guard}`);
+        }
+      },
+    },
+  },
+};
 ```
 
 ### 권한 Guard 사용
