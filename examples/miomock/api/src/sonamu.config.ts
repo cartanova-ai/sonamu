@@ -37,6 +37,11 @@ export default defineConfig({
     },
   },
 
+  test: {
+    parallel: true,
+    maxWorkers: 4,
+  },
+
   logging: {
     sinks: {
       console: getConsoleSink({

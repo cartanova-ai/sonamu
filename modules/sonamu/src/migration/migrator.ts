@@ -403,7 +403,7 @@ export class Migrator {
     if (isTest()) {
       await DB.clearTestTransaction();
       // 병렬 테스트 모드에서는 worker DB 연결 유지
-      if (process.env.SONAMU_PARALLEL_TEST !== "true") {
+      if (process.env.SONAMU_WORKER_DB !== "true") {
         await DB.destroy();
       }
     }

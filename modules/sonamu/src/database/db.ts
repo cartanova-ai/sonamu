@@ -47,7 +47,7 @@ export class DBClass {
     // 테스트 트랜잭션 격리
     if (process.env.NODE_ENV === "test") {
       // 병렬 테스트 모드: worker별 DB 사용
-      if (process.env.SONAMU_PARALLEL_TEST === "true") {
+      if (process.env.SONAMU_WORKER_DB === "true") {
         return this.getWorkerDB(dbConfig);
       }
 

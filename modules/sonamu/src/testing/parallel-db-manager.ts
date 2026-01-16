@@ -112,6 +112,6 @@ export class ParallelDBManager {
    * 병렬 테스트 모드인지 확인합니다.
    */
   isParallelMode(): boolean {
-    return process.env.SONAMU_PARALLEL_TEST === "true";
+    return process.env.SONAMU_WORKER_DB === "true";
   }
 }

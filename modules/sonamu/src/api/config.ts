@@ -30,6 +30,17 @@ export type SonamuI18nOptions = {
   supportedLocales: string[];
 };
 
+/**
+ * 테스트 설정
+ * vitest 병렬 테스팅을 sonamu.config.ts 한 곳에서 관리하기 위한 설정입니다.
+ */
+export type SonamuTestConfig = {
+  /** 병렬 테스팅 활성화 (기본: false) */
+  parallel?: boolean;
+  /** 병렬 실행 워커 수 (기본: 4) */
+  maxWorkers?: number;
+};
+
 export type SonamuConfig<TSinkId extends string = string, TFilterId extends string = string> = {
   projectName?: string;
 
@@ -79,6 +90,19 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
   logging?: false | SonamuLoggingOptions<TSinkId, TFilterId>;
   server: SonamuServerOptions;
   tasks?: SonamuTaskOptions;
+
+  /**
+   * 테스트 설정 (병렬 테스팅 등)
+   *
+   * @example
+   * ```typescript
+   * test: {
+   *   parallel: true,
+   *   maxWorkers: 4,
+   * }
+   * ```
+   */
+  test?: SonamuTestConfig;
 };
 
 export type SonamuServerOptions = {
