@@ -132,6 +132,54 @@ Typically, when building backend APIs and using them on the frontend, type synch
 
 ---
 
+## Fully Type-safe Query Builder: Puri
+
+Sonamu provides Puri, a type-safe query builder based on Knex. Table names, column names, and relationships are all type-checked.
+
+<Frame caption="🎬 Writing type-safe queries with Puri - table name, column name autocomplete">
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    src="/images/introduction-puri.mp4"
+  ></video>
+</Frame>
+
+```typescript
+// Type-safe query
+const users = await this.getPuri("r")
+  .table("users")           // ✅ Table name autocomplete
+  .select("id", "email")    // ✅ Column name type check
+  .where("role", "admin")   // ✅ Column name + value type check
+  .orderBy("created_at", "desc");
+
+// Relation join
+const posts = await this.getPuri("r")
+  .table("posts")
+  .join("users", "posts.author_id", "users.id")  // ✅ Relationship type check
+  .select("posts.*", "users.username as author_name");
+```
+
+**Key Features**:
+
+- ✅ Types auto-extracted from Entity definition
+- ✅ Autocomplete for table names, column names, and relationships
+- ✅ Wrong column names cause compile errors
+- ✅ All Knex features supported
+
+<Card
+  title="Puri Guide"
+  icon="database"
+  href="/database/puri"
+>
+  Write type-safe queries
+</Card>
+
+---
+
 ## Frontend Integration
 
 When you define a backend API, frontend Services and TanStack Query Hooks are automatically generated.
@@ -178,14 +226,34 @@ const user = await UserService.findById("C", userId);
 // { id, email, username, bio, createdAt, updatedAt, ... }
 ```
 
+### SSR
+
+Supports server-side rendering with Next.js App Router. Improve SEO optimization and initial loading speed.
+
+```tsx
+// app/users/[id]/page.tsx
+export default async function UserPage({ params }: { params: { id: string } }) {
+  // Fetch data on the server
+  const user = await UserService.findById("C", Number(params.id));
+
+  return (
+    <div>
+      <h1>{user.username}</h1>  {/* ✅ Type safe */}
+      <p>{user.bio}</p>
+    </div>
+  );
+}
+```
+
 **Key Features**:
 
 - ✅ Backend changes detected immediately via compile errors
 - ✅ Clean structure with Namespace-based organization
 - ✅ TanStack Query auto-integration (caching, revalidation, optimistic updates)
 - ✅ Accurate type inference per Subset
+- ✅ SSR support for SEO optimization
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card
     title="Using Services"
     icon="code"
@@ -199,6 +267,13 @@ const user = await UserService.findById("C", userId);
     href="/en/frontend-integration/generated-services/tanstack-query"
   >
     Data fetching with React Hooks
+  </Card>
+  <Card
+    title="SSR"
+    icon="server"
+    href="/frontend-integration/ssr"
+  >
+    Server-side rendering
   </Card>
 </CardGroup>
 
@@ -283,35 +358,11 @@ test("Next test starts with clean DB", async () => {
 });
 ```
 
-### Context-Based Permission Testing
-
-Test while authenticated as a specific user.
-
-```typescript
-testAs(
-  { id: 1, role: "admin" },
-  "Admin can delete all posts",
-  async () => {
-    await PostModel.delete(123);
-    // Context.user is set to admin
-  }
-);
-
-testAs(
-  { id: 2, role: "user" },
-  "Regular user can only delete their own posts",
-  async () => {
-    await expect(PostModel.delete(999)).rejects.toThrow("Permission denied");
-  }
-);
-```
-
 **Key Features**:
 
 - ✅ Reuse test data with Fixtures
 - ✅ Visualize data changes with Naite
 - ✅ Isolated tests with automatic Transaction rollback
-- ✅ Simplified permission testing with testAs
 
 <CardGroup cols={2}>
   <Card
@@ -356,19 +407,13 @@ Define AI embedding search as an Entity field and you're done. Native support fo
   "dimensions": 1536
 }
 
-// Vector search (using raw SQL)
-const results = await DocumentModel.getPuri("r").raw(`
-  SELECT
-    id, title, content,
-    1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT 10
-`, [
-  JSON.stringify(queryEmbedding),
-  JSON.stringify(queryEmbedding)
-]);
+// Vector search with vectorSimilarity
+const results = await this.getPuri("r")
+  .table("documents")
+  .select("id", "title", "content")
+  .vectorSimilarity("embedding", queryEmbedding, "similarity")
+  .orderBy("similarity", "desc")
+  .limit(10);
 ```
 
 ### AI SDK Integration
@@ -389,27 +434,25 @@ async chat(message: string): Promise<StreamingResponse> {
 
 ### SSE (Server-Sent Events)
 
-Easily use SSE for real-time streaming.
+Easily use SSE for real-time streaming with the `@stream` decorator.
 
 ```typescript
-import { Sonamu } from "sonamu";
+import { stream } from "sonamu";
 import { z } from "zod";
 
-@api({ httpMethod: "GET" })
-async streamEvents() {
-  const { createSSE } = Sonamu.getContext();
+const ChatEventSchema = z.object({
+  type: z.enum(["message", "done"]),
+  content: z.string().optional(),
+});
 
-  const events = z.object({
-    type: z.literal("message"),
-    data: z.string(),
-  });
-
-  return createSSE(events)(async (emit) => {
-    for (let i = 0; i < 10; i++) {
-      await emit({ type: "message", data: `Event ${i}` });
-      await sleep(1000);
+@stream({ eventSchema: ChatEventSchema })
+async chat(message: string) {
+  return async (emit) => {
+    for (const chunk of await generateResponse(message)) {
+      await emit({ type: "message", content: chunk });
     }
-  });
+    await emit({ type: "done" });
+  };
 }
 ```
 

@@ -132,6 +132,54 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
 
 ---
 
+## Fully Type-safe Query Builder: Puri
+
+Sonamu는 Knex 기반의 타입 안전한 쿼리 빌더 Puri를 제공합니다. 테이블명, 칼럼명, 관계까지 모두 타입 체크됩니다.
+
+<Frame caption="🎬 Puri로 타입 안전한 쿼리 작성 - 테이블명, 칼럼명 자동완성">
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    src="/images/introduction-puri.mp4"
+  ></video>
+</Frame>
+
+```typescript
+// 타입 안전한 쿼리
+const users = await this.getPuri("r")
+  .table("users")           // ✅ 테이블명 자동완성
+  .select("id", "email")    // ✅ 칼럼명 타입 체크
+  .where("role", "admin")   // ✅ 칼럼명 + 값 타입 체크
+  .orderBy("created_at", "desc");
+
+// Relation 조인
+const posts = await this.getPuri("r")
+  .table("posts")
+  .join("users", "posts.author_id", "users.id")  // ✅ 관계 타입 체크
+  .select("posts.*", "users.username as author_name");
+```
+
+**핵심 기능**:
+
+- ✅ Entity 정의에서 타입 자동 추출
+- ✅ 테이블명, 칼럼명, 관계 모두 자동완성
+- ✅ 잘못된 칼럼명은 컴파일 에러
+- ✅ Knex의 모든 기능 지원
+
+<Card
+  title="Puri 가이드"
+  icon="database"
+  href="/database/puri"
+>
+  타입 안전한 쿼리 작성하기
+</Card>
+
+---
+
 ## Frontend Integration
 
 백엔드 API를 정의하면, 프론트엔드 Service와 TanStack Query Hook이 자동으로 생성됩니다.
@@ -178,14 +226,34 @@ const user = await UserService.findById("C", userId);
 // { id, email, username, bio, createdAt, updatedAt, ... }
 ```
 
+### SSR
+
+Next.js App Router와 함께 서버 사이드 렌더링을 지원합니다. SEO 최적화와 초기 로딩 속도를 개선할 수 있습니다.
+
+```tsx
+// app/users/[id]/page.tsx
+export default async function UserPage({ params }: { params: { id: string } }) {
+  // 서버에서 데이터 페칭
+  const user = await UserService.findById("C", Number(params.id));
+
+  return (
+    <div>
+      <h1>{user.username}</h1>  {/* ✅ 타입 안전 */}
+      <p>{user.bio}</p>
+    </div>
+  );
+}
+```
+
 **핵심 기능**:
 
 - ✅ 백엔드 변경 시 컴파일 에러로 즉시 감지
 - ✅ Namespace 기반으로 깔끔한 구조
 - ✅ TanStack Query 자동 통합 (캐싱, 재검증, 낙관적 업데이트)
 - ✅ Subset별 정확한 타입 추론
+- ✅ SSR 지원으로 SEO 최적화
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card
     title="Service 사용법"
     icon="code"
@@ -200,6 +268,13 @@ const user = await UserService.findById("C", userId);
   >
     React Hook으로 데이터 페칭
   </Card>
+  <Card
+    title="SSR"
+    icon="server"
+    href="/frontend-integration/ssr"
+  >
+    서버 사이드 렌더링
+  </Card>
 </CardGroup>
 
 ---
@@ -210,27 +285,25 @@ Sonamu는 테스트를 위한 강력한 도구를 내장하고 있습니다.
 
 ### Fixture 시스템
 
-테스트 데이터를 쉽게 생성하고 재사용할 수 있습니다.
+Fixture DB에 미리 세팅된 테스트 데이터를 `createFixtureLoader`로 쉽게 로드할 수 있습니다.
 
 ```typescript
-// Fixture 정의
-export const UserFixtures = {
-  admin: {
-    email: "admin@test.com",
-    username: "admin",
-    role: "admin",
-  },
-  user: {
-    email: "user@test.com",
-    username: "user",
-    role: "user",
-  },
-};
+// fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "../application/user/user.model";
+
+export const loadFixtures = createFixtureLoader({
+  adminUser: async () => UserModel.findById("A", 1),
+  normalUser: async () => UserModel.findById("A", 2),
+});
 
 // 테스트에서 사용
+import { loadFixtures } from "./fixture";
+
 test("관리자는 모든 사용자를 볼 수 있다", async () => {
-  const admin = await createUser(UserFixtures.admin);
-  // ...
+  const f = await loadFixtures(["adminUser"]);
+
+  expect(f.adminUser.role).toBe("admin");
 });
 ```
 
@@ -283,35 +356,11 @@ test("다음 테스트는 깨끗한 DB에서 시작", async () => {
 });
 ```
 
-### Context 기반 권한 테스트
-
-특정 사용자로 인증된 상태에서 테스트할 수 있습니다.
-
-```typescript
-testAs(
-  { id: 1, role: "admin" },
-  "관리자는 모든 게시글을 삭제할 수 있다",
-  async () => {
-    await PostModel.delete(123);
-    // Context.user가 admin으로 설정됨
-  }
-);
-
-testAs(
-  { id: 2, role: "user" },
-  "일반 사용자는 자신의 게시글만 삭제할 수 있다",
-  async () => {
-    await expect(PostModel.delete(999)).rejects.toThrow("권한이 없습니다");
-  }
-);
-```
-
 **핵심 기능**:
 
 - ✅ Fixture로 테스트 데이터 재사용
 - ✅ Naite로 데이터 변화 시각화
 - ✅ Transaction 자동 롤백으로 격리된 테스트
-- ✅ testAs로 권한 테스트 간편화
 
 <CardGroup cols={2}>
   <Card
@@ -356,19 +405,13 @@ AI 임베딩 검색을 Entity 필드로 정의하면 끝입니다. pgvector를 �
   "dimensions": 1536
 }
 
-// 벡터 검색 (raw SQL 사용)
-const results = await DocumentModel.getPuri("r").raw(`
-  SELECT
-    id, title, content,
-    1 - (embedding <=> ?) AS similarity
-  FROM documents
-  WHERE embedding IS NOT NULL
-  ORDER BY embedding <=> ?
-  LIMIT 10
-`, [
-  JSON.stringify(queryEmbedding),
-  JSON.stringify(queryEmbedding)
-]);
+// vectorSimilarity로 벡터 검색
+const results = await this.getPuri("r")
+  .table("documents")
+  .select("id", "title", "content")
+  .vectorSimilarity("embedding", queryEmbedding, "similarity")
+  .orderBy("similarity", "desc")
+  .limit(10);
 ```
 
 ### AI SDK 통합
@@ -389,27 +432,25 @@ async chat(message: string): Promise<StreamingResponse> {
 
 ### SSE (Server-Sent Events)
 
-실시간 스트리밍을 위한 SSE를 간편하게 사용할 수 있습니다.
+`@stream` 데코레이터로 실시간 스트리밍을 간편하게 사용할 수 있습니다.
 
 ```typescript
-import { Sonamu } from "sonamu";
+import { stream } from "sonamu";
 import { z } from "zod";
 
-@api({ httpMethod: "GET" })
-async streamEvents() {
-  const { createSSE } = Sonamu.getContext();
+const ChatEventSchema = z.object({
+  type: z.enum(["message", "done"]),
+  content: z.string().optional(),
+});
 
-  const events = z.object({
-    type: z.literal("message"),
-    data: z.string(),
-  });
-
-  return createSSE(events)(async (emit) => {
-    for (let i = 0; i < 10; i++) {
-      await emit({ type: "message", data: `Event ${i}` });
-      await sleep(1000);
+@stream({ eventSchema: ChatEventSchema })
+async chat(message: string) {
+  return async (emit) => {
+    for (const chunk of await generateResponse(message)) {
+      await emit({ type: "message", content: chunk });
     }
-  });
+    await emit({ type: "done" });
+  };
 }
 ```
 
