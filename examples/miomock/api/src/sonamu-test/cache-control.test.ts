@@ -252,6 +252,7 @@ describe("API 응답 Cache-Control 헤더", () => {
       query: { subset: "A", num: "10", page: "1" },
     });
 
+    expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBeUndefined();
 
     await server.close();
