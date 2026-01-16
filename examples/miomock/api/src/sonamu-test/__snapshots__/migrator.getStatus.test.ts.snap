@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Migrator - getStatus > 일부 DB 미적용 상태 확인 1`] = `
+[
+  0,
+  0,
+  0,
+  0,
+]
+`;
