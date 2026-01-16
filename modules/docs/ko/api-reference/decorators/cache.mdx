@@ -194,6 +194,10 @@ await Sonamu.cache.deleteByTags(["products"]);
 
 ### grace
 
+<Info>
+`grace`, `timeouts` 등의 고급 옵션은 BentoCache의 `RawCommonOptions`에서 제공됩니다. 자세한 내용은 [BentoCache 문서](https://bentocache.dev)를 참고하세요.
+</Info>
+
 캐시가 만료된 후에도 일정 시간 동안 이전 값(Stale)을 반환하는 유예 기간입니다 (Stale-While-Revalidate 패턴).
 
 ```typescript

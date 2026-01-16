@@ -215,9 +215,36 @@ async transferPoints(fromUserId: number, toUserId: number, points: number) {
 }
 ```
 
-## 트랜잭션 컨텍스트
+## 트랜잭션 컨텍스트 자동 감지
 
-`getPuri`는 트랜잭션 컨텍스트를 자동으로 인식합니다.
+`getPuri`는 트랜잭션 컨텍스트를 자동으로 감지하고 재사용합니다. 이는 `@transactional` 데코레이터와 함께 사용할 때 중요한 기능입니다.
+
+### 동작 원리
+
+`getPuri` 메서드는 내부적으로 다음과 같이 동작합니다:
+
+1. `DB.getTransactionContext()`를 통해 현재 실행 중인 트랜잭션 확인
+2. 트랜잭션이 있으면 해당 트랜잭션을 재사용
+3. 트랜잭션이 없으면 새로운 PuriWrapper 생성
+
+```typescript
+// getPuri 내부 로직 (참고용)
+async getPuri(which: DBPreset): PuriWrapper {
+  // 1. 트랜잭션 컨텍스트에서 트랜잭션 획득 시도
+  const trx = DB.getTransactionContext().getTransaction(which);
+
+  if (trx) {
+    // 2. 트랜잭션이 있으면 재사용
+    return trx;
+  }
+
+  // 3. 트랜잭션이 없으면 새로운 PuriWrapper 반환
+  const db = this.getDB(which);
+  return new PuriWrapper(db, new UpsertBuilder());
+}
+```
+
+### @transactional 내에서 사용
 
 ```typescript
 import { BaseModelClass, transactional, api } from "sonamu";
@@ -232,29 +259,68 @@ class UserModelClass extends BaseModelClass {
   }) {
     // @transactional 내에서 getPuri 호출
     const wdb = this.getPuri("w");
-    
-    // 자동으로 트랜잭션 컨텍스트 사용
+
+    // wdb는 @transactional이 생성한 트랜잭션을 자동으로 사용
+    // 별도의 트랜잭션 관리 코드 불필요
     const [user] = await wdb.table("users")
       .insert({
         email: params.email,
         name: params.name
       })
       .returning("*");
-    
+
     await wdb.table("profiles")
       .insert({
         user_id: user.id,
         bio: params.bio
       });
-    
+
     return user;
   }
 }
 ```
 
+### 중첩 메서드 호출 안전성
+
+이 기능 덕분에 트랜잭션 내에서 다른 메서드를 호출해도 안전합니다. 모든 `getPuri` 호출이 동일한 트랜잭션을 사용합니다.
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  @transactional()
+  async createUser(email: string, name: string) {
+    const wdb = this.getPuri("w");
+
+    const [user] = await wdb.table("users")
+      .insert({ email, name })
+      .returning("*");
+
+    // 다른 메서드 호출 - 동일한 트랜잭션 사용
+    await this.createDefaultProfile(user.id);
+
+    return user;
+  }
+
+  // @transactional 없지만, 위에서 호출되면 동일한 트랜잭션 사용
+  async createDefaultProfile(userId: number) {
+    const wdb = this.getPuri("w");
+
+    // createUser의 트랜잭션을 자동으로 재사용
+    await wdb.table("profiles")
+      .insert({
+        user_id: userId,
+        bio: "Welcome!"
+      });
+  }
+}
+```
+
 <Info>
-`@transactional` 데코레이터가 있으면 `getPuri("w")`는 자동으로 해당 트랜잭션을 사용합니다.
+`@transactional` 데코레이터가 설정한 트랜잭션 컨텍스트는 모든 하위 메서드 호출에서 자동으로 공유됩니다. 이는 AsyncLocalStorage를 통해 구현됩니다.
 </Info>
+
+<Warning>
+트랜잭션 내에서 `getPuri`로 얻은 PuriWrapper와 `wdb.transaction()`으로 시작한 새로운 트랜잭션은 **서로 다른 트랜잭션**입니다. 중첩 트랜잭션이 필요한 경우 명시적으로 관리해야 합니다.
+</Warning>
 
 ## 실전 예시
 

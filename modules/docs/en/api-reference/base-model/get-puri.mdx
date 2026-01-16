@@ -215,9 +215,36 @@ async transferPoints(fromUserId: number, toUserId: number, points: number) {
 }
 ```
 
-## 트랜잭션 컨텍스트
+## Automatic Transaction Context Detection
 
-`getPuri`는 트랜잭션 컨텍스트를 자동으로 인식합니다.
+`getPuri` automatically detects and reuses transaction contexts. This is a critical feature when used with the `@transactional` decorator.
+
+### How It Works
+
+The `getPuri` method internally operates as follows:
+
+1. Checks for active transaction via `DB.getTransactionContext()`
+2. If transaction exists, reuses that transaction
+3. If no transaction, creates a new PuriWrapper
+
+```typescript
+// Internal getPuri logic (for reference)
+async getPuri(which: DBPreset): PuriWrapper {
+  // 1. Attempt to get transaction from context
+  const trx = DB.getTransactionContext().getTransaction(which);
+
+  if (trx) {
+    // 2. Reuse if transaction exists
+    return trx;
+  }
+
+  // 3. Return new PuriWrapper if no transaction
+  const db = this.getDB(which);
+  return new PuriWrapper(db, new UpsertBuilder());
+}
+```
+
+### Usage with @transactional
 
 ```typescript
 import { BaseModelClass, transactional, api } from "sonamu";
@@ -230,31 +257,70 @@ class UserModelClass extends BaseModelClass {
     name: string;
     bio: string;
   }) {
-    // @transactional 내에서 getPuri 호출
+    // Call getPuri inside @transactional
     const wdb = this.getPuri("w");
-    
-    // 자동으로 트랜잭션 컨텍스트 사용
+
+    // wdb automatically uses transaction created by @transactional
+    // No separate transaction management code needed
     const [user] = await wdb.table("users")
       .insert({
         email: params.email,
         name: params.name
       })
       .returning("*");
-    
+
     await wdb.table("profiles")
       .insert({
         user_id: user.id,
         bio: params.bio
       });
-    
+
     return user;
   }
 }
 ```
 
+### Safe Nested Method Calls
+
+This feature ensures safety when calling other methods within a transaction. All `getPuri` calls use the same transaction.
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  @transactional()
+  async createUser(email: string, name: string) {
+    const wdb = this.getPuri("w");
+
+    const [user] = await wdb.table("users")
+      .insert({ email, name })
+      .returning("*");
+
+    // Call another method - uses same transaction
+    await this.createDefaultProfile(user.id);
+
+    return user;
+  }
+
+  // No @transactional, but uses same transaction when called from above
+  async createDefaultProfile(userId: number) {
+    const wdb = this.getPuri("w");
+
+    // Automatically reuses createUser's transaction
+    await wdb.table("profiles")
+      .insert({
+        user_id: userId,
+        bio: "Welcome!"
+      });
+  }
+}
+```
+
 <Info>
-`@transactional` 데코레이터가 있으면 `getPuri("w")`는 자동으로 해당 트랜잭션을 사용합니다.
+The transaction context set by `@transactional` decorator is automatically shared across all nested method calls. This is implemented via AsyncLocalStorage.
 </Info>
+
+<Warning>
+PuriWrapper obtained via `getPuri` within a transaction and a new transaction started with `wdb.transaction()` are **different transactions**. Nested transactions must be managed explicitly if needed.
+</Warning>
 
 ## 실전 예시
 

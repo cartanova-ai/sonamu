@@ -7,17 +7,17 @@ description: '파일 업로드 API 생성 데코레이터'
 
 ## 기본 사용법
 
-단일/다중 파일 여부는 메서드의 파라미터 타입으로 결정됩니다. `UploadedFile` 타입은 단일 파일, `UploadedFile[]` 타입은 다중 파일입니다.
+업로드된 파일은 `Sonamu.getContext().files`를 통해 접근합니다. `files`는 `UploadedFile[]` 타입의 배열입니다.
 
 ```typescript
-import { BaseModelClass, upload } from "sonamu";
-import type { UploadedFile } from "sonamu";
+import { BaseModelClass, upload, Sonamu } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
-  // 단일 파일 업로드 - UploadedFile 타입 사용
+  // 단일 파일 업로드
   @upload()
-  async uploadAvatar(params: { file: UploadedFile }) {
-    const { file } = params;
+  async uploadAvatar() {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error("No file uploaded");
@@ -57,7 +57,8 @@ type UploadDecoratorOptions = {
     files: 5,                    // 최대 5개 파일
   }
 })
-async uploadWithLimits(params: { files: UploadedFile[] }) {
+async uploadWithLimits() {
+  const { files } = Sonamu.getContext();
   // ...
 }
 ```
@@ -65,10 +66,11 @@ async uploadWithLimits(params: { files: UploadedFile[] }) {
 <Tabs>
   <Tab title="단일 파일" icon="file">
     ```typescript
-    // 파라미터 타입이 UploadedFile이면 단일 파일
+    // 첫 번째 파일만 사용
     @upload()
-    async uploadAvatar(params: { file: UploadedFile }) {
-      const { file } = params;
+    async uploadAvatar() {
+      const { files } = Sonamu.getContext();
+      const file = files?.[0];
 
       if (!file) {
         throw new Error("No file");
@@ -84,12 +86,12 @@ async uploadWithLimits(params: { files: UploadedFile[] }) {
 
   <Tab title="다중 파일" icon="files">
     ```typescript
-    // 파라미터 타입이 UploadedFile[]이면 다중 파일
+    // 모든 파일 순회
     @upload()
-    async uploadDocuments(params: { files: UploadedFile[] }) {
-      const { files } = params;
+    async uploadDocuments() {
+      const { files } = Sonamu.getContext();
 
-      if (files.length === 0) {
+      if (!files || files.length === 0) {
         throw new Error("No files");
       }
 
@@ -713,6 +715,35 @@ async uploadFile() {
     ```
   </Tab>
 </Tabs>
+
+## 참고 사항
+
+### @api 데코레이터와의 관계
+
+`@upload` 데코레이터는 내부적으로 자동으로 API 엔드포인트를 생성합니다. 따라서 `@api` 데코레이터를 별도로 사용할 필요가 없습니다.
+
+**자동 설정되는 값:**
+- `httpMethod`: `"POST"` (고정)
+- `clients`: `["axios-multipart", "tanstack-mutation-multipart"]` (multipart 전용 클라이언트)
+
+```typescript
+// @upload만 사용 (권장)
+@upload()
+async uploadFile() {
+  // ...
+}
+
+// ❌ @api와 함께 사용 불필요
+@api({ httpMethod: "POST" })  // 불필요
+@upload()
+async uploadFile() {
+  // ...
+}
+```
+
+<Info>
+`@upload`는 파일 업로드에 최적화된 설정을 자동으로 적용하므로, `@api` 데코레이터를 추가로 사용할 필요가 없습니다.
+</Info>
 
 ## 다음 단계
 

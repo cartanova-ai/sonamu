@@ -194,6 +194,10 @@ await Sonamu.cache.deleteByTags(["products"]);
 
 ### grace
 
+<Info>
+Advanced options like `grace` and `timeouts` are provided by BentoCache's `RawCommonOptions`. See [BentoCache documentation](https://bentocache.dev) for details.
+</Info>
+
 Grace period that returns stale values for a certain time even after the cache expires (Stale-While-Revalidate pattern).
 
 ```typescript

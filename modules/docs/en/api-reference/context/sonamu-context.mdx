@@ -19,6 +19,13 @@ type Context = {
 } & AuthContext & ContextExtend;
 ```
 
+The Context type is composed of **Intersection Types (`&`)**:
+- Base Context object (request, reply, etc.)
+- `AuthContext`: Authentication-related properties (user, passport)
+- `ContextExtend`: Project-specific extension properties
+
+This structure allows Context to be extensible while maintaining type safety.
+
 ## Context 속성
 
 ### request

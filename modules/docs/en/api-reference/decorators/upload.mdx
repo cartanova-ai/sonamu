@@ -3,16 +3,25 @@ title: '@upload'
 description: 'Decorator for creating file upload APIs'
 ---
 
-The `@upload` decorator creates an API that handles file uploads. It automatically parses multipart form-data requests and provides file objects.
+The `@upload` decorator creates an API that handles file uploads. It automatically parses multipart form-data requests and provides file objects. Can be used independently without `@api` decorator, automatically setting `POST` method and multipart clients (`axios-multipart`, `tanstack-mutation-multipart`).
 
 ## Basic Usage
 
+Uploaded files are accessed via `Sonamu.getContext().files`. `files` is an array of type `UploadedFile[]`.
+
 ```typescript
-import { BaseModelClass, upload } from "sonamu";
+import { BaseModelClass, upload, Sonamu } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
   @upload()
-  async uploadAvatar(file: UploadedFile) {
+  async uploadAvatar() {
+    const { files } = Sonamu.getContext();
+    const file = files?.[0]; // Use first file
+
+    if (!file) {
+      throw new Error("No file uploaded");
+    }
+
     // Save file
     const key = `avatars/${Date.now()}_${file.filename}`;
     const url = await file.saveToDisk(key);
@@ -43,21 +52,29 @@ export type UploadDecoratorOptions = {
     files: 5 // Maximum 5 files
   }
 })
-async uploadFiles(files: UploadedFile[]) {
+async uploadFiles() {
+  const { files } = Sonamu.getContext();
   // ...
 }
 ```
 
 ## Single vs Multiple File Upload
 
-The number of files is determined by the parameter type, not decorator options.
+Both single and multiple file uploads use the same pattern - accessing `files` from Context.
 
 <Tabs>
   <Tab title="Single File" icon="file">
     ```typescript
+    // Use first file only
     @upload()
-    async uploadAvatar(file: UploadedFile) {
-      // file: UploadedFile
+    async uploadAvatar() {
+      const { files } = Sonamu.getContext();
+      const file = files?.[0];
+
+      if (!file) {
+        throw new Error("No file");
+      }
+
       return {
         filename: file.filename,
         size: file.size
@@ -68,10 +85,12 @@ The number of files is determined by the parameter type, not decorator options.
 
   <Tab title="Multiple Files" icon="files">
     ```typescript
+    // Iterate through all files
     @upload()
-    async uploadDocuments(files: UploadedFile[]) {
-      // files: UploadedFile[]
-      if (files.length === 0) {
+    async uploadDocuments() {
+      const { files } = Sonamu.getContext();
+
+      if (!files || files.length === 0) {
         throw new Error("No files");
       }
 
@@ -676,6 +695,35 @@ async uploadFile(file: UploadedFile) {
     ```
   </Tab>
 </Tabs>
+
+## Notes
+
+### Relationship with @api Decorator
+
+The `@upload` decorator automatically creates an API endpoint internally. Therefore, you don't need to use the `@api` decorator separately.
+
+**Automatically configured values:**
+- `httpMethod`: `"POST"` (fixed)
+- `clients`: `["axios-multipart", "tanstack-mutation-multipart"]` (multipart-specific clients)
+
+```typescript
+// Use @upload only (recommended)
+@upload()
+async uploadFile() {
+  // ...
+}
+
+// ❌ No need to use with @api
+@api({ httpMethod: "POST" })  // Unnecessary
+@upload()
+async uploadFile() {
+  // ...
+}
+```
+
+<Info>
+`@upload` automatically applies optimized settings for file uploads, so there's no need to add the `@api` decorator.
+</Info>
 
 ## Next Steps
 
