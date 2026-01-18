@@ -150,9 +150,7 @@ export class SlackConfirm {
 *시간:* ${timestamp}
 
 *적용 예정 마이그레이션:*
-${migrationsText}
-
-✅ 승인  ❌ 거절`;
+${migrationsText}`;
   }
 
   /**
