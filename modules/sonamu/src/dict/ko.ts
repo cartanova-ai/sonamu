@@ -73,4 +73,6 @@ export default {
   "sonamu.error.keyRequired": "키를 입력해주세요",
   "sonamu.error.keyAlreadyExists": (key: string) => `이미 존재하는 키입니다: ${key}`,
   "sonamu.error.keyNotFound": (key: string) => `키를 찾을 수 없습니다: ${key}`,
+  "sonamu.error.migrationRejected": "마이그레이션이 거절되었습니다",
+  "sonamu.error.slackConfirmNotConfigured": "Slack Confirm이 설정되지 않았습니다",
 } as const;

@@ -72,4 +72,6 @@ export default {
   "sonamu.error.keyRequired": "Key is required",
   "sonamu.error.keyAlreadyExists": (key: string) => `Key already exists: ${key}`,
   "sonamu.error.keyNotFound": (key: string) => `Key not found: ${key}`,
+  "sonamu.error.migrationRejected": "Migration has been rejected",
+  "sonamu.error.slackConfirmNotConfigured": "Slack Confirm is not configured",
 } as const;

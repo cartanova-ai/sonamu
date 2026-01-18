@@ -16,6 +16,7 @@ import {
   ServiceUnavailableException,
 } from "../exceptions/so-exceptions";
 import { type MigrationResult, Migrator } from "../migration/migrator";
+import { SlackConfirm, type SlackConfirmPendingResult } from "../migration/slack-confirm";
 import { TemplateManager } from "../template/template-manager";
 import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
 import {
@@ -603,15 +604,151 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         Body: {
           action: "apply" | "rollback" | "shadow";
           targets: (keyof SonamuDBConfig)[];
+          force?: boolean;
+          forceReason?: string;
+          requestor?: string;
         };
-      }>("/api/migrations/runAction", async (request): Promise<MigrationResult> => {
-        const { action, targets } = request.body;
+      }>(
+        "/api/migrations/runAction",
+        async (request): Promise<MigrationResult | SlackConfirmPendingResult> => {
+          const { action, targets, force, forceReason, requestor } = request.body;
 
-        if (action === "shadow") {
-          return migrator.runShadowTest();
-        } else {
+          if (action === "shadow") {
+            return migrator.runShadowTest();
+          }
+
+          // Slack 승인 체크 (apply 시에만)
+          if (action === "apply") {
+            const slackConfirm = new SlackConfirm();
+            const requiresApproval = targets.some((t) => slackConfirm.isTargetRequiresApproval(t));
+
+            // 로컬 DB인 경우 승인 스킵
+            const localHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
+            const isLocalTarget = targets.every((target) => {
+              const targetConfig = Sonamu.dbConfig[target];
+              const host = (targetConfig?.connection as { host?: string })?.host ?? "localhost";
+              return localHosts.includes(host.toLowerCase());
+            });
+
+            if (requiresApproval && slackConfirm.isConfigured() && !isLocalTarget) {
+              const { conns } = await migrator.getStatus();
+
+              // 모든 타겟 DB에서 pending인 마이그레이션의 합집합을 구합니다.
+              const pendingMigrations = [
+                ...new Set(
+                  conns
+                    .filter((conn) => targets.includes(conn.connKey as keyof SonamuDBConfig))
+                    .flatMap((conn) => conn.pending),
+                ),
+              ];
+
+              if (pendingMigrations.length > 0) {
+                // 기존 승인 요청 확인
+                const existing = await slackConfirm.getExistingRequest(pendingMigrations);
+
+                if (existing) {
+                  // 기존 요청이 있으면 승인 상태 확인
+                  const { approved, rejected } = await slackConfirm.checkApproval(
+                    existing.channel,
+                    existing.ts,
+                  );
+
+                  if (approved) {
+                    // 승인됨 → 실행
+                    const result = await migrator.runAction(action, targets);
+                    if (result.length > 0) {
+                      await slackConfirm.logExecution(
+                        existing.channel,
+                        existing.ts,
+                        result,
+                        requestor,
+                      );
+                    }
+                    return result;
+                  } else if (rejected) {
+                    throw new BadRequestException(SD("sonamu.error.migrationRejected"));
+                  } else if (force) {
+                    // Force 진행
+                    await slackConfirm.forceApproval(
+                      existing.channel,
+                      existing.ts,
+                      forceReason ?? "사유 없음",
+                      requestor,
+                    );
+                    const result = await migrator.runAction(action, targets);
+                    if (result.length > 0) {
+                      await slackConfirm.logExecution(
+                        existing.channel,
+                        existing.ts,
+                        result,
+                        requestor,
+                      );
+                    }
+                    return result;
+                  } else {
+                    // 대기중
+                    return {
+                      type: "pending",
+                      channel: existing.channel,
+                      ts: existing.ts,
+                    };
+                  }
+                } else {
+                  // 새 승인 요청 발송
+                  const { channel, ts } = await slackConfirm.postApprovalRequest(
+                    pendingMigrations,
+                    targets,
+                    requestor,
+                  );
+                  await slackConfirm.saveRequest(pendingMigrations, channel, ts);
+
+                  return {
+                    type: "pending",
+                    channel,
+                    ts,
+                  };
+                }
+              }
+            }
+          }
+
           return migrator.runAction(action, targets);
+        },
+      );
+
+      server.post<{
+        Body: {
+          channel: string;
+          ts: string;
+        };
+      }>("/api/migrations/checkApproval", async (request) => {
+        const { channel, ts } = request.body;
+        const slackConfirm = new SlackConfirm();
+
+        if (!slackConfirm.isConfigured()) {
+          return { approved: true, rejected: false };
         }
+
+        return slackConfirm.checkApproval(channel, ts);
+      });
+
+      server.post<{
+        Body: {
+          channel: string;
+          ts: string;
+          reason: string;
+          requestor?: string;
+        };
+      }>("/api/migrations/forceApproval", async (request) => {
+        const { channel, ts, reason, requestor } = request.body;
+        const slackConfirm = new SlackConfirm();
+
+        if (!slackConfirm.isConfigured()) {
+          throw new BadRequestException(SD("sonamu.error.slackConfirmNotConfigured"));
+        }
+
+        await slackConfirm.forceApproval(channel, ts, reason, requestor);
+        return { success: true };
       });
 
       server.post<{

@@ -45,3 +45,6 @@ Thumbs.db
 .last-verified
 
 .worktrees/
+
+# Slack Confirm
+.slack-confirm-*

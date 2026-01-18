@@ -10,6 +10,7 @@ import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
 import type { CacheConfig } from "../cache/types";
+import type { SonamuDBConfig } from "../database/db";
 import type { SonamuLoggingOptions } from "../logger/configure";
 import type { StorageConfig } from "../storage/types";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
@@ -103,6 +104,30 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
    * ```
    */
   test?: SonamuTestConfig;
+
+  /**
+   * Slack 승인 설정 (Production 마이그레이션용)
+   *
+   * Production DB 마이그레이션 시 Slack을 통한 승인 프로세스를 활성화합니다.
+   * 설정이 없으면 기존 동작(바로 실행)으로 동작합니다.
+   *
+   * @example
+   * ```typescript
+   * slackConfirm: {
+   *   targets: ["production"],
+   *   botToken: process.env.SLACK_BOT_TOKEN ?? "",
+   *   channelId: process.env.SLACK_CHANNEL_ID ?? "",
+   * }
+   * ```
+   */
+  slackConfirm?: {
+    /** 승인이 필요한 DB 키 목록 (예: ["production"]) */
+    targets: (keyof SonamuDBConfig)[];
+    /** Slack Bot Token (xoxb-...) */
+    botToken: string;
+    /** Slack Channel ID (C...) */
+    channelId: string;
+  };
 };
 
 export type SonamuServerOptions = {

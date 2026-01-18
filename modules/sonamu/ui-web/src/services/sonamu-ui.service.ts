@@ -254,17 +254,53 @@ export namespace SonamuUIService {
     });
   }
 
+  export type SlackConfirmPendingResult = {
+    type: "pending";
+    channel: string;
+    ts: string;
+  };
+
   export function migrationsRunAction(
     action: "apply" | "rollback" | "shadow",
     targets: (keyof SonamuDBConfig)[],
-  ): Promise<MigrationResult> {
+    options?: {
+      force?: boolean;
+      forceReason?: string;
+      requestor?: string;
+    },
+  ): Promise<MigrationResult | SlackConfirmPendingResult> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/migrations/runAction`,
       data: {
         action,
         targets,
+        ...options,
       },
+    });
+  }
+
+  export function migrationsCheckApproval(
+    channel: string,
+    ts: string,
+  ): Promise<{ approved: boolean; rejected: boolean; approver?: string }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/migrations/checkApproval`,
+      data: { channel, ts },
+    });
+  }
+
+  export function migrationsForceApproval(
+    channel: string,
+    ts: string,
+    reason: string,
+    requestor?: string,
+  ): Promise<{ success: boolean }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/migrations/forceApproval`,
+      data: { channel, ts, reason, requestor },
     });
   }
 

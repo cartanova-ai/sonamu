@@ -1,7 +1,7 @@
 [
   {
     "path": "src/application/company/company.entity.json",
-    "checksum": "6b911429e3bf562dc86919c99657a8c9e0fe15b3"
+    "checksum": "79702d357ecca2c8e6141ed36f80bfd3b9e24b86"
   },
   {
     "path": "src/application/company/company.model.ts",
@@ -129,6 +129,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "7b9435a201f95424a1190257c397da6151a453f9"
+    "checksum": "e8c9e43b217db2ace729fbbea02c2bec5841acbd"
   }
 ]

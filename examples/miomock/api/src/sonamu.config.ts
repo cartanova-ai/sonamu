@@ -1,9 +1,12 @@
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
+import dotenv from "dotenv";
 import path from "path";
 import { CachePresets, defineConfig } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
+
+dotenv.config({ path: path.join(import.meta.dirname, "../.env") });
 
 const host = "localhost";
 const port = 10280;
@@ -36,6 +39,15 @@ export default defineConfig({
       },
     },
   },
+
+  slackConfirm:
+    process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID
+      ? {
+          targets: ["development_master", "production_master"],
+          botToken: process.env.SLACK_BOT_TOKEN ?? "",
+          channelId: process.env.SLACK_CHANNEL_ID ?? "",
+        }
+      : undefined,
 
   test: {
     parallel: true,
