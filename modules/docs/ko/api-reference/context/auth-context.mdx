@@ -186,24 +186,35 @@ Guard 처리 로직은 `guardHandler`에서 구현합니다:
 
 ```typescript
 // sonamu.config.ts
+import { Sonamu } from "sonamu";
+import type { GuardKey } from "sonamu";
+import type { FastifyRequest } from "fastify";
+
 export default {
-  server: {
+  api: {
     apiConfig: {
-      guardHandler: (guard, request, api) => {
-        if (guard === "user" && !request.user) {
+      guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
+        // Sonamu Context에서 사용자 정보 가져오기
+        const context = Sonamu.getContext();
+
+        if (guard === "user" && !context.user) {
           throw new UnauthorizedException("로그인이 필요합니다");
         }
-        
-        if (guard === "admin" && (!request.user || !request.user.isAdmin)) {
+
+        if (guard === "admin" && (!context.user || !context.user.isAdmin)) {
           throw new UnauthorizedException("관리자 권한이 필요합니다");
         }
-        
+
         return true;
       }
     }
   }
 } satisfies SonamuConfig;
 ```
+
+<Info>
+`guardHandler`는 AsyncLocalStorage 내부에서 실행되므로 `Sonamu.getContext()`를 통해 현재 요청의 Context에 접근할 수 있습니다. `request` 객체에서 직접 `user`에 접근하는 대신 `context.user`를 사용하세요.
+</Info>
 
 ## PassportUser 타입 확장
 
