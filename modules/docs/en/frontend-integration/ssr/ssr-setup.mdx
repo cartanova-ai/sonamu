@@ -3,6 +3,8 @@ title: "SSR Setup"
 description: "Sonamu's TanStack Router + Vite SSR configuration"
 ---
 
+import { FileTree, FileItem } from "../../../../snippets/FileTree.jsx";
+
 Learn how to set up and use Server-Side Rendering (SSR) in Sonamu.
 
 ## SSR Overview
@@ -36,17 +38,20 @@ Sonamu implements SSR using **TanStack Router + Vite**.
 
 ### Core Components
 
-```
-web/src/
-├── entry-server.generated.tsx    # Server rendering entry (auto-generated)
-├── entry-client.tsx               # Client hydration entry
-├── routeTree.gen.ts              # TanStack Router route tree (auto-generated)
-└── routes/                        # File-based routes
-    ├── __root.tsx                # Root layout
-    ├── index.tsx                 # / path
-    └── users/
-        └── $id.tsx               # /users/:id path
-```
+<FileTree>
+  <FileItem name="web/src/">
+    <FileItem name="entry-server.generated.tsx" description="Server rendering entry (auto-generated)" />
+    <FileItem name="entry-client.tsx" description="Client hydration entry" />
+    <FileItem name="routeTree.gen.ts" description="TanStack Router route tree (auto-generated)" />
+    <FileItem name="routes/" description="File-based routes">
+      <FileItem name="__root.tsx" description="Root layout" />
+      <FileItem name="index.tsx" description="/ path" />
+      <FileItem name="users/">
+        <FileItem name="$id.tsx" description="/users/:id path" />
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
 
 ### entry-server.generated.tsx
 
