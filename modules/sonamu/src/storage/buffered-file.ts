@@ -37,7 +37,7 @@ export class BufferedFile extends BaseFile {
    * @param diskName 디스크 이름 (기본: default disk)
    * @returns 저장된 파일의 URL
    */
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string> {
+  async saveToDisk(diskName: DriverKey, key: string): Promise<string> {
     // 순환 의존성 방지를 위해 동적 import
     const { Sonamu } = await import("../api/sonamu");
     const disk = Sonamu.storage.use(diskName);

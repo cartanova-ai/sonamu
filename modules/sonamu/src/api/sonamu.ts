@@ -706,7 +706,6 @@ class SonamuClass {
         try {
           const body = (request[which] ?? {}) as Record<string, unknown>;
           if (api.uploadOptions) {
-            const consume = api.uploadOptions.consume ?? "buffer";
             const parts = request.parts({
               limits: api.uploadOptions.limits,
             });
@@ -714,7 +713,7 @@ class SonamuClass {
             // FormData의 field들을 임시로 저장
             const fields: Record<string, string> = {};
 
-            if (consume === "buffer") {
+            if (api.uploadOptions.consume === "buffer" || !api.uploadOptions.consume) {
               // Buffer 모드: 메모리에 로드
               for await (const part of parts) {
                 if (part.type === "file") {
@@ -726,14 +725,11 @@ class SonamuClass {
                   fields[part.fieldname] = String(part.value);
                 }
               }
-            } else if (consume === "stream") {
+            } else if (api.uploadOptions.consume === "stream") {
               // Stream 모드: 즉시 저장소로 스트리밍
               const diskName = api.uploadOptions.destination;
-              if (!diskName) {
-                throw new Error('@upload with consume="stream" requires destination');
-              }
-
               const disk = this.storage.use(diskName);
+
               // 우선순위: 데코레이터 > 전역 설정 > 기본값
               const keyGenerator: KeyGenerator =
                 api.uploadOptions.keyGenerator ??
