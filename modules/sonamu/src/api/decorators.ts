@@ -16,6 +16,8 @@ import {
 } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
 import { convertDomainToCategory } from "../logger/category";
+import type { DriverKey } from "../storage/drivers";
+import type { KeyGenerator } from "../storage/types";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { BaseFrameClass } from "./base-frame";
 
@@ -61,6 +63,13 @@ export type StreamDecoratorOptions = {
   description?: string;
 };
 export type UploadDecoratorOptions = {
+  /** consume 전략 (기본: 'buffer') */
+  consume?: "buffer" | "stream";
+  /** stream 모드에서 저장할 디스크 이름 (stream일 때 필수) */
+  destination?: DriverKey;
+  /** stream 모드에서 키 생성 함수 (생략 시 전역 설정 또는 기본값 사용) */
+  keyGenerator?: KeyGenerator;
+  /** 파일 크기/개수 제한 */
   limits?: FastifyMultipartBaseOptions["limits"];
 };
 export const registeredApis: {
@@ -339,6 +348,14 @@ export function upload(options: UploadDecoratorOptions = {}) {
       `modelName is required on @upload decorator on ${target.constructor.name}.${propertyKey}`,
     );
     const methodName = propertyKey;
+
+    // stream 모드일 때 destination 필수 검증
+    const consume = options.consume ?? "buffer";
+    if (consume === "stream" && !options.destination) {
+      throw new Error(
+        `@upload on ${target.constructor.name}.${propertyKey}: destination is required when consume is 'stream'`,
+      );
+    }
 
     // 메서드에 걸린 데코레이터 중복 체크
     checkSingleDecorator(target, propertyKey, DECORATOR_TYPES.UPLOAD);
