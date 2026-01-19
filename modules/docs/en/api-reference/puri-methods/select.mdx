@@ -1,13 +1,13 @@
 ---
 title: 'select'
-description: 'SELECT 절로 조회할 필드 지정'
+description: 'Specify fields to query with SELECT clause'
 ---
 
-`select`는 조회할 필드를 지정하는 메서드입니다. 타입 안전하게 필드를 선택하고, SQL 집계 함수 및 표현식을 사용할 수 있습니다.
+`select` is a method for specifying which fields to query. You can select fields in a type-safe manner and use SQL aggregate functions and expressions.
 
-## 기본 사용법
+## Basic Usage
 
-### 전체 필드 조회
+### Query All Fields
 
 ```typescript
 const users = await puri.table("users").selectAll();
@@ -15,7 +15,7 @@ const users = await puri.table("users").selectAll();
 // SELECT * FROM users
 ```
 
-### 특정 필드 선택
+### Select Specific Fields
 
 ```typescript
 const users = await puri.table("users").select({
@@ -27,7 +27,7 @@ const users = await puri.table("users").select({
 // SELECT users.id, users.email, users.name FROM users
 ```
 
-### 필드 별칭 (Alias)
+### Field Alias
 
 ```typescript
 const users = await puri.table("users").select({
@@ -38,9 +38,9 @@ const users = await puri.table("users").select({
 // SELECT users.id as userId, users.name as userName FROM users
 ```
 
-## SQL 집계 함수
+## SQL Aggregate Functions
 
-Puri는 타입 안전한 SQL 함수들을 제공합니다.
+Puri provides type-safe SQL functions.
 
 ### COUNT
 
@@ -53,7 +53,7 @@ const result = await puri.table("users")
 
 console.log(result.total);  // number
 
-// 특정 컬럼 카운트
+// Count specific column
 const result = await puri.table("posts")
   .select({
     published: Puri.count("posts.published")
@@ -77,7 +77,7 @@ console.log(stats.total);    // number
 console.log(stats.average);  // number
 ```
 
-### 문자열 함수
+### String Functions
 
 ```typescript
 const users = await puri.table("users").select({
@@ -88,33 +88,33 @@ const users = await puri.table("users").select({
 });
 ```
 
-## Raw SQL 표현식
+## Raw SQL Expressions
 
-복잡한 SQL 표현식을 사용할 수 있습니다.
+You can use complex SQL expressions.
 
-### 타입별 Raw 함수
+### Type-Specific Raw Functions
 
 ```typescript
 const result = await puri.table("users").select({
   id: "users.id",
-  
-  // 문자열 반환
+
+  // Return string
   display_name: Puri.rawString("CONCAT(users.first_name, ' ', users.last_name)"),
-  
-  // 숫자 반환
+
+  // Return number
   age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(users.birth_date)"),
-  
-  // 불리언 반환
+
+  // Return boolean
   is_adult: Puri.rawBoolean("YEAR(CURRENT_DATE) - YEAR(users.birth_date) >= 18"),
-  
-  // 날짜 반환
+
+  // Return date
   signup_date: Puri.rawDate("DATE(users.created_at)"),
-  
-  // 문자열 배열 반환
+
+  // Return string array
   tags: Puri.rawStringArray("ARRAY_AGG(tags.name)")
 });
 
-// 타입이 자동으로 추론됨
+// Types are automatically inferred
 result[0].display_name;  // string
 result[0].age;           // number
 result[0].is_adult;      // boolean
@@ -122,9 +122,9 @@ result[0].signup_date;   // Date
 result[0].tags;          // string[]
 ```
 
-## 중첩 객체 선택
+## Nested Object Selection
 
-중첩 객체 구조로 SELECT를 작성할 수 있습니다.
+You can write SELECT statements with nested object structures.
 
 ```typescript
 const users = await puri.table("users")
@@ -138,21 +138,21 @@ const users = await puri.table("users")
     }
   });
 
-// 자동으로 flat하게 변환됨:
-// SELECT 
+// Automatically flattened:
+// SELECT
 //   users.id,
 //   users.email,
 //   posts.id as post__id,
 //   posts.title as post__title
 // FROM users LEFT JOIN posts ...
 
-// 결과는 hydrate되어 중첩 객체로 반환
+// Results are hydrated and returned as nested objects
 console.log(users[0].post.title);
 ```
 
 ## appendSelect
 
-기존 SELECT에 필드를 추가합니다.
+Adds fields to existing SELECT.
 
 ```typescript
 let query = puri.table("users").select({
@@ -160,7 +160,7 @@ let query = puri.table("users").select({
   email: "users.email"
 });
 
-// 필드 추가
+// Add fields
 query = query.appendSelect({
   name: "users.name",
   created_at: "users.created_at"
@@ -170,14 +170,14 @@ query = query.appendSelect({
 ```
 
 <Warning>
-`select()`는 기존 SELECT를 **덮어쓰고**, `appendSelect()`는 **추가**합니다.
+`select()` **overwrites** existing SELECT, while `appendSelect()` **appends** to it.
 </Warning>
 
-## Full-Text Search 함수
+## Full-Text Search Functions
 
 ### ts_highlight (PostgreSQL)
 
-PostgreSQL의 tsvector를 사용한 하이라이팅입니다.
+Highlighting using PostgreSQL's tsvector.
 
 ```typescript
 const posts = await puri.table("posts")
@@ -194,18 +194,18 @@ const posts = await puri.table("posts")
   });
 ```
 
-**옵션:**
-- `parser`: 쿼리 파서 (기본: `"websearch_to_tsquery"`)
-- `config`: 텍스트 검색 설정 (기본: `"simple"`)
-- `startSel`: 시작 태그 (기본: `"<b>"`)
-- `stopSel`: 종료 태그 (기본: `"</b>"`)
-- `maxWords`: 최대 단어 수
-- `minWords`: 최소 단어 수
-- `maxFragments`: 최대 조각 수
+**Options:**
+- `parser`: Query parser (default: `"websearch_to_tsquery"`)
+- `config`: Text search configuration (default: `"simple"`)
+- `startSel`: Start tag (default: `"<b>"`)
+- `stopSel`: End tag (default: `"</b>"`)
+- `maxWords`: Maximum number of words
+- `minWords`: Minimum number of words
+- `maxFragments`: Maximum number of fragments
 
 ### ts_rank (PostgreSQL)
 
-검색 관련도 점수를 계산합니다.
+Calculates search relevance score.
 
 ```typescript
 const posts = await puri.table("posts")
@@ -213,65 +213,65 @@ const posts = await puri.table("posts")
   .select({
     id: "posts.id",
     title: "posts.title",
-    
-    // 기본 rank
+
+    // Basic rank
     rank: Puri.tsRank("posts.content_tsv", "typescript"),
-    
-    // 가중치 적용
+
+    // With weights
     weighted_rank: Puri.tsRank("posts.content_tsv", "typescript", {
-      weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A 가중치
-      normalization: 1  // 길이 정규화
+      weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A weights
+      normalization: 1  // Length normalization
     }),
-    
+
     // Cover Density rank
     rank_cd: Puri.tsRankCd("posts.content_tsv", "typescript")
   })
   .orderBy("rank", "desc");
 ```
 
-**옵션:**
-- `parser`: 쿼리 파서 (기본: `"websearch_to_tsquery"`)
-- `config`: 텍스트 검색 설정 (기본: `"simple"`)
-- `weights`: [D, C, B, A] 가중치 배열
-- `normalization`: 정규화 옵션 (0-32)
+**Options:**
+- `parser`: Query parser (default: `"websearch_to_tsquery"`)
+- `config`: Text search configuration (default: `"simple"`)
+- `weights`: [D, C, B, A] weight array
+- `normalization`: Normalization option (0-32)
 
-### PGroonga 함수
+### PGroonga Functions
 
-PGroonga 확장을 사용한 전문 검색입니다.
+Full-text search using PGroonga extension.
 
 ```typescript
 const posts = await puri.table("posts")
   .whereSearch("posts.title", "타입스크립트")
   .select({
     id: "posts.id",
-    
-    // 단일 컬럼 하이라이팅
+
+    // Single column highlighting
     title: Puri.highlight("posts.title", "타입스크립트"),
-    
-    // 여러 검색어
+
+    // Multiple search terms
     content: Puri.highlight("posts.content", ["타입스크립트", "자바스크립트"]),
-    
-    // 여러 컬럼 하이라이팅 (배열 반환)
+
+    // Multiple column highlighting (returns array)
     highlights: Puri.highlight(
       ["posts.title", "posts.content"],
       ["타입스크립트", "Node.js"]
     ),
-    
-    // 검색 점수
+
+    // Search score
     score: Puri.score()
   })
   .orderBy("score", "desc");
 
-// 타입 자동 추론
+// Types are automatically inferred
 console.log(posts[0].title);       // string
 console.log(posts[0].highlights);  // string[]
 console.log(posts[0].score);       // number
 ```
 
-## 실전 예시
+## Practical Examples
 
 <Tabs>
-  <Tab title="사용자 통계" icon="chart-bar">
+  <Tab title="User Statistics" icon="chart-bar">
     ```typescript
     const stats = await puri.table("users")
       .select({
@@ -296,7 +296,7 @@ console.log(posts[0].score);       // number
     ```
   </Tab>
 
-  <Tab title="주문 요약" icon="cart-shopping">
+  <Tab title="Order Summary" icon="cart-shopping">
     ```typescript
     const orderSummary = await puri.table("orders")
       .where("orders.status", "completed")
@@ -305,8 +305,8 @@ console.log(posts[0].score);       // number
         total_amount: Puri.sum("orders.amount"),
         avg_amount: Puri.avg("orders.amount"),
         max_amount: Puri.max("orders.amount"),
-        
-        // 날짜 형식 변환
+
+        // Date format conversion
         first_order: Puri.rawDate("MIN(orders.created_at)"),
         last_order: Puri.rawDate("MAX(orders.created_at)")
       })
@@ -314,24 +314,24 @@ console.log(posts[0].score);       // number
     ```
   </Tab>
 
-  <Tab title="사용자 + 게시물" icon="user-pen">
+  <Tab title="Users + Posts" icon="user-pen">
     ```typescript
     const users = await puri.table("users")
       .leftJoin("posts", "users.id", "posts.user_id")
       .select({
-        // 사용자 정보
+        // User information
         id: "users.id",
         name: "users.name",
         email: "users.email",
-        
-        // 게시물 정보 (중첩)
+
+        // Post information (nested)
         post: {
           id: "posts.id",
           title: "posts.title",
           views: "posts.views"
         },
-        
-        // 계산 필드
+
+        // Calculated field
         full_info: Puri.concat(
           "users.name",
           "' ('",
@@ -340,33 +340,33 @@ console.log(posts[0].score);       // number
         )
       });
 
-    // 중첩 객체로 반환
+    // Returned as nested object
     console.log(users[0].post.title);
     ```
   </Tab>
 
-  <Tab title="검색 + 하이라이팅" icon="magnifying-glass">
+  <Tab title="Search + Highlighting" icon="magnifying-glass">
     ```typescript
     const searchResults = await puri.table("posts")
       .whereTsSearch("posts.content_tsv", "typescript programming")
       .select({
         id: "posts.id",
-        
-        // 제목 하이라이팅
+
+        // Title highlighting
         title: Puri.tsHighlight("posts.title", "typescript programming", {
           startSel: "<mark>",
           stopSel: "</mark>"
         }),
-        
-        // 내용 발췌 + 하이라이팅
+
+        // Content excerpt + highlighting
         excerpt: Puri.tsHighlight("posts.content", "typescript programming", {
           startSel: "<mark>",
           stopSel: "</mark>",
           maxFragments: 2,
           maxWords: 30
         }),
-        
-        // 관련도 점수
+
+        // Relevance score
         rank: Puri.tsRank("posts.content_tsv", "typescript programming", {
           weights: [0.1, 0.2, 0.4, 1.0]
         })
@@ -374,16 +374,16 @@ console.log(posts[0].score);       // number
       .orderBy("rank", "desc")
       .limit(20);
 
-    // 하이라이팅된 HTML 반환
+    // Returns highlighted HTML
     console.log(searchResults[0].title);
     // "Introduction to <mark>TypeScript</mark> <mark>Programming</mark>"
     ```
   </Tab>
 </Tabs>
 
-## 타입 안정성
+## Type Safety
 
-SELECT의 반환 타입은 자동으로 추론됩니다.
+SELECT return types are automatically inferred.
 
 ```typescript
 const result = await puri.table("users")
@@ -395,88 +395,88 @@ const result = await puri.table("users")
   })
   .first();
 
-// 타입 자동 추론
+// Types are automatically inferred
 result.id;         // number
 result.email;      // string
 result.count;      // number
 result.upper_name; // string
 
-result.unknown;    // ❌ 타입 에러
+result.unknown;    // ❌ Type error
 ```
 
-## 주의사항
+## Cautions
 
 ### 1. select vs appendSelect
 
 ```typescript
-// ❌ 나쁜 예: 이전 select가 덮어씌워짐
+// ❌ Bad: Previous select is overwritten
 query.select({ id: "users.id" })
-     .select({ name: "users.name" });  // id가 사라짐!
+     .select({ name: "users.name" });  // id is lost!
 
-// ✅ 좋은 예: appendSelect로 추가
+// ✅ Good: Add with appendSelect
 query.select({ id: "users.id" })
      .appendSelect({ name: "users.name" });
 ```
 
-### 2. 테이블 접두사 필수
+### 2. Table Prefix Required
 
 ```typescript
-// ❌ 잘못됨
+// ❌ Wrong
 puri.table("users").select({
-  id: "id"  // 어떤 테이블의 id인지 불명확
+  id: "id"  // Unclear which table's id
 });
 
-// ✅ 올바름
+// ✅ Correct
 puri.table("users").select({
-  id: "users.id"  // 명확한 테이블 지정
+  id: "users.id"  // Explicit table specification
 });
 ```
 
-### 3. Raw SQL 타입 지정
+### 3. Specify Raw SQL Types
 
 ```typescript
-// Raw SQL 사용 시 반환 타입 명시
+// Specify return type when using raw SQL
 const result = await puri.table("users").select({
-  // ✅ 타입 명시
+  // ✅ Type specified
   age: Puri.rawNumber("YEAR(CURRENT_DATE) - YEAR(birth_date)"),
-  
-  // ❌ 타입 없음 (any)
+
+  // ❌ No type (any)
   unknown: puri.raw("SOME_COMPLEX_SQL")
 });
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="where" 
-    icon="filter" 
+  <Card
+    title="where"
+    icon="filter"
     href="/api-reference/puri-methods/where"
   >
-    조건 필터링하기
+    Filter with conditions
   </Card>
-  
-  <Card 
-    title="join" 
-    icon="link" 
+
+  <Card
+    title="join"
+    icon="link"
     href="/api-reference/puri-methods/join"
   >
-    테이블 조인하기
+    Join tables
   </Card>
-  
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
+
+  <Card
+    title="order-by"
+    icon="arrow-down-1-9"
     href="/api-reference/puri-methods/order-by"
   >
-    결과 정렬하기
+    Sort results
   </Card>
-  
-  <Card 
-    title="advanced-methods" 
-    icon="wand-magic-sparkles" 
+
+  <Card
+    title="advanced-methods"
+    icon="wand-magic-sparkles"
     href="/api-reference/puri-methods/advanced-methods"
   >
-    고급 쿼리 메서드
+    Advanced query methods
   </Card>
 </CardGroup>

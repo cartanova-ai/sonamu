@@ -1,30 +1,30 @@
 ---
 title: 'tsconfig.json'
-description: 'TypeScript 설정하기'
+description: 'Configuring TypeScript'
 ---
 
-Sonamu 프로젝트는 TypeScript로 작성되며, API와 Web 각각 독립적인 `tsconfig.json`을 가지고 있습니다. 각 환경에 최적화된 설정을 사용합니다.
+Sonamu projects are written in TypeScript, with API and Web each having independent `tsconfig.json` files. They use configurations optimized for their respective environments.
 
-## 프로젝트 구조
+## Project Structure
 
 <FileTree>
 - my-project/
   - api/
-    - tsconfig.json          # API 서버용 설정
-    - tsconfig.schemas.json  # 스키마 생성용
-    - tsconfig.types.json    # 타입 생성용
+    - tsconfig.json          # API server configuration
+    - tsconfig.schemas.json  # Schema generation
+    - tsconfig.types.json    # Type generation
   - web/
-    - tsconfig.json          # React 앱용 설정
-    - tsconfig.node.json     # Vite 설정용
+    - tsconfig.json          # React app configuration
+    - tsconfig.node.json     # Vite configuration
 </FileTree>
 
 <Info>
-API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 서로 분리되어 있습니다.
+API and Web are independent TypeScript projects. Their configurations are separate.
 </Info>
 
-## API 서버 설정
+## API Server Configuration
 
-### 기본 tsconfig.json
+### Base tsconfig.json
 
 ```json title="api/tsconfig.json"
 {
@@ -73,36 +73,36 @@ API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 �
     "node_modules",
     "dist/*",
     "public",
-    // "src/**/*.test.ts",  // 테스트 파일도 타입 체크하므로 주석 처리
+    // "src/**/*.test.ts",  // Test files also type-checked, so commented out
     "**/__mocks__/**",
     "vite.config.ts"
   ]
 }
 ```
 
-### 주요 옵션 설명
+### Key Options Explained
 
 <Tabs>
-  <Tab title="모듈 설정" icon="cube">
+  <Tab title="Module Settings" icon="cube">
     ```json
     {
-      "target": "esnext",           // 최신 ECMAScript 문법 사용
-      "module": "esnext",            // ES 모듈 출력
-      "moduleResolution": "bundler"  // Vite/esbuild와 호환
+      "target": "esnext",           // Use latest ECMAScript syntax
+      "module": "esnext",            // Output ES modules
+      "moduleResolution": "bundler"  // Compatible with Vite/esbuild
     }
     ```
 
     **moduleResolution: "bundler"**
-    - Node.js의 `node` 모드 대신 번들러 모드 사용
-    - Vite와 esbuild가 모듈을 해석하는 방식과 일치
-    - `package.json`의 `exports` 필드 지원
+    - Uses bundler mode instead of Node.js's `node` mode
+    - Matches how Vite and esbuild resolve modules
+    - Supports `package.json`'s `exports` field
 
     <Warning>
-    `moduleResolution: "node"`를 사용하면 Vite와 충돌할 수 있습니다.
+    Using `moduleResolution: "node"` may conflict with Vite.
     </Warning>
   </Tab>
 
-  <Tab title="데코레이터" icon="sparkles">
+  <Tab title="Decorators" icon="sparkles">
     ```json
     {
       "experimentalDecorators": true,
@@ -110,12 +110,12 @@ API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 �
     }
     ```
 
-    **Sonamu API에서 필수**
-    - API 메서드에 `@api` 데코레이터 사용
-    - 트랜잭션에 `@transactional` 데코레이터 사용
-    - 파일 업로드에 `@upload` 데코레이터 사용
+    **Required in Sonamu API**
+    - Use `@api` decorator for API methods
+    - Use `@transactional` decorator for transactions
+    - Use `@upload` decorator for file uploads
 
-    **사용 예시:**
+    **Usage Example:**
     ```typescript
     import { BaseModelClass, api, transactional } from "sonamu";
 
@@ -142,11 +142,11 @@ API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 �
     ```
 
     <Info>
-    Entity는 `entity.json` 파일로 정의하며, TypeScript 데코레이터는 사용하지 않습니다. 자세한 내용은 [Entity 정의하기](/core-concepts/entity/defining-entities)를 참고하세요.
+    Entities are defined in `entity.json` files and do not use TypeScript decorators. See [Defining Entities](/core-concepts/entity/defining-entities) for details.
     </Info>
   </Tab>
 
-  <Tab title="Strict 모드" icon="shield-check">
+  <Tab title="Strict Mode" icon="shield-check">
     ```json
     {
       "strict": true,
@@ -160,15 +160,15 @@ API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 �
     }
     ```
 
-    Sonamu는 **모든 strict 옵션을 활성화**합니다.
-    - 타입 안정성 극대화
-    - 런타임 에러 사전 방지
-    - 코드 품질 향상
+    Sonamu **enables all strict options**.
+    - Maximize type safety
+    - Prevent runtime errors in advance
+    - Improve code quality
 
-    자세한 내용은 [타입 체크](/configuration/typescript/type-checking)를 참고하세요.
+    See [Type Checking](/configuration/typescript/type-checking) for details.
   </Tab>
 
-  <Tab title="추가 체크" icon="list-check">
+  <Tab title="Additional Checks" icon="list-check">
     ```json
     {
       "noUnusedLocals": true,
@@ -180,19 +180,19 @@ API와 Web은 각각 독립적인 TypeScript 프로젝트입니다. 설정이 �
     }
     ```
 
-    **코드 품질 향상 옵션:**
-    - `noUnusedLocals`: 사용하지 않는 변수 경고
-    - `noUnusedParameters`: 사용하지 않는 파라미터 경고
-    - `noImplicitReturns`: 모든 경로에서 return 필요
-    - `noUncheckedIndexedAccess`: 배열/객체 접근 시 undefined 체크
+    **Code Quality Improvement Options:**
+    - `noUnusedLocals`: Warn about unused variables
+    - `noUnusedParameters`: Warn about unused parameters
+    - `noImplicitReturns`: Require return in all paths
+    - `noUncheckedIndexedAccess`: Check for undefined when accessing arrays/objects
   </Tab>
 </Tabs>
 
-### 확장 설정 파일들
+### Extended Configuration Files
 
-Sonamu API는 코드 생성을 위해 추가 tsconfig 파일을 사용합니다.
+Sonamu API uses additional tsconfig files for code generation.
 
-<Accordion title="tsconfig.schemas.json - 스키마 생성용" icon="database">
+<Accordion title="tsconfig.schemas.json - Schema Generation" icon="database">
   ```json title="api/tsconfig.schemas.json"
   {
     "extends": "./tsconfig.json",
@@ -201,19 +201,19 @@ Sonamu API는 코드 생성을 위해 추가 tsconfig 파일을 사용합니다.
   }
   ```
 
-  **용도:**
-  - `sonamu.generated.ts` 파일 생성
-  - Entity 스키마 타입 생성
-  - DB 스키마 → TypeScript 타입 변환
+  **Purpose:**
+  - Generate `sonamu.generated.ts` file
+  - Generate Entity schema types
+  - Convert DB schema → TypeScript types
 
-  **사용 시점:**
+  **When Used:**
   ```bash
-  # Sonamu가 자동으로 사용
+  # Automatically used by Sonamu
   pnpm sonamu entity:load
   ```
 </Accordion>
 
-<Accordion title="tsconfig.types.json - 타입 생성용" icon="code">
+<Accordion title="tsconfig.types.json - Type Generation" icon="code">
   ```json title="api/tsconfig.types.json"
   {
     "extends": "./tsconfig.json",
@@ -222,19 +222,19 @@ Sonamu API는 코드 생성을 위해 추가 tsconfig 파일을 사용합니다.
   }
   ```
 
-  **용도:**
-  - API 응답 타입 생성
-  - Request/Response 타입 정의
-  - 프론트엔드와 타입 공유
+  **Purpose:**
+  - Generate API response types
+  - Define Request/Response types
+  - Share types with frontend
 
-  **사용 시점:**
+  **When Used:**
   ```bash
-  # Web으로 타입 동기화
+  # Sync types to Web
   pnpm sonamu sync:types
   ```
 </Accordion>
 
-## Web (React) 설정
+## Web (React) Configuration
 
 ```json title="web/tsconfig.json"
 {
@@ -264,18 +264,18 @@ Sonamu API는 코드 생성을 위해 추가 tsconfig 파일을 사용합니다.
 }
 ```
 
-### API와의 차이점
+### Differences from API
 
-| 옵션 | API | Web | 이유 |
+| Option | API | Web | Reason |
 |------|-----|-----|------|
-| `moduleResolution` | `bundler` | `Bundler` | Vite가 번들러 방식 사용 |
+| `moduleResolution` | `bundler` | `Bundler` | Vite uses bundler mode |
 | `jsx` | - | `react-jsx` | React 17+ JSX Transform |
-| `noEmit` | `false` | `true` | Vite가 빌드 담당 |
-| `isolatedModules` | - | `true` | Vite의 esbuild 요구사항 |
-| `paths` | - | `@/*` | 절대 경로 import |
+| `noEmit` | `false` | `true` | Vite handles build |
+| `isolatedModules` | - | `true` | Required by Vite's esbuild |
+| `paths` | - | `@/*` | Absolute path imports |
 
 <Info>
-API는 `moduleResolution: "bundler"` (소문자), Web은 `moduleResolution: "Bundler"` (대문자)를 사용합니다. 둘 다 Vite가 번들러 방식으로 모듈을 해석합니다.
+API uses `moduleResolution: "bundler"` (lowercase), Web uses `moduleResolution: "Bundler"` (uppercase). Both make Vite resolve modules in bundler mode.
 </Info>
 
 ### Path Mapping
@@ -288,29 +288,29 @@ API는 `moduleResolution: "bundler"` (소문자), Web은 `moduleResolution: "Bun
 }
 ```
 
-절대 경로로 import할 수 있습니다:
+You can import with absolute paths:
 
 ```typescript
-// ❌ 상대 경로
+// ❌ Relative path
 import { Button } from "../../../components/Button";
 
-// ✅ 절대 경로
+// ✅ Absolute path
 import { Button } from "@/components/Button";
 ```
 
-자세한 내용은 [Path Mapping](/configuration/typescript/path-mappings)을 참고하세요.
+See [Path Mapping](/configuration/typescript/path-mappings) for details.
 
-## 타입 체크 실행
+## Running Type Checks
 
 <Tabs>
   <Tab title="API" icon="server">
     ```bash
     cd api
 
-    # 타입 체크만
+    # Type check only
     pnpm tsc --noEmit
 
-    # Watch 모드
+    # Watch mode
     pnpm tsc --noEmit --watch
     ```
   </Tab>
@@ -319,60 +319,60 @@ import { Button } from "@/components/Button";
     ```bash
     cd web
 
-    # 타입 체크만
+    # Type check only
     pnpm tsc --noEmit
 
-    # Watch 모드
+    # Watch mode
     pnpm tsc --noEmit --watch
     ```
   </Tab>
 
-  <Tab title="전체" icon="folder">
+  <Tab title="All" icon="folder">
     ```bash
-    # 프로젝트 루트에서
+    # From project root
     pnpm -r tsc --noEmit
 
-    # API와 Web을 동시에 체크
+    # Check API and Web simultaneously
     ```
   </Tab>
 </Tabs>
 
 <Tip>
-개발 중에는 `--watch` 모드로 실시간 타입 체크를 권장합니다.
+During development, `--watch` mode is recommended for real-time type checking.
 </Tip>
 
-## 일반적인 문제 해결
+## Common Troubleshooting
 
-<Accordion title="모듈을 찾을 수 없음" icon="magnifying-glass">
-  **증상:**
+<Accordion title="Cannot Find Module" icon="magnifying-glass">
+  **Symptoms:**
   ```
   Cannot find module 'sonamu' or its corresponding type declarations.
   ```
 
-  **원인:**
-  - `node_modules`가 설치되지 않음
-  - 잘못된 import 경로
+  **Cause:**
+  - `node_modules` not installed
+  - Incorrect import path
 
-  **해결:**
+  **Solution:**
   ```bash
-  # 의존성 재설치
+  # Reinstall dependencies
   pnpm install
 
-  # 타입 정의 확인
+  # Check type definitions
   ls node_modules/sonamu/dist/*.d.ts
   ```
 </Accordion>
 
-<Accordion title="데코레이터 에러" icon="sparkles">
-  **증상:**
+<Accordion title="Decorator Error" icon="sparkles">
+  **Symptoms:**
   ```
   Experimental support for decorators is a feature that is subject to change
   ```
 
-  **원인:**
-  - `experimentalDecorators`가 비활성화됨
+  **Cause:**
+  - `experimentalDecorators` is disabled
 
-  **해결:**
+  **Solution:**
   ```json
   {
     "compilerOptions": {
@@ -383,16 +383,16 @@ import { Button } from "@/components/Button";
   ```
 </Accordion>
 
-<Accordion title="JSX 에러 (Web)" icon="react">
-  **증상:**
+<Accordion title="JSX Error (Web)" icon="react">
+  **Symptoms:**
   ```
   Cannot use JSX unless the '--jsx' flag is provided.
   ```
 
-  **원인:**
-  - `jsx` 옵션이 설정되지 않음
+  **Cause:**
+  - `jsx` option not configured
 
-  **해결:**
+  **Solution:**
   ```json
   {
     "compilerOptions": {
@@ -401,20 +401,20 @@ import { Button } from "@/components/Button";
   }
   ```
 
-  **React 17+ 필수 설정**
+  **Required for React 17+**
 </Accordion>
 
-<Accordion title="Path Mapping 작동 안 함" icon="route">
-  **증상:**
+<Accordion title="Path Mapping Not Working" icon="route">
+  **Symptoms:**
   ```
   Cannot find module '@/components/Button'
   ```
 
-  **원인:**
-  - `paths` 설정 누락
-  - `baseUrl` 설정 필요
+  **Cause:**
+  - `paths` configuration missing
+  - `baseUrl` configuration needed
 
-  **해결:**
+  **Solution:**
   ```json
   {
     "compilerOptions": {
@@ -426,7 +426,7 @@ import { Button } from "@/components/Button";
   }
   ```
 
-  **Vite 설정도 필요:**
+  **Vite configuration also needed:**
   ```typescript title="vite.config.ts"
   import path from "path";
 
@@ -440,9 +440,9 @@ import { Button } from "@/components/Button";
   ```
 </Accordion>
 
-## 커스터마이징
+## Customization
 
-### 추가 라이브러리 타입
+### Additional Library Types
 
 ```json
 {
@@ -452,7 +452,7 @@ import { Button } from "@/components/Button";
 }
 ```
 
-### 더 엄격한 체크
+### Stricter Checks
 
 ```json
 {
@@ -465,10 +465,10 @@ import { Button } from "@/components/Button";
 ```
 
 <Warning>
-이 옵션들은 기존 코드와 호환성 문제를 일으킬 수 있습니다.
+These options may cause compatibility issues with existing code.
 </Warning>
 
-### include/exclude 패턴
+### include/exclude Patterns
 
 ```json
 {
@@ -487,38 +487,38 @@ import { Button } from "@/components/Button";
 }
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="타입 체크" 
-    icon="shield-check" 
+  <Card
+    title="Type Checking"
+    icon="shield-check"
     href="/configuration/typescript/type-checking"
   >
-    Strict 모드와 타입 체크 옵션을 학습하세요
+    Learn about Strict mode and type check options
   </Card>
-  
-  <Card 
-    title="Path Mapping" 
-    icon="route" 
+
+  <Card
+    title="Path Mapping"
+    icon="route"
     href="/configuration/typescript/path-mappings"
   >
-    절대 경로 import를 설정하세요
+    Configure absolute path imports
   </Card>
-  
-  <Card 
-    title="Entity 정의" 
-    icon="database" 
+
+  <Card
+    title="Defining Entities"
+    icon="database"
     href="/core-concepts/entity/defining-entities"
   >
-    Entity를 정의하세요
+    Define Entities
   </Card>
-  
-  <Card 
-    title="API 타입" 
-    icon="code" 
+
+  <Card
+    title="API Types"
+    icon="code"
     href="/core-concepts/type-system/entity-types"
   >
-    API 요청/응답 타입을 정의하세요
+    Define API request/response types
   </Card>
 </CardGroup>

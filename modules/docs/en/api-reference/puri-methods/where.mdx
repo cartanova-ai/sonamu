@@ -1,13 +1,13 @@
 ---
 title: 'where'
-description: 'WHERE 절로 조건 필터링'
+description: 'Filter Conditions with WHERE Clause'
 ---
 
-`where`는 쿼리 결과를 필터링하는 조건을 지정하는 메서드입니다. 다양한 연산자와 조건 조합을 지원하며, 타입 안전하게 필터링할 수 있습니다.
+`where` is a method that specifies conditions to filter query results. It supports various operators and condition combinations, enabling type-safe filtering.
 
-## 기본 사용법
+## Basic Usage
 
-### 단순 등호 조건
+### Simple Equality Condition
 
 ```typescript
 const users = await puri.table("users")
@@ -17,35 +17,35 @@ const users = await puri.table("users")
 // WHERE users.status = 'active'
 ```
 
-### 비교 연산자
+### Comparison Operators
 
 ```typescript
-// 보다 큰
+// Greater than
 await puri.table("users")
   .where("users.age", ">", 18);
 
-// 보다 작거나 같음
+// Less than or equal
 await puri.table("orders")
   .where("orders.amount", "<=", 1000);
 
-// 같지 않음
+// Not equal
 await puri.table("posts")
   .where("posts.status", "!=", "deleted");
 ```
 
-**지원 연산자:**
-- `=` - 같음 (기본값)
-- `!=` - 같지 않음
-- `>` - 보다 큼
-- `>=` - 보다 크거나 같음
-- `<` - 보다 작음
-- `<=` - 보다 작거나 같음
-- `like` - 패턴 매칭
-- `not like` - 패턴 불일치
+**Supported Operators:**
+- `=` - Equal (default)
+- `!=` - Not equal
+- `>` - Greater than
+- `>=` - Greater than or equal
+- `<` - Less than
+- `<=` - Less than or equal
+- `like` - Pattern matching
+- `not like` - Pattern mismatch
 
-### 객체 형태 조건
+### Object-Style Conditions
 
-여러 AND 조건을 객체로 지정할 수 있습니다.
+You can specify multiple AND conditions as an object.
 
 ```typescript
 const users = await puri.table("users")
@@ -56,23 +56,23 @@ const users = await puri.table("users")
   })
   .select({ id: "users.id", name: "users.name" });
 
-// WHERE users.status = 'active' 
-//   AND users.role = 'admin' 
+// WHERE users.status = 'active'
+//   AND users.role = 'admin'
 //   AND users.verified = true
 ```
 
-## NULL 처리
+## NULL Handling
 
 ### IS NULL
 
 ```typescript
-// 명시적 null 체크
+// Explicit null check
 await puri.table("users")
   .where("users.deleted_at", null);
 
 // WHERE users.deleted_at IS NULL
 
-// 연산자 사용
+// Using operator
 await puri.table("users")
   .where("users.deleted_at", "=", null);
 
@@ -88,24 +88,24 @@ await puri.table("users")
 // WHERE users.email IS NOT NULL
 ```
 
-## 패턴 매칭 (LIKE)
+## Pattern Matching (LIKE)
 
-### 부분 일치
+### Partial Matching
 
 ```typescript
-// 포함
+// Contains
 await puri.table("users")
   .where("users.email", "like", "%@gmail.com");
 
-// 시작
+// Starts with
 await puri.table("users")
   .where("users.name", "like", "John%");
 
-// 끝
+// Ends with
 await puri.table("users")
   .where("users.phone", "like", "%1234");
 
-// 어디든 포함
+// Contains anywhere
 await puri.table("posts")
   .where("posts.title", "like", "%typescript%");
 ```
@@ -121,7 +121,7 @@ await puri.table("users")
 
 ## whereIn / whereNotIn
 
-### 값 목록 중 하나
+### One of Multiple Values
 
 ```typescript
 // IN
@@ -138,21 +138,21 @@ await puri.table("users")
 // WHERE users.status NOT IN ('banned', 'suspended')
 ```
 
-### 빈 배열 처리
+### Empty Array Handling
 
 ```typescript
-// 빈 배열은 항상 false
+// Empty array always returns false
 await puri.table("users")
   .whereIn("users.id", []);
 
-// WHERE 1 = 0 (아무것도 반환하지 않음)
+// WHERE 1 = 0 (returns nothing)
 ```
 
-## 복잡한 조건 그룹
+## Complex Condition Groups
 
-### whereGroup (AND 그룹)
+### whereGroup (AND Group)
 
-괄호로 묶인 조건들을 만듭니다.
+Creates conditions wrapped in parentheses.
 
 ```typescript
 await puri.table("users")
@@ -162,11 +162,11 @@ await puri.table("users")
          .orWhere("users.status", "pending");
   });
 
-// WHERE users.role = 'admin' 
+// WHERE users.role = 'admin'
 //   AND (users.status = 'active' OR users.status = 'pending')
 ```
 
-### orWhereGroup (OR 그룹)
+### orWhereGroup (OR Group)
 
 ```typescript
 await puri.table("products")
@@ -176,11 +176,11 @@ await puri.table("products")
          .where("products.stock", ">", 0);
   });
 
-// WHERE products.published = true 
+// WHERE products.published = true
 //   OR (products.featured = true AND products.stock > 0)
 ```
 
-### 중첩 그룹
+### Nested Groups
 
 ```typescript
 await puri.table("orders")
@@ -193,7 +193,7 @@ await puri.table("orders")
   });
 
 // WHERE (
-//   orders.status = 'completed' 
+//   orders.status = 'completed'
 //   AND (orders.amount > 1000 OR orders.vip = true)
 // )
 ```
@@ -202,7 +202,7 @@ await puri.table("orders")
 
 ### whereMatch (MySQL)
 
-MySQL의 FULLTEXT 인덱스를 사용합니다.
+Uses MySQL's FULLTEXT index.
 
 ```typescript
 await puri.table("posts")
@@ -212,12 +212,12 @@ await puri.table("posts")
 ```
 
 <Info>
-`whereMatch`를 사용하려면 해당 컬럼에 FULLTEXT 인덱스가 있어야 합니다.
+To use `whereMatch`, the column must have a FULLTEXT index.
 </Info>
 
 ### whereTsSearch (PostgreSQL)
 
-PostgreSQL의 tsvector를 사용합니다.
+Uses PostgreSQL's tsvector.
 
 ```typescript
 await puri.table("posts")
@@ -226,84 +226,84 @@ await puri.table("posts")
 // WHERE posts.content_tsv @@ websearch_to_tsquery('simple', 'typescript programming')
 ```
 
-**옵션:**
+**Options:**
 
 ```typescript
-// 파서 지정
+// Specify parser
 await puri.table("posts")
   .whereTsSearch("posts.content_tsv", "typescript", {
-    parser: "plainto_tsquery",  // 또는 "to_tsquery", "phraseto_tsquery"
-    config: "english"  // 언어 설정
+    parser: "plainto_tsquery",  // or "to_tsquery", "phraseto_tsquery"
+    config: "english"  // Language configuration
   });
 
-// 간단한 config만 지정
+// Specify config only
 await puri.table("posts")
   .whereTsSearch("posts.content_tsv", "typescript", "english");
 ```
 
 ### whereSearch (PGroonga)
 
-PGroonga 확장을 사용한 전문 검색입니다.
+Full-text search using the PGroonga extension.
 
 ```typescript
-// 단일 컬럼 검색
+// Single column search
 await puri.table("posts")
   .whereSearch("posts.title", "타입스크립트");
 
 // WHERE posts.title &@~ pgroonga_condition('타입스크립트')
 
-// 여러 컬럼 검색 (배열)
+// Multiple column search (array)
 await puri.table("posts")
   .whereSearch(
     ["posts.title", "posts.content"],
     "타입스크립트"
   );
 
-// WHERE ARRAY[posts.title::text, posts.content::text] 
+// WHERE ARRAY[posts.title::text, posts.content::text]
 //   &@~ pgroonga_condition('타입스크립트')
 
-// 가중치 지정
+// Specify weights
 await puri.table("posts")
   .whereSearch(
     ["posts.title", "posts.content"],
     "타입스크립트",
-    { weights: [10, 1] }  // title이 content보다 10배 중요
+    { weights: [10, 1] }  // title is 10x more important than content
   );
 ```
 
 <Info>
-PGroonga 검색은 사용할 인덱스와 **동일한 컬럼 구성**으로 검색해야 인덱스가 사용됩니다.
+PGroonga search must use the **same column configuration** as the index to be used.
 </Info>
 
-## Raw SQL 조건
+## Raw SQL Conditions
 
 ### whereRaw
 
-복잡한 SQL 조건을 직접 작성할 수 있습니다.
+You can write complex SQL conditions directly.
 
 ```typescript
-// 파라미터 없음
+// No parameters
 await puri.table("users")
   .whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
 
-// 파라미터 바인딩
+// Parameter binding
 await puri.table("users")
   .whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
 
-// 여러 조건
+// Multiple conditions
 await puri.table("orders")
   .whereRaw("DATE(orders.created_at) = ?", ["2024-01-01"])
   .whereRaw("orders.amount > ?", [1000]);
 ```
 
 <Warning>
-SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하세요.
+Always use parameter binding to prevent SQL injection.
 </Warning>
 
-## 실전 예시
+## Real-World Examples
 
 <Tabs>
-  <Tab title="사용자 필터링" icon="user">
+  <Tab title="User Filtering" icon="user">
     ```typescript
     async function getActiveAdmins() {
       return puri.table("users")
@@ -324,7 +324,7 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
     ```
   </Tab>
 
-  <Tab title="주문 검색" icon="cart-shopping">
+  <Tab title="Order Search" icon="cart-shopping">
     ```typescript
     async function searchOrders(filters: {
       status?: string;
@@ -335,22 +335,22 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
     }) {
       let query = puri.table("orders").selectAll();
 
-      // 상태 필터
+      // Status filter
       if (filters.status) {
         query = query.where("orders.status", filters.status);
       }
 
-      // 금액 범위
+      // Amount range
       if (filters.minAmount) {
         query = query.where("orders.amount", ">=", filters.minAmount);
       }
 
-      // 사용자 목록
+      // User list
       if (filters.userIds && filters.userIds.length > 0) {
         query = query.whereIn("orders.user_id", filters.userIds);
       }
 
-      // 날짜 범위
+      // Date range
       if (filters.dateFrom) {
         query = query.where("orders.created_at", ">=", filters.dateFrom);
       }
@@ -363,15 +363,15 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
     ```
   </Tab>
 
-  <Tab title="복잡한 조건" icon="filter">
+  <Tab title="Complex Conditions" icon="filter">
     ```typescript
     async function getEligibleProducts() {
       return puri.table("products")
-        // 기본 조건
+        // Basic conditions
         .where("products.published", true)
         .where("products.deleted_at", null)
-        
-        // (재고 있음 OR 사전주문 가능) AND 가격 조건
+
+        // (In stock OR Pre-order available) AND Price conditions
         .whereGroup((group1) => {
           group1.whereGroup((group2) => {
             group2.where("products.stock", ">", 0)
@@ -381,10 +381,10 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
                   .where("products.price", "<=", 100000);
           });
         })
-        
-        // 제외 조건
+
+        // Exclusion conditions
         .whereNotIn("products.category", ["adult", "restricted"])
-        
+
         .select({
           id: "products.id",
           name: "products.name",
@@ -397,61 +397,61 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
     ```
   </Tab>
 
-  <Tab title="전문 검색" icon="magnifying-glass">
+  <Tab title="Full-Text Search" icon="magnifying-glass">
     ```typescript
     async function searchPosts(keyword: string) {
       return puri.table("posts")
-        // PGroonga 전문 검색
+        // PGroonga full-text search
         .whereSearch(
           ["posts.title", "posts.content"],
           keyword,
-          { weights: [10, 1] }  // 제목 가중치 높임
+          { weights: [10, 1] }  // Higher weight for title
         )
-        
-        // 추가 필터
+
+        // Additional filters
         .where("posts.published", true)
         .where("posts.deleted_at", null)
-        
+
         .select({
           id: "posts.id",
-          
-          // 하이라이팅된 제목/내용
+
+          // Highlighted title/content
           title: Puri.highlight("posts.title", keyword),
           content: Puri.highlight("posts.content", keyword),
-          
-          // 검색 점수
+
+          // Search score
           score: Puri.score(),
-          
+
           created_at: "posts.created_at"
         })
-        
-        // 점수 순 정렬
+
+        // Sort by score
         .orderBy("score", "desc")
         .limit(20);
     }
     ```
   </Tab>
 
-  <Tab title="날짜 범위" icon="calendar">
+  <Tab title="Date Range" icon="calendar">
     ```typescript
     async function getRecentActivity(days: number = 7) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
       return puri.table("activities")
-        // 날짜 범위
+        // Date range
         .where("activities.created_at", ">=", startDate)
         .where("activities.created_at", "<=", new Date())
-        
-        // 활성 사용자만
+
+        // Active users only
         .whereGroup((group) => {
           group.where("activities.user_status", "active")
                .orWhere("activities.user_status", "premium");
         })
-        
-        // 특정 타입 제외
+
+        // Exclude specific types
         .whereNotIn("activities.type", ["system", "automated"])
-        
+
         .select({
           id: "activities.id",
           type: "activities.type",
@@ -464,9 +464,9 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
   </Tab>
 </Tabs>
 
-## 조건 체이닝
+## Condition Chaining
 
-모든 `where` 메서드는 체이닝 가능하며, 기본적으로 **AND**로 연결됩니다.
+All `where` methods are chainable and are connected with **AND** by default.
 
 ```typescript
 const result = await puri.table("users")
@@ -477,9 +477,9 @@ const result = await puri.table("users")
   .where("users.verified", true);        // AND
 ```
 
-## OR 조건
+## OR Conditions
 
-### WhereGroup 내에서 orWhere
+### orWhere within WhereGroup
 
 ```typescript
 await puri.table("users")
@@ -490,69 +490,69 @@ await puri.table("users")
   });
 
 // WHERE (
-//   users.role = 'admin' 
-//   OR users.role = 'moderator' 
+//   users.role = 'admin'
+//   OR users.role = 'moderator'
 //   OR users.role = 'editor'
 // )
 ```
 
 <Info>
-최상위 레벨에는 `orWhere`가 없습니다. OR 조건은 `whereGroup` 또는 `orWhereGroup` 내에서 사용하세요.
+There is no `orWhere` at the top level. Use OR conditions within `whereGroup` or `orWhereGroup`.
 </Info>
 
-## 타입 안정성
+## Type Safety
 
-WHERE 조건은 타입 안전하게 검증됩니다.
+WHERE conditions are validated type-safely.
 
 ```typescript
-// ✅ 올바른 컬럼
+// ✅ Valid column
 await puri.table("users")
   .where("users.email", "like", "%@gmail.com");
 
-// ❌ 타입 에러: 존재하지 않는 컬럼
+// ❌ Type error: Non-existent column
 await puri.table("users")
   .where("users.unknown_field", "value");
 
-// ✅ 올바른 타입
+// ✅ Valid type
 await puri.table("users")
   .where("users.age", 25);  // number
 
-// ❌ 타입 에러: 잘못된 타입
+// ❌ Type error: Wrong type
 await puri.table("users")
-  .where("users.age", "25");  // string (age는 number)
+  .where("users.age", "25");  // string (age is number)
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 1. 인덱스 활용
+### 1. Utilizing Indexes
 
 ```typescript
-// ✅ 좋음: 인덱스 컬럼 사용
+// ✅ Good: Use indexed column
 await puri.table("users")
-  .where("users.email", "user@example.com");  // email에 인덱스 필요
+  .where("users.email", "user@example.com");  // email needs index
 
-// ❌ 나쁨: 함수 사용 (인덱스 무효화)
+// ❌ Bad: Using functions (invalidates index)
 await puri.table("users")
   .whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
 ```
 
-### 2. LIKE 패턴
+### 2. LIKE Patterns
 
 ```typescript
-// ✅ 좋음: 앞 고정 (인덱스 사용 가능)
+// ✅ Good: Fixed prefix (can use index)
 .where("users.name", "like", "John%")
 
-// ❌ 나쁨: 앞 와일드카드 (인덱스 사용 불가)
+// ❌ Bad: Leading wildcard (cannot use index)
 .where("users.name", "like", "%John")
 ```
 
-### 3. IN vs 여러 OR
+### 3. IN vs Multiple ORs
 
 ```typescript
-// ✅ 좋음: IN 사용
+// ✅ Good: Use IN
 .whereIn("users.id", [1, 2, 3, 4, 5])
 
-// ❌ 나쁨: 여러 OR (비효율적)
+// ❌ Bad: Multiple ORs (inefficient)
 .whereGroup((g) => {
   g.where("users.id", 1)
    .orWhere("users.id", 2)
@@ -562,91 +562,91 @@ await puri.table("users")
 })
 ```
 
-## 주의사항
+## Cautions
 
-### 1. NULL 처리
+### 1. NULL Handling
 
 ```typescript
-// ✅ 올바름: NULL 체크
+// ✅ Correct: NULL check
 .where("users.deleted_at", null)           // IS NULL
 .where("users.deleted_at", "=", null)      // IS NULL
 .where("users.deleted_at", "!=", null)     // IS NOT NULL
 
-// ❌ 잘못됨: 일반 비교 (동작하지 않음)
+// ❌ Wrong: Regular comparison (doesn't work)
 .where("users.deleted_at", "=", undefined)
 ```
 
-### 2. 빈 배열
+### 2. Empty Arrays
 
 ```typescript
-// whereIn에 빈 배열을 전달하면 결과 없음
+// whereIn with empty array returns no results
 const ids = [];
 await puri.table("users")
-  .whereIn("users.id", ids);  // 아무것도 반환하지 않음
+  .whereIn("users.id", ids);  // Returns nothing
 
-// 조건부로 처리
+// Handle conditionally
 if (ids.length > 0) {
   query = query.whereIn("users.id", ids);
 }
 ```
 
-### 3. Raw SQL 주입
+### 3. Raw SQL Injection
 
 ```typescript
-// ❌ 위험: SQL 인젝션 가능
+// ❌ Dangerous: SQL injection possible
 const userInput = "'; DROP TABLE users; --";
 .whereRaw(`users.name = '${userInput}'`)
 
-// ✅ 안전: 파라미터 바인딩
+// ✅ Safe: Parameter binding
 .whereRaw("users.name = ?", [userInput])
 ```
 
-### 4. 조건 순서
+### 4. Condition Order
 
 ```typescript
-// WHERE 순서는 성능에 영향을 줄 수 있음
+// WHERE order can affect performance
 
-// ✅ 좋음: 선택도 높은 조건 먼저
-.where("users.id", 123)        // 매우 선택적
-.where("users.status", "active") // 덜 선택적
+// ✅ Good: Highly selective conditions first
+.where("users.id", 123)        // Very selective
+.where("users.status", "active") // Less selective
 
-// ❌ 비효율: 선택도 낮은 조건 먼저
-.where("users.status", "active") // 많은 행
-.where("users.id", 123)        // 소수의 행
+// ❌ Inefficient: Low selectivity first
+.where("users.status", "active") // Many rows
+.where("users.id", 123)        // Few rows
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="select" 
-    icon="list-check" 
+  <Card
+    title="select"
+    icon="list-check"
     href="/api-reference/puri-methods/select"
   >
-    조회할 필드 선택하기
+    Select fields to retrieve
   </Card>
-  
-  <Card 
-    title="join" 
-    icon="link" 
+
+  <Card
+    title="join"
+    icon="link"
     href="/api-reference/puri-methods/join"
   >
-    테이블 조인하기
+    Join tables
   </Card>
-  
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
+
+  <Card
+    title="order-by"
+    icon="arrow-down-1-9"
     href="/api-reference/puri-methods/order-by"
   >
-    결과 정렬하기
+    Sort results
   </Card>
-  
-  <Card 
-    title="limit" 
-    icon="hashtag" 
+
+  <Card
+    title="limit"
+    icon="hashtag"
     href="/api-reference/puri-methods/limit"
   >
-    결과 개수 제한하기
+    Limit number of results
   </Card>
 </CardGroup>

@@ -1,492 +1,508 @@
 ---
-title: 'limit & offset'
-description: '페이지네이션과 결과 제한'
+title: 'limit / offset'
+description: 'Limit and paginate query results'
 ---
 
-`limit`과 `offset`은 쿼리 결과의 개수를 제한하고 페이지네이션을 구현하는 메서드입니다.
+`limit` and `offset` are methods for limiting the number of query results and implementing pagination. These are essential methods for performance optimization and implementing paging functionality.
 
-## limit
+## Basic Usage
 
-조회할 레코드 수를 제한합니다.
+### limit
 
-### 기본 사용법
+Limits the maximum number of results to return.
 
 ```typescript
-// 상위 10개만
 const users = await puri.table("users")
   .select({ id: "users.id", name: "users.name" })
-  .orderBy("users.created_at", "desc")
   .limit(10);
 
-// LIMIT 10
+// SELECT users.id, users.name FROM users LIMIT 10
 ```
 
-### 최신 N개
+### offset
+
+Skips a specified number of results.
 
 ```typescript
-// 최신 게시물 20개
-const recentPosts = await puri.table("posts")
-  .select({
-    id: "posts.id",
-    title: "posts.title",
-    created_at: "posts.created_at"
-  })
+const users = await puri.table("users")
+  .select({ id: "users.id", name: "users.name" })
+  .offset(20)
+  .limit(10);
+
+// SELECT users.id, users.name FROM users LIMIT 10 OFFSET 20
+```
+
+<Info>
+`offset` is typically used with `limit` for pagination.
+</Info>
+
+## Pagination
+
+### Basic Pagination
+
+```typescript
+// Page 1: Items 1-10
+const page1 = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title" })
   .orderBy("posts.created_at", "desc")
+  .limit(10)
+  .offset(0);
+
+// Page 2: Items 11-20
+const page2 = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title" })
+  .orderBy("posts.created_at", "desc")
+  .limit(10)
+  .offset(10);
+
+// Page 3: Items 21-30
+const page3 = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title" })
+  .orderBy("posts.created_at", "desc")
+  .limit(10)
+  .offset(20);
+```
+
+### Pagination Function
+
+```typescript
+function paginate(page: number, perPage: number) {
+  return {
+    limit: perPage,
+    offset: (page - 1) * perPage
+  };
+}
+
+// Get page 3 with 20 items per page
+const { limit, offset } = paginate(3, 20);
+
+const posts = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title" })
+  .orderBy("posts.created_at", "desc")
+  .limit(limit)
+  .offset(offset);
+
+// Returns items 41-60
+```
+
+## Cursor-Based Pagination
+
+Cursor-based pagination is more efficient for large datasets than offset-based pagination.
+
+### Basic Cursor Pagination
+
+```typescript
+// First page: Latest 10 posts
+const firstPage = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
+  .orderBy("posts.created_at", "desc")
+  .limit(10);
+
+// Get last item's cursor
+const lastPost = firstPage[firstPage.length - 1];
+const cursor = lastPost.created_at;
+
+// Next page: 10 items after cursor
+const nextPage = await puri.table("posts")
+  .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
+  .where("posts.created_at", "<", cursor)
+  .orderBy("posts.created_at", "desc")
+  .limit(10);
+```
+
+### Cursor Pagination with ID
+
+```typescript
+// First page
+const firstPage = await puri.table("users")
+  .select({ id: "users.id", name: "users.name" })
+  .orderBy("users.id", "asc")
+  .limit(20);
+
+// Next page cursor
+const lastUserId = firstPage[firstPage.length - 1].id;
+
+// Next page
+const nextPage = await puri.table("users")
+  .select({ id: "users.id", name: "users.name" })
+  .where("users.id", ">", lastUserId)
+  .orderBy("users.id", "asc")
   .limit(20);
 ```
 
-## offset
-
-건너뛸 레코드 수를 지정합니다.
-
-### 기본 사용법
-
-```typescript
-// 처음 10개를 건너뛰고 그 다음 10개
-const users = await puri.table("users")
-  .select({ id: "users.id", name: "users.name" })
-  .orderBy("users.id", "asc")
-  .limit(10)
-  .offset(10);  // 11~20번째 레코드
-
-// LIMIT 10 OFFSET 10
-```
-
-## 페이지네이션
-
-`limit`과 `offset`을 조합하여 페이지네이션을 구현합니다.
-
-### 기본 페이지네이션
-
-```typescript
-function getPage(page: number, pageSize: number = 20) {
-  return puri.table("posts")
-    .select({
-      id: "posts.id",
-      title: "posts.title",
-      created_at: "posts.created_at"
-    })
-    .orderBy("posts.created_at", "desc")
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-}
-
-// 1페이지 (1~20)
-const page1 = await getPage(1);  // offset: 0, limit: 20
-
-// 2페이지 (21~40)
-const page2 = await getPage(2);  // offset: 20, limit: 20
-
-// 3페이지 (41~60)
-const page3 = await getPage(3);  // offset: 40, limit: 20
-```
-
-### 총 개수와 함께
-
-```typescript
-async function getPageWithTotal(page: number, pageSize: number = 20) {
-  // 총 개수
-  const [{ total }] = await puri.table("posts")
-    .select({ total: Puri.count() })
-    .where("posts.published", true);
-
-  // 페이지 데이터
-  const posts = await puri.table("posts")
-    .select({
-      id: "posts.id",
-      title: "posts.title"
-    })
-    .where("posts.published", true)
-    .orderBy("posts.created_at", "desc")
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-
-  return {
-    data: posts,
-    pagination: {
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize)
-    }
-  };
-}
-```
-
-## 실전 예시
+## Practical Examples
 
 <Tabs>
-  <Tab title="무한 스크롤" icon="arrows-down-to-line">
+  <Tab title="Infinite Scroll" icon="arrows-down-to-line">
     ```typescript
-    async function getInfiniteScroll(cursor: number = 0, limit: number = 20) {
-      const posts = await puri.table("posts")
+    // Component state
+    let lastCursor: Date | null = null;
+    let allPosts: Post[] = [];
+
+    async function loadMore() {
+      let query = puri.table("posts")
         .select({
           id: "posts.id",
           title: "posts.title",
           created_at: "posts.created_at"
         })
-        .where("posts.published", true)
-        .where("posts.id", ">", cursor)  // 커서 이후
-        .orderBy("posts.id", "asc")
-        .limit(limit);
+        .orderBy("posts.created_at", "desc")
+        .limit(20);
 
-      return {
-        data: posts,
-        nextCursor: posts.length > 0 ? posts[posts.length - 1].id : null,
-        hasMore: posts.length === limit
-      };
+      // Add cursor condition after first load
+      if (lastCursor) {
+        query = query.where("posts.created_at", "<", lastCursor);
+      }
+
+      const posts = await query;
+
+      // Update state
+      allPosts = [...allPosts, ...posts];
+      lastCursor = posts[posts.length - 1]?.created_at || null;
+
+      return posts;
     }
 
-    // 사용 예시
-    const result1 = await getInfiniteScroll(0, 20);     // 첫 페이지
-    const result2 = await getInfiniteScroll(result1.nextCursor, 20);  // 다음 페이지
+    // Load first page
+    await loadMore();
+
+    // Load on scroll
+    window.addEventListener("scroll", async () => {
+      if (isNearBottom()) {
+        await loadMore();
+      }
+    });
     ```
   </Tab>
 
-  <Tab title="데이터 테이블" icon="table">
+  <Tab title="Data Table" icon="table">
     ```typescript
-    interface TableParams {
-      page: number;
-      pageSize: number;
-      sortBy?: string;
-      sortOrder?: "asc" | "desc";
-      filters?: Record<string, any>;
+    interface PaginationParams {
+      page: number;      // Current page (1-indexed)
+      perPage: number;   // Items per page
     }
 
-    async function getTableData(params: TableParams) {
-      const { page, pageSize, sortBy = "id", sortOrder = "desc", filters = {} } = params;
+    async function getUsers(params: PaginationParams) {
+      const { page, perPage } = params;
+      const offset = (page - 1) * perPage;
 
-      // 기본 쿼리
-      let query = puri.table("users")
+      // Get data
+      const users = await puri.table("users")
         .select({
           id: "users.id",
           name: "users.name",
           email: "users.email",
-          status: "users.status",
           created_at: "users.created_at"
-        });
+        })
+        .orderBy("users.created_at", "desc")
+        .limit(perPage)
+        .offset(offset);
 
-      // 필터 적용
-      if (filters.status) {
-        query = query.where("users.status", filters.status);
-      }
-      if (filters.search) {
-        query = query.where("users.name", "like", `%${filters.search}%`);
-      }
-
-      // 총 개수
-      const countQuery = query.clone();
-      const [{ total }] = await countQuery
-        .clear("select")
-        .select({ total: Puri.count() });
-
-      // 정렬 및 페이지네이션
-      const data = await query
-        .orderBy(`users.${sortBy}` as any, sortOrder)
-        .limit(pageSize)
-        .offset((page - 1) * pageSize);
+      // Get total count
+      const { count } = await puri.table("users")
+        .select({ count: Puri.count() })
+        .first();
 
       return {
-        data,
+        data: users,
         pagination: {
           page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize)
+          perPage,
+          total: count,
+          totalPages: Math.ceil(count / perPage)
         }
       };
     }
+
+    // Example usage
+    const result = await getUsers({ page: 2, perPage: 25 });
+    console.log(result);
+    // {
+    //   data: [...25 users...],
+    //   pagination: { page: 2, perPage: 25, total: 1000, totalPages: 40 }
+    // }
     ```
   </Tab>
 
-  <Tab title="Top N 쿼리" icon="ranking-star">
+  <Tab title="Batch Processing" icon="layer-group">
     ```typescript
-    // 상위 10개 상품
-    async function getTopProducts(limit: number = 10) {
-      return puri.table("products")
-        .select({
-          id: "products.id",
-          name: "products.name",
-          sales: "products.sales",
-          rating: "products.rating"
-        })
-        .where("products.published", true)
-        .orderBy("products.sales", "desc")
-        .limit(limit);
-    }
-
-    // 최근 활동 사용자
-    async function getActiveUsers(days: number = 7, limit: number = 20) {
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-
-      return puri.table("users")
-        .select({
-          id: "users.id",
-          name: "users.name",
-          last_login: "users.last_login"
-        })
-        .where("users.last_login", ">=", since)
-        .orderBy("users.last_login", "desc")
-        .limit(limit);
-    }
-    ```
-  </Tab>
-
-  <Tab title="배치 처리" icon="layer-group">
-    ```typescript
-    async function processBatch<T>(
-      query: Puri<any, any, T>,
-      batchSize: number = 100,
-      callback: (batch: T[]) => Promise<void>
-    ) {
+    async function processAllUsers() {
+      const batchSize = 100;
       let offset = 0;
       let hasMore = true;
 
       while (hasMore) {
-        // 배치 조회
-        const batch = await query
-          .clone()
+        // Fetch batch
+        const users = await puri.table("users")
+          .select({ id: "users.id", email: "users.email" })
           .limit(batchSize)
           .offset(offset);
 
-        if (batch.length === 0) {
-          hasMore = false;
-          break;
+        // Process batch
+        for (const user of users) {
+          await sendEmail(user.email);
         }
 
-        // 배치 처리
-        await callback(batch);
-
+        // Check if more data exists
+        hasMore = users.length === batchSize;
         offset += batchSize;
-        hasMore = batch.length === batchSize;
+
+        console.log(`Processed ${offset} users`);
       }
     }
 
-    // 사용 예시
-    await processBatch(
-      puri.table("users").select({ id: "users.id", email: "users.email" }),
-      500,
-      async (users) => {
-        // 500개씩 처리
-        await sendEmailBatch(users);
+    // With cursor for better performance
+    async function processAllUsersCursor() {
+      const batchSize = 100;
+      let lastId = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const users = await puri.table("users")
+          .select({ id: "users.id", email: "users.email" })
+          .where("users.id", ">", lastId)
+          .orderBy("users.id", "asc")
+          .limit(batchSize);
+
+        for (const user of users) {
+          await sendEmail(user.email);
+        }
+
+        hasMore = users.length === batchSize;
+        lastId = users[users.length - 1]?.id || lastId;
       }
-    );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Latest Items" icon="clock">
+    ```typescript
+    // Latest 10 posts
+    const latestPosts = await puri.table("posts")
+      .select({
+        id: "posts.id",
+        title: "posts.title",
+        created_at: "posts.created_at"
+      })
+      .orderBy("posts.created_at", "desc")
+      .limit(10);
+
+    // Top 5 bestsellers
+    const topProducts = await puri.table("products")
+      .select({
+        id: "products.id",
+        name: "products.name",
+        sales: "products.sales"
+      })
+      .orderBy("products.sales", "desc")
+      .limit(5);
+
+    // Recently active users
+    const activeUsers = await puri.table("users")
+      .select({
+        id: "users.id",
+        name: "users.name",
+        last_active: "users.last_active"
+      })
+      .orderBy("users.last_active", "desc")
+      .limit(20);
     ```
   </Tab>
 </Tabs>
 
-## limit(0)의 의미
+## Performance Optimization
 
-`limit(0)`은 결과를 반환하지 않습니다.
-
-```typescript
-// 0개 반환 (빈 배열)
-const users = await puri.table("users")
-  .limit(0);
-
-// []
-```
-
-<Warning>
-일부 데이터베이스에서 `limit(0)`은 구조 확인용으로 사용되지만, Puri에서는 빈 배열을 반환합니다.
-</Warning>
-
-## 성능 최적화
-
-### 1. 인덱스 활용
+### 1. offset is Slow for Large Datasets
 
 ```typescript
-// ✅ 좋음: 정렬 컬럼에 인덱스
+// ❌ Bad: Offset scans all skipped rows
 await puri.table("posts")
-  .orderBy("posts.created_at", "desc")  // created_at 인덱스 필요
-  .limit(20);
+  .limit(10)
+  .offset(10000);  // Scans 10,000 rows then skips them
 
-// ❌ 나쁨: 인덱스 없는 컬럼 정렬
-await puri.table("posts")
-  .orderBy("posts.content", "desc")  // 인덱스 없음
-  .limit(20);
-```
-
-### 2. Offset 크기
-
-```typescript
-// ⚠️ 주의: 큰 offset은 느림
-await puri.table("posts")
-  .limit(20)
-  .offset(100000);  // 10만 개를 건너뛰고 20개 조회 (느림)
-
-// ✅ 좋음: 커서 기반 페이지네이션
+// ✅ Good: Use cursor-based pagination
 await puri.table("posts")
   .where("posts.id", ">", lastId)
-  .limit(20);
+  .limit(10);  // Directly finds target rows
 ```
 
-### 3. COUNT(*) 최적화
+### 2. Use with orderBy
 
 ```typescript
-// ❌ 나쁨: 매번 전체 카운트
-const [{ total }] = await puri.table("posts").select({ total: Puri.count() });
+// ⚠️ Caution: Results may be inconsistent without ordering
+await puri.table("users")
+  .limit(10)
+  .offset(20);
 
-// ✅ 좋음: 캐싱
-const cachedTotal = await cache.get("posts:total");
-if (!cachedTotal) {
-  const [{ total }] = await puri.table("posts").select({ total: Puri.count() });
-  await cache.set("posts:total", total, 300);  // 5분 캐시
-}
+// ✅ Good: Guarantee consistent ordering
+await puri.table("users")
+  .orderBy("users.id", "asc")
+  .limit(10)
+  .offset(20);
 ```
 
-## 커서 기반 페이지네이션
-
-대용량 데이터에는 offset 대신 커서를 사용하세요.
-
-### Offset 기반 (느림)
+### 3. Optimize COUNT Queries
 
 ```typescript
-// ❌ 큰 offset은 성능 저하
-async function getPage(page: number, pageSize: number = 20) {
-  return puri.table("posts")
-    .select({ id: "posts.id", title: "posts.title" })
-    .orderBy("posts.id", "desc")
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);  // 페이지가 커질수록 느려짐
-}
+// ❌ Bad: Separate queries for data and count
+const users = await puri.table("users")
+  .limit(10)
+  .offset(20);
 
-await getPage(1000, 20);  // offset: 19980 (매우 느림)
+const { count } = await puri.table("users")
+  .select({ count: Puri.count() })
+  .first();
+
+// ✅ Good: Use findMany that combines both
+const { rows, total } = await UserModel.findMany("A", {
+  page: 3,
+  num: 10
+});
+// One query returns both data and total
 ```
 
-### 커서 기반 (빠름)
+## offset vs Cursor
+
+### offset Method
+
+**Advantages:**
+- Simple implementation
+- Can jump to any page
+- Suitable for numbered pages
+
+**Disadvantages:**
+- Slow for large offsets
+- Inconsistent results when data changes
+- Always scans from beginning
 
 ```typescript
-// ✅ 커서 사용 (항상 빠름)
-async function getNextPage(cursor: number | null, pageSize: number = 20) {
-  let query = puri.table("posts")
-    .select({ id: "posts.id", title: "posts.title" })
-    .orderBy("posts.id", "desc")
-    .limit(pageSize);
-
-  if (cursor !== null) {
-    query = query.where("posts.id", "<", cursor);
-  }
-
-  const posts = await query;
-
-  return {
-    data: posts,
-    nextCursor: posts.length > 0 ? posts[posts.length - 1].id : null,
-    hasMore: posts.length === pageSize
-  };
-}
-
-// 항상 빠름 (인덱스 사용)
-const page1 = await getNextPage(null, 20);
-const page2 = await getNextPage(page1.nextCursor, 20);
-const page100 = await getNextPage(page99.nextCursor, 20);  // 여전히 빠름
+// offset: Suitable for page numbers
+<button onClick={() => goToPage(5)}>Page 5</button>
 ```
 
-## 주의사항
+### Cursor Method
 
-### 1. ORDER BY 필수
+**Advantages:**
+- Fast regardless of position
+- Consistent results
+- Efficient memory usage
+
+**Disadvantages:**
+- Cannot jump to arbitrary pages
+- Slightly complex implementation
+- Cursor management needed
 
 ```typescript
-// ❌ 위험: 정렬 없이 limit (순서 불확실)
+// Cursor: Suitable for infinite scroll
+<button onClick={() => loadMore()}>Load More</button>
+```
+
+## Cautions
+
+### 1. Missing orderBy
+
+```typescript
+// ❌ Dangerous: Inconsistent order
 await puri.table("users")
   .limit(10);
 
-// ✅ 올바름: 정렬 후 limit
+// ✅ Safe: Explicit ordering
 await puri.table("users")
   .orderBy("users.id", "asc")
   .limit(10);
 ```
 
-### 2. offset은 0부터
+### 2. Large offset
 
 ```typescript
-// ✅ 올바름
-.offset(0)   // 첫 번째 레코드부터
-.offset(10)  // 11번째 레코드부터
+// ❌ Very slow
+await puri.table("posts")
+  .limit(10)
+  .offset(1000000);
 
-// ❌ 에러: 음수 불가
-.offset(-1)  // Error: Invalid offset: must be >= 0
+// ✅ Fast
+await puri.table("posts")
+  .where("posts.id", ">", lastId)
+  .limit(10);
 ```
 
-### 3. limit도 0 이상
+### 3. limit Without WHERE
 
 ```typescript
-// ✅ 올바름
-.limit(0)    // 빈 배열
-.limit(10)   // 10개
+// ⚠️ Caution: Returns ALL data without limit
+const allUsers = await puri.table("users").selectAll();
 
-// ❌ 에러: 음수 불가
-.limit(-1)   // Error: Invalid limit: must be >= 0
+// ✅ Safe: Always use limit
+const users = await puri.table("users")
+  .selectAll()
+  .limit(1000);
 ```
 
-### 4. 일관된 정렬
+### 4. Pagination and Data Changes
 
 ```typescript
-// ⚠️ 주의: 정렬이 일관되지 않으면 중복/누락 가능
-await puri.table("posts")
-  .orderBy("posts.created_at", "desc")  // 같은 시간 여러 개 있을 수 있음
-  .limit(20)
-  .offset(20);  // 중복 또는 누락 가능
+// Problem: Items may appear twice or be skipped
+// when data changes between page loads
 
-// ✅ 좋음: 고유 컬럼 추가
+// Solution 1: Use cursor pagination
 await puri.table("posts")
-  .orderBy("posts.created_at", "desc")
-  .orderBy("posts.id", "desc")  // 동일 시간은 ID로 구분
-  .limit(20)
+  .where("posts.id", ">", lastId)
+  .limit(10);
+
+// Solution 2: Use timestamp
+await puri.table("posts")
+  .where("posts.created_at", "<=", snapshotTime)
+  .limit(10)
   .offset(20);
 ```
 
-## 타입 안정성
+## Type Safety
+
+Type safety is maintained when using limit and offset.
 
 ```typescript
-// ✅ 올바른 사용
-await puri.table("users")
+const users = await puri.table("users")
+  .select({ id: "users.id", name: "users.name" })
   .limit(10)
-  .offset(0);
+  .offset(20);
 
-// ❌ 타입 에러: 음수
-await puri.table("users")
-  .limit(-10);  // Error: Invalid limit
-
-// ❌ 타입 에러: 음수
-await puri.table("users")
-  .offset(-5);  // Error: Invalid offset
+// Type: Array<{ id: number; name: string }>
+users[0].id;    // number
+users[0].name;  // string
 ```
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
+  <Card
+    title="order-by"
+    icon="arrow-down-1-9"
     href="/api-reference/puri-methods/order-by"
   >
-    결과 정렬하기
+    Sort results
   </Card>
-  
-  <Card 
-    title="where" 
-    icon="filter" 
+
+  <Card
+    title="where"
+    icon="filter"
     href="/api-reference/puri-methods/where"
   >
-    조건 필터링하기
+    Filter with conditions
   </Card>
-  
-  <Card 
-    title="advanced-methods" 
-    icon="wand-magic-sparkles" 
+
+  <Card
+    title="select"
+    icon="list-check"
+    href="/api-reference/puri-methods/select"
+  >
+    Select fields to query
+  </Card>
+
+  <Card
+    title="advanced-methods"
+    icon="wand-magic-sparkles"
     href="/api-reference/puri-methods/advanced-methods"
   >
-    고급 쿼리 메서드
-  </Card>
-  
-  <Card 
-    title="Subset" 
-    icon="layer-group" 
-    href="/database/subsets/what-are-subsets"
-  >
-    서브셋으로 관계 데이터 로딩
+    Advanced query methods
   </Card>
 </CardGroup>

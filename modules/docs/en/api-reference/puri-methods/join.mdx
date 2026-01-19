@@ -1,11 +1,11 @@
 ---
 title: 'join'
-description: '테이블 조인하기'
+description: 'Joining Tables'
 ---
 
-`join`과 `leftJoin`은 여러 테이블을 연결하여 관계 데이터를 조회하는 메서드입니다. 타입 안전하게 테이블을 조인하고, 복잡한 조인 조건을 지원합니다.
+`join` and `leftJoin` are methods for connecting multiple tables to query relational data. They support type-safe table joins and complex join conditions.
 
-## 기본 사용법
+## Basic Usage
 
 ### INNER JOIN
 
@@ -31,7 +31,7 @@ const posts = await puri.table("posts")
   .select({
     post_id: "posts.id",
     title: "posts.title",
-    author_name: "users.name"  // null 가능
+    author_name: "users.name"  // nullable
   });
 
 // SELECT posts.id as post_id, posts.title, users.name as author_name
@@ -40,27 +40,27 @@ const posts = await puri.table("posts")
 ```
 
 <Info>
-**INNER JOIN**: 양쪽 테이블 모두에 매칭되는 레코드만 반환  
-**LEFT JOIN**: 왼쪽 테이블의 모든 레코드 반환 (오른쪽은 null 가능)
+**INNER JOIN**: Returns only matching records from both tables
+**LEFT JOIN**: Returns all records from the left table (right side can be null)
 </Info>
 
-## 테이블 별칭 (Alias)
+## Table Aliases
 
-### 별칭 사용
+### Using Aliases
 
 ```typescript
 const posts = await puri.table("posts")
   .join({ u: "users" }, "posts.user_id", "u.id")
   .select({
     post_id: "posts.id",
-    author_name: "u.name"  // 별칭 사용
+    author_name: "u.name"  // Using alias
   });
 
 // FROM posts
 // INNER JOIN users AS u ON posts.user_id = u.id
 ```
 
-### 같은 테이블 여러 번 조인
+### Joining Same Table Multiple Times
 
 ```typescript
 const posts = await puri.table("posts")
@@ -69,7 +69,7 @@ const posts = await puri.table("posts")
   .select({
     post_id: "posts.id",
     author_name: "author.name",
-    editor_name: "editor.name"  // null 가능
+    editor_name: "editor.name"  // nullable
   });
 
 // FROM posts
@@ -77,11 +77,11 @@ const posts = await puri.table("posts")
 // LEFT JOIN users AS editor ON posts.editor_id = editor.id
 ```
 
-## 복잡한 조인 조건
+## Complex Join Conditions
 
-### 콜백 함수 사용
+### Using Callback Function
 
-여러 조건을 조합할 수 있습니다.
+You can combine multiple conditions.
 
 ```typescript
 const result = await puri.table("orders")
@@ -95,11 +95,11 @@ const result = await puri.table("orders")
   });
 
 // FROM orders
-// INNER JOIN users ON orders.user_id = users.id 
+// INNER JOIN users ON orders.user_id = users.id
 //                  AND orders.country = users.country
 ```
 
-### OR 조건
+### OR Conditions
 
 ```typescript
 const result = await puri.table("products")
@@ -112,28 +112,28 @@ const result = await puri.table("products")
     category_name: "categories.name"
   });
 
-// LEFT JOIN categories ON products.category_id = categories.id 
+// LEFT JOIN categories ON products.category_id = categories.id
 //                      OR products.parent_category_id = categories.id
 ```
 
-### 조건값과 비교
+### Comparison with Values
 
 ```typescript
 const result = await puri.table("orders")
   .join("users", (j) => {
     j.on("orders.user_id", "users.id")
-     .on("users.status", "=", "active")  // 고정 값 비교
+     .on("users.status", "=", "active")  // Fixed value comparison
      .on("orders.created_at", ">", new Date("2024-01-01"));
   })
   .selectAll();
 ```
 
-## 서브쿼리 조인
+## Subquery Joins
 
-서브쿼리를 테이블처럼 조인할 수 있습니다.
+You can join subqueries as tables.
 
 ```typescript
-// 서브쿼리 생성
+// Create subquery
 const recentOrders = puri.table("orders")
   .where("orders.created_at", ">", new Date("2024-01-01"))
   .select({
@@ -142,10 +142,10 @@ const recentOrders = puri.table("orders")
   })
   .groupBy("orders.user_id");
 
-// 서브쿼리 조인
+// Join subquery
 const result = await puri.table("users")
   .join(
-    { ro: recentOrders },  // 별칭 필수
+    { ro: recentOrders },  // Alias required
     "users.id",
     "ro.user_id"
   )
@@ -164,9 +164,9 @@ const result = await puri.table("users")
 // ) AS ro ON users.id = ro.user_id
 ```
 
-## 여러 테이블 조인
+## Multiple Table Joins
 
-순차적으로 여러 테이블을 조인할 수 있습니다.
+You can sequentially join multiple tables.
 
 ```typescript
 const posts = await puri.table("posts")
@@ -177,14 +177,14 @@ const posts = await puri.table("posts")
     // posts
     post_id: "posts.id",
     title: "posts.title",
-    
+
     // users
     author_name: "users.name",
     author_email: "users.email",
-    
+
     // categories (nullable)
     category_name: "categories.name",
-    
+
     // tags (nullable)
     tag_name: "tags.name"
   });
@@ -195,23 +195,23 @@ const posts = await puri.table("posts")
 // LEFT JOIN tags ON posts.id = tags.post_id
 ```
 
-## 실전 예시
+## Real-World Examples
 
 <Tabs>
-  <Tab title="게시물 + 작성자" icon="file-pen">
+  <Tab title="Posts + Authors" icon="file-pen">
     ```typescript
     async function getPostsWithAuthors() {
       return puri.table("posts")
         .join("users", "posts.user_id", "users.id")
         .where("posts.published", true)
         .select({
-          // 게시물 정보
+          // Post information
           id: "posts.id",
           title: "posts.title",
           content: "posts.content",
           created_at: "posts.created_at",
-          
-          // 작성자 정보
+
+          // Author information
           author: {
             id: "users.id",
             name: "users.name",
@@ -224,7 +224,7 @@ const posts = await puri.table("posts")
     ```
   </Tab>
 
-  <Tab title="주문 + 사용자 + 상품" icon="cart-shopping">
+  <Tab title="Orders + Users + Products" icon="cart-shopping">
     ```typescript
     async function getOrderDetails(orderId: number) {
       return puri.table("orders")
@@ -233,19 +233,19 @@ const posts = await puri.table("posts")
         .join("products", "order_items.product_id", "products.id")
         .where("orders.id", orderId)
         .select({
-          // 주문 정보
+          // Order information
           order_id: "orders.id",
           order_status: "orders.status",
           order_date: "orders.created_at",
-          
-          // 사용자 정보
+
+          // User information
           customer: {
             name: "users.name",
             email: "users.email",
             phone: "users.phone"
           },
-          
-          // 상품 정보
+
+          // Product information
           items: {
             product_id: "products.id",
             product_name: "products.name",
@@ -257,7 +257,7 @@ const posts = await puri.table("posts")
     ```
   </Tab>
 
-  <Tab title="통계 쿼리" icon="chart-bar">
+  <Tab title="Statistics Query" icon="chart-bar">
     ```typescript
     async function getUserStatistics() {
       return puri.table("users")
@@ -266,18 +266,18 @@ const posts = await puri.table("posts")
         .select({
           user_id: "users.id",
           user_name: "users.name",
-          
-          // 게시물 수
+
+          // Post count
           post_count: Puri.rawNumber(
             "COUNT(DISTINCT posts.id)"
           ),
-          
-          // 댓글 수
+
+          // Comment count
           comment_count: Puri.rawNumber(
             "COUNT(DISTINCT comments.id)"
           ),
-          
-          // 마지막 활동
+
+          // Last activity
           last_activity: Puri.rawDate(
             "GREATEST(MAX(posts.created_at), MAX(comments.created_at))"
           )
@@ -289,7 +289,7 @@ const posts = await puri.table("posts")
     ```
   </Tab>
 
-  <Tab title="셀프 조인" icon="users">
+  <Tab title="Self Join" icon="users">
     ```typescript
     async function getUsersWithManagers() {
       return puri.table({ emp: "users" })
@@ -299,12 +299,12 @@ const posts = await puri.table("posts")
           "mgr.id"
         )
         .select({
-          // 직원 정보
+          // Employee information
           employee_id: "emp.id",
           employee_name: "emp.name",
           employee_email: "emp.email",
-          
-          // 매니저 정보 (nullable)
+
+          // Manager information (nullable)
           manager: {
             id: "mgr.id",
             name: "mgr.name",
@@ -316,10 +316,10 @@ const posts = await puri.table("posts")
     ```
   </Tab>
 
-  <Tab title="서브쿼리 조인" icon="layer-group">
+  <Tab title="Subquery Join" icon="layer-group">
     ```typescript
     async function getTopContributors(limit: number = 10) {
-      // 사용자별 게시물 수 계산 (서브쿼리)
+      // Calculate post count per user (subquery)
       const postCounts = puri.table("posts")
         .where("posts.published", true)
         .select({
@@ -328,7 +328,7 @@ const posts = await puri.table("posts")
         })
         .groupBy("posts.user_id");
 
-      // 사용자 정보와 조인
+      // Join with user information
       return puri.table("users")
         .join(
           { pc: postCounts },
@@ -348,9 +348,9 @@ const posts = await puri.table("posts")
   </Tab>
 </Tabs>
 
-## 조인 조건 그룹핑
+## Join Condition Grouping
 
-복잡한 조인 조건을 그룹으로 묶을 수 있습니다.
+You can group complex join conditions.
 
 ```typescript
 const result = await puri.table("products")
@@ -374,9 +374,9 @@ const result = await puri.table("products")
 //   )
 ```
 
-## NULL 처리 (LEFT JOIN)
+## NULL Handling (LEFT JOIN)
 
-LEFT JOIN 결과는 nullable 타입으로 자동 추론됩니다.
+LEFT JOIN results are automatically inferred as nullable types.
 
 ```typescript
 const posts = await puri.table("posts")
@@ -387,7 +387,7 @@ const posts = await puri.table("posts")
     author_name: "users.name"  // string | null
   });
 
-// 타입 체크
+// Type check
 posts.forEach(post => {
   if (post.author_name !== null) {
     console.log(post.author_name.toUpperCase());
@@ -395,51 +395,51 @@ posts.forEach(post => {
 });
 ```
 
-## 성능 최적화
+## Performance Optimization
 
-### 1. 필요한 컬럼만 선택
+### 1. Select Only Needed Columns
 
 ```typescript
-// ❌ 나쁨: 모든 컬럼
+// ❌ Bad: All columns
 .join("users", ...)
 .selectAll()
 
-// ✅ 좋음: 필요한 컬럼만
+// ✅ Good: Only needed columns
 .join("users", ...)
 .select({
   post_id: "posts.id",
-  author_name: "users.name"  // 필요한 것만
+  author_name: "users.name"  // Only what's needed
 })
 ```
 
-### 2. 조인 순서
+### 2. Join Order
 
 ```typescript
-// ✅ 좋음: 작은 테이블 먼저 조인
-.table("posts")        // 큰 테이블
-.join("users", ...)    // 작은 테이블
+// ✅ Good: Join smaller tables first
+.table("posts")        // Large table
+.join("users", ...)    // Small table
 .join("categories", ...)
 
-// 조인 조건에 인덱스 사용
-.join("users", "posts.user_id", "users.id")  // users.id는 PK (인덱스)
+// Use indexes in join conditions
+.join("users", "posts.user_id", "users.id")  // users.id is PK (indexed)
 ```
 
 ### 3. LEFT JOIN vs INNER JOIN
 
 ```typescript
-// LEFT JOIN은 INNER JOIN보다 느림
-// 반드시 존재하는 관계면 INNER JOIN 사용
+// LEFT JOIN is slower than INNER JOIN
+// Use INNER JOIN if relationship must exist
 
-// ✅ user_id가 NOT NULL이면 INNER JOIN
+// ✅ If user_id is NOT NULL, use INNER JOIN
 .join("users", "posts.user_id", "users.id")
 
-// ⚠️ user_id가 NULL 가능하면 LEFT JOIN
+// ⚠️ If user_id can be NULL, use LEFT JOIN
 .leftJoin("users", "posts.user_id", "users.id")
 ```
 
-## 타입 안정성
+## Type Safety
 
-조인한 테이블의 컬럼은 타입 자동 완성과 검증을 지원합니다.
+Columns from joined tables support automatic type completion and validation.
 
 ```typescript
 const posts = await puri.table("posts")
@@ -447,68 +447,68 @@ const posts = await puri.table("posts")
   .select({
     post_id: "posts.id",      // ✅ OK
     user_name: "users.name",   // ✅ OK
-    
-    // ❌ 타입 에러: 존재하지 않는 컬럼
+
+    // ❌ Type error: Non-existent column
     unknown: "posts.unknown_field",
-    
-    // ❌ 타입 에러: 조인하지 않은 테이블
+
+    // ❌ Type error: Non-joined table
     category: "categories.name"
   });
 ```
 
-## 주의사항
+## Cautions
 
-### 1. 별칭 필수 (서브쿼리)
+### 1. Alias Required (Subqueries)
 
 ```typescript
-// ❌ 에러: 서브쿼리는 별칭 필요
+// ❌ Error: Subquery needs alias
 .join(subquery, ...)
 
-// ✅ 올바름
+// ✅ Correct
 .join({ sq: subquery }, ...)
 ```
 
-### 2. 조인 조건 테이블 확인
+### 2. Check Join Condition Tables
 
 ```typescript
-// ❌ 잘못됨: 조인하지 않은 테이블 참조
+// ❌ Wrong: Referencing non-joined table
 .table("posts")
-.join("users", "comments.user_id", "users.id")  // comments 테이블 없음
+.join("users", "comments.user_id", "users.id")  // No comments table
 
-// ✅ 올바름
+// ✅ Correct
 .table("posts")
 .join("users", "posts.user_id", "users.id")
 ```
 
-### 3. 중복 컬럼명
+### 3. Duplicate Column Names
 
 ```typescript
-// ⚠️ 주의: 컬럼명 충돌
+// ⚠️ Warning: Column name collision
 .table("posts")
 .join("users", ...)
 .select({
-  id: "posts.id",  // ❌ 나중에 덮어씌워짐
+  id: "posts.id",  // ❌ Will be overwritten
   id: "users.id"   // ❌
 })
 
-// ✅ 올바름: 별칭 사용
+// ✅ Correct: Use aliases
 .select({
   post_id: "posts.id",
   user_id: "users.id"
 })
 ```
 
-### 4. N+1 문제
+### 4. N+1 Problem
 
 ```typescript
-// ❌ 나쁨: N+1 쿼리
+// ❌ Bad: N+1 queries
 for (const post of posts) {
   const user = await puri.table("users")
     .where("users.id", post.user_id)
     .first();
 }
 
-// ✅ 좋음: JOIN으로 한 번에
+// ✅ Good: JOIN once
 const posts = await puri.table("posts")
   .join("users", "posts.user_id", "users.id")
   .select({
@@ -519,59 +519,59 @@ const posts = await puri.table("posts")
 
 ## JOIN vs Loader
 
-Puri는 두 가지 관계 데이터 로딩 방법을 제공합니다.
+Puri provides two methods for loading relational data.
 
-### JOIN (1:1 관계)
+### JOIN (1:1 Relationship)
 
 ```typescript
-// ✅ 적합: 1:1 또는 N:1
+// ✅ Suitable: 1:1 or N:1
 .table("posts")
 .join("users", "posts.user_id", "users.id")
 ```
 
-### Loader (1:N 관계)
+### Loader (1:N Relationship)
 
 ```typescript
-// ✅ 적합: 1:N 또는 N:M
-// Subset Loader로 처리 (별도 쿼리)
+// ✅ Suitable: 1:N or N:M
+// Handle with Subset Loader (separate query)
 ```
 
 <Info>
-JOIN은 행이 곱해지므로, **1:N 관계에는 Loader**를 사용하는 것이 좋습니다.
+JOIN multiplies rows, so use **Loader for 1:N relationships**.
 </Info>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="where" 
-    icon="filter" 
+  <Card
+    title="where"
+    icon="filter"
     href="/api-reference/puri-methods/where"
   >
-    조건 필터링하기
+    Filter conditions
   </Card>
-  
-  <Card 
-    title="select" 
-    icon="list-check" 
+
+  <Card
+    title="select"
+    icon="list-check"
     href="/api-reference/puri-methods/select"
   >
-    조회할 필드 선택하기
+    Select fields to retrieve
   </Card>
-  
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
+
+  <Card
+    title="order-by"
+    icon="arrow-down-1-9"
     href="/api-reference/puri-methods/order-by"
   >
-    결과 정렬하기
+    Sort results
   </Card>
-  
-  <Card 
-    title="Subset" 
-    icon="layer-group" 
+
+  <Card
+    title="Subset"
+    icon="layer-group"
     href="/database/subsets/what-are-subsets"
   >
-    서브셋으로 관계 데이터 로딩
+    Load relational data with Subsets
   </Card>
 </CardGroup>
