@@ -1,90 +1,53 @@
-import type { MultipartFile } from "@fastify/multipart";
-import { createHash } from "crypto";
-import mime from "mime-types";
+import { BaseFile } from "./base-file";
 import type { DriverKey } from "./drivers";
 
 /**
- * 업로드된 파일 래퍼
+ * Stream 모드로 업로드된 파일
+ * 이미 저장소에 스트리밍 완료된 상태로, url/key 등 메타데이터만 접근 가능합니다.
  */
-export class UploadedFile {
-  private _file: MultipartFile;
-  private _buffer?: Buffer;
-  private _url?: string;
-  private _signedUrl?: string;
+export class UploadedFile extends BaseFile {
+  private _key: string;
+  private _diskName: DriverKey;
 
-  constructor(file: MultipartFile) {
-    this._file = file;
+  constructor(params: {
+    filename: string;
+    mimetype: string;
+    size: number;
+    url: string;
+    signedUrl: string;
+    key: string;
+    diskName: DriverKey;
+  }) {
+    super({
+      filename: params.filename,
+      mimetype: params.mimetype,
+      size: params.size,
+      url: params.url,
+      signedUrl: params.signedUrl,
+    });
+    this._key = params.key;
+    this._diskName = params.diskName;
   }
 
-  /** 원본 파일명 */
-  get filename(): string {
-    return this._file.filename;
+  /** 저장소 내 키 */
+  get key(): string {
+    return this._key;
   }
 
-  /** MIME 타입 */
-  get mimetype(): string {
-    return this._file.mimetype;
-  }
-
-  /** 파일 크기 (bytes) */
-  get size(): number {
-    return this._file.file.bytesRead;
-  }
-
-  /** 확장자 (점 제외) */
-  get extname(): string | false {
-    return mime.extension(this._file.mimetype);
-  }
-
-  /** saveToDisk 후 저장된 URL (Unsigned) */
-  get url(): string | undefined {
-    return this._url;
-  }
-
-  /** saveToDisk 후 저장된 URL (Signed) */
-  get signedUrl(): string | undefined {
-    return this._signedUrl;
-  }
-
-  /** Buffer로 변환 (캐싱됨) */
-  async toBuffer(): Promise<Buffer> {
-    if (!this._buffer) {
-      this._buffer = await this._file.toBuffer();
-    }
-    return this._buffer;
-  }
-
-  /** MD5 해시 계산 */
-  async md5(): Promise<string> {
-    const buffer = await this.toBuffer();
-    return createHash("md5").update(buffer).digest("hex");
+  /** 저장된 디스크 이름 */
+  get diskName(): DriverKey {
+    return this._diskName;
   }
 
   /**
-   * 파일을 디스크에 저장
-   * @param key 저장 경로 (예: 'uploads/avatar.png')
-   * @param diskName 디스크 이름 (기본: default disk)
-   * @returns 저장된 파일의 URL
+   * 저장소에서 파일을 다운로드합니다.
+   * 스트림 모드로 업로드된 파일을 나중에 처리해야 할 때 사용합니다.
    */
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string> {
-    // 순환 의존성 방지를 위해 동적 import
+  async download(): Promise<Buffer> {
     const { Sonamu } = await import("../api/sonamu");
-    const disk = Sonamu.storage.use(diskName);
-    const buffer = await this.toBuffer();
+    const disk = Sonamu.storage.use(this._diskName);
 
-    await disk.put(key, new Uint8Array(buffer), {
-      contentType: this.mimetype,
-    });
-
-    this._url = await disk.getUrl(key);
-    this._signedUrl = await disk.getSignedUrl(key);
-
-    // signed url은 만료 시간이 있기 때문에, unsigned url을 반환합니다.
-    return this._url;
-  }
-
-  /** 원본 MultipartFile 접근 */
-  get raw(): MultipartFile {
-    return this._file;
+    const uint8Array = await disk.get(this._key);
+    return Buffer.from(uint8Array);
   }
 }
