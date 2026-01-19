@@ -5,7 +5,7 @@ import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fs from "fs/promises";
 import type { IncomingMessage, Server, ServerResponse } from "http";
-import { lookup as mimeLookup } from "mime-types";
+import mime, { lookup as mimeLookup } from "mime-types";
 import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
@@ -18,7 +18,10 @@ import type { CompressOptions } from "../compress/types";
 import type { SonamuDBConfig } from "../database/db";
 import type { LocalizedString } from "../dict/types";
 import { Naite } from "../naite/naite";
+import { BufferedFile } from "../storage/buffered-file";
 import type { StorageManager } from "../storage/storage-manager";
+import type { KeyGenerator } from "../storage/types";
+import { UploadedFile } from "../storage/uploaded-file";
 import type { Syncer } from "../syncer/syncer";
 import type { WorkflowManager } from "../tasks/workflow-manager";
 import type { SonamuFastifyConfig } from "../types/types";
@@ -692,19 +695,18 @@ class SonamuClass {
           [key: string]: unknown;
         };
         // 파일 업로드 있는 경우 임시 데이터
-        const { UploadedFile } = await import("../storage/uploaded-file");
-        const uploaded: {
-          files: InstanceType<typeof UploadedFile>[];
+        const files: {
+          bufferedFiles: BufferedFile[];
+          uploadedFiles: UploadedFile[];
         } = {
-          files: [] as InstanceType<typeof UploadedFile>[],
+          bufferedFiles: [],
+          uploadedFiles: [],
         };
 
         try {
           const body = (request[which] ?? {}) as Record<string, unknown>;
           if (api.uploadOptions) {
-            // 업로드 옵션이 있는 경우 파트로 분리하여 file 또는 field로 구분 처리
-            // file은 UploadedFile 인스턴스로 변환
-            // field는 body에 추가
+            const consume = api.uploadOptions.consume ?? "buffer";
             const parts = request.parts({
               limits: api.uploadOptions.limits,
             });
@@ -712,15 +714,60 @@ class SonamuClass {
             // FormData의 field들을 임시로 저장
             const fields: Record<string, string> = {};
 
-            for await (const part of parts) {
-              if (part.type === "file") {
-                const uploadedFile = new UploadedFile(part);
-                // CRITICAL: 파일 스트림을 즉시 consume해야 다음 part로 넘어갈 수 있음
-                // 이 호출이 없으면 종종 multipart 파싱이 pending 상태로 타임아웃 발생
-                await uploadedFile.toBuffer();
-                uploaded.files.push(uploadedFile);
-              } else if (part.type === "field") {
-                fields[part.fieldname] = String(part.value);
+            if (consume === "buffer") {
+              // Buffer 모드: 메모리에 로드
+              for await (const part of parts) {
+                if (part.type === "file") {
+                  // CRITICAL: 파일 스트림을 즉시 consume해야 다음 part로 넘어갈 수 있음
+                  // 이 호출이 없으면 종종 multipart 파싱이 pending 상태로 타임아웃 발생
+                  const buffer = await part.toBuffer();
+                  files.bufferedFiles.push(new BufferedFile(part, buffer));
+                } else if (part.type === "field") {
+                  fields[part.fieldname] = String(part.value);
+                }
+              }
+            } else if (consume === "stream") {
+              // Stream 모드: 즉시 저장소로 스트리밍
+              const diskName = api.uploadOptions.destination;
+              if (!diskName) {
+                throw new Error('@upload with consume="stream" requires destination');
+              }
+
+              const disk = this.storage.use(diskName);
+              // 우선순위: 데코레이터 > 전역 설정 > 기본값
+              const keyGenerator: KeyGenerator =
+                api.uploadOptions.keyGenerator ??
+                this.config.server.storage?.keyGenerator ??
+                defaultKeyGenerator;
+
+              for await (const part of parts) {
+                if (part.type === "file") {
+                  const key = await keyGenerator({
+                    filename: part.filename,
+                    mimetype: part.mimetype,
+                  });
+
+                  await disk.putStream(key, part.file, {
+                    contentType: part.mimetype,
+                  });
+
+                  const url = await disk.getUrl(key);
+                  const signedUrl = await disk.getSignedUrl(key);
+
+                  files.uploadedFiles.push(
+                    new UploadedFile({
+                      filename: part.filename,
+                      mimetype: part.mimetype,
+                      size: part.file.bytesRead,
+                      url,
+                      signedUrl,
+                      key,
+                      diskName,
+                    }),
+                  );
+                } else if (part.type === "field") {
+                  fields[part.fieldname] = String(part.value);
+                }
               }
             }
 
@@ -757,9 +804,14 @@ class SonamuClass {
           applyCacheHeaders(reply, apiCacheConfig);
         }
 
+        // 업로드 옵션이 있는 경우 파일 데이터를 Context에 추가
         if (api.uploadOptions) {
-          // 업로드 옵션이 있는 경우 파일 데이터를 Context에 추가 (mutable 하게 추가함)
-          context.files = uploaded.files;
+          const consume = api.uploadOptions.consume ?? "buffer";
+          if (consume === "buffer") {
+            context.bufferedFiles = files.bufferedFiles;
+          } else if (consume === "stream") {
+            context.uploadedFiles = files.uploadedFiles;
+          }
         }
 
         // 모델 메소드 args 생성하여 호출
@@ -1196,3 +1248,13 @@ class SonamuClass {
 }
 
 export const Sonamu = new SonamuClass();
+
+/**
+ * stream 모드에서 키 생성 함수가 지정되지 않았을 때 사용하는 기본 함수입니다.
+ */
+function defaultKeyGenerator(file: { filename: string; mimetype: string }): string {
+  const ext = mime.extension(file.mimetype) || "bin";
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 8);
+  return `uploads/${timestamp}-${random}.${ext}`;
+}
