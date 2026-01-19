@@ -519,6 +519,82 @@ Sonamu UI의 AI 채팅으로 Entity를 자연어로 생성할 수 있습니다.
 
 ---
 
+## Seamless DX
+
+Sonamu는 개발자 경험을 최우선으로 설계되었습니다.
+
+### HMR (Hot Module Replacement)
+
+코드를 수정하면 **서버 재시작 없이 즉시 반영**됩니다. Entity, Model, API 어디를 수정하든 2초면 충분합니다.
+
+```bash
+# 전통적 방식: Entity 수정 → 서버 재시작 → 30초 대기
+# Sonamu 방식: Entity 수정 → 저장 → 2초 후 반영 ✅
+```
+
+```bash
+# 콘솔 출력 예시
+🔄 Invalidated:
+- src/application/user/user.model.ts (with 8 APIs)
+
+✅ All files are synced!
+```
+
+하루에 50번 수정한다면? 전통적 방식은 25분 낭비, Sonamu는 1.7분입니다.
+
+### Sonamu UI
+
+Entity 정의, Subset 관리, Migration 실행을 웹 UI에서 직접 할 수 있습니다. JSON을 직접 편집하지 않아도 됩니다.
+
+<Frame caption="🎬 Sonamu UI에서 Entity 정의 및 관리">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"
+  ></video>
+</Frame>
+
+### 빠른 피드백 루프
+
+Entity 변경 → 타입/스키마 자동 생성 → API 재등록 → 프론트엔드 Service 업데이트까지 **모든 것이 자동**입니다.
+
+**핵심 기능**:
+
+- ✅ HMR로 서버 재시작 없이 개발
+- ✅ Sonamu UI로 시각적 Entity 관리
+- ✅ Syncer가 모든 코드 자동 동기화
+- ✅ 변경 즉시 타입 에러 감지
+
+<CardGroup cols={3}>
+  <Card
+    title="자세히 보기"
+    icon="arrow-right"
+    href="/getting-started/seamless-dx"
+  >
+    Seamless DX 상세 페이지
+  </Card>
+  <Card
+    title="HMR 동작 원리"
+    icon="bolt"
+    href="/tools-and-cli/hmr/how-hmr-works"
+  >
+    HMR 시스템 이해하기
+  </Card>
+  <Card
+    title="Sonamu UI"
+    icon="window"
+    href="/tools-and-cli/sonamu-ui/getting-started"
+  >
+    UI 사용법 가이드
+  </Card>
+</CardGroup>
+
+---
+
 ## Production Ready
 
 Sonamu는 프로덕션 환경을 위한 강력한 기능들을 내장하고 있습니다.
@@ -616,7 +692,7 @@ await Sonamu.workflows.run(processOrder, orderData);
 
 ### 성능 최적화 내장
 
-N+1 문제 자동 해결, 쿼리 최적화, HMR(Hot Module Replacement)이 기본으로 제공됩니다.
+N+1 문제 자동 해결과 쿼리 최적화가 기본으로 제공됩니다.
 
 ```typescript
 // Relation 쿼리에서 N+1 자동 해결

@@ -24,6 +24,7 @@
             "icon": "rocket",
             "pages": [
               "ko/getting-started/introduction",
+              "ko/getting-started/seamless-dx",
               "ko/getting-started/installation",
               "ko/getting-started/quick-start",
               "ko/getting-started/project-structure",
@@ -575,6 +576,7 @@
             "icon": "rocket",
             "pages": [
               "en/getting-started/introduction",
+              "en/getting-started/seamless-dx",
               "en/getting-started/installation",
               "en/getting-started/quick-start",
               "en/getting-started/project-structure",

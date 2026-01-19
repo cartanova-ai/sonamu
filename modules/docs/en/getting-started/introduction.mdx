@@ -519,6 +519,82 @@ Create Entities in natural language using AI chat in Sonamu UI.
 
 ---
 
+## Seamless DX
+
+Sonamu is designed with developer experience as the top priority.
+
+### HMR (Hot Module Replacement)
+
+When you modify code, it's **instantly reflected without server restart**. Whether you modify Entity, Model, or API, 2 seconds is all you need.
+
+```bash
+# Traditional approach: Modify Entity → Restart server → Wait 30 seconds
+# Sonamu approach: Modify Entity → Save → Reflected in 2 seconds ✅
+```
+
+```bash
+# Console output example
+🔄 Invalidated:
+- src/application/user/user.model.ts (with 8 APIs)
+
+✅ All files are synced!
+```
+
+If you make 50 modifications a day? Traditional approach wastes 25 minutes, Sonamu takes only 1.7 minutes.
+
+### Sonamu UI
+
+Define Entities, manage Subsets, and run Migrations directly in the web UI. No need to edit JSON manually.
+
+<Frame caption="🎬 Entity definition and management in Sonamu UI">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"
+  ></video>
+</Frame>
+
+### Fast Feedback Loop
+
+Entity change → Auto-generate types/schemas → Re-register APIs → Update frontend Services — **everything is automatic**.
+
+**Key Features**:
+
+- ✅ Develop without server restart using HMR
+- ✅ Visual Entity management with Sonamu UI
+- ✅ Syncer auto-synchronizes all code
+- ✅ Detect type errors immediately on change
+
+<CardGroup cols={3}>
+  <Card
+    title="Learn More"
+    icon="arrow-right"
+    href="/en/getting-started/seamless-dx"
+  >
+    Seamless DX detail page
+  </Card>
+  <Card
+    title="How HMR Works"
+    icon="bolt"
+    href="/tools-and-cli/hmr/how-hmr-works"
+  >
+    Understand the HMR system
+  </Card>
+  <Card
+    title="Sonamu UI"
+    icon="window"
+    href="/tools-and-cli/sonamu-ui/getting-started"
+  >
+    UI usage guide
+  </Card>
+</CardGroup>
+
+---
+
 ## Production Ready
 
 Sonamu includes powerful features built for production environments.
@@ -616,7 +692,7 @@ await Sonamu.workflows.run(processOrder, orderData);
 
 ### Built-in Performance Optimization
 
-N+1 problem auto-resolution, query optimization, and HMR (Hot Module Replacement) are provided by default.
+N+1 problem auto-resolution and query optimization are provided by default.
 
 ```typescript
 // N+1 auto-resolved in relation queries

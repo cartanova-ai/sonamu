@@ -1,0 +1,146 @@
+---
+title: "Seamless DX"
+description: "Development without server restarts, visual Entity management, automatic code synchronization"
+---
+
+Sonamu is designed with developer experience as the top priority.
+
+## HMR (Hot Module Replacement)
+
+When you modify code, it's **instantly reflected without server restart**. Whether you modify Entity, Model, or API, 2 seconds is all you need.
+
+```bash
+# Traditional approach: Modify Entity → Restart server → Wait 30 seconds
+# Sonamu approach: Modify Entity → Save → Reflected in 2 seconds ✅
+```
+
+```bash
+# Console output example
+🔄 Invalidated:
+- src/application/user/user.model.ts (with 8 APIs)
+
+✅ All files are synced!
+```
+
+If you make 50 modifications a day? Traditional approach wastes 25 minutes, Sonamu takes only 1.7 minutes.
+
+<Card
+  title="How HMR Works"
+  icon="bolt"
+  href="/tools-and-cli/hmr/how-hmr-works"
+>
+  Learn how the HMR system works internally
+</Card>
+
+## Sonamu UI
+
+Define Entities, manage Subsets, and run Migrations directly in the web UI. No need to edit JSON manually.
+
+<Frame caption="🎬 Entity definition and management in Sonamu UI">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"
+  ></video>
+</Frame>
+
+<Card
+  title="Sonamu UI Guide"
+  icon="window"
+  href="/tools-and-cli/sonamu-ui/getting-started"
+>
+  Getting started with Sonamu UI
+</Card>
+
+## Fast Feedback Loop
+
+Entity change → Auto-generate types/schemas → Re-register APIs → Update frontend Services — **everything is automatic**.
+
+```mermaid
+graph LR
+    A[Entity Change] --> B[Type Generation]
+    B --> C[Zod Schema]
+    C --> D[API Re-register]
+    D --> E[Service Update]
+    
+    style A fill:#4f46e5,color:#fff
+    style E fill:#10b981,color:#fff
+```
+
+### What Syncer Does
+
+1. **File Change Detection**: Watches filesystem with chokidar
+2. **ESM Cache Invalidation**: Clears cache for changed modules and dependencies
+3. **Auto Code Generation**: Generates type, schema, and Service files
+4. **Module Reload**: Reloads with latest code
+5. **API Re-registration**: Re-registers changed API endpoints
+
+<Card
+  title="Understanding Syncer"
+  icon="rotate"
+  href="/en/core-concepts/auto-generation/syncer"
+>
+  The core of the auto-generation system
+</Card>
+
+## Key Features Summary
+
+<CardGroup cols={2}>
+  <Card title="HMR" icon="bolt">
+    Instant reflection without restart
+    
+    Modify → Save → Test in 2 seconds
+  </Card>
+  <Card title="Sonamu UI" icon="window">
+    Visual Entity management
+    
+    No JSON editing required
+  </Card>
+  <Card title="Syncer" icon="rotate">
+    Auto-sync all code
+    
+    Types, schemas, Services
+  </Card>
+  <Card title="Type Error Detection" icon="triangle-exclamation">
+    Compile errors on change
+    
+    Prevent runtime errors
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="How HMR Works"
+    icon="bolt"
+    href="/tools-and-cli/hmr/how-hmr-works"
+  >
+    Understand the HMR system
+  </Card>
+  <Card
+    title="Sonamu UI"
+    icon="window"
+    href="/tools-and-cli/sonamu-ui/getting-started"
+  >
+    UI usage guide
+  </Card>
+  <Card
+    title="Syncer"
+    icon="rotate"
+    href="/en/core-concepts/auto-generation/syncer"
+  >
+    Auto-generation system
+  </Card>
+  <Card
+    title="Development Workflow"
+    icon="diagram-project"
+    href="/en/getting-started/development-workflow"
+  >
+    Complete development flow
+  </Card>
+</CardGroup>
