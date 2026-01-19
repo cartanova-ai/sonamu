@@ -117,7 +117,8 @@
                   "ko/database/migrations/creating-migrations",
                   "ko/database/migrations/running-migrations",
                   "ko/database/migrations/rolling-back",
-                  "ko/database/migrations/migration-strategies"
+                  "ko/database/migrations/migration-strategies",
+                  "ko/database/migrations/production-approval"
                 ]
               },
               {
@@ -669,7 +670,8 @@
                   "en/database/migrations/creating-migrations",
                   "en/database/migrations/running-migrations",
                   "en/database/migrations/rolling-back",
-                  "en/database/migrations/migration-strategies"
+                  "en/database/migrations/migration-strategies",
+                  "en/database/migrations/production-approval"
                 ]
               },
               {
