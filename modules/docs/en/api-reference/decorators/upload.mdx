@@ -5,112 +5,115 @@ description: 'Decorator for creating file upload APIs'
 
 The `@upload` decorator creates an API that handles file uploads. It automatically parses multipart form-data requests and provides file objects. Can be used independently without `@api` decorator, automatically setting `POST` method and multipart clients (`axios-multipart`, `tanstack-mutation-multipart`).
 
-## Basic Usage
+## Upload Modes
 
-Uploaded files are accessed via `Sonamu.getContext().files`. `files` is an array of type `UploadedFile[]`.
+Sonamu provides two file upload modes:
+
+| Mode | Option | Context Property | File Type | Features |
+|------|--------|------------------|-----------|----------|
+| **Buffer** (default) | `consume: "buffer"` or omit | `bufferedFiles` | `BufferedFile[]` | Loads into memory, flexible for MD5 calculation/image processing |
+| **Stream** | `consume: "stream"` | `uploadedFiles` | `UploadedFile[]` | Streams directly to storage, suitable for large files |
+
+## Buffer Mode (Default)
+
+Buffer mode loads files into memory before processing. Use this when you need to work directly with file contents like MD5 hash calculation or image resizing.
 
 ```typescript
 import { BaseModelClass, upload, Sonamu } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
-  @upload()
+  @upload()  // default: consume: "buffer"
   async uploadAvatar() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file) {
       throw new Error("No file uploaded");
     }
 
-    // Save file
-    const key = `avatars/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+    // Use MD5 hash to prevent duplicates
+    const md5 = await file.md5();
+    const key = `avatars/${md5}.${file.extname}`;
+    const url = await file.saveToDisk("fs", key);
 
     return { url, filename: file.filename, size: file.size };
   }
 }
 ```
 
-## Options
-
-### limits
-
-Specifies file size limits. Based on Fastify Multipart options.
+### BufferedFile Object
 
 ```typescript
-export type UploadDecoratorOptions = {
-  limits?: FastifyMultipartBaseOptions["limits"];
-};
-```
+class BufferedFile {
+  // Original file name
+  get filename(): string;
 
-**Example:**
+  // MIME type
+  get mimetype(): string;
 
-```typescript
-@upload({
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-    files: 5 // Maximum 5 files
-  }
-})
-async uploadFiles() {
-  const { files } = Sonamu.getContext();
-  // ...
+  // File size (bytes)
+  get size(): number;
+
+  // Extension (without dot, e.g., "jpg", "png")
+  get extname(): string | false;
+
+  // File Buffer (data loaded in memory)
+  get buffer(): Buffer;
+
+  // URL after saveToDisk (Unsigned)
+  get url(): string;
+
+  // Signed URL after saveToDisk
+  get signedUrl(): string;
+
+  // Access to raw Fastify MultipartFile
+  get raw(): MultipartFile;
+
+  // Calculate MD5 hash
+  async md5(): Promise<string>;
+
+  // Save file to disk (returns URL)
+  async saveToDisk(diskName: DriverKey, key: string): Promise<string>;
 }
 ```
 
-## Single vs Multiple File Upload
+<Warning>
+The parameter order for `saveToDisk` is `(diskName, key)`.
+</Warning>
 
-Both single and multiple file uploads use the same pattern - accessing `files` from Context.
+## Stream Mode
 
-<Tabs>
-  <Tab title="Single File" icon="file">
-    ```typescript
-    // Use first file only
-    @upload()
-    async uploadAvatar() {
-      const { files } = Sonamu.getContext();
-      const file = files?.[0];
+Stream mode streams files directly to storage without loading them into memory. Suitable for large file uploads.
 
-      if (!file) {
-        throw new Error("No file");
-      }
+```typescript
+@upload({
+  consume: "stream",
+  destination: "s3",  // disk name to save to
+  keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,  // key generator function
+  limits: { files: 5 }
+})
+async uploadLargeFiles() {
+  const { uploadedFiles } = Sonamu.getContext();
 
-      return {
-        filename: file.filename,
-        size: file.size
-      };
-    }
-    ```
-  </Tab>
+  if (!uploadedFiles || uploadedFiles.length === 0) {
+    throw new Error("No files uploaded");
+  }
 
-  <Tab title="Multiple Files" icon="files">
-    ```typescript
-    // Iterate through all files
-    @upload()
-    async uploadDocuments() {
-      const { files } = Sonamu.getContext();
+  // Files are already uploaded to storage
+  return {
+    files: uploadedFiles.map((file) => ({
+      filename: file.filename,
+      url: file.url,
+      key: file.key,
+      size: file.size,
+    })),
+  };
+}
+```
 
-      if (!files || files.length === 0) {
-        throw new Error("No files");
-      }
+### UploadedFile Object
 
-      const results = [];
-      for (const file of files) {
-        const key = `documents/${Date.now()}_${file.filename}`;
-        const url = await file.saveToDisk(key);
-        results.push({
-          filename: file.filename,
-          url
-        });
-      }
-
-      return results;
-    }
-    ```
-  </Tab>
-</Tabs>
-
-## UploadedFile Object
+In Stream mode, files are already uploaded to storage, so only metadata is accessible.
 
 ```typescript
 class UploadedFile {
@@ -126,31 +129,150 @@ class UploadedFile {
   // Extension (without dot, e.g., "jpg", "png")
   get extname(): string | false;
 
-  // URL after saveToDisk (Unsigned)
-  get url(): string | undefined;
+  // Stored URL (Unsigned)
+  get url(): string;
 
-  // Signed URL after saveToDisk
-  get signedUrl(): string | undefined;
+  // Stored Signed URL
+  get signedUrl(): string;
 
-  // Access to raw Fastify MultipartFile
-  get raw(): MultipartFile;
+  // Key in storage
+  get key(): string;
 
-  // Read file as Buffer
-  async toBuffer(): Promise<Buffer>;
+  // Disk name where file is stored
+  get diskName(): DriverKey;
 
-  // Calculate MD5 hash
-  async md5(): Promise<string>;
-
-  // Save file to disk (returns URL)
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string>;
+  // Download file from storage (for later processing)
+  async download(): Promise<Buffer>;
 }
 ```
 
-### Getting File Information
+## Options
+
+### limits
+
+Specifies file upload limits. Accepts Fastify multipart's `limits` options directly.
+
+```typescript
+type UploadDecoratorOptions = {
+  // Common options
+  limits?: {
+    fileSize?: number;    // Max file size (bytes)
+    files?: number;       // Max number of files
+    fields?: number;      // Max number of fields
+    fieldSize?: number;   // Max field size
+    parts?: number;       // Max number of parts
+  };
+} & (
+  // Buffer mode
+  | { consume?: "buffer" }
+  // Stream mode
+  | {
+      consume: "stream";
+      destination: DriverKey;
+      keyGenerator?: (file: { filename: string; mimetype: string }) => string;
+    }
+);
+```
+
+```typescript
+@upload({
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 5,                    // Max 5 files
+  }
+})
+async uploadWithLimits() {
+  const { bufferedFiles } = Sonamu.getContext();
+  // ...
+}
+```
+
+<Tabs>
+  <Tab title="Single File (Buffer)" icon="file">
+    ```typescript
+    @upload()
+    async uploadAvatar() {
+      const { bufferedFiles } = Sonamu.getContext();
+      const file = bufferedFiles?.[0];
+
+      if (!file) {
+        throw new Error("No file");
+      }
+
+      const md5 = await file.md5();
+      return {
+        filename: file.filename,
+        size: file.size,
+        md5
+      };
+    }
+    ```
+  </Tab>
+
+  <Tab title="Multiple Files (Buffer)" icon="files">
+    ```typescript
+    @upload({ limits: { files: 10 } })
+    async uploadDocuments() {
+      const { bufferedFiles } = Sonamu.getContext();
+
+      if (!bufferedFiles || bufferedFiles.length === 0) {
+        throw new Error("No files");
+      }
+
+      const results = [];
+      for (const file of bufferedFiles) {
+        const md5 = await file.md5();
+        const key = `documents/${md5}.${file.extname}`;
+        const url = await file.saveToDisk("fs", key);
+        results.push({
+          filename: file.filename,
+          url
+        });
+      }
+
+      return results;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Stream Mode" icon="cloud-arrow-up">
+    ```typescript
+    @upload({
+      consume: "stream",
+      destination: "s3",
+      keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,
+      limits: { files: 5 }
+    })
+    async uploadToCloud() {
+      const { uploadedFiles } = Sonamu.getContext();
+
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        throw new Error("No files");
+      }
+
+      // Files are already uploaded to S3
+      return uploadedFiles.map((file) => ({
+        filename: file.filename,
+        url: file.url,
+        key: file.key
+      }));
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Getting File Information
 
 ```typescript
 @upload()
-async uploadFile(file: UploadedFile) {
+async uploadFile() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   console.log("Filename:", file.filename);
   console.log("MIME type:", file.mimetype);
   console.log("Size:", file.size);
@@ -160,15 +282,24 @@ async uploadFile(file: UploadedFile) {
 }
 ```
 
-### Reading Files
+## File Processing (Buffer Mode)
+
+### Accessing Buffer
 
 ```typescript
 @upload()
-async processImage(file: UploadedFile) {
-  // Read as Buffer
-  const buffer = await file.toBuffer();
+async processImage() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  // Process image
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // Direct buffer access
+  const buffer = file.buffer;
+
+  // Image processing
   const processed = await sharp(buffer)
     .resize(300, 300)
     .toBuffer();
@@ -181,10 +312,18 @@ async processImage(file: UploadedFile) {
 
 ```typescript
 @upload()
-async uploadDocument(file: UploadedFile) {
-  // Save to disk
-  const key = `uploads/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+async uploadDocument() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // Save to disk (diskName, key order)
+  const md5 = await file.md5();
+  const key = `uploads/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   // Access saved URLs
   console.log("URL:", file.url);
@@ -198,13 +337,20 @@ async uploadDocument(file: UploadedFile) {
 
 ```typescript
 @upload()
-async uploadWithHash(file: UploadedFile) {
-  // Calculate MD5 hash
+async uploadWithHash() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // Calculate MD5 hash (useful for preventing duplicate files)
   const hash = await file.md5();
 
-  // Include hash in filename
+  // Use hash as filename
   const key = `uploads/${hash}${file.extname ? `.${file.extname}` : ''}`;
-  const url = await file.saveToDisk(key);
+  const url = await file.saveToDisk("fs", key);
 
   return { url, hash };
 }
@@ -216,49 +362,48 @@ Sonamu provides multiple storage drivers.
 
 ```typescript
 @upload()
-async uploadToS3(file: UploadedFile) {
+async uploadToS3() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   // Save to S3 disk (configured in sonamu.config.ts)
-  const key = `avatars/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key, "s3");
+  const md5 = await file.md5();
+  const key = `avatars/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("s3", key);
 
   return { url };
 }
 ```
 
 <Info>
-Storage drivers should be configured in `sonamu.config.ts`.
+Storage drivers are configured in `sonamu.config.ts`. Pass the disk name as the first parameter.
 </Info>
 
 ## Using with Other Decorators
-
-### With @api
-
-```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"]
-})
-@upload()
-async uploadFile(file: UploadedFile) {
-  // File upload API
-}
-```
-
-<Warning>
-When using `@upload`, the `clients` option is automatically configured.
-</Warning>
 
 ### With @transactional
 
 ```typescript
 @upload()
 @transactional()
-async uploadAndSave(file: UploadedFile) {
+async uploadAndSave() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   const wdb = this.getDB("w");
 
   // File save + DB update in transaction
-  const key = `documents/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+  const md5 = await file.md5();
+  const key = `documents/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   await wdb.table("documents").insert({
     filename: file.filename,
@@ -390,7 +535,14 @@ function FileUploader() {
 
 ```typescript
 @upload()
-async uploadImage(file: UploadedFile) {
+async uploadImage() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
   if (!allowedTypes.includes(file.mimetype)) {
     throw new Error(`Invalid file type: ${file.mimetype}`);
@@ -404,7 +556,14 @@ async uploadImage(file: UploadedFile) {
 
 ```typescript
 @upload()
-async uploadDocument(file: UploadedFile) {
+async uploadDocument() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
     throw new Error("File too large");
@@ -418,7 +577,14 @@ async uploadDocument(file: UploadedFile) {
 
 ```typescript
 @upload()
-async uploadFile(file: UploadedFile) {
+async uploadFile() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   const allowedExtensions = ["jpg", "png", "pdf"];
   if (!file.extname || !allowedExtensions.includes(file.extname)) {
     throw new Error(`Invalid file extension: ${file.extname}`);
@@ -436,8 +602,15 @@ async uploadFile(file: UploadedFile) {
 import sharp from "sharp";
 
 @upload()
-async uploadAndResizeImage(file: UploadedFile) {
-  const buffer = await file.toBuffer();
+async uploadAndResizeImage() {
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  const buffer = file.buffer;
 
   // Resize image
   const resized = await sharp(buffer)
@@ -466,53 +639,33 @@ async uploadAndResizeImage(file: UploadedFile) {
 
 ## Constraints
 
-### 1. Independent Usage
+### 1. Independent Usage without @api
 
-`@upload` can be used independently without `@api`:
+`@upload` is used independently without `@api` decorator:
 
 ```typescript
-// Works independently
+// Correct usage
 @upload()
-async uploadFile(file: UploadedFile) {}
+async uploadFile() {}
 
-// Also works with @api
+// Unnecessary - @upload automatically sets up API
 @api({ httpMethod: "POST" })
 @upload()
-async uploadFile(file: UploadedFile) {}
+async uploadFile() {}
 ```
 
 ### 2. httpMethod is POST
 
 When using `@upload`, `httpMethod: "POST"` is automatically set.
 
-```typescript
-@api({ httpMethod: "GET" })  // Ignored
-@upload()
-async uploadFile(file: UploadedFile) {
-  // Works as POST
-}
-```
-
 ### 3. Automatic clients Setting
 
-When using `@upload`, the `clients` option is automatically configured:
+When using `@upload`, the `clients` option is automatically set to `["axios-multipart", "tanstack-mutation-multipart"]`:
 
 ```typescript
 @upload()
-async uploadFile(file: UploadedFile) {
+async uploadFile() {
   // clients: ["axios-multipart", "tanstack-mutation-multipart"]
-}
-```
-
-## Logging
-
-The `@upload` decorator automatically logs:
-
-```typescript
-@upload()
-async uploadFile(file: UploadedFile) {
-  // Automatic log:
-  // [DEBUG] upload: FileModel.uploadFile
 }
 ```
 
@@ -524,8 +677,9 @@ async uploadFile(file: UploadedFile) {
     class UserModelClass extends BaseModelClass {
       @upload()
       @transactional()
-      async uploadAvatar(file: UploadedFile) {
-        const { user } = Sonamu.getContext();
+      async uploadAvatar() {
+        const { user, bufferedFiles } = Sonamu.getContext();
+        const file = bufferedFiles?.[0];
 
         if (!file) {
           throw new Error("No file uploaded");
@@ -538,7 +692,7 @@ async uploadFile(file: UploadedFile) {
         }
 
         // Process image
-        const buffer = await file.toBuffer();
+        const buffer = file.buffer;
         const processed = await sharp(buffer)
           .resize(300, 300, { fit: "cover" })
           .jpeg({ quality: 85 })
@@ -564,17 +718,20 @@ async uploadFile(file: UploadedFile) {
   <Tab title="Multiple File Upload" icon="images">
     ```typescript
     class DocumentModelClass extends BaseModelClass {
-      @upload()
+      @upload({ limits: { files: 10 } })
       @transactional()
-      async uploadDocuments(files: UploadedFile[], projectId: number) {
-        if (files.length === 0) {
+      async uploadDocuments(params: { projectId: number }) {
+        const { bufferedFiles } = Sonamu.getContext();
+        const { projectId } = params;
+
+        if (!bufferedFiles || bufferedFiles.length === 0) {
           throw new Error("No files uploaded");
         }
 
         const wdb = this.getDB("w");
         const results = [];
 
-        for (const file of files) {
+        for (const file of bufferedFiles) {
           // Validate file type
           const allowedTypes = [
             "application/pdf",
@@ -587,8 +744,9 @@ async uploadFile(file: UploadedFile) {
           }
 
           // Save file
-          const key = `documents/${projectId}/${Date.now()}_${file.filename}`;
-          const url = await file.saveToDisk(key);
+          const md5 = await file.md5();
+          const key = `documents/${projectId}/${md5}.${file.extname}`;
+          const url = await file.saveToDisk("fs", key);
 
           // Record in DB
           const doc = await wdb.table("documents").insert({
@@ -616,14 +774,20 @@ async uploadFile(file: UploadedFile) {
     class ImportModelClass extends BaseModelClass {
       @upload()
       @transactional()
-      async importUsers(file: UploadedFile) {
+      async importUsers() {
+        const { bufferedFiles } = Sonamu.getContext();
+        const file = bufferedFiles?.[0];
+
+        if (!file) {
+          throw new Error("No file");
+        }
+
         if (file.mimetype !== "text/csv") {
           throw new Error("CSV file required");
         }
 
-        // Parse CSV
-        const buffer = await file.toBuffer();
-        const text = buffer.toString("utf-8");
+        // Parse CSV (use Buffer directly)
+        const text = file.buffer.toString("utf-8");
 
         const parsed = Papa.parse<UserImportRow>(text, {
           header: true,
@@ -669,17 +833,23 @@ async uploadFile(file: UploadedFile) {
   <Tab title="MD5 Hash-based Storage" icon="hashtag">
     ```typescript
     class FileModelClass extends BaseModelClass {
-      @upload()
-      async uploadWithDeduplication(files: UploadedFile[]) {
+      @upload({ limits: { files: 10 } })
+      async uploadWithDeduplication() {
+        const { bufferedFiles } = Sonamu.getContext();
+
+        if (!bufferedFiles || bufferedFiles.length === 0) {
+          throw new Error("No files");
+        }
+
         const results = [];
-        for (const file of files) {
+        for (const file of bufferedFiles) {
           // Calculate MD5 hash
           const hash = await file.md5();
 
           // Save file with hash (prevent duplicates)
           const ext = file.extname || "bin";
           const key = `uploads/${hash}.${ext}`;
-          const url = await file.saveToDisk(key);
+          const url = await file.saveToDisk("fs", key);
 
           results.push({
             filename: file.filename,
@@ -690,6 +860,37 @@ async uploadFile(file: UploadedFile) {
         }
 
         return results;
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Stream Mode Large Files" icon="cloud-arrow-up">
+    ```typescript
+    class FileModelClass extends BaseModelClass {
+      @upload({
+        consume: "stream",
+        destination: "s3",
+        keyGenerator: (file) => `large-files/${Date.now()}-${file.filename}`,
+        limits: { files: 3, fileSize: 100 * 1024 * 1024 }  // 100MB
+      })
+      async uploadLargeFiles() {
+        const { uploadedFiles } = Sonamu.getContext();
+
+        if (!uploadedFiles || uploadedFiles.length === 0) {
+          throw new Error("No files");
+        }
+
+        // Files are already uploaded to S3
+        return {
+          files: uploadedFiles.map((file) => ({
+            filename: file.filename,
+            url: file.url,
+            signedUrl: file.signedUrl,
+            key: file.key,
+            size: file.size,
+          })),
+        };
       }
     }
     ```
@@ -713,7 +914,7 @@ async uploadFile() {
   // ...
 }
 
-// ❌ No need to use with @api
+// Unnecessary - no need to use with @api
 @api({ httpMethod: "POST" })  // Unnecessary
 @upload()
 async uploadFile() {
