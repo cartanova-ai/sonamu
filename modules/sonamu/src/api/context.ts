@@ -3,6 +3,7 @@ import type { RouteGenericInterface } from "fastify/types/route";
 import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
 import type { ZodObject } from "zod";
 import type { NaiteStore } from "../naite/naite";
+import type { BufferedFile } from "../storage/buffered-file";
 import type { UploadedFile } from "../storage/uploaded-file";
 import type { createSSEFactory } from "../stream/sse";
 
@@ -16,8 +17,10 @@ export type Context = {
   naiteStore: NaiteStore;
   /** 현재 요청의 locale */
   locale: string;
-  // 파일 업로드
-  files?: UploadedFile[];
+  /** buffer 모드에서 업로드된 파일 */
+  bufferedFiles?: BufferedFile[];
+  /** stream 모드에서 업로드된 파일 */
+  uploadedFiles?: UploadedFile[];
 } & AuthContext &
   ContextExtend;
 
