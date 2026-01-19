@@ -82,6 +82,7 @@
     "@logtape/fastify": "catalog:",
     "@aws-sdk/client-s3": "catalog:",
     "bentocache": "catalog:",
+    "@aws-sdk/lib-storage": "catalog:",
     "@aws-sdk/s3-request-presigner": "catalog:",
     "@biomejs/js-api": "catalog:",
     "@biomejs/wasm-nodejs": "catalog:",

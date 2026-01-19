@@ -14,6 +14,7 @@ catalog:
   "@aws-sdk/client-ecr-public": ^3.958.0
   "@aws-sdk/client-s3": ^3.958.0
   "@aws-sdk/ecr-public": ^3.958.0
+  "@aws-sdk/lib-storage": ^3.971.0
   "@aws-sdk/s3-request-presigner": ^3.958.0
   "@biomejs/biome": ^2.3.10
   "@biomejs/js-api": ^4.0.0
