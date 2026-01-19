@@ -100,3 +100,6 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Slack Confirm
+.slack-confirm-*
