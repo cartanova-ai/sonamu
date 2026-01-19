@@ -7,6 +7,32 @@ TypeScript has a powerful type system. However, many frameworks fail to fully le
 
 Sonamu is designed with TypeScript's type system at its core.
 
+## Who Is This Framework For
+
+<CardGroup cols={2}>
+  <Card title="Productivity-Focused Developers" icon="rocket">
+    Those who want to focus on business logic without wasting time on repetitive tasks
+  </Card>
+
+{" "}
+
+<Card title="Teams That Trust Type Safety" icon="shield-check">
+  Teams that prefer compile errors over runtime errors and maximize IDE assistance
+</Card>
+
+{" "}
+
+<Card title="Backend Developers Collaborating with Frontend" icon="handshake">
+  Those who want to escape the dual work of API spec documentation and client writing
+</Card>
+
+  <Card title="Startups Needing Rapid Prototyping" icon="gauge-high">
+    Teams that want to build MVPs quickly while minimizing technical debt
+  </Card>
+</CardGroup>
+
+---
+
 ## Core Philosophy: Single Source of Truth
 
 **Define one Entity, and TypeScript handles the rest.**
@@ -219,22 +245,27 @@ const user = await UserService.findById("C", userId);
 
 ### SSR
 
-Supports server-side rendering with Next.js App Router. Improve SEO optimization and initial loading speed.
+Supports server-side rendering based on Vite + React. Register SSR routes with `registerSSR` and preload necessary data on the server with the `preload` callback.
 
-```tsx
-// app/users/[id]/page.tsx
-export default async function UserPage({ params }: { params: { id: string } }) {
-  // Fetch data on the server
-  const user = await UserService.findById("C", Number(params.id));
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
 
-  return (
-    <div>
-      <h1>{user.username}</h1>  {/* ✅ Type safe */}
-      <p>{user.bio}</p>
-    </div>
-  );
-}
+// Register user detail page for SSR
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
 ```
+
+Registered routes are rendered on the server and automatically hydrated on the client. Improve SEO optimization and initial loading speed.
 
 **Key Features**:
 
@@ -746,33 +777,6 @@ function RegisterForm() {
   ></video>
 </Frame>
 
----
-
-## Who Is This Framework For
-
-<CardGroup cols={2}>
-  <Card title="Productivity-Focused Developers" icon="rocket">
-    Those who want to focus on business logic without wasting time on repetitive tasks
-  </Card>
-
-{" "}
-
-<Card title="Teams That Trust Type Safety" icon="shield-check">
-  Teams that prefer compile errors over runtime errors and maximize IDE assistance
-</Card>
-
-{" "}
-
-<Card title="Backend Developers Collaborating with Frontend" icon="handshake">
-  Those who want to escape the dual work of API spec documentation and client writing
-</Card>
-
-  <Card title="Startups Needing Rapid Prototyping" icon="gauge-high">
-    Teams that want to build MVPs quickly while minimizing technical debt
-  </Card>
-</CardGroup>
-
----
 
 ## Getting Started
 

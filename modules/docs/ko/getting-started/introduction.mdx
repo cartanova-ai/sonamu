@@ -245,22 +245,27 @@ const user = await UserService.findById("C", userId);
 
 ### SSR
 
-Next.js App Router와 함께 서버 사이드 렌더링을 지원합니다. SEO 최적화와 초기 로딩 속도를 개선할 수 있습니다.
+Vite + React 기반의 서버 사이드 렌더링을 지원합니다. `registerSSR`로 SSR할 라우트를 등록하고, `preload` 콜백으로 서버에서 필요한 데이터를 미리 로드합니다.
 
-```tsx
-// app/users/[id]/page.tsx
-export default async function UserPage({ params }: { params: { id: string } }) {
-  // 서버에서 데이터 페칭
-  const user = await UserService.findById("C", Number(params.id));
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
 
-  return (
-    <div>
-      <h1>{user.username}</h1>  {/* ✅ 타입 안전 */}
-      <p>{user.bio}</p>
-    </div>
-  );
-}
+// 사용자 상세 페이지 SSR 등록
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
 ```
+
+등록된 라우트는 서버에서 렌더링되고, 클라이언트에서는 자동으로 hydration됩니다. SEO 최적화와 초기 로딩 속도를 개선할 수 있습니다.
 
 **핵심 기능**:
 
