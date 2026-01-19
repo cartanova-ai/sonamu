@@ -1,32 +1,32 @@
 ---
-title: 'Context 메서드'
-description: 'Context 접근 메서드 레퍼런스'
+title: 'Context Methods'
+description: 'Context Access Methods Reference'
 ---
 
-Sonamu는 Context에 접근할 수 있는 여러 메서드를 제공합니다. 이 메서드들은 API 메서드 외부에서 Context가 필요한 경우에 유용합니다.
+Sonamu provides multiple methods to access the Context. These methods are useful when you need Context outside of API methods.
 
 ## Sonamu.getContext()
 
-현재 실행 중인 요청의 Context를 반환합니다. AsyncLocalStorage를 통해 관리되므로, 같은 요청 스택 내 어디서든 호출할 수 있습니다.
+Returns the Context of the currently executing request. Managed through AsyncLocalStorage, so it can be called anywhere within the same request stack.
 
-### 시그니처
+### Signature
 
 ```typescript
 Sonamu.getContext(): Context
 ```
 
-### 반환값
+### Return Value
 
-- **Context**: 현재 요청의 Context 객체
-- **테스트 환경**: 빈 Context 객체 (request와 reply는 null)
+- **Context**: The Context object of the current request
+- **Test Environment**: Empty Context object (request and reply are null)
 
-### 예외
+### Exceptions
 
-- **Error**: Context를 찾을 수 없는 경우 (프로덕션 환경에서만)
+- **Error**: When Context cannot be found (production environment only)
 
-### 사용 예시
+### Usage Examples
 
-#### 헬퍼 함수에서 사용
+#### Using in Helper Functions
 
 ```typescript
 // src/utils/auth-helper.ts
@@ -40,7 +40,7 @@ export function getCurrentUser() {
 export function requireAuth() {
   const user = getCurrentUser();
   if (!user) {
-    throw new UnauthorizedException("로그인이 필요합니다");
+    throw new UnauthorizedException("Authentication required");
   }
   return user;
 }
@@ -53,9 +53,9 @@ import { requireAuth } from "../utils/auth-helper";
 class PostModelClass extends BaseModel {
   @api()
   async createPost(title: string, content: string) {
-    // Context를 직접 받지 않아도 헬퍼 함수를 통해 사용자 정보 접근
+    // Access user information through helper function without receiving Context directly
     const user = requireAuth();
-    
+
     return this.create({
       title,
       content,
@@ -65,7 +65,7 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-#### 서비스 레이어에서 사용
+#### Using in Service Layer
 
 ```typescript
 // src/services/notification.service.ts
@@ -74,24 +74,24 @@ import { Sonamu } from "sonamu";
 export class NotificationService {
   async sendNotification(userId: number, message: string) {
     const ctx = Sonamu.getContext();
-    
-    // Context의 locale 정보를 사용하여 다국어 메시지 전송
+
+    // Send localized message using Context's locale information
     const localizedMessage = this.localize(message, ctx.locale);
-    
-    // 알림 전송 로직
+
+    // Notification sending logic
     await this.send(userId, localizedMessage);
   }
 
   private localize(message: string, locale?: string) {
-    // 다국어 처리 로직
+    // Localization logic
     return message;
   }
 }
 ```
 
-### 테스트 환경 동작
+### Test Environment Behavior
 
-테스트 환경에서는 Context가 주입되지 않아도 에러를 발생시키지 않고 빈 Context를 반환합니다:
+In test environments, returns an empty Context without throwing errors even when Context is not injected:
 
 ```typescript
 // test/post.test.ts
@@ -99,14 +99,14 @@ import { Sonamu } from "sonamu";
 
 describe("PostModel", () => {
   it("should create post", async () => {
-    // 테스트 환경에서는 Context 없이도 동작
+    // Works in test environment without Context
     const ctx = Sonamu.getContext();
-    console.log(ctx.request); // null (에러 없음)
+    console.log(ctx.request); // null (no error)
   });
 });
 ```
 
-실제 Context가 필요한 테스트에서는 `runWithMockContext`를 사용하세요:
+For tests that need actual Context, use `runWithMockContext`:
 
 ```typescript
 import { runWithMockContext } from "sonamu/test";
@@ -124,55 +124,53 @@ it("should use context in test", async () => {
 });
 ```
 
-## Sonamu.getUploadContext()
+## File Upload Context
 
-파일 업로드 요청에서 업로드된 파일 정보에 접근합니다. `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다.
+For file upload requests, uploaded file information is accessed through the `files` property of `Sonamu.getContext()`. Available only in methods with the `@upload` decorator.
 
-### 시그니처
-
-```typescript
-Sonamu.getUploadContext(): UploadContext
-```
-
-### 반환값
+### Signature
 
 ```typescript
-type UploadContext = {
-  file?: UploadedFile;
-  files: UploadedFile[];
-};
+const { files } = Sonamu.getContext();
+// files: UploadedFile[]
 ```
 
-- **file**: 단일 파일 업로드 시 파일 객체 (`@upload({ mode: "single" })`)
-- **files**: 다중 파일 업로드 시 파일 배열 (`@upload({ mode: "multiple" })`)
+### Type
 
-### 예외
+```typescript
+// files property of Context
+files?: UploadedFile[];
+```
 
-- **Error**: `@upload` 데코레이터 없이 호출한 경우
+- **files**: Array of uploaded files (when using `@upload()` decorator)
 
-### 사용 예시
+### Notes
 
-#### 단일 파일 업로드
+- The `files` property is only set when using the `@upload` decorator
+- For single file uploads, access via `files?.[0]`
+
+### Usage Examples
+
+#### Single File Upload
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
-  @upload({ mode: "single" })
+  @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
 
     if (!file) {
-      throw new BadRequestException("파일이 필요합니다");
+      throw new BadRequestException("File is required");
     }
 
-    // 파일 정보 확인
+    // Check file information
     console.log(file.filename);    // "avatar.jpg"
     console.log(file.mimetype);    // "image/jpeg"
     console.log(file.size);        // 102400 (bytes)
     console.log(file.extname);     // "jpg"
 
-    // 파일 저장
+    // Save file
     const key = `avatars/${Date.now()}_${file.filename}`;
     const url = await file.saveToDisk(key);
 
@@ -181,17 +179,16 @@ class FileModelClass extends BaseModel {
 }
 ```
 
-#### 다중 파일 업로드
+#### Multiple File Upload
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
     const { files } = Sonamu.getContext();
 
     if (files.length === 0) {
-      throw new BadRequestException("최소 1개 이상의 파일이 필요합니다");
+      throw new BadRequestException("At least one file is required");
     }
 
     const savedFiles = await Promise.all(
@@ -202,7 +199,7 @@ class FileModelClass extends BaseModel {
       })
     );
 
-    // 파일 메타데이터 DB 저장
+    // Save file metadata to database
     await this.createMany(
       savedFiles.map((file) => ({
         folderId,
@@ -217,7 +214,7 @@ class FileModelClass extends BaseModel {
 }
 ```
 
-#### 헬퍼 함수에서 사용
+#### Using in Helper Functions
 
 ```typescript
 // src/utils/file-helper.ts
@@ -230,11 +227,11 @@ export function getUploadedFiles() {
 
 export function validateFileTypes(allowedTypes: string[]) {
   const { files } = Sonamu.getContext();
-  
+
   for (const file of files) {
     if (!allowedTypes.includes(file.mimetype)) {
       throw new BadRequestException(
-        `허용되지 않는 파일 형식입니다: ${file.mimetype}`
+        `File type not allowed: ${file.mimetype}`
       );
     }
   }
@@ -244,9 +241,9 @@ export function validateFileTypes(allowedTypes: string[]) {
 ```typescript
 class FileModelClass extends BaseModel {
   @api()
-  @upload({ mode: "multiple" })
+  @upload()
   async uploadImages(ctx: Context) {
-    // 이미지 파일만 허용
+    // Allow only image files
     validateFileTypes([
       "image/jpeg",
       "image/png",
@@ -255,68 +252,68 @@ class FileModelClass extends BaseModel {
     ]);
 
     const files = getUploadedFiles();
-    
-    // 파일 처리 로직
+
+    // File processing logic
     // ...
   }
 }
 ```
 
-## 관련 타입
+## Related Types
 
 ### UploadedFile
 
 ```typescript
 class UploadedFile {
-  /** 원본 파일명 */
+  /** Original filename */
   get filename(): string;
-  
-  /** MIME 타입 */
+
+  /** MIME type */
   get mimetype(): string;
-  
-  /** 파일 크기 (bytes) */
+
+  /** File size (bytes) */
   get size(): number;
-  
-  /** 확장자 (점 제외) */
+
+  /** Extension (without dot) */
   get extname(): string | false;
-  
-  /** saveToDisk 후 저장된 URL (Unsigned) */
+
+  /** Saved URL after saveToDisk (Unsigned) */
   get url(): string | undefined;
-  
-  /** saveToDisk 후 저장된 URL (Signed) */
+
+  /** Saved URL after saveToDisk (Signed) */
   get signedUrl(): string | undefined;
-  
-  /** 원본 MultipartFile 접근 */
+
+  /** Access to original MultipartFile */
   get raw(): MultipartFile;
-  
-  /** Buffer로 변환 (캐싱됨) */
+
+  /** Convert to Buffer (cached) */
   async toBuffer(): Promise<Buffer>;
-  
-  /** MD5 해시 계산 */
+
+  /** Calculate MD5 hash */
   async md5(): Promise<string>;
-  
+
   /**
-   * 파일을 디스크에 저장
-   * @param key 저장 경로 (예: 'uploads/avatar.png')
-   * @param diskName 디스크 이름 (기본: default disk)
-   * @returns 저장된 파일의 URL
+   * Save file to disk
+   * @param key Storage path (e.g., 'uploads/avatar.png')
+   * @param diskName Disk name (default: default disk)
+   * @returns URL of saved file
    */
   async saveToDisk(key: string, diskName?: DriverKey): Promise<string>;
 }
 ```
 
-## 주의사항
+## Precautions
 
-### AsyncLocalStorage 스택
+### AsyncLocalStorage Stack
 
-`getContext()`와 `getUploadContext()`는 AsyncLocalStorage를 통해 동작하므로, 반드시 같은 비동기 실행 스택 내에서 호출해야 합니다:
+`getContext()` works through AsyncLocalStorage, so it must be called within the same asynchronous execution stack:
 
 ```typescript
-// ✅ 올바른 사용
+// ✅ Correct usage
 class PostModelClass extends BaseModel {
   @api()
   async createPost(title: string) {
-    const user = this.getCurrentUser(); // 같은 스택 내
+    const user = this.getCurrentUser(); // Within same stack
     return this.create({ title, authorId: user.id });
   }
 
@@ -325,11 +322,11 @@ class PostModelClass extends BaseModel {
   }
 }
 
-// ❌ 잘못된 사용
+// ❌ Incorrect usage
 class PostModelClass extends BaseModel {
   @api()
   async createPost(title: string) {
-    // setTimeout은 새로운 실행 스택을 생성
+    // setTimeout creates a new execution stack
     setTimeout(() => {
       const ctx = Sonamu.getContext(); // Error!
     }, 1000);
@@ -337,29 +334,30 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### @upload 데코레이터 필수
+### @upload Decorator Required
 
-`getUploadContext()`는 반드시 `@upload` 데코레이터가 적용된 메서드에서만 사용해야 합니다:
+The `files` property can only be used in methods with the `@upload` decorator:
 
 ```typescript
-// ✅ 올바른 사용
+// ✅ Correct usage
 @api()
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext(); // OK
-  const file = files?.[0]; // Use first file
+  const { files } = Sonamu.getContext();
+  const file = files?.[0]; // OK
 }
 
-// ❌ 잘못된 사용
+// ❌ Incorrect usage
 @api()
 async uploadFile() {
-  const { files } = Sonamu.getContext(); // Error! @upload 데코레이터가 없으면 files가 undefined
+  const { files } = Sonamu.getContext();
+  // files is undefined
 }
 ```
 
-## 관련 문서
+## Related Documentation
 
 - [Context](/api-reference/context/sonamu-context)
 - [AuthContext](/api-reference/context/auth-context)
-- [파일 업로드](/api-development/file-upload)
-- [테스트에서 Context 사용](/testing/mocking/run-with-mock-context)
+- [File Upload](/api-development/file-upload)
+- [Using Context in Tests](/testing/mocking/run-with-mock-context)

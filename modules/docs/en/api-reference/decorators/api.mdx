@@ -1,11 +1,11 @@
 ---
 title: '@api'
-description: 'API 엔드포인트 생성 데코레이터'
+description: 'API Endpoint Creation Decorator'
 ---
 
-`@api` 데코레이터는 Model 또는 Frame 클래스의 메서드를 HTTP API 엔드포인트로 노출합니다.
+The `@api` decorator exposes methods of Model or Frame classes as HTTP API endpoints.
 
-## 기본 사용법
+## Basic Usage
 
 ```typescript
 import { BaseModelClass, api } from "sonamu";
@@ -31,57 +31,57 @@ class UserModelClass extends BaseModelClass<
 export const UserModel = new UserModelClass();
 ```
 
-## 옵션
+## Options
 
 ### httpMethod
 
-HTTP 메서드를 지정합니다.
+Specifies the HTTP method.
 
 ```typescript
 type HTTPMethods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 ```
 
-**기본값:** `"GET"`
+**Default:** `"GET"`
 
 ```typescript
 @api({ httpMethod: "POST" })
 async create(data: CreateParams) {
-  // POST 요청으로 노출됩니다
+  // Exposed as POST request
 }
 
 @api({ httpMethod: "DELETE" })
 async remove(id: number) {
-  // DELETE 요청으로 노출됩니다
+  // Exposed as DELETE request
 }
 ```
 
 ### path
 
-API 엔드포인트 경로를 지정합니다.
+Specifies the API endpoint path.
 
-**기본값:** `/{modelName}/{methodName}` (camelCase)
+**Default:** `/{modelName}/{methodName}` (camelCase)
 
 ```typescript
 @api({ path: "/api/v1/users/profile" })
 async getProfile() {
-  // /api/v1/users/profile로 접근
+  // Accessible at /api/v1/users/profile
 }
 
 @api()
 async findById(id: number) {
-  // 기본 경로: /user/findById
+  // Default path: /user/findById
 }
 ```
 
 <Info>
-경로는 자동으로 camelCase로 변환됩니다. `UserModel.findById` → `/user/findById`
+Paths are automatically converted to camelCase. `UserModel.findById` → `/user/findById`
 </Info>
 
 ### contentType
 
-응답의 Content-Type을 지정합니다.
+Specifies the Content-Type of the response.
 
-**기본값:** `"application/json"`
+**Default:** `"application/json"`
 
 ```typescript
 type ContentType =
@@ -93,30 +93,76 @@ type ContentType =
 ```
 
 ```typescript
+// CSV file download
 @api({ contentType: "text/plain" })
 async exportCsv() {
   return "id,name,email\n1,Alice,alice@example.com";
 }
 
+// HTML rendering
 @api({ contentType: "text/html" })
 async renderTemplate() {
   return "<html><body>Hello</body></html>";
 }
+
+// Binary file download (images, PDFs, etc.)
+@api({ contentType: "application/octet-stream" })
+async downloadFile(fileId: number, ctx: Context) {
+  // Fetch file
+  const file = await this.getPuri("r")
+    .table("files")
+    .where("id", fileId)
+    .first();
+
+  if (!file) {
+    throw new NotFoundError("File not found");
+  }
+
+  // Read file from storage
+  const disk = Sonamu.storage.use();
+  const buffer = await disk.get(file.path);
+
+  // Set download filename with Content-Disposition header
+  ctx.reply.header(
+    "Content-Disposition",
+    `attachment; filename="${encodeURIComponent(file.original_name)}"`
+  );
+
+  return buffer;
+}
 ```
+
+**contentType Use Cases**:
+
+| Content-Type | Use Case | Return Type |
+|--------------|----------|-------------|
+| `text/plain` | CSV, TXT file download | `string` |
+| `text/html` | HTML rendering (SSR) | `string` |
+| `text/xml` | XML data response | `string` |
+| `application/json` | JSON data (default) | `object` |
+| `application/octet-stream` | Binary files (images, PDFs, ZIPs, etc.) | `Buffer` or `Uint8Array` |
+
+<Info>
+**Notes for application/octet-stream**:
+- Must return `Buffer` or `Uint8Array`
+- Use `Content-Disposition` header to specify download filename
+- Use `encodeURIComponent()` for filenames containing non-ASCII characters
+- Consider streaming for large files
+</Info>
 
 ### clients
 
-생성할 클라이언트 타입을 지정합니다.
+Specifies the client types to generate.
 
-**기본값:** `["axios"]`
+**Default:** `["axios"]`
 
 ```typescript
 type ServiceClient =
-  | "axios"                          // Axios 클라이언트
+  | "axios"                          // Axios client
   | "axios-multipart"                // Multipart form-data
-  | "tanstack-query"                 // TanStack Query (읽기)
-  | "tanstack-mutation"              // TanStack Mutation (쓰기)
-  | "tanstack-mutation-multipart"    // TanStack Mutation (파일 업로드)
+  | "tanstack-query"                 // TanStack Query (read)
+  | "tanstack-mutation"              // TanStack Mutation (write)
+  | "tanstack-mutation-multipart"    // TanStack Mutation (file upload)
   | "window-fetch";                  // Native Fetch API
 ```
 
@@ -126,7 +172,7 @@ type ServiceClient =
   clients: ["axios", "tanstack-query"]
 })
 async list() {
-  // axios와 TanStack Query 클라이언트 생성
+  // Generates axios and TanStack Query clients
 }
 
 @api({
@@ -134,13 +180,13 @@ async list() {
   clients: ["axios", "tanstack-mutation"]
 })
 async create(data: CreateParams) {
-  // axios와 TanStack Mutation 클라이언트 생성
+  // Generates axios and TanStack Mutation clients
 }
 ```
 
 ### guards
 
-API 접근 권한을 지정합니다.
+Specifies API access permissions.
 
 ```typescript
 type GuardKey = "query" | "admin" | "user";
@@ -149,27 +195,27 @@ type GuardKey = "query" | "admin" | "user";
 ```typescript
 @api({ guards: ["admin"] })
 async deleteUser(id: number) {
-  // 관리자만 접근 가능
+  // Admin only
 }
 
 @api({ guards: ["user"] })
 async getProfile() {
-  // 로그인한 사용자만 접근 가능
+  // Authenticated users only
 }
 
 @api({ guards: ["query", "admin"] })
 async search(query: string) {
-  // query 또는 admin 권한 필요
+  // Requires query or admin permission
 }
 ```
 
 ### description
 
-API 설명을 추가합니다. 생성된 타입과 문서에 포함됩니다.
+Adds API description. Included in generated types and documentation.
 
 ```typescript
 @api({
-  description: "사용자 ID로 프로필을 조회합니다."
+  description: "Fetches user profile by ID."
 })
 async findById(id: number) {
   // ...
@@ -178,35 +224,35 @@ async findById(id: number) {
 
 ### resourceName
 
-생성되는 서비스 파일의 리소스 이름을 지정합니다.
+Specifies the resource name for generated service files.
 
 ```typescript
 @api({ resourceName: "Users" })
 async list() {
-  // UsersService.ts 파일에 포함됩니다
+  // Included in UsersService.ts file
 }
 ```
 
 ### timeout
 
-API 요청의 타임아웃을 밀리초 단위로 지정합니다.
+Specifies the API request timeout in milliseconds.
 
 ```typescript
-@api({ timeout: 30000 })  // 30초
+@api({ timeout: 30000 })  // 30 seconds
 async heavyOperation() {
-  // 오래 걸리는 작업
+  // Long-running task
 }
 ```
 
 ### cacheControl
 
-응답의 Cache-Control 헤더를 설정합니다.
+Sets the Cache-Control header for the response.
 
 ```typescript
 @api({
   cacheControl: {
-    maxAge: "10m",        // 10분 캐싱
-    sMaxAge: "1h",        // CDN에서 1시간 캐싱
+    maxAge: "10m",        // Cache for 10 minutes
+    sMaxAge: "1h",        // Cache on CDN for 1 hour
     public: true
   }
 })
@@ -215,11 +261,11 @@ async getPublicData() {
 }
 ```
 
-**CacheControlConfig 타입:**
+**CacheControlConfig Type:**
 ```typescript
 type CacheControlConfig = {
-  maxAge?: string;        // 브라우저 캐시 시간
-  sMaxAge?: string;       // CDN/프록시 캐시 시간
+  maxAge?: string;        // Browser cache duration
+  sMaxAge?: string;       // CDN/proxy cache duration
   public?: boolean;       // public/private
   noCache?: boolean;      // no-cache
   noStore?: boolean;      // no-store
@@ -228,31 +274,31 @@ type CacheControlConfig = {
 ```
 
 <Tip>
-시간 표기: `"10s"`, `"5m"`, `"1h"`, `"1d"` 형식 지원
+Time notation supports: `"10s"`, `"5m"`, `"1h"`, `"1d"` formats
 </Tip>
 
 ### compress
 
-응답 압축 설정을 지정합니다.
+Specifies response compression settings.
 
 ```typescript
 @api({
   compress: {
-    threshold: 1024,      // 1KB 이상만 압축
-    level: 6              // 압축 레벨 (0-9)
+    threshold: 1024,      // Compress only if >= 1KB
+    level: 6              // Compression level (0-9)
   }
 })
 async getLargeData() {
-  // 큰 데이터 반환
+  // Returns large data
 }
 
-@api({ compress: false })  // 압축 비활성화
+@api({ compress: false })  // Disable compression
 async getSmallData() {
-  // 작은 데이터는 압축하지 않음
+  // Small data not compressed
 }
 ```
 
-## 전체 옵션 예시
+## Complete Options Example
 
 ```typescript
 @api({
@@ -261,7 +307,7 @@ async getSmallData() {
   contentType: "application/json",
   clients: ["axios", "tanstack-query"],
   guards: ["user"],
-  description: "사용자 검색 API",
+  description: "User search API",
   resourceName: "Users",
   timeout: 5000,
   cacheControl: {
@@ -274,49 +320,49 @@ async getSmallData() {
   }
 })
 async search(params: SearchParams) {
-  // 구현
+  // Implementation
 }
 ```
 
-## 경로 생성 규칙
+## Path Generation Rules
 
-### Model 클래스
+### Model Classes
 
 ```typescript
 class UserModelClass extends BaseModelClass {
   @api()
   async findById(id: number) {}
-  // 경로: /user/findById
+  // Path: /user/findById
 }
 
 class PostModelClass extends BaseModelClass {
   @api()
   async getComments() {}
-  // 경로: /post/getComments
+  // Path: /post/getComments
 }
 ```
 
-**규칙:**
-1. 클래스 이름에서 "ModelClass" 제거
-2. 나머지를 camelCase로 변환
-3. `/{modelName}/{methodName}` 형식
+**Rules:**
+1. Remove "ModelClass" from class name
+2. Convert the rest to camelCase
+3. Format: `/{modelName}/{methodName}`
 
-### Frame 클래스
+### Frame Classes
 
 ```typescript
 class AuthFrameClass extends BaseFrameClass {
   @api()
   async login() {}
-  // 경로: /auth/login
+  // Path: /auth/login
 }
 ```
 
-**규칙:**
-1. 클래스 이름에서 "FrameClass" 제거
-2. 나머지를 camelCase로 변환
-3. `/{frameName}/{methodName}` 형식
+**Rules:**
+1. Remove "FrameClass" from class name
+2. Convert the rest to camelCase
+3. Format: `/{frameName}/{methodName}`
 
-## 다른 데코레이터와 함께 사용
+## Using with Other Decorators
 
 ### @transactional
 
@@ -325,13 +371,13 @@ class AuthFrameClass extends BaseFrameClass {
 @transactional()
 async save(data: UserSaveParams) {
   const wdb = this.getDB("w");
-  // 트랜잭션 내에서 실행
+  // Executed within transaction
   return this.upsert(wdb, data);
 }
 ```
 
 <Warning>
-`@api`를 먼저, `@transactional`을 나중에 작성하세요.
+Write `@api` first, then `@transactional`.
 </Warning>
 
 ### @cache
@@ -340,7 +386,7 @@ async save(data: UserSaveParams) {
 @api({ httpMethod: "GET" })
 @cache({ ttl: "10m" })
 async findById(id: number) {
-  // 10분간 결과 캐싱
+  // Result cached for 10 minutes
   const rdb = this.getPuri("r");
   return rdb.table("users").where("id", id).first();
 }
@@ -348,84 +394,85 @@ async findById(id: number) {
 
 ### @upload
 
+`@upload` is used independently without `@api`.
+
 ```typescript
-@api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar() {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // Use first file
-  // 파일 처리
+  // Process file
 }
 ```
 
-## 제약사항
+## Constraints
 
-### 1. @stream과 중복 사용 불가
+### 1. Cannot be used with @stream
 
 ```typescript
-// ❌ 에러 발생
+// ❌ Error
 @api()
 @stream({ type: "sse", events: EventSchema })
 async subscribe() {}
 ```
 
-**에러 메시지:**
+**Error Message:**
 ```
-@api decorator can only be used once on UserModel.subscribe. 
+@api decorator can only be used once on UserModel.subscribe.
 You can use only one of @api or @stream decorator on the same method.
 ```
 
-### 2. 같은 메서드에 여러 번 사용 시
+### 2. Using Multiple Times on Same Method
 
-여러 번 사용하면 **마지막 것이 우선**되며, 충돌하는 옵션이 있으면 에러 발생:
+Using multiple times gives **last one priority**, and conflicting options cause errors:
 
 ```typescript
-// ❌ 에러 - path 충돌
+// ❌ Error - path conflict
 @api({ path: "/users/list" })
 @api({ path: "/users/all" })
 async list() {}
 ```
 
-**에러 메시지:**
+**Error Message:**
 ```
-@api decorator on UserModel.list has conflicting path: /users/all. 
-The decorator is trying to override the existing path(/users/list) 
+@api decorator on UserModel.list has conflicting path: /users/all.
+The decorator is trying to override the existing path(/users/list)
 with the new path(/users/all).
 ```
 
-### 3. Model/Frame 클래스에서만 사용 가능
+### 3. Only Available in Model/Frame Classes
 
 ```typescript
-// ❌ 일반 클래스에서는 사용 불가
+// ❌ Not available in regular classes
 class UtilClass {
   @api()
   async helper() {}
-  // 에러: modelName is required
+  // Error: modelName is required
 }
 
-// ✅ BaseModelClass 상속 필요
+// ✅ Requires BaseModelClass inheritance
 class UserModelClass extends BaseModelClass {
   @api()
   async findById(id: number) {}
 }
 ```
 
-## 생성되는 코드
+## Generated Code
 
-`@api` 데코레이터를 사용하면 다음이 자동 생성됩니다:
+Using the `@api` decorator automatically generates:
 
-### 1. API 라우트 등록
+### 1. API Route Registration
 
 ```typescript
-// Fastify 라우트 자동 등록
+// Fastify route automatically registered
 fastify.get("/user/findById", async (request, reply) => {
-  // 파라미터 검증 및 처리
+  // Parameter validation and processing
   const result = await UserModel.findById(subset, id);
   return result;
 });
 ```
 
-### 2. 타입 정의 생성
+### 2. Type Definitions
 
 ```typescript
 // api/src/application/services/UserService.types.ts
@@ -437,7 +484,7 @@ export type UserFindByIdParams = {
 export type UserFindByIdResult = UserSubsetMapping[UserSubsetKey];
 ```
 
-### 3. 클라이언트 코드 생성
+### 3. Client Code
 
 **Axios:**
 ```typescript
@@ -459,24 +506,24 @@ export const useUserFindById = (params: UserFindByIdParams) => {
 };
 ```
 
-## 로깅
+## Logging
 
-`@api` 데코레이터는 자동으로 로그를 남깁니다:
+The `@api` decorator automatically logs:
 
 ```typescript
 @api({ httpMethod: "GET" })
 async findById(id: number) {
-  // 자동 로그:
+  // Automatic log:
   // [DEBUG] api: GET UserModel.findById
 }
 ```
 
-로그는 LogTape를 통해 기록되며, 카테고리는 `[model:user]` 또는 `[frame:auth]` 형식입니다.
+Logs are recorded through LogTape, with categories in `[model:user]` or `[frame:auth]` format.
 
-## 예시 모음
+## Examples
 
 <Tabs>
-  <Tab title="기본 CRUD" icon="database">
+  <Tab title="Basic CRUD" icon="database">
     ```typescript
     class UserModelClass extends BaseModelClass {
       @api({ httpMethod: "GET" })
@@ -519,13 +566,13 @@ async findById(id: number) {
     ```
   </Tab>
 
-  <Tab title="캐싱" icon="bolt">
+  <Tab title="Caching" icon="bolt">
     ```typescript
     class ProductModelClass extends BaseModelClass {
       @api({ httpMethod: "GET" })
       @cache({ ttl: "1h", tags: ["products"] })
       async featured() {
-        // 1시간 동안 캐싱
+        // Cached for 1 hour
         const rdb = this.getPuri("r");
         return rdb.table("products")
           .where("featured", true)
@@ -535,7 +582,7 @@ async findById(id: number) {
       @api({ httpMethod: "GET" })
       @cache({ ttl: "5m" })
       async findById(id: number) {
-        // 5분 동안 캐싱
+        // Cached for 5 minutes
         const rdb = this.getPuri("r");
         return rdb.table("products").where("id", id).first();
       }
@@ -545,17 +592,17 @@ async findById(id: number) {
       async update(id: number, data: ProductUpdateParams) {
         const wdb = this.getDB("w");
         const result = await this.upsert(wdb, { id, ...data });
-        
-        // 캐시 무효화
+
+        // Invalidate cache
         await Sonamu.cache.deleteByTags(["products"]);
-        
+
         return result;
       }
     }
     ```
   </Tab>
 
-  <Tab title="권한 제어" icon="shield-check">
+  <Tab title="Access Control" icon="shield-check">
     ```typescript
     class AdminFrameClass extends BaseFrameClass {
       @api({
@@ -563,7 +610,7 @@ async findById(id: number) {
         guards: ["admin"]
       })
       async dashboard() {
-        // 관리자만 접근 가능
+        // Admin only
         return {
           users: await UserModel.count(),
           orders: await OrderModel.count()
@@ -576,7 +623,7 @@ async findById(id: number) {
       })
       @transactional()
       async banUser(userId: number) {
-        // 관리자만 실행 가능
+        // Admin only
         const wdb = UserModel.getDB("w");
         return wdb.table("users")
           .where("id", userId)
@@ -590,7 +637,7 @@ async findById(id: number) {
         guards: ["user"]
       })
       async profile() {
-        // 로그인한 사용자만 접근 가능
+        // Authenticated users only
         const { user } = Sonamu.getContext();
         return UserModel.findById(user.id);
       }
@@ -598,7 +645,7 @@ async findById(id: number) {
     ```
   </Tab>
 
-  <Tab title="커스텀 경로" icon="route">
+  <Tab title="Custom Paths" icon="route">
     ```typescript
     class ApiFrameClass extends BaseFrameClass {
       @api({
@@ -623,45 +670,45 @@ async findById(id: number) {
         contentType: "application/json"
       })
       async stripeWebhook(payload: StripePayload) {
-        // Stripe 웹훅 처리
+        // Handle Stripe webhook
       }
     }
     ```
   </Tab>
 </Tabs>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="@stream" 
-    icon="tower-broadcast" 
+  <Card
+    title="@stream"
+    icon="tower-broadcast"
     href="/api-reference/decorators/stream"
   >
-    SSE 스트리밍 API 만들기
+    Create SSE streaming APIs
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
+
+  <Card
+    title="@transactional"
+    icon="arrows-rotate"
     href="/api-reference/decorators/transactional"
   >
-    데이터베이스 트랜잭션 사용하기
+    Use database transactions
   </Card>
-  
-  <Card 
-    title="@upload" 
-    icon="upload" 
+
+  <Card
+    title="@upload"
+    icon="upload"
     href="/api-reference/decorators/upload"
   >
-    파일 업로드 API 만들기
+    Create file upload APIs
   </Card>
-  
-  <Card 
-    title="@cache" 
-    icon="database" 
+
+  <Card
+    title="@cache"
+    icon="database"
     href="/api-reference/decorators/cache"
   >
-    메서드 결과 캐싱하기
+    Cache method results
   </Card>
 </CardGroup>

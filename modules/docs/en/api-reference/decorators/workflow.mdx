@@ -1,11 +1,11 @@
 ---
 title: '@workflow'
-description: '워크플로우 정의 데코레이터'
+description: 'Workflow Definition Decorator'
 ---
 
-`@workflow` 데코레이터는 장기 실행 작업, 백그라운드 작업, 스케줄링 작업을 정의합니다. OpenWorkflow를 기반으로 내구성 있는 실행, 재시도, 모니터링을 제공합니다.
+The `@workflow` decorator defines long-running tasks, background jobs, and scheduled tasks. Built on OpenWorkflow, it provides durable execution, retries, and monitoring.
 
-## 기본 사용법
+## Basic Usage
 
 ```typescript
 import { workflow } from "sonamu";
@@ -18,7 +18,7 @@ export const processOrder = workflow(
   async ({ input, step, logger }) => {
     logger.info("Processing order", { orderId: input.orderId });
 
-    // Step 1: 결제 처리
+    // Step 1: Process payment
     const payment = await step.define(
       { name: "process-payment" },
       async () => {
@@ -26,7 +26,7 @@ export const processOrder = workflow(
       }
     ).run();
 
-    // Step 2: 재고 업데이트
+    // Step 2: Update inventory
     await step.define(
       { name: "update-inventory" },
       async () => {
@@ -34,7 +34,7 @@ export const processOrder = workflow(
       }
     ).run();
 
-    // Step 3: 배송 시작
+    // Step 3: Start shipping
     const shipping = await step.define(
       { name: "start-shipping" },
       async () => {
@@ -51,9 +51,9 @@ export const processOrder = workflow(
 );
 ```
 
-## 설정 (sonamu.config.ts)
+## Configuration (sonamu.config.ts)
 
-워크플로우를 사용하려면 PostgreSQL 설정이 필요합니다.
+Workflows require PostgreSQL configuration.
 
 ```typescript
 import { defineConfig } from "sonamu";
@@ -71,41 +71,41 @@ export default defineConfig({
       }
     },
     worker: {
-      concurrency: 4,      // 동시 실행 수
-      usePubSub: true,     // Pub/Sub 사용
-      listenDelay: 500     // 수신 지연 (ms)
+      concurrency: 4,      // Concurrent execution count
+      usePubSub: true,     // Use Pub/Sub
+      listenDelay: 500     // Listen delay (ms)
     }
   }
 });
 ```
 
-## 옵션
+## Options
 
 ### name
 
-워크플로우 이름을 지정합니다.
+Specifies the workflow name.
 
-**기본값:** 함수 이름을 snake_case로 변환
+**Default:** Function name converted to snake_case
 
 ```typescript
-// 명시적 이름
+// Explicit name
 export const myTask = workflow(
   { name: "process_order" },
   async ({ input }) => { /* ... */ }
 );
 
-// 자동 이름 (함수 이름 사용)
+// Auto name (uses function name)
 export const processOrder = workflow(
-  {},  // name 생략 → "process_order"
+  {},  // name omitted → "process_order"
   async ({ input }) => { /* ... */ }
 );
 ```
 
 ### version
 
-워크플로우 버전을 지정합니다.
+Specifies the workflow version.
 
-**기본값:** `null`
+**Default:** `null`
 
 ```typescript
 export const processOrder = workflow(
@@ -116,7 +116,7 @@ export const processOrder = workflow(
   async ({ input }) => { /* ... */ }
 );
 
-// 버전 업데이트 시
+// When updating version
 export const processOrderV2 = workflow(
   {
     name: "process_order",
@@ -127,12 +127,12 @@ export const processOrderV2 = workflow(
 ```
 
 <Info>
-같은 이름에 다른 버전의 워크플로우를 병렬로 실행할 수 있습니다.
+You can run workflows with the same name but different versions in parallel.
 </Info>
 
 ### schema
 
-입력 데이터의 Zod 스키마를 정의합니다.
+Defines a Zod schema for input data.
 
 ```typescript
 import { z } from "zod";
@@ -151,7 +151,7 @@ export const processOrder = workflow(
     schema: OrderInputSchema
   },
   async ({ input }) => {
-    // input은 자동으로 타입 검증됨
+    // input is automatically type-validated
     input.orderId;  // number
     input.address;  // string
   }
@@ -160,7 +160,7 @@ export const processOrder = workflow(
 
 ### schedules
 
-Cron 표현식으로 스케줄을 정의합니다.
+Defines schedules using Cron expressions.
 
 ```typescript
 export const dailyReport = workflow(
@@ -169,25 +169,25 @@ export const dailyReport = workflow(
     schedules: [
       {
         name: "daily-at-midnight",
-        expression: "0 0 * * *",  // 매일 자정
+        expression: "0 0 * * *",  // Daily at midnight
         input: { date: new Date().toISOString().split('T')[0] }
       }
     ]
   },
   async ({ input, logger }) => {
     logger.info("Generating daily report", { date: input.date });
-    // 보고서 생성
+    // Generate report
   }
 );
 
-// 동적 input
+// Dynamic input
 export const weeklyBackup = workflow(
   {
     name: "weekly_backup",
     schedules: [
       {
         name: "weekly-sunday",
-        expression: "0 2 * * 0",  // 매주 일요일 2시
+        expression: "0 2 * * 0",  // Sundays at 2am
         input: () => ({
           timestamp: new Date().toISOString(),
           backupPath: `/backups/${Date.now()}`
@@ -196,38 +196,38 @@ export const weeklyBackup = workflow(
     ]
   },
   async ({ input }) => {
-    // 백업 수행
+    // Perform backup
   }
 );
 ```
 
-**Cron 표현식 예시:**
+**Cron Expression Examples:**
 ```
-* * * * *    - 매분
-0 * * * *    - 매시간
-0 0 * * *    - 매일 자정
-0 0 * * 0    - 매주 일요일 자정
-0 0 1 * *    - 매월 1일 자정
-0 9 * * 1-5  - 평일 오전 9시
-*/5 * * * *  - 5분마다
+* * * * *    - Every minute
+0 * * * *    - Every hour
+0 0 * * *    - Daily at midnight
+0 0 * * 0    - Sundays at midnight
+0 0 1 * *    - 1st of month at midnight
+0 9 * * 1-5  - Weekdays at 9am
+*/5 * * * *  - Every 5 minutes
 ```
 
-## 워크플로우 함수
+## Workflow Function
 
-워크플로우 함수는 4개의 매개변수를 받습니다:
+The workflow function receives 4 parameters:
 
 ```typescript
 async function workflowFn({ input, step, logger, version }) {
-  // input: 입력 데이터
+  // input: Input data
   // step: Step API
   // logger: LogTape Logger
-  // version: 워크플로우 버전
+  // version: Workflow version
 }
 ```
 
 ### input
 
-워크플로우 실행 시 전달된 입력 데이터입니다.
+Input data passed when executing the workflow.
 
 ```typescript
 export const processOrder = workflow(
@@ -238,7 +238,7 @@ export const processOrder = workflow(
   }
 );
 
-// 실행
+// Execution
 await WorkflowManager.run(
   { name: "process_order" },
   { orderId: 123, amount: 50000 }
@@ -247,7 +247,7 @@ await WorkflowManager.run(
 
 ### step
 
-Step API는 워크플로우의 각 단계를 정의합니다. 각 step은 독립적으로 재시도되고 복구될 수 있습니다.
+The Step API defines each stage of the workflow. Each step can be retried and recovered independently.
 
 ```typescript
 export const processOrder = workflow(
@@ -285,14 +285,14 @@ export const processOrder = workflow(
 );
 ```
 
-**Step의 장점:**
-- 각 step은 한 번만 실행됨 (멱등성)
-- 실패 시 해당 step만 재시도
-- 이미 완료된 step은 건너뜀
+**Step Advantages:**
+- Each step runs only once (idempotent)
+- On failure, only that step is retried
+- Already completed steps are skipped
 
 ### logger
 
-LogTape Logger 인스턴스입니다.
+LogTape Logger instance.
 
 ```typescript
 export const processData = workflow(
@@ -308,7 +308,7 @@ export const processData = workflow(
 
 ### version
 
-현재 워크플로우의 버전입니다.
+Current workflow version.
 
 ```typescript
 export const processOrder = workflow(
@@ -322,12 +322,12 @@ export const processOrder = workflow(
 );
 ```
 
-## 워크플로우 실행
+## Workflow Execution
 
-### 수동 실행
+### Manual Execution
 
 ```typescript
-// WorkflowManager 사용
+// Using WorkflowManager
 import { Sonamu } from "sonamu";
 
 const handle = await Sonamu.workflowManager.run(
@@ -341,12 +341,12 @@ const handle = await Sonamu.workflowManager.run(
   }
 );
 
-// 결과 대기
+// Wait for result
 const result = await handle.result();
 console.log("Result:", result);
 ```
 
-### 스케줄 실행
+### Scheduled Execution
 
 ```typescript
 export const dailyReport = workflow(
@@ -362,34 +362,34 @@ export const dailyReport = workflow(
   },
   async ({ input, logger }) => {
     logger.info("Generating report", { date: input.date });
-    // 자동으로 매일 자정 실행됨
+    // Automatically runs daily at midnight
   }
 );
 ```
 
-## Step API 상세
+## Step API Details
 
 ### step.define().run()
 
-함수를 step으로 감싸서 실행합니다.
+Wraps a function as a step and executes it.
 
 ```typescript
 const result = await step.define(
   { name: "step-name" },
   async () => {
-    // 작업 수행
+    // Perform task
     return { data: "result" };
   }
 ).run();
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 export const processOrder = workflow(
   { name: "process_order" },
   async ({ step }) => {
-    // 결제 처리
+    // Process payment
     const payment = await step.define(
       { name: "process-payment" },
       async () => {
@@ -397,7 +397,7 @@ export const processOrder = workflow(
       }
     ).run();
 
-    // 재고 업데이트
+    // Update inventory
     await step.define(
       { name: "update-inventory" },
       async () => {
@@ -412,37 +412,37 @@ export const processOrder = workflow(
 
 ### step.get().run()
 
-Model 메서드를 step으로 실행합니다.
+Executes a Model method as a step.
 
 ```typescript
-// name 명시
+// Explicit name
 const result = await step.get(
   { name: "fetch-users" },
   UserModel,
   "list"
 ).run({ limit: 10 });
 
-// name 생략 (메서드 이름 자동 사용: "list")
+// Name omitted (auto-uses method name: "list")
 const result = await step.get(
   UserModel,
   "list"
 ).run({ limit: 10 });
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 export const processUsers = workflow(
   { name: "process_users" },
   async ({ step }) => {
-    // Model 메서드를 step으로 실행
+    // Execute Model method as step
     const users = await step.get(
       { name: "fetch-users" },
       UserModel,
       "list"
     ).run({ limit: 100 });
 
-    // 각 사용자 처리
+    // Process each user
     for (const user of users) {
       await step.define(
         { name: `process-user-${user.id}` },
@@ -459,7 +459,7 @@ export const processUsers = workflow(
 
 ### step.sleep()
 
-지정된 시간 동안 대기합니다.
+Waits for a specified duration.
 
 ```typescript
 await step.sleep("wait-1-hour", "1h");
@@ -467,40 +467,40 @@ await step.sleep("wait-30-minutes", "30m");
 await step.sleep("wait-10-seconds", "10s");
 ```
 
-**시간 형식:** `"10s"`, `"5m"`, `"1h"`, `"1d"`
+**Time Format:** `"10s"`, `"5m"`, `"1h"`, `"1d"`
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 export const delayedTask = workflow(
   { name: "delayed_task" },
   async ({ step, logger }) => {
     logger.info("Starting task");
-    
-    // 1시간 대기
+
+    // Wait 1 hour
     await step.sleep("wait-1-hour", "1h");
-    
+
     logger.info("Continuing after 1 hour");
-    
-    // 30분 대기
+
+    // Wait 30 minutes
     await step.sleep("wait-30-minutes", "30m");
-    
+
     logger.info("Task complete");
   }
 );
 ```
 
-### 재시도 정책
+### Retry Policy
 
 <Info>
-Step의 재시도는 OpenWorkflow 백엔드에서 자동으로 처리됩니다. 별도의 retry 옵션 설정이 필요하지 않습니다.
+Step retries are automatically handled by the OpenWorkflow backend. No separate retry options need to be configured.
 </Info>
 
 ```typescript
 export const resilientTask = workflow(
   { name: "resilient_task" },
   async ({ step }) => {
-    // Step이 실패하면 자동으로 재시도됨
+    // Step is automatically retried on failure
     const result = await step.define(
       { name: "flaky-operation" },
       async () => {
@@ -514,15 +514,15 @@ export const resilientTask = workflow(
 );
 ```
 
-## 데이터베이스 접근
+## Database Access
 
-워크플로우 내에서 Sonamu Model을 자유롭게 사용할 수 있습니다.
+You can freely use Sonamu Models within workflows.
 
 ```typescript
 export const processUsers = workflow(
   { name: "process_users" },
   async ({ step, logger }) => {
-    // Step 1: 사용자 조회
+    // Step 1: Fetch users
     const users = await step.get(
       { name: "fetch-users" },
       UserModel,
@@ -531,7 +531,7 @@ export const processUsers = workflow(
 
     logger.info("Found users", { count: users.length });
 
-    // Step 2: 각 사용자 처리
+    // Step 2: Process each user
     for (const user of users) {
       await step.define(
         { name: `process-user-${user.id}` },
@@ -546,11 +546,11 @@ export const processUsers = workflow(
 );
 ```
 
-## 에러 처리
+## Error Handling
 
-### 자동 재시도
+### Automatic Retry
 
-Step이 실패하면 자동으로 재시도됩니다.
+Steps are automatically retried on failure.
 
 ```typescript
 export const resilientTask = workflow(
@@ -559,7 +559,7 @@ export const resilientTask = workflow(
     const result = await step.define(
       { name: "flaky-operation" },
       async () => {
-        // 실패할 수 있는 작업
+        // Task that may fail
         const response = await fetch("https://api.example.com");
         return response.json();
       }
@@ -570,7 +570,7 @@ export const resilientTask = workflow(
 );
 ```
 
-### 수동 에러 처리
+### Manual Error Handling
 
 ```typescript
 export const handleErrors = workflow(
@@ -585,8 +585,8 @@ export const handleErrors = workflow(
       ).run();
     } catch (error) {
       logger.error("Operation failed", { error });
-      
-      // 대체 로직
+
+      // Fallback logic
       await step.define(
         { name: "fallback" },
         async () => {
@@ -598,9 +598,9 @@ export const handleErrors = workflow(
 );
 ```
 
-## 데코레이터 스타일 (TypeScript Decorator)
+## Decorator Style (TypeScript Decorator)
 
-함수 스타일 대신 데코레이터 스타일도 사용 가능합니다:
+You can also use decorator style instead of function style:
 
 ```typescript
 @workflow({
@@ -609,57 +609,57 @@ export const handleErrors = workflow(
 })
 async function processOrder({ input, step, logger }) {
   logger.info("Processing order", { orderId: input.orderId });
-  
+
   const payment = await step.define(
     { name: "charge" },
     async () => {
       return await PaymentService.charge(input.amount);
     }
   ).run();
-  
+
   return { paymentId: payment.id };
 }
 ```
 
-## 주의사항
+## Cautions
 
-### 1. 멱등성
+### 1. Idempotence
 
-Step은 멱등해야 합니다. 같은 입력으로 여러 번 실행해도 같은 결과를 보장해야 합니다.
+Steps must be idempotent. Running multiple times with the same input should guarantee the same result.
 
 ```typescript
-// ❌ 나쁜 예: 멱등하지 않음
+// ❌ Bad: Not idempotent
 await step.define(
   { name: "increment-counter" },
   async () => {
-    counter++;  // 재시도 시 중복 증가
+    counter++;  // Duplicate increment on retry
   }
 ).run();
 
-// ✅ 좋은 예: 멱등함
+// ✅ Good: Idempotent
 await step.define(
   { name: "set-counter" },
   async () => {
-    return await CounterModel.set(10);  // 항상 같은 값
+    return await CounterModel.set(10);  // Always the same value
   }
 ).run();
 ```
 
-### 2. 긴 작업은 step으로 나누기
+### 2. Split Long Tasks into Steps
 
 ```typescript
-// ❌ 나쁜 예: 거대한 step
+// ❌ Bad: Giant step
 await step.define(
   { name: "process-all" },
   async () => {
-    // 1시간 걸리는 작업
+    // Task taking 1 hour
     for (let i = 0; i < 1000000; i++) {
       await processItem(i);
     }
   }
 ).run();
 
-// ✅ 좋은 예: 작은 step들
+// ✅ Good: Small steps
 for (let i = 0; i < 1000; i += 100) {
   await step.define(
     { name: `process-batch-${i}` },
@@ -671,23 +671,23 @@ for (let i = 0; i < 1000; i += 100) {
 }
 ```
 
-### 3. Step 이름 고유성
+### 3. Step Name Uniqueness
 
-Step 이름은 워크플로우 내에서 고유해야 합니다.
+Step names must be unique within a workflow.
 
 ```typescript
-// ❌ 나쁜 예: 중복된 이름
+// ❌ Bad: Duplicate names
 await step.define({ name: "process" }, async () => { /* ... */ }).run();
-await step.define({ name: "process" }, async () => { /* ... */ }).run();  // 에러!
+await step.define({ name: "process" }, async () => { /* ... */ }).run();  // Error!
 
-// ✅ 좋은 예: 고유한 이름
+// ✅ Good: Unique names
 await step.define({ name: "process-payment" }, async () => { /* ... */ }).run();
 await step.define({ name: "process-shipping" }, async () => { /* ... */ }).run();
 ```
 
-## 모니터링
+## Monitoring
 
-### 실행 상태 확인
+### Check Execution Status
 
 ```typescript
 const handle = await Sonamu.workflowManager.run(
@@ -695,17 +695,17 @@ const handle = await Sonamu.workflowManager.run(
   { orderId: 123 }
 );
 
-// 상태 확인
+// Check status
 console.log("Status:", handle.status);
 
-// 결과 대기 (완료될 때까지)
+// Wait for result (until complete)
 const result = await handle.result();
 console.log("Result:", result);
 ```
 
-### 로그 확인
+### View Logs
 
-워크플로우는 자동으로 LogTape를 통해 로깅됩니다:
+Workflows automatically log through LogTape:
 
 ```
 [INFO] [workflow:process_order] Processing order {"orderId":123}
@@ -713,10 +713,10 @@ console.log("Result:", result);
 [INFO] [workflow:process_order] Payment successful {"paymentId":"pay_123"}
 ```
 
-## 예시 모음
+## Example Collection
 
 <Tabs>
-  <Tab title="주문 처리" icon="cart-shopping">
+  <Tab title="Order Processing" icon="cart-shopping">
     ```typescript
     import { workflow } from "sonamu";
     import { z } from "zod";
@@ -742,7 +742,7 @@ console.log("Result:", result);
       async ({ input, step, logger }) => {
         logger.info("Processing order", { orderId: input.orderId });
 
-        // Step 1: 재고 확인
+        // Step 1: Check inventory
         const inventory = await step.define(
           { name: "check-inventory" },
           async () => {
@@ -759,7 +759,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 2: 결제 처리
+        // Step 2: Process payment
         const payment = await step.define(
           { name: "process-payment" },
           async () => {
@@ -773,7 +773,7 @@ console.log("Result:", result);
 
         logger.info("Payment successful", { paymentId: payment.id });
 
-        // Step 3: 재고 차감
+        // Step 3: Decrease inventory
         await step.define(
           { name: "decrease-inventory" },
           async () => {
@@ -783,7 +783,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 4: 배송 시작
+        // Step 4: Start shipping
         const shipping = await step.define(
           { name: "start-shipping" },
           async () => {
@@ -795,7 +795,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 5: 알림 전송
+        // Step 5: Send notifications
         await step.define(
           { name: "send-notifications" },
           async () => {
@@ -821,7 +821,7 @@ console.log("Result:", result);
     ```
   </Tab>
 
-  <Tab title="데이터 동기화" icon="arrows-rotate">
+  <Tab title="Data Sync" icon="arrows-rotate">
     ```typescript
     export const syncUserData = workflow(
       {
@@ -829,7 +829,7 @@ console.log("Result:", result);
         schedules: [
           {
             name: "hourly-sync",
-            expression: "0 * * * *",  // 매시간
+            expression: "0 * * * *",  // Every hour
             input: () => ({
               timestamp: new Date().toISOString()
             })
@@ -839,7 +839,7 @@ console.log("Result:", result);
       async ({ input, step, logger }) => {
         logger.info("Starting user data sync", { timestamp: input.timestamp });
 
-        // Step 1: 외부 API에서 사용자 가져오기
+        // Step 1: Fetch users from external API
         const users = await step.define(
           { name: "fetch-external-users" },
           async () => {
@@ -850,7 +850,7 @@ console.log("Result:", result);
 
         logger.info("Fetched users", { count: users.length });
 
-        // Step 2: 배치로 처리
+        // Step 2: Process in batches
         const batchSize = 100;
         const batches = Math.ceil(users.length / batchSize);
 
@@ -859,7 +859,7 @@ console.log("Result:", result);
             { name: `process-batch-${i}` },
             async () => {
               const batch = users.slice(i * batchSize, (i + 1) * batchSize);
-              
+
               for (const user of batch) {
                 await UserModel.upsert({
                   external_id: user.id,
@@ -873,7 +873,7 @@ console.log("Result:", result);
             }
           ).run();
 
-          // 배치 간 1초 대기
+          // Wait 1 second between batches
           await step.sleep(`wait-after-batch-${i}`, "1s");
         }
 
@@ -887,7 +887,7 @@ console.log("Result:", result);
     ```
   </Tab>
 
-  <Tab title="보고서 생성" icon="file-chart-line">
+  <Tab title="Report Generation" icon="file-chart-line">
     ```typescript
     export const generateMonthlyReport = workflow(
       {
@@ -895,7 +895,7 @@ console.log("Result:", result);
         schedules: [
           {
             name: "first-of-month",
-            expression: "0 3 1 * *",  // 매월 1일 3시
+            expression: "0 3 1 * *",  // 1st of month at 3am
             input: () => {
               const now = new Date();
               const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
@@ -910,7 +910,7 @@ console.log("Result:", result);
       async ({ input, step, logger }) => {
         logger.info("Generating monthly report", input);
 
-        // Step 1: 주문 데이터 집계
+        // Step 1: Aggregate order data
         const orderStats = await step.define(
           { name: "aggregate-orders" },
           async () => {
@@ -927,7 +927,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 2: 사용자 통계
+        // Step 2: User statistics
         const userStats = await step.define(
           { name: "aggregate-users" },
           async () => {
@@ -940,7 +940,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 3: 상품 순위
+        // Step 3: Product rankings
         const topProducts = await step.define(
           { name: "rank-products" },
           async () => {
@@ -960,7 +960,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 4: 보고서 저장
+        // Step 4: Save report
         const report = await step.define(
           { name: "save-report" },
           async () => {
@@ -979,7 +979,7 @@ console.log("Result:", result);
           }
         ).run();
 
-        // Step 5: 관리자에게 이메일 전송
+        // Step 5: Send email to admin
         await step.define(
           { name: "send-email" },
           async () => {
@@ -1007,7 +1007,7 @@ console.log("Result:", result);
     ```
   </Tab>
 
-  <Tab title="리마인더" icon="bell">
+  <Tab title="Reminders" icon="bell">
     ```typescript
     export const sendReminders = workflow(
       {
@@ -1015,7 +1015,7 @@ console.log("Result:", result);
         schedules: [
           {
             name: "daily-9am",
-            expression: "0 9 * * *",  // 매일 오전 9시
+            expression: "0 9 * * *",  // Daily at 9am
             input: () => ({
               date: new Date().toISOString().split('T')[0]
             })
@@ -1025,7 +1025,7 @@ console.log("Result:", result);
       async ({ input, step, logger }) => {
         logger.info("Sending reminders", { date: input.date });
 
-        // Step 1: 리마인더 대상 조회
+        // Step 1: Fetch reminder targets
         const tasks = await step.get(
           { name: "fetch-tasks" },
           TaskModel,
@@ -1038,12 +1038,12 @@ console.log("Result:", result);
           return { sent: 0 };
         }
 
-        // Step 2: 각 작업에 대해 리마인더 전송
+        // Step 2: Send reminder for each task
         for (const task of tasks) {
           await step.define(
             { name: `send-reminder-${task.id}` },
             async () => {
-              // 알림 전송
+              // Send notification
               await NotificationService.send({
                 userId: task.user_id,
                 type: "task_reminder",
@@ -1054,7 +1054,7 @@ console.log("Result:", result);
                 }
               });
 
-              // 상태 업데이트
+              // Update status
               const wdb = TaskModel.getDB("w");
               await wdb.table("tasks")
                 .where("id", task.id)
@@ -1064,7 +1064,7 @@ console.log("Result:", result);
             }
           ).run();
 
-          // 각 리마인더 사이 0.5초 대기 (rate limiting)
+          // Wait 0.5 seconds between reminders (rate limiting)
           await step.sleep(`wait-after-${task.id}`, "500ms");
         }
 
@@ -1075,38 +1075,38 @@ console.log("Result:", result);
   </Tab>
 </Tabs>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="@api" 
-    icon="plug" 
+  <Card
+    title="@api"
+    icon="plug"
     href="/api-reference/decorators/api"
   >
-    API 엔드포인트 만들기
+    Create API endpoints
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
+
+  <Card
+    title="@transactional"
+    icon="arrows-rotate"
     href="/api-reference/decorators/transactional"
   >
-    트랜잭션 사용하기
+    Use transactions
   </Card>
-  
-  <Card 
-    title="스케줄링" 
-    icon="clock" 
+
+  <Card
+    title="Scheduling"
+    icon="clock"
     href="/core-concepts/tasks/scheduling"
   >
-    작업 스케줄링 가이드
+    Task scheduling guide
   </Card>
-  
-  <Card 
-    title="OpenWorkflow" 
-    icon="book" 
+
+  <Card
+    title="OpenWorkflow"
+    icon="book"
     href="https://github.com/sonamu-kit/tasks"
   >
-    OpenWorkflow 문서
+    OpenWorkflow documentation
   </Card>
 </CardGroup>

@@ -1,11 +1,11 @@
 ---
 title: '@stream'
-description: 'SSE 스트리밍 API 생성 데코레이터'
+description: 'SSE Streaming API Creation Decorator'
 ---
 
-`@stream` 데코레이터는 Server-Sent Events(SSE)를 사용한 실시간 스트리밍 API를 생성합니다.
+The `@stream` decorator creates real-time streaming APIs using Server-Sent Events (SSE).
 
-## 기본 사용법
+## Basic Usage
 
 ```typescript
 import { BaseModelClass, stream } from "sonamu";
@@ -31,13 +31,13 @@ class NotificationModelClass extends BaseModelClass {
   async subscribe(userId: number) {
     const sse = Sonamu.getContext().createSSE(NotificationEventsSchema);
 
-    // 연결 시작
+    // Connection started
     sse.publish("status", {
       type: "connected",
       userId
     });
 
-    // 주기적으로 이벤트 전송
+    // Send events periodically
     const interval = setInterval(() => {
       sse.publish("message", {
         id: Date.now(),
@@ -46,7 +46,7 @@ class NotificationModelClass extends BaseModelClass {
       });
     }, 5000);
 
-    // 5분 후 연결 종료
+    // Close connection after 5 minutes
     setTimeout(async () => {
       clearInterval(interval);
       sse.publish("status", {
@@ -61,33 +61,33 @@ class NotificationModelClass extends BaseModelClass {
 }
 ```
 
-## 옵션
+## Options
 
 ### type
 
-스트리밍 타입을 지정합니다.
+Specifies the streaming type.
 
-**필수 옵션**
+**Required option**
 
 ```typescript
-type: "sse"  // Server-Sent Events (현재 유일한 옵션)
+type: "sse"  // Server-Sent Events (currently the only option)
 ```
 
 <Info>
-향후 WebSocket 지원이 추가될 수 있습니다.
+WebSocket support may be added in the future.
 </Info>
 
 ### events
 
-전송할 이벤트의 타입을 Zod 스키마로 정의합니다.
+Defines event types to send using a Zod schema.
 
-**필수 옵션**
+**Required option**
 
 ```typescript
 import { z } from "zod";
 
 const EventsSchema = z.object({
-  // 이벤트 이름: 이벤트 데이터 스키마
+  // Event name: Event data schema
   progress: z.object({
     percent: z.number(),
     message: z.string()
@@ -107,23 +107,23 @@ const EventsSchema = z.object({
 })
 async process() {
   const sse = Sonamu.getContext().createSSE(EventsSchema);
-  
-  // 이벤트 전송
+
+  // Send events
   sse.publish("progress", { percent: 50, message: "Processing..." });
   sse.publish("complete", { result: "Success" });
-  
-  // 스트림 종료
+
+  // End stream
   await sse.end();
-  
+
   return sse;
 }
 ```
 
 ### path
 
-스트리밍 엔드포인트 경로를 지정합니다.
+Specifies the streaming endpoint path.
 
-**기본값:** `/{modelName}/{methodName}` (camelCase)
+**Default:** `/{modelName}/{methodName}` (camelCase)
 
 ```typescript
 @stream({
@@ -132,13 +132,13 @@ async process() {
   path: "/stream/notifications"
 })
 async subscribe() {
-  // /stream/notifications로 접근
+  // Accessible at /stream/notifications
 }
 ```
 
 ### guards
 
-접근 권한을 지정합니다.
+Specifies access permissions.
 
 ```typescript
 type GuardKey = "query" | "admin" | "user";
@@ -151,19 +151,19 @@ type GuardKey = "query" | "admin" | "user";
   guards: ["user"]
 })
 async subscribe() {
-  // 로그인한 사용자만 접근 가능
+  // Only logged-in users can access
 }
 ```
 
 ### description
 
-스트리밍 API 설명을 추가합니다.
+Adds a description for the streaming API.
 
 ```typescript
 @stream({
   type: "sse",
   events: EventsSchema,
-  description: "실시간 알림을 스트리밍합니다."
+  description: "Streams real-time notifications."
 })
 async notifications() {
   // ...
@@ -172,7 +172,7 @@ async notifications() {
 
 ### resourceName
 
-생성되는 서비스 파일의 리소스 이름을 지정합니다.
+Specifies the resource name for the generated service file.
 
 ```typescript
 @stream({
@@ -181,15 +181,15 @@ async notifications() {
   resourceName: "Notifications"
 })
 async subscribe() {
-  // NotificationsService.ts 파일에 포함
+  // Included in NotificationsService.ts file
 }
 ```
 
-## SSE 객체 사용법
+## SSE Object Usage
 
 ### createSSE
 
-Context에서 SSE 객체를 생성합니다.
+Creates an SSE object from Context.
 
 ```typescript
 const sse = Sonamu.getContext().createSSE(EventsSchema);
@@ -197,15 +197,15 @@ const sse = Sonamu.getContext().createSSE(EventsSchema);
 
 ### publish
 
-이벤트를 클라이언트로 전송합니다.
+Sends an event to the client.
 
 ```typescript
 sse.publish("eventName", data);
 ```
 
-**타입 안정성:**
-- 이벤트 이름은 스키마에 정의된 것만 사용 가능
-- 데이터는 스키마에 맞춰 자동 검증
+**Type safety:**
+- Event names must be defined in the schema
+- Data is automatically validated against the schema
 
 ```typescript
 const EventsSchema = z.object({
@@ -216,27 +216,27 @@ const EventsSchema = z.object({
 
 const sse = context.createSSE(EventsSchema);
 
-// ✅ 올바른 사용
+// ✅ Correct usage
 sse.publish("message", { text: "Hello" });
 
-// ❌ 타입 에러
-sse.publish("unknown", { text: "Hello" });  // 'unknown'은 스키마에 없음
-sse.publish("message", { text: 123 });      // text는 string이어야 함
+// ❌ Type error
+sse.publish("unknown", { text: "Hello" });  // 'unknown' not in schema
+sse.publish("message", { text: 123 });      // text must be string
 ```
 
 ### end
 
-스트림 연결을 종료합니다.
+Closes the stream connection.
 
 ```typescript
 await sse.end();
 ```
 
 <Info>
-`end()`는 클라이언트에 "end" 이벤트를 전송하고 200ms 대기 후 연결을 닫습니다.
+`end()` sends an "end" event to the client and closes the connection after waiting 200ms.
 </Info>
 
-## 전체 예시
+## Complete Example
 
 ```typescript
 import { BaseModelClass, stream } from "sonamu";
@@ -264,31 +264,31 @@ class TaskModelClass extends BaseModelClass {
     events: LogEventsSchema,
     path: "/tasks/logs",
     guards: ["admin"],
-    description: "작업 실행 로그를 실시간으로 스트리밍합니다."
+    description: "Streams task execution logs in real-time."
   })
   async streamLogs(taskId: number) {
     const sse = Sonamu.getContext().createSSE(LogEventsSchema);
     const startTime = Date.now();
 
-    // 작업 시작
+    // Start task
     sse.publish("log", {
       level: "info",
       message: "Task started",
       timestamp: new Date().toISOString()
     });
 
-    // 작업 실행
+    // Execute task
     const total = 100;
     for (let i = 0; i <= total; i++) {
       await this.processItem(i);
-      
-      // 진행률 전송
+
+      // Send progress
       sse.publish("progress", {
         current: i,
         total
       });
 
-      // 로그 전송
+      // Send logs
       if (i % 10 === 0) {
         sse.publish("log", {
           level: "info",
@@ -298,26 +298,26 @@ class TaskModelClass extends BaseModelClass {
       }
     }
 
-    // 작업 완료
+    // Task complete
     sse.publish("complete", {
       success: true,
       duration: Date.now() - startTime
     });
 
-    // 연결 종료
+    // Close connection
     await sse.end();
 
     return sse;
   }
 
   private async processItem(index: number) {
-    // 작업 처리
+    // Process task
     await new Promise(resolve => setTimeout(resolve, 50));
   }
 }
 ```
 
-## 다른 데코레이터와 함께 사용
+## Using with Other Decorators
 
 ### @transactional
 
@@ -327,68 +327,68 @@ class TaskModelClass extends BaseModelClass {
 async process() {
   const sse = Sonamu.getContext().createSSE(EventsSchema);
   const wdb = this.getDB("w");
-  
-  // 트랜잭션 내에서 실행
-  // SSE 전송과 DB 작업 함께 수행
-  
+
+  // Execute within transaction
+  // Perform SSE sending and DB operations together
+
   await sse.end();
   return sse;
 }
 ```
 
 <Warning>
-`@stream`을 먼저, `@transactional`을 나중에 작성하세요.
+Write `@stream` first, then `@transactional`.
 </Warning>
 
-## 제약사항
+## Constraints
 
-### 1. @api와 중복 사용 불가
+### 1. Cannot be used with @api
 
 ```typescript
-// ❌ 에러 발생
+// ❌ Error
 @api()
 @stream({ type: "sse", events: EventsSchema })
 async subscribe() {}
 ```
 
-**에러 메시지:**
+**Error message:**
 ```
-@stream decorator can only be used once on NotificationModel.subscribe. 
+@stream decorator can only be used once on NotificationModel.subscribe.
 You can use only one of @api or @stream decorator on the same method.
 ```
 
-### 2. events는 필수
+### 2. events is required
 
 ```typescript
-// ❌ 에러 발생
+// ❌ Error
 @stream({ type: "sse" })
 async subscribe() {}
-// events 옵션이 필요합니다
+// events option is required
 ```
 
-### 3. httpMethod는 항상 GET
+### 3. httpMethod is always GET
 
-`@stream`은 자동으로 `httpMethod: "GET"`을 설정합니다.
+`@stream` automatically sets `httpMethod: "GET"`.
 
 ```typescript
 @stream({ type: "sse", events: EventsSchema })
 async subscribe() {
-  // GET /notification/subscribe로 노출됨
+  // Exposed as GET /notification/subscribe
 }
 ```
 
-## 클라이언트 사용 (Web)
+## Client Usage (Web)
 
-Sonamu는 자동으로 SSE 클라이언트 코드를 생성합니다.
+Sonamu automatically generates SSE client code.
 
 ```typescript
-// 자동 생성된 코드
+// Auto-generated code
 import { NotificationService } from "@/services/NotificationService";
 
-// SSE 연결
+// SSE connection
 const eventSource = NotificationService.subscribe(userId);
 
-// 이벤트 리스너 등록
+// Register event listeners
 eventSource.addEventListener("message", (event) => {
   const data = JSON.parse(event.data);
   console.log("New message:", data);
@@ -399,17 +399,17 @@ eventSource.addEventListener("status", (event) => {
   console.log("Status:", data);
 });
 
-// 연결 종료 이벤트
+// Connection end event
 eventSource.addEventListener("end", () => {
   console.log("Stream ended");
   eventSource.close();
 });
 
-// 수동 연결 종료
+// Manual connection close
 eventSource.close();
 ```
 
-### React 예시
+### React Example
 
 ```typescript
 import { useEffect, useState } from "react";
@@ -454,22 +454,22 @@ function NotificationList({ userId }: { userId: number }) {
 }
 ```
 
-## 로깅
+## Logging
 
-`@stream` 데코레이터는 자동으로 로그를 남깁니다:
+The `@stream` decorator automatically logs:
 
 ```typescript
 @stream({ type: "sse", events: EventsSchema })
 async subscribe() {
-  // 자동 로그:
+  // Auto log:
   // [DEBUG] stream: NotificationModel.subscribe
 }
 ```
 
-## 예시 모음
+## Example Collection
 
 <Tabs>
-  <Tab title="채팅" icon="message">
+  <Tab title="Chat" icon="message">
     ```typescript
     const ChatEventsSchema = z.object({
       message: z.object({
@@ -501,18 +501,18 @@ async subscribe() {
         const sse = Sonamu.getContext().createSSE(ChatEventsSchema);
         const { user } = Sonamu.getContext();
 
-        // 입장 알림
+        // Join notification
         sse.publish("joined", {
           userId: user.id,
           username: user.name
         });
 
-        // 메시지 수신 리스너 등록
+        // Register message listener
         const unsubscribe = this.onMessage(roomId, (message) => {
           sse.publish("message", message);
         });
 
-        // 1시간 후 자동 종료
+        // Auto-close after 1 hour
         setTimeout(async () => {
           unsubscribe();
           sse.publish("left", { userId: user.id });
@@ -525,7 +525,7 @@ async subscribe() {
     ```
   </Tab>
 
-  <Tab title="진행률 모니터링" icon="chart-line">
+  <Tab title="Progress Monitoring" icon="chart-line">
     ```typescript
     const ProcessEventsSchema = z.object({
       started: z.object({
@@ -560,7 +560,7 @@ async subscribe() {
 
         try {
           const steps = await this.getProcessSteps(processId);
-          
+
           sse.publish("started", {
             taskId: processId,
             totalSteps: steps.length
@@ -568,7 +568,7 @@ async subscribe() {
 
           for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
-            
+
             sse.publish("progress", {
               step: i + 1,
               message: step.description,
@@ -597,7 +597,7 @@ async subscribe() {
     ```
   </Tab>
 
-  <Tab title="실시간 데이터" icon="chart-candlestick">
+  <Tab title="Real-time Data" icon="chart-candlestick">
     ```typescript
     const StockEventsSchema = z.object({
       price: z.object({
@@ -626,10 +626,10 @@ async subscribe() {
       async watchSymbol(symbol: string) {
         const sse = Sonamu.getContext().createSSE(StockEventsSchema);
 
-        // 1초마다 가격 업데이트 (1분간)
+        // Update price every second (for 1 minute)
         for (let i = 0; i < 60; i++) {
           const quote = await this.getQuote(symbol);
-          
+
           sse.publish("price", {
             symbol,
             price: quote.price,
@@ -637,7 +637,7 @@ async subscribe() {
             timestamp: new Date()
           });
 
-          // 가격 알림
+          // Price alert
           if (quote.price > quote.highThreshold) {
             sse.publish("alert", {
               type: "high",
@@ -657,38 +657,38 @@ async subscribe() {
   </Tab>
 </Tabs>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="@api" 
-    icon="plug" 
+  <Card
+    title="@api"
+    icon="plug"
     href="/api-reference/decorators/api"
   >
-    일반 API 엔드포인트 만들기
+    Create general API endpoints
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
+
+  <Card
+    title="@transactional"
+    icon="arrows-rotate"
     href="/api-reference/decorators/transactional"
   >
-    트랜잭션으로 데이터 일관성 보장하기
+    Ensure data consistency with transactions
   </Card>
-  
-  <Card 
-    title="@cache" 
-    icon="database" 
+
+  <Card
+    title="@cache"
+    icon="database"
     href="/api-reference/decorators/cache"
   >
-    결과 캐싱으로 성능 향상하기
+    Improve performance with result caching
   </Card>
-  
-  <Card 
-    title="SSE 가이드" 
-    icon="book" 
+
+  <Card
+    title="SSE Guide"
+    icon="book"
     href="/core-concepts/streaming/sse"
   >
-    SSE 상세 가이드 보기
+    View detailed SSE guide
   </Card>
 </CardGroup>

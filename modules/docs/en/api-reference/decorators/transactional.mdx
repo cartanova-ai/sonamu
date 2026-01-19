@@ -1,11 +1,11 @@
 ---
 title: '@transactional'
-description: '데이터베이스 트랜잭션 관리 데코레이터'
+description: 'Database Transaction Management Decorator'
 ---
 
-`@transactional` 데코레이터는 메서드를 데이터베이스 트랜잭션으로 감싸서 데이터 일관성을 보장합니다.
+The `@transactional` decorator wraps methods in a database transaction to ensure data consistency.
 
-## 기본 사용법
+## Basic Usage
 
 ```typescript
 import { BaseModelClass, api, transactional } from "sonamu";
@@ -19,13 +19,13 @@ class UserModelClass extends BaseModelClass<
   @transactional()
   async create(data: UserCreateParams) {
     const wdb = this.getDB("w");
-    
-    // 모든 작업이 트랜잭션 내에서 실행됨
+
+    // All operations executed within transaction
     const user = await this.insert(wdb, data);
     await this.createProfile(user.id);
     await this.sendWelcomeEmail(user.id);
-    
-    // 모두 성공하면 commit, 하나라도 실패하면 rollback
+
+    // Commits if all succeed, rolls back if any fails
     return user;
   }
 
@@ -33,21 +33,21 @@ class UserModelClass extends BaseModelClass<
   @transactional()
   async update(id: number, data: UserUpdateParams) {
     const wdb = this.getDB("w");
-    
-    // 트랜잭션 보장
+
+    // Transaction guaranteed
     await this.upsert(wdb, { id, ...data });
     await this.updateRelatedData(id);
-    
+
     return this.findById(id);
   }
 }
 ```
 
-## 옵션
+## Options
 
 ### isolation
 
-트랜잭션 격리 수준을 지정합니다.
+Specifies the transaction isolation level.
 
 ```typescript
 type IsolationLevel =
@@ -57,97 +57,97 @@ type IsolationLevel =
   | "serializable";
 ```
 
-**기본값:** 데이터베이스 기본 격리 수준 (PostgreSQL: `read committed`)
+**Default:** Database default isolation level (PostgreSQL: `read committed`)
 
 ```typescript
 @transactional({
   isolation: "serializable"
 })
 async processPayment(orderId: number) {
-  // 가장 엄격한 격리 수준
-  // 동시성 문제 완전 방지
+  // Strictest isolation level
+  // Completely prevents concurrency issues
 }
 
 @transactional({
   isolation: "read committed"
 })
 async updateStatus(id: number) {
-  // 일반적인 격리 수준
-  // 커밋된 데이터만 읽음
+  // Common isolation level
+  // Only reads committed data
 }
 ```
 
-<Accordion title="격리 수준 설명" icon="shield-check">
-  **read uncommitted** (가장 낮음)
-  - 커밋되지 않은 데이터도 읽을 수 있음
-  - Dirty Read 발생 가능
-  - 가장 빠르지만 위험함
+<Accordion title="Isolation Level Explanation" icon="shield-check">
+  **read uncommitted** (Lowest)
+  - Can read uncommitted data
+  - Dirty reads possible
+  - Fastest but risky
 
-  **read committed** (기본값)
-  - 커밋된 데이터만 읽음
-  - Dirty Read 방지
-  - Non-repeatable Read 발생 가능
+  **read committed** (Default)
+  - Only reads committed data
+  - Prevents dirty reads
+  - Non-repeatable reads possible
 
   **repeatable read**
-  - 트랜잭션 내에서 같은 데이터는 항상 같은 값
-  - Non-repeatable Read 방지
-  - Phantom Read 발생 가능
+  - Same data always returns same value within transaction
+  - Prevents non-repeatable reads
+  - Phantom reads possible
 
-  **serializable** (가장 높음)
-  - 트랜잭션이 직렬로 실행되는 것처럼 동작
-  - 모든 이상 현상 방지
-  - 가장 안전하지만 느림
+  **serializable** (Highest)
+  - Transactions behave as if executed serially
+  - Prevents all anomalies
+  - Safest but slowest
 </Accordion>
 
 ### readOnly
 
-읽기 전용 트랜잭션으로 설정합니다.
+Sets the transaction as read-only.
 
-**기본값:** `false`
+**Default:** `false`
 
 ```typescript
 @transactional({ readOnly: true })
 async generateReport(startDate: Date, endDate: Date) {
   const rdb = this.getPuri("r");
-  
-  // 여러 테이블을 조회하지만 수정하지 않음
-  // 일관된 스냅샷 보장
+
+  // Queries multiple tables but doesn't modify
+  // Guarantees consistent snapshot
   const users = await rdb.table("users").select();
   const orders = await rdb.table("orders")
     .whereBetween("created_at", [startDate, endDate])
     .select();
-  
+
   return this.calculateReport(users, orders);
 }
 ```
 
 <Info>
-`readOnly: true`를 사용하면 데이터베이스가 최적화를 수행하여 성능이 향상될 수 있습니다.
+Using `readOnly: true` allows the database to perform optimizations, potentially improving performance.
 </Info>
 
 ### dbPreset
 
-사용할 데이터베이스 프리셋을 지정합니다.
+Specifies the database preset to use.
 
-**기본값:** `"w"` (쓰기용 DB)
+**Default:** `"w"` (Write DB)
 
 ```typescript
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
-  // 쓰기용 DB 사용 (기본값)
+  // Uses write DB (default)
   const wdb = this.getDB("w");
   return this.insert(wdb, data);
 }
 
 @transactional({ dbPreset: "r", readOnly: true })
 async complexQuery() {
-  // 읽기용 DB에서 트랜잭션
+  // Transaction on read DB
   const rdb = this.getPuri("r");
   return rdb.table("users").select();
 }
 ```
 
-## 전체 옵션 예시
+## Complete Options Example
 
 ```typescript
 @api({ httpMethod: "POST" })
@@ -157,42 +157,42 @@ async complexQuery() {
   dbPreset: "w"
 })
 async criticalOperation(data: OperationParams) {
-  // 최고 수준의 격리로 안전하게 실행
+  // Executes safely with highest isolation
 }
 ```
 
-## 트랜잭션 동작 방식
+## How Transactions Work
 
-### 자동 커밋/롤백
+### Automatic Commit/Rollback
 
 ```typescript
 @transactional()
 async transfer(fromId: number, toId: number, amount: number) {
   const wdb = this.getDB("w");
-  
-  // 1. 출금
+
+  // 1. Withdraw
   await wdb.table("accounts")
     .where("id", fromId)
     .decrement("balance", amount);
-  
-  // 2. 에러 발생 시 자동 롤백
+
+  // 2. Automatic rollback on error
   if (amount > 1000000) {
     throw new Error("Amount too large");
-    // 위의 decrement도 롤백됨
+    // Above decrement also rolled back
   }
-  
-  // 3. 입금
+
+  // 3. Deposit
   await wdb.table("accounts")
     .where("id", toId)
     .increment("balance", amount);
-  
-  // 4. 모두 성공하면 자동 커밋
+
+  // 4. Automatic commit if all succeed
 }
 ```
 
-### 트랜잭션 중첩
+### Transaction Nesting
 
-같은 dbPreset의 트랜잭션은 **재사용**됩니다:
+Transactions with the same dbPreset are **reused**:
 
 ```typescript
 class UserModelClass extends BaseModelClass {
@@ -200,24 +200,24 @@ class UserModelClass extends BaseModelClass {
   async createUser(data: UserCreateParams) {
     const wdb = this.getDB("w");
     const user = await this.insert(wdb, data);
-    
-    // 이 메서드도 @transactional이지만
-    // 같은 트랜잭션을 재사용함
+
+    // This method also has @transactional
+    // but reuses the same transaction
     await this.createProfile(user.id);
-    
+
     return user;
   }
 
   @transactional()
   async createProfile(userId: number) {
     const wdb = this.getDB("w");
-    // createUser의 트랜잭션 재사용
+    // Reuses createUser's transaction
     return wdb.table("profiles").insert({ user_id: userId });
   }
 }
 ```
 
-**로그 출력:**
+**Log Output:**
 ```
 [DEBUG] transactional: UserModel.createUser
 [DEBUG] new transaction context: w
@@ -226,197 +226,196 @@ class UserModelClass extends BaseModelClass {
 [DEBUG] delete transaction context: w
 ```
 
-### 다른 Preset의 트랜잭션
+### Different Preset Transactions
 
-다른 dbPreset은 **별도의 트랜잭션**을 생성합니다:
+Different dbPresets create **separate transactions**:
 
 ```typescript
 @transactional({ dbPreset: "w" })
 async saveData(data: SaveParams) {
   const wdb = this.getDB("w");
   await wdb.table("logs").insert(data);
-  
-  // 다른 preset은 별도 트랜잭션
+
+  // Different preset creates separate transaction
   await this.saveToReadReplica(data);
 }
 
 @transactional({ dbPreset: "r" })
 async saveToReadReplica(data: SaveParams) {
   const rdb = this.getPuri("r");
-  // 별도의 트랜잭션 생성
+  // Creates separate transaction
   return rdb.table("cache").insert(data);
 }
 ```
 
-## 다른 데코레이터와 함께 사용
+## Using with Other Decorators
 
-### @api와 함께
+### With @api
 
 ```typescript
 @api({ httpMethod: "POST" })
 @transactional()
 async save(data: SaveParams) {
-  // API 엔드포인트이면서 트랜잭션
+  // API endpoint with transaction
 }
 ```
 
 <Warning>
-순서 중요: `@api`를 먼저, `@transactional`을 나중에 작성하세요.
+Order matters: Write `@api` first, then `@transactional`.
 </Warning>
 
-### @cache와 함께
+### With @cache
 
 ```typescript
 @api({ httpMethod: "GET" })
 @cache({ ttl: "10m" })
 @transactional({ readOnly: true })
 async findWithRelations(id: number) {
-  // 읽기 전용 트랜잭션 + 캐싱
+  // Read-only transaction + caching
   const rdb = this.getPuri("r");
-  
+
   const user = await rdb.table("users").where("id", id).first();
   const posts = await rdb.table("posts").where("user_id", id).select();
-  
+
   return { user, posts };
 }
 ```
 
-### @upload와 함께
+### With @upload
 
 ```typescript
-@api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 @transactional()
 async uploadAvatar() {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // Use first file
   const wdb = this.getDB("w");
-  
-  // 파일 저장 + DB 업데이트를 트랜잭션으로
+
+  // File save + DB update in transaction
   const url = await this.saveFile(file);
   await wdb.table("users")
     .where("id", userId)
     .update({ avatar_url: url });
-  
+
   return { url };
 }
 ```
 
 ## AsyncLocalStorage
 
-`@transactional`은 Node.js의 AsyncLocalStorage를 사용하여 트랜잭션 컨텍스트를 관리합니다.
+`@transactional` uses Node.js's AsyncLocalStorage to manage transaction context.
 
-### 컨텍스트 생성
+### Context Creation
 
 ```typescript
-// 트랜잭션이 없을 때
+// When no transaction exists
 @transactional()
 async save() {
-  // 1. 새 AsyncLocalStorage 컨텍스트 생성
-  // 2. 트랜잭션 시작
-  // 3. 메서드 실행
-  // 4. 커밋/롤백
-  // 5. 컨텍스트 정리
+  // 1. Create new AsyncLocalStorage context
+  // 2. Start transaction
+  // 3. Execute method
+  // 4. Commit/rollback
+  // 5. Clean up context
 }
 ```
 
-### 컨텍스트 재사용
+### Context Reuse
 
 ```typescript
 @transactional()
 async parent() {
-  // 컨텍스트 생성
-  await this.child();  // 같은 컨텍스트 사용
+  // Creates context
+  await this.child();  // Uses same context
 }
 
 @transactional()
 async child() {
-  // 부모의 컨텍스트 재사용
+  // Reuses parent's context
 }
 ```
 
-## 에러 처리
+## Error Handling
 
-### 자동 롤백
+### Automatic Rollback
 
 ```typescript
 @transactional()
 async processOrder(orderId: number) {
   const wdb = this.getDB("w");
-  
+
   try {
     await wdb.table("orders")
       .where("id", orderId)
       .update({ status: "processing" });
-    
-    // 결제 실패
+
+    // Payment failure
     throw new Error("Payment failed");
-    
+
   } catch (error) {
-    // 트랜잭션이 자동으로 롤백됨
+    // Transaction automatically rolled back
     throw error;
   }
 }
 ```
 
-### 수동 롤백
+### Manual Rollback
 
-명시적으로 롤백이 필요한 경우 에러를 throw하세요:
+Throw an error when explicit rollback is needed:
 
 ```typescript
 @transactional()
 async validateAndSave(data: SaveParams) {
   const wdb = this.getDB("w");
-  
+
   const result = await this.insert(wdb, data);
-  
-  // 검증 실패 시 롤백
+
+  // Rollback on validation failure
   if (!this.validate(result)) {
     throw new Error("Validation failed");
   }
-  
+
   return result;
 }
 ```
 
-## 주의사항
+## Precautions
 
-### 1. BaseModelClass에서만 사용 가능
+### 1. Only Available in BaseModelClass
 
 ```typescript
-// ❌ 일반 클래스에서는 사용 불가
+// ❌ Not available in regular classes
 class UtilClass {
   @transactional()
   async helper() {}
-  // 에러: modelName is required
+  // Error: modelName is required
 }
 
-// ✅ BaseModelClass 상속 필요
+// ✅ Requires BaseModelClass inheritance
 class UserModelClass extends BaseModelClass {
   @transactional()
   async save() {}
 }
 ```
 
-### 2. 긴 트랜잭션 주의
+### 2. Beware of Long Transactions
 
 ```typescript
-// ❌ 나쁜 예: 오래 걸리는 작업
+// ❌ Bad: Long-running operation
 @transactional()
 async processLargeData() {
   const wdb = this.getDB("w");
-  
-  // 10분 걸리는 작업
+
+  // 10-minute operation
   for (let i = 0; i < 1000000; i++) {
     await wdb.table("logs").insert({ index: i });
   }
-  // 트랜잭션이 너무 오래 열려있음
+  // Transaction open too long
 }
 
-// ✅ 좋은 예: 배치로 나누기
+// ✅ Good: Split into batches
 async processLargeData() {
   const batches = this.createBatches(1000);
-  
+
   for (const batch of batches) {
     await this.processBatch(batch);
   }
@@ -425,39 +424,39 @@ async processLargeData() {
 @transactional()
 async processBatch(batch: Item[]) {
   const wdb = this.getDB("w");
-  // 작은 단위로 트랜잭션 실행
+  // Execute transaction in small units
   return this.insertBatch(wdb, batch);
 }
 ```
 
-### 3. 외부 API 호출 주의
+### 3. Beware of External API Calls
 
 ```typescript
-// ❌ 나쁜 예: 트랜잭션 중 외부 API
+// ❌ Bad: External API in transaction
 @transactional()
 async createOrder(data: OrderCreateParams) {
   const wdb = this.getDB("w");
-  
+
   const order = await this.insert(wdb, data);
-  
-  // 외부 결제 API 호출 (느림)
+
+  // External payment API call (slow)
   await this.paymentService.charge(order.amount);
-  // 트랜잭션이 오래 열려있음
-  
+  // Transaction open too long
+
   return order;
 }
 
-// ✅ 좋은 예: 트랜잭션 밖에서 처리
+// ✅ Good: Handle outside transaction
 async createOrder(data: OrderCreateParams) {
-  // 1. 주문 생성 (트랜잭션)
+  // 1. Create order (transaction)
   const order = await this.saveOrder(data);
-  
-  // 2. 결제 처리 (트랜잭션 밖)
+
+  // 2. Process payment (outside transaction)
   await this.paymentService.charge(order.amount);
-  
-  // 3. 상태 업데이트 (트랜잭션)
+
+  // 3. Update status (transaction)
   await this.updateOrderStatus(order.id, "paid");
-  
+
   return order;
 }
 
@@ -474,24 +473,24 @@ async updateOrderStatus(id: number, status: string) {
 }
 ```
 
-## 로깅
+## Logging
 
-`@transactional` 데코레이터는 자동으로 로그를 남깁니다:
+The `@transactional` decorator automatically logs:
 
 ```typescript
 @transactional()
 async save() {
-  // 자동 로그:
+  // Automatic logs:
   // [DEBUG] transactional: UserModel.save
   // [DEBUG] new transaction context: w
   // [DEBUG] delete transaction context: w
 }
 ```
 
-## 예시 모음
+## Examples
 
 <Tabs>
-  <Tab title="계좌 이체" icon="money-bill-transfer">
+  <Tab title="Money Transfer" icon="money-bill-transfer">
     ```typescript
     class AccountModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
@@ -503,7 +502,7 @@ async save() {
       ) {
         const wdb = this.getDB("w");
 
-        // 1. 출금 계좌 잔액 확인
+        // 1. Check sender balance
         const fromAccount = await wdb.table("accounts")
           .where("id", fromAccountId)
           .first();
@@ -512,17 +511,17 @@ async save() {
           throw new Error("Insufficient balance");
         }
 
-        // 2. 출금
+        // 2. Withdraw
         await wdb.table("accounts")
           .where("id", fromAccountId)
           .decrement("balance", amount);
 
-        // 3. 입금
+        // 3. Deposit
         await wdb.table("accounts")
           .where("id", toAccountId)
           .increment("balance", amount);
 
-        // 4. 거래 기록
+        // 4. Record transaction
         await wdb.table("transactions").insert({
           from_account_id: fromAccountId,
           to_account_id: toAccountId,
@@ -537,7 +536,7 @@ async save() {
     ```
   </Tab>
 
-  <Tab title="주문 처리" icon="cart-shopping">
+  <Tab title="Order Processing" icon="cart-shopping">
     ```typescript
     class OrderModelClass extends BaseModelClass {
       @api({ httpMethod: "POST" })
@@ -545,14 +544,14 @@ async save() {
       async createOrder(data: OrderCreateParams) {
         const wdb = this.getDB("w");
 
-        // 1. 주문 생성
+        // 1. Create order
         const order = await this.insert(wdb, {
           user_id: data.userId,
           total_amount: data.totalAmount,
           status: "pending"
         });
 
-        // 2. 주문 상품 저장
+        // 2. Save order items
         await wdb.table("order_items").insert(
           data.items.map(item => ({
             order_id: order.id,
@@ -562,7 +561,7 @@ async save() {
           }))
         );
 
-        // 3. 재고 감소
+        // 3. Decrease stock
         for (const item of data.items) {
           const updated = await wdb.table("products")
             .where("id", item.productId)
@@ -574,7 +573,7 @@ async save() {
           }
         }
 
-        // 4. 포인트 사용
+        // 4. Use points
         if (data.usePoints > 0) {
           await wdb.table("users")
             .where("id", data.userId)
@@ -587,7 +586,7 @@ async save() {
     ```
   </Tab>
 
-  <Tab title="복잡한 보고서" icon="file-chart-line">
+  <Tab title="Complex Report" icon="file-chart-line">
     ```typescript
     class ReportModelClass extends BaseModelClass {
       @transactional({
@@ -597,19 +596,19 @@ async save() {
       async generateMonthlyReport(month: string) {
         const rdb = this.getPuri("r");
 
-        // 모든 쿼리가 일관된 스냅샷에서 실행됨
-        
-        // 1. 매출 집계
+        // All queries executed from consistent snapshot
+
+        // 1. Aggregate sales
         const sales = await rdb.table("orders")
           .whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [month])
           .sum("total_amount as total");
 
-        // 2. 신규 회원 수
+        // 2. New members
         const newUsers = await rdb.table("users")
           .whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [month])
           .count("* as count");
 
-        // 3. 상품별 판매량
+        // 3. Sales by product
         const productSales = await rdb.table("order_items")
           .join("orders", "orders.id", "order_items.order_id")
           .whereRaw("DATE_FORMAT(orders.created_at, '%Y-%m') = ?", [month])
@@ -631,10 +630,10 @@ async save() {
     ```
   </Tab>
 
-  <Tab title="배치 처리" icon="layer-group">
+  <Tab title="Batch Processing" icon="layer-group">
     ```typescript
     class DataModelClass extends BaseModelClass {
-      // 전체 처리 (트랜잭션 없음)
+      // Overall processing (no transaction)
       async processBulkData(items: Item[]) {
         const batches = this.createBatches(items, 100);
         const results = [];
@@ -645,19 +644,19 @@ async save() {
             results.push(result);
           } catch (error) {
             console.error("Batch failed:", error);
-            // 실패한 배치만 롤백됨
+            // Only failed batch rolled back
           }
         }
 
         return results;
       }
 
-      // 배치별 트랜잭션
+      // Per-batch transaction
       @transactional()
       async processBatch(batch: Item[]) {
         const wdb = this.getDB("w");
 
-        // 배치 단위로 트랜잭션
+        // Transaction per batch
         const processed = [];
         for (const item of batch) {
           const result = await this.processItem(wdb, item);
@@ -679,38 +678,38 @@ async save() {
   </Tab>
 </Tabs>
 
-## 다음 단계
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="@api" 
-    icon="plug" 
+  <Card
+    title="@api"
+    icon="plug"
     href="/api-reference/decorators/api"
   >
-    API 엔드포인트 만들기
+    Create API endpoints
   </Card>
-  
-  <Card 
-    title="@upload" 
-    icon="upload" 
+
+  <Card
+    title="@upload"
+    icon="upload"
     href="/api-reference/decorators/upload"
   >
-    파일 업로드 API 만들기
+    Create file upload APIs
   </Card>
-  
-  <Card 
-    title="Database 가이드" 
-    icon="database" 
+
+  <Card
+    title="Database Guide"
+    icon="database"
     href="/core-concepts/database/puri"
   >
-    Puri 쿼리 빌더 사용하기
+    Use Puri query builder
   </Card>
-  
-  <Card 
-    title="에러 처리" 
-    icon="triangle-exclamation" 
+
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
     href="/core-concepts/error-handling"
   >
-    에러 처리 방법 배우기
+    Learn error handling methods
   </Card>
 </CardGroup>

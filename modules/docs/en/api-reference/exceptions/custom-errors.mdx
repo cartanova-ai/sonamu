@@ -1,13 +1,13 @@
 ---
-title: '커스텀 예외'
-description: '프로젝트에 맞는 커스텀 예외 클래스 만들기'
+title: 'Custom Exceptions'
+description: 'Creating custom exception classes for your project'
 ---
 
-Sonamu의 내장 예외 클래스 외에 프로젝트에 특화된 예외를 만들어 사용할 수 있습니다. `SoException`을 상속하여 커스텀 HTTP 상태 코드와 메시지를 가진 예외를 만들 수 있습니다.
+Beyond Sonamu's built-in exception classes, you can create project-specific exceptions. Inherit from `SoException` to create exceptions with custom HTTP status codes and messages.
 
-## 기본 커스텀 예외
+## Basic Custom Exceptions
 
-### 간단한 예외 클래스
+### Simple Exception Class
 
 ```typescript
 // src/exceptions/payment-failed-exception.ts
@@ -23,22 +23,22 @@ export class PaymentFailedException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
 async processPayment(orderId: number, paymentMethod: string) {
   const order = await OrderModel.findById(orderId);
-  
+
   try {
     const result = await paymentGateway.charge(
       order.amount,
       paymentMethod
     );
-    
+
     if (!result.success) {
       throw new PaymentFailedException(
-        "결제에 실패했습니다",
+        "Payment failed",
         {
           orderId,
           reason: result.failureReason,
@@ -46,18 +46,18 @@ async processPayment(orderId: number, paymentMethod: string) {
         }
       );
     }
-    
+
     return result;
   } catch (err) {
     throw new PaymentFailedException(
-      "결제 처리 중 오류가 발생했습니다",
+      "Error occurred during payment processing",
       { orderId, error: err }
     );
   }
 }
 ```
 
-### 403 Forbidden 예외
+### 403 Forbidden Exception
 
 ```typescript
 // src/exceptions/forbidden-exception.ts
@@ -73,13 +73,13 @@ export class ForbiddenException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
 async accessRestrictedResource(ctx: Context, resourceId: number) {
   if (!ctx.user) {
-    throw new UnauthorizedException("로그인이 필요합니다");
+    throw new UnauthorizedException("Login required");
   }
 
   const hasPermission = await PermissionModel.checkAccess(
@@ -89,7 +89,7 @@ async accessRestrictedResource(ctx: Context, resourceId: number) {
 
   if (!hasPermission) {
     throw new ForbiddenException(
-      "이 리소스에 접근할 권한이 없습니다",
+      "You don't have permission to access this resource",
       { resourceId, userId: ctx.user.id }
     );
   }
@@ -98,9 +98,9 @@ async accessRestrictedResource(ctx: Context, resourceId: number) {
 }
 ```
 
-## 비즈니스 로직 예외
+## Business Logic Exceptions
 
-### 도메인별 예외
+### Domain-Specific Exceptions
 
 ```typescript
 // src/exceptions/inventory-exception.ts
@@ -111,7 +111,7 @@ export class OutOfStockException extends SoException {
     public message = "Out of Stock",
     public payload?: unknown,
   ) {
-    super(550, message, payload);  // 커스텀 상태 코드
+    super(550, message, payload);  // Custom status code
   }
 }
 
@@ -125,7 +125,7 @@ export class InsufficientStockException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -138,13 +138,13 @@ async createOrder(
 
     if (!product) {
       throw new NotFoundException(
-        `상품을 찾을 수 없습니다 (ID: ${item.productId})`
+        `Product not found (ID: ${item.productId})`
       );
     }
 
     if (product.stock === 0) {
       throw new OutOfStockException(
-        `${product.name} 상품이 품절되었습니다`,
+        `${product.name} is out of stock`,
         {
           productId: product.id,
           productName: product.name
@@ -154,7 +154,7 @@ async createOrder(
 
     if (product.stock < item.quantity) {
       throw new InsufficientStockException(
-        `재고가 부족합니다`,
+        `Insufficient stock`,
         {
           productId: product.id,
           productName: product.name,
@@ -169,7 +169,7 @@ async createOrder(
 }
 ```
 
-### 상태 전환 예외
+### State Transition Exceptions
 
 ```typescript
 // src/exceptions/state-transition-exception.ts
@@ -185,7 +185,7 @@ export class InvalidStateTransitionException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -193,15 +193,15 @@ async cancelOrder(orderId: number) {
   const order = await OrderModel.findById(orderId);
 
   if (!order) {
-    throw new NotFoundException("주문을 찾을 수 없습니다");
+    throw new NotFoundException("Order not found");
   }
 
-  // 취소 가능한 상태인지 확인
+  // Check if cancellation is allowed
   const cancellableStates = ["pending", "confirmed"];
-  
+
   if (!cancellableStates.includes(order.status)) {
     throw new InvalidStateTransitionException(
-      "현재 상태에서는 주문을 취소할 수 없습니다",
+      "Cannot cancel order in current state",
       {
         orderId,
         currentState: order.status,
@@ -216,15 +216,15 @@ async cancelOrder(orderId: number) {
 
 private getCancellationBlockReason(status: string): string {
   const reasons = {
-    shipping: "배송 중인 주문은 취소할 수 없습니다",
-    delivered: "배송 완료된 주문은 취소할 수 없습니다",
-    cancelled: "이미 취소된 주문입니다"
+    shipping: "Cannot cancel order being shipped",
+    delivered: "Cannot cancel delivered order",
+    cancelled: "Order already cancelled"
   };
-  return reasons[status] || "취소할 수 없는 상태입니다";
+  return reasons[status] || "Cannot cancel in this state";
 }
 ```
 
-### 제한 사항 예외
+### Limitation Exceptions
 
 ```typescript
 // src/exceptions/rate-limit-exception.ts
@@ -249,7 +249,7 @@ export class QuotaExceededException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -260,33 +260,33 @@ async sendEmail(
   body: string
 ) {
   if (!ctx.user) {
-    throw new UnauthorizedException("로그인이 필요합니다");
+    throw new UnauthorizedException("Login required");
   }
 
-  // 분당 요청 수 체크
+  // Check requests per minute
   const recentRequests = await this.getRecentRequestCount(
     ctx.user.id,
-    60  // 60초
+    60  // 60 seconds
   );
 
   if (recentRequests >= 10) {
     throw new RateLimitExceededException(
-      "분당 이메일 전송 한도를 초과했습니다",
+      "Exceeded email sending limit per minute",
       {
         limit: 10,
-        window: "1분",
+        window: "1 minute",
         retryAfter: 60
       }
     );
   }
 
-  // 일일 할당량 체크
+  // Check daily quota
   const dailyCount = await this.getDailyEmailCount(ctx.user.id);
   const dailyLimit = ctx.user.plan === "premium" ? 1000 : 100;
 
   if (dailyCount >= dailyLimit) {
     throw new QuotaExceededException(
-      "일일 이메일 전송 한도를 초과했습니다",
+      "Exceeded daily email sending limit",
       {
         used: dailyCount,
         limit: dailyLimit,
@@ -300,9 +300,9 @@ async sendEmail(
 }
 ```
 
-## 외부 서비스 예외
+## External Service Exceptions
 
-### 외부 API 예외
+### External API Exceptions
 
 ```typescript
 // src/exceptions/external-service-exception.ts
@@ -327,7 +327,7 @@ export class ExternalServiceTimeoutException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -346,13 +346,13 @@ async getWeatherData(city: string) {
     if (axios.isAxiosError(err)) {
       if (err.code === "ECONNABORTED") {
         throw new ExternalServiceTimeoutException(
-          "날씨 API 응답 시간이 초과되었습니다",
+          "Weather API response timeout",
           { service: "weather-api", timeout: 5000 }
         );
       }
 
       throw new ExternalServiceException(
-        "날씨 데이터를 가져오는데 실패했습니다",
+        "Failed to fetch weather data",
         {
           service: "weather-api",
           statusCode: err.response?.status,
@@ -366,9 +366,9 @@ async getWeatherData(city: string) {
 }
 ```
 
-## 예외 헬퍼 클래스
+## Exception Helper Classes
 
-### 예외 팩토리
+### Exception Factory
 
 ```typescript
 // src/exceptions/exception-factory.ts
@@ -377,21 +377,21 @@ import { SoException } from "sonamu";
 export class ValidationException extends SoException {
   static fieldRequired(fieldName: string) {
     return new ValidationException(
-      `${fieldName}은(는) 필수 항목입니다`,
+      `${fieldName} is required`,
       { field: fieldName, code: "REQUIRED" }
     );
   }
 
   static fieldInvalid(fieldName: string, reason: string) {
     return new ValidationException(
-      `${fieldName}이(가) 유효하지 않습니다: ${reason}`,
+      `${fieldName} is invalid: ${reason}`,
       { field: fieldName, code: "INVALID", reason }
     );
   }
 
   static fieldTooShort(fieldName: string, minLength: number) {
     return new ValidationException(
-      `${fieldName}은(는) 최소 ${minLength}자 이상이어야 합니다`,
+      `${fieldName} must be at least ${minLength} characters`,
       { field: fieldName, code: "TOO_SHORT", minLength }
     );
   }
@@ -402,7 +402,7 @@ export class ValidationException extends SoException {
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -418,7 +418,7 @@ async createUser(username: string, password: string, email: string) {
   if (!email.includes("@")) {
     throw ValidationException.fieldInvalid(
       "email",
-      "올바른 이메일 형식이 아닙니다"
+      "Not a valid email format"
     );
   }
 
@@ -426,13 +426,13 @@ async createUser(username: string, password: string, email: string) {
 }
 ```
 
-## 예외 상속 계층
+## Exception Inheritance Hierarchy
 
 ```typescript
 // src/exceptions/payment-exceptions.ts
 import { SoException } from "sonamu";
 
-// 기본 결제 예외
+// Base payment exception
 export class PaymentException extends SoException {
   constructor(
     statusCode: number,
@@ -443,12 +443,12 @@ export class PaymentException extends SoException {
   }
 }
 
-// 세부 결제 예외들
+// Specific payment exceptions
 export class CardDeclinedException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
     super(
       402,
-      message || "카드가 거부되었습니다",
+      message || "Card declined",
       payload
     );
   }
@@ -458,7 +458,7 @@ export class InsufficientFundsException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
     super(
       402,
-      message || "잔액이 부족합니다",
+      message || "Insufficient funds",
       payload
     );
   }
@@ -468,14 +468,14 @@ export class InvalidCardException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
     super(
       402,
-      message || "유효하지 않은 카드입니다",
+      message || "Invalid card",
       payload
     );
   }
 }
 ```
 
-**사용 예시:**
+**Usage Example:**
 
 ```typescript
 @api()
@@ -490,14 +490,14 @@ async processPayment(orderId: number, cardInfo: CardInfo) {
         { reason: err.decline_reason }
       );
     }
-    
+
     if (err.code === "insufficient_funds") {
       throw new InsufficientFundsException(
         undefined,
         { balance: err.available_balance }
       );
     }
-    
+
     if (err.code === "invalid_card") {
       throw new InvalidCardException(
         undefined,
@@ -505,19 +505,19 @@ async processPayment(orderId: number, cardInfo: CardInfo) {
       );
     }
 
-    // 일반적인 결제 실패
+    // Generic payment failure
     throw new PaymentException(
       402,
-      "결제 처리 중 오류가 발생했습니다",
+      "Error occurred during payment processing",
       { error: err }
     );
   }
 }
 ```
 
-## 예외 그룹화
+## Exception Grouping
 
-### 카테고리별 예외 파일
+### Category-Based Exception Files
 
 ```typescript
 // src/exceptions/auth-exceptions.ts
@@ -555,50 +555,50 @@ export class ResourceConflictException extends SoException {
 }
 ```
 
-## 권장 사항
+## Recommendations
 
-### HTTP 상태 코드 선택
+### HTTP Status Code Selection
 
-표준 HTTP 상태 코드를 우선 사용하고, 필요시 5xx 대역의 커스텀 코드를 사용하세요:
+Use standard HTTP status codes first, and use custom codes in the 5xx range when needed:
 
-- **400-499**: 클라이언트 오류 (표준 코드 사용)
-- **500-599**: 서버 오류 (540-599는 커스텀 용도)
+- **400-499**: Client errors (use standard codes)
+- **500-599**: Server errors (540-599 for custom use)
 
-### 명확한 메시지
+### Clear Messages
 
 ```typescript
-// ❌ 나쁜 예
+// ❌ Bad
 throw new CustomException("Error");
 
-// ✅ 좋은 예
+// ✅ Good
 throw new CustomException(
-  "주문을 처리할 수 없습니다: 재고가 부족합니다",
+  "Cannot process order: insufficient stock",
   { productId: 123, available: 5, requested: 10 }
 );
 ```
 
-### payload 구조화
+### Structured Payload
 
 ```typescript
-// ✅ 일관된 payload 구조
-throw new CustomException("오류 메시지", {
+// ✅ Consistent payload structure
+throw new CustomException("Error message", {
   code: "ERROR_CODE",
   field: "fieldName",
-  details: { /* 추가 정보 */ },
-  suggestions: ["해결 방법 1", "해결 방법 2"]
+  details: { /* additional info */ },
+  suggestions: ["Solution 1", "Solution 2"]
 });
 ```
 
-### 예외 문서화
+### Exception Documentation
 
 ```typescript
 /**
- * 재고가 부족한 경우 발생하는 예외
- * 
+ * Exception thrown when stock is insufficient
+ *
  * @example
  * ```typescript
  * throw new InsufficientStockException(
- *   "재고 부족",
+ *   "Insufficient stock",
  *   { productId: 123, available: 5, requested: 10 }
  * );
  * ```
@@ -608,9 +608,9 @@ export class InsufficientStockException extends SoException {
 }
 ```
 
-## 관련 문서
+## Related Documentation
 
 - [SoException](/api-reference/exceptions/sonamu-error)
 - [BadRequestException](/api-reference/exceptions/bad-request-error)
 - [UnauthorizedException](/api-reference/exceptions/unauthorized-error)
-- [에러 핸들링](/api-development/error-handling)
+- [Error Handling](/api-development/error-handling)

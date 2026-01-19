@@ -1,11 +1,11 @@
 ---
 title: 'BadRequestException'
-description: '잘못된 요청 처리를 위한 400 예외'
+description: '400 Exception for Handling Invalid Requests'
 ---
 
-`BadRequestException`은 클라이언트의 요청이 잘못된 경우 사용하는 예외입니다. HTTP 400 상태 코드를 반환하며, 유효성 검증 실패, 잘못된 매개변수, 요청 형식 오류 등에 사용됩니다.
+`BadRequestException` is an exception used when a client's request is invalid. It returns an HTTP 400 status code and is used for validation failures, invalid parameters, malformed requests, etc.
 
-## 기본 사용법
+## Basic Usage
 
 ```typescript
 class BadRequestException extends SoException {
@@ -16,26 +16,26 @@ class BadRequestException extends SoException {
 }
 ```
 
-**간단한 예시:**
+**Simple Example:**
 
 ```typescript
 @api()
 async createPost(title: string, content: string) {
   if (!title || title.trim().length === 0) {
-    throw new BadRequestException("제목은 필수입니다");
+    throw new BadRequestException("Title is required");
   }
-  
+
   if (content.length > 10000) {
-    throw new BadRequestException("본문은 10,000자를 초과할 수 없습니다");
+    throw new BadRequestException("Content cannot exceed 10,000 characters");
   }
-  
+
   return this.create({ title, content });
 }
 ```
 
-## 실용 예제
+## Practical Examples
 
-### 유효성 검증
+### Validation
 
 ```typescript
 @api()
@@ -47,32 +47,32 @@ async updateUser(
 ) {
   const errors: Array<{ field: string; message: string }> = [];
 
-  // 이메일 검증
+  // Email validation
   if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
     errors.push({
       field: "email",
-      message: "유효하지 않은 이메일 형식입니다"
+      message: "Invalid email format"
     });
   }
 
-  // 나이 검증
+  // Age validation
   if (age !== undefined && (age < 0 || age > 150)) {
     errors.push({
       field: "age",
-      message: "나이는 0~150 사이여야 합니다"
+      message: "Age must be between 0 and 150"
     });
   }
 
-  // 전화번호 검증
+  // Phone number validation
   if (phoneNumber && !phoneNumber.match(/^\d{3}-\d{3,4}-\d{4}$/)) {
     errors.push({
       field: "phoneNumber",
-      message: "전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)"
+      message: "Invalid phone number format (e.g., 010-1234-5678)"
     });
   }
 
   if (errors.length > 0) {
-    throw new BadRequestException("입력 데이터가 유효하지 않습니다", {
+    throw new BadRequestException("Invalid input data", {
       errors
     });
   }
@@ -81,7 +81,7 @@ async updateUser(
 }
 ```
 
-### 비즈니스 규칙 검증
+### Business Rule Validation
 
 ```typescript
 @api()
@@ -91,35 +91,35 @@ async transferMoney(
   toAccountId: number,
   amount: number
 ) {
-  // 금액 검증
+  // Amount validation
   if (amount <= 0) {
     throw new BadRequestException(
-      "이체 금액은 0보다 커야 합니다",
+      "Transfer amount must be greater than 0",
       { amount }
     );
   }
 
   if (amount > 10000000) {
     throw new BadRequestException(
-      "1회 이체 한도는 천만원입니다",
+      "Single transfer limit is 10 million",
       { amount, limit: 10000000 }
     );
   }
 
-  // 계좌 검증
+  // Account validation
   if (fromAccountId === toAccountId) {
-    throw new BadRequestException("동일한 계좌로는 이체할 수 없습니다");
+    throw new BadRequestException("Cannot transfer to the same account");
   }
 
   const fromAccount = await AccountModel.findById(fromAccountId);
-  
+
   if (fromAccount.userId !== ctx.user!.id) {
-    throw new BadRequestException("본인 계좌에서만 이체할 수 있습니다");
+    throw new BadRequestException("Can only transfer from your own account");
   }
 
   if (fromAccount.balance < amount) {
     throw new BadRequestException(
-      "잔액이 부족합니다",
+      "Insufficient balance",
       {
         balance: fromAccount.balance,
         requested: amount,
@@ -128,29 +128,28 @@ async transferMoney(
     );
   }
 
-  // 이체 실행
+  // Execute transfer
   return this.executeTransfer(fromAccountId, toAccountId, amount);
 }
 ```
 
-### 파일 업로드 검증
+### File Upload Validation
 
 ```typescript
-@api()
-@upload({ mode: "single" })
+@upload()
 async uploadProfileImage(ctx: Context) {
   const { files } = Sonamu.getContext();
   const file = files?.[0]; // Use first file
 
   if (!file) {
-    throw new BadRequestException("파일이 필요합니다");
+    throw new BadRequestException("File is required");
   }
 
-  // 파일 크기 검증 (5MB)
+  // File size validation (5MB)
   const maxSize = 5 * 1024 * 1024;
   if (file.size > maxSize) {
     throw new BadRequestException(
-      "파일 크기는 5MB를 초과할 수 없습니다",
+      "File size cannot exceed 5MB",
       {
         size: file.size,
         maxSize,
@@ -160,11 +159,11 @@ async uploadProfileImage(ctx: Context) {
     );
   }
 
-  // 파일 형식 검증
+  // File type validation
   const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   if (!allowedTypes.includes(file.mimetype)) {
     throw new BadRequestException(
-      "지원하지 않는 이미지 형식입니다",
+      "Unsupported image format",
       {
         provided: file.mimetype,
         allowed: allowedTypes
@@ -172,7 +171,7 @@ async uploadProfileImage(ctx: Context) {
     );
   }
 
-  // 이미지 저장
+  // Save image
   return Sonamu.storage.save({
     file: file.buffer,
     filename: file.filename,
@@ -181,7 +180,7 @@ async uploadProfileImage(ctx: Context) {
 }
 ```
 
-### 날짜/시간 검증
+### Date/Time Validation
 
 ```typescript
 @api()
@@ -193,39 +192,39 @@ async createReservation(
 ) {
   const now = new Date();
 
-  // 과거 날짜 체크
+  // Check for past dates
   if (startDate < now) {
     throw new BadRequestException(
-      "예약 시작일은 현재 시각 이후여야 합니다",
+      "Reservation start date must be after current time",
       { startDate, now }
     );
   }
 
-  // 시작일/종료일 순서 체크
+  // Check start/end date order
   if (startDate >= endDate) {
     throw new BadRequestException(
-      "종료일은 시작일보다 이후여야 합니다",
+      "End date must be after start date",
       { startDate, endDate }
     );
   }
 
-  // 최대 예약 기간 체크 (30일)
+  // Check maximum reservation period (30 days)
   const maxDays = 30;
   const daysDiff = Math.ceil(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  
+
   if (daysDiff > maxDays) {
     throw new BadRequestException(
-      `예약 기간은 최대 ${maxDays}일까지 가능합니다`,
+      `Maximum reservation period is ${maxDays} days`,
       { requestedDays: daysDiff, maxDays }
     );
   }
 
-  // 인원 체크
+  // Guest count check
   if (guestCount < 1 || guestCount > 10) {
     throw new BadRequestException(
-      "예약 인원은 1~10명 사이여야 합니다",
+      "Guest count must be between 1 and 10",
       { guestCount }
     );
   }
@@ -234,7 +233,7 @@ async createReservation(
 }
 ```
 
-### 배열/객체 검증
+### Array/Object Validation
 
 ```typescript
 @api()
@@ -242,47 +241,47 @@ async createOrder(
   userId: number,
   items: Array<{ productId: number; quantity: number }>
 ) {
-  // 빈 주문 체크
+  // Empty order check
   if (!items || items.length === 0) {
-    throw new BadRequestException("최소 1개 이상의 상품이 필요합니다");
+    throw new BadRequestException("At least one product is required");
   }
 
-  // 최대 주문 수량 체크
+  // Maximum order quantity check
   if (items.length > 50) {
     throw new BadRequestException(
-      "한 번에 최대 50개 상품까지 주문할 수 있습니다",
+      "Maximum of 50 products per order",
       { itemCount: items.length, maxItems: 50 }
     );
   }
 
-  // 각 항목 검증
+  // Validate each item
   const errors: Array<{ index: number; message: string }> = [];
 
   items.forEach((item, index) => {
     if (!item.productId || item.productId <= 0) {
       errors.push({
         index,
-        message: "유효하지 않은 상품 ID입니다"
+        message: "Invalid product ID"
       });
     }
 
     if (!item.quantity || item.quantity <= 0) {
       errors.push({
         index,
-        message: "수량은 1개 이상이어야 합니다"
+        message: "Quantity must be at least 1"
       });
     }
 
     if (item.quantity > 999) {
       errors.push({
         index,
-        message: "상품당 최대 999개까지 주문할 수 있습니다"
+        message: "Maximum 999 items per product"
       });
     }
   });
 
   if (errors.length > 0) {
-    throw new BadRequestException("주문 항목이 유효하지 않습니다", {
+    throw new BadRequestException("Invalid order items", {
       errors
     });
   }
@@ -291,33 +290,33 @@ async createOrder(
 }
 ```
 
-## Zod 검증과의 조합
+## Combining with Zod Validation
 
-Sonamu는 API 파라미터를 자동으로 Zod 스키마로 검증하지만, 추가 비즈니스 로직 검증에는 `BadRequestException`을 사용합니다:
+Sonamu automatically validates API parameters with Zod schemas, but use `BadRequestException` for additional business logic validation:
 
 ```typescript
 @api()
 async createProduct(
-  name: string,        // Zod로 자동 검증: 문자열 타입
-  price: number,       // Zod로 자동 검증: 숫자 타입
-  categoryId: number   // Zod로 자동 검증: 숫자 타입
+  name: string,        // Auto-validated by Zod: string type
+  price: number,       // Auto-validated by Zod: number type
+  categoryId: number   // Auto-validated by Zod: number type
 ) {
-  // 추가 비즈니스 로직 검증
+  // Additional business logic validation
   if (price < 0) {
-    throw new BadRequestException("가격은 0 이상이어야 합니다");
+    throw new BadRequestException("Price must be 0 or greater");
   }
 
   const category = await CategoryModel.findById(categoryId);
   if (!category) {
     throw new BadRequestException(
-      "존재하지 않는 카테고리입니다",
+      "Category does not exist",
       { categoryId }
     );
   }
 
   if (!category.isActive) {
     throw new BadRequestException(
-      "비활성화된 카테고리에는 상품을 추가할 수 없습니다",
+      "Cannot add products to inactive category",
       { categoryId, categoryName: category.name }
     );
   }
@@ -326,12 +325,12 @@ async createProduct(
 }
 ```
 
-## payload 활용 패턴
+## Payload Usage Patterns
 
-### 필드별 오류 목록
+### Field-level Error List
 
 ```typescript
-throw new BadRequestException("입력 데이터 검증 실패", {
+throw new BadRequestException("Input validation failed", {
   errors: [
     { field: "email", code: "INVALID_FORMAT" },
     { field: "password", code: "TOO_SHORT", minLength: 8 }
@@ -339,60 +338,60 @@ throw new BadRequestException("입력 데이터 검증 실패", {
 });
 ```
 
-### 제한 사항 정보
+### Limit Information
 
 ```typescript
-throw new BadRequestException("파일 크기 초과", {
+throw new BadRequestException("File size exceeded", {
   size: file.size,
   limit: 5242880,  // 5MB in bytes
   unit: "bytes"
 });
 ```
 
-### 재시도 가능 정보
+### Retry Information
 
 ```typescript
-throw new BadRequestException("일일 요청 한도 초과", {
+throw new BadRequestException("Daily request limit exceeded", {
   limit: 100,
   used: 100,
   resetsAt: new Date("2024-01-01T00:00:00Z")
 });
 ```
 
-## 클라이언트 응답 예시
+## Client Response Examples
 
-### 기본 응답
+### Basic Response
 
 ```json
 {
   "statusCode": 400,
-  "message": "제목은 필수입니다"
+  "message": "Title is required"
 }
 ```
 
-### payload 포함 응답
+### Response with Payload
 
 ```json
 {
   "statusCode": 400,
-  "message": "입력 데이터가 유효하지 않습니다",
+  "message": "Invalid input data",
   "payload": {
     "errors": [
       {
         "field": "email",
-        "message": "유효하지 않은 이메일 형식입니다"
+        "message": "Invalid email format"
       },
       {
         "field": "age",
-        "message": "나이는 0~150 사이여야 합니다"
+        "message": "Age must be between 0 and 150"
       }
     ]
   }
 }
 ```
 
-## 관련 문서
+## Related Documentation
 
 - [SoException](/api-reference/exceptions/sonamu-error)
-- [커스텀 예외](/api-reference/exceptions/custom-errors)
-- [Zod 검증](/api-development/validation)
+- [Custom Exceptions](/api-reference/exceptions/custom-errors)
+- [Zod Validation](/api-development/validation)
