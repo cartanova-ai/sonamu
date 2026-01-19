@@ -57,7 +57,7 @@ export default function Sidebar({ className }: SidebarProps) {
     if (path === "/admin") {
       return pathname === "/admin" || pathname === "/admin/";
     }
-    return pathname.startsWith(path);
+    return pathname === path;
   };
 
   return (
