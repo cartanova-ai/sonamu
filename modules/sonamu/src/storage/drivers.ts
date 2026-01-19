@@ -1,7 +1,7 @@
 import { FSDriver } from "flydrive/drivers/fs";
 import type { FSDriverOptions } from "flydrive/drivers/fs/types";
-import { S3Driver } from "flydrive/drivers/s3";
 import type { S3DriverOptions } from "flydrive/drivers/s3/types";
+import { SonamuS3Driver } from "./s3-driver";
 
 /**
  * 드라이버 팩토리 함수
@@ -9,7 +9,7 @@ import type { S3DriverOptions } from "flydrive/drivers/s3/types";
  */
 export const drivers = {
   fs: (config: FSDriverOptions) => () => new FSDriver(config),
-  s3: (config: S3DriverOptions) => () => new S3Driver(config),
+  s3: (config: S3DriverOptions) => () => new SonamuS3Driver(config),
 };
 
 export type DriverKey = keyof typeof drivers;
