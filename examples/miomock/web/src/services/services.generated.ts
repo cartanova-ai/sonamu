@@ -752,6 +752,92 @@ export namespace FileService {
       retry: false,
       ...options,
     });
+
+  export async function testBufferUpload(
+    params: { name: string },
+    files: File[],
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
+  ): Promise<{
+    name: string;
+    files: { filename: string; url: string; mimetype: string; size: number; md5: string }[];
+  }> {
+    const formData = new FormData();
+    files.forEach((f) => {
+      formData.append("files", f);
+    });
+    toFormData(params, formData, "params");
+    return fetch({
+      method: "POST",
+      url: `/api/file/testBufferUpload`,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress,
+      data: formData,
+    });
+  }
+
+  export const useTestBufferUploadMutation = (
+    options?: UseMutationOptions<
+      {
+        name: string;
+        files: { filename: string; url: string; mimetype: string; size: number; md5: string }[];
+      },
+      Error,
+      { params: { name: string }; files: File[] }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: (params: { params: { name: string }; files: File[] }) =>
+        testBufferUpload(params.params, params.files),
+      retry: false,
+      ...options,
+    });
+
+  export async function testStreamUpload(
+    params: { name: string },
+    files: File[],
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
+  ): Promise<{
+    name: string;
+    files: { filename: string; url: string; mimetype: string; size: number; key: string }[];
+  }> {
+    const formData = new FormData();
+    files.forEach((f) => {
+      formData.append("files", f);
+    });
+    toFormData(params, formData, "params");
+    return fetch({
+      method: "POST",
+      url: `/api/file/testStreamUpload`,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress,
+      data: formData,
+    });
+  }
+
+  export const useTestStreamUploadMutation = (
+    options?: UseMutationOptions<
+      {
+        name: string;
+        files: { filename: string; url: string; mimetype: string; size: number; key: string }[];
+      },
+      Error,
+      { params: { name: string }; files: File[] }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: (params: { params: { name: string }; files: File[] }) =>
+        testStreamUpload(params.params, params.files),
+      retry: false,
+      ...options,
+    });
 }
 
 export namespace EmployeeService {

@@ -177,7 +177,6 @@ export default defineConfig({
     },
 
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
         fs: drivers.fs({
           location: path.join(import.meta.dirname, "/../public/uploaded"),
