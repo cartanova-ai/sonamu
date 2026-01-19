@@ -240,85 +240,82 @@ function EditProfile({ userId }: { userId: number }) {
 }
 ```
 
-## Using in Next.js
+## Using Services in SSR
 
-### Server Components (App Router)
+Sonamu supports SSR based on Vite + React. For SSR, use the SSR-specific Services automatically generated in `queries.generated.ts`.
 
-In Next.js 13+ App Router's Server Components, you cannot call Services directly. Instead, use backend models directly.
+### What are SSR Services?
+
+Separate from frontend Services (`services.generated.ts`), **SSR-specific Services** are automatically generated on the backend.
 
 ```typescript
-// app/users/[id]/page.tsx
+// api/src/application/queries.generated.ts (auto-generated)
+import type { SSRQuery } from "sonamu/ssr";
 
-// ❌ Does not work in Server Component
-// Service uses browser fetch, so cannot be used on server
-export default async function UserPage({ params }: { params: { id: string } }) {
-  const user = await UserService.getUser("A", parseInt(params.id)); // ❌ Doesn't work!
-  
-  return <div>{user.username}</div>;
+export namespace UserService {
+  // Returns SSRQuery object (no HTTP request)
+  export const getUser = <T extends UserSubsetKey>(subset: T, id: number): SSRQuery =>
+    createSSRQuery("UserModel", "findById", [subset, id], ["User", "getUser"]);
+
+  export const me = (): SSRQuery =>
+    createSSRQuery("UserModel", "me", [], ["User", "me"]);
 }
 ```
 
-**Solution: Use backend model directly (Recommended)**
+### Using in registerSSR
+
+Use these Services when registering SSR routes.
 
 ```typescript
-// app/users/[id]/page.tsx
-import { UserModel } from "@/models/user.model";
+// api/src/ssr/routes.ts
+import { registerSSR } from "sonamu/ssr";
+import { UserService, CompanyService } from "../application/queries.generated";
 
-export default async function UserPage({ params }: { params: { id: string } }) {
-  // Use model directly on server
-  const userModel = new UserModel();
-  const { user } = await userModel.getProfile(parseInt(params.id));
-  
-  return (
-    <div>
-      <h1>{user.username}</h1>
-      <p>{user.email}</p>
-    </div>
-  );
-}
+// Company detail page SSR
+registerSSR({
+  path: "/companies/:companyId",
+  preload: (params) => [
+    // Call Service method → Returns SSRQuery object
+    UserService.me(),
+    CompanyService.getCompany("A", Number(params.companyId)),
+  ],
+});
+```
+
+### Frontend Service vs SSR Service
+
+| Item | Frontend Service | SSR Service |
+|------|-----------------|-------------|
+| **File Location** | `web/src/services/services.generated.ts` | `api/src/application/queries.generated.ts` |
+| **Return Value** | `Promise<Data>` (HTTP request) | `SSRQuery` (object) |
+| **Used In** | Browser (React components) | Backend (`registerSSR`) |
+| **HTTP Request** | ✅ Real API call | ❌ Direct backend Model execution |
+
+```typescript
+// Frontend Service (browser)
+const user = await UserService.getUser("A", 123);  // HTTP GET /api/user/findById
+
+// SSR Service (backend)
+const query = UserService.getUser("A", 123);  // Returns SSRQuery object
+// → Sonamu directly executes UserModel.findById("A", 123)
 ```
 
 <Info>
-**Recommended approach**: Use backend models directly in Server Components. No HTTP request overhead, and type safety is equally guaranteed.
+**Key Difference**: SSR Services execute backend Model methods directly without HTTP requests, eliminating network overhead.
 </Info>
 
-### Client Components
+### Learn More
 
-You can freely use Services in Client Components.
+For detailed information about SSR, see the following documents.
 
-```typescript
-// app/users/[id]/edit-button.tsx
-"use client";
-
-import { useState } from "react";
-import { UserService } from "@/services/services.generated";
-
-export function EditButton({ userId }: { userId: number }) {
-  const [editing, setEditing] = useState(false);
-  
-  async function handleEdit() {
-    setEditing(true);
-    
-    try {
-      await UserService.updateProfile({
-        username: "newname",
-      });
-      
-      alert("Updated!");
-    } catch (error) {
-      alert("Failed!");
-    } finally {
-      setEditing(false);
-    }
-  }
-  
-  return (
-    <button onClick={handleEdit} disabled={editing}>
-      {editing ? "Saving..." : "Edit"}
-    </button>
-  );
-}
-```
+<CardGroup cols={2}>
+  <Card title="Data Preloading" icon="database" href="/en/frontend-integration/ssr/preloading-data">
+    Preload data on the server with registerSSR
+  </Card>
+  <Card title="SSR Setup" icon="server" href="/en/frontend-integration/ssr/ssr-setup">
+    Understand the SSR system
+  </Card>
+</CardGroup>
 
 ## Error Handling
 

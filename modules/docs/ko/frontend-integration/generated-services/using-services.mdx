@@ -349,47 +349,82 @@ function RegisterFormWithErrors() {
 `@sonamu-kit/react-components`는 Material-UI, Ant Design 등 다른 UI 라이브러리와도 함께 사용할 수 있습니다.
 </Tip>
 
-## Next.js에서 사용하기
+## SSR에서 Service 사용하기
 
-### Server Components (App Router)
+Sonamu는 Vite + React 기반의 SSR을 지원합니다. SSR에서는 `queries.generated.ts`에 자동 생성된 SSR 전용 Service를 사용합니다.
 
-Next.js 13+ App Router의 Server Components에서는 Service를 직접 호출할 수 없습니다. 대신 백엔드 모델을 직접 사용합니다.
+### SSR Service란?
+
+프론트엔드 Service(`services.generated.ts`)와는 별개로, 백엔드에 **SSR 전용 Service**가 자동 생성됩니다.
 
 ```typescript
-// app/users/[id]/page.tsx
+// api/src/application/queries.generated.ts (자동 생성)
+import type { SSRQuery } from "sonamu/ssr";
 
-// ❌ Server Component에서는 작동하지 않음
-// Service는 브라우저용 fetch를 사용하므로 서버에서 사용 불가
-export default async function UserPage({ params }: { params: { id: string } }) {
-  const user = await UserService.getUser("A", parseInt(params.id)); // ❌ 작동 안함!
-  
-  return <div>{user.username}</div>;
+export namespace UserService {
+  // SSRQuery 객체를 반환 (HTTP 요청하지 않음)
+  export const getUser = <T extends UserSubsetKey>(subset: T, id: number): SSRQuery =>
+    createSSRQuery("UserModel", "findById", [subset, id], ["User", "getUser"]);
+
+  export const me = (): SSRQuery =>
+    createSSRQuery("UserModel", "me", [], ["User", "me"]);
 }
 ```
 
-**해결 방법: 백엔드 모델 직접 사용 (권장)**
+### registerSSR에서 사용
+
+SSR 라우트를 등록할 때 이 Service를 사용합니다.
 
 ```typescript
-// app/users/[id]/page.tsx
-import { UserModel } from "@/models/user.model";
+// api/src/ssr/routes.ts
+import { registerSSR } from "sonamu/ssr";
+import { UserService, CompanyService } from "../application/queries.generated";
 
-export default async function UserPage({ params }: { params: { id: string } }) {
-  // 서버에서 모델을 직접 사용
-  const userModel = new UserModel();
-  const { user } = await userModel.getProfile(parseInt(params.id));
-  
-  return (
-    <div>
-      <h1>{user.username}</h1>
-      <p>{user.email}</p>
-    </div>
-  );
-}
+// 회사 상세 페이지 SSR
+registerSSR({
+  path: "/companies/:companyId",
+  preload: (params) => [
+    // Service 메서드 호출 → SSRQuery 객체 반환
+    UserService.me(),
+    CompanyService.getCompany("A", Number(params.companyId)),
+  ],
+});
+```
+
+### 프론트엔드 Service vs SSR Service
+
+| 항목 | 프론트엔드 Service | SSR Service |
+|------|-------------------|-------------|
+| **파일 위치** | `web/src/services/services.generated.ts` | `api/src/application/queries.generated.ts` |
+| **반환값** | `Promise<Data>` (HTTP 요청) | `SSRQuery` (객체) |
+| **사용 위치** | 브라우저 (React 컴포넌트) | 백엔드 (`registerSSR`) |
+| **HTTP 요청** | ✅ 실제 API 호출 | ❌ 백엔드 Model 직접 실행 |
+
+```typescript
+// 프론트엔드 Service (브라우저)
+const user = await UserService.getUser("A", 123);  // HTTP GET /api/user/findById
+
+// SSR Service (백엔드)
+const query = UserService.getUser("A", 123);  // SSRQuery 객체 반환
+// → Sonamu가 UserModel.findById("A", 123) 직접 실행
 ```
 
 <Info>
-**권장 방식**: Server Components에서는 백엔드 모델을 직접 사용하세요. HTTP 요청 오버헤드가 없고, 타입 안전성도 동일하게 보장됩니다.
+**핵심 차이점**: SSR Service는 HTTP 요청 없이 백엔드 Model 메서드를 직접 실행하므로 네트워크 오버헤드가 없습니다.
 </Info>
+
+### 더 알아보기
+
+SSR에 대한 자세한 내용은 다음 문서를 참고하세요.
+
+<CardGroup cols={2}>
+  <Card title="데이터 프리로딩" icon="database" href="/frontend-integration/ssr/preloading-data">
+    registerSSR로 서버에서 데이터 미리 로드하기
+  </Card>
+  <Card title="SSR 설정" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR 시스템 이해하기
+  </Card>
+</CardGroup>
 
 ### Service 생성 메커니즘 이해하기
 

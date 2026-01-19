@@ -248,19 +248,16 @@ const user = await UserService.findById("C", userId);
 Vite + React 기반의 서버 사이드 렌더링을 지원합니다. `registerSSR`로 SSR할 라우트를 등록하고, `preload` 콜백으로 서버에서 필요한 데이터를 미리 로드합니다.
 
 ```typescript
-// api/src/application/sonamu.ts
-import { registerSSR } from "sonamu";
+// api/src/ssr/routes.ts
+import { registerSSR } from "sonamu/ssr";
+import { UserService } from "../application/queries.generated";
 
 // 사용자 상세 페이지 SSR 등록
 registerSSR({
   path: "/users/:id",
   preload: (params) => [
-    {
-      modelName: "UserModel",
-      methodName: "getUser",
-      params: ["C", parseInt(params.id)],
-      serviceKey: ["User", "getUser"],
-    },
+    // Service 메서드 호출 → SSRQuery 반환
+    UserService.getUser("C", parseInt(params.id)),
   ],
 });
 ```

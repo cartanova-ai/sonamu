@@ -248,19 +248,16 @@ const user = await UserService.findById("C", userId);
 Supports server-side rendering based on Vite + React. Register SSR routes with `registerSSR` and preload necessary data on the server with the `preload` callback.
 
 ```typescript
-// api/src/application/sonamu.ts
-import { registerSSR } from "sonamu";
+// api/src/ssr/routes.ts
+import { registerSSR } from "sonamu/ssr";
+import { UserService } from "../application/queries.generated";
 
 // Register user detail page for SSR
 registerSSR({
   path: "/users/:id",
   preload: (params) => [
-    {
-      modelName: "UserModel",
-      methodName: "getUser",
-      params: ["C", parseInt(params.id)],
-      serviceKey: ["User", "getUser"],
-    },
+    // Call Service method → Returns SSRQuery
+    UserService.getUser("C", parseInt(params.id)),
   ],
 });
 ```
