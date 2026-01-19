@@ -1,18 +1,19 @@
-import { NaiteVitestReporter } from "sonamu/test";
+import { getSonamuTestConfig, NaiteVitestReporter } from "sonamu/test";
 import { defineConfig } from "vitest/config";
+import { PrioritySequencer } from "./custom-sequencer";
 
-export default defineConfig({
+export default defineConfig(async () => ({
   plugins: [],
-  test: {
+  test: await getSonamuTestConfig({
     include: ["src/**/*.test.ts"],
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
-    reporters: [NaiteVitestReporter],
-    pool: "forks",
-    maxWorkers: 1,
-    isolate: false,
+    sequence: {
+      sequencer: PrioritySequencer,
+    },
+    reporters: ["default", NaiteVitestReporter],
     restoreMocks: true,
     typecheck: {
       enabled: true,
@@ -26,10 +27,5 @@ export default defineConfig({
       exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
     },
     includeTaskLocation: true,
-    server: {
-      deps: {
-        inline: ["sonamu"],
-      },
-    },
-  },
-});
+  }),
+}));

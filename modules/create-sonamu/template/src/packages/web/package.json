@@ -1,0 +1,49 @@
+{
+  "name": "create-sonamu-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sonamu web client",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@sonamu-kit/react-components": "workspace:^",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "axios": "catalog:",
+    "clsx": "catalog:",
+    "dotenv": "catalog:",
+    "eventsource": "catalog:",
+    "jotai": "catalog:",
+    "qs": "catalog:",
+    "radashi": "catalog:",
+    "react": "catalog:",
+    "react-day-picker": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@svgr/core": "catalog:",
+    "@svgr/plugin-jsx": "catalog:",
+    "@svgr/plugin-svgo": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-router-devtools": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@types/node": "catalog:",
+    "@types/qs": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react-swc": "catalog:",
+    "sass": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:",
+    "vite": "catalog:"
+  }
+}

@@ -22,12 +22,14 @@ Sonamu는 **Entity-driven 풀스택 TypeScript 프레임워크**입니다. 엔�
 
 ## 빠른 시작
 
+### 대화형 모드
+
 ```bash
 pnpm create sonamu
 ```
 
 ```
-? Project name: my-app
+? Project name: my_app
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
 ? Enter the Docker project name: my-app-container
@@ -37,22 +39,59 @@ pnpm create sonamu
 ? Enter the database password: ****
 ```
 
+### CLI 옵션 모드
+
+```bash
+# 프로젝트명만 지정
+pnpm create sonamu my_app
+
+# 모든 질문을 기본값으로 자동 응답
+pnpm create sonamu my_app --yes
+
+# pnpm 설치 스킵
+pnpm create sonamu my_app --skip-pnpm
+
+# Docker 설정 스킵
+pnpm create sonamu my_app --skip-docker
+
+# DB 정보 지정
+pnpm create sonamu my_app \
+  --db-user=postgres \
+  --db-password=mypassword \
+  --db-name=myapp \
+  --container-name=myapp-pg \
+  --docker-project=myapp-docker
+```
+
+#### 사용 가능한 옵션
+
+| 옵션               | 설명                             | 기본값                 |
+| ------------------ | -------------------------------- | ---------------------- |
+| `--yes`, `-y`      | 모든 질문에 기본값으로 자동 응답 | -                      |
+| `--skip-pnpm`      | pnpm 설치 건너뛰기               | false                  |
+| `--skip-docker`    | Docker DB 설정 건너뛰기          | false                  |
+| `--db-user`        | 데이터베이스 사용자              | postgres               |
+| `--db-password`    | 데이터베이스 비밀번호            | (프롬프트로 입력)      |
+| `--db-name`        | 데이터베이스 이름                | {프로젝트명}           |
+| `--container-name` | Docker 컨테이너 이름             | {프로젝트명}-container |
+| `--docker-project` | Docker Compose 프로젝트명        | {프로젝트명}-docker    |
+
 ### 실행하기
 
 ```bash
 # 1. 데이터베이스 시작
-cd my-app/api
-pnpm db:up
+cd my_app/packages/api
+pnpm docker:up
 
 # 2. API 서버 시작
 pnpm dev
 
 # 3. Web 서버 시작 (새 터미널)
-cd my-app/web
+cd my_app/packages/web
 pnpm dev
 
 # 4. Sonamu UI에서 첫 번째 엔티티 생성
-cd my-app/api
+cd my_app/packages/api
 pnpm sonamu ui
 ```
 
@@ -67,25 +106,23 @@ pnpm sonamu ui
 ## 📁 생성되는 프로젝트 구조
 
 ```
-my-app/
-├── api/                          # 백엔드
-│   ├── src/
-│   │   ├── application/          # 엔티티, 모델, 타입 (자동 생성)
-│   │   ├── testing/              # 테스트 유틸리티
-│   │   └── index.ts              # 서버 엔트리포인트
-│   ├── database/
-│   │   ├── docker-compose.yml    # PostgreSQL 컨테이너
-│   │   ├── fixtures/init.sql     # DB 초기화 스크립트
-│   │   └── scripts/              # dump, seed 스크립트
-│   ├── sonamu.config.ts          # Sonamu 설정
-│   └── .env                      # 환경변수
-│
-├── web/                          # 프론트엔드
-│   └── src/
-│       ├── services/             # API 클라이언트 (자동 생성)
-│       └── pages/
-│
-└── README.md
+├── packages/
+│   ├── api/                # 백엔드 (Sonamu (based on Fastify))
+│   │   ├── src/
+│   │   │   ├── application/    # 엔티티, 모델, 타입 (자동 생성 with Scaffolding)
+│   │   │   ├── testing/        # 테스트 유틸리티
+│   │   │   └── index.ts        # 서버 엔트리포인트
+│   │   ├── database/
+│   │   │   ├── docker-compose.yml
+│   │   │   ├── fixtures/       # DB 초기화 스크립트
+│   │   │   └── scripts/        # dump, seed 스크립트
+│   │   └── sonamu.config.ts    # Sonamu 설정
+│   │
+│   └── web/                # 프론트엔드 (React + Vite)
+│       └── src/
+│           ├── services/       # API 클라이언트 (자동 생성)
+│           └── pages/
+└── pnpm-workspace.yaml     # pnpm workspace 설정
 ```
 
 ---

@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.3",
+    "@types/minimist": "^1.2.5",
     "@types/node": "catalog:",
     "@types/prompts": "^2",
     "esbuild": "catalog:",
@@ -40,6 +41,7 @@
   "packageManager": "pnpm@10.28.0",
   "dependencies": {
     "chalk": "catalog:",
+    "minimist": "catalog:",
     "ora": "^8.0.1",
     "prompts": "^2.4.2"
   }

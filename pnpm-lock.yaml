@@ -423,6 +423,9 @@ catalogs:
     minimatch:
       specifier: ^10.0.3
       version: 10.1.1
+    minimist:
+      specifier: ^1.2.8
+      version: 1.2.8
     next-themes:
       specifier: ^0.4.6
       version: 0.4.6
@@ -833,6 +836,9 @@ importers:
       chalk:
         specifier: 'catalog:'
         version: 4.1.2
+      minimist:
+        specifier: 'catalog:'
+        version: 1.2.8
       ora:
         specifier: ^8.0.1
         version: 8.2.0
@@ -846,6 +852,9 @@ importers:
       '@tsconfig/node18':
         specifier: ^18.2.3
         version: 18.2.6
+      '@types/minimist':
+        specifier: ^1.2.5
+        version: 1.2.5
       '@types/node':
         specifier: 'catalog:'
         version: 25.0.7
@@ -4693,6 +4702,9 @@ packages:
 
   '@types/mime-types@3.0.1':
     resolution: {integrity: sha512-xRMsfuQbnRq1Ef+C+RKaENOxXX87Ygl38W1vDfPHRku02TgQr+Qd8iivLtAMcR0KF5/29xlnFihkTlbqFrGOVQ==}
+
+  '@types/minimist@1.2.5':
+    resolution: {integrity: sha512-hov8bUuiLiyFPGyFPE1lwWhmzYbirOXQNNo40+y3zow8aFVTeyn3VWL0VFFfdNddA8S4Vf0Tc062rzyNr7Paag==}
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
@@ -13511,6 +13523,8 @@ snapshots:
   '@types/methods@1.1.4': {}
 
   '@types/mime-types@3.0.1': {}
+
+  '@types/minimist@1.2.5': {}
 
   '@types/ms@2.1.0': {}
 

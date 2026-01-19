@@ -14,6 +14,10 @@ export default defineConfig({
       prefix: "/api",
     },
   },
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
   sync: {
     targets: ["web"],
   },
@@ -75,16 +79,15 @@ export default defineConfig({
     },
 
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
         fs: drivers.fs({
           location: path.join(import.meta.dirname, "/../public/uploaded"),
           visibility: "public",
           urlBuilder: {
-            generateURL(key) {
+            async generateURL(key) {
               return `/api/public/uploaded/${key}`;
             },
-            generateSignedURL(key) {
+            async generateSignedURL(key) {
               return `/api/public/uploaded/${key}`;
             },
           },

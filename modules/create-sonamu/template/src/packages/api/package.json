@@ -1,0 +1,50 @@
+{
+  "name": "create-sonamu-api",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "description": "Sonamu API server",
+  "scripts": {
+    "dev": "sonamu dev",
+    "build": "sonamu build",
+    "start": "sonamu start",
+    "test": "vitest run",
+    "test:watch": "vitest watch --standalone",
+    "test:coverage": "vitest run --coverage",
+    "sonamu": "sonamu",
+    "dump": "bash database/scripts/dump.sh",
+    "seedOnly": "bash database/scripts/seed.sh",
+    "seed": "pnpm seedOnly && sonamu fixture sync",
+    "sync:dump": "pnpm seed && pnpm sonamu migrate run && pnpm dump",
+    "docker:up": "docker compose --env-file .env -f database/docker-compose.yml up -d",
+    "docker:down": "docker compose --env-file .env -f database/docker-compose.yml down"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/provider-utils": "catalog:",
+    "@swc/core": "catalog:",
+    "ai": "catalog:",
+    "dotenv": "catalog:",
+    "knex": "catalog:",
+    "pg": "catalog:",
+    "radashi": "catalog:",
+    "sonamu": "workspace:^",
+    "zod": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@logtape/pretty": "catalog:",
+    "@logtape/redaction": "catalog:"
+  },
+  "devDependencies": {
+    "@fastify/compress": "catalog:",
+    "fastify": "catalog:",
+    "@swc/cli": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
