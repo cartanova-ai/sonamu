@@ -53,7 +53,7 @@
   },
   {
     "path": "src/application/file/file.model.ts",
-    "checksum": "74d45481263fd93157ee61f18f8ec70a9d4daba9"
+    "checksum": "4cae1e25b291be5e07c7df7af6a4e3dfbb4f8041"
   },
   {
     "path": "src/application/file/file.types.ts",
@@ -117,11 +117,11 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "2e4f408e3a1cdbef8a87b728673516ff40f701b3"
+    "checksum": "c67f32863afae54dd1f0d5d1670e64afb30796b0"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "6a16833cdde9a2909cc1b8b6f1012070ba669765"
+    "checksum": "27e3b52f8abebb9098c1da03c7d25a091cdea4e5"
   },
   {
     "path": "src/i18n/sd.generated.ts",
@@ -129,6 +129,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "e8c9e43b217db2ace729fbbea02c2bec5841acbd"
+    "checksum": "6013e36dc3ec3dc3ef88e4bd98ddb24c6246f056"
   }
 ]

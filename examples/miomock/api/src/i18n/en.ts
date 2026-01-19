@@ -97,6 +97,7 @@ export default defineLocale({
   "menu.department": "Departments",
   "menu.employee": "Employees",
   "menu.file": "Files",
+  "menu.fileUploadTest": "File Upload Test",
   "menu.components": "Component Test",
   "menu.home": "Home",
   "menu.project": "Projects",

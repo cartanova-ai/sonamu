@@ -139,20 +139,20 @@ class FileModelClass extends BaseModelClass<
   async upload(): Promise<{
     files: SonamuFile[];
   }> {
-    const { files: _files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    console.log("files", _files);
-    if (!_files || _files.length === 0) {
+    console.log("bufferedFiles", bufferedFiles);
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }
 
     const files = await Promise.all(
-      _files.map(async (file) => {
+      bufferedFiles.map(async (file) => {
         const md5 = await file.md5();
         const key = `${md5}.${file.extname}`;
         return {
           name: file.filename,
-          url: await file.saveToDisk(key),
+          url: await file.saveToDisk("fs", key),
           mime_type: file.mimetype,
           size: file.size,
         };
@@ -169,21 +169,21 @@ class FileModelClass extends BaseModelClass<
     category: string;
     files: SonamuFile[];
   }> {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
     const { category } = params;
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }
 
-    console.log("files를 원하는 로직으로 처리해주세요", files);
+    console.log("bufferedFiles를 원하는 로직으로 처리해주세요", bufferedFiles);
 
     return {
       category,
       files: await Promise.all(
-        files.map(async (file) => ({
+        bufferedFiles.map(async (file) => ({
           name: file.filename,
-          url: await file.saveToDisk(`${category}/${await file.md5()}`),
+          url: await file.saveToDisk("fs", `${category}/${await file.md5()}`),
           mime_type: file.mimetype,
           size: file.size,
         })),
@@ -196,21 +196,93 @@ class FileModelClass extends BaseModelClass<
     category: string;
     files: { name: string; url: string; mime_type: string; size: number }[];
   }> {
-    const { files } = Sonamu.getContext();
-    if (!files || files.length === 0) {
+    const { bufferedFiles } = Sonamu.getContext();
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }
 
     return {
       category,
       files: await Promise.all(
-        files.map(async (file) => ({
+        bufferedFiles.map(async (file) => ({
           name: file.filename,
-          url: await file.saveToDisk(`${category}/${await file.md5()}`),
+          url: await file.saveToDisk("fs", `${category}/${await file.md5()}`),
           mime_type: file.mimetype,
           size: file.size,
         })),
       ),
+    };
+  }
+
+  /**
+   * Buffer 모드 테스트용 API
+   * - 파일을 메모리에 로드한 후 MD5 해시로 저장합니다.
+   * - name 파라미터를 함께 받아서 응답에 포함합니다.
+   */
+  @upload({ limits: { files: 5 } })
+  async testBufferUpload(params: { name: string }): Promise<{
+    name: string;
+    files: { filename: string; url: string; mimetype: string; size: number; md5: string }[];
+  }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const { name } = params;
+
+    if (!bufferedFiles || bufferedFiles.length === 0) {
+      throw new BadRequestException(SD("file.uploadFailed"));
+    }
+
+    console.log("bufferedFiles", bufferedFiles);
+
+    const files = await Promise.all(
+      bufferedFiles.map(async (file) => {
+        const md5 = await file.md5();
+        const key = `buffer-test/${md5}.${file.extname}`;
+        return {
+          filename: file.filename,
+          url: await file.saveToDisk("fs", key),
+          mimetype: file.mimetype,
+          size: file.size,
+          md5,
+        };
+      }),
+    );
+
+    return { name, files };
+  }
+
+  /**
+   * Stream 모드 테스트용 API
+   * - 파일을 즉시 저장소로 스트리밍합니다.
+   * - name 파라미터를 함께 받아서 응답에 포함합니다.
+   */
+  @upload({
+    consume: "stream",
+    destination: "fs",
+    keyGenerator: (file) => `${Date.now()}-${file.filename}`,
+    limits: { files: 5 },
+  })
+  async testStreamUpload(params: { name: string }): Promise<{
+    name: string;
+    files: { filename: string; url: string; mimetype: string; size: number; key: string }[];
+  }> {
+    const { uploadedFiles } = Sonamu.getContext();
+    const { name } = params;
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      throw new BadRequestException(SD("file.uploadFailed"));
+    }
+
+    console.log("uploadedFiles", uploadedFiles);
+
+    return {
+      name,
+      files: uploadedFiles.map((file) => ({
+        filename: file.filename,
+        url: file.signedUrl,
+        mimetype: file.mimetype,
+        size: file.size,
+        key: file.key,
+      })),
     };
   }
 }

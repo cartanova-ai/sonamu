@@ -362,6 +362,28 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/file/testBufferUpload
+Content-Type: application/json
+
+{
+  "params": {
+    "name": "NAME"
+  }
+}
+
+###
+
+POST {{baseUrl}}/api/file/testStreamUpload
+Content-Type: application/json
+
+{
+  "params": {
+    "name": "NAME"
+  }
+}
+
+###
+
 GET {{baseUrl}}/api/employee/findById
 	?subset=unknown
 	&id=0
