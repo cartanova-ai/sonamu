@@ -342,7 +342,7 @@ export function transactional(options: TransactionalOptions = {}) {
  * @param options
  * @returns
  */
-export function upload(options: UploadDecoratorOptions) {
+export function upload(options: UploadDecoratorOptions = { consume: "buffer" }) {
   return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
     const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
