@@ -13,8 +13,6 @@ export type KeyGenerator = (file: {
  * Storage 설정 타입
  */
 export type StorageConfig = {
-  /** 기본 디스크 이름 */
-  default: string;
   /** 디스크별 드라이버 팩토리 */
   drivers: Record<DriverKey, () => DriverContract>;
   /** stream 모드의 전역 키 생성 함수 (생략 시 timestamp-random 기본값) */

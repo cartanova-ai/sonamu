@@ -15,25 +15,16 @@ export class StorageManager {
    * 디스크 인스턴스 반환 (lazy initialization)
    * @param diskName 디스크 이름 (없으면 default)
    */
-  use(diskName?: DriverKey): Disk {
-    const name = diskName ?? (this.config.default as DriverKey);
-
-    if (!this.disks.has(name)) {
-      const factory = this.config.drivers[name];
+  use(diskName: DriverKey): Disk {
+    if (!this.disks.has(diskName)) {
+      const factory = this.config.drivers[diskName];
       if (!factory) {
         const available = Object.keys(this.config.drivers).join(", ");
-        throw new Error(`Unknown disk: "${name}". Available: ${available}`);
+        throw new Error(`Unknown disk: "${diskName}". Available: ${available}`);
       }
-      this.disks.set(name, new Disk(factory()));
+      this.disks.set(diskName, new Disk(factory()));
     }
 
-    return assertDefined(this.disks.get(name), `Disk ${name} not found`);
-  }
-
-  /**
-   * 기본 디스크 이름 반환
-   */
-  get defaultDisk(): string {
-    return this.config.default;
+    return assertDefined(this.disks.get(diskName), `Disk ${diskName} not found`);
   }
 }
