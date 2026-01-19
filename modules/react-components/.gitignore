@@ -4,6 +4,7 @@ node_modules
 # Build
 dist
 *.tsbuildinfo
+.tanstack
 
 # IDE
 .vscode
