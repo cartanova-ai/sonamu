@@ -115,8 +115,10 @@ interface MultiSelectProps
    */
   onValueChange: (value: string[]) => void;
 
-  /** The default selected values when the component mounts. */
-  defaultValue?: string[];
+  /**
+   * The current selected values.
+   */
+  value: string[];
 
   /**
    * Placeholder text to be displayed when no values are selected.
@@ -255,13 +257,6 @@ interface MultiSelectProps
   deduplicateOptions?: boolean;
 
   /**
-   * If true, the component will reset its internal state when defaultValue changes.
-   * Useful for React Hook Form integration and form reset functionality.
-   * Optional, defaults to true.
-   */
-  resetOnDefaultValueChange?: boolean;
-
-  /**
    * If true, automatically closes the popover after selecting an option.
    * Useful for single-selection-like behavior or mobile UX.
    * Optional, defaults to false.
@@ -284,7 +279,7 @@ export interface MultiSelectRef {
   /**
    * Set selected values programmatically
    */
-  setSelectedValues: (values: string[]) => void;
+  handleValueChange: (values: string[]) => void;
   /**
    * Clear all selected values
    */
@@ -301,7 +296,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       options,
       onValueChange,
       variant,
-      defaultValue = [],
+      value,
       placeholder,
       animation = 0,
       animationConfig,
@@ -320,7 +315,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       minWidth,
       maxWidth,
       deduplicateOptions = false,
-      resetOnDefaultValueChange = true,
       closeOnSelect = false,
       ...props
     },
@@ -331,7 +325,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     // SD 기본값 설정
     const finalPlaceholder = placeholder ?? SD("component.multiSelect.selectPlaceholder");
 
-    const [selectedValues, setSelectedValues] = React.useState<string[]>(defaultValue);
+    // 제어 컴포넌트 전용: value를 직접 사용
+    const selectedValues = value;
+
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
     const [searchValue, setSearchValue] = React.useState("");
@@ -360,8 +356,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     const triggerDescriptionId = `${multiSelectId}-description`;
     const selectedCountId = `${multiSelectId}-count`;
 
-    const prevDefaultValueRef = React.useRef<string[]>(defaultValue);
-
     const isGroupedOptions = React.useCallback(
       (opts: MultiSelectOption[] | MultiSelectGroup[]): opts is MultiSelectGroup[] => {
         return opts.length > 0 && "heading" in opts[0];
@@ -369,19 +363,11 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       [],
     );
 
-    const arraysEqual = React.useCallback((a: string[], b: string[]): boolean => {
-      if (a.length !== b.length) return false;
-      const sortedA = [...a].sort();
-      const sortedB = [...b].sort();
-      return sortedA.every((val, index) => val === sortedB[index]);
-    }, []);
-
     const resetToDefault = React.useCallback(() => {
-      setSelectedValues(defaultValue);
+      onValueChange([]);
       setIsPopoverOpen(false);
       setSearchValue("");
-      onValueChange(defaultValue);
-    }, [defaultValue, onValueChange]);
+    }, [onValueChange]);
 
     const buttonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -390,12 +376,10 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       () => ({
         reset: resetToDefault,
         getSelectedValues: () => selectedValues,
-        setSelectedValues: (values: string[]) => {
-          setSelectedValues(values);
+        handleValueChange: (values: string[]) => {
           onValueChange(values);
         },
         clear: () => {
-          setSelectedValues([]);
           onValueChange([]);
         },
         focus: () => {
@@ -588,7 +572,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       } else if (event.key === "Backspace" && !event.currentTarget.value) {
         const newSelectedValues = [...selectedValues];
         newSelectedValues.pop();
-        setSelectedValues(newSelectedValues);
         onValueChange(newSelectedValues);
       }
     };
@@ -600,7 +583,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
       const newSelectedValues = selectedValues.includes(optionValue)
         ? selectedValues.filter((value) => value !== optionValue)
         : [...selectedValues, optionValue];
-      setSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
       if (closeOnSelect) {
         setIsPopoverOpen(false);
@@ -609,7 +591,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 
     const handleClear = () => {
       if (disabled) return;
-      setSelectedValues([]);
       onValueChange([]);
     };
 
@@ -621,7 +602,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     const clearExtraOptions = () => {
       if (disabled) return;
       const newSelectedValues = selectedValues.slice(0, responsiveSettings.maxCount);
-      setSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
     };
 
@@ -632,7 +612,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
         handleClear();
       } else {
         const allValues = allOptions.map((option) => option.value);
-        setSelectedValues(allValues);
         onValueChange(allValues);
       }
 
@@ -640,17 +619,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
         setIsPopoverOpen(false);
       }
     };
-
-    React.useEffect(() => {
-      if (!resetOnDefaultValueChange) return;
-      const prevDefaultValue = prevDefaultValueRef.current;
-      if (!arraysEqual(prevDefaultValue, defaultValue)) {
-        if (!arraysEqual(selectedValues, defaultValue)) {
-          setSelectedValues(defaultValue);
-        }
-        prevDefaultValueRef.current = [...defaultValue];
-      }
-    }, [defaultValue, selectedValues, arraysEqual, resetOnDefaultValueChange]);
 
     const getWidthConstraints = () => {
       const defaultMinWidth = screenSize === "mobile" ? "0px" : "200px";

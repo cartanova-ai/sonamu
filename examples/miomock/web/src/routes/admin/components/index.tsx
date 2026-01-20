@@ -70,7 +70,7 @@ function ComponentsTestPage() {
               CalendarIcon={CalendarIcon}
               ChevronDownIcon={ChevronDownIcon}
               value={singleDateValue}
-              onChange={(_, data) => setSingleDateValue(data.value)}
+              onValueChange={setSingleDateValue}
               placeholder="날짜를 선택하세요"
             />
             <div className="text-xs font-mono bg-muted p-2 rounded">
@@ -90,7 +90,7 @@ function ComponentsTestPage() {
               CalendarIcon={CalendarIcon}
               ChevronDownIcon={ChevronDownIcon}
               value={rangeDateValue}
-              onChange={(_, data) => setRangeDateValue(data.value)}
+              onValueChange={setRangeDateValue}
               placeholder="날짜 범위를 선택하세요"
               defaultRangeMode={true}
               numberOfMonths={2}
@@ -113,7 +113,7 @@ function ComponentsTestPage() {
                 CalendarIcon={CalendarIcon}
                 ChevronDownIcon={ChevronDownIcon}
                 value={emptyDateValue}
-                onChange={(_, data) => setEmptyDateValue(data.value)}
+                onValueChange={setEmptyDateValue}
                 placeholder="날짜를 선택하세요"
               />
             </div>

@@ -7,6 +7,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
@@ -274,7 +277,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                       <Checkbox
                         disabled={conn.status === "error" || !!migrationStatusError}
                         checked={selectedConnKeys.includes(conn.connKey)}
-                        label={`${conn.name} / ${conn.status}`}
+                        label={
+                          <Tooltip>
+                            <TooltipTrigger>
+                              {`${conn.name} / ${conn.status}`}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>${conn.connString}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        }
                         onCheckedChange={(checked) => {
                           if (checked) {
                             setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));

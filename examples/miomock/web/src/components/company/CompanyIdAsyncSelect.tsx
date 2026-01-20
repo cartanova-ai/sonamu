@@ -85,8 +85,8 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
     return (
       <MultiSelect
         options={options}
+        value={multiValue}
         onValueChange={handleMultiChange}
-        defaultValue={multiValue}
         placeholder={placeholder}
         disabled={disabled}
         className={className}

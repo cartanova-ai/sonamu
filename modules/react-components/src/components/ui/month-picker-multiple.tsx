@@ -21,7 +21,7 @@ interface MonthPickerMultipleProps {
   /** Current value */
   value?: MonthPickerValue;
   /** Callback when value changes */
-  onChange?: (event: null, data: { value: MonthPickerValue | undefined }) => void;
+  onValueChange?: (value: MonthPickerValue | undefined) => void;
   /** Placeholder text when no value */
   placeholder?: string;
   /** Date format string for display */
@@ -40,7 +40,7 @@ export function MonthPickerMultiple({
   CalendarIcon,
   ChevronDownIcon,
   value,
-  onChange,
+  onValueChange,
   placeholder,
   dateFormat = "MMM/yyyy",
   className = "",
@@ -120,19 +120,19 @@ export function MonthPickerMultiple({
   };
 
   const handleSave = () => {
-    if (onChange) {
-      if (tempIsRangeMode && tempDateRange?.from && tempDateRange?.to) {
-        onChange(null, {
-          value: {
-            type: "range",
-            from: tempDateRange.from,
-            to: tempDateRange.to,
-          },
-        });
-      } else if (!tempIsRangeMode && tempDate) {
-        onChange(null, { value: { type: "single", date: tempDate } });
-      }
+    let newValue: MonthPickerValue | undefined;
+
+    if (tempIsRangeMode && tempDateRange?.from && tempDateRange?.to) {
+      newValue = {
+        type: "range",
+        from: tempDateRange.from,
+        to: tempDateRange.to,
+      };
+    } else if (!tempIsRangeMode && tempDate) {
+      newValue = { type: "single", date: tempDate };
     }
+
+    onValueChange?.(newValue);
     setIsOpen(false);
   };
 

@@ -1,4 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
@@ -10,8 +11,13 @@ import dts from "vite-plugin-dts";
 export default defineConfig({
   plugins: [
     react(),
+    tanstackRouter({
+      routesDirectory: "./demo/routes",
+      generatedRouteTree: "./demo/routeTree.gen.ts",
+    }),
     dts({
       insertTypesEntry: true,
+      entryRoot: "src",
     }),
     Icons({
       compiler: "jsx",
@@ -37,6 +43,9 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
     dedupe: ["react", "react-dom", "@tanstack/react-router"],
+  },
+  server: {
+    port: 10290,
   },
   build: {
     sourcemap: true,

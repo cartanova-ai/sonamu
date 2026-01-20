@@ -116,6 +116,7 @@
     "unplugin-icons": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
-    "vite-tsconfig-paths": "catalog:"
+    "vite-tsconfig-paths": "catalog:",
+    "@tanstack/router-plugin": "catalog:"
   }
 }
