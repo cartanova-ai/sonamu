@@ -5,30 +5,144 @@ description: '파일 업로드 API 생성 데코레이터'
 
 `@upload` 데코레이터는 파일 업로드를 처리하는 API를 생성합니다. Multipart form-data 요청을 자동으로 파싱하고, 파일 객체를 제공합니다. `@api` 데코레이터 없이도 독립적으로 사용할 수 있으며, 자동으로 `POST` 메서드와 multipart 클라이언트(`axios-multipart`, `tanstack-mutation-multipart`)를 설정합니다.
 
-## 기본 사용법
+## 업로드 모드
 
-업로드된 파일은 `Sonamu.getContext().files`를 통해 접근합니다. `files`는 `UploadedFile[]` 타입의 배열입니다.
+Sonamu는 두 가지 파일 업로드 모드를 제공합니다:
+
+| 모드 | 옵션 | Context 속성 | 파일 타입 | 특징 |
+|------|------|--------------|----------|------|
+| **Buffer** (기본) | `consume: "buffer"` 또는 생략 | `bufferedFiles` | `BufferedFile[]` | 메모리에 로드, MD5 계산/이미지 처리 등 유연한 작업 가능 |
+| **Stream** | `consume: "stream"` | `uploadedFiles` | `UploadedFile[]` | 즉시 저장소로 스트리밍, 대용량 파일에 적합 |
+
+## Buffer 모드 (기본)
+
+Buffer 모드는 파일을 메모리에 로드한 후 처리합니다. MD5 해시 계산, 이미지 리사이징 등 파일 내용을 직접 다뤄야 할 때 사용합니다.
 
 ```typescript
 import { BaseModelClass, upload, Sonamu } from "sonamu";
 
 class FileModelClass extends BaseModelClass {
-  // 단일 파일 업로드
-  @upload()
+  @upload()  // 기본값: consume: "buffer"
   async uploadAvatar() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
 
     if (!file) {
       throw new Error("No file uploaded");
     }
 
-    // 파일 저장
-    const key = `avatars/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+    // MD5 해시로 중복 방지
+    const md5 = await file.md5();
+    const key = `avatars/${md5}.${file.extname}`;
+    const url = await file.saveToDisk("fs", key);
 
     return { url, filename: file.filename, size: file.size };
   }
+}
+```
+
+### BufferedFile 객체
+
+```typescript
+class BufferedFile {
+  // 원본 파일 이름
+  get filename(): string;
+
+  // MIME 타입
+  get mimetype(): string;
+
+  // 파일 크기 (bytes)
+  get size(): number;
+
+  // 확장자 (점 제외, 예: "jpg", "png")
+  get extname(): string | false;
+
+  // 파일 Buffer (메모리에 로드된 데이터)
+  get buffer(): Buffer;
+
+  // saveToDisk 후 저장된 URL (Unsigned)
+  get url(): string;
+
+  // saveToDisk 후 저장된 Signed URL
+  get signedUrl(): string;
+
+  // 원본 Fastify MultipartFile 접근
+  get raw(): MultipartFile;
+
+  // MD5 해시 계산
+  async md5(): Promise<string>;
+
+  // 파일을 디스크에 저장 (URL 반환)
+  async saveToDisk(diskName: DriverKey, key: string): Promise<string>;
+}
+```
+
+<Warning>
+`saveToDisk`의 파라미터 순서는 `(diskName, key)` 입니다.
+</Warning>
+
+## Stream 모드
+
+Stream 모드는 파일을 메모리에 로드하지 않고 즉시 저장소로 스트리밍합니다. 대용량 파일 업로드에 적합합니다.
+
+```typescript
+@upload({
+  consume: "stream",
+  destination: "s3",  // 저장할 디스크 이름
+  keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,  // 키 생성 함수
+  limits: { files: 5 }
+})
+async uploadLargeFiles() {
+  const { uploadedFiles } = Sonamu.getContext();
+
+  if (!uploadedFiles || uploadedFiles.length === 0) {
+    throw new Error("No files uploaded");
+  }
+
+  // 파일은 이미 저장소에 업로드된 상태
+  return {
+    files: uploadedFiles.map((file) => ({
+      filename: file.filename,
+      url: file.url,
+      key: file.key,
+      size: file.size,
+    })),
+  };
+}
+```
+
+### UploadedFile 객체
+
+Stream 모드에서는 파일이 이미 저장소에 업로드된 상태로 메타데이터만 접근할 수 있습니다.
+
+```typescript
+class UploadedFile {
+  // 원본 파일 이름
+  get filename(): string;
+
+  // MIME 타입
+  get mimetype(): string;
+
+  // 파일 크기 (bytes)
+  get size(): number;
+
+  // 확장자 (점 제외, 예: "jpg", "png")
+  get extname(): string | false;
+
+  // 저장된 URL (Unsigned)
+  get url(): string;
+
+  // 저장된 Signed URL
+  get signedUrl(): string;
+
+  // 저장소 내 키
+  get key(): string;
+
+  // 저장된 디스크 이름
+  get diskName(): DriverKey;
+
+  // 저장소에서 파일 다운로드 (나중에 처리해야 할 때)
+  async download(): Promise<Buffer>;
 }
 ```
 
@@ -40,6 +154,7 @@ class FileModelClass extends BaseModelClass {
 
 ```typescript
 type UploadDecoratorOptions = {
+  // 공통 옵션
   limits?: {
     fileSize?: number;    // 최대 파일 크기 (bytes)
     files?: number;       // 최대 파일 개수
@@ -47,7 +162,16 @@ type UploadDecoratorOptions = {
     fieldSize?: number;   // 최대 필드 크기
     parts?: number;       // 최대 파트 개수
   };
-};
+} & (
+  // Buffer 모드
+  | { consume?: "buffer" }
+  // Stream 모드
+  | {
+      consume: "stream";
+      destination: DriverKey;
+      keyGenerator?: (file: { filename: string; mimetype: string }) => string;
+    }
+);
 ```
 
 ```typescript
@@ -58,47 +182,48 @@ type UploadDecoratorOptions = {
   }
 })
 async uploadWithLimits() {
-  const { files } = Sonamu.getContext();
+  const { bufferedFiles } = Sonamu.getContext();
   // ...
 }
 ```
 
 <Tabs>
-  <Tab title="단일 파일" icon="file">
+  <Tab title="단일 파일 (Buffer)" icon="file">
     ```typescript
-    // 첫 번째 파일만 사용
     @upload()
     async uploadAvatar() {
-      const { files } = Sonamu.getContext();
-      const file = files?.[0];
+      const { bufferedFiles } = Sonamu.getContext();
+      const file = bufferedFiles?.[0];
 
       if (!file) {
         throw new Error("No file");
       }
 
+      const md5 = await file.md5();
       return {
         filename: file.filename,
-        size: file.size
+        size: file.size,
+        md5
       };
     }
     ```
   </Tab>
 
-  <Tab title="다중 파일" icon="files">
+  <Tab title="다중 파일 (Buffer)" icon="files">
     ```typescript
-    // 모든 파일 순회
-    @upload()
+    @upload({ limits: { files: 10 } })
     async uploadDocuments() {
-      const { files } = Sonamu.getContext();
+      const { bufferedFiles } = Sonamu.getContext();
 
-      if (!files || files.length === 0) {
+      if (!bufferedFiles || bufferedFiles.length === 0) {
         throw new Error("No files");
       }
 
       const results = [];
-      for (const file of files) {
-        const key = `documents/${Date.now()}_${file.filename}`;
-        const url = await file.saveToDisk(key);
+      for (const file of bufferedFiles) {
+        const md5 = await file.md5();
+        const key = `documents/${md5}.${file.extname}`;
+        const url = await file.saveToDisk("fs", key);
         results.push({
           filename: file.filename,
           url
@@ -109,55 +234,40 @@ async uploadWithLimits() {
     }
     ```
   </Tab>
+
+  <Tab title="Stream 모드" icon="cloud-arrow-up">
+    ```typescript
+    @upload({
+      consume: "stream",
+      destination: "s3",
+      keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,
+      limits: { files: 5 }
+    })
+    async uploadToCloud() {
+      const { uploadedFiles } = Sonamu.getContext();
+
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        throw new Error("No files");
+      }
+
+      // 파일은 이미 S3에 업로드된 상태
+      return uploadedFiles.map((file) => ({
+        filename: file.filename,
+        url: file.url,
+        key: file.key
+      }));
+    }
+    ```
+  </Tab>
 </Tabs>
 
-## 파라미터로 파일 접근
-
-파일은 메서드의 파라미터로 직접 전달됩니다. 파라미터 이름과 타입에 따라 단일/다중 파일이 결정됩니다.
-
-### UploadedFile 객체
-
-```typescript
-class UploadedFile {
-  // 원본 파일 이름
-  get filename(): string;
-  
-  // MIME 타입
-  get mimetype(): string;
-  
-  // 파일 크기 (bytes)
-  get size(): number;
-  
-  // 확장자 (점 제외, 예: "jpg", "png")
-  get extname(): string | false;
-  
-  // saveToDisk 후 저장된 URL (Unsigned)
-  get url(): string | undefined;
-  
-  // saveToDisk 후 저장된 Signed URL
-  get signedUrl(): string | undefined;
-  
-  // 원본 Fastify MultipartFile 접근
-  get raw(): MultipartFile;
-  
-  // 파일을 Buffer로 읽기
-  async toBuffer(): Promise<Buffer>;
-  
-  // MD5 해시 계산
-  async md5(): Promise<string>;
-  
-  // 파일을 디스크에 저장 (URL 반환)
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string>;
-}
-```
-
-### 파일 정보 확인
+## 파일 정보 확인
 
 ```typescript
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
   if (!file) {
     throw new Error("No file");
@@ -172,16 +282,22 @@ async uploadFile() {
 }
 ```
 
-### 파일 읽기
+## 파일 처리 (Buffer 모드)
+
+### Buffer 접근
 
 ```typescript
 @upload()
 async processImage() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  // Buffer로 읽기
-  const buffer = await file.toBuffer();
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // Buffer 직접 접근
+  const buffer = file.buffer;
 
   // 이미지 처리
   const processed = await sharp(buffer)
@@ -197,12 +313,17 @@ async processImage() {
 ```typescript
 @upload()
 async uploadDocument() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  // 디스크에 저장
-  const key = `uploads/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // 디스크에 저장 (diskName, key 순서)
+  const md5 = await file.md5();
+  const key = `uploads/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   // 저장된 URL 접근
   console.log("URL:", file.url);
@@ -217,15 +338,19 @@ async uploadDocument() {
 ```typescript
 @upload()
 async uploadWithHash() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  // MD5 해시 계산
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  // MD5 해시 계산 (중복 파일 방지에 유용)
   const hash = await file.md5();
 
-  // 해시를 파일명에 포함
+  // 해시를 파일명으로 사용
   const key = `uploads/${hash}${file.extname ? `.${file.extname}` : ''}`;
-  const url = await file.saveToDisk(key);
+  const url = await file.saveToDisk("fs", key);
 
   return { url, hash };
 }
@@ -238,19 +363,24 @@ Sonamu는 여러 스토리지 드라이버를 제공합니다.
 ```typescript
 @upload()
 async uploadToS3() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
 
   // S3 디스크에 저장 (sonamu.config.ts에서 설정)
-  const key = `avatars/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key, "s3");
+  const md5 = await file.md5();
+  const key = `avatars/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("s3", key);
 
   return { url };
 }
 ```
 
 <Info>
-스토리지 드라이버는 `sonamu.config.ts`에서 설정하는 것을 권장합니다.
+스토리지 드라이버는 `sonamu.config.ts`에서 설정합니다. 첫 번째 파라미터로 디스크 이름을 전달합니다.
 </Info>
 
 ## 다른 데코레이터와 함께 사용
@@ -261,13 +391,19 @@ async uploadToS3() {
 @upload()
 @transactional()
 async uploadAndSave() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
   const wdb = this.getDB("w");
 
   // 파일 저장 + DB 업데이트를 트랜잭션으로
-  const key = `documents/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+  const md5 = await file.md5();
+  const key = `documents/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   await wdb.table("documents").insert({
     filename: file.filename,
@@ -323,7 +459,7 @@ function FileUploader() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const result = await FileService.uploadAvatar(formData);
       console.log("Uploaded:", result.url);
     } catch (error) {
@@ -400,8 +536,12 @@ function FileUploader() {
 ```typescript
 @upload()
 async uploadImage() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
 
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
   if (!allowedTypes.includes(file.mimetype)) {
@@ -417,8 +557,12 @@ async uploadImage() {
 ```typescript
 @upload()
 async uploadDocument() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
 
   const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
@@ -434,8 +578,12 @@ async uploadDocument() {
 ```typescript
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
 
   const allowedExtensions = ["jpg", "png", "pdf"];
   if (!file.extname || !allowedExtensions.includes(file.extname)) {
@@ -455,9 +603,14 @@ import sharp from "sharp";
 
 @upload()
 async uploadAndResizeImage() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
-  const buffer = await file.toBuffer();
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
+
+  if (!file) {
+    throw new Error("No file");
+  }
+
+  const buffer = file.buffer;
 
   // 이미지 리사이징
   const resized = await sharp(buffer)
@@ -491,11 +644,11 @@ async uploadAndResizeImage() {
 `@upload`는 `@api` 데코레이터 없이 독립적으로 사용합니다:
 
 ```typescript
-// ✅ 올바른 사용법
+// 올바른 사용법
 @upload()
 async uploadFile() {}
 
-// ❌ 잘못된 사용법 - @api와 함께 사용하지 않음
+// 불필요 - @upload가 자동으로 API 설정
 @api({ httpMethod: "POST" })
 @upload()
 async uploadFile() {}
@@ -511,20 +664,8 @@ async uploadFile() {}
 
 ```typescript
 @upload()
-async uploadFile(params: { file: UploadedFile }) {
-  // clients: ["axios-multipart", "tanstack-mutation-multipart"]
-}
-```
-
-## 로깅
-
-`@upload` 데코레이터는 자동으로 로그를 남깁니다:
-
-```typescript
-@upload()
 async uploadFile() {
-  // 자동 로그:
-  // [DEBUG] upload: FileModel.uploadFile
+  // clients: ["axios-multipart", "tanstack-mutation-multipart"]
 }
 ```
 
@@ -537,8 +678,8 @@ async uploadFile() {
       @upload()
       @transactional()
       async uploadAvatar() {
-        const { user, files } = Sonamu.getContext();
-        const file = files?.[0]; // 첫 번째 파일 사용
+        const { user, bufferedFiles } = Sonamu.getContext();
+        const file = bufferedFiles?.[0];
 
         if (!file) {
           throw new Error("No file uploaded");
@@ -551,7 +692,7 @@ async uploadFile() {
         }
 
         // 이미지 처리
-        const buffer = await file.toBuffer();
+        const buffer = file.buffer;
         const processed = await sharp(buffer)
           .resize(300, 300, { fit: "cover" })
           .jpeg({ quality: 85 })
@@ -577,33 +718,35 @@ async uploadFile() {
   <Tab title="여러 파일 업로드" icon="images">
     ```typescript
     class DocumentModelClass extends BaseModelClass {
-      @upload()
+      @upload({ limits: { files: 10 } })
       @transactional()
-      async uploadDocuments(projectId: number) {
-        const { files } = Sonamu.getContext();
+      async uploadDocuments(params: { projectId: number }) {
+        const { bufferedFiles } = Sonamu.getContext();
+        const { projectId } = params;
 
-        if (files.length === 0) {
+        if (!bufferedFiles || bufferedFiles.length === 0) {
           throw new Error("No files uploaded");
         }
 
         const wdb = this.getDB("w");
         const results = [];
 
-        for (const file of files) {
+        for (const file of bufferedFiles) {
           // 파일 타입 검증
           const allowedTypes = [
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           ];
-          
+
           if (!allowedTypes.includes(file.mimetype)) {
             throw new Error(`Invalid file type: ${file.filename}`);
           }
 
           // 파일 저장
-          const key = `documents/${projectId}/${Date.now()}_${file.filename}`;
-          const url = await file.saveToDisk(key);
+          const md5 = await file.md5();
+          const key = `documents/${projectId}/${md5}.${file.extname}`;
+          const url = await file.saveToDisk("fs", key);
 
           // DB에 기록
           const doc = await wdb.table("documents").insert({
@@ -632,17 +775,20 @@ async uploadFile() {
       @upload()
       @transactional()
       async importUsers() {
-        const { files } = Sonamu.getContext();
-        const file = files?.[0]; // 첫 번째 파일 사용
+        const { bufferedFiles } = Sonamu.getContext();
+        const file = bufferedFiles?.[0];
+
+        if (!file) {
+          throw new Error("No file");
+        }
 
         if (file.mimetype !== "text/csv") {
           throw new Error("CSV file required");
         }
 
-        // CSV 파싱
-        const buffer = await file.toBuffer();
-        const text = buffer.toString("utf-8");
-        
+        // CSV 파싱 (Buffer 직접 사용)
+        const text = file.buffer.toString("utf-8");
+
         const parsed = Papa.parse<UserImportRow>(text, {
           header: true,
           skipEmptyLines: true
@@ -687,20 +833,24 @@ async uploadFile() {
   <Tab title="MD5 해시 기반 저장" icon="hashtag">
     ```typescript
     class FileModelClass extends BaseModelClass {
-      @upload()
+      @upload({ limits: { files: 10 } })
       async uploadWithDeduplication() {
-        const { files } = Sonamu.getContext();
+        const { bufferedFiles } = Sonamu.getContext();
+
+        if (!bufferedFiles || bufferedFiles.length === 0) {
+          throw new Error("No files");
+        }
 
         const results = [];
-        for (const file of files) {
+        for (const file of bufferedFiles) {
           // MD5 해시 계산
           const hash = await file.md5();
-          
+
           // 해시로 파일 저장 (중복 방지)
           const ext = file.extname || "bin";
           const key = `uploads/${hash}.${ext}`;
-          const url = await file.saveToDisk(key);
-          
+          const url = await file.saveToDisk("fs", key);
+
           results.push({
             filename: file.filename,
             hash,
@@ -710,6 +860,37 @@ async uploadFile() {
         }
 
         return results;
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Stream 모드 대용량" icon="cloud-arrow-up">
+    ```typescript
+    class FileModelClass extends BaseModelClass {
+      @upload({
+        consume: "stream",
+        destination: "s3",
+        keyGenerator: (file) => `large-files/${Date.now()}-${file.filename}`,
+        limits: { files: 3, fileSize: 100 * 1024 * 1024 }  // 100MB
+      })
+      async uploadLargeFiles() {
+        const { uploadedFiles } = Sonamu.getContext();
+
+        if (!uploadedFiles || uploadedFiles.length === 0) {
+          throw new Error("No files");
+        }
+
+        // 파일은 이미 S3에 업로드된 상태
+        return {
+          files: uploadedFiles.map((file) => ({
+            filename: file.filename,
+            url: file.url,
+            signedUrl: file.signedUrl,
+            key: file.key,
+            size: file.size,
+          })),
+        };
       }
     }
     ```
@@ -733,7 +914,7 @@ async uploadFile() {
   // ...
 }
 
-// ❌ @api와 함께 사용 불필요
+// 불필요 - @api를 함께 사용할 필요 없음
 @api({ httpMethod: "POST" })  // 불필요
 @upload()
 async uploadFile() {
@@ -748,33 +929,33 @@ async uploadFile() {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="@api" 
-    icon="plug" 
+  <Card
+    title="@api"
+    icon="plug"
     href="/api-reference/decorators/api"
   >
     API 엔드포인트 만들기
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
+
+  <Card
+    title="@transactional"
+    icon="arrows-rotate"
     href="/api-reference/decorators/transactional"
   >
     트랜잭션으로 안전하게 저장하기
   </Card>
-  
-  <Card 
-    title="Storage 드라이버" 
-    icon="hard-drive" 
+
+  <Card
+    title="Storage 드라이버"
+    icon="hard-drive"
     href="/core-concepts/storage/drivers"
   >
     S3, Local 등 스토리지 사용하기
   </Card>
-  
-  <Card 
-    title="파일 처리" 
-    icon="file-image" 
+
+  <Card
+    title="파일 처리"
+    icon="file-image"
     href="/guides/file-handling"
   >
     이미지/문서 처리 가이드
