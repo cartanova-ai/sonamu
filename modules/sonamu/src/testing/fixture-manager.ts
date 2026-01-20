@@ -610,6 +610,11 @@ export class FixtureManagerClass {
         continue;
       }
 
+      // Generated column은 INSERT에서 제외 (DB가 자동 생성)
+      if ("generated" in prop && prop.generated) {
+        continue;
+      }
+
       // id/uuid 처리: Override 모드일 때만 기존 값 사용
       if (propName === "id" || propName === "uuid") {
         if (isOverrideMode && existingRecord) {
