@@ -1,3 +1,4 @@
+import { TooltipProvider } from "@sonamu-kit/react-components";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import App from "../App";
@@ -15,9 +16,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <App>
-        <Outlet />
-      </App>
+      <TooltipProvider>
+        <App>
+          <Outlet />
+        </App>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

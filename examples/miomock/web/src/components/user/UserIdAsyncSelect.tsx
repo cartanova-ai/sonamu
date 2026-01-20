@@ -85,8 +85,8 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
     return (
       <MultiSelect
         options={options}
+        value={multiValue}
         onValueChange={handleMultiChange}
-        defaultValue={multiValue}
         placeholder={placeholder}
         disabled={disabled}
         className={className}

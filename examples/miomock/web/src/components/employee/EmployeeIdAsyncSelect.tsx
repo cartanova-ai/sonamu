@@ -52,8 +52,8 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
   // 옵션 생성
   const options = useMemo(() => {
     return (employees ?? []).map((employee) => ({
-      value: String(employee[valueField ?? ("id" as keyof EmployeeSubsetMapping[T])] as number),
-      label: String(employee[textField ?? ("name" as keyof EmployeeSubsetMapping[T])]),
+      value: String(employee[valueField ?? "id"] as number),
+      label: String(employee[textField ?? "id"]),
     }));
   }, [employees, textField, valueField]);
 
@@ -85,8 +85,8 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
     return (
       <MultiSelect
         options={options}
+        value={multiValue}
         onValueChange={handleMultiChange}
-        defaultValue={multiValue}
         placeholder={placeholder}
         disabled={disabled}
         className={className}

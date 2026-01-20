@@ -147,8 +147,8 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
     return (
       <MultiSelect
         options={options}
+        value={multiValue}
         onValueChange={handleMultiChange}
-        defaultValue={multiValue}
         placeholder={placeholder}
         disabled={disabled}
         className={className}
