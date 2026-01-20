@@ -64,7 +64,7 @@ pnpm create sonamu my_app --skip-docker
 # DB 정보 지정
 pnpm create sonamu my_app \
   --db-user=postgres \
-  --db-password=mypassword \
+  --db-password=1234 \
   --db-name=myapp \
   --container-name=myapp-pg \
   --docker-project=myapp-docker
