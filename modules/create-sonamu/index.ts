@@ -533,7 +533,7 @@ async function promptDatabase(
       DB_USER: dbUser || "postgres",
       CONTAINER_NAME: containerName || `${projectName}-container`,
       DATABASE_NAME: databaseName || projectName,
-      DB_PASSWORD: dbPassword || "password",
+      DB_PASSWORD: dbPassword || "1234",
     };
   }
 
