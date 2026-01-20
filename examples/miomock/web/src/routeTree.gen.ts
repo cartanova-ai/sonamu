@@ -19,7 +19,6 @@ import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/
 import { Route as AdminFilesIndexRouteImport } from './routes/admin/files/index'
 import { Route as AdminEmployeesIndexRouteImport } from './routes/admin/employees/index'
 import { Route as AdminDepartmentsIndexRouteImport } from './routes/admin/departments/index'
-import { Route as AdminComponentsIndexRouteImport } from './routes/admin/components/index'
 import { Route as AdminCompaniesIndexRouteImport } from './routes/admin/companies/index'
 import { Route as AdminUsersFormRouteImport } from './routes/admin/users/form'
 import { Route as AdminTagsFormRouteImport } from './routes/admin/tags/form'
@@ -79,11 +78,6 @@ const AdminEmployeesIndexRoute = AdminEmployeesIndexRouteImport.update({
 const AdminDepartmentsIndexRoute = AdminDepartmentsIndexRouteImport.update({
   id: '/admin/departments/',
   path: '/admin/departments/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminComponentsIndexRoute = AdminComponentsIndexRouteImport.update({
-  id: '/admin/components/',
-  path: '/admin/components/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCompaniesIndexRoute = AdminCompaniesIndexRouteImport.update({
@@ -152,7 +146,6 @@ export interface FileRoutesByFullPath {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
-  '/admin/components': typeof AdminComponentsIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/employees': typeof AdminEmployeesIndexRoute
   '/admin/files': typeof AdminFilesIndexRoute
@@ -175,7 +168,6 @@ export interface FileRoutesByTo {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
-  '/admin/components': typeof AdminComponentsIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/employees': typeof AdminEmployeesIndexRoute
   '/admin/files': typeof AdminFilesIndexRoute
@@ -199,7 +191,6 @@ export interface FileRoutesById {
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
   '/admin/companies/': typeof AdminCompaniesIndexRoute
-  '/admin/components/': typeof AdminComponentsIndexRoute
   '/admin/departments/': typeof AdminDepartmentsIndexRoute
   '/admin/employees/': typeof AdminEmployeesIndexRoute
   '/admin/files/': typeof AdminFilesIndexRoute
@@ -224,7 +215,6 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/companies'
-    | '/admin/components'
     | '/admin/departments'
     | '/admin/employees'
     | '/admin/files'
@@ -247,7 +237,6 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/companies'
-    | '/admin/components'
     | '/admin/departments'
     | '/admin/employees'
     | '/admin/files'
@@ -270,7 +259,6 @@ export interface FileRouteTypes {
     | '/admin/tags/form'
     | '/admin/users/form'
     | '/admin/companies/'
-    | '/admin/components/'
     | '/admin/departments/'
     | '/admin/employees/'
     | '/admin/files/'
@@ -294,7 +282,6 @@ export interface RootRouteChildren {
   AdminTagsFormRoute: typeof AdminTagsFormRoute
   AdminUsersFormRoute: typeof AdminUsersFormRoute
   AdminCompaniesIndexRoute: typeof AdminCompaniesIndexRoute
-  AdminComponentsIndexRoute: typeof AdminComponentsIndexRoute
   AdminDepartmentsIndexRoute: typeof AdminDepartmentsIndexRoute
   AdminEmployeesIndexRoute: typeof AdminEmployeesIndexRoute
   AdminFilesIndexRoute: typeof AdminFilesIndexRoute
@@ -373,13 +360,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/departments'
       fullPath: '/admin/departments'
       preLoaderRoute: typeof AdminDepartmentsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/components/': {
-      id: '/admin/components/'
-      path: '/admin/components'
-      fullPath: '/admin/components'
-      preLoaderRoute: typeof AdminComponentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/companies/': {
@@ -470,7 +450,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminTagsFormRoute: AdminTagsFormRoute,
   AdminUsersFormRoute: AdminUsersFormRoute,
   AdminCompaniesIndexRoute: AdminCompaniesIndexRoute,
-  AdminComponentsIndexRoute: AdminComponentsIndexRoute,
   AdminDepartmentsIndexRoute: AdminDepartmentsIndexRoute,
   AdminEmployeesIndexRoute: AdminEmployeesIndexRoute,
   AdminFilesIndexRoute: AdminFilesIndexRoute,

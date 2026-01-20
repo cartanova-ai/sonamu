@@ -26,8 +26,7 @@ type MenuKey =
   | "menu.project"
   | "menu.tag"
   | "menu.file"
-  | "menu.fileUploadTest"
-  | "menu.components";
+  | "menu.fileUploadTest";
 
 interface MenuItemProps {
   titleKey: MenuKey;
@@ -45,7 +44,6 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
   { titleKey: "menu.fileUploadTest", path: "/admin/files/upload-test", icon: TestTubeIcon },
-  { titleKey: "menu.components", path: "/admin/components", icon: TestTubeIcon },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
