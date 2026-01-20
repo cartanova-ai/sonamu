@@ -281,7 +281,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                           <Tooltip>
                             <TooltipTrigger>{`${conn.name} / ${conn.status}`}</TooltipTrigger>
                             <TooltipContent>
-                              <p>${conn.connString}</p>
+                              <p>{conn.connString}</p>
                             </TooltipContent>
                           </Tooltip>
                         }
