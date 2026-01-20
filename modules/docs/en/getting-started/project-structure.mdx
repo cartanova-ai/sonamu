@@ -11,8 +11,11 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
   <FileItem name="my_app/" description="Sonamu monorepo root">
-    <FileItem name="api/" description="Backend API server" />
-    <FileItem name="web/" description="Frontend web application" />
+    <FileItem name="packages/">
+      <FileItem name="api/" description="Backend API server" />
+      <FileItem name="web/" description="Frontend web application" />
+    </FileItem>
+    <FileItem name="pnpm-workspace.yaml" description="Workspace and dependency catalog" />
     <FileItem name="README.md" description="Project documentation" />
   </FileItem>
 </FileTree>
@@ -21,26 +24,46 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   <img src="/images/projectStructure1.png" alt="Complete project structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
+### pnpm Workspace
+
+The root `pnpm-workspace.yaml` manages packages and common dependency versions:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - packages/api
+  - packages/web
+
+catalog:
+  "@tanstack/react-query": ^5.90.12
+  "@tanstack/react-router": 1.143.11
+  react: ^19.2.3
+  vite: 7.3.0
+  vitest: 4.0.16
+  zod: ^4.1.12
+  # ... other common dependencies
+```
+
 ## API Directory (Backend)
 
 ### Root Files
 
 <FileTree>
-  <FileItem name="api/">
+  <FileItem name="packages/api/">
     <FileItem name="src/" description="Source code" />
     <FileItem name="database/" description="Database related files" />
     <FileItem name="package.json" description="Dependencies and scripts" />
+    <FileItem name="vitest.config.ts" description="Test configuration" />
     <FileItem name="tsconfig.json" description="TypeScript configuration" />
     <FileItem name="tsconfig.schemas.json" description="Schema generation config" />
     <FileItem name="tsconfig.types.json" description="Type generation config" />
-    <FileItem name="vite.config.ts" description="Sonamu UI build config" />
+    <FileItem name="custom-sequencer.ts" description="Test sequencer" />
     <FileItem name=".swcrc" description="SWC compiler configuration" />
     <FileItem name=".env" description="Environment variables (auto-generated)" />
   </FileItem>
 </FileTree>
 
-<Frame caption="Actual file structure of api directory">
-  <img src="/images/projectStructure2.png" alt="api directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="Actual file structure of packages/api directory">
+  <img src="/images/projectStructure2.png" alt="packages/api directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Accordion title="Key File Descriptions">
@@ -50,21 +73,22 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 - Backend dependency management
 - npm scripts: `dev`, `build`, `test`, `docker:up/down`, `dump`, `seed`, etc.
 
+**vitest.config.ts**
+
+- Vitest test configuration
+- Sonamu-optimized settings via `getSonamuTestConfig()` function
+- Coverage, reporter, sequencer configuration
+
 **tsconfig.json**
 
 - Main TypeScript compiler configuration
 - `tsconfig.schemas.json`: Dedicated for Zod schema generation
 - `tsconfig.types.json`: Dedicated for type definition generation
 
-**vite.config.ts**
-
-- Sonamu UI development server configuration (`pnpm sonamu ui`)
-- HMR (Hot Module Replacement) configuration
-
 **.env**
 
-- Database connection information
-- Project configuration variables
+- Database connection info (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD)
+- Project configuration variables (DATABASE_NAME, CONTAINER_NAME, PROJECT_NAME)
 - Auto-generated when running `pnpm create sonamu`
 
 </Accordion>
@@ -72,7 +96,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ### src/ Directory
 
 <FileTree>
-  <FileItem name="api/src/">
+  <FileItem name="packages/api/src/">
     <FileItem name="index.ts" description="Server entry point" />
     <FileItem name="sonamu.config.ts" description="Sonamu configuration file" />
     <FileItem name="application/" description="Per-entity folders (auto-generated)">
@@ -87,9 +111,15 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
         description="Base schemas (auto-generated)"
       />
     </FileItem>
+    <FileItem name="i18n/" description="Internationalization">
+      <FileItem name="ko.ts" description="Korean translations" />
+      <FileItem name="en.ts" description="English translations" />
+    </FileItem>
+    <FileItem name="migrations/" description="DB migration files" />
     <FileItem name="testing/" description="Test configuration">
       <FileItem name="global.ts" description="Global test setup" />
       <FileItem name="fixture.ts" description="Fixture management" />
+      <FileItem name="setup-mocks.ts" description="Mock setup" />
     </FileItem>
     <FileItem name="typings/" description="Type definitions">
       <FileItem name="sonamu.d.ts" description="Sonamu global types" />
@@ -101,8 +131,8 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="api/src directory structure (with application folder expanded)">
-  <img src="/images/projectStructure3.png" alt="api/src directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="packages/api/src directory structure (with application folder expanded)">
+  <img src="/images/projectStructure3.png" alt="packages/api/src directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Note>
@@ -151,11 +181,22 @@ When you first create a project, the `application/` folder is empty. The folder 
 - Enum types and label definitions
 - Do not modify directly
 
+**i18n/**
+
+- Internationalization translation files
+- `ko.ts`: Korean, `en.ts`: English
+- `sd.generated.ts` is auto-generated when adding entities
+
+**migrations/**
+
+- DB migration files generated by Sonamu UI
+- Run with `pnpm sonamu migrate run`
+
 **testing/**
 
 - Vitest test environment configuration
+- `global.ts`: Uses `export { setup } from "sonamu/test"` pattern
 - Fixture data management
-- Test utilities
 
 </Accordion>
 
@@ -171,13 +212,13 @@ When you first create a project, the `application/` folder is empty. The folder 
 ### database/ Directory
 
 <FileTree>
-  <FileItem name="api/database/">
+  <FileItem name="packages/api/database/">
     <FileItem
       name="docker-compose.yml"
       description="PostgreSQL container configuration"
     />
     <FileItem name="fixtures/">
-      <FileItem name="init.sql" description="Database initialization SQL" />
+      <FileItem name="init.sh" description="Database initialization script" />
     </FileItem>
     <FileItem name="dumps/" description="Data dump files" />
     <FileItem name="scripts/">
@@ -195,10 +236,11 @@ When you first create a project, the `application/` folder is empty. The folder 
 - Container name, port, environment variable configuration
 - Run with `pnpm docker:up`
 
-**fixtures/init.sql**
+**fixtures/init.sh**
 
-- Database initial setup
-- Extension installation (pgvector, etc.)
+- Database initialization shell script
+- Installs pgvector extension and creates databases
+- Creates databases using environment variables (`DATABASE_NAME`, `_fixture`, `_test`)
 - Auto-generated when running `pnpm create sonamu`
 
 **dumps/**
@@ -227,19 +269,20 @@ When you first create a project, the `application/` folder is empty. The folder 
 ### Root Files
 
 <FileTree>
-  <FileItem name="web/">
+  <FileItem name="packages/web/">
     <FileItem name="src/" description="Source code" />
     <FileItem name="index.html" description="HTML entry point" />
     <FileItem name="package.json" description="Dependencies and scripts" />
     <FileItem name="vite.config.ts" description="Vite configuration" />
+    <FileItem name="tailwind.config.ts" description="Tailwind CSS configuration" />
     <FileItem name="tsconfig.json" description="TypeScript configuration" />
     <FileItem name="tsconfig.node.json" description="Node environment config" />
     <FileItem name=".sonamu.env" description="Environment variables" />
   </FileItem>
 </FileTree>
 
-<Frame caption="Actual file structure of web directory">
-  <img src="/images/projectStructure4.png" alt="web directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="Actual file structure of packages/web directory">
+  <img src="/images/projectStructure4.png" alt="packages/web directory structure" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Accordion title="Key File Descriptions">
@@ -247,8 +290,13 @@ When you first create a project, the `application/` folder is empty. The folder 
 **vite.config.ts**
 
 - Vite development server configuration
+- TanStack Router, Tailwind CSS v4, unplugin-icons plugins
 - API proxy settings (`/api` → `http://localhost:1028`)
-- Path alias (`@` → `./src`)
+- SSR configuration included
+
+**tailwind.config.ts**
+
+- Tailwind CSS v4 configuration
 
 **.sonamu.env**
 
@@ -260,43 +308,67 @@ When you first create a project, the `application/` folder is empty. The folder 
 ### src/ Directory
 
 <FileTree>
-  <FileItem name="web/src/">
-    <FileItem name="main.tsx" description="React entry point" />
+  <FileItem name="packages/web/src/">
+    <FileItem name="entry-client.tsx" description="Client entry point" />
+    <FileItem name="entry-server.generated.tsx" description="SSR entry point (auto-generated)" />
     <FileItem name="App.tsx" description="Root component" />
-    <FileItem name="App.css" description="Global styles" />
-    <FileItem name="index.css" description="Base styles" />
-    <FileItem name="pages/" description="Page components">
+    <FileItem name="routeTree.gen.ts" description="Route tree (auto-generated)" />
+    <FileItem name="routes/" description="TanStack Router based pages">
+      <FileItem name="__root.tsx" description="Root layout" />
       <FileItem name="index.tsx" description="Home page" />
     </FileItem>
     <FileItem name="services/" description="API services (auto-generated)">
-      <FileItem name="{Entity}Service.ts" />
+      <FileItem name="{entity}/" description="Per-entity services">
+        <FileItem name="{entity}.service.ts" />
+      </FileItem>
+      <FileItem name="sonamu.generated.ts" />
+      <FileItem name="sonamu.shared.ts" />
+      <FileItem name="services.generated.ts" />
+    </FileItem>
+    <FileItem name="contexts/" description="React Context">
+      <FileItem name="SonamuContext.tsx" description="Sonamu Provider" />
+    </FileItem>
+    <FileItem name="i18n/" description="Internationalization">
+      <FileItem name="ko.ts" />
+      <FileItem name="en.ts" />
     </FileItem>
     <FileItem name="admin-common/" description="Common components">
       <FileItem name="ApiLogViewer.tsx" />
-      <FileItem name="CommonModal.tsx" />
     </FileItem>
-    <FileItem name="assets/" description="Static resources" />
+    <FileItem name="components/" description="UI components" />
+    <FileItem name="styles/" description="Style files" />
     <FileItem name="vite-env.d.ts" description="Vite type definitions" />
   </FileItem>
 </FileTree>
 
 <Accordion title="Key Directory Descriptions">
 
-**pages/**
+**routes/**
 
-- Routing-based page components
-- Uses React Router
+- TanStack Router based file system routing
+- `__root.tsx`: Global layout
+- Filenames map to URL paths
 
 **services/**
 
 - Service layer for communicating with the API server
 - Auto-generated for each entity
-- Type-safe API client
+- TanStack Query integration support
+
+**contexts/**
+
+- React Context Providers
+- SonamuContext: Global state management
+
+**i18n/**
+
+- Frontend internationalization translation files
+- Synchronized with API's i18n
 
 **admin-common/**
 
 - Reusable common components
-- Sonamu UI related components
+- Debugging tools like ApiLogViewer
 
 </Accordion>
 
@@ -312,7 +384,7 @@ When you first create a project, the `application/` folder is empty. The folder 
 When you create a User entity, the following structure is created:
 
 <FileTree>
-  <FileItem name="api/src/application/">
+  <FileItem name="packages/api/src/application/">
     <FileItem name="user/">
       <FileItem name="user.entity.json" description="Created in Sonamu UI" />
       <FileItem name="user.model.ts" description="Manually written" />
@@ -321,15 +393,17 @@ When you create a User entity, the following structure is created:
     </FileItem>
     <FileItem name="sonamu.generated.ts" description="Auto-updated" />
   </FileItem>
-  <FileItem name="database/migrations/">
+  <FileItem name="packages/api/src/migrations/">
     <FileItem name="20250106120000_create_user.sql" description="Auto-generated" />
   </FileItem>
-  <FileItem name="web/src/services/">
-    <FileItem name="UserService.ts" description="Auto-generated" />
+  <FileItem name="packages/web/src/services/">
+    <FileItem name="user/">
+      <FileItem name="user.service.ts" description="Auto-generated" />
+    </FileItem>
   </FileItem>
 </FileTree>
 
-<Frame caption="Actual file structure of api/src/application/user folder after creating User entity">
+<Frame caption="Actual file structure of packages/api/src/application/user folder after creating User entity">
   <div className="grid grid-cols-2 gap-4">
     <img src="/images/projectStructure5.png" alt="user folder structure 1" style={{borderRadius: '0.75rem'}} />
     <img src="/images/projectStructure6.png" alt="user folder structure 2" style={{borderRadius: '0.75rem'}} />
@@ -361,14 +435,16 @@ When you create a User entity, the following structure is created:
 
 ```typescript title="user.model.ts"
 // File you write directly
-import { BaseModel } from "sonamu";
+import { api, BaseModelClass } from "sonamu";
 
-export class UserModel extends BaseModel {
-  @api({ httpMethod: "GET" })
-  async findById(id: number): Promise<User> {
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findById(id: number): Promise<UserSubsetA | null> {
     // Business logic
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ```typescript title="user.types.ts"
@@ -400,12 +476,22 @@ export const UserOrderBy = z.enum(["id-desc", "name-asc"]);
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
 ```
 
-```typescript title="UserService.ts (web)"
+```typescript title="user.service.ts (web)"
 // Auto-generated
+import { useQuery } from "@tanstack/react-query";
+
 export class UserService {
-  static async findById(id: number): Promise<User> {
-    const res = await axios.get(`/api/users/${id}`);
+  static async findById(id: number): Promise<UserSubsetA | null> {
+    const res = await axios.get(`/api/user/findById`, { params: { id } });
     return res.data;
+  }
+
+  // TanStack Query hooks are also auto-generated
+  static useFindById(id: number) {
+    return useQuery({
+      queryKey: ["User", "findById", id],
+      queryFn: () => UserService.findById(id),
+    });
   }
 }
 ```
@@ -419,7 +505,7 @@ export class UserService {
 <Note>
   **Auto-generated vs Manually Written** - `.entity.json`: Written in Sonamu UI - `.model.ts`:
   Manually written - `.types.ts`: Auto-generated but extensible - `sonamu.generated.ts`:
-  Auto-generated - do not modify - `{Entity}Service.ts`: Auto-generated - do not modify
+  Auto-generated - do not modify - `{entity}.service.ts`: Auto-generated - do not modify
 </Note>
 
 <Info>
@@ -432,20 +518,20 @@ export class UserService {
 
 ## Key Work Locations During Development
 
-| Task                | Location                                              | Method         |
-| ------------------- | ----------------------------------------------------- | -------------- |
-| Entity Definition   | `api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI      |
-| Business Logic      | `api/src/application/{entity}/{entity}.model.ts`      | Manual writing |
-| Custom Types        | `api/src/application/{entity}/{entity}.types.ts`      | Manual extension |
-| API Endpoints       | `@api` decorator in Model file                        | Manual writing |
-| Database Config     | `api/src/sonamu.config.ts`                            | Manual writing |
-| Server Config       | `api/src/sonamu.config.ts`                            | Manual writing |
-| Writing Tests       | `api/src/application/{entity}/{entity}.model.test.ts` | Manual writing |
-| Page Components     | `web/src/pages/`                                      | Manual writing |
-| Common Components   | `web/src/admin-common/`                               | Manual writing |
+| Task                | Location                                                        | Method         |
+| ------------------- | --------------------------------------------------------------- | -------------- |
+| Entity Definition   | `packages/api/src/application/{entity}/{entity}.entity.json`    | Sonamu UI      |
+| Business Logic      | `packages/api/src/application/{entity}/{entity}.model.ts`       | Manual writing |
+| Custom Types        | `packages/api/src/application/{entity}/{entity}.types.ts`       | Manual extension |
+| API Endpoints       | `@api` decorator in Model file                                  | Manual writing |
+| Database Config     | `packages/api/src/sonamu.config.ts`                             | Manual writing |
+| Server Config       | `packages/api/src/sonamu.config.ts`                             | Manual writing |
+| Writing Tests       | `packages/api/src/application/{entity}/{entity}.model.test.ts`  | Manual writing |
+| Page Components     | `packages/web/src/routes/`                                      | Manual writing |
+| Common Components   | `packages/web/src/admin-common/`                                | Manual writing |
 
 <Warning>
-  **Auto-generated File Cautions** - `sonamu.generated.ts`: Never modify - `{Entity}Service.ts`: Never modify - `{entity}.types.ts`: Extension is possible but do not modify auto-generated parts
+  **Auto-generated File Cautions** - `sonamu.generated.ts`: Never modify - `{entity}.service.ts`: Never modify - `{entity}.types.ts`: Extension is possible but do not modify auto-generated parts
 </Warning>
 
 ## Next Steps

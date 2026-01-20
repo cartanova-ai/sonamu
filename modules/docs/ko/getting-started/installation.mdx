@@ -29,6 +29,32 @@ Sonamu를 사용하기 위해서는 다음 환경이 필요합니다:
 pnpm create sonamu
 ```
 
+### 인라인 옵션
+
+프로젝트명을 인자로 전달하거나, 옵션을 통해 대화형 프롬프트를 건너뛸 수 있습니다:
+
+```bash
+# 프로젝트명 직접 지정
+pnpm create sonamu my_app
+
+# 모든 옵션을 기본값으로 설정 (비대화형)
+pnpm create sonamu my_app --yes
+
+# 개별 옵션 지정
+pnpm create sonamu my_app --db-name my_app --db-password secret123
+```
+
+| 옵션 | 설명 |
+|------|------|
+| `--yes`, `-y` | 모든 옵션을 기본값으로 설정 |
+| `--skip-pnpm` | pnpm 설정 건너뛰기 |
+| `--skip-docker` | Docker DB 설정 건너뛰기 |
+| `--docker-project` | Docker 프로젝트명 |
+| `--db-user` | 데이터베이스 사용자명 |
+| `--db-name` | 데이터베이스 이름 |
+| `--db-password` | 데이터베이스 비밀번호 |
+| `--container-name` | Docker 컨테이너 이름 |
+
 <Frame caption="pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정">
   <video
     muted
@@ -47,9 +73,9 @@ pnpm create sonamu
 ? Project name: my_app
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
-? Enter the Docker project name: my-app-container
+? Enter the Docker project name: my_app-docker
 ? Enter the database user: postgres
-? Enter the container name: my-app-pg
+? Enter the container name: my_app-container
 ? Enter the database name: my_app
 ? Enter the database password: ****
 ```
@@ -75,7 +101,7 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 - 데이터베이스 이름
 - 데이터베이스 비밀번호
 
-를 입력받고, 이 정보로 `api/.env` 파일이 자동 생성됩니다.
+를 입력받고, 이 정보로 `packages/api/.env` 파일이 자동 생성됩니다.
 
 </Step>
 </Steps>
@@ -98,50 +124,73 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 
 <Tree>
   <Tree.Folder name="my_app" defaultOpen>
-    <Tree.Folder name="api  (백엔드 API 서버)">
-      <Tree.Folder name="src">
-        <Tree.File name="index.ts  (서버 엔트리포인트)" />
-        <Tree.File name="sonamu.config.ts  (Sonamu 설정)" />
-        <Tree.Folder name="testing  (테스트 유틸리티)" />
-        <Tree.Folder name="typings  (타입 정의)" />
-        <Tree.Folder name="utils  (유틸리티 함수)" />
+    <Tree.Folder name="packages" defaultOpen>
+      <Tree.Folder name="api  (백엔드 API 서버)">
+        <Tree.Folder name="src">
+          <Tree.File name="index.ts  (서버 엔트리포인트)" />
+          <Tree.File name="sonamu.config.ts  (Sonamu 설정)" />
+          <Tree.Folder name="i18n  (다국어 설정)" />
+          <Tree.Folder name="testing  (테스트 유틸리티)" />
+          <Tree.Folder name="typings  (타입 정의)" />
+          <Tree.Folder name="utils  (유틸리티 함수)" />
+        </Tree.Folder>
+        <Tree.Folder name="database">
+          <Tree.File name="docker-compose.yml  (PostgreSQL 컨테이너)" />
+          <Tree.Folder name="fixtures  (DB 초기화 스크립트)" />
+          <Tree.Folder name="scripts  (dump, seed 스크립트)" />
+        </Tree.Folder>
+        <Tree.File name="package.json" />
+        <Tree.File name="vitest.config.ts  (테스트 설정)" />
+        <Tree.File name=".env  (환경변수, 자동 생성)" />
       </Tree.Folder>
-      <Tree.Folder name="database">
-        <Tree.File name="docker-compose.yml  (PostgreSQL 컨테이너)" />
-        <Tree.Folder name="fixtures  (DB 초기화 스크립트)" />
-        <Tree.Folder name="dumps  (데이터 덤프 파일)" />
-        <Tree.Folder name="scripts  (dump, seed 스크립트)" />
+      <Tree.Folder name="web  (프론트엔드 웹 앱)">
+        <Tree.Folder name="src">
+          <Tree.File name="entry-client.tsx  (클라이언트 엔트리포인트)" />
+          <Tree.File name="App.tsx  (루트 컴포넌트)" />
+          <Tree.Folder name="routes  (TanStack Router 기반 페이지)" />
+          <Tree.Folder name="services  (API 서비스, 자동 생성)" />
+          <Tree.Folder name="contexts  (React Context)" />
+          <Tree.Folder name="i18n  (다국어 설정)" />
+          <Tree.Folder name="admin-common  (공통 컴포넌트)" />
+        </Tree.Folder>
+        <Tree.File name="package.json" />
+        <Tree.File name="vite.config.ts  (Vite 설정)" />
+        <Tree.File name=".sonamu.env  (환경변수)" />
       </Tree.Folder>
-      <Tree.File name="package.json" />
-      <Tree.File name="tsconfig.json" />
-      <Tree.File name=".env  (환경변수, 자동 생성)" />
     </Tree.Folder>
-    <Tree.Folder name="web  (프론트엔드 웹 앱)">
-      <Tree.Folder name="src">
-        <Tree.File name="main.tsx  (React 엔트리포인트)" />
-        <Tree.File name="App.tsx  (루트 컴포넌트)" />
-        <Tree.Folder name="pages  (페이지 컴포넌트)" />
-        <Tree.Folder name="services  (API 서비스, 자동 생성)" />
-        <Tree.Folder name="admin-common  (공통 컴포넌트)" />
-      </Tree.Folder>
-      <Tree.File name="package.json" />
-      <Tree.File name="vite.config.ts  (Vite 설정)" />
-      <Tree.File name=".sonamu.env  (환경변수)" />
-    </Tree.Folder>
+    <Tree.File name="pnpm-workspace.yaml  (워크스페이스 설정)" />
     <Tree.File name="README.md" />
   </Tree.Folder>
 </Tree>
 
 ## 주요 설정 파일
 
+### pnpm 워크스페이스
+
+루트의 `pnpm-workspace.yaml`에서 모노레포 패키지와 공통 의존성 버전을 관리합니다:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - packages/api
+  - packages/web
+
+catalog:
+  "@tanstack/react-query": ^5.90.12
+  "@tanstack/react-router": 1.143.11
+  react: ^19.2.3
+  vite: 7.3.0
+  vitest: 4.0.16
+  # ... 기타 공통 의존성
+```
+
 ### API 서버 엔트리포인트
 
 생성된 API 서버의 진입점은 다음과 같습니다:
 
-<Frame caption="VS Code에서 열린 api/src/index.ts 파일">
+<Frame caption="VS Code에서 열린 packages/api/src/index.ts 파일">
   <img
     src="/images/installation5.png"
-    alt="api/src/index.ts 파일"
+    alt="packages/api/src/index.ts 파일"
     style={{ maxWidth: "800px", width: "100%", borderRadius: "0.75rem" }}
   />
 </Frame>
@@ -150,9 +199,10 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 
 `sonamu.config.ts`에서 프로젝트의 주요 설정을 관리합니다:
 
-```typescript title="api/src/sonamu.config.ts"
+```typescript title="packages/api/src/sonamu.config.ts"
 import path from "node:path";
-import { defineConfig } from "sonamu";
+import { CachePresets, defineConfig } from "sonamu";
+import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
@@ -166,6 +216,10 @@ export default defineConfig({
     route: {
       prefix: "/api",
     },
+  },
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
   },
   sync: {
     targets: ["web"],
@@ -184,7 +238,14 @@ export default defineConfig({
   },
   server: {
     listen: { port, host },
-    // ... 추가 서버 설정
+    // ... 서버, 스토리지, 캐시 설정
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(cacheDrivers.memory({ maxSize: "50mb" })),
+      },
+      ttl: "5m",
+    },
   },
 });
 ```
@@ -193,7 +254,7 @@ export default defineConfig({
 
 PostgreSQL 데이터베이스는 Docker로 관리됩니다:
 
-```yaml title="api/database/docker-compose.yml"
+```yaml title="packages/api/database/docker-compose.yml"
 version: "3.8"
 name: ${CONTAINER_NAME}
 services:
@@ -201,9 +262,12 @@ services:
     platform: linux/arm64
     image: pgvector/pgvector:pg18
     container_name: ${CONTAINER_NAME}
+    env_file:
+      - ../.env
     volumes:
-      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
+      DATABASE_NAME: ${DATABASE_NAME}
       POSTGRES_DB: template1
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -214,18 +278,26 @@ services:
 
 ### 프론트엔드 설정
 
-Vite 기반 React 애플리케이션이 생성됩니다:
+Vite + React + TanStack Router + SSR 기반 애플리케이션이 생성됩니다:
 
-```typescript title="web/vite.config.ts"
+```typescript title="packages/web/vite.config.ts"
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import dotenv from "dotenv";
 import path from "path";
+import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 
 dotenv.config({ path: ".sonamu.env" });
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command, isSsrBuild }) => ({
+  plugins: [
+    react(),
+    Icons({ compiler: "jsx", jsx: "react", autoInstall: true }),
+    tailwindcss(),
+    tanstackRouter(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -238,7 +310,8 @@ export default defineConfig({
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
   },
-});
+  // SSR 설정 포함
+}));
 ```
 
 ## 포트 구성
@@ -248,14 +321,14 @@ export default defineConfig({
 | 서비스     | 포트 | 설명                   |
 | ---------- | ---- | ---------------------- |
 | API 서버   | 1028 | Fastify 기반 REST API  |
-| Sonamu UI  | 2028 | 엔티티 관리 인터페이스 |
-| Web 앱     | 3028 | Vite 개발 서버         |
+| Sonamu UI  | -    | http://localhost:1028/sonamu-ui |
+| Web 앱     | 3028 | Vite 개발 서버 (SSR 지원) |
 | PostgreSQL | 5432 | 데이터베이스           |
 
 <Note>
-- API 서버 포트: `api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `web/.sonamu.env`의 `API_PORT`도 함께 수정 필요)
-- Web 앱 포트: `web/vite.config.ts`에서 `server.port` 수정
-- 데이터베이스 포트: `api/src/sonamu.config.ts`의 `database.defaultOptions.connection.port`에서 환경변수 설정 (예: `MIOMOCK_DB_PORT`)
+- **Sonamu UI**: 별도 포트가 아닌 API 서버의 `/sonamu-ui` 경로로 접근합니다.
+- API 서버 포트: `packages/api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `packages/web/.sonamu.env`의 `API_PORT`도 함께 수정 필요)
+- Web 앱 포트: `packages/web/vite.config.ts`에서 `server.port` 수정
 </Note>
 
 ## 다음 단계

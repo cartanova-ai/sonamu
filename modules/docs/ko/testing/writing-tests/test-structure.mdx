@@ -10,25 +10,112 @@ Sonamu의 Vitest 기반 테스트 시스템과 구조를 알아봅니다.
 <CardGroup cols={2}>
   <Card title="Vitest" icon="vial">
     빠른 테스트 실행
-    
+
     Vite 통합
   </Card>
   <Card title="Context 기반" icon="user">
     인증 테스트
-    
+
     권한 시뮬레이션
   </Card>
   <Card title="Transaction" icon="database">
     자동 롤백
-    
+
     격리된 테스트
   </Card>
   <Card title="Fixture 시스템" icon="box">
     테스트 데이터
-    
+
     재사용 가능
   </Card>
 </CardGroup>
+
+## Vitest 설정
+
+Sonamu 프로젝트의 테스트 환경은 `vitest.config.ts`와 `global.ts`로 구성됩니다.
+
+### vitest.config.ts
+
+Sonamu는 `getSonamuTestConfig()` 함수를 제공하여 테스트 설정을 간편하게 구성할 수 있습니다.
+
+```typescript title="api/vitest.config.ts"
+import { getSonamuTestConfig } from "sonamu/test";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig(async () => ({
+  test: await getSonamuTestConfig({
+    include: ["src/**/*.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
+    globals: true,
+    globalSetup: ["./src/testing/global.ts"],
+  }),
+}));
+```
+
+### getSonamuTestConfig 옵션
+
+`getSonamuTestConfig()`는 Vitest의 모든 옵션을 지원하며, Sonamu에 최적화된 기본값을 제공합니다.
+
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `include` | 테스트 파일 패턴 | `["src/**/*.test.ts"]` |
+| `exclude` | 제외할 파일 패턴 | `["**/node_modules/**"]` |
+| `globals` | 전역 API 사용 여부 | `true` |
+| `globalSetup` | 전역 설정 파일 | - |
+| `setupFiles` | 각 테스트 파일 전에 실행할 설정 | - |
+
+### global.ts 설정
+
+`global.ts`는 모든 테스트 실행 전에 한 번 실행되는 전역 설정 파일입니다. Sonamu의 `setup` 함수를 export하여 테스트 환경을 초기화합니다.
+
+```typescript title="api/src/testing/global.ts"
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// sonamu.config.ts의 test 설정을 기반으로 테스트 환경을 구성합니다.
+export { setup } from "sonamu/test";
+```
+
+<Note>
+`export { setup } from "sonamu/test"`는 `sonamu.config.ts`의 `test` 설정을 읽어 병렬 테스트 환경(다중 테스트 DB)을 자동으로 구성합니다.
+</Note>
+
+### 고급 설정 예시
+
+커스텀 시퀀서나 리포터를 추가한 고급 설정 예시입니다.
+
+```typescript title="api/vitest.config.ts"
+import { getSonamuTestConfig, NaiteVitestReporter } from "sonamu/test";
+import { defineConfig } from "vitest/config";
+import { PrioritySequencer } from "./custom-sequencer";
+
+export default defineConfig(async () => ({
+  test: await getSonamuTestConfig({
+    include: ["src/**/*.test.ts"],
+    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**"],
+    globals: true,
+    globalSetup: ["./src/testing/global.ts"],
+    setupFiles: ["./src/testing/setup-mocks.ts"],
+    sequence: {
+      sequencer: PrioritySequencer,  // 커스텀 테스트 순서 제어
+    },
+    reporters: ["default", NaiteVitestReporter],  // Naite 리포터
+    restoreMocks: true,
+    typecheck: {
+      enabled: true,
+      tsconfig: "./tsconfig.json",
+      include: ["src/**/*type-safety.test.ts"],
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/testing/**"],
+    },
+  }),
+}));
+```
 
 ## bootstrap 함수
 

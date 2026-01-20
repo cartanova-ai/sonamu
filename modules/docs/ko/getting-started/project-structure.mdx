@@ -11,8 +11,11 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
   <FileItem name="my_app/" description="Sonamu 모노레포 루트">
-    <FileItem name="api/" description="백엔드 API 서버" />
-    <FileItem name="web/" description="프론트엔드 웹 애플리케이션" />
+    <FileItem name="packages/">
+      <FileItem name="api/" description="백엔드 API 서버" />
+      <FileItem name="web/" description="프론트엔드 웹 애플리케이션" />
+    </FileItem>
+    <FileItem name="pnpm-workspace.yaml" description="워크스페이스 및 의존성 catalog" />
     <FileItem name="README.md" description="프로젝트 문서" />
   </FileItem>
 </FileTree>
@@ -21,26 +24,46 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   <img src="/images/projectStructure1.png" alt="프로젝트 전체 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
+### pnpm 워크스페이스
+
+루트의 `pnpm-workspace.yaml`에서 패키지와 공통 의존성 버전을 관리합니다:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - packages/api
+  - packages/web
+
+catalog:
+  "@tanstack/react-query": ^5.90.12
+  "@tanstack/react-router": 1.143.11
+  react: ^19.2.3
+  vite: 7.3.0
+  vitest: 4.0.16
+  zod: ^4.1.12
+  # ... 기타 공통 의존성
+```
+
 ## API 디렉토리 (백엔드)
 
 ### 루트 파일
 
 <FileTree>
-  <FileItem name="api/">
+  <FileItem name="packages/api/">
     <FileItem name="src/" description="소스 코드" />
     <FileItem name="database/" description="데이터베이스 관련 파일" />
     <FileItem name="package.json" description="의존성 및 스크립트" />
+    <FileItem name="vitest.config.ts" description="테스트 설정" />
     <FileItem name="tsconfig.json" description="TypeScript 설정" />
     <FileItem name="tsconfig.schemas.json" description="스키마 생성용 설정" />
     <FileItem name="tsconfig.types.json" description="타입 생성용 설정" />
-    <FileItem name="vite.config.ts" description="Sonamu UI 빌드 설정" />
+    <FileItem name="custom-sequencer.ts" description="테스트 시퀀서" />
     <FileItem name=".swcrc" description="SWC 컴파일러 설정" />
     <FileItem name=".env" description="환경 변수 (자동 생성)" />
   </FileItem>
 </FileTree>
 
-<Frame caption="api 디렉토리의 실제 파일 구조">
-  <img src="/images/projectStructure2.png" alt="api 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="packages/api 디렉토리의 실제 파일 구조">
+  <img src="/images/projectStructure2.png" alt="packages/api 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Accordion title="주요 파일 설명">
@@ -50,21 +73,22 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 - 백엔드 의존성 관리
 - npm 스크립트: `dev`, `build`, `test`, `docker:up/down`, `dump`, `seed` 등
 
+**vitest.config.ts**
+
+- Vitest 테스트 설정
+- `getSonamuTestConfig()` 함수로 Sonamu 최적화 설정
+- 커버리지, 리포터, 시퀀서 설정
+
 **tsconfig.json**
 
 - 메인 TypeScript 컴파일러 설정
 - `tsconfig.schemas.json`: Zod 스키마 생성 전용
 - `tsconfig.types.json`: 타입 정의 생성 전용
 
-**vite.config.ts**
-
-- Sonamu UI 개발 서버 설정 (`pnpm sonamu ui`)
-- HMR(Hot Module Replacement) 설정
-
 **.env**
 
-- 데이터베이스 연결 정보
-- 프로젝트 설정 변수
+- 데이터베이스 연결 정보 (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD)
+- 프로젝트 설정 변수 (DATABASE_NAME, CONTAINER_NAME, PROJECT_NAME)
 - `pnpm create sonamu` 실행 시 자동 생성
 
 </Accordion>
@@ -72,7 +96,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ### src/ 디렉토리
 
 <FileTree>
-  <FileItem name="api/src/">
+  <FileItem name="packages/api/src/">
     <FileItem name="index.ts" description="서버 진입점" />
     <FileItem name="sonamu.config.ts" description="Sonamu 설정 파일" />
     <FileItem name="application/" description="엔티티별 폴더 (자동 생성)">
@@ -87,9 +111,15 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
         description="Base 스키마 (자동 생성)"
       />
     </FileItem>
+    <FileItem name="i18n/" description="다국어 설정">
+      <FileItem name="ko.ts" description="한국어 번역" />
+      <FileItem name="en.ts" description="영어 번역" />
+    </FileItem>
+    <FileItem name="migrations/" description="DB 마이그레이션 파일" />
     <FileItem name="testing/" description="테스트 설정">
       <FileItem name="global.ts" description="전역 테스트 설정" />
       <FileItem name="fixture.ts" description="Fixture 관리" />
+      <FileItem name="setup-mocks.ts" description="Mock 설정" />
     </FileItem>
     <FileItem name="typings/" description="타입 정의">
       <FileItem name="sonamu.d.ts" description="Sonamu 전역 타입" />
@@ -101,8 +131,8 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)">
-  <img src="/images/projectStructure3.png" alt="api/src 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="packages/api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)">
+  <img src="/images/projectStructure3.png" alt="packages/api/src 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Note>
@@ -151,11 +181,22 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 - Enum 타입 및 레이블 정의
 - 직접 수정하지 말 것
 
+**i18n/**
+
+- 다국어 번역 파일
+- `ko.ts`: 한국어, `en.ts`: 영어
+- Entity 추가 시 `sd.generated.ts`가 자동 생성됨
+
+**migrations/**
+
+- Sonamu UI에서 생성한 DB 마이그레이션 파일
+- `pnpm sonamu migrate run`으로 실행
+
 **testing/**
 
 - Vitest 테스트 환경 설정
+- `global.ts`: `export { setup } from "sonamu/test"` 패턴 사용
 - Fixture 데이터 관리
-- 테스트 유틸리티
 
 </Accordion>
 
@@ -171,13 +212,13 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ### database/ 디렉토리
 
 <FileTree>
-  <FileItem name="api/database/">
+  <FileItem name="packages/api/database/">
     <FileItem
       name="docker-compose.yml"
       description="PostgreSQL 컨테이너 설정"
     />
     <FileItem name="fixtures/">
-      <FileItem name="init.sql" description="데이터베이스 초기화 SQL" />
+      <FileItem name="init.sh" description="데이터베이스 초기화 스크립트" />
     </FileItem>
     <FileItem name="dumps/" description="데이터 덤프 파일" />
     <FileItem name="scripts/">
@@ -195,10 +236,11 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 - 컨테이너 이름, 포트, 환경 변수 설정
 - `pnpm docker:up`으로 실행
 
-**fixtures/init.sql**
+**fixtures/init.sh**
 
-- 데이터베이스 초기 설정
-- 확장 프로그램 설치 (pgvector 등)
+- 데이터베이스 초기화 쉘 스크립트
+- pgvector 확장 설치 및 데이터베이스 생성
+- 환경변수로 데이터베이스 이름 지정 (`DATABASE_NAME`, `_fixture`, `_test`)
 - `pnpm create sonamu` 실행 시 자동 생성
 
 **dumps/**
@@ -227,19 +269,20 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ### 루트 파일
 
 <FileTree>
-  <FileItem name="web/">
+  <FileItem name="packages/web/">
     <FileItem name="src/" description="소스 코드" />
     <FileItem name="index.html" description="HTML 엔트리포인트" />
     <FileItem name="package.json" description="의존성 및 스크립트" />
     <FileItem name="vite.config.ts" description="Vite 설정" />
+    <FileItem name="tailwind.config.ts" description="Tailwind CSS 설정" />
     <FileItem name="tsconfig.json" description="TypeScript 설정" />
     <FileItem name="tsconfig.node.json" description="Node 환경 설정" />
     <FileItem name=".sonamu.env" description="환경 변수" />
   </FileItem>
 </FileTree>
 
-<Frame caption="web 디렉토리의 실제 파일 구조">
-  <img src="/images/projectStructure4.png" alt="web 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+<Frame caption="packages/web 디렉토리의 실제 파일 구조">
+  <img src="/images/projectStructure4.png" alt="packages/web 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Accordion title="주요 파일 설명">
@@ -247,8 +290,13 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 **vite.config.ts**
 
 - Vite 개발 서버 설정
+- TanStack Router, Tailwind CSS v4, unplugin-icons 플러그인
 - API 프록시 설정 (`/api` → `http://localhost:1028`)
-- 경로 별칭 (`@` → `./src`)
+- SSR 설정 포함
+
+**tailwind.config.ts**
+
+- Tailwind CSS v4 설정
 
 **.sonamu.env**
 
@@ -260,43 +308,67 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 ### src/ 디렉토리
 
 <FileTree>
-  <FileItem name="web/src/">
-    <FileItem name="main.tsx" description="React 진입점" />
+  <FileItem name="packages/web/src/">
+    <FileItem name="entry-client.tsx" description="클라이언트 엔트리포인트" />
+    <FileItem name="entry-server.generated.tsx" description="SSR 엔트리포인트 (자동 생성)" />
     <FileItem name="App.tsx" description="루트 컴포넌트" />
-    <FileItem name="App.css" description="글로벌 스타일" />
-    <FileItem name="index.css" description="기본 스타일" />
-    <FileItem name="pages/" description="페이지 컴포넌트">
+    <FileItem name="routeTree.gen.ts" description="라우트 트리 (자동 생성)" />
+    <FileItem name="routes/" description="TanStack Router 기반 페이지">
+      <FileItem name="__root.tsx" description="루트 레이아웃" />
       <FileItem name="index.tsx" description="홈 페이지" />
     </FileItem>
     <FileItem name="services/" description="API 서비스 (자동 생성)">
-      <FileItem name="{Entity}Service.ts" />
+      <FileItem name="{entity}/" description="엔티티별 서비스">
+        <FileItem name="{entity}.service.ts" />
+      </FileItem>
+      <FileItem name="sonamu.generated.ts" />
+      <FileItem name="sonamu.shared.ts" />
+      <FileItem name="services.generated.ts" />
+    </FileItem>
+    <FileItem name="contexts/" description="React Context">
+      <FileItem name="SonamuContext.tsx" description="Sonamu Provider" />
+    </FileItem>
+    <FileItem name="i18n/" description="다국어 설정">
+      <FileItem name="ko.ts" />
+      <FileItem name="en.ts" />
     </FileItem>
     <FileItem name="admin-common/" description="공통 컴포넌트">
       <FileItem name="ApiLogViewer.tsx" />
-      <FileItem name="CommonModal.tsx" />
     </FileItem>
-    <FileItem name="assets/" description="정적 리소스" />
+    <FileItem name="components/" description="UI 컴포넌트" />
+    <FileItem name="styles/" description="스타일 파일" />
     <FileItem name="vite-env.d.ts" description="Vite 타입 정의" />
   </FileItem>
 </FileTree>
 
 <Accordion title="주요 디렉토리 설명">
 
-**pages/**
+**routes/**
 
-- 라우팅 기반 페이지 컴포넌트
-- React Router 사용
+- TanStack Router 기반 파일 시스템 라우팅
+- `__root.tsx`: 전역 레이아웃
+- 파일명이 URL 경로에 매핑됨
 
 **services/**
 
 - API 서버와 통신하는 서비스 레이어
 - 엔티티마다 자동 생성
-- 타입 안전한 API 클라이언트
+- TanStack Query 통합 지원
+
+**contexts/**
+
+- React Context Provider
+- SonamuContext: 전역 상태 관리
+
+**i18n/**
+
+- 프론트엔드 다국어 번역 파일
+- API의 i18n과 동기화
 
 **admin-common/**
 
 - 재사용 가능한 공통 컴포넌트
-- Sonamu UI 관련 컴포넌트
+- ApiLogViewer 등 디버깅 도구
 
 </Accordion>
 
@@ -312,7 +384,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
 
 <FileTree>
-  <FileItem name="api/src/application/">
+  <FileItem name="packages/api/src/application/">
     <FileItem name="user/">
       <FileItem name="user.entity.json" description="Sonamu UI에서 생성" />
       <FileItem name="user.model.ts" description="직접 작성" />
@@ -321,15 +393,17 @@ User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
     </FileItem>
     <FileItem name="sonamu.generated.ts" description="자동 업데이트" />
   </FileItem>
-  <FileItem name="database/migrations/">
+  <FileItem name="packages/api/src/migrations/">
     <FileItem name="20250106120000_create_user.sql" description="자동 생성" />
   </FileItem>
-  <FileItem name="web/src/services/">
-    <FileItem name="UserService.ts" description="자동 생성" />
+  <FileItem name="packages/web/src/services/">
+    <FileItem name="user/">
+      <FileItem name="user.service.ts" description="자동 생성" />
+    </FileItem>
   </FileItem>
 </FileTree>
 
-<Frame caption="User 엔티티 생성 후 api/src/application/user 폴더의 실제 파일 구조">
+<Frame caption="User 엔티티 생성 후 packages/api/src/application/user 폴더의 실제 파일 구조">
   <div className="grid grid-cols-2 gap-4">
     <img src="/images/projectStructure5.png" alt="user 폴더 구조 1" style={{borderRadius: '0.75rem'}} />
     <img src="/images/projectStructure6.png" alt="user 폴더 구조 2" style={{borderRadius: '0.75rem'}} />
@@ -361,14 +435,16 @@ User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
 
 ```typescript title="user.model.ts"
 // 직접 작성하는 파일
-import { BaseModel } from "sonamu";
+import { api, BaseModelClass } from "sonamu";
 
-export class UserModel extends BaseModel {
-  @api({ httpMethod: "GET" })
-  async findById(id: number): Promise<User> {
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findById(id: number): Promise<UserSubsetA | null> {
     // 비즈니스 로직
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ```typescript title="user.types.ts"
@@ -400,12 +476,22 @@ export const UserOrderBy = z.enum(["id-desc", "name-asc"]);
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
 ```
 
-```typescript title="UserService.ts (web)"
+```typescript title="user.service.ts (web)"
 // 자동 생성
+import { useQuery } from "@tanstack/react-query";
+
 export class UserService {
-  static async findById(id: number): Promise<User> {
-    const res = await axios.get(`/api/users/${id}`);
+  static async findById(id: number): Promise<UserSubsetA | null> {
+    const res = await axios.get(`/api/user/findById`, { params: { id } });
     return res.data;
+  }
+
+  // TanStack Query 훅도 자동 생성
+  static useFindById(id: number) {
+    return useQuery({
+      queryKey: ["User", "findById", id],
+      queryFn: () => UserService.findById(id),
+    });
   }
 }
 ```
@@ -419,7 +505,7 @@ export class UserService {
 <Note>
   **자동 생성 vs 직접 작성** - `.entity.json`: Sonamu UI에서 작성 - `.model.ts`:
   직접 작성 - `.types.ts`: 자동 생성되지만 확장 가능 - `sonamu.generated.ts`:
-  자동 생성 - 수정 금지 - `{Entity}Service.ts`: 자동 생성 - 수정 금지
+  자동 생성 - 수정 금지 - `{entity}.service.ts`: 자동 생성 - 수정 금지
 </Note>
 
 <Info>
@@ -432,21 +518,21 @@ export class UserService {
 
 ## 개발 시 주요 작업 위치
 
-| 작업 내용         | 위치                                                  | 방법      |
-| ----------------- | ----------------------------------------------------- | --------- |
-| 엔티티 정의       | `api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI |
-| 비즈니스 로직     | `api/src/application/{entity}/{entity}.model.ts`      | 직접 작성 |
-| 커스텀 타입       | `api/src/application/{entity}/{entity}.types.ts`      | 직접 확장 |
-| API 엔드포인트    | Model 파일에 `@api` 데코레이터                        | 직접 작성 |
-| 데이터베이스 설정 | `api/src/sonamu.config.ts`                            | 직접 작성 |
-| 서버 설정         | `api/src/sonamu.config.ts`                            | 직접 작성 |
-| 테스트 작성       | `api/src/application/{entity}/{entity}.model.test.ts` | 직접 작성 |
-| 페이지 컴포넌트   | `web/src/pages/`                                      | 직접 작성 |
-| 공통 컴포넌트     | `web/src/admin-common/`                               | 직접 작성 |
+| 작업 내용         | 위치                                                           | 방법      |
+| ----------------- | -------------------------------------------------------------- | --------- |
+| 엔티티 정의       | `packages/api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI |
+| 비즈니스 로직     | `packages/api/src/application/{entity}/{entity}.model.ts`      | 직접 작성 |
+| 커스텀 타입       | `packages/api/src/application/{entity}/{entity}.types.ts`      | 직접 확장 |
+| API 엔드포인트    | Model 파일에 `@api` 데코레이터                                 | 직접 작성 |
+| 데이터베이스 설정 | `packages/api/src/sonamu.config.ts`                            | 직접 작성 |
+| 서버 설정         | `packages/api/src/sonamu.config.ts`                            | 직접 작성 |
+| 테스트 작성       | `packages/api/src/application/{entity}/{entity}.model.test.ts` | 직접 작성 |
+| 페이지 컴포넌트   | `packages/web/src/routes/`                                     | 직접 작성 |
+| 공통 컴포넌트     | `packages/web/src/admin-common/`                               | 직접 작성 |
 
 <Warning>
   **자동 생성 파일 주의사항** - `sonamu.generated.ts`: 절대 수정하지 마세요 - `
-  {Entity}Service.ts`: 절대 수정하지 마세요 - `{entity}.types.ts`: 확장은
+  {entity}.service.ts`: 절대 수정하지 마세요 - `{entity}.types.ts`: 확장은
   가능하지만 자동 생성 부분은 수정하지 마세요
 </Warning>
 

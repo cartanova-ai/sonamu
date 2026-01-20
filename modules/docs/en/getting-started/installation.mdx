@@ -29,6 +29,32 @@ Run the following command in your terminal to create a new Sonamu project:
 pnpm create sonamu
 ```
 
+### Inline Options
+
+You can pass the project name as an argument or use options to skip interactive prompts:
+
+```bash
+# Specify project name directly
+pnpm create sonamu my_app
+
+# Use all default options (non-interactive)
+pnpm create sonamu my_app --yes
+
+# Specify individual options
+pnpm create sonamu my_app --db-name my_app --db-password secret123
+```
+
+| Option | Description |
+|--------|-------------|
+| `--yes`, `-y` | Use all default options |
+| `--skip-pnpm` | Skip pnpm setup |
+| `--skip-docker` | Skip Docker DB setup |
+| `--docker-project` | Docker project name |
+| `--db-user` | Database username |
+| `--db-name` | Database name |
+| `--db-password` | Database password |
+| `--container-name` | Docker container name |
+
 <Frame caption="Complete process from running pnpm create sonamu to completing all prompts">
   <video
     muted
@@ -47,9 +73,9 @@ When the interactive prompt appears, enter your project information:
 ? Project name: my_app
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
-? Enter the Docker project name: my-app-container
+? Enter the Docker project name: my_app-docker
 ? Enter the database user: postgres
-? Enter the container name: my-app-pg
+? Enter the container name: my_app-container
 ? Enter the database name: my_app
 ? Enter the database password: ****
 ```
@@ -75,7 +101,7 @@ Choose whether to set up a PostgreSQL database using Docker. If you select Yes:
 - Database name
 - Database password
 
-will be requested, and the `api/.env` file will be automatically generated with this information.
+will be requested, and the `packages/api/.env` file will be automatically generated with this information.
 
 </Step>
 </Steps>
@@ -98,50 +124,73 @@ will be requested, and the `api/.env` file will be automatically generated with 
 
 <Tree>
   <Tree.Folder name="my_app" defaultOpen>
-    <Tree.Folder name="api  (Backend API server)">
-      <Tree.Folder name="src">
-        <Tree.File name="index.ts  (Server entry point)" />
-        <Tree.File name="sonamu.config.ts  (Sonamu configuration)" />
-        <Tree.Folder name="testing  (Test utilities)" />
-        <Tree.Folder name="typings  (Type definitions)" />
-        <Tree.Folder name="utils  (Utility functions)" />
+    <Tree.Folder name="packages" defaultOpen>
+      <Tree.Folder name="api  (Backend API server)">
+        <Tree.Folder name="src">
+          <Tree.File name="index.ts  (Server entry point)" />
+          <Tree.File name="sonamu.config.ts  (Sonamu configuration)" />
+          <Tree.Folder name="i18n  (Internationalization)" />
+          <Tree.Folder name="testing  (Test utilities)" />
+          <Tree.Folder name="typings  (Type definitions)" />
+          <Tree.Folder name="utils  (Utility functions)" />
+        </Tree.Folder>
+        <Tree.Folder name="database">
+          <Tree.File name="docker-compose.yml  (PostgreSQL container)" />
+          <Tree.Folder name="fixtures  (DB initialization scripts)" />
+          <Tree.Folder name="scripts  (dump, seed scripts)" />
+        </Tree.Folder>
+        <Tree.File name="package.json" />
+        <Tree.File name="vitest.config.ts  (Test configuration)" />
+        <Tree.File name=".env  (Environment variables, auto-generated)" />
       </Tree.Folder>
-      <Tree.Folder name="database">
-        <Tree.File name="docker-compose.yml  (PostgreSQL container)" />
-        <Tree.Folder name="fixtures  (DB initialization scripts)" />
-        <Tree.Folder name="dumps  (Data dump files)" />
-        <Tree.Folder name="scripts  (dump, seed scripts)" />
+      <Tree.Folder name="web  (Frontend web app)">
+        <Tree.Folder name="src">
+          <Tree.File name="entry-client.tsx  (Client entry point)" />
+          <Tree.File name="App.tsx  (Root component)" />
+          <Tree.Folder name="routes  (TanStack Router based pages)" />
+          <Tree.Folder name="services  (API services, auto-generated)" />
+          <Tree.Folder name="contexts  (React Context)" />
+          <Tree.Folder name="i18n  (Internationalization)" />
+          <Tree.Folder name="admin-common  (Common components)" />
+        </Tree.Folder>
+        <Tree.File name="package.json" />
+        <Tree.File name="vite.config.ts  (Vite configuration)" />
+        <Tree.File name=".sonamu.env  (Environment variables)" />
       </Tree.Folder>
-      <Tree.File name="package.json" />
-      <Tree.File name="tsconfig.json" />
-      <Tree.File name=".env  (Environment variables, auto-generated)" />
     </Tree.Folder>
-    <Tree.Folder name="web  (Frontend web app)">
-      <Tree.Folder name="src">
-        <Tree.File name="main.tsx  (React entry point)" />
-        <Tree.File name="App.tsx  (Root component)" />
-        <Tree.Folder name="pages  (Page components)" />
-        <Tree.Folder name="services  (API services, auto-generated)" />
-        <Tree.Folder name="admin-common  (Common components)" />
-      </Tree.Folder>
-      <Tree.File name="package.json" />
-      <Tree.File name="vite.config.ts  (Vite configuration)" />
-      <Tree.File name=".sonamu.env  (Environment variables)" />
-    </Tree.Folder>
+    <Tree.File name="pnpm-workspace.yaml  (Workspace configuration)" />
     <Tree.File name="README.md" />
   </Tree.Folder>
 </Tree>
 
 ## Key Configuration Files
 
+### pnpm Workspace
+
+The root `pnpm-workspace.yaml` manages monorepo packages and common dependency versions:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - packages/api
+  - packages/web
+
+catalog:
+  "@tanstack/react-query": ^5.90.12
+  "@tanstack/react-router": 1.143.11
+  react: ^19.2.3
+  vite: 7.3.0
+  vitest: 4.0.16
+  # ... other common dependencies
+```
+
 ### API Server Entry Point
 
 The entry point of the generated API server is as follows:
 
-<Frame caption="api/src/index.ts file opened in VS Code">
+<Frame caption="packages/api/src/index.ts file opened in VS Code">
   <img
     src="/images/installation5.png"
-    alt="api/src/index.ts file"
+    alt="packages/api/src/index.ts file"
     style={{ maxWidth: "800px", width: "100%", borderRadius: "0.75rem" }}
   />
 </Frame>
@@ -150,9 +199,10 @@ The entry point of the generated API server is as follows:
 
 Manage your project's main settings in `sonamu.config.ts`:
 
-```typescript title="api/src/sonamu.config.ts"
+```typescript title="packages/api/src/sonamu.config.ts"
 import path from "node:path";
-import { defineConfig } from "sonamu";
+import { CachePresets, defineConfig } from "sonamu";
+import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
@@ -166,6 +216,10 @@ export default defineConfig({
     route: {
       prefix: "/api",
     },
+  },
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
   },
   sync: {
     targets: ["web"],
@@ -184,7 +238,14 @@ export default defineConfig({
   },
   server: {
     listen: { port, host },
-    // ... additional server configuration
+    // ... server, storage, cache settings
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(cacheDrivers.memory({ maxSize: "50mb" })),
+      },
+      ttl: "5m",
+    },
   },
 });
 ```
@@ -193,7 +254,7 @@ export default defineConfig({
 
 PostgreSQL database is managed with Docker:
 
-```yaml title="api/database/docker-compose.yml"
+```yaml title="packages/api/database/docker-compose.yml"
 version: "3.8"
 name: ${CONTAINER_NAME}
 services:
@@ -201,9 +262,12 @@ services:
     platform: linux/arm64
     image: pgvector/pgvector:pg18
     container_name: ${CONTAINER_NAME}
+    env_file:
+      - ../.env
     volumes:
-      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
+      DATABASE_NAME: ${DATABASE_NAME}
       POSTGRES_DB: template1
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -214,18 +278,26 @@ services:
 
 ### Frontend Configuration
 
-A Vite-based React application is generated:
+A Vite + React + TanStack Router + SSR based application is generated:
 
-```typescript title="web/vite.config.ts"
+```typescript title="packages/web/vite.config.ts"
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import dotenv from "dotenv";
 import path from "path";
+import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 
 dotenv.config({ path: ".sonamu.env" });
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command, isSsrBuild }) => ({
+  plugins: [
+    react(),
+    Icons({ compiler: "jsx", jsx: "react", autoInstall: true }),
+    tailwindcss(),
+    tanstackRouter(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -238,7 +310,8 @@ export default defineConfig({
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
   },
-});
+  // SSR configuration included
+}));
 ```
 
 ## Port Configuration
@@ -248,14 +321,14 @@ Default ports are configured as follows:
 | Service    | Port | Description                  |
 | ---------- | ---- | ---------------------------- |
 | API Server | 1028 | Fastify-based REST API       |
-| Sonamu UI  | 2028 | Entity management interface  |
-| Web App    | 3028 | Vite development server      |
+| Sonamu UI  | -    | http://localhost:1028/sonamu-ui |
+| Web App    | 3028 | Vite development server (SSR support) |
 | PostgreSQL | 5432 | Database                     |
 
 <Note>
-- API server port: Modify the `port` constant in `api/src/sonamu.config.ts` (in this case, also modify `API_PORT` in `web/.sonamu.env`)
-- Web app port: Modify `server.port` in `web/vite.config.ts`
-- Database port: Set environment variable in `database.defaultOptions.connection.port` in `api/src/sonamu.config.ts` (e.g., `MIOMOCK_DB_PORT`)
+- **Sonamu UI**: Access via the API server's `/sonamu-ui` path, not a separate port.
+- API server port: Modify the `port` constant in `packages/api/src/sonamu.config.ts` (in this case, also modify `API_PORT` in `packages/web/.sonamu.env`)
+- Web app port: Modify `server.port` in `packages/web/vite.config.ts`
 </Note>
 
 ## Next Steps

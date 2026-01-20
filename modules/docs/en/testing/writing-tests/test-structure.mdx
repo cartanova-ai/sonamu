@@ -10,25 +10,112 @@ Learn about Sonamu's Vitest-based test system and structure.
 <CardGroup cols={2}>
   <Card title="Vitest" icon="vial">
     Fast test execution
-    
+
     Vite integration
   </Card>
   <Card title="Context Based" icon="user">
     Authentication testing
-    
+
     Permission simulation
   </Card>
   <Card title="Transaction" icon="database">
     Auto rollback
-    
+
     Isolated tests
   </Card>
   <Card title="Fixture System" icon="box">
     Test data
-    
+
     Reusable
   </Card>
 </CardGroup>
+
+## Vitest Configuration
+
+Sonamu project test environment is configured with `vitest.config.ts` and `global.ts`.
+
+### vitest.config.ts
+
+Sonamu provides the `getSonamuTestConfig()` function to easily configure test settings.
+
+```typescript title="api/vitest.config.ts"
+import { getSonamuTestConfig } from "sonamu/test";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig(async () => ({
+  test: await getSonamuTestConfig({
+    include: ["src/**/*.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
+    globals: true,
+    globalSetup: ["./src/testing/global.ts"],
+  }),
+}));
+```
+
+### getSonamuTestConfig Options
+
+`getSonamuTestConfig()` supports all Vitest options and provides Sonamu-optimized defaults.
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `include` | Test file patterns | `["src/**/*.test.ts"]` |
+| `exclude` | Patterns to exclude | `["**/node_modules/**"]` |
+| `globals` | Enable global API | `true` |
+| `globalSetup` | Global setup file | - |
+| `setupFiles` | Setup to run before each test file | - |
+
+### global.ts Setup
+
+`global.ts` is a global setup file that runs once before all tests. Export Sonamu's `setup` function to initialize the test environment.
+
+```typescript title="api/src/testing/global.ts"
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Configure test environment based on sonamu.config.ts test settings.
+export { setup } from "sonamu/test";
+```
+
+<Note>
+`export { setup } from "sonamu/test"` reads the `test` settings from `sonamu.config.ts` to automatically configure parallel test environments (multiple test DBs).
+</Note>
+
+### Advanced Configuration Example
+
+Here's an advanced configuration with custom sequencer and reporters.
+
+```typescript title="api/vitest.config.ts"
+import { getSonamuTestConfig, NaiteVitestReporter } from "sonamu/test";
+import { defineConfig } from "vitest/config";
+import { PrioritySequencer } from "./custom-sequencer";
+
+export default defineConfig(async () => ({
+  test: await getSonamuTestConfig({
+    include: ["src/**/*.test.ts"],
+    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**"],
+    globals: true,
+    globalSetup: ["./src/testing/global.ts"],
+    setupFiles: ["./src/testing/setup-mocks.ts"],
+    sequence: {
+      sequencer: PrioritySequencer,  // Custom test order control
+    },
+    reporters: ["default", NaiteVitestReporter],  // Naite reporter
+    restoreMocks: true,
+    typecheck: {
+      enabled: true,
+      tsconfig: "./tsconfig.json",
+      include: ["src/**/*type-safety.test.ts"],
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/testing/**"],
+    },
+  }),
+}));
+```
 
 ## bootstrap Function
 
