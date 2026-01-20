@@ -8,7 +8,6 @@ set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
   -- 데이터베이스에서 vector 확장 설치 (기본접속 template1)
   CREATE EXTENSION IF NOT EXISTS vector;
-  CREATE EXTENSION IF NOT EXISTS pgroonga;
 
   CREATE DATABASE ${DATABASE_NAME};
   CREATE DATABASE ${DATABASE_NAME}_fixture;
