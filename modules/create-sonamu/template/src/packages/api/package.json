@@ -47,6 +47,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fastify": "catalog:",
+    "ioredis": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
