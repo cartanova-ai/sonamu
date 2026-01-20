@@ -89,7 +89,7 @@ function convertDatesToStrings(obj: any, parentKey?: string): any {
   if (typeof obj === "object") {
     const result: any = {};
     for (const key in obj) {
-      if (Object.hasOwn(obj, key)) {
+      if (obj.hasOwnProperty(key)) {
         result[key] = convertDatesToStrings(obj[key], key);
       }
     }
@@ -221,6 +221,25 @@ export const SonamuSemanticParams = z
   })
   .partial();
 export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
+
+/**
+ * SonamuFile Types
+ */
+export interface SonamuFile {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+}
+
+export const SonamuFileSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  mime_type: z.string(),
+  size: z.number(),
+});
+
+export const SonamuFileArraySchema = z.array(SonamuFileSchema);
 
 /*
   SWR
