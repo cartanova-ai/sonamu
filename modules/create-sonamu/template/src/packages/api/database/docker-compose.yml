@@ -3,11 +3,14 @@ name: ${CONTAINER_NAME}
 services:
   pg:
     platform: linux/arm64
-    image: pgvector/pgvector:pg18
+    image: public.ecr.aws/m9z8n2p9/cartanova/sonamu-postgres:latest
     container_name: ${CONTAINER_NAME}
+    env_file:
+      - ../.env
     volumes:
-      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./fixtures/init.sh:/docker-entrypoint-initdb.d/init.sh
     environment:
+      DATABASE_NAME: ${DATABASE_NAME}
       POSTGRES_DB: template1
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
