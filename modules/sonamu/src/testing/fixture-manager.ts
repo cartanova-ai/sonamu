@@ -512,7 +512,7 @@ export class FixtureManagerClass {
               this.registerFixture(fixture, insertedIdsByTable);
               console.log(
                 chalk.blue(
-                  `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override existing: #${fixture.target?.id})` : ""}`,
+                  `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override)` : ""}`,
                 ),
               );
             }
@@ -615,8 +615,8 @@ export class FixtureManagerClass {
         continue;
       }
 
-      // id/uuid 처리: Override 모드일 때만 기존 값 사용
-      if (propName === "id" || propName === "uuid") {
+      // id 처리: Override 모드일 때만 기존 값 사용
+      if (propName === "id") {
         if (isOverrideMode && existingRecord) {
           // Override: 기존 레코드의 값 사용 → UPDATE
           row[propName] = existingRecord.columns[propName]?.value;
