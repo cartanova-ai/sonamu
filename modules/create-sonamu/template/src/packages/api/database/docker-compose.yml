@@ -3,7 +3,7 @@ name: ${CONTAINER_NAME}
 services:
   pg:
     platform: linux/arm64
-    image: public.ecr.aws/m9z8n2p9/cartanova/sonamu-postgres:latest
+    image: pgvector/pgvector:pg18
     container_name: ${CONTAINER_NAME}
     env_file:
       - ../.env

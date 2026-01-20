@@ -90,22 +90,33 @@ ${functions.join("\n\n")}
       );
     }
 
+    // tanstack-query API가 없으면 헬퍼 함수와 import를 포함하지 않습니다.
+    // 새 프로젝트에서 첫 빌드 시 sync가 아직 안 되어 namespace가 비어있을 수 있고,
+    // 이때 createSSRQuery가 unused로 빌드 에러가 발생하는 것을 방지합니다.
+    const hasQueries = namespaces.length > 0;
+
     return {
       ...this.getTargetAndPath(),
       body: namespaces.join("\n\n"),
       importKeys: diff(unique(importKeys), typeParamNames),
-      customHeaders: [
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
-        "",
-        `import type { SSRQuery } from 'sonamu/ssr';`,
-        "",
-        `// SSRQuery 헬퍼 함수`,
-        `function createSSRQuery(modelName: string, methodName: string, params: any[], serviceKey: [string, string]): SSRQuery {`,
-        `  return { modelName, methodName, params, serviceKey, __brand: 'SSRQuery' } as SSRQuery;`,
-        `}`,
-        "",
-      ],
+      customHeaders: hasQueries
+        ? [
+            "/** biome-ignore-all lint: generated는 무시 */",
+            "/** biome-ignore-all assist: generated는 무시 */",
+            "",
+            `import type { SSRQuery } from 'sonamu/ssr';`,
+            "",
+            `// SSRQuery 헬퍼 함수`,
+            `function createSSRQuery(modelName: string, methodName: string, params: any[], serviceKey: [string, string]): SSRQuery {`,
+            `  return { modelName, methodName, params, serviceKey, __brand: 'SSRQuery' } as SSRQuery;`,
+            `}`,
+            "",
+          ]
+        : [
+            "/** biome-ignore-all lint: generated는 무시 */",
+            "/** biome-ignore-all assist: generated는 무시 */",
+            "",
+          ],
     };
   }
 }

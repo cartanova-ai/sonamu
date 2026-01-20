@@ -270,13 +270,25 @@ function UserListPage() {
 
 ## 🗄️ 데이터베이스
 
+### Docker 이미지
+
+기본적으로 `pgvector/pgvector:pg18` 이미지를 사용합니다. 이 이미지에는 다음 extension이 포함되어 있습니다:
+
+- **pgvector** - 벡터 검색 (AI/임베딩용)
+
+> **pgroonga (전문 검색)가 필요한 경우**
+>
+> pgroonga는 C 라이브러리 기반으로 별도 컴파일이 필요하여 기본 이미지에 포함되어 있지 않습니다.
+> 전문 검색이 필요하다면 [pgroonga Docker 이미지](https://hub.docker.com/r/groonga/pgroonga)를 사용하거나,
+> 직접 Dockerfile을 작성하여 pgroonga를 설치하세요.
+
 ### 데이터베이스 구성
 
-| DB 이름                 | 용도            |
-| ----------------------- | --------------- |
-| `{name}`                | 메인 개발 DB    |
-| `{name}_test`           | 테스트 실행용   |
-| `{name}_fixture_remote` | 팀 공유 fixture |
+| DB 이름            | 용도            |
+| ------------------ | --------------- |
+| `{name}`           | 메인 개발 DB    |
+| `{name}_fixture`   | fixture DB      |
+| `{name}_test`      | 테스트 실행용   |
 
 ### Fixture 워크플로우
 
