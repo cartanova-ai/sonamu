@@ -126,39 +126,48 @@ it("should use context in test", async () => {
 
 ## File Upload Context
 
-For file upload requests, uploaded file information is accessed through the `files` property of `Sonamu.getContext()`. Available only in methods with the `@upload` decorator.
+For file upload requests, uploaded file information is accessed through `Sonamu.getContext()`. Available only in methods with the `@upload` decorator.
+
+Two properties are used depending on the upload mode:
+- **Buffer mode (default)**: `bufferedFiles` - files loaded in memory, suitable for MD5 calculation/image processing
+- **Stream mode**: `uploadedFiles` - files streamed directly to storage, suitable for large files
 
 ### Signature
 
 ```typescript
-const { files } = Sonamu.getContext();
-// files: UploadedFile[]
+// Buffer mode (default)
+const { bufferedFiles } = Sonamu.getContext();
+// bufferedFiles: BufferedFile[]
+
+// Stream mode
+const { uploadedFiles } = Sonamu.getContext();
+// uploadedFiles: UploadedFile[]
 ```
 
 ### Type
 
 ```typescript
-// files property of Context
-files?: UploadedFile[];
+// File upload properties of Context
+bufferedFiles?: BufferedFile[];  // buffer mode
+uploadedFiles?: UploadedFile[];  // stream mode
 ```
-
-- **files**: Array of uploaded files (when using `@upload()` decorator)
 
 ### Notes
 
-- The `files` property is only set when using the `@upload` decorator
-- For single file uploads, access via `files?.[0]`
+- File properties are only set when using the `@upload` decorator
+- In buffer mode (default), use `bufferedFiles`; in stream mode, use `uploadedFiles`
+- For single file uploads, access via `bufferedFiles?.[0]` or `uploadedFiles?.[0]`
 
 ### Usage Examples
 
-#### Single File Upload
+#### Single File Upload (Buffer Mode)
 
 ```typescript
 class FileModelClass extends BaseModel {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
       throw new BadRequestException("File is required");
@@ -170,31 +179,31 @@ class FileModelClass extends BaseModel {
     console.log(file.size);        // 102400 (bytes)
     console.log(file.extname);     // "jpg"
 
-    // Save file
+    // Save file (diskName, key order)
     const key = `avatars/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
 
     return { url, filename: file.filename, size: file.size };
   }
 }
 ```
 
-#### Multiple File Upload
+#### Multiple File Upload (Buffer Mode)
 
 ```typescript
 class FileModelClass extends BaseModel {
   @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("At least one file is required");
     }
 
     const savedFiles = await Promise.all(
-      files.map(async (file, i) => {
+      bufferedFiles.map(async (file, i) => {
         const key = `documents/${Date.now()}_${i}_${file.filename}`;
-        const url = await file.saveToDisk(key);
+        const url = await file.saveToDisk("fs", key);
         return { url, filename: file.filename, size: file.size };
       })
     );
@@ -214,21 +223,47 @@ class FileModelClass extends BaseModel {
 }
 ```
 
+#### Large File Upload (Stream Mode)
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ mode: "stream" })
+  async uploadLargeFiles(ctx: Context) {
+    const { uploadedFiles } = Sonamu.getContext();
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      throw new BadRequestException("File is required");
+    }
+
+    // Already uploaded to storage
+    return {
+      files: uploadedFiles.map((file) => ({
+        filename: file.filename,
+        url: file.url,
+        size: file.size,
+      })),
+    };
+  }
+}
+```
+
 #### Using in Helper Functions
 
 ```typescript
 // src/utils/file-helper.ts
 import { Sonamu } from "sonamu";
 
-export function getUploadedFiles() {
-  const { files } = Sonamu.getContext();
-  return files;
+export function getBufferedFiles() {
+  const { bufferedFiles } = Sonamu.getContext();
+  return bufferedFiles;
 }
 
 export function validateFileTypes(allowedTypes: string[]) {
-  const { files } = Sonamu.getContext();
+  const { bufferedFiles } = Sonamu.getContext();
 
-  for (const file of files) {
+  if (!bufferedFiles) return;
+
+  for (const file of bufferedFiles) {
     if (!allowedTypes.includes(file.mimetype)) {
       throw new BadRequestException(
         `File type not allowed: ${file.mimetype}`
@@ -251,7 +286,7 @@ class FileModelClass extends BaseModel {
       "image/webp"
     ]);
 
-    const files = getUploadedFiles();
+    const files = getBufferedFiles();
 
     // File processing logic
     // ...
@@ -261,7 +296,42 @@ class FileModelClass extends BaseModel {
 
 ## Related Types
 
-### UploadedFile
+### BufferedFile (Buffer Mode)
+
+```typescript
+class BufferedFile {
+  /** Original filename */
+  get filename(): string;
+
+  /** MIME type */
+  get mimetype(): string;
+
+  /** File size (bytes) */
+  get size(): number;
+
+  /** Extension (without dot) */
+  get extname(): string | false;
+
+  /** File Buffer (getter) */
+  get buffer(): Buffer;
+
+  /** Access to original MultipartFile */
+  get raw(): MultipartFile;
+
+  /** Calculate MD5 hash */
+  async md5(): Promise<string>;
+
+  /**
+   * Save file to disk
+   * @param diskName Disk name (e.g., 'fs', 's3')
+   * @param key Storage path (e.g., 'uploads/avatar.png')
+   * @returns URL of saved file
+   */
+  async saveToDisk(diskName: DriverKey, key: string): Promise<string>;
+}
+```
+
+### UploadedFile (Stream Mode)
 
 ```typescript
 class UploadedFile {
@@ -277,28 +347,20 @@ class UploadedFile {
   /** Extension (without dot) */
   get extname(): string | false;
 
-  /** Saved URL after saveToDisk (Unsigned) */
-  get url(): string | undefined;
+  /** URL of the stored file (Unsigned) */
+  get url(): string;
 
-  /** Saved URL after saveToDisk (Signed) */
-  get signedUrl(): string | undefined;
+  /** URL of the stored file (Signed, with expiration) */
+  get signedUrl(): string;
 
-  /** Access to original MultipartFile */
-  get raw(): MultipartFile;
+  /** Key in storage */
+  get key(): string;
 
-  /** Convert to Buffer (cached) */
-  async toBuffer(): Promise<Buffer>;
+  /** Storage disk name */
+  get diskName(): DriverKey;
 
-  /** Calculate MD5 hash */
-  async md5(): Promise<string>;
-
-  /**
-   * Save file to disk
-   * @param key Storage path (e.g., 'uploads/avatar.png')
-   * @param diskName Disk name (default: default disk)
-   * @returns URL of saved file
-   */
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string>;
+  /** Download file from storage */
+  async download(): Promise<Buffer>;
 }
 ```
 
@@ -336,22 +398,30 @@ class PostModelClass extends BaseModel {
 
 ### @upload Decorator Required
 
-The `files` property can only be used in methods with the `@upload` decorator:
+The `bufferedFiles`/`uploadedFiles` properties can only be used in methods with the `@upload` decorator:
 
 ```typescript
-// ✅ Correct usage
+// ✅ Correct usage (Buffer Mode)
 @api()
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // OK
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // OK
+}
+
+// ✅ Correct usage (Stream Mode)
+@api()
+@upload({ mode: "stream" })
+async uploadFile() {
+  const { uploadedFiles } = Sonamu.getContext();
+  const file = uploadedFiles?.[0]; // OK
 }
 
 // ❌ Incorrect usage
 @api()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  // files is undefined
+  const { bufferedFiles } = Sonamu.getContext();
+  // bufferedFiles is undefined
 }
 ```
 

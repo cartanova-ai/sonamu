@@ -15,7 +15,10 @@ type Context = {
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;
   locale: string;
-  files?: UploadedFile[];
+  /** buffer 모드에서 업로드된 파일 */
+  bufferedFiles?: BufferedFile[];
+  /** stream 모드에서 업로드된 파일 */
+  uploadedFiles?: UploadedFile[];
 } & AuthContext & ContextExtend;
 ```
 
@@ -140,20 +143,20 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### files
+### bufferedFiles
 
 ```typescript
-files?: UploadedFile[]
+bufferedFiles?: BufferedFile[]
 ```
 
-업로드된 파일 목록입니다. `@upload` 데코레이터가 적용된 메서드에서만 존재합니다.
+Buffer 모드로 업로드된 파일 목록입니다. `@upload` 데코레이터가 적용된 메서드에서, 기본 모드(buffer) 또는 `mode: "buffer"`로 설정된 경우에 존재합니다.
 
-각 파일은 `UploadedFile` 객체로 제공되며, 파일 처리를 위한 다양한 메서드를 제공합니다.
+각 파일은 메모리에 로드된 상태로, MD5 계산이나 이미지 처리 등 유연한 작업이 가능합니다.
 
-**UploadedFile 주요 속성 및 메서드:**
+**BufferedFile 주요 속성 및 메서드:**
 
 ```typescript
-interface UploadedFile {
+interface BufferedFile {
   // 파일 정보
   filename: string;       // 파일명
   mimetype: string;       // MIME 타입 (예: "image/png", "application/pdf")
@@ -161,9 +164,9 @@ interface UploadedFile {
   extname: string;        // 확장자 (예: "png", "pdf")
 
   // 파일 처리 메서드
-  md5(): Promise<string>;                    // MD5 해시 생성
-  saveToDisk(key: string): Promise<string>;  // 파일 저장 후 URL 반환
-  toBuffer(): Promise<Buffer>;               // Buffer로 읽기
+  buffer: Buffer;                                          // 파일 Buffer (getter)
+  md5(): Promise<string>;                                  // MD5 해시 생성
+  saveToDisk(diskName: string, key: string): Promise<string>;  // 파일 저장 후 URL 반환
 }
 ```
 
@@ -173,19 +176,19 @@ interface UploadedFile {
 class FileModelClass extends BaseModel {
   @upload({ limits: { files: 10 } })
   async upload(): Promise<{ files: SonamuFile[] }> {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("파일이 업로드되지 않았습니다");
     }
 
     const processedFiles = await Promise.all(
-      files.map(async (file) => {
+      bufferedFiles.map(async (file) => {
         const md5 = await file.md5();
         const key = `${md5}.${file.extname}`;
         return {
           name: file.filename,
-          url: await file.saveToDisk(key),
+          url: await file.saveToDisk("fs", key),
           mime_type: file.mimetype,
           size: file.size,
         };
@@ -193,37 +196,6 @@ class FileModelClass extends BaseModel {
     );
 
     return { files: processedFiles };
-  }
-}
-```
-
-**파라미터와 함께 사용:**
-
-```typescript
-class FileModelClass extends BaseModel {
-  @upload({ limits: { files: 5 } })
-  async uploadWithCategory(params: { category: string }): Promise<{
-    category: string;
-    files: SonamuFile[];
-  }> {
-    const { files } = Sonamu.getContext();
-    const { category } = params;
-
-    if (!files || files.length === 0) {
-      throw new BadRequestException("파일이 업로드되지 않았습니다");
-    }
-
-    return {
-      category,
-      files: await Promise.all(
-        files.map(async (file) => ({
-          name: file.filename,
-          url: await file.saveToDisk(`${category}/${await file.md5()}`),
-          mime_type: file.mimetype,
-          size: file.size,
-        }))
-      ),
-    };
   }
 }
 ```
@@ -236,23 +208,22 @@ import sharp from "sharp";
 class ImageModelClass extends BaseModel {
   @upload({ limits: { files: 1 } })
   async uploadThumbnail(): Promise<{ url: string }> {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("이미지가 업로드되지 않았습니다");
     }
 
-    const file = files[0];
+    const file = bufferedFiles[0];
 
-    // Buffer로 읽어서 이미지 처리
-    const buffer = await file.toBuffer();
-    const thumbnail = await sharp(buffer)
+    // Buffer로 이미지 처리 (getter 사용)
+    const thumbnail = await sharp(file.buffer)
       .resize(200, 200)
       .jpeg({ quality: 80 })
       .toBuffer();
 
     // 처리된 이미지 저장
-    const disk = Sonamu.storage.use();
+    const disk = Sonamu.storage.use("fs");
     const key = `thumbnails/${await file.md5()}.jpg`;
     await disk.put(key, thumbnail);
 
@@ -261,11 +232,65 @@ class ImageModelClass extends BaseModel {
 }
 ```
 
+### uploadedFiles
+
+```typescript
+uploadedFiles?: UploadedFile[]
+```
+
+Stream 모드로 업로드된 파일 목록입니다. `@upload({ mode: "stream" })` 설정 시 존재합니다.
+
+파일이 이미 저장소에 스트리밍 완료된 상태로, URL/key 등 메타데이터만 접근 가능합니다. 대용량 파일 업로드에 적합합니다.
+
+**UploadedFile 주요 속성 및 메서드:**
+
+```typescript
+interface UploadedFile {
+  // 파일 정보
+  filename: string;       // 파일명
+  mimetype: string;       // MIME 타입 (예: "image/png", "application/pdf")
+  size: number;           // 파일 크기 (bytes)
+  extname: string;        // 확장자 (예: "png", "pdf")
+  url: string;            // 저장된 파일의 URL
+  signedUrl: string;      // Signed URL (만료 시간 있음)
+  key: string;            // 저장소 내 키
+  diskName: string;       // 저장된 디스크 이름
+
+  // 파일 처리 메서드
+  download(): Promise<Buffer>;  // 저장소에서 파일 다운로드
+}
+```
+
+**Stream 모드 사용 예시:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ mode: "stream", limits: { files: 5 } })
+  async uploadLargeFiles(): Promise<{ files: SonamuFile[] }> {
+    const { uploadedFiles } = Sonamu.getContext();
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      throw new BadRequestException("파일이 업로드되지 않았습니다");
+    }
+
+    // 이미 저장소에 업로드 완료된 상태
+    return {
+      files: uploadedFiles.map((file) => ({
+        name: file.filename,
+        url: file.url,
+        mime_type: file.mimetype,
+        size: file.size,
+      })),
+    };
+  }
+}
+```
+
 <Info>
 **파일 업로드 처리**:
 - `@upload` 데코레이터와 함께 사용해야 합니다
-- 파일은 설정된 storage에 자동으로 저장됩니다
-- `files` 배열의 순서는 폼에서 전송한 순서와 동일합니다
+- Buffer 모드(기본): `bufferedFiles` 사용 - 메모리에 로드, MD5 계산/이미지 처리에 적합
+- Stream 모드: `uploadedFiles` 사용 - 저장소로 직접 스트리밍, 대용량 파일에 적합
 - 자세한 내용은 [@upload 데코레이터](/api-reference/decorators/upload) 문서를 참고하세요
 </Info>
 
