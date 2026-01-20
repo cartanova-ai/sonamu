@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom/client";
 import "./index.css";
+import { TooltipProvider } from "@sonamu-kit/react-components";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
@@ -27,7 +28,9 @@ const router = createRouter({
 });
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <RouterProvider router={router} />,
+  <TooltipProvider>
+    <RouterProvider router={router} />,
+  </TooltipProvider>,
 );
 
 // Chrome Extension용 Devtools
