@@ -627,7 +627,9 @@ export function zodTypeToRenderingNode(
 function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["renderType"] {
   if (zodType instanceof z.ZodDate) {
     return "datetime";
-  } else if (zodType instanceof z.ZodString) {
+  } else if (zodType instanceof z.core.$ZodString) {
+    // NOTE: z.ZodString으로 비교하면 z.url(), z.email() 등의 타입에서 문제가 생기므로 z.core.$ZodString으로 비교함
+    // FIXME: email이나 url 타입 등에 대한 처리가 필요함
     if (zodType.description === "SQLDateTimeString") {
       return "string-datetime";
     } else if (key.endsWith("date")) {

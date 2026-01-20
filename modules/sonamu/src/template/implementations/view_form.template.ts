@@ -138,7 +138,9 @@ export class Template__view_form extends Template {
           value = Object.keys(col.zodType.enum)[0];
         } else if (col.zodType instanceof z.ZodBoolean) {
           value = false;
-        } else if (col.zodType instanceof z.ZodString) {
+        } else if (col.zodType instanceof z.core.$ZodString) {
+          // NOTE: z.ZodString으로 비교하면 z.url(), z.email() 등의 타입에서 문제가 생기므로 z.core.$ZodString으로 비교함
+          // FIXME: email이나 url 타입 등에 대한 처리가 필요함
           if (col.renderType === "string-datetime") {
             value = "now()";
           } else {

@@ -75,7 +75,8 @@ export class Template__generated_http extends Template {
       );
     } else if (zodType instanceof z.ZodArray) {
       return [this.zodTypeToReqDefault((zodType as z.ZodArray<z.ZodType>).element, name)];
-    } else if (zodType instanceof z.ZodString) {
+    } else if (zodType instanceof z.core.$ZodString) {
+      // NOTE: z.ZodString으로 비교하면 z.url(), z.email() 등의 타입에서 문제가 생기므로 z.core.$ZodString으로 비교함
       if (name.endsWith("_at") || name.endsWith("_date") || name === "range") {
         return "2000-01-01";
       } else {
