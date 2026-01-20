@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@sonamu-kit/react-components";
+import { camelize } from "inflection";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
@@ -101,11 +102,63 @@ const FixtureCode = ({
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
   const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
-  const [codes, _setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
+  const [codes, setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
+
+  const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
+    return `${camelize(entityId, true)}${id
+      .toString()
+      .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
+  };
+
+  const getFixtureTestCode = (entityId: string, id: number, res: { [key: string]: any }) => {
+    const fixtureName = camelize(entityId, true) + id.toString().padStart(2, "0");
+
+    const generateExpects = (obj: { [key: string]: any }, path = "") => {
+      let expects = "";
+      for (const [key, value] of Object.entries(obj)) {
+        const currentPath = path ? `${path}.${key}` : key;
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          expects += generateExpects(value, currentPath);
+        } else if (Array.isArray(value)) {
+          value.forEach((item, index) => {
+            if (typeof item === "object" && item !== null) {
+              expects += generateExpects(item, `${currentPath}[${index}]`);
+            } else {
+              expects += `expect(${fixtureName}${
+                currentPath ? `.${currentPath}` : ""
+              }[${index}]).toBe(${JSON.stringify(item)});\n`;
+            }
+          });
+        } else {
+          expects += `expect(${fixtureName}${
+            currentPath ? `.${currentPath}` : ""
+          }).toBe(${JSON.stringify(value)});\n`;
+        }
+      }
+      return expects;
+    };
+
+    return generateExpects(res);
+  };
 
   useEffect(() => {
     if (selectedSubset) {
-      // FIXME: 특정 서브셋 쿼리 조회하는 방식 변경 필요
+      // FIXME: fixture.data를 서브셋 쿼리 조회하는 방식 변경 필요
+      setCodes(
+        new Map([
+          [
+            selectedSubset,
+            {
+              fixture: getFixtureLoaderCode(
+                fixture.entityId,
+                Number(fixture.data.id),
+                selectedSubset,
+              ),
+              test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), fixture.data),
+            },
+          ],
+        ]),
+      );
     }
   }, [fixture, selectedSubset, targetDB]);
 
