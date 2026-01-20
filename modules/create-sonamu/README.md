@@ -15,19 +15,23 @@ Sonamu는 **Entity-driven 풀스택 TypeScript 프레임워크**입니다. 엔�
 - **코드 자동 생성** - 엔티티 정의 → 타입, API, 서비스 코드 자동 생성
 - **타입 안전성** - Zod 스키마 기반 End-to-End 타입 보장
 - **HMR 지원** - 코드 변경 시 서버 재시작 없이 즉시 반영
+- **SSR 지원** - React Server-Side Rendering 기본 탑재
 - **PostgreSQL** - Docker로 간편한 데이터베이스 설정
 - **Sonamu UI** - 브라우저에서 엔티티 관리 및 마이그레이션
+- **Modern Stack** - TanStack Router, React Query, Tailwind CSS
 
 ---
 
 ## 빠른 시작
+
+### 대화형 모드
 
 ```bash
 pnpm create sonamu
 ```
 
 ```
-? Project name: my-app
+? Project name: my_app
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
 ? Enter the Docker project name: my-app-container
@@ -37,29 +41,67 @@ pnpm create sonamu
 ? Enter the database password: ****
 ```
 
+> **프로젝트명 규칙**
+> - 공백(space) 사용 불가
+> - 하이픈(`-`) 사용 불가 (PostgreSQL DB 이름, 환경변수 호환성)
+> - 언더스코어(`_`) 권장 (예: `my_project`, `test_app`)
+
+### CLI 옵션 모드
+
+```bash
+# 프로젝트명만 지정 (언더스코어 사용)
+pnpm create sonamu my_project
+
+# 모든 질문을 기본값으로 자동 응답
+pnpm create sonamu my_project --yes
+
+# pnpm 설치 스킵
+pnpm create sonamu my_app --skip-pnpm
+
+# Docker 설정 스킵
+pnpm create sonamu my_app --skip-docker
+
+# DB 정보 지정
+pnpm create sonamu my_app \
+  --db-user=postgres \
+  --db-password=1234 \
+  --db-name=myapp \
+  --container-name=myapp-pg \
+  --docker-project=myapp-docker
+```
+
+#### 사용 가능한 옵션
+
+| 옵션               | 설명                             | 기본값                 |
+| ------------------ | -------------------------------- | ---------------------- |
+| `--yes`, `-y`      | 모든 질문에 기본값으로 자동 응답 | -                      |
+| `--skip-pnpm`      | pnpm 설치 건너뛰기               | false                  |
+| `--skip-docker`    | Docker DB 설정 건너뛰기          | false                  |
+| `--db-user`        | 데이터베이스 사용자              | postgres               |
+| `--db-password`    | 데이터베이스 비밀번호            | (프롬프트로 입력)      |
+| `--db-name`        | 데이터베이스 이름                | {프로젝트명}           |
+| `--container-name` | Docker 컨테이너 이름             | {프로젝트명}-container |
+| `--docker-project` | Docker Compose 프로젝트명        | {프로젝트명}-docker    |
+
 ### 실행하기
 
 ```bash
 # 1. 데이터베이스 시작
-cd my-app/api
-pnpm db:up
+cd my_app/packages/api
+pnpm docker:up
 
-# 2. API 서버 시작
+# 2. API 서버 시작 (Sonamu UI 포함)
 pnpm dev
 
 # 3. Web 서버 시작 (새 터미널)
-cd my-app/web
+cd my_app/packages/web
 pnpm dev
-
-# 4. Sonamu UI에서 첫 번째 엔티티 생성
-cd my-app/api
-pnpm sonamu ui
 ```
 
 🎉 **완료!**
 
 - API: http://localhost:1028
-- Sonamu UI: http://localhost:2028
+- Sonamu UI: http://localhost:1028/sonamu-ui (엔티티 관리)
 - Web: http://localhost:3028
 
 ---
@@ -67,25 +109,30 @@ pnpm sonamu ui
 ## 📁 생성되는 프로젝트 구조
 
 ```
-my-app/
-├── api/                          # 백엔드
-│   ├── src/
-│   │   ├── application/          # 엔티티, 모델, 타입 (자동 생성)
-│   │   ├── testing/              # 테스트 유틸리티
-│   │   └── index.ts              # 서버 엔트리포인트
-│   ├── database/
-│   │   ├── docker-compose.yml    # PostgreSQL 컨테이너
-│   │   ├── fixtures/init.sql     # DB 초기화 스크립트
-│   │   └── scripts/              # dump, seed 스크립트
-│   ├── sonamu.config.ts          # Sonamu 설정
-│   └── .env                      # 환경변수
-│
-├── web/                          # 프론트엔드
-│   └── src/
-│       ├── services/             # API 클라이언트 (자동 생성)
-│       └── pages/
-│
-└── README.md
+├── packages/
+│   ├── api/                    # 백엔드 (Sonamu based on Fastify)
+│   │   ├── src/
+│   │   │   ├── application/    # 엔티티, 모델, 타입 (Entity 추가 후 생성)
+│   │   │   ├── i18n/           # 다국어 지원 (ko, en)
+│   │   │   ├── testing/        # 테스트 유틸리티
+│   │   │   ├── index.ts        # 서버 엔트리포인트
+│   │   │   └── sonamu.config.ts # Sonamu 설정
+│   │   ├── database/
+│   │   │   ├── docker-compose.yml
+│   │   │   ├── fixtures/       # DB 초기화 스크립트
+│   │   │   └── scripts/        # dump, seed 스크립트
+│   │   └── vitest.config.ts    # 테스트 설정
+│   │
+│   └── web/                    # 프론트엔드 (React + Vite + SSR)
+│       └── src/
+│           ├── routes/         # TanStack Router (파일 기반 라우팅)
+│           ├── services/       # API 클라이언트 (Entity 추가 후 생성)
+│           ├── i18n/           # 다국어 지원
+│           ├── contexts/       # React Context (Sonamu Provider)
+│           ├── admin-common/   # 공통 컴포넌트 (ApiLogViewer 등)
+│           ├── entry-client.tsx    # 클라이언트 엔트리
+│           └── entry-server.generated.tsx  # SSR 엔트리
+└── pnpm-workspace.yaml         # pnpm workspace 설정
 ```
 
 ---
@@ -94,12 +141,16 @@ my-app/
 
 > 여러 프로젝트를 동시에 실행할 수 있습니다.
 
-| 서비스         | 계산식             | 기본값 |
-| -------------- | ------------------ | ------ |
-| **API 서버**   | `BASE_PORT`        | 1028   |
-| **Sonamu UI**  | `BASE_PORT + 1000` | 2028   |
-| **Web**        | `BASE_PORT + 2000` | 3028   |
-| **PostgreSQL** | 5432               | 5432   |
+| 서비스         | 포트               | URL                              |
+| -------------- | ------------------ | -------------------------------- |
+| **API 서버**   | `BASE_PORT` (1028) | http://localhost:1028            |
+| **Sonamu UI**  | -                  | http://localhost:1028/sonamu-ui  |
+| **Web 개발**   | `BASE_PORT + 2000` (3028) | http://localhost:3028     |
+| **PostgreSQL** | 5432               | -                                |
+
+**참고**:
+- Sonamu UI는 API 서버에 통합되어 있어 별도 실행이 필요 없습니다
+- Web은 개발 중에는 Vite dev 서버(3028)로, 프로덕션에서는 빌드 후 API 서버에서 서빙됩니다
 
 ---
 
@@ -109,10 +160,9 @@ my-app/
 
 | 명령어           | 설명                                      |
 | ---------------- | ----------------------------------------- |
-| `pnpm dev`       | 개발 서버 시작 (HMR)                      |
+| `pnpm dev`       | 개발 서버 시작 (HMR, Sonamu UI 포함)      |
 | `pnpm build`     | 프로덕션 빌드                             |
 | `pnpm start`     | 프로덕션 서버 실행                        |
-| `pnpm sonamu ui` | Sonamu UI 실행 (엔티티 관리)              |
 | `pnpm test`      | 테스트 실행                               |
 | `pnpm db:up`     | Docker 데이터베이스 시작                  |
 | `pnpm db:down`   | Docker 데이터베이스 중지                  |
@@ -122,11 +172,13 @@ my-app/
 
 ### Web (`web/`)
 
-| 명령어         | 설명               |
-| -------------- | ------------------ |
-| `pnpm dev`     | 개발 서버 시작     |
-| `pnpm build`   | 프로덕션 빌드      |
-| `pnpm preview` | 빌드 결과 미리보기 |
+| 명령어         | 설명                          |
+| -------------- | ----------------------------- |
+| `pnpm dev`     | 개발 서버 시작 (Vite)         |
+| `pnpm build`   | 프로덕션 빌드 (Client + SSR)  |
+| `pnpm preview` | 빌드 결과 미리보기            |
+
+**참고**: `pnpm build`는 클라이언트와 SSR 서버를 모두 빌드합니다. 빌드 결과는 `api/public/web`과 `api/dist/ssr`에 복사됩니다.
 
 ---
 
@@ -134,31 +186,33 @@ my-app/
 
 ### 1. 엔티티 생성
 
-```bash
-pnpm sonamu ui
-```
-
-브라우저에서 Sonamu UI 접속 → **Entities** 탭 → **+ Entity** 클릭
+API 서버를 실행한 상태에서 http://localhost:1028/sonamu-ui 접속 → **Entities** 탭 → **+ Entity** 클릭
 
 ### 2. 자동 생성되는 파일들
 
-엔티티를 생성하면 다음 파일들이 자동으로 생성됩니다:
+**주의**: 프로젝트를 처음 생성했을 때는 Entity가 없으므로 이 파일들이 생성되지 않습니다.
+첫 번째 Entity를 추가하면 다음 파일들이 자동으로 생성됩니다:
 
 ```
 api/src/application/
 ├── user/
-│   ├── user.entity.json     # 엔티티 정의
+│   ├── user.entity.json     # 엔티티 정의 (SSoT)
 │   ├── user.types.ts        # Zod 스키마 & 타입
 │   └── user.model.ts        # 비즈니스 로직
-├── sonamu.generated.ts      # 공통 타입 (자동 생성)
-└── sonamu.generated.sso.ts  # 서버 전용 타입
+├── sonamu.generated.ts      # 모든 Entity의 공통 타입 (자동 생성)
+└── sonamu.generated.sso.ts  # 서브셋 쿼리 (자동 생성)
 
 web/src/services/
 ├── user/
 │   ├── user.types.ts        # (api에서 복사됨)
 │   └── user.service.ts      # API 클라이언트 (자동 생성)
-└── sonamu.generated.ts      # (api에서 복사됨)
+├── sonamu.generated.ts      # (api에서 복사됨)
+├── sonamu.shared.ts         # 공통 유틸 (josa, dateReviver 등)
+└── services.generated.ts    # 통합 서비스 (자동 생성)
 ```
+
+**초기 상태**: 빌드 가능하도록 최소한의 스텁 파일들이 포함되어 있습니다.
+**Entity 추가 후**: 실제 코드 생성 파일들로 자동 교체됩니다.
 
 ### 3. API 작성
 
@@ -192,12 +246,23 @@ export const UserService = {
 ### 4. 프론트엔드에서 사용
 
 ```tsx
-// web/src/pages/UserPage.tsx
-import { UserService } from "src/services/user/user.service";
+// web/src/routes/users/index.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { UserService } from "@/services/user/user.service";
 
-function UserPage() {
-  const user = await UserService.findById(1);
-  // user는 UserSubsetA | null 타입으로 자동 추론됨
+export const Route = createFileRoute("/users/")({
+  component: UserListPage,
+});
+
+function UserListPage() {
+  const { data: users } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => UserService.findMany({ num: 10, page: 1 }),
+  });
+  // users는 ListResult<UserSubsetA> 타입으로 자동 추론됨
+
+  return <div>{/* ... */}</div>;
 }
 ```
 

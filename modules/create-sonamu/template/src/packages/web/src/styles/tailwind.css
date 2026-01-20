@@ -1,0 +1,5 @@
+/* Tailwind CSS Configuration */
+
+/* Tailwind v4: Source paths */
+@source "../../src/**/*.tsx";
+@source "../../src/**/*.ts";
