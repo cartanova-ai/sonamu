@@ -279,9 +279,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                         checked={selectedConnKeys.includes(conn.connKey)}
                         label={
                           <Tooltip>
-                            <TooltipTrigger>
-                              {`${conn.name} / ${conn.status}`}
-                            </TooltipTrigger>
+                            <TooltipTrigger>{`${conn.name} / ${conn.status}`}</TooltipTrigger>
                             <TooltipContent>
                               <p>${conn.connString}</p>
                             </TooltipContent>
