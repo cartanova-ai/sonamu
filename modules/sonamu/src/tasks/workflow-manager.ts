@@ -198,6 +198,11 @@ export class WorkflowManager {
     workflow: Pick<WorkflowMetadata, "id" | "name" | "version">,
     schedule: WorkflowMetadata["schedules"][number],
   ) {
+    // Worker가 활성화된 노드에서만 처리
+    if (!this.#worker) {
+      return;
+    }
+
     const task = cronSchedule(
       schedule.expression,
       (async (
@@ -227,6 +232,11 @@ export class WorkflowManager {
 
   // cron task를 중지
   async unscheduleTask(name: string) {
+    // Worker가 활성화된 노드에서만 처리
+    if (!this.#worker) {
+      return;
+    }
+
     const taskItem = this.#scheduledTasks.get(name);
     if (!taskItem) {
       console.error("scheduled task not found", name);
