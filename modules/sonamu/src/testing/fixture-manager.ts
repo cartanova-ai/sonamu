@@ -14,6 +14,7 @@ import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
+  type BelongsToOneRelationProp,
   type DatabaseSchemaExtend,
   type EntityProp,
   type FixtureImportResult,
@@ -26,6 +27,7 @@ import {
   isRelationProp,
   isVirtualProp,
   type ManyToManyRelationProp,
+  type OneToOneRelationProp,
 } from "../types/types";
 import { RelationGraph } from "./_relation-graph";
 
@@ -65,7 +67,6 @@ export class FixtureManagerClass {
   // UpsertBuilder 기반 import를 위한 상태
   private builder: UpsertBuilder = new UpsertBuilder();
   private fixtureRefMap: Map<string, UBRef> = new Map();
-  private uuidToFixtureId: Map<string, string> = new Map();
   private skippedFixtures: Map<string, { entityId: string; existingId: number }> = new Map();
 
   init() {
@@ -422,8 +423,13 @@ export class FixtureManagerClass {
 
   /**
    * 1. RelationGraph로 fixture 단위 삽입 순서 계산 (self-reference 포함)
-   * 2. 순서대로 UpsertBuilder에 등록 (UBRef로 참조 관계 표현)
-   * 3. 테이블별 upsert 실행 (ID는 DB가 자동 할당)
+   * 2. 테이블별 레벨별로 UpsertBuilder에 등록 및 upsert 실행
+   * 3. 순서 기반 uuid→id 매핑 (UpsertBuilder가 uuid를 DB에 저장하지 않으므로)
+   *
+   * UpsertBuilder는 self-reference가 있으면 buildInsertLevels()로 재정렬하여
+   * 등록 순서와 반환 순서가 달라질 수 있습니다. 이를 방지하기 위해
+   * FixtureManager가 레벨별로 나눠서 처리하여 각 upsert 호출에서는
+   * self-reference가 없도록 합니다.
    */
   async insertFixtures(
     dbName: keyof SonamuDBConfig,
@@ -434,7 +440,6 @@ export class FixtureManagerClass {
     // 초기화
     this.builder = new UpsertBuilder();
     this.fixtureRefMap = new Map();
-    this.uuidToFixtureId = new Map();
     this.skippedFixtures = new Map();
 
     const db = createKnexInstance(Sonamu.dbConfig[dbName]);
@@ -445,7 +450,7 @@ export class FixtureManagerClass {
       this.relationGraph.buildGraph(fixtures);
       const insertionOrder = this.relationGraph.getInsertionOrder();
 
-      // 2. 순서대로 UpsertBuilder에 등록 (override 체크)
+      // 2. 스킵할 fixture 먼저 처리 (override 체크)
       for (const fixtureId of insertionOrder) {
         const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
         if (!fixture) continue;
@@ -469,52 +474,82 @@ export class FixtureManagerClass {
               `Skipped ${fixture.entityId}#${fixture.id} (existing: #${existingId}, override: false)`,
             ),
           );
-          continue;
         }
-
-        this.registerFixture(fixture);
-        console.log(
-          chalk.blue(
-            `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override existing: #${fixture.target?.id})` : ""}`,
-          ),
-        );
       }
 
-      // 3. 테이블별 upsert 실행
-      const tableOrder = this.getTableOrder(fixtures);
+      // 3. 테이블별 fixture 그룹화 (insertionOrder 순서 기반)
+      const fixturesByTable = new Map<string, FixtureRecord[]>();
+      const tableOrder: string[] = [];
+
+      for (const fixtureId of insertionOrder) {
+        // 스킵된 fixture 제외
+        if (this.skippedFixtures.has(fixtureId)) continue;
+
+        const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
+        if (!fixture) continue;
+
+        const entity = EntityManager.get(fixture.entityId);
+        const tableName = entity.table;
+
+        if (!fixturesByTable.has(tableName)) {
+          fixturesByTable.set(tableName, []);
+          tableOrder.push(tableName);
+        }
+        fixturesByTable.get(tableName)?.push(fixture);
+      }
 
       await db.transaction(async (trx) => {
         const insertedIdsByTable = new Map<string, Map<string, number>>();
 
+        // 4. 테이블별 레벨별 처리
         for (const tableName of tableOrder) {
-          if (!this.builder.hasTable(tableName)) continue;
+          const tableFixtures = fixturesByTable.get(tableName) ?? [];
+          const levels = this.groupFixturesByLevel(tableFixtures);
 
-          // upsert 실행 전 uuid 목록 저장
-          const table = this.builder.getTable(tableName);
-          const uuids = table.rows.map((row) => row.uuid as string);
-
-          console.log(chalk.blue(`Upserting ${tableName} with ${uuids.length} rows`));
-          await this.builder.upsert(trx, tableName);
-
-          // upsert된 row들의 uuid -> id 매핑 구축
-          if (uuids.length > 0) {
-            const uuidToId = new Map<string, number>();
-            const rows = await trx(tableName as string)
-              .select("uuid", "id")
-              .whereIn("uuid", uuids);
-
-            for (const row of rows) {
-              uuidToId.set(row.uuid, row.id);
+          for (const levelFixtures of levels) {
+            // 해당 레벨의 fixture들 register
+            for (const fixture of levelFixtures) {
+              this.registerFixture(fixture, insertedIdsByTable);
+              console.log(
+                chalk.blue(
+                  `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override existing: #${fixture.target?.id})` : ""}`,
+                ),
+              );
             }
 
-            insertedIdsByTable.set(tableName, uuidToId);
+            // upsert 실행 전 uuid 목록 저장
+            const table = this.builder.getTable(tableName);
+            const uuids = table.rows.map((row) => row.uuid as string);
+
+            console.log(
+              chalk.blue(
+                `Upserting ${tableName} with ${uuids.length} rows (level ${levels.indexOf(levelFixtures) + 1}/${levels.length})`,
+              ),
+            );
+            const ids = await this.builder.upsert(trx, tableName as keyof DatabaseSchemaExtend);
+
+            // 순서 기반 uuid -> id 매핑
+            // self-reference가 없으므로 등록 순서 = 반환 순서 보장
+            if (uuids.length > 0 && uuids.length === ids.length) {
+              const existingMap = insertedIdsByTable.get(tableName) ?? new Map<string, number>();
+              for (let i = 0; i < uuids.length; i++) {
+                existingMap.set(uuids[i], ids[i]);
+              }
+              insertedIdsByTable.set(tableName, existingMap);
+            } else if (uuids.length !== ids.length) {
+              console.warn(
+                chalk.yellow(
+                  `Warning: uuid count (${uuids.length}) != id count (${ids.length}) for ${tableName}`,
+                ),
+              );
+            }
           }
         }
 
-        // 4. ManyToMany 관계 처리
+        // 5. ManyToMany 관계 처리
         await this.processManyToManyRelations(trx, fixtures, insertedIdsByTable);
 
-        // 5. 결과 수집
+        // 6. 결과 수집
         for (const fixture of fixtures) {
           const entity = EntityManager.get(fixture.entityId);
 
@@ -555,8 +590,12 @@ export class FixtureManagerClass {
 
   /**
    * FixtureRecord를 UpsertBuilder에 등록
+   * @param insertedIdsByTable 이미 upsert된 테이블의 uuid→id 매핑 (레벨별 처리 시 사용)
    */
-  private registerFixture(fixture: FixtureRecord): UBRef {
+  private registerFixture(
+    fixture: FixtureRecord,
+    insertedIdsByTable?: Map<string, Map<string, number>>,
+  ): UBRef {
     const entity = EntityManager.get(fixture.entityId);
     const row: Record<string, unknown> = {};
 
@@ -598,8 +637,18 @@ export class FixtureManagerClass {
             } else {
               const relatedRef = this.fixtureRefMap.get(relatedFixtureId);
               if (relatedRef) {
-                // 이미 등록된 fixture 참조 → UBRef 사용
-                row[`${propName}_id`] = relatedRef;
+                // 이미 upsert된 같은 테이블 fixture 확인
+                const relatedEntity = EntityManager.get(prop.with);
+                const relatedInsertedIds = insertedIdsByTable?.get(relatedEntity.table);
+                const actualId = relatedInsertedIds?.get(relatedRef.uuid);
+
+                if (actualId !== undefined) {
+                  // 이미 upsert됨 → 실제 ID 사용
+                  row[`${propName}_id`] = actualId;
+                } else {
+                  // 아직 upsert 안됨 → UBRef 사용
+                  row[`${propName}_id`] = relatedRef;
+                }
               } else {
                 // fixtures에 포함되지 않은 레코드 → ID 그대로 사용
                 row[`${propName}_id`] = relatedId;
@@ -619,7 +668,6 @@ export class FixtureManagerClass {
     console.log(chalk.blue(`Registering ${entity.table} - ${inspect(row, false, null, true)}`));
     const ref = this.builder.register(entity.table, row);
     this.fixtureRefMap.set(fixture.fixtureId, ref);
-    this.uuidToFixtureId.set(ref.uuid, fixture.fixtureId);
 
     return ref;
   }
@@ -646,24 +694,6 @@ export class FixtureManagerClass {
       default:
         return value;
     }
-  }
-
-  /**
-   * 테이블 순서 추출 (fixtures에 포함된 테이블만)
-   */
-  private getTableOrder(fixtures: FixtureRecord[]): (keyof DatabaseSchemaExtend)[] {
-    const tables: string[] = [];
-    const seen = new Set<string>();
-
-    for (const fixture of fixtures) {
-      const entity = EntityManager.get(fixture.entityId);
-      if (!seen.has(entity.table)) {
-        seen.add(entity.table);
-        tables.push(entity.table);
-      }
-    }
-
-    return tables as (keyof DatabaseSchemaExtend)[];
   }
 
   private async processManyToManyRelations(
@@ -744,6 +774,79 @@ export class FixtureManagerClass {
         }
       }
     }
+  }
+
+  /**
+   * 같은 테이블 내 fixture들을 self-reference 레벨별로 분할
+   * - self-reference가 없는 fixture들: Level 0
+   * - Level 0을 참조하는 fixture들: Level 1
+   * - 반복
+   *
+   * UpsertBuilder가 self-reference가 있으면 buildInsertLevels()로 재정렬하여
+   * 등록 순서와 반환 순서가 달라질 수 있습니다.
+   * 이를 방지하기 위해 FixtureManager가 레벨별로 나눠서 처리합니다.
+   */
+  private groupFixturesByLevel(fixtures: FixtureRecord[]): FixtureRecord[][] {
+    if (fixtures.length === 0) {
+      return [];
+    }
+
+    const entity = EntityManager.get(fixtures[0].entityId);
+
+    // self-reference relation prop 찾기
+    const selfRefProps = entity.props.filter(
+      (p): p is BelongsToOneRelationProp | OneToOneRelationProp =>
+        isRelationProp(p) &&
+        (isBelongsToOneRelationProp(p) || (isOneToOneRelationProp(p) && p.hasJoinColumn)) &&
+        p.with === entity.id,
+    );
+
+    if (selfRefProps.length === 0) {
+      // self-reference 없음 → 단일 레벨
+      return [fixtures];
+    }
+
+    // 레벨별 분할 (topological sort)
+    const levels: FixtureRecord[][] = [];
+    const remaining = new Set(fixtures.map((f) => f.fixtureId));
+    const processed = new Set<string>();
+
+    while (remaining.size > 0) {
+      const currentLevel: FixtureRecord[] = [];
+
+      for (const fixture of fixtures) {
+        if (!remaining.has(fixture.fixtureId)) continue;
+
+        // self-reference가 모두 이미 처리됐거나 null인 경우
+        const canProcess = selfRefProps.every((prop) => {
+          const refId = fixture.columns[prop.name]?.value as number | null;
+          if (refId === null || refId === undefined) return true;
+          const refFixtureId = `${prop.with}#${refId}`;
+          // 이미 처리됐거나, 현재 fixtures에 포함되지 않은 경우 (외부 참조)
+          return processed.has(refFixtureId) || !remaining.has(refFixtureId);
+        });
+
+        if (canProcess) {
+          currentLevel.push(fixture);
+        }
+      }
+
+      if (currentLevel.length === 0) {
+        const remainingIds = Array.from(remaining).join(", ");
+        throw new Error(
+          `Circular self-reference detected in ${entity.table}. Remaining fixtures: ${remainingIds}`,
+        );
+      }
+
+      for (const fixture of currentLevel) {
+        remaining.delete(fixture.fixtureId);
+        processed.add(fixture.fixtureId);
+      }
+
+      levels.push(currentLevel);
+    }
+
+    return levels;
   }
 
   private async checkUniqueViolation(db: Knex, entity: Entity, fixture: FixtureRecord) {
