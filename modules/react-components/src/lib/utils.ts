@@ -7,6 +7,22 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * 값을 배열로 정규화합니다.
+ * 이미 배열이면 그대로 반환하고, 단일 값이면 배열로 감싸서 반환합니다.
+ *
+ * @param value - 정규화할 값 (단일 값 또는 배열)
+ * @returns 배열로 정규화된 값 (undefined면 undefined 반환)
+ *
+ * @example
+ * normalizeToArray(50) // [50]
+ * normalizeToArray([20, 80]) // [20, 80]
+ * normalizeToArray(undefined) // undefined
+ */
+export function normalizeToArray<T>(value: T | T[] | undefined): T[] | undefined {
+  return value === undefined ? undefined : Array.isArray(value) ? value : [value];
+}
+
+/**
  * useObjectUrls 훅
  *
  * 로컬 File 객체 배열을 받아서 브라우저 메모리 기반 미리보기용 Object URL을 생성하고,

@@ -1,13 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { MultiSelect } from "@/components";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  DateSelectorMultiple,
-  type DateSelectorValue,
-} from "@/components/ui/date-selector-multiple";
-import { MonthPickerMultiple, type MonthPickerValue } from "@/components/ui/month-picker-multiple";
+import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
+import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -26,18 +22,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTypeForm } from "@/lib/form-helpers";
 import CalendarIcon from "~icons/lucide/calendar";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
+import { FormDebugPanel } from "../components/FormDebugPanel";
+import { DataDisplayDemoSchema } from "../schemas/data-display-demo.schema";
 
 export const Route = createFileRoute("/data-display")({
   component: DataDisplayPage,
 });
 
 function DataDisplayPage() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedValues, setSelectedValues] = useState<string[]>(["option1"]);
-  const [monthValue, setMonthValue] = useState<MonthPickerValue | undefined>(undefined);
-  const [dateValue, setDateValue] = useState<DateSelectorValue | undefined>(undefined);
+  // useTypeForm으로 상태 관리
+  const { form, register } = useTypeForm(DataDisplayDemoSchema, {
+    currentPage: 1,
+    selectedValues: ["option1"],
+    monthValue: undefined,
+    dateValue: undefined,
+    selectValue: undefined,
+  });
 
   const multiSelectOptions = [
     { value: "option1", label: "옵션 1" },
@@ -91,8 +94,7 @@ function DataDisplayPage() {
             <DateSelectorMultiple
               CalendarIcon={CalendarIcon}
               ChevronDownIcon={ChevronDownIcon}
-              value={dateValue}
-              onChange={(_, data) => setDateValue(data.value)}
+              {...register("dateValue")}
               placeholder="날짜 선택"
             />
           </div>
@@ -107,8 +109,7 @@ function DataDisplayPage() {
             <MonthPickerMultiple
               CalendarIcon={CalendarIcon}
               ChevronDownIcon={ChevronDownIcon}
-              value={monthValue}
-              onChange={(_, data) => setMonthValue(data.value)}
+              {...register("monthValue")}
             />
           </div>
         </div>
@@ -130,7 +131,7 @@ function DataDisplayPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Select</h2>
         <div className="border rounded-lg p-6 bg-card">
-          <Select>
+          <Select {...register("selectValue")}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="선택하세요" />
             </SelectTrigger>
@@ -149,12 +150,19 @@ function DataDisplayPage() {
         <div className="border rounded-lg p-6 bg-card">
           <div className="max-w-md">
             <MultiSelect
+              {...register("selectedValues")}
               options={multiSelectOptions}
-              onValueChange={setSelectedValues}
-              defaultValue={selectedValues}
               placeholder="옵션 선택"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Pagination */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Pagination</h2>
+        <div className="border rounded-lg p-6 bg-card">
+          <Pagination {...register("currentPage")} total={100} itemsPerPage={10} />
         </div>
       </section>
 
@@ -198,19 +206,6 @@ function DataDisplayPage() {
         </div>
       </section>
 
-      {/* Pagination */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Pagination</h2>
-        <div className="border rounded-lg p-6 bg-card">
-          <Pagination
-            value={currentPage}
-            onValueChange={setCurrentPage}
-            total={100}
-            itemsPerPage={10}
-          />
-        </div>
-      </section>
-
       {/* 나머지 컴포넌트들 목록 */}
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Other Components</h2>
@@ -220,6 +215,19 @@ function DataDisplayPage() {
           </div>
         </div>
       </section>
+
+      {/* 디버그 패널 - 우측 하단에 고정 */}
+      <FormDebugPanel
+        formData={form}
+        title="Data Display State"
+        sections={[
+          { title: "Date Selector", fields: ["dateValue"] },
+          { title: "Month Picker", fields: ["monthValue"] },
+          { title: "Select", fields: ["selectValue"] },
+          { title: "Multi Select", fields: ["selectedValues"] },
+          { title: "Pagination", fields: ["currentPage"] },
+        ]}
+      />
     </div>
   );
 }

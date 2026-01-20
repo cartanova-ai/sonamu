@@ -1,7 +1,7 @@
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import * as React from "react";
 import type { Override } from "../../lib/types";
-import { cn } from "../../lib/utils";
+import { cn, normalizeToArray } from "../../lib/utils";
 
 type SliderProps = Override<
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>,
@@ -23,21 +23,25 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
       onValueChange?.(values[0]);
     };
 
+    // value를 배열로 변환 (Radix UI Slider는 배열을 요구함)
+    const valueAsArray = normalizeToArray(value);
+    const defaultValueAsArray = normalizeToArray(defaultValue);
+
     return (
       <>
         <input
           type="range"
           ref={inputRef}
           name={name}
-          defaultValue={defaultValue?.[0]}
+          defaultValue={defaultValueAsArray?.[0]}
           onBlur={onBlur}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
         />
         <SliderPrimitive.Root
-          value={value}
-          defaultValue={defaultValue}
+          value={valueAsArray}
+          defaultValue={defaultValueAsArray}
           onValueChange={handleValueChange}
           className={cn("relative flex w-full touch-none select-none items-center", className)}
           {...props}

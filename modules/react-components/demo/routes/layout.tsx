@@ -1,9 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,21 +44,15 @@ function LayoutPage() {
             <Accordion type="single" collapsible>
               <AccordionItem value="item-1">
                 <AccordionTrigger>섹션 1</AccordionTrigger>
-                <AccordionContent>
-                  첫 번째 아코디언 내용입니다.
-                </AccordionContent>
+                <AccordionContent>첫 번째 아코디언 내용입니다.</AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-2">
                 <AccordionTrigger>섹션 2</AccordionTrigger>
-                <AccordionContent>
-                  두 번째 아코디언 내용입니다.
-                </AccordionContent>
+                <AccordionContent>두 번째 아코디언 내용입니다.</AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-3">
                 <AccordionTrigger>섹션 3</AccordionTrigger>
-                <AccordionContent>
-                  세 번째 아코디언 내용입니다.
-                </AccordionContent>
+                <AccordionContent>세 번째 아코디언 내용입니다.</AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
@@ -60,9 +65,7 @@ function LayoutPage() {
         <div className="border rounded-lg p-6 bg-card">
           <div className="max-w-md">
             <AspectRatio ratio={16 / 9} className="bg-muted">
-              <div className="flex items-center justify-center h-full">
-                16:9 비율
-              </div>
+              <div className="flex items-center justify-center h-full">16:9 비율</div>
             </AspectRatio>
           </div>
         </div>
@@ -120,7 +123,7 @@ function LayoutPage() {
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-4 border rounded">
                 <span>접기/펼치기 가능한 섹션</span>
-                <ChevronDownIcon className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 p-4 border rounded">
                 접혀진 내용입니다. 토글 버튼을 클릭하면 보이거나 숨겨집니다.

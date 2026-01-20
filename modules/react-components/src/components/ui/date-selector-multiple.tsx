@@ -21,7 +21,7 @@ interface DateSelectorMultipleProps {
   /** Current value */
   value?: DateSelectorValue;
   /** Callback when value changes */
-  onChange?: (event: null, data: { value: DateSelectorValue | undefined }) => void;
+  onValueChange?: (value: DateSelectorValue | undefined) => void;
   /** Placeholder text when no value */
   placeholder?: string;
   /** Date format string for display */
@@ -38,7 +38,7 @@ export function DateSelectorMultiple({
   CalendarIcon,
   ChevronDownIcon,
   value,
-  onChange,
+  onValueChange,
   placeholder,
   dateFormat = "yyyy/MM/dd",
   className = "",
@@ -99,17 +99,15 @@ export function DateSelectorMultiple({
   };
 
   const handleSave = () => {
-    if (onChange) {
-      let newValue: DateSelectorValue | undefined;
+    let newValue: DateSelectorValue | undefined;
 
-      if (tempIsRangeMode && tempDateRange?.from && tempDateRange?.to) {
-        newValue = { type: "range", from: tempDateRange.from, to: tempDateRange.to };
-      } else if (!tempIsRangeMode && tempSingleDate) {
-        newValue = { type: "single", date: tempSingleDate };
-      }
-
-      onChange(null, { value: newValue });
+    if (tempIsRangeMode && tempDateRange?.from && tempDateRange?.to) {
+      newValue = { type: "range", from: tempDateRange.from, to: tempDateRange.to };
+    } else if (!tempIsRangeMode && tempSingleDate) {
+      newValue = { type: "single", date: tempSingleDate };
     }
+
+    onValueChange?.(newValue);
     setIsOpen(false);
   };
 

@@ -9,13 +9,15 @@ type SwitchProps = Override<
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>,
   {
     name?: string;
+    value?: boolean;
     onValueChange?: (checked: boolean) => void;
     onBlur?: React.FocusEventHandler<HTMLInputElement>;
   }
 >;
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, name, checked, defaultChecked, onValueChange, onBlur, ...props }, ref) => {
+  ({ className, name, checked, value, defaultChecked, onValueChange, onBlur, ...props }, ref) => {
+    const effectiveChecked = value !== undefined ? value : checked;
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
@@ -38,7 +40,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           aria-hidden="true"
         />
         <SwitchPrimitives.Root
-          checked={checked}
+          checked={effectiveChecked}
           defaultChecked={defaultChecked}
           onCheckedChange={handleCheckedChange}
           className={cn(

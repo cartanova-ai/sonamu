@@ -1,7 +1,7 @@
 import * as TogglePrimitive from "@radix-ui/react-toggle";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
+import type { Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 const toggleVariants = cva(
@@ -25,16 +25,31 @@ const toggleVariants = cva(
   },
 );
 
-const Toggle = React.forwardRef<
-  React.ElementRef<typeof TogglePrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>
->(({ className, variant, size, ...props }, ref) => (
-  <TogglePrimitive.Root
-    ref={ref}
-    className={cn(toggleVariants({ variant, size, className }))}
-    {...props}
-  />
-));
+type ToggleProps = Override<
+  React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>,
+  { value?: boolean; onValueChange?: (pressed: boolean) => void }
+>;
+
+const Toggle = React.forwardRef<React.ElementRef<typeof TogglePrimitive.Root>, ToggleProps>(
+  ({ className, variant, size, value, pressed, onValueChange, onPressedChange, ...props }, ref) => {
+    const effectivePressed = value !== undefined ? value : pressed;
+
+    const handlePressedChange = (newPressed: boolean) => {
+      onValueChange?.(newPressed);
+      onPressedChange?.(newPressed);
+    };
+
+    return (
+      <TogglePrimitive.Root
+        ref={ref}
+        pressed={effectivePressed}
+        onPressedChange={handlePressedChange}
+        className={cn(toggleVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  },
+);
 
 Toggle.displayName = TogglePrimitive.Root.displayName;
 

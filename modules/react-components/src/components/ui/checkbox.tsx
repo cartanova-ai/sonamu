@@ -10,6 +10,7 @@ type CheckboxProps = Override<
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
   {
     name?: string;
+    value?: boolean;
     onValueChange?: (checked: boolean) => void;
     onBlur?: React.FocusEventHandler<HTMLInputElement>;
     label?: React.ReactNode;
@@ -23,6 +24,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       className,
       name,
       checked,
+      value,
       defaultChecked,
       onValueChange,
       onBlur,
@@ -33,6 +35,8 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     },
     ref,
   ) => {
+    // value prop이 있으면 checked보다 우선 (useTypeForm 호환)
+    const effectiveChecked = value !== undefined ? value : checked;
     const inputRef = React.useRef<HTMLInputElement>(null);
     const checkboxRef = React.useRef<HTMLButtonElement>(null);
     const labelId = React.useId();
@@ -66,7 +70,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         <CheckboxPrimitive.Root
           ref={checkboxRef}
           data-slot="checkbox"
-          checked={checked}
+          checked={effectiveChecked}
           defaultChecked={defaultChecked}
           onCheckedChange={handleCheckedChange}
           disabled={disabled}
@@ -94,7 +98,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           <label
             id={labelId}
             className={cn(
-              "cursor-pointer select-none",
+              "text-sm cursor-pointer select-none",
               disabled && "cursor-not-allowed opacity-50",
               labelClassName,
             )}

@@ -91,66 +91,6 @@ function NavigationPage() {
         </div>
       </section>
 
-      {/* Dropdown Menu */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Dropdown Menu</h2>
-        <div className="border rounded-lg p-6 bg-card">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">메뉴 열기</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>내 계정</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>프로필</DropdownMenuItem>
-              <DropdownMenuItem>청구</DropdownMenuItem>
-              <DropdownMenuItem>팀</DropdownMenuItem>
-              <DropdownMenuItem>구독</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>로그아웃</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </section>
-
-      {/* Menubar */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Menubar</h2>
-        <div className="border rounded-lg p-6 bg-card">
-          <Menubar>
-            <MenubarMenu>
-              <MenubarTrigger>파일</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>새 파일</MenubarItem>
-                <MenubarItem>열기</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>저장</MenubarItem>
-                <MenubarItem>다른 이름으로 저장</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-            <MenubarMenu>
-              <MenubarTrigger>편집</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>실행 취소</MenubarItem>
-                <MenubarItem>다시 실행</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>잘라내기</MenubarItem>
-                <MenubarItem>복사</MenubarItem>
-                <MenubarItem>붙여넣기</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-            <MenubarMenu>
-              <MenubarTrigger>보기</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>전체 화면</MenubarItem>
-                <MenubarItem>확대</MenubarItem>
-                <MenubarItem>축소</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-          </Menubar>
-        </div>
-      </section>
-
       {/* Navigation Menu */}
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Navigation Menu</h2>
@@ -212,6 +152,66 @@ function NavigationPage() {
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
+        </div>
+      </section>
+
+      {/* Dropdown Menu */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Dropdown Menu</h2>
+        <div className="border rounded-lg p-6 bg-card">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">메뉴 열기</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>내 계정</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>프로필</DropdownMenuItem>
+              <DropdownMenuItem>청구</DropdownMenuItem>
+              <DropdownMenuItem>팀</DropdownMenuItem>
+              <DropdownMenuItem>구독</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>로그아웃</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </section>
+
+      {/* Menubar */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Menubar</h2>
+        <div className="border rounded-lg p-6 bg-card">
+          <Menubar>
+            <MenubarMenu>
+              <MenubarTrigger>파일</MenubarTrigger>
+              <MenubarContent>
+                <MenubarItem>새 파일</MenubarItem>
+                <MenubarItem>열기</MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem>저장</MenubarItem>
+                <MenubarItem>다른 이름으로 저장</MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+            <MenubarMenu>
+              <MenubarTrigger>편집</MenubarTrigger>
+              <MenubarContent>
+                <MenubarItem>실행 취소</MenubarItem>
+                <MenubarItem>다시 실행</MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem>잘라내기</MenubarItem>
+                <MenubarItem>복사</MenubarItem>
+                <MenubarItem>붙여넣기</MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+            <MenubarMenu>
+              <MenubarTrigger>보기</MenubarTrigger>
+              <MenubarContent>
+                <MenubarItem>전체 화면</MenubarItem>
+                <MenubarItem>확대</MenubarItem>
+                <MenubarItem>축소</MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+          </Menubar>
         </div>
       </section>
     </div>
