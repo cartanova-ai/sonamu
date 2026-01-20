@@ -1,12 +1,12 @@
-const DEFAULT_LOCALE = "ko";
-const SUPPORTED_LOCALES = ["ko", "en"];
-let _currentLocale = DEFAULT_LOCALE;
+const DEFAULT_LOCALE = "ko" as const;
+const SUPPORTED_LOCALES = ["ko", "en"] as const;
+let _currentLocale: (typeof SUPPORTED_LOCALES)[number] = DEFAULT_LOCALE;
 
-export function setLocale(locale: string) {
+export function setLocale(locale: (typeof SUPPORTED_LOCALES)[number]) {
   _currentLocale = locale;
 }
 
-export function getCurrentLocale(): string {
+export function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
   return _currentLocale;
 }
 
@@ -191,38 +191,52 @@ export function SD<K extends DictKey>(key: K): SDReturnType<K> {
  * EN("common.save")  // → "Save"
  */
 SD.locale =
-  (locale: string) =>
+  (locale: (typeof SUPPORTED_LOCALES)[number]) =>
   <K extends DictKey>(key: K): SDReturnType<K> => {
     return getDictValue(key, locale);
   };
+
+// Localized 가능한 Column 타입 계산
+type LocalizedBaseColumn<T> = {
+  [K in keyof T & string]: K extends `${infer Base}_${(typeof SUPPORTED_LOCALES)[number]}`
+    ? Base
+    : K;
+}[keyof T & string];
 
 /**
  * locale에 따라 적절한 컬럼 값을 반환합니다.
  * DB에 name, name_ko, name_en처럼 localized column이 있을 때 사용합니다.
  *
- * 우선순위 (ko locale): column_ko → column → column_en
- * 우선순위 (en locale): column_en → column → column_ko
+ * 우선순위 (지원 로케일은 ko/jp/en이고, 서비스의 기본 로케일은 ko, 사용자의 로케일은 jp일 때): column_jp → column → column_ko → column_en
+ * 우선순위 (지원 로케일은 ko/jp/en이고, 서비스의 기본 로케일은 en, 사용자의 로케일은 ko일 때): column_ko → column → column_en → column_jp
  *
  * @example
  * localizedColumn(tag, "name")
  */
-export function localizedColumn<T extends Record<string, unknown>, K extends keyof T & string>(
-  row: T,
-  column: K,
-): string | undefined {
+export function localizedColumn<
+  T extends Record<string, unknown>,
+  K extends LocalizedBaseColumn<T>,
+>(row: T, column: K): string | undefined {
   const locale = getCurrentLocale();
-  const otherLocales = SUPPORTED_LOCALES.filter((l: string) => l !== locale);
-  const localizedKey = (column: K, locale: string) => `${String(column)}_${locale}`;
+  const otherLocales = SUPPORTED_LOCALES.filter(
+    (l: string) => l !== locale && l !== DEFAULT_LOCALE,
+  );
+  const localizedKey = (column: K, locale: (typeof SUPPORTED_LOCALES)[number]) =>
+    `${column}_${locale}`;
   const keys = [
     localizedKey(column, locale),
     column,
+    localizedKey(column, DEFAULT_LOCALE),
     ...otherLocales.map((l) => localizedKey(column, l)),
   ];
 
   for (const key of keys) {
-    const value = row[key];
-    if (value != null && value !== "") {
-      return String(value);
+    if (!(key in row)) {
+      continue;
+    }
+
+    if (row[key] !== null && row[key] !== undefined && row[key] !== "") {
+      return String(row[key]);
     }
   }
 

@@ -14,6 +14,11 @@ describe("i18n", () => {
       name_en: "test_en",
     };
 
+    const tagWithoutDefaultName = {
+      name_ko: "test_ko",
+      name_en: "test_en",
+    };
+
     test("ko locale인 경우, name_ko 반환", async () => {
       await runWithContext(
         {
@@ -46,6 +51,18 @@ describe("i18n", () => {
         },
         async () => {
           expect(localizedColumn(tag, "name")).toBe("test");
+        },
+      );
+    });
+
+    test("tag에 default name이 없을 때도 작동해야함", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          expect(localizedColumn(tagWithoutDefaultName, "name")).toBe("test_ko");
         },
       );
     });

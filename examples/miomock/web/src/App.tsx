@@ -13,7 +13,7 @@ function App({ children }: AppProps) {
     // 브라우저 locale 감지
     const browserLocale = navigator.language.split("-")[0];
     if (["ko", "en"].includes(browserLocale)) {
-      setLocale(browserLocale);
+      setLocale(browserLocale as "ko" | "en");
     }
   }, []);
 

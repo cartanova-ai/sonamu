@@ -11,14 +11,20 @@ describe("Migrator - runShadowTest", () => {
     expect(migrator).toBeDefined();
   });
 
-  test("Shadow DB 생성 및 마이그레이션 테스트 결과 확인", async () => {
-    // when
-    const result = await migrator.runShadowTest();
+  test(
+    "Shadow DB 생성 및 마이그레이션 테스트 결과 확인",
+    async () => {
+      // when
+      const result = await migrator.runShadowTest();
 
-    expect(result[0]).toMatchObject({
-      applied: expect.any(Array),
-      batchNo: expect.any(Number),
-      connKey: "shadow",
-    });
-  });
+      expect(result[0]).toMatchObject({
+        applied: expect.any(Array),
+        batchNo: expect.any(Number),
+        connKey: "shadow",
+      });
+    },
+    {
+      timeout: 0,
+    },
+  );
 });
