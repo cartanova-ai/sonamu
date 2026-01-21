@@ -148,6 +148,30 @@ class UploadedFile {
 
 ## Options
 
+### guards
+
+Specifies guards to apply to the upload API. Use this for upload APIs that require authentication.
+
+```typescript
+@upload({ guards: ["user"] })
+async uploadAvatar() {
+  const { user, bufferedFiles } = Sonamu.getContext();
+  // With user guard applied, only authenticated users can access
+  // ...
+}
+```
+
+### description
+
+Specifies the API description. Displayed in auto-generated API documentation.
+
+```typescript
+@upload({ description: "Upload user profile image" })
+async uploadAvatar() {
+  // ...
+}
+```
+
 ### limits
 
 Specifies file upload limits. Accepts Fastify multipart's `limits` options directly.
@@ -155,6 +179,8 @@ Specifies file upload limits. Accepts Fastify multipart's `limits` options direc
 ```typescript
 type UploadDecoratorOptions = {
   // Common options
+  guards?: GuardKey[];    // Guards to apply (e.g., ["user", "admin"])
+  description?: string;   // API description
   limits?: {
     fileSize?: number;    // Max file size (bytes)
     files?: number;       // Max number of files
@@ -906,6 +932,8 @@ The `@upload` decorator automatically creates an API endpoint internally. Theref
 **Automatically configured values:**
 - `httpMethod`: `"POST"` (fixed)
 - `clients`: `["axios-multipart", "tanstack-mutation-multipart"]` (multipart-specific clients)
+- `guards`: `guards` value from `@upload` options is passed to the API
+- `description`: `description` value from `@upload` options is passed to the API
 
 ```typescript
 // Use @upload only (recommended)

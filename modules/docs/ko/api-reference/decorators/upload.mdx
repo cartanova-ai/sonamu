@@ -148,6 +148,30 @@ class UploadedFile {
 
 ## 옵션
 
+### guards
+
+업로드 API에 적용할 가드를 지정합니다. 인증이 필요한 업로드 API에서 사용합니다.
+
+```typescript
+@upload({ guards: ["user"] })
+async uploadAvatar() {
+  const { user, bufferedFiles } = Sonamu.getContext();
+  // user 가드가 적용되어 인증된 사용자만 접근 가능
+  // ...
+}
+```
+
+### description
+
+API 설명을 지정합니다. 자동 생성되는 API 문서에 표시됩니다.
+
+```typescript
+@upload({ description: "사용자 프로필 이미지 업로드" })
+async uploadAvatar() {
+  // ...
+}
+```
+
 ### limits
 
 파일 업로드 제한을 설정합니다. Fastify multipart의 `limits` 옵션을 그대로 받습니다.
@@ -155,6 +179,8 @@ class UploadedFile {
 ```typescript
 type UploadDecoratorOptions = {
   // 공통 옵션
+  guards?: GuardKey[];    // 적용할 가드 (예: ["user", "admin"])
+  description?: string;   // API 설명
   limits?: {
     fileSize?: number;    // 최대 파일 크기 (bytes)
     files?: number;       // 최대 파일 개수
@@ -906,6 +932,8 @@ async uploadFile() {
 **자동 설정되는 값:**
 - `httpMethod`: `"POST"` (고정)
 - `clients`: `["axios-multipart", "tanstack-mutation-multipart"]` (multipart 전용 클라이언트)
+- `guards`: `@upload` 옵션의 `guards` 값이 API에 전달됨
+- `description`: `@upload` 옵션의 `description` 값이 API에 전달됨
 
 ```typescript
 // @upload만 사용 (권장)
