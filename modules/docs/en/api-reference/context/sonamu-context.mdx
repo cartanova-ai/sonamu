@@ -15,7 +15,10 @@ type Context = {
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;
   locale: string;
-  files?: UploadedFile[];
+  /** Files uploaded in buffer mode */
+  bufferedFiles?: BufferedFile[];
+  /** Files uploaded in stream mode */
+  uploadedFiles?: UploadedFile[];
 } & AuthContext & ContextExtend;
 ```
 
@@ -140,20 +143,20 @@ class PostModelClass extends BaseModel {
 }
 ```
 
-### files
+### bufferedFiles
 
 ```typescript
-files?: UploadedFile[]
+bufferedFiles?: BufferedFile[]
 ```
 
-List of uploaded files. This property only exists in methods with the `@upload` decorator.
+List of files uploaded in buffer mode. This property exists when the `@upload` decorator is applied with the default mode (buffer) or `mode: "buffer"` configuration.
 
-Each file is provided as an `UploadedFile` object with various methods for file processing.
+Each file is loaded in memory, allowing flexible operations like MD5 calculation or image processing.
 
-**UploadedFile Key Properties and Methods:**
+**BufferedFile Key Properties and Methods:**
 
 ```typescript
-interface UploadedFile {
+interface BufferedFile {
   // File information
   filename: string;       // Filename
   mimetype: string;       // MIME type (e.g., "image/png", "application/pdf")
@@ -161,9 +164,9 @@ interface UploadedFile {
   extname: string;        // Extension (e.g., "png", "pdf")
 
   // File processing methods
-  md5(): Promise<string>;                    // Generate MD5 hash
-  saveToDisk(key: string): Promise<string>;  // Save file and return URL
-  toBuffer(): Promise<Buffer>;               // Read as Buffer
+  buffer: Buffer;                                          // File Buffer (getter)
+  md5(): Promise<string>;                                  // Generate MD5 hash
+  saveToDisk(diskName: string, key: string): Promise<string>;  // Save file and return URL
 }
 ```
 
@@ -173,19 +176,19 @@ interface UploadedFile {
 class FileModelClass extends BaseModel {
   @upload({ limits: { files: 10 } })
   async upload(): Promise<{ files: SonamuFile[] }> {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("No files uploaded");
     }
 
     const processedFiles = await Promise.all(
-      files.map(async (file) => {
+      bufferedFiles.map(async (file) => {
         const md5 = await file.md5();
         const key = `${md5}.${file.extname}`;
         return {
           name: file.filename,
-          url: await file.saveToDisk(key),
+          url: await file.saveToDisk("fs", key),
           mime_type: file.mimetype,
           size: file.size,
         };
@@ -193,37 +196,6 @@ class FileModelClass extends BaseModel {
     );
 
     return { files: processedFiles };
-  }
-}
-```
-
-**Usage with Parameters:**
-
-```typescript
-class FileModelClass extends BaseModel {
-  @upload({ limits: { files: 5 } })
-  async uploadWithCategory(params: { category: string }): Promise<{
-    category: string;
-    files: SonamuFile[];
-  }> {
-    const { files } = Sonamu.getContext();
-    const { category } = params;
-
-    if (!files || files.length === 0) {
-      throw new BadRequestException("No files uploaded");
-    }
-
-    return {
-      category,
-      files: await Promise.all(
-        files.map(async (file) => ({
-          name: file.filename,
-          url: await file.saveToDisk(`${category}/${await file.md5()}`),
-          mime_type: file.mimetype,
-          size: file.size,
-        }))
-      ),
-    };
   }
 }
 ```
@@ -236,23 +208,22 @@ import sharp from "sharp";
 class ImageModelClass extends BaseModel {
   @upload({ limits: { files: 1 } })
   async uploadThumbnail(): Promise<{ url: string }> {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("No image uploaded");
     }
 
-    const file = files[0];
+    const file = bufferedFiles[0];
 
-    // Read as Buffer and process image
-    const buffer = await file.toBuffer();
-    const thumbnail = await sharp(buffer)
+    // Process image with Buffer (using getter)
+    const thumbnail = await sharp(file.buffer)
       .resize(200, 200)
       .jpeg({ quality: 80 })
       .toBuffer();
 
     // Save processed image
-    const disk = Sonamu.storage.use();
+    const disk = Sonamu.storage.use("fs");
     const key = `thumbnails/${await file.md5()}.jpg`;
     await disk.put(key, thumbnail);
 
@@ -261,11 +232,65 @@ class ImageModelClass extends BaseModel {
 }
 ```
 
+### uploadedFiles
+
+```typescript
+uploadedFiles?: UploadedFile[]
+```
+
+List of files uploaded in stream mode. This property exists when `@upload({ mode: "stream" })` is configured.
+
+Files have already been streamed to storage, so only metadata like URL/key is accessible. This mode is suitable for large file uploads.
+
+**UploadedFile Key Properties and Methods:**
+
+```typescript
+interface UploadedFile {
+  // File information
+  filename: string;       // Filename
+  mimetype: string;       // MIME type (e.g., "image/png", "application/pdf")
+  size: number;           // File size (bytes)
+  extname: string;        // Extension (e.g., "png", "pdf")
+  url: string;            // URL of the stored file
+  signedUrl: string;      // Signed URL (with expiration)
+  key: string;            // Key in storage
+  diskName: string;       // Storage disk name
+
+  // File processing methods
+  download(): Promise<Buffer>;  // Download file from storage
+}
+```
+
+**Stream Mode Usage Example:**
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ mode: "stream", limits: { files: 5 } })
+  async uploadLargeFiles(): Promise<{ files: SonamuFile[] }> {
+    const { uploadedFiles } = Sonamu.getContext();
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    // Already uploaded to storage
+    return {
+      files: uploadedFiles.map((file) => ({
+        name: file.filename,
+        url: file.url,
+        mime_type: file.mimetype,
+        size: file.size,
+      })),
+    };
+  }
+}
+```
+
 <Info>
 **File Upload Handling**:
 - Must be used with the `@upload` decorator
-- Files are automatically saved to the configured storage
-- The order of the `files` array matches the order they were sent in the form
+- Buffer mode (default): Use `bufferedFiles` - loaded in memory, suitable for MD5 calculation/image processing
+- Stream mode: Use `uploadedFiles` - streamed directly to storage, suitable for large files
 - See [@upload decorator](/api-reference/decorators/upload) documentation for more details
 </Info>
 

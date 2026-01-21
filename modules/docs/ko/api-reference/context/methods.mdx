@@ -126,39 +126,48 @@ it("should use context in test", async () => {
 
 ## 파일 업로드 컨텍스트
 
-파일 업로드 요청에서 업로드된 파일 정보는 `Sonamu.getContext()`의 `files` 속성을 통해 접근합니다. `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다.
+파일 업로드 요청에서 업로드된 파일 정보는 `Sonamu.getContext()`를 통해 접근합니다. `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다.
+
+업로드 모드에 따라 두 가지 속성을 사용합니다:
+- **Buffer 모드 (기본)**: `bufferedFiles` - 메모리에 로드된 파일, MD5 계산/이미지 처리에 적합
+- **Stream 모드**: `uploadedFiles` - 저장소로 직접 스트리밍된 파일, 대용량 파일에 적합
 
 ### 시그니처
 
 ```typescript
-const { files } = Sonamu.getContext();
-// files: UploadedFile[]
+// Buffer 모드 (기본)
+const { bufferedFiles } = Sonamu.getContext();
+// bufferedFiles: BufferedFile[]
+
+// Stream 모드
+const { uploadedFiles } = Sonamu.getContext();
+// uploadedFiles: UploadedFile[]
 ```
 
 ### 타입
 
 ```typescript
-// Context의 files 속성
-files?: UploadedFile[];
+// Context의 파일 업로드 속성
+bufferedFiles?: BufferedFile[];  // buffer 모드
+uploadedFiles?: UploadedFile[];  // stream 모드
 ```
-
-- **files**: 업로드된 파일 배열 (`@upload()` 데코레이터 사용 시)
 
 ### 주의사항
 
-- `files` 속성은 `@upload` 데코레이터를 사용한 경우에만 설정됩니다
-- 단일 파일 업로드의 경우 `files?.[0]`으로 접근합니다
+- 파일 속성은 `@upload` 데코레이터를 사용한 경우에만 설정됩니다
+- Buffer 모드(기본)에서는 `bufferedFiles`를, Stream 모드에서는 `uploadedFiles`를 사용합니다
+- 단일 파일 업로드의 경우 `bufferedFiles?.[0]` 또는 `uploadedFiles?.[0]`으로 접근합니다
 
 ### 사용 예시
 
-#### 단일 파일 업로드
+#### 단일 파일 업로드 (Buffer 모드)
 
 ```typescript
 class FileModelClass extends BaseModel {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new BadRequestException("파일이 필요합니다");
@@ -170,31 +179,31 @@ class FileModelClass extends BaseModel {
     console.log(file.size);        // 102400 (bytes)
     console.log(file.extname);     // "jpg"
 
-    // 파일 저장
+    // 파일 저장 (diskName, key 순서)
     const key = `avatars/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
 
     return { url, filename: file.filename, size: file.size };
   }
 }
 ```
 
-#### 다중 파일 업로드
+#### 다중 파일 업로드 (Buffer 모드)
 
 ```typescript
 class FileModelClass extends BaseModel {
   @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new BadRequestException("최소 1개 이상의 파일이 필요합니다");
     }
 
     const savedFiles = await Promise.all(
-      files.map(async (file, i) => {
+      bufferedFiles.map(async (file, i) => {
         const key = `documents/${Date.now()}_${i}_${file.filename}`;
-        const url = await file.saveToDisk(key);
+        const url = await file.saveToDisk("fs", key);
         return { url, filename: file.filename, size: file.size };
       })
     );
@@ -214,21 +223,47 @@ class FileModelClass extends BaseModel {
 }
 ```
 
+#### 대용량 파일 업로드 (Stream 모드)
+
+```typescript
+class FileModelClass extends BaseModel {
+  @upload({ mode: "stream" })
+  async uploadLargeFiles(ctx: Context) {
+    const { uploadedFiles } = Sonamu.getContext();
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      throw new BadRequestException("파일이 필요합니다");
+    }
+
+    // 이미 저장소에 업로드 완료된 상태
+    return {
+      files: uploadedFiles.map((file) => ({
+        filename: file.filename,
+        url: file.url,
+        size: file.size,
+      })),
+    };
+  }
+}
+```
+
 #### 헬퍼 함수에서 사용
 
 ```typescript
 // src/utils/file-helper.ts
 import { Sonamu } from "sonamu";
 
-export function getUploadedFiles() {
-  const { files } = Sonamu.getContext();
-  return files;
+export function getBufferedFiles() {
+  const { bufferedFiles } = Sonamu.getContext();
+  return bufferedFiles;
 }
 
 export function validateFileTypes(allowedTypes: string[]) {
-  const { files } = Sonamu.getContext();
+  const { bufferedFiles } = Sonamu.getContext();
 
-  for (const file of files) {
+  if (!bufferedFiles) return;
+
+  for (const file of bufferedFiles) {
     if (!allowedTypes.includes(file.mimetype)) {
       throw new BadRequestException(
         `허용되지 않는 파일 형식입니다: ${file.mimetype}`
@@ -251,8 +286,8 @@ class FileModelClass extends BaseModel {
       "image/webp"
     ]);
 
-    const files = getUploadedFiles();
-    
+    const files = getBufferedFiles();
+
     // 파일 처리 로직
     // ...
   }
@@ -261,44 +296,71 @@ class FileModelClass extends BaseModel {
 
 ## 관련 타입
 
-### UploadedFile
+### BufferedFile (Buffer 모드)
+
+```typescript
+class BufferedFile {
+  /** 원본 파일명 */
+  get filename(): string;
+
+  /** MIME 타입 */
+  get mimetype(): string;
+
+  /** 파일 크기 (bytes) */
+  get size(): number;
+
+  /** 확장자 (점 제외) */
+  get extname(): string | false;
+
+  /** 파일 Buffer (getter) */
+  get buffer(): Buffer;
+
+  /** 원본 MultipartFile 접근 */
+  get raw(): MultipartFile;
+
+  /** MD5 해시 계산 */
+  async md5(): Promise<string>;
+
+  /**
+   * 파일을 디스크에 저장
+   * @param diskName 디스크 이름 (예: 'fs', 's3')
+   * @param key 저장 경로 (예: 'uploads/avatar.png')
+   * @returns 저장된 파일의 URL
+   */
+  async saveToDisk(diskName: DriverKey, key: string): Promise<string>;
+}
+```
+
+### UploadedFile (Stream 모드)
 
 ```typescript
 class UploadedFile {
   /** 원본 파일명 */
   get filename(): string;
-  
+
   /** MIME 타입 */
   get mimetype(): string;
-  
+
   /** 파일 크기 (bytes) */
   get size(): number;
-  
+
   /** 확장자 (점 제외) */
   get extname(): string | false;
-  
-  /** saveToDisk 후 저장된 URL (Unsigned) */
-  get url(): string | undefined;
-  
-  /** saveToDisk 후 저장된 URL (Signed) */
-  get signedUrl(): string | undefined;
-  
-  /** 원본 MultipartFile 접근 */
-  get raw(): MultipartFile;
-  
-  /** Buffer로 변환 (캐싱됨) */
-  async toBuffer(): Promise<Buffer>;
-  
-  /** MD5 해시 계산 */
-  async md5(): Promise<string>;
-  
-  /**
-   * 파일을 디스크에 저장
-   * @param key 저장 경로 (예: 'uploads/avatar.png')
-   * @param diskName 디스크 이름 (기본: default disk)
-   * @returns 저장된 파일의 URL
-   */
-  async saveToDisk(key: string, diskName?: DriverKey): Promise<string>;
+
+  /** 저장된 파일의 URL (Unsigned) */
+  get url(): string;
+
+  /** 저장된 파일의 URL (Signed, 만료 시간 있음) */
+  get signedUrl(): string;
+
+  /** 저장소 내 키 */
+  get key(): string;
+
+  /** 저장된 디스크 이름 */
+  get diskName(): DriverKey;
+
+  /** 저장소에서 파일 다운로드 */
+  async download(): Promise<Buffer>;
 }
 ```
 
@@ -336,22 +398,30 @@ class PostModelClass extends BaseModel {
 
 ### @upload 데코레이터 필수
 
-`files` 속성은 반드시 `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다:
+`bufferedFiles`/`uploadedFiles` 속성은 반드시 `@upload` 데코레이터가 적용된 메서드에서만 사용할 수 있습니다:
 
 ```typescript
-// ✅ 올바른 사용
+// ✅ 올바른 사용 (Buffer 모드)
 @api()
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // OK
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // OK
+}
+
+// ✅ 올바른 사용 (Stream 모드)
+@api()
+@upload({ mode: "stream" })
+async uploadFile() {
+  const { uploadedFiles } = Sonamu.getContext();
+  const file = uploadedFiles?.[0]; // OK
 }
 
 // ❌ 잘못된 사용
 @api()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  // files는 undefined
+  const { bufferedFiles } = Sonamu.getContext();
+  // bufferedFiles는 undefined
 }
 ```
 
