@@ -35,13 +35,13 @@ You can pass the project name as an argument or use options to skip interactive 
 
 ```bash
 # Specify project name directly
-pnpm create sonamu my_app
+pnpm create sonamu myapp
 
 # Use all default options (non-interactive)
-pnpm create sonamu my_app --yes
+pnpm create sonamu myapp --yes
 
 # Specify individual options
-pnpm create sonamu my_app --db-name my_app --db-password secret123
+pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
 | Option | Description |
@@ -55,7 +55,7 @@ pnpm create sonamu my_app --db-name my_app --db-password secret123
 | `--db-password` | Database password |
 | `--container-name` | Docker container name |
 
-<Frame caption="Complete process from running pnpm create sonamu to completing all prompts">
+<Frame caption="Running pnpm create sonamu with inline options default values">
   <video
     muted
     loop
@@ -63,20 +63,21 @@ pnpm create sonamu my_app --db-name my_app --db-password secret123
     controls
     className="w-full rounded-xl"
     preload="metadata"
-    src="https://cf.cartanova.ai/sonamu-docs/installation2.mp4"
+    autoPlay
+    src="/images/installation2.mp4"
   ></video>
 </Frame>
 
 When the interactive prompt appears, enter your project information:
 
 ```bash
-? Project name: my_app
+? Project name: myapp
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
-? Enter the Docker project name: my_app-docker
+? Enter the Docker project name: myapp-docker
 ? Enter the database user: postgres
-? Enter the container name: my_app-container
-? Enter the database name: my_app
+? Enter the container name: myapp-container
+? Enter the database name: myapp
 ? Enter the database password: ****
 ```
 
@@ -123,7 +124,7 @@ will be requested, and the `packages/api/.env` file will be automatically genera
 </Frame>
 
 <Tree>
-  <Tree.Folder name="my_app" defaultOpen>
+  <Tree.Folder name="myapp" defaultOpen>
     <Tree.Folder name="packages" defaultOpen>
       <Tree.Folder name="api  (Backend API server)">
         <Tree.Folder name="src">

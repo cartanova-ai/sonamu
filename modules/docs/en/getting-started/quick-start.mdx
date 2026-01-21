@@ -23,7 +23,7 @@ The Sonamu development environment consists of three servers:
 Navigate to your project's `api` directory and start the PostgreSQL container:
 
 ```bash
-cd my_app/api
+cd myapp/packages/api
 pnpm docker:up
 ```
 
@@ -100,7 +100,7 @@ In the local development environment, the API server integrates and serves the W
 If you want to focus on Web development or utilize Vite's full features, open a **new terminal window** and start the development server separately in the `web` directory:
 
 ```bash
-cd my_app/web
+cd myapp/packages/web
 pnpm dev
 ```
 
@@ -150,15 +150,6 @@ You can access the following URLs in your browser:
 | API Server| http://localhost:1028/api        | REST API endpoints           |
 | Sonamu UI | http://localhost:1028/sonamu-ui  | Entity management interface  |
 
-<Frame caption="📸 Needed: Browser screen accessing localhost:1028 (default Web app homepage)">
-</Frame>
-
-<Frame caption="📸 Needed: Browser screen accessing localhost:1028/api (404 or API response)">
-</Frame>
-
-<Frame caption="📸 Needed: Browser screen accessing localhost:1028/sonamu-ui (Sonamu UI dashboard)">
-</Frame>
-
 ### Separated Mode (Both API + Web servers running)
 
 | Service   | URL                              | Description                  |
@@ -180,8 +171,7 @@ When you access http://localhost:1028/sonamu-ui in your browser, you can perform
 - View API endpoints
 - Visualize database schema
 
-<Frame caption="📸 Needed: Sonamu UI main screen (full UI showing Entity tab, Migration tab, etc.)">
-</Frame>
+<Frame caption="Sonamu UI Main Screen"><img src="/images/sonamuUI1.png" alt="Sonamu UI" /></Frame>
 
 ## Stopping Servers
 

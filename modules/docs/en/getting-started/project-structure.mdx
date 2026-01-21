@@ -10,11 +10,14 @@ A Sonamu project is structured as a monorepo that manages both the backend (api)
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
-  <FileItem name="my_app/" description="Sonamu monorepo root">
+  <FileItem name="myapp/" description="Sonamu monorepo root">
+    <FileItem name="node_modules/" />
     <FileItem name="packages/">
       <FileItem name="api/" description="Backend API server" />
       <FileItem name="web/" description="Frontend web application" />
     </FileItem>
+    <FileItem name=".gitignore" />
+    <FileItem name="pnpm-lock.yaml" />
     <FileItem name="pnpm-workspace.yaml" description="Workspace and dependency catalog" />
     <FileItem name="README.md" description="Project documentation" />
   </FileItem>

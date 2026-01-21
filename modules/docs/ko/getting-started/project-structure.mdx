@@ -10,11 +10,14 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
-  <FileItem name="my_app/" description="Sonamu 모노레포 루트">
+  <FileItem name="myapp/" description="Sonamu 모노레포 루트">
+    <FileItem name="node_modules/" />
     <FileItem name="packages/">
       <FileItem name="api/" description="백엔드 API 서버" />
       <FileItem name="web/" description="프론트엔드 웹 애플리케이션" />
     </FileItem>
+    <FileItem name=".gitignore" />
+    <FileItem name="pnpm-lock.yaml" />
     <FileItem name="pnpm-workspace.yaml" description="워크스페이스 및 의존성 catalog" />
     <FileItem name="README.md" description="프로젝트 문서" />
   </FileItem>

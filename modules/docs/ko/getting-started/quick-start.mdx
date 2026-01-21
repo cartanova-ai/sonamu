@@ -23,7 +23,7 @@ Sonamu 개발 환경은 다음 세 가지 서버로 구성됩니다:
 프로젝트의 `api` 디렉토리로 이동하여 PostgreSQL 컨테이너를 시작합니다:
 
 ```bash
-cd my_app/api
+cd myapp/packages/api
 pnpm docker:up
 ```
 
@@ -100,7 +100,7 @@ API 서버는 Hot Module Replacement(HMR)을 지원하므로 코드 변경 시 �
 Web 개발에 집중하거나 Vite의 전체 기능을 활용하고 싶다면, **새 터미널 창**을 열고 `web` 디렉토리에서 별도로 개발 서버를 시작할 수 있습니다:
 
 ```bash
-cd my_app/web
+cd myapp/packages/web
 pnpm dev
 ```
 
@@ -172,7 +172,7 @@ Web 서버를 별도로 실행하면 http://localhost:3028 로 접속하여 프�
 - API 엔드포인트 확인
 - 데이터베이스 스키마 시각화
 
-<Frame caption="Sonamu UI Main Screen"><img src="/modules/docs/images/quickstart5.png" alt="Sonamu UI" /></Frame>
+<Frame caption="Sonamu UI Main Screen"><img src="/images/sonamuUI1.png" alt="Sonamu UI" /></Frame>
 
 ## 서버 중지
 

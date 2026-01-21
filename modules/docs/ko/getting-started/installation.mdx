@@ -35,13 +35,13 @@ pnpm create sonamu
 
 ```bash
 # 프로젝트명 직접 지정
-pnpm create sonamu my_app
+pnpm create sonamu myapp
 
 # 모든 옵션을 기본값으로 설정 (비대화형)
-pnpm create sonamu my_app --yes
+pnpm create sonamu myapp --yes
 
 # 개별 옵션 지정
-pnpm create sonamu my_app --db-name my_app --db-password secret123
+pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
 | 옵션 | 설명 |
@@ -55,7 +55,7 @@ pnpm create sonamu my_app --db-name my_app --db-password secret123
 | `--db-password` | 데이터베이스 비밀번호 |
 | `--container-name` | Docker 컨테이너 이름 |
 
-<Frame caption="pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정">
+<Frame caption="인라인 옵션 기본값으로 pnpm create sonamu 실행">
   <video
     muted
     loop
@@ -63,20 +63,21 @@ pnpm create sonamu my_app --db-name my_app --db-password secret123
     controls
     className="w-full rounded-xl"
     preload="metadata"
-    src="https://cf.cartanova.ai/sonamu-docs/installation2.mp4"
+    autoPlay
+    src="/images/installation2.mp4"
   ></video>
 </Frame>
 
 대화형 프롬프트가 나타나면 프로젝트 정보를 입력합니다:
 
 ```bash
-? Project name: my_app
+? Project name: myapp
 ? Would you like to set up pnpm? Yes
 ? Would you like to set up a database using Docker? Yes
-? Enter the Docker project name: my_app-docker
+? Enter the Docker project name: myapp-docker
 ? Enter the database user: postgres
-? Enter the container name: my_app-container
-? Enter the database name: my_app
+? Enter the container name: myapp-container
+? Enter the database name: myapp
 ? Enter the database password: ****
 ```
 
@@ -123,7 +124,7 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 </Frame>
 
 <Tree>
-  <Tree.Folder name="my_app" defaultOpen>
+  <Tree.Folder name="myapp" defaultOpen>
     <Tree.Folder name="packages" defaultOpen>
       <Tree.Folder name="api  (백엔드 API 서버)">
         <Tree.Folder name="src">
