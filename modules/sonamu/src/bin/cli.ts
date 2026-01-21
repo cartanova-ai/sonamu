@@ -50,16 +50,24 @@ async function bootstrap() {
         },
         "#recordIds": "number[]",
         "#name": "string",
+        "#targets": {
+          type: "multiselect",
+          name: "#targets",
+          message: "Please input #targets",
+          choices: [
+            { title: "Development", value: "development_master" },
+            { title: "Production", value: "production_master" },
+            { title: "Fixture", value: "fixture" },
+            { title: "Test", value: "test" },
+          ],
+        },
       },
       args: [
         ["fixture", "init"],
         ["fixture", "import", "#entityId", "#recordIds"],
         ["fixture", "sync"],
         ["migrate", "run"],
-        ["migrate", "check"],
-        ["migrate", "rollback"],
-        ["migrate", "reset"],
-        ["migrate", "clear"],
+        ["migrate", "apply", "#targets"],
         ["migrate", "status"],
         ["stub", "practice", "#name"],
         ["stub", "entity", "#name"],
@@ -75,6 +83,7 @@ async function bootstrap() {
       runners: {
         migrate_status,
         migrate_run,
+        migrate_apply,
         fixture_init,
         fixture_import,
         fixture_sync,
@@ -312,13 +321,16 @@ async function setupFixtureManager() {
   FixtureManager.init();
 }
 
+async function migrate_apply(targets: (keyof SonamuDBConfig)[]) {
+  await setupMigrator();
+  await migrator.runAction("apply", targets);
+}
+
 async function migrate_run() {
   await setupMigrator();
 
-  await migrator.runAction(
-    "apply",
-    Object.keys(Sonamu.dbConfig) as (keyof SonamuDBConfig)[] /*싹 다!*/,
-  );
+  // 기본 값은 fixture, test입니다. (development, production은 수동으로 실행 필요)
+  await migrator.runAction("apply", ["fixture", "test"]);
 }
 
 async function migrate_status() {
