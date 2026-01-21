@@ -55,19 +55,39 @@ pnpm create sonamu my_project
 # 모든 질문을 기본값으로 자동 응답
 pnpm create sonamu my_project --yes
 
+# pnpm/docker 설정 여부를 명시적으로 지정
+pnpm create sonamu my_app --pnpm y --docker y
+
+# pnpm만 자동 진행 (docker는 프롬프트로 물어봄)
+pnpm create sonamu my_app --pnpm y
+
+# docker만 자동 진행 (pnpm은 프롬프트로 물어봄, DB 옵션은 기본값)
+pnpm create sonamu my_app --docker y
+
 # pnpm 설치 스킵
+pnpm create sonamu my_app --pnpm n
+# 또는
 pnpm create sonamu my_app --skip-pnpm
 
 # Docker 설정 스킵
+pnpm create sonamu my_app --docker n
+# 또는
 pnpm create sonamu my_app --skip-docker
 
-# DB 정보 지정
+# 완전한 비대화형 모드 (모든 옵션 지정)
 pnpm create sonamu my_app \
+  --pnpm y \
+  --docker y \
   --db-user=postgres \
   --db-password=1234 \
   --db-name=myapp \
   --container-name=myapp-pg \
   --docker-project=myapp-docker
+
+# DB 옵션만 지정 (pnpm/docker 설정은 프롬프트로 물어봄)
+pnpm create sonamu my_app \
+  --db-name=myapp \
+  --db-password=1234
 ```
 
 #### 사용 가능한 옵션
@@ -75,13 +95,17 @@ pnpm create sonamu my_app \
 | 옵션               | 설명                             | 기본값                 |
 | ------------------ | -------------------------------- | ---------------------- |
 | `--yes`, `-y`      | 모든 질문에 기본값으로 자동 응답 | -                      |
-| `--skip-pnpm`      | pnpm 설치 건너뛰기               | false                  |
-| `--skip-docker`    | Docker DB 설정 건너뛰기          | false                  |
+| `--pnpm`           | pnpm 설치 여부 (`y`/`n`)         | (프롬프트로 질문)      |
+| `--docker`         | Docker DB 설정 여부 (`y`/`n`)    | (프롬프트로 질문)      |
+| `--skip-pnpm`      | pnpm 설치 건너뛰기 (`--pnpm n`과 동일) | false             |
+| `--skip-docker`    | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false        |
 | `--db-user`        | 데이터베이스 사용자              | postgres               |
-| `--db-password`    | 데이터베이스 비밀번호            | (프롬프트로 입력)      |
+| `--db-password`    | 데이터베이스 비밀번호            | 1234                   |
 | `--db-name`        | 데이터베이스 이름                | {프로젝트명}           |
 | `--container-name` | Docker 컨테이너 이름             | {프로젝트명}-container |
-| `--docker-project` | Docker Compose 프로젝트명        | {프로젝트명}-docker    |
+| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명 | {프로젝트명}-docker |
+
+> **참고**: `--pnpm y`, `--docker y`에서 `y`는 `yes`, `true`, `1`로도 지정할 수 있습니다. 마찬가지로 `n`은 `no`, `false`, `0`으로도 지정할 수 있습니다.
 
 ### 실행하기
 
