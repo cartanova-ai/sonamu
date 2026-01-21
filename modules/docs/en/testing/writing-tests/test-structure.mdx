@@ -91,9 +91,10 @@ import { defineConfig } from "vitest/config";
 import { PrioritySequencer } from "./custom-sequencer";
 
 export default defineConfig(async () => ({
+  plugins: [],
   test: await getSonamuTestConfig({
     include: ["src/**/*.test.ts"],
-    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**"],
+    exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
@@ -111,7 +112,13 @@ export default defineConfig(async () => ({
       provider: "v8",
       reporter: ["text", "html"],
       include: ["src/**/*.ts"],
-      exclude: ["**/*.test.ts", "**/testing/**"],
+      exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
+    },
+    includeTaskLocation: true,
+    server: {
+      deps: {
+        inline: ["sonamu"],
+      },
     },
   }),
 }));
