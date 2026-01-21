@@ -40,20 +40,45 @@ pnpm create sonamu myapp
 # Use all default options (non-interactive)
 pnpm create sonamu myapp --yes
 
-# Specify individual options
+# Explicitly specify pnpm/docker setup
+pnpm create sonamu myapp --pnpm y --docker y
+
+# Auto-proceed with pnpm only (docker prompts will appear)
+pnpm create sonamu myapp --pnpm y
+
+# Auto-proceed with docker only (pnpm prompts will appear, DB options use defaults)
+pnpm create sonamu myapp --docker y
+
+# Fully non-interactive mode (all options specified)
+pnpm create sonamu myapp \
+  --pnpm y \
+  --docker y \
+  --db-user=postgres \
+  --db-password=1234 \
+  --db-name=myapp \
+  --container-name=myapp-pg \
+  --docker-project=myapp-docker
+
+# Specify DB options only (pnpm/docker setup will prompt)
 pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--yes`, `-y` | Use all default options |
-| `--skip-pnpm` | Skip pnpm setup |
-| `--skip-docker` | Skip Docker DB setup |
-| `--docker-project` | Docker project name |
-| `--db-user` | Database username |
-| `--db-name` | Database name |
-| `--db-password` | Database password |
-| `--container-name` | Docker container name |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--yes`, `-y` | Use all default options | - |
+| `--pnpm` | pnpm installation (`y`/`n`) | (prompts) |
+| `--docker` | Docker DB setup (`y`/`n`) | (prompts) |
+| `--skip-pnpm` | Skip pnpm setup (same as `--pnpm n`) | false |
+| `--skip-docker` | Skip Docker DB setup (same as `--docker n`) | false |
+| `--docker-project`, `--docker-pj-name` | Docker Compose project name | {project}-docker |
+| `--db-user` | Database username | postgres |
+| `--db-name` | Database name | {project} |
+| `--db-password` | Database password | 1234 |
+| `--container-name` | Docker container name | {project}-container |
+
+<Note>
+In `--pnpm y` and `--docker y`, you can also use `yes`, `true`, or `1` instead of `y`. Similarly, `n` can be replaced with `no`, `false`, or `0`.
+</Note>
 
 <Frame caption="Running pnpm create sonamu with inline options default values">
   <video

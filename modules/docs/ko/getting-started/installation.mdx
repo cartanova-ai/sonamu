@@ -40,20 +40,45 @@ pnpm create sonamu myapp
 # 모든 옵션을 기본값으로 설정 (비대화형)
 pnpm create sonamu myapp --yes
 
-# 개별 옵션 지정
+# pnpm/docker 설정 여부를 명시적으로 지정
+pnpm create sonamu myapp --pnpm y --docker y
+
+# pnpm만 자동 진행 (docker는 프롬프트로 물어봄)
+pnpm create sonamu myapp --pnpm y
+
+# docker만 자동 진행 (pnpm은 프롬프트로 물어봄, DB 옵션은 기본값)
+pnpm create sonamu myapp --docker y
+
+# 완전한 비대화형 모드 (모든 옵션 지정)
+pnpm create sonamu myapp \
+  --pnpm y \
+  --docker y \
+  --db-user=postgres \
+  --db-password=1234 \
+  --db-name=myapp \
+  --container-name=myapp-pg \
+  --docker-project=myapp-docker
+
+# DB 옵션만 지정 (pnpm/docker 설정은 프롬프트로 물어봄)
 pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
-| 옵션 | 설명 |
-|------|------|
-| `--yes`, `-y` | 모든 옵션을 기본값으로 설정 |
-| `--skip-pnpm` | pnpm 설정 건너뛰기 |
-| `--skip-docker` | Docker DB 설정 건너뛰기 |
-| `--docker-project` | Docker 프로젝트명 |
-| `--db-user` | 데이터베이스 사용자명 |
-| `--db-name` | 데이터베이스 이름 |
-| `--db-password` | 데이터베이스 비밀번호 |
-| `--container-name` | Docker 컨테이너 이름 |
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `--yes`, `-y` | 모든 옵션을 기본값으로 설정 | - |
+| `--pnpm` | pnpm 설치 여부 (`y`/`n`) | (프롬프트로 질문) |
+| `--docker` | Docker DB 설정 여부 (`y`/`n`) | (프롬프트로 질문) |
+| `--skip-pnpm` | pnpm 설정 건너뛰기 (`--pnpm n`과 동일) | false |
+| `--skip-docker` | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false |
+| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명 | {프로젝트명}-docker |
+| `--db-user` | 데이터베이스 사용자명 | postgres |
+| `--db-name` | 데이터베이스 이름 | {프로젝트명} |
+| `--db-password` | 데이터베이스 비밀번호 | 1234 |
+| `--container-name` | Docker 컨테이너 이름 | {프로젝트명}-container |
+
+<Note>
+`--pnpm y`, `--docker y`에서 `y`는 `yes`, `true`, `1`로도 지정할 수 있습니다. 마찬가지로 `n`은 `no`, `false`, `0`으로도 지정할 수 있습니다.
+</Note>
 
 <Frame caption="인라인 옵션 기본값으로 pnpm create sonamu 실행">
   <video
