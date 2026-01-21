@@ -328,9 +328,15 @@ async function migrate_apply(targets: (keyof SonamuDBConfig)[]) {
 
 async function migrate_run() {
   await setupMigrator();
+  const localHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
+  const targets = Object.keys(Sonamu.dbConfig).filter((target) => {
+    const targetConfig = Sonamu.dbConfig[target as keyof SonamuDBConfig];
+    const host = (targetConfig?.connection as { host?: string })?.host ?? "localhost";
+    return localHosts.includes(host.toLowerCase());
+  });
 
-  // 기본 값은 fixture, test입니다. (development, production은 수동으로 실행 필요)
-  await migrator.runAction("apply", ["fixture", "test"]);
+  // 로컬 데이터베이스에 대해서만 전체 마이그레이션에서 동작
+  await migrator.runAction("apply", targets as (keyof SonamuDBConfig)[]);
 }
 
 async function migrate_status() {
