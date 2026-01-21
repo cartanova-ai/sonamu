@@ -32,6 +32,9 @@ export const DataDisplayDemoSchema = z.object({
 
   // Select
   selectValue: z.string().optional(),
+
+  // Date Input
+  dateInputValue: z.date().nullable(),
 });
 
 export type DataDisplayDemoValues = z.infer<typeof DataDisplayDemoSchema>;

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MultiSelect } from "@/components";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { DateInput } from "@/components/ui/date-input";
 import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
 import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
@@ -40,6 +41,7 @@ function DataDisplayPage() {
     monthValue: undefined,
     dateValue: undefined,
     selectValue: undefined,
+    dateInputValue: null,
   });
 
   const multiSelectOptions = [
@@ -54,7 +56,7 @@ function DataDisplayPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">📊 Data Display Components</h1>
-        <p className="mt-2 text-muted-foreground">11개의 데이터 표시 및 선택 컴포넌트</p>
+        <p className="mt-2 text-muted-foreground">12개의 데이터 표시 및 선택 컴포넌트</p>
       </div>
 
       {/* Avatar */}
@@ -82,6 +84,16 @@ function DataDisplayPage() {
             <Badge variant="secondary">Secondary</Badge>
             <Badge variant="destructive">Destructive</Badge>
             <Badge variant="outline">Outline</Badge>
+          </div>
+        </div>
+      </section>
+
+      {/* Date Input */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Date Input</h2>
+        <div className="border rounded-lg p-6 bg-card">
+          <div className="max-w-md">
+            <DateInput {...register("dateInputValue")} />
           </div>
         </div>
       </section>
@@ -221,6 +233,7 @@ function DataDisplayPage() {
         formData={form}
         title="Data Display State"
         sections={[
+          { title: "Date Input", fields: ["dateInputValue"] },
           { title: "Date Selector", fields: ["dateValue"] },
           { title: "Month Picker", fields: ["monthValue"] },
           { title: "Select", fields: ["selectValue"] },
