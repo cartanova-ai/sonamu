@@ -42,6 +42,6 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     preBuildCommand: () => "rm -rf dist/server", // api/dist/ssr은 안 지웁니다! 거기는 api의 빌드 결과물이 들어있음!
     buildCommand: () =>
       "tsc --noEmit && vite build --ssr src/entry-server.generated.tsx --outDir dist/server",
-    postBuildCommand: () => "cp -r dist/server/* ../api/dist/ssr",
+    postBuildCommand: () => "mkdir -p ../api/dist/ssr && cp -r dist/server/* ../api/dist/ssr",
   },
 ];
