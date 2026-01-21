@@ -87,10 +87,18 @@ async function init() {
   // CLI 인자 파싱
   const argv = minimist(process.argv.slice(2), {
     boolean: ["yes", "y", "skip-pnpm", "skip-docker"],
-    string: ["db-user", "db-password", "db-name", "container-name", "docker-project", "pnpm", "docker"],
+    string: [
+      "db-user",
+      "db-password",
+      "db-name",
+      "container-name",
+      "docker-project",
+      "pnpm",
+      "docker",
+    ],
     alias: {
       y: "yes",
-      "docker-pj-name": "docker-project",  // --docker-pj-name은 --docker-project의 alias
+      "docker-pj-name": "docker-project", // --docker-pj-name은 --docker-project의 alias
     },
   });
 
