@@ -87,15 +87,25 @@ async function init() {
   // CLI 인자 파싱
   const argv = minimist(process.argv.slice(2), {
     boolean: ["yes", "y", "skip-pnpm", "skip-docker"],
-    string: ["db-user", "db-password", "db-name", "container-name", "docker-project"],
+    string: ["db-user", "db-password", "db-name", "container-name", "docker-project", "pnpm", "docker"],
     alias: {
       y: "yes",
+      "docker-pj-name": "docker-project",  // --docker-pj-name은 --docker-project의 alias
     },
   });
 
   // 첫 번째 인자를 프로젝트명으로 사용
   const argProjectName = argv._[0] as string | undefined;
   const useDefaults = argv.yes || argv.y;
+
+  // Helper: 'y', 'yes', 'true', '1' → true / 'n', 'no', 'false', '0' → false / undefined → undefined
+  const parseYesNo = (value: string | undefined): boolean | undefined => {
+    if (value === undefined) return undefined;
+    const lower = value.toLowerCase();
+    if (["y", "yes", "true", "1"].includes(lower)) return true;
+    if (["n", "no", "false", "0"].includes(lower)) return false;
+    return undefined;
+  };
 
   let result: prompts.Answers<"targetDir">;
 
@@ -310,10 +320,16 @@ overrides:
 
   // 3. Set up pnpm
   let isPnpm = true; // 기본값
+  const pnpmOption = parseYesNo(argv.pnpm);
 
-  if (argv["skip-pnpm"]) {
+  if (argv["skip-pnpm"] || pnpmOption === false) {
+    // --skip-pnpm 또는 --pnpm n 옵션으로 스킵
     isPnpm = false;
-  } else if (!useDefaults) {
+  } else if (pnpmOption === true || useDefaults) {
+    // --pnpm y 또는 --yes 옵션이면 자동 진행
+    isPnpm = true;
+  } else {
+    // 옵션이 없으면 프롬프트로 물어봄
     const result = await prompts(
       {
         type: "confirm",
@@ -344,10 +360,16 @@ overrides:
 
   // 4. Set up Database using Docker
   let isDatabase = true; // 기본값
+  const dockerOption = parseYesNo(argv.docker);
 
-  if (argv["skip-docker"]) {
+  if (argv["skip-docker"] || dockerOption === false) {
+    // --skip-docker 또는 --docker n 옵션으로 스킵
     isDatabase = false;
-  } else if (!useDefaults) {
+  } else if (dockerOption === true || useDefaults) {
+    // --docker y 또는 --yes 옵션이면 자동 진행
+    isDatabase = true;
+  } else {
+    // 옵션이 없으면 프롬프트로 물어봄
     const result = await prompts(
       {
         type: "confirm",
@@ -365,10 +387,13 @@ overrides:
   if (isDatabase) {
     console.log(`\nSetting up a database using Docker...`);
 
+    // --docker y 옵션이 있으면 DB 옵션도 기본값 사용
+    const useDbDefaults = useDefaults || dockerOption === true;
+
     // 프롬프트로 입력받은 DB 정보 .env 파일에 추가
     let answers: PromptDatabaseAnswers;
     try {
-      answers = await promptDatabase(targetDir, argv, useDefaults);
+      answers = await promptDatabase(targetDir, argv, useDbDefaults);
     } catch (error) {
       cleanup();
       throw error;
