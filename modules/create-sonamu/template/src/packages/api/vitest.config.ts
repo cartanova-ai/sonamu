@@ -4,9 +4,6 @@ import { PrioritySequencer } from "./custom-sequencer";
 
 export default defineConfig(async () => ({
   plugins: [],
-  resolve: {
-    extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
-  },
   test: await getSonamuTestConfig({
     include: ["src/**/*.test.ts"],
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
@@ -30,5 +27,10 @@ export default defineConfig(async () => ({
       exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
     },
     includeTaskLocation: true,
+    server: {
+      deps: {
+        inline: ["sonamu"],
+      },
+    },
   }),
 }));
