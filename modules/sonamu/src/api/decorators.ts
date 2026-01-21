@@ -72,6 +72,8 @@ type StreamUploadOptions = {
   keyGenerator?: KeyGenerator;
 };
 export type UploadDecoratorOptions = {
+  guards?: GuardKey[];
+  description?: string;
   limits?: FastifyMultipartBaseOptions["limits"];
 } & (BufferUploadOptions | StreamUploadOptions);
 
@@ -377,6 +379,8 @@ export function upload(options: UploadDecoratorOptions = { consume: "buffer" }) 
         options: {
           httpMethod: "POST",
           clients: ["axios-multipart", "tanstack-mutation-multipart"],
+          guards: options.guards,
+          description: options.description,
         },
         uploadOptions: options,
       });
