@@ -1,10 +1,11 @@
 import { createContext, type ReactNode, useContext } from "react";
+import { type RCKeyName, type RCKeys, rcKeys } from "../i18n/rc-keys";
 import type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";
 
 export interface SonamuContextValue<D extends Dictionary = Dictionary> {
   uploader?: (files: File[]) => Promise<SonamuFile[]>;
   auth?: SonamuAuth;
-  SD: <K extends keyof D>(key: K) => SDReturnType<D, K>;
+  SD?: <K extends keyof D>(key: K) => SDReturnType<D, K>;
 }
 
 const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
@@ -22,7 +23,7 @@ export function SonamuProvider<D extends Dictionary = Dictionary>({
     ...value,
     uploader: value.uploader ?? createUploaderFallback(),
     auth: value.auth ?? createAuthFallback(),
-    SD: value.SD,
+    SD: value.SD ?? createSDFallback<D>(),
   };
 
   return <SonamuContext.Provider value={normalizedValue}>{children}</SonamuContext.Provider>;
@@ -54,5 +55,16 @@ const createAuthFallback = (): SonamuAuth => {
     login: throwAuthError,
     logout: throwAuthError,
     refetch: throwAuthError,
+  };
+};
+
+/**
+ * SD fallback
+ * react-components 내부의 rcKeys를 기본값으로 사용
+ */
+const createSDFallback = <D extends Dictionary = RCKeys>() => {
+  return <K extends keyof D>(key: K): SDReturnType<D, K> => {
+    const value = rcKeys[key as unknown as RCKeyName];
+    return value as unknown as SDReturnType<D, K>;
   };
 };

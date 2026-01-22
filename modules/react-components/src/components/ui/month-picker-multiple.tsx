@@ -159,7 +159,7 @@ export function MonthPickerMultiple({
                 onClick={() => handleModeChange(false)}
                 className="flex-1 h-7 text-xs"
               >
-                {SD("component.monthPickerMultiple.singleDate")}
+                {SD("rc.monthPickerMultiple.singleDate")}
               </Button>
               <Button
                 variant={tempIsRangeMode ? "default" : "outline"}
@@ -167,7 +167,7 @@ export function MonthPickerMultiple({
                 onClick={() => handleModeChange(true)}
                 className="flex-1 h-7 text-xs"
               >
-                {SD("component.monthPickerMultiple.dateRange")}
+                {SD("rc.monthPickerMultiple.dateRange")}
               </Button>
             </div>
           </div>
@@ -176,7 +176,7 @@ export function MonthPickerMultiple({
               {/* Start Date */}
               <div className="p-4 space-y-2">
                 <div className="text-xs text-muted-foreground">
-                  {SD("component.monthPickerMultiple.startDate")}
+                  {SD("rc.monthPickerMultiple.startDate")}
                 </div>
                 <Select
                   value={tempRangeStartYear.toString()}
@@ -238,7 +238,7 @@ export function MonthPickerMultiple({
               {/* End Date */}
               <div className="p-4 space-y-2">
                 <div className="text-xs text-muted-foreground">
-                  {SD("component.monthPickerMultiple.endDate")}
+                  {SD("rc.monthPickerMultiple.endDate")}
                 </div>
                 <Select
                   value={tempRangeEndYear.toString()}
@@ -339,7 +339,7 @@ export function MonthPickerMultiple({
           )}
           <div className="p-3 border-t flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
-              {SD("common.cancel")}
+              {SD("rc.common.cancel")}
             </Button>
             <Button
               variant="default"
@@ -348,7 +348,7 @@ export function MonthPickerMultiple({
               disabled={!isSaveEnabled()}
               className="h-8 text-xs"
             >
-              {SD("common.save")}
+              {SD("rc.common.save")}
             </Button>
           </div>
         </PopoverContent>

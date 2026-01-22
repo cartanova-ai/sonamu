@@ -134,7 +134,7 @@ export function DateSelectorMultiple({
                 onClick={() => handleModeChange(false)}
                 className="flex-1 h-7 text-xs"
               >
-                {SD("component.dateSelectorMultiple.singleDate")}
+                {SD("rc.dateSelectorMultiple.singleDate")}
               </Button>
               <Button
                 variant={tempIsRangeMode ? "default" : "outline"}
@@ -142,7 +142,7 @@ export function DateSelectorMultiple({
                 onClick={() => handleModeChange(true)}
                 className="flex-1 h-7 text-xs"
               >
-                {SD("component.dateSelectorMultiple.dateRange")}
+                {SD("rc.dateSelectorMultiple.dateRange")}
               </Button>
             </div>
           </div>
@@ -170,10 +170,10 @@ export function DateSelectorMultiple({
           )}
           <div className="p-3 border-t flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
-              {SD("common.cancel")}
+              {SD("rc.common.cancel")}
             </Button>
             <Button variant="default" size="sm" onClick={handleSave} className="h-8 text-xs">
-              {SD("common.save")}
+              {SD("rc.common.save")}
             </Button>
           </div>
         </PopoverContent>

@@ -146,7 +146,7 @@ function CalendarCaption({
   const years = React.useMemo(() => generateYears().reverse(), []);
 
   const monthNames = React.useMemo(() => {
-    return Array.from({ length: 12 }, (_, month) => SD(`component.calendar.month.${month}`));
+    return Array.from({ length: 12 }, (_, month) => SD(`rc.calendar.month.${month}`));
   }, [SD]);
 
   const handleMonthChange = React.useCallback(

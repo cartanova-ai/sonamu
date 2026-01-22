@@ -80,7 +80,7 @@ export function FileInput(props: FileInputProps) {
   // 기본 placeholder 설정
   const defaultPlaceholder =
     placeholder ??
-    `${isImageView ? SD("component.fileInput.imagePlaceholder") : SD("component.fileInput.filePlaceholder")} URL${isMultiple ? "S" : ""}`;
+    `${isImageView ? SD("rc.fileInput.imagePlaceholder") : SD("rc.fileInput.filePlaceholder")} URL${isMultiple ? "S" : ""}`;
 
   // 입력 정규화: 내부적으로 배열로 통일
   const values = (() => {
@@ -130,7 +130,7 @@ export function FileInput(props: FileInputProps) {
       const remainingSlots = maxFiles - totalCount;
       if (remainingSlots <= 0) {
         alert(
-          (SD("component.fileInput.maxFilesExceeded") as unknown as (maxFiles: number) => string)(
+          (SD("rc.fileInput.maxFilesExceeded") as unknown as (maxFiles: number) => string)(
             maxFiles,
           ),
         );
@@ -160,7 +160,7 @@ export function FileInput(props: FileInputProps) {
           }
         } catch (error) {
           console.error("Upload failed:", error);
-          alert(SD("component.fileInput.uploadFailed"));
+          alert(SD("rc.fileInput.uploadFailed"));
         } finally {
           setIsUploading(false);
         }
@@ -264,7 +264,7 @@ export function FileInput(props: FileInputProps) {
           {isUploading ? (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Loader2Icon className="h-6 w-6 animate-spin" />
-              <span className="text-xs">{SD("component.fileInput.uploading")}</span>
+              <span className="text-xs">{SD("rc.fileInput.uploading")}</span>
             </div>
           ) : (
             <>
@@ -287,7 +287,7 @@ export function FileInput(props: FileInputProps) {
                   </span>
                   {item.isPending && (
                     <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
-                      {SD("component.fileInput.pending")}
+                      {SD("rc.fileInput.pending")}
                     </span>
                   )}
                 </div>
@@ -305,7 +305,7 @@ export function FileInput(props: FileInputProps) {
               {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
               {isImageView && item.isPending && (
                 <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
-                  {SD("component.fileInput.pending")}
+                  {SD("rc.fileInput.pending")}
                 </div>
               )}
             </>
@@ -359,7 +359,7 @@ export function FileInput(props: FileInputProps) {
               </span>
               {item.isPending && (
                 <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
-                  {SD("component.fileInput.pending")}
+                  {SD("rc.fileInput.pending")}
                 </span>
               )}
             </div>
@@ -377,7 +377,7 @@ export function FileInput(props: FileInputProps) {
           {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
           {isImageView && item.isPending && (
             <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
-              {SD("component.fileInput.pending")}
+              {SD("rc.fileInput.pending")}
             </div>
           )}
         </div>
@@ -409,7 +409,7 @@ export function FileInput(props: FileInputProps) {
           {isUploading ? (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Loader2Icon className="h-6 w-6 animate-spin" />
-              <span className="text-xs">{SD("component.fileInput.uploading")}</span>
+              <span className="text-xs">{SD("rc.fileInput.uploading")}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 text-muted-foreground p-2">

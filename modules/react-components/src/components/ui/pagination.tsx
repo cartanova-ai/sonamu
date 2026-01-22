@@ -24,7 +24,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
       <div ref={ref} className={cn("flex items-center justify-between pt-6", className)}>
         <div className="text-xs text-muted-foreground">
           {(
-            SD("component.pagination.showing") as unknown as (
+            SD("rc.pagination.showing") as unknown as (
               start: number,
               end: number,
               total: number,
@@ -39,7 +39,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             disabled={currentPage === 1}
             onClick={() => onValueChange(currentPage - 1)}
           >
-            {SD("component.pagination.previous")}
+            {SD("rc.pagination.previous")}
           </Button>
           <div className="flex items-center gap-1">
             {(() => {
@@ -70,7 +70,7 @@ export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
             disabled={currentPage === totalPages}
             onClick={() => onValueChange(currentPage + 1)}
           >
-            {SD("component.pagination.next")}
+            {SD("rc.pagination.next")}
           </Button>
         </div>
       </div>

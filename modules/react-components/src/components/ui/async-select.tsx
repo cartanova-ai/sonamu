@@ -72,10 +72,10 @@ export function AsyncSelect<T = number>({
   const [keyword, setKeyword] = React.useState("");
 
   // SD 기본값 설정
-  const finalPlaceholder = placeholder ?? SD("component.asyncSelect.selectPlaceholder");
+  const finalPlaceholder = placeholder ?? SD("rc.asyncSelect.selectPlaceholder");
   const finalSearchPlaceholder = searchPlaceholder ?? SD("common.searchPlaceholder");
-  const finalEmptyText = emptyText ?? SD("component.asyncSelect.noResults");
-  const finalLoadingText = loadingText ?? SD("component.asyncSelect.loading");
+  const finalEmptyText = emptyText ?? SD("rc.asyncSelect.noResults");
+  const finalLoadingText = loadingText ?? SD("rc.asyncSelect.loading");
 
   // 검색어 디바운스
   React.useEffect(() => {

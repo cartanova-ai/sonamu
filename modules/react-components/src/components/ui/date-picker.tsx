@@ -37,7 +37,7 @@ export function DatePicker({
   className,
 }: DatePickerProps) {
   const { SD } = useSonamuContext();
-  const finalPlaceholder = placeholder ?? SD("component.datePicker.pickDate");
+  const finalPlaceholder = placeholder ?? SD("rc.datePicker.pickDate");
 
   return (
     <Popover>
@@ -82,7 +82,7 @@ export function DatePickerWithDropdown({
   className,
 }: DatePickerProps) {
   const { SD } = useSonamuContext();
-  const finalPlaceholder = placeholder ?? SD("component.datePicker.selectDate");
+  const finalPlaceholder = placeholder ?? SD("rc.datePicker.selectDate");
   const [open, setOpen] = React.useState(false);
 
   return (

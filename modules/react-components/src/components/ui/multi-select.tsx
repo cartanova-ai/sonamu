@@ -323,7 +323,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     const { SD } = useSonamuContext();
 
     // SD 기본값 설정
-    const finalPlaceholder = placeholder ?? SD("component.multiSelect.selectPlaceholder");
+    const finalPlaceholder = placeholder ?? SD("rc.multiSelect.selectPlaceholder");
 
     // 제어 컴포넌트 전용: value를 직접 사용
     const selectedValues = value;
@@ -710,7 +710,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
           </div>
           <div id={selectedCountId} className="sr-only" aria-live="polite">
             {selectedValues.length === 0
-              ? SD("component.multiSelect.noOptionsSelected")
+              ? SD("rc.multiSelect.noOptionsSelected")
               : `${selectedValues.length} option${
                   selectedValues.length === 1 ? "" : "s"
                 } selected: ${selectedValues
@@ -858,7 +858,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                         }}
                       >
                         {(
-                          SD("component.multiSelect.moreItems") as unknown as (
+                          SD("rc.multiSelect.moreItems") as unknown as (
                             count: number,
                           ) => string
                         )(selectedValues.length - responsiveSettings.maxCount)}
@@ -957,7 +957,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                 )}
               >
                 <CommandEmpty>
-                  {emptyIndicator || SD("component.multiSelect.noResults")}
+                  {emptyIndicator || SD("rc.multiSelect.noResults")}
                 </CommandEmpty>{" "}
                 {!hideSelectAll && !searchValue && (
                   <CommandGroup>
@@ -985,9 +985,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                         <CheckIcon className="h-4 w-4" />
                       </div>
                       <span>
-                        ({SD("component.multiSelect.selectAll")}
+                        ({SD("rc.multiSelect.selectAll")}
                         {getAllOptions().length > 20
-                          ? ` - ${(SD("component.multiSelect.optionsCount") as unknown as (count: number) => string)(getAllOptions().length)}`
+                          ? ` - ${(SD("rc.multiSelect.optionsCount") as unknown as (count: number) => string)(getAllOptions().length)}`
                           : ""}
                         )
                       </span>
@@ -1090,7 +1090,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                           onSelect={handleClear}
                           className="flex-1 justify-center cursor-pointer"
                         >
-                          {SD("component.multiSelect.clear")}
+                          {SD("rc.multiSelect.clear")}
                         </CommandItem>
                         <Separator orientation="vertical" className="flex min-h-6 h-full" />
                       </>
@@ -1099,7 +1099,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                       onSelect={() => setIsPopoverOpen(false)}
                       className="flex-1 justify-center cursor-pointer max-w-full"
                     >
-                      {SD("component.multiSelect.close")}
+                      {SD("rc.multiSelect.close")}
                     </CommandItem>
                   </div>
                 </CommandGroup>

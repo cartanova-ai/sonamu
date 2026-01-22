@@ -58,9 +58,9 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // SD 기본값 설정
-    const finalPlaceholder = placeholder ?? SD("component.combobox.selectPlaceholder");
+    const finalPlaceholder = placeholder ?? SD("rc.combobox.selectPlaceholder");
     const finalSearchPlaceholder = searchPlaceholder ?? SD("common.searchPlaceholder");
-    const finalEmptyText = emptyText ?? SD("component.combobox.noResults");
+    const finalEmptyText = emptyText ?? SD("rc.combobox.noResults");
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
