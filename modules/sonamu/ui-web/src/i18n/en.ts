@@ -1,11 +1,12 @@
 /**
  * Sonamu UI English Dictionary
  */
+import type { Dictionary } from "@sonamu-kit/react-components";
 import type ko from "./ko";
 
 type DictKey = keyof typeof ko;
 
-const en: Record<DictKey, any> = {
+const en: Record<DictKey, Dictionary[string]> = {
   // react-components i18n keys (English)
   "rc.asyncSelect.loading": "Loading...",
   "rc.asyncSelect.noOptions": "No options",
