@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
@@ -21,7 +22,6 @@ import Trash2Icon from "~icons/lucide/trash-2";
 import { EditableInput } from "../../components/EditableInput";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
-import { useSD } from "../../i18n";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { EntityIndexModal } from "../entities/_entity_index_modal";
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/entities/$entityId")({
 
 type EntitiesShowPageProps = {};
 function EntitiesShowPage({}: EntitiesShowPageProps) {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 

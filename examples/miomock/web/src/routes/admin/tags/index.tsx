@@ -200,7 +200,7 @@ function TagList({}: TagListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>

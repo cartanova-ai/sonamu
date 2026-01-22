@@ -1,4 +1,4 @@
-import { Button } from "@sonamu-kit/react-components";
+import { Button, useSonamuContext } from "@sonamu-kit/react-components";
 import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import classnames from "classnames";
 import { useState } from "react";
@@ -6,7 +6,6 @@ import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
 import EntityChatComponent from "../components/EntityChatComponent";
-import { useSD } from "../i18n";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { EntityCreateModal } from "./entities/_entity_create_modal";
 
@@ -16,7 +15,7 @@ export const Route = createFileRoute("/entities")({
 
 type EntitiesLayoutProps = {};
 function EntitiesLayout(_props: EntitiesLayoutProps) {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data, error, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 

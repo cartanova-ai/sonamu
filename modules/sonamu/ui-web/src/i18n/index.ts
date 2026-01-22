@@ -1,9 +1,11 @@
+import type { SDReturnType } from "@sonamu-kit/react-components";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import en from "./en";
 import ko from "./ko";
 
 export type Locale = "ko" | "en";
 export type DictKey = keyof typeof ko;
+export type UiWebDictionary = typeof ko;
 
 const localeAtom = atom<Locale>("ko");
 
@@ -29,9 +31,9 @@ export function useSetLocale() {
  */
 export function useSD() {
   const locale = useLocale();
-  return (key: DictKey): string => {
+  return <K extends DictKey>(key: K): SDReturnType<UiWebDictionary, K> => {
     const dict = dictionaries[locale];
-    return dict[key] ?? ko[key] ?? key;
+    return (dict[key] ?? ko[key] ?? key) as SDReturnType<UiWebDictionary, K>;
   };
 }
 

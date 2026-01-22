@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
@@ -20,7 +21,6 @@ import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
-import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/scaffolding")({
 
 type ScaffoldingIndexProps = {};
 function ScaffoldingIndex({}: ScaffoldingIndexProps) {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data: entitiesData } = SonamuUIService.useEntities();
   const { entities: allEntities } = entitiesData ?? {};
 

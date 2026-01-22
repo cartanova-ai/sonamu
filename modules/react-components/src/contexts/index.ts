@@ -3,4 +3,4 @@ export {
   SonamuProvider,
   useSonamuContext,
 } from "./sonamu-context";
-export type { SonamuAuth, SonamuFile } from "./types";
+export type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";

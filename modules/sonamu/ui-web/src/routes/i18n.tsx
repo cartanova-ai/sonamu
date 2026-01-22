@@ -6,6 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +15,6 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
-import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/i18n")({
 });
 
 function I18nIndex() {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data, error, refetch } = SonamuUIService.useI18nDictionary();
   const { rows, locales, defaultLocale, stats } = data ?? {};
 

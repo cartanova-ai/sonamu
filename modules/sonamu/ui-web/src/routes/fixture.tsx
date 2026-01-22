@@ -10,6 +10,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  useSonamuContext,
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
@@ -26,7 +27,6 @@ import TableIcon from "~icons/lucide/table";
 import TrashIcon from "~icons/lucide/trash";
 import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
-import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
 import FixtureCodeViewer from "./fixture/_fixture_code_viewer";
@@ -46,7 +46,7 @@ type DuplicateCheckColumns = {
 };
 
 function FixtureIndex() {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
   const [targetDB, setTargetDB] = useState("test");

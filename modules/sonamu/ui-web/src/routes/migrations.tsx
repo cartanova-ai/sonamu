@@ -10,6 +10,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
@@ -23,7 +24,6 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
-import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { MigrationActionModal } from "./migrations/_migration_action_modal";
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/migrations")({
 
 type MigrationsIndexProps = {};
 function MigrationsIndex(_props: MigrationsIndexProps) {
-  const SD = useSD();
+  const { SD } = useSonamuContext();
   const { data, error, refetch } = SonamuUIService.useMigrationStatus();
   const { status } = data ?? {};
   const { preparedCodes, conns, codes } = status ?? {};

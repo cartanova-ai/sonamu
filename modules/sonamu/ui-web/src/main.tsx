@@ -1,8 +1,9 @@
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { TooltipProvider } from "@sonamu-kit/react-components";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { SonamuProviderWrapper } from "./contexts/sonamu-provider";
 import { routeTree } from "./routeTree.gen";
 
 const queryClient = new QueryClient({
@@ -28,9 +29,13 @@ const router = createRouter({
 });
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <TooltipProvider>
-    <RouterProvider router={router} />,
-  </TooltipProvider>,
+  <QueryClientProvider client={queryClient}>
+    <SonamuProviderWrapper>
+      <TooltipProvider>
+        <RouterProvider router={router} />
+      </TooltipProvider>
+    </SonamuProviderWrapper>
+  </QueryClientProvider>,
 );
 
 // Chrome Extension용 Devtools
