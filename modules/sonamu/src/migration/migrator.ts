@@ -317,7 +317,7 @@ export class Migrator {
         const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
         await writeFile(filePath, pcode.formatted);
-        !isTest() && console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
+        !isTest() && console.log(chalk.green(`MIGRATION CREATED ${filePath}`));
       }
     }
 

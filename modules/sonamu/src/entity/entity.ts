@@ -310,7 +310,7 @@ export class Entity {
             // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
             const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
-              // FIXME: 검증 필요
+              // custom join clause는 callback 형태의 on 메서드로 처리합니다.
               loaderLines.push(
                 `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
                 `j.on(Puri.rawString("${join.custom}"));`,
@@ -342,7 +342,7 @@ export class Entity {
             // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
             const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
-              // FIXME: 검증 필요
+              // custom join clause는 callback 형태의 on 메서드로 처리합니다.
               loaderLines.push(
                 `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
                 `j.on(Puri.rawString("${join.custom}"));`,
