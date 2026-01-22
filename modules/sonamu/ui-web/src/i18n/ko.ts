@@ -1,7 +1,12 @@
+import { rcKeys } from "./rc-keys";
+
 /**
  * Sonamu UI 한국어 딕셔너리
  */
 export default {
+  // react-components i18n 키
+  ...rcKeys,
+
   // Navigation
   "nav.entities": "Entities",
   "nav.migration": "DB Migration",

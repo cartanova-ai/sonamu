@@ -857,11 +857,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                           animationDelay: `${animationConfig?.delay || 0}s`,
                         }}
                       >
-                        {(
-                          SD("rc.multiSelect.moreItems") as unknown as (
-                            count: number,
-                          ) => string
-                        )(selectedValues.length - responsiveSettings.maxCount)}
+                        {(SD("rc.multiSelect.moreItems") as unknown as (count: number) => string)(
+                          selectedValues.length - responsiveSettings.maxCount,
+                        )}
                         <XCircleIcon
                           className={cn(
                             "ml-2 h-4 w-4 cursor-pointer",
@@ -956,9 +954,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
                   "overscroll-behavior-y-contain",
                 )}
               >
-                <CommandEmpty>
-                  {emptyIndicator || SD("rc.multiSelect.noResults")}
-                </CommandEmpty>{" "}
+                <CommandEmpty>{emptyIndicator || SD("rc.multiSelect.noResults")}</CommandEmpty>{" "}
                 {!hideSelectAll && !searchValue && (
                   <CommandGroup>
                     <CommandItem
