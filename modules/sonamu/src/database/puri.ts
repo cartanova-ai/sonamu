@@ -707,9 +707,11 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     options: {
       method?: "cosine" | "l2" | "inner_product";
       threshold?: number;
+      distinctOn?: AvailableColumns<TTables>;
     } = {},
   ): Puri<TSchema, TTables, TResult & { similarity: number }> {
-    const { method = "cosine", threshold } = options;
+    const { method = "cosine", threshold, distinctOn } = options;
+
     if (
       !Array.isArray(embedding) ||
       embedding.length === 0 ||
@@ -717,74 +719,65 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     ) {
       throw new Error("Invalid embedding vector: expected a non-empty array of finite numbers");
     }
+
     const vectorLiteral = JSON.stringify(embedding.map((v) => Number(v)));
+    const operator = { cosine: "<=>", l2: "<->", inner_product: "<#>" }[method];
 
     // method별 연산자 및 similarity 계산식
     // - cosine: <=> (cosine distance, 0~2), similarity = 1 - distance
     // - l2: <-> (euclidean distance), similarity = distance (낮을수록 유사)
     // - inner_product: <#> (negative inner product), similarity = -distance (높을수록 유사)
-    const operatorMap = {
-      cosine: "<=>",
-      l2: "<->",
-      inner_product: "<#>",
-    } as const;
-    const operator = operatorMap[method];
+    const similarityExpr =
+      method === "cosine"
+        ? this.knex.raw(`1 - (?? ${operator} ?::vector) as similarity`, [column, vectorLiteral])
+        : method === "l2"
+          ? this.knex.raw(`?? ${operator} ?::vector as similarity`, [column, vectorLiteral])
+          : this.knex.raw(`-(?? ${operator} ?::vector) as similarity`, [column, vectorLiteral]);
 
-    // SELECT에 similarity 추가
-    if (method === "cosine") {
-      // cosine: similarity = 1 - cosine_distance (0~1, 높을수록 유사)
-      this.knexQuery.select(
-        this.knex.raw(`1 - (?? <=> ?::vector) as similarity`, [column, vectorLiteral]),
-      );
-    } else if (method === "l2") {
-      // l2: distance 그대로 반환 (낮을수록 유사)
-      this.knexQuery.select(
-        this.knex.raw(`?? <-> ?::vector as similarity`, [column, vectorLiteral]),
-      );
-    } else {
-      // inner_product: pgvector는 음수 반환하므로 부호 반전 (높을수록 유사)
-      this.knexQuery.select(
-        this.knex.raw(`-(?? <#> ?::vector) as similarity`, [column, vectorLiteral]),
-      );
-    }
-
-    // WHERE col IS NOT NULL
+    // WHERE NOT NULL
     this.knexQuery.whereNotNull(column);
 
-    // threshold가 있으면 WHERE 추가
+    // 기존 ORDER BY clear
+    this.knexQuery.clear("order");
+    if (distinctOn) {
+      // DISTINCT ON은 SELECT 절의 맨 앞에 와야 하므로, 기존 select를 clear하고 다시 추가
+      this.knexQuery.clear("select");
+      this.knexQuery.select(this.knex.raw(`DISTINCT ON (??) ??`, [distinctOn, distinctOn]));
+      this.knexQuery.select(similarityExpr);
+      this.knexQuery.orderByRaw(`??, ?? ${operator} ?::vector`, [
+        distinctOn,
+        column,
+        vectorLiteral,
+      ]);
+
+      this.knexQuery = this.knex
+        .from(this.knexQuery.as("distinct_vectors"))
+        .select("*")
+        .orderBy("similarity", "desc");
+    } else {
+      this.knexQuery.select(similarityExpr);
+      this.knexQuery.orderByRaw(`?? ${operator} ?::vector`, [column, vectorLiteral]);
+    }
+
+    // threshold
     if (typeof threshold === "number") {
       if (!Number.isFinite(threshold)) {
         throw new Error(`Invalid vectorSimilarity threshold: ${threshold}`);
       }
 
-      if (method === "cosine") {
-        // similarity >= threshold  <=>  cosine_distance <= (1 - threshold)
-        this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
-          column,
-          vectorLiteral,
-          1 - threshold,
-        ]);
-      } else if (method === "l2") {
-        // distance <= threshold (거리가 threshold 이하)
-        this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
-          column,
-          vectorLiteral,
-          threshold,
-        ]);
+      if (distinctOn) {
+        const thresholdOp = method === "l2" ? "<=" : ">=";
+        this.knexQuery.where("similarity", thresholdOp, threshold);
       } else {
-        // inner_product: -distance >= threshold  <=>  distance <= -threshold
+        const thresholdValue =
+          method === "cosine" ? 1 - threshold : method === "inner_product" ? -threshold : threshold;
         this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
           column,
           vectorLiteral,
-          -threshold,
+          thresholdValue,
         ]);
       }
     }
-
-    // 기존 ORDER BY clear 후 원시 연산자로 정렬 (HNSW 인덱스 최적화)
-    // 모든 method에서 ASC: 거리/음수값이 작을수록 유사
-    this.knexQuery.clear("order");
-    this.knexQuery.orderByRaw(`?? ${operator} ?::vector`, [column, vectorLiteral]);
 
     return this as any;
   }
