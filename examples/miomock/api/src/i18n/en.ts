@@ -117,4 +117,72 @@ export default defineLocale({
     `${field} must be between ${min} and ${max}`,
   "validation.required": (field: string) => `${field} is required`,
   "validation.url": "Invalid URL format",
+  // React Components (rc.*)
+  // AsyncSelect
+  "rc.asyncSelect.loading": "Loading...",
+  "rc.asyncSelect.noOptions": "No options",
+  "rc.asyncSelect.noResults": "No results found",
+  "rc.asyncSelect.selectPlaceholder": "Select...",
+  // Combobox
+  "rc.combobox.noResults": "No results found",
+  "rc.combobox.selectPlaceholder": "Select...",
+  // DatePicker
+  "rc.datePicker.pickDate": "Pick a date",
+  "rc.datePicker.placeholder": "Pick a date",
+  "rc.datePicker.selectDate": "Select date",
+  // DateSelectorMultiple
+  "rc.dateSelectorMultiple.addDate": "Add date",
+  "rc.dateSelectorMultiple.dateRange": "Range",
+  "rc.dateSelectorMultiple.placeholder": "Select dates",
+  "rc.dateSelectorMultiple.singleDate": "Single",
+  // FileInput
+  "rc.fileInput.browseFiles": "Browse files",
+  "rc.fileInput.dropZone": "Drag files or click to upload",
+  "rc.fileInput.filePlaceholder": "File",
+  "rc.fileInput.imagePlaceholder": "Image",
+  "rc.fileInput.maxFilesExceeded": (maxFiles: number) =>
+    `Maximum ${maxFiles} ${plural(maxFiles, { one: "file", other: "files" })} allowed`,
+  "rc.fileInput.pending": "Pending",
+  "rc.fileInput.remove": "Remove",
+  "rc.fileInput.uploadFailed": "Upload failed",
+  "rc.fileInput.uploading": "Uploading...",
+  // MonthPickerMultiple
+  "rc.monthPickerMultiple.addMonth": "Add month",
+  "rc.monthPickerMultiple.dateRange": "Range",
+  "rc.monthPickerMultiple.endDate": "End date",
+  "rc.monthPickerMultiple.placeholder": "Select months",
+  "rc.monthPickerMultiple.singleDate": "Single",
+  "rc.monthPickerMultiple.startDate": "Start date",
+  // MultiSelect
+  "rc.multiSelect.clear": "Clear all",
+  "rc.multiSelect.close": "Close",
+  "rc.multiSelect.moreItems": (count: number) => `+${count} more`,
+  "rc.multiSelect.noOptions": "No options",
+  "rc.multiSelect.noOptionsSelected": "No options selected",
+  "rc.multiSelect.noResults": "No results found",
+  "rc.multiSelect.optionsCount": (count: number) =>
+    `${count} ${plural(count, { one: "option", other: "options" })}`,
+  "rc.multiSelect.selectAll": "Select all",
+  "rc.multiSelect.selectPlaceholder": "Select...",
+  // Pagination
+  "rc.pagination.next": "Next",
+  "rc.pagination.previous": "Previous",
+  "rc.pagination.showing": (start: number, end: number, total: number) =>
+    `Showing ${start}-${end} of ${total}`,
+  // Calendar
+  "rc.calendar.month.0": "January",
+  "rc.calendar.month.1": "February",
+  "rc.calendar.month.2": "March",
+  "rc.calendar.month.3": "April",
+  "rc.calendar.month.4": "May",
+  "rc.calendar.month.5": "June",
+  "rc.calendar.month.6": "July",
+  "rc.calendar.month.7": "August",
+  "rc.calendar.month.8": "September",
+  "rc.calendar.month.9": "October",
+  "rc.calendar.month.10": "November",
+  "rc.calendar.month.11": "December",
+  // Common
+  "rc.common.cancel": "Cancel",
+  "rc.common.save": "Save",
 });
