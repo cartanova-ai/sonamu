@@ -557,6 +557,85 @@ describe("Puri Query", () => {
       expect(query).toMatch(/<=> '\[.*\]'::vector <= 0\.3/);
     });
 
+    test("cosine (distinctOn)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+          distinctOn: "documents.id",
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // 서브쿼리로 감싸짐
+      expect(query).toContain(`from (select`);
+      expect(query).toContain(`as "distinct_vectors"`);
+      // DISTINCT ON
+      expect(query).toContain(`DISTINCT ON ("documents"."id")`);
+      // 안쪽 ORDER BY: distinctOn 컬럼 + 벡터 거리
+      expect(query).toMatch(
+        /order by "documents"\."id", "documents"\."title_content_embedding" <=>/,
+      );
+      // 바깥 ORDER BY: similarity desc
+      expect(query).toContain(`order by "similarity" desc`);
+    });
+
+    test("cosine (distinctOn + threshold)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+          distinctOn: "documents.title",
+          threshold: 0.6,
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // 서브쿼리로 감싸짐
+      expect(query).toContain(`from (select`);
+      // threshold는 바깥 WHERE에서 similarity로 필터
+      expect(query).toContain(`"similarity" >= 0.6`);
+    });
+
+    test("cosine (distinctOn + limit)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+          distinctOn: "documents.id",
+        })
+        .limit(5);
+      const query = Naite.get("puri:executed-query").first();
+
+      // 서브쿼리로 감싸짐
+      expect(query).toContain(`from (select`);
+      expect(query).toContain(`as "distinct_vectors"`);
+      // limit은 바깥 쿼리에 걸림
+      expect(query).toContain(`order by "similarity" desc limit 5`);
+    });
+
+    test("cosine (distinctOn 없이 기존 동작 유지)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // 서브쿼리 없음
+      expect(query).not.toContain(`from (select`);
+      expect(query).not.toContain(`distinct_vectors`);
+      expect(query).not.toContain(`DISTINCT ON`);
+      // 직접 테이블에서 조회
+      expect(query).toContain(`from "documents"`);
+      // similarity 계산
+      expect(query).toContain(`as similarity`);
+      // 벡터 거리순 정렬
+      expect(query).toMatch(/"documents"\."title_content_embedding" <=> '.*'::vector/);
+    });
+
     test("as - alias (기본값: similarity)", async () => {
       const db = UserModel.getPuri("r");
       await db
