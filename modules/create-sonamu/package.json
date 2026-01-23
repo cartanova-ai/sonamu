@@ -1,6 +1,6 @@
 {
   "name": "create-sonamu",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Create a new Sonamu project",
   "keywords": ["sonamu", "typescript", "fullstack", "framework", "cli", "scaffold"],
   "license": "MIT",
@@ -29,7 +29,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node index.js",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "zx ./scripts/prepublish.mjs",
+    "postpublish": "zx ./scripts/postpublish.mjs",
     "clean": "rm index.js"
   },
   "devDependencies": {
