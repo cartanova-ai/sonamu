@@ -906,12 +906,7 @@ async function generateAlterCode_Foreigns(
   ];
 
   const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
-  const title = [
-    "alter",
-    table,
-    "foreigns",
-    // TODO 바뀌는 부분
-  ].join("_");
+  const title = ["alter", table, "foreigns"].join("_");
 
   return [
     {
