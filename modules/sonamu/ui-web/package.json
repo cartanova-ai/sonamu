@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "prebuild": "tsx ../../../scripts/copy-rc-keys.ts",
+    "prebuild": "tsx ../../../scripts/hard-link.ts",
     "build": "tsc --noEmit && vite build"
   },
   "type": "module",
