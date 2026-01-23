@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext } from "react";
-import { type RCKeyName, type RCKeys, rcKeys } from "../i18n/rc-keys";
+import { type RCKeyName, type RCKeys, rcKeysEn } from "../i18n/rc-keys";
 import type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";
 
 export interface SonamuContextValue<D extends Dictionary = Dictionary> {
@@ -60,7 +60,7 @@ const createAuthFallback = (): SonamuAuth => {
 
 const createSDFallback = <D extends Dictionary = RCKeys>() => {
   return <K extends keyof D>(key: K): SDReturnType<D, K> => {
-    const value = rcKeys[key as unknown as RCKeyName];
+    const value = rcKeysEn[key as unknown as RCKeyName];
     return value as unknown as SDReturnType<D, K>;
   };
 };

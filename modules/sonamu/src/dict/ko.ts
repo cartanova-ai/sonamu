@@ -1,12 +1,12 @@
-import { rcKeys } from "./rc-keys";
+import { rcKeysKo } from "./rc-keys";
 
 /**
  * Sonamu 내장 한국어 Dictionary
  * 프로젝트에서 동일한 키를 정의하면 덮어씁니다.
  */
 export default {
-  // react-components i18n 키
-  ...rcKeys,
+  // react-components i18n keys
+  ...rcKeysKo,
 
   // 에러 메시지
   "error.badRequest": "잘못된 요청입니다",

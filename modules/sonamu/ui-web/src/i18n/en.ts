@@ -3,76 +3,13 @@
  */
 import type { Dictionary } from "@sonamu-kit/react-components";
 import type ko from "./ko";
+import { rcKeysEn } from "./rc-keys";
 
 type DictKey = keyof typeof ko;
 
 const en: Record<DictKey, Dictionary[string]> = {
-  // react-components i18n keys (English)
-  "rc.asyncSelect.loading": "Loading...",
-  "rc.asyncSelect.noOptions": "No options",
-  "rc.asyncSelect.noResults": "No results",
-  "rc.asyncSelect.selectPlaceholder": "Select...",
-
-  "rc.combobox.noResults": "No results",
-  "rc.combobox.selectPlaceholder": "Select...",
-
-  "rc.datePicker.pickDate": "Pick date",
-  "rc.datePicker.placeholder": "Pick date",
-  "rc.datePicker.selectDate": "Select date",
-
-  "rc.dateSelectorMultiple.addDate": "Add date",
-  "rc.dateSelectorMultiple.dateRange": "Range",
-  "rc.dateSelectorMultiple.placeholder": "Pick date",
-  "rc.dateSelectorMultiple.singleDate": "Single",
-
-  "rc.fileInput.browseFiles": "Browse files",
-  "rc.fileInput.dropZone": "Drag files here or click to upload",
-  "rc.fileInput.filePlaceholder": "File",
-  "rc.fileInput.imagePlaceholder": "Image",
-  "rc.fileInput.maxFilesExceeded": (maxFiles: number) => `Maximum ${maxFiles} files allowed`,
-  "rc.fileInput.pending": "Pending",
-  "rc.fileInput.remove": "Remove",
-  "rc.fileInput.uploadFailed": "Upload failed",
-  "rc.fileInput.uploading": "Uploading...",
-
-  "rc.monthPickerMultiple.addMonth": "Add month",
-  "rc.monthPickerMultiple.dateRange": "Range",
-  "rc.monthPickerMultiple.endDate": "End date",
-  "rc.monthPickerMultiple.placeholder": "Pick month",
-  "rc.monthPickerMultiple.singleDate": "Single",
-  "rc.monthPickerMultiple.startDate": "Start date",
-
-  "rc.multiSelect.clear": "Clear all",
-  "rc.multiSelect.close": "Close",
-  "rc.multiSelect.moreItems": (count: number) => `+${count} more`,
-  "rc.multiSelect.noOptions": "No options",
-  "rc.multiSelect.noOptionsSelected": "No options selected",
-  "rc.multiSelect.noResults": "No results",
-  "rc.multiSelect.optionsCount": (count: number) => `${count} options`,
-  "rc.multiSelect.selectAll": "Select all",
-  "rc.multiSelect.selectPlaceholder": "Select...",
-
-  "rc.pagination.next": "Next",
-  "rc.pagination.previous": "Previous",
-  "rc.pagination.showing": (start: number, end: number, total: number) =>
-    `Showing ${start}-${end} of ${total}`,
-
-  "rc.calendar.month.0": "January",
-  "rc.calendar.month.1": "February",
-  "rc.calendar.month.2": "March",
-  "rc.calendar.month.3": "April",
-  "rc.calendar.month.4": "May",
-  "rc.calendar.month.5": "June",
-  "rc.calendar.month.6": "July",
-  "rc.calendar.month.7": "August",
-  "rc.calendar.month.8": "September",
-  "rc.calendar.month.9": "October",
-  "rc.calendar.month.10": "November",
-  "rc.calendar.month.11": "December",
-
-  // Common
-  "rc.common.cancel": "Cancel",
-  "rc.common.save": "Save",
+  // react-components i18n keys
+  ...rcKeysEn,
 
   // Sonamu UI keys
   // Navigation
