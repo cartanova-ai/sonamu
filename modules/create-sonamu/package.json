@@ -1,22 +1,27 @@
 {
   "name": "create-sonamu",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "description": "Create a new Sonamu project",
+  "keywords": ["sonamu", "typescript", "fullstack", "framework", "cli", "scaffold"],
+  "license": "MIT",
   "type": "module",
-  "bin": "index.js",
+  "bin": {
+    "create-sonamu": "index.js"
+  },
   "files": [
     "index.js",
     "template"
   ],
   "engines": {
-    "node": ">=v18.0.0"
+    "node": ">=22.0.0"
   },
   "author": {
-    "name": "nakkim",
-    "email": "nakkim.dev@gmail.com"
+    "name": "noasouth",
+    "email": "noa@cartanova.ai"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ping-alive/sonamu"
+    "url": "https://github.com/cartanova-ai/sonamu"
   },
   "publishConfig": {
     "access": "public"
@@ -24,25 +29,22 @@
   "scripts": {
     "build": "tsc",
     "start": "node index.js",
-    "prepublishOnly": "zx ./scripts/prepublish.mjs",
+    "prepublishOnly": "pnpm build",
     "clean": "rm index.js"
   },
   "devDependencies": {
-    "@tsconfig/node18": "^18.2.3",
     "@types/minimist": "^1.2.5",
     "@types/node": "catalog:",
     "@types/prompts": "^2",
-    "esbuild": "catalog:",
     "@biomejs/biome": "catalog:",
     "typescript": "catalog:",
-    "zx": "^8.8.5",
-    "ts-node": "^10.9.2"
+    "zx": "catalog:"
   },
   "packageManager": "pnpm@10.28.0",
   "dependencies": {
     "chalk": "catalog:",
     "minimist": "catalog:",
     "ora": "^8.0.1",
-    "prompts": "^2.4.2"
+    "prompts": "catalog:"
   }
 }
