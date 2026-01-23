@@ -14,7 +14,7 @@ export function EditableInput({ onChange, value: originValue, ...inputProps }: E
     if (value !== originValue) {
       setValue(originValue);
     }
-  }, [originValue, value]);
+  }, [originValue]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
