@@ -29,8 +29,11 @@ export function createSonamuConfig(): SonamuContextValue<EmptyDictionary> {
     return [];
   };
 
-  // SD configuration - returns key as-is until i18n is set up
-  const sd_config = (key: string): any => key;
+  // SD configuration - returns a function until i18n is set up
+  // Components like Pagination call SD("key")(args), so we must return a function
+  const sd_config = (key: string): any => {
+    return (..._args: any[]) => key;
+  };
 
   return { auth: auth_config, uploader: uploader_config, SD: sd_config };
 }
