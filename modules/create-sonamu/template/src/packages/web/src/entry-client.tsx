@@ -3,11 +3,12 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 import "./styles/tailwind.css";
+import { dateReviver } from "./services/sonamu.shared";
 
-// SSR data types
+// SSR 데이터 타입
 declare global {
   interface Window {
-    // biome-ignore lint/suspicious/noExplicitAny: SSR data needs to be any type
+    // biome-ignore lint/suspicious/noExplicitAny: SSR 데이터를 any 타입으로 받아야 함
     __SONAMU_SSR__?: any;
     __SONAMU_SSR_CONFIG__?: {
       disableHydrate?: boolean;
@@ -15,19 +16,7 @@ declare global {
   }
 }
 
-// Date reviver function for JSON.parse
-// biome-ignore lint/suspicious/noExplicitAny: reviver needs to handle any type
-function dateReviver(_key: string, value: any) {
-  if (typeof value === "string") {
-    const datePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
-    if (datePattern.test(value)) {
-      return new Date(value);
-    }
-  }
-  return value;
-}
-
-// Create QueryClient
+// QueryClient 생성
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -38,7 +27,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Restore SSR data
+// SSR 데이터 복원
 const dehydratedState = window.__SONAMU_SSR__
   ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
   : undefined;
@@ -46,10 +35,10 @@ if (dehydratedState) {
   hydrate(queryClient, dehydratedState);
 }
 
-// Check SSR Config
+// SSR Config 확인
 const ssrConfig = window.__SONAMU_SSR_CONFIG__;
 
-// Create Router
+// Router 생성
 const router = createRouter({
   routeTree,
   context: { queryClient },
@@ -62,11 +51,28 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// Render the app
-const rootElement = document.getElementById("root")!;
-if (!rootElement.innerHTML || ssrConfig?.disableHydrate) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<RouterProvider router={router} />);
+await router.load();
+
+// SSR/CSR 모두 document 전체에 렌더링
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR 페이지
+  if (ssrConfig?.disableHydrate) {
+    // disableHydrate: document 전체 새로 렌더링
+    console.log("[Sonamu] Hydration disabled, rendering as CSR");
+    ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+  } else {
+    // 정상 hydration: document 전체 hydrate
+    ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+  }
 } else {
-  ReactDOM.hydrateRoot(rootElement, <RouterProvider router={router} />);
+  // Pure CSR 페이지: document 전체 렌더링
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
 }
+
+// Chrome Extension용 Devtools
+declare global {
+  interface Window {
+    __TANSTACK_QUERY_CLIENT__: typeof queryClient;
+  }
+}
+window.__TANSTACK_QUERY_CLIENT__ = queryClient;

@@ -1,5 +1,11 @@
 /* Tailwind CSS Configuration */
 
+/* react-components 스타일 import */
+@import "@sonamu-kit/react-components/styles";
+
 /* Tailwind v4: Source paths */
 @source "../../src/**/*.tsx";
 @source "../../src/**/*.ts";
+
+/* node_modules 내의 react-components 패키지 */
+@source "../../node_modules/@sonamu-kit/react-components/dist/**/*.js";
