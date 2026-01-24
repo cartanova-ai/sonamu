@@ -1,5 +1,5 @@
 import { Button, Input, type InputProps } from "@sonamu-kit/react-components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LanguagesIcon from "~icons/lucide/languages";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -9,12 +9,25 @@ type InputWithSuggestionProps = {
 } & InputProps;
 export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWithSuggestionProps) {
   const [loading, setLoading] = useState(false);
+  const [value, setValue] = useState<string>(
+    inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value),
+  );
 
-  const triggerChange = (value: string) => {
+  useEffect(() => {
+    const originValue =
+      inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value);
+    if (value !== originValue) {
+      setValue(originValue);
+    }
+  }, [inputProps.value]);
+
+  const triggerChange = (newValue: string) => {
+    setValue(newValue);
     if (inputProps.onValueChange) {
-      inputProps.onValueChange(value);
+      inputProps.onValueChange(newValue);
     }
   };
+
   const triggerChangeToSuggestion = () => {
     if (!origin) {
       return;
@@ -34,8 +47,10 @@ export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWi
     <div className="flex gap-2">
       <Input
         {...inputProps}
+        value={value}
+        onValueChange={triggerChange}
         onFocus={() => {
-          if (inputProps.onValueChange && (inputProps.value ?? "") === "") {
+          if (inputProps.onValueChange && value === "") {
             triggerChangeToSuggestion();
           }
         }}
