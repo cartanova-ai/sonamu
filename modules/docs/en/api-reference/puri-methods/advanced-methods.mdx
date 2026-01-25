@@ -162,10 +162,50 @@ const results = await puri.table("documents")
 // ORDER BY documents.embedding <=> '[0.1,0.2,0.3,...]' ASC
 ```
 
-**Methods:**
-- `cosine`: Cosine similarity (0~1, higher is more similar)
-- `l2`: Euclidean distance (lower is more similar)
-- `inner_product`: Inner product (higher is more similar)
+**Options:**
+- `method`: Similarity measurement method
+  - `cosine`: Cosine similarity (0~1, higher is more similar)
+  - `l2`: Euclidean distance (lower is more similar)
+  - `inner_product`: Inner product (higher is more similar)
+- `threshold`: Similarity filtering threshold
+- `distinctOn`: Returns only the most similar result per unique column value
+
+#### distinctOn Option
+
+The `distinctOn` option allows you to retrieve only the most similar result for each unique value in a specified column. It leverages PostgreSQL's `DISTINCT ON` clause.
+
+```typescript
+// Get the most similar document per category
+const results = await puri.table("documents")
+  .vectorSimilarity("documents.embedding", queryEmbedding, {
+    method: "cosine",
+    distinctOn: "documents.category_id"  // One most similar document per category
+  })
+  .select({
+    id: "documents.id",
+    title: "documents.title",
+    category_id: "documents.category_id",
+    similarity: "similarity"
+  })
+  .limit(10);
+```
+
+You can combine `distinctOn` with `threshold`:
+
+```typescript
+// Get the most similar document per author with similarity >= 0.6
+const results = await puri.table("documents")
+  .vectorSimilarity("documents.embedding", queryEmbedding, {
+    method: "cosine",
+    distinctOn: "documents.author_id",
+    threshold: 0.6
+  })
+  .limit(5);
+```
+
+<Note>
+When using the `distinctOn` option, the query is internally wrapped in a subquery and sorted by `similarity` in descending order in the outer query.
+</Note>
 
 ## Upsert (INSERT or UPDATE)
 

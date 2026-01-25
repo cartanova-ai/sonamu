@@ -162,10 +162,50 @@ const results = await puri.table("documents")
 // ORDER BY documents.embedding <=> '[0.1,0.2,0.3,...]' ASC
 ```
 
-**메서드:**
-- `cosine`: 코사인 유사도 (0~1, 높을수록 유사)
-- `l2`: 유클리드 거리 (낮을수록 유사)
-- `inner_product`: 내적 (높을수록 유사)
+**옵션:**
+- `method`: 유사도 측정 방식
+  - `cosine`: 코사인 유사도 (0~1, 높을수록 유사)
+  - `l2`: 유클리드 거리 (낮을수록 유사)
+  - `inner_product`: 내적 (높을수록 유사)
+- `threshold`: 유사도 필터링 기준값
+- `distinctOn`: 특정 컬럼 값별로 가장 유사한 결과 하나씩만 반환
+
+#### distinctOn 옵션
+
+`distinctOn` 옵션을 사용하면 특정 컬럼 값별로 가장 유사한 결과를 하나씩만 가져올 수 있습니다. PostgreSQL의 `DISTINCT ON` 절을 활용합니다.
+
+```typescript
+// 카테고리별로 가장 유사한 문서 하나씩만 조회
+const results = await puri.table("documents")
+  .vectorSimilarity("documents.embedding", queryEmbedding, {
+    method: "cosine",
+    distinctOn: "documents.category_id"  // 카테고리별 가장 유사한 문서 1개씩
+  })
+  .select({
+    id: "documents.id",
+    title: "documents.title",
+    category_id: "documents.category_id",
+    similarity: "similarity"
+  })
+  .limit(10);
+```
+
+`distinctOn`과 `threshold`를 함께 사용할 수 있습니다:
+
+```typescript
+// 작성자별로 유사도 0.6 이상인 문서 중 가장 유사한 것만 조회
+const results = await puri.table("documents")
+  .vectorSimilarity("documents.embedding", queryEmbedding, {
+    method: "cosine",
+    distinctOn: "documents.author_id",
+    threshold: 0.6
+  })
+  .limit(5);
+```
+
+<Note>
+`distinctOn` 옵션 사용 시 내부적으로 서브쿼리로 감싸지며, 외부에서 `similarity` 기준 내림차순으로 정렬됩니다.
+</Note>
 
 ## Upsert (INSERT or UPDATE)
 
