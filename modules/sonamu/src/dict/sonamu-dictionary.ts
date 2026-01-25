@@ -504,6 +504,28 @@ export class SonamuDictionary {
   }
 
   /**
+   * sd.generated.ts에서 rc-keys 추출
+   * react-components에서 관리되는 i18n 키들
+   * @param locale - 로케일 (ko, en 등)
+   */
+  extractRCKeys(locale: string): DictEntry[] {
+    const sdPath = path.join(Sonamu.apiRootPath, "src", "i18n", "sd.generated.ts");
+    if (!fs.existsSync(sdPath)) {
+      return [];
+    }
+
+    // locale별 변수명 매핑 (sd.template.ts의 getRCKeysVarName과 동일)
+    const varName = (() => {
+      if (locale === "ko") return "rcKeysKo";
+      if (locale === "en") return "rcKeysEn";
+      // 다른 locale은 en을 fallback으로 사용
+      return "rcKeysEn";
+    })();
+
+    return this.parseConstObjectDeclaration(sdPath, varName);
+  }
+
+  /**
    * Project dict 파일([locale].ts)에서 딕셔너리 로드
    */
   loadProjectDict(locale: string): { entries: DictEntry[] } {
@@ -515,7 +537,7 @@ export class SonamuDictionary {
   }
 
   /**
-   * 딕셔너리 데이터 수집 (entity + project)
+   * 딕셔너리 데이터 수집 (sonamu + entity + project)
    */
   async collectDictionary(): Promise<DictionaryResult> {
     const { defaultLocale, supportedLocales } = this.getI18nConfig();
@@ -524,7 +546,27 @@ export class SonamuDictionary {
     const rows: DictionaryRow[] = [];
     const rowMap = new Map<string, DictionaryRow>();
 
-    // 1. Entity labels (default locale 기준)
+    // 1. RC Keys (sonamu source, 각 locale별)
+    for (const locale of locales) {
+      const rcKeys = this.extractRCKeys(locale);
+      for (const rcKey of rcKeys) {
+        let row = rowMap.get(rcKey.key);
+        if (!row) {
+          row = {
+            key: rcKey.key,
+            source: "sonamu",
+            isFunction: rcKey.isFunction ?? false,
+          };
+          rowMap.set(rcKey.key, row);
+        }
+        row[locale] = rcKey.value;
+        if (rcKey.isFunction) {
+          row.isFunction = true;
+        }
+      }
+    }
+
+    // 2. Entity labels (default locale 기준)
     const entityLabels = this.extractEntityLabels();
     for (const label of entityLabels) {
       const row: DictionaryRow = {
@@ -536,13 +578,13 @@ export class SonamuDictionary {
       rowMap.set(label.key, row);
     }
 
-    // 2. Project dict (각 locale별)
+    // 3. Project dict (각 locale별)
     for (const locale of locales) {
       const { entries } = this.loadProjectDict(locale);
       for (const entry of entries) {
         const existing = rowMap.get(entry.key);
         if (existing) {
-          // entity source가 있으면 해당 locale 값만 추가
+          // sonamu, entity source가 있으면 해당 locale 값만 추가
           existing[locale] = entry.value;
           if (entry.isFunction) {
             existing.isFunction = true;
@@ -789,7 +831,7 @@ export class SonamuDictionary {
   async updateEntry(params: {
     oldKey: string;
     newKey: string;
-    source: "entity" | "project";
+    source: "entity" | "project" | "sonamu";
     values: Record<string, string>;
   }): Promise<void> {
     const { oldKey, newKey, source, values } = params;
@@ -802,7 +844,10 @@ export class SonamuDictionary {
       await this.updateEntityByKey(newKey, values[defaultLocale]);
     }
 
-    // project dict 업데이트 (entity의 non-default locale 또는 project source)
+    // project dict 업데이트
+    // - entity의 non-default locale
+    // - project source의 모든 locale
+    // - sonamu source의 모든 locale (override)
     for (const locale of locales) {
       // entity source의 default locale은 entity.json에서 처리했으므로 스킵
       if (source === "entity" && locale === defaultLocale) continue;

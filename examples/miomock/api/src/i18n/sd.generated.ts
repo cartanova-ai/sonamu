@@ -14,6 +14,162 @@ function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
 import en from "./en";
 import ko from "./ko";
 
+// react-components i18n keys
+const rcKeysKo = {
+  // AsyncSelect Component
+  "rc.asyncSelect.loading": "로딩 중...",
+  "rc.asyncSelect.noOptions": "옵션이 없습니다",
+  "rc.asyncSelect.noResults": "검색 결과가 없습니다",
+  "rc.asyncSelect.selectPlaceholder": "선택하세요...",
+
+  // Combobox Component
+  "rc.combobox.noResults": "검색 결과가 없습니다",
+  "rc.combobox.selectPlaceholder": "선택하세요...",
+
+  // DatePicker Component
+  "rc.datePicker.pickDate": "날짜 선택",
+  "rc.datePicker.placeholder": "날짜 선택",
+  "rc.datePicker.selectDate": "날짜 선택",
+
+  // DateSelectorMultiple Component
+  "rc.dateSelectorMultiple.addDate": "날짜 추가",
+  "rc.dateSelectorMultiple.dateRange": "기간",
+  "rc.dateSelectorMultiple.placeholder": "날짜 선택",
+  "rc.dateSelectorMultiple.singleDate": "단일",
+
+  // FileInput Component
+  "rc.fileInput.browseFiles": "파일 찾기",
+  "rc.fileInput.dropZone": "파일을 드래그하거나 클릭하여 업로드",
+  "rc.fileInput.filePlaceholder": "파일",
+  "rc.fileInput.imagePlaceholder": "이미지",
+  "rc.fileInput.maxFilesExceeded": (maxFiles: number) =>
+    `최대 ${maxFiles}개 파일만 업로드 가능합니다`,
+  "rc.fileInput.pending": "대기 중",
+  "rc.fileInput.remove": "제거",
+  "rc.fileInput.uploadFailed": "업로드 실패",
+  "rc.fileInput.uploading": "업로드 중...",
+
+  // MonthPickerMultiple Component
+  "rc.monthPickerMultiple.addMonth": "월 추가",
+  "rc.monthPickerMultiple.dateRange": "기간",
+  "rc.monthPickerMultiple.endDate": "종료일",
+  "rc.monthPickerMultiple.placeholder": "월 선택",
+  "rc.monthPickerMultiple.singleDate": "단일",
+  "rc.monthPickerMultiple.startDate": "시작일",
+
+  // MultiSelect Component
+  "rc.multiSelect.clear": "전체 해제",
+  "rc.multiSelect.close": "닫기",
+  "rc.multiSelect.moreItems": (count: number) => `+${count}개 더보기`,
+  "rc.multiSelect.noOptions": "옵션이 없습니다",
+  "rc.multiSelect.noOptionsSelected": "선택된 옵션이 없습니다",
+  "rc.multiSelect.noResults": "검색 결과가 없습니다",
+  "rc.multiSelect.optionsCount": (count: number) => `${count}개 옵션`,
+  "rc.multiSelect.selectAll": "전체 선택",
+  "rc.multiSelect.selectPlaceholder": "선택하세요...",
+
+  // Pagination Component
+  "rc.pagination.next": "다음",
+  "rc.pagination.previous": "이전",
+  "rc.pagination.showing": (start: number, end: number, total: number) =>
+    `${total}개 중 ${start}-${end}`,
+
+  // Calendar Component
+  "rc.calendar.month.0": "1월",
+  "rc.calendar.month.1": "2월",
+  "rc.calendar.month.2": "3월",
+  "rc.calendar.month.3": "4월",
+  "rc.calendar.month.4": "5월",
+  "rc.calendar.month.5": "6월",
+  "rc.calendar.month.6": "7월",
+  "rc.calendar.month.7": "8월",
+  "rc.calendar.month.8": "9월",
+  "rc.calendar.month.9": "10월",
+  "rc.calendar.month.10": "11월",
+  "rc.calendar.month.11": "12월",
+
+  // Common
+  "rc.common.cancel": "취소",
+  "rc.common.save": "저장",
+};
+
+const rcKeysEn = {
+  // AsyncSelect Component
+  "rc.asyncSelect.loading": "Loading...",
+  "rc.asyncSelect.noOptions": "No options",
+  "rc.asyncSelect.noResults": "No results",
+  "rc.asyncSelect.selectPlaceholder": "Select...",
+
+  // Combobox Component
+  "rc.combobox.noResults": "No results",
+  "rc.combobox.selectPlaceholder": "Select...",
+
+  // DatePicker Component
+  "rc.datePicker.pickDate": "Pick date",
+  "rc.datePicker.placeholder": "Pick date",
+  "rc.datePicker.selectDate": "Select date",
+
+  // DateSelectorMultiple Component
+  "rc.dateSelectorMultiple.addDate": "Add date",
+  "rc.dateSelectorMultiple.dateRange": "Range",
+  "rc.dateSelectorMultiple.placeholder": "Pick date",
+  "rc.dateSelectorMultiple.singleDate": "Single",
+
+  // FileInput Component
+  "rc.fileInput.browseFiles": "Browse files",
+  "rc.fileInput.dropZone": "Drag files here or click to upload",
+  "rc.fileInput.filePlaceholder": "File",
+  "rc.fileInput.imagePlaceholder": "Image",
+  "rc.fileInput.maxFilesExceeded": (maxFiles: number) => `Maximum ${maxFiles} files allowed`,
+  "rc.fileInput.pending": "Pending",
+  "rc.fileInput.remove": "Remove",
+  "rc.fileInput.uploadFailed": "Upload failed",
+  "rc.fileInput.uploading": "Uploading...",
+
+  // MonthPickerMultiple Component
+  "rc.monthPickerMultiple.addMonth": "Add month",
+  "rc.monthPickerMultiple.dateRange": "Range",
+  "rc.monthPickerMultiple.endDate": "End date",
+  "rc.monthPickerMultiple.placeholder": "Pick month",
+  "rc.monthPickerMultiple.singleDate": "Single",
+  "rc.monthPickerMultiple.startDate": "Start date",
+
+  // MultiSelect Component
+  "rc.multiSelect.clear": "Clear all",
+  "rc.multiSelect.close": "Close",
+  "rc.multiSelect.moreItems": (count: number) => `+${count} more`,
+  "rc.multiSelect.noOptions": "No options",
+  "rc.multiSelect.noOptionsSelected": "No options selected",
+  "rc.multiSelect.noResults": "No results",
+  "rc.multiSelect.optionsCount": (count: number) => `${count} options`,
+  "rc.multiSelect.selectAll": "Select all",
+  "rc.multiSelect.selectPlaceholder": "Select...",
+
+  // Pagination Component
+  "rc.pagination.next": "Next",
+  "rc.pagination.previous": "Previous",
+  "rc.pagination.showing": (start: number, end: number, total: number) =>
+    `Showing ${start}-${end} of ${total}`,
+
+  // Calendar Component
+  "rc.calendar.month.0": "January",
+  "rc.calendar.month.1": "February",
+  "rc.calendar.month.2": "March",
+  "rc.calendar.month.3": "April",
+  "rc.calendar.month.4": "May",
+  "rc.calendar.month.5": "June",
+  "rc.calendar.month.6": "July",
+  "rc.calendar.month.7": "August",
+  "rc.calendar.month.8": "September",
+  "rc.calendar.month.9": "October",
+  "rc.calendar.month.10": "November",
+  "rc.calendar.month.11": "December",
+
+  // Common
+  "rc.common.cancel": "Cancel",
+  "rc.common.save": "Save",
+} as const;
+
 // entity.json에서 추출한 entity labels (defaultLocale 전용)
 const entityLabels = {
   "entity.Company": "COMPANY",
@@ -138,9 +294,12 @@ const entityLabels = {
 } as const;
 
 // defaultLocale의 dictionary를 기준으로 키 추출
+type RCKeys = typeof rcKeysKo;
 type ProjectDictionary = typeof ko;
 type EntityLabels = typeof entityLabels;
-type RawMergedDictionary = Omit<EntityLabels, keyof ProjectDictionary> & ProjectDictionary;
+type RawMergedDictionary = RCKeys &
+  Omit<EntityLabels, keyof (RCKeys & ProjectDictionary)> &
+  ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
 export type MergedDictionary = {
@@ -155,10 +314,10 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
   return dict;
 }
 
-// 각 locale별로 entity labels + 프로젝트 dict 합침
+// 각 locale별로 rc-keys + entity labels + 프로젝트 dict 합침
 const dictionaries: Record<string, Partial<MergedDictionary>> = {
-  ko: { ...entityLabels, ...ko },
-  en: { ...en },
+  ko: { ...rcKeysKo, ...entityLabels, ...ko },
+  en: { ...rcKeysEn, ...en },
 };
 
 type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: infer P) => string

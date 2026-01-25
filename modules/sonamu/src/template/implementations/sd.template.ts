@@ -1,6 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
+import { extractObjectDeclaration } from "../helpers";
 import { Template } from "../template";
 
 /**
@@ -31,6 +35,9 @@ export class Template__sd extends Template {
 
     // entity.json에서 entity labels 추출
     const entityLabels = this.extractEntityLabels();
+
+    // rc-keys 소스 코드 추출
+    const rcKeysSourceCode = this.extractRCKeysSourceCode();
 
     // 플랫폼별 locale 관리 코드
     const localeManagementCode =
@@ -71,18 +78,32 @@ export function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
     // entityLabels를 코드로 변환
     const entityLabelsCode = this.generateEntityLabelsCode(entityLabels);
 
+    // locale별 rcKeys 변수명 매핑
+    const getRCKeysVarName = (locale: string) => {
+      if (locale === "ko") return "rcKeysKo";
+      if (locale === "en") return "rcKeysEn";
+      // 다른 locale은 en을 fallback으로 사용
+      return "rcKeysEn";
+    };
+
     const body = `
 ${localeManagementCode}
 
 ${localeImports}
 
+// react-components i18n keys
+${rcKeysSourceCode.ko}
+
+${rcKeysSourceCode.en}
+
 // entity.json에서 추출한 entity labels (defaultLocale 전용)
 ${entityLabelsCode}
 
 // defaultLocale의 dictionary를 기준으로 키 추출
+type RCKeys = typeof rcKeysKo;
 type ProjectDictionary = typeof ${defaultLocale};
 type EntityLabels = typeof entityLabels;
-type RawMergedDictionary = Omit<EntityLabels, keyof ProjectDictionary> & ProjectDictionary;
+type RawMergedDictionary = RCKeys & Omit<EntityLabels, keyof (RCKeys & ProjectDictionary)> & ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
 export type MergedDictionary = {
@@ -97,12 +118,12 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
   return dict;
 }
 
-// 각 locale별로 entity labels + 프로젝트 dict 합침
+// 각 locale별로 rc-keys + entity labels + 프로젝트 dict 합침
 const dictionaries: Record<string, Partial<MergedDictionary>> = {
-  ${defaultLocale}: { ...entityLabels, ...${defaultLocale} },
+  ${defaultLocale}: { ...${getRCKeysVarName(defaultLocale)}, ...entityLabels, ...${defaultLocale} },
   ${supportedLocales
     .filter((locale) => locale !== defaultLocale)
-    .map((locale) => `  ${locale}: { ...${locale} },`)
+    .map((locale) => `  ${locale}: { ...${getRCKeysVarName(locale)}, ...${locale} },`)
     .join("\n")}
 };
 
@@ -140,7 +161,7 @@ SD.locale = (locale: (typeof SUPPORTED_LOCALES)[number]) => <K extends DictKey>(
   return getDictValue(key, locale);
 };
 
-// Localized 가능한 Column 타입 계산 
+// Localized 가능한 Column 타입 계산
 type LocalizedBaseColumn<T> = {
   [K in keyof T & string]: K extends \`\${infer Base}_\${(typeof SUPPORTED_LOCALES)[number]}\` ? Base : K;
 }[keyof T & string];
@@ -148,7 +169,7 @@ type LocalizedBaseColumn<T> = {
 /**
  * locale에 따라 적절한 컬럼 값을 반환합니다.
  * DB에 name, name_ko, name_en처럼 localized column이 있을 때 사용합니다.
- * 
+ *
  * 우선순위 (지원 로케일은 ko/jp/en이고, 서비스의 기본 로케일은 ko, 사용자의 로케일은 jp일 때): column_jp → column → column_ko → column_en
  * 우선순위 (지원 로케일은 ko/jp/en이고, 서비스의 기본 로케일은 en, 사용자의 로케일은 ko일 때): column_ko → column → column_en → column_jp
  *
@@ -205,6 +226,46 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
       importKeys: [],
       customHeaders: [],
     };
+  }
+
+  /**
+   * react-components의 rc-keys를 추출합
+   * sonamu/src/dict/rc-keys.ts 파일의 소스 코드를 직접 읽어서 반환
+   */
+  private extractRCKeysSourceCode(): { ko: string; en: string } {
+    try {
+      // rc-keys.ts 파일 경로
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+
+      // dist에서 실행될 때는 src로 경로 변경
+      const basePath = __dirname.includes("/dist/")
+        ? __dirname.replace("/dist/", "/src/")
+        : __dirname;
+
+      const rcKeysPath = path.join(basePath, "../../dict/rc-keys.ts");
+
+      // 파일 읽기
+      const sourceCode = fs.readFileSync(rcKeysPath, "utf-8");
+
+      // rcKeysKo 추출 (중괄호 카운팅 방식)
+      const koCode = extractObjectDeclaration(sourceCode, "rcKeysKo");
+
+      // rcKeysEn 추출 (중괄호 카운팅 방식)
+      const enCode = extractObjectDeclaration(sourceCode, "rcKeysEn");
+
+      return {
+        ko: koCode.replace(/^export /, ""),
+        en: enCode.replace(/^export /, "").replace(/ satisfies RCKeys/, " as const"),
+      };
+    } catch (error) {
+      // rc-keys 파일이 없는 경우 빈 코드 반환
+      console.warn("Failed to load rc-keys source:", error);
+      return {
+        ko: "const rcKeysKo = {} as const;",
+        en: "const rcKeysEn = {} as const;",
+      };
+    }
   }
 
   /**

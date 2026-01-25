@@ -145,7 +145,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: editValue,
-          source: row.source as "entity" | "project",
+          source: row.source as "entity" | "project" | "sonamu",
           values,
         });
       } else {
@@ -153,7 +153,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: oldKey,
-          source: row.source as "entity" | "project",
+          source: row.source as "entity" | "project" | "sonamu",
           values: { [field]: editValue },
         });
       }

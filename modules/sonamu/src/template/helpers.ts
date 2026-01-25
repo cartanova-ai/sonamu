@@ -76,3 +76,83 @@ export function getRelationPropFromColName(entityId: string, colName: string): R
     throw new Error(`찾을 수 없는 Relation ${colName}`);
   }
 }
+
+/**
+ * 소스 코드에서 객체 선언을 추출합니다.
+ * 중괄호 카운팅 방식으로 중첩된 객체도 정확히 파싱합니다.
+ */
+export function extractObjectDeclaration(sourceCode: string, varName: string): string {
+  // "export const varName = {" 패턴 찾기
+  const pattern = new RegExp(`export const ${varName}\\s*=\\s*\\{`);
+  const match = pattern.exec(sourceCode);
+
+  if (!match) {
+    return "";
+  }
+
+  // 시작 위치
+  const startIdx = match.index;
+  const openBraceIdx = sourceCode.indexOf("{", startIdx);
+
+  // 중괄호 카운팅
+  let braceCount = 0;
+  let inString = false;
+  let inTemplate = false;
+  let stringChar = "";
+  let endIdx = openBraceIdx;
+
+  for (let i = openBraceIdx; i < sourceCode.length; i++) {
+    const char = sourceCode[i];
+    const prevChar = i > 0 ? sourceCode[i - 1] : "";
+
+    // 이스케이프된 문자는 무시
+    if (prevChar === "\\" && (inString || inTemplate)) {
+      continue;
+    }
+
+    // 문자열 시작/종료
+    if ((char === '"' || char === "'") && !inTemplate) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+        stringChar = "";
+      }
+      continue;
+    }
+
+    // 템플릿 리터럴 시작/종료
+    if (char === "`" && !inString) {
+      inTemplate = !inTemplate;
+      continue;
+    }
+
+    // 문자열/템플릿 내부는 중괄호 카운팅 안 함
+    if (inString || inTemplate) {
+      continue;
+    }
+
+    // 중괄호 카운팅
+    if (char === "{") {
+      braceCount++;
+    } else if (char === "}") {
+      braceCount--;
+      if (braceCount === 0) {
+        endIdx = i;
+        break;
+      }
+    }
+  }
+
+  // 선언문 끝까지 찾기 (};)
+  let finalEndIdx = endIdx;
+  for (let i = endIdx + 1; i < sourceCode.length; i++) {
+    if (sourceCode[i] === ";") {
+      finalEndIdx = i;
+      break;
+    }
+  }
+
+  return sourceCode.substring(startIdx, finalEndIdx + 1);
+}

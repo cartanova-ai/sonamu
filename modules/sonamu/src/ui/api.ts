@@ -959,7 +959,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         Body: {
           oldKey: string;
           newKey: string;
-          source: "entity" | "project";
+          source: "entity" | "project" | "sonamu";
           values: Record<string, string>;
         };
       }>("/api/i18n/update", async (request) => {

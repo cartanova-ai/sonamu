@@ -11,6 +11,11 @@ function HomePage() {
     <div className="space-y-8">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold">🎨 Sonamu React Components</h1>
+        <div className="flex justify-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm">
+            🌐 기본 english 세팅
+          </span>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">

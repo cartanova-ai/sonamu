@@ -14,7 +14,7 @@ export type DictEntry = {
  */
 export type DictionaryRow = {
   key: string;
-  source: "entity" | "project";
+  source: "entity" | "project" | "sonamu";
   isFunction: boolean;
   [locale: string]: string | boolean | undefined;
 };
