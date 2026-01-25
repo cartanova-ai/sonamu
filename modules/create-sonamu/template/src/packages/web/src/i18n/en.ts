@@ -51,13 +51,4 @@ export default {
     `${field} must be at least ${min} characters`,
   "validation.required": (field: string) => `${field} is required`,
   "validation.url": "Invalid URL format",
-  // components
-  "component.asyncSelect.loading": "Loading...",
-  "component.asyncSelect.noOptions": "No options",
-  "component.asyncSelect.noResults": "No results",
-  "component.asyncSelect.selectPlaceholder": "Select",
-  "component.datePicker.pickDate": "Pick a date",
-  "component.datePicker.placeholder": "Pick a date",
-  "component.fileInput.browseFiles": "Browse Files",
-  "component.fileInput.dropZone": "Drag and drop files here or click to upload",
 };

@@ -49,13 +49,4 @@ export default {
     `${field}은(는) 최소 ${min}자 이상이어야 합니다`,
   "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
   "validation.url": "올바른 URL 형식이 아닙니다",
-  // components
-  "component.asyncSelect.loading": "로딩 중...",
-  "component.asyncSelect.noOptions": "옵션이 없습니다",
-  "component.asyncSelect.noResults": "결과가 없습니다",
-  "component.asyncSelect.selectPlaceholder": "선택하세요",
-  "component.datePicker.pickDate": "날짜 선택",
-  "component.datePicker.placeholder": "날짜 선택",
-  "component.fileInput.browseFiles": "파일 선택",
-  "component.fileInput.dropZone": "파일을 드래그하여 업로드하거나 클릭하세요",
 };
