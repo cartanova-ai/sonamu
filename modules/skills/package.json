@@ -1,0 +1,13 @@
+{
+  "name": "@sonamu-kit/skills",
+  "version": "0.0.1",
+  "description": "Sonamu framework skills for Claude",
+  "type": "module",
+  "files": [
+    "CLAUDE.md",
+    "sonamu"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

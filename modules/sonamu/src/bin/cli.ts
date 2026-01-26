@@ -5,7 +5,7 @@ dotenv.config();
 
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { mkdir, readdir, writeFile } from "fs/promises";
+import { cp, mkdir, readdir, readFile, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -31,7 +31,7 @@ import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config
 let migrator: Migrator;
 
 async function bootstrap() {
-  const notToInit = ["dev", "build", "start"].includes(process.argv[2] ?? "");
+  const notToInit = ["dev", "build", "start", "skills"].includes(process.argv[2] ?? "");
   if (!notToInit) {
     await Sonamu.init(false, false);
   }
@@ -79,6 +79,8 @@ async function bootstrap() {
         ["dev"],
         ["build"],
         ["start"],
+        ["skills", "sync"],
+        ["skills", "create", "#name"],
       ],
       runners: {
         migrate_status,
@@ -97,6 +99,8 @@ async function bootstrap() {
         dev,
         build,
         start,
+        skills_sync,
+        skills_create,
       },
     });
   } finally {
@@ -504,4 +508,138 @@ async function scaffold_model_test(entityId: string) {
   await Sonamu.syncer.generateTemplate("model_test", {
     entityId,
   });
+}
+
+/**
+ * pnpm sonamu skills sync 하면 실행되는 함수입니다.
+ * 공식 Skills를 로컬 프로젝트로 동기화합니다.
+ */
+async function skills_sync() {
+  const workspaceRoot = await findWorkspaceRoot();
+  const claudeDir = path.join(workspaceRoot, ".claude");
+  const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
+
+  // @sonamu-kit/skills 패키지 경로
+  const require = createRequire(import.meta.url);
+  const sourceBase = path.dirname(require.resolve("@sonamu-kit/skills/CLAUDE.md"));
+  const sourceSkillsDir = path.join(sourceBase, "sonamu");
+  const sourceClaudeMd = path.join(sourceBase, "CLAUDE.md");
+
+  if (!(await exists(sourceSkillsDir))) {
+    console.log(chalk.yellow("Skills source not found in sonamu package."));
+    return;
+  }
+
+  // 대상 디렉토리 생성
+  await mkdir(targetSkillsDir, { recursive: true });
+
+  // 복사 (recursive, 덮어쓰기)
+  await cp(sourceSkillsDir, targetSkillsDir, { recursive: true, force: true });
+  console.log(chalk.green(`✓ Skills synced to ${targetSkillsDir}`));
+
+  // CLAUDE.md 복사/업데이트
+  if (await exists(sourceClaudeMd)) {
+    const targetClaudeMd = path.join(claudeDir, "CLAUDE.md");
+    const sourceContent = await readFile(sourceClaudeMd, "utf-8");
+
+    if (await exists(targetClaudeMd)) {
+      const targetContent = await readFile(targetClaudeMd, "utf-8");
+      const startMarker = "<!-- SONAMU:START -->";
+      const endMarker = "<!-- SONAMU:END -->";
+      if (targetContent.includes(startMarker) && targetContent.includes(endMarker)) {
+        // marker 영역만 교체합니다.
+        const before = targetContent.split(startMarker)[0];
+        const after = targetContent.split(endMarker)[1];
+        const newContent = `${before}${sourceContent}${after}`;
+        await writeFile(targetClaudeMd, newContent);
+        console.log(chalk.green(`✓ CLAUDE.md updated (marker region)`));
+      } else {
+        console.log(chalk.yellow(`⏭ CLAUDE.md exists but no markers, skipped`));
+      }
+    } else {
+      await writeFile(targetClaudeMd, sourceContent);
+      console.log(chalk.green(`✓ CLAUDE.md created`));
+    }
+  }
+}
+
+/**
+ * pnpm sonamu skills create <name> 하면 실행되는 함수입니다.
+ * 로컬 skill 초안을 생성합니다.
+ */
+async function skills_create(name: string) {
+  const workspaceRoot = await findWorkspaceRoot();
+  const localDir = path.join(workspaceRoot, ".claude", "skills", "local");
+  const filePath = path.join(localDir, `${name}.md`);
+
+  if (await exists(filePath)) {
+    console.log(chalk.yellow(`Skill "${name}" already exists.`));
+    return;
+  }
+
+  await mkdir(localDir, { recursive: true });
+
+  const template = `---
+name: ${name}
+category: other
+created_at: ${new Date().toISOString().split("T")[0]}
+status: draft
+---
+
+# [제목]
+
+## 상황
+
+[어떤 문제였는지]
+
+## 해결 방법
+
+[어떻게 해결했는지]
+
+## 코드 예시
+
+\`\`\`typescript
+// 예시 코드
+\`\`\`
+`;
+
+  await writeFile(filePath, template);
+  console.log(chalk.green(`✓ Created .claude/skills/local/${name}.md`));
+}
+
+/**
+ * 워크스페이스 루트를 찾습니다.
+ * 우선순위: pnpm-workspace.yaml > CLAUDE.md > 루트 package.json (workspaces 필드)
+ */
+async function findWorkspaceRoot() {
+  let dir = process.cwd();
+
+  while (dir !== path.dirname(dir)) {
+    // 1. pnpm-workspace.yaml 파일이 있는지 확인. 있으면 확실한 monorepo 루트.
+    if (await exists(path.join(dir, "pnpm-workspace.yaml"))) {
+      return dir;
+    }
+
+    // 2. CLAUDE.md 파일이 있는지 확인. 있으면 프로젝트 루트로 간주함.
+    if (await exists(path.join(dir, "CLAUDE.md"))) {
+      return dir;
+    }
+
+    // 3. package.json에 workspaces 필드가 있으면 루트.
+    const packagePath = path.join(dir, "package.json");
+    if (await exists(packagePath)) {
+      try {
+        const packageJson = JSON.parse(await readFile(packagePath, "utf-8"));
+        if (packageJson.workspaces) {
+          return dir;
+        }
+      } catch {
+        // 파싱 실패시 무시
+      }
+    }
+    dir = path.dirname(dir);
+  }
+
+  // 찾지 못하면 api 폴더의 부모 사용
+  return findAppRootPath();
 }

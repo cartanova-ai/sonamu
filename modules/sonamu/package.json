@@ -99,6 +99,7 @@
     "@sonamu-kit/hmr-runner": "workspace:^",
     "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
+    "@sonamu-kit/skills": "workspace:^",
     "@swc/core": "catalog:",
     "chalk": "catalog:",
     "chokidar": "catalog:",

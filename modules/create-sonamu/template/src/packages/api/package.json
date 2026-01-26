@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "sonamu dev",
     "build": "sonamu build",
+    "postinstall": "sonamu skills sync",
     "start": "sonamu start",
     "test": "vitest run",
     "test:watch": "vitest watch --standalone",
