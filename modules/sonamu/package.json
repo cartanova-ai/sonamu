@@ -50,6 +50,10 @@
     "./dict": {
       "import": "./dist/dict/index.js",
       "types": "./dist/dict/index.d.ts"
+    },
+    "./filter": {
+      "import": "./dist/filter/index.js",
+      "types": "./dist/filter/index.d.ts"
     }
   },
   "scripts": {

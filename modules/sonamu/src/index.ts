@@ -21,6 +21,7 @@ export * from "./entity/entity";
 export * from "./entity/entity-manager";
 export * from "./exceptions/error-handler";
 export * from "./exceptions/so-exceptions";
+export * from "./filter";
 export * from "./migration/code-generation";
 export * from "./migration/migration-set";
 export * from "./migration/migrator";

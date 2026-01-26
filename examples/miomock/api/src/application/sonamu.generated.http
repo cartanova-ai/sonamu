@@ -16,6 +16,7 @@ GET {{baseUrl}}/api/user/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 	&rawParams[test]=TEST
 Content-Type: application/json
 
@@ -121,6 +122,7 @@ GET {{baseUrl}}/api/tag/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###
@@ -181,6 +183,7 @@ GET {{baseUrl}}/api/syncFixture/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###
@@ -234,6 +237,7 @@ GET {{baseUrl}}/api/project/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###
@@ -303,6 +307,7 @@ GET {{baseUrl}}/api/file/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###
@@ -400,6 +405,7 @@ GET {{baseUrl}}/api/employee/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###
@@ -451,6 +457,7 @@ GET {{baseUrl}}/api/document/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 	&rawParams[semanticQuery][embedding][0]=0
 	&rawParams[semanticQuery][threshold]=0
 	&rawParams[semanticQuery][method]=cosine
@@ -472,6 +479,9 @@ Content-Type: application/json
     "orderBy": "id-desc",
     "queryMode": "both",
     "id": 0,
+    "sonamuFilter": {
+      "SONAMUFILTER": "unknown"
+    },
     "semanticQuery": {
       "embedding": [
         0
@@ -538,6 +548,7 @@ GET {{baseUrl}}/api/department/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 	&rawParams[company_name]=COMPANY_NAME
 Content-Type: application/json
 
@@ -587,6 +598,7 @@ GET {{baseUrl}}/api/company/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[sonamuFilter][SONAMUFILTER]=unknown
 Content-Type: application/json
 
 ###

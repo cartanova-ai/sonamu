@@ -1,7 +1,6 @@
 import { isError } from "radashi";
 import {
   api,
-  asArray,
   BaseModelClass,
   exhaustive,
   type ListResult,
@@ -89,11 +88,6 @@ class ProjectModelClass extends BaseModelClass<
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
 
     qb.appendSelect({ virtual_query_test: Puri.rawString("'test'") });
-
-    // id
-    if (params.id) {
-      qb.whereIn("projects.id", asArray(params.id));
-    }
 
     // search-keyword
     if (params.search && params.keyword && params.keyword.length > 0) {

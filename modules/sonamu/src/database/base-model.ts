@@ -2,9 +2,10 @@
 import { getLogger, type Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
 import { cloneDeep, group, isObject, omit, set } from "radashi";
-import type { ListResult } from "..";
+import { type ListResult, normalizeFilterQuery, validateSonamuFilters } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
+import type { FilterOperator, FilterQuery } from "../filter/types";
 import { convertDomainToCategory } from "../logger/category";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
@@ -152,10 +153,11 @@ export class BaseModelClass<
   /**
    * 서브셋 쿼리 실행
    *
-   * 1. 쿼리 실행 (pagination 적용)
-   * 2. 로더 실행 (1:N, N:M 관계 데이터 로딩)
-   * 3. Hydrate (flat → 중첩 객체)
-   * 4. Enhancer 적용 (virtual 필드 계산)
+   * 1. Sonamu 필터 적용 (타입 변환 포함)
+   * 2. 쿼리 실행 (pagination 적용)
+   * 3. 로더 실행 (1:N, N:M 관계 데이터 로딩)
+   * 4. Hydrate (flat → 중첩 객체)
+   * 5. Enhancer 적용 (virtual 필드 계산)
    */
   async executeSubsetQuery<
     T extends TSubsetKey,
@@ -164,6 +166,7 @@ export class BaseModelClass<
       num?: number;
       page?: number;
       queryMode?: SonamuQueryMode;
+      sonamuFilter?: Record<string, unknown>;
     },
   >(
     params: {
@@ -173,6 +176,7 @@ export class BaseModelClass<
         num: number;
         page: number;
         queryMode?: SonamuQueryMode;
+        sonamuFilter?: Record<string, unknown>;
       };
       debug?: boolean;
       optimizeCountQuery?: boolean;
@@ -182,6 +186,12 @@ export class BaseModelClass<
 
     if (!this.loaderQueries) {
       throw new Error("loaderQueries is not defined");
+    }
+
+    // Sonamu Filter 적용
+    if (queryParams.sonamuFilter) {
+      const normalizedFilter = normalizeFilterQuery(queryParams.sonamuFilter);
+      this.applySonamuFilters(qb, normalizedFilter);
     }
 
     const { num, page } = queryParams;
@@ -229,6 +239,131 @@ export class BaseModelClass<
       this.deleteField(result, field.split("."));
     }
     return result;
+  }
+
+  /**
+   * FilterQuery를 Puri QueryBuilder에 적용
+   *
+   * @param qb Puri QueryBuilder 인스턴스
+   * @param filters FilterQuery 객체
+   */
+  protected applySonamuFilters<TEntity = Record<string, unknown>>(
+    qb: Puri<any, any, any>,
+    filters?: FilterQuery<TEntity>,
+  ): void {
+    if (!filters) return;
+
+    const entity = EntityManager.get(this.modelName);
+    const metadata = entity.getFilterMetadata();
+
+    // 1. 필터 검증 (메타데이터 기반)
+    validateSonamuFilters(filters, metadata);
+
+    // 2. 검증된 필터 적용
+    const puri = qb as any;
+
+    for (const [field, condition] of Object.entries(filters)) {
+      if (condition === undefined || condition === null) continue;
+
+      // 테이블명.필드명 형식으로 변환
+      const fullField = entity.getFullFieldName(field);
+
+      // 직접 값 (eq와 동일)
+      if (typeof condition !== "object" || Array.isArray(condition)) {
+        puri.where(fullField, condition);
+        continue;
+      }
+
+      // 연산자 객체
+      for (const [operator, value] of Object.entries(condition)) {
+        this.applyOperator(qb, fullField, operator as FilterOperator, value);
+      }
+    }
+  }
+
+  /**
+   * 단일 연산자를 QueryBuilder에 적용
+   */
+  private applyOperator(
+    qb: Puri<any, any, any>,
+    field: string,
+    operator: FilterOperator,
+    value: unknown,
+  ): void {
+    const puri = qb as any;
+
+    switch (operator) {
+      case "eq":
+        puri.where(field, value);
+        break;
+
+      case "ne":
+        puri.where(field, "!=", value);
+        break;
+
+      case "gt":
+        puri.where(field, ">", value);
+        break;
+
+      case "gte":
+        puri.where(field, ">=", value);
+        break;
+
+      case "lt":
+        puri.where(field, "<", value);
+        break;
+
+      case "lte":
+        puri.where(field, "<=", value);
+        break;
+
+      case "in":
+        puri.whereIn(field, value);
+        break;
+
+      case "notIn":
+        puri.whereNotIn(field, value);
+        break;
+
+      case "contains":
+        puri.where(field, "like", `%${value}%`);
+        break;
+
+      case "startsWith":
+        puri.where(field, "like", `${value}%`);
+        break;
+
+      case "endsWith":
+        puri.where(field, "like", `%${value}`);
+        break;
+
+      case "isNull":
+        puri.where(field, null);
+        break;
+
+      case "isNotNull":
+        puri.where(field, "!=", null);
+        break;
+
+      case "before":
+        puri.where(field, "<", value);
+        break;
+
+      case "after":
+        puri.where(field, ">", value);
+        break;
+
+      case "between": {
+        if (Array.isArray(value) && value.length === 2) {
+          const [min, max] = value;
+          puri.where(field, ">=", min).where(field, "<=", max);
+        }
+        break;
+      }
+
+      default:
+        console.warn(`Unsupported operator: ${operator}`);
+    }
   }
 
   /**

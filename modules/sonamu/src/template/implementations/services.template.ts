@@ -306,6 +306,7 @@ ${functions.join("\n\n")}
     // sonamu.shared에서 import할 항목들을 동적으로 구성
     const sonamuSharedImports = [
       "type ListResult",
+      "type FilterQuery",
       ...builtInTypeImports,
       "fetch",
       "type EventHandlers",

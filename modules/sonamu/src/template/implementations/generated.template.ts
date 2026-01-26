@@ -119,6 +119,8 @@ export class Template__generated extends Template {
       "SQLDateTimeString",
       "SubsetQuery",
       "SonamuQueryMode",
+      "FilterQuery",
+      "FilterNumericOverride",
       ...builtInSchemas,
     ].filter((mod) => body.includes(mod));
 
@@ -307,13 +309,35 @@ z.object({
   keyword: z.string(),
   orderBy: ${entity.id}OrderBy,
   queryMode: SonamuQueryMode,
-  id: zArrayable(z.number().int().positive()),${filterBody}
+  id: zArrayable(z.number().int().positive()),
+  sonamuFilter: z.record(z.string(), z.unknown()),${filterBody}
 }).partial();
 `.trim();
 
+    // FilterQuery 타입을 위한 제외할 props 추출 (relation, virtual)
+    const excludedProps = entity.props
+      .filter((p) => p.type === "relation" || p.type === "virtual")
+      .map((p) => p.name);
+
+    // numeric 타입인 경우 number로 오버라이드
+    const numericProps = entity.props.filter((p) => p.type === "numeric");
+
+    // FilterQuery 타입 문자열 생성 (필터 불가 prop 제외 + numeric 키 보정)
+    const omitFilterPropsUnion =
+      excludedProps.length > 0 ? excludedProps.map((n) => `"${n}"`).join(" | ") : "";
+    const numericKeysUnion = numericProps.map((prop) => `"${prop.name}"`).join(" | ");
+    const filterQueryType = `FilterQuery<FilterNumericOverride<${
+      omitFilterPropsUnion.length > 0
+        ? `Omit<${entity.id}BaseSchema, ${omitFilterPropsUnion}>`
+        : `${entity.id}BaseSchema`
+    }${numericKeysUnion.length > 0 ? `, ${numericKeysUnion}` : ""}>>`;
+
     const lines = [
       `export const ${schemaName} = ${schemaBody}`,
-      `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
+      // TypeScript 타입은 sonamuFilter를 FilterQuery로 오버라이드
+      `export type ${schemaName} = Omit<z.infer<typeof ${schemaName}>, 'sonamuFilter'> & {`,
+      `  sonamuFilter?: ${filterQueryType};`,
+      `};`,
     ];
 
     return {

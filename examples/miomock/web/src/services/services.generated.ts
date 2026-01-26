@@ -41,6 +41,7 @@ import {
 } from "./sonamu.generated";
 import {
   type EventHandlers,
+  type FilterQuery,
   fetch,
   type ListResult,
   type SonamuFile,

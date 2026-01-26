@@ -1,7 +1,13 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 
-import { SonamuFileArraySchema, SonamuQueryMode, zArrayable } from "sonamu";
+import {
+  FilterNumericOverride,
+  FilterQuery,
+  SonamuFileArraySchema,
+  SonamuQueryMode,
+  zArrayable,
+} from "sonamu";
 import { z } from "zod";
 
 // CustomScalar: NumberType
@@ -311,9 +317,12 @@ export const CompanyBaseListParams = z
     orderBy: CompanyOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type CompanyBaseListParams = z.infer<typeof CompanyBaseListParams>;
+export type CompanyBaseListParams = Omit<z.infer<typeof CompanyBaseListParams>, "sonamuFilter"> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<CompanyBaseSchema>>;
+};
 
 // BaseListParams: Department
 export const DepartmentBaseListParams = z
@@ -325,9 +334,19 @@ export const DepartmentBaseListParams = z
     orderBy: DepartmentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type DepartmentBaseListParams = z.infer<typeof DepartmentBaseListParams>;
+export type DepartmentBaseListParams = Omit<
+  z.infer<typeof DepartmentBaseListParams>,
+  "sonamuFilter"
+> & {
+  sonamuFilter?: FilterQuery<
+    FilterNumericOverride<
+      Omit<DepartmentBaseSchema, "company" | "parent" | "employees" | "employee_count">
+    >
+  >;
+};
 
 // BaseListParams: Document
 export const DocumentBaseListParams = z
@@ -339,9 +358,15 @@ export const DocumentBaseListParams = z
     orderBy: DocumentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type DocumentBaseListParams = z.infer<typeof DocumentBaseListParams>;
+export type DocumentBaseListParams = Omit<
+  z.infer<typeof DocumentBaseListParams>,
+  "sonamuFilter"
+> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<DocumentBaseSchema>>;
+};
 
 // BaseListParams: Employee
 export const EmployeeBaseListParams = z
@@ -353,9 +378,17 @@ export const EmployeeBaseListParams = z
     orderBy: EmployeeOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type EmployeeBaseListParams = z.infer<typeof EmployeeBaseListParams>;
+export type EmployeeBaseListParams = Omit<
+  z.infer<typeof EmployeeBaseListParams>,
+  "sonamuFilter"
+> & {
+  sonamuFilter?: FilterQuery<
+    FilterNumericOverride<Omit<EmployeeBaseSchema, "user" | "department" | "projs">, "salary">
+  >;
+};
 
 // BaseListParams: File
 export const FileBaseListParams = z
@@ -367,9 +400,12 @@ export const FileBaseListParams = z
     orderBy: FileOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
+export type FileBaseListParams = Omit<z.infer<typeof FileBaseListParams>, "sonamuFilter"> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<FileBaseSchema>>;
+};
 
 // BaseListParams: Project
 export const ProjectBaseListParams = z
@@ -381,9 +417,17 @@ export const ProjectBaseListParams = z
     orderBy: ProjectOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
+export type ProjectBaseListParams = Omit<z.infer<typeof ProjectBaseListParams>, "sonamuFilter"> & {
+  sonamuFilter?: FilterQuery<
+    FilterNumericOverride<
+      Omit<ProjectBaseSchema, "employee" | "tags" | "virtual_test" | "virtual_query_test">,
+      "budget"
+    >
+  >;
+};
 
 // BaseListParams: SyncFixture
 export const SyncFixtureBaseListParams = z
@@ -395,9 +439,15 @@ export const SyncFixtureBaseListParams = z
     orderBy: SyncFixtureOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type SyncFixtureBaseListParams = z.infer<typeof SyncFixtureBaseListParams>;
+export type SyncFixtureBaseListParams = Omit<
+  z.infer<typeof SyncFixtureBaseListParams>,
+  "sonamuFilter"
+> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<SyncFixtureBaseSchema>>;
+};
 
 // BaseListParams: Tag
 export const TagBaseListParams = z
@@ -409,9 +459,12 @@ export const TagBaseListParams = z
     orderBy: TagOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
+export type TagBaseListParams = Omit<z.infer<typeof TagBaseListParams>, "sonamuFilter"> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<TagBaseSchema>>;
+};
 
 // BaseListParams: User
 export const UserBaseListParams = z
@@ -423,9 +476,12 @@ export const UserBaseListParams = z
     orderBy: UserOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.record(z.string(), z.unknown()),
   })
   .partial();
-export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
+export type UserBaseListParams = Omit<z.infer<typeof UserBaseListParams>, "sonamuFilter"> & {
+  sonamuFilter?: FilterQuery<FilterNumericOverride<Omit<UserBaseSchema, "employee">>>;
+};
 
 // Subsets: Company
 export const CompanySubsetA = z.object({
