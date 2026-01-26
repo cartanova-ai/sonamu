@@ -1,0 +1,374 @@
+---
+title: 'sonamuFilter'
+description: 'Type-safe entity filtering'
+---
+
+`sonamuFilter` is a feature for type-safe filtering of Entity fields. Filterable fields and allowed operators are automatically inferred from the Entity definition, preventing invalid filtering attempts at both type level and runtime.
+
+<Info>
+`sonamuFilter` is automatically generated based on the Entity's props. Relations and virtual fields are excluded from filtering targets.
+</Info>
+
+## Basic Usage
+
+```typescript
+// Simple value filter (equivalent to eq)
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: "in_progress"
+  }
+});
+
+// Using operators
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { gt: 10000 },
+    name: { contains: "AI" }
+  }
+});
+```
+
+## Filter Types
+
+### FilterQuery
+
+`FilterQuery<T>` type is automatically generated for each Entity:
+
+```typescript
+// Auto-generated type (sonamu.generated.ts)
+export type ProjectListParams = {
+  // ...existing parameters
+  sonamuFilter?: FilterQuery<FilterNumericOverride<ProjectBaseSchema>>;
+};
+```
+
+### FilterCondition
+
+Available operators are determined by the field type:
+
+```typescript
+type FilterCondition<T> =
+  | T                           // Direct value (equivalent to eq)
+  | { eq?: T }                  // Equals
+  | { ne?: T }                  // Not equals
+  | { gt?: T }                  // Greater than
+  | { gte?: T }                 // Greater than or equal
+  | { lt?: T }                  // Less than
+  | { lte?: T }                 // Less than or equal
+  | { in?: T[] }                // Included in
+  | { notIn?: T[] }             // Not included in
+  | { between?: [T, T] }        // Range
+  | { contains?: string }       // Contains (string)
+  | { startsWith?: string }     // Starts with (string)
+  | { endsWith?: string }       // Ends with (string)
+  | { isNull?: boolean }        // Is NULL
+  | { isNotNull?: boolean }     // Is NOT NULL
+  | { before?: Date }           // Before (date)
+  | { after?: Date }            // After (date)
+```
+
+## Operators by Type
+
+| Type | Supported Operators |
+|------|---------------------|
+| `string` | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `integer` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
+| `numeric` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
+| `boolean` | `eq`, `ne`, `isNull`, `isNotNull` |
+| `date` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
+| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
+| `enum` | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `json` | `isNull`, `isNotNull` |
+
+## Usage Examples
+
+### Number Filtering
+
+```typescript
+// Exact value
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: { id: 1 }
+});
+
+// Comparison operators
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { gt: 10000 }  // budget > 10000
+  }
+});
+
+// Range condition
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { between: [5000, 20000] }  // 5000 <= budget <= 20000
+  }
+});
+
+// One of multiple values
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    id: { in: [1, 2, 3] }
+  }
+});
+```
+
+### String Filtering
+
+```typescript
+// Partial match (LIKE '%keyword%')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { contains: "AI" }
+  }
+});
+
+// Prefix match (LIKE 'keyword%')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { startsWith: "Project" }
+  }
+});
+
+// Suffix match (LIKE '%keyword')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { endsWith: "2024" }
+  }
+});
+```
+
+### Date Filtering
+
+```typescript
+// Before a specific date
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    deadline: { before: new Date("2024-12-31") }
+  }
+});
+
+// After a specific date
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    created_at: { after: new Date("2024-01-01") }
+  }
+});
+
+// Date range
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    deadline: {
+      between: [new Date("2024-01-01"), new Date("2024-12-31")]
+    }
+  }
+});
+```
+
+### Enum Filtering
+
+```typescript
+// Single value
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: "in_progress"
+  }
+});
+
+// One of multiple values
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { in: ["planning", "in_progress"] }
+  }
+});
+
+// Exclude specific values
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { notIn: ["cancelled", "completed"] }
+  }
+});
+```
+
+### NULL Check
+
+```typescript
+// When NULL
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    description: { isNull: true }
+  }
+});
+
+// When NOT NULL
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    description: { isNotNull: true }
+  }
+});
+```
+
+### Combined Conditions (AND)
+
+```typescript
+// Multiple field conditions are combined with AND
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { in: ["planning", "in_progress"] },
+    budget: { gt: 5000 },
+    name: { contains: "AI" }
+  }
+});
+// WHERE status IN ('planning', 'in_progress')
+//   AND budget > 5000
+//   AND name LIKE '%AI%'
+```
+
+## URL Query String
+
+Filters can be passed as URL query strings from the frontend:
+
+```
+GET /api/projects?sonamuFilter[status]=in_progress&sonamuFilter[budget][gt]=10000
+```
+
+String values parsed by Fastify are automatically converted to appropriate types:
+
+```typescript
+// Values from URL
+{ status: "in_progress", budget: { gt: "10000" } }
+
+// After automatic conversion
+{ status: "in_progress", budget: { gt: 10000 } }
+```
+
+## Validation
+
+`sonamuFilter` validates the following:
+
+### 1. Filterable Fields
+
+Only fields defined in the Entity's props can be filtered. Relation fields and virtual fields are excluded from filtering targets.
+
+```typescript
+// ❌ Error: Field 'employee' cannot be filtered
+await ProjectModel.findMany("A", {
+  sonamuFilter: { employee: { eq: 1 } }  // relation field
+});
+
+// ❌ Error: Field 'virtual_test' cannot be filtered
+await ProjectModel.findMany("A", {
+  sonamuFilter: { virtual_test: { eq: 1 } }  // virtual field
+});
+```
+
+### 2. Supported Operators
+
+Only operators appropriate for the field type can be used.
+
+```typescript
+// ❌ Error: Field 'name' (type: string) does not support 'between' operator
+await ProjectModel.findMany("A", {
+  sonamuFilter: { name: { between: ["a", "z"] } }
+});
+```
+
+### 3. Enum Values
+
+Enum type fields only allow defined values.
+
+```typescript
+// ❌ Error: Value 'invalid_status' is not valid for field 'status'
+await ProjectModel.findMany("A", {
+  sonamuFilter: { status: "invalid_status" }
+});
+```
+
+## Relationship with Existing Filters
+
+`sonamuFilter` can be used together with custom filters in `ListParams`:
+
+```typescript
+const { rows } = await ProjectModel.findMany("A", {
+  // Existing custom filters
+  id: [1, 2, 3],
+  status: "active",
+
+  // sonamuFilter
+  sonamuFilter: {
+    budget: { gt: 10000 },
+    name: { contains: "AI" }
+  }
+});
+```
+
+<Warning>
+If existing filters and `sonamuFilter` filter the same field, both conditions are applied with AND. Avoid duplicate filtering on the same field to prevent unintended results.
+</Warning>
+
+## Internal Operation
+
+### 1. Filter Normalization (normalizeFilterQuery)
+
+Converts string values from URL query strings to appropriate types.
+
+```typescript
+normalizeFilterQuery({ budget: { gt: "10000" } })
+// → { budget: { gt: 10000 } }
+```
+
+### 2. Validation (validateSonamuFilters)
+
+Validates the filter query based on the Entity's filter metadata.
+
+### 3. Query Application (applySonamuFilters)
+
+Applies validated filter conditions to the Puri query builder.
+
+```typescript
+// BaseModelClass internal implementation
+protected applySonamuFilters<TEntity>(
+  qb: Puri<any, any, any>,
+  filters?: FilterQuery<TEntity>,
+): void {
+  if (!filters) return;
+
+  const entity = EntityManager.get(this.modelName);
+  const metadata = entity.getFilterMetadata();
+
+  // 1. Validate filters
+  validateSonamuFilters(filters, metadata);
+
+  // 2. Apply filters
+  for (const [field, condition] of Object.entries(filters)) {
+    const fullField = entity.getFullFieldName(field);
+
+    if (typeof condition !== "object") {
+      qb.where(fullField, condition);
+    } else {
+      for (const [operator, value] of Object.entries(condition)) {
+        this.applyOperator(qb, fullField, operator, value);
+      }
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="findMany"
+    icon="list"
+    href="/api-reference/base-model/find-many"
+  >
+    List queries and pagination
+  </Card>
+
+  <Card
+    title="Puri Query Builder"
+    icon="code"
+    href="/database/puri/basic-queries"
+  >
+    Write advanced queries
+  </Card>
+</CardGroup>

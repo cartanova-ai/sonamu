@@ -486,7 +486,8 @@
                   "ko/api-reference/base-model/find-many",
                   "ko/api-reference/base-model/save",
                   "ko/api-reference/base-model/del",
-                  "ko/api-reference/base-model/get-puri"
+                  "ko/api-reference/base-model/get-puri",
+                  "ko/api-reference/base-model/sonamu-filter"
                 ]
               },
               {
@@ -1039,7 +1040,8 @@
                   "en/api-reference/base-model/find-many",
                   "en/api-reference/base-model/save",
                   "en/api-reference/base-model/del",
-                  "en/api-reference/base-model/get-puri"
+                  "en/api-reference/base-model/get-puri",
+                  "en/api-reference/base-model/sonamu-filter"
                 ]
               },
               {
