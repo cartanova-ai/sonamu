@@ -64,7 +64,20 @@
       "settings": {},
     },
   },
-  "file_scan_exclusions": [".git/", "**/node_modules"],
+  "file_scan_exclusions": [
+    ".git/",
+    "**/node_modules",
+    "packages/app",
+    "**/.git",
+    "**/.svn",
+    "**/.hg",
+    "**/.jj",
+    "**/CVS",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/.classpath",
+    "**/.setting",
+  ],
   "read_only_files": ["examples/**/web/src/services/**/*"],
   "languages": {
     "JavaScript": {
