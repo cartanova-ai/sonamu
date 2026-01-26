@@ -20,7 +20,7 @@ import {
   type PaginatedResponse,
   type SleepWorkflowRunParams,
 } from "../backend";
-import { DEFAULT_RETRY_POLICY } from "../core/retry";
+import { mergeRetryPolicy, type SerializableRetryPolicy } from "../core/retry";
 import type { StepAttempt } from "../core/step";
 import type { WorkflowRun } from "../core/workflow";
 import { DEFAULT_SCHEMA, migrate } from "./base";
@@ -167,6 +167,12 @@ export class BackendPostgres implements Backend {
       version: params.version,
     });
 
+    // config에 retryPolicy를 포함시킵니다.
+    const configWithRetryPolicy = {
+      ...(typeof params.config === "object" && params.config !== null ? params.config : {}),
+      retryPolicy: params.retryPolicy ?? undefined,
+    };
+
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -177,7 +183,7 @@ export class BackendPostgres implements Backend {
         version: params.version,
         status: "pending",
         idempotency_key: params.idempotencyKey,
-        config: params.config,
+        config: JSON.stringify(configWithRetryPolicy),
         context: params.context,
         input: params.input,
         attempts: 0,
@@ -459,8 +465,60 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
-    const { workflowRunId, error } = params;
-    const { initialIntervalMs, backoffCoefficient, maximumIntervalMs } = DEFAULT_RETRY_POLICY;
+    const { workflowRunId, error, forceComplete, customDelayMs } = params;
+
+    logger.info("Failing workflow run: {workflowRunId}, {workerId}, {error}", {
+      workflowRunId: params.workflowRunId,
+      workerId: params.workerId,
+      error: params.error,
+    });
+
+    const workflowRun = await this.knex
+      .withSchema(DEFAULT_SCHEMA)
+      .table("workflow_runs")
+      .where("namespace_id", this.namespaceId)
+      .where("id", workflowRunId)
+      .first();
+
+    if (!workflowRun) {
+      throw new Error("Workflow run not found");
+    }
+
+    const config =
+      typeof workflowRun.config === "string" ? JSON.parse(workflowRun.config) : workflowRun.config;
+    const savedRetryPolicy: SerializableRetryPolicy | undefined = config?.retryPolicy;
+    const retryPolicy = mergeRetryPolicy(savedRetryPolicy);
+
+    const { initialIntervalMs, backoffCoefficient, maximumIntervalMs, maxAttempts } = retryPolicy;
+
+    const currentAttempts = workflowRun.attempts ?? 0;
+    const shouldForceComplete = forceComplete || currentAttempts >= maxAttempts;
+
+    if (shouldForceComplete) {
+      const [updated] = await this.knex
+        .withSchema(DEFAULT_SCHEMA)
+        .table("workflow_runs")
+        .where("namespace_id", this.namespaceId)
+        .where("id", workflowRunId)
+        .where("status", "running")
+        .where("worker_id", params.workerId)
+        .update({
+          status: "failed",
+          available_at: null,
+          finished_at: this.knex.fn.now(),
+          error: JSON.stringify(error),
+          worker_id: null,
+          started_at: null,
+          updated_at: this.knex.fn.now(),
+        })
+        .returning("*");
+
+      if (!updated) {
+        logger.error("Failed to mark workflow run failed: {params}", { params });
+        throw new Error("Failed to mark workflow run failed");
+      }
+      return updated;
+    }
 
     // this beefy query updates a workflow's status, available_at, and
     // finished_at based on the workflow's deadline and retry policy
@@ -468,14 +526,10 @@ export class BackendPostgres implements Backend {
     // if the next retry would exceed the deadline, the run is marked as
     // 'failed' and finalized, otherwise, the run is rescheduled with an updated
     // 'available_at' timestamp for the next retry
-    const retryIntervalExpr = `LEAST(${initialIntervalMs} * POWER(${backoffCoefficient}, "attempts" - 1), ${maximumIntervalMs}) * INTERVAL '1 millisecond'`;
+    const retryIntervalExpr = customDelayMs
+      ? `${customDelayMs} * INTERVAL '1 millisecond'`
+      : `LEAST(${initialIntervalMs} * POWER(${backoffCoefficient}, "attempts" - 1), ${maximumIntervalMs}) * INTERVAL '1 millisecond'`;
     const deadlineExceededCondition = `"deadline_at" IS NOT NULL AND NOW() + (${retryIntervalExpr}) >= "deadline_at"`;
-
-    logger.info("Failing workflow run: {workflowRunId}, {workerId}, {error}", {
-      workflowRunId: params.workflowRunId,
-      workerId: params.workerId,
-      error: params.error,
-    });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)

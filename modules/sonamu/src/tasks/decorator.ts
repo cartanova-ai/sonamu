@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  RetryPolicy,
   SchemaInput,
   SchemaOutput,
   StandardSchemaV1,
@@ -22,6 +23,7 @@ export interface WorkflowMetadata {
     input: Executable<SchemaInput<unknown, unknown> | undefined>;
   }[];
   fn: WorkflowFunction<unknown, unknown>;
+  retryPolicy?: RetryPolicy;
 }
 
 // 워크플로우 정의 과정에서의 옵션
@@ -39,6 +41,7 @@ export type DefineWorkflowOptions<
     expression: string;
     input?: Executable<SchemaInput<TSchema, Input> | undefined>;
   }[];
+  retryPolicy?: RetryPolicy;
 };
 
 // 워크플로우 정의를 위한 데코레이터,
@@ -74,6 +77,7 @@ export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undef
         };
       }),
       fn: fn as WorkflowFunction<unknown, unknown>,
+      retryPolicy: options.retryPolicy,
     };
 
     return metadata;

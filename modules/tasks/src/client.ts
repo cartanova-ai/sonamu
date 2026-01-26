@@ -1,4 +1,5 @@
 import type { Backend } from "./backend";
+import { serializeRetryPolicy } from "./core/retry";
 import type { StandardSchemaV1 } from "./core/schema";
 import type { SchemaInput, SchemaOutput, WorkflowRun } from "./core/workflow";
 import { validateInput } from "./core/workflow";
@@ -101,6 +102,7 @@ export class OpenWorkflow {
       input: parsedInput ?? null,
       availableAt: null,
       deadlineAt: options?.deadlineAt ?? null,
+      retryPolicy: spec.retryPolicy ? serializeRetryPolicy(spec.retryPolicy) : undefined,
     });
 
     if (options?.publishToChannel) {

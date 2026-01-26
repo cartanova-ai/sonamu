@@ -1,5 +1,6 @@
 import type { SerializedError } from "./core/error";
 import type { JsonValue } from "./core/json";
+import type { SerializableRetryPolicy } from "./core/retry";
 import type { StepAttempt, StepAttemptContext, StepKind } from "./core/step";
 import type { WorkflowRun } from "./core/workflow";
 import type { OnSubscribed } from "./database/pubsub";
@@ -46,6 +47,7 @@ export interface CreateWorkflowRunParams {
   input: JsonValue | null;
   availableAt: Date | null; // null = immediately
   deadlineAt: Date | null; // null = no deadline
+  retryPolicy?: SerializableRetryPolicy;
 }
 
 export interface GetWorkflowRunParams {
@@ -81,6 +83,8 @@ export interface FailWorkflowRunParams {
   workflowRunId: string;
   workerId: string;
   error: SerializedError;
+  forceComplete?: boolean;
+  customDelayMs?: number;
 }
 
 export interface CancelWorkflowRunParams {

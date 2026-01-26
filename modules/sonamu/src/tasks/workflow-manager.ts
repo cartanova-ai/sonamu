@@ -122,6 +122,7 @@ export class WorkflowManager {
               version: workflow.version ?? null,
               schema: workflow.schema,
               function: workflow.fn,
+              retryPolicy: workflow.retryPolicy,
             });
 
             return Promise.allSettled(
@@ -166,6 +167,7 @@ export class WorkflowManager {
                   version: newItem.version ?? null,
                   schema: newItem.schema,
                   function: newItem.fn,
+                  retryPolicy: newItem.retryPolicy,
                 });
 
                 return Promise.allSettled(
@@ -293,6 +295,7 @@ export class WorkflowManager {
         name: options.name,
         version: options.version ?? undefined,
         schema: options.schema,
+        retryPolicy: options.retryPolicy,
       },
       fn,
     );

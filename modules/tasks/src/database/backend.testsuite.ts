@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { Backend } from "..//backend";
+import type { SerializableRetryPolicy } from "../core/retry";
 import type { StepAttempt } from "../core/step";
 import type { WorkflowRun } from "../core/workflow";
 
@@ -529,6 +530,124 @@ export function testBackend(options: TestBackendOptions): void {
         const delayMs = secondFailed.availableAt.getTime() - beforeSecondFail;
         expect(delayMs).toBeGreaterThanOrEqual(1900); // ~2s with some tolerance
         expect(delayMs).toBeLessThan(2500);
+
+        await teardown(backend);
+      });
+
+      test("marks workflow run as failed when maxAttempts is reached", async () => {
+        const backend = await setup();
+
+        // retryPolicy에 maxAttempts: 2를 지정하여 생성
+        const retryPolicy: SerializableRetryPolicy = {
+          maxAttempts: 2,
+          initialIntervalMs: 100,
+        };
+        await backend.createWorkflowRun({
+          workflowName: randomUUID(),
+          version: null,
+          idempotencyKey: null,
+          input: null,
+          config: {},
+          context: null,
+          availableAt: null,
+          deadlineAt: null,
+          retryPolicy,
+        });
+
+        // 첫 번째 시도 - 실패하면 pending으로 스케줄링
+        let workerId = randomUUID();
+        let claimed = await backend.claimWorkflowRun({
+          workerId,
+          leaseDurationMs: 100,
+        });
+        if (!claimed) throw new Error("Expected workflow run to be claimed");
+        expect(claimed.attempts).toBe(1);
+
+        const firstFailed = await backend.failWorkflowRun({
+          workflowRunId: claimed.id,
+          workerId,
+          error: { message: "first failure" },
+        });
+        expect(firstFailed.status).toBe("pending"); // 아직 maxAttempts(2) 미달
+
+        await sleep(150); // 100ms backoff 대기
+
+        // 두 번째 시도 - maxAttempts에 도달하면 failed로 종료
+        workerId = randomUUID();
+        claimed = await backend.claimWorkflowRun({
+          workerId,
+          leaseDurationMs: 100,
+        });
+        if (!claimed) throw new Error("Expected workflow run to be claimed");
+        expect(claimed.attempts).toBe(2);
+
+        const secondFailed = await backend.failWorkflowRun({
+          workflowRunId: claimed.id,
+          workerId,
+          error: { message: "second failure" },
+        });
+
+        // maxAttempts에 도달했으므로 failed로 종료
+        expect(secondFailed.status).toBe("failed");
+        expect(secondFailed.availableAt).toBeNull();
+        expect(secondFailed.finishedAt).not.toBeNull();
+
+        await teardown(backend);
+      });
+
+      test("marks workflow run as failed immediately when forceComplete is true", async () => {
+        const backend = await setup();
+
+        await createPendingWorkflowRun(backend);
+
+        const workerId = randomUUID();
+        const claimed = await backend.claimWorkflowRun({
+          workerId,
+          leaseDurationMs: 100,
+        });
+        if (!claimed) throw new Error("Expected workflow run to be claimed");
+
+        // forceComplete: true로 호출하면 재시도 없이 즉시 failed
+        const failed = await backend.failWorkflowRun({
+          workflowRunId: claimed.id,
+          workerId,
+          error: { message: "forced failure" },
+          forceComplete: true,
+        });
+
+        expect(failed.status).toBe("failed");
+        expect(failed.availableAt).toBeNull();
+        expect(failed.finishedAt).not.toBeNull();
+
+        await teardown(backend);
+      });
+
+      test("stores retryPolicy in config when creating workflow run", async () => {
+        const backend = await setup();
+
+        const retryPolicy: SerializableRetryPolicy = {
+          maxAttempts: 10,
+          initialIntervalMs: 500,
+          backoffCoefficient: 1.5,
+          maximumIntervalMs: 30000,
+        };
+
+        const created = await backend.createWorkflowRun({
+          workflowName: randomUUID(),
+          version: null,
+          idempotencyKey: null,
+          input: null,
+          config: { existingKey: "existingValue" },
+          context: null,
+          availableAt: null,
+          deadlineAt: null,
+          retryPolicy,
+        });
+
+        // config에 retryPolicy가 저장되어 있는지 확인
+        const config = created.config as Record<string, unknown>;
+        expect(config.existingKey).toBe("existingValue");
+        expect(config.retryPolicy).toEqual(retryPolicy);
 
         await teardown(backend);
       });

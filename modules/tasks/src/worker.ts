@@ -202,6 +202,7 @@ export class Worker {
         workflowFn: workflow.fn,
         workflowVersion: execution.workflowRun.version,
         workerId: execution.workerId,
+        retryPolicy: workflow.spec.retryPolicy,
       });
     } catch (error) {
       // specifically for unexpected errors in the execution wrapper itself, not

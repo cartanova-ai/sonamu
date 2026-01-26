@@ -505,6 +505,121 @@ describe("executeWorkflow", () => {
   });
 });
 
+describe("executeWorkflow with dynamic retryPolicy", () => {
+  let backend: BackendPostgres;
+
+  beforeAll(async () => {
+    backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
+      namespaceId: randomUUID(),
+      runMigrations: false,
+    });
+    await backend.initialize();
+  });
+
+  afterAll(async () => {
+    await backend.stop();
+  });
+
+  test("calls failWorkflowRun with forceComplete=true when shouldRetry returns false", async () => {
+    const client = new OpenWorkflow({ backend });
+
+    // shouldRetry가 false를 반환하는 retryPolicy
+    const workflow = client.defineWorkflow(
+      {
+        name: "dynamic-retry-false",
+        retryPolicy: {
+          maxAttempts: 10, // 정적으로는 10번까지 허용하지만
+          shouldRetry: () => ({ shouldRetry: false, delayMs: 0 }), // 동적으로 즉시 거부
+        },
+      },
+      () => {
+        throw new Error("Intentional failure");
+      },
+    );
+
+    const worker = client.newWorker();
+    const handle = await workflow.run();
+    await worker.tick();
+    await sleep(100);
+
+    // shouldRetry가 false를 반환했으므로 즉시 failed 상태가 되어야 합니다
+    const workflowRun = await backend.getWorkflowRun({
+      workflowRunId: handle.workflowRun.id,
+    });
+    expect(workflowRun?.status).toBe("failed");
+    expect(workflowRun?.attempts).toBe(1); // 한 번만 시도하고 종료
+  });
+
+  test("calls failWorkflowRun with forceComplete=false when shouldRetry returns true", async () => {
+    const client = new OpenWorkflow({ backend });
+
+    // shouldRetry가 true를 반환하는 retryPolicy
+    const workflow = client.defineWorkflow(
+      {
+        name: "dynamic-retry-true",
+        retryPolicy: {
+          maxAttempts: 2,
+          shouldRetry: () => ({ shouldRetry: true, delayMs: 1000 }),
+        },
+      },
+      () => {
+        throw new Error("Intentional failure");
+      },
+    );
+
+    const worker = client.newWorker();
+    const handle = await workflow.run();
+    await worker.tick();
+    await sleep(100);
+
+    // shouldRetry가 true를 반환했으므로 pending 상태로 재시도 대기
+    const workflowRun = await backend.getWorkflowRun({
+      workflowRunId: handle.workflowRun.id,
+    });
+    expect(workflowRun?.status).toBe("pending");
+    expect(workflowRun?.attempts).toBe(1);
+  });
+
+  test("receives correct error and attempt number in shouldRetry function", async () => {
+    const client = new OpenWorkflow({ backend });
+
+    let receivedError: unknown = null;
+    let receivedAttempt: number | null = null;
+
+    const workflow = client.defineWorkflow(
+      {
+        name: "dynamic-retry-params",
+        retryPolicy: {
+          maxAttempts: 10,
+          shouldRetry: (error, attempt) => {
+            receivedError = error;
+            receivedAttempt = attempt;
+            return { shouldRetry: false, delayMs: 0 };
+          },
+        },
+      },
+      () => {
+        throw new Error("Test error message");
+      },
+    );
+
+    const worker = client.newWorker();
+    const handle = await workflow.run();
+    await worker.tick();
+    await sleep(100);
+
+    // shouldRetry 함수가 올바른 파라미터를 받았는지 확인
+    expect(receivedError).not.toBeNull();
+    expect((receivedError as { message?: string }).message).toBe("Test error message");
+    expect(receivedAttempt).toBe(1); // 첫 번째 시도 후이므로 1
+
+    const workflowRun = await backend.getWorkflowRun({
+      workflowRunId: handle.workflowRun.id,
+    });
+    expect(workflowRun?.status).toBe("failed");
+  });
+});
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

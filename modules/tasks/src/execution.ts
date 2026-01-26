@@ -2,6 +2,7 @@ import type { Backend } from "./backend";
 import type { DurationString } from "./core/duration";
 import { serializeError } from "./core/error";
 import type { JsonValue } from "./core/json";
+import { isDynamicRetryPolicy, type RetryPolicy } from "./core/retry";
 import type { StepAttempt, StepAttemptCache } from "./core/step";
 import {
   addToStepAttemptCache,
@@ -186,6 +187,7 @@ export interface ExecuteWorkflowParams {
   workflowFn: WorkflowFunction<unknown, unknown>;
   workflowVersion: string | null;
   workerId: string;
+  retryPolicy?: RetryPolicy;
 }
 
 /**
@@ -198,7 +200,7 @@ export interface ExecuteWorkflowParams {
  * @param params - The execution parameters
  */
 export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): Promise<void> {
-  const { backend, workflowRun, workflowFn, workflowVersion, workerId } = params;
+  const { backend, workflowRun, workflowFn, workflowVersion, workerId, retryPolicy } = params;
 
   try {
     // load all pages of step history
@@ -281,11 +283,25 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
       return;
     }
 
-    // mark failure
+    // claimWorkflowRun에서 이미 attempts가 증가된 상태입니다.
+    let forceComplete = false;
+    let customDelayMs: number | undefined;
+    if (retryPolicy && isDynamicRetryPolicy(retryPolicy)) {
+      const serializedError = serializeError(error);
+      const decision = retryPolicy.shouldRetry(serializedError, workflowRun.attempts ?? 1);
+      if (!decision.shouldRetry) {
+        forceComplete = true;
+      } else {
+        customDelayMs = decision.delayMs;
+      }
+    }
+
     await backend.failWorkflowRun({
       workflowRunId: workflowRun.id,
       workerId,
       error: serializeError(error),
+      forceComplete,
+      customDelayMs,
     });
   }
 }
