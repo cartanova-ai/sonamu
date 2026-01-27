@@ -5,7 +5,7 @@ dotenv.config();
 
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { cp, mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -519,7 +519,7 @@ async function skills_sync() {
   const claudeDir = path.join(workspaceRoot, ".claude");
   const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
 
-  // ✅ 수정: sonamu 패키지 기준 상대 경로로 skills 찾기
+  // sonamu 패키지 기준 상대 경로로 skills 찾기
   // cli.ts 위치: sonamu/modules/sonamu/src/bin/cli.ts
   // skills 위치: sonamu/modules/skills/
   const sourceBase = path.resolve(import.meta.dirname, "..", "..", "..", "skills");
@@ -531,12 +531,16 @@ async function skills_sync() {
     return;
   }
 
-  // 대상 디렉토리 생성
-  await mkdir(targetSkillsDir, { recursive: true });
+  // 기존 디렉토리/symlink 삭제 후 symlink 생성
+  if (await exists(targetSkillsDir)) {
+    await rm(targetSkillsDir, { recursive: true });
+  }
 
-  // 복사 (recursive, 덮어쓰기)
-  await cp(sourceSkillsDir, targetSkillsDir, { recursive: true, force: true });
-  console.log(chalk.green(`✓ Skills synced to ${targetSkillsDir}`));
+  // 대상 디렉토리 생성
+  await mkdir(path.dirname(targetSkillsDir), { recursive: true });
+
+  await symlink(sourceSkillsDir, targetSkillsDir, "dir");
+  console.log(chalk.green(`✓ Skills linked to ${targetSkillsDir} -> ${sourceSkillsDir}`));
 
   // CLAUDE.md 복사/업데이트
   if (await exists(sourceClaudeMd)) {
