@@ -1,0 +1,84 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useNodejsImportProtocol": "off"
+      },
+      "correctness": {
+        "useParseIntRadix": "off",
+        "noEmptyPattern": "off",
+        "noUnusedImports": {
+          "level": "warn",
+          "fix": "safe"
+        }
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off",
+        "useSemanticElements": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "useAriaPropsForRole": "off",
+        "noInteractiveElementToNoninteractiveRole": "off",
+        "noNoninteractiveTabindex": "off",
+        "useFocusableInteractive": "off",
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "!**/dist",
+      "!**/build",
+      "!**/node_modules",
+      "!**/*.gen.ts",
+      "!**/*.generated.ts",
+      "!**/*.generated.tsx"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100,
+    "attributePosition": "auto"
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "bracketSameLine": false,
+      "quoteStyle": "double",
+      "attributePosition": "auto"
+    }
+  },
+  "json": {
+    "formatter": {
+      "indentWidth": 2
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

@@ -225,9 +225,13 @@ async function init() {
         copy(srcFile, destFile);
       }
     } else {
-      // 파일은 복사
-      fs.copyFileSync(src, dest);
-      console.log(`${chalk.green("CREATE")} ${dest}`);
+      // 파일은 복사 (gitignore → .gitignore rename)
+      let destPath = dest;
+      if (basename === "gitignore") {
+        destPath = path.join(path.dirname(dest), ".gitignore");
+      }
+      fs.copyFileSync(src, destPath);
+      console.log(`${chalk.green("CREATE")} ${destPath}`);
     }
   };
 
