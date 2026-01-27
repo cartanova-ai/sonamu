@@ -3,26 +3,26 @@ export type * from "./client";
 export { loadConfig } from "./config";
 export type { DurationString } from "./core/duration";
 export type { JsonValue } from "./core/json";
-export {
-  DEFAULT_RETRY_POLICY,
-  mergeRetryPolicy,
-  serializeRetryPolicy,
-  shouldRetryByPolicy,
-  calculateRetryDelayMs,
-  shouldRetry,
-  isDynamicRetryPolicy,
-  isStaticRetryPolicy,
-} from "./core/retry";
 export type {
-  RetryPolicy,
-  StaticRetryPolicy,
   DynamicRetryPolicy,
-  SerializableRetryPolicy,
-  RetryDecision,
-  RetryDecisionFn,
-  MergedStaticRetryPolicy,
   MergedDynamicRetryPolicy,
   MergedRetryPolicy,
+  MergedStaticRetryPolicy,
+  RetryDecision,
+  RetryDecisionFn,
+  RetryPolicy,
+  SerializableRetryPolicy,
+  StaticRetryPolicy,
+} from "./core/retry";
+export {
+  calculateRetryDelayMs,
+  DEFAULT_RETRY_POLICY,
+  isDynamicRetryPolicy,
+  isStaticRetryPolicy,
+  mergeRetryPolicy,
+  serializeRetryPolicy,
+  shouldRetry,
+  shouldRetryByPolicy,
 } from "./core/retry";
 export type { StandardSchemaV1 } from "./core/schema";
 export type { StepAttempt } from "./core/step";
