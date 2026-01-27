@@ -24,6 +24,7 @@ export function josa(word: string, type: "은는" | "이가" | "을를" | "과�
       return false;
     return (lastChar - 0xac00) % 28 !== 0;
   })();
+
   const map = {
     은는: has받침 ? "은" : "는",
     이가: has받침 ? "이" : "가",
@@ -31,5 +32,6 @@ export function josa(word: string, type: "은는" | "이가" | "을를" | "과�
     과와: has받침 ? "과" : "와",
     으로: has받침 ? "으로" : "로",
   };
+
   return word + map[type];
 }

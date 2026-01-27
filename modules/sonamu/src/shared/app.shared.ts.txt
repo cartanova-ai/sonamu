@@ -144,23 +144,27 @@ export async function fetch(options: AxiosRequestConfig) {
   }
 }
 
-export function toFormData(obj: Record<string, unknown>, formData = new FormData(), prefix = ''): FormData {
+export function toFormData(
+  obj: Record<string, unknown>,
+  formData = new FormData(),
+  prefix = "",
+): FormData {
   for (const [key, value] of Object.entries(obj)) {
     const formKey = prefix ? `${prefix}[${key}]` : key;
-    
+
     if (value instanceof File || value instanceof Blob) {
       formData.append(formKey, value);
     } else if (Array.isArray(value)) {
       value.forEach((item, index) => {
         toFormData({ [index]: item }, formData, formKey);
       });
-    } else if (value !== null && value !== undefined && typeof value === 'object') {
-      toFormData(value as Record<string, unknown>, formData, formKey);  // 재귀로 펼치기
+    } else if (value !== null && value !== undefined && typeof value === "object") {
+      toFormData(value as Record<string, unknown>, formData, formKey); // 재귀로 펼치기
     } else if (value !== null && value !== undefined) {
       formData.append(formKey, String(value));
     }
   }
-  
+
   return formData;
 }
 
@@ -208,6 +212,88 @@ export type ListResult<
 
 export const SonamuQueryMode = z.enum(["both", "list", "count"]);
 export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
+
+/* Filter Types */
+// Prop 타입별 허용 연산자
+export const operatorsByPropType = {
+  string: ["eq", "ne", "contains", "startsWith", "endsWith", "in", "notIn", "isNull", "isNotNull"],
+  integer: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "notIn", "between", "isNull", "isNotNull"],
+  numeric: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "notIn", "between", "isNull", "isNotNull"],
+  boolean: ["eq", "ne", "isNull", "isNotNull"],
+  date: ["eq", "ne", "before", "after", "between", "isNull", "isNotNull"],
+  datetime: ["eq", "ne", "before", "after", "between", "isNull", "isNotNull"],
+  enum: ["eq", "ne", "in", "notIn", "isNull", "isNotNull"],
+  json: ["isNull", "isNotNull"],
+} as const;
+
+// Prop 타입별 기본 연산자
+export const defaultOperatorByPropType = {
+  string: "contains",
+  integer: "eq",
+  numeric: "eq",
+  boolean: "eq",
+  date: "eq",
+  datetime: "eq",
+  enum: "eq",
+  json: "isNull",
+} as const;
+
+// operatorsByPropType에서 파생되는 타입들
+export type FilterPropType = keyof typeof operatorsByPropType;
+export type FilterOperator = (typeof operatorsByPropType)[keyof typeof operatorsByPropType][number];
+
+// 특정 prop 타입에 허용되는 연산자 유니온
+type OperatorForPropType<TPropType extends FilterPropType> =
+  (typeof operatorsByPropType)[TPropType][number];
+
+// 연산자별 기대 값 타입
+type OperatorValue<T, K extends FilterOperator> = K extends "in" | "notIn"
+  ? T[]
+  : K extends "between"
+    ? [T, T]
+    : K extends "isNull" | "isNotNull"
+      ? boolean
+      : T;
+
+// 특정 연산자 집합에 대한 필터 조건 타입
+type ConditionForOperators<T, TOps extends FilterOperator> =
+  | T
+  | { [K in TOps]?: OperatorValue<T, K> };
+
+/**
+ * 필터 조건 - 타입에 따라 사용 가능한 연산자가 제한
+ */
+export type FilterCondition<T> =
+  NonNullable<T> extends number
+    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"integer">>
+    : NonNullable<T> extends string
+      ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"string">>
+      : NonNullable<T> extends Date
+        ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"date">>
+        : NonNullable<T> extends boolean
+          ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"boolean">>
+          : // Fallback: 비원시 타입은 null 체크만 허용
+            ConditionForOperators<NonNullable<T>, OperatorForPropType<"json">>;
+
+/**
+ * 필터 쿼리
+ * 엔티티의 각 필드에 대한 필터 조건 정의
+ */
+export type FilterQuery<TEntity, TNumericKeys extends keyof TEntity = never> = {
+  [K in keyof TEntity]?: K extends TNumericKeys
+    ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"numeric">>
+    : FilterCondition<TEntity[K]>;
+};
+
+/**
+ * Sonamu 필터 적용 타입
+ * Entity에서 제외할 필드와 numeric 필드를 받아서 최종 FilterQuery 타입을 생성
+ */
+export type ApplySonamuFilter<
+  TEntity,
+  TOmitKeys extends keyof TEntity = never,
+  TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
+> = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
 /* Semantic Query */
 export const SonamuSemanticParams = z
@@ -287,7 +373,9 @@ export function handleConditional(
 /*
   Utils
 */
-export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
+export function zArrayable<T extends z.ZodTypeAny>(
+  shape: T,
+): z.ZodUnion<readonly [T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
 
