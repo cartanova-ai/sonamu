@@ -127,7 +127,7 @@ export const SonamuQueryMode = z.enum(["both", "list", "count"]);
 export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
 
 /* Filter Types */
-// Prop 타입별 허용 연산자(소스 오브 트루스)
+// Prop 타입별 허용 연산자
 export const operatorsByPropType = {
   string: ["eq", "ne", "contains", "startsWith", "endsWith", "in", "notIn", "isNull", "isNotNull"],
   integer: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "notIn", "between", "isNull", "isNotNull"],
@@ -174,13 +174,11 @@ type ConditionForOperators<T, TOps extends FilterOperator> =
   | { [K in TOps]?: OperatorValue<T, K> };
 
 /**
- * 필터 조건
- * 타입에 따라 사용 가능한 연산자가 제한됩니다.
+ * 필터 조건 - 타입에 따라 사용 가능한 연산자가 제한
  */
 export type FilterCondition<T> =
-  // nullable 타입 처리: NonNullable로 벗긴 후 체크
   NonNullable<T> extends number
-    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"numeric">>
+    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"integer">>
     : NonNullable<T> extends string
       ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"string">>
       : NonNullable<T> extends Date
@@ -194,16 +192,22 @@ export type FilterCondition<T> =
  * 필터 쿼리
  * 엔티티의 각 필드에 대한 필터 조건 정의
  */
-export type FilterQuery<TEntity> = {
-  [K in keyof TEntity]?: FilterCondition<TEntity[K]>;
+export type FilterQuery<TEntity, TNumericKeys extends keyof TEntity = never> = {
+  [K in keyof TEntity]?: K extends TNumericKeys
+    ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"numeric">>
+    : FilterCondition<TEntity[K]>;
 };
 
-type NullIfNullable<T> = null extends T ? null : never;
+/**
+ * Sonamu 필터 적용 타입
+ * Entity에서 제외할 필드와 numeric 필드를 받아서 최종 FilterQuery 타입을 생성
+ */
+export type ApplySonamuFilter<
+  TEntity,
+  TOmitKeys extends keyof TEntity = never,
+  TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
+> = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
-export type FilterNumericOverride<T, TNumericKeys extends keyof T = never> =
-  Omit<T, TNumericKeys> & {
-    [K in TNumericKeys]: number | NullIfNullable<T[K]>;
-  };
 
 /* Semantic Query */
 export const SonamuSemanticParams = z

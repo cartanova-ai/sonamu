@@ -45,13 +45,11 @@ type ConditionForOperators<T, TOps extends FilterOperator> =
   | { [K in TOps]?: OperatorValue<T, K> };
 
 /**
- * 필터 조건
- * 타입에 따라 사용 가능한 연산자가 제한
+ * 필터 조건 - 타입에 따라 사용 가능한 연산자가 제한
  */
 export type FilterCondition<T> =
-  // nullable 타입 처리: NonNullable로 벗긴 후 체크
   NonNullable<T> extends number
-    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"numeric">>
+    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"integer">>
     : NonNullable<T> extends string
       ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"string">>
       : NonNullable<T> extends Date
@@ -64,27 +62,26 @@ export type FilterCondition<T> =
 /**
  * 필터 쿼리
  * 엔티티의 각 필드에 대한 필터 조건 정의
- *
- * @example
- * const query: FilterQuery<Project> = {
- *   status: "in_progress",              // 직접 값
- *   budget: { gt: 10000 },              // 연산자 사용
- *   name: { contains: "AI" }            // 문자열 검색
- * };
  */
-export type FilterQuery<TEntity> = {
-  [K in keyof TEntity]?: FilterCondition<TEntity[K]>;
-};
-
-type NullIfNullable<T> = null extends T ? null : never;
-
-export type FilterNumericOverride<T, TNumericKeys extends keyof T = never> = Omit<T, TNumericKeys> & {
-  [K in TNumericKeys]: number | NullIfNullable<T[K]>;
+export type FilterQuery<TEntity, TNumericKeys extends keyof TEntity = never> = {
+  [K in keyof TEntity]?: K extends TNumericKeys
+    ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"numeric">>
+    : FilterCondition<TEntity[K]>;
 };
 
 /**
+ * Sonamu 필터 적용 타입
+ * Entity에서 제외할 필드와 numeric 필드를 받아서 최종 FilterQuery 타입을 생성
+ */
+export type ApplySonamuFilter<
+  TEntity,
+  TOmitKeys extends keyof TEntity = never,
+  TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
+> = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
+
+/**
  * 필터 메타데이터
- * Entity의 props를 분석하여 자동 생성됩니다.
+ * Entity의 props를 분석하여 자동 생성
  */
 export interface FilterMetadata {
   /** 필드 이름 */

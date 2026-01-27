@@ -3,7 +3,7 @@ import { ProjectBaseListParams, ProjectBaseSchema } from "../sonamu.generated";
 
 // Project - ListParams
 export const ProjectListParams = ProjectBaseListParams;
-export type ProjectListParams = ProjectBaseListParams;
+export type ProjectListParams = z.infer<typeof ProjectListParams>;
 
 // Project - SaveParams
 export const ProjectSaveParams = ProjectBaseSchema.partial({
