@@ -53,7 +53,7 @@ pnpm create sonamu [프로젝트명] --yes
 "sonamu": "link:/path/to/sonamu/modules/sonamu"
 
 // ✗ npm 버전 (Skills 동기화 불가)
-"sonamu": "^0.7.47"
+"sonamu": "^0.7.48"
 ```
 
 **링크 설정 방법 (npm 버전인 경우):**
@@ -147,6 +147,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 | Model | `model.md` | BaseModelClass, CRUD 패턴 |
 | API | `api.md` | @api 데코레이터 |
 | Puri | `puri.md` | SQL 쿼리 빌더 |
+| i18n | `i18n.md` | 다국어 지원, SD 함수 |
 | Upsert | `upsert.md` | 관계 데이터 저장 |
 | Testing | `testing.md` | Vitest 테스트 (test/testAs) |
 | Migration | `migration.md` | DB 스키마 마이그레이션 |
@@ -168,6 +169,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 | 테스트 작성 | testing |
 | DB 스키마 변경 | migration |
 | 프론트엔드 개발 | frontend |
+| 다국어/번역 | i18n |
 | Scaffolding 오류 | scaffolding |
 
 ## 명령어 실행 경로

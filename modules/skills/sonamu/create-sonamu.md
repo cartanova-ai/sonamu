@@ -103,10 +103,53 @@ pnpm create sonamu my_project \
    ```
    > 포트 충돌 오류 발생 시 → `database.md` 참조
 
-2. 개발 서버 실행
+2. Skills 동기화
+   ```bash
+   cd [프로젝트명]/packages/api
+   pnpm sonamu skills sync
+   ```
+   > sonamu가 npm 버전이면 실패함. 아래 "Sonamu 링크 설정" 참조
+
+3. 개발 서버 실행
    ```bash
    cd [프로젝트명]/packages/api
    pnpm dev
    ```
 
-3. Entity 설계 진행 → `entity-basic.md` 참조
+4. Entity 설계 진행 → `entity-basic.md` 참조
+
+## Sonamu 링크 설정
+
+**Skills 동기화는 sonamu가 로컬 링크로 참조되어야 동작합니다.**
+
+### 확인 방법
+
+`packages/api/package.json`에서 sonamu 의존성 확인:
+
+```json
+// ✓ 링크 참조 (Skills 동기화 가능)
+"sonamu": "link:/path/to/sonamu/modules/sonamu"
+
+// ✗ npm 버전 (Skills 동기화 불가)
+"sonamu": "^0.7.47"
+```
+
+### 링크로 변경하는 방법
+
+1. `packages/api/package.json`에서 sonamu 버전을 링크로 변경:
+   ```json
+   "dependencies": {
+     "sonamu": "link:/path/to/sonamu/modules/sonamu"
+   }
+   ```
+
+2. `pnpm install` 실행
+
+3. `pnpm sonamu skills sync` 다시 실행
+
+### 링크 경로 예시
+
+| sonamu 위치 | 링크 경로 |
+|------------|----------|
+| `~/Development/sonamu` | `link:~/Development/sonamu/modules/sonamu` |
+| 프로젝트와 같은 디렉토리 | `link:../../sonamu/modules/sonamu` |
