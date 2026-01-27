@@ -1,0 +1,374 @@
+---
+title: 'sonamuFilter'
+description: '타입 안전한 엔티티 필터링'
+---
+
+`sonamuFilter`는 Entity의 필드를 타입 안전하게 필터링하는 기능입니다. 필터 가능한 필드와 허용되는 연산자가 Entity 정의에서 자동으로 추론되어 잘못된 필터링 시도를 타입 레벨과 런타임 모두에서 방지합니다.
+
+<Info>
+`sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 관계(relations) 및 가상 필드(virtual fields)는 필터링 대상에서 제외됩니다.
+</Info>
+
+## 기본 사용법
+
+```typescript
+// 단순 값 필터 (eq와 동일)
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: "in_progress"
+  }
+});
+
+// 연산자 사용
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { gt: 10000 },
+    name: { contains: "AI" }
+  }
+});
+```
+
+## 필터 타입
+
+### FilterQuery
+
+각 Entity에 대해 `FilterQuery<T>` 타입이 자동 생성됩니다:
+
+```typescript
+// 자동 생성된 타입 (sonamu.generated.ts)
+export type ProjectListParams = {
+  // ...기존 파라미터들
+  sonamuFilter?: FilterQuery<FilterNumericOverride<ProjectBaseSchema>>;
+};
+```
+
+### FilterCondition
+
+필드 타입에 따라 사용 가능한 연산자가 결정됩니다:
+
+```typescript
+type FilterCondition<T> =
+  | T                           // 직접 값 (eq와 동일)
+  | { eq?: T }                  // 같음
+  | { ne?: T }                  // 같지 않음
+  | { gt?: T }                  // 보다 큼
+  | { gte?: T }                 // 보다 크거나 같음
+  | { lt?: T }                  // 보다 작음
+  | { lte?: T }                 // 보다 작거나 같음
+  | { in?: T[] }                // 포함
+  | { notIn?: T[] }             // 미포함
+  | { between?: [T, T] }        // 범위
+  | { contains?: string }       // 포함 (문자열)
+  | { startsWith?: string }     // 시작 (문자열)
+  | { endsWith?: string }       // 끝 (문자열)
+  | { isNull?: boolean }        // NULL 여부
+  | { isNotNull?: boolean }     // NOT NULL 여부
+  | { before?: Date }           // 이전 (날짜)
+  | { after?: Date }            // 이후 (날짜)
+```
+
+## 타입별 지원 연산자
+
+| 타입 | 지원 연산자 |
+|------|-------------|
+| `string` | `eq`, `ne`, `contains`, `startsWith`, `endsWith`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `integer` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
+| `numeric` | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `between`, `isNull`, `isNotNull` |
+| `boolean` | `eq`, `ne`, `isNull`, `isNotNull` |
+| `date` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
+| `datetime` | `eq`, `ne`, `before`, `after`, `between`, `isNull`, `isNotNull` |
+| `enum` | `eq`, `ne`, `in`, `notIn`, `isNull`, `isNotNull` |
+| `json` | `isNull`, `isNotNull` |
+
+## 사용 예시
+
+### 숫자 필터링
+
+```typescript
+// 정확한 값
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: { id: 1 }
+});
+
+// 비교 연산자
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { gt: 10000 }  // budget > 10000
+  }
+});
+
+// 범위 조건
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    budget: { between: [5000, 20000] }  // 5000 <= budget <= 20000
+  }
+});
+
+// 여러 값 중 하나
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    id: { in: [1, 2, 3] }
+  }
+});
+```
+
+### 문자열 필터링
+
+```typescript
+// 부분 일치 (LIKE '%keyword%')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { contains: "AI" }
+  }
+});
+
+// 접두사 일치 (LIKE 'keyword%')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { startsWith: "Project" }
+  }
+});
+
+// 접미사 일치 (LIKE '%keyword')
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    name: { endsWith: "2024" }
+  }
+});
+```
+
+### 날짜 필터링
+
+```typescript
+// 특정 날짜 이전
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    deadline: { before: new Date("2024-12-31") }
+  }
+});
+
+// 특정 날짜 이후
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    created_at: { after: new Date("2024-01-01") }
+  }
+});
+
+// 날짜 범위
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    deadline: {
+      between: [new Date("2024-01-01"), new Date("2024-12-31")]
+    }
+  }
+});
+```
+
+### Enum 필터링
+
+```typescript
+// 단일 값
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: "in_progress"
+  }
+});
+
+// 여러 값 중 하나
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { in: ["planning", "in_progress"] }
+  }
+});
+
+// 특정 값 제외
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { notIn: ["cancelled", "completed"] }
+  }
+});
+```
+
+### NULL 체크
+
+```typescript
+// NULL인 경우
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    description: { isNull: true }
+  }
+});
+
+// NULL이 아닌 경우
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    description: { isNotNull: true }
+  }
+});
+```
+
+### 복합 조건 (AND)
+
+```typescript
+// 여러 필드 조건은 AND로 결합됩니다
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    status: { in: ["planning", "in_progress"] },
+    budget: { gt: 5000 },
+    name: { contains: "AI" }
+  }
+});
+// WHERE status IN ('planning', 'in_progress')
+//   AND budget > 5000
+//   AND name LIKE '%AI%'
+```
+
+## URL 쿼리 스트링
+
+프론트엔드에서 URL 쿼리 스트링으로 필터를 전달할 수 있습니다:
+
+```
+GET /api/projects?sonamuFilter[status]=in_progress&sonamuFilter[budget][gt]=10000
+```
+
+Fastify가 파싱한 문자열은 자동으로 적절한 타입으로 변환됩니다:
+
+```typescript
+// URL에서 전달된 값
+{ status: "in_progress", budget: { gt: "10000" } }
+
+// 자동 변환 후
+{ status: "in_progress", budget: { gt: 10000 } }
+```
+
+## 유효성 검증
+
+`sonamuFilter`는 다음을 검증합니다:
+
+### 1. 필터 가능한 필드
+
+Entity의 props에 정의된 필드만 필터링할 수 있습니다. 관계 필드나 가상 필드는 필터링 대상에서 제외됩니다.
+
+```typescript
+// ❌ 에러: 필드 'employee'는 필터링할 수 없습니다
+await ProjectModel.findMany("A", {
+  sonamuFilter: { employee: { eq: 1 } }  // 관계 필드
+});
+
+// ❌ 에러: 필드 'virtual_test'는 필터링할 수 없습니다
+await ProjectModel.findMany("A", {
+  sonamuFilter: { virtual_test: { eq: 1 } }  // 가상 필드
+});
+```
+
+### 2. 지원하는 연산자
+
+필드 타입에 맞는 연산자만 사용할 수 있습니다.
+
+```typescript
+// ❌ 에러: 필드 'name'(타입: string)는 'between' 연산자를 지원하지 않습니다
+await ProjectModel.findMany("A", {
+  sonamuFilter: { name: { between: ["a", "z"] } }
+});
+```
+
+### 3. Enum 값
+
+Enum 타입의 필드는 정의된 값만 허용합니다.
+
+```typescript
+// ❌ 에러: 필드 'status'의 값 'invalid_status'는 유효하지 않습니다
+await ProjectModel.findMany("A", {
+  sonamuFilter: { status: "invalid_status" }
+});
+```
+
+## 기존 필터와의 관계
+
+`sonamuFilter`는 기존 `ListParams`의 커스텀 필터와 함께 사용할 수 있습니다:
+
+```typescript
+const { rows } = await ProjectModel.findMany("A", {
+  // 기존 커스텀 필터
+  id: [1, 2, 3],
+  status: "active",
+
+  // sonamuFilter
+  sonamuFilter: {
+    budget: { gt: 10000 },
+    name: { contains: "AI" }
+  }
+});
+```
+
+<Warning>
+기존 필터와 `sonamuFilter`가 같은 필드를 필터링하면 두 조건이 모두 AND로 적용됩니다. 의도치 않은 결과를 방지하려면 같은 필드에 대한 중복 필터링을 피하세요.
+</Warning>
+
+## 내부 동작
+
+### 1. 필터 정규화 (normalizeFilterQuery)
+
+URL 쿼리 스트링으로 전달된 문자열 값을 적절한 타입으로 변환합니다.
+
+```typescript
+normalizeFilterQuery({ budget: { gt: "10000" } })
+// → { budget: { gt: 10000 } }
+```
+
+### 2. 유효성 검증 (validateSonamuFilters)
+
+Entity의 필터 메타데이터를 기반으로 필터 쿼리를 검증합니다.
+
+### 3. 쿼리 적용 (applySonamuFilters)
+
+검증된 필터 조건을 Puri 쿼리 빌더에 적용합니다.
+
+```typescript
+// BaseModelClass 내부 구현
+protected applySonamuFilters<TEntity>(
+  qb: Puri<any, any, any>,
+  filters?: FilterQuery<TEntity>,
+): void {
+  if (!filters) return;
+
+  const entity = EntityManager.get(this.modelName);
+  const metadata = entity.getFilterMetadata();
+
+  // 1. 필터 검증
+  validateSonamuFilters(filters, metadata);
+
+  // 2. 필터 적용
+  for (const [field, condition] of Object.entries(filters)) {
+    const fullField = entity.getFullFieldName(field);
+
+    if (typeof condition !== "object") {
+      qb.where(fullField, condition);
+    } else {
+      for (const [operator, value] of Object.entries(condition)) {
+        this.applyOperator(qb, fullField, operator, value);
+      }
+    }
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card
+    title="findMany"
+    icon="list"
+    href="/api-reference/base-model/find-many"
+  >
+    리스트 조회 및 페이지네이션
+  </Card>
+
+  <Card
+    title="Puri 쿼리 빌더"
+    icon="code"
+    href="/database/puri/basic-queries"
+  >
+    고급 쿼리 작성하기
+  </Card>
+</CardGroup>
