@@ -523,15 +523,11 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE: 컬럼 - 사용: .where("u.id", ">", 10), .where("u.id", "!=", null)
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator | "like" | "not like",
+    operator: WhereOperator,
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   // WHERE: SQL 표현식 - 사용: .where(puri.raw("CONCAT(u.name, u.email)"), "like", "%test%")
-  where<TColumn extends Knex.Raw>(
-    column: TColumn,
-    operator: ComparisonOperator | "like" | "not like",
-    value: any,
-  ): this;
+  where<TColumn extends Knex.Raw>(column: TColumn, operator: WhereOperator, value: any): this;
   // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
   where(...args: [columnOrConditions: any, operatorOrValue?: any, value?: any]): this {
     const [columnOrConditions, operatorOrValue, value] = args;
