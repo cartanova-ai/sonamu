@@ -519,9 +519,10 @@ async function skills_sync() {
   const claudeDir = path.join(workspaceRoot, ".claude");
   const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
 
-  // @sonamu-kit/skills 패키지 경로
-  const require = createRequire(import.meta.url);
-  const sourceBase = path.dirname(require.resolve("@sonamu-kit/skills/CLAUDE.md"));
+  // ✅ 수정: sonamu 패키지 기준 상대 경로로 skills 찾기
+  // cli.ts 위치: sonamu/modules/sonamu/src/bin/cli.ts
+  // skills 위치: sonamu/modules/skills/
+  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "..", "skills");
   const sourceSkillsDir = path.join(sourceBase, "sonamu");
   const sourceClaudeMd = path.join(sourceBase, "CLAUDE.md");
 

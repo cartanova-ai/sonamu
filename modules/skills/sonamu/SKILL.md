@@ -41,7 +41,34 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 pnpm create sonamu [프로젝트명] --yes
 ```
 
-### 2. Docker 실행
+### 2. Sonamu 링크 확인 및 Skills 동기화
+
+**sonamu가 로컬 링크로 참조되어야 Skills 동기화가 가능합니다.**
+
+**확인 방법:**
+`packages/api/package.json`에서 sonamu 의존성 확인:
+
+```json
+// ✓ 링크 참조 (Skills 동기화 가능)
+"sonamu": "link:/path/to/sonamu/modules/sonamu"
+
+// ✗ npm 버전 (Skills 동기화 불가)
+"sonamu": "^0.7.47"
+```
+
+**링크 설정 방법 (npm 버전인 경우):**
+1. `packages/api/package.json`에서 sonamu 버전을 링크로 변경
+2. `pnpm install` 실행
+
+**Skills 동기화:**
+```bash
+cd packages/api
+pnpm sonamu skills sync
+```
+
+프로젝트 루트에 `.claude/skills/sonamu/` 생성됨.
+
+### 3. Docker 실행
 
 ```bash
 cd [프로젝트명]/packages/api
@@ -50,7 +77,7 @@ pnpm docker:up
 
 포트 충돌 오류 발생 시 → `database.md` 참조
 
-### 3. 빌드 확인
+### 4. 빌드 확인
 
 ```bash
 cd packages/api
@@ -59,7 +86,7 @@ pnpm build
 
 오류 발생 시 해결 후 다음 단계로.
 
-### 4. 서버 실행
+### 5. 서버 실행
 
 ```bash
 pnpm dev
@@ -67,7 +94,7 @@ pnpm dev
 
 Sonamu UI 접속: http://localhost:1028/sonamu-ui
 
-### 5. 엔티티 설계
+### 6. 엔티티 설계
 
 **사용자에게 먼저 질문 (순서대로, 하나씩):**
 1. 누락된 Entity 확인 → 응답 대기
@@ -83,7 +110,7 @@ Sonamu UI 접속: http://localhost:1028/sonamu-ui
 - 현재 디렉토리가 다른 프로젝트일 수 있습니다
 - 항상 사용자에게 명시적으로 확인받으세요
 
-### 6. Migration
+### 7. Migration
 
 **참조 Skill:** `migration.md`
 
@@ -91,7 +118,7 @@ Sonamu UI 접속: http://localhost:1028/sonamu-ui
 pnpm sonamu migrate run
 ```
 
-### 7. Scaffolding
+### 8. Scaffolding
 
 **참조 Skill:** `scaffolding.md`
 
@@ -99,7 +126,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 
 > **중요**: Scaffolding 전 반드시 `pnpm build` 완료 필요
 
-### 8. 프론트엔드 개발
+### 9. 프론트엔드 개발
 
 **참조 Skill:** `frontend.md`
 
