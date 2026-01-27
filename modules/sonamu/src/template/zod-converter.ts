@@ -295,6 +295,11 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt += ".nullable()";
   }
 
+  // numeric 타입의 경우 nullable 이후에 meta 추가 (메타데이터가 최상위 레벨에 있어야 함)
+  if (isNumericSingleProp(prop) || isNumericArrayProp(prop)) {
+    stmt += '.meta({ SonamuPropType: "numeric" })';
+  }
+
   return `${stmt},`;
 }
 

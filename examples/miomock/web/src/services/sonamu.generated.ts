@@ -174,7 +174,7 @@ export const EmployeeBaseSchema = z.object({
   user_id: z.int(),
   department_id: z.int().nullable(),
   employee_number: z.string().max(32),
-  salary: z.string().nullable(),
+  salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
   hire_date: z.date().nullable(),
   notes: z.string().nullable(),
   // projs: ManyToMany Project
@@ -211,7 +211,7 @@ export const ProjectBaseSchema = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().nullable(),
-  budget: z.string().nullable(),
+  budget: z.string().nullable().meta({ SonamuPropType: "numeric" }),
   deadline: z.date().nullable(),
   // tags: ManyToMany Tag
   image_urls: SonamuFileArraySchema.nullable(),
@@ -473,7 +473,7 @@ export const DepartmentSubsetA = z.object({
     z.object({
       id: z.int(),
       employee_number: z.string().max(32),
-      salary: z.string().nullable(),
+      salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
       user: z.object({
         id: z.int(),
         email: z.string().max(255),
@@ -537,7 +537,7 @@ export const EmployeeSubsetA = z.object({
   id: z.int(),
   created_at: z.date(),
   employee_number: z.string().max(32),
-  salary: z.string().nullable(),
+  salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
   hire_date: z.date().nullable(),
   notes: z.string().nullable(),
   user: z.object({
@@ -571,7 +571,7 @@ export const EmployeeSubsetP = z.object({
           })
           .nullable(),
         employee_number: z.string().max(32),
-        salary: z.string().nullable(),
+        salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
       })
       .nullable(),
   }),
@@ -581,7 +581,7 @@ export const EmployeeSubsetP = z.object({
       employees: z.array(
         z.object({
           id: z.int(),
-          salary: z.string().nullable(),
+          salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
           projs: z.array(
             z.object({
               id: z.int(),
@@ -633,7 +633,7 @@ export const ProjectSubsetA = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().nullable(),
-  budget: z.string().nullable(),
+  budget: z.string().nullable().meta({ SonamuPropType: "numeric" }),
   deadline: z.date().nullable(),
   image_urls: SonamuFileArraySchema.nullable(),
   virtual_test: NumberType.nullable(),
@@ -642,7 +642,7 @@ export const ProjectSubsetA = z.object({
     z.object({
       id: z.int(),
       employee_number: z.string().max(32),
-      salary: z.string().nullable(),
+      salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
       user: z.object({
         email: z.string().max(255),
         username: z.string().max(255),
@@ -763,7 +763,7 @@ export const UserSubsetP = z.object({
           name: z.string().max(128),
         })
         .nullable(),
-      salary: z.string().nullable(),
+      salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
     })
     .nullable(),
 });

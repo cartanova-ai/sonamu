@@ -887,11 +887,15 @@ describe("zod-converter", () => {
       // 목적: numeric 타입 prop이 string으로 변환되는지 검증 (정밀도 유지를 위해 문자열 사용)
       test.each([
         // [설명, EntityProp, 기대하는 Zod 코드]
-        ["numeric single", { type: "numeric" as const, name: "amount" }, "amount: z.string(),"],
+        [
+          "numeric single",
+          { type: "numeric" as const, name: "amount" },
+          'amount: z.string().meta({ SonamuPropType: "numeric" }),',
+        ],
         [
           "numeric array",
           { type: "numeric[]" as const, name: "amounts" },
-          "amounts: z.string().array(),",
+          'amounts: z.string().array().meta({ SonamuPropType: "numeric" }),',
         ],
       ])("%s", (_desc, prop, expectedCode) => {
         const importKeys: string[] = [];
