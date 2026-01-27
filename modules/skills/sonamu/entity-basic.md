@@ -5,35 +5,6 @@ description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 �
 
 # Entity 기본 구조
 
-## CRITICAL: Ask One Question at a Time
-
-**MUST ask questions one at a time. NEVER overwhelm users with multiple questions.**
-
-### MUST DO
-1. **질문은 한 번에 하나씩만**: 사용자가 overwhelmed 되지 않도록
-2. **Entity 생성 요청 → 즉시 질문**: 코드나 JSON을 작성하기 **전에** 확인
-3. **추측 금지**: 사용자가 명시하지 않은 것은 추측하지 말고 질문
-
-### NEVER DO
-- 여러 질문을 한꺼번에 나열
-- 질문 없이 바로 Entity JSON 작성
-- "아마 이렇겠지"하고 추측해서 설계
-- 사용자가 언급한 Entity만 만들고 관련 Entity 누락
-
-### 질문 순서 (한 번에 하나씩!)
-```
-1. 누락된 Entity 확인 → 응답 대기
-2. Entity 간 관계 확인 → 응답 대기
-3. 특수 필드 확인 → 응답 대기
-4. 다음 Entity로 이동...
-```
-
-### 예외: 질문 생략 가능한 경우
-- 사용자가 **현재 대화에서** 이미 모든 세부사항을 명시한 경우
-- 사용자가 "질문하지 말고 바로 만들어"라고 명시적으로 요청한 경우
-
----
-
 ## Entity 생성 워크플로우
 
 ### 1단계: stub 생성

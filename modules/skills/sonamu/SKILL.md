@@ -7,11 +7,110 @@ description: Sonamu TypeScript 풀스택 프레임워크 개발 가이드. Entit
 
 Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill입니다.
 
+## CRITICAL: 질문은 하나씩
+
+**MUST ask questions one at a time. NEVER overwhelm users with multiple questions.**
+
+### MUST DO
+- 질문 하나 → 사용자 응답 대기 → 다음 질문
+- 간결하게 질문
+- 선택지가 있으면 명확하게 제시
+
+### NEVER DO
+- 여러 질문을 한꺼번에 나열
+- 긴 설명과 함께 질문
+- 확인사항 목록을 주루룩 출력
+
+---
+
+## 개발 흐름
+
+### 1. 프로젝트 생성
+
+**사용자에게 먼저 질문 (순서대로, 하나씩):**
+1. "Sonamu 프로젝트가 이미 생성되어 있나요?"
+2. (없다면) "프로젝트를 생성할까요?"
+3. (생성한다면) "프로젝트명을 알려주세요."
+
+**참조 Skill:**
+- `project-init.md` - 대화 흐름, 예시
+- `create-sonamu.md` - CLI 옵션
+
+**명령어:**
+```bash
+pnpm create sonamu [프로젝트명] --yes
+```
+
+### 2. Docker 실행
+
+```bash
+cd [프로젝트명]/packages/api
+pnpm docker:up
+```
+
+### 3. 빌드 확인
+
+```bash
+cd packages/api
+pnpm build
+```
+
+오류 발생 시 해결 후 다음 단계로.
+
+### 4. 서버 실행
+
+```bash
+pnpm dev
+```
+
+Sonamu UI 접속: http://localhost:1028/sonamu-ui
+
+### 5. 엔티티 설계
+
+**사용자에게 먼저 질문 (순서대로, 하나씩):**
+1. 누락된 Entity 확인 → 응답 대기
+2. Entity 간 관계 확인 → 응답 대기
+3. 특수 필드 확인 → 응답 대기
+
+**참조 Skill:**
+- `entity-basic.md` - Entity JSON 구조, 필드 타입
+- `entity-relations.md` - BelongsToOne, HasMany, ManyToMany
+
+**주의:**
+- 파일 시스템을 자동으로 확인하지 마세요
+- 현재 디렉토리가 다른 프로젝트일 수 있습니다
+- 항상 사용자에게 명시적으로 확인받으세요
+
+### 6. Migration
+
+**참조 Skill:** `migration.md`
+
+```bash
+pnpm sonamu migrate run
+```
+
+### 7. Scaffolding
+
+**참조 Skill:** `scaffolding.md`
+
+Sonamu UI에서 Model/View Scaffolding 실행.
+
+> **중요**: Scaffolding 전 반드시 `pnpm build` 완료 필요
+
+### 8. 프론트엔드 개발
+
+**참조 Skill:** `frontend.md`
+
+생성된 Service와 TanStack Query 사용.
+
+---
+
 ## Skills 목록
 
 | Skill | 파일 | 용도 |
 |-------|------|------|
-| 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, create-sonamu |
+| 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
+| 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
 | Entity 기본 | `entity-basic.md` | Entity JSON 구조, 필드 타입 |
 | Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany |
 | Subset | `subset.md` | 조회 필드 범위 정의 |
@@ -28,7 +127,8 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 
 | 작업 | 참고 Skill |
 |------|-----------|
-| Entity/속성 정의 | project-init, entity-basic |
+| 프로젝트 생성 | create-sonamu, project-init |
+| Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |
 | API 응답 필드 구성 | subset |
 | 데이터 조회/저장 로직 | model, puri |
@@ -49,36 +149,6 @@ pnpm build
 pnpm dev
 pnpm sonamu migrate run
 ```
-
-## 개발 흐름
-
-```
-1. Entity 정의 (Sonamu UI)
-     ↓
-2. types.ts 자동 생성 대기 (syncer 감지)
-     ↓
-3. Migration 생성 및 실행
-     ↓
-4. pnpm build (TypeScript 컴파일)
-     ↓
-5. Scaffolding (Model/View)
-     ↓
-6. Frontend Service 사용
-```
-
-### 단계별 상세
-
-| 단계 | 작업 | 명령어/도구 |
-|------|------|-------------|
-| 1 | Entity JSON 정의 | Sonamu UI |
-| 2 | types.ts 자동 생성 | syncer 자동 감지 (2-3초 대기) |
-| 3 | Migration 생성 | Sonamu UI |
-| 3 | Migration 실행 | `pnpm sonamu migrate run` |
-| 4 | TypeScript 빌드 | `pnpm build` |
-| 5 | Model/View Scaffolding | Sonamu UI |
-| 6 | 프론트엔드 개발 | Service, TanStack Query |
-
-> **중요**: Scaffolding 전 반드시 `pnpm build` 완료 필요 (dist/*.js 파일 생성)
 
 ## 소스코드 참조
 
