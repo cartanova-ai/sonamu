@@ -42,6 +42,8 @@ await puri.table("posts")
 - `<=` - Less than or equal
 - `like` - Pattern matching
 - `not like` - Pattern mismatch
+- `ilike` - Case-insensitive pattern matching (PostgreSQL)
+- `not ilike` - Case-insensitive pattern mismatch (PostgreSQL)
 
 ### Object-Style Conditions
 
@@ -118,6 +120,33 @@ await puri.table("users")
 
 // WHERE users.email NOT LIKE '%spam%'
 ```
+
+### ILIKE (Case-Insensitive, PostgreSQL)
+
+Performs case-insensitive pattern matching in PostgreSQL.
+
+```typescript
+// Search regardless of case
+await puri.table("users")
+  .where("users.name", "ilike", "%john%");
+
+// WHERE users.name ILIKE '%john%'
+// Matches 'John', 'JOHN', 'john', etc.
+```
+
+### NOT ILIKE (PostgreSQL)
+
+```typescript
+await puri.table("users")
+  .where("users.email", "not ilike", "%SPAM%");
+
+// WHERE users.email NOT ILIKE '%SPAM%'
+// Excludes 'spam', 'Spam', 'SPAM', etc.
+```
+
+<Info>
+`ilike` and `not ilike` are PostgreSQL-specific operators. In MySQL, you can achieve similar results by combining `LOWER()` function with `like`.
+</Info>
 
 ## whereIn / whereNotIn
 
@@ -536,15 +565,22 @@ await puri.table("users")
   .whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
 ```
 
-### 2. LIKE Patterns
+### 2. LIKE/ILIKE Patterns
 
 ```typescript
 // ✅ Good: Fixed prefix (can use index)
 .where("users.name", "like", "John%")
+.where("users.name", "ilike", "john%")  // PostgreSQL
 
 // ❌ Bad: Leading wildcard (cannot use index)
 .where("users.name", "like", "%John")
+.where("users.name", "ilike", "%john")  // PostgreSQL
 ```
+
+<Info>
+In PostgreSQL, `ilike` is convenient for case-insensitive search, but it can affect performance on large datasets.
+Consider using `citext` type or `pg_trgm` extension indexes for such cases.
+</Info>
 
 ### 3. IN vs Multiple ORs
 

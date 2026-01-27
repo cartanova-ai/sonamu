@@ -42,6 +42,8 @@ await puri.table("posts")
 - `<=` - 보다 작거나 같음
 - `like` - 패턴 매칭
 - `not like` - 패턴 불일치
+- `ilike` - 대소문자 무시 패턴 매칭 (PostgreSQL)
+- `not ilike` - 대소문자 무시 패턴 불일치 (PostgreSQL)
 
 ### 객체 형태 조건
 
@@ -118,6 +120,33 @@ await puri.table("users")
 
 // WHERE users.email NOT LIKE '%spam%'
 ```
+
+### ILIKE (대소문자 무시, PostgreSQL)
+
+PostgreSQL에서 대소문자를 구분하지 않는 패턴 매칭을 수행합니다.
+
+```typescript
+// 대소문자 무관하게 검색
+await puri.table("users")
+  .where("users.name", "ilike", "%john%");
+
+// WHERE users.name ILIKE '%john%'
+// 'John', 'JOHN', 'john' 모두 매칭
+```
+
+### NOT ILIKE (PostgreSQL)
+
+```typescript
+await puri.table("users")
+  .where("users.email", "not ilike", "%SPAM%");
+
+// WHERE users.email NOT ILIKE '%SPAM%'
+// 'spam', 'Spam', 'SPAM' 모두 제외
+```
+
+<Info>
+`ilike`와 `not ilike`는 PostgreSQL 전용 연산자입니다. MySQL에서는 `LOWER()` 함수와 `like`를 조합하여 유사한 효과를 얻을 수 있습니다.
+</Info>
 
 ## whereIn / whereNotIn
 
@@ -536,15 +565,22 @@ await puri.table("users")
   .whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
 ```
 
-### 2. LIKE 패턴
+### 2. LIKE/ILIKE 패턴
 
 ```typescript
 // ✅ 좋음: 앞 고정 (인덱스 사용 가능)
 .where("users.name", "like", "John%")
+.where("users.name", "ilike", "john%")  // PostgreSQL
 
 // ❌ 나쁨: 앞 와일드카드 (인덱스 사용 불가)
 .where("users.name", "like", "%John")
+.where("users.name", "ilike", "%john")  // PostgreSQL
 ```
+
+<Info>
+PostgreSQL에서 `ilike`는 대소문자 무시 검색에 편리하지만, 대용량 데이터에서는 성능에 영향을 줄 수 있습니다.
+이런 경우 `citext` 타입이나 `pg_trgm` 확장의 인덱스 사용을 고려하세요.
+</Info>
 
 ### 3. IN vs 여러 OR
 
