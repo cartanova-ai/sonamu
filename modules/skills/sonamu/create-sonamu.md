@@ -101,6 +101,7 @@ pnpm create sonamu my_project \
    cd [프로젝트명]/packages/api/
    pnpm docker:up
    ```
+   > 포트 충돌 오류 발생 시 → `database.md` 참조
 
 2. 개발 서버 실행
    ```bash

@@ -130,10 +130,9 @@ const user = await UserModel.findById("P", 1);
 // findMany
 const { rows } = await UserModel.findMany("P", { num: 20, page: 1 });
 
-// getPuri + Subset
+// getPuri + Subset (Puri는 Thenable이므로 직접 await)
 const users = await UserModel.getPuri("r", ["P"])
-  .where("employee__department.name", "Engineering")
-  .many();
+  .where("employee__department.name", "Engineering");
 ```
 
 ## 주의사항

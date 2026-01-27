@@ -48,6 +48,8 @@ cd [프로젝트명]/packages/api
 pnpm docker:up
 ```
 
+포트 충돌 오류 발생 시 → `database.md` 참조
+
 ### 3. 빌드 확인
 
 ```bash
@@ -111,6 +113,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 |-------|------|------|
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
+| 데이터베이스 | `database.md` | DB 설정, 포트 충돌 해결 |
 | Entity 기본 | `entity-basic.md` | Entity JSON 구조, 필드 타입 |
 | Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany |
 | Subset | `subset.md` | 조회 필드 범위 정의 |
@@ -128,6 +131,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 | 작업 | 참고 Skill |
 |------|-----------|
 | 프로젝트 생성 | create-sonamu, project-init |
+| DB 설정/포트 충돌 | database |
 | Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |
 | API 응답 필드 구성 | subset |

@@ -8,8 +8,8 @@ description: Sonamu Puri 타입 안전 쿼리 빌더. SELECT, WHERE, JOIN, 트�
 ## 쿼리 시작
 
 ```typescript
-// 읽기
-const users = await this.getPuri("r").table("users").select({ id: "id", name: "username" }).many();
+// 읽기 (Puri는 Thenable이므로 직접 await 가능)
+const users = await this.getPuri("r").table("users").select({ id: "id", name: "username" });
 
 // 쓰기
 await this.getPuri("w").table("users").where("id", 1).update({ is_active: false });
@@ -18,8 +18,8 @@ await this.getPuri("w").table("users").where("id", 1).update({ is_active: false 
 ## SELECT
 
 ```typescript
-// 기본 선택
-const users = await db.table("users").select({ id: "id", name: "username" }).many();
+// 배열 결과 (Puri는 Thenable이므로 직접 await)
+const users = await db.table("users").select({ id: "id", name: "username" });
 
 // 단일 레코드
 const user = await db.table("users").where("id", 1).first();
@@ -90,18 +90,23 @@ await db.table("users").where("id", 1).delete();
 
 ## 결과 메서드
 
+Puri는 Thenable 인터페이스를 구현하므로 직접 `await`로 배열 결과를 얻습니다.
+
 | 메서드 | 반환 | 설명 |
 |--------|------|------|
-| `first()` | `T \| undefined` | 첫 번째 레코드 |
-| `await query` | `T[]` | Puri는 Thenable, 직접 await로 배열 결과 |
-| `pluck("id")` | `number[]` | 특정 컬럼만 배열로 |
+| `await query` | `T[]` | 배열 결과 (Puri는 Thenable) |
+| `first()` | `Promise<T \| undefined>` | 첫 번째 레코드만 반환 |
+| `pluck("column")` | `Promise<V[]>` | 특정 컬럼만 배열로 반환 |
 
 ```typescript
-// 배열 결과 조회
+// 배열 결과 조회 (Puri는 Thenable이므로 직접 await)
 const users = await db.table("users").select({ id: "id", name: "username" });
 
 // 단일 레코드 조회
 const user = await db.table("users").where("id", 1).first();
+
+// 특정 컬럼만 추출
+const userIds = await db.table("users").where("role", "admin").pluck("id");
 
 // COUNT는 SELECT 함수로 사용
 const [{ total }] = await db.table("users").select({ total: Puri.count() });
