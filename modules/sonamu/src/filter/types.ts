@@ -45,28 +45,22 @@ type ConditionForOperators<T, TOps extends FilterOperator> =
   | { [K in TOps]?: OperatorValue<T, K> };
 
 /**
- * 필터 조건 - 타입에 따라 사용 가능한 연산자가 제한
- */
-export type FilterCondition<T> =
-  NonNullable<T> extends number
-    ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"integer">>
-    : NonNullable<T> extends string
-      ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"string">>
-      : NonNullable<T> extends Date
-        ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"date">>
-        : NonNullable<T> extends boolean
-          ? ConditionForOperators<NonNullable<T>, OperatorForPropType<"boolean">>
-          : // Fallback: 비원시 타입은 null 체크만 허용
-            ConditionForOperators<NonNullable<T>, OperatorForPropType<"json">>;
-
-/**
  * 필터 쿼리
  * 엔티티의 각 필드에 대한 필터 조건 정의
  */
 export type FilterQuery<TEntity, TNumericKeys extends keyof TEntity = never> = {
   [K in keyof TEntity]?: K extends TNumericKeys
     ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"numeric">>
-    : FilterCondition<TEntity[K]>;
+    : NonNullable<TEntity[K]> extends number
+      ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"integer">>
+      : NonNullable<TEntity[K]> extends string
+        ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"string">>
+        : NonNullable<TEntity[K]> extends Date
+          ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"date">>
+          : NonNullable<TEntity[K]> extends boolean
+            ? ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"boolean">>
+            : // Fallback: 비원시 타입은 null 체크만 허용
+              ConditionForOperators<NonNullable<TEntity[K]>, OperatorForPropType<"json">>;
 };
 
 /**
@@ -78,32 +72,3 @@ export type ApplySonamuFilter<
   TOmitKeys extends keyof TEntity = never,
   TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
 > = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
-
-/**
- * 필터 메타데이터
- * Entity의 props를 분석하여 자동 생성
- */
-export interface FilterMetadata {
-  /** 필드 이름 */
-  field: string;
-
-  /** 표시 레이블 */
-  label: string;
-
-  /** 필드 타입 */
-  type: "string" | "number" | "boolean" | "date" | "datetime" | "enum" | "json";
-
-  /** 사용 가능한 연산자 */
-  operators: FilterOperator[];
-
-  /** Enum 타입인 경우 가능한 값들 */
-  enumValues?: string[];
-
-  /** 기본 연산자 */
-  defaultOperator: FilterOperator;
-}
-
-/**
- * Entity의 모든 필드에 대한 필터 메타데이터
- */
-export type EntityFilterMetadata = Record<string, FilterMetadata>;

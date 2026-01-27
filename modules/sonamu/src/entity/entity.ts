@@ -6,13 +6,6 @@ import { group, unique } from "radashi";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import {
-  getDefaultOperator,
-  getEnumValues,
-  getOperatorsForType,
-  mapPropTypeToFilterType,
-} from "../filter";
-import type { EntityFilterMetadata } from "../filter/types";
-import {
   type EntityIndex,
   type EntityJson,
   type EntityProp,
@@ -754,31 +747,11 @@ export class Entity {
   }
 
   /**
-   * 필터 가능한 props 반환 (relation, virtual 제외)
+   * 필터링 가능한 props 반환
+   * Relation과 Virtual prop을 제외한 모든 props
    */
   getFilterableProps(): EntityProp[] {
     return this.props.filter((p) => !isRelationProp(p) && !isVirtualProp(p));
-  }
-
-  /**
-   * 필터 메타데이터 생성
-   * Entity의 props를 기반으로 각 필드의 필터링 정보를 생성
-   */
-  getFilterMetadata(): EntityFilterMetadata {
-    const metadata: EntityFilterMetadata = {};
-
-    for (const prop of this.getFilterableProps()) {
-      metadata[prop.name] = {
-        field: prop.name,
-        label: prop.desc || prop.name,
-        type: mapPropTypeToFilterType(prop.type),
-        operators: getOperatorsForType(prop.type),
-        enumValues: isEnumProp(prop) ? getEnumValues(this, prop.id) : undefined,
-        defaultOperator: getDefaultOperator(prop.type),
-      };
-    }
-
-    return metadata;
   }
 
   async registerModulePaths() {

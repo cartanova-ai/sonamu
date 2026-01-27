@@ -254,10 +254,9 @@ export class BaseModelClass<
     if (!filters) return;
 
     const entity = EntityManager.get(this.modelName);
-    const metadata = entity.getFilterMetadata();
 
-    // 1. 필터 검증 (메타데이터 기반)
-    validateSonamuFilters(filters, metadata);
+    // 1. 필터 검증 (Entity 기반)
+    validateSonamuFilters(filters, entity);
 
     // 2. 검증된 필터 적용
     const puri = qb as any;

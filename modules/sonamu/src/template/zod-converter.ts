@@ -674,8 +674,7 @@ function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["r
   } else if (zodType instanceof z.ZodTemplateLiteral) {
     return "string-plain";
   } else if (zodType.def.type === "custom") {
-    // TODO: sonamuFilter UI 렌더링 시 처리가 필요함
-    return "record";
+    return "object";
   } else {
     throw new Error(`타입 파싱 불가 ${key} ${zodType.def.type}`);
   }

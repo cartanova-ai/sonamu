@@ -1,4 +1,6 @@
-import type { EntityFilterMetadata, FilterOperator, FilterQuery } from "./types";
+import type { Entity } from "../entity/entity";
+import { isEnumProp } from "../types/types";
+import { type FilterOperator, type FilterQuery, operatorsByPropType } from "./types";
 
 // ============================================================
 // Query Normalization
@@ -95,41 +97,51 @@ function convertType(value: unknown): unknown {
 // ============================================================
 
 /**
- * sonamuFilter를 메타데이터 기반으로 검증
+ * sonamuFilter를 Entity 기반으로 검증
  *
  * 필터링 불가능한 필드, 지원하지 않는 연산자, 잘못된 enum 값 등을 체크
  *
  * @param filters 검증할 필터 쿼리
- * @param metadata Entity의 필터 메타데이터
+ * @param entity Entity 객체
  * @throws {Error} 검증 실패 시 상세한 에러 메시지와 함께 예외 발생
  *
  * @example
- * const metadata = entity.getFilterMetadata();
- * validateSonamuFilters({ status: "active", id: { gte: 1 } }, metadata);
+ * validateSonamuFilters({ status: "active", id: { gte: 1 } }, ProjectEntity);
  */
 export function validateSonamuFilters<TEntity = Record<string, unknown>>(
   filters: FilterQuery<TEntity> | undefined,
-  metadata: EntityFilterMetadata,
+  entity: Entity,
 ): void {
   if (!filters) return;
+
+  // 필터 가능한 필드들을 Map으로 만들어서 빠른 조회
+  const filterableProps = new Map(entity.getFilterableProps().map((prop) => [prop.name, prop]));
 
   for (const [field, condition] of Object.entries(filters)) {
     if (condition === undefined || condition === null) continue;
 
     // 1. 필드가 필터링 가능한지 검증
-    const fieldMeta = metadata[field];
-    if (!fieldMeta) {
-      const availableFields = Object.keys(metadata).join(", ");
+    const prop = filterableProps.get(field);
+    if (!prop) {
+      const availableFields = Array.from(filterableProps.keys()).join(", ");
       throw new Error(
         `필드 '${field}'는 필터링할 수 없습니다. (필터 가능한 필드: ${availableFields})`,
       );
     }
 
+    // 해당 prop 타입에 허용되는 연산자 목록
+    const allowedOperators = (operatorsByPropType[
+      prop.type as keyof typeof operatorsByPropType
+    ] ?? ["eq"]) as readonly FilterOperator[];
+
     // 직접 값인 경우 (eq와 동일)
     if (typeof condition !== "object" || Array.isArray(condition)) {
       // enum 타입이면 값 검증
-      if (fieldMeta.type === "enum" && fieldMeta.enumValues) {
-        validateEnumValue(field, condition, fieldMeta.enumValues);
+      if (isEnumProp(prop)) {
+        const enumValues = getEnumValues(entity, prop.id);
+        if (enumValues) {
+          validateEnumValue(field, condition, enumValues);
+        }
       }
       continue;
     }
@@ -139,9 +151,9 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
       const op = operator as FilterOperator;
 
       // 연산자가 해당 타입에서 지원되는지 검증
-      if (!fieldMeta.operators.includes(op)) {
+      if (!allowedOperators.includes(op)) {
         throw new Error(
-          `필드 '${field}'(타입: ${fieldMeta.type})는 '${operator}' 연산자를 지원하지 않습니다. (지원되는 연산자: ${fieldMeta.operators.join(", ")})`,
+          `필드 '${field}'(타입: ${prop.type})는 '${operator}' 연산자를 지원하지 않습니다. (지원되는 연산자: ${allowedOperators.join(", ")})`,
         );
       }
 
@@ -160,15 +172,18 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
       }
 
       // enum 타입이면 값 검증
-      if (fieldMeta.type === "enum" && fieldMeta.enumValues) {
-        if (op === "in" || op === "notIn") {
-          if (Array.isArray(value)) {
-            for (const v of value) {
-              validateEnumValue(field, v, fieldMeta.enumValues);
+      if (isEnumProp(prop)) {
+        const enumValues = getEnumValues(entity, prop.id);
+        if (enumValues) {
+          if (op === "in" || op === "notIn") {
+            if (Array.isArray(value)) {
+              for (const v of value) {
+                validateEnumValue(field, v, enumValues);
+              }
             }
+          } else {
+            validateEnumValue(field, value, enumValues);
           }
-        } else {
-          validateEnumValue(field, value, fieldMeta.enumValues);
         }
       }
     }
@@ -176,7 +191,7 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
 }
 
 /**
- * Enum value validation helper
+ * Enum 값 검증 helper
  */
 function validateEnumValue(field: string, value: unknown, enumValues: string[]): void {
   if (value === null || value === undefined) {
@@ -187,4 +202,14 @@ function validateEnumValue(field: string, value: unknown, enumValues: string[]):
       `필드 '${field}'의 값 '${value}'는 유효하지 않습니다. (허용되는 값: ${enumValues.join(", ")})`,
     );
   }
+}
+
+/**
+ * Enum 값 목록 추출 helper
+ */
+export function getEnumValues(entity: Entity, enumId: string): string[] | undefined {
+  const enumDef = entity.enumLabels?.[enumId];
+  if (!enumDef) return undefined;
+
+  return Object.keys(enumDef);
 }
