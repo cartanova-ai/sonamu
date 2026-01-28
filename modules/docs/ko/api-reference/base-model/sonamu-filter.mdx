@@ -6,7 +6,7 @@ description: '타입 안전한 엔티티 필터링'
 `sonamuFilter`는 Entity의 필드를 타입 안전하게 필터링하는 기능입니다. 필터 가능한 필드와 허용되는 연산자가 Entity 정의에서 자동으로 추론되어 잘못된 필터링 시도를 타입 레벨과 런타임 모두에서 방지합니다.
 
 <Info>
-`sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 관계(relations) 및 가상 필드(virtual fields)는 필터링 대상에서 제외됩니다.
+`sonamuFilter`는 Entity의 props를 기반으로 자동 생성됩니다. 가상 필드(virtual fields)는 필터링 대상에서 제외되며, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다.**
 </Info>
 
 ## 기본 사용법
@@ -223,6 +223,46 @@ const { rows } = await ProjectModel.findMany("A", {
 //   AND name LIKE '%AI%'
 ```
 
+### FK (Foreign Key) 필터링
+
+FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다. 내부적으로 integer 타입의 가상 prop으로 변환되어 모든 숫자 연산자를 지원합니다.
+
+```typescript
+// 특정 직원이 담당하는 프로젝트 조회
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: 5  // employee 관계의 FK
+  }
+});
+
+// 여러 직원이 담당하는 프로젝트 조회
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { in: [1, 2, 3] }
+  }
+});
+
+// 담당자가 없는 프로젝트 조회
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { isNull: true }
+  }
+});
+
+// FK와 다른 조건 조합
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { in: [1, 2, 3] },
+    status: "in_progress",
+    budget: { gt: 10000 }
+  }
+});
+```
+
+<Note>
+FK 필터링은 관계명이 아닌 `{관계명}_id` 형식을 사용해야 합니다. 예를 들어 `employee` 관계가 있다면 `employee`가 아닌 `employee_id`로 필터링합니다.
+</Note>
+
 ## URL 쿼리 스트링
 
 프론트엔드에서 URL 쿼리 스트링으로 필터를 전달할 수 있습니다:
@@ -247,12 +287,17 @@ Fastify가 파싱한 문자열은 자동으로 적절한 타입으로 변환됩�
 
 ### 1. 필터 가능한 필드
 
-Entity의 props에 정의된 필드만 필터링할 수 있습니다. 관계 필드나 가상 필드는 필터링 대상에서 제외됩니다.
+Entity의 props에 정의된 필드만 필터링할 수 있습니다. 가상 필드는 필터링 대상에서 제외됩니다. 단, **FK를 생성하는 관계(`BelongsToOne`, `hasJoinColumn`이 있는 `OneToOne`)는 `{관계명}_id` 형태로 필터링할 수 있습니다.**
 
 ```typescript
-// ❌ 에러: 필드 'employee'는 필터링할 수 없습니다
+// ✅ FK를 생성하는 관계는 {관계명}_id로 필터링 가능
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee: { eq: 1 } }  // 관계 필드
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }  // employee 관계의 FK
+});
+
+// ❌ 에러: 필드 'employee'는 필터링할 수 없습니다 (관계명 자체는 불가)
+await ProjectModel.findMany("A", {
+  sonamuFilter: { employee: { eq: 1 } }
 });
 
 // ❌ 에러: 필드 'virtual_test'는 필터링할 수 없습니다
@@ -333,10 +378,10 @@ protected applySonamuFilters<TEntity>(
   if (!filters) return;
 
   const entity = EntityManager.get(this.modelName);
-  const metadata = entity.getFilterMetadata();
+  const filterableProps = entity.getFilterableProps();
 
   // 1. 필터 검증
-  validateSonamuFilters(filters, metadata);
+  validateSonamuFilters(filters, filterableProps);
 
   // 2. 필터 적용
   for (const [field, condition] of Object.entries(filters)) {
