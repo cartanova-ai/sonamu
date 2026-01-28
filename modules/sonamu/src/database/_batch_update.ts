@@ -33,8 +33,8 @@ export async function batchUpdate<Id extends string>(
   }
 
   const executeUpdate = async (chunk: RowWithId<Id>[], transaction: Knex.Transaction) => {
-    const sql = generateBatchUpdateSQL(knex, tableName, chunk, ids);
-    return knex.raw(sql).transacting(transaction);
+    const rawQuery = generateBatchUpdateSQL(knex, tableName, chunk, ids);
+    return rawQuery.transacting(transaction);
   };
 
   if (trx) {
@@ -72,7 +72,7 @@ function generateBatchUpdateSQL<Id extends string>(
   tableName: string,
   data: Record<string, ColumnValue>[],
   identifiers: Id[],
-) {
+): Knex.Raw {
   const keySet = generateKeySetFromData(data);
   const allBindings: (string | number | boolean | null)[] = [];
 
@@ -132,5 +132,5 @@ function generateBatchUpdateSQL<Id extends string>(
     ...whereInBindings,
   ]);
 
-  return sql.toQuery();
+  return sql;
 }

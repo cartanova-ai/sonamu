@@ -1004,7 +1004,12 @@ describe("Upsert Builder", () => {
 
       // 1단계: 먼저 users 3개 생성
       const initialUsers = [
-        { email: "update1@test.com", username: "원본1", password: "pw1", role: "normal" },
+        {
+          email: "update1@test.com",
+          username: "원본1 안에 ?? 물음표가 들어있음",
+          password: "pw1",
+          role: "normal",
+        },
         { email: "update2@test.com", username: "원본2", password: "pw2", role: "normal" },
         { email: "update3@test.com", username: "원본3", password: "pw3", role: "normal" },
       ];
@@ -1026,7 +1031,7 @@ describe("Upsert Builder", () => {
         .orderBy("id");
 
       expect(originalUsers).toMatchObject([
-        { username: "원본1", role: "normal" },
+        { username: "원본1 안에 ?? 물음표가 들어있음", role: "normal" },
         { username: "원본2", role: "normal" },
         { username: "원본3", role: "normal" },
       ]);
