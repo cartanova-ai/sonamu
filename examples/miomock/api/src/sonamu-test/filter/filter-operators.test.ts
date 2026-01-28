@@ -1,5 +1,6 @@
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+import { DepartmentModel } from "../../application/department/department.model";
 import { ProjectModel } from "../../application/project/project.model";
 
 bootstrap(vi);
@@ -211,6 +212,100 @@ describe("Filter Operators - 모든 연산자 동작 검증", () => {
         const date = new Date(row.created_at).getTime();
         expect(date).toBeGreaterThanOrEqual(startDate.getTime());
         expect(date).toBeLessThanOrEqual(endDate.getTime());
+      }
+    });
+  });
+
+  describe("FK 필드 필터링 (Relation → Foreign Key)", () => {
+    test("company_id로 필터링 (eq 연산자) - BelongsToOne FK", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          company_id: { eq: 1 },
+        },
+      });
+
+      expect(result.rows.length).toBeGreaterThan(0);
+      for (const row of result.rows) {
+        expect(row.company?.id).toBe(1);
+      }
+    });
+
+    test("company_id로 필터링 (in 연산자) - BelongsToOne FK", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          company_id: { in: [1, 2] },
+        },
+      });
+
+      for (const row of result.rows) {
+        expect([1, 2]).toContain(row.company?.id);
+      }
+    });
+
+    test("company_id로 필터링 (gt 연산자) - BelongsToOne FK", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          company_id: { gt: 1 },
+        },
+      });
+
+      for (const row of result.rows) {
+        expect(row.company?.id).toBeGreaterThan(1);
+      }
+    });
+
+    test("parent_id로 필터링 (nullable FK, isNull) - BelongsToOne FK", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          parent_id: { isNull: true },
+        },
+      });
+
+      for (const row of result.rows) {
+        expect(row.parent).toBeNull();
+      }
+    });
+
+    test("parent_id로 필터링 (nullable FK, isNotNull) - BelongsToOne FK", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          parent_id: { isNotNull: true },
+        },
+      });
+
+      for (const row of result.rows) {
+        expect(row.parent).not.toBeNull();
+      }
+    });
+
+    test("복합 조건 - FK + 일반 필드", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          company_id: 1,
+          name: { contains: "부서" },
+        },
+      });
+
+      for (const row of result.rows) {
+        expect(row.company?.id).toBe(1);
+        expect(row.name).toContain("부서");
+      }
+    });
+
+    test("FK 필드에 여러 연산자 조합", async () => {
+      const result = await DepartmentModel.findMany("P", {
+        sonamuFilter: {
+          company_id: {
+            gte: 1,
+            lte: 3,
+          },
+        },
+      });
+
+      for (const row of result.rows) {
+        const companyId = row.company?.id ?? 0;
+        expect(companyId).toBeGreaterThanOrEqual(1);
+        expect(companyId).toBeLessThanOrEqual(3);
       }
     });
   });

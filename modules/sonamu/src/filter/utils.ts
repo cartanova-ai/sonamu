@@ -153,7 +153,8 @@ export function validateSonamuFilters<TEntity = Record<string, unknown>>(
       // 연산자가 해당 타입에서 지원되는지 검증
       if (!allowedOperators.includes(op)) {
         throw new Error(
-          `필드 '${field}'(타입: ${prop.type})는 '${operator}' 연산자를 지원하지 않습니다. (지원되는 연산자: ${allowedOperators.join(", ")})`,
+          `필드 '${field}'(타입: ${prop.type})는 '${operator}' 연산자를 지원하지 않습니다.` +
+            `(지원되는 연산자: ${allowedOperators.join(", ")})`,
         );
       }
 

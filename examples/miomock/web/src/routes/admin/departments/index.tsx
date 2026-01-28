@@ -27,13 +27,19 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { DepartmentOrderBySelect } from "@/components/department/DepartmentOrderBySelect";
 import { DepartmentSearchFieldSelect } from "@/components/department/DepartmentSearchFieldSelect";
+import { SonamuFilterModal } from "@/components/SonamuFilterModal";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
-import { DepartmentOrderBy, DepartmentSearchField } from "@/services/sonamu.generated";
+import {
+  DepartmentBaseSchema,
+  DepartmentOrderBy,
+  DepartmentSearchField,
+} from "@/services/sonamu.generated";
 
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
@@ -53,6 +59,7 @@ function DepartmentList({}: DepartmentListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // 리스트 필터
   const { listParams, register } = useListParams(DepartmentListParams, {
@@ -204,12 +211,21 @@ function DepartmentList({}: DepartmentListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<FilterIcon />}
+                      onClick={() => setFilterModalOpen(true)}
+                      className="h-8"
+                    >
+                      <span className="text-xs">Sonamu Filter</span>
                     </Button>
                   </div>
                 </div>
@@ -292,6 +308,13 @@ function DepartmentList({}: DepartmentListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sonamu Filter Modal */}
+      <SonamuFilterModal
+        baseSchema={DepartmentBaseSchema}
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+      />
     </div>
   );
 }

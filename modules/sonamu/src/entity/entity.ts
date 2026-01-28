@@ -709,14 +709,22 @@ export class Entity {
       .filter((f) => f !== null) as string[];
   }
 
+  /**
+   * Relation prop이 현재 테이블에 FK 컬럼을 생성하는지 확인
+   *(BelongsToOne 또는 OneToOne(hasJoinColumn=true)인 경우 FK 생성)
+   */
+  private hasForeignKey(prop: RelationProp): boolean {
+    return (
+      prop.relationType === "BelongsToOne" ||
+      (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
+    );
+  }
+
   getTableColumns(): { name: string; type: string }[] {
     return this.props
       .map((prop) => {
         if (prop.type === "relation") {
-          if (
-            prop.relationType === "BelongsToOne" ||
-            (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
-          ) {
+          if (this.hasForeignKey(prop)) {
             return { name: `${prop.name}_id`, type: "int_unsigned" };
           } else {
             return null;
@@ -748,10 +756,34 @@ export class Entity {
 
   /**
    * 필터링 가능한 props 반환
-   * Relation과 Virtual prop을 제외한 모든 props
+   *
+   * - 일반 prop
+   * - FK를 생성하는 relation (BelongsToOne, OneToOne with hasJoinColumn)
+   *   → {name}_id 형태의 가상 integer prop으로 변환
    */
   getFilterableProps(): EntityProp[] {
-    return this.props.filter((p) => !isRelationProp(p) && !isVirtualProp(p));
+    return this.props.flatMap((prop): EntityProp | EntityProp[] => {
+      // Virtual prop 제외
+      if (isVirtualProp(prop)) {
+        return [];
+      }
+
+      // Relation prop 처리
+      if (isRelationProp(prop)) {
+        // FK를 생성하는 relation만 포함
+        if (this.hasForeignKey(prop)) {
+          return {
+            name: `${prop.name}_id`,
+            type: "integer",
+            nullable: prop.nullable,
+          } as EntityProp;
+        }
+        return [];
+      }
+
+      // 일반 prop 처리
+      return prop;
+    });
   }
 
   async registerModulePaths() {
