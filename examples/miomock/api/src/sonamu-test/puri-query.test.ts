@@ -65,6 +65,23 @@ describe("Puri Query", () => {
       expect(query).toContain("user3@test.com");
     });
 
+    test("insert - JSON 컬럼", async () => {
+      const db = UserModel.getPuri("w");
+      await db.table("sync_fixtures").insert({
+        name: "테스트",
+        code: null,
+        status: "draft" as const,
+        tags: ["tag1", "tag2"],
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expectQuery(query, "type").toMatchInlineSnapshot(`"insert"`);
+      expectQuery(query, "table").toMatchInlineSnapshot(`"sync_fixtures"`);
+      expectQuery(query, "values").toMatchInlineSnapshot(
+        `"NULL,'테스트','draft','["tag1","tag2"]'"`,
+      );
+    });
+
     test("update", async () => {
       const db = UserModel.getPuri("w");
       await db.table("users").where("users.id", 1).update({ username: "수정됨" });
@@ -74,6 +91,19 @@ describe("Puri Query", () => {
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
       expectQuery(query, "set").toMatchInlineSnapshot(`"username = '수정됨'"`);
       expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
+    });
+
+    test("update - JSON 컬럼", async () => {
+      const db = UserModel.getPuri("w");
+      await db
+        .table("sync_fixtures")
+        .where("sync_fixtures.id", 1)
+        .update({ tags: ["tag3", "tag4"] });
+      const query = Naite.get("puri:executed-query").first();
+
+      expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
+      expectQuery(query, "table").toMatchInlineSnapshot(`"sync_fixtures"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"tags = '["tag3","tag4"]'"`);
     });
 
     test("delete", async () => {

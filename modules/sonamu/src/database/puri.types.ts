@@ -14,6 +14,7 @@ type LeftJoinedKey = "__leftJoined__";
 type HasDefault = "__hasDefault__";
 type GeneratedKey = "__generated__";
 type VectorKey = "__vector__";
+type VirtualQueryKey = "__virtual_query__";
 
 type InternalTypeKeys =
   | FulltextKey
@@ -21,7 +22,8 @@ type InternalTypeKeys =
   | LeftJoinedKey
   | HasDefault
   | GeneratedKey
-  | VectorKey;
+  | VectorKey
+  | VirtualQueryKey;
 
 // ============================================
 // 타입 유틸리티

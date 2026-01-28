@@ -10,6 +10,7 @@ export type QueryPart =
   | "table"
   | "columns"
   | "set"
+  | "values"
   | "where"
   | "join"
   | "orderBy"
@@ -171,6 +172,13 @@ function extractHaving(ast: AST): string | null {
   return exprToString(having);
 }
 
+/** VALUES - INSERT 절 추출 */
+function extractValues(ast: AST): string | null {
+  const values = (ast as { values?: { values: unknown[] } }).values;
+  if (!values) return null;
+  return values.values.map((v) => parser.exprToSQL(v, dbOption())).join(", ");
+}
+
 /**
  * QueryPart별 추출 함수 매핑
  * expectQuery() 함수에서 part 인자에 따른 추출 함수를 찾는 데 사용됩니다.
@@ -186,6 +194,7 @@ const extractors: Record<QueryPart, (ast: AST) => string | null> = {
   groupBy: extractGroupBy,
   having: extractHaving,
   set: extractSet,
+  values: extractValues,
 };
 
 /**
@@ -205,3 +214,4 @@ export function expectQuery(query: string, part?: QueryPart) {
   const extractedSql = extractors[part](ast);
   return expect(extractedSql);
 }
+4;

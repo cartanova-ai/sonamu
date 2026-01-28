@@ -5,6 +5,7 @@ import assert from "assert";
 import chalk from "chalk";
 import inflection from "inflection";
 import type { Knex } from "knex";
+import { EntityManager, type TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import type {
   AvailableColumns,
@@ -37,34 +38,45 @@ import type { ClearStatements } from "./puri-subset.types";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
+  private tableSpec: TableSpec | null = null;
 
   // 생성자 시그니처들
   constructor(knex: Knex, tableName: string);
-  constructor(knex: Knex, tableSpec: Record<string, string | Puri<TSchema, any, any>>);
+  constructor(knex: Knex, tableSource: Record<string, string | Puri<TSchema, any, any>>);
   constructor(
     public knex: Knex,
-    tableNameOrSpec: any,
+    tableNameOrSource: any,
   ) {
-    if (typeof tableNameOrSpec === "string") {
+    if (typeof tableNameOrSource === "string") {
       // Case: new Puri(knex, "users")
-      this.knexQuery = this.knex(tableNameOrSpec).from(tableNameOrSpec);
-    } else if (typeof tableNameOrSpec === "object") {
-      const entries = Object.entries(tableNameOrSpec);
+      this.knexQuery = this.knex(tableNameOrSource).from(tableNameOrSource);
+      this.tableSpec = this.safeGetTableSpec(tableNameOrSource);
+    } else if (typeof tableNameOrSource === "object") {
+      const entries = Object.entries(tableNameOrSource);
       if (entries.length !== 1) {
         throw new Error("Table spec must have exactly one entry");
       }
       assert(entries[0]);
-      const [alias, spec] = entries[0];
-      if (typeof spec === "string") {
-        this.knexQuery = this.knex(spec).from({ [alias]: spec });
-      } else if (spec instanceof Puri) {
-        const subqueryBuilder = spec.rawQuery();
+      const [alias, source] = entries[0];
+      if (typeof source === "string") {
+        this.knexQuery = this.knex(source).from({ [alias]: source });
+        this.tableSpec = this.safeGetTableSpec(source);
+      } else if (source instanceof Puri) {
+        const subqueryBuilder = source.rawQuery();
         this.knexQuery = this.knex.from(subqueryBuilder.as(alias));
       } else {
         throw new Error("Invalid table specification");
       }
     } else {
       throw new Error("Invalid table specification");
+    }
+  }
+
+  safeGetTableSpec(tableName: string): TableSpec | null {
+    try {
+      return EntityManager.getTableSpec(tableName);
+    } catch {
+      return null;
     }
   }
 
@@ -873,16 +885,55 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): ResolvedPuri<InsertResult, SingleTableValue<TTables>>;
   // INSERT 실제 구현
   insert(
-    data: InsertData<SingleTableValue<TTables>> | InsertData<SingleTableValue<TTables>>[],
+    rawData: InsertData<SingleTableValue<TTables>> | InsertData<SingleTableValue<TTables>>[],
   ): ResolvedPuri<InsertResult, SingleTableValue<TTables>> {
-    this.knexQuery.insert(data);
+    // JSON 컬럼 stringify 로직을 메서드로 분리하여 중복 제거
+    const refinedData = this.refineJsonColumns(rawData);
+    this.knexQuery.insert(refinedData);
     return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // UPDATE
-  update(data: WhereCondition<TTables>): ResolvedPuri<number, SingleTableValue<TTables>> {
-    this.knexQuery.update(data);
+  update(rawData: WhereCondition<TTables>): ResolvedPuri<number, SingleTableValue<TTables>> {
+    // JSON 컬럼 stringify 로직을 메서드로 분리하여 중복 제거
+    const refinedData = this.refineJsonColumns(rawData);
+    this.knexQuery.update(refinedData);
     return new ResolvedPuri(this.knexQuery, this.knex);
+  }
+
+  /**
+   * JSON 컬럼에 대해 stringify 처리를 수행하는 내부 메서드입니다.
+   * object 또는 object 배열을 받고, JSON 컬럼이 있으면 직렬화하여 반환합니다.
+   * 직접 값을 변경하므로 side effect가 있습니다.
+   */
+  private refineJsonColumns(
+    data: Record<string, unknown> | Record<string, unknown>[],
+  ): typeof data {
+    // tableSpec이나 jsonColumns 없는 경우 바로 반환
+    if (!this.tableSpec || !this.tableSpec.jsonColumns.length) {
+      return data;
+    }
+
+    // 등록된 TableSpec을 통해 JSON컬럼 목록을 가져와 JSON.stringify 처리
+    const jsonColumns = this.tableSpec.jsonColumns;
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        for (const column of jsonColumns) {
+          const value = item[column];
+          if (value !== undefined && value !== null) {
+            item[column] = JSON.stringify(value);
+          }
+        }
+      }
+    } else {
+      for (const column of jsonColumns) {
+        const value = data[column];
+        if (value !== undefined && value !== null) {
+          data[column] = JSON.stringify(value);
+        }
+      }
+    }
+    return data;
   }
 
   // Increment

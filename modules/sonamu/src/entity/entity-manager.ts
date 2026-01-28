@@ -13,7 +13,7 @@ export type EntityNamesRecord = Record<
   "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
   string
 >;
-type TableSpec = {
+export type TableSpec = {
   name: string;
   uniqueIndexes: EntityIndex[];
   jsonColumns: string[];
