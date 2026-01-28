@@ -126,7 +126,60 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 
 > **중요**: Scaffolding 전 반드시 `pnpm build` 완료 필요
 
-### 9. 프론트엔드 개발
+### 9. API 단위테스트
+
+**참조 Skill:** `testing.md`
+
+Scaffolding으로 생성된 Model/API에 대한 테스트 작성.
+
+```bash
+# watch 모드로 테스트 실행 (개발 중 권장)
+pnpm test:watch
+
+# 특정 파일만 테스트
+# 1. pnpm test:watch 실행
+# 2. p 키 입력
+# 3. 파일명 입력 (예: user.model.test.ts)
+
+# 전체 테스트 한 번 실행 (CI용)
+pnpm test
+```
+
+**테스트 파일 위치:**
+```
+src/application/{entity}/
+├── {entity}.model.ts
+├── {entity}.model.test.ts  ← Model 테스트
+└── {entity}.controller.ts
+```
+
+**기본 테스트 패턴:**
+```typescript
+import { bootstrap, test, testAs } from "sonamu/test";
+import { describe, expect, vi } from "vitest";
+import { UserModel } from "./user.model";
+
+bootstrap(vi);
+
+describe("UserModel", () => {
+  test("Create - 새 유저 생성", async () => {
+    const [userId] = await UserModel.save([{
+      email: "test@test.com",
+      username: "testuser",
+    }]);
+    expect(userId).toBeGreaterThan(0);
+  });
+
+  test("Read - 유저 조회", async () => {
+    const user = await UserModel.findById("A", 1);
+    expect(user).toBeDefined();
+  });
+});
+```
+
+> **중요**: 프론트엔드 개발 전 API 테스트로 비즈니스 로직 검증 필수
+
+### 10. 프론트엔드 개발
 
 **참조 Skill:** `frontend.md`
 
@@ -140,6 +193,7 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 |-------|------|------|
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
+| 프로젝트 설정 | `config.md` | .env, sonamu.config.ts 설정 |
 | 데이터베이스 | `database.md` | DB 설정, 포트 충돌 해결 |
 | Entity 기본 | `entity-basic.md` | Entity JSON 구조, 필드 타입 |
 | Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany |
@@ -159,7 +213,8 @@ Sonamu UI에서 Model/View Scaffolding 실행.
 | 작업 | 참고 Skill |
 |------|-----------|
 | 프로젝트 생성 | create-sonamu, project-init |
-| DB 설정/포트 충돌 | database |
+| 프로젝트 설정 | config |
+| DB 설정/포트 충돌 | database, config |
 | Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |
 | API 응답 필드 구성 | subset |
