@@ -6,7 +6,7 @@ description: 'Type-safe entity filtering'
 `sonamuFilter` is a feature for type-safe filtering of Entity fields. Filterable fields and allowed operators are automatically inferred from the Entity definition, preventing invalid filtering attempts at both type level and runtime.
 
 <Info>
-`sonamuFilter` is automatically generated based on the Entity's props. Relations and virtual fields are excluded from filtering targets.
+`sonamuFilter` is automatically generated based on the Entity's props. Virtual fields are excluded from filtering targets. **Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
 </Info>
 
 ## Basic Usage
@@ -223,6 +223,46 @@ const { rows } = await ProjectModel.findMany("A", {
 //   AND name LIKE '%AI%'
 ```
 
+### FK (Foreign Key) Filtering
+
+Relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format. Internally converted to a virtual integer type prop, supporting all numeric operators.
+
+```typescript
+// Get projects assigned to a specific employee
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: 5  // FK of employee relation
+  }
+});
+
+// Get projects assigned to multiple employees
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { in: [1, 2, 3] }
+  }
+});
+
+// Get projects with no assignee
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { isNull: true }
+  }
+});
+
+// Combine FK with other conditions
+const { rows } = await ProjectModel.findMany("A", {
+  sonamuFilter: {
+    employee_id: { in: [1, 2, 3] },
+    status: "in_progress",
+    budget: { gt: 10000 }
+  }
+});
+```
+
+<Note>
+FK filtering requires the `{relation_name}_id` format, not the relation name itself. For example, if you have an `employee` relation, use `employee_id` instead of `employee` for filtering.
+</Note>
+
 ## URL Query String
 
 Filters can be passed as URL query strings from the frontend:
@@ -247,12 +287,17 @@ String values parsed by Fastify are automatically converted to appropriate types
 
 ### 1. Filterable Fields
 
-Only fields defined in the Entity's props can be filtered. Relation fields and virtual fields are excluded from filtering targets.
+Only fields defined in the Entity's props can be filtered. Virtual fields are excluded from filtering targets. **However, relations that create FK (`BelongsToOne`, `OneToOne` with `hasJoinColumn`) can be filtered using the `{relation_name}_id` format.**
 
 ```typescript
-// ❌ Error: Field 'employee' cannot be filtered
+// ✅ Relations that create FK can be filtered as {relation_name}_id
 await ProjectModel.findMany("A", {
-  sonamuFilter: { employee: { eq: 1 } }  // relation field
+  sonamuFilter: { employee_id: { in: [1, 2, 3] } }  // FK of employee relation
+});
+
+// ❌ Error: Field 'employee' cannot be filtered (relation name itself is not allowed)
+await ProjectModel.findMany("A", {
+  sonamuFilter: { employee: { eq: 1 } }
 });
 
 // ❌ Error: Field 'virtual_test' cannot be filtered
@@ -333,10 +378,10 @@ protected applySonamuFilters<TEntity>(
   if (!filters) return;
 
   const entity = EntityManager.get(this.modelName);
-  const metadata = entity.getFilterMetadata();
+  const filterableProps = entity.getFilterableProps();
 
   // 1. Validate filters
-  validateSonamuFilters(filters, metadata);
+  validateSonamuFilters(filters, filterableProps);
 
   // 2. Apply filters
   for (const [field, condition] of Object.entries(filters)) {
