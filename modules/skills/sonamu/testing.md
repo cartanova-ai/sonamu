@@ -529,3 +529,220 @@ api/src/testing/
 - Naite로 쿼리/UpsertBuilder 동작 추적 및 검증
 - `toMatchInlineSnapshot()` 활용하여 스냅샷 테스트 권장
 - Mock은 `setup-mocks.ts`에서 전역 설정하거나 테스트 내에서 `vi.spyOn` 사용
+
+## 실전 주의사항 (Common Pitfalls)
+
+### 1. Fixture 데이터 준비 필수
+
+**문제:** Foreign key constraint로 인해 기본 데이터 없으면 테스트 실패
+
+**해결:**
+```sql
+-- database/scripts/seed-initial-data.sql
+INSERT INTO institutions (id, name, code) VALUES (1, '본원', 'HQ');
+INSERT INTO departments (id, name, institution_id) VALUES (1, '연구부', 1);
+INSERT INTO roles (id, code, name) VALUES (1, 'ADMIN', '관리자');
+```
+
+```bash
+# 1. seed 데이터를 test DB에 적용
+PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -f database/scripts/seed-initial-data.sql
+
+# 2. dump 생성
+pnpm dump
+
+# 3. fixture DB에 적용
+pnpm seed
+
+# 4. sonamu fixture sync (선택사항)
+pnpm sonamu fixture sync
+```
+
+### 2. SaveParams 타입 설계 (Partial)
+
+**문제:** Update 시 일부 필드만 변경하면 타입 에러 발생
+
+**해결:** nullable/dbDefault 필드를 partial로 설정
+```typescript
+// api/src/application/user/user.types.ts
+export const UserSaveParams = UserBaseSchema.partial({
+  id: true,              // update 시 필요
+  created_at: true,      // dbDefault
+  password: true,        // nullable
+  email: true,           // nullable
+  phone: true,           // nullable
+  user_type: true,       // dbDefault
+  position_code: true,   // nullable
+  position_name: true,   // nullable
+  hire_date: true,       // nullable
+  status: true,          // dbDefault
+  department_id: true,   // nullable relation
+});
+```
+
+**핵심:** 필수 필드(employee_no, login_id, name, institution_id)는 partial 제외하여 타입 안정성 유지
+
+### 3. Update 시 Relation 필드 제외 패턴
+
+**문제:** Subset에는 relation 객체가 포함되지만, SaveParams에는 FK만 있어서 에러 발생
+
+```typescript
+// 잘못된 방법
+const user = await UserModel.findById("A", userId);
+await UserModel.save([{ ...user, status: "inactive" }]);
+// → "column 'department' does not exist" 에러
+```
+
+**해결:** Relation 필드 제외 + FK 명시적 추가
+```typescript
+// 올바른 방법
+const user = await UserModel.findById("A", userId);
+const { institution, department, ...userData } = user;
+await UserModel.save([{
+  ...userData,
+  institution_id: user.institution.id,           // FK 명시적 추가
+  department_id: user.department?.id ?? null,
+  status: "inactive",
+}]);
+```
+
+**이유:** `UserSubsetA`는 `institution`, `department` 객체를 포함하지만, `institution_id`, `department_id` FK는 포함하지 않음
+
+### 4. ubUpsert는 Upsert 동작
+
+**문제:** Unique constraint 위반 테스트가 실패함
+
+```typescript
+// 실패하는 테스트
+test("사번은 고유해야 함", async () => {
+  await UserModel.save([{ employee_no: "001", ... }]);
+
+  // 중복된 사번으로 생성 시도
+  await expect(
+    UserModel.save([{ employee_no: "001", ... }])
+  ).rejects.toThrow();  // 에러 안 던지고 UPDATE됨
+});
+```
+
+**원인:** Sonamu의 `save()`는 `ubUpsert` 사용 → conflict 시 에러 대신 UPDATE
+
+**해결:** 이런 테스트는 skip 처리
+```typescript
+test.skip("사번은 고유해야 함 (ubUpsert는 upsert 동작하므로 skip)", async () => {
+  // ...
+});
+```
+
+### 5. testAs 사용법
+
+**문제:** test 안에서 testAs 호출하면 에러 발생
+
+```typescript
+// 잘못된 사용
+test("권한 테스트", async () => {
+  await testAs(adminUser, "설명", async () => { ... });
+  // → "Calling the test function inside another test function is not allowed" 에러
+});
+
+// 올바른 사용 - test를 대체
+testAs(adminUser, "권한 테스트", async () => {
+  const result = await UserModel.del([userId]);
+  expect(result).toBe(1);
+});
+```
+
+### 6. Naite로 Model 쿼리 검증
+
+**Model에 Naite 기록 추가:**
+```typescript
+// user.model.ts
+import { Naite } from "sonamu";
+
+async findMany(...) {
+  // ... qb 구성 ...
+
+  // 테스트를 위한 쿼리 기록
+  Naite.t("esq-query", qb.toQuery());
+
+  return this.executeSubsetQuery({ ... });
+}
+```
+
+**Test에서 검증:**
+```typescript
+test("num: 0일 때 limit 없어야 함", async () => {
+  await UserModel.findMany("A", { num: 0, page: 1 });
+
+  expect(Naite.get("esq-query").first()).not.contain("limit");
+  expect(Naite.get("esq-query").first()).not.contain("offset");
+});
+```
+
+### 7. 에러 메시지는 다국어 고려
+
+```typescript
+// 영어 메시지만 검증 (잘못된 방법)
+await expect(UserModel.findById("A", 99999))
+  .rejects.toThrow("not found");
+
+// 한글 메시지 부분 매칭 (올바른 방법)
+await expect(UserModel.findById("A", 99999))
+  .rejects.toThrow("존재하지 않는");
+```
+
+### 8. pnpm Workspace와 Vitest 인스턴스 충돌
+
+**문제:** "Vitest failed to access its internal state" 에러
+
+**원인:** sonamu가 `link:`로 연결되어 있으면, sonamu와 프로젝트의 vitest가 다른 peer dependency 조합으로 별도 경로에 설치됨
+
+**임시 해결 (테스트용):**
+```json
+// packages/api/package.json
+{
+  "dependencies": {
+    "sonamu": "0.7.50"  // link 대신 버전 명시
+  }
+}
+```
+
+**근본 해결:** sonamu 개발자에게 문의 (프레임워크 내부 이슈)
+
+### 9. assert() for Truthy Checks
+
+```typescript
+import assert from "assert";
+
+test("사용자 생성", async () => {
+  const [userId] = await UserModel.save([{ ... }]);
+
+  // truthy 체크
+  assert(userId);
+
+  // 이후 userId는 number로 확실히 타입 추론됨
+  const user = await UserModel.findById("A", userId);
+});
+```
+
+### 10. 테스트 데이터는 직접 생성
+
+**miomock 컨벤션:** Fixture 최소화, 데이터는 테스트 내에서 직접 생성
+
+```typescript
+// 권장 패턴
+test("사용자 생성", async () => {
+  const [userId] = await UserModel.save([{
+    employee_no: "2026001",
+    login_id: "testuser",
+    name: "테스트유저",
+    institution_id: 1,
+    // ... 필요한 필드들
+  }]);
+
+  const user = await UserModel.findById("A", userId);
+  expect(user.name).toBe("테스트유저");
+});
+
+// Fixture는 공통 데이터에만 사용
+const f = await loadFixtures(["institution01"]);  // 기관 같은 공통 데이터만
+```
