@@ -8,7 +8,7 @@ import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
 import { type core, z } from "zod";
-import { EventSource } from 'eventsource'
+import { EventSource } from "eventsource";
 import { getCurrentLocale } from "../i18n/sd.generated";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
@@ -61,26 +61,29 @@ export async function fetch(options: AxiosRequestConfig) {
   }
 }
 
-export function toFormData(obj: Record<string, unknown>, formData = new FormData(), prefix = ''): FormData {
+export function toFormData(
+  obj: Record<string, unknown>,
+  formData = new FormData(),
+  prefix = "",
+): FormData {
   for (const [key, value] of Object.entries(obj)) {
     const formKey = prefix ? `${prefix}[${key}]` : key;
-    
+
     if (value instanceof File || value instanceof Blob) {
       formData.append(formKey, value);
     } else if (Array.isArray(value)) {
       value.forEach((item, index) => {
         toFormData({ [index]: item }, formData, formKey);
       });
-    } else if (value !== null && value !== undefined && typeof value === 'object') {
-      toFormData(value as Record<string, unknown>, formData, formKey);  // 재귀로 펼치기
+    } else if (value !== null && value !== undefined && typeof value === "object") {
+      toFormData(value as Record<string, unknown>, formData, formKey); // 재귀로 펼치기
     } else if (value !== null && value !== undefined) {
       formData.append(formKey, String(value));
     }
   }
-  
+
   return formData;
 }
-
 
 export class SonamuError extends Error {
   isSonamuError: boolean;
@@ -208,22 +211,22 @@ export type ApplySonamuFilter<
   TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
 > = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
-
 /* Semantic Query */
-export const SonamuSemanticParams = z
-.object({
+export const SonamuSemanticParams = z.object({
   semanticQuery: z.object({
     embedding: z.array(z.number()).min(1024).max(1024),
     threshold: z.number().optional(),
     method: z.enum(["cosine", "l2", "inner_product"]).optional(),
   }),
-})
+});
 export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
 
 /*
   Utils
 */
-export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
+export function zArrayable<T extends z.ZodTypeAny>(
+  shape: T,
+): z.ZodUnion<readonly [T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
 
@@ -327,12 +330,15 @@ export function useSSEStream<T extends Record<string, any>>(
       const fullUrl = queryString ? `${url}?${queryString}` : url;
 
       const eventSource = new EventSource(fullUrl, {
-        fetch: (url, options) => 
-          fetch({ url: url.toString(), ...options, headers: {
-            ...options?.headers,
-            "Accept-Language": getCurrentLocale(),
-          },
-        }),
+        fetch: (url, options) =>
+          fetch({
+            url: url.toString(),
+            ...options,
+            headers: {
+              ...options?.headers,
+              "Accept-Language": getCurrentLocale(),
+            },
+          }),
       });
       eventSourceRef.current = eventSource;
 
@@ -518,6 +524,7 @@ export function josa(word: string, type: "은는" | "이가" | "을를" | "과�
       return false;
     return (lastChar - 0xac00) % 28 !== 0;
   })();
+
   const map = {
     은는: has받침 ? "은" : "는",
     이가: has받침 ? "이" : "가",
@@ -525,6 +532,6 @@ export function josa(word: string, type: "은는" | "이가" | "을를" | "과�
     과와: has받침 ? "과" : "와",
     으로: has받침 ? "으로" : "로",
   };
+
   return word + map[type];
 }
-
