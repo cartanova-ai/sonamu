@@ -211,6 +211,44 @@ export type ApplySonamuFilter<
   TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
 > = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
+
+/**
+ * 필드명과 값을 기반으로 FilterPropType을 추론
+ */
+export function getFieldPropType(
+  fieldName: string,
+  value: any,
+  numericColumns: readonly string[]
+): FilterPropType {
+  // numeric 타입 체크 (명시적으로 지정된 컬럼)
+  if (numericColumns.includes(fieldName)) {
+    return "numeric";
+  }
+
+  // 값 기반 타입 추론
+  if (value instanceof Date) {
+    // Date 객체의 시간 정보 확인
+    const hasTime = value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
+    return hasTime ? "datetime" : "date";
+  }
+
+  if (typeof value === "number") {
+    return "integer";
+  }
+
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+
+  // JSON 타입 (객체/배열)
+  if (value !== null && typeof value === "object") {
+    return "json";
+  }
+
+  // 기본값: string
+  return "string";
+}
+
 /* Semantic Query */
 export const SonamuSemanticParams = z.object({
   semanticQuery: z.object({
