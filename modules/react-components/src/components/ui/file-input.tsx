@@ -1,7 +1,7 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import type { SonamuFile } from "@/contexts";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import { cn, useObjectUrls } from "@/lib/utils";
 import FileIcon from "~icons/lucide/file";
 import ImageIcon from "~icons/lucide/image";
@@ -65,7 +65,7 @@ export function FileInput(props: FileInputProps) {
     onBlur,
   } = props;
 
-  const { uploader, SD } = useSonamuContext();
+  const { uploader, SD } = useSonamuBaseContext();
 
   const isMultiple = props.multiple ?? false;
   const isImageView = viewMode === "image";

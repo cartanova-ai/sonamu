@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
@@ -47,7 +47,7 @@ export function MonthPickerMultiple({
   yearRange = { start: 2020, end: 2030 },
   defaultRangeMode = false,
 }: MonthPickerMultipleProps) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
 
   // Popover open state
   const [isOpen, setIsOpen] = React.useState(false);

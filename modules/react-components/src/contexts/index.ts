@@ -1,6 +1,6 @@
 export {
   type SonamuContextValue,
   SonamuProvider,
-  useSonamuContext,
+  useSonamuBaseContext,
 } from "./sonamu-context";
 export type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";

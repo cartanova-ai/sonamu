@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import * as React from "react";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import CalendarIcon from "~icons/lucide/calendar";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -36,7 +36,7 @@ export function DatePicker({
   disabled = false,
   className,
 }: DatePickerProps) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
   const finalPlaceholder = placeholder ?? SD("rc.datePicker.pickDate");
 
   return (
@@ -81,7 +81,7 @@ export function DatePickerWithDropdown({
   disabled = false,
   className,
 }: DatePickerProps) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
   const finalPlaceholder = placeholder ?? SD("rc.datePicker.selectDate");
   const [open, setOpen] = React.useState(false);
 

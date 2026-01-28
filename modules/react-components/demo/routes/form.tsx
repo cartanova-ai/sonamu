@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import { useTypeForm } from "@/lib/form-helpers";
 import BoldIcon from "~icons/lucide/bold";
 import ItalicIcon from "~icons/lucide/italic";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/form")({
 });
 
 function FormPage() {
-  const { uploader } = useSonamuContext();
+  const { uploader } = useSonamuBaseContext();
 
   // useTypeForm으로 폼 상태 관리
   const { form, register } = useTypeForm(FormDemoSchema, {

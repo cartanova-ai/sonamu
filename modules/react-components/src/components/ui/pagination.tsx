@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useSonamuContext } from "../../contexts";
+import { useSonamuBaseContext } from "../../contexts";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
@@ -14,7 +14,7 @@ export interface PaginationProps {
 
 export const Pagination = React.forwardRef<HTMLDivElement, PaginationProps>(
   ({ value, onValueChange, total, itemsPerPage, className, maxVisible = 6 }, ref) => {
-    const { SD } = useSonamuContext();
+    const { SD } = useSonamuBaseContext();
     const totalPages = Math.ceil(total / itemsPerPage);
     const currentPage = value;
     const startItem = (currentPage - 1) * itemsPerPage + 1;

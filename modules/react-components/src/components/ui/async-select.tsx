@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
 import Loader2Icon from "~icons/lucide/loader2";
@@ -67,7 +67,7 @@ export function AsyncSelect<T = number>({
   onSearch,
   searchDebounce = 300,
 }: AsyncSelectProps<T>) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
   const [open, setOpen] = React.useState(false);
   const [keyword, setKeyword] = React.useState("");
 

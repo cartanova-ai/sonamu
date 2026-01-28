@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
 import XCircleIcon from "~icons/lucide/x-circle";
@@ -53,7 +53,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
     },
     ref,
   ) => {
-    const { SD } = useSonamuContext();
+    const { SD } = useSonamuBaseContext();
     const [open, setOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 

@@ -4,7 +4,7 @@ import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
 import type { SonamuFile } from "@/contexts";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import type { ErrorObj } from "./types";
 
 /**
@@ -61,7 +61,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
-  const { uploader } = useSonamuContext();
+  const { uploader } = useSonamuBaseContext();
 
   function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath

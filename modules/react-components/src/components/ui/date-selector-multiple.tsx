@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -45,7 +45,7 @@ export function DateSelectorMultiple({
   numberOfMonths = 2,
   defaultRangeMode = false,
 }: DateSelectorMultipleProps) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
 
   // Popover open state
   const [isOpen, setIsOpen] = React.useState(false);

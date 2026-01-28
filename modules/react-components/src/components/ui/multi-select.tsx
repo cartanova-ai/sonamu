@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import WandSparklesIcon from "~icons/lucide/wand-sparkles";
@@ -320,7 +320,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
     },
     ref,
   ) => {
-    const { SD } = useSonamuContext();
+    const { SD } = useSonamuBaseContext();
 
     // SD 기본값 설정
     const finalPlaceholder = placeholder ?? SD("rc.multiSelect.selectPlaceholder");

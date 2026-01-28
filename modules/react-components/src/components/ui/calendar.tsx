@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { type DateRange, DayPicker, type Matcher } from "react-day-picker";
-import { useSonamuContext } from "@/contexts";
+import { useSonamuBaseContext } from "@/contexts";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import { cn } from "../../lib/utils";
@@ -140,7 +140,7 @@ function CalendarCaption({
   isSecondCalendar = false,
   baseMonth,
 }: CalendarCaptionProps) {
-  const { SD } = useSonamuContext();
+  const { SD } = useSonamuBaseContext();
   const displayYear = displayMonth.getFullYear();
   const displayMonthIndex = displayMonth.getMonth();
   const years = React.useMemo(() => generateYears().reverse(), []);
