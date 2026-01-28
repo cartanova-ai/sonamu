@@ -1,4 +1,4 @@
-import { Button, useSonamuContext } from "@sonamu-kit/react-components";
+import { Button } from "@sonamu-kit/react-components";
 import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import classnames from "classnames";
 import { useState } from "react";
@@ -6,6 +6,7 @@ import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
 import EntityChatComponent from "../components/EntityChatComponent";
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { EntityCreateModal } from "./entities/_entity_create_modal";
 

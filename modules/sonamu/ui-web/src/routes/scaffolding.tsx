@@ -13,7 +13,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
@@ -21,6 +20,7 @@ import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
 

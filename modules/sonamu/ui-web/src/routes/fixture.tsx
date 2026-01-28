@@ -10,7 +10,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  useSonamuContext,
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
@@ -27,6 +26,7 @@ import TableIcon from "~icons/lucide/table";
 import TrashIcon from "~icons/lucide/trash";
 import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
 import FixtureCodeViewer from "./fixture/_fixture_code_viewer";

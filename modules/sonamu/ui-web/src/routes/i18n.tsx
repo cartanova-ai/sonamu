@@ -6,7 +6,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +14,7 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 

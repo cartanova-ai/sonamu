@@ -10,7 +10,6 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  useSonamuContext,
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
@@ -24,6 +23,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
+import { useSonamuContext } from "../contexts/sonamu-provider";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { MigrationActionModal } from "./migrations/_migration_action_modal";

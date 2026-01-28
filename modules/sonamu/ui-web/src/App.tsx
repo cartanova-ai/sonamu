@@ -1,9 +1,10 @@
-import { CommonModal, useSonamuContext } from "@sonamu-kit/react-components";
+import { CommonModal } from "@sonamu-kit/react-components";
 import { Link, useLocation } from "@tanstack/react-router";
 import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import SearchModal from "./components/SearchModal";
+import { useSonamuContext } from "./contexts/sonamu-provider";
 import { type Locale, SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
