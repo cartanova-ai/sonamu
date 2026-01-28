@@ -63,12 +63,13 @@ function ProjectList({}: ProjectListProps) {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(ProjectListParams, {
+  const { listParams, register, setListParams } = useListParams(ProjectListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: ProjectSearchField.options[0],
     orderBy: ProjectOrderBy.options[0],
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -342,6 +343,9 @@ function ProjectList({}: ProjectListProps) {
         baseSchema={ProjectBaseSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
+        onApply={(filters) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+        }}
       />
     </div>
   );

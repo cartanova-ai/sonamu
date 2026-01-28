@@ -62,12 +62,13 @@ function DepartmentList({}: DepartmentListProps) {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(DepartmentListParams, {
+  const { listParams, register, setListParams } = useListParams(DepartmentListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: DepartmentSearchField.options[0],
     orderBy: DepartmentOrderBy.options[0],
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -314,6 +315,9 @@ function DepartmentList({}: DepartmentListProps) {
         baseSchema={DepartmentBaseSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
+        onApply={(filters) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+        }}
       />
     </div>
   );
