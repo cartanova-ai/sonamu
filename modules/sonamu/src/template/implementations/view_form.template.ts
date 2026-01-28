@@ -163,6 +163,12 @@ export class Template__view_form extends Template {
     const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
 
+    // PK 타입 감지
+    const pkType = entity.getPkType();
+    const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
+    const idZodType =
+      pkType === "string" || pkType === "uuid" ? "z.string().optional()" : "z.number().optional()";
+
     // SaveParams 타입을 로드하여 saveParamsNode 생성
     const { loadTypes } = await import("../../syncer/module-loader");
     const loadedTypes = await loadTypes();
@@ -300,7 +306,7 @@ import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
 
 const formSearchSchema = z.object({
-  id: z.number().optional(),
+  id: ${idZodType},
 });
 
 export const Route = createFileRoute("/admin/${names.fsPlural}/form")({
@@ -314,7 +320,7 @@ function ${names.capitalPlural}FormPage() {
 }
 
 type ${names.capitalPlural}FormProps = {
-  id?: number;
+  id?: ${idTsType};
   mode?: "page" | "modal";
 };
 

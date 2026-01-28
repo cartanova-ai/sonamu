@@ -253,6 +253,10 @@ export class Template__view_list extends Template {
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);
 
+    // PK 타입 감지
+    const pkType = entity.getPkType();
+    const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
+
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
 
@@ -448,9 +452,9 @@ function ${names.capital}List({}: ${names.capital}ListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<${idTsType}>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: ${idTsType}; name?: string } | null>(null);
 
   // 리스트 필터
   const { listParams, register } = useListParams(${names.capital}ListParams, {
@@ -524,7 +528,7 @@ ${columns
   ];
 
   // 선택 핸들러
-  const handleToggleItem = (id: number) => {
+  const handleToggleItem = (id: ${idTsType}) => {
     const newSelection = new Set(selectedItems);
     if (newSelection.has(id)) {
       newSelection.delete(id);
@@ -547,7 +551,7 @@ ${columns
   };
 
   // 삭제 핸들러
-  const handleDeleteClick = (id: number, name?: string) => {
+  const handleDeleteClick = (id: ${idTsType}, name?: string) => {
     setItemToDelete({ id, name });
     setDeleteDialogOpen(true);
   };

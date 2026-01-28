@@ -54,7 +54,7 @@ export default {
   "entity.list": (name: string) => `${name} 목록`,
   "entity.listManage": (name: string) => `${name} 목록 관리`,
   "entity.create": (name: string) => `${name} 생성`,
-  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
+  "entity.edit": (name: string, id: number | string) => `${name} 수정 (#${id})`,
 
   // 에러 메시지 (템플릿 함수)
   "error.entityNotFound": (name: string, id: number | string) => `존재하지 않는 ${name} ID ${id}`,

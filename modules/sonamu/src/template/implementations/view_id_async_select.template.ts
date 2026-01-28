@@ -19,6 +19,11 @@ export class Template__view_id_async_select extends Template {
 
     const entity = EntityManager.get(entityId);
 
+    // PK 타입 감지
+    const pkType = entity.getPkType();
+    const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
+    const isStringId = pkType === "string" || pkType === "uuid";
+
     // textField가 지정되지 않은 경우 모든 subset에 공통으로 있는 필드 찾기
     if (!textField) {
       const subsetKeys = Object.keys(entity.subsets);
@@ -83,13 +88,13 @@ export type ${names.capital}IdAsyncSelectProps<T extends ${names.capital}SubsetK
 } & (
   | {
       multiple?: false;
-      value?: number | null;
-      onValueChange?: (value: number | undefined) => void;
+      value?: ${idTsType} | null;
+      onValueChange?: (value: ${idTsType} | undefined) => void;
     }
   | {
       multiple: true;
-      value?: number[];
-      onValueChange?: (value: number[]) => void;
+      value?: ${idTsType}[];
+      onValueChange?: (value: ${idTsType}[]) => void;
     }
 );
 
@@ -114,7 +119,7 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
   // 옵션 생성
   const options = useMemo(() => {
     return (${names.camelPlural} ?? []).map((${names.camel}) => ({
-      value: String(${names.camel}[valueField ?? "id"] as number),
+      value: String(${names.camel}[valueField ?? "id"] as ${idTsType}),
       label: String(${names.camel}[textField ?? "${textField || "id"}"]),
     }));
   }, [${names.camelPlural}, textField, valueField]);
@@ -140,8 +145,12 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
     const multiValue = Array.isArray(value) ? value.map(String) : [];
 
     const handleMultiChange = (selectedValues: string[]) => {
-      const numericValues = selectedValues.map(Number);
-      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
+      ${
+        isStringId
+          ? `(onValueChange as ((value: string[]) => void) | undefined)?.(selectedValues);`
+          : `const numericValues = selectedValues.map(Number);
+      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);`
+      }
     };
 
     return (
@@ -157,11 +166,15 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
   }
 
   // Single select
-  const singleValue = typeof value === "number" ? value : undefined;
+  const singleValue = typeof value === "${idTsType}" ? value : undefined;
 
   const handleSingleChange = (value: string | undefined) => {
-    const numericValue = value ? Number(value) : undefined;
-    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
+    ${
+      isStringId
+        ? `(onValueChange as ((value: string | undefined) => void) | undefined)?.(value);`
+        : `const numericValue = value ? Number(value) : undefined;
+    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);`
+    }
   };
 
   return (

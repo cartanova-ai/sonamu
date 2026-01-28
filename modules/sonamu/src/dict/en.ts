@@ -54,7 +54,7 @@ export default {
   "entity.list": (name: string) => `${name} List`,
   "entity.listManage": (name: string) => `${name} List Management`,
   "entity.create": (name: string) => `Create ${name}`,
-  "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
+  "entity.edit": (name: string, id: number | string) => `Edit ${name} (#${id})`,
 
   // Error messages (template functions)
   "error.entityNotFound": (name: string, id: number | string) => `${name} ID ${id} not found`,
