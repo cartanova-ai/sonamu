@@ -1,12 +1,6 @@
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  useSonamuContext,
-} from "@sonamu-kit/react-components";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 
 export const Route = createFileRoute("/admin/")({

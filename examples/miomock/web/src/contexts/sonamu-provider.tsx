@@ -1,8 +1,8 @@
 import {
   type SonamuAuth,
-  type SonamuContextValue,
   type SonamuFile,
   SonamuProvider,
+  useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,8 +13,12 @@ import { FileService, UserService } from "@/services/services.generated";
 import type { UserSubsetSS } from "@/services/sonamu.generated";
 import type { UserLoginParams } from "@/services/user/user.types";
 
-export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
-  // Auth 설정
+/** 타입이 지정된 useSonamuContext */
+export function useSonamuContext() {
+  return useSonamuBaseContext<MergedDictionary, UserSubsetSS, UserLoginParams>();
+}
+
+function useSonamuConfig() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: user, isLoading, refetch } = UserService.useMe();
@@ -22,7 +26,8 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   const logoutMutation = UserService.useLogoutMutation();
   const uploadMutation = FileService.useUploadMutation();
 
-  const auth_config: SonamuAuth<UserSubsetSS, UserLoginParams> = {
+  // Auth 설정
+  const auth: SonamuAuth<UserSubsetSS, UserLoginParams> = {
     user: user ?? null,
     loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
     login: (loginParams: UserLoginParams) => {
@@ -57,7 +62,7 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   };
 
   // Uploader 설정
-  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
     if (files.length === 0) {
       return [];
     }
@@ -67,12 +72,16 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   };
 
   // SD 설정
-  const sd_config = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
+  const sd = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
 
-  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+  return { auth, uploader, SD: sd };
 }
 
 export function SonamuProviderWrapper({ children }: { children: ReactNode }) {
-  const sonamuConfig = createSonamuConfig();
-  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
+  const config = useSonamuConfig();
+  return (
+    <SonamuProvider<MergedDictionary, UserSubsetSS, UserLoginParams> {...config}>
+      {children}
+    </SonamuProvider>
+  );
 }
