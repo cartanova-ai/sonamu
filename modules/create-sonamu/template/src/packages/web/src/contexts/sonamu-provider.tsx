@@ -1,10 +1,13 @@
-import { SonamuProvider, type SonamuContextValue } from "@sonamu-kit/react-components";
+import {
+  type SonamuContextValue,
+  type SonamuFile,
+  SonamuProvider,
+} from "@sonamu-kit/react-components";
 import type { ReactNode } from "react";
+import type { MergedDictionary } from "@/i18n/sd.generated";
+import { SD } from "@/i18n/sd.generated";
 
-// Temporary type until sd.generated is created
-type EmptyDictionary = Record<string, never>;
-
-export function createSonamuConfig(): SonamuContextValue<EmptyDictionary> {
+export function createSonamuConfig(): SonamuContextValue<MergedDictionary> {
   // Auth configuration
   const auth_config = {
     user: null,
@@ -23,16 +26,19 @@ export function createSonamuConfig(): SonamuContextValue<EmptyDictionary> {
   };
 
   // Uploader configuration
-  const uploader_config = async (_files: File[]) => {
+  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
     // TODO: Implement file upload logic
+    if (files.length === 0) {
+      return [];
+    }
+
     console.log("File upload not implemented yet");
     return [];
   };
 
-  // SD configuration - returns a function until i18n is set up
-  // Components like Pagination call SD("key")(args), so we must return a function
-  const sd_config = (key: string): any => {
-    return (..._args: any[]) => key;
+  // SD configuration
+  const sd_config = <K extends keyof MergedDictionary>(key: K) => {
+    return SD(key as string);
   };
 
   return { auth: auth_config, uploader: uploader_config, SD: sd_config };
@@ -40,5 +46,5 @@ export function createSonamuConfig(): SonamuContextValue<EmptyDictionary> {
 
 export function SonamuProviderWrapper({ children }: { children: ReactNode }) {
   const sonamuConfig = createSonamuConfig();
-  return <SonamuProvider<EmptyDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
+  return <SonamuProvider<MergedDictionary> {...sonamuConfig}>{children}</SonamuProvider>;
 }

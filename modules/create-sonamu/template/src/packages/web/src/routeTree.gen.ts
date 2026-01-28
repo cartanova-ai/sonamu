@@ -5,6 +5,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRoute } from './routes/index'
+import { Route as AdminIndexRoute } from './routes/admin/index'
 
 const IndexRouteWithChildren = IndexRoute.update({
   id: '/',
@@ -12,7 +13,16 @@ const IndexRouteWithChildren = IndexRoute.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-export const routeTree = rootRoute.addChildren([IndexRouteWithChildren])
+const AdminIndexRouteWithChildren = AdminIndexRoute.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+export const routeTree = rootRoute.addChildren([
+  IndexRouteWithChildren,
+  AdminIndexRouteWithChildren,
+])
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -21,6 +31,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteWithChildren
+      parentRoute: typeof rootRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteWithChildren
       parentRoute: typeof rootRoute
     }
   }

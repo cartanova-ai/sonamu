@@ -6,9 +6,16 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-4xl font-bold mb-4">Welcome to Sonamu</h1>
-      <p className="text-gray-600">Start building your application</p>
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Welcome to Sonamu</h1>
+      <p className="text-gray-600">Start building your application.</p>
+      
+      {/* TODO: 사용자용 콘텐츠 추가 */}
+      <div className="mt-8">
+        <p className="text-sm text-gray-500">
+          This is the user-facing home page. Customize it as needed.
+        </p>
+      </div>
     </div>
   );
 }
