@@ -1,5 +1,9 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Zod 타입 접근 */
+/** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: Convention-based enum label 자동 감지를 위해 필요 */
 import {
   Button,
+  DateInput,
+  DatePicker,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -13,6 +17,10 @@ import {
 } from "@sonamu-kit/react-components/components";
 import { useEffect, useState } from "react";
 import type { z } from "zod";
+import { EnumSelect } from "@/components/common/EnumSelect";
+import { RangeNumberInput } from "@/components/common/RangeNumberInput";
+import { TagInput } from "@/components/common/TagInput";
+import * as SonamuGenerated from "@/services/sonamu.generated";
 import type { FilterOperator, FilterPropType } from "@/services/sonamu.shared";
 import { operatorsByPropType } from "@/services/sonamu.shared";
 import PlusIcon from "~icons/lucide/plus";
@@ -25,7 +33,10 @@ import TrashIcon from "~icons/lucide/trash-2";
 type FieldMeta = {
   propType: FilterPropType;
   nullable: boolean;
-  enumId?: unknown;
+  enumData?: {
+    options: string[];
+    labels: Record<string, string>;
+  };
 };
 
 /**
@@ -58,6 +69,19 @@ const operatorLabels: Record<FilterOperator, string> = {
   after: "after",
   isNull: "NULL",
   isNotNull: "NOTNULL",
+};
+
+/**
+ * Zod 타입 이름 정의
+ */
+const zodTypeToFilterPropTypeMap: Record<string, FilterPropType> = {
+  string: "string",
+  number: "integer",
+  boolean: "boolean",
+  date: "datetime",
+  enum: "enum",
+  array: "json",
+  object: "json",
 };
 
 /**
@@ -102,23 +126,36 @@ function unwrapZodType(zodType: z.ZodTypeAny): {
  * Zod 타입 이름을 FilterPropType으로 변환
  */
 function zodTypeNameToPropType(typeName: string): FilterPropType {
-  switch (typeName) {
-    case "string":
-      return "string";
-    case "number":
-      return "integer";
-    case "boolean":
-      return "boolean";
-    case "date":
-      return "datetime";
-    case "enum":
-      return "enum";
-    case "array":
-    case "object":
-      return "json";
-    default:
-      return "string";
+  return zodTypeToFilterPropTypeMap[typeName] ?? "string";
+}
+
+/**
+ * Zod enum에서 options와 labels를 추출
+ * Convention: {EnumName}Label 형태의 객체를 SonamuGenerated에서 찾음
+ */
+function extractEnumData(zodEnum: z.ZodTypeAny): FieldMeta["enumData"] {
+  // options 추출
+  const options = (zodEnum as any).options
+    ? (Array.from((zodEnum as any).options) as string[])
+    : undefined;
+
+  if (!options) {
+    return undefined;
   }
+
+  // labels 추출 (Convention-based: {EnumName}Label)
+  const enumDescription = (zodEnum as any)._def?.description || (zodEnum as any).description;
+  let labels: Record<string, string> = {};
+
+  if (enumDescription) {
+    const labelKey = `${enumDescription}Label` as keyof typeof SonamuGenerated;
+    const foundLabels = SonamuGenerated[labelKey];
+    if (foundLabels && typeof foundLabels === "object") {
+      labels = foundLabels as Record<string, string>;
+    }
+  }
+
+  return { options, labels };
 }
 
 /**
@@ -137,11 +174,10 @@ function extractFieldMetaFromSchema(schema: z.ZodObject<z.ZodRawShape>): Record<
     // nullable/optional 벗겨내기
     const { innerType, nullable } = unwrapZodType(zodSchema as z.ZodTypeAny);
 
-    // 메타 SonamuPropType 체크 (최상위 레벨에서 .meta() 메서드 사용)
-    // biome-ignore lint/suspicious/noExplicitAny: Zod meta() 메서드 접근
+    // 메타 SonamuPropType 체크 (numeric 등)
     const meta = (zodSchema as any).meta?.();
-    const soanmuPropType = meta?.SonamuPropType;
-    const isNumeric = soanmuPropType === "numeric";
+    const sonamuPropType = meta?.SonamuPropType;
+    const isNumeric = sonamuPropType === "numeric";
 
     // propType 결정
     const innerWithDef = innerType as ZodWithDef;
@@ -149,9 +185,13 @@ function extractFieldMetaFromSchema(schema: z.ZodObject<z.ZodRawShape>): Record<
       ? "numeric"
       : zodTypeNameToPropType(innerWithDef._def.type);
 
+    // enum 타입인 경우 추가 정보 추출
+    const enumData = propType === "enum" ? extractEnumData(innerType) : undefined;
+
     fieldMeta[fieldName] = {
       propType,
       nullable,
+      enumData,
     };
   }
 
@@ -165,17 +205,20 @@ function extractFieldMetaFromSchema(schema: z.ZodObject<z.ZodRawShape>): Record<
 /**
  * ValueInput 컴포넌트
  * operator와 propType에 따라 적절한 입력 UI 렌더링
+ * TODO: ValueInput 컴포넌트는 다음 커밋에서 동작 하나씩 확인하며 작업할 예정입니다.
  */
 function ValueInput({
   propType,
   operator,
   value,
   onChange,
+  fieldMeta,
 }: {
   propType: FilterPropType;
   operator: FilterOperator;
   value: unknown;
   onChange: (value: unknown) => void;
+  fieldMeta?: FieldMeta;
 }) {
   // isNull/isNotNull: Boolean select (true/false)
   if (operator === "isNull" || operator === "isNotNull") {
@@ -193,6 +236,80 @@ function ValueInput({
         </SelectContent>
       </Select>
     );
+  }
+
+  // in/notIn: 다중 값 입력
+  if (operator === "in" || operator === "notIn") {
+    if (propType === "enum" && fieldMeta?.enumData) {
+      return (
+        <EnumSelect
+          enumOptions={fieldMeta.enumData.options}
+          enumLabels={fieldMeta.enumData.labels}
+          value={(value as string[]) ?? []}
+          onValueChange={onChange}
+          isMulti={true}
+        />
+      );
+    }
+    // string/number: TagInput
+    return (
+      <TagInput
+        value={(value as string[]) ?? []}
+        onChange={onChange}
+        type={propType === "integer" || propType === "numeric" ? "number" : "text"}
+      />
+    );
+  }
+
+  // between: 범위 입력
+  if (operator === "between") {
+    if (propType === "integer" || propType === "numeric") {
+      return (
+        <RangeNumberInput
+          value={(value as [number, number]) ?? [undefined, undefined]}
+          onChange={onChange}
+        />
+      );
+    }
+    if (propType === "date" || propType === "datetime") {
+      // DateInput 2개로 범위 입력 (간단 버전)
+      const [start, end] = (value as [Date, Date]) ?? [undefined, undefined];
+      return (
+        <div className="flex items-center gap-2">
+          <DateInput
+            value={start ?? null}
+            onValueChange={(v) => onChange([v ?? undefined, end])}
+            placeholder="시작일"
+            className="flex-1"
+          />
+          <span className="text-muted-foreground">~</span>
+          <DateInput
+            value={end ?? null}
+            onValueChange={(v) => onChange([start, v ?? undefined])}
+            placeholder="종료일"
+            className="flex-1"
+          />
+        </div>
+      );
+    }
+  }
+
+  // enum: EnumSelect (단일)
+  if (propType === "enum" && fieldMeta?.enumData) {
+    return (
+      <EnumSelect
+        enumOptions={fieldMeta.enumData.options}
+        enumLabels={fieldMeta.enumData.labels}
+        value={(value as string) ?? ""}
+        onValueChange={onChange}
+        isMulti={false}
+      />
+    );
+  }
+
+  // date/datetime: DatePicker
+  if (propType === "date" || propType === "datetime") {
+    return <DatePicker value={(value as Date) ?? undefined} onValueChange={onChange} />;
   }
 
   // string: text input
@@ -237,16 +354,8 @@ function ValueInput({
     );
   }
 
-  // 기타 타입은 Phase 2 이상에서 구현
-  return (
-    <Input
-      type="text"
-      value={(value as string) ?? ""}
-      onValueChange={onChange}
-      placeholder="Not supported yet..."
-      disabled
-    />
-  );
+  // json 타입은 isNull/isNotNull만 지원
+  return <Input type="text" value="" placeholder="Not supported..." disabled />;
 }
 
 /**
@@ -330,6 +439,7 @@ function RuleRow({
             operator={rule.operator}
             value={rule.value}
             onChange={(newValue) => onUpdate({ value: newValue })}
+            fieldMeta={selectedFieldMeta}
           />
         ) : (
           <Input type="text" disabled placeholder="Select operator first..." />
