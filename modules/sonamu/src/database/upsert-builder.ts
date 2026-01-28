@@ -6,7 +6,7 @@ import { Naite } from "../naite/naite";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
-import type { ColumnKeys, ForeignKeyColumns, TableName } from "./puri.types";
+import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
 
 /**
  * FK 타입 추론을 위해 DatabaseForeignKeys export
@@ -186,7 +186,7 @@ export class UpsertBuilder {
     wdb: Knex,
     tableName: TTable,
     options?: UpsertOptions<TTable>,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     return this.upsertOrInsert(wdb, tableName, "upsert", options);
   }
 
@@ -194,7 +194,7 @@ export class UpsertBuilder {
     wdb: Knex,
     tableName: TTable,
     options?: InsertOnlyOptions,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", options);
   }
 
@@ -203,7 +203,7 @@ export class UpsertBuilder {
     tableName: TTable,
     mode: "upsert" | "insert",
     options?: UpsertOptions<TTable>,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     if (this.hasTable(tableName) === false) {
       return [];
     }
@@ -253,7 +253,7 @@ export class UpsertBuilder {
     }
 
     const uuidMap = new Map<string, unknown>();
-    const allIds: number[] = [];
+    const allIds: (number | string)[] = [];
 
     // 레벨별로 순차 처리
     for (const levelRows of levels) {
@@ -291,7 +291,7 @@ export class UpsertBuilder {
         const originalUuids = dataChunk.map((r) => r.uuid as string);
         const dataForDb = dataChunk.map(({ uuid, ...rest }) => rest);
 
-        let resultRows: { id: number; [key: string]: unknown }[];
+        let resultRows: { id: number | string; [key: string]: unknown }[];
 
         if (mode === "insert") {
           // INSERT 모드 - RETURNING 사용
@@ -323,13 +323,13 @@ export class UpsertBuilder {
                 .select("id", ...columns)) as Record<string, unknown>[];
 
               // Map 생성: unique 컬럼 조합 → id
-              const existingMap = new Map<string, number>();
+              const existingMap = new Map<string, number | string>();
               for (const existing of existingRows) {
                 const key = columns
                   .map((col) => String(existing[col] ?? ""))
                   .join("---delimiter---");
                 const id = existing.id;
-                if (typeof id === "number") {
+                if (typeof id === "number" || typeof id === "string") {
                   existingMap.set(key, id);
                 }
               }
@@ -465,7 +465,7 @@ export class UpsertBuilder {
       returnedIds: allIds,
     });
 
-    return allIds;
+    return allIds as IdType<DatabaseSchemaExtend, TTable>[];
   }
 
   async updateBatch(

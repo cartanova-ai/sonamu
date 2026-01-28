@@ -499,7 +499,7 @@ export class FixtureManagerClass {
       }
 
       await db.transaction(async (trx) => {
-        const insertedIdsByTable = new Map<string, Map<string, number>>();
+        const insertedIdsByTable = new Map<string, Map<string, number | string>>();
 
         // 4. 테이블별 레벨별 처리
         for (const tableName of tableOrder) {
@@ -526,12 +526,16 @@ export class FixtureManagerClass {
                 `Upserting ${tableName} with ${uuids.length} rows (level ${levels.indexOf(levelFixtures) + 1}/${levels.length})`,
               ),
             );
-            const ids = await this.builder.upsert(trx, tableName as keyof DatabaseSchemaExtend);
+            const ids = (await this.builder.upsert(
+              trx,
+              tableName as keyof DatabaseSchemaExtend,
+            )) as (number | string)[];
 
             // 순서 기반 uuid -> id 매핑
             // self-reference가 없으므로 등록 순서 = 반환 순서 보장
             if (uuids.length > 0 && uuids.length === ids.length) {
-              const existingMap = insertedIdsByTable.get(tableName) ?? new Map<string, number>();
+              const existingMap =
+                insertedIdsByTable.get(tableName) ?? new Map<string, number | string>();
               for (let i = 0; i < uuids.length; i++) {
                 existingMap.set(uuids[i], ids[i]);
               }
@@ -594,7 +598,7 @@ export class FixtureManagerClass {
    */
   private registerFixture(
     fixture: FixtureRecord,
-    insertedIdsByTable?: Map<string, Map<string, number>>,
+    insertedIdsByTable?: Map<string, Map<string, number | string>>,
   ): UBRef {
     const entity = EntityManager.get(fixture.entityId);
     const row: Record<string, unknown> = {};
@@ -704,7 +708,7 @@ export class FixtureManagerClass {
   private async processManyToManyRelations(
     trx: Knex.Transaction,
     fixtures: FixtureRecord[],
-    insertedIdsByTable: Map<string, Map<string, number>>,
+    insertedIdsByTable: Map<string, Map<string, number | string>>,
   ): Promise<void> {
     for (const fixture of fixtures) {
       const entity = EntityManager.get(fixture.entityId);
@@ -738,7 +742,7 @@ export class FixtureManagerClass {
             const relatedFixtureId = `${prop.with}#${relatedId}`;
             const relatedRef = this.fixtureRefMap.get(relatedFixtureId);
 
-            let targetId: number;
+            let targetId: number | string;
 
             if (relatedRef) {
               const relatedUuidToId = insertedIdsByTable.get(relatedEntity.table);

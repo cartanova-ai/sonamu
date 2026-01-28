@@ -5,7 +5,7 @@ import type { Knex } from "knex";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { DBPreset } from "./db";
 import { Puri } from "./puri";
-import type { ColumnKeys, OmitInternalTypeKeys, PuriTable } from "./puri.types";
+import type { ColumnKeys, IdType, OmitInternalTypeKeys, PuriTable } from "./puri.types";
 import type { InsertOnlyOptions, UBRef, UpsertBuilder, UpsertOptions } from "./upsert-builder";
 
 type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
@@ -150,14 +150,14 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ubUpsert<TTable extends TableName<TSchema> & keyof DatabaseSchemaExtend>(
     tableName: TTable,
     options?: UpsertOptions<TTable>,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     return this.upsertBuilder.upsert(this.knex, tableName, options);
   }
 
   ubInsertOnly<TTable extends TableName<TSchema> & keyof DatabaseSchemaExtend>(
     tableName: TTable,
     options?: InsertOnlyOptions,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     return this.upsertBuilder.insertOnly(this.knex, tableName, options);
   }
 
@@ -165,7 +165,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     tableName: TTable,
     mode: "upsert" | "insert",
     options?: UpsertOptions<TTable>,
-  ): Promise<number[]> {
+  ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
     return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, options);
   }
 

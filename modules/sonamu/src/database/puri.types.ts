@@ -41,6 +41,11 @@ export type VectorColumns<TTables extends Record<string, any>> =
 // 테이블명 타입
 export type TableName<TSchema> = keyof TSchema & string;
 
+// 테이블의 id(PK) 타입을 추출
+export type IdType<TSchema, TTable extends keyof TSchema> = TSchema[TTable] extends { id: infer I }
+  ? I
+  : number;
+
 // virtual 컬럼 타입 추출
 type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V & string : never;
 
