@@ -82,6 +82,13 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
         const relMd = EntityManager.get(prop.with);
         const table1 = entity.table;
         const table2 = relMd.table;
+
+        // 각 엔티티의 PK 타입 정보 가져오기
+        const thisPkType = entity.getPkType();
+        const thisPkProp = entity.getPkProp();
+        const relPkType = relMd.getPkType();
+        const relPkProp = relMd.getPkProp();
+
         const join = {
           from: `${entity.table}.id`,
           through: {
@@ -117,13 +124,28 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               type: "integer",
               nullable: false,
             },
-            ...fields.map((field) => {
-              return {
-                name: field.split(".")[1],
-                type: "integer",
-                nullable: false,
-              } as MigrationColumn;
-            }),
+            // 현재 엔티티의 FK
+            {
+              name: `${inflection.singularize(table1)}_id`,
+              type: thisPkType,
+              nullable: false,
+              ...(thisPkType === "string" &&
+                thisPkProp.type === "string" &&
+                thisPkProp.length !== undefined && {
+                  length: thisPkProp.length,
+                }),
+            },
+            // 참조 엔티티의 FK
+            {
+              name: `${inflection.singularize(table2)}_id`,
+              type: relPkType,
+              nullable: false,
+              ...(relPkType === "string" &&
+                relPkProp.type === "string" &&
+                relPkProp.length !== undefined && {
+                  length: relPkProp.length,
+                }),
+            },
           ],
           foreigns: fields.map((field) => {
             // 현재 필드가 어떤 테이블에 속하는지 판단
@@ -149,11 +171,21 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
         (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
       ) {
         // -OneRelation 케이스
+        const relEntity = EntityManager.get(prop.with);
+        const pkType = relEntity.getPkType();
+        const pkProp = relEntity.getPkProp();
+
         const idColumnName = `${prop.name}_id`;
         r.columns.push({
           name: idColumnName,
-          type: "integer",
+          type: pkType,
           nullable: prop.nullable ?? false,
+          // string FK인 경우 length도 전달
+          ...(pkType === "string" &&
+            pkProp.type === "string" &&
+            pkProp.length !== undefined && {
+              length: pkProp.length,
+            }),
         });
         if ((prop.useConstraint ?? true) === true) {
           r.foreigns.push({

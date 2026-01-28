@@ -102,6 +102,18 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
   const chains: string[] = [];
 
   if (column.name === "id") {
+    // PK 타입에 따른 분기 처리
+    if (column.type === "string") {
+      // string PK: length가 있으면 varchar, 없으면 text
+      if (column.length !== undefined) {
+        return `table.string('id', ${column.length}).primary().notNullable();`;
+      }
+      return `table.text('id').primary().notNullable();`;
+    }
+    if (column.type === "uuid") {
+      return `table.uuid('id').primary().notNullable();`;
+    }
+    // 기존 integer PK (기본값)
     return `table.increments().primary();`;
   }
 

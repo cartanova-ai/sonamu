@@ -1147,4 +1147,31 @@ export class Entity {
     }
     return `${this.table}.${field}`;
   }
+
+  /**
+   * 엔티티의 PK 타입을 반환합니다.
+   * id 필드의 타입을 기준으로 "integer" | "string" | "uuid"를 반환합니다.
+   */
+  getPkType(): "integer" | "string" | "uuid" {
+    const idProp = this.propsDict.id;
+    if (!idProp) {
+      throw new Error(`Entity ${this.id}에 id 필드가 없습니다`);
+    }
+    if (idProp.type === "string" || idProp.type === "uuid") {
+      return idProp.type;
+    }
+    return "integer";
+  }
+
+  /**
+   * 엔티티의 PK prop을 반환합니다.
+   * length 등 세부 정보에 접근할 때 사용합니다.
+   */
+  getPkProp(): EntityProp {
+    const idProp = this.propsDict.id;
+    if (!idProp) {
+      throw new Error(`Entity ${this.id}에 id 필드가 없습니다`);
+    }
+    return idProp;
+  }
 }
