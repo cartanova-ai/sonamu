@@ -558,16 +558,16 @@ describe("Migrator - preparedCodes 생성", () => {
   });
 
   test("FK 추가 감지 (OneToOne)", async () => {
-    // UserEntity에 Profile에 대한 OneToOne relation 추가
+    // UserEntity에 Company에 대한 OneToOne relation 추가 (실제 존재하는 Company 엔티티 사용)
     mockEntityManagerGet("User", (original) => ({
       ...original,
       props: [
         ...original.props,
         {
           type: "relation",
-          name: "profile",
-          with: "Profile",
-          desc: "프로필",
+          name: "main_company",
+          with: "Company",
+          desc: "메인 회사",
           relationType: "OneToOne",
           hasJoinColumn: true,
           useConstraint: true,
@@ -586,12 +586,12 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode?.title).toBe("alter_users_add1_alter4");
 
     // up
-    expect(alterCode?.formatted).toContain('table.integer("profile_id").notNullable()');
+    expect(alterCode?.formatted).toContain('table.integer("main_company_id").notNullable()');
 
     // down
-    expect(alterCode?.formatted).toContain('table.dropColumns("profile_id")');
+    expect(alterCode?.formatted).toContain('table.dropColumns("main_company_id")');
     // unique constraint
-    // expect(addProfileFKConstraintCode?.formatted).toContain('table.unique(["profile_id"])');
+    // expect(addProfileFKConstraintCode?.formatted).toContain('table.unique(["main_company_id"])');
   });
 
   test("FK 추가 감지 (HasMany)", async () => {
@@ -873,5 +873,256 @@ describe("Migrator - preparedCodes 생성", () => {
     );
 
     expect(createTableIndex).toBeLessThan(foreignIndex);
+  });
+
+  describe("String/UUID PK 지원", () => {
+    // 목적: string/uuid 타입의 PK를 가진 엔티티의 마이그레이션 코드 생성 검증
+
+    test("String PK 엔티티 생성 - length 지정", async () => {
+      const stringPkEntity = {
+        id: "ExternalResource",
+        table: "external_resources",
+        title: "외부 리소스",
+        props: [
+          { name: "id", type: "string", desc: "외부 시스템 ID", length: 100 },
+          { name: "name", type: "string", desc: "리소스명", length: 255 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(stringPkEntity);
+
+      const status = await migrator.getStatus();
+
+      const createCode = status.preparedCodes.find(
+        (code) => code.title === "create__external_resources",
+      );
+      expect(createCode).toBeDefined();
+
+      // string PK는 table.string("id", length).primary().notNullable() 형태로 생성
+      expect(createCode?.formatted).toContain('table.string("id", 100).primary().notNullable()');
+      expect(createCode?.formatted).not.toContain("table.increments()");
+    });
+
+    test("String PK 엔티티 생성 - length 미지정 (text)", async () => {
+      const stringPkEntity = {
+        id: "TextIdEntity",
+        table: "text_id_entities",
+        title: "Text ID 엔티티",
+        props: [
+          { name: "id", type: "string", desc: "Text ID" }, // length 없음
+          { name: "data", type: "string", desc: "데이터" },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(stringPkEntity);
+
+      const status = await migrator.getStatus();
+
+      const createCode = status.preparedCodes.find(
+        (code) => code.title === "create__text_id_entities",
+      );
+      expect(createCode).toBeDefined();
+
+      // length가 없으면 text 타입으로 생성
+      expect(createCode?.formatted).toContain('table.text("id").primary().notNullable()');
+    });
+
+    test("UUID PK 엔티티 생성", async () => {
+      const uuidPkEntity = {
+        id: "AuditLog",
+        table: "audit_logs",
+        title: "감사 로그",
+        props: [
+          { name: "id", type: "uuid", desc: "UUID" },
+          { name: "action", type: "string", desc: "작업", length: 50 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(uuidPkEntity);
+
+      const status = await migrator.getStatus();
+
+      const createCode = status.preparedCodes.find((code) => code.title === "create__audit_logs");
+      expect(createCode).toBeDefined();
+
+      // uuid PK는 table.uuid("id").primary().notNullable() 형태로 생성
+      expect(createCode?.formatted).toContain('table.uuid("id").primary().notNullable()');
+      expect(createCode?.formatted).not.toContain("table.increments()");
+    });
+
+    test("String PK 엔티티를 참조하는 FK (BelongsToOne)", async () => {
+      // 1. String PK를 가진 엔티티 등록
+      const stringPkEntity = {
+        id: "ExternalSystem",
+        table: "external_systems",
+        title: "외부 시스템",
+        props: [
+          { name: "id", type: "string", desc: "외부 시스템 ID", length: 50 },
+          { name: "name", type: "string", desc: "시스템명", length: 100 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(stringPkEntity);
+
+      // 2. String PK를 참조하는 엔티티 등록
+      const refEntity = {
+        id: "SystemLog",
+        table: "system_logs",
+        title: "시스템 로그",
+        props: [
+          { name: "id", type: "integer", desc: "ID" },
+          { name: "message", type: "string", desc: "메시지" },
+          {
+            type: "relation",
+            name: "external_system",
+            with: "ExternalSystem",
+            desc: "외부 시스템",
+            relationType: "BelongsToOne",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(refEntity);
+
+      const status = await migrator.getStatus();
+
+      // FK 컬럼이 string 타입으로 생성되어야 함
+      const createLogCode = status.preparedCodes.find(
+        (code) => code.title === "create__system_logs",
+      );
+      expect(createLogCode).toBeDefined();
+
+      // FK 컬럼은 참조 엔티티의 PK 타입(string, length: 50)을 따라야 함
+      expect(createLogCode?.formatted).toContain('table.string("external_system_id", 50)');
+      expect(createLogCode?.formatted).not.toContain('table.integer("external_system_id")');
+    });
+
+    test("UUID PK 엔티티를 참조하는 FK (BelongsToOne)", async () => {
+      // 1. UUID PK를 가진 엔티티 등록
+      const uuidPkEntity = {
+        id: "Transaction",
+        table: "transactions",
+        title: "거래",
+        props: [
+          { name: "id", type: "uuid", desc: "UUID" },
+          { name: "amount", type: "number", desc: "금액" },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(uuidPkEntity);
+
+      // 2. UUID PK를 참조하는 엔티티 등록
+      const refEntity = {
+        id: "TransactionDetail",
+        table: "transaction_details",
+        title: "거래 상세",
+        props: [
+          { name: "id", type: "integer", desc: "ID" },
+          { name: "description", type: "string", desc: "설명" },
+          {
+            type: "relation",
+            name: "transaction",
+            with: "Transaction",
+            desc: "거래",
+            relationType: "BelongsToOne",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(refEntity);
+
+      const status = await migrator.getStatus();
+
+      // FK 컬럼이 uuid 타입으로 생성되어야 함
+      const createDetailCode = status.preparedCodes.find(
+        (code) => code.title === "create__transaction_details",
+      );
+      expect(createDetailCode).toBeDefined();
+
+      // FK 컬럼은 참조 엔티티의 PK 타입(uuid)을 따라야 함
+      expect(createDetailCode?.formatted).toContain('table.uuid("transaction_id")');
+      expect(createDetailCode?.formatted).not.toContain('table.integer("transaction_id")');
+    });
+
+    test("String PK 엔티티 간 ManyToMany 관계", async () => {
+      // 1. String PK를 가진 두 엔티티 등록
+      const entityA = {
+        id: "Article",
+        table: "articles",
+        title: "아티클",
+        props: [
+          { name: "id", type: "string", desc: "아티클 ID", length: 36 },
+          { name: "title", type: "string", desc: "제목", length: 255 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(entityA);
+
+      const entityB = {
+        id: "Category",
+        table: "categories",
+        title: "카테고리",
+        props: [
+          { name: "id", type: "string", desc: "카테고리 ID", length: 20 },
+          { name: "name", type: "string", desc: "카테고리명", length: 100 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(entityB);
+
+      // 2. Article에 ManyToMany 관계 추가 (mock 사용)
+      mockEntityManagerGet("Article", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            type: "relation",
+            name: "categories",
+            with: "Category",
+            desc: "카테고리들",
+            relationType: "ManyToMany",
+            joinTable: "articles__categories",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+      }));
+
+      const status = await migrator.getStatus();
+
+      // Join 테이블 생성 코드 확인
+      const createJoinTableCode = status.preparedCodes.find(
+        (code) => code.title === "create__articles__categories",
+      );
+      expect(createJoinTableCode).toBeDefined();
+
+      // Join 테이블의 FK 컬럼들이 각 엔티티의 PK 타입을 따라야 함
+      expect(createJoinTableCode?.formatted).toContain('table.string("article_id", 36)');
+      expect(createJoinTableCode?.formatted).toContain('table.string("category_id", 20)');
+      expect(createJoinTableCode?.formatted).not.toContain('table.integer("article_id")');
+      expect(createJoinTableCode?.formatted).not.toContain('table.integer("category_id")');
+    });
   });
 });

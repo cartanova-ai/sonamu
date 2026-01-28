@@ -998,30 +998,30 @@ describe("zod-converter", () => {
         // 기대: hasJoinColumn이 true인 OneToOne은 "필드명_id: z.int()," 형태로 변환
         const prop: EntityProp = {
           type: "relation",
-          name: "profile",
+          name: "user",
           relationType: "OneToOne",
-          with: "Profile",
+          with: "User",
           hasJoinColumn: true,
         };
         const importKeys: string[] = [];
         const result = propToZodTypeDef(prop, importKeys);
 
-        expect(result).toBe("profile_id: z.int(),");
+        expect(result).toBe("user_id: z.int(),");
       });
 
       test("OneToOne relation without join column", () => {
         // 기대: hasJoinColumn이 false인 OneToOne은 주석으로만 표시
         const prop: EntityProp = {
           type: "relation",
-          name: "profile",
+          name: "user",
           relationType: "OneToOne",
-          with: "Profile",
+          with: "User",
           hasJoinColumn: false,
         };
         const importKeys: string[] = [];
         const result = propToZodTypeDef(prop, importKeys);
 
-        expect(result).toBe("// profile: OneToOne Profile");
+        expect(result).toBe("// user: OneToOne User");
       });
 
       test("HasMany relation", () => {
@@ -1038,6 +1038,40 @@ describe("zod-converter", () => {
 
         expect(result).toBe("// posts: HasMany Post");
       });
+    });
+
+    describe("FK 타입이 참조 엔티티 PK 타입에 따라 결정", () => {
+      // 목적: 참조 엔티티의 PK 타입(integer/string/uuid)에 따라 FK Zod 타입이 달라지는지 검증
+      // User 엔티티는 integer PK를 사용하므로 z.int()가 생성되어야 함
+      test("BelongsToOne - integer PK 엔티티 참조시 z.int() 생성", () => {
+        const prop: EntityProp = {
+          type: "relation",
+          name: "user",
+          relationType: "BelongsToOne",
+          with: "User", // User는 integer PK
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("user_id: z.int(),");
+      });
+
+      test("OneToOne with join column - integer PK 엔티티 참조시 z.int() 생성", () => {
+        const prop: EntityProp = {
+          type: "relation",
+          name: "company",
+          relationType: "OneToOne",
+          with: "Company", // Company는 integer PK
+          hasJoinColumn: true,
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("company_id: z.int(),");
+      });
+
+      // TODO: string/uuid PK 엔티티에 대한 테스트는 해당 엔티티가 실제로 존재해야 함
+      // 현재 miomock에는 string/uuid PK 엔티티가 없으므로, 해당 엔티티 추가 후 테스트 확장 필요
     });
   });
 

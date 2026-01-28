@@ -1,10 +1,99 @@
-import { EntityManager } from "sonamu";
+import { type EntityJson, EntityManager } from "sonamu";
 import { bootstrap } from "sonamu/test";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 bootstrap(vi);
 
 describe("entityManager", () => {
+  // 테스트 실행 후 EntityManager 초기화
+  afterEach(async () => {
+    await EntityManager.reload();
+  });
+
+  describe("Entity.getPkType() / Entity.getPkProp()", () => {
+    // 목적: Entity의 PK 타입을 올바르게 반환하는지 검증
+
+    it("integer PK (기본) - increments로 생성된 엔티티", async () => {
+      // User는 기본 integer PK를 사용하는 엔티티
+      const userEntity = EntityManager.get("User");
+      expect(userEntity.getPkType()).toBe("integer");
+
+      const pkProp = userEntity.getPkProp();
+      expect(pkProp.name).toBe("id");
+      expect(pkProp.type).toBe("integer");
+    });
+
+    it("string PK - text 타입 ID 엔티티", async () => {
+      // string PK를 가진 엔티티 등록
+      const stringPkEntity = {
+        id: "ExternalResource",
+        table: "external_resources",
+        title: "외부 리소스",
+        props: [
+          { name: "id", type: "string", desc: "외부 시스템 ID", length: 100 },
+          { name: "name", type: "string", desc: "리소스명", length: 255 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(stringPkEntity);
+
+      const entity = EntityManager.get("ExternalResource");
+      expect(entity.getPkType()).toBe("string");
+
+      const pkProp = entity.getPkProp();
+      expect(pkProp.name).toBe("id");
+      expect(pkProp.type).toBe("string");
+      if (pkProp.type === "string") {
+        expect(pkProp.length).toBe(100);
+      }
+    });
+
+    it("uuid PK - UUID 타입 ID 엔티티", async () => {
+      // uuid PK를 가진 엔티티 등록
+      const uuidPkEntity = {
+        id: "AuditLog",
+        table: "audit_logs",
+        title: "감사 로그",
+        props: [
+          { name: "id", type: "uuid", desc: "UUID" },
+          { name: "action", type: "string", desc: "작업", length: 50 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(uuidPkEntity);
+
+      const entity = EntityManager.get("AuditLog");
+      expect(entity.getPkType()).toBe("uuid");
+
+      const pkProp = entity.getPkProp();
+      expect(pkProp.name).toBe("id");
+      expect(pkProp.type).toBe("uuid");
+    });
+
+    it("id 필드가 없는 엔티티 → 에러", async () => {
+      // id 필드가 없는 엔티티 등록
+      const noIdEntity = {
+        id: "NoIdEntity",
+        table: "no_id_entities",
+        title: "ID 없는 엔티티",
+        props: [{ name: "code", type: "string", desc: "코드", length: 50 }],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(noIdEntity);
+
+      const entity = EntityManager.get("NoIdEntity");
+
+      expect(() => entity.getPkType()).toThrow("Entity NoIdEntity에 id 필드가 없습니다");
+      expect(() => entity.getPkProp()).toThrow("Entity NoIdEntity에 id 필드가 없습니다");
+    });
+  });
+
   describe("schemaValidate", () => {
     // 유효한 기본 EntityJson
     const validBaseEntity = {
