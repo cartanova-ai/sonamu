@@ -57,7 +57,7 @@ export default {
   "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
 
   // 에러 메시지 (템플릿 함수)
-  "error.entityNotFound": (name: string, id: number) => `존재하지 않는 ${name} ID ${id}`,
+  "error.entityNotFound": (name: string, id: number | string) => `존재하지 않는 ${name} ID ${id}`,
   "error.unknownSearchField": (field: string) => `구현되지 않은 검색 필드 ${field}`,
 
   // Sonamu 내부 에러 메시지

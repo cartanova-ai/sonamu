@@ -315,6 +315,13 @@ export class Template__generated extends Template {
     const omitKeysUnion =
       excludedProps.length > 0 ? excludedProps.map((n) => `"${n}"`).join(" | ") : "never";
 
+    // PK 타입에 따른 id Zod 타입 결정
+    const pkType = entity.getPkType();
+    const idZodType =
+      pkType === "string" || pkType === "uuid"
+        ? "zArrayable(z.string())"
+        : "zArrayable(z.number().int().positive())";
+
     const schemaBody = `
 z.object({
   num: z.number().int().nonnegative(),
@@ -323,7 +330,7 @@ z.object({
   keyword: z.string(),
   orderBy: ${entity.id}OrderBy,
   queryMode: SonamuQueryMode,
-  id: zArrayable(z.number().int().positive()),
+  id: ${idZodType},
   sonamuFilter: z.custom<ApplySonamuFilter<${entityType}, ${omitKeysUnion}, ${numericKeysUnion}>>(),${filterBody}
 }).partial();
 `.trim();

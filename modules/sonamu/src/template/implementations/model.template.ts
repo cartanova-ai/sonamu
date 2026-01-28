@@ -46,6 +46,10 @@ export class Template__model extends Template {
     const notFoundError = `SD("error.entityNotFound")("${names.capital}", id)`;
     const unknownSearchFieldError = `SD("error.unknownSearchField")(params.search)`;
 
+    // PK 타입에 따른 TypeScript 타입 결정
+    const pkType = entity.getPkType();
+    const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
+
     return {
       ...this.getTargetAndPath(names),
       body: `
@@ -77,7 +81,7 @@ class ${entityId}ModelClass extends BaseModelClass<
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "${entityId}" })
   async findById<T extends ${entityId}SubsetKey>(
     subset: T,
-    id: number
+    id: ${idTsType}
   ): Promise<${entityId}SubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -129,7 +133,7 @@ class ${entityId}ModelClass extends BaseModelClass<
     // search-keyword
     if (params.search && params.keyword && params.keyword.length > 0) {
       if (params.search === "id") {
-        qb.where("${entity.table}.id", Number(params.keyword));
+        qb.where("${entity.table}.id", ${idTsType === "string" ? "params.keyword" : "Number(params.keyword)"});
         // } else if (params.search === "field") {
         //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
       } else {
@@ -170,7 +174,7 @@ class ${entityId}ModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(
     spa: ${entityId}SaveParams[]
-  ): Promise<number[]> {
+  ): Promise<${idTsType}[]> {
     const wdb = this.getPuri("w");
 
     // register
@@ -187,7 +191,7 @@ class ${entityId}ModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: [ "admin" ] })
-  async del(ids: number[]): Promise<number> {
+  async del(ids: ${idTsType}[]): Promise<number> {
     const wdb = this.getPuri("w");
 
     // transaction

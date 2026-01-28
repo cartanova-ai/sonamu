@@ -177,7 +177,14 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     zodType = await getZodTypeById(prop.id);
   } else if (isRelationProp(prop)) {
     if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
-      zodType = z.number().int();
+      // FK 타입을 참조 엔티티 PK 타입에 따라 결정
+      const relEntity = EntityManager.get(prop.with);
+      const pkType = relEntity.getPkType();
+      if (pkType === "string" || pkType === "uuid") {
+        zodType = z.string();
+      } else {
+        zodType = z.number().int();
+      }
     }
   } else {
     throw new Error(`prop을 zodType으로 변환하는데 실패 ${prop}}`);
@@ -265,7 +272,14 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     injectImportKeys.push(prop.id);
   } else if (isRelationProp(prop)) {
     if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
-      stmt = `${prop.name}_id: z.int()`;
+      // FK Zod 타입을 참조 엔티티 PK 타입에 따라 결정
+      const relEntity = EntityManager.get(prop.with);
+      const pkType = relEntity.getPkType();
+      if (pkType === "string" || pkType === "uuid") {
+        stmt = `${prop.name}_id: z.string()`;
+      } else {
+        stmt = `${prop.name}_id: z.int()`;
+      }
     } else {
       // 그외 relation 케이스 제외
       return `// ${prop.name}: ${prop.relationType} ${prop.with}`;

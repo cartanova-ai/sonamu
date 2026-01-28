@@ -57,7 +57,7 @@ export default {
   "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
 
   // Error messages (template functions)
-  "error.entityNotFound": (name: string, id: number) => `${name} ID ${id} not found`,
+  "error.entityNotFound": (name: string, id: number | string) => `${name} ID ${id} not found`,
   "error.unknownSearchField": (field: string) => `Unknown search field: ${field}`,
 
   // Sonamu internal error messages
