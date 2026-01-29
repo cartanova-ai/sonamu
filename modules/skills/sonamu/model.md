@@ -5,6 +5,11 @@ description: Sonamu Model 클래스 작성. BaseModelClass 상속, CRUD 메서�
 
 # Model 클래스
 
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save 구현
+- `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` - 기본 CRUD 패턴
+- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - 테스트 예시
+
 ## 기본 구조
 
 ```typescript
@@ -198,27 +203,103 @@ return this.executeSubsetQuery({ subset, qb, params, enhancers });
 ```typescript
 // user.types.ts
 import { z } from "zod";
-import { UserOrderBy, UserSearchField } from "../sonamu.generated";
+import { UserOrderBy, UserSearchField, UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
 
-export const UserListParams = z.object({
-  num: z.number().optional(),
-  page: z.number().optional(),
-  search: UserSearchField.optional(),
-  keyword: z.string().optional(),
-  orderBy: UserOrderBy.optional(),
-  queryMode: z.enum(["list", "count", "both"]).optional(),
-  sonamuFilter: z.record(z.unknown()).optional(),
-  id: z.union([z.number(), z.array(z.number())]).optional(),
-});
+export const UserListParams = UserBaseListParams;
 export type UserListParams = z.infer<typeof UserListParams>;
 
-export const UserSaveParams = z.object({
-  id: z.number().optional(),
-  email: z.string().email(),
-  username: z.string().min(2),
+// 기본 패턴: BaseSchema에서 partial 처리
+export const UserSaveParams = UserBaseSchema.partial({
+  id: true,
+  created_at: true,
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
+
+### SaveParams 패턴
+
+**기본 패턴 (relation 없음):**
+```typescript
+import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
+
+export const UserListParams = UserBaseListParams;
+export type UserListParams = z.infer<typeof UserListParams>;
+
+export const UserSaveParams = UserBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+```
+
+**ManyToMany relation이 있는 경우:**
+```typescript
+// ManyToMany 관계: {relation_name}_ids 배열 추가
+export const ProjectSaveParams = ProjectBaseSchema.partial({
+  id: true,
+  created_at: true,
+})
+  .extend({
+    employee_ids: z.array(z.number().int().positive()),
+    tag_ids: z.array(z.number().int().positive()),
+  })
+  .omit({
+    // virtual 필드, 시스템 생성 필드 등은 omit
+    virtual_test: true,
+  });
+export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
+```
+
+**BelongsToOne relation의 nullable 필드 처리:**
+```typescript
+// nullable relation은 자동으로 optional이므로 추가 partial 불필요
+export const ResponseSaveParams = ResponseBaseSchema.partial({
+  id: true,
+  created_at: true,
+  updated_at: true,  // timestamp 필드도 partial 처리
+});
+export type ResponseSaveParams = z.infer<typeof ResponseSaveParams>;
+```
+
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams 예시
+- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams 예시
+
+### Model에서 Relation 처리
+
+**Update 시 relation 객체 제거:**
+```typescript
+// Test에서 Update 시 사용하는 패턴
+const original = await UserModel.findById("A", userId);
+
+// Relation 객체 제거하고 FK만 추출
+const { institution, ...userData } = original;
+
+await UserModel.save([
+  {
+    ...userData,
+    institution_id: institution?.id ?? null,  // FK 명시적 추가
+    name: "수정된이름",
+  },
+]);
+```
+
+**ManyToMany save 시:**
+```typescript
+// ManyToMany는 _ids 배열로 전달
+await ProjectModel.save([
+  {
+    id: projectId,
+    title: "Updated",
+    employee_ids: [1, 2, 3],
+    tag_ids: [4, 5],
+  },
+]);
+```
+
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save 구현
+- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save 테스트 예시
 
 ## 트랜잭션
 

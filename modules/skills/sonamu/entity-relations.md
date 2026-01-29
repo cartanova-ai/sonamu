@@ -5,6 +5,11 @@ description: Sonamu Entity 관계 정의 시 참조. BelongsToOne, HasMany, OneT
 
 # Entity 관계 정의
 
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/` - ManyToMany 관계 전체 예시
+- `sonamu/examples/miomock/api/src/application/employee/` - BelongsToOne 관계 예시
+- `sonamu/examples/miomock/api/src/application/company/` - HasMany 관계 예시
+
 ## 관계 선택 가이드
 
 ### 1:N vs N:M 판단 기준

@@ -5,6 +5,11 @@ description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 �
 
 # Entity 기본 구조
 
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/user/user.entity.json` - 기본 Entity 예시
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - 복잡한 Entity 예시
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne 관계 예시
+
 ## Entity 생성 워크플로우
 
 ### 1단계: stub 생성
@@ -19,7 +24,7 @@ pnpm sonamu stub entity {EntityId}
 생성된 entity.json 파일에 props, relations, subsets 추가
 
 ### 3단계: 검증 및 필수 파일 생성
-**⚠️ CRITICAL: sync 실행 전에 반드시 검증하세요!**
+**CRITICAL: sync 실행 전에 반드시 검증하세요!**
 
 1. entity.json 검증 (indexes, subsets, enums 등)
 2. model.ts 생성
@@ -335,9 +340,13 @@ Error: EntityName -- 잘못된 FieldExpr 'field_id'
 ```
 
 **규칙**: 모든 relation foreign key는 `relation_name.id` 형식으로 참조
-- `user_id` → `user.id`
+- `user_id` → `user.id` (Sonamu가 `.id`만 참조 시 자동으로 FK 컬럼 직접 읽기로 최적화)
 - `task_id` → `task.id`
 - `department_id` → `department.id`
+
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json`
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
 
 ### 3. 중복 컬럼 정의
 
@@ -414,7 +423,7 @@ Entity.json 파일 작성 시 다음 사항을 확인하세요:
 
 ## IMPORTANT: OrderBy Enum Generation Rule
 
-**⚠️ CRITICAL: `id-desc` 외에는 절대 추가하지 마세요.**
+**CRITICAL: `id-desc` 외에는 절대 추가하지 마세요.**
 
 ```json
 // DO - Correct (기본 설정)
@@ -431,7 +440,7 @@ Scaffolding이 생성하는 model 코드는 `id-desc`만 처리합니다. OrderB
 2. model의 `exhaustive()` 함수에서 타입 오류 발생
 3. 개발자가 수동으로 model에 케이스 추가 필요
 
-**⚠️ Entity 생성 시 반드시 `id-desc`만 포함하고, 다른 정렬 옵션은 추가하지 마세요.**
+**WARNING: Entity 생성 시 반드시 `id-desc`만 포함하고, 다른 정렬 옵션은 추가하지 마세요.**
 
 ### 추가 정렬 옵션이 필요할 때
 

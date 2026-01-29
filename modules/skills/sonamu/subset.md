@@ -5,6 +5,10 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 
 # Subset 정의
 
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - 복잡한 Subset 예시
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - 기본 Subset 예시
+
 ## 기본 구조
 
 ```json
@@ -19,7 +23,7 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 
 ## 네이밍 규칙
 
-**⚠️ Subset 이름은 A, P, SS만 사용합니다. S, D, L 등 임의의 이름은 사용하지 마세요.**
+**WARNING: Subset 이름은 A, P, SS만 사용합니다. S, D, L 등 임의의 이름은 사용하지 마세요.**
 
 | Subset | 용도 |
 |--------|------|
@@ -140,12 +144,17 @@ const users = await UserModel.getPuri("r", ["P"])
 - 기본 Subset `A`는 필수
 - 중첩 depth 3단계 이하 권장
 - 목록용 Subset은 불필요한 관계 제외
-- **FK 컬럼 직접 사용 불가**: BelongsToOne 관계의 FK 컬럼(예: `user_id`)은 Subset에서 직접 사용할 수 없음. 반드시 `user.id` 형태로 접근해야 함
+- **FK 컬럼은 relation 표기 사용**: BelongsToOne 관계의 FK 컬럼(예: `user_id`)은 Subset에서 `user.id` 형태로 접근해야 함. 이는 Sonamu가 relation 표기를 인식하여 `.id`만 참조 시 자동으로 FK 컬럼을 직접 읽는 최적화를 수행하기 때문
 
 ```json
 // DO NOT - Incorrect: FK 컬럼 직접 사용
 { "A": ["id", "user_id", "title"] }
 
-// DO - Correct: relation.field 형식 사용
+// DO - Correct: relation.field 형식 사용 (자동 최적화)
 { "A": ["id", "user.id", "title"] }
+// → Sonamu가 user_id 컬럼을 직접 읽음 (JOIN 없음)
 ```
+
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - Subset 정의 예시
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne 관계 예시

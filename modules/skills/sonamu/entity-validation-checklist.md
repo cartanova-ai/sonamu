@@ -29,12 +29,12 @@ Entity.json 파일을 작성한 직후, **sync 실행 전에** 다음을 검증�
 **모든 index에 `type` 필드가 있는가?**
 
 ```json
-// ❌ BAD
+// DO NOT - Incorrect
 "indexes": [
   { "name": "ix_user_email", "columns": [{ "name": "email" }] }
 ]
 
-// ✅ GOOD
+// DO - Correct
 "indexes": [
   { "name": "ix_user_email", "type": "index", "columns": [{ "name": "email" }] }
 ]
@@ -52,12 +52,12 @@ grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
 **Foreign key를 직접 참조하지 않았는가?**
 
 ```json
-// ❌ BAD - foreign key 직접 참조
+// DO NOT - Incorrect: foreign key 직접 참조
 "subsets": {
   "A": ["id", "user_id", "task_id"]
 }
 
-// ✅ GOOD - relation을 통한 참조
+// DO - Correct: relation을 통한 참조 (Sonamu가 .id만 참조 시 자동 최적화)
 "subsets": {
   "A": ["id", "user.id", "task.id"]
 }
@@ -66,6 +66,7 @@ grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
 **규칙:**
 - `{relation_name}_id` → `{relation_name}.id`
 - BelongsToOne relation이 있으면 반드시 `relation.id` 형식 사용
+- Sonamu가 `.id`만 참조하는 경우 FK 컬럼을 직접 읽어 JOIN을 생략하는 최적화 수행
 
 **검증 방법:**
 ```bash
@@ -73,12 +74,16 @@ grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
 grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 ```
 
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json`
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
+
 ### 1.3 Subset A 완전성 검증
 
 **Subset A에 모든 필드가 포함되어 있는가?**
 
 ```json
-// ✅ GOOD - 모든 props 포함
+// DO - Correct: 모든 props 포함
 {
   "props": [
     { "name": "id" },
@@ -89,7 +94,7 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
   "subsets": {
     "A": [
       "id",
-      "created_at", 
+      "created_at",
       "title",
       "user.id",
       "user.name"
@@ -108,10 +113,10 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 **BelongsToOne relation과 foreign key를 중복 정의하지 않았는가?**
 
 ```json
-// ❌ BAD - 중복 정의
+// DO NOT - Incorrect: 중복 정의
 {
   "props": [
-    { "name": "user_id", "type": "integer" },  // ❌ 삭제해야 함
+    { "name": "user_id", "type": "integer" },  // 삭제해야 함
     {
       "type": "relation",
       "name": "user",
@@ -121,7 +126,7 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
   ]
 }
 
-// ✅ GOOD - relation만 정의
+// DO - Correct: relation만 정의
 {
   "props": [
     {
@@ -146,11 +151,11 @@ grep '"name": ".*_id"' your-entity.entity.json
 **Boolean 타입의 dbDefault가 문자열 "true"/"false"인가?**
 
 ```json
-// ❌ BAD
+// DO NOT - Incorrect
 { "name": "is_active", "type": "boolean", "dbDefault": "1" }
 { "name": "is_deleted", "type": "boolean", "dbDefault": "0" }
 
-// ✅ GOOD
+// DO - Correct
 { "name": "is_active", "type": "boolean", "dbDefault": "true" }
 { "name": "is_deleted", "type": "boolean", "dbDefault": "false" }
 ```
@@ -160,16 +165,16 @@ grep '"name": ".*_id"' your-entity.entity.json
 **OrderBy enum에 `id-desc`만 있는가?**
 
 ```json
-// ❌ BAD - scaffolding 오류 발생!
+// DO NOT - Incorrect: scaffolding 오류 발생!
 "enums": {
-  "ProductOrderBy": { 
+  "ProductOrderBy": {
     "id-desc": "ID최신순",
     "name-asc": "이름순",
     "created_at-desc": "등록일순"
   }
 }
 
-// ✅ GOOD
+// DO - Correct
 "enums": {
   "ProductOrderBy": { "id-desc": "ID최신순" }
 }
@@ -182,11 +187,11 @@ grep '"name": ".*_id"' your-entity.entity.json
 **Enum 타입의 dbDefault가 이스케이프된 큰따옴표로 감싸져 있는가?**
 
 ```json
-// ❌ BAD
+// DO NOT - Incorrect
 { "name": "status", "type": "enum", "id": "Status", "dbDefault": "pending" }
 { "name": "status", "type": "enum", "id": "Status", "dbDefault": "'pending'" }
 
-// ✅ GOOD
+// DO - Correct
 { "name": "status", "type": "enum", "id": "Status", "dbDefault": "\"pending\"" }
 ```
 
@@ -221,7 +226,7 @@ ls packages/api/src/application/your-entity/your-entity.types.ts
 
 **필수 내용:**
 ```typescript
-import type { z } from "zod";
+import { z } from "zod";
 import {
   YourEntityBaseListParams,
   YourEntityBaseSchema,
@@ -230,12 +235,30 @@ import {
 export const YourEntityListParams = YourEntityBaseListParams;
 export type YourEntityListParams = z.infer<typeof YourEntityListParams>;
 
+// 기본 패턴 (relation 없음)
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
 });
 export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
+
+**ManyToMany relation이 있는 경우:**
+```typescript
+// ManyToMany 관계: {relation_name}_ids 배열 추가
+export const YourEntitySaveParams = YourEntityBaseSchema.partial({
+  id: true,
+  created_at: true,
+})
+  .extend({
+    relation_name_ids: z.array(z.number().int().positive()),
+  });
+export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
+```
+
+**실제 동작 코드 참고:**
+- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany 예시
+- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - 기본 패턴
 
 ## PHASE 3: Sync 실행 및 검증
 
