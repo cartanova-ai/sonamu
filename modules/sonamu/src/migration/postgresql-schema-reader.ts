@@ -9,6 +9,27 @@ import type {
   RelationOn,
 } from "../types/types";
 
+/**
+ * 특정 테이블의 PK를 참조하는 다른 테이블의 FK 정보입니다.
+ * PK 타입 변경 시 관련 FK 제약조건을 처리하기 위해 사용됩니다.
+ */
+export type ReferencingForeignKey = {
+  /** FK가 정의된 테이블명 */
+  tableName: string;
+  /** FK 제약조건 이름 */
+  constraintName: string;
+  /** FK 컬럼명 */
+  columnName: string;
+  /** 참조하는 테이블명 (PK가 있는 테이블) */
+  referencedTableName: string;
+  /** 참조하는 컬럼명 (보통 'id') */
+  referencedColumnName: string;
+  /** ON UPDATE 액션 */
+  onUpdate: RelationOn;
+  /** ON DELETE 액션 */
+  onDelete: RelationOn;
+};
+
 export type PgColumn = {
   column_name: string;
   data_type: string;
@@ -310,6 +331,57 @@ class PostgreSQLSchemaReaderClass {
     const foreigns = (await compareDB.raw(foreignsQuery, [tableName])).rows;
 
     return [columns, indexes, foreigns];
+  }
+
+  /**
+   * 특정 테이블의 PK를 참조하는 다른 테이블의 FK 목록을 조회합니다.
+   * PK 타입 변경 시 관련 FK 제약조건을 삭제/복구하기 위해 사용됩니다.
+   */
+  async getReferencingForeignKeys(db: Knex, tableName: string): Promise<ReferencingForeignKey[]> {
+    const query = `
+      SELECT
+        tc.table_name,
+        tc.constraint_name,
+        kcu.column_name,
+        ccu.table_name AS referenced_table_name,
+        ccu.column_name AS referenced_column_name,
+        rc.update_rule,
+        rc.delete_rule
+      FROM information_schema.table_constraints AS tc
+      JOIN information_schema.key_column_usage AS kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage AS ccu
+        ON ccu.constraint_name = tc.constraint_name
+        AND ccu.table_schema = tc.table_schema
+      JOIN information_schema.referential_constraints AS rc
+        ON rc.constraint_name = tc.constraint_name
+        AND rc.constraint_schema = tc.table_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_name = ?
+        AND tc.table_schema = 'public'
+    `;
+
+    const result = await db.raw(query, [tableName]);
+    return result.rows.map(
+      (row: {
+        table_name: string;
+        constraint_name: string;
+        column_name: string;
+        referenced_table_name: string;
+        referenced_column_name: string;
+        update_rule: string;
+        delete_rule: string;
+      }) => ({
+        tableName: row.table_name,
+        constraintName: row.constraint_name,
+        columnName: row.column_name,
+        referencedTableName: row.referenced_table_name,
+        referencedColumnName: row.referenced_column_name,
+        onUpdate: this.mapConstraintAction(row.update_rule),
+        onDelete: this.mapConstraintAction(row.delete_rule),
+      }),
+    );
   }
 
   /**

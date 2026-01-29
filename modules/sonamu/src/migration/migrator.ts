@@ -368,7 +368,7 @@ export class Migrator {
             return await generateCreateCode(entitySet);
           } else {
             // 기존 테이블 존재하는 케이스
-            return await generateAlterCode(entitySet, dbSet);
+            return await generateAlterCode(entitySet, dbSet, compareDB);
           }
         }),
       )

@@ -1,4 +1,5 @@
 import equal from "fast-deep-equal";
+import type { Knex } from "knex";
 import { alphabetical, diff } from "radashi";
 import { EntityManager, Naite } from "..";
 import type {
@@ -11,6 +12,7 @@ import type {
 } from "../types/types";
 import { formatCode } from "../utils/formatter";
 import { differenceWith, intersectionBy } from "../utils/utils";
+import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
 
 /**
  * 컬럼 정의 결과 타입
@@ -415,6 +417,7 @@ async function generateAlterCode_ColumnAndIndexes(
   dbColumns: MigrationColumn[],
   dbIndexes: MigrationIndex[],
   dbForeigns: MigrationForeign[],
+  compareDB?: Knex,
 ): Promise<GenMigrationCode[]> {
   /*
     세부 비교 후 다른점 찾아서 코드 생성
@@ -427,6 +430,29 @@ async function generateAlterCode_ColumnAndIndexes(
     ** 컬럼명을 변경하는 경우는 따로 핸들링하지 않음
     => drop/add 형태의 마이그레이션 코드가 생성되는데, 수동으로 rename 코드로 수정하여 처리
   */
+
+  // PK(id) 컬럼 타입 변경 감지 및 처리
+  const entityIdCol = entityColumns.find((col) => col.name === "id");
+  const dbIdCol = dbColumns.find((col) => col.name === "id");
+
+  if (entityIdCol && dbIdCol && compareDB) {
+    const isPkTypeChanged =
+      entityIdCol.type !== dbIdCol.type || entityIdCol.length !== dbIdCol.length;
+
+    if (isPkTypeChanged) {
+      return generatePkTypeChangeMigration(
+        table,
+        entityIdCol,
+        dbIdCol,
+        entityColumns,
+        entityIndexes,
+        dbColumns,
+        dbIndexes,
+        dbForeigns,
+        compareDB,
+      );
+    }
+  }
 
   // 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
   const alterColumnsTo = getAlterColumnsTo(entityColumns, dbColumns);
@@ -950,11 +976,13 @@ export async function generateCreateCode(entitySet: MigrationSet): Promise<GenMi
  * 주어진 entitySet을 목표로, dbSet을 현 상황으로 하여 테이블 ALTER 마이그레이션 코드를 생성합니다.
  * @param entitySet 현 상황의 MigrationSet
  * @param dbSet 목표 상황의 MigrationSet
+ * @param compareDB PK 타입 변경 시 역참조 FK를 조회하기 위한 Knex 인스턴스 (선택)
  * @returns ALTER 마이그레이션 코드
  */
 export async function generateAlterCode(
   entitySet: MigrationSet,
   dbSet: MigrationSet,
+  compareDB?: Knex,
 ): Promise<GenMigrationCode[]> {
   const replaceColumnDefaultTo = (col: MigrationColumn) => {
     // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
@@ -1038,6 +1066,7 @@ export async function generateAlterCode(
         dbColumns,
         dbIndexes,
         dbSet.foreigns,
+        compareDB,
       ),
     );
   }
@@ -1059,4 +1088,201 @@ export async function generateAlterCode(
   }
 
   return alterCodes.filter((alterCode) => alterCode !== null).flat();
+}
+
+/**
+ * PK 타입 변경 시 역참조 FK 제약조건을 처리하는 마이그레이션 코드를 생성합니다.
+ *
+ * PK 타입 변경 시 순서:
+ * 1. FK 제약조건 삭제 (역참조 테이블들)
+ * 2. 자기 참조 FK 삭제 (있는 경우)
+ * 3. PK 제약조건 삭제
+ * 4. PK 컬럼 타입 변경
+ * 5. FK 컬럼 타입 변경 (역참조 테이블들)
+ * 6. PK 제약조건 복구
+ * 7. 자기 참조 FK 복구
+ * 8. FK 제약조건 복구
+ */
+async function generatePkTypeChangeMigration(
+  table: string,
+  entityIdCol: MigrationColumn,
+  dbIdCol: MigrationColumn,
+  _entityColumns: MigrationColumn[],
+  _entityIndexes: MigrationIndex[],
+  _dbColumns: MigrationColumn[],
+  _dbIndexes: MigrationIndex[],
+  _dbForeigns: MigrationForeign[],
+  compareDB: Knex,
+): Promise<GenMigrationCode[]> {
+  // 역참조 FK 조회 (이 테이블의 PK를 참조하는 다른 테이블의 FK들)
+  const referencingFKs = await PostgreSQLSchemaReader.getReferencingForeignKeys(compareDB, table);
+
+  // 자기 참조 FK 분리 (예: Department.parent_id → Department.id)
+  const selfReferencingFKs = referencingFKs.filter((fk) => fk.tableName === table);
+  const externalReferencingFKs = referencingFKs.filter((fk) => fk.tableName !== table);
+
+  // PK 제약조건 이름 조회
+  const pkConstraintName = `${table}_pkey`;
+
+  // 새 PK 타입에 맞는 PostgreSQL 타입 문자열
+  const newPkPgType = getPkPgType(entityIdCol);
+  const oldPkPgType = getPkPgType(dbIdCol);
+
+  // UP 코드 생성
+  const upLines: string[] = [];
+
+  // 1. 외부 테이블의 FK 제약조건 삭제
+  for (const fk of externalReferencingFKs) {
+    upLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 삭제`);
+    upLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" DROP CONSTRAINT "${fk.constraintName}"');`,
+    );
+  }
+
+  // 2. 자기 참조 FK 삭제
+  for (const fk of selfReferencingFKs) {
+    upLines.push(`  // 자기 참조 FK 삭제: ${fk.columnName}`);
+    upLines.push(
+      `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${fk.constraintName}"');`,
+    );
+  }
+
+  // 3. PK 제약조건 삭제
+  upLines.push(`  // PK 제약조건 삭제`);
+  upLines.push(`  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${pkConstraintName}"');`);
+
+  // 4. PK 컬럼 타입 변경
+  upLines.push(`  // PK 컬럼 타입 변경`);
+  upLines.push(
+    `  await knex.raw('ALTER TABLE "${table}" ALTER COLUMN "id" TYPE ${newPkPgType} USING "id"::${newPkPgType}');`,
+  );
+
+  // 5. FK 컬럼 타입 변경 (역참조 테이블들) - 자기 참조 포함
+  for (const fk of referencingFKs) {
+    upLines.push(`  // ${fk.tableName}.${fk.columnName} 컬럼 타입 변경`);
+    upLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" ALTER COLUMN "${fk.columnName}" TYPE ${newPkPgType} USING "${fk.columnName}"::${newPkPgType}');`,
+    );
+  }
+
+  // 6. PK 제약조건 복구
+  upLines.push(`  // PK 제약조건 복구`);
+  upLines.push(
+    `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${pkConstraintName}" PRIMARY KEY ("id")');`,
+  );
+
+  // 7. 자기 참조 FK 복구
+  for (const fk of selfReferencingFKs) {
+    upLines.push(`  // 자기 참조 FK 복구: ${fk.columnName}`);
+    upLines.push(
+      `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
+    );
+  }
+
+  // 8. 외부 테이블의 FK 제약조건 복구
+  for (const fk of externalReferencingFKs) {
+    upLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 복구`);
+    upLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
+    );
+  }
+
+  // DOWN 코드 생성 (역순)
+  const downLines: string[] = [];
+
+  // 1. 외부 테이블의 FK 제약조건 삭제
+  for (const fk of externalReferencingFKs) {
+    downLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 삭제`);
+    downLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" DROP CONSTRAINT "${fk.constraintName}"');`,
+    );
+  }
+
+  // 2. 자기 참조 FK 삭제
+  for (const fk of selfReferencingFKs) {
+    downLines.push(`  // 자기 참조 FK 삭제: ${fk.columnName}`);
+    downLines.push(
+      `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${fk.constraintName}"');`,
+    );
+  }
+
+  // 3. PK 제약조건 삭제
+  downLines.push(`  // PK 제약조건 삭제`);
+  downLines.push(
+    `  await knex.raw('ALTER TABLE "${table}" DROP CONSTRAINT "${pkConstraintName}"');`,
+  );
+
+  // 4. PK 컬럼 타입 원복
+  downLines.push(`  // PK 컬럼 타입 원복`);
+  downLines.push(
+    `  await knex.raw('ALTER TABLE "${table}" ALTER COLUMN "id" TYPE ${oldPkPgType} USING "id"::${oldPkPgType}');`,
+  );
+
+  // 5. FK 컬럼 타입 원복 (역참조 테이블들)
+  for (const fk of referencingFKs) {
+    downLines.push(`  // ${fk.tableName}.${fk.columnName} 컬럼 타입 원복`);
+    downLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" ALTER COLUMN "${fk.columnName}" TYPE ${oldPkPgType} USING "${fk.columnName}"::${oldPkPgType}');`,
+    );
+  }
+
+  // 6. PK 제약조건 복구
+  downLines.push(`  // PK 제약조건 복구`);
+  downLines.push(
+    `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${pkConstraintName}" PRIMARY KEY ("id")');`,
+  );
+
+  // 7. 자기 참조 FK 복구
+  for (const fk of selfReferencingFKs) {
+    downLines.push(`  // 자기 참조 FK 복구: ${fk.columnName}`);
+    downLines.push(
+      `  await knex.raw('ALTER TABLE "${table}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
+    );
+  }
+
+  // 8. 외부 테이블의 FK 제약조건 복구
+  for (const fk of externalReferencingFKs) {
+    downLines.push(`  // ${fk.tableName}.${fk.columnName} FK 제약조건 복구`);
+    downLines.push(
+      `  await knex.raw('ALTER TABLE "${fk.tableName}" ADD CONSTRAINT "${fk.constraintName}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${table}"("id") ON UPDATE ${fk.onUpdate} ON DELETE ${fk.onDelete}');`,
+    );
+  }
+
+  const lines: string[] = [
+    'import { Knex } from "knex";',
+    "",
+    "export async function up(knex: Knex): Promise<void> {",
+    ...upLines,
+    "}",
+    "",
+    "export async function down(knex: Knex): Promise<void> {",
+    ...downLines,
+    "}",
+  ];
+
+  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
+
+  return [
+    {
+      table,
+      title: `alter_${table}_pk_type`,
+      formatted,
+      type: "normal",
+    },
+  ];
+}
+
+/**
+ * PK 컬럼의 PostgreSQL 타입 문자열을 반환합니다.
+ */
+function getPkPgType(col: MigrationColumn): string {
+  if (col.type === "string") {
+    return col.length !== undefined ? `varchar(${col.length})` : "text";
+  }
+  if (col.type === "uuid") {
+    return "uuid";
+  }
+  // integer의 경우 serial/integer 구분이 필요하지만,
+  // 타입 변경 시에는 integer로 처리합니다.
+  return "integer";
 }
