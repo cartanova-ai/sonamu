@@ -9,8 +9,10 @@
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "axios": "catalog:",
+    "better-auth": "catalog:",
     "clsx": "catalog:",
     "dotenv": "catalog:",
+    "eventsource": "catalog:",
     "jotai": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
@@ -18,8 +20,7 @@
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
     "tailwind-merge": "catalog:",
-    "zod": "catalog:",
-    "eventsource": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@iconify/json": "catalog:",
