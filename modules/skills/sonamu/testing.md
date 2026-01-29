@@ -530,6 +530,59 @@ api/src/testing/
 - `toMatchInlineSnapshot()` 활용하여 스냅샷 테스트 권장
 - Mock은 `setup-mocks.ts`에서 전역 설정하거나 테스트 내에서 `vi.spyOn` 사용
 
+## 타입 안전성 주의사항
+
+### SaveParams의 partial 설정 확인
+
+`Model.save()` 테스트 시 `*.types.ts`의 `SaveParams` partial 설정을 확인해야 함:
+
+```typescript
+// user.types.ts
+export const UserSaveParams = baseSchema.partial({
+  id: true,           // 자동 생성
+  created_at: true,   // 자동 생성
+  updated_at: true,   // 자동 생성
+});
+```
+
+partial로 설정되지 않은 필드는 모두 필수이므로, 테스트에서 누락하면 타입 에러 발생:
+
+```typescript
+// ❌ 타입 에러: email, password 등 필수 필드 누락
+await UserModel.save([{ username: "test" }]);
+
+// ✅ 필수 필드 모두 포함
+await UserModel.save([{
+  username: "test",
+  email: "test@test.com",
+  password: "pw",
+  role: "normal",
+}]);
+```
+
+### Nullish Coalescing 사용
+
+변수가 `T | undefined` 타입일 수 있는 경우 nullish coalescing 필수:
+
+```typescript
+// ❌ 타입 에러: userId가 number | undefined일 수 있음
+const user = await UserModel.findById("A", userId);
+
+// ✅ nullish coalescing으로 undefined 방어
+const user = await UserModel.findById("A", userId ?? 0);
+```
+
+특히 이전 단계에서 생성한 ID를 사용할 때 주의:
+
+```typescript
+const [userId] = await UserModel.save([{ ... }]);
+
+// ❌ userId가 number | undefined
+const user = await UserModel.findById("A", userId);
+
+// ✅ 
+const user = await UserModel.findById("A", userId ?? 0);
+
 ## 실전 주의사항 (Common Pitfalls)
 
 ### 1. Fixture 데이터 준비 필수
