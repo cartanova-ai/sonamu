@@ -1,6 +1,6 @@
 {
   "name": "create-sonamu",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "Create a new Sonamu project",
   "keywords": ["sonamu", "typescript", "fullstack", "framework", "cli", "scaffold"],
   "license": "MIT",
