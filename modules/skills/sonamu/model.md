@@ -1,6 +1,6 @@
 ---
 name: sonamu-model
-description: Sonamu Model 클래스 작성. BaseModelClass 상속, CRUD 메서드 패턴, 비즈니스 로직. Use when implementing Model classes with business logic.
+description: Sonamu Model 클래스 작성. BaseModelClass 상속, CRUD 메서드 패턴, 비즈니스 로직, executeSubsetQuery 옵션. Use when implementing Model classes with business logic.
 ---
 
 # Model 클래스
@@ -46,13 +46,13 @@ async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubs
 @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Users" })
 async findMany<T extends UserSubsetKey>(
   subset: T,
-  params?: UserListParams
+  params: UserListParams = { num: 10, page: 1 }
 ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
 
-  if (params?.id) qb.whereIn("users.id", asArray(params.id));
-  if (params?.keyword) qb.whereLike("users.email", `%${params.keyword}%`);
-  if (params?.orderBy === "id-desc") qb.orderBy("users.id", "desc");
+  if (params.id) qb.whereIn("users.id", asArray(params.id));
+  if (params.keyword) qb.where("users.email", "like", `%${params.keyword}%`);
+  if (params.orderBy === "id-desc") qb.orderBy("users.id", "desc");
 
   return this.executeSubsetQuery({ subset, qb, params });
 }
@@ -91,8 +91,107 @@ async del(ids: number[]): Promise<number> {
 |--------|------|
 | `getPuri("r")` | 읽기 쿼리 빌더 |
 | `getPuri("w")` | 쓰기 쿼리 빌더 |
-| `getSubsetQueries(subset)` | Subset 쿼리 빌더 |
-| `executeSubsetQuery({ subset, qb, params })` | Subset 쿼리 실행 |
+| `getSubsetQueries(subset)` | Subset 쿼리 빌더 (`{ qb, onSubset }` 반환) |
+| `executeSubsetQuery(options)` | Subset 쿼리 실행 |
+| `createEnhancers(enhancers)` | Enhancer 객체 생성 헬퍼 (타입 추론) |
+
+## getSubsetQueries
+
+```typescript
+const { qb, onSubset } = this.getSubsetQueries(subset);
+
+// qb: 조건 추가용 쿼리 빌더
+qb.where("users.status", "active");
+
+// onSubset: 특정 서브셋 전용 타입이 필요할 때
+const typedQb = onSubset("A");  // 서브셋 A의 타입으로 추론
+```
+
+## executeSubsetQuery 옵션
+
+```typescript
+return this.executeSubsetQuery({
+  subset,           // 서브셋 키
+  qb,               // 쿼리 빌더
+  params,           // ListParams (num, page, queryMode, sonamuFilter 등)
+  debug: true,      // 쿼리 로그 출력 (기본값: false)
+  optimizeCountQuery: true,  // COUNT 쿼리 최적화 - 불필요한 LEFT JOIN 제거 (기본값: false)
+  enhancers,        // Enhancer 함수 객체 (옵션)
+});
+```
+
+### queryMode
+
+params에 queryMode를 전달하여 반환값 제어:
+
+```typescript
+// 리스트만 (COUNT 쿼리 스킵) - 성능 최적화
+const { rows } = await this.findMany(subset, { ...params, queryMode: "list" });
+
+// 카운트만 (리스트 스킵)
+const { total } = await this.findMany(subset, { ...params, queryMode: "count" });
+
+// 둘 다 (기본값)
+const { rows, total } = await this.findMany(subset, { ...params, queryMode: "both" });
+```
+
+### sonamuFilter (FilterQuery)
+
+params.sonamuFilter로 필터 조건 자동 적용:
+
+```typescript
+// 클라이언트에서 전달된 필터
+const params = {
+  num: 10,
+  page: 1,
+  sonamuFilter: {
+    status: "active",              // eq (기본)
+    age: { gte: 18 },              // >=
+    role: { in: ["admin", "user"] },
+    email: { contains: "@test" },  // LIKE %...%
+  }
+};
+
+// Model에서 자동 적용됨
+return this.executeSubsetQuery({ subset, qb, params });
+```
+
+**지원 연산자:**
+
+| 연산자 | SQL | 예시 |
+|--------|-----|------|
+| `eq` (기본) | `=` | `{ status: "active" }` |
+| `ne` | `!=` | `{ status: { ne: "deleted" } }` |
+| `gt`, `gte` | `>`, `>=` | `{ age: { gte: 18 } }` |
+| `lt`, `lte` | `<`, `<=` | `{ price: { lte: 1000 } }` |
+| `in`, `notIn` | `IN`, `NOT IN` | `{ role: { in: ["a", "b"] } }` |
+| `contains` | `LIKE %...%` | `{ name: { contains: "kim" } }` |
+| `startsWith` | `LIKE ...%` | `{ code: { startsWith: "A" } }` |
+| `endsWith` | `LIKE %...` | `{ ext: { endsWith: ".pdf" } }` |
+| `isNull`, `isNotNull` | `IS NULL` | `{ deleted_at: { isNull: true } }` |
+| `before`, `after` | `<`, `>` (날짜) | `{ created_at: { after: "2024-01-01" } }` |
+| `between` | `BETWEEN` | `{ price: { between: [100, 500] } }` |
+
+## Enhancers
+
+virtual 필드 계산 등 쿼리 후 가공:
+
+```typescript
+// Enhancer 정의
+const enhancers = this.createEnhancers({
+  A: async (row) => ({
+    ...row,
+    fullName: `${row.first_name} ${row.last_name}`,
+  }),
+  D: async (row) => ({
+    ...row,
+    age: calculateAge(row.birth_date),
+  }),
+});
+
+// executeSubsetQuery에서 사용
+return this.executeSubsetQuery({ subset, qb, params, enhancers });
+```
 
 ## Types 파일
 
@@ -107,6 +206,8 @@ export const UserListParams = z.object({
   search: UserSearchField.optional(),
   keyword: z.string().optional(),
   orderBy: UserOrderBy.optional(),
+  queryMode: z.enum(["list", "count", "both"]).optional(),
+  sonamuFilter: z.record(z.unknown()).optional(),
   id: z.union([z.number(), z.array(z.number())]).optional(),
 });
 export type UserListParams = z.infer<typeof UserListParams>;
@@ -127,6 +228,8 @@ await this.getPuri("w").transaction(async (trx) => {
   await trx.table("users").where("id", toId).increment("points", amount);
 });
 ```
+
+---
 
 ## IMPORTANT: Verify orderBy After Scaffolding
 
