@@ -79,6 +79,17 @@ describe("MyTest", () => {
 });
 ```
 
+**bootstrap 옵션:**
+
+```typescript
+// 기본값: forTesting: true (빠름, Syncer/Task 생략)
+bootstrap(vi);
+
+// forTesting: false - 전체 초기화 (Syncer, Task, EntityManager 등 모두 로드)
+// migrator, syncer, template 등의 테스트에서 사용
+bootstrap(vi, { forTesting: false });
+```
+
 ### test vs testAs
 
 ```typescript
@@ -215,19 +226,53 @@ Naite.t("mock:fs/promises:virtualFileSystem", "/path/to/virtual/file.ts");
 ### Naite.get() 조회 메서드
 
 ```typescript
-Naite.get("key").first()    // 첫 번째 데이터
-Naite.get("key").last()     // 마지막 데이터
-Naite.get("key").at(2)      // n번째 데이터
-Naite.get("key").result()   // 전체 데이터 배열
+// 기본 조회
+Naite.get("key").first()     // 첫 번째 데이터
+Naite.get("key").last()      // 마지막 데이터
+Naite.get("key").at(2)       // n번째 데이터
+Naite.get("key").result()    // 전체 데이터 배열
+Naite.get("key").getTraces() // 원본 trace 배열 (콜스택 포함)
 
 // wildcard 패턴
-Naite.get("puri:*").result()
+Naite.get("puri:*").result()           // puri: 접두사 모두
+Naite.get("syncer:*:user").result()    // syncer:XXX:user 패턴
+```
 
-// 체이닝 필터
+### Naite 체이닝 필터
+
+```typescript
+// 파일명으로 필터링
 Naite.get("esq-query")
-  .where("data.table", "=", "users")
-  .fromFunction("findById")
+  .fromFile("user.model.ts")  // 해당 파일에서 기록된 것만
   .result();
+
+// 함수명으로 필터링
+Naite.get("puri:executed-query")
+  .fromFunction("findById")                    // 해당 함수에서 호출된 것만
+  .result();
+
+// fromFunction 옵션
+Naite.get("key")
+  .fromFunction("save", { from: "direct" })    // 직접 호출만 (stack[0])
+  .fromFunction("save", { from: "indirect" })  // 간접 호출만 (stack[1+])
+  .fromFunction("save", { from: "both" })      // 모두 (기본값)
+
+// 데이터 경로 기반 필터링 (radash get 경로)
+Naite.get("puri:ub-register")
+  .where("data.tableName", "=", "users")    // tableName이 users인 것만
+  .where("data.rowCount", ">", 5)           // rowCount > 5
+  .result();
+
+// where 연산자: ">", "<", ">=", "<=", "=", "!=", "includes"
+Naite.get("key")
+  .where("data.query", "includes", "WHERE")  // 문자열 포함 체크
+  .result();
+
+// 체이닝 조합
+Naite.get("puri:executed-query")
+  .fromFunction("findMany")
+  .where("data", "includes", "users")
+  .first();
 ```
 
 ### 테스트 예시
@@ -548,10 +593,10 @@ export const UserSaveParams = baseSchema.partial({
 partial로 설정되지 않은 필드는 모두 필수이므로, 테스트에서 누락하면 타입 에러 발생:
 
 ```typescript
-// ❌ 타입 에러: email, password 등 필수 필드 누락
+// WRONG: email, password 등 필수 필드 누락
 await UserModel.save([{ username: "test" }]);
 
-// ✅ 필수 필드 모두 포함
+// CORRECT: 필수 필드 모두 포함
 await UserModel.save([{
   username: "test",
   email: "test@test.com",
@@ -565,10 +610,10 @@ await UserModel.save([{
 변수가 `T | undefined` 타입일 수 있는 경우 nullish coalescing 필수:
 
 ```typescript
-// ❌ 타입 에러: userId가 number | undefined일 수 있음
+// WRONG: userId가 number | undefined일 수 있음
 const user = await UserModel.findById("A", userId);
 
-// ✅ nullish coalescing으로 undefined 방어
+// CORRECT: nullish coalescing으로 undefined 방어
 const user = await UserModel.findById("A", userId ?? 0);
 ```
 
@@ -577,11 +622,12 @@ const user = await UserModel.findById("A", userId ?? 0);
 ```typescript
 const [userId] = await UserModel.save([{ ... }]);
 
-// ❌ userId가 number | undefined
+// WRONG: userId가 number | undefined
 const user = await UserModel.findById("A", userId);
 
-// ✅ 
+// CORRECT:
 const user = await UserModel.findById("A", userId ?? 0);
+```
 
 ## 실전 주의사항 (Common Pitfalls)
 
@@ -640,7 +686,7 @@ export const UserSaveParams = UserBaseSchema.partial({
 **문제:** Subset에는 relation 객체가 포함되지만, SaveParams에는 FK만 있어서 에러 발생
 
 ```typescript
-// 잘못된 방법
+// WRONG
 const user = await UserModel.findById("A", userId);
 await UserModel.save([{ ...user, status: "inactive" }]);
 // → "column 'department' does not exist" 에러
@@ -648,7 +694,7 @@ await UserModel.save([{ ...user, status: "inactive" }]);
 
 **해결:** Relation 필드 제외 + FK 명시적 추가
 ```typescript
-// 올바른 방법
+// CORRECT
 const user = await UserModel.findById("A", userId);
 const { institution, department, ...userData } = user;
 await UserModel.save([{
@@ -691,13 +737,13 @@ test.skip("사번은 고유해야 함 (ubUpsert는 upsert 동작하므로 skip)"
 **문제:** test 안에서 testAs 호출하면 에러 발생
 
 ```typescript
-// 잘못된 사용
+// WRONG
 test("권한 테스트", async () => {
   await testAs(adminUser, "설명", async () => { ... });
   // → "Calling the test function inside another test function is not allowed" 에러
 });
 
-// 올바른 사용 - test를 대체
+// CORRECT - test를 대체
 testAs(adminUser, "권한 테스트", async () => {
   const result = await UserModel.del([userId]);
   expect(result).toBe(1);
@@ -734,11 +780,11 @@ test("num: 0일 때 limit 없어야 함", async () => {
 ### 7. 에러 메시지는 다국어 고려
 
 ```typescript
-// 영어 메시지만 검증 (잘못된 방법)
+// WRONG: 영어 메시지만 검증
 await expect(UserModel.findById("A", 99999))
   .rejects.toThrow("not found");
 
-// 한글 메시지 부분 매칭 (올바른 방법)
+// CORRECT: 한글 메시지 부분 매칭
 await expect(UserModel.findById("A", 99999))
   .rejects.toThrow("존재하지 않는");
 ```
