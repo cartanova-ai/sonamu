@@ -34,6 +34,17 @@ export const UserModel = new UserModelClass();
 
 ## CRUD 패턴
 
+Sonamu Model은 다음 기본 메서드를 제공한다:
+
+| 메서드 | 용도 | 비고 |
+|--------|------|------|
+| `findById` | 단건 조회 | |
+| `findMany` | 목록 조회 | |
+| `save` | 생성/수정 | upsert 동작 |
+| `del` | 삭제 | `delete` 아님 주의 |
+
+**JavaScript 예약어 회피:** `delete`는 JS 예약어이므로 `del`로 명명. TypeScript에서는 컴파일 오류 없이 `delete`를 메서드명으로 사용할 수 있지만, 런타임에서 문제가 발생할 수 있어 Sonamu는 `del`을 사용한다.
+
 ### findById
 
 ```typescript

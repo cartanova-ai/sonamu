@@ -18,6 +18,19 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
 - [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
 
+## Model 기본 메서드 (테스트 대상)
+
+Sonamu Model은 다음 메서드를 기본 제공한다. 테스트는 이 메서드들을 대상으로 작성한다:
+
+| 메서드 | 용도 | 반환 |
+|--------|------|------|
+| `findById(subset, id)` | 단건 조회 | `Promise<Subset>` |
+| `findMany(subset, params)` | 목록 조회 | `Promise<ListResult<Subset>>` |
+| `save(rows)` | 생성/수정 (upsert) | `Promise<number[]>` (ids) |
+| `del(ids)` | 삭제 | `Promise<number>` (삭제 건수) |
+
+**주의:** `delete`가 아니라 `del`이다. JavaScript 예약어 회피를 위함.
+
 ## 대규모 프로젝트 전략 (10개 이상 엔티티)
 
 **CRITICAL: 엔티티가 10개 이상인 프로젝트는 한 번에 작업하지 마세요.**
