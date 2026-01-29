@@ -12,6 +12,7 @@ import path from "path";
 import process from "process";
 import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
+import { generateBetterAuthEntities } from "../auth/auth-generator";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
@@ -81,6 +82,7 @@ async function bootstrap() {
         ["start"],
         ["skills", "sync"],
         ["skills", "create", "#name"],
+        ["auth", "generate"],
       ],
       runners: {
         migrate_status,
@@ -101,6 +103,7 @@ async function bootstrap() {
         start,
         skills_sync,
         skills_create,
+        auth_generate,
       },
     });
   } finally {
@@ -610,6 +613,15 @@ status: draft
 
   await writeFile(filePath, template);
   console.log(chalk.green(`✓ Created .claude/skills/local/${name}.md`));
+}
+
+/**
+ * pnpm sonamu auth generate 하면 실행되는 함수입니다.
+ * better-auth 엔티티들(User, Session, Account, Verification)을 생성합니다.
+ */
+async function auth_generate() {
+  console.log(chalk.yellow.bold("🔐 Generating better-auth entities...\n"));
+  await generateBetterAuthEntities();
 }
 
 /**
