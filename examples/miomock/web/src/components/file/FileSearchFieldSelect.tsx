@@ -1,10 +1,4 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components/components";
+import { Select } from "@sonamu-kit/react-components/components";
 
 import { FileSearchField, FileSearchFieldLabel } from "@/services/sonamu.generated";
 
@@ -30,19 +24,22 @@ export function FileSearchFieldSelect({
   // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
   const validOptions = FileSearchField.options.filter((key) => (key as string) !== "");
 
+  const items = [
+    ...(clearable ? [{ value: "", label: "전체" }] : []),
+    ...validOptions.map((key) => ({
+      value: key,
+      label: (textPrefix ?? "") + FileSearchFieldLabel[key],
+    })),
+  ];
+
   return (
-    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder ?? "검색"} />
-      </SelectTrigger>
-      <SelectContent>
-        {clearable && <SelectItem value="">전체</SelectItem>}
-        {validOptions.map((key) => (
-          <SelectItem key={key} value={key}>
-            {(textPrefix ?? "") + FileSearchFieldLabel[key]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Select
+      value={value ?? ""}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      items={items}
+      placeholder={placeholder ?? "검색"}
+      className={className}
+    />
   );
 }

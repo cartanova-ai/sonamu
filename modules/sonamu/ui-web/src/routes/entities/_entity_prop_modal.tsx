@@ -8,10 +8,6 @@ import {
   DialogTitle,
   Input,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
@@ -190,18 +186,9 @@ export function EntityPropModal({
                 <Select
                   value={form.type}
                   onValueChange={(value) => value && setForm({ ...form, type: value })}
-                >
-                  <SelectTrigger className="focus-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typeOptions.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  items={typeOptions}
+                  className="focus-2"
+                />
               </div>
               <div className="flex-1">
                 <label className="block mb-1 font-bold">
@@ -305,15 +292,8 @@ export function EntityPropModal({
                       };
                       setForm({ ...form, generated: newGenerated });
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="STORED">STORED</SelectItem>
-                      <SelectItem value="VIRTUAL">VIRTUAL</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    items={["STORED", "VIRTUAL"] satisfies string[]}
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block mb-1 font-bold">
@@ -390,16 +370,9 @@ export function EntityPropModal({
                         })
                       }
                       clearable
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="real">real</SelectItem>
-                        <SelectItem value="double precision">double precision</SelectItem>
-                        <SelectItem value="numeric">numeric</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      items={["real", "double precision", "numeric"] satisfies string[]}
+                      placeholder="Select..."
+                    />
                   </div>
                 )}
                 {(form.type === "numeric" ||
@@ -462,15 +435,9 @@ export function EntityPropModal({
                       })
                     }
                     clearable
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="code (default)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="code">code</SelectItem>
-                      <SelectItem value="query">query</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    items={["code", "query"] satisfies string[]}
+                    placeholder="code (default)"
+                  />
                 </div>
               </div>
             )}
@@ -510,18 +477,10 @@ export function EntityPropModal({
                             | undefined,
                         })
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"].map((k) => (
-                          <SelectItem key={k} value={k}>
-                            {k}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      items={
+                        ["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"] satisfies string[]
+                      }
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block mb-1 font-bold">
@@ -550,7 +509,7 @@ export function EntityPropModal({
                         <label className="block mb-1 font-bold">
                           ON UPDATE <span className="text-red-500">*</span>
                         </label>
-                        <Select
+                        <Select<string>
                           value={form.onUpdate ?? ""}
                           onValueChange={(value) =>
                             setForm({
@@ -558,24 +517,14 @@ export function EntityPropModal({
                               onUpdate: value as RelationOn | undefined,
                             })
                           }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {EntityPropZodSchema.RelationOn.options.map((k) => (
-                              <SelectItem key={k} value={k}>
-                                {k}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          items={[...EntityPropZodSchema.RelationOn.options]}
+                        />
                       </div>
                       <div className="flex-1">
                         <label className="block mb-1 font-bold">
                           ON DELETE <span className="text-red-500">*</span>
                         </label>
-                        <Select
+                        <Select<string>
                           value={form.onDelete ?? ""}
                           onValueChange={(value) =>
                             setForm({
@@ -583,18 +532,8 @@ export function EntityPropModal({
                               onDelete: value as RelationOn | undefined,
                             })
                           }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {EntityPropZodSchema.RelationOn.options.map((k) => (
-                              <SelectItem key={k} value={k}>
-                                {k}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          items={[...EntityPropZodSchema.RelationOn.options]}
+                        />
                       </div>
                     </>
                   )}

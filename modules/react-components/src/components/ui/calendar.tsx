@@ -8,7 +8,7 @@ import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
+import { Select } from "./select";
 
 const YEAR_RANGE = {
   START: 1900,
@@ -150,63 +150,61 @@ function CalendarCaption({
   }, [SD]);
 
   const handleMonthChange = React.useCallback(
-    (value: string | undefined | null) => {
-      if (!value) return;
+    (value: number | undefined) => {
+      if (value === undefined) return;
       const newDate = new Date(displayMonth);
-      newDate.setMonth(parseInt(value));
+      newDate.setMonth(value);
       onMonthChange(newDate);
     },
     [displayMonth, onMonthChange],
   );
 
   const handleYearChange = React.useCallback(
-    (value: string | undefined | null) => {
-      if (!value) return;
+    (value: number | undefined) => {
+      if (value === undefined) return;
       const newDate = new Date(displayMonth);
-      newDate.setFullYear(parseInt(value));
+      newDate.setFullYear(value);
       onMonthChange(newDate);
     },
     [displayMonth, onMonthChange],
   );
 
+  // 월 선택 아이템
+  const monthItems = React.useMemo(() => {
+    return monthNames.map((month, monthIndex) => {
+      const isDisabled =
+        isSecondCalendar &&
+        baseMonth &&
+        displayYear === baseMonth.getFullYear() &&
+        monthIndex <= baseMonth.getMonth();
+
+      return { value: monthIndex, label: month, disabled: isDisabled };
+    });
+  }, [monthNames, isSecondCalendar, baseMonth, displayYear]);
+
+  // 연도 선택 아이템
+  const yearItems = React.useMemo(() => {
+    return years.map((year) => {
+      const isDisabled = isSecondCalendar && baseMonth && year < baseMonth.getFullYear();
+      return { value: year, label: String(year), disabled: isDisabled };
+    });
+  }, [years, isSecondCalendar, baseMonth]);
+
   return (
     <div className="flex justify-center pt-1 relative items-center w-full gap-2 px-10">
-      <Select value={displayMonthIndex.toString()} onValueChange={handleMonthChange}>
-        <SelectTrigger className="h-7 text-xs w-[110px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {monthNames.map((month, monthIndex) => {
-            const isDisabled =
-              isSecondCalendar &&
-              baseMonth &&
-              displayYear === baseMonth.getFullYear() &&
-              monthIndex <= baseMonth.getMonth();
-
-            return (
-              <SelectItem key={monthIndex} value={monthIndex.toString()} disabled={isDisabled}>
-                {month}
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
-      </Select>
-      <Select value={displayYear.toString()} onValueChange={handleYearChange}>
-        <SelectTrigger className="h-7 text-xs w-[90px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="max-h-[200px]">
-          {years.map((year) => {
-            const isDisabled = isSecondCalendar && baseMonth && year < baseMonth.getFullYear();
-
-            return (
-              <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
-                {year}
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
-      </Select>
+      <Select
+        value={displayMonthIndex}
+        onValueChange={handleMonthChange}
+        items={monthItems}
+        className="h-7 text-xs w-[110px]"
+      />
+      <Select
+        value={displayYear}
+        onValueChange={handleYearChange}
+        items={yearItems}
+        className="h-7 text-xs w-[90px]"
+        contentClassName="max-h-[200px]"
+      />
     </div>
   );
 }

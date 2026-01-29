@@ -1,10 +1,4 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components";
+import { Select } from "@sonamu-kit/react-components";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type EntityIdSelectProps = {
@@ -45,17 +39,9 @@ export function EntityIdSelect({
       value={value}
       onValueChange={handleValueChange}
       disabled={disabled || !entityIds || isLoading}
-    >
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {(entityIds ?? []).map((id) => (
-          <SelectItem key={id} value={id}>
-            {id}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      items={entityIds ?? []}
+      placeholder={placeholder}
+      className={className}
+    />
   );
 }

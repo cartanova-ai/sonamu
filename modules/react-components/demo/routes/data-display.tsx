@@ -7,13 +7,7 @@ import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
 import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -143,16 +137,16 @@ function DataDisplayPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Select</h2>
         <div className="border rounded-lg p-6 bg-card">
-          <Select {...register("selectValue")}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="선택하세요" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="option1">옵션 1</SelectItem>
-              <SelectItem value="option2">옵션 2</SelectItem>
-              <SelectItem value="option3">옵션 3</SelectItem>
-            </SelectContent>
-          </Select>
+          <Select
+            {...register("selectValue")}
+            items={[
+              { value: "option1", label: "옵션 1" },
+              { value: "option2", label: "옵션 2" },
+              { value: "option3", label: "옵션 3" },
+            ]}
+            placeholder="선택하세요"
+            className="w-[200px]"
+          />
         </div>
       </section>
 

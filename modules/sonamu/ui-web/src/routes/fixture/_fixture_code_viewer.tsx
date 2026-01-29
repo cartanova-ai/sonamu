@@ -5,15 +5,7 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
 /** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
 
-import {
-  Button,
-  Checkbox,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components";
+import { Button, Checkbox, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
@@ -57,18 +49,10 @@ export default function FixtureCodeViewer({
         <Select
           value={theme}
           onValueChange={(value) => value && setMarkdownTheme(value as ThemeKey)}
-        >
-          <SelectTrigger className="theme-dropdown">
-            <SelectValue placeholder="Theme" />
-          </SelectTrigger>
-          <SelectContent>
-            {getThemeOptions().map((key) => (
-              <SelectItem key={key} value={key}>
-                {key}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          items={getThemeOptions()}
+          placeholder="Theme"
+          className="theme-dropdown"
+        />
       </div>
 
       {entities.map((entity) => {
@@ -172,18 +156,9 @@ const FixtureCode = ({
           <Select
             value={selectedSubset}
             onValueChange={(value) => value && setSelectedSubset(value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Subset" />
-            </SelectTrigger>
-            <SelectContent>
-              {subsetKeys.map((key) => (
-                <SelectItem key={key} value={key}>
-                  {key}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            items={subsetKeys}
+            placeholder="Subset"
+          />
         </div>
       </div>
 

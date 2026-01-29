@@ -1,11 +1,4 @@
-import {
-  Button,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components";
+import { Button, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -81,18 +74,10 @@ export function FormTypeIdAsyncSelect({
         value={value}
         onValueChange={handleValueChange}
         disabled={disabled || !typeIds || isLoading}
-      >
-        <SelectTrigger className={className}>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {(typeIds ?? []).map((typeId) => (
-            <SelectItem key={typeId} value={typeId}>
-              {typeId}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        items={typeIds ?? []}
+        placeholder={placeholder}
+        className={className}
+      />
       <Button variant="outline" onClick={() => refetch()} icon={<RefreshCwIcon />} />
 
       {withAddEnumButton && (

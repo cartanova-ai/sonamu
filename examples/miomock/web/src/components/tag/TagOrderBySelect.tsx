@@ -1,10 +1,4 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components/components";
+import { Select } from "@sonamu-kit/react-components/components";
 import { SD } from "@/i18n/sd.generated";
 import { TagOrderBy } from "@/services/sonamu.generated";
 
@@ -31,19 +25,22 @@ export function TagOrderBySelect({
   const validOptions = TagOrderBy.options.filter((key) => (key as string) !== "");
   const enumLabels = SD.enumLabels("TagOrderBy");
 
+  const items = [
+    ...(clearable ? [{ value: "", label: SD("common.all") }] : []),
+    ...validOptions.map((key) => ({
+      value: key,
+      label: (textPrefix ?? "") + enumLabels[key],
+    })),
+  ];
+
   return (
-    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder ?? "정렬"} />
-      </SelectTrigger>
-      <SelectContent>
-        {clearable && <SelectItem value="">{SD("common.all")}</SelectItem>}
-        {validOptions.map((key) => (
-          <SelectItem key={key} value={key}>
-            {(textPrefix ?? "") + enumLabels[key]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Select
+      value={value ?? ""}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      items={items}
+      placeholder={placeholder ?? "정렬"}
+      className={className}
+    />
   );
 }

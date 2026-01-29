@@ -6,7 +6,7 @@ import type { DateRange } from "react-day-picker";
 import { useSonamuBaseContext } from "@/contexts";
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
+import { Select } from "./select";
 
 /** 단일 월 또는 월 범위 값 */
 export type MonthPickerValue =
@@ -179,27 +179,17 @@ export function MonthPickerMultiple({
                   {SD("rc.monthPickerMultiple.startDate")}
                 </div>
                 <Select
-                  value={tempRangeStartYear.toString()}
+                  value={tempRangeStartYear}
                   onValueChange={(value) => {
-                    if (value) setTempRangeStartYear(parseInt(value));
+                    if (value !== undefined) setTempRangeStartYear(value);
                   }}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => {
-                      const isDisabled = tempDateRange?.to
-                        ? year > tempDateRange.to.getFullYear()
-                        : false;
-                      return (
-                        <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
-                          {year}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                  items={years.map((year) => ({
+                    value: year,
+                    label: String(year),
+                    disabled: tempDateRange?.to ? year > tempDateRange.to.getFullYear() : false,
+                  }))}
+                  className="h-8 text-xs"
+                />
                 <div className="grid grid-cols-3 gap-2">
                   {MONTHS.map((month, idx) => {
                     const isDisabled = tempDateRange?.to
@@ -241,27 +231,17 @@ export function MonthPickerMultiple({
                   {SD("rc.monthPickerMultiple.endDate")}
                 </div>
                 <Select
-                  value={tempRangeEndYear.toString()}
+                  value={tempRangeEndYear}
                   onValueChange={(value) => {
-                    if (value) setTempRangeEndYear(parseInt(value));
+                    if (value !== undefined) setTempRangeEndYear(value);
                   }}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => {
-                      const isDisabled = tempDateRange?.from
-                        ? year < tempDateRange.from.getFullYear()
-                        : false;
-                      return (
-                        <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
-                          {year}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                  items={years.map((year) => ({
+                    value: year,
+                    label: String(year),
+                    disabled: tempDateRange?.from ? year < tempDateRange.from.getFullYear() : false,
+                  }))}
+                  className="h-8 text-xs"
+                />
                 <div className="grid grid-cols-3 gap-2">
                   {MONTHS.map((month, idx) => {
                     const isDisabled = tempDateRange?.from
@@ -299,22 +279,13 @@ export function MonthPickerMultiple({
           ) : (
             <div className="p-4 space-y-2">
               <Select
-                value={tempYear.toString()}
+                value={tempYear}
                 onValueChange={(value) => {
-                  if (value) setTempYear(parseInt(value));
+                  if (value !== undefined) setTempYear(value);
                 }}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                items={years.map((year) => ({ value: year, label: String(year) }))}
+                className="h-8 text-xs"
+              />
               <div className="grid grid-cols-3 gap-2">
                 {MONTHS.map((month, idx) => (
                   <Button
