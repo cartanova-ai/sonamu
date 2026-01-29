@@ -799,3 +799,231 @@ test("사용자 생성", async () => {
 // Fixture는 공통 데이터에만 사용
 const f = await loadFixtures(["institution01"]);  // 기관 같은 공통 데이터만
 ```
+
+## 복잡한 엔티티 테스트 전략
+
+엔티티 간 의존성이 복잡한 경우 (Institution → Department → User → Task → TaskParticipant) 테스트 헬퍼 함수를 활용한다.
+
+### 테스트 헬퍼 함수 정의
+
+```typescript
+// api/src/testing/test-helpers.ts
+import assert from "assert";
+import { InstitutionModel } from "../application/institution/institution.model";
+import { DepartmentModel } from "../application/department/department.model";
+import { UserModel } from "../application/user/user.model";
+import { TaskModel } from "../application/task/task.model";
+
+// 각 헬퍼는 최소 필수 필드만 요구하고, 나머지는 기본값 제공
+let counter = 0;
+function uniqueId(prefix: string) {
+  return `${prefix}_${Date.now()}_${++counter}`;
+}
+
+export async function createTestInstitution(override?: Partial<InstitutionSaveParams>) {
+  const [id] = await InstitutionModel.save([{
+    name: "테스트기관",
+    code: uniqueId("INST"),
+    ...override,
+  }]);
+  assert(id);
+  return id;
+}
+
+export async function createTestDepartment(
+  institutionId: number,
+  override?: Partial<DepartmentSaveParams>
+) {
+  const [id] = await DepartmentModel.save([{
+    name: "테스트부서",
+    code: uniqueId("DEPT"),
+    dept_type: "division",
+    institution_id: institutionId,
+    is_active: true,
+    sort_order: 0,
+    ...override,
+  }]);
+  assert(id);
+  return id;
+}
+
+export async function createTestUser(
+  institutionId: number,
+  override?: Partial<UserSaveParams>
+) {
+  const [id] = await UserModel.save([{
+    employee_no: uniqueId("EMP"),
+    login_id: uniqueId("login"),
+    name: "테스트사용자",
+    institution_id: institutionId,
+    ...override,
+  }]);
+  assert(id);
+  return id;
+}
+
+export async function createTestTask(
+  principalInvestigatorId: number,
+  override?: Partial<TaskSaveParams>
+) {
+  const [id] = await TaskModel.save([{
+    task_no: uniqueId("TASK"),
+    title: "테스트과제",
+    year: new Date().getFullYear(),
+    begin_date: new Date(),
+    end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    principal_investigator_id: principalInvestigatorId,
+    ...override,
+  }]);
+  assert(id);
+  return id;
+}
+
+// 의존성 체인을 한 번에 생성
+export async function createTestTaskWithDeps(taskOverride?: Partial<TaskSaveParams>) {
+  const institutionId = await createTestInstitution();
+  const userId = await createTestUser(institutionId);
+  const taskId = await createTestTask(userId, taskOverride);
+  return { institutionId, userId, taskId };
+}
+
+export async function createTestUserWithDeps(userOverride?: Partial<UserSaveParams>) {
+  const institutionId = await createTestInstitution();
+  const userId = await createTestUser(institutionId, userOverride);
+  return { institutionId, userId };
+}
+```
+
+### 테스트에서 사용
+
+```typescript
+import { createTestTaskWithDeps, createTestUser } from "../../testing/test-helpers";
+
+describe("TaskModel", () => {
+  // GOOD: 헬퍼 함수로 간결하게
+  test("Create - 최소 필수 필드로 생성", async () => {
+    const { taskId } = await createTestTaskWithDeps();
+
+    const task = await TaskModel.findById("D", taskId);
+    expect(task.id).toBe(taskId);
+  });
+
+  // GOOD: 특정 필드 커스터마이즈
+  test("Create - 특정 상태로 생성", async () => {
+    const { taskId } = await createTestTaskWithDeps({
+      status: "approved",
+      title: "승인된 과제",
+    });
+
+    const task = await TaskModel.findById("D", taskId);
+    expect(task.status).toBe("approved");
+  });
+
+  // BAD: 매 테스트마다 의존성 직접 생성 (반복적)
+  test("Create - 직접 생성 (권장하지 않음)", async () => {
+    const [institutionId] = await InstitutionModel.save([{ name: "...", code: "..." }]);
+    assert(institutionId);
+    const [userId] = await UserModel.save([{ ... }]);
+    assert(userId);
+    const [taskId] = await TaskModel.save([{ ... }]);
+    assert(taskId);
+    // ...
+  });
+});
+```
+
+### Subset → SaveParams 변환 헬퍼
+
+findById 결과를 수정 후 다시 save할 때 relation을 FK로 변환해야 한다:
+
+```typescript
+// api/src/testing/test-helpers.ts
+
+// Task Subset D → SaveParams 변환
+export function taskToSaveParams(task: TaskSubsetD): TaskSaveParams {
+  const {
+    program,
+    project,
+    principal_investigator,
+    department,
+    prev_task,
+    ...rest
+  } = task;
+
+  return {
+    ...rest,
+    program_id: program?.id ?? null,
+    project_id: project?.id ?? null,
+    principal_investigator_id: principal_investigator.id,
+    department_id: department?.id ?? null,
+    prev_task_id: prev_task?.id ?? null,
+  };
+}
+
+// 범용 헬퍼 (주의: relation 필드명이 다른 경우 직접 작성 필요)
+export function relationToFk<T extends Record<string, any>>(
+  data: T,
+  relationFields: string[]
+): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (relationFields.includes(key)) {
+      // relation → FK
+      result[`${key}_id`] = value?.id ?? null;
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+```
+
+### Update 테스트 간소화
+
+```typescript
+import { createTestTaskWithDeps, taskToSaveParams } from "../../testing/test-helpers";
+
+test("Update - 과제 정보 수정", async () => {
+  const { taskId } = await createTestTaskWithDeps();
+
+  const task = await TaskModel.findById("D", taskId);
+  await TaskModel.save([{
+    ...taskToSaveParams(task),
+    title: "수정된 제목",
+  }]);
+
+  const updated = await TaskModel.findById("D", taskId);
+  expect(updated.title).toBe("수정된 제목");
+});
+```
+
+### 주의사항
+
+**beforeAll/beforeEach 사용 금지:**
+
+sonamu의 테스트 환경에서 beforeAll/beforeEach로 데이터를 생성하면 sonamu 내부 코드를 바라보게 될 수 있다. 대신 각 테스트 내에서 헬퍼 함수를 호출한다.
+
+```typescript
+// WRONG: beforeAll 사용
+describe("TaskModel", () => {
+  let taskId: number;
+  beforeAll(async () => {
+    const result = await createTestTaskWithDeps();
+    taskId = result.taskId;
+  });
+
+  test("...", async () => {
+    // taskId 사용 - 문제 발생 가능
+  });
+});
+
+// CORRECT: 각 테스트에서 생성
+describe("TaskModel", () => {
+  test("...", async () => {
+    const { taskId } = await createTestTaskWithDeps();
+    // taskId 사용
+  });
+});
+```
