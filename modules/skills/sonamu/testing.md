@@ -9,11 +9,90 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 **예시 프로젝트**: `sonamu/examples/miomock` - 실제 테스트 코드 참고
 
+**WARNING: 엔티티 10개 이상 프로젝트는 반드시 배치 전략 사용** (아래 "대규모 프로젝트 전략" 참고)
+
 ## 테스트 작성 전 체크리스트
 
 - [ ] **Seed Data 준비** - FK 제약으로 인한 기본 데이터 필요 (→ database.md "최소 seed data" 참고)
 - [ ] **SaveParams partial 설정** - nullable/dbDefault 필드 partial 처리 확인
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
+- [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
+
+## 대규모 프로젝트 전략 (10개 이상 엔티티)
+
+**CRITICAL: 엔티티가 10개 이상인 프로젝트는 한 번에 작업하지 마세요.**
+
+### 문제점
+- 55개 엔티티를 한번에 작업하면 컨텍스트 혼란 발생
+- 잘못된 파일 수정, 필수 내용 삭제 등 심각한 실수 위험
+- 관계 추적 불가능, 테스트 작성 중 방향 상실
+
+### 해결책: 배치 단위 작업
+
+**규칙: 연관된 엔티티끼리 묶어 5-10개씩 배치로 진행**
+
+```
+1차 배치: User, Institution, Role 관련 (5개)
+  → 테스트 완료 → 커밋
+
+2차 배치: Survey, Question, Response 관련 (7개)
+  → 테스트 완료 → 커밋
+
+3차 배치: Report, Statistics 관련 (6개)
+  → 테스트 완료 → 커밋
+```
+
+### 배치 그룹화 기준
+
+**도메인별 그룹화 (권장):**
+```
+인증/권한: User, Role, Permission, Session
+설문: Survey, Question, Choice, Response
+보고서: Report, Chart, Export
+관리: Institution, Department, Settings
+```
+
+**의존성별 그룹화:**
+```
+1차: 독립 엔티티 (User, Institution 등)
+2차: 1차에 의존하는 엔티티 (Survey → Institution)
+3차: 2차에 의존하는 엔티티 (Question → Survey)
+```
+
+### 배치 작업 프로세스
+
+**각 배치마다:**
+1. 해당 배치 엔티티 목록 명시
+2. 테스트 헬퍼 작성 (createTest...)
+3. 모든 엔티티 테스트 작성 완료
+4. 전체 테스트 실행 확인
+5. **Git commit 후 다음 배치 진행**
+
+**배치 사이 확인사항:**
+- [ ] 현재 배치 테스트 모두 통과
+- [ ] 기존 배치 테스트 여전히 통과 (회귀 방지)
+- [ ] 커밋 완료 (롤백 지점 확보)
+
+### 작업 시작 전 선언
+
+**IMPORTANT: 각 배치 시작 전 명시적으로 선언하세요**
+
+```
+"1차 배치 시작: User, Institution, Role 엔티티 (5개)
+- User: user.model.test.ts 작성
+- Institution: institution.model.test.ts 작성
+- Role: role.model.test.ts 작성
+수정할 파일만 작업, 다른 파일 건드리지 않음
+진행할까요?"
+```
+
+### 위험 신호 감지
+
+다음 상황이 발생하면 **즉시 작업 중단**:
+- 배치 범위 밖의 엔티티를 수정하려고 함
+- 같은 질문을 반복함
+- 엔티티 관계를 혼동함
+- 이미 완료한 파일을 다시 수정하려고 함
 
 ## 테스트 실행
 
