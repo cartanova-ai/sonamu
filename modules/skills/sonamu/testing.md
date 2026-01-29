@@ -635,6 +635,30 @@ const user = await UserModel.findById("A", userId);
 const user = await UserModel.findById("A", userId ?? 0);
 ```
 
+### SaveParams import 위치
+
+SaveParams 타입은 sonamu.generated가 아닌 각 엔티티의 types.ts에서 export됩니다.
+
+**잘못된 예:**
+```typescript
+// test-helpers.ts
+import type {
+  UserSaveParams,
+  TaskSaveParams,
+} from "../application/sonamu.generated";  // WRONG
+```
+
+**올바른 예:**
+```typescript
+// test-helpers.ts
+import type { UserSaveParams } from "../application/user/user.types";
+import type { TaskSaveParams } from "../application/task/task.types";
+```
+
+**이유:**
+- sonamu.generated에는 BaseSchema와 BaseListParams만 export됨
+- SaveParams는 각 엔티티의 types.ts에서 BaseSchema.partial()로 정의됨
+
 ## 실전 주의사항 (Common Pitfalls)
 
 ### 1. Fixture 데이터 준비 필수
@@ -665,7 +689,30 @@ pnpm sonamu fixture sync
 
 ### 2. SaveParams 타입 설계 (Partial)
 
-**문제:** Update 시 일부 필드만 변경하면 타입 에러 발생
+**문제 1:** Update 시 일부 필드만 변경하면 타입 에러 발생
+
+**문제 2:** 테스트 헬퍼에서 override를 Partial로 받을 때 타입 에러 발생
+```typescript
+// WRONG - nullable 필드가 partial 미설정
+export const QuestionSaveParams = QuestionBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+
+// test-helpers.ts
+export async function createTestQuestion(
+  collectionId: number,
+  override?: Partial<QuestionSaveParams>
+) {
+  const [id] = await QuestionModel.save([{
+    content: "테스트질문",
+    parent_id: null,
+    answer_group_id: null,
+    ...override,  // 타입 에러: undefined는 null로 할당 불가
+  }]);
+  return id;
+}
+```
 
 **해결:** nullable/dbDefault 필드를 partial로 설정
 ```typescript
@@ -684,6 +731,12 @@ export const UserSaveParams = UserBaseSchema.partial({
   department_id: true,   // nullable relation
 });
 ```
+
+**적용 기준:**
+- id, created_at, updated_at: 항상 partial (자동 생성)
+- dbDefault가 있는 필드: partial 처리
+- nullable: true인 FK 필드: partial 처리
+- nullable: true인 일반 필드 (description 등): partial 처리
 
 **핵심:** 필수 필드(employee_no, login_id, name, institution_id)는 partial 제외하여 타입 안정성 유지
 

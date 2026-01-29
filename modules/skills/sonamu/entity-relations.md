@@ -428,3 +428,98 @@ Error: ApiLog -- 잘못된 FieldExpr 'user_id' (사용 가능한 props: id, crea
 
 - dot notation으로 중첩 가능
 - JOIN 자동 생성
+
+---
+
+## ManyToMany 관계의 타입 정의
+
+ManyToMany 관계는 Entity JSON에서 정의하지만, SaveParams에는 join 테이블 데이터를 배열로 전달해야 합니다.
+
+### SaveParams에서 ManyToMany 처리
+
+**패턴: BaseSchema.partial().extend() 사용**
+
+```typescript
+// question-collection.types.ts
+import { z } from "zod";
+import {
+  QuestionCollectionBaseListParams,
+  QuestionCollectionBaseSchema,
+} from "../sonamu.generated";
+
+export const QuestionCollectionSaveParams = QuestionCollectionBaseSchema
+  .partial({ id: true, created_at: true })
+  .extend({
+    category_ids: z.array(z.number()),  // ManyToMany 관계 필드 추가
+  });
+export type QuestionCollectionSaveParams = z.infer<typeof QuestionCollectionSaveParams>;
+```
+
+**중요:**
+- BaseSchema에는 ManyToMany 관계 필드가 없으므로 `.extend()`로 추가
+- 필드명은 `{relation_name}_ids` 형태 (예: categories → category_ids)
+- Model.save() 메서드에서 이 필드를 추출하여 join 테이블을 별도로 처리
+
+### Model.save()에서 처리 예시
+
+```typescript
+// question-collection.model.ts
+async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+
+  // category_ids 추출
+  const categoryIdsList: (number[] | undefined)[] = [];
+  spa.forEach((sp) => {
+    const { category_ids, ...collectionData } = sp as any;
+    categoryIdsList.push(category_ids);
+    wdb.ubRegister("question_collections", collectionData);
+  });
+
+  return wdb.transaction(async (trx) => {
+    const ids = await trx.ubUpsert("question_collections");
+
+    // 기존 관계 삭제
+    await trx
+      .table("question_collections__survey_categories")
+      .whereIn("question_collection_id", ids)
+      .delete();
+
+    // 새 관계 등록
+    ids.forEach((collectionId, index) => {
+      const categoryIds = categoryIdsList[index];
+      if (categoryIds && categoryIds.length > 0) {
+        categoryIds.forEach((categoryId) => {
+          trx.ubRegister("question_collections__survey_categories", {
+            question_collection_id: collectionId,
+            survey_category_id: categoryId,
+          });
+        });
+      }
+    });
+
+    await trx.ubUpsert("question_collections__survey_categories");
+    return ids;
+  });
+}
+```
+
+### Update 시 주의사항
+
+Update 테스트에서 조회한 데이터를 다시 save할 때, ManyToMany 관계 필드를 다시 제공해야 합니다:
+
+```typescript
+// WRONG - category_ids 없이 save하면 관계가 모두 삭제됨
+const { categories, ...collectionData } = collection;
+await QuestionCollectionModel.save([
+  { ...collectionData, title: "수정된제목" }
+]);
+
+// CORRECT - categories에서 ids 추출하여 전달
+const { categories, ...collectionData } = collection;
+const category_ids = categories?.map(c => c.id) ?? [];
+await QuestionCollectionModel.save([
+  { ...collectionData, category_ids, title: "수정된제목" }
+]);
+```
+
+**핵심:** ManyToMany 관계는 Entity JSON에서 정의되지만, 코드에서는 `{relation}_ids` 배열로 명시적으로 관리해야 합니다.
