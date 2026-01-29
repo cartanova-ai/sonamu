@@ -10,10 +10,6 @@ import {
   DialogTitle,
   Input,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@sonamu-kit/react-components/components";
 import { useEffect, useState } from "react";
 import type { z } from "zod";
@@ -224,17 +220,15 @@ function ValueInput({
   if (operator === "isNull" || operator === "isNotNull") {
     return (
       <Select
+        items={[
+          { value: "true", label: "True" },
+          { value: "false", label: "False" },
+        ]}
         value={value === undefined ? "" : String(value)}
         onValueChange={(v) => onChange(v === "true")}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="true">True</SelectItem>
-          <SelectItem value="false">False</SelectItem>
-        </SelectContent>
-      </Select>
+        placeholder="Select..."
+        className="w-full"
+      />
     );
   }
 
@@ -340,17 +334,15 @@ function ValueInput({
   if (propType === "boolean") {
     return (
       <Select
+        items={[
+          { value: "true", label: "True" },
+          { value: "false", label: "False" },
+        ]}
         value={value === undefined ? "" : String(value)}
         onValueChange={(v) => onChange(v === "true")}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="true">True</SelectItem>
-          <SelectItem value="false">False</SelectItem>
-        </SelectContent>
-      </Select>
+        placeholder="Select..."
+        className="w-full"
+      />
     );
   }
 
@@ -397,38 +389,26 @@ function RuleRow({
     <div className="flex items-start gap-2 p-3 border rounded-lg bg-gray-50">
       {/* Field Select */}
       <div className="flex-1 min-w-[150px]">
-        <Select value={rule.field ?? ""} onValueChange={handleFieldChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select field..." />
-          </SelectTrigger>
-          <SelectContent>
-            {fields.map((field) => (
-              <SelectItem key={field} value={field}>
-                {field}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Select
+          items={fields}
+          value={rule.field ?? ""}
+          onValueChange={handleFieldChange}
+          placeholder="Select field..."
+        />
       </div>
 
       {/* Operator Select */}
       <div className="flex-1 min-w-[120px]">
         <Select
-          value={rule.operator ?? ""}
+          items={allowedOperators.map((op) => ({
+            value: op,
+            label: operatorLabels[op],
+          }))}
+          value={rule.operator ?? undefined}
           onValueChange={handleOperatorChange}
           disabled={!rule.field}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Operator..." />
-          </SelectTrigger>
-          <SelectContent>
-            {allowedOperators.map((op) => (
-              <SelectItem key={op} value={op}>
-                {operatorLabels[op]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Operator..."
+        />
       </div>
 
       {/* Value Input */}
