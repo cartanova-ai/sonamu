@@ -30,7 +30,7 @@ type ToggleProps = Override<
   { value?: boolean; onValueChange?: (pressed: boolean) => void }
 >;
 
-const Toggle = React.forwardRef<React.ElementRef<typeof TogglePrimitive.Root>, ToggleProps>(
+const Toggle = React.forwardRef<React.ComponentRef<typeof TogglePrimitive.Root>, ToggleProps>(
   ({ className, variant, size, value, pressed, onValueChange, onPressedChange, ...props }, ref) => {
     const effectivePressed = value !== undefined ? value : pressed;
 
