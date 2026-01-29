@@ -501,8 +501,7 @@ describe("Upsert Builder", () => {
       // [expect] ID 배열 반환
       expect(ids).toBeInstanceOf(Array);
       expect(ids).toHaveLength(3);
-      expect(ids.every((id) => typeof id === "number")).toBe(true);
-      expect(ids.every((id) => id > 0)).toBe(true);
+      expect(ids.every((id) => typeof id === "string")).toBe(true);
 
       // [expect] DB 검증: 실제로 DB에 삽입되었는지 확인
       const insertedUsers = await wdb("users")
@@ -546,9 +545,6 @@ describe("Upsert Builder", () => {
       });
 
       const [firstId] = await ub.upsert(wdb, "users");
-
-      // [expect] 첫 번째 ID 확인
-      expect(firstId).toBeGreaterThan(0);
 
       // [expect] DB 검증: 원본 데이터 확인
       const originalUser = await wdb("users").select("*").where({ id: firstId }).first();
@@ -631,7 +627,7 @@ describe("Upsert Builder", () => {
 
       // [expect] ID 배열 반환
       expect(ids).toHaveLength(3);
-      expect(ids.every((id) => typeof id === "number" && id > 0)).toBe(true);
+      expect(ids.every((id) => typeof id === "string")).toBe(true);
 
       // [expect] DB 검증: 실제로 삽입되었는지 확인
       const insertedUsers = await wdb("users").select("id", "email").whereIn("id", ids);
@@ -965,7 +961,7 @@ describe("Upsert Builder", () => {
 
       // [expect] 모든 ID 반환
       expect(ids).toHaveLength(userCount);
-      expect(ids.every((id) => typeof id === "number" && id > 0)).toBe(true);
+      expect(ids.every((id) => typeof id === "string")).toBe(true);
 
       // [expect] DB 검증: 10개 모두 삽입되었는지 확인
       const insertedUsers = await wdb("users")
@@ -1019,7 +1015,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a - b);
+      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
 
       // [expect] 3개 ID 생성됨
       expect(ids).toHaveLength(3);
@@ -1575,12 +1571,12 @@ describe("Upsert Builder", () => {
 
       expect(remaining).toHaveLength(2);
       expect(remaining[0]?.employee_number).toBe(`MULTI-FK-${timestamp}-A1`);
-      expect(Number(remaining[0]?.user_id)).toBe(userIdA);
+      expect(remaining[0]?.user_id).toBe(userIdA);
       expect(Number(remaining[0]?.department_id)).toBe(deptId1);
       expect(Number(remaining[0]?.salary)).toBe(60000);
 
       expect(remaining[1]?.employee_number).toBe(`MULTI-FK-${timestamp}-B2`);
-      expect(Number(remaining[1]?.user_id)).toBe(userIdB);
+      expect(remaining[1]?.user_id).toBe(userIdB);
       expect(Number(remaining[1]?.department_id)).toBe(deptId2);
       expect(Number(remaining[1]?.salary)).toBe(63000);
 
@@ -1793,7 +1789,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a - b);
+      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
 
       // [expect] 3명 생성됨
       expect(ids).toHaveLength(3);
@@ -1822,7 +1818,7 @@ describe("Upsert Builder", () => {
       // [expect] DB 검증: 기존 유저는 수정됨, 새 유저는 추가됨
       const updatedUsers = await wdb("users")
         .select("username", "role")
-        .whereIn("id", [...sortedIds, newId] as number[])
+        .whereIn("id", [...sortedIds, newId] as string[])
         .orderBy("id");
 
       expect(updatedUsers).toMatchObject([

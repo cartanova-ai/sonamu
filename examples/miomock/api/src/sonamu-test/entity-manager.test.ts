@@ -16,11 +16,11 @@ describe("entityManager", () => {
     it("integer PK (기본) - increments로 생성된 엔티티", async () => {
       // User는 기본 integer PK를 사용하는 엔티티
       const userEntity = EntityManager.get("User");
-      expect(userEntity.getPkType()).toBe("integer");
+      expect(userEntity.getPkType()).toBe("string");
 
       const pkProp = userEntity.getPkProp();
       expect(pkProp.name).toBe("id");
-      expect(pkProp.type).toBe("integer");
+      expect(pkProp.type).toBe("string");
     });
 
     it("string PK - text 타입 ID 엔티티", async () => {

@@ -84,13 +84,13 @@ describe("Puri Query", () => {
 
     test("update", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("users").where("users.id", 1).update({ username: "수정됨" });
+      await db.table("users").where("users.id", "1").update({ username: "수정됨" });
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
       expectQuery(query, "set").toMatchInlineSnapshot(`"username = '수정됨'"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = '1'"`);
     });
 
     test("update - JSON 컬럼", async () => {
@@ -108,12 +108,12 @@ describe("Puri Query", () => {
 
     test("delete", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("users").where("users.id", 1).delete();
+      await db.table("users").where("users.id", "1").delete();
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"delete"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = '1'"`);
     });
   });
 
@@ -209,19 +209,19 @@ describe("Puri Query", () => {
     describe("C. WHERE", () => {
       test("where - 단일조건", async () => {
         const db = UserModel.getPuri("r");
-        await db.table("users").where("users.id", 1);
+        await db.table("users").where("users.id", "1");
         const query = Naite.get("puri:executed-query").first();
 
-        expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
+        expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = '1'"`);
       });
 
       test("where - 객체조건", async () => {
         const db = UserModel.getPuri("r");
-        await db.table("users").where({ "users.id": 1, "users.username": "test" });
+        await db.table("users").where({ "users.id": "1", "users.username": "test" });
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `""users"."id" = 1 AND "users"."username" = 'test'"`,
+          `""users"."id" = '1' AND "users"."username" = 'test'"`,
         );
       });
 

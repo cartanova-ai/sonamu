@@ -100,7 +100,7 @@ describe("Puri Wrapper", () => {
     describe("B-1. 기본 트랜잭션", () => {
       test("트랜잭션 생성 및 자동 커밋", async () => {
         const wdb = UserModel.getPuri("w");
-        let insertedUserId: number | undefined;
+        let insertedUserId: string | undefined;
 
         // 트랜잭션 내에서 user 생성
         await wdb.transaction(async (trx) => {
@@ -116,7 +116,6 @@ describe("Puri Wrapper", () => {
 
           assert(userId);
 
-          expect(userId.id).toBeGreaterThan(0);
           insertedUserId = userId.id;
         });
 
@@ -676,15 +675,12 @@ describe("Puri Wrapper", () => {
       }
 
       // 트랜잭션 내에서 ubUpsert로 실제 DB에 저장
-      let insertedIds: number[];
+      let insertedIds: string[];
       await wdb.transaction(async (trx) => {
         insertedIds = await trx.ubUpsert("users");
 
         // 트랜잭션 내에서 데이터 확인
         expect(insertedIds).toHaveLength(3);
-        insertedIds.forEach((id) => {
-          expect(id).toBeGreaterThan(0);
-        });
 
         // 트랜잭션 내에서 조회 가능
         const usersInTrx = await trx
@@ -735,9 +731,6 @@ describe("Puri Wrapper", () => {
 
         // 트랜잭션 내에서 생성 확인
         expect(ids).toHaveLength(3);
-        ids.forEach((id) => {
-          expect(id).toBeGreaterThan(0);
-        });
 
         // 트랜잭션 내에서 원본 데이터 확인
         const originalUsers = await trx
@@ -752,7 +745,7 @@ describe("Puri Wrapper", () => {
         ]);
 
         // 업데이트할 데이터를 ubRegister로 등록
-        const sortedIds = [...ids].sort((a, b) => a - b);
+        const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
         for (const [index, id] of sortedIds.entries()) {
           trx.ubRegister("users", {
             id,
@@ -781,7 +774,7 @@ describe("Puri Wrapper", () => {
       });
 
       // 트랜잭션 완료 후 데이터 확인
-      const sortedIds = [...insertedIds].sort((a, b) => a - b);
+      const sortedIds = [...insertedIds].sort((a, b) => a.localeCompare(b));
       const updatedUsers = await rdb.table("users").whereIn("id", insertedIds).orderBy("id", "asc");
 
       expect(updatedUsers).toHaveLength(3);
@@ -815,11 +808,7 @@ describe("Puri Wrapper", () => {
         wdb.transaction(async (trx) => {
           // ubUpsert로 데이터 저장
           const insertedIds = await trx.ubUpsert("users");
-
           expect(insertedIds).toHaveLength(2);
-          insertedIds.forEach((id) => {
-            expect(id).toBeGreaterThan(0);
-          });
 
           // 트랜잭션 내에서 데이터 확인
           const usersInTrx = await trx
