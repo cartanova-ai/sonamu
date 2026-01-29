@@ -214,6 +214,7 @@ describe("UserModel", () => {
 |------|-----------|
 | 프로젝트 생성 | create-sonamu, project-init |
 | 프로젝트 설정 | config |
+| Sonamu 로컬 개발 설정 | config |
 | DB 설정/포트 충돌 | database, config |
 | Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |

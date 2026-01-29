@@ -500,6 +500,75 @@ lifecycle: {
 
 ---
 
+## Sonamu 로컬 개발 환경 설정
+
+**언제 필요한가:**
+- Sonamu 프레임워크 소스코드를 수정하며 개발하는 경우
+- 로컬의 Sonamu 저장소와 프로젝트를 연동하여 작업하는 경우
+
+**문제 상황:**
+
+pnpm link로 Sonamu를 연결하면 빌드 시 타입 에러 발생:
+
+```
+error TS2345: Argument of type 'ZodNumber' is not assignable to parameter...
+  Type '2' is not assignable to type '3'.
+```
+
+**원인:**
+
+- 링크된 Sonamu와 프로젝트가 각자의 `node_modules`를 유지
+- 공통 의존성(zod 등)의 버전이 달라서 TypeScript 타입 불일치 발생
+- TypeScript가 두 개의 다른 타입 정의를 동시에 참조하여 에러 발생
+
+**해결 방법:**
+
+### 1. pnpm-workspace.yaml에 override 추가
+
+프로젝트 루트의 `pnpm-workspace.yaml`:
+
+```yaml
+overrides:
+  sonamu: link:../../sonamu/modules/sonamu
+```
+
+### 2. packages/api/package.json에 배포 버전 명시
+
+```json
+{
+  "dependencies": {
+    "sonamu": "^0.7.45"  // 최신 배포 버전으로 명시
+  }
+}
+```
+
+### 3. 설치 실행
+
+```bash
+pnpm install
+```
+
+### 4. 빌드 확인
+
+```bash
+cd packages/api
+pnpm build
+```
+
+**작동 원리:**
+
+- **TypeScript 타입 체크**: `package.json`의 배포 버전을 보고 npm registry의 타입 정의 참조
+- **실제 런타임**: `pnpm overrides`의 로컬 링크가 우선순위를 가져 로컬 소스코드 실행
+- 타입 체크와 런타임을 분리하여 버전 불일치 문제 해결
+
+**주의사항:**
+
+- Sonamu 소스코드를 수정한 후 프로젝트에서 즉시 반영됨
+- Sonamu 빌드 후 프로젝트 재시작 필요
+- 일반 프로젝트 개발 시에는 npm 버전 사용 권장
+
+---
+
 ## 환경별 설정
 
 ### 개발 환경
