@@ -1,11 +1,4 @@
-import {
-  MultiSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@sonamu-kit/react-components/components";
+import { MultiSelect, Select } from "@sonamu-kit/react-components/components";
 
 export type EnumSelectProps = {
   enumOptions: string[];
@@ -55,23 +48,22 @@ export function EnumSelect({
   }
 
   // Select 사용 (eq/ne)
+  const items = [
+    ...(clearable ? [{ value: "", label: "전체" }] : []),
+    ...enumOptions.map((key) => ({
+      value: key,
+      label: enumLabels[key] ?? key,
+    })),
+  ];
+
   return (
     <Select
+      items={items}
       value={(value as string) ?? ""}
       onValueChange={(v) => onValueChange?.(v ?? "")}
       disabled={disabled}
-    >
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder ?? "선택..."} />
-      </SelectTrigger>
-      <SelectContent>
-        {clearable && <SelectItem value="">전체</SelectItem>}
-        {enumOptions.map((key) => (
-          <SelectItem key={key} value={key}>
-            {enumLabels[key] ?? key}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      placeholder={placeholder ?? "선택..."}
+      className={className}
+    />
   );
 }
