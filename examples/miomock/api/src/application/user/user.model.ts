@@ -1,8 +1,6 @@
-import bcrypt from "bcrypt";
 import {
   api,
   asArray,
-  BadRequestException,
   BaseModelClass,
   exhaustive,
   type ListResult,
@@ -10,17 +8,11 @@ import {
   NotFoundException,
   Sonamu,
   transactional,
-  UnauthorizedException,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
-import type {
-  UserListParams,
-  UserLoginParams,
-  UserRegisterParams,
-  UserSaveParams,
-} from "./user.types";
+import type { UserListParams, UserSaveParams } from "./user.types";
 
 /*
   User Model
@@ -37,7 +29,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
-  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: string): Promise<UserSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -96,7 +88,7 @@ class UserModelClass extends BaseModelClass<
     // search-keyword
     if (params.search && params.keyword && params.keyword.length > 0) {
       if (params.search === "id") {
-        qb.where("users.id", Number(params.keyword));
+        qb.where("users.id", params.keyword);
       } else {
         exhaustive(params.search);
       }
@@ -128,7 +120,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
-  async save(spa: UserSaveParams[]): Promise<number[]> {
+  async save(spa: UserSaveParams[]): Promise<string[]> {
     const wdb = this.getPuri("w");
 
     // register
@@ -145,7 +137,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
-  async del(ids: number[]): Promise<number> {
+  async del(ids: string[]): Promise<number> {
     const wdb = this.getPuri("w");
 
     // transaction
@@ -164,84 +156,36 @@ class UserModelClass extends BaseModelClass<
     };
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
-  async me(): Promise<UserSubsetMapping["SS"] | null> {
-    const context = Sonamu.getContext();
+  // @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  // async register(params: UserRegisterParams): Promise<{ user: UserSubsetMapping["SS"] }> {
+  //   const rdb = this.getDB("r");
+  //   const wdb = this.getDB("w");
 
-    if (!context.user) {
-      return null;
-    }
+  //   // 이메일 중복 확인
+  //   const existingUser = await rdb("users").where("email", params.email).first();
 
-    const user = await this.findById("SS", context.user.id);
+  //   if (existingUser) {
+  //     throw new BadRequestException(SD("user.email.duplicate"));
+  //   }
 
-    return user;
-  }
+  //   // 비밀번호 해싱
+  //   const hashedPassword = await bcrypt.hash(params.password, 10);
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
-  async login(params: UserLoginParams): Promise<{ user: UserSubsetMapping["SS"] }> {
-    const rdb = this.getDB("r");
-    const context = Sonamu.getContext();
+  //   // 사용자 생성
+  //   const [userId] = await wdb("users").insert({
+  //     email: params.email,
+  //     username: params.username,
+  //     password: hashedPassword,
+  //     role: params.role || "normal",
+  //     is_verified: false,
+  //   });
 
-    // 이메일로 사용자 조회
-    const user = await rdb("users").select("*").where("email", params.email).first();
+  //   if (!userId) {
+  //     throw new Error("사용자 생성에 실패했습니다");
+  //   }
 
-    if (!user) {
-      throw new UnauthorizedException(SD("user.login.failed"));
-    }
-
-    // 비밀번호 확인
-    const isPasswordValid = await bcrypt.compare(params.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException(SD("user.login.failed"));
-    }
-
-    // 세션에 사용자 ID 저장
-    await context.passport.login(user);
-
-    // 마지막 로그인 시간 업데이트
-    const wdb = this.getDB("w");
-    await wdb("users").where("id", user.id).update({ last_login_at: new Date() });
-
-    return { user: await this.findById("SS", user.id) };
-  }
-
-  @api({ httpMethod: "GET", clients: ["axios", "tanstack-mutation"] })
-  async logout(): Promise<{ message: string }> {
-    const context = Sonamu.getContext();
-    await context.passport.logout();
-    return { message: "로그아웃 되었습니다" };
-  }
-
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
-  async register(params: UserRegisterParams): Promise<{ user: UserSubsetMapping["SS"] }> {
-    const rdb = this.getDB("r");
-    const wdb = this.getDB("w");
-
-    // 이메일 중복 확인
-    const existingUser = await rdb("users").where("email", params.email).first();
-
-    if (existingUser) {
-      throw new BadRequestException(SD("user.email.duplicate"));
-    }
-
-    // 비밀번호 해싱
-    const hashedPassword = await bcrypt.hash(params.password, 10);
-
-    // 사용자 생성
-    const [userId] = await wdb("users").insert({
-      email: params.email,
-      username: params.username,
-      password: hashedPassword,
-      role: params.role || "normal",
-      is_verified: false,
-    });
-
-    if (!userId) {
-      throw new Error("사용자 생성에 실패했습니다");
-    }
-
-    return { user: await this.findById("SS", userId) };
-  }
+  //   return { user: await this.findById("SS", userId) };
+  // }
 
   // @api({ httpMethod: "GET" })
   // async search(params: UserSearchParams): Promise<UserSubsetMapping["A"][]> {

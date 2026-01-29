@@ -17,6 +17,8 @@ export const UserSaveParams = UserBaseSchema.partial({
   is_verified: true,
   deleted_at: true,
   password: true,
+  image: true,
+  updated_at: true,
 });
 
 export type UserSaveParams = z.infer<typeof UserSaveParams>;

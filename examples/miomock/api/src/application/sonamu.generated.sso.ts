@@ -5,6 +5,8 @@ import type {
   PuriWrapper,
 } from "sonamu";
 import type {
+  AccountBaseSchema,
+  AccountSubsetKey,
   CompanyBaseSchema,
   CompanySubsetKey,
   DepartmentBaseSchema,
@@ -17,13 +19,43 @@ import type {
   FileSubsetKey,
   ProjectBaseSchema,
   ProjectSubsetKey,
+  SessionBaseSchema,
+  SessionSubsetKey,
   SyncFixtureBaseSchema,
   SyncFixtureSubsetKey,
   TagBaseSchema,
   TagSubsetKey,
   UserBaseSchema,
   UserSubsetKey,
+  VerificationBaseSchema,
+  VerificationSubsetKey,
 } from "./sonamu.generated";
+
+// SubsetQuery: Account
+export const accountSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("accounts").select({
+      id: "accounts.id",
+      account_id: "accounts.account_id",
+      provider_id: "accounts.provider_id",
+      access_token: "accounts.access_token",
+      refresh_token: "accounts.refresh_token",
+      id_token: "accounts.id_token",
+      access_token_expires_at: "accounts.access_token_expires_at",
+      refresh_token_expires_at: "accounts.refresh_token_expires_at",
+      scope: "accounts.scope",
+      password: "accounts.password",
+      created_at: "accounts.created_at",
+      updated_at: "accounts.updated_at",
+      user_id: "accounts.user_id",
+    });
+  },
+};
+
+// LoaderQuery: Account
+export const accountLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<AccountSubsetKey>;
 
 // SubsetQuery: Company
 export const companySubsetQueries = {
@@ -394,6 +426,27 @@ export const projectLoaderQueries = {
   ],
 } as const satisfies PuriLoaderQueries<ProjectSubsetKey>;
 
+// SubsetQuery: Session
+export const sessionSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("sessions").select({
+      id: "sessions.id",
+      expires_at: "sessions.expires_at",
+      token: "sessions.token",
+      created_at: "sessions.created_at",
+      updated_at: "sessions.updated_at",
+      ip_address: "sessions.ip_address",
+      user_agent: "sessions.user_agent",
+      user_id: "sessions.user_id",
+    });
+  },
+};
+
+// LoaderQuery: Session
+export const sessionLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<SessionSubsetKey>;
+
 // SubsetQuery: SyncFixture
 export const syncFixtureSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -496,28 +549,54 @@ export const userLoaderQueries = {
   SS: [],
 } as const satisfies PuriLoaderQueries<UserSubsetKey>;
 
+// SubsetQuery: Verification
+export const verificationSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("verifications").select({
+      id: "verifications.id",
+      identifier: "verifications.identifier",
+      value: "verifications.value",
+      expires_at: "verifications.expires_at",
+      created_at: "verifications.created_at",
+      updated_at: "verifications.updated_at",
+    });
+  },
+};
+
+// LoaderQuery: Verification
+export const verificationLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<VerificationSubsetKey>;
+
 // ForeignKey Types
+export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
+export type SessionForeignKeys = "user_id";
 
 // DatabaseSchema
 declare module "sonamu" {
   export interface DatabaseSchemaExtend {
+    accounts: AccountBaseSchema;
     companies: CompanyBaseSchema;
     departments: DepartmentBaseSchema;
     documents: DocumentBaseSchema;
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     projects: ProjectBaseSchema;
+    sessions: SessionBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
     tags: TagBaseSchema;
     users: UserBaseSchema;
+    verifications: VerificationBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
     project_tags: ManyToManyBaseSchema<"project", "tag">;
   }
 
   export interface DatabaseForeignKeys {
+    accounts: AccountForeignKeys;
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
+    sessions: SessionForeignKeys;
   }
 }

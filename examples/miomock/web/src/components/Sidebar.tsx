@@ -1,8 +1,8 @@
 import { Button } from "@sonamu-kit/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
+import { signOut, useSession } from "@/lib/auth-client";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
 import FolderIcon from "~icons/lucide/folder";
@@ -49,8 +49,8 @@ const menuItems: MenuItemProps[] = [
 
 export default function Sidebar({ className }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { auth } = useSonamuContext();
-  const { user, logout } = auth;
+  const session = useSession();
+  const user = session.data?.user ?? null;
 
   const isActive = (path: string) => {
     if (path === "/admin") {
@@ -68,7 +68,7 @@ export default function Sidebar({ className }: SidebarProps) {
         <h3 className="text-lg font-semibold">Sonamu Admin</h3>
         {user && (
           <div className="text-sm text-sidebar-foreground/70">
-            {user.username} ({user.role})
+            {user.name} ({user.role})
           </div>
         )}
       </div>
@@ -103,7 +103,7 @@ export default function Sidebar({ className }: SidebarProps) {
       {/* Footer */}
       {user && (
         <div className="flex shrink-0 flex-col gap-2 p-2 border-t border-sidebar-border">
-          <Button variant="destructive" onClick={logout} icon={<LogOutIcon />}>
+          <Button variant="destructive" onClick={() => signOut()} icon={<LogOutIcon />}>
             {SD("common.logout")}
           </Button>
         </div>

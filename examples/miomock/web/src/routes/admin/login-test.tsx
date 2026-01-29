@@ -11,12 +11,13 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { signIn, signOut, useSession } from "@/lib/auth-client";
 import HomeIcon from "~icons/lucide/home";
 import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
 import LogOutIcon from "~icons/lucide/log-out";
 import MailIcon from "~icons/lucide/mail";
+import UserPlusIcon from "~icons/lucide/user-plus";
 
 export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
 
@@ -24,16 +25,18 @@ function LoginTestPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
-  const { auth } = useSonamuContext();
-  const { login, logout, user } = auth;
+  const session = useSession();
+  const user = session.data?.user ?? null;
   const navigate = useNavigate();
 
   const handleSubmit = () => {
-    login({ email, password });
+    signIn.email({ email, password }).then(() => {
+      navigate({ to: "/admin" });
+    });
   };
 
   const handleLogout = () => {
-    logout();
+    signOut();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -60,7 +63,7 @@ function LoginTestPage() {
               <Alert>
                 <AlertTitle>로그인 성공</AlertTitle>
                 <AlertDescription className="space-y-1">
-                  <p>사용자: {user.username}</p>
+                  <p>사용자: {user.name}</p>
                   <p>이메일: {user.email}</p>
                   <p>역할: {user.role}</p>
                 </AlertDescription>
@@ -110,14 +113,25 @@ function LoginTestPage() {
                 />
               </div>
 
-              <Button
-                icon={<LogInIcon />}
-                className="w-full h-11 gap-2 text-white font-medium shadow-md"
-                style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
-                onClick={handleSubmit}
-              >
-                Login
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  icon={<LogInIcon />}
+                  className="flex-1 h-11 gap-2 text-white font-medium shadow-md"
+                  style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
+                  onClick={handleSubmit}
+                >
+                  Login
+                </Button>
+                <Button
+                  icon={<UserPlusIcon />}
+                  variant="outline"
+                  className="flex-1 h-11 gap-2"
+                  style={{ borderColor: "#6ee7b7", color: "#059669" }}
+                  onClick={() => navigate({ to: "/admin/signup" })}
+                >
+                  회원가입
+                </Button>
+              </div>
             </>
           )}
         </CardContent>

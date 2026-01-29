@@ -1,65 +1,25 @@
 import {
-  type SonamuAuth,
   type SonamuFile,
   SonamuProvider,
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
-import { FileService, UserService } from "@/services/services.generated";
-import type { UserSubsetSS } from "@/services/sonamu.generated";
-import type { UserLoginParams } from "@/services/user/user.types";
+import type { signIn, useSession } from "@/lib/auth-client";
+import { FileService } from "@/services/services.generated";
+
+type User = NonNullable<ReturnType<typeof useSession>["data"]>["user"];
+
+type UserLoginParams = Parameters<typeof signIn.email>[0];
 
 /** 타입이 지정된 useSonamuContext */
 export function useSonamuContext() {
-  return useSonamuBaseContext<MergedDictionary, UserSubsetSS, UserLoginParams>();
+  return useSonamuBaseContext<MergedDictionary, User, UserLoginParams>();
 }
 
 function useSonamuConfig() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { data: user, isLoading, refetch } = UserService.useMe();
-  const loginMutation = UserService.useLoginMutation();
-  const logoutMutation = UserService.useLogoutMutation();
   const uploadMutation = FileService.useUploadMutation();
-
-  // Auth 설정
-  const auth: SonamuAuth<UserSubsetSS, UserLoginParams> = {
-    user: user ?? null,
-    loading: isLoading || loginMutation.isPending || logoutMutation.isPending,
-    login: (loginParams: UserLoginParams) => {
-      loginMutation.mutate(
-        { params: loginParams },
-        {
-          onSuccess: async ({ user: _user }) => {
-            await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-            await queryClient.refetchQueries({ queryKey: ["User", "me"] });
-            navigate({ to: "/admin", replace: true });
-          },
-          onError: (error) => {
-            console.error("Login failed:", error);
-            alert(SD("user.login.failed"));
-          },
-        },
-      );
-    },
-    logout: () => {
-      logoutMutation.mutate(undefined, {
-        onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
-          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
-        },
-        onError: (error) => {
-          console.error("Logout failed:", error);
-          alert(SD("user.logout.failed"));
-        },
-      });
-    },
-    refetch,
-  };
 
   // Uploader 설정
   const uploader = async (files: File[]): Promise<SonamuFile[]> => {
@@ -74,14 +34,12 @@ function useSonamuConfig() {
   // SD 설정
   const sd = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
 
-  return { auth, uploader, SD: sd };
+  return { uploader, SD: sd };
 }
 
 export function SonamuProviderWrapper({ children }: { children: ReactNode }) {
   const config = useSonamuConfig();
   return (
-    <SonamuProvider<MergedDictionary, UserSubsetSS, UserLoginParams> {...config}>
-      {children}
-    </SonamuProvider>
+    <SonamuProvider<MergedDictionary, User, UserLoginParams> {...config}>{children}</SonamuProvider>
   );
 }

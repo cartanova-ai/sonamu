@@ -35,7 +35,7 @@ import { TagListParams } from "./tag/tag.types";
 import { UserListParams } from "./user/user.types";
 
 export namespace UserService {
-  export const getUser = <T extends UserSubsetKey>(subset: T, id: number): SSRQuery =>
+  export const getUser = <T extends UserSubsetKey>(subset: T, id: string): SSRQuery =>
     createSSRQuery("UserModel", "findById", [subset, id], ["User", "getUser"]);
 
   export const getUsers = <T extends UserSubsetKey, LP extends UserListParams>(
@@ -45,8 +45,6 @@ export namespace UserService {
 
   export const getMyIP = (): SSRQuery =>
     createSSRQuery("UserModel", "getMyIP", [], ["User", "getMyIP"]);
-
-  export const me = (): SSRQuery => createSSRQuery("UserModel", "me", [], ["User", "me"]);
 
   export const trxTest = (): SSRQuery =>
     createSSRQuery("UserModel", "trxTest", [], ["User", "trxTest"]);

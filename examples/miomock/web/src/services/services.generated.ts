@@ -51,17 +51,12 @@ import {
 } from "./sonamu.shared";
 import { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
 import { TagListParams, TagSaveParams } from "./tag/tag.types";
-import {
-  UserListParams,
-  UserLoginParams,
-  UserRegisterParams,
-  UserSaveParams,
-} from "./user/user.types";
+import { UserListParams, UserSaveParams } from "./user/user.types";
 
 export namespace UserService {
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number,
+    id: string,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -69,7 +64,7 @@ export namespace UserService {
     });
   }
 
-  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: number) =>
+  export const getUserQueryOptions = <T extends UserSubsetKey>(subset: T, id: string) =>
     queryOptions({
       queryKey: ["User", "getUser", subset, id],
       queryFn: () => getUser(subset, id),
@@ -77,7 +72,7 @@ export namespace UserService {
 
   export const useUser = <T extends UserSubsetKey>(
     subset: T,
-    id: number,
+    id: string,
     options?: { enabled?: boolean },
   ) =>
     useQuery({
@@ -115,7 +110,7 @@ export namespace UserService {
       ...options,
     });
 
-  export async function save(spa: UserSaveParams[]): Promise<number[]> {
+  export async function save(spa: UserSaveParams[]): Promise<string[]> {
     return fetch({
       method: "POST",
       url: `/api/user/save`,
@@ -128,7 +123,7 @@ export namespace UserService {
       mutationFn: (params: { spa: UserSaveParams[] }) => save(params.spa),
     });
 
-  export async function del(ids: number[]): Promise<number> {
+  export async function del(ids: string[]): Promise<number> {
     return fetch({
       method: "POST",
       url: `/api/user/del`,
@@ -138,7 +133,7 @@ export namespace UserService {
 
   export const useDelMutation = () =>
     useMutation({
-      mutationFn: (params: { ids: number[] }) => del(params.ids),
+      mutationFn: (params: { ids: string[] }) => del(params.ids),
     });
 
   export async function getMyIP(): Promise<{ ip: string }> {
@@ -158,65 +153,6 @@ export namespace UserService {
     useQuery({
       ...getMyIPQueryOptions(),
       ...options,
-    });
-
-  export async function me(): Promise<UserSubsetMapping["SS"] | null> {
-    return fetch({
-      method: "GET",
-      url: `/api/user/me`,
-    });
-  }
-
-  export const meQueryOptions = () =>
-    queryOptions({
-      queryKey: ["User", "me"],
-      queryFn: () => me(),
-    });
-
-  export const useMe = (options?: { enabled?: boolean }) =>
-    useQuery({
-      ...meQueryOptions(),
-      ...options,
-    });
-
-  export async function login(params: UserLoginParams): Promise<{ user: UserSubsetMapping["SS"] }> {
-    return fetch({
-      method: "POST",
-      url: `/api/user/login`,
-      data: { params },
-    });
-  }
-
-  export const useLoginMutation = () =>
-    useMutation({
-      mutationFn: (params: { params: UserLoginParams }) => login(params.params),
-    });
-
-  export async function logout(): Promise<{ message: string }> {
-    return fetch({
-      method: "GET",
-      url: `/api/user/logout`,
-    });
-  }
-
-  export const useLogoutMutation = () =>
-    useMutation({
-      mutationFn: (params: void) => logout(),
-    });
-
-  export async function register(
-    params: UserRegisterParams,
-  ): Promise<{ user: UserSubsetMapping["SS"] }> {
-    return fetch({
-      method: "POST",
-      url: `/api/user/register`,
-      data: { params },
-    });
-  }
-
-  export const useRegisterMutation = () =>
-    useMutation({
-      mutationFn: (params: { params: UserRegisterParams }) => register(params.params),
     });
 
   export async function trxTest(): Promise<void> {

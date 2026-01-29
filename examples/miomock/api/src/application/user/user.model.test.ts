@@ -1,8 +1,7 @@
 import assert from "assert";
 import { Naite } from "sonamu";
-import { bootstrap, test, testAs } from "sonamu/test";
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
-import type { UserSubsetSS } from "../sonamu.generated";
 import { UserModel } from "./user.model";
 
 bootstrap(vi);
@@ -41,10 +40,10 @@ describe("UserModel", () => {
 
     test("Read - findById로 유저 조회", async () => {
       // fixture에 있는 유저 조회 (id: 1)
-      const user = await UserModel.findById("A", 1);
+      const user = await UserModel.findById("A", "1");
 
       expect(user).toBeDefined();
-      expect(user.id).toBe(1);
+      expect(user.id).toBe("1");
     });
 
     test("Read - findMany로 유저 목록 조회", async () => {
@@ -83,32 +82,6 @@ describe("UserModel", () => {
       // 수정 확인
       const updatedUser = await UserModel.findById("A", userId);
       expect(updatedUser.username).toBe("updated_username");
-    });
-  });
-
-  describe("me - 로그인된 유저 정보 조회", () => {
-    const adminUser: UserSubsetSS = {
-      id: 1,
-      created_at: new Date(),
-      email: "admin@test.com",
-      username: "admin",
-      role: "admin",
-      is_verified: true,
-      last_login_at: null,
-      bio: null,
-    };
-
-    testAs(adminUser, "로그인된 유저 정보 조회", async () => {
-      const me = await UserModel.me();
-
-      expect(me).not.toBeNull();
-      expect(me?.id).toBe(adminUser.id);
-    });
-
-    test("비로그인 시 null 반환", async () => {
-      const me = await UserModel.me();
-
-      expect(me).toBeNull();
     });
   });
 });

@@ -47,7 +47,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   const queryClient = useQueryClient();
 
   const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
-    user_id: 0,
+    user_id: "",
     department_id: null,
     employee_number: "",
     salary: null,

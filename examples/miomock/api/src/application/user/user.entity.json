@@ -3,11 +3,11 @@
   "table": "users",
   "title": "USER",
   "props": [
-    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "id", "type": "string", "desc": "ID" },
     { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     { "name": "email", "desc": "이메일", "type": "string", "length": 255 },
     { "name": "username", "desc": "이름", "type": "string", "length": 255 },
-    { "name": "password", "desc": "비밀번호", "type": "string", "length": 255 },
+    { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255 },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
     { "name": "last_login_at", "nullable": true, "desc": "LASTLOGIN일시", "type": "date" },
@@ -21,7 +21,9 @@
       "nullable": true,
       "desc": "직원",
       "relationType": "OneToOne"
-    }
+    },
+    { "name": "image", "type": "string", "nullable": true, "desc": "프로필 이미지" },
+    { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {

@@ -24,7 +24,7 @@ import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
 
 const formSearchSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
 });
 
 export const Route = createFileRoute("/admin/users/form")({
@@ -38,7 +38,7 @@ function UsersFormPage() {
 }
 
 type UsersFormProps = {
-  id?: number;
+  id?: string;
   mode?: "page" | "modal";
 };
 

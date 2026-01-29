@@ -89,7 +89,6 @@ export default defineConfig({
       return {
         ...defaultContext,
         ip: "127.0.0.1",
-        session: {},
       };
     },
   },
@@ -124,7 +123,21 @@ export default defineConfig({
       },
     },
 
-    auth: true,
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+      },
+      user: {
+        fields: {
+          name: "username",
+          emailVerified: "is_verified",
+        },
+        additionalFields: {
+          role: { type: "string" },
+          created_at: { type: "date" },
+        },
+      },
+    },
     // auth: {
     //   userSerializer: async (user, _request) => user,
     //   userDeserializer: async (serialized, _request) => serialized,
@@ -135,7 +148,6 @@ export default defineConfig({
         return {
           ...defaultContext,
           ip: request.ip,
-          session: request.session,
           body: request.body,
         };
       },

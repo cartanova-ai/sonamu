@@ -17,6 +17,14 @@ type StringArray = z.infer<typeof StringArray>;
 const StringType = z.string();
 type StringType = z.infer<typeof StringType>;
 
+// Enums: Account
+export const AccountOrderBy = z.enum(["id-desc"]).describe("AccountOrderBy");
+export type AccountOrderBy = z.infer<typeof AccountOrderBy>;
+export const AccountOrderByLabel = { "id-desc": "ID최신순" };
+export const AccountSearchField = z.enum(["id"]).describe("AccountSearchField");
+export type AccountSearchField = z.infer<typeof AccountSearchField>;
+export const AccountSearchFieldLabel = { id: "ID" };
+
 // Enums: Company
 export const CompanyOrderBy = z.enum(["id-desc"]).describe("CompanyOrderBy");
 export type CompanyOrderBy = z.infer<typeof CompanyOrderBy>;
@@ -78,6 +86,14 @@ export const ProjectStatusLabel = {
   cancelled: "취소",
 };
 
+// Enums: Session
+export const SessionOrderBy = z.enum(["id-desc"]).describe("SessionOrderBy");
+export type SessionOrderBy = z.infer<typeof SessionOrderBy>;
+export const SessionOrderByLabel = { "id-desc": "ID최신순" };
+export const SessionSearchField = z.enum(["id"]).describe("SessionSearchField");
+export type SessionSearchField = z.infer<typeof SessionSearchField>;
+export const SessionSearchFieldLabel = { id: "ID" };
+
 // Enums: SyncFixture
 export const SyncFixtureStatus = z
   .enum(["draft", "pending", "active", "completed", "archived"])
@@ -126,6 +142,44 @@ export const UserRole = z.enum(["normal", "admin"]).describe("UserRole");
 export type UserRole = z.infer<typeof UserRole>;
 export const UserRoleLabel = { normal: "노멀", admin: "관리자" };
 
+// Enums: Verification
+export const VerificationOrderBy = z.enum(["id-desc"]).describe("VerificationOrderBy");
+export type VerificationOrderBy = z.infer<typeof VerificationOrderBy>;
+export const VerificationOrderByLabel = { "id-desc": "ID최신순" };
+export const VerificationSearchField = z.enum(["id"]).describe("VerificationSearchField");
+export type VerificationSearchField = z.infer<typeof VerificationSearchField>;
+export const VerificationSearchFieldLabel = { id: "ID" };
+
+// BaseSchema: Account
+export const AccountBaseSchema = z.object({
+  id: z.string(),
+  account_id: z.string(),
+  provider_id: z.string(),
+  user_id: z.string(),
+  access_token: z.string().nullable(),
+  refresh_token: z.string().nullable(),
+  id_token: z.string().nullable(),
+  access_token_expires_at: z.date().nullable(),
+  refresh_token_expires_at: z.date().nullable(),
+  scope: z.string().nullable(),
+  password: z.string().nullable(),
+  created_at: z.date(),
+  updated_at: z.date(),
+});
+export type AccountBaseSchema = z.infer<typeof AccountBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "access_token_expires_at",
+    "refresh_token_expires_at",
+    "scope",
+    "password",
+    "created_at",
+    "id",
+  ];
+};
+
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
   id: z.int(),
@@ -171,7 +225,7 @@ export type DocumentBaseSchema = z.infer<typeof DocumentBaseSchema> & {
 export const EmployeeBaseSchema = z.object({
   id: z.int(),
   created_at: z.date(),
-  user_id: z.int(),
+  user_id: z.string(),
   department_id: z.int().nullable(),
   employee_number: z.string().max(32),
   salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
@@ -236,6 +290,21 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __generated__: readonly ["textsearchable_index_col"];
 };
 
+// BaseSchema: Session
+export const SessionBaseSchema = z.object({
+  id: z.string(),
+  expires_at: z.date(),
+  token: z.string(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  ip_address: z.string().nullable(),
+  user_agent: z.string().nullable(),
+  user_id: z.string(),
+});
+export type SessionBaseSchema = z.infer<typeof SessionBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "ip_address", "user_agent", "id"];
+};
+
 // BaseSchema: SyncFixture
 export const SyncFixtureBaseSchema = z.object({
   id: z.int(),
@@ -276,11 +345,11 @@ export type TagBaseSchema = z.infer<typeof TagBaseSchema> & {
 
 // BaseSchema: User
 export const UserBaseSchema = z.object({
-  id: z.int(),
+  id: z.string(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
-  password: z.string().max(255),
+  password: z.string().max(255).nullable(),
   birth_date: z.date().nullable(),
   role: UserRole,
   last_login_at: z.date().nullable(),
@@ -288,19 +357,52 @@ export const UserBaseSchema = z.object({
   is_verified: z.boolean(),
   deleted_at: z.date().nullable(),
   // employee: OneToOne Employee
+  image: z.string().nullable(),
+  updated_at: z.date(),
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
   readonly __hasDefault__: readonly [
     "created_at",
+    "password",
     "birth_date",
     "last_login_at",
     "bio",
     "is_verified",
     "deleted_at",
     "employee_id",
+    "image",
+    "updated_at",
     "id",
   ];
 };
+
+// BaseSchema: Verification
+export const VerificationBaseSchema = z.object({
+  id: z.string(),
+  identifier: z.string(),
+  value: z.string(),
+  expires_at: z.date(),
+  created_at: z.date(),
+  updated_at: z.date(),
+});
+export type VerificationBaseSchema = z.infer<typeof VerificationBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "updated_at", "id"];
+};
+
+// BaseListParams: Account
+export const AccountBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: AccountSearchField,
+    keyword: z.string(),
+    orderBy: AccountOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.string()),
+    sonamuFilter: z.custom<ApplySonamuFilter<AccountBaseSchema, never, never>>(),
+  })
+  .partial();
+export type AccountBaseListParams = z.infer<typeof AccountBaseListParams>;
 
 // BaseListParams: Company
 export const CompanyBaseListParams = z
@@ -395,6 +497,21 @@ export const ProjectBaseListParams = z
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
 
+// BaseListParams: Session
+export const SessionBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: SessionSearchField,
+    keyword: z.string(),
+    orderBy: SessionOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.string()),
+    sonamuFilter: z.custom<ApplySonamuFilter<SessionBaseSchema, never, never>>(),
+  })
+  .partial();
+export type SessionBaseListParams = z.infer<typeof SessionBaseListParams>;
+
 // BaseListParams: SyncFixture
 export const SyncFixtureBaseListParams = z
   .object({
@@ -434,11 +551,49 @@ export const UserBaseListParams = z
     keyword: z.string(),
     orderBy: UserOrderBy,
     queryMode: SonamuQueryMode,
-    id: zArrayable(z.number().int().positive()),
+    id: zArrayable(z.string()),
     sonamuFilter: z.custom<ApplySonamuFilter<UserBaseSchema, never, never>>(),
   })
   .partial();
 export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
+
+// BaseListParams: Verification
+export const VerificationBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: VerificationSearchField,
+    keyword: z.string(),
+    orderBy: VerificationOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.string()),
+    sonamuFilter: z.custom<ApplySonamuFilter<VerificationBaseSchema, never, never>>(),
+  })
+  .partial();
+export type VerificationBaseListParams = z.infer<typeof VerificationBaseListParams>;
+
+// Subsets: Account
+export const AccountSubsetA = z.object({
+  id: z.string(),
+  account_id: z.string(),
+  provider_id: z.string(),
+  access_token: z.string().nullable(),
+  refresh_token: z.string().nullable(),
+  id_token: z.string().nullable(),
+  access_token_expires_at: z.date().nullable(),
+  refresh_token_expires_at: z.date().nullable(),
+  scope: z.string().nullable(),
+  password: z.string().nullable(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  user_id: z.string(),
+});
+export type AccountSubsetA = z.infer<typeof AccountSubsetA>;
+export type AccountSubsetMapping = {
+  A: AccountSubsetA;
+};
+export const AccountSubsetKey = z.enum(["A"]);
+export type AccountSubsetKey = z.infer<typeof AccountSubsetKey>;
 
 // Subsets: Company
 export const CompanySubsetA = z.object({
@@ -475,7 +630,7 @@ export const DepartmentSubsetA = z.object({
       employee_number: z.string().max(32),
       salary: z.string().nullable().meta({ SonamuPropType: "numeric" }),
       user: z.object({
-        id: z.int(),
+        id: z.string(),
         email: z.string().max(255),
       }),
     }),
@@ -541,7 +696,7 @@ export const EmployeeSubsetA = z.object({
   hire_date: z.date().nullable(),
   notes: z.string().nullable(),
   user: z.object({
-    id: z.int(),
+    id: z.string(),
     username: z.string().max(255),
   }),
   department: z
@@ -560,7 +715,7 @@ export const EmployeeSubsetP = z.object({
   id: z.int(),
   created_at: z.date(),
   user: z.object({
-    id: z.int(),
+    id: z.string(),
     username: z.string().max(255),
     employee: z
       .object({
@@ -700,6 +855,24 @@ export type ProjectSubsetMapping = {
 export const ProjectSubsetKey = z.enum(["A", "P"]);
 export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
 
+// Subsets: Session
+export const SessionSubsetA = z.object({
+  id: z.string(),
+  expires_at: z.date(),
+  token: z.string(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  ip_address: z.string().nullable(),
+  user_agent: z.string().nullable(),
+  user_id: z.string(),
+});
+export type SessionSubsetA = z.infer<typeof SessionSubsetA>;
+export type SessionSubsetMapping = {
+  A: SessionSubsetA;
+};
+export const SessionSubsetKey = z.enum(["A"]);
+export type SessionSubsetKey = z.infer<typeof SessionSubsetKey>;
+
 // Subsets: SyncFixture
 export const SyncFixtureSubsetA = z.object({
   id: z.int(),
@@ -737,7 +910,7 @@ export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({
-  id: z.int(),
+  id: z.string(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
@@ -750,7 +923,7 @@ export const UserSubsetA = z.object({
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({
-  id: z.int(),
+  id: z.string(),
   email: z.string().max(255),
   username: z.string().max(255),
   role: UserRole,
@@ -769,7 +942,7 @@ export const UserSubsetP = z.object({
 });
 export type UserSubsetP = z.infer<typeof UserSubsetP>;
 export const UserSubsetSS = z.object({
-  id: z.int(),
+  id: z.string(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
@@ -786,3 +959,19 @@ export type UserSubsetMapping = {
 };
 export const UserSubsetKey = z.enum(["A", "P", "SS"]);
 export type UserSubsetKey = z.infer<typeof UserSubsetKey>;
+
+// Subsets: Verification
+export const VerificationSubsetA = z.object({
+  id: z.string(),
+  identifier: z.string(),
+  value: z.string(),
+  expires_at: z.date(),
+  created_at: z.date(),
+  updated_at: z.date(),
+});
+export type VerificationSubsetA = z.infer<typeof VerificationSubsetA>;
+export type VerificationSubsetMapping = {
+  A: VerificationSubsetA;
+};
+export const VerificationSubsetKey = z.enum(["A"]);
+export type VerificationSubsetKey = z.infer<typeof VerificationSubsetKey>;
