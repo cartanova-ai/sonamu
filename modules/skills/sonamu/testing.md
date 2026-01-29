@@ -9,6 +9,12 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 **예시 프로젝트**: `sonamu/examples/miomock` - 실제 테스트 코드 참고
 
+## 테스트 작성 전 체크리스트
+
+- [ ] **Seed Data 준비** - FK 제약으로 인한 기본 데이터 필요 (→ database.md "최소 seed data" 참고)
+- [ ] **SaveParams partial 설정** - nullable/dbDefault 필드 partial 처리 확인
+- [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
+
 ## 테스트 실행
 
 ```bash
