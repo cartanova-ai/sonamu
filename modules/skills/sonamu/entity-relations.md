@@ -435,39 +435,98 @@ Error: ApiLog -- 잘못된 FieldExpr 'user_id' (사용 가능한 props: id, crea
 
 ManyToMany 관계는 Entity JSON에서 정의하지만, SaveParams에는 join 테이블 데이터를 배열로 전달해야 합니다.
 
+참고: sonamu/examples/miomock/api/src/application/project
+
 ### SaveParams에서 ManyToMany 처리
 
 **패턴: BaseSchema.partial().extend() 사용**
 
 ```typescript
-// question-collection.types.ts
+// project.types.ts (miomock 예시)
 import { z } from "zod";
-import {
-  QuestionCollectionBaseListParams,
-  QuestionCollectionBaseSchema,
-} from "../sonamu.generated";
+import { ProjectBaseSchema } from "../sonamu.generated";
 
-export const QuestionCollectionSaveParams = QuestionCollectionBaseSchema
-  .partial({ id: true, created_at: true })
+export const ProjectSaveParams = ProjectBaseSchema
+  .partial({
+    id: true,
+    created_at: true,
+  })
   .extend({
-    category_ids: z.array(z.number()),  // ManyToMany 관계 필드 추가
+    employee_ids: z.array(z.number().int().positive()),  // ManyToMany: employee
+    tag_ids: z.array(z.number().int().positive()),       // ManyToMany: tags
+  })
+  .omit({
+    virtual_test: true,           // virtual 필드 제거
+    virtual_query_test: true,
+    textsearchable_index_col: true,  // generated 필드 제거
   });
-export type QuestionCollectionSaveParams = z.infer<typeof QuestionCollectionSaveParams>;
+export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
 **중요:**
 - BaseSchema에는 ManyToMany 관계 필드가 없으므로 `.extend()`로 추가
-- 필드명은 `{relation_name}_ids` 형태 (예: categories → category_ids)
-- Model.save() 메서드에서 이 필드를 추출하여 join 테이블을 별도로 처리
+- 필드명은 `{relation_name}_ids` 형태 (예: employee → employee_ids, tags → tag_ids)
+- 타입 검증: `z.array(z.number().int().positive())` - 양수 정수만 허용
+- virtual/generated 필드는 `.omit()`으로 제거
+- 양방향 ManyToMany는 한쪽에서만 관리 (Project만, Employee는 관리 안함)
 
-### Model.save()에서 처리 예시
+### Model.save()에서 처리 (권장 패턴)
+
+**효율적인 패턴: whereNotIn으로 변경분만 삭제**
 
 ```typescript
-// question-collection.model.ts
+// project.model.ts (miomock 예시)
+async save(spa: ProjectSaveParams[]): Promise<number[]> {
+  const puri = this.getPuri("w");
+
+  // register
+  spa.forEach(({ employee_ids, tag_ids, ...sp }) => {
+    const project_id = puri.ubRegister("projects", sp);
+
+    employee_ids.forEach((employee_id) => {
+      puri.ubRegister("projects__employees", {
+        project_id,
+        employee_id,
+      });
+    });
+
+    tag_ids.forEach((tag_id) => {
+      puri.ubRegister("project_tags", {
+        project_id,
+        tag_id,
+      });
+    });
+  });
+
+  return puri.transaction(async (trx) => {
+    const ids = await trx.ubUpsert("projects");
+    const peIds = await trx.ubUpsert("projects__employees");
+    const ptIds = await trx.ubUpsert("project_tags");
+
+    // 핵심: whereNotIn으로 현재 요청에 없는 관계만 삭제 (효율적)
+    await trx
+      .table("projects__employees")
+      .whereIn("project_id", ids)
+      .whereNotIn("id", peIds)  // ubUpsert 결과에 없는 것만 삭제
+      .delete();
+
+    await trx
+      .table("project_tags")
+      .whereIn("project_id", ids)
+      .whereNotIn("id", ptIds)
+      .delete();
+
+    return ids;
+  });
+}
+```
+
+**기본 패턴: 전체 삭제 후 재등록 (간단하지만 비효율적)**
+
+```typescript
 async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
   const wdb = this.getPuri("w");
 
-  // category_ids 추출
   const categoryIdsList: (number[] | undefined)[] = [];
   spa.forEach((sp) => {
     const { category_ids, ...collectionData } = sp as any;
@@ -478,7 +537,7 @@ async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
   return wdb.transaction(async (trx) => {
     const ids = await trx.ubUpsert("question_collections");
 
-    // 기존 관계 삭제
+    // 전체 삭제 (비효율적이지만 간단)
     await trx
       .table("question_collections__survey_categories")
       .whereIn("question_collection_id", ids)
@@ -522,4 +581,29 @@ await QuestionCollectionModel.save([
 ]);
 ```
 
-**핵심:** ManyToMany 관계는 Entity JSON에서 정의되지만, 코드에서는 `{relation}_ids` 배열로 명시적으로 관리해야 합니다.
+### 양방향 ManyToMany 관리
+
+**원칙: 한쪽에서만 관리**
+
+```typescript
+// Project Entity: employee (ManyToMany)
+// Employee Entity: projs (ManyToMany, 같은 join 테이블)
+
+// project.types.ts - employee_ids 관리
+export const ProjectSaveParams = ProjectBaseSchema
+  .extend({
+    employee_ids: z.array(z.number().int().positive()),
+  });
+
+// employee.types.ts - proj_ids 관리 안함
+export const EmployeeSaveParams = EmployeeBaseSchema
+  .partial({ id: true, created_at: true });
+// proj_ids를 추가하지 않음
+```
+
+**이유:**
+- 양쪽에서 관리하면 동기화 문제 발생
+- 주 Entity(Project)에서만 관리하는 것이 명확
+- Employee 조회 시 projs는 자동으로 join되어 조회됨
+
+**핵심:** ManyToMany 관계는 Entity JSON에서 정의되지만, 코드에서는 `{relation}_ids` 배열로 명시적으로 관리하며, 양방향 관계는 한쪽에서만 관리합니다.
