@@ -9,6 +9,7 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import mime, { lookup as mimeLookup } from "mime-types";
 import os from "os";
 import path from "path";
+import type { PoolConfig } from "pg";
 import type { ZodObject } from "zod";
 import { createMockSSEFactory, DB, isDaemonServer, merge } from "..";
 import { SONAMU_FIELD_MAPPINGS } from "../auth/better-auth-entities";
@@ -1113,13 +1114,7 @@ class SonamuClass {
     const { Pool } = await import("pg");
 
     this._auth = betterAuth({
-      database: new Pool({
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT),
-        database: process.env.DATABASE_NAME,
-      }),
+      database: new Pool(DB.getDBConfig("w").connection as PoolConfig),
       ...mergedFieldMappings,
     });
 
