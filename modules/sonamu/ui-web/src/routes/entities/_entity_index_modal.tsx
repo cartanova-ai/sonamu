@@ -8,10 +8,6 @@ import {
   DialogTitle,
   Input,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
@@ -237,18 +233,9 @@ export function EntityIndexModal({
                     onValueChange={(value) =>
                       value && setForm({ ...form, type: value as typeof form.type })
                     }
-                  >
-                    <SelectTrigger className="focus-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {typeOptions.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    items={typeOptions.map((type) => ({ value: type, label: type.toUpperCase() }))}
+                    className="focus-0"
+                  />
                 </div>
 
                 {form.type === "unique" ? (
@@ -273,18 +260,10 @@ export function EntityIndexModal({
                         });
                       }}
                       clearable
-                    >
-                      <SelectTrigger className="focus-0">
-                        <SelectValue placeholder="Select using..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {usingOptions.map((opt) => (
-                          <SelectItem key={opt.key} value={opt.key}>
-                            {opt.text}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      items={usingOptions.map((opt) => ({ value: opt.key, label: opt.text }))}
+                      placeholder="Select using..."
+                      className="focus-0"
+                    />
                   </div>
                 )}
               </div>
@@ -325,22 +304,13 @@ export function EntityIndexModal({
                           {(form.using === "btree" || !form.using) && (
                             <div className="flex gap-1 shrink-0">
                               <Select
-                                value={col.sortOrder ?? ""}
-                                onValueChange={(value) =>
-                                  updateColumn(idx, {
-                                    sortOrder: value ? (value as "ASC" | "DESC") : undefined,
-                                  })
-                                }
+                                value={col.sortOrder}
+                                onValueChange={(value) => updateColumn(idx, { sortOrder: value })}
                                 clearable
-                              >
-                                <SelectTrigger className="tiny w-[100px]">
-                                  <SelectValue placeholder="Sort" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="ASC">ASC</SelectItem>
-                                  <SelectItem value="DESC">DESC</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                items={["ASC", "DESC"] as const}
+                                placeholder="Sort"
+                                className="tiny w-[100px]"
+                              />
                               <Select
                                 value={col.nullsFirst === undefined ? "" : String(col.nullsFirst)}
                                 onValueChange={(value) =>
@@ -349,15 +319,13 @@ export function EntityIndexModal({
                                   })
                                 }
                                 clearable
-                              >
-                                <SelectTrigger className="tiny w-[100px]">
-                                  <SelectValue placeholder="Nulls" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="true">NULLS FIRST</SelectItem>
-                                  <SelectItem value="false">NULLS LAST</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                items={[
+                                  { value: "true", label: "NULLS FIRST" },
+                                  { value: "false", label: "NULLS LAST" },
+                                ]}
+                                placeholder="Nulls"
+                                className="tiny w-[100px]"
+                              />
                             </div>
                           )}
 

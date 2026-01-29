@@ -225,18 +225,8 @@ export {
 } from "./ui/resizable";
 // Layout
 export { ScrollArea, ScrollBar } from "./ui/scroll-area";
-export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+export type { SelectItemDef, SelectProps } from "./ui/select";
+export { Select } from "./ui/select";
 export { Separator } from "./ui/separator";
 export {
   Sheet,

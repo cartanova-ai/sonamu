@@ -45,13 +45,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -296,16 +290,14 @@ function DialogsAlertsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="drawer-priority">우선순위</Label>
-                    <Select {...registerDrawer("priority")}>
-                      <SelectTrigger id="drawer-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">낮음</SelectItem>
-                        <SelectItem value="medium">중간</SelectItem>
-                        <SelectItem value="high">높음</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      {...registerDrawer("priority")}
+                      items={[
+                        { value: "low", label: "낮음" },
+                        { value: "medium", label: "중간" },
+                        { value: "high", label: "높음" },
+                      ]}
+                    />
                   </div>
                 </div>
                 <DrawerFooter>

@@ -2,10 +2,6 @@ import {
   Button,
   Input,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tabs,
   TabsContent,
   TabsList,
@@ -286,73 +282,54 @@ function FixtureIndex() {
               <Select
                 value={sourceDB}
                 onValueChange={(value) => setSourceDB(value || "development_master")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={SD("fixture.selectSourceDb")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {DB_NAMES.map((db) => (
-                    <SelectItem key={db} value={db}>
-                      {db.replace("_master", "")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                items={DB_NAMES.map((db) => ({ value: db, label: db.replace("_master", "") }))}
+                placeholder={SD("fixture.selectSourceDb")}
+              />
             </div>
 
             <div style={{ flexGrow: 1, minWidth: "200px" }}>
-              <Select {...register("entityId")}>
-                <SelectTrigger disabled={entitiesLoading}>
-                  <SelectValue placeholder={SD("fixture.selectEntity")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {entitiesData?.entities?.map((entity) => (
-                    <SelectItem key={entity.id} value={entity.id}>
-                      {entity.id}
-                    </SelectItem>
-                  )) || []}
-                </SelectContent>
-              </Select>
+              <Select
+                {...register("entityId")}
+                disabled={entitiesLoading}
+                items={
+                  entitiesData?.entities?.map((entity) => ({
+                    value: entity.id,
+                    label: entity.id,
+                  })) || []
+                }
+                placeholder={SD("fixture.selectEntity")}
+              />
             </div>
 
             {searchEntity && (
               <>
-                <Select {...register("field")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={SD("fixture.selectColumn")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {searchEntity.props
-                      .filter((p) => {
-                        if (p.type === "virtual") return false;
-                        if (p.type === "relation") {
-                          if (p.relationType === "BelongsToOne") return true;
-                          if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
-                          return false;
-                        }
-                        return true;
-                      })
-                      .map((prop) => (
-                        <SelectItem key={prop.name} value={prop.name}>
-                          {prop.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <Select
+                  {...register("field")}
+                  items={searchEntity.props
+                    .filter((p) => {
+                      if (p.type === "virtual") return false;
+                      if (p.type === "relation") {
+                        if (p.relationType === "BelongsToOne") return true;
+                        if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((prop) => ({ value: prop.name, label: prop.name }))}
+                  placeholder={SD("fixture.selectColumn")}
+                />
                 <Input
                   placeholder={SD("fixture.inputSearchValue")}
                   {...register("value")}
                   style={{ flexGrow: 1 }}
                 />
-                <Select {...register("searchType")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="equals">Equals</SelectItem>
-                    <SelectItem value="like">Like</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Select
+                  {...register("searchType")}
+                  items={[
+                    { value: "equals", label: "Equals" },
+                    { value: "like", label: "Like" },
+                  ]}
+                />
               </>
             )}
 
@@ -406,18 +383,12 @@ function FixtureIndex() {
             </button>
 
             <div className="grow min-w-[150px]">
-              <Select value={targetDB} onValueChange={(value) => setTargetDB(value || "test")}>
-                <SelectTrigger>
-                  <SelectValue placeholder={SD("fixture.selectTargetDb")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {DB_NAMES.map((db) => (
-                    <SelectItem key={db} value={db}>
-                      {db}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Select
+                value={targetDB}
+                onValueChange={(value) => setTargetDB(value || "test")}
+                items={DB_NAMES.map((db) => ({ value: db, label: db }))}
+                placeholder={SD("fixture.selectTargetDb")}
+              />
             </div>
 
             <Button onClick={saveFixture} variant="default" disabled={fixtureRecords.length === 0}>
@@ -539,32 +510,22 @@ function FixtureIndex() {
               <Select
                 value={dupCheckEntityId}
                 onValueChange={(value) => setDupCheckEntityId(value || "")}
-              >
-                <SelectTrigger disabled={entitiesLoading}>
-                  <SelectValue placeholder={SD("fixture.selectEntity")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {entitiesData?.entities
+                disabled={entitiesLoading}
+                items={
+                  entitiesData?.entities
                     ?.filter((e) => !duplicateCheckColumns[e.id])
-                    .map((entity) => (
-                      <SelectItem key={entity.id} value={entity.id}>
-                        {entity.id}
-                      </SelectItem>
-                    )) || []}
-                </SelectContent>
-              </Select>
+                    .map((entity) => ({ value: entity.id, label: entity.id })) || []
+                }
+                placeholder={SD("fixture.selectEntity")}
+              />
 
               {/* TODO: react-components에 multiple select가 없어서 단일 선택으로만 구현 */}
               <Select
                 value={dupCheckSelectedColumns[0] || ""}
                 onValueChange={(value) => setDupCheckSelectedColumns(value ? [value] : [])}
                 disabled={!dupCheckEntity}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="중복 확인 컬럼 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dupCheckEntity?.props
+                items={
+                  dupCheckEntity?.props
                     .filter((p) => {
                       if (p.type === "virtual") return false;
                       if (p.type === "relation") {
@@ -574,13 +535,10 @@ function FixtureIndex() {
                       }
                       return true;
                     })
-                    .map((prop) => (
-                      <SelectItem key={prop.name} value={prop.name}>
-                        {prop.name}
-                      </SelectItem>
-                    )) || []}
-                </SelectContent>
-              </Select>
+                    .map((prop) => ({ value: prop.name, label: prop.name })) || []
+                }
+                placeholder="중복 확인 컬럼 선택"
+              />
 
               <Button
                 icon={<PlusIcon />}
