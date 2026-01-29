@@ -1,4 +1,3 @@
-import { useSonamuContext } from "@sonamu-kit/react-components";
 import {
   Button,
   Sidebar as SidebarComponent,
@@ -12,6 +11,7 @@ import {
 } from "@sonamu-kit/react-components/components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import HomeIcon from "~icons/lucide/home";
 import LogOutIcon from "~icons/lucide/log-out";
