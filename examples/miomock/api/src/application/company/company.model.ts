@@ -89,8 +89,8 @@ class CompanyModelClass extends BaseModelClass<
       // search-keyword
       if (params.search === "id") {
         qb.where("companies.id", Number(params.keyword));
-        // } else if (params.search === "field") {
-        //   qb.where("companies.field", "like", `%${params.keyword}%`);
+      } else if (params.search === "name") {
+        qb.where("companies.name", "like", `%${params.keyword}%`);
       } else {
         throw new BadRequestException(SD("search.invalidField")(params.search));
       }

@@ -76,6 +76,7 @@ function SelectTestPage() {
         keyword,
         num: 100,
         page: 1,
+        search: "name",
       });
       setCompanyOptions(result.rows);
     } catch (error) {
@@ -101,6 +102,7 @@ function SelectTestPage() {
         keyword,
         num: 100,
         page: 1,
+        search: "name",
       });
       setMultiCompanyOptions(result.rows);
     } catch (error) {
@@ -212,7 +214,10 @@ function SelectTestPage() {
                     size="sm"
                     className="w-full"
                     variant="blue"
-                    onClick={() => companyForm.setForm({ value: undefined })}
+                    onClick={() => {
+                      companyForm.setForm({ value: undefined });
+                      setCompanyOptions([]); // 검색 결과도 함께 초기화
+                    }}
                   >
                     초기화
                   </Button>
@@ -302,7 +307,10 @@ function SelectTestPage() {
                   <Button
                     size="sm"
                     className="w-full bg-green-600 hover:bg-green-700"
-                    onClick={() => multiCompanyForm.setForm({ value: [] })}
+                    onClick={() => {
+                      multiCompanyForm.setForm({ value: [] });
+                      setMultiCompanyOptions([]); // 검색 결과도 함께 초기화
+                    }}
                   >
                     초기화
                   </Button>

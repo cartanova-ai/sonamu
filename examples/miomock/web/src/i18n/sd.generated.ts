@@ -193,6 +193,7 @@ const entityLabels = {
   "entity.Company.name": "회사명",
   "enum.CompanyOrderBy.id-desc": "ID최신순",
   "enum.CompanySearchField.id": "ID",
+  "enum.CompanySearchField.name": "회사명",
   "entity.Department": "부서",
   "entity.Department.id": "ID",
   "entity.Department.created_at": "등록일시",

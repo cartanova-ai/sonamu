@@ -11,5 +11,5 @@
     { "type": "unique", "name": "companies_name_unique", "columns": [{ "name": "name" }] }
   ],
   "subsets": { "A": ["id", "created_at", "name"] },
-  "enums": { "CompanyOrderBy": { "id-desc": "ID최신순" }, "CompanySearchField": { "id": "ID" } }
+  "enums": { "CompanyOrderBy": { "id-desc": "ID최신순" }, "CompanySearchField": { "id": "ID", "name": "회사명" } }
 }

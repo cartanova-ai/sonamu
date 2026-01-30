@@ -222,40 +222,52 @@ function useSelectCommon<Item>(
   // 값 → 라벨 렌더링
   const getItemLabel = useCallback(
     (value: Value): React.ReactNode => {
+      // renderItem이 있으면 바로 사용 (대부분의 경우 여기서 종료)
+      if (props.renderItem) {
+        return props.renderItem(value);
+      }
+
+      // label 찾기: normalizedItems에서 먼저 확인
       const item = normalizedItems.find((i) => i.value === value);
-      if (!item) return String(value);
-      if (item.label !== undefined) return item.label;
-      if (props.renderItem) return props.renderItem(value);
+      if (item?.label !== undefined) {
+        return item.label;
+      }
+
+      // async 모드면 reservedOptions에서도 확인
+      if (isAsync) {
+        const cached = reservedOptions.get(getKeyForValue(value));
+        if (cached?.label !== undefined) {
+          return cached.label;
+        }
+      }
+
+      // 마지막 폴백: String 변환
       return String(value);
     },
-    [normalizedItems, props.renderItem],
+    [props.renderItem, normalizedItems, isAsync, reservedOptions, getKeyForValue],
   );
 
   // Async 모드: 선택된 옵션을 캐시에 저장
   useEffect(() => {
     if (!isAsync) return;
 
+    // 현재 선택된 값들 추출
     const values = isMultiple
       ? (props as MultiAsyncProps<Item>).value
       : [(props as SingleAsyncProps<Item>).value as Value].filter(Boolean);
 
-    setReservedOptions((prev) => {
-      const next = new Map(prev);
-      let changed = false;
+    const next = new Map<string, NormalizedItem<Value>>();
 
-      for (const val of values) {
-        const key = getKeyForValue(val);
-        if (!next.has(key)) {
-          const item = normalizedItems.find((item) => item.value === val);
-          if (item) {
-            next.set(key, item);
-            changed = true;
-          }
-        }
+    // 선택된 값들만 캐시에 저장
+    for (const val of values) {
+      const key = getKeyForValue(val);
+      const item = normalizedItems.find((item) => item.value === val);
+      if (item) {
+        next.set(key, item);
       }
+    }
 
-      return changed ? next : prev;
-    });
+    setReservedOptions(next);
   }, [isAsync, isMultiple, props, normalizedItems, getKeyForValue]);
 
   // 검색어 변경
