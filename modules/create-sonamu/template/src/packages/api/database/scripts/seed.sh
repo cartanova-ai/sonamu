@@ -7,7 +7,7 @@ source .env
 set -e # 에러 발생 시 즉시 중단
 
 SOURCE_DB="${DATABASE_NAME}_test"
-FIXTURE_DB="${DATABASE_NAME}_fixture_remote"
+FIXTURE_DB="${DATABASE_NAME}_fixture"
 DUMP_FILE="database/dumps/${DATABASE_NAME}_test_latest.sql"
 
 # DB 설정 (환경변수 또는 기본값)
