@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -72,7 +72,13 @@ function getWorkspacePackageVersion(packageName: string, workspaceRoot: string):
     const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
     return `^${pkg.version}`;
   }
-  return "workspace:^"; // fallback
+  // fallback: npm에서 최신 버전 가져오기
+  try {
+    const result = execSync(`npm view ${packageName} version`, { encoding: "utf-8" });
+    return `^${result.trim()}`;
+  } catch {
+    return "workspace:^";
+  }
 }
 
 async function init() {

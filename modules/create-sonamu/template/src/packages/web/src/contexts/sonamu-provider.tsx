@@ -1,11 +1,10 @@
 import {
-  type SonamuContextValue,
   type SonamuFile,
   SonamuProvider,
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
 import type { ReactNode } from "react";
-import type { MergedDictionary } from "@/i18n/sd.generated";
+import type { DictKey, MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 
 // TODO: User 엔티티 추가 후 아래 타입들을 지정하세요
@@ -15,9 +14,10 @@ export function useSonamuContext() {
   return useSonamuBaseContext<MergedDictionary, any, any>();
 }
 
-export function createSonamuConfig(): SonamuContextValue<MergedDictionary, any, any> {
-  // Auth configuration
-  const auth_config = {
+export function useSonamuConfig() {
+  // Auth 설정
+  // TODO: User 엔티티 추가 후 auth 로직을 구현하세요
+  const auth = {
     user: null,
     loading: false,
     login: async (_loginParams: any) => {
@@ -29,33 +29,30 @@ export function createSonamuConfig(): SonamuContextValue<MergedDictionary, any, 
       console.log("Logout not implemented yet");
     },
     refetch: async () => {
-      // TODO: Implement refetch logic
+      // 세션 정보 다시 불러오기
     },
   };
 
-  // Uploader configuration
-  const uploader_config = async (files: File[]): Promise<SonamuFile[]> => {
-    // TODO: Implement file upload logic
+  // Uploader 설정
+  // TODO: File 엔티티 추가 후 FileService.useUploadMutation()을 사용하세요
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
     if (files.length === 0) {
       return [];
     }
-
     console.log("File upload not implemented yet");
     return [];
   };
 
-  // SD configuration
-  const sd_config = <K extends keyof MergedDictionary>(key: K) => {
-    return SD(key as string);
-  };
+  // SD 설정
+  const sd = <K extends DictKey>(key: K): ReturnType<typeof SD<K>> => SD(key);
 
-  return { auth: auth_config, uploader: uploader_config, SD: sd_config };
+  return { auth, uploader, SD: sd };
 }
 
 export function SonamuProviderWrapper({ children }: { children: ReactNode }) {
-  const sonamuConfig = createSonamuConfig();
+  const config = useSonamuConfig();
   return (
-    <SonamuProvider<MergedDictionary, any, any> {...sonamuConfig}>
+    <SonamuProvider<MergedDictionary, any, any> {...config}>
       {children}
     </SonamuProvider>
   );
