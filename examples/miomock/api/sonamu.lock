@@ -13,7 +13,7 @@
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "c45cc46caabe523569fa70385efe2a60a7192c96"
+    "checksum": "7df8be856b92afab65c08588eb320da5ddb011dd"
   },
   {
     "path": "src/application/company/company.types.ts",
@@ -141,11 +141,11 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "8576fe1419f4290be77c6a46a15e73f2f3bc7e6e"
+    "checksum": "2714413cdddf5b9fe9f8b9a4753c13799dcc34f1"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "94ece4a0585846495db83b61de0c73b21fe05632"
+    "checksum": "56717ad41305612525d320840727b4dee494fe40"
   },
   {
     "path": "src/i18n/sd.generated.ts",

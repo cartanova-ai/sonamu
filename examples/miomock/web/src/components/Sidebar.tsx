@@ -13,6 +13,7 @@ import TagIcon from "~icons/lucide/tag";
 import TestTubeIcon from "~icons/lucide/test-tube";
 import UploadIcon from "~icons/lucide/upload";
 import UsersIcon from "~icons/lucide/users";
+import ListIcon from "~icons/mdi/format-list-bulleted";
 
 interface SidebarProps {
   className?: string;
@@ -27,7 +28,8 @@ type MenuKey =
   | "menu.project"
   | "menu.tag"
   | "menu.file"
-  | "menu.fileUploadTest";
+  | "menu.fileUploadTest"
+  | "menu.selectTest";
 
 interface MenuItemProps {
   titleKey: MenuKey;
@@ -45,6 +47,7 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
   { titleKey: "menu.fileUploadTest", path: "/admin/files/upload-test", icon: TestTubeIcon },
+  { titleKey: "menu.selectTest", path: "/admin/select-test", icon: ListIcon },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {

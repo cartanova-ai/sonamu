@@ -16,6 +16,7 @@ import { Route as AdminLoginTestRouteImport } from './routes/admin/login-test'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminTagsIndexRouteImport } from './routes/admin/tags/index'
+import { Route as AdminSelectTestIndexRouteImport } from './routes/admin/select-test/index'
 import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
 import { Route as AdminFilesIndexRouteImport } from './routes/admin/files/index'
 import { Route as AdminEmployeesIndexRouteImport } from './routes/admin/employees/index'
@@ -64,6 +65,11 @@ const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
 const AdminTagsIndexRoute = AdminTagsIndexRouteImport.update({
   id: '/admin/tags/',
   path: '/admin/tags/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSelectTestIndexRoute = AdminSelectTestIndexRouteImport.update({
+  id: '/admin/select-test/',
+  path: '/admin/select-test/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProjectsIndexRoute = AdminProjectsIndexRouteImport.update({
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/admin/employees': typeof AdminEmployeesIndexRoute
   '/admin/files': typeof AdminFilesIndexRoute
   '/admin/projects': typeof AdminProjectsIndexRoute
+  '/admin/select-test': typeof AdminSelectTestIndexRoute
   '/admin/tags': typeof AdminTagsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/admin/employees': typeof AdminEmployeesIndexRoute
   '/admin/files': typeof AdminFilesIndexRoute
   '/admin/projects': typeof AdminProjectsIndexRoute
+  '/admin/select-test': typeof AdminSelectTestIndexRoute
   '/admin/tags': typeof AdminTagsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/admin/employees/': typeof AdminEmployeesIndexRoute
   '/admin/files/': typeof AdminFilesIndexRoute
   '/admin/projects/': typeof AdminProjectsIndexRoute
+  '/admin/select-test/': typeof AdminSelectTestIndexRoute
   '/admin/tags/': typeof AdminTagsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/employees'
     | '/admin/files'
     | '/admin/projects'
+    | '/admin/select-test'
     | '/admin/tags'
     | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/admin/employees'
     | '/admin/files'
     | '/admin/projects'
+    | '/admin/select-test'
     | '/admin/tags'
     | '/admin/users'
   id:
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/admin/employees/'
     | '/admin/files/'
     | '/admin/projects/'
+    | '/admin/select-test/'
     | '/admin/tags/'
     | '/admin/users/'
   fileRoutesById: FileRoutesById
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   AdminEmployeesIndexRoute: typeof AdminEmployeesIndexRoute
   AdminFilesIndexRoute: typeof AdminFilesIndexRoute
   AdminProjectsIndexRoute: typeof AdminProjectsIndexRoute
+  AdminSelectTestIndexRoute: typeof AdminSelectTestIndexRoute
   AdminTagsIndexRoute: typeof AdminTagsIndexRoute
   AdminUsersIndexRoute: typeof AdminUsersIndexRoute
 }
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/tags'
       fullPath: '/admin/tags'
       preLoaderRoute: typeof AdminTagsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/select-test/': {
+      id: '/admin/select-test/'
+      path: '/admin/select-test'
+      fullPath: '/admin/select-test'
+      preLoaderRoute: typeof AdminSelectTestIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/projects/': {
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminEmployeesIndexRoute: AdminEmployeesIndexRoute,
   AdminFilesIndexRoute: AdminFilesIndexRoute,
   AdminProjectsIndexRoute: AdminProjectsIndexRoute,
+  AdminSelectTestIndexRoute: AdminSelectTestIndexRoute,
   AdminTagsIndexRoute: AdminTagsIndexRoute,
   AdminUsersIndexRoute: AdminUsersIndexRoute,
 }

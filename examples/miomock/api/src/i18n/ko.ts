@@ -65,6 +65,7 @@ export default {
   "menu.file": "파일 업로드",
   "menu.fileUploadTest": "파일 업로드 테스트",
   "menu.home": "홈",
+  "menu.selectTest": "SelectNew 테스트",
   "menu.project": "프로젝트 관리",
   "menu.tag": "태그 관리",
   "menu.user": "사용자 관리",

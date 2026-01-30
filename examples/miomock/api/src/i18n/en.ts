@@ -100,6 +100,7 @@ export default defineLocale({
   "menu.file": "Files",
   "menu.fileUploadTest": "File Upload Test",
   "menu.home": "Home",
+  "menu.selectTest": "SelectNew Test",
   "menu.project": "Projects",
   "menu.tag": "Tags",
   "menu.user": "Users",

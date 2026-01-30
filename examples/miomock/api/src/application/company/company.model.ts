@@ -72,7 +72,6 @@ class CompanyModelClass extends BaseModelClass<
     const params = {
       num: 24,
       page: 1,
-      search: "id" as const,
       orderBy: "id-desc" as const,
       ...rawParams,
     } satisfies CompanyListParams;
