@@ -19,7 +19,11 @@ export default defineConfig(({ command, isSsrBuild }) => ({
       autoInstall: true,
     }),
     tailwindcss(),
-    tanstackRouter(),
+    tanstackRouter({
+      autoCodeSplitting: true,
+      generatedRouteTree: "./src/routeTree.gen.ts",
+      routeFileIgnorePattern: ".*(generated|test|spec).*",
+    }),
   ],
   resolve: {
     alias: {
@@ -28,12 +32,13 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   },
   server: {
     host: "0.0.0.0",
-    port: 3028,
     proxy: {
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
   },
   build: {
+    outDir: "dist/client",
+    emptyOutDir: true,
     rollupOptions: {
       output: isSsrBuild
         ? {}
