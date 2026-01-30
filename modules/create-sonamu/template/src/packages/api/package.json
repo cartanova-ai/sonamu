@@ -39,7 +39,8 @@
     "pg": "catalog:",
     "radashi": "catalog:",
     "sonamu": "workspace:^",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "better-auth": "catalog:"
   },
   "devDependencies": {
     "@fastify/compress": "catalog:",
