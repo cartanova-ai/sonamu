@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminSignupRouteImport } from './routes/admin/signup'
 import { Route as AdminLoginTestRouteImport } from './routes/admin/login-test'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSignupRoute = AdminSignupRouteImport.update({
+  id: '/admin/signup',
+  path: '/admin/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginTestRoute = AdminLoginTestRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
+  '/admin/signup': typeof AdminSignupRoute
   '/admin': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
+  '/admin/signup': typeof AdminSignupRoute
   '/admin': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
+  '/admin/signup': typeof AdminSignupRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/login'
     | '/admin/login-test'
+    | '/admin/signup'
     | '/admin'
     | '/admin/companies/$companyId'
     | '/admin/companies/form'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/login'
     | '/admin/login-test'
+    | '/admin/signup'
     | '/admin'
     | '/admin/companies/$companyId'
     | '/admin/companies/form'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/login'
     | '/admin/login-test'
+    | '/admin/signup'
     | '/admin/'
     | '/admin/companies/$companyId'
     | '/admin/companies/form'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminLoginTestRoute: typeof AdminLoginTestRoute
+  AdminSignupRoute: typeof AdminSignupRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminCompaniesCompanyIdRoute: typeof AdminCompaniesCompanyIdRoute
   AdminCompaniesFormRoute: typeof AdminCompaniesFormRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/signup': {
+      id: '/admin/signup'
+      path: '/admin/signup'
+      fullPath: '/admin/signup'
+      preLoaderRoute: typeof AdminSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login-test': {
@@ -439,6 +459,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminLoginTestRoute: AdminLoginTestRoute,
+  AdminSignupRoute: AdminSignupRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminCompaniesCompanyIdRoute: AdminCompaniesCompanyIdRoute,
   AdminCompaniesFormRoute: AdminCompaniesFormRoute,

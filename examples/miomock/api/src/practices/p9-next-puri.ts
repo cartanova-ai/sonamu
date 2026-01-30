@@ -22,10 +22,10 @@ Sonamu.runScript(async () => {
 
   // Test: select 타입 체크
   type Test4Result = Awaited<typeof test3>[0];
-  // 예상: { id: number, username: string }
+  // 예상: { id: string, username: string }
   // @ts-expect-error - unused
   const _test4Check: Test4Result = {
-    id: 1,
+    id: "1",
     username: "test",
     // @ts-expect-error - email은 select 안 했으므로 없어야 함
     email: "test@test.com",
@@ -41,10 +41,10 @@ Sonamu.runScript(async () => {
   // Test: where with group
   const test6 = puri.from({ users: "users" }).whereGroup((group) => {
     group.where({
-      "users.id": 10,
+      "users.id": "10",
     });
-    group.orWhere("users.id", ">", 10);
-    group.orWhere("users.id", "<", 20);
+    group.orWhere("users.id", ">", "10");
+    group.orWhere("users.id", "<", "20");
   });
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where `users`.`id` > 10 or `users`.`id` < 20",

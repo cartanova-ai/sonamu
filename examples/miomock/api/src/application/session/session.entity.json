@@ -1,0 +1,39 @@
+{
+  "id": "Session",
+  "table": "sessions",
+  "title": "세션",
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "expires_at", "type": "date", "desc": "만료일시" },
+    { "name": "token", "type": "string", "desc": "토큰" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "생성일시" },
+    { "name": "updated_at", "type": "date", "desc": "수정일시" },
+    { "name": "ip_address", "type": "string", "nullable": true, "desc": "IP 주소" },
+    { "name": "user_agent", "type": "string", "nullable": true, "desc": "User Agent" },
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "relationType": "BelongsToOne",
+      "onDelete": "CASCADE",
+      "desc": "사용자"
+    }
+  ],
+  "indexes": [
+    { "type": "unique", "name": "sessions_token_unique", "columns": [{ "name": "token" }] },
+    { "type": "index", "name": "sessions_user_id_idx", "columns": [{ "name": "user_id" }] }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "expires_at",
+      "token",
+      "created_at",
+      "updated_at",
+      "ip_address",
+      "user_agent",
+      "user.id"
+    ]
+  },
+  "enums": { "SessionOrderBy": { "id-desc": "ID최신순" }, "SessionSearchField": { "id": "ID" } }
+}

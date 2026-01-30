@@ -51,9 +51,9 @@ function UserList({}: UserListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; name?: string } | null>(null);
 
   // 리스트 필터
   const { listParams, register } = useListParams(UserListParams, {
@@ -155,7 +155,7 @@ function UserList({}: UserListProps) {
   ];
 
   // 선택 핸들러
-  const handleToggleItem = (id: number) => {
+  const handleToggleItem = (id: string) => {
     const newSelection = new Set(selectedItems);
     if (newSelection.has(id)) {
       newSelection.delete(id);
@@ -178,7 +178,7 @@ function UserList({}: UserListProps) {
   };
 
   // 삭제 핸들러
-  const handleDeleteClick = (id: number, name?: string) => {
+  const handleDeleteClick = (id: string, name?: string) => {
     setItemToDelete({ id, name });
     setDeleteDialogOpen(true);
   };

@@ -21,13 +21,13 @@ export type UserIdAsyncSelectProps<T extends UserSubsetKey> = {
 } & (
   | {
       multiple?: false;
-      value?: number | null;
-      onValueChange?: (value: number | undefined) => void;
+      value?: string | null;
+      onValueChange?: (value: string | undefined) => void;
     }
   | {
       multiple: true;
-      value?: number[];
-      onValueChange?: (value: number[]) => void;
+      value?: string[];
+      onValueChange?: (value: string[]) => void;
     }
 );
 
@@ -52,8 +52,8 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   // 옵션 생성
   const options = useMemo(() => {
     return (users ?? []).map((user) => ({
-      value: String(user[valueField ?? "id"] as number),
-      label: String(user[textField ?? "email"]),
+      value: String(user[valueField ?? "id"] as string),
+      label: String(user[textField ?? "id"]),
     }));
   }, [users, textField, valueField]);
 
@@ -78,8 +78,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
     const multiValue = Array.isArray(value) ? value.map(String) : [];
 
     const handleMultiChange = (selectedValues: string[]) => {
-      const numericValues = selectedValues.map(Number);
-      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
+      (onValueChange as ((value: string[]) => void) | undefined)?.(selectedValues);
     };
 
     return (
@@ -95,11 +94,10 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   }
 
   // Single select
-  const singleValue = typeof value === "number" ? value : undefined;
+  const singleValue = typeof value === "string" ? value : undefined;
 
   const handleSingleChange = (value: string | undefined) => {
-    const numericValue = value ? Number(value) : undefined;
-    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
+    (onValueChange as ((value: string | undefined) => void) | undefined)?.(value);
   };
 
   return (

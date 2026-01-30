@@ -2,9 +2,9 @@ import type { FastifyCompressOptions } from "@fastify/compress";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyFormbodyOptions } from "@fastify/formbody";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
-import type { DeserializeFunction, SerializeFunction } from "@fastify/passport/dist/Authenticator";
 import type { SecureSessionPluginOptions } from "@fastify/secure-session";
 import type { FastifyStaticOptions } from "@fastify/static";
+import type { BetterAuthOptions } from "better-auth";
 import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
@@ -155,12 +155,29 @@ export type SonamuServerOptions = {
     custom?: (server: FastifyInstance) => void;
   };
 
-  auth?:
-    | boolean
-    | {
-        userSerializer: SerializeFunction<unknown, unknown>;
-        userDeserializer: DeserializeFunction<unknown, unknown>;
-      };
+  /**
+   * better-auth 인증 설정
+   *
+   * @example
+   * ```typescript
+   * // 기본 설정 (emailAndPassword: true)
+   * server: {
+   *   auth: true
+   * }
+   *
+   * // 상세 설정
+   * server: {
+   *   auth: {
+   *     emailAndPassword: true,
+   *     basePath: "/api/auth",
+   *     socialProviders: {
+   *       google: { clientId: "...", clientSecret: "..." }
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  auth?: BetterAuthOptions;
 
   apiConfig: SonamuFastifyConfig;
 

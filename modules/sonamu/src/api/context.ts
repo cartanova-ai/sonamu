@@ -1,4 +1,5 @@
-import type { FastifyReply, FastifyRequest, PassportUser } from "fastify";
+import type { Session, User } from "better-auth";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
 import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
 import type { ZodObject } from "zod";
@@ -24,10 +25,12 @@ export type Context = {
 } & AuthContext &
   ContextExtend;
 
+/**
+ * better-auth 인증 컨텍스트
+ */
 export type AuthContext = {
-  user: PassportUser | null;
-  passport: {
-    login: (user: PassportUser) => Promise<void>;
-    logout: () => void;
-  };
+  /** 현재 로그인한 사용자 (null이면 미인증) */
+  user: User | null;
+  /** 현재 세션 정보 (null이면 미인증) */
+  session: Session | null;
 };

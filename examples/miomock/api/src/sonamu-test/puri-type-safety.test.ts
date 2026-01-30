@@ -22,7 +22,7 @@ describe("Puri Type Safety", () => {
 
       // 유효한 컬럼
       db.table("users").select({ id: "id" });
-      db.table("users").where("id", 1);
+      db.table("users").where("id", "1");
       db.table("users").where("role", "admin");
 
       // @ts-expect-error - 존재하지 않는 컬럼
@@ -39,10 +39,10 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("r");
 
       //유효한 타입
-      db.table("users").where("id", 1);
+      db.table("users").where("id", "1");
 
-      // @ts-expect-error - number 컬럼에 string
-      db.table("users").where("id", "문자열");
+      // @ts-expect-error - string 컬럼에 number
+      db.table("users").where("id", 123);
 
       // @ts-expect-error - string 컬럼에 number
       db.table("users").where("username", 123);
@@ -65,12 +65,12 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("r");
 
       // join 전: prefix 없이 사용 가능
-      db.table("users").where("id", 1);
+      db.table("users").where("id", "1");
 
       // join 후: prefix 필요
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
       joinQuery.where("employees.id", 1);
-      joinQuery.where("users.id", 1);
+      joinQuery.where("users.id", "1");
 
       // @ts-expect-error - join 후에는 prefix 없이 사용 불가
       joinQuery.where("id", 1);
@@ -104,7 +104,7 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
       expect(typeof result[0]?.empId).toBe("number");
-      expect(typeof result[0]?.userId).toBe("number");
+      expect(typeof result[0]?.userId).toBe("string");
       expect(typeof result[0]?.username).toBe("string");
 
       // join 후 selectAll() 시 양쪽 테이블 컬럼 모두 포함 여부 검증
@@ -125,7 +125,7 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(selectAllResult.length).toBeGreaterThanOrEqual(0);
       if (selectAllResult[0]) {
-        expect(typeof selectAllResult[0].user_id).toBe("number");
+        expect(typeof selectAllResult[0].user_id).toBe("string");
         expect(typeof selectAllResult[0].department_id).toBe("number");
         expect(typeof selectAllResult[0].username).toBe("string");
         expect(selectAllResult[0]).toHaveProperty("username");
@@ -310,7 +310,7 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      expect(typeof result[0]?.id).toBe("number");
+      expect(typeof result[0]?.id).toBe("string");
       expect(typeof result[0]?.username).toBe("string");
       expect(typeof result[0]?.role).toBe("string");
     });
@@ -322,10 +322,10 @@ describe("Puri Type Safety", () => {
       const result = await db.table("users").select({ id: "id" }).first();
 
       // 타입 검증: 배열이 아닌 단일 객체
-      expectTypeOf(result).toEqualTypeOf<{ id: number }>();
+      expectTypeOf(result).toEqualTypeOf<{ id: string }>();
 
       // 런타임 검증
-      expect(typeof result.id).toBe("number");
+      expect(typeof result.id).toBe("string");
 
       // 여러 컬럼 select 후 first()
       const multiResult = await db
@@ -339,13 +339,13 @@ describe("Puri Type Safety", () => {
 
       // 타입 검증: 각 필드 타입이 정확히 추론되는지
       expectTypeOf<typeof multiResult>().toEqualTypeOf<{
-        id: number;
+        id: string;
         username: string;
         role: "admin" | "normal";
       }>();
 
       // 런타임 검증
-      expect(typeof multiResult.id).toBe("number");
+      expect(typeof multiResult.id).toBe("string");
       expect(typeof multiResult.username).toBe("string");
       expect(typeof multiResult.role).toBe("string");
     });
@@ -355,7 +355,7 @@ describe("Puri Type Safety", () => {
 
       // pluck - 단일 컬럼 값의 배열을 반환
       const idResult = await db.table("users").pluck("id");
-      expectTypeOf(idResult).toEqualTypeOf<number[]>();
+      expectTypeOf(idResult).toEqualTypeOf<string[]>();
 
       // string 컬럼 pluck
       const usernameResult = await db.table("users").pluck("username");
@@ -378,7 +378,7 @@ describe("Puri Type Safety", () => {
       // 런타임 검증
       expect(Array.isArray(idResult)).toBe(true);
       expect(Array.isArray(usernameResult)).toBe(true);
-      idResult[0] && expect(typeof idResult[0]).toBe("number");
+      idResult[0] && expect(typeof idResult[0]).toBe("string");
       usernameResult[0] && expect(typeof usernameResult[0]).toBe("string");
     });
   });
@@ -388,16 +388,16 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("r");
 
       // 유효한 whereIn 사용
-      db.table("users").whereIn("id", [1, 2, 3]);
+      db.table("companies").whereIn("id", [1, 2, 3]);
       db.table("users").whereIn("role", ["admin", "normal"]);
       db.table("projects").whereIn("status", ["planning", "in_progress", "completed"]);
 
       // 유효한 whereNotIn 사용
-      db.table("users").whereNotIn("id", [1, 2]);
+      db.table("companies").whereNotIn("id", [1, 2]);
       db.table("users").whereNotIn("role", ["admin"]);
 
       // @ts-expect-error - number 컬럼에 string 포함한 배열
-      db.table("users").whereIn("id", [1, "2", "3"]);
+      db.table("companies").whereIn("id", [1, "2", "3"]);
 
       // @ts-expect-error - string 컬럼에 number 포함한 배열
       db.table("users").whereIn("username", [1, "2", "3"]);
@@ -406,7 +406,7 @@ describe("Puri Type Safety", () => {
       db.table("users").whereIn("role", ["admin", "invalid_role"]);
 
       // @ts-expect-error - whereNotIn에서도 동일한 타입 검증
-      db.table("users").whereNotIn("id", ["wrong", "type"]);
+      db.table("companies").whereNotIn("id", ["wrong", "type"]);
 
       // @ts-expect-error - enum 컬럼 whereNotIn에 잘못된 값
       db.table("projects").whereNotIn("status", ["planning", "wrong_status"]);
@@ -417,26 +417,26 @@ describe("Puri Type Safety", () => {
 
       // 유효한 whereGroup / orWhereGroup 사용
       db.table("users")
-        .whereGroup((g) => g.where("id", 1))
+        .whereGroup((g) => g.where("id", "1"))
         .orWhereGroup((g) => g.where("role", "admin"));
 
-      db.table("users").whereGroup((g) => g.where("id", 1).where("role", "normal"));
+      db.table("users").whereGroup((g) => g.where("id", "1").where("role", "normal"));
 
       // 중첩 whereGroup 사용
       db.table("users").whereGroup((g) =>
         g
           .where("role", "admin")
-          .whereGroup((nested) => nested.where("is_verified", true).orWhere("id", 1)),
+          .whereGroup((nested) => nested.where("is_verified", true).orWhere("id", "1")),
       );
 
       // orWhere 체이닝
-      db.table("users").whereGroup((g) => g.where("id", 1).orWhere("id", 2).orWhere("id", 3));
+      db.table("companies").whereGroup((g) => g.where("id", 1).orWhere("id", 2).orWhere("id", 3));
 
       // @ts-expect-error - whereGroup 내부에서 존재하지 않는 컬럼
       db.table("users").whereGroup((g) => g.where("nonexistent", 1));
 
       // @ts-expect-error - whereGroup 내부에서 타입 불일치
-      db.table("users").whereGroup((g) => g.where("id", "문자열"));
+      db.table("companies").whereGroup((g) => g.where("id", "문자열"));
 
       // @ts-expect-error - whereGroup 내부에서 enum 잘못된 값
       db.table("users").whereGroup((g) => g.where("role", "invalid_role"));
@@ -448,7 +448,7 @@ describe("Puri Type Safety", () => {
       db.table("users").orWhereGroup((g) => g.where("username", 123));
 
       // @ts-expect-error - 중첩 whereGroup에서 타입 검증
-      db.table("users").whereGroup((g) => g.whereGroup((nested) => nested.where("id", "1")));
+      db.table("companies").whereGroup((g) => g.whereGroup((nested) => nested.where("id", "1")));
 
       // @ts-expect-error - 중첩 orWhereGroup에서도 존재하지 않는 컬럼
       db.table("users").whereGroup((g) => g.orWhereGroup((nested) => nested.where("bad_col", 1)));
@@ -456,7 +456,7 @@ describe("Puri Type Safety", () => {
       // JOIN 후 whereGroup에서 테이블 prefix 필요
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
 
-      joinQuery.whereGroup((g) => g.where("employees.id", 1).where("users.id", 1));
+      joinQuery.whereGroup((g) => g.where("employees.id", 1).where("users.id", "1"));
       joinQuery.orWhereGroup((g) =>
         g.where("employees.salary", ">", "50000").orWhere("users.role", "admin"),
       );
@@ -493,7 +493,7 @@ describe("Puri Type Safety", () => {
       db.table("users").where("bad_column", "not like", "%test%");
 
       // @ts-expect-error - number type 컬럼에 like 사용 시 string 패턴 불가
-      db.table("users").where("id", "like", "%1%");
+      db.table("companies").where("id", "like", "%1%");
 
       // @ts-expect-error - number type 컬럼에 not like 사용 시 string 패턴 불가
       db.table("employees").where("id", "not like", "%1%");
@@ -818,14 +818,13 @@ describe("Puri Type Safety", () => {
         .returning("id");
 
       // 타입 검증
-      expectTypeOf(insertedIds).toEqualTypeOf<{ id: number }[]>();
-      expectTypeOf(insertedIds[0]?.id).toEqualTypeOf<number | undefined>();
+      expectTypeOf(insertedIds).toEqualTypeOf<{ id: string }[]>();
+      expectTypeOf(insertedIds[0]?.id).toEqualTypeOf<string | undefined>();
 
       // 런타임 검증
       expect(Array.isArray(insertedIds)).toBe(true);
       expect(insertedIds.length).toBe(1);
-      expect(typeof insertedIds[0]?.id).toBe("number");
-      expect(insertedIds[0]?.id).toBeGreaterThan(0);
+      expect(typeof insertedIds[0]?.id).toBe("string");
     });
 
     test("UPDATE 타입 안전성 (WITHOUT RETURNING)", async () => {
@@ -843,10 +842,10 @@ describe("Puri Type Safety", () => {
         .returning("id");
 
       // enum 값 업데이트
-      db.table("users").where("id", 1).update({ role: "admin" });
+      db.table("users").where("id", "1").update({ role: "admin" });
 
       // nullable 컬럼에 null 업데이트
-      db.table("users").where("id", 1).update({ birth_date: null });
+      db.table("users").where("id", "1").update({ birth_date: null });
 
       // @ts-expect-error - 존재하지 않는 컬럼
       db.table("users").where("id", 1).update({ nonexistent_column: "value" });
@@ -862,7 +861,7 @@ describe("Puri Type Safety", () => {
 
       const updateCount = await db
         .table("users")
-        .where("id", insertedId[0]?.id ?? 0)
+        .where("id", insertedId[0]?.id ?? "1")
         .update({ username: "updateduser", bio: "Updated bio" });
 
       // 타입 검증: affected rows 수 반환
@@ -889,7 +888,7 @@ describe("Puri Type Safety", () => {
 
       const updateResult = await db
         .table("users")
-        .where("id", insertedId[0]?.id ?? 0)
+        .where("id", insertedId[0]?.id ?? "1")
         .update({ username: "updateduser", bio: "Updated bio" })
         .returning(["username", "bio"]);
 
@@ -907,7 +906,7 @@ describe("Puri Type Safety", () => {
 
     test("DELETE 타입 안전성 (WITHOUT RETURNING)", async () => {
       const db = UserModel.getPuri("w");
-      const deleteCount = await db.table("users").where({ id: 1 }).delete();
+      const deleteCount = await db.table("users").where({ id: "1" }).delete();
 
       // 타입 검증: affected rows 수 반환
       expectTypeOf(deleteCount).toEqualTypeOf<number>();
@@ -915,23 +914,23 @@ describe("Puri Type Safety", () => {
 
     test("DELETE 타입 안전성 (WITH RETURNING)", async () => {
       const db = UserModel.getPuri("w");
-      const result = await db.table("users").where({ id: 1 }).delete().returning("id");
+      const result = await db.table("users").where({ id: "1" }).delete().returning("id");
 
       // 타입 검증: RETURNING 절에 사용된 컬럼 배열 반환
-      expectTypeOf(result).toEqualTypeOf<{ id: number }[]>();
-      expectTypeOf(result[0]?.id).toEqualTypeOf<number | undefined>();
+      expectTypeOf(result).toEqualTypeOf<{ id: string }[]>();
+      expectTypeOf(result[0]?.id).toEqualTypeOf<string | undefined>();
     });
 
     test("INCREMENT / DECREMENT 타입 안전성", async () => {
       const db = UserModel.getPuri("w");
 
       // fixture에 존재하는 데이터 사용
-      const userId = 1;
+      const userId = "1";
       const employeeId = 1;
 
       // 유효한 increment / decrement 사용
-      db.table("users").where("id", userId).increment("id", 1);
-      db.table("users").where("id", userId).decrement("id", 1);
+      db.table("employees").where("id", employeeId).increment("id", 1);
+      db.table("employees").where("id", employeeId).decrement("id", 1);
 
       // @ts-expect-error - 존재하지 않는 컬럼 increment
       db.table("users").where("id", userId).increment("nonexistent", 1);
@@ -947,8 +946,8 @@ describe("Puri Type Safety", () => {
       db.table("users").where("id", userId).increment("id", undefined);
 
       // 숫자 타입 컬럼만 허용 함
-      db.table("employees").where("id", userId).increment("department_id", 1);
-      db.table("employees").where("id", userId).decrement("department_id", 1);
+      db.table("employees").where("id", employeeId).increment("department_id", 1);
+      db.table("employees").where("id", employeeId).decrement("department_id", 1);
 
       // JOIN 후 increment / decrement
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");

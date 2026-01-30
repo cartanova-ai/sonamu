@@ -988,29 +988,29 @@ describe("zod-converter", () => {
         // 기대: BelongsToOne은 "필드명_id: z.int()," 형태로 변환 (외래키 필드 생성)
         const prop: EntityProp = {
           type: "relation",
-          name: "user",
+          name: "company",
           relationType: "BelongsToOne",
-          with: "User",
+          with: "Company",
         };
         const importKeys: string[] = [];
         const result = propToZodTypeDef(prop, importKeys);
 
-        expect(result).toBe("user_id: z.int(),");
+        expect(result).toBe("company_id: z.int(),");
       });
 
       test("OneToOne relation with join column", () => {
         // 기대: hasJoinColumn이 true인 OneToOne은 "필드명_id: z.int()," 형태로 변환
         const prop: EntityProp = {
           type: "relation",
-          name: "user",
+          name: "company",
           relationType: "OneToOne",
-          with: "User",
+          with: "Company",
           hasJoinColumn: true,
         };
         const importKeys: string[] = [];
         const result = propToZodTypeDef(prop, importKeys);
 
-        expect(result).toBe("user_id: z.int(),");
+        expect(result).toBe("company_id: z.int(),");
       });
 
       test("OneToOne relation without join column", () => {
@@ -1050,14 +1050,14 @@ describe("zod-converter", () => {
       test("BelongsToOne - integer PK 엔티티 참조시 z.int() 생성", () => {
         const prop: EntityProp = {
           type: "relation",
-          name: "user",
+          name: "company",
           relationType: "BelongsToOne",
-          with: "User", // User는 integer PK
+          with: "Company", // Company는 integer PK
         };
         const importKeys: string[] = [];
         const result = propToZodTypeDef(prop, importKeys);
 
-        expect(result).toBe("user_id: z.int(),");
+        expect(result).toBe("company_id: z.int(),");
       });
 
       test("OneToOne with join column - integer PK 엔티티 참조시 z.int() 생성", () => {

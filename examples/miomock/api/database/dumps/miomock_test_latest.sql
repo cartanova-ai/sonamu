@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict L2yGbeSqMvd2YTTEhDGLFvvpBp4HWzhhJWxn0qGrFrKN2LO1Od5WFJ6BuTvKhem
+\restrict lc3CY2718ZewaTDCFYegpzgIwKy8V0ujalCADE8e9c5JlpaXJXcpEQcddQrkWof
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -36,6 +36,27 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounts (
+    id text NOT NULL,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    user_id text NOT NULL,
+    access_token text,
+    refresh_token text,
+    id_token text,
+    access_token_expires_at timestamp(3) with time zone,
+    refresh_token_expires_at timestamp(3) with time zone,
+    scope text,
+    password text,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) with time zone NOT NULL
+);
+
 
 --
 -- Name: companies; Type: TABLE; Schema: public; Owner: -
@@ -143,7 +164,7 @@ ALTER SEQUENCE public.documents_id_seq OWNED BY public.documents.id;
 CREATE TABLE public.employees (
     id integer NOT NULL,
     created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    user_id integer NOT NULL,
+    user_id text NOT NULL,
     department_id integer,
     employee_number character varying(32) NOT NULL,
     salary numeric(10,2),
@@ -367,6 +388,22 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
 
 --
+-- Name: sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sessions (
+    id text NOT NULL,
+    expires_at timestamp(3) with time zone NOT NULL,
+    token text NOT NULL,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) with time zone NOT NULL,
+    ip_address text,
+    user_agent text,
+    user_id text NOT NULL
+);
+
+
+--
 -- Name: sync_fixtures; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -442,17 +479,19 @@ ALTER SEQUENCE public.tags_id_seq OWNED BY public.tags.id;
 --
 
 CREATE TABLE public.users (
-    id integer NOT NULL,
+    id text NOT NULL,
     created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     email character varying(255) NOT NULL,
     username character varying(255) NOT NULL,
-    password character varying(255) NOT NULL,
+    password character varying(255),
     birth_date timestamp(3) with time zone,
     role text NOT NULL,
     last_login_at timestamp(3) with time zone,
     bio text,
     is_verified boolean DEFAULT false NOT NULL,
-    deleted_at timestamp(3) with time zone
+    deleted_at timestamp(3) with time zone,
+    image text,
+    updated_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -474,6 +513,20 @@ CREATE SEQUENCE public.users_id_seq
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: verifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.verifications (
+    id text NOT NULL,
+    identifier text NOT NULL,
+    value text NOT NULL,
+    expires_at timestamp(3) with time zone NOT NULL,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
 
 --
@@ -568,6 +621,12 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
+-- Data for Name: accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
 -- Data for Name: companies; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -607,17 +666,17 @@ INSERT INTO public.departments VALUES (13, '2024-01-07 02:00:00+09', '빈부서B
 -- Data for Name: employees; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.employees VALUES (1, '2024-01-01 01:00:00+09', 1, 3, 'EMP001', 75000.00, '2020-03-01 00:00:00+09', '백엔드 리드 개발자');
-INSERT INTO public.employees VALUES (2, '2024-01-02 01:00:00+09', 2, 2, 'EMP002', 65000.00, '2019-07-15 00:00:00+09', 'UI/UX 디자이너');
-INSERT INTO public.employees VALUES (3, '2024-01-03 01:00:00+09', 3, 4, 'EMP003', 70000.00, '2021-01-10 00:00:00+09', '프론트엔드 개발자');
-INSERT INTO public.employees VALUES (4, '2024-01-04 01:00:00+09', 4, 9, 'EMP004', 60000.00, '2022-05-20 00:00:00+09', NULL);
-INSERT INTO public.employees VALUES (5, '2024-01-05 01:00:00+09', 5, 10, 'EMP005', 85000.00, '2018-09-01 00:00:00+09', '시니어 아키텍트');
-INSERT INTO public.employees VALUES (6, '2024-01-06 01:00:00+09', 6, 11, 'EMP006', 72000.00, '2020-11-15 00:00:00+09', '데브옵스 엔지니어');
-INSERT INTO public.employees VALUES (7, '2024-01-07 01:00:00+09', 7, 6, 'EMP007', 68000.00, '2021-03-20 00:00:00+09', NULL);
-INSERT INTO public.employees VALUES (8, '2024-01-08 01:00:00+09', 8, 5, 'EMP008', 78000.00, '2019-12-01 00:00:00+09', '풀스택 개발자');
-INSERT INTO public.employees VALUES (9, '2024-01-09 01:00:00+09', 9, 1, 'EMP009', 95000.00, '2015-01-01 00:00:00+09', '시스템 관리자');
-INSERT INTO public.employees VALUES (10, '2024-01-10 01:00:00+09', 10, 7, 'EMP010', 55000.00, NULL, NULL);
-INSERT INTO public.employees VALUES (11, '2024-01-11 01:00:00+09', 11, 8, 'EMP011', 58000.00, NULL, NULL);
+INSERT INTO public.employees VALUES (1, '2024-01-01 01:00:00+09', '1', 3, 'EMP001', 75000.00, '2020-03-01 00:00:00+09', '백엔드 리드 개발자');
+INSERT INTO public.employees VALUES (2, '2024-01-02 01:00:00+09', '2', 2, 'EMP002', 65000.00, '2019-07-15 00:00:00+09', 'UI/UX 디자이너');
+INSERT INTO public.employees VALUES (3, '2024-01-03 01:00:00+09', '3', 4, 'EMP003', 70000.00, '2021-01-10 00:00:00+09', '프론트엔드 개발자');
+INSERT INTO public.employees VALUES (4, '2024-01-04 01:00:00+09', '4', 9, 'EMP004', 60000.00, '2022-05-20 00:00:00+09', NULL);
+INSERT INTO public.employees VALUES (5, '2024-01-05 01:00:00+09', '5', 10, 'EMP005', 85000.00, '2018-09-01 00:00:00+09', '시니어 아키텍트');
+INSERT INTO public.employees VALUES (6, '2024-01-06 01:00:00+09', '6', 11, 'EMP006', 72000.00, '2020-11-15 00:00:00+09', '데브옵스 엔지니어');
+INSERT INTO public.employees VALUES (7, '2024-01-07 01:00:00+09', '7', 6, 'EMP007', 68000.00, '2021-03-20 00:00:00+09', NULL);
+INSERT INTO public.employees VALUES (8, '2024-01-08 01:00:00+09', '8', 5, 'EMP008', 78000.00, '2019-12-01 00:00:00+09', '풀스택 개발자');
+INSERT INTO public.employees VALUES (9, '2024-01-09 01:00:00+09', '9', 1, 'EMP009', 95000.00, '2015-01-01 00:00:00+09', '시스템 관리자');
+INSERT INTO public.employees VALUES (10, '2024-01-10 01:00:00+09', '10', 7, 'EMP010', 55000.00, NULL, NULL);
+INSERT INTO public.employees VALUES (11, '2024-01-11 01:00:00+09', '11', 8, 'EMP011', 58000.00, NULL, NULL);
 
 
 --
@@ -663,6 +722,13 @@ INSERT INTO public.knex_migrations VALUES (66, '20260107170856_alter_sync_fixtur
 INSERT INTO public.knex_migrations VALUES (67, '20260107170857_alter_tags_alter1.ts', 10, '2026-01-07 17:36:40.929+09');
 INSERT INTO public.knex_migrations VALUES (68, '20260107170858_alter_users_alter4.ts', 10, '2026-01-07 17:36:40.941+09');
 INSERT INTO public.knex_migrations VALUES (69, '20260113144233_alter_projects_alter3.ts', 11, '2026-01-13 16:43:36.411+09');
+INSERT INTO public.knex_migrations VALUES (70, '20260129201943_alter_users_pk_type.ts', 12, '2026-01-29 21:45:21.814+09');
+INSERT INTO public.knex_migrations VALUES (71, '20260129202012_create__accounts.ts', 12, '2026-01-29 21:45:21.817+09');
+INSERT INTO public.knex_migrations VALUES (72, '20260129202013_create__sessions.ts', 12, '2026-01-29 21:45:21.819+09');
+INSERT INTO public.knex_migrations VALUES (73, '20260129202014_alter_users_add2_alter5.ts', 12, '2026-01-29 21:45:21.82+09');
+INSERT INTO public.knex_migrations VALUES (74, '20260129202015_create__verifications.ts', 12, '2026-01-29 21:45:21.822+09');
+INSERT INTO public.knex_migrations VALUES (75, '20260129202016_foreign__accounts__user_id.ts', 12, '2026-01-29 21:45:21.823+09');
+INSERT INTO public.knex_migrations VALUES (76, '20260129202017_foreign__sessions__user_id.ts', 12, '2026-01-29 21:45:21.824+09');
 
 
 --
@@ -731,6 +797,12 @@ INSERT INTO public.projects__employees VALUES (17, 5, 6);
 INSERT INTO public.projects__employees VALUES (18, 8, 6);
 INSERT INTO public.projects__employees VALUES (19, 1, 7);
 INSERT INTO public.projects__employees VALUES (20, 7, 8);
+
+
+--
+-- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
 
 
 --
@@ -1757,18 +1829,24 @@ INSERT INTO public.tags VALUES (8, '2025-11-25 00:17:02+09', 'UI/UX', 'UI/UX', '
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.users VALUES (1, '2024-01-01 01:00:00+09', 'kim@tech.com', '김철수', 'password123', '1990-03-15 00:00:00+09', 'normal', '2024-01-15 09:30:00+09', '백엔드 개발을 담당하고 있습니다.', true, NULL);
-INSERT INTO public.users VALUES (2, '2024-01-02 01:00:00+09', 'lee@global.com', '이영희', 'password123', '1988-07-22 00:00:00+10', 'normal', '2024-01-14 14:20:00+09', 'UI/UX 디자인 전문가입니다.', true, NULL);
-INSERT INTO public.users VALUES (3, '2024-01-03 01:00:00+09', 'park@innovation.com', '박민수', 'password123', '1992-11-09 00:00:00+09', 'normal', '2024-01-13 11:45:00+09', '프론트엔드 개발자로 일하고 있습니다.', true, NULL);
-INSERT INTO public.users VALUES (4, '2024-01-04 01:00:00+09', 'choi@digital.com', '최지훈', 'password123', '1985-05-30 00:00:00+09', 'normal', '2024-01-12 16:15:00+09', '데이터 분석 및 마케팅 업무를 담당합니다.', true, NULL);
-INSERT INTO public.users VALUES (5, '2024-01-05 01:00:00+09', 'jung@software.com', '정수연', 'password123', '1993-09-14 00:00:00+09', 'normal', '2024-01-11 10:00:00+09', '소프트웨어 아키텍트입니다.', true, NULL);
-INSERT INTO public.users VALUES (6, '2024-01-06 01:00:00+09', 'yoon@tech.com', '윤대성', 'password123', '1987-12-03 00:00:00+09', 'normal', '2024-01-10 13:25:00+09', '데브옵스 엔지니어로 근무하고 있습니다.', false, NULL);
-INSERT INTO public.users VALUES (7, '2024-01-07 01:00:00+09', 'han@global.com', '한미경', 'password123', '1991-04-18 00:00:00+09', 'normal', '2024-01-09 15:40:00+09', '프로젝트 매니저 역할을 하고 있습니다.', false, NULL);
-INSERT INTO public.users VALUES (8, '2024-01-08 01:00:00+09', 'kang@innovation.com', '강태우', 'password123', '1989-08-25 00:00:00+09', 'normal', '2024-01-08 08:50:00+09', '풀스택 개발자입니다.', false, NULL);
-INSERT INTO public.users VALUES (9, '2024-01-09 01:00:00+09', 'admin@test.com', '관리자', '$2b$10$ZwmVndKfTm121TrW6dZQA..eW9xv.NCwEa3fEn/xqWG948O2ADKL2', '1980-01-01 00:00:00+09', 'admin', '2024-01-07 07:00:00+09', '시스템 관리자입니다.', true, NULL);
-INSERT INTO public.users VALUES (10, '2024-01-10 01:00:00+09', 'null1@test.com', '널테스터1', 'password123', NULL, 'normal', NULL, NULL, false, NULL);
-INSERT INTO public.users VALUES (11, '2024-01-11 01:00:00+09', 'null2@test.com', '널테스터2', 'password123', NULL, 'normal', NULL, NULL, false, NULL);
-INSERT INTO public.users VALUES (12, '2023-11-01 01:00:00+09', 'deleted@test.com', '탈퇴유저', 'password123', '1992-03-10 00:00:00+09', 'normal', '2023-12-20 10:00:00+09', '탈퇴한 사용자입니다.', false, '2024-01-01 10:00:00+09');
+INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', '김철수', 'password123', '1990-03-15 00:00:00+09', 'normal', '2024-01-15 09:30:00+09', '백엔드 개발을 담당하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('2', '2024-01-02 01:00:00+09', 'lee@global.com', '이영희', 'password123', '1988-07-22 00:00:00+10', 'normal', '2024-01-14 14:20:00+09', 'UI/UX 디자인 전문가입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('3', '2024-01-03 01:00:00+09', 'park@innovation.com', '박민수', 'password123', '1992-11-09 00:00:00+09', 'normal', '2024-01-13 11:45:00+09', '프론트엔드 개발자로 일하고 있습니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('4', '2024-01-04 01:00:00+09', 'choi@digital.com', '최지훈', 'password123', '1985-05-30 00:00:00+09', 'normal', '2024-01-12 16:15:00+09', '데이터 분석 및 마케팅 업무를 담당합니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('5', '2024-01-05 01:00:00+09', 'jung@software.com', '정수연', 'password123', '1993-09-14 00:00:00+09', 'normal', '2024-01-11 10:00:00+09', '소프트웨어 아키텍트입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('6', '2024-01-06 01:00:00+09', 'yoon@tech.com', '윤대성', 'password123', '1987-12-03 00:00:00+09', 'normal', '2024-01-10 13:25:00+09', '데브옵스 엔지니어로 근무하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('7', '2024-01-07 01:00:00+09', 'han@global.com', '한미경', 'password123', '1991-04-18 00:00:00+09', 'normal', '2024-01-09 15:40:00+09', '프로젝트 매니저 역할을 하고 있습니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('8', '2024-01-08 01:00:00+09', 'kang@innovation.com', '강태우', 'password123', '1989-08-25 00:00:00+09', 'normal', '2024-01-08 08:50:00+09', '풀스택 개발자입니다.', false, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('9', '2024-01-09 01:00:00+09', 'admin@test.com', '관리자', '$2b$10$ZwmVndKfTm121TrW6dZQA..eW9xv.NCwEa3fEn/xqWG948O2ADKL2', '1980-01-01 00:00:00+09', 'admin', '2024-01-07 07:00:00+09', '시스템 관리자입니다.', true, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('10', '2024-01-10 01:00:00+09', 'null1@test.com', '널테스터1', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('11', '2024-01-11 01:00:00+09', 'null2@test.com', '널테스터2', 'password123', NULL, 'normal', NULL, NULL, false, NULL, NULL, '2026-01-29 21:45:21.798+09');
+INSERT INTO public.users VALUES ('12', '2023-11-01 01:00:00+09', 'deleted@test.com', '탈퇴유저', 'password123', '1992-03-10 00:00:00+09', 'normal', '2023-12-20 10:00:00+09', '탈퇴한 사용자입니다.', false, '2024-01-01 10:00:00+09', NULL, '2026-01-29 21:45:21.798+09');
+
+
+--
+-- Data for Name: verifications; Type: TABLE DATA; Schema: public; Owner: -
+--
+
 
 
 --
@@ -1810,7 +1888,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 69, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 76, true);
 
 
 --
@@ -1860,6 +1938,14 @@ SELECT pg_catalog.setval('public.tags_id_seq', 8, true);
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 2361, true);
+
+
+--
+-- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
 
 
 --
@@ -1975,6 +2061,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: sync_fixtures sync_fixtures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2007,6 +2101,21 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: verifications verifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verifications
+    ADD CONSTRAINT verifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounts_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX accounts_user_id_idx ON public.accounts USING btree (user_id);
+
+
+--
 -- Name: projects_name_description_pgroonga_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2018,6 +2127,35 @@ CREATE INDEX projects_name_description_pgroonga_index ON public.projects USING p
 --
 
 CREATE INDEX projects_textsearchable_index_col_index ON public.projects USING gin (textsearchable_index_col);
+
+
+--
+-- Name: sessions_token_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX sessions_token_unique ON public.sessions USING btree (token);
+
+
+--
+-- Name: sessions_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX sessions_user_id_idx ON public.sessions USING btree (user_id);
+
+
+--
+-- Name: verifications_identifier_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX verifications_identifier_idx ON public.verifications USING btree (identifier);
+
+
+--
+-- Name: accounts accounts_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT accounts_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE RESTRICT ON DELETE CASCADE;
 
 
 --
@@ -2085,8 +2223,16 @@ ALTER TABLE ONLY public.projects__employees
 
 
 --
+-- Name: sessions sessions_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict L2yGbeSqMvd2YTTEhDGLFvvpBp4HWzhhJWxn0qGrFrKN2LO1Od5WFJ6BuTvKhem
+\unrestrict lc3CY2718ZewaTDCFYegpzgIwKy8V0ujalCADE8e9c5JlpaXJXcpEQcddQrkWof
 

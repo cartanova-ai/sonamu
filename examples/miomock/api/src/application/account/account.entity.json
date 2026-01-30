@@ -1,0 +1,58 @@
+{
+  "id": "Account",
+  "table": "accounts",
+  "title": "계정",
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "account_id", "type": "string", "desc": "계정 ID" },
+    { "name": "provider_id", "type": "string", "desc": "제공자 ID" },
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "relationType": "BelongsToOne",
+      "onDelete": "CASCADE",
+      "desc": "사용자"
+    },
+    { "name": "access_token", "type": "string", "nullable": true, "desc": "액세스 토큰" },
+    { "name": "refresh_token", "type": "string", "nullable": true, "desc": "리프레시 토큰" },
+    { "name": "id_token", "type": "string", "nullable": true, "desc": "ID 토큰" },
+    {
+      "name": "access_token_expires_at",
+      "type": "date",
+      "nullable": true,
+      "desc": "액세스 토큰 만료일시"
+    },
+    {
+      "name": "refresh_token_expires_at",
+      "type": "date",
+      "nullable": true,
+      "desc": "리프레시 토큰 만료일시"
+    },
+    { "name": "scope", "type": "string", "nullable": true, "desc": "스코프" },
+    { "name": "password", "type": "string", "nullable": true, "desc": "비밀번호" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "생성일시" },
+    { "name": "updated_at", "type": "date", "desc": "수정일시" }
+  ],
+  "indexes": [
+    { "type": "index", "name": "accounts_user_id_idx", "columns": [{ "name": "user_id" }] }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "account_id",
+      "provider_id",
+      "user.id",
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "access_token_expires_at",
+      "refresh_token_expires_at",
+      "scope",
+      "password",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "enums": { "AccountOrderBy": { "id-desc": "ID최신순" }, "AccountSearchField": { "id": "ID" } }
+}

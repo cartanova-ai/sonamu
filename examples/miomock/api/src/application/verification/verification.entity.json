@@ -1,0 +1,25 @@
+{
+  "id": "Verification",
+  "table": "verifications",
+  "title": "인증",
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "identifier", "type": "string", "desc": "식별자" },
+    { "name": "value", "type": "string", "desc": "값" },
+    { "name": "expires_at", "type": "date", "desc": "만료일시" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "생성일시" },
+    { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" }
+  ],
+  "indexes": [
+    {
+      "type": "index",
+      "name": "verifications_identifier_idx",
+      "columns": [{ "name": "identifier" }]
+    }
+  ],
+  "subsets": { "A": ["id", "identifier", "value", "expires_at", "created_at", "updated_at"] },
+  "enums": {
+    "VerificationOrderBy": { "id-desc": "ID최신순" },
+    "VerificationSearchField": { "id": "ID" }
+  }
+}

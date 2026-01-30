@@ -24,6 +24,7 @@
   },
   "packageManager": "pnpm@10.28.0",
   "devDependencies": {
+    "@aws-sdk/client-ecr-public": "catalog:",
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
@@ -31,7 +32,9 @@
     "npm-run-all": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
-    "zx": "catalog:",
-    "@aws-sdk/client-ecr-public": "catalog:"
+    "zx": "catalog:"
+  },
+  "dependencies": {
+    "better-auth": "catalog:"
   }
 }

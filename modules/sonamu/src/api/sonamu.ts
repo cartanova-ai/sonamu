@@ -1,6 +1,7 @@
 import { dispose as logtapeDispose } from "@logtape/logtape";
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
+import type { Auth } from "better-auth";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fs from "fs/promises";
@@ -8,8 +9,10 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import mime, { lookup as mimeLookup } from "mime-types";
 import os from "os";
 import path from "path";
+import type { PoolConfig } from "pg";
 import type { ZodObject } from "zod";
-import { createMockSSEFactory, DB, isDaemonServer } from "..";
+import { createMockSSEFactory, DB, isDaemonServer, merge } from "..";
+import { SONAMU_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
@@ -28,7 +31,7 @@ import type { SonamuFastifyConfig } from "../types/types";
 import { exists, fileExists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
-import type { AuthContext, Context } from "./context";
+import type { Context } from "./context";
 import type { ExtendedApi } from "./decorators";
 import { getSecrets, type SonamuSecrets } from "./secret";
 
@@ -138,6 +141,14 @@ class SonamuClass {
     }
 
     return this._workflows;
+  }
+
+  private _auth: Auth | null = null;
+  get auth(): Auth {
+    if (!this._auth) {
+      throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
+    }
+    return this._auth;
   }
 
   // HMR 처리
@@ -276,11 +287,7 @@ class SonamuClass {
     }
 
     if (options.auth) {
-      if (!options.plugins?.session) {
-        throw new Error("Auth requires session plugin. Please add plugins.session configuration.");
-      }
-
-      await this.registerAuth(server, options.auth);
+      await this.registerBetterAuth(server, options.auth);
     }
 
     // API 라우팅 설정
@@ -946,11 +953,8 @@ class SonamuClass {
             naiteStore: Naite.createStore(),
             locale,
             // auth
-            user: request.user ?? null,
-            passport: {
-              login: request.login?.bind(request) as AuthContext["passport"]["login"],
-              logout: request.logout?.bind(request) as AuthContext["passport"]["logout"],
-            },
+            user: (await this._auth?.$context)?.session?.user ?? null,
+            session: (await this._auth?.$context)?.session?.session ?? null,
           },
           request,
           reply,
@@ -1090,22 +1094,71 @@ class SonamuClass {
     }
   }
 
-  private async registerAuth(
+  /**
+   * better-auth 라우트를 등록합니다.
+   * /api/auth/* 경로로 인증 API가 자동 등록됩니다.
+   */
+  private async registerBetterAuth(
     server: FastifyInstance,
     options: NonNullable<SonamuServerOptions["auth"]>,
   ) {
-    // await import("fastify");
-    const fastifyPassport = (await import("@fastify/passport")).default;
-    server.register(fastifyPassport.initialize());
-    server.register(fastifyPassport.secureSession());
+    if (!options) return;
 
-    if (typeof options === "boolean") {
-      fastifyPassport.registerUserSerializer(async (user, _request) => user);
-      fastifyPassport.registerUserDeserializer(async (serialized, _request) => serialized);
-    } else {
-      fastifyPassport.registerUserSerializer(options.userSerializer);
-      fastifyPassport.registerUserDeserializer(options.userDeserializer);
-    }
+    const basePath = options.basePath ?? "/api/auth";
+
+    // 사용자 설정과 기본값을 merge
+    const mergedFieldMappings = merge(SONAMU_FIELD_MAPPINGS, options);
+
+    // better-auth 인스턴스 생성
+    const { betterAuth } = await import("better-auth");
+    const { Pool } = await import("pg");
+
+    this._auth = betterAuth({
+      database: new Pool(DB.getDBConfig("w").connection as PoolConfig),
+      ...mergedFieldMappings,
+    });
+
+    // better-auth 라우트 등록
+    server.route({
+      method: ["GET", "POST"],
+      url: `${basePath}/*`,
+      handler: async (request, reply) => {
+        if (!this._auth) {
+          throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
+        }
+
+        const url = new URL(request.url, `http://${request.headers.host}`);
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(request.headers)) {
+          if (value) {
+            if (Array.isArray(value)) {
+              for (const v of value) {
+                headers.append(key, v);
+              }
+            } else {
+              headers.append(key, value);
+            }
+          }
+        }
+
+        const req = new Request(url.toString(), {
+          method: request.method,
+          headers,
+          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+        });
+
+        const response = await this._auth.handler(req);
+
+        reply.status(response.status);
+        response.headers.forEach((value: string, key: string) => {
+          reply.header(key, value);
+        });
+        return reply.send(response.body ? await response.text() : null);
+      },
+    });
+
+    const chalk = (await import("chalk")).default;
+    console.log(chalk.green(`✓ better-auth registered at ${basePath}/*`));
   }
 
   private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {

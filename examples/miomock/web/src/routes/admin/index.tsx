@@ -1,19 +1,19 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
+import { signOut, useSession } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminIndexPage,
 });
 
 function AdminIndexPage() {
-  const { auth } = useSonamuContext();
-  const { user, logout } = auth;
+  const session = useSession();
+  const user = session.data?.user ?? null;
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
+    signOut();
   };
 
   return (
@@ -28,7 +28,7 @@ function AdminIndexPage() {
           {user ? (
             <>
               <p>
-                <strong>{SD("dashboard.name")}:</strong> {user.username}
+                <strong>{SD("dashboard.name")}:</strong> {user.name}
               </p>
               <p>
                 <strong>{SD("dashboard.email")}:</strong> {user.email}

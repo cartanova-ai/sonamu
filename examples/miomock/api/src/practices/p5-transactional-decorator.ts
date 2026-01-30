@@ -19,7 +19,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    * - 기본값: dbPreset = "w" (write DB)
    */
   @transactional()
-  async example1_basicTransaction(spa: UserSaveParams[]): Promise<number[]> {
+  async example1_basicTransaction(spa: UserSaveParams[]): Promise<string[]> {
     const wdb = this.getPuri("w"); // 자동으로 트랜잭션 컨텍스트가 주입됨
 
     // register
@@ -38,7 +38,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    * - READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE
    */
   @transactional({ isolation: "repeatable read" })
-  async example2_isolationLevel(userId: number, loginTime: Date): Promise<void> {
+  async example2_isolationLevel(userId: string, loginTime: Date): Promise<void> {
     const wdb = this.getPuri("w");
 
     // 동시성 제어가 중요한 경우 isolation level 설정
@@ -66,7 +66,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
     username: string;
     password: string;
     shouldFail?: boolean;
-  }): Promise<number> {
+  }): Promise<string> {
     const wdb = this.getPuri("w");
 
     // 첫 번째 insert 성공
@@ -103,7 +103,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    * - 내부적으로 같은 트랜잭션 컨텍스트를 재사용합니다
    */
   @transactional()
-  async example4_nestedTransaction(userId: number): Promise<void> {
+  async example4_nestedTransaction(userId: string): Promise<void> {
     const wdb = this.getPuri("w");
 
     await wdb.table("users").where("id", userId).update({
@@ -116,7 +116,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
   }
 
   @transactional()
-  async example4_inner(userId: number): Promise<void> {
+  async example4_inner(userId: string): Promise<void> {
     const wdb = this.getPuri("w");
 
     // 유저의 is_verified 상태 업데이트
@@ -130,7 +130,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    */
   @api({ httpMethod: "POST" })
   @transactional()
-  async example5_withApiDecorator(spa: UserSaveParams[]): Promise<{ ids: number[] }> {
+  async example5_withApiDecorator(spa: UserSaveParams[]): Promise<{ ids: string[] }> {
     const wdb = this.getPuri("w");
 
     spa.forEach((sp) => {
@@ -157,7 +157,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
       employeeNumber: string;
       salary: string;
     }>;
-  }): Promise<{ companyId: number; userIds: number[]; employeeIds: number[] }> {
+  }): Promise<{ companyId: number; userIds: string[]; employeeIds: number[] }> {
     const wdb = this.getPuri("w");
 
     // 1. Company 등록
@@ -204,7 +204,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    */
 
   // Before: 기존 방식
-  async saveOldWay(spa: UserSaveParams[]): Promise<number[]> {
+  async saveOldWay(spa: UserSaveParams[]): Promise<string[]> {
     const wdb = this.getPuri("w");
 
     spa.forEach((sp) => {
@@ -220,7 +220,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
 
   // After: @transactional 방식
   @transactional()
-  async saveNewWay(spa: UserSaveParams[]): Promise<number[]> {
+  async saveNewWay(spa: UserSaveParams[]): Promise<string[]> {
     const wdb = this.getPuri("w");
 
     spa.forEach((sp) => {

@@ -6,10 +6,10 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
+import { signIn, useSession } from "@/lib/auth-client";
 import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
 import MailIcon from "~icons/lucide/mail";
@@ -26,11 +26,14 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const { auth } = useSonamuContext();
-  const { login, user } = auth;
+  const session = useSession();
+  const navigate = useNavigate();
+  const user = session.data?.user ?? null;
 
   const handleSubmit = () => {
-    login({ email, password });
+    signIn.email({ email, password }).then(() => {
+      navigate({ to: "/admin" });
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -103,7 +106,7 @@ function LoginPage() {
                 window.location.href = "/admin";
               }}
             >
-              {SD("login.continueAs")(user.username)}
+              {SD("login.continueAs")(user.name)}
             </Button>
           )}
         </CardContent>
