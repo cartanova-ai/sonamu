@@ -21,6 +21,122 @@ description: Sonamu 프로젝트 생성 및 초기화. Entity 설계 요청 시 
 
 ---
 
+## 전체 프로세스 상세
+
+### A. Sonamu 개발자용 (로컬 링크)
+
+> **로컬 링크를 사용하는 이유:**
+> - Skills 원본에서 직접 동기화
+> - 로컬 Sonamu 변경사항 즉시 반영
+> - 프레임워크 개발 시 필수
+
+#### 1. 프로젝트 생성
+```bash
+pnpm create sonamu [프로젝트명] --yes
+```
+
+CLI 옵션은 `create-sonamu.md` 참조.
+
+#### 2. Sonamu 링크 설정
+
+`pnpm-workspace.yaml`의 `overrides` 섹션에 추가:
+
+```yaml
+overrides:
+  sonamu: link:../../sonamu/modules/sonamu
+```
+
+> **경로 예시:**
+> - Sonamu가 `~/Development/sonamu`에 있는 경우
+> - 프로젝트가 `~/Development/my_project`에 있는 경우
+> - → `link:../../sonamu/modules/sonamu`
+
+#### 3. 의존성 설치 및 빌드
+
+프로젝트 루트에서:
+```bash
+pnpm install
+pnpm -r build
+```
+
+#### 4. DB 실행
+```bash
+cd packages/api
+pnpm docker:up
+```
+
+> 포트 충돌 오류 발생 시 → `database.md` 참조
+
+#### 5. 개발 서버 실행
+```bash
+pnpm dev
+```
+
+> Sonamu UI: http://localhost:1028/sonamu-ui
+
+#### 6. Auth 엔티티 생성 (별도 터미널)
+
+**dev 서버 실행 중**에 다른 터미널에서:
+
+```bash
+cd packages/api
+pnpm sonamu auth generate
+```
+
+> **주의:** dev 모드에서 실행해야 types 파일도 자동 생성됨
+
+#### 7. Subset 확인
+
+Sonamu UI (`http://localhost:1028/sonamu-ui`)의 Entity 메뉴에서:
+- User, Account, Session, Verification 엔티티의 subset 체크
+
+#### 8. DB Migration
+
+Sonamu UI에서 마이그레이션 실행
+
+#### 9. Scaffolding
+
+```bash
+pnpm sonamu scaffold model User
+pnpm sonamu scaffold model Account
+pnpm sonamu scaffold model Session
+pnpm sonamu scaffold model Verification
+```
+
+#### 10. Skills 동기화 (선택)
+
+Skills 원본 동기화가 필요한 경우:
+
+```bash
+cd packages/api
+pnpm sonamu skills sync
+```
+
+프로젝트 루트에 `.claude/skills/sonamu/` 생성됨.
+
+---
+
+### B. Sonamu 사용자용 (npm 버전)
+
+> **npm 버전 사용 시:**
+> - Skills는 npm 패키지에 포함됨
+> - 로컬 링크 불필요
+> - 일반 사용자용
+
+#### 1-3. 프로젝트 생성 및 설정
+```bash
+pnpm create sonamu [프로젝트명] --yes
+cd [프로젝트명]
+pnpm install
+pnpm -r build
+```
+
+#### 4-9. A의 4-9 단계 동일
+
+(단, Skills 동기화는 불필요)
+
+---
+
 ## 예시 대화
 
 ### DO - Correct Example
@@ -68,12 +184,6 @@ Claude: "설문조사 시스템 Entity를 설계하기 전에 확인할게요.
 
 ---
 
-## 프로젝트 생성
-
-CLI 옵션 및 생성 후 구조는 `create-sonamu.md` 참조.
-
----
-
 ## 프로젝트 생성 후 설정
 
 프로젝트 생성 후 사용자에게 확인할 사항:
@@ -93,6 +203,8 @@ DB_PASSWORD=1234
 CONTAINER_NAME={프로젝트명}-container
 DATABASE_NAME={프로젝트명}
 PROJECT_NAME={프로젝트명}
+SESSION_SECRET={자동생성}
+SESSION_SALT={자동생성}
 ```
 
 ### 2. 추가 설정 필요 여부 확인
@@ -110,12 +222,12 @@ Claude: "추가로 설정할 항목이 있나요?
 ### 3. 설정 완료 후 진행
 
 ```
-Claude: "설정이 완료되었습니다. Docker를 실행하고 서버를 시작해볼까요?
+Claude: "설정이 완료되었습니다. 다음 단계로 진행할까요?
 
 1. cd survey_system/packages/api
 2. pnpm docker:up
-3. pnpm build
-4. pnpm dev"
+3. pnpm dev
+4. (별도 터미널) pnpm sonamu auth generate"
 ```
 
 ---

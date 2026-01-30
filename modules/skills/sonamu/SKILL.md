@@ -26,164 +26,62 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 ## 개발 흐름
 
 ### 1. 프로젝트 생성
-
-**사용자에게 먼저 질문 (순서대로, 하나씩):**
-1. "Sonamu 프로젝트가 이미 생성되어 있나요?"
-2. (없다면) "프로젝트를 생성할까요?"
-3. (생성한다면) "프로젝트명을 알려주세요."
-
-**참조 Skill:**
-- `project-init.md` - 대화 흐름, 예시
-- `create-sonamu.md` - CLI 옵션
-
-**명령어:**
 ```bash
 pnpm create sonamu [프로젝트명] --yes
 ```
 
-### 2. Sonamu 링크 확인 및 Skills 동기화
+### 2. Sonamu 링크 설정 (선택)
+**Skills 원본 동기화가 필요한 경우만** `pnpm-workspace.yaml`에 추가:
+```yaml
+overrides:
+  sonamu: link:../../sonamu/modules/sonamu
+```
+> 이유: Skills sync, 로컬 Sonamu 변경사항 즉시 반영
 
-**sonamu가 로컬 링크로 참조되어야 Skills 동기화가 가능합니다.**
-
-**확인 방법:**
-`packages/api/package.json`에서 sonamu 의존성 확인:
-
-```json
-// ✓ 링크 참조 (Skills 동기화 가능)
-"sonamu": "link:/path/to/sonamu/modules/sonamu"
-
-// ✗ npm 버전 (Skills 동기화 불가)
-"sonamu": "^0.7.48"
+### 3. 의존성 설치 및 빌드
+프로젝트 루트에서:
+```bash
+pnpm install
+pnpm -r build
 ```
 
-**링크 설정 방법 (npm 버전인 경우):**
-1. `packages/api/package.json`에서 sonamu 버전을 링크로 변경
-2. `pnpm install` 실행
-
-**Skills 동기화:**
+### 4. Docker 실행
 ```bash
 cd packages/api
-pnpm sonamu skills sync
-```
-
-프로젝트 루트에 `.claude/skills/sonamu/` 생성됨.
-
-### 3. Docker 실행
-
-```bash
-cd [프로젝트명]/packages/api
 pnpm docker:up
 ```
 
-포트 충돌 오류 발생 시 → `database.md` 참조
-
-### 4. 빌드 확인
-
-```bash
-cd packages/api
-pnpm build
-```
-
-오류 발생 시 해결 후 다음 단계로.
-
-### 5. 서버 실행
-
+### 5. 개발 서버 실행
 ```bash
 pnpm dev
 ```
 
-Sonamu UI 접속: http://localhost:1028/sonamu-ui
+### 6. Auth 엔티티 생성 (별도 터미널)
+**dev 실행 중**에:
+```bash
+pnpm sonamu auth generate
+```
+> dev 모드에서 실행해야 types도 자동 생성됨
 
-### 6. 엔티티 설계
+### 7. Subset 확인
+Sonamu UI Entity 메뉴에서 subset 체크
 
-**사용자에게 먼저 질문 (순서대로, 하나씩):**
-1. 누락된 Entity 확인 → 응답 대기
-2. Entity 간 관계 확인 → 응답 대기
-3. 특수 필드 확인 → 응답 대기
-
-**참조 Skill:**
-- `entity-basic.md` - Entity JSON 구조, 필드 타입
-- `entity-relations.md` - BelongsToOne, HasMany, ManyToMany
-
-**주의:**
-- 파일 시스템을 자동으로 확인하지 마세요
-- 현재 디렉토리가 다른 프로젝트일 수 있습니다
-- 항상 사용자에게 명시적으로 확인받으세요
-
-### 7. Migration
-
-**참조 Skill:** `migration.md`
-
+### 8. Migration
 ```bash
 pnpm sonamu migrate run
 ```
 
-### 8. Scaffolding
+### 9. Scaffolding
+Sonamu UI에서 Model/View Scaffolding 실행
 
-**참조 Skill:** `scaffolding.md`
-
-Sonamu UI에서 Model/View Scaffolding 실행.
-
-> **중요**: Scaffolding 전 반드시 `pnpm build` 완료 필요
-
-### 9. API 단위테스트
-
-**참조 Skill:** `testing.md`
-
-Scaffolding으로 생성된 Model/API에 대한 테스트 작성.
-
+### 10. API 단위테스트
 ```bash
-# watch 모드로 테스트 실행 (개발 중 권장)
 pnpm test:watch
-
-# 특정 파일만 테스트
-# 1. pnpm test:watch 실행
-# 2. p 키 입력
-# 3. 파일명 입력 (예: user.model.test.ts)
-
-# 전체 테스트 한 번 실행 (CI용)
-pnpm test
 ```
 
-**테스트 파일 위치:**
-```
-src/application/{entity}/
-├── {entity}.model.ts
-├── {entity}.model.test.ts  ← Model 테스트
-└── {entity}.controller.ts
-```
+### 11. 프론트엔드 개발
 
-**기본 테스트 패턴:**
-```typescript
-import { bootstrap, test, testAs } from "sonamu/test";
-import { describe, expect, vi } from "vitest";
-import { UserModel } from "./user.model";
-
-bootstrap(vi);
-
-describe("UserModel", () => {
-  test("Create - 새 유저 생성", async () => {
-    const [userId] = await UserModel.save([{
-      email: "test@test.com",
-      username: "testuser",
-    }]);
-    expect(userId).toBeGreaterThan(0);
-  });
-
-  test("Read - 유저 조회", async () => {
-    const user = await UserModel.findById("A", 1);
-    expect(user).toBeDefined();
-  });
-});
-```
-
-> **중요**: 프론트엔드 개발 전 API 테스트로 비즈니스 로직 검증 필수
-
-### 10. 프론트엔드 개발
-
-**참조 Skill:** `frontend.md`
-
-생성된 Service와 TanStack Query 사용.
+**상세 내용:** `project-init.md` 참조
 
 ---
 
