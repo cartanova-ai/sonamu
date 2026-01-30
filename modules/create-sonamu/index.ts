@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -419,6 +420,10 @@ DB_PASSWORD=${answers.DB_PASSWORD}
 CONTAINER_NAME=${answers.CONTAINER_NAME}
 DATABASE_NAME=${answers.DATABASE_NAME}
 PROJECT_NAME=${targetDir}
+
+# Session (better-auth)
+SESSION_SECRET=change-this-secret-in-production-${crypto.randomBytes(16).toString("hex")}
+SESSION_SALT=${crypto.randomBytes(8).toString("hex")}
 `;
 
     fs.writeFileSync(path.join(targetRoot, "packages", "api", ".env"), env);

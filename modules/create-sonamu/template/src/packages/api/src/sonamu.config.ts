@@ -1,5 +1,5 @@
 import path from "node:path";
-import { CachePresets, defineConfig } from "sonamu";
+import { CachePresets, defineConfig, Sonamu } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
@@ -59,23 +59,39 @@ export default defineConfig({
       },
     },
 
-    auth: true,
-    // auth: {
-    //   userSerializer: async (user, _request) => user,
-    //   userDeserializer: async (serialized, _request) => serialized,
-    // },
+    auth: {
+      emailAndPassword: { enabled: true },
+    },
 
     apiConfig: {
       contextProvider: (defaultContext, request) => {
         return {
           ...defaultContext,
           ip: request.ip,
-          session: request.session,
           body: request.body,
         };
       },
-      guardHandler: (_guard, _request, _api) => {
-        console.log("NOTHING YET");
+      guardHandler: (guard, _request, _api) => {
+        const { user } = Sonamu.getContext();
+        
+        switch (guard) {
+          case "user":
+            if (!user) {
+              throw new Error("로그인이 필요합니다");
+            }
+            break;
+            
+          case "admin":
+            // User 엔티티에 role 필드 추가 후 구현
+            // if (!user || (user as User).role !== "admin") {
+            //   throw new Error("관리자만 접근 가능합니다");
+            // }
+            break;
+            
+          case "query":
+            // 모든 사용자 허용
+            break;
+        }
       },
       cacheControlHandler: (req) => {
         switch (req.type) {
