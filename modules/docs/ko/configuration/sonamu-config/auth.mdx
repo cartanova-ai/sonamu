@@ -1,9 +1,9 @@
 ---
 title: '인증'
-description: 'Passport.js 기반 인증 설정'
+description: 'better-auth 기반 인증 설정'
 ---
 
-Sonamu는 Passport.js를 기반으로 하는 인증 시스템을 제공합니다. 세션 기반 인증을 지원하며, 사용자 직렬화/역직렬화를 커스터마이징할 수 있습니다.
+Sonamu는 [better-auth](https://www.better-auth.com/)를 기반으로 하는 인증 시스템을 제공합니다. 이메일/비밀번호 인증, 소셜 로그인 등 다양한 인증 방식을 지원하며, `/api/auth/*` 경로로 인증 API가 자동 등록됩니다.
 
 ## 기본 구조
 
@@ -12,17 +12,24 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   server: {
-    auth: true,  // 기본 인증 활성화
-    
-    // 또는 커스터마이징
+    // 기본 설정으로 인증 활성화
     auth: {
-      userSerializer: async (user, request) => {
-        // 세션에 저장할 데이터
-        return { id: user.id, email: user.email };
+      emailAndPassword: {
+        enabled: true,
       },
-      userDeserializer: async (serialized, request) => {
-        // 세션에서 사용자 복원
-        return UserModel.findById(serialized.id);
+    },
+
+    // 또는 상세 설정
+    auth: {
+      basePath: "/api/auth",
+      emailAndPassword: {
+        enabled: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
       },
     },
   },
@@ -32,241 +39,339 @@ export default defineConfig({
 
 ## auth 설정
 
-### 간단한 활성화
+### 타입
 
-**타입**: `boolean | AuthOptions`
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: true,  // 기본 설정으로 활성화
-  },
-});
-```
-
-**비활성화**:
+**타입**: `BetterAuthOptions` (better-auth 라이브러리의 설정 타입)
 
 ```typescript
 export default defineConfig({
   server: {
-    auth: false,  // 인증 비활성화
+    auth: {
+      // better-auth 설정 옵션
+    },
   },
 });
 ```
+
+### 이메일/비밀번호 인증
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+        // 선택: 비밀번호 최소 길이
+        minPasswordLength: 8,
+      },
+    },
+  },
+});
+```
+
+### 소셜 로그인 (Google)
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+});
+```
+
+### 소셜 로그인 (GitHub)
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      socialProviders: {
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+});
+```
+
+### basePath 커스터마이징
+
+기본 경로는 `/api/auth`입니다. 변경이 필요한 경우:
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      basePath: "/auth",  // /auth/* 로 변경
+      emailAndPassword: {
+        enabled: true,
+      },
+    },
+  },
+});
+```
+
+## 엔티티 생성
+
+better-auth를 사용하려면 먼저 필요한 엔티티들을 생성해야 합니다.
+
+### CLI로 엔티티 생성
+
+```bash
+pnpm sonamu better-auth
+```
+
+이 명령은 다음 엔티티들을 생성합니다:
+
+| 엔티티 | 테이블 | 설명 |
+|--------|--------|------|
+| User | users | 사용자 정보 |
+| Session | sessions | 세션 정보 |
+| Account | accounts | OAuth 계정 연동 정보 |
+| Verification | verifications | 이메일 인증 등 |
 
 <Note>
-`auth: true`로 설정하면 Sonamu의 기본 직렬화/역직렬화를 사용합니다.
+이미 User 엔티티가 있는 경우, 명령 실행 시 누락된 필드만 추가됩니다.
 </Note>
 
-### 커스텀 설정
+### 필드 매핑
+
+Sonamu는 snake_case 컬럼명을 사용하므로, better-auth의 camelCase 필드명이 자동으로 매핑됩니다:
 
 ```typescript
-type AuthOptions = {
-  userSerializer: SerializeFunction<unknown, unknown>;
-  userDeserializer: DeserializeFunction<unknown, unknown>;
-};
+// better-auth → Sonamu
+emailVerified → email_verified
+createdAt → created_at
+updatedAt → updated_at
+ipAddress → ip_address
+userAgent → user_agent
+userId → user_id
+// ...
 ```
 
-## userSerializer
+## 인증 API
 
-사용자 객체를 세션에 저장 가능한 형태로 변환합니다.
+better-auth가 등록되면 다음 API들이 자동으로 사용 가능합니다:
 
-**타입**: `(user, request) => SerializedUser | Promise<SerializedUser>`
+### 회원가입
 
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, request) => {
-        // 세션에 최소한의 정보만 저장
-        return {
-          id: user.id,
-          email: user.email,
-        };
-      },
-      // ...
-    },
-  },
-});
 ```
+POST /api/auth/sign-up/email
+Content-Type: application/json
 
-**user**: 로그인 시 전달된 사용자 객체  
-**request**: Fastify request 객체  
-**반환**: 세션에 저장될 직렬화된 데이터
-
-<Tip>
-세션 크기를 줄이기 위해 필수 정보만 저장하세요. 보통 `id`만으로 충분합니다.
-</Tip>
-
-## userDeserializer
-
-세션에서 사용자 정보를 복원합니다.
-
-**타입**: `(serialized, request) => User | Promise<User>`
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userDeserializer: async (serialized, request) => {
-        // DB에서 전체 사용자 정보 조회
-        return UserModel.findById(serialized.id);
-      },
-      // ...
-    },
-  },
-});
+{
+  "name": "홍길동",
+  "email": "user@example.com",
+  "password": "password123"
+}
 ```
-
-**serialized**: `userSerializer`가 반환한 데이터  
-**request**: Fastify request 객체  
-**반환**: 복원된 사용자 객체
-
-<Warning>
-`userDeserializer`는 매 요청마다 호출되므로 성능에 영향을 줄 수 있습니다. 캐싱을 고려하세요.
-</Warning>
-
-## 기본 예시
-
-### ID만 저장 (권장)
-
-```typescript
-import { defineConfig } from "sonamu";
-
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, _request) => {
-        return user.id;  // ID만 저장
-      },
-      
-      userDeserializer: async (userId, _request) => {
-        return UserModel.findById(userId);
-      },
-    },
-  },
-});
-```
-
-### 기본 정보 저장
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, _request) => {
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        };
-      },
-      
-      userDeserializer: async (serialized, _request) => {
-        return UserModel.findById(serialized.id);
-      },
-    },
-  },
-});
-```
-
-### 캐싱 추가
-
-```typescript
-import { cache } from "sonamu/cache";
-
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, _request) => {
-        return user.id;
-      },
-      
-      userDeserializer: async (userId, _request) => {
-        // 사용자 정보 캐싱 (1분)
-        const cacheKey = `user:${userId}`;
-        
-        let user = await cache.get(cacheKey);
-        if (!user) {
-          user = await UserModel.findById(userId);
-          await cache.set(cacheKey, user, { ttl: "1m" });
-        }
-        
-        return user;
-      },
-    },
-  },
-});
-```
-
-## 로그인/로그아웃
-
-인증 설정 후 로그인/로그아웃 API를 구현합니다.
 
 ### 로그인
 
-```typescript
-import { api } from "sonamu";
-import { login } from "sonamu/auth";
-import bcrypt from "bcrypt";
+```
+POST /api/auth/sign-in/email
+Content-Type: application/json
 
-export class AuthModel {
-  @api({ httpMethod: "POST" })
-  static async login(email: string, password: string) {
-    // 사용자 조회
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      throw new BadRequestError("Invalid credentials");
-    }
-    
-    // 비밀번호 확인
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      throw new BadRequestError("Invalid credentials");
-    }
-    
-    // 로그인 (세션 생성)
-    await login(user);
-    
-    return { success: true, user };
-  }
+{
+  "email": "user@example.com",
+  "password": "password123"
 }
 ```
 
 ### 로그아웃
 
+```
+POST /api/auth/sign-out
+```
+
+### 현재 세션
+
+```
+GET /api/auth/get-session
+```
+
+### 소셜 로그인 (Google)
+
+```
+GET /api/auth/sign-in/social?provider=google
+```
+
+<Tip>
+전체 API 목록은 [better-auth 문서](https://www.better-auth.com/docs/api-reference)를 참조하세요.
+</Tip>
+
+## Context에서 사용자 정보 접근
+
+인증된 요청에서는 Context를 통해 사용자 정보에 접근할 수 있습니다.
+
+```typescript
+import { api, getContext } from "sonamu";
+
+export class MyModel {
+  @api()
+  static async myApi() {
+    const ctx = getContext();
+
+    // 현재 로그인한 사용자
+    const user = ctx.user;  // User | null
+
+    // 현재 세션 정보
+    const session = ctx.session;  // Session | null
+
+    if (!user) {
+      throw new UnauthorizedError("로그인이 필요합니다");
+    }
+
+    return { userId: user.id, userName: user.name };
+  }
+}
+```
+
+### User 타입
+
+```typescript
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+```
+
+### Session 타입
+
+```typescript
+type Session = {
+  id: string;
+  expiresAt: Date;
+  token: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ipAddress: string | null;
+  userAgent: string | null;
+  userId: string;
+};
+```
+
+## Guard를 이용한 접근 제어
+
 ```typescript
 import { api } from "sonamu";
-import { logout } from "sonamu/auth";
 
-export class AuthModel {
-  @api({ httpMethod: "POST" })
-  static async logout() {
-    await logout();
-    return { success: true };
+export class AdminModel {
+  @api({ guards: ["admin"] })
+  static async adminOnly() {
+    // admin guard가 통과한 경우에만 실행
+    return { message: "관리자 전용 API" };
   }
 }
 ```
 
-### 현재 사용자
+guardHandler 설정:
 
 ```typescript
-import { api, getUser } from "sonamu";
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+    },
 
-export class AuthModel {
-  @api()
-  static async me() {
-    const user = getUser();
-    if (!user) {
-      throw new UnauthorizedError("Not authenticated");
+    apiConfig: {
+      guardHandler: async (guard, request) => {
+        // Context에서 user 가져오기
+        const { user } = getContext();
+
+        if (guard === "auth" && !user) {
+          throw new UnauthorizedError("로그인이 필요합니다");
+        }
+
+        if (guard === "admin") {
+          if (!user) {
+            throw new UnauthorizedError("로그인이 필요합니다");
+          }
+          // User 엔티티에 role 필드가 있다고 가정
+          const fullUser = await UserModel.findById("A", user.id);
+          if (fullUser.role !== "admin") {
+            throw new UnauthorizedError("관리자 권한이 필요합니다");
+          }
+        }
+      },
+    },
+  },
+});
+```
+
+## 클라이언트 측 연동
+
+### React에서 사용
+
+```typescript
+// lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient({
+  baseURL: "http://localhost:4000",
+});
+```
+
+```tsx
+// components/LoginForm.tsx
+import { authClient } from "../lib/auth-client";
+
+export function LoginForm() {
+  const handleLogin = async (email: string, password: string) => {
+    const result = await authClient.signIn.email({
+      email,
+      password,
+    });
+
+    if (result.error) {
+      alert(result.error.message);
+      return;
     }
-    
-    return user;
-  }
+
+    // 로그인 성공
+    window.location.href = "/dashboard";
+  };
+
+  // ...
 }
 ```
 
-→ [인증 API 구현 가이드](/api-development/authentication/setup)
+```tsx
+// components/GoogleLoginButton.tsx
+import { authClient } from "../lib/auth-client";
+
+export function GoogleLoginButton() {
+  const handleGoogleLogin = () => {
+    authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/dashboard",
+    });
+  };
+
+  return (
+    <button onClick={handleGoogleLogin}>
+      Google로 로그인
+    </button>
+  );
+}
+```
 
 ## 실전 예시
 
@@ -277,124 +382,18 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   server: {
-    plugins: {
-      session: {
-        secret: process.env.SESSION_SECRET!,
-        salt: process.env.SESSION_SALT!,
-        cookie: {
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30일
-        },
-      },
-    },
-    
     auth: {
-      userSerializer: async (user) => user.id,
-      userDeserializer: async (userId) => {
-        return UserModel.findById(userId);
+      emailAndPassword: {
+        enabled: true,
       },
     },
-  },
-});
-```
 
-### Role 기반 인증
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => ({
-        id: user.id,
-        role: user.role,
-      }),
-      
-      userDeserializer: async (serialized) => {
-        const user = await UserModel.findById(serialized.id);
-        
-        // Role 변경 감지
-        if (user.role !== serialized.role) {
-          // 세션 갱신 필요
-          await updateSession(user);
-        }
-        
-        return user;
-      },
-    },
-  },
-});
-```
-
-### JWT와 세션 병행
-
-```typescript
-import jwt from "jsonwebtoken";
-
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => {
-        // JWT 토큰 생성
-        const token = jwt.sign(
-          { userId: user.id },
-          process.env.JWT_SECRET!,
-          { expiresIn: "7d" }
-        );
-        
-        return { id: user.id, token };
-      },
-      
-      userDeserializer: async (serialized) => {
-        // JWT 검증
-        try {
-          jwt.verify(serialized.token, process.env.JWT_SECRET!);
-        } catch {
-          throw new UnauthorizedError("Invalid token");
-        }
-        
-        return UserModel.findById(serialized.id);
-      },
-    },
-  },
-});
-```
-
-### 권한 체크
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => user.id,
-      
-      userDeserializer: async (userId) => {
-        const user = await UserModel.findById(userId);
-        
-        // 비활성화된 사용자
-        if (!user.isActive) {
-          throw new UnauthorizedError("Account deactivated");
-        }
-        
-        // 만료된 계정
-        if (user.expiresAt && user.expiresAt < new Date()) {
-          throw new UnauthorizedError("Account expired");
-        }
-        
-        return user;
-      },
-    },
-    
     apiConfig: {
-      guardHandler: (guard, request, api) => {
-        const user = request.user;
-        
-        if (guard === "admin" && user?.role !== "admin") {
-          throw new UnauthorizedError("Admin access required");
-        }
-        
-        if (guard === "premium" && !user?.isPremium) {
-          throw new UnauthorizedError("Premium subscription required");
+      guardHandler: async (guard) => {
+        const { user } = getContext();
+
+        if (guard === "auth" && !user) {
+          throw new UnauthorizedError("로그인이 필요합니다");
         }
       },
     },
@@ -402,106 +401,83 @@ export default defineConfig({
 });
 ```
 
-## Session 설정
-
-인증은 세션을 기반으로 동작하므로 session 플러그인이 필요합니다.
+### 소셜 로그인 + 이메일 인증
 
 ```typescript
+import { defineConfig } from "sonamu";
+
 export default defineConfig({
   server: {
-    plugins: {
-      session: {
-        secret: process.env.SESSION_SECRET!,
-        salt: process.env.SESSION_SALT!,
-        cookie: {
-          domain: process.env.COOKIE_DOMAIN,
-          path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30일
-          secure: process.env.NODE_ENV === "production",
-          httpOnly: true,
-          sameSite: "strict",
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+        requireEmailVerification: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
         },
       },
     },
-    
-    auth: true,
   },
 });
 ```
-
-→ [Session 설정](/configuration/sonamu-config/server#session)
 
 ## 주의사항
 
-### 1. 세션 크기
+### 1. 엔티티 생성 필수
 
-```typescript
-// ❌ 나쁜 예: 너무 많은 데이터 저장
-userSerializer: async (user) => ({
-  id: user.id,
-  email: user.email,
-  profile: user.profile,  // 큰 객체
-  preferences: user.preferences,
-  history: user.history,
-})
+```bash
+# auth 설정 전에 먼저 엔티티 생성
+pnpm sonamu better-auth
 
-// ✅ 좋은 예: ID만 저장
-userSerializer: async (user) => user.id
+# 마이그레이션 실행
+pnpm sonamu migrate run
 ```
 
-### 2. userDeserializer 성능
+### 2. 환경 변수 설정
 
-```typescript
-// ❌ 나쁜 예: 매번 DB 조회
-userDeserializer: async (userId) => {
-  return UserModel.findById(userId);  // 모든 요청마다!
-}
-
-// ✅ 좋은 예: 캐싱 추가
-userDeserializer: async (userId) => {
-  const cached = await cache.get(`user:${userId}`);
-  if (cached) return cached;
-  
-  const user = await UserModel.findById(userId);
-  await cache.set(`user:${userId}`, user, { ttl: "1m" });
-  return user;
-}
+```bash
+# .env
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
 ```
 
-### 3. 세션 secret
+### 3. CORS 설정
+
+클라이언트가 다른 도메인에서 실행되는 경우:
 
 ```typescript
-// ❌ 나쁜 예: 하드코딩된 secret
-session: {
-  secret: "my-secret-key",
-  salt: "my-salt",
-}
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: {
+        origin: ["http://localhost:3000"],
+        credentials: true,
+      },
+    },
 
-// ✅ 좋은 예: 환경 변수 사용
-session: {
-  secret: process.env.SESSION_SECRET!,
-  salt: process.env.SESSION_SALT!,
-}
+    auth: {
+      emailAndPassword: { enabled: true },
+    },
+  },
+});
 ```
 
-### 4. null 처리
+### 4. 기존 User 엔티티와의 호환성
 
-```typescript
-// ✅ 사용자가 없을 수 있음
-userDeserializer: async (userId) => {
-  const user = await UserModel.findById(userId);
-  if (!user) {
-    // 세션은 있지만 사용자 삭제됨
-    throw new UnauthorizedError("User not found");
-  }
-  return user;
-}
-```
+이미 User 엔티티가 있는 경우, `pnpm sonamu better-auth` 실행 시 누락된 필드만 추가됩니다. 기존 데이터는 유지됩니다.
 
 ## 다음 단계
 
 인증 설정을 완료했다면:
 
-- [authentication](/api-development/authentication/setup) - 로그인/로그아웃 구현
-- [session-management](/api-development/authentication/session-management) - 세션 관리
-- [protected-routes](/api-development/authentication/protected-routes) - 보호된 라우트
+- [Context](/api-development/context/sonamu-context) - Context에서 사용자 정보 접근
+- [Guards](/api-reference/decorators/api#guards) - API 접근 제어

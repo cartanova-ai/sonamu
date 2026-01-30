@@ -1,9 +1,9 @@
 ---
 title: 'Authentication'
-description: 'Passport.js-based authentication settings'
+description: 'better-auth based authentication settings'
 ---
 
-Sonamu provides an authentication system based on Passport.js. It supports session-based authentication and allows customization of user serialization/deserialization.
+Sonamu provides an authentication system based on [better-auth](https://www.better-auth.com/). It supports various authentication methods including email/password authentication and social login, with authentication APIs automatically registered at `/api/auth/*`.
 
 ## Basic Structure
 
@@ -12,17 +12,24 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   server: {
-    auth: true,  // Enable default authentication
-    
-    // Or customize
+    // Enable authentication with default settings
     auth: {
-      userSerializer: async (user, request) => {
-        // Data to store in session
-        return { id: user.id, email: user.email };
+      emailAndPassword: {
+        enabled: true,
       },
-      userDeserializer: async (serialized, request) => {
-        // Restore user from session
-        return UserModel.findById(serialized.id);
+    },
+
+    // Or detailed configuration
+    auth: {
+      basePath: "/api/auth",
+      emailAndPassword: {
+        enabled: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
       },
     },
   },
@@ -32,241 +39,339 @@ export default defineConfig({
 
 ## auth Settings
 
-### Simple Activation
+### Type
 
-**Type**: `boolean | AuthOptions`
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: true,  // Enable with default settings
-  },
-});
-```
-
-**Disable**:
+**Type**: `BetterAuthOptions` (configuration type from better-auth library)
 
 ```typescript
 export default defineConfig({
   server: {
-    auth: false,  // Disable authentication
+    auth: {
+      // better-auth configuration options
+    },
   },
 });
 ```
+
+### Email/Password Authentication
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+        // Optional: minimum password length
+        minPasswordLength: 8,
+      },
+    },
+  },
+});
+```
+
+### Social Login (Google)
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+});
+```
+
+### Social Login (GitHub)
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      socialProviders: {
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+});
+```
+
+### Customizing basePath
+
+The default path is `/api/auth`. To change it:
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      basePath: "/auth",  // Change to /auth/*
+      emailAndPassword: {
+        enabled: true,
+      },
+    },
+  },
+});
+```
+
+## Entity Generation
+
+You need to generate the required entities before using better-auth.
+
+### Generate Entities via CLI
+
+```bash
+pnpm sonamu better-auth
+```
+
+This command generates the following entities:
+
+| Entity | Table | Description |
+|--------|-------|-------------|
+| User | users | User information |
+| Session | sessions | Session information |
+| Account | accounts | OAuth account linking |
+| Verification | verifications | Email verification, etc. |
 
 <Note>
-Setting `auth: true` uses Sonamu's default serialization/deserialization.
+If a User entity already exists, only missing fields will be added when running the command.
 </Note>
 
-### Custom Configuration
+### Field Mapping
+
+Since Sonamu uses snake_case column names, better-auth's camelCase field names are automatically mapped:
 
 ```typescript
-type AuthOptions = {
-  userSerializer: SerializeFunction<unknown, unknown>;
-  userDeserializer: DeserializeFunction<unknown, unknown>;
+// better-auth → Sonamu
+emailVerified → email_verified
+createdAt → created_at
+updatedAt → updated_at
+ipAddress → ip_address
+userAgent → user_agent
+userId → user_id
+// ...
+```
+
+## Authentication APIs
+
+Once better-auth is registered, the following APIs become automatically available:
+
+### Sign Up
+
+```
+POST /api/auth/sign-up/email
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+### Sign In
+
+```
+POST /api/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+### Sign Out
+
+```
+POST /api/auth/sign-out
+```
+
+### Current Session
+
+```
+GET /api/auth/get-session
+```
+
+### Social Login (Google)
+
+```
+GET /api/auth/sign-in/social?provider=google
+```
+
+<Tip>
+For the complete API list, refer to the [better-auth documentation](https://www.better-auth.com/docs/api-reference).
+</Tip>
+
+## Accessing User Information from Context
+
+In authenticated requests, you can access user information through Context.
+
+```typescript
+import { api, getContext } from "sonamu";
+
+export class MyModel {
+  @api()
+  static async myApi() {
+    const ctx = getContext();
+
+    // Currently logged-in user
+    const user = ctx.user;  // User | null
+
+    // Current session information
+    const session = ctx.session;  // Session | null
+
+    if (!user) {
+      throw new UnauthorizedError("Login required");
+    }
+
+    return { userId: user.id, userName: user.name };
+  }
+}
+```
+
+### User Type
+
+```typescript
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 ```
 
-## userSerializer
-
-Converts the user object to a form that can be stored in the session.
-
-**Type**: `(user, request) => SerializedUser | Promise<SerializedUser>`
+### Session Type
 
 ```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, request) => {
-        // Store only minimal information in session
-        return {
-          id: user.id,
-          email: user.email,
-        };
-      },
-      // ...
-    },
-  },
-});
+type Session = {
+  id: string;
+  expiresAt: Date;
+  token: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ipAddress: string | null;
+  userAgent: string | null;
+  userId: string;
+};
 ```
 
-**user**: User object passed during login  
-**request**: Fastify request object  
-**Returns**: Serialized data to be stored in session
-
-<Tip>
-Store only essential information to reduce session size. Usually just `id` is sufficient.
-</Tip>
-
-## userDeserializer
-
-Restores user information from the session.
-
-**Type**: `(serialized, request) => User | Promise<User>`
+## Access Control with Guards
 
 ```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userDeserializer: async (serialized, request) => {
-        // Query full user information from DB
-        return UserModel.findById(serialized.id);
-      },
-      // ...
-    },
-  },
-});
+import { api } from "sonamu";
+
+export class AdminModel {
+  @api({ guards: ["admin"] })
+  static async adminOnly() {
+    // Executes only if admin guard passes
+    return { message: "Admin-only API" };
+  }
+}
 ```
 
-**serialized**: Data returned by `userSerializer`  
-**request**: Fastify request object  
-**Returns**: Restored user object
-
-<Warning>
-`userDeserializer` is called on every request, so it can affect performance. Consider caching.
-</Warning>
-
-## Basic Examples
-
-### Store Only ID (Recommended)
+guardHandler configuration:
 
 ```typescript
-import { defineConfig } from "sonamu";
-
 export default defineConfig({
   server: {
     auth: {
-      userSerializer: async (user, _request) => {
-        return user.id;  // Store only ID
-      },
-      
-      userDeserializer: async (userId, _request) => {
-        return UserModel.findById(userId);
-      },
+      emailAndPassword: { enabled: true },
     },
-  },
-});
-```
 
-### Store Basic Information
+    apiConfig: {
+      guardHandler: async (guard, request) => {
+        // Get user from Context
+        const { user } = getContext();
 
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, _request) => {
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        };
-      },
-      
-      userDeserializer: async (serialized, _request) => {
-        return UserModel.findById(serialized.id);
-      },
-    },
-  },
-});
-```
-
-### Adding Caching
-
-```typescript
-import { cache } from "sonamu/cache";
-
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user, _request) => {
-        return user.id;
-      },
-      
-      userDeserializer: async (userId, _request) => {
-        // Cache user info (1 minute)
-        const cacheKey = `user:${userId}`;
-        
-        let user = await cache.get(cacheKey);
-        if (!user) {
-          user = await UserModel.findById(userId);
-          await cache.set(cacheKey, user, { ttl: "1m" });
+        if (guard === "auth" && !user) {
+          throw new UnauthorizedError("Login required");
         }
-        
-        return user;
+
+        if (guard === "admin") {
+          if (!user) {
+            throw new UnauthorizedError("Login required");
+          }
+          // Assuming User entity has a role field
+          const fullUser = await UserModel.findById("A", user.id);
+          if (fullUser.role !== "admin") {
+            throw new UnauthorizedError("Admin access required");
+          }
+        }
       },
     },
   },
 });
 ```
 
-## Login/Logout
+## Client-Side Integration
 
-Implement login/logout APIs after authentication setup.
-
-### Login
+### Using with React
 
 ```typescript
-import { api } from "sonamu";
-import { login } from "sonamu/auth";
-import bcrypt from "bcrypt";
+// lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
 
-export class AuthModel {
-  @api({ httpMethod: "POST" })
-  static async login(email: string, password: string) {
-    // Find user
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      throw new BadRequestError("Invalid credentials");
+export const authClient = createAuthClient({
+  baseURL: "http://localhost:4000",
+});
+```
+
+```tsx
+// components/LoginForm.tsx
+import { authClient } from "../lib/auth-client";
+
+export function LoginForm() {
+  const handleLogin = async (email: string, password: string) => {
+    const result = await authClient.signIn.email({
+      email,
+      password,
+    });
+
+    if (result.error) {
+      alert(result.error.message);
+      return;
     }
-    
-    // Verify password
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      throw new BadRequestError("Invalid credentials");
-    }
-    
-    // Login (create session)
-    await login(user);
-    
-    return { success: true, user };
-  }
+
+    // Login successful
+    window.location.href = "/dashboard";
+  };
+
+  // ...
 }
 ```
 
-### Logout
+```tsx
+// components/GoogleLoginButton.tsx
+import { authClient } from "../lib/auth-client";
 
-```typescript
-import { api } from "sonamu";
-import { logout } from "sonamu/auth";
+export function GoogleLoginButton() {
+  const handleGoogleLogin = () => {
+    authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/dashboard",
+    });
+  };
 
-export class AuthModel {
-  @api({ httpMethod: "POST" })
-  static async logout() {
-    await logout();
-    return { success: true };
-  }
+  return (
+    <button onClick={handleGoogleLogin}>
+      Sign in with Google
+    </button>
+  );
 }
 ```
-
-### Current User
-
-```typescript
-import { api, getUser } from "sonamu";
-
-export class AuthModel {
-  @api()
-  static async me() {
-    const user = getUser();
-    if (!user) {
-      throw new UnauthorizedError("Not authenticated");
-    }
-    
-    return user;
-  }
-}
-```
-
-→ [Authentication API Implementation Guide](/api-development/authentication/setup)
 
 ## Practical Examples
 
@@ -277,124 +382,18 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   server: {
-    plugins: {
-      session: {
-        secret: process.env.SESSION_SECRET!,
-        salt: process.env.SESSION_SALT!,
-        cookie: {
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30 days
-        },
-      },
-    },
-    
     auth: {
-      userSerializer: async (user) => user.id,
-      userDeserializer: async (userId) => {
-        return UserModel.findById(userId);
+      emailAndPassword: {
+        enabled: true,
       },
     },
-  },
-});
-```
 
-### Role-Based Authentication
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => ({
-        id: user.id,
-        role: user.role,
-      }),
-      
-      userDeserializer: async (serialized) => {
-        const user = await UserModel.findById(serialized.id);
-        
-        // Detect role changes
-        if (user.role !== serialized.role) {
-          // Session refresh needed
-          await updateSession(user);
-        }
-        
-        return user;
-      },
-    },
-  },
-});
-```
-
-### Combining JWT and Session
-
-```typescript
-import jwt from "jsonwebtoken";
-
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => {
-        // Generate JWT token
-        const token = jwt.sign(
-          { userId: user.id },
-          process.env.JWT_SECRET!,
-          { expiresIn: "7d" }
-        );
-        
-        return { id: user.id, token };
-      },
-      
-      userDeserializer: async (serialized) => {
-        // Verify JWT
-        try {
-          jwt.verify(serialized.token, process.env.JWT_SECRET!);
-        } catch {
-          throw new UnauthorizedError("Invalid token");
-        }
-        
-        return UserModel.findById(serialized.id);
-      },
-    },
-  },
-});
-```
-
-### Permission Checking
-
-```typescript
-export default defineConfig({
-  server: {
-    auth: {
-      userSerializer: async (user) => user.id,
-      
-      userDeserializer: async (userId) => {
-        const user = await UserModel.findById(userId);
-        
-        // Deactivated user
-        if (!user.isActive) {
-          throw new UnauthorizedError("Account deactivated");
-        }
-        
-        // Expired account
-        if (user.expiresAt && user.expiresAt < new Date()) {
-          throw new UnauthorizedError("Account expired");
-        }
-        
-        return user;
-      },
-    },
-    
     apiConfig: {
-      guardHandler: (guard, request, api) => {
-        const user = request.user;
-        
-        if (guard === "admin" && user?.role !== "admin") {
-          throw new UnauthorizedError("Admin access required");
-        }
-        
-        if (guard === "premium" && !user?.isPremium) {
-          throw new UnauthorizedError("Premium subscription required");
+      guardHandler: async (guard) => {
+        const { user } = getContext();
+
+        if (guard === "auth" && !user) {
+          throw new UnauthorizedError("Login required");
         }
       },
     },
@@ -402,106 +401,83 @@ export default defineConfig({
 });
 ```
 
-## Session Configuration
-
-Authentication works based on sessions, so the session plugin is required.
+### Social Login + Email Verification
 
 ```typescript
+import { defineConfig } from "sonamu";
+
 export default defineConfig({
   server: {
-    plugins: {
-      session: {
-        secret: process.env.SESSION_SECRET!,
-        salt: process.env.SESSION_SALT!,
-        cookie: {
-          domain: process.env.COOKIE_DOMAIN,
-          path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30 days
-          secure: process.env.NODE_ENV === "production",
-          httpOnly: true,
-          sameSite: "strict",
+    auth: {
+      emailAndPassword: {
+        enabled: true,
+        requireEmailVerification: true,
+      },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
         },
       },
     },
-    
-    auth: true,
   },
 });
 ```
-
-→ [Session configuration](/configuration/sonamu-config/server#session)
 
 ## Important Notes
 
-### 1. Session Size
+### 1. Entity Generation Required
 
-```typescript
-// ❌ Bad example: Storing too much data
-userSerializer: async (user) => ({
-  id: user.id,
-  email: user.email,
-  profile: user.profile,  // Large object
-  preferences: user.preferences,
-  history: user.history,
-})
+```bash
+# Generate entities before auth configuration
+pnpm sonamu better-auth
 
-// ✅ Good example: Store only ID
-userSerializer: async (user) => user.id
+# Run migrations
+pnpm sonamu migrate run
 ```
 
-### 2. userDeserializer Performance
+### 2. Environment Variables Setup
 
-```typescript
-// ❌ Bad example: DB query every time
-userDeserializer: async (userId) => {
-  return UserModel.findById(userId);  // On every request!
-}
-
-// ✅ Good example: Add caching
-userDeserializer: async (userId) => {
-  const cached = await cache.get(`user:${userId}`);
-  if (cached) return cached;
-  
-  const user = await UserModel.findById(userId);
-  await cache.set(`user:${userId}`, user, { ttl: "1m" });
-  return user;
-}
+```bash
+# .env
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
 ```
 
-### 3. Session Secret
+### 3. CORS Configuration
+
+When the client runs on a different domain:
 
 ```typescript
-// ❌ Bad example: Hardcoded secret
-session: {
-  secret: "my-secret-key",
-  salt: "my-salt",
-}
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: {
+        origin: ["http://localhost:3000"],
+        credentials: true,
+      },
+    },
 
-// ✅ Good example: Use environment variables
-session: {
-  secret: process.env.SESSION_SECRET!,
-  salt: process.env.SESSION_SALT!,
-}
+    auth: {
+      emailAndPassword: { enabled: true },
+    },
+  },
+});
 ```
 
-### 4. Null Handling
+### 4. Compatibility with Existing User Entity
 
-```typescript
-// ✅ User might not exist
-userDeserializer: async (userId) => {
-  const user = await UserModel.findById(userId);
-  if (!user) {
-    // Session exists but user was deleted
-    throw new UnauthorizedError("User not found");
-  }
-  return user;
-}
-```
+If a User entity already exists, running `pnpm sonamu better-auth` will only add missing fields. Existing data is preserved.
 
 ## Next Steps
 
 After completing authentication setup:
 
-- [authentication](/api-development/authentication/setup) - Implement login/logout
-- [session-management](/api-development/authentication/session-management) - Session management
-- [protected-routes](/api-development/authentication/protected-routes) - Protected routes
+- [Context](/api-development/context/sonamu-context) - Accessing user information from Context
+- [Guards](/api-reference/decorators/api#guards) - API access control
