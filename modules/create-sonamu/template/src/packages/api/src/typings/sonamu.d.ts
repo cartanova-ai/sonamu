@@ -6,6 +6,7 @@ import {} from "sonamu";
 declare module "sonamu" {
   export interface ContextExtend {
     ip: string;
+    session: Session;
   }
 
   export interface GuardKeys {

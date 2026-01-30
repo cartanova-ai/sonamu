@@ -1,10 +1,10 @@
 import path from "node:path";
-import { CachePresets, defineConfig, Sonamu } from "sonamu";
+import { defineConfig } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "SonamuProject",
@@ -59,67 +59,24 @@ export default defineConfig({
       },
     },
 
-    auth: {
-      emailAndPassword: { enabled: true },
-    },
+    auth: true,
+    // auth: {
+    //   userSerializer: async (user, _request) => user,
+    //   userDeserializer: async (serialized, _request) => serialized,
+    // },
 
     apiConfig: {
       contextProvider: (defaultContext, request) => {
         return {
           ...defaultContext,
           ip: request.ip,
+          session: request.session,
           body: request.body,
         };
       },
-      guardHandler: (guard, _request, _api) => {
-        const { user } = Sonamu.getContext();
-        
-        switch (guard) {
-          case "user":
-            if (!user) {
-              throw new Error("로그인이 필요합니다");
-            }
-            break;
-            
-          case "admin":
-            // User 엔티티에 role 필드 추가 후 구현
-            // if (!user || (user as User).role !== "admin") {
-            //   throw new Error("관리자만 접근 가능합니다");
-            // }
-            break;
-            
-          case "query":
-            // 모든 사용자 허용
-            break;
-        }
-      },
-      cacheControlHandler: (req) => {
-        switch (req.type) {
-          case "assets":
-            // Hash 포함된 파일: 영구 캐시
-            if (req.path.match(/-[a-f0-9]+\./)) {
-              return CachePresets.immutable;
-            }
-            return CachePresets.longLived;
-
-          case "api":
-            // GET 요청만 캐싱 고려
-            if (req.method === "GET") {
-              // 특정 경로는 짧은 캐시
-              if (req.path.startsWith("/api/static-data")) {
-                return CachePresets.shortLived;
-              }
-            }
-            // 기본: 캐시 없음
-            return CachePresets.noCache;
-
-          case "ssr":
-            // SSR 페이지: 10초 캐시
-            return CachePresets.ssr;
-
-          case "csr":
-            // CSR fallback (index.html): 1분 캐시
-            return CachePresets.shortLived;
+      guardHandler: (_guard, _request, _api) => {
+        if (_guard === "user") {
+          console.log("user guard");
         }
       },
     },
