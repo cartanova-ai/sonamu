@@ -1,5 +1,4 @@
 import { execSync, spawn } from "node:child_process";
-import crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -287,6 +286,15 @@ async function init() {
   // 3. Create pnpm-workspace.yaml with catalog (dynamically)
   const parentWorkspacePath = path.join(workspaceRoot, "pnpm-workspace.yaml");
 
+  // 4. Copy root package.json and modify name
+  const rootPkgPath = path.join(templateRoot, "package.json");
+  if (fs.existsSync(rootPkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"));
+    pkg.name = targetDir;
+    fs.writeFileSync(path.join(targetRoot, "package.json"), JSON.stringify(pkg, null, 2));
+    console.log(`${chalk.green("CREATE")} ${path.join(targetRoot, "package.json")}`);
+  }
+
   // Extract catalog packages from template
   const apiPkgPath = path.join(templateRoot, "packages", "api", "package.json");
   const webPkgPath = path.join(templateRoot, "packages", "web", "package.json");
@@ -426,10 +434,6 @@ DB_PASSWORD=${answers.DB_PASSWORD}
 CONTAINER_NAME=${answers.CONTAINER_NAME}
 DATABASE_NAME=${answers.DATABASE_NAME}
 PROJECT_NAME=${targetDir}
-
-# Session (better-auth)
-SESSION_SECRET=change-this-secret-in-production-${crypto.randomBytes(16).toString("hex")}
-SESSION_SALT=${crypto.randomBytes(8).toString("hex")}
 `;
 
     fs.writeFileSync(path.join(targetRoot, "packages", "api", ".env"), env);
