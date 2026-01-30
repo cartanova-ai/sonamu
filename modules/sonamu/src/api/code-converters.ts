@@ -110,11 +110,13 @@ export function getZodTypeFromApiParamType(
             const keyRecord = Object.fromEntries(keys.map((key) => [key, true as const]));
             if (refType.id === "Pick") {
               if (obj.pick) {
-                return obj.pick(keyRecord);
+                // biome-ignore lint/suspicious/noExplicitAny: Zod 4.3.6 pick 타입 호환성
+                return obj.pick(keyRecord as any);
               }
             } else {
               if (obj.omit) {
-                return obj.omit(keyRecord);
+                // biome-ignore lint/suspicious/noExplicitAny: Zod 4.3.6 omit 타입 호환성
+                return obj.omit(keyRecord as any);
               }
             }
           }
