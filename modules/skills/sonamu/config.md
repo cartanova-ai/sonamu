@@ -173,30 +173,87 @@ server: {
 
 ---
 
-## server.auth 상세 (권한 시스템)
+## server.auth 상세 (better-auth 인증)
 
-Sonamu 권한 시스템은 3가지 요소로 구성된다:
+Sonamu는 **better-auth**를 사용한 인증 시스템을 제공한다.
 
-1. **server.auth** - 인증 활성화
-2. **GuardKeys** - 권한 키 정의
-3. **guardHandler** - 권한 검사 로직
+### 1. 엔티티 자동 생성
 
-### 1. server.auth 설정
+```bash
+pnpm sonamu auth generate
+```
+
+생성되는 엔티티:
+- **User** - 사용자 (id, name, email, email_verified, image)
+- **Session** - 세션 (token, expires_at, user_id)
+- **Account** - 계정 (provider_id, access_token 등)
+- **Verification** - 이메일 인증
+
+### 2. server.auth 설정
 
 ```typescript
 server: {
-  // 기본 인증 (세션 기반)
-  auth: true,
+  // 기본 설정 (emailAndPassword 활성화)
+  auth: {
+    emailAndPassword: { enabled: true },
+  },
 
-  // 또는 커스텀 직렬화/역직렬화
+  // 소셜 로그인 추가
   // auth: {
-  //   userSerializer: async (user, request) => user,
-  //   userDeserializer: async (serialized, request) => serialized,
+  //   emailAndPassword: { enabled: true },
+  //   socialProviders: {
+  //     google: {
+  //       clientId: process.env.GOOGLE_CLIENT_ID!,
+  //       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  //     },
+  //   },
   // },
 }
 ```
 
-### 2. GuardKeys 확장 (커스텀 권한)
+### 3. 인증 API 엔드포인트
+
+`/api/auth/*` 경로로 자동 등록:
+
+| 엔드포인트 | 메서드 | 설명 |
+|------------|--------|------|
+| `/api/auth/sign-up/email` | POST | 회원가입 |
+| `/api/auth/sign-in/email` | POST | 로그인 |
+| `/api/auth/sign-out` | POST | 로그아웃 |
+| `/api/auth/get-session` | GET | 세션 조회 |
+
+### 4. Context에서 user/session 접근
+
+```typescript
+@api({ httpMethod: "GET", guards: ["user"] })
+async me(): Promise<UserSubsetA | null> {
+  const { user, session } = Sonamu.getContext();
+  if (!user) return null;
+  return this.findById("A", user.id);
+}
+```
+
+### 5. 필드 매핑 (camelCase → snake_case)
+
+better-auth는 camelCase, Sonamu는 snake_case 사용. 자동 매핑 적용:
+
+| better-auth | Sonamu |
+|-------------|--------|
+| `emailVerified` | `email_verified` |
+| `createdAt` | `created_at` |
+| `userId` | `user_id` |
+| `expiresAt` | `expires_at` |
+
+---
+
+## Guards 시스템 (권한 제어)
+
+Sonamu 권한 시스템은 2가지 요소로 구성:
+
+1. **GuardKeys** - 권한 키 정의
+2. **guardHandler** - 권한 검사 로직
+
+### 1. GuardKeys 확장 (커스텀 권한)
 
 기본 제공: `query`, `admin`, `user`
 
@@ -215,7 +272,7 @@ declare module "sonamu" {
 }
 ```
 
-### 3. @api 데코레이터에서 guards 사용
+### 2. @api 데코레이터에서 guards 사용
 
 ```typescript
 // user.model.ts
@@ -239,13 +296,16 @@ class UserModelClass extends BaseModelClass {
 }
 ```
 
-### 4. guardHandler 구현
+### 3. guardHandler 구현
 
 ```typescript
+import { Sonamu } from "sonamu";
+
 // sonamu.config.ts
 apiConfig: {
   guardHandler: (guard, request, api) => {
-    const user = request.user;
+    // better-auth Context에서 user 접근
+    const { user } = Sonamu.getContext();
 
     switch (guard) {
       case "user":
@@ -256,16 +316,9 @@ apiConfig: {
         break;
 
       case "admin":
-        // 관리자 권한
-        if (!user || user.role !== "admin") {
+        // 관리자 권한 (User 엔티티에 role 필드 추가 필요)
+        if (!user || (user as any).role !== "admin") {
           throw new Error("관리자만 접근 가능합니다");
-        }
-        break;
-
-      case "manager":
-        // 매니저 이상 권한
-        if (!user || !["admin", "manager"].includes(user.role)) {
-          throw new Error("권한이 없습니다");
         }
         break;
 
@@ -276,6 +329,8 @@ apiConfig: {
   },
 },
 ```
+
+**NOTE:** better-auth의 기본 User 엔티티는 `role` 필드가 없다. 권한 기반 인증이 필요하면 User 엔티티에 `role` 필드를 추가하거나, 별도 Role 엔티티를 만들어야 한다.
 
 ### 권한별 메뉴/화면 접근 제어
 

@@ -78,14 +78,14 @@ async me(): Promise<User | null> {
 
 | Context 속성 | 설명 |
 |-------------|------|
-| `user` | 인증된 사용자 (또는 null) |
+| `user` | 인증된 사용자 (better-auth User, null이면 미인증) |
+| `session` | 현재 세션 정보 (better-auth Session, null이면 미인증) |
 | `request` | FastifyRequest |
 | `reply` | FastifyReply |
 | `headers` | HTTP 요청 헤더 |
 | `bufferedFiles` | 버퍼 모드 업로드 파일 |
 | `uploadedFiles` | 스트림 모드 업로드 파일 |
 | `locale` | 요청 언어 |
-| `passport` | login/logout 메서드 |
 
 ## 파일 업로드 (@upload)
 
