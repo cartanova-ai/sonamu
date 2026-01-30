@@ -157,25 +157,6 @@ export type SonamuServerOptions = {
 
   /**
    * better-auth 인증 설정
-   *
-   * @example
-   * ```typescript
-   * // 기본 설정 (emailAndPassword: true)
-   * server: {
-   *   auth: true
-   * }
-   *
-   * // 상세 설정
-   * server: {
-   *   auth: {
-   *     emailAndPassword: true,
-   *     basePath: "/api/auth",
-   *     socialProviders: {
-   *       google: { clientId: "...", clientSecret: "..." }
-   *     }
-   *   }
-   * }
-   * ```
    */
   auth?: BetterAuthOptions;
 
