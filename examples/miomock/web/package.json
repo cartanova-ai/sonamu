@@ -23,7 +23,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@iconify/json": "catalog:",
+    "@iconify-json/lucide": "catalog:",
     "@svgr/core": "catalog:",
     "@svgr/plugin-jsx": "catalog:",
     "@svgr/plugin-svgo": "catalog:",
