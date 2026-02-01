@@ -1,19 +1,20 @@
 ---
 title: 'AuthContext'
-description: 'Sonamu Authentication Context Reference'
+description: 'Sonamu authentication context reference'
 ---
 
-AuthContext is part of Context, providing user authentication state and authentication-related methods. It is implemented based on Fastify Passport.
+AuthContext is part of Context, providing user authentication state and session information. It is implemented based on [better-auth](https://www.better-auth.com/).
 
 ## Type Definition
 
 ```typescript
+import type { Session, User } from "better-auth";
+
 type AuthContext = {
-  user: PassportUser | null;
-  passport: {
-    login: (user: PassportUser) => Promise<void>;
-    logout: () => void;
-  };
+  /** Currently logged in user (null if unauthenticated) */
+  user: User | null;
+  /** Current session info (null if unauthenticated) */
+  session: Session | null;
 };
 ```
 
@@ -22,90 +23,81 @@ type AuthContext = {
 ### user
 
 ```typescript
-user: PassportUser | null
+user: User | null
 ```
 
-Current authenticated user information. Returns `null` if not logged in.
+Information about the currently authenticated user. `null` if not logged in.
 
-The `PassportUser` type is provided by `@fastify/passport` and can be customized for your project.
-
-**Usage Example:**
+The `User` type is provided by better-auth and includes the following fields by default:
 
 ```typescript
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+```
+
+**Usage example:**
+
+```typescript
+import { Sonamu } from "sonamu";
+
 class UserModelClass extends BaseModel {
-  @api()
-  async getMyProfile(ctx: Context) {
-    if (!ctx.user) {
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async getMyProfile() {
+    const { user } = Sonamu.getContext();
+
+    if (!user) {
       throw new UnauthorizedException("Login required");
     }
 
     return {
-      id: ctx.user.id,
-      email: ctx.user.email,
-      name: ctx.user.name
+      id: user.id,
+      email: user.email,
+      name: user.name,
     };
   }
 }
 ```
 
-### passport.login
+### session
 
 ```typescript
-login: (user: PassportUser) => Promise<void>
+session: Session | null
 ```
 
-Logs in a user. Stores user information in the session, making it accessible via `ctx.user` in subsequent requests.
+Current session information. `null` if not logged in.
 
-**Usage Example:**
+The `Session` type is provided by better-auth and includes the following fields:
 
 ```typescript
-class AuthModelClass extends BaseModel {
-  @api()
-  async login(
-    ctx: Context,
-    email: string,
-    password: string
-  ) {
-    // User authentication logic
-    const user = await this.validateCredentials(email, password);
-
-    if (!user) {
-      throw new UnauthorizedException("Incorrect email or password");
-    }
-
-    // Store user information in session
-    await ctx.passport.login(user);
-
-    return { success: true, user };
-  }
-
-  private async validateCredentials(email: string, password: string) {
-    // Implement actual authentication logic
-    const user = await this.findByEmail(email);
-    if (!user) return null;
-
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : null;
-  }
-}
+type Session = {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
 ```
 
-### passport.logout
+**Usage example:**
 
 ```typescript
-logout: () => void
-```
+class SessionModelClass extends BaseModel {
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async getSessionInfo() {
+    const { session } = Sonamu.getContext();
 
-Logs out the current user. Removes user information from the session.
-
-**Usage Example:**
-
-```typescript
-class AuthModelClass extends BaseModel {
-  @api()
-  async logout(ctx: Context) {
-    ctx.passport.logout();
-    return { success: true, message: "Logged out successfully" };
+    return {
+      sessionId: session.id,
+      expiresAt: session.expiresAt,
+    };
   }
 }
 ```
@@ -118,123 +110,125 @@ To use AuthContext, you need to configure authentication in `sonamu.config.ts`.
 
 ```typescript
 // sonamu.config.ts
+import type { SonamuConfig } from "sonamu";
+
 export default {
   server: {
-    plugins: {
-      // Session plugin required
-      session: {
-        secret: process.env.SESSION_SECRET || "your-secret-key-here",
-        cookie: {
-          maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-        }
-      }
+    auth: {
+      emailAndPassword: { enabled: true },
     },
-    auth: true // Use default serialization/deserialization
-  }
+  },
 } satisfies SonamuConfig;
 ```
 
-### Custom Serialization/Deserialization
-
-You can customize how user information is stored in and restored from the session:
+### Adding Social Login
 
 ```typescript
 // sonamu.config.ts
 export default {
   server: {
-    plugins: {
-      session: {
-        secret: process.env.SESSION_SECRET || "your-secret-key-here",
-      }
-    },
     auth: {
-      userSerializer: async (user, request) => {
-        // Return only minimal information to store in session
-        return { id: user.id };
+      emailAndPassword: { enabled: true },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
       },
-      userDeserializer: async (serialized, request) => {
-        // Reconstruct full user object from session data
-        const user = await UserModel.findById(serialized.id);
-        return user;
-      }
-    }
-  }
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
 ## Access Control with Guards
 
-To require authentication for API methods, use the `guards` option:
+To require authentication for API methods, you can use the `guards` option:
 
 ```typescript
 class UserModelClass extends BaseModel {
-  @api({ guards: ["user"] })
-  async getMyData(ctx: Context) {
-    // guards: ["user"] ensures ctx.user is available
-    return this.findById(ctx.user!.id);
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async getMyData() {
+    const { user } = Sonamu.getContext();
+    // guards: ["user"] guarantees user is not null
+    return this.findById("A", user!.id);
   }
 
-  @api({ guards: ["admin"] })
-  async getAllUsers(ctx: Context) {
-    // guards: ["admin"] restricts access to admins only
-    return this.findAll();
+  @api({ httpMethod: "GET", guards: ["admin"] })
+  async getAllUsers() {
+    // guards: ["admin"] allows only admins
+    return this.findMany("A", {});
   }
 }
 ```
 
-Implement guard handling logic in `guardHandler`:
+Guard handling logic is implemented in `guardHandler`:
 
 ```typescript
 // sonamu.config.ts
 import { Sonamu } from "sonamu";
-import type { GuardKey } from "sonamu";
-import type { FastifyRequest } from "fastify";
 
 export default {
-  api: {
+  server: {
     apiConfig: {
-      guardHandler: (guard: GuardKey, request: FastifyRequest, api) => {
-        // Get user information from Sonamu Context
-        const context = Sonamu.getContext();
+      guardHandler: (guard, request, api) => {
+        const { user } = Sonamu.getContext();
 
-        if (guard === "user" && !context.user) {
+        if (guard === "user" && !user) {
           throw new UnauthorizedException("Login required");
         }
 
-        if (guard === "admin" && (!context.user || !context.user.isAdmin)) {
-          throw new UnauthorizedException("Admin permission required");
+        if (guard === "admin") {
+          if (!user || (user as any).role !== "admin") {
+            throw new UnauthorizedException("Admin permission required");
+          }
         }
 
         return true;
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
 <Info>
-`guardHandler` runs inside AsyncLocalStorage, so you can access the current request's Context via `Sonamu.getContext()`. Use `context.user` instead of accessing `user` directly from the `request` object.
+`guardHandler` runs inside AsyncLocalStorage, so you can access the current request's Context via `Sonamu.getContext()`.
 </Info>
 
-## Extending PassportUser Type
+## Extending User Type
 
-You can extend the `PassportUser` type to match your project's user information structure:
+If you've added fields to the User entity in your project, you can modify the entity through Sonamu UI. Added fields are accessible on the `user` object, but type assertions are required for TypeScript type safety:
 
 ```typescript
-// src/types.ts
-declare module "fastify" {
-  interface PassportUser {
-    id: number;
-    email: string;
-    name: string;
-    isAdmin: boolean;
-    createdAt: Date;
-  }
+const { user } = Sonamu.getContext();
+
+// If you added a role field
+const userRole = (user as any).role;
+
+// Or use type guards
+interface ExtendedUser extends User {
+  role: "admin" | "user" | "manager";
+}
+
+function isExtendedUser(user: User | null): user is ExtendedUser {
+  return user !== null && "role" in user;
+}
+
+if (isExtendedUser(user)) {
+  console.log(user.role); // Type-safe
 }
 ```
+
+## Authentication Flow
+
+1. Client sends login request to `/api/auth/sign-in/email`
+2. better-auth handles authentication and creates session
+3. Session token is stored in cookie
+4. Subsequent requests identify user via cookie token
+5. user/session is injected into Context before API method execution
+6. Access user info via `Sonamu.getContext()`
 
 ## Related Documentation
 
 - [Context](/api-reference/context/sonamu-context)
-- [Context Methods](/api-reference/context/methods)
+- [Authentication Setup](/api-development/authentication/setup)
 - [Using Guards](/api-development/guards)

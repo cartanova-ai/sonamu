@@ -1,685 +1,338 @@
 ---
 title: "Authentication Setup"
-description: "Building authentication systems in Sonamu"
+description: "Building better-auth based authentication system in Sonamu"
 ---
 
-Learn how to set up user authentication in Sonamu. Sonamu provides a flexible authentication structure that is not tied to a specific framework, and can be used with various authentication strategies such as Passport.js, JWT, sessions, etc.
+Learn how to set up user authentication in Sonamu. Sonamu provides an integrated authentication system based on [better-auth](https://www.better-auth.com/).
 
 ## Authentication System Overview
 
 <CardGroup cols={2}>
+  <Card title="better-auth Integration" icon="shield-halved">
+    Proven authentication library
+
+    Email/password, Social login
+  </Card>
+  <Card title="Auto Entity Generation" icon="wand-magic-sparkles">
+    Generate entities via CLI
+
+    User, Session, Account, Verification
+  </Card>
   <Card title="Context Based" icon="diagram-project">
     User info per request
-    
+
     Sonamu.getContext()
   </Card>
-  <Card title="Guards System" icon="shield-halved">
+  <Card title="Guards System" icon="lock">
     Declarative permission control
-    
+
     @api guards option
-  </Card>
-  <Card title="Flexible Integration" icon="plug">
-    Passport, JWT, Session
-    
-    Choose your preferred method
-  </Card>
-  <Card title="Type Safety" icon="shield-check">
-    TypeScript support
-    
-    User type definitions
   </Card>
 </CardGroup>
 
-## Understanding Authentication
+## Quick Start
 
-### Sonamu's Authentication Philosophy
+### 1. Generate Auth Entities
 
-Sonamu **does not force a specific authentication library**. Instead, it only provides an interface for injecting authenticated user information into Context. This has the following advantages:
+Automatically generate entities required by better-auth:
 
-1. **Flexibility**: Use any authentication system you want - Passport.js, JWT, Auth0, Firebase Auth, etc.
-2. **Independence**: Authentication logic is separated from business logic
-3. **Testability**: Test by injecting fake users into Context
-
-### Authentication Flow
-
-```
-1. Client → Server (Login request)
-2. Server → Authentication verification (Passport/JWT etc.)
-3. Server → Inject user info into Context
-4. API method → Access Sonamu.getContext().user
-5. Guards → Permission verification (admin, user, etc.)
+```bash
+pnpm sonamu auth generate
 ```
 
-## User Type Definition
+This command generates 4 entities:
 
-### Basic User Interface
-
-First, define the User type to be used in your application.
-
-```typescript
-// types/user.ts
-export interface User {
-  id: number;
-  email: string;
-  username: string;
-  role: "admin" | "user" | "guest";
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Represent unauthenticated state
-export type AuthUser = User | null;
-```
-
-### Context Type Extension
-
-Add User type to Sonamu's Context.
-
-```typescript
-// types/context.ts
-import type { BaseContext } from "sonamu";
-import type { User } from "./user";
-
-export interface AppContext extends BaseContext {
-  user: User | null;
-}
-```
+| Entity | Table | Description |
+|--------|-------|-------------|
+| User | users | User info (id, name, email, email_verified, image) |
+| Session | sessions | Session info (id, token, expires_at, user_id) |
+| Account | accounts | Social account linking (id, provider_id, access_token, user_id) |
+| Verification | verifications | Email verification etc. (id, identifier, value, expires_at) |
 
 <Info>
-Context is created for each request and contains information accessible throughout the request.
+If entities already exist, only missing fields are added. Fields with changed types are automatically updated.
 </Info>
 
-## Passport.js Integration
+### 2. Run Migrations
 
-Passport.js is the most widely used authentication middleware in Node.js. Learn how to use it with Sonamu.
-
-### Install Passport
+After generating entities, run migrations:
 
 ```bash
-npm install passport passport-local
-npm install -D @types/passport @types/passport-local
-# or
-pnpm add passport passport-local
-pnpm add -D @types/passport @types/passport-local
+pnpm sonamu migrate generate
+pnpm sonamu migrate run
 ```
 
-### Passport Strategy Configuration
+### 3. Configure Authentication
 
-Set up the local authentication strategy. This is the most basic method of authenticating with username and password.
+Enable authentication in `sonamu.config.ts`:
 
 ```typescript
-// auth/passport.config.ts
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcrypt";
-import type { User } from "../types/user";
+// sonamu.config.ts
+import type { SonamuConfig } from "sonamu";
 
-/**
- * Local authentication strategy setup
- * 
- * usernameField and passwordField are the field names sent by the client.
- * Defaults are 'username' and 'password', but can be changed to 'email' and 'password'.
- */
-passport.use(
-  new LocalStrategy(
-    {
-      usernameField: "email", // Login with email
-      passwordField: "password",
+export default {
+  // ... other settings
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
     },
-    async (email, password, done) => {
-      try {
-        // Query user from database
-        const db = getDatabase(); // Use your project's DB access method
-        const user = await db
-          .table("users")
-          .where("email", email)
-          .first();
-        
-        if (!user) {
-          // User not found
-          return done(null, false, { message: "Incorrect email" });
-        }
-        
-        // Verify password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        
-        if (!isPasswordValid) {
-          // Password mismatch
-          return done(null, false, { message: "Incorrect password" });
-        }
-        
-        // Authentication successful - remove password field and return
-        const { password: _, ...userWithoutPassword } = user;
-        return done(null, userWithoutPassword as User);
-      } catch (error) {
-        return done(error);
-      }
-    }
-  )
-);
-
-/**
- * Save user info to session
- * 
- * serializeUser is called after successful login and determines what to store in the session.
- * Usually only the user ID is stored to minimize session size.
- */
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
-});
-
-/**
- * Restore user info from session
- * 
- * deserializeUser is called on every request and queries user info using the ID stored in session.
- * The info queried here is stored in req.user.
- */
-passport.deserializeUser(async (id: number, done) => {
-  try {
-    const db = getDatabase();
-    const user = await db
-      .table("users")
-      .where("id", id)
-      .first();
-    
-    if (!user) {
-      return done(new Error("User not found"));
-    }
-    
-    const { password: _, ...userWithoutPassword } = user;
-    done(null, userWithoutPassword as User);
-  } catch (error) {
-    done(error);
-  }
-});
-
-export default passport;
-```
-
-### Integration with Fastify Server
-
-Connect Passport to the Fastify server.
-
-```typescript
-// server.ts
-import fastify from "fastify";
-import fastifySession from "@fastify/session";
-import fastifyCookie from "@fastify/cookie";
-import passport from "./auth/passport.config";
-
-const app = fastify();
-
-/**
- * Register cookie parser
- * Cookies are required to use sessions.
- */
-app.register(fastifyCookie);
-
-/**
- * Register session middleware
- * 
- * secret: Key to encrypt session cookie (must be managed via environment variable)
- * cookie: Cookie settings
- *   - secure: Only send cookie over HTTPS (true in production)
- *   - httpOnly: Cookie inaccessible from JavaScript (XSS prevention)
- *   - maxAge: Cookie validity period (milliseconds)
- */
-app.register(fastifySession, {
-  secret: process.env.SESSION_SECRET!, // Read from environment variable
-  cookie: {
-    secure: process.env.NODE_ENV === "production", // HTTPS required
-    httpOnly: true, // XSS attack prevention
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   },
-  saveUninitialized: false, // Don't save uninitialized sessions
-  resave: false, // Don't resave unchanged sessions
-});
-
-/**
- * Initialize Passport
- * 
- * passport.initialize() connects Passport to Fastify.
- * passport.session() enables session-based authentication.
- */
-app.addHook("onRequest", (request, reply, done) => {
-  passport.initialize()(request.raw, reply.raw, done);
-});
-
-app.addHook("onRequest", (request, reply, done) => {
-  passport.session()(request.raw, reply.raw, done);
-});
-
-// Register API routes
-// ...
+} satisfies SonamuConfig;
 ```
 
-<Warning>
-**Security Notes**:
-- Never hardcode `SESSION_SECRET` in code
-- Must set `secure: true` in production (HTTPS required)
-- Prevent XSS attacks with `httpOnly: true`
-- Recommended to use external storage like Redis for session store (maintains sessions on server restart)
-</Warning>
+This enables basic email/password authentication.
 
-## JWT Authentication
+## API Endpoints
 
-You can also implement authentication using JWT (JSON Web Token) instead of sessions. JWT is a stateless authentication method, useful in microservice environments.
+API endpoints provided by better-auth are automatically registered:
 
-### Install JWT Library
+| Path | Method | Description |
+|------|--------|-------------|
+| `/api/auth/sign-up/email` | POST | Email signup |
+| `/api/auth/sign-in/email` | POST | Email login |
+| `/api/auth/sign-out` | POST | Logout |
+| `/api/auth/get-session` | GET | Get current session |
 
-```bash
-npm install jsonwebtoken
-npm install -D @types/jsonwebtoken
-# or
-pnpm add jsonwebtoken
-pnpm add -D @types/jsonwebtoken
-```
+## Accessing User Info in Context
 
-### JWT Utilities
-
-Create functions for JWT token generation and verification.
+Access authenticated user information through Context:
 
 ```typescript
-// auth/jwt.ts
-import jwt from "jsonwebtoken";
-import type { User } from "../types/user";
-
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES_IN = "7d"; // 7 days
-
-/**
- * JWT payload type
- * 
- * Include only minimal information to store in JWT.
- * Never include sensitive information (passwords, card numbers, etc.).
- */
-export interface JWTPayload {
-  userId: number;
-  email: string;
-  role: string;
-}
-
-/**
- * Generate JWT token
- * 
- * @param user User information
- * @returns JWT token string
- */
-export function generateToken(user: User): string {
-  const payload: JWTPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
-  
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
-}
-
-/**
- * Verify JWT token
- * 
- * @param token JWT token
- * @returns Verified payload or null
- */
-export function verifyToken(token: string): JWTPayload | null {
-  try {
-    const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return payload;
-  } catch (error) {
-    // Token is invalid or expired
-    console.error("JWT verification failed:", error);
-    return null;
-  }
-}
-
-/**
- * Generate Refresh Token
- * 
- * A token with longer validity than Access Token.
- * When Access Token expires, use Refresh Token to get a new Access Token.
- */
-export function generateRefreshToken(user: User): string {
-  const payload: JWTPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
-  
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: "30d", // 30 days
-  });
-}
-```
-
-### JWT Middleware
-
-Create middleware to extract and verify JWT from request headers.
-
-```typescript
-// auth/jwt.middleware.ts
-import type { FastifyRequest, FastifyReply } from "fastify";
-import { verifyToken } from "./jwt";
-
-/**
- * JWT authentication middleware
- * 
- * Extracts and verifies Bearer token from Authorization header.
- * On successful verification, queries user info from database and adds to request.
- */
-export async function jwtAuthMiddleware(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  // Check Authorization header
-  const authHeader = request.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    // No JWT token, just pass through (optional auth)
-    // Will be blocked by guards if needed
-    return;
-  }
-  
-  // Remove Bearer prefix
-  const token = authHeader.substring(7);
-  
-  // Verify token
-  const payload = verifyToken(token);
-  
-  if (!payload) {
-    // Token is invalid
-    return reply.status(401).send({
-      error: "Invalid or expired token",
-    });
-  }
-  
-  // Query user from database
-  const db = getDatabase();
-  const user = await db
-    .table("users")
-    .where("id", payload.userId)
-    .first();
-  
-  if (!user) {
-    return reply.status(401).send({
-      error: "User not found",
-    });
-  }
-  
-  // Add user info to request
-  // Accessible from Context later
-  request.user = user;
-}
-```
-
-## Injecting User into Context
-
-Here's how to inject authenticated user information into Sonamu Context. This is **the most important step**, enabling access to user info via `Sonamu.getContext().user` in API methods.
-
-### Add User When Creating Context
-
-```typescript
-// server.ts
 import { Sonamu } from "sonamu";
-import type { AppContext } from "./types/context";
 
-app.addHook("onRequest", async (request, reply) => {
-  // When using Passport: user info is in request.user
-  // When using JWT: jwtAuthMiddleware sets request.user
-  
-  const context: AppContext = {
-    request,
-    reply,
-    user: request.user || null, // Authenticated user or null
-  };
-  
-  // Set Sonamu Context
-  Sonamu.setContext(context);
+class UserModelClass extends BaseModel {
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async me(): Promise<UserSubsetA | null> {
+    const { user, session } = Sonamu.getContext();
+
+    if (!user) return null;
+
+    // Access user.id, user.email, user.name, etc.
+    return this.findById("A", user.id);
+  }
+}
+```
+
+### AuthContext Type
+
+```typescript
+type AuthContext = {
+  /** Currently logged in user (null if unauthenticated) */
+  user: User | null;
+  /** Current session info (null if unauthenticated) */
+  session: Session | null;
+};
+```
+
+`User` and `Session` types are provided by better-auth.
+
+## Access Control with Guards
+
+### Basic Guard Usage
+
+```typescript
+class UserModelClass extends BaseModel {
+  // Login required
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async getProfile() {
+    const { user } = Sonamu.getContext();
+    return { userId: user.id };
+  }
+
+  // Admin permission required
+  @api({ httpMethod: "DELETE", guards: ["admin"] })
+  async deleteUser(id: string) {
+    // Only admins can execute
+  }
+}
+```
+
+### Implementing guardHandler
+
+Guard logic is implemented in `guardHandler` in `sonamu.config.ts`:
+
+```typescript
+// sonamu.config.ts
+import { Sonamu } from "sonamu";
+
+export default {
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+    },
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const { user } = Sonamu.getContext();
+
+        switch (guard) {
+          case "user":
+            if (!user) {
+              throw new Error("Login required");
+            }
+            break;
+
+          case "admin":
+            // Need to add role field to User entity
+            if (!user || (user as any).role !== "admin") {
+              throw new Error("Admin access only");
+            }
+            break;
+
+          case "query":
+            // Allow all users
+            break;
+        }
+      },
+    },
+  },
+} satisfies SonamuConfig;
+```
+
+## Social Login Setup
+
+### Google Login
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      socialProviders: {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+} satisfies SonamuConfig;
+```
+
+### GitHub Login
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      socialProviders: {
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID!,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        },
+      },
+    },
+  },
+} satisfies SonamuConfig;
+```
+
+## Adding User Roles
+
+The default User entity in better-auth doesn't have a `role` field. If you need role-based authentication, add it directly to the User entity:
+
+### 1. Add Field in Sonamu UI
+
+Add `role` field to User entity:
+- Name: `role`
+- Type: `string`
+- Default: `"user"`
+
+### 2. Add Enum (Optional)
+
+```json
+{
+  "enums": {
+    "UserRole": {
+      "user": "Regular user",
+      "admin": "Administrator",
+      "manager": "Manager"
+    }
+  }
+}
+```
+
+### 3. Check Role in guardHandler
+
+```typescript
+guardHandler: (guard, request, api) => {
+  const { user } = Sonamu.getContext();
+
+  if (guard === "admin") {
+    if (!user || (user as any).role !== "admin") {
+      throw new Error("Admin permission required");
+    }
+  }
+},
+```
+
+## Client Integration
+
+### Using in React
+
+```typescript
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient({
+  baseURL: "http://localhost:4000/api/auth",
 });
+
+// Sign up
+await authClient.signUp.email({
+  email: "user@example.com",
+  password: "password123",
+  name: "John Doe",
+});
+
+// Sign in
+await authClient.signIn.email({
+  email: "user@example.com",
+  password: "password123",
+});
+
+// Sign out
+await authClient.signOut();
+
+// Get current session
+const session = await authClient.getSession();
 ```
 
-### Accessing User Info in API
+## Field Mapping
 
-Now you can access user info in all API methods.
+better-auth uses camelCase, but Sonamu uses snake_case. The following fields are automatically mapped:
 
-```typescript
-class UserModel extends BaseModelClass {
-  @api({ httpMethod: "GET" })
-  async getProfile(): Promise<{
-    user: User;
-  }> {
-    // Get user info from Context
-    const context = Sonamu.getContext();
-    
-    if (!context.user) {
-      throw new Error("Authentication required");
-    }
-    
-    return {
-      user: context.user,
-    };
-  }
-  
-  @api({ httpMethod: "PUT" })
-  async updateProfile(params: {
-    username?: string;
-    bio?: string;
-  }): Promise<{ user: User }> {
-    const context = Sonamu.getContext();
-    
-    if (!context.user) {
-      throw new Error("Authentication required");
-    }
-    
-    const { username, bio } = params;
-    
-    // Can only modify own profile
-    const wdb = this.getPuri("w");
-    await wdb
-      .table("users")
-      .where("id", context.user.id)
-      .update({
-        username,
-        bio,
-        updated_at: new Date(),
-      });
-    
-    // Query updated user info
-    const rdb = this.getPuri("r");
-    const updatedUser = await rdb
-      .table("users")
-      .where("id", context.user.id)
-      .first();
-    
-    return { user: updatedUser };
-  }
-}
-```
+| better-auth | Sonamu |
+|-------------|--------|
+| `emailVerified` | `email_verified` |
+| `createdAt` | `created_at` |
+| `userId` | `user_id` |
+| `expiresAt` | `expires_at` |
 
-## Login/Logout API
+## Checklist
 
-### Passport Login
+Things to verify after setting up authentication:
 
-```typescript
-class AuthModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async login(params: {
-    email: string;
-    password: string;
-  }): Promise<{
-    success: boolean;
-    user: User;
-  }> {
-    const { email, password } = params;
-    const context = Sonamu.getContext();
-    
-    // Passport authentication
-    return new Promise((resolve, reject) => {
-      passport.authenticate("local", (err, user, info) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        if (!user) {
-          reject(new Error(info?.message || "Login failed"));
-          return;
-        }
-        
-        // Save login info to session
-        context.request.logIn(user, (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          
-          resolve({
-            success: true,
-            user,
-          });
-        });
-      })(context.request.raw, context.reply.raw, () => {});
-    });
-  }
-  
-  @api({ httpMethod: "POST" })
-  async logout(): Promise<{ success: boolean }> {
-    const context = Sonamu.getContext();
-    
-    if (!context.user) {
-      throw new Error("Not logged in");
-    }
-    
-    return new Promise((resolve, reject) => {
-      context.request.logOut((err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        resolve({ success: true });
-      });
-    });
-  }
-}
-```
-
-### JWT Login
-
-```typescript
-import { generateToken, generateRefreshToken } from "./auth/jwt";
-import bcrypt from "bcrypt";
-
-class AuthModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  async login(params: {
-    email: string;
-    password: string;
-  }): Promise<{
-    accessToken: string;
-    refreshToken: string;
-    user: User;
-  }> {
-    const { email, password } = params;
-    
-    // Query user
-    const rdb = this.getPuri("r");
-    const user = await rdb
-      .table("users")
-      .where("email", email)
-      .first();
-    
-    if (!user) {
-      throw new Error("Invalid email or password");
-    }
-    
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      throw new Error("Invalid email or password");
-    }
-    
-    // Generate JWT tokens
-    const accessToken = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-    
-    // Save Refresh Token to database (optional)
-    const wdb = this.getPuri("w");
-    await wdb.table("refresh_tokens").insert({
-      user_id: user.id,
-      token: refreshToken,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    });
-    
-    const { password: _, ...userWithoutPassword } = user;
-    
-    return {
-      accessToken,
-      refreshToken,
-      user: userWithoutPassword,
-    };
-  }
-  
-  @api({ httpMethod: "POST" })
-  async refreshAccessToken(params: {
-    refreshToken: string;
-  }): Promise<{
-    accessToken: string;
-  }> {
-    const { refreshToken } = params;
-    
-    // Verify Refresh Token
-    const payload = verifyToken(refreshToken);
-    
-    if (!payload) {
-      throw new Error("Invalid refresh token");
-    }
-    
-    // Verify Refresh Token in database
-    const rdb = this.getPuri("r");
-    const storedToken = await rdb
-      .table("refresh_tokens")
-      .where("token", refreshToken)
-      .where("user_id", payload.userId)
-      .first();
-    
-    if (!storedToken) {
-      throw new Error("Refresh token not found");
-    }
-    
-    // Query user
-    const user = await rdb
-      .table("users")
-      .where("id", payload.userId)
-      .first();
-    
-    if (!user) {
-      throw new Error("User not found");
-    }
-    
-    // Generate new Access Token
-    const accessToken = generateToken(user);
-    
-    return { accessToken };
-  }
-}
-```
+- [ ] Run `pnpm sonamu auth generate`
+- [ ] Generate and apply migrations
+- [ ] Configure `server.auth` in `sonamu.config.ts`
+- [ ] Implement `guardHandler`
+- [ ] Verify user/session access in Context
+- [ ] Add role to User entity if role-based auth is needed
 
 ## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Session Management" icon="clock-rotate-left" href="/api-development/authentication/session-management">
-    Session and token management
-  </Card>
-  <Card title="Protected Routes" icon="shield-halved" href="/api-development/authentication/protected-routes">
-    Permission control with Guards
+    Managing sessions and tokens
   </Card>
   <Card title="Context" icon="diagram-project" href="/api-development/context/sonamu-context">
     Learn more about Context
   </Card>
   <Card title="@api Decorator" icon="at" href="/api-development/creating-apis/api-decorator">
     API decorator options
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/api-reference/exceptions/sonamu-error">
+    Handling authentication errors
   </Card>
 </CardGroup>
