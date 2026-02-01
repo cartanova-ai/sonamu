@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
+    "@iconify-json/mdi": "catalog:",
     "@svgr/core": "catalog:",
     "@svgr/plugin-jsx": "catalog:",
     "@svgr/plugin-svgo": "catalog:",
