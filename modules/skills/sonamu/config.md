@@ -75,7 +75,7 @@ import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "MyProject",
@@ -161,7 +161,7 @@ test: {
 
 ```typescript
 server: {
-  listen: { port: 1028, host: "localhost" },
+  listen: { port: 34900, host: "localhost" },
   plugins: { /* 플러그인 설정 */ },
   auth: true,
   apiConfig: { /* API 설정 */ },
@@ -666,7 +666,7 @@ S3_BUCKET=myproject-prod-bucket
 2. Docker 실행: `pnpm docker:up`
 3. 빌드 확인: `pnpm build`
 4. 서버 실행: `pnpm dev`
-5. Sonamu UI 접속: http://localhost:1028/sonamu-ui
+5. Sonamu UI 접속: http://localhost:34900/sonamu-ui
 
 프로덕션 배포 전:
 - [ ] `SESSION_SECRET` 변경

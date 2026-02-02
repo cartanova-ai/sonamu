@@ -72,7 +72,7 @@ pnpm docker:up
 pnpm dev
 ```
 
-> Sonamu UI: http://localhost:1028/sonamu-ui
+> Sonamu UI: http://localhost:34900/sonamu-ui
 
 #### 6. Auth 엔티티 생성 (별도 터미널)
 
@@ -87,7 +87,7 @@ pnpm sonamu auth generate
 
 #### 7. Subset 확인
 
-Sonamu UI (`http://localhost:1028/sonamu-ui`)의 Entity 메뉴에서:
+Sonamu UI (`http://localhost:34900/sonamu-ui`)의 Entity 메뉴에서:
 - User, Account, Session, Verification 엔티티의 subset 체크
 
 #### 8. DB Migration
