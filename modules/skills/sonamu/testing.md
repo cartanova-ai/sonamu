@@ -13,10 +13,225 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 ## 테스트 작성 전 체크리스트
 
+- [ ] **엔티티 설계 완료 확인** - `pnpm db:migration` 및 `pnpm scaffolding` 오류 없이 완료
+- [ ] **테스트 작성 계획 수립** - 업무 프로세스별 엔티티 그룹핑 (→ 아래 "테스트 작성 계획 수립" 참조)
 - [ ] **types.ts nullable 처리 (FIRST!)** - 엔티티 생성 직후 nullable 필드 partial + extend 처리 (→ 아래 "엔티티 생성 후 즉시 해야 할 작업" 참조)
 - [ ] **Seed Data 준비** - FK 제약으로 인한 기본 데이터 필요 (→ database.md "최소 seed data" 참고)
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
 - [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
+
+## 테스트 작성 계획 수립
+
+### 엔티티 설계 프롬프트 기반 계획
+
+엔티티 설계 완료 후 (migration + scaffolding 성공 확인), **엔티티 설계 시점에 명시한 업무 프로세스와 데이터 흐름**에 따라 테스트를 그룹핑한다.
+
+**CRITICAL:** 단순 알파벳 순서나 개별 엔티티가 아니라, **업무 흐름 단위**로 테스트를 묶어서 작성한다.
+
+### 1단계: 엔티티 설계 프롬프트 재확인
+
+설계 요청 시 작성한 프롬프트에서 다음 정보를 추출:
+- 업무 프로세스 흐름
+- 엔티티 간 관계 (relation)
+- 데이터 생성 순서
+- 주요 사용 시나리오
+
+### 2단계: 업무 프로세스별 그룹핑
+
+단순 우선순위가 아닌, **업무 흐름 단위**로 엔티티를 묶는다.
+
+**VOC 시스템 예시:**
+
+```
+그룹 1: 기반 인프라
+Organization (유관기관)
+└─ User (사용자)
+   └─ LoginHistory (로그인 이력)
+
+업무 흐름: 기관 등록 → 사용자 생성 → 로그인
+테스트 순서: Organization → User → LoginHistory
+
+그룹 2: 피해유형 관리
+DamageType (피해유형, self-referencing)
+└─ CounterMeasure (대응방안)
+
+업무 흐름: 피해유형 계층 구성 → 각 유형별 대응방안 작성
+테스트 순서: DamageType → CounterMeasure
+
+그룹 3: 상담 프로세스 (핵심 업무)
+User (신청인) + User (상담사) + DamageType
+└─ Consultation (상담)
+   ├─ ConsultationChannelLog (채널 로그)
+   └─ ConsultationHistory (상담 이력)
+
+업무 흐름:
+1. 신청인이 상담 접수
+2. 상담사 배정
+3. 피해유형 분류
+4. 채널별 소통 (온라인/전화/SMS/카카오)
+5. 상태 변경 이력 기록
+
+테스트 순서: Consultation → ConsultationChannelLog → ConsultationHistory
+
+그룹 4: 콘텐츠 관리 (독립적)
+FAQ (자주묻는질문)
+Banner (배너)
+Material (자료실)
+Notice (공지사항)
+
+업무 흐름: 각각 독립적으로 CRUD
+테스트 순서: 순서 무관 (병렬 작성 가능)
+```
+
+### 3단계: 그룹별 작업 순서
+
+**각 그룹마다:**
+
+1. **types.ts 수정** - 그룹 내 모든 엔티티의 nullable 필드를 한 번에 처리
+2. **test-helpers.ts 확장** - 그룹 내 엔티티들의 헬퍼 함수를 함께 작성
+3. **테스트 파일 작성** - 그룹 내에서는 의존성 순서대로 작성
+4. **Business Logic 테스트** - 실제 업무 시나리오 구현 (핵심!)
+5. **테스트 통과 확인** - 다음 그룹으로 진행
+
+**test-helpers.ts 예시 (의존성 체인 고려):**
+
+```typescript
+// 의존성 체인을 고려한 헬퍼 작성
+export async function createTestUserWithDeps() {
+  const organizationId = await createTestOrganization();
+  const userId = await createTestUser(organizationId);
+  return { organizationId, userId };
+}
+
+export async function createTestConsultationWithDeps() {
+  const { userId: applicantId } = await createTestUserWithDeps({ role: "applicant" });
+  const { userId: counselorId } = await createTestUserWithDeps({ role: "counselor" });
+  const damageTypeId = await createTestDamageType(null);
+  const consultationId = await createTestConsultation(
+    applicantId,
+    counselorId,
+    damageTypeId
+  );
+  return { applicantId, counselorId, damageTypeId, consultationId };
+}
+```
+
+### 4단계: Business Logic 테스트 (핵심!)
+
+**IMPORTANT:** E. Business Logic 섹션이 가장 중요하다.
+
+이 섹션에서:
+- 엔티티 설계 프롬프트에 명시된 **실제 업무 시나리오** 구현
+- 엔티티 간 **상호작용** 테스트
+- **데이터 흐름** 검증
+
+이것이 단순 CRUD 테스트와의 차별점이며, **설계 의도를 검증하는 핵심**이다.
+
+**상담 프로세스 그룹 예시:**
+
+```typescript
+describe("ConsultationModel", () => {
+  describe("A. Create (생성)");
+  describe("B. Read (조회)");
+  describe("C. Update (수정)");
+  describe("D. Delete (삭제)");
+  
+  describe("E. Business Logic (비즈니스 로직)", () => {
+    test("상담 접수부터 완료까지 전체 프로세스", async () => {
+      // 1. 상담 접수 (신청인)
+      const { consultationId, applicantId, counselorId } = 
+        await createTestConsultationWithDeps({
+          status: "consulting",
+          channel: "online",
+        });
+
+      // 2. 온라인 접수 로그 기록
+      await createTestConsultationChannelLog(consultationId, {
+        channel: "online",
+        content: "상담 접수 완료",
+        sender: "system",
+      });
+
+      // 3. 상담사 배정 이력
+      await createTestConsultationHistory(consultationId, counselorId, {
+        status: "consulting",
+        action: "상담사 배정",
+      });
+
+      // 4. 전화 상담 진행
+      await createTestConsultationChannelLog(consultationId, {
+        channel: "phone",
+        content: "전화 상담 진행",
+        sender: "counselor",
+        receiver: "applicant",
+      });
+
+      // 5. 상담 완료
+      await ConsultationModel.save([{
+        id: consultationId,
+        status: "completed",
+        result: "상담 완료 처리",
+      }]);
+
+      await createTestConsultationHistory(consultationId, counselorId, {
+        status: "completed",
+        action: "상담 완료",
+      });
+
+      // 검증: 전체 프로세스 확인
+      const consultation = await ConsultationModel.findById("A", consultationId);
+      expect(consultation.status).toBe("completed");
+      expect(consultation.result).toBe("상담 완료 처리");
+      
+      // 채널 로그 2건 확인
+      const logs = await ConsultationChannelLogModel.findMany("A", {
+        num: 10,
+        page: 1,
+      });
+      const consultationLogs = logs.rows.filter(
+        log => log.consultation?.id === consultationId
+      );
+      expect(consultationLogs.length).toBe(2);
+      
+      // 이력 2건 확인
+      const histories = await ConsultationHistoryModel.findMany("A", {
+        num: 10,
+        page: 1,
+      });
+      const consultationHistories = histories.rows.filter(
+        h => h.consultation?.id === consultationId
+      );
+      expect(consultationHistories.length).toBe(2);
+    });
+  });
+});
+```
+
+### 주의사항
+
+**DO:**
+- ✅ 엔티티 설계 프롬프트를 항상 참고
+- ✅ 업무 프로세스 흐름대로 그룹핑
+- ✅ 의존성 순서를 고려한 테스트 순서
+- ✅ 실제 사용 시나리오 기반 Business Logic 테스트
+- ✅ test-helpers에 의존성 체인 명확히 구현
+
+**DON'T:**
+- ❌ 단순히 알파벳 순서로 테스트 작성
+- ❌ 엔티티를 개별적으로만 테스트 (통합 관점 누락)
+- ❌ 업무 흐름과 무관한 우선순위 설정
+- ❌ 엔티티 설계 의도를 무시한 테스트
+
+### 그룹별 체크리스트
+
+프로세스 그룹별로 테스트 작성 완료 시:
+
+- [ ] 그룹 내 모든 엔티티의 types.ts nullable 필드 처리 완료
+- [ ] 그룹 내 의존성 체인을 반영한 test-helpers 작성
+- [ ] 그룹 내 각 엔티티의 모듈 테스트 파일 작성
+- [ ] **핵심 업무 시나리오가 Business Logic 테스트에 포함됨**
+- [ ] 모든 테스트 통과 확인 (`pnpm test`)
+- [ ] 다음 그룹으로 진행
 
 ## 엔티티 생성 후 즉시 해야 할 작업
 
