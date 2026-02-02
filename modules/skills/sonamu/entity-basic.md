@@ -46,10 +46,21 @@ description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 �
 ## Entity 생성 워크플로우
 
 ### 1단계: stub 생성
+
+**CRITICAL: EntityId는 반드시 대문자로 시작해야 합니다!**
+
 ```bash
 pnpm sonamu stub entity {EntityId}
 ```
-예: `pnpm sonamu stub entity Course`
+
+**올바른 예시:**
+- `pnpm sonamu stub entity Course` ✅
+- `pnpm sonamu stub entity User` ✅
+- `pnpm sonamu stub entity ConsultationHistory` ✅
+
+**잘못된 예시:**
+- `pnpm sonamu stub entity course` ❌ (소문자로 시작)
+- `pnpm gen stub entity Course` ❌ (잘못된 명령어)
 
 생성되는 파일: `api/src/application/{entity}/{entity}.entity.json`
 

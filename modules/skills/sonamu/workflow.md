@@ -47,6 +47,9 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
    ```bash
    pnpm sonamu stub entity {EntityId}
    ```
+   **중요:** EntityId는 대문자로 시작 (예: User, Course)
+   
+   **자세한 내용:** entity-basic.md "Entity 생성 워크플로우" 참조
 
 2. **entity.json 작성**
    - props, relations, subsets, enums 정의
