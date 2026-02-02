@@ -1,13 +1,13 @@
 ---
 name: sonamu-workflow
-description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스트 작성까지 5단계 가이드. Use when starting a new feature or system from scratch.
+description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Frontend 개발까지 7단계 가이드. Use when starting a new feature or system from scratch.
 ---
 
 # Sonamu 전체 개발 워크플로우
 
-사용자가 시스템 구축을 요청하면 다음 5단계로 진행한다.
+사용자가 시스템 구축을 요청하면 다음 7단계로 진행한다.
 
-## 사용자 요청 → 완성까지 5단계
+## 사용자 요청 → 완성까지 7단계
 
 ### PHASE 1: 엔티티 설계
 
@@ -243,7 +243,329 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 - [ ] 업무 시나리오 검증 완료
 - [ ] 모든 그룹 커밋 완료
 
-**결과:** 전체 워크플로우 완료!
+**다음 단계:** PHASE 6 API 개발
+
+---
+
+### PHASE 6: API 개발
+
+**목표:** 요구사항에 따른 비즈니스 로직 API 구현
+
+**참조 스킬:** api.md, model.md, upsert.md
+
+**절차:**
+
+1. **요구사항 분석**
+   - PHASE 1의 엔티티 설계 프롬프트 재확인
+   - PHASE 5의 Business Logic 테스트에서 구현한 시나리오 분석
+   - 추가 필요한 API 엔드포인트 식별
+
+2. **기본 CRUD API 확인**
+   - scaffolding으로 자동 생성된 API 확인
+   - findById, findMany, save, del
+   - 이미 @api 데코레이터 적용됨
+
+3. **커스텀 API 메서드 추가**
+   
+   예시: 상담 시스템의 "상담 상태 변경" API
+   
+   ```typescript
+   // consultation.model.ts
+   
+   @api({ httpMethod: "POST", guards: ["user"] })
+   async changeStatus(
+     id: number,
+     status: ConsultationStatus,
+     memo?: string
+   ): Promise<Consultation> {
+     const wdb = this.getPuri("w");
+     
+     return wdb.transaction(async (trx) => {
+       // 1. 상담 업데이트
+       await trx.ubRegister("consultations", {
+         id,
+         status,
+         updated_at: new Date()
+       });
+       await trx.ubUpsert("consultations");
+       
+       // 2. 상태 변경 이력 기록
+       await trx.ubRegister("consultation_histories", {
+         consultation_id: id,
+         status,
+         memo,
+         created_at: new Date(),
+       });
+       await trx.ubUpsert("consultation_histories");
+       
+       // 3. 결과 반환
+       return this.findById("A", id);
+     });
+   }
+   ```
+
+4. **검증 로직 구현**
+   
+   ```typescript
+   @api({ httpMethod: "POST", guards: ["user"] })
+   async enroll(
+     courseId: number,
+     userId: number
+   ): Promise<Enrollment> {
+     // 중복 등록 방지
+     const existing = await this.findOne("A", {
+       course_id: courseId,
+       user_id: userId,
+     });
+     
+     if (existing) {
+       throw new Error("이미 등록된 강좌입니다");
+     }
+     
+     // 정원 확인
+     const course = await CourseModel.findById("A", courseId);
+     const { total } = await this.findMany({ course_id: courseId });
+     
+     if (total >= course.max_students) {
+       throw new Error("정원이 가득 찼습니다");
+     }
+     
+     // 등록 실행
+     const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
+     return this.findById("A", id);
+   }
+   ```
+
+5. **권한 가드 적용**
+   
+   ```typescript
+   // 일반 사용자 전용
+   @api({ httpMethod: "POST", guards: ["user"] })
+   async save(spa: PostSaveParams[]): Promise<number[]> { }
+   
+   // 관리자 전용
+   @api({ httpMethod: "POST", guards: ["admin"] })
+   async del(ids: number[]): Promise<number> { }
+   
+   // 현재 로그인 사용자 정보 활용
+   @api({ httpMethod: "GET", guards: ["user"] })
+   async myConsultations(): Promise<ListResult<Consultation>> {
+     const { user } = Sonamu.getContext();
+     return this.findMany({ user_id: user!.id });
+   }
+   ```
+
+6. **API 테스트 확장**
+   
+   PHASE 5의 Business Logic 테스트에 커스텀 API 호출 추가:
+   
+   ```typescript
+   // consultation.test.ts
+   describe("E. Business Logic", () => {
+     test("상태 변경 API", async () => {
+       const { consultationId } = await createTestConsultationWithDeps();
+       
+       // 커스텀 API 호출
+       const updated = await ConsultationModel.changeStatus(
+         consultationId,
+         "completed",
+         "상담 완료"
+       );
+       
+       expect(updated.status).toBe("completed");
+       
+       // 이력 기록 확인
+       const histories = await ConsultationHistoryModel.findMany({
+         consultation_id: consultationId,
+       });
+       expect(histories.rows).toHaveLength(1);
+     });
+   });
+   ```
+
+7. **빌드 및 테스트 통과 확인**
+   ```bash
+   cd packages/api
+   pnpm build
+   pnpm test  # 모든 테스트 통과 확인
+   ```
+
+**완료 기준:**
+- [ ] 요구사항에 따른 모든 API 구현 완료
+- [ ] 각 API에 적절한 @api 데코레이터 적용
+- [ ] 권한 가드 적용 (guards)
+- [ ] 검증 로직 구현
+- [ ] API 테스트 통과
+- [ ] Build 성공
+
+**다음 단계:** PHASE 7 Frontend 개발
+
+---
+
+### PHASE 7: Frontend 개발
+
+**목표:** 화면에서 실제 동작 확인
+
+**참조 스킬:** frontend.md
+
+**절차:**
+
+1. **화면 설계**
+   - PHASE 1의 엔티티 설계 프롬프트 기반 화면 구조 결정
+   - 주요 화면 목록 작성
+     - 목록 페이지 (List)
+     - 상세/편집 페이지 (Form)
+     - 대시보드 (Dashboard)
+
+2. **자동 생성된 Service 확인**
+   - `packages/web/src/services/services.generated.ts`
+   - 각 Entity별 Service 클래스
+   - TanStack Query hooks (useQuery, useMutation)
+
+3. **목록 페이지 구현**
+   
+   ```typescript
+   // pages/consultations/index.tsx
+   import { ConsultationService } from "@/services/services.generated";
+   
+   function ConsultationListPage() {
+     const [params, setParams] = useState({ num: 20, page: 1 });
+     
+     const { data, isLoading } = ConsultationService.useConsultations(
+       "P",  // Subset
+       params
+     );
+     
+     if (isLoading) return <div>Loading...</div>;
+     
+     return (
+       <div>
+         <h1>상담 목록</h1>
+         <table>
+           {data?.rows.map((row) => (
+             <tr key={row.id}>
+               <td>{row.id}</td>
+               <td>{row.title}</td>
+               <td>{row.status}</td>
+             </tr>
+           ))}
+         </table>
+       </div>
+     );
+   }
+   ```
+
+4. **편집 페이지 구현**
+   
+   ```typescript
+   // pages/consultations/[id].tsx
+   import { useTypeForm } from "@sonamu-kit/react-components/lib";
+   import { ConsultationSaveParams } from "@/services/consultation/consultation.types";
+   
+   function ConsultationFormPage() {
+     const { id } = useParams();
+     
+     const { form, setForm, register, submit, errors } = useTypeForm(
+       ConsultationSaveParams,
+       {
+         title: "",
+         content: "",
+         status: "pending",
+         user_id: 0,
+       }
+     );
+     
+     // 데이터 로드
+     useEffect(() => {
+       if (id) {
+         ConsultationService.getConsultation("A", Number(id)).then((row) => {
+           setForm((prev) => ({ ...prev, ...row }));
+         });
+       }
+     }, [id]);
+     
+     const saveMutation = ConsultationService.useSaveMutation();
+     
+     const handleSubmit = submit(async (form) => {
+       const [consultationId] = await saveMutation.mutateAsync({ spa: [form] });
+       navigate(`/consultations/${consultationId}`);
+     });
+     
+     return (
+       <form>
+         <input {...register("title")} />
+         {errors.title && <span>{errors.title.message}</span>}
+         <button onClick={handleSubmit} disabled={saveMutation.isPending}>
+           저장
+         </button>
+       </form>
+     );
+   }
+   ```
+
+5. **커스텀 API 호출**
+   
+   ```typescript
+   function ConsultationDetail({ id }: { id: number }) {
+     const queryClient = useQueryClient();
+     
+     const handleStatusChange = async (newStatus: ConsultationStatus) => {
+       await ConsultationService.changeStatus(id, newStatus, "상태 변경");
+       
+       // 캐시 무효화
+       queryClient.invalidateQueries({
+         queryKey: ["Consultation", "findById", "A", id]
+       });
+     };
+     
+     return (
+       <button onClick={() => handleStatusChange("completed")}>
+         완료 처리
+       </button>
+     );
+   }
+   ```
+
+6. **실제 동작 확인**
+   
+   ```bash
+   cd packages/web
+   pnpm dev
+   ```
+   
+   브라우저에서 확인할 항목:
+   - [ ] 목록 조회 정상 동작
+   - [ ] 페이지네이션 정상 동작
+   - [ ] 등록/수정 정상 동작
+   - [ ] 삭제 정상 동작
+   - [ ] 유효성 검증 (Zod) 정상 동작
+   - [ ] 로딩 상태 표시
+   - [ ] 에러 핸들링
+   - [ ] **비즈니스 로직 정상 동작** (예: 상태 변경, 정원 체크 등)
+
+7. **통합 테스트**
+   
+   주요 사용자 시나리오를 실제로 실행:
+   - 사용자 등록부터 로그인까지
+   - 데이터 생성부터 조회까지
+   - 전체 업무 프로세스 실행
+
+8. **버그 수정 및 재테스트**
+   
+   발견된 문제:
+   - API 오류 → PHASE 6로 돌아가서 수정
+   - 타입 오류 → types.ts 또는 entity.json 수정
+   - UI 문제 → Frontend 컴포넌트 수정
+
+**완료 기준:**
+- [ ] 모든 주요 화면 구현 완료
+- [ ] 실제 동작 확인 완료
+- [ ] **비즈니스 로직 정상 동작 확인**
+- [ ] 에러 핸들링 확인
+- [ ] 사용자 시나리오 테스트 완료
+- [ ] 버그 수정 완료
+
+**결과:** 전체 워크플로우 완료
 
 ---
 
@@ -256,8 +578,9 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 | 3. 마이그레이션 | 5분 | `migration:latest` | migration.md |
 | 4. 스캐폴딩 | 5-10분 | `scaffold`, `build` | scaffolding.md |
 | 5. 테스트 | 30-60분 | `test`, `test:watch` | testing.md |
+| **6. API 개발** | **1-3시간** | **@api 데코레이터** | **api.md, model.md** |
+| **7. Frontend** | **2-5시간** | **Service, useTypeForm** | **frontend.md** |
 
-**총 예상 시간:** 1-2시간 (10개 Entity 기준)
 
 ---
 
@@ -290,7 +613,19 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 ### PHASE 5 완료 시
 ```
 테스트 작성 완료
-전체 워크플로우 완료!
+→ 다음: PHASE 6 API 개발 (api.md)
+```
+
+### PHASE 6 완료 시
+```
+API 개발 완료
+→ 다음: PHASE 7 Frontend 개발 (frontend.md)
+```
+
+### PHASE 7 완료 시
+```
+Frontend 개발 완료
+전체 워크플로우 완료
 ```
 
 ---
@@ -303,6 +638,8 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 - PHASE 3: migration.md "실행 순서", entity-validation-checklist.md PHASE 4
 - PHASE 4: scaffolding.md "흔한 오류"
 - PHASE 5: testing.md "실전 주의사항 (Common Pitfalls)"
+- PHASE 6: api.md, model.md, upsert.md
+- PHASE 7: frontend.md
 
 ---
 
@@ -312,8 +649,20 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 
 배치 단위로 작업:
 1. 연관된 Entity끼리 5-10개씩 묶기
-2. 배치마다 PHASE 2-5 완료 후 커밋
+2. 배치마다 PHASE 2-7 완료 후 커밋
 3. 다음 배치 진행
+
+**예시:**
+```
+1차 배치: User, Organization, Role (5개)
+  → PHASE 2-7 완료 → Git commit
+
+2차 배치: Consultation, ConsultationHistory (7개)
+  → PHASE 2-7 완료 → Git commit
+
+3차 배치: FAQ, Notice, Material (6개)
+  → PHASE 2-7 완료 → Git commit
+```
 
 **자세한 내용:** testing.md "대규모 프로젝트 전략"
 
@@ -325,13 +674,15 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 테스
 2. **검증을 철저히** - 각 단계의 완료 기준 체크
 3. **커밋을 자주** - 배치별로 또는 그룹별로 커밋
 4. **Business Logic 테스트 필수** - 단순 CRUD만으로는 부족
-5. **문서를 참조** - 각 스킬 문서에 상세한 가이드 있음
+5. **API 검증 로직 필수** - 비즈니스 규칙 구현
+6. **실제 동작 확인 필수** - Frontend에서 반드시 확인
+7. **문서를 참조** - 각 스킬 문서에 상세한 가이드 있음
 
 ---
 
 ## 다음 단계
 
 워크플로우 완료 후:
-- API 개발: api.md
-- Frontend 개발: frontend.md
 - 배포: 프로젝트별 배포 가이드 참조
+- 모니터링: 로그 및 에러 추적 설정
+- 성능 최적화: 쿼리 최적화, 캐싱 전략
