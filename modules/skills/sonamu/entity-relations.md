@@ -230,6 +230,17 @@ Task (과제)
 - Subset에서 `user.posts.title` 같은 역방향 조회가 필요할 때
 - 필요 없으면 생략해도 됨
 
+### HasMany 성능 최적화
+
+HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
+- 부모 레코드 ID들을 배치(batch)로 수집
+- 단일 `whereIn` 쿼리로 모든 자식 레코드 조회
+- **N+1 쿼리 문제 발생하지 않음**
+
+이 최적화는 자동으로 적용되므로 추가 설정이 필요 없습니다.
+
+**구현 위치**: `modules/sonamu/src/database/base-model.ts`의 `processLoaders` 메서드
+
 ## OneToOne (1:1)
 
 **상황**: User와 Employee가 1:1일 때
