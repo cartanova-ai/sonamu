@@ -528,24 +528,24 @@ Entity.json 파일 작성 시 다음 사항을 확인하세요:
 
 ## IMPORTANT: OrderBy Enum Generation Rule
 
-**CRITICAL: `id-desc` 외에는 절대 추가하지 마세요.**
+**IMPORTANT: Scaffolding 시에는 `id-desc`만 사용하는 것을 강력히 권장합니다.**
 
 ```json
-// DO - Correct (기본 설정)
+// RECOMMENDED - 초기 Scaffolding용
 "ProductOrderBy": { "id-desc": "ID최신순" }
 
-// DO NOT - Incorrect (scaffolding 오류 발생!)
+// AVOID - Scaffolding 전에는 피하세요
 "ProductOrderBy": { "id-desc": "ID최신순", "name-asc": "이름순", "created_at-desc": "등록일순" }
 ```
 
-### 왜 id-desc만?
+### 왜 id-desc만 권장하나?
 
-Scaffolding이 생성하는 model 코드는 `id-desc`만 처리합니다. OrderBy enum에 다른 값이 있으면:
-1. **Scaffolding 시 오류 발생** (model 생성 실패)
-2. model의 `exhaustive()` 함수에서 타입 오류 발생
-3. 개발자가 수동으로 model에 케이스 추가 필요
+Scaffolding이 생성하는 model 코드는 `id-desc`만 자동 처리합니다. OrderBy enum에 다른 값이 있으면:
+1. Scaffolding은 정상 동작하지만, model의 `exhaustive()` 함수에서 타입 오류 발생
+2. 개발자가 수동으로 model에 케이스 추가 필요
+3. 이 작업이 누락되면 런타임 에러 발생 가능
 
-**WARNING: Entity 생성 시 반드시 `id-desc`만 포함하고, 다른 정렬 옵션은 추가하지 마세요.**
+**이것은 기술적 제약이 아닌 Scaffolding의 best practice입니다.** 복잡한 OrderBy는 Scaffolding 완료 후 추가하는 것이 안전합니다.
 
 ### 추가 정렬 옵션이 필요할 때
 
