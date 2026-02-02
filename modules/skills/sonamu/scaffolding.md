@@ -15,13 +15,134 @@ description: Sonamu UI Scaffolding 사용 시 참조. 흔한 오류와 해결 �
 4. **TypeScript 빌드 완료**: `pnpm build`로 `dist/` 폴더에 `.js` 파일 생성
 5. **개발 서버 재시작**: `pnpm dev` (빌드 후 재시작 필요)
 
+## Scaffolding 후 필수 체크리스트
+
+**CRITICAL: Scaffolding 완료 후 반드시 다음 작업을 수행하세요.**
+
+### 1. Build 테스트
+```bash
+cd packages/api
+pnpm build
+
+cd packages/web
+pnpm build
+```
+- [ ] API 빌드 성공
+- [ ] Web 빌드 성공
+
+### 2. Dev 서버 재시작
+```bash
+cd packages/api
+pnpm dev
+```
+- [ ] 서버 정상 작동
+
+### 3. Relation이 있는 경우 (i18n 키 추가)
+
+**필수**: Entity에 BelongsToOne 또는 relation이 있으면 반드시 수행
+
+```typescript
+// packages/api/src/i18n/ko.ts
+export default {
+  // ... 기존 키들
+  
+  // Relation 있는 Entity마다 추가
+  "entity.Post.author_id": "작성자",
+  "entity.Question.collection_id": "소속 모음집",
+  "entity.Question.parent_id": "상위 질문",
+  "entity.Employee.department_id": "부서",
+  "entity.Task.principal_investigator_id": "연구책임자",
+  
+  // ...
+} as const;
+```
+
+**패턴**: `entity.{EntityId}.{relation}_id`
+- relation 이름에 `_id` 접미사 추가
+- 예: `author` relation → `author_id` 키
+
+- [ ] Relation 있는 모든 Entity의 i18n 키 추가 완료
+
+### 4. OrderBy 케이스 추가 (id-desc 외 사용 시)
+
+**선택**: entity.json의 OrderBy enum에 `id-desc` 외 값이 있으면 수행
+
+```typescript
+// packages/api/src/application/{entity}/{entity}.model.ts
+
+// 생성된 코드
+if (params.orderBy === "id-desc") {
+  qb.orderBy("posts.id", "desc");
+} else {
+  exhaustive(params.orderBy);  // 타입 에러 발생!
+}
+
+// 수정: 나머지 case 추가
+if (params.orderBy === "id-desc") {
+  qb.orderBy("posts.id", "desc");
+} else if (params.orderBy === "created_at-desc") {
+  qb.orderBy("posts.created_at", "desc");
+} else if (params.orderBy === "name-asc") {
+  qb.orderBy("posts.name", "asc");
+} else {
+  exhaustive(params.orderBy);  // 이제 타입 에러 없음
+}
+```
+
+- [ ] OrderBy 케이스 추가 완료
+
+### 5. types.ts nullable 필드 처리 (테스트 전 필수!)
+
+**필수**: 모든 Entity의 types.ts에서 nullable 필드 처리
+
+```typescript
+// packages/api/src/application/{entity}/{entity}.types.ts
+
+// 생성된 코드
+export const PostSaveParams = PostBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+
+// 수정: nullable 필드 추가
+export const PostSaveParams = PostBaseSchema
+  .partial({
+    id: true,
+    created_at: true,
+    updated_at: true,      // nullable 필드
+    category: true,        // nullable 필드
+    description: true,     // nullable 필드
+  })
+  .extend({
+    updated_at: z.date().nullish(),
+    category: z.string().nullish(),
+    description: z.string().nullish(),
+  });
+```
+
+**상세 가이드**: `testing.md`의 "엔티티 생성 후 즉시 해야 할 작업" 참조
+
+- [ ] 모든 Entity의 types.ts nullable 필드 처리 완료
+
+### 완료 확인
+
+```
+✅ Scaffolding 후 필수 체크리스트 완료
+→ 다음 단계: 테스트 작성 (testing.md)
+
+⚠️ types.ts nullable 필드 처리를 하지 않으면
+   테스트 작성 시 타입 에러가 발생합니다!
+```
+
+---
+
 ## 흔한 오류
 
 | 오류 | 원인 | 해결 |
 |------|------|------|
 | "존재하지 않는 모듈 패스 요청 {Type}" | types.ts 미생성 또는 미컴파일 | 대기/수동생성 → build → dev 재시작 |
-| exhaustive() 타입 에러 | OrderBy 첫 번째 값만 자동 처리 | Model에서 나머지 case 추가 |
-| i18n 키 없음 (relation) | `author_id` vs `author` | `entity.{E}.{relation}` 사용 (`_id` 제외) |
+| exhaustive() 타입 에러 | OrderBy 첫 번째 값만 자동 처리 | 위 "4. OrderBy 케이스 추가" 참조 |
+| i18n 키 없음 (relation) | `author_id` vs `author` | 위 "3. Relation이 있는 경우" 참조 |
 
 ## 상세 설명
 
