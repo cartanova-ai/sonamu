@@ -124,8 +124,8 @@ pnpm dev
 
 🎉 **완료!**
 
-- API: http://localhost:1028
-- Sonamu UI: http://localhost:1028/sonamu-ui (엔티티 관리)
+- API: http://localhost:34900
+- Sonamu UI: http://localhost:34900/sonamu-ui (엔티티 관리)
 - Web: http://localhost:3028
 
 ---
@@ -167,8 +167,8 @@ pnpm dev
 
 | 서비스         | 포트               | URL                              |
 | -------------- | ------------------ | -------------------------------- |
-| **API 서버**   | `BASE_PORT` (1028) | http://localhost:1028            |
-| **Sonamu UI**  | -                  | http://localhost:1028/sonamu-ui  |
+| **API 서버**   | `BASE_PORT` (34900) | http://localhost:34900            |
+| **Sonamu UI**  | -                  | http://localhost:34900/sonamu-ui  |
 | **Web 개발**   | `BASE_PORT + 2000` (3028) | http://localhost:3028     |
 | **PostgreSQL** | 5432               | -                                |
 
@@ -210,7 +210,7 @@ pnpm dev
 
 ### 1. 엔티티 생성
 
-API 서버를 실행한 상태에서 http://localhost:1028/sonamu-ui 접속 → **Entities** 탭 → **+ Entity** 클릭
+API 서버를 실행한 상태에서 http://localhost:34900/sonamu-ui 접속 → **Entities** 탭 → **+ Entity** 클릭
 
 ### 2. 자동 생성되는 파일들
 

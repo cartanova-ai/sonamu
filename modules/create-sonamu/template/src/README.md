@@ -56,12 +56,12 @@ pnpm dev
 ```
 
 API 서버가 시작되면 다음 주소로 접속할 수 있습니다:
-- **API 서버**: http://localhost:1028
-- **Sonamu UI**: http://localhost:1028/sonamu-ui (엔티티 관리)
+- **API 서버**: http://localhost:34900
+- **Sonamu UI**: http://localhost:34900/sonamu-ui (엔티티 관리)
 
 ### 4. 첫 번째 엔티티 생성
 
-1. Sonamu UI 열기: http://localhost:1028/sonamu-ui
+1. Sonamu UI 열기: http://localhost:34900/sonamu-ui
 2. **Entities** 탭 → **"+ Entity"** 클릭
 3. 엔티티 정의 (예: `User`, `Post`)
 4. `api/src/application/`과 `web/src/services/`에 파일이 자동으로 생성됩니다
@@ -107,8 +107,8 @@ web/src/services/
 
 | 서비스      | 포트                    | URL                             |
 | ----------- | ----------------------- | ------------------------------- |
-| API 서버    | `BASE_PORT` (기본 1028) | http://localhost:1028           |
-| Sonamu UI   | -                       | http://localhost:1028/sonamu-ui |
+| API 서버    | `BASE_PORT` (기본 34900) | http://localhost:34900           |
+| Sonamu UI   | -                       | http://localhost:34900/sonamu-ui |
 | Web 클라이언트 | `BASE_PORT + 2000`      | http://localhost:3028           |
 | PostgreSQL  | 5432                    | -                               |
 
@@ -148,7 +148,7 @@ web/src/services/
 
 ### 1. 엔티티 생성
 
-1. API 서버 시작 후 Sonamu UI 열기 (http://localhost:1028/sonamu-ui)
+1. API 서버 시작 후 Sonamu UI 열기 (http://localhost:34900/sonamu-ui)
 2. **Entities** 탭 → **"+ Entity"** 클릭
 3. 엔티티 정보 입력 (이름, 필드 등)
 4. **Create** 클릭 - 파일이 자동으로 생성됩니다!
