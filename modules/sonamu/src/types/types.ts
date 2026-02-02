@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
+import type { ApiDecoratorOptions, Context } from "../api";
 import type { GuardKey } from "./../api/decorators";
 import type { CacheControlHandler } from "../cache-control/types";
 
@@ -1424,9 +1424,8 @@ export type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<
       Context,
-      "request" | "reply" | "headers" | "createSSE" | "naiteStore" | "locale"
-    > &
-      AuthContext,
+      "request" | "reply" | "headers" | "createSSE" | "naiteStore" | "locale" | "user" | "session"
+    >,
     request: FastifyRequest,
     reply: FastifyReply,
   ) => Context | Promise<Context>;

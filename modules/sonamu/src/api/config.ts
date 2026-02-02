@@ -15,7 +15,7 @@ import type { SonamuLoggingOptions } from "../logger/configure";
 import type { StorageConfig } from "../storage/types";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
 import type { Executable, SonamuFastifyConfig } from "../types/types";
-import type { AuthContext, Context } from "./context";
+import type { Context } from "./context";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
@@ -157,25 +157,6 @@ export type SonamuServerOptions = {
 
   /**
    * better-auth 인증 설정
-   *
-   * @example
-   * ```typescript
-   * // 기본 설정 (emailAndPassword: true)
-   * server: {
-   *   auth: true
-   * }
-   *
-   * // 상세 설정
-   * server: {
-   *   auth: {
-   *     emailAndPassword: true,
-   *     basePath: "/api/auth",
-   *     socialProviders: {
-   *       google: { clientId: "...", clientSecret: "..." }
-   *     }
-   *   }
-   * }
-   * ```
    */
   auth?: BetterAuthOptions;
 
@@ -235,9 +216,8 @@ export type SonamuTaskOptions = {
   contextProvider: (
     defaultContext: Pick<
       Context,
-      "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale"
-    > &
-      AuthContext,
+      "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale" | "user" | "session"
+    >,
   ) => Context | Promise<Context>;
 };
 

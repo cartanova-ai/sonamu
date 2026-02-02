@@ -22,15 +22,9 @@ export type Context = {
   bufferedFiles?: BufferedFile[];
   /** stream 모드에서 업로드된 파일 */
   uploadedFiles?: UploadedFile[];
-} & AuthContext &
-  ContextExtend;
 
-/**
- * better-auth 인증 컨텍스트
- */
-export type AuthContext = {
   /** 현재 로그인한 사용자 (null이면 미인증) */
   user: User | null;
   /** 현재 세션 정보 (null이면 미인증) */
   session: Session | null;
-};
+} & ContextExtend;

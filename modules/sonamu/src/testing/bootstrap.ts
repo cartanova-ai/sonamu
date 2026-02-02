@@ -8,7 +8,7 @@ import {
   type VitestUtils,
   test as vitestTest,
 } from "vitest";
-import type { AuthContext, Context } from "../api/context";
+import type { Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
 import { Naite } from "../naite/naite";
@@ -133,7 +133,7 @@ export const test = Object.assign(
 );
 
 export const testAs = Object.assign(
-  async <User extends AuthContext["user"]>(
+  async <User extends Context["user"]>(
     user: User,
     title: string,
     fn: TestFunction<object>,
@@ -158,13 +158,13 @@ export const testAs = Object.assign(
     });
   },
   {
-    skip: async <User extends AuthContext["user"]>(
+    skip: async <User extends Context["user"]>(
       _user: User,
       title: string,
       fn: TestFunction<object>,
       options?: TestOptions,
     ) => vitestTest.skip(title, options, fn),
-    only: async <User extends AuthContext["user"]>(
+    only: async <User extends Context["user"]>(
       user: User,
       title: string,
       fn: TestFunction<object>,

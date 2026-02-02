@@ -1,3 +1,4 @@
+import type { FastifyRequest } from "fastify";
 import fs from "fs";
 import path from "path";
 import { cluster } from "radashi";
@@ -122,4 +123,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     !Array.isArray(value) &&
     Object.prototype.toString.call(value) === "[object Object]"
   );
+}
+
+// Convert Fastify headers to standard Headers object
+export function convertFastifyHeadersToStandard(headers: FastifyRequest["headers"]): Headers {
+  const headersObj = new Headers();
+  Object.entries(headers).forEach(([key, value]) => {
+    if (value) headersObj.append(key, value.toString());
+  });
+  return headersObj;
 }

@@ -11,7 +11,13 @@ import os from "os";
 import path from "path";
 import type { PoolConfig } from "pg";
 import type { ZodObject } from "zod";
-import { createMockSSEFactory, DB, isDaemonServer, merge } from "..";
+import {
+  convertFastifyHeadersToStandard,
+  createMockSSEFactory,
+  DB,
+  isDaemonServer,
+  merge,
+} from "..";
 import { SONAMU_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
@@ -942,6 +948,10 @@ class SonamuClass {
       this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
       this.config.i18n.defaultLocale;
 
+    // auth context 추가
+    const headers = convertFastifyHeadersToStandard(request.headers);
+    const session = (await this._auth?.api.getSession({ headers })) ?? null;
+
     const context: Context = {
       ...(await Promise.resolve(
         config.contextProvider(
@@ -953,8 +963,8 @@ class SonamuClass {
             naiteStore: Naite.createStore(),
             locale,
             // auth
-            user: (await this._auth?.$context)?.session?.user ?? null,
-            session: (await this._auth?.$context)?.session?.session ?? null,
+            user: session?.user ?? null,
+            session: session?.session ?? null,
           },
           request,
           reply,
@@ -1123,31 +1133,15 @@ class SonamuClass {
       method: ["GET", "POST"],
       url: `${basePath}/*`,
       handler: async (request, reply) => {
-        if (!this._auth) {
-          throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
-        }
-
         const url = new URL(request.url, `http://${request.headers.host}`);
-        const headers = new Headers();
-        for (const [key, value] of Object.entries(request.headers)) {
-          if (value) {
-            if (Array.isArray(value)) {
-              for (const v of value) {
-                headers.append(key, v);
-              }
-            } else {
-              headers.append(key, value);
-            }
-          }
-        }
-
+        const headers = convertFastifyHeadersToStandard(request.headers);
         const req = new Request(url.toString(), {
           method: request.method,
           headers,
           ...(request.body ? { body: JSON.stringify(request.body) } : {}),
         });
 
-        const response = await this._auth.handler(req);
+        const response = await this.auth.handler(req);
 
         reply.status(response.status);
         response.headers.forEach((value: string, key: string) => {

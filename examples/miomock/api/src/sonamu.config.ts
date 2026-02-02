@@ -138,10 +138,6 @@ export default defineConfig({
         },
       },
     },
-    // auth: {
-    //   userSerializer: async (user, _request) => user,
-    //   userDeserializer: async (serialized, _request) => serialized,
-    // },
 
     apiConfig: {
       contextProvider: (defaultContext, request) => {
