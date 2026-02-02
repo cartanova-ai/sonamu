@@ -1,43 +1,34 @@
-import {
-  AsyncSelect,
-  type AsyncSelectOption,
-  MultiSelect,
-} from "@sonamu-kit/react-components/components";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
+import { useCallback, useState } from "react";
 import type { CompanyListParams } from "@/services/company/company.types";
-import { CompanyService } from "@/services/services.generated";
-import type { CompanySubsetKey, CompanySubsetMapping } from "@/services/sonamu.generated";
+import { CompanyAsyncIdConfig } from "@/services/services.generated";
+import type {
+  CompanySearchField,
+  CompanySubsetKey,
+  CompanySubsetMapping,
+} from "@/services/sonamu.generated";
 
 export type CompanyIdAsyncSelectProps<T extends CompanySubsetKey> = {
   subset: T;
   baseListParams?: CompanyListParams;
-  textField?: keyof CompanySubsetMapping[T];
-  valueField?: keyof CompanySubsetMapping[T];
+  textField?: keyof CompanySubsetMapping[T] & string;
+  valueField?: keyof CompanySubsetMapping[T] & string;
   placeholder?: string;
   clearable?: boolean;
   disabled?: boolean;
   className?: string;
   multiple?: boolean;
-} & (
-  | {
-      multiple?: false;
-      value?: number | null;
-      onValueChange?: (value: number | undefined) => void;
-    }
-  | {
-      multiple: true;
-      value?: number[];
-      onValueChange?: (value: number[]) => void;
-    }
-);
+  value?: number | number[] | null;
+  onValueChange?: (value: number | number[] | undefined) => void;
+};
 
 export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   subset,
   value,
   onValueChange,
   baseListParams,
-  textField,
-  valueField,
+  textField = "name",
+  valueField = "id",
   placeholder = "COMPANY",
   clearable,
   disabled,
@@ -46,72 +37,31 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
 }: CompanyIdAsyncSelectProps<T>) {
   const [listParams, setListParams] = useState<CompanyListParams>(baseListParams ?? {});
 
-  const { data, isLoading } = CompanyService.useCompanies(subset, listParams);
-  const { rows: companies } = data ?? {};
-
-  // 옵션 생성
-  const options = useMemo(() => {
-    return (companies ?? []).map((company) => ({
-      value: String(company[valueField ?? "id"] as number),
-      label: String(company[textField ?? "name"]),
-    }));
-  }, [companies, textField, valueField]);
-
-  // baseListParams 변경 시 반영
-  useEffect(() => {
-    setListParams((prev) => ({
-      ...prev,
-      ...baseListParams,
-    }));
-  }, [baseListParams]);
-
-  // 검색어 변경 핸들러
-  const handleSearch = useCallback((keyword: string) => {
-    setListParams((prev) => ({
-      ...prev,
-      keyword: keyword || undefined,
-    }));
-  }, []);
-
-  // Multiple select
-  if (multiple) {
-    const multiValue = Array.isArray(value) ? value.map(String) : [];
-
-    const handleMultiChange = (selectedValues: string[]) => {
-      const numericValues = selectedValues.map(Number);
-      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
-    };
-
-    return (
-      <MultiSelect
-        options={options}
-        value={multiValue}
-        onValueChange={handleMultiChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={className}
-      />
-    );
-  }
-
-  // Single select
-  const singleValue = typeof value === "number" ? value : undefined;
-
-  const handleSingleChange = (value: string | undefined) => {
-    const numericValue = value ? Number(value) : undefined;
-    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
-  };
+  const handleSearch = useCallback(
+    (keyword: string) => {
+      setListParams((prev) => ({
+        ...prev,
+        search: keyword ? (textField as CompanySearchField) : undefined,
+        keyword: keyword || undefined,
+      }));
+    },
+    [textField],
+  );
 
   return (
-    <AsyncSelect
-      options={options as AsyncSelectOption<string>[]}
-      value={singleValue !== undefined ? String(singleValue) : undefined}
-      onValueChange={handleSingleChange}
-      isLoading={isLoading}
+    <IdAsyncSelect
+      config={CompanyAsyncIdConfig}
+      subset={subset}
+      listParams={listParams}
+      textField={textField}
+      valueField={valueField}
       placeholder={placeholder}
       clearable={clearable}
       disabled={disabled}
       className={className}
+      multiple={multiple}
+      value={value}
+      onValueChange={onValueChange}
       onSearch={handleSearch}
     />
   );

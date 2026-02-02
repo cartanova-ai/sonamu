@@ -15,10 +15,6 @@ export class Template__view_enums_select extends Template {
     };
   }
 
-  override getRequiredDictKeys(): string[] | null {
-    return ["common.all"];
-  }
-
   async render({ entityId, enumId }: TemplateOptions["view_enums_select"]) {
     const names = EntityManager.getNamesFromId(entityId);
     const label = getLabel(entityId, enumId);
@@ -26,11 +22,9 @@ export class Template__view_enums_select extends Template {
     return {
       ...this.getTargetAndPath(names, enumId),
       body: `
-
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@sonamu-kit/react-components/components';
-
+import { EnumSelect } from '@sonamu-kit/react-components/components';
 import { ${enumId}, ${enumId}Label } from '@/services/sonamu.generated';
-import { SD } from "@/i18n/sd.generated";
+
 export type ${enumId}SelectProps = {
   value?: string;
   onValueChange?: (value: string | null | undefined) => void;
@@ -50,24 +44,18 @@ export function ${enumId}Select({
   disabled,
   className,
 }: ${enumId}SelectProps) {
-  // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
-  const validOptions = ${enumId}.options.filter((key) => (key as string) !== "");
-  const enumLabels = SD.enumLabels("${enumId}");
-
   return (
-    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder ?? "${label}"} />
-      </SelectTrigger>
-      <SelectContent>
-        {clearable && <SelectItem value="">{SD("common.all")}</SelectItem>}
-        {validOptions.map((key) => (
-          <SelectItem key={key} value={key}>
-            {(textPrefix ?? "") + enumLabels[key]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <EnumSelect
+      enum={${enumId}}
+      labels={${enumId}Label}
+      value={value}
+      onValueChange={onValueChange}
+      placeholder={placeholder ?? "${label}"}
+      textPrefix={textPrefix}
+      clearable={clearable}
+      disabled={disabled}
+      className={className}
+    />
   );
 }
       `.trim(),

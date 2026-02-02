@@ -1179,3 +1179,107 @@ export namespace CompanyService {
       mutationFn: (params: { ids: number[] }) => del(params.ids),
     });
 }
+
+// AsyncIdConfig: Company
+export const CompanyAsyncIdConfig = {
+  useList: CompanyService.useCompanies as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: Department
+export const DepartmentAsyncIdConfig = {
+  useList: DepartmentService.useDepartments as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: Employee
+export const EmployeeAsyncIdConfig = {
+  useList: EmployeeService.useEmployees as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: File
+export const FileAsyncIdConfig = {
+  useList: FileService.useFiles as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: Project
+export const ProjectAsyncIdConfig = {
+  useList: ProjectService.useProjects as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: SyncFixture
+export const SyncFixtureAsyncIdConfig = {
+  useList: SyncFixtureService.useSyncFixtures as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: Tag
+export const TagAsyncIdConfig = {
+  useList: TagService.useTags as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+
+// AsyncIdConfig: User
+export const UserAsyncIdConfig = {
+  useList: UserService.useUsers as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean },
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};

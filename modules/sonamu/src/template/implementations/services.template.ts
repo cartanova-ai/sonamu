@@ -7,6 +7,7 @@ import {
 } from "../../api/code-converters";
 import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
+import { EntityManager } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
@@ -298,6 +299,47 @@ ${functions.join("\n\n")}
       );
     }
 
+    // AsyncIdConfig 생성 (Entity별로)
+    const entityIds = EntityManager.getAllIds();
+    const asyncIdConfigs: string[] = [];
+
+    for (const entityId of entityIds) {
+      const names = EntityManager.getNamesFromId(entityId);
+
+      // useList 메서드를 가진 API 찾기 (복수형 resourceName을 가진 것)
+      const listApi = apisByModel.get(names.capital)?.find((api) => {
+        if (!api.options.resourceName || !api.options.clients?.includes("tanstack-query")) {
+          return false;
+        }
+        // resourceName이 복수형인지 확인 (list API는 복수형 사용)
+        const resourceName = api.options.resourceName;
+        return inflection.pluralize(resourceName) === resourceName;
+      });
+
+      if (listApi) {
+        // resourceName에서 hook 이름 생성 (기존 로직과 동일)
+        const hookName = inflection.camelize(assertDefined(listApi.options.resourceName), true);
+        const useHookName = `use${inflection.camelize(hookName)}`;
+
+        asyncIdConfigs.push(
+          `
+// AsyncIdConfig: ${names.capital}
+export const ${names.capital}AsyncIdConfig = {
+  useList: ${names.capital}Service.${useHookName} as (
+    subset: string,
+    params?: Record<string, unknown>,
+    options?: { enabled?: boolean }
+  ) => {
+    data?: { rows: Record<string, unknown>[] };
+    isLoading: boolean;
+    error?: Error;
+  },
+};
+          `.trim(),
+        );
+      }
+    }
+
     // BUILT_IN_TYPES에서 사용되는 타입들을 확인하여 동적으로 import 구성
     const builtInTypeImports = Object.keys(BUILT_IN_TYPES)
       .filter((typeKey) => importKeys.includes(typeKey))
@@ -315,9 +357,12 @@ ${functions.join("\n\n")}
       "toFormData",
     ].join(", ");
 
+    // body 구성: namespaces + asyncIdConfigs
+    const bodyParts = [...namespaces, ...asyncIdConfigs];
+
     return {
       ...this.getTargetAndPath(),
-      body: namespaces.join("\n\n"),
+      body: bodyParts.join("\n\n"),
       importKeys: diff(unique(importKeys), [
         ...typeParamNames,
         "ListResult",
