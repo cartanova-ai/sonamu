@@ -45,32 +45,26 @@ export default defineConfig({
         root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
       },
-      session: {
-        secret: process.env.SESSION_SECRET || "sonamu-secret-key-change-this-in-production",
-        salt: process.env.SESSION_SALT || "mq9hDxBCDbsQDR6N",
-        cookie: {
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 365 * 10,
-        },
-      },
       custom: (_server) => {
         // nothing yet
       },
     },
-
-    auth: true,
-    // auth: {
-    //   userSerializer: async (user, _request) => user,
-    //   userDeserializer: async (serialized, _request) => serialized,
-    // },
+    
+    auth:{
+      emailAndPassword: { enabled: true },
+      baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
+      secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+      basePath: "/",
+      session: {
+        expiresIn: 60 * 60 * 24 * 365 * 10,
+      },
+    },
 
     apiConfig: {
       contextProvider: (defaultContext, request) => {
         return {
           ...defaultContext,
           ip: request.ip,
-          session: request.session,
           body: request.body,
         };
       },
