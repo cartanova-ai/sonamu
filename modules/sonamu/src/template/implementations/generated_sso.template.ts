@@ -12,6 +12,28 @@ import {
 import { Template } from "../template";
 import type { SourceCode } from "./generated.template";
 
+/**
+ * better-auth additionalFields의 type 값을 TypeScript 타입 문자열로 변환합니다.
+ */
+function mapBetterAuthFieldType(type: string): string {
+  switch (type) {
+    case "string":
+      return "string";
+    case "number":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "date":
+      return "Date";
+    case "string[]":
+      return "string[]";
+    case "number[]":
+      return "number[]";
+    default:
+      return "unknown";
+  }
+}
+
 export class Template__generated_sso extends Template {
   constructor() {
     super("generated_sso");
@@ -87,6 +109,12 @@ export class Template__generated_sso extends Template {
       sourceCodes.push(dbSchemaSourceCode);
     }
 
+    // Auth User 타입 생성
+    const authUserTypeSourceCode = this.getAuthUserTypeSourceCode();
+    if (authUserTypeSourceCode) {
+      sourceCodes.push(authUserTypeSourceCode);
+    }
+
     const sourceCode = sourceCodes.reduce(
       (result, ts) => {
         if (ts === null) {
@@ -116,11 +144,17 @@ export class Template__generated_sso extends Template {
       .filter(Boolean)
       .join(", ");
 
+    // customHeaders 구성
+    const customHeaders = [`import { ${sonamuImports} } from "sonamu";`];
+    if (this.hasAuthConfig()) {
+      customHeaders.push(`import type { User } from "better-auth";`);
+    }
+
     return {
       ...this.getTargetAndPath(),
       body: sourceCode.lines.join("\n"),
       importKeys: sourceCode.importKeys,
-      customHeaders: [`import { ${sonamuImports} } from "sonamu";`],
+      customHeaders,
     };
   }
 
@@ -154,6 +188,17 @@ export class Template__generated_sso extends Template {
       (entity) => `${entity.table}: ${entity.id}ForeignKeys;`,
     );
 
+    // ContextExtend - auth 설정이 있을 때만 user 타입 추가
+    const contextExtendLines: string[] = [];
+    if (this.hasAuthConfig()) {
+      contextExtendLines.push(
+        ``,
+        `  export interface ContextExtend {`,
+        `    user: SonamuUser | null;`,
+        `  }`,
+      );
+    }
+
     return {
       label: `DatabaseSchema`,
       lines: [
@@ -169,6 +214,7 @@ export class Template__generated_sso extends Template {
         `  export interface DatabaseForeignKeys {`,
         ...fkMetadataLines,
         `  }`,
+        ...contextExtendLines,
         `}`,
       ],
       importKeys: entities.map((entity) => `${entity.id}BaseSchema`),
@@ -216,5 +262,49 @@ export class Template__generated_sso extends Template {
       lines: fkTypeLines,
       importKeys: [],
     };
+  }
+
+  /**
+   * sonamu.config.ts의 auth.user.additionalFields에서 SonamuUser 타입을 생성합니다.
+   * @returns SourceCode | null - auth 설정이 없으면 null 반환
+   */
+  private getAuthUserTypeSourceCode(): SourceCode | null {
+    const authConfig = Sonamu.config.server?.auth;
+    if (!authConfig) {
+      return null;
+    }
+
+    // biome-ignore lint/suspicious/noExplicitAny: additionalFields 타입이 동적임
+    const additionalFields = (authConfig as any)?.user?.additionalFields;
+    if (!additionalFields || Object.keys(additionalFields).length === 0) {
+      // additionalFields가 없으면 기본 User 타입만 사용
+      return {
+        label: "Auth User Type",
+        lines: ["export type SonamuUser = User;"],
+        importKeys: [],
+      };
+    }
+
+    // additionalFields를 TypeScript 타입으로 변환
+    const fieldLines = Object.entries(additionalFields).map(([key, value]) => {
+      // biome-ignore lint/suspicious/noExplicitAny: better-auth additionalFields 구조
+      const fieldType = mapBetterAuthFieldType((value as any).type);
+      // biome-ignore lint/suspicious/noExplicitAny: better-auth additionalFields 구조
+      const isRequired = (value as any).required !== false;
+      return `  ${key}${isRequired ? "" : "?"}: ${fieldType};`;
+    });
+
+    return {
+      label: "Auth User Type",
+      lines: ["export type SonamuUser = User & {", ...fieldLines, "};"],
+      importKeys: [],
+    };
+  }
+
+  /**
+   * auth 설정이 있는지 확인합니다.
+   */
+  private hasAuthConfig(): boolean {
+    return !!Sonamu.config.server?.auth;
   }
 }
