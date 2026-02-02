@@ -5,7 +5,7 @@ import { EventEmitter } from "events";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import inflection from "inflection";
 import { minimatch } from "minimatch";
-import path, { dirname } from "path";
+import path from "path";
 import { group, unique } from "radashi";
 import type { z } from "zod";
 import type { WorkflowMetadata } from "..";
@@ -40,6 +40,7 @@ import {
   loadTypes,
   loadWorkflows,
 } from "./module-loader";
+import * as SyncerActions from "./syncer-actions";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
@@ -307,37 +308,36 @@ export class Syncer {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
     const diffTypes = Object.keys(diffGroups);
 
-    // 트리거: entity, types
-    // 액션: 스키마 생성
+    // Single source of truth가 변경된 경우
     if (diffTypes.includes("entity")) {
-      await this.handleEntityChange(diffGroups, diffTypes);
+      await this.handleTruthSourceChanges(diffGroups, diffTypes);
     }
 
-    // 트리거: types, enums, generated 변경시
-    // 액션: 파일 싱크 types, enums, generated
+    // 타겟으로 복사만 하면 되는 파일이 변경된 경우
     if (
       diffTypes.includes("types") ||
       diffTypes.includes("functions") ||
       diffTypes.includes("generated")
     ) {
-      await this.handleTypesOrFunctionsOrGeneratedChange(diffGroups);
+      await this.handleSyncableFileChanges(diffGroups);
     }
 
-    // 트리거: model
+    // 모델/프레임 구현체가 변경된 경우
     if (diffTypes.includes("model") || diffTypes.includes("frame")) {
-      await this.handleModelOrFrameChange(diffGroups);
+      await this.handleImplementationChanges(diffGroups);
     }
 
-    // 트리거: config
+    // 설정 파일이 변경된 경우
     if (diffTypes.includes("config")) {
-      await this.actionSyncConfig();
+      await SyncerActions.actionSyncConfig();
     }
 
-    // 트리거: workflow
+    // 워크플로우 파일이 변경된 경우
     if (diffTypes.includes("workflow")) {
       await this.autoloadWorkflows();
     }
 
+    // i18n 파일(entity 포함)이 변경된 경우
     if (diffTypes.includes("i18n") || diffTypes.includes("entity")) {
       await this.syncSD();
     }
@@ -365,16 +365,16 @@ export class Syncer {
     }) as unknown as DiffGroups;
   }
 
-  async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
-    Naite.t("handleEntityChange", { diffGroups, diffTypes });
+  async handleTruthSourceChanges(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
+    Naite.t("handleTruthSourceChanges", { diffGroups, diffTypes });
 
     await EntityManager.reload();
 
     // types 생성(entity 새로 추가된 경우)
     // parentId가 없고, types가 없는 경우에만 생성
-    const entityId = EntityManager.getEntityIdFromPath(diffGroups.entity?.[0]);
-
-    if (entityId) {
+    const entityPath = diffGroups.entity?.at(0);
+    if (entityPath !== undefined) {
+      const entityId = EntityManager.getEntityIdFromPath(entityPath);
       const entity = EntityManager.get(entityId);
       // 프로젝트에 생성되어야 하는 .ts 파일의 경로입니다.
       const typeFilePath = path.join(
@@ -386,7 +386,7 @@ export class Syncer {
       }
     }
 
-    await this.actionGenerateSchemas();
+    await SyncerActions.actionGenerateSchemas();
 
     diffGroups.generated = unique([
       ...(diffGroups.generated ?? []),
@@ -395,13 +395,13 @@ export class Syncer {
     diffTypes.push("generated");
   }
 
-  async handleTypesOrFunctionsOrGeneratedChange(diffGroups: DiffGroups): Promise<FileType[]> {
+  async handleSyncableFileChanges(diffGroups: DiffGroups): Promise<FileType[]> {
     const tsPaths = unique([
       ...(diffGroups.types ?? []),
       ...(diffGroups.functions ?? []),
       ...(diffGroups.generated ?? []),
     ]);
-    Naite.t("handleTypesOrFunctionsOrGeneratedChange", { diffGroups });
+    Naite.t("handleSyncableFileChanges", { diffGroups });
 
     // console.log(
     //   chalk.gray(
@@ -409,13 +409,13 @@ export class Syncer {
     //   )
     // );
 
-    await this.actionSyncFilesToTargets(tsPaths);
+    await SyncerActions.actionSyncFilesToTargets(tsPaths);
 
     return [];
   }
 
-  async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
-    Naite.t("handleModelOrFrameChange", { diffGroups });
+  async handleImplementationChanges(diffGroups: DiffGroups): Promise<void> {
+    Naite.t("handleImplementationChanges", { diffGroups });
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
     // console.log(
@@ -452,112 +452,9 @@ export class Syncer {
       throw new Error("not reachable");
     });
 
-    await this.actionGenerateServices(params);
-    await this.actionGenerateHttps();
-
-    // queries.generated.ts 및 entry-server.generated.tsx 재생성
-    await generateTemplate("queries", {}, { overwrite: true });
-    await generateTemplate("entry_server", {}, { overwrite: true });
-  }
-
-  // web/.sonamu.env 에 현재 설정값 저장
-  async actionSyncConfig() {
-    const { host, port } = Sonamu.config.server.listen ?? {};
-    const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
-
-    Naite.t("actionSyncConfig", { content });
-    await Promise.all(
-      Sonamu.config.sync.targets.map(async (target) => {
-        await writeFile(path.join(Sonamu.appRootPath, target, ".sonamu.env"), content);
-      }),
-    );
-  }
-
-  /**
-   * services.generated.ts를 생성합니다.
-   * @param paramsArray
-   * @returns 생성된 파일 경로 배열.
-   */
-  async actionGenerateServices(
-    paramsArray: {
-      namesRecord: EntityNamesRecord;
-    }[],
-  ): Promise<string[]> {
-    Naite.t("actionGenerateServices", paramsArray);
-
-    // services.generated.ts 통합 파일 생성
-    const servicesFile = await generateTemplate(
-      "services",
-      {},
-      {
-        overwrite: true,
-      },
-    );
-
-    return [...servicesFile];
-  }
-
-  /**
-   * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
-   * @returns 생성된 파일 경로 배열.
-   */
-  async actionGenerateSchemas(): Promise<AbsolutePath[]> {
-    return (
-      await Promise.all([
-        generateTemplate("generated_sso", {}, { overwrite: true }),
-        generateTemplate("generated", {}, { overwrite: true }),
-      ])
-    )
-      .flat()
-      .flat();
-  }
-
-  /**
-   * sonamu.generated.http를 생성합니다.
-   * @returns 생성된 파일 경로.
-   */
-  async actionGenerateHttps(): Promise<AbsolutePath> {
-    const [res] = await generateTemplate(
-      "generated_http",
-      { entityId: "dummy" },
-      { overwrite: true },
-    );
-    assert(res);
-    return res;
-  }
-
-  /**
-   * *.types.ts, *.functions.ts, *.generated.ts를 타겟 디렉토리에 복사합니다.
-   * @param tsPaths
-   * @returns 복사된 파일 경로 배열.
-   */
-  async actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise<string[]> {
-    const { targets } = Sonamu.config.sync;
-    const { dir: apiDir } = Sonamu.config.api;
-
-    return (
-      await Promise.all(
-        targets.map(async (target) =>
-          Promise.all(
-            tsPaths.map(async (realSrc) => {
-              const dst = realSrc
-                .replace(`/${apiDir}/`, `/${target}/`)
-                .replace("/application/", "/services/");
-              const dir = dirname(dst);
-              if (!(await exists(dir))) {
-                await mkdir(dir, { recursive: true });
-              }
-              !isTest() &&
-                console.log(
-                  chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
-                );
-              await copyFileWithReplaceCoreToShared(realSrc, dst);
-              return dst;
-            }),
-          ),
-        ),
-      )
-    ).flat();
+    await SyncerActions.actionGenerateServices(params);
+    await SyncerActions.actionGenerateHttps();
+    await SyncerActions.actionGenerateSsr();
   }
 
   /**

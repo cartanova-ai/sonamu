@@ -163,10 +163,10 @@ if (await exists(typesFilePath)) {
 
 ### types.ts 자동 생성 메커니즘
 
-Entity 생성 시 syncer의 `handleEntityChange`가 자동으로 `init_types` 템플릿을 실행합니다:
+Entity 생성 시 syncer의 `handleTruthSourceChanges`가 자동으로 `init_types` 템플릿을 실행합니다:
 
 ```typescript
-// modules/sonamu/src/syncer/syncer.ts - handleEntityChange 함수
+// modules/sonamu/src/syncer/syncer.ts - handleTruthSourceChanges 함수
 if (entityId) {
   const entity = EntityManager.get(entityId);
   const typeFilePath = path.join(...);
