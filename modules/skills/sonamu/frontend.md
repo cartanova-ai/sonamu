@@ -235,3 +235,212 @@ registerSSR({
 - NEVER manually modify `services.generated.ts`
 - MUST specify Subset parameter when calling APIs
 - Use `Promise.all([...])` for parallel requests
+
+---
+
+## 전체 컴포넌트 구현 예시
+
+### 목록 페이지
+
+```typescript
+// pages/consultations/index.tsx
+import { useState } from "react";
+import { ConsultationService } from "@/services/services.generated";
+
+function ConsultationListPage() {
+  const [params, setParams] = useState({ num: 20, page: 1 });
+  
+  const { data, isLoading, error } = ConsultationService.useConsultations(
+    "P",  // Subset
+    params
+  );
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return (
+    <div>
+      <h1>상담 목록</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>제목</th>
+            <th>상태</th>
+            <th>작성일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.rows.map((row) => (
+            <tr key={row.id}>
+              <td>{row.id}</td>
+              <td>{row.title}</td>
+              <td>{row.status}</td>
+              <td>{row.created_at}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      {/* 페이지네이션 */}
+      <div>
+        <button
+          disabled={params.page === 1}
+          onClick={() => setParams((p) => ({ ...p, page: p.page - 1 }))}
+        >
+          이전
+        </button>
+        <span>Page {params.page}</span>
+        <button
+          disabled={!data || data.rows.length < params.num}
+          onClick={() => setParams((p) => ({ ...p, page: p.page + 1 }))}
+        >
+          다음
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+**핵심 포인트:**
+- Service.useXXX hooks로 데이터 조회
+- 로딩/에러 상태 처리
+- 페이지네이션 구현
+
+### 편집 페이지
+
+```typescript
+// pages/consultations/[id].tsx
+import { useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { ConsultationService } from "@/services/services.generated";
+import { ConsultationSaveParams } from "@/services/consultation/consultation.types";
+
+function ConsultationFormPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
+  const { form, setForm, register, submit, errors } = useTypeForm(
+    ConsultationSaveParams,
+    {
+      title: "",
+      content: "",
+      status: "pending",
+      user_id: 0,
+    }
+  );
+  
+  // 데이터 로드 (수정 모드)
+  useEffect(() => {
+    if (id) {
+      ConsultationService.getConsultation("A", Number(id)).then((row) => {
+        setForm((prev) => ({ ...prev, ...row }));
+      });
+    }
+  }, [id]);
+  
+  const saveMutation = ConsultationService.useSaveMutation();
+  
+  const handleSubmit = submit(async (form) => {
+    const [consultationId] = await saveMutation.mutateAsync({ spa: [form] });
+    navigate(`/consultations/${consultationId}`);
+  });
+  
+  return (
+    <div>
+      <h1>{id ? "상담 수정" : "상담 등록"}</h1>
+      <form>
+        <div>
+          <label>제목</label>
+          <input {...register("title")} />
+          {errors.title && <span className="error">{errors.title.message}</span>}
+        </div>
+        
+        <div>
+          <label>내용</label>
+          <textarea {...register("content")} />
+          {errors.content && <span className="error">{errors.content.message}</span>}
+        </div>
+        
+        <div>
+          <label>상태</label>
+          <select {...register("status")}>
+            <option value="pending">대기중</option>
+            <option value="in_progress">진행중</option>
+            <option value="completed">완료</option>
+          </select>
+          {errors.status && <span className="error">{errors.status.message}</span>}
+        </div>
+        
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={saveMutation.isPending}
+        >
+          {saveMutation.isPending ? "저장 중..." : "저장"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+**핵심 포인트:**
+- useTypeForm으로 폼 관리
+- Zod 기반 유효성 검증
+- useMutation으로 데이터 저장
+- 수정 모드 시 데이터 로드
+
+### 커스텀 API 호출 + 캐시 무효화
+
+```typescript
+// components/ConsultationDetail.tsx
+import { useQueryClient } from "@tanstack/react-query";
+import { ConsultationService } from "@/services/services.generated";
+import type { ConsultationStatus } from "@/services/consultation/consultation.types";
+
+function ConsultationDetail({ id }: { id: number }) {
+  const queryClient = useQueryClient();
+  
+  const { data: consultation } = ConsultationService.useConsultation("A", id);
+  
+  const handleStatusChange = async (newStatus: ConsultationStatus) => {
+    // 커스텀 API 호출
+    await ConsultationService.changeStatus(id, newStatus, "상태 변경");
+    
+    // 캐시 무효화 - 해당 상담의 데이터를 다시 가져옴
+    queryClient.invalidateQueries({
+      queryKey: ["Consultation", "findById", "A", id]
+    });
+    
+    // 목록 캐시도 무효화 (옵션)
+    queryClient.invalidateQueries({
+      queryKey: ["Consultation", "findMany"]
+    });
+  };
+  
+  if (!consultation) return <div>Loading...</div>;
+  
+  return (
+    <div>
+      <h2>{consultation.title}</h2>
+      <p>현재 상태: {consultation.status}</p>
+      <div>
+        <button onClick={() => handleStatusChange("in_progress")}>
+          진행 시작
+        </button>
+        <button onClick={() => handleStatusChange("completed")}>
+          완료 처리
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+**핵심 포인트:**
+- Service 클래스에서 커스텀 메서드 호출
+- queryClient.invalidateQueries로 캐시 무효화
+- 상태 변경 후 UI 자동 업데이트

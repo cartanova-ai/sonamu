@@ -321,6 +321,102 @@ await this.getPuri("w").transaction(async (trx) => {
 });
 ```
 
+## 검증 패턴
+
+### 단계별 검증
+
+비즈니스 규칙을 단계별로 검증하는 패턴:
+
+```typescript
+async enroll(courseId: number, userId: number): Promise<Enrollment> {
+  // 1단계: 중복 체크
+  const existing = await this.findOne("A", {
+    course_id: courseId,
+    user_id: userId,
+  });
+  
+  if (existing) {
+    throw new Error("이미 등록된 강좌입니다");
+  }
+  
+  // 2단계: 정원 확인
+  const course = await CourseModel.findById("A", courseId);
+  const { total } = await this.findMany({ course_id: courseId });
+  
+  if (total >= course.max_students) {
+    throw new Error("정원이 가듍 찼습니다");
+  }
+  
+  // 3단계: 실행
+  const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
+  return this.findById("A", id);
+}
+```
+
+### 조건부 검증
+
+조건에 따라 다른 검증 수행:
+
+```typescript
+async save(spa: TaskSaveParams[]): Promise<number[]> {
+  for (const sp of spa) {
+    // 상태가 완료일 때만 완료일 필수
+    if (sp.status === "completed" && !sp.completed_at) {
+      throw new Error("완료 상태는 완료일이 필요합니다");
+    }
+    
+    // 예산이 있을 때만 금액 범위 체크
+    if (sp.budget !== null && sp.budget < 0) {
+      throw new Error("예산은 0 이상이어야 합니다");
+    }
+  }
+  
+  // 검증 통과 후 저장
+  const wdb = this.getPuri("w");
+  spa.forEach((sp) => wdb.ubRegister("tasks", sp));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("tasks");
+  });
+}
+```
+
+### 관련 데이터 검증
+
+다른 테이블과의 관계를 검증:
+
+```typescript
+async save(spa: ResponseSaveParams[]): Promise<number[]> {
+  for (const sp of spa) {
+    // 설문이 아직 열려있는지 확인
+    const collection = await CollectionModel.findById("A", sp.collection_id);
+    
+    if (collection.status === "closed") {
+      throw new Error("이미 종료된 설문입니다");
+    }
+    
+    // 응답 기간 확인
+    const now = new Date();
+    if (now < collection.begin_date || now > collection.end_date) {
+      throw new Error("응답 가능 기간이 아닙니다");
+    }
+  }
+  
+  // 검증 통과 후 저장
+  const wdb = this.getPuri("w");
+  spa.forEach((sp) => wdb.ubRegister("responses", sp));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("responses");
+  });
+}
+```
+
+**핵심 포인트:**
+- 검증 실패 시 명확한 에러 메시지
+- 검증을 모두 통과한 후에만 저장
+- 비즈니스 규칙을 코드로 강제
+
 ---
 
 ## IMPORTANT: Verify orderBy After Scaffolding

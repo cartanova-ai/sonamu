@@ -219,6 +219,48 @@ pnpm dev  # 이 상태로 유지하면서 작업
 
 **참조 스킬:** testing.md
 
+**사전 준비: Seed 데이터 준비 (CRITICAL!)**
+
+테스트 실행을 위해서는 FK 제약 조건을 만족하는 기본 데이터가 필요합니다.
+
+1. **현재 test DB 상태를 dump로 저장**
+   ```bash
+   cd packages/api
+   pnpm dump
+   ```
+   
+2. **생성된 dump 파일 확인 및 편집**
+   
+   Dump 파일 위치: `database/dumps/fixture.sql`
+   
+   파일을 열어서 **적절한 위치에 INSERT문 추가**:
+   
+   ```sql
+   -- User 테이블 테스트 데이터
+   INSERT INTO users (id, email, username, password, role, created_at) 
+   VALUES (1, 'admin@test.com', 'admin', 'hashed_password', 'admin', NOW());
+   
+   -- Organization 테이블 테스트 데이터
+   INSERT INTO organizations (id, name, code) 
+   VALUES (1, '본사', 'HQ');
+   ```
+   
+   **주의:**
+   - FK 관계를 고려하여 부모 테이블부터 INSERT
+   - 테스트에서 사용할 최소한의 데이터만 추가
+   - ID는 명시적으로 지정 (테스트 코드에서 참조하기 위함)
+
+3. **fixture DB에 dump 적용**
+   ```bash
+   pnpm seed
+   pnpm sonamu fixture sync  # test DB에 동기화
+   ```
+
+**완료 확인:**
+- [ ] dump 파일에 필요한 INSERT문 추가 완료
+- [ ] fixture DB에 seed 데이터 적용 완료
+- [ ] test DB에 동기화 완료
+
 **절차:**
 
 1. **types.ts nullable 필드 처리 확인**
@@ -289,133 +331,33 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - 추가 필요한 API 엔드포인트 식별
 
 2. **기본 CRUD API 확인**
-   - scaffolding으로 자동 생성된 API 확인
-   - findById, findMany, save, del
+   - scaffolding으로 자동 생성된 API 확인 (findById, findMany, save, del)
    - 이미 @api 데코레이터 적용됨
 
 3. **커스텀 API 메서드 추가**
-   
-   예시: 상담 시스템의 "상담 상태 변경" API
-   
-   ```typescript
-   // consultation.model.ts
-   
-   @api({ httpMethod: "POST", guards: ["user"] })
-   async changeStatus(
-     id: number,
-     status: ConsultationStatus,
-     memo?: string
-   ): Promise<Consultation> {
-     const wdb = this.getPuri("w");
-     
-     return wdb.transaction(async (trx) => {
-       // 1. 상담 업데이트
-       await trx.ubRegister("consultations", {
-         id,
-         status,
-         updated_at: new Date()
-       });
-       await trx.ubUpsert("consultations");
-       
-       // 2. 상태 변경 이력 기록
-       await trx.ubRegister("consultation_histories", {
-         consultation_id: id,
-         status,
-         memo,
-         created_at: new Date(),
-       });
-       await trx.ubUpsert("consultation_histories");
-       
-       // 3. 결과 반환
-       return this.findById("A", id);
-     });
-   }
-   ```
+   - @api 데코레이터로 HTTP 엔드포인트 생성
+   - 비즈니스 로직 구현 (트랜잭션, 복잡한 쿼리 등)
+   - **상세 가이드:** api.md "@api 데코레이터" 참조
 
 4. **검증 로직 구현**
-   
-   ```typescript
-   @api({ httpMethod: "POST", guards: ["user"] })
-   async enroll(
-     courseId: number,
-     userId: number
-   ): Promise<Enrollment> {
-     // 중복 등록 방지
-     const existing = await this.findOne("A", {
-       course_id: courseId,
-       user_id: userId,
-     });
-     
-     if (existing) {
-       throw new Error("이미 등록된 강좌입니다");
-     }
-     
-     // 정원 확인
-     const course = await CourseModel.findById("A", courseId);
-     const { total } = await this.findMany({ course_id: courseId });
-     
-     if (total >= course.max_students) {
-       throw new Error("정원이 가득 찼습니다");
-     }
-     
-     // 등록 실행
-     const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
-     return this.findById("A", id);
-   }
-   ```
+   - 비즈니스 규칙 검증 (중복 체크, 정원 확인 등)
+   - 적절한 에러 메시지 반환
+   - **상세 가이드:** model.md "검증 패턴" 참조
 
 5. **권한 가드 적용**
-   
-   ```typescript
-   // 일반 사용자 전용
-   @api({ httpMethod: "POST", guards: ["user"] })
-   async save(spa: PostSaveParams[]): Promise<number[]> { }
-   
-   // 관리자 전용
-   @api({ httpMethod: "POST", guards: ["admin"] })
-   async del(ids: number[]): Promise<number> { }
-   
-   // 현재 로그인 사용자 정보 활용
-   @api({ httpMethod: "GET", guards: ["user"] })
-   async myConsultations(): Promise<ListResult<Consultation>> {
-     const { user } = Sonamu.getContext();
-     return this.findMany({ user_id: user!.id });
-   }
-   ```
+   - guards: ["user"], ["admin"] 설정
+   - Context에서 현재 사용자 정보 활용
+   - **상세 가이드:** api.md "권한 가드" 참조
 
 6. **API 테스트 확장**
-   
-   PHASE 5의 Business Logic 테스트에 커스텀 API 호출 추가:
-   
-   ```typescript
-   // consultation.test.ts
-   describe("E. Business Logic", () => {
-     test("상태 변경 API", async () => {
-       const { consultationId } = await createTestConsultationWithDeps();
-       
-       // 커스텀 API 호출
-       const updated = await ConsultationModel.changeStatus(
-         consultationId,
-         "completed",
-         "상담 완료"
-       );
-       
-       expect(updated.status).toBe("completed");
-       
-       // 이력 기록 확인
-       const histories = await ConsultationHistoryModel.findMany({
-         consultation_id: consultationId,
-       });
-       expect(histories.rows).toHaveLength(1);
-     });
-   });
-   ```
+   - PHASE 5의 Business Logic 테스트에 커스텀 API 호출 추가
+   - 각 API의 정상 동작 및 에러 케이스 검증
 
 7. **빌드 및 테스트 통과 확인**
    ```bash
    cd packages/api
    pnpm build
-   pnpm test  # 모든 테스트 통과 확인
+   pnpm test
    ```
 
 **완료 기준:**
@@ -451,108 +393,21 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - TanStack Query hooks (useQuery, useMutation)
 
 3. **목록 페이지 구현**
-   
-   ```typescript
-   // pages/consultations/index.tsx
-   import { ConsultationService } from "@/services/services.generated";
-   
-   function ConsultationListPage() {
-     const [params, setParams] = useState({ num: 20, page: 1 });
-     
-     const { data, isLoading } = ConsultationService.useConsultations(
-       "P",  // Subset
-       params
-     );
-     
-     if (isLoading) return <div>Loading...</div>;
-     
-     return (
-       <div>
-         <h1>상담 목록</h1>
-         <table>
-           {data?.rows.map((row) => (
-             <tr key={row.id}>
-               <td>{row.id}</td>
-               <td>{row.title}</td>
-               <td>{row.status}</td>
-             </tr>
-           ))}
-         </table>
-       </div>
-     );
-   }
-   ```
+   - Service.useXXX hooks로 데이터 조회
+   - 로딩/에러 상태 처리
+   - 페이지네이션 구현
+   - **상세 가이드:** frontend.md "목록 페이지" 참조
 
 4. **편집 페이지 구현**
-   
-   ```typescript
-   // pages/consultations/[id].tsx
-   import { useTypeForm } from "@sonamu-kit/react-components/lib";
-   import { ConsultationSaveParams } from "@/services/consultation/consultation.types";
-   
-   function ConsultationFormPage() {
-     const { id } = useParams();
-     
-     const { form, setForm, register, submit, errors } = useTypeForm(
-       ConsultationSaveParams,
-       {
-         title: "",
-         content: "",
-         status: "pending",
-         user_id: 0,
-       }
-     );
-     
-     // 데이터 로드
-     useEffect(() => {
-       if (id) {
-         ConsultationService.getConsultation("A", Number(id)).then((row) => {
-           setForm((prev) => ({ ...prev, ...row }));
-         });
-       }
-     }, [id]);
-     
-     const saveMutation = ConsultationService.useSaveMutation();
-     
-     const handleSubmit = submit(async (form) => {
-       const [consultationId] = await saveMutation.mutateAsync({ spa: [form] });
-       navigate(`/consultations/${consultationId}`);
-     });
-     
-     return (
-       <form>
-         <input {...register("title")} />
-         {errors.title && <span>{errors.title.message}</span>}
-         <button onClick={handleSubmit} disabled={saveMutation.isPending}>
-           저장
-         </button>
-       </form>
-     );
-   }
-   ```
+   - useTypeForm으로 폼 관리
+   - Zod 기반 유효성 검증
+   - useMutation으로 데이터 저장
+   - **상세 가이드:** frontend.md "폼 페이지" 참조
 
 5. **커스텀 API 호출**
-   
-   ```typescript
-   function ConsultationDetail({ id }: { id: number }) {
-     const queryClient = useQueryClient();
-     
-     const handleStatusChange = async (newStatus: ConsultationStatus) => {
-       await ConsultationService.changeStatus(id, newStatus, "상태 변경");
-       
-       // 캐시 무효화
-       queryClient.invalidateQueries({
-         queryKey: ["Consultation", "findById", "A", id]
-       });
-     };
-     
-     return (
-       <button onClick={() => handleStatusChange("completed")}>
-         완료 처리
-       </button>
-     );
-   }
-   ```
+   - Service 클래스에서 커스텀 메서드 호출
+   - queryClient.invalidateQueries로 캐시 무효화
+   - **상세 가이드:** frontend.md "커스텀 API" 참조
 
 6. **실제 동작 확인**
    
@@ -572,15 +427,11 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - [ ] **비즈니스 로직 정상 동작** (예: 상태 변경, 정원 체크 등)
 
 7. **통합 테스트**
-   
-   주요 사용자 시나리오를 실제로 실행:
    - 사용자 등록부터 로그인까지
    - 데이터 생성부터 조회까지
    - 전체 업무 프로세스 실행
 
 8. **버그 수정 및 재테스트**
-   
-   발견된 문제:
    - API 오류 → PHASE 6로 돌아가서 수정
    - 타입 오류 → types.ts 또는 entity.json 수정
    - UI 문제 → Frontend 컴포넌트 수정

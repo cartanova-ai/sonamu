@@ -113,3 +113,152 @@ async uploadLargeFiles(): Promise<{ urls: string[] }> {
   // uploadedFiles[].key로 저장된 경로 접근
 }
 ```
+
+---
+
+## 실전 비즈니스 로직 패턴
+
+### 트랜잭션과 이력 기록
+
+상태 변경 시 트랜잭션으로 메인 데이터와 이력을 함께 처리하는 패턴:
+
+```typescript
+// consultation.model.ts
+
+@api({ httpMethod: "POST", guards: ["user"] })
+async changeStatus(
+  id: number,
+  status: ConsultationStatus,
+  memo?: string
+): Promise<Consultation> {
+  const wdb = this.getPuri("w");
+  
+  return wdb.transaction(async (trx) => {
+    // 1. 상담 업데이트
+    await trx.ubRegister("consultations", {
+      id,
+      status,
+      updated_at: new Date()
+    });
+    await trx.ubUpsert("consultations");
+    
+    // 2. 상태 변경 이력 기록
+    await trx.ubRegister("consultation_histories", {
+      consultation_id: id,
+      status,
+      memo,
+      created_at: new Date(),
+    });
+    await trx.ubUpsert("consultation_histories");
+    
+    // 3. 결과 반환
+    return this.findById("A", id);
+  });
+}
+```
+
+**핵심 포인트:**
+- 트랜잭션으로 원자성 보장
+- ubRegister + ubUpsert 패턴
+- 변경 후 최신 데이터 반환
+
+### 검증 로직과 비즈니스 규칙
+
+등록 전 중복 체크, 정원 확인 등 복잡한 검증을 수행하는 패턴:
+
+```typescript
+@api({ httpMethod: "POST", guards: ["user"] })
+async enroll(
+  courseId: number,
+  userId: number
+): Promise<Enrollment> {
+  // 1. 중복 등록 방지
+  const existing = await this.findOne("A", {
+    course_id: courseId,
+    user_id: userId,
+  });
+  
+  if (existing) {
+    throw new Error("이미 등록된 강좌입니다");
+  }
+  
+  // 2. 정원 확인
+  const course = await CourseModel.findById("A", courseId);
+  const { total } = await this.findMany({ course_id: courseId });
+  
+  if (total >= course.max_students) {
+    throw new Error("정원이 가득 찼습니다");
+  }
+  
+  // 3. 등록 실행
+  const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
+  return this.findById("A", id);
+}
+```
+
+**핵심 포인트:**
+- 단계별 검증 (중복 → 정원)
+- 명확한 에러 메시지
+- 검증 통과 후 저장
+
+### 권한 가드 활용
+
+사용자 역할에 따른 접근 제어:
+
+```typescript
+// 일반 사용자 전용
+@api({ httpMethod: "POST", guards: ["user"] })
+async save(spa: PostSaveParams[]): Promise<number[]> { }
+
+// 관리자 전용
+@api({ httpMethod: "POST", guards: ["admin"] })
+async del(ids: number[]): Promise<number> { }
+
+// 현재 로그인 사용자 정보 활용
+@api({ httpMethod: "GET", guards: ["user"] })
+async myConsultations(): Promise<ListResult<Consultation>> {
+  const { user } = Sonamu.getContext();
+  return this.findMany({ user_id: user!.id });
+}
+```
+
+### API 테스트 작성
+
+Business Logic 테스트에서 커스텀 API를 검증:
+
+```typescript
+// consultation.test.ts
+describe("E. Business Logic", () => {
+  test("상태 변경 API", async () => {
+    const { consultationId } = await createTestConsultationWithDeps();
+    
+    // 커스텀 API 호출
+    const updated = await ConsultationModel.changeStatus(
+      consultationId,
+      "completed",
+      "상담 완료"
+    );
+    
+    expect(updated.status).toBe("completed");
+    
+    // 이력 기록 확인
+    const histories = await ConsultationHistoryModel.findMany({
+      consultation_id: consultationId,
+    });
+    expect(histories.rows).toHaveLength(1);
+  });
+  
+  test("등록 검증", async () => {
+    const courseId = 1;
+    const userId = 1;
+    
+    // 첫 등록 성공
+    await EnrollmentModel.enroll(courseId, userId);
+    
+    // 중복 등록 실패
+    await expect(
+      EnrollmentModel.enroll(courseId, userId)
+    ).rejects.toThrow("이미 등록된 강좌입니다");
+  });
+});
+```
