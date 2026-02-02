@@ -358,7 +358,67 @@ const [id] = await FAQModel.save([{
 - [ ] dbDefault 필드는 `.optional().default()` 사용
 - [ ] 필수 필드는 partial 제외 확인
 
-**상세 타입 안전성 가이드:** 아래 "타입 안전성 주의사항" 섹션 참조
+**상세 타입 안전성 가이드:** 아래 "TypeScript 타입 안전성" 및 "타입 안전성 주의사항" 섹션 참조
+
+## TypeScript 타입 안전성
+
+### 배열 인덱싱 시 옵셔널 체이닝 필수
+
+배열에서 인덱스로 요소에 접근한 후 프로퍼티에 접근할 때는 반드시 옵셔널 체이닝(`?.`)을 사용해야 합니다.
+
+**이유:**
+- 배열 인덱싱(`array[0]`, `array[1]` 등)은 항상 `undefined`를 반환할 수 있음
+- TypeScript는 `array[0]`의 타입을 `T | undefined`로 추론
+- 옵셔널 체이닝 없이 프로퍼티 접근 시 컴파일 에러 발생
+
+**잘못된 예:**
+```typescript
+// 타입 에러: Object is possibly 'undefined'
+expect(list.rows[0].title).toBe("테스트");
+expect(searchResults.rows[0].name).toContain("검색어");
+```
+
+**올바른 예:**
+```typescript
+// 옵셔널 체이닝 사용
+expect(list.rows[0]?.title).toBe("테스트");
+expect(searchResults.rows[0]?.name).toContain("검색어");
+
+// 또는 먼저 존재 확인 후 접근
+expect(list.rows.length).toBeGreaterThanOrEqual(1);
+expect(list.rows[0].title).toBe("테스트"); // 이제 안전
+```
+
+### 권장 패턴
+
+테스트 코드에서 배열 요소 접근 시:
+
+**패턴 1: 옵셔널 체이닝 사용**
+```typescript
+const result = await Model.findMany("A", { num: 10, page: 1 });
+expect(result.rows[0]?.field).toBe(expectedValue);
+```
+
+**패턴 2: 길이 검증 후 접근**
+```typescript
+const result = await Model.findMany("A", { num: 10, page: 1 });
+expect(result.rows.length).toBeGreaterThanOrEqual(1);
+expect(result.rows[0].field).toBe(expectedValue); // 타입 안전
+```
+
+**패턴 3: find() 사용 시 옵셔널 체이닝 필수**
+```typescript
+const list = await Model.findMany("A", { num: 10, page: 1 });
+const item = list.rows.find(r => r.id === targetId);
+expect(item?.field).toBe(expectedValue); // find()는 undefined 반환 가능
+```
+
+### 일반 규칙
+
+- 배열 인덱싱 후 프로퍼티 접근: `array[0]?.property`
+- `find()`, `filter()[0]` 등 결과: 항상 `?.` 사용
+- 객체 중첩 접근: `obj.nested?.deep?.property`
+- Non-null assertion(`!`)은 확신이 있을 때만 사용
 
 ## Model 기본 메서드 (테스트 대상)
 
