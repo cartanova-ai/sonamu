@@ -132,8 +132,7 @@ export class Template__generated_http extends Template {
 
   resolveApiParams(
     api: ExtendedApi,
-    // biome-ignore lint/suspicious/noExplicitAny: ZodObject 타입 사용
-    references: { [typeName: string]: z.ZodObject<any> },
+    references: { [typeName: string]: z.ZodType },
   ): { [key: string]: unknown } {
     const reqType = getZodObjectFromApi(api, references);
     try {

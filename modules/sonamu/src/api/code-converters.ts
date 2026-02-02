@@ -52,7 +52,7 @@ export function unwrapPromiseOnce(paramType: ApiParamType) {
 export function getZodTypeFromApiParamType(
   paramType: ApiParamType,
   references: {
-    [id: string]: AnyZodObject;
+    [id: string]: z.ZodType;
   },
 ): z.ZodType<unknown> {
   switch (paramType) {
@@ -188,7 +188,7 @@ export function getZodTypeFromApiParamType(
 export function getZodObjectFromApiParams(
   apiParams: ApiParam[],
   references: {
-    [id: string]: AnyZodObject;
+    [id: string]: z.ZodType;
   } = {},
 ): z.ZodObject {
   return z.object(
@@ -212,13 +212,15 @@ export function getZodObjectFromApiParams(
 export function getZodObjectFromApi(
   api: ExtendedApi,
   references: {
-    [id: string]: AnyZodObject;
+    [id: string]: z.ZodType;
   } = {},
 ) {
   if (api.typeParameters?.length > 0) {
     for (const typeParam of api.typeParameters) {
       if (typeParam.constraint) {
         const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
+
+        // FIXME: references는 글로벌 오브젝트로, typeParam.id("T" 등)를 key로 이렇게 덮어씌워버리면 loadedTypes가 오염됨.
         // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
         (references[typeParam.id] as z.ZodType<any>) = zodType;
       }

@@ -21,8 +21,7 @@ export type LoadedApis = {
   options: ApiDecoratorOptions;
 }[];
 
-// biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
-export type LoadedTypes = { [typeName: string]: z.ZodObject<any> };
+export type LoadedTypes = { [typeName: string]: z.ZodType };
 
 export type LoadedModels = {
   [modelName: string]: BaseModelClass | BaseFrameClass;
@@ -102,10 +101,9 @@ export async function loadTypes(): Promise<LoadedTypes> {
 
   const types: LoadedTypes = {};
   for (const filePath of typePaths) {
-    // biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
-    const importedMembers = await importMembers<z.ZodObject<any>>(filePath);
+    const importedMembers = await importMembers<z.ZodType>(filePath);
     for (const { name, value } of importedMembers) {
-      if (value instanceof z.ZodObject) {
+      if (value instanceof z.ZodType) {
         types[name] = value;
       }
     }
