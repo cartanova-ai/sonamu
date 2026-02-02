@@ -1,3 +1,4 @@
+import type { User } from "better-auth";
 import type {
   DatabaseSchemaExtend,
   ManyToManyBaseSchema,
@@ -599,4 +600,14 @@ declare module "sonamu" {
     employees: EmployeeForeignKeys;
     sessions: SessionForeignKeys;
   }
+
+  export interface ContextExtend {
+    user: SonamuUser | null;
+  }
 }
+
+// Auth User Type
+export type SonamuUser = User & {
+  role: string;
+  created_at: Date;
+};
