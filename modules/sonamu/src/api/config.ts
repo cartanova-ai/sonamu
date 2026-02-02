@@ -2,7 +2,6 @@ import type { FastifyCompressOptions } from "@fastify/compress";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyFormbodyOptions } from "@fastify/formbody";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
-import type { SecureSessionPluginOptions } from "@fastify/secure-session";
 import type { FastifyStaticOptions } from "@fastify/static";
 import type { BetterAuthOptions } from "better-auth";
 import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
@@ -150,7 +149,6 @@ export type SonamuServerOptions = {
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
     static?: boolean | FastifyStaticOptions;
-    session?: boolean | SecureSessionPluginOptions;
 
     custom?: (server: FastifyInstance) => void;
   };

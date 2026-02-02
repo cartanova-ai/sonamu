@@ -1078,7 +1078,6 @@ class SonamuClass {
       qs: "fastify-qs",
       sse: "fastify-sse-v2",
       static: "@fastify/static",
-      session: "@fastify/secure-session",
     } as const;
 
     const registerPlugin = async <K extends keyof NonNullable<typeof plugins>>(

@@ -109,23 +109,17 @@ export default defineConfig({
         root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
       },
-      session: {
-        secret: "miomock-secret-key-change-this-in-production",
-        salt: "mq9hDxBCDbsQDR6N",
-        cookie: {
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 365 * 10,
-        },
-      },
       custom: (_server) => {
         // nothing yet
       },
     },
 
     auth: {
-      emailAndPassword: {
-        enabled: true,
+      emailAndPassword: { enabled: true },
+      baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
+      secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+      session: {
+        expiresIn: 60 * 60 * 24 * 365,
       },
       user: {
         fields: {

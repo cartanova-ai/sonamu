@@ -97,7 +97,6 @@
     "@fastify/middie": "catalog:",
     "@fastify/multipart": "catalog:",
     "@fastify/passport": "catalog:",
-    "@fastify/secure-session": "catalog:",
     "@fastify/static": "catalog:",
     "@sonamu-kit/hmr-hook": "workspace:^",
     "@sonamu-kit/hmr-runner": "workspace:^",
