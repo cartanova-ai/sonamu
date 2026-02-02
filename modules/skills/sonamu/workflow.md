@@ -41,6 +41,17 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
 
 **참조 스킬:** entity-basic.md, entity-validation-checklist.md
 
+**사전 준비: CRITICAL!**
+
+**반드시 `/packages/api`에서 `pnpm dev`를 먼저 실행하세요!**
+
+```bash
+cd packages/api
+pnpm dev  # 이 상태로 유지하면서 작업
+```
+
+> 이유: dev 모드에서 syncer가 entity.json 변경을 감지하여 types.ts를 자동 생성합니다.
+
 **절차:**
 
 1. **stub 생성** (각 Entity마다)
@@ -67,7 +78,8 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
    - 필수 메서드: findById, findOne, findMany, save, del
 
 5. **types.ts 확인**
-   - syncer가 2-3초 내 자동 생성
+   - **pnpm dev 실행 중이면** syncer가 2-3초 내 자동 생성
+   - 확인: `ls packages/api/src/application/{entity}/{entity}.types.ts`
    - 생성 안 되면 수동 생성 (entity-validation-checklist.md 참조)
 
 6. **sync 실행**
@@ -95,11 +107,24 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
 
 **참조 스킬:** migration.md, entity-validation-checklist.md
 
+**사전 확인:**
+- `/packages/api`에서 `pnpm dev`가 실행 중인지 확인
+- 브라우저에서 Sonamu UI 접속 가능: `http://localhost:3000/__sonamu` (기본 포트)
+
 **절차:**
 
 1. **Migration 생성**
-   - 방법 1 (권장): Sonamu UI에서 생성 (자동 감지)
-   - 방법 2: `pnpm sonamu migration:create` (CLI)
+   
+   **방법 1 (권장): Sonamu UI에서 생성**
+   - 브라우저에서 `http://localhost:3000/__sonamu` 접속
+   - Migration 메뉴로 이동
+   - 자동 감지된 Entity 변경사항 확인
+   - "Create Migration" 버튼 클릭
+   
+   **방법 2: CLI**
+   ```bash
+   pnpm sonamu migration:create
+   ```
 
 2. **Migration 파일 검증** (entity-validation-checklist.md PHASE 4)
    - [ ] 테이블명이 올바른가? (복수형, snake_case)

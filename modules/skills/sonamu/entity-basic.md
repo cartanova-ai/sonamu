@@ -45,6 +45,19 @@ description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 �
 
 ## Entity 생성 워크플로우
 
+**사전 준비: CRITICAL!**
+
+**반드시 `/packages/api`에서 `pnpm dev`를 먼저 실행하세요!**
+
+```bash
+cd packages/api
+pnpm dev  # 이 상태로 유지하면서 작업
+```
+
+> **이유**: dev 모드에서 syncer가 entity.json 변경을 감지하여 types.ts를 자동 생성합니다.
+> 
+> auth 엔티티뻐만 아니라 **모든 엔티티 생성 시 dev 모드가 필수**입니다.
+
 ### 1단계: stub 생성
 
 **CRITICAL: EntityId는 반드시 대문자로 시작해야 합니다!**
@@ -84,9 +97,11 @@ pnpm sonamu stub entity {EntityId}
 - 템플릿은 `entity-validation-checklist.md` PHASE 2 참조
 
 **C. types.ts (자동 생성 - 대기 필요)**
-- syncer가 2-3초 내 자동 생성
-- 생성 안 되면 수동 생성 (템플릿은 `entity-validation-checklist.md` PHASE 2 참조)
-- 생성 확인: `ls packages/api/src/application/{entity}/{entity}.types.ts`
+- **pnpm dev 실행 중이면** syncer가 2-3초 내 자동 생성
+- 확인: `ls packages/api/src/application/{entity}/{entity}.types.ts`
+- 생성 안 되면:
+  1. pnpm dev가 실행 중인지 확인
+  2. 여전히 안 되면 수동 생성 (템플릿은 `entity-validation-checklist.md` PHASE 2 참조)
 
 **완료 확인:**
 - [ ] entity.json 검증 통과

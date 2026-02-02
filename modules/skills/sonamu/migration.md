@@ -5,6 +5,23 @@ description: Sonamu 데이터베이스 마이그레이션. CREATE/ALTER TABLE, F
 
 # Migration
 
+## Sonamu UI에서 Migration 생성 (권장)
+
+**사전 준비:**
+- `/packages/api`에서 `pnpm dev` 실행 중이어야 함
+- 브라우저에서 Sonamu UI 접속: `http://localhost:34900/sonamu-ui` (기본 포트)
+
+**절차:**
+1. Sonamu UI의 Migration 메뉴로 이동
+2. Entity 변경사항이 자동 감지됨
+3. "Create Migration" 버튼 클릭
+4. Migration 파일이 `packages/api/src/migrations/` 에 생성됨
+
+**장점:**
+- Entity 변경사항을 자동 감지하여 Migration 파일 생성
+- UI에서 바로 Migration 샤행 가능
+- Rollback 기능 제공
+
 ## 기본 구조
 
 ```typescript
