@@ -237,9 +237,9 @@ async function init() {
         destPath = path.join(path.dirname(dest), ".gitignore");
       }
       fs.copyFileSync(src, destPath);
-      // 셸 스크립트는 실행 권한 유지
+      // 셸 스크립트는 실행권한 부여
       if (basename.endsWith(".sh")) {
-        fs.chmodSync(destPath, stat.mode);
+        fs.chmodSync(destPath, 0o755);
       }
       console.log(`${chalk.green("CREATE")} ${destPath}`);
     }

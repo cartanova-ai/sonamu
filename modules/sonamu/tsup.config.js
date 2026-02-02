@@ -17,7 +17,6 @@ export default defineConfig({
     "@fastify/formbody",
     "@fastify/multipart",
     "@fastify/passport",
-    "@fastify/secure-session",
     "@fastify/static",
     "chalk",
     "chokidar",

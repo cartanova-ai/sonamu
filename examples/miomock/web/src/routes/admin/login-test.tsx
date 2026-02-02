@@ -30,8 +30,12 @@ function LoginTestPage() {
   const navigate = useNavigate();
 
   const handleSubmit = () => {
-    signIn.email({ email, password }).then(() => {
-      navigate({ to: "/admin" });
+    signIn.email({ email, password }).then(({ error }) => {
+      if (error) {
+        alert(error.message);
+      } else {
+        navigate({ to: "/admin" });
+      }
     });
   };
 

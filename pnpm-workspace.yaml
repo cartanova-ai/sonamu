@@ -30,7 +30,6 @@ catalog:
   '@fastify/middie': ^8.3.0
   '@fastify/multipart': ^8
   '@fastify/passport': ^2.2.0
-  '@fastify/secure-session': ^7
   '@fastify/static': ^7
   '@hookform/resolvers': ^5.2.2
   '@iconify-json/lucide': ^1.2.82
