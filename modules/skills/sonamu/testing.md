@@ -296,6 +296,164 @@ pnpm test:watch
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
 - [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
 
+## 테스트 작성 핵심 원칙
+
+### 1. 실제 구조 확인 우선
+
+**CRITICAL: 테스트 계획 전에 반드시 실제 엔티티 구조를 확인하세요.**
+
+테스트를 작성하기 전에 다음을 확인해야 합니다:
+
+```typescript
+// STEP 1: entity.json 확인
+// - 실제 필드명과 타입
+// - nullable 여부
+// - enum 값 목록
+// - relation 구조
+
+// STEP 2: types.ts 확인
+// - SaveParams의 partial 설정
+// - nullable 필드의 nullish 처리
+// - ManyToMany relation의 _ids 배열
+
+// STEP 3: sonamu.generated.ts 확인
+// - Enum 타입 정의
+// - Subset 타입 구조
+// - BaseSchema 구조
+```
+
+**잘못된 접근:**
+```typescript
+// BAD - 추측으로 테스트 작성
+test("사용자 생성", async () => {
+  const [userId] = await UserModel.save([{
+    name: "Test",
+    status: "active",  // 실제로는 "normal"일 수 있음
+    role: "user",      // 실제로는 "normal"일 수 있음
+  }]);
+});
+```
+
+**올바른 접근:**
+```typescript
+// GOOD - entity.json 확인 후 작성
+// 1. user.entity.json 확인:
+//    - role: enum ["admin", "normal", "guest"]
+//    - status: enum ["active", "inactive"] with dbDefault: "active"
+//    - name: string (required)
+//    - email: string (nullable)
+
+// 2. user.types.ts 확인:
+//    - SaveParams에서 status, email이 partial 처리됨
+
+// 3. 테스트 작성
+test("사용자 생성", async () => {
+  const [userId] = await UserModel.save([{
+    name: "Test",
+    role: "normal",  // entity.json의 정확한 enum 값
+    // status는 dbDefault가 있어 생략 가능
+    // email은 nullable이므로 생략 가능
+  }]);
+});
+```
+
+### 2. Subset 구조 이해
+
+**중첩된 관계는 dot notation으로 접근합니다.**
+
+```typescript
+// entity.json에서 Subset 정의 확인
+{
+  "subsets": {
+    "A": [
+      "id",
+      "title",
+      "evaluation_form.id",           // BelongsToOne relation
+      "evaluation_form.title",
+      "evaluation_form.category.id",  // 중첩 relation
+      "evaluation_form.category.name"
+    ]
+  }
+}
+
+// 테스트에서 접근
+test("평가 항목 조회", async () => {
+  const { itemId } = await createTestEvaluationItemWithDeps();
+  
+  const item = await EvaluationItemModel.findById("A", itemId);
+  
+  // CORRECT - dot notation으로 중첩 접근
+  expect(item.evaluation_form.id).toBe(formId);
+  expect(item.evaluation_form.category.name).toBe("역량평가");
+  
+  // WRONG - 직접 FK 접근 시도
+  // expect(item.evaluation_form_id).toBe(formId);  // 타입 에러!
+});
+```
+
+**중요 규칙:**
+- BelongsToOne relation의 FK는 Subset에서 `relation.id` 형태로 정의됨
+- 테스트에서는 `entity.relation.field` 형태로 접근
+- 직접 `entity.relation_id` 접근은 불가능 (Subset에 포함되지 않음)
+
+### 3. DECIMAL 타입 처리
+
+**DECIMAL 타입은 PostgreSQL에서 `.00` 접미사를 포함하여 반환됩니다.**
+
+```typescript
+// entity.json
+{
+  "props": [
+    { "name": "salary", "type": "number", "precision": 10, "scale": 2 }
+  ]
+}
+
+// Migration에서 생성됨
+table.decimal("salary", 10, 2);  // DECIMAL(10,2)
+
+// 테스트 작성
+test("급여 정보 조회", async () => {
+  const [userId] = await UserModel.save([{
+    name: "Test",
+    salary: 75000,  // 입력: 숫자
+  }]);
+  
+  const user = await UserModel.findById("A", userId);
+  
+  // WRONG - 정확한 비교는 실패할 수 있음
+  // expect(user.salary).toBe(75000);  // DB에서 "75000.00" 반환 가능
+  
+  // CORRECT - toMatch()로 패턴 매칭
+  expect(String(user.salary)).toMatch(/^75000(\.00)?$/);
+  
+  // 또는 숫자 변환 후 비교
+  expect(Number(user.salary)).toBe(75000);
+  
+  // 또는 범위 체크
+  expect(user.salary).toBeGreaterThanOrEqual(74999.99);
+  expect(user.salary).toBeLessThanOrEqual(75000.01);
+});
+```
+
+**DECIMAL 타입 비교 패턴:**
+
+```typescript
+// 패턴 1: 문자열 패턴 매칭
+expect(String(value)).toMatch(/^1234\.56$/);
+expect(String(value)).toMatch(/^1234(\.56)?$/);  // .56 선택적
+
+// 패턴 2: 숫자 변환 후 비교
+expect(Number(value)).toBe(1234.56);
+
+// 패턴 3: 범위 체크 (부동소수점 오차 고려)
+expect(value).toBeCloseTo(1234.56, 2);  // 소수점 2자리까지
+
+// 패턴 4: toMatchObject (객체 비교 시)
+expect(result).toMatchObject({
+  salary: expect.any(Number),  // 타입만 체크
+});
+```
+
 ## Enum 값 사용 규칙
 
 **CRITICAL: entity.json에 정의된 enum 값만 사용해야 합니다.**
