@@ -1,7 +1,7 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import App from "@/App";
-import { SonamuProviderWrapper } from "@/contexts/sonamu-provider";
+import { SonamuProvider } from "@/contexts/sonamu-provider";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -30,11 +30,11 @@ function RootComponent() {
       <body>
         <div id="root">
           <QueryClientProvider client={queryClient}>
-            <SonamuProviderWrapper>
+            <SonamuProvider>
               <App>
                 <Outlet />
               </App>
-            </SonamuProviderWrapper>
+            </SonamuProvider>
           </QueryClientProvider>
         </div>
         <Scripts />
