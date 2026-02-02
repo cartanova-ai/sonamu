@@ -315,6 +315,31 @@ parentId가 설정된 자식 엔티티는 **루트 부모 엔티티와 같은 �
 { "name": "deleted_at", "type": "date", "nullable": true, "desc": "삭제일시" }
 ```
 
+**CRITICAL: nullable 속성의 중요성**
+
+`nullable: true`가 **없는** 필드는 **필수 필드**로 간주됩니다.
+
+Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하므로,
+업데이트 시에도 **모든 필수 필드**를 포함해야 합니다.
+
+```json
+// 예시
+{
+  "props": [
+    { "name": "title", "type": "string" },  // 필수! (nullable 없음)
+    { "name": "content", "type": "string" },  // 필수! (nullable 없음)
+    { "name": "category", "type": "string", "nullable": true }  // 선택 (nullable 있음)
+  ]
+}
+```
+
+**규칙**:
+- 선택 필드가 아니면 `nullable: true` 추가 금지
+- 선택 필드라면 반드시 `nullable: true` 명시
+- 테스트/API에서 필수 필드는 항상 값 제공 필요
+
+**상세**: `testing.md` "Quick Start" 및 `upsert.md` "CRITICAL: 필수 필드 포함 필수" 참조
+
 ### JSON 필드 추가할 때
 ```json
 { "name": "metadata", "type": "json", "id": "ProductMetadata", "desc": "메타데이터" }

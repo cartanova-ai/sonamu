@@ -35,6 +35,48 @@ return wdb.transaction(async (trx) => {
 });
 ```
 
+## CRITICAL: 필수 필드 포함 필수
+
+**ubUpsert는 PostgreSQL의 `ON CONFLICT ... DO UPDATE` 쿼리를 사용합니다.**
+
+업데이트 시에도 **모든 필수 필드(NOT NULL 제약이 있는 필드)**를 포함해야 합니다.
+
+```typescript
+// BAD - 필수 필드 누락
+wdb.ubRegister("posts", {
+  id: 1,
+  title: "Updated Title",
+  // content 필수 필드 누락! → ON CONFLICT UPDATE 시 NULL 설정 시도 → DB 에러
+});
+// Error: null value in column "content" violates not-null constraint
+
+// GOOD - 모든 필수 필드 포함
+wdb.ubRegister("posts", {
+  id: 1,
+  title: "Updated Title",
+  content: "Updated Content",  // 필수 필드 포함!
+  author_id: 1,                // FK도 필수 필드면 포함!
+});
+```
+
+**필수 필드 확인 방법**:
+1. entity.json의 props 확인
+2. `nullable: true`가 **없는** 필드 = 필수 필드
+3. `id`, `created_at`, `dbDefault` 있는 필드는 제외 가능
+
+```json
+// entity.json 예시
+{
+  "props": [
+    { "name": "id", "type": "integer" },  // 제외 가능
+    { "name": "title", "type": "string" },  // 필수! (nullable 없음)
+    { "name": "content", "type": "string" },  // 필수! (nullable 없음)
+    { "name": "category", "type": "string", "nullable": true },  // 선택
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }  // 제외 가능
+  ]
+}
+```
+
 ## 저장 순서 (중요!)
 
 FK가 참조하는 테이블을 먼저 저장:

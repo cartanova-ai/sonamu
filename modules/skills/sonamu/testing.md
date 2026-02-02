@@ -98,6 +98,86 @@ export async function createTestCommentWithDeps() {
 - FK 필드는 `_id` 접미사 사용 (`author_id`, `post_id`)
 - 반환: 주로 ID 반환, WithDeps는 객체로 여러 ID 반환
 
+**CRITICAL: 모든 필수 필드 포함 필수!**
+
+Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE` 쿼리를 사용합니다. 
+업데이트 시에도 **모든 필수 필드(NOT NULL 제약이 있는 필드)**를 포함해야 합니다.
+
+필수 필드 누락 시:
+```typescript
+// BAD - content 필수 필드 누락
+const post: PostSaveParams = {
+  author_id: authorId,
+  title: "Test",
+  // content 누락! → ubUpsert ON CONFLICT UPDATE 시 NULL 설정 시도 → DB 에러
+};
+// Error: null value in column "content" violates not-null constraint
+```
+
+### 필수 필드 vs 선택 필드 구분
+
+**1. entity.json 확인**
+
+```json
+// post.entity.json
+{
+  "props": [
+    { "name": "id", "type": "integer" },  // 자동 생성 - 제외
+    { "name": "title", "type": "string", "length": 255 },  // 필수! (nullable 없음)
+    { "name": "content", "type": "string" },  // 필수! (nullable 없음)
+    { "name": "category", "type": "string", "nullable": true },  // 선택 (nullable)
+    { "name": "author_id", "type": "integer" },  // 필수! (FK, nullable 없음)
+    { "name": "view_count", "type": "integer", "dbDefault": "0" },  // 필수이지만 DB 기본값 있음
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }  // 자동
+  ]
+}
+```
+
+**필수 필드 (Required)**: `nullable: true`가 **없는** 필드
+- `title`, `content`, `author_id`
+- test-helpers.ts에서 **반드시** 기본값 제공
+
+**선택 필드 (Optional)**: `nullable: true`가 **있는** 필드
+- `category`
+- test-helpers.ts에서 생략 가능
+
+**제외 필드**:
+- `id`: 자동 증가 (save 시 자동 생성)
+- `created_at`: dbDefault가 있어 자동 설정
+- `view_count`: dbDefault="0"이 있어 자동 설정
+
+**2. test-helpers.ts 작성**
+
+```typescript
+export async function createTestPost(
+  authorId: number,
+  params?: Partial<PostSaveParams>
+): Promise<number> {
+  const post: PostSaveParams = {
+    // 필수 필드는 반드시 포함 (nullable이 없는 필드)
+    author_id: authorId,
+    title: "Test Post",      // 필수!
+    content: "Test content",  // 필수!
+    
+    // 선택 필드는 생략 가능 (nullable: true인 필드)
+    // category: null,  // 생략 가능
+    
+    // dbDefault가 있는 필드도 생략 가능
+    // view_count: 0,  // dbDefault="0"이므로 생략 가능
+    
+    ...params,  // override 허용
+  };
+  const saved = await PostModel.save(post);
+  return saved.id;
+}
+```
+
+**규칙 요약**:
+1. entity.json에서 `nullable: true` 없는 필드 = 필수 필드
+2. 필수 필드는 test-helpers.ts에 **반드시** 기본값 포함
+3. `id`, `created_at`, `dbDefault` 있는 필드는 제외 가능
+4. ubUpsert의 ON CONFLICT UPDATE 시에도 필수 필드 필요
+
 ### 2단계: 테스트 파일 작성
 
 ```typescript
