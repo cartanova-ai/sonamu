@@ -49,8 +49,8 @@ export default defineConfig({
         // nothing yet
       },
     },
-    
-    auth:{
+
+    auth: {
       emailAndPassword: { enabled: true },
       baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
       secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
