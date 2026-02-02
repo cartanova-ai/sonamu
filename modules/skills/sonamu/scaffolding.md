@@ -150,8 +150,8 @@ export const PostSaveParams = PostBaseSchema
 
 Scaffolding은 `dist/application/{entity}/{entity}.types.js`에서 export된 타입을 읽어 모듈 경로를 등록합니다.
 
-```
-entity.ts:779-787
+```typescript
+// modules/sonamu/src/entity/entity.ts
 const typesFilePath = path.join(
   Sonamu.apiRootPath,
   runtimePath(`dist/application/${typesModulePath}.js`),
@@ -166,7 +166,7 @@ if (await exists(typesFilePath)) {
 Entity 생성 시 syncer의 `handleEntityChange`가 자동으로 `init_types` 템플릿을 실행합니다:
 
 ```typescript
-// syncer.ts L306-320
+// modules/sonamu/src/syncer/syncer.ts - handleEntityChange 함수
 if (entityId) {
   const entity = EntityManager.get(entityId);
   const typeFilePath = path.join(...);
