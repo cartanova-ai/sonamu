@@ -16,11 +16,12 @@ export async function actionSyncConfig() {
   const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
 
   Naite.t("actionSyncConfig", { content });
-  await Promise.all(
-    Sonamu.config.sync.targets.map(async (target) => {
+  await Promise.all([
+    ...Sonamu.config.sync.targets.map(async (target) => {
       await writeFile(path.join(Sonamu.appRootPath, target, ".sonamu.env"), content);
     }),
-  );
+    generateTemplate("generated_sso", {}, { overwrite: true }),
+  ]);
 }
 
 /**
@@ -57,8 +58,7 @@ export async function actionGenerateSchemas(): Promise<AbsolutePath[]> {
       generateTemplate("generated_sso", {}, { overwrite: true }),
       generateTemplate("generated", {}, { overwrite: true }),
     ])
-  )
-    .flat();
+  ).flat();
 }
 
 /**
