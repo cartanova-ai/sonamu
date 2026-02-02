@@ -32,6 +32,7 @@
     "@swc/core": "catalog:",
     "ai": "catalog:",
     "bcrypt": "catalog:",
+    "better-auth": "catalog:",
     "chalk": "catalog:",
     "date-fns": "catalog:",
     "dotenv": "catalog:",
