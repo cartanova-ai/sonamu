@@ -146,9 +146,12 @@ describe("Syncer", () => {
       expect(writeFiles.map((f) => f.path).sort()).toStrictEqual([
         join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
+        join(apiRootPath, "src/application/sonamu.generated.sso.ts"),
+        join(apiRootPath, "src/application/sonamu.generated.ts"),
         join(webRootPath, "src/entry-server.generated.tsx"),
         join(webRootPath, "src/services/company/company.types.ts"),
         join(webRootPath, "src/services/services.generated.ts"),
+        join(webRootPath, "src/services/sonamu.generated.ts"),
         join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),
       ]);
       expect(writeFiles.length).toBeGreaterThanOrEqual(2);

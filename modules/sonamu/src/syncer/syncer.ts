@@ -309,7 +309,7 @@ export class Syncer {
     const diffTypes = Object.keys(diffGroups);
 
     // Single source of truth가 변경된 경우
-    if (diffTypes.includes("entity")) {
+    if (diffTypes.includes("entity") || diffTypes.includes("types")) {
       await this.handleTruthSourceChanges(diffGroups, diffTypes);
     }
 
