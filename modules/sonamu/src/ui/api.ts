@@ -273,7 +273,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         const typeIds = (() => {
           // 프로젝트에서 정의한 타입들
           const projectTypeIds = Object.entries(Sonamu.syncer.types)
-            .filter(([_typeId, zodType]) => (zodType.def.type as string) !== "enum")
+            .filter(([_typeId, zodType]) => (zodType._zod.def.type as string) !== "enum")
             .map(([typeId, _zodType]) => typeId);
 
           // 내장 타입들 (sonamu 코어에서 제공)
