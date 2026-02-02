@@ -296,6 +296,170 @@ pnpm test:watch
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
 - [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
 
+## Enum 값 사용 규칙
+
+**CRITICAL: entity.json에 정의된 enum 값만 사용해야 합니다.**
+
+테스트 코드나 API 개발 시 enum 필드를 사용할 때는 **반드시 entity.json을 먼저 확인**하세요.
+
+### Entity.json 확인 필수
+
+**잘못된 예:**
+```typescript
+// WRONG - entity.json 확인 없이 임의의 값 사용
+await UserModel.save([{
+  email: "test@test.com",
+  name: "Test",
+  role: "superadmin",  // entity.json에 정의되지 않은 값
+}]);
+
+await TaskModel.save([{
+  title: "테스트 과제",
+  status: "in_progress",  // entity.json에 정의되지 않은 값
+}]);
+```
+
+**올바른 예:**
+
+**STEP 1: entity.json 확인**
+```json
+// user.entity.json
+{
+  "props": [
+    {
+      "name": "role",
+      "type": "string",
+      "enum": ["admin", "normal", "guest"]  // 정확한 enum 값 확인
+    }
+  ]
+}
+
+// task.entity.json
+{
+  "props": [
+    {
+      "name": "status",
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "completed"]  // 정확한 enum 값
+    }
+  ]
+}
+```
+
+**STEP 2: 정확한 enum 값 사용**
+```typescript
+// CORRECT - entity.json에 정의된 값만 사용
+await UserModel.save([{
+  email: "test@test.com",
+  name: "Test",
+  role: "admin",  // entity.json의 enum 값
+}]);
+
+await TaskModel.save([{
+  title: "테스트 과제",
+  status: "pending",  // entity.json의 enum 값
+}]);
+```
+
+### TypeScript Enum 타입 활용 (권장)
+
+**더 안전한 방법: 생성된 enum 타입 사용**
+
+```typescript
+// sonamu.generated.ts에서 자동 생성된 enum 타입
+import { UserRoleEnum, TaskStatusEnum } from "../sonamu.generated";
+
+// test-helpers.ts
+export async function createTestUser(
+  params?: Partial<UserSaveParams>
+): Promise<number> {
+  const user: UserSaveParams = {
+    email: `test-${Date.now()}@example.com`,
+    name: "Test User",
+    role: UserRoleEnum.normal,  // TypeScript enum으로 타입 안전
+    ...params,
+  };
+  const [id] = await UserModel.save([user]);
+  return id;
+}
+
+export async function createTestTask(
+  params?: Partial<TaskSaveParams>
+): Promise<number> {
+  const task: TaskSaveParams = {
+    title: "Test Task",
+    status: TaskStatusEnum.pending,  // TypeScript enum으로 타입 안전
+    ...params,
+  };
+  const [id] = await TaskModel.save([task]);
+  return id;
+}
+```
+
+### Enum 값 검증 패턴
+
+테스트에서 enum 값을 사용하기 전에 유효한 값인지 확인:
+
+```typescript
+test("User 생성 - 유효한 role", async () => {
+  // entity.json에서 확인한 유효한 값들
+  const validRoles = ["admin", "normal", "guest"];
+  
+  for (const role of validRoles) {
+    const [userId] = await UserModel.save([{
+      email: `test-${role}@test.com`,
+      name: "Test",
+      role: role as any,  // 각 role 테스트
+    }]);
+    
+    const user = await UserModel.findById("A", userId);
+    expect(user.role).toBe(role);
+  }
+});
+
+test("Task 상태 변경 - 유효한 status", async () => {
+  const { taskId } = await createTestTaskWithDeps();
+  
+  // entity.json에서 확인한 유효한 상태 전이
+  const statusFlow = ["pending", "approved", "completed"];
+  
+  for (const status of statusFlow) {
+    await TaskModel.save([{
+      id: taskId,
+      status: status as any,
+    }]);
+    
+    const task = await TaskModel.findById("A", taskId);
+    expect(task.status).toBe(status);
+  }
+});
+```
+
+### 체크리스트
+
+테스트 작성 전:
+- [ ] 사용할 enum 필드의 entity.json 확인
+- [ ] 정확한 enum 값 목록 파악
+- [ ] 가능하면 생성된 TypeScript enum 타입 사용
+- [ ] test-helpers.ts에 기본값으로 유효한 enum 값 설정
+- [ ] 임의의 문자열 사용 금지
+
+### 자주 하는 실수
+
+```typescript
+// WRONG: 추측으로 작성
+role: "user"           // entity.json에는 "normal"로 정의됨
+status: "in_progress"  // entity.json에는 "pending"로 정의됨
+status: "done"         // entity.json에는 "completed"로 정의됨
+
+// CORRECT: entity.json 확인 후 작성
+role: "normal"         // entity.json의 정확한 값
+status: "pending"      // entity.json의 정확한 값
+status: "completed"    // entity.json의 정확한 값
+```
+
+**핵심 원칙: entity.json이 단일 진실 공급원(Single Source of Truth)입니다.**
+
 ## 테스트 작성 계획 수립
 
 ### 엔티티 설계 프롬프트 기반 계획
