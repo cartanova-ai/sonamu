@@ -8,9 +8,9 @@ import ChevronUpIcon from "~icons/lucide/chevron-up";
 import Loader2Icon from "~icons/lucide/loader2";
 import XIcon from "~icons/lucide/x";
 import XCircleIcon from "~icons/lucide/x-circle";
-import { cn } from "../../lib/utils";
-import { Badge } from "./badge";
-import { Button } from "./button";
+import { cn } from "../../../lib/utils";
+import { Badge } from "../badge";
+import { Button } from "../button";
 import {
   Command,
   CommandEmpty,
@@ -18,9 +18,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "./command";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { Separator } from "./separator";
+} from "../command";
+import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { Separator } from "../separator";
 
 // ============================================================================
 // Type Definition

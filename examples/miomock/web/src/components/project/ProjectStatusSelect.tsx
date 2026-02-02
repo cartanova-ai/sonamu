@@ -1,5 +1,4 @@
-import { Select } from "@sonamu-kit/react-components/components";
-
+import { EnumSelect } from "@sonamu-kit/react-components/components";
 import { ProjectStatus, ProjectStatusLabel } from "@/services/sonamu.generated";
 
 export type ProjectStatusSelectProps = {
@@ -21,24 +20,16 @@ export function ProjectStatusSelect({
   disabled,
   className,
 }: ProjectStatusSelectProps) {
-  // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
-  const validOptions = ProjectStatus.options.filter((key) => (key as string) !== "");
-
-  const items = [
-    ...(clearable ? [{ value: "", label: "전체" }] : []),
-    ...validOptions.map((key) => ({
-      value: key,
-      label: (textPrefix ?? "") + ProjectStatusLabel[key],
-    })),
-  ];
-
   return (
-    <Select
-      value={value ?? ""}
+    <EnumSelect
+      enum={ProjectStatus}
+      labels={ProjectStatusLabel}
+      value={value}
       onValueChange={onValueChange}
-      disabled={disabled}
-      items={items}
       placeholder={placeholder ?? "상태"}
+      textPrefix={textPrefix}
+      clearable={clearable}
+      disabled={disabled}
       className={className}
     />
   );

@@ -227,8 +227,10 @@ export {
 export { ScrollArea, ScrollBar } from "./ui/scroll-area";
 export type { SelectItemDef, SelectProps } from "./ui/select";
 export { Select } from "./ui/select";
-export type { ExtractValue, SelectNewProps } from "./ui/select-new";
-export { SelectNew } from "./ui/select-new";
+export type { EnumSelectProps } from "./ui/select/enum-select";
+export { EnumSelect } from "./ui/select/enum-select";
+export type { ExtractValue, SelectNewProps } from "./ui/select/select-new";
+export { SelectNew } from "./ui/select/select-new";
 export { Separator } from "./ui/separator";
 export {
   Sheet,
