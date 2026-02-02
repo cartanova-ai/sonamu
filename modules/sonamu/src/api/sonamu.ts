@@ -950,7 +950,7 @@ class SonamuClass {
 
     // auth context 추가
     const headers = convertFastifyHeadersToStandard(request.headers);
-    const session = await this.auth.api.getSession({ headers });
+    const session = (await this._auth?.api.getSession({ headers })) ?? null;
 
     const context: Context = {
       ...(await Promise.resolve(
