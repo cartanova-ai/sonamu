@@ -46,6 +46,36 @@ pnpm sonamu sync
 
 **전체 워크플로우:** `entity-validation-checklist.md`에서 단계별 체크리스트 확인
 
+### 6단계: types.ts nullable 필드 처리 (필수)
+
+**CRITICAL: 테스트 작성 전 즉시 처리하세요!**
+
+scaffolding 완료 후 생성된 `*.types.ts` 파일에서 nullable 필드를 처리해야 합니다.
+
+```typescript
+// 자동 생성된 types.ts
+export const FAQSaveParams = FAQBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+
+// CORRECT: 즉시 수정 - nullable 필드 추가
+export const FAQSaveParams = FAQBaseSchema
+  .partial({
+    id: true,
+    created_at: true,
+    category: true,        // nullable 추가
+    order_num: true,       // nullable 추가
+  })
+  .extend({
+    category: z.string().nullish(),
+    order_num: z.number().nullish(),
+    updated_at: z.date().nullish(),
+  });
+```
+
+**상세 가이드:** `testing.md`의 "엔티티 생성 후 즉시 해야 할 작업" 참조
+
 ## 새 Entity 생성 시 체크리스트
 
 1. **id**: PascalCase (예: `User`, `BlogPost`)

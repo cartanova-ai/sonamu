@@ -13,10 +13,137 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 ## 테스트 작성 전 체크리스트
 
+- [ ] **types.ts nullable 처리 (FIRST!)** - 엔티티 생성 직후 nullable 필드 partial + extend 처리 (→ 아래 "엔티티 생성 후 즉시 해야 할 작업" 참조)
 - [ ] **Seed Data 준비** - FK 제약으로 인한 기본 데이터 필요 (→ database.md "최소 seed data" 참고)
-- [ ] **SaveParams partial 설정** - nullable/dbDefault 필드 partial 처리 확인
 - [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
 - [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
+
+## 엔티티 생성 후 즉시 해야 할 작업
+
+### types.ts nullable 필드 처리 (필수)
+
+엔티티를 생성하고 `sonamu generate`로 types.ts가 생성되면, **테스트 작성 전** 즉시 nullable 필드를 처리하세요.
+
+#### 작업 순서
+
+1. `sonamu generate` 실행
+2. 생성된 `*.types.ts` 파일 확인
+3. nullable 필드를 partial + extend + nullish 처리
+4. 테스트 작성 시작
+
+#### 처리 대상 필드
+
+- `nullable: true`인 모든 필드
+- `dbDefault`가 있는 필드 (`.optional().default(value)`)
+- FK 관계 필드 중 nullable인 것
+
+#### 실전 예시
+
+**STEP 1: sonamu generate 실행 후 생성된 파일**
+
+```typescript
+// faq.types.ts (자동 생성)
+import type { z } from "zod";  // WRONG: type import
+import { FAQBaseListParams, FAQBaseSchema } from "../sonamu.generated";
+
+export const FAQListParams = FAQBaseListParams;
+export type FAQListParams = z.infer<typeof FAQListParams>;
+
+export const FAQSaveParams = FAQBaseSchema.partial({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
+```
+
+**STEP 2: 즉시 수정 (nullable 필드 + Zod import 처리)**
+
+```typescript
+// faq.types.ts (수정 완료)
+import { z } from "zod";  // CORRECT: 일반 import로 수정
+import { FAQBaseListParams, FAQBaseSchema } from "../sonamu.generated";
+
+export const FAQListParams = FAQBaseListParams;
+export type FAQListParams = z.infer<typeof FAQListParams>;
+
+export const FAQSaveParams = FAQBaseSchema
+  .partial({
+    id: true,
+    created_at: true,
+    updated_at: true,
+    // nullable 필드 추가
+    category: true,
+    order_num: true,
+  })
+  .extend({
+    // nullable 필드를 nullish로 재정의
+    category: z.string().nullish(),       // string | null | undefined
+    order_num: z.number().nullish(),      // number | null | undefined
+    updated_at: z.date().nullish(),       // date | null | undefined
+  });
+
+export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
+```
+
+#### 왜 이렇게 해야 하나?
+
+**문제:** Zod의 `nullable()`은 `T | null`이지만 여전히 required입니다.
+
+```typescript
+// entity.json
+{ "name": "category", "type": "string", "nullable": true }
+
+// 생성된 BaseSchema
+z.object({
+  category: z.string().nullable(),  // string | null (required!)
+})
+
+// partial만 적용
+.partial({ category: true })  // category?: string | null
+
+// WRONG: undefined는 string | null에 할당 불가
+const [id] = await FAQModel.save([{
+  question: "질문",
+  answer: "답변",
+  // category 생략 시 타입 에러!
+}]);
+```
+
+**해결:** `partial()` + `extend()` + `nullish()` 조합
+
+```typescript
+// CORRECT: 올바른 처리
+FAQBaseSchema
+  .partial({ category: true })
+  .extend({ category: z.string().nullish() });  // string | null | undefined
+
+// 테스트에서 자유롭게 생략 가능
+const [id] = await FAQModel.save([{
+  question: "질문",
+  answer: "답변",
+  // category 생략 가능!
+}]);
+```
+
+#### 적용 기준
+
+| 필드 타입 | 처리 방법 |
+|-----------|----------|
+| `id`, `created_at`, `updated_at` | 항상 partial (자동 생성) |
+| `dbDefault`가 있는 필드 | `.optional().default(value)` |
+| `nullable: true`인 필드 | partial + extend + `.nullish()` |
+| 필수 필드 | partial 제외 |
+
+#### 체크리스트
+
+- [ ] `import type { z }`를 `import { z }`로 수정
+- [ ] nullable 필드를 partial에 추가
+- [ ] extend로 nullish 재정의
+- [ ] dbDefault 필드는 `.optional().default()` 사용
+- [ ] 필수 필드는 partial 제외 확인
+
+**상세 타입 안전성 가이드:** 아래 "타입 안전성 주의사항" 섹션 참조
 
 ## Model 기본 메서드 (테스트 대상)
 
@@ -675,17 +802,117 @@ api/src/testing/
 
 ## 타입 안전성 주의사항
 
+### Zod import 방식
+
+**CRITICAL: 테스트 파일에서 Zod를 import할 때는 반드시 일반 import를 사용해야 합니다.**
+
+```typescript
+// CORRECT - 테스트 파일에서
+import { z } from "zod";
+import { describe, expect, vi } from "vitest";
+
+// WRONG - type import 사용 시 런타임 에러 발생
+import type { z } from "zod";  // 테스트 실행 시 에러!
+```
+
+**이유:** 테스트에서 `z.infer<>`나 Zod 스키마를 직접 사용하기 때문에 런타임에 Zod 객체가 필요합니다.
+
+**적용 위치:**
+- `*.model.test.ts` - 모든 테스트 파일
+- `test-helpers.ts` - Zod 스키마를 사용하는 헬퍼 파일
+
 ### SaveParams의 partial 설정 확인
 
 `Model.save()` 테스트 시 `*.types.ts`의 `SaveParams` partial 설정을 확인해야 함:
 
 ```typescript
 // user.types.ts
-export const UserSaveParams = baseSchema.partial({
+import { z } from "zod";  // types 파일에서도 일반 import
+import { UserBaseSchema } from "../sonamu.generated";
+
+export const UserSaveParams = UserBaseSchema.partial({
   id: true,           // 자동 생성
   created_at: true,   // 자동 생성
   updated_at: true,   // 자동 생성
 });
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+```
+
+### Nullable 필드 처리 패턴
+
+**CRITICAL: nullable 필드는 partial + extend로 nullish() 처리가 필수입니다.**
+
+```typescript
+// faq.types.ts
+import { z } from "zod";
+import { FAQBaseSchema } from "../sonamu.generated";
+
+// CORRECT - nullable 필드를 nullish로 재정의
+export const FAQSaveParams = FAQBaseSchema
+  .partial({
+    id: true,
+    created_at: true,
+    updated_at: true,
+    // nullable 필드들도 partial 처리
+    category: true,
+    order_num: true,
+  })
+  .extend({
+    // nullable 필드는 nullish로 재정의 (string | null | undefined)
+    category: z.string().nullish(),
+    order_num: z.number().nullish(),
+    updated_at: z.date().nullish(),
+  });
+
+export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
+```
+
+**이유:** Zod의 `nullable()`은 `T | null`이지만 여전히 required입니다. `nullish()`를 사용해야 `T | null | undefined`로 완전히 optional이 됩니다.
+
+**잘못된 패턴:**
+```typescript
+// WRONG - partial만 사용 (타입 에러 발생)
+export const FAQSaveParams = FAQBaseSchema.partial({
+  id: true,
+  category: true,  // string | null 타입이지만 값을 주려면 null 명시 필요
+  order_num: true,
+});
+
+// 테스트에서 타입 에러 발생
+const [id] = await FAQModel.save([{
+  question: "질문",
+  answer: "답변",
+  // category를 생략하면 에러: undefined는 string | null에 할당 불가
+}]);
+```
+
+**올바른 패턴:**
+```typescript
+// CORRECT - partial + extend + nullish
+export const FAQSaveParams = FAQBaseSchema
+  .partial({
+    id: true,
+    category: true,
+    order_num: true,
+  })
+  .extend({
+    category: z.string().nullish(),    // string | null | undefined
+    order_num: z.number().nullish(),   // number | null | undefined
+  });
+
+// 테스트에서 자유롭게 생략 가능
+const [id] = await FAQModel.save([{
+  question: "질문",
+  answer: "답변",
+  // category, order_num 모두 생략 가능!
+}]);
+```
+
+**적용 기준:**
+- `id`, `created_at`, `updated_at`: 항상 partial (자동 생성)
+- `dbDefault`가 있는 필드: `.optional().default(value)`
+- `nullable: true`인 필드: partial + extend + `.nullish()`
+- 필수 필드: partial 제외
 ```
 
 partial로 설정되지 않은 필드는 모두 필수이므로, 테스트에서 누락하면 타입 에러 발생:
