@@ -229,6 +229,8 @@ export type { SelectItemDef, SelectProps } from "./ui/select";
 export { Select } from "./ui/select";
 export type { EnumSelectProps } from "./ui/select/enum-select";
 export { EnumSelect } from "./ui/select/enum-select";
+export type { AsyncIdConfig, IdAsyncSelectProps } from "./ui/select/id-async-select";
+export { IdAsyncSelect } from "./ui/select/id-async-select";
 export type { ExtractValue, SelectNewProps } from "./ui/select/select-new";
 export { SelectNew } from "./ui/select/select-new";
 export { Separator } from "./ui/separator";

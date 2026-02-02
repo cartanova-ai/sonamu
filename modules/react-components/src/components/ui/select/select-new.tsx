@@ -389,7 +389,7 @@ function SingleSyncSelect<Item>({
       >
         <SelectPrimitive.Trigger
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background data-placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
             props.className,
           )}
         >
@@ -581,7 +581,7 @@ function CommandBasedSelect<Item>({
           aria-expanded={isPopoverOpen}
           disabled={props.disabled || loading}
           className={cn(
-            "flex p-1 rounded-md border border-input min-h-10 h-auto items-center justify-between bg-inherit hover:bg-inherit hover:text-inherit [&_svg]:pointer-events-auto w-full",
+            "flex p-1 rounded-md border border-input min-h-10 h-auto items-center justify-between bg-white hover:bg-white hover:text-inherit [&_svg]:pointer-events-auto w-full",
             props.className,
           )}
         >

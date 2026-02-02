@@ -22,7 +22,6 @@ export class Template__view_id_async_select extends Template {
     // PK 타입 감지
     const pkType = entity.getPkType();
     const idTsType = pkType === "string" || pkType === "uuid" ? "string" : "number";
-    const isStringId = pkType === "string" || pkType === "uuid";
 
     // textField가 지정되지 않은 경우 모든 subset에 공통으로 있는 필드 찾기
     if (!textField) {
@@ -65,46 +64,37 @@ export class Template__view_id_async_select extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import {
-  AsyncSelect,
-  type AsyncSelectOption,
-  MultiSelect,
-} from "@sonamu-kit/react-components/components";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ${names.capital}Service } from "@/services/services.generated";
-import type { ${names.capital}SubsetKey, ${names.capital}SubsetMapping } from "@/services/sonamu.generated";
+import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
+import { useCallback, useState } from "react";
+import { ${names.capital}AsyncIdConfig } from "@/services/services.generated";
+import type {
+  ${names.capital}SearchField,
+  ${names.capital}SubsetKey,
+  ${names.capital}SubsetMapping,
+} from "@/services/sonamu.generated";
 import type { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 
 export type ${names.capital}IdAsyncSelectProps<T extends ${names.capital}SubsetKey> = {
   subset: T;
   baseListParams?: ${names.capital}ListParams;
-  textField?: keyof ${names.capital}SubsetMapping[T];
-  valueField?: keyof ${names.capital}SubsetMapping[T];
+  textField?: keyof ${names.capital}SubsetMapping[T] & string;
+  valueField?: keyof ${names.capital}SubsetMapping[T] & string;
   placeholder?: string;
   clearable?: boolean;
   disabled?: boolean;
   className?: string;
   multiple?: boolean;
-} & (
-  | {
-      multiple?: false;
-      value?: ${idTsType} | null;
-      onValueChange?: (value: ${idTsType} | undefined) => void;
-    }
-  | {
-      multiple: true;
-      value?: ${idTsType}[];
-      onValueChange?: (value: ${idTsType}[]) => void;
-    }
-);
+  value?: ${idTsType} | ${idTsType}[] | null;
+  onValueChange?: (value: ${idTsType} | ${idTsType}[] | undefined) => void;
+};
 
 export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>({
   subset,
   value,
   onValueChange,
   baseListParams,
-  textField,
-  valueField,
+  textField = "${textField || "id"}",
+  valueField = "id",
   placeholder = "${entity.title ?? names.constant}",
   clearable,
   disabled,
@@ -113,80 +103,31 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
 }: ${names.capital}IdAsyncSelectProps<T>) {
   const [listParams, setListParams] = useState<${names.capital}ListParams>(baseListParams ?? {});
 
-  const { data, isLoading } = ${names.capital}Service.use${names.capitalPlural}(subset, listParams);
-  const { rows: ${names.camelPlural} } = data ?? {};
-
-  // 옵션 생성
-  const options = useMemo(() => {
-    return (${names.camelPlural} ?? []).map((${names.camel}) => ({
-      value: String(${names.camel}[valueField ?? "id"] as ${idTsType}),
-      label: String(${names.camel}[textField ?? "${textField || "id"}"]),
-    }));
-  }, [${names.camelPlural}, textField, valueField]);
-
-  // baseListParams 변경 시 반영
-  useEffect(() => {
-    setListParams((prev) => ({
-      ...prev,
-      ...baseListParams,
-    }));
-  }, [baseListParams]);
-
-  // 검색어 변경 핸들러
-  const handleSearch = useCallback((keyword: string) => {
-    setListParams((prev) => ({
-      ...prev,
-      keyword: keyword || undefined,
-    }));
-  }, []);
-
-  // Multiple select
-  if (multiple) {
-    const multiValue = Array.isArray(value) ? value.map(String) : [];
-
-    const handleMultiChange = (selectedValues: string[]) => {
-      ${
-        isStringId
-          ? `(onValueChange as ((value: string[]) => void) | undefined)?.(selectedValues);`
-          : `const numericValues = selectedValues.map(Number);
-      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);`
-      }
-    };
-
-    return (
-      <MultiSelect
-        options={options}
-        value={multiValue}
-        onValueChange={handleMultiChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={className}
-      />
-    );
-  }
-
-  // Single select
-  const singleValue = typeof value === "${idTsType}" ? value : undefined;
-
-  const handleSingleChange = (value: string | undefined) => {
-    ${
-      isStringId
-        ? `(onValueChange as ((value: string | undefined) => void) | undefined)?.(value);`
-        : `const numericValue = value ? Number(value) : undefined;
-    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);`
-    }
-  };
+  const handleSearch = useCallback(
+    (keyword: string) => {
+      setListParams((prev) => ({
+        ...prev,
+        search: keyword ? (textField as ${names.capital}SearchField) : undefined,
+        keyword: keyword || undefined,
+      }));
+    },
+    [textField],
+  );
 
   return (
-    <AsyncSelect
-      options={options as AsyncSelectOption<string>[]}
-      value={singleValue !== undefined ? String(singleValue) : undefined}
-      onValueChange={handleSingleChange}
-      isLoading={isLoading}
+    <IdAsyncSelect
+      config={${names.capital}AsyncIdConfig}
+      subset={subset}
+      listParams={listParams}
+      textField={textField}
+      valueField={valueField}
       placeholder={placeholder}
       clearable={clearable}
       disabled={disabled}
       className={className}
+      multiple={multiple}
+      value={value}
+      onValueChange={onValueChange}
       onSearch={handleSearch}
     />
   );
