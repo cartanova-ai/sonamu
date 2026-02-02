@@ -10,6 +10,7 @@ import {
   AlreadyProcessedException,
   BadRequestException,
 } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
+import * as SyncerActions from "../../../../../modules/sonamu/dist/syncer/syncer-actions";
 import type { RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
 import { TemplateManager } from "../../../../../modules/sonamu/dist/template/template-manager";
 import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
@@ -509,7 +510,7 @@ describe("Syncer", () => {
       ];
 
       // 타겟 디렉토리로 파일 동기화 실행
-      await syncer.actionSyncFilesToTargets(tsPaths);
+      await SyncerActions.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 확인
       const writeFile = Naite.get("fs/promises:writeFile").first();
@@ -533,7 +534,7 @@ describe("Syncer", () => {
       ];
 
       // 타겟 디렉토리로 파일 동기화 실행 (import 경로 변환 포함)
-      await syncer.actionSyncFilesToTargets(tsPaths);
+      await SyncerActions.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 내용 확인
       const writeFile = Naite.get("fs/promises:writeFile").first();
@@ -552,7 +553,7 @@ describe("Syncer", () => {
         join(apiRootPath, "src/application/company/company.types.ts") as AbsolutePath,
       ];
 
-      await syncer.actionSyncFilesToTargets(tsPaths);
+      await SyncerActions.actionSyncFilesToTargets(tsPaths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles.length).toBeGreaterThanOrEqual(2);
@@ -651,7 +652,7 @@ describe("Syncer", () => {
   describe("Config 동기화", () => {
     // 목적: config 동기화 시 .sonamu.env 파일이 생성되고 필요한 환경 변수가 포함되는지 확인
     test(".sonamu.env 생성", async () => {
-      await syncer.actionSyncConfig();
+      await SyncerActions.actionSyncConfig();
 
       const writeFile = Naite.get("fs/promises:writeFile").first();
       expect(writeFile.path).toContain(".sonamu.env");
@@ -662,7 +663,7 @@ describe("Syncer", () => {
     // 목적: 생성된 .sonamu.env 파일의 값이 실제 config 값과 일치하는지 확인
     test("config 값 정확성", async () => {
       // config 동기화 실행
-      await syncer.actionSyncConfig();
+      await SyncerActions.actionSyncConfig();
 
       // 생성된 .sonamu.env 파일 찾기
       const writeFile = Naite.get("fs/promises:writeFile").first();
@@ -682,7 +683,7 @@ describe("Syncer", () => {
   describe("Schema 생성", () => {
     // 목적: actionGenerateSchemas가 정상적으로 실행되어 generated 파일 2개(sonamu.generated.ts, sonamu.generated.sso.ts)가 생성되는지 확인
     test("actionGenerateSchemas - generated 파일 생성", async () => {
-      const result = await syncer.actionGenerateSchemas();
+      const result = await SyncerActions.actionGenerateSchemas();
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -691,9 +692,9 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 11. handleEntityChange
+  // 11. handleTruthSourceChanges
   // ============================================
-  describe("handleEntityChange", () => {
+  describe("handleTruthSourceChanges", () => {
     // 목적: entity 파일이 변경되면 diffGroups.generated에 파일이 추가되고 diffTypes에 "generated"가 포함되는지 확인
     test("entity 변경 시 generated 파일 추가", async () => {
       // 초기 상태 설정: entity 파일만 변경된 상태로 시뮬레이션
@@ -715,8 +716,8 @@ describe("Syncer", () => {
       };
       const diffTypes: string[] = ["entity"]; // 초기에는 "entity"만 포함
 
-      // handleEntityChange 실행: entity 변경 처리
-      await syncer.handleEntityChange(diffGroups, diffTypes);
+      // handleTruthSourceChanges 실행: entity 변경 처리
+      await syncer.handleTruthSourceChanges(diffGroups, diffTypes);
 
       // 검증: generated 파일이 추가되었는지 확인
       expect(diffGroups.generated).toBeDefined();
@@ -727,9 +728,9 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 12. handleModelOrFrameChange
+  // 12. handleImplementationChanges
   // ============================================
-  describe("handleModelOrFrameChange", () => {
+  describe("handleImplementationChanges", () => {
     // 목적: 여러 model 파일을 동시에 처리할 때 각각에 대해 actionGenerateServices가 호출되는지 확인
     test("여러 model 동시 처리", async () => {
       // 2개의 model 파일이 동시에 변경된 상황 시뮬레이션
@@ -748,8 +749,8 @@ describe("Syncer", () => {
         i18n: [],
       };
 
-      // handleModelOrFrameChange 실행: 여러 model 처리
-      await syncer.handleModelOrFrameChange(diffGroups);
+      // handleImplementationChanges 실행: 여러 model 처리
+      await syncer.handleImplementationChanges(diffGroups);
 
       // 검증: actionGenerateServices가 2번 호출되었는지 확인 (각 model마다 1번씩)
       const actionGenerateServicesData = Naite.get("actionGenerateServices").first();
@@ -757,11 +758,11 @@ describe("Syncer", () => {
       expect(actionGenerateServicesData.length).toBe(2);
     });
 
-    // 목적: handleModelOrFrameChange 실행 시 autoload가 models → types → apis 순서로 실행되고 모두 정상 로드되는지 확인
+    // 목적: handleImplementationChanges 실행 시 autoload가 models → types → apis 순서로 실행되고 모두 정상 로드되는지 확인
     test("autoload 순서: models → types → apis", async () => {
-      // autoload 순서는 handleModelOrFrameChange 내부에서 보장됨
+      // autoload 순서는 handleImplementationChanges 내부에서 보장됨
       // 실제 동작 검증: autoload 후 models, types, apis가 모두 로드되었는지 확인
-      await syncer.handleModelOrFrameChange({
+      await syncer.handleImplementationChanges({
         model: [
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
@@ -782,9 +783,9 @@ describe("Syncer", () => {
       expect(syncer.apis.length).toBeGreaterThan(0);
     });
 
-    // 목적: handleModelOrFrameChange 실행 시 sonamu.generated.http 파일이 생성되는지 확인
+    // 목적: handleImplementationChanges 실행 시 sonamu.generated.http 파일이 생성되는지 확인
     test("http 파일 생성", async () => {
-      await syncer.handleModelOrFrameChange({
+      await syncer.handleImplementationChanges({
         model: [
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
@@ -807,7 +808,7 @@ describe("Syncer", () => {
     // 목적: actionGenerateServices가 호출될 때 올바른 namesRecord 파라미터가 전달되는지 확인
     test("actionGenerateServices 파라미터 확인", async () => {
       // SyncFixture 모델 변경 처리
-      await syncer.handleModelOrFrameChange({
+      await syncer.handleImplementationChanges({
         model: [
           join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
         ],
@@ -1089,11 +1090,11 @@ describe("Syncer", () => {
        * 테스트 환경에서 모듈 캐싱으로 인해 데코레이터가 재실행되지 않아 직접 테스트 불가.
        *
        * 간접 테스트:
-       * - "handleModelOrFrameChange > autoload 순서: models → types → apis"
-       * - "handleModelOrFrameChange > actionGenerateServices 파라미터 확인"
+       * - "handleImplementationChanges > autoload 순서: models → types → apis"
+       * - "handleImplementationChanges > actionGenerateServices 파라미터 확인"
        */
-      test.skip("apis 로드 후 syncer.apis에 저장 (handleModelOrFrameChange에서 간접 검증)", async () => {});
-      test.skip("로드된 apis는 LoadedApis 형태 (handleModelOrFrameChange에서 간접 검증)", async () => {});
+      test.skip("apis 로드 후 syncer.apis에 저장 (handleImplementationChanges에서 간접 검증)", async () => {});
+      test.skip("로드된 apis는 LoadedApis 형태 (handleImplementationChanges에서 간접 검증)", async () => {});
     });
   });
 
@@ -1191,7 +1192,7 @@ describe("Syncer", () => {
       ];
 
       // 타겟 디렉토리로 파일 동기화 실행 (경로 변환 및 import 변환 포함)
-      await syncer.actionSyncFilesToTargets(tsPaths);
+      await SyncerActions.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 찾기 (web 디렉토리의 types.ts 파일)
       const writeFile = Naite.get("fs/promises:writeFile")
@@ -1444,9 +1445,9 @@ describe("Syncer", () => {
       });
     });
 
-    describe("handleEntityChange / handleModelOrFrameChange와 통합", () => {
-      // 목적: handleEntityChange에서 모킹된 템플릿이 사용되는지 확인
-      test("handleEntityChange - 모킹된 템플릿 적용", async () => {
+    describe("handleTruthSourceChanges / handleImplementationChanges와 통합", () => {
+      // 목적: handleTruthSourceChanges에서 모킹된 템플릿이 사용되는지 확인
+      test("handleTruthSourceChanges - 모킹된 템플릿 적용", async () => {
         const originalGenerated = TemplateManager.get("generated");
 
         class CustomGeneratedTemplate extends Template {
@@ -1488,7 +1489,7 @@ describe("Syncer", () => {
           };
           const diffTypes: string[] = ["entity"];
 
-          await syncer.handleEntityChange(diffGroups, diffTypes);
+          await syncer.handleTruthSourceChanges(diffGroups, diffTypes);
 
           // generated 파일에 커스텀 헤더가 추가되었는지 확인
           const writeFiles = Naite.get("fs/promises:writeFile").result();
@@ -1504,8 +1505,8 @@ describe("Syncer", () => {
         }
       });
 
-      // 목적: handleModelOrFrameChange에서 모킹된 service 템플릿 적용 확인
-      test("handleModelOrFrameChange - 모킹된 services 템플릿", async () => {
+      // 목적: handleImplementationChanges에서 모킹된 service 템플릿 적용 확인
+      test("handleImplementationChanges - 모킹된 services 템플릿", async () => {
         const originalService = TemplateManager.get("services");
 
         class CustomServicesTemplate extends Template {
@@ -1529,7 +1530,7 @@ describe("Syncer", () => {
         const spy = mockTemplateManagerGet("services", new CustomServicesTemplate());
 
         try {
-          await syncer.handleModelOrFrameChange({
+          await syncer.handleImplementationChanges({
             model: [
               join(
                 apiRootPath,

@@ -160,7 +160,7 @@ Sonamu.syncer.eventEmitter.on("onHMRCompleted", () => {
 
 Different actions execute based on file change type.
 
-### 1. Entity Change (`handleEntityChange`)
+### 1. Entity Change (`handleTruthSourceChanges`)
 
 Regenerates schemas when Entity file changes.
 
@@ -176,7 +176,7 @@ Regenerates schemas when Entity file changes.
 
 ```typescript
 // Syncer internal logic
-async handleEntityChange(diffGroups, diffTypes) {
+async handleTruthSourceChanges(diffGroups, diffTypes) {
   await EntityManager.reload();
   
   // Generate new Entity type file
@@ -185,7 +185,7 @@ async handleEntityChange(diffGroups, diffTypes) {
   }
   
   // Generate schemas
-  await this.actionGenerateSchemas();
+  await SyncerActions.actionGenerateSchemas();
 }
 ```
 
@@ -226,15 +226,15 @@ Regenerates API clients when Model file changes.
 4. Regenerate SSR files (`queries.generated.ts`, `entry-server.generated.tsx`)
 
 ```typescript
-async handleModelOrFrameChange(diffGroups) {
+async handleImplementationChanges(diffGroups) {
   // Reload modules
   await this.autoloadModels();
   await this.autoloadTypes();
   await this.autoloadApis();
   
   // Generate services
-  await this.actionGenerateServices(params);
-  await this.actionGenerateHttps();
+  await SyncerActions.actionGenerateServices(params);
+  await SyncerActions.actionGenerateHttps();
   
   // Regenerate SSR files
   await generateTemplate("queries", {}, { overwrite: true });

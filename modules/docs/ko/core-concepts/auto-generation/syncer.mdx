@@ -160,7 +160,7 @@ Sonamu.syncer.eventEmitter.on("onHMRCompleted", () => {
 
 파일 변경 유형에 따라 다른 액션이 실행됩니다.
 
-### 1. Entity 변경 (`handleEntityChange`)
+### 1. Entity 변경 (`handleTruthSourceChanges`)
 
 Entity 파일이 변경되면 스키마를 재생성합니다.
 
@@ -176,7 +176,7 @@ Entity 파일이 변경되면 스키마를 재생성합니다.
 
 ```typescript
 // Syncer 내부 로직
-async handleEntityChange(diffGroups, diffTypes) {
+async handleTruthSourceChanges(diffGroups, diffTypes) {
   await EntityManager.reload();
   
   // 새 Entity 타입 파일 생성
@@ -185,7 +185,7 @@ async handleEntityChange(diffGroups, diffTypes) {
   }
   
   // 스키마 생성
-  await this.actionGenerateSchemas();
+  await SyncerActions.actionGenerateSchemas();
 }
 ```
 
@@ -226,15 +226,15 @@ Model 파일이 변경되면 API 클라이언트를 재생성합니다.
 4. SSR 파일 재생성 (`queries.generated.ts`, `entry-server.generated.tsx`)
 
 ```typescript
-async handleModelOrFrameChange(diffGroups) {
+async handleImplementationChanges(diffGroups) {
   // 모듈 재로드
   await this.autoloadModels();
   await this.autoloadTypes();
   await this.autoloadApis();
   
   // 서비스 생성
-  await this.actionGenerateServices(params);
-  await this.actionGenerateHttps();
+  await SyncerActions.actionGenerateServices(params);
+  await SyncerActions.actionGenerateHttps();
   
   // SSR 파일 재생성
   await generateTemplate("queries", {}, { overwrite: true });
