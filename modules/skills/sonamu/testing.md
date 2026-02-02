@@ -11,6 +11,202 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 **WARNING: 엔티티 10개 이상 프로젝트는 반드시 배치 전략 사용** (아래 "대규모 프로젝트 전략" 참고)
 
+---
+
+## Quick Start - 테스트 작성 빠른 시작
+
+**전제조건**: scaffolding 완료, types.ts nullable 필드 처리 완료
+
+### 1단계: test-helpers.ts 확장
+
+```typescript
+// packages/api/src/application/__tests__/test-helpers.ts
+
+import { User, UserSaveParams } from "../user/user.types";
+import { Post, PostSaveParams } from "../post/post.types";
+import { Comment, CommentSaveParams } from "../comment/comment.types";
+import UserModel from "../user/user.model";
+import PostModel from "../post/post.model";
+import CommentModel from "../comment/comment.model";
+
+// User 헬퍼
+export async function createTestUser(params?: Partial<UserSaveParams>): Promise<number> {
+  const user: UserSaveParams = {
+    email: `test-${Date.now()}@example.com`,
+    name: "Test User",
+    ...params,
+  };
+  const saved = await UserModel.save(user);
+  return saved.id;
+}
+
+// User with dependencies (의존성 체인)
+export async function createTestUserWithDeps() {
+  const userId = await createTestUser();
+  return { userId };
+}
+
+// Post 헬퍼
+export async function createTestPost(
+  authorId: number,
+  params?: Partial<PostSaveParams>
+): Promise<number> {
+  const post: PostSaveParams = {
+    author_id: authorId,
+    title: "Test Post",
+    content: "Test content",
+    ...params,
+  };
+  const saved = await PostModel.save(post);
+  return saved.id;
+}
+
+// Post with dependencies
+export async function createTestPostWithDeps() {
+  const { userId } = await createTestUserWithDeps();
+  const postId = await createTestPost(userId);
+  return { userId, postId };
+}
+
+// Comment 헬퍼
+export async function createTestComment(
+  postId: number,
+  authorId: number,
+  params?: Partial<CommentSaveParams>
+): Promise<number> {
+  const comment: CommentSaveParams = {
+    post_id: postId,
+    author_id: authorId,
+    content: "Test comment",
+    ...params,
+  };
+  const saved = await CommentModel.save(comment);
+  return saved.id;
+}
+
+// Comment with dependencies
+export async function createTestCommentWithDeps() {
+  const { userId, postId } = await createTestPostWithDeps();
+  const commentId = await createTestComment(postId, userId);
+  return { userId, postId, commentId };
+}
+```
+
+**CRITICAL 패턴**:
+- `createTestX()`: 기본 생성 헬퍼 (params로 override 가능)
+- `createTestXWithDeps()`: 의존성 자동 처리 헬퍼 (모든 필요 데이터 함께 생성)
+- FK 필드는 `_id` 접미사 사용 (`author_id`, `post_id`)
+- 반환: 주로 ID 반환, WithDeps는 객체로 여러 ID 반환
+
+### 2단계: 테스트 파일 작성
+
+```typescript
+// packages/api/src/application/post/__tests__/post.test.ts
+
+import { bootstrap } from "sonamu";
+import { describe, test, expect, vi } from "vitest";
+import PostModel from "../post.model";
+import { createTestPostWithDeps } from "../../__tests__/test-helpers";
+
+bootstrap(vi);  // CRITICAL: 필수!
+
+describe("PostModel", () => {
+  describe("A. Create (생성)", () => {
+    test("게시글 생성", async () => {
+      const { userId, postId } = await createTestPostWithDeps();
+      
+      const post = await PostModel.findById(postId, ["A"]);
+      expect(post.id).toBe(postId);
+      expect(post.author_id).toBe(userId);
+    });
+  });
+
+  describe("B. Read (조회)", () => {
+    test("findById - Subset A", async () => {
+      const { postId } = await createTestPostWithDeps();
+      
+      const post = await PostModel.findById(postId, ["A"]);
+      expect(post.id).toBe(postId);
+      expect(post).toHaveProperty("title");
+      expect(post).toHaveProperty("content");
+    });
+
+    test("findMany - 목록 조회", async () => {
+      await createTestPostWithDeps();
+      await createTestPostWithDeps();
+      
+      const { rows } = await PostModel.findMany({ num: 10 });
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe("C. Update (수정)", () => {
+    test("게시글 수정", async () => {
+      const { postId } = await createTestPostWithDeps();
+      
+      const updated = await PostModel.save({
+        id: postId,
+        title: "Updated Title",
+      });
+      
+      expect(updated.title).toBe("Updated Title");
+    });
+  });
+
+  describe("D. Delete (삭제)", () => {
+    test("게시글 삭제", async () => {
+      const { postId } = await createTestPostWithDeps();
+      
+      await PostModel.del(postId);
+      
+      const post = await PostModel.findById(postId, ["A"]);
+      expect(post).toBeNull();
+    });
+  });
+
+  describe("E. Business Logic (비즈니스 로직)", () => {
+    test("게시글 발행부터 댓글 추가까지 전체 프로세스", async () => {
+      // 1. 게시글 작성
+      const { userId, postId } = await createTestPostWithDeps({
+        title: "새 글",
+        content: "내용",
+      });
+
+      // 2. 다른 사용자가 댓글 작성
+      const commenterId = await createTestUser();
+      const commentId = await createTestComment(postId, commenterId, {
+        content: "좋은 글이네요!",
+      });
+
+      // 3. 게시글 조회 (댓글 포함)
+      const post = await PostModel.findById(postId, ["A"]);
+      expect(post.comments).toHaveLength(1);
+      expect(post.comments[0].id).toBe(commentId);
+    });
+  });
+});
+```
+
+**패턴 요약**:
+- `bootstrap(vi)` 호출 필수
+- `describe` + `test` 패턴 (순서: A. Create, B. Read, C. Update, D. Delete, E. Business Logic)
+- `createTestXWithDeps()` 헬퍼로 의존성 자동 해결
+- Business Logic 섹션이 가장 중요! (실제 업무 시나리오 구현)
+
+### 3단계: 테스트 실행
+
+```bash
+cd packages/api
+pnpm test
+
+# watch 모드
+pnpm test:watch
+```
+
+**완료!** 상세한 내용은 아래 섹션 참조.
+
+---
+
 ## 테스트 작성 전 체크리스트
 
 - [ ] **엔티티 설계 완료 확인** - `pnpm db:migration` 및 `pnpm scaffolding` 오류 없이 완료
@@ -210,17 +406,17 @@ describe("ConsultationModel", () => {
 ### 주의사항
 
 **DO:**
-- ✅ 엔티티 설계 프롬프트를 항상 참고
-- ✅ 업무 프로세스 흐름대로 그룹핑
-- ✅ 의존성 순서를 고려한 테스트 순서
-- ✅ 실제 사용 시나리오 기반 Business Logic 테스트
-- ✅ test-helpers에 의존성 체인 명확히 구현
+- 엔티티 설계 프롬프트를 항상 참고
+- 업무 프로세스 흐름대로 그룹핑
+- 의존성 순서를 고려한 테스트 순서
+- 실제 사용 시나리오 기반 Business Logic 테스트
+- test-helpers에 의존성 체인 명확히 구현
 
 **DON'T:**
-- ❌ 단순히 알파벳 순서로 테스트 작성
-- ❌ 엔티티를 개별적으로만 테스트 (통합 관점 누락)
-- ❌ 업무 흐름과 무관한 우선순위 설정
-- ❌ 엔티티 설계 의도를 무시한 테스트
+- 단순히 알파벳 순서로 테스트 작성
+- 엔티티를 개별적으로만 테스트 (통합 관점 누락)
+- 업무 흐름과 무관한 우선순위 설정
+- 엔티티 설계 의도를 무시한 테스트
 
 ### 그룹별 체크리스트
 
