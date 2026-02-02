@@ -89,10 +89,12 @@ pnpm test:watch
 
 | Skill | 파일 | 용도 |
 |-------|------|------|
+| **전체 워크플로우** | `workflow.md` | **엔티티 설계 → 테스트 완료 5단계 가이드** |
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
 | 프로젝트 설정 | `config.md` | .env, sonamu.config.ts 설정 |
 | 데이터베이스 | `database.md` | DB 설정, 포트 충돌 해결 |
+| Entity 검증 | `entity-validation-checklist.md` | Entity 생성 단계별 체크리스트 |
 | Entity 기본 | `entity-basic.md` | Entity JSON 구조, 필드 타입 |
 | Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany |
 | Subset | `subset.md` | 조회 필드 범위 정의 |
@@ -108,8 +110,11 @@ pnpm test:watch
 
 ## 작업별 Skill 선택
 
+**CRITICAL: 새로운 시스템이나 기능을 처음부터 개발할 때는 `workflow.md`부터 시작하세요!**
+
 | 작업 | 참고 Skill |
 |------|-----------|
+| **처음부터 전체 시스템 개발** | **workflow.md (5단계 마스터 가이드)** |
 | 프로젝트 생성 | create-sonamu, project-init |
 | 프로젝트 설정 | config |
 | Sonamu 로컬 개발 설정 | config |

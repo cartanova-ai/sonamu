@@ -10,6 +10,39 @@ description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 �
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json` - 복잡한 Entity 예시
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne 관계 예시
 
+## 사용자 요청 시작 시나리오
+
+사용자가 시스템 구축을 요청하면 다음 순서로 진행:
+
+**1. 요구사항 분석** (누락된 Entity 확인)
+- "사용자(User) Entity가 필요한가요?"
+- "추가로 필요한 Entity가 있나요?"
+
+**2. Entity 간 관계 확인** (한 번에 하나씩 질문)
+- "A와 B는 1:N인가요, N:M인가요?"
+- "챕터는 강좌의 자식으로 함께 관리할까요?"
+
+**3. parentId 사용 여부 결정**
+- "부모 없이 존재 불가한가요?"
+- "부모와 함께 생성/삭제되나요?"
+
+**4. 사용자 최종 확인**
+- Entity 목록 확정
+- 관계 다이어그램 또는 명확한 설명 제공
+
+### 엔티티 설계 완료 체크리스트
+
+- [ ] 모든 필수 Entity 식별 완료
+- [ ] Entity 간 관계 정의 완료
+- [ ] parentId 사용 여부 결정
+- [ ] 사용자 확인 완료
+
+**완료 시:** 다음 단계 "Entity 생성 워크플로우" 시작
+
+**전체 워크플로우 참조:** `workflow.md` - 5단계 전체 가이드
+
+---
+
 ## Entity 생성 워크플로우
 
 ### 1단계: stub 생성
@@ -26,11 +59,28 @@ pnpm sonamu stub entity {EntityId}
 ### 3단계: 검증 및 필수 파일 생성
 **CRITICAL: sync 실행 전에 반드시 검증하세요!**
 
-1. entity.json 검증 (indexes, subsets, enums 등)
-2. model.ts 생성
-3. types.ts 생성
+**A. entity.json 검증** (`entity-validation-checklist.md` PHASE 1 참조)
+- [ ] 인덱스에 type 필드 있는가?
+- [ ] Subset에서 FK를 직접 참조하지 않고 relation.id 형식 사용?
+- [ ] Boolean dbDefault가 "true"/"false" 문자열?
+- [ ] OrderBy enum은 id-desc만 있는가?
+- [ ] Enum dbDefault는 이스케이프된 큰따옴표? (예: `"\"pending\""`)
 
-**상세 가이드:** `entity-validation-checklist.md` 참조
+**B. model.ts (수동 생성 필수)**
+- 반드시 수동 생성 필요
+- 다른 entity의 model.ts 참고하여 작성
+- 필수 메서드: findById, findOne, findMany, save, del
+- 템플릿은 `entity-validation-checklist.md` PHASE 2 참조
+
+**C. types.ts (자동 생성 - 대기 필요)**
+- syncer가 2-3초 내 자동 생성
+- 생성 안 되면 수동 생성 (템플릿은 `entity-validation-checklist.md` PHASE 2 참조)
+- 생성 확인: `ls packages/api/src/application/{entity}/{entity}.types.ts`
+
+**완료 확인:**
+- [ ] entity.json 검증 통과
+- [ ] model.ts 존재
+- [ ] types.ts 존재 (자동 생성 또는 수동 생성)
 
 ### 4단계: sync
 ```bash
