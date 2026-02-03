@@ -5,7 +5,7 @@ dotenv.config();
 
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
+import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -522,10 +522,10 @@ async function skills_sync() {
   const claudeDir = path.join(workspaceRoot, ".claude");
   const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
 
-  // sonamu 패키지 기준 상대 경로로 skills 찾기
-  // cli.ts 위치: sonamu/modules/sonamu/src/bin/cli.ts
-  // skills 위치: sonamu/modules/skills/
-  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "..", "skills");
+  // 개발 환경 - cli.ts: sonamu/modules/sonamu/src/bin/cli.ts
+  // 빌드 후 - cli.js: node_modules/sonamu/dist/bin/cli.js (실제 실행)
+  // skills 위치: node_modules/sonamu/src/skills (npm 배포 시)
+  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "skills");
   const sourceSkillsDir = path.join(sourceBase, "sonamu");
   const sourceClaudeMd = path.join(sourceBase, "CLAUDE.md");
 
@@ -542,31 +542,62 @@ async function skills_sync() {
   // 대상 디렉토리 생성
   await mkdir(path.dirname(targetSkillsDir), { recursive: true });
 
-  await symlink(sourceSkillsDir, targetSkillsDir, "dir");
-  console.log(chalk.green(`✓ Skills linked to ${targetSkillsDir} -> ${sourceSkillsDir}`));
+  try {
+    await symlink(sourceSkillsDir, targetSkillsDir, "dir");
+    console.log(chalk.green(`✓ Skills linked (symlink)`));
+  } catch (error) {
+    console.log(
+      chalk.yellow(`⚠ Symlink failed: ${error instanceof Error ? error.message : String(error)}`),
+    );
+    console.log(chalk.yellow(`  Falling back to copy...`));
+    try {
+      await cp(sourceSkillsDir, targetSkillsDir, { recursive: true });
+      console.log(chalk.green(`✓ Skills copied`));
+    } catch (copyError) {
+      console.error(
+        chalk.red(
+          `✗ Failed to copy skills: ${copyError instanceof Error ? copyError.message : String(copyError)}`,
+        ),
+      );
+      throw copyError;
+    }
+  }
 
   // CLAUDE.md 복사/업데이트
   if (await exists(sourceClaudeMd)) {
-    const targetClaudeMd = path.join(claudeDir, "CLAUDE.md");
-    const sourceContent = await readFile(sourceClaudeMd, "utf-8");
+    try {
+      const targetClaudeMd = path.join(claudeDir, "CLAUDE.md");
+      const sourceContent = await readFile(sourceClaudeMd, "utf-8");
 
-    if (await exists(targetClaudeMd)) {
-      const targetContent = await readFile(targetClaudeMd, "utf-8");
-      const startMarker = "<!-- SONAMU:START -->";
-      const endMarker = "<!-- SONAMU:END -->";
-      if (targetContent.includes(startMarker) && targetContent.includes(endMarker)) {
-        // marker 영역만 교체합니다.
-        const before = targetContent.split(startMarker)[0];
-        const after = targetContent.split(endMarker)[1];
-        const newContent = `${before}${sourceContent}${after}`;
-        await writeFile(targetClaudeMd, newContent);
-        console.log(chalk.green(`✓ CLAUDE.md updated (marker region)`));
+      if (await exists(targetClaudeMd)) {
+        const targetContent = await readFile(targetClaudeMd, "utf-8");
+        const startMarker = "<!-- SONAMU:START -->";
+        const endMarker = "<!-- SONAMU:END -->";
+        if (targetContent.includes(startMarker) && targetContent.includes(endMarker)) {
+          // marker 영역만 교체합니다.
+          const startIdx = targetContent.indexOf(startMarker);
+          const endIdx = targetContent.indexOf(endMarker);
+
+          if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+            const before = targetContent.substring(0, startIdx);
+            const after = targetContent.substring(endIdx + endMarker.length);
+            const newContent = `${before}${startMarker}\n${sourceContent}\n${endMarker}${after}`;
+            await writeFile(targetClaudeMd, newContent);
+            console.log(chalk.green(`✓ CLAUDE.md updated (marker region)`));
+          } else {
+            console.log(chalk.yellow(`⏭ CLAUDE.md marker positions invalid, skipped`));
+          }
+        }
       } else {
-        console.log(chalk.yellow(`⏭ CLAUDE.md exists but no markers, skipped`));
+        await writeFile(targetClaudeMd, sourceContent);
+        console.log(chalk.green(`✓ CLAUDE.md created`));
       }
-    } else {
-      await writeFile(targetClaudeMd, sourceContent);
-      console.log(chalk.green(`✓ CLAUDE.md created`));
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `✗ Failed to update CLAUDE.md: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
     }
   }
 }
@@ -578,23 +609,95 @@ async function skills_sync() {
 async function skills_create(name: string) {
   const workspaceRoot = await findWorkspaceRoot();
   const localDir = path.join(workspaceRoot, ".claude", "skills", "local");
-  const filePath = path.join(localDir, `${name}.md`);
+
+  // === 파일명 검증 및 Sanitize ===
+  if (!name || name.trim() === "") {
+    console.error(chalk.red("✗ Skill name is required"));
+    return;
+  }
+
+  let sanitized = name
+    // 공백을 하이픈으로
+    .replace(/\s+/g, "-")
+    // 경로 구분자 제거
+    .replace(/[/\\]/g, "-")
+    // Path traversal 방지
+    .replace(/\.\./g, "")
+    // Windows 금지 문자 제거
+    .replace(/[<>:"|?*]/g, "")
+    // 시작/끝 점, 하이픈, 언더스코어 제거
+    .replace(/^[.\-_]+|[.\-_]+$/g, "")
+    // 연속된 하이픈을 하나로
+    .replace(/-+/g, "-")
+    // 알파벳, 숫자, 하이픈, 언더스코어, 한글만 허용
+    .replace(/[^a-zA-Z0-9-_가-힣]/g, "");
+
+  // 길이 제한
+  const MAX_LENGTH = 100;
+  if (sanitized.length > MAX_LENGTH) {
+    sanitized = sanitized.substring(0, MAX_LENGTH);
+    console.log(chalk.yellow(`⚠ Name truncated to ${MAX_LENGTH} characters`));
+  }
+
+  // Windows 예약어 확인
+  const RESERVED_NAMES = [
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+  ];
+  if (RESERVED_NAMES.includes(sanitized.toUpperCase())) {
+    sanitized = `skill-${sanitized}`;
+    console.log(chalk.yellow(`⚠ Reserved name detected, prefixed with "skill-"`));
+  }
+
+  // 빈 문자열 체크
+  if (sanitized === "") {
+    console.error(chalk.red("✗ Invalid skill name after sanitization"));
+    console.log(chalk.dim(`  Original: "${name}"`));
+    return;
+  }
+
+  // 변경 알림
+  if (sanitized !== name) {
+    console.log(chalk.yellow(`⚠ Name sanitized: "${name}" → "${sanitized}"`));
+  }
+
+  const filePath = path.join(localDir, `${sanitized}.md`);
 
   if (await exists(filePath)) {
-    console.log(chalk.yellow(`Skill "${name}" already exists.`));
+    console.log(chalk.yellow(`Skill "${sanitized}" already exists.`));
     return;
   }
 
   await mkdir(localDir, { recursive: true });
 
   const template = `---
-name: ${name}
+name: ${sanitized}
 category: other
 created_at: ${new Date().toISOString().split("T")[0]}
 status: draft
 ---
 
-# [제목]
+# ${sanitized}
 
 ## 상황
 
@@ -612,7 +715,7 @@ status: draft
 `;
 
   await writeFile(filePath, template);
-  console.log(chalk.green(`✓ Created .claude/skills/local/${name}.md`));
+  console.log(chalk.green(`✓ Created .claude/skills/local/${sanitized}.md`));
 }
 
 /**
