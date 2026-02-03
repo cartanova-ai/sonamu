@@ -224,7 +224,7 @@ export async function generateBetterAuthEntities(
       }
 
       const plugin = PLUGINS[pluginId];
-      console.log(chalk.magenta(`\n[PLUGIN] ${plugin.name}`));
+      console.log(chalk.magenta(`[PLUGIN] ${plugin.name}`));
 
       // 플러그인의 새 엔티티 생성
       for (const entityJson of plugin.entities) {
