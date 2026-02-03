@@ -91,6 +91,88 @@ export async function down(knex: Knex): Promise<void> {
 }
 ```
 
+## PK 타입 변경
+
+### 상황
+기존 테이블의 PK 타입을 변경해야 하는 경우 (예: integer -> text, bigint -> uuid 등). 해당 PK를 참조하는 FK들이 여러 테이블에 존재하는 상황.
+
+### 필수 순서
+
+참조 무결성이 있는 컬럼(FK가 참조하는 PK)의 타입을 변경할 때는 반드시 다음 순서를 따라야 함:
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 1단계: 해당 PK를 참조하는 모든 FK constraint DROP
+  await knex.raw('ALTER TABLE "child_table_1" DROP CONSTRAINT "child_table_1_parent_id_foreign"');
+  await knex.raw('ALTER TABLE "child_table_2" DROP CONSTRAINT "child_table_2_parent_id_foreign"');
+
+  // 2단계: PK constraint DROP
+  await knex.raw('ALTER TABLE "parent_table" DROP CONSTRAINT "parent_table_pkey"');
+
+  // 3단계: PK 컬럼과 모든 FK 컬럼의 타입을 동시에 변경
+  await knex.raw('ALTER TABLE "parent_table" ALTER COLUMN "id" TYPE new_type USING "id"::new_type');
+  await knex.raw('ALTER TABLE "child_table_1" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
+  await knex.raw('ALTER TABLE "child_table_2" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
+
+  // 4단계: PK constraint ADD
+  await knex.raw('ALTER TABLE "parent_table" ADD CONSTRAINT "parent_table_pkey" PRIMARY KEY ("id")');
+
+  // 5단계: 모든 FK constraint ADD
+  await knex.raw('ALTER TABLE "child_table_1" ADD CONSTRAINT "child_table_1_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
+  await knex.raw('ALTER TABLE "child_table_2" ADD CONSTRAINT "child_table_2_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE RESTRICT');
+}
+```
+
+### 핵심 원칙
+
+1. **FK constraint가 존재하는 상태에서는 참조 컬럼 타입 변경 불가**: PostgreSQL은 FK와 참조되는 PK의 타입이 일치하지 않으면 에러 발생. 반드시 constraint를 먼저 제거해야 함.
+
+2. **하나의 migration에서 모든 변경 처리**: 여러 migration으로 나누면 중간 상태에서 constraint 위반. PK와 모든 FK의 타입 변경을 한 번에 수행.
+
+3. **knex schema builder 대신 raw SQL 사용 권장**: 명확한 실행 순서 보장, constraint 이름 명시 가능, 복잡한 타입 변환(USING) 지원.
+
+### 실제 예시: users.id integer -> text
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 1. FK 제약조건 제거
+  await knex.raw('ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"');
+  await knex.raw('ALTER TABLE "sessions" DROP CONSTRAINT "sessions_user_id_foreign"');
+
+  // 2. PK 제약조건 제거
+  await knex.raw('ALTER TABLE "users" DROP CONSTRAINT "users_pkey"');
+
+  // 3. 타입 변경 (USING 절로 변환 명시)
+  await knex.raw('ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text');
+  await knex.raw('ALTER TABLE "accounts" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
+  await knex.raw('ALTER TABLE "sessions" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
+
+  // 4. PK 제약조건 복구
+  await knex.raw('ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")');
+
+  // 5. FK 제약조건 복구
+  await knex.raw('ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
+  await knex.raw('ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
+}
+```
+
+### FK 참조 테이블 찾기
+
+```bash
+# Entity에서 특정 엔티티를 참조하는 relation 찾기
+grep -r "with.*User" --include="*.entity.json"
+```
+
+### 흔한 실수
+
+1. **여러 migration으로 분리**: Migration 1에서 PK 변경, Migration 2에서 FK 변경 시도 → FK constraint 위반
+
+2. **constraint 제거 없이 타입 변경**: `cannot alter type of a column used by a foreign key` 에러 발생
+
+3. **USING 절 누락**: `column "id" cannot be cast automatically to type text` 에러 발생. integer -> text는 `USING "id"::text` 필수.
+
+4. **constraint 이름 불일치**: `SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'accounts'`로 정확한 constraint 이름 확인 필요.
+
 ## 명령어
 
 **`packages/api`** 디렉토리에서 실행:
