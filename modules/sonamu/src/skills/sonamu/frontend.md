@@ -5,6 +5,65 @@ description: Sonamu 프론트엔드 연동. 자동 생성 Service, TanStack Quer
 
 # Frontend Service
 
+## 빠른 참조
+
+### Hooks
+
+| Hook | 용도 | 주요 반환값 |
+|------|------|------------|
+| `useTypeForm` | 폼 상태 관리 (Zod 기반) | form, setForm, register, submit, addError, reset |
+| `useListParams` | URL 동기화 리스트 파라미터 | listParams, setListParams, register |
+| `useSelection` | 체크박스 다중 선택 | selectedKeys, toggle, selectAll, deselectAll |
+| `useModal` | 모달 상태 관리 | open, modal |
+| `useToast` | 토스트 알림 | toast |
+
+### 컴포넌트
+
+| 컴포넌트 | 용도 | 주요 Props |
+|---------|------|-----------|
+| `Input` | 텍스트 입력 | value, onValueChange |
+| `Textarea` | 여러 줄 입력 | value, onValueChange |
+| `Checkbox` | 체크박스 | value (boolean), onValueChange, label |
+| `Select` | 단일 선택 | items, value, onValueChange, placeholder, clearable |
+| `MultiSelect` | 다중 선택 | options, value (array), onValueChange, maxCount |
+| `EnumSelect` | Enum 선택 | enum, labels, value, onValueChange |
+| `FileInput` | 파일 업로드 | uploadMode, viewMode, multiple, maxFiles |
+
+### Service (자동 생성)
+
+| 메서드 | 용도 | 예시 |
+|--------|------|------|
+| `get{Entity}` | 단일 조회 | `UserService.getUser("A", 123)` |
+| `get{Entities}` | 목록 조회 | `UserService.getUsers("P", params)` |
+| `save` | 저장 (생성/수정) | `UserService.save([data])` |
+| `del` | 삭제 | `UserService.del([1, 2, 3])` |
+| `use{Entity}` | 단일 조회 hook | `UserService.useUser("A", id)` |
+| `use{Entities}` | 목록 조회 hook | `UserService.useUsers("P", params)` |
+| `useSaveMutation` | 저장 mutation | `UserService.useSaveMutation()` |
+
+### 유틸리티
+
+| 함수 | 용도 | 예시 |
+|------|------|------|
+| `dateF` | 날짜 포맷 | `dateF(new Date())` → `"2024-01-15"` |
+| `datetimeF` | 날짜시간 포맷 | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
+| `numF` | 숫자 포맷 | `numF(1234567)` → `"1,234,567"` |
+| `hidden` | 조건부 hidden 클래스 | `hidden(true)` → `"hidden"` |
+| `arrayableToArray` | 배열 변환 | `arrayableToArray("a")` → `["a"]` |
+
+### 설정
+
+| 항목 | 설명 | 필수 여부 |
+|------|------|----------|
+| `SonamuProvider` | 전역 설정 Provider (uploader, auth, SD) | 필수 (uploader는 FileInput 사용 시) |
+| `uploader` | 파일 업로드 함수 | FileInput 사용 시 필수 |
+| `auth` | 인증 상태 및 함수 | 옵션 |
+| `SD` | 다국어 함수 | 옵션 |
+
+---
+
+# Frontend Service
+
 ## 기본 사용
 
 ```typescript
