@@ -12,13 +12,13 @@ import path from "path";
 import type { PoolConfig } from "pg";
 import type { ZodObject } from "zod";
 import {
+  BASE_FIELD_MAPPINGS,
   convertFastifyHeadersToStandard,
   createMockSSEFactory,
   DB,
   isDaemonServer,
   merge,
 } from "..";
-import { SONAMU_FIELD_MAPPINGS } from "../auth/better-auth-entities";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
@@ -1116,7 +1116,7 @@ class SonamuClass {
     const basePath = options.basePath ?? "/api/auth";
 
     // 사용자 설정과 기본값을 merge
-    const mergedFieldMappings = merge(SONAMU_FIELD_MAPPINGS, options);
+    const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, options);
 
     // better-auth 인스턴스 생성
     const { betterAuth } = await import("better-auth");

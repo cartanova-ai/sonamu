@@ -1,8 +1,10 @@
 import chalk from "chalk";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
-import type { EntityIndex, EntityProp } from "../types/types";
+import type { EntityIndex, EntityJson, EntityProp } from "../types/types";
 import { betterAuthV1 } from "./better-auth-entities";
+import { isValidPluginId, PLUGINS } from "./plugins";
+import type { BetterAuthPluginId } from "./plugins/types";
 
 /**
  * 누락된 props 찾기
@@ -64,82 +66,184 @@ function findMissingSubsets(
 }
 
 /**
- * better-auth 엔티티들을 Sonamu에 생성/업데이트
+ * 엔티티를 생성하거나 업데이트합니다.
  */
-export async function generateBetterAuthEntities(): Promise<void> {
-  for (const entityJson of betterAuthV1) {
-    const exists = EntityManager.exists(entityJson.id);
+async function createOrUpdateEntity(entityJson: EntityJson): Promise<void> {
+  const exists = EntityManager.exists(entityJson.id);
 
-    if (!exists) {
-      // 새 엔티티 생성
-      await Sonamu.syncer.createEntity({
-        entityId: entityJson.id,
-        table: entityJson.table,
-        title: entityJson.title ?? entityJson.id,
-        props: entityJson.props ?? [],
-        indexes: entityJson.indexes ?? [],
-        subsets: entityJson.subsets ?? {},
-        enums: entityJson.enums ?? {},
-      });
+  if (!exists) {
+    // 새 엔티티 생성
+    await Sonamu.syncer.createEntity({
+      entityId: entityJson.id,
+      table: entityJson.table,
+      title: entityJson.title ?? entityJson.id,
+      props: entityJson.props ?? [],
+      indexes: entityJson.indexes ?? [],
+      subsets: entityJson.subsets ?? {},
+      enums: entityJson.enums ?? {},
+    });
 
-      const entity = EntityManager.get(entityJson.id);
-      await entity.save();
-      console.log(chalk.green(`[CREATED] ${entityJson.id}`));
-      continue;
-    }
-
-    // 기존 엔티티 업데이트
     const entity = EntityManager.get(entityJson.id);
-    let hasChanges = false;
+    await entity.save();
+    console.log(chalk.green(`[CREATED] ${entityJson.id}`));
+    return;
+  }
 
-    // 누락된 props 추가
-    const missingProps = findMissingProps(entity.props, entityJson.props ?? []);
-    for (const prop of missingProps) {
-      await entity.createProp(prop);
-      console.log(chalk.green(`[ADD PROP] ${entityJson.id}.${prop.name}`));
-      hasChanges = true;
-    }
+  // 기존 엔티티 업데이트
+  const entity = EntityManager.get(entityJson.id);
+  let hasChanges = false;
 
-    // 타입이 변경된 props 업데이트
-    const propsToUpdate = findPropsToUpdate(entity.props, entityJson.props ?? []);
-    for (const { index, newProp } of propsToUpdate) {
-      const oldType = entity.props[index]?.type;
-      await entity.modifyProp(newProp, index);
-      console.log(
-        chalk.yellow(
-          `[UPDATE PROP] ${entityJson.id}.${newProp.name}: ${oldType} → ${newProp.type}`,
-        ),
-      );
-      hasChanges = true;
-    }
+  // 누락된 props 추가
+  const missingProps = findMissingProps(entity.props, entityJson.props ?? []);
+  for (const prop of missingProps) {
+    await entity.createProp(prop);
+    console.log(chalk.green(`[ADD PROP] ${entityJson.id}.${prop.name}`));
+    hasChanges = true;
+  }
 
-    // 누락된 indexes 추가
-    const missingIndexes = findMissingIndexes(entity.indexes, entityJson.indexes ?? []);
-    for (const index of missingIndexes) {
-      entity.indexes.push(index);
-      console.log(chalk.green(`[ADD INDEX] ${entityJson.id}.${index.name}`));
-      hasChanges = true;
-    }
-
-    // 누락된 subsets 추가
-    const missingSubsets = findMissingSubsets(
-      entity.subsets,
-      (entityJson.subsets ?? {}) as { [key: string]: string[] },
+  // 타입이 변경된 props 업데이트
+  const propsToUpdate = findPropsToUpdate(entity.props, entityJson.props ?? []);
+  for (const { index, newProp } of propsToUpdate) {
+    const oldType = entity.props[index]?.type;
+    await entity.modifyProp(newProp, index);
+    console.log(
+      chalk.yellow(`[UPDATE PROP] ${entityJson.id}.${newProp.name}: ${oldType} → ${newProp.type}`),
     );
-    for (const [key, fields] of Object.entries(missingSubsets)) {
-      entity.subsets[key] = fields;
-      console.log(chalk.green(`[ADD SUBSET] ${entityJson.id}.${key}`));
-      hasChanges = true;
-    }
+    hasChanges = true;
+  }
 
-    // 변경사항 저장
-    if (hasChanges) {
-      await entity.save();
-      console.log(chalk.blue(`[UPDATED] ${entityJson.id}`));
-    } else {
-      console.log(chalk.dim(`[SKIP] ${entityJson.id} - no changes`));
+  // 누락된 indexes 추가
+  const missingIndexes = findMissingIndexes(entity.indexes, entityJson.indexes ?? []);
+  for (const index of missingIndexes) {
+    entity.indexes.push(index);
+    console.log(chalk.green(`[ADD INDEX] ${entityJson.id}.${index.name}`));
+    hasChanges = true;
+  }
+
+  // 누락된 subsets 추가
+  const missingSubsets = findMissingSubsets(
+    entity.subsets,
+    (entityJson.subsets ?? {}) as { [key: string]: string[] },
+  );
+  for (const [key, fields] of Object.entries(missingSubsets)) {
+    entity.subsets[key] = fields;
+    console.log(chalk.green(`[ADD SUBSET] ${entityJson.id}.${key}`));
+    hasChanges = true;
+  }
+
+  // 변경사항 저장
+  if (hasChanges) {
+    await entity.save();
+    console.log(chalk.blue(`[UPDATED] ${entityJson.id}`));
+  } else {
+    console.log(chalk.dim(`[SKIP] ${entityJson.id} - no changes`));
+  }
+}
+
+/**
+ * 기존 엔티티에 props를 추가합니다.
+ */
+async function addPropsToEntity(entityId: string, props: EntityProp[]): Promise<void> {
+  if (!EntityManager.exists(entityId)) {
+    console.log(chalk.yellow(`[SKIP] ${entityId} - entity not found, cannot add props`));
+    return;
+  }
+
+  const entity = EntityManager.get(entityId);
+  let hasChanges = false;
+
+  const missingProps = findMissingProps(entity.props, props);
+  for (const prop of missingProps) {
+    await entity.createProp(prop);
+    console.log(chalk.green(`[ADD PROP] ${entityId}.${prop.name}`));
+    hasChanges = true;
+  }
+
+  if (hasChanges) {
+    await entity.save();
+  }
+}
+
+/**
+ * 기존 엔티티에 indexes를 추가합니다.
+ */
+async function addIndexesToEntity(entityId: string, indexes: EntityIndex[]): Promise<void> {
+  if (!EntityManager.exists(entityId)) {
+    console.log(chalk.yellow(`[SKIP] ${entityId} - entity not found, cannot add indexes`));
+    return;
+  }
+
+  const entity = EntityManager.get(entityId);
+  let hasChanges = false;
+
+  const missingIndexes = findMissingIndexes(entity.indexes, indexes);
+  for (const index of missingIndexes) {
+    entity.indexes.push(index);
+    console.log(chalk.green(`[ADD INDEX] ${entityId}.${index.name}`));
+    hasChanges = true;
+  }
+
+  if (hasChanges) {
+    await entity.save();
+  }
+}
+
+export interface GenerateBetterAuthEntitiesOptions {
+  /**
+   * 활성화할 플러그인 ID 목록
+   * 예: ["phone-number", "2fa"]
+   */
+  plugins?: BetterAuthPluginId[];
+}
+
+/**
+ * better-auth 엔티티들을 Sonamu에 생성/업데이트
+ *
+ * @param options 생성 옵션
+ * @param options.plugins 활성화할 플러그인 ID 목록
+ */
+export async function generateBetterAuthEntities(
+  options: GenerateBetterAuthEntitiesOptions = {},
+): Promise<void> {
+  const { plugins = [] } = options;
+
+  // 1. 기본 엔티티 생성/업데이트
+  console.log(chalk.cyan("\n📦 Processing core entities...\n"));
+  for (const entityJson of betterAuthV1) {
+    await createOrUpdateEntity(entityJson);
+  }
+
+  // 2. 플러그인 처리
+  if (plugins.length > 0) {
+    console.log(chalk.cyan("\n🔌 Processing plugins...\n"));
+
+    for (const pluginId of plugins) {
+      if (!isValidPluginId(pluginId)) {
+        console.log(chalk.red(`[ERROR] Unknown plugin: ${pluginId}`));
+        continue;
+      }
+
+      const plugin = PLUGINS[pluginId];
+      console.log(chalk.magenta(`\n[PLUGIN] ${plugin.name}`));
+
+      // 플러그인의 새 엔티티 생성
+      for (const entityJson of plugin.entities) {
+        await createOrUpdateEntity(entityJson);
+      }
+
+      // 기존 엔티티에 필드 추가
+      for (const [entityId, props] of Object.entries(plugin.additionalProps)) {
+        await addPropsToEntity(entityId, props);
+      }
+
+      // 기존 엔티티에 인덱스 추가
+      if (plugin.additionalIndexes) {
+        for (const [entityId, indexes] of Object.entries(plugin.additionalIndexes)) {
+          await addIndexesToEntity(entityId, indexes);
+        }
+      }
     }
   }
 
-  console.log(chalk.bold("Done! better-auth entities generated."));
+  console.log(chalk.bold("\n✅ Done! better-auth entities generated."));
 }
