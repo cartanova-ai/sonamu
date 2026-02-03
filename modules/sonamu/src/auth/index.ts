@@ -1,3 +1,4 @@
+export { admin, phoneNumber, twoFactor, username } from "better-auth/plugins";
 export type { GenerateBetterAuthEntitiesOptions } from "./auth-generator";
 export { generateBetterAuthEntities } from "./auth-generator";
 export { BASE_FIELD_MAPPINGS, betterAuthV1 } from "./better-auth-entities";

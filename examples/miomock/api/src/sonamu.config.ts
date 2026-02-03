@@ -1,9 +1,8 @@
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import { twoFactor } from "better-auth/plugins";
 import dotenv from "dotenv";
 import path from "path";
-import { CachePresets, defineConfig, TWO_FACTOR_SCHEMA } from "sonamu";
+import { CachePresets, defineConfig, TWO_FACTOR_SCHEMA, twoFactor } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
