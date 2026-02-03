@@ -131,6 +131,14 @@ export const TagSearchField = z.enum(["id"]).describe("TagSearchField");
 export type TagSearchField = z.infer<typeof TagSearchField>;
 export const TagSearchFieldLabel = { id: "ID" };
 
+// Enums: TwoFactor
+export const TwoFactorOrderBy = z.enum(["id-desc"]).describe("TwoFactorOrderBy");
+export type TwoFactorOrderBy = z.infer<typeof TwoFactorOrderBy>;
+export const TwoFactorOrderByLabel = { "id-desc": "ID최신순" };
+export const TwoFactorSearchField = z.enum(["id"]).describe("TwoFactorSearchField");
+export type TwoFactorSearchField = z.infer<typeof TwoFactorSearchField>;
+export const TwoFactorSearchFieldLabel = { id: "ID" };
+
 // Enums: User
 export const UserOrderBy = z.enum(["id-desc"]).describe("UserOrderBy");
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
@@ -343,6 +351,19 @@ export type TagBaseSchema = z.infer<typeof TagBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "name_ko", "name_en", "id"];
 };
 
+// BaseSchema: TwoFactor
+export const TwoFactorBaseSchema = z.object({
+  id: z.string(),
+  secret: z.string(),
+  backup_codes: z.string(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  user_id: z.string(),
+});
+export type TwoFactorBaseSchema = z.infer<typeof TwoFactorBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "updated_at", "id"];
+};
+
 // BaseSchema: User
 export const UserBaseSchema = z.object({
   id: z.string(),
@@ -359,6 +380,7 @@ export const UserBaseSchema = z.object({
   // employee: OneToOne Employee
   image: z.string().nullable(),
   updated_at: z.date(),
+  two_factor_enabled: z.boolean().nullable(),
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
   readonly __hasDefault__: readonly [
@@ -372,6 +394,7 @@ export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
     "employee_id",
     "image",
     "updated_at",
+    "two_factor_enabled",
     "id",
   ];
 };
@@ -541,6 +564,21 @@ export const TagBaseListParams = z
   })
   .partial();
 export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
+
+// BaseListParams: TwoFactor
+export const TwoFactorBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: TwoFactorSearchField,
+    keyword: z.string(),
+    orderBy: TwoFactorOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.string()),
+    sonamuFilter: z.custom<ApplySonamuFilter<TwoFactorBaseSchema, never, never>>(),
+  })
+  .partial();
+export type TwoFactorBaseListParams = z.infer<typeof TwoFactorBaseListParams>;
 
 // BaseListParams: User
 export const UserBaseListParams = z
@@ -907,6 +945,22 @@ export type TagSubsetMapping = {
 };
 export const TagSubsetKey = z.enum(["A"]);
 export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
+
+// Subsets: TwoFactor
+export const TwoFactorSubsetA = z.object({
+  id: z.string(),
+  secret: z.string(),
+  backup_codes: z.string(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  user_id: z.string(),
+});
+export type TwoFactorSubsetA = z.infer<typeof TwoFactorSubsetA>;
+export type TwoFactorSubsetMapping = {
+  A: TwoFactorSubsetA;
+};
+export const TwoFactorSubsetKey = z.enum(["A"]);
+export type TwoFactorSubsetKey = z.infer<typeof TwoFactorSubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({

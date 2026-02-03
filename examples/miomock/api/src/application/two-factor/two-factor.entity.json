@@ -1,0 +1,25 @@
+{
+  "id": "TwoFactor",
+  "table": "two_factors",
+  "title": "2FA 설정",
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "secret", "type": "string", "desc": "비밀 키" },
+    { "name": "backup_codes", "type": "string", "desc": "백업 코드" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "생성일시" },
+    { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" },
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "relationType": "BelongsToOne",
+      "onDelete": "CASCADE",
+      "desc": "사용자"
+    }
+  ],
+  "indexes": [
+    { "type": "index", "name": "two_factors_user_id_idx", "columns": [{ "name": "user_id" }] }
+  ],
+  "subsets": { "A": ["id", "secret", "backup_codes", "created_at", "updated_at", "user.id"] },
+  "enums": { "TwoFactorOrderBy": { "id-desc": "ID최신순" }, "TwoFactorSearchField": { "id": "ID" } }
+}
