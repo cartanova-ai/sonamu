@@ -22,10 +22,15 @@ flowchart TD
     E --> E3[queries.generated.ts]
     E --> E4[entry-server.generated.tsx]
 
+    J --> J1[sonamu.generated.ts]
+    J --> J2[sonamu.generated.sso.ts]
+
     A1 --> W["🌐 Copy to<br/>Web/App Projects"]
     A2 --> W
     A3 --> W
     J --> W
+    J1 --> W
+    J2 --> W
 
     style A fill:#4f46e5,color:#fff,stroke:#4f46e5,stroke-width:3px
     style E fill:#059669,color:#fff,stroke:#059669,stroke-width:3px
@@ -39,6 +44,9 @@ flowchart TD
     style E2 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E3 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E4 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+
+    style J1 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style J2 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
 
     style W fill:#e0f2f1,stroke:#0097a7,stroke-width:3px
 ```
@@ -285,17 +293,43 @@ class UserModelClass extends BaseModelClass {
 
 ## On Types Save
 
-When you save a `.types.ts` file, it's copied to targets.
+When you save a `.types.ts` file, schema files are regenerated and copied to targets.
+
+<Note>
+`.types.ts` files are treated as Single Source of Truth. Changes trigger schema file regeneration, same as Entity changes.
+</Note>
 
 ### Regenerated Files
 
 <Steps>
-<Step title="Target Copy">
-Modified Types file is copied to target projects
+<Step title="1. sonamu.generated.ts">
+Base types and Enums for the entire project
+
+**Location**: `api/src/application/sonamu.generated.ts`
+
+**Always regenerated**: ✅
+
+Zod schemas defined in Types files are reflected in this file.
+</Step>
+
+<Step title="2. sonamu.generated.sso.ts">
+Subset query functions
+
+**Location**: `api/src/application/sonamu.generated.sso.ts`
+
+**Always regenerated**: ✅
+
+Regenerated together to maintain type consistency with Types changes.
+</Step>
+
+<Step title="3. Target Copy">
+Modified Types file and regenerated files are copied to target projects
 
 **Locations**:
 - `web/src/services/{entity}/{entity}.types.ts`
-- `app/src/services/{entity}/{entity}.types.ts`
+- `web/src/services/sonamu.generated.ts`
+- `web/src/services/sonamu.generated.sso.ts`
+- `app/src/services/...` (same)
 
 **Always copied**: ✅
 
@@ -319,8 +353,11 @@ export type UserLoginParams = z.infer<typeof UserLoginParams>;
 ```
 
 ```bash title="Execution result"
+✅ Generated: sonamu.generated.ts
+✅ Generated: sonamu.generated.sso.ts
 ✅ Copied: web/src/services/user/user.types.ts
-✅ Copied: app/src/services/user/user.types.ts
+✅ Copied: web/src/services/sonamu.generated.ts
+✅ Copied: web/src/services/sonamu.generated.sso.ts
 ```
 </CodeGroup>
 
@@ -412,7 +449,7 @@ A table showing file changes and regeneration relationships at a glance.
 |--------------|-------------------|---------------------|-------------------------|----------------------|----------------------|---------------------|---------------------------|-------------|-----------------|
 | **{entity}.entity.json** | ✅ (first creation) | ✅ | ✅ | - | - | - | - | - | - |
 | **{entity}.model.ts** | - | - | - | ✅ | ✅ | ✅ | ✅ | - | - |
-| **{entity}.types.ts** | *copy* | - | - | - | - | - | - | - | - |
+| **{entity}.types.ts** | *copy* | ✅ | ✅ | - | - | - | - | - | - |
 | **sonamu.config.ts** | - | - | - | - | - | - | - | ✅ | - |
 | **i18n/{locale}.ts** | - | - | - | - | - | - | - | - | ✅ |
 
@@ -527,10 +564,10 @@ Tips to reduce regeneration time.
 
 <AccordionGroup>
   <Accordion title="Change Only Necessary Files">
-    If you only modified Types, no need to re-save Entity
-    
-    - Types change → Target copy only (fast)
-    - Entity change → All schemas regenerated (slow)
+    If not changing Model APIs, modifying Entity or Types is sufficient
+
+    - Types/Entity change → Schema regeneration
+    - Model change → Services and HTTP file regeneration
   </Accordion>
   
   <Accordion title="Remove Unnecessary Targets">

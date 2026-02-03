@@ -22,10 +22,15 @@ flowchart TD
     E --> E3[queries.generated.ts]
     E --> E4[entry-server.generated.tsx]
 
+    J --> J1[sonamu.generated.ts]
+    J --> J2[sonamu.generated.sso.ts]
+
     A1 --> W["🌐 Web/App 프로젝트로<br/>파일 복사"]
     A2 --> W
     A3 --> W
     J --> W
+    J1 --> W
+    J2 --> W
 
     style A fill:#4f46e5,color:#fff,stroke:#4f46e5,stroke-width:3px
     style E fill:#059669,color:#fff,stroke:#059669,stroke-width:3px
@@ -39,6 +44,9 @@ flowchart TD
     style E2 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E3 fill:#e8f5e9,stroke:#059669,stroke-width:2px
     style E4 fill:#e8f5e9,stroke:#059669,stroke-width:2px
+
+    style J1 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style J2 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
 
     style W fill:#e0f2f1,stroke:#0097a7,stroke-width:3px
 ```
@@ -285,17 +293,43 @@ class UserModelClass extends BaseModelClass {
 
 ## Types 저장 시
 
-`.types.ts` 파일을 저장하면 타겟에 복사됩니다.
+`.types.ts` 파일을 저장하면 스키마 파일들이 재생성되고, 타겟에 복사됩니다.
+
+<Note>
+`.types.ts` 파일은 Single Source of Truth로 취급됩니다. 변경 시 Entity 변경과 동일하게 스키마 파일들이 재생성됩니다.
+</Note>
 
 ### 재생성되는 파일
 
 <Steps>
-<Step title="타겟 복사">
-수정된 Types 파일이 타겟 프로젝트에 복사
+<Step title="1. sonamu.generated.ts">
+프로젝트 전체의 베이스 타입과 Enum
+
+**위치**: `api/src/application/sonamu.generated.ts`
+
+**항상 재생성**: ✅
+
+Types 파일에서 정의한 Zod 스키마들이 이 파일에 반영됩니다.
+</Step>
+
+<Step title="2. sonamu.generated.sso.ts">
+Subset 쿼리 함수들
+
+**위치**: `api/src/application/sonamu.generated.sso.ts`
+
+**항상 재생성**: ✅
+
+Types 변경에 따른 타입 정합성을 유지하기 위해 함께 재생성됩니다.
+</Step>
+
+<Step title="3. 타겟 복사">
+수정된 Types 파일과 재생성된 파일들이 타겟 프로젝트에 복사
 
 **위치**:
 - `web/src/services/{entity}/{entity}.types.ts`
-- `app/src/services/{entity}/{entity}.types.ts`
+- `web/src/services/sonamu.generated.ts`
+- `web/src/services/sonamu.generated.sso.ts`
+- `app/src/services/...` (동일)
 
 **항상 복사**: ✅
 
@@ -319,8 +353,11 @@ export type UserLoginParams = z.infer<typeof UserLoginParams>;
 ```
 
 ```bash title="실행 결과"
+✅ Generated: sonamu.generated.ts
+✅ Generated: sonamu.generated.sso.ts
 ✅ Copied: web/src/services/user/user.types.ts
-✅ Copied: app/src/services/user/user.types.ts
+✅ Copied: web/src/services/sonamu.generated.ts
+✅ Copied: web/src/services/sonamu.generated.sso.ts
 ```
 </CodeGroup>
 
@@ -412,7 +449,7 @@ export const SD = {
 |-----------|-------------------|---------------------|-------------------------|----------------------|----------------------|---------------------|---------------------------|-------------|-----------------|
 | **{entity}.entity.json** | ✅ (첫 생성) | ✅ | ✅ | - | - | - | - | - | - |
 | **{entity}.model.ts** | - | - | - | ✅ | ✅ | ✅ | ✅ | - | - |
-| **{entity}.types.ts** | *복사* | - | - | - | - | - | - | - | - |
+| **{entity}.types.ts** | *복사* | ✅ | ✅ | - | - | - | - | - | - |
 | **sonamu.config.ts** | - | - | - | - | - | - | - | ✅ | - |
 | **i18n/{locale}.ts** | - | - | - | - | - | - | - | - | ✅ |
 
@@ -527,10 +564,10 @@ await Sonamu.syncer.generateTemplate(
 
 <AccordionGroup>
   <Accordion title="필요한 파일만 변경">
-    Types만 수정했다면 Entity를 다시 저장할 필요 없음
-    
-    - Types 변경 → 타겟 복사만 (빠름)
-    - Entity 변경 → 모든 스키마 재생성 (느림)
+    Model API 변경이 아니라면 Entity나 Types 수정만으로 충분
+
+    - Types/Entity 변경 → 스키마 재생성
+    - Model 변경 → 서비스 및 HTTP 파일 재생성
   </Accordion>
   
   <Accordion title="불필요한 타겟 제거">
