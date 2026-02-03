@@ -1,6 +1,6 @@
 ---
 name: sonamu-auth-migration
-description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (integer→string). Entity, Migration, SaveParams, test-helpers 전체 프로세스. Use when integrating external auth requiring PK type change.
+description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (integer→string). Entity, Migration, SaveParams, test-helpers 전체 프로세스. 15개 플러그인 통합 가이드 (OAuth, 2FA, phone-number 등). Use when integrating external auth requiring PK type change or adding better-auth plugins.
 ---
 
 # Auth 시스템 Migration (better-auth 등 외부 인증 통합)
@@ -279,6 +279,284 @@ column files.entity_id does not exist
 - 자식 엔티티에 해당 컬럼이 반드시 존재해야 함
 - subset에도 포함시켜야 조회 가능
 
+### 9. better-auth 플러그인 통합
+
+#### PluginSchema 타입 매핑
+
+better-auth 플러그인은 PluginSchema 타입으로 스키마를 정의합니다. camelCase 필드명이 자동으로 snake_case DB 컬럼명으로 매핑됩니다:
+
+```typescript
+// better-auth 플러그인 스키마 예시
+const schema = {
+  user: {
+    fields: {
+      phoneNumber: {          // camelCase
+        type: "string",
+        required: false,
+      }
+    }
+  }
+};
+
+// DB에는 phone_number로 저장됨 (snake_case)
+```
+
+Sonamu Entity에서는 DB 컬럼명(snake_case)을 그대로 사용:
+
+```json
+// user.entity.json
+{
+  "props": [
+    { "name": "phone_number", "type": "string", "nullable": true, "desc": "전화번호" }
+  ]
+}
+```
+
+#### 플러그인 카테고리
+
+better-auth는 15개 플러그인을 제공하며, 크게 4가지 카테고리로 분류됩니다:
+
+**기본 인증**
+- email/password: 이메일/비밀번호 인증 (User.email, User.emailVerified)
+- OAuth: 소셜 로그인 (Account 테이블 필요)
+- magic link: 이메일 링크 인증 (Verification 테이블 필요)
+- email OTP: 이메일 OTP 인증 (Verification 테이블 필요)
+- multi-session: 다중 세션 지원 (Session 테이블 확장)
+
+**사용자 확장**
+- username: 사용자명 추가 (User.username)
+- phone number: 전화번호 추가 (User.phoneNumber, User.phoneNumberVerified)
+- admin: 관리자 권한 (User.role, User.banned, User.banReason, User.banExpires)
+- anonymous: 익명 사용자 지원 (User.isAnonymous)
+
+**보안**
+- two-factor: 2단계 인증 (TwoFactor 테이블 필요)
+- passkey: 패스키 인증 (Passkey 테이블 필요)
+
+**엔터프라이즈**
+- organization: 조직/멤버 관리 (Organization, Member, Invitation 테이블 필요)
+- API key: API 키 인증 (APIKey 테이블 필요)
+- SSO: SAML 기반 SSO (SAMLProvider, SAMLConnection 테이블 필요)
+- JWT: JWT 토큰 인증 (추가 테이블 불필요)
+
+#### 스키마 요구사항별 분류
+
+**기존 테이블 확장만 필요 (User/Session 테이블에 필드 추가)**
+- username: User.username
+- phone number: User.phone_number, User.phone_number_verified
+- admin: User.role, User.banned, User.ban_reason, User.ban_expires
+- anonymous: User.is_anonymous
+- multi-session: Session.active_expires
+
+**새 테이블 필요**
+- OAuth: Account (account_id, provider_id, user_id, access_token 등)
+- magic link: Verification (identifier, value, expires_at)
+- email OTP: Verification (identifier, value, expires_at)
+- two-factor: TwoFactor (secret, backup_codes)
+- passkey: Passkey (name, public_key, counter 등)
+- organization: Organization, Member, Invitation
+- API key: APIKey (name, key, expires_at)
+- SSO: SAMLProvider, SAMLConnection
+
+#### Entity 작성 패턴
+
+**기존 테이블 확장 (User 테이블에 필드 추가)**
+
+```json
+// user.entity.json
+{
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "email", "type": "string", "desc": "이메일" },
+    { "name": "email_verified", "type": "boolean", "dbDefault": "false", "desc": "이메일 인증 여부" },
+    { "name": "name", "type": "string", "desc": "이름" },
+    { "name": "image", "type": "string", "nullable": true, "desc": "프로필 이미지" },
+    { "name": "created_at", "type": "date", "dbDefault": "now", "desc": "생성일" },
+    { "name": "updated_at", "type": "date", "dbDefault": "now", "desc": "수정일" },
+
+    // phone-number 플러그인 필드
+    { "name": "phone_number", "type": "string", "nullable": true, "desc": "전화번호" },
+    { "name": "phone_number_verified", "type": "boolean", "dbDefault": "false", "desc": "전화번호 인증 여부" },
+
+    // admin 플러그인 필드
+    { "name": "role", "type": "enum", "enums": ["user", "admin"], "dbDefault": "'user'", "desc": "역할" },
+    { "name": "banned", "type": "boolean", "nullable": true, "desc": "차단 여부" },
+    { "name": "ban_reason", "type": "string", "nullable": true, "desc": "차단 사유" },
+    { "name": "ban_expires", "type": "date", "nullable": true, "desc": "차단 만료일" }
+  ]
+}
+```
+
+**새 테이블 생성 (Account 테이블 예시)**
+
+```json
+// account.entity.json
+{
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "account_id", "type": "string", "desc": "계정 ID" },
+    { "name": "provider_id", "type": "string", "desc": "Provider ID" },
+    { "name": "user_id", "type": "string", "desc": "사용자 ID" },
+    { "name": "access_token", "type": "string", "nullable": true, "desc": "액세스 토큰" },
+    { "name": "refresh_token", "type": "string", "nullable": true, "desc": "리프레시 토큰" },
+    { "name": "id_token", "type": "string", "nullable": true, "desc": "ID 토큰" },
+    { "name": "access_token_expires_at", "type": "date", "nullable": true, "desc": "액세스 토큰 만료일" },
+    { "name": "refresh_token_expires_at", "type": "date", "nullable": true, "desc": "리프레시 토큰 만료일" },
+    { "name": "scope", "type": "string", "nullable": true, "desc": "권한 범위" },
+    { "name": "password", "type": "string", "nullable": true, "desc": "비밀번호" },
+    { "name": "created_at", "type": "date", "dbDefault": "now", "desc": "생성일" },
+    { "name": "updated_at", "type": "date", "dbDefault": "now", "desc": "수정일" },
+
+    // Relation 정의
+    { "name": "user", "type": "relation", "with": "User", "relationType": "BelongsToOne", "joinColumn": "user_id" }
+  ]
+}
+```
+
+주의사항:
+- OAuth 플러그인: access_token, refresh_token, id_token은 nullable (OAuth 전용)
+- credential 플러그인: password는 nullable (credential 전용)
+- 모든 nullable 필드는 SaveParams에서 partial 처리 필요
+
+**새 테이블 생성 (TwoFactor 테이블 예시)**
+
+```json
+// two_factor.entity.json
+{
+  "props": [
+    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "secret", "type": "string", "desc": "TOTP 시크릿" },
+    { "name": "backup_codes", "type": "string", "desc": "백업 코드 (JSON)" },
+    { "name": "user_id", "type": "string", "desc": "사용자 ID" },
+    { "name": "created_at", "type": "date", "dbDefault": "now", "desc": "생성일" },
+    { "name": "updated_at", "type": "date", "dbDefault": "now", "desc": "수정일" },
+
+    // Relation 정의
+    { "name": "user", "type": "relation", "with": "User", "relationType": "BelongsToOne", "joinColumn": "user_id" }
+  ]
+}
+```
+
+#### Migration 패턴
+
+**기존 테이블에 필드 추가 (ALTER TABLE)**
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // phone-number 플러그인 필드
+    table.string("phone_number", 255).nullable();
+    table.boolean("phone_number_verified").defaultTo(false);
+
+    // admin 플러그인 필드
+    table.text("role").notNullable().defaultTo("user");
+    table.boolean("banned").nullable();
+    table.string("ban_reason", 255).nullable();
+    table.timestamp("ban_expires", { useTz: true }).nullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns(
+      "phone_number",
+      "phone_number_verified",
+      "role",
+      "banned",
+      "ban_reason",
+      "ban_expires"
+    );
+  });
+}
+```
+
+**새 테이블 생성 (CREATE TABLE)**
+
+FK가 없는 테이블 먼저 생성, 이후 FK 추가:
+
+```typescript
+// 1단계: 테이블 생성 (FK 없이)
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("accounts", (table) => {
+    table.text("id").primary();
+    table.string("account_id", 255).notNullable();
+    table.string("provider_id", 255).notNullable();
+    table.text("user_id").notNullable();  // FK 컬럼만 생성
+    table.string("access_token", 255).nullable();
+    table.string("refresh_token", 255).nullable();
+    table.string("id_token", 255).nullable();
+    table.timestamp("access_token_expires_at", { useTz: true }).nullable();
+    table.timestamp("refresh_token_expires_at", { useTz: true }).nullable();
+    table.string("scope", 255).nullable();
+    table.string("password", 255).nullable();
+    table.timestamp("created_at", { useTz: true }).defaultTo(knex.fn.now());
+    table.timestamp("updated_at", { useTz: true }).defaultTo(knex.fn.now());
+  });
+}
+
+// 2단계: FK 추가 (별도 migration)
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("accounts", (table) => {
+    table.foreign("user_id").references("users.id").onUpdate("RESTRICT").onDelete("CASCADE");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("accounts", (table) => {
+    table.dropForeign(["user_id"]);
+  });
+}
+```
+
+순서:
+1. CREATE TABLE users (FK 없이)
+2. CREATE TABLE accounts (FK 없이, user_id 컬럼만)
+3. ALTER TABLE accounts ADD FOREIGN KEY (user_id) REFERENCES users(id)
+
+#### Sonamu 구현 예시
+
+현재 Sonamu에서 구현된 플러그인:
+- phone-number 플러그인: User.phone_number, User.phone_number_verified
+- two-factor 플러그인: TwoFactor 테이블 (id, secret, backup_codes, user_id)
+
+참조 경로:
+- 예제 프로젝트: `sonamu/examples/miomock/`
+- User Entity: `examples/miomock/api/src/application/user/user.entity.json`
+- TwoFactor Entity: `examples/miomock/api/src/application/two_factor/two_factor.entity.json`
+
+#### 플러그인 추가 순서
+
+1. Entity 작성: `{entity}.entity.json`에 필드 정의
+2. Migration 생성: Sonamu UI에서 자동 생성 또는 수동 작성
+3. SaveParams 수정: nullable 필드는 모두 partial 처리
+4. Model 작성: 비즈니스 로직 구현
+5. test-helpers 수정: userId 등 타입이 변경된 파라미터 수정
+6. 테스트 작성: 각 provider/플러그인별 테스트 케이스 작성
+
+#### 플러그인별 주의사항
+
+**OAuth (Account 테이블)**
+- provider_id별로 다른 필드 사용 (google은 access_token, credential은 password)
+- SaveParams에서 access_token, refresh_token, id_token, password 모두 optional
+- 테스트에서 provider별로 필요한 필드만 제공
+
+**two-factor (TwoFactor 테이블)**
+- backup_codes는 JSON 문자열로 저장 (Array를 JSON.stringify)
+- secret은 TOTP 라이브러리로 생성 (예: speakeasy)
+
+**organization (Organization, Member, Invitation 테이블)**
+- 3개 테이블이 서로 FK 관계
+- Migration 순서: Organization → Member, Invitation
+- Member는 User와 Organization을 모두 참조
+
+**passkey (Passkey 테이블)**
+- public_key는 WebAuthn 표준 형식
+- counter는 replay 공격 방지용 (매 인증시 증가)
+
+**SSO (SAMLProvider, SAMLConnection 테이블)**
+- metadata_url에서 IdP 메타데이터 자동 로드
+- x509_certificate는 SAML 응답 서명 검증용
+
 ## Common Mistakes
 
 ### 실수 1: Migration을 순서대로 개별 적용
@@ -329,17 +607,65 @@ await AccountModel.save([{
 ### 실수 5: 중복 migration 미정리
 Entity 변경 후 generate하면 개별 migration + 통합 migration 둘 다 생성됨. 개별 migration들을 제거하지 않으면 순서대로 실행되어 FK constraint 위반
 
+### 실수 6: PluginSchema 필드명을 Sonamu Entity에 그대로 사용
+```json
+// 잘못된 예 - better-auth의 camelCase를 그대로 사용
+{
+  "props": [
+    { "name": "phoneNumber", "type": "string" }
+  ]
+}
+```
+
+better-auth는 camelCase를 자동으로 snake_case로 변환하지만, Sonamu Entity는 DB 컬럼명을 그대로 사용해야 합니다:
+
+```json
+// 올바른 예
+{
+  "props": [
+    { "name": "phone_number", "type": "string" }
+  ]
+}
+```
+
+### 실수 7: 새 테이블 생성 시 FK를 테이블 생성과 동시에 추가
+```typescript
+// 잘못된 예
+await knex.schema.createTable("accounts", (table) => {
+  table.text("id").primary();
+  table.text("user_id").notNullable();
+  table.foreign("user_id").references("users.id");  // users 테이블이 아직 없을 수 있음
+});
+```
+
+올바른 방법: 테이블 생성과 FK 추가를 분리
+
+```typescript
+// Migration 1: 테이블 생성
+await knex.schema.createTable("accounts", (table) => {
+  table.text("id").primary();
+  table.text("user_id").notNullable();  // FK 컬럼만
+});
+
+// Migration 2: FK 추가
+await knex.schema.alterTable("accounts", (table) => {
+  table.foreign("user_id").references("users.id");
+});
+```
+
 ## Checklist
 
 **Entity 수정:**
 - [ ] User.id 타입을 string으로 변경
 - [ ] User를 참조하는 모든 FK 엔티티 확인 (grep으로 검색)
 - [ ] HasMany 관계가 있다면 joinColumn 컬럼이 자식 엔티티에 존재하는지 확인
+- [ ] better-auth 플러그인별 필요한 필드 확인 (기존 테이블 확장 vs 새 테이블)
 
 **Migration 작성:**
 - [ ] 통합 migration 작성 (FK 제거 - 타입 변경 - FK 복구 순서)
 - [ ] 중복 생성된 개별 migration 파일 삭제
 - [ ] down 함수도 올바른 순서로 작성
+- [ ] 새 테이블 생성 시 FK 순서 확인 (테이블 생성 → FK 추가)
 
 **타입 정의:**
 - [ ] SaveParams에 nullable 필드 모두 partial 처리
@@ -351,6 +677,7 @@ Entity 변경 후 generate하면 개별 migration + 통합 migration 둘 다 생
 - [ ] 테스트에서 불필요한 nullable 필드 제거
 - [ ] OAuth 계정과 credential 계정 테스트 분리
 - [ ] 각 provider에 맞는 필드만 제공
+- [ ] 플러그인별 테스트 케이스 작성 (phone-number, two-factor 등)
 
 **실행:**
 - [ ] stub 재생성: `pnpm stub`
