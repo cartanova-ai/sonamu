@@ -8,6 +8,17 @@ import { useSonamuBaseContext } from "@/contexts";
 import type { ErrorObj } from "./types";
 
 /**
+ * FormRegisterReturn
+ *
+ * register 함수의 반환 타입입니다.
+ */
+export type FormRegisterReturn = {
+  value: any;
+  onValueChange: (value: any) => void;
+  error?: ErrorObj;
+};
+
+/**
  * traverseAndUploadFiles
  *
  * 폼 데이터 안에 중첩되어 있는 File 객체들을 재귀적으로 찾아서 업로드하고,
@@ -89,7 +100,10 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   return {
     form,
     setForm,
-    register: (objPath: string, _emptyStringTo?: "normal" | "nullable" | "optional"): any => {
+    register: (
+      objPath: string,
+      _emptyStringTo?: "normal" | "nullable" | "optional",
+    ): FormRegisterReturn => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = get(form, objPath) as unknown;
 
@@ -115,7 +129,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
         setForm(set(form, objPath, processedValue));
       };
 
-      const result: Record<string, any> = {
+      const result: FormRegisterReturn = {
         value: srcValue === undefined || srcValue === null ? "" : srcValue,
         onValueChange: (value: any) => updateValue(value),
       };
