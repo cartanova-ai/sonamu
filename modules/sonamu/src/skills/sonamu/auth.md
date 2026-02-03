@@ -93,7 +93,14 @@ async me(): Promise<UserSubsetA | null> {
 
 ## Guards 활용
 
-**소스코드:** `modules/sonamu/src/api/config.ts` (GuardKeys 타입)
+**소스코드:** `modules/sonamu/src/api/decorators.ts` (GuardKeys 인터페이스)
+
+### 기본 제공 Guard
+
+Sonamu는 3가지 기본 Guard를 제공합니다:
+- `query`: 모든 사용자 허용 (비로그인 포함)
+- `user`: 로그인한 사용자만 허용
+- `admin`: 관리자 권한 사용자만 허용
 
 ```typescript
 // 로그인 필수
@@ -110,11 +117,51 @@ async deleteUser(id: string) {
 }
 ```
 
+### 커스텀 Guard 추가
+
+기본 Guard 외에 추가 권한이 필요한 경우, `src/typings/sonamu.d.ts`에서 `GuardKeys` 인터페이스를 확장합니다.
+
+**파일 위치:** `src/typings/sonamu.d.ts`
+
+```typescript
+import {} from "sonamu";
+
+declare module "sonamu" {
+  export interface GuardKeys {
+    query: true;
+    user: true;
+    admin: true;
+    // 커스텀 Guard 추가
+    manager: true;
+    evaluator: true;
+    superadmin: true;
+  }
+}
+```
+
+이제 추가한 Guard를 `@api` 데코레이터에서 사용할 수 있습니다:
+
+```typescript
+// 매니저 권한
+@api({ httpMethod: "GET", guards: ["manager"] })
+async getReports() {
+  // 매니저만 실행 가능
+}
+
+// 여러 Guard 동시 허용
+@api({ httpMethod: "POST", guards: ["admin", "manager"] })
+async createReport() {
+  // admin 또는 manager 권한 필요
+}
+```
+
 ## guardHandler 구현
 
 **소스코드:** `modules/sonamu/src/api/config.ts` (SonamuFastifyConfig.guardHandler)
 
 ```typescript
+import { Sonamu } from "sonamu";
+
 // sonamu.config.ts
 apiConfig: {
   guardHandler: (guard, request, api) => {
@@ -131,6 +178,20 @@ apiConfig: {
         // User 엔티티에 role 필드 추가 필요
         if (!user || (user as any).role !== "admin") {
           throw new Error("관리자만 접근 가능합니다");
+        }
+        break;
+      
+      case "manager":
+        // 커스텀 Guard: 매니저 권한
+        if (!user || !["admin", "manager"].includes((user as any).role)) {
+          throw new Error("매니저 권한이 필요합니다");
+        }
+        break;
+      
+      case "evaluator":
+        // 커스텀 Guard: 평가위원 권한
+        if (!user || !["admin", "evaluator"].includes((user as any).role)) {
+          throw new Error("평가위원 권한이 필요합니다");
         }
         break;
         

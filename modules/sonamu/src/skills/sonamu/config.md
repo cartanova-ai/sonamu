@@ -255,14 +255,19 @@ Sonamu 권한 시스템은 2가지 요소로 구성:
 
 ### 1. GuardKeys 확장 (커스텀 권한)
 
+**소스코드:** `modules/sonamu/src/api/decorators.ts` (GuardKeys 인터페이스)
+
 기본 제공: `query`, `admin`, `user`
 
-커스텀 권한 추가 시 `src/sonamu.generated.sso.ts`에서 확장:
+커스텀 권한 추가 시 `src/typings/sonamu.d.ts`에서 확장:
+
+**파일 위치:** `src/typings/sonamu.d.ts`
 
 ```typescript
-// src/sonamu.generated.sso.ts
+import {} from "sonamu";
+
 declare module "sonamu" {
-  interface GuardKeys {
+  export interface GuardKeys {
     query: true;
     admin: true;
     user: true;
@@ -319,6 +324,13 @@ apiConfig: {
         // 관리자 권한 (User 엔티티에 role 필드 추가 필요)
         if (!user || (user as any).role !== "admin") {
           throw new Error("관리자만 접근 가능합니다");
+        }
+        break;
+
+      case "manager":
+        // 매니저 권한 (커스텀 Guard 예시)
+        if (!user || ![“admin”, “manager”].includes((user as any).role)) {
+          throw new Error("매니저 권한이 필요합니다");
         }
         break;
 
