@@ -188,11 +188,13 @@ pnpm dev
 | `pnpm build`     | 프로덕션 빌드                             |
 | `pnpm start`     | 프로덕션 서버 실행                        |
 | `pnpm test`      | 테스트 실행                               |
-| `pnpm db:up`     | Docker 데이터베이스 시작                  |
-| `pnpm db:down`   | Docker 데이터베이스 중지                  |
-| `pnpm db:reset`  | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
+| `pnpm docker:up`     | Docker 데이터베이스 시작                  |
+| `pnpm docker:down`   | Docker 데이터베이스 중지                  |
+| `pnpm docker:reset`  | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
 | `pnpm dump`      | 테스트 DB → 덤프 파일 생성                |
 | `pnpm seed`      | 덤프 파일 → fixture DB 적용               |
+| `pnpm sonamu skills sync` | 공식 Skills 동기화                   |
+| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성             |
 
 ### Web (`web/`)
 
@@ -292,6 +294,120 @@ function UserListPage() {
 
 ---
 
+## 🤖 AI 개발 도우미 (Skills)
+
+Sonamu 프로젝트는 **Claude Code**와 함께 사용하도록 설계되었습니다. Skills는 AI가 Sonamu 프레임워크를 더 잘 이해하고 활용할 수 있도록 돕는 지식 베이스입니다.
+
+### 자동 설치
+
+프로젝트를 생성하면 `.claude/skills/sonamu` 디렉토리가 자동으로 설정됩니다 (postinstall 스크립트 실행).
+
+```
+.claude/
+├── skills/
+│   ├── sonamu/          # 공식 Sonamu Skills (자동 동기화)
+│   │   ├── api.md
+│   │   ├── entity-basic.md
+│   │   ├── model.md
+│   │   ├── puri.md
+│   │   └── ...
+│   └── local/           # 프로젝트별 커스텀 Skills
+│       └── my-skill.md
+└── CLAUDE.md            # 프로젝트 AI 가이드 (Sonamu 섹션 포함)
+```
+
+### Skills 동기화
+
+Sonamu 업데이트 후 최신 Skills를 반영하려면:
+
+```bash
+pnpm sonamu skills sync
+```
+
+이 명령은:
+- 최신 공식 Skills를 `.claude/skills/sonamu`로 동기화 (symlink 또는 복사)
+- `CLAUDE.md`의 Sonamu 관련 섹션을 업데이트 (마커 영역만)
+
+### 커스텀 Skill 생성
+
+프로젝트에서 발견한 해결 방법이나 팁을 Skill로 저장:
+
+```bash
+pnpm sonamu skills create migration-helper
+```
+
+생성된 파일을 편집:
+
+```markdown
+---
+name: migration-helper
+category: other
+created_at: 2026-02-03
+status: draft
+---
+
+# 마이그레이션 FK 순서 문제 해결
+
+## 상황
+
+마이그레이션에서 외래키를 추가할 때 테이블 생성 순서가 맞지 않아 에러 발생
+
+## 해결 방법
+
+참조되는 테이블을 먼저 생성하고, 참조하는 테이블을 나중에 생성
+
+## 코드 예시
+
+\`\`\`typescript
+// 1. users 테이블 먼저 생성
+await knex.schema.createTable('users', ...)
+
+// 2. posts 테이블 나중에 생성 (users 참조)
+await knex.schema.createTable('posts', (table) => {
+  table.integer('user_id').references('users.id')
+})
+\`\`\`
+```
+
+**파일명 규칙**:
+- 자동으로 안전한 이름으로 변환됩니다
+- 예: `"bug fix"` → `bug-fix.md`
+- 예: `"마이그레이션/헬퍼"` → `마이그레이션-헬퍼.md`
+
+### 사용 가능한 Skills
+
+생성된 프로젝트에 포함된 주요 Skills:
+
+| Skill | 설명 |
+|-------|------|
+| **project-init** | 프로젝트 생성 및 초기화 |
+| **entity-basic** | Entity 생성/수정 기본 |
+| **entity-relations** | Entity 관계 정의 (BelongsToOne, HasMany 등) |
+| **model** | Model 클래스 작성 패턴 |
+| **api** | @api 데코레이터로 API 노출 |
+| **puri** | 타입 안전 쿼리 빌더 사용법 |
+| **subset** | API 응답 필드 범위 정의 |
+| **upsert** | 관계 데이터 저장 (UpsertBuilder) |
+| **testing** | 테스트 작성 (bootstrap, test, testAs) |
+| **migration** | 데이터베이스 마이그레이션 |
+| **frontend** | 프론트엔드에서 API 호출 |
+| **i18n** | 다국어 지원 |
+| **workflow** | 전체 개발 워크플로우 |
+
+### Claude Code 사용 팁
+
+Skills가 설정되면 Claude에게 다음과 같이 요청할 수 있습니다:
+
+```
+"User 엔티티를 생성하고 CRUD API를 만들어줘"
+"Post와 Comment의 관계를 설정해줘"
+"API 테스트 코드를 작성해줘"
+```
+
+Claude는 `.claude/skills/sonamu`의 지식을 활용하여 Sonamu 방식에 맞는 코드를 작성합니다.
+
+---
+
 ## 🗄️ 데이터베이스
 
 ### Docker 이미지
@@ -356,7 +472,7 @@ pnpm sonamu fixture sync       # 테스트 DB로 동기화
 
 ## 📚 더 알아보기
 
-- 📖 [Sonamu 공식 문서](https://rurruur.github.io/test-docs)
+- 📖 [Sonamu 공식 문서](https://sonamu.cartanova.ai/)
 - 💬 [이슈 & 피드백](https://github.com/cartanova-ai/sonamu/issues)
 
 ---
