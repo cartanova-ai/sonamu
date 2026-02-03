@@ -1,6 +1,6 @@
 ---
 name: sonamu-frontend
-description: Sonamu 프론트엔드 연동. 자동 생성 Service, TanStack Query hook, useTypeForm. Use when calling APIs from frontend.
+description: Sonamu 프론트엔드 연동. 자동 생성 Service, TanStack Query hook, useTypeForm/useListParams/useSelection, FileInput, MultiSelect, SonamuProvider (react-components v0.1.8+). Use when calling APIs, building forms, handling file uploads, or managing list/selection states.
 ---
 
 # Frontend Service
@@ -71,12 +71,54 @@ queryClient.invalidateQueries({ queryKey: ["User", "findById", "A", userId] });
 
 ## useTypeForm
 
+Zod 스키마 기반 타입 안전 폼 관리 (react-components v0.1.8+)
+
+### 반환값
+
+```typescript
+const {
+  form,
+  setForm,
+  register,
+  submit,
+  addError,
+  removeError,
+  clearError,
+  reset
+} = useTypeForm(Schema, defaultValue);
+```
+
+| 반환값 | 타입 | 설명 |
+|--------|------|------|
+| `form` | `z.infer<Schema>` | 현재 폼 데이터 |
+| `setForm` | `React.Dispatch<SetStateAction<...>>` | 폼 상태 업데이트 함수 |
+| `register` | `(field: string) => RegisterReturn` | 필드 등록 함수 |
+| `submit` | `(callback) => () => Promise<R>` | 제출 핸들러 생성 |
+| `addError` | `(path: string, error: string \| ErrorObj) => void` | 에러 수동 추가 |
+| `removeError` | `(path: string) => void` | 특정 필드 에러 제거 |
+| `clearError` | `() => void` | 모든 에러 제거 |
+| `reset` | `() => void` | 폼을 defaultValue로 초기화 |
+
+### register 반환 객체
+
+```typescript
+register(fieldName) // Returns:
+{
+  value: any,                           // 현재 필드 값
+  onValueChange: (value: any) => void,  // 값 변경 핸들러
+  error?: { content: string }           // 에러 객체 (있는 경우)
+}
+```
+
+### 기본 사용법
+
 ```tsx
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input } from "@sonamu-kit/react-components/components";
 import { UserSaveParams } from "@/services/user/user.types";
 
 function RegisterForm() {
-  const { register, submit, errors } = useTypeForm(UserSaveParams, {
+  const { form, setForm, register, submit } = useTypeForm(UserSaveParams, {
     email: "", username: "", password: "",
   });
 
@@ -84,15 +126,63 @@ function RegisterForm() {
     await UserService.save([form]);
   });
 
+  // 방법 1: spread operator (권장)
+  const emailProps = register("email");
+
   return (
     <form>
-      <input {...register("email")} />
-      {errors.email && <span>{errors.email.message}</span>}
+      <Input {...emailProps} />
+      {emailProps.error && <span className="error">{emailProps.error.content}</span>}
+
+      {/* 방법 2: 인라인 (짧은 경우) */}
+      <Input {...register("username")} />
+      {register("username").error && <span className="error">{register("username").error.content}</span>}
+
       <button onClick={handleSubmit}>등록</button>
     </form>
   );
 }
 ```
+
+### IMPORTANT: react-components UI 컴포넌트 사용
+
+react-components의 모든 UI 컴포넌트는 `value/onValueChange` 패턴을 따릅니다:
+
+```tsx
+import { Input, Checkbox, Select, Textarea } from "@sonamu-kit/react-components/components";
+
+// Input (string)
+<Input {...register("email")} />
+
+// Textarea (string)
+<Textarea {...register("content")} />
+
+// Checkbox (boolean)
+<Checkbox {...register("agreed")} />
+
+// Select (items prop 사용)
+<Select
+  {...register("status")}
+  items={[
+    { value: "active", label: "활성" },
+    { value: "inactive", label: "비활성" }
+  ]}
+  placeholder="상태 선택"
+/>
+
+// Select 간단한 형태 (string[] | number[])
+<Select
+  {...register("priority")}
+  items={["high", "medium", "low"]}
+  placeholder="우선순위"
+/>
+```
+
+**Select 컴포넌트 주요 props:**
+- `items`: 선택 항목 배열 (`V[]` 또는 `{ value: V, label?: ReactNode, disabled?: boolean }[]`)
+- `placeholder`: 선택 전 표시 텍스트
+- `clearable`: X 버튼으로 선택 해제 가능 여부
+- `renderItem`: 커스텀 렌더링 함수
 
 ### IMPORTANT: Form Required Field Initial Values
 
@@ -196,6 +286,348 @@ export default {
 ```
 
 **sync 후에도 유지됨**: `ko.ts`는 api → web으로 복사되므로 한 번만 추가하면 됨.
+
+### 에러 처리 메서드
+
+```typescript
+const { addError, removeError, clearError } = useTypeForm(...);
+
+// 서버 검증 실패 시 에러 추가
+try {
+  await UserService.save([form]);
+} catch (error) {
+  if (isSonamuError(error)) {
+    error.issues.forEach((issue) => {
+      addError(issue.path.join("."), issue.message);
+    });
+  }
+}
+
+// 특정 필드 에러 제거
+removeError("email");
+
+// 모든 에러 제거
+clearError();
+
+// 폼 초기화
+reset();
+```
+
+## useListParams
+
+URL 쿼리 파라미터와 동기화되는 리스트 파라미터 관리 (페이지네이션, 필터링)
+
+```typescript
+import { useListParams } from "@sonamu-kit/react-components/lib";
+import { z } from "zod";
+
+const ListParamsSchema = z.object({
+  page: z.coerce.number().default(1),
+  num: z.coerce.number().default(20),
+  search: z.string().optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+});
+
+function UserListPage() {
+  const { listParams, setListParams, register } = useListParams(
+    ListParamsSchema,
+    { page: 1, num: 20 }
+  );
+
+  const { data } = UserService.useUsers("P", listParams);
+
+  return (
+    <div>
+      {/* 검색 (변경 시 page=1로 리셋) */}
+      <Input {...register("search")} placeholder="검색" />
+
+      {/* 필터 (변경 시 page=1로 리셋) */}
+      <Select {...register("status")} items={["active", "inactive"]} />
+
+      {/* 페이지네이션 (page만 변경) */}
+      <button onClick={() => setListParams({ ...listParams, page: listParams.page - 1 })}>
+        이전
+      </button>
+      <span>Page {listParams.page}</span>
+      <button onClick={() => setListParams({ ...listParams, page: listParams.page + 1 })}>
+        다음
+      </button>
+    </div>
+  );
+}
+```
+
+**핵심:**
+- URL과 자동 동기화 (`?page=2&status=active`)
+- `register`는 page 외 필드 변경 시 자동으로 page를 1로 리셋
+- Zod 스키마로 타입 안전성 보장
+
+## useSelection
+
+체크박스 다중 선택 관리 (Shift 키 범위 선택 지원)
+
+```typescript
+import { useSelection } from "@sonamu-kit/react-components/lib";
+
+function UserListPage() {
+  const { data } = UserService.useUsers("P", { num: 20, page: 1 });
+  const userIds = data?.rows.map(row => row.id) ?? [];
+
+  const {
+    getSelected,
+    toggle,
+    selectedKeys,
+    selectAll,
+    deselectAll,
+    isAllSelected,
+    handleCheckboxClick
+  } = useSelection(userIds);
+
+  const handleDelete = async () => {
+    await UserService.del(selectedKeys);
+    deselectAll();
+  };
+
+  return (
+    <div>
+      <Checkbox
+        value={isAllSelected}
+        onValueChange={isAllSelected ? deselectAll : selectAll}
+        label="전체 선택"
+      />
+      <button onClick={handleDelete} disabled={selectedKeys.length === 0}>
+        선택 삭제 ({selectedKeys.length})
+      </button>
+
+      {data?.rows.map((user, index) => (
+        <div key={user.id} onClick={(e) => handleCheckboxClick(e, index)}>
+          <Checkbox
+            value={getSelected(user.id)}
+            onValueChange={() => toggle(user.id)}
+          />
+          <span>{user.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**핵심:**
+- Shift 키 + 클릭으로 범위 선택
+- `selectedKeys`: 현재 선택된 키 배열
+- `isAllSelected`: 전체 선택 여부
+
+## FileInput
+
+파일 업로드 컴포넌트 (이미지/일반 파일, eager/lazy 모드)
+
+```typescript
+import { FileInput } from "@sonamu-kit/react-components/components";
+import type { SonamuFile } from "@sonamu-kit/react-components/contexts";
+
+function ProfileForm() {
+  const { form, setForm, register, submit } = useTypeForm(ProfileSaveParams, {
+    avatar: null,  // SonamuFile | File | null
+    documents: [], // (SonamuFile | File)[]
+  });
+
+  return (
+    <form>
+      {/* 단일 이미지 - eager 업로드 */}
+      <FileInput
+        {...register("avatar")}
+        uploadMode="eager"
+        viewMode="image"
+        placeholder="프로필 이미지"
+        accept="image/*"
+        previewSize="md"
+      />
+
+      {/* 다중 파일 - lazy 업로드 */}
+      <FileInput
+        {...register("documents")}
+        uploadMode="lazy"
+        viewMode="file"
+        multiple
+        maxFiles={5}
+        placeholder="문서 첨부"
+      />
+
+      <button onClick={submit(async (form) => {
+        // lazy 모드: submit 시 자동 업로드
+        await ProfileService.save([form]);
+      })}>저장</button>
+    </form>
+  );
+}
+```
+
+**Props:**
+- `uploadMode`: `"eager"` (즉시 업로드) | `"lazy"` (submit 시 업로드)
+- `viewMode`: `"image"` (이미지 프리뷰) | `"file"` (파일명)
+- `multiple`: 다중 파일 선택 여부
+- `maxFiles`: 최대 파일 개수
+- `previewSize`: `"sm" | "md" | "lg" | "xl"`
+- `clearable`: X 버튼으로 제거 가능
+
+**IMPORTANT**: SonamuProvider에 uploader 함수 필수 설정 (아래 참조)
+
+## MultiSelect
+
+다중 선택 컴포넌트 (검색, 그룹, 애니메이션 지원)
+
+```typescript
+import { MultiSelect } from "@sonamu-kit/react-components/components";
+import type { MultiSelectOption } from "@sonamu-kit/react-components/components";
+
+function TagForm() {
+  const { register } = useTypeForm(PostSaveParams, {
+    tag_ids: [],  // number[]
+  });
+
+  const options: MultiSelectOption[] = [
+    { label: "JavaScript", value: "1" },
+    { label: "TypeScript", value: "2" },
+    { label: "React", value: "3" },
+    { label: "Vue", value: "4" },
+  ];
+
+  return (
+    <MultiSelect
+      {...register("tag_ids")}
+      options={options}
+      placeholder="태그 선택"
+      emptyIndicator={<span>태그가 없습니다</span>}
+    />
+  );
+}
+```
+
+**주요 Props:**
+- `options`: `MultiSelectOption[]`
+- `groups`: 옵션 그룹화
+- `maxCount`: 표시할 최대 배지 개수
+- `badgeAnimation`: `"bounce" | "pulse" | "wiggle" | "fade" | "slide"`
+- `disabled`: 비활성화
+
+## EnumSelect
+
+Zod enum과 연동된 Select (라벨 매핑)
+
+```typescript
+import { EnumSelect } from "@sonamu-kit/react-components/components";
+import { z } from "zod";
+
+const StatusEnum = z.enum(["draft", "published", "archived"]);
+
+const statusLabels = {
+  draft: "초안",
+  published: "발행됨",
+  archived: "보관됨",
+} as const;
+
+function PostForm() {
+  const { register } = useTypeForm(PostSaveParams, {
+    status: "draft",
+  });
+
+  return (
+    <EnumSelect
+      {...register("status")}
+      enum={StatusEnum}
+      labels={statusLabels}
+      placeholder="상태 선택"
+      clearable
+    />
+  );
+}
+```
+
+**핵심:**
+- Zod enum 타입 안전성
+- labels 객체로 표시명 매핑
+- enum.options를 자동으로 items로 변환
+
+## SonamuProvider
+
+react-components 전체에서 사용하는 전역 설정
+
+```typescript
+// App.tsx 또는 루트 컴포넌트
+import { SonamuProvider } from "@sonamu-kit/react-components/contexts";
+import type { SonamuFile } from "@sonamu-kit/react-components/contexts";
+
+function App() {
+  // 파일 업로더 함수 (FileInput, useTypeForm에서 사용)
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
+    const formData = new FormData();
+    files.forEach(file => formData.append("files", file));
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    return response.json();
+  };
+
+  // 인증 상태 (옵션)
+  const auth = {
+    user: currentUser,
+    loading: isLoading,
+    login: async (params) => { /* ... */ },
+    logout: async () => { /* ... */ },
+    refetch: async () => { /* ... */ },
+  };
+
+  // 다국어 함수 (옵션)
+  const SD = (key: string) => dictionary[key] ?? key;
+
+  return (
+    <SonamuProvider uploader={uploader} auth={auth} SD={SD}>
+      {children}
+    </SonamuProvider>
+  );
+}
+```
+
+**필수 Props:**
+- `uploader`: `(files: File[]) => Promise<SonamuFile[]>` - FileInput에서 사용
+- `auth`: 인증 상태 및 함수 (옵션)
+- `SD`: 다국어 함수 (옵션)
+
+## 유틸리티 함수
+
+```typescript
+import {
+  dateF,
+  datetimeF,
+  numF,
+  hidden,
+  arrayableToArray,
+  sqlDateToDateString,
+} from "@sonamu-kit/react-components/lib";
+
+// 날짜 포매팅
+dateF(new Date());           // "2024-01-15"
+dateF("2024-01-15T10:30:00"); // "2024-01-15"
+datetimeF(new Date());       // "2024-01-15 10:30:00"
+
+// 숫자 포매팅
+numF(1234567);  // "1,234,567"
+
+// 조건부 hidden 클래스
+<div className={hidden(isHidden)}>...</div>
+
+// SQL date → date string
+sqlDateToDateString("2024-01-15T10:30:00.000Z");  // "2024-01-15"
+
+// 배열 변환
+arrayableToArray("single");      // ["single"]
+arrayableToArray(["a", "b"]);    // ["a", "b"]
+arrayableToArray(undefined);     // []
+```
 
 ## 에러 처리
 
@@ -315,14 +747,15 @@ function ConsultationListPage() {
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { Input, Textarea, Select } from "@sonamu-kit/react-components/components";
 import { ConsultationService } from "@/services/services.generated";
 import { ConsultationSaveParams } from "@/services/consultation/consultation.types";
 
 function ConsultationFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  const { form, setForm, register, submit, errors } = useTypeForm(
+
+  const { form, setForm, register, submit } = useTypeForm(
     ConsultationSaveParams,
     {
       title: "",
@@ -331,7 +764,7 @@ function ConsultationFormPage() {
       user_id: 0,
     }
   );
-  
+
   // 데이터 로드 (수정 모드)
   useEffect(() => {
     if (id) {
@@ -340,40 +773,48 @@ function ConsultationFormPage() {
       });
     }
   }, [id]);
-  
+
   const saveMutation = ConsultationService.useSaveMutation();
-  
+
   const handleSubmit = submit(async (form) => {
     const [consultationId] = await saveMutation.mutateAsync({ spa: [form] });
     navigate(`/consultations/${consultationId}`);
   });
-  
+
+  const titleProps = register("title");
+  const contentProps = register("content");
+  const statusProps = register("status");
+
   return (
     <div>
       <h1>{id ? "상담 수정" : "상담 등록"}</h1>
       <form>
         <div>
           <label>제목</label>
-          <input {...register("title")} />
-          {errors.title && <span className="error">{errors.title.message}</span>}
+          <Input {...titleProps} />
+          {titleProps.error && <span className="error">{titleProps.error.content}</span>}
         </div>
-        
+
         <div>
           <label>내용</label>
-          <textarea {...register("content")} />
-          {errors.content && <span className="error">{errors.content.message}</span>}
+          <Textarea {...contentProps} />
+          {contentProps.error && <span className="error">{contentProps.error.content}</span>}
         </div>
-        
+
         <div>
           <label>상태</label>
-          <select {...register("status")}>
-            <option value="pending">대기중</option>
-            <option value="in_progress">진행중</option>
-            <option value="completed">완료</option>
-          </select>
-          {errors.status && <span className="error">{errors.status.message}</span>}
+          <Select
+            {...statusProps}
+            items={[
+              { value: "pending", label: "대기중" },
+              { value: "in_progress", label: "진행중" },
+              { value: "completed", label: "완료" }
+            ]}
+            placeholder="상태 선택"
+          />
+          {statusProps.error && <span className="error">{statusProps.error.content}</span>}
         </div>
-        
+
         <button
           type="button"
           onClick={handleSubmit}
@@ -388,7 +829,10 @@ function ConsultationFormPage() {
 ```
 
 **핵심 포인트:**
-- useTypeForm으로 폼 관리
+- useTypeForm으로 폼 관리 (form, setForm, register, submit 반환)
+- register는 { value, onValueChange, error? } 객체 반환
+- react-components UI 컴포넌트 사용 (Input, Textarea, Select)
+- Select는 items prop으로 선택 항목 전달
 - Zod 기반 유효성 검증
 - useMutation으로 데이터 저장
 - 수정 모드 시 데이터 로드
