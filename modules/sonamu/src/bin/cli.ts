@@ -535,8 +535,11 @@ async function skills_sync() {
   }
 
   // 기존 디렉토리/symlink 삭제 후 symlink 생성
-  if (await exists(targetSkillsDir)) {
-    await rm(targetSkillsDir, { recursive: true });
+  // exists()는 broken symlink를 감지하지 못하므로 rm을 무조건 시도합니다
+  try {
+    await rm(targetSkillsDir, { recursive: true, force: true });
+  } catch {
+    // 파일이 없으면 무시
   }
 
   // 대상 디렉토리 생성
