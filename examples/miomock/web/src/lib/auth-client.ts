@@ -1,17 +1,18 @@
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
-// export const authClient = createAuthClient({
-//   /** The base URL of the server (optional if you're using the same domain) */
-//   baseURL: "http://localhost:3000",
-// });
-
-export const { signIn, signUp, useSession, signOut } = createAuthClient({
+export const { signIn, signUp, useSession, signOut, twoFactor } = createAuthClient({
   plugins: [
     inferAdditionalFields({
       user: {
         role: { type: "string" },
         created_at: { type: "date" },
+        twoFactorEnabled: { type: "boolean", nullable: true, required: false },
+      },
+    }),
+    twoFactorClient({
+      onTwoFactorRedirect() {
+        window.location.href = "/admin/2fa-verify";
       },
     }),
   ],

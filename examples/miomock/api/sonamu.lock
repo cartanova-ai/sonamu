@@ -133,7 +133,7 @@
   },
   {
     "path": "src/application/user/user.types.ts",
-    "checksum": "6c1b88e1e7fcbad50543c48d2f2302cd5d887867"
+    "checksum": "33c1e2b14fee289f8114b80255ae1d7a4b84fd00"
   },
   {
     "path": "src/application/user/user.workflow.ts",
@@ -161,6 +161,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "7f014b99d3e6bf830674445346e250c626048c42"
+    "checksum": "a2bc29421d5d7726ea59d137c479f79de94848a0"
   }
 ]

@@ -17,6 +17,7 @@ import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
 import LogOutIcon from "~icons/lucide/log-out";
 import MailIcon from "~icons/lucide/mail";
+import ShieldIcon from "~icons/lucide/shield";
 import UserPlusIcon from "~icons/lucide/user-plus";
 
 export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
@@ -29,14 +30,19 @@ function LoginTestPage() {
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
 
-  const handleSubmit = () => {
-    signIn.email({ email, password }).then(({ error }) => {
-      if (error) {
-        alert(error.message);
-      } else {
-        navigate({ to: "/admin" });
-      }
-    });
+  const handleSubmit = async () => {
+    const result = await signIn.email({ email, password });
+
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+
+    // // 2FA가 활성화된 경우 onTwoFactorRedirect 콜백이 자동 호출됨
+    // // redirect가 false인 경우에만 수동으로 이동 (2FA 미사용 또는 처리 완료)
+    // if (!result.data?.redirect) {
+    //   navigate({ to: "/admin" });
+    // }
   };
 
   const handleLogout = () => {
@@ -72,9 +78,18 @@ function LoginTestPage() {
                   <p>역할: {user.role}</p>
                 </AlertDescription>
               </Alert>
-              <Button variant="outline" onClick={handleLogout} icon={<LogOutIcon />}>
-                로그아웃
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleLogout} icon={<LogOutIcon />}>
+                  로그아웃
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={<ShieldIcon />}
+                  onClick={() => navigate({ to: "/admin/2fa-setup" })}
+                >
+                  2FA 설정
+                </Button>
+              </div>
               <Button
                 icon={<HomeIcon />}
                 className="w-full h-11 gap-2 text-white font-medium shadow-md"

@@ -14,6 +14,8 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminSignupRouteImport } from './routes/admin/signup'
 import { Route as AdminLoginTestRouteImport } from './routes/admin/login-test'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as Admin2faVerifyRouteImport } from './routes/admin/2fa-verify'
+import { Route as Admin2faSetupRouteImport } from './routes/admin/2fa-setup'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminTagsIndexRouteImport } from './routes/admin/tags/index'
 import { Route as AdminSelectTestIndexRouteImport } from './routes/admin/select-test/index'
@@ -55,6 +57,16 @@ const AdminLoginTestRoute = AdminLoginTestRouteImport.update({
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Admin2faVerifyRoute = Admin2faVerifyRouteImport.update({
+  id: '/admin/2fa-verify',
+  path: '/admin/2fa-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Admin2faSetupRoute = Admin2faSetupRouteImport.update({
+  id: '/admin/2fa-setup',
+  path: '/admin/2fa-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
@@ -145,6 +157,8 @@ const AdminCompaniesCompanyIdRoute = AdminCompaniesCompanyIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/2fa-setup': typeof Admin2faSetupRoute
+  '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
@@ -169,6 +183,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/2fa-setup': typeof Admin2faSetupRoute
+  '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
@@ -194,6 +210,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/2fa-setup': typeof Admin2faSetupRoute
+  '/admin/2fa-verify': typeof Admin2faVerifyRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/signup': typeof AdminSignupRoute
@@ -220,6 +238,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/2fa-setup'
+    | '/admin/2fa-verify'
     | '/admin/login'
     | '/admin/login-test'
     | '/admin/signup'
@@ -244,6 +264,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/2fa-setup'
+    | '/admin/2fa-verify'
     | '/admin/login'
     | '/admin/login-test'
     | '/admin/signup'
@@ -268,6 +290,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin/2fa-setup'
+    | '/admin/2fa-verify'
     | '/admin/login'
     | '/admin/login-test'
     | '/admin/signup'
@@ -293,6 +317,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  Admin2faSetupRoute: typeof Admin2faSetupRoute
+  Admin2faVerifyRoute: typeof Admin2faVerifyRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminLoginTestRoute: typeof AdminLoginTestRoute
   AdminSignupRoute: typeof AdminSignupRoute
@@ -351,6 +377,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/2fa-verify': {
+      id: '/admin/2fa-verify'
+      path: '/admin/2fa-verify'
+      fullPath: '/admin/2fa-verify'
+      preLoaderRoute: typeof Admin2faVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/2fa-setup': {
+      id: '/admin/2fa-setup'
+      path: '/admin/2fa-setup'
+      fullPath: '/admin/2fa-setup'
+      preLoaderRoute: typeof Admin2faSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users/': {
@@ -477,6 +517,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  Admin2faSetupRoute: Admin2faSetupRoute,
+  Admin2faVerifyRoute: Admin2faVerifyRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminLoginTestRoute: AdminLoginTestRoute,
   AdminSignupRoute: AdminSignupRoute,
