@@ -67,6 +67,11 @@ function SelectTestPage() {
   });
   const singleSyncProps = singleSyncForm.register("value");
 
+  const singleSyncSearchableForm = useTypeForm(z.object({ value: z.string().optional() }), {
+    value: undefined,
+  });
+  const singleSyncSearchableProps = singleSyncSearchableForm.register("value");
+
   // ============================================================================
   // Multi-Sync (number 배열)
   // ============================================================================
@@ -74,6 +79,11 @@ function SelectTestPage() {
     value: [1, 2, 3],
   });
   const multiSyncProps = multiSyncForm.register("value");
+
+  const multiSyncNoSearchForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
+    value: [],
+  });
+  const multiSyncNoSearchProps = multiSyncNoSearchForm.register("value");
 
   // ============================================================================
   // 추가 테스트: 복잡한 객체 (Company) - 실제 API 사용
@@ -166,15 +176,22 @@ function SelectTestPage() {
           {/* 설명 */}
           <Card className="border-gray-200">
             <CardHeader>
-              <div className="text-sm font-semibold text-gray-900">
-                SelectNew 컴포넌트 4가지 모드
-              </div>
+              <div className="text-sm font-semibold text-gray-900">SelectNew 컴포넌트 개요</div>
             </CardHeader>
-            <CardContent className="text-xs text-gray-700 space-y-1">
-              <div>1. Single-Sync: 단일 선택 + 동기</div>
-              <div>2. Single-Async: 단일 선택 + 비동기 검색</div>
-              <div>3. Multi-Sync: 다중 선택 + 동기</div>
-              <div>4. Multi-Async: 다중 선택 + 비동기 검색</div>
+            <CardContent className="text-xs text-gray-700 space-y-3">
+              <div className="space-y-1">
+                <div className="font-semibold text-gray-900">통합 Command UI 기반 Select</div>
+                <div>• 모든 모드가 일관된 UI/UX를 제공하는 단일 컴포넌트</div>
+                <div>• 단일/다중 선택, 동기/비동기 검색을 유연하게 지원</div>
+                <div>• 타입 안전성과 확장성을 갖춘 범용 Select 컴포넌트</div>
+              </div>
+              <div className="space-y-1">
+                <div className="font-semibold text-gray-900">4가지 기본 모드</div>
+                <div>• Single-Sync: 정적 데이터에서 하나 선택 (기본 검색 X)</div>
+                <div>• Single-Async: API 검색으로 하나 선택 (검색 필수)</div>
+                <div>• Multi-Sync: 정적 데이터에서 여러 개 선택 (기본 검색 X)</div>
+                <div>• Multi-Async: API 검색으로 여러 개 선택 (검색 필수)</div>
+              </div>
             </CardContent>
           </Card>
 
@@ -186,14 +203,14 @@ function SelectTestPage() {
               <div className="h-px flex-1 bg-linear-to-r from-transparent via-blue-300 to-transparent" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {/* Single-Sync (String 배열) */}
               <Card className="flex flex-col gap-6 rounded-card border border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-blue-900">
                     Single-Sync (String 배열)
                   </div>
-                  <div className="text-xs text-blue-700">Radix Select UI - 과일 선택</div>
+                  <div className="text-xs text-blue-700">과일 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <SelectNew
@@ -215,6 +232,41 @@ function SelectTestPage() {
                     className="w-full"
                     variant="blue"
                     onClick={() => singleSyncForm.setForm({ value: undefined })}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Single-Sync + searchable=true */}
+              <Card className="flex flex-col gap-6 rounded-card border border-blue-200 bg-blue-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-blue-900">
+                    Single-Sync + searchable
+                  </div>
+                  <div className="text-xs text-blue-700">과일 선택 (검색 O)</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <SelectNew
+                    items={fruits}
+                    {...singleSyncSearchableProps}
+                    placeholder="과일을 검색하세요"
+                    searchable={true}
+                    className="bg-white"
+                  />
+                  <div className="p-3 bg-white rounded border border-blue-200">
+                    <div className="text-xs font-semibold text-blue-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {singleSyncSearchableForm.form.value
+                        ? JSON.stringify(singleSyncSearchableForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="blue"
+                    onClick={() => singleSyncSearchableForm.setForm({ value: undefined })}
                   >
                     초기화
                   </Button>
@@ -275,21 +327,20 @@ function SelectTestPage() {
               <div className="h-px flex-1 bg-linear-to-r from-transparent via-green-300 to-transparent" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {/* Multi-Sync (Number 배열) */}
               <Card className="flex flex-col gap-6 rounded-card border border-green-200 bg-green-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-green-900">
                     Multi-Sync (Number 배열)
                   </div>
-                  <div className="text-xs text-green-700">Command Popover UI - 숫자 선택</div>
+                  <div className="text-xs text-green-700">숫자 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <SelectNew
                     items={numbers}
                     {...multiSyncProps}
                     placeholder="숫자를 선택하세요"
-                    clearable={true}
                     multiple={true}
                     maxCount={5}
                     className="bg-white"
@@ -312,6 +363,41 @@ function SelectTestPage() {
                 </CardContent>
               </Card>
 
+              {/* Multi-Sync + searchable */}
+              <Card className="flex flex-col gap-6 rounded-card border border-green-200 bg-green-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-green-900">
+                    Multi-Sync + searchable
+                  </div>
+                  <div className="text-xs text-green-700">숫자 다중 선택 (검색 O)</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <SelectNew
+                    items={numbers}
+                    {...multiSyncNoSearchProps}
+                    placeholder="숫자를 선택하세요"
+                    multiple={true}
+                    searchable={true}
+                    className="bg-white"
+                  />
+                  <div className="p-3 bg-white rounded border border-green-200">
+                    <div className="text-xs font-semibold text-green-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {multiSyncNoSearchForm.form.value.length > 0
+                        ? JSON.stringify(multiSyncNoSearchForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={() => multiSyncNoSearchForm.setForm({ value: [] })}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* Multi-Async (복잡한 객체 - Company) */}
               <Card className="flex flex-col gap-6 rounded-card border border-green-200 bg-green-50/50">
                 <CardHeader className="pb-3">
@@ -325,7 +411,6 @@ function SelectTestPage() {
                     items={multiCompanyOptions}
                     {...multiCompanyProps}
                     placeholder="회사를 검색하세요"
-                    clearable={true}
                     multiple={true}
                     async={true}
                     loading={multiCompanyLoading}

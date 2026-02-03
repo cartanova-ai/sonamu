@@ -1,10 +1,8 @@
-import * as SelectPrimitive from "@radix-ui/react-select";
 import * as React from "react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
-import ChevronUpIcon from "~icons/lucide/chevron-up";
 import Loader2Icon from "~icons/lucide/loader2";
 import XIcon from "~icons/lucide/x";
 import XCircleIcon from "~icons/lucide/x-circle";
@@ -60,6 +58,7 @@ interface SingleSyncProps<Item> {
   async?: false;
   value?: ExtractValue<Item>;
   onValueChange?: (value: ExtractValue<Item> | undefined) => void;
+  searchable?: boolean;
 }
 
 // Single-Async Props
@@ -82,6 +81,7 @@ interface MultiSyncProps<Item> {
   onValueChange: (value: ExtractValue<Item>[]) => void;
   maxCount?: number;
   hideSelectAll?: boolean;
+  searchable?: boolean;
 }
 
 // Multi-Async Props
@@ -132,16 +132,13 @@ type CommonState<Item> = {
   getItemLabel: (value: ExtractValue<Item>) => React.ReactNode;
 };
 
-type SingleSyncRendererProps<Item> = {
-  props: SingleSyncProps<Item> & SelectPropsBase<Item> & SelectPropsWithValueKey<Item>;
-  selectRef: React.RefObject<HTMLSelectElement | null>;
-  normalizedItems: NormalizedItem<ExtractValue<Item>>[];
-  valueByKey: Map<string, ExtractValue<Item>>;
-  getKeyForValue: (val: ExtractValue<Item>) => string;
-};
-
 type CommandBasedSelectProps<Item> = {
-  props: (SingleAsyncProps<Item> | MultiSyncProps<Item> | MultiAsyncProps<Item>) &
+  props: (
+    | SingleSyncProps<Item>
+    | SingleAsyncProps<Item>
+    | MultiSyncProps<Item>
+    | MultiAsyncProps<Item>
+  ) &
     SelectPropsBase<Item> &
     SelectPropsWithValueKey<Item>;
   isMultiple: boolean;
@@ -340,127 +337,8 @@ function useSelectCommon<Item>(
 }
 
 // ============================================================================
-// SingleSyncSelect
-// ============================================================================
-
-function SingleSyncSelect<Item>({
-  props,
-  selectRef,
-  normalizedItems,
-  valueByKey,
-  getKeyForValue,
-}: SingleSyncRendererProps<Item>) {
-  type Value = ExtractValue<Item>;
-
-  // string key → value 변환 후 전달
-  const handleValueChange = (stringKey: string) => {
-    const actualValue = valueByKey.get(stringKey);
-    props.onValueChange?.(actualValue);
-  };
-
-  // clear 처리
-  const handleClear = (e: React.PointerEvent | React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    props.onValueChange?.(undefined);
-  };
-
-  const stringValue = props.value !== undefined ? getKeyForValue(props.value) : undefined;
-  const hasValue = props.value !== undefined;
-
-  return (
-    <>
-      <select
-        ref={selectRef}
-        name={props.name}
-        value={stringValue}
-        onBlur={props.onBlur}
-        onChange={() => {}}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden="true"
-      >
-        <option value={stringValue || ""} />
-      </select>
-      <SelectPrimitive.Root
-        value={stringValue}
-        onValueChange={handleValueChange}
-        disabled={props.disabled}
-      >
-        <SelectPrimitive.Trigger
-          className={cn(
-            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background data-placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            props.className,
-          )}
-        >
-          <span className="flex-1 truncate text-left text-sm">
-            <SelectPrimitive.Value placeholder={props.placeholder} />
-          </span>
-          <div className="flex items-center gap-1 shrink-0 pl-2">
-            {props.clearable && hasValue && (
-              <XCircleIcon
-                className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
-                onPointerDownCapture={handleClear}
-                onMouseDownCapture={handleClear}
-              />
-            )}
-            <SelectPrimitive.Icon asChild>
-              <ChevronDownIcon className="h-4 w-4 opacity-50" />
-            </SelectPrimitive.Icon>
-          </div>
-        </SelectPrimitive.Trigger>
-        <SelectPrimitive.Portal>
-          <SelectPrimitive.Content
-            className={cn(
-              "relative z-50 max-h-100 min-w-32 overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
-              "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-              props.contentClassName,
-            )}
-            position="popper"
-          >
-            <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
-              <ChevronUpIcon className="h-4 w-4" />
-            </SelectPrimitive.ScrollUpButton>
-            <SelectPrimitive.Viewport className="p-1 h-(--radix-select-trigger-height) w-full min-w-(--radix-select-trigger-width)">
-              {normalizedItems.map((item) => {
-                const key = getKeyForValue(item.value as Value);
-                const label =
-                  item.label !== undefined
-                    ? item.label
-                    : props.renderItem
-                      ? props.renderItem(item.value as Value)
-                      : String(item.value);
-
-                return (
-                  <SelectPrimitive.Item
-                    key={key}
-                    value={key}
-                    disabled={item.disabled}
-                    className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
-                  >
-                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                      <SelectPrimitive.ItemIndicator>
-                        <CheckIcon className="h-4 w-4" />
-                      </SelectPrimitive.ItemIndicator>
-                    </span>
-                    <SelectPrimitive.ItemText>{label}</SelectPrimitive.ItemText>
-                  </SelectPrimitive.Item>
-                );
-              })}
-            </SelectPrimitive.Viewport>
-            <SelectPrimitive.ScrollDownButton className="flex cursor-default items-center justify-center py-1">
-              <ChevronDownIcon className="h-4 w-4" />
-            </SelectPrimitive.ScrollDownButton>
-          </SelectPrimitive.Content>
-        </SelectPrimitive.Portal>
-      </SelectPrimitive.Root>
-    </>
-  );
-}
-
-// ============================================================================
 // CommandBasedSelect
-// - Single-Async, Multi-Sync, Multi-Async 모드를 처리하는 Command Popover UI
+// - 모든 모드를 처리하는 통합 Command Popover UI
 // ============================================================================
 function CommandBasedSelect<Item>({
   props,
@@ -476,6 +354,9 @@ function CommandBasedSelect<Item>({
 }: CommandBasedSelectProps<Item>) {
   type Value = ExtractValue<Item>;
   const { SD } = useSonamuBaseContext();
+
+  // 검색 가능 여부 판단: Async면 무조건 true, Sync면 searchable 값 사용
+  const isSearchable = isAsync || ("searchable" in props && props.searchable === true);
 
   // 선택 토글 (single/multi 공용)
   const toggleOption = useCallback(
@@ -635,13 +516,19 @@ function CommandBasedSelect<Item>({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent
+        className="min-w-80 p-0"
+        align="start"
+        style={{ width: "var(--radix-popover-trigger-width)" }}
+      >
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={SD("common.searchPlaceholder")}
-            value={searchValue}
-            onValueChange={handleSearchChange}
-          />
+          {isSearchable && (
+            <CommandInput
+              placeholder={SD("common.searchPlaceholder")}
+              value={searchValue}
+              onValueChange={handleSearchChange}
+            />
+          )}
           <CommandList>
             {loading ? (
               <CommandEmpty>
@@ -720,37 +607,19 @@ function CommandBasedSelect<Item>({
 }
 
 // ============================================================================
-// Main Component
+// Main Component & Export
 // ============================================================================
-// SelectNewInner: 4가지 모드를 처리하는 메인 컴포넌트 (라우터 역할)
-// - Single-Sync: SingleSyncSelect 컴포넌트로 위임
-// - 나머지: CommandBasedSelect 컴포넌트로 위임
-function SelectNewInner<Item>(
+
+export const SelectNew = React.forwardRef(function SelectNew<Item>(
   props: SelectNewProps<Item>,
   ref: React.ForwardedRef<HTMLSelectElement>,
 ) {
   // 공통 상태/유틸
   const common = useSelectCommon(props, ref);
 
-  // Single-Sync 모드
-  if (!props.multiple && !props.async) {
-    const singleProps = props as SingleSyncProps<Item> &
-      SelectPropsBase<Item> &
-      SelectPropsWithValueKey<Item>;
-
-    return (
-      <SingleSyncSelect
-        props={singleProps}
-        selectRef={common.selectRef}
-        normalizedItems={common.normalizedItems}
-        valueByKey={common.valueByKey}
-        getKeyForValue={common.getKeyForValue}
-      />
-    );
-  }
-
-  // Single-Async, Multi-Sync, Multi-Async
+  // 모든 모드를 CommandBasedSelect로 통합
   const commandProps = props as (
+    | SingleSyncProps<Item>
     | SingleAsyncProps<Item>
     | MultiSyncProps<Item>
     | MultiAsyncProps<Item>
@@ -772,13 +641,7 @@ function SelectNewInner<Item>(
       getItemLabel={common.getItemLabel}
     />
   );
-}
-
-// ============================================================================
-// Export
-// ============================================================================
-
-export const SelectNew = React.forwardRef(SelectNewInner) as <Item>(
+}) as <Item>(
   props: SelectNewProps<Item> & React.RefAttributes<HTMLSelectElement>,
 ) => React.ReactElement;
 
