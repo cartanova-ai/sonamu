@@ -4,6 +4,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  IdAsyncSelect,
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
@@ -11,11 +12,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
-import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentSaveParams } from "@/services/department/department.types";
-import { DepartmentService } from "@/services/services.generated";
+import {
+  CompanyAsyncIdConfig,
+  DepartmentAsyncIdConfig,
+  DepartmentService,
+} from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
@@ -136,10 +139,10 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Department.company")}
                   </label>
-                  <CompanyIdAsyncSelect
+                  <IdAsyncSelect
+                    config={CompanyAsyncIdConfig}
                     subset="A"
                     {...register("company_id")}
-                    className="h-8 text-xs"
                   />
                 </div>
 
@@ -148,11 +151,10 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Department.parent")}
                   </label>
-                  <DepartmentIdAsyncSelect
+                  <IdAsyncSelect
+                    config={DepartmentAsyncIdConfig}
                     subset="A"
                     {...register("parent_id")}
-                    clearable
-                    className="h-8 text-xs"
                   />
                 </div>
 

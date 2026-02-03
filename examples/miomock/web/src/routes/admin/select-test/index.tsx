@@ -3,13 +3,19 @@ import {
   Card,
   CardContent,
   CardHeader,
+  EnumSelect,
+  IdAsyncSelect,
   SelectNew,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import z from "zod";
-import { CompanyService } from "@/services/services.generated";
+import {
+  CompanyAsyncIdConfig,
+  CompanyService,
+  EmployeeAsyncIdConfig,
+} from "@/services/services.generated";
 import { CompanyBaseSchema, type CompanySubsetA } from "@/services/sonamu.generated";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 
@@ -37,12 +43,24 @@ const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 type Company = CompanySubsetA;
 
 // ============================================================================
+// EnumSelect 예시 데이터
+// ============================================================================
+const ProjectStatusEnum = z.enum(["active", "done", "pending"]);
+type ProjectStatus = z.infer<typeof ProjectStatusEnum>;
+
+const projectStatusLabels: Record<ProjectStatus, string> = {
+  active: "진행중",
+  done: "완료",
+  pending: "대기중",
+};
+
+// ============================================================================
 // 메인 컴포넌트
 // ============================================================================
 
 function SelectTestPage() {
   // ============================================================================
-  // 1. Single-Sync (string 배열)
+  // Single-Sync (string 배열)
   // ============================================================================
   const singleSyncForm = useTypeForm(z.object({ value: z.string().optional() }), {
     value: "사과",
@@ -50,7 +68,7 @@ function SelectTestPage() {
   const singleSyncProps = singleSyncForm.register("value");
 
   // ============================================================================
-  // 3. Multi-Sync (number 배열)
+  // Multi-Sync (number 배열)
   // ============================================================================
   const multiSyncForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
     value: [1, 2, 3],
@@ -112,6 +130,29 @@ function SelectTestPage() {
     }
   }, []);
 
+  // ============================================================================
+  // EnumSelect Forms
+  // ============================================================================
+  const enumSingleForm = useTypeForm(z.object({ value: ProjectStatusEnum.optional() }), {
+    value: undefined,
+  });
+
+  const enumMultiForm = useTypeForm(
+    z.object({ value: z.array(z.enum(["active", "done", "pending"])) }),
+    { value: ["active"] },
+  );
+
+  // ============================================================================
+  // IdAsyncSelect Forms
+  // ============================================================================
+  const idAsyncSingleForm = useTypeForm(z.object({ value: z.number().optional() }), {
+    value: undefined,
+  });
+
+  const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
+    value: [],
+  });
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
@@ -146,11 +187,11 @@ function SelectTestPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 1. Single-Sync (String 배열) */}
+              {/* Single-Sync (String 배열) */}
               <Card className="flex flex-col gap-6 rounded-card border border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-blue-900">
-                    1. Single-Sync (String 배열)
+                    Single-Sync (String 배열)
                   </div>
                   <div className="text-xs text-blue-700">Radix Select UI - 과일 선택</div>
                 </CardHeader>
@@ -180,11 +221,11 @@ function SelectTestPage() {
                 </CardContent>
               </Card>
 
-              {/* 2. Single-Async (복잡한 객체 - Company) */}
+              {/* Single-Async (복잡한 객체 - Company) */}
               <Card className="flex flex-col gap-6 rounded-card border border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-blue-900">
-                    2. Single-Async (복잡한 객체)
+                    Single-Async (복잡한 객체)
                   </div>
                   <div className="text-xs text-blue-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
@@ -235,11 +276,11 @@ function SelectTestPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 3. Multi-Sync (Number 배열) */}
+              {/* Multi-Sync (Number 배열) */}
               <Card className="flex flex-col gap-6 rounded-card border border-green-200 bg-green-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-green-900">
-                    3. Multi-Sync (Number 배열)
+                    Multi-Sync (Number 배열)
                   </div>
                   <div className="text-xs text-green-700">Command Popover UI - 숫자 선택</div>
                 </CardHeader>
@@ -271,11 +312,11 @@ function SelectTestPage() {
                 </CardContent>
               </Card>
 
-              {/* 4. Multi-Async (복잡한 객체 - Company) */}
+              {/* Multi-Async (복잡한 객체 - Company) */}
               <Card className="flex flex-col gap-6 rounded-card border border-green-200 bg-green-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-green-900">
-                    4. Multi-Async (복잡한 객체)
+                    Multi-Async (복잡한 객체)
                   </div>
                   <div className="text-xs text-green-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
@@ -311,6 +352,168 @@ function SelectTestPage() {
                       multiCompanyForm.setForm({ value: [] });
                       setMultiCompanyOptions([]); // 검색 결과도 함께 초기화
                     }}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ========== EnumSelect 컴포넌트 ========== */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pt-4">
+              <div className="h-px flex-1 bg-linear-to-r from-transparent via-purple-300 to-transparent" />
+              <span className="text-sm font-semibold text-purple-900 px-3">
+                EnumSelect 컴포넌트
+              </span>
+              <div className="h-px flex-1 bg-linear-to-r from-transparent via-purple-300 to-transparent" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* EnumSelect Single */}
+              <Card className="flex flex-col gap-6 rounded-card border border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-purple-900">EnumSelect (Single)</div>
+                  <div className="text-xs text-purple-700">Zod Enum - 프로젝트 상태 선택</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <EnumSelect
+                    enum={ProjectStatusEnum}
+                    labels={projectStatusLabels}
+                    {...enumSingleForm.register("value")}
+                    placeholder="상태를 선택하세요"
+                    className="bg-white"
+                  />
+                  <div className="p-3 bg-white rounded border border-purple-200">
+                    <div className="text-xs font-semibold text-purple-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {JSON.stringify(enumSingleForm.form.value)}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="purple"
+                    onClick={() => enumSingleForm.setForm({ value: undefined })}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* EnumSelect Multi */}
+              <Card className="flex flex-col gap-6 rounded-card border border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-purple-900">EnumSelect (Multi)</div>
+                  <div className="text-xs text-purple-700">Zod Enum - 프로젝트 상태 선택</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <EnumSelect
+                    enum={ProjectStatusEnum}
+                    labels={projectStatusLabels}
+                    {...enumMultiForm.register("value")}
+                    placeholder="상태를 선택하세요"
+                    className="bg-white"
+                    multiple={true}
+                  />
+                  <div className="p-3 bg-white rounded border border-purple-200">
+                    <div className="text-xs font-semibold text-purple-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {enumMultiForm.form.value.length > 0
+                        ? JSON.stringify(enumMultiForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="purple"
+                    onClick={() => enumMultiForm.setForm({ value: [] })}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ========== IdAsyncSelect 컴포넌트 ========== */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pt-4">
+              <div className="h-px flex-1 bg-linear-to-r from-transparent via-orange-300 to-transparent" />
+              <span className="text-sm font-semibold text-orange-900 px-3">
+                IdAsyncSelect 컴포넌트
+              </span>
+              <div className="h-px flex-1 bg-linear-to-r from-transparent via-orange-300 to-transparent" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* IdAsyncSelect Single */}
+              <Card className="flex flex-col gap-6 rounded-card border border-orange-200 bg-orange-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-orange-900">
+                    IdAsyncSelect (Single)
+                  </div>
+                  <div className="text-xs text-orange-700">Company(name) 검색</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <IdAsyncSelect
+                    config={CompanyAsyncIdConfig}
+                    subset="A"
+                    displayField="name"
+                    {...idAsyncSingleForm.register("value")}
+                    placeholder="회사를 검색하세요"
+                    className="bg-white"
+                  />
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {idAsyncSingleForm.form.value
+                        ? JSON.stringify(idAsyncSingleForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="orange"
+                    onClick={() => idAsyncSingleForm.setForm({ value: undefined })}
+                  >
+                    초기화
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* IdAsyncSelect Multi */}
+              <Card className="flex flex-col gap-6 rounded-card border border-orange-200 bg-orange-50/50">
+                <CardHeader className="pb-3">
+                  <div className="text-sm font-semibold text-orange-900">IdAsyncSelect (Multi)</div>
+                  <div className="text-xs text-orange-700">Employee(id) 검색</div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <IdAsyncSelect
+                    config={EmployeeAsyncIdConfig}
+                    subset="A"
+                    displayField="id"
+                    multiple={true}
+                    {...idAsyncMultiForm.register("value")}
+                    placeholder="직원을 검색하세요"
+                    className="bg-white"
+                  />
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <pre className="text-xs text-gray-700">
+                      {idAsyncMultiForm.form.value.length > 0
+                        ? JSON.stringify(idAsyncMultiForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="orange"
+                    onClick={() => idAsyncMultiForm.setForm({ value: [] })}
                   >
                     초기화
                   </Button>

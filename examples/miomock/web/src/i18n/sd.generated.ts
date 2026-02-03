@@ -206,6 +206,7 @@ const entityLabels = {
   "enum.DepartmentOrderBy.id-desc": "ID최신순",
   "enum.DepartmentOrderBy.name-asc": "부서명오름차순",
   "enum.DepartmentSearchField.id": "ID",
+  "enum.DepartmentSearchField.name": "부서명",
   "entity.Document": "DOCUMENT",
   "entity.Document.id": "ID",
   "entity.Document.created_at": "등록일시",

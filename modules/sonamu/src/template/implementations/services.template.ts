@@ -325,6 +325,7 @@ ${functions.join("\n\n")}
           `
 // AsyncIdConfig: ${names.capital}
 export const ${names.capital}AsyncIdConfig = {
+  placeholderKey: "entity.${names.capital}",
   useList: ${names.capital}Service.${useHookName} as (
     subset: string,
     params?: Record<string, unknown>,

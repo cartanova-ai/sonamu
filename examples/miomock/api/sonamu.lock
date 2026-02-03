@@ -21,11 +21,11 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "3aaa91abcaf7c5daa6e3368f9e95397f6790c6a3"
+    "checksum": "b7dc4a9b99e96b2d14c6efd4a9116bbb46fca682"
   },
   {
     "path": "src/application/department/department.model.ts",
-    "checksum": "268b92063f128972f520f0481b7e586a86e843cf"
+    "checksum": "cb052c8ed3f8555ba784f89ba2cbe3d6649d89ad"
   },
   {
     "path": "src/application/department/department.types.ts",

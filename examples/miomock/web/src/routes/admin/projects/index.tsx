@@ -137,11 +137,11 @@ function ProjectList({}: ProjectListProps) {
     },
     {
       label: SD("entity.list")(SD("entity.Employee")),
-      tc: (_row) => <>{/* array row.employee */}</>,
+      tc: (row) => <>{row.employee?.map((e) => e.id).join(", ")}</>,
     },
     {
       label: SD("entity.list")(SD("entity.Tag")),
-      tc: (_row) => <>{/* array row.tags */}</>,
+      tc: (row) => <>{row.tags?.map((t) => t.id).join(", ")}</>,
     },
     {
       label: SD("common.manage"),
