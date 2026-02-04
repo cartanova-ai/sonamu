@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict saHsxT6X4dZJU0VIm8Rjf7mhtf8sQH8SKRuVQXK4z6NMgPrStIYUeh5rqa3Uawi
+\restrict FlKwZA4JzSn8n69hjjdg4G8fdUDWB3UTDjcXnzwIMKNSDIaMfvDZuhs6PUiPaMB
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -286,6 +286,25 @@ CREATE SEQUENCE public.knex_migrations_lock_index_seq
 --
 
 ALTER SEQUENCE public.knex_migrations_lock_index_seq OWNED BY public.knex_migrations_lock.index;
+
+
+--
+-- Name: passkeys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passkeys (
+    id text NOT NULL,
+    name text,
+    public_key text NOT NULL,
+    credential_id text NOT NULL,
+    counter integer NOT NULL,
+    device_type text NOT NULL,
+    backed_up boolean NOT NULL,
+    transports text,
+    aaguid text,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    user_id text NOT NULL
+);
 
 
 --
@@ -747,6 +766,8 @@ INSERT INTO public.knex_migrations VALUES (76, '20260129202017_foreign__sessions
 INSERT INTO public.knex_migrations VALUES (77, '20260203141330_create__two_factors.ts', 13, '2026-02-03 14:13:39.047+09');
 INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_alter5.ts', 13, '2026-02-03 14:13:39.049+09');
 INSERT INTO public.knex_migrations VALUES (79, '20260203141332_foreign__two_factors__user_id.ts', 13, '2026-02-03 14:13:39.05+09');
+INSERT INTO public.knex_migrations VALUES (80, '20260204133419_create__passkeys.ts', 14, '2026-02-04 13:45:53.771+09');
+INSERT INTO public.knex_migrations VALUES (81, '20260204133420_foreign__passkeys__user_id.ts', 14, '2026-02-04 13:45:53.773+09');
 
 
 --
@@ -754,6 +775,12 @@ INSERT INTO public.knex_migrations VALUES (79, '20260203141332_foreign__two_fact
 --
 
 INSERT INTO public.knex_migrations_lock VALUES (1, 0);
+
+
+--
+-- Data for Name: passkeys; Type: TABLE DATA; Schema: public; Owner: -
+--
+
 
 
 --
@@ -1912,7 +1939,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 79, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 81, true);
 
 
 --
@@ -2061,6 +2088,14 @@ ALTER TABLE ONLY public.knex_migrations
 
 
 --
+-- Name: passkeys passkeys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: project_tags project_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2148,6 +2183,20 @@ CREATE INDEX accounts_user_id_idx ON public.accounts USING btree (user_id);
 
 
 --
+-- Name: passkeys_credential_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX passkeys_credential_id_idx ON public.passkeys USING btree (credential_id);
+
+
+--
+-- Name: passkeys_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX passkeys_user_id_idx ON public.passkeys USING btree (user_id);
+
+
+--
 -- Name: projects_name_description_pgroonga_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2230,6 +2279,14 @@ ALTER TABLE ONLY public.employees
 
 
 --
+-- Name: passkeys passkeys_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
 -- Name: project_tags project_tags_project_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2281,5 +2338,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict saHsxT6X4dZJU0VIm8Rjf7mhtf8sQH8SKRuVQXK4z6NMgPrStIYUeh5rqa3Uawi
+\unrestrict FlKwZA4JzSn8n69hjjdg4G8fdUDWB3UTDjcXnzwIMKNSDIaMfvDZuhs6PUiPaMB
 
