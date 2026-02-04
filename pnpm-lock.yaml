@@ -739,6 +739,9 @@ importers:
 
   examples/miomock/web:
     dependencies:
+      '@better-auth/passkey':
+        specifier: 'catalog:'
+        version: 1.4.18(@better-auth/core@1.4.18(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.8(zod@4.3.6))(jose@6.1.3)(kysely@0.28.10)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.18(pg@8.16.3(pg-native@3.5.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.7)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)))(better-call@1.1.8(zod@4.3.6))(nanostores@1.1.0)
       '@sonamu-kit/react-components':
         specifier: workspace:^
         version: link:../../../modules/react-components

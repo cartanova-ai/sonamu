@@ -6,6 +6,7 @@
   "description": "Miomock web 프로젝트입니다. 개발 서버와 빌드 명령은 api 프로젝트에서 실행해주세요 :)",
   "dependencies": {
     "@sonamu-kit/react-components": "workspace:^",
+    "@better-auth/passkey": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "axios": "catalog:",
