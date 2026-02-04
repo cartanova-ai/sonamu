@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  EnumSelect,
   FileInput,
   IdAsyncSelect,
   Input,
@@ -14,10 +15,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { SD } from "@/i18n/sd.generated";
 import { ProjectSaveParams } from "@/services/project/project.types";
 import { EmployeeAsyncIdConfig, ProjectService } from "@/services/services.generated";
+import { ProjectStatus, ProjectStatusLabel } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
@@ -144,7 +145,11 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Project.status")}
                   </label>
-                  <ProjectStatusSelect {...register("status")} />
+                  <EnumSelect
+                    enum={ProjectStatus}
+                    labels={ProjectStatusLabel}
+                    {...register("status")}
+                  />
                 </div>
 
                 {/* 설명 */}

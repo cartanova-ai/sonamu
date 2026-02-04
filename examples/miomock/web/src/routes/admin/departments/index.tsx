@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -25,8 +26,6 @@ import {
 import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { DepartmentOrderBySelect } from "@/components/department/DepartmentOrderBySelect";
-import { DepartmentSearchFieldSelect } from "@/components/department/DepartmentSearchFieldSelect";
 import { SonamuFilterModal } from "@/components/SonamuFilterModal";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
@@ -34,7 +33,9 @@ import { DepartmentService } from "@/services/services.generated";
 import {
   DepartmentBaseSchema,
   DepartmentOrderBy,
+  DepartmentOrderByLabel,
   DepartmentSearchField,
+  DepartmentSearchFieldLabel,
 } from "@/services/sonamu.generated";
 
 import EditIcon from "~icons/lucide/square-pen";
@@ -45,7 +46,10 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/departments/")({
   head: () => ({
-    meta: [{ title: "부서 List" }, { name: "description", content: "부서 목록 관리" }],
+    meta: [
+      { title: "부서 List" },
+      { name: "description", content: SD("entity.listManage")("부서") },
+    ],
   }),
   component: DepartmentList,
 });
@@ -192,10 +196,12 @@ function DepartmentList({}: DepartmentListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <DepartmentSearchFieldSelect
+                  <EnumSelect
+                    enum={DepartmentSearchField}
+                    labels={DepartmentSearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
@@ -212,7 +218,7 @@ function DepartmentList({}: DepartmentListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
@@ -232,11 +238,13 @@ function DepartmentList({}: DepartmentListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <DepartmentOrderBySelect
+                  <EnumSelect
+                    enum={DepartmentOrderBy}
+                    labels={DepartmentOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
                   <span className="text-xs text-muted-foreground">
                     {SD("common.results")(total ?? 0)}
@@ -293,7 +301,6 @@ function DepartmentList({}: DepartmentListProps) {
           </Card>
         </div>
       </div>
-
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -309,7 +316,6 @@ function DepartmentList({}: DepartmentListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
         baseSchema={DepartmentBaseSchema}

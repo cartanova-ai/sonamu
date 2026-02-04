@@ -8,12 +8,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  EnumSelect,
   Input,
   Select,
 } from "@sonamu-kit/react-components/components";
 import { useEffect, useState } from "react";
 import type { z } from "zod";
-import { EnumSelect } from "@/components/common/EnumSelect";
 import { RangeNumberInput } from "@/components/common/RangeNumberInput";
 import { TagInput } from "@/components/common/TagInput";
 import * as SonamuGenerated from "@/services/sonamu.generated";
@@ -237,11 +237,11 @@ function ValueInput({
     if (propType === "enum" && fieldMeta?.enumData) {
       return (
         <EnumSelect
-          enumOptions={fieldMeta.enumData.options}
-          enumLabels={fieldMeta.enumData.labels}
+          enum={{ options: fieldMeta.enumData.options }}
+          labels={fieldMeta.enumData.labels}
           value={(value as string[]) ?? []}
           onValueChange={onChange}
-          isMulti={true}
+          multiple={true}
         />
       );
     }
@@ -292,11 +292,10 @@ function ValueInput({
   if (propType === "enum" && fieldMeta?.enumData) {
     return (
       <EnumSelect
-        enumOptions={fieldMeta.enumData.options}
-        enumLabels={fieldMeta.enumData.labels}
+        enum={{ options: fieldMeta.enumData.options }}
+        labels={fieldMeta.enumData.labels}
         value={(value as string) ?? ""}
         onValueChange={onChange}
-        isMulti={false}
       />
     );
   }

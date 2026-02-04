@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  EnumSelect,
   Input,
   Switch,
 } from "@sonamu-kit/react-components/components";
@@ -13,12 +14,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { UserRoleSelect } from "@/components/user/UserRoleSelect";
 import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
+import { UserRole, UserRoleLabel } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
-
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -166,7 +166,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.User.role")}
                   </label>
-                  <UserRoleSelect {...register("role")} />
+                  <EnumSelect enum={UserRole} labels={UserRoleLabel} {...register("role")} />
                 </div>
 
                 {/* LASTLOGIN일시 */}

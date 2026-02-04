@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -22,31 +23,30 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
-import { ProjectSearchFieldSelect } from "@/components/project/ProjectSearchFieldSelect";
-import { SonamuFilterModal } from "@/components/SonamuFilterModal";
 import { SD } from "@/i18n/sd.generated";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
 import {
-  ProjectBaseSchema,
   ProjectOrderBy,
+  ProjectOrderByLabel,
   ProjectSearchField,
+  ProjectSearchFieldLabel,
   ProjectStatusLabel,
 } from "@/services/sonamu.generated";
-
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
-import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/projects/")({
   head: () => ({
-    meta: [{ title: "PROJECT List" }, { name: "description", content: "PROJECT 목록 관리" }],
+    meta: [
+      { title: "PROJECT List" },
+      { name: "description", content: SD("entity.listManage")("PROJECT") },
+    ],
   }),
   component: ProjectList,
 });
@@ -60,16 +60,14 @@ function ProjectList({}: ProjectListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // 리스트 필터
-  const { listParams, register, setListParams } = useListParams(ProjectListParams, {
+  const { listParams, register } = useListParams(ProjectListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: ProjectSearchField.options[0],
     orderBy: ProjectOrderBy.options[0],
-    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -118,7 +116,7 @@ function ProjectList({}: ProjectListProps) {
       fit: true,
     },
     {
-      label: "이미지URLS",
+      label: SD("entity.Project.image_urls"),
       tc: (row) => (
         <div className="flex gap-1">
           {row.image_urls?.map(
@@ -136,12 +134,20 @@ function ProjectList({}: ProjectListProps) {
       ),
     },
     {
-      label: SD("entity.list")(SD("entity.Employee")),
-      tc: (row) => <>{row.employee?.map((e) => e.id).join(", ")}</>,
+      label: SD("entity.Project.virtual_test"),
+      tc: (row) => <>{row.virtual_test && numF(row.virtual_test)}</>,
     },
     {
-      label: SD("entity.list")(SD("entity.Tag")),
-      tc: (row) => <>{row.tags?.map((t) => t.id).join(", ")}</>,
+      label: SD("entity.Project.virtual_query_test"),
+      tc: (row) => <>{row.virtual_query_test}</>,
+    },
+    {
+      label: SD("entity.Project.employee"),
+      tc: (_row) => <>{/* array row.employee */}</>,
+    },
+    {
+      label: SD("entity.Project.tags"),
+      tc: (_row) => <>{/* array row.tags */}</>,
     },
     {
       label: SD("common.manage"),
@@ -220,10 +226,12 @@ function ProjectList({}: ProjectListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <ProjectSearchFieldSelect
+                  <EnumSelect
+                    enum={ProjectSearchField}
+                    labels={ProjectSearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
@@ -240,31 +248,24 @@ function ProjectList({}: ProjectListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={<FilterIcon />}
-                      onClick={() => setFilterModalOpen(true)}
-                      className="h-8"
-                    >
-                      <span className="text-xs">Sonamu Filter</span>
-                    </Button>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <ProjectOrderBySelect
+                  <EnumSelect
+                    enum={ProjectOrderBy}
+                    labels={ProjectOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
                   <span className="text-xs text-muted-foreground">
                     {SD("common.results")(total ?? 0)}
@@ -337,16 +338,6 @@ function ProjectList({}: ProjectListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Sonamu Filter Modal */}
-      <SonamuFilterModal
-        baseSchema={ProjectBaseSchema}
-        open={filterModalOpen}
-        onOpenChange={setFilterModalOpen}
-        onApply={(filters) => {
-          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
-        }}
-      />
     </div>
   );
 }

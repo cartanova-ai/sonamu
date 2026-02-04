@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -25,13 +26,15 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { CompanyOrderBySelect } from "@/components/company/CompanyOrderBySelect";
-import { CompanySearchFieldSelect } from "@/components/company/CompanySearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
 import { CompanyListParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
-import { CompanyOrderBy, CompanySearchField } from "@/services/sonamu.generated";
-
+import {
+  CompanyOrderBy,
+  CompanyOrderByLabel,
+  CompanySearchField,
+  CompanySearchFieldLabel,
+} from "@/services/sonamu.generated";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -39,7 +42,10 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/companies/")({
   head: () => ({
-    meta: [{ title: "COMPANY List" }, { name: "description", content: "COMPANY 목록 관리" }],
+    meta: [
+      { title: "COMPANY List" },
+      { name: "description", content: SD("entity.listManage")("COMPANY") },
+    ],
   }),
   component: CompanyList,
 });
@@ -83,13 +89,13 @@ function CompanyList({}: CompanyListProps) {
       align: "center",
     },
     {
-      label: SD("entity.Company.name"),
-      tc: (row) => <>{row.name}</>,
-    },
-    {
       label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
+    },
+    {
+      label: SD("entity.Company.name"),
+      tc: (row) => <>{row.name}</>,
     },
     {
       label: SD("common.manage"),
@@ -168,10 +174,12 @@ function CompanyList({}: CompanyListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <CompanySearchFieldSelect
+                  <EnumSelect
+                    enum={CompanySearchField}
+                    labels={CompanySearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
@@ -199,11 +207,13 @@ function CompanyList({}: CompanyListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <CompanyOrderBySelect
+                  <EnumSelect
+                    enum={CompanyOrderBy}
+                    labels={CompanyOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
                   <span className="text-xs text-muted-foreground">
                     {SD("common.results")(total ?? 0)}

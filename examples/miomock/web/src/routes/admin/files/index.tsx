@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   FileInput,
   Input,
   Pagination,
@@ -28,12 +29,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import z from "zod";
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
-import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
-import { FileSearchFieldSelect } from "@/components/file/FileSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
 import { FileListParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
-import { FileOrderBy, FileSearchField } from "@/services/sonamu.generated";
+import {
+  FileOrderBy,
+  FileOrderByLabel,
+  FileSearchField,
+  FileSearchFieldLabel,
+} from "@/services/sonamu.generated";
 import { type SonamuFile, SonamuFileSchema } from "@/services/sonamu.shared";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
@@ -634,7 +638,9 @@ function FileList({}: FileListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <FileSearchFieldSelect
+                  <EnumSelect
+                    enum={FileSearchField}
+                    labels={FileSearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
@@ -665,7 +671,9 @@ function FileList({}: FileListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <FileOrderBySelect
+                  <EnumSelect
+                    enum={FileOrderBy}
+                    labels={FileOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
