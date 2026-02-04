@@ -4,7 +4,14 @@ import type { EntityIndex, EntityJson, EntityProp } from "../../../types/types";
  * better-auth 플러그인 ID
  * 지원하는 플러그인 목록을 정의합니다.
  */
-export type BetterAuthPluginId = "phone-number" | "2fa" | "username" | "admin" | "sso" | "passkey";
+export type BetterAuthPluginId =
+  | "phone-number"
+  | "2fa"
+  | "username"
+  | "admin"
+  | "sso"
+  | "passkey"
+  | "organization";
 
 /**
  * better-auth 엔티티 정의
