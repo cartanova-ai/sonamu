@@ -1,8 +1,9 @@
-import { adminPlugin } from "./admin";
-import { phoneNumberPlugin } from "./phone-number";
-import { twoFactorPlugin } from "./two-factor";
+import { merge } from "../../utils/utils";
+import { ADMIN_SCHEMA, adminPlugin } from "./admin";
+import { PHONE_NUMBER_SCHEMA, phoneNumberPlugin } from "./phone-number";
+import { TWO_FACTOR_SCHEMA, twoFactorPlugin } from "./two-factor";
 import type { BetterAuthPlugin, BetterAuthPluginId } from "./types";
-import { usernamePlugin } from "./username";
+import { USERNAME_SCHEMA, usernamePlugin } from "./username";
 
 export { ADMIN_SCHEMA, adminPlugin } from "./admin";
 export { PHONE_NUMBER_SCHEMA, phoneNumberPlugin } from "./phone-number";
@@ -34,3 +35,45 @@ export const SUPPORTED_PLUGIN_IDS: BetterAuthPluginId[] = Object.keys(
 export function isValidPluginId(id: string): id is BetterAuthPluginId {
   return id in PLUGINS;
 }
+
+import {
+  admin as _admin,
+  phoneNumber as _phoneNumber,
+  twoFactor as _twoFactor,
+  username as _username,
+  type AdminOptions,
+  type PhoneNumberOptions,
+  type TwoFactorOptions,
+  type UsernameOptions,
+} from "better-auth/plugins";
+
+/**
+ * 스키마 옵션 병합을 위한 래퍼 함수
+ */
+export const admin = (options: AdminOptions = {}) => {
+  if (options.schema) {
+    options.schema = merge(ADMIN_SCHEMA, options.schema);
+  }
+  return _admin(options);
+};
+
+export const phoneNumber = (options: PhoneNumberOptions) => {
+  if (options.schema) {
+    options.schema = merge(PHONE_NUMBER_SCHEMA, options.schema);
+  }
+  return _phoneNumber(options);
+};
+
+export const twoFactor = (options: TwoFactorOptions = {}) => {
+  if (options.schema) {
+    options.schema = merge(TWO_FACTOR_SCHEMA, options.schema);
+  }
+  return _twoFactor(options);
+};
+
+export const username = (options: UsernameOptions = {}) => {
+  if (options.schema) {
+    options.schema = merge(USERNAME_SCHEMA, options.schema);
+  }
+  return _username(options);
+};
