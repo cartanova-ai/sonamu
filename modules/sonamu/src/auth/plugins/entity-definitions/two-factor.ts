@@ -1,38 +1,13 @@
-import type { BetterAuthPlugin, PluginSchema } from "./types";
+import type { BetterAuthEntityDef } from "./types";
 
 /**
- * Two-Factor 플러그인 스키마
- *
- * better-auth twoFactor 플러그인 호출 시 전달합니다:
- * ```typescript
- * twoFactor({ schema: TWO_FACTOR_SCHEMA })
- * ```
- */
-export const TWO_FACTOR_SCHEMA: PluginSchema = {
-  user: {
-    fields: {
-      twoFactorEnabled: "two_factor_enabled",
-    },
-  },
-  twoFactor: {
-    modelName: "two_factors",
-    fields: {
-      userId: "user_id",
-      backupCodes: "backup_codes",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-  },
-};
-
-/**
- * better-auth 2FA (Two-Factor Authentication) 플러그인
+ * better-auth 2FA (Two-Factor Authentication) 플러그인 엔티티 정의
  * https://www.better-auth.com/docs/plugins/2fa
  *
  * User 테이블에 2FA 활성화 필드를 추가하고,
  * TwoFactor 테이블을 생성하여 2FA 설정을 저장합니다.
  */
-export const twoFactorPlugin: BetterAuthPlugin = {
+export const twoFactorEntityDef: BetterAuthEntityDef = {
   id: "2fa",
   name: "Two-Factor Authentication",
   entities: [
@@ -75,5 +50,4 @@ export const twoFactorPlugin: BetterAuthPlugin = {
       },
     ],
   },
-  schema: TWO_FACTOR_SCHEMA,
 };

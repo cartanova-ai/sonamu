@@ -1,31 +1,14 @@
-import type { BetterAuthPlugin, PluginSchema } from "./types";
+import type { BetterAuthEntityDef } from "./types";
 
 /**
- * Phone Number 플러그인 스키마
- *
- * better-auth phoneNumber 플러그인 호출 시 전달합니다:
- * ```typescript
- * phoneNumber({ schema: PHONE_NUMBER_SCHEMA })
- * ```
- */
-export const PHONE_NUMBER_SCHEMA: PluginSchema = {
-  user: {
-    fields: {
-      phoneNumber: "phone_number",
-      phoneNumberVerified: "phone_number_verified",
-    },
-  },
-};
-
-/**
- * better-auth phone-number 플러그인
+ * better-auth phone-number 플러그인 엔티티 정의
  * https://www.better-auth.com/docs/plugins/phone-number
  *
  * User 테이블에 전화번호 관련 필드를 추가합니다:
  * - phone_number: 전화번호 (unique)
  * - phone_number_verified: 전화번호 인증 여부
  */
-export const phoneNumberPlugin: BetterAuthPlugin = {
+export const phoneNumberEntityDef: BetterAuthEntityDef = {
   id: "phone-number",
   name: "Phone Number",
   entities: [],
@@ -54,5 +37,4 @@ export const phoneNumberPlugin: BetterAuthPlugin = {
       },
     ],
   },
-  schema: PHONE_NUMBER_SCHEMA,
 };
