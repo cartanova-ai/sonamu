@@ -37,9 +37,9 @@ export const CompanySearchFieldLabel = { id: "ID", name: "회사명" };
 export const DepartmentOrderBy = z.enum(["id-desc", "name-asc"]).describe("DepartmentOrderBy");
 export type DepartmentOrderBy = z.infer<typeof DepartmentOrderBy>;
 export const DepartmentOrderByLabel = { "id-desc": "ID최신순", "name-asc": "부서명오름차순" };
-export const DepartmentSearchField = z.enum(["id"]).describe("DepartmentSearchField");
+export const DepartmentSearchField = z.enum(["id", "name"]).describe("DepartmentSearchField");
 export type DepartmentSearchField = z.infer<typeof DepartmentSearchField>;
-export const DepartmentSearchFieldLabel = { id: "ID" };
+export const DepartmentSearchFieldLabel = { id: "ID", name: "부서명" };
 
 // Enums: Document
 export const DocumentOrderBy = z.enum(["id-desc"]).describe("DocumentOrderBy");

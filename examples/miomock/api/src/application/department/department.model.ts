@@ -91,6 +91,8 @@ class DepartmentModelClass extends BaseModelClass<
     if (params.search && params.keyword && params.keyword.length > 0) {
       if (params.search === "id") {
         qb.where("departments.id", Number(params.keyword));
+      } else if (params.search === "name") {
+        qb.where("departments.name", "like", `%${params.keyword}%`);
       } else {
         exhaustive(params.search);
       }

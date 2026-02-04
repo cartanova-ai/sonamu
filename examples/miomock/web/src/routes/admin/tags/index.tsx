@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -25,11 +26,14 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
-import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
-import { TagOrderBy, TagSearchField } from "@/services/sonamu.generated";
+import {
+  TagOrderBy,
+  TagOrderByLabel,
+  TagSearchField,
+  TagSearchFieldLabel,
+} from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
@@ -69,7 +73,7 @@ function TagList({}: TagListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/tags",
-    title: "TAG",
+    title: SD("entity.list")(SD("entity.Tag")),
   };
 
   // 컬럼 정의
@@ -82,24 +86,24 @@ function TagList({}: TagListProps) {
       align: "center",
     },
     {
-      label: "등록일시",
+      label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "태그명",
+      label: SD("entity.Tag.name"),
       tc: (row) => <>{row.name}</>,
     },
     {
-      label: "태그명 한국어",
+      label: SD("entity.Tag.name_ko"),
       tc: (row) => <>{row.name_ko}</>,
     },
     {
-      label: "태그명 영어",
+      label: SD("entity.Tag.name_en"),
       tc: (row) => <>{row.name_en}</>,
     },
     {
-      label: "Manage",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -175,16 +179,18 @@ function TagList({}: TagListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <TagSearchFieldSelect
+                  <EnumSelect
+                    enum={TagSearchField}
+                    labels={TagSearchFieldLabel}
                     {...register("search")}
-                    placeholder="Search Type"
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    placeholder={SD("common.searchType")}
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -206,13 +212,17 @@ function TagList({}: TagListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <TagOrderBySelect
+                  <EnumSelect
+                    enum={TagOrderBy}
+                    labels={TagOrderByLabel}
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    placeholder={SD("common.sort")}
+                    textPrefix={`${SD("common.sort")}: `}
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {SD("common.results")(total ?? 0)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -270,14 +280,14 @@ function TagList({}: TagListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -2,7 +2,7 @@ import inflection from "inflection";
 import { flat } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
-import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
+import type { RenderingNode, TemplateOptions } from "../../types/types";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
@@ -262,17 +262,30 @@ export class Template__view_list extends Template {
 
       .sort((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
       .map((col) => {
-        const propCandidate = entity.props.find((p) => p.name === col.name);
         const rendered = this.renderColumn(entityId, col, names);
+
+        // 라벨 생성: common 필드(created_at, updated_at 등)는 SD("common.{field}"), entity 필드는 SD("entity.{Entity}.{field}")
+        let label: string;
+        if (col.name === "id") {
+          label = '"ID"';
+        } else if (["created_at", "updated_at"].includes(col.name)) {
+          // camelCase로 변환 (created_at -> createdAt)
+          const camelName = col.name.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+          label = `SD("common.${camelName}")`;
+        } else {
+          label = `SD("entity.${names.capital}.${col.name}")`;
+        }
+
         return {
           name: col.name,
-          label: col.name === "id" ? "ID" : (propCandidate?.desc ?? col.label),
+          label,
           tc: `(row) => ${rendered}`,
           fit:
+            col.name === "id" ||
             col.renderType === "number-id" ||
             col.renderType === "datetime" ||
             col.renderType === "string-datetime",
-          align: col.renderType === "number-id" ? "center" : undefined,
+          align: col.name === "id" || col.renderType === "number-id" ? "center" : undefined,
         };
       });
 
@@ -291,50 +304,6 @@ export class Template__view_list extends Template {
 
     // 필터 컬럼을 프리 템플릿으로 설정
     const preTemplates: RenderedTemplate["preTemplates"] = [];
-    for (const col of filterColumns) {
-      let key: TemplateKey;
-      let targetEntityId = entityId;
-      let enumId: string | undefined;
-
-      if (col.renderType === "enums") {
-        if (col.name === "search") {
-          key = "view_enums_select";
-          enumId = `${names.capital}SearchField`;
-          targetEntityId = names.capital;
-        } else {
-          key = "view_enums_select";
-          // config.enumId 우선 사용
-          if (col.config && "enumId" in col.config) {
-            enumId = (col.config as { enumId: string }).enumId;
-            targetEntityId = entityId;
-          } else {
-            try {
-              const { targetEntityNames, id } = getEnumInfoFromColName(entityId, col.name);
-              targetEntityId = targetEntityNames.capital;
-              enumId = id;
-            } catch {
-              continue;
-            }
-          }
-        }
-      } else {
-        key = "view_id_async_select";
-        try {
-          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-          targetEntityId = relProp.with;
-        } catch {
-          continue;
-        }
-      }
-
-      preTemplates.push({
-        key,
-        options: {
-          entityId: targetEntityId,
-          enumId,
-        },
-      });
-    }
 
     // 컬럼에서 사용하는 enum들 수집
     const columnEnums: string[] = [];
@@ -345,14 +314,6 @@ export class Template__view_list extends Template {
           columnEnums.push(enumId);
         } catch {}
       }
-    });
-
-    // SearchInput
-    preTemplates?.push({
-      key: "view_search_input",
-      options: {
-        entityId,
-      },
     });
 
     // 디폴트 파라미터
@@ -368,7 +329,7 @@ import { Card, CardContent, CardHeader } from "@sonamu-kit/react-components/comp
 import { Badge } from "@sonamu-kit/react-components/components";
 import { Button } from "@sonamu-kit/react-components/components";
 import { Pagination, Table, TableBody, TableCell, type TableCol, TableHead, TableHeader, TableRow } from "@sonamu-kit/react-components/components";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@sonamu-kit/react-components/components";
+import { EnumSelect } from "@sonamu-kit/react-components/components";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@sonamu-kit/react-components/components";
 import { Input } from "@sonamu-kit/react-components/components";
 import { Checkbox } from "@sonamu-kit/react-components/components";
@@ -411,34 +372,24 @@ import { ${(() => {
 
         return [...baseEnums, ...enumImports].join(", ");
       })()} } from "@/services/sonamu.generated";
+import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
 ${(() => {
-  // FK 필드의 AsyncSelect 컴포넌트 import
+  // FK 필드의 AsyncIdConfig import
   const fkColumns = filterColumns.filter((col) => col.name.endsWith("_id") && col.name !== "id");
-  return fkColumns
+  const configNames = fkColumns
     .map((col) => {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-        const targetNames = EntityManager.getNamesFromId(relProp.with);
-        return `import { ${relProp.with}IdAsyncSelect } from "@/components/${targetNames.fs}/${relProp.with}IdAsyncSelect";`;
+        return `${relProp.with}AsyncIdConfig`;
       } catch {
         return "";
       }
     })
-    .filter(Boolean)
-    .join("\n");
+    .filter(Boolean);
+  return configNames.length > 0
+    ? `import { ${configNames.join(", ")} } from "@/services/services.generated";`
+    : "";
 })()}
-${
-  filterColumns.some((col) => col.name === "search")
-    ? `
-import { ${names.capital}SearchFieldSelect } from "@/components/${names.fs}/${names.capital}SearchFieldSelect";`
-    : ""
-}
-${
-  filterColumns.some((col) => col.name === "orderBy")
-    ? `
-import { ${names.capital}OrderBySelect } from "@/components/${names.fs}/${names.capital}OrderBySelect";`
-    : ""
-}
 
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
@@ -480,7 +431,7 @@ function ${names.capital}List({}: ${names.capital}ListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/${names.fsPlural}",
-    title: "${entity.title ?? names.capital}",
+    title: SD("entity.list")(SD("entity.${names.capital}")),
   };
 
   // 컬럼 정의
@@ -489,7 +440,7 @@ function ${names.capital}List({}: ${names.capital}ListProps) {
 ${columns
   .map(
     (col) => `    {
-      label: "${col.label}",
+      label: ${col.label},
       tc: ${col.tc},${
         col.fit
           ? `
@@ -505,7 +456,7 @@ ${columns
   )
   .join(",\n")},
     {
-      label: "Manage",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -583,10 +534,12 @@ ${columns
                 <div className="flex items-center gap-3 flex-wrap">
 ${
   filterColumns.some((col) => col.name === "search")
-    ? `                  <${names.capital}SearchFieldSelect
+    ? `                  <EnumSelect
+                    enum={${names.capital}SearchField}
+                    labels={${names.capital}SearchFieldLabel}
                     {...register("search")}
-                    placeholder="Search Type"
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    placeholder={SD("common.searchType")}
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />`
     : ""
 }
@@ -594,7 +547,7 @@ ${
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -610,7 +563,7 @@ ${
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: \`\${PAGE.route}/form\` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>
@@ -626,32 +579,30 @@ ${filterColumns
           col.config && "enumId" in col.config
             ? (col.config as { enumId: string }).enumId
             : getEnumInfoFromColName(entityId, col.name).id;
-        return `                  <Select key={\`${col.name}-\${listParams.${col.name}}\`} {...register("${col.name}")} clearable>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="${col.label}" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {${enumId}.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {${enumId}Label[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>`;
+        return `                  <EnumSelect
+                    key={\`${col.name}-\${listParams.${col.name}}\`}
+                    enum={${enumId}}
+                    labels={${enumId}Label}
+                    {...register("${col.name}")}
+                    placeholder="${col.label}"
+                    clearable
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
+                  />`;
       } catch {
         return "";
       }
     }
-    // FK 필드 (AsyncSelect)
+    // FK 필드 (IdAsyncSelect)
     if (col.name.endsWith("_id") && col.name !== "id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-        return `                  <${relProp.with}IdAsyncSelect
+        return `                  <IdAsyncSelect
+                    config={${relProp.with}AsyncIdConfig}
                     subset="A"
                     {...register("${col.name}")}
                     placeholder="${col.label ?? relProp.with}"
                     clearable
-                    className="w-[200px] h-8 text-xs"
+                    className="w-50 h-8 text-xs"
                   />`;
       } catch {
         return "";
@@ -663,15 +614,17 @@ ${filterColumns
   .join("\n")}
 ${
   filterColumns.some((col) => col.name === "orderBy")
-    ? `                  <${names.capital}OrderBySelect
+    ? `                  <EnumSelect
+                    enum={${names.capital}OrderBy}
+                    labels={${names.capital}OrderByLabel}
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    placeholder={SD("common.sort")}
+                    textPrefix={\`\${SD("common.sort")}: \`}
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />`
     : ""
 }
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">{SD("common.results")(total ?? 0)}</span>
                 </div>
               </div>
             </CardHeader>
@@ -730,14 +683,14 @@ ${
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

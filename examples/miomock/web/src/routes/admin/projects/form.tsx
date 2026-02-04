@@ -5,7 +5,9 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  EnumSelect,
   FileInput,
+  IdAsyncSelect,
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
@@ -13,12 +15,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { SD } from "@/i18n/sd.generated";
 import { ProjectSaveParams } from "@/services/project/project.types";
-import { ProjectService } from "@/services/services.generated";
+import { EmployeeAsyncIdConfig, ProjectService } from "@/services/services.generated";
+import { ProjectStatus, ProjectStatusLabel } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
-
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -63,6 +64,8 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
+          employee_ids: row.employee?.map((e) => e.id) ?? [],
+          tag_ids: row.tags?.map((t) => t.id) ?? [],
         }));
       });
     }
@@ -142,7 +145,11 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Project.status")}
                   </label>
-                  <ProjectStatusSelect {...register("status")} />
+                  <EnumSelect
+                    enum={ProjectStatus}
+                    labels={ProjectStatusLabel}
+                    {...register("status")}
+                  />
                 </div>
 
                 {/* 설명 */}
@@ -193,9 +200,11 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 {/* EmployeeIds */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
-                  <Input
-                    className="h-8 text-xs bg-white"
-                    placeholder="employee_ids"
+                  <IdAsyncSelect
+                    config={EmployeeAsyncIdConfig}
+                    multiple
+                    subset="A"
+                    displayField="id"
                     {...register("employee_ids")}
                   />
                 </div>

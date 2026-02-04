@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -25,13 +26,15 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { EmployeeOrderBySelect } from "@/components/employee/EmployeeOrderBySelect";
-import { EmployeeSearchFieldSelect } from "@/components/employee/EmployeeSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
 import { EmployeeListParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
-import { EmployeeOrderBy, EmployeeSearchField } from "@/services/sonamu.generated";
-
+import {
+  EmployeeOrderBy,
+  EmployeeOrderByLabel,
+  EmployeeSearchField,
+  EmployeeSearchFieldLabel,
+} from "@/services/sonamu.generated";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -39,7 +42,10 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/employees/")({
   head: () => ({
-    meta: [{ title: "직원 List" }, { name: "description", content: "직원 목록 관리" }],
+    meta: [
+      { title: "직원 List" },
+      { name: "description", content: SD("entity.listManage")("직원") },
+    ],
   }),
   component: EmployeeList,
 });
@@ -189,10 +195,12 @@ function EmployeeList({}: EmployeeListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <EmployeeSearchFieldSelect
+                  <EnumSelect
+                    enum={EmployeeSearchField}
+                    labels={EmployeeSearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
@@ -220,11 +228,13 @@ function EmployeeList({}: EmployeeListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <EmployeeOrderBySelect
+                  <EnumSelect
+                    enum={EmployeeOrderBy}
+                    labels={EmployeeOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
                   <span className="text-xs text-muted-foreground">
                     {SD("common.results")(total ?? 0)}

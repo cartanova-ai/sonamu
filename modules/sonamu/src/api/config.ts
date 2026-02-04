@@ -155,8 +155,19 @@ export type SonamuServerOptions = {
 
   /**
    * better-auth 인증 설정
+   * Sonamu 확장으로 additionalFields에 sonamuType 속성 추가 가능
+   * BetterAuth의 DBFieldAttribute를 확장할 수 없어서 우선 user만 적용
    */
-  auth?: BetterAuthOptions;
+  auth?: BetterAuthOptions & {
+    user?: {
+      additionalFields?: Record<
+        string,
+        NonNullable<NonNullable<BetterAuthOptions["user"]>["additionalFields"]>[string] & {
+          sonamuType?: string;
+        }
+      >;
+    };
+  };
 
   apiConfig: SonamuFastifyConfig;
 

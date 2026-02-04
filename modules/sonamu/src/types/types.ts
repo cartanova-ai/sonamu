@@ -1312,14 +1312,6 @@ export const TemplateOptions = z.object({
   view_id_all_select: z.object({
     entityId: z.string(),
   }),
-  view_id_async_select: z.object({
-    entityId: z.string(),
-    textField: z.string(),
-  }),
-  view_enums_select: z.object({
-    entityId: z.string(),
-    enumId: z.string(),
-  }),
   view_enums_buttonset: z.object({
     entityId: z.string(),
     enumId: z.string(),
@@ -1347,8 +1339,6 @@ export const TemplateKey = z.enum([
   "view_search_input",
   "view_form",
   "view_id_all_select",
-  "view_id_async_select",
-  "view_enums_select",
   "view_enums_buttonset",
   "queries",
   "entry_server",

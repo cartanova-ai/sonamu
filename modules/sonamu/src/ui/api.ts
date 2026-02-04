@@ -766,19 +766,15 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       server.post<{
         Body: {
-          templateGroupName: "Entity" | "Enums";
           entityIds: string[];
           templateKeys: string[];
-          enumIds: string[];
         };
       }>("/api/scaffolding/getStatus", async (request) => {
-        const { templateGroupName, entityIds, templateKeys: _templateKeys, enumIds } = request.body;
+        const { entityIds, templateKeys: _templateKeys } = request.body;
         if ((entityIds ?? []).length === 0) {
           throw new BadRequestException(SD("sonamu.error.entityIdsRequired"));
         } else if ((_templateKeys ?? []).length === 0) {
           throw new BadRequestException(SD("sonamu.error.templateKeysRequired"));
-        } else if (templateGroupName === "Enums" && (enumIds ?? []).length === 0) {
-          throw new BadRequestException(SD("sonamu.error.enumIdsRequired"));
         }
 
         // sorting
@@ -786,33 +782,18 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         const templateKeys = TemplateKey.options.filter((tk) => _templateKeys.includes(tk));
 
         const combinations = entityIds.flatMap((entityId) => {
-          if (templateGroupName === "Enums") {
-            const entityIds = [entityId, ...EntityManager.getChildrenIds(entityId)];
-            const allEnumIds = entityIds.flatMap((entityId) =>
-              Object.keys(EntityManager.get(entityId).enumLabels),
-            );
-            return templateKeys.flatMap((templateKey) =>
-              allEnumIds
-                .filter((enumId) => enumIds.includes(enumId))
-                .map((enumId) => [entityId, templateKey, enumId]),
-            );
-          } else {
-            return templateKeys.map((templateKey) => [entityId, templateKey]);
-          }
+          return templateKeys.map((templateKey) => [entityId, templateKey]);
         });
 
         const statuses = await Promise.all(
-          combinations.map(async ([entityId, templateKey, enumId]) => {
+          combinations.map(async ([entityId, templateKey]) => {
             const { subPath, fullPath, isExists } = await Sonamu.syncer.checkExistsGenCode(
               entityId,
               templateKey as TemplateKey,
-              enumId,
             );
             return {
               entityId,
-              templateGroupName,
               templateKey,
-              enumId,
               subPath,
               fullPath,
               isExists,

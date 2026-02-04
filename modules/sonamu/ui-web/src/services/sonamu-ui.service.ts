@@ -351,14 +351,7 @@ export namespace SonamuUIService {
   }
 
   export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
-    const enabled = (() => {
-      if (params.entityIds.length === 0 || params.templateKeys.length === 0) {
-        return false;
-      } else if (params.templateGroupName === "Enums" && params.enumIds.length === 0) {
-        return false;
-      }
-      return true;
-    })();
+    const enabled = params.entityIds.length > 0 && params.templateKeys.length > 0;
 
     return useQuery({
       queryKey: ["scaffolding", "getStatus", params],
@@ -534,18 +527,14 @@ export namespace SonamuUIService {
 
 export type ScaffoldingStatus = {
   entityId: string;
-  templateGroupName: string;
   templateKey: string;
-  enumId?: string;
   subPath: string;
   fullPath: string;
   isExists: boolean;
 };
 export type ScaffoldingGetStatusParams = {
-  templateGroupName: "Entity" | "Enums";
   entityIds: string[];
   templateKeys: string[];
-  enumIds: string[];
 };
 export type ScaffoldingGenerateOptions = {
   entityId: string;

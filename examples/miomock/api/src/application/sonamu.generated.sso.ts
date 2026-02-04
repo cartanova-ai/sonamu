@@ -31,6 +31,7 @@ import type {
   TwoFactorBaseSchema,
   TwoFactorSubsetKey,
   UserBaseSchema,
+  UserRole,
   UserSubsetKey,
   VerificationBaseSchema,
   VerificationSubsetKey,
@@ -661,6 +662,6 @@ declare module "sonamu" {
 
 // Auth User Type
 export type SonamuUser = User & {
-  role: string;
+  role: UserRole;
   created_at: Date;
 };

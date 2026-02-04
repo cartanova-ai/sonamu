@@ -13,6 +13,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  EnumSelect,
   Input,
   Pagination,
   Table,
@@ -26,13 +27,16 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
-import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
-import { UserOrderBy, UserRoleLabel, UserSearchField } from "@/services/sonamu.generated";
+import {
+  UserOrderBy,
+  UserOrderByLabel,
+  UserRoleLabel,
+  UserSearchField,
+  UserSearchFieldLabel,
+} from "@/services/sonamu.generated";
 import { UserListParams } from "@/services/user/user.types";
-
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -40,7 +44,10 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/users/")({
   head: () => ({
-    meta: [{ title: "USER List" }, { name: "description", content: "USER 목록 관리" }],
+    meta: [
+      { title: "USER List" },
+      { name: "description", content: SD("entity.listManage")("USER") },
+    ],
   }),
   component: UserList,
 });
@@ -208,10 +215,12 @@ function UserList({}: UserListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <UserSearchFieldSelect
+                  <EnumSelect
+                    enum={UserSearchField}
+                    labels={UserSearchFieldLabel}
                     {...register("search")}
                     placeholder={SD("common.searchType")}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
@@ -239,11 +248,13 @@ function UserList({}: UserListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <UserOrderBySelect
+                  <EnumSelect
+                    enum={UserOrderBy}
+                    labels={UserOrderByLabel}
                     {...register("orderBy")}
                     placeholder={SD("common.sort")}
                     textPrefix={`${SD("common.sort")}: `}
-                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                    className="w-50 h-8 bg-white border-gray-300 text-xs"
                   />
                   <span className="text-xs text-muted-foreground">
                     {SD("common.results")(total ?? 0)}

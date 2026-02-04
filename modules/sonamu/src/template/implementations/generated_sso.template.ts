@@ -285,19 +285,31 @@ export class Template__generated_sso extends Template {
       };
     }
 
+    const importKeys: string[] = [];
+
     // additionalFields를 TypeScript 타입으로 변환
     const fieldLines = Object.entries(additionalFields).map(([key, value]) => {
       // biome-ignore lint/suspicious/noExplicitAny: better-auth additionalFields 구조
-      const fieldType = mapBetterAuthFieldType((value as any).type);
-      // biome-ignore lint/suspicious/noExplicitAny: better-auth additionalFields 구조
-      const isRequired = (value as any).required !== false;
+      const fieldConfig = value as any;
+      const isRequired = fieldConfig.required !== false;
+
+      let fieldType: string;
+
+      // sonamuType이 있으면 description을 타입명으로 사용
+      if (fieldConfig.sonamuType) {
+        fieldType = fieldConfig.sonamuType;
+        importKeys.push(fieldType);
+      } else {
+        fieldType = mapBetterAuthFieldType(fieldConfig.type);
+      }
+
       return `  ${key}${isRequired ? "" : "?"}: ${fieldType};`;
     });
 
     return {
       label: "Auth User Type",
       lines: ["export type SonamuUser = User & {", ...fieldLines, "};"],
-      importKeys: [],
+      importKeys,
     };
   }
 

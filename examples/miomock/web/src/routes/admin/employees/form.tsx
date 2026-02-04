@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  IdAsyncSelect,
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
@@ -12,11 +13,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
-import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
 import { SD } from "@/i18n/sd.generated";
 import { EmployeeSaveParams } from "@/services/employee/employee.types";
-import { EmployeeService } from "@/services/services.generated";
+import {
+  DepartmentAsyncIdConfig,
+  EmployeeService,
+  UserAsyncIdConfig,
+} from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
@@ -128,7 +131,12 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Employee.user")}
                   </label>
-                  <UserIdAsyncSelect subset="A" {...register("user_id")} className="h-8 text-xs" />
+                  <IdAsyncSelect
+                    config={UserAsyncIdConfig}
+                    displayField="id"
+                    subset="A"
+                    {...register("user_id")}
+                  />
                 </div>
 
                 {/* 부서 */}
@@ -136,11 +144,10 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                   <label className="block text-xs mb-1 text-gray-600">
                     {SD("entity.Employee.department")}
                   </label>
-                  <DepartmentIdAsyncSelect
+                  <IdAsyncSelect
                     subset="A"
+                    config={DepartmentAsyncIdConfig}
                     {...register("department_id")}
-                    clearable
-                    className="h-8 text-xs"
                   />
                 </div>
 

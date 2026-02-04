@@ -6,17 +6,17 @@ import { SelectNew } from "./select-new";
 // ============================================================================
 
 // EnumSelect Props
-// Duck typing: enum은 .options 속성만 있으면 됨 (Zod enum 또는 호환 타입)
 export type EnumSelectProps<TValue extends string = string> = {
   enum: { options: readonly TValue[] };
   labels: Record<TValue, string>;
-  value?: TValue | "";
-  onValueChange?: (value: TValue | "" | null | undefined) => void;
+  value?: TValue | TValue[] | "";
+  onValueChange?: (value: TValue | TValue[] | "" | null | undefined) => void;
   placeholder?: string;
   textPrefix?: string;
   clearable?: boolean;
   disabled?: boolean;
   className?: string;
+  multiple?: boolean;
 };
 
 // ============================================================================
@@ -33,6 +33,7 @@ export function EnumSelect<TValue extends string = string>({
   clearable = false,
   disabled = false,
   className,
+  multiple = false,
 }: EnumSelectProps<TValue>) {
   // Zod enum에서 options 추출 (빈 문자열 필터링 - Radix UI 제약)
   const validOptions = React.useMemo(() => {
@@ -47,18 +48,38 @@ export function EnumSelect<TValue extends string = string>({
     }));
   }, [validOptions, labels, textPrefix]);
 
+  // Single 모드
+  if (!multiple) {
+    return (
+      <SelectNew
+        items={items}
+        value={(value as TValue | "" | undefined) ?? ""}
+        onValueChange={(newValue: string | undefined) => {
+          onValueChange?.(newValue as TValue | "" | null | undefined);
+        }}
+        placeholder={placeholder}
+        clearable={clearable}
+        disabled={disabled}
+        className={className}
+        multiple={false}
+        async={false}
+      />
+    );
+  }
+
+  // Multiple 모드
   return (
     <SelectNew
       items={items}
-      value={value ?? ""}
-      onValueChange={(newValue) => {
-        onValueChange?.(newValue as TValue | "" | null | undefined);
+      value={(value as TValue[]) ?? []}
+      onValueChange={(newValue: string[]) => {
+        onValueChange?.(newValue as TValue[]);
       }}
       placeholder={placeholder}
       clearable={clearable}
       disabled={disabled}
       className={className}
-      multiple={false}
+      multiple={true}
       async={false}
     />
   );

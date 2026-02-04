@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Select,
+  SelectNew,
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
@@ -183,11 +183,12 @@ export function EntityPropModal({
                 <label className="block mb-1 font-bold">
                   Type <span className="text-red-500">*</span>
                 </label>
-                <Select
+                <SelectNew
                   value={form.type}
                   onValueChange={(value) => value && setForm({ ...form, type: value })}
                   items={typeOptions}
                   className="focus-2"
+                  searchable
                 />
               </div>
               <div className="flex-1">
@@ -283,9 +284,10 @@ export function EntityPropModal({
                   <label className="block mb-1 font-bold">
                     Storage Type <span className="text-red-500">*</span>
                   </label>
-                  <Select
+                  <SelectNew
                     value={form.generated?.type ?? "STORED"}
                     onValueChange={(value) => {
+                      if (!value) return;
                       const newGenerated = {
                         type: value as "STORED" | "VIRTUAL",
                         expression: form.generated?.expression ?? "",
@@ -293,6 +295,7 @@ export function EntityPropModal({
                       setForm({ ...form, generated: newGenerated });
                     }}
                     items={["STORED", "VIRTUAL"] satisfies string[]}
+                    searchable
                   />
                 </div>
                 <div className="flex-1">
@@ -361,7 +364,7 @@ export function EntityPropModal({
                 {form.type === "number" && (
                   <div className="flex-1">
                     <label className="block mb-1 font-bold">Number Type</label>
-                    <Select
+                    <SelectNew
                       value={form.numberType}
                       onValueChange={(value) =>
                         setForm({
@@ -372,6 +375,7 @@ export function EntityPropModal({
                       clearable
                       items={["real", "double precision", "numeric"] satisfies string[]}
                       placeholder="Select..."
+                      searchable
                     />
                   </div>
                 )}
@@ -410,7 +414,7 @@ export function EntityPropModal({
                   <label className="block mb-1 font-bold">
                     CustomType ID <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex">
+                  <div className="flex gap-1">
                     <FormTypeIdAsyncSelect {...register("id")} search />
                     <Button
                       variant="outline"
@@ -426,7 +430,7 @@ export function EntityPropModal({
               <div className="flex gap-[14px] mb-[14px]">
                 <div className="flex-1 max-w-[50%]">
                   <label className="block mb-1 font-bold">Virtual Type</label>
-                  <Select
+                  <SelectNew
                     value={form.virtualType}
                     onValueChange={(value) =>
                       setForm({
@@ -437,6 +441,7 @@ export function EntityPropModal({
                     clearable
                     items={["code", "query"] satisfies string[]}
                     placeholder="code (default)"
+                    searchable
                   />
                 </div>
               </div>
@@ -464,7 +469,7 @@ export function EntityPropModal({
                     <label className="block mb-1 font-bold">
                       Relation Type <span className="text-red-500">*</span>
                     </label>
-                    <Select
+                    <SelectNew
                       value={form.relationType ?? ""}
                       onValueChange={(value) =>
                         setForm({
@@ -480,6 +485,7 @@ export function EntityPropModal({
                       items={
                         ["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"] satisfies string[]
                       }
+                      searchable
                     />
                   </div>
                   <div className="flex-1">
@@ -509,8 +515,8 @@ export function EntityPropModal({
                         <label className="block mb-1 font-bold">
                           ON UPDATE <span className="text-red-500">*</span>
                         </label>
-                        <Select<string>
-                          value={form.onUpdate ?? ""}
+                        <SelectNew
+                          value={form.onUpdate}
                           onValueChange={(value) =>
                             setForm({
                               ...form,
@@ -518,14 +524,15 @@ export function EntityPropModal({
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}
+                          searchable
                         />
                       </div>
                       <div className="flex-1">
                         <label className="block mb-1 font-bold">
                           ON DELETE <span className="text-red-500">*</span>
                         </label>
-                        <Select<string>
-                          value={form.onDelete ?? ""}
+                        <SelectNew
+                          value={form.onDelete}
                           onValueChange={(value) =>
                             setForm({
                               ...form,
@@ -533,6 +540,7 @@ export function EntityPropModal({
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}
+                          searchable
                         />
                       </div>
                     </>

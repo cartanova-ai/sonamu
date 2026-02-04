@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MultiSelect } from "@/components";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DateInput } from "@/components/ui/date-input";
@@ -7,7 +6,7 @@ import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
 import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
-import { Select } from "@/components/ui/select";
+import { SelectNew } from "@/components/ui/select/select-new";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -137,7 +136,7 @@ function DataDisplayPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Select</h2>
         <div className="border rounded-lg p-6 bg-card">
-          <Select
+          <SelectNew
             {...register("selectValue")}
             items={[
               { value: "option1", label: "옵션 1" },
@@ -155,10 +154,12 @@ function DataDisplayPage() {
         <h2 className="text-xl font-semibold">Multi Select</h2>
         <div className="border rounded-lg p-6 bg-card">
           <div className="max-w-md">
-            <MultiSelect
+            <SelectNew
               {...register("selectedValues")}
-              options={multiSelectOptions}
+              items={multiSelectOptions}
+              multiple
               placeholder="옵션 선택"
+              className="bg-gray-100"
             />
           </div>
         </div>

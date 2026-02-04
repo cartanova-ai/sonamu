@@ -1,4 +1,4 @@
-import { Button, Select } from "@sonamu-kit/react-components";
+import { Button, SelectNew } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -28,12 +28,13 @@ export function FormTypeIdAsyncSelect({
   onValueChange,
   placeholder = "TypeId",
   disabled,
+  search,
   className,
 }: FormTypeIdAsyncSelectProps) {
   const { data, isLoading, refetch } = SonamuUIService.useTypeIds(filter);
   const { typeIds } = data ?? {};
 
-  const handleValueChange = (newValue: string | null | undefined) => {
+  const handleValueChange = (newValue: string | undefined) => {
     if (!newValue) return;
     if (onValueChange) {
       onValueChange(newValue);
@@ -70,13 +71,14 @@ export function FormTypeIdAsyncSelect({
 
   return (
     <div className="flex gap-1">
-      <Select
+      <SelectNew
         value={value}
         onValueChange={handleValueChange}
         disabled={disabled || !typeIds || isLoading}
         items={typeIds ?? []}
         placeholder={placeholder}
         className={className}
+        searchable={search}
       />
       <Button variant="outline" onClick={() => refetch()} icon={<RefreshCwIcon />} />
 

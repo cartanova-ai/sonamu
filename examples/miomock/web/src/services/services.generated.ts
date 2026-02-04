@@ -1182,6 +1182,7 @@ export namespace CompanyService {
 
 // AsyncIdConfig: Company
 export const CompanyAsyncIdConfig = {
+  placeholderKey: "entity.Company",
   useList: CompanyService.useCompanies as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1195,6 +1196,7 @@ export const CompanyAsyncIdConfig = {
 
 // AsyncIdConfig: Department
 export const DepartmentAsyncIdConfig = {
+  placeholderKey: "entity.Department",
   useList: DepartmentService.useDepartments as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1208,6 +1210,7 @@ export const DepartmentAsyncIdConfig = {
 
 // AsyncIdConfig: Employee
 export const EmployeeAsyncIdConfig = {
+  placeholderKey: "entity.Employee",
   useList: EmployeeService.useEmployees as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1221,6 +1224,7 @@ export const EmployeeAsyncIdConfig = {
 
 // AsyncIdConfig: File
 export const FileAsyncIdConfig = {
+  placeholderKey: "entity.File",
   useList: FileService.useFiles as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1234,6 +1238,7 @@ export const FileAsyncIdConfig = {
 
 // AsyncIdConfig: Project
 export const ProjectAsyncIdConfig = {
+  placeholderKey: "entity.Project",
   useList: ProjectService.useProjects as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1247,6 +1252,7 @@ export const ProjectAsyncIdConfig = {
 
 // AsyncIdConfig: SyncFixture
 export const SyncFixtureAsyncIdConfig = {
+  placeholderKey: "entity.SyncFixture",
   useList: SyncFixtureService.useSyncFixtures as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1260,6 +1266,7 @@ export const SyncFixtureAsyncIdConfig = {
 
 // AsyncIdConfig: Tag
 export const TagAsyncIdConfig = {
+  placeholderKey: "entity.Tag",
   useList: TagService.useTags as (
     subset: string,
     params?: Record<string, unknown>,
@@ -1273,6 +1280,7 @@ export const TagAsyncIdConfig = {
 
 // AsyncIdConfig: User
 export const UserAsyncIdConfig = {
+  placeholderKey: "entity.User",
   useList: UserService.useUsers as (
     subset: string,
     params?: Record<string, unknown>,

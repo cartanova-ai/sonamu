@@ -1,4 +1,5 @@
 import { passkey as _passkey, type PasskeyOptions } from "@better-auth/passkey";
+import { merge } from "../../../utils/utils";
 
 export type { PasskeyOptions } from "@better-auth/passkey";
 
@@ -30,19 +31,6 @@ export const PASSKEY_SCHEMA: PasskeyOptions["schema"] = {
  * Sonamu의 스키마 매핑을 자동으로 병합합니다.
  */
 export const passkey = (options: PasskeyOptions = {}): ReturnType<typeof _passkey> => {
-  options.schema = {
-    passkey: {
-      modelName: "passkeys",
-      fields: {
-        publicKey: "public_key",
-        userId: "user_id",
-        credentialID: "credential_id",
-        deviceType: "device_type",
-        backedUp: "backed_up",
-        createdAt: "created_at",
-        ...options.schema?.passkey?.fields,
-      },
-    },
-  };
+  options.schema = merge(PASSKEY_SCHEMA, options.schema ?? {});
   return _passkey(options);
 };

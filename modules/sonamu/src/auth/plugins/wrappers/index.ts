@@ -1,4 +1,8 @@
 export { ADMIN_SCHEMA, type AdminOptions, admin } from "./admin";
+export { ANONYMOUS_SCHEMA, type AnonymousOptions, anonymous } from "./anonymous";
+export { API_KEY_SCHEMA, type ApiKeyOptions, apiKey } from "./api-key";
+export { JWT_SCHEMA, type JwtOptions, jwt } from "./jwt";
+export { ORGANIZATION_SCHEMA, type OrganizationOptions, organization } from "./organization";
 export { PASSKEY_SCHEMA, type PasskeyOptions, passkey } from "./passkey";
 export { PHONE_NUMBER_SCHEMA, type PhoneNumberOptions, phoneNumber } from "./phone-number";
 export { SSO_SCHEMA, type SSOOptions, sso } from "./sso";

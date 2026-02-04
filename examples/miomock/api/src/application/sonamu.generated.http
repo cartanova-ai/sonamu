@@ -1,14 +1,14 @@
 
 
 GET {{baseUrl}}/api/user/findById
-	?subset=unknown
+	?subset=A
 	&id=ID
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/user/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -40,7 +40,8 @@ Content-Type: application/json
       "is_verified": false,
       "deleted_at": null,
       "image": null,
-      "updated_at": "2000-01-01"
+      "updated_at": "2000-01-01",
+      "two_factor_enabled": null
     }
   ]
 }
@@ -71,14 +72,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/tag/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/tag/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -132,14 +133,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/syncFixture/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/syncFixture/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -186,14 +187,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/project/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/project/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -256,14 +257,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/file/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/file/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -354,14 +355,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/employee/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/employee/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -406,14 +407,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/document/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/document/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -434,7 +435,7 @@ POST {{baseUrl}}/api/document/findManySemanticByVector
 Content-Type: application/json
 
 {
-  "subset": "unknown",
+  "subset": "A",
   "params": {
     "num": 24,
     "page": 1,
@@ -495,14 +496,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/department/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/department/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -545,14 +546,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/company/findById
-	?subset=unknown
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/company/findMany
-	?subset=unknown
+	?subset=A
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
