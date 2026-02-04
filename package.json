@@ -19,6 +19,7 @@
     "publish:packages": "tsx scripts/publish.ts",
     "format": "biome format --write",
     "check": "biome check",
+    "check:fix": "biome check --write --unsafe",
     "verify:clean": "tsx scripts/verify.ts clean",
     "verify:fast": "tsx scripts/verify.ts fast"
   },
