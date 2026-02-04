@@ -1,5 +1,6 @@
 export { adminEntityDef } from "./admin";
 export { apiKeyEntityDef } from "./api-key";
+export { jwtEntityDef } from "./jwt";
 export { organizationEntityDef } from "./organization";
 export { passkeyEntityDef } from "./passkey";
 export { phoneNumberEntityDef } from "./phone-number";
@@ -10,6 +11,7 @@ export { usernameEntityDef } from "./username";
 
 import { adminEntityDef } from "./admin";
 import { apiKeyEntityDef } from "./api-key";
+import { jwtEntityDef } from "./jwt";
 import { organizationEntityDef } from "./organization";
 import { passkeyEntityDef } from "./passkey";
 import { phoneNumberEntityDef } from "./phone-number";
@@ -31,6 +33,7 @@ export const ENTITY_DEFINITIONS: Record<BetterAuthPluginId, BetterAuthEntityDef>
   passkey: passkeyEntityDef,
   organization: organizationEntityDef,
   "api-key": apiKeyEntityDef,
+  jwt: jwtEntityDef,
 };
 
 /**
