@@ -26,8 +26,6 @@ export const USERNAME_SCHEMA: UsernameOptions["schema"] = {
  * Sonamu의 스키마 매핑을 자동으로 병합합니다.
  */
 export const username = (options: UsernameOptions = {}) => {
-  if (options.schema) {
-    options.schema = merge(USERNAME_SCHEMA, options.schema);
-  }
+  options.schema = merge(USERNAME_SCHEMA, options.schema ?? {});
   return _username(options);
 };

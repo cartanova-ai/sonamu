@@ -26,8 +26,6 @@ export const PHONE_NUMBER_SCHEMA: PhoneNumberOptions["schema"] = {
  * Sonamu의 스키마 매핑을 자동으로 병합합니다.
  */
 export const phoneNumber = (options: PhoneNumberOptions) => {
-  if (options.schema) {
-    options.schema = merge(PHONE_NUMBER_SCHEMA, options.schema);
-  }
+  options.schema = merge(PHONE_NUMBER_SCHEMA, options.schema ?? {});
   return _phoneNumber(options);
 };

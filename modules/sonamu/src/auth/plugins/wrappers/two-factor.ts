@@ -32,8 +32,6 @@ export const TWO_FACTOR_SCHEMA: TwoFactorOptions["schema"] = {
  * Sonamu의 스키마 매핑을 자동으로 병합합니다.
  */
 export const twoFactor = (options: TwoFactorOptions = {}) => {
-  if (options.schema) {
-    options.schema = merge(TWO_FACTOR_SCHEMA, options.schema);
-  }
+  options.schema = merge(TWO_FACTOR_SCHEMA, options.schema ?? {});
   return _twoFactor(options);
 };

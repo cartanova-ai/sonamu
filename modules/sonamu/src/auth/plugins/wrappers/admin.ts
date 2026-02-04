@@ -33,8 +33,6 @@ export const ADMIN_SCHEMA: AdminOptions["schema"] = {
  * Sonamu의 스키마 매핑을 자동으로 병합합니다.
  */
 export const admin = (options: AdminOptions = {}) => {
-  if (options.schema) {
-    options.schema = merge(ADMIN_SCHEMA, options.schema);
-  }
+  options.schema = merge(ADMIN_SCHEMA, options.schema ?? {});
   return _admin(options);
 };
