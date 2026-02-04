@@ -40,7 +40,8 @@ Content-Type: application/json
       "is_verified": false,
       "deleted_at": null,
       "image": null,
-      "updated_at": "2000-01-01"
+      "updated_at": "2000-01-01",
+      "two_factor_enabled": null
     }
   ]
 }

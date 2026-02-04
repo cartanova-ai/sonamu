@@ -486,12 +486,7 @@ describe("Syncer", () => {
         .map((f) => f.path);
 
       // expectedFiles의 모든 항목이 writeFilesPaths 중 적어도 하나에 포함되어 있는지 체크
-      const expectedFiles = [
-        "index.tsx",
-        "SyncFixtureSearchFieldSelect.tsx",
-        "SyncFixtureOrderBySelect.tsx",
-        "SyncFixtureSearchInput.tsx",
-      ];
+      const expectedFiles = ["index.tsx"];
 
       // 모든 expectedFile이 writeFilesPaths 중 적어도 하나에 포함되어야 함
       const allFilesExist = expectedFiles.every((f) =>

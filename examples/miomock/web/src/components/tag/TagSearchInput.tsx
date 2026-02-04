@@ -1,35 +1,28 @@
-import { Button, Input } from "@sonamu-kit/react-components/components";
+import { Button, EnumSelect, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
-import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
+import { TagSearchField, TagSearchFieldLabel } from "@/services/sonamu.generated";
 import SearchIcon from "~icons/lucide/search";
-
 export type TagSearchInputProps = {
   input: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
   dropdown: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
 };
 
 export function TagSearchInput({
-  input: { value: inputValue, onChange: inputOnChange },
+  input: { value: inputValue, onValueChange: inputOnValueChange },
   dropdown: dropdownProps,
 }: TagSearchInputProps) {
   const [keyword, setKeyword] = useState<string>(inputValue ?? "");
 
   const handleSearch = () => {
-    if (inputOnChange) {
-      const syntheticEvent = {
-        target: { value: keyword },
-        currentTarget: { value: keyword },
-      } as React.ChangeEvent<HTMLInputElement>;
-      inputOnChange(syntheticEvent);
-    }
+    inputOnValueChange?.(keyword || undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -40,7 +33,16 @@ export function TagSearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <TagSearchFieldSelect {...dropdownProps} />
+      <EnumSelect
+        enum={TagSearchField}
+        labels={TagSearchFieldLabel}
+        value={dropdownProps.value}
+        onValueChange={(value) => {
+          dropdownProps.onValueChange?.(value as string | null | undefined);
+        }}
+        placeholder={SD("common.search")}
+        className="w-[150px] h-8"
+      />
       <div className="relative flex items-center">
         <Input
           type="text"

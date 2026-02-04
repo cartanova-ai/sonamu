@@ -1,34 +1,28 @@
-import { Button, Input } from "@sonamu-kit/react-components/components";
+import { Button, EnumSelect, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
-import { EmployeeSearchFieldSelect } from "@/components/employee/EmployeeSearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
+import { EmployeeSearchField, EmployeeSearchFieldLabel } from "@/services/sonamu.generated";
 import SearchIcon from "~icons/lucide/search";
-
 export type EmployeeSearchInputProps = {
   input: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
   dropdown: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
 };
 
 export function EmployeeSearchInput({
-  input: { value: inputValue, onChange: inputOnChange },
+  input: { value: inputValue, onValueChange: inputOnValueChange },
   dropdown: dropdownProps,
 }: EmployeeSearchInputProps) {
   const [keyword, setKeyword] = useState<string>(inputValue ?? "");
 
   const handleSearch = () => {
-    if (inputOnChange) {
-      const syntheticEvent = {
-        target: { value: keyword },
-        currentTarget: { value: keyword },
-      } as React.ChangeEvent<HTMLInputElement>;
-      inputOnChange(syntheticEvent);
-    }
+    inputOnValueChange?.(keyword || undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -39,11 +33,20 @@ export function EmployeeSearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <EmployeeSearchFieldSelect {...dropdownProps} />
+      <EnumSelect
+        enum={EmployeeSearchField}
+        labels={EmployeeSearchFieldLabel}
+        value={dropdownProps.value}
+        onValueChange={(value) => {
+          dropdownProps.onValueChange?.(value as string | null | undefined);
+        }}
+        placeholder={SD("common.search")}
+        className="w-[150px] h-8"
+      />
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="검색..."
+          placeholder={SD("common.searchPlaceholder")}
           className="h-8 w-[200px] pr-8"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
