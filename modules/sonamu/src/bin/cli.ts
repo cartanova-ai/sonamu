@@ -13,8 +13,11 @@ import process from "process";
 import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
 import { generateBetterAuthEntities } from "../auth/auth-generator";
-import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins";
-import type { BetterAuthPluginId } from "../auth/plugins/types";
+import {
+  type BetterAuthPluginId,
+  isValidPluginId,
+  SUPPORTED_PLUGIN_IDS,
+} from "../auth/plugins/entity-definitions";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";

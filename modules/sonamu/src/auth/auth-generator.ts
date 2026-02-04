@@ -3,8 +3,11 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import type { EntityIndex, EntityJson, EntityProp } from "../types/types";
 import { betterAuthV1 } from "./better-auth-entities";
-import { isValidPluginId, PLUGINS } from "./plugins";
-import type { BetterAuthPluginId } from "./plugins/types";
+import {
+  type BetterAuthPluginId,
+  ENTITY_DEFINITIONS,
+  isValidPluginId,
+} from "./plugins/entity-definitions";
 
 /**
  * 누락된 props 찾기
@@ -223,22 +226,22 @@ export async function generateBetterAuthEntities(
         continue;
       }
 
-      const plugin = PLUGINS[pluginId];
-      console.log(chalk.magenta(`[PLUGIN] ${plugin.name}`));
+      const entityDef = ENTITY_DEFINITIONS[pluginId];
+      console.log(chalk.magenta(`[PLUGIN] ${entityDef.name}`));
 
       // 플러그인의 새 엔티티 생성
-      for (const entityJson of plugin.entities) {
+      for (const entityJson of entityDef.entities) {
         await createOrUpdateEntity(entityJson);
       }
 
       // 기존 엔티티에 필드 추가
-      for (const [entityId, props] of Object.entries(plugin.additionalProps)) {
+      for (const [entityId, props] of Object.entries(entityDef.additionalProps)) {
         await addPropsToEntity(entityId, props);
       }
 
       // 기존 엔티티에 인덱스 추가
-      if (plugin.additionalIndexes) {
-        for (const [entityId, indexes] of Object.entries(plugin.additionalIndexes)) {
+      if (entityDef.additionalIndexes) {
+        for (const [entityId, indexes] of Object.entries(entityDef.additionalIndexes)) {
           await addIndexesToEntity(entityId, indexes);
         }
       }

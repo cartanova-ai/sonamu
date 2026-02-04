@@ -1,31 +1,7 @@
-import type { BetterAuthPlugin, PluginSchema } from "./types";
+import type { BetterAuthEntityDef } from "./types";
 
 /**
- * Admin 플러그인 스키마
- *
- * better-auth admin 플러그인 호출 시 전달합니다:
- * ```typescript
- * admin({ schema: ADMIN_SCHEMA })
- * ```
- */
-export const ADMIN_SCHEMA: PluginSchema = {
-  user: {
-    fields: {
-      // role: "role",
-      // banned: "banned",
-      banReason: "ban_reason",
-      banExpires: "ban_expires",
-    },
-  },
-  session: {
-    fields: {
-      impersonatedBy: "impersonated_by",
-    },
-  },
-};
-
-/**
- * better-auth admin 플러그인
+ * better-auth admin 플러그인 엔티티 정의
  * https://www.better-auth.com/docs/plugins/admin
  *
  * 관리자 기능을 위한 필드를 추가합니다:
@@ -39,7 +15,7 @@ export const ADMIN_SCHEMA: PluginSchema = {
  * Session 테이블:
  * - impersonated_by: 대리 로그인한 관리자 ID
  */
-export const adminPlugin: BetterAuthPlugin = {
+export const adminEntityDef: BetterAuthEntityDef = {
   id: "admin",
   name: "Admin",
   entities: [],
@@ -81,5 +57,4 @@ export const adminPlugin: BetterAuthPlugin = {
       },
     ],
   },
-  schema: ADMIN_SCHEMA,
 };
