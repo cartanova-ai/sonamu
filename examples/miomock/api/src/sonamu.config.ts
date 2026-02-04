@@ -129,7 +129,7 @@ export default defineConfig({
           emailVerified: "is_verified",
         },
         additionalFields: {
-          role: { type: "string" },
+          role: { type: "string", sonamuType: "UserRole" },
           created_at: { type: "date" },
         },
       },
