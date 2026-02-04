@@ -146,6 +146,31 @@ pnpm sonamu better-auth
 이미 User 엔티티가 있는 경우, 명령 실행 시 누락된 필드만 추가됩니다.
 </Note>
 
+### 플러그인과 함께 엔티티 생성
+
+better-auth 플러그인을 사용하려면 `--plugins` 옵션으로 필요한 플러그인들을 지정합니다:
+
+```bash
+# 단일 플러그인
+pnpm sonamu better-auth --plugins=2fa
+
+# 여러 플러그인 (쉼표로 구분)
+pnpm sonamu better-auth --plugins=2fa,admin,username
+```
+
+지원하는 플러그인:
+
+| 플러그인 ID | 설명 | 추가되는 필드/테이블 |
+|------------|------|---------------------|
+| `2fa` | 2단계 인증 (TOTP) | TwoFactor 테이블, User.two_factor_enabled |
+| `admin` | 관리자 기능 | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by |
+| `username` | 사용자명 로그인 | User.username (unique), User.display_username |
+| `phone-number` | 전화번호 인증 | User.phone_number (unique), User.phone_number_verified |
+
+<Tip>
+플러그인 사용 시 `sonamu.config.ts`에서도 해당 플러그인을 활성화해야 합니다. 자세한 내용은 아래 [플러그인 설정](#플러그인-설정) 섹션을 참조하세요.
+</Tip>
+
 ### 필드 매핑
 
 Sonamu는 snake_case 컬럼명을 사용하므로, better-auth의 camelCase 필드명이 자동으로 매핑됩니다:
@@ -372,6 +397,154 @@ export function GoogleLoginButton() {
   );
 }
 ```
+
+## 플러그인 설정
+
+better-auth 플러그인을 사용하려면 `sonamu.config.ts`의 `auth.plugins` 배열에 플러그인을 추가합니다.
+
+<Warning>
+플러그인을 설정하기 전에 먼저 `pnpm sonamu better-auth --plugins=...` 명령으로 필요한 엔티티와 필드를 생성해야 합니다.
+</Warning>
+
+### 2단계 인증 (2FA)
+
+TOTP 기반 2단계 인증을 활성화합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { twoFactor, TWO_FACTOR_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        twoFactor({
+          issuer: "My App",  // OTP 앱에 표시될 이름
+          schema: TWO_FACTOR_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+2FA 관련 API:
+- `POST /api/auth/two-factor/enable` - 2FA 활성화 시작
+- `POST /api/auth/two-factor/verify` - 2FA 코드 검증
+- `POST /api/auth/two-factor/disable` - 2FA 비활성화
+
+### 관리자 플러그인 (Admin)
+
+사용자 역할, 차단 기능, 대리 로그인(impersonation)을 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { admin, ADMIN_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        admin({
+          schema: ADMIN_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Admin 플러그인이 User 테이블에 추가하는 필드:
+- `role` - 사용자 역할 (기본값: "user")
+- `banned` - 차단 여부
+- `ban_reason` - 차단 사유
+- `ban_expires` - 차단 만료 시간 (Unix timestamp)
+
+### 사용자명 플러그인 (Username)
+
+이메일 대신 사용자명으로 로그인할 수 있습니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { username, USERNAME_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        username({
+          schema: USERNAME_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Username 플러그인이 User 테이블에 추가하는 필드:
+- `username` - 정규화된 사용자명 (소문자, unique 인덱스)
+- `display_username` - 표시용 사용자명 (원본 케이스 유지)
+
+### 전화번호 플러그인 (Phone Number)
+
+전화번호 인증을 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        phoneNumber({
+          schema: PHONE_NUMBER_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Phone Number 플러그인이 User 테이블에 추가하는 필드:
+- `phone_number` - 전화번호 (unique 인덱스)
+- `phone_number_verified` - 전화번호 인증 여부
+
+### 여러 플러그인 함께 사용
+
+```typescript
+import { defineConfig } from "sonamu";
+import {
+  admin,
+  ADMIN_SCHEMA,
+  twoFactor,
+  TWO_FACTOR_SCHEMA,
+  username,
+  USERNAME_SCHEMA,
+} from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        admin({ schema: ADMIN_SCHEMA }),
+        twoFactor({
+          issuer: "My App",
+          schema: TWO_FACTOR_SCHEMA,
+        }),
+        username({ schema: USERNAME_SCHEMA }),
+      ],
+    },
+  },
+});
+```
+
+<Note>
+각 플러그인의 스키마(`*_SCHEMA`)는 Sonamu의 snake_case 컬럼명과 better-auth의 camelCase 필드명을 매핑하는 역할을 합니다. 반드시 해당 플러그인과 함께 전달해야 합니다.
+</Note>
 
 ## 실전 예시
 
