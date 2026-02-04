@@ -109,7 +109,7 @@ describe("LoadersResult", () => {
   it("단일 로더의 결과 타입을 생성한다", () => {
     type MockLoaderQb = (
       qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-      fromIds: number[],
+      fromIds: number[] | string[],
     ) => MockPuri<{ id: number; title: string; refId: number }>;
 
     type Loaders = [
@@ -129,12 +129,12 @@ describe("LoadersResult", () => {
   it("중첩 로더를 처리한다", () => {
     type CommentLoaderQb = (
       qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-      fromIds: number[],
+      fromIds: number[] | string[],
     ) => MockPuri<{ id: number; content: string; refId: number }>;
 
     type PostLoaderQb = (
       qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-      fromIds: number[],
+      fromIds: number[] | string[],
     ) => MockPuri<{ id: number; title: string; refId: number }>;
 
     type Loaders = [
@@ -166,7 +166,7 @@ describe("LoadersResult", () => {
       refId: "id";
       qb: (
         qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-        fromIds: number[],
+        fromIds: number[] | string[],
       ) => MockPuri<{ id: number; name: string; refId: number }>;
     };
     type DepartmentLoader = {
@@ -174,7 +174,7 @@ describe("LoadersResult", () => {
       refId: "id";
       qb: (
         qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-        fromIds: number[],
+        fromIds: number[] | string[],
       ) => MockPuri<{ id: number; name: string; company_name: string; refId: number }>;
     };
     type EmployeeLoader = {
@@ -182,7 +182,7 @@ describe("LoadersResult", () => {
       refId: "id";
       qb: (
         qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-        fromIds: number[],
+        fromIds: number[] | string[],
       ) => MockPuri<{ id: number; employee_number: string; refId: number }>;
       loaders: [
         {
@@ -190,7 +190,7 @@ describe("LoadersResult", () => {
           refId: "id";
           qb: (
             qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-            fromIds: number[],
+            fromIds: number[] | string[],
           ) => MockPuri<{ id: number; name: string; email: string; refId: number }>;
         },
       ];
@@ -267,7 +267,7 @@ describe("InferAllSubsets", () => {
         refId: "company__id";
         qb: (
           qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-          fromIds: number[],
+          fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; refId: number }>;
       };
       type DepartmentProjectsLoader = {
@@ -275,7 +275,7 @@ describe("InferAllSubsets", () => {
         refId: "department__id";
         qb: (
           qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-          fromIds: number[],
+          fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
       };
       type LoaderQueries = {
@@ -316,7 +316,7 @@ describe("InferAllSubsets", () => {
         refId: "company__id";
         qb: (
           qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-          fromIds: number[],
+          fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; refId: number }>;
         loaders: [
           {
@@ -324,7 +324,7 @@ describe("InferAllSubsets", () => {
             refId: "id";
             qb: (
               qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-              fromIds: number[],
+              fromIds: number[] | string[],
             ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
           },
         ];
@@ -428,7 +428,7 @@ describe("InferAllSubsets", () => {
         refId: "id";
         qb: (
           qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-          fromIds: number[],
+          fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
         loaders: [
           {
@@ -436,7 +436,7 @@ describe("InferAllSubsets", () => {
             refId: "id";
             qb: (
               qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-              fromIds: number[],
+              fromIds: number[] | string[],
             ) => MockPuri<{ id: number; name: string; refId: number }>;
           },
         ];

@@ -41,7 +41,7 @@ export type ExtractPuriResult<T> = T extends Puri<any, any, infer R> ? R : never
  */
 export type PuriLoaderQbFn = (
   qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-  fromIds: number[],
+  fromIds: number[] | string[],
 ) => Puri<any, any, any>;
 
 /**

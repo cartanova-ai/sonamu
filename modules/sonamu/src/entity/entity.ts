@@ -290,12 +290,17 @@ export class Entity {
       const loaderLines: string[] = [];
 
       for (const loader of loaders) {
-        const { toTable, toCol, through } = loader.manyJoin;
+        const { toTable, toCol, through, fromTable } = loader.manyJoin;
+
+        // fromTable의 Entity를 가져와서 PK 타입 확인
+        const fromEntity = EntityManager.getByTable(fromTable);
+        const fromIdsType = fromEntity.getPkArrayType();
+
         loaderLines.push(
           "{",
           `as: "${loader.as}",`,
           `refId: "${loader.manyJoin.idField}",`,
-          `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`,
+          `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {`,
         );
 
         if (through === undefined) {
@@ -327,7 +332,7 @@ export class Entity {
           const selectObj = this.buildNestedSelectObject(loader.select);
           selectObj.refId = `"${toTable}.${toCol}"`;
           loaderLines.push(
-            `.whereIn("${toTable}.${toCol}", fromIds)`,
+            `.whereIn("${toTable}.${toCol}", fromIds as ${fromIdsType})`,
             `.select(${this.stringifyNestedSelectObject(selectObj)});`,
           );
         } else {
@@ -359,7 +364,7 @@ export class Entity {
           const selectObj = this.buildNestedSelectObject(loader.select);
           selectObj.refId = `"${through.table}.${through.fromCol}"`;
           loaderLines.push(
-            `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
+            `.whereIn("${through.table}.${through.fromCol}", fromIds as ${fromIdsType})`,
             `.select(${this.stringifyNestedSelectObject(selectObj)});`,
           );
         }
@@ -1178,5 +1183,14 @@ export class Entity {
       throw new Error(`Entity ${this.id}에 id 필드가 없습니다`);
     }
     return idProp;
+  }
+
+  /**
+   * 엔티티의 PK 배열 타입을 반환합니다.
+   * LoaderQuery의 fromIds 타입으로 사용됩니다.
+   */
+  getPkArrayType(): string {
+    const pkType = this.getPkType();
+    return pkType === "integer" ? "number[]" : "string[]";
   }
 }
