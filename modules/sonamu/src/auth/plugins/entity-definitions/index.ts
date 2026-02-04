@@ -1,4 +1,5 @@
 export { adminEntityDef } from "./admin";
+export { passkeyEntityDef } from "./passkey";
 export { phoneNumberEntityDef } from "./phone-number";
 export { ssoEntityDef } from "./sso";
 export { twoFactorEntityDef } from "./two-factor";
@@ -6,6 +7,7 @@ export type { BetterAuthEntityDef, BetterAuthPluginId } from "./types";
 export { usernameEntityDef } from "./username";
 
 import { adminEntityDef } from "./admin";
+import { passkeyEntityDef } from "./passkey";
 import { phoneNumberEntityDef } from "./phone-number";
 import { ssoEntityDef } from "./sso";
 import { twoFactorEntityDef } from "./two-factor";
@@ -22,6 +24,7 @@ export const ENTITY_DEFINITIONS: Record<BetterAuthPluginId, BetterAuthEntityDef>
   "phone-number": phoneNumberEntityDef,
   "2fa": twoFactorEntityDef,
   sso: ssoEntityDef,
+  passkey: passkeyEntityDef,
 };
 
 /**
