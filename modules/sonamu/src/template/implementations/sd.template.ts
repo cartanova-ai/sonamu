@@ -58,7 +58,7 @@ function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
 `.trim()
         : `
 const DEFAULT_LOCALE = "${defaultLocale}" as const;
-const SUPPORTED_LOCALES = ${JSON.stringify(supportedLocales)} as const;
+export const SUPPORTED_LOCALES = ${JSON.stringify(supportedLocales)} as const;
 let _currentLocale: (typeof SUPPORTED_LOCALES)[number] = DEFAULT_LOCALE;
 
 export function setLocale(locale: (typeof SUPPORTED_LOCALES)[number]) {
@@ -80,9 +80,14 @@ export function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
 
     // locale별 rcKeys 변수명 매핑
     const getRCKeysVarName = (locale: string) => {
-      if (locale === "ko") return "rcKeysKo";
-      if (locale === "en") return "rcKeysEn";
-      // 다른 locale은 en을 fallback으로 사용
+      // supportedLocales에 포함된 locale만 해당 변수 반환
+      if (locale === "ko" && supportedLocales.includes("ko")) return "rcKeysKo";
+      if (locale === "en" && supportedLocales.includes("en")) return "rcKeysEn";
+      // fallback: defaultLocale의 rcKeys
+      if (locale !== defaultLocale) {
+        return getRCKeysVarName(defaultLocale);
+      }
+      // defaultLocale조차 없는 경우 en을 fallback으로 사용
       return "rcKeysEn";
     };
 
@@ -92,15 +97,15 @@ ${localeManagementCode}
 ${localeImports}
 
 // react-components i18n keys
-${rcKeysSourceCode.ko}
+${supportedLocales.includes("ko") ? rcKeysSourceCode.ko : ""}
 
-${rcKeysSourceCode.en}
+${supportedLocales.includes("en") ? rcKeysSourceCode.en : ""}
 
 // entity.json에서 추출한 entity labels (defaultLocale 전용)
 ${entityLabelsCode}
 
 // defaultLocale의 dictionary를 기준으로 키 추출
-type RCKeys = typeof rcKeysKo;
+type RCKeys = typeof ${getRCKeysVarName(defaultLocale)};
 type ProjectDictionary = typeof ${defaultLocale};
 type EntityLabels = typeof entityLabels;
 type RawMergedDictionary = RCKeys & Omit<EntityLabels, keyof (RCKeys & ProjectDictionary)> & ProjectDictionary;
