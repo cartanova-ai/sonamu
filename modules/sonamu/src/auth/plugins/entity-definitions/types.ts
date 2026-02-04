@@ -11,7 +11,8 @@ export type BetterAuthPluginId =
   | "admin"
   | "sso"
   | "passkey"
-  | "organization";
+  | "organization"
+  | "api-key";
 
 /**
  * better-auth 엔티티 정의
