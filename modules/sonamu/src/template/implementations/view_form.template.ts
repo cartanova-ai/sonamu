@@ -1,10 +1,8 @@
-import inflection from "inflection";
 import { unique } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
-import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
+import type { RenderingNode, TemplateOptions } from "../../types/types";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
-import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
 
 export class Template__view_form extends Template {
@@ -36,24 +34,20 @@ export class Template__view_form extends Template {
 
   renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
-      const { id, targetEntityNames } = getEnumInfoFromColName(entityId, col.name);
-      const componentId = `${id}Select`;
-      return `import { ${componentId} } from "@/components/${targetEntityNames.fs}/${componentId}";`;
+      const { id } = getEnumInfoFromColName(entityId, col.name);
+      return { type: "enum" as const, enumId: id };
     } else if (col.renderType === "number-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-        const targetNames = EntityManager.getNamesFromId(relProp.with);
-        const componentId = `${relProp.with}IdAsyncSelect`;
-        return `import { ${componentId} } from "@/components/${targetNames.fs}/${componentId}";`;
+        return { type: "fk" as const, entityId: relProp.with };
       } catch {
-        return "";
+        return null;
       }
-    } else {
-      throw new Error(`렌더 불가능한 임포트 ${col.name} ${col.renderType}`);
     }
+    return null;
   }
 
-  renderColumn(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
+  renderColumn(entityId: string, col: RenderingNode): string {
     const regExpr = `{...register("${col.name}")}`;
     const placeholder = `{SD("entity.${entityId}.${col.name}")}`;
 
@@ -93,24 +87,26 @@ export class Template__view_form extends Template {
                   />`;
       case "enums":
         try {
-          let enumId: string;
-          if (col.name === "orderBy") {
-            enumId = `${names.capital}${inflection.camelize(col.name)}Select`;
-          } else {
-            const { id } = getEnumInfoFromColName(entityId, col.name);
-            enumId = `${id}Select`;
-          }
-          return `<${enumId} ${regExpr} ${col.optional || col.nullable ? "clearable" : ""} />`;
+          const { id } = getEnumInfoFromColName(entityId, col.name);
+          return `<EnumSelect
+                    enum={${id}}
+                    labels={${id}Label}
+                    ${regExpr}
+                    ${col.optional || col.nullable ? "clearable" : ""}
+                  />`;
         } catch {
           return `<Input className="h-8 text-xs bg-white" ${regExpr} />`;
         }
       case "number-fk_id":
         try {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-          const fkId = `${relProp.with}IdAsyncSelect`;
-          return `<${fkId} subset="A" ${regExpr} ${
-            col.optional || col.nullable ? "clearable" : ""
-          } className="h-8 text-xs" />`;
+          return `<IdAsyncSelect
+                    config={${relProp.with}AsyncIdConfig}
+                    subset="A"
+                    ${regExpr}
+                    ${col.optional || col.nullable ? "clearable" : ""}
+                    className="h-8 text-xs"
+                  />`;
         } catch {
           return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         }
@@ -192,66 +188,23 @@ export class Template__view_form extends Template {
 
     const defaultValue = this.resolveDefaultValue(columns);
 
-    // 프리 템플릿
-    const preTemplates: RenderedTemplate["preTemplates"] = (columns as RenderingNode[])
-      .filter((col) => {
-        if (col.name === "id") {
-          return false;
-        } else if (col.name.endsWith("_id") || col.renderType === "number-id") {
-          try {
-            getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-            return true;
-          } catch {
-            return false;
-          }
-        } else if (col.renderType === "enums") {
-          try {
-            getEnumInfoFromColName(entityId, col.name);
-            return true;
-          } catch {
-            return false;
-          }
-        }
-        return false;
-      })
-      .map((col) => {
-        let key: TemplateKey;
-        let targetMdId = entityId;
-        let enumId: string | undefined;
-        if (col.renderType === "enums") {
-          key = "view_enums_select";
-          const { targetEntityNames: targetMDNames, id } = getEnumInfoFromColName(
-            entityId,
-            col.name,
-          );
-          targetMdId = targetMDNames.capital;
-          enumId = id;
-        } else {
-          key = "view_id_async_select";
-          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-          targetMdId = relProp.with;
-        }
+    // enum과 FK에 대한 import 정보 수집
+    const enumImports = new Set<string>();
+    const fkConfigImports = new Set<string>();
 
-        return {
-          key: key as TemplateKey,
-          options: {
-            entityId: targetMdId,
-            node: col,
-            enumId,
-          },
-        };
-      })
-      .filter((preTemplate) => {
-        if (preTemplate.key === "view_id_async_select") {
-          try {
-            EntityManager.get(preTemplate.options.entityId);
-            return true;
-          } catch {
-            return false;
-          }
-        }
-        return true;
-      });
+    columns.forEach((col) => {
+      if (col.renderType === "enums") {
+        try {
+          const { id } = getEnumInfoFromColName(entityId, col.name);
+          enumImports.add(id);
+        } catch {}
+      } else if (col.renderType === "number-fk_id") {
+        try {
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
+          fkConfigImports.add(relProp.with);
+        } catch {}
+      }
+    });
 
     return {
       ...this.getTargetAndPath(names),
@@ -262,7 +215,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  EnumSelect," : ""}${columns.some((col) => col.renderType === "number-fk_id") ? "\n  IdAsyncSelect," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
@@ -291,14 +244,13 @@ import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
           : ""
       }
 import { defaultCatch } from "@/services/sonamu.shared";
-import { ${names.capital}SaveParams } from "@/services/${names.fs}/${names.fs}.types";
-${unique(
-  columns
-    .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
-    .map((col) => {
-      return this.renderColumnImport(entityId, col);
-    }),
-).join("\n")}
+import { ${names.capital}SaveParams } from "@/services/${names.fs}/${names.fs}.types";${
+        fkConfigImports.size > 0
+          ? `\nimport { ${Array.from(fkConfigImports)
+              .map((entity) => `${entity}AsyncIdConfig`)
+              .join(", ")} } from "@/services/services.generated";`
+          : ""
+      }
 import { SD } from "@/i18n/sd.generated";
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
@@ -486,7 +438,7 @@ ${columns
     return `                {/* ${label} */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">{SD("entity.${entityId}.${col.name}")}</label>
-                  ${this.renderColumn(entityId, col, names)}
+                  ${this.renderColumn(entityId, col)}
                 </div>`;
   })
   .join("\n\n")}
@@ -518,7 +470,6 @@ ${columns
 }
       `.trim(),
       importKeys: [],
-      preTemplates,
     };
   }
 }

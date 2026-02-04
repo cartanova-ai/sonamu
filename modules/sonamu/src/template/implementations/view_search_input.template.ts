@@ -24,37 +24,32 @@ export class Template__view_search_input extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { Button, Input } from "@sonamu-kit/react-components/components";
+import { Button, EnumSelect, Input } from "@sonamu-kit/react-components/components";
+import { useSonamuBaseContext } from "@sonamu-kit/react-components/contexts";
 import type React from "react";
 import { useState } from "react";
-import { ${names.capital}SearchFieldSelect } from "@/components/${names.fs}/${names.capital}SearchFieldSelect";
+import { ${names.capital}SearchField, ${names.capital}SearchFieldLabel } from "@/services/sonamu.generated";
 import SearchIcon from "~icons/lucide/search";
 import { SD } from "@/i18n/sd.generated";
 export type ${names.capital}SearchInputProps = {
   input: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
   dropdown: {
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onValueChange?: (value: string | null | undefined) => void;
   };
 };
 
 export function ${names.capital}SearchInput({
-  input: { value: inputValue, onChange: inputOnChange },
+  input: { value: inputValue, onValueChange: inputOnValueChange },
   dropdown: dropdownProps,
 }: ${names.capital}SearchInputProps) {
   const [keyword, setKeyword] = useState<string>(inputValue ?? "");
 
   const handleSearch = () => {
-    if (inputOnChange) {
-      const syntheticEvent = {
-        target: { value: keyword },
-        currentTarget: { value: keyword },
-      } as React.ChangeEvent<HTMLInputElement>;
-      inputOnChange(syntheticEvent);
-    }
+    inputOnValueChange?.(keyword || undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -65,7 +60,16 @@ export function ${names.capital}SearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <${names.capital}SearchFieldSelect {...dropdownProps} />
+      <EnumSelect
+        enum={${names.capital}SearchField}
+        labels={${names.capital}SearchFieldLabel}
+        value={dropdownProps.value}
+        onValueChange={(value) => {
+          dropdownProps.onValueChange?.(value as string | null | undefined);
+        }}
+        placeholder={SD("common.search")}
+        className="w-[150px] h-8"
+      />
       <div className="relative flex items-center">
         <Input
           type="text"

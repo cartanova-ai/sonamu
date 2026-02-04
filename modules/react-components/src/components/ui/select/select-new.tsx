@@ -517,7 +517,7 @@ function CommandBasedSelect<Item>({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="min-w-80 p-0"
+        className="min-w-50 p-0"
         align="start"
         style={{ width: "var(--radix-popover-trigger-width)" }}
       >
