@@ -294,7 +294,37 @@ HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
 
 **필수**: `joinTable`, `onUpdate`, `onDelete`
 
-**joinTable 권장 규칙**: 알파벳 순 (`posts__tags` 권장, `tags__posts`도 작동함)
+### ManyToMany 네이밍 규칙
+
+**joinTable (조인 테이블명)**: 언더바 **2개** 사용
+```
+User ↔ Role → user__roles
+Post ↔ Tag → posts__tags (알파벳 순 권장)
+```
+
+**joinColumn (조인 테이블 컬럼명)**: 언더바 **1개** 사용
+```
+user__roles 테이블:
+  - user_id (언더바 1개)
+  - role_id (언더바 1개)
+```
+
+**예시**:
+```typescript
+// Entity: User
+{
+  "name": "roles",
+  "relationType": "ManyToMany",
+  "with": "Role",
+  "joinTable": "user__roles"  // 언더바 2개
+}
+
+// Model save()에서 사용:
+puri.ubRegister("user__roles", {
+  user_id,   // 언더바 1개
+  role_id    // 언더바 1개
+});
+```
 
 ## 자기 참조
 
