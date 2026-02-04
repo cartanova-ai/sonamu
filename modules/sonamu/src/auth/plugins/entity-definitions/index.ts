@@ -1,11 +1,13 @@
 export { adminEntityDef } from "./admin";
 export { phoneNumberEntityDef } from "./phone-number";
+export { ssoEntityDef } from "./sso";
 export { twoFactorEntityDef } from "./two-factor";
 export type { BetterAuthEntityDef, BetterAuthPluginId } from "./types";
 export { usernameEntityDef } from "./username";
 
 import { adminEntityDef } from "./admin";
 import { phoneNumberEntityDef } from "./phone-number";
+import { ssoEntityDef } from "./sso";
 import { twoFactorEntityDef } from "./two-factor";
 import type { BetterAuthEntityDef, BetterAuthPluginId } from "./types";
 import { usernameEntityDef } from "./username";
@@ -19,6 +21,7 @@ export const ENTITY_DEFINITIONS: Record<BetterAuthPluginId, BetterAuthEntityDef>
   username: usernameEntityDef,
   "phone-number": phoneNumberEntityDef,
   "2fa": twoFactorEntityDef,
+  sso: ssoEntityDef,
 };
 
 /**
