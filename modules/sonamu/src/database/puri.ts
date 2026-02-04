@@ -1120,6 +1120,25 @@ export class WhereGroup<TTables extends Record<string, any>> {
     return this;
   }
 
+  // whereIn / whereNotIn 메서드들
+  whereIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[],
+  ): this;
+  whereIn(...args: any[]): WhereGroup<TTables> {
+    this.builder.whereIn(args[0], args[1]);
+    return this;
+  }
+
+  whereNotIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[],
+  ): this;
+  whereNotIn(...args: any[]): WhereGroup<TTables> {
+    this.builder.whereNotIn(args[0], args[1]);
+    return this;
+  }
+
   // orWhere 메서드들
   orWhere(conditions: WhereCondition<TTables>): this;
   orWhere<TColumn extends AvailableColumns<TTables>>(
@@ -1133,6 +1152,25 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhere(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhere(args[0], ...args.slice(1));
+    return this;
+  }
+
+  // orWhereIn / orWhereNotIn 메서드들
+  orWhereIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[],
+  ): this;
+  orWhereIn(...args: any[]): WhereGroup<TTables> {
+    this.builder.orWhereIn(args[0], args[1]);
+    return this;
+  }
+
+  orWhereNotIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[],
+  ): this;
+  orWhereNotIn(...args: any[]): WhereGroup<TTables> {
+    this.builder.orWhereNotIn(args[0], args[1]);
     return this;
   }
 

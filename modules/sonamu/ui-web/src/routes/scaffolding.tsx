@@ -57,13 +57,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   }>({});
 
   const entities = (allEntities ?? []).filter((e) => !e.parentId);
-  const templateKeys = [
-    "model",
-    "model_test",
-    "view_list",
-    "view_search_input",
-    "view_form",
-  ];
+  const templateKeys = ["model", "model_test", "view_list", "view_search_input", "view_form"];
 
   const setEntityIds = (entityIds: string[]) => {
     setSelected({
