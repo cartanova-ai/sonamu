@@ -35,15 +35,11 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const { entities: allEntities } = entitiesData ?? {};
 
   const [selected, setSelected] = useState<{
-    templateGroupName: "Entity" | "Enums";
     entityIds: string[];
     templateKeys: string[];
-    enumIds: string[];
   }>({
-    templateGroupName: "Entity",
     entityIds: [],
     templateKeys: [],
-    enumIds: [],
   });
 
   const [previewModalState, setPreviewModalState] = useState<{
@@ -61,52 +57,24 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   }>({});
 
   const entities = (allEntities ?? []).filter((e) => !e.parentId);
-  const templateGroups = [
-    {
-      name: "Entity" as const,
-      templateKeys: [
-        "model",
-        "model_test",
-        "view_list",
-        "view_search_input",
-        "view_form",
-        "view_id_async_select",
-      ],
-    },
-    {
-      name: "Enums" as const,
-      templateKeys: ["view_enums_select"],
-    },
+  const templateKeys = [
+    "model",
+    "model_test",
+    "view_list",
+    "view_search_input",
+    "view_form",
   ];
 
-  const filteredEnumIds = (allEntities ?? [])
-    .filter(
-      (e) => selected.entityIds.includes(e.id) || selected.entityIds.includes(e.parentId ?? ""),
-    )
-    .flatMap((e) => Object.keys(e.enumLabels));
   const setEntityIds = (entityIds: string[]) => {
     setSelected({
       ...selected,
       entityIds,
-      enumIds: filteredEnumIds.filter((eid) => selected.enumIds.includes(eid)),
     });
   };
-  const setTemplateKeys = (templateGroupName: "Entity" | "Enums", templateKeys: string[]) => {
-    const group = templateGroups.find((g) => g.name === templateGroupName);
-    if (!group) {
-      return;
-    }
+  const setTemplateKeys = (keys: string[]) => {
     setSelected({
       ...selected,
-      templateGroupName,
-      templateKeys: group.templateKeys.filter((tk) => templateKeys.includes(tk)),
-      enumIds: templateGroupName === "Entity" ? [] : selected.enumIds,
-    });
-  };
-  const setEnumIds = (enumIds: string[]) => {
-    setSelected({
-      ...selected,
-      enumIds: filteredEnumIds.filter((eid) => enumIds.includes(eid)),
+      templateKeys: templateKeys.filter((tk) => keys.includes(tk)),
     });
   };
 
@@ -118,7 +86,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const { statuses } = scaffoldingData ?? {};
 
   const getScaffoldingKey = (status: ScaffoldingStatus) =>
-    [status.entityId, status.templateKey, status.enumId].join("///");
+    [status.entityId, status.templateKey].join("///");
 
   const columns: TableCol<ScaffoldingStatus>[] = [
     {
@@ -131,15 +99,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       tc: (row) => <>{row.templateKey}</>,
       fit: true,
     },
-    ...(selected.templateGroupName === "Enums"
-      ? [
-          {
-            label: "EnumId",
-            tc: (row: ScaffoldingStatus) => <>{row.enumId}</>,
-            fit: true,
-          } as TableCol<ScaffoldingStatus>,
-        ]
-      : []),
     {
       label: SD("common.path"),
       tc: (row) => <>{row.subPath}</>,
@@ -252,7 +211,6 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     const options = statuses.map((st) => ({
       entityId: st.entityId,
       templateKey: st.templateKey,
-      enumId: st.enumId,
       overwrite: generateOptions[getScaffoldingKey(st)]?.overwrite ?? false,
     }));
     SonamuUIService.scaffoldingGenerate(options)
@@ -306,87 +264,41 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         ))}
       </div>
       <div className="bg-sidebar-bg pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
-        {templateGroups.map((group) => (
-          <div className="pb-4" key={group.name}>
-            <h4 className="mb-1">{SD("scaffolding.template").replace("{name}", group.name)}</h4>
-            <div className="py-3 text-center">
-              {selected.templateGroupName !== group.name ||
-              selected.templateKeys.length !== group.templateKeys.length ? (
-                <Button
-                  icon={<CheckIcon />}
-                  onClick={() => setTemplateKeys(group.name, group.templateKeys)}
-                >
-                  {SD("scaffolding.checkAll")}
-                </Button>
-              ) : (
-                <Button icon={<CheckIcon />} onClick={() => setTemplateKeys(group.name, [])}>
-                  {SD("scaffolding.uncheckAll")}
-                </Button>
-              )}
-            </div>
-            {group.templateKeys.map((templateKey) => (
-              <div className="flex items-center pb-2" key={templateKey}>
-                <Checkbox
-                  checked={
-                    selected.templateGroupName === group.name &&
-                    selected.templateKeys.includes(templateKey)
-                  }
-                  label={templateKey}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setTemplateKeys(group.name, [...selected.templateKeys, templateKey]);
-                    } else {
-                      setTemplateKeys(
-                        group.name,
-                        selected.templateKeys.filter((id) => id !== templateKey),
-                      );
-                    }
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-      {selected.templateGroupName === "Enums" && (
-        <div className="bg-sidebar-bg p-4 pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
-          <h4 className="mb-1">{SD("scaffolding.enums")}</h4>
+        <div className="pb-4">
+          <h4 className="mb-1">{SD("scaffolding.template").replace("{name}", "Entity")}</h4>
           <div className="py-3 text-center">
-            {selected.enumIds.length !== filteredEnumIds.length ? (
-              <Button icon={<CheckIcon />} onClick={() => setEnumIds(filteredEnumIds)}>
-                {SD("scaffolding.checkAllEnums")}
+            {selected.templateKeys.length !== templateKeys.length ? (
+              <Button icon={<CheckIcon />} onClick={() => setTemplateKeys(templateKeys)}>
+                {SD("scaffolding.checkAll")}
               </Button>
             ) : (
-              <Button icon={<CheckIcon />} onClick={() => setEnumIds([])}>
-                {SD("scaffolding.uncheckAllEnums")}
+              <Button icon={<CheckIcon />} onClick={() => setTemplateKeys([])}>
+                {SD("scaffolding.uncheckAll")}
               </Button>
             )}
           </div>
-          {filteredEnumIds.map((enumId) => (
-            <div className="flex items-center pb-2" key={enumId}>
+          {templateKeys.map((templateKey) => (
+            <div className="flex items-center pb-2" key={templateKey}>
               <Checkbox
-                checked={selected.enumIds.includes(enumId)}
-                label={enumId}
+                checked={selected.templateKeys.includes(templateKey)}
+                label={templateKey}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    setEnumIds([...selected.enumIds, enumId]);
+                    setTemplateKeys([...selected.templateKeys, templateKey]);
                   } else {
-                    setEnumIds(selected.enumIds.filter((id) => id !== enumId));
+                    setTemplateKeys(selected.templateKeys.filter((id) => id !== templateKey));
                   }
                 }}
               />
             </div>
           ))}
         </div>
-      )}
+      </div>
       <div className="flex-1 p-4">
         <div>
           {!statuses && !scaffoldingIsLoading && (
             <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-orange-500">
               {SD("scaffolding.selectPrompt")}
-              {selected.templateGroupName === "Enums"
-                ? SD("scaffolding.selectPromptWithEnums")
-                : ""}
             </div>
           )}
           {statuses && (
