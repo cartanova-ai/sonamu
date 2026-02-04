@@ -11,7 +11,8 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
-import { signIn, signOut, useSession } from "@/lib/auth-client";
+import { passkey, signIn, signOut, useSession } from "@/lib/auth-client";
+import FingerprintIcon from "~icons/lucide/fingerprint";
 import HomeIcon from "~icons/lucide/home";
 import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
@@ -25,10 +26,23 @@ export const Route = createFileRoute("/admin/login-test")({ component: LoginTest
 function LoginTestPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [passkeyLoading, setPasskeyLoading] = React.useState(false);
 
   const session = useSession();
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
+
+  // 패스키 autofill 활성화
+  React.useEffect(() => {
+    if (
+      !PublicKeyCredential.isConditionalMediationAvailable ||
+      !PublicKeyCredential.isConditionalMediationAvailable()
+    ) {
+      return;
+    }
+
+    void signIn.passkey({ autoFill: true });
+  }, []);
 
   const handleSubmit = async () => {
     const result = await signIn.email({ email, password });
@@ -78,7 +92,7 @@ function LoginTestPage() {
                   <p>역할: {user.role}</p>
                 </AlertDescription>
               </Alert>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" onClick={handleLogout} icon={<LogOutIcon />}>
                   로그아웃
                 </Button>
@@ -88,6 +102,20 @@ function LoginTestPage() {
                   onClick={() => navigate({ to: "/admin/2fa-setup" })}
                 >
                   2FA 설정
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={<FingerprintIcon />}
+                  onClick={async () => {
+                    const result = await passkey.addPasskey({ name: `${user.name}의 패스키` });
+                    if (result.error) {
+                      alert(`패스키 등록 실패: ${result.error.message}`);
+                    } else {
+                      alert("패스키가 등록되었습니다.");
+                    }
+                  }}
+                >
+                  패스키 등록
                 </Button>
               </div>
               <Button
@@ -111,6 +139,7 @@ function LoginTestPage() {
                   style={{ paddingLeft: "40px", paddingRight: "16px" }}
                   placeholder="Email"
                   type="email"
+                  autoComplete="username webauthn"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -151,6 +180,27 @@ function LoginTestPage() {
                   회원가입
                 </Button>
               </div>
+
+              <Button
+                variant="outline"
+                className="w-full h-11 gap-2"
+                style={{ borderColor: "#6ee7b7", color: "#059669" }}
+                disabled={passkeyLoading}
+                onClick={async () => {
+                  setPasskeyLoading(true);
+                  try {
+                    const result = await signIn.passkey();
+                    if (result.error) {
+                      alert(`패스키 인증 실패: ${result.error.message}`);
+                    }
+                  } finally {
+                    setPasskeyLoading(false);
+                  }
+                }}
+              >
+                <FingerprintIcon className="h-4 w-4" />
+                {passkeyLoading ? "인증 중..." : "패스키로 로그인"}
+              </Button>
             </>
           )}
         </CardContent>
