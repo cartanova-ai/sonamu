@@ -337,8 +337,15 @@ export class Syncer {
       await this.autoloadWorkflows();
     }
 
-    // i18n 파일(entity 포함)이 변경된 경우
-    if (diffTypes.includes("i18n") || diffTypes.includes("entity")) {
+    // i18n 관련 파일이 변경된 경우
+    // - i18n/*.ts: locale 번역 파일
+    // - entity.json: entity labels
+    // - sonamu.config.ts: i18n 설정 (defaultLocale, supportedLocales)
+    if (
+      diffTypes.includes("i18n") ||
+      diffTypes.includes("entity") ||
+      diffTypes.includes("config")
+    ) {
       await this.syncSD();
     }
 
