@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Select,
+  SelectNew,
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
@@ -228,7 +228,7 @@ export function EntityIndexModal({
                   <label className="block mb-1 font-bold">
                     Type <span className="text-red-500">*</span>
                   </label>
-                  <Select
+                  <SelectNew
                     value={form.type}
                     onValueChange={(value) =>
                       value && setForm({ ...form, type: value as typeof form.type })
@@ -251,7 +251,7 @@ export function EntityIndexModal({
                 ) : (
                   <div className="mb-[14px]">
                     <label className="block mb-1 font-bold">Using</label>
-                    <Select
+                    <SelectNew
                       value={form.using}
                       onValueChange={(value) => {
                         setForm({
@@ -303,7 +303,7 @@ export function EntityIndexModal({
                           {/* B-Tree 정렬 옵션 */}
                           {(form.using === "btree" || !form.using) && (
                             <div className="flex gap-1 shrink-0">
-                              <Select
+                              <SelectNew
                                 value={col.sortOrder}
                                 onValueChange={(value) => updateColumn(idx, { sortOrder: value })}
                                 clearable
@@ -311,7 +311,7 @@ export function EntityIndexModal({
                                 placeholder="Sort"
                                 className="tiny w-[100px]"
                               />
-                              <Select
+                              <SelectNew
                                 value={col.nullsFirst === undefined ? "" : String(col.nullsFirst)}
                                 onValueChange={(value) =>
                                   updateColumn(idx, {

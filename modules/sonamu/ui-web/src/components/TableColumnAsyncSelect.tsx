@@ -1,4 +1,4 @@
-import { MultiSelect, type MultiSelectOption } from "@sonamu-kit/react-components";
+import { SelectNew } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -24,7 +24,7 @@ export function TableColumnAsyncSelect({
   disabled,
   className,
 }: TableColumnAsyncSelectProps) {
-  const [options, setOptions] = useState<MultiSelectOption[]>([]);
+  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>(value);
 
   useEffect(() => {
@@ -60,8 +60,9 @@ export function TableColumnAsyncSelect({
   };
 
   return (
-    <MultiSelect
-      options={options}
+    <SelectNew
+      multiple
+      items={options}
       value={selectedValues}
       onValueChange={handleValueChange}
       placeholder={placeholder}

@@ -354,9 +354,23 @@ function CommandBasedSelect<Item>({
 }: CommandBasedSelectProps<Item>) {
   type Value = ExtractValue<Item>;
   const { SD } = useSonamuBaseContext();
+  const commandListRef = useRef<HTMLDivElement>(null);
 
   // 검색 가능 여부 판단: Async면 무조건 true, Sync면 searchable 값 사용
   const isSearchable = isAsync || ("searchable" in props && props.searchable === true);
+
+  // Wheel 이벤트 핸들러
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const target = commandListRef.current;
+    if (!target) return;
+
+    const canScrollDown = target.scrollTop < target.scrollHeight - target.clientHeight;
+    const canScrollUp = target.scrollTop > 0;
+
+    if ((e.deltaY > 0 && canScrollDown) || (e.deltaY < 0 && canScrollUp)) {
+      e.stopPropagation();
+    }
+  }, []);
 
   // 선택 토글 (single/multi 공용)
   const toggleOption = useCallback(
@@ -517,7 +531,7 @@ function CommandBasedSelect<Item>({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="min-w-50 p-0"
+        className="min-w-40 p-0"
         align="start"
         style={{ width: "var(--radix-popover-trigger-width)" }}
       >
@@ -529,7 +543,7 @@ function CommandBasedSelect<Item>({
               onValueChange={handleSearchChange}
             />
           )}
-          <CommandList>
+          <CommandList ref={commandListRef} onWheel={handleWheel}>
             {loading ? (
               <CommandEmpty>
                 <div className="flex items-center justify-center">

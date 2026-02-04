@@ -10,7 +10,7 @@ import {
   DialogTitle,
   EnumSelect,
   Input,
-  Select,
+  SelectNew,
 } from "@sonamu-kit/react-components/components";
 import { useEffect, useState } from "react";
 import type { z } from "zod";
@@ -219,13 +219,13 @@ function ValueInput({
   // isNull/isNotNull: Boolean select (true/false)
   if (operator === "isNull" || operator === "isNotNull") {
     return (
-      <Select
+      <SelectNew
         items={[
           { value: "true", label: "True" },
           { value: "false", label: "False" },
         ]}
         value={value === undefined ? "" : String(value)}
-        onValueChange={(v) => onChange(v === "true")}
+        onValueChange={(v) => v && onChange(v === "true")}
         placeholder="Select..."
         className="w-full"
       />
@@ -332,13 +332,13 @@ function ValueInput({
   // boolean: true/false select
   if (propType === "boolean") {
     return (
-      <Select
+      <SelectNew
         items={[
           { value: "true", label: "True" },
           { value: "false", label: "False" },
         ]}
         value={value === undefined ? "" : String(value)}
-        onValueChange={(v) => onChange(v === "true")}
+        onValueChange={(v) => v && onChange(v === "true")}
         placeholder="Select..."
         className="w-full"
       />
@@ -388,7 +388,7 @@ function RuleRow({
     <div className="flex items-start gap-2 p-3 border rounded-lg bg-gray-50">
       {/* Field Select */}
       <div className="flex-1 min-w-[150px]">
-        <Select
+        <SelectNew
           items={fields}
           value={rule.field ?? ""}
           onValueChange={handleFieldChange}
@@ -398,7 +398,7 @@ function RuleRow({
 
       {/* Operator Select */}
       <div className="flex-1 min-w-[120px]">
-        <Select
+        <SelectNew
           items={allowedOperators.map((op) => ({
             value: op,
             label: operatorLabels[op],

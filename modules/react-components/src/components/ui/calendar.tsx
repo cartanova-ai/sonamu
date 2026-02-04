@@ -8,7 +8,7 @@ import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
-import { Select } from "./select";
+import { SelectNew } from "./select/select-new";
 
 const YEAR_RANGE = {
   START: 1900,
@@ -192,13 +192,13 @@ function CalendarCaption({
 
   return (
     <div className="flex justify-center pt-1 relative items-center w-full gap-2 px-10">
-      <Select
+      <SelectNew
         value={displayMonthIndex}
         onValueChange={handleMonthChange}
         items={monthItems}
         className="h-7 text-xs w-[110px]"
       />
-      <Select
+      <SelectNew
         value={displayYear}
         onValueChange={handleYearChange}
         items={yearItems}
