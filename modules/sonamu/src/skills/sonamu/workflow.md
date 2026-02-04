@@ -16,20 +16,85 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
 **참조 스킬:** entity-basic.md, entity-relations.md
 
 **절차:**
-1. 요구사항 분석 (누락된 Entity 확인)
+
+1. **비즈니스 플로우 작성**
+   - 업무 프로세스를 단계별로 작성
+   - 각 단계의 입력/출력 데이터 명시
+   - 데이터 흐름 다이어그램 작성 (선택)
+   - 예: "공고 발행 → 과제 신청 → 평가 생성 → 평가위원 배정 → 평가표 작성 → 확정"
+
+2. **Entity 식별 및 역할 정의**
+   - 비즈니스 플로우 기반으로 필요한 모든 Entity 나열
+   - 각 Entity의 역할 명확히 정의
    - "사용자(User) Entity가 필요한가요?"
    - "추가로 필요한 Entity가 있나요?"
-2. Entity 간 관계 확인 (한 번에 하나씩 질문)
+   - **중요**: 매핑 테이블(N:M 관계)도 Entity로 식별
+
+3. **Entity 간 관계 정의**
+   - ERD 작성 (시각화 권장)
+   - 관계 유형 결정 (BelongsToOne, HasMany, ManyToMany)
+   - FK 관계 명시
    - "챕터는 강좌의 자식으로 함께 관리할까요?"
    - "강좌와 수강생은 어떤 관계인가요?"
-3. parentId 사용 여부 결정
-4. 사용자 최종 확인
+   - **중요**: N:M 관계는 중간 매핑 Entity 필요
+
+4. **필드 목록 상세화**
+   - 각 Entity별로 필요한 필드 전부 나열
+   - 필드명, 타입, nullable 여부 결정
+   - 시간 추적 필드 확인 (created_at, updated_at, started_at 등)
+   - 상태 관리 필드 확인 (status, confirmed_date 등)
+   - **체크리스트**: "이 Entity에 누락된 필드는 없는가?"
+
+5. **parentId 사용 여부 결정**
+   - 계층 구조가 필요한 Entity 확인
+   - parentId 또는 별도 관계 테이블 선택
+
+6. **사용자 최종 확인**
+   - 전체 설계 리뷰
+   - 누락 사항 확인
+   - 승인
 
 **완료 기준:**
+- [ ] 비즈니스 플로우 문서 작성 완료
 - [ ] 모든 필수 Entity 식별 완료
-- [ ] Entity 간 관계 정의 완료 (BelongsToOne, HasMany, ManyToMany)
+- [ ] 각 Entity의 역할 정의 완료
+- [ ] Entity 간 관계 정의 완료 (ERD 포함)
+- [ ] **각 Entity별 필드 목록 작성 완료**
 - [ ] parentId 사용 여부 결정
 - [ ] 사용자 승인
+
+**CRITICAL - API 개발 전 필수 단계:**
+
+Entity 설계 후 API 개발로 넘어가기 전에 **반드시** 다음을 수행하세요:
+
+**"추측하지 말고, 확인하라"**
+
+- DON'T: 필드명 추측 금지 → Entity JSON 확인 필수
+- DON'T: 관계 타입 추측 금지 → BelongsToOne은 자동으로 _id FK 생성
+- DON'T: Subset 접근 추측 금지 → nested 접근 방식 확인 (예: committee.id, evaluator.id)
+
+**API 개발 시작 전 체크리스트:**
+```
+□ 1. 모든 Entity JSON 파일 읽기 완료
+   - 필드명 정확히 파악
+   - 타입 확인
+   - nullable 여부 확인
+
+□ 2. 관계 확인
+   - BelongsToOne → _id FK 자동 생성 확인
+   - HasMany 방향 확인
+   - ManyToMany 매핑 테이블 확인
+
+□ 3. Subset 구조 확인
+   - Subset A에서 관계 필드 접근 방식 확인
+   - nested object로 접근 (예: sheet.committee.id)
+   - FK 직접 접근 불가 (예: sheet.committee_id ❌)
+
+□ 4. 기존 필드 활용 확인
+   - 시작/종료 시점: start_date, end_date 있는지 확인
+   - 상태 관리: status enum으로 충분한지 확인
+   - 불필요한 필드 추가 방지
+```
 
 **다음 단계:** PHASE 2 엔티티 생성
 
