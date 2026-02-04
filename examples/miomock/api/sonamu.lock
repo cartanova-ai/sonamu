@@ -68,6 +68,14 @@
     "checksum": "4ab4a3010613b1a2391bb5db30253cd5b802521e"
   },
   {
+    "path": "src/application/passkey/passkey.entity.json",
+    "checksum": "fedf1f0edbe164f6fe764bfa1f906d7919401500"
+  },
+  {
+    "path": "src/application/passkey/passkey.types.ts",
+    "checksum": "79de06130f51bdab961d505fb7c749a7f67b37b2"
+  },
+  {
     "path": "src/application/project/project.entity.json",
     "checksum": "488b3d7c98bfea83f7ef5015b8a415d82d38afa7"
   },
@@ -89,7 +97,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "0d5159a874f347ad9f3bc2a9bf22b13757d0e8cb"
+    "checksum": "113e9e75d1bb63c3a6c00a032cbe59300774b509"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -157,10 +165,10 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "e77ce1b4b7c995f93d431e06537ad84f50d439b9"
+    "checksum": "d449b31a172a91d3d09efc639139179cba6257f6"
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "eef5f89d2e96980bd3d81a6c01c5089c45aef6b2"
+    "checksum": "ef845d3c193d2610796863e0cdb910d0b3019ad6"
   }
 ]

@@ -1,5 +1,5 @@
 const DEFAULT_LOCALE = "ko" as const;
-const SUPPORTED_LOCALES = ["ko", "en"] as const;
+export const SUPPORTED_LOCALES = ["ko", "en"] as const;
 let _currentLocale: (typeof SUPPORTED_LOCALES)[number] = DEFAULT_LOCALE;
 
 export function setLocale(locale: (typeof SUPPORTED_LOCALES)[number]) {
@@ -238,6 +238,22 @@ const entityLabels = {
   "entity.File.url": "URL",
   "enum.FileOrderBy.id-desc": "ID최신순",
   "enum.FileSearchField.id": "ID",
+  "entity.Passkey": "패스키",
+  "entity.Passkey.id": "ID",
+  "entity.Passkey.name": "패스키 이름",
+  "entity.Passkey.public_key": "공개키",
+  "entity.Passkey.credential_id": "자격 증명 ID",
+  "entity.Passkey.counter": "카운터",
+  "entity.Passkey.device_type": "장치 유형",
+  "entity.Passkey.backed_up": "백업 여부",
+  "entity.Passkey.transports": "전송 방식",
+  "entity.Passkey.aaguid": "AAGUID",
+  "entity.Passkey.created_at": "생성일시",
+  "entity.Passkey.user": "사용자",
+  "enum.PasskeyOrderBy.id-desc": "ID최신순",
+  "enum.PasskeyOrderBy.created_at-desc": "생성일최신순",
+  "enum.PasskeySearchField.id": "ID",
+  "enum.PasskeySearchField.name": "이름",
   "entity.Project": "PROJECT",
   "entity.Project.id": "ID",
   "entity.Project.created_at": "등록일시",

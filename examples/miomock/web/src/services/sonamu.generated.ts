@@ -68,6 +68,14 @@ export const FileSearchField = z.enum(["id"]).describe("FileSearchField");
 export type FileSearchField = z.infer<typeof FileSearchField>;
 export const FileSearchFieldLabel = { id: "ID" };
 
+// Enums: Passkey
+export const PasskeyOrderBy = z.enum(["id-desc", "created_at-desc"]).describe("PasskeyOrderBy");
+export type PasskeyOrderBy = z.infer<typeof PasskeyOrderBy>;
+export const PasskeyOrderByLabel = { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" };
+export const PasskeySearchField = z.enum(["id", "name"]).describe("PasskeySearchField");
+export type PasskeySearchField = z.infer<typeof PasskeySearchField>;
+export const PasskeySearchFieldLabel = { id: "ID", name: "이름" };
+
 // Enums: Project
 export const ProjectOrderBy = z.enum(["id-desc"]).describe("ProjectOrderBy");
 export type ProjectOrderBy = z.infer<typeof ProjectOrderBy>;
@@ -263,6 +271,24 @@ export const FileBaseSchema = z.object({
 });
 export type FileBaseSchema = z.infer<typeof FileBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "id"];
+};
+
+// BaseSchema: Passkey
+export const PasskeyBaseSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  public_key: z.string(),
+  credential_id: z.string(),
+  counter: z.int(),
+  device_type: z.string(),
+  backed_up: z.boolean(),
+  transports: z.string().nullable(),
+  aaguid: z.string().nullable(),
+  created_at: z.date(),
+  user_id: z.string(),
+});
+export type PasskeyBaseSchema = z.infer<typeof PasskeyBaseSchema> & {
+  readonly __hasDefault__: readonly ["name", "transports", "aaguid", "created_at", "id"];
 };
 
 // BaseSchema: Project
@@ -501,6 +527,21 @@ export const FileBaseListParams = z
   })
   .partial();
 export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
+
+// BaseListParams: Passkey
+export const PasskeyBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: PasskeySearchField,
+    keyword: z.string(),
+    orderBy: PasskeyOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.string()),
+    sonamuFilter: z.custom<ApplySonamuFilter<PasskeyBaseSchema, never, never>>(),
+  })
+  .partial();
+export type PasskeyBaseListParams = z.infer<typeof PasskeyBaseListParams>;
 
 // BaseListParams: Project
 export const ProjectBaseListParams = z
@@ -818,6 +859,27 @@ export type FileSubsetMapping = {
 };
 export const FileSubsetKey = z.enum(["A"]);
 export type FileSubsetKey = z.infer<typeof FileSubsetKey>;
+
+// Subsets: Passkey
+export const PasskeySubsetA = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  public_key: z.string(),
+  credential_id: z.string(),
+  counter: z.int(),
+  device_type: z.string(),
+  backed_up: z.boolean(),
+  transports: z.string().nullable(),
+  aaguid: z.string().nullable(),
+  created_at: z.date(),
+  user_id: z.string(),
+});
+export type PasskeySubsetA = z.infer<typeof PasskeySubsetA>;
+export type PasskeySubsetMapping = {
+  A: PasskeySubsetA;
+};
+export const PasskeySubsetKey = z.enum(["A"]);
+export type PasskeySubsetKey = z.infer<typeof PasskeySubsetKey>;
 
 // Subsets: Project
 export const ProjectSubsetA = z.object({

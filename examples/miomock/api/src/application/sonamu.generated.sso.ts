@@ -18,6 +18,8 @@ import type {
   EmployeeSubsetKey,
   FileBaseSchema,
   FileSubsetKey,
+  PasskeyBaseSchema,
+  PasskeySubsetKey,
   ProjectBaseSchema,
   ProjectSubsetKey,
   SessionBaseSchema,
@@ -313,6 +315,30 @@ export const fileLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<FileSubsetKey>;
 
+// SubsetQuery: Passkey
+export const passkeySubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("passkeys").select({
+      id: "passkeys.id",
+      name: "passkeys.name",
+      public_key: "passkeys.public_key",
+      credential_id: "passkeys.credential_id",
+      counter: "passkeys.counter",
+      device_type: "passkeys.device_type",
+      backed_up: "passkeys.backed_up",
+      transports: "passkeys.transports",
+      aaguid: "passkeys.aaguid",
+      created_at: "passkeys.created_at",
+      user_id: "passkeys.user_id",
+    });
+  },
+};
+
+// LoaderQuery: Passkey
+export const passkeyLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<PasskeySubsetKey>;
+
 // SubsetQuery: Project
 export const projectSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -594,6 +620,7 @@ export const verificationLoaderQueries = {
 export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
+export type PasskeyForeignKeys = "user_id";
 export type SessionForeignKeys = "user_id";
 export type TwoFactorForeignKeys = "user_id";
 
@@ -606,6 +633,7 @@ declare module "sonamu" {
     documents: DocumentBaseSchema;
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
+    passkeys: PasskeyBaseSchema;
     projects: ProjectBaseSchema;
     sessions: SessionBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
@@ -621,6 +649,7 @@ declare module "sonamu" {
     accounts: AccountForeignKeys;
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
+    passkeys: PasskeyForeignKeys;
     sessions: SessionForeignKeys;
     two_factors: TwoFactorForeignKeys;
   }
