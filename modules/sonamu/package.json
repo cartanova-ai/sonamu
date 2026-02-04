@@ -149,6 +149,7 @@
     "@swc/cli": "catalog:",
     "@swc/core": "catalog:",
     "ai": "catalog:",
+    "better-auth": "catalog:",
     "fastify": "catalog:",
     "knex": "catalog:",
     "pgvector": "catalog:",

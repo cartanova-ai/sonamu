@@ -34,7 +34,5 @@
     "typescript": "catalog:",
     "zx": "catalog:"
   },
-  "dependencies": {
-    "better-auth": "catalog:"
-  }
+  "dependencies": {}
 }
