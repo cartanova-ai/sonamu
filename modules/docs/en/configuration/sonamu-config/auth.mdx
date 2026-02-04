@@ -146,6 +146,31 @@ This command generates the following entities:
 If a User entity already exists, only missing fields will be added when running the command.
 </Note>
 
+### Generate Entities with Plugins
+
+To use better-auth plugins, specify the required plugins with the `--plugins` option:
+
+```bash
+# Single plugin
+pnpm sonamu better-auth --plugins=2fa
+
+# Multiple plugins (comma-separated)
+pnpm sonamu better-auth --plugins=2fa,admin,username
+```
+
+Supported plugins:
+
+| Plugin ID | Description | Added Fields/Tables |
+|-----------|-------------|---------------------|
+| `2fa` | Two-Factor Authentication (TOTP) | TwoFactor table, User.two_factor_enabled |
+| `admin` | Admin features | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by |
+| `username` | Username login | User.username (unique), User.display_username |
+| `phone-number` | Phone number verification | User.phone_number (unique), User.phone_number_verified |
+
+<Tip>
+When using plugins, you also need to enable them in `sonamu.config.ts`. See the [Plugin Configuration](#plugin-configuration) section below for details.
+</Tip>
+
 ### Field Mapping
 
 Since Sonamu uses snake_case column names, better-auth's camelCase field names are automatically mapped:
@@ -372,6 +397,154 @@ export function GoogleLoginButton() {
   );
 }
 ```
+
+## Plugin Configuration
+
+To use better-auth plugins, add them to the `auth.plugins` array in `sonamu.config.ts`.
+
+<Warning>
+Before configuring plugins, you must first generate the required entities and fields using `pnpm sonamu better-auth --plugins=...`.
+</Warning>
+
+### Two-Factor Authentication (2FA)
+
+Enable TOTP-based two-factor authentication:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { twoFactor, TWO_FACTOR_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        twoFactor({
+          issuer: "My App",  // Name displayed in OTP apps
+          schema: TWO_FACTOR_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+2FA-related APIs:
+- `POST /api/auth/two-factor/enable` - Start 2FA setup
+- `POST /api/auth/two-factor/verify` - Verify 2FA code
+- `POST /api/auth/two-factor/disable` - Disable 2FA
+
+### Admin Plugin
+
+Supports user roles, banning, and impersonation:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { admin, ADMIN_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        admin({
+          schema: ADMIN_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Fields added to User table by Admin plugin:
+- `role` - User role (default: "user")
+- `banned` - Ban status
+- `ban_reason` - Ban reason
+- `ban_expires` - Ban expiration time (Unix timestamp)
+
+### Username Plugin
+
+Allows login with username instead of email:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { username, USERNAME_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        username({
+          schema: USERNAME_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Fields added to User table by Username plugin:
+- `username` - Normalized username (lowercase, unique index)
+- `display_username` - Display username (preserves original case)
+
+### Phone Number Plugin
+
+Supports phone number verification:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { phoneNumber, PHONE_NUMBER_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        phoneNumber({
+          schema: PHONE_NUMBER_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Fields added to User table by Phone Number plugin:
+- `phone_number` - Phone number (unique index)
+- `phone_number_verified` - Phone number verification status
+
+### Using Multiple Plugins Together
+
+```typescript
+import { defineConfig } from "sonamu";
+import {
+  admin,
+  ADMIN_SCHEMA,
+  twoFactor,
+  TWO_FACTOR_SCHEMA,
+  username,
+  USERNAME_SCHEMA,
+} from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        admin({ schema: ADMIN_SCHEMA }),
+        twoFactor({
+          issuer: "My App",
+          schema: TWO_FACTOR_SCHEMA,
+        }),
+        username({ schema: USERNAME_SCHEMA }),
+      ],
+    },
+  },
+});
+```
+
+<Note>
+Each plugin's schema (`*_SCHEMA`) maps Sonamu's snake_case column names to better-auth's camelCase field names. It must be passed along with the corresponding plugin.
+</Note>
 
 ## Practical Examples
 

@@ -26,6 +26,8 @@ import type {
   SyncFixtureSubsetKey,
   TagBaseSchema,
   TagSubsetKey,
+  TwoFactorBaseSchema,
+  TwoFactorSubsetKey,
   UserBaseSchema,
   UserSubsetKey,
   VerificationBaseSchema,
@@ -489,6 +491,25 @@ export const tagLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<TagSubsetKey>;
 
+// SubsetQuery: TwoFactor
+export const twoFactorSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("two_factors").select({
+      id: "two_factors.id",
+      secret: "two_factors.secret",
+      backup_codes: "two_factors.backup_codes",
+      created_at: "two_factors.created_at",
+      updated_at: "two_factors.updated_at",
+      user_id: "two_factors.user_id",
+    });
+  },
+};
+
+// LoaderQuery: TwoFactor
+export const twoFactorLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<TwoFactorSubsetKey>;
+
 // SubsetQuery: User
 export const userSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -574,6 +595,7 @@ export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
 export type SessionForeignKeys = "user_id";
+export type TwoFactorForeignKeys = "user_id";
 
 // DatabaseSchema
 declare module "sonamu" {
@@ -588,6 +610,7 @@ declare module "sonamu" {
     sessions: SessionBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
     tags: TagBaseSchema;
+    two_factors: TwoFactorBaseSchema;
     users: UserBaseSchema;
     verifications: VerificationBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
@@ -599,6 +622,7 @@ declare module "sonamu" {
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
     sessions: SessionForeignKeys;
+    two_factors: TwoFactorForeignKeys;
   }
 
   export interface ContextExtend {

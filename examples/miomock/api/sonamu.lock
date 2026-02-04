@@ -89,7 +89,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "e050ef13fb86f495fda22fa76454c0351ca5bd16"
+    "checksum": "0d5159a874f347ad9f3bc2a9bf22b13757d0e8cb"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -116,8 +116,16 @@
     "checksum": "8b6bb5381463ee93ddc7374f3e848cd510204ffa"
   },
   {
+    "path": "src/application/two-factor/two-factor.entity.json",
+    "checksum": "c8ec679ddf6dbfe41074552eb92153d405ed57fc"
+  },
+  {
+    "path": "src/application/two-factor/two-factor.types.ts",
+    "checksum": "552b251c28ee95aa165e0acc681c0ea20d9d4f3b"
+  },
+  {
     "path": "src/application/user/user.entity.json",
-    "checksum": "6c88f25f0cfa4253d5da9fbb2aee01bc43d6cc2e"
+    "checksum": "32749592c2a416e76574489ea2593edc84a70ada"
   },
   {
     "path": "src/application/user/user.model.ts",
@@ -125,7 +133,7 @@
   },
   {
     "path": "src/application/user/user.types.ts",
-    "checksum": "6c1b88e1e7fcbad50543c48d2f2302cd5d887867"
+    "checksum": "33c1e2b14fee289f8114b80255ae1d7a4b84fd00"
   },
   {
     "path": "src/application/user/user.workflow.ts",
@@ -149,10 +157,10 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "6f49f8d6edcfe22409f15ed1be84412f98117129"
+    "checksum": "e77ce1b4b7c995f93d431e06537ad84f50d439b9"
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "7f014b99d3e6bf830674445346e250c626048c42"
+    "checksum": "47c9c6aae44b9ab2e551cfcf49d71738569931fc"
   }
 ]

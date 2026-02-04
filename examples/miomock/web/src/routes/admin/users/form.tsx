@@ -50,6 +50,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     email: "",
     username: "",
     role: "normal",
+    two_factor_enabled: null,
   });
 
   useEffect(() => {

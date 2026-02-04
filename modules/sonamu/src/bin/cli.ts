@@ -13,6 +13,8 @@ import process from "process";
 import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
 import { generateBetterAuthEntities } from "../auth/auth-generator";
+import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins";
+import type { BetterAuthPluginId } from "../auth/plugins/types";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
@@ -38,7 +40,26 @@ async function bootstrap() {
   }
 
   try {
-    await tsicli(process.argv, {
+    // tsicli는 정확한 명령어 매칭만 지원하므로, --로 시작하는 옵션과 그 값을 필터링합니다.
+    // 옵션 파싱은 각 runner 함수에서 원본 process.argv를 사용하여 수행합니다.
+    const filteredArgv: string[] = [];
+    let skipNext = false;
+    for (const arg of process.argv) {
+      if (skipNext) {
+        skipNext = false;
+        continue;
+      }
+      if (arg.startsWith("--")) {
+        // --option=value 형식은 이 arg만 스킵
+        // --option value 형식은 다음 arg도 스킵
+        if (!arg.includes("=")) {
+          skipNext = true;
+        }
+        continue;
+      }
+      filteredArgv.push(arg);
+    }
+    await tsicli(filteredArgv, {
       types: {
         "#entityId": {
           type: "autocomplete",
@@ -724,10 +745,41 @@ status: draft
 /**
  * pnpm sonamu auth generate 하면 실행되는 함수입니다.
  * better-auth 엔티티들(User, Session, Account, Verification)을 생성합니다.
+ *
+ * 옵션:
+ * --plugins phone-number,2fa  플러그인 엔티티도 함께 생성
  */
 async function auth_generate() {
+  // --plugins 옵션 파싱
+  const pluginsArg = process.argv.find((arg) => arg.startsWith("--plugins"));
+  const plugins: BetterAuthPluginId[] = [];
+
+  if (pluginsArg) {
+    const pluginValue = pluginsArg.includes("=")
+      ? pluginsArg.split("=")[1]
+      : process.argv[process.argv.indexOf(pluginsArg) + 1];
+
+    if (pluginValue) {
+      const pluginIds = pluginValue.split(",").map((p) => p.trim());
+
+      for (const id of pluginIds) {
+        if (isValidPluginId(id)) {
+          plugins.push(id);
+        } else {
+          console.log(chalk.yellow(`⚠ Unknown plugin: ${id}`));
+          console.log(chalk.dim(`  Supported plugins: ${SUPPORTED_PLUGIN_IDS.join(", ")}`));
+        }
+      }
+    }
+  }
+
   console.log(chalk.yellow.bold("🔐 Generating better-auth entities...\n"));
-  await generateBetterAuthEntities();
+
+  if (plugins.length > 0) {
+    console.log(chalk.dim(`  Plugins: ${plugins.join(", ")}`));
+  }
+
+  await generateBetterAuthEntities({ plugins });
 }
 
 /**

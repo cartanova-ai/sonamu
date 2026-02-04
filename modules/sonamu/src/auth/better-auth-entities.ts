@@ -157,10 +157,10 @@ export const betterAuthV1: EntityJson[] = [
 ];
 
 /**
- * better-auth 필드 매핑 (camelCase → snake_case)
- * better-auth 인스턴스 생성 시 사용
+ * better-auth 기본 필드 매핑 (camelCase → snake_case)
+ * 기본 4개 엔티티(User, Session, Account, Verification)의 필드 매핑입니다.
  */
-export const SONAMU_FIELD_MAPPINGS: BetterAuthOptions = {
+export const BASE_FIELD_MAPPINGS: BetterAuthOptions = {
   user: {
     modelName: "users",
     fields: {

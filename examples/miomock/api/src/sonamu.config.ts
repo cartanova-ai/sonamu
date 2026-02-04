@@ -2,7 +2,7 @@ import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import dotenv from "dotenv";
 import path from "path";
-import { CachePresets, defineConfig } from "sonamu";
+import { CachePresets, defineConfig, TWO_FACTOR_SCHEMA, twoFactor } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
@@ -115,6 +115,8 @@ export default defineConfig({
     },
 
     auth: {
+      appName: "Miomock",
+      plugins: [twoFactor({ schema: TWO_FACTOR_SCHEMA })],
       emailAndPassword: { enabled: true },
       baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
       secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
