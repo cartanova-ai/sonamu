@@ -1,5 +1,5 @@
 import * as React from "react";
-import { SelectNew } from "./select-new";
+import { Select } from "./select";
 
 // ============================================================================
 // Type Definition
@@ -51,7 +51,7 @@ export function EnumSelect<TValue extends string = string>({
   // Single 모드
   if (!multiple) {
     return (
-      <SelectNew
+      <Select
         items={items}
         value={(value as TValue | "" | undefined) ?? ""}
         onValueChange={(newValue: string | undefined) => {
@@ -69,7 +69,7 @@ export function EnumSelect<TValue extends string = string>({
 
   // Multiple 모드
   return (
-    <SelectNew
+    <Select
       items={items}
       value={(value as TValue[]) ?? []}
       onValueChange={(newValue: string[]) => {

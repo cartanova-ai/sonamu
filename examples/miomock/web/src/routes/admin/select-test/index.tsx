@@ -5,7 +5,7 @@ import {
   CardHeader,
   EnumSelect,
   IdAsyncSelect,
-  SelectNew,
+  Select,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
@@ -22,8 +22,8 @@ import ListIcon from "~icons/mdi/format-list-bulleted";
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({
     meta: [
-      { title: "SelectNew 테스트" },
-      { name: "description", content: "SelectNew 컴포넌트 4가지 모드 테스트" },
+      { title: "Select 테스트" },
+      { name: "description", content: "Select 컴포넌트 4가지 모드 테스트" },
     ],
   }),
   component: SelectTestPage,
@@ -159,9 +159,7 @@ function SelectTestPage() {
     value: undefined,
   });
 
-  const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
-    value: [],
-  });
+  const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), { value: [] });
 
   return (
     <div className="flex-1 overflow-auto">
@@ -170,13 +168,13 @@ function SelectTestPage() {
           {/* Header */}
           <div className="flex items-center gap-2">
             <ListIcon className="h-5 w-5" />
-            <span className="text-lg font-semibold h-5">SelectNew 컴포넌트 테스트</span>
+            <span className="text-lg font-semibold h-5">Select 컴포넌트 테스트</span>
           </div>
 
           {/* 설명 */}
           <Card className="border-gray-200">
             <CardHeader>
-              <div className="text-sm font-semibold text-gray-900">SelectNew 컴포넌트 개요</div>
+              <div className="text-sm font-semibold text-gray-900">Select 컴포넌트 개요</div>
             </CardHeader>
             <CardContent className="text-xs text-gray-700 space-y-3">
               <div className="space-y-1">
@@ -213,7 +211,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">과일 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={fruits}
                     {...singleSyncProps}
                     placeholder="과일을 선택하세요"
@@ -247,7 +245,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">과일 선택 (검색 O)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={fruits}
                     {...singleSyncSearchableProps}
                     placeholder="과일을 검색하세요"
@@ -282,7 +280,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={companyOptions}
                     {...companyProps}
                     placeholder="회사를 검색하세요"
@@ -337,7 +335,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">숫자 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={numbers}
                     {...multiSyncProps}
                     placeholder="숫자를 선택하세요"
@@ -372,7 +370,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">숫자 다중 선택 (검색 O)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={numbers}
                     {...multiSyncNoSearchProps}
                     placeholder="숫자를 선택하세요"
@@ -407,7 +405,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={multiCompanyOptions}
                     {...multiCompanyProps}
                     placeholder="회사를 검색하세요"
@@ -552,10 +550,20 @@ function SelectTestPage() {
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
-                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <div className="text-xs font-semibold text-orange-900 mb-1">
+                      선택된 값 (ID):
+                    </div>
                     <pre className="text-xs text-gray-700">
                       {idAsyncSingleForm.form.value
                         ? JSON.stringify(idAsyncSingleForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Row:</div>
+                    <pre className="text-xs text-gray-700">
+                      {idAsyncSingleForm.row.value
+                        ? JSON.stringify(idAsyncSingleForm.row.value, null, 2)
                         : "없음"}
                     </pre>
                   </div>
@@ -563,7 +571,9 @@ function SelectTestPage() {
                     size="sm"
                     className="w-full"
                     variant="orange"
-                    onClick={() => idAsyncSingleForm.setForm({ value: undefined })}
+                    onClick={() => {
+                      idAsyncSingleForm.reset();
+                    }}
                   >
                     초기화
                   </Button>
@@ -581,16 +591,26 @@ function SelectTestPage() {
                     config={EmployeeAsyncIdConfig}
                     subset="A"
                     displayField="id"
-                    multiple={true}
                     {...idAsyncMultiForm.register("value")}
+                    multiple={true}
                     placeholder="직원을 검색하세요"
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
-                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <div className="text-xs font-semibold text-orange-900 mb-1">
+                      선택된 값 (IDs):
+                    </div>
                     <pre className="text-xs text-gray-700">
                       {idAsyncMultiForm.form.value.length > 0
                         ? JSON.stringify(idAsyncMultiForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Rows:</div>
+                    <pre className="text-xs text-gray-700 max-h-32 overflow-auto">
+                      {idAsyncMultiForm.row.value?.length
+                        ? JSON.stringify(idAsyncMultiForm.row.value, null, 2)
                         : "없음"}
                     </pre>
                   </div>
@@ -598,7 +618,9 @@ function SelectTestPage() {
                     size="sm"
                     className="w-full"
                     variant="orange"
-                    onClick={() => idAsyncMultiForm.setForm({ value: [] })}
+                    onClick={() => {
+                      idAsyncMultiForm.reset();
+                    }}
                   >
                     초기화
                   </Button>

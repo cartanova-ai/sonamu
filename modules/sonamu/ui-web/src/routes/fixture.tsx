@@ -1,7 +1,7 @@
 import {
   Button,
   Input,
-  SelectNew,
+  Select,
   Tabs,
   TabsContent,
   TabsList,
@@ -279,7 +279,7 @@ function FixtureIndex() {
             </div>
 
             <div className="grow min-w-[150px]">
-              <SelectNew
+              <Select
                 value={sourceDB}
                 onValueChange={(value) => setSourceDB(value ?? "development_master")}
                 items={DB_NAMES.map((db) => ({ value: db, label: db.replace("_master", "") }))}
@@ -288,7 +288,7 @@ function FixtureIndex() {
             </div>
 
             <div style={{ flexGrow: 1, minWidth: "200px" }}>
-              <SelectNew
+              <Select
                 {...register("entityId")}
                 disabled={entitiesLoading}
                 items={
@@ -303,7 +303,7 @@ function FixtureIndex() {
 
             {searchEntity && (
               <>
-                <SelectNew
+                <Select
                   {...register("field")}
                   items={searchEntity.props
                     .filter((p) => {
@@ -323,7 +323,7 @@ function FixtureIndex() {
                   {...register("value")}
                   style={{ flexGrow: 1 }}
                 />
-                <SelectNew
+                <Select
                   {...register("searchType")}
                   items={[
                     { value: "equals", label: "Equals" },
@@ -383,7 +383,7 @@ function FixtureIndex() {
             </button>
 
             <div className="grow min-w-[150px]">
-              <SelectNew
+              <Select
                 value={targetDB}
                 onValueChange={(value) => setTargetDB(value ?? "test")}
                 items={DB_NAMES.map((db) => ({ value: db, label: db }))}
@@ -507,7 +507,7 @@ function FixtureIndex() {
               </p>
 
               {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
-              <SelectNew
+              <Select
                 value={dupCheckEntityId}
                 onValueChange={(value) => setDupCheckEntityId(value ?? "")}
                 disabled={entitiesLoading}
@@ -520,7 +520,7 @@ function FixtureIndex() {
               />
 
               {/* TODO: react-components에 multiple select가 없어서 단일 선택으로만 구현 */}
-              <SelectNew
+              <Select
                 value={dupCheckSelectedColumns[0] || ""}
                 onValueChange={(value) => setDupCheckSelectedColumns(value ? [value] : [])}
                 disabled={!dupCheckEntity}

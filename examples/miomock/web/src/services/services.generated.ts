@@ -1,6 +1,7 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 
+import type { AsyncIdConfig } from "@sonamu-kit/react-components/components";
 import {
   queryOptions,
   type UseMutationOptions,
@@ -1181,113 +1182,53 @@ export namespace CompanyService {
 }
 
 // AsyncIdConfig: Company
-export const CompanyAsyncIdConfig = {
+export const CompanyAsyncIdConfig: AsyncIdConfig<CompanySubsetKey, CompanySubsetMapping> = {
   placeholderKey: "entity.Company",
-  useList: CompanyService.useCompanies as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: CompanyService.useCompanies,
 };
 
 // AsyncIdConfig: Department
-export const DepartmentAsyncIdConfig = {
-  placeholderKey: "entity.Department",
-  useList: DepartmentService.useDepartments as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
-};
+export const DepartmentAsyncIdConfig: AsyncIdConfig<DepartmentSubsetKey, DepartmentSubsetMapping> =
+  {
+    placeholderKey: "entity.Department",
+    useList: DepartmentService.useDepartments,
+  };
 
 // AsyncIdConfig: Employee
-export const EmployeeAsyncIdConfig = {
+export const EmployeeAsyncIdConfig: AsyncIdConfig<EmployeeSubsetKey, EmployeeSubsetMapping> = {
   placeholderKey: "entity.Employee",
-  useList: EmployeeService.useEmployees as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: EmployeeService.useEmployees,
 };
 
 // AsyncIdConfig: File
-export const FileAsyncIdConfig = {
+export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping> = {
   placeholderKey: "entity.File",
-  useList: FileService.useFiles as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: FileService.useFiles,
 };
 
 // AsyncIdConfig: Project
-export const ProjectAsyncIdConfig = {
+export const ProjectAsyncIdConfig: AsyncIdConfig<ProjectSubsetKey, ProjectSubsetMapping> = {
   placeholderKey: "entity.Project",
-  useList: ProjectService.useProjects as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: ProjectService.useProjects,
 };
 
 // AsyncIdConfig: SyncFixture
-export const SyncFixtureAsyncIdConfig = {
+export const SyncFixtureAsyncIdConfig: AsyncIdConfig<
+  SyncFixtureSubsetKey,
+  SyncFixtureSubsetMapping
+> = {
   placeholderKey: "entity.SyncFixture",
-  useList: SyncFixtureService.useSyncFixtures as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: SyncFixtureService.useSyncFixtures,
 };
 
 // AsyncIdConfig: Tag
-export const TagAsyncIdConfig = {
+export const TagAsyncIdConfig: AsyncIdConfig<TagSubsetKey, TagSubsetMapping> = {
   placeholderKey: "entity.Tag",
-  useList: TagService.useTags as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: TagService.useTags,
 };
 
 // AsyncIdConfig: User
-export const UserAsyncIdConfig = {
+export const UserAsyncIdConfig: AsyncIdConfig<UserSubsetKey, UserSubsetMapping> = {
   placeholderKey: "entity.User",
-  useList: UserService.useUsers as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean },
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: UserService.useUsers,
 };

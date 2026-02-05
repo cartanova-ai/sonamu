@@ -10,7 +10,7 @@ import {
   DialogTitle,
   EnumSelect,
   Input,
-  SelectNew,
+  Select,
 } from "@sonamu-kit/react-components/components";
 import { useEffect, useState } from "react";
 import type { z } from "zod";
@@ -219,7 +219,7 @@ function ValueInput({
   // isNull/isNotNull: Boolean select (true/false)
   if (operator === "isNull" || operator === "isNotNull") {
     return (
-      <SelectNew
+      <Select
         items={[
           { value: "true", label: "True" },
           { value: "false", label: "False" },
@@ -332,7 +332,7 @@ function ValueInput({
   // boolean: true/false select
   if (propType === "boolean") {
     return (
-      <SelectNew
+      <Select
         items={[
           { value: "true", label: "True" },
           { value: "false", label: "False" },
@@ -388,7 +388,7 @@ function RuleRow({
     <div className="flex items-start gap-2 p-3 border rounded-lg bg-gray-50">
       {/* Field Select */}
       <div className="flex-1 min-w-[150px]">
-        <SelectNew
+        <Select
           items={fields}
           value={rule.field ?? ""}
           onValueChange={handleFieldChange}
@@ -398,7 +398,7 @@ function RuleRow({
 
       {/* Operator Select */}
       <div className="flex-1 min-w-[120px]">
-        <SelectNew
+        <Select
           items={allowedOperators.map((op) => ({
             value: op,
             label: operatorLabels[op],

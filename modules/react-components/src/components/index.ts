@@ -25,8 +25,6 @@ export {
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
 export { AspectRatio } from "./ui/aspect-ratio";
-export type { AsyncSelectOption, AsyncSelectProps } from "./ui/async-select";
-export { AsyncSelect } from "./ui/async-select";
 // export type { BadgeProps } from "./ui/badge";
 export { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 export { Badge, badgeVariants } from "./ui/badge";
@@ -192,12 +190,6 @@ export {
 export type { MonthPickerValue } from "./ui/month-picker-multiple";
 export { MonthPickerMultiple } from "./ui/month-picker-multiple";
 
-export type {
-  MultiSelectOption,
-  MultiSelectProps,
-  MultiSelectRef,
-} from "./ui/multi-select";
-export { MultiSelect } from "./ui/multi-select";
 export {
   NavigationMenu,
   NavigationMenuContent,
@@ -225,14 +217,12 @@ export {
 } from "./ui/resizable";
 // Layout
 export { ScrollArea, ScrollBar } from "./ui/scroll-area";
-export type { SelectItemDef, SelectProps } from "./ui/select";
-export { Select } from "./ui/select";
 export type { EnumSelectProps } from "./ui/select/enum-select";
 export { EnumSelect } from "./ui/select/enum-select";
 export type { AsyncIdConfig, IdAsyncSelectProps } from "./ui/select/id-async-select";
 export { IdAsyncSelect } from "./ui/select/id-async-select";
-export type { ExtractValue, SelectNewProps } from "./ui/select/select-new";
-export { SelectNew } from "./ui/select/select-new";
+export type { ExtractValue, SelectItemDef, SelectProps } from "./ui/select/select";
+export { Select } from "./ui/select/select";
 export { Separator } from "./ui/separator";
 export {
   Sheet,

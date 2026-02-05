@@ -88,7 +88,13 @@ class EmployeeModelClass extends BaseModelClass<
     if (params.search && params.keyword && params.keyword.length > 0) {
       // search-keyword
       if (params.search === "id") {
-        qb.where("employees.id", Number(params.keyword));
+        const idNum = Number(params.keyword);
+        if (!Number.isNaN(idNum)) {
+          qb.where("employees.id", idNum);
+        } else {
+          // NaN이면 빈 배열로 검색해서 결과가 0개가 되도록 함
+          qb.whereIn("employees.id", []);
+        }
         // } else if (params.search === "field") {
         //   qb.where("employees.field", "like", `%${params.keyword}%`);
       } else {

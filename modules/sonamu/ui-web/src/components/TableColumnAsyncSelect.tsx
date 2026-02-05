@@ -1,4 +1,4 @@
-import { SelectNew } from "@sonamu-kit/react-components";
+import { Select } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -60,7 +60,7 @@ export function TableColumnAsyncSelect({
   };
 
   return (
-    <SelectNew
+    <Select
       multiple
       items={options}
       value={selectedValues}

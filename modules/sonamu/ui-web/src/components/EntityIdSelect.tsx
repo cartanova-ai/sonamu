@@ -1,4 +1,4 @@
-import { SelectNew } from "@sonamu-kit/react-components";
+import { Select } from "@sonamu-kit/react-components";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type EntityIdSelectProps = {
@@ -35,7 +35,7 @@ export function EntityIdSelect({
   };
 
   return (
-    <SelectNew
+    <Select
       value={value}
       onValueChange={handleValueChange}
       disabled={disabled || !entityIds || isLoading}

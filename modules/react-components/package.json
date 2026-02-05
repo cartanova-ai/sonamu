@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/react-components",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
@@ -97,6 +97,7 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -104,6 +105,7 @@
   "devDependencies": {
     "@iconify/json": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@types/inflection": "catalog:",
     "@types/react": "catalog:",
