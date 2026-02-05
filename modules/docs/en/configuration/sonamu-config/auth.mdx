@@ -166,6 +166,12 @@ Supported plugins:
 | `admin` | Admin features | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by |
 | `username` | Username login | User.username (unique), User.display_username |
 | `phone-number` | Phone number verification | User.phone_number (unique), User.phone_number_verified |
+| `passkey` | WebAuthn passkey authentication | Passkey table |
+| `sso` | SSO login (OIDC/SAML) | SsoProvider table |
+| `api-key` | API key authentication | ApiKey table |
+| `jwt` | JWT token issuance | Jwks table |
+| `organization` | Organization/team management | Organization, Member, Invitation, Team, TeamMember tables, Session.active_organization_id, Session.active_team_id |
+| `anonymous` | Anonymous users | User.is_anonymous |
 
 <Tip>
 When using plugins, you also need to enable them in `sonamu.config.ts`. See the [Plugin Configuration](#plugin-configuration) section below for details.
@@ -512,6 +518,192 @@ Fields added to User table by Phone Number plugin:
 - `phone_number` - Phone number (unique index)
 - `phone_number_verified` - Phone number verification status
 
+### Passkey Plugin
+
+Supports WebAuthn/FIDO2 based passkey authentication:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { passkey, PASSKEY_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        passkey({
+          schema: PASSKEY_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Tables created by Passkey plugin:
+- `passkeys` - User passkey information (public key, credential ID, etc.)
+
+Passkey-related APIs:
+- `POST /api/auth/passkey/generate-register-options` - Generate passkey registration options
+- `POST /api/auth/passkey/verify-registration` - Verify passkey registration
+- `POST /api/auth/passkey/generate-authentication-options` - Generate passkey authentication options
+- `POST /api/auth/passkey/verify-authentication` - Verify passkey authentication
+
+<Note>
+The `@better-auth/passkey` package is required to use the Passkey plugin.
+</Note>
+
+### SSO Plugin
+
+Supports SSO login through external IdPs (OIDC, SAML):
+
+```typescript
+import { defineConfig } from "sonamu";
+import { sso, SSO_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        sso({
+          ...SSO_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Tables created by SSO plugin:
+- `sso_providers` - SSO provider settings (including OIDC/SAML configuration)
+
+<Note>
+The `@better-auth/sso` package is required to use the SSO plugin.
+</Note>
+
+### API Key Plugin
+
+Supports API key based authentication:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { apiKey, API_KEY_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        apiKey({
+          schema: API_KEY_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Tables created by API Key plugin:
+- `api_keys` - API key information (hashed key, rate limit settings, etc.)
+
+API Key-related APIs:
+- `POST /api/auth/api-key/create` - Create API key
+- `POST /api/auth/api-key/revoke` - Revoke API key
+- `GET /api/auth/api-key/list` - List API keys
+
+### JWT Plugin
+
+Supports JWT token issuance and JWKS key management:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { jwt, JWT_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        jwt({
+          schema: JWT_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Tables created by JWT plugin:
+- `jwks` - JSON Web Key Set information (public key, private key)
+
+JWT-related APIs:
+- `GET /api/auth/.well-known/jwks.json` - JWKS endpoint
+- `POST /api/auth/jwt/generate` - Generate JWT token
+
+### Organization Plugin
+
+Supports organization, member, invitation, and team management:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { organization, ORGANIZATION_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        organization({
+          schema: ORGANIZATION_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Tables created by Organization plugin:
+- `organizations` - Organization information
+- `members` - Organization members
+- `invitations` - Organization invitations
+- `teams` - Teams
+- `team_members` - Team members
+
+Fields added to Session table by Organization plugin:
+- `active_organization_id` - Current active organization ID
+- `active_team_id` - Current active team ID
+
+Organization-related APIs:
+- `POST /api/auth/organization/create` - Create organization
+- `POST /api/auth/organization/invite` - Invite member
+- `POST /api/auth/organization/accept-invitation` - Accept invitation
+- `POST /api/auth/organization/set-active` - Set active organization
+
+### Anonymous Plugin
+
+Supports anonymous user authentication. Allows creating temporary users without sign-up:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { anonymous, ANONYMOUS_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        anonymous({
+          schema: ANONYMOUS_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Fields added to User table by Anonymous plugin:
+- `is_anonymous` - Whether the user is anonymous
+
+Anonymous-related APIs:
+- `POST /api/auth/sign-in/anonymous` - Anonymous login
+- `POST /api/auth/anonymous/link` - Link anonymous account to a regular account
+
 ### Using Multiple Plugins Together
 
 ```typescript
@@ -523,6 +715,10 @@ import {
   TWO_FACTOR_SCHEMA,
   username,
   USERNAME_SCHEMA,
+  passkey,
+  PASSKEY_SCHEMA,
+  organization,
+  ORGANIZATION_SCHEMA,
 } from "sonamu/auth";
 
 export default defineConfig({
@@ -536,6 +732,8 @@ export default defineConfig({
           schema: TWO_FACTOR_SCHEMA,
         }),
         username({ schema: USERNAME_SCHEMA }),
+        passkey({ schema: PASSKEY_SCHEMA }),
+        organization({ schema: ORGANIZATION_SCHEMA }),
       ],
     },
   },

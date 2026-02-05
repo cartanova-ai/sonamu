@@ -166,6 +166,12 @@ pnpm sonamu better-auth --plugins=2fa,admin,username
 | `admin` | 관리자 기능 | User.role, User.banned, User.ban_reason, User.ban_expires, Session.impersonated_by |
 | `username` | 사용자명 로그인 | User.username (unique), User.display_username |
 | `phone-number` | 전화번호 인증 | User.phone_number (unique), User.phone_number_verified |
+| `passkey` | WebAuthn 패스키 인증 | Passkey 테이블 |
+| `sso` | SSO 로그인 (OIDC/SAML) | SsoProvider 테이블 |
+| `api-key` | API 키 인증 | ApiKey 테이블 |
+| `jwt` | JWT 토큰 발급 | Jwks 테이블 |
+| `organization` | 조직/팀 관리 | Organization, Member, Invitation, Team, TeamMember 테이블, Session.active_organization_id, Session.active_team_id |
+| `anonymous` | 익명 사용자 | User.is_anonymous |
 
 <Tip>
 플러그인 사용 시 `sonamu.config.ts`에서도 해당 플러그인을 활성화해야 합니다. 자세한 내용은 아래 [플러그인 설정](#플러그인-설정) 섹션을 참조하세요.
@@ -512,6 +518,192 @@ Phone Number 플러그인이 User 테이블에 추가하는 필드:
 - `phone_number` - 전화번호 (unique 인덱스)
 - `phone_number_verified` - 전화번호 인증 여부
 
+### 패스키 플러그인 (Passkey)
+
+WebAuthn/FIDO2 기반 패스키 인증을 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { passkey, PASSKEY_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      emailAndPassword: { enabled: true },
+      plugins: [
+        passkey({
+          schema: PASSKEY_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Passkey 플러그인이 생성하는 테이블:
+- `passkeys` - 사용자의 패스키 정보 (공개키, 자격 증명 ID 등)
+
+Passkey 관련 API:
+- `POST /api/auth/passkey/generate-register-options` - 패스키 등록 옵션 생성
+- `POST /api/auth/passkey/verify-registration` - 패스키 등록 검증
+- `POST /api/auth/passkey/generate-authentication-options` - 패스키 인증 옵션 생성
+- `POST /api/auth/passkey/verify-authentication` - 패스키 인증 검증
+
+<Note>
+Passkey 플러그인 사용 시 `@better-auth/passkey` 패키지가 필요합니다.
+</Note>
+
+### SSO 플러그인
+
+외부 IdP(OIDC, SAML)를 통한 SSO 로그인을 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { sso, SSO_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        sso({
+          ...SSO_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+SSO 플러그인이 생성하는 테이블:
+- `sso_providers` - SSO 제공자 설정 (OIDC/SAML 설정 포함)
+
+<Note>
+SSO 플러그인 사용 시 `@better-auth/sso` 패키지가 필요합니다.
+</Note>
+
+### API 키 플러그인 (API Key)
+
+API 키 기반 인증을 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { apiKey, API_KEY_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        apiKey({
+          schema: API_KEY_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+API Key 플러그인이 생성하는 테이블:
+- `api_keys` - API 키 정보 (해시된 키, Rate Limit 설정 등)
+
+API Key 관련 API:
+- `POST /api/auth/api-key/create` - API 키 생성
+- `POST /api/auth/api-key/revoke` - API 키 폐기
+- `GET /api/auth/api-key/list` - API 키 목록 조회
+
+### JWT 플러그인
+
+JWT 토큰 발급 및 JWKS 키 관리를 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { jwt, JWT_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        jwt({
+          schema: JWT_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+JWT 플러그인이 생성하는 테이블:
+- `jwks` - JSON Web Key Set 정보 (공개키, 비밀키)
+
+JWT 관련 API:
+- `GET /api/auth/.well-known/jwks.json` - JWKS 엔드포인트
+- `POST /api/auth/jwt/generate` - JWT 토큰 생성
+
+### 조직 플러그인 (Organization)
+
+조직, 멤버, 초대, 팀 관리를 지원합니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { organization, ORGANIZATION_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        organization({
+          schema: ORGANIZATION_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Organization 플러그인이 생성하는 테이블:
+- `organizations` - 조직 정보
+- `members` - 조직 멤버
+- `invitations` - 조직 초대
+- `teams` - 팀
+- `team_members` - 팀 멤버
+
+Organization 플러그인이 Session 테이블에 추가하는 필드:
+- `active_organization_id` - 현재 활성 조직 ID
+- `active_team_id` - 현재 활성 팀 ID
+
+Organization 관련 API:
+- `POST /api/auth/organization/create` - 조직 생성
+- `POST /api/auth/organization/invite` - 멤버 초대
+- `POST /api/auth/organization/accept-invitation` - 초대 수락
+- `POST /api/auth/organization/set-active` - 활성 조직 설정
+
+### 익명 사용자 플러그인 (Anonymous)
+
+익명 사용자 인증을 지원합니다. 회원가입 없이 임시 사용자를 생성할 수 있습니다:
+
+```typescript
+import { defineConfig } from "sonamu";
+import { anonymous, ANONYMOUS_SCHEMA } from "sonamu/auth";
+
+export default defineConfig({
+  server: {
+    auth: {
+      plugins: [
+        anonymous({
+          schema: ANONYMOUS_SCHEMA,
+        }),
+      ],
+    },
+  },
+});
+```
+
+Anonymous 플러그인이 User 테이블에 추가하는 필드:
+- `is_anonymous` - 익명 사용자 여부
+
+Anonymous 관련 API:
+- `POST /api/auth/sign-in/anonymous` - 익명 로그인
+- `POST /api/auth/anonymous/link` - 익명 계정을 정식 계정으로 연결
+
 ### 여러 플러그인 함께 사용
 
 ```typescript
@@ -523,6 +715,10 @@ import {
   TWO_FACTOR_SCHEMA,
   username,
   USERNAME_SCHEMA,
+  passkey,
+  PASSKEY_SCHEMA,
+  organization,
+  ORGANIZATION_SCHEMA,
 } from "sonamu/auth";
 
 export default defineConfig({
@@ -536,6 +732,8 @@ export default defineConfig({
           schema: TWO_FACTOR_SCHEMA,
         }),
         username({ schema: USERNAME_SCHEMA }),
+        passkey({ schema: PASSKEY_SCHEMA }),
+        organization({ schema: ORGANIZATION_SCHEMA }),
       ],
     },
   },
