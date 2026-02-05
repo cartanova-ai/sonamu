@@ -18,6 +18,7 @@ export default {
   "error.alreadyProcessed": "이미 처리되었습니다",
   "error.duplicateRow": "중복된 데이터입니다",
   "error.targetNotFound": "대상을 찾을 수 없습니다",
+  "error.api.notFound": "존재하지 않는 API입니다",
 
   // 공통 UI
   "common.save": "저장",
