@@ -57,6 +57,7 @@ import {
   type RenderingNode,
   SonamuFileArraySchema,
   SonamuFileSchema,
+  type ZodStringFormat,
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
@@ -86,6 +87,72 @@ export const BUILT_IN_TYPES = {
     schemaName: "SonamuFileArraySchema",
   },
 } as const;
+
+/**
+ * zodFormat을 Zod 4 코드 문자열로 변환합니다.
+ * Zod 4에서는 z.email(), z.uuid() 등 독립적인 함수 형태를 사용합니다.
+ */
+function zodFormatToCode(format: ZodStringFormat): string {
+  // ISO 포맷은 z.iso.xxx() 형태
+  const isoFormats: Record<string, string> = {
+    isoDate: "z.iso.date()",
+    isoTime: "z.iso.time()",
+    isoDatetime: "z.iso.datetime()",
+    isoDuration: "z.iso.duration()",
+  };
+
+  // hash 포맷은 z.hash("algorithm") 형태
+  const hashFormats: Record<string, string> = {
+    hashMd5: 'z.hash("md5")',
+    hashSha1: 'z.hash("sha1")',
+    hashSha256: 'z.hash("sha256")',
+    hashSha384: 'z.hash("sha384")',
+    hashSha512: 'z.hash("sha512")',
+  };
+
+  if (format in isoFormats) {
+    return isoFormats[format];
+  }
+
+  if (format in hashFormats) {
+    return hashFormats[format];
+  }
+
+  // 기본 포맷은 z.xxx() 형태 (Zod 4)
+  return `z.${format}()`;
+}
+
+/**
+ * zodFormat을 Zod 4 타입으로 변환합니다.
+ * Zod 4에서는 z.email(), z.uuid() 등 독립적인 함수 형태를 사용합니다.
+ */
+function zodFormatToType(format: ZodStringFormat): z.ZodType {
+  // ISO 포맷은 z.iso.xxx() 형태
+  switch (format) {
+    case "isoDate":
+      return z.iso.date();
+    case "isoTime":
+      return z.iso.time();
+    case "isoDatetime":
+      return z.iso.datetime();
+    case "isoDuration":
+      return z.iso.duration();
+    // hash 포맷은 z.hash("algorithm") 형태
+    case "hashMd5":
+      return z.hash("md5");
+    case "hashSha1":
+      return z.hash("sha1");
+    case "hashSha256":
+      return z.hash("sha256");
+    case "hashSha384":
+      return z.hash("sha384");
+    case "hashSha512":
+      return z.hash("sha512");
+    // 기본 포맷은 z.xxx() 형태 (Zod 4)
+    default:
+      return (z as unknown as Record<string, () => z.ZodType>)[format]();
+  }
+}
 
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
@@ -136,17 +203,29 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
   } else if (isEnumArrayProp(prop)) {
     zodType = (await getZodTypeById(prop.id)).array();
   } else if (isStringSingleProp(prop)) {
-    if (prop.length) {
+    if (prop.zodFormat) {
+      zodType = zodFormatToType(prop.zodFormat);
+      if (prop.length && "max" in zodType) {
+        zodType = (zodType as z.ZodString).max(prop.length);
+      }
+    } else if (prop.length) {
       zodType = z.string().max(prop.length);
     } else {
       zodType = z.string();
     }
   } else if (isStringArrayProp(prop)) {
-    if (prop.length) {
-      zodType = z.string().max(prop.length).array();
+    let elementType: z.ZodType;
+    if (prop.zodFormat) {
+      elementType = zodFormatToType(prop.zodFormat);
+      if (prop.length && "max" in elementType) {
+        elementType = (elementType as z.ZodString).max(prop.length);
+      }
+    } else if (prop.length) {
+      elementType = z.string().max(prop.length);
     } else {
-      zodType = z.string().array();
+      elementType = z.string();
     }
+    zodType = elementType.array();
   } else if (isNumberSingleProp(prop)) {
     zodType = z.number();
   } else if (isNumberArrayProp(prop)) {
@@ -220,13 +299,27 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt = `${prop.name}: ${prop.id}.array()`;
     injectImportKeys.push(prop.id);
   } else if (isStringSingleProp(prop)) {
-    if (prop.length) {
+    if (prop.zodFormat) {
+      const base = zodFormatToCode(prop.zodFormat);
+      if (prop.length) {
+        stmt = `${prop.name}: ${base}.max(${prop.length})`;
+      } else {
+        stmt = `${prop.name}: ${base}`;
+      }
+    } else if (prop.length) {
       stmt = `${prop.name}: z.string().max(${prop.length})`;
     } else {
       stmt = `${prop.name}: z.string()`;
     }
   } else if (isStringArrayProp(prop)) {
-    if (prop.length) {
+    if (prop.zodFormat) {
+      const base = zodFormatToCode(prop.zodFormat);
+      if (prop.length) {
+        stmt = `${prop.name}: ${base}.max(${prop.length}).array()`;
+      } else {
+        stmt = `${prop.name}: ${base}.array()`;
+      }
+    } else if (prop.length) {
       stmt = `${prop.name}: z.string().max(${prop.length}).array()`;
     } else {
       stmt = `${prop.name}: z.string().array()`;

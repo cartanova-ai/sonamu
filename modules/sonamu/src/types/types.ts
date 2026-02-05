@@ -41,13 +41,56 @@ export type BigIntegerProp = CommonProp & {
 export type BigIntegerArrayProp = CommonProp & {
   type: "bigInteger[]";
 }; // PG: bigint[] / TS: bigint[] / JSON: bigint[]
+
+/**
+ * Zod 4 String Format 타입
+ * entity.json에서 string 타입의 prop에 zodFormat 옵션을 지정하여
+ * BaseSchema 생성 시 Zod의 string format validation을 적용합니다.
+ */
+export const ZodStringFormat = z.enum([
+  // 기본 포맷
+  "email",
+  "uuid",
+  "url",
+  "httpUrl",
+  "hostname",
+  "emoji",
+  "base64",
+  "base64url",
+  "hex",
+  "jwt",
+  "nanoid",
+  "cuid",
+  "cuid2",
+  "ulid",
+  "ipv4",
+  "ipv6",
+  "mac",
+  "cidrv4",
+  "cidrv6",
+  // hash 포맷 (알고리즘별)
+  "hashMd5",
+  "hashSha1",
+  "hashSha256",
+  "hashSha384",
+  "hashSha512",
+  // ISO 포맷
+  "isoDate",
+  "isoTime",
+  "isoDatetime",
+  "isoDuration",
+]);
+export type ZodStringFormat = z.infer<typeof ZodStringFormat>;
+
 export type StringProp = CommonProp & {
   type: "string";
   length?: number; // PG: varchar(n), text / TS: string / JSON: string
+  zodFormat?: ZodStringFormat;
 }; // PG: text / TS: string / JSON: string
 export type StringArrayProp = CommonProp & {
   type: "string[]";
   length?: number; // PG: varchar(n)[], text[] / TS: string[] / JSON: string[]
+  zodFormat?: ZodStringFormat;
 }; // PG: varchar(n)[], text[] / TS: string[] / JSON: string[]
 export type EnumProp = CommonProp & {
   type: "enum";
@@ -936,6 +979,7 @@ const StringPropSchema = z
     ...BasePropFields,
     type: z.literal("string"),
     length: z.number().optional(),
+    zodFormat: ZodStringFormat.optional(),
   })
   .strict();
 const StringArrayPropSchema = z
@@ -943,6 +987,7 @@ const StringArrayPropSchema = z
     ...BasePropFields,
     type: z.literal("string[]"),
     length: z.number().optional(),
+    zodFormat: ZodStringFormat.optional(),
   })
   .strict();
 
