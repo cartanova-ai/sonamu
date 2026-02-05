@@ -594,6 +594,126 @@ describe("zod-converter", () => {
         expectToPass(zodType, ["abc", "de"]);
         expectToFail(zodType, ["abcdef"]);
       });
+
+      test("string with zodFormat email", async () => {
+        // 목적: zodFormat이 email인 경우 z.email() 타입으로 변환되어 이메일 형식만 허용하는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "test@example.com");
+        expectToPass(zodType, "user.name+tag@domain.co.kr");
+        expectToFail(zodType, "invalid-email");
+        expectToFail(zodType, "missing@domain");
+      });
+
+      test("string with zodFormat uuid", async () => {
+        // 목적: zodFormat이 uuid인 경우 z.uuid() 타입으로 변환되어 UUID 형식만 허용하는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "token",
+          zodFormat: "uuid",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "550e8400-e29b-41d4-a716-446655440000");
+        expectToFail(zodType, "not-a-uuid");
+        expectToFail(zodType, "550e8400-e29b-41d4-a716");
+      });
+
+      test("string with zodFormat url", async () => {
+        // 목적: zodFormat이 url인 경우 z.url() 타입으로 변환되어 URL 형식만 허용하는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "website",
+          zodFormat: "url",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "https://example.com");
+        expectToPass(zodType, "http://localhost:3000/path?query=1");
+        expectToPass(zodType, "mailto:noreply@zod.dev");
+        expectToFail(zodType, "not-a-url");
+        expectToFail(zodType, "example.com");
+      });
+
+      test("string with zodFormat email and length", async () => {
+        // 목적: zodFormat과 length가 함께 사용되는 경우 둘 다 적용되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+          length: 30,
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "test@example.com");
+        expectToFail(zodType, "invalid-email");
+        expectToFail(zodType, "verylongemail.address.here@verylongdomain.example.com");
+      });
+
+      test("string with zodFormat email and nullable", async () => {
+        // 목적: zodFormat과 nullable이 함께 사용되는 경우 둘 다 적용되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+          nullable: true,
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "test@example.com");
+        expectToPass(zodType, null);
+        expectToFail(zodType, "invalid-email");
+      });
+
+      test("string array with zodFormat email", async () => {
+        // 목적: 배열 타입에 zodFormat이 적용되는 경우 각 요소에 format 검증이 적용되는지 확인
+        const prop: EntityProp = {
+          type: "string[]",
+          name: "emails",
+          zodFormat: "email",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, ["test@example.com", "user@domain.org"]);
+        expectToPass(zodType, []);
+        expectToFail(zodType, ["test@example.com", "invalid-email"]);
+        expectToFail(zodType, ["not-an-email"]);
+      });
+
+      test("string with zodFormat isoDatetime", async () => {
+        // 목적: ISO datetime format이 올바르게 적용되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "createdAt",
+          zodFormat: "isoDatetime",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "2024-01-15T10:30:00Z");
+        expectToPass(zodType, "2024-01-15T10:30:00.123Z");
+        expectToFail(zodType, "2024-01-15");
+        expectToFail(zodType, "not-a-datetime");
+      });
+
+      test("string with zodFormat ipv4", async () => {
+        // 목적: IPv4 format이 올바르게 적용되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "ipAddress",
+          zodFormat: "ipv4",
+        };
+        const zodType = await propToZodType(prop);
+
+        expectToPass(zodType, "192.168.1.1");
+        expectToPass(zodType, "10.0.0.1");
+        expectToFail(zodType, "256.1.1.1");
+        expectToFail(zodType, "not-an-ip");
+      });
     });
 
     describe("Number 타입", () => {
@@ -862,6 +982,139 @@ describe("zod-converter", () => {
         const result = propToZodTypeDef(prop, importKeys);
 
         expect(result).toBe("tags: z.string().max(50).array(),");
+      });
+
+      test("string with zodFormat email", () => {
+        // 목적: zodFormat이 email인 경우 z.email() 코드로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("email: z.email(),");
+      });
+
+      test("string with zodFormat uuid", () => {
+        // 목적: zodFormat이 uuid인 경우 z.uuid() 코드로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "token",
+          zodFormat: "uuid",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("token: z.uuid(),");
+      });
+
+      test("string with zodFormat url", () => {
+        // 목적: zodFormat이 url인 경우 z.url() 코드로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "website",
+          zodFormat: "url",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("website: z.url(),");
+      });
+
+      test("string with zodFormat email and length", () => {
+        // 목적: zodFormat과 length가 함께 사용되는 경우 z.email().max(길이) 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+          length: 100,
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("email: z.email().max(100),");
+      });
+
+      test("string with zodFormat email and nullable", () => {
+        // 목적: zodFormat과 nullable이 함께 사용되는 경우 z.email().nullable() 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "email",
+          zodFormat: "email",
+          nullable: true,
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("email: z.email().nullable(),");
+      });
+
+      test("string array with zodFormat email", () => {
+        // 목적: 배열 타입에 zodFormat이 적용되는 경우 z.email().array() 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string[]",
+          name: "emails",
+          zodFormat: "email",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("emails: z.email().array(),");
+      });
+
+      test("string array with zodFormat email and length", () => {
+        // 목적: 배열 타입에 zodFormat과 length가 함께 사용되는 경우 z.email().max(길이).array() 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string[]",
+          name: "emails",
+          zodFormat: "email",
+          length: 100,
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("emails: z.email().max(100).array(),");
+      });
+
+      test("string with zodFormat isoDatetime", () => {
+        // 목적: ISO datetime format이 z.iso.datetime() 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "createdAt",
+          zodFormat: "isoDatetime",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("createdAt: z.iso.datetime(),");
+      });
+
+      test("string with zodFormat hashSha256", () => {
+        // 목적: hash format이 z.hash("sha256") 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "checksum",
+          zodFormat: "hashSha256",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe('checksum: z.hash("sha256"),');
+      });
+
+      test("string with zodFormat ipv4", () => {
+        // 목적: ipv4 format이 z.ipv4() 형태로 변환되는지 검증
+        const prop: EntityProp = {
+          type: "string",
+          name: "ipAddress",
+          zodFormat: "ipv4",
+        };
+        const importKeys: string[] = [];
+        const result = propToZodTypeDef(prop, importKeys);
+
+        expect(result).toBe("ipAddress: z.ipv4(),");
       });
     });
 
