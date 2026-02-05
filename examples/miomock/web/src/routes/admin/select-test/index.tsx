@@ -16,15 +16,7 @@ import {
   CompanyService,
   EmployeeAsyncIdConfig,
 } from "@/services/services.generated";
-import {
-  CompanyBaseSchema,
-  type CompanySubsetA,
-  type CompanySubsetKey,
-  type CompanySubsetMapping,
-  type EmployeeSubsetA,
-  type EmployeeSubsetKey,
-  type EmployeeSubsetMapping,
-} from "@/services/sonamu.generated";
+import { CompanyBaseSchema, type CompanySubsetA } from "@/services/sonamu.generated";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 
 export const Route = createFileRoute("/admin/select-test/")({
@@ -167,17 +159,7 @@ function SelectTestPage() {
     value: undefined,
   });
 
-  const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
-    value: [],
-  });
-
-  // ============================================================================
-  // IdAsyncSelect onRowChange State
-  // ============================================================================
-  const [selectedCompanyRow, setSelectedCompanyRow] = useState<CompanySubsetA | undefined>(
-    undefined,
-  );
-  const [selectedEmployeeRows, setSelectedEmployeeRows] = useState<EmployeeSubsetA[]>([]);
+  const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), { value: [] });
 
   return (
     <div className="flex-1 overflow-auto">
@@ -559,14 +541,11 @@ function SelectTestPage() {
                   <div className="text-xs text-orange-700">Company(name) 검색</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <IdAsyncSelect<CompanySubsetKey, CompanySubsetMapping, number>
+                  <IdAsyncSelect
                     config={CompanyAsyncIdConfig}
                     subset="A"
                     displayField="name"
                     {...idAsyncSingleForm.register("value")}
-                    onRowChange={(row) => {
-                      setSelectedCompanyRow(row as CompanySubsetA | undefined);
-                    }}
                     placeholder="회사를 검색하세요"
                     className="bg-white"
                   />
@@ -583,7 +562,9 @@ function SelectTestPage() {
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Row:</div>
                     <pre className="text-xs text-gray-700">
-                      {selectedCompanyRow ? JSON.stringify(selectedCompanyRow, null, 2) : "없음"}
+                      {idAsyncSingleForm.row.value
+                        ? JSON.stringify(idAsyncSingleForm.row.value, null, 2)
+                        : "없음"}
                     </pre>
                   </div>
                   <Button
@@ -591,8 +572,7 @@ function SelectTestPage() {
                     className="w-full"
                     variant="orange"
                     onClick={() => {
-                      idAsyncSingleForm.setForm({ value: undefined });
-                      setSelectedCompanyRow(undefined);
+                      idAsyncSingleForm.reset();
                     }}
                   >
                     초기화
@@ -607,15 +587,12 @@ function SelectTestPage() {
                   <div className="text-xs text-orange-700">Employee(id) 검색</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <IdAsyncSelect<EmployeeSubsetKey, EmployeeSubsetMapping, number>
+                  <IdAsyncSelect
                     config={EmployeeAsyncIdConfig}
                     subset="A"
                     displayField="id"
-                    multiple={true}
                     {...idAsyncMultiForm.register("value")}
-                    onRowChange={(rows) => {
-                      setSelectedEmployeeRows(rows as EmployeeSubsetA[]);
-                    }}
+                    multiple={true}
                     placeholder="직원을 검색하세요"
                     className="bg-white"
                   />
@@ -632,8 +609,8 @@ function SelectTestPage() {
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Rows:</div>
                     <pre className="text-xs text-gray-700 max-h-32 overflow-auto">
-                      {selectedEmployeeRows.length > 0
-                        ? JSON.stringify(selectedEmployeeRows, null, 2)
+                      {idAsyncMultiForm.row.value?.length
+                        ? JSON.stringify(idAsyncMultiForm.row.value, null, 2)
                         : "없음"}
                     </pre>
                   </div>
@@ -642,8 +619,7 @@ function SelectTestPage() {
                     className="w-full"
                     variant="orange"
                     onClick={() => {
-                      idAsyncMultiForm.setForm({ value: [] });
-                      setSelectedEmployeeRows([]);
+                      idAsyncMultiForm.reset();
                     }}
                   >
                     초기화

@@ -150,7 +150,39 @@ export function IdAsyncSelect<
   // selectedQuery로 로드한 데이터가 있으면 우선 사용, 없으면 현재 rows에서 찾기
   const selectedRow = ((selectedQuery.data?.rows as Record<string, unknown>[] | undefined)?.[0] ||
     selectedInRows) as Record<string, unknown> | undefined;
-  const isLoading = listLoading || (shouldLoadById && selectedQuery.isLoading);
+
+  // ============================================================
+  // Multi 모드: 선택된 값들 로드
+  // ============================================================
+  const multiValues = multiple && Array.isArray(value) ? (value as TValue[]) : [];
+
+  // 먼저 현재 rows에서 찾기
+  const selectedMultiInRows = useMemo(
+    () => multiValues.map((val) => rows.find((row) => row[valueField] === val)).filter(Boolean),
+    [rows, multiValues, valueField],
+  );
+
+  // rows에 없는 항목들을 id로 조회
+  const selectedMultiIds = useMemo(() => {
+    const foundIds = new Set(selectedMultiInRows.map((row) => row?.[valueField]));
+    return multiValues.filter((val) => !foundIds.has(val));
+  }, [multiValues, selectedMultiInRows, valueField]);
+
+  const shouldLoadByIds = selectedMultiIds.length > 0;
+  const multiSelectedQuery = config.useList(
+    subset,
+    { id: selectedMultiIds, num: selectedMultiIds.length, page: 1 },
+    { enabled: shouldLoadByIds },
+  );
+
+  // 최종 선택된 rows (rows에서 찾은 것 + query로 로드한 것)
+  const multiSelectedRows = useMemo(() => {
+    const queryRows = (multiSelectedQuery.data?.rows ?? []) as Record<string, unknown>[];
+    return [...selectedMultiInRows, ...queryRows] as Record<string, unknown>[];
+  }, [selectedMultiInRows, multiSelectedQuery.data]);
+
+  const isLoading =
+    listLoading || (shouldLoadById && selectedQuery.isLoading) || (shouldLoadByIds && multiSelectedQuery.isLoading);
 
   // ============================================================
   // itemMap + rowMap
@@ -159,13 +191,25 @@ export function IdAsyncSelect<
     const rowMap = new Map<TValue, Record<string, unknown>>();
     const itemMap = new Map<TValue, { value: TValue; label: string }>();
 
-    // 선택된 항목 추가
-    if (selectedRow && singleValue != null) {
+    // Single 모드: 선택된 항목 추가
+    if (!multiple && selectedRow && singleValue != null) {
       rowMap.set(singleValue, selectedRow);
       itemMap.set(singleValue, {
         value: singleValue,
         label: String(selectedRow[displayField]),
       });
+    }
+
+    // Multi 모드: 선택된 항목들 추가
+    if (multiple && multiSelectedRows.length > 0) {
+      for (const row of multiSelectedRows) {
+        const val = row[valueField] as TValue;
+        rowMap.set(val, row);
+        itemMap.set(val, {
+          value: val,
+          label: String(row[displayField]),
+        });
+      }
     }
 
     // 검색 결과 추가
@@ -182,7 +226,7 @@ export function IdAsyncSelect<
       items: Array.from(itemMap.values()),
       rowMap,
     };
-  }, [rows, selectedRow, singleValue, displayField, valueField]);
+  }, [rows, selectedRow, singleValue, multiSelectedRows, multiple, displayField, valueField]);
 
   // ============================================================
   // SelectNew 렌더링
