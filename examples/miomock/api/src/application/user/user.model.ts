@@ -11,7 +11,7 @@ import {
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import { userSubsetQueries } from "../sonamu.generated.sso";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 import type { UserListParams, UserSaveParams } from "./user.types";
 
 /*
@@ -21,10 +21,11 @@ import type { UserListParams, UserSaveParams } from "./user.types";
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
-  typeof userSubsetQueries
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
 > {
   constructor() {
-    super("User", userSubsetQueries);
+    super("User", userSubsetQueries, userLoaderQueries);
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })

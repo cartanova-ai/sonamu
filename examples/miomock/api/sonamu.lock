@@ -137,7 +137,7 @@
   },
   {
     "path": "src/application/user/user.model.ts",
-    "checksum": "90584e6798c9d749369cad1e8b50294424b7a944"
+    "checksum": "f88ce24e0075ee78937051f261a6d89eb2274261"
   },
   {
     "path": "src/application/user/user.types.ts",
