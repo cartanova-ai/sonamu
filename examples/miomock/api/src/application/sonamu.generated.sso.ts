@@ -20,6 +20,8 @@ import type {
   FileSubsetKey,
   PasskeyBaseSchema,
   PasskeySubsetKey,
+  PostBaseSchema,
+  PostSubsetKey,
   ProjectBaseSchema,
   ProjectSubsetKey,
   SessionBaseSchema,
@@ -141,11 +143,11 @@ export const departmentLoaderQueries = {
     {
       as: "employees",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("employees")
           .join({ user: "users" }, "employees.user_id", "user.id")
-          .whereIn("employees.department_id", fromIds)
+          .whereIn("employees.department_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -252,22 +254,25 @@ export const employeeLoaderQueries = {
     {
       as: "department__employees",
       refId: "department__id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
-        return qbWrapper.from("employees").whereIn("employees.department_id", fromIds).select({
-          id: "employees.id",
-          salary: "employees.salary",
-          refId: "employees.department_id",
-        });
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
+        return qbWrapper
+          .from("employees")
+          .whereIn("employees.department_id", fromIds as number[])
+          .select({
+            id: "employees.id",
+            salary: "employees.salary",
+            refId: "employees.department_id",
+          });
       },
       loaders: [
         {
           as: "projs",
           refId: "id",
-          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
             return qbWrapper
               .from("projects__employees")
               .join("projects", "projects__employees.project_id", "projects.id")
-              .whereIn("projects__employees.employee_id", fromIds)
+              .whereIn("projects__employees.employee_id", fromIds as number[])
               .select({
                 id: "projects.id",
                 name: "projects.name",
@@ -281,11 +286,11 @@ export const employeeLoaderQueries = {
     {
       as: "projs",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("projects", "projects__employees.project_id", "projects.id")
-          .whereIn("projects__employees.employee_id", fromIds)
+          .whereIn("projects__employees.employee_id", fromIds as number[])
           .select({
             id: "projects.id",
             name: "projects.name",
@@ -340,6 +345,42 @@ export const passkeyLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<PasskeySubsetKey>;
 
+// SubsetQuery: Post
+export const postSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper
+      .from("posts")
+      .join({ author: "users" }, "posts.author_id", "author.id")
+      .select({
+        id: "posts.id",
+        created_at: "posts.created_at",
+        title: "posts.title",
+        content: "posts.content",
+        author: {
+          id: "author.id",
+          created_at: "author.created_at",
+          email: "author.email",
+          username: "author.username",
+          password: "author.password",
+          birth_date: "author.birth_date",
+          role: "author.role",
+          last_login_at: "author.last_login_at",
+          bio: "author.bio",
+          is_verified: "author.is_verified",
+          deleted_at: "author.deleted_at",
+          image: "author.image",
+          updated_at: "author.updated_at",
+          two_factor_enabled: "author.two_factor_enabled",
+        },
+      });
+  },
+};
+
+// LoaderQuery: Post
+export const postLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<PostSubsetKey>;
+
 // SubsetQuery: Project
 export const projectSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -374,13 +415,13 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds)
+          .whereIn("projects__employees.project_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -399,11 +440,11 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds)
+          .whereIn("project_tags.project_id", fromIds as number[])
           .select({
             id: "tags.id",
             name: "tags.name",
@@ -416,13 +457,13 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds)
+          .whereIn("projects__employees.project_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -441,11 +482,11 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds)
+          .whereIn("project_tags.project_id", fromIds as number[])
           .select({
             id: "tags.id",
             name: "tags.name",
@@ -593,7 +634,25 @@ export const userSubsetQueries = {
 
 // LoaderQuery: User
 export const userLoaderQueries = {
-  A: [],
+  A: [
+    {
+      as: "posts",
+      refId: "id",
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
+        return qbWrapper
+          .from("posts")
+          .whereIn("posts.author_id", fromIds as string[])
+          .select({
+            id: "posts.id",
+            created_at: "posts.created_at",
+            title: "posts.title",
+            content: "posts.content",
+            author_id: "posts.author_id",
+            refId: "posts.author_id",
+          });
+      },
+    },
+  ],
   P: [],
   SS: [],
 } as const satisfies PuriLoaderQueries<UserSubsetKey>;
@@ -622,6 +681,7 @@ export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
 export type PasskeyForeignKeys = "user_id";
+export type PostForeignKeys = "author_id";
 export type SessionForeignKeys = "user_id";
 export type TwoFactorForeignKeys = "user_id";
 
@@ -635,6 +695,7 @@ declare module "sonamu" {
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     passkeys: PasskeyBaseSchema;
+    posts: PostBaseSchema;
     projects: ProjectBaseSchema;
     sessions: SessionBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
@@ -651,6 +712,7 @@ declare module "sonamu" {
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
     passkeys: PasskeyForeignKeys;
+    posts: PostForeignKeys;
     sessions: SessionForeignKeys;
     two_factors: TwoFactorForeignKeys;
   }

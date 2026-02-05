@@ -76,6 +76,14 @@ export const PasskeySearchField = z.enum(["id", "name"]).describe("PasskeySearch
 export type PasskeySearchField = z.infer<typeof PasskeySearchField>;
 export const PasskeySearchFieldLabel = { id: "ID", name: "이름" };
 
+// Enums: Post
+export const PostOrderBy = z.enum(["id-desc"]).describe("PostOrderBy");
+export type PostOrderBy = z.infer<typeof PostOrderBy>;
+export const PostOrderByLabel = { "id-desc": "ID최신순" };
+export const PostSearchField = z.enum(["id"]).describe("PostSearchField");
+export type PostSearchField = z.infer<typeof PostSearchField>;
+export const PostSearchFieldLabel = { id: "ID" };
+
 // Enums: Project
 export const ProjectOrderBy = z.enum(["id-desc"]).describe("ProjectOrderBy");
 export type ProjectOrderBy = z.infer<typeof ProjectOrderBy>;
@@ -291,6 +299,18 @@ export type PasskeyBaseSchema = z.infer<typeof PasskeyBaseSchema> & {
   readonly __hasDefault__: readonly ["name", "transports", "aaguid", "created_at", "id"];
 };
 
+// BaseSchema: Post
+export const PostBaseSchema = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  title: z.string().max(500),
+  content: z.string(),
+  author_id: z.string(),
+});
+export type PostBaseSchema = z.infer<typeof PostBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "id"];
+};
+
 // BaseSchema: Project
 export const ProjectBaseSchema = z.object({
   id: z.int(),
@@ -407,6 +427,7 @@ export const UserBaseSchema = z.object({
   image: z.string().nullable(),
   updated_at: z.date(),
   two_factor_enabled: z.boolean().nullable(),
+  // posts: HasMany Post
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
   readonly __hasDefault__: readonly [
@@ -421,6 +442,7 @@ export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
     "image",
     "updated_at",
     "two_factor_enabled",
+    "posts_id",
     "id",
   ];
 };
@@ -542,6 +564,21 @@ export const PasskeyBaseListParams = z
   })
   .partial();
 export type PasskeyBaseListParams = z.infer<typeof PasskeyBaseListParams>;
+
+// BaseListParams: Post
+export const PostBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: PostSearchField,
+    keyword: z.string(),
+    orderBy: PostOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.custom<ApplySonamuFilter<PostBaseSchema, never, never>>(),
+  })
+  .partial();
+export type PostBaseListParams = z.infer<typeof PostBaseListParams>;
 
 // BaseListParams: Project
 export const ProjectBaseListParams = z
@@ -881,6 +918,36 @@ export type PasskeySubsetMapping = {
 export const PasskeySubsetKey = z.enum(["A"]);
 export type PasskeySubsetKey = z.infer<typeof PasskeySubsetKey>;
 
+// Subsets: Post
+export const PostSubsetA = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  title: z.string().max(500),
+  content: z.string(),
+  author: z.object({
+    id: z.string(),
+    created_at: z.date(),
+    email: z.string().max(255),
+    username: z.string().max(255),
+    password: z.string().max(255).nullable(),
+    birth_date: z.date().nullable(),
+    role: UserRole,
+    last_login_at: z.date().nullable(),
+    bio: z.string().nullable(),
+    is_verified: z.boolean(),
+    deleted_at: z.date().nullable(),
+    image: z.string().nullable(),
+    updated_at: z.date(),
+    two_factor_enabled: z.boolean().nullable(),
+  }),
+});
+export type PostSubsetA = z.infer<typeof PostSubsetA>;
+export type PostSubsetMapping = {
+  A: PostSubsetA;
+};
+export const PostSubsetKey = z.enum(["A"]);
+export type PostSubsetKey = z.infer<typeof PostSubsetKey>;
+
 // Subsets: Project
 export const ProjectSubsetA = z.object({
   id: z.int(),
@@ -1036,6 +1103,15 @@ export const UserSubsetA = z.object({
   bio: z.string().nullable(),
   is_verified: z.boolean(),
   deleted_at: z.date().nullable(),
+  posts: z.array(
+    z.object({
+      id: z.int(),
+      created_at: z.date(),
+      title: z.string().max(500),
+      content: z.string(),
+      author_id: z.string(),
+    }),
+  ),
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({

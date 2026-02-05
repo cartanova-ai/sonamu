@@ -24,7 +24,21 @@
     },
     { "name": "image", "type": "string", "nullable": true, "desc": "프로필 이미지" },
     { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" },
-    { "name": "two_factor_enabled", "type": "boolean", "nullable": true, "desc": "2FA 활성화 여부" }
+    {
+      "name": "two_factor_enabled",
+      "type": "boolean",
+      "nullable": true,
+      "desc": "2FA 활성화 여부"
+    },
+    {
+      "type": "relation",
+      "name": "posts",
+      "with": "Post",
+      "nullable": true,
+      "desc": "POSTS",
+      "relationType": "HasMany",
+      "joinColumn": "author_id"
+    }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
@@ -38,7 +52,12 @@
       "last_login_at",
       "bio",
       "is_verified",
-      "deleted_at"
+      "deleted_at",
+      "posts.id",
+      "posts.created_at",
+      "posts.title",
+      "posts.content",
+      "posts.author.id"
     ],
     "P": [
       "id",

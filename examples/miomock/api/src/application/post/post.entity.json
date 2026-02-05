@@ -1,0 +1,44 @@
+{
+  "id": "Post",
+  "table": "posts",
+  "title": "POST",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "title", "desc": "TITLE", "type": "string", "length": 500 },
+    { "name": "content", "desc": "CONTENT", "type": "string" },
+    {
+      "type": "relation",
+      "name": "author",
+      "with": "User",
+      "desc": "AUTHOR",
+      "relationType": "BelongsToOne",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "title",
+      "content",
+      "author.id",
+      "author.created_at",
+      "author.email",
+      "author.username",
+      "author.password",
+      "author.birth_date",
+      "author.role",
+      "author.last_login_at",
+      "author.bio",
+      "author.is_verified",
+      "author.deleted_at",
+      "author.image",
+      "author.updated_at",
+      "author.two_factor_enabled"
+    ]
+  },
+  "enums": { "PostOrderBy": { "id-desc": "ID최신순" }, "PostSearchField": { "id": "ID" } }
+}
