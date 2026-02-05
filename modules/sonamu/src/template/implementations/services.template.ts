@@ -324,17 +324,9 @@ ${functions.join("\n\n")}
         asyncIdConfigs.push(
           `
 // AsyncIdConfig: ${names.capital}
-export const ${names.capital}AsyncIdConfig = {
+export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping> = {
   placeholderKey: "entity.${names.capital}",
-  useList: ${names.capital}Service.${useHookName} as (
-    subset: string,
-    params?: Record<string, unknown>,
-    options?: { enabled?: boolean }
-  ) => {
-    data?: { rows: Record<string, unknown>[] };
-    isLoading: boolean;
-    error?: Error;
-  },
+  useList: ${names.capital}Service.${useHookName},
 };
           `.trim(),
         );
@@ -377,6 +369,7 @@ export const ${names.capital}AsyncIdConfig = {
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
         `import { ${sonamuSharedImports} } from './sonamu.shared';`,
+        `import type { AsyncIdConfig } from '@sonamu-kit/react-components/components';`,
       ],
     };
   }

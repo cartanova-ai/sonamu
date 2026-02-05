@@ -16,7 +16,15 @@ import {
   CompanyService,
   EmployeeAsyncIdConfig,
 } from "@/services/services.generated";
-import { CompanyBaseSchema, type CompanySubsetA } from "@/services/sonamu.generated";
+import {
+  CompanyBaseSchema,
+  type CompanySubsetA,
+  type CompanySubsetKey,
+  type CompanySubsetMapping,
+  type EmployeeSubsetA,
+  type EmployeeSubsetKey,
+  type EmployeeSubsetMapping,
+} from "@/services/sonamu.generated";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 
 export const Route = createFileRoute("/admin/select-test/")({
@@ -162,6 +170,14 @@ function SelectTestPage() {
   const idAsyncMultiForm = useTypeForm(z.object({ value: z.array(z.number()) }), {
     value: [],
   });
+
+  // ============================================================================
+  // IdAsyncSelect onRowChange State
+  // ============================================================================
+  const [selectedCompanyRow, setSelectedCompanyRow] = useState<CompanySubsetA | undefined>(
+    undefined,
+  );
+  const [selectedEmployeeRows, setSelectedEmployeeRows] = useState<EmployeeSubsetA[]>([]);
 
   return (
     <div className="flex-1 overflow-auto">
@@ -543,27 +559,41 @@ function SelectTestPage() {
                   <div className="text-xs text-orange-700">Company(name) 검색</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <IdAsyncSelect
+                  <IdAsyncSelect<CompanySubsetKey, CompanySubsetMapping, number>
                     config={CompanyAsyncIdConfig}
                     subset="A"
                     displayField="name"
                     {...idAsyncSingleForm.register("value")}
+                    onRowChange={(row) => {
+                      setSelectedCompanyRow(row as CompanySubsetA | undefined);
+                    }}
                     placeholder="회사를 검색하세요"
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
-                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <div className="text-xs font-semibold text-orange-900 mb-1">
+                      선택된 값 (ID):
+                    </div>
                     <pre className="text-xs text-gray-700">
                       {idAsyncSingleForm.form.value
                         ? JSON.stringify(idAsyncSingleForm.form.value)
                         : "없음"}
                     </pre>
                   </div>
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Row:</div>
+                    <pre className="text-xs text-gray-700">
+                      {selectedCompanyRow ? JSON.stringify(selectedCompanyRow, null, 2) : "없음"}
+                    </pre>
+                  </div>
                   <Button
                     size="sm"
                     className="w-full"
                     variant="orange"
-                    onClick={() => idAsyncSingleForm.setForm({ value: undefined })}
+                    onClick={() => {
+                      idAsyncSingleForm.setForm({ value: undefined });
+                      setSelectedCompanyRow(undefined);
+                    }}
                   >
                     초기화
                   </Button>
@@ -577,20 +607,33 @@ function SelectTestPage() {
                   <div className="text-xs text-orange-700">Employee(id) 검색</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <IdAsyncSelect
+                  <IdAsyncSelect<EmployeeSubsetKey, EmployeeSubsetMapping, number>
                     config={EmployeeAsyncIdConfig}
                     subset="A"
                     displayField="id"
                     multiple={true}
                     {...idAsyncMultiForm.register("value")}
+                    onRowChange={(rows) => {
+                      setSelectedEmployeeRows(rows as EmployeeSubsetA[]);
+                    }}
                     placeholder="직원을 검색하세요"
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
-                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 값:</div>
+                    <div className="text-xs font-semibold text-orange-900 mb-1">
+                      선택된 값 (IDs):
+                    </div>
                     <pre className="text-xs text-gray-700">
                       {idAsyncMultiForm.form.value.length > 0
                         ? JSON.stringify(idAsyncMultiForm.form.value)
+                        : "없음"}
+                    </pre>
+                  </div>
+                  <div className="p-3 bg-white rounded border border-orange-200">
+                    <div className="text-xs font-semibold text-orange-900 mb-1">선택된 Rows:</div>
+                    <pre className="text-xs text-gray-700 max-h-32 overflow-auto">
+                      {selectedEmployeeRows.length > 0
+                        ? JSON.stringify(selectedEmployeeRows, null, 2)
                         : "없음"}
                     </pre>
                   </div>
@@ -598,7 +641,10 @@ function SelectTestPage() {
                     size="sm"
                     className="w-full"
                     variant="orange"
-                    onClick={() => idAsyncMultiForm.setForm({ value: [] })}
+                    onClick={() => {
+                      idAsyncMultiForm.setForm({ value: [] });
+                      setSelectedEmployeeRows([]);
+                    }}
                   >
                     초기화
                   </Button>
