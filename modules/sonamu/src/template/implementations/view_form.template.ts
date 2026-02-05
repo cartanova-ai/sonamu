@@ -1,3 +1,4 @@
+import inflection from "inflection";
 import { unique } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
@@ -32,6 +33,47 @@ export class Template__view_form extends Template {
     return this.wrapFC(body, label);
   }
 
+  // FK 컬럼명에서 실제 relation 이름을 추출하는 헬퍼 메서드
+  getRelationNameFromColumnName(entityId: string, colName: string): string {
+    // _ids (복수) 처리
+    if (colName.endsWith("_ids")) {
+      const baseName = colName.replace(/_ids$/, "");
+      // 먼저 base name으로 찾기
+      try {
+        const relProp = getRelationPropFromColName(entityId, baseName);
+        return relProp.name;
+      } catch {
+        // pluralize해서 찾기
+        try {
+          const pluralName = inflection.pluralize(baseName);
+          const relProp = getRelationPropFromColName(entityId, pluralName);
+          return relProp.name;
+        } catch {
+          return colName;
+        }
+      }
+    }
+    // _id (단수) 처리
+    if (colName.endsWith("_id") && colName !== "id") {
+      const baseName = colName.replace(/_id$/, "");
+      // 먼저 base name으로 찾기
+      try {
+        const relProp = getRelationPropFromColName(entityId, baseName);
+        return relProp.name;
+      } catch {
+        // singularize해서 찾기
+        try {
+          const singularName = inflection.singularize(baseName);
+          const relProp = getRelationPropFromColName(entityId, singularName);
+          return relProp.name;
+        } catch {
+          return colName;
+        }
+      }
+    }
+    return colName;
+  }
+
   renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
       const { id } = getEnumInfoFromColName(entityId, col.name);
@@ -43,16 +85,49 @@ export class Template__view_form extends Template {
       } catch {
         return null;
       }
+    } else if (col.renderType === "string-plain" && col.name.endsWith("_id") && col.name !== "id") {
+      // string FK 처리 (자신의 PK인 id는 제외)
+      try {
+        const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
+        return { type: "fk" as const, entityId: relProp.with };
+      } catch {
+        return null;
+      }
+    } else if (col.renderType === "array" && col.name.endsWith("_ids")) {
+      // ManyToMany relation의 FK 배열
+      try {
+        const baseName = col.name.replace(/_ids$/, "");
+        const relProp = getRelationPropFromColName(entityId, baseName);
+        return { type: "fk" as const, entityId: relProp.with };
+      } catch {
+        return null;
+      }
     }
     return null;
   }
 
   renderColumn(entityId: string, col: RenderingNode): string {
     const regExpr = `{...register("${col.name}")}`;
-    const placeholder = `{SD("entity.${entityId}.${col.name}")}`;
+    const placeholderName = this.getRelationNameFromColumnName(entityId, col.name);
+    const placeholder = `{SD("entity.${entityId}.${placeholderName}")}`;
 
     switch (col.renderType) {
       case "string-plain":
+        // string FK 체크: _id로 끝나지만 자신의 PK(id)는 제외
+        if (col.name.endsWith("_id") && col.name !== "id") {
+          try {
+            const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
+            return `<IdAsyncSelect
+                    config={${relProp.with}AsyncIdConfig}
+                    subset="A"
+                    ${regExpr}
+                    ${col.optional || col.nullable ? "clearable" : ""}
+                  />`;
+          } catch {
+            // FK가 아니면 일반 Input으로 fallback
+          }
+        }
+        // 일반 string 필드 처리
         if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 256) {
           return `<Input className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         } else {
@@ -92,7 +167,6 @@ export class Template__view_form extends Template {
                     enum={${id}}
                     labels={${id}Label}
                     ${regExpr}
-                    ${col.optional || col.nullable ? "clearable" : ""}
                   />`;
         } catch {
           return `<Input className="h-8 text-xs bg-white" ${regExpr} />`;
@@ -104,13 +178,27 @@ export class Template__view_form extends Template {
                     config={${relProp.with}AsyncIdConfig}
                     subset="A"
                     ${regExpr}
-                    ${col.optional || col.nullable ? "clearable" : ""}
-                    className="h-8 text-xs"
                   />`;
         } catch {
           return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         }
       case "array":
+        // ManyToMany relation의 FK 배열인지 확인
+        if (col.name.endsWith("_ids")) {
+          try {
+            const baseName = col.name.replace(/_ids$/, "");
+            const relProp = getRelationPropFromColName(entityId, baseName);
+            return `<IdAsyncSelect
+                    config={${relProp.with}AsyncIdConfig}
+                    subset="A"
+                    multiple
+                    ${regExpr}
+                  />`;
+          } catch {
+            return `<Input className="h-8 text-xs bg-white" placeholder="${col.name}" ${regExpr} />`;
+          }
+        }
+        return `<Input className="h-8 text-xs bg-white" placeholder="${col.name}" ${regExpr} />`;
       case "object":
         return `<Input className="h-8 text-xs bg-white" placeholder="${col.name}" ${regExpr} />`;
       default:
@@ -203,6 +291,23 @@ export class Template__view_form extends Template {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           fkConfigImports.add(relProp.with);
         } catch {}
+      } else if (
+        col.renderType === "string-plain" &&
+        col.name.endsWith("_id") &&
+        col.name !== "id"
+      ) {
+        // string FK 처리 (자신의 PK인 id는 제외)
+        try {
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
+          fkConfigImports.add(relProp.with);
+        } catch {}
+      } else if (col.renderType === "array" && col.name.endsWith("_ids")) {
+        // ManyToMany relation의 FK 배열
+        try {
+          const baseName = col.name.replace(/_ids$/, "");
+          const relProp = getRelationPropFromColName(entityId, baseName);
+          fkConfigImports.add(relProp.with);
+        } catch {}
       }
     });
 
@@ -215,7 +320,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  EnumSelect," : ""}${columns.some((col) => col.renderType === "number-fk_id") ? "\n  IdAsyncSelect," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  EnumSelect," : ""}${columns.some((col) => col.renderType === "number-fk_id" || (col.renderType === "string-plain" && col.name.endsWith("_id") && col.name !== "id") || (col.renderType === "array" && col.name.endsWith("_ids"))) ? "\n  IdAsyncSelect," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
@@ -326,10 +431,24 @@ ${(() => {
           ...prevForm,
           ...row,${(() => {
             // relation 필드들을 찾아서 변환 코드 생성
+            // number FK, string FK (자신의 PK 제외), ManyToMany FK 배열만 필터링
             const relationFields = columns
-              .filter((col) => col.renderType === "number-fk_id")
+              .filter(
+                (col) =>
+                  col.renderType === "number-fk_id" ||
+                  (col.renderType === "string-plain" &&
+                    col.name.endsWith("_id") &&
+                    col.name !== "id") ||
+                  (col.renderType === "array" && col.name.endsWith("_ids")),
+              )
               .map((col) => {
-                const relationName = col.name.replace(/_id$/, "");
+                // ManyToMany(array) 처리
+                if (col.renderType === "array" && col.name.endsWith("_ids")) {
+                  const relationName = this.getRelationNameFromColumnName(entityId, col.name);
+                  return `\n          ${col.name}: row.${relationName}?.map((r) => r.id) ?? [],`;
+                }
+                // FK(number, string) 처리
+                const relationName = this.getRelationNameFromColumnName(entityId, col.name);
                 if (col.nullable) {
                   return `\n          ${col.name}: row.${relationName}?.id ?? null,`;
                 } else {
@@ -435,9 +554,10 @@ ${columns
       }
       return col.label;
     })();
+    const labelName = this.getRelationNameFromColumnName(entityId, col.name);
     return `                {/* ${label} */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">{SD("entity.${entityId}.${col.name}")}</label>
+                  <label className="block text-xs mb-1 text-gray-600">{SD("entity.${entityId}.${labelName}")}</label>
                   ${this.renderColumn(entityId, col)}
                 </div>`;
   })
