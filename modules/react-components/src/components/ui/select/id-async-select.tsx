@@ -1,4 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: AsyncIdConfig의 useList params는 contravariance 때문에 any 필요 (unknown 사용시 구체적 타입 전달 불가) */
+
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useSonamuBaseContext } from "@/contexts";
 import { SelectNew } from "./select-new";
@@ -19,11 +21,7 @@ export type AsyncIdConfig<
     subset: T,
     params?: any,
     options?: { enabled?: boolean },
-  ) => {
-    data?: { rows?: unknown[]; [key: string]: unknown };
-    isLoading: boolean;
-    error: Error | null;
-  };
+  ) => UseQueryResult<Record<string, unknown>, Error>;
 };
 
 // onRowChange의 row 파라미터 타입
@@ -182,7 +180,9 @@ export function IdAsyncSelect<
   }, [selectedMultiInRows, multiSelectedQuery.data]);
 
   const isLoading =
-    listLoading || (shouldLoadById && selectedQuery.isLoading) || (shouldLoadByIds && multiSelectedQuery.isLoading);
+    listLoading ||
+    (shouldLoadById && selectedQuery.isLoading) ||
+    (shouldLoadByIds && multiSelectedQuery.isLoading);
 
   // ============================================================
   // itemMap + rowMap
