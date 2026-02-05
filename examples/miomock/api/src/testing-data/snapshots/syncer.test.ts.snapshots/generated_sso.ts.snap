@@ -141,11 +141,11 @@ export const departmentLoaderQueries = {
     {
       as: "employees",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("employees")
           .join({ user: "users" }, "employees.user_id", "user.id")
-          .whereIn("employees.department_id", fromIds)
+          .whereIn("employees.department_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -252,22 +252,25 @@ export const employeeLoaderQueries = {
     {
       as: "department__employees",
       refId: "department__id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
-        return qbWrapper.from("employees").whereIn("employees.department_id", fromIds).select({
-          id: "employees.id",
-          salary: "employees.salary",
-          refId: "employees.department_id",
-        });
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
+        return qbWrapper
+          .from("employees")
+          .whereIn("employees.department_id", fromIds as number[])
+          .select({
+            id: "employees.id",
+            salary: "employees.salary",
+            refId: "employees.department_id",
+          });
       },
       loaders: [
         {
           as: "projs",
           refId: "id",
-          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
             return qbWrapper
               .from("projects__employees")
               .join("projects", "projects__employees.project_id", "projects.id")
-              .whereIn("projects__employees.employee_id", fromIds)
+              .whereIn("projects__employees.employee_id", fromIds as number[])
               .select({
                 id: "projects.id",
                 name: "projects.name",
@@ -281,11 +284,11 @@ export const employeeLoaderQueries = {
     {
       as: "projs",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("projects", "projects__employees.project_id", "projects.id")
-          .whereIn("projects__employees.employee_id", fromIds)
+          .whereIn("projects__employees.employee_id", fromIds as number[])
           .select({
             id: "projects.id",
             name: "projects.name",
@@ -374,13 +377,13 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds)
+          .whereIn("projects__employees.project_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -399,11 +402,11 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds)
+          .whereIn("project_tags.project_id", fromIds as number[])
           .select({
             id: "tags.id",
             name: "tags.name",
@@ -416,13 +419,13 @@ export const projectLoaderQueries = {
     {
       as: "employee",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("projects__employees")
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join({ user: "users" }, "employees.user_id", "user.id")
           .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-          .whereIn("projects__employees.project_id", fromIds)
+          .whereIn("projects__employees.project_id", fromIds as number[])
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
@@ -441,11 +444,11 @@ export const projectLoaderQueries = {
     {
       as: "tags",
       refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
         return qbWrapper
           .from("project_tags")
           .join("tags", "project_tags.tag_id", "tags.id")
-          .whereIn("project_tags.project_id", fromIds)
+          .whereIn("project_tags.project_id", fromIds as number[])
           .select({
             id: "tags.id",
             name: "tags.name",
