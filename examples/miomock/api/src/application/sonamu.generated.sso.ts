@@ -645,8 +645,8 @@ declare module "sonamu" {
     two_factors: TwoFactorBaseSchema;
     users: UserBaseSchema;
     verifications: VerificationBaseSchema;
-    projects__employees: ManyToManyBaseSchema<"employee", "project">;
-    project_tags: ManyToManyBaseSchema<"project", "tag">;
+    projects__employees: ManyToManyBaseSchema<"employee", "project", number, number>;
+    project_tags: ManyToManyBaseSchema<"project", "tag", number, number>;
   }
 
   export interface DatabaseForeignKeys {
