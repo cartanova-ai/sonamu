@@ -18,6 +18,7 @@ export default {
   "error.alreadyProcessed": "Already processed",
   "error.duplicateRow": "Duplicate data",
   "error.targetNotFound": "Target not found",
+  "error.api.notFound": "API not found",
 
   // Common UI
   "common.save": "Save",

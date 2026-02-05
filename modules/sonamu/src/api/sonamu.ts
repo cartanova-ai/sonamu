@@ -18,6 +18,7 @@ import {
   DB,
   isDaemonServer,
   merge,
+  NotFoundException,
 } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
@@ -25,6 +26,7 @@ import type { CacheControlConfig, CacheControlRequest } from "../cache-control/t
 import { toFastifyCompressOption } from "../compress/compress";
 import type { CompressOptions } from "../compress/types";
 import type { SonamuDBConfig } from "../database/db";
+import { SD } from "../dict/sd";
 import type { LocalizedString } from "../dict/types";
 import { Naite } from "../naite/naite";
 import { BufferedFile } from "../storage/buffered-file";
@@ -398,7 +400,7 @@ class SonamuClass {
     if (isLocal()) {
       // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
       if (hasWeb) {
-        await this.setupViteDevServer(server, webPath, config, globalCompressOptions);
+        await this.setupViteDevServer(server, webPath, config);
       }
     } else {
       // 프로덕션 환경: 개별 API 라우트 + 정적 파일 서빙
@@ -428,7 +430,6 @@ class SonamuClass {
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     webPath: string,
     config: SonamuFastifyConfig,
-    globalCompressOptions?: CompressOptions,
   ): Promise<void> {
     // @fastify/middie 등록 (Connect-style middleware 지원)
     await server.register((await import("@fastify/middie")).default);
@@ -456,49 +457,57 @@ class SonamuClass {
       return this.viteServer.middlewares(req, res, next);
     });
 
-    // API 동적 라우팅 (catch-all 전에 등록)
-    for (const api of this.syncer.apis) {
-      if (this.syncer.models[api.modelName] === undefined) {
-        throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
-      }
-
-      server.route({
-        method: api.options.httpMethod ?? "GET",
-        url: this.config.api.route.prefix + api.path,
-        handler: this.createApiHandler(api, config),
-        compress: toFastifyCompressOption(api.options.compress, globalCompressOptions),
-      });
-    }
-
-    // SSR 라우트 개별 등록 (compress 옵션이 라우트별로 적용되도록)
-    const { getSSRRoutes, renderSSR } = await import("../ssr");
-    const ssrRoutes = getSSRRoutes();
-
-    for (const route of ssrRoutes) {
-      server.route({
-        method: ["GET", "HEAD"],
-        url: route.path,
-        compress: toFastifyCompressOption(route.compress ?? true, globalCompressOptions),
-        handler: async (request, reply) => {
-          const url = request.url;
-          console.log(`[SSR] Matched route: ${route.path}`);
-
-          const params = this.extractPathParams(route.path, url);
-          const html = await renderSSR(url, route, params, request, reply, config, this.viteServer);
-
-          reply.type("text/html");
-          return html;
-        },
-      });
-    }
-
-    // CSR fallback (SSR 라우트에 매칭되지 않는 모든 요청)
+    // catch-all 라우트에서 동적으로 API/SSR 처리
+    // 개발 환경에서는 라우트별 compress 옵션을 포기하고 HMR 이점을 취합니다.
     server.route({
-      method: ["GET", "HEAD"],
+      method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"],
       url: "/*",
       handler: async (request, reply) => {
         const url = request.url;
+        const method = request.method;
 
+        // 1. API 요청 처리 - /api로 시작하면 syncer.apis에서 매칭되는 API 찾기
+        if (url.startsWith(this.config.api.route.prefix)) {
+          const { matchPath } = await import("../ssr/registry");
+
+          const matchedApi = this.syncer.apis.find((api) => {
+            if (this.syncer.models[api.modelName] === undefined) {
+              return false;
+            }
+            const apiMethod = api.options.httpMethod ?? "GET";
+            if (apiMethod !== method) return false;
+
+            const fullPath = this.config.api.route.prefix + api.path;
+            return matchPath(fullPath, url) !== null;
+          });
+
+          if (!matchedApi) {
+            throw new NotFoundException(SD("error.api.notFound"));
+          }
+
+          const handler = this.createApiHandler(matchedApi, config);
+          return handler(request, reply);
+        }
+
+        // 2. SSR 라우트 처리
+        const { matchSSRRoute, renderSSR } = await import("../ssr");
+        const ssrMatch = matchSSRRoute(url);
+        if (ssrMatch) {
+          console.log(`[SSR] Matched route: ${ssrMatch.route.path}`);
+          const html = await renderSSR(
+            url,
+            ssrMatch.route,
+            ssrMatch.params,
+            request,
+            reply,
+            config,
+            this.viteServer,
+          );
+          reply.type("text/html");
+          return html;
+        }
+
+        // 3. CSR fallback
         try {
           const fs = await import("node:fs/promises");
           let template = await fs.readFile(
@@ -1037,7 +1046,7 @@ class SonamuClass {
   }
 
   /*
-     A function that automatically handles init and destroy when using Sonamu via scripts.    
+     A function that automatically handles init and destroy when using Sonamu via scripts.
   */
   async runScript(fn: () => Promise<void>) {
     await this.init(true, false, undefined, false);
