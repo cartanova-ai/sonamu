@@ -29,15 +29,6 @@
       "type": "boolean",
       "nullable": true,
       "desc": "2FA 활성화 여부"
-    },
-    {
-      "type": "relation",
-      "name": "posts",
-      "with": "Post",
-      "nullable": true,
-      "desc": "POSTS",
-      "relationType": "HasMany",
-      "joinColumn": "author_id"
     }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
@@ -52,12 +43,7 @@
       "last_login_at",
       "bio",
       "is_verified",
-      "deleted_at",
-      "posts.id",
-      "posts.created_at",
-      "posts.title",
-      "posts.content",
-      "posts.author.id"
+      "deleted_at"
     ],
     "P": [
       "id",

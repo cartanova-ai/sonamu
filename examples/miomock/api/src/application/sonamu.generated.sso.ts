@@ -20,8 +20,6 @@ import type {
   FileSubsetKey,
   PasskeyBaseSchema,
   PasskeySubsetKey,
-  PostBaseSchema,
-  PostSubsetKey,
   ProjectBaseSchema,
   ProjectSubsetKey,
   SessionBaseSchema,
@@ -345,42 +343,6 @@ export const passkeyLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<PasskeySubsetKey>;
 
-// SubsetQuery: Post
-export const postSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper
-      .from("posts")
-      .join({ author: "users" }, "posts.author_id", "author.id")
-      .select({
-        id: "posts.id",
-        created_at: "posts.created_at",
-        title: "posts.title",
-        content: "posts.content",
-        author: {
-          id: "author.id",
-          created_at: "author.created_at",
-          email: "author.email",
-          username: "author.username",
-          password: "author.password",
-          birth_date: "author.birth_date",
-          role: "author.role",
-          last_login_at: "author.last_login_at",
-          bio: "author.bio",
-          is_verified: "author.is_verified",
-          deleted_at: "author.deleted_at",
-          image: "author.image",
-          updated_at: "author.updated_at",
-          two_factor_enabled: "author.two_factor_enabled",
-        },
-      });
-  },
-};
-
-// LoaderQuery: Post
-export const postLoaderQueries = {
-  A: [],
-} as const satisfies PuriLoaderQueries<PostSubsetKey>;
-
 // SubsetQuery: Project
 export const projectSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -634,25 +596,7 @@ export const userSubsetQueries = {
 
 // LoaderQuery: User
 export const userLoaderQueries = {
-  A: [
-    {
-      as: "posts",
-      refId: "id",
-      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[] | string[]) => {
-        return qbWrapper
-          .from("posts")
-          .whereIn("posts.author_id", fromIds as string[])
-          .select({
-            id: "posts.id",
-            created_at: "posts.created_at",
-            title: "posts.title",
-            content: "posts.content",
-            author_id: "posts.author_id",
-            refId: "posts.author_id",
-          });
-      },
-    },
-  ],
+  A: [],
   P: [],
   SS: [],
 } as const satisfies PuriLoaderQueries<UserSubsetKey>;
@@ -681,7 +625,6 @@ export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
 export type PasskeyForeignKeys = "user_id";
-export type PostForeignKeys = "author_id";
 export type SessionForeignKeys = "user_id";
 export type TwoFactorForeignKeys = "user_id";
 
@@ -695,7 +638,6 @@ declare module "sonamu" {
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     passkeys: PasskeyBaseSchema;
-    posts: PostBaseSchema;
     projects: ProjectBaseSchema;
     sessions: SessionBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
@@ -712,7 +654,6 @@ declare module "sonamu" {
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
     passkeys: PasskeyForeignKeys;
-    posts: PostForeignKeys;
     sessions: SessionForeignKeys;
     two_factors: TwoFactorForeignKeys;
   }
