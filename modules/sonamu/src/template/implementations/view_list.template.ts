@@ -264,11 +264,11 @@ export class Template__view_list extends Template {
       .map((col) => {
         const rendered = this.renderColumn(entityId, col, names);
 
-        // 라벨 생성: common 필드(created_at, updated_at 등)는 SD("common.{field}"), entity 필드는 SD("entity.{Entity}.{field}")
+        // 라벨 생성: common 필드(created_at)는 SD("common.{field}"), entity 필드는 SD("entity.{Entity}.{field}")
         let label: string;
         if (col.name === "id") {
           label = '"ID"';
-        } else if (["created_at", "updated_at"].includes(col.name)) {
+        } else if (["created_at"].includes(col.name)) {
           // camelCase로 변환 (created_at -> createdAt)
           const camelName = col.name.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
           label = `SD("common.${camelName}")`;
