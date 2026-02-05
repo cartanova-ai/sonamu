@@ -250,19 +250,21 @@ Variable-length string type.
       "name": "email",
       "type": "string",
       "length": 255,
+      "zodFormat": "email",
       "desc": "Email"
     }
     ```
-    
+
     **Mapping**:
     - PostgreSQL: `varchar(255)` (when length specified) or `text`
     - TypeScript: `string`
     - JSON: `string`
-    
+
     **Additional Options**:
     - `length`: Maximum length (uses `text` type when omitted)
+    - `zodFormat`: Zod 4 String Format validation (see below)
   </Tab>
-  
+
   <Tab title="Array">
     ```json
     {
@@ -271,7 +273,7 @@ Variable-length string type.
       "desc": "Tag list"
     }
     ```
-    
+
     **Mapping**:
     - PostgreSQL: `text[]` or `varchar(n)[]`
     - TypeScript: `string[]`
@@ -279,11 +281,65 @@ Variable-length string type.
   </Tab>
 </Tabs>
 
+#### zodFormat Option
+
+The `zodFormat` option automatically applies Zod's string format validation when generating BaseSchema.
+
+**Usage Example**:
+
+```json
+{
+  "name": "user_email",
+  "type": "string",
+  "zodFormat": "email",
+  "desc": "User email"
+}
+```
+
+**Supported Formats**:
+
+| Category | Format | Description |
+|----------|--------|-------------|
+| Basic | `email` | Email address format |
+| | `uuid` | UUID format |
+| | `url` | URL format |
+| | `httpUrl` | HTTP/HTTPS URL format |
+| | `hostname` | Hostname format |
+| | `emoji` | Emoji format |
+| | `jwt` | JWT token format |
+| Encoding | `base64` | Base64 encoding |
+| | `base64url` | URL-safe Base64 encoding |
+| | `hex` | Hexadecimal string |
+| ID | `nanoid` | NanoID format |
+| | `cuid` | CUID format |
+| | `cuid2` | CUID2 format |
+| | `ulid` | ULID format |
+| Network | `ipv4` | IPv4 address |
+| | `ipv6` | IPv6 address |
+| | `mac` | MAC address |
+| | `cidrv4` | IPv4 CIDR notation |
+| | `cidrv6` | IPv6 CIDR notation |
+| Hash | `hashMd5` | MD5 hash |
+| | `hashSha1` | SHA-1 hash |
+| | `hashSha256` | SHA-256 hash |
+| | `hashSha384` | SHA-384 hash |
+| | `hashSha512` | SHA-512 hash |
+| ISO | `isoDate` | ISO 8601 date (YYYY-MM-DD) |
+| | `isoTime` | ISO 8601 time (HH:MM:SS) |
+| | `isoDatetime` | ISO 8601 datetime |
+| | `isoDuration` | ISO 8601 duration |
+
 <Tip>
 **length Setting Guide**:
 - Short text (name, email): `255`
 - Long text (description, content): omit (text type)
 - Fixed length (zip code, phone number): specify exact length
+</Tip>
+
+<Tip>
+**Difference between zodFormat and uuid type**:
+- `type: "uuid"`: Uses PostgreSQL's native `uuid` column type, enabling UUID-specific indexes and functions
+- `type: "string"` + `zodFormat: "uuid"`: Uses PostgreSQL's `text`/`varchar` column while validating UUID format only at the API level
 </Tip>
 
 ### enum / enum[]
