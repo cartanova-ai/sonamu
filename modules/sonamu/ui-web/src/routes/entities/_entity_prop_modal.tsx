@@ -77,6 +77,7 @@ export function EntityPropModal({
       onDelete: EntityPropZodSchema.RelationOn.optional(),
       with: z.string().optional(),
       generated: EntityPropZodSchema.GeneratedColumn.optional(),
+      zodFormat: EntityPropZodSchema.ZodStringFormat.optional(),
     }),
     initialForm,
   );
@@ -322,16 +323,31 @@ export function EntityPropModal({
               form.type === "enum" ||
               form.type === "enum[]") && (
               <div className="flex gap-[14px] mb-[14px]">
-                {form.type === "string" && (
-                  <div className="flex-1">
-                    <label className="block mb-1 font-bold">Length</label>
-                    <FormNumberInput
-                      value={form.length}
-                      onChange={(_, { value }) =>
-                        setForm({ ...form, length: value === "" ? undefined : value })
-                      }
-                    />
-                  </div>
+                {(form.type === "string" || form.type === "string[]") && (
+                  <>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">Length</label>
+                      <FormNumberInput
+                        value={form.length}
+                        onChange={(_, { value }) =>
+                          setForm({ ...form, length: value === "" ? undefined : value })
+                        }
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">Zod Format</label>
+                      <Select
+                        value={form.zodFormat}
+                        onValueChange={(value) =>
+                          setForm({ ...form, zodFormat: value || undefined })
+                        }
+                        clearable
+                        items={[...EntityPropZodSchema.ZodStringFormat.options]}
+                        placeholder="Select format..."
+                        searchable
+                      />
+                    </div>
+                  </>
                 )}
                 {form.type === "enum" ? (
                   <div className="flex-1">
