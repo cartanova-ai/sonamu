@@ -19,6 +19,7 @@ import { UserService } from "@/services/services.generated";
 import { UserRole, UserRoleLabel } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -50,7 +51,6 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     email: "",
     username: "",
     role: "normal",
-    two_factor_enabled: null,
   });
 
   useEffect(() => {
@@ -203,6 +203,34 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                     {SD("entity.User.deleted_at")}
                   </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("deleted_at")} />
+                </div>
+
+                {/* 프로필 이미지 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.image")}
+                  </label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder={SD("entity.User.image")}
+                    {...register("image")}
+                  />
+                </div>
+
+                {/* 수정일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.updated_at")}
+                  </label>
+                  <DateInput className="h-8 text-xs bg-white" {...register("updated_at")} />
+                </div>
+
+                {/* 2FA 활성화 여부 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.two_factor_enabled")}
+                  </label>
+                  <Switch {...register("two_factor_enabled")} />
                 </div>
 
                 {/* Save Button */}

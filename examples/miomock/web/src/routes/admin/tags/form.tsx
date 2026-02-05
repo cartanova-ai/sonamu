@@ -121,6 +121,30 @@ export function TagsForm({ id, mode }: TagsFormProps) {
                   />
                 </div>
 
+                {/* 태그명 한국어 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Tag.name_ko")}
+                  </label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder={SD("entity.Tag.name_ko")}
+                    {...register("name_ko")}
+                  />
+                </div>
+
+                {/* 태그명 영어 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Tag.name_en")}
+                  </label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder={SD("entity.Tag.name_en")}
+                    {...register("name_en")}
+                  />
+                </div>
+
                 {/* Save Button */}
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (

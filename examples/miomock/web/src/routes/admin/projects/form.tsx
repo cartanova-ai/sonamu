@@ -20,6 +20,7 @@ import { ProjectSaveParams } from "@/services/project/project.types";
 import { EmployeeAsyncIdConfig, ProjectService } from "@/services/services.generated";
 import { ProjectStatus, ProjectStatusLabel } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -64,17 +65,15 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
-          employee_ids: row.employee?.map((e) => e.id) ?? [],
-          tag_ids: row.tags?.map((t) => t.id) ?? [],
+          employee_ids: row.employee?.map((r) => r.id) ?? [],
+          tag_ids: row.tags?.map((r) => r.id) ?? [],
         }));
       });
     }
   }, [id, setForm]);
 
   const saveMutation = ProjectService.useSaveMutation();
-
   const handleSubmit = submit(async (form) => {
-    // 프로젝트 저장
     saveMutation.mutate(
       { spa: [form] },
       {
@@ -186,7 +185,9 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
 
                 {/* 이미지URLS */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.image_urls")}
+                  </label>
                   <FileInput
                     multiple={true}
                     uploadMode="lazy"
@@ -199,19 +200,22 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
 
                 {/* EmployeeIds */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.employee")}
+                  </label>
                   <IdAsyncSelect
                     config={EmployeeAsyncIdConfig}
-                    multiple
                     subset="A"
-                    displayField="id"
+                    multiple
                     {...register("employee_ids")}
                   />
                 </div>
 
                 {/* TagIds */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">TagIds</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.tags")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
                     placeholder="tag_ids"

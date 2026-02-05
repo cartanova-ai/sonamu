@@ -133,8 +133,8 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                   </label>
                   <IdAsyncSelect
                     config={UserAsyncIdConfig}
-                    displayField="id"
                     subset="A"
+                    displayField="id"
                     {...register("user_id")}
                   />
                 </div>
@@ -145,8 +145,8 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                     {SD("entity.Employee.department")}
                   </label>
                   <IdAsyncSelect
-                    subset="A"
                     config={DepartmentAsyncIdConfig}
+                    subset="A"
                     {...register("department_id")}
                   />
                 </div>
