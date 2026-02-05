@@ -9,6 +9,7 @@ import type { BetterAuthEntityDef } from "./types";
 export const organizationEntityDef: BetterAuthEntityDef = {
   id: "organization",
   name: "Organization",
+  // 엔티티 순서: 의존관계에 따라 정렬 (Organization → Team → Member → Invitation → TeamMember)
   entities: [
     {
       id: "Organization",
@@ -29,6 +30,39 @@ export const organizationEntityDef: BetterAuthEntityDef = {
       enums: {
         OrganizationOrderBy: { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" },
         OrganizationSearchField: { id: "ID", name: "조직명", slug: "슬러그" },
+      },
+    },
+    {
+      id: "Team",
+      table: "teams",
+      title: "팀",
+      props: [
+        { name: "id", type: "string", desc: "ID" },
+        { name: "name", type: "string", desc: "팀명" },
+        { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
+        { name: "updated_at", type: "date", nullable: true, desc: "수정일시" },
+        {
+          type: "relation",
+          name: "organization",
+          with: "Organization",
+          relationType: "BelongsToOne",
+          onDelete: "CASCADE",
+          desc: "조직",
+        },
+      ],
+      indexes: [
+        {
+          type: "index",
+          name: "teams_organization_id_idx",
+          columns: [{ name: "organization_id" }],
+        },
+      ],
+      subsets: {
+        A: ["id", "name", "created_at", "updated_at", "organization.id"],
+      },
+      enums: {
+        TeamOrderBy: { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" },
+        TeamSearchField: { id: "ID", name: "팀명" },
       },
     },
     {
@@ -133,39 +167,6 @@ export const organizationEntityDef: BetterAuthEntityDef = {
       enums: {
         InvitationOrderBy: { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" },
         InvitationSearchField: { id: "ID", email: "이메일" },
-      },
-    },
-    {
-      id: "Team",
-      table: "teams",
-      title: "팀",
-      props: [
-        { name: "id", type: "string", desc: "ID" },
-        { name: "name", type: "string", desc: "팀명" },
-        { name: "created_at", type: "date", dbDefault: "CURRENT_TIMESTAMP", desc: "생성일시" },
-        { name: "updated_at", type: "date", nullable: true, desc: "수정일시" },
-        {
-          type: "relation",
-          name: "organization",
-          with: "Organization",
-          relationType: "BelongsToOne",
-          onDelete: "CASCADE",
-          desc: "조직",
-        },
-      ],
-      indexes: [
-        {
-          type: "index",
-          name: "teams_organization_id_idx",
-          columns: [{ name: "organization_id" }],
-        },
-      ],
-      subsets: {
-        A: ["id", "name", "created_at", "updated_at", "organization.id"],
-      },
-      enums: {
-        TeamOrderBy: { "id-desc": "ID최신순", "created_at-desc": "생성일최신순" },
-        TeamSearchField: { id: "ID", name: "팀명" },
       },
     },
     {
