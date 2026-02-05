@@ -477,6 +477,154 @@ function UserListPage() {
 - `selectedKeys`: 현재 선택된 키 배열
 - `isAllSelected`: 전체 선택 여부
 
+## IdAsyncSelect
+
+Entity의 레코드를 비동기로 검색하여 선택하는 컴포넌트입니다. Entity의 Primary Key 타입에 따라 제네릭 타입을 명시해야 합니다.
+
+### 기본 사용법
+
+IdAsyncSelect는 일반적으로 Entity별 래퍼 컴포넌트로 사용합니다:
+
+```typescript
+import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
+import { UserAsyncIdConfig } from "@/services/services.generated";
+import type { UserSubsetKey, UserSubsetMapping } from "@/services/sonamu.generated";
+import type { UserListParams } from "@/services/user/user.types";
+
+export type UserIdAsyncSelectProps<T extends UserSubsetKey> = {
+  subset: T;
+  baseListParams?: UserListParams;
+  displayField?: keyof UserSubsetMapping[T] & string;
+  valueField?: keyof UserSubsetMapping[T] & string;
+  placeholder?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+  multiple?: boolean;
+  value?: number | number[] | null;  // Number PK
+  onValueChange?: (value: number | number[] | undefined) => void;
+};
+
+export function UserIdAsyncSelect<T extends UserSubsetKey>({
+  subset,
+  value,
+  onValueChange,
+  baseListParams,
+  displayField = "name",
+  valueField = "id",
+  placeholder = "사용자",
+  clearable,
+  disabled,
+  className,
+  multiple = false,
+}: UserIdAsyncSelectProps<T>) {
+  return (
+    <IdAsyncSelect<number>  // Number PK
+      config={UserAsyncIdConfig}
+      subset={subset}
+      baseListParams={baseListParams}
+      displayField={displayField}
+      valueField={valueField}
+      placeholder={placeholder}
+      clearable={clearable}
+      disabled={disabled}
+      className={className}
+      multiple={multiple}
+      value={value}
+      onValueChange={onValueChange}
+    />
+  );
+}
+```
+
+**주요 Props:**
+- `config`: 자동 생성된 AsyncIdConfig (EntityAsyncIdConfig 형태)
+- `subset`: 조회할 Subset 키
+- `baseListParams`: 목록 조회 필터 파라미터
+- `displayField`: 화면에 표시할 필드명 (기본값: Entity에 따라 다름)
+- `valueField`: value로 사용할 필드명 (기본값: "id")
+- `multiple`: 다중 선택 여부
+- `value`: 현재 선택된 값 (PK 타입에 따라 number 또는 string)
+- `onValueChange`: 값 변경 핸들러
+
+### IMPORTANT: String Primary Key Support
+
+**Number PK Entity (대부분의 Entity):**
+```typescript
+export type PostIdAsyncSelectProps<T extends PostSubsetKey> = {
+  // ...
+  value?: number | number[] | null;
+  onValueChange?: (value: number | number[] | undefined) => void;
+};
+
+export function PostIdAsyncSelect<T extends PostSubsetKey>({...}: PostIdAsyncSelectProps<T>) {
+  return (
+    <IdAsyncSelect<number>  // ← Number PK
+      config={PostAsyncIdConfig}
+      // ...
+    />
+  );
+}
+```
+
+**String PK Entity (User, Account, Session, Verification 등):**
+```typescript
+export type AccountIdAsyncSelectProps<T extends AccountSubsetKey> = {
+  // ...
+  value?: string | string[] | null;  // ← String으로 변경
+  onValueChange?: (value: string | string[] | undefined) => void;
+};
+
+export function AccountIdAsyncSelect<T extends AccountSubsetKey>({...}: AccountIdAsyncSelectProps<T>) {
+  return (
+    <IdAsyncSelect<string>  // ← String PK
+      config={AccountAsyncIdConfig}
+      // ...
+    />
+  );
+}
+```
+
+**String PK를 사용하는 주요 Entity:**
+- `User`: 사용자 계정 (일반적으로 UUID 또는 영문자 ID)
+- `Account`: 인증 계정 정보
+- `Session`: 세션 관리
+- `Verification`: 인증 토큰
+
+**scaffolding 후 수정 필요:**
+- Sonamu scaffolding은 기본적으로 Number PK를 가정하고 코드를 생성합니다
+- String PK Entity의 경우 생성된 IdAsyncSelect 래퍼 컴포넌트를 수동으로 수정해야 합니다
+- 제네릭 타입, value 타입, onValueChange 타입을 모두 `string`으로 변경해야 합니다
+
+### 폼에서 사용
+
+```tsx
+function PostForm() {
+  const { form, setForm, register } = useTypeForm(PostSaveParams, {
+    title: "",
+    author_id: 0,  // or "" for string PK
+  });
+
+  return (
+    <form>
+      <Input {...register("title")} />
+
+      {/* Number PK */}
+      <UserIdAsyncSelect
+        subset="A"
+        {...register("author_id")}
+      />
+
+      {/* String PK */}
+      <AccountIdAsyncSelect
+        subset="A"
+        {...register("account_id")}
+      />
+    </form>
+  );
+}
+```
+
 ## FileInput
 
 파일 업로드 컴포넌트 (이미지/일반 파일, eager/lazy 모드)

@@ -143,6 +143,7 @@ export const PostSaveParams = PostBaseSchema
 | "존재하지 않는 모듈 패스 요청 {Type}" | types.ts 미생성 또는 미컴파일 | 대기/수동생성 → build → dev 재시작 |
 | exhaustive() 타입 에러 | OrderBy 첫 번째 값만 자동 처리 | 위 "4. OrderBy 케이스 추가" 참조 |
 | i18n 키 없음 (relation) | `author_id` vs `author` | 위 "3. Relation이 있는 경우" 참조 |
+| IdAsyncSelect API 불일치 | 구버전 scaffolding 템플릿 사용 | 아래 "IdAsyncSelect API 마이그레이션" 참조 |
 
 ## 상세 설명
 
@@ -283,3 +284,114 @@ export default {
 ```
 
 **권장**: 첫 번째 방법 - ko.ts에 `_id` 키 추가. sync 시 유지되며 여러 form에서 재사용 가능.
+
+### IdAsyncSelect API 마이그레이션
+
+#### 발생 배경
+
+Sonamu의 `@sonamu-kit/react-components` 패키지가 업데이트되면서 IdAsyncSelect API가 변경되었으나, scaffolding 생성 코드(`scaffolding/react-components.ts`)는 구 API 기준으로 코드를 생성합니다.
+
+따라서 `pnpm sonamu scaffold` 실행 시 구 API 기반 래퍼 컴포넌트가 생성되며, 최신 패키지를 사용하는 프로젝트에서는 빌드 오류가 발생합니다.
+
+#### 구체적인 API 변경 사항
+
+**구 API (scaffolding이 생성하는 코드):**
+```typescript
+export function UserIdAsyncSelect<T extends UserSubsetKey>({
+  subset,
+  value,
+  onValueChange,
+  listParams,      // ← 구 API
+  textField = "name",  // ← 구 API
+  pageField,       // ← 구 API
+  ...
+}: UserIdAsyncSelectProps<T>) {
+  // 수동 상태 관리
+  const [searchText, setSearchText] = useState("");
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchText(text);
+  }, []);
+
+  return (
+    <AsyncSelect  // ← 구 컴포넌트
+      config={UserAsyncIdConfig}
+      subset={subset}
+      listParams={{ ...listParams, [textField]: searchText }}
+      textField={textField}
+      pageField={pageField}
+      onSearch={handleSearch}
+      ...
+    />
+  );
+}
+```
+
+**신 API (실제 패키지 API):**
+```typescript
+export function UserIdAsyncSelect<T extends UserSubsetKey>({
+  subset,
+  value,
+  onValueChange,
+  baseListParams,    // ← 신 API
+  displayField = "name",  // ← 신 API
+  // pageField 없음  // ← 제거됨
+  ...
+}: UserIdAsyncSelectProps<T>) {
+  // 상태 관리 없음 (내부에서 처리)
+
+  return (
+    <IdAsyncSelect<number>  // ← 신 컴포넌트 + 제네릭
+      config={UserAsyncIdConfig}
+      subset={subset}
+      baseListParams={baseListParams}
+      displayField={displayField}
+      // 내부에서 검색 처리
+      ...
+    />
+  );
+}
+```
+
+#### 주요 변경점
+
+1. **컴포넌트명**: `AsyncSelect` → `IdAsyncSelect<T>` (제네릭 추가)
+2. **Props 이름**:
+   - `listParams` → `baseListParams`
+   - `textField` → `displayField`
+   - `pageField` 삭제
+3. **검색 로직**: 외부 상태관리 → 내부 처리 (useState, useCallback, onSearch 불필요)
+4. **제네릭 타입**: PK 타입 명시 필요 (`<number>` 또는 `<string>`)
+
+#### 수정이 필요한 파일들
+
+```
+src/components/
+  ├── user/UserIdAsyncSelect.tsx
+  ├── account/AccountIdAsyncSelect.tsx
+  ├── announcement/AnnouncementIdAsyncSelect.tsx
+  └── ... (모든 *IdAsyncSelect.tsx 파일)
+```
+
+#### 마이그레이션 체크리스트
+
+- [ ] 컴포넌트 import 변경: `AsyncSelect` → `IdAsyncSelect`
+- [ ] 제네릭 타입 파라미터 추가: `<number>` 또는 `<string>` (PK 타입에 따라)
+- [ ] Props 타입 정의 업데이트:
+  - [ ] `listParams` → `baseListParams`
+  - [ ] `textField` → `displayField`
+  - [ ] `pageField` 제거
+- [ ] 수동 상태 관리 제거:
+  - [ ] `useState`, `useCallback` 제거
+  - [ ] `onSearch` 핸들러 제거
+- [ ] JSX 내 props 이름 변경:
+  - [ ] `listParams={...}` → `baseListParams={...}`
+  - [ ] `textField={...}` → `displayField={...}`
+  - [ ] `pageField` 제거
+  - [ ] `onSearch` 제거
+
+#### 왜 이런 일이 발생하나?
+
+Sonamu의 scaffolding 생성 코드가 최신 패키지 API를 반영하지 못한 상태에서, 사용자가 로컬의 Sonamu 소스를 수정하면서 패키지는 업데이트되었지만 scaffolding 템플릿은 그대로인 상황에서 발생합니다.
+
+**해결책**: 생성된 컴포넌트를 위 체크리스트에 따라 수동으로 수정하거나, Sonamu 코어의 scaffolding 템플릿을 최신 API로 업데이트해야 합니다.
