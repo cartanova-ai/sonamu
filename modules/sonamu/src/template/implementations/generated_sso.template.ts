@@ -173,8 +173,15 @@ export class Template__generated_sso extends Template {
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const fromTableKey = inflection.singularize(entity.table);
-          const toTableKey = inflection.singularize(EntityManager.get(prop.with).table);
-          return { table: prop.joinTable, fromTableKey, toTableKey };
+          const toEntity = EntityManager.get(prop.with);
+          const toTableKey = inflection.singularize(toEntity.table);
+          return {
+            table: prop.joinTable,
+            fromTableKey,
+            toTableKey,
+            fromEntityId: entity.id,
+            toEntityId: toEntity.id,
+          };
         }),
       ),
       (joinTable) => joinTable.table,
@@ -205,10 +212,14 @@ export class Template__generated_sso extends Template {
         `declare module "sonamu" {`,
         `  export interface DatabaseSchemaExtend {`,
         ...entitySchemaLines,
-        ...joinTables.map(
-          (joinTable) =>
-            `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}">;`,
-        ),
+        ...joinTables.map((joinTable) => {
+          const fromEntity = EntityManager.get(joinTable.fromEntityId);
+          const toEntity = EntityManager.get(joinTable.toEntityId);
+          const fromPkType = fromEntity.getPkType() === "integer" ? "number" : "string";
+          const toPkType = toEntity.getPkType() === "integer" ? "number" : "string";
+
+          return `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}", ${fromPkType}, ${toPkType}>;`;
+        }),
         `  }`,
         ``,
         `  export interface DatabaseForeignKeys {`,

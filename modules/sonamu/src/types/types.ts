@@ -1399,12 +1399,17 @@ export type RelationNode = {
 export interface DatabaseSchemaExtend {}
 // biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
 export interface DatabaseForeignKeys {}
-export type ManyToManyBaseSchema<FromIdKey extends string, ToIdKey extends string> = {
+export type ManyToManyBaseSchema<
+  FromIdKey extends string,
+  ToIdKey extends string,
+  FromPkType = number,
+  ToPkType = number,
+> = {
   id: number;
 } & {
-  [K in `${FromIdKey}_id`]: number;
+  [K in `${FromIdKey}_id`]: FromPkType;
 } & {
-  [K in `${ToIdKey}_id`]: number;
+  [K in `${ToIdKey}_id`]: ToPkType;
 };
 
 // 객체, 함수, 비동기 함수를 모두 포괄하는 타입
