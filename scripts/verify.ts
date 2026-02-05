@@ -93,8 +93,11 @@ async function verifyClean() {
   exec("pnpm build");
   console.log("✓ Build completed\n");
 
-  exec("pnpm --filter miomock-api seed");
-  console.log("✓ Seed completed\n");
+  exec("pnpm --filter miomock-api sonamu migrate run");
+  console.log("✓ Migration completed\n");
+
+  exec("pnpm --filter miomock-api fixture sync");
+  console.log("✓ Fixture sync completed\n");
 
   exec("pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
@@ -132,8 +135,11 @@ async function verifyFast() {
     exec("pnpm build");
     console.log("✓ Build completed\n");
 
-    exec("pnpm --filter miomock-api seed");
-    console.log("✓ Seed completed\n");
+    exec("pnpm --filter miomock-api sonamu migrate run");
+    console.log("✓ Migration completed\n");
+
+    exec("pnpm --filter miomock-api fixture sync");
+    console.log("✓ Fixture sync completed\n");
 
     exec("pnpm --filter miomock-api test");
     console.log("✓ Test completed\n");
@@ -161,8 +167,11 @@ async function verifyFast() {
   exec(`pnpm --filter "${filterStr}..." build`);
   console.log("✓ Build completed\n");
 
-  exec("pnpm --filter miomock-api seed");
-  console.log("✓ Seed completed\n");
+  exec("pnpm --filter miomock-api sonamu migrate run");
+  console.log("✓ Migration completed\n");
+
+  exec("pnpm --filter miomock-api fixture sync");
+  console.log("✓ Fixture sync completed\n");
 
   exec("pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
