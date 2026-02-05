@@ -157,11 +157,11 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "6d1e8528f24c35d747d2e6373bba5c4c94cce0e9"
+    "checksum": "fb351f3314f6bee4d438b9a7120f5de8696a42ca"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "6cd10c1375dbfe874b465f8bd4c1732854b22fcf"
+    "checksum": "14261faa6062217949c5bcf297b56674f47fb0ed"
   },
   {
     "path": "src/i18n/sd.generated.ts",

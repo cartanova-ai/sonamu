@@ -6,7 +6,7 @@ import { DateSelectorMultiple } from "@/components/ui/date-selector-multiple";
 import { MonthPickerMultiple } from "@/components/ui/month-picker-multiple";
 import { Pagination } from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
-import { SelectNew } from "@/components/ui/select/select-new";
+import { Select } from "@/components/ui/select/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -136,7 +136,7 @@ function DataDisplayPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Select</h2>
         <div className="border rounded-lg p-6 bg-card">
-          <SelectNew
+          <Select
             {...register("selectValue")}
             items={[
               { value: "option1", label: "옵션 1" },
@@ -154,7 +154,7 @@ function DataDisplayPage() {
         <h2 className="text-xl font-semibold">Multi Select</h2>
         <div className="border rounded-lg p-6 bg-card">
           <div className="max-w-md">
-            <SelectNew
+            <Select
               {...register("selectedValues")}
               items={multiSelectOptions}
               multiple

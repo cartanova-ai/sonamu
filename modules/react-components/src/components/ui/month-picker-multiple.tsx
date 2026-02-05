@@ -6,7 +6,7 @@ import type { DateRange } from "react-day-picker";
 import { useSonamuBaseContext } from "@/contexts";
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { SelectNew } from "./select/select-new";
+import { Select } from "./select/select";
 
 /** 단일 월 또는 월 범위 값 */
 export type MonthPickerValue =
@@ -178,7 +178,7 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">
                   {SD("rc.monthPickerMultiple.startDate")}
                 </div>
-                <SelectNew
+                <Select
                   value={tempRangeStartYear}
                   onValueChange={(value) => {
                     if (value !== undefined) setTempRangeStartYear(value);
@@ -230,7 +230,7 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">
                   {SD("rc.monthPickerMultiple.endDate")}
                 </div>
-                <SelectNew
+                <Select
                   value={tempRangeEndYear}
                   onValueChange={(value) => {
                     if (value !== undefined) setTempRangeEndYear(value);
@@ -278,7 +278,7 @@ export function MonthPickerMultiple({
             </div>
           ) : (
             <div className="p-4 space-y-2">
-              <SelectNew
+              <Select
                 value={tempYear}
                 onValueChange={(value) => {
                   if (value !== undefined) setTempYear(value);

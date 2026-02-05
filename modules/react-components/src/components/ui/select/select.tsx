@@ -99,7 +99,7 @@ interface MultiAsyncProps<Item> {
 }
 
 // 통합 타입
-type SelectNewProps<Item> = SelectPropsBase<Item> &
+type SelectProps<Item> = SelectPropsBase<Item> &
   SelectPropsWithValueKey<Item> &
   (SingleSyncProps<Item> | SingleAsyncProps<Item> | MultiSyncProps<Item> | MultiAsyncProps<Item>);
 
@@ -168,7 +168,7 @@ function isItemObject<V>(
 // ============================================================================
 
 function useSelectCommon<Item>(
-  props: SelectNewProps<Item>,
+  props: SelectProps<Item>,
   ref: React.ForwardedRef<HTMLSelectElement>,
 ): CommonState<Item> {
   type Value = ExtractValue<Item>;
@@ -624,8 +624,8 @@ function CommandBasedSelect<Item>({
 // Main Component & Export
 // ============================================================================
 
-export const SelectNew = React.forwardRef(function SelectNew<Item>(
-  props: SelectNewProps<Item>,
+export const Select = React.forwardRef(function Select<Item>(
+  props: SelectProps<Item>,
   ref: React.ForwardedRef<HTMLSelectElement>,
 ) {
   // 공통 상태/유틸
@@ -656,7 +656,7 @@ export const SelectNew = React.forwardRef(function SelectNew<Item>(
     />
   );
 }) as <Item>(
-  props: SelectNewProps<Item> & React.RefAttributes<HTMLSelectElement>,
+  props: SelectProps<Item> & React.RefAttributes<HTMLSelectElement>,
 ) => React.ReactElement;
 
-export type { SelectNewProps, SelectItemDef, ExtractValue };
+export type { SelectProps, SelectItemDef, ExtractValue };

@@ -5,7 +5,7 @@ import {
   CardHeader,
   EnumSelect,
   IdAsyncSelect,
-  SelectNew,
+  Select,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
@@ -22,8 +22,8 @@ import ListIcon from "~icons/mdi/format-list-bulleted";
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({
     meta: [
-      { title: "SelectNew 테스트" },
-      { name: "description", content: "SelectNew 컴포넌트 4가지 모드 테스트" },
+      { title: "Select 테스트" },
+      { name: "description", content: "Select 컴포넌트 4가지 모드 테스트" },
     ],
   }),
   component: SelectTestPage,
@@ -168,13 +168,13 @@ function SelectTestPage() {
           {/* Header */}
           <div className="flex items-center gap-2">
             <ListIcon className="h-5 w-5" />
-            <span className="text-lg font-semibold h-5">SelectNew 컴포넌트 테스트</span>
+            <span className="text-lg font-semibold h-5">Select 컴포넌트 테스트</span>
           </div>
 
           {/* 설명 */}
           <Card className="border-gray-200">
             <CardHeader>
-              <div className="text-sm font-semibold text-gray-900">SelectNew 컴포넌트 개요</div>
+              <div className="text-sm font-semibold text-gray-900">Select 컴포넌트 개요</div>
             </CardHeader>
             <CardContent className="text-xs text-gray-700 space-y-3">
               <div className="space-y-1">
@@ -211,7 +211,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">과일 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={fruits}
                     {...singleSyncProps}
                     placeholder="과일을 선택하세요"
@@ -245,7 +245,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">과일 선택 (검색 O)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={fruits}
                     {...singleSyncSearchableProps}
                     placeholder="과일을 검색하세요"
@@ -280,7 +280,7 @@ function SelectTestPage() {
                   <div className="text-xs text-blue-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={companyOptions}
                     {...companyProps}
                     placeholder="회사를 검색하세요"
@@ -335,7 +335,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">숫자 선택 (검색 X)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={numbers}
                     {...multiSyncProps}
                     placeholder="숫자를 선택하세요"
@@ -370,7 +370,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">숫자 다중 선택 (검색 O)</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={numbers}
                     {...multiSyncNoSearchProps}
                     placeholder="숫자를 선택하세요"
@@ -405,7 +405,7 @@ function SelectTestPage() {
                   <div className="text-xs text-green-700">Company 타입 - 실제 API 사용</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <SelectNew
+                  <Select
                     items={multiCompanyOptions}
                     {...multiCompanyProps}
                     placeholder="회사를 검색하세요"

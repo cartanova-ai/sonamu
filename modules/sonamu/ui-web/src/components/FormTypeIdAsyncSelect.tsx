@@ -1,4 +1,4 @@
-import { Button, SelectNew } from "@sonamu-kit/react-components";
+import { Button, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -71,7 +71,7 @@ export function FormTypeIdAsyncSelect({
 
   return (
     <div className="flex gap-1">
-      <SelectNew
+      <Select
         value={value}
         onValueChange={handleValueChange}
         disabled={disabled || !typeIds || isLoading}

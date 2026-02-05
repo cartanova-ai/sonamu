@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  SelectNew,
+  Select,
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
@@ -183,7 +183,7 @@ export function EntityPropModal({
                 <label className="block mb-1 font-bold">
                   Type <span className="text-red-500">*</span>
                 </label>
-                <SelectNew
+                <Select
                   value={form.type}
                   onValueChange={(value) => value && setForm({ ...form, type: value })}
                   items={typeOptions}
@@ -284,7 +284,7 @@ export function EntityPropModal({
                   <label className="block mb-1 font-bold">
                     Storage Type <span className="text-red-500">*</span>
                   </label>
-                  <SelectNew
+                  <Select
                     value={form.generated?.type ?? "STORED"}
                     onValueChange={(value) => {
                       if (!value) return;
@@ -364,7 +364,7 @@ export function EntityPropModal({
                 {form.type === "number" && (
                   <div className="flex-1">
                     <label className="block mb-1 font-bold">Number Type</label>
-                    <SelectNew
+                    <Select
                       value={form.numberType}
                       onValueChange={(value) =>
                         setForm({
@@ -430,7 +430,7 @@ export function EntityPropModal({
               <div className="flex gap-[14px] mb-[14px]">
                 <div className="flex-1 max-w-[50%]">
                   <label className="block mb-1 font-bold">Virtual Type</label>
-                  <SelectNew
+                  <Select
                     value={form.virtualType}
                     onValueChange={(value) =>
                       setForm({
@@ -469,7 +469,7 @@ export function EntityPropModal({
                     <label className="block mb-1 font-bold">
                       Relation Type <span className="text-red-500">*</span>
                     </label>
-                    <SelectNew
+                    <Select
                       value={form.relationType ?? ""}
                       onValueChange={(value) =>
                         setForm({
@@ -515,7 +515,7 @@ export function EntityPropModal({
                         <label className="block mb-1 font-bold">
                           ON UPDATE <span className="text-red-500">*</span>
                         </label>
-                        <SelectNew
+                        <Select
                           value={form.onUpdate}
                           onValueChange={(value) =>
                             setForm({
@@ -531,7 +531,7 @@ export function EntityPropModal({
                         <label className="block mb-1 font-bold">
                           ON DELETE <span className="text-red-500">*</span>
                         </label>
-                        <SelectNew
+                        <Select
                           value={form.onDelete}
                           onValueChange={(value) =>
                             setForm({

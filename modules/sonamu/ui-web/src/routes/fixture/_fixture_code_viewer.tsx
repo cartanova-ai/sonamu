@@ -5,7 +5,7 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
 /** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
 
-import { Button, Checkbox, SelectNew } from "@sonamu-kit/react-components";
+import { Button, Checkbox, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
@@ -47,7 +47,7 @@ export default function FixtureCodeViewer({
   return (
     <div className="block p-4 bg-white border border-gray-200 rounded-md shadow-sm fixture-code-viewer-container">
       <div className="top-controls">
-        <SelectNew
+        <Select
           value={theme}
           onValueChange={(value) => setMarkdownTheme(value as ThemeKey)}
           items={getThemeOptions()}
@@ -154,7 +154,7 @@ const FixtureCode = ({
           Fixture ID: {fixture.entityId}#{String(fixture.data.id)}
         </strong>
         <div style={{ display: "flex", alignItems: "center" }}>
-          <SelectNew
+          <Select
             value={selectedSubset}
             onValueChange={(value) => value && setSelectedSubset(value)}
             items={subsetKeys}

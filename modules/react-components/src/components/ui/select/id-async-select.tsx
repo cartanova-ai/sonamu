@@ -3,7 +3,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useSonamuBaseContext } from "@/contexts";
-import { SelectNew } from "./select-new";
+import { Select } from "./select";
 
 // ============================================================================
 // Type Definition
@@ -48,7 +48,7 @@ export type IdAsyncSelectProps<
   displayField?: string;
   // 실제 저장/전송될 값의 필드명 (기본값: "id")
   valueField?: string;
-  // 기본 SelectNew Props
+  // 기본 Select Props
   placeholder?: string;
   clearable?: boolean;
   disabled?: boolean;
@@ -229,11 +229,11 @@ export function IdAsyncSelect<
   }, [rows, selectedRow, singleValue, multiSelectedRows, multiple, displayField, valueField]);
 
   // ============================================================
-  // SelectNew 렌더링
+  // Select 렌더링
   // ============================================================
   if (!multiple) {
     return (
-      <SelectNew
+      <Select
         items={items}
         value={value as TValue | undefined}
         onValueChange={(newValue: TValue | undefined) => {
@@ -254,7 +254,7 @@ export function IdAsyncSelect<
   }
 
   return (
-    <SelectNew
+    <Select
       items={items}
       value={(value as TValue[]) ?? []}
       onValueChange={(newValue: TValue[]) => {
