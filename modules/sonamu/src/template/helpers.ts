@@ -78,6 +78,55 @@ export function getRelationPropFromColName(entityId: string, colName: string): R
 }
 
 /**
+ * FK 컬럼명에서 실제 relation 이름을 추출합니다.
+ * BelongsToOne/OneToOne relation은 subset에서 FK 컬럼명(user_id)으로 생성되므로 변환이 필요하고,
+ * ManyToMany relation은 subset에서 relation명(employee)으로 생성되므로 변환이 불필요합니다.
+ *
+ * @example
+ * getRelationNameFromColumnName("Employee", "user_id") // "user"
+ * getRelationNameFromColumnName("Project", "tag_ids") // "tags"
+ */
+export function getRelationNameFromColumnName(entityId: string, colName: string): string {
+  // _ids (복수) 처리
+  if (colName.endsWith("_ids")) {
+    const baseName = colName.replace(/_ids$/, "");
+    // 먼저 base name으로 찾기
+    try {
+      const relProp = getRelationPropFromColName(entityId, baseName);
+      return relProp.name;
+    } catch {
+      // pluralize해서 찾기
+      try {
+        const pluralName = inflection.pluralize(baseName);
+        const relProp = getRelationPropFromColName(entityId, pluralName);
+        return relProp.name;
+      } catch {
+        return colName;
+      }
+    }
+  }
+  // _id (단수) 처리
+  if (colName.endsWith("_id") && colName !== "id") {
+    const baseName = colName.replace(/_id$/, "");
+    // 먼저 base name으로 찾기
+    try {
+      const relProp = getRelationPropFromColName(entityId, baseName);
+      return relProp.name;
+    } catch {
+      // singularize해서 찾기
+      try {
+        const singularName = inflection.singularize(baseName);
+        const relProp = getRelationPropFromColName(entityId, singularName);
+        return relProp.name;
+      } catch {
+        return colName;
+      }
+    }
+  }
+  return colName;
+}
+
+/**
  * 소스 코드에서 객체 선언을 추출합니다.
  * 중괄호 카운팅 방식으로 중첩된 객체도 정확히 파싱합니다.
  */

@@ -3,7 +3,11 @@ import { flat } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateOptions } from "../../types/types";
-import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
+import {
+  getEnumInfoFromColName,
+  getRelationNameFromColumnName,
+  getRelationPropFromColName,
+} from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
 
@@ -273,30 +277,7 @@ export class Template__view_list extends Template {
           const camelName = col.name.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
           label = `SD("common.${camelName}")`;
         } else {
-          // FK 컬럼인 경우 실제 relation 이름 사용
-          // BelongsToOne relation은 subset에서 FK 컬럼명(user_id)으로 생성되므로 변환 필요
-          // ManyToMany relation은 subset에서 relation명(employee)으로 생성되므로 변환 불필요(catch로 fallback)
-          let labelName = col.name;
-          // _ids (복수) 처리
-          if (col.name.endsWith("_ids")) {
-            try {
-              const baseName = col.name.replace(/_ids$/, "");
-              const relProp = getRelationPropFromColName(entityId, baseName);
-              labelName = relProp.name; // 실제 relation 이름
-            } catch {
-              labelName = col.name;
-            }
-          }
-          // _id (단수) 처리
-          else if (col.name.endsWith("_id") && col.name !== "id") {
-            try {
-              const baseName = col.name.replace(/_id$/, "");
-              const relProp = getRelationPropFromColName(entityId, baseName);
-              labelName = relProp.name; // 실제 relation 이름
-            } catch {
-              labelName = col.name;
-            }
-          }
+          const labelName = getRelationNameFromColumnName(entityId, col.name);
           label = `SD("entity.${names.capital}.${labelName}")`;
         }
 

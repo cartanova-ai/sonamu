@@ -1,9 +1,12 @@
-import inflection from "inflection";
 import { unique } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateOptions } from "../../types/types";
-import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
+import {
+  getEnumInfoFromColName,
+  getRelationNameFromColumnName,
+  getRelationPropFromColName,
+} from "../helpers";
 import { Template } from "../template";
 
 export class Template__view_form extends Template {
@@ -31,47 +34,6 @@ export class Template__view_form extends Template {
   }
   wrapFG(body: string, label?: string): string {
     return this.wrapFC(body, label);
-  }
-
-  // FK 컬럼명에서 실제 relation 이름을 추출하는 헬퍼 메서드
-  getRelationNameFromColumnName(entityId: string, colName: string): string {
-    // _ids (복수) 처리
-    if (colName.endsWith("_ids")) {
-      const baseName = colName.replace(/_ids$/, "");
-      // 먼저 base name으로 찾기
-      try {
-        const relProp = getRelationPropFromColName(entityId, baseName);
-        return relProp.name;
-      } catch {
-        // pluralize해서 찾기
-        try {
-          const pluralName = inflection.pluralize(baseName);
-          const relProp = getRelationPropFromColName(entityId, pluralName);
-          return relProp.name;
-        } catch {
-          return colName;
-        }
-      }
-    }
-    // _id (단수) 처리
-    if (colName.endsWith("_id") && colName !== "id") {
-      const baseName = colName.replace(/_id$/, "");
-      // 먼저 base name으로 찾기
-      try {
-        const relProp = getRelationPropFromColName(entityId, baseName);
-        return relProp.name;
-      } catch {
-        // singularize해서 찾기
-        try {
-          const singularName = inflection.singularize(baseName);
-          const relProp = getRelationPropFromColName(entityId, singularName);
-          return relProp.name;
-        } catch {
-          return colName;
-        }
-      }
-    }
-    return colName;
   }
 
   renderColumnImport(entityId: string, col: RenderingNode) {
@@ -108,7 +70,7 @@ export class Template__view_form extends Template {
 
   renderColumn(entityId: string, col: RenderingNode): string {
     const regExpr = `{...register("${col.name}")}`;
-    const placeholderName = this.getRelationNameFromColumnName(entityId, col.name);
+    const placeholderName = getRelationNameFromColumnName(entityId, col.name);
     const placeholder = `{SD("entity.${entityId}.${placeholderName}")}`;
 
     switch (col.renderType) {
@@ -444,11 +406,11 @@ ${(() => {
               .map((col) => {
                 // ManyToMany(array) 처리
                 if (col.renderType === "array" && col.name.endsWith("_ids")) {
-                  const relationName = this.getRelationNameFromColumnName(entityId, col.name);
+                  const relationName = getRelationNameFromColumnName(entityId, col.name);
                   return `\n          ${col.name}: row.${relationName}?.map((r) => r.id) ?? [],`;
                 }
                 // FK(number, string) 처리
-                const relationName = this.getRelationNameFromColumnName(entityId, col.name);
+                const relationName = getRelationNameFromColumnName(entityId, col.name);
                 if (col.nullable) {
                   return `\n          ${col.name}: row.${relationName}?.id ?? null,`;
                 } else {
@@ -554,7 +516,7 @@ ${columns
       }
       return col.label;
     })();
-    const labelName = this.getRelationNameFromColumnName(entityId, col.name);
+    const labelName = getRelationNameFromColumnName(entityId, col.name);
     return `                {/* ${label} */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">{SD("entity.${entityId}.${labelName}")}</label>
