@@ -56,8 +56,10 @@ export class Template__view_list extends Template {
       case "string-plain":
       case "string-date":
       case "number-id":
+      case "string-id":
         return `<>{${colName}}</>`;
-      case "number-fk_id": {
+      case "number-fk_id":
+      case "string-fk_id": {
         try {
           const baseName = col.name.includes(".")
             ? (col.name.split(".").pop() ?? col.name).replace("_id", "")
@@ -173,7 +175,7 @@ export class Template__view_list extends Template {
           return "";
         }
       }
-    } else if (col.renderType === "number-fk_id") {
+    } else if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         const targetNames = EntityManager.getNamesFromId(relProp.with);
@@ -206,7 +208,7 @@ export class Template__view_list extends Template {
         }
       }
       return `<${componentId} {...register('${col.name}')} ${isClearable ? "clearable" : ""} />`;
-    } else if (col.renderType === "number-fk_id") {
+    } else if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         componentId = `${relProp.with}IdAsyncSelect`;
@@ -300,7 +302,7 @@ export class Template__view_list extends Template {
         (col) =>
           col.name !== "id" &&
           col.name !== "queryMode" &&
-          (["enums", "number-id"].includes(col.renderType) || col.name.endsWith("_id")),
+          (["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType)),
       )
       // orderBy가 가장 뒤로 오게 순서 조정
       .sort((a) => {
@@ -380,7 +382,9 @@ import { ${(() => {
 import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
 ${(() => {
   // FK 필드의 AsyncIdConfig import
-  const fkColumns = filterColumns.filter((col) => col.name.endsWith("_id") && col.name !== "id");
+  const fkColumns = filterColumns.filter(
+    (col) => col.renderType === "number-fk_id" || col.renderType === "string-fk_id"
+  );
   const configNames = fkColumns
     .map((col) => {
       try {
@@ -598,7 +602,7 @@ ${filterColumns
       }
     }
     // FK 필드 (IdAsyncSelect)
-    if (col.name.endsWith("_id") && col.name !== "id") {
+    if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         return `                  <IdAsyncSelect

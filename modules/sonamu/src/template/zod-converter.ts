@@ -746,6 +746,10 @@ function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["r
       return "string-datetime";
     } else if (key.endsWith("date")) {
       return "string-date";
+    } else if (key === "id") {
+      return "string-id";
+    } else if (key.endsWith("_id")) {
+      return "string-fk_id";
     } else {
       return "string-plain";
     }

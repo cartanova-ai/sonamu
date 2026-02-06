@@ -40,15 +40,7 @@ export class Template__view_form extends Template {
     if (col.renderType === "enums") {
       const { id } = getEnumInfoFromColName(entityId, col.name);
       return { type: "enum" as const, enumId: id };
-    } else if (col.renderType === "number-fk_id") {
-      try {
-        const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-        return { type: "fk" as const, entityId: relProp.with };
-      } catch {
-        return null;
-      }
-    } else if (col.renderType === "string-plain" && col.name.endsWith("_id") && col.name !== "id") {
-      // string FK 처리 (자신의 PK인 id는 제외)
+    } else if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         return { type: "fk" as const, entityId: relProp.with };
@@ -75,21 +67,6 @@ export class Template__view_form extends Template {
 
     switch (col.renderType) {
       case "string-plain":
-        // string FK 체크: _id로 끝나지만 자신의 PK(id)는 제외
-        if (col.name.endsWith("_id") && col.name !== "id") {
-          try {
-            const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-            return `<IdAsyncSelect
-                    config={${relProp.with}AsyncIdConfig}
-                    subset="A"
-                    ${regExpr}
-                    ${col.optional || col.nullable ? "clearable" : ""}
-                  />`;
-          } catch {
-            // FK가 아니면 일반 Input으로 fallback
-          }
-        }
-        // 일반 string 필드 처리
         if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 256) {
           return `<Input className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         } else {
@@ -101,6 +78,7 @@ export class Template__view_form extends Template {
                     ${regExpr}
                   />`;
       case "number-id":
+      case "string-id":
         return `<input type="hidden" ${regExpr} />`;
       case "number-plain":
         return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
@@ -134,6 +112,7 @@ export class Template__view_form extends Template {
           return `<Input className="h-8 text-xs bg-white" ${regExpr} />`;
         }
       case "number-fk_id":
+      case "string-fk_id":
         try {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           return `<IdAsyncSelect
@@ -248,7 +227,7 @@ export class Template__view_form extends Template {
           const { id } = getEnumInfoFromColName(entityId, col.name);
           enumImports.add(id);
         } catch {}
-      } else if (col.renderType === "number-fk_id") {
+      } else if (col.renderType === "number-fk_id" || col.renderType === "string-fk_id") {
         try {
           const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           fkConfigImports.add(relProp.with);
@@ -282,7 +261,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  EnumSelect," : ""}${columns.some((col) => col.renderType === "number-fk_id" || (col.renderType === "string-plain" && col.name.endsWith("_id") && col.name !== "id") || (col.renderType === "array" && col.name.endsWith("_ids"))) ? "\n  IdAsyncSelect," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  EnumSelect," : ""}${columns.some((col) => col.renderType === "number-fk_id" || col.renderType === "string-fk_id" || (col.renderType === "array" && col.name.endsWith("_ids"))) ? "\n  IdAsyncSelect," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
@@ -398,9 +377,7 @@ ${(() => {
               .filter(
                 (col) =>
                   col.renderType === "number-fk_id" ||
-                  (col.renderType === "string-plain" &&
-                    col.name.endsWith("_id") &&
-                    col.name !== "id") ||
+                  col.renderType === "string-fk_id" ||
                   (col.renderType === "array" && col.name.endsWith("_ids")),
               )
               .map((col) => {
