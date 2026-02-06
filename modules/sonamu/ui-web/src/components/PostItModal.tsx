@@ -1,3 +1,4 @@
+import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
 import {
   Button,
   Dialog,
@@ -9,7 +10,6 @@ import {
   Input,
   Textarea,
 } from "@sonamu-kit/react-components";
-import { DndContext, useDraggable } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import type { PostIt } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
@@ -98,7 +98,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
   }, [open, postIt]);
 
   // 드래그 종료 시 위치 저장
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { delta } = event;
     setPosition((prev) => ({
       x: prev.x + delta.x,
@@ -120,7 +120,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
       if (dataSourceInput.trim()) {
         try {
           dataSource = JSON.parse(dataSourceInput);
-        } catch (e) {
+        } catch {
           alert("Invalid JSON in dataSource field");
           setSaving(false);
           return;
@@ -182,97 +182,98 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
             </DialogHeader>
           }
         >
+          <div className="overflow-y-scroll flex-1 space-y-4">
+            {/* Description */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Description</label>
+              <Input
+                value={form.desc || ""}
+                onChange={(e) => setForm({ ...form, desc: e.target.value })}
+                placeholder="짧은 설명 (UI 라벨용)"
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-        <div className="overflow-y-scroll flex-1 space-y-4">
-          {/* Description */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Description</label>
-            <Input
-              value={form.desc || ""}
-              onChange={(e) => setForm({ ...form, desc: e.target.value })}
-              placeholder="짧은 설명 (UI 라벨용)"
-              style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
+            {/* Note */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Note</label>
+              <Textarea
+                value={form.note || ""}
+                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                placeholder="자유로운 메모 (무제한 길이)"
+                rows={3}
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-          {/* Note */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Note</label>
-            <Textarea
-              value={form.note || ""}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              placeholder="자유로운 메모 (무제한 길이)"
-              rows={3}
-              style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
+            {/* Tags */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Tags</label>
+              <Input
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="쉼표로 구분 (예: core, auth, test)"
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-          {/* Tags */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Tags</label>
-            <Input
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="쉼표로 구분 (예: core, auth, test)"
-              style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
+            {/* Fixture Hint */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Fixture Hint</label>
+              <Textarea
+                value={form.fixtureHint || ""}
+                onChange={(e) => setForm({ ...form, fixtureHint: e.target.value })}
+                placeholder="Fixture 생성 시 힌트 (무제한 길이)"
+                rows={4}
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-          {/* Fixture Hint */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Fixture Hint</label>
-            <Textarea
-              value={form.fixtureHint || ""}
-              onChange={(e) => setForm({ ...form, fixtureHint: e.target.value })}
-              placeholder="Fixture 생성 시 힌트 (무제한 길이)"
-              rows={4}
-              style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
+            {/* Fixture Generator */}
+            <div>
+              <label className="mb-1 font-bold text-gray-900 flex items-center gap-1">
+                <CodeIcon className="w-4 h-4" />
+                Fixture Generator
+              </label>
+              <Input
+                value={form.fixtureGenerator || ""}
+                onChange={(e) => setForm({ ...form, fixtureGenerator: e.target.value })}
+                placeholder="예: faker.internet.email()"
+                className="font-mono text-sm"
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-          {/* Fixture Generator */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900 flex items-center gap-1">
-              <CodeIcon className="w-4 h-4" />
-              Fixture Generator
-            </label>
-            <Input
-              value={form.fixtureGenerator || ""}
-              onChange={(e) => setForm({ ...form, fixtureGenerator: e.target.value })}
-              placeholder="예: faker.internet.email()"
-              className="font-mono text-sm" style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
+            {/* Fixture Default */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Fixture Default</label>
+              <Input
+                value={
+                  form.fixtureDefault !== undefined
+                    ? typeof form.fixtureDefault === "string"
+                      ? form.fixtureDefault
+                      : JSON.stringify(form.fixtureDefault)
+                    : ""
+                }
+                onChange={(e) => setForm({ ...form, fixtureDefault: e.target.value })}
+                placeholder="기본값 (JSON 또는 문자열)"
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
 
-          {/* Fixture Default */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Fixture Default</label>
-            <Input
-              value={
-                form.fixtureDefault !== undefined
-                  ? typeof form.fixtureDefault === "string"
-                    ? form.fixtureDefault
-                    : JSON.stringify(form.fixtureDefault)
-                  : ""
-              }
-              onChange={(e) => setForm({ ...form, fixtureDefault: e.target.value })}
-              placeholder="기본값 (JSON 또는 문자열)"
-              style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
+            {/* Data Source */}
+            <div>
+              <label className="block mb-1 font-bold text-gray-900">Data Source</label>
+              <Textarea
+                value={dataSourceInput}
+                onChange={(e) => setDataSourceInput(e.target.value)}
+                placeholder={`JSON 형식:\n{\n  "strategy": "sample",\n  "limit": 10\n}`}
+                rows={6}
+                className="font-mono text-sm"
+                style={{ backgroundColor: "var(--color-postit-input)" }}
+              />
+            </div>
           </div>
-
-          {/* Data Source */}
-          <div>
-            <label className="block mb-1 font-bold text-gray-900">Data Source</label>
-            <Textarea
-              value={dataSourceInput}
-              onChange={(e) => setDataSourceInput(e.target.value)}
-              placeholder={`JSON 형식:\n{\n  "strategy": "sample",\n  "limit": 10\n}`}
-              rows={6}
-              className="font-mono text-sm" style={{ backgroundColor: "var(--color-postit-input)" }}
-            />
-          </div>
-        </div>
 
           <DialogFooter className="flex justify-end">
             <Button variant="default" onClick={handleSave} disabled={saving}>
