@@ -262,3 +262,105 @@ describe("E. Business Logic", () => {
   });
 });
 ```
+
+---
+
+## 컨벤션과 베스트 프랙티스
+
+### 에러 메시지 패턴
+
+일관된 에러 메시지를 위해 `this.modelName`과 `SD()` 함수를 사용합니다.
+
+**BAD: 하드코딩된 모델명**
+```typescript
+// findById
+if (!rows[0]) {
+  throw new NotFoundException(SD("error.entityNotFound")("Department", id));
+}
+
+// findMany
+throw new BadRequestException(SD("error.unknownSearchField")(params.search));
+```
+
+**GOOD: this.modelName 사용**
+```typescript
+// findById - 모델명 자동 인식
+if (!rows[0]) {
+  throw new NotFoundException(SD("notFound")(this.modelName, id));
+}
+
+// findMany - 짧고 명확한 키
+throw new BadRequestException(SD("search.invalidField")(params.search));
+```
+
+**장점:**
+- DRY 원칙 준수: 모델명 한 곳에서 관리
+- 리팩토링 안전: 모델명 변경 시 에러 메시지 자동 반영
+- 짧은 i18n 키: `notFound`, `search.invalidField`가 더 간결
+
+### satisfies 키워드
+
+TypeScript의 satisfies 키워드로 타입 추론을 유지하면서 타입 체크합니다.
+
+**BAD: 타입 추론 상실**
+```typescript
+const params: RoleListParams = {
+  num: 24,
+  page: 1,
+  search: "id" as const,
+  orderBy: "id-desc" as const,
+  ...rawParams,
+};
+```
+
+**GOOD: satisfies로 타입 체크 + 추론 유지**
+```typescript
+const params = {
+  num: 24,
+  page: 1,
+  search: "id" as const,
+  orderBy: "id-desc" as const,
+  ...rawParams,
+} satisfies RoleListParams;
+```
+
+**장점:**
+- 컴파일 타임 검증: params가 RoleListParams 타입을 만족하는지 확인
+- 타입 추론 유지: params의 실제 타입이 좁혀진 상태로 유지됨
+- IDE 지원 향상: 자동완성과 타입 체크가 더 정확
+
+### debug 옵션
+
+executeSubsetQuery의 debug 옵션은 기본값이 false이므로 명시할 필요 없습니다.
+
+**BAD: 불필요한 debug: false**
+```typescript
+return this.executeSubsetQuery({
+  subset,
+  qb,
+  params,
+  enhancers,
+  debug: false,  // 기본값이므로 불필요
+});
+```
+
+**GOOD: 기본값 활용**
+```typescript
+return this.executeSubsetQuery({
+  subset,
+  qb,
+  params,
+  enhancers,
+});
+```
+
+**debug: true를 사용하는 경우:**
+```typescript
+// 디버깅 시에만 명시
+return this.executeSubsetQuery({
+  subset,
+  qb,
+  params,
+  debug: true,  // SQL 쿼리 로그 출력
+});
+```

@@ -456,3 +456,156 @@ if (params.orderBy) {
 - 스캐폴딩 후 model의 orderBy 케이스 확인
 - entity.json의 orderBy enum과 일치하는지 확인
 - search 케이스, enhancers 등 다른 커스텀 로직도 확인
+
+---
+
+## 코드 품질과 일관성
+
+### DRY 원칙: this.modelName 사용
+
+에러 메시지에서 모델명을 하드코딩하지 않고 `this.modelName`을 사용합니다.
+
+**BAD: 모델명 하드코딩**
+```typescript
+// department.model.ts
+if (!rows[0]) {
+  throw new NotFoundException(SD("notFound")("Department", id));
+}
+
+// user.model.ts
+if (!rows[0]) {
+  throw new NotFoundException(SD("notFound")("User", id));
+}
+```
+
+**GOOD: this.modelName 활용**
+```typescript
+// 모든 Model 공통
+if (!rows[0]) {
+  throw new NotFoundException(SD("notFound")(this.modelName, id));
+}
+```
+
+**장점:**
+- 복붙 실수 방지: 다른 모델 코드 복사 시 모델명 수정 불필요
+- 일관성: 모든 모델이 동일한 패턴 사용
+- 유지보수: constructor의 modelName만 변경하면 모든 에러 메시지 자동 반영
+
+### 일관된 i18n 키 사용
+
+프로젝트 전체에서 동일한 목적의 i18n 키를 일관되게 사용합니다.
+
+**BAD: 중복된 i18n 키**
+```typescript
+// 여러 모델에서 서로 다른 키 사용
+throw new NotFoundException(SD("error.entityNotFound")(this.modelName, id));
+throw new NotFoundException(SD("error.notFound")(this.modelName, id));
+throw new NotFoundException(SD("notFound")(this.modelName, id));
+
+// 검색 필드 오류
+throw new BadRequestException(SD("error.unknownSearchField")(params.search));
+throw new BadRequestException(SD("error.invalidSearchField")(params.search));
+```
+
+**GOOD: 표준 i18n 키 사용**
+```typescript
+// Entity 조회 실패 - 짧고 명확
+throw new NotFoundException(SD("notFound")(this.modelName, id));
+
+// 검색 필드 오류 - search 네임스페이스
+throw new BadRequestException(SD("search.invalidField")(params.search));
+```
+
+**권장 i18n 키 패턴:**
+| 상황 | i18n 키 | 사용처 |
+|------|---------|--------|
+| Entity 조회 실패 | `notFound` | findById |
+| 잘못된 검색 필드 | `search.invalidField` | findMany search |
+| 필수 필드 누락 | `validation.required` | save 검증 |
+| 권한 없음 | `error.forbidden` | guards 실패 |
+| 로그인 필요 | `error.loginRequired` | Context.user null |
+
+### 벌크 리팩토링 전략
+
+여러 모델 파일을 일관되게 수정할 때 sed를 활용한 자동화:
+
+**1단계: 패턴 확인**
+```bash
+# 수정 대상 파일 찾기
+grep -r 'SD("error.entityNotFound")' packages/api/src/application/*/
+```
+
+**2단계: 변경 검증 (dry-run)**
+```bash
+# 변경될 내용 미리 확인
+sed -n 's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/p' file.ts
+```
+
+**3단계: 일괄 적용**
+```bash
+# 모든 model 파일 수정
+find packages/api/src/application -name "*.model.ts" -exec sed -i '' \
+  's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/g' {} \;
+```
+
+**4단계: 빌드로 검증**
+```bash
+# TypeScript 타입 체크
+pnpm typecheck
+
+# 전체 빌드
+pnpm build
+```
+
+**주의사항:**
+- 반드시 git commit 후 실행 (롤백 가능하도록)
+- dry-run으로 변경 내용 먼저 확인
+- 빌드로 타입 오류 체크
+- 테스트 실행으로 동작 검증
+
+### 타입 체크 패턴
+
+**satisfies vs as const:**
+
+```typescript
+// BAD: 타입 단언으로 타입 체크 우회
+const params = {
+  num: 24,
+  page: 1,
+  search: "id" as const,
+  orderBy: "wrong-value" as const,  // 오류 감지 안 됨
+  ...rawParams,
+} as RoleListParams;
+
+// GOOD: satisfies로 컴파일 타임 검증
+const params = {
+  num: 24,
+  page: 1,
+  search: "id" as const,
+  orderBy: "wrong-value" as const,  // 컴파일 오류 발생!
+  ...rawParams,
+} satisfies RoleListParams;
+```
+
+**적용 권장 위치:**
+- findMany의 params 기본값
+- 복잡한 객체 리터럴 (타입 체크가 중요한 경우)
+
+### 코드 리뷰 체크리스트
+
+새로운 Model 작성 시:
+- [ ] `this.modelName` 사용 (하드코딩 금지)
+- [ ] 표준 i18n 키 사용 (`notFound`, `search.invalidField`)
+- [ ] satisfies 키워드 활용 (타입 안전성)
+- [ ] debug 옵션 불필요하게 명시하지 않음
+- [ ] orderBy 모든 케이스 exhaustive 처리
+- [ ] ManyToMany relation이 있으면 _ids 배열 SaveParams에 추가
+
+20개 Model 일괄 수정 시:
+- [ ] miomock 같은 레퍼런스 코드와 패턴 비교
+- [ ] 불일치하는 패턴 우선순위 정리
+- [ ] sed 등으로 자동화 스크립트 작성
+- [ ] 변경 전 git commit
+- [ ] dry-run으로 변경 내용 검증
+- [ ] pnpm typecheck로 타입 오류 확인
+- [ ] pnpm test로 동작 검증
