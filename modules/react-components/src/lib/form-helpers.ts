@@ -72,9 +72,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   defaultValue: U,
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
-  const [row, setRow] = useState<Record<string, any>>({});
   const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
-
   const { uploader } = useSonamuBaseContext();
 
   function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
@@ -103,7 +101,6 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   return {
     form,
     setForm,
-    row,
     register: (
       objPath: string,
       _emptyStringTo?: "normal" | "nullable" | "optional",
@@ -133,21 +130,9 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
         setForm(set(form, objPath, processedValue));
       };
 
-      // row 업데이트 로직
-      const updateRow = (newRow: any) => {
-        setRow((prev) => {
-          if (newRow === undefined || newRow === null) {
-            const { [objPath]: _, ...rest } = prev;
-            return rest;
-          }
-          return { ...prev, [objPath]: newRow };
-        });
-      };
-
       const result: FormRegisterReturn = {
         value: srcValue === undefined || srcValue === null ? "" : srcValue,
         onValueChange: updateValue,
-        onRowChange: updateRow,
       };
 
       // error가 있으면 추가
@@ -186,7 +171,6 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
     },
     reset: (): void => {
       setForm(defaultValue);
-      setRow({});
     },
   };
 }

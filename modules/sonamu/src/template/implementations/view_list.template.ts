@@ -302,7 +302,7 @@ export class Template__view_list extends Template {
         (col) =>
           col.name !== "id" &&
           col.name !== "queryMode" &&
-          (["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType)),
+          ["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType),
       )
       // orderBy가 가장 뒤로 오게 순서 조정
       .sort((a) => {
@@ -383,7 +383,7 @@ import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
 ${(() => {
   // FK 필드의 AsyncIdConfig import
   const fkColumns = filterColumns.filter(
-    (col) => col.renderType === "number-fk_id" || col.renderType === "string-fk_id"
+    (col) => col.renderType === "number-fk_id" || col.renderType === "string-fk_id",
   );
   const configNames = fkColumns
     .map((col) => {
