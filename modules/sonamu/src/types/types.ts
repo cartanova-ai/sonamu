@@ -213,6 +213,7 @@ type _RelationProp = {
   nullable?: boolean; // DEFAULT: false
   toFilter?: true; // DEFAULT: false
   desc?: string;
+  postIt?: PostIt; // post-it 메타데이터
 };
 export type OneToOneRelationProp = _RelationProp & {
   relationType: "OneToOne";
