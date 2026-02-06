@@ -13,11 +13,11 @@ import { propToZodType, zodTypeToRenderingNode } from "./zod-converter";
  */
 export async function getColumnsNode(entityId: string, subsetKey: string): Promise<RenderingNode> {
   const entity = EntityManager.get(entityId);
-  const subset = entity.subsets[subsetKey];
-  if (subset === undefined) {
+  const subsetDef = entity.subsets[subsetKey];
+  if (subsetDef === undefined) {
     throw new ServiceUnavailableException(SD("sonamu.error.subsetNotFound")(subsetKey));
   }
-  const propNodes = entity.fieldExprsToPropNodes(subset);
+  const propNodes = entity.fieldExprsToPropNodes(subsetDef);
   const rootPropNode: EntityPropNode = {
     nodeType: "object",
     children: propNodes,

@@ -11,6 +11,8 @@ import {
   type EntityProp,
   type EntityPropNode,
   type EntitySubsetRow,
+  getEnumDefValues,
+  getSubsetFields,
   isBelongsToOneRelationProp,
   isEnumProp,
   isHasManyRelationProp,
@@ -104,16 +106,19 @@ export class Entity {
     // indexes
     this.indexes = indexes ?? [];
 
-    // subsets: SubsetField[]를 파싱하여 subsets(일반)와 subsetsInternal(internal)로 분리
+    // subsets: SubsetDef에서 SubsetField[]를 추출하여 subsets(일반)와 subsetsInternal(internal)로 분리
     this.subsets = {};
     this.subsetsInternal = {};
-    for (const [key, fields] of Object.entries(subsets ?? {})) {
+    for (const [key, subsetDef] of Object.entries(subsets ?? {})) {
+      const fields = getSubsetFields(subsetDef);
       this.subsets[key] = fields.filter((f) => !isInternalSubsetField(f)).map(normalizeSubsetField);
       this.subsetsInternal[key] = fields.filter(isInternalSubsetField).map(normalizeSubsetField);
     }
 
-    // enums
-    this.enumLabels = enums ?? {};
+    // enums: EnumDef에서 values를 추출하여 처리
+    this.enumLabels = Object.fromEntries(
+      Object.entries(enums ?? {}).map(([key, enumDef]) => [key, getEnumDefValues(enumDef)]),
+    );
     this.enums = Object.fromEntries(
       Object.entries(this.enumLabels).map(([key, enumLabel]) => {
         return [key, z.enum(Object.keys(enumLabel) as unknown as readonly [string, ...string[]])];
