@@ -32,8 +32,27 @@ export function useSetLocale() {
 export function useSD() {
   const locale = useLocale();
   return <K extends DictKey>(key: K): SDReturnType<UiWebDictionary, K> => {
-    const dict = dictionaries[locale];
-    return (dict[key] ?? ko[key] ?? key) as SDReturnType<UiWebDictionary, K>;
+    // 1. 현재 locale에서 조회
+    if (dictionaries[locale]?.[key] !== undefined) {
+      return dictionaries[locale][key] as unknown as SDReturnType<UiWebDictionary, K>;
+    }
+
+    // 2. default locale (ko)에서 조회
+    if (locale !== "ko" && ko[key] !== undefined) {
+      return ko[key] as unknown as SDReturnType<UiWebDictionary, K>;
+    }
+
+    // 3. supported locales 순회
+    for (const { value: supportedLocale } of SUPPORTED_LOCALES) {
+      if (supportedLocale !== locale && supportedLocale !== "ko") {
+        if (dictionaries[supportedLocale]?.[key] !== undefined) {
+          return dictionaries[supportedLocale][key] as unknown as SDReturnType<UiWebDictionary, K>;
+        }
+      }
+    }
+
+    // 4. key 반환
+    return key as unknown as SDReturnType<UiWebDictionary, K>;
   };
 }
 

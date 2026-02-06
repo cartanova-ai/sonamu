@@ -25,11 +25,31 @@ type SDReturnType<K extends DictKey> = SonamuDict[K] extends (...args: infer P) 
   ? (...args: P) => LocalizedString
   : LocalizedString;
 
-const FALLBACK_LOCALE = "en";
 function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K> {
+  const { defaultLocale, supportedLocales } = Sonamu.config.i18n;
+
+  // 1. 지정된 locale에서 조회
   const dict = dictionaries[locale];
-  const value = dict?.[key] ?? dictionaries[FALLBACK_LOCALE]?.[key] ?? key;
-  return value as unknown as SDReturnType<K>;
+  if (dict?.[key] !== undefined) {
+    return dict[key] as unknown as SDReturnType<K>;
+  }
+
+  // 2. default locale에서 조회
+  if (locale !== defaultLocale && dictionaries[defaultLocale]?.[key] !== undefined) {
+    return dictionaries[defaultLocale][key] as unknown as SDReturnType<K>;
+  }
+
+  // 3. supported locales 순회
+  for (const supportedLocale of supportedLocales) {
+    if (supportedLocale !== locale && supportedLocale !== defaultLocale) {
+      if (dictionaries[supportedLocale]?.[key] !== undefined) {
+        return dictionaries[supportedLocale][key] as unknown as SDReturnType<K>;
+      }
+    }
+  }
+
+  // 4. 모두 실패 시 key 반환
+  return key as unknown as SDReturnType<K>;
 }
 
 /**
