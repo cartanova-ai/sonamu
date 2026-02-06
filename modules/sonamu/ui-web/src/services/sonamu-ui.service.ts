@@ -523,6 +523,70 @@ export namespace SonamuUIService {
       data: { keys },
     });
   }
+
+  // PostIt 업데이트 메서드들
+  export function updateEntityPostIt(entityId: string, postIt: import("sonamu").PostIt): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "entity",
+        postIt,
+      },
+    });
+  }
+
+  export function updatePropPostIt(
+    entityId: string,
+    propName: string,
+    postIt: import("sonamu").PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "prop",
+        propName,
+        postIt,
+      },
+    });
+  }
+
+  export function updateEnumPostIt(
+    entityId: string,
+    enumId: string,
+    postIt: import("sonamu").PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "enum",
+        enumId,
+        postIt,
+      },
+    });
+  }
+
+  export function updateSubsetPostIt(
+    entityId: string,
+    subsetKey: string,
+    postIt: import("sonamu").PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "subset",
+        subsetKey,
+        postIt,
+      },
+    });
+  }
 }
 
 export type ScaffoldingStatus = {
