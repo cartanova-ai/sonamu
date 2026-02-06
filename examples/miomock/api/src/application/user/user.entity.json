@@ -5,7 +5,8 @@
   "postIt": {
     "desc": "사용자",
     "note": "시스템의 모든 사용자를 관리하는 핵심 Entity입니다. 직원과 OneToOne 관계를 가집니다.",
-    "tags": ["core", "auth"]
+    "tags": ["core", "auth"],
+    "fixtureHint": "한국인 이름"
   },
   "props": [
     { "name": "id", "type": "string", "desc": "ID" },
@@ -26,10 +27,7 @@
       "desc": "이름",
       "type": "string",
       "length": 255,
-      "postIt": {
-        "fixtureHint": "한글 이름 2-4자",
-        "fixtureDefault": "테스트사용자"
-      }
+      "postIt": { "fixtureHint": "한글 이름 2-4자", "fixtureDefault": "테스트사용자" }
     },
     { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255 },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
@@ -48,12 +46,7 @@
     },
     { "name": "image", "type": "string", "nullable": true, "desc": "프로필 이미지" },
     { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" },
-    {
-      "name": "two_factor_enabled",
-      "type": "boolean",
-      "nullable": true,
-      "desc": "2FA 활성화 여부"
-    }
+    { "name": "two_factor_enabled", "type": "boolean", "nullable": true, "desc": "2FA 활성화 여부" }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
