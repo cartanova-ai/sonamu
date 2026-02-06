@@ -45,11 +45,11 @@
   },
   {
     "path": "src/application/employee/employee.entity.json",
-    "checksum": "dc6568300f3032a80c03e436fdbfca793c4cc165"
+    "checksum": "31501809863752527565f3aed56bd32ee9de6166"
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "decf983930bc04f431e7b2334c749d7b483a7f8a"
+    "checksum": "f1dc2d0ce1d8a33d44fac7ebadd054b965d89b68"
   },
   {
     "path": "src/application/employee/employee.types.ts",
@@ -97,7 +97,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "dc9e98656e82c80695ed35253c80399d058c7402"
+    "checksum": "691ff7985402c3eb32ee5205625077c22dac928e"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -165,7 +165,7 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "6ce9ee0337ce9bc95c261016957720b48f0779cf"
+    "checksum": "6141c11f5069d15ce31680df6919938d19ba9d1b"
   },
   {
     "path": "src/sonamu.config.ts",

@@ -92,5 +92,8 @@
       "projs.description"
     ]
   },
-  "enums": { "EmployeeOrderBy": { "id-desc": "ID최신순" }, "EmployeeSearchField": { "id": "ID" } }
+  "enums": {
+    "EmployeeOrderBy": { "id-desc": "ID최신순" },
+    "EmployeeSearchField": { "id": "ID", "employee_number": "사번" }
+  }
 }

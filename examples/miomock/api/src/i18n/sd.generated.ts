@@ -232,6 +232,7 @@ const entityLabels = {
   "entity.Employee.projs": "참여중인 프로젝트",
   "enum.EmployeeOrderBy.id-desc": "ID최신순",
   "enum.EmployeeSearchField.id": "ID",
+  "enum.EmployeeSearchField.employee_number": "사번",
   "entity.File": "FILE",
   "entity.File.id": "ID",
   "entity.File.created_at": "등록일시",

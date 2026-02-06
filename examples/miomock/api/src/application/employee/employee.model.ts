@@ -95,8 +95,8 @@ class EmployeeModelClass extends BaseModelClass<
           // NaN이면 빈 배열로 검색해서 결과가 0개가 되도록 함
           qb.whereIn("employees.id", []);
         }
-        // } else if (params.search === "field") {
-        //   qb.where("employees.field", "like", `%${params.keyword}%`);
+      } else if (params.search === "employee_number") {
+        qb.where("employees.employee_number", "like", `%${params.keyword}%`);
       } else {
         throw new BadRequestException(SD("search.invalidField")(params.search));
       }

@@ -597,7 +597,7 @@ function SelectTestPage() {
                   <IdAsyncSelect
                     config={EmployeeAsyncIdConfig}
                     subset="A"
-                    displayField="id"
+                    displayField="employee_number"
                     {...idAsyncMultiForm.register("value")}
                     onRowChange={(rows) => setIdAsyncMultiRows(rows as Employee[])}
                     multiple={true}

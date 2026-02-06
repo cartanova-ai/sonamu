@@ -56,9 +56,11 @@ export const DocumentStatusLabel = { draft: "초안", published: "게시됨", ar
 export const EmployeeOrderBy = z.enum(["id-desc"]).describe("EmployeeOrderBy");
 export type EmployeeOrderBy = z.infer<typeof EmployeeOrderBy>;
 export const EmployeeOrderByLabel = { "id-desc": "ID최신순" };
-export const EmployeeSearchField = z.enum(["id"]).describe("EmployeeSearchField");
+export const EmployeeSearchField = z
+  .enum(["id", "employee_number"])
+  .describe("EmployeeSearchField");
 export type EmployeeSearchField = z.infer<typeof EmployeeSearchField>;
-export const EmployeeSearchFieldLabel = { id: "ID" };
+export const EmployeeSearchFieldLabel = { id: "ID", employee_number: "사번" };
 
 // Enums: File
 export const FileOrderBy = z.enum(["id-desc"]).describe("FileOrderBy");
