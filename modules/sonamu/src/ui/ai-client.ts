@@ -9,6 +9,7 @@ import { EntityManager } from "../entity/entity-manager";
 import {
   type EntityProp,
   type FixtureRecord,
+  getEnumDefValues,
   isInternalSubsetField,
   normalizeSubsetField,
   TemplateOptions,
@@ -483,8 +484,11 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               }
 
               if (updates.enums !== undefined) {
+                const convertedEnums = Object.fromEntries(
+                  Object.entries(updates.enums).map(([key, enumDef]) => [key, getEnumDefValues(enumDef)]),
+                );
                 entity.enumLabels =
-                  mode === "replace" ? updates.enums : { ...entity.enumLabels, ...updates.enums };
+                  mode === "replace" ? convertedEnums : { ...entity.enumLabels, ...convertedEnums };
               }
 
               // 저장 전 검증
