@@ -869,6 +869,72 @@ registerSSR({
 });
 ```
 
+## 프로젝트 초기 설정
+
+### 프로젝트명 변경 (신규 프로젝트 생성 시)
+
+사용자가 프로젝트 생성을 요청했을 때, 프론트엔드의 "Sonamu" 텍스트를 프로젝트명으로 변경해야 합니다.
+
+**변경해야 할 파일 4개:**
+
+1. **`packages/web/index.html`** - 브라우저 탭 제목
+```html
+<!-- 변경 전 -->
+<title>Sonamu Project</title>
+
+<!-- 변경 후 -->
+<title>{프로젝트명}</title>
+```
+
+2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head 설정 (가장 중요!)
+```typescript
+// 변경 전
+head: () => ({
+  meta: [
+    { title: "Sonamu Project" },
+  ],
+}),
+
+// 변경 후
+head: () => ({
+  meta: [
+    { title: "{프로젝트명}" },
+  ],
+}),
+```
+
+**중요:** `__root.tsx`를 변경하지 않으면 HMR 시 title이 "Sonamu"로 되돌아갑니다!
+
+3. **`packages/web/src/routes/index.tsx`** - 메인 페이지 제목
+```tsx
+// 변경 전
+<h1 className="text-2xl font-bold mb-4">Welcome to Sonamu</h1>
+
+// 변경 후
+<h1 className="text-2xl font-bold mb-4">Welcome to {프로젝트명}</h1>
+```
+
+4. **`packages/web/src/components/Sidebar.tsx`** - 사이드바 앱 이름
+```typescript
+// 변경 전
+const title = isAdmin ? "Admin" : "Sonamu App";
+
+// 변경 후
+const title = isAdmin ? "Admin" : "{프로젝트명}";
+```
+
+**작업 순서:**
+1. 사용자가 "KOPRI 프로젝트 생성해줘" 요청
+2. API 프로젝트 생성 (`pnpm create sonamu kopri`)
+3. **프론트엔드 4개 파일에서 "Sonamu" → "KOPRI" 변경**
+4. 개발 서버 실행 후 브라우저에서 확인
+
+**확인 방법:**
+- 브라우저 탭에 프로젝트명이 표시되는지 확인
+- 파일 저장 시 HMR로 탭 제목이 변경되지 않는지 확인 (변경되면 `__root.tsx` 누락)
+
+---
+
 ## Rules
 
 - NEVER manually modify `services.generated.ts`
