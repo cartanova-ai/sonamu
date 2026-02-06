@@ -400,7 +400,7 @@ export function isInternalSubsetField(f: SubsetField): boolean {
  * 하위 호환성을 위해 SubsetField[] 배열 형태도 지원합니다.
  */
 export type SubsetDef =
-  | SubsetField[] // 하위 호환성: 기존 배열 형태
+  | SubsetField[] // 기존 배열 형태
   | {
       // 새로운 객체 형태
       fields: SubsetField[];
@@ -413,7 +413,7 @@ export type SubsetDef =
  * 하위 호환성을 위해 Record<string, string> 형태도 지원합니다.
  */
 export type EnumDef =
-  | Record<string, string> // 하위 호환성: 기존 Record 형태
+  | Record<string, string> // 기존 Record 형태
   | {
       // 새로운 객체 형태
       values: Record<string, string>;
@@ -423,26 +423,32 @@ export type EnumDef =
 /**
  * SubsetDef가 새로운 객체 형태인지 확인
  */
-export function isSubsetDefWithPostIt(def: SubsetDef): def is { fields: SubsetField[]; postIt?: PostIt } {
+export function isSubsetDefWithPostIt(
+  def: SubsetDef,
+): def is { fields: SubsetField[]; postIt?: PostIt } {
   return !Array.isArray(def) && "fields" in def;
 }
 
 /**
  * EnumDef가 새로운 객체 형태인지 확인
  */
-export function isEnumDefWithPostIt(def: EnumDef): def is { values: Record<string, string>; postIt?: PostIt } {
-  return "values" in def && !("postIt" in def && def.postIt === undefined && Object.keys(def).length > 1);
+export function isEnumDefWithPostIt(
+  def: EnumDef,
+): def is { values: Record<string, string>; postIt?: PostIt } {
+  return (
+    "values" in def && !("postIt" in def && def.postIt === undefined && Object.keys(def).length > 1)
+  );
 }
 
 /**
- * SubsetDef에서 fields 추출 (하위 호환성)
+ * SubsetDef에서 fields 추출
  */
 export function getSubsetFields(def: SubsetDef): SubsetField[] {
   return Array.isArray(def) ? def : def.fields;
 }
 
 /**
- * EnumDef에서 values 추출 (하위 호환성)
+ * EnumDef에서 values 추출
  */
 export function getEnumDefValues(def: EnumDef): Record<string, string> {
   return isEnumDefWithPostIt(def) ? def.values : def;
@@ -1404,11 +1410,13 @@ const EntityIndexSchema = z
  * 하위 호환성을 위해 배열 형태와 객체 형태 둘 다 지원합니다.
  */
 const SubsetDefSchema = z.union([
-  // 기존 배열 형태 (하위 호환성)
+  // 기존 배열 형태
   z.array(z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })])),
   // 새로운 객체 형태
   z.object({
-    fields: z.array(z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })])),
+    fields: z.array(
+      z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
+    ),
     postIt: PostItSchema.optional(),
   }),
 ]);
@@ -1419,7 +1427,7 @@ const SubsetDefSchema = z.union([
  * 하위 호환성을 위해 Record 형태와 객체 형태 둘 다 지원합니다.
  */
 const EnumDefSchema = z.union([
-  // 기존 Record 형태 (하위 호환성)
+  // 기존 Record 형태
   z.record(z.string(), z.string()),
   // 새로운 객체 형태
   z.object({
