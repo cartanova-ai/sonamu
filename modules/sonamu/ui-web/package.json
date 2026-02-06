@@ -23,6 +23,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@xyflow/react": "catalog:",
     "axios": "catalog:",
+    "class-variance-authority": "catalog:",
     "classnames": "catalog:",
     "inflection": "catalog:",
     "jotai": "catalog:",
