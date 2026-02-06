@@ -16,6 +16,34 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 /*
   Model-Definition
 */
+
+/**
+ * post-it: 범용 메타데이터 시스템
+ *
+ * Entity, Prop, Enum, Subset에 추가할 수 있는 범용 메타데이터입니다.
+ * Fixture 생성, UI 라벨, 문서화 등 다양한 용도로 활용할 수 있습니다.
+ */
+export type PostIt = {
+  // 일반 정보
+  desc?: string; // 짧은 설명 (UI 라벨용)
+  note?: string; // 자유로운 메모 (무제한 길이)
+  tags?: string[]; // 분류/검색용 태그
+
+  // Fixture 생성 관련
+  fixtureHint?: string; // 생성 힌트 (무제한 길이, 짧은 패턴 또는 긴 설명 가능)
+  fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
+  fixtureDefault?: unknown; // 기본값
+
+  // 참조 데이터 관련
+  dataSource?: {
+    strategy: "sample" | "ids" | "query" | "file" | "recent" | "random";
+    config?: unknown; // 전략별 설정
+  };
+
+  // 확장성
+  [key: string]: unknown; // 사용자 정의 메타데이터
+};
+
 export type GeneratedColumnType = "STORED" | "VIRTUAL";
 export type GeneratedColumn = {
   type: GeneratedColumnType;
@@ -28,7 +56,18 @@ export type CommonProp = {
   desc?: string;
   dbDefault?: string;
   generated?: GeneratedColumn;
+  postIt?: PostIt; // post-it 메타데이터
 };
+
+/**
+ * 하위 호환성을 위한 헬퍼 함수
+ *
+ * desc 필드와 postIt.desc 둘 다 지원합니다.
+ * postIt.desc가 있으면 우선적으로 사용하고, 없으면 desc를 사용합니다.
+ */
+export function getDescription(item: { desc?: string; postIt?: PostIt }): string | undefined {
+  return item.postIt?.desc || item.desc;
+}
 export type IntegerProp = CommonProp & {
   type: "integer";
 }; // PG: integer / TS: number / JSON: number
@@ -360,6 +399,7 @@ export type EntityJson = {
   parentId?: string;
   table: string;
   title?: string;
+  postIt?: PostIt; // post-it 메타데이터
   props: EntityProp[];
   indexes: EntityIndex[];
   subsets: {
@@ -939,6 +979,28 @@ const GeneratedColumnSchema = z.object({
   expression: z.string(),
 });
 
+/**
+ * PostIt 스키마 검증
+ *
+ * post-it 메타데이터의 유효성을 검증합니다.
+ */
+const PostItSchema = z
+  .object({
+    desc: z.string().optional(),
+    note: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    fixtureHint: z.string().optional(),
+    fixtureGenerator: z.string().optional(),
+    fixtureDefault: z.unknown().optional(),
+    dataSource: z
+      .object({
+        strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),
+        config: z.unknown().optional(),
+      })
+      .optional(),
+  })
+  .catchall(z.unknown()); // 사용자 정의 메타데이터 허용
+
 const BasePropFields = {
   name: z.string(),
   desc: z.string().optional(),
@@ -946,6 +1008,7 @@ const BasePropFields = {
   toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
   generated: GeneratedColumnSchema.optional(),
+  postIt: PostItSchema.optional(),
 };
 
 // 부가 필드가 필요없는 prop
@@ -1289,6 +1352,7 @@ export const EntityJsonSchema = z
     title: z.string().describe("Entity 이름"),
     table: z.string().describe("snake_case로 된 테이블명"),
     parentId: z.string().optional().describe("부모 Entity ID"),
+    postIt: PostItSchema.optional(),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),
     subsets: z.record(
