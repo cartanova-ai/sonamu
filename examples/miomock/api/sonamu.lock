@@ -133,7 +133,7 @@
   },
   {
     "path": "src/application/user/user.entity.json",
-    "checksum": "edc502ac33fda52acdd0c67d1bb317543e4122fd"
+    "checksum": "d5edd53fabf57636004fb5fa4a9aa56692448589"
   },
   {
     "path": "src/application/user/user.model.ts",

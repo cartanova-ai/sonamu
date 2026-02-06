@@ -2,11 +2,35 @@
   "id": "User",
   "table": "users",
   "title": "USER",
+  "postIt": {
+    "desc": "사용자",
+    "note": "시스템의 모든 사용자를 관리하는 핵심 Entity입니다. 직원과 OneToOne 관계를 가집니다.",
+    "tags": ["core", "auth"]
+  },
   "props": [
     { "name": "id", "type": "string", "desc": "ID" },
     { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
-    { "name": "email", "desc": "이메일", "type": "string", "length": 255 },
-    { "name": "username", "desc": "이름", "type": "string", "length": 255 },
+    {
+      "name": "email",
+      "desc": "이메일",
+      "type": "string",
+      "length": 255,
+      "postIt": {
+        "desc": "이메일 주소",
+        "fixtureHint": "실제 이메일 형식이어야 하며, 도메인은 @test.com 사용 권장",
+        "fixtureGenerator": "faker.internet.email()"
+      }
+    },
+    {
+      "name": "username",
+      "desc": "이름",
+      "type": "string",
+      "length": 255,
+      "postIt": {
+        "fixtureHint": "한글 이름 2-4자",
+        "fixtureDefault": "테스트사용자"
+      }
+    },
     { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255 },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
