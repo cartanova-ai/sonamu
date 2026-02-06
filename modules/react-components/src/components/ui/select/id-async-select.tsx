@@ -11,10 +11,12 @@ import { Select } from "./select";
 
 // AsyncIdConfig 타입
 // services.generated.ts에서 생성되는 config와 호환됨
-// TSubsetMapping은 onRowChange의 타입 추론에 사용됨
+// _TSubsetMapping은 onRowChange의 타입 추론에 사용됨
+// _TListParams는 baseListParams의 타입 추론에 사용됨
 export type AsyncIdConfig<
   TSubsetKey extends string = string,
   _TSubsetMapping = Record<string, unknown>,
+  _TListParams extends Record<string, unknown> = Record<string, unknown>,
 > = {
   placeholderKey: string;
   useList: <T extends TSubsetKey>(
@@ -23,6 +25,16 @@ export type AsyncIdConfig<
     options?: { enabled?: boolean },
   ) => UseQueryResult<Record<string, unknown>, Error>;
 };
+
+// SubsetMapping에서 선택된 subset의 필드 키를 추출하는 유틸리티 타입
+type SubsetFieldKeys<
+  TSubsetKey extends string,
+  TSubsetMapping,
+> = TSubsetKey extends keyof TSubsetMapping
+  ? TSubsetMapping[TSubsetKey] extends Record<string, unknown>
+    ? string & keyof TSubsetMapping[TSubsetKey]
+    : string
+  : string;
 
 // onRowChange의 row 파라미터 타입
 type OnRowChangeType<
@@ -37,17 +49,18 @@ export type IdAsyncSelectProps<
   TSubsetKey extends string = string,
   TSubsetMapping = Record<string, unknown>,
   TValue extends string | number = string,
+  TListParams extends Record<string, unknown> = Record<string, unknown>,
 > = {
   // Entity Async ID Config
-  config: AsyncIdConfig<TSubsetKey, TSubsetMapping>;
+  config: AsyncIdConfig<TSubsetKey, TSubsetMapping, TListParams>;
   // Entity subset key
   subset: TSubsetKey;
   // 검색/조회 시 적용될 파라미터
-  baseListParams?: Record<string, unknown>;
+  baseListParams?: Partial<TListParams>;
   // 드롭다운에 표시할 텍스트 필드명 (기본값: "name")
-  displayField?: string;
+  displayField?: SubsetFieldKeys<TSubsetKey, TSubsetMapping>;
   // 실제 저장/전송될 값의 필드명 (기본값: "id")
-  valueField?: string;
+  valueField?: SubsetFieldKeys<TSubsetKey, TSubsetMapping>;
   // 기본 Select Props
   placeholder?: string;
   clearable?: boolean;
@@ -68,12 +81,13 @@ export function IdAsyncSelect<
   TSubsetKey extends string = string,
   TSubsetMapping = Record<string, unknown>,
   TValue extends string | number = string,
+  TListParams extends Record<string, unknown> = Record<string, unknown>,
 >({
   config,
   subset,
   baseListParams,
-  displayField = "name",
-  valueField = "id",
+  displayField = "name" as SubsetFieldKeys<TSubsetKey, TSubsetMapping>,
+  valueField = "id" as SubsetFieldKeys<TSubsetKey, TSubsetMapping>,
   placeholder,
   clearable,
   disabled,
@@ -82,7 +96,7 @@ export function IdAsyncSelect<
   value,
   onValueChange,
   onRowChange,
-}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue>) {
+}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue, TListParams>) {
   const { SD } = useSonamuBaseContext();
 
   // onRowChange의 파라미터 타입

@@ -1182,32 +1182,47 @@ export namespace CompanyService {
 }
 
 // AsyncIdConfig: Company
-export const CompanyAsyncIdConfig: AsyncIdConfig<CompanySubsetKey, CompanySubsetMapping> = {
+export const CompanyAsyncIdConfig: AsyncIdConfig<
+  CompanySubsetKey,
+  CompanySubsetMapping,
+  CompanyListParams
+> = {
   placeholderKey: "entity.Company",
   useList: CompanyService.useCompanies,
 };
 
 // AsyncIdConfig: Department
-export const DepartmentAsyncIdConfig: AsyncIdConfig<DepartmentSubsetKey, DepartmentSubsetMapping> =
-  {
-    placeholderKey: "entity.Department",
-    useList: DepartmentService.useDepartments,
-  };
+export const DepartmentAsyncIdConfig: AsyncIdConfig<
+  DepartmentSubsetKey,
+  DepartmentSubsetMapping,
+  DepartmentListParams
+> = {
+  placeholderKey: "entity.Department",
+  useList: DepartmentService.useDepartments,
+};
 
 // AsyncIdConfig: Employee
-export const EmployeeAsyncIdConfig: AsyncIdConfig<EmployeeSubsetKey, EmployeeSubsetMapping> = {
+export const EmployeeAsyncIdConfig: AsyncIdConfig<
+  EmployeeSubsetKey,
+  EmployeeSubsetMapping,
+  EmployeeListParams
+> = {
   placeholderKey: "entity.Employee",
   useList: EmployeeService.useEmployees,
 };
 
 // AsyncIdConfig: File
-export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping> = {
+export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping, FileListParams> = {
   placeholderKey: "entity.File",
   useList: FileService.useFiles,
 };
 
 // AsyncIdConfig: Project
-export const ProjectAsyncIdConfig: AsyncIdConfig<ProjectSubsetKey, ProjectSubsetMapping> = {
+export const ProjectAsyncIdConfig: AsyncIdConfig<
+  ProjectSubsetKey,
+  ProjectSubsetMapping,
+  ProjectListParams
+> = {
   placeholderKey: "entity.Project",
   useList: ProjectService.useProjects,
 };
@@ -1215,20 +1230,21 @@ export const ProjectAsyncIdConfig: AsyncIdConfig<ProjectSubsetKey, ProjectSubset
 // AsyncIdConfig: SyncFixture
 export const SyncFixtureAsyncIdConfig: AsyncIdConfig<
   SyncFixtureSubsetKey,
-  SyncFixtureSubsetMapping
+  SyncFixtureSubsetMapping,
+  SyncFixtureListParams
 > = {
   placeholderKey: "entity.SyncFixture",
   useList: SyncFixtureService.useSyncFixtures,
 };
 
 // AsyncIdConfig: Tag
-export const TagAsyncIdConfig: AsyncIdConfig<TagSubsetKey, TagSubsetMapping> = {
+export const TagAsyncIdConfig: AsyncIdConfig<TagSubsetKey, TagSubsetMapping, TagListParams> = {
   placeholderKey: "entity.Tag",
   useList: TagService.useTags,
 };
 
 // AsyncIdConfig: User
-export const UserAsyncIdConfig: AsyncIdConfig<UserSubsetKey, UserSubsetMapping> = {
+export const UserAsyncIdConfig: AsyncIdConfig<UserSubsetKey, UserSubsetMapping, UserListParams> = {
   placeholderKey: "entity.User",
   useList: UserService.useUsers,
 };

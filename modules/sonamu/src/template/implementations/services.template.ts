@@ -321,10 +321,13 @@ ${functions.join("\n\n")}
         const hookName = inflection.camelize(assertDefined(listApi.options.resourceName), true);
         const useHookName = `use${inflection.camelize(hookName)}`;
 
+        // ListParams 타입명 구성
+        const listParamsType = `${names.capital}ListParams`;
+
         asyncIdConfigs.push(
           `
 // AsyncIdConfig: ${names.capital}
-export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping> = {
+export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping, ${listParamsType}> = {
   placeholderKey: "entity.${names.capital}",
   useList: ${names.capital}Service.${useHookName},
 };
