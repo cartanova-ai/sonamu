@@ -19,6 +19,8 @@ import CheckIcon from "~icons/lucide/check";
 import PlusIcon from "~icons/lucide/plus";
 import Trash2Icon from "~icons/lucide/trash-2";
 import { EditableInput } from "../../components/EditableInput";
+import { PostItButton } from "../../components/PostItButton";
+import { PostItModal } from "../../components/PostItModal";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { useSonamuContext } from "../../contexts/sonamu-provider";
@@ -88,6 +90,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     oldOne?: EntityIndex;
     focusIndex?: number;
   } | null>(null);
+
+  // Entity PostItModal 상태
+  const [entityPostItModalOpen, setEntityPostItModalOpen] = useState(false);
 
   // useSheetTable
   const { regRow, regCell, cursor, setCursor, setFocusedCursor, turnKeyHandler, isFocused } =
@@ -721,7 +726,14 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         <>
           <div className="relative pb-4 border-b border-gray-200">
             <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
-              <span>{SD("entity.title").replace("{id}", entity.id)}</span>
+              <div className="flex items-center gap-2">
+                <span>{SD("entity.title").replace("{id}", entity.id)}</span>
+                <PostItButton
+                  color="#fdcb6e"
+                  size="sm"
+                  onClick={() => setEntityPostItModalOpen(true)}
+                />
+              </div>
               <Button
                 size="xs"
                 variant="destructive"
@@ -1184,6 +1196,18 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           open={indexModalOpen}
           onOpenChange={handleIndexModalOpenChange}
           onCompleted={handleIndexModalCompleted}
+        />
+      )}
+      {entity && (
+        <PostItModal
+          open={entityPostItModalOpen}
+          onOpenChange={setEntityPostItModalOpen}
+          title={`Entity: ${entity.id}`}
+          postIt={entity.postIt}
+          onSave={async (postIt) => {
+            await SonamuUIService.updateEntityPostIt(entity.id, postIt);
+            refetch();
+          }}
         />
       )}
     </div>
