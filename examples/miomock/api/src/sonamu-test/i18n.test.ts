@@ -68,6 +68,79 @@ describe("i18n", () => {
     });
   });
 
+  describe("SD fallback", () => {
+    test("지정된 locale에 값이 있으면 해당 값 반환", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          // ko 사전에 있는 키 → ko 값 반환
+          const labels = SD.enumLabels("TagOrderBy");
+          expect(labels["id-desc"]).toBe("ID최신순");
+        },
+      );
+    });
+
+    test("지정된 locale에 값이 없으면 default locale에서 fallback", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "en",
+        },
+        async () => {
+          // "common.all"은 ko에만 있고 en에는 없음
+          // en locale에서 조회 → 없음 → ko(default)로 fallback
+          expect(SD("common.all")).toBe("전체");
+        },
+      );
+    });
+
+    test("지원하지 않는 locale이면 default locale로 fallback", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "fr", // supportedLocales에 없는 locale
+        },
+        async () => {
+          // fr은 지원되지 않으므로 ko(default)로 fallback
+          const labels = SD.enumLabels("TagOrderBy");
+          expect(labels["id-desc"]).toBe("ID최신순");
+        },
+      );
+    });
+
+    test("모든 locale에 없는 키는 키 자체를 반환", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          // 존재하지 않는 enum 값 → key 자체 반환
+          const labels = SD.enumLabels("NonExistentEnum");
+          expect(labels["non-existent-value"]).toBe("enum.NonExistentEnum.non-existent-value");
+        },
+      );
+    });
+
+    test("default locale에도 없는 키는 supported locales를 순회하여 찾음", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "en",
+        },
+        async () => {
+          // "test.jaOnly"는 ja 딕셔너리에만 존재하는 키 (사실상 defineLocale을 이용하면 이런 경우 없긴 함.)
+          // en에서 조회 → 없음 → ko(default)에서 조회 → 없음 → ja(supported)에서 찾음
+          // biome-ignore lint/suspicious/noExplicitAny: ko에 없는 키로 테스트 필요
+          expect(SD("test.jaOnly" as any)).toBe("日本語のみ");
+        },
+      );
+    });
+  });
+
   describe("SD.enumLabels", () => {
     test("ko locale인 경우, 한국어 라벨 반환", async () => {
       await runWithContext(

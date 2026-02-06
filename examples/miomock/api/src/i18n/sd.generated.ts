@@ -1,7 +1,7 @@
 import { Sonamu } from "sonamu";
 
 const DEFAULT_LOCALE = "ko" as const;
-const SUPPORTED_LOCALES = ["ko", "en"] as const;
+const SUPPORTED_LOCALES = ["ko", "en", "ja"] as const;
 function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
   try {
     const ctx = Sonamu.getContext();
@@ -12,6 +12,7 @@ function getCurrentLocale(): (typeof SUPPORTED_LOCALES)[number] {
 }
 
 import en from "./en";
+import ja from "./ja";
 import ko from "./ko";
 
 // react-components i18n keys
@@ -385,6 +386,7 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
 const dictionaries: Record<string, Partial<MergedDictionary>> = {
   ko: { ...rcKeysKo, ...entityLabels, ...ko },
   en: { ...rcKeysEn, ...en },
+  ja: { ...rcKeysKo, ...ja },
 };
 
 type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: infer P) => string
@@ -392,9 +394,28 @@ type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: inf
   : LocalizedString;
 
 function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K> {
+  // 1. 지정된 locale에서 조회
   const dict = dictionaries[locale];
-  const value = dict?.[key] ?? dictionaries[DEFAULT_LOCALE]?.[key] ?? key;
-  return value as unknown as SDReturnType<K>;
+  if (dict?.[key] !== undefined) {
+    return dict[key] as unknown as SDReturnType<K>;
+  }
+
+  // 2. default locale에서 조회
+  if (locale !== DEFAULT_LOCALE && dictionaries[DEFAULT_LOCALE]?.[key] !== undefined) {
+    return dictionaries[DEFAULT_LOCALE][key] as unknown as SDReturnType<K>;
+  }
+
+  // 3. supported locales 순회
+  for (const supportedLocale of SUPPORTED_LOCALES) {
+    if (supportedLocale !== locale && supportedLocale !== DEFAULT_LOCALE) {
+      if (dictionaries[supportedLocale]?.[key] !== undefined) {
+        return dictionaries[supportedLocale][key] as unknown as SDReturnType<K>;
+      }
+    }
+  }
+
+  // 4. 모두 실패 시 key 반환
+  return key as unknown as SDReturnType<K>;
 }
 
 /**

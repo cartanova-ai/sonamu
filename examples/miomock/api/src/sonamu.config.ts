@@ -22,7 +22,7 @@ export default defineConfig({
   },
   i18n: {
     defaultLocale: "ko",
-    supportedLocales: ["ko", "en"],
+    supportedLocales: ["ko", "en", "ja"],
   },
   sync: {
     targets: ["web"],
