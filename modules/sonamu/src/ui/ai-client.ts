@@ -9,6 +9,7 @@ import { EntityManager } from "../entity/entity-manager";
 import {
   type EntityProp,
   type FixtureRecord,
+  getEnumDefValues,
   isInternalSubsetField,
   normalizeSubsetField,
   TemplateOptions,
@@ -433,6 +434,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               if (updates.parentId !== undefined) entity.parentId = updates.parentId;
               if (updates.title !== undefined) entity.title = updates.title;
               if (updates.table !== undefined) entity.table = updates.table;
+              if (updates.postIt !== undefined) entity.postIt = updates.postIt;
 
               // props: merge 시 이름 기준 병합, replace 시 교체
               if (updates.props !== undefined) {
@@ -483,8 +485,11 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               }
 
               if (updates.enums !== undefined) {
+                const convertedEnums = Object.fromEntries(
+                  Object.entries(updates.enums).map(([key, enumDef]) => [key, getEnumDefValues(enumDef)]),
+                );
                 entity.enumLabels =
-                  mode === "replace" ? updates.enums : { ...entity.enumLabels, ...updates.enums };
+                  mode === "replace" ? convertedEnums : { ...entity.enumLabels, ...convertedEnums };
               }
 
               // 저장 전 검증

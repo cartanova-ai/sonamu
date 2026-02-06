@@ -16,6 +16,34 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 /*
   Model-Definition
 */
+
+/**
+ * post-it: 범용 메타데이터 시스템
+ *
+ * Entity, Prop, Enum, Subset에 추가할 수 있는 범용 메타데이터입니다.
+ * Fixture 생성, UI 라벨, 문서화 등 다양한 용도로 활용할 수 있습니다.
+ */
+export type PostIt = {
+  // 일반 정보
+  desc?: string; // 짧은 설명 (UI 라벨용)
+  note?: string; // 자유로운 메모 (무제한 길이)
+  tags?: string[]; // 분류/검색용 태그
+
+  // Fixture 생성 관련
+  fixtureHint?: string; // 생성 힌트 (무제한 길이, 짧은 패턴 또는 긴 설명 가능)
+  fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
+  fixtureDefault?: unknown; // 기본값
+
+  // 참조 데이터 관련
+  dataSource?: {
+    strategy: "sample" | "ids" | "query" | "file" | "recent" | "random";
+    config?: unknown; // 전략별 설정
+  };
+
+  // 확장성
+  [key: string]: unknown; // 사용자 정의 메타데이터
+};
+
 export type GeneratedColumnType = "STORED" | "VIRTUAL";
 export type GeneratedColumn = {
   type: GeneratedColumnType;
@@ -28,7 +56,18 @@ export type CommonProp = {
   desc?: string;
   dbDefault?: string;
   generated?: GeneratedColumn;
+  postIt?: PostIt; // post-it 메타데이터
 };
+
+/**
+ * 하위 호환성을 위한 헬퍼 함수
+ *
+ * desc 필드와 postIt.desc 둘 다 지원합니다.
+ * postIt.desc가 있으면 우선적으로 사용하고, 없으면 desc를 사용합니다.
+ */
+export function getDescription(item: { desc?: string; postIt?: PostIt }): string | undefined {
+  return item.postIt?.desc || item.desc;
+}
 export type IntegerProp = CommonProp & {
   type: "integer";
 }; // PG: integer / TS: number / JSON: number
@@ -174,6 +213,7 @@ type _RelationProp = {
   nullable?: boolean; // DEFAULT: false
   toFilter?: true; // DEFAULT: false
   desc?: string;
+  postIt?: PostIt; // post-it 메타데이터
 };
 export type OneToOneRelationProp = _RelationProp & {
   relationType: "OneToOne";
@@ -355,20 +395,79 @@ export function isInternalSubsetField(f: SubsetField): boolean {
   return typeof f !== "string" && f.internal === true;
 }
 
+/**
+ * SubsetDef: Subset 정의
+ *
+ * 하위 호환성을 위해 SubsetField[] 배열 형태도 지원합니다.
+ */
+export type SubsetDef =
+  | SubsetField[] // 기존 배열 형태
+  | {
+      // 새로운 객체 형태
+      fields: SubsetField[];
+      postIt?: PostIt;
+    };
+
+/**
+ * EnumDef: Enum 정의
+ *
+ * 하위 호환성을 위해 Record<string, string> 형태도 지원합니다.
+ */
+export type EnumDef =
+  | Record<string, string> // 기존 Record 형태
+  | {
+      // 새로운 객체 형태
+      values: Record<string, string>;
+      postIt?: PostIt;
+    };
+
+/**
+ * SubsetDef가 새로운 객체 형태인지 확인
+ */
+export function isSubsetDefWithPostIt(
+  def: SubsetDef,
+): def is { fields: SubsetField[]; postIt?: PostIt } {
+  return !Array.isArray(def) && "fields" in def;
+}
+
+/**
+ * EnumDef가 새로운 객체 형태인지 확인
+ */
+export function isEnumDefWithPostIt(
+  def: EnumDef,
+): def is { values: Record<string, string>; postIt?: PostIt } {
+  return (
+    "values" in def && !("postIt" in def && def.postIt === undefined && Object.keys(def).length > 1)
+  );
+}
+
+/**
+ * SubsetDef에서 fields 추출
+ */
+export function getSubsetFields(def: SubsetDef): SubsetField[] {
+  return Array.isArray(def) ? def : def.fields;
+}
+
+/**
+ * EnumDef에서 values 추출
+ */
+export function getEnumDefValues(def: EnumDef): Record<string, string> {
+  return isEnumDefWithPostIt(def) ? def.values : def;
+}
+
 export type EntityJson = {
   id: string;
   parentId?: string;
   table: string;
   title?: string;
+  postIt?: PostIt; // post-it 메타데이터
   props: EntityProp[];
   indexes: EntityIndex[];
   subsets: {
-    [subset: string]: SubsetField[];
+    [subset: string]: SubsetDef;
   };
   enums: {
-    [enumId: string]: {
-      [key: string]: string;
-    };
+    [enumId: string]: EnumDef;
   };
 };
 export type EntitySubsetRow = {
@@ -941,6 +1040,28 @@ const GeneratedColumnSchema = z.object({
   expression: z.string(),
 });
 
+/**
+ * PostIt 스키마 검증
+ *
+ * post-it 메타데이터의 유효성을 검증합니다.
+ */
+const PostItSchema = z
+  .object({
+    desc: z.string().optional(),
+    note: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    fixtureHint: z.string().optional(),
+    fixtureGenerator: z.string().optional(),
+    fixtureDefault: z.unknown().optional(),
+    dataSource: z
+      .object({
+        strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),
+        config: z.unknown().optional(),
+      })
+      .optional(),
+  })
+  .catchall(z.unknown()); // 사용자 정의 메타데이터 허용
+
 const BasePropFields = {
   name: z.string(),
   desc: z.string().optional(),
@@ -948,6 +1069,7 @@ const BasePropFields = {
   toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
   generated: GeneratedColumnSchema.optional(),
+  postIt: PostItSchema.optional(),
 };
 
 // 부가 필드가 필요없는 prop
@@ -1285,21 +1407,49 @@ const EntityIndexSchema = z
   })
   .strict();
 
+/**
+ * SubsetDef 스키마
+ *
+ * 하위 호환성을 위해 배열 형태와 객체 형태 둘 다 지원합니다.
+ */
+const SubsetDefSchema = z.union([
+  // 기존 배열 형태
+  z.array(z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })])),
+  // 새로운 객체 형태
+  z.object({
+    fields: z.array(
+      z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
+    ),
+    postIt: PostItSchema.optional(),
+  }),
+]);
+
+/**
+ * EnumDef 스키마
+ *
+ * 하위 호환성을 위해 Record 형태와 객체 형태 둘 다 지원합니다.
+ */
+const EnumDefSchema = z.union([
+  // 기존 Record 형태
+  z.record(z.string(), z.string()),
+  // 새로운 객체 형태
+  z.object({
+    values: z.record(z.string(), z.string()),
+    postIt: PostItSchema.optional(),
+  }),
+]);
+
 export const EntityJsonSchema = z
   .object({
     id: z.string().describe("PascalCase로 된 Entity ID"),
     title: z.string().describe("Entity 이름"),
     table: z.string().describe("snake_case로 된 테이블명"),
     parentId: z.string().optional().describe("부모 Entity ID"),
+    postIt: PostItSchema.optional(),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),
-    subsets: z.record(
-      z.string(),
-      z.array(
-        z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
-      ),
-    ),
-    enums: z.record(z.string(), z.record(z.string(), z.string())),
+    subsets: z.record(z.string(), SubsetDefSchema),
+    enums: z.record(z.string(), EnumDefSchema),
   })
   .strict();
 

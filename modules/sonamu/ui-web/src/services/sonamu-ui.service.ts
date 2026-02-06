@@ -11,6 +11,7 @@ import type {
   MigrationResult,
   MigrationStatus,
   PathAndCode,
+  PostIt,
   SonamuDBConfig,
 } from "sonamu";
 import { fetch } from "./sonamu.shared";
@@ -521,6 +522,70 @@ export namespace SonamuUIService {
       method: "POST",
       url: `/sonamu-ui/api/i18n/checkUsage`,
       data: { keys },
+    });
+  }
+
+  // PostIt 업데이트 메서드들
+  export function updateEntityPostIt(entityId: string, postIt: PostIt): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "entity",
+        postIt,
+      },
+    });
+  }
+
+  export function updatePropPostIt(
+    entityId: string,
+    propName: string,
+    postIt: PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "prop",
+        propName,
+        postIt,
+      },
+    });
+  }
+
+  export function updateEnumPostIt(
+    entityId: string,
+    enumId: string,
+    postIt: PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "enum",
+        enumId,
+        postIt,
+      },
+    });
+  }
+
+  export function updateSubsetPostIt(
+    entityId: string,
+    subsetKey: string,
+    postIt: PostIt,
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/updatePostIt`,
+      data: {
+        entityId,
+        target: "subset",
+        subsetKey,
+        postIt,
+      },
     });
   }
 }

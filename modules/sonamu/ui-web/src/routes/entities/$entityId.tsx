@@ -19,6 +19,8 @@ import CheckIcon from "~icons/lucide/check";
 import PlusIcon from "~icons/lucide/plus";
 import Trash2Icon from "~icons/lucide/trash-2";
 import { EditableInput } from "../../components/EditableInput";
+import { PostItButton } from "../../components/PostItButton";
+import { PostItModal } from "../../components/PostItModal";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { useSonamuContext } from "../../contexts/sonamu-provider";
@@ -87,6 +89,27 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     at?: number;
     oldOne?: EntityIndex;
     focusIndex?: number;
+  } | null>(null);
+
+  // Entity PostItModal 상태
+  const [entityPostItModalOpen, setEntityPostItModalOpen] = useState(false);
+
+  // Prop PostItModal 상태
+  const [propPostItModal, setPropPostItModal] = useState<{
+    open: boolean;
+    propName: string;
+  } | null>(null);
+
+  // Enum PostItModal 상태
+  const [enumPostItModal, setEnumPostItModal] = useState<{
+    open: boolean;
+    enumId: string;
+  } | null>(null);
+
+  // Subset PostItModal 상태
+  const [subsetPostItModal, setSubsetPostItModal] = useState<{
+    open: boolean;
+    subsetKey: string;
   } | null>(null);
 
   // useSheetTable
@@ -721,7 +744,14 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         <>
           <div className="relative pb-4 border-b border-gray-200">
             <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
-              <span>{SD("entity.title").replace("{id}", entity.id)}</span>
+              <div className="flex items-center gap-2">
+                <span>{SD("entity.title").replace("{id}", entity.id)}</span>
+                <PostItButton
+                  variant="entity"
+                  size="sm"
+                  onClick={() => setEntityPostItModalOpen(true)}
+                />
+              </div>
               <Button
                 size="xs"
                 variant="destructive"
@@ -770,6 +800,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                     <TableHead>{SD("entity.prop.withAs")}</TableHead>
                     <TableHead>{SD("entity.prop.default")}</TableHead>
                     <TableHead>{SD("entity.prop.filter")}</TableHead>
+                    <TableHead>Post-it</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -854,10 +885,18 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <TableCell {...regCell("props", propIndex, 6)}>
                         {prop.toFilter && <CheckIcon />}
                       </TableCell>
+                      <TableCell {...regCell("props", propIndex, 7)} className="text-center">
+                        <PostItButton
+                          size="sm"
+                          onClick={() => {
+                            setPropPostItModal({ open: true, propName: prop.name });
+                          }}
+                        />
+                      </TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={7} className="footer-buttons text-center">
+                    <TableCell colSpan={8} className="footer-buttons text-center">
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
@@ -937,6 +976,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             >
                               <div className="flex items-center gap-2">
                                 {enumId}
+                                <PostItButton
+                                  size="sm"
+                                  onClick={() => {
+                                    setEnumPostItModal({ open: true, enumId });
+                                  }}
+                                />
                                 <Button
                                   size="xs"
                                   icon={<Trash2Icon />}
@@ -1023,16 +1068,24 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         <TableHead>Field</TableHead>
                         {Object.keys(entity.subsets).map((subsetKey) => (
                           <TableHead key={subsetKey}>
-                            Subset{subsetKey}{" "}
-                            {subsetKey !== "A" && (
-                              <Button
-                                icon={<Trash2Icon />}
-                                size="xs"
-                                variant="destructive"
-                                className="btn-del-subset"
-                                onClick={() => delSubset(subsetKey)}
+                            <div className="flex items-center gap-2">
+                              Subset{subsetKey}
+                              <PostItButton
+                                size="sm"
+                                onClick={() => {
+                                  setSubsetPostItModal({ open: true, subsetKey });
+                                }}
                               />
-                            )}
+                              {subsetKey !== "A" && (
+                                <Button
+                                  icon={<Trash2Icon />}
+                                  size="xs"
+                                  variant="destructive"
+                                  className="btn-del-subset"
+                                  onClick={() => delSubset(subsetKey)}
+                                />
+                              )}
+                            </div>
                           </TableHead>
                         ))}
                       </TableRow>
@@ -1184,6 +1237,73 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           open={indexModalOpen}
           onOpenChange={handleIndexModalOpenChange}
           onCompleted={handleIndexModalCompleted}
+        />
+      )}
+      {entity && (
+        <PostItModal
+          open={entityPostItModalOpen}
+          onOpenChange={setEntityPostItModalOpen}
+          title={`Entity: ${entity.id}`}
+          postIt={entity.postIt}
+          onSave={async (postIt) => {
+            await SonamuUIService.updateEntityPostIt(entity.id, postIt);
+            refetch();
+          }}
+        />
+      )}
+      {entity && propPostItModal && propPostItModal.open && (
+        <PostItModal
+          open={propPostItModal.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPropPostItModal(null);
+            }
+          }}
+          title={`Prop: ${entity.id}.${propPostItModal.propName}`}
+          postIt={entity.props.find((p) => p.name === propPostItModal.propName)?.postIt}
+          onSave={async (postIt) => {
+            await SonamuUIService.updatePropPostIt(entity.id, propPostItModal.propName, postIt);
+            refetch();
+            setPropPostItModal(null);
+          }}
+        />
+      )}
+      {entity && enumPostItModal && enumPostItModal.open && (
+        <PostItModal
+          open={enumPostItModal.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEnumPostItModal(null);
+            }
+          }}
+          title={`Enum: ${enumPostItModal.enumId}`}
+          postIt={entity.enumPostIts?.[enumPostItModal.enumId]}
+          onSave={async (postIt) => {
+            await SonamuUIService.updateEnumPostIt(entity.id, enumPostItModal.enumId, postIt);
+            refetch();
+            setEnumPostItModal(null);
+          }}
+        />
+      )}
+      {entity && subsetPostItModal && subsetPostItModal.open && (
+        <PostItModal
+          open={subsetPostItModal.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSubsetPostItModal(null);
+            }
+          }}
+          title={`Subset: ${entity.id}.Subset${subsetPostItModal.subsetKey}`}
+          postIt={entity.subsetPostIts?.[subsetPostItModal.subsetKey]}
+          onSave={async (postIt) => {
+            await SonamuUIService.updateSubsetPostIt(
+              entity.id,
+              subsetPostItModal.subsetKey,
+              postIt,
+            );
+            refetch();
+            setSubsetPostItModal(null);
+          }}
         />
       )}
     </div>
