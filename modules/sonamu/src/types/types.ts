@@ -394,6 +394,60 @@ export function isInternalSubsetField(f: SubsetField): boolean {
   return typeof f !== "string" && f.internal === true;
 }
 
+/**
+ * SubsetDef: Subset 정의
+ *
+ * 하위 호환성을 위해 SubsetField[] 배열 형태도 지원합니다.
+ */
+export type SubsetDef =
+  | SubsetField[] // 하위 호환성: 기존 배열 형태
+  | {
+      // 새로운 객체 형태
+      fields: SubsetField[];
+      postIt?: PostIt;
+    };
+
+/**
+ * EnumDef: Enum 정의
+ *
+ * 하위 호환성을 위해 Record<string, string> 형태도 지원합니다.
+ */
+export type EnumDef =
+  | Record<string, string> // 하위 호환성: 기존 Record 형태
+  | {
+      // 새로운 객체 형태
+      values: Record<string, string>;
+      postIt?: PostIt;
+    };
+
+/**
+ * SubsetDef가 새로운 객체 형태인지 확인
+ */
+export function isSubsetDefWithPostIt(def: SubsetDef): def is { fields: SubsetField[]; postIt?: PostIt } {
+  return !Array.isArray(def) && "fields" in def;
+}
+
+/**
+ * EnumDef가 새로운 객체 형태인지 확인
+ */
+export function isEnumDefWithPostIt(def: EnumDef): def is { values: Record<string, string>; postIt?: PostIt } {
+  return "values" in def && !("postIt" in def && def.postIt === undefined && Object.keys(def).length > 1);
+}
+
+/**
+ * SubsetDef에서 fields 추출 (하위 호환성)
+ */
+export function getSubsetFields(def: SubsetDef): SubsetField[] {
+  return Array.isArray(def) ? def : def.fields;
+}
+
+/**
+ * EnumDef에서 values 추출 (하위 호환성)
+ */
+export function getEnumDefValues(def: EnumDef): Record<string, string> {
+  return isEnumDefWithPostIt(def) ? def.values : def;
+}
+
 export type EntityJson = {
   id: string;
   parentId?: string;
@@ -403,12 +457,10 @@ export type EntityJson = {
   props: EntityProp[];
   indexes: EntityIndex[];
   subsets: {
-    [subset: string]: SubsetField[];
+    [subset: string]: SubsetDef;
   };
   enums: {
-    [enumId: string]: {
-      [key: string]: string;
-    };
+    [enumId: string]: EnumDef;
   };
 };
 export type EntitySubsetRow = {
@@ -1346,6 +1398,36 @@ const EntityIndexSchema = z
   })
   .strict();
 
+/**
+ * SubsetDef 스키마
+ *
+ * 하위 호환성을 위해 배열 형태와 객체 형태 둘 다 지원합니다.
+ */
+const SubsetDefSchema = z.union([
+  // 기존 배열 형태 (하위 호환성)
+  z.array(z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })])),
+  // 새로운 객체 형태
+  z.object({
+    fields: z.array(z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })])),
+    postIt: PostItSchema.optional(),
+  }),
+]);
+
+/**
+ * EnumDef 스키마
+ *
+ * 하위 호환성을 위해 Record 형태와 객체 형태 둘 다 지원합니다.
+ */
+const EnumDefSchema = z.union([
+  // 기존 Record 형태 (하위 호환성)
+  z.record(z.string(), z.string()),
+  // 새로운 객체 형태
+  z.object({
+    values: z.record(z.string(), z.string()),
+    postIt: PostItSchema.optional(),
+  }),
+]);
+
 export const EntityJsonSchema = z
   .object({
     id: z.string().describe("PascalCase로 된 Entity ID"),
@@ -1355,13 +1437,8 @@ export const EntityJsonSchema = z
     postIt: PostItSchema.optional(),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),
-    subsets: z.record(
-      z.string(),
-      z.array(
-        z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
-      ),
-    ),
-    enums: z.record(z.string(), z.record(z.string(), z.string())),
+    subsets: z.record(z.string(), SubsetDefSchema),
+    enums: z.record(z.string(), EnumDefSchema),
   })
   .strict();
 
