@@ -9,6 +9,7 @@ import {
   Input,
   Textarea,
 } from "@sonamu-kit/react-components";
+import { DndContext, useDraggable } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import type { PostIt } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
@@ -20,6 +21,38 @@ type PostItModalProps = {
   postIt?: PostIt;
   onSave: (postIt: PostIt) => Promise<void>;
 };
+
+function DraggableDialogContent({
+  children,
+  className,
+  style: customStyle,
+  dragHandleContent,
+  position,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  dragHandleContent: React.ReactNode;
+  position: { x: number; y: number };
+}) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: "postit-modal",
+  });
+
+  const style = {
+    ...customStyle,
+    transform: `translate(${position.x + (transform?.x || 0)}px, ${position.y + (transform?.y || 0)}px)`,
+  };
+
+  return (
+    <DialogContent ref={setNodeRef} style={style} className={className}>
+      <div {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing">
+        {dragHandleContent}
+      </div>
+      {children}
+    </DialogContent>
+  );
+}
 
 export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostItModalProps) {
   const [form, setForm] = useState<PostIt>({
@@ -35,6 +68,9 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
   const [tagsInput, setTagsInput] = useState("");
   const [dataSourceInput, setDataSourceInput] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // 드래그 위치 상태 - 화면 중앙을 기본값으로
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (open && postIt) {
@@ -55,7 +91,20 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
       setTagsInput("");
       setDataSourceInput("");
     }
+    // 모달이 열릴 때 위치 초기화
+    if (open) {
+      setPosition({ x: 0, y: 0 });
+    }
   }, [open, postIt]);
+
+  // 드래그 종료 시 위치 저장
+  const handleDragEnd = (event: any) => {
+    const { delta } = event;
+    setPosition((prev) => ({
+      x: prev.x + delta.x,
+      y: prev.y + delta.y,
+    }));
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -119,19 +168,20 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl max-h-[90vh] flex flex-col"
-        style={{
-          background: "linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%)",
-          boxShadow: "4px 4px 12px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <DialogHeader className="text-left">
-          <DialogTitle className="text-gray-900 flex items-center gap-2">
-            📝 {title}
-          </DialogTitle>
-          <DialogDescription className="sr-only">Edit post-it metadata</DialogDescription>
-        </DialogHeader>
+      <DndContext onDragEnd={handleDragEnd}>
+        <DraggableDialogContent
+          className="max-w-md max-h-[80vh] flex flex-col shadow-[4px_4px_12px_rgba(0,0,0,0.2)]"
+          style={{ backgroundColor: "var(--color-postit-bg)" }}
+          position={position}
+          dragHandleContent={
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-gray-900 flex items-center gap-2 select-none">
+                📝 {title}
+              </DialogTitle>
+              <DialogDescription className="sr-only">Edit post-it metadata</DialogDescription>
+            </DialogHeader>
+          }
+        >
 
         <div className="overflow-y-scroll flex-1 space-y-4">
           {/* Description */}
@@ -141,7 +191,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               value={form.desc || ""}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
               placeholder="짧은 설명 (UI 라벨용)"
-              className="bg-white/80"
+              style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -153,7 +203,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder="자유로운 메모 (무제한 길이)"
               rows={3}
-              className="bg-white/80"
+              style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -164,7 +214,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="쉼표로 구분 (예: core, auth, test)"
-              className="bg-white/80"
+              style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -176,7 +226,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               onChange={(e) => setForm({ ...form, fixtureHint: e.target.value })}
               placeholder="Fixture 생성 시 힌트 (무제한 길이)"
               rows={4}
-              className="bg-white/80"
+              style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -190,7 +240,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               value={form.fixtureGenerator || ""}
               onChange={(e) => setForm({ ...form, fixtureGenerator: e.target.value })}
               placeholder="예: faker.internet.email()"
-              className="bg-white/80 font-mono text-sm"
+              className="font-mono text-sm" style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -207,7 +257,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               }
               onChange={(e) => setForm({ ...form, fixtureDefault: e.target.value })}
               placeholder="기본값 (JSON 또는 문자열)"
-              className="bg-white/80"
+              style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
 
@@ -219,25 +269,18 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
               onChange={(e) => setDataSourceInput(e.target.value)}
               placeholder={`JSON 형식:\n{\n  "strategy": "sample",\n  "limit": 10\n}`}
               rows={6}
-              className="bg-white/80 font-mono text-sm"
+              className="font-mono text-sm" style={{ backgroundColor: "var(--color-postit-input)" }}
             />
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-            className="bg-white/80"
-          >
-            Close
-          </Button>
-          <Button variant="default" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+          <DialogFooter className="flex justify-end">
+            <Button variant="default" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DraggableDialogContent>
+      </DndContext>
     </Dialog>
   );
 }
