@@ -11,6 +11,7 @@ import type {
   MigrationResult,
   MigrationStatus,
   PathAndCode,
+  PostIt,
   SonamuDBConfig,
 } from "sonamu";
 import { fetch } from "./sonamu.shared";
@@ -525,7 +526,7 @@ export namespace SonamuUIService {
   }
 
   // PostIt 업데이트 메서드들
-  export function updateEntityPostIt(entityId: string, postIt: import("sonamu").PostIt): Promise<void> {
+  export function updateEntityPostIt(entityId: string, postIt: PostIt): Promise<void> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/entity/updatePostIt`,
@@ -540,7 +541,7 @@ export namespace SonamuUIService {
   export function updatePropPostIt(
     entityId: string,
     propName: string,
-    postIt: import("sonamu").PostIt,
+    postIt: PostIt,
   ): Promise<void> {
     return fetch({
       method: "POST",
@@ -557,7 +558,7 @@ export namespace SonamuUIService {
   export function updateEnumPostIt(
     entityId: string,
     enumId: string,
-    postIt: import("sonamu").PostIt,
+    postIt: PostIt,
   ): Promise<void> {
     return fetch({
       method: "POST",
@@ -574,7 +575,7 @@ export namespace SonamuUIService {
   export function updateSubsetPostIt(
     entityId: string,
     subsetKey: string,
-    postIt: import("sonamu").PostIt,
+    postIt: PostIt,
   ): Promise<void> {
     return fetch({
       method: "POST",
