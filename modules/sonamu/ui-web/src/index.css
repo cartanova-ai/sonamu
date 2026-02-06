@@ -21,6 +21,11 @@
   --color-text-muted: #94a3b8;
   --color-accent: #10b981;
 
+  /* PostIt 색상 */
+  --color-postit-bg: #ffeaa7;
+  --color-postit-input: #fffef5;
+  --color-postit-entity: #fdcb6e;
+
   /* 간격 */
   --spacing-sidemenu: 280px;
   --spacing-gnb: 50px;
@@ -140,3 +145,4 @@ strong {
   color: var(--muted-foreground);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
+
