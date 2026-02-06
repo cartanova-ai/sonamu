@@ -16,7 +16,156 @@ pnpm docker:up
 
 테스트를 위한 기본 데이터(seed data)는 dump 파일에 추가하여 관리한다.
 
-### 워크플로우
+### 전체 워크플로우 개요
+
+Seed data 관리는 2단계로 진행된다:
+
+| 단계 | 목적 | 대상 DB |
+|------|------|---------|
+| **Phase 1** | 개발/테스트용 seed 준비 | `project_test`, `project_fixture` |
+| **Phase 2** | 실제 DB에 seed 적용 | `project` (실제 DB) |
+
+---
+
+### Phase 1: 개발/테스트용 Seed 준비
+
+개발 중 테스트를 위한 더미 데이터를 준비하는 단계.
+
+#### 1-1. 초기 dump 생성 (테이블 구조만)
+
+```bash
+pnpm dump
+```
+
+이 시점에서 생성된 `database/scripts/dump.sql`은:
+- CREATE TABLE 구문
+- CREATE SEQUENCE 구문
+- ALTER TABLE ... PRIMARY KEY
+- ALTER TABLE ... FOREIGN KEY
+- **INSERT문은 없음** (아직 데이터가 없으므로)
+
+#### 1-2. dump 파일에 INSERT문 추가
+
+`database/scripts/dump.sql` 파일을 열고, **FK CONSTRAINT 전**에 INSERT문을 추가한다.
+
+**중요: FK 의존성 순서를 고려하여 작성**
+```sql
+-- 독립 테이블부터
+INSERT INTO public.institutions (id, created_at, name, code) VALUES
+  (1, '2024-01-01 00:00:00+09', '본원', 'HQ');
+
+-- 참조 테이블 (institutions를 참조)
+INSERT INTO public.departments (id, created_at, name, code, institution_id) VALUES
+  (1, '2024-01-01 00:00:00+09', '연구부', 'RND', 1);
+
+-- 시퀀스 값 설정 (INSERT 후)
+SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
+SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
+```
+
+#### 1-3. test DB에 적용
+
+```bash
+pnpm seed
+```
+
+`database/scripts/seed.sh`가 실행되며:
+- `SOURCE_DB="${DATABASE_NAME}_test"` → dump.sql을 test DB에 적용
+
+#### 1-4. fixture DB에 동기화
+
+```bash
+pnpm sonamu fixture sync
+```
+
+test DB의 데이터를 fixture DB로 복사.
+
+---
+
+### Phase 2: 실제 DB에 Seed 적용
+
+**⚠️ CRITICAL WARNING:**
+- 이 단계는 실제 DB(`project`)에 데이터를 넣는다
+- 기존 데이터가 있다면 덮어쓰여질 수 있다
+- **반드시 사용자에게 확인 후 진행해야 한다**
+
+**Claude Code 규칙:**
+```
+실제 DB에 seed를 적용하기 전에:
+1. 사용자에게 "실제 데이터베이스(project)에 seed 데이터를 적용하시겠습니까?" 질문
+2. 사용자가 명시적으로 승인할 때만 진행
+3. 승인 없이 절대 실행하지 말것
+```
+
+#### 2-1. 현재 상태 확인
+
+```bash
+# test/fixture DB에 데이터가 들어가 있어야 함
+PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -c "SELECT COUNT(*) FROM users;"
+```
+
+#### 2-2. 최종 dump 생성
+
+```bash
+# test/fixture의 데이터가 포함된 dump 생성
+pnpm dump
+```
+
+이번 dump에는 **INSERT문이 포함**되어 있다 (1-2에서 추가한 데이터).
+
+#### 2-3. seed.sh 파일 수정
+
+`database/scripts/seed.sh`를 열고 FIXTURE_DB 변경:
+
+```bash
+# 변경 전 (개발/테스트 단계)
+FIXTURE_DB="${DATABASE_NAME}_fixture"
+
+# 변경 후 (실제 DB에 seed)
+FIXTURE_DB="${DATABASE_NAME}"
+```
+
+#### 2-4. 실제 DB에 seed 실행
+
+**⚠️ 사용자 승인 후에만 실행:**
+
+```bash
+pnpm seed
+```
+
+이제 실제 DB(`project`)에 seed 데이터가 적용된다.
+
+#### 2-5. 확인
+
+```bash
+# 실제 DB에서 데이터 확인
+PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project -c "SELECT * FROM departments LIMIT 5;"
+```
+
+#### 2-6. seed.sh 원복 (중요!)
+
+실제 DB seed 완료 후, seed.sh를 원래대로 되돌려야 다음 개발 시 test DB를 사용한다:
+
+```bash
+# database/scripts/seed.sh
+FIXTURE_DB="${DATABASE_NAME}_fixture"  # 원복
+```
+
+---
+
+### 요약: Phase 1 vs Phase 2
+
+| 항목 | Phase 1 (개발/테스트) | Phase 2 (실제 DB) |
+|------|---------------------|------------------|
+| **시점** | 개발 중 테스트 데이터 준비 | 개발 완료 후 실제 데이터 준비 |
+| **dump 횟수** | 1회 (테이블 구조) | 2회 (데이터 포함) |
+| **대상 DB** | `project_test` → `project_fixture` | `project` |
+| **seed.sh** | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"` |
+| **사용자 승인** | 불필요 | **반드시 필요** |
+
+---
+
+### 구 워크플로우 (Phase 1 간단 버전)
 
 ```bash
 # 1. test DB에 기본 데이터 직접 추가 (psql 또는 Sonamu UI 사용)
