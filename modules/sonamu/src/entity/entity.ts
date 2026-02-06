@@ -23,6 +23,7 @@ import {
   isVirtualCodeProp,
   isVirtualProp,
   normalizeSubsetField,
+  type PostIt,
   type RelationProp,
   type SubsetField,
   type SubsetQuery,
@@ -39,6 +40,7 @@ export class Entity {
   parentId?: string;
   table: string;
   title: string;
+  postIt?: PostIt;
   names: {
     parentFs: string;
     fs: string;
@@ -69,13 +71,20 @@ export class Entity {
       [key: string]: string;
     };
   } = {};
+  enumPostIts: {
+    [enumId: string]: PostIt;
+  } = {};
+  subsetPostIts: {
+    [subsetKey: string]: PostIt;
+  } = {};
 
-  constructor({ id, parentId, table, title, props, indexes, subsets, enums }: EntityJson) {
+  constructor({ id, parentId, table, title, postIt, props, indexes, subsets, enums }: EntityJson) {
     // id
     this.id = id;
     this.parentId = parentId;
     this.title = title ?? this.id;
     this.table = table ?? inflection.underscore(inflection.pluralize(id));
+    this.postIt = postIt;
 
     // props
     if (props) {
@@ -113,11 +122,22 @@ export class Entity {
       const fields = getSubsetFields(subsetDef);
       this.subsets[key] = fields.filter((f) => !isInternalSubsetField(f)).map(normalizeSubsetField);
       this.subsetsInternal[key] = fields.filter(isInternalSubsetField).map(normalizeSubsetField);
+
+      // postIt 추출
+      if (!Array.isArray(subsetDef) && "postIt" in subsetDef && subsetDef.postIt) {
+        this.subsetPostIts[key] = subsetDef.postIt;
+      }
     }
 
-    // enums: EnumDef에서 values를 추출하여 처리
+    // enums: EnumDef에서 values와 postIt를 추출하여 처리
     this.enumLabels = Object.fromEntries(
-      Object.entries(enums ?? {}).map(([key, enumDef]) => [key, getEnumDefValues(enumDef)]),
+      Object.entries(enums ?? {}).map(([key, enumDef]) => {
+        // postIt 추출
+        if ("values" in enumDef && "postIt" in enumDef && enumDef.postIt) {
+          this.enumPostIts[key] = enumDef.postIt as PostIt;
+        }
+        return [key, getEnumDefValues(enumDef)];
+      }),
     );
     this.enums = Object.fromEntries(
       Object.entries(this.enumLabels).map(([key, enumLabel]) => {
@@ -851,15 +871,39 @@ export class Entity {
   }
 
   toJson(): EntityJson {
-    // subsets와 subsetsInternal을 SubsetField[] 형태로 복원
-    const subsets: { [key: string]: SubsetField[] } = {};
+    // subsets와 subsetsInternal을 SubsetDef 형태로 복원 (postIt 포함)
+    const subsets: { [key: string]: import("../types/types").SubsetDef } = {};
     for (const key of Object.keys(this.subsets)) {
       const normalFields: SubsetField[] = this.subsets[key];
       const internalFields: SubsetField[] = (this.subsetsInternal[key] ?? []).map((field) => ({
         field,
         internal: true,
       }));
-      subsets[key] = [...normalFields, ...internalFields];
+      const fields = [...normalFields, ...internalFields];
+
+      // postIt이 있으면 새로운 객체 형태로, 없으면 배열 형태로
+      if (this.subsetPostIts[key]) {
+        subsets[key] = {
+          fields,
+          postIt: this.subsetPostIts[key],
+        };
+      } else {
+        subsets[key] = fields;
+      }
+    }
+
+    // enums를 EnumDef 형태로 복원 (postIt 포함)
+    const enums: { [key: string]: import("../types/types").EnumDef } = {};
+    for (const [key, values] of Object.entries(this.enumLabels)) {
+      // postIt이 있으면 새로운 객체 형태로, 없으면 Record 형태로
+      if (this.enumPostIts[key]) {
+        enums[key] = {
+          values,
+          postIt: this.enumPostIts[key],
+        };
+      } else {
+        enums[key] = values;
+      }
     }
 
     return {
@@ -867,10 +911,11 @@ export class Entity {
       parentId: this.parentId,
       table: this.table,
       title: this.title,
+      postIt: this.postIt,
       props: this.props,
       indexes: this.indexes,
       subsets,
-      enums: this.enumLabels,
+      enums,
     };
   }
 
