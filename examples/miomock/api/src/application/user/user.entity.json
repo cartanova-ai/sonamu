@@ -18,7 +18,7 @@
       "length": 255,
       "postIt": {
         "desc": "이메일 주소",
-        "fixtureHint": "실제 이메일 형식이어야 하며, 도메인은 @test.com 사용 권장",
+        "fixtureHint": "실제 이메일 형식이어야 하며, 도메인은 @test.com 사용 권장함",
         "fixtureGenerator": "faker.internet.email()"
       }
     },
@@ -50,18 +50,21 @@
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
-    "A": [
-      "id",
-      "created_at",
-      "email",
-      "username",
-      "birth_date",
-      "role",
-      "last_login_at",
-      "bio",
-      "is_verified",
-      "deleted_at"
-    ],
+    "A": {
+      "fields": [
+        "id",
+        "created_at",
+        "email",
+        "username",
+        "birth_date",
+        "role",
+        "last_login_at",
+        "bio",
+        "is_verified",
+        "deleted_at"
+      ],
+      "postIt": { "desc": "SubsetA" }
+    },
     "P": [
       "id",
       "email",
@@ -75,7 +78,10 @@
     "SS": ["id", "created_at", "email", "username", "role", "last_login_at", "bio", "is_verified"]
   },
   "enums": {
-    "UserOrderBy": { "id-desc": "ID최신순" },
+    "UserOrderBy": {
+      "values": { "id-desc": "ID최신순" },
+      "postIt": { "note": "사용자를 최신 생성 순서대로 조회함" }
+    },
     "UserSearchField": { "id": "ID" },
     "UserRole": { "normal": "노멀", "admin": "관리자" }
   }
