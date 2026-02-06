@@ -1,7 +1,7 @@
 import assert from "assert";
 import { join } from "path";
 import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonamu";
-import { Naite, Sonamu, Template } from "sonamu";
+import { getEnumDefValues, Naite, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { SD } from "../../../../../modules/sonamu/dist/dict/sd";
@@ -1373,7 +1373,8 @@ describe("Syncer", () => {
         expect(entityData.props.some((p: EntityProp) => p.name === "created_by")).toBe(true);
         expect(entityData.props.some((p: EntityProp) => p.name === "updated_by")).toBe(true);
         expect(entityData.props.some((p: EntityProp) => p.name === "deleted_at")).toBe(true);
-        expect(entityData.enums?.AuditTestOrderBy?.["created_at-desc"]).toBe("최신순");
+        const orderByEnum = entityData.enums?.AuditTestOrderBy;
+        expect(orderByEnum && getEnumDefValues(orderByEnum)["created_at-desc"]).toBe("최신순");
       });
 
       // 목적: 플러그인 방식으로 여러 템플릿을 일괄 등록
