@@ -28,6 +28,7 @@ import {
   type FixtureSearchOptions,
   type FlattenSubsetRow,
   type PathAndCode,
+  type PostIt,
   TemplateKey,
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
@@ -580,6 +581,38 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           const entity = EntityManager.get(entityId);
           delete entity.enumLabels[enumId];
           await entity.save();
+        });
+      });
+
+      server.post<{
+        Body: {
+          entityId: string;
+          target: "entity" | "prop" | "enum" | "subset";
+          propName?: string;
+          enumId?: string;
+          subsetKey?: string;
+          postIt: PostIt;
+        };
+      }>("/api/entity/updatePostIt", async (request) => {
+        return await waitForHMRCompleted(async () => {
+          const { entityId, target, propName, enumId, subsetKey, postIt } = request.body;
+          const entity = EntityManager.get(entityId);
+
+          if (target === "entity") {
+            entity.postIt = postIt;
+          } else if (target === "prop" && propName) {
+            const prop = entity.props.find((p) => p.name === propName);
+            if (prop) {
+              (prop as { postIt?: PostIt }).postIt = postIt;
+            }
+          } else if (target === "enum" && enumId) {
+            entity.enumPostIts[enumId] = postIt;
+          } else if (target === "subset" && subsetKey) {
+            entity.subsetPostIts[subsetKey] = postIt;
+          }
+
+          await entity.save();
+          return true;
         });
       });
 
