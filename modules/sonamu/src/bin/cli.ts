@@ -590,6 +590,27 @@ async function skills_sync() {
     }
   }
 
+  // project 디렉토리 초기화 (없으면 생성, 있으면 유지)
+  const sourceProjectDir = path.join(sourceBase, "project");
+  const targetProjectDir = path.join(claudeDir, "skills", "project");
+
+  if (await exists(sourceProjectDir)) {
+    if (!(await exists(targetProjectDir))) {
+      try {
+        await cp(sourceProjectDir, targetProjectDir, { recursive: true });
+        console.log(chalk.green(`✓ Project templates initialized`));
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `✗ Failed to initialize project templates: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+      }
+    } else {
+      console.log(chalk.dim(`⏭ Project templates already exist (preserved)`));
+    }
+  }
+
   // CLAUDE.md 복사/업데이트
   if (await exists(sourceClaudeMd)) {
     try {
