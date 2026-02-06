@@ -81,7 +81,6 @@ export function EntityPropModal({
     }),
     initialForm,
   );
-  console.log({ oldOne, form });
 
   const typeOptions = [
     "string",

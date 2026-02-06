@@ -250,19 +250,21 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
       "name": "email",
       "type": "string",
       "length": 255,
+      "zodFormat": "email",
       "desc": "이메일"
     }
     ```
-    
+
     **매핑**:
     - PostgreSQL: `varchar(255)` (length 지정 시) 또는 `text`
     - TypeScript: `string`
     - JSON: `string`
-    
+
     **추가 옵션**:
     - `length`: 최대 길이 (생략 시 `text` 타입 사용)
+    - `zodFormat`: Zod 4 String Format validation (아래 참조)
   </Tab>
-  
+
   <Tab title="배열">
     ```json
     {
@@ -271,7 +273,7 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
       "desc": "태그 목록"
     }
     ```
-    
+
     **매핑**:
     - PostgreSQL: `text[]` 또는 `varchar(n)[]`
     - TypeScript: `string[]`
@@ -279,11 +281,65 @@ JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigin
   </Tab>
 </Tabs>
 
+#### zodFormat 옵션
+
+`zodFormat` 옵션을 사용하면 BaseSchema 생성 시 Zod의 string format validation이 자동으로 적용됩니다.
+
+**사용 예시**:
+
+```json
+{
+  "name": "user_email",
+  "type": "string",
+  "zodFormat": "email",
+  "desc": "사용자 이메일"
+}
+```
+
+**지원 포맷**:
+
+| 카테고리 | 포맷 | 설명 |
+|----------|------|------|
+| 기본 | `email` | 이메일 주소 형식 |
+| | `uuid` | UUID 형식 |
+| | `url` | URL 형식 |
+| | `httpUrl` | HTTP/HTTPS URL 형식 |
+| | `hostname` | 호스트명 형식 |
+| | `emoji` | 이모지 형식 |
+| | `jwt` | JWT 토큰 형식 |
+| 인코딩 | `base64` | Base64 인코딩 |
+| | `base64url` | URL-safe Base64 인코딩 |
+| | `hex` | 16진수 문자열 |
+| ID | `nanoid` | NanoID 형식 |
+| | `cuid` | CUID 형식 |
+| | `cuid2` | CUID2 형식 |
+| | `ulid` | ULID 형식 |
+| 네트워크 | `ipv4` | IPv4 주소 |
+| | `ipv6` | IPv6 주소 |
+| | `mac` | MAC 주소 |
+| | `cidrv4` | IPv4 CIDR 표기법 |
+| | `cidrv6` | IPv6 CIDR 표기법 |
+| 해시 | `hashMd5` | MD5 해시 |
+| | `hashSha1` | SHA-1 해시 |
+| | `hashSha256` | SHA-256 해시 |
+| | `hashSha384` | SHA-384 해시 |
+| | `hashSha512` | SHA-512 해시 |
+| ISO | `isoDate` | ISO 8601 날짜 (YYYY-MM-DD) |
+| | `isoTime` | ISO 8601 시간 (HH:MM:SS) |
+| | `isoDatetime` | ISO 8601 날짜시간 |
+| | `isoDuration` | ISO 8601 기간 |
+
 <Tip>
 **length 설정 가이드**:
 - 짧은 텍스트 (이름, 이메일): `255`
 - 긴 텍스트 (설명, 내용): 생략 (text 타입)
 - 고정 길이 (우편번호, 전화번호): 정확한 길이 지정
+</Tip>
+
+<Tip>
+**zodFormat과 uuid 타입의 차이**:
+- `type: "uuid"`: PostgreSQL의 `uuid` 컬럼 타입을 사용하며, UUID 전용 인덱스 및 함수 활용 가능
+- `type: "string"` + `zodFormat: "uuid"`: PostgreSQL의 `text`/`varchar` 컬럼을 사용하면서 API 레벨에서만 UUID 형식 검증
 </Tip>
 
 ### enum / enum[]
