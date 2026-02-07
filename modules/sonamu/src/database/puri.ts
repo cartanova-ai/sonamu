@@ -748,9 +748,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // 기존 ORDER BY clear
     this.knexQuery.clear("order");
     if (distinctOn) {
-      // DISTINCT ON은 SELECT 절의 맨 앞에 와야 하므로, 기존 select를 clear하고 다시 추가
+      // DISTINCT ON은 SELECT 절의 맨 앞에 와야 하므로, 기존 select(subset 필드들)를 보존 후 clear하고 다시 추가
+      const existingSubsetCols = (this.knexQuery as any)._statements
+        .filter((s: any) => s.grouping === "columns")
+        .flatMap((s: any) => s.value);
       this.knexQuery.clear("select");
       this.knexQuery.select(this.knex.raw(`DISTINCT ON (??) ??`, [distinctOn, distinctOn]));
+      existingSubsetCols.map((col: any) => this.knexQuery.select(col));
       this.knexQuery.select(similarityExpr);
       this.knexQuery.orderByRaw(`??, ?? ${operator} ?::vector`, [
         distinctOn,

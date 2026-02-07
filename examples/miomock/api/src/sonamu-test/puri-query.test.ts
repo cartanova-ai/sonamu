@@ -675,6 +675,36 @@ describe("Puri Query", () => {
 
       expect(query).toContain(`as similarity`);
     });
+
+    test("cosine (distinctOn + 기존 select 보존)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .select({
+          docId: "documents.id",
+          docTitle: "documents.title",
+          docContent: "documents.content",
+        })
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+          distinctOn: "documents.content",
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // 서브쿼리로 감싸짐
+      expect(query).toContain(`from (select`);
+      expect(query).toContain(`as "distinct_vectors"`);
+      // DISTINCT ON
+      expect(query).toContain(`DISTINCT ON ("documents"."content")`);
+      // 기존 subset 컬럼들이 보존되어야 함
+      expect(query).toContain(`"documents"."id" as "docId"`);
+      expect(query).toContain(`"documents"."title" as "docTitle"`);
+      expect(query).toContain(`"documents"."content" as "docContent"`);
+      // similarity
+      expect(query).toContain(`as similarity`);
+      // 바깥 ORDER BY
+      expect(query).toContain(`order by "similarity" desc`);
+    });
   });
 
   describe("H. FULLTEXT SEARCH (PGroonga)", () => {
