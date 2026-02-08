@@ -134,9 +134,15 @@ const user = await UserModel.findById("P", 1);
 // findMany
 const { rows } = await UserModel.findMany("P", { num: 20, page: 1 });
 
-// getPuri + Subset (Puri는 Thenable이므로 직접 await)
-const users = await UserModel.getPuri("r", ["P"])
-  .where("employee__department.name", "Engineering");
+// getSubsetQueries + executeSubsetQuery
+const { qb } = UserModel.getSubsetQueries("P");
+qb.where("users.role", "admin");
+
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
 ```
 
 ## 주의사항
