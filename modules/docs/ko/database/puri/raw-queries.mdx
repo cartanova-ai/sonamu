@@ -479,8 +479,8 @@ Raw SQL을 사용할 때는 **hydrate()**를 수동으로 호출하거나, 필�
 
 ### Subset vs Raw Puri의 차이
 
-| 기능 | Subset 쿼리 (`getPuri("r", ["A"])`) | Raw Puri 쿼리 (`getPuri("r")`) |
-|------|-------------------------------------|-------------------------------|
+| 기능 | Subset 쿼리 (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri 쿼리 (`getPuri("r")`) |
+|------|-------------------------------------------------------|-------------------------------|
 | **Hydrate** | ✅ 자동 호출 | ❌ 수동 호출 필요 |
 | **JOIN** | ✅ 자동 설정 | ⚠️ 수동 설정 |
 | **타입 추론** | ✅ Subset 타입 | ⚠️ 수동 정의 |
@@ -567,11 +567,17 @@ hydrated[0].employee; // undefined
 
 ```typescript
 // Subset 쿼리는 hydrate 자동 호출
-const users = await UserModel.getPuri("r", ["P"])
-  .where("users.role", "normal");
+const { qb } = UserModel.getSubsetQueries("P");
+qb.where("users.role", "normal");
+
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
 
 // 이미 hydrate되어 중첩 구조
-users[0].employee.department.name; // ✅ OK
+result.rows[0].employee.department.name; // ✅ OK
 ```
 
 #### Raw Puri 쿼리 (수동 Hydrate)
@@ -633,7 +639,7 @@ class UserModelClass extends BaseModelClass<...> {
 
 | 메서드 | Hydrate 자동 호출 | 설명 |
 |--------|------------------|------|
-| `getPuri("r", ["A"])` | ✅ Yes | Subset 쿼리는 자동 |
+| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes | Subset 쿼리는 자동 |
 | `executeSubsetQuery()` | ✅ Yes | 내부에서 자동 호출 |
 | `getPuri("r")` | ❌ No | Raw 쿼리는 수동 |
 | `findById()` | ✅ Yes | BaseModel 메서드는 자동 |
