@@ -42,25 +42,30 @@ const users = await UserModel.findMany({
 // 타입: UserSubsetMapping["L"][]
 ```
 
-## getPuri로 Subset 쿼리 시작
+## getSubsetQueries로 Subset 쿼리 시작
 
-`getPuri`를 사용하여 Subset 기반 쿼리를 시작합니다:
+`getSubsetQueries`를 사용하여 Subset 기반 쿼리를 시작합니다:
 
 ```typescript
-// Subset P의 쿼리 시작
-const query = UserModel.getPuri("r", ["P"]);
+// Subset P의 쿼리 빌더 획득
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
 
 // 추가 조건 적용
-const users = await query
-  .where("users.role", "admin")
+qb.where("users.role", "admin")
   .where("users.is_verified", true)
   .orderBy("users.created_at", "desc");
 
-// 타입: UserSubsetMapping["P"][]
+// executeSubsetQuery로 실행
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
+// 타입: ListResult<{ num: number; page: number }, UserSubsetMapping["P"]>
 ```
 
 <Info>
-`getPuri("r", ["P"])`는 Subset P에 정의된 JOIN과 SELECT를 자동으로 적용합니다.
+`getSubsetQueries("P")`는 Subset P에 정의된 JOIN과 SELECT를 자동으로 적용한 쿼리 빌더(`qb`)를 반환합니다.
 </Info>
 
 ## Subset 쿼리 확장
@@ -68,29 +73,44 @@ const users = await query
 ### WHERE 조건 추가
 
 ```typescript
-const admins = await UserModel.getPuri("r", ["L"])
-  .where("users.role", "admin")
+const { qb } = UserModel.getSubsetQueries("L");
+
+qb.where("users.role", "admin")
   .where("users.is_verified", true);
 
+const result = await UserModel.executeSubsetQuery({
+  subset: "L",
+  qb,
+  params: { num: 20, page: 1 },
+});
 // Subset L의 기본 필드 + WHERE 조건
 ```
 
 ### ORDER BY 정렬
 
 ```typescript
-const recentUsers = await UserModel.getPuri("r", ["L"])
-  .orderBy("users.created_at", "desc")
-  .limit(10);
+const { qb } = UserModel.getSubsetQueries("L");
+
+qb.orderBy("users.created_at", "desc");
+
+const result = await UserModel.executeSubsetQuery({
+  subset: "L",
+  qb,
+  params: { num: 10, page: 1 },
+});
 ```
 
 ### 복합 조건
 
 ```typescript
-const activeEngineers = await UserModel.getPuri("r", ["P"])
-  .where("users.role", "normal")
-  .where("employee__department.name", "Engineering")
-  .where("employee.salary", ">", "60000")
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+
+qb.where("users.role", "normal")
   .orderBy("employee.salary", "desc");
+
+// onSubset으로 특정 Subset의 테이블에 접근
+onSubset("P").where("employee__department.name", "Engineering");
+onSubset("P").where("employee.salary", ">", "60000");
 
 // Subset P는 employee.department.name을 포함하므로
 // JOIN이 자동으로 설정됨
@@ -102,13 +122,13 @@ const activeEngineers = await UserModel.getPuri("r", ["P"])
 
 ```typescript
 // ✅ OK: Subset P는 employee__department 테이블 포함
-await UserModel.getPuri("r", ["P"])
-  .where("employee__department.name", "Engineering");
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+onSubset("P").where("employee__department.name", "Engineering");
 
 // ❌ Type Error: Subset L은 employee 테이블 미포함
-await UserModel.getPuri("r", ["L"])
-  .where("employee__department.name", "Engineering");
-//     ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+const { qb: qbL, onSubset: onSubsetL } = UserModel.getSubsetQueries("L");
+onSubsetL("L").where("employee__department.name", "Engineering");
+//             ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
 ```
 
 ### 자동 타입 추론
@@ -152,16 +172,19 @@ user.bio;       // ❌ Type Error (P에는 없음, A에만 있음)
 #### 쿼리에서의 교집합
 
 ```typescript
-// 쿼리 시작: A와 P 교집합
-const query = UserModel.getPuri("r", ["A", "P"]);
+// 쿼리 시작: A Subset 기반
+const { qb, onSubset } = UserModel.getSubsetQueries("A");
 
 // ✅ OK: 공통 필드만 WHERE 조건 가능
-await query.where("users.username", "like", "%john%");
-await query.where("users.email", "john@example.com");
+qb.where("users.username", "like", "%john%");
+qb.where("users.email", "john@example.com");
 
-// ❌ Type Error: employee는 교집합에 없음
-await query.where("employee__department.name", "Engineering");
-//                ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+// onSubset으로 여러 Subset의 교집합 타입 사용
+onSubset(["A", "P"]).where("users.id", 1);
+
+// ❌ Type Error: employee는 A와 P 교집합에 없음 (A에 없음)
+// onSubset(["A", "P"]).where("employee__department.name", "Engineering");
+//                      ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
 ```
 
 #### 실전 예제: 조건부 Subset 선택
@@ -226,37 +249,32 @@ const userP = await getUserDataGeneric(1, "P");  // 타입: UserSubsetMapping["P
 `onSubset` 메서드로 Subset 조건을 동적으로 적용할 때도 교집합이 계산됩니다:
 
 ```typescript
-const query = UserModel.getPuri("r", ["A"]);
+const { qb, onSubset } = UserModel.getSubsetQueries("A");
 
-// Subset A와 P 조건 모두 적용
-const result = await query
-  .onSubset(["A", "P"], (qb) => {
-    // 이 블록 내에서는 A와 P의 교집합 필드만 사용 가능
-    qb.where("users.username", "like", "%john%");  // ✅ OK
+// Subset A와 P 조건 모두 적용 (교집합 타입)
+onSubset(["A", "P"]).where("users.username", "like", "%john%");  // ✅ OK
 
-    // ❌ Type Error: employee는 교집합에 없음
-    // qb.where("employee__department.name", "Engineering");
-  });
+// ❌ Type Error: employee는 교집합에 없음
+// onSubset(["A", "P"]).where("employee__department.name", "Engineering");
 ```
 
 **onSubset의 타입 추론**:
 
 ```typescript
+const { qb, onSubset } = UserModel.getSubsetQueries("A");
+
 // 단일 Subset
-query.onSubset(["A"], (qb) => {
-  // qb는 Subset A의 모든 필드 사용 가능
-});
+onSubset("A").where("users.id", 1);
+// qb는 Subset A의 모든 필드 사용 가능
 
 // 복수 Subset (교집합)
-query.onSubset(["A", "P"], (qb) => {
-  // qb는 A와 P의 교집합 필드만 사용 가능
-});
+onSubset(["A", "P"]).where("users.id", 1);
+// qb는 A와 P의 교집합 필드만 사용 가능
 
 // 교집합이 비어있으면?
-query.onSubset(["L", "P"], (qb) => {
-  // L과 P의 공통 필드만 사용 가능
-  // 만약 공통 필드가 거의 없다면, 사용 가능한 필드가 매우 제한적
-});
+onSubset(["L", "P"]).where("users.id", 1);
+// L과 P의 공통 필드만 사용 가능
+// 만약 공통 필드가 거의 없다면, 사용 가능한 필드가 매우 제한적
 ```
 
 <Warning>
@@ -280,29 +298,30 @@ query.onSubset(["L", "P"], (qb) => {
 ### 사용자 목록 API
 
 ```typescript
-// Controller
-class UserController {
-  async list(req: TypedRequest<UserListParams>) {
-    const { page, pageSize, role, search } = req.body;
-    
-    let query = UserModel.getPuri("r", ["L"]);
-    
+// Model 내부 메서드 (권장 패턴)
+class UserModelClass extends BaseModelClass<...> {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findMany<T extends UserSubsetKey>(
+    subset: T,
+    rawParams?: UserListParams
+  ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+    const params = { num: 24, page: 1, ...rawParams };
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
     // 역할 필터
-    if (role) {
-      query = query.where("users.role", role);
+    if (params.role) {
+      qb.where("users.role", params.role);
     }
-    
+
     // 검색
-    if (search) {
-      query = query.where("users.username", "like", `%${search}%`);
+    if (params.keyword) {
+      qb.where("users.username", "like", `%${params.keyword}%`);
     }
-    
-    const users = await query
-      .orderBy("users.created_at", "desc")
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
-    
-    return users;
+
+    // 정렬
+    qb.orderBy("users.created_at", "desc");
+
+    return this.executeSubsetQuery({ subset, qb, params });
   }
 }
 ```
@@ -310,22 +329,21 @@ class UserController {
 ### 프로필 조회 API
 
 ```typescript
-async getProfile(userId: number) {
-  const user = await UserModel.findById(userId, ["P"]);
-  
-  if (!user) {
+@api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+async findById<T extends UserSubsetKey>(
+  subset: T,
+  id: string
+): Promise<UserSubsetMapping[T]> {
+  const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
+  if (!rows[0]) {
     throw new NotFoundException("User not found");
   }
-  
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    bio: user.bio,
-    department: user.employee?.department?.name,
-    salary: user.employee?.salary,
-  };
+  return rows[0];
 }
+
+// 사용 예시
+const user = await UserModel.findById("P", "123");
+// user.employee?.department?.name 접근 가능
 ```
 
 ### 복합 검색 API
@@ -336,25 +354,32 @@ async searchUsers(params: {
   departmentName?: string;
   minSalary?: number;
 }) {
-  let query = UserModel.getPuri("r", ["P"]);
-  
+  const { qb, onSubset } = this.getSubsetQueries("P");
+
   if (params.role) {
-    query = query.where("users.role", params.role);
+    qb.where("users.role", params.role);
   }
-  
+
   if (params.departmentName) {
-    query = query.where(
+    // onSubset으로 Subset P의 테이블에 타입 안전하게 접근
+    onSubset("P").where(
       "employee__department.name",
       "like",
       `%${params.departmentName}%`
     );
   }
-  
+
   if (params.minSalary) {
-    query = query.where("employee.salary", ">=", String(params.minSalary));
+    onSubset("P").where("employee.salary", ">=", String(params.minSalary));
   }
-  
-  return await query.orderBy("users.username", "asc");
+
+  qb.orderBy("users.username", "asc");
+
+  return this.executeSubsetQuery({
+    subset: "P",
+    qb,
+    params: { num: 100, page: 1 },
+  });
 }
 ```
 
@@ -408,14 +433,22 @@ const users = await UserModel.findMany({
 
 ```typescript
 // ❌ 나쁨: 불필요한 JOIN (Subset P)
-const userIds = await UserModel.getPuri("r", ["P"])
-  .pluck("users.id");
-// employee, department 테이블도 JOIN됨
+// Subset P는 employee, department 테이블도 JOIN함
+const { qb } = UserModel.getSubsetQueries("P");
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 100, page: 1 },
+});
 
 // ✅ 좋음: JOIN 없는 Subset (SS)
-const userIds = await UserModel.getPuri("r", ["SS"])
-  .pluck("users.id");
-// users 테이블만 조회
+// Subset SS는 users 테이블만 조회
+const { qb: qbSS } = UserModel.getSubsetQueries("SS");
+const resultSS = await UserModel.executeSubsetQuery({
+  subset: "SS",
+  qb: qbSS,
+  params: { num: 100, page: 1 },
+});
 ```
 
 ## Subset과 Raw Puri 비교
@@ -424,10 +457,15 @@ const userIds = await UserModel.getPuri("r", ["SS"])
 
 ```typescript
 // ✅ Subset - 타입 안전, 간결
-const users = await UserModel.getPuri("r", ["P"])
-  .where("users.role", "admin");
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+qb.where("users.role", "admin");
 
-// 타입: UserSubsetMapping["P"][]
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
+// 타입: ListResult<..., UserSubsetMapping["P"]>
 // JOIN 자동 설정
 // SELECT 자동 설정
 ```
@@ -436,7 +474,8 @@ const users = await UserModel.getPuri("r", ["P"])
 
 ```typescript
 // ⚠️ Raw Puri - 수동 설정
-const users = await UserModel.getPuri("r")
+const puri = UserModel.getPuri("r");
+const users = await puri
   .table("users")
   .leftJoin("employees", "users.id", "employees.user_id")
   .leftJoin("departments", "employees.department_id", "departments.id")
@@ -446,7 +485,8 @@ const users = await UserModel.getPuri("r")
     employee__salary: "employees.salary",
     employee__department__name: "departments.name",
   })
-  .where("users.role", "admin");
+  .where("users.role", "admin")
+  .many();
 
 // 타입: { id: number; username: string; ... }[]
 // JOIN 수동 설정

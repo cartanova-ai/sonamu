@@ -77,11 +77,12 @@ function serializeArgs(args: unknown[]): string {
  * 메서드의 결과를 캐싱합니다.
  *
  * @example
- * class UserModelClass extends BaseModel {
+ * class UserModelClass extends BaseModelClass<...> {
  *   @cache({ ttl: '10m', tags: ['user'] })
  *   @api()
- *   async findById(id: number) {
- *     return this.findOne(['id', id]);
+ *   async findById(subset: UserSubsetKey, id: string) {
+ *     const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
+ *     return rows[0];
  *   }
  * }
  */
