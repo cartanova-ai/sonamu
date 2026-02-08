@@ -42,25 +42,30 @@ const users = await UserModel.findMany({
 // Type: UserSubsetMapping["L"][]
 ```
 
-## Starting Subset Queries with getPuri
+## Starting Subset Queries with getSubsetQueries
 
-Use `getPuri` to start a Subset-based query:
+Use `getSubsetQueries` to start a Subset-based query:
 
 ```typescript
-// Start query with Subset P
-const query = UserModel.getPuri("r", ["P"]);
+// Get query builder for Subset P
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
 
 // Apply additional conditions
-const users = await query
-  .where("users.role", "admin")
+qb.where("users.role", "admin")
   .where("users.is_verified", true)
   .orderBy("users.created_at", "desc");
 
-// Type: UserSubsetMapping["P"][]
+// Execute with executeSubsetQuery
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
+// Type: ListResult<{ num: number; page: number }, UserSubsetMapping["P"]>
 ```
 
 <Info>
-`getPuri("r", ["P"])` automatically applies the JOIN and SELECT defined in Subset P.
+`getSubsetQueries("P")` returns a query builder (`qb`) with the JOIN and SELECT defined in Subset P automatically applied.
 </Info>
 
 ## Extending Subset Queries
@@ -68,29 +73,44 @@ const users = await query
 ### Adding WHERE Conditions
 
 ```typescript
-const admins = await UserModel.getPuri("r", ["L"])
-  .where("users.role", "admin")
+const { qb } = UserModel.getSubsetQueries("L");
+
+qb.where("users.role", "admin")
   .where("users.is_verified", true);
 
+const result = await UserModel.executeSubsetQuery({
+  subset: "L",
+  qb,
+  params: { num: 20, page: 1 },
+});
 // Subset L base fields + WHERE conditions
 ```
 
 ### ORDER BY Sorting
 
 ```typescript
-const recentUsers = await UserModel.getPuri("r", ["L"])
-  .orderBy("users.created_at", "desc")
-  .limit(10);
+const { qb } = UserModel.getSubsetQueries("L");
+
+qb.orderBy("users.created_at", "desc");
+
+const result = await UserModel.executeSubsetQuery({
+  subset: "L",
+  qb,
+  params: { num: 10, page: 1 },
+});
 ```
 
 ### Complex Conditions
 
 ```typescript
-const activeEngineers = await UserModel.getPuri("r", ["P"])
-  .where("users.role", "normal")
-  .where("employee__department.name", "Engineering")
-  .where("employee.salary", ">", "60000")
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+
+qb.where("users.role", "normal")
   .orderBy("employee.salary", "desc");
+
+// Access Subset-specific tables with onSubset
+onSubset("P").where("employee__department.name", "Engineering");
+onSubset("P").where("employee.salary", ">", "60000");
 
 // Subset P includes employee.department.name,
 // so JOIN is automatically configured
@@ -102,13 +122,13 @@ const activeEngineers = await UserModel.getPuri("r", ["P"])
 
 ```typescript
 // ✅ OK: Subset P includes employee__department table
-await UserModel.getPuri("r", ["P"])
-  .where("employee__department.name", "Engineering");
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+onSubset("P").where("employee__department.name", "Engineering");
 
 // ❌ Type Error: Subset L doesn't include employee table
-await UserModel.getPuri("r", ["L"])
-  .where("employee__department.name", "Engineering");
-//     ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+const { qb: qbL, onSubset: onSubsetL } = UserModel.getSubsetQueries("L");
+onSubsetL("L").where("employee__department.name", "Engineering");
+//             ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
 ```
 
 ### Automatic Type Inference
@@ -130,29 +150,30 @@ user.password;  // Property 'password' does not exist
 ### User List API
 
 ```typescript
-// Controller
-class UserController {
-  async list(req: TypedRequest<UserListParams>) {
-    const { page, pageSize, role, search } = req.body;
-    
-    let query = UserModel.getPuri("r", ["L"]);
-    
+// Model method (recommended pattern)
+class UserModelClass extends BaseModelClass<...> {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  async findMany<T extends UserSubsetKey>(
+    subset: T,
+    rawParams?: UserListParams
+  ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+    const params = { num: 24, page: 1, ...rawParams };
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
     // Role filter
-    if (role) {
-      query = query.where("users.role", role);
+    if (params.role) {
+      qb.where("users.role", params.role);
     }
-    
+
     // Search
-    if (search) {
-      query = query.where("users.username", "like", `%${search}%`);
+    if (params.keyword) {
+      qb.where("users.username", "like", `%${params.keyword}%`);
     }
-    
-    const users = await query
-      .orderBy("users.created_at", "desc")
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
-    
-    return users;
+
+    // Sorting
+    qb.orderBy("users.created_at", "desc");
+
+    return this.executeSubsetQuery({ subset, qb, params });
   }
 }
 ```
@@ -160,22 +181,21 @@ class UserController {
 ### Profile Query API
 
 ```typescript
-async getProfile(userId: number) {
-  const user = await UserModel.findById(userId, ["P"]);
-  
-  if (!user) {
+@api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+async findById<T extends UserSubsetKey>(
+  subset: T,
+  id: string
+): Promise<UserSubsetMapping[T]> {
+  const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
+  if (!rows[0]) {
     throw new NotFoundException("User not found");
   }
-  
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    bio: user.bio,
-    department: user.employee?.department?.name,
-    salary: user.employee?.salary,
-  };
+  return rows[0];
 }
+
+// Usage example
+const user = await UserModel.findById("P", "123");
+// user.employee?.department?.name is accessible
 ```
 
 ### Complex Search API
@@ -186,25 +206,32 @@ async searchUsers(params: {
   departmentName?: string;
   minSalary?: number;
 }) {
-  let query = UserModel.getPuri("r", ["P"]);
-  
+  const { qb, onSubset } = this.getSubsetQueries("P");
+
   if (params.role) {
-    query = query.where("users.role", params.role);
+    qb.where("users.role", params.role);
   }
-  
+
   if (params.departmentName) {
-    query = query.where(
+    // Access Subset P's tables with type safety using onSubset
+    onSubset("P").where(
       "employee__department.name",
       "like",
       `%${params.departmentName}%`
     );
   }
-  
+
   if (params.minSalary) {
-    query = query.where("employee.salary", ">=", String(params.minSalary));
+    onSubset("P").where("employee.salary", ">=", String(params.minSalary));
   }
-  
-  return await query.orderBy("users.username", "asc");
+
+  qb.orderBy("users.username", "asc");
+
+  return this.executeSubsetQuery({
+    subset: "P",
+    qb,
+    params: { num: 100, page: 1 },
+  });
 }
 ```
 
@@ -258,14 +285,22 @@ const users = await UserModel.findMany({
 
 ```typescript
 // ❌ Bad: Unnecessary JOINs (Subset P)
-const userIds = await UserModel.getPuri("r", ["P"])
-  .pluck("users.id");
-// employee, department tables are also JOINed
+// Subset P also JOINs employee, department tables
+const { qb } = UserModel.getSubsetQueries("P");
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 100, page: 1 },
+});
 
 // ✅ Good: Subset without JOINs (SS)
-const userIds = await UserModel.getPuri("r", ["SS"])
-  .pluck("users.id");
-// Only users table is queried
+// Subset SS only queries users table
+const { qb: qbSS } = UserModel.getSubsetQueries("SS");
+const resultSS = await UserModel.executeSubsetQuery({
+  subset: "SS",
+  qb: qbSS,
+  params: { num: 100, page: 1 },
+});
 ```
 
 ## Subset vs Raw Puri Comparison
@@ -274,10 +309,15 @@ const userIds = await UserModel.getPuri("r", ["SS"])
 
 ```typescript
 // ✅ Subset - type safe, concise
-const users = await UserModel.getPuri("r", ["P"])
-  .where("users.role", "admin");
+const { qb, onSubset } = UserModel.getSubsetQueries("P");
+qb.where("users.role", "admin");
 
-// Type: UserSubsetMapping["P"][]
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
+// Type: ListResult<..., UserSubsetMapping["P"]>
 // JOIN auto-configured
 // SELECT auto-configured
 ```
@@ -286,7 +326,8 @@ const users = await UserModel.getPuri("r", ["P"])
 
 ```typescript
 // ⚠️ Raw Puri - manual configuration
-const users = await UserModel.getPuri("r")
+const puri = UserModel.getPuri("r");
+const users = await puri
   .table("users")
   .leftJoin("employees", "users.id", "employees.user_id")
   .leftJoin("departments", "employees.department_id", "departments.id")
@@ -296,7 +337,8 @@ const users = await UserModel.getPuri("r")
     employee__salary: "employees.salary",
     employee__department__name: "departments.name",
   })
-  .where("users.role", "admin");
+  .where("users.role", "admin")
+  .many();
 
 // Type: { id: number; username: string; ... }[]
 // JOIN manual configuration
