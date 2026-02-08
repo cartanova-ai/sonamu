@@ -473,6 +473,241 @@ results[0].numberValue; // number
 results[0].boolValue; // boolean
 ```
 
+## Raw Queries and Hydrate
+
+When using Raw SQL, you must either manually call **hydrate()** or follow field naming conventions to properly structure JOIN data.
+
+### Subset vs Raw Puri Differences
+
+| Feature | Subset Query (`getSubsetQueries` + `executeSubsetQuery`) | Raw Puri Query (`getPuri("r")`) |
+|---------|-------------------------------------------------------|-------------------------------|
+| **Hydrate** | ✅ Automatic | ❌ Manual call required |
+| **JOIN** | ✅ Auto-configured | ⚠️ Manual setup |
+| **Type Inference** | ✅ Subset types | ⚠️ Manual definition |
+| **Field Structuring** | ✅ Automatic (nested objects) | ❌ Manual (flat) |
+
+### What Hydrate Does
+
+`hydrate()` **transforms flat query results into nested object structures**.
+
+**Before hydrate (Flat)**:
+```typescript
+{
+  id: 1,
+  username: "john",
+  employee__id: 10,
+  employee__salary: "60000",
+  employee__department__id: 5,
+  employee__department__name: "Engineering"
+}
+```
+
+**After hydrate (Nested)**:
+```typescript
+{
+  id: 1,
+  username: "john",
+  employee: {
+    id: 10,
+    salary: "60000",
+    department: {
+      id: 5,
+      name: "Engineering"
+    }
+  }
+}
+```
+
+### Field Naming Convention: Double Underscore (`__`)
+
+JOIN table fields must use the **`tableName__fieldName`** format.
+
+```typescript
+// ✅ Correct naming
+const results = await db
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .join("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__id: "employees.id",                    // double underscore
+    employee__salary: "employees.salary",
+    employee__department__id: "departments.id",      // double underscore for nesting
+    employee__department__name: "departments.name",
+  });
+
+// call hydrate
+const hydrated = results.map(row => UserModel.hydrate(row));
+
+// result: nested object structure
+hydrated[0].employee.department.name; // "Engineering"
+```
+
+```typescript
+// ❌ Incorrect naming (single underscore)
+const results = await db
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee_id: "employees.id",        // ❌ wrong (single underscore)
+    employee_salary: "employees.salary", // ❌ wrong
+  });
+
+// hydrate won't create nested structure
+const hydrated = results.map(row => UserModel.hydrate(row));
+hydrated[0].employee; // undefined
+```
+
+### Automatic vs Manual Hydrate
+
+#### Subset Query (Automatic Hydrate)
+
+```typescript
+// Subset queries automatically call hydrate
+const { qb } = UserModel.getSubsetQueries("P");
+qb.where("users.role", "normal");
+
+const result = await UserModel.executeSubsetQuery({
+  subset: "P",
+  qb,
+  params: { num: 20, page: 1 },
+});
+
+// Already hydrated into nested structure
+result.rows[0].employee.department.name; // ✅ OK
+```
+
+#### Raw Puri Query (Manual Hydrate)
+
+```typescript
+// Raw queries require manual hydrate call
+const users = await UserModel.getPuri("r")
+  .table("users")
+  .join("employees", "users.id", "employees.user_id")
+  .join("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__id: "employees.id",
+    employee__salary: "employees.salary",
+    employee__department__id: "departments.id",
+    employee__department__name: "departments.name",
+  });
+
+// ❌ Before hydrate: flat structure
+users[0].employee; // undefined
+users[0].employee__id; // 10 (flat)
+
+// ✅ After hydrate: nested structure
+const hydrated = users.map(row => UserModel.hydrate(row));
+hydrated[0].employee.id; // 10
+hydrated[0].employee.department.name; // "Engineering"
+```
+
+### Automatic Hydrate in executeSubsetQuery
+
+`executeSubsetQuery()` internally calls hydrate automatically.
+
+```typescript
+class UserModelClass extends BaseModelClass<...> {
+  async getUsersWithDepartment() {
+    const { qb } = this.getSubsetQueries("P");
+
+    qb.where("users.role", "normal");
+
+    // executeSubsetQuery calls hydrate automatically
+    const users = await this.executeSubsetQuery({
+      subset: "P",
+      qb,
+      params: { num: 20, page: 1 },
+    });
+
+    // Already hydrated
+    return users.rows.map(user => ({
+      id: user.id,
+      username: user.username,
+      department: user.employee?.department?.name, // ✅ OK
+    }));
+  }
+}
+```
+
+### Hydrate Call Summary
+
+| Method | Automatic Hydrate | Description |
+|--------|------------------|------|
+| `getSubsetQueries` + `executeSubsetQuery` | ✅ Yes | Subset queries are automatic |
+| `executeSubsetQuery()` | ✅ Yes | Called internally |
+| `getPuri("r")` | ❌ No | Raw queries are manual |
+| `findById()` | ✅ Yes | BaseModel methods are automatic |
+| `findOne()` | ✅ Yes | BaseModel methods are automatic |
+| `findMany()` | ✅ Yes | BaseModel methods are automatic |
+
+### Practical Example: Raw Query + Hydrate
+
+```typescript
+class UserModelClass extends BaseModelClass<...> {
+  // Complex join with raw query
+  async getTopUsersWithStats() {
+    const results = await this.getPuri("r")
+      .table("users")
+      .join("employees", "users.id", "employees.user_id")
+      .join("departments", "employees.department_id", "departments.id")
+      .select({
+        // Basic fields
+        id: "users.id",
+        username: "users.username",
+        email: "users.email",
+
+        // JOIN fields (double underscore convention)
+        employee__id: "employees.id",
+        employee__salary: "employees.salary",
+        employee__hire_date: "employees.hire_date",
+        employee__department__id: "departments.id",
+        employee__department__name: "departments.name",
+
+        // Aggregate fields
+        postCount: Puri.rawNumber(`
+          (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+        `),
+      })
+      .whereRaw("employees.salary > ?", [60000])
+      .orderBy("employees.salary", "desc")
+      .limit(10);
+
+    // Create nested structure with hydrate
+    const hydrated = results.map(row => this.hydrate(row));
+
+    // Safely access nested structure
+    return hydrated.map(user => ({
+      id: user.id,
+      username: user.username,
+      department: user.employee.department.name,  // ✅ OK
+      salary: user.employee.salary,
+      postCount: user.postCount,
+    }));
+  }
+}
+```
+
+<Warning>
+**Cautions when using Hydrate**:
+1. **Field naming**: JOIN fields must use `__` (double underscore)
+2. **Manual call**: Raw Puri queries require manual hydrate() call
+3. **Type safety**: Types after hydrate must be manually defined
+4. **Performance**: hydrate has runtime overhead, so use Subset queries for simple cases
+</Warning>
+
+<Info>
+**Recommendations**:
+- Use **Subset queries** when possible (automatic hydrate)
+- Only use manual hydrate when complex Raw SQL is needed
+- Apply field naming conventions (`__`) consistently
+</Info>
+
 ## Next Steps
 
 <CardGroup cols={2}>
