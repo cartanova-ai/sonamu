@@ -15,6 +15,7 @@ import {
   EnumSelect,
   Input,
   Pagination,
+  SonamuFilterModal,
   Table,
   TableBody,
   TableCell,
@@ -26,10 +27,10 @@ import {
 import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { SonamuFilterModal } from "@/components/SonamuFilterModal";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
+import * as SonamuGenerated from "@/services/sonamu.generated";
 import {
   DepartmentBaseSchema,
   DepartmentOrderBy,
@@ -324,6 +325,7 @@ function DepartmentList({}: DepartmentListProps) {
         onApply={(filters) => {
           setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
         }}
+        sonamuGenerated={SonamuGenerated}
       />
     </div>
   );

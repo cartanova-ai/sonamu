@@ -26,11 +26,14 @@ export type {
   ControlledModalProps,
   DistributiveOmit,
   ErrorObj,
+  FilterOperator,
+  FilterPropType,
   Override,
   PaginationProps,
   SonamuCol,
   TableColumnWidth,
 } from "./types";
+export { defaultOperatorByPropType, operatorsByPropType } from "./types";
 
 // Use Mobile
 export { useIsMobile } from "./use-mobile";
