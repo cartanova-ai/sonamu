@@ -64,7 +64,16 @@ export class FixtureGenerator {
 
       // 1. Relation prop 처리
       if (isRelationProp(prop)) {
-        fixture[prop.name] = await this.generateRelationValue(entity, prop, context);
+        const relationValue = await this.generateRelationValue(entity, prop, context);
+        // BelongsToOne, OneToOne(hasJoinColumn)의 경우 foreign key 컬럼명으로 저장
+        if (
+          isBelongsToOneRelationProp(prop) ||
+          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
+        ) {
+          fixture[`${prop.name}_id`] = relationValue;
+        } else {
+          fixture[prop.name] = relationValue;
+        }
         continue;
       }
 
@@ -304,11 +313,55 @@ export class FixtureGenerator {
    * 타입별 기본값 생성 (Faker.js 사용)
    */
   private async generateDefaultValue(prop: EntityProp, entity?: Entity): Promise<unknown> {
-    const { faker } = await import("@faker-js/faker");
+    const fakerModule = await import("@faker-js/faker");
+    const faker = fakerModule.faker;
+    const fakerKO = fakerModule.fakerKO;
 
     switch (prop.type) {
       case "string":
       case "string[]":
+        // Department의 name 필드는 한국어 부서명 생성
+        if (entity?.id === "Department" && prop.name === "name") {
+          const departments = [
+            "개발팀",
+            "기획팀",
+            "마케팅팀",
+            "영업팀",
+            "인사팀",
+            "총무팀",
+            "재무팀",
+            "회계팀",
+            "법무팀",
+            "디자인팀",
+            "IT팀",
+            "고객지원팀",
+            "품질관리팀",
+            "연구개발팀",
+            "생산팀",
+            "구매팀",
+            "물류팀",
+          ];
+          const prefixes = ["신규", "통합", "전략", "글로벌", "디지털", "핵심"];
+          const suffixes = ["1팀", "2팀", "3팀", "A팀", "B팀", "본부", "센터", "그룹"];
+
+          const dept = faker.helpers.arrayElement(departments);
+
+          // 70% 확률로 prefix 또는 suffix 추가하여 고유성 확보
+          const random = Math.random();
+          if (random > 0.7) {
+            const prefix = faker.helpers.arrayElement(prefixes);
+            return `${prefix} ${dept}`;
+          }
+          if (random > 0.4) {
+            const suffix = faker.helpers.arrayElement(suffixes);
+            return `${dept} ${suffix}`;
+          }
+          return dept;
+        }
+        // 일반 name 필드는 한국어 사람 이름 생성
+        if (prop.name === "name" || prop.name === "username") {
+          return fakerKO.person.fullName();
+        }
         return faker.lorem.words(3);
       case "integer":
         return faker.number.int({ min: 1, max: 1000 });
