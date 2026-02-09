@@ -27,9 +27,9 @@
       "desc": "이름",
       "type": "string",
       "length": 255,
-      "postIt": { "fixtureHint": "한글 이름 2-4자", "fixtureDefault": "테스트사용자" }
+      "postIt": { "fixtureHint": "한글 이름 2-4자", "fixtureGenerator": "faker.person.fullName()" }
     },
-    { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255 },
+    { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255, "postIt": { "fixtureDefault": "password123" } },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
     { "name": "last_login_at", "nullable": true, "desc": "LASTLOGIN일시", "type": "date" },
