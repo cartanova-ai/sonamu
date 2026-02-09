@@ -33,6 +33,7 @@ import {
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config";
+import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
 
 let migrator: Migrator;
 
@@ -47,15 +48,20 @@ async function bootstrap() {
     // 옵션 파싱은 각 runner 함수에서 원본 process.argv를 사용하여 수행합니다.
     const filteredArgv: string[] = [];
     let skipNext = false;
-    for (const arg of process.argv) {
+    for (let i = 0; i < process.argv.length; i++) {
+      const arg = process.argv[i];
       if (skipNext) {
         skipNext = false;
         continue;
       }
       if (arg.startsWith("--")) {
         // --option=value 형식은 이 arg만 스킵
-        // --option value 형식은 다음 arg도 스킵
-        if (!arg.includes("=")) {
+        if (arg.includes("=")) {
+          continue;
+        }
+        // --option value 형식인지 확인: 다음 arg가 --로 시작하지 않으면 값이 있는 것
+        const nextArg = process.argv[i + 1];
+        if (nextArg && !nextArg.startsWith("--") && !nextArg.startsWith("-")) {
           skipNext = true;
         }
         continue;
@@ -91,6 +97,9 @@ async function bootstrap() {
         ["fixture", "init"],
         ["fixture", "import", "#entityId", "#recordIds"],
         ["fixture", "sync"],
+        ["fixture", "gen"],
+        ["fixture", "fetch"],
+        ["fixture", "explore"],
         ["migrate", "run"],
         ["migrate", "apply", "#targets"],
         ["migrate", "status"],
@@ -115,6 +124,9 @@ async function bootstrap() {
         fixture_init,
         fixture_import,
         fixture_sync,
+        fixture_gen,
+        fixture_fetch,
+        fixture_explore,
         stub_practice,
         stub_entity,
         scaffold_model,
@@ -468,6 +480,77 @@ async function fixture_sync() {
   await setupFixtureManager();
 
   await FixtureManager.sync();
+}
+
+/**
+ * fixture gen 명령어
+ * 옵션을 process.argv에서 파싱
+ */
+async function fixture_gen() {
+  const options = parseOptions(process.argv);
+  await fixtureGenCommand(options);
+}
+
+/**
+ * fixture fetch 명령어
+ * 옵션을 process.argv에서 파싱
+ */
+async function fixture_fetch() {
+  const options = parseOptions(process.argv);
+  await fixtureFetchCommand(options);
+}
+
+/**
+ * fixture explore 명령어
+ * 옵션을 process.argv에서 파싱
+ */
+async function fixture_explore() {
+  const options = parseOptions(process.argv);
+  await fixtureExploreCommand(options);
+}
+
+/**
+ * 간단한 옵션 파서
+ */
+function parseOptions(
+  argv: string[],
+): Record<string, string | boolean | string[]> & { _: string[] } {
+  const options: Record<string, string | boolean | string[]> & { _: string[] } = { _: [] };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg.startsWith("--")) {
+      const key = arg.slice(2);
+
+      if (key.includes("=")) {
+        const [k, v] = key.split("=");
+        options[k] = v;
+      } else {
+        const next = argv[i + 1];
+        if (next && !next.startsWith("--")) {
+          options[key] = next;
+          i++;
+        } else {
+          options[key] = true;
+        }
+      }
+    } else if (arg.startsWith("-")) {
+      const key = arg.slice(1);
+      const next = argv[i + 1];
+
+      if (next && !next.startsWith("-")) {
+        options[key] = next;
+        i++;
+      } else {
+        options[key] = true;
+      }
+    } else {
+      options._.push(arg);
+    }
+  }
+
+  return options;
 }
 
 async function stub_practice(name: string) {
