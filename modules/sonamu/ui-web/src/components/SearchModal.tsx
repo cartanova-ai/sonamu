@@ -11,17 +11,17 @@ import { useMemo, useState } from "react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 function Highlight({ text, search }: { text: string; search: string }) {
-  if (!search) return <>{text}</>;
+  if (!search) return <span>{text}</span>;
   const index = text.toLowerCase().indexOf(search.toLowerCase());
-  if (index === -1) return <>{text}</>;
+  if (index === -1) return <span>{text}</span>;
   return (
-    <>
+    <span>
       {text.slice(0, index)}
-      <span className="bg-amber-200/60 text-amber-900 rounded-sm px-[1px]">
+      <span className="bg-amber-200/60 text-amber-900 rounded-sm">
         {text.slice(index, index + search.length)}
       </span>
       {text.slice(index + search.length)}
-    </>
+    </span>
   );
 }
 
@@ -65,13 +65,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           return {
             entity,
             entityMatch,
-            matchedProps: entityMatch ? entity.props : matchedProps,
-            matchedSubsets: entityMatch
-              ? Object.entries(entity.subsets).flatMap(([subsetKey, fields]) =>
-                  fields.map((field) => ({ subsetKey, field })),
-                )
-              : matchedSubsets,
-            matchedEnums: entityMatch ? Object.keys(entity.enumLabels) : matchedEnums,
+            matchedProps,
+            matchedSubsets,
+            matchedEnums,
           };
         }
         return null;
@@ -123,16 +119,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         )}
         {filteredEntities.map((item) => {
           if (!item) return null;
-          const { entity, entityMatch } = item;
-          const matchedProps = "matchedProps" in item ? item.matchedProps : entity.props;
-          const matchedSubsets =
-            "matchedSubsets" in item
-              ? item.matchedSubsets
-              : Object.entries(entity.subsets).flatMap(([subsetKey, fields]) =>
-                  fields.map((field) => ({ subsetKey, field })),
-                );
-          const matchedEnums =
-            "matchedEnums" in item ? item.matchedEnums : Object.keys(entity.enumLabels);
+          const { entity, entityMatch, matchedProps, matchedSubsets, matchedEnums } = item;
 
           return (
             <CommandGroup
@@ -165,14 +152,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 >
                   prop &gt; <Highlight text={prop.name} search={search} />
                   {prop.desc ? (
-                    <>
+                    <span>
                       {" ("}
                       <Highlight text={prop.desc} search={search} />
                       {")"}
-                    </>
-                  ) : (
-                    ""
-                  )}
+                    </span>
+                  ) : null}
                 </CommandItem>
               ))}
 
