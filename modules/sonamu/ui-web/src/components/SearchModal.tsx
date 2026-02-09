@@ -171,17 +171,31 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           matchedSubsets.length > 0 ||
           matchedEnums.length > 0
         ) {
+          // 이 엔티티에서 가장 높은 매칭 스코어를 계산합니다.
+          // entityResult는 이미 위에서 계산되어 있으므로 재사용합니다.
+          const bestScore = Math.max(
+            entityResult?.score ?? 0,
+            ...matchedProps.map(
+              (prop) => fuzzyMatch(`${prop.name} ${prop.desc ?? ""}`, search)?.score ?? 0,
+            ),
+            ...matchedSubsets.map(
+              ({ subsetKey, field }) => fuzzyMatch(`${subsetKey} ${field}`, search)?.score ?? 0,
+            ),
+            ...matchedEnums.map((enumKey) => fuzzyMatch(enumKey, search)?.score ?? 0),
+          );
           return {
             entity,
             entityMatch,
             matchedProps,
             matchedSubsets,
             matchedEnums,
+            bestScore,
           };
         }
         return null;
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a, b) => (b?.bestScore ?? 0) - (a?.bestScore ?? 0));
   }, [entities, search]);
 
   const handleSelect = (url: string, elementId?: string) => {
