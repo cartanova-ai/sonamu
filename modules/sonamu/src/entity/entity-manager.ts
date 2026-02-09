@@ -104,6 +104,10 @@ class EntityManagerClass {
     return Array.from(EntityManager.entities.keys()).sort();
   }
 
+  getAllEntities(): Entity[] {
+    return Array.from(this.entities.values());
+  }
+
   getAllParentIds(): string[] {
     return this.getAllIds().filter((entityId) => {
       const entity = this.get(entityId);
