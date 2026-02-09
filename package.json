@@ -21,7 +21,8 @@
     "check": "biome check",
     "check:fix": "biome check --write --unsafe",
     "verify:clean": "tsx scripts/verify.ts clean",
-    "verify:fast": "tsx scripts/verify.ts fast"
+    "verify:fast": "tsx scripts/verify.ts fast",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "packageManager": "pnpm@10.28.0",
   "devDependencies": {
