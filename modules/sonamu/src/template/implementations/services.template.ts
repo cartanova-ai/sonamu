@@ -323,11 +323,16 @@ ${functions.join("\n\n")}
 
         // ListParams 타입명 구성
         const listParamsType = `${names.capital}ListParams`;
+        // SearchField 타입명 구성
+        const searchFieldType = `${names.capital}SearchField`;
+
+        // SearchField 타입을 importKeys에 추가
+        importKeys.push(searchFieldType);
 
         asyncIdConfigs.push(
           `
 // AsyncIdConfig: ${names.capital}
-export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping, ${listParamsType}> = {
+export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}SubsetKey, ${names.capital}SubsetMapping, ${listParamsType}, ${searchFieldType}> = {
   placeholderKey: "entity.${names.capital}",
   useList: ${names.capital}Service.${useHookName},
 };

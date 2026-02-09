@@ -13,10 +13,12 @@ import { Select } from "./select";
 // services.generated.ts에서 생성되는 config와 호환됨
 // _TSubsetMapping은 onRowChange의 타입 추론에 사용됨
 // _TListParams는 baseListParams의 타입 추론에 사용됨
+// _TSearchField는 searchField prop의 타입 추론에 사용됨
 export type AsyncIdConfig<
   TSubsetKey extends string = string,
   _TSubsetMapping = Record<string, unknown>,
   _TListParams extends Record<string, unknown> = Record<string, unknown>,
+  _TSearchField extends string = string,
 > = {
   placeholderKey: string;
   useList: <T extends TSubsetKey>(
@@ -36,6 +38,19 @@ type SubsetFieldKeys<
     : string
   : string;
 
+// SubsetMapping에서 선택된 subset의 row 타입을 추출하는 유틸리티 타입
+type SubsetRow<TSubsetKey extends string, TSubsetMapping> = TSubsetKey extends keyof TSubsetMapping
+  ? TSubsetMapping[TSubsetKey]
+  : Record<string, unknown>;
+
+// displayField: 필드명 또는 row 콜백 함수
+type DisplayFieldAsString<TSubsetKey extends string, TSubsetMapping> = {
+  displayField?: SubsetFieldKeys<TSubsetKey, TSubsetMapping>;
+};
+type DisplayFieldAsCallback<TSubsetKey extends string, TSubsetMapping> = {
+  displayField: (row: SubsetRow<TSubsetKey, TSubsetMapping>) => string;
+};
+
 // onRowChange의 row 파라미터 타입
 type OnRowChangeType<
   TSubsetKey extends string,
@@ -44,23 +59,25 @@ type OnRowChangeType<
   ? TSubsetMapping[TSubsetKey] | TSubsetMapping[TSubsetKey][] | undefined
   : unknown;
 
-// IdAsyncSelect Props
-export type IdAsyncSelectProps<
+// IdAsyncSelect 공통 Props (displayField 제외)
+type IdAsyncSelectBaseProps<
   TSubsetKey extends string = string,
   TSubsetMapping = Record<string, unknown>,
   TValue extends string | number = string,
   TListParams extends Record<string, unknown> = Record<string, unknown>,
+  TSubset extends TSubsetKey = TSubsetKey,
+  TSearchField extends string = string,
 > = {
   // Entity Async ID Config
-  config: AsyncIdConfig<TSubsetKey, TSubsetMapping, TListParams>;
+  config: AsyncIdConfig<TSubsetKey, TSubsetMapping, TListParams, TSearchField>;
   // Entity subset key
-  subset: TSubsetKey;
+  subset: TSubset;
   // 검색/조회 시 적용될 파라미터
   baseListParams?: Partial<TListParams>;
-  // 드롭다운에 표시할 텍스트 필드명 (기본값: "name")
-  displayField?: SubsetFieldKeys<TSubsetKey, TSubsetMapping>;
   // 실제 저장/전송될 값의 필드명 (기본값: "id")
-  valueField?: SubsetFieldKeys<TSubsetKey, TSubsetMapping>;
+  valueField?: SubsetFieldKeys<TSubset, TSubsetMapping>;
+  // 검색 시 사용할 필드명
+  searchField?: TSearchField;
   // 기본 Select Props
   placeholder?: string;
   clearable?: boolean;
@@ -70,24 +87,61 @@ export type IdAsyncSelectProps<
   multiple?: boolean;
   value?: TValue | TValue[] | null;
   onValueChange?: (value: TValue | TValue[] | undefined) => void;
-  onRowChange?: (row: OnRowChangeType<TSubsetKey, TSubsetMapping>) => void;
+  onRowChange?: (row: OnRowChangeType<TSubset, TSubsetMapping>) => void;
 };
+
+// IdAsyncSelect Total Props
+export type IdAsyncSelectProps<
+  TSubsetKey extends string = string,
+  TSubsetMapping = Record<string, unknown>,
+  TValue extends string | number = string,
+  TListParams extends Record<string, unknown> = Record<string, unknown>,
+  TSubset extends TSubsetKey = TSubsetKey,
+  TSearchField extends string = string,
+> = IdAsyncSelectBaseProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset, TSearchField> &
+  (DisplayFieldAsString<TSubset, TSubsetMapping> | DisplayFieldAsCallback<TSubset, TSubsetMapping>);
 
 // ============================================================================
 // Component
 // ============================================================================
+
+// name-like 컨럼을 찾기 위한 후보 필드명 (우선순위 순)
+const NAME_LIKE_FIELDS = ["name", "title", "label", "display_name", "username"];
+
+/**
+ * row 데이터에서 name-like 필드를 자동 탐지
+ */
+function detectDisplayField(row: Record<string, unknown>): string {
+  // 1) name-like 필드 찾기
+  for (const field of NAME_LIKE_FIELDS) {
+    if (field in row && row[field] != null) {
+      return field;
+    }
+  }
+  // 2) string 타입인 첫 번째 컨럼 (id 제외)
+  for (const [key, val] of Object.entries(row)) {
+    if (key !== "id" && typeof val === "string") {
+      return key;
+    }
+  }
+  // 3) fallback
+  return "id";
+}
 
 export function IdAsyncSelect<
   TSubsetKey extends string = string,
   TSubsetMapping = Record<string, unknown>,
   TValue extends string | number = string,
   TListParams extends Record<string, unknown> = Record<string, unknown>,
+  TSubset extends TSubsetKey = TSubsetKey,
+  TSearchField extends string = string,
 >({
   config,
   subset,
   baseListParams,
-  displayField = "name" as SubsetFieldKeys<TSubsetKey, TSubsetMapping>,
-  valueField = "id" as SubsetFieldKeys<TSubsetKey, TSubsetMapping>,
+  displayField,
+  valueField = "id" as SubsetFieldKeys<TSubset, TSubsetMapping>,
+  searchField: searchFieldProp,
   placeholder,
   clearable,
   disabled,
@@ -96,11 +150,35 @@ export function IdAsyncSelect<
   value,
   onValueChange,
   onRowChange,
-}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue, TListParams>) {
+}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset, TSearchField>) {
   const { SD } = useSonamuBaseContext();
 
   // onRowChange의 파라미터 타입
   type RowChangeParam = Parameters<NonNullable<typeof onRowChange>>[0];
+
+  // ============================================================
+  // displayField 해석: 콜백 / 필드명 / 자동탐지 분리
+  // ============================================================
+  const isDisplayFieldCallback = typeof displayField === "function";
+
+  // row에서 label을 추출하는 함수
+  const getLabel = useCallback(
+    (row: Record<string, unknown>): string => {
+      if (isDisplayFieldCallback) {
+        return (displayField as (row: any) => string)(row);
+      }
+      const field = typeof displayField === "string" ? displayField : detectDisplayField(row);
+      return String(row[field] ?? "");
+    },
+    [displayField, isDisplayFieldCallback],
+  );
+
+  // 검색 시 사용할 필드명 결정 우선순위:
+  // 1. searchField prop이 명시되면 그것을 사용
+  // 2. displayField가 string이면 displayField를 검색 필드로 사용
+  // 3. 둘 다 없으면 undefined (서버 기본값 사용)
+  const searchField =
+    searchFieldProp ?? (typeof displayField === "string" ? displayField : undefined);
 
   // ============================================================
   // listParams 상태 관리
@@ -114,11 +192,11 @@ export function IdAsyncSelect<
     (keyword: string) => {
       setListParams((prev) => ({
         ...prev,
-        search: keyword ? displayField : undefined,
+        search: keyword ? searchField : undefined,
         keyword: keyword || undefined,
       }));
     },
-    [displayField],
+    [searchField],
   );
 
   // ============================================================
@@ -210,7 +288,7 @@ export function IdAsyncSelect<
       rowMap.set(singleValue, selectedRow);
       itemMap.set(singleValue, {
         value: singleValue,
-        label: String(selectedRow[displayField]),
+        label: getLabel(selectedRow),
       });
     }
 
@@ -221,7 +299,7 @@ export function IdAsyncSelect<
         rowMap.set(val, row);
         itemMap.set(val, {
           value: val,
-          label: String(row[displayField]),
+          label: getLabel(row),
         });
       }
     }
@@ -232,7 +310,7 @@ export function IdAsyncSelect<
       rowMap.set(val, row);
       itemMap.set(val, {
         value: val,
-        label: String(row[displayField]),
+        label: getLabel(row),
       });
     }
 
@@ -240,7 +318,7 @@ export function IdAsyncSelect<
       items: Array.from(itemMap.values()),
       rowMap,
     };
-  }, [rows, selectedRow, singleValue, multiSelectedRows, multiple, displayField, valueField]);
+  }, [rows, selectedRow, singleValue, multiSelectedRows, multiple, getLabel, valueField]);
 
   // ============================================================
   // Select 렌더링
