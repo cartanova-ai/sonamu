@@ -1,6 +1,8 @@
 import chalk from "chalk";
 import prompts from "prompts";
+import { Sonamu } from "../api";
 import { DB } from "../database/db";
+import { createKnexInstance } from "../database/knex";
 import { EntityManager } from "../entity/entity-manager";
 import { DataExplorer, type DataExplorerStrategy } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
@@ -103,9 +105,9 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
       }
     }
 
-    const sourceDb = DB.getDB("r");
-    const targetDb = DB.getDB("w");
-    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+    // fixture gen: fixture DB 내에서 참조 관계를 해결하고 저장합니다
+    const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+    const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
 
     console.log(chalk.cyan(`\n${entityNames.join(", ")} 생성 중...`));
 
@@ -215,9 +217,10 @@ export async function fixtureFetchCommand(options: FixtureCommandOptions) {
     const strategy: DataExplorerStrategy = options.strategy ?? "recent";
     const limit = options.limit ? Number.parseInt(options.limit, 10) : 10;
 
-    const sourceDb = DB.getDB("r");
-    const targetDb = DB.getDB("w");
-    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+    // fixture fetch: production 데이터를 fixture DB로 import합니다
+    const sourceDb = DB.getDB("r"); // production_master (또는 development_master)
+    const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+    const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 
     console.log(chalk.cyan(`\n${entityNames.join(", ")} import 중...`));
 
