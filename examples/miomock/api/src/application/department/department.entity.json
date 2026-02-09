@@ -13,7 +13,11 @@
       "desc": "회사",
       "relationType": "BelongsToOne",
       "onUpdate": "CASCADE",
-      "onDelete": "CASCADE"
+      "onDelete": "CASCADE",
+      "postIt": {
+        "fixtureHint": "Fixture생성 시 각 company별 생성",
+        "dataSource": { "strategy": "recent", "config": { "limit": 3 } }
+      }
     },
     {
       "type": "relation",
