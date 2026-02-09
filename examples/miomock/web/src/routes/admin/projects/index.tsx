@@ -15,6 +15,7 @@ import {
   EnumSelect,
   Input,
   Pagination,
+  SonamuFilterModal,
   Table,
   TableBody,
   TableCell,
@@ -30,6 +31,7 @@ import { SD } from "@/i18n/sd.generated";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
 import {
+  ProjectBaseSchema,
   ProjectOrderBy,
   ProjectOrderByLabel,
   ProjectSearchField,
@@ -38,6 +40,7 @@ import {
 } from "@/services/sonamu.generated";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
@@ -60,14 +63,16 @@ function ProjectList({}: ProjectListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(ProjectListParams, {
+  const { listParams, register, setListParams } = useListParams(ProjectListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: ProjectSearchField.options[0],
     orderBy: ProjectOrderBy.options[0],
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -248,12 +253,21 @@ function ProjectList({}: ProjectListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<FilterIcon />}
+                      onClick={() => setFilterModalOpen(true)}
+                      className="h-8"
+                    >
+                      <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
                     </Button>
                   </div>
                 </div>
@@ -338,6 +352,16 @@ function ProjectList({}: ProjectListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sonamu Filter Modal */}
+      <SonamuFilterModal
+        baseSchema={ProjectBaseSchema}
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        onApply={(filters) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+        }}
+      />
     </div>
   );
 }

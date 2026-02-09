@@ -30,7 +30,6 @@ import { Fragment, useState } from "react";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
-import * as SonamuGenerated from "@/services/sonamu.generated";
 import {
   DepartmentBaseSchema,
   DepartmentOrderBy,
@@ -233,7 +232,7 @@ function DepartmentList({}: DepartmentListProps) {
                       onClick={() => setFilterModalOpen(true)}
                       className="h-8"
                     >
-                      <span className="text-xs">Sonamu Filter</span>
+                      <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
                     </Button>
                   </div>
                 </div>
@@ -325,7 +324,6 @@ function DepartmentList({}: DepartmentListProps) {
         onApply={(filters) => {
           setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
         }}
-        sonamuGenerated={SonamuGenerated}
       />
     </div>
   );

@@ -1,25 +1,30 @@
-import { DateInput, DatePicker, Input, Select } from "../..";
+import { useSonamuBaseContext } from "@/contexts";
+import { DateInput, DatePicker, Input } from "../..";
 import { RangeNumberInput } from "../range-number-input";
 import { EnumSelect } from "../select/enum-select";
 import { TagInput } from "../tag-input";
 import type { ValueInputProps } from "./types";
+
+// Boolean enum 상수
+const BOOLEAN_ENUM = {
+  options: ["true", "false"] as const,
+  labels: { true: "True", false: "False" },
+};
 
 /**
  * ValueInput 컴포넌트
  * operator와 propType에 따라 적절한 입력 UI 렌더링
  */
 export function ValueInput({ propType, operator, value, onChange, fieldMeta }: ValueInputProps) {
+  const { SD } = useSonamuBaseContext();
   // isNull/isNotNull: Boolean select (true/false)
   if (operator === "isNull" || operator === "isNotNull") {
     return (
-      <Select
-        items={[
-          { value: "true", label: "True" },
-          { value: "false", label: "False" },
-        ]}
+      <EnumSelect
+        enum={{ options: BOOLEAN_ENUM.options }}
+        labels={BOOLEAN_ENUM.labels}
         value={value === undefined ? "" : String(value)}
         onValueChange={(v) => v && onChange(v === "true")}
-        placeholder="Select..."
         className="w-full"
       />
     );
@@ -66,14 +71,14 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
           <DateInput
             value={start ?? null}
             onValueChange={(v) => onChange([v ?? undefined, end])}
-            placeholder="시작일"
+            placeholder={SD("rc.sonamuFilter.startDate")}
             className="flex-1"
           />
           <span className="text-muted-foreground">~</span>
           <DateInput
             value={end ?? null}
             onValueChange={(v) => onChange([start, v ?? undefined])}
-            placeholder="종료일"
+            placeholder={SD("rc.sonamuFilter.endDate")}
             className="flex-1"
           />
         </div>
@@ -105,7 +110,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
         type="text"
         value={(value as string) ?? ""}
         onValueChange={onChange}
-        placeholder="Enter value..."
+        placeholder={SD("rc.sonamuFilter.enterValue")}
       />
     );
   }
@@ -117,7 +122,7 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
         type="number"
         value={value === undefined ? "" : String(value)}
         onValueChange={(v) => onChange(v === "" ? undefined : Number(v))}
-        placeholder="Enter number..."
+        placeholder={SD("rc.sonamuFilter.enterNumber")}
       />
     );
   }
@@ -125,19 +130,16 @@ export function ValueInput({ propType, operator, value, onChange, fieldMeta }: V
   // boolean: true/false select
   if (propType === "boolean") {
     return (
-      <Select
-        items={[
-          { value: "true", label: "True" },
-          { value: "false", label: "False" },
-        ]}
+      <EnumSelect
+        enum={{ options: BOOLEAN_ENUM.options }}
+        labels={BOOLEAN_ENUM.labels}
         value={value === undefined ? "" : String(value)}
         onValueChange={(v) => v && onChange(v === "true")}
-        placeholder="Select..."
         className="w-full"
       />
     );
   }
 
   // json 타입은 isNull/isNotNull만 지원
-  return <Input type="text" value="" placeholder="Not supported..." disabled />;
+  return <Input type="text" value="" placeholder={SD("rc.sonamuFilter.notSupported")} disabled />;
 }

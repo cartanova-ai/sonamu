@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PlusIcon from "~icons/lucide/plus";
+import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "../..";
 import { RuleRowInput } from "./rule-row-input";
 import type { Rule, SonamuFilterModalProps } from "./types";
@@ -17,8 +18,9 @@ export function SonamuFilterModal({
   open,
   onOpenChange,
   onApply,
-  sonamuGenerated,
 }: SonamuFilterModalProps) {
+  const { SD } = useSonamuBaseContext();
+
   // Apply된 최종 상태
   const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
   // 작업 중 상태
@@ -32,7 +34,7 @@ export function SonamuFilterModal({
   }, [open, appliedRules]);
 
   // baseSchema에서 동적으로 FieldMeta 추출
-  const fieldMeta = extractFieldMetaFromSchema(baseSchema, sonamuGenerated);
+  const fieldMeta = extractFieldMetaFromSchema(baseSchema, SD);
 
   // Rule 추가
   const addRule = () => {
@@ -101,14 +103,14 @@ export function SonamuFilterModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Sonamu Filter</DialogTitle>
+          <DialogTitle>{SD("rc.sonamuFilter.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-4 py-4">
           {/* Rules */}
           {rules.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No rules yet. Click "+ Add Rule" to start.</p>
+              <p className="text-sm">{SD("rc.sonamuFilter.noRulesYet")}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -128,11 +130,11 @@ export function SonamuFilterModal({
           <div className="flex gap-2">
             <Button variant="outline" onClick={addRule} className="flex-1">
               <PlusIcon />
-              Add Rule
+              {SD("rc.sonamuFilter.addRule")}
             </Button>
             {rules.length > 0 && (
               <Button variant="outline" onClick={handleReset} className="flex-1">
-                Clear All
+                {SD("rc.sonamuFilter.reset")}
               </Button>
             )}
           </div>
@@ -151,9 +153,9 @@ export function SonamuFilterModal({
         {/* Footer Buttons */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            {SD("rc.common.cancel")}
           </Button>
-          <Button onClick={handleApply}>Apply Filter</Button>
+          <Button onClick={handleApply}>{SD("rc.sonamuFilter.apply")}</Button>
         </div>
       </DialogContent>
     </Dialog>

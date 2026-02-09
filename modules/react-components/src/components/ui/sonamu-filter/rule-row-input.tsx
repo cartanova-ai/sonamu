@@ -1,3 +1,4 @@
+import { useSonamuBaseContext } from "@/contexts";
 import TrashIcon from "~icons/lucide/trash-2";
 import type { FilterOperator } from "../../../lib/types";
 import { operatorsByPropType } from "../../../lib/types";
@@ -10,6 +11,7 @@ import { ValueInput } from "./value-input";
  * Rule Row Input 컴포넌트
  */
 export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowProps) {
+  const { SD } = useSonamuBaseContext();
   const fields = Object.keys(fieldMeta);
   const selectedFieldMeta = rule.field ? fieldMeta[rule.field] : null;
   const allowedOperators = selectedFieldMeta ? operatorsByPropType[selectedFieldMeta.propType] : [];
@@ -39,7 +41,7 @@ export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowPro
           items={fields}
           value={rule.field ?? ""}
           onValueChange={handleFieldChange}
-          placeholder="Select field..."
+          placeholder={SD("rc.sonamuFilter.selectField")}
         />
       </div>
 
@@ -53,7 +55,7 @@ export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowPro
           value={rule.operator ?? undefined}
           onValueChange={handleOperatorChange}
           disabled={!rule.field}
-          placeholder="Operator..."
+          placeholder={SD("rc.sonamuFilter.selectOperator")}
         />
       </div>
 
@@ -68,7 +70,7 @@ export function RuleRowInput({ rule, fieldMeta, onUpdate, onRemove }: RuleRowPro
             fieldMeta={selectedFieldMeta}
           />
         ) : (
-          <Input type="text" disabled placeholder="Select operator first..." />
+          <Input type="text" disabled placeholder={SD("rc.sonamuFilter.selectOperatorFirst")} />
         )}
       </div>
 

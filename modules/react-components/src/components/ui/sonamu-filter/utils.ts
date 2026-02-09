@@ -34,11 +34,11 @@ export function zodTypeNameToPropType(typeName: string): FilterPropType {
 
 /**
  * Zod enum에서 options와 labels를 추출
- * Convention: {EnumName}Label 형태의 객체를 sonamuGenerated에서 찾음
+ * SD 함수를 사용하여 enum.{EnumName}.{value} 형태로 라벨 조회
  */
 export function extractEnumData(
   zodEnum: z.ZodTypeAny,
-  sonamuGenerated?: Record<string, unknown>,
+  SD: (key: string) => string,
 ): FieldMeta["enumData"] {
   // options 추출
   const options = (zodEnum as any).options
@@ -49,15 +49,14 @@ export function extractEnumData(
     return undefined;
   }
 
-  // labels 추출 (Convention-based: {EnumName}Label)
+  // labels 추출 (SD 함수 사용: enum.{EnumName}.{value})
   const enumDescription = (zodEnum as any)._def?.description || (zodEnum as any).description;
-  let labels: Record<string, string> = {};
+  const labels: Record<string, string> = {};
 
-  if (enumDescription && sonamuGenerated) {
-    const labelKey = `${enumDescription}Label`;
-    const foundLabels = sonamuGenerated[labelKey];
-    if (foundLabels && typeof foundLabels === "object") {
-      labels = foundLabels as Record<string, string>;
+  if (enumDescription) {
+    for (const option of options) {
+      const dictKey = `enum.${enumDescription}.${option}`;
+      labels[option] = SD(dictKey);
     }
   }
 
@@ -69,7 +68,7 @@ export function extractEnumData(
  */
 export function extractFieldMetaFromSchema(
   schema: z.ZodObject<z.ZodRawShape>,
-  sonamuGenerated?: Record<string, unknown>,
+  SD: (key: string) => string,
 ): Record<string, FieldMeta> {
   const shape = schema.shape;
   const fieldMeta: Record<string, FieldMeta> = {};
@@ -95,7 +94,7 @@ export function extractFieldMetaFromSchema(
       : zodTypeNameToPropType(innerWithDef._def.type);
 
     // enum 타입인 경우 추가 정보 추출
-    const enumData = propType === "enum" ? extractEnumData(innerType, sonamuGenerated) : undefined;
+    const enumData = propType === "enum" ? extractEnumData(innerType, SD) : undefined;
 
     fieldMeta[fieldName] = {
       propType,

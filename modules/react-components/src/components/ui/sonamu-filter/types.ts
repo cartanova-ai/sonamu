@@ -44,10 +44,6 @@ export type SonamuFilterModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApply?: (filters: Record<string, unknown>) => void;
-  /**
-   * Sonamu Generated 객체 주입 (EnumLabel 조회에 사용)
-   */
-  sonamuGenerated?: Record<string, unknown>;
 };
 
 /**
