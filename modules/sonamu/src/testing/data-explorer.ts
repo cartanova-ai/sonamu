@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import type { CacheManager } from "../cache/types";
 import type { Entity } from "../entity/entity";
 import type { EntityManager } from "../entity/entity-manager";
-import { isRelationProp } from "../types/types";
+import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
 
 export type DataExplorerStrategy = "sample" | "ids" | "query" | "file" | "recent" | "random";
 
@@ -20,6 +20,23 @@ export type DataExplorerOptions = {
   useCache?: boolean;
   /** 캐시 TTL (초 단위, 기본값: 300) */
   cacheTtl?: number;
+};
+
+export type ExploreWithRelationsOptions = DataExplorerOptions & {
+  /** 관련 데이터 포함 여부 (기본값: true) */
+  includeRelations?: boolean;
+  /** 재귀 탐색 최대 깊이 (기본값: 2) */
+  maxDepth?: number;
+};
+
+export type ExploreWithRelationsResult = {
+  /** 메인 entity 데이터 */
+  main: {
+    entityId: string;
+    records: Record<string, unknown>[];
+  };
+  /** 관련 entity 데이터 (entityId -> records) */
+  related: Map<string, Record<string, unknown>[]>;
 };
 
 // 기존 DB 데이터를 탐색하여 fixture 생성 시 참조할 수 있는 시스템
@@ -252,5 +269,160 @@ export class DataExplorer {
     }
 
     return parts.join(":");
+  }
+
+  /**
+   * Entity와 관련된 데이터를 재귀적으로 탐색합니다.
+   * BelongsToOne, OneToOne(hasJoinColumn) relation을 따라가며 참조 데이터를 수집합니다.
+   */
+  async exploreWithRelations(
+    entityName: string,
+    options: ExploreWithRelationsOptions,
+  ): Promise<ExploreWithRelationsResult> {
+    const includeRelations = options.includeRelations ?? true;
+    const maxDepth = options.maxDepth ?? 2;
+
+    // 메인 entity 조회
+    const mainRecords = await this.explore(entityName, options);
+
+    const result: ExploreWithRelationsResult = {
+      main: {
+        entityId: entityName,
+        records: mainRecords,
+      },
+      related: new Map(),
+    };
+
+    // 관련 데이터 수집하지 않으면 바로 리턴
+    if (!includeRelations || maxDepth <= 0) {
+      return result;
+    }
+
+    // 이미 조회한 entity 추적 (중복 방지)
+    const visited = new Set<string>([entityName]);
+
+    // 재귀적으로 관련 데이터 수집
+    await this.collectRelatedData(entityName, mainRecords, result.related, visited, maxDepth);
+
+    return result;
+  }
+
+  /**
+   * 관련 데이터를 재귀적으로 수집합니다 (private helper)
+   */
+  private async collectRelatedData(
+    entityName: string,
+    records: Record<string, unknown>[],
+    relatedMap: Map<string, Record<string, unknown>[]>,
+    visited: Set<string>,
+    remainingDepth: number,
+  ): Promise<void> {
+    if (remainingDepth <= 0 || records.length === 0) {
+      return;
+    }
+
+    const entity = this.entityManager.get(entityName);
+    const recordIds = records.map((r) => r.id).filter((id) => id != null);
+
+    // 1. Forward references: 이 entity가 참조하는 다른 entity
+    const forwardRelationProps = entity.props.filter(
+      (prop) =>
+        isRelationProp(prop) &&
+        (isBelongsToOneRelationProp(prop) ||
+          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)),
+    );
+
+    for (const prop of forwardRelationProps) {
+      if (!isRelationProp(prop)) continue;
+
+      const targetEntityName = prop.with;
+
+      // 이미 조회한 entity는 스킵 (순환 참조 방지)
+      if (visited.has(targetEntityName)) {
+        continue;
+      }
+
+      // 참조하는 ID들 수집
+      const foreignKeyName = `${prop.name}_id`;
+      const referencedIds = records
+        .map((record) => record[foreignKeyName])
+        .filter((id) => id != null) as number[];
+
+      if (referencedIds.length === 0) {
+        continue;
+      }
+
+      // 중복 제거
+      const uniqueIds = [...new Set(referencedIds)];
+
+      // 참조 데이터 조회
+      const referencedRecords = await this.explore(targetEntityName, {
+        strategy: "ids",
+        ids: uniqueIds,
+      });
+
+      // 결과에 추가
+      relatedMap.set(targetEntityName, referencedRecords);
+      visited.add(targetEntityName);
+
+      // 재귀: 참조된 데이터의 관련 데이터도 수집
+      await this.collectRelatedData(
+        targetEntityName,
+        referencedRecords,
+        relatedMap,
+        visited,
+        remainingDepth - 1,
+      );
+    }
+
+    // 2. Backward references: 이 entity를 참조하는 다른 entity
+    // 모든 entity를 순회하며 현재 entity를 참조하는 relation 찾기
+    const allEntities = this.entityManager.getAllEntities();
+
+    for (const otherEntity of allEntities) {
+      const otherEntityName = otherEntity.id;
+
+      // 이미 조회했거나 자기 자신이면 스킵
+      if (visited.has(otherEntityName) || otherEntityName === entityName) {
+        continue;
+      }
+
+      // 현재 entity를 참조하는 relation prop 찾기
+      const backwardRelations = otherEntity.props.filter(
+        (prop) =>
+          isRelationProp(prop) &&
+          prop.with === entityName &&
+          (isBelongsToOneRelationProp(prop) ||
+            (isOneToOneRelationProp(prop) && prop.hasJoinColumn)),
+      );
+
+      for (const prop of backwardRelations) {
+        if (!isRelationProp(prop)) continue;
+
+        // otherEntity가 현재 entity를 참조하는 FK 컬럼
+        const foreignKeyName = `${prop.name}_id`;
+
+        // 현재 레코드들을 참조하는 otherEntity 레코드 조회
+        const query = this.db(otherEntity.table).whereIn(foreignKeyName, recordIds);
+        const backwardRecords = await query;
+
+        if (backwardRecords.length === 0) {
+          continue;
+        }
+
+        // 결과에 추가
+        relatedMap.set(otherEntityName, backwardRecords);
+        visited.add(otherEntityName);
+
+        // 재귀: 역참조 데이터의 관련 데이터도 수집
+        await this.collectRelatedData(
+          otherEntityName,
+          backwardRecords,
+          relatedMap,
+          visited,
+          remainingDepth - 1,
+        );
+      }
+    }
   }
 }

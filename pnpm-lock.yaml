@@ -69,6 +69,9 @@ catalogs:
     '@dnd-kit/utilities':
       specifier: ^3.2.2
       version: 3.2.2
+    '@faker-js/faker':
+      specifier: ^9.2.0
+      version: 9.9.0
     '@fastify/compress':
       specifier: ^7.0.3
       version: 7.0.3
@@ -1416,6 +1419,9 @@ importers:
       '@biomejs/wasm-nodejs':
         specifier: 'catalog:'
         version: 2.3.10
+      '@faker-js/faker':
+        specifier: 'catalog:'
+        version: 9.9.0
       '@fastify/compress':
         specifier: 'catalog:'
         version: 7.0.3
@@ -1467,6 +1473,9 @@ importers:
       ai:
         specifier: 'catalog:'
         version: 6.0.3(zod@4.3.6)
+      bcrypt:
+        specifier: 'catalog:'
+        version: 6.0.0
       bentocache:
         specifier: 'catalog:'
         version: 1.5.1(ioredis@5.8.2)(knex@3.1.0(pg-native@3.5.2)(pg@8.16.3(pg-native@3.5.2)))(kysely@0.28.10)
@@ -1561,6 +1570,9 @@ importers:
       '@swc/cli':
         specifier: 'catalog:'
         version: 0.7.9(@swc/core@1.15.7(@swc/helpers@0.5.18))(chokidar@4.0.3)
+      '@types/bcrypt':
+        specifier: 'catalog:'
+        version: 6.0.0
       '@types/inflection':
         specifier: 'catalog:'
         version: 2.0.0
@@ -2602,6 +2614,10 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@faker-js/faker@9.9.0':
+    resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
+    engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
   '@fast-csv/format@4.3.5':
     resolution: {integrity: sha512-8iRn6QF3I8Ak78lNAa+Gdl5MJJBM5vRHivFtMRUWINdevNo00K7OXxS2PshawLKTejVwieIlPmK5YlLu6w4u8A==}
@@ -11437,6 +11453,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@faker-js/faker@9.9.0': {}
 
   '@fast-csv/format@4.3.5':
     dependencies:
