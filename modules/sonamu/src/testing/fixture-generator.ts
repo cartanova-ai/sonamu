@@ -223,7 +223,9 @@ export class FixtureGenerator {
         // 함수 경로와 인자 파싱
         const match = expr.match(/^([\w.]+)(?:\((.*?)\))?$/);
         if (!match) {
-          throw new Error(`FixtureGenerator: Invalid faker expression for ${prop.name}: ${generator}`);
+          throw new Error(
+            `FixtureGenerator: Invalid faker expression for ${prop.name}: ${generator}`,
+          );
         }
 
         const [, path, argsStr] = match;
@@ -262,7 +264,9 @@ export class FixtureGenerator {
             ) {
               args = [trimmed.slice(1, -1)];
             } else {
-              throw new Error(`FixtureGenerator: Cannot parse arguments for ${prop.name}: ${argsStr}`);
+              throw new Error(
+                `FixtureGenerator: Cannot parse arguments for ${prop.name}: ${argsStr}`,
+              );
             }
           }
         }
