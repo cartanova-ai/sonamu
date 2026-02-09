@@ -10,6 +10,21 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
+function Highlight({ text, search }: { text: string; search: string }) {
+  if (!search) return <>{text}</>;
+  const index = text.toLowerCase().indexOf(search.toLowerCase());
+  if (index === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="bg-amber-200/60 text-amber-900 rounded-sm px-[1px]">
+        {text.slice(index, index + search.length)}
+      </span>
+      {text.slice(index + search.length)}
+    </>
+  );
+}
+
 type SearchModalProps = {
   open: boolean;
   onClose: () => void;
@@ -24,7 +39,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const filteredEntities = useMemo(() => {
     if (!entities) return [];
     const s = search.toLowerCase();
-    if (!s) return entities.map((entity) => ({ entity, entityMatch: true as const }));
+    if (!s) return [];
 
     return entities
       .map((entity) => {
@@ -78,10 +93,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       const element = document.getElementById(id);
       if (element) {
         element.scrollIntoView({ behavior: "instant", block: "center" });
-        element.style.backgroundColor = "yellow";
+        element.style.backgroundColor = "#fef3c7";
+        element.style.boxShadow = "0 0 0 2px #fbbf24";
         setTimeout(() => {
           element.style.backgroundColor = "";
-          element.style.transition = "background-color 1s";
+          element.style.boxShadow = "";
+          element.style.transition = "background-color 1s, box-shadow 1s";
         }, 1000);
         clearInterval(interval);
       }
@@ -118,20 +135,24 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             "matchedEnums" in item ? item.matchedEnums : Object.keys(entity.enumLabels);
 
           return (
-            <CommandGroup key={entity.id} heading={`${entity.id} ${entity.title}`}>
+            <CommandGroup
+              key={entity.id}
+              heading={<Highlight text={`${entity.id} ${entity.title}`} search={search} />}
+            >
               {entityMatch && (
                 <>
                   <CommandItem
                     value={`entity:${entity.id} ${entity.title}`}
                     onSelect={() => handleSelect(`/entities/${entity.id}`)}
                   >
-                    {entity.id} ({entity.title})
+                    <Highlight text={`${entity.id} (${entity.title})`} search={search} />
                   </CommandItem>
                   <CommandItem
                     value={`scaffolding:${entity.id} ${entity.title}`}
                     onSelect={() => handleSelect("/scaffolding", entity.id)}
                   >
-                    Scaffolding &gt; {entity.id}({entity.title})
+                    Scaffolding &gt;{" "}
+                    <Highlight text={`${entity.id}(${entity.title})`} search={search} />
                   </CommandItem>
                 </>
               )}
@@ -142,8 +163,16 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   value={`prop:${prop.name} ${prop.desc ?? ""} ${entity.id}`}
                   onSelect={() => handleSelect(`/entities/${entity.id}`, `prop-${prop.name}`)}
                 >
-                  prop &gt; {prop.name}
-                  {prop.desc ? ` (${prop.desc})` : ""}
+                  prop &gt; <Highlight text={prop.name} search={search} />
+                  {prop.desc ? (
+                    <>
+                      {" ("}
+                      <Highlight text={prop.desc} search={search} />
+                      {")"}
+                    </>
+                  ) : (
+                    ""
+                  )}
                 </CommandItem>
               ))}
 
@@ -153,7 +182,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   value={`subset:${subsetKey} ${field} ${entity.id}`}
                   onSelect={() => handleSelect(`/entities/${entity.id}`, field)}
                 >
-                  Subset{subsetKey} &gt; {field}
+                  Subset{subsetKey} &gt; <Highlight text={field} search={search} />
                 </CommandItem>
               ))}
 
@@ -163,7 +192,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   value={`enum:${enumKey} ${entity.id}`}
                   onSelect={() => handleSelect(`/entities/${entity.id}`, `enum-${enumKey}`)}
                 >
-                  enum &gt; {enumKey}
+                  enum &gt; <Highlight text={enumKey} search={search} />
                 </CommandItem>
               ))}
             </CommandGroup>
