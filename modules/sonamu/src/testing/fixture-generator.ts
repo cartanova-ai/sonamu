@@ -64,13 +64,26 @@ export class FixtureGenerator {
 
       // 1. Relation prop 처리
       if (isRelationProp(prop)) {
-        fixture[prop.name] = await this.generateRelationValue(entity, prop, context);
+        const relationValue = await this.generateRelationValue(entity, prop, context);
+        // BelongsToOne, OneToOne(hasJoinColumn)의 경우 foreign key 컬럼명으로 저장
+        if (
+          isBelongsToOneRelationProp(prop) ||
+          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
+        ) {
+          fixture[`${prop.name}_id`] = relationValue;
+        } else {
+          fixture[prop.name] = relationValue;
+        }
         continue;
       }
 
       // 2. fixtureGenerator 사용
       if (postIt?.fixtureGenerator) {
-        fixture[prop.name] = await this.executeGenerator(postIt.fixtureGenerator as string, prop);
+        fixture[prop.name] = await this.executeGenerator(
+          postIt.fixtureGenerator as string,
+          prop,
+          entity,
+        );
         continue;
       }
 
@@ -81,7 +94,7 @@ export class FixtureGenerator {
       }
 
       // 4. 타입별 기본 생성
-      fixture[prop.name] = await this.generateDefaultValue(prop);
+      fixture[prop.name] = await this.generateDefaultValue(prop, entity);
     }
 
     // 5. password 필드 암호화
@@ -210,7 +223,11 @@ export class FixtureGenerator {
    * 예: "faker.internet.email()" → faker.internet.email()
    * 예: "faker.lorem.words(3)" → faker.lorem.words(3)
    */
-  private async executeGenerator(generator: string, prop: EntityProp): Promise<unknown> {
+  private async executeGenerator(
+    generator: string,
+    prop: EntityProp,
+    entity: Entity,
+  ): Promise<unknown> {
     // Faker.js 표현식만 지원
     if (generator.startsWith("faker.")) {
       // username이나 name 필드는 한국어 faker 사용
@@ -279,7 +296,7 @@ export class FixtureGenerator {
           ),
           error,
         );
-        return this.generateDefaultValue(prop);
+        return this.generateDefaultValue(prop, entity);
       }
     }
 
@@ -289,18 +306,62 @@ export class FixtureGenerator {
         `Unsupported generator expression for ${prop.name}: ${generator}. Only faker.* expressions are supported. Using default value.`,
       ),
     );
-    return this.generateDefaultValue(prop);
+    return this.generateDefaultValue(prop, entity);
   }
 
   /**
    * 타입별 기본값 생성 (Faker.js 사용)
    */
-  private async generateDefaultValue(prop: EntityProp): Promise<unknown> {
-    const { faker } = await import("@faker-js/faker");
+  private async generateDefaultValue(prop: EntityProp, entity?: Entity): Promise<unknown> {
+    const fakerModule = await import("@faker-js/faker");
+    const faker = fakerModule.faker;
+    const fakerKO = fakerModule.fakerKO;
 
     switch (prop.type) {
       case "string":
       case "string[]":
+        // Department의 name 필드는 한국어 부서명 생성
+        if (entity?.id === "Department" && prop.name === "name") {
+          const departments = [
+            "개발팀",
+            "기획팀",
+            "마케팅팀",
+            "영업팀",
+            "인사팀",
+            "총무팀",
+            "재무팀",
+            "회계팀",
+            "법무팀",
+            "디자인팀",
+            "IT팀",
+            "고객지원팀",
+            "품질관리팀",
+            "연구개발팀",
+            "생산팀",
+            "구매팀",
+            "물류팀",
+          ];
+          const prefixes = ["신규", "통합", "전략", "글로벌", "디지털", "핵심"];
+          const suffixes = ["1팀", "2팀", "3팀", "A팀", "B팀", "본부", "센터", "그룹"];
+
+          const dept = faker.helpers.arrayElement(departments);
+
+          // 70% 확률로 prefix 또는 suffix 추가하여 고유성 확보
+          const random = Math.random();
+          if (random > 0.7) {
+            const prefix = faker.helpers.arrayElement(prefixes);
+            return `${prefix} ${dept}`;
+          }
+          if (random > 0.4) {
+            const suffix = faker.helpers.arrayElement(suffixes);
+            return `${dept} ${suffix}`;
+          }
+          return dept;
+        }
+        // 일반 name 필드는 한국어 사람 이름 생성
+        if (prop.name === "name" || prop.name === "username") {
+          return fakerKO.person.fullName();
+        }
         return faker.lorem.words(3);
       case "integer":
         return faker.number.int({ min: 1, max: 1000 });
@@ -328,8 +389,37 @@ export class FixtureGenerator {
       case "uuid":
       case "uuid[]":
         return faker.string.uuid();
-      case "enum":
-      case "enum[]":
+      case "enum": {
+        // enum 타입은 prop.enum 또는 entity.enumLabels[prop.id]에 정의되어 있습니다
+        let enumValues: string[] = [];
+
+        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+          enumValues = prop.enum;
+        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+          // entity.enumLabels에서 enum 키들을 추출합니다
+          enumValues = Object.keys(entity.enumLabels[prop.id]);
+        }
+
+        if (enumValues.length > 0) {
+          return faker.helpers.arrayElement(enumValues);
+        }
+        // enum 값이 없으면 nullable 여부에 따라 처리합니다
+        return prop.nullable ? null : "UNKNOWN";
+      }
+      case "enum[]": {
+        let enumValues: string[] = [];
+
+        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+          enumValues = prop.enum;
+        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+          enumValues = Object.keys(entity.enumLabels[prop.id]);
+        }
+
+        if (enumValues.length > 0) {
+          return [faker.helpers.arrayElement(enumValues)];
+        }
+        return [];
+      }
       case "vector":
       case "vector[]":
       case "tsvector":

@@ -21,7 +21,7 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "b7dc4a9b99e96b2d14c6efd4a9116bbb46fca682"
+    "checksum": "8a295d50356b26e381b389630cd0ce3411390773"
   },
   {
     "path": "src/application/department/department.model.ts",
