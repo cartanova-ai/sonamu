@@ -21,30 +21,22 @@ import { EmployeeListParams, EmployeeSaveParams } from "./employee/employee.type
 import { FileListParams, FileSaveParams } from "./file/file.types";
 import { ProjectListParams, ProjectSaveParams } from "./project/project.types";
 import {
-  CompanySearchField,
   CompanySubsetKey,
   CompanySubsetMapping,
-  DepartmentSearchField,
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
   DocumentSubsetKey,
   DocumentSubsetMapping,
-  EmployeeSearchField,
   EmployeeSubsetKey,
   EmployeeSubsetMapping,
-  FileSearchField,
   FileSubsetKey,
   FileSubsetMapping,
-  ProjectSearchField,
   ProjectSubsetKey,
   ProjectSubsetMapping,
-  SyncFixtureSearchField,
   SyncFixtureSubsetKey,
   SyncFixtureSubsetMapping,
-  TagSearchField,
   TagSubsetKey,
   TagSubsetMapping,
-  UserSearchField,
   UserSubsetKey,
   UserSubsetMapping,
 } from "./sonamu.generated";
@@ -1193,8 +1185,7 @@ export namespace CompanyService {
 export const CompanyAsyncIdConfig: AsyncIdConfig<
   CompanySubsetKey,
   CompanySubsetMapping,
-  CompanyListParams,
-  CompanySearchField
+  CompanyListParams
 > = {
   placeholderKey: "entity.Company",
   useList: CompanyService.useCompanies,
@@ -1204,8 +1195,7 @@ export const CompanyAsyncIdConfig: AsyncIdConfig<
 export const DepartmentAsyncIdConfig: AsyncIdConfig<
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
-  DepartmentListParams,
-  DepartmentSearchField
+  DepartmentListParams
 > = {
   placeholderKey: "entity.Department",
   useList: DepartmentService.useDepartments,
@@ -1215,20 +1205,14 @@ export const DepartmentAsyncIdConfig: AsyncIdConfig<
 export const EmployeeAsyncIdConfig: AsyncIdConfig<
   EmployeeSubsetKey,
   EmployeeSubsetMapping,
-  EmployeeListParams,
-  EmployeeSearchField
+  EmployeeListParams
 > = {
   placeholderKey: "entity.Employee",
   useList: EmployeeService.useEmployees,
 };
 
 // AsyncIdConfig: File
-export const FileAsyncIdConfig: AsyncIdConfig<
-  FileSubsetKey,
-  FileSubsetMapping,
-  FileListParams,
-  FileSearchField
-> = {
+export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping, FileListParams> = {
   placeholderKey: "entity.File",
   useList: FileService.useFiles,
 };
@@ -1237,8 +1221,7 @@ export const FileAsyncIdConfig: AsyncIdConfig<
 export const ProjectAsyncIdConfig: AsyncIdConfig<
   ProjectSubsetKey,
   ProjectSubsetMapping,
-  ProjectListParams,
-  ProjectSearchField
+  ProjectListParams
 > = {
   placeholderKey: "entity.Project",
   useList: ProjectService.useProjects,
@@ -1248,31 +1231,20 @@ export const ProjectAsyncIdConfig: AsyncIdConfig<
 export const SyncFixtureAsyncIdConfig: AsyncIdConfig<
   SyncFixtureSubsetKey,
   SyncFixtureSubsetMapping,
-  SyncFixtureListParams,
-  SyncFixtureSearchField
+  SyncFixtureListParams
 > = {
   placeholderKey: "entity.SyncFixture",
   useList: SyncFixtureService.useSyncFixtures,
 };
 
 // AsyncIdConfig: Tag
-export const TagAsyncIdConfig: AsyncIdConfig<
-  TagSubsetKey,
-  TagSubsetMapping,
-  TagListParams,
-  TagSearchField
-> = {
+export const TagAsyncIdConfig: AsyncIdConfig<TagSubsetKey, TagSubsetMapping, TagListParams> = {
   placeholderKey: "entity.Tag",
   useList: TagService.useTags,
 };
 
 // AsyncIdConfig: User
-export const UserAsyncIdConfig: AsyncIdConfig<
-  UserSubsetKey,
-  UserSubsetMapping,
-  UserListParams,
-  UserSearchField
-> = {
+export const UserAsyncIdConfig: AsyncIdConfig<UserSubsetKey, UserSubsetMapping, UserListParams> = {
   placeholderKey: "entity.User",
   useList: UserService.useUsers,
 };

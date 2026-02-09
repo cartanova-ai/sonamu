@@ -552,11 +552,10 @@ function SelectTestPage() {
                     config={CompanyAsyncIdConfig}
                     subset="A"
                     displayField="name"
-                    searchField="id"
+                    baseListParams={{ search: "id" }}
                     {...idAsyncSingleForm.register("value")}
                     onRowChange={(row) => setIdAsyncSingleRow(row as Company)}
                     placeholder="회사를 검색하세요"
-                    className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">
@@ -598,13 +597,14 @@ function SelectTestPage() {
                   <IdAsyncSelect
                     config={EmployeeAsyncIdConfig}
                     subset="A"
-                    displayField={(row) => `${row.employee_number} (id: ${row.id})`}
-                    searchField="id"
+                    displayField={(row) =>
+                      `${row.employee_number} (소속 부서: ${row.department?.name})`
+                    }
+                    baseListParams={{ search: "id" }}
                     {...idAsyncMultiForm.register("value")}
                     onRowChange={(rows) => setIdAsyncMultiRows(rows as Employee[])}
                     multiple={true}
                     placeholder="직원을 검색하세요"
-                    className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">

@@ -13,12 +13,10 @@ import { Select } from "./select";
 // services.generated.ts에서 생성되는 config와 호환됨
 // _TSubsetMapping은 onRowChange의 타입 추론에 사용됨
 // _TListParams는 baseListParams의 타입 추론에 사용됨
-// _TSearchField는 searchField prop의 타입 추론에 사용됨
 export type AsyncIdConfig<
   TSubsetKey extends string = string,
   _TSubsetMapping = Record<string, unknown>,
   _TListParams extends Record<string, unknown> = Record<string, unknown>,
-  _TSearchField extends string = string,
 > = {
   placeholderKey: string;
   useList: <T extends TSubsetKey>(
@@ -66,18 +64,15 @@ type IdAsyncSelectBaseProps<
   TValue extends string | number = string,
   TListParams extends Record<string, unknown> = Record<string, unknown>,
   TSubset extends TSubsetKey = TSubsetKey,
-  TSearchField extends string = string,
 > = {
   // Entity Async ID Config
-  config: AsyncIdConfig<TSubsetKey, TSubsetMapping, TListParams, TSearchField>;
+  config: AsyncIdConfig<TSubsetKey, TSubsetMapping, TListParams>;
   // Entity subset key
   subset: TSubset;
   // 검색/조회 시 적용될 파라미터
-  baseListParams?: Partial<TListParams>;
+  baseListParams?: Partial<Omit<TListParams, "keyword" | "page">>;
   // 실제 저장/전송될 값의 필드명 (기본값: "id")
   valueField?: SubsetFieldKeys<TSubset, TSubsetMapping>;
-  // 검색 시 사용할 필드명
-  searchField?: TSearchField;
   // 기본 Select Props
   placeholder?: string;
   clearable?: boolean;
@@ -97,8 +92,7 @@ export type IdAsyncSelectProps<
   TValue extends string | number = string,
   TListParams extends Record<string, unknown> = Record<string, unknown>,
   TSubset extends TSubsetKey = TSubsetKey,
-  TSearchField extends string = string,
-> = IdAsyncSelectBaseProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset, TSearchField> &
+> = IdAsyncSelectBaseProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset> &
   (DisplayFieldAsString<TSubset, TSubsetMapping> | DisplayFieldAsCallback<TSubset, TSubsetMapping>);
 
 // ============================================================================
@@ -134,14 +128,12 @@ export function IdAsyncSelect<
   TValue extends string | number = string,
   TListParams extends Record<string, unknown> = Record<string, unknown>,
   TSubset extends TSubsetKey = TSubsetKey,
-  TSearchField extends string = string,
 >({
   config,
   subset,
   baseListParams,
   displayField,
   valueField = "id" as SubsetFieldKeys<TSubset, TSubsetMapping>,
-  searchField: searchFieldProp,
   placeholder,
   clearable,
   disabled,
@@ -150,7 +142,7 @@ export function IdAsyncSelect<
   value,
   onValueChange,
   onRowChange,
-}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset, TSearchField>) {
+}: IdAsyncSelectProps<TSubsetKey, TSubsetMapping, TValue, TListParams, TSubset>) {
   const { SD } = useSonamuBaseContext();
 
   // onRowChange의 파라미터 타입
@@ -173,13 +165,6 @@ export function IdAsyncSelect<
     [displayField, isDisplayFieldCallback],
   );
 
-  // 검색 시 사용할 필드명 결정 우선순위:
-  // 1. searchField prop이 명시되면 그것을 사용
-  // 2. displayField가 string이면 displayField를 검색 필드로 사용
-  // 3. 둘 다 없으면 undefined (서버 기본값 사용)
-  const searchField =
-    searchFieldProp ?? (typeof displayField === "string" ? displayField : undefined);
-
   // ============================================================
   // listParams 상태 관리
   // ============================================================
@@ -188,16 +173,12 @@ export function IdAsyncSelect<
   // ============================================================
   // handleSearch 로직
   // ============================================================
-  const handleSearch = useCallback(
-    (keyword: string) => {
-      setListParams((prev) => ({
-        ...prev,
-        search: keyword ? searchField : undefined,
-        keyword: keyword || undefined,
-      }));
-    },
-    [searchField],
-  );
+  const handleSearch = useCallback((keyword: string) => {
+    setListParams((prev) => ({
+      ...prev,
+      keyword: keyword || undefined,
+    }));
+  }, []);
 
   // ============================================================
   // 리스트 로드
