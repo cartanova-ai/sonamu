@@ -41,7 +41,10 @@ async function main() {
       limit: 10,
     });
     console.log(`   조회됨: ${sampledUsers.length}명`);
-    console.log("   ID 분포:", sampledUsers.map((u) => u.id));
+    console.log(
+      "   ID 분포:",
+      sampledUsers.map((u) => u.id),
+    );
     console.log("");
 
     // 3. Query 전략 테스트
@@ -65,7 +68,10 @@ async function main() {
       limit: 3,
     });
     console.log(`   조회됨: ${randomUsers.length}명`);
-    console.log("   ID:", randomUsers.map((u) => u.id));
+    console.log(
+      "   ID:",
+      randomUsers.map((u) => u.id),
+    );
     console.log("");
 
     // 5. Relation 탐색 테스트 (Employee -> Department)
@@ -81,11 +87,9 @@ async function main() {
 
     // 6. 여러 Relation 병렬 조회 테스트
     console.log("6. ExploreRelations - Employee의 여러 relation 병렬 조회");
-    const relations = await explorer.exploreRelations(
-      "Employee",
-      ["department", "user"],
-      { limit: 3 }
-    );
+    const relations = await explorer.exploreRelations("Employee", ["department", "user"], {
+      limit: 3,
+    });
     console.log(`   department: ${relations.department?.length}개`);
     console.log(`   user: ${relations.user?.length}개`);
     console.log("");

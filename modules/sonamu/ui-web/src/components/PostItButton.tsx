@@ -23,8 +23,7 @@ const postItButtonVariants = cva(
   },
 );
 
-type PostItButtonProps = React.ComponentProps<"button"> &
-  VariantProps<typeof postItButtonVariants>;
+type PostItButtonProps = React.ComponentProps<"button"> & VariantProps<typeof postItButtonVariants>;
 
 export const PostItButton = React.forwardRef<HTMLButtonElement, PostItButtonProps>(
   ({ className, variant, size, ...props }, ref) => {

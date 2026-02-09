@@ -7,9 +7,7 @@ import { isRelationProp } from "../types/types";
 export type DataExplorerStrategy = "sample" | "ids" | "query" | "file" | "recent" | "random";
 
 /** WHERE 조건 타입 (객체 또는 Knex QueryBuilder 함수) */
-export type WhereCondition =
-  | Record<string, unknown>
-  | ((queryBuilder: Knex.QueryBuilder) => void);
+export type WhereCondition = Record<string, unknown> | ((queryBuilder: Knex.QueryBuilder) => void);
 
 export type DataExplorerOptions = {
   strategy: DataExplorerStrategy;
@@ -36,7 +34,10 @@ export class DataExplorer {
     this.cache = cacheManager;
   }
 
-  async explore(entityName: string, options: DataExplorerOptions): Promise<Record<string, unknown>[]> {
+  async explore(
+    entityName: string,
+    options: DataExplorerOptions,
+  ): Promise<Record<string, unknown>[]> {
     const entity = this.entityManager.get(entityName);
     if (!entity) {
       throw new Error(`Entity not found: ${entityName}`);

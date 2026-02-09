@@ -486,7 +486,10 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
 
               if (updates.enums !== undefined) {
                 const convertedEnums = Object.fromEntries(
-                  Object.entries(updates.enums).map(([key, enumDef]) => [key, getEnumDefValues(enumDef)]),
+                  Object.entries(updates.enums).map(([key, enumDef]) => [
+                    key,
+                    getEnumDefValues(enumDef),
+                  ]),
                 );
                 entity.enumLabels =
                   mode === "replace" ? convertedEnums : { ...entity.enumLabels, ...convertedEnums };
