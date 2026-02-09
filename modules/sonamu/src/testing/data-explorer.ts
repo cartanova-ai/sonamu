@@ -328,8 +328,7 @@ export class DataExplorer {
     const forwardRelationProps = entity.props.filter(
       (prop) =>
         isRelationProp(prop) &&
-        (isBelongsToOneRelationProp(prop) ||
-          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)),
+        (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)),
     );
 
     for (const prop of forwardRelationProps) {

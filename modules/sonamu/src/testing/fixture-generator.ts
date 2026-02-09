@@ -70,7 +70,11 @@ export class FixtureGenerator {
 
       // 2. fixtureGenerator 사용
       if (postIt?.fixtureGenerator) {
-        fixture[prop.name] = await this.executeGenerator(postIt.fixtureGenerator as string, prop);
+        fixture[prop.name] = await this.executeGenerator(
+          postIt.fixtureGenerator as string,
+          prop,
+          entity,
+        );
         continue;
       }
 
@@ -81,7 +85,7 @@ export class FixtureGenerator {
       }
 
       // 4. 타입별 기본 생성
-      fixture[prop.name] = await this.generateDefaultValue(prop);
+      fixture[prop.name] = await this.generateDefaultValue(prop, entity);
     }
 
     // 5. password 필드 암호화
@@ -210,7 +214,11 @@ export class FixtureGenerator {
    * 예: "faker.internet.email()" → faker.internet.email()
    * 예: "faker.lorem.words(3)" → faker.lorem.words(3)
    */
-  private async executeGenerator(generator: string, prop: EntityProp): Promise<unknown> {
+  private async executeGenerator(
+    generator: string,
+    prop: EntityProp,
+    entity: Entity,
+  ): Promise<unknown> {
     // Faker.js 표현식만 지원
     if (generator.startsWith("faker.")) {
       // username이나 name 필드는 한국어 faker 사용
@@ -223,7 +231,9 @@ export class FixtureGenerator {
         // 함수 경로와 인자 파싱
         const match = expr.match(/^([\w.]+)(?:\((.*?)\))?$/);
         if (!match) {
-          throw new Error(`FixtureGenerator: Invalid faker expression for ${prop.name}: ${generator}`);
+          throw new Error(
+            `FixtureGenerator: Invalid faker expression for ${prop.name}: ${generator}`,
+          );
         }
 
         const [, path, argsStr] = match;
@@ -262,7 +272,9 @@ export class FixtureGenerator {
             ) {
               args = [trimmed.slice(1, -1)];
             } else {
-              throw new Error(`FixtureGenerator: Cannot parse arguments for ${prop.name}: ${argsStr}`);
+              throw new Error(
+                `FixtureGenerator: Cannot parse arguments for ${prop.name}: ${argsStr}`,
+              );
             }
           }
         }
@@ -275,7 +287,7 @@ export class FixtureGenerator {
           ),
           error,
         );
-        return this.generateDefaultValue(prop);
+        return this.generateDefaultValue(prop, entity);
       }
     }
 
@@ -285,13 +297,13 @@ export class FixtureGenerator {
         `Unsupported generator expression for ${prop.name}: ${generator}. Only faker.* expressions are supported. Using default value.`,
       ),
     );
-    return this.generateDefaultValue(prop);
+    return this.generateDefaultValue(prop, entity);
   }
 
   /**
    * 타입별 기본값 생성 (Faker.js 사용)
    */
-  private async generateDefaultValue(prop: EntityProp): Promise<unknown> {
+  private async generateDefaultValue(prop: EntityProp, entity?: Entity): Promise<unknown> {
     const { faker } = await import("@faker-js/faker");
 
     switch (prop.type) {
@@ -324,8 +336,37 @@ export class FixtureGenerator {
       case "uuid":
       case "uuid[]":
         return faker.string.uuid();
-      case "enum":
-      case "enum[]":
+      case "enum": {
+        // enum 타입은 prop.enum 또는 entity.enumLabels[prop.id]에 정의되어 있습니다
+        let enumValues: string[] = [];
+
+        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+          enumValues = prop.enum;
+        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+          // entity.enumLabels에서 enum 키들을 추출합니다
+          enumValues = Object.keys(entity.enumLabels[prop.id]);
+        }
+
+        if (enumValues.length > 0) {
+          return faker.helpers.arrayElement(enumValues);
+        }
+        // enum 값이 없으면 nullable 여부에 따라 처리합니다
+        return prop.nullable ? null : "UNKNOWN";
+      }
+      case "enum[]": {
+        let enumValues: string[] = [];
+
+        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+          enumValues = prop.enum;
+        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+          enumValues = Object.keys(entity.enumLabels[prop.id]);
+        }
+
+        if (enumValues.length > 0) {
+          return [faker.helpers.arrayElement(enumValues)];
+        }
+        return [];
+      }
       case "vector":
       case "vector[]":
       case "tsvector":
