@@ -108,6 +108,136 @@ Fixture sync completed!
 Calling `sync` before test execution ensures you always start with a clean state.
 </Tip>
 
+### gen - Auto Fixture Generation
+
+**Automatically generate fixtures** using Entity's post-it metadata. Useful when you don't have real data or need virtual test data.
+
+```bash
+pnpm fixture gen
+```
+
+**Interactive mode**:
+```
+? Select entities to generate fixtures for: (Use arrow keys)
+❯ ◯ User
+  ◯ Post
+  ◯ Comment
+
+? Number to generate per Entity: 5
+
+? Save method: (Use arrow keys)
+❯ Save to Fixture DB
+  Save to file (auto filename)
+  Save to file (specify filename)
+  Don't save (output only)
+```
+
+**CLI options**:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--all` | Generate for all Entities | `pnpm fixture gen --all` |
+| `--include` | Include specific Entities only | `pnpm fixture gen --include User,Post` |
+| `--exclude` | Exclude specific Entities (use with --all) | `pnpm fixture gen --all --exclude Comment` |
+| `--count` | Number of records to generate | `pnpm fixture gen --include User --count 10` |
+| `--save-to` | Specify save method | `pnpm fixture gen --save-to db` |
+
+**Save methods**:
+- `db`: Save directly to Fixture DB (default)
+- `file`: Save to `test/fixtures/{entity_table}.json` file
+- `file:{filename}`: Save with specified filename
+- `none`: Don't save, just output to console
+
+```bash
+# Example: Generate 10 each of User, Post and save to DB
+pnpm fixture gen --include User,Post --count 10 --save-to db
+```
+
+### fetch - Fetch Data from Production DB
+
+**Fetch data from actual production (or development) DB** and save to Fixture DB. Use when you need realistic test data.
+
+```bash
+pnpm fixture fetch
+```
+
+**Interactive mode**:
+```
+? Select entities to import: (Use arrow keys)
+❯ ◯ User
+  ◯ Post
+  ◯ Comment
+
+Importing User, Post...
+  ✓ User: 10 records imported
+  ✓ Post: 10 records imported
+```
+
+**CLI options**:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--all` | Fetch from all Entities | `pnpm fixture fetch --all` |
+| `--include` | Include specific Entities only | `pnpm fixture fetch --include User,Post` |
+| `--exclude` | Exclude specific Entities | `pnpm fixture fetch --all --exclude Log` |
+| `--strategy` | Data selection strategy | `pnpm fixture fetch --strategy recent` |
+| `--limit` | Number of records to fetch | `pnpm fixture fetch --limit 20` |
+
+**Data selection strategies**:
+- `recent` (default): Fetch most recent data first
+- `sample`: Random sampling
+
+```bash
+# Example: Fetch 20 most recent User records
+pnpm fixture fetch --include User --strategy recent --limit 20
+```
+
+**Features**:
+- Related data is automatically fetched together (up to depth level 2)
+- Foreign key referential integrity maintained
+
+### explore - Query DB Data
+
+**Query only** DB data. Useful for quickly checking data without saving.
+
+```bash
+pnpm fixture explore
+```
+
+**Interactive mode**:
+```
+? Entity to explore: User
+
+User 10 records retrieved:
+┌─────────┬────┬────────────────────┬───────────┐
+│ (index) │ id │ email              │ name      │
+├─────────┼────┼────────────────────┼───────────┤
+│    0    │  1 │ 'user1@example.com'│ 'John'    │
+│    1    │  2 │ 'user2@example.com'│ 'Jane'    │
+│   ...   │... │ ...                │ ...       │
+└─────────┴────┴────────────────────┴───────────┘
+```
+
+**CLI options**:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--include` | Entity to explore | `pnpm fixture explore --include User` |
+| `--strategy` | Data selection strategy | `pnpm fixture explore --strategy sample` |
+| `--limit` | Number of records to query | `pnpm fixture explore --limit 5` |
+
+**Data selection strategies**:
+- `sample` (default): Random sample
+- `recent`: Most recent data
+- `random`: Completely random
+- `ids`: Specify specific IDs
+- `query`: Custom query
+
+```bash
+# Example: Query 5 most recent records from User table
+pnpm fixture explore --include User --strategy recent --limit 5
+```
+
 ## Usage Workflow
 
 ### 1. Initial Setup
