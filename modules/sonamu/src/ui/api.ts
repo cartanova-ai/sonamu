@@ -2,10 +2,12 @@ import { execSync } from "child_process";
 import type { FastifyInstance } from "fastify";
 import fs from "fs";
 import inflection from "inflection";
+import type { AddressInfo } from "net";
 import path from "path";
 import { range } from "radashi";
 import { Sonamu } from "../api/sonamu";
-import type { SonamuDBConfig } from "../database/db";
+import { DB, type SonamuDBConfig } from "../database/db";
+import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { sonamuDictionary } from "../dict/sonamu-dictionary";
 import type { Entity } from "../entity/entity";
@@ -18,6 +20,8 @@ import {
 import { type MigrationResult, Migrator } from "../migration/migrator";
 import { SlackConfirm, type SlackConfirmPendingResult } from "../migration/slack-confirm";
 import { TemplateManager } from "../template/template-manager";
+import { DataExplorer } from "../testing/data-explorer";
+import { FixtureGenerator } from "../testing/fixture-generator";
 import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
 import {
   BUILT_IN_TYPE_IDS,
@@ -1002,6 +1006,227 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       server.post<{ Body: { keys: string[] } }>("/api/i18n/checkUsage", async (request) => {
         return sonamuDictionary.checkUsage(request.body.keys);
+      });
+
+      /**
+       * Health Check API
+       * MCP 도구가 Sonamu 서버를 자동 감지하기 위한 엔드포인트
+       */
+      server.get("/api/sonamu/health", async (request) => {
+        const address = request.server.server.address();
+        const port = address && typeof address === "object" ? (address as AddressInfo).port : 0;
+
+        return {
+          ok: true,
+          project: process.cwd().split("/").pop() || "unknown",
+          port,
+          timestamp: new Date().toISOString(),
+        };
+      });
+
+      /**
+       * Fixture 생성 API
+       */
+      server.post<{
+        Body: {
+          entity: string;
+          count?: number;
+          overrides?: Record<string, unknown>;
+          targetDb?: "fixture" | "test";
+        };
+      }>("/api/sonamu/fixture/generate", async (request, reply) => {
+        const { entity, count = 1, overrides, targetDb = "fixture" } = request.body;
+
+        try {
+          // 타겟 DB 설정 가져오기
+          const dbConfig = targetDb === "fixture" ? Sonamu.dbConfig.fixture : Sonamu.dbConfig.test;
+
+          // Knex 인스턴스 생성
+          const db = createKnexInstance(dbConfig);
+
+          // FixtureGenerator 생성
+          const generator = new FixtureGenerator(db, db, targetDb, EntityManager);
+
+          // 단일 Entity 배치 생성
+          const fixtures = await generator.generateBatch([
+            {
+              entity,
+              count,
+              overrides: overrides ?? {},
+            },
+          ]);
+
+          // Knex 연결 종료
+          await db.destroy();
+
+          return {
+            success: true,
+            entity,
+            count: fixtures.length,
+            fixtures,
+            targetDb,
+          };
+        } catch (error) {
+          reply.status(400);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      /**
+       * Fixture 데이터 탐색 API
+       */
+      server.post<{
+        Body: {
+          entity: string;
+          strategy: "sample" | "recent" | "random" | "query";
+          limit?: number;
+          where?: Record<string, unknown>;
+        };
+      }>("/api/sonamu/fixture/explore", async (request, reply) => {
+        const { entity, strategy, limit = 10, where } = request.body;
+
+        try {
+          // Fixture DB 설정 가져오기
+          const fixtureDbConfig = Sonamu.dbConfig.fixture;
+
+          // Knex 인스턴스 생성
+          const fixtureDb = createKnexInstance(fixtureDbConfig);
+
+          // DataExplorer 생성
+          const explorer = new DataExplorer(fixtureDb, EntityManager);
+
+          const data = await explorer.explore(entity, {
+            strategy,
+            limit,
+            where,
+          });
+
+          // Knex 연결 종료
+          await fixtureDb.destroy();
+
+          return {
+            success: true,
+            entity,
+            strategy,
+            count: data.length,
+            data,
+          };
+        } catch (error) {
+          reply.status(400);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      /**
+       * Fixture 데이터 가져오기 (fetch) API
+       * production/development DB에서 실제 데이터를 fixture DB로 import
+       */
+      server.post<{
+        Body: {
+          entity: string;
+          strategy?: "sample" | "recent" | "random" | "query";
+          limit?: number;
+          includeRelations?: boolean;
+          maxDepth?: number;
+        };
+      }>("/api/sonamu/fixture/fetch", async (request, reply) => {
+        const {
+          entity,
+          strategy = "recent",
+          limit = 10,
+          includeRelations = true,
+          maxDepth = 2,
+        } = request.body;
+
+        try {
+          // Source DB (production/development) - 읽기 전용
+          const sourceDb = DB.getDB("r");
+
+          // Target DB (fixture)
+          const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+
+          // FixtureGenerator 생성
+          const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
+
+          // production 데이터를 fixture DB로 import
+          const results = await generator.importFromSource(entity, {
+            strategy,
+            limit,
+            includeRelations,
+            maxDepth,
+          });
+
+          // Knex 연결 종료 (sourceDb는 Sonamu가 관리하므로 destroy하지 않음)
+          await fixtureDb.destroy();
+
+          return {
+            success: true,
+            entity,
+            strategy,
+            count: results.length,
+            imported: results,
+          };
+        } catch (error) {
+          reply.status(400);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      /**
+       * Fixture 데이터 삭제 (clean) API
+       * FK 순서를 고려하여 안전하게 삭제
+       */
+      server.post<{
+        Body: {
+          entities?: string[];
+        };
+      }>("/api/sonamu/fixture/clean", async (request, reply) => {
+        const { entities } = request.body;
+
+        try {
+          // Fixture DB 연결
+          const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+
+          // 삭제할 Entity 목록 결정
+          const targetEntities =
+            entities && entities.length > 0 ? entities : EntityManager.getAllIds();
+
+          // Entity ID를 테이블명으로 변환 (snake_case 복수형)
+          const tableNames = targetEntities.map((entityId) => {
+            const entity = EntityManager.get(entityId);
+            return entity.table;
+          });
+
+          // PostgreSQL: TRUNCATE CASCADE로 FK 순서 무관하게 안전하게 삭제
+          // CASCADE 옵션으로 의존성 있는 데이터도 함께 삭제
+          await fixtureDb.raw(
+            `TRUNCATE TABLE ${tableNames.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`,
+          );
+
+          // Knex 연결 종료
+          await fixtureDb.destroy();
+
+          return {
+            success: true,
+            cleaned: tableNames,
+            count: tableNames.length,
+          };
+        } catch (error) {
+          reply.status(400);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
       });
 
       // ui-web 빌드 파일 서빙
