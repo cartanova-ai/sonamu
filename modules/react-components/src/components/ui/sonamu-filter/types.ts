@@ -43,7 +43,8 @@ export type SonamuFilterModalProps = {
   baseSchema: z.ZodObject<z.ZodRawShape>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onApply?: (filters: Record<string, unknown>) => void;
+  initialRules?: Rule[];
+  onApply?: (filters: Record<string, unknown>, rules: Rule[]) => void;
 };
 
 /**
@@ -65,4 +66,30 @@ export type RuleRowProps = {
   fieldMeta: Record<string, FieldMeta>;
   onUpdate: (updates: Partial<Rule>) => void;
   onRemove: () => void;
+};
+
+/**
+ * SonamuFilterBadge Props
+ */
+export type SonamuFilterBadgeProps = {
+  rules: Rule[];
+  fieldMeta: Record<string, FieldMeta>;
+  onRemove: (ruleId: string) => void;
+  onClearAll: () => void;
+};
+
+/**
+ * SonamuFilterTooltip Props (deprecated - use SonamuFilterPopoverProps)
+ */
+export type SonamuFilterTooltipProps = SonamuFilterPopoverProps;
+
+/**
+ * SonamuFilterPopover Props
+ */
+export type SonamuFilterPopoverProps = {
+  rules: Rule[];
+  fieldMeta: Record<string, FieldMeta>;
+  children: React.ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
 };

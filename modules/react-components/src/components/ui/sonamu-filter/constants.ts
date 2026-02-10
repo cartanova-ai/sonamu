@@ -18,8 +18,8 @@ export const operatorLabels: Record<FilterOperator, string> = {
   between: "between",
   before: "before",
   after: "after",
-  isNull: "NULL",
-  isNotNull: "NOTNULL",
+  isNull: "null",
+  isNotNull: "not null",
 };
 
 /**

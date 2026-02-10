@@ -103,6 +103,7 @@ const rcKeysKo = {
   "rc.sonamuFilter.notSupported": "지원하지 않음",
   "rc.sonamuFilter.startDate": "시작일",
   "rc.sonamuFilter.endDate": "종료일",
+  "rc.sonamuFilter.appliedFilters": "🌲 적용된 소나무 필터",
 
   // Common
   "rc.common.cancel": "취소",
@@ -195,6 +196,7 @@ const rcKeysEn = {
   "rc.sonamuFilter.notSupported": "Not supported",
   "rc.sonamuFilter.startDate": "Start date",
   "rc.sonamuFilter.endDate": "End date",
+  "rc.sonamuFilter.appliedFilters": "🌲 Applied SonamuFilters",
 
   // Common
   "rc.common.cancel": "Cancel",

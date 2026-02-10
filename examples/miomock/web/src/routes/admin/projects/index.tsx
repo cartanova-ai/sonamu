@@ -7,15 +7,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   Checkbox,
   EnumSelect,
+  extractFieldMetaFromSchema,
   Input,
   Pagination,
+  type Rule,
   SonamuFilterModal,
+  SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
@@ -64,6 +68,7 @@ function ProjectList({}: ProjectListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
 
   // 리스트 필터
   const { listParams, register, setListParams } = useListParams(ProjectListParams, {
@@ -260,15 +265,28 @@ function ProjectList({}: ProjectListProps) {
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={<FilterIcon />}
-                      onClick={() => setFilterModalOpen(true)}
-                      className="h-8"
+                    <SonamuFilterPopover
+                      rules={appliedRules}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        ProjectBaseSchema,
+                        SD as (key: string) => string,
+                      )}
                     >
-                      <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FilterIcon />}
+                        onClick={() => setFilterModalOpen(true)}
+                        className="h-8"
+                      >
+                        <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
+                        {appliedRules.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {appliedRules.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SonamuFilterPopover>
                   </div>
                 </div>
 
@@ -358,8 +376,10 @@ function ProjectList({}: ProjectListProps) {
         baseSchema={ProjectBaseSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
-        onApply={(filters) => {
+        initialRules={appliedRules}
+        onApply={(filters, rules) => {
           setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+          setAppliedRules(rules);
         }}
       />
     </div>

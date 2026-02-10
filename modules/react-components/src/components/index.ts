@@ -269,7 +269,18 @@ export {
 export { Skeleton } from "./ui/skeleton";
 export { Slider } from "./ui/slider";
 export { SonamuFilterModal } from "./ui/sonamu-filter/sonamu-filter-modal";
-export type { FieldMeta, Rule, SonamuFilterModalProps } from "./ui/sonamu-filter/types";
+export {
+  SonamuFilterPopover,
+  SonamuFilterPopover as SonamuFilterTooltip,
+} from "./ui/sonamu-filter/sonamu-filter-popover";
+export type {
+  FieldMeta,
+  Rule,
+  SonamuFilterBadgeProps,
+  SonamuFilterModalProps,
+  SonamuFilterPopoverProps,
+  SonamuFilterTooltipProps,
+} from "./ui/sonamu-filter/types";
 export { extractFieldMetaFromSchema } from "./ui/sonamu-filter/utils";
 export { Switch } from "./ui/switch";
 // Data Display

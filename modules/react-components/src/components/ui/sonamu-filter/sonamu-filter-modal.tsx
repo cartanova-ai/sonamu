@@ -17,14 +17,20 @@ export function SonamuFilterModal({
   baseSchema,
   open,
   onOpenChange,
+  initialRules = [],
   onApply,
 }: SonamuFilterModalProps) {
   const { SD } = useSonamuBaseContext();
 
   // Apply된 최종 상태
-  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>(initialRules);
   // 작업 중 상태
   const [rules, setRules] = useState<Rule[]>([]);
+
+  // initialRules가 변경되면 appliedRules에 동기화
+  useEffect(() => {
+    setAppliedRules(initialRules);
+  }, [initialRules]);
 
   // 모달이 열릴 때마다 appliedRules를 rules로 복사
   useEffect(() => {
@@ -81,9 +87,10 @@ export function SonamuFilterModal({
   // Apply 버튼 클릭
   const handleApply = () => {
     const filters = buildFilterQuery();
+    const confirmedRules = rules.map((rule) => ({ ...rule }));
     // 현재 rules를 확정 상태로 저장
-    setAppliedRules(rules.map((rule) => ({ ...rule })));
-    onApply?.(filters);
+    setAppliedRules(confirmedRules);
+    onApply?.(filters, confirmedRules);
     onOpenChange(false);
   };
 

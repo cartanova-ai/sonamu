@@ -108,7 +108,7 @@ const NAME_LIKE_FIELDS = ["name", "title", "label", "display_name", "username"];
 function detectDisplayField(row: Record<string, unknown>): string {
   // 1) name-like 필드 찾기
   for (const field of NAME_LIKE_FIELDS) {
-    if (field in row && row[field] != null) {
+    if (Object.keys(row).includes(field)) {
       return field;
     }
   }
