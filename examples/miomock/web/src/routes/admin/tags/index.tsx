@@ -7,14 +7,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   Checkbox,
   EnumSelect,
+  extractFieldMetaFromSchema,
   Input,
   Pagination,
+  type Rule,
+  SonamuFilterModal,
+  SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
@@ -29,6 +34,7 @@ import { Fragment, useState } from "react";
 import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import {
+  TagBaseSchema,
   TagOrderBy,
   TagOrderByLabel,
   TagSearchField,
@@ -37,6 +43,7 @@ import {
 import { TagListParams } from "@/services/tag/tag.types";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
@@ -56,14 +63,17 @@ function TagList({}: TagListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(TagListParams, {
+  const { listParams, register, setListParams } = useListParams(TagListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: TagSearchField.options[0],
     orderBy: TagOrderBy.options[0],
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -201,13 +211,35 @@ function TagList({}: TagListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
+                    <SonamuFilterPopover
+                      rules={appliedRules}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        TagBaseSchema,
+                        SD as (key: string) => string,
+                      )}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FilterIcon />}
+                        onClick={() => setFilterModalOpen(true)}
+                        className="h-8"
+                      >
+                        <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
+                        {appliedRules.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {appliedRules.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SonamuFilterPopover>
                   </div>
                 </div>
 
@@ -291,6 +323,18 @@ function TagList({}: TagListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sonamu Filter Modal */}
+      <SonamuFilterModal
+        baseSchema={TagBaseSchema}
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        initialRules={appliedRules}
+        onApply={(filters, rules) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+          setAppliedRules(rules);
+        }}
+      />
     </div>
   );
 }

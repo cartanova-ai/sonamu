@@ -14,8 +14,12 @@ import {
   CardHeader,
   Checkbox,
   EnumSelect,
+  extractFieldMetaFromSchema,
   Input,
   Pagination,
+  type Rule,
+  SonamuFilterModal,
+  SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
@@ -30,6 +34,7 @@ import { Fragment, useState } from "react";
 import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
 import {
+  UserBaseSchema,
   UserOrderBy,
   UserOrderByLabel,
   UserRoleLabel,
@@ -39,6 +44,7 @@ import {
 import { UserListParams } from "@/services/user/user.types";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
@@ -61,14 +67,17 @@ function UserList({}: UserListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(UserListParams, {
+  const { listParams, register, setListParams } = useListParams(UserListParams, {
     num: 10,
     page: 1,
     keyword: "",
     search: UserSearchField.options[0],
     orderBy: UserOrderBy.options[0],
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -237,13 +246,35 @@ function UserList({}: UserListProps) {
                     />
                   </div>
 
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
+                    <SonamuFilterPopover
+                      rules={appliedRules}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        UserBaseSchema,
+                        SD as (key: string) => string,
+                      )}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FilterIcon />}
+                        onClick={() => setFilterModalOpen(true)}
+                        className="h-8"
+                      >
+                        <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
+                        {appliedRules.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {appliedRules.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SonamuFilterPopover>
                   </div>
                 </div>
 
@@ -327,6 +358,18 @@ function UserList({}: UserListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sonamu Filter Modal */}
+      <SonamuFilterModal
+        baseSchema={UserBaseSchema}
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        initialRules={appliedRules}
+        onApply={(filters, rules) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+          setAppliedRules(rules);
+        }}
+      />
     </div>
   );
 }
