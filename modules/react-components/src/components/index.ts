@@ -210,6 +210,9 @@ export {
 } from "./ui/popover";
 export { Progress } from "./ui/progress";
 export { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+// Sonamu Filter
+export type { RangeNumberInputProps } from "./ui/range-number-input";
+export { RangeNumberInput } from "./ui/range-number-input";
 export {
   ResizableHandle,
   ResizablePanel,
@@ -265,6 +268,20 @@ export {
 } from "./ui/sidebar";
 export { Skeleton } from "./ui/skeleton";
 export { Slider } from "./ui/slider";
+export { SonamuFilterModal } from "./ui/sonamu-filter/sonamu-filter-modal";
+export {
+  SonamuFilterPopover,
+  SonamuFilterPopover as SonamuFilterTooltip,
+} from "./ui/sonamu-filter/sonamu-filter-popover";
+export type {
+  FieldMeta,
+  Rule,
+  SonamuFilterBadgeProps,
+  SonamuFilterModalProps,
+  SonamuFilterPopoverProps,
+  SonamuFilterTooltipProps,
+} from "./ui/sonamu-filter/types";
+export { extractFieldMetaFromSchema } from "./ui/sonamu-filter/utils";
 export { Switch } from "./ui/switch";
 // Data Display
 export {
@@ -280,6 +297,8 @@ export {
 } from "./ui/table";
 // Navigation
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+export type { TagInputProps } from "./ui/tag-input";
+export { TagInput } from "./ui/tag-input";
 export { Textarea } from "./ui/textarea";
 export {
   Toast,

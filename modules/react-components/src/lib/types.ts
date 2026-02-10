@@ -32,3 +32,35 @@ export type SonamuCol<T> = {
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 export type Override<T, U> = Omit<T, keyof U> & U;
+
+/**
+ * Sonamu Filter 관련 타입 정의
+ */
+
+// Prop 타입별 허용 연산자
+export const operatorsByPropType = {
+  string: ["eq", "ne", "contains", "startsWith", "endsWith", "in", "notIn", "isNull", "isNotNull"],
+  integer: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "notIn", "between", "isNull", "isNotNull"],
+  numeric: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "notIn", "between", "isNull", "isNotNull"],
+  boolean: ["eq", "ne", "isNull", "isNotNull"],
+  date: ["eq", "ne", "before", "after", "between", "isNull", "isNotNull"],
+  datetime: ["eq", "ne", "before", "after", "between", "isNull", "isNotNull"],
+  enum: ["eq", "ne", "in", "notIn", "isNull", "isNotNull"],
+  json: ["isNull", "isNotNull"],
+} as const;
+
+// Prop 타입별 기본 연산자
+export const defaultOperatorByPropType = {
+  string: "contains",
+  integer: "eq",
+  numeric: "eq",
+  boolean: "eq",
+  date: "eq",
+  datetime: "eq",
+  enum: "eq",
+  json: "isNull",
+} as const;
+
+// operatorsByPropType에서 파생되는 타입들
+export type FilterPropType = keyof typeof operatorsByPropType;
+export type FilterOperator = (typeof operatorsByPropType)[keyof typeof operatorsByPropType][number];

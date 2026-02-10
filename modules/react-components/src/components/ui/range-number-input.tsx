@@ -1,4 +1,4 @@
-import { Input } from "@sonamu-kit/react-components/components";
+import { Input } from "./input";
 
 export type RangeNumberInputProps = {
   value?: [number | undefined, number | undefined];

@@ -88,6 +88,22 @@ const rcKeysKo = {
   "rc.calendar.month.10": "11월",
   "rc.calendar.month.11": "12월",
 
+  // Sonamu Filter Component
+  "rc.sonamuFilter.title": "소나무 필터",
+  "rc.sonamuFilter.apply": "적용",
+  "rc.sonamuFilter.reset": "초기화",
+  "rc.sonamuFilter.addRule": "규칙 추가",
+  "rc.sonamuFilter.noRulesYet": '아직 규칙이 없습니다. "+ 규칙 추가"를 클릭하여 시작하세요.',
+  "rc.sonamuFilter.selectField": "필드 선택",
+  "rc.sonamuFilter.selectOperator": "연산자 선택",
+  "rc.sonamuFilter.selectOperatorFirst": "먼저 연산자를 선택하세요",
+  "rc.sonamuFilter.enterValue": "값 입력",
+  "rc.sonamuFilter.enterNumber": "숫자 입력",
+  "rc.sonamuFilter.notSupported": "지원하지 않음",
+  "rc.sonamuFilter.startDate": "시작일",
+  "rc.sonamuFilter.endDate": "종료일",
+  "rc.sonamuFilter.appliedFilters": "🌲 적용된 소나무 필터",
+
   // Common
   "rc.common.cancel": "취소",
   "rc.common.save": "저장",
@@ -164,6 +180,22 @@ const rcKeysEn = {
   "rc.calendar.month.9": "October",
   "rc.calendar.month.10": "November",
   "rc.calendar.month.11": "December",
+
+  // Sonamu Filter Component
+  "rc.sonamuFilter.title": "Sonamu Filter",
+  "rc.sonamuFilter.apply": "Apply",
+  "rc.sonamuFilter.reset": "Reset",
+  "rc.sonamuFilter.addRule": "Add Rule",
+  "rc.sonamuFilter.noRulesYet": 'No rules yet. Click "+ Add Rule" to start.',
+  "rc.sonamuFilter.selectField": "Select field",
+  "rc.sonamuFilter.selectOperator": "Operator",
+  "rc.sonamuFilter.selectOperatorFirst": "Select operator first",
+  "rc.sonamuFilter.enterValue": "Enter value",
+  "rc.sonamuFilter.enterNumber": "Enter number",
+  "rc.sonamuFilter.notSupported": "Not supported",
+  "rc.sonamuFilter.startDate": "Start date",
+  "rc.sonamuFilter.endDate": "End date",
+  "rc.sonamuFilter.appliedFilters": "🌲 Applied SonamuFilters",
 
   // Common
   "rc.common.cancel": "Cancel",

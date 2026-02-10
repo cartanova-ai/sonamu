@@ -552,10 +552,10 @@ function SelectTestPage() {
                     config={CompanyAsyncIdConfig}
                     subset="A"
                     displayField="name"
+                    baseListParams={{ search: "id" }}
                     {...idAsyncSingleForm.register("value")}
                     onRowChange={(row) => setIdAsyncSingleRow(row as Company)}
                     placeholder="회사를 검색하세요"
-                    className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">
@@ -591,18 +591,20 @@ function SelectTestPage() {
               <Card className="flex flex-col gap-6 rounded-card border border-orange-200 bg-orange-50/50">
                 <CardHeader className="pb-3">
                   <div className="text-sm font-semibold text-orange-900">IdAsyncSelect (Multi)</div>
-                  <div className="text-xs text-orange-700">Employee(id) 검색</div>
+                  <div className="text-xs text-orange-700">Employee 검색</div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <IdAsyncSelect
                     config={EmployeeAsyncIdConfig}
                     subset="A"
-                    displayField="employee_number"
+                    displayField={(row) =>
+                      `${row.employee_number} (소속 부서: ${row.department?.name})`
+                    }
+                    baseListParams={{ search: "id" }}
                     {...idAsyncMultiForm.register("value")}
                     onRowChange={(rows) => setIdAsyncMultiRows(rows as Employee[])}
                     multiple={true}
                     placeholder="직원을 검색하세요"
-                    className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-orange-200">
                     <div className="text-xs font-semibold text-orange-900 mb-1">

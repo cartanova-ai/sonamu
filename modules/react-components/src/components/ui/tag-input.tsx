@@ -1,6 +1,6 @@
-import { Badge } from "@sonamu-kit/react-components/components";
 import { useState } from "react";
 import XIcon from "~icons/lucide/x";
+import { Badge } from "./badge";
 
 export type TagInputProps = {
   value?: string[];
@@ -99,7 +99,7 @@ export function TagInput({
               onClick={() => removeTag(index)}
               className="hover:bg-gray-300 rounded-full p-0.5"
             >
-              <XIcon className="h-3 w-3" />
+              <XIcon />
             </button>
           )}
         </Badge>

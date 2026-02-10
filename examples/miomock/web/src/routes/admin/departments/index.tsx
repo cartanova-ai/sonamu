@@ -7,14 +7,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardContent,
   CardHeader,
   Checkbox,
   EnumSelect,
+  extractFieldMetaFromSchema,
   Input,
   Pagination,
+  type Rule,
+  SonamuFilterModal,
+  SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
@@ -26,7 +31,6 @@ import {
 import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { SonamuFilterModal } from "@/components/SonamuFilterModal";
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentListParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
@@ -37,7 +41,6 @@ import {
   DepartmentSearchField,
   DepartmentSearchFieldLabel,
 } from "@/services/sonamu.generated";
-
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import FilterIcon from "~icons/mdi/filter-variant";
@@ -64,6 +67,7 @@ function DepartmentList({}: DepartmentListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
 
   // 리스트 필터
   const { listParams, register, setListParams } = useListParams(DepartmentListParams, {
@@ -225,15 +229,28 @@ function DepartmentList({}: DepartmentListProps) {
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={<FilterIcon />}
-                      onClick={() => setFilterModalOpen(true)}
-                      className="h-8"
+                    <SonamuFilterPopover
+                      rules={appliedRules}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        DepartmentBaseSchema,
+                        SD as (key: string) => string,
+                      )}
                     >
-                      <span className="text-xs">Sonamu Filter</span>
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FilterIcon />}
+                        onClick={() => setFilterModalOpen(true)}
+                        className="h-8"
+                      >
+                        <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
+                        {appliedRules.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {appliedRules.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SonamuFilterPopover>
                   </div>
                 </div>
 
@@ -301,6 +318,7 @@ function DepartmentList({}: DepartmentListProps) {
           </Card>
         </div>
       </div>
+
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -316,13 +334,16 @@ function DepartmentList({}: DepartmentListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       {/* Sonamu Filter Modal */}
       <SonamuFilterModal
         baseSchema={DepartmentBaseSchema}
         open={filterModalOpen}
         onOpenChange={setFilterModalOpen}
-        onApply={(filters) => {
+        initialRules={appliedRules}
+        onApply={(filters, rules) => {
           setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+          setAppliedRules(rules);
         }}
       />
     </div>

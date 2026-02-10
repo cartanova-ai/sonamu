@@ -340,9 +340,10 @@ import { EnumSelect } from "@sonamu-kit/react-components/components";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@sonamu-kit/react-components/components";
 import { Input } from "@sonamu-kit/react-components/components";
 import { Checkbox } from "@sonamu-kit/react-components/components";
+import { SonamuFilterModal, SonamuFilterPopover, extractFieldMetaFromSchema, type Rule } from "@sonamu-kit/react-components/components";
 
 import { useListParams, numF, dateF, datetimeF } from "@sonamu-kit/react-components/lib";
-import { ${names.capital}SubsetA } from "@/services/sonamu.generated";
+import { ${names.capital}SubsetA, ${names.capital}BaseSchema } from "@/services/sonamu.generated";
 import { ${names.capital}Service } from "@/services/services.generated";
 import { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 import { ${(() => {
@@ -402,6 +403,7 @@ ${(() => {
 
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 import { SD } from "@/i18n/sd.generated";
@@ -415,9 +417,11 @@ function ${names.capital}List({}: ${names.capital}ListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<${idTsType}>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: ${idTsType}; name?: string } | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [appliedRules, setAppliedRules] = useState<Rule[]>([]);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(${names.capital}ListParams, {
+  const { listParams, register, setListParams } = useListParams(${names.capital}ListParams, {
     num: 10,
     page: 1,
     keyword: "",${
@@ -431,6 +435,7 @@ function ${names.capital}List({}: ${names.capital}ListProps) {
     orderBy: ${names.capital}OrderBy.options[0],`
         : ""
     }
+    sonamuFilter: {},
   });
 
   // 리스트 쿼리
@@ -567,13 +572,35 @@ ${
                     />
                   </div>
 
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-2">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: \`\${PAGE.route}/form\` })}
                     >
                       <span className="text-xs">{SD("common.create")}</span>
                     </Button>
+                    <SonamuFilterPopover
+                      rules={appliedRules}
+                      fieldMeta={extractFieldMetaFromSchema(
+                        ${names.capital}BaseSchema,
+                        SD as (key: string) => string,
+                      )}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<FilterIcon />}
+                        onClick={() => setFilterModalOpen(true)}
+                        className="h-8"
+                      >
+                        <span className="text-xs">{SD("rc.sonamuFilter.title")}</span>
+                        {appliedRules.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {appliedRules.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SonamuFilterPopover>
                   </div>
                 </div>
 
@@ -703,6 +730,18 @@ ${
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sonamu Filter Modal */}
+      <SonamuFilterModal
+        baseSchema={${names.capital}BaseSchema}
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        initialRules={appliedRules}
+        onApply={(filters, rules) => {
+          setListParams({ ...listParams, sonamuFilter: filters, page: 1 });
+          setAppliedRules(rules);
+        }}
+      />
     </div>
   );
 }
