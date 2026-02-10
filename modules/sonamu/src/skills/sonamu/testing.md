@@ -11,6 +11,10 @@ Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트�
 
 **WARNING: 엔티티 10개 이상 프로젝트는 반드시 배치 전략 사용** (아래 "대규모 프로젝트 전략" 참고)
 
+**참고 문서**:
+- **Fixture CLI 명령어**: `fixture-cli.md` - fixture gen/fetch/explore 사용법, 3-Tier DB 구조
+- **Fixture 생성 팁**: 이 문서 하단 "Fixture 데이터 생성 팁" 섹션 또는 `fixture-cli.md` "실전 팁" 섹션
+
 ---
 
 ## Quick Start - 테스트 작성 빠른 시작
@@ -2444,3 +2448,164 @@ test("정렬 - ID 최신순", async () => {
 ```
 
 **핵심:** Transaction isolation으로 인한 불확실성을 받아들이고, 검증 가능한 경우에만 assertion을 수행합니다.
+
+---
+
+## Fixture 데이터 생성 팁
+
+Sonamu의 `pnpm sonamu fixture gen` 명령어로 테스트용 fixture 데이터를 생성할 때 유용한 패턴들입니다.
+
+### Unique Constraint 고려
+
+unique constraint가 있는 필드는 랜덤 데이터 생성 시 중복을 피해야 합니다.
+
+**문제 상황:**
+```typescript
+// BAD - 같은 값 반복 생성 → unique constraint 위반
+const dept = faker.helpers.arrayElement(["개발팀", "기획팀", "마케팅팀"]);
+// 같은 company_id에 "개발팀"이 여러 번 생성되면 오류 발생
+```
+
+**해결 방법: Suffix/Prefix 추가로 중복 방지**
+```typescript
+// GOOD - 70% 확률로 suffix/prefix 추가하여 변형
+const depts = ["개발팀", "기획팀", "마케팅팀", "영업팀", "인사팀"];
+const prefixes = ["신규", "통합", "전략", "글로벌", "디지털", "핵심"];
+const suffixes = ["1팀", "2팀", "3팀", "A팀", "B팀", "본부", "센터", "그룹"];
+
+const dept = faker.helpers.arrayElement(depts);
+const random = Math.random();
+
+if (random > 0.7) {
+  return `${faker.helpers.arrayElement(prefixes)} ${dept}`;
+}
+if (random > 0.4) {
+  return `${dept} ${faker.helpers.arrayElement(suffixes)}`;
+}
+return dept;
+
+// 결과 예시: "개발팀", "개발팀 1팀", "글로벌 개발팀", "개발팀 본부" 등
+```
+
+**핵심:**
+- 기본 값(30% 확률) + 변형 값(70% 확률)으로 중복 최소화
+- unique constraint가 있는 필드는 반드시 변형 로직 추가
+- 여러 조합으로 다양성 확보 (prefix × dept, dept × suffix)
+
+### 한국어 데이터 생성
+
+테스트 데이터의 가독성을 높이기 위해 한국어 데이터를 생성합니다.
+
+**설치:**
+```bash
+pnpm add -D @faker-js/faker
+```
+
+**사용 예시:**
+```typescript
+import { faker } from "@faker-js/faker";
+import { fakerKO } from "@faker-js/faker";
+
+// 한국 이름 (성+이름)
+const name = fakerKO.person.fullName();
+// 예: "김민준", "이서연", "박지호"
+
+// 한국 성만
+const lastName = fakerKO.person.lastName();
+// 예: "김", "이", "박"
+
+// 한국 이름만
+const firstName = fakerKO.person.firstName();
+// 예: "민준", "서연", "지호"
+
+// 한국 부서명 (커스텀 리스트)
+const departments = [
+  "개발팀", "기획팀", "마케팅팀", "영업팀", "인사팀",
+  "재무팀", "법무팀", "품질관리팀", "IT팀", "디자인팀"
+];
+const dept = faker.helpers.arrayElement(departments);
+
+// 한국 회사명 (커스텀 리스트 + suffix)
+const companies = ["테크놀로지", "솔루션즈", "디지털", "이노베이션"];
+const suffixes = ["주식회사", "㈜", "코퍼레이션", "그룹"];
+const company = `${faker.helpers.arrayElement(companies)} ${faker.helpers.arrayElement(suffixes)}`;
+// 예: "테크놀로지 주식회사", "디지털 ㈜"
+```
+
+**FixtureGenerator에서 활용:**
+```typescript
+// fixture-generator.ts 내부
+if (entity?.id === "Department" && prop.name === "name") {
+  const departments = ["개발팀", "기획팀", "마케팅팀", "영업팀"];
+  const prefixes = ["신규", "통합", "전략", "글로벌"];
+  const suffixes = ["1팀", "2팀", "본부", "센터"];
+
+  const dept = faker.helpers.arrayElement(departments);
+  const random = Math.random();
+
+  if (random > 0.7) {
+    return `${faker.helpers.arrayElement(prefixes)} ${dept}`;
+  }
+  if (random > 0.4) {
+    return `${dept} ${faker.helpers.arrayElement(suffixes)}`;
+  }
+  return dept;
+}
+
+if (prop.name === "name" || prop.name === "username") {
+  return fakerKO.person.fullName();
+}
+```
+
+### Fixture Gen vs Fetch 선택 기준
+
+| 상황 | 명령어 | 이유 |
+|------|--------|------|
+| 운영 DB에 데이터가 없음 | `fixture gen` | faker로 더미 데이터 생성 |
+| 실제 데이터로 테스트 필요 | `fixture fetch` | 운영 DB에서 가져오기 |
+| 특정 패턴 데이터 필요 | `fixture gen` + custom logic | FixtureGenerator 수정 |
+| 관련 데이터 함께 필요 | `fixture fetch` | FK 따라 자동으로 가져옴 |
+
+**예시:**
+```bash
+# 더미 데이터 생성 (한국어)
+pnpm sonamu fixture gen --include Department --count 10
+
+# 실제 데이터 가져오기 (최근 10개 + 관련 데이터)
+pnpm sonamu fixture fetch --include User --limit 10 --strategy recent
+```
+
+### DB 시퀀스 리셋
+
+Fixture 데이터 생성 후 ID 시퀀스가 실제 데이터와 맞지 않을 수 있습니다.
+
+**확인:**
+```bash
+PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
+SELECT
+  schemaname,
+  sequencename,
+  last_value
+FROM pg_sequences
+WHERE schemaname = 'public'
+ORDER BY sequencename;
+"
+```
+
+**리셋:**
+```sql
+-- 각 테이블마다 실행
+SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments), true);
+SELECT setval('companies_id_seq', (SELECT MAX(id) FROM companies), true);
+```
+
+**자동화 스크립트:**
+```bash
+# 모든 시퀀스 리셋
+PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
+SELECT 'SELECT setval(''' || sequencename || ''', (SELECT COALESCE(MAX(id), 1) FROM ' ||
+  replace(sequencename, '_id_seq', '') || '), true);'
+FROM pg_sequences
+WHERE schemaname = 'public' AND sequencename LIKE '%_id_seq';
+" | grep SELECT | PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture
+```

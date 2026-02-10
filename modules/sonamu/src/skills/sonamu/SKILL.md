@@ -93,17 +93,18 @@ pnpm test:watch
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
 | 프로젝트 설정 | `config.md` | .env, sonamu.config.ts 설정 |
-| 데이터베이스 | `database.md` | DB 설정, 포트 충돌 해결 |
+| 데이터베이스 | `database.md` | DB 설정, 포트 충돌 해결, 3-Tier 구조 |
 | Entity 검증 | `entity-validation-checklist.md` | Entity 생성 단계별 체크리스트 |
 | Entity 기본 | `entity-basic.md` | Entity JSON 구조, 필드 타입 |
-| Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany |
+| Entity 관계 | `entity-relations.md` | BelongsToOne, HasMany, ManyToMany, FK 코드 패턴 |
 | Subset | `subset.md` | 조회 필드 범위 정의 |
 | Model | `model.md` | BaseModelClass, CRUD 패턴 |
 | API | `api.md` | @api 데코레이터 |
 | Puri | `puri.md` | SQL 쿼리 빌더 |
 | i18n | `i18n.md` | 다국어 지원, SD 함수 |
 | Upsert | `upsert.md` | 관계 데이터 저장 |
-| Testing | `testing.md` | Vitest 테스트 (test/testAs) |
+| Testing | `testing.md` | Vitest 테스트 (test/testAs), Fixture 생성 팁 |
+| **Fixture CLI** | `fixture-cli.md` | **fixture gen/fetch/explore 명령어, 3-Tier DB 활용** |
 | Migration | `migration.md` | DB 스키마 마이그레이션, PK 타입 변경 |
 | Auth Migration | `auth-migration.md` | better-auth 등 외부 인증 통합 시 User.id 타입 변경 |
 | Frontend | `frontend.md` | Service, TanStack Query |
@@ -120,13 +121,17 @@ pnpm test:watch
 | 프로젝트 설정 | config |
 | Sonamu 로컬 개발 설정 | config |
 | DB 설정/포트 충돌 | database, config |
+| **3-Tier DB 구조 이해** | **database, fixture-cli** |
 | Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |
+| **BelongsToOne FK 코드 사용** | **entity-relations** |
 | API 응답 필드 구성 | subset |
 | 데이터 조회/저장 로직 | model, puri |
 | API 엔드포인트 | api |
 | 관계 데이터 배치 저장 | upsert |
 | 테스트 작성 | testing |
+| **Fixture 데이터 생성/관리** | **fixture-cli** |
+| **테스트 데이터 생성 팁** | **testing (Fixture 데이터 생성 팁), fixture-cli (실전 팁)** |
 | DB 스키마 변경 | migration |
 | PK 타입 변경 (better-auth 등) | auth-migration |
 | 프론트엔드 개발 | frontend |

@@ -12,6 +12,76 @@ cd packages/api
 pnpm docker:up
 ```
 
+## 3-Tier DB 구조
+
+Sonamu는 3단계 데이터베이스 구조를 사용합니다. 각 DB의 역할과 데이터 흐름을 이해하는 것이 중요합니다.
+
+```
+production/development master (실제 DB)
+          ↓ (fixture fetch)
+     project_fixture (fixture DB)
+          ↓ (fixture sync)
+       project_test (test DB)
+```
+
+### DB별 역할
+
+| DB | 용도 | 데이터 출처 | 명령어 |
+|----|------|-----------|--------|
+| `project` | 운영/개발 실제 DB | 실제 사용자 데이터 | 직접 생성 |
+| `project_fixture` | 테스트용 참조 데이터 저장소 | production에서 fetch 또는 gen으로 생성 | `pnpm sonamu fixture gen/fetch` |
+| `project_test` | 테스트 실행 환경 | fixture에서 sync | `pnpm sonamu fixture sync` |
+
+### 데이터 흐름
+
+**1. fixture fetch (실제 데이터 가져오기)**
+```bash
+pnpm sonamu fixture fetch --include User --limit 10
+```
+- production/development master → fixture DB
+- 실제 운영 데이터를 테스트용으로 복사
+- 관련 데이터(FK)도 함께 가져옴
+
+**2. fixture gen (더미 데이터 생성)**
+```bash
+pnpm sonamu fixture gen --include Department --count 5
+```
+- fixture DB 내부에서 faker 기반 생성
+- 참조 관계(FK) 자동 해결
+- 한국어 데이터 생성 지원
+
+**3. fixture sync (테스트 DB 동기화)**
+```bash
+pnpm sonamu fixture sync
+```
+- fixture DB → test DB
+- 테스트 실행 전 최신 상태로 동기화
+- 각 테스트는 트랜잭션으로 격리되어 자동 롤백
+
+### 주의사항
+
+**CRITICAL: sourceDb vs targetDb 혼동 방지**
+
+- `fixture gen`: sourceDb=fixture, targetDb=fixture (fixture 내부에서 생성)
+- `fixture fetch`: sourceDb=production, targetDb=fixture (production → fixture)
+- 잘못 설정하면 FK 참조 오류 발생
+
+**예시 (올바른 설정)**:
+```typescript
+// fixture gen: fixture DB 내에서 참조 및 저장
+const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
+
+// fixture fetch: production → fixture DB
+const sourceDb = DB.getDB("r"); // production_master
+const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
+```
+
+**참고**: Fixture CLI 명령어 상세 사용법은 `fixture-cli.md` 참조
+
+---
+
 ## Seed Data 관리
 
 테스트를 위한 기본 데이터(seed data)는 dump 파일에 추가하여 관리한다.

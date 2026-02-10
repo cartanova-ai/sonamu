@@ -207,6 +207,64 @@ Task (과제)
 
 **주의**: `author_id`를 props에 직접 정의하지 말 것 (자동 생성됨)
 
+### 코드에서 FK 사용하기
+
+BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, Model이나 FixtureGenerator 등 코드에서 이를 직접 다룰 때는 올바른 필드명을 사용해야 합니다.
+
+**올바른 패턴:**
+```typescript
+// Entity 정의
+{
+  "type": "relation",
+  "name": "company",
+  "with": "Company",
+  "relationType": "BelongsToOne"
+}
+
+// Model save() 또는 FixtureGenerator에서
+const department = {
+  name: "개발팀",
+  company_id: 1  // ✓ CORRECT: {relation_name}_id 형태
+};
+
+await puri.ubRegister("departments", department);
+```
+
+**잘못된 패턴 (흔한 실수):**
+```typescript
+// ✗ WRONG: relation name을 직접 사용
+const department = {
+  name: "개발팀",
+  company: 1  // FK가 설정되지 않음! company_id가 NULL로 저장됨
+};
+
+// ✗ WRONG: 객체로 전달
+const department = {
+  name: "개발팀",
+  company: { id: 1 }  // FK가 설정되지 않음!
+};
+```
+
+**FixtureGenerator 예시:**
+```typescript
+// fixture-generator.ts 내부
+if (isBelongsToOneRelationProp(prop) ||
+    (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
+  const relationValue = await this.generateRelationValue(entity, prop, context);
+
+  // ✓ CORRECT: {prop.name}_id로 FK 설정
+  fixture[`${prop.name}_id`] = relationValue;
+} else {
+  fixture[prop.name] = relationValue;
+}
+```
+
+**핵심:**
+- Entity JSON: `"name": "company"` (relation 이름)
+- DB 컬럼: `company_id` (자동 생성)
+- TypeScript 코드: `company_id` 사용 (FK 설정)
+- Entity subset: `"company.id"` 형태 (FieldExpr)
+
 ## HasMany (1:N) - 역방향 조회용
 
 **상황**: User의 Posts를 조회하고 싶을 때
