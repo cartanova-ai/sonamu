@@ -81,7 +81,7 @@ export class DataExplorer {
 
     switch (options.strategy) {
       case "sample":
-        return this.sampleData(query, options.limit || 10);
+        return await this.sampleData(query, options.limit || 10);
 
       case "recent": {
         const createdAtCol = this.findTimestampColumn(entity, "created_at");
@@ -92,7 +92,7 @@ export class DataExplorer {
       }
 
       case "random":
-        return this.randomSample(query, options.limit || 10);
+        return await this.randomSample(query, options.limit || 10);
 
       case "ids":
         if (options.ids && options.ids.length > 0) {
@@ -135,7 +135,7 @@ export class DataExplorer {
     const total = Number(count);
 
     if (total <= limit) {
-      return query.limit(limit);
+      return await query.limit(limit);
     }
 
     // 균등 간격 계산
@@ -168,7 +168,7 @@ export class DataExplorer {
     query: Knex.QueryBuilder,
     limit: number,
   ): Promise<Record<string, unknown>[]> {
-    return query.orderByRaw("RANDOM()").limit(limit);
+    return await query.orderByRaw("RANDOM()").limit(limit);
   }
 
   private findTimestampColumn(entity: Entity, columnName: string): string | null {
