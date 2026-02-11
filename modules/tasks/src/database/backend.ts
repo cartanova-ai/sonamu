@@ -253,6 +253,8 @@ export class BackendPostgres implements Backend {
     });
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
+    const order = params.order ?? "asc";
+    const reverseOrder = order === "asc" ? "desc" : "asc";
 
     let cursor: Cursor | null = null;
     if (after) {
@@ -261,10 +263,10 @@ export class BackendPostgres implements Backend {
       cursor = decodeCursor(before);
     }
 
-    const qb = this.buildListWorkflowRunsWhere(params, cursor);
+    const qb = this.buildListWorkflowRunsWhere(params, cursor, order);
     const rows = await qb
-      .orderBy("created_at", before ? "desc" : "asc")
-      .orderBy("id", before ? "desc" : "asc")
+      .orderBy("created_at", before ? reverseOrder : order)
+      .orderBy("id", before ? reverseOrder : order)
       .limit(limit + 1);
 
     return this.processPaginationResults(
@@ -275,7 +277,11 @@ export class BackendPostgres implements Backend {
     );
   }
 
-  private buildListWorkflowRunsWhere(params: ListWorkflowRunsParams, cursor: Cursor | null) {
+  private buildListWorkflowRunsWhere(
+    params: ListWorkflowRunsParams,
+    cursor: Cursor | null,
+    order: "asc" | "desc",
+  ) {
     const { after } = params;
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -283,7 +289,9 @@ export class BackendPostgres implements Backend {
       .where("namespace_id", this.namespaceId);
 
     if (cursor) {
-      const operator = after ? ">" : "<";
+      // asc: after → ">", before → "<"
+      // desc: after → "<", before → ">"
+      const operator = (order === "asc") === !!after ? ">" : "<";
       return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
         cursor.createdAt.toISOString(),
         cursor.id,
@@ -685,6 +693,8 @@ export class BackendPostgres implements Backend {
 
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
+    const order = params.order ?? "asc";
+    const reverseOrder = order === "asc" ? "desc" : "asc";
 
     let cursor: Cursor | null = null;
     if (after) {
@@ -693,10 +703,10 @@ export class BackendPostgres implements Backend {
       cursor = decodeCursor(before);
     }
 
-    const qb = this.buildListStepAttemptsWhere(params, cursor);
+    const qb = this.buildListStepAttemptsWhere(params, cursor, order);
     const rows = await qb
-      .orderBy("created_at", before ? "desc" : "asc")
-      .orderBy("id", before ? "desc" : "asc")
+      .orderBy("created_at", before ? reverseOrder : order)
+      .orderBy("id", before ? reverseOrder : order)
       .limit(limit + 1);
 
     return this.processPaginationResults(
@@ -707,7 +717,11 @@ export class BackendPostgres implements Backend {
     );
   }
 
-  private buildListStepAttemptsWhere(params: ListStepAttemptsParams, cursor: Cursor | null) {
+  private buildListStepAttemptsWhere(
+    params: ListStepAttemptsParams,
+    cursor: Cursor | null,
+    order: "asc" | "desc",
+  ) {
     const { after } = params;
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -716,7 +730,9 @@ export class BackendPostgres implements Backend {
       .where("workflow_run_id", params.workflowRunId);
 
     if (cursor) {
-      const operator = after ? ">" : "<";
+      // asc: after → ">", before → "<"
+      // desc: after → "<", before → ">"
+      const operator = (order === "asc") === !!after ? ">" : "<";
       return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
         cursor.createdAt.toISOString(),
         cursor.id,

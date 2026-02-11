@@ -126,6 +126,7 @@ export interface PaginationOptions {
   limit?: number;
   after?: string;
   before?: string;
+  order?: "asc" | "desc";
 }
 
 export interface PaginatedResponse<T> {
