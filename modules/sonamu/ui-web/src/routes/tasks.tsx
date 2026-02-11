@@ -15,8 +15,26 @@ import ChevronRightIcon from "~icons/lucide/chevron-right";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
-import { SonamuUIService } from "../services/sonamu-ui.service";
+import { SonamuUIService, type WorkflowDefinitionInfo } from "../services/sonamu-ui.service";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";
+
+function formatMs(ms: number): string {
+  if (ms >= 60000) return `${ms / 60000}m`;
+  if (ms >= 1000) return `${ms / 1000}s`;
+  return `${ms}ms`;
+}
+
+function formatRetryPolicy(policy: WorkflowDefinitionInfo["retryPolicy"]): string {
+  if (!policy) return "-";
+  const parts: string[] = [];
+  if (policy.maxAttempts != null) parts.push(`최대 ${policy.maxAttempts}회`);
+  if (policy.initialIntervalMs != null) parts.push(`초기 ${formatMs(policy.initialIntervalMs)}`);
+  if (policy.backoffCoefficient != null) parts.push(`배수 ${policy.backoffCoefficient}x`);
+  if (policy.maximumIntervalMs != null)
+    parts.push(`최대간격 ${formatMs(policy.maximumIntervalMs)}`);
+  if (policy.hasDynamicPolicy) parts.push("(+ dynamic)");
+  return parts.length > 0 ? parts.join(" · ") : "-";
+}
 
 export const Route = createFileRoute("/tasks")({
   component: TasksIndex,
@@ -37,6 +55,9 @@ function TasksIndex() {
   const workflowRuns = data?.data ?? [];
   const pagination = data?.pagination;
 
+  const { data: defData } = SonamuUIService.useWorkflowDefinitions();
+  const definitions = defData?.definitions ?? [];
+
   if (error) {
     return (
       <div className="p-8">
@@ -49,6 +70,47 @@ function TasksIndex() {
 
   return (
     <div className="p-8">
+      <div className="block p-4 bg-white border border-gray-200 rounded-md shadow-sm mb-4">
+        <h3 className="text-xl font-semibold mb-4">{SD("tasks.definitions")}</h3>
+        {definitions.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">{SD("tasks.noDefinitions")}</div>
+        ) : (
+          <Table className="text-[0.9em]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent bg-gray-100">
+                <TableHead>{SD("tasks.workflowName")}</TableHead>
+                <TableHead>{SD("tasks.version")}</TableHead>
+                <TableHead>{SD("tasks.schedule")}</TableHead>
+                <TableHead>{SD("tasks.retryPolicy")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {definitions.map((def) => (
+                <TableRow key={def.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">{def.name}</TableCell>
+                  <TableCell className="text-gray-500 text-xs">
+                    {def.version ?? <span className="italic text-gray-400">(unversioned)</span>}
+                  </TableCell>
+                  <TableCell className="text-gray-500 text-xs">
+                    {def.schedules.length > 0
+                      ? def.schedules.map((s) => (
+                          <div key={s.name} className="mb-1 last:mb-0">
+                            <span className="font-medium">{s.name}</span>
+                            <span className="ml-1 font-mono text-gray-400">{s.expression}</span>
+                          </div>
+                        ))
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-gray-500 text-xs">
+                    {formatRetryPolicy(def.retryPolicy)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
       <div className="block p-4 bg-white border border-gray-200 rounded-md shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold">{SD("tasks.title")}</h3>

@@ -569,6 +569,17 @@ export namespace SonamuUIService {
     });
   }
 
+  export function useWorkflowDefinitions() {
+    return useQuery({
+      queryKey: ["tasks", "workflowDefinitions"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/tasks/workflowDefinitions`,
+        }) as Promise<{ definitions: WorkflowDefinitionInfo[] }>,
+    });
+  }
+
   export function cancelWorkflowRun(id: string): Promise<WorkflowRun> {
     return fetch({
       method: "POST",
@@ -694,6 +705,20 @@ export interface StepAttempt {
   finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorkflowDefinitionInfo {
+  id: string;
+  name: string;
+  version: string | null;
+  schedules: { name: string; expression: string }[];
+  retryPolicy?: {
+    maxAttempts?: number;
+    initialIntervalMs?: number;
+    backoffCoefficient?: number;
+    maximumIntervalMs?: number;
+    hasDynamicPolicy?: boolean;
+  };
 }
 
 export interface TasksPaginatedResponse<T> {

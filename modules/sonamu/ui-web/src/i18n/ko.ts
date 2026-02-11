@@ -183,4 +183,8 @@ export default {
   "tasks.detail.stepName": "Step",
   "tasks.detail.stepKind": "종류",
   "tasks.detail.stepStatus": "상태",
+  "tasks.definitions": "등록된 워크플로우",
+  "tasks.schedule": "스케줄",
+  "tasks.retryPolicy": "리트라이 정책",
+  "tasks.noDefinitions": "등록된 워크플로우가 없습니다",
 } as const;

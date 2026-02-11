@@ -188,6 +188,10 @@ const en: Record<DictKey, Dictionary[string]> = {
   "tasks.detail.stepName": "Step",
   "tasks.detail.stepKind": "Kind",
   "tasks.detail.stepStatus": "Status",
+  "tasks.definitions": "Registered Workflows",
+  "tasks.schedule": "Schedule",
+  "tasks.retryPolicy": "Retry Policy",
+  "tasks.noDefinitions": "No registered workflows",
 };
 
 export default en;
