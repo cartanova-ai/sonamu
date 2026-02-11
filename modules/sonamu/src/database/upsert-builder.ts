@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
 import { isArray, unique } from "radashi";
@@ -7,6 +8,8 @@ import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
+
+const logger = getLogger(["sonamu", "internal", "upsert-builder"]);
 
 /**
  * FK 타입 추론을 위해 DatabaseForeignKeys export
@@ -256,7 +259,13 @@ export class UpsertBuilder {
     const allIds: (number | string)[] = [];
 
     // 레벨별로 순차 처리
-    for (const levelRows of levels) {
+    for (let levelIdx = 0; levelIdx < levels.length; levelIdx++) {
+      const levelRows = levels[levelIdx];
+      logger.debug("Processing Query Level: {current} / {total}", {
+        current: levelIdx + 1,
+        total: levels.length,
+      });
+
       // 이전 레벨에서 얻은 ID로 자기 참조 해결
       const resolvedRows = levelRows.map((row) => {
         const resolved = { ...row };
@@ -284,8 +293,13 @@ export class UpsertBuilder {
       const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
       const selectFields = unique(["id", ...extractFields]);
 
-      for (const dataChunk of levelChunks) {
+      for (let index = 0; index < levelChunks.length; index++) {
+        const dataChunk = levelChunks[index];
         if (dataChunk.length === 0) continue;
+        logger.debug("Processing Chunk: {current} / {total}", {
+          current: index + 1,
+          total: levelChunks.length,
+        });
 
         // uuid를 별도로 보관하고, DB에 저장할 데이터에서 제거
         const originalUuids = dataChunk.map((r) => r.uuid as string);

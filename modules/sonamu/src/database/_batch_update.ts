@@ -3,7 +3,10 @@
   https://github.com/knex/knex/issues/5716
 */
 
+import { getLogger } from "@logtape/logtape";
 import type { Knex } from "knex";
+
+const logger = getLogger(["sonamu", "internal", "batch-update"]);
 
 type ColumnValue = string | number | boolean | null;
 export type RowWithId<Id extends string> = {
@@ -39,11 +42,19 @@ export async function batchUpdate<Id extends string>(
 
   if (trx) {
     for (const chunk of chunks) {
+      logger.debug("Processing Batch Chunk in Existing Transaction: {current} / {total}", {
+        current: chunk.length,
+        total: chunks.length,
+      });
       await executeUpdate(chunk, trx);
     }
   } else {
     await knex.transaction(async (newTrx) => {
       for (const chunk of chunks) {
+        logger.debug("Processing Batch Chunk in New Transaction: {current} / {total}", {
+          current: chunk.length,
+          total: chunks.length,
+        });
         await executeUpdate(chunk, newTrx);
       }
     });
