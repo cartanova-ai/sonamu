@@ -175,7 +175,9 @@ function WorkflowRunDetailPage() {
         {/* 에러 섹션 */}
         {run.error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <h4 className="text-sm font-semibold text-red-800 mb-2">{SD("tasks.detail.error")}</h4>
+            <span className="text-sm font-semibold text-red-800 mb-2">
+              {SD("tasks.detail.error")}
+            </span>
             <div className="text-sm">
               <div className="font-mono text-red-700">
                 {run.error.name ? `${run.error.name}: ` : ""}
