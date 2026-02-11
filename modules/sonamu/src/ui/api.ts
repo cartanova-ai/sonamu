@@ -1008,6 +1008,74 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return sonamuDictionary.checkUsage(request.body.keys);
       });
 
+      // Tasks API
+      server.get("/api/tasks/status", async () => {
+        try {
+          Sonamu.workflows;
+          return { active: true };
+        } catch {
+          return { active: false };
+        }
+      });
+
+      server.get<{
+        Querystring: {
+          limit?: string;
+          after?: string;
+          before?: string;
+          order?: "asc" | "desc";
+        };
+      }>("/api/tasks/workflowRuns", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        const { limit, after, before, order } = request.query;
+        return backend.listWorkflowRuns({
+          limit: limit ? Number.parseInt(limit, 10) : undefined,
+          after,
+          before,
+          order,
+        });
+      });
+
+      server.get<{
+        Params: { id: string };
+      }>("/api/tasks/workflowRuns/:id", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        const workflowRun = await backend.getWorkflowRun({
+          workflowRunId: request.params.id,
+        });
+        if (!workflowRun) {
+          throw new Error(`Workflow run not found: ${request.params.id}`);
+        }
+        return workflowRun;
+      });
+
+      server.post<{
+        Params: { id: string };
+      }>("/api/tasks/workflowRuns/:id/cancel", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        return backend.cancelWorkflowRun({
+          workflowRunId: request.params.id,
+        });
+      });
+
+      server.get<{
+        Params: { id: string };
+        Querystring: {
+          limit?: string;
+          after?: string;
+          before?: string;
+        };
+      }>("/api/tasks/workflowRuns/:id/steps", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        const { limit, after, before } = request.query;
+        return backend.listStepAttempts({
+          workflowRunId: request.params.id,
+          limit: limit ? Number.parseInt(limit, 10) : undefined,
+          after,
+          before,
+        });
+      });
+
       /**
        * Health Check API
        * MCP 도구가 Sonamu 서버를 자동 감지하기 위한 엔드포인트

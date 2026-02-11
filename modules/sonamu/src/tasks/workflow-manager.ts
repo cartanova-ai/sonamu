@@ -92,6 +92,11 @@ export class WorkflowManager {
     this.#scheduledTasks = new Map();
   }
 
+  // Sonamu UI API에서 워크플로우 실행 목록 조회, 취소 등에 사용합니다.
+  get backend(): BackendPostgres {
+    return this.#backend;
+  }
+
   /**
    * 정의된 워크플로우 및 워크플로우에 대한 scheduled tasks를 동기화합니다.
    */
