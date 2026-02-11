@@ -10,22 +10,22 @@ Learn how to use the ID Async Select component for handling foreign key relation
 <CardGroup cols={2}>
   <Card title="Async Loading" icon="clock">
     API calls
-    
+
     Autocomplete
   </Card>
   <Card title="Type Safe" icon="shield-check">
     Entity based
-    
+
     ID type guaranteed
   </Card>
   <Card title="Search Support" icon="magnifying-glass">
     Real-time filtering
-    
+
     Debounce
   </Card>
   <Card title="Multiple Selection" icon="list-check">
     Single/Multiple modes
-    
+
     Array return
   </Card>
 </CardGroup>
@@ -70,11 +70,14 @@ Sonamu's ID Async Select **loads asynchronously only when needed** and provides 
 
 ```typescript
 // ✅ Load only needed data based on search terms
+import { IdAsyncSelect } from "@sonamu-kit/react-components";
+import { UserAsyncIdConfig } from "@/services/services.generated";
+
 <IdAsyncSelect
-  entity="User"
+  config={UserAsyncIdConfig}
+  subset="A"
   value={selectedUserId}
-  onChange={(userId) => setSelectedUserId(userId)}
-  searchField="username"
+  onValueChange={setSelectedUserId}
 />
 ```
 
@@ -86,25 +89,46 @@ Sonamu's ID Async Select **loads asynchronously only when needed** and provides 
 
 ## Basic Usage
 
+### Required Props
+
+ID Async Select uses these two core props:
+
+- `config`: AsyncIdConfig object auto-generated from `services.generated.ts`
+- `subset`: Subset key to query (e.g., "A", "D", etc.)
+
+```typescript
+import { IdAsyncSelect } from "@sonamu-kit/react-components";
+import { UserAsyncIdConfig } from "@/services/services.generated";
+
+<IdAsyncSelect
+  config={UserAsyncIdConfig}
+  subset="A"
+  value={userId}
+  onValueChange={setUserId}
+/>
+```
+
 ### Single Selection
 
 Select one entity.
 
 ```typescript
-import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { IdAsyncSelect } from "@sonamu-kit/react-components";
+import { UserAsyncIdConfig } from "@/services/services.generated";
 import { useState } from "react";
 
 function PostForm() {
   const [authorId, setAuthorId] = useState<number | null>(null);
-  
+
   return (
     <div>
       <label>Author</label>
       <IdAsyncSelect
-        entity="User"
+        config={UserAsyncIdConfig}
+        subset="A"
         value={authorId}
-        onChange={setAuthorId}
-        searchField="username"
+        onValueChange={setAuthorId}
+        displayField="username"
         placeholder="Select author..."
       />
     </div>
@@ -113,27 +137,29 @@ function PostForm() {
 ```
 
 **How it works**:
-1. Load initial options on component mount (usually 10 most recent)
-2. Call search API when user types
-3. Display search results in dropdown
-4. Only save ID when selected (memory efficient)
+1. Call search API when user types
+2. Display search results in dropdown
+3. Only save ID when selected (memory efficient)
 
 ### Multiple Selection
 
 Select multiple entities.
 
 ```typescript
+import { TagAsyncIdConfig } from "@/services/services.generated";
+
 function PostForm() {
   const [tagIds, setTagIds] = useState<number[]>([]);
-  
+
   return (
     <div>
       <label>Tags</label>
       <IdAsyncSelect
-        entity="Tag"
+        config={TagAsyncIdConfig}
+        subset="A"
         value={tagIds}
-        onChange={setTagIds}
-        searchField="name"
+        onValueChange={setTagIds}
+        displayField="name"
         multiple
         placeholder="Select tags..."
       />
@@ -154,13 +180,14 @@ Set initial values when editing existing data.
 ```typescript
 function EditPostForm({ post }: { post: Post }) {
   const [authorId, setAuthorId] = useState(post.author_id);
-  
+
   return (
     <IdAsyncSelect
-      entity="User"
+      config={UserAsyncIdConfig}
+      subset="A"
       value={authorId}
-      onChange={setAuthorId}
-      searchField="username"
+      onValueChange={setAuthorId}
+      displayField="username"
     />
   );
 }
@@ -171,148 +198,149 @@ function EditPostForm({ post }: { post: Post }) {
 - Background single query for label display
 - Display only ID while loading
 
+## displayField Options
+
+### Specify by Field Name
+
+The simplest way - specify the field name as a string.
+
+```typescript
+<IdAsyncSelect
+  config={UserAsyncIdConfig}
+  subset="A"
+  value={userId}
+  onValueChange={setUserId}
+  displayField="username"
+/>
+```
+
+### Specify by Callback Function
+
+Use a callback function when complex labels are needed.
+
+```typescript
+<IdAsyncSelect
+  config={EmployeeAsyncIdConfig}
+  subset="A"
+  value={employeeId}
+  onValueChange={setEmployeeId}
+  displayField={(row) =>
+    `${row.employee_number} (Department: ${row.department?.name})`
+  }
+/>
+```
+
+### Auto Detection (Omit displayField)
+
+When `displayField` is omitted, an appropriate field is automatically detected.
+
+```typescript
+// Auto detection applied when displayField is omitted
+<IdAsyncSelect
+  config={UserAsyncIdConfig}
+  subset="A"
+  value={userId}
+  onValueChange={setUserId}
+/>
+```
+
+**Detection priority**:
+1. name-like fields: `name`, `title`, `label`, `display_name`, `username`
+2. First string type column (excluding id)
+3. fallback: `id`
+
 ## Advanced Usage
 
-### Custom Search Logic
+### Pass Search Conditions with baseListParams
 
-Use custom logic instead of default search.
+Set default search parameters.
 
 ```typescript
 <IdAsyncSelect
-  entity="User"
+  config={UserAsyncIdConfig}
+  subset="A"
   value={userId}
-  onChange={setUserId}
-  // Custom search function
-  onSearch={async (query) => {
-    const { users } = await userService.search({
-      query,
-      role: "admin", // Search only admins
-      isActive: true, // Only active users
-    });
-    return users;
+  onValueChange={setUserId}
+  displayField="username"
+  // Apply additional conditions on search
+  baseListParams={{
+    search: "username",
+    role: "admin"
   }}
-  // Label format
-  getLabel={(user) => `${user.username} (${user.email})`}
 />
 ```
 
-**Use cases for custom search**:
-- Filtering by specific conditions (role, status, etc.)
-- Complex search logic
-- Using different API endpoints
+### Get Full Row Data with onRowChange
 
-### Label Customization
+When you need the full selected Row data, not just the ID:
 
-Change the displayed label to desired format.
+```typescript
+function SelectWithRowData() {
+  const [userId, setUserId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | undefined>();
+
+  return (
+    <IdAsyncSelect
+      config={UserAsyncIdConfig}
+      subset="A"
+      value={userId}
+      onValueChange={setUserId}
+      onRowChange={(row) => setSelectedUser(row as User)}
+      displayField="username"
+    />
+  );
+}
+```
+
+### Change valueField
+
+By default, the `id` field is used as the value, but you can use a different field.
 
 ```typescript
 <IdAsyncSelect
-  entity="User"
-  value={userId}
-  onChange={setUserId}
-  searchField="username"
-  // Label format: "Name (email)"
-  getLabel={(user) => `${user.username} (${user.email})`}
-  
-  // Or render as component
-  renderOption={(user) => (
-    <div className="user-option">
-      <img src={user.avatar} alt="" />
-      <div>
-        <div>{user.username}</div>
-        <div className="email">{user.email}</div>
-      </div>
-    </div>
-  )}
+  config={UserAsyncIdConfig}
+  subset="A"
+  value={userUuid}
+  onValueChange={setUserUuid}
+  valueField="uuid"
+  displayField="username"
 />
 ```
-
-### Conditional Option Filtering
-
-Make only items matching certain conditions selectable.
-
-```typescript
-<IdAsyncSelect
-  entity="User"
-  value={userId}
-  onChange={setUserId}
-  searchField="username"
-  // Condition: Only users with role 'editor' or 'admin'
-  filterOption={(user) => 
-    user.role === "editor" || user.role === "admin"
-  }
-  // Disable condition
-  isOptionDisabled={(user) => !user.isActive}
-/>
-```
-
-### Debounce Settings
-
-Control the frequency of search API calls.
-
-```typescript
-<IdAsyncSelect
-  entity="User"
-  value={userId}
-  onChange={setUserId}
-  searchField="username"
-  // 500ms debounce (default: 300ms)
-  debounceMs={500}
-  // Minimum input characters (default: 1)
-  minSearchLength={2}
-/>
-```
-
-**Debounce explanation**:
-- Search executes after specified time passes since user stopped typing
-- Reduces API calls to decrease server load
-- Also improves user experience (reduces unnecessary loading)
 
 ## Type Safety
 
-### Auto Type Inference
+### AsyncIdConfig Structure
 
-Types are automatically inferred when Entity name is specified.
+The Config auto-generated from `services.generated.ts` has this structure:
 
 ```typescript
-// When entity="User" is specified
+// Auto-generated in services.generated.ts
+export const UserAsyncIdConfig: AsyncIdConfig<
+  "A" | "D",              // TSubsetKey - Available Subset keys
+  UserSubsetMapping,      // TSubsetMapping - Subset type mapping
+  UserListParams          // TListParams - Search parameter types
+> = {
+  placeholderKey: "user.placeholder",
+  useList: UserService.useList,
+};
+```
+
+### Utilizing Type Inference
+
+Types are automatically inferred through Config:
+
+```typescript
 <IdAsyncSelect
-  entity="User"
-  value={userId}  // number | null
-  onChange={(id) => {
-    // id type is auto-inferred as number | null
-  }}
-  onSearch={async (query) => {
-    // Return type must be User[]
-    return users;
-  }}
-  getLabel={(user) => {
-    // user type is auto-inferred as User
-    return user.username;
-  }}
-/>
-```
-
-**Type chain**:
-```
-Entity Definition 
-  → Type Generation 
-  → IdAsyncSelect Props 
-  → Type-safe Callbacks
-```
-
-### Using Generics
-
-You can also explicitly specify types.
-
-```typescript
-import type { User } from "@/types/user.types";
-
-<IdAsyncSelect<User>
-  entity="User"
+  config={UserAsyncIdConfig}
+  subset="A"                    // Choose from "A" | "D"
+  displayField="username"       // Auto-complete only UserSubsetA fields
+  baseListParams={{ role: "admin" }}  // Auto-complete based on UserListParams
   value={userId}
-  onChange={setUserId}
-  searchField="username"
+  onValueChange={setUserId}
+  onRowChange={(row) => {
+    // row type is inferred as UserSubsetA
+    console.log(row.username);
+  }}
 />
 ```
 
@@ -322,7 +350,12 @@ import type { User } from "@/types/user.types";
 
 ```typescript
 import { useState } from "react";
-import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { IdAsyncSelect } from "@sonamu-kit/react-components";
+import {
+  UserAsyncIdConfig,
+  CategoryAsyncIdConfig,
+  TagAsyncIdConfig
+} from "@/services/services.generated";
 import { postService } from "@/services/post.service";
 
 function CreatePostForm() {
@@ -331,13 +364,13 @@ function CreatePostForm() {
   const [authorId, setAuthorId] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [tagIds, setTagIds] = useState<number[]>([]);
-  
+
   async function handleSubmit() {
     if (!authorId || !categoryId) {
       alert("Please select author and category");
       return;
     }
-    
+
     await postService.create({
       title,
       content,
@@ -346,7 +379,7 @@ function CreatePostForm() {
       tag_ids: tagIds,
     });
   }
-  
+
   return (
     <form onSubmit={handleSubmit}>
       <div>
@@ -356,7 +389,7 @@ function CreatePostForm() {
           onChange={(e) => setTitle(e.target.value)}
         />
       </div>
-      
+
       <div>
         <label>Content</label>
         <textarea
@@ -364,108 +397,49 @@ function CreatePostForm() {
           onChange={(e) => setContent(e.target.value)}
         />
       </div>
-      
+
       {/* Author selection (single) */}
       <div>
         <label>Author *</label>
         <IdAsyncSelect
-          entity="User"
+          config={UserAsyncIdConfig}
+          subset="A"
           value={authorId}
-          onChange={setAuthorId}
-          searchField="username"
+          onValueChange={setAuthorId}
+          displayField="username"
           placeholder="Select author..."
         />
       </div>
-      
+
       {/* Category selection (single) */}
       <div>
         <label>Category *</label>
         <IdAsyncSelect
-          entity="Category"
+          config={CategoryAsyncIdConfig}
+          subset="A"
           value={categoryId}
-          onChange={setCategoryId}
-          searchField="name"
+          onValueChange={setCategoryId}
+          displayField="name"
           placeholder="Select category..."
         />
       </div>
-      
+
       {/* Tag selection (multiple) */}
       <div>
         <label>Tags</label>
         <IdAsyncSelect
-          entity="Tag"
+          config={TagAsyncIdConfig}
+          subset="A"
           value={tagIds}
-          onChange={setTagIds}
-          searchField="name"
+          onValueChange={setTagIds}
+          displayField="name"
           multiple
           placeholder="Select tags..."
         />
       </div>
-      
+
       <button type="submit">Create Post</button>
     </form>
-  );
-}
-```
-
-### Post Edit Form
-
-```typescript
-function EditPostForm({ postId }: { postId: number }) {
-  const { post, isLoading } = usePost(postId);
-  const [authorId, setAuthorId] = useState<number | null>(null);
-  
-  // Set initial value when post loads
-  useEffect(() => {
-    if (post) {
-      setAuthorId(post.author_id);
-    }
-  }, [post]);
-  
-  if (isLoading) return <div>Loading...</div>;
-  
-  return (
-    <form>
-      {/* With initial value */}
-      <IdAsyncSelect
-        entity="User"
-        value={authorId}
-        onChange={setAuthorId}
-        searchField="username"
-      />
-    </form>
-  );
-}
-```
-
-### Conditional Filtering
-
-```typescript
-function AssignTaskForm() {
-  const [assigneeId, setAssigneeId] = useState<number | null>(null);
-  
-  return (
-    <div>
-      <label>Assign To</label>
-      <IdAsyncSelect
-        entity="User"
-        value={assigneeId}
-        onChange={setAssigneeId}
-        searchField="username"
-        // Only active users selectable
-        filterOption={(user) => user.isActive}
-        // Only users with role 'developer'
-        onSearch={async (query) => {
-          const { users } = await userService.search({
-            query,
-            role: "developer",
-            isActive: true,
-          });
-          return users;
-        }}
-        getLabel={(user) => `${user.username} (${user.role})`}
-      />
-    </div>
   );
 }
 ```
@@ -475,43 +449,44 @@ function AssignTaskForm() {
 Pattern of selecting child after parent.
 
 ```typescript
-function ProductForm() {
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
-  
+import {
+  DepartmentAsyncIdConfig,
+  EmployeeAsyncIdConfig
+} from "@/services/services.generated";
+
+function EmployeeAssignForm() {
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
+
   return (
     <div>
-      {/* Step 1: Category selection */}
+      {/* Step 1: Department selection */}
       <div>
-        <label>Category</label>
+        <label>Department</label>
         <IdAsyncSelect
-          entity="Category"
-          value={categoryId}
-          onChange={(id) => {
-            setCategoryId(id);
-            setSubcategoryId(null); // Reset child when parent changes
+          config={DepartmentAsyncIdConfig}
+          subset="A"
+          value={departmentId}
+          onValueChange={(id) => {
+            setDepartmentId(id);
+            setEmployeeId(null); // Reset employee when department changes
           }}
-          searchField="name"
+          displayField="name"
         />
       </div>
-      
-      {/* Step 2: Subcategory selection (only after category selected) */}
-      {categoryId && (
+
+      {/* Step 2: Employee selection (only after department selected) */}
+      {departmentId && (
         <div>
-          <label>Subcategory</label>
+          <label>Employee</label>
           <IdAsyncSelect
-            entity="Subcategory"
-            value={subcategoryId}
-            onChange={setSubcategoryId}
-            searchField="name"
-            // Only those belonging to parent category
-            onSearch={async (query) => {
-              const { subcategories } = await subcategoryService.search({
-                query,
-                category_id: categoryId,
-              });
-              return subcategories;
-            }}
+            config={EmployeeAsyncIdConfig}
+            subset="A"
+            value={employeeId}
+            onValueChange={setEmployeeId}
+            displayField="employee_number"
+            // Query only employees in selected department
+            baseListParams={{ department_id: departmentId }}
           />
         </div>
       )}
@@ -520,147 +495,58 @@ function ProductForm() {
 }
 ```
 
-## Internal Implementation
+### Using with Forms
 
-### Service Integration
-
-Internally uses generated Services.
+Example using with Sonamu's `useForm`.
 
 ```typescript
-// components/common/IdAsyncSelect.tsx (internal implementation)
-import { useQuery } from "@tanstack/react-query";
+import { useForm } from "@sonamu-kit/react-components";
+import { CompanyAsyncIdConfig } from "@/services/services.generated";
 
-interface IdAsyncSelectProps<T> {
-  entity: string;
-  value: number | number[] | null;
-  onChange: (value: number | number[] | null) => void;
-  searchField: keyof T;
-  multiple?: boolean;
-}
+function CompanySelectForm() {
+  const form = useForm({
+    defaultValues: { company_id: null as number | null },
+  });
 
-export function IdAsyncSelect<T extends { id: number }>({
-  entity,
-  value,
-  onChange,
-  searchField,
-  multiple = false,
-}: IdAsyncSelectProps<T>) {
-  const [inputValue, setInputValue] = useState("");
-  const [debouncedInput] = useDebounce(inputValue, 300);
-  
-  // Dynamic Service import
-  const service = getServiceByEntity(entity); // userService, postService, etc.
-  
-  // Load search results
-  const { data: options } = useQuery({
-    queryKey: [entity, "search", debouncedInput],
-    queryFn: () => service.search({
-      query: debouncedInput,
-      searchField,
-    }),
-    enabled: !!debouncedInput,
-  });
-  
-  // Load initial value (when value exists but not in options)
-  const { data: initialValues } = useQuery({
-    queryKey: [entity, value as number],
-    queryFn: () => service.get(value as number),
-    enabled: !!value && !multiple,
-  });
-  
-  // Display selected items
-  const selectedOptions = multiple
-    ? options?.filter((opt: any) => (value as number[]).includes(opt.id))
-    : initialValues || options?.find((opt: any) => opt.id === value);
-  
   return (
-    <Select
-      options={options}
-      value={selectedOptions}
-      onChange={(selected) => {
-        if (multiple) {
-          onChange(selected.map((s: any) => s.id));
-        } else {
-          onChange(selected?.id || null);
-        }
-      }}
-      onInputChange={setInputValue}
-      isMulti={multiple}
+    <IdAsyncSelect
+      config={CompanyAsyncIdConfig}
+      subset="A"
+      displayField="name"
+      {...form.register("company_id")}
+      placeholder="Search for a company"
     />
   );
 }
 ```
 
-### Caching Strategy
+## Props Reference
 
-Uses TanStack Query to cache search results.
-
-```typescript
-// Same search terms return immediately from cache
-const { data } = useQuery({
-  queryKey: [entity, "search", debouncedInput],
-  queryFn: () => service.search({ query: debouncedInput }),
-  staleTime: 5000, // Stay fresh for 5 seconds
-  refetchOnWindowFocus: false, // Don't revalidate on focus
-});
-```
-
-## Performance Optimization
-
-### 1. Minimize API Calls with Debounce
-
-```typescript
-const [inputValue, setInputValue] = useState("");
-const [debouncedInput] = useDebounce(inputValue, 300);
-
-// Only call API when debouncedInput changes
-useQuery({
-  queryKey: ["search", debouncedInput],
-  queryFn: fetcher,
-  enabled: !!debouncedInput,
-});
-```
-
-### 2. Virtual Scrolling
-
-Improve performance with virtual scrolling when there are many options:
-
-```typescript
-<IdAsyncSelect
-  entity="User"
-  value={userId}
-  onChange={setUserId}
-  searchField="username"
-  virtualScroll // Auto-enabled when 1000+ items
-  virtualiRowHeight={40}
-/>
-```
-
-### 3. Minimize Initial Loading
-
-```typescript
-<IdAsyncSelect
-  entity="User"
-  value={userId}
-  onChange={setUserId}
-  searchField="username"
-  // Don't load initially
-  loadOnMount={false}
-  // Minimum search length
-  minSearchLength={2}
-/>
-```
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `config` | `AsyncIdConfig` | ✓ | Entity's AsyncIdConfig object |
+| `subset` | `string` | ✓ | Subset key to query |
+| `value` | `TValue \| TValue[] \| null` | | Selected value |
+| `onValueChange` | `(value) => void` | | Value change callback |
+| `onRowChange` | `(row) => void` | | Row data change callback |
+| `displayField` | `string \| ((row) => string)` | | Display field (auto-detected if omitted) |
+| `valueField` | `string` | | Value field (default: "id") |
+| `baseListParams` | `object` | | Additional parameters for search |
+| `multiple` | `boolean` | | Multiple selection mode |
+| `placeholder` | `string` | | Placeholder text |
+| `clearable` | `boolean` | | Whether selection can be cleared |
+| `disabled` | `boolean` | | Disabled state |
+| `className` | `string` | | Additional CSS class |
 
 ## Cautions
 
 <Warning>
 **Cautions when using ID Async Select**:
-1. `searchField` must match actual Entity field name
-2. **Search endpoint required in API** (`search` method)
+1. `config` should use objects auto-generated from `services.generated.ts`
+2. `subset` must be a valid Subset key defined in the Entity
 3. Verify **array type** for multiple selection
-4. Adjust debounce time according to API response speed
-5. Consider **pagination** for large data
-6. Error handling required for initial value loading failure
+4. Field specified in `displayField` must be included in the Subset
+5. Error handling required for initial value loading failure
 </Warning>
 
 ## Next Steps

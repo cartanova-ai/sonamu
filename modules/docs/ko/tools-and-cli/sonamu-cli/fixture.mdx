@@ -108,6 +108,136 @@ Fixture sync completed!
 테스트 실행 전에 `sync`를 호출하면 항상 깨끗한 상태에서 시작할 수 있습니다.
 </Tip>
 
+### gen - 자동 Fixture 생성
+
+Entity의 post-it 메타데이터를 활용하여 **자동으로 Fixture를 생성**합니다. 실제 데이터가 없거나 가상의 테스트 데이터가 필요할 때 유용합니다.
+
+```bash
+pnpm fixture gen
+```
+
+**대화형 모드**:
+```
+? Fixture를 생성할 Entity를 선택하세요: (Use arrow keys)
+❯ ◯ User
+  ◯ Post
+  ◯ Comment
+
+? 각 Entity별 생성 개수: 5
+
+? 저장 방식: (Use arrow keys)
+❯ Fixture DB에 저장
+  파일로 저장 (자동 파일명)
+  파일로 저장 (파일명 지정)
+  저장 안 함 (출력만)
+```
+
+**CLI 옵션**:
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| `--all` | 모든 Entity에 대해 생성 | `pnpm fixture gen --all` |
+| `--include` | 특정 Entity만 포함 | `pnpm fixture gen --include User,Post` |
+| `--exclude` | 특정 Entity 제외 (--all과 함께 사용) | `pnpm fixture gen --all --exclude Comment` |
+| `--count` | 생성할 레코드 수 | `pnpm fixture gen --include User --count 10` |
+| `--save-to` | 저장 방식 지정 | `pnpm fixture gen --save-to db` |
+
+**저장 방식**:
+- `db`: Fixture DB에 직접 저장 (기본값)
+- `file`: `test/fixtures/{entity_table}.json` 파일로 저장
+- `file:{filename}`: 지정된 파일명으로 저장
+- `none`: 저장하지 않고 콘솔에 출력만
+
+```bash
+# 예시: User, Post 각 10개씩 생성하여 DB에 저장
+pnpm fixture gen --include User,Post --count 10 --save-to db
+```
+
+### fetch - 운영 DB에서 데이터 가져오기
+
+**실제 운영 DB(또는 개발 DB)에서 데이터를 가져와** Fixture DB에 저장합니다. 현실적인 테스트 데이터가 필요할 때 사용합니다.
+
+```bash
+pnpm fixture fetch
+```
+
+**대화형 모드**:
+```
+? Import할 Entity를 선택하세요: (Use arrow keys)
+❯ ◯ User
+  ◯ Post
+  ◯ Comment
+
+User, Post import 중...
+  ✓ User: 10개 import 완료
+  ✓ Post: 10개 import 완료
+```
+
+**CLI 옵션**:
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| `--all` | 모든 Entity에서 가져오기 | `pnpm fixture fetch --all` |
+| `--include` | 특정 Entity만 포함 | `pnpm fixture fetch --include User,Post` |
+| `--exclude` | 특정 Entity 제외 | `pnpm fixture fetch --all --exclude Log` |
+| `--strategy` | 데이터 선택 전략 | `pnpm fixture fetch --strategy recent` |
+| `--limit` | 가져올 레코드 수 | `pnpm fixture fetch --limit 20` |
+
+**데이터 선택 전략**:
+- `recent` (기본값): 최근 데이터부터 가져옴
+- `sample`: 무작위 샘플링
+
+```bash
+# 예시: User의 최근 20개 데이터 가져오기
+pnpm fixture fetch --include User --strategy recent --limit 20
+```
+
+**특징**:
+- 관계된 데이터도 함께 자동으로 가져옴 (깊이 2 레벨까지)
+- 외래키 참조 무결성 유지
+
+### explore - DB 데이터 조회
+
+DB의 데이터를 **조회만** 합니다. 저장하지 않고 빠르게 데이터를 확인할 때 유용합니다.
+
+```bash
+pnpm fixture explore
+```
+
+**대화형 모드**:
+```
+? 탐색할 Entity: User
+
+User 10개 조회 완료:
+┌─────────┬────┬────────────────────┬──────────┐
+│ (index) │ id │ email              │ name     │
+├─────────┼────┼────────────────────┼──────────┤
+│    0    │  1 │ 'user1@example.com'│ '홍길동' │
+│    1    │  2 │ 'user2@example.com'│ '김철수' │
+│   ...   │... │ ...                │ ...      │
+└─────────┴────┴────────────────────┴──────────┘
+```
+
+**CLI 옵션**:
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| `--include` | 탐색할 Entity | `pnpm fixture explore --include User` |
+| `--strategy` | 데이터 선택 전략 | `pnpm fixture explore --strategy sample` |
+| `--limit` | 조회할 레코드 수 | `pnpm fixture explore --limit 5` |
+
+**데이터 선택 전략**:
+- `sample` (기본값): 무작위 샘플
+- `recent`: 최근 데이터
+- `random`: 완전 무작위
+- `ids`: 특정 ID 지정
+- `query`: 커스텀 쿼리
+
+```bash
+# 예시: User 테이블에서 최근 5개 조회
+pnpm fixture explore --include User --strategy recent --limit 5
+```
+
 ## 사용 워크플로우
 
 ### 1. 초기 설정
