@@ -298,6 +298,10 @@ export class BackendPostgres implements Backend {
       ]);
     }
 
+    if (params.status && params.status.length > 0) {
+      qb.whereIn("status", params.status);
+    }
+
     return qb;
   }
 
