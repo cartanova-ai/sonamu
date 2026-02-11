@@ -85,6 +85,166 @@ pnpm test:watch
 
 ---
 
+## 프로젝트 문서 체계
+
+### CRITICAL: 작업 시작 전 필수 확인
+
+**프로젝트 작업을 시작하기 전에 반드시 `skills/project/` 하위의 모든 문서를 읽으세요.**
+
+```
+skills/project/
+├── requirements.md      # 요구사항 정의
+├── architecture.md      # 엔티티 설계 + 시스템 아키텍처
+└── business-logic.md    # 사용자 권한별 비즈니스 로직
+```
+
+### 문서 작성 시점
+
+#### 1. requirements.md
+**언제:** 사용자로부터 요구사항을 받았을 때
+**내용:**
+- 프로젝트 목표 및 배경
+- 기능 요구사항 (FR)
+- 비기능 요구사항 (NFR)
+- 제약사항 및 전제조건
+
+**예시:**
+```markdown
+# 요구사항 정의
+
+## 프로젝트 목표
+온라인 병원 예약 시스템
+
+## 기능 요구사항
+1. 환자가 의사를 검색하고 예약할 수 있어야 함
+2. 의사가 진료 일정을 관리할 수 있어야 함
+...
+
+## 사용자 유형
+- 관리자: 시스템 전체 관리
+- 의사: 진료 일정, 환자 기록 관리
+- 환자: 예약, 진료 내역 조회
+- 병원: 의사 관리, 통계 확인
+```
+
+#### 2. architecture.md
+**언제:** 엔티티를 설계하거나 시스템 아키텍처를 논의할 때
+**내용:**
+- Entity 구조 및 관계 설계
+- 데이터베이스 스키마
+- API 엔드포인트 설계
+- 시스템 컴포넌트 구조
+
+**예시:**
+```markdown
+# 시스템 아키텍처
+
+## 엔티티 설계
+
+### User (사용자)
+- id: number (PK)
+- username: string
+- email: string
+- role: enum (admin, doctor, patient, hospital)
+
+### Doctor (의사)
+- id: number (PK)
+- user_id: number (FK → User)
+- specialty: string
+- hospital_id: number (FK → Hospital)
+
+### Appointment (예약)
+- id: number (PK)
+- patient_id: number (FK → User)
+- doctor_id: number (FK → Doctor)
+- appointment_date: datetime
+- status: enum (pending, confirmed, cancelled)
+
+## 관계
+- User ← Doctor (BelongsToOne)
+- User ← Appointment.patient (BelongsToOne)
+- Doctor ← Appointment.doctor (BelongsToOne)
+```
+
+#### 3. business-logic.md
+**언제:** 사용자 권한별 비즈니스 로직을 정의할 때
+**내용:**
+- 각 사용자 유형(role)별 권한
+- 비즈니스 규칙 및 제약사항
+- 상태 전이 규칙
+- 검증 로직
+
+**예시:**
+```markdown
+# 비즈니스 로직
+
+## 사용자 권한
+
+### 관리자 (admin)
+- 모든 데이터 CRUD 가능
+- 사용자 role 변경 가능
+- 시스템 설정 관리
+
+### 의사 (doctor)
+- 자신의 일정 관리 (CRUD)
+- 예약 확인/취소
+- 환자 진료 기록 조회/작성
+- 다른 의사 데이터 조회 불가
+
+### 환자 (patient)
+- 의사 검색 및 조회
+- 예약 생성/조회/취소 (자신의 예약만)
+- 자신의 진료 기록 조회
+- 다른 환자 데이터 접근 불가
+
+### 병원 (hospital)
+- 소속 의사 관리
+- 병원 통계 조회
+- 소속 의사의 예약 현황 조회
+
+## 예약 상태 전이
+pending → confirmed (의사 확인)
+pending → cancelled (환자/의사 취소)
+confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
+
+## 비즈니스 규칙
+1. 예약은 진료 24시간 전까지만 취소 가능
+2. 의사는 동시에 2개 이상 예약 불가
+3. 환자는 같은 의사에게 1주일에 1번만 예약 가능
+```
+
+### 문서 업데이트 규칙
+
+**CRITICAL: 설계 변경 시 즉시 문서 업데이트**
+
+1. **대화 중 설계가 변경되면:**
+   - 해당 문서를 즉시 업데이트
+   - 변경 이유와 컨텍스트를 기록
+
+2. **변경 기록 형식:**
+   ```markdown
+   ## 변경 이력
+
+   ### 2026-02-10: Appointment 상태 필드 추가
+   **변경 내용:** status 필드 추가 (pending, confirmed, cancelled)
+   **이유:** 예약 취소 기능 추가 요청
+   **영향:** Appointment 엔티티, API 응답 구조 변경
+   ```
+
+3. **문서 일관성 유지:**
+   - Entity 변경 → architecture.md 업데이트
+   - 권한 규칙 변경 → business-logic.md 업데이트
+   - 요구사항 추가/변경 → requirements.md 업데이트
+
+### Compacting 후에도 안전
+
+**문서가 파일로 영속화되어 있어서:**
+- 대화가 압축(compacting)되어도 프로젝트 맥락 유지
+- 언제든 문서를 다시 읽어 일관성 있게 작업 가능
+- 설계 결정의 히스토리 추적 가능
+
+---
+
 ## Skills 목록
 
 | Skill | 파일 | 용도 |
