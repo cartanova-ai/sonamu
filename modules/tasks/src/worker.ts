@@ -203,8 +203,13 @@ export class Worker {
         workflowVersion: execution.workflowRun.version,
         workerId: execution.workerId,
         retryPolicy: workflow.spec.retryPolicy,
+        signal: execution.signal,
       });
     } catch (error) {
+      if (execution.signal.aborted) {
+        return;
+      }
+
       // specifically for unexpected errors in the execution wrapper itself, not
       // for business logic errors (those are handled inside executeWorkflow)
       console.error(
@@ -233,11 +238,20 @@ class WorkflowExecution {
   workflowRun: WorkflowRun;
   workerId: string;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private abortController = new AbortController();
 
   constructor(options: WorkflowExecutionOptions) {
     this.backend = options.backend;
     this.workflowRun = options.workflowRun;
     this.workerId = options.workerId;
+  }
+
+  /**
+   * 외부에서 abort 여부를 확인할 수 있는 signal입니다.
+   * heartbeat 실패 시 abort됩니다.
+   */
+  get signal(): AbortSignal {
+    return this.abortController.signal;
   }
 
   /**
@@ -255,8 +269,10 @@ class WorkflowExecution {
           workerId: this.workerId,
           leaseDurationMs,
         })
-        .catch((error: unknown) => {
-          console.error("Heartbeat failed:", error);
+        .catch((_error: unknown) => {
+          // lease 연장 실패에는 heartbeat를 중단하고 abort 신호를 보냅니다.
+          this.abortController.abort();
+          this.stopHeartbeat();
         });
     }, heartbeatIntervalMs);
   }

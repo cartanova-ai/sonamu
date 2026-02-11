@@ -71,6 +71,16 @@ class SleepSignal extends Error {
 }
 
 /**
+ * 외부에서 workflow 상태가 변경되었을 때 실행을 안전하게 중단하기 위한 에러입니다.
+ */
+class WorkflowAbortedError extends Error {
+  constructor() {
+    super("Workflow execution aborted");
+    this.name = "WorkflowAbortedError";
+  }
+}
+
+/**
  * Configures the options for a StepExecutor.
  */
 export interface StepExecutorOptions {
@@ -78,6 +88,7 @@ export interface StepExecutorOptions {
   workflowRunId: string;
   workerId: string;
   attempts: StepAttempt[];
+  signal?: AbortSignal;
 }
 
 /**
@@ -88,12 +99,14 @@ export class StepExecutor implements StepApi {
   private readonly backend: Backend;
   private readonly workflowRunId: string;
   private readonly workerId: string;
+  private readonly signal?: AbortSignal;
   private cache: StepAttemptCache;
 
   constructor(options: Readonly<StepExecutorOptions>) {
     this.backend = options.backend;
     this.workflowRunId = options.workflowRunId;
     this.workerId = options.workerId;
+    this.signal = options.signal;
 
     this.cache = createStepAttemptCacheFromAttempts(options.attempts);
   }
@@ -103,6 +116,9 @@ export class StepExecutor implements StepApi {
     fn: StepFunction<Output>,
   ): Promise<Output> {
     const { name } = config;
+    if (this.signal?.aborted) {
+      throw new WorkflowAbortedError();
+    }
 
     // return cached result if available
     const existingAttempt = getCachedStepAttempt(this.cache, name);
@@ -150,6 +166,10 @@ export class StepExecutor implements StepApi {
   }
 
   async sleep(name: string, duration: DurationString): Promise<void> {
+    if (this.signal?.aborted) {
+      throw new WorkflowAbortedError();
+    }
+
     // return cached result if this sleep already completed
     const existingAttempt = getCachedStepAttempt(this.cache, name);
     if (existingAttempt) return;
@@ -188,6 +208,7 @@ export interface ExecuteWorkflowParams {
   workflowVersion: string | null;
   workerId: string;
   retryPolicy?: RetryPolicy;
+  signal?: AbortSignal;
 }
 
 /**
@@ -200,7 +221,8 @@ export interface ExecuteWorkflowParams {
  * @param params - The execution parameters
  */
 export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): Promise<void> {
-  const { backend, workflowRun, workflowFn, workflowVersion, workerId, retryPolicy } = params;
+  const { backend, workflowRun, workflowFn, workflowVersion, workerId, retryPolicy, signal } =
+    params;
 
   try {
     // load all pages of step history
@@ -256,6 +278,7 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
       workflowRunId: workflowRun.id,
       workerId,
       attempts,
+      signal,
     });
 
     // execute workflow
@@ -280,6 +303,11 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
         availableAt: error.resumeAt,
       });
 
+      return;
+    }
+
+    // heartbeat 실패로 abort된 경우, failWorkflowRun을 호출하지 않고 조용히 종료합니다.
+    if (error instanceof WorkflowAbortedError || signal?.aborted) {
       return;
     }
 
