@@ -553,7 +553,28 @@ export class FixtureManagerClass {
         // 5. ManyToMany 관계 처리
         await this.processManyToManyRelations(trx, fixtures, insertedIdsByTable);
 
-        // 6. 결과 수집
+        // 6. PostgreSQL 시퀀스 리셋
+        // Fixture 삽입 후 각 테이블의 ID 시퀀스를 최대 ID 값으로 업데이트합니다.
+        // 이렇게 하지 않으면 다음 INSERT 시 ID가 2000번대로 생성될 수 있습니다.
+        console.log(chalk.blue("Resetting sequences..."));
+        for (const tableName of tableOrder) {
+          try {
+            // 테이블의 최대 ID 조회
+            const maxIdResult = await trx(tableName).max("id as max_id").first();
+            const maxId = maxIdResult?.max_id;
+
+            if (maxId !== null && maxId !== undefined) {
+              // 시퀀스를 최대 ID로 설정
+              await trx.raw(`SELECT setval('${tableName}_id_seq', ?)`, [maxId]);
+              console.log(chalk.green(`Reset sequence for ${tableName}: ${maxId}`));
+            }
+          } catch (_err) {
+            // 시퀀스가 없는 테이블(join table 등)은 무시
+            console.log(chalk.gray(`Skipped sequence reset for ${tableName}`));
+          }
+        }
+
+        // 7. 결과 수집
         for (const fixture of fixtures) {
           const entity = EntityManager.get(fixture.entityId);
 
