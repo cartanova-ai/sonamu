@@ -1029,15 +1029,17 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           after?: string;
           before?: string;
           order?: "asc" | "desc";
+          status?: string;
         };
       }>("/api/tasks/workflowRuns", async (request) => {
         const backend = Sonamu.workflows.backend;
-        const { limit, after, before, order } = request.query;
+        const { limit, after, before, order, status } = request.query;
         return backend.listWorkflowRuns({
           limit: limit ? Number.parseInt(limit, 10) : undefined,
           after,
           before,
           order,
+          status: status ? status.split(",") : undefined,
         });
       });
 
