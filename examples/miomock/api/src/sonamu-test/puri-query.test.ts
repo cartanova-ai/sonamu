@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
@@ -39,9 +40,13 @@ describe("Puri Query", () => {
 
     test("insert - 단일 객체", async () => {
       const db = UserModel.getPuri("w");
-      await db
-        .table("users")
-        .insert({ username: "테스트", email: "test@test.com", password: "test", role: "normal" });
+      await db.table("users").insert({
+        id: randomUUID(),
+        username: "테스트",
+        email: "test@test.com",
+        password: "test",
+        role: "normal",
+      });
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"insert"`);
@@ -51,9 +56,27 @@ describe("Puri Query", () => {
     test("insert - 배열 (다중 행)", async () => {
       const db = UserModel.getPuri("w");
       await db.table("users").insert([
-        { username: "user1", email: "user1@test.com", password: "pass1", role: "normal" },
-        { username: "user2", email: "user2@test.com", password: "pass2", role: "normal" },
-        { username: "user3", email: "user3@test.com", password: "pass3", role: "admin" },
+        {
+          id: randomUUID(),
+          username: "user1",
+          email: "user1@test.com",
+          password: "pass1",
+          role: "normal",
+        },
+        {
+          id: randomUUID(),
+          username: "user2",
+          email: "user2@test.com",
+          password: "pass2",
+          role: "normal",
+        },
+        {
+          id: randomUUID(),
+          username: "user3",
+          email: "user3@test.com",
+          password: "pass3",
+          role: "admin",
+        },
       ]);
       const query = Naite.get("puri:executed-query").first();
 

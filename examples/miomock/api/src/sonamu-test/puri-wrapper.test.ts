@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "assert";
 import type { Knex } from "knex";
 import { Puri, Sonamu } from "sonamu";
@@ -16,6 +17,7 @@ describe("Puri Wrapper", () => {
       const [userId] = await wdb
         .table("users")
         .insert({
+          id: randomUUID(),
           email: testEmail,
           username: "from_test_user",
           password: "pw",
@@ -49,6 +51,7 @@ describe("Puri Wrapper", () => {
       const [userId] = await wdb
         .table("users")
         .insert({
+          id: randomUUID(),
           email: testEmail,
           username: "table_test_user",
           password: "pw",
@@ -79,8 +82,8 @@ describe("Puri Wrapper", () => {
 
       // raw SQL로 INSERT 실행
       await wdb.knex.raw(
-        `INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)`,
-        [testEmail, "raw_user", "pw", "normal"],
+        `INSERT INTO users (id, email, username, password, role) VALUES (?, ?, ?, ?, ?)`,
+        [randomUUID(), testEmail, "raw_user", "pw", "normal"],
       );
 
       // PuriWrapper가 Knex를 감싸고 있음을 확인
@@ -107,6 +110,7 @@ describe("Puri Wrapper", () => {
           const [userId] = await trx
             .table("users")
             .insert({
+              id: randomUUID(),
               email: "transaction-basic@test.com",
               username: "transaction_basic",
               password: "pw",
@@ -137,6 +141,7 @@ describe("Puri Wrapper", () => {
         const [userId] = await wdb
           .table("users")
           .insert({
+            id: randomUUID(),
             email: "trx-select@test.com",
             username: "trx_select",
             password: "pw",
@@ -167,6 +172,7 @@ describe("Puri Wrapper", () => {
         const [userId] = await wdb
           .table("users")
           .insert({
+            id: randomUUID(),
             email: "trx-update@test.com",
             username: "original_name",
             password: "pw",
@@ -211,6 +217,7 @@ describe("Puri Wrapper", () => {
         await expect(
           wdb.transaction(async (trx) => {
             await trx.table("users").insert({
+              id: randomUUID(),
               email: "rollback-test@test.com",
               username: "rollback_test",
               password: "pw",
@@ -241,6 +248,7 @@ describe("Puri Wrapper", () => {
           const [userId1] = await trx1
             .table("users")
             .insert({
+              id: randomUUID(),
               email: outerEmail,
               username: "outer_user",
               password: "pw",
@@ -256,6 +264,7 @@ describe("Puri Wrapper", () => {
             const [userId2] = await trx2
               .table("users")
               .insert({
+                id: randomUUID(),
                 email: innerEmail,
                 username: "inner_user",
                 password: "pw",
@@ -299,6 +308,7 @@ describe("Puri Wrapper", () => {
           const [userId1] = await trx1
             .table("users")
             .insert({
+              id: randomUUID(),
               email: outerEmail,
               username: "outer_user",
               password: "pw",
@@ -312,6 +322,7 @@ describe("Puri Wrapper", () => {
           await expect(
             trx1.transaction(async (trx2) => {
               await trx2.table("users").insert({
+                id: randomUUID(),
                 email: innerEmail,
                 username: "inner_user",
                 password: "pw",
@@ -352,6 +363,7 @@ describe("Puri Wrapper", () => {
         const transactionPromise = wdb.transaction(async (trx1) => {
           // 외부 트랜잭션에서 user 생성
           await trx1.table("users").insert({
+            id: randomUUID(),
             email: outerEmail,
             username: "outer_error",
             password: "pw",
@@ -361,6 +373,7 @@ describe("Puri Wrapper", () => {
           // 중첩 트랜잭션에서 user 생성
           await trx1.transaction(async (trx2) => {
             await trx2.table("users").insert({
+              id: randomUUID(),
               email: innerEmail,
               username: "inner_error",
               password: "pw",
@@ -394,6 +407,7 @@ describe("Puri Wrapper", () => {
         await wdb.transaction(async (trx1) => {
           // 1단계: 외부 트랜잭션에서 user 생성
           await trx1.table("users").insert({
+            id: randomUUID(),
             email: email1,
             username: "level1_user",
             password: "pw",
@@ -403,6 +417,7 @@ describe("Puri Wrapper", () => {
           // 2단계: 중첩 트랜잭션
           await trx1.transaction(async (trx2) => {
             await trx2.table("users").insert({
+              id: randomUUID(),
               email: email2,
               username: "level2_user",
               password: "pw",
@@ -412,6 +427,7 @@ describe("Puri Wrapper", () => {
             // 3단계: 중첩 트랜잭션
             await trx2.transaction(async (trx3) => {
               await trx3.table("users").insert({
+                id: randomUUID(),
                 email: email3,
                 username: "level3_user",
                 password: "pw",
@@ -474,6 +490,7 @@ describe("Puri Wrapper", () => {
             async (trx) => {
               // 트랜잭션 내에서 user 생성
               await trx.table("users").insert({
+                id: randomUUID(),
                 email: testEmail,
                 username: `isolation_${isolation.replace(/\s+/g, "_")}`,
                 password: "pw",
@@ -504,6 +521,7 @@ describe("Puri Wrapper", () => {
         const [userId] = await wdb
           .table("users")
           .insert({
+            id: randomUUID(),
             email: testEmail,
             username: "readonly_user",
             password: "pw",
@@ -533,6 +551,7 @@ describe("Puri Wrapper", () => {
         await wdb.transaction(async (trx) => {
           // 트랜잭션 내에서 user 생성
           await trx.table("users").insert({
+            id: randomUUID(),
             email: testEmail,
             username: "manual_rollback",
             password: "pw",
@@ -553,6 +572,7 @@ describe("Puri Wrapper", () => {
           // 롤백된 트랜잭션 재사용 시도하면 에러 발생
           await expect(
             trx.table("users").insert({
+              id: randomUUID(),
               email: "should-fail@test.com",
               username: "fail_user",
               password: "pw",
@@ -574,6 +594,7 @@ describe("Puri Wrapper", () => {
         await wdb.transaction(async (trx) => {
           // 트랜잭션 내에서 user 생성
           await trx.table("users").insert({
+            id: randomUUID(),
             email: testEmail,
             username: "early_user",
             password: "pw",
@@ -594,6 +615,7 @@ describe("Puri Wrapper", () => {
           // 커밋된 트랜잭션 재사용 시도시 에러 발생
           await expect(
             trx.table("users").insert({
+              id: randomUUID(),
               email: "should-fail@test.com",
               username: "fail_user",
               password: "pw",
@@ -618,6 +640,7 @@ describe("Puri Wrapper", () => {
         await wdb.transaction(async (trx) => {
           // table() 메서드로 INSERT 정상 동작 확인
           await trx.table("users").insert({
+            id: randomUUID(),
             email: testEmail,
             username: "inheritance_user",
             password: "pw",

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { type InsertResult, Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, expectTypeOf, vi } from "vitest";
@@ -757,6 +758,7 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("w");
 
       const defaultUserData = {
+        id: randomUUID(),
         email: "test@test.com",
         username: "testuser",
         password: "password123",
@@ -789,26 +791,32 @@ describe("Puri Type Safety", () => {
         role: "admin",
         birth_date: new Date("1990-01-01"),
         bio: "테스트 유저입니다.",
+        id: randomUUID(),
       });
 
       // nullable 컬럼
-      db.table("users").insert({ ...defaultUserData, birth_date: null });
+      db.table("users").insert({ ...defaultUserData, id: randomUUID(), birth_date: null });
 
       // @ts-expect-error - 필수 컬럼 누락 시 에러
-      db.table("users").insert({ ...defaultUserData, email: undefined });
+      db.table("users").insert({ ...defaultUserData, id: randomUUID(), email: undefined });
 
       // @ts-expect-error - 존재하지 않는 컬럼
-      db.table("users").insert({ ...defaultUserData, nonexistent_column: "value" });
+      db.table("users").insert({
+        ...defaultUserData,
+        id: randomUUID(),
+        nonexistent_column: "value",
+      });
 
       // @ts-expect-error - 타입 불일치 (email에 number)
-      db.table("users").insert({ ...defaultUserData, email: 123 });
+      db.table("users").insert({ ...defaultUserData, id: randomUUID(), email: 123 });
 
       // @ts-expect-error - enum 잘못된 값
-      db.table("users").insert({ ...defaultUserData, role: "invalid_role" });
+      db.table("users").insert({ ...defaultUserData, id: randomUUID(), role: "invalid_role" });
 
       const insertedIds = await db
         .table("users")
         .insert({
+          id: randomUUID(),
           email: `insert-test-${Date.now()}@test.com`,
           username: `inserttestuser${Date.now()}`,
           password: "password123",
@@ -833,6 +841,7 @@ describe("Puri Type Safety", () => {
       const insertedId = await db
         .table("users")
         .insert({
+          id: randomUUID(),
           email: `update-test-${Date.now()}@test.com`,
           username: `updatetestuser${Date.now()}`,
           password: "password123",
@@ -878,6 +887,7 @@ describe("Puri Type Safety", () => {
       const insertedId = await db
         .table("users")
         .insert({
+          id: randomUUID(),
           email: `update-test-${Date.now()}@test.com`,
           username: `updatetestuser${Date.now()}`,
           password: "password123",
