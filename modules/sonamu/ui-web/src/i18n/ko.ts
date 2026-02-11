@@ -187,4 +187,7 @@ export default {
   "tasks.schedule": "스케줄",
   "tasks.retryPolicy": "리트라이 정책",
   "tasks.noDefinitions": "등록된 워크플로우가 없습니다",
+  "tasks.active.title": "실행 중인 워크플로우",
+  "tasks.active.noStepsYet": "아직 실행된 Step이 없습니다",
+  "tasks.active.elapsed": "경과",
 } as const;

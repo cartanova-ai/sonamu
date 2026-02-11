@@ -527,7 +527,12 @@ export namespace SonamuUIService {
 
   // PostIt 업데이트 메서드들
   // ---- Tasks 훅/함수 ----
-  export function useWorkflowRuns(params?: { limit?: number; after?: string; before?: string }) {
+  export function useWorkflowRuns(params?: {
+    limit?: number;
+    after?: string;
+    before?: string;
+    status?: string[];
+  }) {
     return useQuery({
       queryKey: ["tasks", "workflowRuns", params],
       queryFn: () =>
@@ -538,6 +543,7 @@ export namespace SonamuUIService {
             ...(params?.limit ? { limit: String(params.limit) } : {}),
             ...(params?.after ? { after: params.after } : {}),
             ...(params?.before ? { before: params.before } : {}),
+            ...(params?.status?.length ? { status: params.status.join(",") } : {}),
             order: "desc",
           },
         }) as Promise<TasksPaginatedResponse<WorkflowRun>>,

@@ -192,6 +192,9 @@ const en: Record<DictKey, Dictionary[string]> = {
   "tasks.schedule": "Schedule",
   "tasks.retryPolicy": "Retry Policy",
   "tasks.noDefinitions": "No registered workflows",
+  "tasks.active.title": "Active Workflows",
+  "tasks.active.noStepsYet": "No steps executed yet",
+  "tasks.active.elapsed": "Elapsed",
 };
 
 export default en;

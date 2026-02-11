@@ -9,13 +9,20 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import classNames from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import XCircleIcon from "~icons/lucide/x-circle";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
-import { SonamuUIService, type WorkflowDefinitionInfo } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
+import {
+  SonamuUIService,
+  type StepAttempt,
+  type WorkflowDefinitionInfo,
+  type WorkflowRun,
+} from "../services/sonamu-ui.service";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";
 
 function formatMs(ms: number): string {
@@ -34,6 +41,125 @@ function formatRetryPolicy(policy: WorkflowDefinitionInfo["retryPolicy"]): strin
     parts.push(`최대간격 ${formatMs(policy.maximumIntervalMs)}`);
   if (policy.hasDynamicPolicy) parts.push("(+ dynamic)");
   return parts.length > 0 ? parts.join(" · ") : "-";
+}
+
+function LiveElapsedTime({ startedAt }: { startedAt: string | null }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!startedAt) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  return <span className="font-mono text-sm">{formatDuration(startedAt, null)}</span>;
+}
+
+const STEP_CHIP_STYLES: Record<string, string> = {
+  succeeded: "bg-green-100 text-green-700 border-green-200",
+  completed: "bg-green-100 text-green-700 border-green-200",
+  running: "bg-blue-100 text-blue-700 border-blue-200 animate-pulse",
+  failed: "bg-red-100 text-red-700 border-red-200",
+};
+
+function StepTimeline({ steps }: { steps: StepAttempt[] }) {
+  if (steps.length === 0) return null;
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {steps.map((step, i) => (
+        <div key={step.id} className="flex items-center gap-1">
+          {i > 0 && <span className="text-gray-300 text-xs">→</span>}
+          <span
+            className={classNames(
+              "inline-block px-1.5 py-0.5 text-[11px] font-mono rounded border",
+              STEP_CHIP_STYLES[step.status] ?? "bg-gray-100 text-gray-600 border-gray-200",
+            )}
+          >
+            {step.stepName}
+          </span>
+        </div>
+      ))}
+      <span className="text-gray-300 text-xs ml-0.5">→ ···</span>
+    </div>
+  );
+}
+
+function ActiveWorkflowCard({ run }: { run: WorkflowRun }) {
+  const { SD } = useSonamuContext();
+  const [canceling, setCanceling] = useState(false);
+  const { data: stepsData } = SonamuUIService.useStepAttempts(run.id);
+  const steps = stepsData?.data ?? [];
+
+  const handleCancel = () => {
+    if (!confirm(SD("tasks.cancelConfirm"))) return;
+    setCanceling(true);
+    SonamuUIService.cancelWorkflowRun(run.id)
+      .catch(defaultCatch)
+      .finally(() => setCanceling(false));
+  };
+
+  return (
+    <div className="flex items-center gap-4 p-3 bg-white border border-blue-200 rounded-md">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <Link
+            to="/tasks/$workflowRunId"
+            params={{ workflowRunId: run.id }}
+            className="text-blue-600 hover:underline no-underline font-medium text-sm truncate"
+          >
+            {run.workflowName}
+          </Link>
+          <span
+            className={classNames(
+              "inline-block px-1.5 py-0.5 text-[10px] font-bold rounded border shrink-0",
+              STATUS_STYLES[run.status] ?? "bg-gray-100 text-gray-800",
+            )}
+          >
+            {run.status.toUpperCase()}
+          </span>
+        </div>
+        {steps.length > 0 ? (
+          <StepTimeline steps={steps} />
+        ) : (
+          <span className="text-xs text-gray-400">{SD("tasks.active.noStepsYet")}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-xs text-gray-500">
+          <span className="mr-1">{SD("tasks.active.elapsed")}:</span>
+          <LiveElapsedTime startedAt={run.startedAt} />
+        </div>
+        <Button
+          size="xs"
+          variant="destructive"
+          icon={<XCircleIcon />}
+          disabled={canceling}
+          onClick={handleCancel}
+        >
+          {SD("tasks.cancel")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ActiveWorkflowsSection() {
+  const { SD } = useSonamuContext();
+  const { data } = SonamuUIService.useWorkflowRuns({
+    status: ["pending", "running", "sleeping"],
+  });
+  const activeRuns = data?.data ?? [];
+
+  if (activeRuns.length === 0) return null;
+
+  return (
+    <div className="block p-4 bg-blue-50 border-2 border-blue-300 rounded-md shadow-sm mb-4">
+      <h3 className="text-lg font-semibold mb-3 text-blue-900">{SD("tasks.active.title")}</h3>
+      <div className="flex flex-col gap-2">
+        {activeRuns.map((run) => (
+          <ActiveWorkflowCard key={run.id} run={run} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export const Route = createFileRoute("/tasks")({
@@ -70,6 +196,7 @@ function TasksIndex() {
 
   return (
     <div className="p-8">
+      <ActiveWorkflowsSection />
       <div className="block p-4 bg-white border border-gray-200 rounded-md shadow-sm mb-4">
         <h3 className="text-xl font-semibold mb-4">{SD("tasks.definitions")}</h3>
         {definitions.length === 0 ? (
