@@ -157,14 +157,38 @@ export class FixtureGenerator {
       }
     }
 
+    // dataSource가 없을 때 자동으로 fixture DB에서 조회 시도
+    const autoKey = `${prop.with}:auto`;
+    if (!context.referenceCache.has(autoKey)) {
+      // fixture DB(sourceDb)에서 자동 조회
+      const autoData = await this.dataExplorer.explore(prop.with, {
+        strategy: "random",
+        limit: 10,
+      });
+      context.referenceCache.set(autoKey, autoData);
+
+      // 조회한 데이터를 targetDb에 자동 import
+      if (autoData.length > 0) {
+        await this.importReferencedData(prop.with, autoData, context);
+      }
+    }
+
+    const autoCandidates = context.referenceCache.get(autoKey);
+    if (autoCandidates && autoCandidates.length > 0) {
+      // 랜덤하게 하나 선택
+      const selected = autoCandidates[Math.floor(Math.random() * autoCandidates.length)];
+      return selected.id as number;
+    }
+
     // 참조 데이터가 없으면 null 반환 (nullable인 경우)
     if (prop.nullable) {
       return null;
     }
 
-    // nullable이 아니면 에러
+    // nullable이 아니고 데이터도 없으면 에러
     throw new Error(
-      `FixtureGenerator: Cannot generate non-nullable relation ${entity.id}.${prop.name} without dataSource`,
+      `FixtureGenerator: ${entity.id}.${prop.name}에 필요한 ${prop.with} 데이터가 없습니다. ` +
+        `먼저 ${prop.with}를 생성하거나 postIt.dataSource를 설정하세요.`,
     );
   }
 
