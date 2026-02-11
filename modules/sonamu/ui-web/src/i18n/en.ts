@@ -162,6 +162,32 @@ const en: Record<DictKey, Dictionary[string]> = {
   "i18n.modal.addNewKey": "Add New Key",
   "i18n.modal.valueFor": "Value for {locale}",
   "i18n.creating": "Creating...",
+
+  // Tasks
+  "nav.tasks": "Tasks",
+  "tasks.title": "Workflow Runs",
+  "tasks.workflowName": "Workflow",
+  "tasks.version": "Version",
+  "tasks.status": "Status",
+  "tasks.attempts": "Attempts",
+  "tasks.createdAt": "Created",
+  "tasks.startedAt": "Started",
+  "tasks.finishedAt": "Finished",
+  "tasks.duration": "Duration",
+  "tasks.noData": "No workflow runs found.",
+  "tasks.cancel": "Cancel",
+  "tasks.cancelConfirm": "Are you sure you want to cancel this workflow run?",
+  "tasks.autoRefresh": "Auto Refresh",
+  "tasks.prev": "Previous",
+  "tasks.next": "Next",
+  "tasks.detail.input": "Input",
+  "tasks.detail.output": "Output",
+  "tasks.detail.error": "Error Info",
+  "tasks.detail.steps": "Step Attempts",
+  "tasks.detail.noSteps": "No step attempts found.",
+  "tasks.detail.stepName": "Step",
+  "tasks.detail.stepKind": "Kind",
+  "tasks.detail.stepStatus": "Status",
 };
 
 export default en;

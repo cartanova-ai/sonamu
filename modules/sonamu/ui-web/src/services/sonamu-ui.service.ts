@@ -526,6 +526,56 @@ export namespace SonamuUIService {
   }
 
   // PostIt 업데이트 메서드들
+  // ---- Tasks 훅/함수 ----
+  export function useWorkflowRuns(params?: { limit?: number; after?: string; before?: string }) {
+    return useQuery({
+      queryKey: ["tasks", "workflowRuns", params],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/tasks/workflowRuns`,
+          params: {
+            ...(params?.limit ? { limit: String(params.limit) } : {}),
+            ...(params?.after ? { after: params.after } : {}),
+            ...(params?.before ? { before: params.before } : {}),
+            order: "desc",
+          },
+        }) as Promise<TasksPaginatedResponse<WorkflowRun>>,
+      refetchInterval: 5000,
+    });
+  }
+
+  export function useWorkflowRun(id: string) {
+    return useQuery({
+      queryKey: ["tasks", "workflowRun", id],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/tasks/workflowRuns/${id}`,
+        }) as Promise<WorkflowRun>,
+      refetchInterval: 5000,
+    });
+  }
+
+  export function useStepAttempts(workflowRunId: string) {
+    return useQuery({
+      queryKey: ["tasks", "stepAttempts", workflowRunId],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/tasks/workflowRuns/${workflowRunId}/steps`,
+        }) as Promise<TasksPaginatedResponse<StepAttempt>>,
+      refetchInterval: 5000,
+    });
+  }
+
+  export function cancelWorkflowRun(id: string): Promise<WorkflowRun> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/tasks/workflowRuns/${id}/cancel`,
+    });
+  }
+
   export function updateEntityPostIt(entityId: string, postIt: PostIt): Promise<void> {
     return fetch({
       method: "POST",
@@ -588,6 +638,67 @@ export namespace SonamuUIService {
       },
     });
   }
+}
+
+// ---- Tasks 타입 정의 ----
+export type WorkflowRunStatus =
+  | "pending"
+  | "running"
+  | "sleeping"
+  | "succeeded"
+  | "completed"
+  | "failed"
+  | "canceled";
+
+export type StepAttemptStatus = "running" | "succeeded" | "completed" | "failed";
+export type StepKind = "function" | "sleep";
+
+export interface WorkflowRun {
+  namespaceId: string;
+  id: string;
+  workflowName: string;
+  version: string | null;
+  status: WorkflowRunStatus;
+  idempotencyKey: string | null;
+  config: unknown;
+  context: unknown | null;
+  input: unknown | null;
+  output: unknown | null;
+  error: { name?: string; message: string; stack?: string; [key: string]: unknown } | null;
+  attempts: number;
+  parentStepAttemptNamespaceId: string | null;
+  parentStepAttemptId: string | null;
+  workerId: string | null;
+  availableAt: string | null;
+  deadlineAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StepAttempt {
+  namespaceId: string;
+  id: string;
+  workflowRunId: string;
+  stepName: string;
+  kind: StepKind;
+  status: StepAttemptStatus;
+  config: unknown;
+  context: { kind: "sleep"; resumeAt: string } | null;
+  output: unknown | null;
+  error: unknown | null;
+  childWorkflowRunNamespaceId: string | null;
+  childWorkflowRunId: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TasksPaginatedResponse<T> {
+  data: T[];
+  pagination: { next: string | null; prev: string | null };
 }
 
 export type ScaffoldingStatus = {
