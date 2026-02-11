@@ -1018,6 +1018,11 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         }
       });
 
+      server.get("/api/tasks/workflowDefinitions", async () => {
+        const definitions = Sonamu.workflows.workflowDefinitions;
+        return { definitions };
+      });
+
       server.get<{
         Querystring: {
           limit?: string;

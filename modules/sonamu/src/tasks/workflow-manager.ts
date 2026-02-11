@@ -1,13 +1,14 @@
 import { getLogger, type Logger } from "@logtape/logtape";
 import { BackendPostgres, OpenWorkflow, type Worker } from "@sonamu-kit/tasks";
-import type {
-  RunnableWorkflow,
-  SchemaInput,
-  SchemaOutput,
-  StandardSchemaV1,
-  StepApi,
-  WorkflowRunHandle,
-  WorkflowSpec,
+import {
+  type RunnableWorkflow,
+  type SchemaInput,
+  type SchemaOutput,
+  type StandardSchemaV1,
+  type StepApi,
+  serializeRetryPolicy,
+  type WorkflowRunHandle,
+  type WorkflowSpec,
 } from "@sonamu-kit/tasks/internal";
 import assert from "assert";
 import type { Knex } from "knex";
@@ -95,6 +96,21 @@ export class WorkflowManager {
   // Sonamu UI API에서 워크플로우 실행 목록 조회, 취소 등에 사용합니다.
   get backend(): BackendPostgres {
     return this.#backend;
+  }
+
+  get workflowDefinitions() {
+    return Array.from(this.#workflowsMap.values())
+      .flat()
+      .map((wf) => ({
+        id: wf.id,
+        name: wf.name,
+        version: wf.version,
+        schedules: wf.schedules.map((s) => ({
+          name: s.name,
+          expression: s.expression,
+        })),
+        retryPolicy: wf.retryPolicy ? serializeRetryPolicy(wf.retryPolicy) : undefined,
+      }));
   }
 
   /**
