@@ -127,7 +127,16 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
           processedValue = newValue === "" ? undefined : newValue;
         }
 
-        setForm(set(form, objPath, processedValue));
+        // 최상위 속성인지 확인
+        const isTopLevelPath = objPath.indexOf(".") === -1 && objPath.indexOf("[") === -1;
+
+        // radashi의 set은 undefined 값을 처리하지 못하므로, 최상위 속성은 직접 설정
+        // 관련 이슈: https://github.com/sodiray/radash/issues/432
+        if (processedValue === undefined && isTopLevelPath) {
+          setForm({ ...form, [objPath]: undefined });
+        } else {
+          setForm(set(form, objPath, processedValue));
+        }
       };
 
       const result: FormRegisterReturn = {

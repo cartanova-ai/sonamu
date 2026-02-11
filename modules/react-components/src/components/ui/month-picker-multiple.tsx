@@ -103,13 +103,6 @@ export function MonthPickerMultiple({
     return `${format(value.from, dateFormat)} - ${format(value.to, dateFormat)}`;
   };
 
-  const isSaveEnabled = () => {
-    if (tempIsRangeMode) {
-      return !!(tempDateRange?.from && tempDateRange?.to);
-    }
-    return tempDate !== undefined;
-  };
-
   const handleModeChange = (isRangeMode: boolean) => {
     setTempIsRangeMode(isRangeMode);
     if (isRangeMode) {
@@ -209,10 +202,15 @@ export function MonthPickerMultiple({
                         size="sm"
                         onClick={() => {
                           const newDate = new Date(tempRangeStartYear, idx, 1);
-                          setTempDateRange({
-                            from: newDate,
-                            to: tempDateRange?.to,
-                          });
+                          // 이미 선택된 시작 월을 다시 클릭하면 해제
+                          if (
+                            tempDateRange?.from?.getMonth() === idx &&
+                            tempDateRange?.from?.getFullYear() === tempRangeStartYear
+                          ) {
+                            setTempDateRange({ from: undefined, to: tempDateRange?.to });
+                          } else {
+                            setTempDateRange({ from: newDate, to: tempDateRange?.to });
+                          }
                         }}
                         disabled={isDisabled}
                         className="h-8 text-xs"
@@ -261,10 +259,15 @@ export function MonthPickerMultiple({
                         size="sm"
                         onClick={() => {
                           const newDate = new Date(tempRangeEndYear, idx, 1);
-                          setTempDateRange({
-                            from: tempDateRange?.from,
-                            to: newDate,
-                          });
+                          // 이미 선택된 종료 월을 다시 클릭하면 해제
+                          if (
+                            tempDateRange?.to?.getMonth() === idx &&
+                            tempDateRange?.to?.getFullYear() === tempRangeEndYear
+                          ) {
+                            setTempDateRange({ from: tempDateRange?.from, to: undefined });
+                          } else {
+                            setTempDateRange({ from: tempDateRange?.from, to: newDate });
+                          }
                         }}
                         disabled={isDisabled}
                         className="h-8 text-xs"
@@ -298,7 +301,12 @@ export function MonthPickerMultiple({
                     size="sm"
                     onClick={() => {
                       const newDate = new Date(tempYear, idx, 1);
-                      setTempDate(newDate);
+                      // 이미 선택된 월을 다시 클릭하면 해제
+                      if (tempDate?.getMonth() === idx && tempDate?.getFullYear() === tempYear) {
+                        setTempDate(undefined);
+                      } else {
+                        setTempDate(newDate);
+                      }
                     }}
                     className="h-8 text-xs"
                   >
@@ -312,13 +320,7 @@ export function MonthPickerMultiple({
             <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
               {SD("rc.common.cancel")}
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleSave}
-              disabled={!isSaveEnabled()}
-              className="h-8 text-xs"
-            >
+            <Button variant="default" size="sm" onClick={handleSave} className="h-8 text-xs">
               {SD("rc.common.save")}
             </Button>
           </div>
