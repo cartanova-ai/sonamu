@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict gEm05LQ1mNTJ27Al0h75zuBFwMJS3zB9HI9WFuzuiUODeet9gVKHdbtysUMYfJ7
+\restrict 5gGMLQtmAQIL4Wpf1xYNyldC1uPu2ivpKgfIs3uBBr9cXPFgapnmuX7rZKQzWvB
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1 (Homebrew)
@@ -651,7 +651,7 @@ ALTER TABLE ONLY public.tags ALTER COLUMN id SET DEFAULT nextval('public.tags_id
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT (nextval('public.users_id_seq'::regclass))::text;
 
 
 --
@@ -764,10 +764,10 @@ INSERT INTO public.knex_migrations VALUES (74, '20260129202015_create__verificat
 INSERT INTO public.knex_migrations VALUES (75, '20260129202016_foreign__accounts__user_id.ts', 12, '2026-01-29 21:45:21.823+09');
 INSERT INTO public.knex_migrations VALUES (76, '20260129202017_foreign__sessions__user_id.ts', 12, '2026-01-29 21:45:21.824+09');
 INSERT INTO public.knex_migrations VALUES (77, '20260203141330_create__two_factors.ts', 13, '2026-02-03 14:13:39.047+09');
-INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_alter5.ts', 13, '2026-02-03 14:13:39.049+09');
 INSERT INTO public.knex_migrations VALUES (79, '20260203141332_foreign__two_factors__user_id.ts', 13, '2026-02-03 14:13:39.05+09');
-INSERT INTO public.knex_migrations VALUES (80, '20260204133419_create__passkeys.ts', 14, '2026-02-04 13:45:53.771+09');
-INSERT INTO public.knex_migrations VALUES (81, '20260204133420_foreign__passkeys__user_id.ts', 14, '2026-02-04 13:45:53.773+09');
+INSERT INTO public.knex_migrations VALUES (84, '20260204133419_create__passkeys.ts', 14, '2026-02-12 10:38:40.664+09');
+INSERT INTO public.knex_migrations VALUES (85, '20260204133420_foreign__passkeys__user_id.ts', 14, '2026-02-12 10:38:40.665+09');
+INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_alter6.ts', 13, '2026-02-03 14:13:39.049+09');
 
 
 --
@@ -1939,7 +1939,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 81, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 85, true);
 
 
 --
@@ -1988,7 +1988,7 @@ SELECT pg_catalog.setval('public.tags_id_seq', 8, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 2361, true);
+SELECT pg_catalog.setval('public.users_id_seq', 13, false);
 
 
 --
@@ -2338,5 +2338,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gEm05LQ1mNTJ27Al0h75zuBFwMJS3zB9HI9WFuzuiUODeet9gVKHdbtysUMYfJ7
+\unrestrict 5gGMLQtmAQIL4Wpf1xYNyldC1uPu2ivpKgfIs3uBBr9cXPFgapnmuX7rZKQzWvB
 
