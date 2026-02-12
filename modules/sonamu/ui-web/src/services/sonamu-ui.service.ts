@@ -670,7 +670,7 @@ export type WorkflowRunStatus =
   | "failed"
   | "canceled";
 
-export type StepAttemptStatus = "running" | "succeeded" | "completed" | "failed";
+export type StepAttemptStatus = "running" | "paused" | "succeeded" | "completed" | "failed";
 export type StepKind = "function" | "sleep";
 
 export interface WorkflowRun {
