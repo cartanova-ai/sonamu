@@ -368,12 +368,11 @@ export function useSSEStream<T extends Record<string, any>>(
       const fullUrl = queryString ? `${url}?${queryString}` : url;
 
       const eventSource = new EventSource(fullUrl, {
-        fetch: (url, options) =>
-          fetch({
-            url: url.toString(),
-            ...options,
+        fetch: (url, init) =>
+          globalThis.fetch(url, {
+            ...init,
             headers: {
-              ...options?.headers,
+              ...init?.headers,
               "Accept-Language": getCurrentLocale(),
             },
           }),
