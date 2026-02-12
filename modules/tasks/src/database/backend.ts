@@ -294,7 +294,7 @@ export class BackendPostgres implements Backend {
       // asc: after → ">", before → "<"
       // desc: after → "<", before → ">"
       const operator = (order === "asc") === !!after ? ">" : "<";
-      return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
+      qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
         cursor.createdAt.toISOString(),
         cursor.id,
       ]);
@@ -302,6 +302,15 @@ export class BackendPostgres implements Backend {
 
     if (params.status && params.status.length > 0) {
       qb.whereIn("status", params.status);
+    }
+    if (params.workflowName) {
+      qb.where("workflow_name", params.workflowName);
+    }
+    if (params.createdAfter) {
+      qb.where("created_at", ">=", params.createdAfter);
+    }
+    if (params.createdBefore) {
+      qb.where("created_at", "<=", params.createdBefore);
     }
 
     return qb;

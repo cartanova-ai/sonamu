@@ -58,6 +58,9 @@ export interface GetWorkflowRunParams {
 
 export interface ListWorkflowRunsParams extends PaginationOptions {
   status?: string[];
+  workflowName?: string;
+  createdAfter?: Date;
+  createdBefore?: Date;
 }
 
 export interface ClaimWorkflowRunParams {
