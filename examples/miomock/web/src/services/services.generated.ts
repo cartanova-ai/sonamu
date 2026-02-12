@@ -271,6 +271,13 @@ export namespace TagService {
       url: `/api/tag/deleteCached`,
     });
   }
+
+  export async function runWorkflow(): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/tag/runWorkflow`,
+    });
+  }
 }
 
 export namespace SyncFixtureService {

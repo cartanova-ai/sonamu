@@ -132,6 +132,13 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/tag/runWorkflow
+Content-Type: application/json
+
+{}
+
+###
+
 GET {{baseUrl}}/api/syncFixture/findById
 	?subset=A
 	&id=0

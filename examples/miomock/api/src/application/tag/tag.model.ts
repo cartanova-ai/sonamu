@@ -157,6 +157,12 @@ class TagModelClass extends BaseModelClass<
   async deleteCached(): Promise<void> {
     await Sonamu.cache.expire({ key: "Tag.cached" });
   }
+
+  @api({ httpMethod: "POST", clients: ["axios"] })
+  async runWorkflow(): Promise<void> {
+    const handle = await Sonamu.workflows.run({ name: "test-workflow", version: null }, {});
+    console.log("handle", handle);
+  }
 }
 
 export const TagModel = new TagModelClass();

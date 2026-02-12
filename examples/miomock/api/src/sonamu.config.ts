@@ -75,6 +75,11 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "error",
       },
+      {
+        category: ["tasks"],
+        sinks: ["console"],
+        lowestLevel: "info",
+      },
     ],
   },
 

@@ -117,11 +117,15 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "84b9438b8dd9982020784cee842f5865d4edc84b"
+    "checksum": "e0f97204fe89c8daae93b3082c7c621d45ce0701"
   },
   {
     "path": "src/application/tag/tag.types.ts",
     "checksum": "8b6bb5381463ee93ddc7374f3e848cd510204ffa"
+  },
+  {
+    "path": "src/application/tag/tag.workflow.ts",
+    "checksum": "53638a1f1422cc08f00718752d4dab986ace8bb8"
   },
   {
     "path": "src/application/two-factor/two-factor.entity.json",
@@ -173,6 +177,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "27c4a699283167cd4afc29eb22946bca82d1283f"
+    "checksum": "d5856eff7fe088ad88594e5b211bc2d8c6f5c730"
   }
 ]
