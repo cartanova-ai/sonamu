@@ -21,10 +21,10 @@
   --color-text-muted: #94a3b8;
   --color-accent: #10b981;
 
-  /* PostIt 색상 */
-  --color-postit-bg: #ffeaa7;
-  --color-postit-input: #fffef5;
-  --color-postit-entity: #fdcb6e;
+  /* Cone 색상 */
+  --color-cone-bg: #ffeaa7;
+  --color-cone-input: #fffef5;
+  --color-cone-entity: #fdcb6e;
 
   /* 간격 */
   --spacing-sidemenu: 280px;

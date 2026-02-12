@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type {
+  Cone,
   DuplicateCheckOptions,
   Entity,
   EntityIndex,
@@ -11,7 +12,6 @@ import type {
   MigrationResult,
   MigrationStatus,
   PathAndCode,
-  PostIt,
   SonamuDBConfig,
 } from "sonamu";
 import { fetch } from "./sonamu.shared";
@@ -525,7 +525,7 @@ export namespace SonamuUIService {
     });
   }
 
-  // PostIt 업데이트 메서드들
+  // Cone 업데이트 메서드들
   // ---- Tasks 훅/함수 ----
   export function useWorkflowRuns(params?: {
     limit?: number;
@@ -593,65 +593,53 @@ export namespace SonamuUIService {
     });
   }
 
-  export function updateEntityPostIt(entityId: string, postIt: PostIt): Promise<void> {
+  export function updateEntityCone(entityId: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/sonamu-ui/api/entity/updatePostIt`,
+      url: `/sonamu-ui/api/entity/updateCone`,
       data: {
         entityId,
         target: "entity",
-        postIt,
+        cone,
       },
     });
   }
 
-  export function updatePropPostIt(
-    entityId: string,
-    propName: string,
-    postIt: PostIt,
-  ): Promise<void> {
+  export function updatePropCone(entityId: string, propName: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/sonamu-ui/api/entity/updatePostIt`,
+      url: `/sonamu-ui/api/entity/updateCone`,
       data: {
         entityId,
         target: "prop",
         propName,
-        postIt,
+        cone,
       },
     });
   }
 
-  export function updateEnumPostIt(
-    entityId: string,
-    enumId: string,
-    postIt: PostIt,
-  ): Promise<void> {
+  export function updateEnumCone(entityId: string, enumId: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/sonamu-ui/api/entity/updatePostIt`,
+      url: `/sonamu-ui/api/entity/updateCone`,
       data: {
         entityId,
         target: "enum",
         enumId,
-        postIt,
+        cone,
       },
     });
   }
 
-  export function updateSubsetPostIt(
-    entityId: string,
-    subsetKey: string,
-    postIt: PostIt,
-  ): Promise<void> {
+  export function updateSubsetCone(entityId: string, subsetKey: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/sonamu-ui/api/entity/updatePostIt`,
+      url: `/sonamu-ui/api/entity/updateCone`,
       data: {
         entityId,
         target: "subset",
         subsetKey,
-        postIt,
+        cone,
       },
     });
   }

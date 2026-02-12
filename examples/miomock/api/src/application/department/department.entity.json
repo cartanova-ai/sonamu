@@ -14,7 +14,7 @@
       "relationType": "BelongsToOne",
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "postIt": {
+      "cone": {
         "fixtureHint": "Fixture생성 시 각 company별 생성",
         "dataSource": { "strategy": "recent", "config": { "limit": 3 } }
       }

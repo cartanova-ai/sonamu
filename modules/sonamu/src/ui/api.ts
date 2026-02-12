@@ -25,6 +25,7 @@ import { FixtureGenerator } from "../testing/fixture-generator";
 import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
 import {
   BUILT_IN_TYPE_IDS,
+  type Cone,
   type EntityIndex,
   type EntityProp,
   type EntitySubsetRow,
@@ -32,7 +33,6 @@ import {
   type FixtureSearchOptions,
   type FlattenSubsetRow,
   type PathAndCode,
-  type PostIt,
   TemplateKey,
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
@@ -595,24 +595,24 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           propName?: string;
           enumId?: string;
           subsetKey?: string;
-          postIt: PostIt;
+          cone: Cone;
         };
-      }>("/api/entity/updatePostIt", async (request) => {
+      }>("/api/entity/updateCone", async (request) => {
         return await waitForHMRCompleted(async () => {
-          const { entityId, target, propName, enumId, subsetKey, postIt } = request.body;
+          const { entityId, target, propName, enumId, subsetKey, cone } = request.body;
           const entity = EntityManager.get(entityId);
 
           if (target === "entity") {
-            entity.postIt = postIt;
+            entity.cone = cone;
           } else if (target === "prop" && propName) {
             const prop = entity.props.find((p) => p.name === propName);
             if (prop) {
-              (prop as { postIt?: PostIt }).postIt = postIt;
+              (prop as { cone?: Cone }).cone = cone;
             }
           } else if (target === "enum" && enumId) {
-            entity.enumPostIts[enumId] = postIt;
+            entity.enumCones[enumId] = cone;
           } else if (target === "subset" && subsetKey) {
-            entity.subsetPostIts[subsetKey] = postIt;
+            entity.subsetCones[subsetKey] = cone;
           }
 
           await entity.save();

@@ -2,7 +2,7 @@
   "id": "User",
   "table": "users",
   "title": "USER",
-  "postIt": {
+  "cone": {
     "desc": "사용자",
     "note": "시스템의 모든 사용자를 관리하는 핵심 Entity입니다. 직원과 OneToOne 관계를 가집니다.",
     "tags": ["core", "auth"],
@@ -16,7 +16,7 @@
       "desc": "이메일",
       "type": "string",
       "length": 255,
-      "postIt": {
+      "cone": {
         "desc": "이메일 주소",
         "fixtureHint": "실제 이메일 형식이어야 하며, 도메인은 @test.com 사용 권장함",
         "fixtureGenerator": "faker.internet.email()"
@@ -27,7 +27,7 @@
       "desc": "이름",
       "type": "string",
       "length": 255,
-      "postIt": { "fixtureHint": "한글 이름 2-4자", "fixtureGenerator": "faker.person.fullName()" }
+      "cone": { "fixtureHint": "한글 이름 2-4자", "fixtureGenerator": "faker.person.fullName()" }
     },
     {
       "name": "password",
@@ -35,7 +35,7 @@
       "desc": "비밀번호",
       "type": "string",
       "length": 255,
-      "postIt": { "fixtureDefault": "password123" }
+      "cone": { "fixtureDefault": "password123" }
     },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
@@ -70,7 +70,7 @@
         "is_verified",
         "deleted_at"
       ],
-      "postIt": { "desc": "SubsetA" }
+      "cone": { "desc": "SubsetA" }
     },
     "P": [
       "id",
@@ -87,7 +87,7 @@
   "enums": {
     "UserOrderBy": {
       "values": { "id-desc": "ID최신순" },
-      "postIt": { "note": "사용자를 최신 생성 순서대로 조회함" }
+      "cone": { "note": "사용자를 최신 생성 순서대로 조회함" }
     },
     "UserSearchField": { "id": "ID" },
     "UserRole": { "normal": "노멀", "admin": "관리자" }
