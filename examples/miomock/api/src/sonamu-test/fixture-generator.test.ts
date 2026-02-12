@@ -1,100 +1,43 @@
-import { DB, EntityManager } from "sonamu";
+import { DB, type DBPreset, EntityManager } from "sonamu";
 import { bootstrap, DataExplorer, FixtureGenerator, test } from "sonamu/test";
-import { afterAll, beforeAll, describe, expect, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, vi } from "vitest";
+import {
+  cleanupTestRecords,
+  getFixtureMaxIds,
+  resetSequencesToFixture,
+} from "../testing/test-helpers";
 
 bootstrap(vi);
 
-// 테스트 시작 전 max ID 기록
-let maxCompanyIdBeforeTest: number;
-let maxUserIdBeforeTest: number;
+// fixture-generator 테스트에서 insert된 레코드 ID 추적
+const insertedUserIds = new Set<string>();
+const insertedCompanyIds = new Set<number>();
+const insertedDepartmentIds = new Set<number>();
+const insertedEmployeeIds = new Set<number>();
 
-// 시퀀스 리셋 함수
-async function resetSequences() {
-  const db = DB.getDB("w");
-
-  // 테이블별 설정: id 컬럼이 string이면 타입캐스팅 필요
-  const tables = [
-    { name: "users", stringId: true },
-    { name: "companies", stringId: false },
-    { name: "departments", stringId: false },
-    { name: "employees", stringId: false },
-  ];
-
-  for (const { name: table, stringId } of tables) {
-    try {
-      // 실제 시퀀스 이름을 DB에서 가져오기
-      const seqResult = await db.raw(
-        `SELECT pg_get_serial_sequence('public.${table}', 'id') as seq_name`,
-      );
-      const seqName = seqResult.rows[0]?.seq_name;
-
-      if (!seqName) {
-        console.log(`⚠️  ${table}: 시퀀스 없음 (스킵)`);
-        continue;
-      }
-
-      // string id면 integer로 캐스팅, 아니면 그대로 사용
-      const maxIdExpr = stringId ? `MAX(id::integer)` : `MAX(id)`;
-
-      await db.raw(`
-        SELECT setval(
-          '${seqName}',
-          COALESCE((SELECT ${maxIdExpr} FROM ${table})::integer, 1),
-          true
-        )
-      `);
-
-      // 실제 설정된 값 확인
-      const checkResult = await db.raw(`SELECT last_value FROM ${seqName}`);
-      const lastValue = checkResult.rows[0]?.last_value;
-
-      console.log(`✅ ${table} 시퀀스 리셋 완료: ${seqName} = ${lastValue}`);
-    } catch (e) {
-      console.log(`⚠️  ${table} 시퀀스 리셋 실패:`, e);
-    }
-  }
-}
+// fixture 데이터의 max ID
+let fixtureMaxIds: Awaited<ReturnType<typeof getFixtureMaxIds>>;
 
 // 테스트 시작 전 준비
 beforeAll(async () => {
   console.log("\n🔧 테스트 시작 전 준비");
-  const db = DB.getDB("w");
 
-  // 현재 max ID 기록
-  const companyResults = await db("companies").max("id as maxId");
-  const userResult = await db.raw(
-    "SELECT MAX(CAST(id AS INTEGER)) as max_id FROM users WHERE id ~ '^[0-9]+$'",
-  );
-
-  maxCompanyIdBeforeTest = (companyResults[0]?.maxId as number) || 0;
-  maxUserIdBeforeTest = userResult.rows[0]?.max_id || 0;
-
+  fixtureMaxIds = await getFixtureMaxIds();
   console.log(
-    `📊 현재 max ID - companies: ${maxCompanyIdBeforeTest}, users: ${maxUserIdBeforeTest}`,
+    `📊 fixture max ID - companies: ${fixtureMaxIds.companies}, users: ${fixtureMaxIds.users}`,
   );
 
-  await resetSequences();
+  await resetSequencesToFixture(fixtureMaxIds);
 });
 
 // 테스트 종료 후 cleanup
 afterAll(async () => {
   console.log("\n🧹 테스트 종료 후 cleanup");
-  const db = DB.getDB("w");
 
-  // 테스트로 생성된 레코드 삭제 (max ID 이후)
-  const deletedCompanies = await db("companies").where("id", ">", maxCompanyIdBeforeTest).delete();
+  const deleted = await cleanupTestRecords(fixtureMaxIds);
+  console.log(`🗑️  삭제된 레코드: companies(${deleted.companies}), users(${deleted.users})`);
 
-  // Users는 string ID이지만 숫자 형태인 경우만 삭제
-  const deletedUsers = await db.raw(
-    `DELETE FROM users WHERE id ~ '^[0-9]+$' AND CAST(id AS INTEGER) > ${maxUserIdBeforeTest}`,
-  );
-
-  console.log(
-    `🗑️  삭제된 레코드: companies(${deletedCompanies}), users(${deletedUsers.rowCount || 0})`,
-  );
-
-  // 시퀀스 리셋
-  await resetSequences();
+  await resetSequencesToFixture(fixtureMaxIds);
 });
 
 describe("FixtureGenerator", () => {
@@ -105,7 +48,9 @@ describe("FixtureGenerator", () => {
    * 테스트 코드에서 직접 호출할 필요가 없습니다.
    */
   const getGenerator = () => {
-    const sourceDb = DB.testTransaction || DB.getDB("r");
+    // sourceDb: fixture DB에서 데이터 읽기
+    const sourceDb = DB.getDB("fixture" as DBPreset);
+    // targetDb: test DB로 데이터 insert
     const targetDb = DB.testTransaction || DB.getDB("w");
     return new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
   };
@@ -259,16 +204,55 @@ describe("FixtureGenerator", () => {
     });
   });
 
-  describe("실제 DB에서 import", () => {
+  describe("fixture DB에서 test DB로 import", () => {
+    afterEach(async () => {
+      // import 테스트에서 insert된 레코드를 각 테스트 후 즉시 삭제
+      const db = DB.getDB("w");
+
+      if (insertedUserIds.size > 0) {
+        const userIdsArray = Array.from(insertedUserIds);
+        await db("users").whereIn("id", userIdsArray).delete();
+        insertedUserIds.clear();
+      }
+
+      if (insertedEmployeeIds.size > 0) {
+        await db("employees").whereIn("id", Array.from(insertedEmployeeIds)).delete();
+        insertedEmployeeIds.clear();
+      }
+
+      if (insertedDepartmentIds.size > 0) {
+        await db("departments").whereIn("id", Array.from(insertedDepartmentIds)).delete();
+        insertedDepartmentIds.clear();
+      }
+
+      if (insertedCompanyIds.size > 0) {
+        await db("companies").whereIn("id", Array.from(insertedCompanyIds)).delete();
+        insertedCompanyIds.clear();
+      }
+    });
+
     test("importFromSource로 User + 관련 데이터 가져오기", async () => {
       const generator = getGenerator();
 
-      // 실제 DB에서 User 3명 + 관련 Employee, Department, Company 가져오기
+      // fixture DB에서 User 3명 + 관련 Employee, Department, Company 가져오기
       const results = await generator.importFromSource("User", {
         strategy: "sample",
         limit: 3,
         includeRelations: true,
         maxDepth: 3, // User → Employee → Department → Company
+      });
+
+      // insert된 ID 추적
+      results.forEach((result) => {
+        if (result.entityId === "User") {
+          insertedUserIds.add(result.data.id as string);
+        } else if (result.entityId === "Employee") {
+          insertedEmployeeIds.add(result.data.id as number);
+        } else if (result.entityId === "Department") {
+          insertedDepartmentIds.add(result.data.id as number);
+        } else if (result.entityId === "Company") {
+          insertedCompanyIds.add(result.data.id as number);
+        }
       });
 
       // 반환된 결과 검증
@@ -279,12 +263,12 @@ describe("FixtureGenerator", () => {
       expect(userResults.length).toBeGreaterThan(0);
       expect(userResults.length).toBeLessThanOrEqual(3);
 
-      console.log(`\n📦 Imported ${results.length} total records`);
-      console.log(`  - Users: ${userResults.length}`);
-
-      // 관련 entity들도 import되었는지 확인
-      const entityTypes = new Set(results.map((r) => r.entityId));
-      console.log(`  - Entity types: ${[...entityTypes].join(", ")}`);
+      // 각 결과가 유효한 데이터를 가지는지 확인
+      userResults.forEach((result) => {
+        expect(result.entityId).toBe("User");
+        expect(result.data).toBeDefined();
+        expect(result.data.id).toBeDefined();
+      });
     });
 
     test("importFromSource - 관련 데이터 없이 가져오기", async () => {
@@ -297,9 +281,67 @@ describe("FixtureGenerator", () => {
         includeRelations: false,
       });
 
+      // insert된 ID 추적
+      results.forEach((result) => {
+        insertedCompanyIds.add(result.data.id as number);
+      });
+
       // Company만 있어야 함
       expect(results.length).toBe(2);
       expect(results.every((r) => r.entityId === "Company")).toBe(true);
+
+      // 각 결과가 유효한 데이터를 가지는지 확인
+      results.forEach((result) => {
+        expect(result.data).toBeDefined();
+        expect(result.data.id).toBeDefined();
+        expect(result.data.name).toBeDefined();
+      });
+    });
+
+    test("importFromSource - 관계 체인 자동 import 검증 (User → Employee → Department → Company)", async () => {
+      const generator = getGenerator();
+
+      // User 1명 + 관계 체인 전체를 가져오기
+      const results = await generator.importFromSource("User", {
+        strategy: "sample",
+        limit: 1,
+        includeRelations: true,
+        maxDepth: 3, // User → Employee → Department → Company
+      });
+
+      // insert된 ID 추적
+      results.forEach((result) => {
+        if (result.entityId === "User") {
+          insertedUserIds.add(result.data.id as string);
+        } else if (result.entityId === "Employee") {
+          insertedEmployeeIds.add(result.data.id as number);
+        } else if (result.entityId === "Department") {
+          insertedDepartmentIds.add(result.data.id as number);
+        } else if (result.entityId === "Company") {
+          insertedCompanyIds.add(result.data.id as number);
+        }
+      });
+
+      // 결과 검증
+      expect(results.length).toBeGreaterThan(0);
+
+      // 결과 분석: 엔티티별 개수 확인
+      const entityCounts = results.reduce(
+        (acc, r) => {
+          acc[r.entityId] = (acc[r.entityId] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      // User는 반드시 import되어야 함
+      expect(entityCounts.User).toBeGreaterThan(0);
+
+      // Employee가 있는 User를 가져왔다면, 관계 체인이 모두 import되었는지 검증
+      if (entityCounts.Employee) {
+        expect(entityCounts.Department).toBeGreaterThan(0);
+        expect(entityCounts.Company).toBeGreaterThan(0);
+      }
     });
   });
 });
