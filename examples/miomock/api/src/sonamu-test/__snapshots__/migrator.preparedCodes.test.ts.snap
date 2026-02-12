@@ -20,7 +20,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_alter5",
+    "title": "alter_users_add1_alter6",
     "type": "normal",
   },
   {
@@ -69,7 +69,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_alter5",
+    "title": "alter_users_add1_alter6",
     "type": "normal",
   },
   {
@@ -114,7 +114,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_alter5",
+    "title": "alter_users_add1_alter6",
     "type": "normal",
   },
   {
@@ -226,7 +226,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_alter5",
+    "title": "alter_users_add1_alter6",
     "type": "normal",
   },
   {
@@ -301,7 +301,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_alter5",
+    "title": "alter_users_alter6",
     "type": "normal",
   },
 ]
@@ -327,7 +327,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_drop1_alter4",
+    "title": "alter_users_drop1_alter5",
     "type": "normal",
   },
 ]
@@ -353,7 +353,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_alter5",
+    "title": "alter_users_alter6",
     "type": "normal",
   },
 ]
@@ -383,7 +383,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_drop1_alter5",
+    "title": "alter_users_add1_drop1_alter6",
     "type": "normal",
   },
 ]
@@ -410,7 +410,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add2_alter5",
+    "title": "alter_users_add2_alter6",
     "type": "normal",
   },
 ]

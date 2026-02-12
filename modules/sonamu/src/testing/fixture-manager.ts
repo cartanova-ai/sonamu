@@ -67,7 +67,8 @@ export class FixtureManagerClass {
   // UpsertBuilder 기반 import를 위한 상태
   private builder: UpsertBuilder = new UpsertBuilder();
   private fixtureRefMap: Map<string, UBRef> = new Map();
-  private skippedFixtures: Map<string, { entityId: string; existingId: number }> = new Map();
+  private skippedFixtures: Map<string, { entityId: string; existingId: number | string }> =
+    new Map();
 
   init() {
     if (this._tdb !== null) {
@@ -330,7 +331,7 @@ export class FixtureManagerClass {
   async createFixtureRecord(
     entity: Entity,
     row: {
-      id: number;
+      id: number | string;
       [key: string]: string | number | boolean | null;
     },
     options?: {
@@ -344,7 +345,7 @@ export class FixtureManagerClass {
     const create = async (
       entity: Entity,
       row: {
-        id: number;
+        id: number | string;
         [key: string]: string | number | boolean | null;
       },
     ) => {
@@ -389,12 +390,16 @@ export class FixtureManagerClass {
             .pluck("id");
           record.columns[prop.name].value = relatedIds;
         } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
+          // 역방향 OneToOne: FK를 가진 관련 엔티티를 찾습니다
+          // 예시: User OneToOne Employee (Employee가 user_id FK를 가짐)
           const relatedEntity = EntityManager.get(prop.with);
           const relatedProp = relatedEntity.props.find(
             (p) => isRelationProp(p) && p.with === entity.id,
           );
-          if (relatedProp) {
-            const relatedRow = await db(relatedEntity.table).where("id", row.id).first();
+          if (relatedProp && isRelationProp(relatedProp)) {
+            // 관련 엔티티에서 FK 컬럼으로 쿼리합니다 (id가 아님)
+            const fkColumn = `${relatedProp.name}_id`;
+            const relatedRow = await db(relatedEntity.table).where(fkColumn, row.id).first();
             record.columns[prop.name].value = relatedRow?.id;
           }
         } else if (isRelationProp(prop)) {

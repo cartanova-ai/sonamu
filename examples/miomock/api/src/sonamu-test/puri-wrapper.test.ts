@@ -3,12 +3,29 @@ import assert from "assert";
 import type { Knex } from "knex";
 import { Puri, Sonamu } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { beforeAll, describe, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
+import {
+  cleanupTestRecords,
+  getFixtureMaxIds,
+  resetSequencesToFixture,
+} from "../testing/test-helpers";
 
 bootstrap(vi);
+
+let fixtureMaxIds: Awaited<ReturnType<typeof getFixtureMaxIds>>;
+
+beforeAll(async () => {
+  fixtureMaxIds = await getFixtureMaxIds();
+  await resetSequencesToFixture(fixtureMaxIds);
+});
+
 describe("Puri Wrapper", () => {
   describe("A. 쿼리 빌더 래퍼", () => {
+    afterEach(async () => {
+      await cleanupTestRecords(fixtureMaxIds);
+    });
+
     test("from()", async () => {
       const wdb = UserModel.getPuri("w");
       const rdb = UserModel.getPuri("r");
