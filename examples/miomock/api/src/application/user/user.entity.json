@@ -9,7 +9,7 @@
     "fixtureHint": "한국인 이름"
   },
   "props": [
-    { "name": "id", "type": "string", "desc": "ID" },
+    { "name": "id", "desc": "ID", "type": "string" },
     { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     {
       "name": "email",
@@ -29,7 +29,14 @@
       "length": 255,
       "postIt": { "fixtureHint": "한글 이름 2-4자", "fixtureGenerator": "faker.person.fullName()" }
     },
-    { "name": "password", "nullable": true, "desc": "비밀번호", "type": "string", "length": 255, "postIt": { "fixtureDefault": "password123" } },
+    {
+      "name": "password",
+      "nullable": true,
+      "desc": "비밀번호",
+      "type": "string",
+      "length": 255,
+      "postIt": { "fixtureDefault": "password123" }
+    },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
     { "name": "last_login_at", "nullable": true, "desc": "LASTLOGIN일시", "type": "date" },
