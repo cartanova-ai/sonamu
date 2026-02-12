@@ -945,6 +945,79 @@ export class Entity {
     await EntityManager.register(json);
   }
 
+  /**
+   * LLM을 사용하여 cone 메타데이터를 생성합니다.
+   *
+   * @param options.preserveExisting - 기존 cone 보존 여부 (기본값: true)
+   * @param options.locale - 생성 시 사용할 locale (기본값: "ko")
+   */
+  async generateCones(options?: {
+    preserveExisting?: boolean;
+    locale?: "ko" | "en" | "ja";
+  }): Promise<import("../cone/cone-generator").ConeGenerationResult> {
+    const { generateCones } = await import("../cone/cone-generator");
+    const context: import("../cone/cone-generator").ConeGenerationContext = {
+      entity: this.toJson(),
+      locale: options?.locale || "ko",
+      existingCones: options?.preserveExisting !== false ? this.collectExistingCones() : undefined,
+    };
+
+    const result = await generateCones(context);
+    this.applyCones(result);
+    await this.save();
+    return result;
+  }
+
+  /**
+   * 기존 cone들을 수집합니다 (entity, props, enums, subsets).
+   *
+   * @returns 키가 "entity:id", "prop:name", "enum:enumId", "subset:key" 형식인 cone 맵
+   */
+  private collectExistingCones(): Record<string, Cone> {
+    const cones: Record<string, Cone> = {};
+
+    if (this.cone) {
+      cones[`entity:${this.id}`] = this.cone;
+    }
+
+    for (const prop of this.props) {
+      if (prop.cone) {
+        cones[`prop:${prop.name}`] = prop.cone;
+      }
+    }
+
+    for (const [enumId, cone] of Object.entries(this.enumCones)) {
+      cones[`enum:${enumId}`] = cone;
+    }
+
+    for (const [subsetKey, cone] of Object.entries(this.subsetCones)) {
+      cones[`subset:${subsetKey}`] = cone;
+    }
+
+    return cones;
+  }
+
+  /**
+   * 생성된 cone들을 Entity에 적용합니다.
+   *
+   * @param result - LLM으로 생성된 cone 결과
+   */
+  private applyCones(result: import("../cone/cone-generator").ConeGenerationResult): void {
+    if (result.entityCone) {
+      this.cone = result.entityCone;
+    }
+
+    for (const [propName, cone] of Object.entries(result.propCones)) {
+      const prop = this.props.find((p) => p.name === propName);
+      if (prop) {
+        (prop as { cone?: Cone }).cone = cone;
+      }
+    }
+
+    this.enumCones = { ...this.enumCones, ...result.enumCones };
+    this.subsetCones = { ...this.subsetCones, ...result.subsetCones };
+  }
+
   getSubsetRows(
     _subsets?: { [key: string]: string[] },
     _subsetsInternal?: { [key: string]: string[] },
