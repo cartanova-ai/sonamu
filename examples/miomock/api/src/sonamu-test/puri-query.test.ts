@@ -1,12 +1,29 @@
 import { Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { describe, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import { expectQuery } from "../testing/expect-query";
+import {
+  cleanupTestRecords,
+  getFixtureMaxIds,
+  resetSequencesToFixture,
+} from "../testing/test-helpers";
 
 bootstrap(vi);
+
+let fixtureMaxIds: Awaited<ReturnType<typeof getFixtureMaxIds>>;
+
+beforeAll(async () => {
+  fixtureMaxIds = await getFixtureMaxIds();
+  await resetSequencesToFixture(fixtureMaxIds);
+});
+
 describe("Puri Query", () => {
   describe("A. BASIC CRUD", () => {
+    afterEach(async () => {
+      await cleanupTestRecords(fixtureMaxIds);
+    });
+
     test("select", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").select({ id: "users.id" });
