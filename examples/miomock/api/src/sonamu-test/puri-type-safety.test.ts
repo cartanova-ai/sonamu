@@ -1,9 +1,24 @@
 import { type InsertResult, Naite, Puri } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { describe, expect, expectTypeOf, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, expectTypeOf, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
+import {
+  cleanupTestRecords,
+  getFixtureMaxIds,
+  resetSequencesToFixture,
+} from "../testing/test-helpers";
 
 bootstrap(vi);
+
+// fixture 데이터의 max ID
+let fixtureMaxIds: Awaited<ReturnType<typeof getFixtureMaxIds>>;
+
+beforeAll(async () => {
+  // INSERT 테스트를 위해 sequence를 fixture max + 1로 리셋
+  fixtureMaxIds = await getFixtureMaxIds();
+  await resetSequencesToFixture(fixtureMaxIds);
+});
+
 describe("Puri Type Safety", () => {
   describe("A. 기본", () => {
     test("테이블 타입 안전성", async () => {
@@ -753,6 +768,11 @@ describe("Puri Type Safety", () => {
   });
 
   describe("G. INSERT/UPDATE/DELETE 타입 안전성", () => {
+    afterEach(async () => {
+      // 테스트에서 생성한 users 레코드 cleanup (fixture max ID 이후)
+      await cleanupTestRecords(fixtureMaxIds);
+    });
+
     test("INSERT 타입 안전성 (WITHOUT RETURNING)", async () => {
       const db = UserModel.getPuri("w");
 
