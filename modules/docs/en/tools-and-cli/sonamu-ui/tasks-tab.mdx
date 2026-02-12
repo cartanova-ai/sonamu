@@ -1,0 +1,122 @@
+---
+title: 'Tasks Tab'
+description: 'Monitor and manage workflow execution'
+---
+
+The Tasks tab provides **functionality to monitor and manage workflow execution status**. You can view registered workflow definitions, track running workflows, and cancel executions when needed.
+
+<Info>
+The Tasks tab integrates with the [@sonamu-kit/tasks](https://github.com/ping-alive/sonamu/tree/master/modules/tasks) module. If no workflows are defined, an empty screen will be displayed.
+</Info>
+
+## Screen Layout
+
+The Tasks tab consists of three main sections:
+
+### 1. Active Workflows
+
+This section is only displayed when there are currently running workflows.
+
+| Information | Description |
+|-------------|-------------|
+| **Workflow Name** | Click to navigate to detail view |
+| **Status** | One of `PENDING`, `RUNNING`, `SLEEPING` |
+| **Step Progress** | Timeline of executed steps so far |
+| **Elapsed Time** | Real-time updating elapsed time |
+| **Cancel Button** | Cancel the running workflow |
+
+<Warning>
+Workflow cancellation may not take effect immediately. It will be cancelled after the currently running Step completes.
+</Warning>
+
+### 2. Workflow Definitions
+
+Displays a list of all workflows defined in the project.
+
+| Column | Description |
+|--------|-------------|
+| **Workflow** | Workflow name |
+| **Version** | Workflow version (`(unversioned)` if none) |
+| **Schedule** | Schedule defined by cron expression (if any) |
+| **Retry Policy** | Max attempts, initial interval, backoff multiplier, etc. |
+
+### 3. Workflow Runs
+
+Displays all workflow execution history in chronological order.
+
+| Column | Description |
+|--------|-------------|
+| **Workflow** | Click to navigate to detail view |
+| **Version** | Version of the executed workflow |
+| **Status** | `PENDING`, `RUNNING`, `SLEEPING`, `SUCCEEDED`, `FAILED`, `CANCELLED` |
+| **Attempts** | Retry count |
+| **Created** | Time when workflow was created |
+| **Started** | Time when execution actually started |
+| **Finished** | Time when execution completed |
+| **Duration** | Time from start to finish |
+
+## Workflow Detail View
+
+Click on a workflow name in the execution history to navigate to the detail view.
+
+### Basic Information
+
+The top of the detail view displays the following information:
+
+- **Workflow name** and **ID**
+- **Current status** (color-coded by status)
+- **Version**, **attempt count**, **created/started/finished time**, **duration**
+- **Worker ID**, **Namespace**
+
+### Input/Output
+
+View the input values passed to the workflow and result values in JSON format. Click to expand.
+
+### Error Information
+
+If the workflow failed, the error name, message, and stack trace are displayed.
+
+### Step Attempts
+
+A list of all Steps executed within the workflow. Click each row to expand details:
+
+| Information | Description |
+|-------------|-------------|
+| **Step** | Step name |
+| **Kind** | `activity` or `sleep` |
+| **Status** | `RUNNING`, `SUCCEEDED`, `FAILED`, etc. |
+| **Started/Finished Time** | Step execution time |
+| **Output** | Return value of the Step (when expanded) |
+| **Error** | Error that occurred during Step execution (when expanded) |
+| **Context** | Step execution context (when expanded) |
+| **Child Workflow** | Link if there's a child workflow |
+
+## Auto Refresh
+
+Workflow execution history is **automatically refreshed every 5 seconds**. To manually refresh, click the refresh button in the top right corner.
+
+## Pagination
+
+Cursor-based pagination is applied when there are many execution records. Use the previous/next buttons at the bottom to navigate pages.
+
+## Status Colors
+
+| Status | Color | Description |
+|--------|-------|-------------|
+| `PENDING` | Yellow | Waiting to execute |
+| `RUNNING` | Blue | Currently executing |
+| `SLEEPING` | Purple | Executing sleep Step |
+| `SUCCEEDED` | Green | Completed successfully |
+| `FAILED` | Red | Failed |
+| `CANCELLED` | Gray | Cancelled by user |
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Workflows" icon="diagram-project" href="/advanced-features/workflows/overview">
+    Workflow feature overview
+  </Card>
+  <Card title="Defining Workflows" icon="code" href="/advanced-features/workflows/defining-workflows">
+    How to write workflows
+  </Card>
+</CardGroup>
