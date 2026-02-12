@@ -36,8 +36,8 @@ export interface Backend {
   listStepAttempts(
     params: Readonly<ListStepAttemptsParams>,
   ): Promise<PaginatedResponse<StepAttempt>>;
-  completeStepAttempt(params: Readonly<CompleteStepAttemptParams>): Promise<StepAttempt>;
-  failStepAttempt(params: Readonly<FailStepAttemptParams>): Promise<StepAttempt>;
+  completeStepAttempt(params: Readonly<CompleteStepAttemptParams>): Promise<StepAttempt | null>;
+  failStepAttempt(params: Readonly<FailStepAttemptParams>): Promise<StepAttempt | null>;
 }
 
 export interface CreateWorkflowRunParams {

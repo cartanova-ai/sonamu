@@ -141,26 +141,33 @@ export class StepExecutor implements StepApi {
       const result = await fn();
       const output = normalizeStepOutput(result);
 
-      // mark success
+      // mark success — null이면 외부에서 워크플로우 상태가 변경된 것입니다(pause/cancel).
       const savedAttempt = await this.backend.completeStepAttempt({
         workflowRunId: this.workflowRunId,
         stepAttemptId: attempt.id,
         workerId: this.workerId,
         output,
       });
+      if (!savedAttempt) {
+        throw new WorkflowAbortedError();
+      }
 
       // cache result
       this.cache = addToStepAttemptCache(this.cache, savedAttempt);
 
       return savedAttempt.output as Output;
     } catch (error) {
-      // mark failure
-      await this.backend.failStepAttempt({
+      // mark failure — null이면 외부에서 워크플로우 상태가 변경된 것입니다(pause/cancel).
+      const failed = await this.backend.failStepAttempt({
         workflowRunId: this.workflowRunId,
         stepAttemptId: attempt.id,
         workerId: this.workerId,
         error: serializeError(error),
       });
+      if (!failed) {
+        throw new WorkflowAbortedError();
+      }
+
       throw error;
     }
   }
@@ -266,6 +273,9 @@ export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): 
           workerId,
           output: null,
         });
+        if (!completed) {
+          throw new WorkflowAbortedError();
+        }
 
         // update cache w/ completed attempt
         attempts[i] = completed;

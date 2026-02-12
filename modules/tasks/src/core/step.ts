@@ -14,6 +14,7 @@ export type StepKind = "function" | "sleep";
  */
 export type StepAttemptStatus =
   | "running"
+  | "paused"
   | "succeeded" // deprecated in favor of 'completed'
   | "completed"
   | "failed";

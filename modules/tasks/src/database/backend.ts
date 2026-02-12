@@ -894,8 +894,10 @@ export class BackendPostgres implements Backend {
     };
   }
 
-  // NOTE: 실제 서비스에서 이게 안 되는 것 같은데, 쿼리 등을 체크할 필요가 있음.
-  async completeStepAttempt(params: CompleteStepAttemptParams): Promise<StepAttempt> {
+  // WHERE 조건에 wr.status='running', sa.status='running'이 포함되어 있어,
+  // 외부에서 워크플로우 상태가 변경된 경우(pause/cancel) null을 반환합니다.
+  // 예상하지 못한 이유로 실패한 경우에는 에러를 로깅합니다.
+  async completeStepAttempt(params: CompleteStepAttemptParams): Promise<StepAttempt | null> {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
@@ -928,14 +930,13 @@ export class BackendPostgres implements Backend {
       .returning("sa.*");
 
     if (!updated) {
-      logger.error("Failed to mark step attempt completed: {params}", { params });
-      throw new Error("Failed to mark step attempt completed");
+      return this.handleStepAttemptUpdateMiss("completed", params);
     }
 
     return updated;
   }
 
-  async failStepAttempt(params: FailStepAttemptParams): Promise<StepAttempt> {
+  async failStepAttempt(params: FailStepAttemptParams): Promise<StepAttempt | null> {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
@@ -969,11 +970,45 @@ export class BackendPostgres implements Backend {
       .returning("sa.*");
 
     if (!updated) {
-      logger.error("Failed to mark step attempt failed: {params}", { params });
-      throw new Error("Failed to mark step attempt failed");
+      return this.handleStepAttemptUpdateMiss("failed", params);
     }
 
     return updated;
+  }
+
+  /**
+   * completeStepAttempt/failStepAttempt에서 UPDATE가 0건일 때,
+   * 외부 상태 변경(pause/cancel)에 의한 것인지 판단합니다.
+   * - 외부 상태 변경이면 해당 step의 상태도 워크플로우와 동일하게 맞추고 null을 반환합니다.
+   * - 그 외에는 예상하지 못한 상황이므로 에러를 throw합니다.
+   */
+  private async handleStepAttemptUpdateMiss(
+    method: string,
+    params: { workflowRunId: string; stepAttemptId: string; workerId: string },
+  ): Promise<null> {
+    const wr = await this.getWorkflowRun({ workflowRunId: params.workflowRunId });
+
+    // 워크플로우가 외부에서 paused/canceled된 경우 → step 상태도 동일하게 갱신하고 null 반환
+    if (wr && (wr.status === "paused" || wr.status === "canceled")) {
+      await this.knex
+        .withSchema(DEFAULT_SCHEMA)
+        .table("step_attempts")
+        .where("namespace_id", this.namespaceId)
+        .where("id", params.stepAttemptId)
+        .whereIn("status", ["running", "paused"])
+        .update({
+          status: wr.status,
+          updated_at: this.knex.fn.now(),
+        });
+      return null;
+    }
+
+    // 그 외(워크플로우가 여전히 running인데 UPDATE가 안 된 경우 등) → 예상 못한 상황
+    logger.error("Failed to mark step attempt {method}: {params}", {
+      method,
+      params,
+    });
+    throw new Error(`Failed to mark step attempt ${method}`);
   }
 }
 
