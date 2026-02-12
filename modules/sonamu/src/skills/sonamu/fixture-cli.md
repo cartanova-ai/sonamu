@@ -366,9 +366,9 @@ git commit -m "Add user fixtures for testing"
 
 ---
 
-## 고급: post-it 메타데이터 (선택사항)
+## 고급: cone 메타데이터 (선택사항)
 
-Entity JSON에 `postIt` 메타데이터를 추가하면 fixture 생성을 더욱 세밀하게 제어할 수 있습니다.
+Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 세밀하게 제어할 수 있습니다.
 
 ### dataSource - 참조 전략 지정
 
@@ -381,7 +381,7 @@ Entity JSON에 `postIt` 메타데이터를 추가하면 fixture 생성을 더욱
       "type": "relation",
       "with": "User",
       "relationType": "BelongsToOne",
-      "postIt": {
+      "cone": {
         "dataSource": {
           "strategy": "recent",
           "config": { "limit": 5 }
@@ -406,7 +406,7 @@ Entity JSON에 `postIt` 메타데이터를 추가하면 fixture 생성을 더욱
 {
   "name": "email",
   "type": "string",
-  "postIt": {
+  "cone": {
     "fixtureGenerator": "faker.internet.email()"
   }
 }
@@ -420,7 +420,7 @@ Entity JSON에 `postIt` 메타데이터를 추가하면 fixture 생성을 더욱
 {
   "name": "status",
   "type": "string",
-  "postIt": {
+  "cone": {
     "fixtureDefault": "active"
   }
 }
@@ -432,7 +432,7 @@ Entity JSON에 `postIt` 메타데이터를 추가하면 fixture 생성을 더욱
 {
   "name": "phone",
   "type": "string",
-  "postIt": {
+  "cone": {
     "fixtureHint": "010-XXXX-XXXX 형식의 한국 전화번호"
   }
 }

@@ -218,7 +218,7 @@ export class DataExplorer {
       throw new Error(`Relation property not found: ${entityName}.${relationProp}`);
     }
 
-    const dataSource = prop.postIt?.dataSource;
+    const dataSource = prop.cone?.dataSource;
     const strategy = dataSource?.strategy || options?.strategy || "sample";
     const config =
       dataSource?.config && typeof dataSource.config === "object"

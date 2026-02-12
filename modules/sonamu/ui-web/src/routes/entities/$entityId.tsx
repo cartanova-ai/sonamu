@@ -18,9 +18,9 @@ import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import PlusIcon from "~icons/lucide/plus";
 import Trash2Icon from "~icons/lucide/trash-2";
+import { ConeButton } from "../../components/ConeButton";
+import { ConeModal } from "../../components/ConeModal";
 import { EditableInput } from "../../components/EditableInput";
-import { PostItButton } from "../../components/PostItButton";
-import { PostItModal } from "../../components/PostItModal";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { useSonamuContext } from "../../contexts/sonamu-provider";
@@ -91,23 +91,23 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     focusIndex?: number;
   } | null>(null);
 
-  // Entity PostItModal 상태
-  const [entityPostItModalOpen, setEntityPostItModalOpen] = useState(false);
+  // Entity ConeModal 상태
+  const [entityConeModalOpen, setEntityConeModalOpen] = useState(false);
 
-  // Prop PostItModal 상태
-  const [propPostItModal, setPropPostItModal] = useState<{
+  // Prop ConeModal 상태
+  const [propConeModal, setPropConeModal] = useState<{
     open: boolean;
     propName: string;
   } | null>(null);
 
-  // Enum PostItModal 상태
-  const [enumPostItModal, setEnumPostItModal] = useState<{
+  // Enum ConeModal 상태
+  const [enumConeModal, setEnumConeModal] = useState<{
     open: boolean;
     enumId: string;
   } | null>(null);
 
-  // Subset PostItModal 상태
-  const [subsetPostItModal, setSubsetPostItModal] = useState<{
+  // Subset ConeModal 상태
+  const [subsetConeModal, setSubsetConeModal] = useState<{
     open: boolean;
     subsetKey: string;
   } | null>(null);
@@ -746,11 +746,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span>{SD("entity.title").replace("{id}", entity.id)}</span>
-                <PostItButton
-                  variant="entity"
-                  size="sm"
-                  onClick={() => setEntityPostItModalOpen(true)}
-                />
+                <ConeButton size="sm" onClick={() => setEntityConeModalOpen(true)} />
               </div>
               <Button
                 size="xs"
@@ -886,10 +882,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         {prop.toFilter && <CheckIcon />}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 7)} className="text-center">
-                        <PostItButton
+                        <ConeButton
                           size="sm"
                           onClick={() => {
-                            setPropPostItModal({ open: true, propName: prop.name });
+                            setPropConeModal({ open: true, propName: prop.name });
                           }}
                         />
                       </TableCell>
@@ -976,10 +972,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             >
                               <div className="flex items-center gap-2">
                                 {enumId}
-                                <PostItButton
+                                <ConeButton
                                   size="sm"
                                   onClick={() => {
-                                    setEnumPostItModal({ open: true, enumId });
+                                    setEnumConeModal({ open: true, enumId });
                                   }}
                                 />
                                 <Button
@@ -1070,10 +1066,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                           <TableHead key={subsetKey}>
                             <div className="flex items-center gap-2">
                               Subset{subsetKey}
-                              <PostItButton
+                              <ConeButton
                                 size="sm"
                                 onClick={() => {
-                                  setSubsetPostItModal({ open: true, subsetKey });
+                                  setSubsetConeModal({ open: true, subsetKey });
                                 }}
                               />
                               {subsetKey !== "A" && (
@@ -1240,69 +1236,65 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         />
       )}
       {entity && (
-        <PostItModal
-          open={entityPostItModalOpen}
-          onOpenChange={setEntityPostItModalOpen}
+        <ConeModal
+          open={entityConeModalOpen}
+          onOpenChange={setEntityConeModalOpen}
           title={`Entity: ${entity.id}`}
-          postIt={entity.postIt}
-          onSave={async (postIt) => {
-            await SonamuUIService.updateEntityPostIt(entity.id, postIt);
+          cone={entity.cone}
+          onSave={async (cone) => {
+            await SonamuUIService.updateEntityCone(entity.id, cone);
             refetch();
           }}
         />
       )}
-      {entity && propPostItModal && propPostItModal.open && (
-        <PostItModal
-          open={propPostItModal.open}
+      {entity && propConeModal && propConeModal.open && (
+        <ConeModal
+          open={propConeModal.open}
           onOpenChange={(open) => {
             if (!open) {
-              setPropPostItModal(null);
+              setPropConeModal(null);
             }
           }}
-          title={`Prop: ${entity.id}.${propPostItModal.propName}`}
-          postIt={entity.props.find((p) => p.name === propPostItModal.propName)?.postIt}
-          onSave={async (postIt) => {
-            await SonamuUIService.updatePropPostIt(entity.id, propPostItModal.propName, postIt);
+          title={`Prop: ${entity.id}.${propConeModal.propName}`}
+          cone={entity.props.find((p) => p.name === propConeModal.propName)?.cone}
+          onSave={async (cone) => {
+            await SonamuUIService.updatePropCone(entity.id, propConeModal.propName, cone);
             refetch();
-            setPropPostItModal(null);
+            setPropConeModal(null);
           }}
         />
       )}
-      {entity && enumPostItModal && enumPostItModal.open && (
-        <PostItModal
-          open={enumPostItModal.open}
+      {entity && enumConeModal && enumConeModal.open && (
+        <ConeModal
+          open={enumConeModal.open}
           onOpenChange={(open) => {
             if (!open) {
-              setEnumPostItModal(null);
+              setEnumConeModal(null);
             }
           }}
-          title={`Enum: ${enumPostItModal.enumId}`}
-          postIt={entity.enumPostIts?.[enumPostItModal.enumId]}
-          onSave={async (postIt) => {
-            await SonamuUIService.updateEnumPostIt(entity.id, enumPostItModal.enumId, postIt);
+          title={`Enum: ${enumConeModal.enumId}`}
+          cone={entity.enumCones?.[enumConeModal.enumId]}
+          onSave={async (cone) => {
+            await SonamuUIService.updateEnumCone(entity.id, enumConeModal.enumId, cone);
             refetch();
-            setEnumPostItModal(null);
+            setEnumConeModal(null);
           }}
         />
       )}
-      {entity && subsetPostItModal && subsetPostItModal.open && (
-        <PostItModal
-          open={subsetPostItModal.open}
+      {entity && subsetConeModal && subsetConeModal.open && (
+        <ConeModal
+          open={subsetConeModal.open}
           onOpenChange={(open) => {
             if (!open) {
-              setSubsetPostItModal(null);
+              setSubsetConeModal(null);
             }
           }}
-          title={`Subset: ${entity.id}.Subset${subsetPostItModal.subsetKey}`}
-          postIt={entity.subsetPostIts?.[subsetPostItModal.subsetKey]}
-          onSave={async (postIt) => {
-            await SonamuUIService.updateSubsetPostIt(
-              entity.id,
-              subsetPostItModal.subsetKey,
-              postIt,
-            );
+          title={`Subset: ${entity.id}.Subset${subsetConeModal.subsetKey}`}
+          cone={entity.subsetCones?.[subsetConeModal.subsetKey]}
+          onSave={async (cone) => {
+            await SonamuUIService.updateSubsetCone(entity.id, subsetConeModal.subsetKey, cone);
             refetch();
-            setSubsetPostItModal(null);
+            setSubsetConeModal(null);
           }}
         />
       )}

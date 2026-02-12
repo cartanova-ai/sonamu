@@ -18,12 +18,12 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 */
 
 /**
- * post-it: 범용 메타데이터 시스템
+ * cone: 범용 메타데이터 시스템
  *
  * Entity, Prop, Enum, Subset에 추가할 수 있는 범용 메타데이터입니다.
  * Fixture 생성, UI 라벨, 문서화 등 다양한 용도로 활용할 수 있습니다.
  */
-export type PostIt = {
+export type Cone = {
   // 일반 정보
   desc?: string; // 짧은 설명 (UI 라벨용)
   note?: string; // 자유로운 메모 (무제한 길이)
@@ -56,17 +56,17 @@ export type CommonProp = {
   desc?: string;
   dbDefault?: string;
   generated?: GeneratedColumn;
-  postIt?: PostIt; // post-it 메타데이터
+  cone?: Cone; // cone 메타데이터
 };
 
 /**
  * 하위 호환성을 위한 헬퍼 함수
  *
- * desc 필드와 postIt.desc 둘 다 지원합니다.
- * postIt.desc가 있으면 우선적으로 사용하고, 없으면 desc를 사용합니다.
+ * desc 필드와 cone.desc 둘 다 지원합니다.
+ * cone.desc가 있으면 우선적으로 사용하고, 없으면 desc를 사용합니다.
  */
-export function getDescription(item: { desc?: string; postIt?: PostIt }): string | undefined {
-  return item.postIt?.desc || item.desc;
+export function getDescription(item: { desc?: string; cone?: Cone }): string | undefined {
+  return item.cone?.desc || item.desc;
 }
 export type IntegerProp = CommonProp & {
   type: "integer";
@@ -213,7 +213,7 @@ type _RelationProp = {
   nullable?: boolean; // DEFAULT: false
   toFilter?: true; // DEFAULT: false
   desc?: string;
-  postIt?: PostIt; // post-it 메타데이터
+  cone?: Cone; // cone 메타데이터
 };
 export type OneToOneRelationProp = _RelationProp & {
   relationType: "OneToOne";
@@ -405,7 +405,7 @@ export type SubsetDef =
   | {
       // 새로운 객체 형태
       fields: SubsetField[];
-      postIt?: PostIt;
+      cone?: Cone;
     };
 
 /**
@@ -418,26 +418,24 @@ export type EnumDef =
   | {
       // 새로운 객체 형태
       values: Record<string, string>;
-      postIt?: PostIt;
+      cone?: Cone;
     };
 
 /**
  * SubsetDef가 새로운 객체 형태인지 확인
  */
-export function isSubsetDefWithPostIt(
-  def: SubsetDef,
-): def is { fields: SubsetField[]; postIt?: PostIt } {
+export function isSubsetDefWithCone(def: SubsetDef): def is { fields: SubsetField[]; cone?: Cone } {
   return !Array.isArray(def) && "fields" in def;
 }
 
 /**
  * EnumDef가 새로운 객체 형태인지 확인
  */
-export function isEnumDefWithPostIt(
+export function isEnumDefWithCone(
   def: EnumDef,
-): def is { values: Record<string, string>; postIt?: PostIt } {
+): def is { values: Record<string, string>; cone?: Cone } {
   return (
-    "values" in def && !("postIt" in def && def.postIt === undefined && Object.keys(def).length > 1)
+    "values" in def && !("cone" in def && def.cone === undefined && Object.keys(def).length > 1)
   );
 }
 
@@ -452,7 +450,7 @@ export function getSubsetFields(def: SubsetDef): SubsetField[] {
  * EnumDef에서 values 추출
  */
 export function getEnumDefValues(def: EnumDef): Record<string, string> {
-  return isEnumDefWithPostIt(def) ? def.values : def;
+  return isEnumDefWithCone(def) ? def.values : def;
 }
 
 export type EntityJson = {
@@ -460,7 +458,7 @@ export type EntityJson = {
   parentId?: string;
   table: string;
   title?: string;
-  postIt?: PostIt; // post-it 메타데이터
+  cone?: Cone; // cone 메타데이터
   props: EntityProp[];
   indexes: EntityIndex[];
   subsets: {
@@ -1041,11 +1039,11 @@ const GeneratedColumnSchema = z.object({
 });
 
 /**
- * PostIt 스키마 검증
+ * Cone 스키마 검증
  *
- * post-it 메타데이터의 유효성을 검증합니다.
+ * cone 메타데이터의 유효성을 검증합니다.
  */
-const PostItSchema = z
+const ConeSchema = z
   .object({
     desc: z.string().optional(),
     note: z.string().optional(),
@@ -1069,7 +1067,7 @@ const BasePropFields = {
   toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
   generated: GeneratedColumnSchema.optional(),
-  postIt: PostItSchema.optional(),
+  cone: ConeSchema.optional(),
 };
 
 // 부가 필드가 필요없는 prop
@@ -1420,7 +1418,7 @@ const SubsetDefSchema = z.union([
     fields: z.array(
       z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
     ),
-    postIt: PostItSchema.optional(),
+    cone: ConeSchema.optional(),
   }),
 ]);
 
@@ -1435,7 +1433,7 @@ const EnumDefSchema = z.union([
   // 새로운 객체 형태
   z.object({
     values: z.record(z.string(), z.string()),
-    postIt: PostItSchema.optional(),
+    cone: ConeSchema.optional(),
   }),
 ]);
 
@@ -1445,7 +1443,7 @@ export const EntityJsonSchema = z
     title: z.string().describe("Entity 이름"),
     table: z.string().describe("snake_case로 된 테이블명"),
     parentId: z.string().optional().describe("부모 Entity ID"),
-    postIt: PostItSchema.optional(),
+    cone: ConeSchema.optional(),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),
     subsets: z.record(z.string(), SubsetDefSchema),

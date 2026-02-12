@@ -11,15 +11,15 @@ import {
   Textarea,
 } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import type { PostIt } from "sonamu";
+import type { Cone } from "sonamu";
 import CodeIcon from "~icons/lucide/code";
 
-type PostItModalProps = {
+type ConeModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  postIt?: PostIt;
-  onSave: (postIt: PostIt) => Promise<void>;
+  cone?: Cone;
+  onSave: (cone: Cone) => Promise<void>;
 };
 
 function DraggableDialogContent({
@@ -36,7 +36,7 @@ function DraggableDialogContent({
   position: { x: number; y: number };
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: "postit-modal",
+    id: "cone-modal",
   });
 
   const style = {
@@ -54,8 +54,8 @@ function DraggableDialogContent({
   );
 }
 
-export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostItModalProps) {
-  const [form, setForm] = useState<PostIt>({
+export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModalProps) {
+  const [form, setForm] = useState<Cone>({
     desc: "",
     note: "",
     tags: [],
@@ -73,12 +73,12 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (open && postIt) {
-      setForm(postIt);
-      setTagsInput(postIt.tags?.join(", ") || "");
-      setDataSourceInput(postIt.dataSource ? JSON.stringify(postIt.dataSource, null, 2) : "");
-    } else if (open && !postIt) {
-      // Reset form for new postIt
+    if (open && cone) {
+      setForm(cone);
+      setTagsInput(cone.tags?.join(", ") || "");
+      setDataSourceInput(cone.dataSource ? JSON.stringify(cone.dataSource, null, 2) : "");
+    } else if (open && !cone) {
+      // Reset form for new cone
       setForm({
         desc: "",
         note: "",
@@ -95,7 +95,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
     if (open) {
       setPosition({ x: 0, y: 0 });
     }
-  }, [open, postIt]);
+  }, [open, cone]);
 
   // 드래그 종료 시 위치 저장
   const handleDragEnd = (event: DragEndEvent) => {
@@ -116,7 +116,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
         .filter(Boolean);
 
       // Parse dataSource
-      let dataSource: PostIt["dataSource"];
+      let dataSource: Cone["dataSource"];
       if (dataSourceInput.trim()) {
         try {
           dataSource = JSON.parse(dataSourceInput);
@@ -137,7 +137,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
         }
       }
 
-      const postItToSave: PostIt = {
+      const coneToSave: Cone = {
         ...form,
         tags: tags.length > 0 ? tags : undefined,
         dataSource,
@@ -150,17 +150,17 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
       };
 
       // Remove undefined keys
-      Object.keys(postItToSave).forEach((key) => {
-        if (postItToSave[key as keyof PostIt] === undefined) {
-          delete postItToSave[key as keyof PostIt];
+      Object.keys(coneToSave).forEach((key) => {
+        if (coneToSave[key as keyof Cone] === undefined) {
+          delete coneToSave[key as keyof Cone];
         }
       });
 
-      await onSave(postItToSave);
+      await onSave(coneToSave);
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save postIt:", error);
-      alert("Failed to save postIt");
+      console.error("Failed to save cone:", error);
+      alert("Failed to save cone");
     } finally {
       setSaving(false);
     }
@@ -171,14 +171,14 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
       <DndContext onDragEnd={handleDragEnd}>
         <DraggableDialogContent
           className="max-w-md max-h-[80vh] flex flex-col shadow-[4px_4px_12px_rgba(0,0,0,0.2)]"
-          style={{ backgroundColor: "var(--color-postit-bg)" }}
+          style={{ backgroundColor: "var(--color-cone-bg)" }}
           position={position}
           dragHandleContent={
             <DialogHeader className="text-left">
               <DialogTitle className="text-gray-900 flex items-center gap-2 select-none">
                 📝 {title}
               </DialogTitle>
-              <DialogDescription className="sr-only">Edit post-it metadata</DialogDescription>
+              <DialogDescription className="sr-only">Edit cone metadata</DialogDescription>
             </DialogHeader>
           }
         >
@@ -190,7 +190,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 value={form.desc || ""}
                 onChange={(e) => setForm({ ...form, desc: e.target.value })}
                 placeholder="짧은 설명 (UI 라벨용)"
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -202,7 +202,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
                 placeholder="자유로운 메모 (무제한 길이)"
                 rows={3}
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -213,7 +213,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
                 placeholder="쉼표로 구분 (예: core, auth, test)"
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -225,7 +225,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 onChange={(e) => setForm({ ...form, fixtureHint: e.target.value })}
                 placeholder="Fixture 생성 시 힌트 (무제한 길이)"
                 rows={4}
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -240,7 +240,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 onChange={(e) => setForm({ ...form, fixtureGenerator: e.target.value })}
                 placeholder="예: faker.internet.email()"
                 className="font-mono text-sm"
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -257,7 +257,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 }
                 onChange={(e) => setForm({ ...form, fixtureDefault: e.target.value })}
                 placeholder="기본값 (JSON 또는 문자열)"
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
 
@@ -270,7 +270,7 @@ export function PostItModal({ open, onOpenChange, title, postIt, onSave }: PostI
                 placeholder={`JSON 형식:\n{\n  "strategy": "sample",\n  "limit": 10\n}`}
                 rows={6}
                 className="font-mono text-sm"
-                style={{ backgroundColor: "var(--color-postit-input)" }}
+                style={{ backgroundColor: "var(--color-cone-input)" }}
               />
             </div>
           </div>

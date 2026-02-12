@@ -434,7 +434,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               if (updates.parentId !== undefined) entity.parentId = updates.parentId;
               if (updates.title !== undefined) entity.title = updates.title;
               if (updates.table !== undefined) entity.table = updates.table;
-              if (updates.postIt !== undefined) entity.postIt = updates.postIt;
+              if (updates.cone !== undefined) entity.cone = updates.cone;
 
               // props: merge 시 이름 기준 병합, replace 시 교체
               if (updates.props !== undefined) {

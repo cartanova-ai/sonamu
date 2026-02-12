@@ -71,8 +71,8 @@ export class FixtureGenerator {
         continue;
       }
 
-      // postIt에서 생성 전략 확인
-      const postIt = prop.postIt;
+      // cone에서 생성 전략 확인
+      const cone = prop.cone;
 
       // 1. Relation prop 처리
       if (isRelationProp(prop)) {
@@ -90,9 +90,9 @@ export class FixtureGenerator {
       }
 
       // 2. fixtureGenerator 사용
-      if (postIt?.fixtureGenerator) {
+      if (cone?.fixtureGenerator) {
         fixture[prop.name] = await this.executeGenerator(
-          postIt.fixtureGenerator as string,
+          cone.fixtureGenerator as string,
           prop,
           entity,
         );
@@ -100,8 +100,8 @@ export class FixtureGenerator {
       }
 
       // 3. fixtureDefault 사용
-      if (postIt?.fixtureDefault !== undefined) {
-        fixture[prop.name] = postIt.fixtureDefault;
+      if (cone?.fixtureDefault !== undefined) {
+        fixture[prop.name] = cone.fixtureDefault;
         continue;
       }
 
@@ -139,8 +139,8 @@ export class FixtureGenerator {
       return null;
     }
 
-    const postIt = prop.postIt;
-    const dataSource = postIt?.dataSource;
+    const cone = prop.cone;
+    const dataSource = cone?.dataSource;
 
     // DataExplorer로 참조 데이터 조회 (sourceDb)
     // 관계 체인을 따라가기 위해 exploreWithRelations 사용
@@ -206,7 +206,7 @@ export class FixtureGenerator {
     // nullable이 아니고 데이터도 없으면 에러
     throw new Error(
       `FixtureGenerator: ${entity.id}.${prop.name}에 필요한 ${prop.with} 데이터가 없습니다. ` +
-        `먼저 ${prop.with}를 생성하거나 postIt.dataSource를 설정하세요.`,
+        `먼저 ${prop.with}를 생성하거나 cone.dataSource를 설정하세요.`,
     );
   }
 
