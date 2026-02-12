@@ -1065,6 +1065,24 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         });
       });
 
+      server.post<{
+        Params: { id: string };
+      }>("/api/tasks/workflowRuns/:id/pause", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        return backend.pauseWorkflowRun({
+          workflowRunId: request.params.id,
+        });
+      });
+
+      server.post<{
+        Params: { id: string };
+      }>("/api/tasks/workflowRuns/:id/resume", async (request) => {
+        const backend = Sonamu.workflows.backend;
+        return backend.resumeWorkflowRun({
+          workflowRunId: request.params.id,
+        });
+      });
+
       server.get<{
         Params: { id: string };
         Querystring: {
