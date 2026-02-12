@@ -321,11 +321,31 @@ export class WorkflowRunHandle<Output> {
   }
 
   /**
-   * Cancels the workflow run. Only workflows in pending, running, or sleeping
-   * status can be canceled.
+   * Cancels the workflow run. Only workflows in pending, running, sleeping,
+   * or paused status can be canceled.
    */
   async cancel(): Promise<void> {
     await this.backend.cancelWorkflowRun({
+      workflowRunId: this.workflowRun.id,
+    });
+  }
+
+  /**
+   * Pauses the workflow run. Only workflows in pending, running, or sleeping
+   * status can be paused.
+   */
+  async pause(): Promise<void> {
+    await this.backend.pauseWorkflowRun({
+      workflowRunId: this.workflowRun.id,
+    });
+  }
+
+  /**
+   * Resumes a paused workflow run. Sets the status back to pending so that
+   * a worker can reclaim it.
+   */
+  async resume(): Promise<void> {
+    await this.backend.resumeWorkflowRun({
       workflowRunId: this.workflowRun.id,
     });
   }

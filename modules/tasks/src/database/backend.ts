@@ -18,6 +18,8 @@ import {
   type ListStepAttemptsParams,
   type ListWorkflowRunsParams,
   type PaginatedResponse,
+  type PauseWorkflowRunParams,
+  type ResumeWorkflowRunParams,
   type SleepWorkflowRunParams,
 } from "../backend";
 import { mergeRetryPolicy, type SerializableRetryPolicy } from "../core/retry";
@@ -587,7 +589,7 @@ export class BackendPostgres implements Backend {
       .table("workflow_runs")
       .where("namespace_id", this.namespaceId)
       .where("id", params.workflowRunId)
-      .whereIn("status", ["pending", "running", "sleeping"])
+      .whereIn("status", ["pending", "running", "sleeping", "paused"])
       .update({
         status: "canceled",
         worker_id: null,
@@ -625,6 +627,111 @@ export class BackendPostgres implements Backend {
 
       logger.error("Failed to cancel workflow run: {params}", { params });
       throw new Error("Failed to cancel workflow run");
+    }
+
+    return updated;
+  }
+
+  async pauseWorkflowRun(params: PauseWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
+    logger.info("Pausing workflow run: {workflowRunId}", { workflowRunId: params.workflowRunId });
+
+    const [updated] = await this.knex
+      .withSchema(DEFAULT_SCHEMA)
+      .table("workflow_runs")
+      .where("namespace_id", this.namespaceId)
+      .where("id", params.workflowRunId)
+      .whereIn("status", ["pending", "running", "sleeping"])
+      .update({
+        status: "paused",
+        worker_id: null,
+        available_at: null,
+        updated_at: this.knex.fn.now(),
+      })
+      .returning("*");
+
+    if (!updated) {
+      const existing = await this.getWorkflowRun({
+        workflowRunId: params.workflowRunId,
+      });
+      if (!existing) {
+        throw new Error(`Workflow run ${params.workflowRunId} does not exist`);
+      }
+
+      // 이미 paused이면 멱등하게 반환합니다.
+      if (existing.status === "paused") {
+        return existing;
+      }
+
+      // 터미널 상태에서는 pause할 수 없습니다.
+      // 'succeeded' status is deprecated
+      if (["succeeded", "completed", "failed", "canceled"].includes(existing.status)) {
+        logger.error("Cannot pause workflow run: {params} with status {status}", {
+          params,
+          status: existing.status,
+        });
+        throw new Error(
+          `Cannot pause workflow run ${params.workflowRunId} with status ${existing.status}`,
+        );
+      }
+
+      logger.error("Failed to pause workflow run: {params}", { params });
+      throw new Error("Failed to pause workflow run");
+    }
+
+    return updated;
+  }
+
+  async resumeWorkflowRun(params: ResumeWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
+    logger.info("Resuming workflow run: {workflowRunId}", { workflowRunId: params.workflowRunId });
+
+    const [updated] = await this.knex
+      .withSchema(DEFAULT_SCHEMA)
+      .table("workflow_runs")
+      .where("namespace_id", this.namespaceId)
+      .where("id", params.workflowRunId)
+      .where("status", "paused")
+      .update({
+        status: "pending",
+        available_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
+      })
+      .returning("*");
+
+    if (!updated) {
+      const existing = await this.getWorkflowRun({
+        workflowRunId: params.workflowRunId,
+      });
+      if (!existing) {
+        throw new Error(`Workflow run ${params.workflowRunId} does not exist`);
+      }
+
+      // 이미 pending/running이면 멱등하게 반환합니다.
+      if (existing.status === "pending" || existing.status === "running") {
+        return existing;
+      }
+
+      // 터미널 상태에서는 resume할 수 없습니다.
+      // 'succeeded' status is deprecated
+      if (["succeeded", "completed", "failed", "canceled"].includes(existing.status)) {
+        logger.error("Cannot resume workflow run: {params} with status {status}", {
+          params,
+          status: existing.status,
+        });
+        throw new Error(
+          `Cannot resume workflow run ${params.workflowRunId} with status ${existing.status}`,
+        );
+      }
+
+      logger.error("Failed to resume workflow run: {params}", { params });
+      throw new Error("Failed to resume workflow run");
     }
 
     return updated;

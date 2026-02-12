@@ -27,6 +27,8 @@ export interface Backend {
   completeWorkflowRun(params: Readonly<CompleteWorkflowRunParams>): Promise<WorkflowRun>;
   failWorkflowRun(params: Readonly<FailWorkflowRunParams>): Promise<WorkflowRun>;
   cancelWorkflowRun(params: Readonly<CancelWorkflowRunParams>): Promise<WorkflowRun>;
+  pauseWorkflowRun(params: Readonly<PauseWorkflowRunParams>): Promise<WorkflowRun>;
+  resumeWorkflowRun(params: Readonly<ResumeWorkflowRunParams>): Promise<WorkflowRun>;
 
   // Step Attempts
   createStepAttempt(params: Readonly<CreateStepAttemptParams>): Promise<StepAttempt>;
@@ -90,6 +92,14 @@ export interface FailWorkflowRunParams {
 }
 
 export interface CancelWorkflowRunParams {
+  workflowRunId: string;
+}
+
+export interface PauseWorkflowRunParams {
+  workflowRunId: string;
+}
+
+export interface ResumeWorkflowRunParams {
   workflowRunId: string;
 }
 

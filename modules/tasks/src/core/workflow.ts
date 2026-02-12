@@ -9,6 +9,7 @@ export type WorkflowRunStatus =
   | "pending"
   | "running"
   | "sleeping"
+  | "paused"
   | "succeeded" // deprecated in favor of 'completed'
   | "completed"
   | "failed"
