@@ -12,6 +12,8 @@ import classNames from "classnames";
 import { useEffect, useState } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
+import PauseCircleIcon from "~icons/lucide/pause-circle";
+import PlayCircleIcon from "~icons/lucide/play-circle";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import XCircleIcon from "~icons/lucide/x-circle";
 import { useSonamuContext } from "../contexts/sonamu-provider";
@@ -85,8 +87,13 @@ function StepTimeline({ steps }: { steps: StepAttempt[] }) {
 function ActiveWorkflowCard({ run }: { run: WorkflowRun }) {
   const { SD } = useSonamuContext();
   const [canceling, setCanceling] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const { data: stepsData } = SonamuUIService.useStepAttempts(run.id);
   const steps = stepsData?.data ?? [];
+
+  const isPausable = ["pending", "running", "sleeping"].includes(run.status);
+  const isResumable = run.status === "paused";
 
   const handleCancel = () => {
     if (!confirm(SD("tasks.cancelConfirm"))) return;
@@ -94,6 +101,21 @@ function ActiveWorkflowCard({ run }: { run: WorkflowRun }) {
     SonamuUIService.cancelWorkflowRun(run.id)
       .catch(defaultCatch)
       .finally(() => setCanceling(false));
+  };
+
+  const handlePause = () => {
+    if (!confirm(SD("tasks.pauseConfirm"))) return;
+    setPausing(true);
+    SonamuUIService.pauseWorkflowRun(run.id)
+      .catch(defaultCatch)
+      .finally(() => setPausing(false));
+  };
+
+  const handleResume = () => {
+    setResuming(true);
+    SonamuUIService.resumeWorkflowRun(run.id)
+      .catch(defaultCatch)
+      .finally(() => setResuming(false));
   };
 
   return (
@@ -127,6 +149,28 @@ function ActiveWorkflowCard({ run }: { run: WorkflowRun }) {
           <span className="mr-1">{SD("tasks.active.elapsed")}:</span>
           <LiveElapsedTime startedAt={run.startedAt} />
         </div>
+        {isPausable && (
+          <Button
+            size="xs"
+            variant="outline"
+            icon={<PauseCircleIcon />}
+            disabled={pausing}
+            onClick={handlePause}
+          >
+            {SD("tasks.pause")}
+          </Button>
+        )}
+        {isResumable && (
+          <Button
+            size="xs"
+            variant="outline"
+            icon={<PlayCircleIcon />}
+            disabled={resuming}
+            onClick={handleResume}
+          >
+            {SD("tasks.resume")}
+          </Button>
+        )}
         <Button
           size="xs"
           variant="destructive"
@@ -144,7 +188,7 @@ function ActiveWorkflowCard({ run }: { run: WorkflowRun }) {
 function ActiveWorkflowsSection() {
   const { SD } = useSonamuContext();
   const { data } = SonamuUIService.useWorkflowRuns({
-    status: ["pending", "running", "sleeping"],
+    status: ["pending", "running", "sleeping", "paused"],
   });
   const activeRuns = data?.data ?? [];
 

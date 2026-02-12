@@ -13,6 +13,8 @@ import { Fragment, useState } from "react";
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
+import PauseCircleIcon from "~icons/lucide/pause-circle";
+import PlayCircleIcon from "~icons/lucide/play-circle";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import XCircleIcon from "~icons/lucide/x-circle";
 import { useSonamuContext } from "../contexts/sonamu-provider";
@@ -51,6 +53,8 @@ function WorkflowRunDetailPage() {
   const locale = useLocale();
   const { workflowRunId } = Route.useParams();
   const [canceling, setCanceling] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const { data: run, error, refetch, isLoading } = SonamuUIService.useWorkflowRun(workflowRunId);
   const { data: stepsData } = SonamuUIService.useStepAttempts(workflowRunId);
@@ -67,7 +71,9 @@ function WorkflowRunDetailPage() {
     });
   };
 
-  const isCancelable = run && ["pending", "running", "sleeping"].includes(run.status);
+  const isCancelable = run && ["pending", "running", "sleeping", "paused"].includes(run.status);
+  const isPausable = run && ["pending", "running", "sleeping"].includes(run.status);
+  const isResumable = run && run.status === "paused";
 
   const handleCancel = () => {
     if (!confirm(SD("tasks.cancelConfirm"))) return;
@@ -76,6 +82,23 @@ function WorkflowRunDetailPage() {
       .then(() => refetch())
       .catch(defaultCatch)
       .finally(() => setCanceling(false));
+  };
+
+  const handlePause = () => {
+    if (!confirm(SD("tasks.pauseConfirm"))) return;
+    setPausing(true);
+    SonamuUIService.pauseWorkflowRun(workflowRunId)
+      .then(() => refetch())
+      .catch(defaultCatch)
+      .finally(() => setPausing(false));
+  };
+
+  const handleResume = () => {
+    setResuming(true);
+    SonamuUIService.resumeWorkflowRun(workflowRunId)
+      .then(() => refetch())
+      .catch(defaultCatch)
+      .finally(() => setResuming(false));
   };
 
   if (error) {
@@ -119,6 +142,28 @@ function WorkflowRunDetailPage() {
             >
               {run.status.toUpperCase()}
             </span>
+            {isPausable && (
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<PauseCircleIcon />}
+                disabled={pausing}
+                onClick={handlePause}
+              >
+                {SD("tasks.pause")}
+              </Button>
+            )}
+            {isResumable && (
+              <Button
+                size="sm"
+                variant="outline"
+                icon={<PlayCircleIcon />}
+                disabled={resuming}
+                onClick={handleResume}
+              >
+                {SD("tasks.resume")}
+              </Button>
+            )}
             {isCancelable && (
               <Button
                 size="sm"

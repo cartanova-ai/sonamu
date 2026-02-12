@@ -593,6 +593,20 @@ export namespace SonamuUIService {
     });
   }
 
+  export function pauseWorkflowRun(id: string): Promise<WorkflowRun> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/tasks/workflowRuns/${id}/pause`,
+    });
+  }
+
+  export function resumeWorkflowRun(id: string): Promise<WorkflowRun> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/tasks/workflowRuns/${id}/resume`,
+    });
+  }
+
   export function updateEntityCone(entityId: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",
@@ -650,6 +664,7 @@ export type WorkflowRunStatus =
   | "pending"
   | "running"
   | "sleeping"
+  | "paused"
   | "succeeded"
   | "completed"
   | "failed"
