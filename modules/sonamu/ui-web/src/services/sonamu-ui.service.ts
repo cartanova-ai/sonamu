@@ -532,6 +532,9 @@ export namespace SonamuUIService {
     after?: string;
     before?: string;
     status?: string[];
+    workflowName?: string;
+    createdAfter?: string;
+    createdBefore?: string;
   }) {
     return useQuery({
       queryKey: ["tasks", "workflowRuns", params],
@@ -544,6 +547,9 @@ export namespace SonamuUIService {
             ...(params?.after ? { after: params.after } : {}),
             ...(params?.before ? { before: params.before } : {}),
             ...(params?.status?.length ? { status: params.status.join(",") } : {}),
+            ...(params?.workflowName ? { workflowName: params.workflowName } : {}),
+            ...(params?.createdAfter ? { createdAfter: params.createdAfter } : {}),
+            ...(params?.createdBefore ? { createdBefore: params.createdBefore } : {}),
             order: "desc",
           },
         }) as Promise<TasksPaginatedResponse<WorkflowRun>>,

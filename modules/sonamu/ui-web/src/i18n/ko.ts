@@ -193,4 +193,9 @@ export default {
   "tasks.active.title": "실행 중인 워크플로우",
   "tasks.active.noStepsYet": "아직 실행된 Step이 없습니다",
   "tasks.active.elapsed": "경과",
+  "tasks.filter.status": "상태",
+  "tasks.filter.workflowName": "워크플로우",
+  "tasks.filter.createdAfter": "시작일",
+  "tasks.filter.createdBefore": "종료일",
+  "tasks.filter.reset": "초기화",
 } as const;

@@ -1030,16 +1030,23 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           before?: string;
           order?: "asc" | "desc";
           status?: string;
+          workflowName?: string;
+          createdAfter?: string;
+          createdBefore?: string;
         };
       }>("/api/tasks/workflowRuns", async (request) => {
         const backend = Sonamu.workflows.backend;
-        const { limit, after, before, order, status } = request.query;
+        const { limit, after, before, order, status, workflowName, createdAfter, createdBefore } =
+          request.query;
         return backend.listWorkflowRuns({
           limit: limit ? Number.parseInt(limit, 10) : undefined,
           after,
           before,
           order,
           status: status ? status.split(",") : undefined,
+          workflowName: workflowName || undefined,
+          createdAfter: createdAfter ? new Date(createdAfter) : undefined,
+          createdBefore: createdBefore ? new Date(createdBefore) : undefined,
         });
       });
 

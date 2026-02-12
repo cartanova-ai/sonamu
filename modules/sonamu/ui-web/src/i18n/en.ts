@@ -198,6 +198,11 @@ const en: Record<DictKey, Dictionary[string]> = {
   "tasks.active.title": "Active Workflows",
   "tasks.active.noStepsYet": "No steps executed yet",
   "tasks.active.elapsed": "Elapsed",
+  "tasks.filter.status": "Status",
+  "tasks.filter.workflowName": "Workflow",
+  "tasks.filter.createdAfter": "From",
+  "tasks.filter.createdBefore": "To",
+  "tasks.filter.reset": "Reset",
 };
 
 export default en;

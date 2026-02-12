@@ -1,5 +1,7 @@
 import {
   Button,
+  DatePicker,
+  EnumSelect,
   Table,
   TableBody,
   TableCell,
@@ -9,12 +11,13 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import classNames from "classnames";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import PauseCircleIcon from "~icons/lucide/pause-circle";
 import PlayCircleIcon from "~icons/lucide/play-circle";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import RotateCcwIcon from "~icons/lucide/rotate-ccw";
 import XCircleIcon from "~icons/lucide/x-circle";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
@@ -26,6 +29,27 @@ import {
   type WorkflowRun,
 } from "../services/sonamu-ui.service";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";
+
+const WORKFLOW_RUN_STATUS_OPTIONS = [
+  "pending",
+  "running",
+  "sleeping",
+  "paused",
+  "completed",
+  "failed",
+  "canceled",
+] as const;
+type FilterableStatus = (typeof WORKFLOW_RUN_STATUS_OPTIONS)[number];
+const WorkflowRunStatusEnum = { options: WORKFLOW_RUN_STATUS_OPTIONS };
+const WORKFLOW_RUN_STATUS_LABELS: Record<FilterableStatus, string> = {
+  pending: "PENDING",
+  running: "RUNNING",
+  sleeping: "SLEEPING",
+  paused: "PAUSED",
+  completed: "COMPLETED",
+  failed: "FAILED",
+  canceled: "CANCELED",
+};
 
 function formatMs(ms: number): string {
   if (ms >= 60000) return `${ms / 60000}m`;
@@ -216,17 +240,40 @@ function TasksIndex() {
   const PAGE_SIZE = 50;
 
   const [cursors, setCursors] = useState<{ after?: string; before?: string }>({});
+  const [filterStatus, setFilterStatus] = useState<FilterableStatus[]>([]);
+  const [filterWorkflowName, setFilterWorkflowName] = useState<string>("");
+  const [filterCreatedAfter, setFilterCreatedAfter] = useState<Date | undefined>();
+  const [filterCreatedBefore, setFilterCreatedBefore] = useState<Date | undefined>();
+
+  const { data: defData } = SonamuUIService.useWorkflowDefinitions();
+  const definitions = defData?.definitions ?? [];
+
+  // definitions에서 워크플로우 이름 목록을 추출합니다.
+  const workflowNameEnum = useMemo(() => {
+    const names = definitions.map((d) => d.name);
+    return { options: names };
+  }, [definitions]);
+  const workflowNameLabels = useMemo(() => {
+    return Object.fromEntries(definitions.map((d) => [d.name, d.name])) as Record<string, string>;
+  }, [definitions]);
+
+  const hasActiveFilter =
+    filterStatus.length > 0 ||
+    filterWorkflowName !== "" ||
+    filterCreatedAfter ||
+    filterCreatedBefore;
 
   const { data, error, refetch, isLoading } = SonamuUIService.useWorkflowRuns({
     limit: PAGE_SIZE,
     ...cursors,
+    ...(filterStatus.length > 0 ? { status: filterStatus } : {}),
+    ...(filterWorkflowName ? { workflowName: filterWorkflowName } : {}),
+    ...(filterCreatedAfter ? { createdAfter: filterCreatedAfter.toISOString() } : {}),
+    ...(filterCreatedBefore ? { createdBefore: filterCreatedBefore.toISOString() } : {}),
   });
 
   const workflowRuns = data?.data ?? [];
   const pagination = data?.pagination;
-
-  const { data: defData } = SonamuUIService.useWorkflowDefinitions();
-  const definitions = defData?.definitions ?? [];
 
   if (error) {
     return (
@@ -291,6 +338,86 @@ function TasksIndex() {
               {SD("common.refresh")}
             </Button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 shrink-0">{SD("tasks.filter.status")}</label>
+            <EnumSelect
+              enum={WorkflowRunStatusEnum}
+              labels={WORKFLOW_RUN_STATUS_LABELS}
+              value={filterStatus}
+              onValueChange={(v) => {
+                setFilterStatus((v as FilterableStatus[]) ?? []);
+                setCursors({});
+              }}
+              multiple
+              placeholder={SD("common.all")}
+              className="w-[200px]"
+            />
+          </div>
+          {workflowNameEnum.options.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-gray-500 shrink-0">
+                {SD("tasks.filter.workflowName")}
+              </label>
+              <EnumSelect
+                enum={workflowNameEnum}
+                labels={workflowNameLabels}
+                value={filterWorkflowName}
+                onValueChange={(v) => {
+                  setFilterWorkflowName((v as string) ?? "");
+                  setCursors({});
+                }}
+                clearable
+                placeholder={SD("common.all")}
+                className="w-[200px]"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 shrink-0">
+              {SD("tasks.filter.createdAfter")}
+            </label>
+            <DatePicker
+              value={filterCreatedAfter}
+              onValueChange={(v) => {
+                setFilterCreatedAfter(v);
+                setCursors({});
+              }}
+              className="w-[180px]"
+            />
+          </div>
+          <span className="text-gray-400">~</span>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 shrink-0">
+              {SD("tasks.filter.createdBefore")}
+            </label>
+            <DatePicker
+              value={filterCreatedBefore}
+              onValueChange={(v) => {
+                setFilterCreatedBefore(v);
+                setCursors({});
+              }}
+              className="w-[180px]"
+            />
+          </div>
+          {hasActiveFilter && (
+            <Button
+              size="xs"
+              variant="outline"
+              icon={<RotateCcwIcon />}
+              onClick={() => {
+                setFilterStatus([]);
+                setFilterWorkflowName("");
+                setFilterCreatedAfter(undefined);
+                setFilterCreatedBefore(undefined);
+                setCursors({});
+              }}
+            >
+              {SD("tasks.filter.reset")}
+            </Button>
+          )}
         </div>
 
         {isLoading && <div className="text-center py-8">{SD("common.loading")}</div>}
