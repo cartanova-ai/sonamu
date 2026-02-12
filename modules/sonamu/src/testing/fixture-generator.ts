@@ -4,32 +4,44 @@ import type { Entity } from "../entity/entity";
 import type { EntityManager } from "../entity/entity-manager";
 import type { EntityProp, FixtureImportResult, FixtureRecord } from "../types/types";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
-import { DataExplorer, type ExploreWithRelationsOptions } from "./data-explorer";
+import {
+  DataExplorer,
+  type ExploreWithRelationsOptions,
+  type ExploreWithRelationsResult,
+} from "./data-explorer";
+import { type FakerMappings, fakerMappings } from "./faker-mappings";
 import { FixtureManager } from "./fixture-manager";
 
+export type Locale = "ko" | "en" | "ja";
+
 export type GeneratorContext = {
-  // 생성 중인 fixture들 (메모리 상)
+  /** 생성 중인 fixture들 (메모리 상) */
   fixtures: Map<string, Record<string, unknown>>;
 
-  // 참조 데이터 캐시 (DataExplorer 결과)
+  /** 참조 데이터 캐시 (DataExplorer 결과) */
   referenceCache: Map<string, Record<string, unknown>[]>;
 
-  // 이미 import된 레코드 추적 (중복 import 방지)
+  /** 이미 import된 레코드를 추적하여 중복 import를 방지합니다 */
   importedRecords: Set<string>; // "User#123"
 };
 
 export class FixtureGenerator {
   private dataExplorer: DataExplorer;
+  private locale: Locale;
+  private mappings: FakerMappings;
 
   constructor(
-    private sourceDb: Knex, // 참조 데이터 조회용
-    // targetDb는 FixtureManager.insertFixtures가 dbName(문자열)을 받기 때문에 직접 사용하지 않음
-    _targetDb: Knex, // 저장용 (Fixture DB) - 미래 확장을 위해 API에 포함
-    private targetDbName: "fixture" | "test" | "production_master", // targetDb의 이름
+    private sourceDb: Knex,
+    // FixtureManager.insertFixtures가 dbName 문자열을 받기 때문에 직접 사용하지 않습니다
+    // 미래 확장성을 위해 API 시그니처에는 포함시켰습니다
+    _targetDb: Knex,
+    private targetDbName: "fixture" | "test" | "production_master",
     private entityManager: typeof EntityManager,
+    options?: { locale?: Locale },
   ) {
-    // DataExplorer는 sourceDb 사용
     this.dataExplorer = new DataExplorer(sourceDb, entityManager);
+    this.locale = options?.locale || "ko";
+    this.mappings = fakerMappings;
   }
 
   /**
@@ -131,22 +143,25 @@ export class FixtureGenerator {
     const dataSource = postIt?.dataSource;
 
     // DataExplorer로 참조 데이터 조회 (sourceDb)
+    // 관계 체인을 따라가기 위해 exploreWithRelations 사용
     if (dataSource) {
       const cacheKey = `${prop.with}:${JSON.stringify(dataSource)}`;
 
       if (!context.referenceCache.has(cacheKey)) {
-        const data = await this.dataExplorer.explore(prop.with, {
+        const exploreResult = await this.dataExplorer.exploreWithRelations(prop.with, {
           strategy: dataSource.strategy,
           limit:
             ((dataSource.config as Record<string, unknown> | undefined)?.limit as
               | number
               | undefined) || 10,
+          includeRelations: true,
+          maxDepth: 3,
           ...(dataSource.config as Record<string, unknown> | undefined),
         });
-        context.referenceCache.set(cacheKey, data);
+        context.referenceCache.set(cacheKey, exploreResult.main.records);
 
-        // 조회한 데이터를 targetDb에 자동 import
-        await this.importReferencedData(prop.with, data, context);
+        // 조회한 데이터와 관계된 모든 엔티티를 targetDb에 import
+        await this.importExploreResult(exploreResult, context);
       }
 
       const candidates = context.referenceCache.get(cacheKey);
@@ -158,18 +173,21 @@ export class FixtureGenerator {
     }
 
     // dataSource가 없을 때 자동으로 fixture DB에서 조회 시도
+    // 관계 체인을 따라가기 위해 exploreWithRelations 사용
     const autoKey = `${prop.with}:auto`;
     if (!context.referenceCache.has(autoKey)) {
-      // fixture DB(sourceDb)에서 자동 조회
-      const autoData = await this.dataExplorer.explore(prop.with, {
+      // fixture DB(sourceDb)에서 자동 조회 (관계 포함)
+      const autoExploreResult = await this.dataExplorer.exploreWithRelations(prop.with, {
         strategy: "random",
         limit: 10,
+        includeRelations: true,
+        maxDepth: 3,
       });
-      context.referenceCache.set(autoKey, autoData);
+      context.referenceCache.set(autoKey, autoExploreResult.main.records);
 
-      // 조회한 데이터를 targetDb에 자동 import
-      if (autoData.length > 0) {
-        await this.importReferencedData(prop.with, autoData, context);
+      // 조회한 데이터와 관계된 모든 엔티티를 targetDb에 import
+      if (autoExploreResult.main.records.length > 0) {
+        await this.importExploreResult(autoExploreResult, context);
       }
     }
 
@@ -193,51 +211,93 @@ export class FixtureGenerator {
   }
 
   /**
-   * 참조된 데이터를 targetDb에 import
+   * ExploreWithRelations 결과를 targetDb에 import
+   *
+   * 관계 체인을 따라간 결과(main + related)를 모두 import합니다.
+   * 의존성 순서는 FixtureManager.insertFixtures가 자동으로 처리합니다.
    */
-  private async importReferencedData(
-    entityName: string,
-    records: Record<string, unknown>[],
+  private async importExploreResult(
+    exploreResult: ExploreWithRelationsResult,
     context: GeneratorContext,
   ): Promise<void> {
-    const entity = this.entityManager.get(entityName);
-    const recordsToImport: Record<string, unknown>[] = [];
+    const allFixtureRecords: FixtureRecord[] = [];
 
-    for (const record of records) {
-      const recordKey = `${entityName}#${record.id}`;
+    // 1. Related entities import (Company, Department 등)
+    for (const [entityId, records] of exploreResult.related.entries()) {
+      const entity = this.entityManager.get(entityId);
+      const recordsToImport: Record<string, unknown>[] = [];
 
-      // 이미 import된 레코드는 스킵
-      if (context.importedRecords.has(recordKey)) {
-        continue;
+      console.log(chalk.cyan(`Importing related entity: ${entityId} (${records.length} records)`));
+
+      for (const record of records) {
+        const recordKey = `${entityId}#${record.id}`;
+        if (!context.importedRecords.has(recordKey)) {
+          recordsToImport.push(record);
+          context.importedRecords.add(recordKey);
+        }
       }
 
-      recordsToImport.push(record);
-      context.importedRecords.add(recordKey);
+      if (recordsToImport.length > 0) {
+        for (const record of recordsToImport) {
+          console.log(
+            chalk.gray(`  - Processing ${entityId} record:`, JSON.stringify(record).slice(0, 100)),
+          );
+          const fixtureRecords = await FixtureManager.createFixtureRecord(
+            entity,
+            record as { id: number | string; [key: string]: string | number | boolean | null },
+            { _db: this.sourceDb, singleRecord: true },
+          );
+          allFixtureRecords.push(...fixtureRecords);
+        }
+      }
     }
 
-    if (recordsToImport.length === 0) {
-      return;
-    }
-
-    // FixtureRecord로 변환
-    const fixtureRecords: FixtureRecord[] = [];
-    for (const record of recordsToImport) {
-      const records = await FixtureManager.createFixtureRecord(
-        entity,
-        record as { id: number; [key: string]: string | number | boolean | null },
-        { _db: this.sourceDb, singleRecord: true },
-      );
-      fixtureRecords.push(...records);
-    }
-
-    // targetDb에 삽입
-    await FixtureManager.insertFixtures(this.targetDbName, fixtureRecords);
+    // 2. Main entity import (Employee 등)
+    const mainEntity = this.entityManager.get(exploreResult.main.entityId);
+    const mainRecordsToImport: Record<string, unknown>[] = [];
 
     console.log(
-      chalk.green(
-        `Auto-imported ${recordsToImport.length} ${entityName} records to ${this.targetDbName}`,
+      chalk.cyan(
+        `Importing main entity: ${exploreResult.main.entityId} (${exploreResult.main.records.length} records)`,
       ),
     );
+
+    for (const record of exploreResult.main.records) {
+      const recordKey = `${exploreResult.main.entityId}#${record.id}`;
+      if (!context.importedRecords.has(recordKey)) {
+        mainRecordsToImport.push(record);
+        context.importedRecords.add(recordKey);
+      }
+    }
+
+    if (mainRecordsToImport.length > 0) {
+      for (const record of mainRecordsToImport) {
+        console.log(
+          chalk.gray(
+            `  - Processing ${exploreResult.main.entityId} record:`,
+            JSON.stringify(record).slice(0, 100),
+          ),
+        );
+        const fixtureRecords = await FixtureManager.createFixtureRecord(
+          mainEntity,
+          record as { id: number | string; [key: string]: string | number | boolean | null },
+          { _db: this.sourceDb, singleRecord: true },
+        );
+        allFixtureRecords.push(...fixtureRecords);
+      }
+    }
+
+    // 3. 모든 fixture를 한 번에 삽입 (의존성 순서 자동 처리)
+    if (allFixtureRecords.length > 0) {
+      await FixtureManager.insertFixtures(this.targetDbName, allFixtureRecords);
+
+      console.log(
+        chalk.green(
+          `Auto-imported ${exploreResult.main.entityId} with relations: ` +
+            `${exploreResult.main.records.length} main + ${exploreResult.related.size} related entities`,
+        ),
+      );
+    }
   }
 
   /**
@@ -334,58 +394,153 @@ export class FixtureGenerator {
   }
 
   /**
-   * 타입별 기본값 생성 (Faker.js 사용)
+   * 필드의 타입과 이름을 분석하여 적절한 기본값을 생성합니다.
+   *
+   * 우선순위:
+   * 1. 필드명 패턴 매칭 (salary, budget 등 의미있는 데이터)
+   * 2. 특수 케이스 (Department name 등 도메인 지식)
+   * 3. 배열 타입 (JSON 배열)
+   * 4. Enum 타입
+   * 5. 타입별 기본값
    */
   private async generateDefaultValue(prop: EntityProp, entity?: Entity): Promise<unknown> {
     const fakerModule = await import("@faker-js/faker");
     const faker = fakerModule.faker;
     const fakerKO = fakerModule.fakerKO;
+    const fakerJA = fakerModule.fakerJA;
 
+    const localeFaker = this.locale === "ko" ? fakerKO : this.locale === "ja" ? fakerJA : faker;
+
+    /**
+     * 1. 필드명에서 의미를 추론하여 현실적인 데이터를 생성합니다.
+     * 예: salary → 30M~150M (한국 연봉 범위)
+     *     budget → 10M~500M (프로젝트 예산 범위)
+     */
+    const localeMappings = this.mappings[this.locale] || this.mappings.en;
+    const normalizedName = prop.name.toLowerCase().replace(/_/g, "");
+
+    for (const [pattern, config] of Object.entries(localeMappings.field_patterns)) {
+      if (normalizedName.includes(pattern.toLowerCase())) {
+        try {
+          return await this.executeFakerExpression(config.faker, prop);
+        } catch (error) {
+          console.log(
+            chalk.yellow(
+              `Failed to execute field pattern "${pattern}" for ${prop.name}, falling back:`,
+            ),
+            error,
+          );
+          break;
+        }
+      }
+    }
+
+    /**
+     * 2. Department name은 한국어 부서명 목록에서 선택합니다.
+     * 고유성을 위해 70% 확률로 prefix/suffix를 추가합니다.
+     */
+    if (entity?.id === "Department" && prop.name === "name") {
+      const departments = [
+        "개발팀",
+        "기획팀",
+        "마케팅팀",
+        "영업팀",
+        "인사팀",
+        "총무팀",
+        "재무팀",
+        "회계팀",
+        "법무팀",
+        "디자인팀",
+        "IT팀",
+        "고객지원팀",
+        "품질관리팀",
+        "연구개발팀",
+        "생산팀",
+        "구매팀",
+        "물류팀",
+      ];
+      const prefixes = ["신규", "통합", "전략", "글로벌", "디지털", "핵심"];
+      const suffixes = ["1팀", "2팀", "3팀", "A팀", "B팀", "본부", "센터", "그룹"];
+
+      const dept = faker.helpers.arrayElement(departments);
+
+      const random = Math.random();
+      if (random > 0.7) {
+        const prefix = faker.helpers.arrayElement(prefixes);
+        return `${prefix} ${dept}`;
+      }
+      if (random > 0.4) {
+        const suffix = faker.helpers.arrayElement(suffixes);
+        return `${dept} ${suffix}`;
+      }
+      return dept;
+    }
+
+    /**
+     * 3. JSON 타입이면서 배열인 경우 (SonamuFile[], string[] 등)
+     * 필드명 패턴을 보고 적절한 배열 데이터를 생성합니다.
+     */
+    if (prop.type === "json" && "id" in prop && prop.id) {
+      if (prop.id.endsWith("[]")) {
+        return this.generateArrayValue(prop, entity, faker, localeFaker);
+      }
+    }
+
+    /** 4. Enum 타입은 정의된 값 중 하나를 랜덤 선택합니다 */
+    if (prop.type === "enum") {
+      let enumValues: string[] = [];
+
+      if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+        enumValues = prop.enum;
+      } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+        enumValues = Object.keys(entity.enumLabels[prop.id]);
+      }
+
+      if (enumValues.length > 0) {
+        return faker.helpers.arrayElement(enumValues);
+      }
+      return prop.nullable ? null : "UNKNOWN";
+    }
+
+    if (prop.type === "enum[]") {
+      let enumValues: string[] = [];
+
+      if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+        enumValues = prop.enum;
+      } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+        enumValues = Object.keys(entity.enumLabels[prop.id]);
+      }
+
+      if (enumValues.length > 0) {
+        return [faker.helpers.arrayElement(enumValues)];
+      }
+      return [];
+    }
+
+    /**
+     * 5. Vector 타입은 현재 지원하지 않으므로 null을 반환합니다.
+     * 향후 AI embedding 생성 기능 추가 시 구현 예정입니다.
+     */
+    if (prop.type === "vector" || prop.type === "vector[]" || prop.type === "tsvector") {
+      return null;
+    }
+
+    /** 6. 타입별 기본 Faker 표현식을 실행합니다 */
+    const typeDefault = localeMappings.type_defaults[prop.type];
+    if (typeDefault) {
+      try {
+        return await this.executeFakerExpression(typeDefault.faker, prop);
+      } catch (error) {
+        console.log(
+          chalk.yellow(`Failed to execute type default for ${prop.type}, using fallback:`, error),
+        );
+      }
+    }
+
+    /** 7. 매핑되지 않은 타입은 기본 Faker 함수로 처리합니다 */
     switch (prop.type) {
       case "string":
       case "string[]":
-        // Department의 name 필드는 한국어 부서명 생성
-        if (entity?.id === "Department" && prop.name === "name") {
-          const departments = [
-            "개발팀",
-            "기획팀",
-            "마케팅팀",
-            "영업팀",
-            "인사팀",
-            "총무팀",
-            "재무팀",
-            "회계팀",
-            "법무팀",
-            "디자인팀",
-            "IT팀",
-            "고객지원팀",
-            "품질관리팀",
-            "연구개발팀",
-            "생산팀",
-            "구매팀",
-            "물류팀",
-          ];
-          const prefixes = ["신규", "통합", "전략", "글로벌", "디지털", "핵심"];
-          const suffixes = ["1팀", "2팀", "3팀", "A팀", "B팀", "본부", "센터", "그룹"];
-
-          const dept = faker.helpers.arrayElement(departments);
-
-          // 70% 확률로 prefix 또는 suffix 추가하여 고유성 확보
-          const random = Math.random();
-          if (random > 0.7) {
-            const prefix = faker.helpers.arrayElement(prefixes);
-            return `${prefix} ${dept}`;
-          }
-          if (random > 0.4) {
-            const suffix = faker.helpers.arrayElement(suffixes);
-            return `${dept} ${suffix}`;
-          }
-          return dept;
-        }
-        // 일반 name 필드는 한국어 사람 이름 생성
-        if (prop.name === "name" || prop.name === "username") {
-          return fakerKO.person.fullName();
-        }
         return faker.lorem.words(3);
       case "integer":
         return faker.number.int({ min: 1, max: 1000 });
@@ -413,44 +568,139 @@ export class FixtureGenerator {
       case "uuid":
       case "uuid[]":
         return faker.string.uuid();
-      case "enum": {
-        // enum 타입은 prop.enum 또는 entity.enumLabels[prop.id]에 정의되어 있습니다
-        let enumValues: string[] = [];
-
-        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
-          enumValues = prop.enum;
-        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
-          // entity.enumLabels에서 enum 키들을 추출합니다
-          enumValues = Object.keys(entity.enumLabels[prop.id]);
-        }
-
-        if (enumValues.length > 0) {
-          return faker.helpers.arrayElement(enumValues);
-        }
-        // enum 값이 없으면 nullable 여부에 따라 처리합니다
-        return prop.nullable ? null : "UNKNOWN";
-      }
-      case "enum[]": {
-        let enumValues: string[] = [];
-
-        if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
-          enumValues = prop.enum;
-        } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
-          enumValues = Object.keys(entity.enumLabels[prop.id]);
-        }
-
-        if (enumValues.length > 0) {
-          return [faker.helpers.arrayElement(enumValues)];
-        }
-        return [];
-      }
-      case "vector":
-      case "vector[]":
-      case "tsvector":
-        return null;
       default:
         return null;
     }
+  }
+
+  /**
+   * 배열 타입의 값을 생성합니다.
+   *
+   * 타입 ID와 필드명 패턴을 분석하여 적절한 배열 데이터를 생성합니다.
+   * 예: image_urls → [{url, name, mime_type}, ...]
+   *     tag_ids → [1, 23, 45]
+   */
+  private generateArrayValue(
+    prop: EntityProp,
+    _entity: Entity | undefined,
+    faker: typeof import("@faker-js/faker").faker,
+    _localeFaker: typeof import("@faker-js/faker").faker,
+  ): unknown[] {
+    const count = faker.number.int({ min: 1, max: 3 });
+
+    /** SonamuFile[]은 Sonamu 내장 타입으로 구조가 정해져 있습니다 */
+    if ("id" in prop && prop.id === "SonamuFile[]") {
+      return Array.from({ length: count }, () => ({
+        url: faker.image.url(),
+        name: faker.system.fileName(),
+        mime_type: faker.helpers.arrayElement([
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "application/pdf",
+        ]),
+      }));
+    }
+
+    /** 필드명에서 배열의 용도를 추론합니다 */
+    const normalizedName = prop.name.toLowerCase().replace(/_/g, "");
+
+    if (normalizedName.includes("url") || normalizedName.includes("image")) {
+      return Array.from({ length: count }, () => faker.internet.url());
+    }
+
+    if (normalizedName.includes("id") && normalizedName.endsWith("s")) {
+      return Array.from({ length: count }, () => faker.number.int({ min: 1, max: 100 }));
+    }
+
+    if (normalizedName.includes("tag") || normalizedName.includes("name")) {
+      return Array.from({ length: count }, () => faker.lorem.word());
+    }
+
+    /** 패턴 매칭되지 않으면 빈 배열을 반환합니다 */
+    return [];
+  }
+
+  /**
+   * JSON 매핑의 Faker 표현식을 파싱하여 실행합니다.
+   *
+   * 표현식 예시:
+   * - "faker.internet.email()" → 인자 없음
+   * - "faker.number.int({ min: 1, max: 100 })" → JSON 인자
+   * - "{}" → 리터럴 값 (JSON.parse)
+   *
+   * fakerKO, fakerJA도 지원하여 다국어 데이터를 생성합니다.
+   */
+  private async executeFakerExpression(expression: string, prop: EntityProp): Promise<unknown> {
+    const fakerModule = await import("@faker-js/faker");
+    const faker = fakerModule.faker;
+    const fakerKO = fakerModule.fakerKO;
+    const fakerJA = fakerModule.fakerJA;
+
+    /** Faker 표현식이 아닌 리터럴 값은 JSON으로 파싱합니다 */
+    if (!expression.startsWith("faker")) {
+      try {
+        return JSON.parse(expression);
+      } catch {
+        return expression;
+      }
+    }
+
+    /** 표현식에서 Faker 객체와 경로를 추출합니다 */
+    const match = expression.match(/^(faker|fakerKO|fakerJA)\.(.*?)$/);
+    if (!match) {
+      throw new Error(`Invalid faker expression: ${expression}`);
+    }
+
+    const [, fakerName, expr] = match;
+    const selectedFaker =
+      fakerName === "fakerKO" ? fakerKO : fakerName === "fakerJA" ? fakerJA : faker;
+
+    const funcMatch = expr.match(/^([\w.]+)(?:\((.*?)\))?$/);
+    if (!funcMatch) {
+      throw new Error(`Invalid faker expression for ${prop.name}: ${expression}`);
+    }
+
+    const [, path, argsStr] = funcMatch;
+    const parts = path.split(".");
+
+    /** 점 표기법(dot notation)으로 Faker 함수를 찾아갑니다 */
+    let fn: unknown = selectedFaker;
+    for (const part of parts) {
+      if (typeof fn === "object" && fn !== null && part in fn) {
+        fn = (fn as Record<string, unknown>)[part];
+      } else {
+        throw new Error(`Invalid faker path for ${prop.name}: ${fakerName}.${path}`);
+      }
+    }
+
+    if (typeof fn !== "function") {
+      throw new Error(`${fakerName}.${path} is not a function (for ${prop.name})`);
+    }
+
+    /** 함수 인자를 JSON으로 파싱합니다 */
+    let args: unknown[] = [];
+    if (argsStr?.trim()) {
+      try {
+        const parsed = JSON.parse(`[${argsStr}]`) as unknown;
+        args = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        /** JSON 파싱 실패 시 단순 숫자/문자열로 시도합니다 */
+        const trimmed = argsStr.trim();
+        if (!Number.isNaN(Number(trimmed))) {
+          args = [Number(trimmed)];
+        } else if (
+          (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'"))
+        ) {
+          args = [trimmed.slice(1, -1)];
+        } else {
+          throw new Error(`Cannot parse arguments for ${prop.name}: ${argsStr}`);
+        }
+      }
+    }
+
+    return fn(...args);
   }
 
   /**
@@ -561,7 +811,7 @@ export class FixtureGenerator {
     for (const record of exploreResult.main.records) {
       const records = await FixtureManager.createFixtureRecord(
         mainEntity,
-        record as { id: number; [key: string]: string | number | boolean | null },
+        record as { id: number | string; [key: string]: string | number | boolean | null },
         { _db: this.sourceDb, singleRecord: true },
       );
       fixtureRecords.push(...records);
@@ -573,7 +823,7 @@ export class FixtureGenerator {
       for (const record of relatedRecords) {
         const records = await FixtureManager.createFixtureRecord(
           relatedEntity,
-          record as { id: number; [key: string]: string | number | boolean | null },
+          record as { id: number | string; [key: string]: string | number | boolean | null },
           { _db: this.sourceDb, singleRecord: true },
         );
         fixtureRecords.push(...records);

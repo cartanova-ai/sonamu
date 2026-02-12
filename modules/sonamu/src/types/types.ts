@@ -1565,7 +1565,7 @@ type ColumnValue = string | number | boolean | Date | null;
 export type FixtureRecord = {
   fixtureId: string;
   entityId: string;
-  id: number;
+  id: number | string;
   columns: {
     [key: string]: {
       prop: EntityProp;
