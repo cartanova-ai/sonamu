@@ -395,6 +395,11 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!updated) {
+      const wr = await this.getWorkflowRun({ workflowRunId: params.workflowRunId });
+      if (wr && (wr.status === "paused" || wr.status === "canceled")) {
+        throw new Error("Workflow run is paused or canceled");
+      }
+
       logger.error("Failed to extend lease for workflow run: {params}", { params });
       throw new Error("Failed to extend lease for workflow run");
     }
