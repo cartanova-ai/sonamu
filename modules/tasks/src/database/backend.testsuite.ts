@@ -912,7 +912,7 @@ export function testBackend(options: TestBackendOptions): void {
         expect(fetched?.finishedAt).not.toBeNull();
       });
 
-      test("returns null when workflow is not running", async () => {
+      test("throws when workflow is not running", async () => {
         const backend = await setup();
         await createPendingWorkflowRun(backend);
 
@@ -941,31 +941,33 @@ export function testBackend(options: TestBackendOptions): void {
           output: null,
         });
 
-        // 워크플로우가 running이 아니면 null을 반환합니다.
-        const result = await backend.completeStepAttempt({
-          workflowRunId: claimed.id,
-          stepAttemptId: stepAttempt.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
-          workerId: claimed.workerId!,
-          output: { foo: "bar" },
-        });
-        expect(result).toBeNull();
+        // try to complete the step attempt
+        await expect(
+          backend.completeStepAttempt({
+            workflowRunId: claimed.id,
+            stepAttemptId: stepAttempt.id,
+            // biome-ignore lint/style/noNonNullAssertion: for test
+            workerId: claimed.workerId!,
+            output: { foo: "bar" },
+          }),
+        ).rejects.toThrow("Failed to mark step attempt completed");
 
         await teardown(backend);
       });
 
-      test("returns null when step attempt does not exist", async () => {
+      test("throws when step attempt does not exist", async () => {
         const backend = await setup();
         const claimed = await createClaimedWorkflowRun(backend);
 
-        const result = await backend.completeStepAttempt({
-          workflowRunId: claimed.id,
-          stepAttemptId: randomUUID(),
-          // biome-ignore lint/style/noNonNullAssertion: for test
-          workerId: claimed.workerId!,
-          output: { foo: "bar" },
-        });
-        expect(result).toBeNull();
+        await expect(
+          backend.completeStepAttempt({
+            workflowRunId: claimed.id,
+            stepAttemptId: randomUUID(),
+            // biome-ignore lint/style/noNonNullAssertion: for test
+            workerId: claimed.workerId!,
+            output: { foo: "bar" },
+          }),
+        ).rejects.toThrow("Failed to mark step attempt completed");
 
         await teardown(backend);
       });
@@ -1017,7 +1019,7 @@ export function testBackend(options: TestBackendOptions): void {
         expect(fetched?.finishedAt).not.toBeNull();
       });
 
-      test("returns null when workflow is not running", async () => {
+      test("throws when workflow is not running", async () => {
         const backend = await setup();
         await createPendingWorkflowRun(backend);
 
@@ -1046,31 +1048,33 @@ export function testBackend(options: TestBackendOptions): void {
           output: null,
         });
 
-        // 워크플로우가 running이 아니면 null을 반환합니다.
-        const result = await backend.failStepAttempt({
-          workflowRunId: claimed.id,
-          stepAttemptId: stepAttempt.id,
-          // biome-ignore lint/style/noNonNullAssertion: for test
-          workerId: claimed.workerId!,
-          error: { message: "nope" },
-        });
-        expect(result).toBeNull();
+        // try to fail the step attempt
+        await expect(
+          backend.failStepAttempt({
+            workflowRunId: claimed.id,
+            stepAttemptId: stepAttempt.id,
+            // biome-ignore lint/style/noNonNullAssertion: for test
+            workerId: claimed.workerId!,
+            error: { message: "nope" },
+          }),
+        ).rejects.toThrow("Failed to mark step attempt failed");
 
         await teardown(backend);
       });
 
-      test("returns null when step attempt does not exist", async () => {
+      test("throws when step attempt does not exist", async () => {
         const backend = await setup();
         const claimed = await createClaimedWorkflowRun(backend);
 
-        const result = await backend.failStepAttempt({
-          workflowRunId: claimed.id,
-          stepAttemptId: randomUUID(),
-          // biome-ignore lint/style/noNonNullAssertion: for test
-          workerId: claimed.workerId!,
-          error: { message: "nope" },
-        });
-        expect(result).toBeNull();
+        await expect(
+          backend.failStepAttempt({
+            workflowRunId: claimed.id,
+            stepAttemptId: randomUUID(),
+            // biome-ignore lint/style/noNonNullAssertion: for test
+            workerId: claimed.workerId!,
+            error: { message: "nope" },
+          }),
+        ).rejects.toThrow("Failed to mark step attempt failed");
 
         await teardown(backend);
       });
