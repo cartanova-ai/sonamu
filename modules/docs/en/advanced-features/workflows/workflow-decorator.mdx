@@ -429,6 +429,99 @@ export const cleanupOldData = workflow(
 - Temporary file deletion
 - Expired session removal
 
+## Pause and Resume
+
+You can pause a running Workflow and resume it later. This feature is useful when managing resources or dealing with external dependency issues.
+
+### State Transitions
+
+Workflow states transition as follows:
+
+| Current Status | Available Action | Result Status |
+|----------------|------------------|---------------|
+| `pending` | pause | `paused` |
+| `running` | pause | `paused` |
+| `sleeping` | pause | `paused` |
+| `paused` | resume | `pending` |
+| `completed`, `failed`, `canceled` | - | Cannot change (terminal states) |
+
+### Using Sonamu UI
+
+You can directly pause or resume running Workflows from the Tasks tab in Sonamu UI.
+
+1. **Pause**: Click the "Pause" button on Workflow cards with `pending`, `running`, or `sleeping` status
+2. **Resume**: Click the "Resume" button on Workflow cards with `paused` status
+
+### Using the API
+
+You can programmatically control Workflows from the backend.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+// Run a Workflow
+const handle = await Sonamu.workflows.run(
+  { name: "data_processing", version: null },
+  { dataId: 123 }
+);
+
+// Pause (using workflowRunId)
+await Sonamu.workflows.backend.pauseWorkflowRun({
+  workflowRunId: handle.workflowRunId,
+});
+
+// Resume
+await Sonamu.workflows.backend.resumeWorkflowRun({
+  workflowRunId: handle.workflowRunId,
+});
+```
+
+### Key Features
+
+- **Idempotency Guaranteed**: Calling pause on an already `paused` Workflow doesn't throw an error. The same applies to resume.
+- **Terminal State Protection**: Workflows with `completed`, `failed`, or `canceled` status cannot be paused/resumed.
+- **Immediate Resume**: When resume is called, `available_at` is set to the current time, so the Worker picks up the task immediately.
+
+### Use Cases
+
+```typescript
+// Example: Pause related Workflows during external API outage
+export async function handleExternalApiOutage() {
+  const { data: runs } = await Sonamu.workflows.backend.listWorkflowRuns({
+    status: ["pending", "running", "sleeping"],
+    workflowName: "sync_external_data",
+  });
+
+  for (const run of runs) {
+    await Sonamu.workflows.backend.pauseWorkflowRun({
+      workflowRunId: run.id,
+    });
+  }
+
+  console.log(`Paused ${runs.length} Workflows.`);
+}
+
+// Example: Batch resume after external API recovery
+export async function handleExternalApiRecovery() {
+  const { data: runs } = await Sonamu.workflows.backend.listWorkflowRuns({
+    status: ["paused"],
+    workflowName: "sync_external_data",
+  });
+
+  for (const run of runs) {
+    await Sonamu.workflows.backend.resumeWorkflowRun({
+      workflowRunId: run.id,
+    });
+  }
+
+  console.log(`Resumed ${runs.length} Workflows.`);
+}
+```
+
+<Tip>
+When a Workflow is paused, the currently running Step continues until completion. Before starting the next Step, the Worker checks the `paused` status and stops the work.
+</Tip>
+
 ## Important Notes
 
 <Warning>

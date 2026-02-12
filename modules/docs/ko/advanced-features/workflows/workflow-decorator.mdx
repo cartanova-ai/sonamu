@@ -429,6 +429,99 @@ export const cleanupOldData = workflow(
 - 임시 파일 삭제
 - 만료된 세션 제거
 
+## 일시중지 및 재개 (Pause/Resume)
+
+실행 중인 Workflow를 일시중지하고 나중에 재개할 수 있습니다. 이 기능은 리소스 관리나 외부 의존성 문제가 발생했을 때 유용합니다.
+
+### 상태 전이
+
+Workflow의 상태는 다음과 같이 전이됩니다:
+
+| 현재 상태 | 가능한 동작 | 결과 상태 |
+|----------|------------|----------|
+| `pending` | pause | `paused` |
+| `running` | pause | `paused` |
+| `sleeping` | pause | `paused` |
+| `paused` | resume | `pending` |
+| `completed`, `failed`, `canceled` | - | 변경 불가 (터미널 상태) |
+
+### Sonamu UI에서 사용
+
+Sonamu UI의 Tasks 탭에서 실행 중인 Workflow를 직접 일시중지하거나 재개할 수 있습니다.
+
+1. **일시중지**: `pending`, `running`, `sleeping` 상태의 Workflow 카드에서 "일시중지" 버튼 클릭
+2. **재개**: `paused` 상태의 Workflow 카드에서 "재개" 버튼 클릭
+
+### API로 사용
+
+백엔드에서 프로그래밍 방식으로 Workflow를 제어할 수 있습니다.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+// Workflow 실행
+const handle = await Sonamu.workflows.run(
+  { name: "data_processing", version: null },
+  { dataId: 123 }
+);
+
+// 일시중지 (workflowRunId 사용)
+await Sonamu.workflows.backend.pauseWorkflowRun({
+  workflowRunId: handle.workflowRunId,
+});
+
+// 재개
+await Sonamu.workflows.backend.resumeWorkflowRun({
+  workflowRunId: handle.workflowRunId,
+});
+```
+
+### 주요 특징
+
+- **멱등성 보장**: 이미 `paused` 상태인 Workflow에 pause를 호출해도 에러가 발생하지 않습니다. resume도 마찬가지입니다.
+- **터미널 상태 보호**: `completed`, `failed`, `canceled` 상태의 Workflow는 pause/resume할 수 없습니다.
+- **즉시 재개**: resume 호출 시 `available_at`이 현재 시간으로 설정되어 Worker가 즉시 작업을 가져갑니다.
+
+### 사용 시나리오
+
+```typescript
+// 예: 외부 API 장애 시 관련 Workflow 일시중지
+export async function handleExternalApiOutage() {
+  const { data: runs } = await Sonamu.workflows.backend.listWorkflowRuns({
+    status: ["pending", "running", "sleeping"],
+    workflowName: "sync_external_data",
+  });
+
+  for (const run of runs) {
+    await Sonamu.workflows.backend.pauseWorkflowRun({
+      workflowRunId: run.id,
+    });
+  }
+
+  console.log(`${runs.length}개의 Workflow를 일시중지했습니다.`);
+}
+
+// 예: 외부 API 복구 후 일괄 재개
+export async function handleExternalApiRecovery() {
+  const { data: runs } = await Sonamu.workflows.backend.listWorkflowRuns({
+    status: ["paused"],
+    workflowName: "sync_external_data",
+  });
+
+  for (const run of runs) {
+    await Sonamu.workflows.backend.resumeWorkflowRun({
+      workflowRunId: run.id,
+    });
+  }
+
+  console.log(`${runs.length}개의 Workflow를 재개했습니다.`);
+}
+```
+
+<Tip>
+Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 계속 실행됩니다. 다음 Step을 시작하기 전에 Worker가 `paused` 상태를 확인하고 작업을 중단합니다.
+</Tip>
+
 ## 주의사항
 
 <Warning>
