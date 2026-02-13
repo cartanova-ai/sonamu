@@ -109,6 +109,7 @@ async function bootstrap() {
         ["scaffold", "model_test", "#entityId"],
         ["scaffold", "view_list", "#entityId"],
         ["scaffold", "view_form", "#entityId"],
+        ["cone", "gen", "#entityId"],
         ["sync"],
         ["dev"],
         ["build"],
@@ -133,6 +134,7 @@ async function bootstrap() {
         scaffold_model_test,
         // scaffold_view_list,
         // scaffold_view_form,
+        cone_gen,
         sync,
         dev,
         build,
@@ -606,6 +608,78 @@ async function stub_practice(name: string) {
 
 async function stub_entity(entityId: string) {
   await Sonamu.syncer.createEntity({ entityId, title: entityId });
+
+  // 템플릿 cone 자동 생성
+  // LLM 없이 faker-mappings.ts를 활용하여 기본 cone 메타데이터를 생성합니다.
+  // 이를 통해 ANTHROPIC_API_KEY가 없어도 Sonamu를 사용할 수 있으며,
+  // 생성된 템플릿 cone은 나중에 'cone gen' 명령어로 AI를 통해 업그레이드할 수 있습니다.
+  const { EntityManager } = await import("../entity/entity-manager");
+  const entity = EntityManager.get(entityId);
+  if (!entity) {
+    console.error(`Entity not found: ${entityId}`);
+    return;
+  }
+
+  console.log(`Generating template cones...`);
+  await entity.generateTemplateCones();
+  console.log(`Entity '${entityId}' created with template cones`);
+  console.log(`Tip: Run 'pnpm sonamu cone gen ${entityId}' to improve with AI`);
+}
+
+/**
+ * AI를 사용하여 entity의 cone 메타데이터를 생성하거나 업그레이드합니다.
+ *
+ * - onlyEmpty 모드: 기존 fixtureHint가 있는 cone은 보존하고 비어있는 것만 생성
+ * - locale: Sonamu.config.i18n.defaultLocale 또는 "ko"
+ * - ANTHROPIC_API_KEY 필요 (sonamu.secret.ts 또는 환경변수)
+ */
+async function cone_gen(entityId: string) {
+  const { EntityManager } = await import("../entity/entity-manager");
+  const entity = EntityManager.get(entityId);
+  if (!entity) {
+    console.error(`Entity not found: ${entityId}`);
+    return;
+  }
+
+  console.log(`Generating AI-powered cones for ${entityId}...`);
+
+  try {
+    const configLocale = Sonamu.config.i18n?.defaultLocale;
+    const locale =
+      configLocale === "ko" || configLocale === "en" || configLocale === "ja" ? configLocale : "ko";
+
+    const result = await entity.generateCones({
+      preserveExisting: true,
+      onlyEmpty: true,
+      locale,
+    });
+
+    console.log(`✅ Done! (${result.tokensUsed} tokens used)`);
+
+    // 토큰 비용 계산 (대략적인 추정)
+    // Claude Sonnet 4.5: input $3/M tokens, output $15/M tokens
+    // 간단하게 평균 $9/M tokens로 계산
+    const estimatedCost = (result.tokensUsed * 9) / 1_000_000;
+    console.log(`💰 Estimated cost: ~$${estimatedCost.toFixed(4)}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes("ANTHROPIC_API_KEY")) {
+        console.error(`\n❌ ${error.message}`);
+        console.error(`\n💡 To use AI-powered cone generation:`);
+        console.error(`   1. Get an API key from https://console.anthropic.com/`);
+        console.error(
+          `   2. Add it to sonamu.secret.ts or set ANTHROPIC_API_KEY environment variable`,
+        );
+      } else if (error.message.includes("Rate limit")) {
+        console.error(`\n❌ ${error.message}`);
+        console.error(`\n💡 Please wait a moment and try again.`);
+      } else {
+        console.error(`\n❌ Failed to generate cones: ${error.message}`);
+      }
+    } else {
+      console.error(`\n❌ Failed to generate cones: Unknown error`);
+    }
+  }
 }
 
 async function scaffold_model(entityId: string) {
