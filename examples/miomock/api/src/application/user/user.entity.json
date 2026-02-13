@@ -122,7 +122,7 @@
         "desc": "소프트 삭제 일시",
         "note": "소프트 삭제 패턴 적용. null이면 활성 사용자",
         "fixtureHint": "대부분 null로 설정하고, 일부만(5% 이하) 삭제된 사용자로 생성",
-        "fixtureGenerator": "faker.helpers.maybe(() => faker.date.recent({ days: 90 }), { probability: 0.05 })"
+        "fixtureDefault": null
       }
     },
     {
