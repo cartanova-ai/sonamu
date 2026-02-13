@@ -13,6 +13,16 @@ afterAll(async () => {
   for (const entity of entities) {
     const tableName = entity.table || entity.id.toLowerCase();
 
+    // id 필드의 타입을 확인합니다
+    const idProp = entity.props.find((p) => p.name === "id");
+    const idType = idProp?.type;
+
+    // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다 (text, uuid 등)
+    if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
+      console.log(`Skipping sequence reset for ${tableName} (id type: ${idType || "unknown"})`);
+      continue;
+    }
+
     // PostgreSQL 시퀀스를 현재 테이블의 MAX(id)로 리셋
     await wdb.raw(`
       SELECT setval(
