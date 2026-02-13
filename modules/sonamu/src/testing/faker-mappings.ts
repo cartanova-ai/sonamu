@@ -114,23 +114,23 @@ export const fakerMappings: FakerMappings = {
         comment: "UUID",
       },
       salary: {
-        faker: "faker.number.int({ min: 30000000, max: 150000000 })",
+        faker: 'faker.number.int({ "min": 30000000, "max": 150000000 })',
         comment: "연봉 (한국, 원)",
       },
       budget: {
-        faker: "faker.number.int({ min: 10000000, max: 500000000 })",
+        faker: 'faker.number.int({ "min": 10000000, "max": 500000000 })',
         comment: "예산",
       },
       price: {
-        faker: "faker.number.int({ min: 1000, max: 1000000 })",
+        faker: 'faker.number.int({ "min": 1000, "max": 1000000 })',
         comment: "가격",
       },
       amount: {
-        faker: "faker.number.int({ min: 1000, max: 1000000 })",
+        faker: 'faker.number.int({ "min": 1000, "max": 1000000 })',
         comment: "금액",
       },
       cost: {
-        faker: "faker.number.int({ min: 1000, max: 1000000 })",
+        faker: 'faker.number.int({ "min": 1000, "max": 1000000 })',
         comment: "비용",
       },
       employeenumber: {
@@ -142,11 +142,11 @@ export const fakerMappings: FakerMappings = {
         comment: "코드",
       },
       count: {
-        faker: "faker.number.int({ min: 0, max: 100 })",
+        faker: 'faker.number.int({ "min": 0, "max": 100 })',
         comment: "개수",
       },
       quantity: {
-        faker: "faker.number.int({ min: 1, max: 100 })",
+        faker: 'faker.number.int({ "min": 1, "max": 100 })',
         comment: "수량",
       },
       mimetype: {
@@ -161,11 +161,11 @@ export const fakerMappings: FakerMappings = {
         comment: "일반 문자열",
       },
       integer: {
-        faker: "faker.number.int({ min: 1, max: 1000 })",
+        faker: 'faker.number.int({ "min": 1, "max": 1000 })',
         comment: "정수",
       },
       numeric: {
-        faker: "faker.number.float({ min: 0, max: 1000, fractionDigits: 2 })",
+        faker: 'faker.number.float({ "min": 0, "max": 1000, "fractionDigits": 2 })',
         comment: "숫자",
       },
       boolean: {
@@ -281,23 +281,23 @@ export const fakerMappings: FakerMappings = {
         comment: "UUID",
       },
       salary: {
-        faker: "faker.number.int({ min: 30000, max: 200000 })",
+        faker: 'faker.number.int({ "min": 30000, "max": 200000 })',
         comment: "Annual salary (USD)",
       },
       budget: {
-        faker: "faker.number.int({ min: 10000, max: 500000 })",
+        faker: 'faker.number.int({ "min": 10000, "max": 500000 })',
         comment: "Budget",
       },
       price: {
-        faker: "faker.number.int({ min: 10, max: 10000 })",
+        faker: 'faker.number.int({ "min": 10, "max": 10000 })',
         comment: "Price",
       },
       amount: {
-        faker: "faker.number.int({ min: 10, max: 10000 })",
+        faker: 'faker.number.int({ "min": 10, "max": 10000 })',
         comment: "Amount",
       },
       cost: {
-        faker: "faker.number.int({ min: 10, max: 10000 })",
+        faker: 'faker.number.int({ "min": 10, "max": 10000 })',
         comment: "Cost",
       },
       employeenumber: {
@@ -309,11 +309,11 @@ export const fakerMappings: FakerMappings = {
         comment: "Code",
       },
       count: {
-        faker: "faker.number.int({ min: 0, max: 100 })",
+        faker: 'faker.number.int({ "min": 0, "max": 100 })',
         comment: "Count",
       },
       quantity: {
-        faker: "faker.number.int({ min: 1, max: 100 })",
+        faker: 'faker.number.int({ "min": 1, "max": 100 })',
         comment: "Quantity",
       },
       mimetype: {
@@ -328,11 +328,11 @@ export const fakerMappings: FakerMappings = {
         comment: "String",
       },
       integer: {
-        faker: "faker.number.int({ min: 1, max: 1000 })",
+        faker: 'faker.number.int({ "min": 1, "max": 1000 })',
         comment: "Integer",
       },
       numeric: {
-        faker: "faker.number.float({ min: 0, max: 1000, fractionDigits: 2 })",
+        faker: 'faker.number.float({ "min": 0, "max": 1000, "fractionDigits": 2 })',
         comment: "Numeric",
       },
       boolean: {
@@ -400,11 +400,11 @@ export const fakerMappings: FakerMappings = {
         comment: "タイトル",
       },
       salary: {
-        faker: "faker.number.int({ min: 3000000, max: 15000000 })",
+        faker: 'faker.number.int({ "min": 3000000, "max": 15000000 })',
         comment: "年収（円）",
       },
       budget: {
-        faker: "faker.number.int({ min: 1000000, max: 50000000 })",
+        faker: 'faker.number.int({ "min": 1000000, "max": 50000000 })',
         comment: "予算",
       },
     },
@@ -414,11 +414,11 @@ export const fakerMappings: FakerMappings = {
         comment: "文字列",
       },
       integer: {
-        faker: "faker.number.int({ min: 1, max: 1000 })",
+        faker: 'faker.number.int({ "min": 1, "max": 1000 })',
         comment: "整数",
       },
       numeric: {
-        faker: "faker.number.float({ min: 0, max: 1000, fractionDigits: 2 })",
+        faker: 'faker.number.float({ "min": 0, "max": 1000, "fractionDigits": 2 })',
         comment: "数値",
       },
       boolean: {

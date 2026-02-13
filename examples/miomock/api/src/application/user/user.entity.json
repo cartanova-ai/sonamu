@@ -131,13 +131,7 @@
       "with": "Employee",
       "nullable": true,
       "desc": "직원",
-      "relationType": "OneToOne",
-      "cone": {
-        "desc": "연결된 직원 정보",
-        "note": "OneToOne 관계. 모든 사용자가 직원인 것은 아님",
-        "fixtureHint": "최근 생성된 직원 중 아직 사용자와 연결되지 않은 직원을 참조. null 값도 허용됨",
-        "dataSource": { "strategy": "recent", "config": { "limit": 3 } }
-      }
+      "relationType": "OneToOne"
     },
     {
       "name": "image",

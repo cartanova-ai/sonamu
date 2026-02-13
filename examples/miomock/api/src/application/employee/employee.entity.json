@@ -37,12 +37,7 @@
       "relationType": "OneToOne",
       "hasJoinColumn": true,
       "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
-      "cone": {
-        "desc": "Associated user information",
-        "fixtureHint": "Selects from recently created User entities. Prioritizes users not yet linked to an employee.",
-        "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
-      }
+      "onDelete": "CASCADE"
     },
     {
       "type": "relation",

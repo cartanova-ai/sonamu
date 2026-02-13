@@ -150,12 +150,22 @@ export class FixtureManagerClass {
       for (const entity of entities) {
         const tableName = entity.table || entity.id.toLowerCase();
 
+        // id 필드의 타입을 확인합니다
+        const idProp = entity.props.find((p) => p.name === "id");
+        const idType = idProp?.type;
+
+        // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다 (text, uuid 등)
+        if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
+          console.log(`Skipping sequence reset for ${tableName} (id type: ${idType || "unknown"})`);
+          continue;
+        }
+
         // PostgreSQL 시퀀스를 현재 테이블의 MAX(id)로 리셋합니다.
         // 세 번째 인자를 생략하면 기본값 true가 적용되어, 다음 INSERT 시 MAX(id)+1부터 시작합니다.
         await testDb.raw(`
           SELECT setval(
             pg_get_serial_sequence('public.${tableName}', 'id'),
-            COALESCE((SELECT MAX(id::integer) FROM ${tableName}), 1)
+            COALESCE((SELECT MAX(id) FROM ${tableName}), 1)
           )
         `);
       }
@@ -593,6 +603,26 @@ export class FixtureManagerClass {
         console.log(chalk.blue("Resetting sequences..."));
         for (const tableName of tableOrder) {
           try {
+            // Entity를 찾아서 id 타입 확인
+            const entity = EntityManager.getAllEntities().find(
+              (e) => e.table === tableName || e.id.toLowerCase() === tableName,
+            );
+
+            if (entity) {
+              const idProp = entity.props.find((p) => p.name === "id");
+              const idType = idProp?.type;
+
+              // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다
+              if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
+                console.log(
+                  chalk.gray(
+                    `Skipped sequence reset for ${tableName} (id type: ${idType || "unknown"})`,
+                  ),
+                );
+                continue;
+              }
+            }
+
             // 테이블의 최대 ID 조회
             const maxIdResult = await trx(tableName).max("id as max_id").first();
             const maxId = maxIdResult?.max_id;
