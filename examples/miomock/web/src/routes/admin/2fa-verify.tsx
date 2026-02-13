@@ -10,13 +10,14 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { twoFactor } from "@/lib/auth-client";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import KeyIcon from "~icons/lucide/key";
 import ShieldCheckIcon from "~icons/lucide/shield-check";
 
 export const Route = createFileRoute("/admin/2fa-verify")({ component: TwoFactorVerifyPage });
 
 function TwoFactorVerifyPage() {
+  const { auth } = useSonamuContext();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +32,7 @@ function TwoFactorVerifyPage() {
     setIsLoading(true);
     setError("");
 
-    const result = await twoFactor.verifyTotp({ code });
+    const result = await auth.twoFactor.verifyTotp({ code });
 
     setIsLoading(false);
 

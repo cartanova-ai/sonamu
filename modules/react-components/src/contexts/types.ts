@@ -10,14 +10,6 @@ export type SonamuFile = {
   size: number;
 };
 
-export type SonamuAuth<TUser = any, TLoginParams = any> = {
-  user: TUser | null;
-  loading: boolean;
-  login: (params: TLoginParams) => void;
-  logout: () => void;
-  refetch: () => void;
-};
-
 // Dictionary type - 모든 i18n dictionary의 기본 타입
 export type Dictionary = Record<string, string | ((...args: any[]) => string)>;
 

@@ -11,7 +11,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
-import { passkey, signIn, signOut, useSession } from "@/lib/auth-client";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import FingerprintIcon from "~icons/lucide/fingerprint";
 import HomeIcon from "~icons/lucide/home";
 import LockIcon from "~icons/lucide/lock";
@@ -24,11 +24,12 @@ import UserPlusIcon from "~icons/lucide/user-plus";
 export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
 
 function LoginTestPage() {
+  const { auth } = useSonamuContext();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [passkeyLoading, setPasskeyLoading] = React.useState(false);
 
-  const session = useSession();
+  const session = auth.useSession();
   const user = session.data?.user ?? null;
   const navigate = useNavigate();
 
@@ -41,11 +42,11 @@ function LoginTestPage() {
       return;
     }
 
-    void signIn.passkey({ autoFill: true });
+    void auth.signIn.passkey({ autoFill: true });
   }, []);
 
   const handleSubmit = async () => {
-    const result = await signIn.email({ email, password });
+    const result = await auth.signIn.email({ email, password });
 
     if (result.error) {
       alert(result.error.message);
@@ -60,7 +61,7 @@ function LoginTestPage() {
   };
 
   const handleLogout = () => {
-    signOut();
+    auth.signOut();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,7 +108,7 @@ function LoginTestPage() {
                   variant="outline"
                   icon={<FingerprintIcon />}
                   onClick={async () => {
-                    const result = await passkey.addPasskey({ name: `${user.name}의 패스키` });
+                    const result = await auth.passkey.addPasskey({ name: `${user.name}의 패스키` });
                     if (result.error) {
                       alert(`패스키 등록 실패: ${result.error.message}`);
                     } else {
@@ -189,7 +190,7 @@ function LoginTestPage() {
                 onClick={async () => {
                   setPasskeyLoading(true);
                   try {
-                    const result = await signIn.passkey();
+                    const result = await auth.signIn.passkey();
                     if (result.error) {
                       alert(`패스키 인증 실패: ${result.error.message}`);
                     }

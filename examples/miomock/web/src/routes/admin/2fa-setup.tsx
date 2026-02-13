@@ -12,7 +12,7 @@ import {
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
-import { twoFactor, useSession } from "@/lib/auth-client";
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import CopyIcon from "~icons/lucide/copy";
@@ -26,7 +26,8 @@ export const Route = createFileRoute("/admin/2fa-setup")({ component: TwoFactorS
 type SetupStep = "password" | "qr" | "verify" | "done";
 
 function TwoFactorSetupPage() {
-  const { data: session, refetch } = useSession();
+  const { auth } = useSonamuContext();
+  const { data: session, refetch } = auth.useSession();
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");
@@ -49,7 +50,7 @@ function TwoFactorSetupPage() {
     setIsLoading(true);
     setError("");
 
-    const result = await twoFactor.enable({ password });
+    const result = await auth.twoFactor.enable({ password });
 
     setIsLoading(false);
 
@@ -73,7 +74,7 @@ function TwoFactorSetupPage() {
     setIsLoading(true);
     setError("");
 
-    const result = await twoFactor.verifyTotp({ code: verifyCode });
+    const result = await auth.twoFactor.verifyTotp({ code: verifyCode });
 
     setIsLoading(false);
 
@@ -96,7 +97,7 @@ function TwoFactorSetupPage() {
     setIsLoading(true);
     setError("");
 
-    const result = await twoFactor.disable({ password });
+    const result = await auth.twoFactor.disable({ password });
 
     setIsLoading(false);
 

@@ -1,24 +1,31 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: 제네릭 기본값으로 any 사용 */
-import { createContext, type ReactNode, useContext } from "react";
+
+import type { BetterAuthClientOptions } from "better-auth/client";
+import { createAuthClient } from "better-auth/react";
+import { createContext, type ReactNode, useContext, useRef } from "react";
 import { type RCKeyName, type RCKeys, rcKeysEn } from "../i18n/rc-keys";
-import type { Dictionary, SDReturnType, SonamuAuth, SonamuFile } from "./types";
+import type { Dictionary, SDReturnType, SonamuFile } from "./types";
+
+/** createAuthClient의 반환 타입을 옵션으로부터 추론하는 유틸리티 타입 */
+export type SonamuAuthClient<O extends BetterAuthClientOptions> = ReturnType<
+  typeof createAuthClient<O>
+>;
 
 export interface SonamuContextValue<
   D extends Dictionary = Dictionary,
-  TUser = any,
-  TLoginParams = any,
+  O extends BetterAuthClientOptions = BetterAuthClientOptions,
 > {
   uploader?: (files: File[]) => Promise<SonamuFile[]>;
-  auth?: SonamuAuth<TUser, TLoginParams>;
+  auth?: SonamuAuthClient<O>;
   SD?: <K extends keyof D>(key: K) => SDReturnType<D, K>;
 }
 
 export interface SonamuProviderProps<
   D extends Dictionary = Dictionary,
-  TUser = any,
-  TLoginParams = any,
-> extends SonamuContextValue<D, TUser, TLoginParams> {
+  O extends BetterAuthClientOptions = BetterAuthClientOptions,
+> extends SonamuContextValue<D, O> {
   children: ReactNode;
+  authOptions?: O;
 }
 
 const SONAMU_CONTEXT_ERROR_MESSAGE = (key: string) =>
@@ -27,20 +34,6 @@ const SONAMU_CONTEXT_ERROR_MESSAGE = (key: string) =>
 const createUploaderFallback = () => {
   return () => {
     throw new Error(SONAMU_CONTEXT_ERROR_MESSAGE("uploader"));
-  };
-};
-
-const createAuthFallback = <TUser, TLoginParams>(): SonamuAuth<TUser, TLoginParams> => {
-  const throwAuthError = () => {
-    throw new Error(SONAMU_CONTEXT_ERROR_MESSAGE("auth"));
-  };
-
-  return {
-    user: null,
-    loading: false,
-    login: throwAuthError,
-    logout: throwAuthError,
-    refetch: throwAuthError,
   };
 };
 
@@ -53,14 +46,18 @@ const createSDFallback = <D extends Dictionary = RCKeys>() => {
 
 const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
 
-export function SonamuProvider<D extends Dictionary = Dictionary, TUser = any, TLoginParams = any>({
-  children,
-  ...value
-}: SonamuProviderProps<D, TUser, TLoginParams>) {
-  const normalizedValue: SonamuContextValue<D, TUser, TLoginParams> = {
-    ...value,
+export function SonamuProvider<
+  D extends Dictionary = Dictionary,
+  O extends BetterAuthClientOptions = BetterAuthClientOptions,
+>({ children, authOptions, ...value }: SonamuProviderProps<D, O>) {
+  const authRef = useRef<SonamuAuthClient<O> | undefined>(undefined);
+  if (authOptions && !authRef.current) {
+    authRef.current = createAuthClient<O>(authOptions);
+  }
+
+  const normalizedValue: SonamuContextValue<D, O> = {
     uploader: value.uploader ?? createUploaderFallback(),
-    auth: value.auth ?? createAuthFallback<TUser, TLoginParams>(),
+    auth: authRef.current,
     SD: value.SD ?? createSDFallback<D>(),
   };
 
@@ -73,13 +70,12 @@ export function SonamuProvider<D extends Dictionary = Dictionary, TUser = any, T
  * @example
  * // contexts/sonamu-provider.tsx
  * export function useSonamuContext() {
- *   return useSonamuBaseContext<MergedDictionary, UserSubsetSS, UserLoginParams>();
+ *   return useSonamuBaseContext<MergedDictionary>();
  * }
  */
 export function useSonamuBaseContext<
   D extends Dictionary = Dictionary,
-  TUser = any,
-  TLoginParams = any,
->(): Required<SonamuContextValue<D, TUser, TLoginParams>> {
-  return useContext(SonamuContext) as Required<SonamuContextValue<D, TUser, TLoginParams>>;
+  O extends BetterAuthClientOptions = BetterAuthClientOptions,
+>(): Required<SonamuContextValue<D, O>> {
+  return useContext(SonamuContext) as unknown as Required<SonamuContextValue<D, O>>;
 }
