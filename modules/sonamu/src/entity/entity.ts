@@ -946,6 +946,42 @@ export class Entity {
   }
 
   /**
+   * 템플릿 cone 메타데이터를 생성합니다.
+   *
+   * LLM을 사용하지 않고 faker-mappings.ts를 활용하여 기본 cone을 생성합니다.
+   * stub entity 생성 시 자동으로 호출되어 최소한의 cone 메타데이터를 제공합니다.
+   *
+   * @param locale - 생성 시 사용할 locale (기본값: Sonamu.config.i18n.defaultLocale 또는 "ko")
+   */
+  async generateTemplateCones(locale?: "ko" | "en" | "ja"): Promise<void> {
+    const { generateTemplateCones } = await import("./entity-template-cone");
+    const configLocale = Sonamu.config.i18n?.defaultLocale;
+    const effectiveLocale =
+      locale ||
+      (configLocale === "ko" || configLocale === "en" || configLocale === "ja"
+        ? configLocale
+        : "ko");
+    const result = generateTemplateCones(this.toJson(), effectiveLocale);
+
+    // 결과를 Entity에 적용 (applyCones와 동일한 방식)
+    if (result.entityCone) {
+      this.cone = result.entityCone;
+    }
+
+    for (const [propName, cone] of Object.entries(result.propCones)) {
+      const prop = this.props.find((p) => p.name === propName);
+      if (prop) {
+        (prop as { cone?: Cone }).cone = cone;
+      }
+    }
+
+    this.enumCones = { ...this.enumCones, ...result.enumCones };
+    this.subsetCones = { ...this.subsetCones, ...result.subsetCones };
+
+    await this.save();
+  }
+
+  /**
    * LLM을 사용하여 cone 메타데이터를 생성합니다.
    *
    * @param options.preserveExisting - 기존 cone 보존 여부 (기본값: true)
