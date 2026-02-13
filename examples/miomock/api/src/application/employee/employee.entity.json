@@ -2,9 +2,32 @@
   "id": "Employee",
   "table": "employees",
   "title": "직원",
+  "cone": {
+    "desc": "직원 정보를 관리하는 엔티티",
+    "note": "User와 1:1 관계를 가지며, Department에 소속되고, Project에 참여할 수 있습니다.",
+    "tags": ["HR", "인사", "조직"]
+  },
   "props": [
-    { "name": "id", "type": "integer", "desc": "ID" },
-    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "name": "id",
+      "type": "integer",
+      "desc": "ID",
+      "cone": {
+        "desc": "Employee unique identifier",
+        "fixtureHint": "Auto-incrementing integer ID"
+      }
+    },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "cone": {
+        "desc": "Employee record creation timestamp",
+        "fixtureHint": "Generates a date within the last year.",
+        "fixtureGenerator": "faker.date.recent({ days: 365 })"
+      }
+    },
     {
       "type": "relation",
       "name": "user",
@@ -13,7 +36,12 @@
       "relationType": "OneToOne",
       "hasJoinColumn": true,
       "onUpdate": "CASCADE",
-      "onDelete": "CASCADE"
+      "onDelete": "CASCADE",
+      "cone": {
+        "desc": "Associated user information",
+        "fixtureHint": "Selects from recently created User entities. Prioritizes users not yet linked to an employee.",
+        "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
+      }
     },
     {
       "type": "relation",
@@ -23,19 +51,59 @@
       "desc": "부서",
       "relationType": "BelongsToOne",
       "onUpdate": "CASCADE",
-      "onDelete": "SET NULL"
+      "onDelete": "SET NULL",
+      "cone": {
+        "desc": "Assigned department",
+        "fixtureHint": "Selects from recently created Department entities. Approximately 20% will be unassigned (null).",
+        "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
+      }
     },
-    { "name": "employee_number", "desc": "사번", "type": "string", "length": 32 },
+    {
+      "name": "employee_number",
+      "desc": "사번",
+      "type": "string",
+      "length": 32,
+      "cone": {
+        "desc": "Employee number",
+        "fixtureHint": "Generates an 8-digit employee number. Example: 20240001, 20230154",
+        "fixtureGenerator": "faker.string.numeric(8)"
+      }
+    },
     {
       "name": "salary",
       "nullable": true,
       "desc": "SALARY",
       "type": "numeric",
       "precision": 10,
-      "scale": 2
+      "scale": 2,
+      "cone": {
+        "desc": "Annual salary",
+        "fixtureHint": "Generates salary between 30,000,000 and 150,000,000 (Korean currency). Approximately 30% will be undisclosed (null).",
+        "fixtureGenerator": "faker.number.int({ min: 30000000, max: 150000000 })"
+      }
     },
-    { "name": "hire_date", "type": "date", "nullable": true, "desc": "입사일" },
-    { "name": "notes", "type": "string", "nullable": true, "desc": "비고" },
+    {
+      "name": "hire_date",
+      "type": "date",
+      "nullable": true,
+      "desc": "입사일",
+      "cone": {
+        "desc": "Date of hire",
+        "fixtureHint": "Generates hire date within the last 5 years. Approximately 10% will be null.",
+        "fixtureGenerator": "faker.date.past({ years: 5 })"
+      }
+    },
+    {
+      "name": "notes",
+      "type": "string",
+      "nullable": true,
+      "desc": "비고",
+      "cone": {
+        "desc": "Additional notes",
+        "fixtureHint": "Generates additional notes or remarks about the employee. Approximately 60% will be empty.",
+        "fixtureGenerator": "faker.lorem.sentence()"
+      }
+    },
     {
       "type": "relation",
       "name": "projs",
@@ -45,7 +113,12 @@
       "relationType": "ManyToMany",
       "joinTable": "projects__employees",
       "onUpdate": "CASCADE",
-      "onDelete": "CASCADE"
+      "onDelete": "CASCADE",
+      "cone": {
+        "desc": "List of participating projects",
+        "fixtureHint": "Randomly selects 0-3 projects from recently created Project entities. ManyToMany relationship allows simultaneous participation in multiple projects.",
+        "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
+      }
     }
   ],
   "indexes": [
@@ -56,44 +129,71 @@
     }
   ],
   "subsets": {
-    "A": [
-      "id",
-      "created_at",
-      "user.id",
-      "user.username",
-      "department.id",
-      "department.name",
-      "department.company.name",
-      "department.employee_count",
-      "employee_number",
-      "salary",
-      "hire_date",
-      "notes"
-    ],
-    "P": [
-      "id",
-      "created_at",
-      "user.id",
-      "user.username",
-      "user.employee.department.id",
-      "user.employee.department.employee_count",
-      "user.employee.employee_number",
-      "user.employee.salary",
-      "department.id",
-      "department.employees.id",
-      "department.employees.salary",
-      "department.employees.projs.id",
-      "department.employees.projs.name",
-      "department.employees.projs.status",
-      "department.employees.projs.virtual_test",
-      "projs.id",
-      "projs.name",
-      "projs.status",
-      "projs.description"
-    ]
+    "A": {
+      "fields": [
+        "id",
+        "created_at",
+        "user.id",
+        "user.username",
+        "department.id",
+        "department.name",
+        "department.company.name",
+        "department.employee_count",
+        "employee_number",
+        "salary",
+        "hire_date",
+        "notes"
+      ],
+      "cone": {
+        "desc": "Employee basic information subset",
+        "note": "Includes employee basic information, assigned department, and company information."
+      }
+    },
+    "P": {
+      "fields": [
+        "id",
+        "created_at",
+        "user.id",
+        "user.username",
+        "user.employee.department.id",
+        "user.employee.department.employee_count",
+        "user.employee.employee_number",
+        "user.employee.salary",
+        "department.id",
+        "department.employees.id",
+        "department.employees.salary",
+        "department.employees.projs.id",
+        "department.employees.projs.name",
+        "department.employees.projs.status",
+        "department.employees.projs.virtual_test",
+        "projs.id",
+        "projs.name",
+        "projs.status",
+        "projs.description"
+      ],
+      "cone": {
+        "desc": "Employee detailed information subset",
+        "note": "Detailed subset including all relationship information. Retrieves user, department, and project information."
+      }
+    }
   },
   "enums": {
-    "EmployeeOrderBy": { "id-desc": "ID최신순" },
-    "EmployeeSearchField": { "id": "ID", "employee_number": "사번" }
+    "EmployeeOrderBy": {
+      "values": { "id-desc": "ID최신순" },
+      "cone": {
+        "desc": "Employee list sorting criteria",
+        "values": { "id-desc": { "desc": "Sort by ID in descending order" } }
+      }
+    },
+    "EmployeeSearchField": {
+      "values": { "id": "ID", "employee_number": "사번" },
+      "cone": {
+        "desc": "Employee search fields",
+        "values": {
+          "id": { "desc": "Search by employee ID" },
+          "employee_number": { "desc": "Search by employee number" }
+        }
+      }
+    }
   }
 }
