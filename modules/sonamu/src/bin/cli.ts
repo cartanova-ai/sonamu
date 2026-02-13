@@ -37,6 +37,41 @@ import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from ".
 
 let migrator: Migrator;
 
+/**
+ * CLI 옵션을 파싱하는 헬퍼 함수
+ */
+function parseCliOptions(argv: string[] = process.argv): {
+  flags: Set<string>; // --regenerate, --ai, --no-cones 등
+  options: Record<string, string>; // --locale ko 등
+} {
+  const flags = new Set<string>();
+  const options: Record<string, string> = {};
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (!arg.startsWith("--")) continue;
+
+    // --option=value 형식
+    if (arg.includes("=")) {
+      const [key, value] = arg.slice(2).split("=");
+      options[key] = value;
+      continue;
+    }
+
+    // --option value 형식인지 확인
+    const nextArg = argv[i + 1];
+    if (nextArg && !nextArg.startsWith("--") && !nextArg.startsWith("-")) {
+      options[arg.slice(2)] = nextArg;
+      i++; // 다음 arg는 값이므로 스킵
+    } else {
+      // --flag 형식
+      flags.add(arg.slice(2));
+    }
+  }
+
+  return { flags, options };
+}
+
 async function bootstrap() {
   const notToInit = ["dev", "build", "start", "skills"].includes(process.argv[2] ?? "");
   if (!notToInit) {
@@ -609,10 +644,16 @@ async function stub_practice(name: string) {
 async function stub_entity(entityId: string) {
   await Sonamu.syncer.createEntity({ entityId, title: entityId });
 
-  // 템플릿 cone 자동 생성
-  // LLM 없이 faker-mappings.ts를 활용하여 기본 cone 메타데이터를 생성합니다.
-  // 이를 통해 ANTHROPIC_API_KEY가 없어도 Sonamu를 사용할 수 있으며,
-  // 생성된 템플릿 cone은 나중에 'cone gen' 명령어로 AI를 통해 업그레이드할 수 있습니다.
+  const { flags } = parseCliOptions();
+  const useAI = flags.has("ai");
+  const noCones = flags.has("no-cones");
+
+  // --no-cones: cone 생성 스킵
+  if (noCones) {
+    console.log(`✓ Entity '${entityId}' created without cones`);
+    return;
+  }
+
   const { EntityManager } = await import("../entity/entity-manager");
   const entity = EntityManager.get(entityId);
   if (!entity) {
@@ -620,37 +661,124 @@ async function stub_entity(entityId: string) {
     return;
   }
 
-  console.log(`Generating template cones...`);
+  // --ai: LLM으로 cone 생성
+  if (useAI) {
+    console.log(`✓ Entity '${entityId}' created`);
+    console.log(`🌟 Generating AI-powered cones...`);
+    try {
+      const configLocale = Sonamu.config.i18n?.defaultLocale;
+      const locale =
+        configLocale === "ko" || configLocale === "en" || configLocale === "ja"
+          ? configLocale
+          : "ko";
+
+      const result = await entity.generateCones({
+        preserveExisting: false,
+        onlyEmpty: false,
+        locale,
+      });
+
+      console.log(`✅ Done (${result.tokensUsed} tokens)`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("ANTHROPIC_API_KEY")) {
+        console.error(`\n❌ ${error.message}`);
+        console.error(`\n💡 Remove --ai flag to use template cones instead`);
+      } else {
+        throw error;
+      }
+    }
+    return;
+  }
+
+  // 기본: 템플릿 cone 자동 생성
+  // LLM 없이 faker-mappings.ts를 활용하여 기본 cone 메타데이터를 생성합니다.
+  // 이를 통해 ANTHROPIC_API_KEY가 없어도 Sonamu를 사용할 수 있으며,
+  // 생성된 템플릿 cone은 나중에 'cone gen' 명령어로 AI를 통해 업그레이드할 수 있습니다.
+  console.log(`🌟 Generating template cones...`);
   await entity.generateTemplateCones();
-  console.log(`Entity '${entityId}' created with template cones`);
-  console.log(`Tip: Run 'pnpm sonamu cone gen ${entityId}' to improve with AI`);
+  console.log(`✓ Entity '${entityId}' created with template cones`);
+  console.log(`💡 Tip: Run 'pnpm sonamu cone gen ${entityId}' to improve with AI`);
 }
 
 /**
  * AI를 사용하여 entity의 cone 메타데이터를 생성하거나 업그레이드합니다.
  *
- * - onlyEmpty 모드: 기존 fixtureHint가 있는 cone은 보존하고 비어있는 것만 생성
- * - locale: Sonamu.config.i18n.defaultLocale 또는 "ko"
- * - ANTHROPIC_API_KEY 필요 (sonamu.secret.ts 또는 환경변수)
+ * 옵션:
+ * - --regenerate: 전체 재생성 (기존 cone 덮어쓰기)
+ * - --locale <ko|en|ja>: 생성 언어 지정
+ * - 기본: onlyEmpty 모드 (기존 fixtureHint 보존)
+ *
+ * ANTHROPIC_API_KEY 필요 (sonamu.secret.ts 또는 환경변수)
  */
 async function cone_gen(entityId: string) {
   const { EntityManager } = await import("../entity/entity-manager");
+  const { flags, options } = parseCliOptions();
+
+  // --all 옵션: 모든 entity cone 생성
+  if (flags.has("all") || entityId === "all") {
+    const allEntities = EntityManager.getAllEntities();
+    console.log(`🌟 Generating AI-powered cones for ${allEntities.length} entities...\n`);
+
+    let totalTokens = 0;
+    const errors: string[] = [];
+
+    for (const entity of allEntities) {
+      try {
+        console.log(`Processing ${entity.id}...`);
+        const configLocale = options.locale || Sonamu.config.i18n?.defaultLocale;
+        const locale =
+          configLocale === "ko" || configLocale === "en" || configLocale === "ja"
+            ? configLocale
+            : "ko";
+
+        const result = await entity.generateCones({
+          preserveExisting: !flags.has("regenerate"),
+          onlyEmpty: !flags.has("regenerate"),
+          locale,
+        });
+
+        totalTokens += result.tokensUsed;
+        console.log(`  ✓ ${entity.id} (${result.tokensUsed} tokens)\n`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        errors.push(`${entity.id}: ${message}`);
+        console.error(`  ✗ ${entity.id}: ${message}\n`);
+      }
+    }
+
+    console.log(`\n✅ Done! Total: ${totalTokens} tokens used`);
+    const estimatedCost = (totalTokens * 9) / 1_000_000;
+    console.log(`💰 Estimated cost: ~$${estimatedCost.toFixed(4)}`);
+
+    if (errors.length > 0) {
+      console.error(`\n❌ Failed entities (${errors.length}):`);
+      for (const err of errors) {
+        console.error(`  - ${err}`);
+      }
+    }
+    return;
+  }
+
+  // 단일 entity cone 생성
   const entity = EntityManager.get(entityId);
   if (!entity) {
     console.error(`Entity not found: ${entityId}`);
     return;
   }
 
-  console.log(`Generating AI-powered cones for ${entityId}...`);
+  const mode = flags.has("regenerate") ? "regenerating" : "generating";
+  console.log(
+    `🌟 ${mode === "regenerating" ? "Regenerating" : "Generating"} AI-powered cones for ${entityId}...`,
+  );
 
   try {
-    const configLocale = Sonamu.config.i18n?.defaultLocale;
+    const configLocale = options.locale || Sonamu.config.i18n?.defaultLocale;
     const locale =
       configLocale === "ko" || configLocale === "en" || configLocale === "ja" ? configLocale : "ko";
 
     const result = await entity.generateCones({
-      preserveExisting: true,
-      onlyEmpty: true,
+      preserveExisting: !flags.has("regenerate"),
+      onlyEmpty: !flags.has("regenerate"),
       locale,
     });
 
