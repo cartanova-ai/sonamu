@@ -51,6 +51,11 @@ describe("FixtureGenerator LLM", () => {
           is_verified: true,
           deleted_at: null,
           password: "test123",
+          created_at: new Date(),
+          birth_date: new Date("1990-01-01"),
+          last_login_at: new Date(),
+          updated_at: new Date(),
+          two_factor_enabled: false,
         };
         const fixture = await generator.generate("User", overrides);
         // API 키가 없어도 fallback으로 정상 생성되어야 함
@@ -100,6 +105,11 @@ describe("FixtureGenerator LLM", () => {
         is_verified: true,
         deleted_at: null,
         password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
       };
       const fixture = await generator.generate("User", overrides);
       expect(fixture.bio).toBe("10년 경력 백엔드 개발자로 TypeScript와 Node.js를 주로 사용합니다.");
@@ -137,6 +147,11 @@ describe("FixtureGenerator LLM", () => {
       is_verified: true,
       deleted_at: null,
       password: "test123",
+      created_at: new Date(),
+      birth_date: new Date("1990-01-01"),
+      last_login_at: new Date(),
+      updated_at: new Date(),
+      two_factor_enabled: false,
     });
 
     // email은 fixtureGenerator가 있음 → LLM 안 씀
@@ -183,6 +198,11 @@ describe("FixtureGenerator LLM", () => {
         is_verified: true,
         deleted_at: null,
         password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
       };
 
       // 2번 생성
@@ -295,6 +315,11 @@ describe("FixtureGenerator LLM", () => {
         is_verified: true,
         deleted_at: null,
         password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
       };
       // LLM 실패해도 에러 없이 fallback으로 진행되어야 함
       const fixture = await generator.generate("User", overrides);
@@ -335,6 +360,11 @@ describe("FixtureGenerator LLM", () => {
         is_verified: true,
         deleted_at: null,
         password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
       };
 
       // 첫 번째 생성

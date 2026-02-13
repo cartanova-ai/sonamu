@@ -26,7 +26,7 @@
       "cone": {
         "desc": "회사 정보 등록 일시",
         "fixtureHint": "기본값으로 현재 시각이 자동 설정됩니다. 과거 데이터를 생성하려면 최근 1-2년 이내의 날짜를 사용하는 것이 적절합니다.",
-        "fixtureGenerator": "faker.date.recent({ days: 730 })"
+        "fixtureGenerator": null
       }
     },
     {
