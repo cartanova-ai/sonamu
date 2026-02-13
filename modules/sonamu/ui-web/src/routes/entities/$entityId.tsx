@@ -3,6 +3,11 @@
 import {
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Table,
   TableBody,
   TableCell,
@@ -16,7 +21,10 @@ import { unique } from "radashi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
+import Loader2Icon from "~icons/lucide/loader-2";
 import PlusIcon from "~icons/lucide/plus";
+import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import SparklesIcon from "~icons/lucide/sparkles";
 import Trash2Icon from "~icons/lucide/trash-2";
 import { ConeButton } from "../../components/ConeButton";
 import { ConeModal } from "../../components/ConeModal";
@@ -70,6 +78,84 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  // 비어있는 Cone만 생성 (안전)
+  const handleGenerateEmptyCones = () => {
+    if (!entity) {
+      return;
+    }
+
+    const answer = confirm(
+      `비어있는 Cone만 AI로 생성하시겠습니까?\n\n- FixtureHint가 있는 Cone은 보존됩니다\n- 예상 비용: ~$0.01\n- 소요 시간: 10-30초`,
+    );
+    if (!answer) {
+      return;
+    }
+
+    setGeneratingCones(true);
+    SonamuUIService.generateCones(entity.id, {
+      preserveExisting: true,
+      onlyEmpty: true,
+    })
+      .then((result) => {
+        alert(`Cone 생성 완료!\n\n사용 토큰: ${result.tokensUsed}`);
+        refetch();
+      })
+      .catch((error) => {
+        const message = error?.message || String(error);
+        if (message.includes("Entity not found")) {
+          alert("Entity를 찾을 수 없습니다.");
+        } else if (message.includes("API key not configured")) {
+          alert("API 키가 설정되지 않았습니다.\n\nANTHROPIC_API_KEY 환경변수를 설정해주세요.");
+        } else if (message.includes("Rate limit exceeded")) {
+          alert("요청 한도 초과.\n\n잠시 후 다시 시도해주세요.");
+        } else {
+          alert(`Cone 생성 실패:\n\n${message}`);
+        }
+      })
+      .finally(() => {
+        setGeneratingCones(false);
+      });
+  };
+
+  // 전체 Cone 재생성 (위험)
+  const handleRegenerateAllCones = () => {
+    if (!entity) {
+      return;
+    }
+
+    const answer = confirm(
+      `⚠️ 모든 Cone을 AI로 재생성하시겠습니까?\n\n경고: 수동으로 작성한 모든 Cone이 덮어씌워집니다!\n\n- 예상 비용: ~$0.01\n- 소요 시간: 10-30초`,
+    );
+    if (!answer) {
+      return;
+    }
+
+    setGeneratingCones(true);
+    SonamuUIService.generateCones(entity.id, {
+      preserveExisting: false,
+      onlyEmpty: false,
+    })
+      .then((result) => {
+        alert(`Cone 재생성 완료!\n\n사용 토큰: ${result.tokensUsed}`);
+        refetch();
+      })
+      .catch((error) => {
+        const message = error?.message || String(error);
+        if (message.includes("Entity not found")) {
+          alert("Entity를 찾을 수 없습니다.");
+        } else if (message.includes("API key not configured")) {
+          alert("API 키가 설정되지 않았습니다.\n\nANTHROPIC_API_KEY 환경변수를 설정해주세요.");
+        } else if (message.includes("Rate limit exceeded")) {
+          alert("요청 한도 초과.\n\n잠시 후 다시 시도해주세요.");
+        } else {
+          alert(`Cone 생성 실패:\n\n${message}`);
+        }
+      })
+      .finally(() => {
+        setGeneratingCones(false);
+      });
+  };
+
   // EntityPropModal 상태
   const [propModalOpen, setPropModalOpen] = useState(false);
   const [propModalData, setPropModalData] = useState<{
@@ -111,6 +197,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     open: boolean;
     subsetKey: string;
   } | null>(null);
+
+  // AI Cone 생성 상태
+  const [generatingCones, setGeneratingCones] = useState(false);
 
   // useSheetTable
   const { regRow, regCell, cursor, setCursor, setFocusedCursor, turnKeyHandler, isFocused } =
@@ -747,6 +836,24 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               <div className="flex items-center gap-2">
                 <span>{SD("entity.title").replace("{id}", entity.id)}</span>
                 <ConeButton size="sm" onClick={() => setEntityConeModalOpen(true)} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={<SparklesIcon />}
+                  onClick={handleGenerateEmptyCones}
+                  disabled={generatingCones}
+                  className="text-xs"
+                  title="비어있는 Cone만 AI로 생성 (안전)"
+                />
+                <Button
+                  size="sm"
+                  variant="yellow"
+                  icon={<RefreshCwIcon />}
+                  onClick={handleRegenerateAllCones}
+                  disabled={generatingCones}
+                  className="text-xs"
+                  title="⚠️ 전체 Cone 재생성 (기존 내용 덮어쓰기)"
+                />
               </div>
               <Button
                 size="xs"
@@ -1298,6 +1405,23 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           }}
         />
       )}
+      {/* Cone Generation Loading Modal */}
+      <Dialog open={generatingCones} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cone 생성 중</DialogTitle>
+            <DialogDescription>AI가 전체 Cone을 생성하고 있습니다...</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-8 gap-4">
+            <Loader2Icon className="h-12 w-12 animate-spin text-blue-500" />
+            <p className="text-sm text-gray-600">
+              예상 시간: 10-30초
+              <br />
+              잠시만 기다려주세요...
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
