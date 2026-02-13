@@ -620,6 +620,73 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         });
       });
 
+      server.post<{
+        Body: {
+          entityId: string;
+          preserveExisting?: boolean;
+          onlyEmpty?: boolean;
+          locale?: "ko" | "en" | "ja";
+        };
+      }>("/api/entity/generateCones", async (request, reply) => {
+        return await waitForHMRCompleted(async () => {
+          const { entityId, preserveExisting, onlyEmpty, locale } = request.body;
+
+          try {
+            // Entity 존재 여부 확인
+            const entity = EntityManager.get(entityId);
+
+            // locale 기본값: Sonamu.config.i18n.defaultLocale 사용
+            const effectiveLocale =
+              locale ?? (Sonamu.config.i18n.defaultLocale as "ko" | "en" | "ja");
+
+            // Cone 생성
+            const result = await entity.generateCones({
+              preserveExisting: preserveExisting ?? true,
+              onlyEmpty: onlyEmpty ?? false,
+              locale: effectiveLocale,
+            });
+
+            return result;
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+
+            // Entity not found
+            if (message.includes("존재하지 않는 Entity")) {
+              reply.status(404);
+              return {
+                success: false,
+                error: `Entity not found: ${entityId}`,
+              };
+            }
+
+            // API 키 없음
+            if (message.includes("ANTHROPIC_API_KEY not found")) {
+              reply.status(500);
+              return {
+                success: false,
+                error: "API key not configured",
+              };
+            }
+
+            // Rate limit
+            if (message.includes("Rate limit exceeded")) {
+              reply.status(429);
+              return {
+                success: false,
+                error: "Rate limit exceeded. Please try again later.",
+              };
+            }
+
+            // 기타 에러
+            reply.status(500);
+            return {
+              success: false,
+              error: `Cone generation failed: ${message}`,
+            };
+          }
+        });
+      });
+
       server.get<{
         Querystring: {
           entityId: string;

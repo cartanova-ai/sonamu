@@ -7,12 +7,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
   Textarea,
 } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import type { Cone } from "sonamu";
-import CodeIcon from "~icons/lucide/code";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+import ChevronRightIcon from "~icons/lucide/chevron-right";
 
 type ConeModalProps = {
   open: boolean;
@@ -68,6 +68,10 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
   const [tagsInput, setTagsInput] = useState("");
   const [dataSourceInput, setDataSourceInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+
+  // Enum이나 Subset인 경우 Note를 메인 필드로 사용
+  const isEnumOrSubset = title.startsWith("Enum:") || title.startsWith("Subset:");
 
   // 드래그 위치 상태 - 화면 중앙을 기본값으로
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -183,95 +187,76 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
           }
         >
           <div className="overflow-y-scroll flex-1 space-y-4">
-            {/* Description */}
+            {/* Main editable field - FixtureHint for Entity/Prop, Note for Enum/Subset */}
             <div>
-              <label className="block mb-1 font-bold text-gray-900">Description</label>
-              <Input
-                value={form.desc || ""}
-                onChange={(e) => setForm({ ...form, desc: e.target.value })}
-                placeholder="짧은 설명 (UI 라벨용)"
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="block mb-1 font-bold text-gray-900">Note</label>
-              <Textarea
-                value={form.note || ""}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                placeholder="자유로운 메모 (무제한 길이)"
-                rows={3}
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="block mb-1 font-bold text-gray-900">Tags</label>
-              <Input
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="쉼표로 구분 (예: core, auth, test)"
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Fixture Hint */}
-            <div>
-              <label className="block mb-1 font-bold text-gray-900">Fixture Hint</label>
-              <Textarea
-                value={form.fixtureHint || ""}
-                onChange={(e) => setForm({ ...form, fixtureHint: e.target.value })}
-                placeholder="Fixture 생성 시 힌트 (무제한 길이)"
-                rows={4}
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Fixture Generator */}
-            <div>
-              <label className="mb-1 font-bold text-gray-900 flex items-center gap-1">
-                <CodeIcon className="w-4 h-4" />
-                Fixture Generator
+              <label className="block mb-1 font-bold text-gray-900 text-base">
+                {isEnumOrSubset ? "Note" : "Fixture Hint"}
               </label>
-              <Input
-                value={form.fixtureGenerator || ""}
-                onChange={(e) => setForm({ ...form, fixtureGenerator: e.target.value })}
-                placeholder="예: faker.internet.email()"
-                className="font-mono text-sm"
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Fixture Default */}
-            <div>
-              <label className="block mb-1 font-bold text-gray-900">Fixture Default</label>
-              <Input
-                value={
-                  form.fixtureDefault !== undefined
-                    ? typeof form.fixtureDefault === "string"
-                      ? form.fixtureDefault
-                      : JSON.stringify(form.fixtureDefault)
-                    : ""
-                }
-                onChange={(e) => setForm({ ...form, fixtureDefault: e.target.value })}
-                placeholder="기본값 (JSON 또는 문자열)"
-                style={{ backgroundColor: "var(--color-cone-input)" }}
-              />
-            </div>
-
-            {/* Data Source */}
-            <div>
-              <label className="block mb-1 font-bold text-gray-900">Data Source</label>
               <Textarea
-                value={dataSourceInput}
-                onChange={(e) => setDataSourceInput(e.target.value)}
-                placeholder={`JSON 형식:\n{\n  "strategy": "sample",\n  "limit": 10\n}`}
-                rows={6}
-                className="font-mono text-sm"
+                value={isEnumOrSubset ? form.note || "" : form.fixtureHint || ""}
+                onChange={(e) =>
+                  setForm(
+                    isEnumOrSubset
+                      ? { ...form, note: e.target.value }
+                      : { ...form, fixtureHint: e.target.value },
+                  )
+                }
+                placeholder={
+                  isEnumOrSubset
+                    ? "Enum/Subset에 대한 설명을 입력하세요..."
+                    : "Fixture 생성 시 힌트를 입력하세요..."
+                }
+                rows={8}
                 style={{ backgroundColor: "var(--color-cone-input)" }}
+                className="text-sm"
               />
+            </div>
+
+            {/* Cone JSON Preview - Read-only collapsible section */}
+            <div className="border border-gray-300 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAdvancedExpanded(!advancedExpanded)}
+                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <span className="font-semibold text-gray-700 flex items-center gap-2">
+                  {advancedExpanded ? (
+                    <ChevronDownIcon className="w-4 h-4" />
+                  ) : (
+                    <ChevronRightIcon className="w-4 h-4" />
+                  )}
+                  Cone JSON 미리보기
+                </span>
+                <span className="text-xs text-gray-500">
+                  {advancedExpanded ? "클릭하여 접기" : "entity.json에 저장될 내용"}
+                </span>
+              </button>
+
+              {advancedExpanded && (
+                <div className="p-4 bg-gray-50">
+                  <pre className="bg-white text-gray-900 p-4 rounded-lg overflow-x-auto text-xs font-mono leading-relaxed border border-gray-200">
+                    <code>
+                      {JSON.stringify(
+                        {
+                          ...(form.desc && { desc: form.desc }),
+                          ...(form.note && { note: form.note }),
+                          ...(form.tags && form.tags.length > 0 && { tags: form.tags }),
+                          ...(form.fixtureHint && { fixtureHint: form.fixtureHint }),
+                          ...(form.fixtureGenerator && {
+                            fixtureGenerator: form.fixtureGenerator,
+                          }),
+                          ...(form.fixtureDefault !== undefined && {
+                            fixtureDefault: form.fixtureDefault,
+                          }),
+                          ...(form.dataSource && { dataSource: form.dataSource }),
+                        },
+                        null,
+                        2,
+                      )}
+                    </code>
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
 

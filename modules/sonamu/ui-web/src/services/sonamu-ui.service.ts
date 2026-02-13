@@ -663,6 +663,32 @@ export namespace SonamuUIService {
       },
     });
   }
+
+  export type ConeGenerationResult = {
+    entityCone?: Cone;
+    propCones: Record<string, Cone>;
+    subsetCones: Record<string, Cone>;
+    enumCones: Record<string, Cone>;
+    tokensUsed: number;
+  };
+
+  export function generateCones(
+    entityId: string,
+    options?: {
+      preserveExisting?: boolean;
+      onlyEmpty?: boolean;
+      locale?: "ko" | "en" | "ja";
+    },
+  ): Promise<ConeGenerationResult> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/entity/generateCones`,
+      data: {
+        entityId,
+        ...options,
+      },
+    });
+  }
 }
 
 // ---- Tasks 타입 정의 ----

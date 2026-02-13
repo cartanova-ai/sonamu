@@ -945,6 +945,118 @@ export class Entity {
     await EntityManager.register(json);
   }
 
+  /**
+   * 템플릿 cone 메타데이터를 생성합니다.
+   *
+   * LLM을 사용하지 않고 faker-mappings.ts를 활용하여 기본 cone을 생성합니다.
+   * stub entity 생성 시 자동으로 호출되어 최소한의 cone 메타데이터를 제공합니다.
+   *
+   * @param locale - 생성 시 사용할 locale (기본값: Sonamu.config.i18n.defaultLocale 또는 "ko")
+   */
+  async generateTemplateCones(locale?: "ko" | "en" | "ja"): Promise<void> {
+    const { generateTemplateCones } = await import("./entity-template-cone");
+    const configLocale = Sonamu.config.i18n?.defaultLocale;
+    const effectiveLocale =
+      locale ||
+      (configLocale === "ko" || configLocale === "en" || configLocale === "ja"
+        ? configLocale
+        : "ko");
+    const result = generateTemplateCones(this.toJson(), effectiveLocale);
+
+    // 결과를 Entity에 적용 (applyCones와 동일한 방식)
+    if (result.entityCone) {
+      this.cone = result.entityCone;
+    }
+
+    for (const [propName, cone] of Object.entries(result.propCones)) {
+      const prop = this.props.find((p) => p.name === propName);
+      if (prop) {
+        (prop as { cone?: Cone }).cone = cone;
+      }
+    }
+
+    this.enumCones = { ...this.enumCones, ...result.enumCones };
+    this.subsetCones = { ...this.subsetCones, ...result.subsetCones };
+
+    await this.save();
+  }
+
+  /**
+   * LLM을 사용하여 cone 메타데이터를 생성합니다.
+   *
+   * @param options.preserveExisting - 기존 cone 보존 여부 (기본값: true)
+   * @param options.onlyEmpty - fixtureHint가 없는 cone만 생성 (기본값: false)
+   * @param options.locale - 생성 시 사용할 locale (기본값: "ko")
+   */
+  async generateCones(options?: {
+    preserveExisting?: boolean;
+    onlyEmpty?: boolean;
+    locale?: "ko" | "en" | "ja";
+  }): Promise<import("../cone/cone-generator").ConeGenerationResult> {
+    const { generateCones } = await import("../cone/cone-generator");
+    const context: import("../cone/cone-generator").ConeGenerationContext = {
+      entity: this.toJson(),
+      locale: options?.locale || "ko",
+      existingCones: options?.preserveExisting !== false ? this.collectExistingCones() : undefined,
+      onlyEmpty: options?.onlyEmpty ?? false,
+    };
+
+    const result = await generateCones(context);
+    this.applyCones(result);
+    await this.save();
+    return result;
+  }
+
+  /**
+   * 기존 cone들을 수집합니다 (entity, props, enums, subsets).
+   *
+   * @returns 키가 "entity:id", "prop:name", "enum:enumId", "subset:key" 형식인 cone 맵
+   */
+  private collectExistingCones(): Record<string, Cone> {
+    const cones: Record<string, Cone> = {};
+
+    if (this.cone) {
+      cones[`entity:${this.id}`] = this.cone;
+    }
+
+    for (const prop of this.props) {
+      if (prop.cone) {
+        cones[`prop:${prop.name}`] = prop.cone;
+      }
+    }
+
+    for (const [enumId, cone] of Object.entries(this.enumCones)) {
+      cones[`enum:${enumId}`] = cone;
+    }
+
+    for (const [subsetKey, cone] of Object.entries(this.subsetCones)) {
+      cones[`subset:${subsetKey}`] = cone;
+    }
+
+    return cones;
+  }
+
+  /**
+   * 생성된 cone들을 Entity에 적용합니다.
+   *
+   * @param result - LLM으로 생성된 cone 결과
+   */
+  private applyCones(result: import("../cone/cone-generator").ConeGenerationResult): void {
+    if (result.entityCone) {
+      this.cone = result.entityCone;
+    }
+
+    for (const [propName, cone] of Object.entries(result.propCones)) {
+      const prop = this.props.find((p) => p.name === propName);
+      if (prop) {
+        (prop as { cone?: Cone }).cone = cone;
+      }
+    }
+
+    this.enumCones = { ...this.enumCones, ...result.enumCones };
+    this.subsetCones = { ...this.subsetCones, ...result.subsetCones };
+  }
+
   getSubsetRows(
     _subsets?: { [key: string]: string[] },
     _subsetsInternal?: { [key: string]: string[] },
