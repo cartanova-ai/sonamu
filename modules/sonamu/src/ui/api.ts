@@ -624,11 +624,12 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         Body: {
           entityId: string;
           preserveExisting?: boolean;
+          onlyEmpty?: boolean;
           locale?: "ko" | "en" | "ja";
         };
       }>("/api/entity/generateCones", async (request, reply) => {
         return await waitForHMRCompleted(async () => {
-          const { entityId, preserveExisting, locale } = request.body;
+          const { entityId, preserveExisting, onlyEmpty, locale } = request.body;
 
           try {
             // Entity 존재 여부 확인
@@ -641,6 +642,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             // Cone 생성
             const result = await entity.generateCones({
               preserveExisting: preserveExisting ?? true,
+              onlyEmpty: onlyEmpty ?? false,
               locale: effectiveLocale,
             });
 
