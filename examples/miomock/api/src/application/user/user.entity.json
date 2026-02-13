@@ -4,13 +4,28 @@
   "title": "USER",
   "cone": {
     "desc": "사용자",
-    "note": "시스템의 모든 사용자를 관리하는 핵심 Entity입니다. 직원과 OneToOne 관계를 가집니다.",
+    "note": "시스템의 기본 사용자 엔티티. 인증 및 권한 관리를 위한 핵심 엔티티이며, 직원(Employee)과 1:1 관계를 가질 수 있음",
     "tags": ["core", "auth"],
-    "fixtureHint": "한국인 이름"
+    "fixtureHint": "한국인 이름을 사용하고, 이메일은 고유해야 함. role은 대부분 normal로 설정하고 일부만 admin으로 설정. is_verified는 대부분 true로 설정하는 것이 현실적임"
   },
   "props": [
-    { "name": "id", "desc": "ID", "type": "string" },
-    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "name": "id",
+      "desc": "ID",
+      "type": "string",
+      "cone": { "desc": "사용자 고유 식별자", "fixtureHint": "UUID 또는 자동 생성되는 고유 ID" }
+    },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "cone": {
+        "desc": "사용자 등록 일시",
+        "fixtureHint": "최근 1년 이내의 날짜를 권장",
+        "fixtureGenerator": "faker.date.recent({ days: 365 })"
+      }
+    },
     {
       "name": "email",
       "desc": "이메일",
@@ -35,25 +50,129 @@
       "desc": "비밀번호",
       "type": "string",
       "length": 255,
-      "cone": { "fixtureDefault": "password123" }
+      "cone": {
+        "desc": "비밀번호 해시값",
+        "fixtureHint": "테스트용으로 고정된 비밀번호 사용",
+        "fixtureDefault": "password123"
+      }
     },
-    { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
-    { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
-    { "name": "last_login_at", "nullable": true, "desc": "LASTLOGIN일시", "type": "date" },
-    { "name": "bio", "nullable": true, "desc": "BIO", "type": "string" },
-    { "name": "is_verified", "type": "boolean", "desc": "ISVERIFIED", "dbDefault": "false" },
-    { "name": "deleted_at", "nullable": true, "desc": "삭제일시", "type": "date" },
+    {
+      "name": "birth_date",
+      "nullable": true,
+      "desc": "생일",
+      "type": "date",
+      "cone": {
+        "desc": "생년월일",
+        "fixtureHint": "만 18세~65세 사이의 생년월일 생성",
+        "fixtureGenerator": "faker.date.birthdate({ min: 18, max: 65, mode: 'age' })"
+      }
+    },
+    {
+      "name": "role",
+      "desc": "ROLE",
+      "type": "enum",
+      "id": "UserRole",
+      "cone": {
+        "desc": "사용자 권한 역할",
+        "note": "normal 또는 admin 값을 가짐",
+        "fixtureHint": "대부분(80% 이상)은 'normal'로 설정하고, 일부만 'admin'으로 설정하는 것이 현실적임",
+        "fixtureGenerator": "faker.helpers.weightedArrayElement([{ weight: 8, value: 'normal' }, { weight: 2, value: 'admin' }])"
+      }
+    },
+    {
+      "name": "last_login_at",
+      "nullable": true,
+      "desc": "LASTLOGIN일시",
+      "type": "date",
+      "cone": {
+        "desc": "마지막 로그인 일시",
+        "fixtureHint": "최근 30일 이내의 날짜 권장. null 값도 허용됨(아직 로그인하지 않은 경우)",
+        "fixtureGenerator": "faker.date.recent({ days: 30 })"
+      }
+    },
+    {
+      "name": "bio",
+      "nullable": true,
+      "desc": "BIO",
+      "type": "string",
+      "cone": {
+        "desc": "사용자 자기소개",
+        "fixtureHint": "1-3문장 정도의 간단한 자기소개 텍스트. null 값 허용",
+        "fixtureGenerator": "faker.person.bio()"
+      }
+    },
+    {
+      "name": "is_verified",
+      "type": "boolean",
+      "desc": "ISVERIFIED",
+      "dbDefault": "false",
+      "cone": {
+        "desc": "이메일 인증 완료 여부",
+        "note": "기본값은 false이지만, 픽스처에서는 대부분 true로 설정하는 것이 테스트에 유용함",
+        "fixtureHint": "대부분 true로 설정하여 인증된 사용자로 생성",
+        "fixtureGenerator": "faker.datatype.boolean({ probability: 0.9 })"
+      }
+    },
+    {
+      "name": "deleted_at",
+      "nullable": true,
+      "desc": "삭제일시",
+      "type": "date",
+      "cone": {
+        "desc": "소프트 삭제 일시",
+        "note": "소프트 삭제 패턴 적용. null이면 활성 사용자",
+        "fixtureHint": "대부분 null로 설정하고, 일부만(5% 이하) 삭제된 사용자로 생성",
+        "fixtureGenerator": "faker.helpers.maybe(() => faker.date.recent({ days: 90 }), { probability: 0.05 })"
+      }
+    },
     {
       "type": "relation",
       "name": "employee",
       "with": "Employee",
       "nullable": true,
       "desc": "직원",
-      "relationType": "OneToOne"
+      "relationType": "OneToOne",
+      "cone": {
+        "desc": "연결된 직원 정보",
+        "note": "OneToOne 관계. 모든 사용자가 직원인 것은 아님",
+        "fixtureHint": "최근 생성된 직원 중 아직 사용자와 연결되지 않은 직원을 참조. null 값도 허용됨",
+        "dataSource": { "strategy": "recent", "config": { "limit": 3 } }
+      }
     },
-    { "name": "image", "type": "string", "nullable": true, "desc": "프로필 이미지" },
-    { "name": "updated_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP", "desc": "수정일시" },
-    { "name": "two_factor_enabled", "type": "boolean", "nullable": true, "desc": "2FA 활성화 여부" }
+    {
+      "name": "image",
+      "type": "string",
+      "nullable": true,
+      "desc": "프로필 이미지",
+      "cone": {
+        "desc": "프로필 이미지 URL",
+        "fixtureHint": "이미지 URL 또는 파일 경로. null 값 허용",
+        "fixtureGenerator": "faker.image.avatar()"
+      }
+    },
+    {
+      "name": "updated_at",
+      "type": "date",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "desc": "수정일시",
+      "cone": {
+        "desc": "마지막 수정 일시",
+        "note": "레코드가 수정될 때마다 자동 업데이트됨",
+        "fixtureHint": "created_at 이후의 날짜로 설정. created_at과 동일하거나 더 최근 날짜",
+        "fixtureGenerator": "faker.date.recent({ days: 30 })"
+      }
+    },
+    {
+      "name": "two_factor_enabled",
+      "type": "boolean",
+      "nullable": true,
+      "desc": "2FA 활성화 여부",
+      "cone": {
+        "desc": "2단계 인증(2FA) 활성화 여부",
+        "fixtureHint": "대부분 false 또는 null. 보안을 중요시하는 일부 사용자(특히 admin)만 true로 설정",
+        "fixtureGenerator": "faker.datatype.boolean({ probability: 0.2 })"
+      }
+    }
   ],
   "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
@@ -70,26 +189,71 @@
         "is_verified",
         "deleted_at"
       ],
-      "cone": { "desc": "SubsetA" }
+      "cone": {
+        "desc": "기본 사용자 정보 서브셋",
+        "note": "사용자의 기본 정보를 포함하는 서브셋. ID, 생성일, 이메일, 이름, 생년월일, 권한, 마지막 로그인, 자기소개, 인증 여부, 삭제 일시 필드를 포함"
+      }
     },
-    "P": [
-      "id",
-      "email",
-      "username",
-      "role",
-      "bio",
-      "is_verified",
-      "employee.department.name",
-      "employee.salary"
-    ],
-    "SS": ["id", "created_at", "email", "username", "role", "last_login_at", "bio", "is_verified"]
+    "P": {
+      "fields": [
+        "id",
+        "email",
+        "username",
+        "role",
+        "bio",
+        "is_verified",
+        "employee.department.name",
+        "employee.salary"
+      ],
+      "cone": {
+        "desc": "프로필 조회용 서브셋",
+        "note": "공개 프로필 정보와 연결된 직원의 부서명 및 급여 정보 포함. 사용자 기본 정보와 관계된 직원 정보를 함께 조회할 때 사용"
+      }
+    },
+    "SS": {
+      "fields": [
+        "id",
+        "created_at",
+        "email",
+        "username",
+        "role",
+        "last_login_at",
+        "bio",
+        "is_verified"
+      ],
+      "cone": {
+        "desc": "간략한 사용자 정보 서브셋",
+        "note": "리스트 조회 시 사용되는 축약된 사용자 정보. password와 민감한 정보 제외. ID, 생성일, 이메일, 이름, 권한, 마지막 로그인, 자기소개, 인증 여부 필드만 포함"
+      }
+    }
   },
   "enums": {
     "UserOrderBy": {
       "values": { "id-desc": "ID최신순" },
-      "cone": { "note": "사용자를 최신 생성 순서대로 조회함" }
+      "cone": {
+        "desc": "사용자 정렬 기준",
+        "note": "사용자 목록을 정렬할 때 사용하는 기준",
+        "values": { "id-desc": { "desc": "ID 기준 내림차순 정렬 (최신 생성 순)" } }
+      }
     },
-    "UserSearchField": { "id": "ID" },
-    "UserRole": { "normal": "노멀", "admin": "관리자" }
+    "UserSearchField": {
+      "values": { "id": "ID" },
+      "cone": {
+        "desc": "사용자 검색 필드",
+        "note": "사용자 검색 시 검색 대상 필드를 지정하는 열거형",
+        "values": { "id": { "desc": "ID로 검색" } }
+      }
+    },
+    "UserRole": {
+      "values": { "normal": "노멀", "admin": "관리자" },
+      "cone": {
+        "desc": "사용자 권한 역할",
+        "note": "시스템 내에서 사용자의 권한 수준을 정의",
+        "values": {
+          "normal": { "desc": "일반 사용자 권한" },
+          "admin": { "desc": "관리자 권한 (모든 기능 접근 가능)" }
+        }
+      }
+    }
   }
 }

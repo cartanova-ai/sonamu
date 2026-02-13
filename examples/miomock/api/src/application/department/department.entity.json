@@ -5,7 +5,8 @@
   "cone": {
     "desc": "회사의 조직 구조를 나타내는 부서 정보",
     "note": "각 부서는 회사에 소속되며, 계층 구조를 가질 수 있습니다. 부서별 직원 수를 집계할 수 있습니다.",
-    "tags": ["organization", "hierarchy", "company"]
+    "tags": ["organization", "hierarchy", "company"],
+    "fixtureHint": "부서는 반드시 회사(Company)에 소속되어야 합니다. 계층 구조를 위해 parent 필드를 사용하며, 같은 회사 내에서만 상하 관계를 맺어야 합니다. 회사당 3-5개의 부서를 생성하고, 일부는 상위 부서를 가지도록 설정합니다. 부서명은 회사 내에서 중복될 수 없습니다(unique index)."
   },
   "props": [
     {

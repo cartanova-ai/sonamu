@@ -5,7 +5,8 @@
   "cone": {
     "desc": "직원 정보를 관리하는 엔티티",
     "note": "User와 1:1 관계를 가지며, Department에 소속되고, Project에 참여할 수 있습니다.",
-    "tags": ["HR", "인사", "조직"]
+    "tags": ["HR", "인사", "조직"],
+    "fixtureHint": "Employee 엔티티 생성 시 User와 1:1 관계를 유지해야 하며, 이미 Employee와 연결된 User는 재사용할 수 없습니다. Department는 nullable이므로 일부는 부서 미배정 상태로 생성됩니다. Project는 ManyToMany 관계로 0~3개를 무작위로 할당합니다. employee_number와 user_id 조합은 unique 제약이 있으므로 중복되지 않도록 주의합니다."
   },
   "props": [
     {
