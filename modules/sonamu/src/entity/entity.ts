@@ -949,10 +949,12 @@ export class Entity {
    * LLM을 사용하여 cone 메타데이터를 생성합니다.
    *
    * @param options.preserveExisting - 기존 cone 보존 여부 (기본값: true)
+   * @param options.onlyEmpty - fixtureHint가 없는 cone만 생성 (기본값: false)
    * @param options.locale - 생성 시 사용할 locale (기본값: "ko")
    */
   async generateCones(options?: {
     preserveExisting?: boolean;
+    onlyEmpty?: boolean;
     locale?: "ko" | "en" | "ja";
   }): Promise<import("../cone/cone-generator").ConeGenerationResult> {
     const { generateCones } = await import("../cone/cone-generator");
@@ -960,6 +962,7 @@ export class Entity {
       entity: this.toJson(),
       locale: options?.locale || "ko",
       existingCones: options?.preserveExisting !== false ? this.collectExistingCones() : undefined,
+      onlyEmpty: options?.onlyEmpty ?? false,
     };
 
     const result = await generateCones(context);
