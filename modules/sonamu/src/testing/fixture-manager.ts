@@ -133,6 +133,35 @@ export class FixtureManagerClass {
       env: { ...process.env, ...fixturePgEnv } as NodeJS.ProcessEnv,
       shell: "/bin/bash",
     });
+
+    // 3. 시퀀스 리셋 (데이터 복사 후 시퀀스를 MAX(id)로 정렬)
+    await this.resetSequences(Sonamu.dbConfig.test);
+  }
+
+  /**
+   * 모든 테이블의 시퀀스를 현재 MAX(id)로 리셋합니다.
+   * fixture sync 후 시퀀스가 실제 데이터와 맞지 않는 문제를 해결합니다.
+   */
+  private async resetSequences(dbConfig: SonamuDBConfig["test"]) {
+    const testDb = createKnexInstance(dbConfig);
+    const entities = EntityManager.getAllEntities();
+
+    try {
+      for (const entity of entities) {
+        const tableName = entity.table || entity.id.toLowerCase();
+
+        // PostgreSQL 시퀀스를 현재 테이블의 MAX(id)로 리셋합니다.
+        // 세 번째 인자를 생략하면 기본값 true가 적용되어, 다음 INSERT 시 MAX(id)+1부터 시작합니다.
+        await testDb.raw(`
+          SELECT setval(
+            pg_get_serial_sequence('public.${tableName}', 'id'),
+            COALESCE((SELECT MAX(id::integer) FROM ${tableName}), 1)
+          )
+        `);
+      }
+    } finally {
+      await testDb.destroy();
+    }
   }
 
   private visitedRecords = new Set<string>();
