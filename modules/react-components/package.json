@@ -99,6 +99,7 @@
   "peerDependencies": {
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "better-auth": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -107,6 +108,7 @@
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "better-auth": "catalog:",
     "@types/inflection": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
