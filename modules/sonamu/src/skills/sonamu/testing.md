@@ -2055,7 +2055,7 @@ await expect(UserModel.findById("A", 99999))
 // packages/api/package.json
 {
   "dependencies": {
-    "sonamu": "0.7.50"  // link 대신 버전 명시
+    "sonamu": "0.7.54"  // link 대신 버전 명시
   }
 }
 ```
