@@ -811,6 +811,11 @@ export type ApiParam = {
   defaultDef?: string;
 };
 export namespace ApiParamType {
+  export type Function = {
+    t: "function";
+    parameters: ApiParam[];
+    returnType: ApiParamType;
+  };
   export type Object = {
     t: "object";
     props: ApiParam[];
@@ -974,7 +979,8 @@ export type ApiParamType =
   | ApiParamType.Ref
   | ApiParamType.IndexedAccess
   | ApiParamType.TypeParam
-  | ApiParamType.TupleType;
+  | ApiParamType.TupleType
+  | ApiParamType.Function;
 
 /* Template */
 /**

@@ -234,6 +234,18 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
       // 괄호로 묶인 타입 (예: (A & B)[] 에서 (A & B))
       // 내부 타입을 재귀적으로 resolve
       return resolveTypeNode((typeNode as ts.ParenthesizedTypeNode).type);
+
+    case ts.SyntaxKind.FunctionType:
+      return {
+        t: "function",
+        parameters: (typeNode as ts.FunctionTypeNode).parameters.map((param) => ({
+          name: param.name.getText(),
+          type: param.type ? resolveTypeNode(param.type) : "unknown",
+          optional: param.questionToken !== undefined,
+          defaultDef: undefined,
+        })),
+        returnType: resolveTypeNode((typeNode as ts.FunctionTypeNode).type),
+      };
     case undefined:
       throw new Error(`typeNode undefined`);
   }
