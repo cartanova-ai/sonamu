@@ -14,6 +14,13 @@ import { FixtureManager } from "./fixture-manager";
 
 export type Locale = "ko" | "en" | "ja";
 
+export type FixtureGeneratorOptions = {
+  locale?: Locale;
+  useLLM?: boolean;
+  enableLLMCache?: boolean;
+  llmModel?: string;
+};
+
 export type GeneratorContext = {
   /** 생성 중인 fixture들 (메모리 상) */
   fixtures: Map<string, Record<string, unknown>>;
@@ -29,6 +36,8 @@ export class FixtureGenerator {
   private dataExplorer: DataExplorer;
   private locale: Locale;
   private mappings: FakerMappings;
+  private llmCache: Map<string, unknown> = new Map();
+  private options: FixtureGeneratorOptions;
 
   constructor(
     private sourceDb: Knex,
@@ -37,11 +46,17 @@ export class FixtureGenerator {
     _targetDb: Knex,
     private targetDbName: "fixture" | "test" | "production_master",
     private entityManager: typeof EntityManager,
-    options?: { locale?: Locale },
+    options?: FixtureGeneratorOptions,
   ) {
     this.dataExplorer = new DataExplorer(sourceDb, entityManager);
     this.locale = options?.locale || "ko";
     this.mappings = fakerMappings;
+    this.options = {
+      locale: options?.locale || "ko",
+      useLLM: options?.useLLM || false,
+      enableLLMCache: options?.enableLLMCache !== false,
+      llmModel: options?.llmModel || "claude-sonnet-4-5",
+    };
   }
 
   /**
@@ -97,6 +112,20 @@ export class FixtureGenerator {
           entity,
         );
         continue;
+      }
+
+      // 2.5. fixtureHint + LLM 사용
+      if (cone?.fixtureHint && this.options.useLLM) {
+        try {
+          fixture[prop.name] = await this.generateWithLLM(cone.fixtureHint, prop, entity);
+          continue;
+        } catch (error) {
+          console.warn(
+            `[FixtureGenerator] LLM generation failed for ${entity.id}.${prop.name}, falling back to default`,
+            error instanceof Error ? error.message : error,
+          );
+          // fallback: fixtureDefault 또는 기본값으로 계속
+        }
       }
 
       // 3. fixtureDefault 사용
@@ -701,6 +730,297 @@ export class FixtureGenerator {
     }
 
     return fn(...args);
+  }
+
+  /**
+   * fixtureHint를 LLM에게 전달하여 현실적인 테스트 데이터를 생성합니다.
+   *
+   * faker.js로는 생성하기 어려운 복잡한 텍스트(자기소개, 설명문 등)를
+   * LLM을 활용하여 생성합니다. 동일한 hint에 대한 중복 호출을 방지하기 위해
+   * 캐싱을 기본으로 지원합니다 (LLM API 비용 절감).
+   *
+   * ai 패키지는 dynamic import로 불러오므로, useLLM이 false인 경우
+   * 의존성이 설치되지 않아도 fixture 생성이 정상 동작합니다.
+   */
+  private async generateWithLLM(
+    fixtureHint: string,
+    prop: EntityProp,
+    entity: Entity,
+  ): Promise<unknown> {
+    const cacheKey = `${entity.id}:${prop.name}:${fixtureHint}`;
+    if (this.options.enableLLMCache && this.llmCache.has(cacheKey)) {
+      return this.llmCache.get(cacheKey);
+    }
+
+    const apiKey = this.getApiKey();
+    const { createAnthropic } = await import("@ai-sdk/anthropic");
+    const { generateText } = await import("ai");
+
+    const { text } = await generateText({
+      model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
+      prompt: this.buildLLMPrompt(fixtureHint, prop, entity),
+    });
+
+    const value = this.parseLLMResponse(text, prop.type);
+    if (this.options.enableLLMCache) {
+      this.llmCache.set(cacheKey, value);
+    }
+
+    return value;
+  }
+
+  private buildLLMPrompt(hint: string, prop: EntityProp, entity: Entity): string {
+    const locale = this.options.locale || "ko";
+    const language = locale === "ko" ? "Korean" : locale === "ja" ? "Japanese" : "English";
+
+    let prompt = `Generate test data for ${entity.id}.${prop.name} (type: ${prop.type})
+
+Requirement: ${hint}
+
+Rules:
+- Return ONLY the value, no explanation or markdown
+- Use ${language} language if applicable
+- Format: ${this.getExpectedFormat(prop.type)}`;
+
+    // enum 타입인 경우 가능한 값 목록 추가
+    if (prop.type === "enum" || prop.type === "enum[]") {
+      let enumValues: string[] = [];
+
+      if ("enum" in prop && Array.isArray(prop.enum) && prop.enum.length > 0) {
+        enumValues = prop.enum;
+      } else if ("id" in prop && prop.id && entity?.enumLabels?.[prop.id]) {
+        enumValues = Object.keys(entity.enumLabels[prop.id]);
+      }
+
+      if (enumValues.length > 0) {
+        prompt += `\n- IMPORTANT: Choose ONLY from these allowed values: ${enumValues.join(", ")}`;
+      }
+    }
+
+    prompt += `\n\nExample: ${this.getExampleForType(prop.type, locale)}`;
+
+    return prompt;
+  }
+
+  private parseLLMResponse(text: string, propType: string): unknown {
+    const cleaned = text.trim();
+
+    // 배열 타입 처리
+    if (propType.endsWith("[]")) {
+      try {
+        const parsed = JSON.parse(cleaned);
+        const baseType = propType.slice(0, -2); // "integer[]" -> "integer"
+
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => {
+            // null/undefined는 타입별 기본값으로
+            if (item === null || item === undefined) {
+              return this.getDefaultValueForType(baseType);
+            }
+            // 객체는 JSON.stringify 후 파싱 (json 타입인 경우)
+            if (typeof item === "object") {
+              return baseType === "json"
+                ? item
+                : this.parseScalarValue(JSON.stringify(item), baseType);
+            }
+            // primitive 값은 문자열로 변환 후 파싱
+            return this.parseScalarValue(String(item), baseType);
+          });
+        }
+
+        // 단일 값이 온 경우 배열로 감싸기
+        if (parsed === null || parsed === undefined) {
+          return [this.getDefaultValueForType(baseType)];
+        }
+        return [this.parseScalarValue(String(parsed), baseType)];
+      } catch {
+        return [];
+      }
+    }
+
+    return this.parseScalarValue(cleaned, propType);
+  }
+
+  private getDefaultValueForType(propType: string): unknown {
+    switch (propType) {
+      case "integer":
+        return 0;
+      case "bigInteger":
+        return 0n;
+      case "float":
+      case "number":
+      case "numeric":
+        return 0;
+      case "boolean":
+        return false;
+      case "date":
+        return new Date();
+      case "json":
+        return {};
+      case "uuid":
+        return "00000000-0000-0000-0000-000000000000";
+      default:
+        return "";
+    }
+  }
+
+  private parseScalarValue(text: string, propType: string): unknown {
+    const cleaned = text.trim();
+
+    switch (propType) {
+      case "integer": {
+        const num = parseInt(cleaned, 10);
+        return Number.isNaN(num) ? 0 : num;
+      }
+      case "bigInteger": {
+        try {
+          return BigInt(cleaned);
+        } catch {
+          return 0n;
+        }
+      }
+      case "float":
+      case "number":
+      case "numeric": {
+        const num = parseFloat(cleaned);
+        return Number.isNaN(num) ? 0 : num;
+      }
+      case "boolean":
+        return cleaned.toLowerCase() === "true";
+      case "date": {
+        const date = new Date(cleaned);
+        return Number.isNaN(date.getTime()) ? new Date() : date;
+      }
+      case "json":
+        try {
+          return JSON.parse(cleaned);
+        } catch {
+          return cleaned;
+        }
+      case "uuid":
+      case "enum":
+        return cleaned;
+      default:
+        return cleaned;
+    }
+  }
+
+  /**
+   * Sonamu.secret을 우선으로 하고, 없으면 환경변수에서 API 키를 읽습니다.
+   *
+   * Sonamu.secret은 프로젝트별 설정(sonamu.config.ts)이므로 더 높은 우선순위를 가지며,
+   * 환경변수는 개발 환경이나 CI/CD에서 fallback으로 사용됩니다.
+   */
+  private getApiKey(): string {
+    let apiKey: string | undefined;
+
+    try {
+      const { Sonamu } = require("../api");
+      apiKey = Sonamu.secret?.anthropic_api_key;
+    } catch {
+      // Sonamu가 초기화되지 않은 경우 (테스트 환경 등)
+    }
+
+    if (!apiKey) {
+      apiKey = process.env.ANTHROPIC_API_KEY;
+    }
+
+    if (!apiKey) {
+      throw new Error(
+        "ANTHROPIC_API_KEY not found. Set it in environment variables or Sonamu.secret.anthropic_api_key",
+      );
+    }
+
+    return apiKey;
+  }
+
+  private getExpectedFormat(propType: string): string {
+    // 배열 타입 처리
+    if (propType.endsWith("[]")) {
+      const baseType = propType.slice(0, -2);
+      const baseFormat = this.getScalarFormat(baseType);
+      return `JSON array of ${baseFormat} (e.g., [${this.getExampleForType(baseType, "en")}, ...])`;
+    }
+
+    return this.getScalarFormat(propType);
+  }
+
+  private getScalarFormat(propType: string): string {
+    switch (propType) {
+      case "integer":
+      case "bigInteger":
+        return "integer numbers";
+      case "float":
+      case "number":
+      case "numeric":
+        return "decimal numbers";
+      case "boolean":
+        return "booleans (true or false)";
+      case "date":
+        return "ISO 8601 date strings";
+      case "json":
+        return "valid JSON object or array";
+      case "uuid":
+        return "UUID strings";
+      case "enum":
+        return "one of the allowed enum values";
+      default:
+        return "plain text strings";
+    }
+  }
+
+  private getExampleForType(propType: string, locale: Locale): string {
+    // 배열 타입 처리
+    if (propType.endsWith("[]")) {
+      const baseType = propType.slice(0, -2);
+      const baseExample = this.getScalarExample(baseType, locale);
+      return `[${baseExample}]`;
+    }
+
+    return this.getScalarExample(propType, locale);
+  }
+
+  private getScalarExample(propType: string, locale: Locale): string {
+    const isKorean = locale === "ko";
+
+    switch (propType) {
+      case "integer":
+      case "bigInteger":
+        return "42";
+      case "float":
+      case "number":
+      case "numeric":
+        return "3.14";
+      case "boolean":
+        return "true";
+      case "date":
+        return "2024-01-01";
+      case "json":
+        return '{"key": "value"}';
+      case "uuid":
+        return "550e8400-e29b-41d4-a716-446655440000";
+      case "enum":
+        return "ENUM_VALUE";
+      default:
+        return isKorean ? "안녕하세요" : "Hello";
+    }
+  }
+
+  /**
+   * LLM 캐시 통계를 반환합니다.
+   */
+  getLLMCacheStats() {
+    return {
+      size: this.llmCache.size,
+      enabled: this.options.enableLLMCache,
+    };
+  }
+
+  /**
+   * LLM 캐시를 초기화합니다.
+   */
+  clearLLMCache() {
+    this.llmCache.clear();
   }
 
   /**
