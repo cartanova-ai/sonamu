@@ -23,7 +23,7 @@
       "cone": {
         "desc": "부서 등록 일시",
         "fixtureHint": "최근 1년 이내의 날짜로 생성",
-        "fixtureGenerator": "faker.date.recent({ days: 365 })"
+        "fixtureGenerator": null
       }
     },
     {
