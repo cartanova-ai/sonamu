@@ -1,9 +1,29 @@
 import type { Cone } from "sonamu";
 import { BaseModel, EntityManager } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { afterAll, describe, expect, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, vi } from "vitest";
+
+// ai 패키지의 generateText 모킹
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>();
+  return {
+    ...actual,
+    generateText: vi.fn(),
+  };
+});
 
 bootstrap(vi);
+
+// 모킹된 generateText 함수
+let mockGenerateText: ReturnType<typeof vi.fn>;
+
+beforeEach(async () => {
+  const ai = await import("ai");
+  mockGenerateText = ai.generateText as ReturnType<typeof vi.fn>;
+
+  // 테스트에서 더미 API 키 설정 (실제 호출은 모킹되므로 유효하지 않아도 됨)
+  process.env.ANTHROPIC_API_KEY = "test-api-key-for-mocking";
+});
 
 // 모든 테스트 후 시퀀스 리셋
 afterAll(async () => {
@@ -71,64 +91,83 @@ describe("Cone Generator", () => {
     }
   });
 
-  test(
-    "User entity cone 생성 (API 키 필요)",
-    async () => {
-      // 이 테스트는 ANTHROPIC_API_KEY가 설정되어 있을 때만 실행됩니다
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        console.log("ANTHROPIC_API_KEY not set, skipping LLM test");
-        return;
+  test("User entity cone 생성 (모킹)", async () => {
+    const userEntity = EntityManager.get("User");
+
+    // 기존 cone 백업
+    const originalCone = userEntity.cone;
+    const originalPropCones: Record<string, Cone> = {};
+    for (const prop of userEntity.props) {
+      if (prop.cone) {
+        originalPropCones[prop.name] = prop.cone;
       }
+    }
 
-      const userEntity = EntityManager.get("User");
+    // LLM 응답을 JSON으로 감싼 형태로 모킹
+    const mockLLMResponse = JSON.stringify({
+      entityCone: {
+        desc: "사용자 관리",
+        note: "시스템 사용자 정보",
+      },
+      propCones: {
+        email: {
+          desc: "이메일 주소",
+          fixtureGenerator: "faker.internet.email()",
+        },
+        username: {
+          desc: "사용자명",
+          fixtureGenerator: "fakerKO.person.fullName()",
+        },
+        role: {
+          desc: "사용자 역할",
+          fixtureGenerator: "faker.helpers.arrayElement(['admin', 'user', 'guest'])",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
 
-      // 기존 cone 백업
-      const originalCone = userEntity.cone;
-      const originalPropCones: Record<string, Cone> = {};
+    // generateText 모킹
+    mockGenerateText.mockResolvedValueOnce({
+      text: mockLLMResponse,
+      usage: { totalTokens: 1500 },
+    });
+
+    try {
+      // Cone 생성
+      const result = await userEntity.generateCones({
+        preserveExisting: false,
+        locale: "ko",
+      });
+
+      // 결과 검증
+      expect(result).toBeDefined();
+      expect(result.propCones).toBeDefined();
+      expect(typeof result.propCones).toBe("object");
+
+      // email 필드 cone 확인
+      const emailCone = result.propCones.email;
+      expect(emailCone).toBeDefined();
+      expect(emailCone?.desc).toBeDefined();
+      expect(emailCone?.fixtureGenerator).toContain("faker");
+
+      // 토큰 사용량 확인
+      expect(result.tokensUsed).toBeGreaterThanOrEqual(0);
+
+      console.log("Cone generation test passed");
+      console.log("Generated cones for props:", Object.keys(result.propCones).slice(0, 5));
+    } finally {
+      // cone 복원 (entity.json 변경 방지)
+      userEntity.cone = originalCone;
       for (const prop of userEntity.props) {
-        if (prop.cone) {
-          originalPropCones[prop.name] = prop.cone;
+        if (originalPropCones[prop.name]) {
+          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+        } else {
+          delete (prop as unknown as PropWithCone).cone;
         }
       }
-
-      try {
-        // Cone 생성
-        const result = await userEntity.generateCones({
-          preserveExisting: false,
-          locale: "ko",
-        });
-
-        // 결과 검증
-        expect(result).toBeDefined();
-        expect(result.propCones).toBeDefined();
-        expect(typeof result.propCones).toBe("object");
-
-        // email 필드 cone 확인
-        const emailCone = result.propCones.email;
-        expect(emailCone).toBeDefined();
-        expect(emailCone?.desc).toBeDefined();
-        expect(emailCone?.fixtureGenerator).toContain("faker");
-
-        // 토큰 사용량 확인
-        expect(result.tokensUsed).toBeGreaterThanOrEqual(0);
-
-        console.log("Cone generation test passed");
-        console.log("Generated cones for props:", Object.keys(result.propCones).slice(0, 5));
-      } finally {
-        // cone 복원 (entity.json 변경 방지)
-        userEntity.cone = originalCone;
-        for (const prop of userEntity.props) {
-          if (originalPropCones[prop.name]) {
-            (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
-          } else {
-            delete (prop as unknown as PropWithCone).cone;
-          }
-        }
-      }
-    },
-    { timeout: 120000 },
-  );
+    }
+  });
 
   test("기존 cone 보존 테스트", async () => {
     const userEntity = EntityManager.get("User");
@@ -200,173 +239,251 @@ describe("Cone Generator", () => {
     }
   });
 
-  test(
-    "관계 필드 테스트 - BelongsToOne dataSource 자동 설정 (API 키 필요)",
-    async () => {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        console.log("ANTHROPIC_API_KEY not set, skipping LLM test");
-        return;
+  test("관계 필드 테스트 - BelongsToOne dataSource 자동 설정 (모킹)", async () => {
+    const employeeEntity = EntityManager.get("Employee");
+
+    const originalCone = employeeEntity.cone;
+    const originalPropCones: Record<string, Cone> = {};
+    for (const prop of employeeEntity.props) {
+      if (prop.cone) {
+        originalPropCones[prop.name] = prop.cone;
       }
+    }
 
-      const employeeEntity = EntityManager.get("Employee");
+    // LLM 응답 모킹 - BelongsToOne 관계 필드 포함
+    const mockLLMResponse = JSON.stringify({
+      entityCone: {
+        desc: "직원 정보",
+        note: "회사 직원 관리",
+      },
+      propCones: {
+        department: {
+          desc: "소속 부서",
+          fixtureHint: "최근 생성된 부서 중에서 랜덤하게 선택",
+          dataSource: {
+            strategy: "recent",
+            limit: 10,
+          },
+        },
+        employee_number: {
+          desc: "사번",
+          fixtureGenerator: "faker.string.numeric(8)",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
 
-      const originalCone = employeeEntity.cone;
-      const originalPropCones: Record<string, Cone> = {};
+    mockGenerateText.mockResolvedValueOnce({
+      text: mockLLMResponse,
+      usage: { totalTokens: 1200 },
+    });
+
+    try {
+      const result = await employeeEntity.generateCones({
+        preserveExisting: false,
+        locale: "ko",
+      });
+
+      // department 필드 (BelongsToOne)에 dataSource가 자동 설정되었는지 확인
+      const deptCone = result.propCones.department;
+      expect(deptCone).toBeDefined();
+      expect(deptCone?.dataSource).toBeDefined();
+      expect(deptCone?.dataSource?.strategy).toBe("recent");
+      expect(deptCone?.fixtureHint).toBeDefined();
+
+      console.log("관계 필드 테스트 통과");
+      console.log("department cone:", deptCone);
+    } finally {
+      employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
-        if (prop.cone) {
-          originalPropCones[prop.name] = prop.cone;
+        if (originalPropCones[prop.name]) {
+          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+        } else {
+          delete (prop as unknown as PropWithCone).cone;
         }
       }
+    }
+  });
 
-      try {
-        const result = await employeeEntity.generateCones({
-          preserveExisting: false,
-          locale: "ko",
-        });
+  test("한국어 필드명 테스트 - 적절한 faker 생성 확인 (모킹)", async () => {
+    const employeeEntity = EntityManager.get("Employee");
 
-        // department 필드 (BelongsToOne)에 dataSource가 자동 설정되었는지 확인
-        const deptCone = result.propCones.department;
-        expect(deptCone).toBeDefined();
-        expect(deptCone?.dataSource).toBeDefined();
-        expect(deptCone?.dataSource?.strategy).toBe("recent");
-        expect(deptCone?.fixtureHint).toBeDefined();
-
-        console.log("관계 필드 테스트 통과");
-        console.log("department cone:", deptCone);
-      } finally {
-        employeeEntity.cone = originalCone;
-        for (const prop of employeeEntity.props) {
-          if (originalPropCones[prop.name]) {
-            (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
-          } else {
-            delete (prop as unknown as PropWithCone).cone;
-          }
-        }
+    const originalCone = employeeEntity.cone;
+    const originalPropCones: Record<string, Cone> = {};
+    for (const prop of employeeEntity.props) {
+      if (prop.cone) {
+        originalPropCones[prop.name] = prop.cone;
       }
-    },
-    { timeout: 60000 },
-  );
+    }
 
-  test(
-    "한국어 필드명 테스트 - 적절한 faker 생성 확인 (API 키 필요)",
-    async () => {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        console.log("ANTHROPIC_API_KEY not set, skipping LLM test");
-        return;
-      }
+    // LLM 응답 모킹 - 한국어 desc와 적절한 faker 표현식
+    const mockLLMResponse = JSON.stringify({
+      entityCone: {
+        desc: "직원 정보",
+        note: "회사 직원 관리",
+      },
+      propCones: {
+        employee_number: {
+          desc: "사번",
+          fixtureGenerator: "faker.string.numeric(8)",
+        },
+        hire_date: {
+          desc: "입사일",
+          fixtureGenerator: "faker.date.past()",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
 
-      const employeeEntity = EntityManager.get("Employee");
+    mockGenerateText.mockResolvedValueOnce({
+      text: mockLLMResponse,
+      usage: { totalTokens: 1000 },
+    });
 
-      const originalCone = employeeEntity.cone;
-      const originalPropCones: Record<string, Cone> = {};
+    try {
+      const result = await employeeEntity.generateCones({
+        preserveExisting: false,
+        locale: "ko",
+      });
+
+      // "사번" 필드 - 한국어 desc 확인
+      const empNumberCone = result.propCones.employee_number;
+      expect(empNumberCone).toBeDefined();
+      expect(empNumberCone?.desc).toBeDefined();
+
+      // "입사일" 필드 - date faker 생성 확인
+      const hireDateCone = result.propCones.hire_date;
+      expect(hireDateCone).toBeDefined();
+      expect(hireDateCone?.fixtureGenerator).toBeDefined();
+
+      console.log("한국어 필드명 테스트 통과");
+      console.log("employee_number cone:", empNumberCone);
+      console.log("hire_date cone:", hireDateCone);
+    } finally {
+      employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
-        if (prop.cone) {
-          originalPropCones[prop.name] = prop.cone;
+        if (originalPropCones[prop.name]) {
+          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+        } else {
+          delete (prop as unknown as PropWithCone).cone;
         }
       }
+    }
+  });
 
-      try {
-        const result = await employeeEntity.generateCones({
-          preserveExisting: false,
-          locale: "ko",
-        });
+  test("Locale 변경 테스트 - ko/en/ja 언어별 desc 생성 (모킹)", async () => {
+    const employeeEntity = EntityManager.get("Employee");
 
-        // "사번" 필드 - 한국어 desc 확인
-        const empNumberCone = result.propCones.employee_number;
-        expect(empNumberCone).toBeDefined();
-        expect(empNumberCone?.desc).toBeDefined();
-
-        // "입사일" 필드 - date faker 생성 확인
-        const hireDateCone = result.propCones.hire_date;
-        expect(hireDateCone).toBeDefined();
-        expect(hireDateCone?.fixtureGenerator).toBeDefined();
-
-        console.log("한국어 필드명 테스트 통과");
-        console.log("employee_number cone:", empNumberCone);
-        console.log("hire_date cone:", hireDateCone);
-      } finally {
-        employeeEntity.cone = originalCone;
-        for (const prop of employeeEntity.props) {
-          if (originalPropCones[prop.name]) {
-            (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
-          } else {
-            delete (prop as unknown as PropWithCone).cone;
-          }
-        }
+    const originalCone = employeeEntity.cone;
+    const originalPropCones: Record<string, Cone> = {};
+    for (const prop of employeeEntity.props) {
+      if (prop.cone) {
+        originalPropCones[prop.name] = prop.cone;
       }
-    },
-    { timeout: 60000 },
-  );
+    }
 
-  test(
-    "Locale 변경 테스트 - ko/en/ja 언어별 desc 생성 (API 키 필요)",
-    async () => {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        console.log("ANTHROPIC_API_KEY not set, skipping LLM test");
-        return;
-      }
+    // 한국어 LLM 응답
+    const mockLLMResponseKo = JSON.stringify({
+      entityCone: { desc: "직원 정보", note: "회사 직원 관리" },
+      propCones: {
+        employee_number: {
+          desc: "사번",
+          fixtureGenerator: "faker.string.numeric(8)",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
 
-      const employeeEntity = EntityManager.get("Employee");
+    // 영어 LLM 응답
+    const mockLLMResponseEn = JSON.stringify({
+      entityCone: { desc: "Employee Information", note: "Company employee management" },
+      propCones: {
+        employee_number: {
+          desc: "Employee Number",
+          fixtureGenerator: "faker.string.numeric(8)",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
 
-      const originalCone = employeeEntity.cone;
-      const originalPropCones: Record<string, Cone> = {};
+    // 일본어 LLM 응답
+    const mockLLMResponseJa = JSON.stringify({
+      entityCone: { desc: "社員情報", note: "会社の社員管理" },
+      propCones: {
+        employee_number: {
+          desc: "社員番号",
+          fixtureGenerator: "faker.string.numeric(8)",
+        },
+      },
+      subsetCones: {},
+      enumCones: {},
+    });
+
+    // 3번의 호출에 대한 모킹 설정
+    mockGenerateText
+      .mockResolvedValueOnce({
+        text: mockLLMResponseKo,
+        usage: { totalTokens: 1000 },
+      })
+      .mockResolvedValueOnce({
+        text: mockLLMResponseEn,
+        usage: { totalTokens: 1000 },
+      })
+      .mockResolvedValueOnce({
+        text: mockLLMResponseJa,
+        usage: { totalTokens: 1000 },
+      });
+
+    try {
+      // 한국어
+      const resultKo = await employeeEntity.generateCones({
+        preserveExisting: false,
+        locale: "ko",
+      });
+
+      // 영어
+      const resultEn = await employeeEntity.generateCones({
+        preserveExisting: false,
+        locale: "en",
+      });
+
+      // 일본어
+      const resultJa = await employeeEntity.generateCones({
+        preserveExisting: false,
+        locale: "ja",
+      });
+
+      // employee_number 필드의 desc가 각 언어별로 다른지 확인
+      const koDesc = resultKo.propCones.employee_number?.desc;
+      const enDesc = resultEn.propCones.employee_number?.desc;
+      const jaDesc = resultJa.propCones.employee_number?.desc;
+
+      expect(koDesc).toBeDefined();
+      expect(enDesc).toBeDefined();
+      expect(jaDesc).toBeDefined();
+
+      // 각 언어별로 다른 desc가 생성되어야 함
+      expect(koDesc).not.toBe(enDesc);
+      expect(enDesc).not.toBe(jaDesc);
+      expect(koDesc).not.toBe(jaDesc);
+
+      console.log("Locale 변경 테스트 통과");
+      console.log("ko desc:", koDesc);
+      console.log("en desc:", enDesc);
+      console.log("ja desc:", jaDesc);
+    } finally {
+      employeeEntity.cone = originalCone;
       for (const prop of employeeEntity.props) {
-        if (prop.cone) {
-          originalPropCones[prop.name] = prop.cone;
+        if (originalPropCones[prop.name]) {
+          (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
+        } else {
+          delete (prop as unknown as PropWithCone).cone;
         }
       }
-
-      try {
-        // 한국어
-        const resultKo = await employeeEntity.generateCones({
-          preserveExisting: false,
-          locale: "ko",
-        });
-
-        // 영어
-        const resultEn = await employeeEntity.generateCones({
-          preserveExisting: false,
-          locale: "en",
-        });
-
-        // 일본어
-        const resultJa = await employeeEntity.generateCones({
-          preserveExisting: false,
-          locale: "ja",
-        });
-
-        // employee_number 필드의 desc가 각 언어별로 다른지 확인
-        const koDesc = resultKo.propCones.employee_number?.desc;
-        const enDesc = resultEn.propCones.employee_number?.desc;
-        const jaDesc = resultJa.propCones.employee_number?.desc;
-
-        expect(koDesc).toBeDefined();
-        expect(enDesc).toBeDefined();
-        expect(jaDesc).toBeDefined();
-
-        // 각 언어별로 다른 desc가 생성되어야 함
-        expect(koDesc).not.toBe(enDesc);
-        expect(enDesc).not.toBe(jaDesc);
-        expect(koDesc).not.toBe(jaDesc);
-
-        console.log("Locale 변경 테스트 통과");
-        console.log("ko desc:", koDesc);
-        console.log("en desc:", enDesc);
-        console.log("ja desc:", jaDesc);
-      } finally {
-        employeeEntity.cone = originalCone;
-        for (const prop of employeeEntity.props) {
-          if (originalPropCones[prop.name]) {
-            (prop as unknown as PropWithCone).cone = originalPropCones[prop.name];
-          } else {
-            delete (prop as unknown as PropWithCone).cone;
-          }
-        }
-      }
-    },
-    { timeout: 120000 },
-  );
+    }
+  });
 });
