@@ -9,6 +9,8 @@ export type ConeGenerationContext = {
   entity: EntityJson;
   locale?: "ko" | "en" | "ja";
   existingCones?: Record<string, Cone>;
+  /** true인 경우 fixtureHint가 없는 cone만 생성 */
+  onlyEmpty?: boolean;
 };
 
 /**
@@ -38,6 +40,9 @@ export async function generateCones(context: ConeGenerationContext): Promise<Con
   result.tokensUsed = tokensUsed;
 
   if (context.existingCones) {
+    if (context.onlyEmpty) {
+      return mergeOnlyEmpty(result, context.existingCones);
+    }
     return mergeWithExisting(result, context.existingCones);
   }
 
@@ -97,12 +102,19 @@ ${JSON.stringify(context.entity, null, 2)}
 LOCALE: ${locale} (${localeDesc})
 
 INSTRUCTIONS:
-1. For each prop, generate appropriate cone metadata:
+1. Entity cone metadata:
+   - desc: Short description of what this entity represents
+   - note: Explain the entity's purpose, relationships, and business context
+   - tags: Relevant categorization tags
+   - fixtureHint: Overall guidance for generating test data for this entity
+
+2. For each prop, generate appropriate cone metadata:
    - desc: Short description in ${localeDesc}
+   - note: Additional notes if needed
    - fixtureHint: Detailed guidance for realistic test data generation
    - fixtureGenerator: faker.js expression when applicable
 
-2. Field type → faker.js mapping:
+3. Field type → faker.js mapping:
    - email → faker.internet.email()
    - phone → faker.phone.number()
    - name/username → faker.person.fullName() (with locale)
@@ -111,17 +123,28 @@ INSTRUCTIONS:
    - company_name → faker.company.name()
    - address → faker.location.streetAddress()
 
-3. Relation fields (BelongsToOne, OneToOne with hasJoinColumn):
+4. Relation fields (BelongsToOne, OneToOne with hasJoinColumn):
    - Always add dataSource: { strategy: "recent", config: { limit: 3-5 } }
    - fixtureHint: Explain that it references existing data
 
-4. Korean field names (locale=ko):
+5. Subsets cone metadata (IMPORTANT - generate for ALL subsets):
+   - desc: Describe what this subset represents and what fields it includes
+   - note: Explain the use case and when to use this subset
+
+6. Enums cone metadata (IMPORTANT - generate for ALL enums):
+   - desc: Describe what this enum represents
+   - fixtureHint: If any prop uses this enum type, copy that prop's fixtureHint here
+     Example: If prop "status" (type: enum, enum: "UserStatus") has fixtureHint "User status: active, inactive, suspended",
+              then UserStatus enum's fixtureHint should be the same
+   - For each enum value, provide desc explaining what that specific value means
+
+7. Korean field names (locale=ko):
    - Infer meaning and generate appropriate faker
    - "이름" → faker.person.fullName()
    - "생년월일" → faker.date.birthdate()
    - "주소" → faker.location.streetAddress()
 
-5. Locale-specific values:
+8. Locale-specific values:
    - ko: Korean names, addresses, phone numbers (010-XXXX-XXXX format)
    - en: English names, US addresses
    - ja: Japanese names, addresses
@@ -140,18 +163,37 @@ Return ONLY valid JSON (no markdown, no code blocks). Use this exact structure:
 {
   "entityCone": {
     "desc": "${localeDesc} description of the entity",
-    "note": "Optional detailed notes",
-    "tags": ["optional", "tags"]
+    "note": "Optional detailed notes about the entity's purpose and relationships",
+    "tags": ["optional", "tags"],
+    "fixtureHint": "Guidance for generating fixtures of this entity (what to consider, relationships, constraints)"
   },
   "propCones": {
     "prop_name": {
       "desc": "${localeDesc} description",
-      "fixtureHint": "Detailed generation guidance",
-      "fixtureGenerator": "faker.xxx.yyy()"
+      "note": "Optional additional notes about this field",
+      "fixtureHint": "Detailed generation guidance for this specific field",
+      "fixtureGenerator": "faker.xxx.yyy()",
+      "dataSource": { "strategy": "recent", "config": { "limit": 5 } }  // Only for relation fields
     }
   },
-  "subsetCones": {},
-  "enumCones": {}
+  "subsetCones": {
+    "A": {
+      "desc": "${localeDesc} description of subset A",
+      "note": "What fields are included in this subset",
+      "fixtureHint": "Optional guidance if this subset affects fixture generation"
+    }
+  },
+  "enumCones": {
+    "EnumName": {
+      "desc": "${localeDesc} description of the enum",
+      "fixtureHint": "Optional guidance for generating enum values in fixtures",
+      "values": {
+        "VALUE_KEY": {
+          "desc": "${localeDesc} description of this enum value"
+        }
+      }
+    }
+  }
 }
 
 IMPORTANT: Return pure JSON only. Do NOT wrap in markdown code blocks.`;
@@ -269,6 +311,50 @@ function mergeWithExisting(
   for (const subsetKey of Object.keys(generated.subsetCones)) {
     const key = `subset:${subsetKey}`;
     if (existing[key]) {
+      result.subsetCones[subsetKey] = existing[key];
+    }
+  }
+
+  return result;
+}
+
+/**
+ * fixtureHint가 없는 cone만 생성하고 나머지는 보존합니다.
+ *
+ * 기존 cone에 fixtureHint가 있으면 보존하고, 없으면 새로 생성된 cone을 사용합니다.
+ */
+function mergeOnlyEmpty(
+  generated: ConeGenerationResult,
+  existing: Record<string, Cone>,
+): ConeGenerationResult {
+  const result = { ...generated };
+
+  // Entity cone: fixtureHint가 있으면 보존
+  const entityKey = `entity:${generated.entityCone ? "present" : "missing"}`;
+  if (existing[entityKey]?.fixtureHint) {
+    result.entityCone = existing[entityKey];
+  }
+
+  // Prop cones: fixtureHint가 있으면 보존
+  for (const propName of Object.keys(generated.propCones)) {
+    const key = `prop:${propName}`;
+    if (existing[key]?.fixtureHint) {
+      result.propCones[propName] = existing[key];
+    }
+  }
+
+  // Enum cones: fixtureHint가 있으면 보존 (enum은 보통 fixtureHint가 없지만 일관성을 위해)
+  for (const enumId of Object.keys(generated.enumCones)) {
+    const key = `enum:${enumId}`;
+    if (existing[key]?.fixtureHint) {
+      result.enumCones[enumId] = existing[key];
+    }
+  }
+
+  // Subset cones: fixtureHint가 있으면 보존 (subset도 보통 fixtureHint가 없지만 일관성을 위해)
+  for (const subsetKey of Object.keys(generated.subsetCones)) {
+    const key = `subset:${subsetKey}`;
+    if (existing[key]?.fixtureHint) {
       result.subsetCones[subsetKey] = existing[key];
     }
   }
