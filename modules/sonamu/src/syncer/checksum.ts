@@ -48,38 +48,6 @@ export async function renewChecksums(): Promise<void> {
   await saveChecksums(calculatedChecksums);
 }
 
-export type FileOrData =
-  | {
-      path: PathLike;
-    }
-  | {
-      data: string;
-    };
-
-/**
- * 두 파일의 내용이 같은지 체크섬으로 비교합니다.
- * 만약 파일이 둘 중 하나라도 없다면 비교 불가로 false 반환합니다.
- * @param one 파일 경로 혹은 데이터
- * @param two 파일 경로 혹은 데이터
- * @returns boolean
- */
-export async function areFilesSame(...files: FileOrData[]): Promise<boolean> {
-  const checksums: string[] = [];
-
-  for (const file of files) {
-    if ("path" in file && !(await exists(file.path))) {
-      return false;
-    }
-
-    checksums.push(
-      "path" in file ? await getChecksumOfFile(file.path) : getChecksumOfData(file.data),
-    );
-  }
-
-  // 모든 체크섬이 첫 번째 체크섬과 같은지 확인
-  return checksums.every((checksum) => checksum === checksums[0]);
-}
-
 async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
   const filePaths = (
     await Promise.all(
@@ -145,12 +113,6 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
     ),
     "utf-8",
   );
-}
-
-function getChecksumOfData(data: string): string {
-  const hash = crypto.createHash("sha1");
-  hash.update(data);
-  return hash.digest("hex");
 }
 
 async function getChecksumOfFile(filePath: PathLike): Promise<string> {
