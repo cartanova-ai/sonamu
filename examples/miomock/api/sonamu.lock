@@ -97,7 +97,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "691ff7985402c3eb32ee5205625077c22dac928e"
+    "checksum": "28c5f7d48bf063d6ecc80fa6780bb8face1dbf10"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -173,7 +173,7 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "d6dc6ddc18e4a112ccc8d50e077bc70fe1f17b9f"
+    "checksum": "9f145644f6604c30525d5a4de4915c30682031c2"
   },
   {
     "path": "src/sonamu.config.ts",

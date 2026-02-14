@@ -1,3 +1,10 @@
+/**
+ * @generated
+ * 이 파일은 Sonamu에 의해 자동 생성되었습니다.
+ * i18n 관련 Sonamu Dictionary(SD) 함수 및 locale 관리 코드가 포함됩니다.
+ * 직접 수정하지 마세요. 원본 수정 후 `pnpm sonamu sync`를 실행하면 갱신됩니다.
+ */
+
 const DEFAULT_LOCALE = "ko" as const;
 export const SUPPORTED_LOCALES = ["ko", "en", "ja"] as const;
 let _currentLocale: (typeof SUPPORTED_LOCALES)[number] = DEFAULT_LOCALE;

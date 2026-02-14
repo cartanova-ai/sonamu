@@ -38,11 +38,13 @@ export async function fileExists(path: PathLike): Promise<boolean> {
  *
  * @param fromPath 원본 파일 경로
  * @param toPath 대상 파일 경로
+ * @param syncHeader 동기화 시 파일 최상단에 삽입할 주석 블록. 기존 @generated 블록이 있으면 교체하고, 없으면 최상단에 추가합니다.
  * @returns 파일을 썼으면 true, 건너뛰었으면 false
  */
 export async function copyFileWithReplaceCoreToShared(
   fromPath: string,
   toPath: string,
+  syncHeader?: string,
 ): Promise<boolean> {
   if (!(await exists(fromPath))) {
     return false;
@@ -50,7 +52,7 @@ export async function copyFileWithReplaceCoreToShared(
 
   const oldFileContent = (await readFile(fromPath)).toString();
 
-  const newFileContent = (() => {
+  let newFileContent = (() => {
     // sonamu.shared.ts는 항상 {base}/src/services/sonamu.shared.ts에 위치합니다.
     // toPath에서 /src/를 찾아 services 디렉토리 경로를 계산합니다.
     const srcMatch = toPath.match(/^(.+\/src)\//);
@@ -66,6 +68,16 @@ export async function copyFileWithReplaceCoreToShared(
 
     return oldFileContent.replace(/from "sonamu(\/dict)?"/g, `from "${sharedPath}"`);
   })();
+
+  // syncHeader가 제공된 경우 @generated 블록을 교체하거나 최상단에 추가합니다.
+  if (syncHeader) {
+    const generatedBlockRegex = /\/\*\*\r?\n \* @generated\r?\n[\s\S]*?\*\/\r?\n/;
+    if (generatedBlockRegex.test(newFileContent)) {
+      newFileContent = newFileContent.replace(generatedBlockRegex, `${syncHeader}\n`);
+    } else {
+      newFileContent = `${syncHeader}\n${newFileContent}`;
+    }
+  }
 
   await writeFile(toPath, newFileContent);
   return true;

@@ -627,7 +627,14 @@ export class Syncer {
       const sourceFile = path.join(apiI18nDir, `${locale}.ts`);
       const targetFile = path.join(targetI18nDir, `${locale}.ts`);
 
-      await copyFileWithReplaceCoreToShared(sourceFile, targetFile);
+      const syncHeader = [
+        "/**",
+        " * @generated",
+        ` * 이 파일은 API(${Sonamu.config.api.dir}/src/i18n/${locale}.ts)에서 자동으로 동기화된 것입니다.`,
+        " * 수정이 필요하면 API 측 원본 파일을 수정하세요.",
+        " */",
+      ].join("\n");
+      await copyFileWithReplaceCoreToShared(sourceFile, targetFile, syncHeader);
       !isTest() &&
         console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
     }

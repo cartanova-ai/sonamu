@@ -1,3 +1,9 @@
+/**
+ * @generated
+ * 이 파일은 Sonamu에 의해 자동 생성되었습니다.
+ * SSR(Server-Side Rendering)용 쿼리 정의가 포함됩니다. (tanstack-query client 대상)
+ * 직접 수정하지 마세요. 원본 수정 후 `pnpm sonamu sync`를 실행하면 갱신됩니다.
+ */
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 

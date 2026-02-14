@@ -1,3 +1,8 @@
+/**
+ * @generated
+ * 이 파일은 API(api/src/i18n/ko.ts)에서 자동으로 동기화된 것입니다.
+ * 수정이 필요하면 API 측 원본 파일을 수정하세요.
+ */
 import { createFormat, josa } from "../services/sonamu.shared";
 
 const format = createFormat("ko");
