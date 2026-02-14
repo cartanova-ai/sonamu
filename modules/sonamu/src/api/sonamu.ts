@@ -630,6 +630,16 @@ class SonamuClass {
     server.get("/assets/:filename", async (request, reply) => {
       const requestedFile = (request.params as { filename: string }).filename;
       const assetsDir = path.join(webDistPath, "assets");
+
+      // path traversal 방지: 정규화된 경로가 assetsDir 내부인지 검증합니다.
+      // Fastify의 find-my-way 라우터가 :filename을 URL 디코딩하므로,
+      // ..%2F..%2Fetc%2Fpasswd 같은 입력이 ../../../etc/passwd로 풀려 디렉토리를 탈출할 수 있습니다.
+      const resolved = path.resolve(assetsDir, requestedFile);
+      if (!resolved.startsWith(assetsDir + path.sep) && resolved !== assetsDir) {
+        reply.code(403).send("Forbidden");
+        return;
+      }
+
       const assetPath = `/assets/${requestedFile}`;
 
       // Cache-Control 헤더 결정
