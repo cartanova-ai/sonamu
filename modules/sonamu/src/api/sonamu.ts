@@ -420,9 +420,9 @@ class SonamuClass {
         });
       }
 
-      if (hasWeb) {
-        await this.setupStaticWebServer(server, webPath, config, globalCompressOptions);
-      }
+      // 프로덕션에서는 web 소스(appRoot/web) 유무와 무관하게,
+      // api/web-dist 존재 여부를 setupStaticWebServer 내부에서 판단합니다.
+      await this.setupStaticWebServer(server, config, globalCompressOptions);
     }
   }
 
@@ -587,7 +587,6 @@ class SonamuClass {
 
   private async setupStaticWebServer(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
-    _webPath: string,
     config: SonamuFastifyConfig,
     globalCompressOptions: CompressOptions | undefined,
   ): Promise<void> {
