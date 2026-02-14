@@ -9,7 +9,7 @@ export type BuildArtifact<BuildCommandArgs = {}> = {
 
 /**
  * API 프로젝트 빌드 산출물에 대한 규칙들.
- * cli.ts의 build_api/build_web 함수가 이것을 보고 그대로 실행합니다.
+ * cli.ts의 build_api 함수가 이것을 보고 그대로 실행합니다.
  */
 export const API_ARTIFACTS: BuildArtifact<{ configFilePath: string }>[] = [
   {
@@ -24,7 +24,7 @@ export const API_ARTIFACTS: BuildArtifact<{ configFilePath: string }>[] = [
 
 /**
  * 웹 프로젝트 빌드 산출물에 대한 규칙들.
- * cli.ts의 build_api/build_web 함수가 이것을 보고 그대로 실행합니다.
+ * cli.ts의 build_web 함수가 이것을 보고 그대로 실행합니다.
  */
 export const WEB_ARTIFACTS: BuildArtifact[] = [
   {
