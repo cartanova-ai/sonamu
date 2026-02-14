@@ -243,6 +243,50 @@ sonamu/
 
 ---
 
+## CLI 커맨드
+
+### 빌드
+```bash
+sonamu build          # 전체 빌드 (= sonamu build all)
+sonamu build all      # 전체 빌드 (API + Web)
+sonamu build api      # API만 빌드
+sonamu build web      # Web만 빌드
+```
+
+### 개발 서버
+```bash
+sonamu dev            # 통합 모드 (= sonamu dev all)
+sonamu dev all        # 통합 모드 (one-port: API + Web)
+sonamu dev api        # API-only 모드 (Vite 통합 비활성)
+sonamu dev web        # Vite 단독 실행
+sonamu dev web -- --port 3028 --host 0.0.0.0  # Vite 옵션 전달
+```
+
+### pnpm 스크립트 전달
+```bash
+pnpm build            # → sonamu build (기본 all)
+pnpm build web        # → sonamu build web
+pnpm build api        # → sonamu build api
+```
+
+## 빌드 산출물 구조
+
+```
+web/dist/             # Web 빌드 원본
+├── client/           # 클라이언트 번들
+└── server/           # SSR 번들
+
+api/web-dist/         # Web 빌드 미러 (배포용)
+├── client/           # = web/dist/client 미러
+└── server/           # = web/dist/server 미러
+
+api/dist/             # API 빌드 결과
+└── ssr/
+    └── routes.js     # SSR 라우트 (API 소유)
+```
+
+---
+
 ## 테스트 실행
 
 테스트는 `miomock-api`를 대상으로 실행됩니다.

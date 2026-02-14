@@ -75,16 +75,13 @@ export default defineConfig(({ isSsrBuild }) => ({
 
 ### 2. API 빌드 설정 (Web 결과물 복사)
 
-#### 2.1 `.gitignore` - ssr 제거
+#### 2.1 `.gitignore` - web-dist 추가
 
 ```diff
   dist/*
   .env
-  public/web
-- ssr
++ web-dist
 ```
-
-**이유**: `dist/*`에 이미 포함되므로 중복 제거
 
 #### 2.2 `package.json` - 복사 경로 변경
 
@@ -92,14 +89,14 @@ export default defineConfig(({ isSsrBuild }) => ({
 {
   "scripts": {
     "build": "pnpm build:web && sonamu build",
-    "build:web": "cd ../web && pnpm build && cd ../api && cp -r ../web/dist/client/* public/web/ && cp -r ../web/dist/server/* dist/ssr/"
+    "build:web": "cd ../web && pnpm build && cd ../api && cp -r ../web/dist web-dist"
   }
 }
 ```
 
 **복사 결과**:
-- `api/public/web/` - 클라이언트 정적 파일 (index.html, assets/)
-- `api/dist/ssr/` - SSR entry (entry-server.generated.js)
+- `api/web-dist/client/` - 클라이언트 정적 파일 (index.html, assets/)
+- `api/web-dist/server/` - SSR entry (entry-server.generated.js)
 
 ---
 
@@ -138,8 +135,8 @@ if (vite) {
 } else {
   // Prod: 빌드된 파일 사용
   const fs = await import("node:fs");
-  const webDistPath = path.join(Sonamu.apiRootPath, "public", "web");
-  const ssrPath = path.join(Sonamu.apiRootPath, "dist", "ssr");
+  const webDistPath = path.join(Sonamu.apiRootPath, "web-dist", "client");
+  const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
 
   template = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");
   const entryModule = await import(path.join(ssrPath, "entry-server.generated.js"));
@@ -153,7 +150,7 @@ if (vite) {
 |------|-----|------|
 | template | Vite가 변환 (`transformIndexHtml`) | 빌드된 index.html 그대로 사용 |
 | entry | Vite가 동적 로드 (`ssrLoadModule`) | 빌드된 JS 파일 import |
-| 경로 | web 프로젝트 소스 | api/public/web, api/dist/ssr |
+| 경로 | web 프로젝트 소스 | api/web-dist/client, api/web-dist/server |
 | CSS | 별도 링크 추가 필요 | index.html에 이미 포함 |
 
 #### 3.3 CSS 처리 조건부 추가
@@ -173,9 +170,9 @@ Dev에서만 CSS 링크 추가 (Prod는 빌드 시 index.html에 포함됨)
 #### 4.1 경로 설정 및 SSR 가용성 체크
 
 ```typescript
-// 경로 명확화: api/public/web, api/dist/ssr
-const webDistPath = path.join(this.apiRootPath, "public", "web");
-const ssrPath = path.join(this.apiRootPath, "dist", "ssr");
+// 경로 명확화: api/web-dist/client, api/web-dist/server
+const webDistPath = path.join(this.apiRootPath, "web-dist", "client");
+const ssrPath = path.join(this.apiRootPath, "web-dist", "server");
 
 if (!fs.existsSync(webDistPath)) {
   console.warn(`⚠ Web dist not found: ${webDistPath}`);
@@ -197,7 +194,7 @@ if (!ssrAvailable) {
 ```typescript
 // SSR 라우트 로드 (production에서만, 사용자 프로젝트의 ssr/routes.ts)
 if (ssrAvailable) {
-  const ssrRoutesPath = path.join(this.apiRootPath, "dist", "ssr", "routes.js");
+  const ssrRoutesPath = path.join(this.apiRootPath, "web-dist", "server", "routes.js");
   if (fs.existsSync(ssrRoutesPath)) {
     await import(ssrRoutesPath);
     console.log("✓ SSR routes loaded");
@@ -209,7 +206,7 @@ if (ssrAvailable) {
 
 **중요**:
 - Dev에서는 HMR을 위해 정적 import 사용 안 함
-- Prod에서만 빌드된 `api/dist/ssr/routes.js`를 동적 import
+- Prod에서만 빌드된 `api/web-dist/server/routes.js`를 동적 import
 - import 시점에 `registerSSR()` 호출이 실행됨
 
 #### 4.3 롤링 업데이트 대응 (Asset 서빙)
@@ -326,11 +323,12 @@ server.setNotFoundHandler(async (request, reply) => {
        ▼
 ┌─────────────────────────┐
 │ api/                    │
-│  ├─public/web/         │ ◄─── web/dist/client/*
-│  │  ├─index.html       │
-│  │  └─assets/          │
-│  └─dist/ssr/           │ ◄─── web/dist/server/*
-│     └─entry-server.*.js│
+│  └─web-dist/           │ ◄─── web/dist/ 미러
+│     ├─client/          │ ◄─── web/dist/client/*
+│     │  ├─index.html    │
+│     │  └─assets/       │
+│     └─server/          │ ◄─── web/dist/server/*
+│        └─entry-server.*│
 └─────────────────────────┘
 ```
 
@@ -343,7 +341,7 @@ Request: GET /admin/companies
 setupStaticWebServer.setNotFoundHandler()
        │
        ├─ matchSSRRoute(url) ──► ssrRoutes 확인
-       │                          (api/dist/ssr/routes.js에서 등록)
+       │                          (api/web-dist/server/routes.js에서 등록)
        ▼
    match 성공?
        │
@@ -351,12 +349,12 @@ setupStaticWebServer.setNotFoundHandler()
        │          │
        │          ├─ preload() 실행 → SSRQuery[] 획득
        │          ├─ invokeApiForSSR() → 데이터 로드
-       │          ├─ import(api/dist/ssr/entry-server.generated.js)
+       │          ├─ import(api/web-dist/server/entry-server.generated.js)
        │          ├─ render(url, preloadedData) → HTML 생성
        │          └─ template 치환 → 최종 HTML 반환
        │
        └─ No/Error ──► CSR fallback
-                       (api/public/web/index.html 반환)
+                       (api/web-dist/client/index.html 반환)
 ```
 
 ---
@@ -378,7 +376,7 @@ setupStaticWebServer.setNotFoundHandler()
 
 **문제 상황**:
 ```
-api/dist/ssr/entry-server.generated.js
+api/web-dist/server/entry-server.generated.js
   └─ import { jsx } from "react/jsx-runtime"  ❌ Cannot find package 'react'
 ```
 
@@ -395,24 +393,24 @@ ssr: {
 - Vite가 `react`, `react-dom`, `@tanstack/*` 등 모든 의존성을 SSR 번들에 포함
 - 결과물이 자체 완결적이 되어 외부 node_modules 불필요
 
-### 3. 왜 `api/dist/ssr/` 경로를 사용하는가?
+### 3. 왜 `api/web-dist/` 경로를 사용하는가?
 
 **디렉토리 구조**:
 ```
 api/
 ├─ src/          # API 소스 코드
 ├─ dist/         # API 빌드 결과물
-│  ├─ api/       # API TypeScript 컴파일 결과
-│  └─ ssr/       # Web SSR 빌드 복사본 ✓
-└─ public/       # 정적 파일 서빙
-   └─ web/       # Web 클라이언트 빌드 복사본
+│  └─ ...        # API TypeScript 컴파일 결과
+│                # (+ SSR 라우트: dist/ssr/routes.js)
+└─ web-dist/     # Web 빌드 미러 (배포용)
+   ├─ client/    # 클라이언트 정적 파일 (= web/dist/client)
+   └─ server/    # SSR 번들 (= web/dist/server)
 ```
 
 **이유**:
-- `dist/` = 빌드 결과물 (gitignore)
-- `public/` = 정적 파일 서빙용
-- SSR entry는 "실행되는 JS 파일"이므로 `dist/`가 적합
-- `public/web/`은 클라이언트 정적 파일(HTML, CSS, JS)만 서빙
+- `web-dist/` = web 빌드 결과물의 미러 (gitignore)
+- `web-dist/client/` = 클라이언트 정적 파일(HTML, CSS, JS) 서빙용
+- `web-dist/server/` = SSR entry 실행용
 
 ---
 

@@ -4,10 +4,6 @@ node_modules/
 # .pnp
 # .pnp.js
 
-# Production builds
-/api/dist/
-/web/dist/
-
 # Environment variables
 .env
 .env.local
@@ -79,8 +75,6 @@ dist
 
 # Gatsby files
 .cache/
-public
-!web/public
 
 # Storybook build outputs
 .out

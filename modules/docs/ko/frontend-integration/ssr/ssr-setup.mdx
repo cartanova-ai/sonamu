@@ -338,27 +338,41 @@ Sonamu는 **하이브리드 접근 방식**을 사용합니다:
 ### 개발 모드
 
 ```bash
-pnpm dev
+sonamu dev            # 통합 모드 (= sonamu dev all)
+sonamu dev all        # 통합 모드 (one-port: API + Web)
+sonamu dev api        # API-only 모드 (Vite 통합 비활성)
+sonamu dev web        # Vite 단독 실행
+sonamu dev web -- --port 3028 --host 0.0.0.0  # Vite 옵션 전달
 ```
 
-- Vite Dev Server 사용
-- HMR (Hot Module Replacement) 지원
-- `entry-server.generated.tsx`를 Vite가 실시간으로 로드
+- `dev all`: API 서버가 Vite를 통합하여 하나의 포트로 API + Web 서빙 (HMR 지원)
+- `dev api`: API만 실행. Web이 필요 없거나 Vite를 별도로 실행하고 싶을 때 사용
+- `dev web`: Vite 개발 서버만 단독 실행. `--` 뒤에 Vite 옵션 전달 가능
 
 ### 프로덕션 빌드
 
 ```bash
-pnpm build
+sonamu build          # 전체 빌드 (= sonamu build all)
+sonamu build api      # API만 빌드
+sonamu build web      # Web만 빌드
 ```
 
 **빌드 결과**:
 ```
-api/
-├── dist/ssr/
-│   └── entry-server.generated.js    # SSR 번들
-└── public/web/
-    ├── index.html                    # HTML 템플릿
-    └── assets/                       # 클라이언트 번들
+web/dist/                               # Web 빌드 원본
+├── client/                             # 클라이언트 번들
+└── server/                             # SSR 번들
+
+api/web-dist/                           # Web 빌드 미러 (배포용)
+├── client/                             # = web/dist/client 미러
+│   ├── index.html
+│   └── assets/
+└── server/                             # = web/dist/server 미러
+    └── entry-server.generated.js
+
+api/dist/                               # API 빌드 결과
+└── ssr/
+    └── routes.js                       # SSR 라우트 (API 소유)
 ```
 
 ## 주의사항

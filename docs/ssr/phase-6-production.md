@@ -152,18 +152,17 @@ web/
 
 ## 6.2 API 빌드 및 배포 설정
 
-### public/web, ssr 폴더 생성
+### web-dist 폴더 생성
 
 ```bash
-mkdir -p examples/miomock/api/public/web
-mkdir -p examples/miomock/api/ssr
+mkdir -p examples/miomock/api/web-dist
 ```
 
 **설명:**
-- `api/public/web`: 클라이언트 빌드 결과물 (CSS, JS, HTML) - `web/dist/client`에서 복사
-- `api/ssr`: 서버 빌드 결과물 (entry-server.generated.js) - `web/dist/server`에서 복사
+- `api/web-dist/client`: 클라이언트 빌드 결과물 (CSS, JS, HTML) - `web/dist/client`에서 복사
+- `api/web-dist/server`: 서버 빌드 결과물 (entry-server.generated.js) - `web/dist/server`에서 복사
 
-> **중요**: Production에서는 `web/dist`가 아니라 `api/public/web`, `api/ssr`를 사용합니다. 빌드 시 복사하는 이유는 API 서버가 단독으로 배포될 때 web 폴더 없이도 동작하게 하기 위함입니다.
+> **중요**: Production에서는 `web/dist`가 아니라 `api/web-dist`를 사용합니다. 빌드 시 복사하는 이유는 API 서버가 단독으로 배포될 때 web 폴더 없이도 동작하게 하기 위함입니다.
 
 ### .gitignore 업데이트
 
@@ -171,8 +170,7 @@ mkdir -p examples/miomock/api/ssr
 
 **추가할 내용:**
 ```
-public/web
-ssr
+web-dist
 ```
 
 **이유:** 빌드 산출물은 git에 추가하지 않음
@@ -197,14 +195,14 @@ ssr
 {
   "scripts": {
     "build": "pnpm build:web && sonamu build",
-    "build:web": "cd ../web && pnpm build && cd ../api && cp -r ../web/dist/client public/web && cp -r ../web/dist/server ssr",
+    "build:web": "cd ../web && pnpm build && cd ../api && cp -r ../web/dist web-dist",
     "start": "sonamu start"
   }
 }
 ```
 
 **변경 사항:**
-- ✏️ `build:web`: Web 빌드 후 결과물을 `public/web`, `ssr` 폴더로 복사하는 로직 추가
+- ✏️ `build:web`: Web 빌드 후 결과물을 `web-dist` 폴더로 복사하는 로직 추가
 - ✅ `build`: 변경 없음 (build:web → sonamu build 순서 유지)
 
 ### 빌드 테스트
@@ -217,21 +215,21 @@ pnpm build
 **확인:**
 ```
 api/
-  public/
-    web/              # ← 복사됨
+  web-dist/             # ← web/dist에서 복사됨
+    client/
       index.html
       assets/
         index-[hash].js
         ...
-  ssr/                # ← 복사됨
-    entry-server.generated.js
-  dist/               # ← sonamu build 결과
+    server/
+      entry-server.generated.js
+  dist/                 # ← sonamu build 결과
     # API 빌드 결과물
 ```
 
 ### 확인 사항
-- [ ] `public/web`에 클라이언트 파일 복사 확인
-- [ ] `ssr/entry-server.generated.js` 복사 확인
+- [ ] `web-dist/client`에 클라이언트 파일 복사 확인
+- [ ] `web-dist/server/entry-server.generated.js` 복사 확인
 - [ ] API 빌드 정상 완료 (`dist` 폴더 생성)
 
 ---
@@ -364,8 +362,8 @@ export async function renderSSR(
   } else {
     // Prod: 빌드된 파일 사용
     const fs = await import("node:fs");
-    const webDistPath = path.join(Sonamu.apiRootPath, "public", "web");
-    const ssrPath = path.join(Sonamu.apiRootPath, "ssr");
+    const webDistPath = path.join(Sonamu.apiRootPath, "web-dist", "client");
+    const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
     
     template = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");
     const entryModule = await import(path.join(ssrPath, "entry-server.generated.js"));
@@ -407,9 +405,9 @@ private async setupStaticWebServer(
   webPath: string,
   config: SonamuFastifyConfig,
 ): Promise<void> {
-  // ➕ 경로 명확화: prod에서는 api/public/web, api/ssr 사용
-  const webDistPath = path.join(this.apiRootPath, "public", "web");
-  const ssrPath = path.join(this.apiRootPath, "ssr");
+  // ➕ 경로 명확화: prod에서는 api/web-dist 사용
+  const webDistPath = path.join(this.apiRootPath, "web-dist", "client");
+  const ssrPath = path.join(this.apiRootPath, "web-dist", "server");
 
   if (!fs.existsSync(webDistPath)) {
     console.warn(`⚠ Web dist not found: ${webDistPath}`);
@@ -512,7 +510,7 @@ private async setupStaticWebServer(
 
 **변경 요약:**
 1. ➕ `renderSSR` 함수 dev/prod 공유 - 코드 중복 제거
-2. ➕ 경로 명확화 - prod에서는 `api/public/web`, `api/ssr` 사용
+2. ➕ 경로 명확화 - prod에서는 `api/web-dist/client`, `api/web-dist/server` 사용
 3. ➕ 롤링 업데이트 대응 - `setNotFoundHandler` 내부에서 처리
 4. ➕ SSR 라우트 매칭 및 렌더링
 5. ➕ 에러 시 CSR fallback

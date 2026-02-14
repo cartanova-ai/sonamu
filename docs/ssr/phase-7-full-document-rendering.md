@@ -10,7 +10,7 @@ Phase 6에서 다음 항목들이 **완전히 구임**되었습니다:
 
 - `renderer.ts`의 dev/prod 분기 처리
 - Production 빌드 설정 (`web/vite.config.ts`)
-- 빌드 결과물 복사 (`api/public/web`, `api/ssr`)
+- 빌드 결과물 복사 (`api/web-dist`)
 - `setupStaticWebServer()`에 SSR 렌더링 로직 추가
 - 롤링 업데이트 대응
 - 에러 핸들링 및 CSR fallback
@@ -684,8 +684,8 @@ export async function renderSSR(
   } else {
     // Prod: 빌드된 파일
     const fs = await import("node:fs");
-    const webDistPath = path.join(Sonamu.apiRootPath, "public", "web");
-    const ssrPath = path.join(Sonamu.apiRootPath, "dist", "ssr");
+    const webDistPath = path.join(Sonamu.apiRootPath, "web-dist", "client");
+    const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
 
     // 빌드된 index.html에서 스크립트 추출
     const builtHtml = fs.readFileSync(
@@ -1047,21 +1047,20 @@ open http://localhost:10280
 
 ```
 api/
-  public/
-    web/
+  web-dist/
+    client/
       index.html              # ← 빌드된 HTML
       assets/
         entry-client-[hash].js
         style-[hash].css
         vendor-react-[hash].js
         vendor-tanstack-[hash].js
-  dist/
-    ssr/
+    server/
       entry-server.generated.js
 ```
 
-- [ ] `public/web` 폴더 생성
-- [ ] `dist/ssr` 폴더 생성
+- [ ] `web-dist/client` 폴더 생성
+- [ ] `web-dist/server` 폴더 생성
 - [ ] 해시가 포함된 파일명 확인
 
 #### 2. SSR 라우트 (`/admin/companies`)

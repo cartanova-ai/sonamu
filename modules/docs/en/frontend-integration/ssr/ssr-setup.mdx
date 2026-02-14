@@ -338,27 +338,41 @@ Sonamu uses a **hybrid approach**:
 ### Development Mode
 
 ```bash
-pnpm dev
+sonamu dev            # Integrated mode (= sonamu dev all)
+sonamu dev all        # Integrated mode (one-port: API + Web)
+sonamu dev api        # API-only mode (Vite integration disabled)
+sonamu dev web        # Vite standalone
+sonamu dev web -- --port 3028 --host 0.0.0.0  # Pass Vite options
 ```
 
-- Uses Vite Dev Server
-- HMR (Hot Module Replacement) support
-- Vite loads `entry-server.generated.tsx` in real-time
+- `dev all`: API server integrates Vite to serve API + Web on a single port (HMR supported)
+- `dev api`: Runs API only. Use when Web is not needed or when running Vite separately
+- `dev web`: Runs Vite dev server standalone. Pass Vite options after `--`
 
 ### Production Build
 
 ```bash
-pnpm build
+sonamu build          # Full build (= sonamu build all)
+sonamu build api      # API only
+sonamu build web      # Web only
 ```
 
 **Build output**:
 ```
-api/
-├── dist/ssr/
-│   └── entry-server.generated.js    # SSR bundle
-└── public/web/
-    ├── index.html                    # HTML template
-    └── assets/                       # Client bundle
+web/dist/                               # Web build source
+├── client/                             # Client bundle
+└── server/                             # SSR bundle
+
+api/web-dist/                           # Copied from web/dist (for deployment)
+├── client/                             # = web/dist/client copy
+│   ├── index.html
+│   └── assets/
+└── server/                             # = web/dist/server copy
+    └── entry-server.generated.js
+
+api/dist/                               # API build output
+└── ssr/
+    └── routes.js                       # SSR routes (API owned)
 ```
 
 ## Cautions

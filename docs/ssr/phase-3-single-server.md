@@ -108,7 +108,7 @@ async withFastify(
     });
   } else {
     // Production 모드: 빌드된 파일 서빙
-    const webDistPath = path.join(this.apiRootPath, 'public', 'web');
+    const webDistPath = path.join(this.apiRootPath, 'web-dist', 'client');
     
     // 롤링 업데이트 대응: asset hash 불일치 처리
     server.get('/assets/index-*.js', async (request, reply) => {
@@ -276,7 +276,7 @@ export default defineConfig({
   "scripts": {
     "dev": "sonamu dev",
     "build": "pnpm build:web && pnpm build:api",
-    "build:web": "cd ../web && pnpm build && cp -r dist/client ../api/public/web",
+    "build:web": "cd ../web && pnpm build && cp -r dist ../api/web-dist",
     "build:api": "sonamu build",
     "start": "sonamu start"
   }
@@ -286,7 +286,7 @@ export default defineConfig({
 ### public 폴더 생성
 
 ```bash
-mkdir -p /Users/minsangk/Development/sonamu/examples/miomock/api/public/web
+mkdir -p /Users/minsangk/Development/sonamu/examples/miomock/api/web-dist
 ```
 
 ### .gitignore 업데이트
@@ -294,7 +294,7 @@ mkdir -p /Users/minsangk/Development/sonamu/examples/miomock/api/public/web
 **파일**: `api/.gitignore`
 
 ```
-public/web
+web-dist
 ```
 
 ### 테스트
@@ -307,7 +307,7 @@ NODE_ENV=production pnpm start
 
 ### 확인 사항
 - [ ] `web/dist/client` 폴더 생성 확인
-- [ ] `api/public/web`에 파일 복사 확인
+- [ ] `api/web-dist`에 파일 복사 확인
 - [ ] index.html, assets 폴더 확인
 - [ ] production 모드로 서버 실행
 - [ ] `http://localhost:10280` 접속 시 정상 동작

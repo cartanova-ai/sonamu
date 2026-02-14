@@ -48,16 +48,18 @@ cd packages/api
 pnpm docker:up
 ```
 
-### 3. API 서버 시작
+### 3. 개발 서버 시작
 
 ```bash
 cd packages/api
 pnpm dev
 ```
 
-API 서버가 시작되면 다음 주소로 접속할 수 있습니다:
-- **API 서버**: http://localhost:34900
+개발 서버가 시작되면 다음 주소로 접속할 수 있습니다:
+- **API + Web (통합)**: http://localhost:34900
 - **Sonamu UI**: http://localhost:34900/sonamu-ui (엔티티 관리)
+
+> `pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다 (`sonamu dev all`과 동일).
 
 ### 4. 첫 번째 엔티티 생성
 
@@ -66,14 +68,11 @@ API 서버가 시작되면 다음 주소로 접속할 수 있습니다:
 3. 엔티티 정의 (예: `User`, `Post`)
 4. `api/src/application/`과 `web/src/services/`에 파일이 자동으로 생성됩니다
 
-### 5. Web 서버 시작 (새 터미널에서)
+### 5. 앱 확인
 
-```bash
-cd packages/web
-pnpm dev
-```
+http://localhost:34900 을 열어서 앱을 확인하세요!
 
-http://localhost:3028 을 열어서 앱을 확인하세요!
+> Web만 별도로 실행하고 싶다면 `sonamu dev web`을 사용할 수 있습니다 (`--` 뒤에 Vite 옵션 전달 가능).
 
 ---
 
@@ -105,12 +104,11 @@ web/src/services/
 
 ## 🌐 포트 구성
 
-| 서비스      | 포트                    | URL                             |
-| ----------- | ----------------------- | ------------------------------- |
-| API 서버    | `BASE_PORT` (기본 34900) | http://localhost:34900           |
-| Sonamu UI   | -                       | http://localhost:34900/sonamu-ui |
-| Web 클라이언트 | `BASE_PORT + 2000`      | http://localhost:3028           |
-| PostgreSQL  | 5432                    | -                               |
+| 서비스             | 포트                     | URL                             |
+| ------------------ | ------------------------ | ------------------------------- |
+| API + Web (통합)   | `BASE_PORT` (기본 34900) | http://localhost:34900           |
+| Sonamu UI          | -                        | http://localhost:34900/sonamu-ui |
+| PostgreSQL         | 5432                     | -                               |
 
 ## 📜 주요 스크립트
 
@@ -124,27 +122,30 @@ web/src/services/
 
 ### API (`packages/api/`)
 
-| 명령어              | 설명                                   |
-| ------------------- | -------------------------------------- |
-| `pnpm dev`          | 개발 서버 시작 (HMR, Sonamu UI 포함)   |
-| `pnpm build`        | 프로덕션 빌드                          |
-| `pnpm start`        | 프로덕션 서버 시작                     |
-| `pnpm test`         | 테스트 실행                            |
-| `pnpm docker:up`    | Docker DB 시작                         |
-| `pnpm docker:down`  | Docker DB 중지                         |
-| `pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작) |
-| `pnpm dump`         | 테스트 DB 덤프 생성                    |
-| `pnpm seed`         | 덤프를 fixture DB에 적용               |
+| 명령어              | 설명                                       |
+| ------------------- | ------------------------------------------ |
+| `pnpm dev`          | 통합 개발 서버 시작 (= `sonamu dev all`)   |
+| `pnpm build`        | 전체 프로덕션 빌드 (= `sonamu build all`)  |
+| `pnpm build api`    | API만 빌드 (= `sonamu build api`)          |
+| `pnpm build web`    | Web만 빌드 (= `sonamu build web`)          |
+| `pnpm start`        | 프로덕션 서버 시작                         |
+| `pnpm test`         | 테스트 실행                                |
+| `pnpm docker:up`    | Docker DB 시작                             |
+| `pnpm docker:down`  | Docker DB 중지                             |
+| `pnpm docker:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작)     |
+| `pnpm dump`         | 테스트 DB 덤프 생성                        |
+| `pnpm seed`         | 덤프를 fixture DB에 적용                   |
 | `pnpm sonamu skills sync` | 공식 Skills 동기화                   |
 | `pnpm sonamu skills create <name>` | 커스텀 Skill 생성             |
 
-### Web (`packages/web/`)
+### 개발 서버 모드
 
-| 명령어         | 설명               |
-| -------------- | ------------------ |
-| `pnpm dev`     | 개발 서버 시작     |
-| `pnpm build`   | 프로덕션 빌드      |
-| `pnpm preview` | 빌드 결과 미리보기 |
+| 명령어                                 | 설명                           |
+| -------------------------------------- | ------------------------------ |
+| `sonamu dev` / `sonamu dev all`        | 통합 모드 (one-port: API + Web) |
+| `sonamu dev api`                       | API-only 모드                  |
+| `sonamu dev web`                       | Vite 단독 실행                 |
+| `sonamu dev web -- --port 3028 --host 0.0.0.0` | Vite 옵션 전달         |
 
 ## 🛠️ 개발 워크플로우
 

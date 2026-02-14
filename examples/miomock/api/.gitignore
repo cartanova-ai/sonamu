@@ -13,6 +13,6 @@
 #!.yarn/cache
 .pnp.*
 
-dist/*
+dist
+web-dist
 .env
-public/web

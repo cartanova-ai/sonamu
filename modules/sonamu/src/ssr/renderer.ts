@@ -64,8 +64,8 @@ export async function renderSSR(
   } else {
     // Prod: 빌드된 파일
     const fs = await import("node:fs");
-    const webDistPath = path.join(Sonamu.apiRootPath, "public", "web");
-    const ssrPath = path.join(Sonamu.apiRootPath, "dist", "ssr");
+    const webDistPath = path.join(Sonamu.apiRootPath, "web-dist", "client");
+    const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
 
     // 빌드된 index.html에서 스크립트 추출
     const builtHtml = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");

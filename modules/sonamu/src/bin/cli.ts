@@ -103,6 +103,14 @@ async function bootstrap() {
       }
       filteredArgv.push(arg);
     }
+
+    // build/dev 명령어가 서브커맨드 없이 호출될 때 "all"을 기본값으로 추가합니다.
+    // 예: `sonamu build` → `sonamu build all`, `sonamu dev` → `sonamu dev all`
+    const cmd = filteredArgv[2];
+    if ((cmd === "build" || cmd === "dev") && filteredArgv.length === 3) {
+      filteredArgv.push("all");
+    }
+
     await tsicli(filteredArgv, {
       types: {
         "#entityId": {
@@ -146,8 +154,12 @@ async function bootstrap() {
         ["scaffold", "view_form", "#entityId"],
         ["cone", "gen", "#entityId"],
         ["sync"],
-        ["dev"],
-        ["build"],
+        ["build", "all"],
+        ["build", "api"],
+        ["build", "web"],
+        ["dev", "all"],
+        ["dev", "api"],
+        ["dev", "web"],
         ["start"],
         ["skills", "sync"],
         ["skills", "create", "#name"],
@@ -171,8 +183,12 @@ async function bootstrap() {
         // scaffold_view_form,
         cone_gen,
         sync,
-        dev,
-        build,
+        build_all,
+        build_api,
+        build_web,
+        dev_all,
+        dev_api,
+        dev_web,
         start,
         skills_sync,
         skills_create,
@@ -197,8 +213,8 @@ async function sync() {
 }
 
 /**
- * pnpm dev 하면 실행되는 함수입니다.
- * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
+ * API 개발 서버를 실행하는 공통 로직입니다.
+ * dev_all과 dev_api에서 공유합니다.
  *
  * TypeScript를 바로 실행할 수 있도록 @sonamu-kit/ts-loader를,
  * HMR을 지원하기 위해 @sonamu-kit/hmr-hook을 import하며,
@@ -207,14 +223,10 @@ async function sync() {
  * 이때 @sonamu-kit/ts-loader와 @sonamu-kit/hmr-hook는 sonamu가 자체적으로 가지고 있는 dependency입니다.
  * 또한 실행에 사용하는 @sonamu-kit/hmr-runner도 마찬가지로 sonamu가 자체적으로 가지고 있는 dependency입니다.
  * 따라서 사용자 프로젝트에서는 이 세 패키지를 직접 설치할 필요가 없습니다.
- *
- * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
-async function dev() {
+function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
   const apiRoot = findApiRootPath();
   const entryPoint = "src/index.ts";
-
-  console.log(chalk.yellow.bold("🚀 Starting Sonamu dev server...\n"));
 
   // 이 sonamu 패키지가 dependencies로 가지고 있는 @sonamu-kit/hmr-runner의 bin/run.js를 사용합니다.
   // 이 경로(/bin/run.js)는 @sonamu-kit/hmr-runner의 package.json의 bin 필드에 명시되어 있는 그것과 같습니다.
@@ -245,6 +257,7 @@ async function dev() {
         NODE_ENV: "development",
         HOT: "yes", // 얘가 있어야 HMR이 활성화됩니다.
         API_ROOT_PATH: apiRoot, // 이 경로가 hmr-hook의 루트 디렉토리가 됩니다.
+        ...options?.extraEnv,
       },
     },
   );
@@ -261,34 +274,89 @@ async function dev() {
 
   serverProcess.on("exit", (code) => {
     if (code !== 0) {
-      console.error(chalk.red(`❌ Server exited with code ${code}`));
+      console.error(chalk.red(`Server exited with code ${code}`));
       process.exit(code || 1);
     }
   });
 }
 
 /**
- * pnpm build 하면 실행되는 함수입니다.
- * 프로젝트를 빌드합니다.
- *
- * 빌드에 필요한 .swcrc는 프로젝트 루트에서 찾고, 없으면 sonamu가 관리하는 .swcrc.project-default를 사용합니다.
- *
- * 실제 빌드 타겟(아티팩트)과 동작은 build-config.ts에 정의되어 있습니다.
- * 이 함수는 build-config.ts에 정의된 동작들을 실행해주는 역할만 합니다.
+ * pnpm dev / pnpm dev all 하면 실행되는 함수입니다.
+ * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
+ * 기존 dev() 함수와 완전히 동일한 동작입니다.
  *
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
-async function build() {
-  const appRoot = findAppRootPath();
+function dev_all() {
+  console.log(chalk.yellow.bold("Starting Sonamu dev server...\n"));
+  spawnApiDevServer();
+}
 
-  // .swcrc 파일을 지정합니다.
+/**
+ * pnpm dev api 하면 실행되는 함수입니다.
+ * API 전용 개발 서버를 띄웁니다.
+ * dev_all과 거의 동일하되, 통합 웹 서버를 비활성화합니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
+function dev_api() {
+  console.log(chalk.yellow.bold("Starting Sonamu API-only dev server...\n"));
+  spawnApiDevServer({
+    extraEnv: { SONAMU_DISABLE_INTEGRATED_WEB: "yes" },
+  });
+}
+
+/**
+ * pnpm dev web 하면 실행되는 함수입니다.
+ * Vite 개발 서버를 단독으로 실행합니다.
+ * -- 뒤의 인자는 Vite에 그대로 전달됩니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
+async function dev_web() {
+  const appRoot = findAppRootPath();
+  const webPath = path.join(appRoot, "web");
+
+  if (!(await exists(webPath))) {
+    console.error(`web 디렉토리를 찾을 수 없습니다: ${webPath}`);
+    process.exit(1);
+  }
+
+  // -- 뒤의 인자 추출
+  const doubleDashIndex = process.argv.indexOf("--");
+  const passthroughArgs = doubleDashIndex !== -1 ? process.argv.slice(doubleDashIndex + 1) : [];
+
+  const viteArgs = ["exec", "vite", ...passthroughArgs];
+
+  console.log(chalk.yellow.bold("Starting Vite dev server...\n"));
+
+  const viteProcess = spawn("pnpm", viteArgs, {
+    cwd: webPath,
+    stdio: "inherit",
+  });
+
+  viteProcess.on("exit", (code) => {
+    process.exit(code ?? 0);
+  });
+
+  // SIGINT/SIGTERM 시 Vite 프로세스를 gracefully 종료합니다.
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, () => {
+      viteProcess.kill(signal);
+    });
+  }
+}
+
+/**
+ * SWC 설정 파일 경로를 결정합니다.
+ * 프로젝트 루트에 .swcrc가 있으면 그것을, 없으면 sonamu 기본 설정을 사용합니다.
+ */
+async function resolveSwcConfigPath(): Promise<string> {
   let swcFilePath = ".swcrc";
   try {
     if (await exists(swcFilePath)) {
-      // 사용자 프로젝트에 .swcrc가 있으면 우선으로 사용합니다.
       console.log(chalk.dim("Using .swcrc from project root..."));
     } else {
-      // 아니라면 sonamu가 관리하는 .swcrc.project-default를 가져다 씁니다.
       console.log(chalk.dim("Using default .swcrc from sonamu package..."));
       swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
     }
@@ -296,8 +364,28 @@ async function build() {
     console.error(chalk.red("Setting up swc config file failed."), error);
     process.exit(1);
   }
+  return swcFilePath;
+}
 
-  // API 프로젝트를 빌드합니다.
+/**
+ * sonamu build / sonamu build all 하면 실행되는 함수입니다.
+ * build_api + build_web의 합성입니다. Web 디렉토리가 없으면 Web 빌드를 스킵합니다.
+ */
+async function build_all() {
+  await build_api();
+  await build_web({ skipIfMissing: true });
+}
+
+/**
+ * pnpm build api 하면 실행되는 함수입니다.
+ * API 프로젝트만 빌드합니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
+async function build_api() {
+  const appRoot = findAppRootPath();
+  const swcFilePath = await resolveSwcConfigPath();
+
   const apiStartedAt = Date.now();
   try {
     for (const artifact of API_ARTIFACTS) {
@@ -307,12 +395,32 @@ async function build() {
       await runBuildSteps(artifact, { cwd, buildCommandArgs: { configFilePath: swcFilePath } });
     }
     printBuildSummary("API", true, Date.now() - apiStartedAt);
-  } catch {
+  } catch (e) {
     printBuildSummary("API", false, Date.now() - apiStartedAt);
+    console.error(e);
+    process.exit(1);
+  }
+}
+
+/**
+ * pnpm build web 하면 실행되는 함수입니다.
+ * Web 프로젝트만 빌드합니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
+async function build_web({ skipIfMissing = false } = {}) {
+  const appRoot = findAppRootPath();
+  const webPath = path.join(appRoot, "web");
+
+  if (!(await exists(webPath))) {
+    if (skipIfMissing) {
+      console.log(chalk.gray("Web 디렉토리가 없으므로 Web 빌드를 건너뜁니다."));
+      return;
+    }
+    console.error(`web 디렉토리를 찾을 수 없습니다: ${webPath}`);
     process.exit(1);
   }
 
-  // Web 프로젝트를 빌드합니다.
   const webStartedAt = Date.now();
   try {
     for (const artifact of WEB_ARTIFACTS) {
@@ -322,8 +430,9 @@ async function build() {
       await runBuildSteps(artifact, { cwd, buildCommandArgs: {} });
     }
     printBuildSummary("Web", true, Date.now() - webStartedAt);
-  } catch {
+  } catch (e) {
     printBuildSummary("Web", false, Date.now() - webStartedAt);
+    console.error(e);
     process.exit(1);
   }
 }
@@ -372,7 +481,7 @@ async function start() {
 
   if (!(await exists(entryPoint))) {
     console.log(chalk.red(`${entryPoint} not found. Please build your project first.`));
-    console.log(chalk.blue("Run: yarn sonamu build"));
+    console.log(chalk.blue("Run: pnpm sonamu build"));
     return;
   }
 

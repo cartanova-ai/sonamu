@@ -399,7 +399,9 @@ class SonamuClass {
 
     if (isLocal()) {
       // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
-      if (hasWeb) {
+      // SONAMU_DISABLE_INTEGRATED_WEB=yes로 설정하면 dev_api 모드에서 Vite 통합을 비활성화할 수 있습니다.
+      const disableIntegratedWeb = process.env.SONAMU_DISABLE_INTEGRATED_WEB === "yes";
+      if (hasWeb && !disableIntegratedWeb) {
         await this.setupViteDevServer(server, webPath, config);
       }
     } else {
@@ -541,11 +543,11 @@ class SonamuClass {
     config: SonamuFastifyConfig,
     globalCompressOptions: CompressOptions | undefined,
   ): Promise<void> {
-    // 경로 명확화: api/public/web, api/dist/ssr
-    const webDistPath = path.join(this.apiRootPath, "public", "web");
-    const ssrPath = path.join(this.apiRootPath, "dist", "ssr");
+    // 경로 명확화: api/web-dist/client (정적 파일), api/web-dist/server (SSR entry), api/dist/ssr (SSR routes - API 소유)
+    const webDistPath = path.join(this.apiRootPath, "web-dist", "client");
+    const ssrPath = path.join(this.apiRootPath, "web-dist", "server");
     const ssrEntryPath = path.join(ssrPath, "entry-server.generated.js");
-    const ssrRoutesPath = path.join(ssrPath, "routes.js");
+    const ssrRoutesPath = path.join(this.apiRootPath, "dist", "ssr", "routes.js");
 
     if (!(await exists(webDistPath))) {
       console.warn(`⚠ Web dist not found: ${webDistPath}`);

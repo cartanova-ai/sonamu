@@ -114,19 +114,17 @@ pnpm create sonamu my_app \
 cd my_app/packages/api
 pnpm docker:up
 
-# 2. API 서버 시작 (Sonamu UI 포함)
-pnpm dev
-
-# 3. Web 서버 시작 (새 터미널)
-cd my_app/packages/web
+# 2. 개발 서버 시작 (API + Web 통합 모드)
 pnpm dev
 ```
 
 🎉 **완료!**
 
-- API: http://localhost:34900
+- API + Web: http://localhost:34900 (통합 모드)
 - Sonamu UI: http://localhost:34900/sonamu-ui (엔티티 관리)
-- Web: http://localhost:3028
+
+> **참고**: `pnpm dev`는 `sonamu dev`를 실행하며, 기본적으로 API와 Web을 하나의 포트로 통합 서빙합니다.
+> Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요.
 
 ---
 
@@ -167,14 +165,14 @@ pnpm dev
 
 | 서비스         | 포트               | URL                              |
 | -------------- | ------------------ | -------------------------------- |
-| **API 서버**   | `BASE_PORT` (34900) | http://localhost:34900            |
+| **API + Web (통합)** | `BASE_PORT` (34900) | http://localhost:34900     |
 | **Sonamu UI**  | -                  | http://localhost:34900/sonamu-ui  |
-| **Web 개발**   | `BASE_PORT + 2000` (3028) | http://localhost:3028     |
 | **PostgreSQL** | 5432               | -                                |
 
 **참고**:
+- `sonamu dev` (= `sonamu dev all`)은 API와 Web을 하나의 포트(one-port)로 통합 서빙합니다
 - Sonamu UI는 API 서버에 통합되어 있어 별도 실행이 필요 없습니다
-- Web은 개발 중에는 Vite dev 서버(3028)로, 프로덕션에서는 빌드 후 API 서버에서 서빙됩니다
+- Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요
 
 ---
 
@@ -184,8 +182,10 @@ pnpm dev
 
 | 명령어           | 설명                                      |
 | ---------------- | ----------------------------------------- |
-| `pnpm dev`       | 개발 서버 시작 (HMR, Sonamu UI 포함)      |
-| `pnpm build`     | 프로덕션 빌드                             |
+| `pnpm dev`       | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `pnpm build`     | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `pnpm build api` | API만 빌드 (= `sonamu build api`)         |
+| `pnpm build web` | Web만 빌드 (= `sonamu build web`)         |
 | `pnpm start`     | 프로덕션 서버 실행                        |
 | `pnpm test`      | 테스트 실행                               |
 | `pnpm docker:up`     | Docker 데이터베이스 시작                  |
@@ -196,15 +196,26 @@ pnpm dev
 | `pnpm sonamu skills sync` | 공식 Skills 동기화                   |
 | `pnpm sonamu skills create <name>` | 커스텀 Skill 생성             |
 
-### Web (`web/`)
+### 개발 서버 모드
 
-| 명령어         | 설명                          |
-| -------------- | ----------------------------- |
-| `pnpm dev`     | 개발 서버 시작 (Vite)         |
-| `pnpm build`   | 프로덕션 빌드 (Client + SSR)  |
-| `pnpm preview` | 빌드 결과 미리보기            |
+| 명령어                          | 설명                                     |
+| ------------------------------- | ---------------------------------------- |
+| `sonamu dev`                    | 통합 모드 (= `sonamu dev all`)           |
+| `sonamu dev all`                | 통합 모드 (one-port: API + Web)          |
+| `sonamu dev api`                | API-only 모드 (Vite 통합 비활성)         |
+| `sonamu dev web`                | Vite 단독 실행                           |
+| `sonamu dev web -- --port 3028` | Vite 옵션 전달                           |
 
-**참고**: `pnpm build`는 클라이언트와 SSR 서버를 모두 빌드합니다. 빌드 결과는 `api/public/web`과 `api/dist/ssr`에 복사됩니다.
+### 빌드
+
+| 명령어             | 설명                                      |
+| ------------------ | ----------------------------------------- |
+| `sonamu build`     | 전체 빌드 (= `sonamu build all`)          |
+| `sonamu build all` | 전체 빌드 (API + Web)                     |
+| `sonamu build api` | API만 빌드                                |
+| `sonamu build web` | Web만 빌드                                |
+
+**참고**: `sonamu build web`은 클라이언트와 SSR 서버를 모두 빌드합니다. 빌드 결과는 `web/dist/`에 생성되고, `api/web-dist/`로 복사됩니다.
 
 ---
 

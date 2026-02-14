@@ -31,17 +31,17 @@ export const WEB_ARTIFACTS: BuildArtifact[] = [
     name: "Web Client",
     description: "Web 프로젝트 클라이언트 빌드 산출물",
     projectPath: "web",
-    preBuildCommand: () => "rm -rf dist/client && rm -rf ../api/public/web",
+    preBuildCommand: () => "rm -rf dist/client",
     buildCommand: () => "tsc --noEmit && vite build --outDir dist/client",
-    postBuildCommand: () => "mkdir -p ../api/public/web && cp -r dist/client/* ../api/public/web",
   },
   {
     name: "Web Server",
     description: "Web 프로젝트 서버 빌드 산출물",
     projectPath: "web",
-    preBuildCommand: () => "rm -rf dist/server", // api/dist/ssr은 안 지웁니다! 거기는 api의 빌드 결과물이 들어있음!
+    preBuildCommand: () => "rm -rf dist/server",
     buildCommand: () =>
       "tsc --noEmit && vite build --ssr src/entry-server.generated.tsx --outDir dist/server",
-    postBuildCommand: () => "mkdir -p ../api/dist/ssr && cp -r dist/server/* ../api/dist/ssr",
+    postBuildCommand: () =>
+      "rm -rf ../api/web-dist && mkdir -p ../api/web-dist && cp -r dist/* ../api/web-dist",
   },
 ];
