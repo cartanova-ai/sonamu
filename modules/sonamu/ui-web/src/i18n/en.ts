@@ -85,6 +85,7 @@ const en: Record<DictKey, Dictionary[string]> = {
   "entity.prop.withAs": "With/As",
   "entity.prop.default": "Default",
   "entity.prop.filter": "Filter",
+  "entity.prop.cone": "Cone",
 
   // Entity Index Table
   "entity.index.type": "Type",

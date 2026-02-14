@@ -19,7 +19,7 @@ interface FixtureCommandOptions {
 }
 
 /**
- * fixture gen 명령어 - post-it 메타데이터를 활용하여 자동으로 fixture를 생성합니다.
+ * fixture gen 명령어 - cone 메타데이터를 활용하여 자동으로 fixture를 생성합니다.
  */
 export async function fixtureGenCommand(options: FixtureCommandOptions) {
   try {

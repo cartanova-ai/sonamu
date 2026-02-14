@@ -903,7 +903,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                     <TableHead>{SD("entity.prop.withAs")}</TableHead>
                     <TableHead>{SD("entity.prop.default")}</TableHead>
                     <TableHead>{SD("entity.prop.filter")}</TableHead>
-                    <TableHead>Post-it</TableHead>
+                    <TableHead>{SD("entity.prop.cone")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
