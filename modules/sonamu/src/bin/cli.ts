@@ -283,7 +283,6 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
 /**
  * pnpm dev / pnpm dev all 하면 실행되는 함수입니다.
  * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
- * 기존 dev() 함수와 완전히 동일한 동작입니다.
  *
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
