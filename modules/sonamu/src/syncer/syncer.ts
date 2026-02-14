@@ -630,8 +630,7 @@ export class Syncer {
       const syncHeader = [
         "/**",
         " * @generated",
-        ` * 이 파일은 API(${Sonamu.config.api.dir}/src/i18n/${locale}.ts)에서 자동으로 동기화된 것입니다.`,
-        " * 수정이 필요하면 API 측 원본 파일을 수정하세요.",
+        " * API에서 동기화된 파일입니다. 직접 수정하지 마세요.",
         " */",
       ].join("\n");
       await copyFileWithReplaceCoreToShared(sourceFile, targetFile, syncHeader);

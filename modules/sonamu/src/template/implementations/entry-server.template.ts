@@ -75,14 +75,7 @@ export async function render(url: string, preloadedData: PreloadedData[] = []) {
       ...this.getTargetAndPath(),
       body,
       importKeys: [],
-      customHeaders: [
-        "/**",
-        " * @generated",
-        " * 이 파일은 Sonamu에 의해 자동 생성되었습니다.",
-        " * SSR(Server-Side Rendering) 엔트리 포인트입니다.",
-        " * 직접 수정하지 마세요. 원본 수정 후 `pnpm sonamu sync`를 실행하면 갱신됩니다.",
-        " */",
-      ],
+      customHeaders: ["/**", " * @generated", " * 직접 수정하지 마세요.", " */"],
     };
   }
 }

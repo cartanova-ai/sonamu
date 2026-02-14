@@ -148,9 +148,7 @@ export class Template__generated_sso extends Template {
     const customHeaders = [
       "/**",
       " * @generated",
-      " * 이 파일은 Sonamu에 의해 자동 생성되었습니다.",
-      " * entity.json의 subset/relation 정의로부터 SubsetQuery, LoaderQuery, DatabaseSchema가 생성됩니다.",
-      " * 직접 수정하지 마세요. 원본 수정 후 `pnpm sonamu sync`를 실행하면 갱신됩니다.",
+      " * 직접 수정하지 마세요.",
       " */",
       `import { ${sonamuImports} } from "sonamu";`,
     ];

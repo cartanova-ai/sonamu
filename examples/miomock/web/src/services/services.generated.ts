@@ -1,8 +1,6 @@
 /**
  * @generated
- * 이 파일은 Sonamu에 의해 자동 생성되었습니다.
- * Model/Frame의 @api 데코레이터 정의로부터 서비스 클라이언트 함수가 생성됩니다.
- * 직접 수정하지 마세요. 원본 수정 후 `pnpm sonamu sync`를 실행하면 갱신됩니다.
+ * 직접 수정하지 마세요.
  */
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */

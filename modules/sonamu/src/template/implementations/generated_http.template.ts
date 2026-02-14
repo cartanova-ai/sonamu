@@ -62,12 +62,7 @@ export class Template__generated_http extends Template {
       ...this.getTargetAndPath(),
       body: lines.join("\n\n###\n\n"),
       importKeys: [],
-      customHeaders: [
-        "# @generated",
-        "# 이 파일은 Sonamu에 의해 자동 생성되었습니다.",
-        "# Model/Frame의 @api 데코레이터 정의로부터 생성됩니다.",
-        "# 직접 수정하지 마세요.",
-      ],
+      customHeaders: ["# @generated", "# 직접 수정하지 마세요."],
     };
   }
 
