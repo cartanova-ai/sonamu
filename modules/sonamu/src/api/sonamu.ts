@@ -627,17 +627,14 @@ class SonamuClass {
     server.get("/assets/:filename", async (request, reply) => {
       const requestedFile = (request.params as { filename: string }).filename;
       const assetsDir = path.join(webDistPath, "assets");
-
-      // path traversal 방지: 정규화된 경로가 assetsDir 내부인지 검증합니다.
-      // Fastify의 find-my-way 라우터가 :filename을 URL 디코딩하므로,
-      // ..%2F..%2Fetc%2Fpasswd 같은 입력이 ../../../etc/passwd로 풀려 디렉토리를 탈출할 수 있습니다.
-      const resolved = path.resolve(assetsDir, requestedFile);
-      if (!resolved.startsWith(assetsDir + path.sep) && resolved !== assetsDir) {
+      const safeFilePath = this.resolvePathWithinBaseDir(assetsDir, requestedFile);
+      if (safeFilePath === null) {
         reply.code(403).send("Forbidden");
         return;
       }
+      const normalizedRequestedFile = path.relative(assetsDir, safeFilePath).replace(/\\/g, "/");
 
-      const assetPath = `/assets/${requestedFile}`;
+      const assetPath = `/assets/${normalizedRequestedFile}`;
 
       // Cache-Control 헤더 결정
       const getCacheControlForAsset = (): CacheControlConfig => {
@@ -659,8 +656,8 @@ class SonamuClass {
       };
 
       // index-*.js 또는 index-*.css 요청인 경우
-      if (/^index-[a-f0-9]+\.(js|css)$/.test(requestedFile)) {
-        const ext = requestedFile.split(".").pop();
+      if (/^index-[a-f0-9]+\.(js|css)$/.test(normalizedRequestedFile)) {
+        const ext = normalizedRequestedFile.split(".").pop();
         const files = await fs.readdir(assetsDir);
         const currentFile = files.find((f) => f.startsWith("index-") && f.endsWith(`.${ext}`));
 
@@ -674,12 +671,12 @@ class SonamuClass {
       }
 
       // 일반 파일 서빙
-      const filePath = path.join(assetsDir, requestedFile);
+      const filePath = safeFilePath;
       if (await exists(filePath)) {
         const content = await fs.readFile(filePath);
-        const ext = requestedFile.split(".").pop();
+        const ext = normalizedRequestedFile.split(".").pop();
         reply.type(ext === "js" ? "application/javascript" : ext === "css" ? "text/css" : "");
-        if (requestedFile.includes("-")) {
+        if (normalizedRequestedFile.includes("-")) {
           applyCacheHeaders(reply, getCacheControlForAsset());
         }
         return reply.send(content);
@@ -740,10 +737,15 @@ class SonamuClass {
         }
 
         // 정적 파일이 존재할 경우, 정적 파일을 먼저 서빙해야함
-        const filePath = path.join(webDistPath, request.url);
-        if (await fileExists(filePath)) {
-          const content = await fs.readFile(filePath);
-          return reply.type(mimeLookup(filePath) || "application/octet-stream").send(content);
+        const requestPath = this.getPathnameFromUrl(request.url);
+        const safeFilePath = this.resolvePathWithinBaseDir(webDistPath, requestPath);
+        if (safeFilePath === null) {
+          reply.code(403).send("Forbidden");
+          return;
+        }
+        if (await fileExists(safeFilePath)) {
+          const content = await fs.readFile(safeFilePath);
+          return reply.type(mimeLookup(safeFilePath) || "application/octet-stream").send(content);
         }
 
         // CSR fallback: index.html 서빙
@@ -949,6 +951,24 @@ class SonamuClass {
 
   private getPathnameFromUrl(url: string): string {
     return url.split("?")[0];
+  }
+
+  private resolvePathWithinBaseDir(baseDir: string, inputPath: string): string | null {
+    try {
+      const decoded = decodeURIComponent(inputPath).replace(/\\/g, "/");
+      if (decoded.includes("\0")) {
+        return null;
+      }
+      const relativePath = decoded.replace(/^\/+/, "");
+      const resolvedPath = path.resolve(baseDir, relativePath);
+      const relativeFromBase = path.relative(baseDir, resolvedPath);
+      if (relativeFromBase.startsWith("..") || path.isAbsolute(relativeFromBase)) {
+        return null;
+      }
+      return resolvedPath;
+    } catch {
+      return null;
+    }
   }
 
   /**
