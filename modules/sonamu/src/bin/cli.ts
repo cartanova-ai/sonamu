@@ -81,10 +81,17 @@ async function bootstrap() {
   try {
     // tsicli는 정확한 명령어 매칭만 지원하므로, --로 시작하는 옵션과 그 값을 필터링합니다.
     // 옵션 파싱은 각 runner 함수에서 원본 process.argv를 사용하여 수행합니다.
+    // "--"(bare double dash)는 passthrough 구분자이므로, 그 뒤의 모든 인자도 제외합니다.
     const filteredArgv: string[] = [];
     let skipNext = false;
+    let afterDoubleDash = false;
     for (let i = 0; i < process.argv.length; i++) {
       const arg = process.argv[i];
+      if (arg === "--") {
+        afterDoubleDash = true;
+        continue;
+      }
+      if (afterDoubleDash) continue;
       if (skipNext) {
         skipNext = false;
         continue;
