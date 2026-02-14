@@ -381,7 +381,6 @@ class SonamuClass {
       server.register(sonamuUIApiPlugin);
     }
 
-    // 로컬/프로덕션 환경 분기
     const webPath = path.join(this.appRootPath, "web");
     const hasWeb = await exists(webPath);
 
@@ -398,11 +397,13 @@ class SonamuClass {
       : undefined;
 
     if (isLocal()) {
-      // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
+      // 로컬 개발 환경: catch-all로 API를 동적 매칭하여 HMR을 지원합니다.
       // SONAMU_DISABLE_INTEGRATED_WEB=yes로 설정하면 dev_api 모드에서 Vite 통합을 비활성화할 수 있습니다.
       const disableIntegratedWeb = process.env.SONAMU_DISABLE_INTEGRATED_WEB === "yes";
       if (hasWeb && !disableIntegratedWeb) {
-        await this.setupViteDevServer(server, webPath, config);
+        await this.setupDevServerWithVite(server, webPath, config);
+      } else {
+        this.setupDevServer(server, config);
       }
     } else {
       // 프로덕션 환경: 개별 API 라우트 + 정적 파일 서빙
@@ -425,10 +426,78 @@ class SonamuClass {
     }
   }
 
+  /**
+   * dev 모드 공통: catch-all에서 syncer.apis를 동적으로 탐색하여 API 요청을 처리합니다.
+   * server.route()로 개별 등록하면 handler가 고정되어 HMR이 동작하지 않으므로,
+   * 매 요청마다 syncer.apis를 조회하는 이 방식을 사용합니다.
+   *
+   * 요청이 /api(정확히는 this.config.api.route.prefix)로 시작하지 않는 경우라면 null을 반환하며 끝냅니다.
+   */
+  private handleDevApiRequest(
+    request: FastifyRequest,
+    config: SonamuFastifyConfig,
+  ): ((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null {
+    const url = request.url;
+    const method = request.method;
+
+    if (!url.startsWith(this.config.api.route.prefix)) {
+      return null;
+    }
+
+    // matchPath를 동기로 쓸 수 없으므로(dynamic import), 여기서는 직접 매칭합니다.
+    // syncer.apis의 path는 :param 형태의 패턴을 포함할 수 있으므로 정규식으로 변환하여 매칭합니다.
+    const matchedApi = this.syncer.apis.find((api) => {
+      if (this.syncer.models[api.modelName] === undefined) {
+        return false;
+      }
+      const apiMethod = api.options.httpMethod ?? "GET";
+      if (apiMethod !== method) return false;
+
+      const fullPath = this.config.api.route.prefix + api.path;
+      // :param을 [^/]+로 치환하여 간이 매칭합니다.
+      const pattern = fullPath.replace(/:[^/]+/g, "[^/]+");
+      const urlWithoutQuery = url.split("?")[0];
+      return new RegExp(`^${pattern}$`).test(urlWithoutQuery);
+    });
+
+    if (!matchedApi) {
+      throw new NotFoundException(SD("error.api.notFound"));
+    }
+
+    return this.createApiHandler(matchedApi, config);
+  }
+
+  /**
+   * dev api 모드: Vite 없이 API 동적 라우팅만 제공합니다.
+   * HMR을 위해 catch-all에서 매 요청마다 syncer.apis를 조회합니다.
+   */
+  private setupDevServer(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+    config: SonamuFastifyConfig,
+  ): void {
+    server.route({
+      method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"],
+      url: `${this.config.api.route.prefix}/*`,
+      handler: async (request, reply) => {
+        const handler = this.handleDevApiRequest(request, config);
+        if (handler) {
+          return handler(request, reply);
+        }
+        // 사실 /api로 시작하지 않는 요청은 여기에 들어오지도 않을 거라 이 라인은 도달 불가능입니다만,
+        // 안전빵으로 남겨놓습니다.
+        throw new NotFoundException(SD("error.api.notFound"));
+      },
+    });
+  }
+
   // biome-ignore lint/suspicious/noExplicitAny: ViteDevServer 타입을 동적으로 로드해야 함
   private viteServer: any = null;
 
-  private async setupViteDevServer(
+  /**
+   * dev all 모드: Vite Dev Server를 통합하여 API + SSR + CSR을 모두 제공합니다.
+   * API 동적 매칭은 handleDevApiRequest를 공유합니다.
+   */
+  private async setupDevServerWithVite(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     webPath: string,
     config: SonamuFastifyConfig,
@@ -465,31 +534,13 @@ class SonamuClass {
       method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"],
       url: "/*",
       handler: async (request, reply) => {
-        const url = request.url;
-        const method = request.method;
-
-        // 1. API 요청 처리 - /api로 시작하면 syncer.apis에서 매칭되는 API 찾기
-        if (url.startsWith(this.config.api.route.prefix)) {
-          const { matchPath } = await import("../ssr/registry");
-
-          const matchedApi = this.syncer.apis.find((api) => {
-            if (this.syncer.models[api.modelName] === undefined) {
-              return false;
-            }
-            const apiMethod = api.options.httpMethod ?? "GET";
-            if (apiMethod !== method) return false;
-
-            const fullPath = this.config.api.route.prefix + api.path;
-            return matchPath(fullPath, url) !== null;
-          });
-
-          if (!matchedApi) {
-            throw new NotFoundException(SD("error.api.notFound"));
-          }
-
-          const handler = this.createApiHandler(matchedApi, config);
-          return handler(request, reply);
+        // 1. API 요청 처리
+        const result = this.handleDevApiRequest(request, config);
+        if (result) {
+          return result(request, reply);
         }
+
+        const url = request.url;
 
         // 2. SSR 라우트 처리
         const { matchSSRRoute, renderSSR } = await import("../ssr");
