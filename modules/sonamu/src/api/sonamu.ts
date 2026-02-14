@@ -437,15 +437,15 @@ class SonamuClass {
     request: FastifyRequest,
     config: SonamuFastifyConfig,
   ): ((request: FastifyRequest, reply: FastifyReply) => Promise<unknown>) | null {
-    const url = request.url;
+    const url = this.getPathnameFromUrl(request.url);
     const method = request.method;
 
     if (!url.startsWith(this.config.api.route.prefix)) {
       return null;
     }
 
-    // matchPath를 동기로 쓸 수 없으므로(dynamic import), 여기서는 직접 매칭합니다.
-    // syncer.apis의 path는 :param 형태의 패턴을 포함할 수 있으므로 정규식으로 변환하여 매칭합니다.
+    // syncer.apis의 path는 :param 형태를 포함할 수 있으므로 세그먼트 단위로 매칭합니다.
+    // 정규식 생성 방식은 path 문자열 내 특수문자(., +, (, [ 등)로 오작동할 수 있어 사용하지 않습니다.
     const matchedApi = this.syncer.apis.find((api) => {
       if (this.syncer.models[api.modelName] === undefined) {
         return false;
@@ -454,10 +454,7 @@ class SonamuClass {
       if (apiMethod !== method) return false;
 
       const fullPath = this.config.api.route.prefix + api.path;
-      // :param을 [^/]+로 치환하여 간이 매칭합니다.
-      const pattern = fullPath.replace(/:[^/]+/g, "[^/]+");
-      const urlWithoutQuery = url.split("?")[0];
-      return new RegExp(`^${pattern}$`).test(urlWithoutQuery);
+      return this.isPathPatternMatch(fullPath, url);
     });
 
     if (!matchedApi) {
@@ -917,7 +914,7 @@ class SonamuClass {
    */
   private extractPathParams(pattern: string, url: string): Record<string, string> {
     const patternParts = pattern.split("/").filter(Boolean);
-    const urlParts = url.split("?")[0].split("/").filter(Boolean);
+    const urlParts = this.getPathnameFromUrl(url).split("/").filter(Boolean);
     const params: Record<string, string> = {};
 
     for (let i = 0; i < patternParts.length; i++) {
@@ -926,6 +923,32 @@ class SonamuClass {
       }
     }
     return params;
+  }
+
+  private isPathPatternMatch(pattern: string, url: string): boolean {
+    const patternParts = pattern.split("/").filter(Boolean);
+    const urlParts = this.getPathnameFromUrl(url).split("/").filter(Boolean);
+
+    if (patternParts.length !== urlParts.length) {
+      return false;
+    }
+
+    for (let i = 0; i < patternParts.length; i++) {
+      const patternPart = patternParts[i];
+      const urlPart = urlParts[i];
+      if (patternPart.startsWith(":")) {
+        continue;
+      }
+      if (patternPart !== urlPart) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private getPathnameFromUrl(url: string): string {
+    return url.split("?")[0];
   }
 
   /**
