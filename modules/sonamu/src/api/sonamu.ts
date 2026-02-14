@@ -629,7 +629,7 @@ class SonamuClass {
       const assetsDir = path.join(webDistPath, "assets");
       const safeFilePath = this.resolvePathWithinBaseDir(assetsDir, requestedFile);
       if (safeFilePath === null) {
-        reply.code(403).send("Forbidden");
+        reply.status(403).send();
         return;
       }
       const normalizedRequestedFile = path.relative(assetsDir, safeFilePath).replace(/\\/g, "/");
@@ -682,7 +682,7 @@ class SonamuClass {
         return reply.send(content);
       }
 
-      reply.code(404).send("Not found");
+      reply.status(404).send();
     });
 
     // SSR 라우트 개별 등록 (compress 옵션이 라우트별로 적용되도록)
@@ -717,7 +717,7 @@ class SonamuClass {
       handler: async (request, reply) => {
         // /api, /sonamu-ui는 404 그대로
         if (request.url.startsWith("/api") || request.url.startsWith("/sonamu-ui")) {
-          reply.code(404).send({ error: "Not Found" });
+          reply.status(404).send();
           return;
         }
 
@@ -740,7 +740,7 @@ class SonamuClass {
         const requestPath = this.getPathnameFromUrl(request.url);
         const safeFilePath = this.resolvePathWithinBaseDir(webDistPath, requestPath);
         if (safeFilePath === null) {
-          reply.code(403).send("Forbidden");
+          reply.status(403).send();
           return;
         }
         if (await fileExists(safeFilePath)) {
