@@ -348,7 +348,7 @@ async function dev_web() {
 }
 
 /**
- * SWC 설정 파일 경로를 결정합니다.
+ * SWC 설정 파일 경로를 결정합니다. API 빌드(SWC)에서만 사용됩니다.
  * 프로젝트 루트에 .swcrc가 있으면 그것을, 없으면 sonamu 기본 설정을 사용합니다.
  */
 async function resolveSwcConfigPath(): Promise<string> {
@@ -459,9 +459,9 @@ async function runBuildSteps<T>(
       printTaskStart(step.name, step.cmd, isLast);
       await execWithLinePrefix(step.cmd, { cwd: options.cwd });
       printTaskSuccess(step.name, isLast);
-    } catch {
+    } catch (e) {
       printTaskFailed(step.name, isLast);
-      throw new Error(`${step.name} failed`);
+      throw new Error(`${step.name} failed`, { cause: e });
     }
   }
 }

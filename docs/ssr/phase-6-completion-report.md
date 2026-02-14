@@ -194,7 +194,7 @@ if (!ssrAvailable) {
 ```typescript
 // SSR 라우트 로드 (production에서만, 사용자 프로젝트의 ssr/routes.ts)
 if (ssrAvailable) {
-  const ssrRoutesPath = path.join(this.apiRootPath, "web-dist", "server", "routes.js");
+  const ssrRoutesPath = path.join(this.apiRootPath, "dist", "ssr", "routes.js");
   if (fs.existsSync(ssrRoutesPath)) {
     await import(ssrRoutesPath);
     console.log("✓ SSR routes loaded");
@@ -206,7 +206,7 @@ if (ssrAvailable) {
 
 **중요**:
 - Dev에서는 HMR을 위해 정적 import 사용 안 함
-- Prod에서만 빌드된 `api/web-dist/server/routes.js`를 동적 import
+- Prod에서만 빌드된 `api/dist/ssr/routes.js`를 동적 import
 - import 시점에 `registerSSR()` 호출이 실행됨
 
 #### 4.3 롤링 업데이트 대응 (Asset 서빙)
@@ -341,7 +341,7 @@ Request: GET /admin/companies
 setupStaticWebServer.setNotFoundHandler()
        │
        ├─ matchSSRRoute(url) ──► ssrRoutes 확인
-       │                          (api/web-dist/server/routes.js에서 등록)
+       │                          (api/dist/ssr/routes.js에서 등록)
        ▼
    match 성공?
        │
