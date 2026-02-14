@@ -138,7 +138,7 @@ entity.json 등이 변경되면 **자동으로 덮어써지는** 파일들입니
 **Web 측 (`web/src/services/`)**
 | 파일 | 설명 |
 |------|------|
-| `sonamu.shared.ts` | 코어에서 자동 복사 |
+| `sonamu.shared.ts` | 코어 템플릿에서 생성 (파일 없을 때만 1회 생성, 이후 덮어쓰지 않음) |
 | `sonamu.generated.ts` | API에서 복사 |
 | `sonamu.generated.sso.ts` | API에서 복사 |
 | `services.generated.ts` | 서비스 클라이언트 |

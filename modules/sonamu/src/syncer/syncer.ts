@@ -23,7 +23,7 @@ import { isTest } from "../utils/controller";
 import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
-import { areFilesSame, findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
+import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
 import {
@@ -55,13 +55,13 @@ export class Syncer {
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
-   * 다만 sonamu.shared.ts는 체크섬 비교 없이 무조건 싱크(복사)합니다.
+   * sonamu.shared.ts는 파일이 없을 때만 1회 생성하고, 이후에는 덮어쓰지 않습니다.
    * @returns
    */
   async sync(): Promise<void> {
     const { targets } = Sonamu.config.sync;
 
-    // sonamu.shared.ts는 무조건 싱크(복사)합니다.
+    // sonamu.shared.ts는 파일이 없을 때만 1회 생성합니다.
     await this.copySharedToTargets(targets);
 
     // 그 다음부터는 변경된 파일을 찾아서 동기화 작업을 실행합니다.
@@ -239,7 +239,12 @@ export class Syncer {
         console.warn(`Created directory '${path.dirname(destPath)}' because it did not exist.`);
       }
 
-      if (await areFilesSame({ data: convertedText }, { path: destPath })) {
+      // 파일이 이미 존재하면 건너뜁니다.
+      // sonamu.shared.ts는 프로젝트에서 자유롭게 커스터마이징할 수 있어야 하므로,
+      // 최초 1회만 생성하고 이후에는 덮어쓰지 않습니다.
+      // 템플릿 내용($[[dictUtils]] 등)이 변경되었을 때 반영이 필요하면,
+      // 해당 파일을 삭제한 뒤 `pnpm sonamu sync`로 재생성하면 됩니다.
+      if (await exists(destPath)) {
         continue;
       }
 

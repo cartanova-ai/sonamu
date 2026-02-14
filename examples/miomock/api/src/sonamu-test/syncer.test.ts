@@ -893,6 +893,38 @@ describe("Syncer", () => {
       await syncer.copySharedToTargets([]);
       // 에러 없이 완료되어야 함
     });
+
+    // 목적: sonamu.shared.ts가 이미 존재하면 덮어쓰지 않는지 확인
+    test("파일이 이미 존재하면 덮어쓰지 않음", async () => {
+      const targets = Sonamu.config.sync.targets;
+
+      await syncer.copySharedToTargets(targets);
+
+      // 파일이 이미 존재하므로 writeFile이 sonamu.shared.ts에 대해 호출되지 않아야 합니다.
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
+      const sharedWrites = writeFiles.filter((f) => f.path.includes("sonamu.shared.ts"));
+      expect(sharedWrites.length).toBe(0);
+    });
+
+    // 목적: sonamu.shared.ts가 존재하지 않으면 새로 생성하는지 확인
+    test("파일이 없으면 생성함", async () => {
+      // "app" 타겟 디렉토리를 가상으로 등록하여 디렉토리 존재 체크를 통과시킵니다.
+      // app.shared.ts.txt 템플릿은 실제로 존재하지만, app/src/services/sonamu.shared.ts는 존재하지 않습니다.
+      const appDirPath = join(Sonamu.appRootPath, "app");
+      Naite.t("mock:fs/promises:virtualFileSystem", appDirPath);
+
+      try {
+        await syncer.copySharedToTargets(["app"]);
+
+        // 파일이 없었으므로 writeFile이 호출되어야 합니다.
+        const writeFiles = Naite.get("fs/promises:writeFile").result();
+        const sharedWrite = writeFiles.find((f) => f.path.includes("sonamu.shared.ts"));
+        expect(sharedWrite).toBeDefined();
+        expect(sharedWrite.path).toContain("app/src/services/sonamu.shared.ts");
+      } finally {
+        Naite.del("mock:fs/promises:virtualFileSystem");
+      }
+    });
   });
 
   // ============================================
