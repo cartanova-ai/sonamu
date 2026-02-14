@@ -71,6 +71,7 @@ export async function copyFileWithReplaceCoreToShared(
 
   // syncHeader가 제공된 경우 @generated 블록을 교체하거나 최상단에 추가합니다.
   if (syncHeader) {
+    // 여러 줄 형식만 매칭합니다. 한 줄짜리(/** @generated */)는 매칭하지 않으므로 수동으로 축약하지 마세요.
     const generatedBlockRegex = /\/\*\*\r?\n \* @generated\r?\n[\s\S]*?\*\/\r?\n/;
     if (generatedBlockRegex.test(newFileContent)) {
       newFileContent = newFileContent.replace(generatedBlockRegex, `${syncHeader}\n`);
