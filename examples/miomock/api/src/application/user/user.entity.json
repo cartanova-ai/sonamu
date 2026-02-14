@@ -22,8 +22,7 @@
       "dbDefault": "CURRENT_TIMESTAMP",
       "cone": {
         "desc": "사용자 등록 일시",
-        "fixtureHint": "최근 1년 이내의 날짜를 권장",
-        "fixtureGenerator": null
+        "fixtureHint": "최근 1년 이내의 날짜를 권장"
       }
     },
     {
@@ -63,8 +62,7 @@
       "type": "date",
       "cone": {
         "desc": "생년월일",
-        "fixtureHint": "만 18세~65세 사이의 생년월일 생성",
-        "fixtureGenerator": null
+        "fixtureHint": "만 18세~65세 사이의 생년월일 생성"
       }
     },
     {
@@ -86,8 +84,7 @@
       "type": "date",
       "cone": {
         "desc": "마지막 로그인 일시",
-        "fixtureHint": "최근 30일 이내의 날짜 권장. null 값도 허용됨(아직 로그인하지 않은 경우)",
-        "fixtureGenerator": null
+        "fixtureHint": "최근 30일 이내의 날짜 권장. null 값도 허용됨(아직 로그인하지 않은 경우)"
       }
     },
     {
@@ -109,8 +106,7 @@
       "cone": {
         "desc": "이메일 인증 완료 여부",
         "note": "기본값은 false이지만, 픽스처에서는 대부분 true로 설정하는 것이 테스트에 유용함",
-        "fixtureHint": "대부분 true로 설정하여 인증된 사용자로 생성",
-        "fixtureGenerator": null
+        "fixtureHint": "대부분 true로 설정하여 인증된 사용자로 생성"
       }
     },
     {
@@ -152,8 +148,7 @@
       "cone": {
         "desc": "마지막 수정 일시",
         "note": "레코드가 수정될 때마다 자동 업데이트됨",
-        "fixtureHint": "created_at 이후의 날짜로 설정. created_at과 동일하거나 더 최근 날짜",
-        "fixtureGenerator": null
+        "fixtureHint": "created_at 이후의 날짜로 설정. created_at과 동일하거나 더 최근 날짜"
       }
     },
     {
@@ -163,8 +158,7 @@
       "desc": "2FA 활성화 여부",
       "cone": {
         "desc": "2단계 인증(2FA) 활성화 여부",
-        "fixtureHint": "대부분 false 또는 null. 보안을 중요시하는 일부 사용자(특히 admin)만 true로 설정",
-        "fixtureGenerator": null
+        "fixtureHint": "대부분 false 또는 null. 보안을 중요시하는 일부 사용자(특히 admin)만 true로 설정"
       }
     }
   ],
