@@ -306,14 +306,15 @@ ${functions.join("\n\n")}
     for (const entityId of entityIds) {
       const names = EntityManager.getNamesFromId(entityId);
 
-      // useList 메서드를 가진 API 찾기 (복수형 resourceName을 가진 것)
+      // AsyncIdConfig용 리스트 조회 API 찾기
       const listApi = apisByModel.get(names.capital)?.find((api) => {
+        // resourceName이 없거나 tanstack-query를 사용하지 않는 API는 제외
         if (!api.options.resourceName || !api.options.clients?.includes("tanstack-query")) {
           return false;
         }
-        // resourceName이 복수형인지 확인 (list API는 복수형 사용)
+        // resourceName이 복수형이고 메서드명이 findMany인 API
         const resourceName = api.options.resourceName;
-        return inflection.pluralize(resourceName) === resourceName;
+        return inflection.pluralize(resourceName) === resourceName && api.methodName === "findMany";
       });
 
       if (listApi) {
