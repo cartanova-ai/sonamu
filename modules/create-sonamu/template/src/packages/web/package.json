@@ -25,8 +25,7 @@
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
     "tailwind-merge": "catalog:",
-    "zod": "catalog:",
-    "better-auth": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
