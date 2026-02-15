@@ -237,8 +237,7 @@ async handleImplementationChanges(diffGroups) {
   await SyncerActions.actionGenerateHttps();
   
   // Regenerate SSR files
-  await generateTemplate("queries", {}, { overwrite: true });
-  await generateTemplate("entry_server", {}, { overwrite: true });
+  await SyncerActions.actionGenerateSsr();
 }
 ```
 
@@ -275,21 +274,35 @@ Regenerates SD file when i18n file changes.
 1. Copy Locale files to targets
 2. Generate `sd.generated.ts` (api, web, app)
 
+### 7. SSR Config Change
+
+Immediately reloads when SSR route config files change.
+
+**Trigger**: `src/ssr/**/*.ts` change
+
+**Actions**:
+1. Invalidate changed file (HMR)
+2. Reload all SSR routes (`autoloadSSRRoutes`)
+3. Emit HMR completed event
+
+<Info>
+SSR config changes are not part of checksum-based sync. The watcher detects them directly and processes them through a separate path.
+</Info>
+
 ## Checksum-Based Change Detection
 
 Syncer stores file checksums for efficient change detection.
 
-```typescript
-// .sonamu-checksums.json
-{
-  "src/application/user/user.entity.json": "a7f4b3e2c1d5...",
-  "src/application/user/user.types.ts": "c3d1e4f5a6b7...",
-  "src/application/user/user.model.ts": "e5f6a7b8c9d0..."
-}
+```json title="sonamu.lock"
+[
+  { "path": "src/application/user/user.entity.json", "checksum": "a7f4b3e2c1d5..." },
+  { "path": "src/application/user/user.types.ts", "checksum": "c3d1e4f5a6b7..." },
+  { "path": "src/application/user/user.model.ts", "checksum": "e5f6a7b8c9d0..." }
+]
 ```
 
 **How it works**:
-1. Calculate SHA-256 hash of file content
+1. Calculate SHA-1 hash of file content
 2. Compare with stored checksum
 3. Consider changed if different
 4. Update checksum after sync
@@ -457,7 +470,7 @@ Check changes without browser refresh!
     3. Delete checksum file and retry
     
     ```bash
-    rm .sonamu-checksums.json
+    rm sonamu.lock
     pnpm sonamu sync
     ```
   </Accordion>

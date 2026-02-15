@@ -237,8 +237,7 @@ async handleImplementationChanges(diffGroups) {
   await SyncerActions.actionGenerateHttps();
   
   // SSR 파일 재생성
-  await generateTemplate("queries", {}, { overwrite: true });
-  await generateTemplate("entry_server", {}, { overwrite: true });
+  await SyncerActions.actionGenerateSsr();
 }
 ```
 
@@ -275,21 +274,35 @@ API_PORT=3000
 1. Locale 파일을 타겟에 복사
 2. `sd.generated.ts` 생성 (api, web, app)
 
+### 7. SSR 설정 변경
+
+SSR 라우트 설정 파일이 변경되면 즉시 재로드합니다.
+
+**트리거**: `src/ssr/**/*.ts` 변경
+
+**액션**:
+1. 변경된 파일 무효화 (HMR)
+2. SSR 라우트 전체 재로드 (`autoloadSSRRoutes`)
+3. HMR 완료 이벤트 발생
+
+<Info>
+SSR 설정 변경은 체크섬 기반 동기화 대상이 아닙니다. Watcher가 직접 감지하여 별도의 경로로 처리합니다.
+</Info>
+
 ## Checksum 기반 변경 감지
 
 Syncer는 파일의 checksum을 저장하여 효율적으로 변경을 감지합니다.
 
-```typescript
-// .sonamu-checksums.json
-{
-  "src/application/user/user.entity.json": "a7f4b3e2c1d5...",
-  "src/application/user/user.types.ts": "c3d1e4f5a6b7...",
-  "src/application/user/user.model.ts": "e5f6a7b8c9d0..."
-}
+```json title="sonamu.lock"
+[
+  { "path": "src/application/user/user.entity.json", "checksum": "a7f4b3e2c1d5..." },
+  { "path": "src/application/user/user.types.ts", "checksum": "c3d1e4f5a6b7..." },
+  { "path": "src/application/user/user.model.ts", "checksum": "e5f6a7b8c9d0..." }
+]
 ```
 
 **작동 방식**:
-1. 파일 내용의 SHA-256 해시 계산
+1. 파일 내용의 SHA-1 해시 계산
 2. 저장된 checksum과 비교
 3. 다르면 변경으로 판단
 4. 동기화 후 checksum 갱신
@@ -457,7 +470,7 @@ Model이나 Entity를 수정하면 HMR로 즉시 반영됩니다.
     3. Checksum 파일 삭제 후 재시도
     
     ```bash
-    rm .sonamu-checksums.json
+    rm sonamu.lock
     pnpm sonamu sync
     ```
   </Accordion>
