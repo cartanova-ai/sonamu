@@ -37,9 +37,8 @@ Thumbs.db
 
 **/pgdata/**
 
-# Claude Code
-# CLAUDE.md
-.claude/
+# Coding Agents
+.agents/setting.local.json
 
 # Verifier
 .last-verified
