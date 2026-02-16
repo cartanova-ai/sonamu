@@ -42,9 +42,13 @@ Only the main agent can spawn sub-agents. The orchestrator role is always assume
 ### `reviewer`
 - Canonical prompt: `.agents/workflow/prompts/06_codex_output_and_sessions.md`
 - Preset file: `.agents/agents/reviewer.md`
-- Input artifacts: review request payload, target refs
+- Input artifacts: git diff, `must_verify_behaviors`, gate results, `objective_packet` subset
 - Output artifacts: `unit_review_result` or `branch_review_result`, `review_metadata`
+- Rule: context-isolated (receives only diff and requirements, not implementation reasoning)
+- Rule: follows structured review checklist (see local reviewer review contract in canonical prompt)
 - Rule: prioritize bugs -> requirement conformance -> performance/security
+- Rule: severity-gated (high and medium only, no style nitpicks)
+- Scope: unit-level reviews (orchestrator-spawned). Branch-level reviews use Codex MCP.
 
 ### `review-feedback-handler`
 - Canonical prompt: `.agents/workflow/prompts/08_review_feedback_handler.md`

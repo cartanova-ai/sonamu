@@ -49,12 +49,17 @@ If `Codex MCP` is missing, continue with fallback planning/review paths.
 3. Validate `must_verify_behaviors` exists for each implementation/hotfix unit.
 4. Build execution queue by dependency and parallel group.
 5. Spawn implementation units in parallel when safe.
-6. Each implementation sub-agent internally handles: implement -> commit -> Codex MCP review -> fix -> re-commit -> re-review until clean.
-7. When a unit sub-agent returns, verify its `unit_execution_report` includes review closure evidence.
-8. After all units are integrated and clean, spawn a reviewer sub-agent for full-branch review.
-9. If branch findings exist, route through `prompts/08_review_feedback_handler.md` and repeat until clean.
-10. If user feedback arrives, route through feedback handler and re-run required reviews.
-11. When zero unresolved findings remain, trigger `prompts/05_user_review_handoff.md`.
+6. Each implementation sub-agent handles: implement -> automated gates -> commit -> return.
+7. When a unit sub-agent returns, verify its `unit_execution_report` and check review fast-path eligibility (see `prompts/06_codex_output_and_sessions.md` Review fast-path policy).
+8. Unit-level review loop:
+   a. If fast-path conditions are met, skip reviewer spawn and mark review as closed.
+   b. Otherwise, spawn a local reviewer sub-agent with context isolation (diff, `must_verify_behaviors`, gate results only). Follow the local reviewer review contract in `prompts/06_codex_output_and_sessions.md`.
+   c. If reviewer returns findings, spawn review-feedback-handler to fix, then re-spawn reviewer.
+   d. Repeat until zero unresolved findings.
+9. After all units are reviewed and clean, spawn a Codex MCP review for the full branch (final quality gate). Follow session and human-in-the-loop policies in `prompts/06_codex_output_and_sessions.md`.
+10. If branch findings exist, route through `prompts/08_review_feedback_handler.md` and repeat until clean.
+11. If user feedback arrives, route through feedback handler and re-run required reviews.
+12. When zero unresolved findings remain, trigger `prompts/05_user_review_handoff.md`.
 
 ## Bug-fix routing rule
 - Incident or production bug-fix path: use `prompts/04_hotfix.md`.

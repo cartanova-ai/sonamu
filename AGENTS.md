@@ -114,14 +114,17 @@ docker compose up -d
   - before push: test pass
 
 ## Review policy
-- Run per-unit review/fix loop until clean.
-- After integration, run full-branch review/fix loop until clean.
+- Unit-level review: orchestrator spawns a separate, context-isolated reviewer sub-agent after each implementation unit completes. The reviewer receives only diff, `must_verify_behaviors`, and gate results.
+- Review fast-path: trivial changes (<=30 lines, docs/formatting/config only, all gates pass) skip reviewer spawn.
+- Branch-level review: after all units are integrated and clean, run Codex MCP full-branch review as the final quality gate.
+- Run review/fix loop at each level until clean.
 - Review priority order is mandatory:
   - bugs
   - requirement conformance
   - performance/security risk
 - If review output is large, use temp files and pass only file path plus compact metadata.
-- Prefer Codex MCP for planning/review when available and not overridden.
+- Prefer Codex MCP for planning and branch-level review when available and not overridden.
+- Human-in-the-loop for Codex MCP: enforced in normal mode, exempted in autonomous mode.
 
 ## Hotfix policy
 - Hotfix uses the same orchestration model as implementation:

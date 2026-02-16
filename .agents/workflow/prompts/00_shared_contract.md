@@ -53,14 +53,16 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 - Use plain-text `rg`/`grep` only for plain-text needs or explicit user request.
 
 ## Codex MCP policy
-- For planning and code review, use Codex MCP as default when installed and available.
-- If Codex MCP is unavailable, use the fallback path while preserving the same review contract.
+- For planning, use Codex MCP as default when installed and available.
+- For code review:
+  - Unit-level: use local reviewer sub-agent (orchestrator-driven, context-isolated). See `06_codex_output_and_sessions.md` local reviewer review contract.
+  - Branch-level: use Codex MCP as default when installed and available.
+  - If Codex MCP is unavailable for branch review, use the fallback path while preserving the same review contract.
 - For Codex MCP interactions, create a progress file before the call and include its path in the prompt so progress can be inspected at any time.
 - For bug-fix paths, allow Codex MCP problem-solving escalation when self-attempts stall: analysis delegation or full-task delegation, with user confirmation in normal mode and automatic escalation in autonomous mode. If Codex MCP fails, always resume self-attempt.
-- For Codex MCP interactions in sub-agents, enforce human-in-the-loop:
-  - surface Codex MCP responses to user first
-  - wait for user input
-  - then relay via `codex-reply`
+- Human-in-the-loop for Codex MCP interactions in sub-agents:
+  - Normal mode (`autonomous: false`): surface Codex MCP responses to user first, wait for user input, then relay via `codex-reply`.
+  - Autonomous mode (`autonomous: true`): process Codex MCP responses automatically, relay via `codex-reply` immediately, log in `review_metadata`.
 
 ## Framework/runtime policy
 - React: require React best-practice skills.
@@ -97,10 +99,12 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 - All spawnable roles are leaf workers; nested spawning is forbidden.
 - Decomposition requests from leaf workers must be escalated back to orchestrator.
 
-## Implementation commit and review loop policy
+## Implementation commit and review policy
 - Implementation sub-agents must commit unit changes after required validation checks pass.
-- Implementation sub-agents must run Codex MCP review (or fallback backend) and close all findings before returning.
-- Unit handoff requires review closure evidence in `unit_execution_report`.
+- Implementation sub-agents return to orchestrator after commit. They do not self-review.
+- Unit-level review is orchestrator-driven: a separate reviewer sub-agent is spawned with context isolation.
+- Branch-level review uses Codex MCP (or fallback backend) as the final quality gate.
+- Review fast-path: trivial changes (<=30 lines, docs/formatting/config only, all gates pass) skip reviewer spawn.
 
 ## Bug-fix routing policy
 - Incident/hotfix bug fixes must use `prompts/04_hotfix.md`.

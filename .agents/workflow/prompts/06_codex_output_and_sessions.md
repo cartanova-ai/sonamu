@@ -17,9 +17,14 @@ Standardize review requests/responses, session continuity, and long-output handl
 
 ## Human-in-the-loop reply policy
 - Sub-agents that interact with Codex MCP must run as foreground sub-agents (not background).
-- When a sub-agent calls Codex MCP and receives a response, do not auto-reply.
-- Present the Codex MCP response to the user via `AskUserQuestion` and wait for user input.
-- After user input arrives, relay the user response via `codex-reply`.
+- Normal mode (`autonomous: false`):
+  - When a sub-agent calls Codex MCP and receives a response, do not auto-reply.
+  - Present the Codex MCP response to the user via `AskUserQuestion` and wait for user input.
+  - After user input arrives, relay the user response via `codex-reply`.
+- Autonomous mode (`autonomous: true`):
+  - Process Codex MCP responses automatically without user confirmation.
+  - Relay responses via `codex-reply` immediately.
+  - Log the interaction in `review_metadata` for traceability.
 - Apply this policy to all Codex MCP interactions in all sub-agents.
 
 ## Progress tracking policy
@@ -121,6 +126,71 @@ review_metadata:
   unresolved_count: <number>
   status: clean|needs_fix
 ```
+
+## Local reviewer review contract
+
+When the orchestrator spawns a local reviewer sub-agent for unit-level reviews:
+
+### Context isolation requirement
+- The reviewer sub-agent must receive only:
+  - git diff of the unit changes
+  - `must_verify_behaviors` list
+  - test results and gate outputs
+  - relevant `objective_packet` fields (`unit_objective`, `success_criteria`, `constraints`)
+- The reviewer must NOT receive implementation reasoning or conversation history.
+
+### Structured review checklist
+The reviewer must evaluate each item and report pass/fail:
+1. Every `must_verify_behavior` has a corresponding test.
+2. Tests cover the declared behavior correctly (not vacuous).
+3. No bugs: logic errors, off-by-one, null/undefined risks, race conditions.
+4. Requirement conformance: implementation matches `unit_objective` and `success_criteria`.
+5. No performance/security regressions: N+1 queries, unvalidated input, exposed secrets.
+6. No generated file edits or policy violations per AGENTS.md.
+
+### AST pre-scan
+Before the reviewer sub-agent starts manual review, run automated pattern checks:
+- `ast-grep` / `GritQL` for known anti-patterns in the diff
+- Include pre-scan results in reviewer input as supplementary findings
+
+### Findings format
+
+```yaml
+unit_review_result:
+  unit_id: U-###
+  backend: local-reviewer
+  checklist:
+    - item: "must_verify_behaviors coverage"
+      status: pass|fail
+      details: "..."
+  findings:
+    - id: F-###
+      severity: high|medium
+      category: bug|requirement|performance|security
+      file: "..."
+      line: <number>
+      description: "..."
+      suggestion: "..."
+  unresolved_count: <number>
+  status: clean|needs_fix
+```
+
+### Severity gate
+- Report only `high` and `medium` severity findings.
+- Do not report style, formatting, or naming nitpicks.
+- Priority order: bugs -> requirement conformance -> performance/security.
+
+## Review fast-path policy
+
+Skip reviewer sub-agent spawn when ALL conditions are met:
+- Total lines changed <= 30
+- Changes are limited to: documentation, comments, formatting, typo fixes, config-only edits
+- All automated gates (lint, type-check, test) pass
+
+When fast-path applies:
+- Record `review_loop.backend: fast-path` in `unit_execution_report`.
+- Set `review_closed: true` without spawning reviewer.
+- Proceed directly to branch-level integration.
 
 ## Downstream outputs
 - `unit_review_result`
