@@ -6,6 +6,10 @@
 2. Codex를 활용해 플래닝 / 코드 리뷰를 진행할 경우, 다음 작업들을 수행해주세요.
    - Claude Code 등의 코딩 에이전트에서 다음과 같이 Codex MCP를 추가해주세요. 다음 명령어는 사용자 스코프로 Codex MCP 서버를 설치합니다. `claude mcp add -s user -t stdio codex -- codex mcp-server`
    - 아래 내용을 참고해서 `~/.codex/config.toml` 파일을 업데이트해주세요.
+3. 공통적인 Skills의 경우 Git Repository에서 관리하지 않습니다. 첫 실행 시에는 코딩 에이전트(종류 불문)에게 다음과 같이 프롬프트를 입력해서 Skills를 설치해주세요.
+   - "지금 에이전틱 워크플로우에 필요한 skills가 모두 설치되었는지 확인해주세요. 설치되지 않았으면 npx skills를 활용해 설치해주세요."
+
+### `~/.codex/config.toml` 예시
 
 ```toml
 model = "gpt-5.3-codex"

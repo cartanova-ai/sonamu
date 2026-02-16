@@ -39,6 +39,12 @@ Thumbs.db
 
 # Coding Agents
 .agents/setting.local.json
+.cursor/
+
+# Coding Agents - Skills (직접 설치로 관리)
+.agents/skills/vercel-composition-patterns/
+.agents/skills/vercel-react-best-practices/
+.agents/skills/web-design-guidelines/
 
 # Verifier
 .last-verified
