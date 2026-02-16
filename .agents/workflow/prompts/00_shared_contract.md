@@ -3,9 +3,9 @@
 This contract is mandatory for every prompt under this template.
 
 ## Canonical references
-1. Project root policy file: `AGENTS.md`
-2. Role and dispatch policy: `subagents/00_agent_roles.md`
-3. Review/session/long-output policy: `prompts/06_codex_output_and_sessions.md`
+1. Project root policy file: `../../../AGENTS.md`
+2. Role and dispatch policy: `../subagents/00_agent_roles.md`
+3. Review/session/long-output policy: `06_codex_output_and_sessions.md`
 
 ## Architecture policy
 - Planning, Codex execution protocol, branch review, and orchestration must be implemented as prompts, not separate skills.

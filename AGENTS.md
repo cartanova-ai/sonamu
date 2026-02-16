@@ -1,6 +1,6 @@
 # Sonamu Guide for Coding Agents (Monorepo Root)
 
-This file applies to `/Users/Nebuleto/Workspace/sonamu` and all child directories unless overridden by a deeper `AGENTS.md`.
+This file applies to current directory and all child directories unless overridden by a deeper `AGENTS.md`.
 
 ## Canonical control files
 - Primary instructions are `AGENTS.md` and `.agents/`.

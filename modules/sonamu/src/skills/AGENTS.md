@@ -1,8 +1,8 @@
 # Guide for Coding Agents - modules/sonamu/src/skills
 
 Inherits rules from:
-- `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`
-- `/Users/Nebuleto/Workspace/sonamu/modules/sonamu/AGENTS.md`
+- `../../../../AGENTS.md`
+- `../../AGENTS.md`
 
 ## Directory role
 - Source-of-truth skill documents for Sonamu-related agent guidance.

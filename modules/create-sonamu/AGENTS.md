@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/create-sonamu
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Package role
 - CLI scaffolder for bootstrapping new Sonamu projects.

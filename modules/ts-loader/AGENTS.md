@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/ts-loader
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Package role
 - TypeScript loader utility used by Sonamu toolchain.

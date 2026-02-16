@@ -1,8 +1,8 @@
 # Guide for Coding Agents - modules/sonamu/ui-web
 
 Inherits rules from:
-- `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`
-- `/Users/Nebuleto/Workspace/sonamu/modules/sonamu/AGENTS.md`
+- `../../../AGENTS.md`
+- `../AGENTS.md`
 
 ## Package role
 - Static UI-web build package for Sonamu UI.

@@ -1,8 +1,8 @@
 # Guide for Coding Agents - examples/miomock/web
 
 Inherits rules from:
-- `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`
-- `/Users/Nebuleto/Workspace/sonamu/examples/miomock/AGENTS.md`
+- `../../../AGENTS.md`
+- `../AGENTS.md`
 
 ## Web-specific policy
 - React + Vite sample frontend for integration validation.

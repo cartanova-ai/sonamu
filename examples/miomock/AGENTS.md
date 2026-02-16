@@ -1,6 +1,6 @@
 # Guide for Coding Agents - examples/miomock
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Project role
 - `examples/miomock` is the Sonamu sample/integration test application.

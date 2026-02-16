@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/sonamu
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Module role
 - `modules/sonamu` is the framework core.

@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/react-components
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Package role
 - Shared React component library.

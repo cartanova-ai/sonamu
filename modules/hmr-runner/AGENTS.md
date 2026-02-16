@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/hmr-runner
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Package role
 - Runner for HMR-enabled applications.

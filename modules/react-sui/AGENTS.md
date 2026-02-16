@@ -1,6 +1,6 @@
 # Guide for Coding Agents - modules/react-sui
 
-Inherits root rules from `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`.
+Inherits root rules from `../../AGENTS.md`.
 
 ## Package role
 - Semantic UI-oriented React component package.

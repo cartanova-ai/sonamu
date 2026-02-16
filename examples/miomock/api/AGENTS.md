@@ -1,8 +1,8 @@
 # Guide for Coding Agents - examples/miomock/api
 
 Inherits rules from:
-- `/Users/Nebuleto/Workspace/sonamu/AGENTS.md`
-- `/Users/Nebuleto/Workspace/sonamu/examples/miomock/AGENTS.md`
+- `../../../AGENTS.md`
+- `../AGENTS.md`
 
 ## API-specific policy
 - This package is the primary integration-test target for Sonamu core changes.
