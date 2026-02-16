@@ -55,6 +55,7 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 ## Codex MCP policy
 - For planning and code review, use Codex MCP as default when installed and available.
 - If Codex MCP is unavailable, use the fallback path while preserving the same review contract.
+- For Codex MCP interactions, create a progress file before the call and include its path in the prompt so progress can be inspected at any time.
 - For Codex MCP interactions in sub-agents, enforce human-in-the-loop:
   - surface Codex MCP responses to user first
   - wait for user input

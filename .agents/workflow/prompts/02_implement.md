@@ -40,7 +40,8 @@ After steps 1-6 pass, execute this loop:
    - Commit message must be in Korean.
    - Do not add Co-Authored-By trailer.
 8. Request Codex MCP code review on the committed changes.
-   - Follow the session protocol in `prompts/06_codex_output_and_sessions.md`.
+   - Follow the session and progress tracking protocol in `prompts/06_codex_output_and_sessions.md`.
+   - Create a progress file before calling Codex MCP and include its path in the prompt.
    - Follow the human-in-the-loop policy: present Codex MCP responses to the user via `AskUserQuestion`, wait for user input, then relay via `codex-reply`.
 9. If Codex MCP returns unresolved findings:
    a. Fix each finding within the unit scope.
@@ -79,6 +80,7 @@ unit_execution_report:
     cycles: <number>
     final_unresolved_count: 0
     review_session_id: "..."
+    progress_file_path: "/tmp/..."
   known_risks:
     - "..."
   review_closed: true

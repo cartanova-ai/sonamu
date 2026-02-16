@@ -22,6 +22,24 @@ Standardize review requests/responses, session continuity, and long-output handl
 - After user input arrives, relay the user response via `codex-reply`.
 - Apply this policy to all Codex MCP interactions in all sub-agents.
 
+## Progress tracking policy
+Codex MCP may take time because it can spawn a separate coding agent. Before each Codex MCP call, create a progress file and include its path in the prompt so progress can be checked at any time.
+
+1. Create a progress file before the call.
+```bash
+progress_file=$(mktemp /tmp/codex-progress-XXXXXX.md)
+```
+
+2. Include this instruction in the Codex MCP prompt.
+```text
+Please write your progress updates to ${progress_file}.
+Update the file when each major step starts and completes.
+```
+
+3. The user can inspect this file during execution to monitor progress.
+
+4. Include `progress_file_path` in `review_metadata`.
+
 ## Inline review request contract
 Each review request must include:
 - `scope_type`: `unit` or `full-branch`
@@ -49,6 +67,7 @@ review_metadata:
   session_id: "..."
   reused_or_new: reused|new
   result_file_path: "/tmp/..."
+  progress_file_path: "/tmp/..."
   unresolved_count: <number>
   status: clean|needs_fix
 ```
