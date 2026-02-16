@@ -17,6 +17,32 @@ pnpm dev
 - **소스맵 지원**: 에러 발생 시 정확한 줄 번호 표시
 - **키보드 단축키**: 빠른 작업을 위한 단축키
 
+### 하위 명령어
+
+API와 Web을 분리해서 실행할 수 있습니다.
+
+| 명령어 | 설명 |
+|--------|------|
+| `pnpm dev` | API + Web 통합 개발 서버 (기본) |
+| `pnpm dev api` | API 전용 개발 서버 (통합 웹 서버 비활성화) |
+| `pnpm dev web` | Vite 개발 서버 단독 실행 |
+
+**API와 Web을 별도 터미널에서 실행하기**:
+```bash
+# 터미널 1: API 서버
+pnpm dev api
+
+# 터미널 2: Web 개발 서버
+pnpm dev web
+```
+
+<Tip>
+`pnpm dev web`은 `--` 뒤의 인자를 Vite에 그대로 전달합니다. 예를 들어 포트를 변경하려면:
+```bash
+pnpm dev web -- --port 5174
+```
+</Tip>
+
 ## 동작 원리
 
 `pnpm dev`는 내부적으로 다음 도구들을 사용합니다:

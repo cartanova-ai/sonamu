@@ -17,6 +17,32 @@ Once the development server starts, you can use the following features:
 - **Source map support**: Accurate line numbers on errors
 - **Keyboard shortcuts**: Shortcuts for quick actions
 
+### Subcommands
+
+You can run API and Web separately.
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Integrated API + Web dev server (default) |
+| `pnpm dev api` | API-only dev server (integrated web server disabled) |
+| `pnpm dev web` | Standalone Vite dev server |
+
+**Running API and Web in separate terminals**:
+```bash
+# Terminal 1: API server
+pnpm dev api
+
+# Terminal 2: Web dev server
+pnpm dev web
+```
+
+<Tip>
+`pnpm dev web` passes arguments after `--` directly to Vite. For example, to change the port:
+```bash
+pnpm dev web -- --port 5174
+```
+</Tip>
+
 ## How It Works
 
 `pnpm dev` internally uses the following tools:
