@@ -10,6 +10,11 @@ Own the control plane: planning intake, spawn orchestration, parallel execution,
 - `spawn_manifest`
 - runtime capability state
 
+## Planning delegation policy
+- Planning must be delegated to the `planner` sub-agent.
+- Do not use built-in Plan Mode (`EnterPlanMode`) for planning.
+- The `planner` sub-agent should use Codex MCP as default planning assistance when available.
+
 ## Hard constraints
 - Orchestrator must never edit code directly.
 - Only orchestrator can spawn subagents.

@@ -48,8 +48,12 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 - Use plain-text `rg`/`grep` only for plain-text needs or explicit user request.
 
 ## Codex MCP policy
-- For planning and code review, use Codex MCP only when installed and available.
+- For planning and code review, use Codex MCP as default when installed and available.
 - If Codex MCP is unavailable, use the fallback path while preserving the same review contract.
+- For Codex MCP interactions in sub-agents, enforce human-in-the-loop:
+  - surface Codex MCP responses to user first
+  - wait for user input
+  - then relay via `codex-reply`
 
 ## Framework/runtime policy
 - React: require React best-practice skills.

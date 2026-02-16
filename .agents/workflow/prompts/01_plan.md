@@ -24,18 +24,19 @@ Convert `bootstrap_context` into a detailed execution plan and a machine-readabl
 6. For each unit, define `must_verify_behaviors` and require test-first execution for those behaviors.
 7. Define common required gates plus project-level overrides via `gate_profile`.
 8. Treat planning/codex-execution/branch-review/orchestration as prompt contracts, not separate skills.
-9. For planning assistance, use Codex MCP only when installed and available.
-10. Include execution-mode matrix for subagents:
+9. Use Codex MCP as the default planning assistance tool. If Codex MCP is unavailable or encounters errors, proceed without it.
+10. When Codex MCP returns a response during planning, present the response to the user and wait for user input before replying via `codex-reply`. Do not auto-reply.
+11. Include execution-mode matrix for subagents:
    - `preset` (Claude preset available)
    - `inline_fallback` (portable mode)
-11. Include review loop plan:
+12. Include review loop plan:
    - per-unit review/fix loop
    - post-integration branch review/fix loop
    - user-review feedback loop via feedback handler
-12. Route bug-fix work by source:
+13. Route bug-fix work by source:
    - incident/hotfix path -> `prompts/04_hotfix.md`
    - review-originated fixes -> `prompts/08_review_feedback_handler.md`
-13. Mark Sonamu MCP and SocratsAI MCP as future integrations.
+14. Mark Sonamu MCP and SocratsAI MCP as future integrations.
 
 ## Spawn manifest contract
 For each unit, include:

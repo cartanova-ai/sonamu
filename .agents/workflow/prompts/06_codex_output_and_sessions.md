@@ -15,6 +15,13 @@ Standardize review requests/responses, session continuity, and long-output handl
 - If Codex MCP is unavailable, use fallback backend.
 - Preserve the same review contract and output schema regardless of backend.
 
+## Human-in-the-loop reply policy
+- Sub-agents that interact with Codex MCP must run as foreground sub-agents (not background).
+- When a sub-agent calls Codex MCP and receives a response, do not auto-reply.
+- Present the Codex MCP response to the user via `AskUserQuestion` and wait for user input.
+- After user input arrives, relay the user response via `codex-reply`.
+- Apply this policy to all Codex MCP interactions in all sub-agents.
+
 ## Inline review request contract
 Each review request must include:
 - `scope_type`: `unit` or `full-branch`
