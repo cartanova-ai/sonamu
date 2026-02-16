@@ -123,6 +123,18 @@ docker compose up -d
 - If review output is large, use temp files and pass only file path plus compact metadata.
 - Prefer Codex MCP for planning/review when available and not overridden.
 
+## Hotfix policy
+- Hotfix uses the same orchestration model as implementation:
+  - Implement sub-agent(s) -> review sub-agent loop -> branch-level review loop -> user handoff.
+- Hotfix sub-agents may escalate to Codex MCP for problem-solving when self-attempts stall:
+  - Analysis delegation: root-cause investigation stalls -> delegate analysis to Codex MCP, apply result, continue fix.
+  - Full task delegation: `self_attempt_count >= max_self_attempts` -> delegate the entire fix to Codex MCP.
+  - Normal mode: ask user via `AskUserQuestion` before each delegation.
+  - Autonomous mode (`autonomous: true` in `objective_packet`): delegate without user confirmation.
+  - Codex MCP failure: do not block; resume self-attempt from the last known state.
+  - Orchestrator sets `max_self_attempts` and `autonomous` in `objective_packet` when spawning hotfix units.
+  - Full protocol: `.agents/workflow/prompts/06_codex_output_and_sessions.md` section `Problem-solving escalation session protocol`.
+
 ## Commit message policy
 - Use scope-first bracket conventional format.
 - Standard: `[scope] type: short title`

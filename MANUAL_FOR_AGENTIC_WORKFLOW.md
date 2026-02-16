@@ -263,6 +263,58 @@ Bootstrap에서 요구사항이 고정되면 플래닝을 지시합니다. 플�
 | Review | Codex MCP 리뷰 응답 확인 | 단위 리뷰 -> 브랜치 리뷰 순서로 클로저 |
 | Handoff | 최종 결과 확인/피드백 | 미해결 0건 확인 후 전달 |
 
+## 핫픽스/버그 수정 시 Codex MCP 문제 해결 에스컬레이션
+
+핫픽스나 인시던트 버그 수정 작업에서 에이전트가 자체적으로 문제를 해결하지 못하는 경우, Codex MCP에 문제 해결을 위임할 수 있습니다.
+
+### 에스컬레이션 흐름
+
+```mermaid
+flowchart TD
+  A["에이전트 자체 시도 (1..N)"] --> B{"분석 난항?"}
+  B -->|"예"| C["분석 위임: Codex MCP에 근본 원인 분석 요청"]
+  C --> D{"Codex 성공?"}
+  D -->|"예"| E["분석 결과로 수정 계속"]
+  D -->|"실패"| F["에이전트가 자체 분석 계속"]
+  B -->|"아니오"| G{"시도 횟수 >= max_self_attempts?"}
+  G -->|"예"| H["전체 위임: Codex MCP에 수정 작업 전체 위임"]
+  H --> I{"Codex 성공?"}
+  I -->|"예"| J["결과 수령 후 검증"]
+  I -->|"실패"| F
+  G -->|"아니오"| A
+  E --> K["커밋 + 리뷰 루프 진입"]
+  J --> K
+  F --> A
+```
+
+### 2단계 위임 모델
+
+| 단계 | 트리거 | Codex가 받는 것 | 에이전트 역할 |
+|------|--------|----------------|-------------|
+| 분석 위임 | 근본 원인 파악 난항 | 에러 로그, 재현 경로, 시도한 가설 | progress file 모니터링, 분석 결과 적용 |
+| 전체 위임 | `self_attempt_count >= max_self_attempts` | 전체 버그 컨텍스트 + 코드베이스 참조 + 시도 이력 | progress file 모니터링, 완성된 수정 수령 및 검증 |
+
+### 사용자 확인 모드
+
+- **일반 모드**: 에스컬레이션 시점에 사용자에게 Codex MCP 위임 여부를 확인합니다.
+- **자율 주행 모드** (`autonomous: true`): 확인 없이 바로 위임을 시도합니다.
+
+Orchestrator가 핫픽스 단위를 spawn할 때 `objective_packet`에 다음을 설정합니다.
+
+- `max_self_attempts`: 전체 위임 전까지 허용하는 자체 시도 횟수 (기본값: 3)
+- `autonomous`: 사용자 확인 없이 위임을 진행할지 여부
+
+### Codex MCP 실패 시
+
+Codex MCP 호출이 실패(타임아웃, 연결 오류, 미설치 등)하면 에이전트는 멈추지 않고 자체 시도를 계속합니다. 실패 이력은 `unit_execution_report`에 기록됩니다.
+
+### 진행 상황 확인
+
+Codex MCP에 위임하면 progress file(`/tmp/codex-troubleshoot-XXXXXX.md`)이 생성됩니다. 사용자는 작업 중 언제든지 이 파일을 읽어 Codex의 진행 상황을 확인할 수 있습니다.
+
+> [!TIP]
+> 전체 프로토콜은 `.agents/workflow/prompts/06_codex_output_and_sessions.md`의 "Problem-solving escalation session protocol" 섹션을 참고해주세요.
+
 ## FAQ
 
 ### `classifyHandoffIfNeeded is not defined` 오류가 발생합니다

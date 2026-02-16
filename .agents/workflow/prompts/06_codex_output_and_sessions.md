@@ -23,22 +23,72 @@ Standardize review requests/responses, session continuity, and long-output handl
 - Apply this policy to all Codex MCP interactions in all sub-agents.
 
 ## Progress tracking policy
-Codex MCP may take time because it can spawn a separate coding agent. Before each Codex MCP call, create a progress file and include its path in the prompt so progress can be checked at any time.
+Codex MCP spawns a separate coding agent, so tasks may take a long time. The caller must create a progress file before calling Codex MCP and include its path in the prompt so Codex records progress there.
 
 1. Create a progress file before the call.
 ```bash
 progress_file=$(mktemp /tmp/codex-progress-XXXXXX.md)
 ```
 
-2. Include this instruction in the Codex MCP prompt.
+2. Include the following instruction in the Codex MCP prompt.
 ```text
-Please write your progress updates to ${progress_file}.
-Update the file when each major step starts and completes.
+Record your progress to ${progress_file}.
+Update the file whenever you start or complete a major step.
 ```
 
-3. The user can inspect this file during execution to monitor progress.
+3. The user or the calling agent may read the progress file at any time to check status.
 
 4. Include `progress_file_path` in `review_metadata`.
+
+## Problem-solving escalation session protocol
+Bug-fix paths (`04_hotfix.md`, `08_review_feedback_handler.md`) may delegate problem-solving to Codex MCP when self-attempts stall. Two delegation types exist:
+
+### Delegation types
+| Type | Trigger | Codex receives | Agent role during Codex work |
+|------|---------|---------------|------------------------------|
+| Analysis delegation | Root-cause investigation stalls | Error logs, reproduction steps, hypotheses tried | Monitors progress file, applies Codex analysis result to continue fix |
+| Full task delegation | `self_attempt_count >= max_self_attempts` | Full bug context + codebase references + prior attempt history | Monitors progress file, receives completed fix, runs validation |
+
+### User confirmation policy
+- Normal mode (`autonomous: false`): Before each delegation, ask the user via `AskUserQuestion` whether to proceed with Codex MCP delegation. Do not call Codex MCP without user approval.
+- Autonomous mode (`autonomous: true`): Skip user confirmation and proceed with delegation immediately.
+- The `autonomous` flag is provided in `objective_packet` by the orchestrator.
+
+### Progress tracking for problem-solving sessions
+Same pattern as review progress tracking, with a distinct prefix:
+
+```bash
+progress_file=$(mktemp /tmp/codex-troubleshoot-XXXXXX.md)
+```
+
+Include this instruction in the Codex MCP prompt:
+
+```text
+Record your progress to ${progress_file}.
+Log each analysis step, approaches tried, and intermediate findings.
+```
+
+The calling agent may read the progress file at any time to check Codex status.
+
+### Codex MCP failure fallback
+If a Codex MCP call fails (timeout, connection error, not installed, or runtime error):
+1. Do not block or retry indefinitely.
+2. Log the failure reason.
+3. Resume self-attempt from the last known state.
+4. Record the failure in `unit_execution_report.troubleshoot_sessions`.
+
+### Problem-solving session metadata
+When a problem-solving delegation occurs, include this in `unit_execution_report`:
+
+```yaml
+troubleshoot_sessions:
+  - session_id: "..."
+    type: analysis|full
+    trigger: "root_cause_stall|max_attempts_exceeded"
+    progress_file_path: "/tmp/codex-troubleshoot-..."
+    result_file_path: "/tmp/codex-troubleshoot-result-..."
+    outcome: resolved|failed|fallback_to_self
+```
 
 ## Inline review request contract
 Each review request must include:

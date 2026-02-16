@@ -60,6 +60,11 @@ If `Codex MCP` is missing, continue with fallback planning/review paths.
 - Incident or production bug-fix path: use `prompts/04_hotfix.md`.
 - Review-originated fix path: use `prompts/08_review_feedback_handler.md`.
 
+## Hotfix escalation configuration
+When spawning hotfix units, include these in `objective_packet`:
+- `max_self_attempts`: Maximum number of self-fix attempts before full Codex MCP delegation (default: 3). Adjust based on bug complexity and severity.
+- `autonomous`: Whether the sub-agent may escalate to Codex MCP without user confirmation (`true` for autonomous mode, `false` for normal mode). Set based on user preference or task context.
+
 ## Context-window efficiency policy
 Keep only control metadata in orchestrator context:
 - objective identifiers and revisions
