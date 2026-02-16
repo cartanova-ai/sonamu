@@ -84,11 +84,16 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 - Do not deploy.
 - Migration execution requires explicit user intervention.
 
-## Subagent topology policy
-- Only orchestrator can spawn subagents.
-- All non-orchestrator roles are leaf workers.
-- Nested spawning is forbidden.
+## Agent topology policy
+- The orchestrator role must be assumed by the main agent and is not spawnable as a sub-agent.
+- Only the main agent (acting as orchestrator) can spawn sub-agents.
+- All spawnable roles are leaf workers; nested spawning is forbidden.
 - Decomposition requests from leaf workers must be escalated back to orchestrator.
+
+## Implementation commit and review loop policy
+- Implementation sub-agents must commit unit changes after required validation checks pass.
+- Implementation sub-agents must run Codex MCP review (or fallback backend) and close all findings before returning.
+- Unit handoff requires review closure evidence in `unit_execution_report`.
 
 ## Bug-fix routing policy
 - Incident/hotfix bug fixes must use `prompts/04_hotfix.md`.

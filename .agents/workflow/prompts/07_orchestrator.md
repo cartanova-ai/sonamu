@@ -5,6 +5,11 @@ Follow `prompts/00_shared_contract.md`.
 ## Purpose
 Own the control plane: planning intake, spawn orchestration, parallel execution, review closure loops, and user handoff readiness.
 
+## Topology constraint
+The orchestrator role must be assumed by the main agent (top-level conversation), not spawned as a sub-agent. This is a hard runtime constraint: only the main agent can use the Task tool to spawn sub-agents. If the orchestrator were spawned as a sub-agent, it would be unable to spawn further sub-agents and the workflow would fail.
+
+When assuming this role, the main agent reads this file and `.agents/agents/orchestrator.md`, then operates as the orchestrator for the remainder of the task.
+
 ## Upstream inputs
 - `plan_document`
 - `spawn_manifest`
@@ -17,8 +22,8 @@ Own the control plane: planning intake, spawn orchestration, parallel execution,
 
 ## Hard constraints
 - Orchestrator must never edit code directly.
-- Only orchestrator can spawn subagents.
-- Nested spawning is forbidden.
+- Only the main agent (acting as orchestrator) can spawn sub-agents.
+- Nested spawning is forbidden. All spawned sub-agents are leaf workers.
 - Every spawned unit must include complete `objective_packet`.
 
 ## Capability-based spawn mode
@@ -44,9 +49,9 @@ If `Codex MCP` is missing, continue with fallback planning/review paths.
 3. Validate `must_verify_behaviors` exists for each implementation/hotfix unit.
 4. Build execution queue by dependency and parallel group.
 5. Spawn implementation units in parallel when safe.
-6. After each unit completion, run immediate unit-level review.
-7. Route findings to owner and repeat unit loop until clean.
-8. After all units are integrated and clean, run full-branch review.
+6. Each implementation sub-agent internally handles: implement -> commit -> Codex MCP review -> fix -> re-commit -> re-review until clean.
+7. When a unit sub-agent returns, verify its `unit_execution_report` includes review closure evidence.
+8. After all units are integrated and clean, spawn a reviewer sub-agent for full-branch review.
 9. If branch findings exist, route through `prompts/08_review_feedback_handler.md` and repeat until clean.
 10. If user feedback arrives, route through feedback handler and re-run required reviews.
 11. When zero unresolved findings remain, trigger `prompts/05_user_review_handoff.md`.

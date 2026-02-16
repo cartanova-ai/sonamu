@@ -24,14 +24,32 @@ Execute exactly one assigned unit from orchestrator with complete evidence and r
 3. Add/update focused unit/regression tests first for every `must_verify_behavior`.
 4. Implement the minimal patch until those tests pass.
 5. Run required checks for touched scope:
+   - `pnpm check` at monorepo workspace root
+   - `pnpm check` in every affected subproject
    - common required gates
    - project-level override gates
 6. Apply runtime validation policy when applicable:
    - Web: Playwright MCP checks for changed user flows
    - React Native: mobile-mcp checks on emulator/simulator only
-7. Prepare a compact evidence report.
-8. Request unit review using contract in `prompts/06_codex_output_and_sessions.md`.
-9. For review, use Codex MCP only when installed and available; otherwise use fallback backend.
+
+## Commit and Codex MCP review loop (mandatory)
+After steps 1-6 pass, execute this loop:
+
+7. Commit all changes following `AGENTS.md` commit message policy.
+   - Use scope-first bracket conventional commit style.
+   - Commit message must be in Korean.
+   - Do not add Co-Authored-By trailer.
+8. Request Codex MCP code review on the committed changes.
+   - Follow the session protocol in `prompts/06_codex_output_and_sessions.md`.
+   - Follow the human-in-the-loop policy: present Codex MCP responses to the user via `AskUserQuestion`, wait for user input, then relay via `codex-reply`.
+9. If Codex MCP returns unresolved findings:
+   a. Fix each finding within the unit scope.
+   b. Re-run validation checks (step 5).
+   c. Commit the fixes (step 7).
+   d. Re-request Codex MCP review (step 8).
+   e. Repeat until Codex MCP returns zero unresolved findings.
+10. If Codex MCP is unavailable, use the fallback review backend for the same loop.
+11. Prepare a compact evidence report including review closure proof.
 
 ## Downstream output
 Produce `unit_execution_report`:
@@ -47,16 +65,25 @@ unit_execution_report:
     - "..."
   tests_added_or_updated:
     - "..."
+  commits:
+    - hash: "..."
+      message: "..."
   validation_commands:
     - cmd: "..."
       status: pass|fail|not_run
   runtime_validation:
     web_playwright: pass|fail|na
     rn_emulator_or_simulator: pass|fail|na
+  review_loop:
+    backend: codex-mcp|fallback
+    cycles: <number>
+    final_unresolved_count: 0
+    review_session_id: "..."
   known_risks:
     - "..."
-  review_request_ready: true
+  review_closed: true
 ```
 
 ## Handoff contract
-- Return `unit_execution_report` to orchestrator for unit-level review loop.
+- Return `unit_execution_report` to orchestrator.
+- Do not return until `review_closed` is `true` and `review_loop.final_unresolved_count` is `0`.
