@@ -149,6 +149,8 @@ docker compose up -d
 - Avoid unnecessary `return await`, but preserve `await` in assignment/try boundaries where stack trace quality matters.
 
 ## Comment, error, logging policy
+- Only add comments where the logic is not self-evident. Keep comments concise.
+- Do not use section-label or region-marker comments (for example: `// ===== Section =====`, `// --- Region ---`, `/* ========== */`).
 - Write comments in Korean honorific style.
 - Comments must explain "why" and decision context, not restate code.
 - Resolve comment-code mismatch immediately.

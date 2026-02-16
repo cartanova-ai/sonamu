@@ -28,6 +28,11 @@ For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
 - Avoid unnecessary formatting noise.
 - Prefer concrete, verifiable details.
 
+## Code comment policy
+- Add comments only where logic is not self-evident.
+- Keep comments concise and decision-focused.
+- Do not use section-label or region-marker comments (for example: `// ===== Section =====`, `// --- Region ---`, `/* ========== */`).
+
 ## Commit message policy
 - Use scope-first bracket conventional commit format.
 - Standard format: `[scope] type: short title`.
