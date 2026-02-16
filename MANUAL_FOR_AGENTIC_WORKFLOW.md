@@ -262,3 +262,9 @@ Bootstrap에서 요구사항이 고정되면 플래닝을 지시합니다. 플�
 | Orchestrate | Orchestrator 실행 지시 | 메인 에이전트가 Orchestrator로 전환 및 분배 |
 | Review | Codex MCP 리뷰 응답 확인 | 단위 리뷰 -> 브랜치 리뷰 순서로 클로저 |
 | Handoff | 최종 결과 확인/피드백 | 미해결 0건 확인 후 전달 |
+
+## FAQ
+
+### `classifyHandoffIfNeeded is not defined` 오류가 발생합니다
+
+브랜치 레벨 코드 리뷰 과정에서 이 오류가 발생할 수 있습니다. 이 문제는 Claude Code의 알려진 버그이며 다음 릴리즈에서 수정될 예정입니다. 자세한 내용은 [claude-code#22087](https://github.com/anthropics/claude-code/issues/22087)을 참고해주세요.
