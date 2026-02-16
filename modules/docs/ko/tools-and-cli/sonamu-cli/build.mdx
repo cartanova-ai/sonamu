@@ -13,6 +13,16 @@ pnpm build
 
 빌드가 완료되면 `dist` 디렉토리에 최적화된 JavaScript 파일이 생성됩니다.
 
+### 하위 명령어
+
+API와 Web을 분리해서 빌드할 수 있습니다.
+
+| 명령어 | 설명 |
+|--------|------|
+| `pnpm build` | API + Web 전체 빌드 (기본, Web 디렉토리가 없으면 Web 빌드 스킵) |
+| `pnpm build api` | API 프로젝트만 빌드 |
+| `pnpm build web` | Web 프로젝트만 빌드 |
+
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
@@ -42,7 +52,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 **제거되는 디렉토리**:
 - `dist/` - API 빌드 결과물
 - `web/dist/` - Web 빌드 결과물  
-- `web-build/` - 복사된 Web 결과물
+- `web-dist/` - 복사된 Web 결과물
 
 ### 2. SWC 설정 파일 준비
 
@@ -117,7 +127,7 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
   
   <Step title="파일 복사">
     ```bash
-    web/dist → web-build
+    web/dist → web-dist
     ```
     
     API 서버에서 서빙할 수 있도록 복사합니다.
@@ -134,7 +144,7 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
 
 **Web 빌드 결과물**:
 - `web/dist/` - 원본 빌드 결과
-- `web-build/` - API 서버에서 서빙할 복사본
+- `web-dist/` - API 서버에서 서빙할 복사본
 
 ## 빌드 설정
 
@@ -211,7 +221,7 @@ Web 프로젝트가 있는 경우 빌드하고 API 프로젝트로 복사합니�
 ### Web 빌드 결과 (선택)
 
 <FileTree>
-  <FileItem name="web-build/">
+  <FileItem name="web-dist/">
     <FileItem name="index.html" description="HTML 엔트리" />
     <FileItem name="assets/" description="최적화된 에셋">
       <FileItem name="index-abc123.js" />
