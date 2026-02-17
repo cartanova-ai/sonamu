@@ -1,8 +1,11 @@
 /** biome-ignore-all lint/suspicious/noTemplateCurlyInString: template 테스트 시 사용 */
+import { Workbook } from "@sheetkit/node";
+import fs from "fs";
 import { Sonamu } from "sonamu";
 import { createFormat, type DictEntry, josa, plural, sonamuDictionary } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
 import { describe, expect, test, vi } from "vitest";
+import { BadRequestException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import { localizedColumn, SD } from "../i18n/sd.generated";
 
 bootstrap(vi);
@@ -522,6 +525,196 @@ describe("i18n", () => {
       expect(result).toContain('"quote": "따옴표 \\"테스트\\""');
       expect(result).toContain('"backslash": "백슬래시 \\\\ 테스트"');
       expect(result).toContain('"newline": "줄바꿈\\n테스트"');
+    });
+  });
+
+  describe("exportToExcel / importFromExcel", () => {
+    const HEADER_SCAN_MAX_ROWS = 20;
+
+    test("exportToExcel이 유효한 XLSX buffer를 반환한다", async () => {
+      const result = await sonamuDictionary.exportToExcel();
+
+      expect(result.filename).toBeDefined();
+      expect(result.filename).toContain("Dictionary");
+      expect(result.filename).toContain(".xlsx");
+      expect(result.buffer).toBeDefined();
+      expect(Buffer.byteLength(result.buffer)).toBeGreaterThan(0);
+
+      const wb = Workbook.openBufferSync(result.buffer);
+      expect(wb.sheetNames.length).toBeGreaterThan(0);
+    });
+
+    test("export 후 import round-trip에서 key, source, locale 값이 보존된다", async () => {
+      const exportResult = await sonamuDictionary.exportToExcel();
+      const buffer = Buffer.isBuffer(exportResult.buffer)
+        ? exportResult.buffer
+        : Buffer.from(exportResult.buffer);
+
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => {});
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+
+      const importResult = await sonamuDictionary.importFromExcel(buffer);
+
+      expect(importResult.success).toBe(true);
+      expect(writeFileSyncSpy).toHaveBeenCalled();
+
+      writeFileSyncSpy.mockRestore();
+      updateEntityByKeySpy.mockRestore();
+
+      const wb = Workbook.openBufferSync(buffer);
+      const sheet = wb.sheetNames[0] as string;
+      // Find header row by scanning column A
+      let headerRowNum = 0;
+      for (let r = 1; r <= HEADER_SCAN_MAX_ROWS; r++) {
+        const val = String(wb.getCellValue(sheet, `A${r}`) ?? "")
+          .trim()
+          .toLowerCase();
+        if (val === "key") {
+          headerRowNum = r;
+          break;
+        }
+      }
+      expect(headerRowNum).toBeGreaterThan(0);
+
+      // Read headers
+      const headers: string[] = [];
+      let col = 0;
+      const colLetter = (i: number) => String.fromCharCode(65 + i);
+      while (true) {
+        const val = wb.getCellValue(sheet, `${colLetter(col)}${headerRowNum}`);
+        if (val === null) break;
+        headers.push(String(val));
+        col++;
+      }
+      expect(headers[0]).toBe("key");
+      expect(headers[1]).toBe("source");
+      expect(headers.length).toBeGreaterThan(2);
+
+      // Check first data row
+      const firstKey = wb.getCellValue(sheet, `A${headerRowNum + 1}`);
+      expect(firstKey).toBeDefined();
+      const firstSource = String(wb.getCellValue(sheet, `B${headerRowNum + 1}`) ?? "");
+      expect(["entity", "project", "sonamu"]).toContain(firstSource);
+    });
+
+    test("헤더 없는 Excel 파일에서 BadRequestException이 발생한다", async () => {
+      const wb = new Workbook();
+      const sheet = wb.sheetNames[0] as string;
+      wb.setCellValue(sheet, "A1", "invalid");
+      wb.setCellValue(sheet, "B1", "data");
+      wb.setCellValue(sheet, "C1", "here");
+      wb.setCellValue(sheet, "A2", "no");
+      wb.setCellValue(sheet, "B2", "header");
+      wb.setCellValue(sheet, "C2", "row");
+      const buffer = wb.writeBufferSync();
+
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => {});
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+
+      await expect(sonamuDictionary.importFromExcel(Buffer.from(buffer))).rejects.toThrow(
+        BadRequestException,
+      );
+
+      writeFileSyncSpy.mockRestore();
+      updateEntityByKeySpy.mockRestore();
+    });
+
+    test("빈 딕셔너리에서 export/import가 오류 없이 동작한다", async () => {
+      const dictResult = await sonamuDictionary.collectDictionary();
+      expect(dictResult.rows.length).toBeGreaterThan(0);
+
+      const wb = new Workbook();
+      const sheet = wb.sheetNames[0] as string;
+      wb.setCellValue(sheet, "A1", "Sonamu Dictionary");
+      // Row 2 is empty
+      wb.setCellValue(sheet, "A3", "key");
+      wb.setCellValue(sheet, "B3", "source");
+      wb.setCellValue(sheet, "C3", "ko");
+      wb.setCellValue(sheet, "D3", "en");
+      const buffer = wb.writeBufferSync();
+
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => {});
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+
+      const importResult = await sonamuDictionary.importFromExcel(Buffer.from(buffer));
+
+      expect(importResult.success).toBe(true);
+      expect(importResult.updatedEntities).toBe(0);
+      expect(importResult.updatedLocales).toBe(0);
+
+      writeFileSyncSpy.mockRestore();
+      updateEntityByKeySpy.mockRestore();
+    });
+
+    test("함수 값 entry가 round-trip 후 보존된다", async () => {
+      const exportResult = await sonamuDictionary.exportToExcel();
+      const buffer = Buffer.isBuffer(exportResult.buffer)
+        ? exportResult.buffer
+        : Buffer.from(exportResult.buffer);
+
+      const wb = Workbook.openBufferSync(buffer);
+      const sheet = wb.sheetNames[0] as string;
+      // Find header row
+      let headerRowNum = 0;
+      for (let r = 1; r <= HEADER_SCAN_MAX_ROWS; r++) {
+        if (
+          String(wb.getCellValue(sheet, `A${r}`) ?? "")
+            .trim()
+            .toLowerCase() === "key"
+        ) {
+          headerRowNum = r;
+          break;
+        }
+      }
+      expect(headerRowNum).toBeGreaterThan(0);
+
+      // Scan for function entries
+      let foundFunctionEntry = false;
+      const colLetter = (i: number) => String.fromCharCode(65 + i);
+      for (let r = headerRowNum + 1; ; r++) {
+        const keyCell = wb.getCellValue(sheet, `A${r}`);
+        if (keyCell === null) break;
+        const sourceCell = String(wb.getCellValue(sheet, `B${r}`) ?? "");
+
+        for (let c = 2; c < 20; c++) {
+          const cellValue = String(wb.getCellValue(sheet, `${colLetter(c)}${r}`) ?? "");
+          if (cellValue.includes("=>") || cellValue.includes("(n)")) {
+            foundFunctionEntry = true;
+            expect(String(keyCell)).toBeTruthy();
+            expect(["entity", "project"]).toContain(sourceCell);
+            break;
+          }
+        }
+        if (foundFunctionEntry) break;
+      }
+
+      expect(foundFunctionEntry).toBe(true);
+    });
+
+    test("테스트 실행으로 i18n/entity 소스 파일이 변경되지 않는다", async () => {
+      const exportResult = await sonamuDictionary.exportToExcel();
+      const buffer = Buffer.isBuffer(exportResult.buffer)
+        ? exportResult.buffer
+        : Buffer.from(exportResult.buffer);
+
+      const writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => {});
+      const updateEntityByKeySpy = vi
+        .spyOn(sonamuDictionary, "updateEntityByKey")
+        .mockResolvedValue(false);
+
+      await sonamuDictionary.importFromExcel(buffer);
+
+      expect(writeFileSyncSpy).toHaveBeenCalled();
+      expect(updateEntityByKeySpy).toHaveBeenCalled();
+
+      writeFileSyncSpy.mockRestore();
+      updateEntityByKeySpy.mockRestore();
     });
   });
 });

@@ -650,7 +650,7 @@ async searchUsers(keyword: string) {
     ```typescript
     import { UserModel } from "./user/user.model";
     import { api } from "sonamu";
-    import * as XLSX from "xlsx";
+    import { Workbook } from "@sheetkit/node";
 
     class ExportFrame {
       @api({ httpMethod: "GET" })
@@ -665,26 +665,30 @@ async searchUsers(keyword: string) {
           num: 0,  // 전체
           orderBy: "id-asc"
         });
-        
+
         // Excel 생성
-        const worksheet = XLSX.utils.json_to_sheet(
-          rows.map(user => ({
-            ID: user.id,
-            Name: user.name,
-            Email: user.email,
-            Status: user.status,
-            Created: user.created_at
-          }))
-        );
-        
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
-        
-        const buffer = XLSX.write(workbook, { 
-          type: "buffer", 
-          bookType: "xlsx" 
+        const wb = new Workbook();
+        const sheet = wb.sheetNames[0]; // "Sheet1"
+
+        // 헤더 설정
+        wb.setCellValue(sheet, "A1", "ID");
+        wb.setCellValue(sheet, "B1", "Name");
+        wb.setCellValue(sheet, "C1", "Email");
+        wb.setCellValue(sheet, "D1", "Status");
+        wb.setCellValue(sheet, "E1", "Created");
+
+        // 데이터 행 추가
+        rows.forEach((user, index) => {
+          const rowNum = index + 2; // 2번째 행부터 시작 (1번 행은 헤더)
+          wb.setCellValue(sheet, `A${rowNum}`, user.id);
+          wb.setCellValue(sheet, `B${rowNum}`, user.name);
+          wb.setCellValue(sheet, `C${rowNum}`, user.email);
+          wb.setCellValue(sheet, `D${rowNum}`, user.status);
+          wb.setCellValue(sheet, `E${rowNum}`, user.created_at);
         });
-        
+
+        const buffer = await wb.writeBuffer();
+
         return {
           filename: `users_${Date.now()}.xlsx`,
           data: buffer.toString("base64")
