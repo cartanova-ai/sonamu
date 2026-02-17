@@ -1289,6 +1289,36 @@ export class JoinClauseGroup<
     this.callback.orOn(...(args as [string, string]));
     return this;
   }
+
+  // ON VAL(AND): 컬럼 = 값 (값을 컬럼 참조가 아닌 파라미터로 바인딩)
+  onVal(column: AvailableColumns<TLeft>, value: any): this;
+  onVal(column: AvailableColumns<TRight>, value: any): this;
+  onVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
+  onVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
+  onVal(...args: any[]): this {
+    (this.callback as any).onVal(...args);
+    return this;
+  }
+
+  // AND ON VAL: onVal의 명시적 alias (Knex 호환)
+  andOnVal(column: AvailableColumns<TLeft>, value: any): this;
+  andOnVal(column: AvailableColumns<TRight>, value: any): this;
+  andOnVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
+  andOnVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
+  andOnVal(...args: any[]): this {
+    (this.callback as any).andOnVal(...args);
+    return this;
+  }
+
+  // OR ON VAL: OR 조건으로 값 바인딩
+  orOnVal(column: AvailableColumns<TLeft>, value: any): this;
+  orOnVal(column: AvailableColumns<TRight>, value: any): this;
+  orOnVal(column: AvailableColumns<TLeft>, operator: ComparisonOperator, value: any): this;
+  orOnVal(column: AvailableColumns<TRight>, operator: ComparisonOperator, value: any): this;
+  orOnVal(...args: any[]): this {
+    (this.callback as any).orOnVal(...args);
+    return this;
+  }
 }
 
 /*
