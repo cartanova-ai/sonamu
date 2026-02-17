@@ -132,6 +132,9 @@ type UserListParams = {
   
   // 쿼리 모드
   queryMode?: "list" | "count" | "both";  // 조회 모드
+
+  // 의미 검색 (벡터 검색)
+  semanticQuery?: Record<string, unknown>;  // 의미 검색 파라미터
 }
 ```
 
@@ -152,13 +155,33 @@ const params = {
 **타입:** `Promise<ListResult<LP, SubsetMapping[T]>>`
 
 ```typescript
-type ListResult<LP, T> = 
+// semanticQuery가 있으면 각 row에 similarity 필드가 추가됩니다.
+type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
+  ? T & { similarity: number }
+  : T;
+
+type ListResult<LP, T> =
   // queryMode: "list"
-  | { rows: T[] }
+  | { rows: WithSimilarity<LP, T>[] }
   // queryMode: "count"
   | { total: number }
   // queryMode: "both" (기본)
-  | { rows: T[]; total: number };
+  | { rows: WithSimilarity<LP, T>[]; total: number };
+```
+
+`semanticQuery`를 전달하면 각 row에 `similarity` 필드(0~1 사이의 유사도 점수)가 자동으로 추가됩니다.
+
+```typescript
+// 일반 조회
+const { rows } = await PostModel.findMany("A", { num: 10 });
+// rows[0].id, rows[0].title  (similarity 없음)
+
+// 의미 검색
+const { rows } = await PostModel.findMany("A", {
+  num: 10,
+  semanticQuery: { embedding: queryVector },
+});
+// rows[0].id, rows[0].title, rows[0].similarity  (similarity 포함)
 ```
 
 ### rows

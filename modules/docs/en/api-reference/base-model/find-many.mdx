@@ -132,6 +132,9 @@ type UserListParams = {
 
   // Query mode
   queryMode?: "list" | "count" | "both";  // Query mode
+
+  // Semantic search (vector search)
+  semanticQuery?: Record<string, unknown>;  // Semantic search parameters
 }
 ```
 
@@ -152,13 +155,33 @@ const params = {
 **Type:** `Promise<ListResult<LP, SubsetMapping[T]>>`
 
 ```typescript
+// When semanticQuery is provided, a similarity field is added to each row.
+type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
+  ? T & { similarity: number }
+  : T;
+
 type ListResult<LP, T> =
   // queryMode: "list"
-  | { rows: T[] }
+  | { rows: WithSimilarity<LP, T>[] }
   // queryMode: "count"
   | { total: number }
   // queryMode: "both" (default)
-  | { rows: T[]; total: number };
+  | { rows: WithSimilarity<LP, T>[]; total: number };
+```
+
+When `semanticQuery` is provided, a `similarity` field (a score between 0 and 1) is automatically added to each row.
+
+```typescript
+// Normal query
+const { rows } = await PostModel.findMany("A", { num: 10 });
+// rows[0].id, rows[0].title  (no similarity)
+
+// Semantic search
+const { rows } = await PostModel.findMany("A", {
+  num: 10,
+  semanticQuery: { embedding: queryVector },
+});
+// rows[0].id, rows[0].title, rows[0].similarity  (similarity included)
 ```
 
 ### rows
