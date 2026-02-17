@@ -128,6 +128,64 @@ const result = await puri.table("orders")
   .selectAll();
 ```
 
+### 값 바인딩 (onVal)
+
+`onVal`은 조인 조건에서 값을 **파라미터 바인딩**으로 안전하게 비교합니다. `on`이 두 컬럼 간 비교에 사용되는 반면, `onVal`은 컬럼과 리터럴 값의 비교에 사용됩니다.
+
+```typescript
+const result = await puri.table("orders")
+  .join("users", (j) => {
+    j.on("orders.user_id", "users.id")
+     .onVal("users.status", "active");  // 파라미터 바인딩
+  })
+  .select({
+    order_id: "orders.id",
+    user_name: "users.name"
+  });
+
+// INNER JOIN users ON orders.user_id = users.id
+//                  AND users.status = ?    -- 'active'가 파라미터로 바인딩됨
+```
+
+연산자를 지정할 수도 있습니다.
+
+```typescript
+const result = await puri.table("orders")
+  .join("shipments", (j) => {
+    j.on("orders.id", "shipments.order_id")
+     .onVal("shipments.status", "!=", "cancelled");
+  })
+  .selectAll();
+
+// INNER JOIN shipments ON orders.id = shipments.order_id
+//                       AND shipments.status != ?   -- 'cancelled'
+```
+
+#### andOnVal / orOnVal
+
+`andOnVal`은 `onVal`의 명시적인 AND 버전이고, `orOnVal`은 OR 조건으로 값을 비교합니다.
+
+```typescript
+const result = await puri.table("products")
+  .leftJoin("promotions", (j) => {
+    j.on("products.id", "promotions.product_id")
+     .onVal("promotions.active", true)
+     .orOnVal("promotions.featured", true);
+  })
+  .select({
+    product_name: "products.name",
+    promo_name: "promotions.name"
+  });
+
+// LEFT JOIN promotions ON products.id = promotions.product_id
+//                       AND promotions.active = ?      -- true
+//                       OR promotions.featured = ?     -- true
+```
+
+<Info>
+**on vs onVal**: `on("col1", "col2")`는 두 컬럼을 비교합니다. `onVal("col", value)`는 컬럼과 값을 비교하며, 값을 SQL 파라미터로 바인딩합니다.
+</Info>
+
 ## 서브쿼리 조인
 
 서브쿼리를 테이블처럼 조인할 수 있습니다.
