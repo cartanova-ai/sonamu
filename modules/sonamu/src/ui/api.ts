@@ -47,15 +47,15 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       // waitForHMRCompleted
       async function waitForHMRCompleted<T>(fn: () => Promise<T>): Promise<T> {
         const waitPromise = new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => {
-            resolve();
-          }, 1500);
-
           const handler = () => {
             clearTimeout(timeout);
-            Sonamu.syncer.eventEmitter.off("onHMRCompleted", handler);
             resolve();
           };
+
+          const timeout = setTimeout(() => {
+            Sonamu.syncer.eventEmitter.off("onHMRCompleted", handler);
+            resolve();
+          }, 1500);
 
           Sonamu.syncer.eventEmitter.once("onHMRCompleted", handler);
         });
