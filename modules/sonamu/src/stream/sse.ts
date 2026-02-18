@@ -50,6 +50,8 @@ class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
       return;
     }
 
+    this._closed = true;
+
     this.reply.sse({
       event: "end",
       data: "END",
