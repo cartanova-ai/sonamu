@@ -1,11 +1,18 @@
 # 코딩 에이전트와 Sonamu를 개발하기 위한 매뉴얼
 
+## 문서 기준 버전
+
+- 본 문서는 Codex `v0.103.0` (릴리즈 날짜: 2026-02-17) 기준으로 작성합니다.
+- 본 문서의 설정 예시는 `features.multi_agent` 키를 기준으로 합니다.
+- 설정에서 `features.collab`를 사용 중이면 `features.multi_agent`로 마이그레이션하는 것을 권장합니다.
+
 ## 작업 전 준비사항
 
 1. 작업 환경에 `ast-grep`과 `gritql`을 추가로 설치해주세요.
 2. Codex를 활용해 플래닝 / 코드 리뷰를 진행할 경우, 다음 작업들을 수행해주세요.
    - Claude Code 등의 코딩 에이전트에서 다음과 같이 Codex MCP를 추가해주세요. 다음 명령어는 사용자 스코프로 Codex MCP 서버를 설치합니다. `claude mcp add -s user -t stdio codex -- codex mcp-server`
    - 아래 내용을 참고해서 `~/.codex/config.toml` 파일을 업데이트해주세요.
+   - 프로젝트별 서브에이전트 역할은 `.codex/config.toml` + `.codex/agents/*.toml`로 이관해주세요.
 3. 공통적인 Skills의 경우 Git Repository에서 관리하지 않습니다. 첫 실행 시에는 코딩 에이전트(종류 불문)에게 다음과 같이 프롬프트를 입력해서 Skills를 설치해주세요.
    - "지금 에이전틱 워크플로우에 필요한 skills가 모두 설치되었는지 확인해주세요. 설치되지 않았으면 npx skills를 활용해 설치해주세요."
 
@@ -19,12 +26,13 @@ personality = "pragmatic"
 # Reasoning 결과를 에이전트에서도 출력해주게 합니다.
 model_reasoning_summary = "detailed"
 hide_agent_reasoning = false
+show_raw_agent_reasoning = true
 
-# 전체 Reasoning 출력은 우선 비활성화
-# show_raw_agent_reasoning = true
+# 최신 기능 사용 시 생기는 경고를 무시합니다.
+suppress_unstable_features_warning = true
 
 [features]
-collab = true                       # 서브 에이전트 실행을 활성화합니다.
+multi_agent = true                  # 서브 에이전트 실행을 활성화합니다. (기존 collab 키 대체)
 memory_tool = true                  # Codex가 작업 기억을 위해 메모리를 쓸 수 있게 됩니다.
 sqlite = true                       # 메모리 툴을 쓰기 위한 데이터베이스를 켭니다.
 responses_websockets_v2 = true      # SSE API 대신 효율적 실시간 처리를 위해 새로운 웹소켓 API를 사용합니다.
@@ -48,7 +56,58 @@ url = "https://mcp.notion.com/mcp"
 [mcp_servers.playwright]
 command = "npx"
 args = ["@playwright/mcp@latest"]
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
 ```
+
+### Codex용 서브 에이전트 현황
+
+Codex에서도 사전 정의된 서브 에이전트를 지원하게 되어서 다음과 같이 설정할 수 있습니다. 아래 예시는 Sonamu 내 .codex/config.toml 파일입니다.
+
+```toml
+[features]
+multi_agent = true
+
+[agents."planner"]
+description = "Build interview-first, dependency-aware execution plans with spawn manifest output."
+config_file = "./.codex/agents/planner.toml"
+
+[agents."implementation-primary"]
+description = "Implement one scoped unit with required tests and validations as a leaf worker."
+config_file = "./.codex/agents/implementation-primary.toml"
+
+[agents."reviewer"]
+description = "Run commit/branch review loops and return concise, actionable findings."
+config_file = "./.codex/agents/reviewer.toml"
+
+[agents."review-feedback-handler"]
+description = "Convert branch/user review findings into fix units and drive closure through re-review."
+config_file = "./.codex/agents/review-feedback-handler.toml"
+
+[agents."handoff"]
+description = "Prepare final user-review handoff with traceability and concise status reporting."
+config_file = "./.codex/agents/handoff.toml"
+```
+
+각 서브에이전트별 정의 파일에서는 모델과 reasoning effort, instructions를 설정합니다.
+
+```toml
+# /Users/Nebuleto/Workspace/sonamu/.codex/agents/planner.toml
+model = "gpt-5.3-codex"
+model_reasoning_effort = "high"
+developer_instructions = """
+...
+"""
+```
+
+이관 매핑 기준은 다음과 같습니다.
+
+- `.agents/agents/*.md`의 `name` -> `[agents."<name>"]`
+- `.agents/agents/*.md`의 `description` -> `[agents."<name>"].description`
+- 본문 지침 -> `.codex/agents/<name>.toml`의 `developer_instructions`
+- `model: sonnet/opus` 같은 Claude 전용 값은 Codex에서 사용할 모델(`gpt-5.3-codex` 등)로 치환
+- `orchestrator.md`는 메인 에이전트 역할 문서이므로 필요 시 참조용으로만 등록하고, spawn 대상 역할은 `planner`, `implementation-primary`, `reviewer`, `review-feedback-handler`, `handoff` 위주로 운영
 
 ## 전체 작업 플로우
 
@@ -87,6 +146,11 @@ flowchart TD
 
 ### Claude Code
 - `.claude/agents/*.md` preset(subagent)을 사용할 수 있습니다.
+- Orchestrator는 preset 기반 역할 분배를 우선 사용합니다.
+- Orchestrator는 코드를 직접 수정하지 않습니다.
+
+### OpenAI Codex (App / CLI)
+- Codex는 프로젝트 `.codex/config.toml`의 `[agents.<role>]` 설정의 preset(subagent)를 사용할 수 있습니다.
 - Orchestrator는 preset 기반 역할 분배를 우선 사용합니다.
 - Orchestrator는 코드를 직접 수정하지 않습니다.
 

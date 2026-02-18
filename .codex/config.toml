@@ -1,0 +1,26 @@
+[features]
+multi_agent = true
+
+[agents."planner"]
+description = "Build interview-first, dependency-aware execution plans with spawn manifest output."
+config_file = "./.codex/agents/planner.toml"
+
+[agents."implementation-primary"]
+description = "Implement one scoped unit with required tests and validations as a leaf worker."
+config_file = "./.codex/agents/implementation-primary.toml"
+
+[agents."reviewer"]
+description = "Run commit/branch review loops and return concise, actionable findings."
+config_file = "./.codex/agents/reviewer.toml"
+
+[agents."review-feedback-handler"]
+description = "Convert branch/user review findings into fix units and drive closure through re-review."
+config_file = "./.codex/agents/review-feedback-handler.toml"
+
+[agents."handoff"]
+description = "Prepare final user-review handoff with traceability and concise status reporting."
+config_file = "./.codex/agents/handoff.toml"
+
+[agents."orchestrator"]
+description = "Role-assumption document for the main agent. This role is main-agent only and not intended for spawn."
+config_file = "./.codex/agents/orchestrator.toml"
