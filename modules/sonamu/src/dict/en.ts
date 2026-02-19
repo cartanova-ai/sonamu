@@ -80,4 +80,9 @@ export default {
   "sonamu.error.keyNotFound": (key: string) => `Key not found: ${key}`,
   "sonamu.error.migrationRejected": "Migration has been rejected",
   "sonamu.error.slackConfirmNotConfigured": "Slack Confirm is not configured",
+  "sonamu.error.devRunner.notEnabled":
+    "devRunner is not enabled. Set test.devRunner.enabled: true in sonamu.config.ts",
+  "sonamu.error.devRunner.notReady": "Vitest instance is not ready yet",
+  "sonamu.error.devRunner.serverUnreachable":
+    "Cannot connect to dev server. Make sure sonamu dev is running",
 } as const;

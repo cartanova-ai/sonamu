@@ -31,6 +31,18 @@ export type SonamuI18nOptions = {
 };
 
 /**
+ * Dev 서버 내 Vitest 상주 인스턴스 설정
+ */
+export type SonamuDevRunnerConfig = {
+  /** DevRunner 활성화 여부 (기본: false) */
+  enabled: boolean;
+  /** 테스트 엔드포인트 경로 접두사 (기본: /__test__) */
+  routePrefix?: string;
+  /** vitest.config.ts 경로 (api-root 상대경로) */
+  vitestConfigPath?: string;
+};
+
+/**
  * 테스트 설정
  * vitest 병렬 테스팅을 sonamu.config.ts 한 곳에서 관리하기 위한 설정입니다.
  */
@@ -39,6 +51,8 @@ export type SonamuTestConfig = {
   parallel?: boolean;
   /** 병렬 실행 워커 수 (기본: 4) */
   maxWorkers?: number;
+  /** Dev 서버 내 Vitest 상주 인스턴스 설정 */
+  devRunner?: SonamuDevRunnerConfig;
 };
 
 export type SonamuConfig<TSinkId extends string = string, TFilterId extends string = string> = {
