@@ -381,6 +381,12 @@ class SonamuClass {
       server.register(sonamuUIApiPlugin);
     }
 
+    // DevRunner 테스트 엔드포인트 (로컬 환경 + devRunner 활성화 시)
+    if (isLocal() && this.config.test?.devRunner?.enabled) {
+      const { registerDevTestRoutes } = await import("../testing/dev-test-routes");
+      await registerDevTestRoutes(server, this.config.test.devRunner);
+    }
+
     const webPath = path.join(this.appRootPath, "web");
     const hasWeb = await exists(webPath);
 
