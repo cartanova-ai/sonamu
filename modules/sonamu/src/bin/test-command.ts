@@ -32,6 +32,13 @@ export async function testCommand(): Promise<void> {
     }
   }
 
+  if (!config.test?.devRunner?.enabled) {
+    console.error(
+      "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+    );
+    process.exit(1);
+  }
+
   const port = config.server.listen?.port ?? 3000;
   const host = config.server.listen?.host ?? "localhost";
   const routePrefix = config.test?.devRunner?.routePrefix ?? "/__test__";
