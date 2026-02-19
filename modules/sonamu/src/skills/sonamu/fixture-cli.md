@@ -93,7 +93,7 @@ pnpm sonamu fixture gen --include User --count 10 --save-to none
 - `--exclude <entities>`: --all과 함께 사용, 제외할 Entity
 - `--count <number>`: 각 Entity별 생성 개수 (기본값: 5)
 - `--save-to <target>`: 저장 방식 - `db` | `file` | `file:name.json` | `none`
-- `--use-llm`: fixtureHint 기반 LLM 생성 활성화 (ANTHROPIC_API_KEY 필요)
+- `--use-llm`: cone.note 기반 LLM 생성 활성화 (ANTHROPIC_API_KEY 필요)
 - `--no-cache`: LLM 캐시 비활성화 (기본값: 캐시 ON)
 
 ---
@@ -428,39 +428,39 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
-### fixtureHint - LLM 연동 트리거
+### note - 설명 및 LLM 연동 트리거
 
 ```json
 {
   "name": "phone",
   "type": "string",
   "cone": {
-    "fixtureHint": "010-XXXX-XXXX 형식의 한국 전화번호"
+    "note": "010-XXXX-XXXX 형식의 한국 전화번호"
   }
 }
 ```
 
 **동작 방식**:
-- `--use-llm` 없을 때: 개발자 참고용 주석 역할만 함
-- `--use-llm` 있을 때: Claude API를 호출하여 hint 기반의 실제 값 생성
+- `--use-llm` 없을 때: 개발자/LLM 참고용 설명 역할만 함 (cone-generator가 읽어 메타데이터 생성 시 활용)
+- `--use-llm` 있을 때: fixture gen이 Claude API를 호출하여 note 내용 기반의 실제 값 생성
 
 **용도**:
 - 단순 faker.js로 표현하기 어려운 맥락있는 텍스트 (자기소개, 설명문 등)
-- 개발자에게 생성 패턴 설명
+- 개발자에게 필드의 의미와 생성 패턴 설명
 - 길이 제한 없음 (짧은 패턴 또는 긴 설명 모두 가능)
 
 ---
 
 ### LLM 기반 데이터 생성
 
-`--use-llm` 플래그를 사용하면 `fixtureHint`가 Claude API 호출 트리거로 작동합니다.
+`--use-llm` 플래그를 사용하면 `cone.note`가 Claude API 호출 트리거로 작동합니다.
 
 #### 우선순위 체인
 
 ```
 1. override 값 (generate() 호출 시 전달)
 2. fixtureGenerator (faker.js 표현식)
-3. fixtureHint + LLM  ← --use-llm 플래그 시 활성화
+3. cone.note + LLM  ← --use-llm 플래그 시 활성화
 4. fixtureDefault (고정 기본값)
 5. 타입별 기본값 (자동 생성)
 ```
@@ -489,7 +489,7 @@ export default defineConfig({
 
 #### 캐싱 동작
 
-- 동일한 `entity:field:hint` 조합은 LLM을 재호출하지 않음
+- 동일한 `entity:field:note` 조합은 LLM을 재호출하지 않음
 - 같은 FixtureGenerator 인스턴스 내에서만 유효 (인메모리)
 - `--no-cache`로 비활성화 가능
 
@@ -498,12 +498,12 @@ export default defineConfig({
 - API 키 없음 → fixtureDefault 또는 타입 기본값으로 fallback (에러 없음)
 - LLM 호출 실패 → 동일하게 fallback (콘솔 경고만 출력)
 
-#### fixtureHint vs fixtureGenerator 선택 기준
+#### note vs fixtureGenerator 선택 기준
 
 | 상황 | 추천 |
 |------|------|
 | 이메일, 이름, 숫자 등 단순한 값 | `fixtureGenerator` (faker.js) |
-| 자기소개, 설명문 등 맥락있는 텍스트 | `fixtureHint` (LLM) |
+| 자기소개, 설명문 등 맥락있는 텍스트 | `cone.note` + `--use-llm` (LLM) |
 | 특정 값 목록에서 선택 | `fixtureGenerator` (arrayElement) |
 
 ---
