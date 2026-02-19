@@ -1,5 +1,6 @@
 export * from "./bootstrap";
 export * from "./data-explorer";
+export * from "./dev-vitest-manager";
 export * from "./fixture-generator";
 export * from "./fixture-loader";
 export * from "./fixture-manager";
