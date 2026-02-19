@@ -14,6 +14,7 @@ export type RunResult = {
     total: number;
     passed: number;
     failed: number;
+    skipped: number;
     durationMs: number;
   };
   failed: FailedTest[];
@@ -46,6 +47,11 @@ export class DevVitestManager {
   private closed = false;
 
   async start(vitestConfigPath?: string): Promise<void> {
+    // 이미 시작된 경우 중복 초기화를 방지
+    if (this.vitest) {
+      return;
+    }
+
     const { createVitest } = await import("vitest/node");
 
     const viteOverrides: ViteUserConfig = {
@@ -164,6 +170,7 @@ export class DevVitestManager {
     let total = 0;
     let passed = 0;
     let failed = 0;
+    let skipped = 0;
     const failedTests: FailedTest[] = [];
 
     for (const testModule of runResult.testModules) {
@@ -171,12 +178,13 @@ export class DevVitestManager {
         total += counts.total;
         passed += counts.passed;
         failed += counts.failed;
+        skipped += counts.skipped;
       });
     }
 
     return {
       ok: failed === 0,
-      summary: { total, passed, failed, durationMs },
+      summary: { total, passed, failed, skipped, durationMs },
       failed: failedTests,
     };
   }
@@ -184,11 +192,12 @@ export class DevVitestManager {
   private collectFromModule(
     testModule: TestModule,
     failedTests: FailedTest[],
-    addCounts: (counts: { total: number; passed: number; failed: number }) => void,
+    addCounts: (counts: { total: number; passed: number; failed: number; skipped: number }) => void,
   ): void {
     let total = 0;
     let passed = 0;
     let failed = 0;
+    let skipped = 0;
 
     for (const testCase of testModule.children.allTests()) {
       total++;
@@ -199,10 +208,13 @@ export class DevVitestManager {
       } else if (result.state === "failed") {
         failed++;
         failedTests.push(this.extractFailedTest(testCase, testModule));
+      } else {
+        // pending/skipped 상태는 skipped로 집계
+        skipped++;
       }
     }
 
-    addCounts({ total, passed, failed });
+    addCounts({ total, passed, failed, skipped });
   }
 
   private extractFailedTest(testCase: TestCase, testModule: TestModule): FailedTest {
