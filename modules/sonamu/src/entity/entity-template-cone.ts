@@ -31,8 +31,7 @@ export function generateTemplateCones(
 
   // 1. Entity cone
   const entityCone: Cone = {
-    desc: getEntityDesc(entity, locale),
-    fixtureHint: getEntityFixtureHint(entity, locale),
+    note: getEntityScale(entity, locale),
   };
 
   // 2. Prop cones
@@ -41,9 +40,8 @@ export function generateTemplateCones(
     const fakerConfig = findFakerMapping(prop, mapping);
 
     propCones[prop.name] = {
-      desc: fakerConfig?.comment || getDefaultDesc(prop, locale),
+      note: getPropScale(prop, fakerConfig, locale),
       fixtureGenerator: fakerConfig?.faker,
-      fixtureHint: getFixtureHint(prop, fakerConfig, locale),
       dataSource: shouldHaveDataSource(prop)
         ? { strategy: "recent", config: { limit: 5 } }
         : undefined,
@@ -54,8 +52,7 @@ export function generateTemplateCones(
   const subsetCones: Record<string, Cone> = {};
   for (const [key, subset] of Object.entries(entity.subsets || {})) {
     subsetCones[key] = {
-      desc: getSubsetDesc(key, subset, locale),
-      note: getSubsetNote(key, subset, locale),
+      note: getSubsetScale(key, subset, locale),
     };
   }
 
@@ -65,16 +62,15 @@ export function generateTemplateCones(
     const values = isEnumDefWithCone(enumDef) ? enumDef.values : enumDef;
 
     enumCones[enumId] = {
-      desc: getEnumDesc(enumId, locale),
-      note: getEnumNote(enumId, values, locale),
+      note: getEnumScale(enumId, values, locale),
       values: Object.keys(values).reduce(
         (acc, key) => {
           acc[key] = {
-            desc: getEnumValueDesc(values[key] || key, locale),
+            note: getEnumValueScale(values[key] || key),
           };
           return acc;
         },
-        {} as Record<string, { desc: string }>,
+        {} as Record<string, { note: string }>,
       ),
     };
   }
@@ -125,84 +121,47 @@ function findFakerMapping(
 }
 
 /**
- * Entity 설명을 생성합니다.
+ * Entity scale을 생성합니다.
  */
-function getEntityDesc(entity: EntityJson, locale: "ko" | "en" | "ja"): string {
+function getEntityScale(entity: EntityJson, locale: "ko" | "en" | "ja"): string {
   const title = entity.title || entity.id;
 
   const templates = {
-    ko: `${title} 엔티티`,
-    en: `${title} entity`,
-    ja: `${title}エンティティ`,
+    ko: `${title} 엔티티. 테스트 데이터 생성 시 각 필드는 실제 데이터와 유사한 형식으로 생성됩니다.`,
+    en: `${title} entity. Each field is generated in a format similar to real data.`,
+    ja: `${title}エンティティ。各フィールドは実際のデータに似た形式で生成されます。`,
   };
 
   return templates[locale];
 }
 
 /**
- * Entity fixture hint를 생성합니다.
+ * Prop scale을 생성합니다.
  */
-function getEntityFixtureHint(entity: EntityJson, locale: "ko" | "en" | "ja"): string {
-  const title = entity.title || entity.id;
-
-  const templates = {
-    ko: `${title} 테스트 데이터를 생성합니다. 각 필드는 실제 데이터와 유사한 형식으로 생성됩니다.`,
-    en: `Generates ${title} test data. Each field is generated in a format similar to real data.`,
-    ja: `${title}のテストデータを生成します。各フィールドは実際のデータに似た形式で生成されます。`,
-  };
-
-  return templates[locale];
-}
-
-/**
- * Prop 기본 설명을 생성합니다 (faker mapping이 없는 경우).
- */
-function getDefaultDesc(prop: EntityProp, locale: "ko" | "en" | "ja"): string {
-  if (isRelationProp(prop)) {
-    const templates = {
-      ko: `${prop.with} 참조`,
-      en: `Reference to ${prop.with}`,
-      ja: `${prop.with}への参照`,
-    };
-    return templates[locale];
-  }
-
-  const templates = {
-    ko: prop.name,
-    en: prop.name,
-    ja: prop.name,
-  };
-
-  return templates[locale];
-}
-
-/**
- * Prop fixture hint를 생성합니다.
- */
-function getFixtureHint(
+function getPropScale(
   prop: EntityProp,
   fakerConfig: FakerMappingConfig | undefined,
   locale: "ko" | "en" | "ja",
-): string | undefined {
+): string {
   if (isRelationProp(prop)) {
     const templates = {
-      ko: `기존 ${prop.with} 데이터를 참조합니다`,
-      en: `References existing ${prop.with} data`,
-      ja: `既存の${prop.with}データを参照します`,
+      ko: `${prop.with} 참조. 기존 ${prop.with} 데이터를 참조합니다.`,
+      en: `Reference to ${prop.with}. References existing ${prop.with} data.`,
+      ja: `${prop.with}への参照。既存の${prop.with}データを参照します。`,
     };
     return templates[locale];
   }
 
   if (fakerConfig?.comment) {
     const templates = {
-      ko: `${fakerConfig.comment} 형식으로 생성됩니다`,
-      en: `Generated as ${fakerConfig.comment}`,
-      ja: `${fakerConfig.comment}形式で生成されます`,
+      ko: `${fakerConfig.comment} 형식으로 생성됩니다.`,
+      en: `Generated as ${fakerConfig.comment}.`,
+      ja: `${fakerConfig.comment}形式で生成されます。`,
     };
     return templates[locale];
   }
 
-  return undefined;
+  return prop.name;
 }
 
 /**
@@ -229,51 +188,25 @@ function shouldHaveDataSource(prop: EntityProp): boolean {
 }
 
 /**
- * Subset 설명을 생성합니다.
+ * Subset scale을 생성합니다.
  */
-function getSubsetDesc(key: string, _subset: SubsetDef, locale: "ko" | "en" | "ja"): string {
-  const templates = {
-    ko: `${key} 서브셋`,
-    en: `${key} subset`,
-    ja: `${key}サブセット`,
-  };
-
-  return templates[locale];
-}
-
-/**
- * Subset note를 생성합니다.
- */
-function getSubsetNote(_key: string, subset: SubsetDef, locale: "ko" | "en" | "ja"): string {
+function getSubsetScale(key: string, subset: SubsetDef, locale: "ko" | "en" | "ja"): string {
   const fields = isSubsetDefWithCone(subset) ? subset.fields : subset;
   const fieldNames = fields.map((f) => (typeof f === "string" ? f : f.field)).join(", ");
 
   const templates = {
-    ko: `포함된 필드: ${fieldNames}`,
-    en: `Included fields: ${fieldNames}`,
-    ja: `含まれるフィールド: ${fieldNames}`,
+    ko: `${key} 서브셋. 포함된 필드: ${fieldNames}`,
+    en: `${key} subset. Included fields: ${fieldNames}`,
+    ja: `${key}サブセット。含まれるフィールド: ${fieldNames}`,
   };
 
   return templates[locale];
 }
 
 /**
- * Enum 설명을 생성합니다.
+ * Enum scale을 생성합니다.
  */
-function getEnumDesc(_enumId: string, locale: "ko" | "en" | "ja"): string {
-  const templates = {
-    ko: `열거형`,
-    en: `enum`,
-    ja: `列挙型`,
-  };
-
-  return templates[locale];
-}
-
-/**
- * Enum note를 생성합니다.
- */
-function getEnumNote(
+function getEnumScale(
   _enumId: string,
   values: Record<string, string>,
   locale: "ko" | "en" | "ja",
@@ -290,9 +223,8 @@ function getEnumNote(
 }
 
 /**
- * Enum value 설명을 생성합니다.
+ * Enum value scale을 생성합니다.
  */
-function getEnumValueDesc(label: string, _locale: "ko" | "en" | "ja"): string {
-  // label을 그대로 사용
+function getEnumValueScale(label: string): string {
   return label;
 }

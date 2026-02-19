@@ -115,10 +115,10 @@ export class FixtureGenerator {
         continue;
       }
 
-      // 2.5. fixtureHint + LLM 사용
-      if (cone?.fixtureHint && this.options.useLLM) {
+      // 2.5. cone.note + LLM 사용
+      if (cone?.note && this.options.useLLM) {
         try {
-          fixture[prop.name] = await this.generateWithLLM(cone.fixtureHint, prop, entity);
+          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity);
           continue;
         } catch (error) {
           console.warn(

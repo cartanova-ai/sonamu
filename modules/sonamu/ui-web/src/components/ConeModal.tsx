@@ -56,10 +56,8 @@ function DraggableDialogContent({
 
 export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModalProps) {
   const [form, setForm] = useState<Cone>({
-    desc: "",
     note: "",
     tags: [],
-    fixtureHint: "",
     fixtureGenerator: "",
     fixtureDefault: undefined,
     dataSource: undefined,
@@ -69,9 +67,6 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
   const [dataSourceInput, setDataSourceInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
-
-  // Enum이나 Subset인 경우 Note를 메인 필드로 사용
-  const isEnumOrSubset = title.startsWith("Enum:") || title.startsWith("Subset:");
 
   // 드래그 위치 상태 - 화면 중앙을 기본값으로
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -84,10 +79,8 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
     } else if (open && !cone) {
       // Reset form for new cone
       setForm({
-        desc: "",
         note: "",
         tags: [],
-        fixtureHint: "",
         fixtureGenerator: "",
         fixtureDefault: undefined,
         dataSource: undefined,
@@ -147,9 +140,7 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
         dataSource,
         fixtureDefault,
         // Remove undefined fields
-        desc: form.desc || undefined,
         note: form.note || undefined,
-        fixtureHint: form.fixtureHint || undefined,
         fixtureGenerator: form.fixtureGenerator || undefined,
       };
 
@@ -187,25 +178,12 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
           }
         >
           <div className="overflow-y-scroll flex-1 space-y-4">
-            {/* Main editable field - FixtureHint for Entity/Prop, Note for Enum/Subset */}
+            {/* Scale - 비즈니스 의미 + fixture 힌트 통합 서술 */}
             <div>
-              <label className="block mb-1 font-bold text-gray-900 text-base">
-                {isEnumOrSubset ? "Note" : "Fixture Hint"}
-              </label>
               <Textarea
-                value={isEnumOrSubset ? form.note || "" : form.fixtureHint || ""}
-                onChange={(e) =>
-                  setForm(
-                    isEnumOrSubset
-                      ? { ...form, note: e.target.value }
-                      : { ...form, fixtureHint: e.target.value },
-                  )
-                }
-                placeholder={
-                  isEnumOrSubset
-                    ? "Enum/Subset에 대한 설명을 입력하세요..."
-                    : "Fixture 생성 시 힌트를 입력하세요..."
-                }
+                value={form.note || ""}
+                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                placeholder="이 대상이 무엇인지, fixture 생성 시 어떻게 생성할지 자유롭게 적어주세요..."
                 rows={8}
                 style={{ backgroundColor: "var(--color-cone-input)" }}
                 className="text-sm"
@@ -238,10 +216,8 @@ export function ConeModal({ open, onOpenChange, title, cone, onSave }: ConeModal
                     <code>
                       {JSON.stringify(
                         {
-                          ...(form.desc && { desc: form.desc }),
                           ...(form.note && { note: form.note }),
                           ...(form.tags && form.tags.length > 0 && { tags: form.tags }),
-                          ...(form.fixtureHint && { fixtureHint: form.fixtureHint }),
                           ...(form.fixtureGenerator && {
                             fixtureGenerator: form.fixtureGenerator,
                           }),

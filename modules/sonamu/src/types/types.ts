@@ -20,17 +20,14 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 /**
  * cone: 범용 메타데이터 시스템
  *
- * Entity, Prop, Enum, Subset에 추가할 수 있는 범용 메타데이터입니다.
- * Fixture 생성, UI 라벨, 문서화 등 다양한 용도로 활용할 수 있습니다.
+ * Entity, Prop, Enum, Subset에 "솔방울을 단다"는 개념으로 붙이는 단일 서술 메타데이터입니다.
+ * note 하나로 비즈니스 의미와 fixture 생성 힌트를 함께 기술합니다.
  */
 export type Cone = {
-  // 일반 정보
-  desc?: string; // 짧은 설명 (UI 라벨용)
-  note?: string; // 자유로운 메모 (무제한 길이)
+  note?: string; // 이 대상이 무엇인지 설명 (비즈니스 의미 + fixture 힌트 통합)
   tags?: string[]; // 분류/검색용 태그
 
   // Fixture 생성 관련
-  fixtureHint?: string; // 생성 힌트 (무제한 길이, 짧은 패턴 또는 긴 설명 가능)
   fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
   fixtureDefault?: unknown; // 기본값
 
@@ -60,13 +57,12 @@ export type CommonProp = {
 };
 
 /**
- * 하위 호환성을 위한 헬퍼 함수
+ * prop의 설명을 반환합니다.
  *
- * desc 필드와 cone.desc 둘 다 지원합니다.
- * cone.desc가 있으면 우선적으로 사용하고, 없으면 desc를 사용합니다.
+ * cone.note가 있으면 우선 사용하고, 없으면 prop.desc를 사용합니다.
  */
 export function getDescription(item: { desc?: string; cone?: Cone }): string | undefined {
-  return item.cone?.desc || item.desc;
+  return item.cone?.note || item.desc;
 }
 export type IntegerProp = CommonProp & {
   type: "integer";
@@ -1051,10 +1047,8 @@ const GeneratedColumnSchema = z.object({
  */
 const ConeSchema = z
   .object({
-    desc: z.string().optional(),
     note: z.string().optional(),
     tags: z.array(z.string()).optional(),
-    fixtureHint: z.string().optional(),
     fixtureGenerator: z.string().optional(),
     fixtureDefault: z.unknown().optional(),
     dataSource: z
