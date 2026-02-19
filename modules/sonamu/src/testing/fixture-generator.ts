@@ -4,6 +4,7 @@ import type { Entity } from "../entity/entity";
 import type { EntityManager } from "../entity/entity-manager";
 import type { EntityProp, FixtureImportResult, FixtureRecord } from "../types/types";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
+import { isTest } from "../utils/controller";
 import {
   DataExplorer,
   type ExploreWithRelationsOptions,
@@ -256,7 +257,10 @@ export class FixtureGenerator {
       const entity = this.entityManager.get(entityId);
       const recordsToImport: Record<string, unknown>[] = [];
 
-      console.log(chalk.cyan(`Importing related entity: ${entityId} (${records.length} records)`));
+      !isTest() &&
+        console.log(
+          chalk.cyan(`Importing related entity: ${entityId} (${records.length} records)`),
+        );
 
       for (const record of records) {
         const recordKey = `${entityId}#${record.id}`;
@@ -268,9 +272,13 @@ export class FixtureGenerator {
 
       if (recordsToImport.length > 0) {
         for (const record of recordsToImport) {
-          console.log(
-            chalk.gray(`  - Processing ${entityId} record:`, JSON.stringify(record).slice(0, 100)),
-          );
+          !isTest() &&
+            console.log(
+              chalk.gray(
+                `  - Processing ${entityId} record:`,
+                JSON.stringify(record).slice(0, 100),
+              ),
+            );
           const fixtureRecords = await FixtureManager.createFixtureRecord(
             entity,
             record as { id: number | string; [key: string]: string | number | boolean | null },
@@ -285,11 +293,12 @@ export class FixtureGenerator {
     const mainEntity = this.entityManager.get(exploreResult.main.entityId);
     const mainRecordsToImport: Record<string, unknown>[] = [];
 
-    console.log(
-      chalk.cyan(
-        `Importing main entity: ${exploreResult.main.entityId} (${exploreResult.main.records.length} records)`,
-      ),
-    );
+    !isTest() &&
+      console.log(
+        chalk.cyan(
+          `Importing main entity: ${exploreResult.main.entityId} (${exploreResult.main.records.length} records)`,
+        ),
+      );
 
     for (const record of exploreResult.main.records) {
       const recordKey = `${exploreResult.main.entityId}#${record.id}`;
@@ -301,12 +310,13 @@ export class FixtureGenerator {
 
     if (mainRecordsToImport.length > 0) {
       for (const record of mainRecordsToImport) {
-        console.log(
-          chalk.gray(
-            `  - Processing ${exploreResult.main.entityId} record:`,
-            JSON.stringify(record).slice(0, 100),
-          ),
-        );
+        !isTest() &&
+          console.log(
+            chalk.gray(
+              `  - Processing ${exploreResult.main.entityId} record:`,
+              JSON.stringify(record).slice(0, 100),
+            ),
+          );
         const fixtureRecords = await FixtureManager.createFixtureRecord(
           mainEntity,
           record as { id: number | string; [key: string]: string | number | boolean | null },
@@ -320,12 +330,13 @@ export class FixtureGenerator {
     if (allFixtureRecords.length > 0) {
       await FixtureManager.insertFixtures(this.targetDbName, allFixtureRecords);
 
-      console.log(
-        chalk.green(
-          `Auto-imported ${exploreResult.main.entityId} with relations: ` +
-            `${exploreResult.main.records.length} main + ${exploreResult.related.size} related entities`,
-        ),
-      );
+      !isTest() &&
+        console.log(
+          chalk.green(
+            `Auto-imported ${exploreResult.main.entityId} with relations: ` +
+              `${exploreResult.main.records.length} main + ${exploreResult.related.size} related entities`,
+          ),
+        );
     }
   }
 
@@ -383,22 +394,24 @@ export class FixtureGenerator {
 
         return fn(...args);
       } catch (error) {
-        console.log(
-          chalk.yellow(
-            `Failed to execute generator "${generator}" for ${prop.name}, falling back to default:`,
-          ),
-          error,
-        );
+        !isTest() &&
+          console.log(
+            chalk.yellow(
+              `Failed to execute generator "${generator}" for ${prop.name}, falling back to default:`,
+            ),
+            error,
+          );
         return this.generateDefaultValue(prop, entity);
       }
     }
 
     // faker 이외의 표현식은 지원하지 않음
-    console.log(
-      chalk.yellow(
-        `Unsupported generator expression for ${prop.name}: ${generator}. Only faker.* expressions are supported. Using default value.`,
-      ),
-    );
+    !isTest() &&
+      console.log(
+        chalk.yellow(
+          `Unsupported generator expression for ${prop.name}: ${generator}. Only faker.* expressions are supported. Using default value.`,
+        ),
+      );
     return this.generateDefaultValue(prop, entity);
   }
 
@@ -433,12 +446,13 @@ export class FixtureGenerator {
         try {
           return await this.executeFakerExpression(config.faker, prop);
         } catch (error) {
-          console.log(
-            chalk.yellow(
-              `Failed to execute field pattern "${pattern}" for ${prop.name}, falling back:`,
-            ),
-            error,
-          );
+          !isTest() &&
+            console.log(
+              chalk.yellow(
+                `Failed to execute field pattern "${pattern}" for ${prop.name}, falling back:`,
+              ),
+              error,
+            );
           break;
         }
       }
@@ -540,9 +554,10 @@ export class FixtureGenerator {
       try {
         return await this.executeFakerExpression(typeDefault.faker, prop);
       } catch (error) {
-        console.log(
-          chalk.yellow(`Failed to execute type default for ${prop.type}, using fallback:`, error),
-        );
+        !isTest() &&
+          console.log(
+            chalk.yellow(`Failed to execute type default for ${prop.type}, using fallback:`, error),
+          );
       }
     }
 
@@ -1100,9 +1115,10 @@ Rules:
     // 3. targetDb에 삽입 (FixtureManager가 의존성 정렬 처리)
     const results = await FixtureManager.insertFixtures(this.targetDbName, fixtureRecords);
 
-    console.log(
-      chalk.green(`Generated and saved ${results.length} fixtures to ${this.targetDbName}`),
-    );
+    !isTest() &&
+      console.log(
+        chalk.green(`Generated and saved ${results.length} fixtures to ${this.targetDbName}`),
+      );
     return results;
   }
 
@@ -1130,20 +1146,22 @@ Rules:
     entityName: string,
     options: ExploreWithRelationsOptions,
   ): Promise<FixtureImportResult[]> {
-    console.log(
-      chalk.blue(
-        `Importing ${entityName} from source DB with options: ${JSON.stringify({ strategy: options.strategy, limit: options.limit, includeRelations: options.includeRelations, maxDepth: options.maxDepth })}`,
-      ),
-    );
+    !isTest() &&
+      console.log(
+        chalk.blue(
+          `Importing ${entityName} from source DB with options: ${JSON.stringify({ strategy: options.strategy, limit: options.limit, includeRelations: options.includeRelations, maxDepth: options.maxDepth })}`,
+        ),
+      );
 
     // 1. DataExplorer로 sourceDb에서 데이터 조회 (관련 데이터 포함)
     const exploreResult = await this.dataExplorer.exploreWithRelations(entityName, options);
 
-    console.log(
-      chalk.cyan(
-        `Found ${exploreResult.main.records.length} ${entityName} records and ${exploreResult.related.size} related entities`,
-      ),
-    );
+    !isTest() &&
+      console.log(
+        chalk.cyan(
+          `Found ${exploreResult.main.records.length} ${entityName} records and ${exploreResult.related.size} related entities`,
+        ),
+      );
 
     // 2. FixtureRecord로 변환
     const fixtureRecords: FixtureRecord[] = [];
@@ -1171,17 +1189,19 @@ Rules:
         fixtureRecords.push(...records);
       }
 
-      console.log(chalk.gray(`  - ${relatedEntityName}: ${relatedRecords.length} records`));
+      !isTest() &&
+        console.log(chalk.gray(`  - ${relatedEntityName}: ${relatedRecords.length} records`));
     }
 
     // 3. targetDb에 삽입 (FixtureManager가 의존성 정렬 처리)
     const results = await FixtureManager.insertFixtures(this.targetDbName, fixtureRecords);
 
-    console.log(
-      chalk.green(
-        `Successfully imported ${results.length} records to ${this.targetDbName} (${exploreResult.main.records.length} ${entityName} + ${results.length - exploreResult.main.records.length} related)`,
-      ),
-    );
+    !isTest() &&
+      console.log(
+        chalk.green(
+          `Successfully imported ${results.length} records to ${this.targetDbName} (${exploreResult.main.records.length} ${entityName} + ${results.length - exploreResult.main.records.length} related)`,
+        ),
+      );
 
     return results;
   }

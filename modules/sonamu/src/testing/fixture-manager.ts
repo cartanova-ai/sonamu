@@ -29,6 +29,7 @@ import {
   type ManyToManyRelationProp,
   type OneToOneRelationProp,
 } from "../types/types";
+import { isTest } from "../utils/controller";
 import { RelationGraph } from "./_relation-graph";
 
 /** 사용자 지정 중복 확인 컬럼 (entityId별로 지정) */
@@ -156,7 +157,10 @@ export class FixtureManagerClass {
 
         // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다 (text, uuid 등)
         if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
-          console.log(`Skipping sequence reset for ${tableName} (id type: ${idType || "unknown"})`);
+          !isTest() &&
+            console.log(
+              `Skipping sequence reset for ${tableName} (id type: ${idType || "unknown"})`,
+            );
           continue;
         }
 
@@ -513,11 +517,12 @@ export class FixtureManagerClass {
             existingId,
           });
 
-          console.log(
-            chalk.yellow(
-              `Skipped ${fixture.entityId}#${fixture.id} (existing: #${existingId}, override: false)`,
-            ),
-          );
+          !isTest() &&
+            console.log(
+              chalk.yellow(
+                `Skipped ${fixture.entityId}#${fixture.id} (existing: #${existingId}, override: false)`,
+              ),
+            );
         }
       }
 
@@ -554,22 +559,24 @@ export class FixtureManagerClass {
             // 해당 레벨의 fixture들 register
             for (const fixture of levelFixtures) {
               this.registerFixture(fixture, insertedIdsByTable);
-              console.log(
-                chalk.blue(
-                  `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override)` : ""}`,
-                ),
-              );
+              !isTest() &&
+                console.log(
+                  chalk.blue(
+                    `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override)` : ""}`,
+                  ),
+                );
             }
 
             // upsert 실행 전 uuid 목록 저장
             const table = this.builder.getTable(tableName);
             const uuids = table.rows.map((row) => row.uuid as string);
 
-            console.log(
-              chalk.blue(
-                `Upserting ${tableName} with ${uuids.length} rows (level ${levels.indexOf(levelFixtures) + 1}/${levels.length})`,
-              ),
-            );
+            !isTest() &&
+              console.log(
+                chalk.blue(
+                  `Upserting ${tableName} with ${uuids.length} rows (level ${levels.indexOf(levelFixtures) + 1}/${levels.length})`,
+                ),
+              );
             const ids = (await this.builder.upsert(
               trx,
               tableName as keyof DatabaseSchemaExtend,
@@ -600,7 +607,7 @@ export class FixtureManagerClass {
         // 6. PostgreSQL 시퀀스 리셋
         // Fixture 삽입 후 각 테이블의 ID 시퀀스를 최대 ID 값으로 업데이트합니다.
         // 이렇게 하지 않으면 다음 INSERT 시 ID가 2000번대로 생성될 수 있습니다.
-        console.log(chalk.blue("Resetting sequences..."));
+        !isTest() && console.log(chalk.blue("Resetting sequences..."));
         for (const tableName of tableOrder) {
           try {
             // Entity를 찾아서 id 타입 확인
@@ -614,11 +621,12 @@ export class FixtureManagerClass {
 
               // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다
               if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
-                console.log(
-                  chalk.gray(
-                    `Skipped sequence reset for ${tableName} (id type: ${idType || "unknown"})`,
-                  ),
-                );
+                !isTest() &&
+                  console.log(
+                    chalk.gray(
+                      `Skipped sequence reset for ${tableName} (id type: ${idType || "unknown"})`,
+                    ),
+                  );
                 continue;
               }
             }
@@ -630,11 +638,11 @@ export class FixtureManagerClass {
             if (maxId !== null && maxId !== undefined) {
               // 시퀀스를 최대 ID로 설정
               await trx.raw(`SELECT setval('${tableName}_id_seq', ?)`, [maxId]);
-              console.log(chalk.green(`Reset sequence for ${tableName}: ${maxId}`));
+              !isTest() && console.log(chalk.green(`Reset sequence for ${tableName}: ${maxId}`));
             }
           } catch (_err) {
             // 시퀀스가 없는 테이블(join table 등)은 무시
-            console.log(chalk.gray(`Skipped sequence reset for ${tableName}`));
+            !isTest() && console.log(chalk.gray(`Skipped sequence reset for ${tableName}`));
           }
         }
 
@@ -663,9 +671,10 @@ export class FixtureManagerClass {
                 data: await trx(entity.table).where("id", insertedId).first(),
               });
 
-              console.log(
-                chalk.green(`Inserted into ${entity.table}: #${fixture.id} -> #${insertedId}`),
-              );
+              !isTest() &&
+                console.log(
+                  chalk.green(`Inserted into ${entity.table}: #${fixture.id} -> #${insertedId}`),
+                );
             }
           }
         }
@@ -759,7 +768,8 @@ export class FixtureManagerClass {
       }
     }
 
-    console.log(chalk.blue(`Registering ${entity.table} - ${inspect(row, false, null, true)}`));
+    !isTest() &&
+      console.log(chalk.blue(`Registering ${entity.table} - ${inspect(row, false, null, true)}`));
     const ref = this.builder.register(entity.table, row);
     this.fixtureRefMap.set(fixture.fixtureId, ref);
 
@@ -858,11 +868,12 @@ export class FixtureManagerClass {
                 [targetColumn]: targetId,
               });
 
-              console.log(
-                chalk.green(
-                  `Inserted into ${joinTable}: ${entity.table}(${sourceId}) - ${relatedEntity.table}(${targetId})`,
-                ),
-              );
+              !isTest() &&
+                console.log(
+                  chalk.green(
+                    `Inserted into ${joinTable}: ${entity.table}(${sourceId}) - ${relatedEntity.table}(${targetId})`,
+                  ),
+                );
             }
           }
         }

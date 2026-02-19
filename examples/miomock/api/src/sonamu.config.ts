@@ -68,7 +68,7 @@ export default defineConfig({
       {
         category: ["sonamu"],
         sinks: ["console"],
-        lowestLevel: "debug",
+        lowestLevel: process.env.NODE_ENV === "test" ? "warning" : "debug",
       },
       {
         category: ["sonamu", "internal", "tasks"],
