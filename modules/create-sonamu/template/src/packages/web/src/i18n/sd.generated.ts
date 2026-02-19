@@ -2,7 +2,7 @@
 // 초기 빈 상태 - sonamu dev 실행 시 실제 내용으로 대체됩니다.
 
 const DEFAULT_LOCALE = "ko" as const;
-const SUPPORTED_LOCALES = ["ko", "en"] as const;
+export const SUPPORTED_LOCALES = ["ko", "en"] as const;
 let _currentLocale: (typeof SUPPORTED_LOCALES)[number] = DEFAULT_LOCALE;
 
 export function setLocale(locale: (typeof SUPPORTED_LOCALES)[number]) {
