@@ -63,9 +63,13 @@ export class DevVitestManager {
       standalone: true,
       forceRerunTriggers: [],
       config: vitestConfigPath,
+      env: {
+        NODE_ENV: "test",
+      },
     };
 
     this.vitest = await createVitest("test", cliOptions, viteOverrides);
+    await this.vitest.init();
 
     this.vitest.onFilterWatchedSpecification((_spec) => false);
     this.closed = false;
