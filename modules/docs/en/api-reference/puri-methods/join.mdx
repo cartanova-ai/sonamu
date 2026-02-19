@@ -128,6 +128,64 @@ const result = await puri.table("orders")
   .selectAll();
 ```
 
+### Value Binding (onVal)
+
+`onVal` safely compares a column with a literal value using **parameter binding** in join conditions. While `on` is used for column-to-column comparisons, `onVal` is used for column-to-value comparisons.
+
+```typescript
+const result = await puri.table("orders")
+  .join("users", (j) => {
+    j.on("orders.user_id", "users.id")
+     .onVal("users.status", "active");  // Parameter binding
+  })
+  .select({
+    order_id: "orders.id",
+    user_name: "users.name"
+  });
+
+// INNER JOIN users ON orders.user_id = users.id
+//                  AND users.status = ?    -- 'active' bound as parameter
+```
+
+You can also specify an operator.
+
+```typescript
+const result = await puri.table("orders")
+  .join("shipments", (j) => {
+    j.on("orders.id", "shipments.order_id")
+     .onVal("shipments.status", "!=", "cancelled");
+  })
+  .selectAll();
+
+// INNER JOIN shipments ON orders.id = shipments.order_id
+//                       AND shipments.status != ?   -- 'cancelled'
+```
+
+#### andOnVal / orOnVal
+
+`andOnVal` is an explicit AND version of `onVal`, and `orOnVal` compares values with OR conditions.
+
+```typescript
+const result = await puri.table("products")
+  .leftJoin("promotions", (j) => {
+    j.on("products.id", "promotions.product_id")
+     .onVal("promotions.active", true)
+     .orOnVal("promotions.featured", true);
+  })
+  .select({
+    product_name: "products.name",
+    promo_name: "promotions.name"
+  });
+
+// LEFT JOIN promotions ON products.id = promotions.product_id
+//                       AND promotions.active = ?      -- true
+//                       OR promotions.featured = ?     -- true
+```
+
+<Info>
+**on vs onVal**: `on("col1", "col2")` compares two columns. `onVal("col", value)` compares a column with a value, binding the value as a SQL parameter.
+</Info>
+
 ## Subquery Joins
 
 You can join subqueries as tables.
