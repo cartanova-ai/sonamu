@@ -35,6 +35,7 @@ import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config";
 import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
+import { testCommand } from "./test-command";
 
 let migrator: Migrator;
 
@@ -74,7 +75,7 @@ function parseCliOptions(argv: string[] = process.argv): {
 }
 
 async function bootstrap() {
-  const notToInit = ["dev", "build", "start", "skills"].includes(process.argv[2] ?? "");
+  const notToInit = ["dev", "build", "start", "skills", "test"].includes(process.argv[2] ?? "");
   if (!notToInit) {
     await Sonamu.init(false, false);
   }
@@ -171,6 +172,7 @@ async function bootstrap() {
         ["start"],
         ["skills", "sync"],
         ["skills", "create", "#name"],
+        ["test"],
         ["auth", "generate"],
       ],
       runners: {
@@ -200,6 +202,7 @@ async function bootstrap() {
         start,
         skills_sync,
         skills_create,
+        test: testCommand,
         auth_generate,
       },
     });
