@@ -25,7 +25,8 @@
       "dbDefault": "CURRENT_TIMESTAMP",
       "cone": {
         "desc": "Employee record creation timestamp",
-        "fixtureHint": "Generates a date within the last year."
+        "fixtureHint": "Generates a date within the last year.",
+        "fixtureGenerator": "faker.date.recent({ days: 365 })"
       }
     },
     {
