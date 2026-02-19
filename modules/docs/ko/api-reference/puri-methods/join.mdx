@@ -118,12 +118,14 @@ const result = await puri.table("products")
 
 ### 조건값과 비교
 
+컬럼과 리터럴 값을 비교할 때는 `on()` 대신 `onVal()`을 사용해야 합니다. `on()`은 인자를 컬럼 참조로 처리하므로, 값을 파라미터로 바인딩하려면 `onVal()`이 필요합니다.
+
 ```typescript
 const result = await puri.table("orders")
   .join("users", (j) => {
     j.on("orders.user_id", "users.id")
-     .on("users.status", "=", "active")  // 고정 값 비교
-     .on("orders.created_at", ">", new Date("2024-01-01"));
+     .onVal("users.status", "=", "active")  // 값을 파라미터로 바인딩
+     .onVal("orders.created_at", ">", new Date("2024-01-01"));
   })
   .selectAll();
 ```
@@ -415,8 +417,8 @@ const result = await puri.table("products")
   .leftJoin("discounts", (j) => {
     j.on("products.id", "discounts.product_id")
      .on((nested) => {
-       nested.on("discounts.start_date", "<=", new Date())
-             .on("discounts.end_date", ">=", new Date());
+       nested.onVal("discounts.start_date", "<=", new Date())
+             .onVal("discounts.end_date", ">=", new Date());
      });
   })
   .select({

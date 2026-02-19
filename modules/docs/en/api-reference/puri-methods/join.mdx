@@ -118,12 +118,14 @@ const result = await puri.table("products")
 
 ### Comparison with Values
 
+Use `onVal()` instead of `on()` when comparing a column with a literal value. `on()` treats its arguments as column references, so `onVal()` is required to bind values as parameters.
+
 ```typescript
 const result = await puri.table("orders")
   .join("users", (j) => {
     j.on("orders.user_id", "users.id")
-     .on("users.status", "=", "active")  // Fixed value comparison
-     .on("orders.created_at", ">", new Date("2024-01-01"));
+     .onVal("users.status", "=", "active")  // Bind value as parameter
+     .onVal("orders.created_at", ">", new Date("2024-01-01"));
   })
   .selectAll();
 ```
@@ -415,8 +417,8 @@ const result = await puri.table("products")
   .leftJoin("discounts", (j) => {
     j.on("products.id", "discounts.product_id")
      .on((nested) => {
-       nested.on("discounts.start_date", "<=", new Date())
-             .on("discounts.end_date", ">=", new Date());
+       nested.onVal("discounts.start_date", "<=", new Date())
+             .onVal("discounts.end_date", ">=", new Date());
      });
   })
   .select({
