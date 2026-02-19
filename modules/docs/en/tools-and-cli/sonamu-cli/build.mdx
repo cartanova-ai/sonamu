@@ -13,6 +13,16 @@ pnpm build
 
 Once the build completes, optimized JavaScript files are generated in the `dist` directory.
 
+### Subcommands
+
+You can build API and Web separately.
+
+| Command | Description |
+|---------|-------------|
+| `pnpm build` | Full API + Web build (default, skips Web build if no Web directory) |
+| `pnpm build api` | Build API project only |
+| `pnpm build web` | Build Web project only |
+
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 <FileTree>
@@ -42,7 +52,7 @@ Cleanly removes residual files from previous builds.
 **Directories removed**:
 - `dist/` - API build output
 - `web/dist/` - Web build output
-- `web-build/` - Copied Web output
+- `web-dist/` - Copied Web output
 
 ### 2. Prepare SWC Configuration
 
@@ -117,7 +127,7 @@ If a Web project exists, builds it and copies to the API project.
 
   <Step title="Copy files">
     ```bash
-    web/dist → web-build
+    web/dist → web-dist
     ```
 
     Copies for serving from API server.
@@ -134,7 +144,7 @@ If a Web project exists, builds it and copies to the API project.
 
 **Web build output**:
 - `web/dist/` - Original build result
-- `web-build/` - Copy for serving from API server
+- `web-dist/` - Copy for serving from API server
 
 ## Build Configuration
 
@@ -211,7 +221,7 @@ If no `.swcrc` file exists, **optimized default configuration** provided by Sona
 ### Web Build Result (Optional)
 
 <FileTree>
-  <FileItem name="web-build/">
+  <FileItem name="web-dist/">
     <FileItem name="index.html" description="HTML entry" />
     <FileItem name="assets/" description="Optimized assets">
       <FileItem name="index-abc123.js" />
