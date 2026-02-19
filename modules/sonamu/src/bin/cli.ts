@@ -120,6 +120,11 @@ async function bootstrap() {
       filteredArgv.push("all");
     }
 
+    // test 커맨드는 가변 인자(파일명, --pattern 등)를 받으므로 tsicli를 우회합니다.
+    if (cmd === "test") {
+      return testCommand();
+    }
+
     await tsicli(filteredArgv, {
       types: {
         "#entityId": {
