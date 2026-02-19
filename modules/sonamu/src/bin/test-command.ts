@@ -75,7 +75,13 @@ export async function testCommand(): Promise<void> {
 
     const result = (await response.json()) as {
       ok: boolean;
-      summary: { passed: number; failed: number; total: number; durationMs: number };
+      summary: {
+        passed: number;
+        failed: number;
+        skipped: number;
+        total: number;
+        durationMs: number;
+      };
       failed: { name: string; file: string; error: string }[];
     };
 
@@ -96,7 +102,7 @@ export async function testCommand(): Promise<void> {
       process.exit(1);
     }
   } catch (err) {
-    if (err instanceof TypeError && (err as NodeJS.ErrnoException).cause) {
+    if (err instanceof TypeError && err.cause) {
       console.error("dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인하세요");
       process.exit(1);
     }
