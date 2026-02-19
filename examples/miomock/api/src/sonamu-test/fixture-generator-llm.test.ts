@@ -38,11 +38,11 @@ describe("FixtureGenerator LLM", () => {
       useLLM: true,
     });
 
-    // fixtureHint가 있는 필드를 임시로 추가
+    // note가 있는 필드를 임시로 추가
     const bioProp = userEntity.props.find((p) => p.name === "bio");
     if (bioProp) {
       const originalCone = bioProp.cone;
-      bioProp.cone = { desc: originalCone?.desc, fixtureHint: "개발자 자기소개" };
+      bioProp.cone = { note: "개발자 자기소개" };
 
       try {
         const overrides = {
@@ -75,7 +75,7 @@ describe("FixtureGenerator LLM", () => {
     }
   });
 
-  test("fixtureHint로 텍스트 생성", async () => {
+  test("note로 텍스트 생성", async () => {
     mockGenerateText.mockResolvedValueOnce({
       text: "10년 경력 백엔드 개발자로 TypeScript와 Node.js를 주로 사용합니다.",
       usage: { totalTokens: 50 },
@@ -89,14 +89,14 @@ describe("FixtureGenerator LLM", () => {
       useLLM: true,
     });
 
-    // bio 필드에 fixtureHint 추가 (테스트용)
+    // bio 필드에 note 추가 (테스트용)
     const bioProp = userEntity.props.find((p) => p.name === "bio");
     if (!bioProp) {
       throw new Error("bio 필드를 찾을 수 없습니다");
     }
 
     const originalCone = bioProp.cone;
-    bioProp.cone = { desc: originalCone?.desc, fixtureHint: "개발자 자기소개" };
+    bioProp.cone = { note: "개발자 자기소개" };
 
     try {
       const overrides = {
@@ -120,14 +120,14 @@ describe("FixtureGenerator LLM", () => {
     }
   });
 
-  test("우선순위: fixtureGenerator > fixtureHint", async () => {
+  test("우선순위: fixtureGenerator > note", async () => {
     // 이전 테스트에서 수정된 상태를 복원
     const userEntity = EntityManager.get("User");
     const bioProp = userEntity.props.find((p) => p.name === "bio");
     if (bioProp) {
-      // bio.cone의 fixtureHint를 제거하여 원래 상태로 복원
-      if (bioProp.cone?.fixtureHint) {
-        const { fixtureHint, ...rest } = bioProp.cone;
+      // bio.cone의 note를 제거하여 원래 상태로 복원
+      if (bioProp.cone?.note) {
+        const { note, ...rest } = bioProp.cone;
         bioProp.cone = Object.keys(rest).length > 0 ? rest : undefined;
       }
     }
@@ -139,7 +139,7 @@ describe("FixtureGenerator LLM", () => {
       useLLM: true,
     });
 
-    // fixtureHint가 있는 필드들을 override해서 LLM 호출 방지
+    // note가 있는 필드들을 override해서 LLM 호출 방지
     // (id, role, password 등)
     const fixture = await generator.generate("User", {
       id: 999,
@@ -162,7 +162,7 @@ describe("FixtureGenerator LLM", () => {
     // username도 fixtureGenerator가 있음
     expect(fixture.username).toBeDefined();
 
-    // LLM이 호출되지 않았는지 확인 (모든 필드가 fixtureGenerator 또는 override)
+    // LLM이 호출되지 않았는지 확인 (모든 필드가 fixtureGenerator 또는 override로 처리됨)
     expect(mockGenerateText).not.toHaveBeenCalled();
   });
 
@@ -181,14 +181,14 @@ describe("FixtureGenerator LLM", () => {
       enableLLMCache: true,
     });
 
-    // bio 필드에 fixtureHint 추가
+    // bio 필드에 note 추가
     const bioProp = userEntity.props.find((p) => p.name === "bio");
     if (!bioProp) {
       throw new Error("bio 필드를 찾을 수 없습니다");
     }
 
     const originalCone = bioProp.cone;
-    bioProp.cone = { desc: originalCone?.desc, fixtureHint: "간단한 자기소개" };
+    bioProp.cone = { note: "간단한 자기소개" };
 
     try {
       // 공통 override (fixtureHint만 있는 필드들을 제공)
@@ -243,7 +243,7 @@ describe("FixtureGenerator LLM", () => {
     }
 
     const originalCone = ageProp.cone;
-    ageProp.cone = { ...originalCone, fixtureHint: "성인 나이" };
+    ageProp.cone = { ...originalCone, scale: "성인 나이" };
 
     try {
       const fixture = await generator.generate("User", {});
@@ -276,7 +276,7 @@ describe("FixtureGenerator LLM", () => {
     }
 
     const originalCone = arrayProp.cone;
-    arrayProp.cone = { ...originalCone, fixtureHint: "정수 배열" };
+    arrayProp.cone = { ...originalCone, scale: "정수 배열" };
 
     try {
       const fixture = await generator.generate("User", {});
@@ -306,7 +306,7 @@ describe("FixtureGenerator LLM", () => {
     }
 
     const originalCone = bioProp.cone;
-    bioProp.cone = { desc: originalCone?.desc, fixtureHint: "자기소개" };
+    bioProp.cone = { note: "자기소개" };
 
     try {
       const overrides = {
@@ -351,7 +351,7 @@ describe("FixtureGenerator LLM", () => {
     }
 
     const originalCone = bioProp.cone;
-    bioProp.cone = { desc: originalCone?.desc, fixtureHint: "자기소개" };
+    bioProp.cone = { note: "자기소개" };
 
     try {
       const overrides = {

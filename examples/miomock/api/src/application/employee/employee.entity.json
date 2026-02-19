@@ -3,10 +3,8 @@
   "table": "employees",
   "title": "직원",
   "cone": {
-    "desc": "직원 정보를 관리하는 엔티티",
-    "note": "User와 1:1 관계를 가지며, Department에 소속되고, Project에 참여할 수 있습니다.",
-    "tags": ["HR", "인사", "조직"],
-    "fixtureHint": "Employee 엔티티 생성 시 User와 1:1 관계를 유지해야 하며, 이미 Employee와 연결된 User는 재사용할 수 없습니다. Department는 nullable이므로 일부는 부서 미배정 상태로 생성됩니다. Project는 ManyToMany 관계로 0~3개를 무작위로 할당합니다. employee_number와 user_id 조합은 unique 제약이 있으므로 중복되지 않도록 주의합니다."
+    "note": "직원 정보를 관리하는 엔티티. User와 1:1 관계를 가지며, Department에 소속되고, Project에 참여할 수 있습니다. 생성 시 User와 1:1 관계를 유지해야 하며, 이미 Employee와 연결된 User는 재사용할 수 없습니다. Department는 nullable이므로 일부는 부서 미배정 상태로 생성됩니다. Project는 ManyToMany 관계로 0~3개를 무작위로 할당합니다. employee_number와 user_id 조합은 unique 제약이 있으므로 중복되지 않도록 주의합니다.",
+    "tags": ["HR", "인사", "조직"]
   },
   "props": [
     {
@@ -14,8 +12,7 @@
       "type": "integer",
       "desc": "ID",
       "cone": {
-        "desc": "Employee unique identifier",
-        "fixtureHint": "Auto-incrementing integer ID"
+        "note": "직원 고유 식별자. 자동 증가되는 정수 ID"
       }
     },
     {
@@ -24,8 +21,7 @@
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP",
       "cone": {
-        "desc": "Employee record creation timestamp",
-        "fixtureHint": "Generates a date within the last year.",
+        "note": "직원 등록 일시. 최근 1년 이내의 날짜로 생성",
         "fixtureGenerator": "faker.date.recent({ days: 365 })"
       }
     },
@@ -49,8 +45,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "SET NULL",
       "cone": {
-        "desc": "Assigned department",
-        "fixtureHint": "Selects from recently created Department entities. Approximately 20% will be unassigned (null).",
+        "note": "소속 부서. 최근 생성된 Department 엔티티에서 선택합니다. 약 20%는 부서 미배정(null) 상태로 생성됩니다.",
         "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
       }
     },
@@ -60,8 +55,7 @@
       "type": "string",
       "length": 32,
       "cone": {
-        "desc": "Employee number",
-        "fixtureHint": "Generates an 8-digit employee number. Example: 20240001, 20230154",
+        "note": "사번. 8자리 숫자로 구성됩니다. 예: 20240001, 20230154",
         "fixtureGenerator": "faker.string.numeric(8)"
       }
     },
@@ -73,8 +67,7 @@
       "precision": 10,
       "scale": 2,
       "cone": {
-        "desc": "Annual salary",
-        "fixtureHint": "Generates salary between 30,000,000 and 150,000,000 (Korean currency). Approximately 30% will be undisclosed (null).",
+        "note": "연봉. 3천만~1억5천만 원 범위에서 생성됩니다. 약 30%는 비공개(null) 처리합니다.",
         "fixtureGenerator": "faker.number.int({ min: 30000000, max: 150000000 })"
       }
     },
@@ -84,8 +77,7 @@
       "nullable": true,
       "desc": "입사일",
       "cone": {
-        "desc": "Date of hire",
-        "fixtureHint": "Generates hire date within the last 5 years. Approximately 10% will be null.",
+        "note": "입사일. 최근 5년 이내의 날짜로 생성합니다. 약 10%는 null 처리합니다.",
         "fixtureGenerator": "faker.date.past({ years: 5 })"
       }
     },
@@ -95,8 +87,7 @@
       "nullable": true,
       "desc": "비고",
       "cone": {
-        "desc": "Additional notes",
-        "fixtureHint": "Generates additional notes or remarks about the employee. Approximately 60% will be empty.",
+        "note": "비고. 직원에 대한 추가 메모나 특이사항. 약 60%는 빈 값(null)으로 생성합니다.",
         "fixtureGenerator": "faker.lorem.sentence()"
       }
     },
@@ -111,8 +102,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "cone": {
-        "desc": "List of participating projects",
-        "fixtureHint": "Randomly selects 0-3 projects from recently created Project entities. ManyToMany relationship allows simultaneous participation in multiple projects.",
+        "note": "참여 중인 프로젝트 목록. 최근 생성된 Project 엔티티에서 0~3개를 무작위로 선택합니다. ManyToMany 관계로 여러 프로젝트에 동시 참여 가능합니다.",
         "dataSource": { "strategy": "recent", "config": { "limit": 5 } }
       }
     }
@@ -141,8 +131,7 @@
         "notes"
       ],
       "cone": {
-        "desc": "Employee basic information subset",
-        "note": "Includes employee basic information, assigned department, and company information."
+        "note": "직원 기본 정보 서브셋. 직원 기본 정보와 소속 부서, 회사 정보를 포함합니다."
       }
     },
     "P": {
@@ -168,8 +157,7 @@
         "projs.description"
       ],
       "cone": {
-        "desc": "Employee detailed information subset",
-        "note": "Detailed subset including all relationship information. Retrieves user, department, and project information."
+        "note": "직원 상세 정보 서브셋. 모든 관계 정보를 포함하는 상세 서브셋. 사용자, 부서, 프로젝트 정보를 함께 조회합니다."
       }
     }
   },
@@ -177,17 +165,17 @@
     "EmployeeOrderBy": {
       "values": { "id-desc": "ID최신순" },
       "cone": {
-        "desc": "Employee list sorting criteria",
-        "values": { "id-desc": { "desc": "Sort by ID in descending order" } }
+        "note": "직원 목록 정렬 기준",
+        "values": { "id-desc": { "note": "ID 기준 내림차순 정렬" } }
       }
     },
     "EmployeeSearchField": {
       "values": { "id": "ID", "employee_number": "사번" },
       "cone": {
-        "desc": "Employee search fields",
+        "note": "직원 검색 필드",
         "values": {
-          "id": { "desc": "Search by employee ID" },
-          "employee_number": { "desc": "Search by employee number" }
+          "id": { "note": "직원 ID로 검색" },
+          "employee_number": { "note": "사번으로 검색" }
         }
       }
     }

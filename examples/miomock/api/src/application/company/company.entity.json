@@ -3,10 +3,8 @@
   "table": "companies",
   "title": "COMPANY",
   "cone": {
-    "desc": "회사 정보를 관리하는 엔티티",
-    "note": "회사명은 unique 제약조건이 있어 중복될 수 없습니다.",
-    "tags": ["company", "organization"],
-    "fixtureHint": "실제 존재할 법한 회사명을 생성합니다. 회사명은 unique 제약조건이 있으므로 중복되지 않도록 주의해야 합니다. 한국 로케일에 맞는 회사명을 생성하거나 글로벌 기업명을 사용할 수 있습니다."
+    "note": "회사 정보를 관리하는 엔티티. 회사명은 unique 제약조건이 있어 중복될 수 없습니다. 실제 존재할 법한 회사명을 생성하며, 한국 로케일에 맞는 회사명이나 글로벌 기업명을 사용할 수 있습니다.",
+    "tags": ["company", "organization"]
   },
   "props": [
     {
@@ -14,8 +12,7 @@
       "type": "integer",
       "desc": "ID",
       "cone": {
-        "desc": "회사 고유 식별자",
-        "fixtureHint": "자동 생성되는 ID 값으로 명시적으로 지정할 필요 없음"
+        "note": "회사 고유 식별자. 자동 생성되는 ID 값으로 명시적으로 지정할 필요 없음"
       }
     },
     {
@@ -24,8 +21,7 @@
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP",
       "cone": {
-        "desc": "회사 정보 등록 일시",
-        "fixtureHint": "기본값으로 현재 시각이 자동 설정됩니다. 과거 데이터를 생성하려면 최근 1-2년 이내의 날짜를 사용하는 것이 적절합니다.",
+        "note": "회사 정보 등록 일시. 기본값으로 현재 시각이 자동 설정됩니다. 과거 데이터를 생성하려면 최근 1-2년 이내의 날짜를 사용하는 것이 적절합니다.",
         "fixtureGenerator": "faker.date.recent({ days: 730 })"
       }
     },
@@ -34,9 +30,7 @@
       "desc": "회사명",
       "type": "string",
       "cone": {
-        "desc": "회사명",
-        "note": "unique 제약조건이 적용되어 중복될 수 없습니다.",
-        "fixtureHint": "실제 존재할 법한 한국 회사명을 생성합니다. '(주)', '㈜', '주식회사' 등의 접두사를 포함할 수 있으며, 기술/제조/서비스 등 다양한 업종을 고려합니다. unique 제약조건이 있으므로 매번 다른 값이 생성되어야 합니다.",
+        "note": "회사명. unique 제약조건이 적용되어 중복될 수 없습니다. 실제 존재할 법한 한국 회사명을 생성합니다. '(주)', '㈜', '주식회사' 등의 접두사를 포함할 수 있으며, 기술/제조/서비스 등 다양한 업종을 고려합니다.",
         "fixtureGenerator": "faker.company.name()"
       }
     }
@@ -48,8 +42,7 @@
     "A": {
       "fields": ["id", "created_at", "name"],
       "cone": {
-        "desc": "회사의 전체 기본 정보",
-        "note": "ID, 등록일시, 회사명을 포함하는 전체 필드 서브셋"
+        "note": "회사의 전체 기본 정보. ID, 등록일시, 회사명을 포함하는 전체 필드 서브셋"
       }
     }
   },
@@ -57,15 +50,15 @@
     "CompanyOrderBy": {
       "values": { "id-desc": "ID최신순" },
       "cone": {
-        "desc": "회사 목록 정렬 기준",
-        "values": { "id-desc": { "desc": "최근 등록된 순서대로 정렬" } }
+        "note": "회사 목록 정렬 기준",
+        "values": { "id-desc": { "note": "최근 등록된 순서대로 정렬" } }
       }
     },
     "CompanySearchField": {
       "values": { "id": "ID", "name": "회사명" },
       "cone": {
-        "desc": "회사 검색 가능 필드",
-        "values": { "id": { "desc": "회사 ID로 검색" }, "name": { "desc": "회사명으로 검색" } }
+        "note": "회사 검색 가능 필드",
+        "values": { "id": { "note": "회사 ID로 검색" }, "name": { "note": "회사명으로 검색" } }
       }
     }
   }
