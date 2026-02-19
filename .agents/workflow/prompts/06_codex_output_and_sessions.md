@@ -10,9 +10,9 @@ Standardize review requests/responses, session continuity, and long-output handl
 - Reuse existing session via reply when scope is unchanged.
 - Start a new session only when scope changes materially (for example, unit -> full-branch).
 
-## Backend policy
+## Default backend policy
 - If Codex MCP is available and user did not override, use Codex MCP by default.
-- If Codex MCP is unavailable, use fallback backend.
+- If Codex MCP is not installed or unavailable, skip Codex MCP and use the configured fallback backend.
 - Preserve the same review contract and output schema regardless of backend.
 
 ## Human-in-the-loop reply policy
@@ -30,13 +30,13 @@ Standardize review requests/responses, session continuity, and long-output handl
 ## Progress tracking policy
 Codex MCP spawns a separate coding agent, so tasks may take a long time. The caller must create a progress file before calling Codex MCP and include its path in the prompt so Codex records progress there.
 
-1. Create a progress file before the call.
+1. Create a progress file before calling Codex MCP.
 ```bash
 progress_file=$(mktemp /tmp/codex-progress-XXXXXX.md)
 ```
 
 2. Include the following instruction in the Codex MCP prompt.
-```text
+```
 Record your progress to ${progress_file}.
 Update the file whenever you start or complete a major step.
 ```
@@ -60,15 +60,14 @@ Bug-fix paths (`04_hotfix.md`, `08_review_feedback_handler.md`) may delegate pro
 - The `autonomous` flag is provided in `objective_packet` by the orchestrator.
 
 ### Progress tracking for problem-solving sessions
-Same pattern as review progress tracking, with a distinct prefix:
+Same pattern as review progress tracking, with distinct prefix:
 
 ```bash
 progress_file=$(mktemp /tmp/codex-troubleshoot-XXXXXX.md)
 ```
 
-Include this instruction in the Codex MCP prompt:
-
-```text
+Include the following instruction in the Codex MCP prompt:
+```
 Record your progress to ${progress_file}.
 Log each analysis step, approaches tried, and intermediate findings.
 ```
@@ -76,14 +75,14 @@ Log each analysis step, approaches tried, and intermediate findings.
 The calling agent may read the progress file at any time to check Codex status.
 
 ### Codex MCP failure fallback
-If a Codex MCP call fails (timeout, connection error, not installed, or runtime error):
+If Codex MCP call fails (timeout, connection error, not installed, or runtime error):
 1. Do not block or retry indefinitely.
 2. Log the failure reason.
 3. Resume self-attempt from the last known state.
 4. Record the failure in `unit_execution_report.troubleshoot_sessions`.
 
 ### Problem-solving session metadata
-When a problem-solving delegation occurs, include this in `unit_execution_report`:
+When a problem-solving delegation occurs, include in `unit_execution_report`:
 
 ```yaml
 troubleshoot_sessions:
@@ -103,8 +102,6 @@ Each review request must include:
 - `reviewer_priority_order`: `bugs -> requirement conformance -> performance/security`
 - `large_output_instruction`: write full output to temp file and return only path when large
 
-The reviewer must keep this priority order as a hard constraint.
-
 ## Large output policy
 Use temp files for long payloads/responses:
 
@@ -118,7 +115,6 @@ Return compact metadata in-context:
 ```yaml
 review_metadata:
   scope: unit|full-branch
-  backend: codex-mcp|fallback
   session_id: "..."
   reused_or_new: reused|new
   result_file_path: "/tmp/..."

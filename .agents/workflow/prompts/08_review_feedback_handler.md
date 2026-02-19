@@ -39,8 +39,6 @@ feedback_resolution_log:
   fix_units:
     - fix_unit_id: F-###
       mapped_owner_unit: U-###
-      must_verify_behaviors:
-        - "..."
       action_summary: "..."
   rereview:
     requested: true

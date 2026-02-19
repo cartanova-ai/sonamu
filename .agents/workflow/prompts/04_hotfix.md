@@ -3,32 +3,32 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
-Run incident/hotfix bug-fix execution with the same rigor as normal implementation, with tighter scope and urgency.
+Run hotfix execution with the same orchestration and review rigor as normal implementation, with tighter scope and urgency.
 
 ## Upstream inputs
 - hotfix issue context
 - `objective_packet` for hotfix unit(s)
 - severity and user-impact summary
-- `must_verify_behaviors`
-- `gate_profile`
 
 ## Required behavior
-0. This prompt is the dedicated path for incident/hotfix bug fixes.
+0. This prompt is the dedicated bug-fix path for incident/hotfix work. Do not use review-feedback-handler for primary incident triage.
 1. Keep unit scope minimal and conflict-safe.
-2. Define `must_verify_behaviors` and add focused tests first.
+2. Define `must_verify_behaviors` for the hotfix and add focused tests first.
 3. Investigate root cause and apply minimal patch until those tests pass.
    - Track `self_attempt_count` starting from 1.
-   - Each distinct fix attempt (modify code -> run tests -> observe failure) increments this count.
+   - Each distinct fix attempt (modify code -> run tests -> observe failure) increments the count.
 4. Run required checks:
+   - `pnpm check` at monorepo workspace root
+   - `pnpm check` in every affected subproject
    - common required gates
    - project-level override gates
 5. Run unit-level review/fix loop to closure.
 6. Run full-branch hotfix review/fix loop to closure.
 7. Route review findings through `prompts/08_review_feedback_handler.md`.
-8. For review, use Codex MCP only when installed and available; otherwise use fallback backend.
+8. For review, use Codex MCP only when installed and available; otherwise use fallback review backend.
 
 ## Codex MCP problem-solving escalation
-Follow `prompts/06_codex_output_and_sessions.md` section `Problem-solving escalation session protocol`.
+Follow the session protocol in `prompts/06_codex_output_and_sessions.md` section `Problem-solving escalation session protocol`.
 
 ### Analysis delegation (during step 3)
 If root-cause investigation stalls and the agent cannot form a confident hypothesis:

@@ -18,15 +18,15 @@ Create a high-quality `bootstrap_context` that removes planning ambiguity before
    - in-scope packages
    - out-of-scope packages
    - constraints and non-goals
-4. Derive framework/runtime category for affected projects from known project structure first.
-   - Use repository package map and nearest `AGENTS.md` as canonical baseline.
-   - Reclassify only when scope includes a new/unknown package or explicit architecture change.
-   - Categories: React, React Native (Expo), Backend, Library, Other.
+4. Detect framework/runtime category for affected projects:
+   - React
+   - React Native (Expo)
+   - Backend/library/other
 5. Determine required tools and runtime validation channels:
    - `ast-grep`, `GritQL` (required)
    - `mobile-mcp` (RN runtime scope)
    - `Playwright MCP` (Web runtime scope)
-   - `Codex MCP` (optional; planning/review only when available)
+   - `Codex MCP` (optional, default review backend if available)
 6. Record unresolved questions count. Do not finish bootstrap with unresolved planning-critical questions.
 
 ## Downstream output

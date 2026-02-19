@@ -34,7 +34,7 @@ handoff_bundle:
     branch_review_closed: true
     review_sessions:
       - scope: unit|full-branch
-        backend: codex-mcp|fallback
+        backend: codex-mcp|other
         reused_or_new: reused|new
         final_status: clean|findings_resolved
   feedback_trace:
@@ -54,3 +54,5 @@ handoff_bundle:
 ## Communication rule
 - Keep wording compact and concrete.
 - Do not include deployment or migration-executed claims.
+- `validation_evidence.root_checks` must include workspace-root `pnpm check`.
+- `validation_evidence.project_checks` must include `pnpm check` for each affected subproject.

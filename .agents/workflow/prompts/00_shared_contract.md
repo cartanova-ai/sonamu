@@ -1,118 +1,38 @@
 # Prompt: Shared Workflow Contract
 
-This contract is mandatory for every prompt under this template.
+This contract is mandatory for every prompt under `.agents/workflow/prompts/`.
 
-## Canonical references
-1. Project root policy file: `../../../AGENTS.md`
-2. Role and dispatch policy: `../subagents/00_agent_roles.md`
-3. Review/session/long-output policy: `06_codex_output_and_sessions.md`
+## Canonical policy references (no duplication)
+Use file-path references below as the single source of truth instead of repeating policy text in every prompt.
 
-## Architecture policy
-- Planning, Codex execution protocol, branch review, and orchestration must be implemented as prompts, not separate skills.
-- Library/service quality gates are managed by prompts and AGENTS policies, not standalone skills.
+1. Global coding-agent policy:
+- `../../../AGENTS.md`
 
-## Language and output policy
-- Prompts and internal reasoning are in English.
-- Final output follows user language preference; if unclear, default to Korean.
-- Output style is polite and extremely concise.
-- Do not output emoji unless explicitly requested.
-- Use Mermaid for diagrams. Never use ASCII flowcharts.
-- When writing in Korean, use polite honorific declarative endings such as `-합니다.` and avoid plain declarative style.
-- The Korean style rule applies to all output channels, including direct agent responses and external systems (for example: Notion MCP, Linear MCP, GitHub Issues/PRs/comments).
+2. Role/dispatch policy:
+- `../subagents/00_agent_roles.md`
 
-## Writing quality policy
-For docs/messages/direct responses (Notion, Linear, Slack, GitHub, and similar):
-- Avoid hype and inflated claims.
-- Avoid vague attribution.
-- Avoid repetitive template phrasing.
-- Avoid unnecessary formatting noise.
-- Prefer concrete, verifiable details.
+3. Review session and long-output policy:
+- `06_codex_output_and_sessions.md`
 
-## Code comment policy
-- Add comments only where logic is not self-evident.
-- Keep comments concise and decision-focused.
-- Do not use section-label or region-marker comments (for example: `// ===== Section =====`, `// --- Region ---`, `/* ========== */`).
+## Required inheritance for all stage prompts
+Every stage prompt must inherit from the canonical files above:
+- language/output style policy
+- writing quality policy
+- commit message policy
+- tooling policy
+- safety and operational boundaries
+- agent topology policy: orchestrator = main agent (not spawnable), all other roles = spawnable leaf workers
+- language/output style policy across all output channels, including direct agent responses and external systems (Notion MCP, Linear MCP, GitHub Issues/PRs/comments)
+- Codex MCP conditional usage policy: use Codex MCP by default for planning and branch-level review when available; use local reviewer sub-agents for unit-level review
+- Codex MCP human-in-the-loop policy: normal mode requires user-mediated replies; autonomous mode auto-processes Codex replies and logs interaction metadata
+- Codex MCP progress tracking policy: create a progress file before calling Codex MCP and include its path in the prompt so progress can be checked at any time
+- Codex MCP problem-solving escalation policy: bug-fix paths may delegate analysis or full task to Codex MCP when self-attempts stall, with user confirmation in normal mode and automatic in autonomous mode; Codex failure always falls back to self-attempt
+- implementation commit + review policy: implementation sub-agents commit and return; orchestrator runs context-isolated unit review and branch-level final review; fast-path may skip unit reviewer for trivial changes
+- code comment policy: comments only where logic is not self-evident, no region-marker comments
+- test-first policy for must-verify behaviors
+- validation gate baseline: `pnpm check` (Biome) must pass at workspace root and in every affected subproject
 
-## Commit message policy
-- Use scope-first bracket conventional commit format.
-- Standard format: `[scope] type: short title`.
-- Work-in-progress format: `[scope] type(wip): short title`.
-- `type` is mandatory.
-- Do not use work-order stage tags (for example: `(Phase 1)`, `(Wave 2)`).
-- Commit messages must be written in Korean.
-- Do not add any `Co-Authored-By` trailer to commits.
-- `scope` may include multiple projects.
-- Exclude sync-only and auto-generated file impacts when determining `scope`.
-- If the change affects the whole monorepo across multiple subprojects, use `[*]` as `scope`.
-- Linear ticket IDs and PR numbers may be referenced.
-- Referencing Linear ticket IDs is recommended.
-
-## Tooling policy
-- Use `ast-grep` for syntax-aware search by default.
-- Use `GritQL` for AST-based checks/transformations by default.
-- Use plain-text `rg`/`grep` only for plain-text needs or explicit user request.
-
-## Codex MCP policy
-- For planning, use Codex MCP as default when installed and available.
-- For code review:
-  - Unit-level: use local reviewer sub-agent (orchestrator-driven, context-isolated). See `06_codex_output_and_sessions.md` local reviewer review contract.
-  - Branch-level: use Codex MCP as default when installed and available.
-  - If Codex MCP is unavailable for branch review, use the fallback path while preserving the same review contract.
-- For Codex MCP interactions, create a progress file before the call and include its path in the prompt so progress can be inspected at any time.
-- For bug-fix paths, allow Codex MCP problem-solving escalation when self-attempts stall: analysis delegation or full-task delegation, with user confirmation in normal mode and automatic escalation in autonomous mode. If Codex MCP fails, always resume self-attempt.
-- Human-in-the-loop for Codex MCP interactions in sub-agents:
-  - Normal mode (`autonomous: false`): surface Codex MCP responses to user first, wait for user input, then relay via `codex-reply`.
-  - Autonomous mode (`autonomous: true`): process Codex MCP responses automatically, relay via `codex-reply` immediately, log in `review_metadata`.
-
-## Framework/runtime policy
-- React: require React best-practice skills.
-- React Native (Expo): require React + React Native + Expo skills.
-- React Native runtime validation: emulator/simulator only. No physical devices.
-- Web runtime validation: Playwright MCP required.
-
-## Quality gate policy
-- Apply common required gates and project-level overrides together.
-- Common required gates include root `pnpm check` (Biome) and touched-project build/test.
-- Carry override metadata via `gate_profile`.
-
-## Review priority policy
-- Review findings must be prioritized in this fixed order:
-  - bugs
-  - requirement conformance
-  - performance/security risk
-
-## Test-first policy
-- For every implementation/fix unit, define `must_verify_behaviors`.
-- Write tests for `must_verify_behaviors` first.
-- Implement until those tests pass.
-
-## Safety and operational boundaries
-- Do not modify local databases directly. Read-only local DB access is allowed.
-- Do not directly connect/read/write remote databases.
-- Do not run mutating Terraform/AWS CLI operations. Read-only inspection is allowed.
-- Do not deploy.
-- Migration execution requires explicit user intervention.
-
-## Agent topology policy
-- The orchestrator role must be assumed by the main agent and is not spawnable as a sub-agent.
-- Only the main agent (acting as orchestrator) can spawn sub-agents.
-- All spawnable roles are leaf workers; nested spawning is forbidden.
-- Decomposition requests from leaf workers must be escalated back to orchestrator.
-
-## Implementation commit and review policy
-- Implementation sub-agents must commit unit changes after required validation checks pass.
-- Implementation sub-agents return to orchestrator after commit. They do not self-review.
-- Unit-level review is orchestrator-driven: a separate reviewer sub-agent is spawned with context isolation.
-- Branch-level review uses Codex MCP (or fallback backend) as the final quality gate.
-- Review fast-path: trivial changes (<=30 lines, docs/formatting/config only, all gates pass) skip reviewer spawn.
-
-## Bug-fix routing policy
-- Incident/hotfix bug fixes must use `prompts/04_hotfix.md`.
-- Review-originated fixes must use `prompts/08_review_feedback_handler.md`.
-
-## Future MCP integration
-- Sonamu MCP and SocratsAI MCP are future integrations.
-- Keep the current workflow unchanged until those MCPs are ready.
+Do not restate these shared policies in stage prompts unless role-specific exceptions are required.
 
 ## Standard artifacts
 - `bootstrap_context`

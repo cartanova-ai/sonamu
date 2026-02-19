@@ -15,11 +15,6 @@ When assuming this role, the main agent reads this file and `.agents/agents/orch
 - `spawn_manifest`
 - runtime capability state
 
-## Planning delegation policy
-- Planning must be delegated to the `planner` sub-agent.
-- Do not use built-in Plan Mode (`EnterPlanMode`) for planning.
-- The `planner` sub-agent should use Codex MCP as default planning assistance when available.
-
 ## Hard constraints
 - Orchestrator must never edit code directly.
 - Only the main agent (acting as orchestrator) can spawn sub-agents.
@@ -30,8 +25,8 @@ When assuming this role, the main agent reads this file and `.agents/agents/orch
 1. Check whether preset subagent execution is supported.
 2. If supported and preset exists, use `preset` mode.
 3. Otherwise use `inline_fallback` mode with mandatory references:
-   - `role_file_ref=subagents/00_agent_roles.md`
-   - `prompt_file_ref=prompts/<role_prompt>.md`
+   - `role_file_ref=.agents/workflow/subagents/00_agent_roles.md`
+   - `prompt_file_ref=.agents/workflow/prompts/<role_prompt>.md`
 4. Record mode and reason per spawn.
 
 ## Tool availability gate
@@ -41,12 +36,12 @@ Before implementation/review execution:
 - conditional required: `Playwright MCP` for Web runtime scope
 - optional: `Codex MCP`
 If required items are missing, stop and request setup.
-If `Codex MCP` is missing, continue with fallback planning/review paths.
+If `Codex MCP` is missing, continue without Codex MCP and use fallback planning/review paths.
 
 ## Orchestration flow
 1. Validate `spawn_manifest` schema completeness.
 2. Validate common required gates and project-level overrides from `gate_profile`.
-3. Validate `must_verify_behaviors` exists for each implementation/hotfix unit.
+3. Validate `must_verify_behaviors` is present for each implementation/hotfix unit.
 4. Build execution queue by dependency and parallel group.
 5. Spawn implementation units in parallel when safe.
 6. Each implementation sub-agent handles: implement -> automated gates -> commit -> return.
@@ -66,7 +61,7 @@ If `Codex MCP` is missing, continue with fallback planning/review paths.
 - Review-originated fix path: use `prompts/08_review_feedback_handler.md`.
 
 ## Hotfix escalation configuration
-When spawning hotfix units, include these in `objective_packet`:
+When spawning hotfix units, include the following in `objective_packet`:
 - `max_self_attempts`: Maximum number of self-fix attempts before full Codex MCP delegation (default: 3). Adjust based on bug complexity and severity.
 - `autonomous`: Whether the sub-agent may escalate to Codex MCP without user confirmation (`true` for autonomous mode, `false` for normal mode). Set based on user preference or task context.
 

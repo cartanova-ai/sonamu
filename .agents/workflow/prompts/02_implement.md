@@ -9,7 +9,7 @@ Execute exactly one assigned unit from orchestrator with complete evidence and r
 - `objective_packet`
 - unit metadata (`unit_id`, dependencies, constraints, done criteria)
 - `must_verify_behaviors`
-- `gate_profile` (common required + project overrides)
+- `gate_profile` (common required gates + project overrides)
 - selected execution mode (`preset` or `inline_fallback`)
 
 ## Hard constraints
