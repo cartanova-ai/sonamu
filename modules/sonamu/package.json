@@ -62,7 +62,8 @@
     "build": "run-s 'build:sonamu' 'build:ui-web'",
     "build:sonamu": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
     "build:ui-web": "cd ui-web && pnpm install && pnpm build",
-    "test:type": "vitest --typecheck test-d.ts"
+    "test:type": "vitest --typecheck test-d.ts",
+    "test:unit": "vitest run --config vitest.config.ts"
   },
   "license": "MIT",
   "author": {
