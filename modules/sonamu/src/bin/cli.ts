@@ -964,6 +964,7 @@ async function skills_sync() {
     await skills_sync_to(path.join(os.homedir(), ".claude"), sourceSkillsDir, sourceClaudeMd, {
       useSymlink: false,
       copyProjectTemplates: false,
+      isGlobal: true,
     });
     console.log(chalk.cyan(`\n  Global sync complete → ~/.claude/skills/sonamu/`));
     console.log(chalk.dim(`  These skills are available in all Claude Code sessions.`));
@@ -994,6 +995,7 @@ async function skills_sync_to(
     useSymlink: boolean;
     copyProjectTemplates: boolean;
     sourceBase?: string;
+    isGlobal?: boolean;
   },
 ) {
   const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
@@ -1050,7 +1052,11 @@ async function skills_sync_to(
   if (await exists(sourceClaudeMd)) {
     try {
       const targetClaudeMd = path.join(claudeDir, "CLAUDE.md");
-      const sourceContent = await readFile(sourceClaudeMd, "utf-8");
+      const rawContent = await readFile(sourceClaudeMd, "utf-8");
+      // 글로벌 모드에서는 상대 경로를 절대 경로로 변환합니다
+      const sourceContent = options.isGlobal
+        ? rawContent.replaceAll(".claude/skills/sonamu/", "~/.claude/skills/sonamu/")
+        : rawContent;
 
       if (await exists(targetClaudeMd)) {
         const targetContent = await readFile(targetClaudeMd, "utf-8");
