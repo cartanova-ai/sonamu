@@ -52,6 +52,7 @@ export default defineConfig({
   test: {
     parallel: true,
     maxWorkers: 4,
+    devRunner: { enabled: true },
   },
 
   logging: {
