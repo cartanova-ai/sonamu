@@ -8,6 +8,7 @@ import { execSync, spawn } from "child_process";
 import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
+import os from "os";
 import path from "path";
 import process from "process";
 import { tsicli } from "tsicli";
@@ -939,12 +940,13 @@ async function scaffold_model_test(entityId: string) {
 
 /**
  * pnpm sonamu skills sync 하면 실행되는 함수입니다.
- * 공식 Skills를 로컬 프로젝트로 동기화합니다.
+ * 공식 Skills를 로컬 프로젝트 또는 글로벌 ~/.claude/로 동기화합니다.
+ *
+ * --global 플래그: ~/.claude/에 동기화 (프로젝트 생성 전 사용 가능)
  */
 async function skills_sync() {
-  const workspaceRoot = await findWorkspaceRoot();
-  const claudeDir = path.join(workspaceRoot, ".claude");
-  const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
+  const { flags } = parseCliOptions();
+  const isGlobal = flags.has("global");
 
   // 개발 환경 - cli.ts: sonamu/modules/sonamu/src/bin/cli.ts
   // 빌드 후 - cli.js: node_modules/sonamu/dist/bin/cli.js (실제 실행)
@@ -958,7 +960,45 @@ async function skills_sync() {
     return;
   }
 
-  // 기존 디렉토리/symlink 삭제 후 symlink 생성
+  if (isGlobal) {
+    await skills_sync_to(path.join(os.homedir(), ".claude"), sourceSkillsDir, sourceClaudeMd, {
+      useSymlink: false,
+      copyProjectTemplates: false,
+    });
+    console.log(chalk.cyan(`\n  Global sync complete → ~/.claude/skills/sonamu/`));
+    console.log(chalk.dim(`  These skills are available in all Claude Code sessions.`));
+    console.log(
+      chalk.dim(
+        `  Once a project is created, run 'pnpm sonamu skills sync' for project-local sync.`,
+      ),
+    );
+  } else {
+    const workspaceRoot = await findWorkspaceRoot();
+    const claudeDir = path.join(workspaceRoot, ".claude");
+    await skills_sync_to(claudeDir, sourceSkillsDir, sourceClaudeMd, {
+      useSymlink: true,
+      copyProjectTemplates: true,
+      sourceBase,
+    });
+  }
+}
+
+/**
+ * claudeDir로 skills를 동기화하는 공통 로직입니다.
+ */
+async function skills_sync_to(
+  claudeDir: string,
+  sourceSkillsDir: string,
+  sourceClaudeMd: string,
+  options: {
+    useSymlink: boolean;
+    copyProjectTemplates: boolean;
+    sourceBase?: string;
+  },
+) {
+  const targetSkillsDir = path.join(claudeDir, "skills", "sonamu");
+
+  // 기존 디렉토리/symlink 삭제 후 재생성
   // exists()는 broken symlink를 감지하지 못하므로 rm을 무조건 시도합니다
   try {
     await rm(targetSkillsDir, { recursive: true, force: true });
@@ -966,48 +1006,43 @@ async function skills_sync() {
     // 파일이 없으면 무시
   }
 
-  // 대상 디렉토리 생성
   await mkdir(path.dirname(targetSkillsDir), { recursive: true });
 
-  try {
-    await symlink(sourceSkillsDir, targetSkillsDir, "dir");
-    console.log(chalk.green(`✓ Skills linked (symlink)`));
-  } catch (error) {
-    console.log(
-      chalk.yellow(`⚠ Symlink failed: ${error instanceof Error ? error.message : String(error)}`),
-    );
-    console.log(chalk.yellow(`  Falling back to copy...`));
+  if (options.useSymlink) {
     try {
-      await cp(sourceSkillsDir, targetSkillsDir, { recursive: true });
-      console.log(chalk.green(`✓ Skills copied`));
-    } catch (copyError) {
-      console.error(
-        chalk.red(
-          `✗ Failed to copy skills: ${copyError instanceof Error ? copyError.message : String(copyError)}`,
-        ),
+      await symlink(sourceSkillsDir, targetSkillsDir, "dir");
+      console.log(chalk.green(`✓ Skills linked (symlink)`));
+    } catch (error) {
+      console.log(
+        chalk.yellow(`⚠ Symlink failed: ${error instanceof Error ? error.message : String(error)}`),
       );
-      throw copyError;
+      console.log(chalk.yellow(`  Falling back to copy...`));
+      await skillsCopy(sourceSkillsDir, targetSkillsDir);
     }
+  } else {
+    await skillsCopy(sourceSkillsDir, targetSkillsDir);
   }
 
   // project 디렉토리 초기화 (없으면 생성, 있으면 유지)
-  const sourceProjectDir = path.join(sourceBase, "project");
-  const targetProjectDir = path.join(claudeDir, "skills", "project");
+  if (options.copyProjectTemplates && options.sourceBase) {
+    const sourceProjectDir = path.join(options.sourceBase, "project");
+    const targetProjectDir = path.join(claudeDir, "skills", "project");
 
-  if (await exists(sourceProjectDir)) {
-    if (!(await exists(targetProjectDir))) {
-      try {
-        await cp(sourceProjectDir, targetProjectDir, { recursive: true });
-        console.log(chalk.green(`✓ Project templates initialized`));
-      } catch (error) {
-        console.error(
-          chalk.red(
-            `✗ Failed to initialize project templates: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
+    if (await exists(sourceProjectDir)) {
+      if (!(await exists(targetProjectDir))) {
+        try {
+          await cp(sourceProjectDir, targetProjectDir, { recursive: true });
+          console.log(chalk.green(`✓ Project templates initialized`));
+        } catch (error) {
+          console.error(
+            chalk.red(
+              `✗ Failed to initialize project templates: ${error instanceof Error ? error.message : String(error)}`,
+            ),
+          );
+        }
+      } else {
+        console.log(chalk.dim(`⏭ Project templates already exist (preserved)`));
       }
-    } else {
-      console.log(chalk.dim(`⏭ Project templates already exist (preserved)`));
     }
   }
 
@@ -1022,7 +1057,6 @@ async function skills_sync() {
         const startMarker = "<!-- SONAMU:START -->";
         const endMarker = "<!-- SONAMU:END -->";
         if (targetContent.includes(startMarker) && targetContent.includes(endMarker)) {
-          // marker 영역만 교체합니다.
           const startIdx = targetContent.indexOf(startMarker);
           const endIdx = targetContent.indexOf(endMarker);
 
@@ -1035,9 +1069,15 @@ async function skills_sync() {
           } else {
             console.log(chalk.yellow(`⏭ CLAUDE.md marker positions invalid, skipped`));
           }
+        } else {
+          // 마커가 없는 기존 CLAUDE.md에 Sonamu 섹션을 추가합니다
+          const appended = `${targetContent.trimEnd()}\n\n<!-- SONAMU:START -->\n${sourceContent}\n<!-- SONAMU:END -->\n`;
+          await writeFile(targetClaudeMd, appended);
+          console.log(chalk.green(`✓ CLAUDE.md updated (appended Sonamu section)`));
         }
       } else {
-        await writeFile(targetClaudeMd, sourceContent);
+        const withMarkers = `<!-- SONAMU:START -->\n${sourceContent}\n<!-- SONAMU:END -->\n`;
+        await writeFile(targetClaudeMd, withMarkers);
         console.log(chalk.green(`✓ CLAUDE.md created`));
       }
     } catch (error) {
@@ -1047,6 +1087,20 @@ async function skills_sync() {
         ),
       );
     }
+  }
+}
+
+async function skillsCopy(src: string, dest: string) {
+  try {
+    await cp(src, dest, { recursive: true });
+    console.log(chalk.green(`✓ Skills copied`));
+  } catch (copyError) {
+    console.error(
+      chalk.red(
+        `✗ Failed to copy skills: ${copyError instanceof Error ? copyError.message : String(copyError)}`,
+      ),
+    );
+    throw copyError;
   }
 }
 
