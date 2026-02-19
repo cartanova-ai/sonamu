@@ -383,3 +383,120 @@ describe("FixtureGenerator LLM", () => {
     }
   });
 });
+
+describe("executeGenerator 인자 파싱", () => {
+  test("객체 인자: faker.number.int({ min: 1000, max: 9999 })", async () => {
+    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const targetDb = DB.testTransaction || DB.getDB("w");
+    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+
+    const employeeEntity = EntityManager.get("Employee");
+    const salaryProp = employeeEntity.props.find((p) => p.name === "salary");
+    if (!salaryProp) throw new Error("salary 필드를 찾을 수 없습니다");
+
+    const originalCone = salaryProp.cone;
+    salaryProp.cone = {
+      ...originalCone,
+      fixtureGenerator: "faker.number.int({ min: 1000, max: 9999 })",
+    };
+
+    try {
+      const fixture = await generator.generate("Employee", {
+        id: 999,
+        employee_number: "12345678",
+        user_id: "test-user-id",
+      });
+      const salary = fixture.salary as number;
+      expect(typeof salary).toBe("number");
+      expect(salary).toBeGreaterThanOrEqual(1000);
+      expect(salary).toBeLessThanOrEqual(9999);
+    } finally {
+      salaryProp.cone = originalCone;
+    }
+  });
+
+  test("배열 내 single-quote 문자열: faker.helpers.arrayElement(['a', 'b', 'c'])", async () => {
+    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const targetDb = DB.testTransaction || DB.getDB("w");
+    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+
+    const userEntity = EntityManager.get("User");
+    const roleProp = userEntity.props.find((p) => p.name === "role");
+    if (!roleProp) throw new Error("role 필드를 찾을 수 없습니다");
+
+    const originalCone = roleProp.cone;
+    roleProp.cone = {
+      ...originalCone,
+      fixtureGenerator: "faker.helpers.arrayElement(['a', 'b', 'c'])",
+    };
+
+    try {
+      const fixture = await generator.generate("User", {
+        id: 999,
+        is_verified: true,
+        deleted_at: null,
+        password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
+      });
+      expect(["a", "b", "c"]).toContain(fixture.role);
+    } finally {
+      roleProp.cone = originalCone;
+    }
+  });
+
+  test("객체 배열 (weighted): faker.helpers.weightedArrayElement", async () => {
+    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const targetDb = DB.testTransaction || DB.getDB("w");
+    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+
+    const userEntity = EntityManager.get("User");
+    const roleProp = userEntity.props.find((p) => p.name === "role");
+    if (!roleProp) throw new Error("role 필드를 찾을 수 없습니다");
+
+    const originalCone = roleProp.cone;
+    roleProp.cone = {
+      ...originalCone,
+      fixtureGenerator:
+        "faker.helpers.weightedArrayElement([{ weight: 8, value: 'normal' }, { weight: 2, value: 'admin' }])",
+    };
+
+    try {
+      const fixture = await generator.generate("User", {
+        id: 999,
+        is_verified: true,
+        deleted_at: null,
+        password: "test123",
+        created_at: new Date(),
+        birth_date: new Date("1990-01-01"),
+        last_login_at: new Date(),
+        updated_at: new Date(),
+        two_factor_enabled: false,
+      });
+      expect(["normal", "admin"]).toContain(fixture.role);
+    } finally {
+      roleProp.cone = originalCone;
+    }
+  });
+
+  test("날짜 객체 인자: faker.date.past({ years: 5 })", async () => {
+    const sourceDb = DB.getDB("fixture" as DBPreset);
+    const targetDb = DB.testTransaction || DB.getDB("w");
+    const generator = new FixtureGenerator(sourceDb, targetDb, "test", EntityManager);
+
+    const employeeEntity = EntityManager.get("Employee");
+    const hireDateProp = employeeEntity.props.find((p) => p.name === "hire_date");
+    if (!hireDateProp) throw new Error("hire_date 필드를 찾을 수 없습니다");
+
+    const fixture = await generator.generate("Employee", {
+      id: 999,
+      employee_number: "12345678",
+      user_id: "test-user-id",
+    });
+    // hire_date는 이미 faker.date.past({ years: 5 })를 fixtureGenerator로 가짐
+    expect(fixture.hire_date).toBeInstanceOf(Date);
+  });
+});
