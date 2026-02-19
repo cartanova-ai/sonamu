@@ -109,44 +109,28 @@ describe("FixtureGenerator", () => {
       const sourceDb = DB.testTransaction || DB.getDB("r");
       const explorer = new DataExplorer(sourceDb, EntityManager);
 
-      // 1. DataExplorer로 실제 DB의 Department 조회
-      console.log("\n🔍 Step 1: DataExplorer로 실제 DB의 Department 조회");
       const departments = await explorer.explore("Department", {
         strategy: "sample",
         limit: 3,
       });
 
-      console.log(`   ✅ 조회 완료: ${departments.length}개`);
-      console.log("   ", departments);
-
       expect(departments.length).toBeGreaterThan(0);
+      expect(departments.length).toBeLessThanOrEqual(3);
 
-      // 2. 조회한 Department 중 하나를 선택
       const selectedDept = departments[0];
-      console.log(`\n🔍 Step 2: 선택된 Department (id: ${selectedDept?.id})`);
-      console.log("   ", selectedDept);
+      expect(selectedDept).toHaveProperty("id");
+      expect(selectedDept).toHaveProperty("company_id");
 
-      // 3. 그 Department를 참조하는 Employee 조회
-      console.log(`\n🔍 Step 3: Department(${selectedDept?.id})를 참조하는 Employee 조회`);
       const employees = await sourceDb("employees")
         .where("department_id", (selectedDept?.id as number) ?? 0)
         .limit(2);
 
-      console.log(`   ✅ Employee ${employees.length}개 발견`);
-      console.log("   ", employees);
-
       if (employees.length > 0) {
         const employee = employees[0];
-        console.log(`\n🔍 Step 4: 선택된 Employee (id: ${employee.id})`);
-        console.log(`   - employee_number: ${employee.employee_number}`);
-        console.log(`   - department_id: ${employee.department_id}`);
-        console.log(`   - user_id: ${employee.user_id}`);
-
-        // 검증
+        expect(employee).toHaveProperty("id");
+        expect(employee).toHaveProperty("employee_number");
+        expect(employee).toHaveProperty("user_id");
         expect(employee.department_id).toBe((selectedDept?.id as number) ?? 0);
-        console.log("\n✅ Department와 Employee의 참조 관계가 확인되었습니다!");
-      } else {
-        console.log("\n⚠️  해당 Department를 참조하는 Employee가 없습니다.");
       }
     });
   });
