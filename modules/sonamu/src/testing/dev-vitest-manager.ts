@@ -161,7 +161,8 @@ export class DevVitestManager {
       const durationMs = Date.now() - startTime;
       this.lastRunAt = new Date().toISOString();
 
-      return this.collectResults(runResult, durationMs);
+      const specModuleIds = new Set(specs.map((s) => s.moduleId));
+      return this.collectResults(runResult, durationMs, specModuleIds);
     } finally {
       if (opts.pattern) {
         vitest.resetGlobalTestNamePattern();
@@ -170,7 +171,11 @@ export class DevVitestManager {
     }
   }
 
-  private collectResults(runResult: TestRunResult, durationMs: number): RunResult {
+  private collectResults(
+    runResult: TestRunResult,
+    durationMs: number,
+    specModuleIds: Set<string>,
+  ): RunResult {
     let total = 0;
     let passed = 0;
     let failed = 0;
@@ -178,6 +183,7 @@ export class DevVitestManager {
     const failedTests: FailedTest[] = [];
 
     for (const testModule of runResult.testModules) {
+      if (!specModuleIds.has(testModule.moduleId)) continue;
       this.collectFromModule(testModule, failedTests, (counts) => {
         total += counts.total;
         passed += counts.passed;
