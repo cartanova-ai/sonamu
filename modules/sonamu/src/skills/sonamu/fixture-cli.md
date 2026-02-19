@@ -93,6 +93,8 @@ pnpm sonamu fixture gen --include User --count 10 --save-to none
 - `--exclude <entities>`: --all과 함께 사용, 제외할 Entity
 - `--count <number>`: 각 Entity별 생성 개수 (기본값: 5)
 - `--save-to <target>`: 저장 방식 - `db` | `file` | `file:name.json` | `none`
+- `--use-llm`: fixtureHint 기반 LLM 생성 활성화 (ANTHROPIC_API_KEY 필요)
+- `--no-cache`: LLM 캐시 비활성화 (기본값: 캐시 ON)
 
 ---
 
@@ -426,7 +428,7 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
-### fixtureHint - 생성 힌트 (문서용)
+### fixtureHint - LLM 연동 트리거
 
 ```json
 {
@@ -438,10 +440,71 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
+**동작 방식**:
+- `--use-llm` 없을 때: 개발자 참고용 주석 역할만 함
+- `--use-llm` 있을 때: Claude API를 호출하여 hint 기반의 실제 값 생성
+
 **용도**:
-- AI가 fixture 생성 시 참고
+- 단순 faker.js로 표현하기 어려운 맥락있는 텍스트 (자기소개, 설명문 등)
 - 개발자에게 생성 패턴 설명
 - 길이 제한 없음 (짧은 패턴 또는 긴 설명 모두 가능)
+
+---
+
+### LLM 기반 데이터 생성
+
+`--use-llm` 플래그를 사용하면 `fixtureHint`가 Claude API 호출 트리거로 작동합니다.
+
+#### 우선순위 체인
+
+```
+1. override 값 (generate() 호출 시 전달)
+2. fixtureGenerator (faker.js 표현식)
+3. fixtureHint + LLM  ← --use-llm 플래그 시 활성화
+4. fixtureDefault (고정 기본값)
+5. 타입별 기본값 (자동 생성)
+```
+
+#### CLI 사용법
+
+```bash
+# LLM 활성화
+pnpm sonamu fixture gen --include User --count 10 --use-llm
+
+# 캐시 비활성화
+pnpm sonamu fixture gen --include User --count 10 --use-llm --no-cache
+```
+
+#### API 키 설정
+
+```bash
+# 방법 1: 환경변수
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# 방법 2: sonamu.config.ts
+export default defineConfig({
+  secret: { anthropic_api_key: "sk-ant-..." }
+});
+```
+
+#### 캐싱 동작
+
+- 동일한 `entity:field:hint` 조합은 LLM을 재호출하지 않음
+- 같은 FixtureGenerator 인스턴스 내에서만 유효 (인메모리)
+- `--no-cache`로 비활성화 가능
+
+#### Fallback 동작
+
+- API 키 없음 → fixtureDefault 또는 타입 기본값으로 fallback (에러 없음)
+- LLM 호출 실패 → 동일하게 fallback (콘솔 경고만 출력)
+
+#### fixtureHint vs fixtureGenerator 선택 기준
+
+| 상황 | 추천 |
+|------|------|
+| 이메일, 이름, 숫자 등 단순한 값 | `fixtureGenerator` (faker.js) |
+| 자기소개, 설명문 등 맥락있는 텍스트 | `fixtureHint` (LLM) |
+| 특정 값 목록에서 선택 | `fixtureGenerator` (arrayElement) |
 
 ---
 
