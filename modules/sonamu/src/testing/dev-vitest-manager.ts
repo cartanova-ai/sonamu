@@ -55,7 +55,7 @@ export class DevVitestManager {
     const { createVitest } = await import("vitest/node");
 
     const viteOverrides: ViteUserConfig = {
-      server: { watch: { ignored: ["**/*"] } },
+      server: { watch: null },
     };
 
     const cliOptions: CliOptions = {
