@@ -376,29 +376,9 @@ export class FixtureGenerator {
           throw new Error(`FixtureGenerator: faker.${path} is not a function (for ${prop.name})`);
         }
 
-        // 인자 파싱 (JSON 형식만 지원)
         let args: unknown[] = [];
         if (argsStr?.trim()) {
-          try {
-            // JSON 배열로 파싱 시도
-            const parsed = JSON.parse(`[${argsStr}]`) as unknown;
-            args = Array.isArray(parsed) ? parsed : [parsed];
-          } catch {
-            // 숫자나 문자열 단일 인자 처리
-            const trimmed = argsStr.trim();
-            if (!Number.isNaN(Number(trimmed))) {
-              args = [Number(trimmed)];
-            } else if (
-              (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-              (trimmed.startsWith("'") && trimmed.endsWith("'"))
-            ) {
-              args = [trimmed.slice(1, -1)];
-            } else {
-              throw new Error(
-                `FixtureGenerator: Cannot parse arguments for ${prop.name}: ${argsStr}`,
-              );
-            }
-          }
+          args = this.parseGeneratorArgs(argsStr, prop.name);
         }
 
         return fn(...args);
@@ -707,26 +687,9 @@ export class FixtureGenerator {
       throw new Error(`${fakerName}.${path} is not a function (for ${prop.name})`);
     }
 
-    /** 함수 인자를 JSON으로 파싱합니다 */
     let args: unknown[] = [];
     if (argsStr?.trim()) {
-      try {
-        const parsed = JSON.parse(`[${argsStr}]`) as unknown;
-        args = Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        /** JSON 파싱 실패 시 단순 숫자/문자열로 시도합니다 */
-        const trimmed = argsStr.trim();
-        if (!Number.isNaN(Number(trimmed))) {
-          args = [Number(trimmed)];
-        } else if (
-          (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-          (trimmed.startsWith("'") && trimmed.endsWith("'"))
-        ) {
-          args = [trimmed.slice(1, -1)];
-        } else {
-          throw new Error(`Cannot parse arguments for ${prop.name}: ${argsStr}`);
-        }
-      }
+      args = this.parseGeneratorArgs(argsStr, prop.name);
     }
 
     return fn(...args);
@@ -903,6 +866,65 @@ Rules:
       default:
         return cleaned;
     }
+  }
+
+  /**
+   * faker 함수 인자 문자열을 파싱하여 인자 배열로 반환합니다.
+   *
+   * 3단계 전략:
+   * 1. JSON 직접 파싱 (표준 JSON 표현식)
+   * 2. JS 객체 리터럴 → JSON 변환 후 재시도 (single quote, unquoted key 처리)
+   * 3. 단순 단일 인자 폴백 (숫자, 문자열)
+   */
+  private parseGeneratorArgs(argsStr: string, propName: string): unknown[] {
+    // 1. JSON 직접 파싱
+    try {
+      const parsed = JSON.parse(`[${argsStr}]`) as unknown;
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      // 계속
+    }
+
+    // 2. JS 객체 리터럴 → JSON 변환 후 재시도
+    try {
+      const jsonStr = this.convertJsLiteralToJson(argsStr);
+      const parsed = JSON.parse(`[${jsonStr}]`) as unknown;
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      // 계속
+    }
+
+    // 3. 단순 단일 인자 폴백
+    const trimmed = argsStr.trim();
+    if (!Number.isNaN(Number(trimmed))) {
+      return [Number(trimmed)];
+    }
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      return [trimmed.slice(1, -1)];
+    }
+
+    throw new Error(`FixtureGenerator: Cannot parse arguments for ${propName}: ${argsStr}`);
+  }
+
+  /**
+   * JS 객체 리터럴을 JSON으로 변환합니다.
+   *
+   * 두 가지 변환:
+   * 1. Single-quoted 문자열 → double-quoted (이스케이프 처리 포함)
+   * 2. Unquoted 객체 키 → double-quoted
+   */
+  private convertJsLiteralToJson(input: string): string {
+    // 1. 'value' → "value" (내부 " 이스케이프, \' → ')
+    const withDoubleQuotes = input.replace(
+      /'([^'\\]*(?:\\.[^'\\]*)*)'/g,
+      (_, content: string) => `"${content.replace(/"/g, '\\"').replace(/\\'/g, "'")}"`,
+    );
+
+    // 2. { key: → { "key":
+    return withDoubleQuotes.replace(/([{,]\s*)([a-zA-Z_$][\w$]*)(\s*:)/g, '$1"$2"$3');
   }
 
   /**

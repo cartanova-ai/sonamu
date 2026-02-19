@@ -16,6 +16,8 @@ interface FixtureCommandOptions {
   "save-to"?: string;
   strategy?: DataExplorerStrategy;
   limit?: string;
+  "use-llm"?: boolean;
+  "no-cache"?: boolean;
 }
 
 /**
@@ -105,11 +107,37 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
       }
     }
 
+    // LLM 사용 여부 결정
+    let useLLM = options["use-llm"] ?? false;
+    if (!options["use-llm"]) {
+      const llmResult = await prompts({
+        type: "confirm",
+        name: "useLLM",
+        message:
+          "LLM으로 더 현실적인 데이터를 생성할까요? (fixtureHint 기반, ANTHROPIC_API_KEY 필요)",
+        initial: false,
+      });
+      useLLM = llmResult.useLLM ?? false;
+    }
+
+    const enableLLMCache = !options["no-cache"];
+
     // fixture gen: fixture DB 내에서 참조 관계를 해결하고 저장합니다
     const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
-    const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
+    const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager, {
+      useLLM,
+      enableLLMCache,
+    });
 
-    console.log(chalk.cyan(`\n${entityNames.join(", ")} 생성 중...`));
+    if (useLLM) {
+      console.log(
+        chalk.cyan(
+          `\nLLM 모드로 ${entityNames.join(", ")} 생성 중... (캐싱: ${enableLLMCache ? "ON" : "OFF"})`,
+        ),
+      );
+    } else {
+      console.log(chalk.cyan(`\n${entityNames.join(", ")} 생성 중...`));
+    }
 
     const specs = entityNames.map((entityName) => ({
       entity: entityName,
@@ -118,6 +146,11 @@ export async function fixtureGenCommand(options: FixtureCommandOptions) {
     }));
 
     const results = await generator.generateBatch(specs);
+
+    if (useLLM) {
+      const stats = generator.getLLMCacheStats();
+      console.log(chalk.cyan(`[LLM Cache] 캐시 크기: ${stats.size}`));
+    }
 
     console.log(chalk.green(`\n✅ ${results.length}개 fixture 생성 완료`));
 
