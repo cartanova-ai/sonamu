@@ -9,7 +9,7 @@
   },
   {
     "path": "src/application/company/company.entity.json",
-    "checksum": "b9ce03cd351ea5262baf4a78271b9cc5ab5d9a11"
+    "checksum": "ab1efa5fbfbb7fd0f3c990cdd4201ef49abeb643"
   },
   {
     "path": "src/application/company/company.model.ts",
@@ -21,7 +21,7 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "d1642c1da3f90056814808efaa76f295d360430d"
+    "checksum": "e7258aef6c3a96627a06da9b4aecfdbbf4bc45e0"
   },
   {
     "path": "src/application/department/department.model.ts",
@@ -45,7 +45,7 @@
   },
   {
     "path": "src/application/employee/employee.entity.json",
-    "checksum": "4f654b668b8d13b89e966139231477d1b5279f60"
+    "checksum": "6425be688c005a95e3534214d2d99fc95e5225c9"
   },
   {
     "path": "src/application/employee/employee.model.ts",
@@ -137,7 +137,7 @@
   },
   {
     "path": "src/application/user/user.entity.json",
-    "checksum": "1bda256a6a261a4c19480f185ff23e3be91a843a"
+    "checksum": "3b30301fd0786da8e04fdfde07ccbfffc85a14dd"
   },
   {
     "path": "src/application/user/user.model.ts",
