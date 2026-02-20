@@ -1123,6 +1123,44 @@ pnpm test:watch
 pnpm test
 ```
 
+### DevRunner - dev 서버에서 테스트 실행
+
+`pnpm sonamu test` 커맨드를 사용하면 dev 서버에 상주하는 Vitest 인스턴스를 통해 테스트를 실행할 수 있다. HMR로 파일이 변경되면 재빌드 없이 바로 반영되어 빠른 피드백이 가능하다.
+
+**전제조건:** `pnpm dev` (dev 서버)가 실행 중이어야 하며, `devRunner.enabled: true` 설정 필요.
+
+**sonamu.config.ts 설정:**
+
+```typescript
+export default defineConfig({
+  test: {
+    devRunner: {
+      enabled: true,
+      routePrefix: "/__test__",            // optional, 기본값
+      vitestConfigPath: "vitest.config.ts", // optional, api-root 상대경로
+    },
+  },
+});
+```
+
+**실행:**
+
+```bash
+pnpm sonamu test                                         # 전체 테스트
+pnpm sonamu test src/application/user/user.test.ts       # 특정 파일
+pnpm sonamu test --pattern "findMany"                    # 이름 패턴 필터
+pnpm sonamu test src/application/user/user.test.ts --pattern "findById"  # 파일 + 패턴
+```
+
+**devRunner vs 일반 vitest 비교:**
+
+| | `pnpm test` | `pnpm sonamu test` |
+|---|---|---|
+| 서버 필요 | 불필요 | `pnpm dev` 실행 중 필요 |
+| 실행 속도 | 매번 초기화 | Vitest 인스턴스 재사용 (빠름) |
+| HMR 반영 | 재실행 필요 | 즉시 반영 |
+| 용도 | CI, 전체 테스트 | 개발 중 빠른 피드백 |
+
 ## 설정 파일
 
 ### vitest.config.ts
