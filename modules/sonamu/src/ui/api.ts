@@ -1204,13 +1204,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }>("/api/sonamu/fixture/generate", async (request, reply) => {
         const { entity, count = 1, overrides, targetDb = "fixture" } = request.body;
 
+        // 타겟 DB 설정 가져오기
+        const dbConfig = targetDb === "fixture" ? Sonamu.dbConfig.fixture : Sonamu.dbConfig.test;
+
+        // Knex 인스턴스 생성
+        const db = createKnexInstance(dbConfig);
+
         try {
-          // 타겟 DB 설정 가져오기
-          const dbConfig = targetDb === "fixture" ? Sonamu.dbConfig.fixture : Sonamu.dbConfig.test;
-
-          // Knex 인스턴스 생성
-          const db = createKnexInstance(dbConfig);
-
           // FixtureGenerator 생성
           const generator = new FixtureGenerator(db, db, targetDb, EntityManager);
 
@@ -1222,9 +1222,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
               overrides: overrides ?? {},
             },
           ]);
-
-          // Knex 연결 종료
-          await db.destroy();
 
           return {
             success: true,
@@ -1239,6 +1236,8 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
+        } finally {
+          await db.destroy();
         }
       });
 
@@ -1255,13 +1254,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }>("/api/sonamu/fixture/explore", async (request, reply) => {
         const { entity, strategy, limit = 10, where } = request.body;
 
+        // Fixture DB 설정 가져오기
+        const fixtureDbConfig = Sonamu.dbConfig.fixture;
+
+        // Knex 인스턴스 생성
+        const fixtureDb = createKnexInstance(fixtureDbConfig);
+
         try {
-          // Fixture DB 설정 가져오기
-          const fixtureDbConfig = Sonamu.dbConfig.fixture;
-
-          // Knex 인스턴스 생성
-          const fixtureDb = createKnexInstance(fixtureDbConfig);
-
           // DataExplorer 생성
           const explorer = new DataExplorer(fixtureDb, EntityManager);
 
@@ -1270,9 +1269,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             limit,
             where,
           });
-
-          // Knex 연결 종료
-          await fixtureDb.destroy();
 
           return {
             success: true,
@@ -1287,6 +1283,8 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
+        } finally {
+          await fixtureDb.destroy();
         }
       });
 
@@ -1311,13 +1309,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           maxDepth = 2,
         } = request.body;
 
+        // Source DB (production/development) - 읽기 전용
+        const sourceDb = DB.getDB("r");
+
+        // Target DB (fixture)
+        const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+
         try {
-          // Source DB (production/development) - 읽기 전용
-          const sourceDb = DB.getDB("r");
-
-          // Target DB (fixture)
-          const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
-
           // FixtureGenerator 생성
           const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 
@@ -1328,9 +1326,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             includeRelations,
             maxDepth,
           });
-
-          // Knex 연결 종료 (sourceDb는 Sonamu가 관리하므로 destroy하지 않음)
-          await fixtureDb.destroy();
 
           return {
             success: true,
@@ -1345,6 +1340,9 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
+        } finally {
+          // sourceDb는 Sonamu가 관리하므로 destroy하지 않음
+          await fixtureDb.destroy();
         }
       });
 
@@ -1359,10 +1357,10 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }>("/api/sonamu/fixture/clean", async (request, reply) => {
         const { entities } = request.body;
 
-        try {
-          // Fixture DB 연결
-          const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
+        // Fixture DB 연결
+        const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 
+        try {
           // 삭제할 Entity 목록 결정
           const targetEntities =
             entities && entities.length > 0 ? entities : EntityManager.getAllIds();
@@ -1379,9 +1377,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             `TRUNCATE TABLE ${tableNames.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`,
           );
 
-          // Knex 연결 종료
-          await fixtureDb.destroy();
-
           return {
             success: true,
             cleaned: tableNames,
@@ -1393,6 +1388,8 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
+        } finally {
+          await fixtureDb.destroy();
         }
       });
 
