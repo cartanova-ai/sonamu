@@ -72,6 +72,9 @@ export class FixtureGenerator {
     const entity = this.entityManager.get(entityName);
     const tempId = `${entityName}#temp#${Date.now()}`; // 임시 ID
 
+    // LLM row 단위 생성을 위한 고유 키 (같은 row의 필드들이 동일한 rowKey를 공유)
+    const rowKey = this.options.useLLM ? `${entityName}#row#${Date.now()}` : undefined;
+
     // 각 prop별 값 생성
     const fixture: Record<string, unknown> = {};
 
@@ -123,7 +126,7 @@ export class FixtureGenerator {
       // 2.5. cone.note + LLM 사용
       if (cone?.note && this.options.useLLM) {
         try {
-          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity);
+          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity, rowKey);
           continue;
         } catch (error) {
           console.warn(
@@ -729,6 +732,60 @@ export class FixtureGenerator {
     fixtureHint: string,
     prop: EntityProp,
     entity: Entity,
+    rowKey?: string,
+  ): Promise<unknown> {
+    // rowKey가 있으면 row 단위 생성 전략 사용
+    if (rowKey) {
+      const rowCacheKey = `${rowKey}:${prop.name}`;
+
+      // 이미 이 row에 대한 LLM 호출이 완료된 경우 캐시에서 바로 반환
+      if (this.llmCache.has(rowCacheKey)) {
+        return this.llmCache.get(rowCacheKey);
+      }
+
+      // 새 row: LLM 대상 prop 전체를 한 번에 생성
+      const llmProps = entity.props.filter((p) => {
+        if (isRelationProp(p)) return false;
+        if (p.cone?.fixtureGenerator) return false;
+        if (p.name === "id" && p.cone?.fixtureStrategy === "sequence") return false;
+        return !!p.cone?.note;
+      });
+
+      const apiKey = this.getApiKey();
+      const { createAnthropic } = await import("@ai-sdk/anthropic");
+      const { generateText } = await import("ai");
+
+      const { text } = await generateText({
+        model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
+        prompt: this.buildRowLLMPrompt(llmProps, entity),
+      });
+
+      // 응답을 파싱하여 각 필드에 대한 결과를 캐시에 저장
+      const rowResult = this.parseRowLLMResponse(text, llmProps);
+      for (const [fieldName, value] of Object.entries(rowResult)) {
+        this.llmCache.set(`${rowKey}:${fieldName}`, value);
+      }
+
+      // 요청한 필드의 값 반환 (없으면 단일 필드 fallback)
+      if (this.llmCache.has(rowCacheKey)) {
+        return this.llmCache.get(rowCacheKey);
+      }
+
+      // 만약 row 응답에 이 필드가 누락된 경우 단일 필드 fallback
+      return this.generateSingleWithLLM(fixtureHint, prop, entity);
+    }
+
+    // rowKey가 없으면 기존 단일 필드 방식
+    return this.generateSingleWithLLM(fixtureHint, prop, entity);
+  }
+
+  /**
+   * 단일 필드를 LLM으로 생성합니다 (rowKey 없을 때 fallback용)
+   */
+  private async generateSingleWithLLM(
+    fixtureHint: string,
+    prop: EntityProp,
+    entity: Entity,
   ): Promise<unknown> {
     const cacheKey = `${entity.id}:${prop.name}:${fixtureHint}`;
     if (this.options.enableLLMCache && this.llmCache.has(cacheKey)) {
@@ -750,6 +807,78 @@ export class FixtureGenerator {
     }
 
     return value;
+  }
+
+  /**
+   * row 전체를 한 번에 생성하는 LLM 프롬프트를 만듭니다.
+   */
+  private buildRowLLMPrompt(props: EntityProp[], entity: Entity): string {
+    const locale = this.options.locale || "ko";
+    const language = locale === "ko" ? "Korean" : locale === "ja" ? "Japanese" : "English";
+
+    const fieldDescriptions = props
+      .map((p) => {
+        let desc = `- ${p.name} (${p.type}): ${p.cone?.note ?? ""}`;
+        if (
+          (p.type === "enum" || p.type === "enum[]") &&
+          "id" in p &&
+          p.id &&
+          entity.enumLabels?.[p.id]
+        ) {
+          const values = Object.keys(entity.enumLabels[p.id]).join(", ");
+          desc += ` [allowed values: ${values}]`;
+        }
+        return desc;
+      })
+      .join("\n");
+
+    const outputShape = props.map((p) => `  "${p.name}": <${p.type}>`).join(",\n");
+
+    return `Generate test fixture data for the ${entity.id} entity. All fields must be coherent and consistent with each other.
+
+Entity: ${entity.id}
+Locale: ${locale} (use ${language} for text fields)
+
+Fields to generate:
+${fieldDescriptions}
+
+Rules:
+- All fields in a single row must be logically consistent (e.g. name/name_en/name_cn should represent the same person)
+- Return ONLY valid JSON, no markdown or explanation
+- Dates in ISO 8601 format
+- Use ${language} for text unless field description says otherwise
+
+Return exactly this JSON shape:
+{
+${outputShape}
+}`;
+  }
+
+  /**
+   * row LLM 응답을 파싱하여 필드별 값으로 변환합니다.
+   */
+  private parseRowLLMResponse(text: string, props: EntityProp[]): Record<string, unknown> {
+    const jsonText = text
+      .trim()
+      .replace(/^```json\s*/i, "")
+      .replace(/```\s*$/, "")
+      .trim();
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      !isTest() && console.warn("[FixtureGenerator] Failed to parse row LLM response:", text);
+      return {};
+    }
+
+    const result: Record<string, unknown> = {};
+    for (const prop of props) {
+      if (prop.name in parsed) {
+        result[prop.name] = this.parseLLMResponse(String(parsed[prop.name] ?? ""), prop.type);
+      }
+    }
+    return result;
   }
 
   private buildLLMPrompt(hint: string, prop: EntityProp, entity: Entity): string {
