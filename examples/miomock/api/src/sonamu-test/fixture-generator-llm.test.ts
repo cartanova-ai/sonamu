@@ -77,7 +77,7 @@ describe("FixtureGenerator LLM", () => {
 
   test("note로 텍스트 생성", async () => {
     mockGenerateText.mockResolvedValueOnce({
-      text: "10년 경력 백엔드 개발자로 TypeScript와 Node.js를 주로 사용합니다.",
+      text: '{"bio": "10년 경력 백엔드 개발자로 TypeScript와 Node.js를 주로 사용합니다."}',
       usage: { totalTokens: 50 },
     });
 
@@ -168,7 +168,7 @@ describe("FixtureGenerator LLM", () => {
 
   test("LLM 캐싱", async () => {
     mockGenerateText.mockResolvedValue({
-      text: "캐싱 테스트 데이터",
+      text: '{"bio": "캐싱 테스트 데이터"}',
       usage: { totalTokens: 30 },
     });
 
@@ -209,8 +209,8 @@ describe("FixtureGenerator LLM", () => {
       await generator.generate("User", overrides);
       await generator.generate("User", overrides);
 
-      // LLM은 1번만 호출되어야 함 (캐싱)
-      expect(mockGenerateText).toHaveBeenCalledTimes(1);
+      // row 단위 생성 방식: 각 generate() 호출마다 새 rowKey가 생성되므로 2번 호출됨
+      expect(mockGenerateText).toHaveBeenCalledTimes(2);
 
       // 캐시 통계 확인
       const stats = generator.getLLMCacheStats();
@@ -332,7 +332,7 @@ describe("FixtureGenerator LLM", () => {
 
   test("캐시 초기화", async () => {
     mockGenerateText.mockResolvedValue({
-      text: "테스트 데이터",
+      text: '{"bio": "테스트 데이터"}',
       usage: { totalTokens: 20 },
     });
 
