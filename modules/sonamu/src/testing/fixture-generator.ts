@@ -91,8 +91,24 @@ export class FixtureGenerator {
         continue;
       }
 
-      // DB sequence로 관리되는 PK는 생성하지 않음 (DB가 자동 할당)
-      if (prop.name === "id" && "cone" in prop && prop.cone?.fixtureStrategy === "sequence") {
+      // id prop 처리
+      if (prop.name === "id") {
+        if ("cone" in prop && prop.cone?.fixtureStrategy === "sequence") {
+          // DB sequence가 자동 할당하므로 스킵 (User 등)
+          continue;
+        }
+        if (prop.type === "string") {
+          // DB DEFAULT 없는 string PK: alphanumeric 32자 생성 (better-auth 스타일)
+          const { faker: _faker } = await import("@faker-js/faker");
+          fixture[prop.name] = _faker.string.alphanumeric(32);
+          continue;
+        }
+        if (prop.type === "uuid") {
+          const { faker: _faker } = await import("@faker-js/faker");
+          fixture[prop.name] = _faker.string.uuid();
+          continue;
+        }
+        // integer/bigInteger PK: generateBatch에서 tempId를 넣으므로 여기선 스킵
         continue;
       }
 
@@ -1252,11 +1268,21 @@ Rules:
     for (const { entity: entityName, data } of generatedFixtures) {
       const entity = this.entityManager.get(entityName);
 
-      // 임시 ID 생성 (targetDb에 INSERT 후 실제 ID를 받음)
-      const tempId = Math.floor(Math.random() * 1000000);
+      // integer/bigInteger PK는 임시 ID 생성 (DB 시퀀스가 실제 ID 할당)
+      // string PK는 generate()에서 이미 생성된 id 값을 그대로 사용
+      const idProp = entity.props.find((p) => p.name === "id");
+      const usesSequence =
+        idProp?.type === "integer" ||
+        idProp?.type === "bigInteger" ||
+        idProp?.cone?.fixtureStrategy === "sequence";
+
+      const dataForRecord = usesSequence
+        ? { ...data, id: Math.floor(Math.random() * 1000000) }
+        : data;
+
       const records = await FixtureManager.createFixtureRecord(
         entity,
-        { ...data, id: tempId } as { id: number; [key: string]: string | number | boolean | null },
+        dataForRecord as { id: number | string; [key: string]: string | number | boolean | null },
         { singleRecord: true },
       );
       fixtureRecords.push(...records);

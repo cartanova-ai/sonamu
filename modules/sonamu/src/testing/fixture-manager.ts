@@ -736,13 +736,22 @@ export class FixtureManagerClass {
         continue;
       }
 
-      // id 처리: Override 모드일 때만 기존 값 사용
+      // id 처리
       if (propName === "id") {
+        const idProp = entity.props.find((p) => p.name === "id");
+        const usesSequence =
+          idProp?.type === "integer" ||
+          idProp?.type === "bigInteger" ||
+          idProp?.cone?.fixtureStrategy === "sequence";
+
         if (isOverrideMode && existingRecord) {
           // Override: 기존 레코드의 값 사용 → UPDATE
           row[propName] = existingRecord.columns[propName]?.value;
+        } else if (!usesSequence) {
+          // string PK: 생성된 id 값을 INSERT에 포함 (DB DEFAULT 없음)
+          row[propName] = column.value;
         }
-        // 새 레코드: 제외 → INSERT (DB/UpsertBuilder가 생성)
+        // integer/bigInteger PK: DB 시퀀스에 맡김 (값 제외)
         continue;
       }
 
