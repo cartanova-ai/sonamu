@@ -30,6 +30,7 @@ export type Cone = {
   // Fixture 생성 관련
   fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
   fixtureDefault?: unknown; // 기본값
+  fixtureStrategy?: "sequence"; // string 타입이지만 DB sequence로 관리되는 PK (better-auth 등)
 
   // 참조 데이터 관련
   dataSource?: {
@@ -1051,6 +1052,7 @@ const ConeSchema = z
     tags: z.array(z.string()).optional(),
     fixtureGenerator: z.string().optional(),
     fixtureDefault: z.unknown().optional(),
+    fixtureStrategy: z.literal("sequence").optional(),
     dataSource: z
       .object({
         strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),

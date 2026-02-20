@@ -81,6 +81,11 @@ export class FixtureGenerator {
         continue;
       }
 
+      // DB sequence로 관리되는 PK는 생성하지 않음 (DB가 자동 할당)
+      if (prop.name === "id" && "cone" in prop && prop.cone?.fixtureStrategy === "sequence") {
+        continue;
+      }
+
       // override가 있으면 사용
       if (prop.name in overrides) {
         fixture[prop.name] = overrides[prop.name];

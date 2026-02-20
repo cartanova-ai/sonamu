@@ -11,7 +11,10 @@
       "name": "id",
       "desc": "ID",
       "type": "string",
-      "cone": { "note": "사용자 고유 식별자. UUID 또는 자동 생성되는 고유 ID" }
+      "cone": { 
+        "note": "사용자 고유 식별자. DB sequence로 자동 생성되는 숫자를 text로 저장",
+        "fixtureStrategy": "sequence"
+      }
     },
     {
       "name": "created_at",

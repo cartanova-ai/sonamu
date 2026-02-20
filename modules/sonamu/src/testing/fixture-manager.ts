@@ -155,8 +155,13 @@ export class FixtureManagerClass {
         const idProp = entity.props.find((p) => p.name === "id");
         const idType = idProp?.type;
 
-        // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다 (text, uuid 등)
-        if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
+        // integer/bigInteger이거나, string이지만 fixtureStrategy=sequence인 경우에만 리셋합니다
+        const usesSequence =
+          idType === "integer" ||
+          idType === "bigInteger" ||
+          idProp?.cone?.fixtureStrategy === "sequence";
+
+        if (!usesSequence) {
           !isTest() &&
             console.log(
               `Skipping sequence reset for ${tableName} (id type: ${idType || "unknown"})`,
@@ -165,11 +170,12 @@ export class FixtureManagerClass {
         }
 
         // PostgreSQL 시퀀스를 현재 테이블의 MAX(id)로 리셋합니다.
-        // 세 번째 인자를 생략하면 기본값 true가 적용되어, 다음 INSERT 시 MAX(id)+1부터 시작합니다.
+        // string 타입의 경우 숫자 캐스팅이 필요합니다.
+        const maxExpr = idType === "string" ? "MAX(id::bigint)" : "MAX(id)";
         await testDb.raw(`
           SELECT setval(
             pg_get_serial_sequence('public.${tableName}', 'id'),
-            COALESCE((SELECT MAX(id) FROM ${tableName}), 1)
+            COALESCE((SELECT ${maxExpr} FROM ${tableName}), 1)
           )
         `);
       }
@@ -619,8 +625,13 @@ export class FixtureManagerClass {
               const idProp = entity.props.find((p) => p.name === "id");
               const idType = idProp?.type;
 
-              // integer나 bigInteger가 아닌 경우 sequence reset을 스킵합니다
-              if (!idType || (idType !== "integer" && idType !== "bigInteger")) {
+              // integer/bigInteger이거나, string이지만 fixtureStrategy=sequence인 경우에만 리셋합니다
+              const usesSequence =
+                idType === "integer" ||
+                idType === "bigInteger" ||
+                idProp?.cone?.fixtureStrategy === "sequence";
+
+              if (!usesSequence) {
                 !isTest() &&
                   console.log(
                     chalk.gray(
@@ -631,13 +642,25 @@ export class FixtureManagerClass {
               }
             }
 
-            // 테이블의 최대 ID 조회
-            const maxIdResult = await trx(tableName).max("id as max_id").first();
+            // 테이블의 최대 ID 조회 (string 타입은 숫자 캐스팅 필요)
+            const entity2 = EntityManager.getAllEntities().find(
+              (e) => e.table === tableName || e.id.toLowerCase() === tableName,
+            );
+            const idType2 = entity2?.props.find((p) => p.name === "id")?.type;
+            const maxIdResult =
+              idType2 === "string"
+                ? await trx
+                    .raw(`SELECT MAX(id::bigint) as max_id FROM "${tableName}"`)
+                    .then((r) => r.rows[0])
+                : await trx(tableName).max("id as max_id").first();
             const maxId = maxIdResult?.max_id;
 
             if (maxId !== null && maxId !== undefined) {
-              // 시퀀스를 최대 ID로 설정
-              await trx.raw(`SELECT setval('${tableName}_id_seq', ?)`, [maxId]);
+              // 시퀀스명을 pg_get_serial_sequence로 안전하게 조회
+              await trx.raw(`SELECT setval(pg_get_serial_sequence(?, 'id'), ?)`, [
+                tableName,
+                maxId,
+              ]);
               !isTest() && console.log(chalk.green(`Reset sequence for ${tableName}: ${maxId}`));
             }
           } catch (_err) {
