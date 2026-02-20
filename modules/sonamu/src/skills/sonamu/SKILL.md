@@ -44,6 +44,7 @@ overrides:
 pnpm install
 pnpm -r build
 ```
+> 빌드 실패 시 → 4번 도커 먼저 실행 후 5번 dev 서버 올리고 재시도
 
 ### 4. Docker 실행
 ```bash
@@ -55,6 +56,7 @@ pnpm docker:up
 ```bash
 pnpm dev
 ```
+> 3번 빌드가 실패했다면, dev 서버가 올라온 후 프로젝트 루트에서 `pnpm -r build` 재시도
 
 ### 6. Auth 엔티티 생성 (별도 터미널)
 **dev 실행 중**에:

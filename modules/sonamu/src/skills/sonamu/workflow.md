@@ -7,6 +7,9 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
 
 사용자가 시스템 구축을 요청하면 다음 7단계로 진행한다.
 
+**CRITICAL: 요구사항이 이미 제공된 경우에도 설계 및 비즈니스 로직은 반드시 사용자와 함께 확인한다.**
+요구사항 명세는 출발점일 뿐이다. Entity 구조, 관계, 필드, 상태 전이, 권한 규칙 등은 항상 사용자에게 질문하고 승인을 받아야 한다. 과거에 비슷한 요구사항을 받은 적이 있더라도 이번 프로젝트의 설계는 새로 확인한다.
+
 ## 사용자 요청 → 완성까지 7단계
 
 ### PHASE 1: 엔티티 설계
@@ -55,6 +58,7 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
    - 승인
 
 **완료 기준:**
+
 - [ ] 비즈니스 플로우 문서 작성 완료
 - [ ] 모든 필수 Entity 식별 완료
 - [ ] 각 Entity의 역할 정의 완료
@@ -70,10 +74,11 @@ Entity 설계 후 API 개발로 넘어가기 전에 **반드시** 다음을 수�
 **"추측하지 말고, 확인하라"**
 
 - DON'T: 필드명 추측 금지 → Entity JSON 확인 필수
-- DON'T: 관계 타입 추측 금지 → BelongsToOne은 자동으로 _id FK 생성
+- DON'T: 관계 타입 추측 금지 → BelongsToOne은 자동으로 \_id FK 생성
 - DON'T: Subset 접근 추측 금지 → nested 접근 방식 확인 (예: committee.id, evaluator.id)
 
 **API 개발 시작 전 체크리스트:**
+
 ```
 □ 1. 모든 Entity JSON 파일 읽기 완료
    - 필드명 정확히 파악
@@ -120,11 +125,13 @@ pnpm dev  # 이 상태로 유지하면서 작업
 **절차:**
 
 1. **stub 생성** (각 Entity마다)
+
    ```bash
    pnpm sonamu stub entity {EntityId}
    ```
+
    **중요:** EntityId는 대문자로 시작 (예: User, Course)
-   
+
    **자세한 내용:** entity-basic.md "Entity 생성 워크플로우" 참조
 
 2. **entity.json 작성**
@@ -148,6 +155,7 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - 생성 안 되면 수동 생성 (entity-validation-checklist.md 참조)
 
 6. **sync 실행**
+
    ```bash
    pnpm sonamu sync
    ```
@@ -157,6 +165,7 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - web 패키지 동기화 확인
 
 **완료 기준:**
+
 - [ ] 모든 Entity의 entity.json 검증 통과
 - [ ] 모든 Entity의 model.ts 존재
 - [ ] 모든 Entity의 types.ts 존재 (자동 생성 또는 수동)
@@ -173,22 +182,28 @@ pnpm dev  # 이 상태로 유지하면서 작업
 **참조 스킬:** migration.md, entity-validation-checklist.md
 
 **사전 확인:**
+
 - `/packages/api`에서 `pnpm dev`가 실행 중인지 확인
-- 브라우저에서 Sonamu UI 접속 가능: `http://localhost:3000/__sonamu` (기본 포트)
+- 브라우저에서 Sonamu UI 접속 가능: `http://localhost:34900/sonamu-ui` (기본 포트)
 
 **절차:**
 
-1. **Migration 생성**
-   
-   **방법 1 (권장): Sonamu UI에서 생성**
-   - 브라우저에서 `http://localhost:3000/__sonamu` 접속
-   - Migration 메뉴로 이동
-   - 자동 감지된 Entity 변경사항 확인
-   - "Create Migration" 버튼 클릭
-   
-   **방법 2: CLI**
+1. **Migration 생성 및 적용**
+
+   사용자에게 선택지를 제시한다:
+
+   > "Migration을 Sonamu UI에서 직접 실행하시겠어요, 아니면 제가 CLI로 대신 실행할까요?"
+
+   **선택 1 - 사용자가 UI에서 직접:**
+   - `http://localhost:34900/sonamu-ui` 접속
+   - Migration 탭 → Generate 대상 확인 → 생성 및 Apply 실행
+   - 완료 후 알려주세요
+
+   **선택 2 - CC가 CLI로 대행:**
    ```bash
    pnpm sonamu migration:create
+   pnpm sonamu migration:latest --dry-run  # 확인
+   pnpm sonamu migration:latest            # 실행
    ```
 
 2. **Migration 파일 검증** (entity-validation-checklist.md PHASE 4)
@@ -198,17 +213,8 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - [ ] Index가 생성되는가?
    - [ ] Boolean 컬럼의 default가 올바른가? (true/false)
 
-3. **Dry-run 확인**
-   ```bash
-   pnpm sonamu migration:latest --dry-run
-   ```
-
-4. **Migration 실행**
-   ```bash
-   pnpm sonamu migration:latest
-   ```
-
 **완료 기준:**
+
 - [ ] Migration 오류 없이 완료
 - [ ] DB에 테이블 생성 확인 (psql 또는 DB UI)
 
@@ -225,15 +231,29 @@ pnpm dev  # 이 상태로 유지하면서 작업
 **절차:**
 
 1. **빌드 및 서버 재시작**
+
    ```bash
    cd packages/api
    pnpm build
    pnpm dev  # 재시작
    ```
 
-2. **Sonamu UI에서 각 Entity scaffolding**
-   - 브라우저에서 Sonamu UI 접속
-   - 각 Entity별로 scaffold 실행
+2. **각 Entity Scaffolding 실행**
+
+   사용자에게 선택지를 제시한다:
+
+   > "Scaffolding을 Sonamu UI에서 직접 실행하시겠어요, 아니면 제가 CLI로 대신 실행할까요?"
+
+   **선택 1 - 사용자가 UI에서 직접:**
+   - `http://localhost:34900/sonamu-ui` 접속
+   - 각 Entity별로 Scaffolding 실행
+   - 완료 후 알려주세요
+
+   **선택 2 - CC가 CLI로 대행:**
+   ```bash
+   pnpm sonamu scaffold model {EntityId}
+   pnpm sonamu scaffold view {EntityId}
+   ```
 
 3. **Scaffolding 후 필수 작업**
    - [ ] **Relation이 있는 경우**: ko.ts에 `{relation}_id` 키 추가
@@ -257,18 +277,23 @@ pnpm dev  # 이 상태로 유지하면서 작업
      - 모든 Entity의 types.ts에서 nullable 필드 처리
      - testing.md "엔티티 생성 후 즉시 해야 할 작업" 참조
 
-4. **빌드 확인**
+4. **빌드 및 코드 품질 확인**
+
    ```bash
-   # API 빌드
+   # API
    cd packages/api
-   pnpm build
-   
-   # Web 빌드
+   pnpm biome check --write .  # lint + format 자동 수정
+   pnpm build                  # 타입체크
+
+   # Web
    cd packages/web
+   pnpm biome check --write .
    pnpm build
    ```
 
 **완료 기준:**
+
+- [ ] biome check 통과 (API, Web 모두)
 - [ ] Build 성공 (API, Web 모두)
 - [ ] Dev 서버 정상 작동
 - [ ] Relation이 있는 경우 ko.ts 키 추가 완료
@@ -293,23 +318,22 @@ pnpm dev  # 이 상태로 유지하면서 작업
    cd packages/api
    pnpm dump
    ```
-   
 2. **생성된 dump 파일 확인 및 편집**
-   
+
    Dump 파일 위치: `database/dumps/fixture.sql`
-   
+
    파일을 열어서 **적절한 위치에 INSERT문 추가**:
-   
+
    ```sql
    -- User 테이블 테스트 데이터
-   INSERT INTO users (id, email, username, password, role, created_at) 
+   INSERT INTO users (id, email, username, password, role, created_at)
    VALUES (1, 'admin@test.com', 'admin', 'hashed_password', 'admin', NOW());
-   
+
    -- Organization 테이블 테스트 데이터
-   INSERT INTO organizations (id, name, code) 
+   INSERT INTO organizations (id, name, code)
    VALUES (1, '본사', 'HQ');
    ```
-   
+
    **주의:**
    - FK 관계를 고려하여 부모 테이블부터 INSERT
    - 테스트에서 사용할 최소한의 데이터만 추가
@@ -322,6 +346,7 @@ pnpm dev  # 이 상태로 유지하면서 작업
    ```
 
 **완료 확인:**
+
 - [ ] dump 파일에 필요한 INSERT문 추가 완료
 - [ ] fixture DB에 seed 데이터 적용 완료
 - [ ] test DB에 동기화 완료
@@ -343,28 +368,30 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - 예: 그룹 1 (기반 인프라), 그룹 2 (피해유형), 그룹 3 (상담 프로세스)
 
 4. **그룹별로 반복:**
-   
+
    a. **test-helpers.ts 확장**
    - 그룹 내 Entity들의 헬퍼 함수 작성
    - 의존성 체인 고려 (`createTestXXXWithDeps`)
-   
+
    b. **테스트 파일 작성**
    - `bootstrap(vi)` 필수
    - describe + test 패턴 사용
    - A. Create, B. Read, C. Update, D. Delete
-   
+
    c. **Business Logic 테스트 작성 (핵심!)**
    - E. Business Logic 섹션
    - 실제 업무 시나리오 구현
    - Entity 간 상호작용 테스트
    - 데이터 흐름 검증
-   
+
    d. **테스트 통과 확인**
+
    ```bash
    pnpm test
    ```
-   
+
    e. **Git commit**
+
    ```bash
    git add .
    git commit -m "[테스트] 그룹 N 완료: EntityA, EntityB, EntityC"
@@ -373,6 +400,7 @@ pnpm dev  # 이 상태로 유지하면서 작업
 5. **다음 그룹**
 
 **완료 기준:**
+
 - [ ] 모든 Entity 테스트 통과
 - [ ] **Business Logic 테스트 포함** (실제 업무 시나리오)
 - [ ] 업무 시나리오 검증 완료
@@ -418,14 +446,17 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - PHASE 5의 Business Logic 테스트에 커스텀 API 호출 추가
    - 각 API의 정상 동작 및 에러 케이스 검증
 
-7. **빌드 및 테스트 통과 확인**
+7. **빌드 및 코드 품질 확인**
    ```bash
    cd packages/api
-   pnpm build
+   pnpm biome check --write .  # lint + format
+   pnpm build                  # 타입체크
    pnpm test
    ```
 
 **완료 기준:**
+
+- [ ] biome check 통과
 - [ ] 요구사항에 따른 모든 API 구현 완료
 - [ ] 각 API에 적절한 @api 데코레이터 적용
 - [ ] 권한 가드 적용 (guards)
@@ -475,12 +506,12 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - **상세 가이드:** frontend.md "커스텀 API" 참조
 
 6. **실제 동작 확인**
-   
+
    ```bash
    cd packages/web
    pnpm dev
    ```
-   
+
    브라우저에서 확인할 항목:
    - [ ] 목록 조회 정상 동작
    - [ ] 페이지네이션 정상 동작
@@ -502,6 +533,7 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - UI 문제 → Frontend 컴포넌트 수정
 
 **완료 기준:**
+
 - [ ] 모든 주요 화면 구현 완료
 - [ ] 실제 동작 확인 완료
 - [ ] **비즈니스 로직 정상 동작 확인**
@@ -515,58 +547,64 @@ pnpm dev  # 이 상태로 유지하면서 작업
 
 ## 빠른 참조 테이블
 
-| 단계 | 예상 시간 | 핵심 명령어 | 핵심 스킬 |
-|------|-----------|-------------|----------|
-| 1. 설계 | 5-10분 | (대화) | entity-basic.md |
-| 2. 생성 | 10-15분 | `stub entity`, `sync` | entity-basic.md |
-| 3. 마이그레이션 | 5분 | `migration:latest` | migration.md |
-| 4. 스캐폴딩 | 5-10분 | `scaffold`, `build` | scaffolding.md |
-| 5. 테스트 | 30-60분 | `test`, `test:watch` | testing.md |
-| **6. API 개발** | **1-3시간** | **@api 데코레이터** | **api.md, model.md** |
-| **7. Frontend** | **2-5시간** | **Service, useTypeForm** | **frontend.md** |
-
+| 단계            | 예상 시간   | 핵심 명령어              | 핵심 스킬            |
+| --------------- | ----------- | ------------------------ | -------------------- |
+| 1. 설계         | 5-10분      | (대화)                   | entity-basic.md      |
+| 2. 생성         | 10-15분     | `stub entity`, `sync`    | entity-basic.md      |
+| 3. 마이그레이션 | 5분         | `migration:latest`       | migration.md         |
+| 4. 스캐폴딩     | 5-10분      | `scaffold`, `build`      | scaffolding.md       |
+| 5. 테스트       | 30-60분     | `test`, `test:watch`     | testing.md           |
+| **6. API 개발** | **1-3시간** | **@api 데코레이터**      | **api.md, model.md** |
+| **7. Frontend** | **2-5시간** | **Service, useTypeForm** | **frontend.md**      |
 
 ---
 
 ## 각 단계의 완료 확인
 
 ### PHASE 1 완료 시
+
 ```
 엔티티 설계 완료
 → 다음: PHASE 2 엔티티 생성 (entity-basic.md)
 ```
 
 ### PHASE 2 완료 시
+
 ```
 엔티티 생성 완료
 → 다음: PHASE 3 마이그레이션 (migration.md)
 ```
 
 ### PHASE 3 완료 시
+
 ```
 마이그레이션 완료
 → 다음: PHASE 4 스캐폴딩 (scaffolding.md)
 ```
 
 ### PHASE 4 완료 시
+
 ```
 스캐폴딩 완료
 → 다음: PHASE 5 테스트 작성 (testing.md)
 ```
 
 ### PHASE 5 완료 시
+
 ```
 테스트 작성 완료
 → 다음: PHASE 6 API 개발 (api.md)
 ```
 
 ### PHASE 6 완료 시
+
 ```
 API 개발 완료
 → 다음: PHASE 7 Frontend 개발 (frontend.md)
 ```
 
 ### PHASE 7 완료 시
+
 ```
 Frontend 개발 완료
 전체 워크플로우 완료
@@ -592,11 +630,13 @@ Frontend 개발 완료
 **CRITICAL: Entity가 10개 이상인 프로젝트는 한 번에 작업하지 마세요.**
 
 배치 단위로 작업:
+
 1. 연관된 Entity끼리 5-10개씩 묶기
 2. 배치마다 PHASE 2-7 완료 후 커밋
 3. 다음 배치 진행
 
 **예시:**
+
 ```
 1차 배치: User, Organization, Role (5개)
   → PHASE 2-7 완료 → Git commit
@@ -627,6 +667,7 @@ Frontend 개발 완료
 ## 다음 단계
 
 워크플로우 완료 후:
+
 - 배포: 프로젝트별 배포 가이드 참조
 - 모니터링: 로그 및 에러 추적 설정
 - 성능 최적화: 쿼리 최적화, 캐싱 전략

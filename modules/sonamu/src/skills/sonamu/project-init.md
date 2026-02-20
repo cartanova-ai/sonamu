@@ -218,6 +218,8 @@ pnpm install
 pnpm -r build
 ```
 
+> **빌드 실패 시:** 리소스 초기화 실패일 수 있음. 4번 도커를 먼저 띄운 후 5번 dev 서버 실행하고 재시도.
+
 #### 4. DB 실행
 ```bash
 cd packages/api
@@ -230,6 +232,8 @@ pnpm docker:up
 ```bash
 pnpm dev
 ```
+
+> 3번 빌드가 실패했다면, dev 서버가 올라온 후 프로젝트 루트에서 `pnpm -r build` 재시도
 
 > Sonamu UI: http://localhost:34900/sonamu-ui
 
@@ -289,6 +293,8 @@ cd [프로젝트명]
 pnpm install
 pnpm -r build
 ```
+
+> **빌드 실패 시:** A의 3번과 동일 처리 - 도커 먼저 띄운 후 dev 실행, 재빌드
 
 #### 4-9. A의 4-9 단계 동일
 
