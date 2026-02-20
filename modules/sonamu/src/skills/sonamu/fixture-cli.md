@@ -489,9 +489,11 @@ export default defineConfig({
 
 #### 캐싱 동작
 
-- 동일한 `entity:field:note` 조합은 LLM을 재호출하지 않음
-- 같은 FixtureGenerator 인스턴스 내에서만 유효 (인메모리)
-- `--no-cache`로 비활성화 가능
+- `useLLM=true` 시 하나의 row에서 LLM 대상 필드 전체를 **단일 LLM 호출**로 생성 (필드별 개별 호출 아님)
+- 단일 호출 덕분에 `name`, `name_en`, `name_cn`, `email` 등 연관 필드 간 일관성이 자동으로 보장됨
+- 생성된 결과는 `rowKey:fieldName` 키로 인메모리 캐시에 저장되어, 같은 row 내 다음 필드 처리 시 즉시 반환
+- 캐시는 같은 FixtureGenerator 인스턴스 내에서만 유효
+- `--no-cache`로 캐시 비활성화 가능 (단, row 단위 생성 방식 자체는 유지됨)
 
 #### Fallback 동작
 

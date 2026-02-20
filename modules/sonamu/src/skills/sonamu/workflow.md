@@ -1,6 +1,6 @@
 ---
 name: sonamu-workflow
-description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Frontend 개발까지 7단계 가이드. Use when starting a new feature or system from scratch.
+description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Frontend 개발까지 7단계(PHASE 1~7) 가이드. Use when starting a new feature or system from scratch.
 ---
 
 # Sonamu 전체 개발 워크플로우

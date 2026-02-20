@@ -249,7 +249,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 
 | Skill | 파일 | 용도 |
 |-------|------|------|
-| **전체 워크플로우** | `workflow.md` | **엔티티 설계 → 테스트 완료 5단계 가이드** |
+| **전체 워크플로우** | `workflow.md` | **엔티티 설계 → Frontend 개발 7단계 가이드** |
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
 | 프로젝트 설정 | `config.md` | .env, sonamu.config.ts 설정 |
@@ -276,7 +276,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 
 | 작업 | 참고 Skill |
 |------|-----------|
-| **처음부터 전체 시스템 개발** | **workflow.md (5단계 마스터 가이드)** |
+| **처음부터 전체 시스템 개발** | **workflow.md (7단계 마스터 가이드)** |
 | 프로젝트 생성 | create-sonamu, project-init |
 | 프로젝트 설정 | config |
 | Sonamu 로컬 개발 설정 | config |

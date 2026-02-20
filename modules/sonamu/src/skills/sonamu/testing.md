@@ -40,8 +40,8 @@ export async function createTestUser(params?: Partial<UserSaveParams>): Promise<
     name: "Test User",
     ...params,
   };
-  const saved = await UserModel.save(user);
-  return saved.id;
+  const [id] = await UserModel.save([user]);
+  return id;
 }
 
 // User with dependencies (의존성 체인)
@@ -61,8 +61,8 @@ export async function createTestPost(
     content: "Test content",
     ...params,
   };
-  const saved = await PostModel.save(post);
-  return saved.id;
+  const [id] = await PostModel.save([post]);
+  return id;
 }
 
 // Post with dependencies
@@ -84,8 +84,8 @@ export async function createTestComment(
     content: "Test comment",
     ...params,
   };
-  const saved = await CommentModel.save(comment);
-  return saved.id;
+  const [id] = await CommentModel.save([comment]);
+  return id;
 }
 
 // Comment with dependencies
@@ -228,11 +228,12 @@ describe("PostModel", () => {
     test("게시글 수정", async () => {
       const { postId } = await createTestPostWithDeps();
       
-      const updated = await PostModel.save({
+      await PostModel.save([{
         id: postId,
         title: "Updated Title",
-      });
+      }]);
       
+      const updated = await PostModel.findById("A", postId);
       expect(updated.title).toBe("Updated Title");
     });
   });
@@ -2240,8 +2241,8 @@ findById 결과를 수정 후 다시 save할 때 relation을 FK로 변환해야 
 ```typescript
 // api/src/testing/test-helpers.ts
 
-// Task Subset D → SaveParams 변환
-export function taskToSaveParams(task: TaskSubsetD): TaskSaveParams {
+// Task Subset A → SaveParams 변환
+export function taskToSaveParams(task: TaskSubsetA): TaskSaveParams {
   const {
     program,
     project,
@@ -2289,13 +2290,13 @@ import { createTestTaskWithDeps, taskToSaveParams } from "../../testing/test-hel
 test("Update - 과제 정보 수정", async () => {
   const { taskId } = await createTestTaskWithDeps();
 
-  const task = await TaskModel.findById("D", taskId);
+  const task = await TaskModel.findById("A", taskId);
   await TaskModel.save([{
     ...taskToSaveParams(task),
     title: "수정된 제목",
   }]);
 
-  const updated = await TaskModel.findById("D", taskId);
+  const updated = await TaskModel.findById("A", taskId);
   expect(updated.title).toBe("수정된 제목");
 });
 ```
