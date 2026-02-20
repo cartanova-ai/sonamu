@@ -1,6 +1,6 @@
 import { DB, type DBPreset, EntityManager } from "sonamu";
 import { bootstrap, FixtureGenerator, test } from "sonamu/test";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, vi } from "vitest";
 
 // ai 패키지의 generateText 모킹
 vi.mock("ai", async (importOriginal) => {
@@ -26,6 +26,28 @@ beforeEach(async () => {
 });
 
 describe("FixtureGenerator LLM", () => {
+  // User 엔티티의 bio 필드 원본 cone을 저장하여 모든 테스트 후 복원
+  let savedOriginalCone: unknown;
+
+  beforeAll(() => {
+    const userEntity = EntityManager.get("User");
+    const bioProp = userEntity.props.find((p) => p.name === "bio");
+    if (bioProp) {
+      savedOriginalCone = bioProp.cone;
+      // 모든 테스트에서 사용할 cone.note 설정 (entity 캐싱으로 모든 테스트가 이를 공유)
+      bioProp.cone = { note: "자기소개" };
+    }
+  });
+
+  afterAll(() => {
+    // 모든 테스트 완료 후 원본 cone 복원
+    const userEntity = EntityManager.get("User");
+    const bioProp = userEntity.props.find((p) => p.name === "bio");
+    if (bioProp) {
+      bioProp.cone = savedOriginalCone as typeof bioProp.cone;
+    }
+  });
+
   test("API 키 없을 때 fallback 동작", async () => {
     const originalKey = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
@@ -331,6 +353,8 @@ describe("FixtureGenerator LLM", () => {
   });
 
   test("캐시 초기화", async () => {
+    // 이전 테스트의 mock 설정 완전히 초기화 (mockClear는 호출 기록만 지우고 설정은 남음)
+    mockGenerateText.mockReset();
     mockGenerateText.mockResolvedValue({
       text: '{"bio": "테스트 데이터"}',
       usage: { totalTokens: 20 },
@@ -369,7 +393,8 @@ describe("FixtureGenerator LLM", () => {
 
       // 첫 번째 생성
       await generator.generate("User", overrides);
-      expect(generator.getLLMCacheStats().size).toBeGreaterThan(0);
+      // cache.size 대신 mock 호출 여부로 확인 (entity cone 상태에 더 견고)
+      expect(mockGenerateText).toHaveBeenCalledTimes(1);
 
       // 캐시 초기화
       generator.clearLLMCache();

@@ -38,6 +38,7 @@ export class FixtureGenerator {
   private locale: Locale;
   private mappings: FakerMappings;
   private llmCache: Map<string, unknown> = new Map();
+  private entityCache: Map<string, Entity> = new Map();
   private options: FixtureGeneratorOptions;
 
   constructor(
@@ -69,7 +70,13 @@ export class FixtureGenerator {
     overrides: Record<string, unknown> = {},
     context: GeneratorContext = this.createContext(),
   ): Promise<Record<string, unknown>> {
-    const entity = this.entityManager.get(entityName);
+    // Entity 캐싱: 테스트에서 entity cone 수정이 반영되도록 보장
+    let entity = this.entityCache.get(entityName);
+    if (!entity) {
+      entity = this.entityManager.get(entityName);
+      this.entityCache.set(entityName, entity);
+    }
+
     const tempId = `${entityName}#temp#${Date.now()}`; // 임시 ID
 
     // LLM row 단위 생성을 위한 고유 키 (같은 row의 필드들이 동일한 rowKey를 공유)
@@ -750,6 +757,15 @@ export class FixtureGenerator {
         if (p.name === "id" && p.cone?.fixtureStrategy === "sequence") return false;
         return !!p.cone?.note;
       });
+
+      // llmProps가 비어있으면 단일 필드 방식으로 fallback
+      if (llmProps.length === 0) {
+        !isTest() &&
+          console.log(
+            `[FixtureGenerator] llmProps is empty for ${entity.id}.${prop.name}, using single field fallback`,
+          );
+        return this.generateSingleWithLLM(fixtureHint, prop, entity);
+      }
 
       const apiKey = this.getApiKey();
       const { createAnthropic } = await import("@ai-sdk/anthropic");
