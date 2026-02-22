@@ -104,6 +104,14 @@ export class DevVitestManager {
     }
     this.closed = true;
 
+    // 큐에 남은 작업들을 reject하여 호출자가 영구 대기하지 않도록 정리
+    while (this.queue.length > 0) {
+      const entry = this.queue.shift();
+      if (entry) {
+        entry.reject(new Error("DevVitestManager is being shut down"));
+      }
+    }
+
     if (this.vitest) {
       await this.vitest.close();
       this.vitest = null;
