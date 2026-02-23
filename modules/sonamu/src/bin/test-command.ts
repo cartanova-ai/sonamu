@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
 import { findApiRootPath } from "../utils/utils";
@@ -122,15 +123,18 @@ export async function testCommand(): Promise<void> {
     if (showTraces && result.traces && result.traces.length > 0) {
       console.log("\nTraces:");
       for (const testTraces of result.traces) {
-        console.log(`  ${testTraces.testName} (${testTraces.file})`);
+        console.log(`\n  ${testTraces.testName}`);
+        console.log(`  ${path.basename(testTraces.file)}`);
         for (const trace of testTraces.traces) {
-          // value가 undefined인 경우 JSON.stringify가 undefined를 반환하므로 빈 문자열로 대체
-          const valueStr = (JSON.stringify(trace.value, null, 2) ?? "undefined")
-            .split("\n")
-            .join("\n        ");
-          console.log(`    [${trace.key}] ${trace.at}`);
-          console.log(`      at ${trace.filePath}:${trace.lineNumber}`);
-          console.log(`      ${valueStr}`);
+          const loc = `${path.basename(trace.filePath)}:${trace.lineNumber}`;
+          const valueStr =
+            typeof trace.value === "string"
+              ? trace.value
+              : (JSON.stringify(trace.value, null, 2) ?? "undefined");
+          console.log(`\n    [${trace.key}] ${loc}`);
+          // value가 여러 줄이면 각 줄을 들여쓰기하여 출력합니다.
+          const indented = valueStr.split("\n").join("\n    ");
+          console.log(`    ${indented}`);
         }
       }
     }
