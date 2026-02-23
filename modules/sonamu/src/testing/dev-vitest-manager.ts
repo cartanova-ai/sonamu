@@ -7,15 +7,7 @@ import type {
   TestSpecification,
   Vitest,
 } from "vitest/node";
-
-// bootstrap.ts TaskMeta augmentation과 동일한 구조의 직렬화된 trace 타입
-export type SerializedTrace = {
-  key: string;
-  value: unknown;
-  filePath: string;
-  lineNumber: number;
-  at: string;
-};
+import type { SerializedTrace } from "../naite/naite";
 
 // 테스트 한 건의 trace 모음
 export type TestTraces = {

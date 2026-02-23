@@ -2,6 +2,7 @@ import path from "node:path";
 import chalk from "chalk";
 import type { SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
+import type { RunResult } from "../testing";
 import { findApiRootPath } from "../utils/utils";
 
 export async function testCommand(): Promise<void> {
@@ -89,28 +90,7 @@ export async function testCommand(): Promise<void> {
       process.exit(1);
     }
 
-    const result = (await response.json()) as {
-      ok: boolean;
-      summary: {
-        passed: number;
-        failed: number;
-        skipped: number;
-        total: number;
-        durationMs: number;
-      };
-      failed: { name: string; file: string; error: string }[];
-      traces: {
-        testName: string;
-        file: string;
-        traces: {
-          key: string;
-          value: unknown;
-          filePath: string;
-          lineNumber: number;
-          at: string;
-        }[];
-      }[];
-    };
+    const result = (await response.json()) as RunResult;
 
     const { passed, failed: failedCount, total, durationMs } = result.summary;
     const passedStr = chalk.green(`${passed} passed`);

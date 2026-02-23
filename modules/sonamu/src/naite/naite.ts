@@ -25,6 +25,16 @@ interface NaiteTrace {
 // Naite.t가 저장되는 타입 (항상 배열로 통일)
 export type NaiteStore = Map<string, NaiteTrace[]>;
 
+// getAllTraces()가 반환하는 직렬화된 trace 타입
+// bootstrap.ts의 TaskMeta augmentation, dev-vitest-manager.ts에서도 이 타입을 공유합니다.
+export type SerializedTrace = {
+  key: string;
+  value: any;
+  filePath: string;
+  lineNumber: number;
+  at: string;
+};
+
 /**
  * 콜스택을 파싱하여 StackFrame 배열로 반환
  * - extractCallStack 자신과 Naite.t는 제외
@@ -338,13 +348,7 @@ export class NaiteClass {
    * 테스트 정보와 함께 extensions에 보낼 용도로 만들었습니다.
    * @returns
    */
-  getAllTraces(): {
-    key: string;
-    value: any;
-    filePath: string;
-    lineNumber: number;
-    at: string;
-  }[] {
+  getAllTraces(): SerializedTrace[] {
     const context = Sonamu.getContext();
     if (!context?.naiteStore) {
       return [];
