@@ -68,13 +68,20 @@ pnpm sonamu test src/application/user/user.test.ts src/application/post/post.tes
 
 `pnpm sonamu test`는 dev 서버 내부에 상주하는 Vitest 인스턴스를 HTTP 요청으로 호출합니다.
 
-```
-┌─────────────┐    HTTP POST     ┌──────────────────────┐
-│ sonamu test  │ ──────────────> │ dev 서버 (pnpm dev)  │
-│ (CLI)       │                 │   └─ DevVitestManager│
-│             │ <────────────── │      └─ Vitest       │
-│ 결과 출력   │    JSON 응답    │                      │
-└─────────────┘                 └──────────────────────┘
+```mermaid
+sequenceDiagram
+    participant CLI as sonamu test (CLI)
+    participant DEV as dev 서버 (pnpm dev)
+    participant DVM as DevVitestManager
+    participant V as Vitest
+
+    CLI->>DEV: HTTP POST /__test__/run
+    DEV->>DVM: 테스트 실행 요청
+    DVM->>V: runTests()
+    V-->>DVM: 테스트 결과
+    DVM-->>DEV: 결과 반환
+    DEV-->>CLI: JSON 응답
+    CLI->>CLI: 결과 출력
 ```
 
 1. CLI가 dev 서버의 `/__test__/run` 엔드포인트에 POST 요청을 보냅니다.

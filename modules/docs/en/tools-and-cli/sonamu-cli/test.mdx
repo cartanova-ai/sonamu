@@ -68,13 +68,20 @@ pnpm sonamu test src/application/user/user.test.ts src/application/post/post.tes
 
 `pnpm sonamu test` invokes the resident Vitest instance inside the dev server via an HTTP request.
 
-```
-┌─────────────┐    HTTP POST     ┌──────────────────────┐
-│ sonamu test  │ ──────────────> │ dev server (pnpm dev)│
-│ (CLI)       │                 │   └─ DevVitestManager│
-│             │ <────────────── │      └─ Vitest       │
-│ Print result│    JSON response│                      │
-└─────────────┘                 └──────────────────────┘
+```mermaid
+sequenceDiagram
+    participant CLI as sonamu test (CLI)
+    participant DEV as dev server (pnpm dev)
+    participant DVM as DevVitestManager
+    participant V as Vitest
+
+    CLI->>DEV: HTTP POST /__test__/run
+    DEV->>DVM: Run tests request
+    DVM->>V: runTests()
+    V-->>DVM: Test results
+    DVM-->>DEV: Return results
+    DEV-->>CLI: JSON response
+    CLI->>CLI: Print summary
 ```
 
 1. The CLI sends a POST request to the dev server's `/__test__/run` endpoint.
