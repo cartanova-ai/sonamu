@@ -30,6 +30,7 @@ const okRunResult: RunResult = {
   ok: true,
   summary: { total: 3, passed: 2, failed: 0, skipped: 1, durationMs: 42 },
   failed: [],
+  traces: [],
 };
 
 const okStatus: ManagerStatus = {
