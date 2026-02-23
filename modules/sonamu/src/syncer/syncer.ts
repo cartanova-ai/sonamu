@@ -193,7 +193,10 @@ export class Syncer {
     const entityId = EntityManager.getEntityIdFromPath(invalidatedPath);
     const toRemove = registeredApis.filter((api) => api.modelName === `${entityId}Model`);
     for (const api of toRemove) {
-      registeredApis.splice(registeredApis.indexOf(api), 1);
+      const idx = registeredApis.indexOf(api);
+      if (idx !== -1) {
+        registeredApis.splice(idx, 1);
+      }
     }
 
     return toRemove;
