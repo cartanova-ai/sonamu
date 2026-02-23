@@ -51,23 +51,27 @@ declare module "@tanstack/react-router" {
   }
 }
 
-await router.load();
+// async IIFE로 감싸서 top-level await 제거
+// (top-level await가 있으면 Vite 빌드 시 코드 스플릿 청크가 메인 엔트리를 import하면서 순환 의존성 데드락 발생)
+(async () => {
+  await router.load();
 
-// SSR/CSR 모두 document 전체에 렌더링
-if (document.documentElement.innerHTML && dehydratedState) {
-  // SSR 페이지
-  if (ssrConfig?.disableHydrate) {
-    // disableHydrate: document 전체 새로 렌더링
-    console.log("[Sonamu] Hydration disabled, rendering as CSR");
-    ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+  // SSR/CSR 모두 document 전체에 렌더링
+  if (document.documentElement.innerHTML && dehydratedState) {
+    // SSR 페이지
+    if (ssrConfig?.disableHydrate) {
+      // disableHydrate: document 전체 새로 렌더링
+      console.log("[Sonamu] Hydration disabled, rendering as CSR");
+      ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+    } else {
+      // 정상 hydration: document 전체 hydrate
+      ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+    }
   } else {
-    // 정상 hydration: document 전체 hydrate
-    ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+    // Pure CSR 페이지: document 전체 렌더링
+    ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
   }
-} else {
-  // Pure CSR 페이지: document 전체 렌더링
-  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
-}
+})();
 
 // Chrome Extension용 Devtools
 declare global {
