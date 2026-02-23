@@ -11,7 +11,7 @@ import {
 import type { Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
-import { Naite } from "../naite/naite";
+import { Naite, type SerializedTrace } from "../naite/naite";
 import { NaiteReporter } from "../naite/naite-reporter";
 
 export interface BootstrapOptions {
@@ -86,14 +86,7 @@ export async function runWithMockContext(fn: () => Promise<void>) {
 
 declare module "vitest" {
   interface TaskMeta {
-    traces: {
-      key: string;
-      // biome-ignore lint/suspicious/noExplicitAny: expect와 호응하도록 any를 허용함.
-      value: any;
-      filePath: string;
-      lineNumber: number;
-      at: string;
-    }[];
+    traces: SerializedTrace[];
   }
 }
 
