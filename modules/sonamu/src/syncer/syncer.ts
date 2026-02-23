@@ -154,6 +154,13 @@ export class Syncer {
       }
     }
 
+    // devRunner 활성화 시, 변경된 소스 파일을 Vitest 모듈 그래프에서도 무효화합니다.
+    // Vite의 moduleGraph.invalidateModule()이 importer 방향으로 재귀적 cascade하므로,
+    // 소스 파일 하나만 무효화하면 이를 import하는 테스트 파일도 자동으로 무효화됩니다.
+    if (!isTest() && Sonamu.config.test?.devRunner?.enabled && Sonamu.devVitestManager) {
+      Sonamu.devVitestManager.invalidateFiles([diffFilePath]);
+    }
+
     const isInCheckPatternGroup = Object.values(getChecksumPatternGroupInAbsolutePath()).some(
       (pattern) => minimatch(diffFilePath, pattern),
     );
