@@ -49,6 +49,9 @@ pnpm sonamu test --pattern "findMany"
 
 # Combine file and pattern
 pnpm sonamu test src/application/user/user.test.ts --pattern "findById"
+
+# Show trace information
+pnpm sonamu test --traces
 ```
 
 ### Options
@@ -56,6 +59,7 @@ pnpm sonamu test src/application/user/user.test.ts --pattern "findById"
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--pattern <name>` | `-p <name>` | Filter tests by name pattern |
+| `--traces` | `-t` | Show trace information collected during tests |
 
 <Tip>
 You can specify multiple file paths:
@@ -63,6 +67,39 @@ You can specify multiple file paths:
 pnpm sonamu test src/application/user/user.test.ts src/application/post/post.test.ts
 ```
 </Tip>
+
+## Trace Output
+
+Use the `--traces` (`-t`) option to display trace information collected via `Naite.t()` during test execution. Each trace includes its key, source location, and value.
+
+```bash
+pnpm sonamu test --traces
+```
+
+```
+Tests: 3 passed, 0 failed, 3 total
+Duration: 245ms
+
+Traces:
+  UserModel.findMany
+  user.test.ts
+
+    [query] user.model.ts:42
+    SELECT * FROM users WHERE ...
+
+    [result] user.model.ts:45
+    [{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]
+```
+
+You can record traces in your test or model code using `Naite.t()`:
+
+```typescript
+import { Naite } from "sonamu";
+
+// Inside test or model code
+Naite.t("query", sqlString);
+Naite.t("result", rows);
+```
 
 ## How It Works
 
