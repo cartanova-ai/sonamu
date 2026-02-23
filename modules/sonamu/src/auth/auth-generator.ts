@@ -33,8 +33,7 @@ function findPropsToUpdate(
 
     const existingProp = existingProps[existingIndex];
     // type이 다르거나 cone.fixtureStrategy가 다르면 업데이트 대상
-    const coneChanged =
-      requiredProp.cone?.fixtureStrategy !== existingProp?.cone?.fixtureStrategy;
+    const coneChanged = requiredProp.cone?.fixtureStrategy !== existingProp?.cone?.fixtureStrategy;
     if (existingProp?.type !== requiredProp.type || coneChanged) {
       result.push({ index: existingIndex, newProp: requiredProp });
     }
