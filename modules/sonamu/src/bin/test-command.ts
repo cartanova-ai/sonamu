@@ -1,4 +1,5 @@
 import path from "node:path";
+import chalk from "chalk";
 import type { SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
 import { findApiRootPath } from "../utils/utils";
@@ -38,7 +39,9 @@ export async function testCommand(): Promise<void> {
 
   if (!config.test?.devRunner?.enabled) {
     console.error(
-      "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+      chalk.red(
+        "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+      ),
     );
     process.exit(1);
   }
@@ -65,22 +68,24 @@ export async function testCommand(): Promise<void> {
 
     if (response.status === 404) {
       console.error(
-        "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+        chalk.red(
+          "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+        ),
       );
       process.exit(1);
     }
 
     if (response.status === 500) {
       const errorBody = (await response.json()) as { error?: string };
-      console.error("Vitest 인스턴스가 아직 준비되지 않았습니다");
+      console.error(chalk.red("Vitest 인스턴스가 아직 준비되지 않았습니다"));
       if (errorBody.error) {
-        console.error(errorBody.error);
+        console.error(chalk.red(errorBody.error));
       }
       process.exit(1);
     }
 
     if (!response.ok) {
-      console.error(`예상하지 못한 응답: ${response.status}`);
+      console.error(chalk.red(`예상하지 못한 응답: ${response.status}`));
       process.exit(1);
     }
 
@@ -107,31 +112,33 @@ export async function testCommand(): Promise<void> {
       }[];
     };
 
-    console.log(
-      `\nTests: ${result.summary.passed} passed, ${result.summary.failed} failed, ${result.summary.total} total`,
-    );
-    console.log(`Duration: ${result.summary.durationMs}ms`);
+    const { passed, failed: failedCount, total, durationMs } = result.summary;
+    const passedStr = chalk.green(`${passed} passed`);
+    const failedStr =
+      failedCount > 0 ? chalk.red(`${failedCount} failed`) : `${failedCount} failed`;
+    console.log(`\nTests: ${passedStr}, ${failedStr}, ${total} total`);
+    console.log(chalk.dim(`Duration: ${durationMs}ms`));
 
     if (result.failed && result.failed.length > 0) {
-      console.log("\nFailed tests:");
+      console.log(chalk.red.bold("\nFailed tests:"));
       for (const f of result.failed) {
-        console.log(`  x ${f.name} (${f.file})`);
-        console.log(`    ${f.error}`);
+        console.log(`  ${chalk.red("x")} ${f.name} ${chalk.dim(`(${f.file})`)}`);
+        console.log(`    ${chalk.red(f.error)}`);
       }
     }
 
     if (showTraces && result.traces && result.traces.length > 0) {
-      console.log("\nTraces:");
+      console.log(chalk.cyan.bold("\nTraces:"));
       for (const testTraces of result.traces) {
-        console.log(`\n  ${testTraces.testName}`);
-        console.log(`  ${path.basename(testTraces.file)}`);
+        console.log(`\n  ${chalk.bold(testTraces.testName)}`);
+        console.log(`  ${chalk.dim(path.basename(testTraces.file))}`);
         for (const trace of testTraces.traces) {
           const loc = `${path.basename(trace.filePath)}:${trace.lineNumber}`;
           const valueStr =
             typeof trace.value === "string"
               ? trace.value
               : (JSON.stringify(trace.value, null, 2) ?? "undefined");
-          console.log(`\n    [${trace.key}] ${loc}`);
+          console.log(`\n    ${chalk.yellow(`[${trace.key}]`)} ${chalk.dim(loc)}`);
           // value가 여러 줄이면 각 줄을 들여쓰기하여 출력합니다.
           const indented = valueStr.split("\n").join("\n    ");
           console.log(`    ${indented}`);
@@ -144,7 +151,9 @@ export async function testCommand(): Promise<void> {
     }
   } catch (err) {
     if (err instanceof TypeError && err.cause) {
-      console.error("dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인하세요");
+      console.error(
+        chalk.red("dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인하세요"),
+      );
       process.exit(1);
     }
     throw err;
