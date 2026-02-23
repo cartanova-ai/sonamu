@@ -5,18 +5,88 @@ description: Sonamu 전체 개발 워크플로우. 엔티티 설계부터 Fronte
 
 # Sonamu 전체 개발 워크플로우
 
-사용자가 시스템 구축을 요청하면 다음 7단계로 진행한다.
+사용자가 시스템 구축을 요청하면 다음 9단계로 진행한다.
+
+**CRITICAL: 이 워크플로우는 반드시 순서대로 진행한다. 단계를 건너뛰거나 순서를 바꾸지 않는다.**
 
 **CRITICAL: 요구사항이 이미 제공된 경우에도 설계 및 비즈니스 로직은 반드시 사용자와 함께 확인한다.**
 요구사항 명세는 출발점일 뿐이다. Entity 구조, 관계, 필드, 상태 전이, 권한 규칙 등은 항상 사용자에게 질문하고 승인을 받아야 한다. 과거에 비슷한 요구사항을 받은 적이 있더라도 이번 프로젝트의 설계는 새로 확인한다.
 
-## 사용자 요청 → 완성까지 7단계
+## 사용자 요청 → 완성까지 9단계
+
+### PHASE 0: 프로젝트 초기화
+
+**목표:** 프로젝트 생성 및 better-auth 기반 엔티티 준비
+
+**참조 스킬:** project-init.md, create-sonamu.md, auth.md
+
+**절차:**
+
+1. **작업 경로 확인**
+   - 현재 디렉토리 또는 지정 디렉토리 확인
+   - `project-init.md` "0. 작업 경로 확인" 참조
+
+2. **프로젝트 생성**
+   ```bash
+   pnpm create sonamu [프로젝트명] --yes
+   ```
+   기존 프로젝트면 경로 확인 후 진행.
+
+3. **요구사항 문서화** (요구사항 제공 시)
+   - `.claude/skills/project/requirements.md` 작성
+   - `project-init.md` "요구사항 문서화" 참조
+
+4. **의존성 설치 및 빌드**
+   ```bash
+   pnpm install
+   pnpm -r build
+   ```
+   > 빌드 실패 시 → 5번 Docker 먼저 실행 후 6번 dev 서버 올리고 재시도
+
+5. **Docker 실행**
+   ```bash
+   cd packages/api
+   pnpm docker:up
+   ```
+
+6. **개발 서버 실행**
+   ```bash
+   pnpm dev
+   ```
+
+7. **Auth 엔티티 생성** (별도 터미널, dev 실행 중)
+   ```bash
+   cd packages/api
+   pnpm sonamu auth generate
+   ```
+   생성되는 엔티티: `User`, `Session`, `Account`, `Verification`
+   > dev 모드에서 실행해야 types 파일도 자동 생성됨
+
+8. **생성된 Auth 엔티티 확인**
+   - Sonamu UI (`http://localhost:34900/sonamu-ui`) → Entity 메뉴에서 4개 엔티티 확인
+   - **User 엔티티 필드 파악** (id 타입, 기본 제공 필드 목록)
+   - 이후 PHASE 1 엔티티 설계 시 User와의 관계를 고려해야 하므로 반드시 확인
+
+**완료 기준:**
+
+- [ ] 프로젝트 생성 완료
+- [ ] Docker 실행 중
+- [ ] dev 서버 실행 중
+- [ ] `pnpm sonamu auth generate` 완료
+- [ ] User, Session, Account, Verification 엔티티 확인 완료
+
+**다음 단계:** PHASE 1 엔티티 설계
+
+---
 
 ### PHASE 1: 엔티티 설계
 
 **목표:** 시스템에 필요한 모든 Entity 식별 및 관계 정의
 
 **참조 스킬:** entity-basic.md, entity-relations.md
+
+**CRITICAL: PHASE 0에서 생성된 Auth 엔티티(User, Session, Account, Verification)를 확인한 후 설계를 시작한다.**
+User 엔티티는 이미 생성되어 있으므로 중복 생성하지 않는다. 다른 엔티티에서 User를 참조하는 관계는 이미 존재하는 User 엔티티 구조에 맞춰 설계한다.
 
 **절차:**
 
@@ -218,11 +288,71 @@ pnpm dev  # 이 상태로 유지하면서 작업
 - [ ] Migration 오류 없이 완료
 - [ ] DB에 테이블 생성 확인 (psql 또는 DB UI)
 
-**다음 단계:** PHASE 4 스캐폴딩
+**다음 단계:** PHASE 4 Cone 생성
 
 ---
 
-### PHASE 4: 스캐폴딩
+### PHASE 4: Cone 생성
+
+**목표:** Entity에 fixture 생성 가이드 메타데이터(cone) 부착
+
+**참조 스킬:** fixture-cli.md (고급: cone 메타데이터 섹션)
+
+**Cone이란?**
+각 Entity/Prop/Subset/Enum에 `cone` 메타데이터를 추가하여 fixture 생성 시 더 현실적인 테스트 데이터를 만들 수 있게 하는 기능이다. `note`, `fixtureGenerator`, `fixtureDefault`, `dataSource` 등의 속성으로 구성된다.
+
+**절차:**
+
+1. **LLM 사용 여부 확인**
+
+   사용자에게 묻는다:
+   > "Cone 메타데이터를 생성할게요. 요구사항 명세(`requirements.md`)를 참고하여 LLM이 각 필드에 맞는 설명과 faker 생성 로직을 자동으로 작성할 수 있습니다.
+   > LLM(Claude API)을 호출하여 생성하갬습니까?
+   > 1. 예 — AI가 요구사항 기반 상세 cone 생성 (ANTHROPIC_API_KEY 필요, 소량 과금)
+   > 2. 아니오 — faker 타입 매핑 기반 템플릿 cone 자동 생성 (API 키 불필요)"
+
+   **선택 1 — LLM 사용:**
+   ```bash
+   # 단일 Entity
+   pnpm sonamu cone gen [EntityId]
+
+   # 전체 Entity
+   pnpm sonamu cone gen --all
+
+   # 전체 재생성 (기존 덮어쓰기)
+   pnpm sonamu cone gen --all --regenerate
+
+   # 언어 지정 (기본: sonamu.config.ts의 i18n.defaultLocale)
+   pnpm sonamu cone gen --all --locale ko
+   ```
+   > ANTHROPIC_API_KEY가 없으면 에러 발생 → `sonamu.secret.ts` 또는 환경변수 설정 필요
+
+   **선택 2 — 템플릿 cone 사용:**
+   ```bash
+   # stub entity 시 이미 템플릿 cone이 생성되어 있음 (별도 작업 불필요)
+   # 필요 시 개별 Entity의 entity.json을 직접 편집
+   ```
+   > stub entity 실행 시 faker 타입 매핑 기반 기본 cone이 자동 생성된다.
+   > 나중에 `pnpm sonamu cone gen [EntityId]`로 AI 업그레이드 가능.
+
+2. **생성 결과 확인**
+   - 각 Entity의 `entity.json` → `cone` 필드 확인
+   - `note`: 필드 설명 및 fixture 생성 가이드
+   - `fixtureGenerator`: faker.js 표현식
+   - `dataSource`: BelongsToOne 관계 참조 전략
+   - 필요 시 직접 편집하여 커스터마이징
+
+**완료 기준:**
+
+- [ ] 모든 Entity의 `entity.json`에 cone 메타데이터 존재
+- [ ] BelongsToOne 관계 필드에 `dataSource` 설정 확인
+- [ ] LLM 사용 시 비용 확인 (콘솔 출력 참고)
+
+**다음 단계:** PHASE 5 스캐폴딩
+
+---
+
+### PHASE 5: 스캐폴딩
 
 **목표:** Model, API, Frontend 코드 자동 생성
 
@@ -299,11 +429,11 @@ pnpm dev  # 이 상태로 유지하면서 작업
 - [ ] Relation이 있는 경우 ko.ts 키 추가 완료
 - [ ] types.ts nullable 필드 처리 완료
 
-**다음 단계:** PHASE 5 테스트 작성
+**다음 단계:** PHASE 6 테스트 작성
 
 ---
 
-### PHASE 5: 테스트 작성
+### PHASE 6: 테스트 작성
 
 **목표:** 업무 프로세스 기반 모듈 테스트 작성
 
@@ -406,11 +536,47 @@ pnpm dev  # 이 상태로 유지하면서 작업
 - [ ] 업무 시나리오 검증 완료
 - [ ] 모든 그룹 커밋 완료
 
-**다음 단계:** PHASE 6 API 개발
+**[사용자 확인] Fixture 생성**
+
+테스트 작성 완료 후 사용자에게 묻는다:
+
+> "Fixture 데이터를 생성할게요.
+> 테스트 DB에 현실적인 샘플 데이터를 체우면 확장성 테스트나 프론트엔드 개발에 도움이 됩니다.
+> Fixture를 생성하시갌습니까?
+> 1. 예 — Fixture 생성 진행
+> 2. 아니오 — PHASE 7 API 개발로 바로 진행"
+
+**예 선택 시 — Fixture 생성 방식 확인:**
+
+> "Fixture 데이터를 어떻게 생성할까요?
+> 1. LLM 사용 — `cone.note` 기반으로 Claude API가 현실적인 데이터 생성 (ANTHROPIC_API_KEY 필요)
+> 2. 템플릿 사용 — faker.js 기반 자동 생성 (API 키 불필요)"
+
+**LLM 사용 시:**
+```bash
+# 대화형 모드
+pnpm sonamu fixture gen
+
+# 또는 직접 지정
+pnpm sonamu fixture gen --include User,Post,Comment --count 10 --use-llm
+
+# 후 테스트 DB 동기화
+pnpm sonamu fixture sync
+```
+
+**템플릿 사용 시:**
+```bash
+pnpm sonamu fixture gen --include User,Post,Comment --count 10
+pnpm sonamu fixture sync
+```
+
+> fixture gen 세부 옵션 및 생성 전략은 `fixture-cli.md` 참조
+
+**다음 단계:** PHASE 7 API 개발
 
 ---
 
-### PHASE 6: API 개발
+### PHASE 7: API 개발
 
 **목표:** 요구사항에 따른 비즈니스 로직 API 구현
 
@@ -464,11 +630,11 @@ pnpm dev  # 이 상태로 유지하면서 작업
 - [ ] API 테스트 통과
 - [ ] Build 성공
 
-**다음 단계:** PHASE 7 Frontend 개발
+**다음 단계:** PHASE 8 Frontend 개발
 
 ---
 
-### PHASE 7: Frontend 개발
+### PHASE 8: Frontend 개발
 
 **목표:** 화면에서 실제 동작 확인
 
@@ -547,19 +713,28 @@ pnpm dev  # 이 상태로 유지하면서 작업
 
 ## 빠른 참조 테이블
 
-| 단계            | 예상 시간   | 핵심 명령어              | 핵심 스킬            |
-| --------------- | ----------- | ------------------------ | -------------------- |
-| 1. 설계         | 5-10분      | (대화)                   | entity-basic.md      |
-| 2. 생성         | 10-15분     | `stub entity`, `sync`    | entity-basic.md      |
-| 3. 마이그레이션 | 5분         | `migration:latest`       | migration.md         |
-| 4. 스캐폴딩     | 5-10분      | `scaffold`, `build`      | scaffolding.md       |
-| 5. 테스트       | 30-60분     | `test`, `test:watch`     | testing.md           |
-| **6. API 개발** | **1-3시간** | **@api 데코레이터**      | **api.md, model.md** |
-| **7. Frontend** | **2-5시간** | **Service, useTypeForm** | **frontend.md**      |
+| 단계                 | 예상 시간   | 핵심 명령어                   | 핵심 스킬                     |
+| -------------------- | ----------- | ----------------------------- | ----------------------------- |
+| **0. 프로젝트 초기화** | **5-10분** | **`create sonamu`, `auth generate`** | **project-init.md, auth.md** |
+| 1. 엔티티 설계       | 5-10분      | (대화)                        | entity-basic.md               |
+| 2. 엔티티 생성       | 10-15분     | `stub entity`, `sync`         | entity-basic.md               |
+| 3. 마이그레이션      | 5분         | `migration:latest`            | migration.md                  |
+| **4. Cone 생성**    | **5-10분** | **`cone gen`**                | **fixture-cli.md**            |
+| 5. 스캐폴딩          | 5-10분      | `scaffold`, `build`           | scaffolding.md                |
+| 6. 테스트            | 30-60분     | `test`, `test:watch`          | testing.md                    |
+| **7. API 개발**      | **1-3시간** | **@api 데코레이터**           | **api.md, model.md**          |
+| **8. Frontend**      | **2-5시간** | **Service, useTypeForm**      | **frontend.md**               |
 
 ---
 
 ## 각 단계의 완료 확인
+
+### PHASE 0 완료 시
+
+```
+프로젝트 초기화 완료 (Auth 엔티티 생성 포함)
+→ 다음: PHASE 1 엔티티 설계 (entity-basic.md)
+```
 
 ### PHASE 1 완료 시
 
@@ -579,31 +754,39 @@ pnpm dev  # 이 상태로 유지하면서 작업
 
 ```
 마이그레이션 완료
-→ 다음: PHASE 4 스캐폴딩 (scaffolding.md)
+→ 다음: PHASE 4 Cone 생성 (fixture-cli.md)
 ```
 
 ### PHASE 4 완료 시
 
 ```
-스캐폴딩 완료
-→ 다음: PHASE 5 테스트 작성 (testing.md)
+Cone 생성 완료
+→ 다음: PHASE 5 스캐폴딩 (scaffolding.md)
 ```
 
 ### PHASE 5 완료 시
 
 ```
-테스트 작성 완료
-→ 다음: PHASE 6 API 개발 (api.md)
+스ce90폴딩 완료
+→ 다음: PHASE 6 테스트 작성 (testing.md)
 ```
 
 ### PHASE 6 완료 시
 
 ```
-API 개발 완료
-→ 다음: PHASE 7 Frontend 개발 (frontend.md)
+테스트 작성 완료
+[사용자 확인] Fixture 생성 여부 확인 원스톱
+→ 다음: PHASE 7 API 개발 (api.md)
 ```
 
 ### PHASE 7 완료 시
+
+```
+API 개발 완료
+→ 다음: PHASE 8 Frontend 개발 (frontend.md)
+```
+
+### PHASE 8 완료 시
 
 ```
 Frontend 개발 완료

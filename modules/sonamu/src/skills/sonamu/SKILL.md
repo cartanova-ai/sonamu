@@ -25,65 +25,21 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 
 ## 개발 흐름
 
-### 1. 프로젝트 생성
-```bash
-pnpm create sonamu [프로젝트명] --yes
+**CRITICAL: 모든 개발은 반드시 `workflow.md`의 PHASE 0 → 7 순서를 따른다. 단계를 건너뛰거나 순서를 바꾸지 않는다.**
+
+```
+PHASE 0: 프로젝트 초기화  (프로젝트 생성 + auth generate)
+PHASE 1: 엔티티 설계      (Auth 엔티티 확인 후 나머지 설계)
+PHASE 2: 엔티티 생성
+PHASE 3: 마이그레이션
+PHASE 4: Cone 생성     (LLM 사용 여부 사용자에게 확인 후 진행)
+PHASE 5: 스캐폴딩
+PHASE 6: 테스트 작성  (완료 후 Fixture 생성 여부 확인, LLM 사용 여부도 확인)
+PHASE 7: API 개발
+PHASE 8: Frontend 개발
 ```
 
-### 2. Sonamu 링크 설정 (선택)
-**Skills 원본 동기화가 필요한 경우만** `pnpm-workspace.yaml`에 추가:
-```yaml
-overrides:
-  sonamu: link:../../sonamu/modules/sonamu
-```
-> 이유: Skills sync, 로컬 Sonamu 변경사항 즉시 반영
-
-### 3. 의존성 설치 및 빌드
-프로젝트 루트에서:
-```bash
-pnpm install
-pnpm -r build
-```
-> 빌드 실패 시 → 4번 도커 먼저 실행 후 5번 dev 서버 올리고 재시도
-
-### 4. Docker 실행
-```bash
-cd packages/api
-pnpm docker:up
-```
-
-### 5. 개발 서버 실행
-```bash
-pnpm dev
-```
-> 3번 빌드가 실패했다면, dev 서버가 올라온 후 프로젝트 루트에서 `pnpm -r build` 재시도
-
-### 6. Auth 엔티티 생성 (별도 터미널)
-**dev 실행 중**에:
-```bash
-pnpm sonamu auth generate
-```
-> dev 모드에서 실행해야 types도 자동 생성됨
-
-### 7. Subset 확인
-Sonamu UI Entity 메뉴에서 subset 체크
-
-### 8. Migration
-```bash
-pnpm sonamu migrate run
-```
-
-### 9. Scaffolding
-Sonamu UI에서 Model/View Scaffolding 실행
-
-### 10. API 단위테스트
-```bash
-pnpm test:watch
-```
-
-### 11. 프론트엔드 개발
-
-**상세 내용:** `project-init.md` 참조
+**상세 내용:** `workflow.md` 참조
 
 ---
 
