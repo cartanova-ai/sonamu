@@ -124,7 +124,10 @@ export async function testCommand(): Promise<void> {
       for (const testTraces of result.traces) {
         console.log(`  ${testTraces.testName} (${testTraces.file})`);
         for (const trace of testTraces.traces) {
-          const valueStr = JSON.stringify(trace.value, null, 2).split("\n").join("\n        ");
+          // value가 undefined인 경우 JSON.stringify가 undefined를 반환하므로 빈 문자열로 대체
+          const valueStr = (JSON.stringify(trace.value, null, 2) ?? "undefined")
+            .split("\n")
+            .join("\n        ");
           console.log(`    [${trace.key}] ${trace.at}`);
           console.log(`      at ${trace.filePath}:${trace.lineNumber}`);
           console.log(`      ${valueStr}`);
