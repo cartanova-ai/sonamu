@@ -77,9 +77,15 @@ export class DevVitestManager {
       },
     };
 
-    this.vitest = await createVitest("test", cliOptions, viteOverrides);
-    await this.vitest.init();
+    const vitest = await createVitest("test", cliOptions, viteOverrides);
+    try {
+      await vitest.init();
+    } catch (err) {
+      await vitest.close();
+      throw err;
+    }
 
+    this.vitest = vitest;
     this.vitest.onFilterWatchedSpecification((_spec) => false);
     this.closed = false;
   }
