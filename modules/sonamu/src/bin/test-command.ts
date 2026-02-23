@@ -18,15 +18,18 @@ export async function testCommand(): Promise<void> {
     }
   }
 
-  // process.argv 파싱: sonamu test [file...] --pattern "이름"
+  // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces
   const args = process.argv.slice(3);
   const files: string[] = [];
   let pattern: string | undefined;
+  let showTraces = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--pattern" || arg === "-p") {
       pattern = args[++i];
+    } else if (arg === "--traces" || arg === "-t") {
+      showTraces = true;
     } else if (!arg.startsWith("-")) {
       files.push(arg);
     }
@@ -90,6 +93,17 @@ export async function testCommand(): Promise<void> {
         durationMs: number;
       };
       failed: { name: string; file: string; error: string }[];
+      traces: {
+        testName: string;
+        file: string;
+        traces: {
+          key: string;
+          value: unknown;
+          filePath: string;
+          lineNumber: number;
+          at: string;
+        }[];
+      }[];
     };
 
     console.log(
@@ -102,6 +116,19 @@ export async function testCommand(): Promise<void> {
       for (const f of result.failed) {
         console.log(`  x ${f.name} (${f.file})`);
         console.log(`    ${f.error}`);
+      }
+    }
+
+    if (showTraces && result.traces && result.traces.length > 0) {
+      console.log("\nTraces:");
+      for (const testTraces of result.traces) {
+        console.log(`  ${testTraces.testName} (${testTraces.file})`);
+        for (const trace of testTraces.traces) {
+          const valueStr = JSON.stringify(trace.value, null, 2).split("\n").join("\n        ");
+          console.log(`    [${trace.key}] ${trace.at}`);
+          console.log(`      at ${trace.filePath}:${trace.lineNumber}`);
+          console.log(`      ${valueStr}`);
+        }
       }
     }
 
