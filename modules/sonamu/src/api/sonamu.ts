@@ -35,6 +35,7 @@ import type { KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
 import type { Syncer } from "../syncer/syncer";
 import type { WorkflowManager } from "../tasks/workflow-manager";
+import type { DevVitestManager } from "../testing/dev-vitest-manager";
 import type { SonamuFastifyConfig } from "../types/types";
 import { exists, fileExists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
@@ -157,6 +158,14 @@ class SonamuClass {
       throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
     }
     return this._auth;
+  }
+
+  private _devVitestManager: DevVitestManager | null = null;
+  get devVitestManager(): DevVitestManager | null {
+    return this._devVitestManager;
+  }
+  set devVitestManager(manager: DevVitestManager | null) {
+    this._devVitestManager = manager;
   }
 
   // HMR 처리
@@ -1403,6 +1412,7 @@ class SonamuClass {
     await Promise.allSettled([
       this._workflows?.destroy() ?? Promise.resolve(),
       this._cache?.disconnect() ?? Promise.resolve(),
+      this._devVitestManager?.shutdown() ?? Promise.resolve(),
       this.watcher?.close() ?? Promise.resolve(),
       logtapeDispose(),
     ]);
