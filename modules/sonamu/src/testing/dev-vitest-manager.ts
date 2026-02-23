@@ -8,6 +8,22 @@ import type {
   Vitest,
 } from "vitest/node";
 
+// bootstrap.ts TaskMeta augmentation과 동일한 구조의 직렬화된 trace 타입
+export type SerializedTrace = {
+  key: string;
+  value: unknown;
+  filePath: string;
+  lineNumber: number;
+  at: string;
+};
+
+// 테스트 한 건의 trace 모음
+export type TestTraces = {
+  testName: string;
+  file: string;
+  traces: SerializedTrace[];
+};
+
 export type RunResult = {
   ok: boolean;
   summary: {
@@ -18,6 +34,7 @@ export type RunResult = {
     durationMs: number;
   };
   failed: FailedTest[];
+  traces: TestTraces[];
 };
 
 export type FailedTest = {
@@ -202,10 +219,11 @@ export class DevVitestManager {
     let failed = 0;
     let skipped = 0;
     const failedTests: FailedTest[] = [];
+    const allTraces: TestTraces[] = [];
 
     for (const testModule of runResult.testModules) {
       if (!specModuleIds.has(testModule.moduleId)) continue;
-      this.collectFromModule(testModule, failedTests, (counts) => {
+      this.collectFromModule(testModule, failedTests, allTraces, (counts) => {
         total += counts.total;
         passed += counts.passed;
         failed += counts.failed;
@@ -217,12 +235,14 @@ export class DevVitestManager {
       ok: failed === 0,
       summary: { total, passed, failed, skipped, durationMs },
       failed: failedTests,
+      traces: allTraces,
     };
   }
 
   private collectFromModule(
     testModule: TestModule,
     failedTests: FailedTest[],
+    allTraces: TestTraces[],
     addCounts: (counts: { total: number; passed: number; failed: number; skipped: number }) => void,
   ): void {
     let total = 0;
@@ -243,6 +263,11 @@ export class DevVitestManager {
         // pending/skipped 상태는 skipped로 집계
         skipped++;
       }
+
+      const traceEntry = this.extractTraces(testCase, testModule);
+      if (traceEntry !== null) {
+        allTraces.push(traceEntry);
+      }
     }
 
     addCounts({ total, passed, failed, skipped });
@@ -261,6 +286,18 @@ export class DevVitestManager {
       name: testCase.fullName,
       file: testModule.moduleId,
       error: errorMessage,
+    };
+  }
+
+  private extractTraces(testCase: TestCase, testModule: TestModule): TestTraces | null {
+    const traces: SerializedTrace[] = testCase.meta().traces ?? [];
+    if (traces.length === 0) {
+      return null;
+    }
+    return {
+      testName: testCase.fullName,
+      file: testModule.moduleId,
+      traces,
     };
   }
 }
