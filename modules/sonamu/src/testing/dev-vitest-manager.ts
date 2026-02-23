@@ -7,6 +7,14 @@ import type {
   TestSpecification,
   Vitest,
 } from "vitest/node";
+import type { SerializedTrace } from "../naite/naite";
+
+// 테스트 한 건의 trace 모음
+export type TestTraces = {
+  testName: string;
+  file: string;
+  traces: SerializedTrace[];
+};
 
 export type RunResult = {
   ok: boolean;
@@ -18,6 +26,7 @@ export type RunResult = {
     durationMs: number;
   };
   failed: FailedTest[];
+  traces: TestTraces[];
 };
 
 export type FailedTest = {
@@ -202,10 +211,11 @@ export class DevVitestManager {
     let failed = 0;
     let skipped = 0;
     const failedTests: FailedTest[] = [];
+    const allTraces: TestTraces[] = [];
 
     for (const testModule of runResult.testModules) {
       if (!specModuleIds.has(testModule.moduleId)) continue;
-      this.collectFromModule(testModule, failedTests, (counts) => {
+      this.collectFromModule(testModule, failedTests, allTraces, (counts) => {
         total += counts.total;
         passed += counts.passed;
         failed += counts.failed;
@@ -217,12 +227,14 @@ export class DevVitestManager {
       ok: failed === 0,
       summary: { total, passed, failed, skipped, durationMs },
       failed: failedTests,
+      traces: allTraces,
     };
   }
 
   private collectFromModule(
     testModule: TestModule,
     failedTests: FailedTest[],
+    allTraces: TestTraces[],
     addCounts: (counts: { total: number; passed: number; failed: number; skipped: number }) => void,
   ): void {
     let total = 0;
@@ -242,6 +254,11 @@ export class DevVitestManager {
       } else {
         // pending/skipped 상태는 skipped로 집계
         skipped++;
+      }
+
+      const traceEntry = this.extractTraces(testCase, testModule);
+      if (traceEntry !== null) {
+        allTraces.push(traceEntry);
       }
     }
 
@@ -263,4 +280,35 @@ export class DevVitestManager {
       error: errorMessage,
     };
   }
+
+  private extractTraces(testCase: TestCase, testModule: TestModule): TestTraces | null {
+    const raw = testCase.meta().traces;
+    // bootstrap.ts가 설정하는 traces 배열 여부를 런타임에서도 검증
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return null;
+    }
+    const traces = raw.filter(isSerializedTrace);
+    if (traces.length === 0) {
+      return null;
+    }
+    return {
+      testName: testCase.fullName,
+      file: testModule.moduleId,
+      traces,
+    };
+  }
+}
+
+function isSerializedTrace(value: unknown): value is SerializedTrace {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.key === "string" &&
+    typeof v.filePath === "string" &&
+    typeof v.lineNumber === "number" &&
+    typeof v.at === "string" &&
+    "value" in v
+  );
 }

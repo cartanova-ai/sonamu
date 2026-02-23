@@ -159,6 +159,9 @@ export class Syncer {
     // 소스 파일 하나만 무효화하면 이를 import하는 테스트 파일도 자동으로 무효화됩니다.
     if (!isTest() && Sonamu.config.test?.devRunner?.enabled && Sonamu.devVitestManager) {
       Sonamu.devVitestManager.invalidateFiles([diffFilePath]);
+      console.log(
+        chalk.dim(`Test invalidated: ${path.relative(Sonamu.apiRootPath, diffFilePath)}`),
+      );
     }
 
     const isInCheckPatternGroup = Object.values(getChecksumPatternGroupInAbsolutePath()).some(
