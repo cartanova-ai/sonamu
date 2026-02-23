@@ -16,7 +16,7 @@ export const betterAuthV1: EntityJson[] = [
     table: "users",
     title: "사용자",
     props: [
-      { name: "id", type: "string", desc: "ID" },
+      { name: "id", type: "string", desc: "ID", cone: { fixtureStrategy: "sequence" } },
       { name: "name", type: "string", desc: "이름" },
       { name: "email", type: "string", desc: "이메일" },
       { name: "email_verified", type: "boolean", desc: "이메일 인증 여부" },
