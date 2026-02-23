@@ -383,6 +383,30 @@ SESSION_SECRET={자동생성}
 SESSION_SALT={자동생성}
 ```
 
+### 1.5 template 기본값 잔류 체크 (CRITICAL)
+
+`pnpm create sonamu`로 생성된 프로젝트에는 placeholder 값이 있다. **반드시 실제 값으로 교체해야 한다.**
+
+```bash
+# 확인: 기본값이 남아있는지 검색
+grep -r 'SonamuProject' packages/api/src/
+```
+
+**`packages/api/src/sonamu.config.ts`:**
+```typescript
+// DO NOT - template 기본값 그대로
+projectName: process.env.PROJECT_NAME ?? "SonamuProject"
+
+// DO - 실제 프로젝트명으로
+projectName: process.env.PROJECT_NAME ?? "NIFOS"
+```
+
+**교체 체크리스트:**
+- [ ] `sonamu.config.ts`의 `projectName` 기본값
+- [ ] `package.json` (root)의 `name` 필드
+- [ ] `.env`의 `PROJECT_NAME`, `DATABASE_NAME`
+- [ ] `.env`의 `SESSION_SECRET`, `SESSION_SALT` (운영 전 반드시 교체)
+
 ### 2. 추가 설정 필요 여부 확인
 
 ```

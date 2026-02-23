@@ -591,6 +591,47 @@ const params = {
 - findMany의 params 기본값
 - 복잡한 객체 리터럴 (타입 체크가 중요한 경우)
 
+### IMPORTANT: ListParams / findMany / SearchField 동기화
+
+다음 세 가지는 항상 일관성을 유지해야 한다. 하나라도 어긋나면 선언만 있고 동작하지 않거나, 런타임 오류가 발생한다.
+
+1. `entity.json`의 `SearchField` enum values
+2. `types.ts`의 `ListParams` 필드 정의
+3. `model.ts`의 `findMany` 내 필터/검색 처리 코드
+
+**체크리스트:**
+- [ ] SearchField에 선언된 모든 값이 findMany에 구현되어 있는가?
+- [ ] 주석 처리된 필터 분기가 있다면 제거하거나 구현하거나 둘 중 하나
+- [ ] 요구사항의 "~별 필터", "~로 검색" 기능이 ListParams에 반영되어 있는가?
+
+**특히 승인 워크플로우가 있는 엔티티는 status 필터를 반드시 추가한다.**
+(단계별 건수 클릭 → 해당 목록만 필터링 조회 패턴이 공통으로 요구됨)
+
+```typescript
+// types.ts - 승인 워크플로우 엔티티 예시
+export const AchievementListParams = AchievementBaseListParams.extend({
+  status: z.nativeEnum(AchievementStatus).optional(),
+  achievement_type: z.nativeEnum(AchievementType).optional(),
+  submitter_id: z.string().optional(),
+});
+
+// model.ts - 대응하는 필터 구현
+if (params.status) qb.where("achievements.status", params.status);
+if (params.achievement_type) qb.where("achievements.achievement_type", params.achievement_type);
+if (params.submitter_id) qb.where("achievements.submitter_id", params.submitter_id);
+```
+
+**DO NOT - 선언/구현 불일치:**
+```typescript
+// entity.json에 SearchField "title" 선언
+// model.ts에서 "id" 케이스만 처리하고 "title"은 주석 처리
+if (params.search === "id") {
+  // ...
+} /* else if (params.search === "title") {
+  // TODO: 미구현
+} */
+```
+
 ### 코드 리뷰 체크리스트
 
 새로운 Model 작성 시:
@@ -600,6 +641,8 @@ const params = {
 - [ ] debug 옵션 불필요하게 명시하지 않음
 - [ ] orderBy 모든 케이스 exhaustive 처리
 - [ ] ManyToMany relation이 있으면 _ids 배열 SaveParams에 추가
+- [ ] SearchField enum과 findMany 구현이 일치하는가?
+- [ ] 승인 워크플로우 엔티티에 status/type 필터가 ListParams와 findMany 양쪽에 모두 있는가?
 
 20개 Model 일괄 수정 시:
 - [ ] miomock 같은 레퍼런스 코드와 패턴 비교

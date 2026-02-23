@@ -240,6 +240,29 @@ Claude: "레슨도 챕터의 자식으로 함께 관리할까요?"
 | 예약 시스템 | User, Reservation, Schedule |
 | 교육 플랫폼 | User(Student/Instructor), Enrollment, Review, Progress |
 
+### 설계 전 반드시 사용자에게 확인할 사항
+
+다음 두 가지는 설계 초기에 판단이 틀리면 마이그레이션 수정이 필요하므로, **코드 작성 전에 반드시 질문한다.**
+
+**1. Polymorphic Association (여러 엔티티에 공통으로 붙는 테이블)**
+
+`entity_type + entity_id` 패턴(공통 첨부파일, 공통 댓글 등)을 사용할 경우:
+
+> "시스템 내에 string PK를 사용하는 엔티티(예: better-auth의 User)가 있습니까?"
+
+- **있다** → `entity_id`를 `string` 타입으로 통일
+- **없다** → `integer` 타입 사용 가능
+
+`entity_id`를 integer로 정의하면 string PK 엔티티의 파일/댓글을 연결할 수 없어 후에 컬럼 타입 변경이 필요해진다.
+
+**2. 도메인 용어와 엔티티 영문 ID 매핑**
+
+요구사항 문서의 한글 명칭과 엔티티 영문 ID를 설계 시작 전에 사용자와 확인한다.
+
+> "요구사항의 '위탁연구과제'를 엔티티로 만들 때 `ResearchContract`로 명명하겠습니다. 맞나요?"
+
+중간에 명칭이 바뀌면 테이블명, 파일명, API 경로 등 전체를 rename해야 하므로 초기에 확정이 중요하다. 팀 내 용어 사전(한글 ↔ 영문 ID)을 requirements.md에 함께 기록해두는 것을 권장한다.
+
 ## 부모-자식 관계 (parentId)
 
 ### parentId란?
@@ -336,6 +359,31 @@ parentId가 설정된 자식 엔티티는 **루트 부모 엔티티와 같은 �
 "ProductStatus": { "draft": "임시저장", "published": "공개", "archived": "보관" }
 ```
 
+### IMPORTANT: 고정값 필드는 반드시 enum으로
+
+선택지가 정해진 필드를 `string`으로 정의하면 DB 정합성이 깨지고 오타로 인한 버그가 발생한다.
+
+**판단 기준: "이 값이 코드 외부에서 자유롭게 입력될 수 있는가?"**
+- No → **enum** (예: 비목구분, 점검카테고리, 실적유형, 상태값, 승인단계)
+- Yes → **string** (예: 과제명, 계약명, 메모)
+
+**enum 후보 식별 패턴 (아래 중 하나라도 해당하면 enum):**
+- `cone.fixtureGenerator`가 `faker.helpers.arrayElement([...])` 형태인 string 필드
+- 요구사항 문서에 "다음 중 하나", "구분", "유형" 형태로 나열된 필드
+- 화면에서 셀렉트박스 또는 라디오버튼으로 표시될 필드
+
+**DO NOT:**
+```json
+{ "name": "budget_item", "type": "string", "desc": "비목명" }
+{ "name": "category", "type": "string", "desc": "점검분류" }
+```
+
+**DO:**
+```json
+{ "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "비목" }
+{ "name": "category", "type": "enum", "id": "InspectionCategory", "desc": "점검분류" }
+```
+
 ### nullable 필드 추가할 때
 ```json
 { "name": "deleted_at", "type": "date", "nullable": true, "desc": "삭제일시" }
@@ -383,6 +431,44 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 { "name": "cart_items_unique", "type": "unique", "columns": [{ "name": "user_id" }, { "name": "product_id" }] }
 ```
 
+### IMPORTANT: unique 제약은 비즈니스 규칙 기준으로
+
+unique index는 기술적 판단이 아니라 **비즈니스 관점**에서 "이 데이터가 시스템에서 중복 존재할 수 있는가?"를 먼저 판단한 후 정의한다.
+
+**설계 시 질문:** "같은 조합이 두 번 insert되면 어떻게 되는가?"
+- 오류여야 한다 → **unique index 추가**
+- 허용된다 → index만 추가
+
+**복합 unique가 반드시 필요한 패턴:**
+
+| 패턴 | 예시 | 권장 unique 구성 |
+|------|------|------------------|
+| 연도별 설정 테이블 | 실적가중치, 예산 비목 | `(type, dept_id, year)` |
+| 사용자-역할 매핑 | UserRole | 역할의 적용 범위(dept 등)가 포함되는지 먼저 확인 |
+| 연차별 예산 항목 | ResearchBudget | `(project_id, year, budget_item)` |
+| 사용자-엔티티 매핑 | 좋아요, 북마크, 수강신청 | `(user_id, entity_id)` |
+
+**DO NOT - unique 누락:**
+```json
+// 연도별 가중치 설정인데 unique 없음 → 같은 연도/유형/부서에 중복 삽입 가능
+"indexes": []
+```
+
+**DO:**
+```json
+"indexes": [
+  {
+    "name": "achievement_weights_type_dept_year_unique",
+    "type": "unique",
+    "columns": [
+      { "name": "achievement_type" },
+      { "name": "dept_id" },
+      { "name": "valid_year" }
+    ]
+  }
+]
+```
+
 ## 흔한 실수
 
 | 실수 | 해결 |
@@ -395,6 +481,8 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 | json prop에 `id` 누락 | `id` 필드 추가 |
 | `"type": "text"` 직접 사용 | `text`는 유효하지 않음. `"type": "string"` + length 생략으로 사용 |
 | `OrderBy` enum에 여러 값 추가 | **기본은 `id-desc`만 생성** (아래 참조) |
+| 고정 선택지 필드를 `string`으로 정의 | enum으로 변환 (fixtureGenerator가 arrayElement인 필드 확인) |
+| unique 제약 없는 연도별/매핑 테이블 | 비즈니스 규칙 기준으로 복합 unique 추가 |
 
 ## Entity 스키마 검증 오류 해결
 
