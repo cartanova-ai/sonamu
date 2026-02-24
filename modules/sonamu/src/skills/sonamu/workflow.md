@@ -215,9 +215,9 @@ pnpm dev  # 이 상태로 유지하면서 작업
    - [ ] OrderBy enum은 id-desc만 있는가?
    - [ ] Enum dbDefault가 이스케이프된 큰따옴표로 감싸져 있는가?
 
-4. **model.ts 수동 생성**
-   - 다른 entity의 model.ts 참고
-   - 필수 메서드: findById, findOne, findMany, save, del
+4. **model.ts는 이 단계에서 생성하지 않음**
+   - model.ts는 PHASE 3(마이그레이션) 완료 후 PHASE 5(스캐폴딩)에서 자동 생성하는 것이 기본
+   - 수동 생성은 스캐폴딩을 사용할 수 없는 예외 상황에서만 사용 (지양)
 
 5. **types.ts 확인**
    - **pnpm dev 실행 중이면** syncer가 2-3초 내 자동 생성
@@ -237,9 +237,9 @@ pnpm dev  # 이 상태로 유지하면서 작업
 **완료 기준:**
 
 - [ ] 모든 Entity의 entity.json 검증 통과
-- [ ] 모든 Entity의 model.ts 존재
 - [ ] 모든 Entity의 types.ts 존재 (자동 생성 또는 수동)
 - [ ] sync 성공
+- [ ] model.ts는 아직 없어도 됨 (PHASE 5 스캐폴딩에서 생성)
 
 **다음 단계:** PHASE 3 마이그레이션
 
@@ -355,6 +355,10 @@ pnpm dev  # 이 상태로 유지하면서 작업
 ### PHASE 5: 스캐폴딩
 
 **목표:** Model, API, Frontend 코드 자동 생성
+
+**CRITICAL: model.ts는 이 단계에서 scaffolding을 통해 생성하는 것이 기본이다.**
+PHASE 3(마이그레이션)이 완료되어 DB 테이블이 존재해야 scaffolding이 정상 동작한다.
+model.ts를 수동으로 먼저 생성하는 것은 지양한다.
 
 **참조 스킬:** scaffolding.md
 
