@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "typescript",
