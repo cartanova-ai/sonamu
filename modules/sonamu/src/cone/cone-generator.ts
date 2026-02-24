@@ -108,7 +108,7 @@ INSTRUCTIONS:
 
 2. For each prop, generate appropriate cone metadata:
    - note: Describe what this field represents in business terms, and provide guidance for realistic test data generation. Combine field description and fixture hint into one coherent description.
-   - fixtureGenerator: faker.js expression when applicable
+   - fixtureGenerator: faker.js expression when applicable (see rule 9 for exceptions)
 
 3. Field type → faker.js mapping:
    - email → faker.internet.email()
@@ -140,6 +140,17 @@ INSTRUCTIONS:
    - ko: Korean names, addresses, phone numbers (010-XXXX-XXXX format)
    - en: English names, US addresses
    - ja: Japanese names, addresses
+
+9. Correlated fields (IMPORTANT - do NOT use fixtureGenerator for these):
+   If multiple props are semantically related and must be consistent with each other (e.g. name + name_en, name + name_ja, title + title_en), do NOT set fixtureGenerator on any of them.
+   Instead, set only note with a clear description that explains the relationship.
+   Example: if name is a Korean full name like "김민수", then name_en must be its romanized form "Kim Minsu".
+   The fixture generator will pass all such props together to LLM in a single call to ensure consistency.
+   Detection rule: if a prop name matches another prop name with a locale suffix (_en, _ko, _ja, _cn) or vice versa, treat them as correlated.
+
+10. String PK with DB sequence:
+   If a prop named "id" has type "string" and the entity uses a DB sequence for id generation (indicated by dbDefault containing "nextval" or by the entity being a user/auth entity managed externally), set fixtureStrategy: "sequence" and do NOT set fixtureGenerator.
+   note should mention that the id is managed by DB sequence as a sequential number stored as string.
 
 ${
   context.existingCones
