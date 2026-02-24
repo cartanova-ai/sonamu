@@ -130,6 +130,8 @@ pnpm fixture gen
   Save to file (auto filename)
   Save to file (specify filename)
   Don't save (output only)
+
+? Generate more realistic data with LLM? (fixtureHint-based, requires ANTHROPIC_API_KEY) No
 ```
 
 **CLI options**:
@@ -141,6 +143,8 @@ pnpm fixture gen
 | `--exclude` | Exclude specific Entities (use with --all) | `pnpm fixture gen --all --exclude Comment` |
 | `--count` | Number of records to generate | `pnpm fixture gen --include User --count 10` |
 | `--save-to` | Specify save method | `pnpm fixture gen --save-to db` |
+| `--use-llm` | Generate realistic data with LLM (fixtureHint-based, requires `ANTHROPIC_API_KEY`) | `pnpm fixture gen --use-llm` |
+| `--no-cache` | Disable LLM cache (use with `--use-llm`) | `pnpm fixture gen --use-llm --no-cache` |
 
 **Save methods**:
 - `db`: Save directly to Fixture DB (default)
