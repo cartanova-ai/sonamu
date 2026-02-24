@@ -524,21 +524,30 @@ model.ts를 수동으로 먼저 생성하는 것은 지양한다.
    pnpm test
    ```
 
-   e. **Git commit**
-
-   ```bash
-   git add .
-   git commit -m "[테스트] 그룹 N 완료: EntityA, EntityB, EntityC"
-   ```
+   e. **사용자에게 커밋 여부 확인** (선택)
+   > "그룹 N 테스트가 완료되었습니다. 중간 커밋하시겠습니까?"
 
 5. **다음 그룹**
+
+6. **코드 품질 확인 (모든 그룹 테스트 완료 후 필수)**
+
+   ```bash
+   cd packages/api
+   pnpm biome check --write .  # lint + format 자동 수정
+   pnpm build                  # 타입체크
+   ```
+
+   - biome check로 테스트 코드 포함 전체 소스코드의 lint/format 정리
+   - build로 타입 오류 없는지 검증
+   - 오류 발견 시 수정 후 테스트 재실행
 
 **완료 기준:**
 
 - [ ] 모든 Entity 테스트 통과
 - [ ] **Business Logic 테스트 포함** (실제 업무 시나리오)
 - [ ] 업무 시나리오 검증 완료
-- [ ] 모든 그룹 커밋 완료
+- [ ] biome check 통과 (packages/api)
+- [ ] Build 성공 (packages/api)
 
 **[사용자 확인] Fixture 생성**
 
