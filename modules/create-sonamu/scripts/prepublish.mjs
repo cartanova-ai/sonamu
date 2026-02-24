@@ -58,7 +58,15 @@ function parseCatalog(content) {
 const catalog = parseCatalog(workspaceYaml);
 console.log(`📦 Loaded ${Object.keys(catalog).length} catalog entries`);
 
-// 3. 백업
+// 3. catalog.json 저장
+console.log("\n📄 Writing catalog.json...");
+await fs.writeFile(
+  path.join(__dirname, "..", "catalog.json"),
+  JSON.stringify(catalog, null, 2) + "\n"
+);
+console.log(`  ✅ catalog.json (${Object.keys(catalog).length} entries)`);
+
+// 4. 백업
 console.log("\n📁 Backing up template files...");
 for (const file of templateFiles) {
   const backupFile = `${file}.bak`;
@@ -66,7 +74,7 @@ for (const file of templateFiles) {
   console.log(`  ✅ ${file} → ${backupFile}`);
 }
 
-// 4. 치환
+// 5. 치환
 console.log("\n🔄 Replacing workspace:^ and catalog: references...");
 for (const file of templateFiles) {
   const pkg = JSON.parse(await fs.readFile(file, "utf-8"));
@@ -103,7 +111,7 @@ for (const file of templateFiles) {
   console.log(`  ✅ ${file} (${changes} replacements)`);
 }
 
-// 5. 빌드
+// 6. 빌드
 console.log("\n🔨 Building...");
 await $`pnpm build`;
 

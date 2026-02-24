@@ -1,4 +1,4 @@
-import { execSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,73 +11,11 @@ import prompts from "prompts";
 let createdTargetRoot: string | null = null;
 let isCleaningUp = false;
 
-// Helper: package.json에서 catalog 패키지 추출
-function extractCatalogPackages(packageJsonPath: string): Set<string> {
-  const packages = new Set<string>();
-  if (!fs.existsSync(packageJsonPath)) return packages;
-
-  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-  const allDeps = {
-    ...pkg.dependencies,
-    ...pkg.devDependencies,
-  };
-
-  for (const [name, version] of Object.entries(allDeps)) {
-    if (version === "catalog:") {
-      packages.add(name);
-    }
-  }
-  return packages;
-}
-
-// Helper: pnpm-workspace.yaml에서 catalog 파싱
-function parseCatalogFromWorkspace(workspacePath: string): Record<string, string> {
-  if (!fs.existsSync(workspacePath)) return {};
-
-  const content = fs.readFileSync(workspacePath, "utf-8");
-  const catalog: Record<string, string> = {};
-
-  const lines = content.split("\n");
-  let inCatalog = false;
-
-  for (const line of lines) {
-    if (line.trim() === "catalog:") {
-      inCatalog = true;
-      continue;
-    }
-
-    if (inCatalog) {
-      // catalog 섹션이 끝나면 중단
-      if (line && !line.startsWith(" ") && !line.startsWith("\t")) {
-        break;
-      }
-
-      // 패키지 파싱: "  package-name: version"
-      const match = line.match(/^\s+["']?([^"':]+)["']?:\s*(.+)$/);
-      if (match) {
-        const [, name, version] = match;
-        catalog[name.trim()] = version.trim();
-      }
-    }
-  }
-
-  return catalog;
-}
-
-// Helper: workspace 패키지의 실제 버전 가져오기
-function getWorkspacePackageVersion(packageName: string, workspaceRoot: string): string {
-  const packagePath = path.join(workspaceRoot, "modules", packageName, "package.json");
-  if (fs.existsSync(packagePath)) {
-    const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
-    return `^${pkg.version}`;
-  }
-  // fallback: npm에서 최신 버전 가져오기
-  try {
-    const result = execSync(`npm view ${packageName} version`, { encoding: "utf-8" });
-    return `^${result.trim()}`;
-  } catch {
-    return "workspace:^";
-  }
+// Helper: catalog.json에서 catalog 파싱
+function loadCatalogJson(): Record<string, string> {
+  const catalogPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "catalog.json");
+  if (!fs.existsSync(catalogPath)) return {};
+  return JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
 }
 
 async function init() {
@@ -257,38 +195,16 @@ async function init() {
     write(file);
   }
 
-  // 2. Copy package.json and modify name & replace workspace references
-  const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-
+  // 2. Copy package.json and modify name
   ["packages/api", "packages/web"].forEach((dir) => {
     const pkgPath = path.join(templateRoot, dir, "package.json");
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      // Extract just "api" or "web" from "packages/api"
       const pkgType = dir.split("/")[1];
       pkg.name = `${targetDir}-${pkgType}`;
-
-      // Replace workspace:^ with actual versions
-      const replaceDeps = (deps: Record<string, string> | undefined) => {
-        if (!deps) return;
-        for (const [name, version] of Object.entries(deps)) {
-          if (version === "workspace:^") {
-            // Extract package name from scoped package (e.g., @sonamu-kit/react-sui -> react-sui)
-            const pkgName = name.includes("/") ? name.split("/")[1] : name;
-            deps[name] = getWorkspacePackageVersion(pkgName, workspaceRoot);
-          }
-        }
-      };
-
-      replaceDeps(pkg.dependencies);
-      replaceDeps(pkg.devDependencies);
-
       fs.writeFileSync(path.join(targetRoot, dir, "package.json"), JSON.stringify(pkg, null, 2));
     }
   });
-
-  // 3. Create pnpm-workspace.yaml with catalog (dynamically)
-  const parentWorkspacePath = path.join(workspaceRoot, "pnpm-workspace.yaml");
 
   // 4. Copy root package.json and modify name
   const rootPkgPath = path.join(templateRoot, "package.json");
@@ -299,25 +215,13 @@ async function init() {
     console.log(`${chalk.green("CREATE")} ${path.join(targetRoot, "package.json")}`);
   }
 
-  // Extract catalog packages from template
-  const apiPkgPath = path.join(templateRoot, "packages", "api", "package.json");
-  const webPkgPath = path.join(templateRoot, "packages", "web", "package.json");
-
-  const apiPackages = extractCatalogPackages(apiPkgPath);
-  const webPackages = extractCatalogPackages(webPkgPath);
-
-  const allCatalogPackages = new Set([...Array.from(apiPackages), ...Array.from(webPackages)]);
-
-  // Parse parent workspace catalog
-  const parentCatalog = parseCatalogFromWorkspace(parentWorkspacePath);
+  // Load catalog from bundled catalog.json
+  const parentCatalog = loadCatalogJson();
 
   // Build catalog for the new project
   const catalogEntries: string[] = [];
-  for (const pkgName of Array.from(allCatalogPackages).sort()) {
-    const version = parentCatalog[pkgName];
-    if (version) {
-      catalogEntries.push(`  "${pkgName}": ${version}`);
-    }
+  for (const pkgName of Object.keys(parentCatalog).sort()) {
+    catalogEntries.push(`  "${pkgName}": ${parentCatalog[pkgName]}`);
   }
 
   const workspaceContent = `packages:

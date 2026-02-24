@@ -25,4 +25,11 @@ for (const file of templateFiles) {
   }
 }
 
+// catalog.json 삭제
+const catalogJsonPath = path.join(__dirname, "..", "catalog.json");
+if (await fs.exists(catalogJsonPath)) {
+  await fs.remove(catalogJsonPath);
+  console.log("  ✅ catalog.json removed");
+}
+
 console.log("\n✅ Template files restored");
