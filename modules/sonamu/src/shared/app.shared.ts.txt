@@ -12,11 +12,11 @@
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
-import EventSource from "react-native-sse";
 import { type core, z } from "zod";
 import { getCurrentLocale } from "~/i18n/sd.generated";
+import { ExpoEventSource as EventSource } from "@falcondev-oss/expo-event-source-polyfill";
 
 // AbortSignal.timeout polyfill for React Native
 if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
@@ -405,24 +405,22 @@ export type SSEStreamOptions = {
   retry?: number;
   retryInterval?: number;
 };
-
 export type SSEStreamState = {
   isConnected: boolean;
   error: string | null;
   retryCount: number;
   isEnded: boolean;
 };
-
 export type EventHandlers<T> = {
-  [K in keyof T as K extends "end" ? never : K]?: (data: T[K]) => void;
-} & (T extends { end?: any } ? { end?: () => void } : {});
+  [K in keyof T]: (data: T[K]) => void;
+};
 
 export function useSSEStream<T extends Record<string, any>>(
   url: string,
   params: Record<string, any>,
   handlers: {
     [K in keyof T]?: (data: T[K]) => void;
-  } & { end?: () => void },
+  },
   options: SSEStreamOptions = {},
 ): SSEStreamState {
   const { enabled = true, retry = 3, retryInterval = 3000 } = options;
@@ -437,7 +435,6 @@ export function useSSEStream<T extends Record<string, any>>(
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handlersRef = useRef(handlers);
-  const currentRetryCount = useRef(0);
 
   // handlers를 ref로 관리해서 재연결 없이 업데이트
   useEffect(() => {
@@ -445,7 +442,7 @@ export function useSSEStream<T extends Record<string, any>>(
   }, [handlers]);
 
   // 연결 함수
-  const connect = useCallback(() => {
+  const connect = () => {
     if (!enabled) return;
 
     try {
@@ -461,15 +458,15 @@ export function useSSEStream<T extends Record<string, any>>(
         retryTimeoutRef.current = null;
       }
 
-      // URL에 파라미터 추가 - 절대 URL로 변환
+      // URL에 파라미터 추가
       const queryString = qs.stringify(params);
-      const baseUrl = url.startsWith("http") ? url : `${axios.defaults.baseURL}${url}`;
-      const fullUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+      const fullUrl = queryString ? `${axios.defaults.baseURL}${url}?${queryString}` : `${axios.defaults.baseURL}${url}`;
 
       const eventSource = new EventSource(fullUrl, {
         headers: {
           "Accept-Language": getCurrentLocale(),
         },
+        credentials: "include",
       });
       eventSourceRef.current = eventSource;
 
@@ -479,13 +476,9 @@ export function useSSEStream<T extends Record<string, any>>(
         isConnected: false,
         error: null,
         isEnded: false,
-        retryCount: currentRetryCount.current,
       }));
 
-      // 연결 성공 이벤트
       eventSource.addEventListener("open", () => {
-        console.log("✅ SSE 연결 성공");
-        currentRetryCount.current = 0;
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -495,14 +488,14 @@ export function useSSEStream<T extends Record<string, any>>(
         }));
       });
 
-      // 연결 에러 이벤트
-      eventSource.addEventListener("error", (event: any) => {
-        console.log("❌ SSE 연결 에러:", event);
-
+      eventSource.addEventListener("error",  (_event) => {
         // 이미 다른 연결로 교체되었는지 확인
         if (eventSourceRef.current !== eventSource) {
-          return;
+          return; // 이미 새로운 연결이 있으면 무시
         }
+
+        // EventSource 내장 자동 재연결 방지를 위해 즉시 close
+        eventSource.close();
 
         setState((prev) => ({
           ...prev,
@@ -511,48 +504,66 @@ export function useSSEStream<T extends Record<string, any>>(
           isEnded: false,
         }));
 
-        // 자동 재연결 시도
-        if (currentRetryCount.current < retry) {
-          currentRetryCount.current += 1;
-          retryTimeoutRef.current = setTimeout(() => {
-            if (eventSourceRef.current === eventSource) {
-              setState((prev) => ({
-                ...prev,
-                retryCount: currentRetryCount.current,
-                isEnded: false,
-              }));
-              connect();
-            }
-          }, retryInterval);
-        } else {
+        // 자체 재연결 로직 (EventSource 내장 재연결 대신)
+        setState((prev) => {
+          if (prev.retryCount < retry) {
+            retryTimeoutRef.current = setTimeout(() => {
+              // cleanup으로 정리되지 않았는지 확인
+              if (retryTimeoutRef.current !== null) {
+                setState((inner) => ({
+                  ...inner,
+                  retryCount: inner.retryCount + 1,
+                  isEnded: false,
+                }));
+                connect();
+              }
+            }, retryInterval);
+            return prev;
+          } else {
+            eventSourceRef.current = null;
+            return {
+              ...prev,
+              error: `Connection failed after ${retry} attempts`,
+            };
+          }
+        });
+      });
+
+      // 공통 'end' 이벤트 처리 (사용자 정의 이벤트와 별도)
+      eventSource.addEventListener("end", () => {
+        if (eventSourceRef.current === eventSource) {
+          eventSource.close();
+          eventSourceRef.current = null;
           setState((prev) => ({
             ...prev,
-            error: `Connection failed after ${retry} attempts`,
+            isConnected: false,
+            error: null, // 정상 종료
+            isEnded: true,
           }));
+
+          if (handlersRef.current.end) {
+            const endHandler = handlersRef.current.end;
+            endHandler("end" as T[string]);
+          }
         }
       });
 
       // 각 이벤트 타입별 리스너 등록
       Object.keys(handlersRef.current).forEach((eventType) => {
-        if (eventType === "end") return; // end는 별도 처리
-
         const handler = handlersRef.current[eventType as keyof T];
         if (handler) {
-          (eventSource as any).addEventListener(eventType, (event: any) => {
-            // console.log(`SSE 이벤트 수신 [${eventType}]:`, event.data);
-
+          eventSource.addEventListener(eventType, (event) => {
             // 여전히 현재 연결인지 확인
             if (eventSourceRef.current !== eventSource) {
-              return;
+              return; // 이미 새로운 연결로 교체되었으면 무시
             }
 
             try {
-              const data = JSON.parse(event.data, dateReviver);
+              const data = JSON.parse(event.data as string);
               handler(data);
             } catch (error) {
               console.error(`Failed to parse SSE data for event ${eventType}:`, error);
             }
-
             setState((prev) => ({
               ...prev,
               isEnded: false,
@@ -561,26 +572,25 @@ export function useSSEStream<T extends Record<string, any>>(
         }
       });
 
-      // 공통 'end' 이벤트 처리
-      (eventSource as any).addEventListener("end", () => {
-        console.log("SSE 연결 정상종료");
-        if (eventSourceRef.current === eventSource) {
-          eventSource.close();
-          eventSourceRef.current = null;
-          setState((prev) => ({
-            ...prev,
-            isConnected: false,
-            error: null,
-            isEnded: true,
-          }));
+      // 기본 message 이벤트 처리 (event 타입이 없는 경우)
+      eventSource.addEventListener("message", (event) => {
+        // 여전히 현재 연결인지 확인
+        if (eventSourceRef.current !== eventSource) {
+          return;
+        }
 
-          if (handlersRef.current.end) {
-            handlersRef.current.end();
+        try {
+          const data = JSON.parse(event.data as string);
+          // 'message' 핸들러가 있으면 호출
+          const messageHandler = handlersRef.current["message" as keyof T];
+          if (messageHandler) {
+            messageHandler(data);
           }
+        } catch (error) {
+          console.error("Failed to parse SSE message:", error);
         }
       });
     } catch (error) {
-      console.error("SSE 연결 중 오류:", error);
       setState((prev) => ({
         ...prev,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -588,28 +598,19 @@ export function useSSEStream<T extends Record<string, any>>(
         isEnded: false,
       }));
     }
-  }, [url, JSON.stringify(params), enabled, retry, retryInterval]);
+  };
 
-  // 연결 시작 및 정리
+  // 연결 시작 (단일 effect로 연결 lifecycle 관리)
   useEffect(() => {
     if (enabled) {
-      connect();
-    } else {
-      // 연결 해제
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-      setState((prev) => ({
-        ...prev,
+      // state 초기화
+      setState({
         isConnected: false,
         error: null,
-        isEnded: true,
-      }));
+        retryCount: 0,
+        isEnded: false,
+      });
+      connect();
     }
 
     return () => {
@@ -623,7 +624,7 @@ export function useSSEStream<T extends Record<string, any>>(
         retryTimeoutRef.current = null;
       }
     };
-  }, [connect]);
+  }, [url, JSON.stringify(params), enabled]);
 
   return state;
 }
