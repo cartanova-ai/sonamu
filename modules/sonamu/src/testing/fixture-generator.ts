@@ -170,7 +170,17 @@ export class FixtureGenerator {
       fixture[prop.name] = await this.generateDefaultValue(prop, entity);
     }
 
-    // 5. password 필드 암호화
+    // 5. email 필드가 있고 name 필드가 있으면, email의 로컬 파트를 name 기반으로 보정
+    if ("email" in fixture && typeof fixture.email === "string" && !("email" in overrides)) {
+      const nameValue = fixture.name || fixture.username || fixture.full_name || fixture.name_en;
+      if (nameValue && typeof nameValue === "string") {
+        const domain = fixture.email.split("@")[1] || "example.com";
+        const romanized = await this.romanizeName(nameValue);
+        fixture.email = `${romanized}@${domain}`;
+      }
+    }
+
+    // 6. password 필드 암호화
     if ("password" in fixture && fixture.password && typeof fixture.password === "string") {
       const bcrypt = await import("bcrypt");
       fixture.password = await bcrypt.hash(fixture.password, 10);
@@ -1247,6 +1257,128 @@ Rules:
       default:
         return isKorean ? "안녕하세요" : "Hello";
     }
+  }
+
+  /**
+   * 이름을 이메일 로컬 파트용 로마나이즈드 문자열로 변환합니다.
+   *
+   * 한글 이름은 초성-중성-종성 분해 후 로마나이즈 처리합니다.
+   * 영문 이름은 소문자로 변환하고 공백을 점(.)\uc73c로 치환합니다.
+   * 예: "김철수" → "cheolsu.kim", "John Doe" → "john.doe"
+   */
+  private async romanizeName(name: string): Promise<string> {
+    // 한글 포함 여부 확인
+    if (/[\uAC00-\uD7AF]/.test(name)) {
+      return this.romanizeKoreanName(name);
+    }
+    // 영문: 소문자 + 점 구분
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, ".")
+      .replace(/[^a-z0-9.]/g, "");
+  }
+
+  /**
+   * 한글 이름을 로마나이즈 처리합니다.
+   *
+   * 초성/중성/종성 매핑 테이블을 사용하여 한글을 로마자로 변환합니다.
+   * 첫 글자를 성으로 간주하여 "김철수" → "cheolsu.kim" 형태로 출력합니다.
+   */
+  private romanizeKoreanName(name: string): string {
+    const CHOSEONG = [
+      "g",
+      "kk",
+      "n",
+      "d",
+      "tt",
+      "r",
+      "m",
+      "b",
+      "pp",
+      "s",
+      "ss",
+      "",
+      "j",
+      "jj",
+      "ch",
+      "k",
+      "t",
+      "p",
+      "h",
+    ];
+    const JUNGSEONG = [
+      "a",
+      "ae",
+      "ya",
+      "yae",
+      "eo",
+      "e",
+      "yeo",
+      "ye",
+      "o",
+      "wa",
+      "wae",
+      "oe",
+      "yo",
+      "u",
+      "wo",
+      "we",
+      "wi",
+      "yu",
+      "eu",
+      "ui",
+      "i",
+    ];
+    const JONGSEONG = [
+      "",
+      "k",
+      "k",
+      "k",
+      "n",
+      "n",
+      "n",
+      "t",
+      "l",
+      "l",
+      "l",
+      "l",
+      "l",
+      "l",
+      "l",
+      "l",
+      "m",
+      "p",
+      "p",
+      "t",
+      "t",
+      "ng",
+      "t",
+      "t",
+      "k",
+      "t",
+      "p",
+      "t",
+    ];
+
+    const romanize = (char: string): string => {
+      const code = char.charCodeAt(0);
+      if (code < 0xac00 || code > 0xd7af) return char;
+      const offset = code - 0xac00;
+      const cho = Math.floor(offset / 588);
+      const jung = Math.floor((offset % 588) / 28);
+      const jong = offset % 28;
+      return CHOSEONG[cho] + JUNGSEONG[jung] + JONGSEONG[jong];
+    };
+
+    const chars = [...name];
+    // 첫 글자를 성(姓)으로 간주
+    const familyName = romanize(chars[0]);
+    const givenName = chars.slice(1).map(romanize).join("");
+
+    if (givenName) {
+      return `${givenName}.${familyName}`;
+    }
+    return familyName;
   }
 
   /**
