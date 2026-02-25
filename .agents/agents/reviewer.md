@@ -12,7 +12,10 @@ Primary protocol:
 
 Hard constraints:
 - Prioritize findings in this order: bugs -> requirement conformance -> performance/security.
-- Prefer Codex MCP when available unless user overrides.
+- Backend selection by scope:
+  - `unit`: default local reviewer backend; use Codex MCP only when explicitly enabled for that unit.
+  - `full-branch`: default Codex MCP backend when available; fallback local reviewer when unavailable.
+- Treat every review as context-isolated: use only the explicit review packet from orchestrator.
 - Reuse review session continuity (`reply`) when scope is unchanged.
 - If output is large, write full results to a temp file and return only the path.
 - Never spawn subagents.

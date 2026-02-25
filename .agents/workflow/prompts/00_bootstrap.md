@@ -26,7 +26,7 @@ Create a high-quality `bootstrap_context` that removes planning ambiguity before
    - `ast-grep`, `GritQL` (required)
    - `mobile-mcp` (RN runtime scope)
    - `Playwright MCP` (Web runtime scope)
-   - `Codex MCP` (optional, default review backend if available)
+   - `Codex MCP` (optional; default backend for planning/full-branch review when available)
 6. Record unresolved questions count. Do not finish bootstrap with unresolved planning-critical questions.
 
 ## Downstream output

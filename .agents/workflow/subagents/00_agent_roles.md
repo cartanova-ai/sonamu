@@ -37,7 +37,7 @@ Only the main agent can spawn sub-agents. The orchestrator role is always assume
 - Preset file: `.agents/agents/implementation-primary.md`
 - Input artifacts: `objective_packet`, unit metadata
 - Output artifacts: `unit_execution_report`
-- Rule: leaf worker, no nested spawn, must commit and self-review via Codex MCP before returning
+- Rule: leaf worker, no nested spawn, must commit and return `unit_execution_report`; if inline Codex unit-review is explicitly enabled and available, may close unit review before returning
 
 ### `reviewer`
 - Canonical prompt: `.agents/workflow/prompts/06_codex_output_and_sessions.md`
@@ -48,7 +48,7 @@ Only the main agent can spawn sub-agents. The orchestrator role is always assume
 - Rule: follows structured review checklist (see local reviewer review contract in canonical prompt)
 - Rule: prioritize bugs -> requirement conformance -> performance/security
 - Rule: severity-gated (high and medium only, no style nitpicks)
-- Scope: unit-level reviews (orchestrator-spawned). Branch-level reviews use Codex MCP.
+- Scope: unit-level and full-branch reviews (orchestrator-spawned). Backend default is local reviewer for unit-level and Codex MCP (fallback local reviewer) for full-branch.
 
 ### `review-feedback-handler`
 - Canonical prompt: `.agents/workflow/prompts/08_review_feedback_handler.md`

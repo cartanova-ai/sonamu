@@ -525,6 +525,18 @@ export namespace SonamuUIService {
     });
   }
 
+  // ---- 테스트 상태 훅 ----
+  export function useTestStatus() {
+    return useQuery({
+      queryKey: ["test", "status"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/__test__/status`,
+        }) as Promise<ManagerStatus>,
+    });
+  }
+
   // Cone 업데이트 메서드들
   // ---- Tasks 훅/함수 ----
   export function useWorkflowRuns(params?: {
@@ -783,4 +795,97 @@ export type ScaffoldingGenerateOptions = {
   templateKey: string;
   enumId?: string;
   overwrite?: boolean;
+};
+
+// ---- 테스트 결과 뷰어 타입 정의 ----
+export type TestNodeKind = "file" | "suite" | "test";
+export type TestState = "passed" | "failed" | "skipped" | "todo" | "running" | "unknown";
+
+export type SerializedTrace = {
+  key: string;
+  value: unknown;
+  filePath: string;
+  lineNumber: number;
+  at: string;
+};
+
+export type TestCaseResult = {
+  id: string;
+  kind: TestNodeKind;
+  name: string;
+  fullName: string;
+  file: string;
+  state: TestState;
+  durationMs: number | null;
+  counts: { total: number; passed: number; failed: number; skipped: number };
+  error: { message: string; stack?: string } | null;
+  traces: SerializedTrace[];
+  children: TestCaseResult[];
+};
+
+export type RunResult = {
+  ok: boolean;
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+    durationMs: number;
+  };
+  results: TestCaseResult[];
+};
+
+export type ManagerStatus = {
+  ready: boolean;
+  running: boolean;
+  lastRunAt: string | null;
+  sseAvailable: boolean;
+};
+
+export type StoredRunEntry = {
+  runId: string;
+  dateKey: string;
+  startedAt: string;
+  finishedAt: string;
+  result: RunResult;
+};
+
+export type StoredRunHistory = {
+  runs: StoredRunEntry[];
+};
+
+export type TestSSEEventMap = {
+  snapshot: {
+    schemaVersion: 1;
+    serverTime: string;
+    status: ManagerStatus;
+  };
+  runQueued: {
+    schemaVersion: 1;
+    runId: string;
+    queuedAt: string;
+    request: { files?: string[]; pattern?: string };
+  };
+  runStarted: {
+    schemaVersion: 1;
+    runId: string;
+    startedAt: string;
+  };
+  runCompleted: {
+    schemaVersion: 1;
+    runId: string;
+    startedAt: string;
+    finishedAt: string;
+    result: RunResult;
+  };
+  runErrored: {
+    schemaVersion: 1;
+    runId: string;
+    finishedAt: string;
+    error: { message: string; stack?: string };
+  };
+  heartbeat: {
+    schemaVersion: 1;
+    at: string;
+  };
 };

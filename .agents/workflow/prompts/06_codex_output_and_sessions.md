@@ -11,8 +11,9 @@ Standardize review requests/responses, session continuity, and long-output handl
 - Start a new session only when scope changes materially (for example, unit -> full-branch).
 
 ## Default backend policy
-- If Codex MCP is available and user did not override, use Codex MCP by default.
-- If Codex MCP is not installed or unavailable, skip Codex MCP and use the configured fallback backend.
+- Planning scope (`01_plan.md`): if Codex MCP is available and user did not override, use Codex MCP by default.
+- Unit-level review scope (`scope_type=unit`): default backend is local reviewer. Use Codex MCP only when explicitly enabled for that unit and available.
+- Full-branch review scope (`scope_type=full-branch`): default backend is Codex MCP when available; fallback to local reviewer when unavailable.
 - Preserve the same review contract and output schema regardless of backend.
 
 ## Human-in-the-loop reply policy
@@ -123,7 +124,12 @@ review_metadata:
   status: clean|needs_fix
 ```
 
-## Local reviewer review contract
+## Reviewer backend selection policy
+- Reviewer sub-agents are context-isolated workers. They review only the explicit review packet from orchestrator, not implementation conversation history.
+- For `scope_type=unit`: default backend is local reviewer; Codex MCP is optional only when explicitly enabled for that unit.
+- For `scope_type=full-branch`: default backend is Codex MCP when available; fallback is local reviewer.
+
+## Unit-level local reviewer contract
 
 When the orchestrator spawns a local reviewer sub-agent for unit-level reviews:
 
@@ -154,7 +160,7 @@ Before the reviewer sub-agent starts manual review, run automated pattern checks
 ```yaml
 unit_review_result:
   unit_id: U-###
-  backend: local-reviewer
+  backend: local-reviewer|codex-mcp
   checklist:
     - item: "must_verify_behaviors coverage"
       status: pass|fail

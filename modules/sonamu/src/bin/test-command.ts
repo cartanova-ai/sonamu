@@ -2,7 +2,7 @@ import path from "node:path";
 import chalk from "chalk";
 import type { SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
-import type { RunResult } from "../testing";
+import type { RunResult, TestCaseResult } from "../testing";
 import { findApiRootPath } from "../utils/utils";
 
 export async function testCommand(): Promise<void> {
@@ -99,29 +99,34 @@ export async function testCommand(): Promise<void> {
     console.log(`\nTests: ${passedStr}, ${failedStr}, ${total} total`);
     console.log(chalk.dim(`Duration: ${durationMs}ms`));
 
-    if (result.failed && result.failed.length > 0) {
+    const failedTests = collectFailedFromResults(result.results);
+    if (failedTests.length > 0) {
       console.log(chalk.red.bold("\nFailed tests:"));
-      for (const f of result.failed) {
-        console.log(`  ${chalk.red("x")} ${f.name} ${chalk.dim(`(${f.file})`)}`);
-        console.log(`    ${chalk.red(f.error)}`);
+      for (const f of failedTests) {
+        console.log(`  ${chalk.red("x")} ${f.fullName} ${chalk.dim(`(${f.file})`)}`);
+        if (f.error) {
+          console.log(`    ${chalk.red(f.error.message)}`);
+        }
       }
     }
 
-    if (showTraces && result.traces && result.traces.length > 0) {
-      console.log(chalk.cyan.bold("\nTraces:"));
-      for (const testTraces of result.traces) {
-        console.log(`\n  ${chalk.bold(testTraces.testName)}`);
-        console.log(`  ${chalk.dim(path.basename(testTraces.file))}`);
-        for (const trace of testTraces.traces) {
-          const loc = `${path.basename(trace.filePath)}:${trace.lineNumber}`;
-          const valueStr =
-            typeof trace.value === "string"
-              ? trace.value
-              : (JSON.stringify(trace.value, null, 2) ?? "undefined");
-          console.log(`\n    ${chalk.yellow(`[${trace.key}]`)} ${chalk.dim(loc)}`);
-          // value가 여러 줄이면 각 줄을 들여쓰기하여 출력합니다.
-          const indented = valueStr.split("\n").join("\n    ");
-          console.log(`    ${indented}`);
+    if (showTraces) {
+      const testsWithTraces = collectTracesFromResults(result.results);
+      if (testsWithTraces.length > 0) {
+        console.log(chalk.cyan.bold("\nTraces:"));
+        for (const { testName, file, traces } of testsWithTraces) {
+          console.log(`\n  ${chalk.bold(testName)}`);
+          console.log(`  ${chalk.dim(path.basename(file))}`);
+          for (const trace of traces) {
+            const loc = `${path.basename(trace.filePath)}:${trace.lineNumber}`;
+            const valueStr =
+              typeof trace.value === "string"
+                ? trace.value
+                : (JSON.stringify(trace.value, null, 2) ?? "undefined");
+            console.log(`\n    ${chalk.yellow(`[${trace.key}]`)} ${chalk.dim(loc)}`);
+            const indented = valueStr.split("\n").join("\n    ");
+            console.log(`    ${indented}`);
+          }
         }
       }
     }
@@ -138,4 +143,32 @@ export async function testCommand(): Promise<void> {
     }
     throw err;
   }
+}
+
+function collectFailedFromResults(nodes: TestCaseResult[]): TestCaseResult[] {
+  const result: TestCaseResult[] = [];
+  for (const node of nodes) {
+    if (node.kind === "test" && node.state === "failed") {
+      result.push(node);
+    }
+    if (node.children.length > 0) {
+      result.push(...collectFailedFromResults(node.children));
+    }
+  }
+  return result;
+}
+
+function collectTracesFromResults(
+  nodes: TestCaseResult[],
+): { testName: string; file: string; traces: TestCaseResult["traces"] }[] {
+  const result: { testName: string; file: string; traces: TestCaseResult["traces"] }[] = [];
+  for (const node of nodes) {
+    if (node.kind === "test" && node.traces.length > 0) {
+      result.push({ testName: node.fullName, file: node.file, traces: node.traces });
+    }
+    if (node.children.length > 0) {
+      result.push(...collectTracesFromResults(node.children));
+    }
+  }
+  return result;
 }

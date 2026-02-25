@@ -25,11 +25,12 @@ When you read this file, you must:
 - Every spawn must include a complete `objective_packet`.
 
 ## Review policy
-- Implementation sub-agents handle their own unit-level commit + Codex MCP review loop internally.
-- After all units are integrated, orchestrator spawns a reviewer sub-agent for full-branch review.
+- Implementation sub-agents may close unit-level review inline only when unit-level Codex is explicitly enabled and available; otherwise they return with `review_pending=true`.
+- For pending units, orchestrator spawns a context-isolated reviewer sub-agent for unit-level review.
+- After all units are integrated and clean, orchestrator spawns a reviewer sub-agent for full-branch review.
+- Reviewer backend defaults: unit-level = local reviewer, full-branch = Codex MCP when available (fallback local reviewer).
 - Enforce review loops until zero unresolved findings.
-- Prefer Codex MCP for review when available unless user overrides.
-- Enforce Codex MCP human-in-the-loop policy: sub-agents must surface Codex responses to the user and wait for user input before replying via `codex-reply`.
+- Enforce Codex MCP human-in-the-loop policy: normal mode requires user-mediated replies; autonomous mode allows automatic processing via `codex-reply`.
 
 ## Execution mode
 - If runtime supports preset subagents, use preset role dispatch.

@@ -115,6 +115,7 @@ export default defineConfig({
         root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
       },
+      sse: true,
       custom: (_server) => {
         // nothing yet
       },

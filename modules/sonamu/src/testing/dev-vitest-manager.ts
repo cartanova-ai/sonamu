@@ -5,15 +5,27 @@ import type {
   TestModule,
   TestRunResult,
   TestSpecification,
+  TestSuite,
   Vitest,
 } from "vitest/node";
 import type { SerializedTrace } from "../naite/naite";
 
 // 테스트 한 건의 trace 모음
-export type TestTraces = {
-  testName: string;
+export type TestNodeKind = "file" | "suite" | "test";
+export type TestState = "passed" | "failed" | "skipped" | "todo" | "running" | "unknown";
+
+export type TestCaseResult = {
+  id: string;
+  kind: TestNodeKind;
+  name: string;
+  fullName: string;
   file: string;
+  state: TestState;
+  durationMs: number | null;
+  counts: { total: number; passed: number; failed: number; skipped: number };
+  error: { message: string; stack?: string } | null;
   traces: SerializedTrace[];
+  children: TestCaseResult[];
 };
 
 export type RunResult = {
@@ -25,14 +37,7 @@ export type RunResult = {
     skipped: number;
     durationMs: number;
   };
-  failed: FailedTest[];
-  traces: TestTraces[];
-};
-
-export type FailedTest = {
-  name: string;
-  file: string;
-  error: string;
+  results: TestCaseResult[];
 };
 
 export type ManagerStatus = {
@@ -40,6 +45,8 @@ export type ManagerStatus = {
   running: boolean;
   lastRunAt: string | null;
 };
+
+export type TestEventListener = (event: string, data: unknown) => void;
 
 type QueueEntry = {
   task: () => Promise<RunResult>;
@@ -54,6 +61,21 @@ export class DevVitestManager {
   private queue: QueueEntry[] = [];
   private processing = false;
   private closed = false;
+  private eventListeners = new Set<TestEventListener>();
+
+  addEventListener(listener: TestEventListener): void {
+    this.eventListeners.add(listener);
+  }
+
+  removeEventListener(listener: TestEventListener): void {
+    this.eventListeners.delete(listener);
+  }
+
+  emitEvent(event: string, data: unknown): void {
+    for (const listener of this.eventListeners) {
+      listener(event, data);
+    }
+  }
 
   async start(vitestConfigPath?: string): Promise<void> {
     // 이미 시작된 경우 중복 초기화를 방지
@@ -212,97 +234,198 @@ export class DevVitestManager {
     durationMs: number,
     specModuleIds: Set<string>,
   ): RunResult {
-    let total = 0;
-    let passed = 0;
-    let failed = 0;
-    let skipped = 0;
-    const failedTests: FailedTest[] = [];
-    const allTraces: TestTraces[] = [];
+    const results: TestCaseResult[] = [];
 
     for (const testModule of runResult.testModules) {
       if (!specModuleIds.has(testModule.moduleId)) continue;
-      this.collectFromModule(testModule, failedTests, allTraces, (counts) => {
-        total += counts.total;
-        passed += counts.passed;
-        failed += counts.failed;
-        skipped += counts.skipped;
-      });
+      results.push(this.buildFileNode(testModule));
     }
 
+    const summary = aggregateCounts(results);
+
     return {
-      ok: failed === 0,
-      summary: { total, passed, failed, skipped, durationMs },
-      failed: failedTests,
-      traces: allTraces,
+      ok: summary.failed === 0,
+      summary: { ...summary, durationMs },
+      results,
     };
   }
 
-  private collectFromModule(
-    testModule: TestModule,
-    failedTests: FailedTest[],
-    allTraces: TestTraces[],
-    addCounts: (counts: { total: number; passed: number; failed: number; skipped: number }) => void,
-  ): void {
-    let total = 0;
-    let passed = 0;
-    let failed = 0;
-    let skipped = 0;
+  private buildFileNode(testModule: TestModule): TestCaseResult {
+    const file = testModule.moduleId;
+    const children = this.buildChildNodes(testModule, file);
+    const counts = aggregateCounts(children);
+    const moduleState = testModule.state();
+    const diagnostic = testModule.diagnostic();
 
-    for (const testCase of testModule.children.allTests()) {
-      total++;
-      const result = testCase.result();
-
-      if (result.state === "passed") {
-        passed++;
-      } else if (result.state === "failed") {
-        failed++;
-        failedTests.push(this.extractFailedTest(testCase, testModule));
-      } else {
-        // pending/skipped 상태는 skipped로 집계
-        skipped++;
-      }
-
-      const traceEntry = this.extractTraces(testCase, testModule);
-      if (traceEntry !== null) {
-        allTraces.push(traceEntry);
-      }
-    }
-
-    addCounts({ total, passed, failed, skipped });
+    return {
+      id: testModule.moduleId,
+      kind: "file",
+      name: testModule.moduleId,
+      fullName: testModule.moduleId,
+      file,
+      state: mapModuleState(moduleState),
+      durationMs: diagnostic.duration > 0 ? diagnostic.duration : null,
+      counts,
+      error: null,
+      traces: [],
+      children,
+    };
   }
 
-  private extractFailedTest(testCase: TestCase, testModule: TestModule): FailedTest {
-    const result = testCase.result();
-    let errorMessage = "Unknown error";
+  private buildChildNodes(parent: TestModule | TestSuite, file: string): TestCaseResult[] {
+    const result: TestCaseResult[] = [];
+    for (const child of parent.children) {
+      if (child.type === "suite") {
+        result.push(this.buildSuiteNode(child, file));
+      } else {
+        result.push(this.buildTestNode(child, file));
+      }
+    }
+    return result;
+  }
 
+  private buildSuiteNode(suite: TestSuite, file: string): TestCaseResult {
+    const children = this.buildChildNodes(suite, file);
+    const counts = aggregateCounts(children);
+    const suiteState = suite.state();
+
+    return {
+      id: `${file}::${suite.fullName}`,
+      kind: "suite",
+      name: suite.name,
+      fullName: suite.fullName,
+      file,
+      state: mapSuiteState(suiteState),
+      durationMs: null,
+      counts,
+      error: null,
+      traces: [],
+      children,
+    };
+  }
+
+  private buildTestNode(testCase: TestCase, file: string): TestCaseResult {
+    const result = testCase.result();
+    const diagnostic = testCase.diagnostic();
+    const state = mapTestResult(result, testCase.options.mode);
+
+    let error: { message: string; stack?: string } | null = null;
     if (result.state === "failed" && result.errors.length > 0) {
       const firstError = result.errors[0];
-      errorMessage = firstError.message ?? String(firstError);
+      error = {
+        message: firstError.message ?? String(firstError),
+        stack: firstError.stack,
+      };
     }
 
-    return {
-      name: testCase.fullName,
-      file: testModule.moduleId,
-      error: errorMessage,
-    };
-  }
-
-  private extractTraces(testCase: TestCase, testModule: TestModule): TestTraces | null {
     const raw = testCase.meta().traces;
-    // bootstrap.ts가 설정하는 traces 배열 여부를 런타임에서도 검증
-    if (!Array.isArray(raw) || raw.length === 0) {
-      return null;
+    let traces: SerializedTrace[] = [];
+    if (Array.isArray(raw) && raw.length > 0) {
+      traces = raw.filter(isSerializedTrace);
     }
-    const traces = raw.filter(isSerializedTrace);
-    if (traces.length === 0) {
-      return null;
-    }
+
     return {
-      testName: testCase.fullName,
-      file: testModule.moduleId,
+      id: `${file}::${testCase.fullName}`,
+      kind: "test",
+      name: testCase.name,
+      fullName: testCase.fullName,
+      file,
+      state,
+      durationMs: diagnostic ? diagnostic.duration : null,
+      counts: countFromState(state),
+      error,
       traces,
+      children: [],
     };
   }
+}
+
+function mapModuleState(state: "skipped" | "pending" | "failed" | "passed" | "queued"): TestState {
+  switch (state) {
+    case "passed":
+      return "passed";
+    case "failed":
+      return "failed";
+    case "skipped":
+      return "skipped";
+    case "pending":
+    case "queued":
+      return "running";
+    default:
+      return "unknown";
+  }
+}
+
+function mapSuiteState(state: "skipped" | "pending" | "failed" | "passed"): TestState {
+  switch (state) {
+    case "passed":
+      return "passed";
+    case "failed":
+      return "failed";
+    case "skipped":
+      return "skipped";
+    case "pending":
+      return "running";
+    default:
+      return "unknown";
+  }
+}
+
+function mapTestResult(
+  result: ReturnType<TestCase["result"]>,
+  mode: "run" | "only" | "skip" | "todo",
+): TestState {
+  switch (result.state) {
+    case "passed":
+      return "passed";
+    case "failed":
+      return "failed";
+    case "skipped":
+      return mode === "todo" ? "todo" : "skipped";
+    case "pending":
+      return "running";
+    default:
+      return "unknown";
+  }
+}
+
+function countFromState(state: TestState): {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+} {
+  switch (state) {
+    case "passed":
+      return { total: 1, passed: 1, failed: 0, skipped: 0 };
+    case "failed":
+      return { total: 1, passed: 0, failed: 1, skipped: 0 };
+    case "skipped":
+    case "todo":
+      return { total: 1, passed: 0, failed: 0, skipped: 1 };
+    default:
+      // running/unknown 상태도 total에 포함하여 파일 노드 counts.total이 하위 합계와 일치하도록 함
+      return { total: 1, passed: 0, failed: 0, skipped: 0 };
+  }
+}
+
+function aggregateCounts(children: TestCaseResult[]): {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+} {
+  let total = 0;
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+  for (const child of children) {
+    total += child.counts.total;
+    passed += child.counts.passed;
+    failed += child.counts.failed;
+    skipped += child.counts.skipped;
+  }
+  return { total, passed, failed, skipped };
 }
 
 function isSerializedTrace(value: unknown): value is SerializedTrace {

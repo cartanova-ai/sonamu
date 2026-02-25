@@ -15,7 +15,7 @@ Provide one fully integrated workflow where each prompt consumes explicit artifa
 1. `prompts/00_bootstrap.md`
 2. `prompts/01_plan.md` (planner sub-agent)
 3. `prompts/07_orchestrator.md` (main agent assumes this role)
-4. `prompts/02_implement.md` (spawned implementation sub-agents, each handles commit + Codex MCP review loop internally)
+4. `prompts/02_implement.md` (spawned implementation sub-agents handle commit; inline Codex unit-review is conditional, otherwise return for orchestrator-driven reviewer loop)
 5. `prompts/06_codex_output_and_sessions.md` (review/session protocol used by review actors)
 6. `prompts/08_review_feedback_handler.md` (when findings exist)
 7. `prompts/05_user_review_handoff.md`
@@ -28,7 +28,7 @@ All prompts must follow `prompts/00_shared_contract.md`.
 - Bootstrap output: `bootstrap_context`
 - Planning outputs: `plan_document`, `spawn_manifest`
 - Orchestration output: per-unit `objective_packet` payloads and execution trace
-- Implementation output: `unit_execution_report` (includes commit hashes and review closure evidence)
+- Implementation output: `unit_execution_report` (includes commit hashes and review path/status fields such as `review_path`, `review_backend`, `review_pending`, `review_closed`)
 - Review outputs: `unit_review_result`, `branch_review_result`
 - Feedback handling output: `feedback_resolution_log`
 - Final output: `handoff_bundle`
