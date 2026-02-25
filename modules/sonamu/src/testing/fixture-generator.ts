@@ -894,9 +894,7 @@ export class FixtureGenerator {
 
     const outputShape = props.map((p) => `  "${p.name}": <${p.type}>`).join(",\n");
 
-    const entityContext = entity.cone?.note
-      ? `\nEntity description: ${entity.cone.note}`
-      : "";
+    const entityContext = entity.cone?.note ? `\nEntity description: ${entity.cone.note}` : "";
 
     return `Generate test fixture data for the ${entity.id} entity. All fields must be coherent and consistent with each other.
 
@@ -949,9 +947,7 @@ ${outputShape}
     const locale = this.options.locale || "ko";
     const language = locale === "ko" ? "Korean" : locale === "ja" ? "Japanese" : "English";
 
-    const entityContext = entity.cone?.note
-      ? `\nEntity context: ${entity.cone.note}`
-      : "";
+    const entityContext = entity.cone?.note ? `\nEntity context: ${entity.cone.note}` : "";
 
     const otherFields = entity.props
       .filter((p) => p.name !== prop.name && !isRelationProp(p) && p.cone?.note)
