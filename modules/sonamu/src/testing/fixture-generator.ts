@@ -864,15 +864,47 @@ export class FixtureGenerator {
       })
       .join("\n");
 
+    // LLM 대상이 아닌 prop들도 맥락으로 제공 (relation 제외)
+    const otherProps = entity.props
+      .filter(
+        (p) =>
+          !props.includes(p) &&
+          !isRelationProp(p) &&
+          p.name !== "id" &&
+          !("virtual" in p && p.virtual),
+      )
+      .map((p) => {
+        let desc = `- ${p.name} (${p.type})`;
+        if (p.cone?.note) desc += `: ${p.cone.note}`;
+        if (
+          (p.type === "enum" || p.type === "enum[]") &&
+          "id" in p &&
+          p.id &&
+          entity.enumLabels?.[p.id]
+        ) {
+          const values = Object.keys(entity.enumLabels[p.id]).join(", ");
+          desc += ` [allowed values: ${values}]`;
+        }
+        return desc;
+      })
+      .join("\n");
+    const otherPropsContext = otherProps
+      ? `\n\nOther fields in this entity (for context, do NOT generate these):\n${otherProps}`
+      : "";
+
     const outputShape = props.map((p) => `  "${p.name}": <${p.type}>`).join(",\n");
+
+    const entityContext = entity.cone?.note
+      ? `\nEntity description: ${entity.cone.note}`
+      : "";
 
     return `Generate test fixture data for the ${entity.id} entity. All fields must be coherent and consistent with each other.
 
-Entity: ${entity.id}
+Entity: ${entity.id}${entityContext}
 Locale: ${locale} (use ${language} for text fields)
 
 Fields to generate:
-${fieldDescriptions}
+${fieldDescriptions}${otherPropsContext}
 
 Rules:
 - All fields in a single row must be logically consistent (e.g. name/name_en/name_cn should represent the same person)
@@ -917,7 +949,19 @@ ${outputShape}
     const locale = this.options.locale || "ko";
     const language = locale === "ko" ? "Korean" : locale === "ja" ? "Japanese" : "English";
 
-    let prompt = `Generate test data for ${entity.id}.${prop.name} (type: ${prop.type})
+    const entityContext = entity.cone?.note
+      ? `\nEntity context: ${entity.cone.note}`
+      : "";
+
+    const otherFields = entity.props
+      .filter((p) => p.name !== prop.name && !isRelationProp(p) && p.cone?.note)
+      .map((p) => `- ${p.name} (${p.type}): ${p.cone?.note}`)
+      .join("\n");
+    const otherFieldsContext = otherFields
+      ? `\n\nOther fields in this entity (for context):\n${otherFields}`
+      : "";
+
+    let prompt = `Generate test data for ${entity.id}.${prop.name} (type: ${prop.type})${entityContext}${otherFieldsContext}
 
 Requirement: ${hint}
 
