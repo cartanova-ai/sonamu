@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { Cone, EntityJson } from "../types/types";
 
 /**
@@ -82,6 +84,46 @@ function getApiKey(): string {
 }
 
 /**
+ * 프로젝트 루트의 .claude/skills/project/*.md 파일들을 읽어 컨텍스트로 반환합니다.
+ *
+ * requirements.md 등 프로젝트의 비즈니스 요구사항과 도메인 지식을 담은 파일들을
+ * cone 생성 시 LLM에게 전달하여 현실적인 메타데이터를 생성하도록 합니다.
+ */
+function readProjectSkills(): string {
+  try {
+    const { Sonamu } = require("../api");
+    const projectRoot = Sonamu.appRootPath;
+    const skillsDir = path.join(projectRoot, ".claude", "skills", "project");
+
+    if (!fs.existsSync(skillsDir)) {
+      return "";
+    }
+
+    const files = fs
+      .readdirSync(skillsDir)
+      .filter((f: string) => f.endsWith(".md"))
+      .sort();
+    if (files.length === 0) {
+      return "";
+    }
+
+    const contents: string[] = [];
+    for (const file of files) {
+      const filePath = path.join(skillsDir, file);
+      const content = fs.readFileSync(filePath, "utf-8").trim();
+      if (content) {
+        contents.push(`--- ${file} ---\n${content}`);
+      }
+    }
+
+    return contents.join("\n\n");
+  } catch {
+    // Sonamu 미초기화 또는 파일 접근 오류 시 빈 문자열 반환
+    return "";
+  }
+}
+
+/**
  * LLM 프롬프트를 생성합니다.
  *
  * ai-client.ts 패턴을 참고하여 명확한 지시사항과 출력 형식을 제공합니다.
@@ -94,8 +136,13 @@ function buildPrompt(context: ConeGenerationContext): string {
     ja: "Japanese",
   }[locale];
 
-  return `You are a Sonamu framework expert. Generate cone metadata for database entity fixture generation.
+  const projectContext = readProjectSkills();
+  const projectSection = projectContext
+    ? `\nPROJECT CONTEXT (business requirements and domain knowledge):\n${projectContext}\n\nUse the above project context to understand the business domain, entity purposes, field meanings, and relationships. Generate cone metadata that reflects this project's actual requirements, not generic assumptions.\n`
+    : "";
 
+  return `You are a Sonamu framework expert. Generate cone metadata for database entity fixture generation.
+${projectSection}
 ENTITY STRUCTURE:
 ${JSON.stringify(context.entity, null, 2)}
 
