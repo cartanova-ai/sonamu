@@ -25,6 +25,10 @@ export default defineConfig({
         target: "http://localhost:10280",
         changeOrigin: true,
       },
+      "/__test__": {
+        target: "http://localhost:10280",
+        changeOrigin: true,
+      },
     },
   },
   build: {

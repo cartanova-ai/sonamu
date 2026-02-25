@@ -204,6 +204,25 @@ const en: Record<DictKey, Dictionary[string]> = {
   "tasks.filter.createdAfter": "From",
   "tasks.filter.createdBefore": "To",
   "tasks.filter.reset": "Reset",
+
+  // Test Results
+  "nav.testResults": "Test",
+  "testResults.title": "Test",
+  "testResults.noHistory": "No run history.",
+  "testResults.sseNotAvailable":
+    "SSE plugin is not configured. Add `sse: true` to server.plugins in sonamu.config.ts.",
+  "testResults.connected": "Connected",
+  "testResults.disconnected": "Disconnected",
+  "testResults.connecting": "Connecting...",
+  "testResults.summary.total": "Total",
+  "testResults.summary.passed": "Passed",
+  "testResults.summary.failed": "Failed",
+  "testResults.summary.skipped": "Skipped",
+  "testResults.summary.duration": "Duration",
+  "testResults.detail.error": "Error",
+  "testResults.detail.traces": "Naite Traces",
+  "testResults.detail.noTraces": "No traces",
+  "testResults.clearHistory": "Clear History",
 };
 
 export default en;

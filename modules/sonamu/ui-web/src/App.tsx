@@ -24,6 +24,7 @@ function App({ children }: AppProps) {
     { name: SD("nav.fixture"), path: "/fixture" },
     { name: SD("nav.i18n"), path: "/i18n" },
     { name: SD("nav.tasks"), path: "/tasks" },
+    { name: SD("nav.testResults"), path: "/test-results" },
   ];
   const location = useLocation();
 

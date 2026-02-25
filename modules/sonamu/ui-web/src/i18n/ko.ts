@@ -199,4 +199,23 @@ export default {
   "tasks.filter.createdAfter": "시작일",
   "tasks.filter.createdBefore": "종료일",
   "tasks.filter.reset": "초기화",
+
+  // Test Results
+  "nav.testResults": "Test",
+  "testResults.title": "Test",
+  "testResults.noHistory": "실행 내역이 없습니다.",
+  "testResults.sseNotAvailable":
+    "SSE 플러그인이 설정되지 않았습니다. sonamu.config.ts의 server.plugins에 sse: true를 추가해주세요.",
+  "testResults.connected": "연결됨",
+  "testResults.disconnected": "연결 끊김",
+  "testResults.connecting": "연결 중...",
+  "testResults.summary.total": "전체",
+  "testResults.summary.passed": "통과",
+  "testResults.summary.failed": "실패",
+  "testResults.summary.skipped": "건너뜀",
+  "testResults.summary.duration": "소요",
+  "testResults.detail.error": "에러",
+  "testResults.detail.traces": "Naite 트레이스",
+  "testResults.detail.noTraces": "트레이스 없음",
+  "testResults.clearHistory": "이력 지우기",
 } as const;
