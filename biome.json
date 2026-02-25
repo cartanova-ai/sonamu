@@ -31,7 +31,8 @@
       },
       "suspicious": {
         "noArrayIndexKey": "off",
-        "noFocusedTests": "warn"
+        "noFocusedTests": "warn",
+        "noDoubleEquals": "error"
       }
     }
   },
