@@ -39,9 +39,15 @@ After steps 1-6 pass:
    - Use scope-first bracket conventional commit style.
    - Commit message must be in Korean.
    - Do not add Co-Authored-By trailer.
-8. Prepare unit execution report and return to orchestrator.
-   - Unit-level code review is handled by the orchestrator via a separate reviewer sub-agent.
-   - Do not self-review or call Codex MCP from within the implementation sub-agent.
+8. Resolve unit review path using `objective_packet` review policy.
+   - If inline Codex unit-review is explicitly enabled and Codex MCP is available:
+     - Run inline Codex review on the committed changes.
+     - If findings exist: fix -> re-commit -> re-review until zero unresolved findings.
+     - Mark the report as `review_closed: true`.
+   - Otherwise (inline review disabled or Codex unavailable):
+     - Do not block on review inside implementation.
+     - Return with `review_pending: true` so orchestrator can run a separate reviewer sub-agent.
+9. Prepare `unit_execution_report` and return to orchestrator.
 
 ## Downstream output
 Produce `unit_execution_report`:
@@ -66,12 +72,20 @@ unit_execution_report:
   runtime_validation:
     web_playwright: pass|fail|na
     rn_emulator_or_simulator: pass|fail|na
-  review_pending: true
+  review_path: inline_codex|orchestrated_reviewer
+  review_backend: codex-mcp|pending
+  review_closed: true|false
+  review_pending: true|false
+  review_metadata:
+    unresolved_count: <number>|null
+    evidence:
+      - "..."
   known_risks:
     - "..."
 ```
 
 ## Handoff contract
 - Return `unit_execution_report` to orchestrator.
-- Do not self-review. Review is orchestrator-driven via a separate reviewer sub-agent.
-- Return when all automated gates pass and changes are committed.
+- If `review_path=inline_codex`, return only after inline review loop is closed.
+- If `review_path=orchestrated_reviewer`, return after automated gates pass and changes are committed, with `review_pending: true`.
+- Orchestrated reviewer path is context-isolated and owned by the orchestrator.

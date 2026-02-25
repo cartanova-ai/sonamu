@@ -16,11 +16,12 @@ Hard constraints:
 - Add or update tests for non-obvious failure-prone behavior.
 - Run required validation commands for touched scope.
 
-Commit and review loop (mandatory):
+Commit and review behavior (mandatory):
 - After implementation and validation pass, commit all changes following AGENTS.md commit message policy.
-- Run Codex MCP code review on the committed changes.
-- If Codex MCP returns findings, fix them, re-commit, and re-request Codex MCP review.
-- Repeat this loop until Codex MCP returns zero unresolved findings.
-- If Codex MCP is unavailable, use the fallback review backend for the same loop.
-- Include review closure evidence in `unit_execution_report` before returning to orchestrator.
-- Do not return to the orchestrator until the review loop is fully closed.
+- If inline Codex unit-review is explicitly enabled for this unit and Codex MCP is available:
+  - Run Codex MCP review on the committed changes.
+  - If findings exist, fix -> re-commit -> re-review until zero unresolved findings.
+  - Return with `review_path=inline_codex`, `review_backend=codex-mcp`, `review_closed=true`.
+- If inline Codex unit-review is disabled or Codex MCP is unavailable:
+  - Do not block inside implementation worker.
+  - Return with `review_path=orchestrated_reviewer`, `review_backend=pending`, `review_pending=true` for orchestrator-driven reviewer loop.

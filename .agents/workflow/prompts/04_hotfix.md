@@ -25,7 +25,9 @@ Run hotfix execution with the same orchestration and review rigor as normal impl
 5. Run unit-level review/fix loop to closure.
 6. Run full-branch hotfix review/fix loop to closure.
 7. Route review findings through `prompts/08_review_feedback_handler.md`.
-8. For review, use Codex MCP only when installed and available; otherwise use fallback review backend.
+8. For review, follow backend selection policy in `prompts/06_codex_output_and_sessions.md`:
+   - unit-level: default local reviewer backend (Codex only when explicitly enabled and available)
+   - full-branch: default Codex MCP backend when available, otherwise fallback local reviewer backend
 
 ## Codex MCP problem-solving escalation
 Follow the session protocol in `prompts/06_codex_output_and_sessions.md` section `Problem-solving escalation session protocol`.

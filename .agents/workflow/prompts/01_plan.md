@@ -26,7 +26,9 @@ Convert `bootstrap_context` into a detailed execution plan and a machine-readabl
 7. Enforce common required gates and explicit project-level override mapping.
 8. Treat planning, codex execution protocol, branch review, and orchestration as prompt-based contracts (not separate skills).
 9. Use Codex MCP as the default planning assistance tool. If Codex MCP is unavailable or encounters errors, proceed without it.
-10. When Codex MCP returns a response during planning, present the response to the user and wait for user input before replying to Codex MCP via `codex-reply`. Do not auto-reply.
+10. When Codex MCP returns a response during planning:
+    - Normal mode (`autonomous: false`): present the response to the user, wait for user input, then reply via `codex-reply`.
+    - Autonomous mode (`autonomous: true`): process and reply automatically via `codex-reply` without user mediation.
 11. Sonamu MCP and SocratsAI MCP are future integrations; mark as pending and do not block current planning.
 12. Include execution-mode matrix for subagents:
    - `preset` (Claude preset available)

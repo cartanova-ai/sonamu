@@ -169,16 +169,17 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
   - before push: test pass
 
 ## Review policy
-- Unit-level review: orchestrator spawns a separate, context-isolated reviewer sub-agent after each implementation unit completes. The reviewer receives only diff, `must_verify_behaviors`, and gate results.
+- Unit-level review: implementation sub-agent may close unit review inline only when unit-level Codex is explicitly enabled and available; otherwise orchestrator spawns a separate, context-isolated reviewer sub-agent.
+- Reviewer input contract for unit-level: diff, `must_verify_behaviors`, test/gate results, relevant `objective_packet` fields, and AST pre-scan results.
 - Review fast-path: trivial changes (<=30 lines, docs/formatting/config only, all gates pass) skip reviewer spawn.
-- Branch-level review: after all units are integrated and clean, run Codex MCP full-branch review as the final quality gate.
+- Branch-level review: after all units are integrated and clean, orchestrator spawns a context-isolated reviewer sub-agent for full-branch final gate. Default backend is Codex MCP when available, fallback is local reviewer.
 - Run review/fix loop at each level until clean.
 - Review priority order is mandatory:
   - bugs
   - requirement conformance
   - performance/security risk
 - If review output is large, write review details to a temp file and pass only the file path to avoid context overflow.
-- Prefer Codex MCP for planning and branch-level review when available and not overridden.
+- Prefer Codex MCP for planning and full-branch review when available and not overridden.
 - Human-in-the-loop for Codex MCP: enforced in normal mode, exempted in autonomous mode.
 
 ## Hotfix policy

@@ -34,7 +34,7 @@ handoff_bundle:
     branch_review_closed: true
     review_sessions:
       - scope: unit|full-branch
-        backend: codex-mcp|other
+        backend: codex-mcp|local-reviewer|fast-path|other
         reused_or_new: reused|new
         final_status: clean|findings_resolved
   feedback_trace:

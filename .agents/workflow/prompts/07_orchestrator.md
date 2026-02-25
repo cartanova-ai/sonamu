@@ -44,14 +44,19 @@ If `Codex MCP` is missing, continue without Codex MCP and use fallback planning/
 3. Validate `must_verify_behaviors` is present for each implementation/hotfix unit.
 4. Build execution queue by dependency and parallel group.
 5. Spawn implementation units in parallel when safe.
-6. Each implementation sub-agent handles: implement -> automated gates -> commit -> return.
-7. When a unit sub-agent returns, verify its `unit_execution_report` and check review fast-path eligibility (see `prompts/06_codex_output_and_sessions.md` Review fast-path policy).
+6. Each implementation sub-agent handles: implement -> automated gates -> commit -> optional inline unit-review (only when explicitly enabled and Codex is available) -> return.
+7. When a unit sub-agent returns, verify its `unit_execution_report` fields (`review_path`, `review_backend`, `review_closed`, `review_pending`) and check review fast-path eligibility (see `prompts/06_codex_output_and_sessions.md` Review fast-path policy).
 8. Unit-level review loop:
-   a. If fast-path conditions are met, skip reviewer spawn and mark review as closed.
-   b. Otherwise, spawn a local reviewer sub-agent with context isolation (diff, `must_verify_behaviors`, gate results only). Follow the local reviewer review contract in `prompts/06_codex_output_and_sessions.md`.
-   c. If reviewer returns findings, spawn review-feedback-handler to fix, then re-spawn reviewer.
-   d. Repeat until zero unresolved findings.
-9. After all units are reviewed and clean, spawn a Codex MCP review for the full branch (final quality gate). Follow session and human-in-the-loop policies in `prompts/06_codex_output_and_sessions.md`.
+   a. If `unit_execution_report.review_closed == true`, mark the unit review as closed and continue.
+   b. Else if fast-path conditions are met, skip reviewer spawn and mark review as closed.
+   c. Otherwise, spawn a context-isolated reviewer sub-agent with a blank-context review packet. Follow review contract in `prompts/06_codex_output_and_sessions.md`.
+      - Unit-level default backend: local reviewer.
+      - Unit-level Codex backend: allowed only when explicitly enabled per unit and available.
+   d. If reviewer returns findings, spawn review-feedback-handler to fix, then re-spawn reviewer.
+   e. Repeat until zero unresolved findings.
+9. After all units are reviewed and clean, spawn a reviewer sub-agent for full-branch final review with a blank-context review packet.
+   - Full-branch default backend: Codex MCP when available.
+   - If Codex MCP is unavailable, fallback to local reviewer backend.
 10. If branch findings exist, route through `prompts/08_review_feedback_handler.md` and repeat until clean.
 11. If user feedback arrives, route through feedback handler and re-run required reviews.
 12. When zero unresolved findings remain, trigger `prompts/05_user_review_handoff.md`.
