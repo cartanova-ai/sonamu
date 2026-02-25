@@ -45,19 +45,41 @@ pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
 
 ### entity - Generate Entity
 
-Create a new Entity.
+Create a new Entity. By default, **template cones** are automatically generated along with the Entity.
 
 ```bash
-pnpm stub entity <entityId>
+pnpm stub entity <entityId> [options]
 ```
 
-**Example**:
+**Options**:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| (none) | Generate Entity with template cones (default behavior) | `pnpm stub entity Product` |
+| `--ai` | Generate Entity with LLM-powered cones (`ANTHROPIC_API_KEY` required) | `pnpm stub entity Product --ai` |
+| `--no-cones` | Generate Entity only, skip cone generation | `pnpm stub entity Product --no-cones` |
+
+**Examples**:
 ```bash
+# Default: Generate Entity with template cones
 pnpm stub entity Product
+# ✓ Entity 'Product' created with template cones
+# 💡 Tip: Run 'pnpm sonamu cone gen Product' to improve with AI
 
-# Generated:
-# src/entities/Product.entity.ts
+# Generate with AI-powered cones
+pnpm stub entity Product --ai
+# ✓ Entity 'Product' created
+# 🌟 Generating AI-powered cones...
+# ✅ Done (1234 tokens)
+
+# Generate Entity without cones
+pnpm stub entity Product --no-cones
+# ✓ Entity 'Product' created without cones
 ```
+
+<Note>
+Template cones can be generated without `ANTHROPIC_API_KEY`. You can later upgrade them using the `cone gen` command with AI.
+</Note>
 
 **Generated file**:
 ```typescript title="src/entities/Product.entity.ts"
