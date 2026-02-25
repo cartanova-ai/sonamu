@@ -130,6 +130,8 @@ pnpm fixture gen
   파일로 저장 (자동 파일명)
   파일로 저장 (파일명 지정)
   저장 안 함 (출력만)
+
+? LLM으로 더 현실적인 데이터를 생성할까요? (fixtureHint 기반, ANTHROPIC_API_KEY 필요) No
 ```
 
 **CLI 옵션**:
@@ -141,6 +143,8 @@ pnpm fixture gen
 | `--exclude` | 특정 Entity 제외 (--all과 함께 사용) | `pnpm fixture gen --all --exclude Comment` |
 | `--count` | 생성할 레코드 수 | `pnpm fixture gen --include User --count 10` |
 | `--save-to` | 저장 방식 지정 | `pnpm fixture gen --save-to db` |
+| `--use-llm` | LLM으로 현실적인 데이터 생성 (fixtureHint 기반, `ANTHROPIC_API_KEY` 필요) | `pnpm fixture gen --use-llm` |
+| `--no-cache` | LLM 캐시 비활성화 (`--use-llm`과 함께 사용) | `pnpm fixture gen --use-llm --no-cache` |
 
 **저장 방식**:
 - `db`: Fixture DB에 직접 저장 (기본값)
