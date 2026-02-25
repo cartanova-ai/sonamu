@@ -1,0 +1,105 @@
+---
+title: "cone"
+description: "AI를 활용한 cone 메타데이터 생성 및 업그레이드"
+---
+
+`pnpm cone gen` 명령어는 AI(LLM)를 사용하여 Entity의 **cone 메타데이터**를 생성하거나 업그레이드합니다. `stub entity`로 생성된 템플릿 cone을 AI 기반으로 개선하거나, 기존 cone을 재생성할 수 있습니다.
+
+## 기본 사용법
+
+```bash
+pnpm cone gen <entityId> [옵션]
+```
+
+<Note>
+`ANTHROPIC_API_KEY`가 필요합니다. `sonamu.secret.ts` 또는 환경변수로 설정할 수 있습니다.
+</Note>
+
+## 옵션
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| (없음) | 비어 있는 fixtureHint만 생성 (기존 값 보존) | `pnpm cone gen Product` |
+| `--regenerate` | 기존 cone을 덮어쓰고 전체 재생성 | `pnpm cone gen Product --regenerate` |
+| `--locale <ko\|en\|ja>` | 생성 언어 지정 (기본값: `sonamu.config.ts`의 `i18n.defaultLocale` 또는 `ko`) | `pnpm cone gen Product --locale en` |
+| `--all` | 모든 Entity의 cone을 일괄 생성 | `pnpm cone gen all` |
+
+## 예시
+
+### 단일 Entity cone 생성
+
+```bash
+pnpm cone gen Product
+# 🌟 Generating AI-powered cones for Product...
+# ✅ Done! (1234 tokens used)
+# 💰 Estimated cost: ~$0.0111
+```
+
+### 기존 cone 재생성
+
+```bash
+pnpm cone gen Product --regenerate
+# 🌟 Regenerating AI-powered cones for Product...
+# ✅ Done! (1567 tokens used)
+# 💰 Estimated cost: ~$0.0141
+```
+
+### 영어로 cone 생성
+
+```bash
+pnpm cone gen Product --locale en
+```
+
+### 모든 Entity 일괄 생성
+
+```bash
+pnpm cone gen all
+# 🌟 Generating AI-powered cones for 5 entities...
+#
+# Processing User...
+#   ✓ User (1234 tokens)
+#
+# Processing Product...
+#   ✓ Product (1567 tokens)
+#
+# ...
+#
+# ✅ Done! Total: 5678 tokens used
+# 💰 Estimated cost: ~$0.0511
+```
+
+## 동작 방식
+
+### 기본 모드 (onlyEmpty)
+
+옵션 없이 실행하면, 기존에 `fixtureHint`가 이미 설정된 필드는 건드리지 않고 비어 있는 필드만 생성합니다.
+
+### 재생성 모드 (`--regenerate`)
+
+`--regenerate` 옵션을 사용하면 기존 cone 메타데이터를 모두 덮어쓰고 새로 생성합니다. 기존에 수동으로 조정한 값이 있다면 주의가 필요합니다.
+
+## 워크플로우
+
+일반적인 cone 관련 워크플로우는 다음과 같습니다:
+
+```bash
+# 1. Entity 생성 (템플릿 cone 자동 포함)
+pnpm stub entity Product
+
+# 2. AI로 cone 업그레이드
+pnpm cone gen Product
+
+# 3. 필요 시 특정 언어로 재생성
+pnpm cone gen Product --regenerate --locale en
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="stub" icon="hammer" href="/tools-and-cli/sonamu-cli/stub">
+    Entity 및 Practice 코드 스텁 생성하기
+  </Card>
+  <Card title="fixture" icon="database" href="/tools-and-cli/sonamu-cli/fixture">
+    테스트 데이터 관리하기
+  </Card>
+</CardGroup>

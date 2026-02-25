@@ -1,0 +1,105 @@
+---
+title: "cone"
+description: "Generate and upgrade cone metadata with AI"
+---
+
+The `pnpm cone gen` command uses AI (LLM) to generate or upgrade **cone metadata** for Entities. You can improve template cones created by `stub entity` with AI, or regenerate existing cones.
+
+## Basic Usage
+
+```bash
+pnpm cone gen <entityId> [options]
+```
+
+<Note>
+Requires `ANTHROPIC_API_KEY`. Set it in `sonamu.secret.ts` or as an environment variable.
+</Note>
+
+## Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| (none) | Generate only empty fixtureHints (preserves existing values) | `pnpm cone gen Product` |
+| `--regenerate` | Overwrite existing cones and regenerate all | `pnpm cone gen Product --regenerate` |
+| `--locale <ko\|en\|ja>` | Specify generation language (default: `sonamu.config.ts` `i18n.defaultLocale` or `ko`) | `pnpm cone gen Product --locale en` |
+| `--all` | Generate cones for all Entities at once | `pnpm cone gen all` |
+
+## Examples
+
+### Generate cones for a single Entity
+
+```bash
+pnpm cone gen Product
+# 🌟 Generating AI-powered cones for Product...
+# ✅ Done! (1234 tokens used)
+# 💰 Estimated cost: ~$0.0111
+```
+
+### Regenerate existing cones
+
+```bash
+pnpm cone gen Product --regenerate
+# 🌟 Regenerating AI-powered cones for Product...
+# ✅ Done! (1567 tokens used)
+# 💰 Estimated cost: ~$0.0141
+```
+
+### Generate cones in English
+
+```bash
+pnpm cone gen Product --locale en
+```
+
+### Batch generate for all Entities
+
+```bash
+pnpm cone gen all
+# 🌟 Generating AI-powered cones for 5 entities...
+#
+# Processing User...
+#   ✓ User (1234 tokens)
+#
+# Processing Product...
+#   ✓ Product (1567 tokens)
+#
+# ...
+#
+# ✅ Done! Total: 5678 tokens used
+# 💰 Estimated cost: ~$0.0511
+```
+
+## How It Works
+
+### Default mode (onlyEmpty)
+
+When run without options, only fields with empty `fixtureHint` are generated. Existing values are preserved.
+
+### Regenerate mode (`--regenerate`)
+
+With `--regenerate`, all existing cone metadata is overwritten and regenerated from scratch. Be careful if you have manually adjusted values.
+
+## Workflow
+
+A typical cone workflow:
+
+```bash
+# 1. Create Entity (includes template cones by default)
+pnpm stub entity Product
+
+# 2. Upgrade cones with AI
+pnpm cone gen Product
+
+# 3. Regenerate in a specific language if needed
+pnpm cone gen Product --regenerate --locale en
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="stub" icon="hammer" href="/tools-and-cli/sonamu-cli/stub">
+    Generate Entity and Practice code stubs
+  </Card>
+  <Card title="fixture" icon="database" href="/tools-and-cli/sonamu-cli/fixture">
+    Manage test data
+  </Card>
+</CardGroup>
