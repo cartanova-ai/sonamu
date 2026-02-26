@@ -7,6 +7,8 @@ export type OnSubscribed = (result: Result<string | null>) => void | Promise<voi
 export class PostgresPubSub {
   private _destroyed = false;
   private _onClosed: () => Promise<void>;
+  private _onNotification: (msg: { channel: string; payload: unknown }) => Promise<void>;
+  private _onError: (error: Error) => Promise<void>;
   private _listeners = new Map<string, Set<OnSubscribed>>();
 
   // biome-ignore lint/suspicious/noExplicitAny: Knex exposes a connection as any
@@ -21,6 +23,34 @@ export class PostgresPubSub {
 
       await this.connect();
     }).bind(this);
+
+    this._onNotification = (async ({
+      channel,
+      payload: rawPayload,
+    }: {
+      channel: string;
+      payload: unknown;
+    }) => {
+      const payload = typeof rawPayload === "string" && rawPayload.length !== 0 ? rawPayload : null;
+      const listeners = this._listeners.get(channel);
+      if (!listeners) {
+        return;
+      }
+
+      const result = ok(payload);
+      await Promise.allSettled(
+        Array.from(listeners.values()).map((listener) => Promise.resolve(listener(result))),
+      );
+    }).bind(this);
+
+    this._onError = (async (error: Error) => {
+      const result = err(error);
+      await Promise.allSettled(
+        Array.from(this._listeners.values())
+          .flatMap((listeners) => Array.from(listeners))
+          .map((listener) => Promise.resolve(listener(result))),
+      );
+    }).bind(this);
   }
 
   get destroyed() {
@@ -31,30 +61,8 @@ export class PostgresPubSub {
   async connect() {
     const connection = await this.knex.client.acquireRawConnection();
     connection.on("close", this._onClosed);
-    connection.on(
-      "notification",
-      async ({ channel, payload: rawPayload }: { channel: string; payload: unknown }) => {
-        const payload =
-          typeof rawPayload === "string" && rawPayload.length !== 0 ? rawPayload : null;
-        const listeners = this._listeners.get(channel);
-        if (!listeners) {
-          return;
-        }
-
-        const result = ok(payload);
-        await Promise.allSettled(
-          Array.from(listeners.values()).map((listener) => Promise.resolve(listener(result))),
-        );
-      },
-    );
-    connection.on("error", async (error: Error) => {
-      const result = err(error);
-      await Promise.allSettled(
-        Array.from(this._listeners.values())
-          .flatMap((listeners) => Array.from(listeners))
-          .map((listener) => Promise.resolve(listener(result))),
-      );
-    });
+    connection.on("notification", this._onNotification);
+    connection.on("error", this._onError);
 
     for (const channel of this._listeners.keys()) {
       connection.query(`LISTEN ${channel}`);
@@ -70,6 +78,8 @@ export class PostgresPubSub {
     }
     try {
       this._connection.off("close", this._onClosed);
+      this._connection.off("notification", this._onNotification);
+      this._connection.off("error", this._onError);
       await this.knex.client.destroyRawConnection(this._connection);
     } finally {
       this._destroyed = true;
