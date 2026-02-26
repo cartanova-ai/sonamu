@@ -108,4 +108,25 @@ describe("DevVitestManager", () => {
     await manager.run({ files: ["foo.test.ts"] });
     expect(mockVitest.globTestSpecifications).toHaveBeenCalledWith(["foo.test.ts"]);
   });
+
+  it("동일 moduleId 결과가 중복되어도 최종 results는 파일당 1건만 유지한다", async () => {
+    await manager.start();
+    mockVitest.globTestSpecifications.mockResolvedValue([{ moduleId: "dup.test.ts" }]);
+
+    const createModule = (duration: number) => ({
+      moduleId: "dup.test.ts",
+      children: [],
+      state: () => "passed" as const,
+      diagnostic: () => ({ duration }),
+    });
+
+    mockVitest.runTestSpecifications.mockResolvedValue({
+      testModules: [createModule(10), createModule(25)],
+    });
+
+    const result = await manager.run({});
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]?.id).toBe("dup.test.ts");
+    expect(result.results[0]?.durationMs).toBe(25);
+  });
 });

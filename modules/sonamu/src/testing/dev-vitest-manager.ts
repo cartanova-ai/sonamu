@@ -440,13 +440,26 @@ export class DevVitestManager {
     durationMs: number,
     specModuleIds: Set<string>,
   ): RunResult {
-    const results: TestCaseResult[] = [];
+    const resultsByFile = new Map<string, TestCaseResult>();
 
     for (const testModule of runResult.testModules) {
       if (!specModuleIds.has(testModule.moduleId)) continue;
-      results.push(this.buildFileNode(testModule));
+      const nextResult = this.buildFileNode(testModule);
+      const existingResult = resultsByFile.get(nextResult.id);
+
+      if (!existingResult) {
+        resultsByFile.set(nextResult.id, nextResult);
+        continue;
+      }
+
+      const existingScore = getResultCompletenessScore(existingResult);
+      const nextScore = getResultCompletenessScore(nextResult);
+      if (nextScore >= existingScore) {
+        resultsByFile.set(nextResult.id, nextResult);
+      }
     }
 
+    const results = Array.from(resultsByFile.values());
     const summary = aggregateCounts(results);
 
     return {
@@ -632,6 +645,38 @@ function aggregateCounts(children: TestCaseResult[]): {
     skipped += child.counts.skipped;
   }
   return { total, passed, failed, skipped };
+}
+
+function getResultCompletenessScore(node: TestCaseResult): number {
+  let score = 0;
+  // 테스트 수가 더 많은 결과를 우선하여 중복 파일 병합 시 정보 손실을 줄입니다.
+  score += node.counts.total * 1000;
+  score += node.children.length * 100;
+  if (node.durationMs !== null) score += 10;
+
+  switch (node.state) {
+    case "failed":
+      score += 5;
+      break;
+    case "passed":
+      score += 4;
+      break;
+    case "skipped":
+      score += 3;
+      break;
+    case "todo":
+      score += 2;
+      break;
+    case "running":
+      score += 1;
+      break;
+    case "unknown":
+      break;
+    default:
+      break;
+  }
+
+  return score;
 }
 
 function isSerializedTrace(value: unknown): value is SerializedTrace {
