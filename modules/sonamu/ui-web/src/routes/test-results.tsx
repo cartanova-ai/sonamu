@@ -12,7 +12,10 @@ import MinusCircleIcon from "~icons/lucide/minus-circle";
 import Trash2Icon from "~icons/lucide/trash-2";
 import XCircleIcon from "~icons/lucide/x-circle";
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import { useRunHistorySession } from "../hooks/use-run-history-session";
+import {
+  type RunHistoryStorageWarning,
+  useRunHistorySession,
+} from "../hooks/use-run-history-session";
 import { useTestEvents } from "../hooks/use-test-events";
 import {
   type ManagerStatus,
@@ -127,7 +130,7 @@ function TestResultsPage() {
   const statusQuery = SonamuUIService.useTestStatus();
   const sseAvailable = statusQuery.data?.sseAvailable ?? false;
   const { connected, on } = useTestEvents({ enabled: sseAvailable });
-  const { history, addRun, clearHistory } = useRunHistorySession();
+  const { history, storageWarning, addRun, clearHistory } = useRunHistorySession();
 
   const [managerStatus, setManagerStatus] = useState<ManagerStatus | null>(null);
   const [connecting, setConnecting] = useState(true);
@@ -247,6 +250,12 @@ function TestResultsPage() {
     return history.runs.find((r) => r.runId === selectedRunId) ?? null;
   }, [selectedRunId, history.runs]);
 
+  const selectedRunStorageWarning = useMemo(() => {
+    if (!selectedRun || !storageWarning) return null;
+    if (storageWarning.runId !== selectedRun.runId) return null;
+    return storageWarning;
+  }, [selectedRun, storageWarning]);
+
   const liveRunResults = useMemo(() => {
     if (!liveRun) return null;
     return Array.from(liveRun.fileResults.values());
@@ -344,6 +353,7 @@ function TestResultsPage() {
           ) : selectedRun ? (
             <ResultViewPanel
               run={selectedRun}
+              storageWarning={selectedRunStorageWarning}
               selectedNodeId={selectedNodeId}
               selectedNode={selectedNode}
               onSelectNode={setSelectedNodeId}
@@ -534,18 +544,20 @@ function formatTime(iso: string): string {
 
 function ResultViewPanel({
   run,
+  storageWarning,
   selectedNodeId,
   selectedNode,
   onSelectNode,
 }: {
   run: StoredRunEntry;
+  storageWarning: RunHistoryStorageWarning | null;
   selectedNodeId: string | null;
   selectedNode: TestCaseResult | null;
   onSelectNode: (id: string) => void;
 }) {
   return (
     <div className="flex flex-col h-full">
-      <SummaryHeader summary={run.result.summary} />
+      <SummaryHeader summary={run.result.summary} storageWarning={storageWarning} />
       <div className="flex flex-1 overflow-hidden">
         <ResultTreePanel
           results={run.result.results}
@@ -586,7 +598,13 @@ function LiveResultViewPanel({
   );
 }
 
-function SummaryHeader({ summary }: { summary: RunResult["summary"] }) {
+function SummaryHeader({
+  summary,
+  storageWarning = null,
+}: {
+  summary: RunResult["summary"];
+  storageWarning?: RunHistoryStorageWarning | null;
+}) {
   const { SD } = useSonamuContext();
   return (
     <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-gray-200 text-sm shrink-0">
@@ -607,6 +625,14 @@ function SummaryHeader({ summary }: { summary: RunResult["summary"] }) {
         {SD("testResults.summary.duration")}:{" "}
         <span className="font-mono">{formatDurationMs(summary.durationMs)}</span>
       </span>
+      {storageWarning?.reason === "quota-exceeded" && (
+        <span className="text-amber-700 text-xs">
+          {SD("testResults.storageWarning.quotaExceeded")} ({SD("testResults.storageWarning.limit")}
+          : {formatStorageBytes(storageWarning.quotaHintBytes)},
+          {SD("testResults.storageWarning.resultSize")}:{" "}
+          {formatStorageBytes(storageWarning.payloadBytes)})
+        </span>
+      )}
     </div>
   );
 }
@@ -615,6 +641,12 @@ function formatDurationMs(ms: number): string {
   if (ms >= 60000) return `${(ms / 60000).toFixed(1)}m`;
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
   return `${ms.toFixed(2)}ms`;
+}
+
+function formatStorageBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${bytes}B`;
 }
 
 type VisibleRow = {

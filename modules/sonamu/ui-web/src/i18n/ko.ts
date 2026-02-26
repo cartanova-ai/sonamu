@@ -214,6 +214,10 @@ export default {
   "testResults.summary.failed": "실패",
   "testResults.summary.skipped": "건너뜀",
   "testResults.summary.duration": "소요",
+  "testResults.storageWarning.quotaExceeded":
+    "이번 실행 결과가 세션 스토리지 용량을 초과하여 저장되지 않았습니다",
+  "testResults.storageWarning.limit": "제한",
+  "testResults.storageWarning.resultSize": "결과 크기",
   "testResults.detail.error": "에러",
   "testResults.detail.traces": "Naite 트레이스",
   "testResults.detail.noTraces": "트레이스 없음",

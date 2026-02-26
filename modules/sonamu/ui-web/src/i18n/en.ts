@@ -219,6 +219,10 @@ const en: Record<DictKey, Dictionary[string]> = {
   "testResults.summary.failed": "Failed",
   "testResults.summary.skipped": "Skipped",
   "testResults.summary.duration": "Duration",
+  "testResults.storageWarning.quotaExceeded":
+    "This run result was not saved because it exceeded session storage capacity",
+  "testResults.storageWarning.limit": "Limit",
+  "testResults.storageWarning.resultSize": "Result size",
   "testResults.detail.error": "Error",
   "testResults.detail.traces": "Naite Traces",
   "testResults.detail.noTraces": "No traces",

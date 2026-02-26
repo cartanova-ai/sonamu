@@ -3,6 +3,23 @@ import type { StoredRunEntry, StoredRunHistory } from "../services/sonamu-ui.ser
 
 const STORAGE_KEY = "sonamu.ui.test-result-viewer.v1";
 const MAX_RUNS = 100;
+const SESSION_STORAGE_QUOTA_HINT_BYTES = 5 * 1024 * 1024;
+
+type StorageWriteResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "quota-exceeded";
+      payloadBytes: number;
+      quotaHintBytes: number;
+    };
+
+export type RunHistoryStorageWarning = {
+  runId: string;
+  reason: "quota-exceeded";
+  payloadBytes: number;
+  quotaHintBytes: number;
+};
 
 function readFromStorage(): StoredRunHistory {
   try {
@@ -20,10 +37,16 @@ function readFromStorage(): StoredRunHistory {
   }
 }
 
-function writeToStorage(history: StoredRunHistory): void {
+function estimateUtf8Bytes(text: string): number {
+  return new TextEncoder().encode(text).length;
+}
+
+function writeToStorage(history: StoredRunHistory): StorageWriteResult {
   const json = JSON.stringify(history);
+  const payloadBytes = estimateUtf8Bytes(json);
   try {
     sessionStorage.setItem(STORAGE_KEY, json);
+    return { ok: true };
   } catch (err: unknown) {
     if (isQuotaExceededError(err) && history.runs.length > 1) {
       // 오래된 항목을 절반 제거 후 재시도
@@ -32,10 +55,25 @@ function writeToStorage(history: StoredRunHistory): void {
       };
       try {
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+        return { ok: true };
       } catch {
-        // 재시도도 실패하면 포기
+        return {
+          ok: false,
+          reason: "quota-exceeded",
+          payloadBytes,
+          quotaHintBytes: SESSION_STORAGE_QUOTA_HINT_BYTES,
+        };
       }
     }
+    if (isQuotaExceededError(err)) {
+      return {
+        ok: false,
+        reason: "quota-exceeded",
+        payloadBytes,
+        quotaHintBytes: SESSION_STORAGE_QUOTA_HINT_BYTES,
+      };
+    }
+    return { ok: true };
   }
 }
 
@@ -62,10 +100,12 @@ function toDateKey(finishedAt: string): string {
 
 export function useRunHistorySession(): {
   history: StoredRunHistory;
+  storageWarning: RunHistoryStorageWarning | null;
   addRun: (entry: Omit<StoredRunEntry, "dateKey">) => void;
   clearHistory: () => void;
 } {
   const [history, setHistory] = useState<StoredRunHistory>(readFromStorage);
+  const [storageWarning, setStorageWarning] = useState<RunHistoryStorageWarning | null>(null);
 
   const addRun = useCallback((entry: Omit<StoredRunEntry, "dateKey">) => {
     setHistory((prev) => {
@@ -79,7 +119,17 @@ export function useRunHistorySession(): {
       // 최대 100개 trim
       const trimmed = merged.slice(0, MAX_RUNS);
       const next: StoredRunHistory = { runs: trimmed };
-      writeToStorage(next);
+      const writeResult = writeToStorage(next);
+      if (!writeResult.ok && writeResult.reason === "quota-exceeded") {
+        setStorageWarning({
+          runId: fullEntry.runId,
+          reason: "quota-exceeded",
+          payloadBytes: writeResult.payloadBytes,
+          quotaHintBytes: writeResult.quotaHintBytes,
+        });
+      } else {
+        setStorageWarning(null);
+      }
       return next;
     });
   }, []);
@@ -87,6 +137,7 @@ export function useRunHistorySession(): {
   const clearHistory = useCallback(() => {
     const empty: StoredRunHistory = { runs: [] };
     setHistory(empty);
+    setStorageWarning(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -94,5 +145,5 @@ export function useRunHistorySession(): {
     }
   }, []);
 
-  return { history, addRun, clearHistory };
+  return { history, storageWarning, addRun, clearHistory };
 }
