@@ -259,6 +259,7 @@ function spawnApiDevServer(options?: { extraEnv?: Record<string, string> }) {
       "--node-args=--import=sonamu/hmr-hook-register", // HMR을 지원하기 위한 hook,
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
       "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
+      "--on-key=c:clear:Clear screen", // c 누르면 터미널 화면을 지워줘요.
       `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 sonamu.lock 파일을 지우고 서버 재시작하게 해줘요.
 
       "--on-key=enter:shell(echo hi):Key binding test", // enter를 key로 쓸 수 있음을 보이기 위한 테스트입니다.
