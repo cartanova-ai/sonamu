@@ -50,6 +50,7 @@ export type ManagerStatus = {
 export type TestEventListener = (event: string, data: unknown) => void;
 
 type QueueEntry = {
+  runId: string;
   task: () => Promise<RunResult>;
   resolve: (result: RunResult) => void;
   reject: (error: unknown) => void;
@@ -132,7 +133,7 @@ export class DevVitestManager {
     this.closed = false;
   }
 
-  async run(opts: { files?: string[]; pattern?: string }): Promise<RunResult> {
+  async run(opts: { files?: string[]; pattern?: string }, runId: string): Promise<RunResult> {
     if (this.closed) {
       throw new Error("DevVitestManager is already shut down");
     }
@@ -141,8 +142,8 @@ export class DevVitestManager {
     }
 
     return new Promise<RunResult>((resolve, reject) => {
-      const task = () => this.executeRun(opts);
-      this.queue.push({ task, resolve, reject });
+      const task = () => this.executeRun(opts, runId);
+      this.queue.push({ runId, task, resolve, reject });
       this.processQueue();
     });
   }
@@ -215,7 +216,10 @@ export class DevVitestManager {
     }
   }
 
-  private async executeRun(opts: { files?: string[]; pattern?: string }): Promise<RunResult> {
+  private async executeRun(
+    opts: { files?: string[]; pattern?: string },
+    runId: string,
+  ): Promise<RunResult> {
     const vitest = this.vitest;
     if (!vitest) {
       throw new Error("DevVitestManager is not started");
@@ -234,8 +238,9 @@ export class DevVitestManager {
         : await vitest.globTestSpecifications();
 
       const specModuleIds = new Set(specs.map((s) => s.moduleId));
+      // routes에서 생성한 runId를 그대로 사용하여 runStarted/runNodeProgress/runCompleted 간 일관성 보장
       this.currentRunContext = {
-        runId: `run-${Date.now()}`,
+        runId,
         startedAt: new Date().toISOString(),
         specModuleIds,
       };

@@ -113,9 +113,28 @@ function relativizeNode(node: TestCaseResult, prefix: string): TestCaseResult {
   return {
     ...node,
     name: node.name.replace(prefix, ""),
+    file: node.file.replace(prefix, ""),
     traces: node.traces.map((t) => relativizeTrace(t, prefix)),
     children: node.children.map((c) => relativizeNode(c, prefix)),
   };
+}
+
+function isRunNodeProgressData(data: unknown): data is TestEvents["runNodeProgress"] {
+  if (typeof data !== "object" || data === null) return false;
+  const d = data as Record<string, unknown>;
+  return (
+    d.schemaVersion === 1 &&
+    typeof d.runId === "string" &&
+    typeof d.startedAt === "string" &&
+    typeof d.at === "string" &&
+    (d.kind === "file" || d.kind === "suite" || d.kind === "test") &&
+    (d.phase === "ready" || d.phase === "result") &&
+    typeof d.fileId === "string" &&
+    typeof d.nodeId === "string" &&
+    (d.parentId === null || typeof d.parentId === "string") &&
+    typeof d.node === "object" &&
+    d.node !== null
+  );
 }
 
 function relativizeResult(result: RunResult, basePath: string): RunResult {
@@ -165,10 +184,10 @@ export async function registerDevTestRoutes(
       const listener = (event: string, data: unknown) => {
         const key = event as keyof TestEvents;
         if (key === "runNodeProgress") {
-          const progressData = data as TestEvents["runNodeProgress"];
+          if (!isRunNodeProgressData(data)) return;
           const relativized = {
-            ...progressData,
-            node: relativizeNode(progressData.node, pathPrefix),
+            ...data,
+            node: relativizeNode(data.node, pathPrefix),
           };
           sse.publish(key, relativized);
           return;
@@ -212,7 +231,7 @@ export async function registerDevTestRoutes(
         startedAt,
       });
 
-      const rawResult: RunResult = await Sonamu.devVitestManager.run(runRequest);
+      const rawResult: RunResult = await Sonamu.devVitestManager.run(runRequest, runId);
       const result = relativizeResult(rawResult, Sonamu.apiRootPath);
 
       const finishedAt = new Date().toISOString();
