@@ -135,6 +135,42 @@ function TestResultsPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [liveRun, setLiveRun] = useState<LiveRunState | null>(null);
 
+  const pendingProgressRef = useRef<TestSSEEventMap["runNodeProgress"][]>([]);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingProgress = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    const events = pendingProgressRef.current.splice(0);
+    if (events.length > 0) {
+      setLiveRun((prev) => {
+        let next = prev;
+        for (const payload of events) {
+          next = applyNodeProgress(next, payload);
+        }
+        return next;
+      });
+    }
+  }, []);
+
+  const scheduleBatchFlush = useCallback(() => {
+    if (rafIdRef.current !== null) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      const events = pendingProgressRef.current.splice(0);
+      if (events.length === 0) return;
+      setLiveRun((prev) => {
+        let next = prev;
+        for (const payload of events) {
+          next = applyNodeProgress(next, payload);
+        }
+        return next;
+      });
+    });
+  }, []);
+
   useEffect(() => {
     if (connected) {
       setConnecting(false);
@@ -154,6 +190,12 @@ function TestResultsPage() {
 
     unsubs.push(
       on("runStarted", (payload) => {
+        // 이전 런의 pending 큐를 초기화합니다.
+        pendingProgressRef.current.length = 0;
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
         setManagerStatus((prev) => (prev ? { ...prev, running: true } : prev));
         setLiveRun({ runId: payload.runId, startedAt: payload.startedAt, fileResults: new Map() });
         setSelectedRunId(null);
@@ -162,12 +204,14 @@ function TestResultsPage() {
 
     unsubs.push(
       on("runNodeProgress", (payload) => {
-        setLiveRun((prev) => applyNodeProgress(prev, payload));
+        pendingProgressRef.current.push(payload);
+        scheduleBatchFlush();
       }),
     );
 
     unsubs.push(
       on("runCompleted", (payload) => {
+        flushPendingProgress();
         setManagerStatus((prev) =>
           prev ? { ...prev, running: false, lastRunAt: payload.finishedAt } : prev,
         );
@@ -184,6 +228,7 @@ function TestResultsPage() {
 
     unsubs.push(
       on("runErrored", (payload) => {
+        flushPendingProgress();
         setManagerStatus((prev) =>
           prev ? { ...prev, running: false, lastRunAt: payload.finishedAt } : prev,
         );
@@ -195,8 +240,13 @@ function TestResultsPage() {
       for (const unsub of unsubs) {
         unsub();
       }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      pendingProgressRef.current.length = 0;
     };
-  }, [on, addRun]);
+  }, [on, addRun, flushPendingProgress, scheduleBatchFlush]);
 
   const selectedRun = useMemo(() => {
     if (!selectedRunId) return null;
