@@ -138,21 +138,13 @@ function TestResultsPage() {
   const pendingProgressRef = useRef<TestSSEEventMap["runNodeProgress"][]>([]);
   const rafIdRef = useRef<number | null>(null);
 
-  const flushPendingProgress = useCallback(() => {
+  // rAF를 취소하고 pending 큐를 동기적으로 드레인하여 반환합니다. 상태 업데이트는 호출자 책임입니다.
+  const drainPendingProgress = useCallback(() => {
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
-    const events = pendingProgressRef.current.splice(0);
-    if (events.length > 0) {
-      setLiveRun((prev) => {
-        let next = prev;
-        for (const payload of events) {
-          next = applyNodeProgress(next, payload);
-        }
-        return next;
-      });
-    }
+    return pendingProgressRef.current.splice(0);
   }, []);
 
   const scheduleBatchFlush = useCallback(() => {
@@ -211,7 +203,8 @@ function TestResultsPage() {
 
     unsubs.push(
       on("runCompleted", (payload) => {
-        flushPendingProgress();
+        // pending 큐를 버리고 rAF를 취소합니다. 최종 결과는 payload.result에 포함되어 있습니다.
+        drainPendingProgress();
         setManagerStatus((prev) =>
           prev ? { ...prev, running: false, lastRunAt: payload.finishedAt } : prev,
         );
@@ -228,7 +221,8 @@ function TestResultsPage() {
 
     unsubs.push(
       on("runErrored", (payload) => {
-        flushPendingProgress();
+        // pending 큐를 버리고 rAF를 취소합니다.
+        drainPendingProgress();
         setManagerStatus((prev) =>
           prev ? { ...prev, running: false, lastRunAt: payload.finishedAt } : prev,
         );
@@ -246,7 +240,7 @@ function TestResultsPage() {
       }
       pendingProgressRef.current.length = 0;
     };
-  }, [on, addRun, flushPendingProgress, scheduleBatchFlush]);
+  }, [on, addRun, drainPendingProgress, scheduleBatchFlush]);
 
   const selectedRun = useMemo(() => {
     if (!selectedRunId) return null;
@@ -866,10 +860,12 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
   const formattedCacheRef = useRef<Map<string, string>>(new Map());
 
-  // 노드 전환 시 traces prop이 변경되면 캐시를 초기화하여 cacheKey 충돌을 방지합니다.
-  useEffect(() => {
+  // 렌더 중 동기적으로 캐시를 초기화하여 traces 변경 직후 첫 렌더에서 stale 캐시 히트를 방지합니다.
+  const prevTracesRef = useRef(traces);
+  if (prevTracesRef.current !== traces) {
+    prevTracesRef.current = traces;
     formattedCacheRef.current.clear();
-  }, [traces]);
+  }
 
   const toggleTrace = useCallback((cacheKey: string) => {
     setExpandedTraceKeys((prev) => {
