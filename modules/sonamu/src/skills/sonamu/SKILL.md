@@ -28,7 +28,7 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 **CRITICAL: 모든 개발은 반드시 `workflow.md`의 PHASE 0 → 5 순서를 따른다. 단계를 건너뛰거나 순서를 바꾸지 않는다.**
 
 ```
-PHASE 0: 프로젝트 생성 및 초기 설정  (프로젝트 생성 + auth generate + Users 시퀀스 설정)
+PHASE 0: 프로젝트 생성 및 초기 설정  (프로젝트 생성 → requirements.md/business-logic.md 작성 → auth generate → Users 시퀀스 설정)
 PHASE 1: 엔티티 설계                (사용자와 함께 설계 확인)
 PHASE 2: 엔티티 생성 및 마이그레이션  (entity.json + migration + cone + scaffolding)
 PHASE 3: 테스트 및 API 구현          (batch별 테스트 → API 구현 반복)

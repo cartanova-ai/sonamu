@@ -30,6 +30,8 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 2. 요구사항 기록 및 비즈니스 로직 파악
 
+**CRITICAL: 이 단계(Step 4~6)를 완료하기 전에 auth generate나 인프라 기동으로 넘어가지 않는다.**
+
 4. 사용자가 입력한 prompt를 프로젝트 루트의 `.claude/skills/project/requirements.md`에 기록
 5. 비즈니스 로직 파악 후 **작은 단위로** 사용자에게 확인받기
    - 한 번에 전체를 확인하지 말고 도메인별로 나누어 확인
