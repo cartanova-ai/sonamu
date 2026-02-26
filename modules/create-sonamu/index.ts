@@ -174,6 +174,9 @@ async function init() {
       if (basename === "gitignore") {
         destPath = path.join(path.dirname(dest), ".gitignore");
       }
+      if (basename === "env") {
+        destPath = path.join(path.dirname(dest), ".env");
+      }
       fs.copyFileSync(src, destPath);
       // 셸 스크립트는 실행권한 부여
       if (basename.endsWith(".sh")) {
