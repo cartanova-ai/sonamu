@@ -1,7 +1,7 @@
 import { Button } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CheckCircle2Icon from "~icons/lucide/check-circle-2";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -769,10 +769,31 @@ function formatTraceValue(value: unknown): string {
 
 function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const { SD } = useSonamuContext();
-  const formattedValues = useMemo(
-    () => traces.map((trace) => formatTraceValue(trace.value)),
-    [traces],
-  );
+  const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
+  const formattedCacheRef = useRef<Map<string, string>>(new Map());
+
+  const toggleTrace = useCallback((cacheKey: string) => {
+    setExpandedTraceKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(cacheKey)) {
+        next.delete(cacheKey);
+      } else {
+        next.add(cacheKey);
+      }
+      return next;
+    });
+  }, []);
+
+  const getFormattedValue = useCallback((trace: SerializedTrace, cacheKey: string): string => {
+    const cached = formattedCacheRef.current.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const formatted = formatTraceValue(trace.value);
+    formattedCacheRef.current.set(cacheKey, formatted);
+    return formatted;
+  }, []);
+
   return (
     <div>
       <div className="text-xs font-semibold text-gray-600 mb-1">
@@ -782,22 +803,37 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
         <div className="text-xs text-gray-400">{SD("testResults.detail.noTraces")}</div>
       ) : (
         <div className="space-y-1.5">
-          {traces.map((trace, i) => (
-            <div
-              key={`${trace.key}-${trace.at}-${i}`}
-              className="text-xs border border-gray-100 rounded overflow-hidden"
-            >
-              <div className="flex items-center px-2 py-1 bg-gray-50">
-                <span className="font-mono font-semibold text-blue-700">{trace.key}</span>
-                <span className="ml-3 text-gray-400 text-[11px]">
-                  {trace.filePath}:{trace.lineNumber}
-                </span>
+          {traces.map((trace, i) => {
+            const cacheKey = `${trace.key}-${trace.at}-${i}`;
+            const isExpanded = expandedTraceKeys.has(cacheKey);
+            return (
+              <div
+                key={cacheKey}
+                className="text-xs border border-gray-100 rounded overflow-hidden"
+              >
+                <button
+                  type="button"
+                  className="flex items-center w-full px-2 py-1 bg-gray-50 cursor-pointer text-left"
+                  onClick={() => toggleTrace(cacheKey)}
+                >
+                  {isExpanded ? (
+                    <ChevronDownIcon className="w-3 h-3 text-gray-400 mr-1 shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="w-3 h-3 text-gray-400 mr-1 shrink-0" />
+                  )}
+                  <span className="font-mono font-semibold text-blue-700">{trace.key}</span>
+                  <span className="ml-3 text-gray-400 text-[11px]">
+                    {trace.filePath}:{trace.lineNumber}
+                  </span>
+                </button>
+                {isExpanded && (
+                  <pre className="px-2 py-1.5 text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                    {getFormattedValue(trace, cacheKey)}
+                  </pre>
+                )}
               </div>
-              <pre className="px-2 py-1.5 text-gray-700 whitespace-pre-wrap break-all overflow-x-auto">
-                {formattedValues[i]}
-              </pre>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
