@@ -105,11 +105,16 @@ const TestEventSchema = z.object({
 
 type TestEvents = z.infer<typeof TestEventSchema>;
 
+function toPathPrefix(basePath: string): string {
+  return basePath.endsWith("/") ? basePath : `${basePath}/`;
+}
+
 function relativizeTrace(trace: SerializedTrace, prefix: string): SerializedTrace {
   return { ...trace, filePath: trace.filePath.replace(prefix, "") };
 }
 
-function relativizeNode(node: TestCaseResult, prefix: string): TestCaseResult {
+function relativizeNode(node: TestCaseResult, basePath: string): TestCaseResult {
+  const prefix = toPathPrefix(basePath);
   return {
     ...node,
     name: node.name.replace(prefix, ""),
@@ -138,7 +143,7 @@ function isRunNodeProgressData(data: unknown): data is TestEvents["runNodeProgre
 }
 
 function relativizeResult(result: RunResult, basePath: string): RunResult {
-  const prefix = basePath.endsWith("/") ? basePath : `${basePath}/`;
+  const prefix = toPathPrefix(basePath);
   return {
     ...result,
     results: result.results.map((n) => relativizeNode(n, prefix)),
@@ -180,14 +185,13 @@ export async function registerDevTestRoutes(
       }, HEARTBEAT_INTERVAL_MS);
 
       const basePath = Sonamu.apiRootPath;
-      const pathPrefix = basePath.endsWith("/") ? basePath : `${basePath}/`;
       const listener = (event: string, data: unknown) => {
         const key = event as keyof TestEvents;
         if (key === "runNodeProgress") {
           if (!isRunNodeProgressData(data)) return;
           const relativized = {
             ...data,
-            node: relativizeNode(data.node, pathPrefix),
+            node: relativizeNode(data.node, basePath),
           };
           sse.publish(key, relativized);
           return;
