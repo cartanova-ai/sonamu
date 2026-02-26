@@ -11,6 +11,40 @@ import { DevVitestManager } from "./dev-vitest-manager";
 const SCHEMA_VERSION = 1;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
+const SerializedTraceSchema = z.object({
+  key: z.string(),
+  value: z.unknown(),
+  filePath: z.string(),
+  lineNumber: z.number(),
+  at: z.string(),
+});
+
+const TestCaseResultSchema: z.ZodType<TestCaseResult> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    kind: z.enum(["file", "suite", "test"]),
+    name: z.string(),
+    fullName: z.string(),
+    file: z.string(),
+    state: z.enum(["passed", "failed", "skipped", "todo", "running", "unknown"]),
+    durationMs: z.number().nullable(),
+    counts: z.object({
+      total: z.number(),
+      passed: z.number(),
+      failed: z.number(),
+      skipped: z.number(),
+    }),
+    error: z
+      .object({
+        message: z.string(),
+        stack: z.string().optional(),
+      })
+      .nullable(),
+    traces: z.array(SerializedTraceSchema),
+    children: z.array(TestCaseResultSchema),
+  }),
+);
+
 const TestEventSchema = z.object({
   snapshot: z.object({
     schemaVersion: z.number(),
@@ -50,6 +84,18 @@ const TestEventSchema = z.object({
       message: z.string(),
       stack: z.string().optional(),
     }),
+  }),
+  runNodeProgress: z.object({
+    schemaVersion: z.literal(1),
+    runId: z.string(),
+    startedAt: z.string(),
+    at: z.string(),
+    kind: z.enum(["file", "suite", "test"]),
+    phase: z.enum(["ready", "result"]),
+    fileId: z.string(),
+    nodeId: z.string(),
+    parentId: z.string().nullable(),
+    node: TestCaseResultSchema,
   }),
   heartbeat: z.object({
     schemaVersion: z.number(),
@@ -114,8 +160,19 @@ export async function registerDevTestRoutes(
         });
       }, HEARTBEAT_INTERVAL_MS);
 
+      const basePath = Sonamu.apiRootPath;
+      const pathPrefix = basePath.endsWith("/") ? basePath : `${basePath}/`;
       const listener = (event: string, data: unknown) => {
         const key = event as keyof TestEvents;
+        if (key === "runNodeProgress") {
+          const progressData = data as TestEvents["runNodeProgress"];
+          const relativized = {
+            ...progressData,
+            node: relativizeNode(progressData.node, pathPrefix),
+          };
+          sse.publish(key, relativized);
+          return;
+        }
         sse.publish(key, data as TestEvents[typeof key]);
       };
       manager.addEventListener(listener);
