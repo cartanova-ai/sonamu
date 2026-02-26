@@ -153,7 +153,21 @@ export class Serve extends BaseCommand {
       .then(() => {
         if (this.#httpServer !== server) return;
         if (this.#intentionalExits.has(server) || this.#isClosing) return;
-        this.#log(`${this.script} exited.`);
+
+        this.#consecutiveCrashCount++;
+        this.#log(
+          `${this.script} exited. (${this.#consecutiveCrashCount}/${this.#maxConsecutiveCrashCount})`,
+        );
+
+        if (this.#consecutiveCrashCount >= this.#maxConsecutiveCrashCount) {
+          this.#log(
+            this.colors.red(
+              `Reached max consecutive exit count (${this.#maxConsecutiveCrashCount}). Exiting.`,
+            ),
+          );
+          process.exit(1);
+        }
+
         this.#scheduleCrashRestart();
       })
       .catch((error: unknown) => {
