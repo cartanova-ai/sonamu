@@ -15,7 +15,7 @@ type ParsedKeybinding = {
   chords: ParsedChord[];
 };
 
-export type Action = { type: "restart" } | { type: "shell"; command: string };
+export type Action = { type: "restart" } | { type: "clear" } | { type: "shell"; command: string };
 
 export type KeyBinding = {
   keybinding: string; // 원본 키바인딩 문자열 (예: "cmd+r cmd+r")
