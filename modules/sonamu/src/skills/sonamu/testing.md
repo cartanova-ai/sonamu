@@ -281,11 +281,12 @@ describe("PostModel", () => {
 ### 3단계: 테스트 실행
 
 ```bash
-cd packages/api
-pnpm test
+# dev 서버가 내려가 있으면 먼저 실행
+pnpm sonamu dev
 
-# watch 모드
-pnpm test:watch
+# 개발 중 테스트 (기본)
+pnpm sonamu test
+pnpm sonamu test user.model
 ```
 
 **완료!** 상세한 내용은 아래 섹션 참조.
@@ -833,7 +834,7 @@ describe("ConsultationModel", () => {
 - [ ] 그룹 내 의존성 체인을 반영한 test-helpers 작성
 - [ ] 그룹 내 각 엔티티의 모듈 테스트 파일 작성
 - [ ] **핵심 업무 시나리오가 Business Logic 테스트에 포함됨**
-- [ ] 모든 테스트 통과 확인 (`pnpm test`)
+- [ ] 모든 테스트 통과 확인 (`pnpm sonamu test`)
 - [ ] 다음 그룹으로 진행
 
 ## 엔티티 생성 후 즉시 해야 할 작업
@@ -1114,18 +1115,24 @@ Sonamu Model은 다음 메서드를 기본 제공한다. 테스트는 이 메서
 
 ## 테스트 실행
 
-```bash
-# watch 모드로 테스트 실행 (개발 중 권장)
-pnpm test:watch
+**원칙: 개발 중에는 `pnpm sonamu test`를 사용한다.** dev 서버는 항상 실행 중이라고 가정한다. 만약 dev 서버가 내려가 있다면 `pnpm sonamu dev`로 먼저 띄운 뒤 테스트한다. `pnpm test`는 CI 환경에서만 사용한다.
 
-# 특정 파일만 테스트 (watch 모드에서 p 키 → 파일명 입력)
-# 전체 테스트 한 번 실행 (CI용)
+```bash
+# dev 서버 확인 (내려가 있으면 먼저 실행)
+pnpm sonamu dev
+
+# 개발 중 테스트 (기본)
+pnpm sonamu test
+pnpm sonamu test user.model
+pnpm sonamu test user.model -p "findMany"
+
+# CI 환경에서만
 pnpm test
 ```
 
-### DevRunner — dev 서버에서 테스트 실행 (`sonamu test`)
+### DevRunner — `sonamu test` (기본 테스트 실행 방식)
 
-`sonamu test`는 `sonamu dev` 프로세스 내부에 상주하는 Vitest Node API 인스턴스를 통해 테스트를 실행한다. 매번 Vitest를 새로 기동하는 대신 이미 초기화된 인스턴스를 재사용하므로 실행 속도가 빠르고, HMR과 연동되어 소스 변경 즉시 최신 코드로 테스트된다.
+`sonamu test`는 `sonamu dev` 프로세스 내부에 상주하는 Vitest Node API 인스턴스를 통해 테스트를 실행한다. 매번 Vitest를 새로 기동하는 대신 이미 초기화된 인스턴스를 재사용하므로 실행 속도가 3.2x 빠르고, HMR과 연동되어 소스 변경 즉시 최신 코드로 테스트된다.
 
 #### 사전 준비
 
@@ -1322,16 +1329,16 @@ curl http://localhost:3000/__test__/status
 
 속도 차이 원인: `vitest run`은 매 실행마다 프로세스 부팅(~1.5초) + 모듈 transform(~400ms)이 필요하지만, `sonamu test`는 이미 초기화된 인스턴스를 재사용하므로 이 비용이 없다.
 
-#### `pnpm test` vs `sonamu test` 비교
+#### `pnpm sonamu test` vs `pnpm test` 비교
 
-| | `pnpm test` | `sonamu test` |
+| | `pnpm sonamu test` (기본) | `pnpm test` (CI/대체) |
 |---|---|---|
-| 실행 방식 | 독립 Vitest 프로세스 | dev 서버 내 상주 인스턴스 |
-| 초기화 비용 | 매 실행마다 초기화 | 없음 (이미 초기화됨) |
-| HMR 연동 | 해당 없음 | 소스 변경 즉시 반영 |
-| Naite trace | reporter 통해 확인 | `--traces` 플래그로 CLI 출력 |
-| 용도 | CI, 전체 회귀 테스트 | 개발 중 빠른 피드백 |
-| 사전 조건 | 없음 | `sonamu dev` 실행 중 |
+| 실행 방식 | dev 서버 내 상주 인스턴스 | 독립 Vitest 프로세스 |
+| 초기화 비용 | 없음 (이미 초기화됨) | 매 실행마다 초기화 |
+| HMR 연동 | 소스 변경 즉시 반영 | 해당 없음 |
+| Naite trace | `--traces` 플래그로 CLI 출력 | reporter 통해 확인 |
+| 용도 | **개발 중 기본 테스트 실행** | CI 환경 |
+| 사전 조건 | `sonamu dev` 실행 중 (항상 실행 가정) | 없음 |
 
 #### 트러블슈팅
 
@@ -1349,7 +1356,7 @@ curl http://localhost:3000/__test__/status
 
 ## sonamu.config.ts 테스트 관련 설정 전체 맵
 
-`sonamu test` (DevRunner)와 `pnpm test` (Vitest 직접 실행) 모두 `sonamu.config.ts`의 설정을 참조한다. 아래는 테스트 실행에 관여하는 모든 설정 항목이다.
+`pnpm sonamu test` (DevRunner, 기본)와 `pnpm test` (Vitest 직접 실행, CI용) 모두 `sonamu.config.ts`의 설정을 참조한다. 아래는 테스트 실행에 관여하는 모든 설정 항목이다.
 
 ### 설정 타입 정의 (SonamuTestConfig)
 
@@ -1374,9 +1381,9 @@ export type SonamuDevRunnerConfig = {
 };
 ```
 
-### 최소 설정 (pnpm test만 사용)
+### 병렬 테스트 설정 (선택)
 
-`pnpm test`로 Vitest를 직접 실행하는 경우, 순차 실행이면 `test` 설정 자체가 필요 없다. 병렬 실행이 필요한 경우에만 설정한다:
+`pnpm sonamu test`와 `pnpm test` 모두 병렬 설정을 공유한다. 병렬 실행이 필요한 경우에만 설정한다:
 
 ```typescript
 export default defineConfig({
@@ -1390,9 +1397,9 @@ export default defineConfig({
 
 `parallel: true`이면 `getSonamuTestConfig()`(vitest-helpers.ts)이 vitest에 `pool: "forks"`, `maxWorkers`, `env: { SONAMU_WORKER_DB: "true" }`를 주입하고, `globalSetup`(global-setup.ts)에서 `{database.name}_test_1` ~ `{database.name}_test_{maxWorkers}` DB를 템플릿(`{database.name}_test`)에서 복제 생성한다.
 
-### DevRunner 설정 (sonamu test 사용)
+### DevRunner 설정 (필수)
 
-`sonamu test` CLI를 사용하려면 DevRunner를 활성화해야 한다:
+`pnpm sonamu test`를 사용하려면 DevRunner를 활성화해야 한다. `test.devRunner.enabled: true`만 추가하면 된다:
 
 ```typescript
 export default defineConfig({
