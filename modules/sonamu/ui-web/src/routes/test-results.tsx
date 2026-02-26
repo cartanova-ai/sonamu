@@ -573,6 +573,33 @@ function formatDurationMs(ms: number): string {
   return `${ms.toFixed(2)}ms`;
 }
 
+type VisibleRow = {
+  node: TestCaseResult;
+  depth: number;
+  hasChildren: boolean;
+};
+
+function buildInitialExpandedIds(results: TestCaseResult[]): Set<string> {
+  return new Set(results.map((r) => r.id));
+}
+
+function buildVisibleRows(results: TestCaseResult[], expandedIds: Set<string>): VisibleRow[] {
+  const rows: VisibleRow[] = [];
+  const visit = (node: TestCaseResult, depth: number) => {
+    const hasChildren = node.children.length > 0;
+    rows.push({ node, depth, hasChildren });
+    if (hasChildren && expandedIds.has(node.id)) {
+      for (const child of node.children) {
+        visit(child, depth + 1);
+      }
+    }
+  };
+  for (const root of results) {
+    visit(root, 0);
+  }
+  return rows;
+}
+
 function ResultTreePanel({
   results,
   selectedNodeId,
@@ -582,94 +609,104 @@ function ResultTreePanel({
   selectedNodeId: string | null;
   onSelectNode: (id: string) => void;
 }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    buildInitialExpandedIds(results),
+  );
+
+  const prevResultsRef = useRef(results);
+  useEffect(() => {
+    if (prevResultsRef.current !== results) {
+      prevResultsRef.current = results;
+      setExpandedIds(buildInitialExpandedIds(results));
+    }
+  }, [results]);
+
+  const visibleRows = useMemo(() => buildVisibleRows(results, expandedIds), [results, expandedIds]);
+
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="w-120 shrink-0 border-r border-gray-200 overflow-y-auto p-2">
-      {results.map((node) => (
-        <TreeNode
-          key={node.id}
-          node={node}
-          depth={0}
-          selectedNodeId={selectedNodeId}
+      {visibleRows.map((row) => (
+        <TreeRow
+          key={row.node.id}
+          row={row}
+          isSelected={selectedNodeId === row.node.id}
+          expanded={expandedIds.has(row.node.id)}
           onSelectNode={onSelectNode}
+          onToggleExpand={handleToggleExpand}
         />
       ))}
     </div>
   );
 }
 
-const TreeNode = memo(function TreeNode({
-  node,
-  depth,
-  selectedNodeId,
+const TreeRow = memo(function TreeRow({
+  row,
+  isSelected,
+  expanded,
   onSelectNode,
+  onToggleExpand,
 }: {
-  node: TestCaseResult;
-  depth: number;
-  selectedNodeId: string | null;
+  row: VisibleRow;
+  isSelected: boolean;
+  expanded: boolean;
   onSelectNode: (id: string) => void;
+  onToggleExpand: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
-  const hasChildren = node.children.length > 0;
-  const isSelected = selectedNodeId === node.id;
-
   return (
-    <div>
-      <button
-        type="button"
-        className={classNames(
-          "w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm cursor-pointer transition-colors text-left",
-          {
-            "bg-blue-100": isSelected,
-            "hover:bg-gray-100": !isSelected,
-          },
-        )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-        onClick={() => {
-          onSelectNode(node.id);
-          if (hasChildren) {
-            setExpanded((prev) => !prev);
-          }
-        }}
-      >
-        {hasChildren ? (
-          expanded ? (
-            <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-          ) : (
-            <ChevronRightIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-          )
-        ) : (
-          <span className="w-3.5 shrink-0" />
-        )}
-        <StateIcon state={node.state} kind={node.kind} />
-        <span
-          className={classNames("truncate", {
-            "text-red-600": node.state === "failed",
-            "text-green-700": node.state === "passed",
-            "text-gray-400": node.state === "skipped" || node.state === "todo",
-          })}
-        >
-          {node.name}
-        </span>
-        {node.durationMs !== null && (
-          <span className="ml-auto text-xs text-gray-400 font-mono shrink-0">
-            {formatDurationMs(node.durationMs)}
-          </span>
-        )}
-      </button>
-      {hasChildren && expanded && (
-        <div>
-          {node.children.map((child) => (
-            <TreeNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={onSelectNode}
-            />
-          ))}
-        </div>
+    <button
+      type="button"
+      className={classNames(
+        "w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm cursor-pointer transition-colors text-left",
+        {
+          "bg-blue-100": isSelected,
+          "hover:bg-gray-100": !isSelected,
+        },
       )}
-    </div>
+      style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
+      onClick={() => {
+        onSelectNode(row.node.id);
+        if (row.hasChildren) {
+          onToggleExpand(row.node.id);
+        }
+      }}
+    >
+      {row.hasChildren ? (
+        expanded ? (
+          <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        ) : (
+          <ChevronRightIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        )
+      ) : (
+        <span className="w-3.5 shrink-0" />
+      )}
+      <StateIcon state={row.node.state} kind={row.node.kind} />
+      <span
+        className={classNames("truncate", {
+          "text-red-600": row.node.state === "failed",
+          "text-green-700": row.node.state === "passed",
+          "text-gray-400": row.node.state === "skipped" || row.node.state === "todo",
+        })}
+      >
+        {row.node.name}
+      </span>
+      {row.node.durationMs !== null && (
+        <span className="ml-auto text-xs text-gray-400 font-mono shrink-0">
+          {formatDurationMs(row.node.durationMs)}
+        </span>
+      )}
+    </button>
   );
 });
 
