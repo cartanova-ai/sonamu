@@ -5,22 +5,33 @@ description: Sonamu 데이터베이스 마이그레이션. CREATE/ALTER TABLE, F
 
 # Migration
 
-## Sonamu UI에서 Migration 생성 (권장)
+## CRITICAL: Migration은 Sonamu UI 또는 CLI로 생성한다
+
+**Migration 파일을 직접 작성하거나 SQL을 직접 실행하지 않는다.** Sonamu가 entity.json 변경사항을 감지하여 정확한 migration 파일을 생성해준다.
 
 **사전 준비:**
 - `/packages/api`에서 `pnpm dev` 실행 중이어야 함
-- 브라우저에서 Sonamu UI 접속: `http://localhost:34900/sonamu-ui` (기본 포트)
 
-**절차:**
-1. Sonamu UI의 Migration 메뉴로 이동
-2. Entity 변경사항이 자동 감지됨
-3. "Create Migration" 버튼 클릭
-4. Migration 파일이 `packages/api/src/migrations/` 에 생성됨
+**방법 1: Sonamu UI (사용자에게 확인 후 선택)**
+1. 브라우저에서 Sonamu UI 접속: `http://localhost:34900/sonamu-ui`
+2. Migration 메뉴에서 prepared 리스트 확인
+3. "Generate" 버튼으로 migration 파일 생성
+4. "Apply" 버튼으로 실제 DB에 적용
 
-**장점:**
-- Entity 변경사항을 자동 감지하여 Migration 파일 생성
-- UI에서 바로 Migration 샤행 가능
-- Rollback 기능 제공
+**방법 2: CLI**
+```bash
+cd packages/api
+pnpm sonamu migrate generate   # migration 파일 생성
+pnpm sonamu migrate run         # 실제 DB에 적용
+```
+
+**CRITICAL: 사용자에게 UI와 CLI 중 어떤 방식으로 진행할지 물어본 후 진행한다.**
+
+**DO NOT:**
+- Migration 파일을 수동으로 작성
+- `CREATE TABLE`, `ALTER TABLE` 등 SQL을 직접 실행
+
+**예외:** PK 타입 변경 등 Sonamu가 자동 처리할 수 없는 특수 케이스만 raw SQL 허용 (아래 "PK 타입 변경" 섹션 참조)
 
 ## 기본 구조
 

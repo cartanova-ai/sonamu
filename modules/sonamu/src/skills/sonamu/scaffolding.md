@@ -5,6 +5,22 @@ description: Sonamu UI Scaffolding 사용 시 참조. 흔한 오류와 해결 �
 
 # Scaffolding 트러블슈팅
 
+## CRITICAL: Scaffolding 필수 항목
+
+**모든 엔티티에 대해 다음 5가지를 모두 scaffolding 해야 한다:**
+
+| 항목 | 설명 |
+|------|------|
+| `model` | BaseModelClass 기반 CRUD 모델 |
+| `model_test` | 모델 테스트 파일 |
+| `view_list` | 목록 화면 컴포넌트 |
+| `view_search_input` | 검색 입력 컴포넌트 |
+| `view_form` | 생성/수정 폼 컴포넌트 |
+
+**DO NOT:** model과 model_test만 scaffolding하고 view 관련을 건너뛰는 것
+
+---
+
 ## Scaffolding 전 체크리스트
 
 **`packages/api`** 디렉토리에서 실행:

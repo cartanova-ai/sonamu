@@ -105,13 +105,18 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 9. 마이그레이션
 
-24. migration 실행
+24. 사용자에게 Sonamu UI와 CLI 중 어떤 방식으로 migration을 진행할지 확인 후 실행
 25. 실제 테이블이 생성되었는지 확인
 
 ### 10. Cone 및 Scaffolding
 
 26. Cone 생성 (`--use-llm`)
-27. Scaffolding 실행 — model, model test, view, view list 등 **모든 것을 scaffolding** 해야 함
+27. Scaffolding 실행 — 다음 **모든 항목을 scaffolding** 해야 함:
+    - model
+    - model_test
+    - view_list
+    - view_search_input
+    - view_form
     - Sonamu UI에서 사용자가 실행하거나 Claude Code가 CLI로 실행
 28. 오류 없이 생성되는지 확인
 29. biome check, type check
@@ -122,7 +127,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 - [ ] 모든 엔티티 entity.json 생성 완료
 - [ ] migration 완료, DB 테이블 확인
 - [ ] cone 생성 완료
-- [ ] scaffolding 완료 (model, model test, view, view list 등 전부)
+- [ ] scaffolding 완료 (model, model_test, view_list, view_search_input, view_form 전부)
 - [ ] biome check, type check, build 모두 통과
 
 ---
