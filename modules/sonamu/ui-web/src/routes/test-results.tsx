@@ -617,7 +617,14 @@ function ResultTreePanel({
   useEffect(() => {
     if (prevResultsRef.current !== results) {
       prevResultsRef.current = results;
-      setExpandedIds(buildInitialExpandedIds(results));
+      // 새로 추가된 root id만 병합하여 사용자가 수동으로 접은 항목 상태를 보존합니다.
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        for (const r of results) {
+          if (!next.has(r.id)) next.add(r.id);
+        }
+        return next;
+      });
     }
   }, [results]);
 
@@ -808,6 +815,11 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const { SD } = useSonamuContext();
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
   const formattedCacheRef = useRef<Map<string, string>>(new Map());
+
+  // 노드 전환 시 traces prop이 변경되면 캐시를 초기화하여 cacheKey 충돌을 방지합니다.
+  useEffect(() => {
+    formattedCacheRef.current.clear();
+  }, [traces]);
 
   const toggleTrace = useCallback((cacheKey: string) => {
     setExpandedTraceKeys((prev) => {
