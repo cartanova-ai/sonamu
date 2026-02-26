@@ -223,6 +223,7 @@ const en: Record<DictKey, Dictionary[string]> = {
   "testResults.detail.traces": "Naite Traces",
   "testResults.detail.noTraces": "No traces",
   "testResults.clearHistory": "Clear History",
+  "testResults.liveRunning": "Running",
 };
 
 export default en;

@@ -218,4 +218,5 @@ export default {
   "testResults.detail.traces": "Naite 트레이스",
   "testResults.detail.noTraces": "트레이스 없음",
   "testResults.clearHistory": "이력 지우기",
+  "testResults.liveRunning": "진행 중",
 } as const;

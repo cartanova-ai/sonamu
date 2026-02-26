@@ -21,12 +21,106 @@ import {
   SonamuUIService,
   type StoredRunEntry,
   type TestCaseResult,
+  type TestSSEEventMap,
   type TestState,
 } from "../services/sonamu-ui.service";
 
 export const Route = createFileRoute("/test-results")({
   component: TestResultsPage,
 });
+
+type LiveRunState = {
+  runId: string;
+  startedAt: string;
+  fileResults: Map<string, TestCaseResult>;
+};
+
+function aggregateChildCounts(children: TestCaseResult[]): TestCaseResult["counts"] {
+  let total = 0;
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+  for (const child of children) {
+    total += child.counts.total;
+    passed += child.counts.passed;
+    failed += child.counts.failed;
+    skipped += child.counts.skipped;
+  }
+  return { total, passed, failed, skipped };
+}
+
+function deriveParentState(parent: TestCaseResult, children: TestCaseResult[]): TestState {
+  if (children.some((c) => c.state === "running")) return "running";
+  if (children.some((c) => c.state === "failed")) return "failed";
+  if (children.every((c) => c.state === "passed" || c.state === "skipped" || c.state === "todo")) {
+    return children.some((c) => c.state === "passed") ? "passed" : "skipped";
+  }
+  return parent.state;
+}
+
+function upsertNodeInTree(
+  root: TestCaseResult,
+  parentId: string,
+  node: TestCaseResult,
+  phase: "ready" | "result",
+): TestCaseResult {
+  if (root.id === parentId) {
+    const existingIdx = root.children.findIndex((c) => c.id === node.id);
+    let newChildren: TestCaseResult[];
+    if (existingIdx >= 0) {
+      if (phase === "ready" && root.children[existingIdx].state !== "running") {
+        return root;
+      }
+      newChildren = [...root.children];
+      newChildren[existingIdx] = node;
+    } else {
+      newChildren = [...root.children, node];
+    }
+    const counts = aggregateChildCounts(newChildren);
+    const state = deriveParentState(root, newChildren);
+    return { ...root, children: newChildren, counts, state };
+  }
+
+  let changed = false;
+  const newChildren = root.children.map((child) => {
+    if (changed) return child;
+    const updated = upsertNodeInTree(child, parentId, node, phase);
+    if (updated !== child) changed = true;
+    return updated;
+  });
+
+  if (!changed) return root;
+
+  const counts = aggregateChildCounts(newChildren);
+  const state = deriveParentState(root, newChildren);
+  return { ...root, children: newChildren, counts, state };
+}
+
+function applyNodeProgress(
+  state: LiveRunState | null,
+  payload: TestSSEEventMap["runNodeProgress"],
+): LiveRunState | null {
+  if (!state || payload.runId !== state.runId) return state;
+
+  const next = new Map(state.fileResults);
+
+  if (payload.kind === "file" || payload.parentId === null) {
+    if (payload.phase === "ready") {
+      if (!next.has(payload.fileId)) {
+        next.set(payload.fileId, payload.node);
+      }
+    } else {
+      next.set(payload.fileId, payload.node);
+    }
+  } else {
+    const fileRoot = next.get(payload.fileId);
+    if (!fileRoot) return state;
+    const updated = upsertNodeInTree(fileRoot, payload.parentId, payload.node, payload.phase);
+    next.set(payload.fileId, updated);
+  }
+
+  return { ...state, fileResults: next };
+}
 
 function TestResultsPage() {
   const { SD } = useSonamuContext();
@@ -39,6 +133,7 @@ function TestResultsPage() {
   const [connecting, setConnecting] = useState(true);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [liveRun, setLiveRun] = useState<LiveRunState | null>(null);
 
   useEffect(() => {
     if (connected) {
@@ -58,8 +153,16 @@ function TestResultsPage() {
     );
 
     unsubs.push(
-      on("runStarted", () => {
+      on("runStarted", (payload) => {
         setManagerStatus((prev) => (prev ? { ...prev, running: true } : prev));
+        setLiveRun({ runId: payload.runId, startedAt: payload.startedAt, fileResults: new Map() });
+        setSelectedRunId(null);
+      }),
+    );
+
+    unsubs.push(
+      on("runNodeProgress", (payload) => {
+        setLiveRun((prev) => applyNodeProgress(prev, payload));
       }),
     );
 
@@ -74,6 +177,8 @@ function TestResultsPage() {
           finishedAt: payload.finishedAt,
           result: payload.result,
         });
+        setLiveRun(null);
+        setSelectedRunId(payload.runId);
       }),
     );
 
@@ -82,6 +187,7 @@ function TestResultsPage() {
         setManagerStatus((prev) =>
           prev ? { ...prev, running: false, lastRunAt: payload.finishedAt } : prev,
         );
+        setLiveRun(null);
       }),
     );
 
@@ -97,8 +203,38 @@ function TestResultsPage() {
     return history.runs.find((r) => r.runId === selectedRunId) ?? null;
   }, [selectedRunId, history.runs]);
 
+  const liveRunResults = useMemo(() => {
+    if (!liveRun) return null;
+    return Array.from(liveRun.fileResults.values());
+  }, [liveRun]);
+
+  const liveRunSummary = useMemo(() => {
+    if (!liveRunResults) return null;
+    let total = 0;
+    let passed = 0;
+    let failed = 0;
+    let skipped = 0;
+    let durationMs = 0;
+    for (const f of liveRunResults) {
+      total += f.counts.total;
+      passed += f.counts.passed;
+      failed += f.counts.failed;
+      skipped += f.counts.skipped;
+      if (f.durationMs) durationMs += f.durationMs;
+    }
+    return { total, passed, failed, skipped, durationMs };
+  }, [liveRunResults]);
+
+  const showLiveRun = !selectedRunId && liveRun !== null;
+
+  const activeResults = useMemo(() => {
+    if (showLiveRun && liveRunResults) return liveRunResults;
+    if (selectedRun) return selectedRun.result.results;
+    return null;
+  }, [showLiveRun, liveRunResults, selectedRun]);
+
   const nodeIndex = useMemo(() => {
-    if (!selectedRun) return new Map<string, TestCaseResult>();
+    if (!activeResults) return new Map<string, TestCaseResult>();
     const map = new Map<string, TestCaseResult>();
     const walk = (nodes: TestCaseResult[]) => {
       for (const n of nodes) {
@@ -106,9 +242,9 @@ function TestResultsPage() {
         if (n.children.length > 0) walk(n.children);
       }
     };
-    walk(selectedRun.result.results);
+    walk(activeResults);
     return map;
-  }, [selectedRun]);
+  }, [activeResults]);
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -117,6 +253,11 @@ function TestResultsPage() {
 
   const handleSelectRun = useCallback((runId: string) => {
     setSelectedRunId(runId);
+    setSelectedNodeId(null);
+  }, []);
+
+  const handleSelectLiveRun = useCallback(() => {
+    setSelectedRunId(null);
     setSelectedNodeId(null);
   }, []);
 
@@ -143,9 +284,20 @@ function TestResultsPage() {
           selectedRunId={selectedRunId}
           onSelectRun={handleSelectRun}
           onClearHistory={clearHistory}
+          liveRun={liveRun}
+          showLiveRun={showLiveRun}
+          onSelectLiveRun={handleSelectLiveRun}
         />
         <div className="flex-1 overflow-auto">
-          {selectedRun ? (
+          {showLiveRun && liveRunResults && liveRunSummary ? (
+            <LiveResultViewPanel
+              results={liveRunResults}
+              summary={liveRunSummary}
+              selectedNodeId={selectedNodeId}
+              selectedNode={selectedNode}
+              onSelectNode={setSelectedNodeId}
+            />
+          ) : selectedRun ? (
             <ResultViewPanel
               run={selectedRun}
               selectedNodeId={selectedNodeId}
@@ -205,11 +357,17 @@ function RunHistorySidebar({
   selectedRunId,
   onSelectRun,
   onClearHistory,
+  liveRun,
+  showLiveRun,
+  onSelectLiveRun,
 }: {
   runs: StoredRunEntry[];
   selectedRunId: string | null;
   onSelectRun: (runId: string) => void;
   onClearHistory: () => void;
+  liveRun: LiveRunState | null;
+  showLiveRun: boolean;
+  onSelectLiveRun: () => void;
 }) {
   const { SD } = useSonamuContext();
   const grouped = useMemo(() => {
@@ -230,7 +388,27 @@ function RunHistorySidebar({
   return (
     <div className="w-60 shrink-0 flex flex-col border-r border-gray-200 bg-gray-50 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-2">
-        {runs.length === 0 ? (
+        {liveRun && (
+          <button
+            type="button"
+            className={classNames(
+              "w-full text-left px-2 py-1.5 rounded text-sm cursor-pointer transition-colors mb-2",
+              {
+                "bg-blue-100 text-blue-900": showLiveRun,
+                "hover:bg-gray-200": !showLiveRun,
+              },
+            )}
+            onClick={onSelectLiveRun}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-xs font-semibold text-blue-700">
+                {SD("testResults.liveRunning")}
+              </span>
+            </div>
+          </button>
+        )}
+        {runs.length === 0 && !liveRun ? (
           <div className="text-center text-gray-400 text-sm py-8">
             {SD("testResults.noHistory")}
           </div>
@@ -327,6 +505,34 @@ function ResultViewPanel({
       <div className="flex flex-1 overflow-hidden">
         <ResultTreePanel
           results={run.result.results}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+        />
+        <ResultDetailPanel node={selectedNode} />
+      </div>
+    </div>
+  );
+}
+
+function LiveResultViewPanel({
+  results,
+  summary,
+  selectedNodeId,
+  selectedNode,
+  onSelectNode,
+}: {
+  results: TestCaseResult[];
+  summary: RunResult["summary"];
+  selectedNodeId: string | null;
+  selectedNode: TestCaseResult | null;
+  onSelectNode: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <SummaryHeader summary={summary} />
+      <div className="flex flex-1 overflow-hidden">
+        <ResultTreePanel
+          results={results}
           selectedNodeId={selectedNodeId}
           onSelectNode={onSelectNode}
         />

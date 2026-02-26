@@ -63,6 +63,21 @@ function isRunErroredPayload(v: unknown): v is TestSSEEventMap["runErrored"] {
   );
 }
 
+function isRunNodeProgressPayload(v: unknown): v is TestSSEEventMap["runNodeProgress"] {
+  if (!isRecord(v) || !hasSchemaVersion1(v)) return false;
+  return (
+    typeof v.runId === "string" &&
+    typeof v.startedAt === "string" &&
+    typeof v.at === "string" &&
+    (v.kind === "file" || v.kind === "suite" || v.kind === "test") &&
+    (v.phase === "ready" || v.phase === "result") &&
+    typeof v.fileId === "string" &&
+    typeof v.nodeId === "string" &&
+    (v.parentId === null || typeof v.parentId === "string") &&
+    isRecord(v.node)
+  );
+}
+
 function isHeartbeatPayload(v: unknown): v is TestSSEEventMap["heartbeat"] {
   if (!isRecord(v) || !hasSchemaVersion1(v)) return false;
   return typeof v.at === "string";
@@ -74,6 +89,7 @@ type PayloadGuard = {
   runStarted: (v: unknown) => v is TestSSEEventMap["runStarted"];
   runCompleted: (v: unknown) => v is TestSSEEventMap["runCompleted"];
   runErrored: (v: unknown) => v is TestSSEEventMap["runErrored"];
+  runNodeProgress: (v: unknown) => v is TestSSEEventMap["runNodeProgress"];
   heartbeat: (v: unknown) => v is TestSSEEventMap["heartbeat"];
 };
 
@@ -83,6 +99,7 @@ const payloadGuards: PayloadGuard = {
   runStarted: isRunStartedPayload,
   runCompleted: isRunCompletedPayload,
   runErrored: isRunErroredPayload,
+  runNodeProgress: isRunNodeProgressPayload,
   heartbeat: isHeartbeatPayload,
 };
 
@@ -129,6 +146,7 @@ export function useTestEvents(options?: { enabled?: boolean }): {
       "runStarted",
       "runCompleted",
       "runErrored",
+      "runNodeProgress",
       "heartbeat",
     ];
 

@@ -884,6 +884,18 @@ export type TestSSEEventMap = {
     finishedAt: string;
     error: { message: string; stack?: string };
   };
+  runNodeProgress: {
+    schemaVersion: 1;
+    runId: string;
+    startedAt: string;
+    at: string;
+    kind: "file" | "suite" | "test";
+    phase: "ready" | "result";
+    fileId: string;
+    nodeId: string;
+    parentId: string | null;
+    node: TestCaseResult;
+  };
   heartbeat: {
     schemaVersion: 1;
     at: string;
