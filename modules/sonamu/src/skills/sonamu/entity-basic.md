@@ -498,6 +498,36 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 }
 ```
 
+### IMPORTANT: indexes에서 FK 컨럼명은 실제 DB 컨럼명을 사용한다
+
+**indexes와 subsets에서 FK 컨럼을 참조하는 방식이 다르다. 혼동하지 않는다.**
+
+| 위치 | 사용 형식 | 예시 |
+|------|----------|------|
+| `indexes` | 실제 DB 컨럼명 | `role_id`, `user_id`, `department_id` |
+| `subsets` | FieldExpr (relation.field) | `role.id`, `user.id`, `department.id` |
+
+**DO NOT:**
+```json
+// indexes에서 FieldExpr 사용 → 오류
+"indexes": [
+  { "name": "ix_role", "type": "index", "columns": [{ "name": "role.id" }] }
+]
+```
+
+**DO:**
+```json
+// indexes는 실제 DB 컨럼명
+"indexes": [
+  { "name": "ix_role_id", "type": "index", "columns": [{ "name": "role_id" }] }
+]
+
+// subsets는 FieldExpr
+"subsets": {
+  "A": ["id", "role.id", "role.name"]
+}
+```
+
 ### IMPORTANT: unique 제약은 비즈니스 규칙 기준으로
 
 unique index는 기술적 판단이 아니라 **비즈니스 관점**에서 "이 데이터가 시스템에서 중복 존재할 수 있는가?"를 먼저 판단한 후 정의한다.
@@ -554,6 +584,7 @@ unique index는 기술적 판단이 아니라 **비즈니스 관점**에서 "이
 | 고정 선택지 필드를 `string`으로 정의 | enum으로 변환 (fixtureGenerator가 arrayElement인 필드 확인)       |
 | unique 제약 없는 연도별/매핑 테이블  | 비즈니스 규칙 기준으로 복합 unique 추가                           |
 | 정수 필드에 `number` 타입 사용       | `integer` 사용 (소수점 필요 시 `numeric`)                         |
+| indexes에서 `role.id` 형식 사용          | indexes는 실제 DB 컨럼명(`role_id`), subsets만 FieldExpr(`role.id`) 사용 |
 
 ## Entity 스키마 검증 오류 해결
 
@@ -725,6 +756,7 @@ Entity.json 파일 작성 시 다음 사항을 확인하세요:
 - [ ] BelongsToOne relation과 foreign key 컬럼을 중복 정의하지 않았는가?
 - [ ] Boolean 타입의 dbDefault가 "true" 또는 "false" 문자열인가?
 - [ ] Subset A에 모든 필드가 포함되어 있는가?
+- [ ] indexes의 columns에 FieldExpr(`role.id`) 대신 실제 DB 컨럼명(`role_id`)을 사용했는가?
 
 ## IMPORTANT: OrderBy Enum Generation Rule
 
