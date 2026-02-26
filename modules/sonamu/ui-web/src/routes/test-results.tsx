@@ -624,7 +624,23 @@ type VisibleRow = {
 };
 
 function buildInitialExpandedIds(results: TestCaseResult[]): Set<string> {
-  return new Set(results.map((r) => r.id));
+  const ids = new Set<string>();
+  const visit = (node: TestCaseResult): boolean => {
+    if (node.children.length === 0) {
+      return node.state === "failed";
+    }
+    let hasFailed = false;
+    for (const child of node.children) {
+      if (visit(child)) hasFailed = true;
+    }
+    if (hasFailed) ids.add(node.id);
+    return hasFailed;
+  };
+  for (const root of results) {
+    ids.add(root.id);
+    visit(root);
+  }
+  return ids;
 }
 
 function buildVisibleRows(results: TestCaseResult[], expandedIds: Set<string>): VisibleRow[] {
@@ -661,11 +677,21 @@ function ResultTreePanel({
   useEffect(() => {
     if (prevResultsRef.current !== results) {
       prevResultsRef.current = results;
-      // 새로 추가된 root id만 병합하여 사용자가 수동으로 접은 항목 상태를 보존합니다.
+      // 새로 추가된 root 및 실패 경로를 병합하여 기존 접힘 상태를 보존합니다.
       setExpandedIds((prev) => {
         const next = new Set(prev);
+        const addFailedPaths = (node: TestCaseResult): boolean => {
+          if (node.children.length === 0) return node.state === "failed";
+          let hasFailed = false;
+          for (const child of node.children) {
+            if (addFailedPaths(child)) hasFailed = true;
+          }
+          if (hasFailed) next.add(node.id);
+          return hasFailed;
+        };
         for (const r of results) {
           if (!next.has(r.id)) next.add(r.id);
+          addFailedPaths(r);
         }
         return next;
       });
