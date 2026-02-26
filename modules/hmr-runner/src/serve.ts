@@ -36,6 +36,15 @@ export class Serve extends BaseCommand {
   #onReloadAsked?: (updatedFile: string, shouldBeReloadable: boolean) => void;
   #onFileInvalidated?: (invalidatedFiles: string[]) => void;
 
+  #intentionalExits = new WeakSet<ExecaChildProcess<string>>();
+  #restartTimer?: NodeJS.Timeout;
+  #crashResetTimer?: NodeJS.Timeout;
+  #isClosing = false;
+  #consecutiveCrashCount = 0;
+  readonly #crashRestartDelayMs = 1000;
+  readonly #crashResetWindowMs = 5000;
+  readonly #maxConsecutiveCrashCount = 3;
+
   /**
    * 조건부로 터미널 화면을 지웁니다
    */
@@ -53,6 +62,67 @@ export class Serve extends BaseCommand {
   }
 
   /**
+   * unknown error에서 signal 문자열을 타입 안전하게 추출합니다
+   */
+  #extractSignal(error: unknown): string | undefined {
+    if (typeof error === "object" && error !== null && "signal" in error) {
+      const candidate = (error as { signal: unknown }).signal;
+      if (typeof candidate === "string") {
+        return candidate;
+      }
+    }
+    return undefined;
+  }
+
+  #clearRestartTimer() {
+    if (this.#restartTimer) {
+      clearTimeout(this.#restartTimer);
+      this.#restartTimer = undefined;
+    }
+  }
+
+  #clearCrashResetTimer() {
+    if (this.#crashResetTimer) {
+      clearTimeout(this.#crashResetTimer);
+      this.#crashResetTimer = undefined;
+    }
+  }
+
+  /**
+   * 서버 시작 후 일정 시간(5초) 정상 운영 시 크래시 카운터를 리셋합니다
+   */
+  #scheduleCrashCounterReset(server: ExecaChildProcess<string>) {
+    this.#clearCrashResetTimer();
+    this.#crashResetTimer = setTimeout(() => {
+      if (this.#intentionalExits.has(server)) return;
+      if (this.#httpServer !== server) return;
+      this.#consecutiveCrashCount = 0;
+    }, this.#crashResetWindowMs);
+  }
+
+  /**
+   * 현재 HTTP 서버를 의도적으로 종료합니다
+   */
+  #stopHTTPServer(signal?: NodeJS.Signals) {
+    if (this.#httpServer) {
+      this.#intentionalExits.add(this.#httpServer);
+      this.#httpServer.removeAllListeners();
+      this.#httpServer.kill(signal ?? "SIGKILL");
+    }
+  }
+
+  /**
+   * 크래시 후 일정 시간(1초) 뒤 서버 재시작을 예약합니다
+   */
+  #scheduleCrashRestart() {
+    if (this.#isClosing) return;
+    this.#clearRestartTimer();
+    this.#restartTimer = setTimeout(() => {
+      this.#startHTTPServer();
+    }, this.#crashRestartDelayMs);
+  }
+
+  /**
    * HTTP 서버를 시작합니다
    */
   #startHTTPServer() {
@@ -61,6 +131,9 @@ export class Serve extends BaseCommand {
       nodeArgs: this.nodeArgs,
       scriptArgs: this.scriptArgs,
     });
+
+    const server = this.#httpServer;
+    this.#scheduleCrashCounterReset(server);
 
     this.#httpServer.on("message", async (message: unknown) => {
       if (typeof message !== "object" || message === null) return;
@@ -78,16 +151,36 @@ export class Serve extends BaseCommand {
 
     this.#httpServer
       .then(() => {
+        if (this.#httpServer !== server) return;
+        if (this.#intentionalExits.has(server) || this.#isClosing) return;
         this.#log(`${this.script} exited.`);
+        this.#scheduleCrashRestart();
       })
-      .catch(({ signal }) => {
+      .catch((error: unknown) => {
+        if (this.#httpServer !== server) return;
+        if (this.#intentionalExits.has(server) || this.#isClosing) return;
+
+        const signal = this.#extractSignal(error);
         if (signal === "SIGUSR2") {
-          // 프로세스가 죽은 이유가 SIGUSR2 때문이라면, 이는 서버 프로세스 재시작을 기대하고 보낸 것입니다.
-          // 따라서 재시작합니다.
           this.#startHTTPServer();
-        } else {
-          this.#log(`${this.colors.red(`${this.script} crashed.`)}`);
+          return;
         }
+
+        this.#consecutiveCrashCount++;
+        this.#log(
+          `${this.colors.red(`${this.script} crashed.`)} (${this.#consecutiveCrashCount}/${this.#maxConsecutiveCrashCount})`,
+        );
+
+        if (this.#consecutiveCrashCount >= this.#maxConsecutiveCrashCount) {
+          this.#log(
+            this.colors.red(
+              `Reached max consecutive crash count (${this.#maxConsecutiveCrashCount}). Exiting.`,
+            ),
+          );
+          process.exit(1);
+        }
+
+        this.#scheduleCrashRestart();
       });
   }
 
@@ -131,6 +224,10 @@ export class Serve extends BaseCommand {
   #parseAction(actionStr: string): Action | null {
     if (actionStr === "restart") {
       return { type: "restart" };
+    }
+
+    if (actionStr === "clear") {
+      return { type: "clear" };
     }
 
     const shellMatch = actionStr.match(/^shell\((.+)\)$/);
@@ -201,9 +298,10 @@ export class Serve extends BaseCommand {
     for (const action of binding.actions) {
       if (action.type === "restart") {
         this.#clearScreen();
-        this.#httpServer?.removeAllListeners();
-        this.#httpServer?.kill("SIGKILL");
+        this.#stopHTTPServer();
         this.#startHTTPServer();
+      } else if (action.type === "clear") {
+        process.stdout.write("\u001Bc");
       } else if (action.type === "shell") {
         await this.#executeShellCommand(action.command, binding.description);
       }
@@ -262,8 +360,7 @@ export class Serve extends BaseCommand {
         this.#log(`${message}\n${warning}`);
       }
 
-      this.#httpServer?.removeAllListeners();
-      this.#httpServer?.kill("SIGKILL");
+      this.#stopHTTPServer();
       this.#startHTTPServer();
     };
 
@@ -281,10 +378,10 @@ export class Serve extends BaseCommand {
    * 감시자 및 실행 중인 자식 프로세스를 종료합니다
    */
   async close() {
+    this.#isClosing = true;
+    this.#clearRestartTimer();
+    this.#clearCrashResetTimer();
     this.#keybindingManager.cleanup();
-    if (this.#httpServer) {
-      this.#httpServer.removeAllListeners();
-      this.#httpServer.kill("SIGKILL");
-    }
+    this.#stopHTTPServer();
   }
 }
