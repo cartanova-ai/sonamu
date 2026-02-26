@@ -387,6 +387,7 @@
                   "ko/tools-and-cli/sonamu-cli/fixture",
                   "ko/tools-and-cli/sonamu-cli/test",
                   "ko/tools-and-cli/sonamu-cli/stub",
+                  "ko/tools-and-cli/sonamu-cli/cone",
                   "ko/tools-and-cli/sonamu-cli/scaffold"
                 ]
               },
@@ -942,6 +943,7 @@
                   "en/tools-and-cli/sonamu-cli/fixture",
                   "en/tools-and-cli/sonamu-cli/test",
                   "en/tools-and-cli/sonamu-cli/stub",
+                  "en/tools-and-cli/sonamu-cli/cone",
                   "en/tools-and-cli/sonamu-cli/scaffold"
                 ]
               },

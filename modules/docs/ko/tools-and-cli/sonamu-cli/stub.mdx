@@ -45,19 +45,41 @@ pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
 
 ### entity - Entity 생성
 
-새로운 Entity를 생성합니다.
+새로운 Entity를 생성합니다. 기본적으로 Entity 생성 후 **템플릿 cone**이 자동으로 함께 생성됩니다.
 
 ```bash
-pnpm stub entity <entityId>
+pnpm stub entity <entityId> [옵션]
 ```
+
+**옵션**:
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| (없음) | Entity 생성 후 템플릿 cone 자동 생성 (기본 동작) | `pnpm stub entity Product` |
+| `--ai` | Entity 생성 후 LLM으로 cone 생성 (`ANTHROPIC_API_KEY` 필요) | `pnpm stub entity Product --ai` |
+| `--no-cones` | Entity만 생성하고 cone 생성을 스킵 | `pnpm stub entity Product --no-cones` |
 
 **예시**:
 ```bash
+# 기본: 템플릿 cone과 함께 Entity 생성
 pnpm stub entity Product
+# ✓ Entity 'Product' created with template cones
+# 💡 Tip: Run 'pnpm sonamu cone gen Product' to improve with AI
 
-# 생성됨:
-# src/entities/Product.entity.ts
+# AI를 활용한 cone 생성
+pnpm stub entity Product --ai
+# ✓ Entity 'Product' created
+# 🌟 Generating AI-powered cones...
+# ✅ Done (1234 tokens)
+
+# cone 없이 Entity만 생성
+pnpm stub entity Product --no-cones
+# ✓ Entity 'Product' created without cones
 ```
+
+<Note>
+템플릿 cone은 `ANTHROPIC_API_KEY` 없이도 생성할 수 있습니다. 나중에 `cone gen` 명령어로 AI를 활용해 업그레이드할 수 있습니다.
+</Note>
 
 **생성된 파일**:
 ```typescript title="src/entities/Product.entity.ts"
