@@ -13,6 +13,8 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 **CRITICAL: 테스트는 `pnpm sonamu test`를 사용한다.** `pnpm test`는 CI 또는 dev 서버 없이 실행해야 할 때만 사용한다.
 
+**CRITICAL: 모든 단계는 사용자에게 결과를 보고하고 확인을 받은 후 다음 단계로 넘어간다.** 자체 판단으로 사용자 확인 없이 여러 단계를 연속 진행하지 않는다.
+
 **CRITICAL: 요구사항이 이미 제공된 경우에도 설계 및 비즈니스 로직은 반드시 사용자와 함께 확인한다.**
 요구사항 명세는 출발점일 뿐이다. Entity 구조, 관계, 필드, 상태 전이, 권한 규칙 등은 항상 사용자에게 질문하고 승인을 받아야 한다. 추측하지 말고 확인한다.
 
@@ -40,38 +42,41 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 3. 설정 확인
 
+**CRITICAL: 설정 확인 결과를 사용자에게 보고하고 승인을 받은 후 다음 단계로 넘어간다. 자체 판단으로 건너뛰지 않는다.**
+
 7. `sonamu.config.ts`에서 `test.devRunner.enabled: true`인지 확인. 아니면 true로 설정
 8. `.env` 파일 확인:
    - DB 연결 설정 확인
    - `ANTHROPIC_API_KEY` 설정 여부 확인 → 없으면 사용자에게 직접 저장하도록 안내 (Claude Code가 직접 키를 입력하지 않음)
+9. 확인 결과를 사용자에게 보고하고 승인 대기
 
 ### 4. 인프라 기동
 
-9. Docker 띄우기 (`pnpm docker:up` 등)
-10. 빌드 시도 — 최초에는 빌드가 안 될 수도 있는데, 바로 모든 것을 수정하려 하지 말고 dev 서버 먼저 띄워보기
-11. dev 서버 띄우기 (`pnpm dev`)
+10. Docker 띄우기 (`pnpm docker:up` 등)
+11. 빌드 시도 — 최초에는 빌드가 안 될 수도 있는데, 바로 모든 것을 수정하려 하지 말고 dev 서버 먼저 띄워보기
+12. dev 서버 띄우기 (`pnpm dev`)
 
 ### 5. Auth 엔티티 생성
 
-12. `pnpm sonamu auth generate`로 better-auth 관련 엔티티 생성
-13. User 엔티티의 prop 중 `id`의 cone에 `"fixtureStrategy": "sequence"` 추가
+13. `pnpm sonamu auth generate`로 better-auth 관련 엔티티 생성
+14. User 엔티티의 prop 중 `id`의 cone에 `"fixtureStrategy": "sequence"` 추가
     - **이 설정은 이후에도 변경되어서는 안 됨**
-14. auth generate로 생성된 엔티티(User, Session, Account, Verification) 확인 후 Sonamu UI에서 사용자에게 확인 요청
-15. 사용자 확인 후 migration 진행
-16. Docker로 띄운 DB에서 테이블이 생성되었는지 확인
+15. auth generate로 생성된 엔티티(User, Session, Account, Verification) 확인 후 Sonamu UI에서 사용자에게 확인 요청
+16. 사용자 확인 후 migration 진행
+17. Docker로 띄운 DB에서 테이블이 생성되었는지 확인
 
 ### 6. Users 테이블 시퀀스 설정
 
 **CRITICAL: Auth 엔티티 migration 완료 직후 반드시 실행한다. 이 단계를 건너뛰면 이후 테스트와 fixture 생성이 실패한다.**
 
-17. `CREATE SEQUENCE users_id_seq;` 실행
-18. `ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;` 실행
+18. `CREATE SEQUENCE users_id_seq;` 실행
+19. `ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;` 실행
 
 **완료 기준:**
 
 - [ ] 프로젝트 생성 완료
 - [ ] requirements.md, business-logic.md 기록 완료
-- [ ] sonamu.config.ts `test.devRunner.enabled: true` 확인
+- [ ] sonamu.config.ts, .env 설정 확인 및 사용자 승인 완료
 - [ ] Docker, dev 서버 실행 중
 - [ ] Auth 엔티티 생성 및 migration 완료
 - [ ] Users 테이블 시퀀스 설정 완료
@@ -84,11 +89,11 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 7. 엔티티 설계
 
-19. 사용자 요구사항에 맞는 엔티티 설계
+20. 사용자 요구사항에 맞는 엔티티 설계
     - 설계하면서 사용자에게 비즈니스 로직에 맞는지 **지속적으로 디테일하게** 확인받을 것
     - 관계 유형(BelongsToOne, HasMany, ManyToMany) 결정 시 반드시 사용자 확인
     - 필드 구성, enum 값, nullable 여부 등 세부 사항도 확인
-20. 최종 완료된 설계안을 `.claude/skills/project/architecture.md`에 기록
+21. 최종 완료된 설계안을 `.claude/skills/project/architecture.md`에 기록
 
 **완료 기준:**
 
@@ -103,28 +108,29 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 8. 엔티티 생성
 
-21. 설계에 따라 **batch로** entity.json 생성
-22. biome check, type check
-23. 문제 없이 빌드되는지 확인
+22. 설계에 따라 **batch로** entity.json 생성
+23. biome check, type check
+24. 문제 없이 빌드되는지 확인
 
 ### 9. 마이그레이션
 
-24. 사용자에게 Sonamu UI와 CLI 중 어떤 방식으로 migration을 진행할지 확인 후 실행
-25. 실제 테이블이 생성되었는지 확인
+25. 사용자에게 Sonamu UI와 CLI 중 어떤 방식으로 migration을 진행할지 확인 후 실행
+26. 실제 테이블이 생성되었는지 확인
 
 ### 10. Cone 및 Scaffolding
 
-26. Cone 생성 (`--use-llm`)
-27. Scaffolding 실행 — 다음 **모든 항목을 scaffolding** 해야 함:
+27. Cone 생성 (`--use-llm`)
+28. Scaffolding 실행 — 다음 **모든 항목을 scaffolding** 해야 함:
     - model
     - model_test
     - view_list
     - view_search_input
     - view_form
     - Sonamu UI에서 사용자가 실행하거나 Claude Code가 CLI로 실행
-28. 오류 없이 생성되는지 확인
-29. biome check, type check
-30. 오류 없이 빌드되는지 확인
+29. 오류 없이 생성되는지 확인
+30. biome check, type check
+31. 오류 없이 빌드되는지 확인
+32. `pnpm dump`으로 DB 덤프 파일 생성
 
 **완료 기준:**
 
@@ -133,6 +139,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 - [ ] cone 생성 완료
 - [ ] scaffolding 완료 (model, model_test, view_list, view_search_input, view_form 전부)
 - [ ] biome check, type check, build 모두 통과
+- [ ] `pnpm dump` 실행 완료
 
 ---
 
@@ -142,24 +149,24 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 11. 테스트 계획
 
-31. 테스트 계획을 batch로 세우기 — **항상 User 관련 테스트가 우선**
-32. `.claude/skills/project/test-plan.md`에 기록
-33. `architecture.md`에 test-plan.md 링크 추가
+33. 테스트 계획을 batch로 세우기 — **항상 User 관련 테스트가 우선**
+34. `.claude/skills/project/test-plan.md`에 기록
+35. `architecture.md`에 test-plan.md 링크 추가
 
 ### 12. Batch별 테스트 및 API 구현 (반복)
 
 각 batch마다 다음을 반복:
 
-34. **하나의 batch 비즈니스 로직에 맞는 테스트 코드 작성**
-35. biome check, type check
-36. **model의 API 구현**
-37. **`pnpm sonamu test`로 테스트 돌려보기**
+36. **하나의 batch 비즈니스 로직에 맞는 테스트 코드 작성**
+37. biome check, type check
+38. **model의 API 구현**
+39. **`pnpm sonamu test`로 테스트 돌려보기**
     - dev 서버가 올라가있지 않으면 올린 뒤 실행
 
 ### 13. 전체 검증
 
-38. 모든 batch 완료 후 전체 biome check, type check 및 빌드 확인
-39. **`pnpm sonamu test`로 전체 테스트 실행**
+40. 모든 batch 완료 후 전체 biome check, type check 및 빌드 확인
+41. **`pnpm sonamu test`로 전체 테스트 실행**
 
 **완료 기준:**
 
@@ -175,17 +182,19 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 14. Fixture 생성
 
-40. 사용자에게 fixture 생성할지 확인
-41. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
-42. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
-43. 실제 DB에 생성되었는지 사용자에게 확인 요청
-44. **`pnpm sonamu test`로 전체 테스트 재실행**
+42. 사용자에게 fixture 생성할지 확인
+43. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
+44. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
+45. 실제 DB에 생성되었는지 사용자에게 확인 요청
+46. **`pnpm sonamu test`로 전체 테스트 재실행**
+47. `pnpm dump`으로 DB 덤프 파일 생성
 
 **완료 기준:**
 
 - [ ] fixture 데이터 생성 완료 (사용자 승인 시)
 - [ ] DB에 데이터 존재 확인
 - [ ] 전체 테스트 통과
+- [ ] `pnpm dump` 실행 완료
 
 ---
 
@@ -195,15 +204,15 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 15. Frontend 계획
 
-45. Frontend 개발 진행할지 사용자에게 확인
-46. 승인 후 테스트에서 나눈 batch로 Frontend 개발 계획 세우기
-47. `.claude/skills/project/frontend-plan.md`에 기록
-48. `architecture.md`에 frontend-plan.md 링크 추가
+48. Frontend 개발 진행할지 사용자에게 확인
+49. 승인 후 테스트에서 나눈 batch로 Frontend 개발 계획 세우기
+50. `.claude/skills/project/frontend-plan.md`에 기록
+51. `architecture.md`에 frontend-plan.md 링크 추가
 
 ### 16. Batch별 Frontend 개발 (반복)
 
-49. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
-50. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
+52. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
+53. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
     - "확인했다"
     - "로직대로 된다"
     - "이 부분이 잘 안 된다"
