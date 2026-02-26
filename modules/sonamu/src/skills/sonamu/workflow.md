@@ -62,6 +62,8 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 6. Users 테이블 시퀀스 설정
 
+**CRITICAL: Auth 엔티티 migration 완료 직후 반드시 실행한다. 이 단계를 건너뛰면 이후 테스트와 fixture 생성이 실패한다.**
+
 17. `CREATE SEQUENCE users_id_seq;` 실행
 18. `ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;` 실행
 
