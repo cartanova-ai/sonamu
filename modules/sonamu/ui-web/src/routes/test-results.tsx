@@ -952,17 +952,19 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   }, [searchInput]);
 
   const filteredTraces = useMemo(() => {
-    if (!debouncedQuery) return traces;
     const q = debouncedQuery.toLowerCase();
-    return traces.filter((trace, i) => {
+    return traces.reduce<{ trace: SerializedTrace; originalIndex: number }[]>((acc, trace, i) => {
       const cacheKey = `${trace.key}-${trace.at}-${i}`;
       let corpus = corpusCacheRef.current.get(cacheKey);
       if (corpus === undefined) {
         corpus = `${trace.key} ${JSON.stringify(trace.value)}`.toLowerCase();
         corpusCacheRef.current.set(cacheKey, corpus);
       }
-      return corpus.includes(q);
-    });
+      if (!debouncedQuery || corpus.includes(q)) {
+        acc.push({ trace, originalIndex: i });
+      }
+      return acc;
+    }, []);
   }, [traces, debouncedQuery]);
 
   const toggleTrace = useCallback((cacheKey: string) => {
@@ -1010,9 +1012,11 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
         <div className="text-xs text-gray-400">{SD("testResults.detail.noTraceMatches")}</div>
       ) : (
         <div className="space-y-1.5">
-          {filteredTraces.map((trace, i) => {
-            const cacheKey = `${trace.key}-${trace.at}-${i}`;
+          {filteredTraces.map(({ trace, originalIndex }) => {
+            const cacheKey = `${trace.key}-${trace.at}-${originalIndex}`;
             const isExpanded = expandedTraceKeys.has(cacheKey);
+            const raw = toViewerValue(trace.value);
+            const viewerVal = raw !== null && typeof raw === "object" ? raw : { value: raw };
             return (
               <div
                 key={cacheKey}
@@ -1036,7 +1040,7 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
                 {isExpanded && (
                   <div className="px-2 py-1.5 overflow-x-auto">
                     <JsonView
-                      value={toViewerValue(trace.value) as object}
+                      value={viewerVal}
                       collapsed={1}
                       displayDataTypes={false}
                       indentWidth={12}
