@@ -979,10 +979,27 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
     });
   }, []);
 
+  const expandAll = useCallback(() => {
+    setExpandedTraceKeys(new Set(traces.map((t, i) => `${t.key}-${t.at}-${i}`)));
+  }, [traces]);
+
+  const collapseAll = useCallback(() => {
+    setExpandedTraceKeys(new Set());
+  }, []);
+
   return (
     <div>
-      <div className="text-xs font-semibold text-gray-600 mb-1">
+      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-1">
         {SD("testResults.detail.traces")}
+        <span className="flex gap-1 font-normal">
+          <button type="button" className="text-blue-500 hover:text-blue-700" onClick={expandAll}>
+            {SD("testResults.detail.expandAll")}
+          </button>
+          <span className="text-gray-300">/</span>
+          <button type="button" className="text-blue-500 hover:text-blue-700" onClick={collapseAll}>
+            {SD("testResults.detail.collapseAll")}
+          </button>
+        </span>
       </div>
       <div className="relative mb-1.5">
         <input

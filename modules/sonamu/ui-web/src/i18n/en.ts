@@ -229,6 +229,8 @@ const en: Record<DictKey, Dictionary[string]> = {
   "testResults.detail.searchPlaceholder": "Search traces",
   "testResults.detail.clearSearch": "Clear search",
   "testResults.detail.noTraceMatches": "No matching traces",
+  "testResults.detail.expandAll": "Expand all",
+  "testResults.detail.collapseAll": "Collapse all",
   "testResults.clearHistory": "Clear History",
   "testResults.liveRunning": "Running",
 };
