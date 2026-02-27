@@ -119,7 +119,12 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 10. Cone 및 Scaffolding
 
-27. Cone 생성 (`--use-llm`)
+**CRITICAL: Scaffolding 전에 반드시 Cone 생성을 먼저 실행한다. Cone이 없으면 fixture 생성이 실패한다.**
+
+27. Cone 생성 (`pnpm sonamu cone generate --use-llm`)
+    - `--use-llm` 플래그는 필수다. 요구사항 기반으로 컨텍스트에 맞는 cone을 생성하기 위해 LLM이 필요하다.
+    - `.env`에 `ANTHROPIC_API_KEY`가 설정되어 있는지 확인. 없으면 사용자에게 안내한다.
+    - 생성된 cone을 사용자에게 확인받는다.
 28. Scaffolding 실행 — 다음 **모든 항목을 scaffolding** 해야 함:
     - model
     - model_test
