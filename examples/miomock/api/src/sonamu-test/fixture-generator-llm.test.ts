@@ -132,6 +132,9 @@ describe("FixtureGenerator LLM", () => {
         last_login_at: new Date(),
         updated_at: new Date(),
         two_factor_enabled: false,
+        email: "test@test.com",
+        username: "테스트",
+        image: null,
       };
       const fixture = await generator.generate("User", overrides);
       expect(fixture.bio).toBe("10년 경력 백엔드 개발자로 TypeScript와 Node.js를 주로 사용합니다.");
@@ -174,6 +177,9 @@ describe("FixtureGenerator LLM", () => {
       last_login_at: new Date(),
       updated_at: new Date(),
       two_factor_enabled: false,
+      email: "test@test.com",
+      username: "테스트",
+      image: null,
     });
 
     // email은 fixtureGenerator가 있음 → LLM 안 씀
@@ -225,6 +231,9 @@ describe("FixtureGenerator LLM", () => {
         last_login_at: new Date(),
         updated_at: new Date(),
         two_factor_enabled: false,
+        email: "test@test.com",
+        username: "테스트",
+        image: null,
       };
 
       // 2번 생성
@@ -389,6 +398,9 @@ describe("FixtureGenerator LLM", () => {
         last_login_at: new Date(),
         updated_at: new Date(),
         two_factor_enabled: false,
+        email: "test@test.com",
+        username: "테스트",
+        image: null,
       };
 
       // 첫 번째 생성
