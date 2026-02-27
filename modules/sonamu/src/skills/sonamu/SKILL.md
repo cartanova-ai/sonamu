@@ -25,8 +25,6 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 
 ## 개발 흐름
 
-**CRITICAL: 모든 개발은 반드시 `workflow.md`의 PHASE 0 → 5 순서를 따른다. 단계를 건너뛰거나 순서를 바꾸지 않는다.**
-
 ```
 PHASE 0: 프로젝트 생성 및 초기 설정  (프로젝트 생성 → requirements.md/business-logic.md 작성 → auth generate → Users 시퀀스 설정)
 PHASE 1: 엔티티 설계                (사용자와 함께 설계 확인)
@@ -38,7 +36,23 @@ PHASE 5: Frontend 개발              (batch별 진행, 사용자 확인)
 
 **상세 내용:** `workflow.md` 참조
 
-**CRITICAL: `workflow.md`의 넘버링된 항목(Step 1, 2, 3, ...)과 그 하위 세부 항목을 반드시 순서대로 하나씩 진행한다. 어떤 항목도 건너뛰지 않고, 자체 판단으로 병합하지 않는다.**
+### 시작 지점 판단
+
+**사용자의 지시에 따라 적절한 PHASE부터 시작한다.** 무조건 PHASE 0부터 시작하지 않는다.
+
+| 사용자 지시 | 시작 PHASE | 전제 조건 확인 |
+|------------|------------|----------------|
+| "새 프로젝트 만들어줘" | PHASE 0 | — |
+| "엔티티 추가해줘" / "엔티티 생성해줘" | PHASE 1 | 프로젝트 존재, dev 서버 실행 중, skills/project/ 문서 읽기 |
+| "테스트 작성해줘" / "API 구현해줘" | PHASE 3 | entity.json 존재, migration 완료, scaffolding 완료 |
+| "fixture 생성해줘" | PHASE 4 | 테스트 통과, cone.note 존재 확인 |
+| "프론트엔드 개발해줘" | PHASE 5 | API 구현 완료 |
+
+**중간 진입 시 규칙:**
+1. `skills/project/` 하위 문서(requirements.md, architecture.md, business-logic.md)가 있으면 반드시 먼저 읽는다
+2. 해당 PHASE의 전제 조건이 충족되었는지 확인한다
+3. 충족되지 않으면 사용자에게 알리고 필요한 단계부터 진행한다
+4. 해당 PHASE 내에서는 `workflow.md`의 넘버링된 Step을 순서대로 진행한다. 어떤 Step도 건너뛰지 않고, 자체 판단으로 병합하지 않는다
 
 ---
 
