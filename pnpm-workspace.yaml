@@ -4,6 +4,7 @@ packages:
   - '!modules/create-sonamu/template/**/*'
 
 catalog:
+  '@uiw/react-json-view': 2.0.0-alpha.41
   '@adonisjs/ace': ^13.3.0
   '@adonisjs/tsconfig': ^1.4.1
   '@ai-sdk/anthropic': ^3.0.0

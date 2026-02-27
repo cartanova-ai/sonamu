@@ -13,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "@ai-sdk/react": "catalog:",
+    "@uiw/react-json-view": "catalog:",
     "@dagrejs/dagre": "catalog:",
     "@dnd-kit/core": "catalog:",
     "@dnd-kit/utilities": "catalog:",

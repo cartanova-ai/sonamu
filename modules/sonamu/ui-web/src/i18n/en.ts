@@ -226,6 +226,9 @@ const en: Record<DictKey, Dictionary[string]> = {
   "testResults.detail.error": "Error",
   "testResults.detail.traces": "Naite Traces",
   "testResults.detail.noTraces": "No traces",
+  "testResults.detail.searchPlaceholder": "Search traces",
+  "testResults.detail.clearSearch": "Clear search",
+  "testResults.detail.noTraceMatches": "No matching traces",
   "testResults.clearHistory": "Clear History",
   "testResults.liveRunning": "Running",
 };
