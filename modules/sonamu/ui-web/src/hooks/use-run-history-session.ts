@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { StoredRunEntry, StoredRunHistory } from "../services/sonamu-ui.service";
 
 const STORAGE_KEY = "sonamu.ui.test-result-viewer.v1";
@@ -106,6 +106,8 @@ export function useRunHistorySession(): {
 } {
   const [history, setHistory] = useState<StoredRunHistory>(readFromStorage);
   const [storageWarning, setStorageWarning] = useState<RunHistoryStorageWarning | null>(null);
+  // sessionStorage에 저장 불가능한 runId를 추적하여 후속 쓰기 시 제외합니다.
+  const unpersistableRef = useRef<Set<string>>(new Set());
 
   const addRun = useCallback((entry: Omit<StoredRunEntry, "dateKey">) => {
     setHistory((prev) => {
@@ -119,8 +121,16 @@ export function useRunHistorySession(): {
       // 최대 100개 trim
       const trimmed = merged.slice(0, MAX_RUNS);
       const next: StoredRunHistory = { runs: trimmed };
-      const writeResult = writeToStorage(next);
+
+      // sessionStorage에는 저장 불가능한 엔트리를 제외하고 쓰기를 시도합니다.
+      const persistable = trimmed.filter((r) => !unpersistableRef.current.has(r.runId));
+      const writeResult = writeToStorage({ runs: persistable });
       if (!writeResult.ok && writeResult.reason === "quota-exceeded") {
+        // 새 엔트리 자체가 초과 원인이므로 저장 불가 목록에 추가합니다.
+        unpersistableRef.current.add(fullEntry.runId);
+        // 새 엔트리를 제외하고 기존 저장 상태를 복원합니다.
+        const withoutNew = persistable.filter((r) => r.runId !== fullEntry.runId);
+        writeToStorage({ runs: withoutNew });
         setStorageWarning({
           runId: fullEntry.runId,
           reason: "quota-exceeded",
@@ -130,6 +140,7 @@ export function useRunHistorySession(): {
       } else {
         setStorageWarning(null);
       }
+      // 인메모리에는 항상 전체를 유지하여 현재 세션에서 조회 가능하도록 합니다.
       return next;
     });
   }, []);
@@ -138,6 +149,7 @@ export function useRunHistorySession(): {
     const empty: StoredRunHistory = { runs: [] };
     setHistory(empty);
     setStorageWarning(null);
+    unpersistableRef.current.clear();
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
