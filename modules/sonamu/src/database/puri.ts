@@ -344,6 +344,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this as any;
   }
 
+  // DISTINCT
+  distinct<TColumns extends AvailableColumns<TTables>>(...columns: TColumns[]): this;
+  distinct(...columns: string[]): this {
+    this.knexQuery.distinct(...(columns as string[]));
+    return this;
+  }
+
   // CLEAR
   clear(statement: ClearStatements): this {
     this.knexQuery.clear(statement);
