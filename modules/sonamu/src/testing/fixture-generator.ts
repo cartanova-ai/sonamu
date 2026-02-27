@@ -136,7 +136,21 @@ export class FixtureGenerator {
         continue;
       }
 
-      // 2. fixtureGenerator 사용
+      // 2. cone.note + LLM 사용 (useLLM이면 fixtureGenerator보다 우선)
+      if (cone?.note && this.options.useLLM) {
+        try {
+          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity, rowKey);
+          continue;
+        } catch (error) {
+          console.warn(
+            `[FixtureGenerator] LLM generation failed for ${entity.id}.${prop.name}, falling back to fixtureGenerator or default`,
+            error instanceof Error ? error.message : error,
+          );
+          // fallback: fixtureGenerator → fixtureDefault → 기본값으로 계속
+        }
+      }
+
+      // 3. fixtureGenerator 사용
       if (cone?.fixtureGenerator) {
         fixture[prop.name] = await this.executeGenerator(
           cone.fixtureGenerator as string,
@@ -146,31 +160,17 @@ export class FixtureGenerator {
         continue;
       }
 
-      // 2.5. cone.note + LLM 사용
-      if (cone?.note && this.options.useLLM) {
-        try {
-          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity, rowKey);
-          continue;
-        } catch (error) {
-          console.warn(
-            `[FixtureGenerator] LLM generation failed for ${entity.id}.${prop.name}, falling back to default`,
-            error instanceof Error ? error.message : error,
-          );
-          // fallback: fixtureDefault 또는 기본값으로 계속
-        }
-      }
-
-      // 3. fixtureDefault 사용
+      // 4. fixtureDefault 사용
       if (cone?.fixtureDefault !== undefined) {
         fixture[prop.name] = cone.fixtureDefault;
         continue;
       }
 
-      // 4. 타입별 기본 생성
+      // 5. 타입별 기본 생성
       fixture[prop.name] = await this.generateDefaultValue(prop, entity);
     }
 
-    // 5. email 필드가 있고 name 필드가 있으면, email의 로컬 파트를 name 기반으로 보정
+    // 6. email 필드가 있고 name 필드가 있으면, email의 로컬 파트를 name 기반으로 보정
     if ("email" in fixture && typeof fixture.email === "string" && !("email" in overrides)) {
       const nameValue = fixture.name || fixture.username || fixture.full_name || fixture.name_en;
       if (nameValue && typeof nameValue === "string") {
@@ -180,7 +180,7 @@ export class FixtureGenerator {
       }
     }
 
-    // 6. password 필드 암호화
+    // 7. password 필드 암호화
     if ("password" in fixture && fixture.password && typeof fixture.password === "string") {
       const bcrypt = await import("bcrypt");
       fixture.password = await bcrypt.hash(fixture.password, 10);
@@ -475,32 +475,13 @@ export class FixtureGenerator {
     const localeFaker = this.locale === "ko" ? fakerKO : this.locale === "ja" ? fakerJA : faker;
 
     /**
-     * 1. 필드명에서 의미를 추론하여 현실적인 데이터를 생성합니다.
-     * 예: salary → 30M~150M (한국 연봉 범위)
-     *     budget → 10M~500M (프로젝트 예산 범위)
+     * 1. Entity-specific 특수 케이스를 먼저 처리합니다.
+     * field_patterns보다 우선하여, 특정 엔티티의 필드에 도메인에 맞는 값을 생성합니다.
+     * 예: Department.name → 한국어 부서명 (사람 이름이 아님)
      */
-    const localeMappings = this.mappings[this.locale] || this.mappings.en;
-    const normalizedName = prop.name.toLowerCase().replace(/_/g, "");
-
-    for (const [pattern, config] of Object.entries(localeMappings.field_patterns)) {
-      if (normalizedName.includes(pattern.toLowerCase())) {
-        try {
-          return await this.executeFakerExpression(config.faker, prop);
-        } catch (error) {
-          !isTest() &&
-            console.log(
-              chalk.yellow(
-                `Failed to execute field pattern "${pattern}" for ${prop.name}, falling back:`,
-              ),
-              error,
-            );
-          break;
-        }
-      }
-    }
 
     /**
-     * 2. Department name은 한국어 부서명 목록에서 선택합니다.
+     * Department name은 한국어 부서명 목록에서 선택합니다.
      * 고유성을 위해 70% 확률로 prefix/suffix를 추가합니다.
      */
     if (entity?.id === "Department" && prop.name === "name") {
@@ -538,6 +519,31 @@ export class FixtureGenerator {
         return `${dept} ${suffix}`;
       }
       return dept;
+    }
+
+    /**
+     * 2. 필드명에서 의미를 추론하여 현실적인 데이터를 생성합니다.
+     * 예: salary → 30M~150M (한국 연봉 범위)
+     *     budget → 10M~500M (프로젝트 예산 범위)
+     */
+    const localeMappings = this.mappings[this.locale] || this.mappings.en;
+    const normalizedName = prop.name.toLowerCase().replace(/_/g, "");
+
+    for (const [pattern, config] of Object.entries(localeMappings.field_patterns)) {
+      if (normalizedName.includes(pattern.toLowerCase())) {
+        try {
+          return await this.executeFakerExpression(config.faker, prop);
+        } catch (error) {
+          !isTest() &&
+            console.log(
+              chalk.yellow(
+                `Failed to execute field pattern "${pattern}" for ${prop.name}, falling back:`,
+              ),
+              error,
+            );
+          break;
+        }
+      }
     }
 
     /**

@@ -459,8 +459,8 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 
 ```
 1. override 값 (generate() 호출 시 전달)
-2. fixtureGenerator (faker.js 표현식)
-3. cone.note + LLM  ← --use-llm 플래그 시 활성화
+2. cone.note + LLM  ← --use-llm 플래그 시 활성화 (API key 있을 때 최우선)
+3. fixtureGenerator (faker.js 표현식)  ← LLM 실패 시 fallback
 4. fixtureDefault (고정 기본값)
 5. 타입별 기본값 (자동 생성)
 ```
