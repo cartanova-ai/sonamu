@@ -1041,8 +1041,9 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
                   <div className="px-2 py-1.5 overflow-x-auto">
                     <JsonView
                       value={viewerVal}
-                      collapsed={1}
+                      collapsed={false}
                       displayDataTypes={false}
+                      // shortenTextAfterLength={0}
                       indentWidth={12}
                       enableClipboard={false}
                       style={{ fontSize: "12px" }}
