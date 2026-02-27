@@ -677,6 +677,35 @@ function buildInitialExpandedIds(results: TestCaseResult[]): Set<string> {
   return ids;
 }
 
+function filterTree(nodes: TestCaseResult[], query: string): TestCaseResult[] {
+  const filterNode = (node: TestCaseResult): TestCaseResult | null => {
+    const selfMatch = node.name.toLowerCase().includes(query);
+    if (selfMatch) return node;
+    const filteredChildren = node.children.flatMap((c) => {
+      const r = filterNode(c);
+      return r ? [r] : [];
+    });
+    if (filteredChildren.length > 0) {
+      return { ...node, children: filteredChildren };
+    }
+    return null;
+  };
+  return nodes.flatMap((n) => {
+    const r = filterNode(n);
+    return r ? [r] : [];
+  });
+}
+
+function collectAllIds(nodes: TestCaseResult[]): Set<string> {
+  const ids = new Set<string>();
+  const visit = (node: TestCaseResult) => {
+    ids.add(node.id);
+    for (const child of node.children) visit(child);
+  };
+  for (const root of nodes) visit(root);
+  return ids;
+}
+
 function buildVisibleRows(results: TestCaseResult[], expandedIds: Set<string>): VisibleRow[] {
   const rows: VisibleRow[] = [];
   const visit = (node: TestCaseResult, depth: number) => {
@@ -703,17 +732,47 @@ function ResultTreePanel({
   selectedNodeId: string | null;
   onSelectNode: (id: string) => void;
 }) {
+  const { SD } = useSonamuContext();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
     buildInitialExpandedIds(results),
   );
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const savedExpandedIdsRef = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(searchInput), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const filteredResults = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    return q ? filterTree(results, q) : results;
+  }, [results, debouncedQuery]);
+
+  useEffect(() => {
+    if (debouncedQuery) {
+      if (savedExpandedIdsRef.current === null) {
+        savedExpandedIdsRef.current = new Set(expandedIds);
+      }
+      setExpandedIds(collectAllIds(filteredResults));
+    } else {
+      if (savedExpandedIdsRef.current !== null) {
+        setExpandedIds(savedExpandedIdsRef.current);
+        savedExpandedIdsRef.current = null;
+      }
+    }
+    // expandedIds를 deps에 포함하지 않음: 진입 시점 스냅샷만 필요
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery, filteredResults]);
 
   const prevResultsRef = useRef(results);
   useEffect(() => {
     if (prevResultsRef.current !== results) {
       prevResultsRef.current = results;
-      // 새로 추가된 root 및 실패 경로를 병합하여 기존 접힘 상태를 보존합니다.
-      setExpandedIds((prev) => {
-        const next = new Set(prev);
+      if (savedExpandedIdsRef.current !== null) {
+        // 검색 활성 중: savedExpandedIdsRef에 새 root 및 실패 경로를 병합합니다.
+        const next = new Set(savedExpandedIdsRef.current);
         const addFailedPaths = (node: TestCaseResult): boolean => {
           if (node.children.length === 0) return node.state === "failed";
           let hasFailed = false;
@@ -727,12 +786,34 @@ function ResultTreePanel({
           if (!next.has(r.id)) next.add(r.id);
           addFailedPaths(r);
         }
-        return next;
-      });
+        savedExpandedIdsRef.current = next;
+      } else {
+        // 새로 추가된 root 및 실패 경로를 병합하여 기존 접힘 상태를 보존합니다.
+        setExpandedIds((prev) => {
+          const next = new Set(prev);
+          const addFailedPaths = (node: TestCaseResult): boolean => {
+            if (node.children.length === 0) return node.state === "failed";
+            let hasFailed = false;
+            for (const child of node.children) {
+              if (addFailedPaths(child)) hasFailed = true;
+            }
+            if (hasFailed) next.add(node.id);
+            return hasFailed;
+          };
+          for (const r of results) {
+            if (!next.has(r.id)) next.add(r.id);
+            addFailedPaths(r);
+          }
+          return next;
+        });
+      }
     }
   }, [results]);
 
-  const visibleRows = useMemo(() => buildVisibleRows(results, expandedIds), [results, expandedIds]);
+  const visibleRows = useMemo(
+    () => buildVisibleRows(filteredResults, expandedIds),
+    [filteredResults, expandedIds],
+  );
 
   const handleToggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -748,6 +829,28 @@ function ResultTreePanel({
 
   return (
     <div className="w-120 shrink-0 border-r border-gray-200 overflow-y-auto p-2">
+      <div className="relative mb-2">
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder={SD("testResults.tree.searchPlaceholder")}
+          className="w-full text-xs px-2 py-1 pr-6 border border-gray-200 rounded outline-none focus:border-blue-400"
+        />
+        {searchInput && (
+          <button
+            type="button"
+            aria-label={SD("testResults.tree.clearSearch")}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            onClick={() => {
+              setSearchInput("");
+              setDebouncedQuery("");
+            }}
+          >
+            <XCircleIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
       {visibleRows.map((row) => (
         <TreeRow
           key={row.node.id}
@@ -758,6 +861,9 @@ function ResultTreePanel({
           onToggleExpand={handleToggleExpand}
         />
       ))}
+      {debouncedQuery && visibleRows.length === 0 && (
+        <div className="text-xs text-gray-400 px-2 py-1">{SD("testResults.tree.noMatches")}</div>
+      )}
     </div>
   );
 }

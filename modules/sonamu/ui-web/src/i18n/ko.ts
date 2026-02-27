@@ -226,6 +226,9 @@ export default {
   "testResults.detail.noTraceMatches": "검색 결과 없음",
   "testResults.detail.expandAll": "전체 펼침",
   "testResults.detail.collapseAll": "전체 접기",
+  "testResults.tree.searchPlaceholder": "테스트 검색",
+  "testResults.tree.clearSearch": "검색 초기화",
+  "testResults.tree.noMatches": "검색 결과 없음",
   "testResults.clearHistory": "이력 지우기",
   "testResults.liveRunning": "진행 중",
 } as const;
