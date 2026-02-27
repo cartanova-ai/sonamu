@@ -916,14 +916,37 @@ function formatTraceValue(value: unknown): string {
 function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const { SD } = useSonamuContext();
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const formattedCacheRef = useRef<Map<string, string>>(new Map());
+  const corpusCacheRef = useRef<Map<string, string>>(new Map());
 
   // 렌더 중 동기적으로 캐시를 초기화하여 traces 변경 직후 첫 렌더에서 stale 캐시 히트를 방지합니다.
   const prevTracesRef = useRef(traces);
   if (prevTracesRef.current !== traces) {
     prevTracesRef.current = traces;
     formattedCacheRef.current.clear();
+    corpusCacheRef.current.clear();
   }
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(searchInput), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const filteredTraces = useMemo(() => {
+    if (!debouncedQuery) return traces;
+    const q = debouncedQuery.toLowerCase();
+    return traces.filter((trace, i) => {
+      const cacheKey = `${trace.key}-${trace.at}-${i}`;
+      let corpus = corpusCacheRef.current.get(cacheKey);
+      if (corpus === undefined) {
+        corpus = `${trace.key} ${JSON.stringify(trace.value)}`.toLowerCase();
+        corpusCacheRef.current.set(cacheKey, corpus);
+      }
+      return corpus.includes(q);
+    });
+  }, [traces, debouncedQuery]);
 
   const toggleTrace = useCallback((cacheKey: string) => {
     setExpandedTraceKeys((prev) => {
@@ -952,11 +975,35 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
       <div className="text-xs font-semibold text-gray-600 mb-1">
         {SD("testResults.detail.traces")}
       </div>
-      {traces.length === 0 ? (
+      <div className="relative mb-1.5">
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder={SD("testResults.detail.searchPlaceholder")}
+          className="w-full text-xs px-2 py-1 pr-6 border border-gray-200 rounded outline-none focus:border-blue-400"
+        />
+        {searchInput && (
+          <button
+            type="button"
+            aria-label={SD("testResults.detail.clearSearch")}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            onClick={() => {
+              setSearchInput("");
+              setDebouncedQuery("");
+            }}
+          >
+            <XCircleIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {filteredTraces.length === 0 && traces.length === 0 ? (
         <div className="text-xs text-gray-400">{SD("testResults.detail.noTraces")}</div>
+      ) : filteredTraces.length === 0 ? (
+        <div className="text-xs text-gray-400">{SD("testResults.detail.noTraceMatches")}</div>
       ) : (
         <div className="space-y-1.5">
-          {traces.map((trace, i) => {
+          {filteredTraces.map((trace, i) => {
             const cacheKey = `${trace.key}-${trace.at}-${i}`;
             const isExpanded = expandedTraceKeys.has(cacheKey);
             return (
