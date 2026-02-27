@@ -119,12 +119,15 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 10. Cone 및 Scaffolding
 
+**참조 스킬:** cone.md
+
 **CRITICAL: Scaffolding 전에 반드시 Cone 생성을 먼저 실행한다. Cone이 없으면 fixture 생성이 실패한다.**
 
-27. Cone 생성 (`pnpm sonamu cone generate --use-llm`)
-    - `--use-llm` 플래그는 필수다. 요구사항 기반으로 컨텍스트에 맞는 cone을 생성하기 위해 LLM이 필요하다.
+27. Cone 생성 (`pnpm sonamu cone gen --all`)
+    - LLM으로 생성한다. 요구사항 기반으로 컨텍스트에 맞는 cone을 생성하기 위해 LLM이 필요하다.
     - `.env`에 `ANTHROPIC_API_KEY`가 설정되어 있는지 확인. 없으면 사용자에게 안내한다.
     - 생성된 cone을 사용자에게 확인받는다.
+    - 상세 사용법은 cone.md 참조
 28. Scaffolding 실행 — 다음 **모든 항목을 scaffolding** 해야 함:
     - model
     - model_test
@@ -188,14 +191,18 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 ### 14. Fixture 생성
 
 42. 사용자에게 fixture 생성할지 확인
-43. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
-44. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
-45. 실제 DB에 생성되었는지 사용자에게 확인 요청
-46. **`pnpm sonamu test`로 전체 테스트 재실행**
-47. `pnpm dump`으로 DB 덤프 파일 생성
+43. 모든 엔티티의 prop에 `cone.note`가 존재하는지 체크
+    - cone.note가 비어있는 prop이 있으면 사용자에게 보고하고 `pnpm sonamu cone generate --use-llm`으로 cone을 재생성할지 확인
+    - cone.note가 있어야 LLM이 맥락에 맞는 fixture 데이터를 생성할 수 있다
+44. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
+45. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
+46. 실제 DB에 생성되었는지 사용자에게 확인 요청
+47. **`pnpm sonamu test`로 전체 테스트 재실행**
+48. `pnpm dump`으로 DB 덤프 파일 생성
 
 **완료 기준:**
 
+- [ ] cone.note 존재 여부 체크 완료
 - [ ] fixture 데이터 생성 완료 (사용자 승인 시)
 - [ ] DB에 데이터 존재 확인
 - [ ] 전체 테스트 통과
@@ -209,15 +216,15 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 15. Frontend 계획
 
-48. Frontend 개발 진행할지 사용자에게 확인
-49. 승인 후 테스트에서 나눈 batch로 Frontend 개발 계획 세우기
-50. `.claude/skills/project/frontend-plan.md`에 기록
-51. `architecture.md`에 frontend-plan.md 링크 추가
+49. Frontend 개발 진행할지 사용자에게 확인
+50. 승인 후 테스트에서 나눈 batch로 Frontend 개발 계획 세우기
+51. `.claude/skills/project/frontend-plan.md`에 기록
+52. `architecture.md`에 frontend-plan.md 링크 추가
 
 ### 16. Batch별 Frontend 개발 (반복)
 
-52. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
-53. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
+53. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
+54. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
     - "확인했다"
     - "로직대로 된다"
     - "이 부분이 잘 안 된다"

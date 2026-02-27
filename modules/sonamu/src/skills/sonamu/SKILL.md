@@ -221,6 +221,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | i18n | `i18n.md` | 다국어 지원, SD 함수 |
 | Upsert | `upsert.md` | 관계 데이터 저장 |
 | Testing | `testing.md` | Vitest 테스트 (test/testAs), Fixture 생성 팁 |
+| **Cone** | `cone.md` | **Cone 메타데이터 생성 및 관리 (LLM/템플릿)** |
 | **Fixture CLI** | `fixture-cli.md` | **fixture gen/fetch/explore 명령어, 3-Tier DB 활용** |
 | Migration | `migration.md` | DB 스키마 마이그레이션, PK 타입 변경 |
 | Auth Migration | `auth-migration.md` | better-auth 등 외부 인증 통합 시 User.id 타입 변경 |
@@ -239,6 +240,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | Sonamu 로컬 개발 설정 | config |
 | DB 설정/포트 충돌 | database, config |
 | **3-Tier DB 구조 이해** | **database, fixture-cli** |
+| **Cone 메타데이터 생성/관리** | **cone** |
 | Entity/속성 정의 | entity-basic |
 | 관계 설정 | entity-relations |
 | **BelongsToOne FK 코드 사용** | **entity-relations** |
