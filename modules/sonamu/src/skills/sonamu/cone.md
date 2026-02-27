@@ -33,8 +33,8 @@ Fixture 생성 시 LLM이 맥락에 맞는 현실적인 데이터를 생성하�
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `note` | string | 필드의 비즈니스 의미와 fixture 생성 힌트 |
-| `fixtureGenerator` | string | faker.js 표현식 (예: `faker.internet.email()`) |
+| `note` | string | **최우선.** 필드의 비즈니스 의미, 구체적 예시, 값 범위, 형식 제약. LLM이 읽고 데이터를 생성하는 입력 |
+| `fixtureGenerator` | string | **Fallback.** faker.js 표현식. API key 없을 때의 대체 수단 |
 | `fixtureDefault` | any | 고정 기본값 |
 | `fixtureStrategy` | string | `"sequence"` — DB 시퀀스로 id 자동 생성 시 사용 |
 | `dataSource` | object | relation prop의 참조 데이터 조회 전략 |
@@ -239,8 +239,12 @@ relation prop에서 참조 데이터 조회 방식을 지정합니다.
 
 ### cone.note 작성 요령
 
+**note는 fixture 데이터 생성의 최우선 입력이다.** LLM은 note를 읽고 맥락에 맞는 데이터를 생성한다. 따라서 구체적이고 도메인에 특화된 내용을 담아야 한다.
+
 - **구체적으로**: "문자열" 보다 "010-XXXX-XXXX 형식의 한국 전화번호"
 - **비즈니스 맥락 포함**: "직원의 연봉. 3000만원~1.5억원 범위"
+- **구체적 예시 포함**: "예: AI 기반 신약 개발 플랫폼 구축, 친환경 에너지 저장 시스템 개발"
+- **값 범위 명시**: "5천만원(50,000)에서 50억원(5,000,000) 사이"
 - **상관 필드 명시**: "name_en은 name의 로마자 표기이어야 함"
 - **길이/형식 제한**: "20~100자 한국어 자기소개"
 

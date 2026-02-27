@@ -142,6 +142,11 @@ function buildPrompt(context: ConeGenerationContext): string {
     : "";
 
   return `You are a Sonamu framework expert. Generate cone metadata for database entity fixture generation.
+
+CRITICAL PRIORITY RULE:
+The "note" field is the PRIMARY source for fixture data generation. When --use-llm is enabled, the fixture generator reads cone.note and asks LLM to generate contextually appropriate data BEFORE falling back to fixtureGenerator.
+Therefore, cone.note must always contain rich, domain-specific descriptions with concrete examples and value ranges.
+fixtureGenerator is only a FALLBACK for when LLM is unavailable (no API key). Write it as a best-effort approximation, but never rely on it as the primary generation method.
 ${projectSection}
 ENTITY STRUCTURE:
 ${JSON.stringify(context.entity, null, 2)}
@@ -154,8 +159,8 @@ INSTRUCTIONS:
    - tags: Relevant categorization tags
 
 2. For each prop, generate appropriate cone metadata:
-   - note: Describe what this field represents in business terms, and provide guidance for realistic test data generation. Combine field description and fixture hint into one coherent description.
-   - fixtureGenerator: faker.js expression when applicable (see rule 9 for exceptions)
+   - note (MOST IMPORTANT): Describe what this field represents in business terms, and provide detailed guidance for realistic test data generation. Include concrete examples, value ranges, formatting rules, and domain constraints. This is the primary input LLM uses to generate fixture data.
+   - fixtureGenerator: faker.js expression as FALLBACK only (see rule 9 for exceptions). For free-text fields where faker cannot produce domain-appropriate content (description, summary, note, reason, title, etc.), prefer using faker.helpers.arrayElement([...]) with 5-10 domain-specific example values rather than faker.lorem.*.
 
 3. Field type → faker.js mapping:
    - email → faker.internet.email()
