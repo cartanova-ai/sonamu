@@ -1,6 +1,8 @@
 import { Button } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
+import JsonView from "@uiw/react-json-view";
 import classNames from "classnames";
+import type React from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CheckCircle2Icon from "~icons/lucide/check-circle-2";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
@@ -898,19 +900,36 @@ function ErrorBlock({ error }: { error: { message: string; stack?: string } }) {
   );
 }
 
-function formatTraceValue(value: unknown): string {
+function toViewerValue(value: unknown): unknown {
   if (typeof value === "string") {
     try {
-      const parsed = JSON.parse(value);
-      return JSON.stringify(parsed, null, 2);
+      return JSON.parse(value);
     } catch {
       return value;
     }
   }
-  if (typeof value === "object" && value !== null) {
-    return JSON.stringify(value, null, 2);
+  return value;
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const lower = text.toLowerCase();
+  const q = query.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  let idx = lower.indexOf(q, cursor);
+  while (idx !== -1) {
+    if (idx > cursor) parts.push(text.slice(cursor, idx));
+    parts.push(
+      <mark key={idx} className="bg-yellow-200 text-yellow-900">
+        {text.slice(idx, idx + q.length)}
+      </mark>,
+    );
+    cursor = idx + q.length;
+    idx = lower.indexOf(q, cursor);
   }
-  return String(value);
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts.length > 0 ? parts : text;
 }
 
 function TraceList({ traces }: { traces: SerializedTrace[] }) {
@@ -918,14 +937,12 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const formattedCacheRef = useRef<Map<string, string>>(new Map());
   const corpusCacheRef = useRef<Map<string, string>>(new Map());
 
   // 렌더 중 동기적으로 캐시를 초기화하여 traces 변경 직후 첫 렌더에서 stale 캐시 히트를 방지합니다.
   const prevTracesRef = useRef(traces);
   if (prevTracesRef.current !== traces) {
     prevTracesRef.current = traces;
-    formattedCacheRef.current.clear();
     corpusCacheRef.current.clear();
   }
 
@@ -958,16 +975,6 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
       }
       return next;
     });
-  }, []);
-
-  const getFormattedValue = useCallback((trace: SerializedTrace, cacheKey: string): string => {
-    const cached = formattedCacheRef.current.get(cacheKey);
-    if (cached !== undefined) {
-      return cached;
-    }
-    const formatted = formatTraceValue(trace.value);
-    formattedCacheRef.current.set(cacheKey, formatted);
-    return formatted;
   }, []);
 
   return (
@@ -1027,9 +1034,33 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
                   </span>
                 </button>
                 {isExpanded && (
-                  <pre className="px-2 py-1.5 text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                    {getFormattedValue(trace, cacheKey)}
-                  </pre>
+                  <div className="px-2 py-1.5 overflow-x-auto">
+                    <JsonView
+                      value={toViewerValue(trace.value) as object}
+                      collapsed={1}
+                      displayDataTypes={false}
+                      indentWidth={12}
+                      enableClipboard={false}
+                      style={{ fontSize: "12px" }}
+                    >
+                      {debouncedQuery && (
+                        <>
+                          <JsonView.KeyName
+                            render={(props, { keyName }) => {
+                              const text = String(keyName);
+                              return <span {...props}>{highlightText(text, debouncedQuery)}</span>;
+                            }}
+                          />
+                          <JsonView.String
+                            render={(props, { value }) => {
+                              const text = String(value);
+                              return <span {...props}>{highlightText(text, debouncedQuery)}</span>;
+                            }}
+                          />
+                        </>
+                      )}
+                    </JsonView>
+                  </div>
                 )}
               </div>
             );
