@@ -770,9 +770,12 @@ function ResultTreePanel({
   useEffect(() => {
     if (prevResultsRef.current !== results) {
       prevResultsRef.current = results;
-      if (savedExpandedIdsRef.current !== null) {
-        // 검색 활성 중: savedExpandedIdsRef에 새 root 및 실패 경로를 병합합니다.
-        const next = new Set(savedExpandedIdsRef.current);
+      // 검색 활성 중에는 expandedIds를 건드리지 않습니다.
+      // debouncedQuery effect가 filteredResults 변경에 반응하여 expandedIds를 올바르게 갱신합니다.
+      if (savedExpandedIdsRef.current !== null) return;
+      // 새로 추가된 root 및 실패 경로를 병합하여 기존 접힘 상태를 보존합니다.
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
         const addFailedPaths = (node: TestCaseResult): boolean => {
           if (node.children.length === 0) return node.state === "failed";
           let hasFailed = false;
@@ -786,27 +789,8 @@ function ResultTreePanel({
           if (!next.has(r.id)) next.add(r.id);
           addFailedPaths(r);
         }
-        savedExpandedIdsRef.current = next;
-      } else {
-        // 새로 추가된 root 및 실패 경로를 병합하여 기존 접힘 상태를 보존합니다.
-        setExpandedIds((prev) => {
-          const next = new Set(prev);
-          const addFailedPaths = (node: TestCaseResult): boolean => {
-            if (node.children.length === 0) return node.state === "failed";
-            let hasFailed = false;
-            for (const child of node.children) {
-              if (addFailedPaths(child)) hasFailed = true;
-            }
-            if (hasFailed) next.add(node.id);
-            return hasFailed;
-          };
-          for (const r of results) {
-            if (!next.has(r.id)) next.add(r.id);
-            addFailedPaths(r);
-          }
-          return next;
-        });
-      }
+        return next;
+      });
     }
   }, [results]);
 
