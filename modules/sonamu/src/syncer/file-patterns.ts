@@ -2,21 +2,6 @@ import path from "path";
 import { Sonamu } from "../api/sonamu";
 import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 
-export type FileType =
-  | "config"
-  | "entity"
-  | "frame"
-  | "functions"
-  | "generated"
-  | "model"
-  | "types"
-  | "workflow"
-  | "i18n";
-
-export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
-  [key in FileType]: T;
-};
-
 /**
  * Syncer가 관심 가지고 지켜보는 파일들입니다.
  * 이 파일들에 변경이 생기면 추가적인 작업(이하 "싱크" 또는 "싱크 액션")을 수행합니다.
@@ -25,7 +10,7 @@ export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
  * **경로 형식**: API 상대 경로 (src/로 시작)
  * **사용**: getChecksumPatternGroupInAbsolutePath()로 절대 경로 변환 후 glob 사용
  */
-export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
+const checksumPatternGroup = {
   config: "src/sonamu.config.ts",
   entity: "src/application/**/*.entity.json",
   frame: "src/application/**/*.frame.ts",
@@ -34,8 +19,13 @@ export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
   model: "src/application/**/*.model.ts",
   types: "src/application/**/*.types.ts",
   workflow: "src/application/**/*.workflow.ts",
-  i18n: "src/i18n/**/*.ts",
-};
+  i18n: "src/i18n/**/!(sd.generated).ts",
+  i18nGenerated: "src/i18n/**/sd.generated.ts",
+} as const satisfies Record<string, ApiRelativePath>;
+
+export { checksumPatternGroup };
+export type FileType = keyof typeof checksumPatternGroup;
+export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = Record<FileType, T>;
 
 /**
  * API 상대 경로 패턴을 절대 경로 패턴으로 변환합니다.

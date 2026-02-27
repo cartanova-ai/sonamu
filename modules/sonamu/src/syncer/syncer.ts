@@ -324,7 +324,7 @@ export class Syncer {
    */
   async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: string[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
-    const diffTypes = Object.keys(diffGroups);
+    const diffTypes = Object.keys(diffGroups) as FileType[];
 
     // Single source of truth가 변경된 경우
     if (diffTypes.includes("entity") || diffTypes.includes("types")) {
