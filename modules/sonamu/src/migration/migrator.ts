@@ -136,11 +136,11 @@ export class Migrator {
       }
 
       const compareDBconn = createKnexInstance(Sonamu.dbConfig[status0conn.connKey]);
-      const genCodes = await this.compareMigrations(compareDBconn);
-
-      await compareDBconn.destroy();
-
-      return genCodes;
+      try {
+        return await this.compareMigrations(compareDBconn);
+      } finally {
+        await compareDBconn.destroy();
+      }
     })();
 
     Naite.t("migrator:getStatus:preparedCodes", preparedCodes);
@@ -192,44 +192,45 @@ export class Migrator {
       })),
     );
 
-    // action
-    const result = await (async () => {
-      switch (action) {
-        case "apply":
-          return Promise.all(
-            conns.map(async ({ connKey, knex }) => {
-              const [batchNo, applied] = await knex.migrate.latest();
-              return {
-                connKey,
-                batchNo,
-                applied, // 이번 latest 호출로 인해 "up"이 적용된 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L560
-              };
-            }),
-          );
-        case "rollback":
-          return Promise.all(
-            conns.map(async ({ connKey, knex }) => {
-              const [batchNo, applied] = await knex.migrate.rollback();
-              return {
-                connKey,
-                batchNo,
-                applied, // 이번 rollback 호출로 인해 "down"이 적용된(=롤백된) 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L611
-              };
-            }),
-          );
-      }
-    })();
+    try {
+      // action
+      const result = await (async () => {
+        switch (action) {
+          case "apply":
+            return Promise.all(
+              conns.map(async ({ connKey, knex }) => {
+                const [batchNo, applied] = await knex.migrate.latest();
+                return {
+                  connKey,
+                  batchNo,
+                  applied, // 이번 latest 호출로 인해 "up"이 적용된 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L560
+                };
+              }),
+            );
+          case "rollback":
+            return Promise.all(
+              conns.map(async ({ connKey, knex }) => {
+                const [batchNo, applied] = await knex.migrate.rollback();
+                return {
+                  connKey,
+                  batchNo,
+                  applied, // 이번 rollback 호출로 인해 "down"이 적용된(=롤백된) 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L611
+                };
+              }),
+            );
+        }
+      })();
 
-    // destroy
-    await Promise.all(
-      conns.map(({ knex }) => {
-        return knex.destroy();
-      }),
-    );
+      Naite.t("migrator:runAction:result", result);
 
-    Naite.t("migrator:runAction:result", result);
-
-    return result;
+      return result;
+    } finally {
+      await Promise.all(
+        conns.map(({ knex }) => {
+          return knex.destroy();
+        }),
+      );
+    }
   }
 
   /**
