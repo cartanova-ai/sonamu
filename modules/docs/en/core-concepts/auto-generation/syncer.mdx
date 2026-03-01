@@ -78,7 +78,8 @@ File patterns that Syncer tracks for changes:
 | **Generated** | `src/application/sonamu.generated.ts` | Generated base file |
 | **Config** | `src/sonamu.config.ts` | Sonamu configuration |
 | **Workflow** | `src/application/**/*.workflow.ts` | Workflow definitions |
-| **i18n** | `src/i18n/**/*.ts` | Internationalization files |
+| **i18n** | `src/i18n/**/!(sd.generated).ts` | i18n source files |
+| **i18nGenerated** | `src/i18n/**/sd.generated.ts` | i18n generated files |
 
 <Info>
 **File patterns**: Managed in `file-patterns.ts`, change detection via checksum
@@ -268,7 +269,7 @@ Reloads when workflow file changes.
 
 Regenerates SD file when i18n file changes.
 
-**Trigger**: `src/i18n/**/*.ts` change
+**Trigger**: `src/i18n/**/!(sd.generated).ts` change
 
 **Actions**:
 1. Copy Locale files to targets
