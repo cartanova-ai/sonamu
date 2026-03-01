@@ -23,6 +23,25 @@ const stats = await puri.table("orders")
 // GROUP BY orders.user_id
 ```
 
+### distinct
+
+Returns results with duplicates removed. Uses the SQL `DISTINCT` clause.
+
+```typescript
+// Remove duplicate rows
+const categories = await puri.table("products")
+  .distinct("products.category")
+  .select({ category: "products.category" });
+
+// Multiple columns
+const pairs = await puri.table("orders")
+  .distinct("orders.user_id", "orders.status")
+  .select({
+    user_id: "orders.user_id",
+    status: "orders.status"
+  });
+```
+
 ### having
 
 Filters grouped results.
