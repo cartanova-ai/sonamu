@@ -157,6 +157,20 @@ pnpm fixture gen
 pnpm fixture gen --include User,Post --count 10 --save-to db
 ```
 
+**Value generation priority**:
+
+When generating a value for each field, the following strategies are applied in order. The first matching strategy is used, and subsequent steps are skipped.
+
+1. **Relation** — Fields with foreign key relationships automatically create/reference related records.
+2. **cone.note + LLM** — When `--use-llm` is enabled and the field's cone has a `note` defined, LLM generates realistic values based on the `note` content. Falls back to the next step if LLM call fails.
+3. **cone.fixtureGenerator** — If the cone has a `fixtureGenerator` (Faker expression, etc.), it is executed.
+4. **cone.fixtureDefault** — If the cone has a `fixtureDefault` fixed value, it is used.
+5. **Type-based default generation** — If none of the above strategies apply, values are auto-generated based on the field type (string, number, date, etc.).
+
+<Info>
+When using `--use-llm`, LLM takes priority over `fixtureGenerator` for fields with cone.note. This allows generating more realistic, domain-appropriate data.
+</Info>
+
 ### fetch - Fetch Data from Production DB
 
 **Fetch data from actual production (or development) DB** and save to Fixture DB. Use when you need realistic test data.
