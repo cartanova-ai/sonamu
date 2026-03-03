@@ -23,6 +23,25 @@ const stats = await puri.table("orders")
 // GROUP BY orders.user_id
 ```
 
+### distinct
+
+중복을 제거한 결과를 반환합니다. SQL의 `DISTINCT` 절을 사용합니다.
+
+```typescript
+// 전체 행 중복 제거
+const categories = await puri.table("products")
+  .distinct("products.category")
+  .select({ category: "products.category" });
+
+// 여러 컬럼 지정
+const pairs = await puri.table("orders")
+  .distinct("orders.user_id", "orders.status")
+  .select({
+    user_id: "orders.user_id",
+    status: "orders.status"
+  });
+```
+
 ### having
 
 그룹화된 결과를 필터링합니다.

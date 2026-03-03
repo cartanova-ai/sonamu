@@ -78,7 +78,8 @@ Syncer가 변경을 추적하는 파일 패턴입니다:
 | **Generated** | `src/application/sonamu.generated.ts` | 생성된 베이스 파일 |
 | **Config** | `src/sonamu.config.ts` | Sonamu 설정 |
 | **Workflow** | `src/application/**/*.workflow.ts` | 워크플로우 정의 |
-| **i18n** | `src/i18n/**/*.ts` | 다국어 파일 |
+| **i18n** | `src/i18n/**/!(sd.generated).ts` | 다국어 소스 파일 |
+| **i18nGenerated** | `src/i18n/**/sd.generated.ts` | 다국어 산출물 파일 |
 
 <Info>
 **파일 패턴**: `file-patterns.ts`에서 관리되며, checksum으로 변경 감지
@@ -268,7 +269,7 @@ API_PORT=3000
 
 다국어 파일이 변경되면 SD 파일을 재생성합니다.
 
-**트리거**: `src/i18n/**/*.ts` 변경
+**트리거**: `src/i18n/**/!(sd.generated).ts` 변경
 
 **액션**:
 1. Locale 파일을 타겟에 복사
