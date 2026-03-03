@@ -49,6 +49,11 @@ axios.defaults.transformResponse = [
   },
 ];
 
+axios.interceptors.request.use((config) => {
+  config.headers["Accept-Language"] = getCurrentLocale();
+  return config;
+});
+
 export async function fetch(options: AxiosRequestConfig) {
   try {
     const res = await axios({
