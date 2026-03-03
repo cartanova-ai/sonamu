@@ -2,7 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { type ReactNode, Suspense, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
-import { setLocale } from "./i18n/sd.generated";
+import { SUPPORTED_LOCALES, setLocale } from "./i18n/sd.generated";
 
 interface AppProps {
   children?: ReactNode;
@@ -12,8 +12,8 @@ function App({ children }: AppProps) {
   useEffect(() => {
     // 브라우저 locale 감지
     const browserLocale = navigator.language.split("-")[0];
-    if (["ko", "en"].includes(browserLocale)) {
-      setLocale(browserLocale as "ko" | "en");
+    if (SUPPORTED_LOCALES.includes(browserLocale as (typeof SUPPORTED_LOCALES)[number])) {
+      setLocale(browserLocale as (typeof SUPPORTED_LOCALES)[number]);
     }
   }, []);
 
