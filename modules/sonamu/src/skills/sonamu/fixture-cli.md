@@ -95,6 +95,7 @@ pnpm sonamu fixture gen --include User --count 10 --save-to none
 - `--save-to <target>`: 저장 방식 - `db` | `file` | `file:name.json` | `none`
 - `--use-llm`: cone.note 기반 LLM 생성 활성화 (ANTHROPIC_API_KEY 필요)
 - `--no-cache`: LLM 캐시 비활성화 (기본값: 캐시 ON)
+- `--llm-model <model>`: LLM 모델 지정 (기본값: `claude-sonnet-4-5`)
 
 ---
 
@@ -313,6 +314,10 @@ pnpm sonamu fixture gen --include Department,Company --count 5
 
 **주의**: 순환 참조는 경고 발생
 
+**내부 구현 (RelationGraph):**
+
+`FixtureManager`는 `RelationGraph` 클래스(`_relation-graph.ts`)를 사용하여 의존성 그래프를 구축하고 위상 정렬(topological sort)하여 삽입 순서를 결정합니다. BelongsToOne과 OneToOne(hasJoinColumn) 관계를 분석하여 부모 엔티티가 항상 자식보다 먼저 삽입되도록 보장합니다.
+
 ### 5. DB 시퀀스 리셋
 
 fixture 생성 후 ID 시퀀스가 맞지 않을 수 있습니다.
@@ -507,6 +512,19 @@ export default defineConfig({
 | 이메일, 이름, 숫자 등 단순한 값 | `fixtureGenerator` (faker.js) |
 | 자기소개, 설명문 등 맥락있는 텍스트 | `cone.note` + `--use-llm` (LLM) |
 | 특정 값 목록에서 선택 | `fixtureGenerator` (arrayElement) |
+
+---
+
+## FixtureGenerator 옵션 (FixtureGeneratorOptions)
+
+**소스코드:** `modules/sonamu/src/testing/fixture-generator.ts`
+
+| 옵션 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `locale` | `"ko"` \| `"en"` \| `"ja"` | `"ko"` | 생성 데이터 로케일 |
+| `useLLM` | boolean | `false` | LLM 기반 데이터 생성 (`--use-llm`) |
+| `enableLLMCache` | boolean | `true` | LLM 결과 캐싱 (`--no-cache`로 비활성화) |
+| `llmModel` | string | `"claude-sonnet-4-5"` | 사용할 LLM 모델 |
 
 ---
 

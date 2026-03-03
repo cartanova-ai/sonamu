@@ -233,6 +233,42 @@ relation prop에서 참조 데이터 조회 방식을 지정합니다.
 }
 ```
 
+### DataExplorer 옵션 상세
+
+**소스코드:** `modules/sonamu/src/testing/data-explorer.ts`
+
+| 옵션 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `strategy` | string | — | 조회 전략 (위 표 참고) |
+| `limit` | number | — | 최대 조회 건수 |
+| `where` | object \| function | — | WHERE 조건 (객체 또는 Knex QueryBuilder 함수) |
+| `orderBy` | string | — | 정렬 기준 |
+| `ids` | number[] | — | `ids` 전략 시 특정 ID 목록 |
+| `filePath` | string | — | `file` 전략 시 파일 경로 |
+| `useCache` | boolean | `false` | 캐싱 사용 여부 |
+| `cacheTtl` | number | `300` | 캐시 TTL (초 단위) |
+
+**where 조건 사용 예시:**
+
+```json
+"dataSource": {
+  "strategy": "sample",
+  "config": {
+    "limit": 5,
+    "where": { "status": "active" }
+  }
+}
+```
+
+### 관계 탐색 옵션 (ExploreWithRelationsOptions)
+
+`fixture gen`에서 관련 데이터를 함께 가져올 때 사용됩니다.
+
+| 옵션 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `includeRelations` | boolean | `true` | 관련 데이터 포함 여부 |
+| `maxDepth` | number | `2` | 재귀 탐색 최대 깊이 |
+
 ---
 
 ## 실전 팁

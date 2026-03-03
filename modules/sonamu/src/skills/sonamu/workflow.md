@@ -22,7 +22,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ## PHASE 0: 프로젝트 생성 및 초기 설정
 
-**참조 스킬:** project-init.md, create-sonamu.md, auth.md
+**참조 스킬:** project-init.md, create-sonamu.md, auth.md, auth-plugins.md
 
 ### 1. 요구사항 수집 및 프로젝트 생성
 
@@ -57,6 +57,8 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 12. dev 서버 띄우기 (`pnpm dev`)
 
 ### 5. Auth 엔티티 생성
+
+**플러그인이 필요한 경우 `auth-plugins.md`를 참조하여 `--plugins` 옵션을 사용한다.**
 
 13. `pnpm sonamu auth generate`로 better-auth 관련 엔티티 생성
 14. User 엔티티의 prop 중 `id`의 cone에 `"fixtureStrategy": "sequence"` 추가
@@ -153,7 +155,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ## PHASE 3: 테스트 및 API 구현
 
-**참조 스킬:** testing.md
+**참조 스킬:** testing.md, testing-devrunner.md, naite.md
 
 ### 11. 테스트 계획
 

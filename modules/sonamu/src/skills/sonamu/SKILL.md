@@ -235,10 +235,15 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | i18n | `i18n.md` | 다국어 지원, SD 함수 |
 | Upsert | `upsert.md` | 관계 데이터 저장 |
 | Testing | `testing.md` | Vitest 테스트 (test/testAs), Fixture 생성 팁 |
+| **DevRunner** | `testing-devrunner.md` | **sonamu test 실행, HMR 연동, 병렬 테스트, sonamu.config.ts 테스트 설정** |
+| **Naite** | `naite.md` | **Naite.t()/get() 추적 시스템, 체이닝 필터, trace CLI 출력** |
 | **Cone** | `cone.md` | **Cone 메타데이터 생성 및 관리 (LLM/템플릿)** |
 | **Fixture CLI** | `fixture-cli.md` | **fixture gen/fetch/explore 명령어, 3-Tier DB 활용** |
 | Migration | `migration.md` | DB 스키마 마이그레이션, PK 타입 변경 |
 | Auth Migration | `auth-migration.md` | better-auth 등 외부 인증 통합 시 User.id 타입 변경 |
+| **Auth Plugins** | `auth-plugins.md` | **better-auth 플러그인 래퍼 (admin, organization, 2fa, passkey 등 10종), snake_case 매핑** |
+| **벡터 검색** | `vector.md` | **pgvector 임베딩 (Voyage AI/OpenAI), 청킹, 하이브리드 검색** |
+| **AI Agents** | `ai-agents.md` | **BaseAgentClass, @tools 데코레이터, ToolLoopAgent, AsyncLocalStorage 상태** |
 | Frontend | `frontend.md` | Service, TanStack Query |
 | Scaffolding | `scaffolding.md` | UI Scaffolding 오류 해결 |
 
@@ -263,13 +268,18 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | API 엔드포인트 | api |
 | 관계 데이터 배치 저장 | upsert |
 | 테스트 작성 | testing |
+| **테스트 실행 (sonamu test)** | **testing-devrunner** |
+| **Naite 추적/디버깅** | **naite** |
 | **Fixture 데이터 생성/관리** | **fixture-cli** |
 | **테스트 데이터 생성 팁** | **testing (Fixture 데이터 생성 팁), fixture-cli (실전 팁)** |
 | DB 스키마 변경 | migration |
 | PK 타입 변경 (better-auth 등) | auth-migration |
+| **인증 플러그인 추가** | **auth-plugins** |
 | 프론트엔드 개발 | frontend |
 | 다국어/번역 | i18n |
 | Scaffolding 오류 | scaffolding |
+| **벡터 검색/임베딩** | **vector** |
+| **AI Agent 개발** | **ai-agents** |
 
 ## 명령어 실행 경로
 
