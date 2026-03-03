@@ -57,7 +57,7 @@ export function SonamuProvider<
 
   const normalizedValue: SonamuContextValue<D, O> = {
     uploader: value.uploader ?? createUploaderFallback(),
-    auth: authRef.current,
+    auth: value.auth ?? authRef.current,
     SD: value.SD ?? createSDFallback<D>(),
   };
 
