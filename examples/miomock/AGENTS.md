@@ -6,6 +6,16 @@ Inherits root rules from `../../AGENTS.md`.
 - `examples/miomock` is the Sonamu sample/integration test application.
 - It is used for framework validation and practical pattern verification.
 
+## CDD policy (miomock-only)
+- This scope follows Contract-Driven Development (CDD). Detailed policy: `contract/cdd.md`
+- Planning gate (mandatory): before any detailed implementation plan, lock Contract/Spec first.
+  - Confirm relevant Contract requirements and fixed Spec sections.
+  - If Spec is missing or outdated, create/update Spec first, then write implementation plan.
+- Implementation gate (mandatory): after code changes, verify code/test changes match confirmed Contract/Spec.
+  - If mismatch exists, fix code first to match Spec.
+  - If structural/interface changes are needed, update Spec first, then adjust code.
+- `contract/contract.md` is human-owned SSoT and read-only for AI; propose updates to user instead of editing it directly.
+
 ## Structure
 - `examples/miomock/api`: backend API and integration tests.
 - `examples/miomock/web`: frontend sample app.
