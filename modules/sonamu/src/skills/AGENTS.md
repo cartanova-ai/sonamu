@@ -30,6 +30,12 @@ Examples:
 
 See `.claude/skills/sonamu/SKILL.md` for the full skill list.
 
+## Skill contribution trigger
+
+- After resolving a troubleshooting issue, suggest the `skill-contribution.md` workflow if the resolution is reusable.
+- If the user explicitly requests (e.g. "add this to skills", "record this"), read `skill-contribution.md` and proceed immediately.
+- Always check existing skills for duplicates before writing. Do not create new files unconditionally.
+
 ## Cross-workspace gate
 
 - For changes in this scope, root `pnpm check` (Biome) must pass before handoff.

@@ -244,6 +244,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | **Auth Plugins** | `auth-plugins.md` | **better-auth 플러그인 래퍼 (admin, organization, 2fa, passkey 등 10종), snake_case 매핑** |
 | **벡터 검색** | `vector.md` | **pgvector 임베딩 (Voyage AI/OpenAI), 청킹, 하이브리드 검색** |
 | **AI Agents** | `ai-agents.md` | **BaseAgentClass, @tools 데코레이터, ToolLoopAgent, AsyncLocalStorage 상태** |
+| **스킬 기여** | `skill-contribution.md` | **트러블슈팅 해결 → 스킬 반영 워크플로우 (매칭, 판정, 포맷, 승인)** |
 | Frontend | `frontend.md` | Service, TanStack Query |
 | Scaffolding | `scaffolding.md` | UI Scaffolding 오류 해결 |
 
@@ -280,6 +281,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | Scaffolding 오류 | scaffolding |
 | **벡터 검색/임베딩** | **vector** |
 | **AI Agent 개발** | **ai-agents** |
+| **트러블슈팅 → 스킬 반영** | **skill-contribution** |
 
 ## 명령어 실행 경로
 
