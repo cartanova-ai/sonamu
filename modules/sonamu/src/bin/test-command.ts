@@ -5,14 +5,12 @@ import { loadConfig } from "../api/config";
 import type { RunResult, TestCaseResult } from "../testing";
 import { findApiRootPath } from "../utils/utils";
 
-export async function testCommand(): Promise<void> {
-  // VITEST=true 임시 설정으로 loadConfig가 src/sonamu.config.ts 경로를 사용하도록 함
+async function loadTestConfig(): Promise<SonamuConfig> {
   const prevVitest = process.env.VITEST;
   process.env.VITEST = "true";
-  let config: SonamuConfig;
   try {
     const apiRootPath = findApiRootPath();
-    config = await loadConfig(apiRootPath);
+    return await loadConfig(apiRootPath);
   } finally {
     if (prevVitest === undefined) {
       delete process.env.VITEST;
@@ -20,12 +18,30 @@ export async function testCommand(): Promise<void> {
       process.env.VITEST = prevVitest;
     }
   }
+}
 
-  // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces
+function resolveTestBaseUrl(config: SonamuConfig): {
+  host: string;
+  port: number;
+  routePrefix: string;
+  baseUrl: string;
+} {
+  const port = config.server.listen?.port ?? 3000;
+  const host = config.server.listen?.host ?? "localhost";
+  const routePrefix = config.test?.devRunner?.routePrefix ?? "/__test__";
+  return { host, port, routePrefix, baseUrl: `http://${host}:${port}${routePrefix}` };
+}
+
+export async function testCommand(): Promise<void> {
   const args = process.argv.slice(3);
+
+  const config = await loadTestConfig();
+
+  // process.argv 파싱: sonamu test [file...] --pattern "이름" --traces --status
   const files: string[] = [];
   let pattern: string | undefined;
   let showTraces = false;
+  let showStatus = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -33,9 +49,15 @@ export async function testCommand(): Promise<void> {
       pattern = args[++i];
     } else if (arg === "--traces" || arg === "-t") {
       showTraces = true;
+    } else if (arg === "--status" || arg === "-s") {
+      showStatus = true;
     } else if (!arg.startsWith("-")) {
       files.push(arg);
     }
+  }
+
+  if (showStatus) {
+    return testStatusCommand(config);
   }
 
   if (!config.test?.devRunner?.enabled) {
@@ -47,10 +69,8 @@ export async function testCommand(): Promise<void> {
     process.exit(1);
   }
 
-  const port = config.server.listen?.port ?? 3000;
-  const host = config.server.listen?.host ?? "localhost";
-  const routePrefix = config.test?.devRunner?.routePrefix ?? "/__test__";
-  const url = `http://${host}:${port}${routePrefix}/run`;
+  const { baseUrl } = resolveTestBaseUrl(config);
+  const url = `${baseUrl}/run`;
 
   const payload: { files?: string[]; pattern?: string } = {};
   if (files.length > 0) {
@@ -171,4 +191,48 @@ function collectTracesFromResults(
     }
   }
   return result;
+}
+
+async function testStatusCommand(config: SonamuConfig): Promise<void> {
+  if (!config.test?.devRunner?.enabled) {
+    console.error(
+      chalk.red(
+        "devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다",
+      ),
+    );
+    process.exit(1);
+  }
+
+  const { baseUrl } = resolveTestBaseUrl(config);
+  const url = `${baseUrl}/status`;
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error(chalk.red(`예상하지 못한 응답: ${response.status}`));
+      process.exit(1);
+    }
+
+    const status = (await response.json()) as {
+      ready: boolean;
+      running: boolean;
+      lastRunAt: string | null;
+      sseAvailable: boolean;
+    };
+
+    console.log(chalk.bold("DevRunner 상태:"));
+    console.log(`  ready:        ${status.ready ? chalk.green("true") : chalk.red("false")}`);
+    console.log(`  running:      ${status.running ? chalk.yellow("true") : "false"}`);
+    console.log(`  lastRunAt:    ${status.lastRunAt ?? chalk.dim("없음")}`);
+    console.log(`  sseAvailable: ${status.sseAvailable ? chalk.green("true") : "false"}`);
+  } catch (err) {
+    if (err instanceof TypeError && err.cause) {
+      console.error(
+        chalk.red("dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인하세요"),
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
 }
