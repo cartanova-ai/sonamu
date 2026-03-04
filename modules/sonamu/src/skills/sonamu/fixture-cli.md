@@ -7,7 +7,7 @@ description: Sonamu Fixture CLI 사용 가이드. fixture gen/fetch/explore 명�
 
 Sonamu는 테스트용 fixture 데이터를 생성하고 관리하기 위한 CLI 명령어를 제공합니다.
 
-**참고**: Fixture 생성 팁은 `testing.md`의 "Fixture 데이터 생성 팁" 섹션 참조
+**참고**: Fixture 생성 팁은 아래 "실전 팁" 섹션 참조
 
 ---
 
