@@ -1,6 +1,6 @@
 ---
 name: sonamu-entity-validation-checklist
-description: Entity 생성 후 필수 검증 체크리스트. stub 생성부터 scaffolding까지 오류 없이 완료하기 위한 단계별 가이드.
+description: Entity 생성 후 필수 검증 체크리스트. entity.json 검증(인덱스 type, Subset FieldExpr, 중복 컨럼, Boolean dbDefault), 필수 파일 생성, sync, migration, scaffolding 단계별 검증. Use when entity.json validation fails or verifying entity creation steps.
 ---
 
 # Entity 생성 후 검증 체크리스트

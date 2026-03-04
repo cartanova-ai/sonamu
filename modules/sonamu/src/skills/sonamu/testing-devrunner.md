@@ -1,6 +1,6 @@
 ---
 name: sonamu-testing-devrunner
-description: DevRunner (sonamu test) 및 sonamu.config.ts 테스트 설정. HMR 연동, Naite trace CLI, 병렬 테스트, vitest.config.ts 구성. Use when configuring test execution, DevRunner setup, or parallel testing.
+description: DevRunner (sonamu test) 실행 및 테스트 환경 설정. sonamu test 실행 오류, HMR 연동, Naite trace CLI, 병렬 테스트, vitest.config.ts/sonamu.config.ts 구성. Use when 'sonamu test' fails, configuring DevRunner, or setting up parallel testing.
 ---
 
 # DevRunner 및 테스트 설정

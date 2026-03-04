@@ -1,6 +1,6 @@
 ---
 name: sonamu-auth-migration
-description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (integer→string). Entity, Migration, SaveParams, test-helpers 전체 프로세스. 15개 플러그인 통합 가이드 (OAuth, 2FA, phone-number 등). Use when integrating external auth requiring PK type change or adding better-auth plugins.
+description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (integer→string). Entity, Migration, SaveParams, test-helpers 전체 프로세스. PK 타입 변경 후 플러그인 Entity/Migration 작성 패턴. Use when migrating User.id from integer to string PK, or writing plugin Entity/Migration after PK type change.
 ---
 
 # Auth 시스템 Migration (better-auth 등 외부 인증 통합)

@@ -1,6 +1,6 @@
 ---
 name: sonamu-entity-basic
-description: Sonamu Entity 생성/수정 시 참조. 필수 항목, 타입별 설정, 흔한 실수 방지. Use when creating or modifying entities.
+description: Sonamu Entity 생성/수정 시 참조. 필드 타입, 요구사항 분석, 부모-자식 관계, OrderBy/Enum 규칙. Use when creating or modifying entities. 검증 체크리스트는 entity-validation-checklist.md 참조.
 ---
 
 # Entity 기본 구조

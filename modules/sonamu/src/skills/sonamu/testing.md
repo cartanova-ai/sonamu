@@ -1,6 +1,6 @@
 ---
 name: sonamu-testing
-description: Sonamu 테스트 시스템. bootstrap, test/testAs 함수, Fixture, Naite 추적, expectQuery/expectUB 헬퍼, Mock 패턴, DevRunner (sonamu test CLI/HMR 연동/Naite trace), sonamu.config.ts 테스트 설정 전체 맵 (병렬/DB/DevRunner). Use when writing tests for Models and APIs.
+description: Sonamu 테스트 작성. bootstrap, test/testAs 함수, Fixture 생성, Naite.get() 검증, expectQuery/expectUB 헬퍼, Mock 패턴. Use when writing or structuring test code for Models and APIs.
 ---
 
 # Sonamu 테스트 시스템
