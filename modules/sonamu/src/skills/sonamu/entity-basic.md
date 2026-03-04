@@ -177,123 +177,33 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 
 **STOP! Entity를 만들기 전에 질문을 하나씩 하세요.**
 
-사용자가 시스템을 요청할 때, 명시적으로 언급한 Entity만 생성하지 말 것.
+### 누락된 Entity 확인
 
-### 누락된 Entity 확인 (필수 질문)
-
-**한 번에 하나씩 질문할 것:**
+사용자가 명시적으로 언급한 Entity만 생성하지 말 것. **한 번에 하나씩 질문:**
 
 - "사용자(User) Entity가 필요한가요?" → 응답 대기
-- (필요하다면) "User의 역할이 여러 개인가요? (예: 관리자, 일반회원)" → 응답 대기
+- "User의 역할이 여러 개인가요?" → 응답 대기
 - "추가로 필요한 Entity가 있나요?" → 응답 대기
 
-### User Entity 생성 시 확인필수
+**User Entity 주의**: `id`는 자동 증가 시퀀스(PK)이며 로그인 아이디가 아님. better-auth 사용 시 별도 `login_id` 불필요 (auth 테이블이 관리).
 
-Entity의 `id` prop은 자동 증가 시퀀스(auto-increment PK)입니다. 로그인 아이디가 아닙니다.
+**자주 누락되는 Entity**: 컨텐츠(Comment, Like, Tag, Category), 커머스(Review, Cart, Payment), 예약(Reservation, Schedule), 교육(Enrollment, Progress)
 
-**예시 (한 번에 하나씩):**
+### 여러 Entity 요청 시 - 관계 확인
 
-```
-사용자: "회원 기능이 있는 시스템을 만들려고 해요."
+2개 이상 Entity 요청 시 **코드 작성 전에 관계를 하나씩 질문**:
 
-Claude: "로그인 아이디가 필요한가요? (id는 자동증가 시퀀스라 로그인용으로 쓰기 어렵습니다)"
+- BelongsToOne, HasMany, ManyToMany, parentId 중 어떤 관계인지
+- 부모-자식 종속(삭제 시 함께 삭제)인지 독립적인지
 
-사용자: "네"
+### 설계 전 반드시 확인
 
-Claude: "로그인 아이디는 문자열(username)인가요, 이메일인가요?"
+**1. Polymorphic Association** (`entity_type + entity_id` 패턴):
 
-사용자: "이메일로 할게요"
+- string PK 엔티티(better-auth User 등)가 있으면 → `entity_id`를 `string` 타입으로 통일
+- 없으면 → `integer` 사용 가능
 
-Claude: "알겠습니다. 다음 질문으로 넘어갈게요..."
-```
-
-**User Entity 예시 (로그인 아이디 포함):**
-
-```json
-{
-  "props": [
-    { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "login_id",
-      "type": "string",
-      "length": 50,
-      "desc": "로그인 아이디"
-    },
-    { "name": "email", "type": "string", "length": 255, "desc": "이메일" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "dbDefault": "CURRENT_TIMESTAMP",
-      "desc": "가입일시"
-    }
-  ],
-  "indexes": [
-    {
-      "name": "users_login_id_unique",
-      "type": "unique",
-      "columns": [{ "name": "login_id" }]
-    }
-  ]
-}
-```
-
-### 여러 Entity 요청 시 - 관계 확인 필수 (필수 질문)
-
-사용자가 2개 이상의 Entity를 요청하면, **코드 작성 전에 Entity 간 관계를 하나씩 질문**할 것.
-
-**확인할 관계 유형:**
-
-- BelongsToOne: A가 B에 속함 (FK 생성)
-- HasMany: A가 여러 B를 가짐 (B에 FK)
-- ManyToMany: 다대다 관계 (중간 테이블 필요)
-- parentId: 부모-자식 종속 관계
-
-**예시 (한 번에 하나씩):**
-
-```
-사용자: "온라인 강의 플랫폼을 만들 거야. 강좌, 챕터, 레슨이 필요해."
-
-Claude: "사용자(User) Entity가 필요한가요? (수강생, 강사 등)"
-
-사용자: "네, 강사랑 수강생 둘 다요"
-
-Claude: "챕터는 강좌의 자식으로 함께 관리할까요? (parentId 사용 - 강좌 삭제 시 챕터도 삭제)"
-
-사용자: "네"
-
-Claude: "레슨도 챕터의 자식으로 함께 관리할까요?"
-```
-
-**일반적으로 빠지기 쉬운 Entity:**
-| 도메인 | 자주 누락되는 Entity |
-|--------|------------------------|
-| 컨텐츠 시스템 | User, Comment, Like, Tag, Category |
-| 커머스 | User, Review, Cart, Payment |
-| 예약 시스템 | User, Reservation, Schedule |
-| 교육 플랫폼 | User(Student/Instructor), Enrollment, Review, Progress |
-
-### 설계 전 반드시 사용자에게 확인할 사항
-
-다음 두 가지는 설계 초기에 판단이 틀리면 마이그레이션 수정이 필요하므로, **코드 작성 전에 반드시 질문한다.**
-
-**1. Polymorphic Association (여러 엔티티에 공통으로 붙는 테이블)**
-
-`entity_type + entity_id` 패턴(공통 첨부파일, 공통 댓글 등)을 사용할 경우:
-
-> "시스템 내에 string PK를 사용하는 엔티티(예: better-auth의 User)가 있습니까?"
-
-- **있다** → `entity_id`를 `string` 타입으로 통일
-- **없다** → `integer` 타입 사용 가능
-
-`entity_id`를 integer로 정의하면 string PK 엔티티의 파일/댓글을 연결할 수 없어 후에 컬럼 타입 변경이 필요해진다.
-
-**2. 도메인 용어와 엔티티 영문 ID 매핑**
-
-요구사항 문서의 한글 명칭과 엔티티 영문 ID를 설계 시작 전에 사용자와 확인한다.
-
-> "요구사항의 '위탁연구과제'를 엔티티로 만들 때 `ResearchContract`로 명명하겠습니다. 맞나요?"
-
-중간에 명칭이 바뀌면 테이블명, 파일명, API 경로 등 전체를 rename해야 하므로 초기에 확정이 중요하다. 팀 내 용어 사전(한글 ↔ 영문 ID)을 requirements.md에 함께 기록해두는 것을 권장한다.
+**2. 도메인 용어 ↔ 엔티티 영문 ID 매핑**: 코드 작성 전에 사용자와 확정 (예: "위탁연구과제" → `ResearchContract`). 중간에 바뀌면 전체 rename 필요.
 
 ## 부모-자식 관계 (parentId)
 
@@ -405,31 +315,17 @@ parentId가 설정된 자식 엔티티는 **루트 부모 엔티티와 같은 �
 
 ### IMPORTANT: 고정값 필드는 반드시 enum으로
 
-선택지가 정해진 필드를 `string`으로 정의하면 DB 정합성이 깨지고 오타로 인한 버그가 발생한다.
+선택지가 정해진 필드를 `string`으로 정의하면 DB 정합성이 깨진다.
 
-**판단 기준: "이 값이 코드 외부에서 자유롭게 입력될 수 있는가?"**
+**판단: "이 값이 코드 외부에서 자유롭게 입력될 수 있는가?"** No → enum, Yes → string
 
-- No → **enum** (예: 비목구분, 점검카테고리, 실적유형, 상태값, 승인단계)
-- Yes → **string** (예: 과제명, 계약명, 메모)
-
-**enum 후보 식별 패턴 (아래 중 하나라도 해당하면 enum):**
-
-- `cone.fixtureGenerator`가 `faker.helpers.arrayElement([...])` 형태인 string 필드
-- 요구사항 문서에 "다음 중 하나", "구분", "유형" 형태로 나열된 필드
-- 화면에서 셀렉트박스 또는 라디오버튼으로 표시될 필드
-
-**DO NOT:**
+**enum 후보 식별**: `faker.helpers.arrayElement([...])` 형태의 string, "다음 중 하나/구분/유형" 나열, 셀렉트박스/라디오버튼 표시 필드
 
 ```json
+// WRONG: string으로 정의
 { "name": "budget_item", "type": "string", "desc": "비목명" }
-{ "name": "category", "type": "string", "desc": "점검분류" }
-```
-
-**DO:**
-
-```json
+// CORRECT: enum으로 정의
 { "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "비목" }
-{ "name": "category", "type": "enum", "id": "InspectionCategory", "desc": "점검분류" }
 ```
 
 ### nullable 필드 추가할 때
@@ -502,12 +398,13 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 
 **indexes와 subsets에서 FK 컨럼을 참조하는 방식이 다르다. 혼동하지 않는다.**
 
-| 위치 | 사용 형식 | 예시 |
-|------|----------|------|
-| `indexes` | 실제 DB 컨럼명 | `role_id`, `user_id`, `department_id` |
+| 위치      | 사용 형식                  | 예시                                  |
+| --------- | -------------------------- | ------------------------------------- |
+| `indexes` | 실제 DB 컨럼명             | `role_id`, `user_id`, `department_id` |
 | `subsets` | FieldExpr (relation.field) | `role.id`, `user.id`, `department.id` |
 
 **DO NOT:**
+
 ```json
 // indexes에서 FieldExpr 사용 → 오류
 "indexes": [
@@ -516,6 +413,7 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 ```
 
 **DO:**
+
 ```json
 // indexes는 실제 DB 컨럼명
 "indexes": [
@@ -530,233 +428,39 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 
 ### IMPORTANT: unique 제약은 비즈니스 규칙 기준으로
 
-unique index는 기술적 판단이 아니라 **비즈니스 관점**에서 "이 데이터가 시스템에서 중복 존재할 수 있는가?"를 먼저 판단한 후 정의한다.
+기술적 판단이 아니라 **"같은 조합이 두 번 insert되면?"** → 오류여야 하면 unique, 허용이면 index만.
 
-**설계 시 질문:** "같은 조합이 두 번 insert되면 어떻게 되는가?"
-
-- 오류여야 한다 → **unique index 추가**
-- 허용된다 → index만 추가
-
-**복합 unique가 반드시 필요한 패턴:**
-
-| 패턴               | 예시                     | 권장 unique 구성                                 |
-| ------------------ | ------------------------ | ------------------------------------------------ |
-| 연도별 설정 테이블 | 실적가중치, 예산 비목    | `(type, dept_id, year)`                          |
-| 사용자-역할 매핑   | UserRole                 | 역할의 적용 범위(dept 등)가 포함되는지 먼저 확인 |
-| 연차별 예산 항목   | ResearchBudget           | `(project_id, year, budget_item)`                |
-| 사용자-엔티티 매핑 | 좋아요, 북마크, 수강신청 | `(user_id, entity_id)`                           |
-
-**DO NOT - unique 누락:**
-
-```json
-// 연도별 가중치 설정인데 unique 없음 → 같은 연도/유형/부서에 중복 삽입 가능
-"indexes": []
-```
-
-**DO:**
-
-```json
-"indexes": [
-  {
-    "name": "achievement_weights_type_dept_year_unique",
-    "type": "unique",
-    "columns": [
-      { "name": "achievement_type" },
-      { "name": "dept_id" },
-      { "name": "valid_year" }
-    ]
-  }
-]
-```
+**복합 unique가 필요한 패턴**: 연도별 설정(`type, dept_id, year`), 사용자-역할 매핑, 연차별 예산(`project_id, year, budget_item`), 좋아요/북마크(`user_id, entity_id`)
 
 ## 흔한 실수
 
-| 실수                                 | 해결                                                              |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `id` prop 누락                       | 추가 권장 (대부분의 Model 로직에서 필요)                          |
-| `created_at` prop 누락               | 추가 권장, `dbDefault: "CURRENT_TIMESTAMP"`                       |
-| `OrderBy` enum 누락                  | `{EntityId}OrderBy` 추가 권장 (findMany 정렬에 필요)              |
-| `SearchField` enum 누락              | `{EntityId}SearchField` 추가 권장 (검색 기능에 필요)              |
-| enum prop의 `id`가 enums에 없음      | enums 섹션에 정의 추가                                            |
-| json prop에 `id` 누락                | `id` 필드 추가                                                    |
-| `"type": "text"` 직접 사용           | `text`는 유효하지 않음. `"type": "string"` + length 생략으로 사용 |
-| `OrderBy` enum에 여러 값 추가        | **기본은 `id-desc`만 생성** (아래 참조)                           |
-| 고정 선택지 필드를 `string`으로 정의 | enum으로 변환 (fixtureGenerator가 arrayElement인 필드 확인)       |
-| unique 제약 없는 연도별/매핑 테이블  | 비즈니스 규칙 기준으로 복합 unique 추가                           |
-| 정수 필드에 `number` 타입 사용       | `integer` 사용 (소수점 필요 시 `numeric`)                         |
-| indexes에서 `role.id` 형식 사용          | indexes는 실제 DB 컨럼명(`role_id`), subsets만 FieldExpr(`role.id`) 사용 |
+| 실수                                 | 해결                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `id` prop 누락                       | 추가 권장 (대부분의 Model 로직에서 필요)                                 |
+| `created_at` prop 누락               | 추가 권장, `dbDefault: "CURRENT_TIMESTAMP"`                              |
+| `OrderBy` enum 누락                  | `{EntityId}OrderBy` 추가 권장 (findMany 정렬에 필요)                     |
+| `SearchField` enum 누락              | `{EntityId}SearchField` 추가 권장 (검색 기능에 필요)                     |
+| enum prop의 `id`가 enums에 없음      | enums 섹션에 정의 추가                                                   |
+| json prop에 `id` 누락                | `id` 필드 추가                                                           |
+| `"type": "text"` 직접 사용           | `text`는 유효하지 않음. `"type": "string"` + length 생략으로 사용        |
+| `OrderBy` enum에 여러 값 추가        | **기본은 `id-desc`만 생성** (아래 참조)                                  |
+| 고정 선택지 필드를 `string`으로 정의 | enum으로 변환 (fixtureGenerator가 arrayElement인 필드 확인)              |
+| unique 제약 없는 연도별/매핑 테이블  | 비즈니스 규칙 기준으로 복합 unique 추가                                  |
+| 정수 필드에 `number` 타입 사용       | `integer` 사용 (소수점 필요 시 `numeric`)                                |
+| indexes에서 `role.id` 형식 사용      | indexes는 실제 DB 컨럼명(`role_id`), subsets만 FieldExpr(`role.id`) 사용 |
 
 ## Entity 스키마 검증 오류 해결
 
-### 1. 인덱스 타입 누락
+**→ `entity-validation-checklist.md` PHASE 1 참조** (인덱스 type 누락, Subset FieldExpr, 중복 컬럼, Boolean dbDefault 등)
 
-**오류:**
+**빠른 체크리스트:**
 
-```
-Invalid option: expected one of "index"|"unique"|"hnsw"|"ivfflat"
-  → at indexes[N].type
-```
-
-**원인**: indexes 배열의 각 인덱스 정의에 type 필드가 누락되었습니다.
-
-**DO NOT:**
-
-```json
-"indexes": [
-  { "name": "ix_user_email", "columns": [{ "name": "email" }] }
-]
-```
-
-**DO:**
-
-```json
-"indexes": [
-  { "name": "ix_user_email", "type": "index", "columns": [{ "name": "email" }] }
-]
-```
-
-**타입 종류:**
-
-- 일반 인덱스: `"type": "index"`
-- 유니크 인덱스: `"type": "unique"`
-- 벡터 인덱스: `"type": "hnsw"` 또는 `"type": "ivfflat"`
-
-### 2. Subset에서 잘못된 FieldExpr 참조
-
-**오류:**
-
-```
-Error: EntityName -- 잘못된 FieldExpr 'field_id'
-```
-
-**원인**: subsets에서 relation의 foreign key를 직접 참조했습니다. Relation을 통해 접근해야 합니다.
-
-**DO NOT:**
-
-```json
-{
-  "props": [
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ],
-  "subsets": {
-    "A": ["id", "user_id", "user.name"]
-  }
-}
-```
-
-**DO:**
-
-```json
-{
-  "props": [
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ],
-  "subsets": {
-    "A": ["id", "user.id", "user.name"]
-  }
-}
-```
-
-**규칙**: 모든 relation foreign key는 `relation_name.id` 형식으로 참조
-
-- `user_id` → `user.id` (Sonamu가 `.id`만 참조 시 자동으로 FK 컬럼 직접 읽기로 최적화)
-- `task_id` → `task.id`
-- `department_id` → `department.id`
-
-**실제 동작 코드 참고:**
-
-- `sonamu/examples/miomock/api/src/application/project/project.entity.json`
-- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
-
-### 3. 중복 컬럼 정의
-
-**오류:**
-
-```
-migration failed: column "field_id" specified more than once
-```
-
-**원인**: BelongsToOne relation을 정의하면 자동으로 foreign key 컬럼이 생성되는데, props에서 수동으로도 정의하여 중복이 발생했습니다.
-
-**DO NOT:**
-
-```json
-{
-  "props": [
-    { "name": "user_id", "type": "integer", "desc": "사용자ID" },
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ]
-}
-```
-
-**DO:**
-
-```json
-{
-  "props": [
-    {
-      "type": "relation",
-      "name": "user",
-      "with": "User",
-      "relationType": "BelongsToOne"
-    }
-  ]
-}
-```
-
-**규칙**: BelongsToOne relation을 정의할 때는 foreign key 컬럼을 별도로 정의하지 않습니다. Relation이 자동으로 `{relation_name}_id` 컬럼을 생성합니다.
-
-### 4. Boolean 타입 기본값 오류
-
-**오류:**
-
-```
-migration failed: column "field_name" is of type boolean but default expression is of type integer
-```
-
-**원인**: Boolean 타입 컬럼의 dbDefault에 정수 값(0, 1)을 사용했습니다. PostgreSQL은 boolean 타입에 정수를 허용하지 않습니다.
-
-**DO NOT:**
-
-```json
-{ "name": "is_active", "type": "boolean", "dbDefault": "1" }
-{ "name": "is_deleted", "type": "boolean", "dbDefault": "0" }
-```
-
-**DO:**
-
-```json
-{ "name": "is_active", "type": "boolean", "dbDefault": "true" }
-{ "name": "is_deleted", "type": "boolean", "dbDefault": "false" }
-```
-
-**규칙**: Boolean 타입에는 항상 `"dbDefault": "true"` 또는 `"dbDefault": "false"` 사용. 숫자 0, 1은 사용하지 않습니다.
-
-### Entity 스키마 검증 체크리스트
-
-Entity.json 파일 작성 시 다음 사항을 확인하세요:
-
-- [ ] 모든 인덱스에 type 필드가 있는가?
-- [ ] Subsets에서 foreign key를 직접 참조하지 않고 relation을 통해 참조하는가?
-- [ ] BelongsToOne relation과 foreign key 컬럼을 중복 정의하지 않았는가?
-- [ ] Boolean 타입의 dbDefault가 "true" 또는 "false" 문자열인가?
+- [ ] 모든 인덱스에 `type` 필드 있는가? (`"index"` | `"unique"` | `"hnsw"` | `"ivfflat"`)
+- [ ] Subset에서 FK를 `relation.id` 형식으로 참조하는가? (`user_id` ✗ → `user.id` ✓)
+- [ ] BelongsToOne relation과 FK 컬럼을 중복 정의하지 않았는가?
+- [ ] Boolean dbDefault가 `"true"` / `"false"` 문자열인가? (0, 1 ✗)
 - [ ] Subset A에 모든 필드가 포함되어 있는가?
-- [ ] indexes의 columns에 FieldExpr(`role.id`) 대신 실제 DB 컨럼명(`role_id`)을 사용했는가?
+- [ ] indexes의 columns에 실제 DB 컬럼명(`role_id`)을 사용했는가? (FieldExpr `role.id` ✗)
 
 ## IMPORTANT: OrderBy Enum Generation Rule
 
