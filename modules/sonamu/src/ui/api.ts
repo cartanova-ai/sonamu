@@ -37,6 +37,7 @@ import {
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
+import { editContent, getCddTree } from "./cdd-service";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
@@ -1391,6 +1392,16 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         } finally {
           await fixtureDb.destroy();
         }
+      });
+
+      // CDD API
+      server.get("/api/cdd/tree", async () => {
+        return getCddTree();
+      });
+
+      server.post<{ Body: { filePath: string } }>("/api/cdd/editContent", async (request) => {
+        const { filePath } = request.body;
+        return editContent(filePath);
       });
 
       // ui-web 빌드 파일 서빙

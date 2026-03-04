@@ -119,6 +119,24 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
   test?: SonamuTestConfig;
 
   /**
+   * 외부 에디터 설정 (CDD 등에서 파일 편집 시 사용)
+   *
+   * @example
+   * ```typescript
+   * externalEditor: {
+   *   command: "code",
+   *   args: ["--wait"],
+   * }
+   * ```
+   */
+  externalEditor?: {
+    /** 에디터 실행 명령어 ("code", "zed" 등) */
+    command: string;
+    /** 추가 인자 (["--wait"] 등) */
+    args?: string[];
+  };
+
+  /**
    * Slack 승인 설정 (Production 마이그레이션용)
    *
    * Production DB 마이그레이션 시 Slack을 통한 승인 프로세스를 활성화합니다.
