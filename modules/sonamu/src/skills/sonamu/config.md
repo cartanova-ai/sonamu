@@ -83,8 +83,10 @@ export default defineConfig({
   i18n: { /* 다국어 설정 */ },
   sync: { /* 동기화 설정 */ },
   database: { /* DB 설정 */ },
+  logging: { /* 로깅 설정 (false로 비활성화 가능) */ },
   test: { /* 테스트 설정 */ },
   server: { /* 서버 설정 */ },
+  slackConfirm: { /* Production 마이그레이션 Slack 승인 */ },
 });
 ```
 
@@ -152,10 +154,14 @@ database: {
 test: {
   parallel: true,   // 병렬 테스트 활성화
   maxWorkers: 4,    // Worker 수
+  devRunner: {      // Dev 서버 내 Vitest 상주 인스턴스
+    enabled: true,
+    watch: true,
+  },
 },
 ```
 
-자세한 내용은 `testing.md` 참조.
+자세한 내용은 `testing.md`, `testing-devrunner.md` 참조.
 
 #### server
 
@@ -668,6 +674,61 @@ AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 S3_REGION=ap-northeast-2
 S3_BUCKET=myproject-prod-bucket
+```
+
+---
+
+## server 추가 옵션
+
+### baseUrl
+
+```typescript
+server: {
+  baseUrl: "https://api.example.com",  // 외부 접근 URL (기본: host:port)
+}
+```
+
+### fastify
+
+Fastify 서버 옵션을 직접 전달합니다 (`logger` 제외).
+
+### plugins 전체 목록
+
+| 플러그인 | 타입 | 설명 |
+|----------|------|------|
+| `compress` | `boolean \| FastifyCompressOptions` | 응답 압축 (@fastify/compress) |
+| `cors` | `boolean \| FastifyCorsOptions` | CORS 설정 |
+| `formbody` | `boolean \| FastifyFormbodyOptions` | x-www-form-urlencoded 파싱 |
+| `multipart` | `boolean \| FastifyMultipartOptions` | 파일 업로드 |
+| `qs` | `boolean \| QsPluginOptions` | 쿼리 스트링 파싱 |
+| `session` | 세션 설정 | 세션 관리 |
+| `sse` | `boolean \| SsePluginOptions` | Server-Sent Events |
+| `static` | `boolean \| FastifyStaticOptions` | 정적 파일 서빙 |
+| `custom` | `(server: FastifyInstance) => void` | 커스텀 플러그인 등록 함수 |
+
+## logging
+
+로깅 설정을 정의합니다. `false`로 설정하면 로깅을 완전히 비활성화합니다.
+
+```typescript
+logging: false,  // 로깅 비활성화
+// 또는
+logging: {
+  sinks: { /* 로그 출력 대상 정의 */ },
+  filters: { /* 필터 정의 */ },
+},
+```
+
+## slackConfirm
+
+Production DB 마이그레이션 시 Slack을 통한 승인 프로세스를 활성화합니다.
+
+```typescript
+slackConfirm: {
+  targets: ["production"],       // 승인이 필요한 DB 키 목록
+  botToken: process.env.SLACK_BOT_TOKEN ?? "",  // Slack Bot Token (xoxb-...)
+  channelId: process.env.SLACK_CHANNEL_ID ?? "", // Slack Channel ID (C...)
+},
 ```
 
 ---

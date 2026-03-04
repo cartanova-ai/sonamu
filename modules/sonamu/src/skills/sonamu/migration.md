@@ -201,14 +201,25 @@ pnpm sonamu migrate apply    # 특정 DB 설정 대상으로 적용
 
 | Entity | DB | Knex |
 |--------|-----|------|
-| `string` | `varchar(n)` | `table.string(name, length)` |
+| `string` | `varchar(n)` / `text` | `table.string(name, length)` |
+| `string[]` | `varchar(n)[]` / `text[]` | `table.specificType(name, 'text[]')` |
 | `integer` | `integer` | `table.integer(name)` |
+| `integer[]` | `integer[]` | `table.specificType(name, 'integer[]')` |
 | `bigInteger` | `bigint` | `table.bigInteger(name)` |
+| `bigInteger[]` | `bigint[]` | `table.specificType(name, 'bigint[]')` |
 | `boolean` | `boolean` | `table.boolean(name)` |
+| `boolean[]` | `boolean[]` | `table.specificType(name, 'boolean[]')` |
 | `number` | `numeric(p,s)` | `table.decimal(name, p, s)` |
+| `numeric` | `numeric(p,s)` | `table.decimal(name, p, s)` |
 | `date` | `timestamptz` | `table.timestamp(name, { useTz: true })` |
+| `date[]` | `timestamptz[]` | `table.specificType(name, 'timestamptz[]')` |
+| `uuid` | `uuid` | `table.uuid(name)` |
+| `uuid[]` | `uuid[]` | `table.specificType(name, 'uuid[]')` |
 | `json` | `jsonb` | `table.jsonb(name)` |
 | `enum` | `text` | `table.text(name)` |
+| `vector` | `vector(n)` | `table.specificType(name, 'vector(n)')` |
+| `vector[]` | `vector(n)[]` | `table.specificType(name, 'vector(n)[]')` |
+| `tsvector` | `tsvector` | `table.specificType(name, 'tsvector')` |
 
 ## 실행 순서 (중요!)
 

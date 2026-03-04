@@ -207,6 +207,10 @@ Task (과제)
 
 **주의**: `author_id`를 props에 직접 정의하지 말 것 (자동 생성됨)
 
+**선택 옵션:**
+- `customJoinClause`: 커스텀 JOIN 조건 SQL (FK 대신 직접 JOIN 조건 지정)
+- `useConstraint`: FK constraint 생성 여부 (기본: `true`). `false`면 FK 컬럼은 생성되지만 DB constraint는 생성하지 않음
+
 ### 코드에서 FK 사용하기
 
 BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, Model이나 FixtureGenerator 등 코드에서 이를 직접 다룰 때는 올바른 필드명을 사용해야 합니다.
@@ -282,6 +286,8 @@ if (isBelongsToOneRelationProp(prop) ||
 
 **필수**: `joinColumn` = 상대 테이블의 FK 컬럼명
 
+**선택**: `fromColumn` = 자기 테이블의 매칭 컬럼 (기본: `id`). 비표준 PK로 JOIN해야 할 때 사용
+
 **중요**: `joinColumn` 필드가 정의되지 않으면 Zod 스키마 검증 오류가 발생합니다.
 
 **DB 컬럼 생성 안 됨** (virtual)
@@ -332,6 +338,10 @@ HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
 ```
 
 **핵심**: `hasJoinColumn: true`인 쪽에만 FK 생성 (생략 시 FK 없음, optional 옵션)
+
+**선택 옵션 (`hasJoinColumn: true`일 때):**
+- `customJoinClause`: 커스텀 JOIN 조건 SQL
+- `useConstraint`: FK constraint 생성 여부 (기본: `true`)
 
 ## ManyToMany (N:M)
 
