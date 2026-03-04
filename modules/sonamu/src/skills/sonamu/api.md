@@ -22,6 +22,11 @@ async findById(id: number): Promise<User> { }
 | `resourceName` | TanStack Query의 queryKey | - |
 | `guards` | 인증/권한 가드 | - |
 | `path` | 커스텀 경로 | `/{model}/{method}` |
+| `description` | API 설명 (문서화용) | - |
+| `timeout` | 요청 타임아웃 (ms) | - |
+| `contentType` | 응답 Content-Type | `application/json` |
+| `cacheControl` | Cache-Control 헤더 설정 | - |
+| `compress` | 응답 압축 설정 (`false`로 비활성화 가능) | - |
 
 ## clients 옵션
 
@@ -364,3 +369,49 @@ return this.executeSubsetQuery({
   debug: true,  // SQL 쿼리 로그 출력
 });
 ```
+
+## @stream 데코레이터 (SSE)
+
+Server-Sent Events 엔드포인트를 생성합니다.
+
+```typescript
+import { stream } from "sonamu";
+import { z } from "zod";
+
+@stream({
+  type: "sse",
+  events: z.object({
+    progress: z.object({ percent: z.number() }),
+    done: z.object({ result: z.string() }),
+  }),
+  guards: ["user"],
+})
+async processStream() { ... }
+```
+
+| 옵션 | 설명 | 필수 |
+|------|------|------|
+| `type` | `"sse"` (현재 SSE만 지원) | 예 |
+| `events` | Zod 스키마로 이벤트 키별 페이로드 정의 | 예 |
+| `path` | 커스텀 경로 | - |
+| `resourceName` | 리소스 이름 | - |
+| `guards` | 인증/권한 가드 | - |
+
+## @transactional 데코레이터
+
+메서드 전체를 자동 트랜잭션으로 감쌉니다. 이미 트랜잭션 컨텍스트 안이면 재사용합니다.
+
+```typescript
+import { transactional } from "sonamu";
+
+@transactional({ isolation: "serializable" })
+async transferFunds(fromId: number, toId: number, amount: number) {
+  // this.getPuri("w")가 자동으로 트랜잭션 안에서 실행됨
+}
+```
+
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `isolation` | 트랜잭션 격리 수준 (read uncommitted/read committed/repeatable read/serializable) | - |
+| `readOnly` | 읽기 전용 트랜잭션 | `false` |
+| `dbPreset` | DB 프리셋 | `"w"` |

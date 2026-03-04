@@ -542,17 +542,20 @@ PostgreSQL 기준:
 
 ## 타입별 필수 옵션
 
-| 타입      | 필수         | 선택                               |
-| --------- | ------------ | ---------------------------------- |
-| `string`  | -            | `length` (없으면 text)             |
-| `integer` | -            | `numberType` (bigint, smallint)    |
-| `number`  | -            | `precision`, `scale`, `numberType` |
-| `enum`    | `id`         | `nullable`, `dbDefault`            |
-| `json`    | `id`         | `dbDefault: "{}"`                  |
-| `date`    | -            | `dbDefault`                        |
-| `boolean` | -            | `dbDefault: "false"`               |
-| `virtual` | `id`         | -                                  |
-| `vector`  | `dimensions` | -                                  |
+| 타입         | 필수         | 선택                                                        |
+| ------------ | ------------ | ----------------------------------------------------------- |
+| `string`     | -            | `length` (없으면 text), `zodFormat` (email, uuid 등)        |
+| `integer`    | -            | -                                                           |
+| `bigInteger` | -            | -                                                           |
+| `number`     | -            | `precision`, `scale`, `numberType` (real/double precision/numeric) |
+| `numeric`    | -            | `precision`, `scale`                                        |
+| `enum`       | `id`         | `nullable`, `dbDefault`, `length`                           |
+| `json`       | `id`         | `dbDefault: "{}"`                                           |
+| `date`       | -            | `dbDefault`, `precision`                                    |
+| `boolean`    | -            | `dbDefault: "false"`                                        |
+| `virtual`    | `id`         | `virtualType` (query/code, 기본: code)                      |
+| `vector`     | `dimensions` | -                                                           |
+| `tsvector`   | -            | -                                                           |
 
 ## IMPORTANT: ENUM Type dbDefault Setting
 
