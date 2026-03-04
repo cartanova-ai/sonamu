@@ -20,6 +20,15 @@ export type ExtendedEntity = Entity & {
   flattenSubsetRows: FlattenSubsetRow[];
 };
 
+export type CddFileType = "contract" | "spec";
+export type CddTreeNode = {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  fileType?: CddFileType;
+  children?: CddTreeNode[];
+};
+
 export namespace SonamuUIService {
   export function getSonamuConfig(): Promise<{ projectName?: string }> {
     return fetch({
@@ -622,6 +631,27 @@ export namespace SonamuUIService {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/tasks/workflowRuns/${id}/resume`,
+    });
+  }
+
+  export function useCddTree() {
+    return useQuery({
+      queryKey: ["cdd", "tree"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/cdd/tree`,
+        }) as Promise<{ exists: boolean; tree: CddTreeNode[] }>,
+    });
+  }
+
+  export function editCddContent(
+    filePath: string,
+  ): Promise<{ success: boolean; filePath: string }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/cdd/editContent`,
+      data: { filePath },
     });
   }
 

@@ -16,6 +16,7 @@ import { Route as MigrationsRouteImport } from './routes/migrations'
 import { Route as I18nRouteImport } from './routes/i18n'
 import { Route as FixtureRouteImport } from './routes/fixture'
 import { Route as EntitiesRouteImport } from './routes/entities'
+import { Route as CddRouteImport } from './routes/cdd'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksWorkflowRunIdRouteImport } from './routes/tasks_.$workflowRunId'
 import { Route as EntitiesEntityIdRouteImport } from './routes/entities/$entityId'
@@ -55,6 +56,11 @@ const EntitiesRoute = EntitiesRouteImport.update({
   path: '/entities',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CddRoute = CddRouteImport.update({
+  id: '/cdd',
+  path: '/cdd',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -73,6 +79,7 @@ const EntitiesEntityIdRoute = EntitiesEntityIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cdd': typeof CddRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
   '/i18n': typeof I18nRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cdd': typeof CddRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
   '/i18n': typeof I18nRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cdd': typeof CddRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
   '/i18n': typeof I18nRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cdd'
     | '/entities'
     | '/fixture'
     | '/i18n'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cdd'
     | '/entities'
     | '/fixture'
     | '/i18n'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/cdd'
     | '/entities'
     | '/fixture'
     | '/i18n'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CddRoute: typeof CddRoute
   EntitiesRoute: typeof EntitiesRouteWithChildren
   FixtureRoute: typeof FixtureRoute
   I18nRoute: typeof I18nRoute
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cdd': {
+      id: '/cdd'
+      path: '/cdd'
+      fullPath: '/cdd'
+      preLoaderRoute: typeof CddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -248,6 +268,7 @@ const EntitiesRouteWithChildren = EntitiesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CddRoute: CddRoute,
   EntitiesRoute: EntitiesRouteWithChildren,
   FixtureRoute: FixtureRoute,
   I18nRoute: I18nRoute,

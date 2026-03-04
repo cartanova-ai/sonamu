@@ -231,4 +231,15 @@ export default {
   "testResults.tree.noMatches": "검색 결과 없음",
   "testResults.clearHistory": "이력 지우기",
   "testResults.liveRunning": "진행 중",
+
+  // CDD
+  "nav.cdd": "CDD",
+  "cdd.title": "Contract-Driven Development",
+  "cdd.refresh": "새로고침",
+  "cdd.noContractDir":
+    "contract/ 디렉터리가 존재하지 않습니다. 프로젝트 루트에 contract/ 디렉터리를 생성해주세요.",
+  "cdd.editContent": "편집",
+  "cdd.editing": "편집 중...",
+  "cdd.editSuccess": "편집이 완료되었습니다.",
+  "cdd.editError": "편집 중 오류가 발생했습니다.",
 } as const;

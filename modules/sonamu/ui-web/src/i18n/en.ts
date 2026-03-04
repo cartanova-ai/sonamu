@@ -236,6 +236,17 @@ const en: Record<DictKey, Dictionary[string]> = {
   "testResults.tree.noMatches": "No matching tests",
   "testResults.clearHistory": "Clear History",
   "testResults.liveRunning": "Running",
+
+  // CDD
+  "nav.cdd": "CDD",
+  "cdd.title": "Contract-Driven Development",
+  "cdd.refresh": "Refresh",
+  "cdd.noContractDir":
+    "The contract/ directory does not exist. Please create a contract/ directory in the project root.",
+  "cdd.editContent": "Edit",
+  "cdd.editing": "Editing...",
+  "cdd.editSuccess": "Edit completed successfully.",
+  "cdd.editError": "An error occurred during editing.",
 };
 
 export default en;
