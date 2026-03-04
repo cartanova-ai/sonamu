@@ -411,54 +411,58 @@ export class Migrator {
 
     // 기존 Shadow DB 삭제 후 Shadow DB 생성
     const tdb = createKnexInstance(Sonamu.dbConfig.test);
-    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-    await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
-    await tdb.raw(`
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE datname = '${tdbConn.database}'
-        AND pid <> pg_backend_pid();
-    `);
-    await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
-
-    // Shadow DB에 연결
-    const sdb = createKnexInstance({
-      ...Sonamu.dbConfig.test,
-      connection: {
-        ...tdbConn,
-        database: shadowDatabase,
-        password: tdbConn.password,
-      },
-    });
-
-    // shadow DB 테스트 진행
     try {
-      const [batchNo, applied] = await sdb.migrate.latest();
-      !isTest() &&
-        console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
-          batchNo,
-          applied,
-        });
-
-      return [
-        {
-          connKey: "shadow",
-          batchNo,
-          applied,
-        },
-      ];
-    } catch (e) {
-      console.error(e);
-      throw new ServiceUnavailableException(SD("sonamu.error.shadowDbTestFailed"));
-    } finally {
-      // Shadow DB 연결 종료
-      await sdb.destroy();
-
-      // Shadow DB 삭제
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
+      await tdb.raw(`
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE datname = '${tdbConn.database}'
+          AND pid <> pg_backend_pid();
+      `);
+      await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
 
-      // Test DB 연결 종료
+      // Shadow DB에 연결
+      const sdb = createKnexInstance({
+        ...Sonamu.dbConfig.test,
+        connection: {
+          ...tdbConn,
+          database: shadowDatabase,
+          password: tdbConn.password,
+        },
+      });
+
+      // shadow DB 테스트 진행
+      try {
+        const [batchNo, applied] = await sdb.migrate.latest();
+        !isTest() &&
+          console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
+            batchNo,
+            applied,
+          });
+
+        return [
+          {
+            connKey: "shadow",
+            batchNo,
+            applied,
+          },
+        ];
+      } catch (e) {
+        console.error(e);
+        throw new ServiceUnavailableException(SD("sonamu.error.shadowDbTestFailed"));
+      } finally {
+        await sdb.destroy();
+      }
+    } finally {
+      // Shadow DB 삭제
+      !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
+      try {
+        await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
+      } catch {
+        // tdb 커넥션 자체에 문제가 있는 경우 shadow DB 삭제 실패는 무시합니다
+      }
+
       await tdb.destroy();
     }
   }
