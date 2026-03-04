@@ -17,8 +17,15 @@ Inherits root rules from `../../AGENTS.md`.
    - `cd examples/miomock/api && pnpm sonamu migrate run`
 3. Seed fixtures:
    - `pnpm seed`
-4. Run tests:
-   - `pnpm test`
+4. Run tests (integration and feature tests use the same policy):
+   - Check readiness: `pnpm sonamu test -s`
+   - If the output includes `ready: true`, run tests with `pnpm sonamu test`
+   - If not ready, fallback to `pnpm test`
+   - Quick usage (see `modules/docs/en/tools-and-cli/sonamu-cli/test.mdx`):
+     - All tests: `pnpm sonamu test`
+     - Specific file: `pnpm sonamu test src/application/department/department.model.test.ts`
+     - Test-name filter: `pnpm sonamu test --pattern "Department"`
+     - Trace output (Naite): `pnpm sonamu test -t`
 
 ## Entity/migration rule
 - Entity updates and migration operations are primarily user-driven via Sonamu UI.
