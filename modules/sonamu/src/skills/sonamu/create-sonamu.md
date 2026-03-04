@@ -153,3 +153,36 @@ pnpm create sonamu my_project \
 |------------|----------|
 | `~/Development/sonamu` | `link:~/Development/sonamu/modules/sonamu` |
 | 프로젝트와 같은 디렉토리 | `link:../../sonamu/modules/sonamu` |
+
+## 프로젝트명 변경 (신규 프로젝트 생성 시)
+
+프로젝트 생성 후, 프론트엔드의 "Sonamu" 텍스트를 프로젝트명으로 변경해야 합니다.
+
+**변경해야 할 파일 4개:**
+
+1. **`packages/web/index.html`** - 브라우저 탭 제목
+```html
+<title>{프로젝트명}</title>
+```
+
+2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head 설정 (가장 중요!)
+```typescript
+head: () => ({
+  meta: [{ title: "{프로젝트명}" }],
+}),
+```
+**중요:** `__root.tsx`를 변경하지 않으면 HMR 시 title이 "Sonamu"로 되돌아갑니다!
+
+3. **`packages/web/src/routes/index.tsx`** - 메인 페이지 제목
+```tsx
+<h1 className="text-2xl font-bold mb-4">Welcome to {프로젝트명}</h1>
+```
+
+4. **`packages/web/src/components/Sidebar.tsx`** - 사이드바 앱 이름
+```typescript
+const title = isAdmin ? "Admin" : "{프로젝트명}";
+```
+
+**확인 방법:**
+- 브라우저 탭에 프로젝트명이 표시되는지 확인
+- 파일 저장 시 HMR로 탭 제목이 변경되지 않는지 확인 (변경되면 `__root.tsx` 누락)
