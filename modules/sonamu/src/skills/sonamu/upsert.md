@@ -254,6 +254,24 @@ await trx.ubUpsert("users", {
 });
 ```
 
+## ubUpsertOrInsert (조건부 모드)
+
+upsert 또는 insert 모드를 런타임에 선택합니다.
+
+```typescript
+await trx.ubUpsertOrInsert("logs", "insert");   // INSERT 전용
+await trx.ubUpsertOrInsert("users", "upsert");  // UPSERT (기본)
+await trx.ubUpsertOrInsert("users", "upsert", { cleanOrphans: "team_id" });
+```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `tableName` | string | 테이블명 |
+| `mode` | `"upsert"` \| `"insert"` | 동작 모드 |
+| `options` | `UpsertOptions` | chunkSize, cleanOrphans, inherit (ubUpsert와 동일) |
+
+`mode: "insert"`일 때 `insertOnly`와 달리 `UpsertOptions` (cleanOrphans, inherit)를 사용할 수 있습니다.
+
 ## Rules
 
 - MUST use inside `transaction()`

@@ -134,6 +134,9 @@ const result = await MyAgent.use(
 | `topP` / `topK` | `number` | 샘플링 파라미터 |
 | `presencePenalty` / `frequencyPenalty` | `number` | 페널티 |
 | `seed` | `number` | 재현성용 시드 |
+| `stopSequences` | `string[]` | 생성 중단 시퀀스 |
+| `providerOptions` | `ProviderOptions` | 프로바이더별 추가 옵션 |
+| `headers` | `Record<string, string>` | 커스텀 HTTP 헤더 |
 
 ---
 
