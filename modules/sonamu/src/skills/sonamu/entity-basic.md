@@ -540,6 +540,18 @@ PostgreSQL 기준:
 - No → `integer`
 - Yes → `number` (반드시 `precision`, `scale` 명시)
 
+## 공통 옵션 (CommonProp)
+
+모든 prop 타입에 적용 가능한 공통 옵션:
+
+| 옵션 | 타입 | 설명 |
+|------|------|------|
+| `name` | string | 필드명 (필수) |
+| `desc` | string | 필드 설명 |
+| `nullable` | boolean | NULL 허용 여부 (기본: false) |
+| `toFilter` | true | sonamuFilter의 필터링 대상으로 등록. model.md 참조 |
+| `cone` | Cone | LLM 기반 fixture 생성 메타데이터. cone.md 참조 |
+
 ## 타입별 필수 옵션
 
 | 타입         | 필수         | 선택                                                        |

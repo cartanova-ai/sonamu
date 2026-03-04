@@ -155,6 +155,8 @@ const { rows, total } = await this.findMany(subset, { ...params, queryMode: "bot
 
 params.sonamuFilter로 필터 조건 자동 적용:
 
+**전제조건:** entity.json에서 해당 prop에 `"toFilter": true`가 설정되어 있어야 함. 설정되지 않은 필드는 필터링 대상에서 제외된다.
+
 ```typescript
 // 클라이언트에서 전달된 필터
 const params = {
@@ -172,7 +174,19 @@ const params = {
 return this.executeSubsetQuery({ subset, qb, params });
 ```
 
-**지원 연산자:**
+**타입별 허용 연산자:**
+
+| 타입 | 연산자 |
+|------|--------|
+| `string` | eq, ne, contains, startsWith, endsWith, in, notIn, isNull, isNotNull |
+| `integer` | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull |
+| `numeric` | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull |
+| `boolean` | eq, ne, isNull, isNotNull |
+| `date`/`datetime` | eq, ne, before, after, between, isNull, isNotNull |
+| `enum` | eq, ne, in, notIn, isNull, isNotNull |
+| `json` | isNull, isNotNull |
+
+**연산자 예시:**
 
 | 연산자 | SQL | 예시 |
 |--------|-----|------|
@@ -187,6 +201,23 @@ return this.executeSubsetQuery({ subset, qb, params });
 | `isNull`, `isNotNull` | `IS NULL` | `{ deleted_at: { isNull: true } }` |
 | `before`, `after` | `<`, `>` (날짜) | `{ created_at: { after: "2024-01-01" } }` |
 | `between` | `BETWEEN` | `{ price: { between: [100, 500] } }` |
+
+**타입 정의 (`ApplySonamuFilter`):**
+
+```typescript
+import type { ApplySonamuFilter } from "sonamu";
+
+// ListParams에서 sonamuFilter 타입 정의
+type ProjectListParams = {
+  num: number;
+  page: number;
+  sonamuFilter?: ApplySonamuFilter<
+    ProjectSubsetA,       // 엔티티 타입
+    "id" | "created_at",   // 제외할 필드 (TOmitKeys)
+    "budget"              // numeric으로 취급할 필드 (TNumericKeys)
+  >;
+};
+```
 
 ## Enhancers
 
