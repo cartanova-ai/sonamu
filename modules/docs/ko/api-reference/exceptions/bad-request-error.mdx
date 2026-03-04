@@ -10,8 +10,8 @@ description: '잘못된 요청 처리를 위한 400 예외'
 ```typescript
 class BadRequestException extends SoException {
   constructor(
-    public message = "Bad Request",
-    public payload?: unknown,
+    message: LocalizedString,
+    payload?: unknown,
   );
 }
 ```
@@ -138,8 +138,8 @@ async transferMoney(
 ```typescript
 @upload()
 async uploadProfileImage(ctx: Context) {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
   if (!file) {
     throw new BadRequestException("파일이 필요합니다");

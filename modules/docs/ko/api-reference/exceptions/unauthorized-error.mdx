@@ -10,8 +10,8 @@ description: '인증 및 권한 처리를 위한 401 예외'
 ```typescript
 class UnauthorizedException extends SoException {
   constructor(
-    public message = "Unauthorized",
-    public payload?: unknown,
+    message: LocalizedString,
+    payload?: unknown,
   );
 }
 ```

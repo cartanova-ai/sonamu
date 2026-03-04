@@ -11,7 +11,7 @@ description: 'Base class for Sonamu exception handling system'
 abstract class SoException extends Error {
   constructor(
     public readonly statusCode: number,
-    public message: string,
+    public message: LocalizedString,
     public payload?: unknown,
   );
 }
@@ -30,10 +30,10 @@ HTTP response status code. When an exception is thrown, Fastify responds with th
 ### message
 
 ```typescript
-message: string
+message: LocalizedString
 ```
 
-Exception message. This is the error description delivered to the client.
+Exception message. Uses the `LocalizedString` type, delivering localized strings through Sonamu's i18n system.
 
 ### payload
 
