@@ -238,4 +238,6 @@ export default defineConfig({
       },
     },
   },
+
+  externalEditor: "Zed",
 });
