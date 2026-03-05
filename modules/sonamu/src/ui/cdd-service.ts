@@ -95,7 +95,7 @@ export async function editContent(
     throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
   }
 
-  const editorCommand = resolveEditor();
+  const editorApp = resolveEditorApp();
 
   const raw = fs.readFileSync(absPath, "utf-8");
   const json: Record<string, unknown> = JSON.parse(raw);
@@ -108,7 +108,7 @@ export async function editContent(
   fs.writeFileSync(tmpFilePath, content, "utf-8");
 
   try {
-    await runEditor(editorCommand, tmpFilePath);
+    await runEditor(editorApp, tmpFilePath);
 
     const edited = fs.readFileSync(tmpFilePath, "utf-8");
     json.content = edited;
@@ -129,32 +129,26 @@ export async function editContent(
   }
 }
 
-/** externalEditor 설정 → VISUAL → EDITOR 순으로 에디터 커맨드를 결정 */
-function resolveEditor(): string {
-  const config = Sonamu.config.externalEditor;
-  if (config) {
-    const parts = [config.command, ...(config.args ?? [])];
-    return parts.join(" ");
+/** externalEditor 설정에서 앱 이름을 가져옴 */
+function resolveEditorApp(): string {
+  const app = Sonamu.config.externalEditor;
+  if (!app) {
+    throw new Error(
+      "에디터를 찾을 수 없습니다. sonamu.config.ts의 externalEditor를 설정해주세요. (예: 'Zed')",
+    );
   }
-  const envEditor = process.env.VISUAL ?? process.env.EDITOR;
-  if (envEditor) {
-    return envEditor;
-  }
-  throw new Error(
-    "에디터를 찾을 수 없습니다. sonamu.config.ts의 externalEditor 또는 EDITOR 환경변수를 설정해주세요.",
-  );
+  return app;
 }
 
-/** 셸을 통해 에디터를 실행하고 종료를 대기 */
-function runEditor(command: string, filePath: string): Promise<void> {
+/** macOS `open -W -a <app>` 으로 에디터를 실행하고 종료를 대기 */
+function runEditor(app: string, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, [filePath], {
+    const child = spawn("open", ["-W", "-a", app, filePath], {
       stdio: "inherit",
-      shell: true,
     });
 
     child.on("error", (err) => {
-      reject(new Error(`에디터 실행 실패 (${command}): ${err.message}`));
+      reject(new Error(`에디터 실행 실패 (${app}): ${err.message}`));
     });
 
     child.on("close", (code) => {

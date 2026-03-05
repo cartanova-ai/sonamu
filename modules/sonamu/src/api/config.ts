@@ -120,21 +120,16 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
 
   /**
    * 외부 에디터 설정 (CDD 등에서 파일 편집 시 사용)
+   * macOS에서는 `open -W -a <app>` 방식으로 실행합니다.
    *
    * @example
    * ```typescript
-   * externalEditor: {
-   *   command: "code",
-   *   args: ["--wait"],
-   * }
+   * externalEditor: "Zed"
+   * // 또는
+   * externalEditor: "Visual Studio Code"
    * ```
    */
-  externalEditor?: {
-    /** 에디터 실행 명령어 ("code", "zed" 등) */
-    command: string;
-    /** 추가 인자 (["--wait"] 등) */
-    args?: string[];
-  };
+  externalEditor?: string;
 
   /**
    * Slack 승인 설정 (Production 마이그레이션용)
