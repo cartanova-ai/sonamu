@@ -459,11 +459,11 @@ export class Migrator {
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       try {
         await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
-      } catch {
-        // tdb 커넥션 자체에 문제가 있는 경우 shadow DB 삭제 실패는 무시합니다
+      } catch (e) {
+        console.error("Shadow DB 정리 실패:", e); // 이게 없으면 조용히 누수
+      } finally {
+        await tdb.destroy();
       }
-
-      await tdb.destroy();
     }
   }
 }
