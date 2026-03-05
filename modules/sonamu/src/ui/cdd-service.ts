@@ -82,7 +82,14 @@ export function getCddTree(): { exists: boolean; tree: CddTreeNode[] } {
   return { exists: true, tree };
 }
 
-/** JSON 파일의 전체 내용을 읽어 반환 */
+/** content 필드를 string으로 변환 (string[] 및 string 모두 지원) */
+function contentToString(content: unknown): string {
+  if (Array.isArray(content)) return content.join("\n");
+  if (typeof content === "string") return content;
+  return "";
+}
+
+/** JSON 파일의 전체 내용을 읽어 반환 (content는 string으로 변환) */
 export function readContent(filePath: string): Record<string, unknown> {
   assertInsideContractDir(filePath);
 
@@ -94,7 +101,8 @@ export function readContent(filePath: string): Record<string, unknown> {
   }
 
   const raw = fs.readFileSync(absPath, "utf-8");
-  return JSON.parse(raw) as Record<string, unknown>;
+  const json = JSON.parse(raw) as Record<string, unknown>;
+  return { ...json, content: contentToString(json.content) };
 }
 
 /** JSON 파일의 content 필드를 외부 에디터로 편집 */
@@ -110,12 +118,12 @@ export async function editContent(
     throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
   }
 
-  const editorCli = resolveEditorCli();
+  const editor = resolveEditorCli();
 
   const raw = fs.readFileSync(absPath, "utf-8");
   const json: Record<string, unknown> = JSON.parse(raw);
 
-  const content = typeof json.content === "string" ? json.content : "";
+  const content = contentToString(json.content);
 
   const tmpFileName = `cdd-edit-${crypto.randomUUID()}.md`;
   const tmpFilePath = path.join(os.tmpdir(), tmpFileName);
@@ -123,10 +131,10 @@ export async function editContent(
   fs.writeFileSync(tmpFilePath, content, "utf-8");
 
   try {
-    await runEditor(editorCli, tmpFilePath);
+    await runEditor(editor, tmpFilePath);
 
     const edited = fs.readFileSync(tmpFilePath, "utf-8");
-    json.content = edited;
+    json.content = edited.split("\n");
 
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -144,42 +152,30 @@ export async function editContent(
   }
 }
 
-/** 알려진 에디터의 앱 번들 내 CLI 경로 + wait 플래그 매핑 */
+/** 에디터별 앱 번들 내 CLI 경로 + --wait 플래그 매핑 */
 const EDITOR_CLI_MAP: Record<string, { cli: string; waitFlag: string }> = {
-  zed: { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
-  "zed preview": { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
-  "visual studio code": { cli: "Contents/Resources/app/bin/code", waitFlag: "--wait" },
-  "sublime text": { cli: "Contents/SharedSupport/bin/subl", waitFlag: "--wait" },
+  "Visual Studio Code": { cli: "Contents/Resources/app/bin/code", waitFlag: "--wait" },
+  Zed: { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
+  Cursor: { cli: "Contents/Resources/app/bin/cursor", waitFlag: "--wait" },
 };
 
-/** 앱 이름으로 /Applications 에서 .app 번들 경로를 탐색 */
-function findAppBundle(appName: string): string | undefined {
-  const candidates = [
+/** 앱 번들 CLI 경로를 resolve */
+function resolveEditorCli(): { bin: string; args: string[] } {
+  const appName = Sonamu.config.externalEditor ?? "Visual Studio Code";
+  const mapping = EDITOR_CLI_MAP[appName];
+  if (!mapping) {
+    throw new Error(
+      `지원되지 않는 에디터입니다: ${appName} (지원: ${Object.keys(EDITOR_CLI_MAP).join(", ")})`,
+    );
+  }
+
+  const searchPaths = [
     `/Applications/${appName}.app`,
     `${os.homedir()}/Applications/${appName}.app`,
   ];
-  return candidates.find((p) => fs.existsSync(p));
-}
-
-/** externalEditor 설정에서 CLI 실행 정보를 resolve */
-function resolveEditorCli(): { bin: string; args: string[] } {
-  const app = Sonamu.config.externalEditor;
-  if (!app) {
-    throw new Error(
-      "에디터를 찾을 수 없습니다. sonamu.config.ts의 externalEditor를 설정해주세요. (예: 'Zed')",
-    );
-  }
-
-  const bundlePath = findAppBundle(app);
+  const bundlePath = searchPaths.find((p) => fs.existsSync(p));
   if (!bundlePath) {
-    throw new Error(`앱 번들을 찾을 수 없습니다: ${app} (/Applications 확인)`);
-  }
-
-  const mapping = EDITOR_CLI_MAP[app.toLowerCase()];
-  if (!mapping) {
-    throw new Error(
-      `지원되지 않는 에디터입니다: ${app} (지원: ${Object.keys(EDITOR_CLI_MAP).join(", ")})`,
-    );
+    throw new Error(`앱 번들을 찾을 수 없습니다: ${appName} (/Applications 확인)`);
   }
 
   const cliBin = path.join(bundlePath, mapping.cli);
@@ -191,14 +187,14 @@ function resolveEditorCli(): { bin: string; args: string[] } {
 }
 
 /** 에디터 CLI를 실행하고 탭이 닫힐 때까지 대기 */
-function runEditor(editorCli: { bin: string; args: string[] }, filePath: string): Promise<void> {
+function runEditor(editor: { bin: string; args: string[] }, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(editorCli.bin, [...editorCli.args, filePath], {
+    const child = spawn(editor.bin, [...editor.args, filePath], {
       stdio: "inherit",
     });
 
     child.on("error", (err) => {
-      reject(new Error(`에디터 실행 실패 (${editorCli.bin}): ${err.message}`));
+      reject(new Error(`에디터 실행 실패 (${editor.bin}): ${err.message}`));
     });
 
     child.on("close", (code) => {
