@@ -95,7 +95,7 @@ export async function editContent(
     throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
   }
 
-  const editorApp = resolveEditorApp();
+  const editorCli = resolveEditorCli();
 
   const raw = fs.readFileSync(absPath, "utf-8");
   const json: Record<string, unknown> = JSON.parse(raw);
@@ -108,7 +108,7 @@ export async function editContent(
   fs.writeFileSync(tmpFilePath, content, "utf-8");
 
   try {
-    await runEditor(editorApp, tmpFilePath);
+    await runEditor(editorCli, tmpFilePath);
 
     const edited = fs.readFileSync(tmpFilePath, "utf-8");
     json.content = edited;
@@ -129,26 +129,61 @@ export async function editContent(
   }
 }
 
-/** externalEditor 설정에서 앱 이름을 가져옴 */
-function resolveEditorApp(): string {
+/** 알려진 에디터의 앱 번들 내 CLI 경로 + wait 플래그 매핑 */
+const EDITOR_CLI_MAP: Record<string, { cli: string; waitFlag: string }> = {
+  zed: { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
+  "zed preview": { cli: "Contents/MacOS/cli", waitFlag: "--wait" },
+  "visual studio code": { cli: "Contents/Resources/app/bin/code", waitFlag: "--wait" },
+  "sublime text": { cli: "Contents/SharedSupport/bin/subl", waitFlag: "--wait" },
+};
+
+/** 앱 이름으로 /Applications 에서 .app 번들 경로를 탐색 */
+function findAppBundle(appName: string): string | undefined {
+  const candidates = [
+    `/Applications/${appName}.app`,
+    `${os.homedir()}/Applications/${appName}.app`,
+  ];
+  return candidates.find((p) => fs.existsSync(p));
+}
+
+/** externalEditor 설정에서 CLI 실행 정보를 resolve */
+function resolveEditorCli(): { bin: string; args: string[] } {
   const app = Sonamu.config.externalEditor;
   if (!app) {
     throw new Error(
       "에디터를 찾을 수 없습니다. sonamu.config.ts의 externalEditor를 설정해주세요. (예: 'Zed')",
     );
   }
-  return app;
+
+  const bundlePath = findAppBundle(app);
+  if (!bundlePath) {
+    throw new Error(`앱 번들을 찾을 수 없습니다: ${app} (/Applications 확인)`);
+  }
+
+  const mapping = EDITOR_CLI_MAP[app.toLowerCase()];
+  if (!mapping) {
+    throw new Error(
+      `지원되지 않는 에디터입니다: ${app} (지원: ${Object.keys(EDITOR_CLI_MAP).join(", ")})`,
+    );
+  }
+
+  const cliBin = path.join(bundlePath, mapping.cli);
+  if (!fs.existsSync(cliBin)) {
+    throw new Error(`에디터 CLI를 찾을 수 없습니다: ${cliBin}`);
+  }
+
+  return { bin: cliBin, args: [mapping.waitFlag] };
 }
 
-/** macOS `open -W -a <app>` 으로 에디터를 실행하고 종료를 대기 */
-function runEditor(app: string, filePath: string): Promise<void> {
+/** 에디터 CLI를 실행하고 탭이 닫힐 때까지 대기 */
+function runEditor(editorCli: { bin: string; args: string[] }, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("open", ["-W", "-a", app, filePath], {
+    const child = spawn(editorCli.bin, [...editorCli.args, filePath], {
       stdio: "inherit",
     });
 
     child.on("error", (err) => {
-      reject(new Error(`에디터 실행 실패 (${app}): ${err.message}`));
+      reject(new Error(`에디터 실행 실패 (${editorCli.bin}): ${err.message}`));
     });
 
     child.on("close", (code) => {
