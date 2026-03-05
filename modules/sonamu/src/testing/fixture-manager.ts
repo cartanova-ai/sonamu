@@ -372,8 +372,7 @@ export class FixtureManagerClass {
 
       return unique(fixtures, (f) => f.fixtureId);
     } finally {
-      await targetDB.destroy();
-      await sourceDB.destroy();
+      await Promise.allSettled([targetDB.destroy(), sourceDB.destroy()]);
     }
   }
 
