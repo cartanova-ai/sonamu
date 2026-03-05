@@ -18,9 +18,9 @@ export type CddTreeNode = {
   children?: CddTreeNode[];
 };
 
-/** contract/ 디렉터리 절대 경로 반환 (프로젝트 루트 기준) */
+/** contract/ 디렉터리 절대 경로 반환 (apiRootPath 기준) */
 function getContractDir(): string {
-  return path.join(path.dirname(Sonamu.apiRootPath), "contract");
+  return path.join(Sonamu.apiRootPath, "contract");
 }
 
 /** 경로가 contract/ 디렉터리 내부인지 검증 */
