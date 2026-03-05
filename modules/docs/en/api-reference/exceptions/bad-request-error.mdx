@@ -10,8 +10,8 @@ description: '400 Exception for Handling Invalid Requests'
 ```typescript
 class BadRequestException extends SoException {
   constructor(
-    public message = "Bad Request",
-    public payload?: unknown,
+    message: LocalizedString,
+    payload?: unknown,
   );
 }
 ```
@@ -138,8 +138,8 @@ async transferMoney(
 ```typescript
 @upload()
 async uploadProfileImage(ctx: Context) {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
 
   if (!file) {
     throw new BadRequestException("File is required");

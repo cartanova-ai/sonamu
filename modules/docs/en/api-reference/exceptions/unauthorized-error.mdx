@@ -10,8 +10,8 @@ description: '401 exception for authentication and authorization handling'
 ```typescript
 class UnauthorizedException extends SoException {
   constructor(
-    public message = "Unauthorized",
-    public payload?: unknown,
+    message: LocalizedString,
+    payload?: unknown,
   );
 }
 ```

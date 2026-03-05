@@ -11,7 +11,7 @@ description: 'Sonamu 예외 처리 시스템 기본 클래스'
 abstract class SoException extends Error {
   constructor(
     public readonly statusCode: number,
-    public message: string,
+    public message: LocalizedString,
     public payload?: unknown,
   );
 }
@@ -30,10 +30,10 @@ HTTP 응답 상태 코드입니다. 예외가 발생하면 Fastify가 이 코드
 ### message
 
 ```typescript
-message: string
+message: LocalizedString
 ```
 
-예외 메시지입니다. 클라이언트에게 전달되는 오류 설명입니다.
+예외 메시지입니다. `LocalizedString` 타입으로, Sonamu의 다국어 지원 시스템을 통해 지역화된 문자열을 전달합니다.
 
 ### payload
 
