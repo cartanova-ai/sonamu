@@ -242,4 +242,8 @@ export default {
   "cdd.editing": "편집 중...",
   "cdd.editSuccess": "편집이 완료되었습니다.",
   "cdd.editError": "편집 중 오류가 발생했습니다.",
+  "cdd.searchPlaceholder": "문서 검색...",
+  "cdd.documentCount": "{count}개의 문서",
+  "cdd.selectDocument": "문서를 선택하세요",
+  "cdd.selectDocumentDesc": "좌측 트리에서 문서를 선택하면 상세 정보가 표시됩니다.",
 } as const;

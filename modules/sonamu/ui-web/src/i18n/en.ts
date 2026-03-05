@@ -247,6 +247,10 @@ const en: Record<DictKey, Dictionary[string]> = {
   "cdd.editing": "Editing...",
   "cdd.editSuccess": "Edit completed successfully.",
   "cdd.editError": "An error occurred during editing.",
+  "cdd.searchPlaceholder": "Search documents...",
+  "cdd.documentCount": "{count} documents",
+  "cdd.selectDocument": "Select a document",
+  "cdd.selectDocumentDesc": "Select a document from the tree on the left to view details.",
 };
 
 export default en;

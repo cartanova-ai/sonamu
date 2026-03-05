@@ -82,6 +82,21 @@ export function getCddTree(): { exists: boolean; tree: CddTreeNode[] } {
   return { exists: true, tree };
 }
 
+/** JSON 파일의 전체 내용을 읽어 반환 */
+export function readContent(filePath: string): Record<string, unknown> {
+  assertInsideContractDir(filePath);
+
+  const contractDir = getContractDir();
+  const absPath = path.resolve(contractDir, filePath);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
+  }
+
+  const raw = fs.readFileSync(absPath, "utf-8");
+  return JSON.parse(raw) as Record<string, unknown>;
+}
+
 /** JSON 파일의 content 필드를 외부 에디터로 편집 */
 export async function editContent(
   filePath: string,

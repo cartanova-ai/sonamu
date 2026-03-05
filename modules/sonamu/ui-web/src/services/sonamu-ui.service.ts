@@ -645,6 +645,26 @@ export namespace SonamuUIService {
     });
   }
 
+  export function readCddContent(filePath: string): Promise<Record<string, unknown>> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/cdd/readContent`,
+      data: { filePath },
+    });
+  }
+
+  export function useReadCddContent(filePath: string | null) {
+    return useQuery({
+      queryKey: ["cdd", "readContent", filePath],
+      queryFn: ({ queryKey }) => {
+        const path = queryKey[2];
+        if (typeof path !== "string") throw new Error("filePath is required");
+        return readCddContent(path);
+      },
+      enabled: filePath !== null,
+    });
+  }
+
   export function editCddContent(
     filePath: string,
   ): Promise<{ success: boolean; filePath: string }> {
