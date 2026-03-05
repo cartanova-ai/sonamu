@@ -373,6 +373,7 @@ export function useSSEStream<T extends Record<string, any>>(
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectionIdRef = useRef(0);
   const handlersRef = useRef(handlers);
 
   // handlers를 ref로 관리해서 재연결 없이 업데이트
@@ -383,6 +384,8 @@ export function useSSEStream<T extends Record<string, any>>(
   // 연결 함수
   const connect = () => {
     if (!enabled) return;
+
+    const myConnectionId = ++connectionIdRef.current;
 
     try {
       // 기존 연결이 있으면 정리
@@ -404,6 +407,7 @@ export function useSSEStream<T extends Record<string, any>>(
       const eventSource = new EventSource(fullUrl, {
         headers: {
           "Accept-Language": getCurrentLocale(),
+          "Cookie": authClient.getCookie(),
         },
         credentials: "include",
       });
@@ -447,7 +451,7 @@ export function useSSEStream<T extends Record<string, any>>(
         setState((prev) => {
           if (prev.retryCount < retry) {
             retryTimeoutRef.current = setTimeout(() => {
-              // cleanup으로 정리되지 않았는지 확인
+              if (connectionIdRef.current !== myConnectionId) return;
               if (retryTimeoutRef.current !== null) {
                 setState((inner) => ({
                   ...inner,
@@ -553,7 +557,7 @@ export function useSSEStream<T extends Record<string, any>>(
     }
 
     return () => {
-      // cleanup
+      connectionIdRef.current++;
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
