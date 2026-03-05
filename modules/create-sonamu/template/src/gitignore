@@ -61,5 +61,5 @@ Thumbs.db
 .slack-confirm-*
 
 # Claude
-.claude/skills/sonamu/
+.claude/skills/sonamu
 .claude/CLAUDE.md
