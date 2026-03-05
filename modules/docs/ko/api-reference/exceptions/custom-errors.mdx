@@ -14,10 +14,7 @@ Sonamu의 내장 예외 클래스 외에 프로젝트에 특화된 예외를 만
 import { SoException } from "sonamu";
 
 export class PaymentFailedException extends SoException {
-  constructor(
-    public message = "Payment Failed",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(402, message, payload);  // 402 Payment Required
   }
 }
@@ -64,10 +61,7 @@ async processPayment(orderId: number, paymentMethod: string) {
 import { SoException } from "sonamu";
 
 export class ForbiddenException extends SoException {
-  constructor(
-    public message = "Forbidden",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(403, message, payload);
   }
 }
@@ -107,19 +101,13 @@ async accessRestrictedResource(ctx: Context, resourceId: number) {
 import { SoException } from "sonamu";
 
 export class OutOfStockException extends SoException {
-  constructor(
-    public message = "Out of Stock",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(550, message, payload);  // 커스텀 상태 코드
   }
 }
 
 export class InsufficientStockException extends SoException {
-  constructor(
-    public message = "Insufficient Stock",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(551, message, payload);
   }
 }
@@ -176,10 +164,7 @@ async createOrder(
 import { SoException } from "sonamu";
 
 export class InvalidStateTransitionException extends SoException {
-  constructor(
-    public message = "Invalid State Transition",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(560, message, payload);
   }
 }
@@ -231,19 +216,13 @@ private getCancellationBlockReason(status: string): string {
 import { SoException } from "sonamu";
 
 export class RateLimitExceededException extends SoException {
-  constructor(
-    public message = "Rate Limit Exceeded",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(429, message, payload);  // 429 Too Many Requests
   }
 }
 
 export class QuotaExceededException extends SoException {
-  constructor(
-    public message = "Quota Exceeded",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(570, message, payload);
   }
 }
@@ -309,19 +288,13 @@ async sendEmail(
 import { SoException } from "sonamu";
 
 export class ExternalServiceException extends SoException {
-  constructor(
-    public message = "External Service Error",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(502, message, payload);  // 502 Bad Gateway
   }
 }
 
 export class ExternalServiceTimeoutException extends SoException {
-  constructor(
-    public message = "External Service Timeout",
-    public payload?: unknown,
-  ) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(504, message, payload);  // 504 Gateway Timeout
   }
 }
@@ -396,7 +369,7 @@ export class ValidationException extends SoException {
     );
   }
 
-  constructor(message: string, payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(400, message, payload);
   }
 }
@@ -436,7 +409,7 @@ import { SoException } from "sonamu";
 export class PaymentException extends SoException {
   constructor(
     statusCode: number,
-    message: string,
+    message: LocalizedString,
     payload?: unknown
   ) {
     super(statusCode, message, payload);
@@ -522,19 +495,19 @@ async processPayment(orderId: number, cardInfo: CardInfo) {
 ```typescript
 // src/exceptions/auth-exceptions.ts
 export class SessionExpiredException extends SoException {
-  constructor(message = "Session Expired", payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(401, message, payload);
   }
 }
 
 export class InvalidTokenException extends SoException {
-  constructor(message = "Invalid Token", payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(401, message, payload);
   }
 }
 
 export class PasswordMismatchException extends SoException {
-  constructor(message = "Password Mismatch", payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(401, message, payload);
   }
 }
@@ -543,13 +516,13 @@ export class PasswordMismatchException extends SoException {
 ```typescript
 // src/exceptions/resource-exceptions.ts
 export class ResourceLockedException extends SoException {
-  constructor(message = "Resource Locked", payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(423, message, payload);  // 423 Locked
   }
 }
 
 export class ResourceConflictException extends SoException {
-  constructor(message = "Resource Conflict", payload?: unknown) {
+  constructor(message: LocalizedString, payload?: unknown) {
     super(409, message, payload);  // 409 Conflict
   }
 }
