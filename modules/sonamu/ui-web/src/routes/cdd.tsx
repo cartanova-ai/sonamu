@@ -37,7 +37,7 @@ function CddPage() {
       {error && <div className="text-red-500">{SD("common.error")}</div>}
 
       {data && !data.exists && (
-        <div className="p-4 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-200">
+        <div className="p-4 rounded-md bg-amber-900/40 border border-amber-500/50 text-amber-100">
           {SD("cdd.noContractDir")}
         </div>
       )}
