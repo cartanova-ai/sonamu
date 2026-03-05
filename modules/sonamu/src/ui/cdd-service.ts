@@ -95,12 +95,7 @@ export async function editContent(
     throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
   }
 
-  const editorConfig = Sonamu.config.externalEditor;
-  if (!editorConfig) {
-    throw new Error(
-      "externalEditor 설정이 필요합니다. sonamu.config.ts에 externalEditor를 추가해주세요.",
-    );
-  }
+  const editorCommand = resolveEditor();
 
   const raw = fs.readFileSync(absPath, "utf-8");
   const json: Record<string, unknown> = JSON.parse(raw);
@@ -113,7 +108,7 @@ export async function editContent(
   fs.writeFileSync(tmpFilePath, content, "utf-8");
 
   try {
-    await runEditor(editorConfig.command, [...(editorConfig.args ?? []), tmpFilePath]);
+    await runEditor(editorCommand, tmpFilePath);
 
     const edited = fs.readFileSync(tmpFilePath, "utf-8");
     json.content = edited;
@@ -134,11 +129,28 @@ export async function editContent(
   }
 }
 
-/** 에디터 프로세스를 실행하고 종료를 대기 */
-function runEditor(command: string, args: string[]): Promise<void> {
+/** externalEditor 설정 → VISUAL → EDITOR 순으로 에디터 커맨드를 결정 */
+function resolveEditor(): string {
+  const config = Sonamu.config.externalEditor;
+  if (config) {
+    const parts = [config.command, ...(config.args ?? [])];
+    return parts.join(" ");
+  }
+  const envEditor = process.env.VISUAL ?? process.env.EDITOR;
+  if (envEditor) {
+    return envEditor;
+  }
+  throw new Error(
+    "에디터를 찾을 수 없습니다. sonamu.config.ts의 externalEditor 또는 EDITOR 환경변수를 설정해주세요.",
+  );
+}
+
+/** 셸을 통해 에디터를 실행하고 종료를 대기 */
+function runEditor(command: string, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(command, [filePath], {
       stdio: "inherit",
+      shell: true,
     });
 
     child.on("error", (err) => {
