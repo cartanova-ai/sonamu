@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { useMemo, useState } from "react";
+import Markdown from "react-markdown";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import FileCodeIcon from "~icons/lucide/file-code";
@@ -309,10 +310,17 @@ function SelectedNodeDetail({ node, onRefetch }: { node: CddTreeNode; onRefetch:
           <div className="text-center py-8 text-gray-400 text-sm">{SD("common.loading")}</div>
         )}
         {content !== null && (
-          <div className="max-w-4xl mx-auto">
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
-              {content}
-            </pre>
+          <div
+            className={classNames(
+              "max-w-4xl mx-auto prose prose-sm prose-gray",
+              "prose-headings:text-gray-900",
+              "prose-h2:border-b prose-h2:border-gray-200 prose-h2:pb-1.5",
+              "prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-gray-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none",
+              "prose-pre:bg-gray-800 prose-pre:rounded-lg",
+              "prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline",
+            )}
+          >
+            <Markdown>{content}</Markdown>
           </div>
         )}
         {!isLoading && content === null && data && (
