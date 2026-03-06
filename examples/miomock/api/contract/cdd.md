@@ -10,7 +10,7 @@ This project follows Contract-Driven Development (CDD). All development work mus
   - Code must always follow Spec.
   - Spec must always follow Contract.
 - Even if a better structure appears during implementation, do not change code first. Update Spec first, then update code.
-- Contract is human-managed. AI must not modify Contract files arbitrarily.
+- Contract is human-managed. AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
 
 ## Project Structure
 
@@ -311,7 +311,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 ## Prohibitions
 
-- AI must not modify Contract files arbitrarily. If updates are needed, propose to user.
+- AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
 - AI must not delete Spec files arbitrarily. Deletion is user decision only.
 - Do not write code without checking Contract and Spec first.
 - Do not omit or reorder fixed sections in Spec.

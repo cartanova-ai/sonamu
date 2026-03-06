@@ -14,7 +14,7 @@ Inherits root rules from `../../AGENTS.md`.
 - Implementation gate (mandatory): after code changes, verify code/test changes match confirmed Contract/Spec.
   - If mismatch exists, fix code first to match Spec.
   - If structural/interface changes are needed, update Spec first, then adjust code.
-- `contract/contract.md` is human-owned SSoT and read-only for AI; propose updates to user instead of editing it directly.
+- Contract files are human-owned SSoT. AI must not modify them without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
 
 ## Structure
 - `examples/miomock/api`: backend API and integration tests.
