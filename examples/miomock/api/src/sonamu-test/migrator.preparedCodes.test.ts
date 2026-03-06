@@ -1125,4 +1125,77 @@ describe("Migrator - preparedCodes 생성", () => {
       expect(createJoinTableCode?.formatted).not.toContain('table.integer("category_id")');
     });
   });
+
+  // SON-395 issue
+  describe("배열 타입 컬럼 length 처리", () => {
+    test("string[] + length 컬럼 추가 시 varchar(N)[] 코드가 생성되어야 한다", async () => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            name: "tags",
+            type: "string[]",
+            length: 500,
+            nullable: true,
+            desc: "태그 배열",
+          },
+        ],
+      }));
+
+      const status = await migrator.getStatus();
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain(
+        'table.specificType("tags", "varchar(500)[]").nullable()',
+      );
+      expect(alterCode?.formatted).not.toContain('"text[]"');
+    });
+
+    test("string[] + length 없는 컬럼 추가 시 text[] 코드가 생성되어야 한다", async () => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            name: "labels",
+            type: "string[]",
+            nullable: true,
+            desc: "라벨 배열",
+          },
+        ],
+      }));
+
+      const status = await migrator.getStatus();
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain('table.specificType("labels", "text[]").nullable()');
+      expect(alterCode?.formatted).not.toContain("varchar");
+    });
+
+    test("integer[] 컬럼 추가 시 integer[] 코드가 생성되어야 한다", async () => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            name: "scores",
+            type: "integer[]",
+            nullable: false,
+            desc: "점수 배열",
+          },
+        ],
+      }));
+
+      const status = await migrator.getStatus();
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain(
+        'table.specificType("scores", "integer[]").notNullable()',
+      );
+    });
+  });
 });

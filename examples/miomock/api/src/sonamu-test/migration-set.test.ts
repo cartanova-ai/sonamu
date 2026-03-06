@@ -235,6 +235,57 @@ describe("migration-set.ts", () => {
       });
     });
 
+    describe("Array types", () => {
+      test("_varchar(500) -> string[] with length", () => {
+        const col = {
+          udt_name: "_varchar",
+          character_maximum_length: 500,
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string[]", length: 500 });
+      });
+
+      test("_varchar(no length) -> string[] without length", () => {
+        const col = {
+          udt_name: "_varchar",
+          character_maximum_length: null,
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string[]" });
+        expect(result).not.toHaveProperty("length");
+      });
+
+      test("_text -> string[] without length", () => {
+        const col = {
+          udt_name: "_text",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string[]" });
+        expect(result).not.toHaveProperty("length");
+      });
+
+      test("_int4 -> integer[]", () => {
+        const col = {
+          udt_name: "_int4",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "integer[]" });
+      });
+
+      test("_bool -> boolean[]", () => {
+        const col = {
+          udt_name: "_bool",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "boolean[]" });
+      });
+    });
+
     describe("Numeric types", () => {
       test("numeric(10, 2) -> numberOrNumeric", () => {
         const col = {

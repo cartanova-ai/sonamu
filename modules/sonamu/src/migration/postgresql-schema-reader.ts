@@ -223,7 +223,13 @@ class PostgreSQLSchemaReaderClass {
         c.column_name,
         c.data_type,
         c.udt_name,
-        c.character_maximum_length,
+        COALESCE(
+          c.character_maximum_length,
+          CASE WHEN c.data_type = 'ARRAY' AND a.atttypmod > 0
+            THEN a.atttypmod - 4
+            ELSE NULL
+          END
+        ) AS character_maximum_length,
         COALESCE(c.datetime_precision, c.numeric_precision) AS precision,
         c.numeric_scale,
         c.is_nullable,
