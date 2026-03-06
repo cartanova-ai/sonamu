@@ -95,9 +95,23 @@ A feature-level technical document derived from Contract. AI can create and upda
 
 `content` fixed sections:
 
-`Summary -> Features -> Modules/Components -> Interfaces -> Data Flow -> Error Handling -> Technical Constraints`
+```
+Summary
+Features
+  {feature-name-1}
+    Modules/Components
+    Interfaces
+    Data Flow
+    Error Handling
+    Technical Constraints
+  {feature-name-2}
+    ...
+```
 
-- `Features` section is **mandatory**. It lists all feature names that this Spec implements. Each feature name must correspond to a Contract `Features/Capabilities` item.
+- `Summary`: overview of the entire Spec scope.
+- `Features`: lists all feature names this Spec implements. Each name must correspond to a Contract `Features/Capabilities` item.
+- Each feature has its own subsections: `Modules/Components`, `Interfaces`, `Data Flow`, `Error Handling`, `Technical Constraints`. If a subsection is empty, write `N/A`.
+- Shared infrastructure (e.g. common entities, shared config) that spans multiple features may be described once in the first feature that introduces it, and referenced from subsequent features.
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
 
@@ -276,9 +290,9 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 ### Spec authoring principles
 
-- Include all fixed sections in `content`. If empty, write `"N/A"`.
-- In `Summary`, explicitly state which Contract feature is implemented.
-- `Features` section must list all feature names this Spec implements. Each name must match a Contract `Features/Capabilities` item.
+- `Summary` must state the overall scope of the Spec.
+- `Features` section must list all feature names. Each name must match a Contract `Features/Capabilities` item.
+- Each feature must have its own subsections (`Modules/Components`, `Interfaces`, `Data Flow`, `Error Handling`, `Technical Constraints`). If a subsection is empty, write `N/A`.
 - In `Interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
