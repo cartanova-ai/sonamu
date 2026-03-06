@@ -96,7 +96,7 @@ async function verifyClean() {
   exec("pnpm --filter miomock-api sonamu migrate run");
   console.log("✓ Migration completed\n");
 
-  exec("pnpm --filter miomock-api fixture sync");
+  exec("pnpm --filter miomock-api sonamu fixture sync");
   console.log("✓ Fixture sync completed\n");
 
   exec("pnpm --filter miomock-api test");
@@ -138,7 +138,7 @@ async function verifyFast() {
     exec("pnpm --filter miomock-api sonamu migrate run");
     console.log("✓ Migration completed\n");
 
-    exec("pnpm --filter miomock-api fixture sync");
+    exec("pnpm --filter miomock-api sonamu fixture sync");
     console.log("✓ Fixture sync completed\n");
 
     exec("pnpm --filter miomock-api test");
@@ -170,7 +170,7 @@ async function verifyFast() {
   exec("pnpm --filter miomock-api sonamu migrate run");
   console.log("✓ Migration completed\n");
 
-  exec("pnpm --filter miomock-api fixture sync");
+  exec("pnpm --filter miomock-api sonamu fixture sync");
   console.log("✓ Fixture sync completed\n");
 
   exec("pnpm --filter miomock-api test");
