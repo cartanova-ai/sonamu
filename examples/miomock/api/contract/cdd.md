@@ -63,9 +63,11 @@ A business-logic document that non-developers can read. AI must treat this file 
 ```json
 {
   "lastModified": "YYYY-MM-DD",
-  "content": "Markdown body"
+  "content": ["## Overview", "", "Markdown lines as string array", ...]
 }
 ```
+
+`content` is a `string[]` where each element is one line of Markdown.
 
 `content` fixed sections:
 
@@ -89,7 +91,7 @@ A feature-level technical document derived from Contract. AI can create and upda
       "status": "done"
     }
   ],
-  "content": "Markdown body"
+  "content": ["## Summary", "", "Markdown lines as string array", ...]
 }
 ```
 
