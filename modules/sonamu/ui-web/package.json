@@ -13,7 +13,6 @@
   "type": "module",
   "dependencies": {
     "@ai-sdk/react": "catalog:",
-    "@uiw/react-json-view": "catalog:",
     "@dagrejs/dagre": "catalog:",
     "@dnd-kit/core": "catalog:",
     "@dnd-kit/utilities": "catalog:",
@@ -21,6 +20,7 @@
     "@sonamu-kit/react-components": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "@uiw/react-json-view": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@xyflow/react": "catalog:",
     "axios": "catalog:",
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@iconify/json": "catalog:",
+    "@tailwindcss/typography": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",
     "@tanstack/router-plugin": "catalog:",

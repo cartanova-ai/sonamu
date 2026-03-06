@@ -84,6 +84,7 @@ catalog:
   '@swc/cli': ^0.7.8
   '@swc/core': ^1.13.5
   '@tailwindcss/postcss': ^4.0.0
+  '@tailwindcss/typography': ^0.5.19
   '@tailwindcss/vite': ^4.1.17
   '@tanstack/react-query': ^5.90.12
   '@tanstack/react-query-devtools': ^5.91.1

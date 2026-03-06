@@ -11,6 +11,8 @@
 @source "../../../react-components/src/**/*.tsx";
 @source "../../../react-components/src/**/*.ts";
 
+@plugin "@tailwindcss/typography";
+
 /* 커스텀 테마 변수 (App.scss에서 이전) */
 @theme {
   /* 색상 */
