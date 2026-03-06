@@ -296,7 +296,21 @@ function SelectedNodeDetail({ node, onRefetch }: { node: CddTreeNode; onRefetch:
               <div key={key} className="flex items-baseline gap-3 text-sm">
                 <span className="text-gray-400 font-medium min-w-[100px] shrink-0">{key}</span>
                 <span className="text-gray-700">
-                  {Array.isArray(value) ? value.join(", ") : String(value)}
+                  {Array.isArray(value)
+                    ? value.some((v) => typeof v === "object" && v !== null)
+                      ? value.map((item, i) => {
+                          const obj = item as Record<string, unknown>;
+                          const parts = Object.entries(obj).map(([k, v]) =>
+                            Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`,
+                          );
+                          return (
+                            <span key={i} className={i > 0 ? "block" : ""}>
+                              {parts.join(" | ")}
+                            </span>
+                          );
+                        })
+                      : value.join(", ")
+                    : String(value)}
                 </span>
               </div>
             ))}
