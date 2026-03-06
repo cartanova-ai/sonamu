@@ -52,6 +52,9 @@ pnpm sonamu test src/application/user/user.test.ts --pattern "findById"
 
 # Show trace information
 pnpm sonamu test --traces
+
+# Check DevRunner status
+pnpm sonamu test --status
 ```
 
 ### Options
@@ -60,6 +63,7 @@ pnpm sonamu test --traces
 |--------|-------|-------------|
 | `--pattern <name>` | `-p <name>` | Filter tests by name pattern |
 | `--traces` | `-t` | Show trace information collected during tests |
+| `--status` | `-s` | Check DevRunner status and exit |
 
 <Tip>
 You can specify multiple file paths:
@@ -143,9 +147,13 @@ sequenceDiagram
 
 ## Status Check
 
-To check the DevRunner status on the dev server, use the `/__test__/status` endpoint:
+You can check DevRunner status using the `--status` flag in the CLI or by sending a request directly to the HTTP endpoint:
 
 ```bash
+# Check via CLI
+pnpm sonamu test --status
+
+# Or request the HTTP endpoint directly
 curl http://localhost:3000/__test__/status
 ```
 
@@ -153,7 +161,8 @@ curl http://localhost:3000/__test__/status
 {
   "ready": true,
   "running": false,
-  "lastRunAt": "2026-02-23T10:30:00.000Z"
+  "lastRunAt": "2026-02-23T10:30:00.000Z",
+  "sseAvailable": true
 }
 ```
 
@@ -162,6 +171,7 @@ curl http://localhost:3000/__test__/status
 | `ready` | Whether the Vitest instance is ready |
 | `running` | Whether tests are currently running |
 | `lastRunAt` | Timestamp of the last test run |
+| `sseAvailable` | Whether SSE (Server-Sent Events) real-time streaming is available |
 
 ## Troubleshooting
 
