@@ -81,13 +81,23 @@ A feature-level technical document derived from Contract. AI can create and upda
   "status": "draft | in-progress | done",
   "sources": ["src/auth/login.ts"],
   "contracts": ["./auth.contract.json"],
+  "revisions": [
+    {
+      "id": "rev-001",
+      "date": "YYYY-MM-DD",
+      "features": ["feature-name-A", "feature-name-B"],
+      "status": "done"
+    }
+  ],
   "content": "Markdown body"
 }
 ```
 
 `content` fixed sections:
 
-`Summary -> Modules/Components -> Interfaces -> Data Flow -> Error Handling -> Technical Constraints`
+`Summary -> Features -> Modules/Components -> Interfaces -> Data Flow -> Error Handling -> Technical Constraints`
+
+- `Features` section is **mandatory**. It lists all feature names that this Spec implements. Each feature name must correspond to a Contract `Features/Capabilities` item.
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
 
@@ -98,6 +108,34 @@ A feature-level technical document derived from Contract. AI can create and upda
 | `draft` | Spec is being written, not confirmed yet | Initial state |
 | `in-progress` | Spec confirmed, implementation in progress | After all Spec sections are confirmed |
 | `done` | Implementation complete and consistency validation passed | After code passes consistency check against Spec |
+
+The top-level `status` is the aggregate of all revisions: it is `done` only when every revision is `done`.
+
+### `revisions` field
+
+Tracks incremental feature additions to a Spec. Each revision records which features were added and their implementation status.
+
+```json
+{
+  "id": "rev-001",
+  "date": "YYYY-MM-DD",
+  "features": ["feature-name"],
+  "status": "draft | in-progress | done"
+}
+```
+
+- `id`: sequential identifier (`rev-001`, `rev-002`, ...).
+- `date`: date the revision was created.
+- `features`: list of feature names added in this revision. Must match entries in the `Features` section of `content`.
+- `status`: follows the same semantics as the top-level `status` field.
+
+When adding a new feature to an existing Spec:
+1. Add a new revision entry with `status: "draft"`.
+2. Add the feature name to the `Features` section in `content`.
+3. Update relevant `content` sections with the new feature's details.
+4. Set the top-level `status` to the lowest status among all revisions.
+5. Progress the revision `status` independently through `draft -> in-progress -> done`.
+6. When all revisions reach `done`, set the top-level `status` to `done`.
 
 ### Spec detail level
 
@@ -240,9 +278,11 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 - Include all fixed sections in `content`. If empty, write `"N/A"`.
 - In `Summary`, explicitly state which Contract feature is implemented.
+- `Features` section must list all feature names this Spec implements. Each name must match a Contract `Features/Capabilities` item.
 - In `Interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
+- When adding features to an existing Spec, add a new `revisions` entry instead of modifying existing revision entries.
 
 ### Reference path rules
 
