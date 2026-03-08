@@ -39,6 +39,7 @@ export class Serve extends BaseCommand {
   #intentionalExits = new WeakSet<ExecaChildProcess<string>>();
   #restartTimer?: NodeJS.Timeout;
   #crashResetTimer?: NodeJS.Timeout;
+  #keypressListener?: (_str: string, key: Key) => void;
   #isClosing = false;
   #consecutiveCrashCount = 0;
   readonly #crashRestartDelayMs = 1000;
@@ -333,7 +334,7 @@ export class Serve extends BaseCommand {
     process.stdin.setRawMode(true);
     process.stdin.resume();
 
-    process.stdin.on("keypress", (_str: string, key: Key) => {
+    this.#keypressListener = (_str: string, key: Key) => {
       // Ctrl+C는 종료 처리
       if (key.ctrl && key.name === "c") {
         this.close().then(() => process.exit());
@@ -344,7 +345,9 @@ export class Serve extends BaseCommand {
       this.#keybindingManager.processKeyPressFromReadline(key, (binding) => {
         this.#executeActions(binding);
       });
-    });
+    };
+
+    process.stdin.on("keypress", this.#keypressListener);
 
     const keyHints = keyBindings
       .map((b) => `${this.colors.cyan(b.keybinding)} ${b.description}`)
@@ -396,6 +399,19 @@ export class Serve extends BaseCommand {
     this.#clearRestartTimer();
     this.#clearCrashResetTimer();
     this.#keybindingManager.cleanup();
+    this.#cleanupStdin();
     this.#stopHTTPServer();
+  }
+
+  /**
+   * stdin keypress 리스너 및 raw mode를 정리합니다
+   */
+  #cleanupStdin() {
+    if (this.#keypressListener && process.stdin.isTTY) {
+      process.stdin.removeListener("keypress", this.#keypressListener);
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+      this.#keypressListener = undefined;
+    }
   }
 }
