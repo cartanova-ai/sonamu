@@ -8,12 +8,24 @@
     "checksum": "d61f746a325b5dc5b1eea7408817112523b68693"
   },
   {
+    "path": "src/application/audit-log/audit-log.entity.json",
+    "checksum": "58af69ad4b638743356be851b243b9c63dfff6e9"
+  },
+  {
+    "path": "src/application/audit-log/audit-log.model.ts",
+    "checksum": "4daa0fdfedfa037e45eb713427bcbbbd24aa32b4"
+  },
+  {
+    "path": "src/application/audit-log/audit-log.types.ts",
+    "checksum": "a3e588c8ea15382fe3ee9ffe31261d67b68ef3e7"
+  },
+  {
     "path": "src/application/company/company.entity.json",
     "checksum": "5135d9a42e8bd366462e1c52d7ace07757550600"
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "e2a54637f1ba38911e8dbec3d013933b421a4322"
+    "checksum": "89f01321c934b8386e3dfe0449f75661b665a17a"
   },
   {
     "path": "src/application/company/company.types.ts",
@@ -25,7 +37,7 @@
   },
   {
     "path": "src/application/department/department.model.ts",
-    "checksum": "ed6ba573f4b247e73613993aa76d386daf3e875b"
+    "checksum": "cd5c6c1a55ccb8b3f06dccc6d5e40fb7d1e4f13a"
   },
   {
     "path": "src/application/department/department.types.ts",
@@ -49,7 +61,7 @@
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "00a4fbe1ad58a64a3e6ded801366f616c9c0b215"
+    "checksum": "125d87ef6ce52097c41be560ea8191435152d43e"
   },
   {
     "path": "src/application/employee/employee.types.ts",
@@ -68,6 +80,18 @@
     "checksum": "4ab4a3010613b1a2391bb5db30253cd5b802521e"
   },
   {
+    "path": "src/application/milestone/milestone.entity.json",
+    "checksum": "7f554d7a31600f0a11e34ef1570a0cdd703f1f2d"
+  },
+  {
+    "path": "src/application/milestone/milestone.model.ts",
+    "checksum": "c4e583f255f9b8b2a616cd62449ad94995909583"
+  },
+  {
+    "path": "src/application/milestone/milestone.types.ts",
+    "checksum": "71f2488a081534f5511cab64601fdb2ab10732fb"
+  },
+  {
     "path": "src/application/passkey/passkey.entity.json",
     "checksum": "fedf1f0edbe164f6fe764bfa1f906d7919401500"
   },
@@ -77,11 +101,11 @@
   },
   {
     "path": "src/application/project/project.entity.json",
-    "checksum": "272bf925fed28698524e7ff5a9f37774c2eaeb26"
+    "checksum": "8a1cf72e80f3c61a3e47d5d8d046083288705f52"
   },
   {
     "path": "src/application/project/project.model.ts",
-    "checksum": "682b3e93f7e494331d7de6c43b761652f4bfa71b"
+    "checksum": "c117844e43829c44f3f50a3c7c11ae5cda04917a"
   },
   {
     "path": "src/application/project/project.types.ts",
@@ -97,7 +121,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "6147fa8aefa48fa1046f83e02be8ab533b97f11d"
+    "checksum": "c6453ca30d4cdc52387ae11265fe2fc1b5d94d0d"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
@@ -117,7 +141,7 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "e0f97204fe89c8daae93b3082c7c621d45ce0701"
+    "checksum": "e5bae69fc74172d6d44fe156e9c6a164da530efb"
   },
   {
     "path": "src/application/tag/tag.types.ts",
@@ -161,7 +185,7 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "5d87629f098f5c2d0cc1bf1bd36a516a60dd0be6"
+    "checksum": "1b46903b1de1462ae9e82f1a37276c249f47edff"
   },
   {
     "path": "src/i18n/ja.ts",
@@ -169,11 +193,11 @@
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "804bc44dcc2c7cc43e3c124feb79c4a196db3cad"
+    "checksum": "e5abc71cd1fccb4d22cc6142d21b03556d017a08"
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "68682457756166fd172fec0ee3ebf0598a15e016"
+    "checksum": "009c6efd42dced3944f88f27569e05f4060548d1"
   },
   {
     "path": "src/sonamu.config.ts",

@@ -1,0 +1,63 @@
+{
+  "id": "Milestone",
+  "table": "milestones",
+  "title": "마일스톤",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "date",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    {
+      "type": "relation",
+      "name": "project",
+      "with": "Project",
+      "desc": "프로젝트",
+      "relationType": "BelongsToOne",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "useConstraint": true
+    },
+    { "name": "name", "type": "string", "length": 255, "desc": "마일스톤명" },
+    {
+      "name": "description",
+      "type": "string",
+      "nullable": true,
+      "desc": "설명"
+    },
+    { "name": "due_date", "type": "date", "desc": "마감일" },
+    {
+      "name": "completed_at",
+      "type": "date",
+      "nullable": true,
+      "desc": "완료일시"
+    }
+  ],
+  "indexes": [
+    {
+      "type": "index",
+      "name": "milestones_project_id_index",
+      "columns": [{ "name": "project_id" }]
+    }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "project.id",
+      "project.name",
+      "project.status",
+      "project.deadline",
+      "name",
+      "description",
+      "due_date",
+      "completed_at"
+    ]
+  },
+  "enums": {
+    "MilestoneOrderBy": { "id-desc": "ID최신순", "due_date-asc": "마감일순" },
+    "MilestoneSearchField": { "id": "ID" }
+  }
+}
