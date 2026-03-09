@@ -9,8 +9,10 @@ This project follows Contract-Driven Development (CDD). All development work mus
 - Authority flows in this order: **Contract -> Spec -> Code**.
   - Code must always follow Spec.
   - Spec must always follow Contract.
+- **1 Contract Feature = 1 Spec File**. Each feature in Contract's `Features/Capabilities` maps to exactly one Spec file. Shared infrastructure across features may be separated into `shared/*.spec.json`.
 - Even if a better structure appears during implementation, do not change code first. Update Spec first, then update code.
 - Contract is human-managed. AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
+- Code-document consistency is verified by AI automated validation (1st pass) and review checklist (2nd pass for feature mapping/coverage).
 
 ## Project Structure
 
@@ -21,7 +23,9 @@ project/
 |  |- {domain}/
 |  |  |- main.contract.json       # domain representative contract
 |  |  |- {sub-contract}.contract.json
-|  |  |- {feature}.spec.json      # same folder as related Contract
+|  |  |- {feature-key}.spec.json  # 1 feature = 1 spec file
+|  |- shared/
+|  |  |- {shared-infra}.spec.json # cross-feature shared infrastructure
 |  \- ...
 |- src/
 |  \- ...
@@ -37,13 +41,16 @@ project/
 |  |- auth/
 |  |  |- main.contract.json
 |  |  |- login.contract.json
-|  |  |- token.contract.json
-|  |  |- login.spec.json
-|  |  \- session.spec.json
-|  \- payment/
-|     |- main.contract.json
-|     |- checkout.contract.json
-|     \- checkout.spec.json
+|  |  |- login.spec.json           # login feature spec (1:1)
+|  |  |- session.spec.json         # session feature spec (1:1)
+|  |  \- password-reset.spec.json  # password-reset feature spec (1:1)
+|  |- payment/
+|  |  |- main.contract.json
+|  |  |- checkout.contract.json
+|  |  |- checkout.spec.json        # checkout feature spec (1:1)
+|  |  \- refund.spec.json          # refund feature spec (1:1)
+|  \- shared/
+|     \- auth-session.spec.json    # shared session infrastructure
 |- src/
 |  |- auth/login.ts
 |  |- auth/login.test.ts
@@ -52,7 +59,7 @@ project/
 ```
 
 - Contract: `*.contract.json` - folder-based tree structure, with `main.contract.json` as the folder representative.
-- Spec: `*.spec.json` - flat per-folder structure (no extra layering), placed in the same folder as related Contract files.
+- Spec: `*.spec.json` - one file per feature, placed in the same folder as related Contract files. The filename is the feature key (`login.spec.json` -> feature key `login`).
 
 ## Document Model
 
@@ -69,53 +76,86 @@ A business-logic document that non-developers can read. AI must treat this file 
 
 `content` is a `string[]` where each element is one line of Markdown.
 
-`content` fixed sections:
+`content` fixed sections (compliance verified via review checklist):
 
 `Overview -> Domain Glossary -> Features/Capabilities -> User Roles/Actors -> Business Rules/Constraints -> Edge Cases`
 
 ### Spec (`.spec.json`)
 
-A feature-level technical document derived from Contract. AI can create and update Spec files. Deletion is user decision only.
+A feature-level technical document derived from Contract. Each file represents exactly one feature. AI can create and update Spec files. Deletion requires user approval.
 
 ```json
 {
+  "schemaVersion": 1,
+  "summary": "Login processing and session issuance",
+  "description": [
+    "Validates user credentials and issues JWT-based sessions.",
+    "Includes password retry limit and account lockout policy."
+  ],
+  "acceptanceCriteria": [
+    "Valid email/password login returns a JWT token",
+    "5 wrong password attempts locks account for 30 minutes",
+    "Expired session request returns 401 response"
+  ],
   "lastModified": "YYYY-MM-DD",
   "status": "draft | in-progress | done",
-  "sources": ["src/auth/login.ts"],
+  "sources": ["src/auth/login.ts", "src/auth/login.test.ts"],
   "contracts": ["./auth.contract.json"],
-  "revisions": [
-    {
-      "id": "rev-001",
-      "date": "YYYY-MM-DD",
-      "features": ["feature-name-A", "feature-name-B"],
-      "status": "done"
-    }
+  "dependsOnSpecs": ["./session.spec.json"],
+  "modules": {
+    "LoginService": "Handles login processing",
+    "SessionManager": "Manages sessions"
+  },
+  "interfaces": {
+    "LoginService.authenticate()": "Performs authentication",
+    "LoginService.validate()": "Validates input"
+  },
+  "dataFlow": [
+    "1. Client -> LoginService.validate(): validate email/password input",
+    "2. LoginService.validate() -> LoginService.authenticate(): pass validated credentials",
+    "3. LoginService.authenticate() -> Database: query user record and compare password hash",
+    "4. LoginService.authenticate() -> SessionManager: request session creation on auth success",
+    "5. SessionManager -> Redis: store Refresh Token in whitelist",
+    "6. SessionManager -> Client: return Access Token + Refresh Token"
   ],
-  "content": ["## Summary", "", "Markdown lines as string array", ...]
+  "errorHandling": {
+    "InvalidCredentialsError": "Wrong password",
+    "AccountLockedError": "Account locked"
+  },
+  "constraints": ["Session timeout: 30 min", "Login retry limit: 5 attempts"]
 }
 ```
 
-`content` fixed sections:
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schemaVersion` | `number` | Y | Schema version |
+| `summary` | `string` | Y | One-line feature summary |
+| `description` | `string[]` | Y | Detailed feature description |
+| `acceptanceCriteria` | `string[]` | Y | Completion criteria (verifiable conditions) |
+| `lastModified` | `string` | Y | Last modified date (YYYY-MM-DD) |
+| `status` | `string` | Y | `"draft"` / `"in-progress"` / `"done"` |
+| `sources` | `string[]` | Y | Implementation/test files (relative to project root) |
+| `contracts` | `string[]` | Y | Referenced Contract files (relative to Spec file) |
+| `dependsOnSpecs` | `string[]` | N | Dependent Spec files (relative to Spec file) |
+| `modules` | `Record<string, string>` | Y | Module structure (key: module name, value: role) |
+| `interfaces` | `Record<string, string>` | Y | Functions/APIs (key: function name, value: description) |
+| `dataFlow` | `string[]` | Y | Inter-module data flow |
+| `errorHandling` | `Record<string, string>` | Y | Error handling (key: error name, value: trigger condition) |
+| `constraints` | `string[]` | Y | Technical constraints |
 
-```
-Summary
-Features
-  {feature-name-1}
-    Modules/Components
-    Interfaces
-    Data Flow
-    Error Handling
-    Technical Constraints
-  {feature-name-2}
-    ...
-```
-
-- `Summary`: overview of the entire Spec scope.
-- `Features`: lists all feature names this Spec implements. Each name must correspond to a Contract `Features/Capabilities` item.
-- Each feature has its own subsections: `Modules/Components`, `Interfaces`, `Data Flow`, `Error Handling`, `Technical Constraints`. If a subsection is empty, write `N/A`.
-- Shared infrastructure (e.g. common entities, shared config) that spans multiple features may be described once in the first feature that introduces it, and referenced from subsequent features.
+**Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
+
+### Contract-Spec linking
+
+Contract is not extended as a structural source of feature keys. **Spec references Contract unidirectionally.**
+
+1. **Spec filename = feature key**: `login.spec.json` -> `login`
+2. **`contracts` field** points to referenced Contract files
+3. **`summary`/`description`** describes which Contract feature this Spec implements (human-readable)
+4. Duplicate feature keys within the same Contract boundary are not allowed
+5. Renaming a Spec file = changing the feature key
 
 ### `status` field
 
@@ -123,35 +163,21 @@ Features
 |---|---|---|
 | `draft` | Spec is being written, not confirmed yet | Initial state |
 | `in-progress` | Spec confirmed, implementation in progress | After all Spec sections are confirmed |
-| `done` | Implementation complete and consistency validation passed | After code passes consistency check against Spec |
+| `done` | Implementation complete, consistency validation passed, all `acceptanceCriteria` met | After code passes consistency check against Spec |
 
-The top-level `status` is the aggregate of all revisions: it is `done` only when every revision is `done`.
+**Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `in-progress`.
 
-### `revisions` field
+### `acceptanceCriteria` field
 
-Tracks incremental feature additions to a Spec. Each revision records which features were added and their implementation status.
+Conditions that must be met for this Spec's implementation to be considered "done". AI uses these as a checklist during consistency validation.
 
-```json
-{
-  "id": "rev-001",
-  "date": "YYYY-MM-DD",
-  "features": ["feature-name"],
-  "status": "draft | in-progress | done"
-}
-```
+**Authoring rules**:
+- Each item must be a verifiable, specific condition. Vague expressions like "should work well" are not allowed.
+- Include conditions derived from Contract's business rules and Edge Cases.
+- Conditions derived from `constraints` and `errorHandling` may also be included.
+- Recommended format: "When X, then Y" (input-result).
 
-- `id`: sequential identifier (`rev-001`, `rev-002`, ...).
-- `date`: date the revision was created.
-- `features`: list of feature names added in this revision. Must match entries in the `Features` section of `content`.
-- `status`: follows the same semantics as the top-level `status` field.
-
-When adding a new feature to an existing Spec:
-1. Add a new revision entry with `status: "draft"`.
-2. Add the feature name to the `Features` section in `content`.
-3. Update relevant `content` sections with the new feature's details.
-4. Set the top-level `status` to the lowest status among all revisions.
-5. Progress the revision `status` independently through `draft -> in-progress -> done`.
-6. When all revisions reach `done`, set the top-level `status` to `done`.
+**Validation usage**: When transitioning `status` to `"done"`, AI verifies all items are satisfied in code. If any item is unmet, `"done"` transition is blocked.
 
 ### Spec detail level
 
@@ -162,6 +188,16 @@ When adding a new feature to an existing Spec:
 
 - `contracts` field: relative path from the Spec file (e.g. `"./payment.contract.json"`).
 - `sources` field: relative path from the project root (e.g. `"src/auth/login.ts"`).
+- `dependsOnSpecs` field: relative path from the Spec file (e.g. `"../shared/auth-session.spec.json"`).
+
+### Change history tracking
+
+Spec files do not store history internally. Git handles it.
+
+```bash
+git log -- contract/auth/login.spec.json
+git log --follow -- contract/auth/login.spec.json  # track renames
+```
 
 ---
 
@@ -181,13 +217,14 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 - If not defined, propose a Contract update to the user. Continue only after Contract is updated.
 
 **Step 2: Spec authoring/fix**
-- Create `{feature}.spec.json` in the same folder as related Contract files.
+- Create `{feature-key}.spec.json` in the same folder as related Contract files.
 - Set `status` to `"draft"`.
 - Fill `contracts` with relative paths to base Contract files.
-- Fill all fixed sections in `content` based on the target Contract feature.
-- In `Summary`, explicitly state which Contract feature this Spec implements.
+- Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
+- Fill all structured fields (`modules`, `interfaces`, `dataFlow`, `errorHandling`, `constraints`).
+- Define `acceptanceCriteria` with verifiable completion conditions.
 - Add planned implementation file paths to `sources`.
-- **All fixed sections in `content` must be confirmed in this step.** After confirmation, set `status` to `"in-progress"` and continue.
+- **All fields must be confirmed in this step.** After confirmation, set `status` to `"in-progress"` and continue.
 
 **Step 3: Code implementation**
 - Implement exactly following the confirmed module structure and interfaces defined in Spec.
@@ -201,7 +238,8 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 
 **Step 5: Consistency validation**
 - Validate that implemented code follows the confirmed Spec exactly.
-- Check whether `Modules/Components`, `Interfaces`, and `Data Flow` match Spec.
+- Check whether `modules`, `interfaces`, and `dataFlow` match Spec.
+- Verify all `acceptanceCriteria` items are satisfied in code.
 - **If mismatch exists, fix code.** Spec should not be changed to match code.
 - After all validations pass, set `status` to `"done"` and update `lastModified` to today.
 
@@ -213,7 +251,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 
 **Step 1: Impact analysis**
 - Find all Spec files whose `sources` include the target files.
-- Check `contracts` in those Specs to identify chained impact scope.
+- Check `contracts` and `dependsOnSpecs` in those Specs to identify chained impact scope.
 
 **Step 2: Contract/Spec review**
 - Read related Specs to understand current module structure and interfaces.
@@ -223,9 +261,10 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 **Step 3: Spec update/fix**
 - Determine whether the change affects Spec scope.
   - Interface changes, module add/remove, data flow changes -> Spec update is required.
-  - Internal-only changes (refactoring, performance tuning) -> Spec update may be unnecessary, but verify `Modules/Components` is still accurate.
+  - Internal-only changes (refactoring, performance tuning) -> Spec update may be unnecessary, but verify `modules` is still accurate.
 - If Spec update is required, update and confirm Spec first.
 - If files are added/removed, update `sources`.
+- Update `acceptanceCriteria` if completion conditions have changed.
 - Set `status` to `"in-progress"`.
 - **Continue only after Spec is confirmed.**
 
@@ -239,6 +278,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 
 **Step 6: Consistency validation**
 - Validate that updated code follows confirmed Spec exactly.
+- Verify all `acceptanceCriteria` items are satisfied.
 - **If mismatch exists, fix code.**
 - After all validations pass, set `status` to `"done"` and update `lastModified` to today.
 
@@ -255,12 +295,13 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - Find Spec files whose `sources` include affected files.
 - Classify root cause:
   - Business rule violation -> verify Spec and code against Contract.
-  - Implementation bug -> check Spec `Error Handling` and Contract `Edge Cases`.
+  - Implementation bug -> check Spec `errorHandling` and Contract `Edge Cases`.
   - Spec defect -> Spec failed to represent Contract correctly.
 
 **Step 3: Spec update/fix (if needed)**
-- If the bug is a missing technical case in Spec `Error Handling` or `Technical Constraints`, update those sections first.
+- If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
 - If the bug is a missing business case in Contract `Edge Cases`, propose Contract update to user. After Contract update, update Spec.
+- Add missing conditions to `acceptanceCriteria` if applicable.
 - Set `status` to `"in-progress"`.
 - **Continue only after Spec is confirmed.**
 
@@ -274,6 +315,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 **Step 6: Consistency validation**
 - Validate that fixed code follows confirmed Spec exactly.
+- Verify all `acceptanceCriteria` items are satisfied.
 - **If mismatch exists, fix code.**
 - After all validations pass, set `status` to `"done"` and update `lastModified` to today.
 
@@ -292,22 +334,26 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 ### Spec authoring principles
 
-- `Summary` must state the overall scope of the Spec.
-- `Features` section must list all feature names. Each name must match a Contract `Features/Capabilities` item.
-- Each feature must have its own subsections (`Modules/Components`, `Interfaces`, `Data Flow`, `Error Handling`, `Technical Constraints`). If a subsection is empty, write `N/A`.
-- In `Interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
+- `summary` must state the feature in one line. `description` provides detailed explanation.
+- `summary`/`description` must make it clear which Contract feature this Spec implements.
+- `modules` and `interfaces` use `Record<string, string>` format (key: name, value: description).
+- In `interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
+- `dataFlow` and `constraints` use `string[]` format.
+- `errorHandling` uses `Record<string, string>` format (key: error name, value: trigger condition).
+- `acceptanceCriteria` must contain verifiable, specific conditions.
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
-- When adding features to an existing Spec, add a new `revisions` entry instead of modifying existing revision entries.
+- Empty sections: `[]` for `string[]` fields, `{}` for `Record<string, string>` fields.
 
 ### Reference path rules
 
 - `contracts` field: relative path from the Spec file (e.g. `"./payment.contract.json"`).
 - `sources` field: relative path from project root (e.g. `"src/auth/login.ts"`).
+- `dependsOnSpecs` field: relative path from the Spec file (e.g. `"../shared/auth-session.spec.json"`).
 
 ### `lastModified` update rule
 
-- Whenever document content (`content`) or metadata changes, update `lastModified` to today's date.
+- Whenever any Spec field changes, update `lastModified` to today's date.
 
 ---
 
@@ -321,12 +367,12 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 |---|---|
 | `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
 | `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
-| `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown, revision/feature summary) |
-| `cdd validate` | Verify structural/referential integrity (missing sections, invalid paths, revision consistency) |
+| `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown) |
+| `cdd validate` | Verify schema/path/reference integrity (file existence, path resolution, required fields) |
 | `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
-| `cdd check` | Verify Spec-Code consistency (source existence, duplicates, status-revision consistency, path security) |
+| `cdd check` | Verify Code-Spec-Contract consistency + `acceptanceCriteria` fulfillment |
 | `cdd spec create <name>` | Create a Spec template. Requires `--domain <name>` or `--contract <path>` |
-| `cdd spec set-status <spec> <status>` | Change Spec/revision status. Use `--revision <id>` for individual revision. Top-level status is always auto-aggregated to the minimum |
+| `cdd spec set-status <spec> <status>` | Change Spec status |
 
 ### Common Options
 
@@ -347,12 +393,22 @@ const issues = validateProject(project);
 
 ---
 
+## Edge Cases
+
+| Situation | Handling |
+|---|---|
+| Feature rename | `git mv` to rename Spec file |
+| Feature split | Keep/delete existing file + create new files, in the same commit |
+| Feature merge | Consolidate into one file, delete the rest, in the same commit |
+| Feature removal | Confirm removal from Contract, delete Spec file with user approval |
+
+---
+
 ## Prohibitions
 
 - AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
-- AI must not delete Spec files arbitrarily. Deletion is user decision only.
+- AI must not delete Spec files without user approval.
 - Do not write code without checking Contract and Spec first.
-- Do not omit or reorder fixed sections in Spec.
 - Do not include implementation internals, algorithm details, or code snippets in Spec.
 - **Do not start implementation before Spec is confirmed.**
 - **If Spec and code conflict, do not change Spec to match code. Always fix code to match Spec.**
