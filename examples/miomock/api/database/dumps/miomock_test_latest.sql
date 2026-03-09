@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict 31QXyO104WxKd3MUyMTZiOXFucoy33hifEbEG9uVCYOYWehPoP3KfAKmd0rPADN
+\restrict uqPdarjymZ7lz5iVeX6E4baBPC8fFdUK4kRBcq6t5s8MDkyFa6Cuxa3PsObuirV
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
--- Dumped by pg_dump version 18.1 (Homebrew)
+-- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -56,6 +56,42 @@ CREATE TABLE public.accounts (
     created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp(3) with time zone NOT NULL
 );
+
+
+--
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_logs (
+    id integer NOT NULL,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    actor_id character varying(255),
+    action text NOT NULL,
+    entity_type character varying(100) NOT NULL,
+    entity_id integer NOT NULL,
+    old_value jsonb,
+    new_value jsonb
+);
+
+
+--
+-- Name: audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.audit_logs_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.audit_logs_id_seq OWNED BY public.audit_logs.id;
 
 
 --
@@ -286,6 +322,41 @@ CREATE SEQUENCE public.knex_migrations_lock_index_seq
 --
 
 ALTER SEQUENCE public.knex_migrations_lock_index_seq OWNED BY public.knex_migrations_lock.index;
+
+
+--
+-- Name: milestones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.milestones (
+    id integer NOT NULL,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    project_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    due_date timestamp(3) with time zone NOT NULL,
+    completed_at timestamp(3) with time zone
+);
+
+
+--
+-- Name: milestones_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.milestones_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: milestones_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.milestones_id_seq OWNED BY public.milestones.id;
 
 
 --
@@ -564,6 +635,13 @@ CREATE TABLE public.verifications (
 
 
 --
+-- Name: audit_logs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_logs ALTER COLUMN id SET DEFAULT nextval('public.audit_logs_id_seq'::regclass);
+
+
+--
 -- Name: companies id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -613,6 +691,13 @@ ALTER TABLE ONLY public.knex_migrations_lock ALTER COLUMN index SET DEFAULT next
 
 
 --
+-- Name: milestones id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.milestones ALTER COLUMN id SET DEFAULT nextval('public.milestones_id_seq'::regclass);
+
+
+--
 -- Name: project_tags id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -656,6 +741,12 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT (nextval('public.users
 
 --
 -- Data for Name: accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: audit_logs; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 
@@ -768,6 +859,9 @@ INSERT INTO public.knex_migrations VALUES (79, '20260203141332_foreign__two_fact
 INSERT INTO public.knex_migrations VALUES (84, '20260204133419_create__passkeys.ts', 14, '2026-02-12 10:38:40.664+09');
 INSERT INTO public.knex_migrations VALUES (85, '20260204133420_foreign__passkeys__user_id.ts', 14, '2026-02-12 10:38:40.665+09');
 INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_alter6.ts', 13, '2026-02-03 14:13:39.049+09');
+INSERT INTO public.knex_migrations VALUES (86, '20260309160529_create__milestones.ts', 15, '2026-03-09 16:36:46.313+09');
+INSERT INTO public.knex_migrations VALUES (87, '20260309160530_foreign__milestones__project_id.ts', 15, '2026-03-09 16:36:46.314+09');
+INSERT INTO public.knex_migrations VALUES (88, '20260309161828_create__audit_logs.ts', 15, '2026-03-09 16:36:46.316+09');
 
 
 --
@@ -775,6 +869,12 @@ INSERT INTO public.knex_migrations VALUES (78, '20260203141331_alter_users_add1_
 --
 
 INSERT INTO public.knex_migrations_lock VALUES (1, 0);
+
+
+--
+-- Data for Name: milestones; Type: TABLE DATA; Schema: public; Owner: -
+--
+
 
 
 --
@@ -1901,6 +2001,13 @@ INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', 
 
 
 --
+-- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.audit_logs_id_seq', 1, false);
+
+
+--
 -- Name: companies_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -1939,7 +2046,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 85, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 88, true);
 
 
 --
@@ -1947,6 +2054,13 @@ SELECT pg_catalog.setval('public.knex_migrations_id_seq', 85, true);
 --
 
 SELECT pg_catalog.setval('public.knex_migrations_lock_index_seq', 1, true);
+
+
+--
+-- Name: milestones_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.milestones_id_seq', 1, false);
 
 
 --
@@ -1988,7 +2102,7 @@ SELECT pg_catalog.setval('public.tags_id_seq', 8, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 9, true);
+SELECT pg_catalog.setval('public.users_id_seq', 12, true);
 
 
 --
@@ -1997,6 +2111,14 @@ SELECT pg_catalog.setval('public.users_id_seq', 9, true);
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
 
 
 --
@@ -2085,6 +2207,14 @@ ALTER TABLE ONLY public.knex_migrations_lock
 
 ALTER TABLE ONLY public.knex_migrations
     ADD CONSTRAINT knex_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: milestones milestones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.milestones
+    ADD CONSTRAINT milestones_pkey PRIMARY KEY (id);
 
 
 --
@@ -2180,6 +2310,27 @@ ALTER TABLE ONLY public.verifications
 --
 
 CREATE INDEX accounts_user_id_idx ON public.accounts USING btree (user_id);
+
+
+--
+-- Name: audit_logs_actor_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_logs_actor_id_index ON public.audit_logs USING btree (actor_id);
+
+
+--
+-- Name: audit_logs_entity_type_entity_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX audit_logs_entity_type_entity_id_index ON public.audit_logs USING btree (entity_type, entity_id);
+
+
+--
+-- Name: milestones_project_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX milestones_project_id_index ON public.milestones USING btree (project_id);
 
 
 --
@@ -2279,6 +2430,14 @@ ALTER TABLE ONLY public.employees
 
 
 --
+-- Name: milestones milestones_project_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.milestones
+    ADD CONSTRAINT milestones_project_id_foreign FOREIGN KEY (project_id) REFERENCES public.projects(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: passkeys passkeys_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2338,5 +2497,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 31QXyO104WxKd3MUyMTZiOXFucoy33hifEbEG9uVCYOYWehPoP3KfAKmd0rPADN
+\unrestrict uqPdarjymZ7lz5iVeX6E4baBPC8fFdUK4kRBcq6t5s8MDkyFa6Cuxa3PsObuirV
 
