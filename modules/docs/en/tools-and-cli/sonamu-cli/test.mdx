@@ -179,6 +179,7 @@ curl http://localhost:3000/__test__/status
 
 ```
 dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인하세요
+(Cannot connect to the dev server. Please check that sonamu dev is running.)
 ```
 
 **Solution**: Start the dev server first with `pnpm dev`.
@@ -187,6 +188,7 @@ dev 서버에 연결할 수 없습니다. sonamu dev가 실행 중인지 확인�
 
 ```
 devRunner가 활성화되지 않았습니다. sonamu.config.ts에서 test.devRunner.enabled: true 설정이 필요합니다
+(devRunner is not enabled. You need to set test.devRunner.enabled: true in sonamu.config.ts)
 ```
 
 **Solution**: Set `test.devRunner.enabled` to `true` in `sonamu.config.ts` and restart the dev server.
