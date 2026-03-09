@@ -9,6 +9,10 @@
 import { ApplySonamuFilter, SonamuFileArraySchema, SonamuQueryMode, zArrayable } from "sonamu";
 import { z } from "zod";
 
+// CustomScalar: AuditLogValue
+const AuditLogValue = z.record(z.string(), z.unknown());
+type AuditLogValue = z.infer<typeof AuditLogValue>;
+
 // CustomScalar: NumberType
 const NumberType = z.number();
 type NumberType = z.infer<typeof NumberType>;
@@ -28,6 +32,17 @@ export const AccountOrderByLabel = { "id-desc": "ID최신순" };
 export const AccountSearchField = z.enum(["id"]).describe("AccountSearchField");
 export type AccountSearchField = z.infer<typeof AccountSearchField>;
 export const AccountSearchFieldLabel = { id: "ID" };
+
+// Enums: AuditLog
+export const AuditLogOrderBy = z.enum(["id-desc"]).describe("AuditLogOrderBy");
+export type AuditLogOrderBy = z.infer<typeof AuditLogOrderBy>;
+export const AuditLogOrderByLabel = { "id-desc": "ID최신순" };
+export const AuditLogSearchField = z.enum(["id"]).describe("AuditLogSearchField");
+export type AuditLogSearchField = z.infer<typeof AuditLogSearchField>;
+export const AuditLogSearchFieldLabel = { id: "ID" };
+export const AuditLogAction = z.enum(["create", "update", "delete"]).describe("AuditLogAction");
+export type AuditLogAction = z.infer<typeof AuditLogAction>;
+export const AuditLogActionLabel = { create: "생성", update: "수정", delete: "삭제" };
 
 // Enums: Company
 export const CompanyOrderBy = z.enum(["id-desc"]).describe("CompanyOrderBy");
@@ -74,6 +89,14 @@ export const FileSearchField = z.enum(["id"]).describe("FileSearchField");
 export type FileSearchField = z.infer<typeof FileSearchField>;
 export const FileSearchFieldLabel = { id: "ID" };
 
+// Enums: Milestone
+export const MilestoneOrderBy = z.enum(["id-desc", "due_date-asc"]).describe("MilestoneOrderBy");
+export type MilestoneOrderBy = z.infer<typeof MilestoneOrderBy>;
+export const MilestoneOrderByLabel = { "id-desc": "ID최신순", "due_date-asc": "마감일순" };
+export const MilestoneSearchField = z.enum(["id"]).describe("MilestoneSearchField");
+export type MilestoneSearchField = z.infer<typeof MilestoneSearchField>;
+export const MilestoneSearchFieldLabel = { id: "ID" };
+
 // Enums: Passkey
 export const PasskeyOrderBy = z.enum(["id-desc", "created_at-desc"]).describe("PasskeyOrderBy");
 export type PasskeyOrderBy = z.infer<typeof PasskeyOrderBy>;
@@ -83,9 +106,9 @@ export type PasskeySearchField = z.infer<typeof PasskeySearchField>;
 export const PasskeySearchFieldLabel = { id: "ID", name: "이름" };
 
 // Enums: Project
-export const ProjectOrderBy = z.enum(["id-desc"]).describe("ProjectOrderBy");
+export const ProjectOrderBy = z.enum(["id-desc", "deadline-asc"]).describe("ProjectOrderBy");
 export type ProjectOrderBy = z.infer<typeof ProjectOrderBy>;
-export const ProjectOrderByLabel = { "id-desc": "ID최신순" };
+export const ProjectOrderByLabel = { "id-desc": "ID최신순", "deadline-asc": "마감일최신순" };
 export const ProjectSearchField = z.enum(["id"]).describe("ProjectSearchField");
 export type ProjectSearchField = z.infer<typeof ProjectSearchField>;
 export const ProjectSearchFieldLabel = { id: "ID" };
@@ -202,6 +225,21 @@ export type AccountBaseSchema = z.infer<typeof AccountBaseSchema> & {
   ];
 };
 
+// BaseSchema: AuditLog
+export const AuditLogBaseSchema = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  actor_id: z.string().max(255).nullable(),
+  action: AuditLogAction,
+  entity_type: z.string().max(100),
+  entity_id: z.int(),
+  old_value: AuditLogValue.nullable(),
+  new_value: AuditLogValue.nullable(),
+});
+export type AuditLogBaseSchema = z.infer<typeof AuditLogBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "actor_id", "old_value", "new_value", "id"];
+};
+
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
   id: z.int(),
@@ -277,6 +315,20 @@ export const FileBaseSchema = z.object({
 });
 export type FileBaseSchema = z.infer<typeof FileBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "id"];
+};
+
+// BaseSchema: Milestone
+export const MilestoneBaseSchema = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  project_id: z.int(),
+  name: z.string().max(255),
+  description: z.string().nullable(),
+  due_date: z.date(),
+  completed_at: z.date().nullable(),
+});
+export type MilestoneBaseSchema = z.infer<typeof MilestoneBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "description", "completed_at", "id"];
 };
 
 // BaseSchema: Passkey
@@ -459,6 +511,21 @@ export const AccountBaseListParams = z
   .partial();
 export type AccountBaseListParams = z.infer<typeof AccountBaseListParams>;
 
+// BaseListParams: AuditLog
+export const AuditLogBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: AuditLogSearchField,
+    keyword: z.string(),
+    orderBy: AuditLogOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.custom<ApplySonamuFilter<AuditLogBaseSchema, never, never>>(),
+  })
+  .partial();
+export type AuditLogBaseListParams = z.infer<typeof AuditLogBaseListParams>;
+
 // BaseListParams: Company
 export const CompanyBaseListParams = z
   .object({
@@ -533,6 +600,21 @@ export const FileBaseListParams = z
   })
   .partial();
 export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
+
+// BaseListParams: Milestone
+export const MilestoneBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: MilestoneSearchField,
+    keyword: z.string(),
+    orderBy: MilestoneOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+    sonamuFilter: z.custom<ApplySonamuFilter<MilestoneBaseSchema, never, never>>(),
+  })
+  .partial();
+export type MilestoneBaseListParams = z.infer<typeof MilestoneBaseListParams>;
 
 // BaseListParams: Passkey
 export const PasskeyBaseListParams = z
@@ -679,6 +761,24 @@ export type AccountSubsetMapping = {
 };
 export const AccountSubsetKey = z.enum(["A"]);
 export type AccountSubsetKey = z.infer<typeof AccountSubsetKey>;
+
+// Subsets: AuditLog
+export const AuditLogSubsetA = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  actor_id: z.string().max(255).nullable(),
+  action: AuditLogAction,
+  entity_type: z.string().max(100),
+  entity_id: z.int(),
+  old_value: AuditLogValue.nullable(),
+  new_value: AuditLogValue.nullable(),
+});
+export type AuditLogSubsetA = z.infer<typeof AuditLogSubsetA>;
+export type AuditLogSubsetMapping = {
+  A: AuditLogSubsetA;
+};
+export const AuditLogSubsetKey = z.enum(["A"]);
+export type AuditLogSubsetKey = z.infer<typeof AuditLogSubsetKey>;
 
 // Subsets: Company
 export const CompanySubsetA = z.object({
@@ -865,6 +965,28 @@ export type FileSubsetMapping = {
 };
 export const FileSubsetKey = z.enum(["A"]);
 export type FileSubsetKey = z.infer<typeof FileSubsetKey>;
+
+// Subsets: Milestone
+export const MilestoneSubsetA = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  name: z.string().max(255),
+  description: z.string().nullable(),
+  due_date: z.date(),
+  completed_at: z.date().nullable(),
+  project: z.object({
+    id: z.int(),
+    name: z.string().max(255),
+    status: ProjectStatus,
+    deadline: z.date().nullable(),
+  }),
+});
+export type MilestoneSubsetA = z.infer<typeof MilestoneSubsetA>;
+export type MilestoneSubsetMapping = {
+  A: MilestoneSubsetA;
+};
+export const MilestoneSubsetKey = z.enum(["A"]);
+export type MilestoneSubsetKey = z.infer<typeof MilestoneSubsetKey>;
 
 // Subsets: Passkey
 export const PasskeySubsetA = z.object({
