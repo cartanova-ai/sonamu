@@ -1,0 +1,52 @@
+{
+  "name": "@sonamu-kit/cdd",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CDD(Contract-Driven Development) CLI tool for Sonamu projects",
+  "main": "./dist/lib.js",
+  "bin": {
+    "cdd": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/lib.js",
+      "types": "./dist/lib.d.ts",
+      "development": "./src/lib.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "check": "tsc --noEmit && biome check --write src",
+    "check:type": "tsc --noEmit",
+    "check:format": "biome check --write src",
+    "test": "vitest run",
+    "test:watch": "vitest watch --standalone"
+  },
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "catalog:",
+    "fast-glob": "catalog:",
+    "minimist": "catalog:"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@swc/cli": "catalog:",
+    "@swc/core": "catalog:",
+    "@types/minimist": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  }
+}
