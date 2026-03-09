@@ -52,7 +52,9 @@ export class ParallelDBManager {
       // 3. 템플릿에서 복제 (병렬)
       await Promise.all(
         workerDbNames.map((dbName) =>
-          adminDb.raw(`CREATE DATABASE "${dbName}" TEMPLATE "${this.templateDb}"`),
+          adminDb.raw(
+            `CREATE DATABASE "${dbName}" TEMPLATE "${this.templateDb}" STRATEGY FILE_COPY`,
+          ),
         ),
       );
     } finally {
