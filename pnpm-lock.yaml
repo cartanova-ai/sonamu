@@ -666,6 +666,9 @@ importers:
       '@logtape/redaction':
         specifier: 'catalog:'
         version: 2.0.0(@logtape/logtape@2.0.0)
+      '@sonamu-kit/cdd':
+        specifier: workspace:^
+        version: link:../../../modules/cdd
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.7(@swc/helpers@0.5.18)

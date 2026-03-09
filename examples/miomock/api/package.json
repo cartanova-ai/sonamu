@@ -18,7 +18,8 @@
     "dump": "bash database/scripts/dump.sh",
     "seedOnly": "bash database/scripts/seed.sh",
     "seed": "pnpm seedOnly && sonamu fixture sync",
-    "sync:dump": "pnpm seed && pnpm sonamu migrate run && pnpm dump"
+    "sync:dump": "pnpm seed && pnpm sonamu migrate run && pnpm dump",
+    "cdd": "cdd"
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
@@ -34,6 +35,7 @@
     "knex": "catalog:",
     "pg": "catalog:",
     "radashi": "catalog:",
+    "@sonamu-kit/cdd": "workspace:^",
     "sonamu": "workspace:^",
     "zod": "catalog:",
     "@logtape/logtape": "catalog:",
