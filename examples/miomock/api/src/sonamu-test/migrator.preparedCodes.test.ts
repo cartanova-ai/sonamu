@@ -933,9 +933,9 @@ describe("Migrator - preparedCodes 생성", () => {
 
     test("UUID PK 엔티티 생성", async () => {
       const uuidPkEntity = {
-        id: "AuditLog",
-        table: "audit_logs",
-        title: "감사 로그",
+        id: "UuidEntity",
+        table: "uuid_entities",
+        title: "UUID 엔티티",
         props: [
           { name: "id", type: "uuid", desc: "UUID" },
           { name: "action", type: "string", desc: "작업", length: 50 },
@@ -948,7 +948,9 @@ describe("Migrator - preparedCodes 생성", () => {
 
       const status = await migrator.getStatus();
 
-      const createCode = status.preparedCodes.find((code) => code.title === "create__audit_logs");
+      const createCode = status.preparedCodes.find(
+        (code) => code.title === "create__uuid_entities",
+      );
       expect(createCode).toBeDefined();
 
       // uuid PK는 table.uuid("id").primary().notNullable() 형태로 생성
