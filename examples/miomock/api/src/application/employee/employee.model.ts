@@ -182,6 +182,17 @@ class EmployeeModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: EmployeeSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 신규 생성 시 사용자 중복 등록 체크 (Contract: "한 사용자는 하나의 직원 레코드만")
+    const newEmps = spa.filter((sp) => !sp.id);
+    if (newEmps.length > 0) {
+      const userIds = newEmps.map((sp) => sp.user_id);
+      const existing = await rdb.table("employees").whereIn("user_id", userIds).selectAll().first();
+      if (existing) {
+        throw new BadRequestException(SD("employee.user.duplicate"));
+      }
+    }
 
     // register
     spa.forEach((sp) => {
