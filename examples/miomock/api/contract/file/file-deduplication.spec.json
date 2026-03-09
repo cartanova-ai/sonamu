@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "summary": "MD5 해시 기반 파일 중복 감지 및 재사용",
+  "description": [
+    "Contract 'file' 도메인의 중복 감지 기능을 구현한다.",
+    "MD5 해시 기반 파일 중복 판별과 기존 파일 재사용을 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "업로드 시 MD5 해시 기반으로 중복 파일을 감지한다",
+    "동일 해시/키가 있으면 기존 파일을 재사용한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/file/file.model.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "FileModel": "파일 해시 계산과 중복 판별 로직을 담당한다"
+  },
+  "interfaces": {
+    "FileModel.upload()": "업로드 중 중복 체크 포함",
+    "FileModel.testBufferUpload()": "해시 기반 중복 체크 검증",
+    "FileModel.testStreamUpload()": "스트림 업로드 경로 중복 체크 검증"
+  },
+  "dataFlow": [
+    "1. 업로드 입력에서 파일 바이트를 읽어 MD5 해시를 계산한다",
+    "2. 해시 기반 저장 키를 생성한다",
+    "3. 동일 해시/키가 있으면 기존 파일을 재사용하거나 중복 상태를 판별한다"
+  ],
+  "errorHandling": {
+    "HashCalculationError": "해시 계산 또는 저장 키 생성 실패 시 업로드 중단"
+  },
+  "constraints": [
+    "기본 업로드 키 형식은 {md5}.{확장자}다",
+    "카테고리 업로드 키 형식은 {category}/{md5}다"
+  ]
+}

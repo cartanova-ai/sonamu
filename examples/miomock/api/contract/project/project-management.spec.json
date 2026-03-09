@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "summary": "프로젝트 생성/조회/수정/삭제 CRUD",
+  "description": [
+    "Contract 'project' 도메인의 프로젝트 관리 기능을 구현한다.",
+    "프로젝트 CRUD와 기본 조회를 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "프로젝트를 생성/수정/삭제할 수 있다 (이름, 설명, 예산, 마감일, 상태, 이미지)",
+    "관리자 권한으로만 프로젝트를 삭제할 수 있다",
+    "존재하지 않는 프로젝트 조회 시 NotFoundException이 발생한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/project/project.model.ts",
+    "src/application/project/project.types.ts",
+    "src/application/project/project.model.test.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "ProjectModel": "프로젝트 생성/조회/수정/삭제를 담당한다",
+    "Project Types": "프로젝트 엔티티 및 상태/파라미터 스키마를 정의한다"
+  },
+  "interfaces": {
+    "ProjectModel.findById()": "프로젝트 단건 조회",
+    "ProjectModel.findMany()": "프로젝트 목록 조회",
+    "ProjectModel.save()": "프로젝트 생성/수정",
+    "ProjectModel.del()": "프로젝트 삭제 (관리자 전용)"
+  },
+  "dataFlow": [
+    "1. 프로젝트 저장 시 이름, 설명, 예산, 마감일, 상태, 이미지 정보를 저장한다",
+    "2. 목록/단건 조회에서 프로젝트 기본 정보와 선택된 관계를 반환한다",
+    "3. 삭제 요청은 관리자 검증 후 처리한다"
+  ],
+  "errorHandling": {
+    "NotFoundException": "존재하지 않는 프로젝트 조회",
+    "ForbiddenException": "권한 없는 삭제 요청은 관리자 가드에서 차단"
+  },
+  "constraints": [
+    "프로젝트 ID는 정수 타입이다",
+    "image_urls는 JSON 타입(SonamuFile 배열)으로 저장한다",
+    "삭제 인터페이스는 관리자 가드를 필수로 적용한다"
+  ]
+}

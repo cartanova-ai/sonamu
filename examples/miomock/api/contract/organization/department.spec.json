@@ -1,5 +1,21 @@
 {
-  "lastModified": "2026-03-06",
+  "schemaVersion": 1,
+  "summary": "부서 CRUD, 계층 구조, 회사 기준 유니크 규칙, 부서별 직원 수 조회 구현",
+  "description": [
+    "Contract 'organization' 도메인의 '부서 관리' 기능을 구현한다.",
+    "부서 CRUD, 계층 구조(상위 부서), 회사 내 유니크 규칙, employee_count 인핸서를 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "부서를 생성/수정할 수 있으며 회사 ID와 선택적 상위 부서 ID를 지정한다",
+    "부서 코드는 DB 생성 컬럼으로 자동 부여된다 (DEP-001 형식)",
+    "부서 목록 조회 시 이름 검색과 회사명 필터를 지원한다",
+    "employee_count가 인핸서로 계산되어 응답에 포함된다",
+    "같은 회사 내 중복 부서명 저장 시 유니크 제약 위반 에러가 발생한다",
+    "관리자 권한으로만 부서를 삭제할 수 있다",
+    "부서 삭제 시 소속 직원의 department_id를 NULL로 전환한다",
+    "존재하지 않는 부서 조회 시 NotFoundException이 발생한다"
+  ],
+  "lastModified": "2026-03-09",
   "status": "done",
   "sources": [
     "src/application/department/department.model.ts",
@@ -7,62 +23,35 @@
     "src/application/department/department.model.test.ts"
   ],
   "contracts": ["./main.contract.json"],
-  "revisions": [
-    {
-      "id": "rev-001",
-      "date": "2026-03-05",
-      "features": ["부서 관리"],
-      "status": "done"
-    }
+  "modules": {
+    "DepartmentModel": "부서 CRUD, 계층 구조, employee_count 인핸서를 담당한다",
+    "Department Types": "부서 파라미터, 서브셋, 검색/정렬 스키마를 정의한다"
+  },
+  "interfaces": {
+    "DepartmentModel.findById()": "부서 단건 조회",
+    "DepartmentModel.findMany()": "부서 목록 조회 (페이지네이션, 이름 검색, 회사명 필터)",
+    "DepartmentModel.save()": "부서 생성/수정",
+    "DepartmentModel.del()": "부서 삭제 (관리자 전용)"
+  },
+  "dataFlow": [
+    "1. 부서 생성 시 회사 ID와 선택적 상위 부서 ID를 저장한다",
+    "2. 부서 코드는 DB 생성 컬럼으로 자동 부여된다 (DEP-001 형식)",
+    "3. 목록 조회는 이름 검색과 회사명 필터를 함께 지원한다",
+    "4. employee_count는 인핸서로 계산되어 응답에 포함된다",
+    "5. 부서 삭제 시 소속 직원의 department_id를 NULL로 전환한다"
   ],
-  "content": [
-    "## Summary",
-    "",
-    "Contract 'organization' 도메인의 '부서 관리' 기능을 구현한다. 부서 CRUD, 계층 구조, 회사 기준 유니크 규칙, 부서별 직원 수 조회를 담당한다.",
-    "",
-    "## Features",
-    "",
-    "- 부서 관리",
-    "",
-    "---",
-    "",
-    "### 부서 관리",
-    "",
-    "#### Modules/Components",
-    "",
-    "- **DepartmentModel** (`department.model.ts`): 부서 CRUD와 계층 구조, employee_count 인핸서를 담당한다.",
-    "- **Department Types** (`department.types.ts`): 부서 파라미터, 서브셋, 검색/정렬 스키마를 정의한다.",
-    "",
-    "#### Interfaces",
-    "",
-    "- `findById` - GET: 부서 단건 조회",
-    "- `findMany` - GET: 부서 목록 조회(페이지네이션, 이름 검색, 회사명 필터)",
-    "- `save` - POST: 부서 생성/수정",
-    "- `del` - POST: 부서 삭제(관리자 전용)",
-    "",
-    "#### Data Flow",
-    "",
-    "1. 부서 생성 시 회사 ID와 선택적 상위 부서 ID를 저장한다.",
-    "2. 부서 코드는 DB 생성 컬럼으로 자동 부여된다(`DEP-001` 형식).",
-    "3. 목록 조회는 이름 검색과 회사명 필터를 함께 지원한다.",
-    "4. `employee_count`는 인핸서로 계산되어 응답에 포함된다.",
-    "5. 부서 삭제 시 소속 직원의 `department_id`를 `NULL`로 전환한다.",
-    "",
-    "#### Error Handling",
-    "",
-    "- 존재하지 않는 부서 조회 시 `NotFoundException`이 발생한다.",
-    "- 유효하지 않은 검색 필드 지정 시 `BadRequestException`이 발생한다.",
-    "- 같은 회사 내 중복 부서명 저장 시 유니크 제약 위반 에러가 발생한다.",
-    "",
-    "#### Technical Constraints",
-    "",
-    "- 부서 ID는 정수 타입이다.",
-    "- `(company_id, name)` 복합 유니크 인덱스를 유지한다.",
-    "- `code`는 STORED 생성 컬럼(`'DEP-' || LPAD(id::text, 3, '0')`)이다.",
-    "- `employee_count`는 가상 필드(비영속)로 계산한다.",
-    "- 상위 부서(`parent`)는 자기 참조 nullable 관계다.",
-    "- Company 삭제는 CASCADE, Employee 삭제 관계는 SET NULL 규칙을 따른다.",
-    "- 삭제 인터페이스는 관리자 가드를 필수로 적용한다.",
-    ""
+  "errorHandling": {
+    "NotFoundException": "존재하지 않는 부서 조회",
+    "BadRequestException": "유효하지 않은 검색 필드 지정",
+    "UniqueConstraintError": "같은 회사 내 중복 부서명 저장 시 유니크 제약 위반"
+  },
+  "constraints": [
+    "부서 ID는 정수 타입이다",
+    "(company_id, name) 복합 유니크 인덱스를 유지한다",
+    "code는 STORED 생성 컬럼('DEP-' || LPAD(id::text, 3, '0'))이다",
+    "employee_count는 가상 필드(비영속)로 계산한다",
+    "상위 부서(parent)는 자기 참조 nullable 관계다",
+    "Company 삭제는 CASCADE, Employee 삭제 관계는 SET NULL 규칙을 따른다",
+    "삭제 인터페이스는 관리자 가드를 필수로 적용한다"
   ]
 }

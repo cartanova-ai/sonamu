@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "summary": "프로젝트 AI 질의응답 SSE 스트리밍",
+  "description": [
+    "Contract 'project' 도메인의 AI 어시스턴트 기능을 구현한다.",
+    "프로젝트 관련 질의응답 생성과 SSE 스트리밍 응답을 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "AI 어시스턴트에 질문하면 SSE 스트리밍으로 응답한다",
+    "에이전트가 fetchProjects 도구로 관련 데이터를 조회한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/project/project.agent.ts",
+    "src/application/project/project.model.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "ProjectAgent": "프로젝트 질의응답 생성과 SSE 스트리밍 응답을 담당한다",
+    "ProjectModel": "에이전트가 참조할 프로젝트 데이터 조회를 지원한다"
+  },
+  "interfaces": {
+    "ProjectAgent.ask()": "AI 어시스턴트 질의 및 실시간 응답 스트리밍 (SSE)"
+  },
+  "dataFlow": [
+    "1. 사용자 질문을 ask로 수신한다",
+    "2. ProjectAgent가 fetchProjects 도구로 관련 데이터를 조회한다",
+    "3. LLM 응답을 SSE(onToken, onComplete, onError)로 스트리밍한다"
+  ],
+  "errorHandling": {
+    "AgentExecutionError": "에이전트 실행 오류는 onError 이벤트로 스트리밍"
+  },
+  "constraints": [
+    "AI 어시스턴트는 OpenAI GPT-4 모델을 사용한다",
+    "응답 전달 방식은 SSE 스트리밍을 유지한다"
+  ]
+}

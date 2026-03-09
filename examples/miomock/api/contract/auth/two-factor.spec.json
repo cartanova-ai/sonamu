@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "summary": "TOTP 기반 2단계 인증 활성화/검증/비활성화",
+  "description": [
+    "Contract 'auth' 도메인의 2단계 인증 기능을 구현한다.",
+    "Better-Auth twoFactor 플러그인 기반 TOTP 인증을 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "TOTP 기반 2단계 인증 활성화가 동작한다",
+    "OTP 코드 검증이 동작한다",
+    "2단계 인증 비활성화가 동작한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/two-factor/two-factor.types.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "TwoFactor": "TOTP 기반 2단계 인증 엔티티. 비밀키와 백업 코드를 관리한다"
+  },
+  "interfaces": {
+    "POST /auth/two-factor/enable": "2FA 활성화",
+    "POST /auth/two-factor/verify": "OTP 코드 검증",
+    "POST /auth/two-factor/disable": "2FA 비활성화"
+  },
+  "dataFlow": [
+    "1. 2FA 활성화 시 TwoFactor 엔티티에 TOTP 비밀키와 백업 코드를 저장한다",
+    "2. 로그인 시 비밀번호 인증 후 추가로 OTP 코드 입력이 필요하다"
+  ],
+  "errorHandling": {
+    "InvalidOTPCode": "잘못된 OTP 코드"
+  },
+  "constraints": [
+    "사용자 삭제 시 TwoFactor CASCADE 삭제"
+  ]
+}

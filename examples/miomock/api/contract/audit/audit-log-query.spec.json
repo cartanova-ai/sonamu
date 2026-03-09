@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "summary": "감사 로그 목록 필터 조회 및 페이지네이션",
+  "description": [
+    "감사 로그 도메인의 목록 조회 기능을 구현한다.",
+    "entity_type, actor_id, 기간 필터와 페이지네이션을 지원한다."
+  ],
+  "acceptanceCriteria": [
+    "entity_type, actor_id, 기간(date_from, date_to) 필터로 감사 로그 목록을 조회할 수 있다",
+    "감사 로그 목록은 created_at DESC 정렬과 페이지네이션을 지원한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "in-progress",
+  "sources": [],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "AuditLogModel": "감사 로그 목록 조회(findMany)를 담당한다"
+  },
+  "interfaces": {
+    "AuditLogModel.findMany()": "entity_type, actor_id, 기간 필터 + 페이지네이션으로 감사 로그 목록 반환"
+  },
+  "dataFlow": [
+    "1. findMany 호출 시 where 절에 필터 조건 적용",
+    "2. created_at DESC 정렬, 페이지네이션 적용하여 반환"
+  ],
+  "errorHandling": {},
+  "constraints": [
+    "기본 정렬: created_at DESC"
+  ]
+}

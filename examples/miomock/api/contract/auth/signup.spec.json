@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "summary": "이메일/비밀번호/이름 기반 회원가입",
+  "description": [
+    "Contract 'auth' 도메인의 회원가입 기능을 구현한다.",
+    "사용자 생성과 입력 검증을 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "이메일, 비밀번호, 이름으로 사용자를 생성할 수 있다",
+    "중복 이메일로 가입 시 유니크 제약 위반 에러가 발생한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/user/user.model.ts",
+    "src/application/user/user.types.ts",
+    "src/application/user/user.model.test.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "UserModel": "사용자 생성/수정 저장 로직을 담당한다",
+    "User Types": "가입 입력 파라미터와 사용자 엔티티 스키마를 정의한다"
+  },
+  "interfaces": {
+    "UserModel.save()": "이메일, 비밀번호, 이름 기반 사용자 생성/수정"
+  },
+  "dataFlow": [
+    "1. 가입 요청에서 사용자 기본 정보(이메일/비밀번호/이름)를 입력받는다",
+    "2. save 호출로 사용자 레코드를 생성한다",
+    "3. 생성된 사용자는 이후 인증/검증 흐름에서 참조된다"
+  ],
+  "errorHandling": {
+    "UniqueConstraintError": "중복 이메일 저장 시 유니크 제약 위반",
+    "BadRequestException": "잘못된 입력 구조는 파라미터 스키마 검증에서 차단"
+  },
+  "constraints": [
+    "이메일 유니크 인덱스를 유지한다",
+    "사용자 ID는 문자열 타입(시퀀스 텍스트 변환)으로 관리한다"
+  ]
+}

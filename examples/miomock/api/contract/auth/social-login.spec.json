@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "summary": "OAuth 외부 계정 연동 로그인",
+  "description": [
+    "Contract 'auth' 도메인의 외부 계정 연동 기능을 구현한다.",
+    "Better-Auth 프레임워크 기반 OAuth 계정 연결 및 다중 계정 관리를 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "외부 계정(OAuth)으로 로그인할 수 있다",
+    "하나의 사용자에 여러 외부 계정을 연결할 수 있다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/account/account.types.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "Account": "OAuth 외부 계정 연동 엔티티. 커스텀 모델 없이 자동 생성 API를 사용한다"
+  },
+  "interfaces": {
+    "POST /auth/sign-in/social": "외부 계정 로그인"
+  },
+  "dataFlow": [
+    "1. 외부 계정 로그인 시 Account 레코드를 통해 User와 연결한다",
+    "2. 하나의 사용자에 여러 외부 계정을 연결할 수 있다"
+  ],
+  "errorHandling": {
+    "OAuthFailure": "Better-Auth 프레임워크가 OAuth 인증 실패를 처리"
+  },
+  "constraints": [
+    "사용자 삭제 시 Account CASCADE 삭제"
+  ]
+}

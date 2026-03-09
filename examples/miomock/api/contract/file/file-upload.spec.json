@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "summary": "멀티파트 파일 업로드 (버퍼/스트림 모드)",
+  "description": [
+    "Contract 'file' 도메인의 파일 업로드 기능을 구현한다.",
+    "멀티파트 요청 기반 파일 업로드와 버퍼/스트림 모드를 담당한다."
+  ],
+  "acceptanceCriteria": [
+    "멀티파트 요청으로 파일을 업로드할 수 있다 (최대 10개, 30MB 제한)",
+    "카테고리 지정 업로드(최대 5개)와 단일 파일 업로드(최대 1개)를 지원한다",
+    "버퍼/스트림 두 가지 업로드 모드를 지원한다"
+  ],
+  "lastModified": "2026-03-09",
+  "status": "done",
+  "sources": [
+    "src/application/file/file.model.ts",
+    "src/application/file/file.types.ts"
+  ],
+  "contracts": ["./main.contract.json"],
+  "modules": {
+    "FileModel": "업로드 엔드포인트와 스토리지 저장을 담당한다",
+    "File Types": "파일 입력/출력 스키마와 메타데이터 타입을 정의한다"
+  },
+  "interfaces": {
+    "FileModel.upload()": "기본 업로드 (최대 10개, 버퍼 모드)",
+    "FileModel.inlineUpload()": "카테고리 지정 업로드 (최대 5개)",
+    "FileModel.inlineUploadFlat()": "단일 파일 업로드 (최대 1개)",
+    "FileModel.testBufferUpload()": "버퍼 업로드 테스트",
+    "FileModel.testStreamUpload()": "스트림 업로드 테스트"
+  },
+  "dataFlow": [
+    "1. 멀티파트 요청에서 파일 목록을 수신한다",
+    "2. 업로드 모드(버퍼/스트림)에 따라 스토리지 저장 경로를 선택한다",
+    "3. 저장 완료 후 파일 URL, MIME 타입, 이름을 응답으로 반환한다"
+  ],
+  "errorHandling": {
+    "BadRequestException": "업로드 실패 또는 파일 수/크기 제한 초과"
+  },
+  "constraints": [
+    "파일 크기 제한은 30MB다",
+    "기본 업로드 최대 파일 수는 10개다",
+    "스토리지 드라이버는 fs 또는 s3를 지원한다"
+  ]
+}
