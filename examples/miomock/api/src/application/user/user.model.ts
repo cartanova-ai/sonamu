@@ -1,6 +1,7 @@
 import {
   api,
   asArray,
+  BadRequestException,
   BaseModelClass,
   exhaustive,
   type ListResult,
@@ -75,6 +76,9 @@ class UserModelClass extends BaseModelClass<
 
     const { qb, onSubset } = this.getSubsetQueries(subset);
 
+    // soft delete 필터: deleted_at이 없는 사용자만 조회
+    qb.where("users.deleted_at", null);
+
     // id
     if (params.id) {
       qb.whereIn("users.id", asArray(params.id));
@@ -122,6 +126,17 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: UserSaveParams[]): Promise<string[]> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 신규 생성 시 이메일 중복 체크
+    const newUsers = spa.filter((sp) => !sp.id);
+    if (newUsers.length > 0) {
+      const emails = newUsers.map((sp) => sp.email);
+      const existing = await rdb.table("users").whereIn("email", emails).selectAll().first();
+      if (existing) {
+        throw new BadRequestException(SD("user.email.duplicate"));
+      }
+    }
 
     // register
     spa.forEach((sp) => {
@@ -140,9 +155,9 @@ class UserModelClass extends BaseModelClass<
   async del(ids: string[]): Promise<number> {
     const wdb = this.getPuri("w");
 
-    // transaction
+    // soft delete: deleted_at 설정
     await wdb.transaction(async (trx) => {
-      return trx.table("users").whereIn("users.id", ids).delete();
+      return trx.table("users").whereIn("users.id", ids).update({ deleted_at: new Date() });
     });
 
     return ids.length;
