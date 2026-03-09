@@ -1,6 +1,7 @@
 import {
   api,
   asArray,
+  BadRequestException,
   BaseModelClass,
   exhaustive,
   type ListResult,
@@ -132,6 +133,24 @@ class DepartmentModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: DepartmentSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 신규 생성 시 같은 회사 내 부서명 중복 체크
+    const newDepts = spa.filter((sp) => !sp.id);
+    if (newDepts.length > 0) {
+      const checks = newDepts.map((sp) =>
+        rdb
+          .table("departments")
+          .where("company_id", sp.company_id)
+          .where("name", sp.name)
+          .selectAll()
+          .first(),
+      );
+      const results = await Promise.all(checks);
+      if (results.some((r) => r !== undefined)) {
+        throw new BadRequestException(SD("department.name.duplicate"));
+      }
+    }
 
     // register
     for (const sp of spa) {
