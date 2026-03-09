@@ -41,10 +41,13 @@ export function runSpecSetStatus(
     }
   }
 
-  // top-level status = revision 최솟값으로 재계산
-  doc.status = doc.revisions.reduce<SpecStatus>((min, rev) => {
-    return STATUS_ORDER[rev.status] < STATUS_ORDER[min] ? rev.status : min;
-  }, "done");
+  // top-level status = revision 최솟값으로 재계산 (revision이 비어있으면 요청 status 사용)
+  doc.status =
+    doc.revisions.length === 0
+      ? newStatus
+      : doc.revisions.reduce<SpecStatus>((min, rev) => {
+          return STATUS_ORDER[rev.status] < STATUS_ORDER[min] ? rev.status : min;
+        }, "done");
 
   doc.lastModified = todayString();
 

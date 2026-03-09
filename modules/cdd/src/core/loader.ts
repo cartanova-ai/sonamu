@@ -63,6 +63,7 @@ export async function loadProject(contractDir: string): Promise<CddProject> {
       });
     } else if (relPath.endsWith(".spec.json")) {
       validateContentIsStringArray(parsed, absPath);
+      validateSpecStructure(parsed, absPath);
       const doc = parsed as SpecDocument;
       const specDir = path.dirname(absPath);
       const resolvedContracts = (doc.contracts ?? []).map((c) => path.resolve(specDir, c));
@@ -86,6 +87,27 @@ function deriveDomain(contractDir: string, filePath: string): string {
     return "";
   }
   return rel;
+}
+
+/** Spec JSON 필수 필드 구조 검증 */
+function validateSpecStructure(parsed: unknown, filePath: string): void {
+  const obj = parsed as Record<string, unknown>;
+
+  if (typeof obj.lastModified !== "string") {
+    throw new Error(`lastModified 필드가 문자열이 아닙니다: ${filePath}`);
+  }
+  if (typeof obj.status !== "string") {
+    throw new Error(`status 필드가 문자열이 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.sources)) {
+    throw new Error(`sources 필드가 배열이 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.contracts)) {
+    throw new Error(`contracts 필드가 배열이 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.revisions)) {
+    throw new Error(`revisions 필드가 배열이 아닙니다: ${filePath}`);
+  }
 }
 
 /** content 필드가 string[]인지 검증 */

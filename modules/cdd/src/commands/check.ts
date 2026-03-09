@@ -9,7 +9,7 @@ export function runCheck(project: CddProject): void {
   for (const spec of project.specs) {
     checkSourcesExist(spec.document.sources, project.projectRoot, spec.path, issues);
     checkSourcesSecurity(spec.document.sources, project.projectRoot, spec.path, issues);
-    checkDuplicateSources(spec.document.sources, spec.path, issues);
+    checkDuplicateSources(spec.document.sources, project.projectRoot, spec.path, issues);
     checkStatusRevisionConsistency(spec.document, spec.path, issues);
   }
 
@@ -74,35 +74,44 @@ function checkSourcesSecurity(
 
 function checkDuplicateSources(
   sources: string[],
+  projectRoot: string,
   filePath: string,
   issues: ValidationIssue[],
 ): void {
   const seen = new Set<string>();
   for (const source of sources) {
-    if (seen.has(source)) {
+    const normalized = path.resolve(projectRoot, source);
+    if (seen.has(normalized)) {
       issues.push({
         severity: "warning",
         path: filePath,
         message: `sources에 중복 참조가 있습니다: "${source}"`,
       });
     }
-    seen.add(source);
+    seen.add(normalized);
   }
 }
+
+const STATUS_ORDER: Record<string, number> = { draft: 0, "in-progress": 1, done: 2 };
 
 function checkStatusRevisionConsistency(
   doc: { status: string; revisions: { status: string }[] },
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  if (doc.status === "done") {
-    const notDone = doc.revisions.filter((r) => r.status !== "done");
-    if (notDone.length > 0) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `status가 "done"이지만 완료되지 않은 revision이 ${notDone.length}개 있습니다`,
-      });
-    }
+  if (doc.revisions.length === 0) return;
+
+  const minRevisionStatus = doc.revisions.reduce((min, rev) => {
+    const minOrder = STATUS_ORDER[min] ?? 0;
+    const revOrder = STATUS_ORDER[rev.status] ?? 0;
+    return revOrder < minOrder ? rev.status : min;
+  }, "done");
+
+  if (doc.status !== minRevisionStatus) {
+    issues.push({
+      severity: "error",
+      path: filePath,
+      message: `top-level status "${doc.status}"가 revision 최솟값 "${minRevisionStatus}"과 불일치합니다`,
+    });
   }
 }
