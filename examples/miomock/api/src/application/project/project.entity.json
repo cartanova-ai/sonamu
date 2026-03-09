@@ -26,7 +26,7 @@
       "nullable": true,
       "desc": "예산"
     },
-    { "name": "deadline", "type": "date", "nullable": true, "desc": "마감일시" },
+    { "name": "deadline", "nullable": true, "desc": "마감일시", "type": "date" },
     {
       "type": "relation",
       "name": "tags",
@@ -125,7 +125,7 @@
     ]
   },
   "enums": {
-    "ProjectOrderBy": { "id-desc": "ID최신순" },
+    "ProjectOrderBy": { "id-desc": "ID최신순", "deadline-asc": "마감일최신순" },
     "ProjectSearchField": { "id": "ID" },
     "ProjectStatus": {
       "planning": "계획",
