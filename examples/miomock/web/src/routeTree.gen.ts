@@ -24,9 +24,11 @@ import { Route as AdminFilesIndexRouteImport } from './routes/admin/files/index'
 import { Route as AdminEmployeesIndexRouteImport } from './routes/admin/employees/index'
 import { Route as AdminDepartmentsIndexRouteImport } from './routes/admin/departments/index'
 import { Route as AdminCompaniesIndexRouteImport } from './routes/admin/companies/index'
+import { Route as AdminAuditLogsIndexRouteImport } from './routes/admin/audit-logs/index'
 import { Route as AdminUsersFormRouteImport } from './routes/admin/users/form'
 import { Route as AdminTagsFormRouteImport } from './routes/admin/tags/form'
 import { Route as AdminProjectsFormRouteImport } from './routes/admin/projects/form'
+import { Route as AdminProjectsProjectIdRouteImport } from './routes/admin/projects/$projectId'
 import { Route as AdminFilesUploadTestRouteImport } from './routes/admin/files/upload-test'
 import { Route as AdminFilesFormRouteImport } from './routes/admin/files/form'
 import { Route as AdminEmployeesFormRouteImport } from './routes/admin/employees/form'
@@ -109,6 +111,11 @@ const AdminCompaniesIndexRoute = AdminCompaniesIndexRouteImport.update({
   path: '/admin/companies/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAuditLogsIndexRoute = AdminAuditLogsIndexRouteImport.update({
+  id: '/admin/audit-logs/',
+  path: '/admin/audit-logs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersFormRoute = AdminUsersFormRouteImport.update({
   id: '/admin/users/form',
   path: '/admin/users/form',
@@ -122,6 +129,11 @@ const AdminTagsFormRoute = AdminTagsFormRouteImport.update({
 const AdminProjectsFormRoute = AdminProjectsFormRouteImport.update({
   id: '/admin/projects/form',
   path: '/admin/projects/form',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProjectsProjectIdRoute = AdminProjectsProjectIdRouteImport.update({
+  id: '/admin/projects/$projectId',
+  path: '/admin/projects/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminFilesUploadTestRoute = AdminFilesUploadTestRouteImport.update({
@@ -169,9 +181,11 @@ export interface FileRoutesByFullPath {
   '/admin/employees/form': typeof AdminEmployeesFormRoute
   '/admin/files/form': typeof AdminFilesFormRoute
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
+  '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
+  '/admin/audit-logs': typeof AdminAuditLogsIndexRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/employees': typeof AdminEmployeesIndexRoute
@@ -195,9 +209,11 @@ export interface FileRoutesByTo {
   '/admin/employees/form': typeof AdminEmployeesFormRoute
   '/admin/files/form': typeof AdminFilesFormRoute
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
+  '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
+  '/admin/audit-logs': typeof AdminAuditLogsIndexRoute
   '/admin/companies': typeof AdminCompaniesIndexRoute
   '/admin/departments': typeof AdminDepartmentsIndexRoute
   '/admin/employees': typeof AdminEmployeesIndexRoute
@@ -222,9 +238,11 @@ export interface FileRoutesById {
   '/admin/employees/form': typeof AdminEmployeesFormRoute
   '/admin/files/form': typeof AdminFilesFormRoute
   '/admin/files/upload-test': typeof AdminFilesUploadTestRoute
+  '/admin/projects/$projectId': typeof AdminProjectsProjectIdRoute
   '/admin/projects/form': typeof AdminProjectsFormRoute
   '/admin/tags/form': typeof AdminTagsFormRoute
   '/admin/users/form': typeof AdminUsersFormRoute
+  '/admin/audit-logs/': typeof AdminAuditLogsIndexRoute
   '/admin/companies/': typeof AdminCompaniesIndexRoute
   '/admin/departments/': typeof AdminDepartmentsIndexRoute
   '/admin/employees/': typeof AdminEmployeesIndexRoute
@@ -250,9 +268,11 @@ export interface FileRouteTypes {
     | '/admin/employees/form'
     | '/admin/files/form'
     | '/admin/files/upload-test'
+    | '/admin/projects/$projectId'
     | '/admin/projects/form'
     | '/admin/tags/form'
     | '/admin/users/form'
+    | '/admin/audit-logs'
     | '/admin/companies'
     | '/admin/departments'
     | '/admin/employees'
@@ -276,9 +296,11 @@ export interface FileRouteTypes {
     | '/admin/employees/form'
     | '/admin/files/form'
     | '/admin/files/upload-test'
+    | '/admin/projects/$projectId'
     | '/admin/projects/form'
     | '/admin/tags/form'
     | '/admin/users/form'
+    | '/admin/audit-logs'
     | '/admin/companies'
     | '/admin/departments'
     | '/admin/employees'
@@ -302,9 +324,11 @@ export interface FileRouteTypes {
     | '/admin/employees/form'
     | '/admin/files/form'
     | '/admin/files/upload-test'
+    | '/admin/projects/$projectId'
     | '/admin/projects/form'
     | '/admin/tags/form'
     | '/admin/users/form'
+    | '/admin/audit-logs/'
     | '/admin/companies/'
     | '/admin/departments/'
     | '/admin/employees/'
@@ -329,9 +353,11 @@ export interface RootRouteChildren {
   AdminEmployeesFormRoute: typeof AdminEmployeesFormRoute
   AdminFilesFormRoute: typeof AdminFilesFormRoute
   AdminFilesUploadTestRoute: typeof AdminFilesUploadTestRoute
+  AdminProjectsProjectIdRoute: typeof AdminProjectsProjectIdRoute
   AdminProjectsFormRoute: typeof AdminProjectsFormRoute
   AdminTagsFormRoute: typeof AdminTagsFormRoute
   AdminUsersFormRoute: typeof AdminUsersFormRoute
+  AdminAuditLogsIndexRoute: typeof AdminAuditLogsIndexRoute
   AdminCompaniesIndexRoute: typeof AdminCompaniesIndexRoute
   AdminDepartmentsIndexRoute: typeof AdminDepartmentsIndexRoute
   AdminEmployeesIndexRoute: typeof AdminEmployeesIndexRoute
@@ -449,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCompaniesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/audit-logs/': {
+      id: '/admin/audit-logs/'
+      path: '/admin/audit-logs'
+      fullPath: '/admin/audit-logs'
+      preLoaderRoute: typeof AdminAuditLogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users/form': {
       id: '/admin/users/form'
       path: '/admin/users/form'
@@ -468,6 +501,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/projects/form'
       fullPath: '/admin/projects/form'
       preLoaderRoute: typeof AdminProjectsFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/projects/$projectId': {
+      id: '/admin/projects/$projectId'
+      path: '/admin/projects/$projectId'
+      fullPath: '/admin/projects/$projectId'
+      preLoaderRoute: typeof AdminProjectsProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/files/upload-test': {
@@ -529,9 +569,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminEmployeesFormRoute: AdminEmployeesFormRoute,
   AdminFilesFormRoute: AdminFilesFormRoute,
   AdminFilesUploadTestRoute: AdminFilesUploadTestRoute,
+  AdminProjectsProjectIdRoute: AdminProjectsProjectIdRoute,
   AdminProjectsFormRoute: AdminProjectsFormRoute,
   AdminTagsFormRoute: AdminTagsFormRoute,
   AdminUsersFormRoute: AdminUsersFormRoute,
+  AdminAuditLogsIndexRoute: AdminAuditLogsIndexRoute,
   AdminCompaniesIndexRoute: AdminCompaniesIndexRoute,
   AdminDepartmentsIndexRoute: AdminDepartmentsIndexRoute,
   AdminEmployeesIndexRoute: AdminEmployeesIndexRoute,

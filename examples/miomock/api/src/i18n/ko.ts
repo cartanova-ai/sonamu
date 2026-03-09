@@ -69,6 +69,7 @@ export default {
   "menu.selectTest": "Select 테스트",
   "menu.project": "프로젝트 관리",
   "menu.tag": "태그 관리",
+  "menu.auditLog": "감사 로그",
   "menu.user": "사용자 관리",
   notFound: (name: string, id: number | string) => `존재하지 않는 ${name} ID ${id}`,
   "search.invalidField": (field: string) => `구현되지 않은 검색 필드 ${field}`,
@@ -97,4 +98,8 @@ export default {
     `${field}은(는) ${min}~${max} 사이여야 합니다`,
   "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
   "validation.url": "올바른 URL 형식이 아닙니다",
+  "milestone.project.closedStatus": (status: string) =>
+    `프로젝트가 ${status} 상태이므로 마일스톤을 추가할 수 없습니다`,
+  "milestone.dueDate.afterDeadline": (dueDate: string, deadline: string) =>
+    `마일스톤 마감일(${dueDate})이 프로젝트 마감일(${deadline}) 이후입니다`,
 } as const;

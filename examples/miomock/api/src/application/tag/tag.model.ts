@@ -11,6 +11,7 @@ import {
   Sonamu,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
+import { AuditLogModel } from "../audit-log/audit-log.model";
 import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
 import type { TagListParams, TagSaveParams } from "./tag.types";
@@ -115,9 +116,26 @@ class TagModelClass extends BaseModelClass<
       wdb.ubRegister("tags", sp);
     });
 
+    // create/update 판별
+    const isCreate = spa.map((sp) => !sp.id);
+
     // transaction
     return wdb.transaction(async (trx) => {
       const ids = await trx.ubUpsert("tags");
+
+      // audit log
+      await Promise.all(
+        ids.map((id, i) =>
+          AuditLogModel.log({
+            actor_id: null,
+            action: isCreate[i] ? "create" : "update",
+            entity_type: "Tag",
+            entity_id: id,
+            old_value: null,
+            new_value: spa[i] ?? null,
+          }),
+        ),
+      );
 
       return ids;
     });
@@ -126,11 +144,29 @@ class TagModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 삭제 전 old_value 조회
+    const oldRows = await rdb.table("tags").whereIn("id", ids).selectAll();
 
     // transaction
     await wdb.transaction(async (trx) => {
       return trx.table("tags").whereIn("tags.id", ids).delete();
     });
+
+    // audit log
+    await Promise.all(
+      oldRows.map((row) =>
+        AuditLogModel.log({
+          actor_id: null,
+          action: "delete",
+          entity_type: "Tag",
+          entity_id: row.id,
+          old_value: row,
+          new_value: null,
+        }),
+      ),
+    );
 
     return ids.length;
   }

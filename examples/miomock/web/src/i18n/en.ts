@@ -108,6 +108,7 @@ export default defineLocale({
   "menu.selectTest": "Select Test",
   "menu.project": "Projects",
   "menu.tag": "Tags",
+  "menu.auditLog": "Audit Logs",
   "menu.user": "Users",
   notFound: (name: string, id: number | string) => `${name} ID ${id} not found`,
   "search.invalidField": (field: string) => `Invalid search field: ${field}`,
@@ -135,4 +136,8 @@ export default defineLocale({
     `${field} must be between ${min} and ${max}`,
   "validation.required": (field: string) => `${field} is required`,
   "validation.url": "Invalid URL format",
+  "milestone.project.closedStatus": (status: string) =>
+    `Cannot add milestone to a ${status} project`,
+  "milestone.dueDate.afterDeadline": (dueDate: string, deadline: string) =>
+    `Milestone due date (${dueDate}) is after project deadline (${deadline})`,
 });

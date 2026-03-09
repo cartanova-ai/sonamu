@@ -13,6 +13,8 @@ import type {
 import type {
   AccountBaseSchema,
   AccountSubsetKey,
+  AuditLogBaseSchema,
+  AuditLogSubsetKey,
   CompanyBaseSchema,
   CompanySubsetKey,
   DepartmentBaseSchema,
@@ -23,6 +25,8 @@ import type {
   EmployeeSubsetKey,
   FileBaseSchema,
   FileSubsetKey,
+  MilestoneBaseSchema,
+  MilestoneSubsetKey,
   PasskeyBaseSchema,
   PasskeySubsetKey,
   ProjectBaseSchema,
@@ -67,6 +71,27 @@ export const accountSubsetQueries = {
 export const accountLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<AccountSubsetKey>;
+
+// SubsetQuery: AuditLog
+export const auditLogSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("audit_logs").select({
+      id: "audit_logs.id",
+      created_at: "audit_logs.created_at",
+      actor_id: "audit_logs.actor_id",
+      action: "audit_logs.action",
+      entity_type: "audit_logs.entity_type",
+      entity_id: "audit_logs.entity_id",
+      old_value: "audit_logs.old_value",
+      new_value: "audit_logs.new_value",
+    });
+  },
+};
+
+// LoaderQuery: AuditLog
+export const auditLogLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<AuditLogSubsetKey>;
 
 // SubsetQuery: Company
 export const companySubsetQueries = {
@@ -323,6 +348,34 @@ export const fileSubsetQueries = {
 export const fileLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<FileSubsetKey>;
+
+// SubsetQuery: Milestone
+export const milestoneSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper
+      .from("milestones")
+      .join({ project: "projects" }, "milestones.project_id", "project.id")
+      .select({
+        id: "milestones.id",
+        created_at: "milestones.created_at",
+        name: "milestones.name",
+        description: "milestones.description",
+        due_date: "milestones.due_date",
+        completed_at: "milestones.completed_at",
+        project: {
+          id: "project.id",
+          name: "project.name",
+          status: "project.status",
+          deadline: "project.deadline",
+        },
+      });
+  },
+};
+
+// LoaderQuery: Milestone
+export const milestoneLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<MilestoneSubsetKey>;
 
 // SubsetQuery: Passkey
 export const passkeySubsetQueries = {
@@ -629,6 +682,7 @@ export const verificationLoaderQueries = {
 export type AccountForeignKeys = "user_id";
 export type DepartmentForeignKeys = "company_id" | "parent_id";
 export type EmployeeForeignKeys = "user_id" | "department_id";
+export type MilestoneForeignKeys = "project_id";
 export type PasskeyForeignKeys = "user_id";
 export type SessionForeignKeys = "user_id";
 export type TwoFactorForeignKeys = "user_id";
@@ -637,11 +691,13 @@ export type TwoFactorForeignKeys = "user_id";
 declare module "sonamu" {
   export interface DatabaseSchemaExtend {
     accounts: AccountBaseSchema;
+    audit_logs: AuditLogBaseSchema;
     companies: CompanyBaseSchema;
     departments: DepartmentBaseSchema;
     documents: DocumentBaseSchema;
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
+    milestones: MilestoneBaseSchema;
     passkeys: PasskeyBaseSchema;
     projects: ProjectBaseSchema;
     sessions: SessionBaseSchema;
@@ -658,6 +714,7 @@ declare module "sonamu" {
     accounts: AccountForeignKeys;
     departments: DepartmentForeignKeys;
     employees: EmployeeForeignKeys;
+    milestones: MilestoneForeignKeys;
     passkeys: PasskeyForeignKeys;
     sessions: SessionForeignKeys;
     two_factors: TwoFactorForeignKeys;

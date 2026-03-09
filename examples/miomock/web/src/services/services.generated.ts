@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-query";
 import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
+import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
 import { DepartmentListParams, DepartmentSaveParams } from "./department/department.types";
 import {
@@ -23,8 +24,11 @@ import {
 } from "./document/document.types";
 import { EmployeeListParams, EmployeeSaveParams } from "./employee/employee.types";
 import { FileListParams, FileSaveParams } from "./file/file.types";
+import { MilestoneListParams, MilestoneSaveParams } from "./milestone/milestone.types";
 import { ProjectListParams, ProjectSaveParams } from "./project/project.types";
 import {
+  AuditLogSubsetKey,
+  AuditLogSubsetMapping,
   CompanySubsetKey,
   CompanySubsetMapping,
   DepartmentSubsetKey,
@@ -35,6 +39,8 @@ import {
   EmployeeSubsetMapping,
   FileSubsetKey,
   FileSubsetMapping,
+  MilestoneSubsetKey,
+  MilestoneSubsetMapping,
   ProjectSubsetKey,
   ProjectSubsetMapping,
   SyncFixtureSubsetKey,
@@ -510,6 +516,118 @@ export namespace ProjectService {
       url: `/api/project/search?${qs.stringify({ search })}`,
     });
   }
+}
+
+export namespace MilestoneService {
+  export async function getMilestone<T extends MilestoneSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<MilestoneSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/milestone/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+
+  export const getMilestoneQueryOptions = <T extends MilestoneSubsetKey>(subset: T, id: number) =>
+    queryOptions({
+      queryKey: ["Milestone", "getMilestone", subset, id],
+      queryFn: () => getMilestone(subset, id),
+    });
+
+  export const useMilestone = <T extends MilestoneSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getMilestoneQueryOptions(subset, id),
+      ...options,
+    });
+
+  export async function getMilestones<T extends MilestoneSubsetKey, LP extends MilestoneListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, MilestoneSubsetMapping[T]>> {
+    return fetch({
+      method: "GET",
+      url: `/api/milestone/findMany?${qs.stringify({ subset, rawParams })}`,
+    });
+  }
+
+  export const getMilestonesQueryOptions = <
+    T extends MilestoneSubsetKey,
+    LP extends MilestoneListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    queryOptions({
+      queryKey: ["Milestone", "getMilestones", subset, rawParams],
+      queryFn: () => getMilestones(subset, rawParams),
+    });
+
+  export const useMilestones = <T extends MilestoneSubsetKey, LP extends MilestoneListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getMilestonesQueryOptions(subset, rawParams),
+      ...options,
+    });
+
+  export async function save(spa: MilestoneSaveParams[]): Promise<number[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/milestone/save`,
+      data: { spa },
+    });
+  }
+
+  export const useSaveMutation = () =>
+    useMutation({
+      mutationFn: (params: { spa: MilestoneSaveParams[] }) => save(params.spa),
+    });
+
+  export async function del(ids: number[]): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/milestone/del`,
+      data: { ids },
+    });
+  }
+
+  export const useDelMutation = () =>
+    useMutation({
+      mutationFn: (params: { ids: number[] }) => del(params.ids),
+    });
+
+  export async function complete(id: number): Promise<MilestoneSubsetMapping["A"]> {
+    return fetch({
+      method: "POST",
+      url: `/api/milestone/complete`,
+      data: { id },
+    });
+  }
+
+  export const useCompleteMutation = () =>
+    useMutation({
+      mutationFn: (params: { id: number }) => complete(params.id),
+    });
+
+  export async function uncomplete(id: number): Promise<MilestoneSubsetMapping["A"]> {
+    return fetch({
+      method: "POST",
+      url: `/api/milestone/uncomplete`,
+      data: { id },
+    });
+  }
+
+  export const useUncompleteMutation = () =>
+    useMutation({
+      mutationFn: (params: { id: number }) => uncomplete(params.id),
+    });
 }
 
 export namespace FileService {
@@ -1192,6 +1310,76 @@ export namespace CompanyService {
     });
 }
 
+export namespace AuditLogService {
+  export async function getAuditLog<T extends AuditLogSubsetKey>(
+    subset: T,
+    id: number,
+  ): Promise<AuditLogSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/auditLog/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+
+  export const getAuditLogQueryOptions = <T extends AuditLogSubsetKey>(subset: T, id: number) =>
+    queryOptions({
+      queryKey: ["AuditLog", "getAuditLog", subset, id],
+      queryFn: () => getAuditLog(subset, id),
+    });
+
+  export const useAuditLog = <T extends AuditLogSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getAuditLogQueryOptions(subset, id),
+      ...options,
+    });
+
+  export async function getAuditLogs<T extends AuditLogSubsetKey, LP extends AuditLogListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, AuditLogSubsetMapping[T]>> {
+    return fetch({
+      method: "GET",
+      url: `/api/auditLog/findMany?${qs.stringify({ subset, rawParams })}`,
+    });
+  }
+
+  export const getAuditLogsQueryOptions = <
+    T extends AuditLogSubsetKey,
+    LP extends AuditLogListParams,
+  >(
+    subset: T,
+    rawParams?: LP,
+  ) =>
+    queryOptions({
+      queryKey: ["AuditLog", "getAuditLogs", subset, rawParams],
+      queryFn: () => getAuditLogs(subset, rawParams),
+    });
+
+  export const useAuditLogs = <T extends AuditLogSubsetKey, LP extends AuditLogListParams>(
+    subset: T,
+    rawParams?: LP,
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getAuditLogsQueryOptions(subset, rawParams),
+      ...options,
+    });
+}
+
+// AsyncIdConfig: AuditLog
+export const AuditLogAsyncIdConfig: AsyncIdConfig<
+  AuditLogSubsetKey,
+  AuditLogSubsetMapping,
+  AuditLogListParams
+> = {
+  placeholderKey: "entity.AuditLog",
+  useList: AuditLogService.useAuditLogs,
+};
+
 // AsyncIdConfig: Company
 export const CompanyAsyncIdConfig: AsyncIdConfig<
   CompanySubsetKey,
@@ -1226,6 +1414,16 @@ export const EmployeeAsyncIdConfig: AsyncIdConfig<
 export const FileAsyncIdConfig: AsyncIdConfig<FileSubsetKey, FileSubsetMapping, FileListParams> = {
   placeholderKey: "entity.File",
   useList: FileService.useFiles,
+};
+
+// AsyncIdConfig: Milestone
+export const MilestoneAsyncIdConfig: AsyncIdConfig<
+  MilestoneSubsetKey,
+  MilestoneSubsetMapping,
+  MilestoneListParams
+> = {
+  placeholderKey: "entity.Milestone",
+  useList: MilestoneService.useMilestones,
 };
 
 // AsyncIdConfig: Project

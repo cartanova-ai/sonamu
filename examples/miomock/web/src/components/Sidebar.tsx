@@ -5,6 +5,7 @@ import { useSonamuContext } from "@/contexts/sonamu-provider";
 import { SD } from "@/i18n/sd.generated";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
+import ClipboardListIcon from "~icons/lucide/clipboard-list";
 import FolderIcon from "~icons/lucide/folder";
 import HandshakeIcon from "~icons/lucide/handshake";
 import HomeIcon from "~icons/lucide/home";
@@ -29,7 +30,8 @@ type MenuKey =
   | "menu.tag"
   | "menu.file"
   | "menu.fileUploadTest"
-  | "menu.selectTest";
+  | "menu.selectTest"
+  | "menu.auditLog";
 
 interface MenuItemProps {
   titleKey: MenuKey;
@@ -46,6 +48,7 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.project", path: "/admin/projects", icon: FolderIcon },
   { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
+  { titleKey: "menu.auditLog", path: "/admin/audit-logs", icon: ClipboardListIcon },
   { titleKey: "menu.fileUploadTest", path: "/admin/files/upload-test", icon: TestTubeIcon },
   { titleKey: "menu.selectTest", path: "/admin/select-test", icon: ListIcon },
 ];

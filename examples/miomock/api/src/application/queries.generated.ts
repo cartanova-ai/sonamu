@@ -17,18 +17,22 @@ function createSSRQuery(
   return { modelName, methodName, params, serviceKey, __brand: "SSRQuery" } as SSRQuery;
 }
 
+import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams } from "./company/company.types";
 import { DepartmentListParams } from "./department/department.types";
 import { DocumentListParams, DocumentSemanticParams } from "./document/document.types";
 import { EmployeeListParams } from "./employee/employee.types";
 import { FileListParams } from "./file/file.types";
+import { MilestoneListParams } from "./milestone/milestone.types";
 import { ProjectListParams } from "./project/project.types";
 import {
+  AuditLogSubsetKey,
   CompanySubsetKey,
   DepartmentSubsetKey,
   DocumentSubsetKey,
   EmployeeSubsetKey,
   FileSubsetKey,
+  MilestoneSubsetKey,
   ProjectSubsetKey,
   SyncFixtureSubsetKey,
   TagSubsetKey,
@@ -89,6 +93,22 @@ export namespace ProjectService {
     rawParams?: LP,
   ): SSRQuery =>
     createSSRQuery("ProjectModel", "findMany", [subset, rawParams], ["Project", "getProjects"]);
+}
+
+export namespace MilestoneService {
+  export const getMilestone = <T extends MilestoneSubsetKey>(subset: T, id: number): SSRQuery =>
+    createSSRQuery("MilestoneModel", "findById", [subset, id], ["Milestone", "getMilestone"]);
+
+  export const getMilestones = <T extends MilestoneSubsetKey, LP extends MilestoneListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): SSRQuery =>
+    createSSRQuery(
+      "MilestoneModel",
+      "findMany",
+      [subset, rawParams],
+      ["Milestone", "getMilestones"],
+    );
 }
 
 export namespace FileService {
@@ -171,4 +191,15 @@ export namespace CompanyService {
     rawParams?: LP,
   ): SSRQuery =>
     createSSRQuery("CompanyModel", "findMany", [subset, rawParams], ["Company", "getCompanies"]);
+}
+
+export namespace AuditLogService {
+  export const getAuditLog = <T extends AuditLogSubsetKey>(subset: T, id: number): SSRQuery =>
+    createSSRQuery("AuditLogModel", "findById", [subset, id], ["AuditLog", "getAuditLog"]);
+
+  export const getAuditLogs = <T extends AuditLogSubsetKey, LP extends AuditLogListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): SSRQuery =>
+    createSSRQuery("AuditLogModel", "findMany", [subset, rawParams], ["AuditLog", "getAuditLogs"]);
 }

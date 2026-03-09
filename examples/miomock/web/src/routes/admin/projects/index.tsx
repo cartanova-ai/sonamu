@@ -106,7 +106,15 @@ function ProjectList({}: ProjectListProps) {
     },
     {
       label: SD("entity.Project.name"),
-      tc: (row) => <>{row.name}</>,
+      tc: (row) => (
+        <button
+          type="button"
+          className="text-primary hover:underline cursor-pointer text-left"
+          onClick={() => navigate({ to: `/admin/projects/${row.id}` })}
+        >
+          {row.name}
+        </button>
+      ),
     },
     {
       label: SD("entity.Project.status"),

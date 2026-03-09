@@ -264,6 +264,76 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/milestone/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/milestone/findMany
+	?subset=A
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
+	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[project_id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/milestone/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "project_id": 0,
+      "name": "NAME",
+      "description": null,
+      "due_date": "2000-01-01",
+      "completed_at": null
+    }
+  ]
+}
+
+###
+
+POST {{baseUrl}}/api/milestone/del
+Content-Type: application/json
+
+{
+  "ids": [
+    0
+  ]
+}
+
+###
+
+POST {{baseUrl}}/api/milestone/complete
+Content-Type: application/json
+
+{
+  "id": 0
+}
+
+###
+
+POST {{baseUrl}}/api/milestone/uncomplete
+Content-Type: application/json
+
+{
+  "id": 0
+}
+
+###
+
 GET {{baseUrl}}/api/file/findById
 	?subset=A
 	&id=0
@@ -597,3 +667,28 @@ Content-Type: application/json
     0
   ]
 }
+
+###
+
+GET {{baseUrl}}/api/auditLog/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/auditLog/findMany
+	?subset=A
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
+	&rawParams[sonamuFilter]=unknown-custom
+	&rawParams[entity_type]=ENTITY_TYPE
+	&rawParams[actor_id]=ACTOR_ID
+	&rawParams[date_from]=2000-01-01
+	&rawParams[date_to]=2000-01-01
+Content-Type: application/json
