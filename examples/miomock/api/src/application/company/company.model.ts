@@ -117,6 +117,17 @@ class CompanyModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: CompanySaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 신규 생성 시 회사명 중복 체크
+    const newCompanies = spa.filter((sp) => !sp.id);
+    if (newCompanies.length > 0) {
+      const names = newCompanies.map((sp) => sp.name);
+      const existing = await rdb.table("companies").whereIn("name", names).selectAll().first();
+      if (existing) {
+        throw new BadRequestException(SD("company.name.duplicate"));
+      }
+    }
 
     // register
     spa.forEach((sp) => {
