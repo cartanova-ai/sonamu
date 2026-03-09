@@ -112,7 +112,35 @@ export default defineLocale({
 `defineLocale` is exported from `sd.generated.ts` and provides type checking based on the keys from defaultLocale.
 </Note>
 
-## Setting Locale in Context
+## Locale Configuration
+
+### Frontend (Client)
+
+`sd.generated.ts` includes `setLocale` and `getCurrentLocale` functions for client-side locale management:
+
+```typescript
+import { setLocale, getCurrentLocale, SUPPORTED_LOCALES } from "@/i18n/sd.generated";
+
+// Change locale
+setLocale("en");
+
+// Check current locale
+const current = getCurrentLocale(); // "en"
+```
+
+The axios interceptor in `sonamu.shared.ts` automatically adds the `Accept-Language` header to all API requests:
+
+```typescript
+// sonamu.shared.ts (auto-generated — no manual setup needed)
+axios.interceptors.request.use((config) => {
+  config.headers["Accept-Language"] = getCurrentLocale();
+  return config;
+});
+```
+
+After calling `setLocale("en")`, all subsequent API requests will include the `Accept-Language: en` header.
+
+### Backend (Server)
 
 To set the locale per request, configure the Context in middleware:
 
@@ -131,6 +159,10 @@ export async function localeMiddleware(request: FastifyRequest) {
   ctx.locale = locale;
 }
 ```
+
+<Note>
+When the client calls `setLocale()`, the axios interceptor automatically sends the `Accept-Language` header, and the server's locale middleware reads it so that `SD()` calls return translations in the correct language. Client-server locale synchronization works without any additional configuration.
+</Note>
 
 ## Verifying Initialization
 

@@ -112,7 +112,35 @@ export default defineLocale({
 `defineLocale`은 `sd.generated.ts`에서 export되며, defaultLocale의 키를 기준으로 타입 체크를 제공합니다.
 </Note>
 
-## Context에서 Locale 설정
+## Locale 설정
+
+### 프론트엔드 (클라이언트)
+
+`sd.generated.ts`에는 클라이언트 측 locale 관리를 위한 `setLocale`과 `getCurrentLocale` 함수가 포함됩니다:
+
+```typescript
+import { setLocale, getCurrentLocale, SUPPORTED_LOCALES } from "@/i18n/sd.generated";
+
+// locale 변경
+setLocale("en");
+
+// 현재 locale 확인
+const current = getCurrentLocale(); // "en"
+```
+
+`sonamu.shared.ts`의 axios interceptor가 모든 API 요청에 `Accept-Language` 헤더를 자동으로 추가합니다:
+
+```typescript
+// sonamu.shared.ts (자동 생성됨 — 직접 작성할 필요 없음)
+axios.interceptors.request.use((config) => {
+  config.headers["Accept-Language"] = getCurrentLocale();
+  return config;
+});
+```
+
+따라서 `setLocale("en")`을 호출한 뒤의 모든 API 요청은 `Accept-Language: en` 헤더를 포함합니다.
+
+### 백엔드 (서버)
 
 요청별로 locale을 설정하려면 미들웨어에서 Context를 구성합니다:
 
@@ -122,15 +150,19 @@ import { Sonamu } from "sonamu";
 
 export async function localeMiddleware(request: FastifyRequest) {
   // Accept-Language 헤더 또는 쿼리 파라미터에서 locale 추출
-  const locale = request.headers["accept-language"]?.split(",")[0]?.split("-")[0] 
-    || request.query.locale 
+  const locale = request.headers["accept-language"]?.split(",")[0]?.split("-")[0]
+    || request.query.locale
     || "ko";
-  
+
   // Context에 locale 설정
   const ctx = Sonamu.getContext();
   ctx.locale = locale;
 }
 ```
+
+<Note>
+클라이언트에서 `setLocale()`로 locale을 설정하면, axios interceptor가 `Accept-Language` 헤더를 자동 전달하고, 서버의 locale 미들웨어가 이를 읽어 `SD()` 호출 시 해당 언어의 번역을 반환합니다. 별도의 추가 설정 없이 클라이언트-서버 간 locale이 동기화됩니다.
+</Note>
 
 ## 초기화 확인
 
