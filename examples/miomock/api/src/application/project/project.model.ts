@@ -12,6 +12,7 @@ import {
   stream,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
+import { AuditLogModel } from "../audit-log/audit-log.model";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectAgent } from "./project.agent";
@@ -109,6 +110,8 @@ class ProjectModelClass extends BaseModelClass<
       // default orderBy
       if (params.orderBy === "id-desc") {
         qb.orderBy("projects.id", "desc");
+      } else if (params.orderBy === "deadline-asc") {
+        qb.orderBy("projects.deadline", "asc");
       } else {
         exhaustive(params.orderBy);
       }
@@ -155,6 +158,9 @@ class ProjectModelClass extends BaseModelClass<
       });
     });
 
+    // create/update 판별
+    const isCreate = spa.map((sp) => !sp.id);
+
     // transaction
     return puri.transaction(async (trx) => {
       const ids = await trx.ubUpsert("projects");
@@ -170,6 +176,20 @@ class ProjectModelClass extends BaseModelClass<
 
       await trx.table("project_tags").whereIn("project_id", ids).whereNotIn("id", ptIds).delete();
 
+      // audit log
+      await Promise.all(
+        ids.map((id, i) =>
+          AuditLogModel.log({
+            actor_id: null,
+            action: isCreate[i] ? "create" : "update",
+            entity_type: "Project",
+            entity_id: id,
+            old_value: null,
+            new_value: spa[i] ?? null,
+          }),
+        ),
+      );
+
       return ids;
     });
   }
@@ -177,11 +197,29 @@ class ProjectModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 삭제 전 old_value 조회
+    const oldRows = await rdb.table("projects").whereIn("id", ids).selectAll();
 
     // transaction
     await wdb.transaction(async (trx) => {
       return trx.table("projects").whereIn("projects.id", ids).delete();
     });
+
+    // audit log
+    await Promise.all(
+      oldRows.map((row) =>
+        AuditLogModel.log({
+          actor_id: null,
+          action: "delete",
+          entity_type: "Project",
+          entity_id: row.id,
+          old_value: row,
+          new_value: null,
+        }),
+      ),
+    );
 
     return ids.length;
   }

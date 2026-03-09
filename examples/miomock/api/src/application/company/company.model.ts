@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
+import { AuditLogModel } from "../audit-log/audit-log.model";
 import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
 import { companyLoaderQueries, companySubsetQueries } from "../sonamu.generated.sso";
 import type { CompanyListParams, CompanySaveParams } from "./company.types";
@@ -134,9 +135,26 @@ class CompanyModelClass extends BaseModelClass<
       wdb.ubRegister("companies", sp);
     });
 
+    // create/update 판별을 위해 id 유무 기록
+    const isCreate = spa.map((sp) => !sp.id);
+
     // transaction
     return wdb.transaction(async (trx) => {
       const ids = await trx.ubUpsert("companies");
+
+      // audit log
+      await Promise.all(
+        ids.map((id, i) =>
+          AuditLogModel.log({
+            actor_id: null,
+            action: isCreate[i] ? "create" : "update",
+            entity_type: "Company",
+            entity_id: id,
+            old_value: null,
+            new_value: spa[i] ?? null,
+          }),
+        ),
+      );
 
       return ids;
     });
@@ -145,11 +163,29 @@ class CompanyModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 삭제 전 old_value 조회
+    const oldRows = await rdb.table("companies").whereIn("id", ids).selectAll();
 
     // transaction
     await wdb.transaction(async (trx) => {
       return trx.table("companies").whereIn("companies.id", ids).delete();
     });
+
+    // audit log
+    await Promise.all(
+      oldRows.map((row) =>
+        AuditLogModel.log({
+          actor_id: null,
+          action: "delete",
+          entity_type: "Company",
+          entity_id: row.id,
+          old_value: row,
+          new_value: null,
+        }),
+      ),
+    );
 
     return ids.length;
   }

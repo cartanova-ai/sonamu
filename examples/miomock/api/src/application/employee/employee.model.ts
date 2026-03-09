@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import { SD } from "../../i18n/sd.generated";
+import { AuditLogModel } from "../audit-log/audit-log.model";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeLoaderQueries, employeeSubsetQueries } from "../sonamu.generated.sso";
 import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
@@ -199,9 +200,26 @@ class EmployeeModelClass extends BaseModelClass<
       wdb.ubRegister("employees", sp);
     });
 
+    // create/update 판별
+    const isCreate = spa.map((sp) => !sp.id);
+
     // transaction
     return wdb.transaction(async (trx) => {
       const ids = await trx.ubUpsert("employees");
+
+      // audit log
+      await Promise.all(
+        ids.map((id, i) =>
+          AuditLogModel.log({
+            actor_id: null,
+            action: isCreate[i] ? "create" : "update",
+            entity_type: "Employee",
+            entity_id: id,
+            old_value: null,
+            new_value: spa[i] ?? null,
+          }),
+        ),
+      );
 
       return ids;
     });
@@ -210,11 +228,29 @@ class EmployeeModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
+    const rdb = this.getPuri("r");
+
+    // 삭제 전 old_value 조회
+    const oldRows = await rdb.table("employees").whereIn("id", ids).selectAll();
 
     // transaction
     await wdb.transaction(async (trx) => {
       return trx.table("employees").whereIn("employees.id", ids).delete();
     });
+
+    // audit log
+    await Promise.all(
+      oldRows.map((row) =>
+        AuditLogModel.log({
+          actor_id: null,
+          action: "delete",
+          entity_type: "Employee",
+          entity_id: row.id,
+          old_value: row,
+          new_value: null,
+        }),
+      ),
+    );
 
     return ids.length;
   }
