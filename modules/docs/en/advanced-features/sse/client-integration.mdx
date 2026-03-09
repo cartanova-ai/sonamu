@@ -3,9 +3,89 @@ title: "Client Integration"
 description: "Using SSE in the frontend"
 ---
 
-This guide explains how to use Sonamu's SSE endpoints in the frontend. You can receive real-time events using the browser's **EventSource API**.
+This guide explains how to use Sonamu's SSE endpoints in the frontend. Sonamu provides a built-in `useSSEStream` hook in `sonamu.shared.ts`, so you typically don't need to work with EventSource directly.
 
-## EventSource API
+## Built-in useSSEStream Hook
+
+When you create a Sonamu project, `sonamu.shared.ts` includes the `useSSEStream` hook. It provides connection management, automatic retries, and locale header forwarding out of the box.
+
+### API
+
+```typescript
+function useSSEStream<T extends Record<string, any>>(
+  url: string,
+  params: Record<string, any>,
+  handlers: { [K in keyof T]?: (data: T[K]) => void },
+  options?: SSEStreamOptions,
+): SSEStreamState;
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | `string` | SSE endpoint path |
+| `params` | `Record<string, any>` | Query parameters |
+| `handlers` | `{ [K in keyof T]?: (data: T[K]) => void }` | Event type handlers |
+| `options` | `SSEStreamOptions` | Connection options (optional) |
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Whether the connection is active |
+| `retry` | `number` | `3` | Maximum retry count |
+| `retryInterval` | `number` | `3000` | Retry interval (ms) |
+
+**Return value (`SSEStreamState`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `isConnected` | `boolean` | Current connection status |
+| `error` | `string \| null` | Error message |
+| `retryCount` | `number` | Current retry count |
+| `isEnded` | `boolean` | Server sent `end` event (graceful termination) |
+
+### Usage Example
+
+```typescript
+import { useSSEStream } from "@/services/sonamu.shared";
+
+type NotificationEvents = {
+  notification: { id: number; message: string };
+  end: string;
+};
+
+function NotificationList({ userId }: { userId: number }) {
+  const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
+
+  const { isConnected, error, isEnded } = useSSEStream<NotificationEvents>(
+    "/stream/notifications",
+    { userId },
+    {
+      notification: (data) => {
+        setNotifications((prev) => [data, ...prev].slice(0, 50));
+      },
+    },
+  );
+
+  return (
+    <div>
+      <div>Status: {isConnected ? "Connected" : isEnded ? "Ended" : "Disconnected"}</div>
+      {error && <div>Error: {error}</div>}
+      {notifications.map((n) => (
+        <div key={n.id}>{n.message}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+<Note>
+`useSSEStream` automatically sends the `Accept-Language` header, allowing the server to return locale-aware responses.
+</Note>
+
+## EventSource API (Direct Usage)
 
 A built-in browser API for managing SSE connections.
 
@@ -33,9 +113,11 @@ source.onerror = (error) => {
 };
 ```
 
-## React Integration
+## Manual React Implementation
 
-### Basic Hook
+Below shows how to work with EventSource directly without `useSSEStream`. Use this when you need fine-grained control not provided by the built-in hook.
+
+### Custom Hook
 
 ```typescript
 import { useEffect, useState } from 'react';
