@@ -311,6 +311,42 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 ---
 
+## CDD CLI (`@sonamu-kit/cdd`)
+
+The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
+| `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
+| `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown, revision/feature summary) |
+| `cdd validate` | Verify structural/referential integrity (missing sections, invalid paths, revision consistency) |
+| `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
+| `cdd check` | Verify Spec-Code consistency (source existence, duplicates, status-revision consistency, path security) |
+| `cdd spec create <name>` | Create a Spec template. Requires `--domain <name>` or `--contract <path>` |
+| `cdd spec set-status <spec> <status>` | Change Spec/revision status. Use `--revision <id>` for individual revision. Top-level status is always auto-aggregated to the minimum |
+
+### Common Options
+
+- `--cwd <dir>` : Set working directory (default: current directory)
+- `-h, --help` : Show help
+
+### Programmatic API
+
+The package also exports a library API for use in scripts:
+
+```ts
+import { loadProject, validateProject, findContractDir } from "@sonamu-kit/cdd";
+
+const contractDir = findContractDir(process.cwd());
+const project = await loadProject(contractDir);
+const issues = validateProject(project);
+```
+
+---
+
 ## Prohibitions
 
 - AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
