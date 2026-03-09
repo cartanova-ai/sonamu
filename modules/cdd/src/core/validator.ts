@@ -203,7 +203,7 @@ function validateContractReferences(
 
 /** 특정 레벨의 Markdown 헤딩 텍스트를 추출한다 */
 function extractHeadings(content: string[], level: number): string[] {
-  const prefix = "#".repeat(level) + " ";
+  const prefix = `${"#".repeat(level)} `;
   return content
     .filter((line) => line.startsWith(prefix) && !line.startsWith(`${prefix}#`))
     .map((line) => line.slice(prefix.length).trim());

@@ -49,9 +49,10 @@ export function runSpecCreate(
     }
     targetDir = path.dirname(contractPath);
   } else {
-    targetDir = path.join(project.contractDir, options.domain!);
+    const domain = options.domain ?? "";
+    targetDir = path.join(project.contractDir, domain);
     if (!fs.existsSync(targetDir)) {
-      console.error(`도메인 디렉토리가 존재하지 않습니다: "${options.domain}"`);
+      console.error(`도메인 디렉토리가 존재하지 않습니다: "${domain}"`);
       const domains = [...new Set(project.contracts.map((c) => c.domain))].filter((d) => d !== "");
       if (domains.length > 0) {
         console.error("사용 가능한 도메인:");

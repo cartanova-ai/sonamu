@@ -59,7 +59,7 @@ describe("loadProject", () => {
 
     const rootContract = project.contracts.find((c) => c.domain === "");
     expect(rootContract).toBeDefined();
-    expect(rootContract!.basename).toBe("main");
+    expect(rootContract?.basename).toBe("main");
 
     const authSpecs = project.specs.filter((s) => s.domain === "auth");
     expect(authSpecs.length).toBeGreaterThanOrEqual(1);
@@ -70,7 +70,7 @@ describe("loadProject", () => {
 
     const userSpec = project.specs.find((s) => s.basename === "user");
     expect(userSpec).toBeDefined();
-    expect(userSpec!.resolvedContracts).toContain(
+    expect(userSpec?.resolvedContracts).toContain(
       path.resolve(MIOMOCK_CONTRACT_DIR, "auth/main.contract.json"),
     );
   });
