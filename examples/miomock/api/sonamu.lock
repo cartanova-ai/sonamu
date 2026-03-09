@@ -13,7 +13,7 @@
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "fbba65a8f1fdb4203aa2e0bd76881a48d7b3b424"
+    "checksum": "e2a54637f1ba38911e8dbec3d013933b421a4322"
   },
   {
     "path": "src/application/company/company.types.ts",
@@ -25,7 +25,7 @@
   },
   {
     "path": "src/application/department/department.model.ts",
-    "checksum": "cb052c8ed3f8555ba784f89ba2cbe3d6649d89ad"
+    "checksum": "ed6ba573f4b247e73613993aa76d386daf3e875b"
   },
   {
     "path": "src/application/department/department.types.ts",
@@ -49,7 +49,7 @@
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "f1dc2d0ce1d8a33d44fac7ebadd054b965d89b68"
+    "checksum": "00a4fbe1ad58a64a3e6ded801366f616c9c0b215"
   },
   {
     "path": "src/application/employee/employee.types.ts",
@@ -141,7 +141,7 @@
   },
   {
     "path": "src/application/user/user.model.ts",
-    "checksum": "f88ce24e0075ee78937051f261a6d89eb2274261"
+    "checksum": "c88113683efb5ec036bc3a76c9ef35bcd21d3283"
   },
   {
     "path": "src/application/user/user.types.ts",
@@ -161,7 +161,7 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "fb351f3314f6bee4d438b9a7120f5de8696a42ca"
+    "checksum": "5d87629f098f5c2d0cc1bf1bd36a516a60dd0be6"
   },
   {
     "path": "src/i18n/ja.ts",
@@ -169,7 +169,7 @@
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "14261faa6062217949c5bcf297b56674f47fb0ed"
+    "checksum": "804bc44dcc2c7cc43e3c124feb79c4a196db3cad"
   },
   {
     "path": "src/i18n/sd.generated.ts",
