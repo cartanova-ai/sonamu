@@ -5,9 +5,12 @@ import { runCheck } from "./commands/check.js";
 import { runImpact } from "./commands/impact.js";
 import { runInit } from "./commands/init.js";
 import { runSpecAdd } from "./commands/spec-add.js";
+import { runSpecBlame } from "./commands/spec-blame.js";
 import { runSpecCreate } from "./commands/spec-create.js";
+import { runSpecExplain } from "./commands/spec-explain.js";
 import { runSpecGet } from "./commands/spec-get.js";
 import { runSpecList } from "./commands/spec-list.js";
+import { runSpecLog } from "./commands/spec-log.js";
 import { runSpecRemove } from "./commands/spec-remove.js";
 import { runSpecSet } from "./commands/spec-set.js";
 import { runSpecSetStatus } from "./commands/spec-set-status.js";
@@ -134,9 +137,37 @@ async function dispatchSpec(cmdArgs: string[], project: CddProject): Promise<Out
         project,
       );
     }
+    case "blame":
+      return runSpecBlame(cmdArgs[1], { cwd, since: args.since, until: args.until }, project);
+    case "log":
+      return runSpecLog(
+        cmdArgs[1],
+        {
+          cwd,
+          since: args.since,
+          until: args.until,
+          groupBy: (args["group-by"] as "day" | "week" | "month") || "week",
+        },
+        project,
+      );
+    case "explain": {
+      if (!cmdArgs[1]) {
+        console.error(
+          "사용법: cdd spec explain <spec> [--since <date>] [--until <date>] [--commit <hash>]",
+        );
+        process.exit(1);
+      }
+      return runSpecExplain(
+        cmdArgs[1],
+        { cwd, since: args.since, until: args.until, commit: args.commit },
+        project,
+      );
+    }
     default:
       console.error(`알 수 없는 spec 서브커맨드: "${subCmd}"`);
-      console.error("사용 가능: create, set-status, list, get, set, add, remove");
+      console.error(
+        "사용 가능: create, set-status, list, get, set, add, remove, blame, log, explain",
+      );
       process.exit(1);
   }
 }
@@ -158,6 +189,9 @@ Commands:
   spec set <spec>                   Spec 필드 값 변경
   spec add <spec>                   Spec 배열/맵 필드에 항목 추가
   spec remove <spec>                Spec 배열/맵 필드에서 항목 제거
+  spec blame <spec>                 Spec 기여자 분석 (git blame 기반)
+  spec log <spec>                   Spec 변경 타임라인 조회
+  spec explain <spec>               Spec 변경 사유 분석
 
 Options:
   --cwd <dir>           작업 디렉토리 지정 (기본: 현재 디렉토리)
@@ -168,6 +202,10 @@ Options:
   --status <status>     상태 필터 (draft | in-progress | done)
   --domain <domain>     도메인 필터
   --contract <path>     Contract 경로
+  --since <date>        시작 날짜 필터 (blame, log, explain)
+  --until <date>        종료 날짜/리비전 필터 (blame, log, explain)
+  --group-by <period>   그룹 단위: day | week | month (log, 기본: week)
+  --commit <hash>       특정 커밋 분석 (explain)
   --raw                 JSON 원본 출력 (파이프/비TTY 환경에서 자동 적용)
   --json                --raw의 별칭 (spec set에서는 JSON 값 파싱에도 사용)
   -h, --help            도움말`);
