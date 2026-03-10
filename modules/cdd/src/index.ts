@@ -20,7 +20,21 @@ import type { OutputResult } from "./utils/output.js";
 import { printOutput } from "./utils/output.js";
 
 const args = minimist(process.argv.slice(2), {
-  string: ["cwd", "domain", "contract", "field", "value", "key", "status", "format", "index"],
+  string: [
+    "cwd",
+    "domain",
+    "contract",
+    "field",
+    "value",
+    "key",
+    "status",
+    "format",
+    "index",
+    "since",
+    "until",
+    "group-by",
+    "commit",
+  ],
   boolean: ["help", "raw", "json", "reverse"],
   alias: { h: "help" },
 });
@@ -82,7 +96,7 @@ async function dispatch(
   }
 }
 
-function dispatchSpec(cmdArgs: string[], project: CddProject): OutputResult {
+async function dispatchSpec(cmdArgs: string[], project: CddProject): Promise<OutputResult> {
   const subCmd = cmdArgs[0];
   switch (subCmd) {
     case "create":
