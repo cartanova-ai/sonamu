@@ -3,7 +3,7 @@ title: "Creating SSE Endpoints"
 description: "Building SSE APIs with the @stream decorator"
 ---
 
-Sonamu makes it easy to create SSE endpoints using the **@stream** decorator. Generator functions are used to send events sequentially.
+Sonamu makes it easy to create SSE endpoints using the **@stream** decorator. Use the SSE connection object created by `ctx.createSSE()` to send events to clients.
 
 ## @stream Decorator
 
@@ -12,7 +12,7 @@ A decorator for defining SSE endpoints.
 ### Basic Usage
 
 ```typescript
-import { BaseModel, stream, api, z } from "sonamu";
+import { BaseModel, stream, z } from "sonamu";
 
 class NotificationModelClass extends BaseModel {
   @stream({
@@ -24,8 +24,7 @@ class NotificationModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })  // Compression must be disabled
-  async *streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -171,8 +170,7 @@ class NotificationModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -236,8 +234,7 @@ class TaskModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamTaskProgress(taskId: number, ctx: Context) {
+  async streamTaskProgress(taskId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         progress: z.object({
@@ -300,8 +297,7 @@ class PostModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamNewPosts(ctx: Context) {
+  async streamNewPosts(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         newPost: z.object({
@@ -374,8 +370,7 @@ class ChatModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamChatRoom(roomId: number, ctx: Context) {
+  async streamChatRoom(roomId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         message: z.object({
@@ -448,8 +443,7 @@ class MonitorModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamServerStatus(ctx: Context) {
+  async streamServerStatus(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         status: z.object({
@@ -508,8 +502,7 @@ class MonitorModelClass extends BaseModel {
     message: z.string(),
   })
 })
-@api({ compress: false })
-async *streamData(ctx: Context) {
+async streamData(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       message: z.string(),
@@ -544,8 +537,7 @@ SSE automatically sends keep-alive signals, but custom implementation is also po
     keepalive: z.object({}),
   })
 })
-@api({ compress: false })
-async *streamWithKeepAlive(ctx: Context) {
+async streamWithKeepAlive(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       message: z.string(),
@@ -584,8 +576,7 @@ async *streamWithKeepAlive(ctx: Context) {
     }),
   })
 })
-@api({ compress: false })
-async *streamWithErrorHandling(ctx: Context) {
+async streamWithErrorHandling(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       data: z.object({
@@ -616,21 +607,19 @@ async *streamWithErrorHandling(ctx: Context) {
 <Warning>
 **Important considerations when writing SSE endpoints**:
 
-1. **Compression must be disabled**: SSE is streaming, so compression is prohibited
+1. **`@stream` and `@api` cannot be used together**: Use only the `@stream` decorator for SSE endpoints
    ```typescript
+   // ✅ Use @stream only
+   @stream({ type: 'sse', events: ... })
+   async streamData(ctx: Context): Promise<void> { ... }
+
+   // ❌ Using @api and @stream together (runtime error)
+   @stream({ type: 'sse', events: ... })
    @api({ compress: false })
+   async streamData(ctx: Context): Promise<void> { ... }
    ```
 
-2. **Use generator function**: `async *` keyword required
-   ```typescript
-   // ✅ Generator function
-   async *streamData() { ... }
-
-   // ❌ Regular function
-   async streamData() { ... }
-   ```
-
-3. **Always call end()**: Connection closure is required
+2. **Always call end()**: Connection closure is required
    ```typescript
    try {
      // Send events
@@ -639,7 +628,7 @@ async *streamWithErrorHandling(ctx: Context) {
    }
    ```
 
-4. **Beware of infinite loops**: Appropriate wait time needed
+3. **Beware of infinite loops**: Appropriate wait time needed
    ```typescript
    while (true) {
      sse.publish('data', ...);
@@ -647,7 +636,7 @@ async *streamWithErrorHandling(ctx: Context) {
    }
    ```
 
-5. **Event schema matching**: events and publish event names must match
+4. **Event schema matching**: events and publish event names must match
    ```typescript
    // ✅ Match
    events: z.object({
@@ -659,7 +648,7 @@ async *streamWithErrorHandling(ctx: Context) {
    sse.publish('msg', 'Hi');
    ```
 
-6. **Prevent memory leaks**: Clean up timers/listeners
+5. **Prevent memory leaks**: Clean up timers/listeners
    ```typescript
    const interval = setInterval(() => { ... }, 1000);
    try {
