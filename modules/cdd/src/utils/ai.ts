@@ -34,6 +34,8 @@ export async function callAi<T>(options: AiCallOptions<T>): Promise<AiCallResult
   const timeout = options.timeoutMs ?? 120_000;
   const cliArgs = [
     "-p",
+    "--model",
+    "haiku",
     "--input-format",
     "text",
     "--output-format",
