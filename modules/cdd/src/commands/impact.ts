@@ -78,7 +78,7 @@ function printContractPaths(title: string, paths: Set<string>, project: CddProje
   console.log();
 }
 
-function resolveSourcePath(ref: string, project: CddProject): string {
+export function resolveSourcePath(ref: string, project: CddProject): string {
   const srcIdx = ref.indexOf("src/");
   if (srcIdx >= 0) {
     return ref.slice(srcIdx);
