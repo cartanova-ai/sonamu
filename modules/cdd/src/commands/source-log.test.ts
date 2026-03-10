@@ -47,18 +47,18 @@ function stubCallAiFail(): LogDeps["callAi"] {
   };
 }
 
-function stubCallAiSuccess(value: { summary: string; phase: string }): LogDeps["callAi"] {
+function stubCallAiSuccess(summary: string): LogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
     const keyMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
-    const batchResponse: Record<string, { summary: string; phase: string }> = {};
+    const batchResponse: Record<string, string> = {};
     for (const match of keyMatches) {
       const key = match.slice(1, -1);
       if (key.includes("::")) {
-        batchResponse[key] = value;
+        batchResponse[key] = summary;
       }
     }
 
-    const target = Object.keys(batchResponse).length > 0 ? batchResponse : value;
+    const target = Object.keys(batchResponse).length > 0 ? batchResponse : summary;
     const parsed = opts.parse(target);
     if (parsed !== null) {
       return { ok: true, value: parsed, rawText: JSON.stringify(target) };
@@ -126,7 +126,7 @@ describe("runSourceLog", () => {
     expect(bob?.lines_delta).toBe("+65 -2");
   });
 
-  it("AI 성공 시 summary와 phase가 채워진다", async () => {
+  it("AI 성공 시 summary가 채워진다", async () => {
     const commits: GitHistoryCommit[] = [
       makeCommit({
         hash: "a".repeat(40),
@@ -137,7 +137,7 @@ describe("runSourceLog", () => {
 
     const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
-      callAi: stubCallAiSuccess({ summary: "초기 인증 모듈을 구현했습니다.", phase: "drafting" }),
+      callAi: stubCallAiSuccess("초기 인증 모듈을 구현했습니다."),
     };
 
     const result = await runSourceLog(
@@ -148,15 +148,14 @@ describe("runSourceLog", () => {
     );
     const data = result.data as {
       timeline: Array<{
-        by_author: Array<{ summary: string; phase: string }>;
+        by_author: Array<{ summary: string }>;
       }>;
     };
 
     expect(data.timeline[0].by_author[0].summary).toBe("초기 인증 모듈을 구현했습니다.");
-    expect(data.timeline[0].by_author[0].phase).toBe("drafting");
   });
 
-  it("AI 실패 시 summary/phase가 빈 문자열이고 명령은 성공한다", async () => {
+  it("AI 실패 시 summary가 빈 문자열이고 명령은 성공한다", async () => {
     const commits: GitHistoryCommit[] = [
       makeCommit({
         hash: "a".repeat(40),
@@ -178,12 +177,11 @@ describe("runSourceLog", () => {
     );
     const data = result.data as {
       timeline: Array<{
-        by_author: Array<{ summary: string; phase: string }>;
+        by_author: Array<{ summary: string }>;
       }>;
     };
 
     expect(data.timeline[0].by_author[0].summary).toBe("");
-    expect(data.timeline[0].by_author[0].phase).toBe("");
   });
 
   it("커밋이 없으면 빈 timeline을 반환한다", async () => {

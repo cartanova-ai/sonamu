@@ -18,21 +18,11 @@ export interface LogDeps {
   callAi: typeof callAi;
 }
 
-type Phase =
-  | "drafting"
-  | "in-progress"
-  | "reviewing"
-  | "refining"
-  | "hotfix"
-  | "restructuring"
-  | "";
-
 export interface LogAuthorGroup {
   author: string;
   commits: Array<{ hash: string; message: string }>;
   lines_delta: string;
   summary: string;
-  phase: Phase;
 }
 
 export interface LogTimelinePeriod {
@@ -87,9 +77,6 @@ export function printLogPretty(
       }
       if (ag.summary) {
         console.log(`    ${chalk.green("summary:")} ${ag.summary}`);
-      }
-      if (ag.phase) {
-        console.log(`    ${chalk.yellow("phase:")} ${ag.phase}`);
       }
     }
     console.log();
@@ -219,33 +206,18 @@ async function buildTimeline(
     lines_delta: pd.linesDelta,
     by_author: pd.authorGroups.map((ag) => {
       const key = `${pd.period}::${ag.author}`;
-      const aiResult = aiResults.get(key) ?? { summary: "", phase: "" as Phase };
+      const aiResult = aiResults.get(key) ?? "";
       return {
         author: ag.author,
         commits: ag.commits.map((c) => ({ hash: c.hash, message: c.subject })),
         lines_delta: computeLinesDelta(ag.commits),
-        summary: aiResult.summary,
-        phase: aiResult.phase,
+        summary: aiResult,
       };
     }),
   }));
 }
 
 // --- 내부 함수: AI 배치 호출 ---
-
-interface AiSummaryResult {
-  summary: string;
-  phase: Phase;
-}
-
-const VALID_PHASES = new Set<string>([
-  "drafting",
-  "in-progress",
-  "reviewing",
-  "refining",
-  "hotfix",
-  "restructuring",
-]);
 
 interface BatchEntry {
   key: string;
@@ -257,8 +229,8 @@ async function callAiBatchSummary(
   entries: BatchEntry[],
   options: LogOptions,
   deps: LogDeps,
-): Promise<Map<string, AiSummaryResult>> {
-  const fallbackMap = new Map<string, AiSummaryResult>();
+): Promise<Map<string, string>> {
+  const fallbackMap = new Map<string, string>();
   if (entries.length === 0) return fallbackMap;
 
   const sections = entries
@@ -273,13 +245,11 @@ async function callAiBatchSummary(
     "",
     sections,
     "",
-    "응답 형식: key는 각 그룹의 [key] 값, value는 { summary, phase } 객체입니다.",
-    'phase는 다음 중 하나: "drafting", "in-progress", "reviewing", "refining", "hotfix", "restructuring"',
-    "summary는 해당 작성자가 이 기간에 한 작업을 1~2문장으로 요약합니다.",
-    '예: {"2025-01-15::Alice": {"summary": "초기 스펙 작성", "phase": "drafting"}}',
+    "응답 형식: key는 각 그룹의 [key] 값, value는 해당 작성자가 이 기간에 한 작업을 1~2문장으로 요약한 문자열입니다.",
+    '예: {"2025-01-15::Alice": "초기 스펙 작성 및 인증 모듈 구현"}',
   ].join("\n");
 
-  const result: AiCallResult<Record<string, AiSummaryResult>> = await deps.callAi({
+  const result: AiCallResult<Record<string, string>> = await deps.callAi({
     cwd: options.cwd,
     prompt,
     fallback: {},
@@ -289,17 +259,14 @@ async function callAiBatchSummary(
   return new Map(Object.entries(result.value));
 }
 
-function parseBatchResponse(value: unknown): Record<string, AiSummaryResult> | null {
+function parseBatchResponse(value: unknown): Record<string, string> | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const obj = value as Record<string, unknown>;
-  const out: Record<string, AiSummaryResult> = {};
+  const out: Record<string, string> = {};
 
   for (const [key, val] of Object.entries(obj)) {
-    if (typeof val !== "object" || val === null) continue;
-    const entry = val as Record<string, unknown>;
-    if (typeof entry.summary !== "string") continue;
-    if (typeof entry.phase !== "string" || !VALID_PHASES.has(entry.phase)) continue;
-    out[key] = { summary: entry.summary, phase: entry.phase as Phase };
+    if (typeof val !== "string") continue;
+    out[key] = val;
   }
 
   return Object.keys(out).length > 0 ? out : null;
