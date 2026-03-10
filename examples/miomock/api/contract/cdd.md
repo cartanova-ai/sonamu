@@ -368,16 +368,101 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 | `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
 | `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
 | `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown) |
+| `cdd status <file>` | Spec/Contract status with relationship info (contracts, deps, dependents) |
 | `cdd validate` | Verify schema/path/reference integrity (file existence, path resolution, required fields) |
 | `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
 | `cdd check` | Verify Code-Spec-Contract consistency + `acceptanceCriteria` fulfillment |
 | `cdd spec create <name>` | Create a Spec template. Requires `--domain <name>` or `--contract <path>` |
 | `cdd spec set-status <spec> <status>` | Change Spec status |
+| `cdd spec list` | List Specs. Filters: `--status`, `--domain`, `--contract` |
+| `cdd spec get <spec>` | Show full Spec or a specific field (`--field`) |
+| `cdd spec set <spec>` | Update a Spec field (`--field`, `--value`, `--json`) |
+| `cdd spec add <spec>` | Add an item to an array/map field (`--field`, `--value`, `--key`) |
+| `cdd spec remove <spec>` | Remove an item from an array/map field (`--field`, `--index`/`--value`/`--key`) |
+| `cdd spec blame <feature>` | Contributor analysis per Spec (ownership, score, AI role summary) |
+| `cdd spec log <feature>` | Change timeline grouped by time period and author |
+| `cdd spec explain <feature>` | AI-powered diff analysis: what changed, why, and impact level |
 
 ### Common Options
 
 - `--cwd <dir>` : Set working directory (default: current directory)
+- `--raw` / `--json` : Force raw JSON output (auto-enabled in pipe/CI environments)
 - `-h, --help` : Show help
+
+### Git + AI Options (blame, log, explain)
+
+- `--since=<date>` : Start date filter (ISO 8601, e.g. `2025-01-01`)
+- `--until=<date>` : End date filter (ISO 8601, default: HEAD)
+- `--group-by=day|week|month` : Grouping interval for `spec log` (default: `day`)
+- `--commit=<hash>` : Analyze a single commit for `spec explain`
+
+AI uses `claude --model haiku` via local CLI. If AI is unavailable, AI-generated fields are returned as empty strings.
+
+### Usage Examples
+
+#### Spec CRUD
+
+```bash
+# List in-progress specs
+pnpm cdd spec list --status in-progress
+
+# Show full spec
+pnpm cdd spec get signin
+
+# Show a specific field
+pnpm cdd spec get signin --field modules
+
+# Update a field
+pnpm cdd spec set signin --field summary --value "Updated summary"
+
+# Add a constraint
+pnpm cdd spec add signin --field constraints --value "New constraint"
+
+# Remove a module
+pnpm cdd spec remove signin --field modules --key "OldModule"
+```
+
+#### Git + AI: "Who should I ask about this feature?"
+
+```bash
+# Contributor analysis for a spec
+pnpm cdd spec blame signin
+# Output: primary owner, each contributor's ownership %, score, and AI-inferred role
+
+# Scoped to a date range
+pnpm cdd spec blame signin --since=2025-01-01 --until=2025-06-01
+```
+
+#### Git + AI: "What happened to this feature recently?"
+
+```bash
+# Weekly changelog for a spec
+pnpm cdd spec log signin --group-by=week
+
+# Monthly changelog for a specific period
+pnpm cdd spec log signin --group-by=month --since=2025-01-01
+# Output: timeline grouped by period -> author, with AI summary and phase label
+```
+
+#### Git + AI: "Why did this change?"
+
+```bash
+# Explain all changes in a date range
+pnpm cdd spec explain signin --since=2025-03-01
+
+# Explain a single commit
+pnpm cdd spec explain signin --commit=a1b2c3d
+# Output: per-section what/why/impact analysis, overall summary, breaking changes
+```
+
+#### Pipe-friendly output
+
+```bash
+# JSON output for scripting
+pnpm cdd spec list --raw | jq '.[].status'
+pnpm cdd spec get signin --raw | jq '.modules'
+pnpm cdd spec blame signin --raw | jq '.contributors[0]'
+```
 
 ### Programmatic API
 

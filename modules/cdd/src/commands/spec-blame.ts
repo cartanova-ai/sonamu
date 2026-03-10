@@ -218,32 +218,53 @@ async function enrichWithAiRoles(
     }
   }
 
-  const results = await Promise.all(
-    contributors.map(async (c) => {
-      const authorCommits = commitsByAuthor.get(c.name);
-      // 커밋 이력이 없는 blame-only 기여자는 AI 역할 분석을 건너뜁니다.
-      if (!authorCommits || authorCommits.length === 0) return { ...c };
+  // 커밋 이력이 있는 기여자만 AI 분석 대상으로 합니다.
+  const authorsWithCommits = contributors.filter((c) => {
+    const authorCommits = commitsByAuthor.get(c.name);
+    return authorCommits && authorCommits.length > 0;
+  });
 
-      const summaryLines = authorCommits.map((ac) => `- ${ac.subject}`).join("\n");
-      const prompt = [
-        `다음은 "${path.basename(specAbsPath)}" 파일에 대한 "${c.name}"의 커밋 목록입니다:`,
-        summaryLines,
-        "",
-        "이 사람이 이 파일에서 수행한 역할을 한 줄로 요약해주세요. 한국어로 답변하세요.",
-      ].join("\n");
+  if (authorsWithCommits.length === 0) return contributors.map((c) => ({ ...c }));
 
-      const result: AiCallResult<string> = await deps.callAi<string>({
-        cwd: options.cwd,
-        prompt,
-        fallback: "",
-        parse: (v) => (typeof v === "string" && v.length > 0 ? v : null),
-      });
+  // 모든 기여자를 하나의 배치 프롬프트로 분석합니다.
+  const authorSections = authorsWithCommits
+    .map((c) => {
+      const authorCommits = commitsByAuthor.get(c.name) ?? [];
+      const commitList = authorCommits.map((ac) => `  - ${ac.subject}`).join("\n");
+      return `[${c.name}]\n${commitList}`;
+    })
+    .join("\n\n");
 
-      return { ...c, role: result.value };
-    }),
-  );
+  const prompt = [
+    `다음은 "${path.basename(specAbsPath)}" 파일에 대한 기여자별 커밋 목록입니다:`,
+    "",
+    authorSections,
+    "",
+    "각 기여자가 이 파일에서 수행한 역할을 한 줄로 요약해주세요.",
+    "JSON으로 응답하세요. key는 기여자 이름, value는 역할 요약 문자열입니다.",
+    '예: {"Alice": "초기 설계 및 핵심 플로우 작성", "Bob": "에러 처리 보강"}',
+  ].join("\n");
 
-  return results;
+  const result: AiCallResult<Record<string, string>> = await deps.callAi<Record<string, string>>({
+    cwd: options.cwd,
+    prompt,
+    fallback: {},
+    parse: (v) => {
+      if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+      const obj = v as Record<string, unknown>;
+      const out: Record<string, string> = {};
+      for (const [key, val] of Object.entries(obj)) {
+        if (typeof val === "string") out[key] = val;
+      }
+      return Object.keys(out).length > 0 ? out : null;
+    },
+  });
+
+  const roleMap = result.value;
+  return contributors.map((c) => ({
+    ...c,
+    role: roleMap[c.name] ?? "",
+  }));
 }
 
 function printBlamePretty(data: SpecBlameData, specAbsPath: string, project: CddProject): void {

@@ -56,9 +56,20 @@ function stubListFileHistory(commits: GitHistoryCommit[]): SpecLogDeps["listFile
 
 function stubCallAiSuccess(value: { summary: string; phase: string }): SpecLogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
-    const parsed = opts.parse(value);
+    // 배치 호출에서는 prompt에 포함된 key들을 추출하여 모든 그룹에 동일한 결과를 매핑합니다.
+    const keyMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
+    const batchResponse: Record<string, { summary: string; phase: string }> = {};
+    for (const match of keyMatches) {
+      const key = match.slice(1, -1);
+      if (key.includes("::")) {
+        batchResponse[key] = value;
+      }
+    }
+
+    const target = Object.keys(batchResponse).length > 0 ? batchResponse : value;
+    const parsed = opts.parse(target);
     if (parsed !== null) {
-      return { ok: true, value: parsed, rawText: JSON.stringify(value) };
+      return { ok: true, value: parsed, rawText: JSON.stringify(target) };
     }
     return {
       ok: false,

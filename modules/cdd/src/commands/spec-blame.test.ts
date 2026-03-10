@@ -89,11 +89,18 @@ function makeStubDeps(
   return {
     listFileHistory: async () => history,
     blameFile: async () => blame,
-    callAi: async <T>(opts: { fallback: T; parse: (v: unknown) => T | null }) => {
+    callAi: async <T>(opts: { prompt: string; fallback: T; parse: (v: unknown) => T | null }) => {
       const role = aiRole ?? "";
-      const parsed = opts.parse(role);
+      // 배치 호출: prompt에서 [이름] 패턴을 추출하여 모든 기여자에 동일 역할 매핑
+      const nameMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
+      const roleMap: Record<string, string> = {};
+      for (const match of nameMatches) {
+        roleMap[match.slice(1, -1)] = role;
+      }
+      const target = Object.keys(roleMap).length > 0 ? roleMap : role;
+      const parsed = opts.parse(target);
       if (parsed !== null) {
-        return { ok: true, value: parsed, rawText: role } as AiCallResult<T>;
+        return { ok: true, value: parsed, rawText: JSON.stringify(target) } as AiCallResult<T>;
       }
       return { ok: true, value: opts.fallback, rawText: "" } as AiCallResult<T>;
     },

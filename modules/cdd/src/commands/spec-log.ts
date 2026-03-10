@@ -196,36 +196,41 @@ async function buildTimeline(
   options: SpecLogOptions,
   deps: SpecLogDeps,
 ): Promise<TimelinePeriod[]> {
-  return Promise.all(
-    groups.map(async (group) => {
-      const authorGroups = groupByAuthor(group.commits);
+  // 모든 period-author 조합을 수집하여 배치 AI 호출용 엔트리를 만듭니다.
+  const periodsData = groups.map((group) => ({
+    period: group.period,
+    linesDelta: computeLinesDelta(group.commits),
+    authorGroups: groupByAuthor(group.commits),
+  }));
 
-      const byAuthor = await Promise.all(
-        authorGroups.map(async (ag) => {
-          const commitSummaries = ag.commits.map((c) => ({ hash: c.hash, message: c.subject }));
-          const linesDelta = computeLinesDelta(ag.commits);
-          const aiResult = await callAiForAuthorGroup(ag.author, commitSummaries, options, deps);
+  const entries: BatchEntry[] = periodsData.flatMap((pd) =>
+    pd.authorGroups.map((ag) => ({
+      key: `${pd.period}::${ag.author}`,
+      author: ag.author,
+      commits: ag.commits.map((c) => ({ hash: c.hash, message: c.subject })),
+    })),
+  );
 
-          return {
-            author: ag.author,
-            commits: commitSummaries,
-            lines_delta: linesDelta,
-            summary: aiResult.summary,
-            phase: aiResult.phase,
-          };
-        }),
-      );
+  const aiResults = await callAiBatchSummary(entries, options, deps);
 
+  return periodsData.map((pd) => ({
+    period: pd.period,
+    lines_delta: pd.linesDelta,
+    by_author: pd.authorGroups.map((ag) => {
+      const key = `${pd.period}::${ag.author}`;
+      const aiResult = aiResults.get(key) ?? { summary: "", phase: "" as Phase };
       return {
-        period: group.period,
-        lines_delta: computeLinesDelta(group.commits),
-        by_author: byAuthor,
+        author: ag.author,
+        commits: ag.commits.map((c) => ({ hash: c.hash, message: c.subject })),
+        lines_delta: computeLinesDelta(ag.commits),
+        summary: aiResult.summary,
+        phase: aiResult.phase,
       };
     }),
-  );
+  }));
 }
 
-// --- 내부 함수: AI 호출 ---
+// --- 내부 함수: AI 배치 호출 ---
 
 interface AiSummaryResult {
   summary: string;
@@ -241,52 +246,62 @@ const VALID_PHASES = new Set<string>([
   "restructuring",
 ]);
 
-function parseAiResponse(value: unknown): AiSummaryResult | null {
-  if (typeof value !== "object" || value === null) return null;
-  const obj = value as Record<string, unknown>;
-  if (typeof obj.summary !== "string") return null;
-  if (typeof obj.phase !== "string") return null;
-  if (!VALID_PHASES.has(obj.phase)) return null;
-  return { summary: obj.summary, phase: obj.phase as Phase };
+interface BatchEntry {
+  key: string;
+  author: string;
+  commits: Array<{ hash: string; message: string }>;
 }
 
-async function callAiForAuthorGroup(
-  author: string,
-  commits: Array<{ hash: string; message: string }>,
+async function callAiBatchSummary(
+  entries: BatchEntry[],
   options: SpecLogOptions,
   deps: SpecLogDeps,
-): Promise<AiSummaryResult> {
-  const fallback: AiSummaryResult = { summary: "", phase: "" };
-  const commitList = commits.map((c) => `- ${c.message}`).join("\n");
+): Promise<Map<string, AiSummaryResult>> {
+  const fallbackMap = new Map<string, AiSummaryResult>();
+  if (entries.length === 0) return fallbackMap;
+
+  const sections = entries
+    .map((e) => {
+      const commitList = e.commits.map((c) => `  - ${c.message}`).join("\n");
+      return `[${e.key}] (${e.author})\n${commitList}`;
+    })
+    .join("\n\n");
 
   const prompt = [
-    `다음은 "${author}"의 커밋 목록입니다:`,
-    commitList,
+    "다음은 기간별 작성자의 커밋 목록입니다. 각 그룹을 분석하여 JSON으로 응답하세요.",
     "",
-    "위 커밋들을 분석하여 JSON으로 응답하세요:",
-    '- "summary": 작업 내용 1~2문장 요약',
-    '- "phase": 다음 중 하나: "drafting", "in-progress", "reviewing", "refining", "hotfix", "restructuring"',
+    sections,
+    "",
+    "응답 형식: key는 각 그룹의 [key] 값, value는 { summary, phase } 객체입니다.",
+    'phase는 다음 중 하나: "drafting", "in-progress", "reviewing", "refining", "hotfix", "restructuring"',
+    "summary는 해당 작성자가 이 기간에 한 작업을 1~2문장으로 요약합니다.",
+    '예: {"2025-01-15::Alice": {"summary": "초기 스펙 작성", "phase": "drafting"}}',
   ].join("\n");
 
-  const result: AiCallResult<AiSummaryResult> = await deps.callAi({
+  const result: AiCallResult<Record<string, AiSummaryResult>> = await deps.callAi({
     cwd: options.cwd,
     prompt,
-    fallback,
-    parse: parseAiResponse,
-    jsonSchema: {
-      type: "object",
-      properties: {
-        summary: { type: "string" },
-        phase: {
-          type: "string",
-          enum: ["drafting", "in-progress", "reviewing", "refining", "hotfix", "restructuring"],
-        },
-      },
-      required: ["summary", "phase"],
-    },
+    fallback: {},
+    parse: parseBatchResponse,
   });
 
-  return result.value;
+  return new Map(Object.entries(result.value));
+}
+
+function parseBatchResponse(value: unknown): Record<string, AiSummaryResult> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const obj = value as Record<string, unknown>;
+  const out: Record<string, AiSummaryResult> = {};
+
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val !== "object" || val === null) continue;
+    const entry = val as Record<string, unknown>;
+    if (typeof entry.summary !== "string") continue;
+    if (typeof entry.phase !== "string" || !VALID_PHASES.has(entry.phase)) continue;
+    out[key] = { summary: entry.summary, phase: entry.phase as Phase };
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 // --- 내부 함수: Pretty 출력 ---
