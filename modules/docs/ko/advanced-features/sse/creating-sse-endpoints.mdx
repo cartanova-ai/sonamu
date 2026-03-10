@@ -3,7 +3,7 @@ title: "SSE 엔드포인트 만들기"
 description: "@stream 데코레이터로 SSE API 구축하기"
 ---
 
-Sonamu는 **@stream** 데코레이터를 통해 SSE 엔드포인트를 쉽게 만들 수 있습니다. Generator 함수를 사용하여 이벤트를 순차적으로 전송합니다.
+Sonamu는 **@stream** 데코레이터를 통해 SSE 엔드포인트를 쉽게 만들 수 있습니다. `ctx.createSSE()`로 생성한 SSE 연결 객체를 사용하여 이벤트를 전송합니다.
 
 ## @stream 데코레이터
 
@@ -12,7 +12,7 @@ SSE 엔드포인트를 정의하는 데코레이터입니다.
 ### 기본 사용법
 
 ```typescript
-import { BaseModel, stream, api, z } from "sonamu";
+import { BaseModel, stream, z } from "sonamu";
 
 class NotificationModelClass extends BaseModel {
   @stream({
@@ -24,8 +24,7 @@ class NotificationModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })  // 압축 비활성화 필수
-  async *streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -34,13 +33,13 @@ class NotificationModelClass extends BaseModel {
         }),
       })
     );
-    
+
     // 이벤트 전송
     sse.publish('notification', {
       id: 1,
       message: 'Hello, World!'
     });
-    
+
     // 연결 종료
     await sse.end();
   }
@@ -52,21 +51,21 @@ class NotificationModelClass extends BaseModel {
 <Tabs>
   <Tab title="type" icon="plug">
     **스트림 타입**
-    
+
     ```typescript
     @stream({
       type: 'sse',  // 현재는 SSE만 지원
     })
     ```
-    
+
     **지원 타입**:
     - `'sse'`: Server-Sent Events
     - (향후 WebSocket 지원 예정)
   </Tab>
-  
+
   <Tab title="events" icon="calendar">
     **이벤트 스키마**
-    
+
     ```typescript
     @stream({
       type: 'sse',
@@ -82,13 +81,13 @@ class NotificationModelClass extends BaseModel {
       })
     })
     ```
-    
+
     **역할**: 타입 안전성 보장 + 자동 코드 생성
   </Tab>
-  
+
   <Tab title="path" icon="route">
     **커스텀 경로** (선택)
-    
+
     ```typescript
     @stream({
       type: 'sse',
@@ -98,13 +97,13 @@ class NotificationModelClass extends BaseModel {
       path: '/custom/stream'
     })
     ```
-    
+
     **기본값**: `/{modelName}/{methodName}`
   </Tab>
-  
+
   <Tab title="guards" icon="shield">
     **인증/권한** (선택)
-    
+
     ```typescript
     @stream({
       type: 'sse',
@@ -171,8 +170,7 @@ class NotificationModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamNotifications(userId: number, ctx: Context) {
+  async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
@@ -183,7 +181,7 @@ class NotificationModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       // 실시간 알림 감지 (예: 폴링 또는 이벤트 리스너)
       while (true) {
@@ -195,7 +193,7 @@ class NotificationModelClass extends BaseModel {
           ],
           num: 10,
         });
-        
+
         // 알림 전송
         for (const notification of notifications.data) {
           sse.publish('notification', {
@@ -205,7 +203,7 @@ class NotificationModelClass extends BaseModel {
             createdAt: notification.created_at.toISOString(),
           });
         }
-        
+
         // 5초 대기
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
@@ -236,8 +234,7 @@ class TaskModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamTaskProgress(taskId: number, ctx: Context) {
+  async streamTaskProgress(taskId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         progress: z.object({
@@ -253,10 +250,10 @@ class TaskModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       const total = 100;
-      
+
       for (let current = 0; current <= total; current += 10) {
         // 진행률 전송
         sse.publish('progress', {
@@ -264,11 +261,11 @@ class TaskModelClass extends BaseModel {
           total,
           percentage: Math.round((current / total) * 100),
         });
-        
+
         // 작업 수행 (예: 파일 처리)
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       // 완료 이벤트
       sse.publish('complete', {
         result: 'Task completed successfully'
@@ -300,8 +297,7 @@ class PostModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamNewPosts(ctx: Context) {
+  async streamNewPosts(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         newPost: z.object({
@@ -312,10 +308,10 @@ class PostModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       let lastCheckTime = new Date();
-      
+
       while (true) {
         // 새 게시물 조회
         const posts = await this.findMany({
@@ -323,7 +319,7 @@ class PostModelClass extends BaseModel {
           num: 20,
           order: [['created_at', 'DESC']],
         });
-        
+
         // 새 게시물 전송
         for (const post of posts.data) {
           sse.publish('newPost', {
@@ -333,12 +329,12 @@ class PostModelClass extends BaseModel {
             createdAt: post.created_at.toISOString(),
           });
         }
-        
+
         // 마지막 체크 시간 업데이트
         if (posts.data.length > 0) {
           lastCheckTime = posts.data[0].created_at;
         }
-        
+
         // 10초 대기
         await new Promise(resolve => setTimeout(resolve, 10000));
       }
@@ -374,8 +370,7 @@ class ChatModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamChatRoom(roomId: number, ctx: Context) {
+  async streamChatRoom(roomId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         message: z.object({
@@ -396,18 +391,18 @@ class ChatModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       // 입장 이벤트
       sse.publish('joined', {
         userId: ctx.user.id,
         username: ctx.user.name,
       });
-      
+
       // 메시지 스트리밍
       while (true) {
         const messages = await this.getNewMessages(roomId);
-        
+
         for (const msg of messages) {
           sse.publish('message', {
             id: msg.id,
@@ -415,7 +410,7 @@ class ChatModelClass extends BaseModel {
             sender: msg.sender_name,
           });
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } finally {
@@ -423,7 +418,7 @@ class ChatModelClass extends BaseModel {
       sse.publish('left', {
         userId: ctx.user.id,
       });
-      
+
       await sse.end();
     }
   }
@@ -448,8 +443,7 @@ class MonitorModelClass extends BaseModel {
       }),
     })
   })
-  @api({ compress: false })
-  async *streamServerStatus(ctx: Context) {
+  async streamServerStatus(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         status: z.object({
@@ -463,18 +457,18 @@ class MonitorModelClass extends BaseModel {
         }),
       })
     );
-    
+
     try {
       while (true) {
         const status = await this.getServerStatus();
-        
+
         // 상태 전송
         sse.publish('status', {
           cpu: status.cpu,
           memory: status.memory,
           disk: status.disk,
         });
-        
+
         // 임계값 초과 시 알림
         if (status.cpu > 90) {
           sse.publish('alert', {
@@ -487,7 +481,7 @@ class MonitorModelClass extends BaseModel {
             message: `CPU usage is ${status.cpu}%`,
           });
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     } finally {
@@ -508,19 +502,18 @@ class MonitorModelClass extends BaseModel {
     message: z.string(),
   })
 })
-@api({ compress: false })
-async *streamData(ctx: Context) {
+async streamData(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       message: z.string(),
     })
   );
-  
+
   // 클라이언트 연결 종료 감지
   ctx.request.socket.on('close', () => {
     console.log('Client disconnected');
   });
-  
+
   try {
     while (true) {
       sse.publish('message', 'Hello');
@@ -544,20 +537,19 @@ SSE는 자동으로 Keep-Alive를 전송하지만, 커스텀 구현도 가능합
     keepalive: z.object({}),
   })
 })
-@api({ compress: false })
-async *streamWithKeepAlive(ctx: Context) {
+async streamWithKeepAlive(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       message: z.string(),
       keepalive: z.object({}),
     })
   );
-  
+
   // Keep-alive 전송 (30초마다)
   const keepAliveInterval = setInterval(() => {
     sse.publish('keepalive', {});
   }, 30000);
-  
+
   try {
     while (true) {
       sse.publish('message', 'Data');
@@ -584,8 +576,7 @@ async *streamWithKeepAlive(ctx: Context) {
     }),
   })
 })
-@api({ compress: false })
-async *streamWithErrorHandling(ctx: Context) {
+async streamWithErrorHandling(ctx: Context): Promise<void> {
   const sse = ctx.createSSE(
     z.object({
       data: z.object({
@@ -596,7 +587,7 @@ async *streamWithErrorHandling(ctx: Context) {
       }),
     })
   );
-  
+
   try {
     const value = await this.getSomeData();
     sse.publish('data', { value });
@@ -616,21 +607,19 @@ async *streamWithErrorHandling(ctx: Context) {
 <Warning>
 **SSE 엔드포인트 작성 시 주의사항**:
 
-1. **압축 비활성화 필수**: SSE는 스트리밍이므로 압축 금지
+1. **`@stream`과 `@api`는 동시에 사용할 수 없습니다**: SSE 엔드포인트에는 `@stream` 데코레이터만 사용합니다
    ```typescript
+   // ✅ @stream만 사용
+   @stream({ type: 'sse', events: ... })
+   async streamData(ctx: Context): Promise<void> { ... }
+
+   // ❌ @api와 @stream 동시 사용 (런타임 에러)
+   @stream({ type: 'sse', events: ... })
    @api({ compress: false })
+   async streamData(ctx: Context): Promise<void> { ... }
    ```
 
-2. **Generator 함수 사용**: `async *` 키워드 필요
-   ```typescript
-   // ✅ Generator 함수
-   async *streamData() { ... }
-   
-   // ❌ 일반 함수
-   async streamData() { ... }
-   ```
-
-3. **반드시 end() 호출**: 연결 종료 필수
+2. **반드시 end() 호출**: 연결 종료 필수
    ```typescript
    try {
      // 이벤트 전송
@@ -639,7 +628,7 @@ async *streamWithErrorHandling(ctx: Context) {
    }
    ```
 
-4. **무한 루프 주의**: 적절한 대기 시간 필요
+3. **무한 루프 주의**: 적절한 대기 시간 필요
    ```typescript
    while (true) {
      sse.publish('data', ...);
@@ -647,19 +636,19 @@ async *streamWithErrorHandling(ctx: Context) {
    }
    ```
 
-5. **이벤트 스키마 일치**: events와 publish 이벤트 이름 일치 필수
+4. **이벤트 스키마 일치**: events와 publish 이벤트 이름 일치 필수
    ```typescript
    // ✅ 일치
    events: z.object({
      message: z.string(),
    })
    sse.publish('message', 'Hi');
-   
+
    // ❌ 불일치 (컴파일 에러)
    sse.publish('msg', 'Hi');
    ```
 
-6. **메모리 누수 방지**: 타이머/리스너 정리
+5. **메모리 누수 방지**: 타이머/리스너 정리
    ```typescript
    const interval = setInterval(() => { ... }, 1000);
    try {

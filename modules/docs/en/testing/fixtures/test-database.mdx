@@ -103,9 +103,9 @@ flowchart TD
 if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
   const tConn = Sonamu.dbConfig.test.connection;
   const pConn = Sonamu.dbConfig.production_master.connection;
-  
-  if (`${tConn.host}:${tConn.port}/${tConn.database}` ===
-      `${pConn.host}:${pConn.port}/${pConn.database}`) {
+
+  if (`${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
+      `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`) {
     throw new Error('Test DB and Production DB use the same database.');
   }
 }
