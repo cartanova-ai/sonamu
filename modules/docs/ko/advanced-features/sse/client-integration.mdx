@@ -3,9 +3,89 @@ title: "클라이언트 통합"
 description: "프론트엔드에서 SSE 사용하기"
 ---
 
-Sonamu의 SSE 엔드포인트를 프론트엔드에서 사용하는 방법을 설명합니다. 브라우저의 **EventSource API**를 사용하여 실시간 이벤트를 수신할 수 있습니다.
+Sonamu의 SSE 엔드포인트를 프론트엔드에서 사용하는 방법을 설명합니다. Sonamu는 `sonamu.shared.ts`에 내장 `useSSEStream` 훅을 제공하므로 대부분의 경우 직접 EventSource를 다룰 필요가 없습니다.
 
-## EventSource API
+## 내장 useSSEStream 훅
+
+Sonamu 프로젝트를 생성하면 `sonamu.shared.ts`에 `useSSEStream` 훅이 포함됩니다. 이 훅은 연결 관리, 자동 재시도, locale 헤더 전달을 기본 제공합니다.
+
+### API
+
+```typescript
+function useSSEStream<T extends Record<string, any>>(
+  url: string,
+  params: Record<string, any>,
+  handlers: { [K in keyof T]?: (data: T[K]) => void },
+  options?: SSEStreamOptions,
+): SSEStreamState;
+```
+
+**매개변수:**
+
+| 매개변수 | 타입 | 설명 |
+|----------|------|------|
+| `url` | `string` | SSE 엔드포인트 경로 |
+| `params` | `Record<string, any>` | 쿼리 파라미터 |
+| `handlers` | `{ [K in keyof T]?: (data: T[K]) => void }` | 이벤트 타입별 핸들러 |
+| `options` | `SSEStreamOptions` | 연결 옵션 (선택) |
+
+**옵션:**
+
+| 옵션 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `enabled` | `boolean` | `true` | 연결 활성화 여부 |
+| `retry` | `number` | `3` | 최대 재시도 횟수 |
+| `retryInterval` | `number` | `3000` | 재시도 간격 (ms) |
+
+**반환값 (`SSEStreamState`):**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `isConnected` | `boolean` | 현재 연결 상태 |
+| `error` | `string \| null` | 에러 메시지 |
+| `retryCount` | `number` | 현재 재시도 횟수 |
+| `isEnded` | `boolean` | 서버가 `end` 이벤트를 전송하여 정상 종료됨 |
+
+### 사용 예제
+
+```typescript
+import { useSSEStream } from "@/services/sonamu.shared";
+
+type NotificationEvents = {
+  notification: { id: number; message: string };
+  end: string;
+};
+
+function NotificationList({ userId }: { userId: number }) {
+  const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
+
+  const { isConnected, error, isEnded } = useSSEStream<NotificationEvents>(
+    "/stream/notifications",
+    { userId },
+    {
+      notification: (data) => {
+        setNotifications((prev) => [data, ...prev].slice(0, 50));
+      },
+    },
+  );
+
+  return (
+    <div>
+      <div>상태: {isConnected ? "연결됨" : isEnded ? "완료" : "연결 끊김"}</div>
+      {error && <div>에러: {error}</div>}
+      {notifications.map((n) => (
+        <div key={n.id}>{n.message}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+<Note>
+`useSSEStream`은 `Accept-Language` 헤더를 자동으로 전달하므로, 서버에서 locale 기반 응답을 반환할 수 있습니다.
+</Note>
+
+## EventSource API (직접 사용)
 
 브라우저 내장 API로 SSE 연결을 관리합니다.
 
@@ -33,9 +113,11 @@ source.onerror = (error) => {
 };
 ```
 
-## React 통합
+## React에서 직접 구현
 
-### 기본 Hook
+아래는 `useSSEStream`을 사용하지 않고 직접 EventSource를 다루는 방법입니다. 내장 훅이 제공하지 않는 세밀한 제어가 필요한 경우 참고하세요.
+
+### 커스텀 Hook
 
 ```typescript
 import { useEffect, useState } from 'react';
