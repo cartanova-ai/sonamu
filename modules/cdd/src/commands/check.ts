@@ -1,16 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { CddProject, ValidationIssue } from "../core/types.js";
+import { findMissingResolvedPaths, findSourcesOutsideRoot } from "../core/validation-shared.js";
 import { formatPath, formatSeverity } from "../utils/format.js";
 
 export function runCheck(project: CddProject): void {
   const issues: ValidationIssue[] = [];
+  const specPaths = new Set(project.specs.map((s) => s.path));
 
   for (const spec of project.specs) {
     checkSourcesExist(spec.document.sources, project.projectRoot, spec.path, issues);
     checkSourcesSecurity(spec.document.sources, project.projectRoot, spec.path, issues);
     checkDuplicateSources(spec.document.sources, project.projectRoot, spec.path, issues);
-    checkStatusRevisionConsistency(spec.document, spec.path, issues);
+    checkDependsOnSpecsExist(spec.resolvedDependsOnSpecs, specPaths, spec.path, issues);
   }
 
   if (issues.length === 0) {
@@ -59,16 +61,12 @@ function checkSourcesSecurity(
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  for (const source of sources) {
-    const resolved = path.resolve(projectRoot, source);
-    const rel = path.relative(projectRoot, resolved);
-    if (rel.startsWith("..")) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `sources 경로가 프로젝트 루트를 벗어납니다: "${source}"`,
-      });
-    }
+  for (const source of findSourcesOutsideRoot(sources, projectRoot)) {
+    issues.push({
+      severity: "error",
+      path: filePath,
+      message: `sources 경로가 프로젝트 루트를 벗어납니다: "${source}"`,
+    });
   }
 }
 
@@ -92,26 +90,17 @@ function checkDuplicateSources(
   }
 }
 
-const STATUS_ORDER: Record<string, number> = { draft: 0, "in-progress": 1, done: 2 };
-
-function checkStatusRevisionConsistency(
-  doc: { status: string; revisions: { status: string }[] },
+function checkDependsOnSpecsExist(
+  resolvedDependsOnSpecs: string[],
+  specPaths: Set<string>,
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  if (doc.revisions.length === 0) return;
-
-  const minRevisionStatus = doc.revisions.reduce((min, rev) => {
-    const minOrder = STATUS_ORDER[min] ?? 0;
-    const revOrder = STATUS_ORDER[rev.status] ?? 0;
-    return revOrder < minOrder ? rev.status : min;
-  }, "done");
-
-  if (doc.status !== minRevisionStatus) {
+  for (const dep of findMissingResolvedPaths(resolvedDependsOnSpecs, specPaths)) {
     issues.push({
       severity: "error",
       path: filePath,
-      message: `top-level status "${doc.status}"가 revision 최솟값 "${minRevisionStatus}"과 불일치합니다`,
+      message: `dependsOnSpecs 참조를 찾을 수 없습니다: "${dep}"`,
     });
   }
 }

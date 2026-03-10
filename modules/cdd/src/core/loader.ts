@@ -62,17 +62,20 @@ export async function loadProject(contractDir: string): Promise<CddProject> {
         document: doc,
       });
     } else if (relPath.endsWith(".spec.json")) {
-      validateContentIsStringArray(parsed, absPath);
       validateSpecStructure(parsed, absPath);
       const doc = parsed as SpecDocument;
       const specDir = path.dirname(absPath);
       const resolvedContracts = (doc.contracts ?? []).map((c) => path.resolve(specDir, c));
+      const resolvedDependsOnSpecs = (doc.dependsOnSpecs ?? []).map((d) =>
+        path.resolve(specDir, d),
+      );
       specs.push({
         path: absPath,
         domain: deriveDomain(resolvedDir, absPath),
         basename: path.basename(relPath, ".spec.json"),
         document: doc,
         resolvedContracts,
+        resolvedDependsOnSpecs,
       });
     }
   }
@@ -93,6 +96,18 @@ function deriveDomain(contractDir: string, filePath: string): string {
 function validateSpecStructure(parsed: unknown, filePath: string): void {
   const obj = parsed as Record<string, unknown>;
 
+  if (typeof obj.schemaVersion !== "number") {
+    throw new Error(`schemaVersion 필드가 숫자가 아닙니다: ${filePath}`);
+  }
+  if (typeof obj.summary !== "string") {
+    throw new Error(`summary 필드가 문자열이 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.description)) {
+    throw new Error(`description 필드가 배열이 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.acceptanceCriteria)) {
+    throw new Error(`acceptanceCriteria 필드가 배열이 아닙니다: ${filePath}`);
+  }
   if (typeof obj.lastModified !== "string") {
     throw new Error(`lastModified 필드가 문자열이 아닙니다: ${filePath}`);
   }
@@ -105,8 +120,28 @@ function validateSpecStructure(parsed: unknown, filePath: string): void {
   if (!Array.isArray(obj.contracts)) {
     throw new Error(`contracts 필드가 배열이 아닙니다: ${filePath}`);
   }
-  if (!Array.isArray(obj.revisions)) {
-    throw new Error(`revisions 필드가 배열이 아닙니다: ${filePath}`);
+  if (typeof obj.modules !== "object" || obj.modules === null || Array.isArray(obj.modules)) {
+    throw new Error(`modules 필드가 객체가 아닙니다: ${filePath}`);
+  }
+  if (
+    typeof obj.interfaces !== "object" ||
+    obj.interfaces === null ||
+    Array.isArray(obj.interfaces)
+  ) {
+    throw new Error(`interfaces 필드가 객체가 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.dataFlow)) {
+    throw new Error(`dataFlow 필드가 배열이 아닙니다: ${filePath}`);
+  }
+  if (
+    typeof obj.errorHandling !== "object" ||
+    obj.errorHandling === null ||
+    Array.isArray(obj.errorHandling)
+  ) {
+    throw new Error(`errorHandling 필드가 객체가 아닙니다: ${filePath}`);
+  }
+  if (!Array.isArray(obj.constraints)) {
+    throw new Error(`constraints 필드가 배열이 아닙니다: ${filePath}`);
   }
 }
 

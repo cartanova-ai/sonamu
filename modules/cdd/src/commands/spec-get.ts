@@ -1,0 +1,114 @@
+import path from "node:path";
+import chalk from "chalk";
+import { getField } from "../core/spec-field-ops.js";
+import type { CddProject, SpecDocument } from "../core/types.js";
+import { formatStatus } from "../utils/format.js";
+import { resolveSpec } from "../utils/resolve.js";
+
+interface SpecGetOptions {
+  field?: string;
+  json?: boolean;
+}
+
+export function runSpecGet(
+  specRef: string | undefined,
+  options: SpecGetOptions,
+  project: CddProject,
+): void {
+  if (!specRef) {
+    console.error("사용법: cdd spec get <spec> [--field <fieldPath>] [--json]");
+    process.exit(1);
+  }
+
+  const spec = resolveSpec(specRef, project);
+
+  if (options.field) {
+    const value = getField(spec.document, options.field);
+    if (value === undefined) {
+      console.error(`필드를 찾을 수 없습니다: "${options.field}"`);
+      process.exit(1);
+    }
+    if (options.json || typeof value === "object") {
+      console.log(JSON.stringify(value, null, 2));
+    } else {
+      console.log(String(value));
+    }
+    return;
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(spec.document, null, 2));
+  } else {
+    printSpecPretty(spec.path, spec.document, project);
+  }
+}
+
+function printSpecPretty(specPath: string, doc: SpecDocument, project: CddProject): void {
+  const rel = path.relative(project.projectRoot, specPath);
+
+  console.log(chalk.bold(`Spec: ${rel}`));
+  console.log();
+
+  // 기본 정보
+  console.log(`  ${chalk.dim("summary")}      ${doc.summary}`);
+  console.log(`  ${chalk.dim("status")}       ${formatStatus(doc.status)}`);
+  console.log(`  ${chalk.dim("lastModified")} ${doc.lastModified}`);
+  console.log();
+
+  // description
+  printArray("description", doc.description);
+
+  // acceptanceCriteria
+  printArray("acceptanceCriteria", doc.acceptanceCriteria);
+
+  // sources
+  printArray("sources", doc.sources);
+
+  // contracts
+  printArray("contracts", doc.contracts);
+
+  // dependsOnSpecs
+  if (doc.dependsOnSpecs && doc.dependsOnSpecs.length > 0) {
+    printArray("dependsOnSpecs", doc.dependsOnSpecs);
+  }
+
+  // modules
+  printRecord("modules", doc.modules);
+
+  // interfaces
+  printRecord("interfaces", doc.interfaces);
+
+  // dataFlow
+  printArray("dataFlow", doc.dataFlow);
+
+  // errorHandling
+  printRecord("errorHandling", doc.errorHandling);
+
+  // constraints
+  printArray("constraints", doc.constraints);
+}
+
+function printArray(label: string, items: string[]): void {
+  console.log(`  ${chalk.bold.cyan(label)}`);
+  if (items.length === 0) {
+    console.log(`    ${chalk.dim("(empty)")}`);
+  } else {
+    for (const item of items) {
+      console.log(`    - ${item}`);
+    }
+  }
+  console.log();
+}
+
+function printRecord(label: string, record: Record<string, string>): void {
+  const entries = Object.entries(record);
+  console.log(`  ${chalk.bold.cyan(label)}`);
+  if (entries.length === 0) {
+    console.log(`    ${chalk.dim("(empty)")}`);
+  } else {
+    for (const [key, value] of entries) {
+      console.log(`    ${chalk.white(key)}: ${value}`);
+    }
+  }
+  console.log();
+}

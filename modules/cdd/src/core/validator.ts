@@ -1,16 +1,6 @@
-import path from "node:path";
-import type { CddProject, SpecStatus, ValidationIssue } from "./types.js";
-import {
-  CONTRACT_REQUIRED_SECTIONS,
-  SPEC_FEATURE_SUBSECTIONS,
-  SPEC_REQUIRED_SECTIONS,
-} from "./types.js";
-
-const STATUS_ORDER: Record<SpecStatus, number> = {
-  draft: 0,
-  "in-progress": 1,
-  done: 2,
-};
+import type { CddProject, SpecDocument, ValidationIssue } from "./types.js";
+import { CONTRACT_REQUIRED_SECTIONS } from "./types.js";
+import { findMissingResolvedPaths, findSourcesOutsideRoot } from "./validation-shared.js";
 
 /**
  * CDD 프로젝트 전체를 검증하고 이슈 목록을 반환한다.
@@ -24,14 +14,15 @@ export function validateProject(project: CddProject): ValidationIssue[] {
   }
 
   const contractPaths = new Set(project.contracts.map((c) => c.path));
+  const specPaths = new Set(project.specs.map((s) => s.path));
 
   for (const spec of project.specs) {
-    validateSpecSections(spec.document.content, spec.path, issues);
-    validateSpecMetadata(spec.document, spec.path, issues);
-    validateSpecFeatureBlocks(spec.document.content, spec.path, issues);
-    validateStatusAggregation(spec.document.status, spec.document.revisions, spec.path, issues);
+    validateSpecRequiredFields(spec.document, spec.path, issues);
+    validateLastModified(spec.document.lastModified, spec.path, issues);
+    validateSpecStatus(spec.document.status, spec.path, issues);
     validateSourcesSecurity(spec.document.sources, project.projectRoot, spec.path, issues);
     validateContractReferences(spec.resolvedContracts, contractPaths, spec.path, issues);
+    validateDependsOnSpecsReferences(spec.resolvedDependsOnSpecs, specPaths, spec.path, issues);
   }
 
   return issues;
@@ -70,95 +61,35 @@ function validateLastModified(
   }
 }
 
-/** Spec content 필수 최상위 섹션 검증 */
-function validateSpecSections(
-  content: string[],
+/** Spec 필수 필드 존재 및 타입 검증 */
+function validateSpecRequiredFields(
+  doc: SpecDocument,
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  const headings = extractHeadings(content, 2);
-  for (const section of SPEC_REQUIRED_SECTIONS) {
-    if (!headings.includes(section)) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `Spec 필수 섹션 누락: "${section}"`,
-      });
-    }
-  }
-}
-
-/** Spec 메타데이터 존재 여부 검증 */
-function validateSpecMetadata(
-  doc: {
-    lastModified: string;
-    status: string;
-    sources: string[];
-    contracts: string[];
-    revisions: unknown[];
-  },
-  filePath: string,
-  issues: ValidationIssue[],
-): void {
-  validateLastModified(doc.lastModified, filePath, issues);
-
-  if (!["draft", "in-progress", "done"].includes(doc.status)) {
+  if (typeof doc.schemaVersion !== "number") {
     issues.push({
       severity: "error",
       path: filePath,
-      message: `유효하지 않은 status 값: "${doc.status}"`,
+      message: "schemaVersion 필드가 누락되었거나 숫자가 아닙니다",
     });
   }
-
-  if (!doc.revisions || doc.revisions.length === 0) {
+  if (typeof doc.summary !== "string" || doc.summary.length === 0) {
     issues.push({
       severity: "warning",
       path: filePath,
-      message: "revisions가 비어 있습니다",
+      message: "summary가 비어 있습니다",
     });
   }
 }
 
-/** Feature 블록 구조 검증: ### 헤딩으로 분리 후 #### 하위 섹션 5개 필수 확인 */
-function validateSpecFeatureBlocks(
-  content: string[],
-  filePath: string,
-  issues: ValidationIssue[],
-): void {
-  const featureBlocks = extractFeatureBlocks(content);
-
-  for (const block of featureBlocks) {
-    const subHeadings = extractHeadings(block.lines, 4);
-    for (const sub of SPEC_FEATURE_SUBSECTIONS) {
-      if (!subHeadings.includes(sub)) {
-        issues.push({
-          severity: "error",
-          path: filePath,
-          message: `Feature "${block.name}" 필수 하위 섹션 누락: "${sub}"`,
-        });
-      }
-    }
-  }
-}
-
-/** top-level status = 최소 revision 상태 검증 */
-function validateStatusAggregation(
-  topStatus: SpecStatus,
-  revisions: { status: SpecStatus }[],
-  filePath: string,
-  issues: ValidationIssue[],
-): void {
-  if (revisions.length === 0) return;
-
-  const minStatus = revisions.reduce<SpecStatus>((min, rev) => {
-    return STATUS_ORDER[rev.status] < STATUS_ORDER[min] ? rev.status : min;
-  }, "done");
-
-  if (topStatus !== minStatus) {
+/** Spec status 값 유효성 검증 */
+function validateSpecStatus(status: string, filePath: string, issues: ValidationIssue[]): void {
+  if (!["draft", "in-progress", "done"].includes(status)) {
     issues.push({
-      severity: "warning",
+      severity: "error",
       path: filePath,
-      message: `top-level status "${topStatus}"가 revision 최솟값 "${minStatus}"과 불일치합니다`,
+      message: `유효하지 않은 status 값: "${status}"`,
     });
   }
 }
@@ -170,16 +101,12 @@ function validateSourcesSecurity(
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  for (const source of sources) {
-    const resolved = path.resolve(projectRoot, source);
-    const rel = path.relative(projectRoot, resolved);
-    if (rel.startsWith("..")) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `sources 경로가 프로젝트 루트를 벗어납니다: "${source}"`,
-      });
-    }
+  for (const source of findSourcesOutsideRoot(sources, projectRoot)) {
+    issues.push({
+      severity: "error",
+      path: filePath,
+      message: `sources 경로가 프로젝트 루트를 벗어납니다: "${source}"`,
+    });
   }
 }
 
@@ -190,14 +117,28 @@ function validateContractReferences(
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  for (const rc of resolvedContracts) {
-    if (!knownContractPaths.has(rc)) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `참조된 contract를 찾을 수 없습니다: "${rc}"`,
-      });
-    }
+  for (const rc of findMissingResolvedPaths(resolvedContracts, knownContractPaths)) {
+    issues.push({
+      severity: "error",
+      path: filePath,
+      message: `참조된 contract를 찾을 수 없습니다: "${rc}"`,
+    });
+  }
+}
+
+/** dependsOnSpecs 경로가 실존하는 spec 노드로 해소되는지 검증 */
+function validateDependsOnSpecsReferences(
+  resolvedDependsOnSpecs: string[],
+  knownSpecPaths: Set<string>,
+  filePath: string,
+  issues: ValidationIssue[],
+): void {
+  for (const rd of findMissingResolvedPaths(resolvedDependsOnSpecs, knownSpecPaths)) {
+    issues.push({
+      severity: "error",
+      path: filePath,
+      message: `참조된 spec을 찾을 수 없습니다: "${rd}"`,
+    });
   }
 }
 
@@ -207,44 +148,4 @@ function extractHeadings(content: string[], level: number): string[] {
   return content
     .filter((line) => line.startsWith(prefix) && !line.startsWith(`${prefix}#`))
     .map((line) => line.slice(prefix.length).trim());
-}
-
-interface FeatureBlock {
-  name: string;
-  lines: string[];
-}
-
-/** ### 헤딩 기준으로 feature 블록을 분리한다 */
-function extractFeatureBlocks(content: string[]): FeatureBlock[] {
-  const blocks: FeatureBlock[] = [];
-  let current: FeatureBlock | null = null;
-  let inFeaturesSection = false;
-
-  for (const line of content) {
-    if (line.startsWith("## ") && !line.startsWith("## #")) {
-      const heading = line.slice(3).trim();
-      inFeaturesSection = heading === "Features";
-      if (!inFeaturesSection && current) {
-        blocks.push(current);
-        current = null;
-      }
-      continue;
-    }
-
-    if (!inFeaturesSection && current === null) continue;
-
-    if (line.startsWith("### ") && !line.startsWith("### #")) {
-      if (current) blocks.push(current);
-      current = { name: line.slice(4).trim(), lines: [] };
-      inFeaturesSection = true;
-      continue;
-    }
-
-    if (current) {
-      current.lines.push(line);
-    }
-  }
-
-  if (current) blocks.push(current);
-  return blocks;
 }

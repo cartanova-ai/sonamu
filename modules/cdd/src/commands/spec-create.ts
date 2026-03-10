@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
+import { todayString } from "../core/date.js";
 import type { CddProject, SpecDocument } from "../core/types.js";
 
 interface SpecCreateOptions {
@@ -23,7 +24,6 @@ export function runSpecCreate(
     process.exit(1);
   }
 
-  // basename 충돌 검사
   const existing = project.specs.filter((s) => s.basename === name);
   if (existing.length > 0) {
     console.error(`동명의 Spec이 이미 존재합니다: "${name}"`);
@@ -33,7 +33,6 @@ export function runSpecCreate(
     process.exit(1);
   }
 
-  // 대상 디렉토리 결정
   let targetDir: string;
   if (options.contract) {
     const contractPath = path.resolve(project.projectRoot, options.contract);
@@ -77,31 +76,23 @@ export function runSpecCreate(
     : "./main.contract.json";
 
   const doc: SpecDocument = {
+    schemaVersion: 1,
+    summary: "",
+    description: [],
+    acceptanceCriteria: [],
     lastModified: today,
     status: "draft",
     sources: [],
     contracts: [contractRef],
-    revisions: [
-      {
-        id: "rev-001",
-        date: today,
-        features: [],
-        status: "draft",
-      },
-    ],
-    content: ["## Summary", "", "", "", "## Features", "", ""],
+    modules: {},
+    interfaces: {},
+    dataFlow: [],
+    errorHandling: {},
+    constraints: [],
   };
 
   fs.writeFileSync(specPath, `${JSON.stringify(doc, null, 2)}\n`);
 
   const relPath = path.relative(project.projectRoot, specPath);
   console.log(chalk.green(`Spec을 생성했습니다: ${relPath}`));
-}
-
-function todayString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
+import { todayString } from "../core/date.js";
 import type { ContractDocument } from "../core/types.js";
 
 export function runInit(args: string[]): void {
@@ -57,14 +58,6 @@ export function runInit(args: string[]): void {
   console.log("  - cdd.md");
 }
 
-function todayString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 const CDD_MD_TEMPLATE = `# Contract-Driven Development (CDD)
 
 This project follows Contract-Driven Development (CDD).
@@ -98,12 +91,19 @@ project/
 
 \`\`\`json
 {
+  "schemaVersion": 1,
+  "summary": "Feature summary",
+  "description": ["Detailed description"],
+  "acceptanceCriteria": ["When X, then Y"],
   "lastModified": "YYYY-MM-DD",
   "status": "draft | in-progress | done",
   "sources": ["src/foo.ts"],
   "contracts": ["./main.contract.json"],
-  "revisions": [{ "id": "rev-001", "date": "YYYY-MM-DD", "features": ["feature"], "status": "draft" }],
-  "content": ["## Summary", "", "..."]
+  "modules": { "ModuleName": "Role description" },
+  "interfaces": { "FunctionName": "Description" },
+  "dataFlow": ["1. Step description"],
+  "errorHandling": { "ErrorName": "Trigger condition" },
+  "constraints": ["Constraint description"]
 }
 \`\`\`
 

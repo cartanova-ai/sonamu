@@ -1,14 +1,6 @@
 /** Spec 상태 */
 export type SpecStatus = "draft" | "in-progress" | "done";
 
-/** Spec revision 항목 */
-export interface SpecRevision {
-  id: string;
-  date: string;
-  features: string[];
-  status: SpecStatus;
-}
-
 /** Contract JSON 문서 구조 */
 export interface ContractDocument {
   lastModified: string;
@@ -17,12 +9,20 @@ export interface ContractDocument {
 
 /** Spec JSON 문서 구조 */
 export interface SpecDocument {
+  schemaVersion: number;
+  summary: string;
+  description: string[];
+  acceptanceCriteria: string[];
   lastModified: string;
   status: SpecStatus;
   sources: string[];
   contracts: string[];
-  revisions: SpecRevision[];
-  content: string[];
+  dependsOnSpecs?: string[];
+  modules: Record<string, string>;
+  interfaces: Record<string, string>;
+  dataFlow: string[];
+  errorHandling: Record<string, string>;
+  constraints: string[];
 }
 
 /** 로드된 Contract 노드 */
@@ -47,6 +47,8 @@ export interface SpecNode {
   document: SpecDocument;
   /** contracts 필드에서 해소된 절대 경로 목록 */
   resolvedContracts: string[];
+  /** dependsOnSpecs 필드에서 해소된 절대 경로 목록 */
+  resolvedDependsOnSpecs: string[];
 }
 
 /** 로드된 CDD 프로젝트 */
@@ -80,14 +82,19 @@ export const CONTRACT_REQUIRED_SECTIONS = [
   "Edge Cases",
 ] as const;
 
-/** Spec content 필수 최상위 섹션 */
-export const SPEC_REQUIRED_SECTIONS = ["Summary", "Features"] as const;
-
-/** Spec feature 블록 필수 하위 섹션 */
-export const SPEC_FEATURE_SUBSECTIONS = [
-  "Modules/Components",
-  "Interfaces",
-  "Data Flow",
-  "Error Handling",
-  "Technical Constraints",
+/** Spec 필수 필드 목록 */
+export const SPEC_REQUIRED_FIELDS = [
+  "schemaVersion",
+  "summary",
+  "description",
+  "acceptanceCriteria",
+  "lastModified",
+  "status",
+  "sources",
+  "contracts",
+  "modules",
+  "interfaces",
+  "dataFlow",
+  "errorHandling",
+  "constraints",
 ] as const;

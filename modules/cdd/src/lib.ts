@@ -1,4 +1,12 @@
 export { findContractDir, loadProject } from "./core/loader.js";
+export {
+  addToField,
+  getField,
+  getFieldMeta,
+  listFieldNames,
+  removeFromField,
+  setField,
+} from "./core/spec-field-ops.js";
 export type {
   CddProject,
   ContractDocument,
@@ -6,13 +14,13 @@ export type {
   IssueSeverity,
   SpecDocument,
   SpecNode,
-  SpecRevision,
   SpecStatus,
   ValidationIssue,
 } from "./core/types.js";
 export {
   CONTRACT_REQUIRED_SECTIONS,
-  SPEC_FEATURE_SUBSECTIONS,
-  SPEC_REQUIRED_SECTIONS,
+  SPEC_REQUIRED_FIELDS,
 } from "./core/types.js";
 export { validateProject } from "./core/validator.js";
+export type { ResolvedFile } from "./utils/resolve.js";
+export { resolveContract, resolveFile, resolveSpec } from "./utils/resolve.js";

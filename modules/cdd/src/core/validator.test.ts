@@ -44,62 +44,28 @@ describe("validator", () => {
     expect(issues.some((i) => i.message.includes("lastModified 형식"))).toBe(true);
   });
 
-  it("Spec 필수 섹션 누락 시 에러를 생성한다", () => {
+  it("유효하지 않은 status 값에서 에러를 생성한다", () => {
     const project = makeProject({
       specs: [
         makeSpecNode({
-          content: ["## Summary", "", "요약만 있음"],
+          status: "invalid" as "draft",
         }),
       ],
     });
     const issues = validateProject(project);
-    expect(issues.some((i) => i.message.includes('Spec 필수 섹션 누락: "Features"'))).toBe(true);
+    expect(issues.some((i) => i.message.includes("유효하지 않은 status 값"))).toBe(true);
   });
 
-  it("Feature 블록에 하위 섹션 누락 시 에러를 생성한다", () => {
+  it("summary가 비어있으면 경고를 생성한다", () => {
     const project = makeProject({
       specs: [
         makeSpecNode({
-          content: [
-            "## Summary",
-            "",
-            "요약",
-            "",
-            "## Features",
-            "",
-            "- 기능A",
-            "",
-            "### 기능A",
-            "",
-            "#### Modules/Components",
-            "",
-            "모듈 설명",
-          ],
+          summary: "",
         }),
       ],
     });
     const issues = validateProject(project);
-    const featureErrors = issues.filter((i) =>
-      i.message.includes('Feature "기능A" 필수 하위 섹션 누락'),
-    );
-    expect(featureErrors).toHaveLength(4);
-  });
-
-  it("top-level status가 revision 최솟값과 불일치하면 경고를 생성한다", () => {
-    const project = makeProject({
-      specs: [
-        makeSpecNode({
-          status: "done",
-          revisions: [
-            { id: "rev-001", date: "2026-01-01", features: ["A"], status: "done" },
-            { id: "rev-002", date: "2026-01-02", features: ["B"], status: "draft" },
-          ],
-          content: makeValidSpecContent(),
-        }),
-      ],
-    });
-    const issues = validateProject(project);
-    expect(issues.some((i) => i.message.includes("불일치"))).toBe(true);
+    expect(issues.some((i) => i.message.includes("summary가 비어 있습니다"))).toBe(true);
   });
 
   it("sources 경로가 프로젝트 루트를 벗어나면 에러를 생성한다", () => {
@@ -107,7 +73,6 @@ describe("validator", () => {
       specs: [
         makeSpecNode({
           sources: ["../../etc/passwd"],
-          content: makeValidSpecContent(),
         }),
       ],
     });
@@ -120,12 +85,23 @@ describe("validator", () => {
       specs: [
         makeSpecNode({
           resolvedContracts: ["/nonexistent/contract.json"],
-          content: makeValidSpecContent(),
         }),
       ],
     });
     const issues = validateProject(project);
     expect(issues.some((i) => i.message.includes("contract를 찾을 수 없습니다"))).toBe(true);
+  });
+
+  it("참조된 dependsOnSpecs가 존재하지 않으면 에러를 생성한다", () => {
+    const project = makeProject({
+      specs: [
+        makeSpecNode({
+          resolvedDependsOnSpecs: ["/nonexistent/spec.json"],
+        }),
+      ],
+    });
+    const issues = validateProject(project);
+    expect(issues.some((i) => i.message.includes("참조된 spec을 찾을 수 없습니다"))).toBe(true);
   });
 });
 
@@ -164,18 +140,21 @@ function makeSpecNode(
     path: string;
     domain: string;
     basename: string;
+    schemaVersion: number;
+    summary: string;
+    description: string[];
+    acceptanceCriteria: string[];
     lastModified: string;
     status: "draft" | "in-progress" | "done";
     sources: string[];
     contracts: string[];
-    revisions: {
-      id: string;
-      date: string;
-      features: string[];
-      status: "draft" | "in-progress" | "done";
-    }[];
-    content: string[];
+    modules: Record<string, string>;
+    interfaces: Record<string, string>;
+    dataFlow: string[];
+    errorHandling: Record<string, string>;
+    constraints: string[];
     resolvedContracts: string[];
+    resolvedDependsOnSpecs: string[];
   }> = {},
 ): SpecNode {
   return {
@@ -183,16 +162,22 @@ function makeSpecNode(
     domain: overrides.domain ?? "",
     basename: overrides.basename ?? "test",
     document: {
+      schemaVersion: overrides.schemaVersion ?? 1,
+      summary: overrides.summary ?? "테스트 기능",
+      description: overrides.description ?? ["테스트 설명"],
+      acceptanceCriteria: overrides.acceptanceCriteria ?? ["조건 A"],
       lastModified: overrides.lastModified ?? "2026-03-09",
       status: overrides.status ?? "draft",
       sources: overrides.sources ?? ["src/test.ts"],
       contracts: overrides.contracts ?? ["./main.contract.json"],
-      revisions: overrides.revisions ?? [
-        { id: "rev-001", date: "2026-03-09", features: ["기능A"], status: "draft" },
-      ],
-      content: overrides.content ?? makeValidSpecContent(),
+      modules: overrides.modules ?? { TestModule: "테스트" },
+      interfaces: overrides.interfaces ?? { "TestModule.run()": "실행" },
+      dataFlow: overrides.dataFlow ?? ["1. 입력 -> 출력"],
+      errorHandling: overrides.errorHandling ?? { TestError: "에러" },
+      constraints: overrides.constraints ?? ["제약"],
     },
     resolvedContracts: overrides.resolvedContracts ?? [],
+    resolvedDependsOnSpecs: overrides.resolvedDependsOnSpecs ?? [],
   };
 }
 
@@ -221,39 +206,5 @@ function makeValidContractContent(): string[] {
     "## Edge Cases",
     "",
     "엣지 케이스",
-  ];
-}
-
-function makeValidSpecContent(): string[] {
-  return [
-    "## Summary",
-    "",
-    "요약",
-    "",
-    "## Features",
-    "",
-    "- 기능A",
-    "",
-    "### 기능A",
-    "",
-    "#### Modules/Components",
-    "",
-    "모듈",
-    "",
-    "#### Interfaces",
-    "",
-    "인터페이스",
-    "",
-    "#### Data Flow",
-    "",
-    "데이터 흐름",
-    "",
-    "#### Error Handling",
-    "",
-    "에러 처리",
-    "",
-    "#### Technical Constraints",
-    "",
-    "제약 사항",
   ];
 }
