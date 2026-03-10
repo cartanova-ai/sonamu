@@ -16,6 +16,7 @@ import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
 import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
+import { ActivityGroup, ActivityPeriod, DashboardStats } from "./dashboard/dashboard.types";
 import { DepartmentListParams, DepartmentSaveParams } from "./department/department.types";
 import {
   DocumentListParams,
@@ -1221,6 +1222,49 @@ export namespace DepartmentService {
   export const useDelMutation = () =>
     useMutation({
       mutationFn: (params: { ids: number[] }) => del(params.ids),
+    });
+}
+
+export namespace DashboardService {
+  export async function getDashboardStats(): Promise<DashboardStats> {
+    return fetch({
+      method: "GET",
+      url: `/api/dashboard/getStats`,
+    });
+  }
+
+  export const getDashboardStatsQueryOptions = () =>
+    queryOptions({
+      queryKey: ["Dashboard", "getDashboardStats"],
+      queryFn: () => getDashboardStats(),
+    });
+
+  export const useDashboardStats = (options?: { enabled?: boolean }) =>
+    useQuery({
+      ...getDashboardStatsQueryOptions(),
+      ...options,
+    });
+
+  export async function getRecentActivity(period: ActivityPeriod = "7"): Promise<ActivityGroup[]> {
+    return fetch({
+      method: "GET",
+      url: `/api/dashboard/getRecentActivity?${qs.stringify({ period })}`,
+    });
+  }
+
+  export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
+    queryOptions({
+      queryKey: ["Dashboard", "getRecentActivity", period],
+      queryFn: () => getRecentActivity(period),
+    });
+
+  export const useRecentActivity = (
+    period: ActivityPeriod = "7",
+    options?: { enabled?: boolean },
+  ) =>
+    useQuery({
+      ...getRecentActivityQueryOptions(period),
+      ...options,
     });
 }
 

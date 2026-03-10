@@ -623,6 +623,18 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/dashboard/getStats
+	?
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/dashboard/getRecentActivity
+	?period=7
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/company/findById
 	?subset=A
 	&id=0

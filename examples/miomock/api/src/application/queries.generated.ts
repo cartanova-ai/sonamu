@@ -19,6 +19,7 @@ function createSSRQuery(
 
 import { AuditLogListParams } from "./audit-log/audit-log.types";
 import { CompanyListParams } from "./company/company.types";
+import { ActivityPeriod } from "./dashboard/dashboard.types";
 import { DepartmentListParams } from "./department/department.types";
 import { DocumentListParams, DocumentSemanticParams } from "./document/document.types";
 import { EmployeeListParams } from "./employee/employee.types";
@@ -179,6 +180,19 @@ export namespace DepartmentService {
       "findMany",
       [subset, rawParams],
       ["Department", "getDepartments"],
+    );
+}
+
+export namespace DashboardService {
+  export const getDashboardStats = (): SSRQuery =>
+    createSSRQuery("DashboardFrame", "getStats", [], ["Dashboard", "getDashboardStats"]);
+
+  export const getRecentActivity = (period: ActivityPeriod = "7"): SSRQuery =>
+    createSSRQuery(
+      "DashboardFrame",
+      "getRecentActivity",
+      [period],
+      ["Dashboard", "getRecentActivity"],
     );
 }
 

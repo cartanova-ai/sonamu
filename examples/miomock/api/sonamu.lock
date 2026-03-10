@@ -32,6 +32,14 @@
     "checksum": "d21f52c6a07c5233afcc8c27872232b1d6eb9909"
   },
   {
+    "path": "src/application/dashboard/dashboard.frame.ts",
+    "checksum": "92977b781e06eeb7298900efed80ed71c641ec99"
+  },
+  {
+    "path": "src/application/dashboard/dashboard.types.ts",
+    "checksum": "e25bd60398c1a5a0a6c0a65871c930f9332d0746"
+  },
+  {
     "path": "src/application/department/department.entity.json",
     "checksum": "62534ce56863d77011698402a03868f39d56276d"
   },
@@ -185,7 +193,7 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "1b46903b1de1462ae9e82f1a37276c249f47edff"
+    "checksum": "1c353cc703c415bd8eef1734ba8757086aaac1d0"
   },
   {
     "path": "src/i18n/ja.ts",
@@ -193,7 +201,7 @@
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "e5abc71cd1fccb4d22cc6142d21b03556d017a08"
+    "checksum": "64a4a4428dd272904a2f4047e73b6171178237fb"
   },
   {
     "path": "src/i18n/sd.generated.ts",
