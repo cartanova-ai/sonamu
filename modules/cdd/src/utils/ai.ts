@@ -144,6 +144,9 @@ function spawnClaude(
   options: { cwd: string; timeoutMs: number },
 ): Promise<SpawnResult> {
   return new Promise((resolve, reject) => {
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
+
     const child = execFile(
       "claude",
       args,
@@ -151,6 +154,7 @@ function spawnClaude(
         cwd: options.cwd,
         maxBuffer: 50 * 1024 * 1024,
         timeout: options.timeoutMs,
+        env,
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -184,15 +188,22 @@ function spawnClaude(
 function extractContent(parsed: unknown): unknown {
   if (!isObjectWithResult(parsed)) return parsed;
   const { result } = parsed;
-  // result가 JSON 문자열이면 한번 더 파싱
   if (typeof result === "string") {
+    const cleaned = stripMarkdownCodeBlock(result);
     try {
-      return JSON.parse(result);
+      return JSON.parse(cleaned);
     } catch {
-      return result;
+      return cleaned;
     }
   }
   return result;
+}
+
+/** 마크다운 코드블록 래핑을 제거합니다 */
+function stripMarkdownCodeBlock(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:\w*)\n([\s\S]*?)\n```$/);
+  return match ? match[1] : trimmed;
 }
 
 function isObjectWithResult(v: unknown): v is { result: unknown } {
