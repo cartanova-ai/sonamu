@@ -675,6 +675,14 @@ export namespace SonamuUIService {
     });
   }
 
+  export function openCddSource(filePath: string): Promise<{ success: boolean }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/cdd/openSource`,
+      data: { filePath },
+    });
+  }
+
   export function updateEntityCone(entityId: string, cone: Cone): Promise<void> {
     return fetch({
       method: "POST",

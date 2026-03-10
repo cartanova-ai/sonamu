@@ -174,7 +174,7 @@ function CddPage() {
   const renderMainContent = () => {
     if (activeNode?.type === "file") {
       if (activeNode.fileType === "spec") {
-        return <SpecNodeDetail node={activeNode} />;
+        return <SpecNodeDetail node={activeNode} onSelect={setActiveNodePath} />;
       }
       return <ContractNodeDetail node={activeNode} onRefetch={refetch} />;
     }
@@ -398,13 +398,35 @@ const SPEC_SECTIONS = [
   { id: "technical", title: "기술 제약/참조", Icon: TerminalIcon },
 ] as const;
 
-function SpecNodeDetail({ node }: { node: CddTreeNode }) {
+function SpecNodeDetail({
+  node,
+  onSelect,
+}: {
+  node: CddTreeNode;
+  onSelect: (path: string) => void;
+}) {
   const { SD } = useSonamuContext();
   const { data, isLoading } = SonamuUIService.useReadCddContent(node.path);
   const [activeSection, setActiveSection] = useState("summary");
 
   const spec: SpecData = (data as SpecData) ?? {};
   const statusInfo = STATUS_MAP[spec.status ?? ""] ?? STATUS_MAP.draft;
+
+  /** spec 파일 기준 상대 경로를 contract/ 기준 경로로 변환 */
+  const resolveRefPath = (ref: string): string => {
+    const dir = node.path.includes("/") ? node.path.substring(0, node.path.lastIndexOf("/")) : "";
+    const parts = (dir ? `${dir}/${ref}` : ref).split("/");
+    const resolved: string[] = [];
+    for (const p of parts) {
+      if (p === "." || p === "") continue;
+      if (p === "..") {
+        resolved.pop();
+      } else {
+        resolved.push(p);
+      }
+    }
+    return resolved.join("/");
+  };
 
   const hasDescription = spec.description && spec.description.length > 0;
   const hasAcceptanceCriteria = spec.acceptanceCriteria && spec.acceptanceCriteria.length > 0;
@@ -678,9 +700,14 @@ function SpecNodeDetail({ node }: { node: CddTreeNode }) {
                           소스 코드
                         </h4>
                         {spec.sources?.map((s) => (
-                          <div key={s} className="flex items-center gap-2 text-xs text-slate-500">
+                          <button
+                            type="button"
+                            key={s}
+                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                            onClick={() => SonamuUIService.openCddSource(s).catch(defaultCatch)}
+                          >
                             <Link2Icon className="w-3 h-3 shrink-0" /> {s}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -690,14 +717,24 @@ function SpecNodeDetail({ node }: { node: CddTreeNode }) {
                           참조 문서
                         </h4>
                         {spec.contracts?.map((c) => (
-                          <div key={c} className="flex items-center gap-2 text-xs text-slate-500">
+                          <button
+                            type="button"
+                            key={c}
+                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                            onClick={() => onSelect(resolveRefPath(c))}
+                          >
                             <HashIcon className="w-3 h-3 shrink-0" /> {c}
-                          </div>
+                          </button>
                         ))}
                         {spec.dependsOnSpecs?.map((d) => (
-                          <div key={d} className="flex items-center gap-2 text-xs text-slate-500">
+                          <button
+                            type="button"
+                            key={d}
+                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                            onClick={() => onSelect(resolveRefPath(d))}
+                          >
                             <HashIcon className="w-3 h-3 shrink-0" /> {d}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}

@@ -37,7 +37,7 @@ import {
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
-import { editContent, getCddTree, readContent } from "./cdd-service";
+import { editContent, getCddTree, openSourceFile, readContent } from "./cdd-service";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
@@ -1407,6 +1407,12 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post<{ Body: { filePath: string } }>("/api/cdd/editContent", async (request) => {
         const { filePath } = request.body;
         return editContent(filePath);
+      });
+
+      server.post<{ Body: { filePath: string } }>("/api/cdd/openSource", async (request) => {
+        const { filePath } = request.body;
+        openSourceFile(filePath);
+        return { success: true };
       });
 
       // ui-web 빌드 파일 서빙

@@ -159,8 +159,9 @@ const EDITOR_CLI_MAP: Record<string, { cli: string; waitFlag: string }> = {
   Cursor: { cli: "Contents/Resources/app/bin/cursor", waitFlag: "--wait" },
 };
 
-/** 앱 번들 CLI 경로를 resolve */
-function resolveEditorCli(): { bin: string; args: string[] } {
+/** 앱 번들 CLI 경로를 resolve. wait=false이면 --wait 플래그를 생략 */
+function resolveEditorCli(options?: { wait?: boolean }): { bin: string; args: string[] } {
+  const wait = options?.wait ?? true;
   const appName = Sonamu.config.externalEditor ?? "Visual Studio Code";
   const mapping = EDITOR_CLI_MAP[appName];
   if (!mapping) {
@@ -183,7 +184,7 @@ function resolveEditorCli(): { bin: string; args: string[] } {
     throw new Error(`에디터 CLI를 찾을 수 없습니다: ${cliBin}`);
   }
 
-  return { bin: cliBin, args: [mapping.waitFlag] };
+  return { bin: cliBin, args: wait ? [mapping.waitFlag] : [] };
 }
 
 /** 에디터 CLI를 실행하고 탭이 닫힐 때까지 대기 */
@@ -205,4 +206,20 @@ function runEditor(editor: { bin: string; args: string[] }, filePath: string): P
       }
     });
   });
+}
+
+/** 소스 파일을 외부 에디터로 열기 (대기하지 않음) */
+export function openSourceFile(filePath: string): void {
+  const absPath = path.isAbsolute(filePath) ? filePath : path.resolve(Sonamu.apiRootPath, filePath);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
+  }
+
+  const editor = resolveEditorCli({ wait: false });
+  const child = spawn(editor.bin, [...editor.args, absPath], {
+    stdio: "ignore",
+    detached: true,
+  });
+  child.unref();
 }
