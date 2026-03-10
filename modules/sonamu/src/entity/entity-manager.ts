@@ -3,10 +3,13 @@ import chalk from "chalk";
 import { glob, readFile } from "fs/promises";
 import inflection from "inflection";
 import path from "path";
-import { prettifyError } from "zod";
+import { prettifyError, z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { type EntityIndex, type EntityJson, EntityJsonSchema } from "../types/types";
+import { globAsync } from "../utils/async-utils";
+import { importMembers } from "../utils/esm-utils";
 import type { AbsolutePath } from "../utils/path-utils";
+import { runtimePath } from "../utils/path-utils";
 import { Entity } from "./entity";
 
 export type EntityNamesRecord = Record<
@@ -46,12 +49,8 @@ class EntityManagerClass {
 
       await this.register(json);
     }
-    // !doSilent &&
-    //   console.log(
-    //     chalk.gray(
-    //       `[Loading] Loaded entity definitions from "*.entity.json" files: ${count} files.`
-    //     )
-    //   );
+
+    await this.registerNonEntityTypeModulePaths();
 
     this.isAutoloaded = true;
   }
@@ -177,6 +176,37 @@ class EntityManagerClass {
     const matched = filePath.match(/application\/(.+)\//);
     assert(matched?.[1]);
     return inflection.camelize(matched[1].replace(/-/g, "_"));
+  }
+
+  private async registerNonEntityTypeModulePaths(): Promise<void> {
+    const typePathsPatterns = [
+      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
+      path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.generated.ts")),
+    ];
+    const typePaths = (
+      await Promise.all(typePathsPatterns.map((pattern) => globAsync(pattern)))
+    ).flat();
+
+    for (const filePath of typePaths) {
+      const modulePath = this.getModulePathFromTypeFilePath(filePath);
+      const importedMembers = await importMembers<unknown>(filePath);
+      for (const { name, value } of importedMembers) {
+        if (value instanceof z.ZodType) {
+          this.setModulePath(name, modulePath);
+        }
+      }
+    }
+  }
+
+  private getModulePathFromTypeFilePath(filePath: string): string {
+    const normalizedPath = filePath.replaceAll("\\", "/");
+    const matched = normalizedPath.match(/\/(?:src|dist)\/application\/(.+)\.(?:ts|js)$/);
+
+    if (!matched?.[1]) {
+      throw new Error(`타입 파일의 모듈 경로를 계산할 수 없습니다: ${filePath}`);
+    }
+
+    return matched[1];
   }
 }
 
