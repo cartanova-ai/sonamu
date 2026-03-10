@@ -50,9 +50,10 @@ export async function runSpecExplain(
 ): Promise<OutputResult> {
   const specNode = resolveSpec(specRef, project);
   const specAbsPath = specNode.path;
+  const specBasename = specNode.basename;
 
   const fallback: SpecExplainData = {
-    feature: specAbsPath,
+    feature: specBasename,
     changes: [],
     overall_summary: "",
     breaking_changes: [],
@@ -81,7 +82,7 @@ export async function runSpecExplain(
     parse: parseExplainResult,
   });
 
-  const data: SpecExplainData = { ...aiResult.value, feature: specAbsPath };
+  const data: SpecExplainData = { ...aiResult.value, feature: specBasename };
 
   return {
     data,
@@ -101,6 +102,7 @@ async function buildCommitContext(
   options: SpecExplainOptions,
   deps: SpecExplainDeps,
 ): Promise<ExplainContext> {
+  // --commit 경로에서는 since/until을 무시하고 전체 이력을 조회한 뒤 해시로 필터링합니다.
   const commits = await deps.listFileHistory(specAbsPath, {
     cwd: options.cwd,
   });

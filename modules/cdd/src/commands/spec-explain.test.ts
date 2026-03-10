@@ -221,7 +221,7 @@ describe("runSpecExplain", () => {
     const result = await runSpecExplain("login", { cwd: "/project" }, project, deps);
     const data = result.data as SpecExplainData;
 
-    expect(data.feature).toBe(specNode.path);
+    expect(data.feature).toBe(specNode.basename);
     expect(data.changes).toHaveLength(2);
     expect(data.changes[0]).toEqual({
       section: "interfaces",
@@ -249,7 +249,7 @@ describe("runSpecExplain", () => {
     const result = await runSpecExplain("login", { cwd: "/project" }, project, deps);
     const data = result.data as SpecExplainData;
 
-    expect(data.feature).toBe(specNode.path);
+    expect(data.feature).toBe(specNode.basename);
     expect(data.changes).toEqual([]);
     expect(data.overall_summary).toBe("");
     expect(data.breaking_changes).toEqual([]);

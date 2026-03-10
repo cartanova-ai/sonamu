@@ -260,15 +260,31 @@ export async function getFileDiff(
   let headRef: string;
 
   if (options.commit) {
-    // 특정 커밋의 diff
-    args = ["diff", `${options.commit}~1`, options.commit, "--", specAbsPath];
+    // 특정 커밋의 diff: 루트 커밋이면 ~1 참조가 없으므로 --root fallback을 사용합니다.
     baseRef = `${options.commit}~1`;
     headRef = options.commit;
-  } else {
-    baseRef = options.baseRef ?? "HEAD~1";
-    headRef = options.headRef ?? "HEAD";
-    args = ["diff", `${baseRef}..${headRef}`, "--", specAbsPath];
+    args = ["diff", baseRef, headRef, "--", specAbsPath];
+
+    try {
+      const { stdout } = await runGit(args, {
+        cwd: options.cwd,
+        timeoutMs: options.timeoutMs,
+      });
+      return { path: specAbsPath, baseRef, headRef, diffText: stdout };
+    } catch {
+      // 루트 커밋은 ~1이 없으므로 --root 옵션으로 재시도합니다.
+      const rootArgs = ["diff", "--root", headRef, "--", specAbsPath];
+      const { stdout } = await runGit(rootArgs, {
+        cwd: options.cwd,
+        timeoutMs: options.timeoutMs,
+      });
+      return { path: specAbsPath, baseRef: "", headRef, diffText: stdout };
+    }
   }
+
+  baseRef = options.baseRef ?? "HEAD~1";
+  headRef = options.headRef ?? "HEAD";
+  args = ["diff", `${baseRef}..${headRef}`, "--", specAbsPath];
 
   const { stdout } = await runGit(args, {
     cwd: options.cwd,

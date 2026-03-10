@@ -221,6 +221,7 @@ async function enrichWithAiRoles(
   const results = await Promise.all(
     contributors.map(async (c) => {
       const authorCommits = commitsByAuthor.get(c.name);
+      // 커밋 이력이 없는 blame-only 기여자는 AI 역할 분석을 건너뜁니다.
       if (!authorCommits || authorCommits.length === 0) return { ...c };
 
       const summaryLines = authorCommits.map((ac) => `- ${ac.subject}`).join("\n");

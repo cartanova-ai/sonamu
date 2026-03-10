@@ -153,6 +153,26 @@ describe("callAi", () => {
     }
   });
 
+  it("stdin이 null이면 reason:spawn_error + fallback을 반환한다", async () => {
+    mockedExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      const cb = callback as (
+        error: NodeJS.ErrnoException | null,
+        stdout: string,
+        stderr: string,
+      ) => void;
+      // 콜백은 호출하지 않아 resolve/reject는 stdin null 처리에서 발생
+      void cb;
+      return makeChild({ stdin: null } as unknown as ChildProcess);
+    });
+
+    const result = await callAi(defaultOptions);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("spawn_error");
+      expect(result.value).toBe("fallback-value");
+    }
+  });
+
   it("parse()가 null을 반환하면 reason:invalid_shape + fallback을 반환한다", async () => {
     setupExecFile({ stdout: JSON.stringify({ result: "42" }) });
 

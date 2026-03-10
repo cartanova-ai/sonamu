@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { parseBlameOutput, parseLogOutput } from "./git.js";
+import { execFile } from "node:child_process";
+import { describe, expect, it, vi } from "vitest";
+import { getFileDiff, parseBlameOutput, parseLogOutput } from "./git.js";
+
+vi.mock("node:child_process", () => ({
+  execFile: vi.fn(),
+}));
+
+const mockedExecFile = vi.mocked(execFile);
 
 const RS = "\x1e";
 const US = "\x1f";
@@ -151,5 +158,65 @@ describe("parseBlameOutput", () => {
     const report = parseBlameOutput("", "HEAD", "empty.ts");
     expect(report.totalLines).toBe(0);
     expect(report.lines).toEqual([]);
+  });
+});
+
+// --- getFileDiff ---
+
+describe("getFileDiff", () => {
+  it("루트 커밋 지정 시 ~1 실패 후 --root로 fallback한다", async () => {
+    let callCount = 0;
+
+    mockedExecFile.mockImplementation((_cmd, args, _opts, callback) => {
+      const cb = callback as (
+        error: NodeJS.ErrnoException | null,
+        stdout: string,
+        stderr: string,
+      ) => void;
+      callCount += 1;
+      const argList = args as string[];
+
+      if (argList.includes("abc123~1")) {
+        // 루트 커밋이라 ~1 참조가 없으므로 git 에러를 반환합니다.
+        const err = new Error("unknown revision") as NodeJS.ErrnoException;
+        cb(err, "", "unknown revision or path");
+      } else if (argList.includes("--root")) {
+        cb(null, "diff --root output", "");
+      } else {
+        cb(null, "", "");
+      }
+      return { stdin: null } as ReturnType<typeof execFile>;
+    });
+
+    const result = await getFileDiff("/project/spec.json", {
+      cwd: "/project",
+      commit: "abc123",
+    });
+
+    expect(callCount).toBe(2);
+    expect(result.diffText).toBe("diff --root output");
+    expect(result.baseRef).toBe("");
+    expect(result.headRef).toBe("abc123");
+  });
+
+  it("일반 커밋은 ~1..hash diff를 사용한다", async () => {
+    mockedExecFile.mockImplementation((_cmd, _args, _opts, callback) => {
+      const cb = callback as (
+        error: NodeJS.ErrnoException | null,
+        stdout: string,
+        stderr: string,
+      ) => void;
+      cb(null, "normal diff output", "");
+      return { stdin: null } as ReturnType<typeof execFile>;
+    });
+
+    const result = await getFileDiff("/project/spec.json", {
+      cwd: "/project",
+      commit: "def456",
+    });
+
+    expect(result.diffText).toBe("normal diff output");
+    expect(result.baseRef).toBe("def456~1");
+    expect(result.headRef).toBe("def456");
   });
 });

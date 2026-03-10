@@ -168,11 +168,13 @@ function spawnClaude(
       },
     );
 
-    // stdin으로 프롬프트 전달
-    if (child.stdin) {
-      child.stdin.write(stdinData);
-      child.stdin.end();
+    // stdin이 null이면 프롬프트를 전달할 수 없으므로 즉시 실패 처리합니다.
+    if (!child.stdin) {
+      reject(new Error("child.stdin is null: cannot write prompt"));
+      return;
     }
+    child.stdin.write(stdinData);
+    child.stdin.end();
   });
 }
 

@@ -196,35 +196,33 @@ async function buildTimeline(
   options: SpecLogOptions,
   deps: SpecLogDeps,
 ): Promise<TimelinePeriod[]> {
-  const timeline: TimelinePeriod[] = [];
+  return Promise.all(
+    groups.map(async (group) => {
+      const authorGroups = groupByAuthor(group.commits);
 
-  for (const group of groups) {
-    const authorGroups = groupByAuthor(group.commits);
-    const byAuthor: AuthorGroup[] = [];
+      const byAuthor = await Promise.all(
+        authorGroups.map(async (ag) => {
+          const commitSummaries = ag.commits.map((c) => ({ hash: c.hash, message: c.subject }));
+          const linesDelta = computeLinesDelta(ag.commits);
+          const aiResult = await callAiForAuthorGroup(ag.author, commitSummaries, options, deps);
 
-    for (const ag of authorGroups) {
-      const commitSummaries = ag.commits.map((c) => ({ hash: c.hash, message: c.subject }));
-      const linesDelta = computeLinesDelta(ag.commits);
+          return {
+            author: ag.author,
+            commits: commitSummaries,
+            lines_delta: linesDelta,
+            summary: aiResult.summary,
+            phase: aiResult.phase,
+          };
+        }),
+      );
 
-      const aiResult = await callAiForAuthorGroup(ag.author, commitSummaries, options, deps);
-
-      byAuthor.push({
-        author: ag.author,
-        commits: commitSummaries,
-        lines_delta: linesDelta,
-        summary: aiResult.summary,
-        phase: aiResult.phase,
-      });
-    }
-
-    timeline.push({
-      period: group.period,
-      lines_delta: computeLinesDelta(group.commits),
-      by_author: byAuthor,
-    });
-  }
-
-  return timeline;
+      return {
+        period: group.period,
+        lines_delta: computeLinesDelta(group.commits),
+        by_author: byAuthor,
+      };
+    }),
+  );
 }
 
 // --- 내부 함수: AI 호출 ---
