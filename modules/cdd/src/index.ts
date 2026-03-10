@@ -4,6 +4,9 @@ import minimist from "minimist";
 import { runCheck } from "./commands/check.js";
 import { runImpact } from "./commands/impact.js";
 import { runInit } from "./commands/init.js";
+import { runSourceBlame } from "./commands/source-blame.js";
+import { runSourceExplain } from "./commands/source-explain.js";
+import { runSourceLog } from "./commands/source-log.js";
 import { runSpecAdd } from "./commands/spec-add.js";
 import { runSpecBlame } from "./commands/spec-blame.js";
 import { runSpecCreate } from "./commands/spec-create.js";
@@ -92,6 +95,8 @@ async function dispatch(
       return runCheck(project);
     case "spec":
       return dispatchSpec(cmdArgs, project);
+    case "source":
+      return dispatchSource(cmdArgs, project);
     default:
       console.error(`알 수 없는 명령어: "${cmd}"`);
       printHelp();
@@ -172,6 +177,42 @@ async function dispatchSpec(cmdArgs: string[], project: CddProject): Promise<Out
   }
 }
 
+async function dispatchSource(cmdArgs: string[], project: CddProject): Promise<OutputResult> {
+  const subCmd = cmdArgs[0];
+  switch (subCmd) {
+    case "blame":
+      return runSourceBlame(cmdArgs[1], { cwd, since: args.since, until: args.until }, project);
+    case "log":
+      return runSourceLog(
+        cmdArgs[1],
+        {
+          cwd,
+          since: args.since,
+          until: args.until,
+          groupBy: (args["group-by"] as "day" | "week" | "month") || "week",
+        },
+        project,
+      );
+    case "explain": {
+      if (!cmdArgs[1]) {
+        console.error(
+          "사용법: cdd source explain <file> [--since <date>] [--until <date>] [--commit <hash>]",
+        );
+        process.exit(1);
+      }
+      return runSourceExplain(
+        cmdArgs[1],
+        { cwd, since: args.since, until: args.until, commit: args.commit },
+        project,
+      );
+    }
+    default:
+      console.error(`알 수 없는 source 서브커맨드: "${subCmd}"`);
+      console.error("사용 가능: blame, log, explain");
+      process.exit(1);
+  }
+}
+
 function printHelp(): void {
   console.log(`Usage: cdd <command> [options]
 
@@ -192,6 +233,9 @@ Commands:
   spec blame <spec>                 Spec 기여자 분석 (git blame 기반)
   spec log <spec>                   Spec 변경 타임라인 조회
   spec explain <spec>               Spec 변경 사유 분석
+  source blame <file>               소스 파일 기여자 분석 (git blame 기반)
+  source log <file>                 소스 파일 변경 타임라인 조회
+  source explain <file>             소스 파일 변경 사유 분석
 
 Options:
   --cwd <dir>           작업 디렉토리 지정 (기본: 현재 디렉토리)
