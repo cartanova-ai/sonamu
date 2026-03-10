@@ -382,6 +382,9 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 | `cdd spec blame <feature>` | Contributor analysis per Spec (ownership, score, AI role summary) |
 | `cdd spec log <feature>` | Change timeline grouped by time period and author |
 | `cdd spec explain <feature>` | AI-powered diff analysis: what changed, why, and impact level |
+| `cdd source blame <file>` | Contributor analysis per source file (ownership, score, AI role summary) |
+| `cdd source log <file>` | Source file change timeline grouped by time period and author |
+| `cdd source explain <file>` | AI-powered source file diff analysis: what changed, why, and impact level |
 
 ### Common Options
 
@@ -393,8 +396,8 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 
 - `--since=<date>` : Start date filter (ISO 8601, e.g. `2025-01-01`)
 - `--until=<date>` : End date filter (ISO 8601, default: HEAD)
-- `--group-by=day|week|month` : Grouping interval for `spec log` (default: `day`)
-- `--commit=<hash>` : Analyze a single commit for `spec explain`
+- `--group-by=day|week|month` : Grouping interval for `spec log` / `source log` (default: `day`)
+- `--commit=<hash>` : Analyze a single commit for `spec explain` / `source explain`
 
 AI uses `claude --model haiku` via local CLI. If AI is unavailable, AI-generated fields are returned as empty strings.
 
@@ -453,6 +456,25 @@ pnpm cdd spec explain signin --since=2025-03-01
 # Explain a single commit
 pnpm cdd spec explain signin --commit=a1b2c3d
 # Output: per-section what/why/impact analysis, overall summary, breaking changes
+```
+
+#### Git + AI for source files
+
+```bash
+# Contributor analysis for a source file
+pnpm cdd source blame src/application/session/session.types.ts
+
+# Source file can also be referenced by filename
+pnpm cdd source blame session.types.ts
+
+# Weekly changelog for a source file
+pnpm cdd source log session.types.ts --group-by=week
+
+# Explain changes in a source file
+pnpm cdd source explain session.types.ts --since=2025-03-01
+
+# Explain a single commit for a source file
+pnpm cdd source explain session.types.ts --commit=a1b2c3d
 ```
 
 #### Pipe-friendly output
