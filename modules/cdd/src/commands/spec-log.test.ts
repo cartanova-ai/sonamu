@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { CddProject } from "../core/types.js";
 import type { AiCallOptions, AiCallResult } from "../utils/ai.js";
 import type { GitHistoryCommit } from "../utils/git.js";
-import type { SpecLogDeps } from "./spec-log.js";
-import { groupCommitsByPeriod, runSpecLog, toPeriodKey } from "./spec-log.js";
+import type { LogDeps } from "./log-core.js";
+import { groupCommitsByPeriod, toPeriodKey } from "./log-core.js";
+import { runSpecLog } from "./spec-log.js";
 
 // --- 테스트 헬퍼 ---
 
@@ -50,13 +51,12 @@ function makeProject(): CddProject {
   };
 }
 
-function stubListFileHistory(commits: GitHistoryCommit[]): SpecLogDeps["listFileHistory"] {
+function stubListFileHistory(commits: GitHistoryCommit[]): LogDeps["listFileHistory"] {
   return async (_path, _opts) => commits;
 }
 
-function stubCallAiSuccess(value: { summary: string; phase: string }): SpecLogDeps["callAi"] {
+function stubCallAiSuccess(value: { summary: string; phase: string }): LogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
-    // 배치 호출에서는 prompt에 포함된 key들을 추출하여 모든 그룹에 동일한 결과를 매핑합니다.
     const keyMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
     const batchResponse: Record<string, { summary: string; phase: string }> = {};
     for (const match of keyMatches) {
@@ -81,7 +81,7 @@ function stubCallAiSuccess(value: { summary: string; phase: string }): SpecLogDe
   };
 }
 
-function stubCallAiFail(): SpecLogDeps["callAi"] {
+function stubCallAiFail(): LogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
     return {
       ok: false,
@@ -107,9 +107,7 @@ describe("toPeriodKey", () => {
   });
 
   it("week 그룹핑에서 YYYY-Www 형식을 반환한다", () => {
-    // 2025-01-06은 월요일, ISO week 2
     expect(toPeriodKey("2025-01-06T12:00:00Z", "week")).toBe("2025-W02");
-    // 2025-01-01은 수요일, ISO week 1
     expect(toPeriodKey("2025-01-01T00:00:00Z", "week")).toBe("2025-W01");
   });
 
@@ -140,9 +138,9 @@ describe("groupCommitsByPeriod", () => {
 
   it("week 그룹핑으로 커밋을 ISO week 기준 그룹화한다", () => {
     const commits: GitHistoryCommit[] = [
-      makeCommit({ authoredAt: "2025-01-06T10:00:00Z" }), // W02
-      makeCommit({ authoredAt: "2025-01-07T10:00:00Z" }), // W02
-      makeCommit({ authoredAt: "2025-01-13T10:00:00Z" }), // W03
+      makeCommit({ authoredAt: "2025-01-06T10:00:00Z" }),
+      makeCommit({ authoredAt: "2025-01-07T10:00:00Z" }),
+      makeCommit({ authoredAt: "2025-01-13T10:00:00Z" }),
     ];
 
     const groups = groupCommitsByPeriod(commits, "week");
@@ -206,7 +204,7 @@ describe("runSpecLog", () => {
       }),
     ];
 
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -243,7 +241,7 @@ describe("runSpecLog", () => {
       }),
     ];
 
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiSuccess({ summary: "초기 인증 모듈을 구현했습니다.", phase: "drafting" }),
     };
@@ -273,7 +271,7 @@ describe("runSpecLog", () => {
       }),
     ];
 
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -310,7 +308,7 @@ describe("runSpecLog", () => {
       }),
     ];
 
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -364,7 +362,7 @@ describe("runSpecLog", () => {
       }),
     ];
 
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -401,7 +399,7 @@ describe("runSpecLog", () => {
   });
 
   it("커밋이 없으면 빈 timeline을 반환한다", async () => {
-    const deps: SpecLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory([]),
       callAi: stubCallAiFail(),
     };

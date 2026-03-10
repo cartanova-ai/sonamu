@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CddProject } from "../core/types.js";
 import type { AiCallOptions, AiCallResult } from "../utils/ai.js";
 import type { GitHistoryCommit } from "../utils/git.js";
-import type { SourceLogDeps } from "./source-log.js";
+import type { LogDeps } from "./log-core.js";
 import { runSourceLog } from "./source-log.js";
 
 // --- 테스트 헬퍼 ---
@@ -31,11 +31,11 @@ function makeProject(): CddProject {
   };
 }
 
-function stubListFileHistory(commits: GitHistoryCommit[]): SourceLogDeps["listFileHistory"] {
+function stubListFileHistory(commits: GitHistoryCommit[]): LogDeps["listFileHistory"] {
   return async (_path, _opts) => commits;
 }
 
-function stubCallAiFail(): SourceLogDeps["callAi"] {
+function stubCallAiFail(): LogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
     return {
       ok: false,
@@ -47,7 +47,7 @@ function stubCallAiFail(): SourceLogDeps["callAi"] {
   };
 }
 
-function stubCallAiSuccess(value: { summary: string; phase: string }): SourceLogDeps["callAi"] {
+function stubCallAiSuccess(value: { summary: string; phase: string }): LogDeps["callAi"] {
   return async <U>(opts: AiCallOptions<U>): Promise<AiCallResult<U>> => {
     const keyMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
     const batchResponse: Record<string, { summary: string; phase: string }> = {};
@@ -96,7 +96,7 @@ describe("runSourceLog", () => {
       }),
     ];
 
-    const deps: SourceLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -135,7 +135,7 @@ describe("runSourceLog", () => {
       }),
     ];
 
-    const deps: SourceLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiSuccess({ summary: "초기 인증 모듈을 구현했습니다.", phase: "drafting" }),
     };
@@ -165,7 +165,7 @@ describe("runSourceLog", () => {
       }),
     ];
 
-    const deps: SourceLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory(commits),
       callAi: stubCallAiFail(),
     };
@@ -187,7 +187,7 @@ describe("runSourceLog", () => {
   });
 
   it("커밋이 없으면 빈 timeline을 반환한다", async () => {
-    const deps: SourceLogDeps = {
+    const deps: LogDeps = {
       listFileHistory: stubListFileHistory([]),
       callAi: stubCallAiFail(),
     };

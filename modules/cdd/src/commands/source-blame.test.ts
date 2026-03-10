@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CddProject } from "../core/types.js";
 import type { AiCallResult } from "../utils/ai.js";
 import type { GitBlameReport, GitHistoryCommit } from "../utils/git.js";
-import type { SourceBlameDeps } from "./source-blame.js";
+import type { BlameDeps } from "./blame-core.js";
 import { runSourceBlame } from "./source-blame.js";
 
 // --- 테스트 헬퍼 ---
@@ -59,7 +59,7 @@ function makeStubDeps(
   history: GitHistoryCommit[],
   blame: GitBlameReport,
   aiRole?: string,
-): SourceBlameDeps {
+): BlameDeps {
   return {
     listFileHistory: async () => history,
     blameFile: async () => blame,
@@ -166,7 +166,7 @@ describe("runSourceBlame", () => {
     const history = [makeCommit("Alice", 10, 5, "feat: init")];
     const blame = makeBlameReport([{ author: "Alice", count: 100 }]);
 
-    const deps: SourceBlameDeps = {
+    const deps: BlameDeps = {
       listFileHistory: async () => history,
       blameFile: async () => blame,
       callAi: async <T>(opts: { fallback: T }) =>

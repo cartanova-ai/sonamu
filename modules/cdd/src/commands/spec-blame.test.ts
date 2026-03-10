@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CddProject, SpecNode } from "../core/types.js";
 import type { AiCallResult } from "../utils/ai.js";
 import type { GitBlameReport, GitHistoryCommit } from "../utils/git.js";
-import type { SpecBlameDeps } from "./spec-blame.js";
+import type { BlameDeps } from "./blame-core.js";
 import { runSpecBlame } from "./spec-blame.js";
 
 // --- 테스트 헬퍼 ---
@@ -85,13 +85,12 @@ function makeStubDeps(
   history: GitHistoryCommit[],
   blame: GitBlameReport,
   aiRole?: string,
-): SpecBlameDeps {
+): BlameDeps {
   return {
     listFileHistory: async () => history,
     blameFile: async () => blame,
     callAi: async <T>(opts: { prompt: string; fallback: T; parse: (v: unknown) => T | null }) => {
       const role = aiRole ?? "";
-      // 배치 호출: prompt에서 [이름] 패턴을 추출하여 모든 기여자에 동일 역할 매핑
       const nameMatches = opts.prompt.match(/\[([^\]]+)]/g) ?? [];
       const roleMap: Record<string, string> = {};
       for (const match of nameMatches) {
@@ -139,7 +138,6 @@ describe("runSpecBlame", () => {
     expect(data.feature).toBe("signin");
     expect(data.contributors).toHaveLength(2);
     expect(data.primary_owner).toBe(data.contributors[0].name);
-    // Alice가 더 높은 점수를 받아야 함
     expect(data.primary_owner).toBe("Alice");
   });
 
@@ -170,7 +168,7 @@ describe("runSpecBlame", () => {
     let capturedHistoryOpts: { since?: string; until?: string } | undefined;
     let capturedBlameOpts: { revision?: string } | undefined;
 
-    const deps: SpecBlameDeps = {
+    const deps: BlameDeps = {
       listFileHistory: async (_path, opts) => {
         capturedHistoryOpts = { since: opts.since, until: opts.until };
         return [makeCommit("Alice", 10, 5, "feat: init")];
@@ -190,16 +188,12 @@ describe("runSpecBlame", () => {
       deps,
     );
 
-    // since가 listFileHistory에 전달됨
     expect(capturedHistoryOpts?.since).toBe("2026-01-01");
-    // until이 listFileHistory에 전달됨
     expect(capturedHistoryOpts?.until).toBe("abc123");
-    // until이 blameFile revision으로 전달됨
     expect(capturedBlameOpts?.revision).toBe("abc123");
   });
 
   it("가중치 점수가 zero-total 항목 재배분을 포함해 안정적으로 계산된다", async () => {
-    // totalAdded=0, totalRemoved=0인 경우 (history 없음, blame만 있음)
     const history: GitHistoryCommit[] = [];
     const blame = makeBlameReport([
       { author: "Alice", count: 80 },
@@ -216,13 +210,11 @@ describe("runSpecBlame", () => {
       contributors: Array<{ name: string; score: number }>;
     };
 
-    // 점수가 NaN이나 Infinity가 아니어야 함
     for (const c of data.contributors) {
       expect(Number.isFinite(c.score)).toBe(true);
       expect(c.score).toBeGreaterThanOrEqual(0);
     }
 
-    // ownership만 반영되므로 Alice 80%, Bob 20% 비율에 근사
     const alice = data.contributors.find((c) => c.name === "Alice");
     const bob = data.contributors.find((c) => c.name === "Bob");
     expect(alice).toBeDefined();
@@ -259,7 +251,7 @@ describe("runSpecBlame", () => {
     const history = [makeCommit("Alice", 10, 5, "feat: init")];
     const blame = makeBlameReport([{ author: "Alice", count: 100 }]);
 
-    const deps: SpecBlameDeps = {
+    const deps: BlameDeps = {
       listFileHistory: async () => history,
       blameFile: async () => blame,
       callAi: async <T>(opts: { fallback: T }) =>

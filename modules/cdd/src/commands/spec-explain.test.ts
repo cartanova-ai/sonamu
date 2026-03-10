@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { CddProject, SpecDocument, SpecNode } from "../core/types.js";
 import type { AiCallResult } from "../utils/ai.js";
 import type { GitDiffResult, GitHistoryCommit } from "../utils/git.js";
-import type { SpecExplainData, SpecExplainDeps } from "./spec-explain.js";
+import type { ExplainDeps } from "./explain-core.js";
+import type { SpecExplainData } from "./spec-explain.js";
 import { runSpecExplain } from "./spec-explain.js";
 
 function makeSpecNode(overrides?: Partial<SpecNode>): SpecNode {
@@ -110,7 +111,7 @@ describe("runSpecExplain", () => {
       }),
     );
 
-    const deps: SpecExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: listFileHistoryStub,
       getFileDiff: getFileDiffStub,
       callAi: callAiStub,
@@ -123,13 +124,11 @@ describe("runSpecExplain", () => {
       deps,
     );
 
-    // getFileDiff는 commit 옵션으로 호출되어야 함
     expect(getFileDiffStub).toHaveBeenCalledWith(specNode.path, {
       cwd: "/project",
       commit: "target123",
     });
 
-    // AI 프롬프트에 target123 커밋 정보만 포함되어야 함
     const aiPrompt = callAiStub.mock.calls[0][0].prompt as string;
     expect(aiPrompt).toContain("target123");
     expect(aiPrompt).not.toContain("other456");
@@ -155,7 +154,7 @@ describe("runSpecExplain", () => {
       }),
     );
 
-    const deps: SpecExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: listFileHistoryStub,
       getFileDiff: getFileDiffStub,
       callAi: callAiStub,
@@ -168,14 +167,12 @@ describe("runSpecExplain", () => {
       deps,
     );
 
-    // listFileHistory에 since/until이 전달되어야 함
     expect(listFileHistoryStub).toHaveBeenCalledWith(specNode.path, {
       cwd: "/project",
       since: "2025-01-01",
       until: "2025-12-31",
     });
 
-    // getFileDiff는 oldest~newest 범위로 호출되어야 함
     expect(getFileDiffStub).toHaveBeenCalledWith(specNode.path, {
       cwd: "/project",
       baseRef: "oldest222~1",
@@ -212,7 +209,7 @@ describe("runSpecExplain", () => {
       }),
     );
 
-    const deps: SpecExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: vi.fn().mockResolvedValue([makeCommit()]),
       getFileDiff: vi.fn().mockResolvedValue(makeDiff()),
       callAi: callAiStub,
@@ -240,7 +237,7 @@ describe("runSpecExplain", () => {
     const specNode = makeSpecNode();
     const project = makeProject(specNode);
 
-    const deps: SpecExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: vi.fn().mockResolvedValue([makeCommit()]),
       getFileDiff: vi.fn().mockResolvedValue(makeDiff()),
       callAi: vi.fn().mockResolvedValue(makeAiFailureResult()),
@@ -264,7 +261,7 @@ describe("runSpecExplain", () => {
     const getFileDiffStub = vi.fn().mockResolvedValue(makeDiff({ diffText: "" }));
     const callAiStub = vi.fn();
 
-    const deps: SpecExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: listFileHistoryStub,
       getFileDiff: getFileDiffStub,
       callAi: callAiStub,
@@ -273,7 +270,6 @@ describe("runSpecExplain", () => {
     await runSpecExplain("login", { cwd: "/project" }, project, deps);
 
     expect(listFileHistoryStub).toHaveBeenCalled();
-    // diff가 비어있고 commits도 없으면 AI 호출을 건너뜀
     expect(callAiStub).not.toHaveBeenCalled();
   });
 });

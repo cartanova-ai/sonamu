@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { CddProject } from "../core/types.js";
 import type { AiCallResult } from "../utils/ai.js";
 import type { GitDiffResult, GitHistoryCommit } from "../utils/git.js";
-import type { SourceExplainData, SourceExplainDeps } from "./source-explain.js";
+import type { ExplainDeps } from "./explain-core.js";
+import type { SourceExplainData } from "./source-explain.js";
 import { runSourceExplain } from "./source-explain.js";
 
 function makeProject(): CddProject {
@@ -83,7 +84,7 @@ describe("runSourceExplain", () => {
       }),
     );
 
-    const deps: SourceExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: listFileHistoryStub,
       getFileDiff: getFileDiffStub,
       callAi: callAiStub,
@@ -125,7 +126,7 @@ describe("runSourceExplain", () => {
       }),
     );
 
-    const deps: SourceExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: listFileHistoryStub,
       getFileDiff: getFileDiffStub,
       callAi: callAiStub,
@@ -154,7 +155,7 @@ describe("runSourceExplain", () => {
   it("AI 실패 시 빈 구조를 반환하고 명령은 성공한다", async () => {
     const project = makeProject();
 
-    const deps: SourceExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: vi.fn().mockResolvedValue([makeCommit()]),
       getFileDiff: vi.fn().mockResolvedValue(makeDiff()),
       callAi: vi.fn().mockResolvedValue(makeAiFailureResult()),
@@ -173,7 +174,7 @@ describe("runSourceExplain", () => {
     const project = makeProject();
 
     const callAiStub = vi.fn();
-    const deps: SourceExplainDeps = {
+    const deps: ExplainDeps = {
       listFileHistory: vi.fn().mockResolvedValue([]),
       getFileDiff: vi.fn().mockResolvedValue(makeDiff({ diffText: "" })),
       callAi: callAiStub,

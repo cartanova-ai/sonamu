@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import type { CddProject, ContractNode, SpecNode } from "../core/types.js";
 
@@ -120,4 +121,60 @@ function printAmbiguous<T extends { path: string }>(
     console.error(`  - ${path.relative(project.projectRoot, c.path)}`);
   }
   console.error("더 구체적인 경로를 사용하세요.");
+}
+
+/**
+ * 소스 파일 레퍼런스를 정규화된 src/ 상대 경로로 해석합니다.
+ * 전체 경로, 파일명, 부분 경로를 지원합니다.
+ */
+export function resolveSourcePath(ref: string, project: CddProject): string {
+  const srcIdx = ref.indexOf("src/");
+  if (srcIdx >= 0) {
+    return ref.slice(srcIdx);
+  }
+
+  const srcDir = path.join(project.projectRoot, "src");
+  if (!fs.existsSync(srcDir)) {
+    console.error(`src/ 디렉토리가 존재하지 않습니다: ${srcDir}`);
+    process.exit(1);
+  }
+
+  const hasPathSep = ref.includes("/");
+  const candidates = collectFiles(srcDir).filter((rel) =>
+    hasPathSep ? rel.endsWith(`/${ref}`) || rel === ref : path.basename(rel) === ref,
+  );
+
+  if (candidates.length === 0) {
+    console.error(`src/ 하위에서 "${ref}"에 해당하는 파일을 찾을 수 없습니다.`);
+    process.exit(1);
+  }
+  if (candidates.length > 1) {
+    console.error(`"${ref}"에 해당하는 파일이 여러 개 존재합니다:`);
+    for (const c of candidates) {
+      console.error(`  - ${c}`);
+    }
+    console.error("더 구체적인 경로를 사용하세요.");
+    process.exit(1);
+  }
+
+  return candidates[0];
+}
+
+function collectFiles(dir: string): string[] {
+  const srcRoot = dir;
+  const results: string[] = [];
+
+  function walk(current: string): void {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else {
+        results.push(`src/${path.relative(srcRoot, full)}`);
+      }
+    }
+  }
+
+  walk(dir);
+  return results;
 }
