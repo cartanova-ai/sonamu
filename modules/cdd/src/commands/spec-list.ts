@@ -2,16 +2,16 @@ import path from "node:path";
 import chalk from "chalk";
 import type { CddProject, SpecStatus } from "../core/types.js";
 import { formatStatus } from "../utils/format.js";
+import type { OutputResult } from "../utils/output.js";
 import { resolveContract } from "../utils/resolve.js";
 
 interface SpecListOptions {
   status?: string;
   domain?: string;
   contract?: string;
-  json?: boolean;
 }
 
-export function runSpecList(options: SpecListOptions, project: CddProject): void {
+export function runSpecList(options: SpecListOptions, project: CddProject): OutputResult {
   let specs = [...project.specs];
 
   if (options.status) {
@@ -25,29 +25,30 @@ export function runSpecList(options: SpecListOptions, project: CddProject): void
     specs = specs.filter((s) => s.resolvedContracts.includes(contractNode.path));
   }
 
-  if (options.json) {
-    const result = specs.map((s) => ({
-      path: path.relative(project.projectRoot, s.path),
-      domain: s.domain,
-      basename: s.basename,
-      status: s.document.status,
-      summary: s.document.summary,
-    }));
-    console.log(JSON.stringify(result, null, 2));
-    return;
-  }
+  const data = specs.map((s) => ({
+    path: path.relative(project.projectRoot, s.path),
+    domain: s.domain,
+    basename: s.basename,
+    status: s.document.status,
+    summary: s.document.summary,
+  }));
 
-  if (specs.length === 0) {
-    console.log("조건에 맞는 Spec이 없습니다.");
-    return;
-  }
+  return {
+    data,
+    pretty() {
+      if (specs.length === 0) {
+        console.log("조건에 맞는 Spec이 없습니다.");
+        return;
+      }
 
-  for (const s of specs) {
-    const rel = path.relative(project.projectRoot, s.path);
-    const status = formatStatus(s.document.status as SpecStatus);
-    console.log(`  ${status}  ${chalk.white(rel)}  ${s.document.summary}`);
-  }
+      for (const s of specs) {
+        const rel = path.relative(project.projectRoot, s.path);
+        const status = formatStatus(s.document.status as SpecStatus);
+        console.log(`  ${status}  ${chalk.white(rel)}  ${s.document.summary}`);
+      }
 
-  console.log();
-  console.log(`총 ${specs.length}개`);
+      console.log();
+      console.log(`총 ${specs.length}개`);
+    },
+  };
 }

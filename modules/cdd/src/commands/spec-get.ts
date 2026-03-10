@@ -3,20 +3,20 @@ import chalk from "chalk";
 import { getField } from "../core/spec-field-ops.js";
 import type { CddProject, SpecDocument } from "../core/types.js";
 import { formatStatus } from "../utils/format.js";
+import type { OutputResult } from "../utils/output.js";
 import { resolveSpec } from "../utils/resolve.js";
 
 interface SpecGetOptions {
   field?: string;
-  json?: boolean;
 }
 
 export function runSpecGet(
   specRef: string | undefined,
   options: SpecGetOptions,
   project: CddProject,
-): void {
+): OutputResult {
   if (!specRef) {
-    console.error("사용법: cdd spec get <spec> [--field <fieldPath>] [--json]");
+    console.error("사용법: cdd spec get <spec> [--field <fieldPath>]");
     process.exit(1);
   }
 
@@ -28,19 +28,24 @@ export function runSpecGet(
       console.error(`필드를 찾을 수 없습니다: "${options.field}"`);
       process.exit(1);
     }
-    if (options.json || typeof value === "object") {
-      console.log(JSON.stringify(value, null, 2));
-    } else {
-      console.log(String(value));
-    }
-    return;
+    return {
+      data: value,
+      pretty() {
+        if (typeof value === "object") {
+          console.log(JSON.stringify(value, null, 2));
+        } else {
+          console.log(String(value));
+        }
+      },
+    };
   }
 
-  if (options.json) {
-    console.log(JSON.stringify(spec.document, null, 2));
-  } else {
-    printSpecPretty(spec.path, spec.document, project);
-  }
+  return {
+    data: spec.document,
+    pretty() {
+      printSpecPretty(spec.path, spec.document, project);
+    },
+  };
 }
 
 function printSpecPretty(specPath: string, doc: SpecDocument, project: CddProject): void {
@@ -49,42 +54,24 @@ function printSpecPretty(specPath: string, doc: SpecDocument, project: CddProjec
   console.log(chalk.bold(`Spec: ${rel}`));
   console.log();
 
-  // 기본 정보
   console.log(`  ${chalk.dim("summary")}      ${doc.summary}`);
   console.log(`  ${chalk.dim("status")}       ${formatStatus(doc.status)}`);
   console.log(`  ${chalk.dim("lastModified")} ${doc.lastModified}`);
   console.log();
 
-  // description
   printArray("description", doc.description);
-
-  // acceptanceCriteria
   printArray("acceptanceCriteria", doc.acceptanceCriteria);
-
-  // sources
   printArray("sources", doc.sources);
-
-  // contracts
   printArray("contracts", doc.contracts);
 
-  // dependsOnSpecs
   if (doc.dependsOnSpecs && doc.dependsOnSpecs.length > 0) {
     printArray("dependsOnSpecs", doc.dependsOnSpecs);
   }
 
-  // modules
   printRecord("modules", doc.modules);
-
-  // interfaces
   printRecord("interfaces", doc.interfaces);
-
-  // dataFlow
   printArray("dataFlow", doc.dataFlow);
-
-  // errorHandling
   printRecord("errorHandling", doc.errorHandling);
-
-  // constraints
   printArray("constraints", doc.constraints);
 }
 

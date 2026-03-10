@@ -3,8 +3,9 @@ import path from "node:path";
 import chalk from "chalk";
 import type { CddProject } from "../core/types.js";
 import { formatPath } from "../utils/format.js";
+import type { OutputResult } from "../utils/output.js";
 
-export function runImpact(file: string | undefined, project: CddProject): void {
+export function runImpact(file: string | undefined, project: CddProject): OutputResult {
   if (!file) {
     console.error("파일 경로를 지정하세요: cdd impact <file>");
     process.exit(1);
@@ -23,7 +24,6 @@ export function runImpact(file: string | undefined, project: CddProject): void {
     }
   }
 
-  // Direct Specs가 dependsOnSpecs로 참조하는 Spec들
   const directSpecPaths = new Set(directSpecs.map((s) => s.path));
   const dependsOnPaths = new Set<string>();
   for (const spec of directSpecs) {
@@ -35,12 +35,23 @@ export function runImpact(file: string | undefined, project: CddProject): void {
   }
   const dependsOnSpecs = project.specs.filter((s) => dependsOnPaths.has(s.path));
 
-  console.log(chalk.bold(`Impact analysis: ${sourcePath}`));
-  console.log();
+  const data = {
+    source: sourcePath,
+    directSpecs: directSpecs.map((s) => formatPath(s.path, project.projectRoot)),
+    chainContracts: [...chainContractPaths].sort().map((p) => formatPath(p, project.projectRoot)),
+    dependsOnSpecs: dependsOnSpecs.map((s) => formatPath(s.path, project.projectRoot)),
+  };
 
-  printSection("Direct Specs", directSpecs, project);
-  printContractPaths("Chain Contracts", chainContractPaths, project);
-  printSection("Depends On Specs", dependsOnSpecs, project);
+  return {
+    data,
+    pretty() {
+      console.log(chalk.bold(`Impact analysis: ${sourcePath}`));
+      console.log();
+      printSection("Direct Specs", directSpecs, project);
+      printContractPaths("Chain Contracts", chainContractPaths, project);
+      printSection("Depends On Specs", dependsOnSpecs, project);
+    },
+  };
 }
 
 function printSection(title: string, nodes: { path: string }[], project: CddProject): void {
@@ -67,18 +78,12 @@ function printContractPaths(title: string, paths: Set<string>, project: CddProje
   console.log();
 }
 
-/**
- * 입력된 파일 참조를 sources 포맷(src/... 상대 경로)으로 정규화한다.
- * - src/ 포함 시: src/ 이전 경로를 제거 (e.g. api/src/foo/bar.ts → src/foo/bar.ts)
- * - src/ 미포함 시: projectRoot/src/ 하위에서 파일명/부분경로 검색
- */
 function resolveSourcePath(ref: string, project: CddProject): string {
   const srcIdx = ref.indexOf("src/");
   if (srcIdx >= 0) {
     return ref.slice(srcIdx);
   }
 
-  // src/ 미포함: src/ 하위에서 검색
   const srcDir = path.join(project.projectRoot, "src");
   if (!fs.existsSync(srcDir)) {
     console.error(`src/ 디렉토리가 존재하지 않습니다: ${srcDir}`);
@@ -106,7 +111,6 @@ function resolveSourcePath(ref: string, project: CddProject): string {
   return candidates[0];
 }
 
-/** src/ 디렉토리 하위의 모든 파일을 src/... 형식의 상대 경로로 수집 */
 function collectFiles(dir: string): string[] {
   const srcRoot = dir;
   const results: string[] = [];

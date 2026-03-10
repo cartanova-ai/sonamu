@@ -1,47 +1,46 @@
 import chalk from "chalk";
-import type { CddProject, ContractNode, SpecNode } from "../core/types.js";
+import type { CddProject } from "../core/types.js";
 import { formatStatus } from "../utils/format.js";
+import type { OutputResult } from "../utils/output.js";
 
-export function runTree(project: CddProject): void {
+export function runTree(project: CddProject): OutputResult {
   const domains = collectDomains(project);
 
-  for (const domain of domains) {
-    const label = domain === "" ? "(root)" : domain;
-    console.log(chalk.bold.cyan(label));
-
+  const data = domains.map((domain) => {
     const contracts = project.contracts
       .filter((c) => c.domain === domain)
-      .sort((a, b) => a.basename.localeCompare(b.basename));
+      .sort((a, b) => a.basename.localeCompare(b.basename))
+      .map((c) => ({ type: "contract" as const, basename: c.basename }));
 
     const specs = project.specs
       .filter((s) => s.domain === domain)
-      .sort((a, b) => a.basename.localeCompare(b.basename));
+      .sort((a, b) => a.basename.localeCompare(b.basename))
+      .map((s) => ({ type: "spec" as const, basename: s.basename, status: s.document.status }));
 
-    const items: { line: string }[] = [];
+    return { domain, items: [...contracts, ...specs] };
+  });
 
-    for (const c of contracts) {
-      items.push({ line: formatContractLine(c) });
-    }
-    for (const s of specs) {
-      items.push({ line: formatSpecLine(s) });
-    }
+  return {
+    data,
+    pretty() {
+      for (const { domain, items } of data) {
+        const label = domain === "" ? "(root)" : domain;
+        console.log(chalk.bold.cyan(label));
 
-    for (let i = 0; i < items.length; i++) {
-      const connector = i === items.length - 1 ? "└── " : "├── ";
-      console.log(`  ${connector}${items[i].line}`);
-    }
+        for (let i = 0; i < items.length; i++) {
+          const connector = i === items.length - 1 ? "└── " : "├── ";
+          const item = items[i];
+          const line =
+            item.type === "contract"
+              ? `${chalk.white(item.basename)}.contract.json`
+              : `${chalk.white(item.basename)}.spec.json [${formatStatus(item.status)}]`;
+          console.log(`  ${connector}${line}`);
+        }
 
-    console.log();
-  }
-}
-
-function formatContractLine(c: ContractNode): string {
-  return `${chalk.white(c.basename)}.contract.json`;
-}
-
-function formatSpecLine(s: SpecNode): string {
-  const status = formatStatus(s.document.status);
-  return `${chalk.white(s.basename)}.spec.json [${status}]`;
+        console.log();
+      }
+    },
+  };
 }
 
 function collectDomains(project: CddProject): string[] {

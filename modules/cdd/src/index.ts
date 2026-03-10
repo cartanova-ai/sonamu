@@ -16,13 +16,16 @@ import { runTree } from "./commands/tree.js";
 import { runValidate } from "./commands/validate.js";
 import { findContractDir, loadProject } from "./core/loader.js";
 import type { CddProject } from "./core/types.js";
+import type { OutputResult } from "./utils/output.js";
+import { printOutput } from "./utils/output.js";
 
 const args = minimist(process.argv.slice(2), {
   string: ["cwd", "domain", "contract", "field", "value", "key", "status", "format", "index"],
-  boolean: ["help", "json", "reverse"],
+  boolean: ["help", "raw", "json", "reverse"],
   alias: { h: "help" },
 });
 
+const rawFlag: boolean = args.raw || args.json;
 const command = args._[0];
 
 if (args.help) {
@@ -38,7 +41,9 @@ if (!command) {
 const cwd = args.cwd ?? process.cwd();
 
 if (command === "init") {
-  runInit([args._[1] ?? cwd]);
+  const result = runInit([args._[1] ?? cwd]);
+  printOutput(result, rawFlag);
+  if (result.exitCode) process.exit(result.exitCode);
 } else {
   const contractDir = findContractDir(cwd);
   if (!contractDir) {
@@ -47,29 +52,29 @@ if (command === "init") {
   }
 
   const project = await loadProject(contractDir);
-  await dispatch(command, args._.slice(1), project);
+  const result = await dispatch(command, args._.slice(1), project);
+  printOutput(result, rawFlag);
+  if (result.exitCode) process.exit(result.exitCode);
 }
 
-async function dispatch(cmd: string, cmdArgs: string[], project: CddProject): Promise<void> {
+async function dispatch(
+  cmd: string,
+  cmdArgs: string[],
+  project: CddProject,
+): Promise<OutputResult> {
   switch (cmd) {
     case "tree":
-      runTree(project);
-      break;
+      return runTree(project);
     case "status":
-      runStatus(cmdArgs[0], project);
-      break;
+      return runStatus(cmdArgs[0], project);
     case "validate":
-      runValidate(project);
-      break;
+      return runValidate(project);
     case "impact":
-      runImpact(cmdArgs[0], project);
-      break;
+      return runImpact(cmdArgs[0], project);
     case "check":
-      runCheck(project);
-      break;
+      return runCheck(project);
     case "spec":
-      dispatchSpec(cmdArgs, project);
-      break;
+      return dispatchSpec(cmdArgs, project);
     default:
       console.error(`알 수 없는 명령어: "${cmd}"`);
       printHelp();
@@ -77,43 +82,43 @@ async function dispatch(cmd: string, cmdArgs: string[], project: CddProject): Pr
   }
 }
 
-function dispatchSpec(cmdArgs: string[], project: CddProject): void {
+function dispatchSpec(cmdArgs: string[], project: CddProject): OutputResult {
   const subCmd = cmdArgs[0];
   switch (subCmd) {
     case "create":
-      runSpecCreate(cmdArgs[1], { domain: args.domain, contract: args.contract }, project);
-      break;
+      return runSpecCreate(cmdArgs[1], { domain: args.domain, contract: args.contract }, project);
     case "set-status":
-      runSpecSetStatus(cmdArgs[1], cmdArgs[2], project);
-      break;
+      return runSpecSetStatus(cmdArgs[1], cmdArgs[2], project);
     case "list":
-      runSpecList(
+      return runSpecList(
         {
           status: args.status,
           domain: args.domain,
           contract: args.contract,
-          json: args.json,
         },
         project,
       );
-      break;
     case "get":
-      runSpecGet(cmdArgs[1], { field: args.field, json: args.json }, project);
-      break;
+      return runSpecGet(cmdArgs[1], { field: args.field }, project);
     case "set":
-      runSpecSet(cmdArgs[1], { field: args.field, value: args.value, json: args.json }, project);
-      break;
+      return runSpecSet(
+        cmdArgs[1],
+        { field: args.field, value: args.value, json: args.json },
+        project,
+      );
     case "add":
-      runSpecAdd(cmdArgs[1], { field: args.field, value: args.value, key: args.key }, project);
-      break;
+      return runSpecAdd(
+        cmdArgs[1],
+        { field: args.field, value: args.value, key: args.key },
+        project,
+      );
     case "remove": {
       const index = args.index !== undefined ? Number(args.index) : undefined;
-      runSpecRemove(
+      return runSpecRemove(
         cmdArgs[1],
         { field: args.field, index, value: args.value, key: args.key },
         project,
       );
-      break;
     }
     default:
       console.error(`알 수 없는 spec 서브커맨드: "${subCmd}"`);
@@ -149,6 +154,7 @@ Options:
   --status <status>     상태 필터 (draft | in-progress | done)
   --domain <domain>     도메인 필터
   --contract <path>     Contract 경로
-  --json                JSON 형식으로 출력/입력
+  --raw                 JSON 원본 출력 (파이프/비TTY 환경에서 자동 적용)
+  --json                --raw의 별칭 (spec set에서는 JSON 값 파싱에도 사용)
   -h, --help            도움말`);
 }

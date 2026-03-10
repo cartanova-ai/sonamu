@@ -3,14 +3,19 @@ import path from "node:path";
 import chalk from "chalk";
 import { todayString } from "../core/date.js";
 import type { ContractDocument } from "../core/types.js";
+import type { OutputResult } from "../utils/output.js";
 
-export function runInit(args: string[]): void {
+export function runInit(args: string[]): OutputResult {
   const targetDir = path.resolve(args[0] ?? ".");
   const contractDir = path.join(targetDir, "contract");
 
   if (fs.existsSync(contractDir)) {
-    console.log(chalk.yellow(`contract/ 디렉토리가 이미 존재합니다: ${contractDir}`));
-    return;
+    return {
+      data: { initialized: false, path: contractDir, reason: "already_exists" },
+      pretty() {
+        console.log(chalk.yellow(`contract/ 디렉토리가 이미 존재합니다: ${contractDir}`));
+      },
+    };
   }
 
   fs.mkdirSync(contractDir, { recursive: true });
@@ -52,10 +57,21 @@ export function runInit(args: string[]): void {
   const cddMdPath = path.join(contractDir, "cdd.md");
   fs.writeFileSync(cddMdPath, CDD_MD_TEMPLATE);
 
-  console.log(chalk.green("CDD 프로젝트를 초기화했습니다:"));
-  console.log(`  ${contractDir}/`);
-  console.log("  - main.contract.json");
-  console.log("  - cdd.md");
+  const data = {
+    initialized: true,
+    path: contractDir,
+    files: ["main.contract.json", "cdd.md"],
+  };
+
+  return {
+    data,
+    pretty() {
+      console.log(chalk.green("CDD 프로젝트를 초기화했습니다:"));
+      console.log(`  ${contractDir}/`);
+      console.log("  - main.contract.json");
+      console.log("  - cdd.md");
+    },
+  };
 }
 
 const CDD_MD_TEMPLATE = `# Contract-Driven Development (CDD)

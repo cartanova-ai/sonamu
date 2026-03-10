@@ -3,6 +3,7 @@ import path from "node:path";
 import chalk from "chalk";
 import { getFieldMeta, removeFromField } from "../core/spec-field-ops.js";
 import type { CddProject } from "../core/types.js";
+import type { OutputResult } from "../utils/output.js";
 import { resolveSpec } from "../utils/resolve.js";
 
 interface SpecRemoveOptions {
@@ -16,7 +17,7 @@ export function runSpecRemove(
   specRef: string | undefined,
   options: SpecRemoveOptions,
   project: CddProject,
-): void {
+): OutputResult {
   if (!specRef || !options.field) {
     console.error(
       "사용법: cdd spec remove <spec> --field <field> (--index <n> | --value <value> | --key <key>)",
@@ -52,5 +53,11 @@ export function runSpecRemove(
   fs.writeFileSync(spec.path, `${JSON.stringify(doc, null, 2)}\n`);
 
   const relPath = path.relative(project.projectRoot, spec.path);
-  console.log(chalk.green(`항목을 제거했습니다: ${relPath} [${options.field}]`));
+
+  return {
+    data: { path: relPath, field: options.field },
+    pretty() {
+      console.log(chalk.green(`항목을 제거했습니다: ${relPath} [${options.field}]`));
+    },
+  };
 }

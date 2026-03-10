@@ -22,5 +22,7 @@ export {
   SPEC_REQUIRED_FIELDS,
 } from "./core/types.js";
 export { validateProject } from "./core/validator.js";
+export type { OutputResult } from "./utils/output.js";
+export { getOutputMode, printOutput } from "./utils/output.js";
 export type { ResolvedFile } from "./utils/resolve.js";
 export { resolveContract, resolveFile, resolveSpec } from "./utils/resolve.js";

@@ -3,6 +3,7 @@ import path from "node:path";
 import chalk from "chalk";
 import { todayString } from "../core/date.js";
 import type { CddProject, SpecDocument } from "../core/types.js";
+import type { OutputResult } from "../utils/output.js";
 
 interface SpecCreateOptions {
   domain?: string;
@@ -13,7 +14,7 @@ export function runSpecCreate(
   name: string | undefined,
   options: SpecCreateOptions,
   project: CddProject,
-): void {
+): OutputResult {
   if (!name) {
     console.error("Spec 이름을 지정하세요: cdd spec create <name>");
     process.exit(1);
@@ -94,5 +95,11 @@ export function runSpecCreate(
   fs.writeFileSync(specPath, `${JSON.stringify(doc, null, 2)}\n`);
 
   const relPath = path.relative(project.projectRoot, specPath);
-  console.log(chalk.green(`Spec을 생성했습니다: ${relPath}`));
+
+  return {
+    data: { path: relPath, status: "draft" },
+    pretty() {
+      console.log(chalk.green(`Spec을 생성했습니다: ${relPath}`));
+    },
+  };
 }
