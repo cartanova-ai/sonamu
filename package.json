@@ -24,7 +24,7 @@
     "verify:fast": "tsx scripts/verify.ts fast",
     "prepare": "git config core.hooksPath .githooks"
   },
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@10.32.0",
   "devDependencies": {
     "@aws-sdk/client-ecr-public": "catalog:",
     "@biomejs/biome": "catalog:",
