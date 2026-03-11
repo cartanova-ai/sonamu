@@ -44,6 +44,7 @@ describe("DashboardFrame", () => {
       expect(stats.documents.total).toBe(
         stats.documents.draft + stats.documents.published + stats.documents.archived,
       );
+      expect(typeof stats.documents.recentCount).toBe("number");
     });
 
     test("진행중 프로젝트 TOP 5가 마감일 임박순으로 정렬된다", async () => {

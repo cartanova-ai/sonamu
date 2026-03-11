@@ -40,6 +40,7 @@ export const DocumentStats = z.object({
   draft: z.number(),
   published: z.number(),
   archived: z.number(),
+  recentCount: z.number(),
 });
 export type DocumentStats = z.infer<typeof DocumentStats>;
 

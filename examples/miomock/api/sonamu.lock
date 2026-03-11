@@ -33,11 +33,11 @@
   },
   {
     "path": "src/application/dashboard/dashboard.frame.ts",
-    "checksum": "92977b781e06eeb7298900efed80ed71c641ec99"
+    "checksum": "c1acfa25f1376501a34faa4ea07e98e997e73f3e"
   },
   {
     "path": "src/application/dashboard/dashboard.types.ts",
-    "checksum": "e25bd60398c1a5a0a6c0a65871c930f9332d0746"
+    "checksum": "eda1d34c981d0e30f65f2bb92653b66792a7198c"
   },
   {
     "path": "src/application/department/department.entity.json",
