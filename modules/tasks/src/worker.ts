@@ -32,6 +32,7 @@ export class Worker {
   private readonly activeExecutions = new Set<WorkflowExecution>();
   private running = false;
   private loopPromise: Promise<void> | null = null;
+  private subscribed = false;
 
   private usePubSub: boolean;
   private listenDelay: number;
@@ -108,9 +109,10 @@ export class Worker {
    * Only sleeps when no work was claimed to avoid busy-waiting.
    */
   private async runLoop(): Promise<void> {
-    if (this.usePubSub) {
+    if (this.usePubSub && !this.subscribed) {
+      this.subscribed = true;
       this.backend.subscribe(async (result) => {
-        if (!result.ok) {
+        if (!result.ok || !this.running) {
           return;
         }
 
