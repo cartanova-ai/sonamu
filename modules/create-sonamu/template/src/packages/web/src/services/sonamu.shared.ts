@@ -221,14 +221,13 @@ export type ApplySonamuFilter<
   TNumericKeys extends Exclude<keyof TEntity, TOmitKeys> = never,
 > = FilterQuery<Omit<TEntity, TOmitKeys>, TNumericKeys>;
 
-
 /**
  * 필드명과 값을 기반으로 FilterPropType을 추론
  */
 export function getFieldPropType(
   fieldName: string,
   value: any,
-  numericColumns: readonly string[]
+  numericColumns: readonly string[],
 ): FilterPropType {
   // numeric 타입 체크 (명시적으로 지정된 컬럼)
   if (numericColumns.includes(fieldName)) {

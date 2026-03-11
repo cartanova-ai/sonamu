@@ -9,7 +9,7 @@ function AdminDashboard() {
     <div>
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <p className="text-gray-600">Welcome to the admin panel. Start building your application.</p>
-      
+
       {/* TODO: 대시보드 위젯 추가 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
         <div className="p-6 bg-gray-50 rounded-lg border">

@@ -47,7 +47,9 @@ const userMenuItems: MenuItemProps[] = [
 export default function Sidebar({ className }: SidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { auth } = useSonamuContext();
-  const { user, logout } = auth;
+  const session = auth?.useSession?.();
+  const user = session?.data?.user ?? null;
+  const logout = () => auth?.signOut?.();
 
   // 경로에 따라 메뉴 및 타이틀 분기
   const isAdmin = pathname.startsWith("/admin");
@@ -70,7 +72,7 @@ export default function Sidebar({ className }: SidebarProps) {
         </div>
         {user && (
           <div className="text-sm text-sidebar-foreground/70 mt-1">
-            {user.username ?? user.email ?? "User"}
+            {user.name ?? user.email ?? "User"}
           </div>
         )}
       </SidebarHeader>

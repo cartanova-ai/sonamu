@@ -19,8 +19,7 @@ export default {
   "common.login": "Login",
   "common.logout": "Logout",
   "common.manage": "Manage",
-  "common.results": (count: number) =>
-    plural(count, `${count} result`, `${count} results`),
+  "common.results": (count: number) => plural(count, `${count} result`, `${count} results`),
   "common.save": "Save",
   "common.search": "Search",
   "common.searchPlaceholder": "Search...",
