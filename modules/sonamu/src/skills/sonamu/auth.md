@@ -35,7 +35,7 @@ pnpm sonamu auth generate
 
 ## 필드 매핑 (자동 적용)
 
-**소스코드:** `modules/sonamu/src/auth/better-auth-entities.ts` (SONAMU_FIELD_MAPPINGS)
+**소스코드:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
 
 | better-auth | Sonamu |
 |-------------|--------|

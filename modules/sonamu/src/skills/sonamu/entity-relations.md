@@ -460,56 +460,47 @@ parentId를 설정하면 자식 엔티티의 **BaseSchema에서 FK 컬럼이 제
 
 ## FK 참조 규칙 (FieldExpr)
 
-BelongsToOne 관계를 정의하면 `{name}_id` 컨럼이 자동 생성되지만, **Entity 정의 내에서는 `{name}.id` 형태로 참조**해야 합니다.
+BelongsToOne 관계를 정의하면 `{name}_id` 컬럼이 자동 생성됩니다. **subsets에서는 `{name}.id` 형태(FieldExpr)로 참조**하고, **indexes에서는 실제 DB 컬럼명(`{name}_id`)을 사용**합니다.
 
 ### 적용 대상
 
-| 위치 | 잘못된 예 | 올바른 예 |
-|------|----------|----------|
-| subsets | `"user_id"` | `"user.id"` |
-| indexes | `"user_id"` | `"user.id"` |
-| unique | `["user_id", "date"]` | `["user.id", "date"]` |
-| search | `"user_id"` | `"user.id"` |
+| 위치 | 사용 형식 | 예시 |
+|------|----------|------|
+| subsets | FieldExpr (`relation.field`) | `"user.id"` |
+| indexes | 실제 DB 컬럼명 | `"user_id"` |
+| unique | 실제 DB 컬럼명 | `["user_id", "date"]` |
+| search | FieldExpr (`relation.field`) | `"user.id"` |
 
 ### 예시
 
 ```json
-// WRONG - "user_id"를 직접 사용하면 에러 발생
 {
   "id": "ApiLog",
   "props": [
     { "type": "relation", "name": "user", "with": "User", "relationType": "BelongsToOne" }
   ],
   "subsets": {
-    "A": ["id", "user_id", "api_path"]  // WRONG: user_id
+    "A": ["id", "user.id", "api_path"]  // FieldExpr 사용
   },
   "indexes": [
-    ["user_id"]  // WRONG: user_id
-  ]
-}
-
-// CORRECT - "user.id" 형태로 참조
-{
-  "id": "ApiLog",
-  "props": [
-    { "type": "relation", "name": "user", "with": "User", "relationType": "BelongsToOne" }
-  ],
-  "subsets": {
-    "A": ["id", "user.id", "api_path"]  // CORRECT: user.id
-  },
-  "indexes": [
-    ["user.id"]  // CORRECT: user.id
+    {
+      "type": "index",
+      "name": "api_logs_user_id_index",
+      "columns": [{ "name": "user_id" }]
+    }
   ]
 }
 ```
 
-### 에러 메시지
+### subsets에서의 에러 메시지
 
 ```
 Error: ApiLog -- 잘못된 FieldExpr 'user_id' (사용 가능한 props: id, created_at, ..., user)
 ```
 
-이 에러가 보이면 `user_id` → `user.id`로 변경하세요.
+subsets에서 이 에러가 보이면 `user_id` → `user.id`로 변경하세요. indexes에서는 `user_id`가 올바른 형식입니다.
+
+> **참고:** indexes와 subsets의 참조 방식 차이에 대한 상세 설명은 `entity-basic.md`의 "IMPORTANT: indexes에서 FK 컬럼명은 실제 DB 컬럼명을 사용한다" 섹션을 참고하세요.
 
 ---
 

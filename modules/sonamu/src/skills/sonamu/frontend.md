@@ -589,44 +589,51 @@ function ProfileForm() {
 
 **IMPORTANT**: SonamuProvider에 uploader 함수 필수 설정 (아래 참조)
 
-## MultiSelect
+## Select (다중 선택 모드)
 
-다중 선택 컴포넌트 (검색, 그룹, 애니메이션 지원)
+`Select` 컴포넌트에 `multiple: true`를 설정하면 다중 선택 모드로 동작합니다.
 
 ```typescript
-import { MultiSelect } from "@sonamu-kit/react-components/components";
-import type { MultiSelectOption } from "@sonamu-kit/react-components/components";
+import { Select } from "@sonamu-kit/react-components/components";
 
 function TagForm() {
   const { register } = useTypeForm(PostSaveParams, {
     tag_ids: [],  // number[]
   });
 
-  const options: MultiSelectOption[] = [
-    { label: "JavaScript", value: "1" },
-    { label: "TypeScript", value: "2" },
-    { label: "React", value: "3" },
-    { label: "Vue", value: "4" },
+  const items = [
+    { value: 1, label: "JavaScript" },
+    { value: 2, label: "TypeScript" },
+    { value: 3, label: "React" },
+    { value: 4, label: "Vue" },
   ];
 
   return (
-    <MultiSelect
+    <Select
       {...register("tag_ids")}
-      options={options}
+      items={items}
+      multiple
       placeholder="태그 선택"
-      emptyIndicator={<span>태그가 없습니다</span>}
     />
   );
 }
 ```
 
-**주요 Props:**
+**다중 선택 전용 Props:**
 
-- `options`: `MultiSelectOption[]`
-- `groups`: 옵션 그룹화
+- `multiple`: `true` (다중 선택 활성화)
 - `maxCount`: 표시할 최대 배지 개수
-- `badgeAnimation`: `"bounce" | "pulse" | "wiggle" | "fade" | "slide"`
+- `hideSelectAll`: 전체 선택 버튼 숨기기
+- `searchable`: 검색 입력 활성화
+
+**공통 Props:**
+
+- `items`: `SelectItemDef[]` (값만 또는 `{ value, label, disabled }` 형태)
+- `placeholder`: 선택 전 표시 텍스트
+- `clearable`: X 버튼으로 전체 해제
 - `disabled`: 비활성화
+- `renderItem`: 커스텀 렌더링 함수
+- `async`: `true` 설정 시 `onSearch` 콜백으로 비동기 검색 지원
 
 ## EnumSelect
 
