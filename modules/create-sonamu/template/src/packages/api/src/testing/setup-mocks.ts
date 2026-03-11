@@ -1,5 +1,4 @@
-import type { MakeDirectoryOptions, Mode, PathLike, RmOptions } from "fs";
-import type { FileHandle } from "fs/promises";
+import type { PathLike } from "fs";
 // import { Naite } from "sonamu";
 import { vi } from "vitest";
 

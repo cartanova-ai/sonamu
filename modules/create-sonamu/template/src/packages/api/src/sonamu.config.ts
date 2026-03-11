@@ -2,7 +2,7 @@ import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import dotenv from "dotenv";
 import path from "path";
-import { CachePresets, defineConfig, passkey, twoFactor } from "sonamu";
+import { CachePresets, defineConfig } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
@@ -114,27 +114,27 @@ export default defineConfig({
       },
     },
 
-    auth: {
-      appName: "Sonamu Project",
-      plugins: [twoFactor(), passkey()],
-      emailAndPassword: { enabled: true },
-      baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
-      secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
-      trustedOrigins: ["http://localhost:5173"],
-      session: {
-        expiresIn: 60 * 60 * 24 * 365,
-      },
-      user: {
-        fields: {
-          name: "username",
-          emailVerified: "is_verified",
-        },
-        additionalFields: {
-          role: { type: "string", sonamuType: "UserRole" },
-          created_at: { type: "date" },
-        },
-      },
-    },
+    // auth: {
+    //   appName: "Sonamu Project",
+    //   plugins: [twoFactor(), passkey()],
+    //   emailAndPassword: { enabled: true },
+    //   baseURL: process.env.BETTER_AUTH_URL ?? `http://${host}:${port}`,
+    //   secret: process.env.BETTER_AUTH_SECRET ?? "miomock-secret-key-change-this-in-production",
+    //   trustedOrigins: ["http://localhost:5173"],
+    //   session: {
+    //     expiresIn: 60 * 60 * 24 * 365,
+    //   },
+    //   user: {
+    //     fields: {
+    //       name: "username",
+    //       emailVerified: "is_verified",
+    //     },
+    //     additionalFields: {
+    //       role: { type: "string", sonamuType: "UserRole" },
+    //       created_at: { type: "date" },
+    //     },
+    //   },
+    // },
 
     apiConfig: {
       contextProvider: (defaultContext, request) => {
