@@ -14,6 +14,7 @@ import type {
   ActiveProjectItem,
   ActivityGroup,
   ActivityPeriod,
+  DocumentStats,
 } from "@/services/dashboard/dashboard.types";
 import { DashboardService } from "@/services/services.generated";
 import { AuditLogActionLabel } from "@/services/sonamu.generated";
@@ -37,7 +38,7 @@ function AdminIndexPage() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div className="max-w-350 mx-auto px-6 py-6">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-lg font-semibold">{SD("dashboard.title")}</h1>
@@ -263,7 +264,7 @@ function DocumentStatsPanel({
   docs,
   loading,
 }: {
-  docs: { total: number; draft: number; published: number; archived: number } | undefined;
+  docs: DocumentStats | undefined;
   loading: boolean;
 }) {
   if (loading) {
@@ -288,6 +289,9 @@ function DocumentStatsPanel({
       <div className="text-center pb-3 border-b border-gray-100">
         <p className="text-3xl font-bold tabular-nums">{total.toLocaleString()}</p>
         <p className="text-xs text-muted-foreground mt-0.5">전체 문서</p>
+        {(docs?.recentCount ?? 0) > 0 && (
+          <p className="text-xs text-emerald-600 mt-1 font-medium">+{docs?.recentCount} 최근 7일</p>
+        )}
       </div>
 
       {total > 0 && (

@@ -98,19 +98,36 @@ class DashboardFrameClass extends BaseFrameClass {
       })(),
 
       // 문서 현황: findMany queryMode count 활용
-      Promise.all([
-        DocumentModel.findMany("A", { queryMode: "count" }),
-        DocumentModel.findMany("A", { queryMode: "count", sonamuFilter: { status: "draft" } }),
-        DocumentModel.findMany("A", { queryMode: "count", sonamuFilter: { status: "published" } }),
-        DocumentModel.findMany("A", { queryMode: "count", sonamuFilter: { status: "archived" } }),
-      ])
-        .then(([all, draft, published, archived]) => ({
-          total: all.total ?? 0,
-          draft: draft.total ?? 0,
-          published: published.total ?? 0,
-          archived: archived.total ?? 0,
-        }))
-        .catch(() => ({ total: 0, draft: 0, published: 0, archived: 0 })),
+      (async () => {
+        try {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+          const [all, draft, published, archived, recent] = await Promise.all([
+            DocumentModel.findMany("A", { queryMode: "count" }),
+            DocumentModel.findMany("A", { queryMode: "count", sonamuFilter: { status: "draft" } }),
+            DocumentModel.findMany("A", {
+              queryMode: "count",
+              sonamuFilter: { status: "published" },
+            }),
+            DocumentModel.findMany("A", {
+              queryMode: "count",
+              sonamuFilter: { status: "archived" },
+            }),
+            db("documents").where("created_at", ">=", sevenDaysAgo).count("id as total").first(),
+          ]);
+
+          return {
+            total: all.total ?? 0,
+            draft: draft.total ?? 0,
+            published: published.total ?? 0,
+            archived: archived.total ?? 0,
+            recentCount: Number(recent?.total ?? 0),
+          };
+        } catch {
+          return { total: 0, draft: 0, published: 0, archived: 0, recentCount: 0 };
+        }
+      })(),
     ]);
 
     return { organization, projects, documents };
