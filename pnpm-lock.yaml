@@ -40,10 +40,10 @@ catalogs:
       specifier: ^3.958.0
       version: 3.958.0
     '@better-auth/passkey':
-      specifier: ^1.4.18
+      specifier: ~1.4.18
       version: 1.4.18
     '@better-auth/sso':
-      specifier: ^1.4.18
+      specifier: ~1.4.18
       version: 1.4.18
     '@biomejs/biome':
       specifier: ^2.3.13
@@ -337,7 +337,7 @@ catalogs:
       specifier: ^1.5.0
       version: 1.5.1
     better-auth:
-      specifier: ^1.4.18
+      specifier: ~1.4.18
       version: 1.4.18
     c12:
       specifier: ^3.3.2
