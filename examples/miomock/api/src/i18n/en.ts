@@ -111,6 +111,7 @@ export default defineLocale({
   "menu.company": "Companies",
   "menu.components": "Component Test",
   "menu.department": "Departments",
+  "menu.document": "Documents",
   "menu.employee": "Employees",
   "menu.file": "Files",
   "menu.fileUploadTest": "File Upload Test",

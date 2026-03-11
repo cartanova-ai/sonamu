@@ -6,6 +6,7 @@ import { SD } from "@/i18n/sd.generated";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
 import ClipboardListIcon from "~icons/lucide/clipboard-list";
+import FileTextIcon from "~icons/lucide/file-text";
 import FolderIcon from "~icons/lucide/folder";
 import HandshakeIcon from "~icons/lucide/handshake";
 import HomeIcon from "~icons/lucide/home";
@@ -31,6 +32,7 @@ type MenuKey =
   | "menu.file"
   | "menu.fileUploadTest"
   | "menu.selectTest"
+  | "menu.document"
   | "menu.auditLog";
 
 interface MenuItemProps {
@@ -47,6 +49,7 @@ const menuItems: MenuItemProps[] = [
   { titleKey: "menu.employee", path: "/admin/employees", icon: HandshakeIcon },
   { titleKey: "menu.project", path: "/admin/projects", icon: FolderIcon },
   { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
+  { titleKey: "menu.document", path: "/admin/documents", icon: FileTextIcon },
   { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
   { titleKey: "menu.auditLog", path: "/admin/audit-logs", icon: ClipboardListIcon },
   { titleKey: "menu.fileUploadTest", path: "/admin/files/upload-test", icon: TestTubeIcon },

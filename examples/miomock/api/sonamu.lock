@@ -193,7 +193,7 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "1c353cc703c415bd8eef1734ba8757086aaac1d0"
+    "checksum": "4dc23c4989e31d3f410239ca4229cfe312985c7a"
   },
   {
     "path": "src/i18n/ja.ts",
@@ -201,7 +201,7 @@
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "64a4a4428dd272904a2f4047e73b6171178237fb"
+    "checksum": "227b9f484313f9bc2645c9991b741e1bfc4a734d"
   },
   {
     "path": "src/i18n/sd.generated.ts",
