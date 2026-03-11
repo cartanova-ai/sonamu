@@ -29,9 +29,9 @@ export class ParallelDBManager {
         (_, i) => `${this.templateDb}_${i + 1}`,
       );
 
-      // 1. 기존 연결 종료 (병렬)
+      // 1. 기존 연결 종료 (병렬) worker DB + template DB (PG 18에서 FILE_COPY 시 template에 exclusive access 필요)
       await Promise.all(
-        workerDbNames.map((dbName) =>
+        [...workerDbNames, this.templateDb].map((dbName) =>
           adminDb.raw(
             `
             SELECT pg_terminate_backend(pg_stat_activity.pid)
