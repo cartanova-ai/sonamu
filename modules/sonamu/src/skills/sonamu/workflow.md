@@ -85,11 +85,57 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ---
 
+## PHASE 0.5: Contract 및 Spec 작성
+
+**참조 스킬:** cdd.md
+
+**CRITICAL: 이 PHASE가 완료되기 전에 엔티티 설계(PHASE 1)를 시작하지 않는다.**
+
+### 7. main.contract.json 작성
+
+20. `packages/api/src/contract/main.contract.json` 생성
+    - `requirements.md`, `business-logic.md` 기반으로 작성
+    - 전체 프로젝트 Overview, 하위 도메인 목록, Domain Glossary, User Roles, Business Rules, Edge Cases 포함
+    - `content`는 Markdown 한 줄씩 `string[]`로 작성
+21. 사용자에게 보고 후 승인 대기
+
+### 8. 도메인별 contract 작성
+
+22. `business-logic.md`에서 도메인을 식별하고 도메인 목록을 사용자에게 확인받기
+23. 도메인별로 `packages/api/src/contract/{domain}/main.contract.json` 작성
+    - 도메인 폴더명은 영문 소문자 (예: `auth`, `organization`, `research`)
+    - 각 도메인 contract 작성 후 사용자 확인받기 (도메인별로 하나씩)
+    - Features/Capabilities 섹션을 상세하게 작성한다 (이후 spec의 1:1 기반이 됨)
+
+### 9. Spec 작성
+
+**CRITICAL: 1 Feature = 1 Spec 파일. 도메인 contract의 Features/Capabilities에 정의된 기능 하나당 spec 파일 하나.**
+
+24. 각 도메인의 Features/Capabilities를 기반으로 spec 파일 목록 작성 후 사용자 확인
+25. 도메인별로 spec 파일 작성
+    - spec 파일은 해당 도메인 폴더에 위치
+    - 파일명은 feature key (예: `signin.spec.json`)
+    - `status: "draft"`로 시작
+26. 전체 spec 작성 완료 후 사용자에게 검토 요청
+    - 사용자 검토 및 수정 반영
+    - 모든 spec 검토 완료 후에만 다음 PHASE로 진행
+
+**완료 기준:**
+
+- [ ] `packages/api/src/contract/main.contract.json` 작성 및 사용자 승인
+- [ ] 모든 도메인 contract 작성 및 사용자 승인
+- [ ] 모든 domain spec 파일 작성 완료
+- [ ] 사용자 spec 검토 완료
+
+---
+
 ## PHASE 1: 엔티티 설계
 
 **참조 스킬:** entity-basic.md, entity-relations.md
 
-### 7. 엔티티 설계
+**전제 조건:** PHASE 0.5 완료 (모든 spec 사용자 검토 완료)
+
+### 10. 엔티티 설계
 
 20. 사용자 요구사항에 맞는 엔티티 설계
     - 설계하면서 사용자에게 비즈니스 로직에 맞는지 **지속적으로 디테일하게** 확인받을 것

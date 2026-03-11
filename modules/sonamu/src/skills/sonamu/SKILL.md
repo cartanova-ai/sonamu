@@ -27,6 +27,7 @@ Sonamu 프레임워크로 프로젝트를 개발하기 위한 Claude Code skill�
 
 ```
 PHASE 0: 프로젝트 생성 및 초기 설정  (프로젝트 생성 → requirements.md/business-logic.md 작성 → auth generate → Users 시퀀스 설정)
+PHASE 0.5: Contract 및 Spec 작성   (main.contract.json → 도메인별 contract → spec → 사용자 검토 완료)
 PHASE 1: 엔티티 설계                (사용자와 함께 설계 확인)
 PHASE 2: 엔티티 생성 및 마이그레이션  (entity.json + migration + cone + scaffolding)
 PHASE 3: 테스트 및 API 구현          (batch별 테스트 → API 구현 반복)
@@ -43,7 +44,8 @@ PHASE 5: Frontend 개발              (batch별 진행, 사용자 확인)
 | 사용자 지시 | 시작 PHASE | 전제 조건 확인 |
 |------------|------------|----------------|
 | "새 프로젝트 만들어줘" | PHASE 0 | — |
-| "엔티티 추가해줘" / "엔티티 생성해줘" | PHASE 1 | 프로젝트 존재, dev 서버 실행 중, skills/project/ 문서 읽기 |
+| "contract 작성해줘" / "spec 작성해줘" | PHASE 0.5 | requirements.md, business-logic.md 존재 |
+| "엔티티 추가해줘" / "엔티티 생성해줘" | PHASE 1 | 프로젝트 존재, dev 서버 실행 중, skills/project/ 문서 읽기, contract/spec 완료 |
 | "테스트 작성해줘" / "API 구현해줘" | PHASE 3 | entity.json 존재, migration 완료, scaffolding 완료 |
 | "fixture 생성해줘" | PHASE 4 | 테스트 통과, cone.note 존재 확인 |
 | "프론트엔드 개발해줘" | PHASE 5 | API 구현 완료 |
@@ -221,6 +223,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | Skill | 파일 | 용도 |
 |-------|------|------|
 | **전체 워크플로우** | `workflow.md` | **엔티티 설계 → Frontend 개발 7단계 가이드** |
+| **CDD (Contract-Driven Dev)** | `cdd.md` | **main.contract.json, 도메인 contract, spec 작성 절차** |
 | 프로젝트 생성 | `create-sonamu.md` | create-sonamu CLI 옵션 |
 | 프로젝트 초기화 | `project-init.md` | 프로젝트 생성 여부 확인, 대화 흐름 |
 | 프로젝트 설정 | `config.md` | .env, sonamu.config.ts 설정 |
@@ -257,6 +260,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | 작업 | 참고 Skill |
 |------|-----------|
 | **처음부터 전체 시스템 개발** | **workflow.md (7단계 마스터 가이드)** |
+| **Contract/Spec 작성** | **cdd.md** |
 | 프로젝트 생성 | create-sonamu, project-init |
 | 프로젝트 설정 | config |
 | Sonamu 로컬 개발 설정 | config |
