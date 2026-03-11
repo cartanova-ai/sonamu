@@ -11,11 +11,16 @@
     "프로젝트 현황: 상태별(planning/in_progress/completed/cancelled) 카운트를 반환한다",
     "프로젝트 현황: 진행중 프로젝트 TOP 5를 마감일 임박순으로 반환하며 마일스톤 진행률(완료/전체)을 포함한다",
     "문서 현황: 전체 문서 수와 상태별(draft/published/archived) 카운트를 반환한다",
+    "문서 현황: 최근 7일 내 생성된 문서 수(recentCount)를 반환한다",
     "카운트 메트릭은 항상 전체 데이터 기준이다 (필터 없음)"
   ],
-  "lastModified": "2026-03-10",
-  "status": "draft",
-  "sources": [],
+  "lastModified": "2026-03-11",
+  "status": "in-progress",
+  "sources": [
+    "src/application/dashboard/dashboard.frame.ts",
+    "src/application/dashboard/dashboard.frame.test.ts",
+    "src/application/dashboard/dashboard.types.ts"
+  ],
   "contracts": ["./main.contract.json"],
   "modules": {
     "DashboardModel": "대시보드 전용 모델. 별도 테이블 없이 기존 모델의 메서드를 조합하여 메트릭을 집계한다"
@@ -28,7 +33,8 @@
     "2. 내부에서 기존 모델의 findMany를 병렬 호출하여 각 엔티티의 total 집계",
     "3. ProjectModel.findMany({ status: 'in_progress', orderBy: 'deadline-asc', num: 5 })로 진행중 TOP 5 조회",
     "4. TOP 5 각 프로젝트에 대해 MilestoneModel.findMany로 마일스톤 전체/완료 카운트 집계",
-    "5. DashboardStats 객체로 조합하여 반환"
+    "5. DocumentModel.findMany({ created_at >= NOW - 7d, queryMode: 'count' })로 최근 7일 내 신규 문서 수 집계",
+    "6. DashboardStats 객체로 조합하여 반환"
   ],
   "errorHandling": {
     "ModelCallFailure": "내부 모델 호출 실패 시 해당 섹션을 null로 반환하고 나머지 섹션은 정상 반환"
