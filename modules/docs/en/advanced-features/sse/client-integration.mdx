@@ -608,8 +608,7 @@ const source = new EventSource(`/stream/notifications?token=${token}`);
     notification: z.string(),
   })
 })
-@api({ compress: false })
-async *streamNotifications(token: string, ctx: Context) {
+async streamNotifications(token: string): Promise<void> {
   // Verify token
   const user = await this.verifyToken(token);
   if (!user) {
