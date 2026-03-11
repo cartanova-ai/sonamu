@@ -94,6 +94,32 @@ async me(): Promise<User | null> {
 
 ## 파일 업로드 (@upload)
 
+> **CRITICAL: `@upload`는 `@api` 없이 단독으로 사용한다.**
+> `@upload`를 붙이면 POST 엔드포인트와 `axios-multipart`/`tanstack-mutation-multipart` 클라이언트가 **자동 생성**된다.
+> `@api`를 함께 붙이면 `checkSingleDecorator` 충돌로 **빌드 에러**가 발생한다.
+
+```typescript
+// ✅ CORRECT
+@upload({ limits: { files: 10 }, guards: ["user"] })
+async upload(...): Promise<number[]> { }
+
+// ❌ WRONG — 빌드 에러 발생
+@api({ httpMethod: "POST", clients: ["axios-multipart"] })
+@upload({ limits: { files: 10 } })
+async upload(...): Promise<number[]> { }
+```
+
+**`@upload` 지원 옵션** (`httpMethod`, `clients`는 지원하지 않음 — 자동 설정됨)
+
+| 옵션 | 설명 |
+|------|------|
+| `guards` | 인증/권한 가드 |
+| `limits` | 파일 개수/크기 제한 (`{ files: N }`) |
+| `consume` | `"buffer"` (기본) 또는 `"stream"` |
+| `description` | API 문서 설명 |
+| `destination` | 스트림 모드 전용: 스토리지 드라이버 키 |
+| `keyGenerator` | 스트림 모드 전용: 저장 경로 생성 함수 |
+
 ### 버퍼 모드 (기본)
 
 ```typescript

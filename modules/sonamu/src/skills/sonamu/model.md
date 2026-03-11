@@ -672,6 +672,7 @@ if (params.search === "id") {
 - [ ] debug 옵션 불필요하게 명시하지 않음
 - [ ] orderBy 모든 케이스 exhaustive 처리
 - [ ] ManyToMany relation이 있으면 _ids 배열 SaveParams에 추가
+- [ ] `@upload` 메서드에 `@api`가 붙어 있지 않은가? (`@upload`는 단독 사용, 함께 쓰면 빌드 에러)
 - [ ] SearchField enum과 findMany 구현이 일치하는가?
 - [ ] 승인 워크플로우 엔티티에 status/type 필터가 ListParams와 findMany 양쪽에 모두 있는가?
 
