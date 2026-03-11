@@ -22,7 +22,7 @@ This project follows Contract-Driven Development (CDD). All development work mus
 ## Project Structure
 
 ```text
-packages/api/src/contract/
+packages/api/contract/
 |- main.contract.json          # project root contract
 |- {domain}/
 |  |- main.contract.json       # domain representative contract
@@ -36,7 +36,7 @@ packages/api/src/contract/
 Example:
 
 ```text
-packages/api/src/contract/
+packages/api/contract/
 |- main.contract.json
 |- auth/
 |  |- main.contract.json
@@ -193,8 +193,8 @@ Whenever any Spec field changes, update `lastModified` to today's date.
 Spec files do not store history internally. Git handles it.
 
 ```bash
-git log -- packages/api/src/contract/auth/login.spec.json
-git log --follow -- packages/api/src/contract/auth/login.spec.json  # track renames
+git log -- packages/api/contract/auth/login.spec.json
+git log --follow -- packages/api/contract/auth/login.spec.json  # track renames
 ```
 
 ---

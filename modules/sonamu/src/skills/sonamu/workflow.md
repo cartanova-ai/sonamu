@@ -93,7 +93,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ### 7. main.contract.json 작성
 
-20. `packages/api/src/contract/main.contract.json` 생성
+20. `packages/api/contract/main.contract.json` 생성
     - `requirements.md`, `business-logic.md` 기반으로 작성
     - 전체 프로젝트 Overview, 하위 도메인 목록, Domain Glossary, User Roles, Business Rules, Edge Cases 포함
     - `content`는 Markdown 한 줄씩 `string[]`로 작성
@@ -102,7 +102,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 ### 8. 도메인별 contract 작성
 
 22. `business-logic.md`에서 도메인을 식별하고 도메인 목록을 사용자에게 확인받기
-23. 도메인별로 `packages/api/src/contract/{domain}/main.contract.json` 작성
+23. 도메인별로 `packages/api/contract/{domain}/main.contract.json` 작성
     - 도메인 폴더명은 영문 소문자 (예: `auth`, `organization`, `research`)
     - 각 도메인 contract 작성 후 사용자 확인받기 (도메인별로 하나씩)
     - Features/Capabilities 섹션을 상세하게 작성한다 (이후 spec의 1:1 기반이 됨)
@@ -122,7 +122,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 **완료 기준:**
 
-- [ ] `packages/api/src/contract/main.contract.json` 작성 및 사용자 승인
+- [ ] `packages/api/contract/main.contract.json` 작성 및 사용자 승인
 - [ ] 모든 도메인 contract 작성 및 사용자 승인
 - [ ] 모든 domain spec 파일 작성 완료
 - [ ] 사용자 spec 검토 완료
