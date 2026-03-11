@@ -16,8 +16,11 @@
     "문서 저장 성공 시 목록 페이지로 이동하고 목록이 갱신된다"
   ],
   "lastModified": "2026-03-11",
-  "status": "draft",
-  "sources": [],
+  "status": "done",
+  "sources": [
+    "../../../web/src/routes/admin/documents/index.tsx",
+    "../../../web/src/routes/admin/documents/form.tsx"
+  ],
   "contracts": ["./main.contract.json"],
   "dependsOnSpecs": [
     "./document-creation.spec.json",
