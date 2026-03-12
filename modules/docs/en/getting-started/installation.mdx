@@ -232,7 +232,7 @@ import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "SonamuProject",
@@ -331,7 +331,6 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   },
   server: {
     host: "0.0.0.0",
-    port: 3028,
     proxy: {
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
@@ -346,9 +345,9 @@ Default ports are configured as follows:
 
 | Service    | Port | Description                  |
 | ---------- | ---- | ---------------------------- |
-| API Server | 1028 | Fastify-based REST API       |
-| Sonamu UI  | -    | http://localhost:1028/sonamu-ui |
-| Web App    | 3028 | Vite development server (SSR support) |
+| API Server | 34900 | Fastify-based REST API       |
+| Sonamu UI  | -    | http://localhost:34900/sonamu-ui |
+| Web App    | 5173 | Vite development server (Vite default, SSR support) |
 | PostgreSQL | 5432 | Database                     |
 
 <Note>

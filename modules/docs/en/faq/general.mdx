@@ -45,9 +45,9 @@ pnpm dev
 Accessible URLs:
 
 ```
-API: http://localhost:1028
-Sonamu UI: http://localhost:1028/sonamu-ui
-Web: http://localhost:3028
+API: http://localhost:34900
+Sonamu UI: http://localhost:34900/sonamu-ui
+Web: http://localhost:5173
 ```
 
 Requirements: `Node.js >= 18`, `pnpm >= 10`, `Docker`
@@ -97,7 +97,7 @@ Auto-generated: Migration files, TypeScript types, API endpoints, React hooks
 
 </Accordion>
 
-<Accordion title='I ran pnpm dev and got "Port 1028 is already in use" error'>
+<Accordion title='I ran pnpm dev and got "Port 34900 is already in use" error'>
 
 **Method 1: Change the port**
 
@@ -115,7 +115,7 @@ export default {
 **Method 2: Kill existing process (macOS/Linux)**
 
 ```bash
-lsof -ti:1028 | xargs kill -9
+lsof -ti:34900 | xargs kill -9
 ```
 
 </Accordion>

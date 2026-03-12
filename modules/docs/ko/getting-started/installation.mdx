@@ -232,7 +232,7 @@ import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   projectName: process.env.PROJECT_NAME ?? "SonamuProject",
@@ -331,7 +331,6 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   },
   server: {
     host: "0.0.0.0",
-    port: 3028,
     proxy: {
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
@@ -346,9 +345,9 @@ export default defineConfig(({ command, isSsrBuild }) => ({
 
 | 서비스     | 포트 | 설명                   |
 | ---------- | ---- | ---------------------- |
-| API 서버   | 1028 | Fastify 기반 REST API  |
-| Sonamu UI  | -    | http://localhost:1028/sonamu-ui |
-| Web 앱     | 3028 | Vite 개발 서버 (SSR 지원) |
+| API 서버   | 34900 | Fastify 기반 REST API  |
+| Sonamu UI  | -    | http://localhost:34900/sonamu-ui |
+| Web 앱     | 5173 | Vite 개발 서버 (Vite 기본값, SSR 지원) |
 | PostgreSQL | 5432 | 데이터베이스           |
 
 <Note>

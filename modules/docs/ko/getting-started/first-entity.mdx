@@ -8,16 +8,16 @@ description: "Sonamu UI로 첫 번째 엔티티를 생성하고 API 만들기"
 ## 전제 조건
 
 - [빠른 시작](/getting-started/quick-start) 가이드를 완료하고 개발 서버가 실행 중이어야 합니다.
-- API 서버가 http://localhost:1028 에서 실행 중이어야 합니다.
+- API 서버가 http://localhost:34900 에서 실행 중이어야 합니다.
 
 <Tip>
-  API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:1028/sonamu-ui
+  API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:34900/sonamu-ui
   에서 자동으로 제공됩니다.
 </Tip>
 
 ## 1단계: Sonamu UI 접속
 
-브라우저에서 http://localhost:1028/sonamu-ui 로 접속합니다.
+브라우저에서 http://localhost:34900/sonamu-ui 로 접속합니다.
 
 <Frame caption="Sonamu UI 메인 화면 (Entity, Migration, Scaffolding 탭)">
   <img
@@ -386,7 +386,7 @@ export class PostService {
 
 <CodeGroup>
 ```bash title="게시글 생성 (POST)"
-curl -X POST http://localhost:1028/api/posts \
+curl -X POST http://localhost:34900/api/posts \
   -H "Content-Type: application/json" \
   -d '{
     "title": "첫 번째 게시글",
@@ -396,22 +396,22 @@ curl -X POST http://localhost:1028/api/posts \
 ```
 
 ```bash title="게시글 목록 조회 (GET)"
-curl http://localhost:1028/api/posts?subset=A
+curl http://localhost:34900/api/posts?subset=A
 ```
 
 ```bash title="게시글 상세 조회 (GET)"
-curl http://localhost:1028/api/posts/1?subset=A
+curl http://localhost:34900/api/posts/1?subset=A
 ```
 
 ```bash title="게시글 삭제 (DELETE)"
-curl -X DELETE http://localhost:1028/api/posts/1
+curl -X DELETE http://localhost:34900/api/posts/1
 ```
 
 </CodeGroup>
 
 ### 브라우저에서 테스트
 
-http://localhost:1028/api/posts?subset=A 로 접속하여 JSON 응답을 확인합니다.
+http://localhost:34900/api/posts?subset=A 로 접속하여 JSON 응답을 확인합니다.
 
 <Frame caption="📸 필요: 브라우저에서 API 응답 JSON 화면 (게시글 목록 데이터)"></Frame>
 

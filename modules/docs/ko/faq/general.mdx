@@ -45,9 +45,9 @@ pnpm dev
 접속 가능한 URL:
 
 ```
-API: http://localhost:1028
-Sonamu UI: http://localhost:1028/sonamu-ui
-Web: http://localhost:3028
+API: http://localhost:34900
+Sonamu UI: http://localhost:34900/sonamu-ui
+Web: http://localhost:5173
 ```
 
 요구사항: `Node.js >= 18`, `pnpm >= 10`, `Docker`
@@ -97,7 +97,7 @@ Web: http://localhost:3028
 
 </Accordion>
 
-<Accordion title='pnpm dev를 실행했는데 "Port 1028 is already in use" 에러가 발생합니다'>
+<Accordion title='pnpm dev를 실행했는데 "Port 34900 is already in use" 에러가 발생합니다'>
 
 **방법 1: 포트 변경**
 
@@ -115,7 +115,7 @@ export default {
 **방법 2: 기존 프로세스 종료 (macOS/Linux)**
 
 ```bash
-lsof -ti:1028 | xargs kill -9
+lsof -ti:34900 | xargs kill -9
 ```
 
 </Accordion>

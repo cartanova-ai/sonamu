@@ -61,7 +61,7 @@ server {
   }
 
   location /api {
-    proxy_pass http://localhost:1028;
+    proxy_pass http://localhost:34900;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -86,7 +86,7 @@ server {
 ```bash
 # api/.env.production
 NODE_ENV=production
-PORT=1028
+PORT=34900
 
 # Database
 DB_HOST=prod-db.example.com
@@ -113,7 +113,7 @@ REDIS_PASSWORD=redis_password
 export default {
   server: {
     listen: {
-      port: Number(process.env.PORT) || 1028,
+      port: Number(process.env.PORT) || 34900,
     }
   },
   database: {
@@ -471,7 +471,7 @@ RUN pnpm build
 
 # Run in production mode
 ENV NODE_ENV=production
-EXPOSE 1028
+EXPOSE 34900
 
 CMD ["node", "dist/index.js"]
 ```
@@ -510,7 +510,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:
-      - "1028:1028"
+      - "34900:34900"
     depends_on:
       - postgres
       - redis
@@ -645,7 +645,7 @@ server {
 export default {
   server: {
     cors: {
-      origin: process.env.CORS_ORIGIN || "http://localhost:3028",
+      origin: process.env.CORS_ORIGIN || "http://localhost:5173",
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
     }

@@ -412,14 +412,14 @@ export default defineConfig({
 
 ```bash
 # gzip 압축 요청
-curl -H "Accept-Encoding: gzip" http://localhost:1028/api/data -i
+curl -H "Accept-Encoding: gzip" http://localhost:34900/api/data -i
 
 # 응답 헤더 확인
 # Content-Encoding: gzip
 # Content-Length: 1234
 
 # Brotli 압축 요청
-curl -H "Accept-Encoding: br" http://localhost:1028/api/data -i
+curl -H "Accept-Encoding: br" http://localhost:34900/api/data -i
 ```
 
 ## 성능 영향
