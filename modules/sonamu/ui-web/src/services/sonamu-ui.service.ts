@@ -29,6 +29,25 @@ export type CddTreeNode = {
   children?: CddTreeNode[];
 };
 
+export type CddSchemaField = {
+  name: string;
+  label?: string;
+  type: "string[]" | "Record<string, string>" | "Record<string, object>";
+  required: boolean;
+};
+
+export type CddSchema = {
+  id: string;
+  type: "contract" | "spec";
+  fields: CddSchemaField[];
+};
+
+export type CddContentEnvelope = {
+  document: Record<string, unknown>;
+  schema: CddSchema | null;
+  fileType: CddFileType;
+};
+
 export namespace SonamuUIService {
   export function getSonamuConfig(): Promise<{ projectName?: string }> {
     return fetch({
@@ -645,7 +664,7 @@ export namespace SonamuUIService {
     });
   }
 
-  export function readCddContent(filePath: string): Promise<Record<string, unknown>> {
+  export function readCddContent(filePath: string): Promise<CddContentEnvelope> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/cdd/readContent`,

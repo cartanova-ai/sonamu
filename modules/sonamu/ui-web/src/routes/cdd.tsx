@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import AlertTriangleIcon from "~icons/lucide/alert-triangle";
@@ -18,36 +18,275 @@ import GitBranchIcon from "~icons/lucide/git-branch";
 import GlobeIcon from "~icons/lucide/globe";
 import HashIcon from "~icons/lucide/hash";
 import Link2Icon from "~icons/lucide/link-2";
+import ListIcon from "~icons/lucide/list";
 import PencilIcon from "~icons/lucide/pencil";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import SearchIcon from "~icons/lucide/search";
 import TerminalIcon from "~icons/lucide/terminal";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { defaultCatch } from "../services/sonamu.shared";
-import type { CddTreeNode } from "../services/sonamu-ui.service";
+import type {
+  CddContentEnvelope,
+  CddSchema,
+  CddSchemaField,
+  CddTreeNode,
+} from "../services/sonamu-ui.service";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
-type SpecData = {
-  schemaVersion?: number;
-  summary?: string;
-  description?: string[];
-  acceptanceCriteria?: string[];
-  lastModified?: string;
-  status?: string;
-  sources?: string[];
-  contracts?: string[];
-  dependsOnSpecs?: string[];
-  types?: Record<string, string>;
-  api?: Record<
-    string,
-    { description?: string; request?: string; response?: string; errors?: string[] }
-  >;
-  modules?: Record<string, string>;
-  interfaces?: Record<string, string>;
-  dataFlow?: string[];
-  errorHandling?: Record<string, string>;
-  constraints?: string[];
+/* ========================================================================
+ * Schema Field Renderer Registry
+ * ======================================================================== */
+
+type FieldRendererProps = {
+  field: CddSchemaField;
+  value: unknown;
 };
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** camelCase를 사람이 읽기 좋은 형태로 변환 */
+const humanize = (name: string) =>
+  name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (s) => s.toUpperCase());
+
+/** string[] 렌더러 */
+function StringListRenderer({ value }: FieldRendererProps) {
+  const items = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
+          <span className="text-slate-700 text-sm leading-6">{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Record<string, string> 렌더러 */
+function StringRecordRenderer({ value }: FieldRendererProps) {
+  const entries = isPlainObject(value)
+    ? Object.entries(value).filter(([, v]) => typeof v === "string")
+    : [];
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+      <table className="w-full text-left text-sm border-collapse">
+        <thead className="bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th className="px-4 py-3 font-bold text-slate-700">Key</th>
+            <th className="px-4 py-3 font-bold text-slate-700">Value</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {entries.map(([k, v]) => (
+            <tr key={k} className="hover:bg-slate-50/50">
+              <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800 whitespace-nowrap">
+                {k}
+              </td>
+              <td className="px-4 py-3 text-slate-600">{String(v)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Record<string, object> 렌더러 */
+function ObjectRecordRenderer({ value }: FieldRendererProps) {
+  const entries = isPlainObject(value)
+    ? Object.entries(value).filter(([, v]) => isPlainObject(v))
+    : [];
+  return (
+    <div className="space-y-4">
+      {entries.map(([key, obj]) => {
+        const record = obj as Record<string, unknown>;
+        return (
+          <div key={key} className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+              <span className="font-mono text-sm font-semibold text-slate-800">{key}</span>
+            </div>
+            <div className="px-5 py-4 space-y-2">
+              {Object.entries(record).map(([prop, val]) => (
+                <div key={prop} className="flex gap-3 text-sm">
+                  <span className="text-slate-400 font-medium min-w-[100px] shrink-0">
+                    {humanize(prop)}
+                  </span>
+                  <span className="text-slate-700">
+                    {Array.isArray(val) ? val.join(", ") : String(val ?? "")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const FIELD_RENDERERS: Record<
+  CddSchemaField["type"],
+  {
+    Component: React.ComponentType<FieldRendererProps>;
+    isEmpty: (value: unknown) => boolean;
+  }
+> = {
+  "string[]": {
+    Component: StringListRenderer,
+    isEmpty: (v) => !Array.isArray(v) || v.length === 0,
+  },
+  "Record<string, string>": {
+    Component: StringRecordRenderer,
+    isEmpty: (v) => !isPlainObject(v) || Object.keys(v).length === 0,
+  },
+  "Record<string, object>": {
+    Component: ObjectRecordRenderer,
+    isEmpty: (v) => !isPlainObject(v) || Object.keys(v).length === 0,
+  },
+};
+
+const getFieldLabel = (field: CddSchemaField) => field.label ?? humanize(field.name);
+
+/* ========================================================================
+ * Section Descriptor — TOC와 본문의 단일 소스
+ * ======================================================================== */
+
+type SectionDescriptor = {
+  id: string;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  render: () => React.ReactNode;
+};
+
+/** schema 커스텀 필드에서 렌더링할 아이콘을 결정 */
+const FIELD_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  overview: FileTextIcon,
+  domainGlossary: BoxIcon,
+  userRoles: GlobeIcon,
+  businessRules: AlertTriangleIcon,
+  edgeCases: AlertCircleIcon,
+  modules: BoxIcon,
+  interfaces: Code2Icon,
+  dataFlow: GitBranchIcon,
+  errorHandling: AlertTriangleIcon,
+  constraints: TerminalIcon,
+  api: GlobeIcon,
+  types: Code2Icon,
+};
+
+function getFieldIcon(fieldName: string): React.ComponentType<{ className?: string }> {
+  return FIELD_ICON_MAP[fieldName] ?? ListIcon;
+}
+
+/* ========================================================================
+ * Shared Section Components
+ * ======================================================================== */
+
+function ViewerSection({
+  id,
+  title,
+  Icon,
+  children,
+}: {
+  id: string;
+  title: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="mb-12 scroll-mt-20">
+      <div className="flex items-baseline gap-2 mb-6 border-b border-slate-200 pb-2">
+        <Icon className="w-5 h-5 text-slate-400 translate-y-[1px]" />
+        <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+      </div>
+      <div className="pl-0 md:pl-7">{children}</div>
+    </section>
+  );
+}
+
+function SectionLayout({
+  navChildren,
+  tocSections,
+  activeSection,
+  onSectionClick,
+  children,
+}: {
+  navChildren: React.ReactNode;
+  tocSections: SectionDescriptor[];
+  activeSection: string;
+  onSectionClick: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 shrink-0">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">{navChildren}</div>
+      </nav>
+
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="max-w-7xl mx-auto flex px-6 py-10 gap-12">
+          <aside className="hidden lg:block w-48 flex-shrink-0 sticky top-6 h-fit">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 ml-4">
+              Contents
+            </p>
+            <ul className="space-y-1">
+              {tocSections.map((s) => (
+                <li key={s.id}>
+                  <a
+                    href={`#${s.id}`}
+                    onClick={() => onSectionClick(s.id)}
+                    className={classNames(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                      activeSection === s.id
+                        ? "bg-slate-100 text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50",
+                    )}
+                  >
+                    <s.icon className="w-4 h-4" />
+                    {s.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+
+          <div className="flex-1 max-w-3xl">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** schema의 커스텀 필드들에서 SectionDescriptor 배열을 생성 */
+function buildCustomFieldSections(
+  schema: CddSchema | null,
+  document: Record<string, unknown>,
+  prefix: string,
+): SectionDescriptor[] {
+  if (!schema) return [];
+  const sections: SectionDescriptor[] = [];
+
+  for (const field of schema.fields) {
+    const renderer = FIELD_RENDERERS[field.type];
+    const value = document[field.name];
+    if (!renderer || renderer.isEmpty(value)) continue;
+
+    const { Component } = renderer;
+    sections.push({
+      id: `${prefix}-${field.name}`,
+      title: getFieldLabel(field),
+      icon: getFieldIcon(field.name),
+      render: () => <Component field={field} value={value} />,
+    });
+  }
+
+  return sections;
+}
+
+/* ========================================================================
+ * Common Types & Utilities
+ * ======================================================================== */
 
 function CddFileIcon({
   fileType,
@@ -147,6 +386,10 @@ const STATUS_MAP: Record<string, { label: string; color: string; dot: string }> 
   },
 };
 
+/* ========================================================================
+ * CddPage (main)
+ * ======================================================================== */
+
 function CddPage() {
   const { SD } = useSonamuContext();
   const { data, error, refetch } = SonamuUIService.useCddTree();
@@ -180,10 +423,7 @@ function CddPage() {
 
   const renderMainContent = () => {
     if (activeNode?.type === "file") {
-      if (activeNode.fileType === "spec") {
-        return <SpecNodeDetail node={activeNode} onSelect={setActiveNodePath} />;
-      }
-      return <ContractNodeDetail node={activeNode} onRefetch={refetch} />;
+      return <DocumentDetail node={activeNode} onRefetch={refetch} onSelect={setActiveNodePath} />;
     }
 
     return (
@@ -214,9 +454,7 @@ function CddPage() {
 
   return (
     <div className="flex h-[calc(100vh-var(--spacing-gnb))] bg-gray-50 text-gray-900">
-      {/* 사이드바 */}
       <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0">
-        {/* 헤더 */}
         <div className="px-4 h-14 border-b border-gray-100 flex items-center justify-between">
           <h1 className="font-bold text-lg text-gray-800">{SD("cdd.title")}</h1>
           <button
@@ -229,7 +467,6 @@ function CddPage() {
           </button>
         </div>
 
-        {/* 검색 */}
         <div className="px-4 py-3">
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -243,7 +480,6 @@ function CddPage() {
           </div>
         </div>
 
-        {/* 트리 */}
         <nav className="flex-1 overflow-y-auto px-2 py-2 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
           {isLoading && (
             <div className="text-center py-8 text-gray-400 text-sm">{SD("common.loading")}</div>
@@ -272,7 +508,6 @@ function CddPage() {
             ))}
         </nav>
 
-        {/* 하단 */}
         {data?.exists && (
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-2">
             <div className="grid grid-cols-2 gap-1.5 text-[10px] text-gray-500">
@@ -292,16 +527,33 @@ function CddPage() {
         )}
       </aside>
 
-      {/* 메인 콘텐츠 */}
       <main className="flex-1 flex flex-col bg-white min-w-0">{renderMainContent()}</main>
     </div>
   );
 }
 
-function ContractNodeDetail({ node, onRefetch }: { node: CddTreeNode; onRefetch: () => void }) {
+/* ========================================================================
+ * DocumentDetail — Contract/Spec 통합 뷰어
+ * ======================================================================== */
+
+function DocumentDetail({
+  node,
+  onRefetch,
+  onSelect,
+}: {
+  node: CddTreeNode;
+  onRefetch: () => void;
+  onSelect: (path: string) => void;
+}) {
   const { SD } = useSonamuContext();
   const [editing, setEditing] = useState(false);
   const { data, isLoading, refetch: refetchContent } = SonamuUIService.useReadCddContent(node.path);
+  const [activeSection, setActiveSection] = useState("");
+
+  const envelope: CddContentEnvelope | null = data ?? null;
+  const doc = envelope?.document ?? {};
+  const schema = envelope?.schema ?? null;
+  const fileType = envelope?.fileType ?? node.fileType ?? "contract";
 
   const handleEdit = () => {
     setEditing(true);
@@ -313,113 +565,6 @@ function ContractNodeDetail({ node, onRefetch }: { node: CddTreeNode; onRefetch:
       .catch(defaultCatch)
       .finally(() => setEditing(false));
   };
-
-  const metaEntries = useMemo(() => {
-    if (!data) return [];
-    return Object.entries(data).filter(([key]) => key !== "content");
-  }, [data]);
-
-  const content = typeof data?.content === "string" ? data.content : null;
-
-  return (
-    <>
-      <header className="border-b border-gray-100 shrink-0">
-        <div className="flex items-center justify-between px-8 h-14">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>{SD("cdd.title")}</span>
-            <ChevronRightIcon className="w-3.5 h-3.5" />
-            <CddFileIcon fileType={node.fileType} name={node.name} className="w-4 h-4" />
-            <span className="text-gray-900 font-medium">{node.name}</span>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleEdit}
-            disabled={editing}
-          >
-            <PencilIcon className="w-3.5 h-3.5" />
-            {editing ? SD("cdd.editing") : SD("cdd.editContent")}
-          </button>
-        </div>
-
-        {metaEntries.length > 0 && (
-          <div className="px-8 py-3 bg-gray-50 border-t border-gray-100 space-y-1.5">
-            {metaEntries.map(([key, value]) => (
-              <div key={key} className="flex items-baseline gap-3 text-sm">
-                <span className="text-gray-400 font-medium min-w-[100px] shrink-0">{key}</span>
-                <span className="text-gray-700">
-                  {Array.isArray(value)
-                    ? value.some((v) => typeof v === "object" && v !== null)
-                      ? value.map((item, i) => {
-                          const obj = item as Record<string, unknown>;
-                          const parts = Object.entries(obj).map(([k, v]) =>
-                            Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`,
-                          );
-                          return (
-                            <span key={i} className={i > 0 ? "block" : ""}>
-                              {parts.join(" | ")}
-                            </span>
-                          );
-                        })
-                      : value.join(", ")
-                    : String(value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-8">
-        {isLoading && (
-          <div className="text-center py-8 text-gray-400 text-sm">{SD("common.loading")}</div>
-        )}
-        {content !== null && (
-          <div
-            className={classNames(
-              "max-w-4xl mx-auto prose prose-sm prose-gray",
-              "prose-headings:text-gray-900",
-              "prose-h2:border-b prose-h2:border-gray-200 prose-h2:pb-1.5",
-              "prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-gray-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none",
-              "prose-pre:bg-gray-800 prose-pre:rounded-lg",
-              "prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline",
-            )}
-          >
-            <Markdown>{content}</Markdown>
-          </div>
-        )}
-        {!isLoading && content === null && data && (
-          <div className="text-center py-8 text-gray-400 text-sm">No content</div>
-        )}
-      </div>
-    </>
-  );
-}
-
-const SPEC_SECTIONS = [
-  { id: "summary", title: "설계 개요", Icon: FileTextIcon },
-  { id: "criteria", title: "판정 기준", Icon: CheckCircle2Icon },
-  { id: "api", title: "API 엔드포인트", Icon: GlobeIcon },
-  { id: "types", title: "타입 정의", Icon: Code2Icon },
-  { id: "architecture", title: "구조 설계", Icon: BoxIcon },
-  { id: "dataflow", title: "데이터 흐름", Icon: GitBranchIcon },
-  { id: "errors", title: "에러 처리", Icon: AlertTriangleIcon },
-  { id: "technical", title: "기술 제약/참조", Icon: TerminalIcon },
-] as const;
-
-function SpecNodeDetail({
-  node,
-  onSelect,
-}: {
-  node: CddTreeNode;
-  onSelect: (path: string) => void;
-}) {
-  const { SD } = useSonamuContext();
-  const { data, isLoading } = SonamuUIService.useReadCddContent(node.path);
-  const [activeSection, setActiveSection] = useState("summary");
-
-  const spec: SpecData = (data as SpecData) ?? {};
-  const statusInfo = STATUS_MAP[spec.status ?? ""] ?? STATUS_MAP.draft;
 
   /** spec 파일 기준 상대 경로를 contract/ 기준 경로로 변환 */
   const resolveRefPath = (ref: string): string => {
@@ -437,54 +582,176 @@ function SpecNodeDetail({
     return resolved.join("/");
   };
 
-  const hasDescription = spec.description && spec.description.length > 0;
-  const hasAcceptanceCriteria = spec.acceptanceCriteria && spec.acceptanceCriteria.length > 0;
-  const hasApi = spec.api && Object.keys(spec.api).length > 0;
-  const hasTypes = spec.types && Object.keys(spec.types).length > 0;
-  const hasModules = spec.modules && Object.keys(spec.modules).length > 0;
-  const hasInterfaces = spec.interfaces && Object.keys(spec.interfaces).length > 0;
-  const hasDataFlow = spec.dataFlow && spec.dataFlow.length > 0;
-  const hasErrorHandling = spec.errorHandling && Object.keys(spec.errorHandling).length > 0;
-  const hasConstraints = spec.constraints && spec.constraints.length > 0;
-  const hasSources = spec.sources && spec.sources.length > 0;
-  const hasContracts = spec.contracts && spec.contracts.length > 0;
-  const hasDependsOnSpecs = spec.dependsOnSpecs && spec.dependsOnSpecs.length > 0;
-  const hasTechnical = hasConstraints || hasSources || hasContracts || hasDependsOnSpecs;
+  const contractDir = node.path.includes("/")
+    ? node.path.substring(0, node.path.lastIndexOf("/"))
+    : "";
 
-  const visibleSections = useMemo(() => {
-    return SPEC_SECTIONS.filter((s) => {
-      switch (s.id) {
-        case "summary":
-          return hasDescription;
-        case "criteria":
-          return hasAcceptanceCriteria;
-        case "api":
-          return hasApi;
-        case "types":
-          return hasTypes;
-        case "architecture":
-          return hasModules || hasInterfaces;
-        case "dataflow":
-          return hasDataFlow;
-        case "errors":
-          return hasErrorHandling;
-        case "technical":
-          return hasTechnical;
-        default:
-          return false;
+  const featureToSpecPath = (key: string): string =>
+    contractDir ? `${contractDir}/${key}.spec.json` : `${key}.spec.json`;
+
+  // Contract/Spec 고정 섹션 + schema 커스텀 필드 → 단일 SectionDescriptor[]
+  const sections = useMemo((): SectionDescriptor[] => {
+    const result: SectionDescriptor[] = [];
+
+    if (fileType === "contract") {
+      // Contract 고정 필드: features
+      const features = doc.features as Record<string, string> | undefined;
+      if (features && Object.keys(features).length > 0) {
+        result.push({
+          id: "contract-features",
+          title: "Features",
+          icon: FileCodeIcon,
+          render: () => (
+            <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 font-bold text-slate-700">Feature</th>
+                    <th className="px-4 py-3 font-bold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {Object.entries(features).map(([key, desc]) => (
+                    <tr key={key} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                          onClick={() => onSelect(featureToSpecPath(key))}
+                        >
+                          {key}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ),
+        });
       }
-    });
-  }, [
-    hasDescription,
-    hasAcceptanceCriteria,
-    hasApi,
-    hasTypes,
-    hasModules,
-    hasInterfaces,
-    hasDataFlow,
-    hasErrorHandling,
-    hasTechnical,
-  ]);
+    }
+
+    if (fileType === "spec") {
+      // Spec 고정 필드: description
+      const description = doc.description as string[] | undefined;
+      if (description && description.length > 0) {
+        result.push({
+          id: "spec-summary",
+          title: "Overview",
+          icon: FileTextIcon,
+          render: () => (
+            <div
+              className={classNames(
+                "prose prose-slate max-w-none",
+                "prose-headings:text-slate-900",
+                "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none",
+              )}
+            >
+              <Markdown>{description.join("\n")}</Markdown>
+            </div>
+          ),
+        });
+      }
+
+      // Spec 고정 필드: acceptanceCriteria
+      const criteria = doc.acceptanceCriteria as string[] | undefined;
+      if (criteria && criteria.length > 0) {
+        result.push({
+          id: "spec-criteria",
+          title: "Acceptance Criteria",
+          icon: CheckCircle2Icon,
+          render: () => (
+            <div className="space-y-3">
+              {criteria.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/50"
+                >
+                  <div className="mt-1 text-blue-500 shrink-0">
+                    <CheckCircle2Icon className="w-[18px] h-[18px]" />
+                  </div>
+                  <p className="text-slate-700 leading-6">{item}</p>
+                </div>
+              ))}
+            </div>
+          ),
+        });
+      }
+    }
+
+    // Schema 커스텀 필드
+    result.push(...buildCustomFieldSections(schema, doc, fileType));
+
+    if (fileType === "spec") {
+      // Spec 고정 필드: sources, contracts, dependsOnSpecs
+      const sources = doc.sources as string[] | undefined;
+      const contracts = doc.contracts as string[] | undefined;
+      const dependsOnSpecs = doc.dependsOnSpecs as string[] | undefined;
+      const hasSources = sources && sources.length > 0;
+      const hasContracts = contracts && contracts.length > 0;
+      const hasDependsOnSpecs = dependsOnSpecs && dependsOnSpecs.length > 0;
+
+      if (hasSources || hasContracts || hasDependsOnSpecs) {
+        result.push({
+          id: "spec-references",
+          title: "References",
+          icon: Link2Icon,
+          render: () => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {hasSources && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Sources
+                  </h4>
+                  {sources.map((s) => (
+                    <button
+                      type="button"
+                      key={s}
+                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                      onClick={() => SonamuUIService.openCddSource(s).catch(defaultCatch)}
+                    >
+                      <Link2Icon className="w-3 h-3 shrink-0" /> {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {(hasContracts || hasDependsOnSpecs) && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Documents
+                  </h4>
+                  {contracts?.map((c) => (
+                    <button
+                      type="button"
+                      key={c}
+                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                      onClick={() => onSelect(resolveRefPath(c))}
+                    >
+                      <HashIcon className="w-3 h-3 shrink-0" /> {c}
+                    </button>
+                  ))}
+                  {dependsOnSpecs?.map((d) => (
+                    <button
+                      type="button"
+                      key={d}
+                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                      onClick={() => onSelect(resolveRefPath(d))}
+                    >
+                      <HashIcon className="w-3 h-3 shrink-0" /> {d}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ),
+        });
+      }
+    }
+
+    return result;
+  }, [doc, schema, fileType, onSelect, contractDir, node.path]);
 
   if (isLoading) {
     return (
@@ -494,401 +761,72 @@ function SpecNodeDetail({
     );
   }
 
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* 상단 네비게이션 바 */}
-      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 shrink-0">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3 min-w-0">
-            <h1 className="font-bold text-lg tracking-tight truncate">
-              {spec.summary ?? node.name}
-            </h1>
-          </div>
-          <div className="flex items-center gap-4 shrink-0">
-            <div
-              className={classNames(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border",
-                statusInfo.color,
-              )}
-            >
-              <span className={classNames("w-2 h-2 rounded-full", statusInfo.dot)} />
-              {statusInfo.label}
-            </div>
-            <div className="text-xs text-slate-400 flex items-center gap-1">
-              <ClockIcon className="w-3 h-3" /> {spec.lastModified ?? "-"}
-            </div>
-          </div>
-        </div>
-      </nav>
+  const summary = doc.summary as string | undefined;
+  const status = doc.status as string | undefined;
+  const lastModified = doc.lastModified as string | undefined;
+  const schemaId = doc.schema as string | undefined;
+  const statusInfo = STATUS_MAP[status ?? ""] ?? STATUS_MAP.draft;
 
-      {/* 본문 */}
-      <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-7xl mx-auto flex px-6 py-10 gap-12">
-          {/* 좌측 목차 네비게이션 */}
-          <aside className="hidden lg:block w-48 flex-shrink-0 sticky top-6 h-fit">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 ml-4">
-              Contents
-            </p>
-            <ul className="space-y-1">
-              {visibleSections.map((s) => (
-                <li key={s.id}>
-                  <a
-                    href={`#spec-${s.id}`}
-                    onClick={() => setActiveSection(s.id)}
-                    className={classNames(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
-                      activeSection === s.id
-                        ? "bg-slate-100 text-slate-900 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50",
-                    )}
-                  >
-                    <s.Icon className="w-4 h-4" />
-                    {s.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </aside>
-
-          {/* 메인 콘텐츠 영역 */}
-          <div className="flex-1 max-w-3xl">
-            {/* 설계 개요 */}
-            {hasDescription && (
-              <SpecViewerSection id="spec-summary" title="설계 개요" Icon={FileTextIcon}>
-                <div
-                  className={classNames(
-                    "prose prose-slate max-w-none",
-                    "prose-headings:text-slate-900",
-                    "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none",
-                  )}
-                >
-                  <Markdown>{spec.description?.join("\n")}</Markdown>
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 판정 기준 */}
-            {hasAcceptanceCriteria && (
-              <SpecViewerSection id="spec-criteria" title="완료 판정 기준" Icon={CheckCircle2Icon}>
-                <div className="space-y-3">
-                  {spec.acceptanceCriteria?.map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/50"
-                    >
-                      <div className="mt-1 text-blue-500 shrink-0">
-                        <CheckCircle2Icon className="w-[18px] h-[18px]" />
-                      </div>
-                      <p className="text-slate-700 leading-6">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* API 엔드포인트 */}
-            {hasApi && (
-              <SpecViewerSection id="spec-api" title="API 엔드포인트" Icon={GlobeIcon}>
-                <div className="space-y-4">
-                  {Object.entries(spec.api ?? {}).map(([endpoint, detail]) => {
-                    const [method, ...pathParts] = endpoint.split(" ");
-                    const path = pathParts.join(" ");
-                    return (
-                      <div
-                        key={endpoint}
-                        className="rounded-xl border border-slate-200 shadow-sm overflow-hidden"
-                      >
-                        <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">
-                            {method}
-                          </span>
-                          <code className="font-mono text-sm font-semibold text-slate-800">
-                            {path}
-                          </code>
-                        </div>
-                        <div className="px-5 py-4 space-y-3">
-                          {detail.description && (
-                            <p className="text-sm text-slate-600">{detail.description}</p>
-                          )}
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            {detail.request && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-400 uppercase">
-                                  Request
-                                </span>
-                                <code className="font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs">
-                                  {detail.request}
-                                </code>
-                              </div>
-                            )}
-                            {detail.response && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-400 uppercase">
-                                  Response
-                                </span>
-                                <code className="font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-xs">
-                                  {detail.response}
-                                </code>
-                              </div>
-                            )}
-                          </div>
-                          {detail.errors && detail.errors.length > 0 && (
-                            <div className="mt-2">
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                Errors
-                              </span>
-                              <div className="mt-1.5 space-y-1.5">
-                                {detail.errors.map((err, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-start gap-2 text-xs text-slate-600"
-                                  >
-                                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-                                    <span>{err}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 타입 정의 */}
-            {hasTypes && (
-              <SpecViewerSection id="spec-types" title="타입 정의" Icon={Code2Icon}>
-                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3 font-bold text-slate-700">Type</th>
-                        <th className="px-4 py-3 font-bold text-slate-700">Definition</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {Object.entries(spec.types ?? {}).map(([name, def]) => (
-                        <tr key={name} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 font-mono text-indigo-600 font-medium whitespace-nowrap">
-                            {name}
-                          </td>
-                          <td className="px-4 py-3">
-                            <code className="font-mono text-sm text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                              {def}
-                            </code>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 구조 설계 */}
-            {(hasModules || hasInterfaces) && (
-              <SpecViewerSection id="spec-architecture" title="구조 설계" Icon={BoxIcon}>
-                <div className="space-y-8">
-                  {hasModules && (
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                        주요 모듈
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        {Object.entries(spec.modules ?? {}).map(([name, desc]) => (
-                          <div
-                            key={name}
-                            className="flex items-center justify-between p-4 border border-slate-100 rounded-xl shadow-sm"
-                          >
-                            <span className="font-mono text-sm font-bold text-slate-800">
-                              {name}
-                            </span>
-                            <span className="text-sm text-slate-500">{desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {hasInterfaces && (
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                        인터페이스 및 메서드
-                      </h4>
-                      <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-                        <table className="w-full text-left text-sm border-collapse">
-                          <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                              <th className="px-4 py-3 font-bold text-slate-700">
-                                Interface / Method
-                              </th>
-                              <th className="px-4 py-3 font-bold text-slate-700">Description</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {Object.entries(spec.interfaces ?? {}).map(([name, desc]) => (
-                              <tr key={name} className="hover:bg-slate-50/50">
-                                <td className="px-4 py-3 font-mono text-indigo-600 font-medium">
-                                  {name}
-                                </td>
-                                <td className="px-4 py-3 text-slate-600">{desc}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 데이터 흐름 */}
-            {hasDataFlow && (
-              <SpecViewerSection id="spec-dataflow" title="데이터 흐름" Icon={GitBranchIcon}>
-                <div className="flex flex-col items-center gap-2 max-w-lg mx-auto py-4">
-                  {spec.dataFlow?.map((step, i) => (
-                    <Fragment key={i}>
-                      <div className="w-full p-3 bg-white border border-slate-200 rounded-lg text-center font-medium text-slate-700 shadow-sm text-sm">
-                        {step}
-                      </div>
-                      {i < (spec.dataFlow?.length ?? 0) - 1 && (
-                        <div className="flex flex-col items-center">
-                          <div className="w-0.5 h-6 bg-slate-200" />
-                          <ChevronDownIcon className="w-3.5 h-3.5 text-slate-300 -mt-1" />
-                        </div>
-                      )}
-                    </Fragment>
-                  ))}
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 에러 처리 */}
-            {hasErrorHandling && (
-              <SpecViewerSection
-                id="spec-errors"
-                title="에러 처리 및 예외"
-                Icon={AlertTriangleIcon}
-              >
-                <div className="space-y-3">
-                  {Object.entries(spec.errorHandling ?? {}).map(([code, msg]) => (
-                    <div
-                      key={code}
-                      className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/50"
-                    >
-                      <div className="mt-1 text-slate-400 shrink-0">
-                        <AlertCircleIcon className="w-[18px] h-[18px]" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-tight mb-1">
-                          {code}
-                        </div>
-                        <p className="text-slate-700 text-sm leading-6">{msg}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SpecViewerSection>
-            )}
-
-            {/* 기술 제약 및 참조 */}
-            {hasTechnical && (
-              <SpecViewerSection id="spec-technical" title="기술 제약 및 참조" Icon={TerminalIcon}>
-                <div className="space-y-6">
-                  {hasConstraints && (
-                    <div className="bg-slate-50 rounded-xl px-5 pb-5 border border-slate-200">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                        기술 제약 사항
-                      </h4>
-                      <ul className="space-y-2">
-                        {spec.constraints?.map((c, i) => (
-                          <li key={i} className="text-sm text-slate-600 flex gap-2">
-                            <span className="text-blue-500">•</span> {c}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {hasSources && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          소스 코드
-                        </h4>
-                        {spec.sources?.map((s) => (
-                          <button
-                            type="button"
-                            key={s}
-                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
-                            onClick={() => SonamuUIService.openCddSource(s).catch(defaultCatch)}
-                          >
-                            <Link2Icon className="w-3 h-3 shrink-0" /> {s}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {(hasContracts || hasDependsOnSpecs) && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          참조 문서
-                        </h4>
-                        {spec.contracts?.map((c) => (
-                          <button
-                            type="button"
-                            key={c}
-                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
-                            onClick={() => onSelect(resolveRefPath(c))}
-                          >
-                            <HashIcon className="w-3 h-3 shrink-0" /> {c}
-                          </button>
-                        ))}
-                        {spec.dependsOnSpecs?.map((d) => (
-                          <button
-                            type="button"
-                            key={d}
-                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
-                            onClick={() => onSelect(resolveRefPath(d))}
-                          >
-                            <HashIcon className="w-3 h-3 shrink-0" /> {d}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </SpecViewerSection>
-            )}
-          </div>
-        </div>
+  const navContent = (
+    <>
+      <div className="flex items-center gap-3 min-w-0">
+        <CddFileIcon fileType={node.fileType} name={node.name} className="w-5 h-5" />
+        <h1 className="font-bold text-lg tracking-tight truncate">
+          {fileType === "spec" ? (summary ?? node.name) : node.name}
+        </h1>
+        {schemaId && (
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+            {schemaId}
+          </span>
+        )}
       </div>
-    </div>
+      <div className="flex items-center gap-4 shrink-0">
+        {fileType === "spec" && (
+          <div
+            className={classNames(
+              "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border",
+              statusInfo.color,
+            )}
+          >
+            <span className={classNames("w-2 h-2 rounded-full", statusInfo.dot)} />
+            {statusInfo.label}
+          </div>
+        )}
+        <div className="text-xs text-slate-400 flex items-center gap-1">
+          <ClockIcon className="w-3 h-3" /> {lastModified ?? "-"}
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleEdit}
+          disabled={editing}
+        >
+          <PencilIcon className="w-3.5 h-3.5" />
+          {editing ? SD("cdd.editing") : SD("cdd.editContent")}
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <SectionLayout
+      navChildren={navContent}
+      tocSections={sections}
+      activeSection={activeSection || sections[0]?.id || ""}
+      onSectionClick={setActiveSection}
+    >
+      {sections.map((s) => (
+        <ViewerSection key={s.id} id={s.id} title={s.title} Icon={s.icon}>
+          {s.render()}
+        </ViewerSection>
+      ))}
+    </SectionLayout>
   );
 }
 
-function SpecViewerSection({
-  id,
-  title,
-  Icon,
-  children,
-}: {
-  id: string;
-  title: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="mb-12 scroll-mt-20">
-      <div className="flex items-baseline gap-2 mb-6 border-b border-slate-200 pb-2">
-        <Icon className="w-5 h-5 text-slate-400 translate-y-[1px]" />
-        <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-      </div>
-      <div className="pl-0 md:pl-7">{children}</div>
-    </section>
-  );
-}
+/* ========================================================================
+ * TreeNodeItem
+ * ======================================================================== */
 
 function TreeNodeItem({
   node,
@@ -937,7 +875,6 @@ function TreeNodeItem({
         onClick={handleClick}
         onKeyDown={undefined}
       >
-        {/* 접기/펴기 아이콘 */}
         <div className="w-5 h-5 flex items-center justify-center mr-1 shrink-0">
           {node.type === "directory" &&
             (expanded ? (
@@ -947,7 +884,6 @@ function TreeNodeItem({
             ))}
         </div>
 
-        {/* 파일/폴더 아이콘 */}
         <div className="mr-2 shrink-0">
           {node.type === "directory" ? (
             expanded ? (
@@ -970,10 +906,8 @@ function TreeNodeItem({
           )}
         </div>
 
-        {/* 이름 */}
         <span className="flex-1 truncate text-sm font-medium">{node.name}</span>
 
-        {/* 호버 시 편집 버튼 (contract 파일만) */}
         {node.type === "file" && node.fileType === "contract" && (
           <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0">
             <button
@@ -989,7 +923,6 @@ function TreeNodeItem({
         )}
       </div>
 
-      {/* 자식 */}
       {node.type === "directory" && expanded && node.children && (
         <div className="mt-0.5">
           {node.children.map((child) => (

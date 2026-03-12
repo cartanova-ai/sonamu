@@ -1,11 +1,29 @@
 import { spawn } from "child_process";
-import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { Sonamu } from "../api/sonamu";
 
 export type CddFileType = "contract" | "spec";
+
+export type CddSchemaField = {
+  name: string;
+  label?: string;
+  type: "string[]" | "Record<string, string>" | "Record<string, object>";
+  required: boolean;
+};
+
+export type CddSchema = {
+  id: string;
+  type: "contract" | "spec";
+  fields: CddSchemaField[];
+};
+
+export type CddContentEnvelope = {
+  document: Record<string, unknown>;
+  schema: CddSchema | null;
+  fileType: CddFileType;
+};
 
 export type CddTreeNode = {
   name: string;
@@ -82,15 +100,17 @@ export function getCddTree(): { exists: boolean; tree: CddTreeNode[] } {
   return { exists: true, tree };
 }
 
-/** content 필드를 string으로 변환 (string[] 및 string 모두 지원) */
-function contentToString(content: unknown): string {
-  if (Array.isArray(content)) return content.join("\n");
-  if (typeof content === "string") return content;
-  return "";
+/** schema ID로 schema 파일을 찾아 반환 */
+function resolveSchema(schemaId: string): CddSchema | null {
+  const contractDir = getContractDir();
+  const schemaPath = path.join(contractDir, "schemas", `${schemaId}.schema.json`);
+  if (!fs.existsSync(schemaPath)) return null;
+  const raw = fs.readFileSync(schemaPath, "utf-8");
+  return JSON.parse(raw) as CddSchema;
 }
 
-/** JSON 파일의 전체 내용을 읽어 반환 (content는 string으로 변환) */
-export function readContent(filePath: string): Record<string, unknown> {
+/** JSON 파일의 전체 내용을 읽어 schema와 함께 envelope로 반환 */
+export function readContent(filePath: string): CddContentEnvelope {
   assertInsideContractDir(filePath);
 
   const contractDir = getContractDir();
@@ -101,11 +121,19 @@ export function readContent(filePath: string): Record<string, unknown> {
   }
 
   const raw = fs.readFileSync(absPath, "utf-8");
-  const json = JSON.parse(raw) as Record<string, unknown>;
-  return { ...json, content: contentToString(json.content) };
+  const document = JSON.parse(raw) as Record<string, unknown>;
+  const fileType = detectFileType(path.basename(filePath));
+  const schemaId = typeof document.schema === "string" ? document.schema : null;
+  const schema = schemaId ? resolveSchema(schemaId) : null;
+
+  return {
+    document,
+    schema,
+    fileType: fileType ?? "contract",
+  };
 }
 
-/** JSON 파일의 content 필드를 외부 에디터로 편집 */
+/** JSON 파일을 외부 에디터로 직접 편집 */
 export async function editContent(
   filePath: string,
 ): Promise<{ success: boolean; filePath: string }> {
@@ -119,37 +147,9 @@ export async function editContent(
   }
 
   const editor = resolveEditorCli();
+  await runEditor(editor, absPath);
 
-  const raw = fs.readFileSync(absPath, "utf-8");
-  const json: Record<string, unknown> = JSON.parse(raw);
-
-  const content = contentToString(json.content);
-
-  const tmpFileName = `cdd-edit-${crypto.randomUUID()}.md`;
-  const tmpFilePath = path.join(os.tmpdir(), tmpFileName);
-
-  fs.writeFileSync(tmpFilePath, content, "utf-8");
-
-  try {
-    await runEditor(editor, tmpFilePath);
-
-    const edited = fs.readFileSync(tmpFilePath, "utf-8");
-    json.content = edited.split("\n");
-
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    json.lastModified = `${yyyy}-${mm}-${dd}`;
-
-    fs.writeFileSync(absPath, `${JSON.stringify(json, null, 2)}\n`, "utf-8");
-
-    return { success: true, filePath };
-  } finally {
-    if (fs.existsSync(tmpFilePath)) {
-      fs.unlinkSync(tmpFilePath);
-    }
-  }
+  return { success: true, filePath };
 }
 
 /** 에디터별 앱 번들 내 CLI 경로 + --wait 플래그 매핑 */
