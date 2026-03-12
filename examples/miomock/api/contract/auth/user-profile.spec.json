@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "사용자 프로필 조회 및 수정",
   "description": [

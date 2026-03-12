@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "회사 CRUD 및 이름 유니크 제약, 삭제 연쇄 규칙 구현",
   "description": [

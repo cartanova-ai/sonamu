@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "부서 CRUD, 계층 구조, 회사 기준 유니크 규칙, 부서별 직원 수 조회 구현",
   "description": [

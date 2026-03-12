@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "벡터 임베딩 기반 의미 검색",
   "description": [

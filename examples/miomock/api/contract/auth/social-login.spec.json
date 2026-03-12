@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "OAuth 외부 계정 연동 로그인",
   "description": [

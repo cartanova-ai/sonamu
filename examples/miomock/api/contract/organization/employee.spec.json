@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "직원 등록, 부서 배치, 프로젝트 참여, 급여/입사일 관리 구현",
   "description": [

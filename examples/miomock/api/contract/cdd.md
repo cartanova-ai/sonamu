@@ -67,10 +67,23 @@ Location: `contract/schemas/`
 Each field item:
 
 - `name` (string): Field name
-- `type` (string): `"string[]"` | `"Record<string, string>"` | `"Record<string, object>"`
+- `type` (string): Field type (see Type System below)
 - `required` (boolean): Whether the field is required
 
 Schema fields define only the **custom** portion of the document. Fixed fields are always present regardless of format.
+
+### Type System
+
+Schema types serve as **UI component rendering hints**. Validation only minimally checks that the value structure matches the type.
+
+- `string`: Text block. Prose text (summary, etc.). Validation: value is a string.
+- `string[]`: Ordered list. Ordered item listing (dataFlow, overview, etc.). Validation: value is a string array.
+- `Record<string, string>`: Key-value table. Key-value dictionary (modules, errorHandling, etc.). Validation: value is an object.
+- `Record<string, object>`: Key + structured card/panel. Dictionary with complex object values (API definitions, type definitions, etc.). Validation: value is an object. Internal structure is free-form.
+
+### Schema Independence
+
+Each Schema is fully independent. There is no inheritance or extension mechanism. If a domain needs a different structure, create a separate Schema.
 
 ## Document Model
 
@@ -128,7 +141,6 @@ A feature-level technical document derived from Contract. Each file represents e
 **Fixed fields** (always present, not defined by schema):
 
 - `schema` (string, required): Schema ID
-- `schemaVersion` (number, required): Schema version
 - `summary` (string, required): One-line feature summary
 - `description` (string[], required): Detailed feature description
 - `acceptanceCriteria` (string[], required): Completion criteria (verifiable conditions)
@@ -145,7 +157,6 @@ Example (with `default-spec` schema):
 ```json
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
   "summary": "Login processing and session issuance",
   "description": [
     "Validates user credentials and issues JWT-based sessions.",
@@ -385,8 +396,10 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - `summary` must state the feature in one line. `description` provides detailed explanation.
 - `summary`/`description` must make it clear which Contract feature this Spec implements.
 - Custom fields must follow the schema's type definitions:
-  - `Record<string, string>`: key-value pairs (e.g. modules, interfaces, errorHandling)
+  - `string`: prose text (e.g. summary)
   - `string[]`: ordered items (e.g. dataFlow, constraints)
+  - `Record<string, string>`: key-value pairs (e.g. modules, interfaces, errorHandling)
+  - `Record<string, object>`: dictionary with complex object values (e.g. API definitions, type definitions)
 - `acceptanceCriteria` must contain verifiable, specific conditions.
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
@@ -401,6 +414,29 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 ### `lastModified` update rule
 
 - Whenever any field changes, update `lastModified` to today's date.
+
+---
+
+## Validation System
+
+- `cdd validate`: Schema/path/reference integrity + Schema conformance
+- `cdd check`: Code <-> Spec <-> Contract consistency + `acceptanceCriteria` fulfillment
+
+### `cdd validate` checks
+
+- Contract/Spec `schema` field points to a valid Schema ID
+- Fields marked `required: true` in Schema exist in the document
+- Field value structure matches the type defined in Schema (minimal type-level validation only)
+- Contract `features` keys match `*.spec.json` filenames in the same folder
+
+### `cdd check` flow
+
+1. Extract list of changed source files
+2. Scan all Spec `sources` -> identify related Specs
+3. Collect `contracts` from those Specs
+4. Determine whether code follows Spec
+5. Determine whether Spec follows Contract
+6. Verify all `acceptanceCriteria` are fulfilled
 
 ---
 

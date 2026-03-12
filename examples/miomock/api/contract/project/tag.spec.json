@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "태그 CRUD, 다국어 이름 관리, 태그 캐시, 워크플로우 실행 구현",
   "description": [

@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "프로젝트 직원/태그 다대다 배정 동기화",
   "description": [

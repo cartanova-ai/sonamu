@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "관리자 권한 기반 계정 삭제(soft delete)",
   "description": [

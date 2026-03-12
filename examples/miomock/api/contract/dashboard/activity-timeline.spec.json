@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "감사 로그 기반 날짜별 그룹핑 활동 타임라인",
   "description": [

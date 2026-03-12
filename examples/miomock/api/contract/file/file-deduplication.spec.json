@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "MD5 해시 기반 파일 중복 감지 및 재사용",
   "description": [

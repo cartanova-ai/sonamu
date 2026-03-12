@@ -1,0 +1,11 @@
+{
+  "id": "default-contract",
+  "type": "contract",
+  "fields": [
+    { "name": "overview", "type": "string[]", "required": true },
+    { "name": "domainGlossary", "type": "string[]", "required": true },
+    { "name": "userRoles", "type": "string[]", "required": true },
+    { "name": "businessRules", "type": "string[]", "required": true },
+    { "name": "edgeCases", "type": "string[]", "required": true }
+  ]
+}

@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "멀티파트 파일 업로드 (버퍼/스트림 모드)",
   "description": [

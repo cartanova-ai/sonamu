@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "이메일 검증 토큰 생성 및 확인",
   "description": [

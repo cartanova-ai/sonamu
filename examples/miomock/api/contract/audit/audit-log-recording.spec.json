@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "대상 Model의 save/del 후 감사 로그 자동 기록",
   "description": [

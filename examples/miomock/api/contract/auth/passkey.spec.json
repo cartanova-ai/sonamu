@@ -1,4 +1,5 @@
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "WebAuthn/FIDO2 패스키 등록 및 인증",
   "description": [

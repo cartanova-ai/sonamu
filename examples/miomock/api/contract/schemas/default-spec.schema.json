@@ -1,0 +1,11 @@
+{
+  "id": "default-spec",
+  "type": "spec",
+  "fields": [
+    { "name": "modules", "type": "Record<string, string>", "required": true },
+    { "name": "interfaces", "type": "Record<string, string>", "required": true },
+    { "name": "dataFlow", "type": "string[]", "required": true },
+    { "name": "errorHandling", "type": "Record<string, string>", "required": true },
+    { "name": "constraints", "type": "string[]", "required": true }
+  ]
+}
