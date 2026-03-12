@@ -344,10 +344,16 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 - Use language that non-developers can understand.
 - Do not include code, technical jargon, or implementation details.
-- Define project-specific terms in `Domain Glossary`.
-- Each item in `Features/Capabilities` must include clear business rules.
-- `Business Rules/Constraints` should contain only global rules that cross individual features.
-- `Edge Cases` should define business-level boundary conditions and decisions.
+- Organize Contract files by domain or business capability, not by UI flow or implementation sequence.
+- Domain names should be short, clear, and reusable. Prefer names that express responsibility directly rather than screen names, temporary workflows, or technical layers.
+- The root Contract should describe the top-level domain map of the scope, and each domain Contract should describe the features owned by that domain.
+- `Overview`: summarize the business scope of the Contract, what part of the product or domain it governs, and what is explicitly in or out of scope.
+- `Domain Glossary`: define project-specific terms, domain nouns, and recurring business concepts that readers need in order to interpret the rest of the Contract consistently.
+- `Features/Capabilities`: describe each feature in business terms, including what the feature provides, what outcome the user receives, and what important boundaries or decisions apply. This section may use subheadings per feature when needed, but it must remain business-facing and implementation-agnostic.
+- `User Roles/Actors`: list the human roles and system actors that participate in the Contract scope, and describe each actor in terms of responsibility or interaction, not implementation.
+- `Business Rules/Constraints`: record the stable rules, policies, scope limits, and cross-feature constraints that govern the Contract scope. Put rules here when they affect multiple features or define non-optional product behavior.
+- `Edge Cases`: describe business-level boundary conditions, failure expectations, ambiguous inputs, and fallback decisions that the product must handle consistently.
+- Do not put code structure, API fields, database design, algorithms, file paths, class names, prompt wiring, or other implementation-specific details into Contract sections.
 
 ### Spec authoring principles
 
