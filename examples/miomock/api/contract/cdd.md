@@ -102,6 +102,21 @@ A feature-level technical document derived from Contract. Each file represents e
   "sources": ["src/auth/login.ts", "src/auth/login.test.ts"],
   "contracts": ["./auth.contract.json"],
   "dependsOnSpecs": ["./session.spec.json"],
+  "types": {
+    "LoginRequest": "{ email: string; password: string }",
+    "LoginResponse": "{ accessToken: string; refreshToken: string }"
+  },
+  "api": {
+    "POST /auth/login": {
+      "description": "Authenticate user and issue tokens",
+      "request": "LoginRequest",
+      "response": "LoginResponse",
+      "errors": [
+        "401 InvalidCredentialsError: Wrong email or password",
+        "423 AccountLockedError: Account locked due to retry limit"
+      ]
+    }
+  },
   "modules": {
     "LoginService": "Handles login processing",
     "SessionManager": "Manages sessions"
@@ -137,13 +152,15 @@ A feature-level technical document derived from Contract. Each file represents e
 | `sources` | `string[]` | Y | Implementation/test files (relative to project root) |
 | `contracts` | `string[]` | Y | Referenced Contract files (relative to Spec file) |
 | `dependsOnSpecs` | `string[]` | N | Dependent Spec files (relative to Spec file) |
+| `types` | `Record<string, string>` | N | Type definitions (key: type name, value: type expression) |
+| `api` | `Record<string, object>` | N | API endpoints (key: `METHOD /path`, value: `{ description, request, response, errors }`) |
 | `modules` | `Record<string, string>` | Y | Module structure (key: module name, value: role) |
 | `interfaces` | `Record<string, string>` | Y | Functions/APIs (key: function name, value: description) |
 | `dataFlow` | `string[]` | Y | Inter-module data flow |
 | `errorHandling` | `Record<string, string>` | Y | Error handling (key: error name, value: trigger condition) |
 | `constraints` | `string[]` | Y | Technical constraints |
 
-**Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`
+**Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`, `Record<string, object>` -> `{}`
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
 
@@ -338,6 +355,8 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - `summary`/`description` must make it clear which Contract feature this Spec implements.
 - `modules` and `interfaces` use `Record<string, string>` format (key: name, value: description).
 - In `interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
+- `types` uses `Record<string, string>` format (key: type name, value: type expression). Define domain-specific types used in `api`, `interfaces`, etc.
+- `api` uses `Record<string, object>` format (key: `"METHOD /path"`, value: `{ description, request, response, errors }`). `errors` is `string[]` with format `"HTTP_CODE ErrorName: description"`.
 - `dataFlow` and `constraints` use `string[]` format.
 - `errorHandling` uses `Record<string, string>` format (key: error name, value: trigger condition).
 - `acceptanceCriteria` must contain verifiable, specific conditions.
