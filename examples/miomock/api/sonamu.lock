@@ -57,7 +57,7 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "9b6057b7d3b444928e170312946ebdc90d343fd1"
+    "checksum": "ab037a35e1ec4d69b4158d2b4ded09c640095290"
   },
   {
     "path": "src/application/document/document.types.ts",

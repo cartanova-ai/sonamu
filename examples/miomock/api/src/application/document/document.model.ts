@@ -228,7 +228,7 @@ class DocumentModelClass extends BaseModelClass<
       ),
     );
 
-    return ids.length;
+    return oldRows.length;
   }
 }
 

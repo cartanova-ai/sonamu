@@ -58,6 +58,12 @@ describe("DocumentModel", () => {
 
       await expect(DocumentModel.findById("A", docId)).rejects.toThrow();
     });
+
+    // BUG 재현: del()이 실제 삭제 수가 아닌 ids.length를 반환하는 버그
+    test("존재하지 않는 문서 삭제 시 반환값은 0이어야 한다", async () => {
+      const count = await DocumentModel.del([999999]);
+      expect(count).toBe(0);
+    });
   });
 
   // ============================================================
