@@ -636,7 +636,7 @@ async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
 
   const categoryIdsList: (number[] | undefined)[] = [];
   spa.forEach((sp) => {
-    const { category_ids, ...collectionData } = sp as any;
+    const { category_ids, ...collectionData } = sp as QuestionCollectionSaveParams;
     categoryIdsList.push(category_ids);
     wdb.ubRegister("question_collections", collectionData);
   });

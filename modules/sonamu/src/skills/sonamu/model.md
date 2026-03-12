@@ -684,3 +684,31 @@ if (params.search === "id") {
 - [ ] dry-run으로 변경 내용 검증
 - [ ] pnpm typecheck로 타입 오류 확인
 - [ ] pnpm test로 동작 검증
+- [ ] `any` 타입 사용 여부 (사용 금지)
+
+### any 타입 금지
+
+`any` 타입은 TypeScript의 타입 안전성을 무력화하므로 **절대 사용하지 않는다.**
+
+**BAD: any 사용**
+```typescript
+const { category_ids, ...data } = sp as any;
+function process(input: any) { ... }
+```
+
+**GOOD: 정확한 타입 또는 unknown 사용**
+```typescript
+// 정확한 타입으로 구조 분해
+const { category_ids, ...data } = sp as QuestionCollectionSaveParams;
+
+// 타입을 알 수 없을 때는 unknown (any 대신)
+function process(input: unknown) {
+  if (typeof input === "string") { ... }
+}
+```
+
+**규칙:**
+- `any`는 사용 금지
+- 타입을 모를 때는 `unknown` 사용 후 타입 가드로 좁힌다
+- 구조 분해 시 타입 단언이 필요하면 정확한 타입명을 명시한다 (`as ConcreteType`)
+- `eslint-disable @typescript-eslint/no-explicit-any` 같은 억제 주석도 사용 금지
