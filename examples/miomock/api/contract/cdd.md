@@ -9,7 +9,7 @@ This project follows Contract-Driven Development (CDD). All development work mus
 - Authority flows in this order: **Contract -> Spec -> Code**.
   - Code must always follow Spec.
   - Spec must always follow Contract.
-- **1 Contract Feature = 1 Spec File**. Each feature in Contract's `Features/Capabilities` maps to exactly one Spec file. Shared infrastructure across features may be separated into `shared/*.spec.json`.
+- **1 Contract Feature = 1 Spec File**. Contract's `features` field key maps to Spec filename 1:1. Shared infrastructure across features may be separated into `shared/*.spec.json`.
 - Even if a better structure appears during implementation, do not change code first. Update Spec first, then update code.
 - Contract is human-managed. AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
 - Code-document consistency is verified by AI automated validation (1st pass) and review checklist (2nd pass for feature mapping/coverage).
@@ -19,47 +19,58 @@ This project follows Contract-Driven Development (CDD). All development work mus
 ```text
 project/
 |- contract/
-|  |- main.contract.json          # project root contract
+|  |- schemas/
+|  |  |- default-contract.schema.json  # Contract field schema
+|  |  \- default-spec.schema.json      # Spec field schema
+|  |- main.contract.json                # project root contract
 |  |- {domain}/
-|  |  |- main.contract.json       # domain representative contract
+|  |  |- main.contract.json            # domain representative contract
 |  |  |- {sub-contract}.contract.json
-|  |  |- {feature-key}.spec.json  # 1 feature = 1 spec file
-|  |- shared/
-|  |  |- {shared-infra}.spec.json # cross-feature shared infrastructure
-|  \- ...
-|- src/
-|  \- ...
-\- ...
-```
-
-Example:
-
-```text
-project/
-|- contract/
-|  |- main.contract.json
-|  |- auth/
-|  |  |- main.contract.json
-|  |  |- login.contract.json
-|  |  |- login.spec.json           # login feature spec (1:1)
-|  |  |- session.spec.json         # session feature spec (1:1)
-|  |  \- password-reset.spec.json  # password-reset feature spec (1:1)
-|  |- payment/
-|  |  |- main.contract.json
-|  |  |- checkout.contract.json
-|  |  |- checkout.spec.json        # checkout feature spec (1:1)
-|  |  \- refund.spec.json          # refund feature spec (1:1)
+|  |  \- {feature-key}.spec.json       # 1 feature = 1 spec file
 |  \- shared/
-|     \- auth-session.spec.json    # shared session infrastructure
+|     \- {shared-infra}.spec.json      # cross-feature shared infrastructure
 |- src/
-|  |- auth/login.ts
-|  |- auth/login.test.ts
-|  \- payment/checkout.ts
+|  \- ...
 \- ...
 ```
 
-- Contract: `*.contract.json` - folder-based tree structure, with `main.contract.json` as the folder representative.
-- Spec: `*.spec.json` - one file per feature, placed in the same folder as related Contract files. The filename is the feature key (`login.spec.json` -> feature key `login`).
+- Format: `contract/schemas/*.schema.json` — defines custom field schemas for Contract and Spec.
+- Contract: `*.contract.json` — folder-based tree structure, with `main.contract.json` as the folder representative.
+- Spec: `*.spec.json` — one file per feature, placed in the same folder as related Contract files.
+
+## Schema System
+
+Schema documents define the custom field structure for Contract and Spec files. Each Contract/Spec references a schema by ID.
+
+### Schema document (`.schema.json`)
+
+Location: `contract/schemas/`
+
+```json
+{
+  "id": "default-spec",
+  "type": "spec",
+  "fields": [
+    { "name": "modules", "type": "Record<string, string>", "required": true },
+    { "name": "interfaces", "type": "Record<string, string>", "required": true },
+    { "name": "dataFlow", "type": "string[]", "required": true },
+    { "name": "errorHandling", "type": "Record<string, string>", "required": true },
+    { "name": "constraints", "type": "string[]", "required": true }
+  ]
+}
+```
+
+- `id` (string, required): Format identifier, referenced by Contract/Spec `schema` field
+- `type` (`"contract"` | `"spec"`, required): Target document type
+- `fields` (array, required): Custom field definitions
+
+Each field item:
+
+- `name` (string): Field name
+- `type` (string): `"string[]"` | `"Record<string, string>"` | `"Record<string, object>"`
+- `required` (boolean): Whether the field is required
+
+Schema fields define only the **custom** portion of the document. Fixed fields are always present regardless of format.
 
 ## Document Model
 
@@ -67,25 +78,73 @@ project/
 
 A business-logic document that non-developers can read. AI must treat this file as **read-only**. If an update is needed, AI should only propose the change to the user.
 
+**Fixed fields** (always present, not defined by schema):
+
+- `schema` (string, required): Schema ID
+- `lastModified` (string YYYY-MM-DD, required): Last modified date
+- `features` (Record<string, string>, required): Feature list (key: feature key matching Spec filename, value: feature description)
+
+**Custom fields**: defined by the Schema document referenced in `schema`.
+
+Example (with `default-contract` schema):
+
 ```json
 {
-  "lastModified": "YYYY-MM-DD",
-  "content": ["## Overview", "", "Markdown lines as string array", ...]
+  "schema": "default-contract",
+  "lastModified": "2026-03-09",
+  "features": {
+    "login": "Email/password-based user authentication",
+    "session": "Session issuance and renewal",
+    "password-reset": "Password reset via email verification"
+  },
+  "overview": [
+    "Authentication domain: user login and session management.",
+    "Includes email/password auth, session token management, and password reset."
+  ],
+  "domainGlossary": [
+    "Session: a token-based mechanism that maintains user auth state",
+    "Access Token: short-lived auth token (JWT)",
+    "Refresh Token: long-lived token for Access Token reissuance"
+  ],
+  "userRoles": [
+    "End user: uses the service",
+    "Admin: manages system settings and users"
+  ],
+  "businessRules": [
+    "Password: minimum 8 chars, requires alphanumeric + special char",
+    "Login failure 5 times -> account locked for 30 minutes"
+  ],
+  "edgeCases": [
+    "Under-14 signup attempt -> redirect to legal guardian consent flow",
+    "Login attempt on locked account -> show unlock time"
+  ]
 }
 ```
 
-`content` is a `string[]` where each element is one line of Markdown.
-
-`content` fixed sections (compliance verified via review checklist):
-
-`Overview -> Domain Glossary -> Features/Capabilities -> User Roles/Actors -> Business Rules/Constraints -> Edge Cases`
-
 ### Spec (`.spec.json`)
 
-A feature-level technical document derived from Contract. Each file represents exactly one feature. AI can create and update Spec files. Deletion requires user approval.
+A feature-level technical document derived from Contract. Each file represents exactly one feature. The filename is the feature key (`login.spec.json` -> feature key `login`). AI can create and update Spec files. Deletion requires user approval.
+
+**Fixed fields** (always present, not defined by schema):
+
+- `schema` (string, required): Schema ID
+- `schemaVersion` (number, required): Schema version
+- `summary` (string, required): One-line feature summary
+- `description` (string[], required): Detailed feature description
+- `acceptanceCriteria` (string[], required): Completion criteria (verifiable conditions)
+- `lastModified` (string YYYY-MM-DD, required): Last modified date
+- `status` (string, required): `"draft"` / `"in-progress"` / `"done"`
+- `sources` (string[], required): Implementation/test files (relative to project root)
+- `contracts` (string[], required): Referenced Contract files (relative to Spec file)
+- `dependsOnSpecs` (string[], optional): Dependent Spec files (relative to Spec file)
+
+**Custom fields**: defined by the Schema document referenced in `schema`.
+
+Example (with `default-spec` schema):
 
 ```json
 {
+  "schema": "default-spec",
   "schemaVersion": 1,
   "summary": "Login processing and session issuance",
   "description": [
@@ -97,33 +156,20 @@ A feature-level technical document derived from Contract. Each file represents e
     "5 wrong password attempts locks account for 30 minutes",
     "Expired session request returns 401 response"
   ],
-  "lastModified": "YYYY-MM-DD",
-  "status": "draft | in-progress | done",
+  "lastModified": "2026-03-09",
+  "status": "in-progress",
   "sources": ["src/auth/login.ts", "src/auth/login.test.ts"],
-  "contracts": ["./auth.contract.json"],
+  "contracts": ["./main.contract.json"],
   "dependsOnSpecs": ["./session.spec.json"],
-  "types": {
-    "LoginRequest": "{ email: string; password: string }",
-    "LoginResponse": "{ accessToken: string; refreshToken: string }"
-  },
-  "api": {
-    "POST /auth/login": {
-      "description": "Authenticate user and issue tokens",
-      "request": "LoginRequest",
-      "response": "LoginResponse",
-      "errors": [
-        "401 InvalidCredentialsError: Wrong email or password",
-        "423 AccountLockedError: Account locked due to retry limit"
-      ]
-    }
-  },
   "modules": {
     "LoginService": "Handles login processing",
-    "SessionManager": "Manages sessions"
+    "SessionManager": "Manages sessions",
+    "RateLimiter": "Login retry limiting"
   },
   "interfaces": {
     "LoginService.authenticate()": "Performs authentication",
-    "LoginService.validate()": "Validates input"
+    "LoginService.validate()": "Validates input",
+    "POST /auth/login": "Login API endpoint"
   },
   "dataFlow": [
     "1. Client -> LoginService.validate(): validate email/password input",
@@ -135,52 +181,37 @@ A feature-level technical document derived from Contract. Each file represents e
   ],
   "errorHandling": {
     "InvalidCredentialsError": "Wrong password",
-    "AccountLockedError": "Account locked"
+    "AccountLockedError": "Account locked due to retry limit"
   },
-  "constraints": ["Session timeout: 30 min", "Login retry limit: 5 attempts"]
+  "constraints": [
+    "Session timeout: 30 min",
+    "Login retry limit: 5 attempts / 30 min",
+    "Password comparison: bcrypt"
+  ]
 }
 ```
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `schemaVersion` | `number` | Y | Schema version |
-| `summary` | `string` | Y | One-line feature summary |
-| `description` | `string[]` | Y | Detailed feature description |
-| `acceptanceCriteria` | `string[]` | Y | Completion criteria (verifiable conditions) |
-| `lastModified` | `string` | Y | Last modified date (YYYY-MM-DD) |
-| `status` | `string` | Y | `"draft"` / `"in-progress"` / `"done"` |
-| `sources` | `string[]` | Y | Implementation/test files (relative to project root) |
-| `contracts` | `string[]` | Y | Referenced Contract files (relative to Spec file) |
-| `dependsOnSpecs` | `string[]` | N | Dependent Spec files (relative to Spec file) |
-| `types` | `Record<string, string>` | N | Type definitions (key: type name, value: type expression) |
-| `api` | `Record<string, object>` | N | API endpoints (key: `METHOD /path`, value: `{ description, request, response, errors }`) |
-| `modules` | `Record<string, string>` | Y | Module structure (key: module name, value: role) |
-| `interfaces` | `Record<string, string>` | Y | Functions/APIs (key: function name, value: description) |
-| `dataFlow` | `string[]` | Y | Inter-module data flow |
-| `errorHandling` | `Record<string, string>` | Y | Error handling (key: error name, value: trigger condition) |
-| `constraints` | `string[]` | Y | Technical constraints |
-
-**Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`, `Record<string, object>` -> `{}`
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
 
 ### Contract-Spec linking
 
-Contract is not extended as a structural source of feature keys. **Spec references Contract unidirectionally.**
+Contract's `features` field (fixed, `Record<string, string>`) is the structural link to Spec files.
 
-1. **Spec filename = feature key**: `login.spec.json` -> `login`
-2. **`contracts` field** points to referenced Contract files
-3. **`summary`/`description`** describes which Contract feature this Spec implements (human-readable)
+- Contract `features` key `"login"` -> Spec filename `login.spec.json` (1:1)
+- Contract `features` key `"session"` -> Spec filename `session.spec.json` (1:1)
+
+Rules:
+1. Contract `features` key = Spec filename (part before `.spec.json`)
+2. Spec `contracts` field points to referenced Contract files
+3. Spec `summary`/`description` describes which Contract feature this Spec implements (human-readable)
 4. Duplicate feature keys within the same Contract boundary are not allowed
-5. Renaming a Spec file = changing the feature key
+5. Renaming a Spec file = changing the feature key (Contract `features` must be synchronized)
 
 ### `status` field
 
-| Value | Meaning | Transition condition |
-|---|---|---|
-| `draft` | Spec is being written, not confirmed yet | Initial state |
-| `in-progress` | Spec confirmed, implementation in progress | After all Spec sections are confirmed |
-| `done` | Implementation complete, consistency validation passed, all `acceptanceCriteria` met | After code passes consistency check against Spec |
+- `draft`: Spec is being written, not confirmed yet. Initial state.
+- `in-progress`: Spec confirmed, implementation in progress. Transition after all Spec sections are confirmed.
+- `done`: Implementation complete, consistency validation passed, all `acceptanceCriteria` met. Transition after code passes consistency check against Spec.
 
 **Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `in-progress`.
 
@@ -230,15 +261,16 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 
 **Step 1: Contract review**
 - Read related `.contract.json` files and identify business requirements for the target feature.
-- Confirm the feature is defined under Contract `Features/Capabilities`.
+- Confirm the feature key exists in Contract's `features` field.
 - If not defined, propose a Contract update to the user. Continue only after Contract is updated.
 
 **Step 2: Spec authoring/fix**
 - Create `{feature-key}.spec.json` in the same folder as related Contract files.
+- Set `schema` to the appropriate Spec schema ID.
 - Set `status` to `"draft"`.
 - Fill `contracts` with relative paths to base Contract files.
 - Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
-- Fill all structured fields (`modules`, `interfaces`, `dataFlow`, `errorHandling`, `constraints`).
+- Fill all custom fields defined by the schema (`modules`, `interfaces`, `dataFlow`, etc.).
 - Define `acceptanceCriteria` with verifiable completion conditions.
 - Add planned implementation file paths to `sources`.
 - **All fields must be confirmed in this step.** After confirmation, set `status` to `"in-progress"` and continue.
@@ -312,12 +344,12 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - Find Spec files whose `sources` include affected files.
 - Classify root cause:
   - Business rule violation -> verify Spec and code against Contract.
-  - Implementation bug -> check Spec `errorHandling` and Contract `Edge Cases`.
+  - Implementation bug -> check Spec `errorHandling` and Contract `edgeCases`.
   - Spec defect -> Spec failed to represent Contract correctly.
 
 **Step 3: Spec update/fix (if needed)**
 - If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
-- If the bug is a missing business case in Contract `Edge Cases`, propose Contract update to user. After Contract update, update Spec.
+- If the bug is a missing business case in Contract `edgeCases`, propose Contract update to user. After Contract update, update Spec.
 - Add missing conditions to `acceptanceCriteria` if applicable.
 - Set `status` to `"in-progress"`.
 - **Continue only after Spec is confirmed.**
@@ -344,195 +376,41 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 - Use language that non-developers can understand.
 - Do not include code, technical jargon, or implementation details.
-- Organize Contract files by domain or business capability, not by UI flow or implementation sequence.
-- Domain names should be short, clear, and reusable. Prefer names that express responsibility directly rather than screen names, temporary workflows, or technical layers.
-- The root Contract should describe the top-level domain map of the scope, and each domain Contract should describe the features owned by that domain.
-- `Overview`: summarize the business scope of the Contract, what part of the product or domain it governs, and what is explicitly in or out of scope.
-- `Domain Glossary`: define project-specific terms, domain nouns, and recurring business concepts that readers need in order to interpret the rest of the Contract consistently.
-- `Features/Capabilities`: describe each feature in business terms, including what the feature provides, what outcome the user receives, and what important boundaries or decisions apply. This section may use subheadings per feature when needed, but it must remain business-facing and implementation-agnostic.
-- `User Roles/Actors`: list the human roles and system actors that participate in the Contract scope, and describe each actor in terms of responsibility or interaction, not implementation.
-- `Business Rules/Constraints`: record the stable rules, policies, scope limits, and cross-feature constraints that govern the Contract scope. Put rules here when they affect multiple features or define non-optional product behavior.
-- `Edge Cases`: describe business-level boundary conditions, failure expectations, ambiguous inputs, and fallback decisions that the product must handle consistently.
-- Do not put code structure, API fields, database design, algorithms, file paths, class names, prompt wiring, or other implementation-specific details into Contract sections.
+- `features` keys must match Spec filenames exactly.
+- Custom field content (overview, domainGlossary, etc.) should follow the schema's field types.
+- All `string[]` fields: each element is one self-contained line of content.
 
 ### Spec authoring principles
 
 - `summary` must state the feature in one line. `description` provides detailed explanation.
 - `summary`/`description` must make it clear which Contract feature this Spec implements.
-- `modules` and `interfaces` use `Record<string, string>` format (key: name, value: description).
-- In `interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
-- `types` uses `Record<string, string>` format (key: type name, value: type expression). Define domain-specific types used in `api`, `interfaces`, etc.
-- `api` uses `Record<string, object>` format (key: `"METHOD /path"`, value: `{ description, request, response, errors }`). `errors` is `string[]` with format `"HTTP_CODE ErrorName: description"`.
-- `dataFlow` and `constraints` use `string[]` format.
-- `errorHandling` uses `Record<string, string>` format (key: error name, value: trigger condition).
+- Custom fields must follow the schema's type definitions:
+  - `Record<string, string>`: key-value pairs (e.g. modules, interfaces, errorHandling)
+  - `string[]`: ordered items (e.g. dataFlow, constraints)
 - `acceptanceCriteria` must contain verifiable, specific conditions.
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
-- Empty sections: `[]` for `string[]` fields, `{}` for `Record<string, string>` fields.
+- Empty sections: `[]` for `string[]` fields, `{}` for `Record` fields.
 
 ### Reference path rules
 
-- `contracts` field: relative path from the Spec file (e.g. `"./payment.contract.json"`).
-- `sources` field: relative path from project root (e.g. `"src/auth/login.ts"`).
-- `dependsOnSpecs` field: relative path from the Spec file (e.g. `"../shared/auth-session.spec.json"`).
+- `contracts` field: relative path from the Spec file.
+- `sources` field: relative path from the project root.
+- `dependsOnSpecs` field: relative path from the Spec file.
 
 ### `lastModified` update rule
 
-- Whenever any Spec field changes, update `lastModified` to today's date.
-
----
-
-## CDD CLI (`@sonamu-kit/cdd`)
-
-The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
-
-### Commands
-
-| Command | Description |
-|---|---|
-| `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
-| `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
-| `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown) |
-| `cdd status <file>` | Spec/Contract status with relationship info (contracts, deps, dependents) |
-| `cdd validate` | Verify schema/path/reference integrity (file existence, path resolution, required fields) |
-| `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
-| `cdd check` | Verify Code-Spec-Contract consistency + `acceptanceCriteria` fulfillment |
-| `cdd spec create <name>` | Create a Spec template. Requires `--domain <name>` or `--contract <path>` |
-| `cdd spec set-status <spec> <status>` | Change Spec status |
-| `cdd spec list` | List Specs. Filters: `--status`, `--domain`, `--contract` |
-| `cdd spec get <spec>` | Show full Spec or a specific field (`--field`) |
-| `cdd spec set <spec>` | Update a Spec field (`--field`, `--value`, `--json`) |
-| `cdd spec add <spec>` | Add an item to an array/map field (`--field`, `--value`, `--key`) |
-| `cdd spec remove <spec>` | Remove an item from an array/map field (`--field`, `--index`/`--value`/`--key`) |
-| `cdd spec blame <feature>` | Contributor analysis per Spec (ownership, score, AI role summary) |
-| `cdd spec log <feature>` | Change timeline grouped by time period and author |
-| `cdd spec explain <feature>` | AI-powered diff analysis: what changed, why, and impact level |
-| `cdd source blame <file>` | Contributor analysis per source file (ownership, score, AI role summary) |
-| `cdd source log <file>` | Source file change timeline grouped by time period and author |
-| `cdd source explain <file>` | AI-powered source file diff analysis: what changed, why, and impact level |
-
-### Common Options
-
-- `--cwd <dir>` : Set working directory (default: current directory)
-- `--raw` / `--json` : Force raw JSON output (auto-enabled in pipe/CI environments)
-- `-h, --help` : Show help
-
-### Git + AI Options (blame, log, explain)
-
-- `--since=<date>` : Start date filter (ISO 8601, e.g. `2025-01-01`)
-- `--until=<date>` : End date filter (ISO 8601, default: HEAD)
-- `--group-by=day|week|month` : Grouping interval for `spec log` / `source log` (default: `day`)
-- `--commit=<hash>` : Analyze a single commit for `spec explain` / `source explain`
-
-AI uses `claude --model haiku` via local CLI. If AI is unavailable, AI-generated fields are returned as empty strings.
-
-### Usage Examples
-
-#### Spec CRUD
-
-```bash
-# List in-progress specs
-pnpm cdd spec list --status in-progress
-
-# Show full spec
-pnpm cdd spec get signin
-
-# Show a specific field
-pnpm cdd spec get signin --field modules
-
-# Update a field
-pnpm cdd spec set signin --field summary --value "Updated summary"
-
-# Add a constraint
-pnpm cdd spec add signin --field constraints --value "New constraint"
-
-# Remove a module
-pnpm cdd spec remove signin --field modules --key "OldModule"
-```
-
-#### Git + AI: "Who should I ask about this feature?"
-
-```bash
-# Contributor analysis for a spec
-pnpm cdd spec blame signin
-# Output: primary owner, each contributor's ownership %, score, and AI-inferred role
-
-# Scoped to a date range
-pnpm cdd spec blame signin --since=2025-01-01 --until=2025-06-01
-```
-
-#### Git + AI: "What happened to this feature recently?"
-
-```bash
-# Weekly changelog for a spec
-pnpm cdd spec log signin --group-by=week
-
-# Monthly changelog for a specific period
-pnpm cdd spec log signin --group-by=month --since=2025-01-01
-# Output: timeline grouped by period -> author, with AI summary and phase label
-```
-
-#### Git + AI: "Why did this change?"
-
-```bash
-# Explain all changes in a date range
-pnpm cdd spec explain signin --since=2025-03-01
-
-# Explain a single commit
-pnpm cdd spec explain signin --commit=a1b2c3d
-# Output: per-section what/why/impact analysis, overall summary, breaking changes
-```
-
-#### Git + AI for source files
-
-```bash
-# Contributor analysis for a source file
-pnpm cdd source blame src/application/session/session.types.ts
-
-# Source file can also be referenced by filename
-pnpm cdd source blame session.types.ts
-
-# Weekly changelog for a source file
-pnpm cdd source log session.types.ts --group-by=week
-
-# Explain changes in a source file
-pnpm cdd source explain session.types.ts --since=2025-03-01
-
-# Explain a single commit for a source file
-pnpm cdd source explain session.types.ts --commit=a1b2c3d
-```
-
-#### Pipe-friendly output
-
-```bash
-# JSON output for scripting
-pnpm cdd spec list --raw | jq '.[].status'
-pnpm cdd spec get signin --raw | jq '.modules'
-pnpm cdd spec blame signin --raw | jq '.contributors[0]'
-```
-
-### Programmatic API
-
-The package also exports a library API for use in scripts:
-
-```ts
-import { loadProject, validateProject, findContractDir } from "@sonamu-kit/cdd";
-
-const contractDir = findContractDir(process.cwd());
-const project = await loadProject(contractDir);
-const issues = validateProject(project);
-```
+- Whenever any field changes, update `lastModified` to today's date.
 
 ---
 
 ## Edge Cases
 
-| Situation | Handling |
-|---|---|
-| Feature rename | `git mv` to rename Spec file |
-| Feature split | Keep/delete existing file + create new files, in the same commit |
-| Feature merge | Consolidate into one file, delete the rest, in the same commit |
-| Feature removal | Confirm removal from Contract, delete Spec file with user approval |
+- Feature rename: `git mv` Spec file + synchronize Contract `features` key
+- Feature split: Existing + new files in same commit + synchronize Contract `features`
+- Feature merge: Consolidate into one file, delete rest, same commit + synchronize Contract `features`
+- Feature removal: Confirm removal from Contract `features`, delete Spec file with user approval
+- Format change: Create new Schema, update `schema` field in documents, migrate fields as needed
 
 ---
 
