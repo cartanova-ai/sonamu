@@ -9,11 +9,13 @@ import CheckCircle2Icon from "~icons/lucide/check-circle-2";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import ClockIcon from "~icons/lucide/clock";
+import Code2Icon from "~icons/lucide/code-2";
 import FileCodeIcon from "~icons/lucide/file-code";
 import FileTextIcon from "~icons/lucide/file-text";
 import FolderIcon from "~icons/lucide/folder";
 import FolderOpenIcon from "~icons/lucide/folder-open";
 import GitBranchIcon from "~icons/lucide/git-branch";
+import GlobeIcon from "~icons/lucide/globe";
 import HashIcon from "~icons/lucide/hash";
 import Link2Icon from "~icons/lucide/link-2";
 import PencilIcon from "~icons/lucide/pencil";
@@ -35,6 +37,11 @@ type SpecData = {
   sources?: string[];
   contracts?: string[];
   dependsOnSpecs?: string[];
+  types?: Record<string, string>;
+  api?: Record<
+    string,
+    { description?: string; request?: string; response?: string; errors?: string[] }
+  >;
   modules?: Record<string, string>;
   interfaces?: Record<string, string>;
   dataFlow?: string[];
@@ -392,6 +399,8 @@ function ContractNodeDetail({ node, onRefetch }: { node: CddTreeNode; onRefetch:
 const SPEC_SECTIONS = [
   { id: "summary", title: "설계 개요", Icon: FileTextIcon },
   { id: "criteria", title: "판정 기준", Icon: CheckCircle2Icon },
+  { id: "api", title: "API 엔드포인트", Icon: GlobeIcon },
+  { id: "types", title: "타입 정의", Icon: Code2Icon },
   { id: "architecture", title: "구조 설계", Icon: BoxIcon },
   { id: "dataflow", title: "데이터 흐름", Icon: GitBranchIcon },
   { id: "errors", title: "에러 처리", Icon: AlertTriangleIcon },
@@ -430,6 +439,8 @@ function SpecNodeDetail({
 
   const hasDescription = spec.description && spec.description.length > 0;
   const hasAcceptanceCriteria = spec.acceptanceCriteria && spec.acceptanceCriteria.length > 0;
+  const hasApi = spec.api && Object.keys(spec.api).length > 0;
+  const hasTypes = spec.types && Object.keys(spec.types).length > 0;
   const hasModules = spec.modules && Object.keys(spec.modules).length > 0;
   const hasInterfaces = spec.interfaces && Object.keys(spec.interfaces).length > 0;
   const hasDataFlow = spec.dataFlow && spec.dataFlow.length > 0;
@@ -447,6 +458,10 @@ function SpecNodeDetail({
           return hasDescription;
         case "criteria":
           return hasAcceptanceCriteria;
+        case "api":
+          return hasApi;
+        case "types":
+          return hasTypes;
         case "architecture":
           return hasModules || hasInterfaces;
         case "dataflow":
@@ -462,6 +477,8 @@ function SpecNodeDetail({
   }, [
     hasDescription,
     hasAcceptanceCriteria,
+    hasApi,
+    hasTypes,
     hasModules,
     hasInterfaces,
     hasDataFlow,
@@ -569,6 +586,108 @@ function SpecNodeDetail({
               </SpecViewerSection>
             )}
 
+            {/* API 엔드포인트 */}
+            {hasApi && (
+              <SpecViewerSection id="spec-api" title="API 엔드포인트" Icon={GlobeIcon}>
+                <div className="space-y-4">
+                  {Object.entries(spec.api ?? {}).map(([endpoint, detail]) => {
+                    const [method, ...pathParts] = endpoint.split(" ");
+                    const path = pathParts.join(" ");
+                    return (
+                      <div
+                        key={endpoint}
+                        className="rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+                      >
+                        <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">
+                            {method}
+                          </span>
+                          <code className="font-mono text-sm font-semibold text-slate-800">
+                            {path}
+                          </code>
+                        </div>
+                        <div className="px-5 py-4 space-y-3">
+                          {detail.description && (
+                            <p className="text-sm text-slate-600">{detail.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-4 text-sm">
+                            {detail.request && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase">
+                                  Request
+                                </span>
+                                <code className="font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs">
+                                  {detail.request}
+                                </code>
+                              </div>
+                            )}
+                            {detail.response && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase">
+                                  Response
+                                </span>
+                                <code className="font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-xs">
+                                  {detail.response}
+                                </code>
+                              </div>
+                            )}
+                          </div>
+                          {detail.errors && detail.errors.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Errors
+                              </span>
+                              <div className="mt-1.5 space-y-1.5">
+                                {detail.errors.map((err, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-start gap-2 text-xs text-slate-600"
+                                  >
+                                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                                    <span>{err}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SpecViewerSection>
+            )}
+
+            {/* 타입 정의 */}
+            {hasTypes && (
+              <SpecViewerSection id="spec-types" title="타입 정의" Icon={Code2Icon}>
+                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 font-bold text-slate-700">Type</th>
+                        <th className="px-4 py-3 font-bold text-slate-700">Definition</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Object.entries(spec.types ?? {}).map(([name, def]) => (
+                        <tr key={name} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3 font-mono text-indigo-600 font-medium whitespace-nowrap">
+                            {name}
+                          </td>
+                          <td className="px-4 py-3">
+                            <code className="font-mono text-sm text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                              {def}
+                            </code>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SpecViewerSection>
+            )}
+
             {/* 구조 설계 */}
             {(hasModules || hasInterfaces) && (
               <SpecViewerSection id="spec-architecture" title="구조 설계" Icon={BoxIcon}>
@@ -611,7 +730,7 @@ function SpecNodeDetail({
                           <tbody className="divide-y divide-slate-100">
                             {Object.entries(spec.interfaces ?? {}).map(([name, desc]) => (
                               <tr key={name} className="hover:bg-slate-50/50">
-                                <td className="px-4 py-3 font-mono text-indigo-600 font-medium whitespace-nowrap">
+                                <td className="px-4 py-3 font-mono text-indigo-600 font-medium">
                                   {name}
                                 </td>
                                 <td className="px-4 py-3 text-slate-600">{desc}</td>
