@@ -16,10 +16,18 @@ export type CddSchemaFieldType =
   | "Record<string, string>"
   | "Record<string, object>";
 
+export type CddRendererType =
+  | "markdown"
+  | "bullet-list"
+  | "label-grid"
+  | "grouped-record"
+  | "table";
+
 export type CddSchemaField = {
   name: string;
   label?: string;
   type: CddSchemaFieldType;
+  renderer?: CddRendererType;
   required: boolean;
 };
 

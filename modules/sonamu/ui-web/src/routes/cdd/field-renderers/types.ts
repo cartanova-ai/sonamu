@@ -1,4 +1,4 @@
-import type { CddSchemaField } from "../types";
+import type { CddSchemaField, CddSchemaFieldType } from "../types";
 
 export type FieldRendererProps = {
   field: CddSchemaField;
@@ -8,4 +8,5 @@ export type FieldRendererProps = {
 export type FieldRendererDefinition = {
   Component: React.ComponentType<FieldRendererProps>;
   isEmpty: (value: unknown) => boolean;
+  supportedTypes: CddSchemaFieldType[];
 };

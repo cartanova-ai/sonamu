@@ -6,10 +6,18 @@ import { Sonamu } from "../api/sonamu";
 
 export type CddFileType = "contract" | "spec";
 
+export type CddRendererType =
+  | "markdown"
+  | "bullet-list"
+  | "label-grid"
+  | "grouped-record"
+  | "table";
+
 export type CddSchemaField = {
   name: string;
   label?: string;
   type: "string" | "string[]" | "Record<string, string>" | "Record<string, object>";
+  renderer?: CddRendererType;
   required: boolean;
 };
 
