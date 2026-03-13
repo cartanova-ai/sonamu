@@ -76,27 +76,31 @@ export function CddDocumentDetail({
           title: "Features",
           icon: FileCodeIcon,
           render: () => (
-            <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200">
+            <div className="overflow-hidden rounded-md border border-slate-200">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50/50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 font-bold text-slate-700">Feature</th>
-                    <th className="px-4 py-3 font-bold text-slate-700">Description</th>
+                    <th className="px-3 py-2 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">
+                      Feature
+                    </th>
+                    <th className="px-3 py-2 font-semibold text-slate-500 uppercase tracking-wide text-[10px]">
+                      Description
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {Object.entries(features).map(([key, desc]) => (
-                    <tr key={key} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 whitespace-nowrap">
+                    <tr key={key} className="group hover:bg-slate-50 transition-colors">
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <button
                           type="button"
-                          className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                          className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                           onClick={() => onSelect(featureToSpecPath(contractDir, key))}
                         >
                           {key}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{desc}</td>
+                      <td className="px-3 py-2.5 text-slate-600 leading-relaxed">{desc}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -135,16 +139,15 @@ export function CddDocumentDetail({
           title: "Acceptance Criteria",
           icon: CheckCircle2Icon,
           render: () => (
-            <div className="space-y-3">
+            <div className="space-y-1">
               {criteria.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/50"
-                >
-                  <div className="mt-1 text-blue-500 shrink-0">
-                    <CheckCircle2Icon className="w-[18px] h-[18px]" />
+                <div key={i} className="flex gap-3 items-start group">
+                  <div className="mt-1 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0">
+                    <CheckCircle2Icon className="w-4 h-4" />
                   </div>
-                  <p className="text-slate-700 leading-6">{item}</p>
+                  <p className="text-slate-600 text-sm leading-relaxed group-hover:text-slate-900 transition-colors">
+                    {item}
+                  </p>
                 </div>
               ))}
             </div>
@@ -169,49 +172,54 @@ export function CddDocumentDetail({
           title: "References",
           icon: Link2Icon,
           render: () => (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {hasSources && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                     Sources
                   </h4>
                   {sources.map((s) => (
                     <button
                       type="button"
                       key={s}
-                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
+                      className="flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 cursor-pointer transition-colors group text-left"
                       onClick={() => CddService.openCddSource(s).catch(defaultCatch)}
                     >
-                      <Link2Icon className="w-3 h-3 shrink-0" /> {s}
+                      <Link2Icon className="w-3.5 h-3.5 shrink-0 text-slate-300 group-hover:text-blue-400" />
+                      <span className="truncate">{s}</span>
                     </button>
                   ))}
                 </div>
               )}
               {(hasContracts || hasDependsOnSpecs) && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Documents
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Related
                   </h4>
-                  {contracts?.map((c) => (
-                    <button
-                      type="button"
-                      key={c}
-                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
-                      onClick={() => onSelect(resolveRefPath(node.path, c))}
-                    >
-                      <HashIcon className="w-3 h-3 shrink-0" /> {c}
-                    </button>
-                  ))}
-                  {dependsOnSpecs?.map((d) => (
-                    <button
-                      type="button"
-                      key={d}
-                      className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 cursor-pointer transition-colors"
-                      onClick={() => onSelect(resolveRefPath(node.path, d))}
-                    >
-                      <HashIcon className="w-3 h-3 shrink-0" /> {d}
-                    </button>
-                  ))}
+                  <div className="flex flex-col gap-1.5">
+                    {contracts?.map((c) => (
+                      <button
+                        type="button"
+                        key={c}
+                        className="flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 cursor-pointer transition-colors group text-left"
+                        onClick={() => onSelect(resolveRefPath(node.path, c))}
+                      >
+                        <HashIcon className="w-3.5 h-3.5 shrink-0 text-slate-300 group-hover:text-blue-400" />
+                        <span className="truncate">{c}</span>
+                      </button>
+                    ))}
+                    {dependsOnSpecs?.map((d) => (
+                      <button
+                        type="button"
+                        key={d}
+                        className="flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 cursor-pointer transition-colors group text-left"
+                        onClick={() => onSelect(resolveRefPath(node.path, d))}
+                      >
+                        <HashIcon className="w-3.5 h-3.5 shrink-0 text-slate-300 group-hover:text-blue-400" />
+                        <span className="truncate">{d}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -238,44 +246,40 @@ export function CddDocumentDetail({
   const statusInfo = STATUS_MAP[status ?? ""] ?? STATUS_MAP.draft;
 
   const navContent = (
-    <>
+    <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-3 min-w-0">
-        <CddFileIcon fileType={node.fileType} name={node.name} className="w-5 h-5" />
-        <h1 className="font-bold text-lg tracking-tight truncate">
-          {fileType === "spec" ? (summary ?? node.name) : node.name}
-        </h1>
-        {schemaId && (
-          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-            {schemaId}
-          </span>
-        )}
+        <div className="p-1.5 bg-slate-100 text-slate-500 rounded-md">
+          <CddFileIcon fileType={node.fileType} name={node.name} className="w-4 h-4" />
+        </div>
+        <div className="flex flex-col">
+          <h1 className="font-bold text-sm text-slate-800 tracking-tight leading-tight truncate">
+            {fileType === "spec" ? (summary ?? node.name) : node.name}
+          </h1>
+          {schemaId && <span className="text-[10px] text-slate-400 font-mono">{schemaId}</span>}
+        </div>
       </div>
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
         {fileType === "spec" && (
-          <div
-            className={classNames(
-              "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border",
-              statusInfo.color,
-            )}
-          >
-            <span className={classNames("w-2 h-2 rounded-full", statusInfo.dot)} />
-            {statusInfo.label}
+          <div className="flex items-center gap-1.5">
+            <span className={classNames("w-1.5 h-1.5 rounded-full", statusInfo.dot)} />
+            <span className="text-xs font-medium text-slate-500">{statusInfo.label}</span>
           </div>
         )}
+        <div className="h-4 w-px bg-slate-200 mx-1" />
         <div className="text-xs text-slate-400 flex items-center gap-1">
-          <ClockIcon className="w-3 h-3" /> {lastModified ?? "-"}
+          <ClockIcon className="w-3.5 h-3.5" /> {lastModified ?? "-"}
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-900 text-white hover:bg-slate-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           onClick={handleEdit}
           disabled={editing}
         >
-          <PencilIcon className="w-3.5 h-3.5" />
+          <PencilIcon className="w-3 h-3" />
           {editing ? SD("cdd.editing") : SD("cdd.editContent")}
         </button>
       </div>
-    </>
+    </div>
   );
 
   return (

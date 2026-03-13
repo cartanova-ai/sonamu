@@ -13,12 +13,17 @@ export function ViewerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mb-12 scroll-mt-20">
-      <div className="flex items-baseline gap-2 mb-6 border-b border-slate-200 pb-2">
-        <Icon className="w-5 h-5 text-slate-400 translate-y-[1px]" />
-        <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+    <section
+      id={id}
+      className="group grid grid-cols-1 lg:grid-cols-[140px_1fr] items-start gap-y-4 gap-x-8 mb-10 pb-10 border-b border-dashed border-slate-200 last:border-0 scroll-mt-28"
+    >
+      <div className="flex items-center gap-2 lg:flex-row-reverse lg:text-right text-slate-400">
+        <h2 className="text-xs font-bold uppercase tracking-widest group-hover:text-slate-600 transition-colors">
+          {title}
+        </h2>
+        <Icon className="w-3.5 h-3.5 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
       </div>
-      <div className="pl-0 md:pl-7">{children}</div>
+      <div className="min-w-0">{children}</div>
     </section>
   );
 }
@@ -37,31 +42,34 @@ export function CddSectionLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 shrink-0">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">{navChildren}</div>
+    <div className="flex-1 flex flex-col min-h-0 bg-white [&_h1]:!m-0 [&_h2]:!m-0 [&_h3]:!m-0 [&_h4]:!m-0 [&_h5]:!m-0 [&_h6]:!m-0">
+      <nav className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 px-8 py-3 shrink-0">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">{navChildren}</div>
       </nav>
 
-      <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-7xl mx-auto flex px-6 py-10 gap-12">
-          <aside className="hidden lg:block w-48 flex-shrink-0 sticky top-6 h-fit">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 ml-4">
-              Contents
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto flex px-8 py-10 gap-10">
+          <aside className="hidden xl:block w-48 flex-shrink-0 sticky top-4 h-fit">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">
+              On this page
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-0.5 border-l border-slate-100">
               {tocSections.map((s) => (
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
-                    onClick={() => onSectionClick(s.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSectionClick(s.id);
+                      document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" });
+                    }}
                     className={classNames(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                      "block pl-4 py-1.5 text-xs font-medium border-l -ml-px transition-all",
                       activeSection === s.id
-                        ? "bg-slate-100 text-slate-900 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50",
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300",
                     )}
                   >
-                    <s.icon className="w-4 h-4" />
                     {s.title}
                   </a>
                 </li>
@@ -69,7 +77,7 @@ export function CddSectionLayout({
             </ul>
           </aside>
 
-          <div className="flex-1 max-w-3xl">{children}</div>
+          <div className="flex-1 min-w-0">{children}</div>
         </div>
       </div>
     </div>

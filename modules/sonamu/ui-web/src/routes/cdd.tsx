@@ -72,33 +72,33 @@ function CddPage() {
 
   return (
     <div className="flex h-[calc(100vh-var(--spacing-gnb))] bg-gray-50 text-gray-900">
-      <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0">
-        <div className="px-4 h-14 border-b border-gray-100 flex items-center justify-between">
-          <h1 className="font-bold text-lg text-gray-800">{SD("cdd.title")}</h1>
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0">
+        <div className="px-4 h-12 border-b border-gray-100 flex items-center justify-between">
+          <h1 className="font-bold text-base text-gray-800">{SD("cdd.title")}</h1>
           <button
             type="button"
-            className="p-1.5 hover:bg-gray-100 rounded-full text-gray-500 cursor-pointer"
+            className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer"
             onClick={() => refetch()}
             title={SD("cdd.refresh")}
           >
-            <RefreshCwIcon className="w-4 h-4" />
+            <RefreshCwIcon className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="px-4 py-3">
+        <div className="px-3 py-2">
           <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
             <input
               type="text"
               placeholder={SD("cdd.searchPlaceholder")}
-              className="w-full pl-9 pr-4 py-2 bg-gray-100 border border-transparent focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg text-sm transition-all outline-none"
+              className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg text-xs transition-all outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-2 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
+        <nav className="flex-1 overflow-y-auto px-1.5 py-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
           {isLoading && (
             <div className="text-center py-8 text-gray-400 text-sm">{SD("common.loading")}</div>
           )}
