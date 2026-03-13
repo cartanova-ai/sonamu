@@ -3,12 +3,13 @@ import type { FieldRendererProps } from "./types";
 export function StringListRenderer({ value }: FieldRendererProps) {
   const items = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
   return (
-    <div className="space-y-2">
+    <ul className="space-y-2 list-none p-0 m-0">
       {items.map((item, i) => (
-        <div key={i} className="flex gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50/50">
-          <span className="text-slate-700 text-sm leading-relaxed">{item}</span>
-        </div>
+        <li key={i} className="flex gap-3 text-slate-700 text-[14px] leading-relaxed group">
+          <span className="text-slate-300 mt-1 select-none flex-shrink-0">&bull;</span>
+          <span>{item}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

@@ -2,7 +2,7 @@ import classNames from "classnames";
 import { useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import CheckCircle2Icon from "~icons/lucide/check-circle-2";
-import ClockIcon from "~icons/lucide/clock";
+
 import FileCodeIcon from "~icons/lucide/file-code";
 import FileTextIcon from "~icons/lucide/file-text";
 import HashIcon from "~icons/lucide/hash";
@@ -119,13 +119,7 @@ export function CddDocumentDetail({
           title: "Overview",
           icon: FileTextIcon,
           render: () => (
-            <div
-              className={classNames(
-                "prose prose-slate max-w-none",
-                "prose-headings:text-slate-900",
-                "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none",
-              )}
-            >
+            <div className="prose prose-slate max-w-none prose-p:leading-relaxed prose-headings:font-semibold prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none">
               <Markdown>{description.join("\n")}</Markdown>
             </div>
           ),
@@ -246,32 +240,30 @@ export function CddDocumentDetail({
   const statusInfo = STATUS_MAP[status ?? ""] ?? STATUS_MAP.draft;
 
   const navContent = (
-    <div className="flex items-center justify-between w-full">
+    <>
       <div className="flex items-center gap-3 min-w-0">
-        <div className="p-1.5 bg-slate-100 text-slate-500 rounded-md">
-          <CddFileIcon fileType={node.fileType} name={node.name} className="w-4 h-4" />
+        <div className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center text-white shrink-0">
+          <CddFileIcon fileType={node.fileType} name={node.name} className="w-4 h-4 text-white" />
         </div>
-        <div className="flex flex-col">
-          <h1 className="font-bold text-sm text-slate-800 tracking-tight leading-tight truncate">
+        <div className="min-w-0">
+          <h1 className="text-sm font-bold leading-none mb-0.5 truncate">
             {fileType === "spec" ? (summary ?? node.name) : node.name}
           </h1>
-          {schemaId && <span className="text-[10px] text-slate-400 font-mono">{schemaId}</span>}
+          <p className="text-[10px] text-slate-400 font-medium">
+            {[schemaId, lastModified].filter(Boolean).join(" · ") || "-"}
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {fileType === "spec" && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 mr-2">
             <span className={classNames("w-1.5 h-1.5 rounded-full", statusInfo.dot)} />
             <span className="text-xs font-medium text-slate-500">{statusInfo.label}</span>
           </div>
         )}
-        <div className="h-4 w-px bg-slate-200 mx-1" />
-        <div className="text-xs text-slate-400 flex items-center gap-1">
-          <ClockIcon className="w-3.5 h-3.5" /> {lastModified ?? "-"}
-        </div>
         <button
           type="button"
-          className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-900 text-white hover:bg-slate-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleEdit}
           disabled={editing}
         >
@@ -279,7 +271,7 @@ export function CddDocumentDetail({
           {editing ? SD("cdd.editing") : SD("cdd.editContent")}
         </button>
       </div>
-    </div>
+    </>
   );
 
   return (

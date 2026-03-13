@@ -1,4 +1,5 @@
 import classNames from "classnames";
+import ChevronRightIcon from "~icons/lucide/chevron-right";
 import type { SectionDescriptor } from "../types";
 
 export function ViewerSection({
@@ -13,17 +14,14 @@ export function ViewerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className="group grid grid-cols-1 lg:grid-cols-[140px_1fr] items-start gap-y-4 gap-x-8 mb-10 pb-10 border-b border-dashed border-slate-200 last:border-0 scroll-mt-28"
-    >
-      <div className="flex items-center gap-2 lg:flex-row-reverse lg:text-right text-slate-400">
-        <h2 className="text-xs font-bold uppercase tracking-widest group-hover:text-slate-600 transition-colors">
-          {title}
-        </h2>
-        <Icon className="w-3.5 h-3.5 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+    <section id={id} className="mb-16 scroll-mt-24 last:mb-0">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-1.5 rounded-md bg-slate-50 text-slate-400">
+          <Icon className="w-4 h-4" />
+        </div>
+        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{title}</h2>
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="pl-10">{children}</div>
     </section>
   );
 }
@@ -42,42 +40,49 @@ export function CddSectionLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white [&_h1]:!m-0 [&_h2]:!m-0 [&_h3]:!m-0 [&_h4]:!m-0 [&_h5]:!m-0 [&_h6]:!m-0">
-      <nav className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 px-8 py-3 shrink-0">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">{navChildren}</div>
+    <div className="flex-1 flex flex-col min-h-0 bg-white text-slate-900 selection:bg-blue-100 [&_h1]:!m-0 [&_h2]:!m-0 [&_h3]:!m-0 [&_h4]:!m-0 [&_h5]:!m-0 [&_h6]:!m-0">
+      <nav className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 shrink-0">
+        <div className="max-w-4xl mx-auto h-16 flex items-center justify-between">
+          {navChildren}
+        </div>
       </nav>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto flex px-8 py-10 gap-10">
-          <aside className="hidden xl:block w-48 flex-shrink-0 sticky top-4 h-fit">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">
-              On this page
-            </p>
-            <ul className="space-y-0.5 border-l border-slate-100">
+        <div className="max-w-6xl mx-auto px-6 py-12 flex gap-16">
+          <aside className="hidden xl:block w-48 shrink-0 sticky top-28 h-fit">
+            <nav className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4 ml-3">
+                Contents
+              </span>
               {tocSections.map((s) => (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onSectionClick(s.id);
-                      document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" });
-                    }}
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSectionClick(s.id);
+                    document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className={classNames(
+                    "px-3 py-2 text-[13px] font-medium rounded-lg transition-all flex items-center gap-2",
+                    activeSection === s.id
+                      ? "bg-slate-50 text-blue-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50",
+                  )}
+                >
+                  <ChevronRightIcon
                     className={classNames(
-                      "block pl-4 py-1.5 text-xs font-medium border-l -ml-px transition-all",
-                      activeSection === s.id
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300",
+                      "w-3 h-3 transition-transform",
+                      activeSection === s.id ? "rotate-90" : "",
                     )}
-                  >
-                    {s.title}
-                  </a>
-                </li>
+                  />
+                  {s.title}
+                </a>
               ))}
-            </ul>
+            </nav>
           </aside>
 
-          <div className="flex-1 min-w-0">{children}</div>
+          <main className="flex-1 max-w-2xl">{children}</main>
         </div>
       </div>
     </div>
