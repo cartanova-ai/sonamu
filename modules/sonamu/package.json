@@ -54,6 +54,10 @@
     "./filter": {
       "import": "./dist/filter/index.js",
       "types": "./dist/filter/index.d.ts"
+    },
+    "./cdd-types": {
+      "import": "./dist/ui/cdd-types.js",
+      "types": "./dist/ui/cdd-types.d.ts"
     }
   },
   "scripts": {

@@ -3,46 +3,27 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { Sonamu } from "../api/sonamu";
+import type {
+  CddContentEnvelope,
+  CddFileType,
+  CddSchema,
+  CddSchemaDetailEnvelope,
+  CddSchemaReference,
+  CddSchemaSummary,
+  CddTreeNode,
+} from "./cdd-types";
 
-export type CddFileType = "contract" | "spec";
-
-export type CddRendererType =
-  | "markdown"
-  | "bullet-list"
-  | "label-grid"
-  | "grouped-record"
-  | "table";
-
-export type CddSchemaField = {
-  name: string;
-  label?: string;
-  type: "string" | "string[]" | "Record<string, string>" | "Record<string, object>";
-  renderer?: CddRendererType;
-  required: boolean;
-};
-
-export type CddSchema = {
-  id: string;
-  type: "contract" | "spec";
-  fields: CddSchemaField[];
-};
-
-export type CddContentEnvelope = {
-  document: Record<string, unknown>;
-  schema: CddSchema | null;
-  fileType: CddFileType;
-};
-
-export type CddTreeNode = {
-  name: string;
-  /** contract/ 기준 상대 경로 */
-  path: string;
-  type: "file" | "directory";
-  /** file인 경우만 존재 */
-  fileType?: CddFileType;
-  /** directory인 경우만 존재 */
-  children?: CddTreeNode[];
-};
+export type {
+  CddContentEnvelope,
+  CddFileType,
+  CddSchema,
+  CddSchemaDetailEnvelope,
+  CddSchemaField,
+  CddSchemaFieldType,
+  CddSchemaReference,
+  CddSchemaSummary,
+  CddTreeNode,
+} from "./cdd-types";
 
 /** contract/ 디렉터리 절대 경로 반환 (apiRootPath 기준) */
 function getContractDir(): string {
@@ -219,33 +200,6 @@ function runEditor(editor: { bin: string; args: string[] }, filePath: string): P
 /* ========================================================================
  * Schema 관리 API
  * ======================================================================== */
-
-export type CddSchemaSummary = {
-  /** 파일명 기반 key (예: "default-spec") — API lookup에 사용 */
-  key: string;
-  /** JSON 내부 id 필드 값 */
-  id: string;
-  path: string;
-  type: "contract" | "spec";
-  fieldCount: number;
-  referenceCount: number;
-  hasIdMismatch: boolean;
-  parseError?: string;
-};
-
-export type CddSchemaReference = {
-  path: string;
-  fileType: CddFileType;
-  name: string;
-};
-
-export type CddSchemaDetailEnvelope = {
-  key: string;
-  path: string;
-  schema: CddSchema;
-  references: CddSchemaReference[];
-  hasIdMismatch: boolean;
-};
 
 /** contract/schemas/ 디렉터리 내 .schema.json 파일 경로 목록 반환 */
 function scanSchemaFiles(): { absPath: string; relPath: string; fileName: string }[] {

@@ -7,13 +7,7 @@ import GitBranchIcon from "~icons/lucide/git-branch";
 import GlobeIcon from "~icons/lucide/globe";
 import ListIcon from "~icons/lucide/list";
 import TerminalIcon from "~icons/lucide/terminal";
-import type {
-  CddRendererType,
-  CddSchema,
-  CddSchemaField,
-  CddSchemaFieldType,
-  SectionDescriptor,
-} from "../types";
+import type { CddSchema, CddSchemaField, CddSchemaFieldType, SectionDescriptor } from "../types";
 import { humanize, isPlainObject } from "../utils/schema";
 import { ObjectRecordRenderer } from "./object_record_renderer";
 import { StringBlockRenderer } from "./string_block_renderer";
@@ -21,33 +15,37 @@ import { StringListRenderer } from "./string_list_renderer";
 import { StringRecordRenderer } from "./string_record_renderer";
 import type { FieldRendererDefinition } from "./types";
 
-export const FIELD_RENDERERS: Record<CddRendererType, FieldRendererDefinition> = {
+const _renderers = {
   markdown: {
     Component: StringBlockRenderer,
-    isEmpty: (v) => typeof v !== "string" || v.trim() === "",
-    supportedTypes: ["string"],
+    isEmpty: (v: unknown) => typeof v !== "string" || v.trim() === "",
+    supportedTypes: ["string"] as CddSchemaFieldType[],
   },
   "bullet-list": {
     Component: StringListRenderer,
-    isEmpty: (v) => !Array.isArray(v) || v.length === 0,
-    supportedTypes: ["string[]"],
+    isEmpty: (v: unknown) => !Array.isArray(v) || v.length === 0,
+    supportedTypes: ["string[]"] as CddSchemaFieldType[],
   },
   "label-grid": {
     Component: StringRecordRenderer,
-    isEmpty: (v) => !isPlainObject(v) || Object.keys(v).length === 0,
-    supportedTypes: ["Record<string, string>"],
+    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    supportedTypes: ["Record<string, string>"] as CddSchemaFieldType[],
   },
   "grouped-record": {
     Component: ObjectRecordRenderer,
-    isEmpty: (v) => !isPlainObject(v) || Object.keys(v).length === 0,
-    supportedTypes: ["Record<string, object>"],
+    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    supportedTypes: ["Record<string, object>"] as CddSchemaFieldType[],
   },
   table: {
     Component: ObjectRecordRenderer,
-    isEmpty: (v) => !isPlainObject(v) || Object.keys(v).length === 0,
-    supportedTypes: ["Record<string, string>", "Record<string, object>"],
+    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    supportedTypes: ["Record<string, string>", "Record<string, object>"] as CddSchemaFieldType[],
   },
 };
+
+export type CddRendererType = keyof typeof _renderers;
+
+export const FIELD_RENDERERS: Record<CddRendererType, FieldRendererDefinition> = _renderers;
 
 /** type별 기본 renderer 매핑 (renderer 미지정 시 사용) */
 export const DEFAULT_RENDERER: Record<CddSchemaFieldType, CddRendererType> = {
@@ -88,7 +86,10 @@ export function buildCustomFieldSections(
 
   for (const field of schema.fields) {
     const rendererKey = field.renderer ?? DEFAULT_RENDERER[field.type];
-    const rendererDef = FIELD_RENDERERS[rendererKey];
+    if (!(rendererKey in FIELD_RENDERERS)) {
+      throw new Error(`알 수 없는 renderer "${rendererKey}" (field: ${field.name})`);
+    }
+    const rendererDef = FIELD_RENDERERS[rendererKey as CddRendererType];
 
     if (!rendererDef.supportedTypes.includes(field.type)) {
       throw new Error(
