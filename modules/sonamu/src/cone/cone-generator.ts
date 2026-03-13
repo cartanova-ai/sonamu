@@ -200,9 +200,9 @@ INSTRUCTIONS:
    The fixture generator will pass all such props together to LLM in a single call to ensure consistency.
    Detection rule: if a prop name matches another prop name with a locale suffix (_en, _ko, _ja, _cn) or vice versa, treat them as correlated.
 
-10. String PK with DB sequence:
-   If a prop named "id" has type "string" and the entity uses a DB sequence for id generation (indicated by dbDefault containing "nextval" or by the entity being a user/auth entity managed externally), set fixtureStrategy: "sequence" and do NOT set fixtureGenerator.
-   note should mention that the id is managed by DB sequence as a sequential number stored as string.
+10. String PK — sequence vs UUID:
+   - DB sequence id: If a prop named "id" has type "string" and uses a DB sequence (indicated by dbDefault containing "nextval"), set fixtureStrategy: "sequence" and do NOT set fixtureGenerator. note should mention sequential number stored as string.
+   - better-auth entity id: Account, Session, Verification 엔티티의 id는 better-auth가 crypto.randomUUID()로 생성하는 UUID다. fixtureStrategy: "sequence"를 절대 사용하지 말고, fixtureGenerator: "faker.string.uuid()"를 사용한다.
 
 ${
   context.existingCones
