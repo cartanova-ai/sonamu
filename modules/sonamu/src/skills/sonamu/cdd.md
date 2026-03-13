@@ -136,8 +136,23 @@ A feature-level technical document derived from Contract. Each file represents e
 | `dataFlow` | `string[]` | Y | Inter-module data flow |
 | `errorHandling` | `Record<string, string>` | Y | Error handling (key: error name, value: trigger condition) |
 | `constraints` | `string[]` | Y | Technical constraints |
+| `guards` | `string[]` | N | Access control guards (e.g. `["admin"]`, `["admin", "sot"]`) |
+| `testCases` | `string[]` | N | Key test scenarios derived from errorHandling/acceptanceCriteria (used as fixture/test design hints) |
+| `fixtureStrategy` | `string` | N | Notes on fixture generation order or dependencies (e.g. "User → Department → Lab 순으로 생성") |
 
 **Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`
+
+### 엔티티 레벨 권장 추가 항목 (constraints에 명시)
+
+다음 항목들은 Entity 설계에 영향을 주므로 `constraints` 또는 별도 필드에 명시해 두면 Entity 설계 시 혼선을 방지할 수 있다.
+
+| 항목 | 예시 |
+|---|---|
+| PK 타입 전략 | `"User.id는 string (better-auth). 나머지는 number auto-increment"` |
+| i18n 대상 여부 | `"name 필드는 ko/en 다국어 지원 (naite 패턴 사용)"` |
+| 파일 업로드 여부 | `"thumbnail: SonamuFile (eager upload)"` |
+| ManyToMany FK 타입 일치 | `"user__roles: user_id(string FK), role_id(number FK) 혼합"` |
+| Read-only 엔티티 | `"Log 엔티티는 insert only. save/del 불필요"` |
 
 **Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
 

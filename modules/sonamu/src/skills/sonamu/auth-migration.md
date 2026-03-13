@@ -575,9 +575,89 @@ better-auth의 camelCase(`phoneNumber`)가 아닌 snake_case(`phone_number`)를 
 - [ ] Migration 적용: `pnpm migration:apply`
 - [ ] 전체 테스트 실행: `pnpm test`
 
+## Better-auth 엔티티 Fixture 생성
+
+### 생성 순서 (필수)
+
+better-auth 엔티티는 FK 의존성 때문에 반드시 다음 순서로 fixture를 생성해야 한다.
+
+```
+User → Account → Session → Verification (선택)
+```
+
+Account, Session은 user_id(string FK)를 통해 User를 참조하므로 User가 먼저 생성되어야 한다.
+
+### 생성 명령
+
+```bash
+# 1. User 먼저 생성
+pnpm sonamu fixture gen --include User --count 10 --use-llm
+
+# 2. Account 생성 (User에 의존)
+pnpm sonamu fixture gen --include Account --count 10 --use-llm
+
+# 3. Session 생성 (User에 의존)
+pnpm sonamu fixture gen --include Session --count 10 --use-llm
+
+# 또는 User를 포함하여 함께 생성 (자동 순서 정렬)
+pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm
+```
+
+### User.id 시퀀스 설정 필수
+
+better-auth User 엔티티는 id가 string 타입이지만, fixture gen이 자동으로 숫자 시퀀스를 사용한다. **PHASE 0에서 users_id_seq를 생성하지 않았다면 fixture gen이 실패한다.**
+
+```sql
+-- 반드시 먼저 설정되어 있어야 함
+CREATE SEQUENCE users_id_seq;
+ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;
+```
+
+이미 설정되어 있어야 하지만 누락된 경우 위 쿼리를 실행한 후 fixture gen을 진행한다.
+
+### cone.fixtureStrategy 설정 권장
+
+User entity.json의 id prop에 `"fixtureStrategy": "sequence"`가 설정되어 있는지 확인한다:
+
+```json
+{
+  "name": "id",
+  "type": "string",
+  "cone": {
+    "fixtureStrategy": "sequence",
+    "note": "better-auth가 관리하는 사용자 ID (string 타입)"
+  }
+}
+```
+
+### Account 생성 시 주의사항
+
+Account는 credential 계정과 OAuth 계정의 구조가 다르다:
+
+```typescript
+// credential 계정 (이메일/비밀번호)
+{
+  provider_id: "credential",
+  account_id: "user@example.com",
+  user_id: existingUserId,
+  password: hashedPassword,
+}
+
+// OAuth 계정 (Google 등)
+{
+  provider_id: "google",
+  account_id: "google-oauth-id-12345",
+  user_id: existingUserId,
+  // password 없음
+}
+```
+
+`--use-llm`과 cone.note를 적절히 설정하면 LLM이 맥락에 맞는 provider_id와 account_id를 생성해준다.
+
 ## Related Skills
 
 - migration: Migration 작성 기본, PK 타입 변경
 - entity-basic: Entity 타입 정의
 - entity-relations: BelongsToOne, HasMany 관계
 - testing: 테스트 작성 패턴
+- fixture-cli: Fixture 생성 CLI 사용법

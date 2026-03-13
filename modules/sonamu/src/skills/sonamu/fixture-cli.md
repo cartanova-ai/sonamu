@@ -49,6 +49,10 @@ production/development master (실제 DB)
 
 faker 기반으로 새로운 테스트 데이터를 생성합니다.
 
+**CRITICAL: `--use-llm` 옵션은 실제 프로젝트에서 항상 사용해야 한다.** `--use-llm` 없이 생성하면 cone.note 기반 도메인 맥락이 반영되지 않아 faker 기본값만 사용되므로, 의미 없는 데이터가 생성될 수 있다. LLM이 `requirements.md`, `business-logic.md`를 참조해 맥락에 맞는 데이터를 생성하려면 이 옵션이 필수이다.
+
+**CRITICAL: fixture gen을 실행하기 전에 `cone.note`가 주요 prop에 존재하는지 확인한다.** cone.note가 없으면 LLM이 맥락을 파악할 수 없어 의미 있는 데이터 생성이 불가능하다. cone.note가 부족하면 `pnpm sonamu cone generate --use-llm`으로 cone을 재생성한다.
+
 #### 기본 사용법
 
 ```bash

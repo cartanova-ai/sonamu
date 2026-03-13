@@ -243,15 +243,22 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
     - cone.note가 비어있는 prop이 있으면 사용자에게 보고하고 `pnpm sonamu cone generate --use-llm`으로 cone을 재생성할지 확인
     - cone.note가 있어야 LLM이 맥락에 맞는 fixture 데이터를 생성할 수 있다
 44. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
-45. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
-46. 실제 DB에 생성되었는지 사용자에게 확인 요청
-47. **`pnpm sonamu test`로 전체 테스트 재실행**
-48. `pnpm dump`으로 DB 덤프 파일 생성
+45. **better-auth 엔티티 먼저 생성** (의존성 순서 필수):
+    - User → Account → Session 순으로 생성
+    - `pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm`
+    - **CRITICAL**: User.id string PK를 위한 `users_id_seq`가 생성되어 있어야 함 (PHASE 0 Step 18-19에서 설정)
+    - 상세 내용은 `auth-migration.md` "Better-auth 엔티티 Fixture 생성" 섹션 참조
+46. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
+    - `--use-llm` 옵션은 반드시 사용 (cone.note 기반 도메인 맥락 반영 필수)
+47. 실제 DB에 생성되었는지 사용자에게 확인 요청
+48. **`pnpm sonamu test`로 전체 테스트 재실행**
+49. `pnpm dump`으로 DB 덤프 파일 생성
 
 **완료 기준:**
 
 - [ ] cone.note 존재 여부 체크 완료
-- [ ] fixture 데이터 생성 완료 (사용자 승인 시)
+- [ ] better-auth 엔티티 (User, Account, Session) fixture 먼저 생성 완료
+- [ ] fixture 데이터 생성 완료 (사용자 승인 시, `--use-llm` 사용)
 - [ ] DB에 데이터 존재 확인
 - [ ] 전체 테스트 통과
 - [ ] `pnpm dump` 실행 완료

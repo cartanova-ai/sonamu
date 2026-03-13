@@ -490,6 +490,71 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 - `value`: 현재 선택된 값 (PK 타입에 따라 number 또는 string)
 - `onValueChange`: 값 변경 핸들러
 
+### Cascade Dropdown 패턴 (계층 선택)
+
+부서 → 과소 → 연구실처럼 상위 선택에 따라 하위 목록이 변해야 하는 경우, `baseListParams`를 동적으로 전달하면 된다.
+
+**핵심 동작**: `baseListParams` prop이 변경되면 `IdAsyncSelect` 내부 React Query가 새 파라미터로 자동 재조회한다. (v0.2.5+에서 수정된 버그 - 이전 버전은 초기값만 사용하고 변경을 반영하지 않았음)
+
+```tsx
+// 예시: 부서 → 과소 → 연구실 3단계 cascade
+function UserForm() {
+  const { form, register, setForm } = useTypeForm(UserSaveParams, {
+    dept_id: null,
+    division_id: null,
+    lab_id: null,
+  });
+
+  return (
+    <form>
+      {/* 1단계: 부서 선택 (전체 목록 → preload 또는 기본 IdAsyncSelect) */}
+      <DepartmentIdAsyncSelect
+        subset="A"
+        {...register("dept_id")}
+        onValueChange={(v) => {
+          // 부서 변경 시 하위 값 초기화
+          setForm((prev) => ({ ...prev, dept_id: v ?? null, division_id: null, lab_id: null }));
+        }}
+      />
+
+      {/* 2단계: 과소 선택 (선택된 부서의 과소만 조회) */}
+      <DivisionIdAsyncSelect
+        subset="A"
+        baseListParams={form.dept_id ? { department_id: form.dept_id } : undefined}
+        disabled={!form.dept_id}
+        {...register("division_id")}
+        onValueChange={(v) => {
+          // 과소 변경 시 연구실 초기화
+          setForm((prev) => ({ ...prev, division_id: v ?? null, lab_id: null }));
+        }}
+      />
+
+      {/* 3단계: 연구실 선택 (선택된 과소의 연구실만 조회) */}
+      <LabIdAsyncSelect
+        subset="A"
+        baseListParams={form.division_id ? { division_id: form.division_id } : undefined}
+        disabled={!form.division_id}
+        {...register("lab_id")}
+      />
+    </form>
+  );
+}
+```
+
+**주의사항**:
+- 상위가 변경될 때 하위 값을 명시적으로 `null`로 초기화해야 한다. IdAsyncSelect는 자동으로 초기화하지 않는다.
+- `disabled` prop으로 상위가 선택되지 않은 경우 하위를 비활성화하는 것이 UX에 좋다.
+- `baseListParams`가 `undefined`이면 IdAsyncSelect는 enabled=false 상태로 조회하지 않는다.
+
+**Spec에 명시할 항목** (cascade가 있는 경우 spec.json의 acceptanceCriteria에 추가 권장):
+```json
+"acceptanceCriteria": [
+  "부서 선택 시 해당 부서의 과소만 드롭다운으로 조회된다",
+  "과소 선택 시 해당 과소의 연구실만 드롭다운으로 조회된다",
+  "부서 변경 시 하위 과소/연구실 선택이 초기화된다"
+]
+```
+
 ### IMPORTANT: String Primary Key Support
 
 대부분 Entity는 Number PK (`IdAsyncSelect<number>`)이지만, better-auth 관련 Entity는 String PK를 사용합니다.
