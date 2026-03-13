@@ -495,8 +495,7 @@ class SonamuClass {
         if (handler) {
           return handler(request, reply);
         }
-        // 사실 /api로 시작하지 않는 요청은 여기에 들어오지도 않을 거라 이 라인은 도달 불가능입니다만,
-        // 안전빵으로 남겨놓습니다.
+        // 등록된 API와 일치하지 않는 요청에 대한 fallback입니다.
         throw new NotFoundException(SD("error.api.notFound"));
       },
     });

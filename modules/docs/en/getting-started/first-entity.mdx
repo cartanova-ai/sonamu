@@ -8,16 +8,16 @@ In this guide, you'll learn how to create a `Post` entity using Sonamu UI, creat
 ## Prerequisites
 
 - You must have completed the [Quick Start](/en/getting-started/quick-start) guide and have the development server running.
-- The API server must be running at http://localhost:1028.
+- The API server must be running at http://localhost:34900.
 
 <Tip>
   When the API server (`pnpm dev`) is running, Sonamu UI is automatically served
-  at http://localhost:1028/sonamu-ui.
+  at http://localhost:34900/sonamu-ui.
 </Tip>
 
 ## Step 1: Access Sonamu UI
 
-Open http://localhost:1028/sonamu-ui in your browser.
+Open http://localhost:34900/sonamu-ui in your browser.
 
 <Frame caption="Sonamu UI main screen (Entity, Migration, Scaffolding tabs)">
   <img
@@ -385,7 +385,7 @@ Now let's test if the API is working correctly.
 
 <CodeGroup>
 ```bash title="Create Post (POST)"
-curl -X POST http://localhost:1028/api/posts \
+curl -X POST http://localhost:34900/api/posts \
   -H "Content-Type: application/json" \
   -d '{
     "title": "First Post",
@@ -395,22 +395,22 @@ curl -X POST http://localhost:1028/api/posts \
 ```
 
 ```bash title="List Posts (GET)"
-curl http://localhost:1028/api/posts?subset=C
+curl http://localhost:34900/api/posts?subset=C
 ```
 
 ```bash title="Get Post Detail (GET)"
-curl http://localhost:1028/api/posts/1?subset=A
+curl http://localhost:34900/api/posts/1?subset=A
 ```
 
 ```bash title="Delete Post (DELETE)"
-curl -X DELETE http://localhost:1028/api/posts/1
+curl -X DELETE http://localhost:34900/api/posts/1
 ```
 
 </CodeGroup>
 
 ### Test in Browser
 
-Navigate to http://localhost:1028/api/posts?subset=C to view the JSON response.
+Navigate to http://localhost:34900/api/posts?subset=C to view the JSON response.
 
 <Frame caption="📸 Needed: Browser screen showing API response JSON (post list data)"></Frame>
 

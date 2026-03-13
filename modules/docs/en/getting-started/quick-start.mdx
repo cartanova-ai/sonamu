@@ -75,13 +75,13 @@ pnpm dev
 When the server starts successfully, you'll see the following message:
 
 ```
-🌲 Server listening on http://localhost:1028
+🌲 Server listening on http://localhost:34900
 ```
 
 This single command runs everything:
-- **Web App**: http://localhost:1028
-- **API Endpoints**: http://localhost:1028/api
-- **Sonamu UI**: http://localhost:1028/sonamu-ui
+- **Web App**: http://localhost:34900
+- **API Endpoints**: http://localhost:34900/api
+- **Sonamu UI**: http://localhost:34900/sonamu-ui
 
 The API server supports Hot Module Replacement (HMR), so it automatically restarts when code changes.
 
@@ -121,16 +121,16 @@ When the Vite development server starts, you'll see the following message:
 ```
   VITE v5.x.x  ready in xxx ms
 
-  ➜  Local:   http://localhost:3028/
-  ➜  Network: http://192.168.x.x:3028/
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.x.x:5173/
 ```
 
-If you run the Web server separately, you can access the frontend at http://localhost:3028. The Web server automatically proxies `/api/*` path requests to the API server (localhost:1028).
+If you run the Web server separately, you can access the frontend at http://localhost:5173. The Web server automatically proxies `/api/*` path requests to the API server (localhost:34900).
 
 <Info>
 **Two Development Modes**
-- **Integrated mode** (recommended): Run only API server → Access everything at `localhost:1028`
-- **Separated mode**: Run API + Web separately → API at `localhost:1028`, Web at `localhost:3028`
+- **Integrated mode** (recommended): Run only API server → Access everything at `localhost:34900`
+- **Separated mode**: Run API + Web separately → API at `localhost:34900`, Web at `localhost:5173`
 
 The integrated mode is sufficient for most cases. Use separated mode only when focusing on Web development.
 </Info>
@@ -146,17 +146,17 @@ You can access the following URLs in your browser:
 
 | Service   | URL                              | Description                  |
 | --------- | -------------------------------- | ---------------------------- |
-| Web App   | http://localhost:1028            | Frontend application         |
-| API Server| http://localhost:1028/api        | REST API endpoints           |
-| Sonamu UI | http://localhost:1028/sonamu-ui  | Entity management interface  |
+| Web App   | http://localhost:34900            | Frontend application         |
+| API Server| http://localhost:34900/api        | REST API endpoints           |
+| Sonamu UI | http://localhost:34900/sonamu-ui  | Entity management interface  |
 
 ### Separated Mode (Both API + Web servers running)
 
 | Service   | URL                              | Description                  |
 | --------- | -------------------------------- | ---------------------------- |
-| Web App   | http://localhost:3028            | Frontend application         |
-| API Server| http://localhost:1028/api        | REST API endpoints           |
-| Sonamu UI | http://localhost:1028/sonamu-ui  | Entity management interface  |
+| Web App   | http://localhost:5173            | Frontend application         |
+| API Server| http://localhost:34900/api        | REST API endpoints           |
+| Sonamu UI | http://localhost:34900/sonamu-ui  | Entity management interface  |
 
 <Check>
   Access the Web app to verify the Sonamu application is running correctly.
@@ -164,7 +164,7 @@ You can access the following URLs in your browser:
 
 ### Sonamu UI Features
 
-When you access http://localhost:1028/sonamu-ui in your browser, you can perform the following tasks:
+When you access http://localhost:34900/sonamu-ui in your browser, you can perform the following tasks:
 
 - Create and edit entities
 - Manage database migrations

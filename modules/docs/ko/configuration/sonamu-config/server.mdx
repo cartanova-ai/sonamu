@@ -12,7 +12,7 @@ import path from "path";
 import { defineConfig } from "sonamu";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {
@@ -59,7 +59,7 @@ export default defineConfig({
 
 ```typescript
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {
@@ -107,7 +107,7 @@ listen?: {
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,  // 이 포트에서 수신
+      port: 34900,  // 이 포트에서 수신
     },
   },
 });
@@ -116,7 +116,7 @@ export default defineConfig({
 **환경 변수로 포트 설정**:
 
 ```typescript
-const port = Number(process.env.PORT ?? 1028);
+const port = Number(process.env.PORT ?? 34900);
 
 export default defineConfig({
   server: {
@@ -137,7 +137,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,
+      port: 34900,
       host: "localhost",  // 로컬에서만 접근 가능
     },
   },
@@ -150,7 +150,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,
+      port: 34900,
       host: "0.0.0.0",  // 외부 접근 허용
     },
   },
@@ -541,7 +541,7 @@ export default defineConfig({
   server: {
     lifecycle: {
       onStart: (server) => {
-        console.log(`🌲 Server listening on http://localhost:1028`);
+        console.log(`🌲 Server listening on http://localhost:34900`);
         console.log(`📊 Routes registered: ${server.printRoutes()}`);
       },
     },
@@ -603,7 +603,7 @@ import path from "path";
 import { defineConfig } from "sonamu";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {

@@ -412,14 +412,14 @@ How to verify if responses are compressed:
 
 ```bash
 # Request gzip compression
-curl -H "Accept-Encoding: gzip" http://localhost:1028/api/data -i
+curl -H "Accept-Encoding: gzip" http://localhost:34900/api/data -i
 
 # Check response headers
 # Content-Encoding: gzip
 # Content-Length: 1234
 
 # Request Brotli compression
-curl -H "Accept-Encoding: br" http://localhost:1028/api/data -i
+curl -H "Accept-Encoding: br" http://localhost:34900/api/data -i
 ```
 
 ## Performance Impact

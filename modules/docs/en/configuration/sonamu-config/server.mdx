@@ -12,7 +12,7 @@ import path from "path";
 import { defineConfig } from "sonamu";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {
@@ -59,7 +59,7 @@ Specifies the full URL where the server is externally accessible.
 
 ```typescript
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {
@@ -107,7 +107,7 @@ The port number the server listens on.
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,  // Listen on this port
+      port: 34900,  // Listen on this port
     },
   },
 });
@@ -116,7 +116,7 @@ export default defineConfig({
 **Setting port via environment variable**:
 
 ```typescript
-const port = Number(process.env.PORT ?? 1028);
+const port = Number(process.env.PORT ?? 34900);
 
 export default defineConfig({
   server: {
@@ -137,7 +137,7 @@ The host address the server binds to.
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,
+      port: 34900,
       host: "localhost",  // Only accessible locally
     },
   },
@@ -150,7 +150,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     listen: {
-      port: 1028,
+      port: 34900,
       host: "0.0.0.0",  // Allow external access
     },
   },
@@ -541,7 +541,7 @@ export default defineConfig({
   server: {
     lifecycle: {
       onStart: (server) => {
-        console.log(`🌲 Server listening on http://localhost:1028`);
+        console.log(`🌲 Server listening on http://localhost:34900`);
         console.log(`📊 Routes registered: ${server.printRoutes()}`);
       },
     },
@@ -603,7 +603,7 @@ import path from "path";
 import { defineConfig } from "sonamu";
 
 const host = "localhost";
-const port = 1028;
+const port = 34900;
 
 export default defineConfig({
   server: {

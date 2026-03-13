@@ -75,13 +75,13 @@ pnpm dev
 서버가 성공적으로 시작되면 다음과 같은 메시지가 표시됩니다:
 
 ```
-🌲 Server listening on http://localhost:1028
+🌲 Server listening on http://localhost:34900
 ```
 
 이 명령어 하나로 다음이 모두 실행됩니다:
-- **Web 앱**: http://localhost:1028
-- **API 엔드포인트**: http://localhost:1028/api
-- **Sonamu UI**: http://localhost:1028/sonamu-ui
+- **Web 앱**: http://localhost:34900
+- **API 엔드포인트**: http://localhost:34900/api
+- **Sonamu UI**: http://localhost:34900/sonamu-ui
 
 API 서버는 Hot Module Replacement(HMR)을 지원하므로 코드 변경 시 자동으로 재시작됩니다.
 
@@ -121,16 +121,16 @@ Vite 개발 서버가 시작되면 다음과 같은 메시지가 표시됩니다
 ```
   VITE v5.x.x  ready in xxx ms
 
-  ➜  Local:   http://localhost:3028/
-  ➜  Network: http://192.168.x.x:3028/
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.x.x:5173/
 ```
 
-Web 서버를 별도로 실행하면 http://localhost:3028 로 접속하여 프론트엔드를 확인할 수 있습니다. Web 서버는 `/api/*` 경로 요청을 자동으로 API 서버(localhost:1028)로 프록시합니다.
+Web 서버를 별도로 실행하면 http://localhost:5173 로 접속하여 프론트엔드를 확인할 수 있습니다. Web 서버는 `/api/*` 경로 요청을 자동으로 API 서버(localhost:34900)로 프록시합니다.
 
 <Info>
 **두 가지 개발 방식**
-- **통합 모드** (권장): API 서버만 실행 → `localhost:1028`로 모든 것에 접근
-- **분리 모드**: API + Web 별도 실행 → API는 `localhost:1028`, Web은 `localhost:3028`
+- **통합 모드** (권장): API 서버만 실행 → `localhost:34900`로 모든 것에 접근
+- **분리 모드**: API + Web 별도 실행 → API는 `localhost:34900`, Web은 `localhost:5173`
 
 대부분의 경우 통합 모드로 충분하며, Web 개발에 집중할 때만 분리 모드를 사용하세요.
 </Info>
@@ -146,18 +146,18 @@ Web 서버를 별도로 실행하면 http://localhost:3028 로 접속하여 프�
 
 | 서비스    | URL                              | 설명                    |
 | --------- | -------------------------------- | ----------------------- |
-| Web 앱    | http://localhost:1028            | 프론트엔드 애플리케이션 |
-| API 서버  | http://localhost:1028/api        | REST API 엔드포인트     |
-| Sonamu UI | http://localhost:1028/sonamu-ui  | 엔티티 관리 인터페이스  |
+| Web 앱    | http://localhost:34900            | 프론트엔드 애플리케이션 |
+| API 서버  | http://localhost:34900/api        | REST API 엔드포인트     |
+| Sonamu UI | http://localhost:34900/sonamu-ui  | 엔티티 관리 인터페이스  |
 
 
 ### 분리 모드 (API + Web 서버 모두 실행한 경우)
 
 | 서비스    | URL                              | 설명                    |
 | --------- | -------------------------------- | ----------------------- |
-| Web 앱    | http://localhost:3028            | 프론트엔드 애플리케이션 |
-| API 서버  | http://localhost:1028/api        | REST API 엔드포인트     |
-| Sonamu UI | http://localhost:1028/sonamu-ui  | 엔티티 관리 인터페이스  |
+| Web 앱    | http://localhost:5173            | 프론트엔드 애플리케이션 |
+| API 서버  | http://localhost:34900/api        | REST API 엔드포인트     |
+| Sonamu UI | http://localhost:34900/sonamu-ui  | 엔티티 관리 인터페이스  |
 
 <Check>
   Web 앱에 접속하여 Sonamu 애플리케이션이 정상적으로 실행되는지 확인하세요.
@@ -165,7 +165,7 @@ Web 서버를 별도로 실행하면 http://localhost:3028 로 접속하여 프�
 
 ### Sonamu UI 기능
 
-브라우저에서 http://localhost:1028/sonamu-ui 로 접속하면 다음 작업을 수행할 수 있습니다:
+브라우저에서 http://localhost:34900/sonamu-ui 로 접속하면 다음 작업을 수행할 수 있습니다:
 
 - 엔티티 생성 및 편집
 - 데이터베이스 마이그레이션 관리
