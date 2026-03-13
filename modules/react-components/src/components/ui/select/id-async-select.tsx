@@ -169,18 +169,16 @@ export function IdAsyncSelect<
   );
 
   // ============================================================
-  // listParams 상태 관리
+  // keyword 상태 관리 (사용자 입력 검색어만 관리)
+  // baseListParams는 외부에서 주입되므로 별도 state 불필요
   // ============================================================
-  const [listParams, setListParams] = useState<Record<string, unknown>>(baseListParams ?? {});
+  const [keyword, setKeyword] = useState<string | undefined>(undefined);
 
   // ============================================================
   // handleSearch 로직
   // ============================================================
-  const handleSearch = useCallback((keyword: string) => {
-    setListParams((prev) => ({
-      ...prev,
-      keyword: keyword || undefined,
-    }));
+  const handleSearch = useCallback((kw: string) => {
+    setKeyword(kw || undefined);
   }, []);
 
   // ============================================================
@@ -201,7 +199,12 @@ export function IdAsyncSelect<
   // preload 또는 baseFilter가 있으면 sync 드롭다운으로 렌더링
   const isDropdown = preload || hasBaseFilter;
 
-  const keyword = listParams?.keyword;
+  // 실제 쿼리 파라미터: baseListParams(외부 필터) + keyword(사용자 검색어) 병합
+  const queryParams = {
+    ...(baseListParams ?? {}),
+    ...(keyword ? { keyword } : {}),
+  };
+
   const shouldLoadList =
     isDropdown ||
     (typeof keyword === "string" && keyword.length > 0) ||
@@ -211,7 +214,7 @@ export function IdAsyncSelect<
     data,
     isLoading: listLoading,
     error,
-  } = config.useList(subset, listParams, {
+  } = config.useList(subset, queryParams, {
     enabled: shouldLoadList,
   });
 
