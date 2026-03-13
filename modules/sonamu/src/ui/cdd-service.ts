@@ -9,7 +9,7 @@ export type CddFileType = "contract" | "spec";
 export type CddSchemaField = {
   name: string;
   label?: string;
-  type: "string[]" | "Record<string, string>" | "Record<string, object>";
+  type: "string" | "string[]" | "Record<string, string>" | "Record<string, object>";
   required: boolean;
 };
 
@@ -206,6 +206,184 @@ function runEditor(editor: { bin: string; args: string[] }, filePath: string): P
       }
     });
   });
+}
+
+/* ========================================================================
+ * Schema 관리 API
+ * ======================================================================== */
+
+export type CddSchemaSummary = {
+  /** 파일명 기반 key (예: "default-spec") — API lookup에 사용 */
+  key: string;
+  /** JSON 내부 id 필드 값 */
+  id: string;
+  path: string;
+  type: "contract" | "spec";
+  fieldCount: number;
+  referenceCount: number;
+  hasIdMismatch: boolean;
+  parseError?: string;
+};
+
+export type CddSchemaReference = {
+  path: string;
+  fileType: CddFileType;
+  name: string;
+};
+
+export type CddSchemaDetailEnvelope = {
+  key: string;
+  path: string;
+  schema: CddSchema;
+  references: CddSchemaReference[];
+  hasIdMismatch: boolean;
+};
+
+/** contract/schemas/ 디렉터리 내 .schema.json 파일 경로 목록 반환 */
+function scanSchemaFiles(): { absPath: string; relPath: string; fileName: string }[] {
+  const schemasDir = path.join(getContractDir(), "schemas");
+  if (!fs.existsSync(schemasDir)) return [];
+
+  return fs
+    .readdirSync(schemasDir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".schema.json"))
+    .map((e) => ({
+      absPath: path.join(schemasDir, e.name),
+      relPath: `schemas/${e.name}`,
+      fileName: e.name,
+    }));
+}
+
+/** 특정 schemaId를 참조하는 contract/spec 문서들을 재귀 수집 */
+function collectSchemaReferences(
+  schemaId: string,
+  dirPath: string,
+  relativeTo: string,
+): CddSchemaReference[] {
+  if (!fs.existsSync(dirPath)) return [];
+  const refs: CddSchemaReference[] = [];
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === "schemas") continue;
+      refs.push(...collectSchemaReferences(schemaId, fullPath, relativeTo));
+    } else if (entry.isFile()) {
+      const fileType = detectFileType(entry.name);
+      if (!fileType) continue;
+      try {
+        const raw = fs.readFileSync(fullPath, "utf-8");
+        const doc = JSON.parse(raw) as Record<string, unknown>;
+        if (doc.schema === schemaId) {
+          refs.push({
+            path: path.relative(relativeTo, fullPath),
+            fileType,
+            name: entry.name,
+          });
+        }
+      } catch {
+        // JSON 파싱 실패 시 무시
+      }
+    }
+  }
+  return refs;
+}
+
+/** schema 파일명에서 기대되는 id 추출 */
+function expectedSchemaId(fileName: string): string {
+  return fileName.replace(/\.schema\.json$/, "");
+}
+
+/** schemas/ 하위 경로가 contract/schemas/ 내부인지 검증 */
+function assertInsideSchemaDir(schemaKey: string): void {
+  const schemasDir = path.join(getContractDir(), "schemas");
+  const resolved = path.resolve(schemasDir, `${schemaKey}.schema.json`);
+  if (!resolved.startsWith(schemasDir + path.sep) && resolved !== schemasDir) {
+    throw new Error(`유효하지 않은 스키마 키입니다: ${schemaKey}`);
+  }
+}
+
+/** schema 목록 반환 */
+export function listSchemas(): { schemas: CddSchemaSummary[] } {
+  const contractDir = getContractDir();
+  const files = scanSchemaFiles();
+  const schemas: CddSchemaSummary[] = [];
+
+  for (const file of files) {
+    const key = expectedSchemaId(file.fileName);
+    try {
+      const raw = fs.readFileSync(file.absPath, "utf-8");
+      const schema = JSON.parse(raw) as CddSchema;
+      const refs = collectSchemaReferences(schema.id, contractDir, contractDir);
+      schemas.push({
+        key,
+        id: schema.id,
+        path: file.relPath,
+        type: schema.type,
+        fieldCount: schema.fields.length,
+        referenceCount: refs.length,
+        hasIdMismatch: schema.id !== key,
+      });
+    } catch (err) {
+      schemas.push({
+        key,
+        id: key,
+        path: file.relPath,
+        type: "contract",
+        fieldCount: 0,
+        referenceCount: 0,
+        hasIdMismatch: false,
+        parseError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return { schemas };
+}
+
+/** schema 상세 반환 (파일명 기반 key로 조회) */
+export function readSchema(schemaKey: string): CddSchemaDetailEnvelope {
+  assertInsideSchemaDir(schemaKey);
+
+  const contractDir = getContractDir();
+  const absPath = path.join(contractDir, "schemas", `${schemaKey}.schema.json`);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`스키마를 찾을 수 없습니다: ${schemaKey}`);
+  }
+
+  const raw = fs.readFileSync(absPath, "utf-8");
+  const schema = JSON.parse(raw) as CddSchema;
+  const relPath = path.relative(contractDir, absPath);
+  const references = collectSchemaReferences(schema.id, contractDir, contractDir);
+
+  return {
+    key: schemaKey,
+    path: relPath,
+    schema,
+    references,
+    hasIdMismatch: schema.id !== schemaKey,
+  };
+}
+
+/** schema 파일을 외부 에디터로 편집 (파일명 기반 key로 조회) */
+export async function editSchema(
+  schemaKey: string,
+): Promise<{ success: boolean; schemaKey: string }> {
+  assertInsideSchemaDir(schemaKey);
+
+  const contractDir = getContractDir();
+  const absPath = path.join(contractDir, "schemas", `${schemaKey}.schema.json`);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`스키마를 찾을 수 없습니다: ${schemaKey}`);
+  }
+
+  const editor = resolveEditorCli();
+  await runEditor(editor, absPath);
+
+  return { success: true, schemaKey };
 }
 
 /** 소스 파일을 외부 에디터로 열기 (대기하지 않음) */

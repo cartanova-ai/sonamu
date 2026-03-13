@@ -37,7 +37,15 @@ import {
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
-import { editContent, getCddTree, openSourceFile, readContent } from "./cdd-service";
+import {
+  editContent,
+  editSchema,
+  getCddTree,
+  listSchemas,
+  openSourceFile,
+  readContent,
+  readSchema,
+} from "./cdd-service";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
@@ -1413,6 +1421,21 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         const { filePath } = request.body;
         openSourceFile(filePath);
         return { success: true };
+      });
+
+      // CDD Schema API
+      server.get("/api/cdd/schemas", async () => {
+        return listSchemas();
+      });
+
+      server.post<{ Body: { schemaKey: string } }>("/api/cdd/readSchema", async (request) => {
+        const { schemaKey } = request.body;
+        return readSchema(schemaKey);
+      });
+
+      server.post<{ Body: { schemaKey: string } }>("/api/cdd/editSchema", async (request) => {
+        const { schemaKey } = request.body;
+        return editSchema(schemaKey);
       });
 
       // ui-web 빌드 파일 서빙
