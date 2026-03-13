@@ -183,7 +183,11 @@ export function IdAsyncSelect<
   // ============================================================
   // 리스트 로드
   // ============================================================
-  const isNotEmpty = (val: unknown) => val != null && val !== "" && val !== 0;
+  const isNotEmpty = (val: unknown): boolean => {
+    if (val == null || val === "") return false;
+    if (typeof val === "number") return val !== 0 && !Number.isNaN(val);
+    return true;
+  };
   const keyword = listParams?.keyword;
   const shouldLoadList =
     (typeof keyword === "string" && keyword.length > 0) ||
