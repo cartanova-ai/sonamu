@@ -332,6 +332,33 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - **If mismatch exists, fix code.**
 - After all validations pass, set `status` to `"done"` and update `lastModified` to today.
 
+### 4. Spec-Code Audit (정합성 감사)
+
+구현이 어느 정도 진행된 시점에서 전체 Spec과 코드의 정합성을 일괄 점검하는 패턴. 특히 여러 세션에 걸쳐 개발이 진행된 경우, 또는 구현 완료 후 리뷰 전에 실행한다.
+
+```text
+전체 Spec 스캔 -> 누락/불일치 목록 작성 -> 우선순위 정렬 -> 순차 수정
+```
+
+**Step 1: 전체 Spec 스캔**
+- `pnpm cdd spec list --status in-progress` 또는 `pnpm cdd tree`로 전체 Spec 현황 파악
+- 각 Spec의 `acceptanceCriteria`와 `interfaces`를 기준으로 코드 구현 여부 확인
+- 누락된 API, 잘못된 guard, 미구현 에러 처리 등을 목록으로 정리
+
+**Step 2: 감사 결과 파일로 기록**
+- `packages/api/contract/spec-vs-code-audit.md` 또는 `.claude/skills/project/spec-audit.md`에 기록
+- 형식: `[domain/feature] 항목 — 상태 (구현됨 / 누락 / 불일치)`
+- 이 파일을 새 세션에서 컨텍스트 복원용으로 활용 가능
+
+**Step 3: 우선순위 기반 수정**
+- 가장 쉽고 확실한 것부터 순서 번호를 붙여 처리
+- 각 항목 완료 시 감사 파일에 완료 표시
+
+**활용 시점**:
+- 긴 세션 종료 후 새 세션 시작 시 — 현황 파악 비용 최소화
+- Claude Desktop에서 전체 Spec 스캔 → Claude Code에서 불일치 수정하는 분업 패턴에서 유용
+- 도메인 단위 구현 완료 후 PR 전 최종 점검
+
 ---
 
 ## Contract/Spec Authoring Guide
