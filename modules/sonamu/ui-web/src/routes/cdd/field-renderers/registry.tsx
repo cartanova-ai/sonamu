@@ -9,36 +9,86 @@ import ListIcon from "~icons/lucide/list";
 import TerminalIcon from "~icons/lucide/terminal";
 import type { CddSchema, CddSchemaField, CddSchemaFieldType, SectionDescriptor } from "../types";
 import { humanize, isPlainObject } from "../utils/schema";
+import { CardGridRenderer } from "./card_grid_renderer";
+import { ChecklistRenderer } from "./checklist_renderer";
+import { CodeBlockRenderer } from "./code_block_renderer";
+import { DefinitionListRenderer } from "./definition_list_renderer";
 import { ObjectRecordRenderer } from "./object_record_renderer";
+import { PlainTextRenderer } from "./plain_text_renderer";
 import { StringBlockRenderer } from "./string_block_renderer";
 import { StringListRenderer } from "./string_list_renderer";
 import { StringRecordRenderer } from "./string_record_renderer";
+import { TableRenderer } from "./table_renderer";
+import { TagListRenderer } from "./tag_list_renderer";
 import type { FieldRendererDefinition } from "./types";
 
+const isEmptyString = (v: unknown) => typeof v !== "string" || v.trim() === "";
+const isEmptyArray = (v: unknown) => !Array.isArray(v) || v.length === 0;
+const isEmptyObject = (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0;
+
 const _renderers = {
+  // string
   markdown: {
     Component: StringBlockRenderer,
-    isEmpty: (v: unknown) => typeof v !== "string" || v.trim() === "",
+    isEmpty: isEmptyString,
     supportedTypes: ["string"] as CddSchemaFieldType[],
   },
+  "code-block": {
+    Component: CodeBlockRenderer,
+    isEmpty: isEmptyString,
+    supportedTypes: ["string"] as CddSchemaFieldType[],
+  },
+  "plain-text": {
+    Component: PlainTextRenderer,
+    isEmpty: isEmptyString,
+    supportedTypes: ["string"] as CddSchemaFieldType[],
+  },
+
+  // string[]
   "bullet-list": {
     Component: StringListRenderer,
-    isEmpty: (v: unknown) => !Array.isArray(v) || v.length === 0,
+    isEmpty: isEmptyArray,
     supportedTypes: ["string[]"] as CddSchemaFieldType[],
   },
+  checklist: {
+    Component: ChecklistRenderer,
+    isEmpty: isEmptyArray,
+    supportedTypes: ["string[]"] as CddSchemaFieldType[],
+  },
+  "tag-list": {
+    Component: TagListRenderer,
+    isEmpty: isEmptyArray,
+    supportedTypes: ["string[]"] as CddSchemaFieldType[],
+  },
+
+  // Record<string, string>
   "label-grid": {
     Component: StringRecordRenderer,
-    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    isEmpty: isEmptyObject,
     supportedTypes: ["Record<string, string>"] as CddSchemaFieldType[],
   },
+  "definition-list": {
+    Component: DefinitionListRenderer,
+    isEmpty: isEmptyObject,
+    supportedTypes: ["Record<string, string>"] as CddSchemaFieldType[],
+  },
+
+  // Record<string, object>
   "grouped-record": {
     Component: ObjectRecordRenderer,
-    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    isEmpty: isEmptyObject,
     supportedTypes: ["Record<string, object>"] as CddSchemaFieldType[],
   },
+  "card-grid": {
+    Component: CardGridRenderer,
+    isEmpty: isEmptyObject,
+    supportedTypes: ["Record<string, object>"] as CddSchemaFieldType[],
+  },
+
+  // Record<string, string> | Record<string, object>
   table: {
-    Component: ObjectRecordRenderer,
-    isEmpty: (v: unknown) => !isPlainObject(v) || Object.keys(v).length === 0,
+    Component: TableRenderer,
+    isEmpty: isEmptyObject,
     supportedTypes: ["Record<string, string>", "Record<string, object>"] as CddSchemaFieldType[],
   },
 };
