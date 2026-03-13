@@ -199,6 +199,22 @@ pnpm sonamu stub entity Post --no-cones
 }
 ```
 
+### better-auth 엔티티 PK (Account / Session / Verification)
+
+better-auth가 관리하는 엔티티의 id는 `crypto.randomUUID()`로 생성되는 UUID다.
+`fixtureStrategy: "sequence"`를 사용하면 fixture sync 시 `MAX(id::bigint)` 오류가 발생하므로 반드시 `fixtureGenerator: "faker.string.uuid()"`를 사용한다.
+
+```json
+{
+  "name": "id",
+  "type": "string",
+  "cone": {
+    "note": "better-auth가 crypto.randomUUID()로 생성하는 UUID 형식의 식별자",
+    "fixtureGenerator": "faker.string.uuid()"
+  }
+}
+```
+
 ### enum 필드
 
 ```json
