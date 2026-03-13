@@ -105,6 +105,12 @@ export const DEFAULT_RENDERER: Record<CddSchemaFieldType, CddRendererType> = {
   "Record<string, object>": "grouped-record",
 };
 
+export function getCompatibleRenderers(fieldType: CddSchemaFieldType): CddRendererType[] {
+  return (Object.entries(FIELD_RENDERERS) as [CddRendererType, FieldRendererDefinition][])
+    .filter(([, def]) => def.supportedTypes.includes(fieldType))
+    .map(([key]) => key);
+}
+
 export const getFieldLabel = (field: CddSchemaField) => field.label ?? humanize(field.name);
 
 const FIELD_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
