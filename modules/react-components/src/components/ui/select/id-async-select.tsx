@@ -78,6 +78,8 @@ type IdAsyncSelectBaseProps<
   clearable?: boolean;
   disabled?: boolean;
   className?: string;
+  /** true이면 키워드 없이도 마운트 시 전체 목록을 즉시 로드 (소규모 데이터셋에 적합) */
+  preload?: boolean;
   // Single/Multi 모드
   multiple?: boolean;
   value?: TValue | TValue[] | null;
@@ -139,6 +141,7 @@ export function IdAsyncSelect<
   disabled,
   className,
   multiple = false,
+  preload = false,
   value,
   onValueChange,
   onRowChange,
@@ -188,8 +191,19 @@ export function IdAsyncSelect<
     if (typeof val === "number") return val !== 0 && !Number.isNaN(val);
     return true;
   };
+
+  // baseListParams에 search/orderBy/queryMode 외의 의미 있는 필터값이 있는지 확인
+  const IGNORED_FILTER_KEYS = new Set(["search", "orderBy", "queryMode", "num", "page", "keyword"]);
+  const hasBaseFilter =
+    baseListParams != null &&
+    Object.entries(baseListParams).some(([k, v]) => !IGNORED_FILTER_KEYS.has(k) && isNotEmpty(v));
+
+  // preload 또는 baseFilter가 있으면 sync 드롭다운으로 렌더링
+  const isDropdown = preload || hasBaseFilter;
+
   const keyword = listParams?.keyword;
   const shouldLoadList =
+    isDropdown ||
     (typeof keyword === "string" && keyword.length > 0) ||
     (multiple && Array.isArray(value) && value.length > 0);
 
@@ -308,6 +322,47 @@ export function IdAsyncSelect<
   // ============================================================
   // Select 렌더링
   // ============================================================
+  const valueKey = (v: TValue) => String(v);
+
+  // isDropdown 모드: sync 드롭다운 (검색창 없이 목록 즉시 표시)
+  if (isDropdown) {
+    if (!multiple) {
+      return (
+        <Select
+          items={items}
+          valueKey={valueKey}
+          value={value as TValue | undefined}
+          onValueChange={(newValue: TValue | undefined) => {
+            onValueChange?.(newValue);
+            onRowChange?.((newValue ? rowMap.get(newValue) : undefined) as RowChangeParam);
+          }}
+          placeholder={placeholder ?? SD(config.placeholderKey)}
+          clearable={clearable}
+          disabled={disabled}
+          className={className}
+          multiple={false}
+        />
+      );
+    }
+
+    return (
+      <Select
+        items={items}
+        valueKey={valueKey}
+        value={(value as TValue[]) ?? []}
+        onValueChange={(newValue: TValue[]) => {
+          onValueChange?.(newValue);
+          onRowChange?.(newValue.map((val) => rowMap.get(val)).filter(Boolean) as RowChangeParam);
+        }}
+        placeholder={placeholder ?? SD(config.placeholderKey)}
+        clearable={clearable}
+        disabled={disabled}
+        className={className}
+        multiple={true}
+      />
+    );
+  }
+
   if (!multiple) {
     return (
       <Select
