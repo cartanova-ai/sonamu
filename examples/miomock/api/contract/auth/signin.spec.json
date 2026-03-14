@@ -1,14 +1,28 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "이메일/비밀번호 기반 로그인 및 세션 관리",
   "description": [
     "Contract 'auth' 도메인의 로그인 기능을 구현한다.",
     "Better-Auth 프레임워크 기반 이메일/비밀번호 인증 및 세션 생성을 담당한다."
   ],
   "acceptanceCriteria": [
-    "이메일/비밀번호로 로그인 시 세션이 생성된다 (유효 기간 1년)",
-    "로그인 시점의 IP 주소와 User-Agent가 세션에 기록된다"
+    {
+      "id": "ac-signin-1",
+      "condition": "이메일/비밀번호로 로그인 시 세션이 생성된다 (유효 기간 1년)",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-signin-2",
+      "condition": "로그인 시점의 IP 주소와 User-Agent가 세션에 기록된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -16,7 +30,9 @@
     "src/application/session/session.types.ts",
     "sonamu.config.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "Session": "세션 관리 엔티티. 토큰, 만료일, 접속 정보(IP, User-Agent)를 관리한다",
     "Auth Config": "Better-Auth emailAndPassword 설정"

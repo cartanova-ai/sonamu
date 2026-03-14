@@ -1,19 +1,35 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "감사 로그 단건 상세 조회 (변경 전후 값 포함)",
   "description": [
     "감사 로그 도메인의 단건 상세 조회 기능을 구현한다.",
     "old_value, new_value JSON을 포함하여 변경 전후를 확인할 수 있다."
   ],
   "acceptanceCriteria": [
-    "감사 로그 단건 조회 시 old_value, new_value JSON을 포함하여 반환한다",
-    "존재하지 않는 감사 로그 ID 조회 시 NotFoundException이 발생한다"
+    {
+      "id": "ac-audit-log-detail-1",
+      "condition": "감사 로그 단건 조회 시 old_value, new_value JSON을 포함하여 반환한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-audit-log-detail-2",
+      "condition": "존재하지 않는 감사 로그 ID 조회 시 NotFoundException이 발생한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
-  "status": "in-progress",
+  "status": "implementing",
   "sources": [],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "AuditLogModel": "감사 로그 단건 상세 조회(findById)를 담당한다"
   },

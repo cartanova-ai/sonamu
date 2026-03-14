@@ -1,15 +1,36 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "tsvector 기반 프로젝트 전문 검색",
   "description": [
     "Contract 'project' 도메인의 프로젝트 검색 기능을 구현한다.",
     "이름/설명 기반 tsvector 전문 검색과 가중치 점수 계산을 담당한다."
   ],
   "acceptanceCriteria": [
-    "이름/설명 기반 전문 검색이 동작한다",
-    "이름 가중치 3, 설명 가중치 1로 점수를 계산한다",
-    "점수 순으로 결과를 반환한다"
+    {
+      "id": "ac-project-search-1",
+      "condition": "이름/설명 기반 전문 검색이 동작한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-project-search-2",
+      "condition": "이름 가중치 3, 설명 가중치 1로 점수를 계산한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-project-search-3",
+      "condition": "점수 순으로 결과를 반환한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -17,7 +38,9 @@
     "src/application/project/project.model.ts",
     "src/application/project/project.model.test.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "ProjectModel": "이름/설명 기반 전문 검색을 담당한다"
   },

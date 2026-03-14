@@ -143,9 +143,9 @@ A feature-level technical document derived from Contract. Each file represents e
 - `schema` (string, required): Schema ID
 - `summary` (string, required): One-line feature summary
 - `description` (string[], required): Detailed feature description
-- `acceptanceCriteria` (string[], required): Completion criteria (verifiable conditions)
+- `acceptanceCriteria` (AcceptanceCriterion[], required): Structured completion criteria with test references (see `acceptanceCriteria` field section)
 - `lastModified` (string YYYY-MM-DD, required): Last modified date
-- `status` (string, required): `"draft"` / `"in-progress"` / `"done"`
+- `status` (string, required): `"draft"` / `"specifying"` / `"implementing"` / `"validating"` / `"done"`
 - `sources` (string[], required): Implementation/test files (relative to project root)
 - `contracts` (string[], required): Referenced Contract files (relative to Spec file)
 - `dependsOnSpecs` (string[], optional): Dependent Spec files (relative to Spec file)
@@ -163,12 +163,33 @@ Example (with `default-spec` schema):
     "Includes password retry limit and account lockout policy."
   ],
   "acceptanceCriteria": [
-    "Valid email/password login returns a JWT token",
-    "5 wrong password attempts locks account for 30 minutes",
-    "Expired session request returns 401 response"
+    {
+      "id": "ac-login-jwt",
+      "condition": "Valid email/password login returns a JWT token",
+      "testRef": {
+        "target": "src/auth/login.test.ts",
+        "pattern": "returns.*JWT"
+      }
+    },
+    {
+      "id": "ac-lockout",
+      "condition": "5 wrong password attempts locks account for 30 minutes",
+      "testRef": {
+        "target": "src/auth/login.test.ts",
+        "pattern": "lock.*5.*attempt"
+      }
+    },
+    {
+      "id": "ac-expired-401",
+      "condition": "Expired session request returns 401 response",
+      "testRef": {
+        "target": "src/auth/session.test.ts",
+        "pattern": "expired.*401"
+      }
+    }
   ],
   "lastModified": "2026-03-09",
-  "status": "in-progress",
+  "status": "implementing",
   "sources": ["src/auth/login.ts", "src/auth/login.test.ts"],
   "contracts": ["./main.contract.json"],
   "dependsOnSpecs": ["./session.spec.json"],
@@ -220,23 +241,59 @@ Rules:
 
 ### `status` field
 
-- `draft`: Spec is being written, not confirmed yet. Initial state.
-- `in-progress`: Spec confirmed, implementation in progress. Transition after all Spec sections are confirmed.
-- `done`: Implementation complete, consistency validation passed, all `acceptanceCriteria` met. Transition after code passes consistency check against Spec.
+5-stage workflow with enforced transition gates:
 
-**Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `in-progress`.
+```
+draft → specifying → implementing → validating → done
+                                                   ↓
+                                              implementing (regression)
+```
+
+- `draft`: Spec created, not yet started. Initial state.
+- `specifying`: Spec is being authored. Transition requires: `contracts` references valid Contract files.
+- `implementing`: Spec confirmed, implementation in progress. Transition requires: all required custom fields non-empty, `acceptanceCriteria` has at least 1 item.
+- `validating`: Implementation complete, validation in progress. Transition requires: all files listed in `sources` exist.
+- `done`: Validation passed, all acceptance criteria met. Transition requires: all AC `testRef.target` files exist.
+
+Only adjacent transitions are allowed (e.g., `draft` → `specifying`, not `draft` → `implementing`).
+
+**Regression**: When `sources`, `contracts`, or `acceptanceCriteria` change on a `done` Spec, `status` automatically reverts to `implementing`.
 
 ### `acceptanceCriteria` field
 
-Conditions that must be met for this Spec's implementation to be considered "done". AI uses these as a checklist during consistency validation.
+Structured completion criteria. Every AC must be provable by test code.
+
+**Structure** (AcceptanceCriterion):
+
+```json
+{
+  "id": "ac-login-jwt",
+  "condition": "Valid email/password login returns a JWT token",
+  "testRef": {
+    "target": "src/auth/login.test.ts",
+    "pattern": "returns.*JWT"
+  }
+}
+```
+
+- `id` (string, required): Unique identifier within the Spec. Format: `ac-{feature}-{seq}`.
+- `condition` (string, required): Verifiable condition. Recommended format: "When X, then Y".
+- `testRef.target` (string, required): Test file path relative to project root.
+- `testRef.pattern` (string, required): Regex pattern to match the test case name/description in the test file.
 
 **Authoring rules**:
 - Each item must be a verifiable, specific condition. Vague expressions like "should work well" are not allowed.
+- **Every AC must have a corresponding test.** If a condition cannot be tested, it should not be an AC.
 - Include conditions derived from Contract's business rules and Edge Cases.
 - Conditions derived from `constraints` and `errorHandling` may also be included.
-- Recommended format: "When X, then Y" (input-result).
+- `testRef` may be empty (`target: "", pattern: ""`) during `specifying` stage but must be filled before `done` transition.
 
-**Validation usage**: When transitioning `status` to `"done"`, AI verifies all items are satisfied in code. If any item is unmet, `"done"` transition is blocked.
+**Validation (`cdd check`)**:
+1. Verifies `testRef.target` file exists.
+2. Verifies `testRef.pattern` matches content in the test file.
+3. Invalid regex patterns are reported as errors.
+
+**Gate enforcement**: `done` transition is blocked if any AC `testRef.target` file does not exist.
 
 ### Spec detail level
 
@@ -278,13 +335,13 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 **Step 2: Spec authoring/fix**
 - Create `{feature-key}.spec.json` in the same folder as related Contract files.
 - Set `schema` to the appropriate Spec schema ID.
-- Set `status` to `"draft"`.
+- Set `status` to `"draft"`, then advance to `"specifying"` (requires valid `contracts` reference).
 - Fill `contracts` with relative paths to base Contract files.
 - Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
 - Fill all custom fields defined by the schema (`modules`, `interfaces`, `dataFlow`, etc.).
-- Define `acceptanceCriteria` with verifiable completion conditions.
+- Define `acceptanceCriteria` with structured entries (id, condition, testRef).
 - Add planned implementation file paths to `sources`.
-- **All fields must be confirmed in this step.** After confirmation, set `status` to `"in-progress"` and continue.
+- **All fields must be confirmed in this step.** After confirmation, advance `status` to `"implementing"` (requires all custom fields non-empty, AC >= 1).
 
 **Step 3: Code implementation**
 - Implement exactly following the confirmed module structure and interfaces defined in Spec.
@@ -301,7 +358,7 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 - Check whether `modules`, `interfaces`, and `dataFlow` match Spec.
 - Verify all `acceptanceCriteria` items are satisfied in code.
 - **If mismatch exists, fix code.** Spec should not be changed to match code.
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
+- After all validations pass, advance `status` through `"validating"` to `"done"` and update `lastModified` to today.
 
 ### 2. Existing code changes
 
@@ -325,7 +382,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 - If Spec update is required, update and confirm Spec first.
 - If files are added/removed, update `sources`.
 - Update `acceptanceCriteria` if completion conditions have changed.
-- Set `status` to `"in-progress"`.
+- Set `status` to `"implementing"`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code update**
@@ -362,7 +419,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
 - If the bug is a missing business case in Contract `edgeCases`, propose Contract update to user. After Contract update, update Spec.
 - Add missing conditions to `acceptanceCriteria` if applicable.
-- Set `status` to `"in-progress"`.
+- Set `status` to `"implementing"`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code fix**

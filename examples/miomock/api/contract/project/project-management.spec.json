@@ -1,15 +1,36 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "프로젝트 생성/조회/수정/삭제 CRUD",
   "description": [
     "Contract 'project' 도메인의 프로젝트 관리 기능을 구현한다.",
     "프로젝트 CRUD와 기본 조회를 담당한다."
   ],
   "acceptanceCriteria": [
-    "프로젝트를 생성/수정/삭제할 수 있다 (이름, 설명, 예산, 마감일, 상태, 이미지)",
-    "관리자 권한으로만 프로젝트를 삭제할 수 있다",
-    "존재하지 않는 프로젝트 조회 시 NotFoundException이 발생한다"
+    {
+      "id": "ac-project-management-1",
+      "condition": "프로젝트를 생성/수정/삭제할 수 있다 (이름, 설명, 예산, 마감일, 상태, 이미지)",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-project-management-2",
+      "condition": "관리자 권한으로만 프로젝트를 삭제할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-project-management-3",
+      "condition": "존재하지 않는 프로젝트 조회 시 NotFoundException이 발생한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -18,7 +39,9 @@
     "src/application/project/project.types.ts",
     "src/application/project/project.model.test.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "ProjectModel": "프로젝트 생성/조회/수정/삭제를 담당한다",
     "Project Types": "프로젝트 엔티티 및 상태/파라미터 스키마를 정의한다"

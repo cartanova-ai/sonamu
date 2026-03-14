@@ -1,16 +1,44 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "문서 생성/수정/삭제 CRUD",
   "description": [
     "Contract 'document' 도메인의 문서 작성 기능을 구현한다.",
     "문서 CRUD와 기본 조회를 담당한다."
   ],
   "acceptanceCriteria": [
-    "문서를 생성/수정/삭제할 수 있다",
-    "문서 생성 시 기본 상태는 draft이다",
-    "관리자 권한으로만 문서를 삭제할 수 있다",
-    "존재하지 않는 문서 조회 시 NotFoundException이 발생한다"
+    {
+      "id": "ac-document-creation-1",
+      "condition": "문서를 생성/수정/삭제할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-creation-2",
+      "condition": "문서 생성 시 기본 상태는 draft이다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-creation-3",
+      "condition": "관리자 권한으로만 문서를 삭제할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-creation-4",
+      "condition": "존재하지 않는 문서 조회 시 NotFoundException이 발생한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -18,7 +46,9 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "DocumentModel": "문서 생성/수정/삭제와 기본 조회를 담당한다",
     "Document Types": "문서 입력/출력 스키마와 파라미터를 정의한다"

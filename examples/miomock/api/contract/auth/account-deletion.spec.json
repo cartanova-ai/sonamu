@@ -1,15 +1,36 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "관리자 권한 기반 계정 삭제(soft delete)",
   "description": [
     "Contract 'auth' 도메인의 계정 삭제 기능을 구현한다.",
     "관리자 권한 확인 후 soft delete 방식으로 계정을 비활성화한다."
   ],
   "acceptanceCriteria": [
-    "관리자 권한으로만 사용자를 삭제할 수 있다",
-    "삭제 시 hard delete가 아닌 deleted_at 기반 soft delete가 적용된다",
-    "사용자 삭제 시 Account, Passkey, TwoFactor가 CASCADE 삭제된다"
+    {
+      "id": "ac-account-deletion-1",
+      "condition": "관리자 권한으로만 사용자를 삭제할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-account-deletion-2",
+      "condition": "삭제 시 hard delete가 아닌 deleted_at 기반 soft delete가 적용된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-account-deletion-3",
+      "condition": "사용자 삭제 시 Account, Passkey, TwoFactor가 CASCADE 삭제된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -17,7 +38,9 @@
     "src/application/user/user.model.ts",
     "src/application/user/user.model.test.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "UserModel": "관리자 권한 기반 계정 삭제(soft delete)를 담당한다"
   },

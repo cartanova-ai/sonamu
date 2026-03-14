@@ -1,14 +1,28 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "프로젝트 AI 질의응답 SSE 스트리밍",
   "description": [
     "Contract 'project' 도메인의 AI 어시스턴트 기능을 구현한다.",
     "프로젝트 관련 질의응답 생성과 SSE 스트리밍 응답을 담당한다."
   ],
   "acceptanceCriteria": [
-    "AI 어시스턴트에 질문하면 SSE 스트리밍으로 응답한다",
-    "에이전트가 fetchProjects 도구로 관련 데이터를 조회한다"
+    {
+      "id": "ac-project-ai-assistant-1",
+      "condition": "AI 어시스턴트에 질문하면 SSE 스트리밍으로 응답한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-project-ai-assistant-2",
+      "condition": "에이전트가 fetchProjects 도구로 관련 데이터를 조회한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -16,7 +30,9 @@
     "src/application/project/project.agent.ts",
     "src/application/project/project.model.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "ProjectAgent": "프로젝트 질의응답 생성과 SSE 스트리밍 응답을 담당한다",
     "ProjectModel": "에이전트가 참조할 프로젝트 데이터 조회를 지원한다"

@@ -1,14 +1,28 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "문서 상태 전이 관리 (draft/published/archived)",
   "description": [
     "Contract 'document' 도메인의 문서 상태 관리 기능을 구현한다.",
     "draft -> published -> archived 상태 전이를 담당한다."
   ],
   "acceptanceCriteria": [
-    "상태 값은 draft, published, archived만 허용된다",
-    "문서 생성 시 기본 상태는 draft이다"
+    {
+      "id": "ac-document-status-1",
+      "condition": "상태 값은 draft, published, archived만 허용된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-status-2",
+      "condition": "문서 생성 시 기본 상태는 draft이다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -16,7 +30,9 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "DocumentModel": "상태 필드 저장/조회와 상태 변경을 담당한다",
     "Document Types": "상태 열거형(draft, published, archived)을 정의한다"

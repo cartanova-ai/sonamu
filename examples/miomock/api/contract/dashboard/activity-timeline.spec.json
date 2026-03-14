@@ -1,23 +1,67 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "감사 로그 기반 날짜별 그룹핑 활동 타임라인",
   "description": [
     "대시보드의 최근 활동 타임라인 기능을 구현한다.",
     "Contract dashboard/main.contract.json의 Feature 4(최근 활동 타임라인)를 다룬다."
   ],
   "acceptanceCriteria": [
-    "감사 로그를 날짜별로 그룹핑하여 최근 20건을 반환한다",
-    "각 항목은 액터명, 대상 엔티티/레코드 식별자, 액션(create/update/delete), 생성 시각을 포함한다",
-    "기간 필터를 지원한다: 7일 / 30일 / 전체 (기본값: 7일)",
-    "일반 사용자는 본인의 변경 이력만 조회된다",
-    "관리자는 전체 변경 이력을 조회한다",
-    "'더보기' 클릭 시 /admin/audit-logs 페이지로 이동한다"
+    {
+      "id": "ac-activity-timeline-1",
+      "condition": "감사 로그를 날짜별로 그룹핑하여 최근 20건을 반환한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-activity-timeline-2",
+      "condition": "각 항목은 액터명, 대상 엔티티/레코드 식별자, 액션(create/update/delete), 생성 시각을 포함한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-activity-timeline-3",
+      "condition": "기간 필터를 지원한다: 7일 / 30일 / 전체 (기본값: 7일)",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-activity-timeline-4",
+      "condition": "일반 사용자는 본인의 변경 이력만 조회된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-activity-timeline-5",
+      "condition": "관리자는 전체 변경 이력을 조회한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-activity-timeline-6",
+      "condition": "'더보기' 클릭 시 /admin/audit-logs 페이지로 이동한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-10",
   "status": "draft",
   "sources": [],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "DashboardModel": "대시보드 전용 모델. getRecentActivity 메서드를 제공한다"
   },

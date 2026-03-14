@@ -1,19 +1,35 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "감사 로그 목록 필터 조회 및 페이지네이션",
   "description": [
     "감사 로그 도메인의 목록 조회 기능을 구현한다.",
     "entity_type, actor_id, 기간 필터와 페이지네이션을 지원한다."
   ],
   "acceptanceCriteria": [
-    "entity_type, actor_id, 기간(date_from, date_to) 필터로 감사 로그 목록을 조회할 수 있다",
-    "감사 로그 목록은 created_at DESC 정렬과 페이지네이션을 지원한다"
+    {
+      "id": "ac-audit-log-query-1",
+      "condition": "entity_type, actor_id, 기간(date_from, date_to) 필터로 감사 로그 목록을 조회할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-audit-log-query-2",
+      "condition": "감사 로그 목록은 created_at DESC 정렬과 페이지네이션을 지원한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
-  "status": "in-progress",
+  "status": "implementing",
   "sources": [],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "AuditLogModel": "감사 로그 목록 조회(findMany)를 담당한다"
   },

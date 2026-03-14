@@ -1,15 +1,36 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "멀티파트 파일 업로드 (버퍼/스트림 모드)",
   "description": [
     "Contract 'file' 도메인의 파일 업로드 기능을 구현한다.",
     "멀티파트 요청 기반 파일 업로드와 버퍼/스트림 모드를 담당한다."
   ],
   "acceptanceCriteria": [
-    "멀티파트 요청으로 파일을 업로드할 수 있다 (최대 10개, 30MB 제한)",
-    "카테고리 지정 업로드(최대 5개)와 단일 파일 업로드(최대 1개)를 지원한다",
-    "버퍼/스트림 두 가지 업로드 모드를 지원한다"
+    {
+      "id": "ac-file-upload-1",
+      "condition": "멀티파트 요청으로 파일을 업로드할 수 있다 (최대 10개, 30MB 제한)",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-file-upload-2",
+      "condition": "카테고리 지정 업로드(최대 5개)와 단일 파일 업로드(최대 1개)를 지원한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-file-upload-3",
+      "condition": "버퍼/스트림 두 가지 업로드 모드를 지원한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -17,7 +38,9 @@
     "src/application/file/file.model.ts",
     "src/application/file/file.types.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "FileModel": "업로드 엔드포인트와 스토리지 저장을 담당한다",
     "File Types": "파일 입력/출력 스키마와 메타데이터 타입을 정의한다"

@@ -1,15 +1,36 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "벡터 임베딩 기반 의미 검색",
   "description": [
     "Contract 'document' 도메인의 의미 검색 기능을 구현한다.",
     "텍스트 임베딩과 벡터 유사도 기반 문서 검색을 담당한다."
   ],
   "acceptanceCriteria": [
-    "텍스트를 임베딩 벡터로 변환할 수 있다",
-    "벡터 기반 의미 검색으로 유사 문서를 점수와 함께 반환한다",
-    "일반 목록 조회에서 semanticQuery가 있으면 의미 검색 경로를 사용한다"
+    {
+      "id": "ac-semantic-search-1",
+      "condition": "텍스트를 임베딩 벡터로 변환할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-semantic-search-2",
+      "condition": "벡터 기반 의미 검색으로 유사 문서를 점수와 함께 반환한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-semantic-search-3",
+      "condition": "일반 목록 조회에서 semanticQuery가 있으면 의미 검색 경로를 사용한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -17,7 +38,9 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "DocumentModel": "임베딩 생성 및 벡터 유사도 검색을 담당한다",
     "Document Types": "의미 검색 입력(semanticQuery/벡터) 파라미터를 정의한다"

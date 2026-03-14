@@ -1,18 +1,60 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "태그 CRUD, 다국어 이름 관리, 태그 캐시, 워크플로우 실행 구현",
   "description": [
     "Contract 'project' 도메인의 '태그 관리' 기능을 구현한다.",
     "태그 CRUD, 다국어 이름(name_ko, name_en) 관리, 캐시 조회/무효화, 워크플로우 실행을 담당한다."
   ],
   "acceptanceCriteria": [
-    "태그를 생성/수정할 수 있으며 기본 이름과 다국어 이름(name_ko, name_en)을 저장한다",
-    "태그 캐시 조회 시 캐시 히트면 즉시 반환하고, 미스 시 DB 조회 후 캐시에 저장한다",
-    "태그 캐시를 명시적으로 무효화할 수 있다",
-    "태그 워크플로우(scrape-data -> process-data -> save-data)를 실행할 수 있다",
-    "관리자 권한으로만 태그를 삭제할 수 있다",
-    "존재하지 않는 태그 조회 시 NotFoundException이 발생한다"
+    {
+      "id": "ac-tag-1",
+      "condition": "태그를 생성/수정할 수 있으며 기본 이름과 다국어 이름(name_ko, name_en)을 저장한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-tag-2",
+      "condition": "태그 캐시 조회 시 캐시 히트면 즉시 반환하고, 미스 시 DB 조회 후 캐시에 저장한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-tag-3",
+      "condition": "태그 캐시를 명시적으로 무효화할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-tag-4",
+      "condition": "태그 워크플로우(scrape-data -> process-data -> save-data)를 실행할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-tag-5",
+      "condition": "관리자 권한으로만 태그를 삭제할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-tag-6",
+      "condition": "존재하지 않는 태그 조회 시 NotFoundException이 발생한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
@@ -21,7 +63,9 @@
     "src/application/tag/tag.types.ts",
     "src/application/tag/tag.workflow.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "TagModel": "태그 CRUD, 캐시 조회/무효화, 워크플로우 실행을 담당한다",
     "Tag Types": "태그 파라미터/엔티티 스키마를 정의한다",

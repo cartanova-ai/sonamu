@@ -1,20 +1,76 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "문서 관리 Admin UI",
   "description": [
     "Contract 'document' 도메인의 관리자 화면 기능을 구현한다.",
     "문서 목록 조회(필터/검색/페이지네이션)와 생성/수정 폼, 삭제 기능을 Admin UI로 제공한다."
   ],
   "acceptanceCriteria": [
-    "문서 목록 페이지에서 전체 문서를 테이블 형태로 조회할 수 있다",
-    "문서 목록에서 상태별(draft/published/archived) 필터링이 가능하다",
-    "문서 목록에서 키워드 검색이 가능하다",
-    "문서 목록에서 페이지네이션이 동작한다",
-    "문서 목록에서 삭제 버튼을 클릭하면 확인 다이얼로그 후 삭제된다",
-    "문서 생성 폼에서 제목, 본문, 상태를 입력하여 새 문서를 생성할 수 있다",
-    "문서 수정 폼에서 기존 문서의 제목, 본문, 상태를 수정할 수 있다",
-    "문서 저장 성공 시 목록 페이지로 이동하고 목록이 갱신된다"
+    {
+      "id": "ac-document-admin-ui-1",
+      "condition": "문서 목록 페이지에서 전체 문서를 테이블 형태로 조회할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-2",
+      "condition": "문서 목록에서 상태별(draft/published/archived) 필터링이 가능하다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-3",
+      "condition": "문서 목록에서 키워드 검색이 가능하다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-4",
+      "condition": "문서 목록에서 페이지네이션이 동작한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-5",
+      "condition": "문서 목록에서 삭제 버튼을 클릭하면 확인 다이얼로그 후 삭제된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-6",
+      "condition": "문서 생성 폼에서 제목, 본문, 상태를 입력하여 새 문서를 생성할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-7",
+      "condition": "문서 수정 폼에서 기존 문서의 제목, 본문, 상태를 수정할 수 있다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-document-admin-ui-8",
+      "condition": "문서 저장 성공 시 목록 페이지로 이동하고 목록이 갱신된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-11",
   "status": "done",
@@ -22,7 +78,9 @@
     "../../../web/src/routes/admin/documents/index.tsx",
     "../../../web/src/routes/admin/documents/form.tsx"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "dependsOnSpecs": [
     "./document-creation.spec.json",
     "./document-status.spec.json"

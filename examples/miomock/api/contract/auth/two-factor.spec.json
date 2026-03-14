@@ -1,22 +1,45 @@
 {
   "schema": "default-spec",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "TOTP 기반 2단계 인증 활성화/검증/비활성화",
   "description": [
     "Contract 'auth' 도메인의 2단계 인증 기능을 구현한다.",
     "Better-Auth twoFactor 플러그인 기반 TOTP 인증을 담당한다."
   ],
   "acceptanceCriteria": [
-    "TOTP 기반 2단계 인증 활성화가 동작한다",
-    "OTP 코드 검증이 동작한다",
-    "2단계 인증 비활성화가 동작한다"
+    {
+      "id": "ac-two-factor-1",
+      "condition": "TOTP 기반 2단계 인증 활성화가 동작한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-two-factor-2",
+      "condition": "OTP 코드 검증이 동작한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    },
+    {
+      "id": "ac-two-factor-3",
+      "condition": "2단계 인증 비활성화가 동작한다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "2026-03-09",
   "status": "done",
   "sources": [
     "src/application/two-factor/two-factor.types.ts"
   ],
-  "contracts": ["./main.contract.json"],
+  "contracts": [
+    "./main.contract.json"
+  ],
   "modules": {
     "TwoFactor": "TOTP 기반 2단계 인증 엔티티. 비밀키와 백업 코드를 관리한다"
   },
