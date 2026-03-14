@@ -12,22 +12,43 @@ import { useSonamuContext } from "../../../contexts/sonamu-provider";
 import { defaultCatch } from "../../../services/sonamu.shared";
 import { buildCustomFieldSections } from "../field-renderers/registry";
 import { CddService } from "../service";
-import type { CddContentEnvelope, CddTreeNode, SectionDescriptor } from "../types";
+import type {
+  AcceptanceCriterion,
+  CddContentEnvelope,
+  CddTreeNode,
+  SectionDescriptor,
+} from "../types";
 import { featureToSpecPath, resolveRefPath } from "../utils/document-path";
 import { CddFileIcon } from "./cdd_file_icon";
 import { CddSectionLayout, ViewerSection } from "./cdd_section_layout";
 
 const STATUS_MAP: Record<string, { label: string; color: string; dot: string }> = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-600 border-gray-200", dot: "bg-gray-400" },
-  "in-progress": {
-    label: "In Progress",
+  specifying: {
+    label: "Specifying",
+    color: "bg-amber-50 text-amber-600 border-amber-200",
+    dot: "bg-amber-500",
+  },
+  implementing: {
+    label: "Implementing",
     color: "bg-blue-50 text-blue-600 border-blue-200",
     dot: "bg-blue-500",
+  },
+  validating: {
+    label: "Validating",
+    color: "bg-violet-50 text-violet-600 border-violet-200",
+    dot: "bg-violet-500",
   },
   done: {
     label: "Done",
     color: "bg-emerald-50 text-emerald-600 border-emerald-200",
     dot: "bg-emerald-500",
+  },
+  // 하위 호환: schemaVersion 1
+  "in-progress": {
+    label: "In Progress",
+    color: "bg-blue-50 text-blue-600 border-blue-200",
+    dot: "bg-blue-500",
   },
 };
 
@@ -126,24 +147,51 @@ export function CddDocumentDetail({
         });
       }
 
-      const criteria = doc.acceptanceCriteria as string[] | undefined;
+      const criteria = doc.acceptanceCriteria as (AcceptanceCriterion | string)[] | undefined;
       if (criteria && criteria.length > 0) {
         result.push({
           id: "spec-criteria",
           title: "Acceptance Criteria",
           icon: CheckCircle2Icon,
           render: () => (
-            <div className="space-y-1">
-              {criteria.map((item, i) => (
-                <div key={i} className="flex gap-3 items-start group">
-                  <div className="mt-1 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0">
-                    <CheckCircle2Icon className="w-4 h-4" />
+            <div className="space-y-2">
+              {criteria.map((item, i) => {
+                if (typeof item === "string") {
+                  return (
+                    <div key={i} className="flex gap-3 items-start group">
+                      <div className="mt-1 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0">
+                        <CheckCircle2Icon className="w-4 h-4" />
+                      </div>
+                      <p className="text-slate-600 text-sm leading-relaxed group-hover:text-slate-900 transition-colors">
+                        {item}
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div
+                    key={item.id}
+                    className="border border-slate-200 rounded-lg p-3 space-y-1.5 hover:border-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2Icon className="w-4 h-4 text-blue-500 shrink-0" />
+                      <span className="text-[11px] font-mono text-slate-400">{item.id}</span>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed">{item.condition}</p>
+                    {item.testRef?.target && (
+                      <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                        <span>{item.testRef.target}</span>
+                        {item.testRef.pattern && (
+                          <>
+                            <span className="text-slate-300">|</span>
+                            <span>/{item.testRef.pattern}/</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-slate-600 text-sm leading-relaxed group-hover:text-slate-900 transition-colors">
-                    {item}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ),
         });

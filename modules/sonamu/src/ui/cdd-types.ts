@@ -58,3 +58,16 @@ export type CddSchemaDetailEnvelope = {
   references: CddSchemaReference[];
   hasIdMismatch: boolean;
 };
+
+/** Acceptance Criterion 테스트 참조 */
+export type AcceptanceCriterionTestRef = {
+  target: string;
+  pattern: string;
+};
+
+/** 구조화된 Acceptance Criterion */
+export type AcceptanceCriterion = {
+  id: string;
+  condition: string;
+  testRef: AcceptanceCriterionTestRef;
+};

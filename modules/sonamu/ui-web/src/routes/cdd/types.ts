@@ -1,4 +1,5 @@
 export type {
+  AcceptanceCriterion,
   CddContentEnvelope,
   CddFileType,
   CddSchema,
