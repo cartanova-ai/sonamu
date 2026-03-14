@@ -21,32 +21,14 @@ export function runInit(args: string[]): OutputResult {
   fs.mkdirSync(contractDir, { recursive: true });
 
   const mainContract: ContractDocument = {
+    schema: "default-contract",
     lastModified: todayString(),
-    content: [
-      "## Overview",
-      "",
-      "",
-      "",
-      "## Domain Glossary",
-      "",
-      "",
-      "",
-      "## Features/Capabilities",
-      "",
-      "",
-      "",
-      "## User Roles/Actors",
-      "",
-      "",
-      "",
-      "## Business Rules/Constraints",
-      "",
-      "",
-      "",
-      "## Edge Cases",
-      "",
-      "",
-    ],
+    features: {},
+    overview: [],
+    domainGlossary: [],
+    userRoles: [],
+    businessRules: [],
+    edgeCases: [],
   };
 
   fs.writeFileSync(
@@ -98,8 +80,14 @@ project/
 
 \`\`\`json
 {
+  "schema": "default-contract",
   "lastModified": "YYYY-MM-DD",
-  "content": ["## Overview", "", "Markdown lines as string array", ...]
+  "features": { "feature-name": "Feature description" },
+  "overview": ["Project/domain overview"],
+  "domainGlossary": ["Term: Definition"],
+  "userRoles": ["Role: Description"],
+  "businessRules": ["Rule description"],
+  "edgeCases": ["Edge case description"]
 }
 \`\`\`
 
@@ -107,12 +95,18 @@ project/
 
 \`\`\`json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "summary": "Feature summary",
   "description": ["Detailed description"],
-  "acceptanceCriteria": ["When X, then Y"],
+  "acceptanceCriteria": [
+    {
+      "id": "ac-feature-1",
+      "condition": "When X, then Y",
+      "testRef": { "target": "src/foo.test.ts", "pattern": "regex pattern" }
+    }
+  ],
   "lastModified": "YYYY-MM-DD",
-  "status": "draft | in-progress | done",
+  "status": "draft | specifying | implementing | validating | done",
   "sources": ["src/foo.ts"],
   "contracts": ["./main.contract.json"],
   "modules": { "ModuleName": "Role description" },
@@ -122,6 +116,16 @@ project/
   "constraints": ["Constraint description"]
 }
 \`\`\`
+
+## Workflow
+
+Status pipeline: draft → specifying → implementing → validating → done
+
+Each transition enforces gate conditions:
+- draft → specifying: contracts must reference valid contract files
+- specifying → implementing: modules, interfaces, dataFlow, AC must be non-empty
+- implementing → validating: sources must be non-empty and files must exist
+- validating → done: all AC testRef targets must exist
 
 For full CDD rules, see the project documentation.
 `;

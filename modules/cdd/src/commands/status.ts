@@ -1,6 +1,7 @@
 import path from "node:path";
 import chalk from "chalk";
 import type { CddProject, SpecStatus } from "../core/types.js";
+import { VALID_STATUSES } from "../core/types.js";
 import { formatPath, formatStatus } from "../utils/format.js";
 import type { OutputResult } from "../utils/output.js";
 import { resolveFile } from "../utils/resolve.js";
@@ -28,12 +29,17 @@ function runProjectStatus(project: CddProject): OutputResult {
   const contractCount = project.contracts.length;
   const specCount = project.specs.length;
 
-  const statusCounts: Record<SpecStatus, number> = { draft: 0, "in-progress": 0, done: 0 };
+  const statusCounts = Object.fromEntries(VALID_STATUSES.map((s) => [s, 0])) as Record<
+    SpecStatus,
+    number
+  >;
   let totalAcceptanceCriteria = 0;
   let specsWithDependencies = 0;
 
   for (const spec of project.specs) {
-    statusCounts[spec.document.status]++;
+    if (spec.document.status in statusCounts) {
+      statusCounts[spec.document.status]++;
+    }
     totalAcceptanceCriteria += spec.document.acceptanceCriteria.length;
     if (spec.document.dependsOnSpecs && spec.document.dependsOnSpecs.length > 0) {
       specsWithDependencies++;
@@ -57,8 +63,10 @@ function runProjectStatus(project: CddProject): OutputResult {
       console.log(`  Specs:      ${chalk.white(String(specCount))}`);
       console.log();
       console.log(chalk.bold("  Status Breakdown:"));
-      console.log(`    ${formatStatus("done")}:         ${statusCounts.done}`);
-      console.log(`    ${formatStatus("in-progress")}:  ${statusCounts["in-progress"]}`);
+      console.log(`    ${formatStatus("done")}:          ${statusCounts.done}`);
+      console.log(`    ${formatStatus("validating")}:    ${statusCounts.validating}`);
+      console.log(`    ${formatStatus("implementing")}: ${statusCounts.implementing}`);
+      console.log(`    ${formatStatus("specifying")}:   ${statusCounts.specifying}`);
       console.log(`    ${formatStatus("draft")}:        ${statusCounts.draft}`);
       console.log();
       console.log(`  Acceptance Criteria:  ${totalAcceptanceCriteria}`);

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { CddProject, ValidationIssue } from "../core/types.js";
+import type { AcceptanceCriterion, CddProject, ValidationIssue } from "../core/types.js";
 import { findMissingResolvedPaths, findSourcesOutsideRoot } from "../core/validation-shared.js";
 import { formatPath, formatSeverity } from "../utils/format.js";
 import type { OutputResult } from "../utils/output.js";
@@ -14,6 +14,12 @@ export function runCheck(project: CddProject): OutputResult {
     checkSourcesSecurity(spec.document.sources, project.projectRoot, spec.path, issues);
     checkDuplicateSources(spec.document.sources, project.projectRoot, spec.path, issues);
     checkDependsOnSpecsExist(spec.resolvedDependsOnSpecs, specPaths, spec.path, issues);
+    checkAcceptanceCriteriaTestRefs(
+      spec.document.acceptanceCriteria,
+      project.projectRoot,
+      spec.path,
+      issues,
+    );
   }
 
   const errorCount = issues.filter((i) => i.severity === "error").length;
@@ -115,5 +121,47 @@ function checkDependsOnSpecsExist(
       path: filePath,
       message: `dependsOnSpecs 참조를 찾을 수 없습니다: "${dep}"`,
     });
+  }
+}
+
+/** AC testRef 검증: 테스트 파일 존재 및 패턴 매칭 확인 */
+function checkAcceptanceCriteriaTestRefs(
+  criteria: AcceptanceCriterion[],
+  projectRoot: string,
+  filePath: string,
+  issues: ValidationIssue[],
+): void {
+  for (const ac of criteria) {
+    if (!ac.testRef?.target) continue;
+
+    const testPath = path.resolve(projectRoot, ac.testRef.target);
+    if (!fs.existsSync(testPath)) {
+      issues.push({
+        severity: "error",
+        path: filePath,
+        message: `AC "${ac.id}": 테스트 파일이 존재하지 않습니다: "${ac.testRef.target}"`,
+      });
+      continue;
+    }
+
+    if (ac.testRef.pattern) {
+      const content = fs.readFileSync(testPath, "utf-8");
+      try {
+        const regex = new RegExp(ac.testRef.pattern);
+        if (!regex.test(content)) {
+          issues.push({
+            severity: "warning",
+            path: filePath,
+            message: `AC "${ac.id}": 테스트 파일에서 패턴 "${ac.testRef.pattern}"을(를) 찾을 수 없습니다`,
+          });
+        }
+      } catch {
+        issues.push({
+          severity: "error",
+          path: filePath,
+          message: `AC "${ac.id}": 유효하지 않은 정규식 패턴: "${ac.testRef.pattern}"`,
+        });
+      }
+    }
   }
 }

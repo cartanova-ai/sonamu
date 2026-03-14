@@ -1,7 +1,7 @@
 import path from "node:path";
 import chalk from "chalk";
 import { getField } from "../core/spec-field-ops.js";
-import type { CddProject, SpecDocument } from "../core/types.js";
+import type { AcceptanceCriterion, CddProject, SpecDocument } from "../core/types.js";
 import { formatStatus } from "../utils/format.js";
 import type { OutputResult } from "../utils/output.js";
 import { resolveSpec } from "../utils/resolve.js";
@@ -60,7 +60,7 @@ function printSpecPretty(specPath: string, doc: SpecDocument, project: CddProjec
   console.log();
 
   printArray("description", doc.description);
-  printArray("acceptanceCriteria", doc.acceptanceCriteria);
+  printAcceptanceCriteria(doc.acceptanceCriteria);
   printArray("sources", doc.sources);
   printArray("contracts", doc.contracts);
 
@@ -82,6 +82,23 @@ function printArray(label: string, items: string[]): void {
   } else {
     for (const item of items) {
       console.log(`    - ${item}`);
+    }
+  }
+  console.log();
+}
+
+function printAcceptanceCriteria(criteria: AcceptanceCriterion[]): void {
+  console.log(`  ${chalk.bold.cyan("acceptanceCriteria")}`);
+  if (criteria.length === 0) {
+    console.log(`    ${chalk.dim("(empty)")}`);
+  } else {
+    for (const ac of criteria) {
+      console.log(`    - ${chalk.dim(`[${ac.id}]`)} ${ac.condition}`);
+      if (ac.testRef?.target) {
+        console.log(
+          `      ${chalk.dim("test:")} ${ac.testRef.target} ${chalk.dim(`/${ac.testRef.pattern}/`)}`,
+        );
+      }
     }
   }
   console.log();

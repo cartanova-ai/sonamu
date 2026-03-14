@@ -77,7 +77,7 @@ export function runSpecCreate(
     : "./main.contract.json";
 
   const doc: SpecDocument = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     summary: "",
     description: [],
     acceptanceCriteria: [],

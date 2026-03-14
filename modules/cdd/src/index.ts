@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 
 import minimist from "minimist";
+import { runAcAdd } from "./commands/ac-add.js";
+import { runAcCheck } from "./commands/ac-check.js";
+import { runAcList } from "./commands/ac-list.js";
+import { runAcRemove } from "./commands/ac-remove.js";
+import { runAdvance } from "./commands/advance.js";
+import { runUnifiedBlame } from "./commands/blame.js";
 import { runCheck } from "./commands/check.js";
+import { runUnifiedExplain } from "./commands/explain.js";
 import { runImpact } from "./commands/impact.js";
 import { runInit } from "./commands/init.js";
-import { runSourceBlame } from "./commands/source-blame.js";
-import { runSourceExplain } from "./commands/source-explain.js";
-import { runSourceLog } from "./commands/source-log.js";
+import { runUnifiedLog } from "./commands/log.js";
+import { runRegress } from "./commands/regress.js";
 import { runSpecAdd } from "./commands/spec-add.js";
-import { runSpecBlame } from "./commands/spec-blame.js";
 import { runSpecCreate } from "./commands/spec-create.js";
-import { runSpecExplain } from "./commands/spec-explain.js";
 import { runSpecGet } from "./commands/spec-get.js";
 import { runSpecList } from "./commands/spec-list.js";
-import { runSpecLog } from "./commands/spec-log.js";
 import { runSpecRemove } from "./commands/spec-remove.js";
 import { runSpecSet } from "./commands/spec-set.js";
-import { runSpecSetStatus } from "./commands/spec-set-status.js";
 import { runStatus } from "./commands/status.js";
 import { runTree } from "./commands/tree.js";
 import { runValidate } from "./commands/validate.js";
@@ -40,6 +42,10 @@ const args = minimist(process.argv.slice(2), {
     "until",
     "group-by",
     "commit",
+    "condition",
+    "target",
+    "pattern",
+    "id",
   ],
   boolean: ["help", "raw", "json", "reverse"],
   alias: { h: "help" },
@@ -83,6 +89,7 @@ async function dispatch(
   project: CddProject,
 ): Promise<OutputResult> {
   switch (cmd) {
+    // 프로젝트 관리
     case "tree":
       return runTree(project);
     case "status":
@@ -93,13 +100,72 @@ async function dispatch(
       return runImpact(cmdArgs[0], project);
     case "check":
       return runCheck(project);
+
+    // 워크플로우
+    case "advance":
+      return runAdvance(cmdArgs[0], project);
+    case "regress":
+      return runRegress(cmdArgs[0], project);
+
+    // AC 관리
+    case "ac":
+      return dispatchAc(cmdArgs, project);
+
+    // Spec CRUD
     case "spec":
       return dispatchSpec(cmdArgs, project);
-    case "source":
-      return dispatchSource(cmdArgs, project);
+
+    // 분석 (통합)
+    case "blame":
+      return runUnifiedBlame(cmdArgs[0], { cwd, since: args.since, until: args.until }, project);
+    case "log":
+      return runUnifiedLog(
+        cmdArgs[0],
+        {
+          cwd,
+          since: args.since,
+          until: args.until,
+          groupBy: (args["group-by"] as "day" | "week" | "month") || "week",
+        },
+        project,
+      );
+    case "explain":
+      return runUnifiedExplain(
+        cmdArgs[0],
+        { cwd, since: args.since, until: args.until, commit: args.commit },
+        project,
+      );
+
     default:
       console.error(`알 수 없는 명령어: "${cmd}"`);
       printHelp();
+      process.exit(1);
+  }
+}
+
+async function dispatchAc(cmdArgs: string[], project: CddProject): Promise<OutputResult> {
+  const subCmd = cmdArgs[0];
+  switch (subCmd) {
+    case "add":
+      return runAcAdd(
+        cmdArgs[1],
+        {
+          condition: args.condition,
+          target: args.target,
+          pattern: args.pattern,
+          id: args.id,
+        },
+        project,
+      );
+    case "remove":
+      return runAcRemove(cmdArgs[1], args.id, project);
+    case "list":
+      return runAcList(cmdArgs[1], project);
+    case "check":
+      return runAcCheck(cmdArgs[1], project);
+    default:
+      console.error(`알 수 없는 ac 서브커맨드: "${subCmd}"`);
+      console.error("사용 가능: add, remove, list, check");
       process.exit(1);
   }
 }
@@ -109,8 +175,6 @@ async function dispatchSpec(cmdArgs: string[], project: CddProject): Promise<Out
   switch (subCmd) {
     case "create":
       return runSpecCreate(cmdArgs[1], { domain: args.domain, contract: args.contract }, project);
-    case "set-status":
-      return runSpecSetStatus(cmdArgs[1], cmdArgs[2], project);
     case "list":
       return runSpecList(
         {
@@ -142,73 +206,9 @@ async function dispatchSpec(cmdArgs: string[], project: CddProject): Promise<Out
         project,
       );
     }
-    case "blame":
-      return runSpecBlame(cmdArgs[1], { cwd, since: args.since, until: args.until }, project);
-    case "log":
-      return runSpecLog(
-        cmdArgs[1],
-        {
-          cwd,
-          since: args.since,
-          until: args.until,
-          groupBy: (args["group-by"] as "day" | "week" | "month") || "week",
-        },
-        project,
-      );
-    case "explain": {
-      if (!cmdArgs[1]) {
-        console.error(
-          "사용법: cdd spec explain <spec> [--since <date>] [--until <date>] [--commit <hash>]",
-        );
-        process.exit(1);
-      }
-      return runSpecExplain(
-        cmdArgs[1],
-        { cwd, since: args.since, until: args.until, commit: args.commit },
-        project,
-      );
-    }
     default:
       console.error(`알 수 없는 spec 서브커맨드: "${subCmd}"`);
-      console.error(
-        "사용 가능: create, set-status, list, get, set, add, remove, blame, log, explain",
-      );
-      process.exit(1);
-  }
-}
-
-async function dispatchSource(cmdArgs: string[], project: CddProject): Promise<OutputResult> {
-  const subCmd = cmdArgs[0];
-  switch (subCmd) {
-    case "blame":
-      return runSourceBlame(cmdArgs[1], { cwd, since: args.since, until: args.until }, project);
-    case "log":
-      return runSourceLog(
-        cmdArgs[1],
-        {
-          cwd,
-          since: args.since,
-          until: args.until,
-          groupBy: (args["group-by"] as "day" | "week" | "month") || "week",
-        },
-        project,
-      );
-    case "explain": {
-      if (!cmdArgs[1]) {
-        console.error(
-          "사용법: cdd source explain <file> [--since <date>] [--until <date>] [--commit <hash>]",
-        );
-        process.exit(1);
-      }
-      return runSourceExplain(
-        cmdArgs[1],
-        { cwd, since: args.since, until: args.until, commit: args.commit },
-        project,
-      );
-    }
-    default:
-      console.error(`알 수 없는 source 서브커맨드: "${subCmd}"`);
-      console.error("사용 가능: blame, log, explain");
+      console.error("사용 가능: create, list, get, set, add, remove");
       process.exit(1);
   }
 }
@@ -222,20 +222,26 @@ Commands:
   status [file]                     전체 상태 대시보드 / spec·contract 상태 조회
   validate                          구조/참조 무결성 검증
   impact <file>                     소스 파일 변경 영향 분석 (sources 기반)
-  check                             Spec-Code 일관성 검증
+  check                             Spec-Code 일관성 검증 (sources + AC testRef)
+
+  advance <spec>                    다음 상태로 전진 (게이트 강제)
+  regress <spec>                    done → implementing 수동 회귀
+
+  ac add <spec>                     AC 추가 (--condition --target --pattern [--id])
+  ac remove <spec> --id <id>        AC 제거 (id 기준)
+  ac list <spec>                    AC 목록 + testRef 검증 상태
+  ac check <spec>                   AC testRef 전체 검증
+
   spec create <name>                Spec 템플릿 생성
-  spec set-status <spec> <status>   Spec 상태 변경
   spec list                         Spec 목록 조회
   spec get <spec>                   Spec 조회
   spec set <spec>                   Spec 필드 값 변경
   spec add <spec>                   Spec 배열/맵 필드에 항목 추가
   spec remove <spec>                Spec 배열/맵 필드에서 항목 제거
-  spec blame <spec>                 Spec 기여자 분석 (git blame 기반)
-  spec log <spec>                   Spec 변경 타임라인 조회
-  spec explain <spec>               Spec 변경 사유 분석
-  source blame <file>               소스 파일 기여자 분석 (git blame 기반)
-  source log <file>                 소스 파일 변경 타임라인 조회
-  source explain <file>             소스 파일 변경 사유 분석
+
+  blame <file>                      기여자 분석 (spec/source 자동 판별)
+  log <file>                        변경 타임라인 (--group-by day|week|month)
+  explain <file>                    변경 사유 분석 (--commit | --since --until)
 
 Options:
   --cwd <dir>           작업 디렉토리 지정 (기본: 현재 디렉토리)
@@ -243,7 +249,11 @@ Options:
   --value <value>       설정할 값
   --key <key>           맵 필드의 키
   --index <n>           배열 필드의 인덱스
-  --status <status>     상태 필터 (draft | in-progress | done)
+  --id <id>             AC id (ac add/remove에서 사용)
+  --condition <text>    AC 검증 조건 (ac add)
+  --target <file>       AC 테스트 파일 경로 (ac add)
+  --pattern <regex>     AC 테스트 패턴 (ac add)
+  --status <status>     상태 필터 (draft | specifying | implementing | validating | done)
   --domain <domain>     도메인 필터
   --contract <path>     Contract 경로
   --since <date>        시작 날짜 필터 (blame, log, explain)
