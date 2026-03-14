@@ -18,7 +18,7 @@ export type {
   ValidationIssue,
 } from "./core/types.js";
 export {
-  CONTRACT_REQUIRED_SECTIONS,
+  CONTRACT_REQUIRED_FIELDS,
   SPEC_REQUIRED_FIELDS,
 } from "./core/types.js";
 export { validateProject } from "./core/validator.js";

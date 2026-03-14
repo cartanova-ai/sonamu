@@ -36,8 +36,8 @@ describe("loadProject", () => {
     expect(project.contractDir).toBe(MIOMOCK_CONTRACT_DIR);
     expect(project.projectRoot).toBe(path.dirname(MIOMOCK_CONTRACT_DIR));
 
-    expect(project.contracts).toHaveLength(7);
-    expect(project.specs).toHaveLength(27);
+    expect(project.contracts).toHaveLength(8);
+    expect(project.specs).toHaveLength(30);
 
     for (const c of project.contracts) {
       expect(path.isAbsolute(c.path)).toBe(true);
@@ -74,16 +74,16 @@ describe("loadProject", () => {
     );
   });
 
-  it("content가 string[]이 아닌 contract 파일이면 에러를 던진다", async () => {
+  it("필수 필드가 누락된 contract 파일이면 에러를 던진다", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdd-test-"));
     const contractDir = path.join(tmpDir, "contract");
     fs.mkdirSync(contractDir, { recursive: true });
     fs.writeFileSync(
       path.join(contractDir, "bad.contract.json"),
-      JSON.stringify({ lastModified: "2026-01-01", content: "not an array" }),
+      JSON.stringify({ lastModified: "2026-01-01" }),
     );
 
-    await expect(loadProject(contractDir)).rejects.toThrow("content 필드가 배열이 아닙니다");
+    await expect(loadProject(contractDir)).rejects.toThrow("schema 필드가 문자열이 아닙니다");
 
     fs.rmSync(tmpDir, { recursive: true });
   });

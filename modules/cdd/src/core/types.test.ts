@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CddProject,
-  CONTRACT_REQUIRED_SECTIONS,
+  CONTRACT_REQUIRED_FIELDS,
   type ContractDocument,
   type ContractNode,
   SPEC_REQUIRED_FIELDS,
@@ -14,19 +14,33 @@ import {
 describe("types", () => {
   it("ContractDocument 형상 확인", () => {
     const doc: ContractDocument = {
+      schema: "default-contract",
       lastModified: "2026-03-09",
-      content: ["## Overview", "", "설명"],
+      features: { signin: "로그인 기능" },
+      overview: ["시스템 개요"],
+      domainGlossary: ["용어: 정의"],
+      userRoles: ["일반 사용자: 설명"],
+      businessRules: ["규칙 설명"],
+      edgeCases: ["엣지 케이스 설명"],
     };
     expect(doc.lastModified).toBe("2026-03-09");
-    expect(doc.content).toHaveLength(3);
+    expect(doc.schema).toBe("default-contract");
+    expect(doc.features).toEqual({ signin: "로그인 기능" });
+    expect(doc.overview).toHaveLength(1);
   });
 
   it("SpecDocument 형상 확인", () => {
     const doc: SpecDocument = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       summary: "테스트 기능",
       description: ["테스트 설명"],
-      acceptanceCriteria: ["조건 A를 만족한다"],
+      acceptanceCriteria: [
+        {
+          id: "ac-test-1",
+          condition: "조건 A를 만족한다",
+          testRef: { target: "src/test.ts", pattern: "조건 A를 만족한다" },
+        },
+      ],
       lastModified: "2026-03-09",
       status: "draft",
       sources: ["src/test.ts"],
@@ -37,14 +51,14 @@ describe("types", () => {
       errorHandling: { TestError: "테스트 에러" },
       constraints: ["제약 사항"],
     };
-    expect(doc.schemaVersion).toBe(1);
+    expect(doc.schemaVersion).toBe(2);
     expect(doc.summary).toBe("테스트 기능");
     expect(doc.status).toBe("draft");
   });
 
   it("SpecDocument에 dependsOnSpecs 옵션 필드를 포함할 수 있다", () => {
     const doc: SpecDocument = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       summary: "의존성 테스트",
       description: [],
       acceptanceCriteria: [],
@@ -63,8 +77,8 @@ describe("types", () => {
   });
 
   it("SpecStatus 값 제약 확인", () => {
-    const statuses: SpecStatus[] = ["draft", "in-progress", "done"];
-    expect(statuses).toHaveLength(3);
+    const statuses: SpecStatus[] = ["draft", "specifying", "implementing", "validating", "done"];
+    expect(statuses).toHaveLength(5);
   });
 
   it("ContractNode/SpecNode 형상 확인", () => {
@@ -72,7 +86,16 @@ describe("types", () => {
       path: "/abs/contract/main.contract.json",
       domain: "",
       basename: "main",
-      document: { lastModified: "2026-01-01", content: [] },
+      document: {
+        schema: "default-contract",
+        lastModified: "2026-01-01",
+        features: {},
+        overview: [],
+        domainGlossary: [],
+        userRoles: [],
+        businessRules: [],
+        edgeCases: [],
+      },
     };
     expect(cn.domain).toBe("");
 
@@ -81,7 +104,7 @@ describe("types", () => {
       domain: "auth",
       basename: "user",
       document: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         summary: "사용자",
         description: [],
         acceptanceCriteria: [],
@@ -122,10 +145,11 @@ describe("types", () => {
     expect(issue.severity).toBe("error");
   });
 
-  it("CONTRACT_REQUIRED_SECTIONS 상수 확인", () => {
-    expect(CONTRACT_REQUIRED_SECTIONS).toContain("Overview");
-    expect(CONTRACT_REQUIRED_SECTIONS).toContain("Edge Cases");
-    expect(CONTRACT_REQUIRED_SECTIONS).toHaveLength(6);
+  it("CONTRACT_REQUIRED_FIELDS 상수 확인", () => {
+    expect(CONTRACT_REQUIRED_FIELDS).toContain("schema");
+    expect(CONTRACT_REQUIRED_FIELDS).toContain("overview");
+    expect(CONTRACT_REQUIRED_FIELDS).toContain("edgeCases");
+    expect(CONTRACT_REQUIRED_FIELDS).toHaveLength(8);
   });
 
   it("SPEC_REQUIRED_FIELDS 상수 확인", () => {

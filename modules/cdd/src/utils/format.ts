@@ -6,8 +6,12 @@ export function formatStatus(status: SpecStatus): string {
   switch (status) {
     case "draft":
       return chalk.yellow(status);
-    case "in-progress":
+    case "specifying":
+      return chalk.hex("#f59e0b")(status);
+    case "implementing":
       return chalk.blue(status);
+    case "validating":
+      return chalk.magenta(status);
     case "done":
       return chalk.green(status);
   }

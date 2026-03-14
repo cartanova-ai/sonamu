@@ -53,7 +53,7 @@ export async function loadProject(contractDir: string): Promise<CddProject> {
     const parsed: unknown = JSON.parse(raw);
 
     if (relPath.endsWith(".contract.json")) {
-      validateContentIsStringArray(parsed, absPath);
+      validateContractStructure(parsed, absPath);
       const doc = parsed as ContractDocument;
       contracts.push({
         path: absPath,
@@ -145,18 +145,25 @@ function validateSpecStructure(parsed: unknown, filePath: string): void {
   }
 }
 
-/** content 필드가 string[]인지 검증 */
-function validateContentIsStringArray(parsed: unknown, filePath: string): void {
+/** Contract JSON 필수 필드 구조 검증 */
+function validateContractStructure(parsed: unknown, filePath: string): void {
   if (typeof parsed !== "object" || parsed === null) {
     throw new Error(`잘못된 JSON 구조입니다: ${filePath}`);
   }
   const obj = parsed as Record<string, unknown>;
-  if (!Array.isArray(obj.content)) {
-    throw new Error(`content 필드가 배열이 아닙니다: ${filePath}`);
+  if (typeof obj.schema !== "string") {
+    throw new Error(`schema 필드가 문자열이 아닙니다: ${filePath}`);
   }
-  for (let i = 0; i < obj.content.length; i++) {
-    if (typeof obj.content[i] !== "string") {
-      throw new Error(`content[${i}]가 문자열이 아닙니다: ${filePath}`);
+  if (typeof obj.lastModified !== "string") {
+    throw new Error(`lastModified 필드가 문자열이 아닙니다: ${filePath}`);
+  }
+  if (typeof obj.features !== "object" || obj.features === null || Array.isArray(obj.features)) {
+    throw new Error(`features 필드가 객체가 아닙니다: ${filePath}`);
+  }
+  const arrayFields = ["overview", "domainGlossary", "userRoles", "businessRules", "edgeCases"];
+  for (const field of arrayFields) {
+    if (!Array.isArray(obj[field])) {
+      throw new Error(`${field} 필드가 배열이 아닙니다: ${filePath}`);
     }
   }
 }

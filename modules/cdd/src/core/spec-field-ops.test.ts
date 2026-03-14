@@ -14,7 +14,9 @@ function makeDoc(overrides: Partial<SpecDocument> = {}): SpecDocument {
     schemaVersion: 1,
     summary: "테스트",
     description: ["설명"],
-    acceptanceCriteria: ["조건 A"],
+    acceptanceCriteria: [
+      { id: "ac-test-1", condition: "조건 A", testRef: { target: "src/a.ts", pattern: "조건 A" } },
+    ],
     lastModified: "2026-01-01",
     status: "draft",
     sources: ["src/a.ts", "src/b.ts"],

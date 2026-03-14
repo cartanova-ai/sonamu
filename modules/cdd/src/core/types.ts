@@ -1,10 +1,52 @@
 /** Spec 상태 */
-export type SpecStatus = "draft" | "in-progress" | "done";
+export type SpecStatus = "draft" | "specifying" | "implementing" | "validating" | "done";
+
+/** 유효한 상태 목록 */
+export const VALID_STATUSES: SpecStatus[] = [
+  "draft",
+  "specifying",
+  "implementing",
+  "validating",
+  "done",
+];
+
+/** 상태 순서 (전진 방향). 인접한 상태로만 전환 가능. */
+export const STATUS_ORDER: readonly SpecStatus[] = [
+  "draft",
+  "specifying",
+  "implementing",
+  "validating",
+  "done",
+] as const;
+
+/** Acceptance Criterion 테스트 참조 */
+export interface AcceptanceCriterionTestRef {
+  /** 테스트 파일 경로 (프로젝트 루트 기준) */
+  target: string;
+  /** 테스트 케이스 매칭 정규식 */
+  pattern: string;
+}
+
+/** 구조화된 Acceptance Criterion */
+export interface AcceptanceCriterion {
+  /** 고유 식별자 */
+  id: string;
+  /** 검증 조건 */
+  condition: string;
+  /** 테스트 참조 */
+  testRef: AcceptanceCriterionTestRef;
+}
 
 /** Contract JSON 문서 구조 */
 export interface ContractDocument {
+  schema: string;
   lastModified: string;
-  content: string[];
+  features: Record<string, string>;
+  overview: string[];
+  domainGlossary: string[];
+  userRoles: string[];
+  businessRules: string[];
+  edgeCases: string[];
 }
 
 /** Spec JSON 문서 구조 */
@@ -12,7 +54,7 @@ export interface SpecDocument {
   schemaVersion: number;
   summary: string;
   description: string[];
-  acceptanceCriteria: string[];
+  acceptanceCriteria: AcceptanceCriterion[];
   lastModified: string;
   status: SpecStatus;
   sources: string[];
@@ -72,14 +114,16 @@ export interface ValidationIssue {
   message: string;
 }
 
-/** Contract content 필수 섹션 */
-export const CONTRACT_REQUIRED_SECTIONS = [
-  "Overview",
-  "Domain Glossary",
-  "Features/Capabilities",
-  "User Roles/Actors",
-  "Business Rules/Constraints",
-  "Edge Cases",
+/** Contract 필수 필드 목록 */
+export const CONTRACT_REQUIRED_FIELDS = [
+  "schema",
+  "lastModified",
+  "features",
+  "overview",
+  "domainGlossary",
+  "userRoles",
+  "businessRules",
+  "edgeCases",
 ] as const;
 
 /** Spec 필수 필드 목록 */

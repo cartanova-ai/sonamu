@@ -1,5 +1,11 @@
-import type { CddProject, SpecDocument, ValidationIssue } from "./types.js";
-import { CONTRACT_REQUIRED_SECTIONS } from "./types.js";
+import type {
+  CddProject,
+  ContractDocument,
+  SpecDocument,
+  SpecStatus,
+  ValidationIssue,
+} from "./types.js";
+import { VALID_STATUSES } from "./types.js";
 import { findMissingResolvedPaths, findSourcesOutsideRoot } from "./validation-shared.js";
 
 /**
@@ -9,7 +15,7 @@ export function validateProject(project: CddProject): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   for (const contract of project.contracts) {
-    validateContractSections(contract.document.content, contract.path, issues);
+    validateContractFields(contract.document, contract.path, issues);
     validateLastModified(contract.document.lastModified, contract.path, issues);
   }
 
@@ -20,6 +26,7 @@ export function validateProject(project: CddProject): ValidationIssue[] {
     validateSpecRequiredFields(spec.document, spec.path, issues);
     validateLastModified(spec.document.lastModified, spec.path, issues);
     validateSpecStatus(spec.document.status, spec.path, issues);
+    validateAcceptanceCriteriaStructure(spec.document, spec.path, issues);
     validateSourcesSecurity(spec.document.sources, project.projectRoot, spec.path, issues);
     validateContractReferences(spec.resolvedContracts, contractPaths, spec.path, issues);
     validateDependsOnSpecsReferences(spec.resolvedDependsOnSpecs, specPaths, spec.path, issues);
@@ -28,21 +35,18 @@ export function validateProject(project: CddProject): ValidationIssue[] {
   return issues;
 }
 
-/** Contract content 필수 섹션 헤딩 검증 */
-function validateContractSections(
-  content: string[],
+/** Contract 필수 필드 검증 */
+function validateContractFields(
+  doc: ContractDocument,
   filePath: string,
   issues: ValidationIssue[],
 ): void {
-  const headings = extractHeadings(content, 2);
-  for (const section of CONTRACT_REQUIRED_SECTIONS) {
-    if (!headings.includes(section)) {
-      issues.push({
-        severity: "error",
-        path: filePath,
-        message: `Contract 필수 섹션 누락: "${section}"`,
-      });
-    }
+  if (doc.overview.length === 0) {
+    issues.push({
+      severity: "warning",
+      path: filePath,
+      message: "Contract overview가 비어 있습니다",
+    });
   }
 }
 
@@ -85,12 +89,85 @@ function validateSpecRequiredFields(
 
 /** Spec status 값 유효성 검증 */
 function validateSpecStatus(status: string, filePath: string, issues: ValidationIssue[]): void {
-  if (!["draft", "in-progress", "done"].includes(status)) {
+  if (!VALID_STATUSES.includes(status as SpecStatus)) {
     issues.push({
       severity: "error",
       path: filePath,
       message: `유효하지 않은 status 값: "${status}"`,
     });
+  }
+}
+
+/** acceptanceCriteria 구조 검증 */
+function validateAcceptanceCriteriaStructure(
+  doc: SpecDocument,
+  filePath: string,
+  issues: ValidationIssue[],
+): void {
+  const criteria = doc.acceptanceCriteria as unknown[];
+  if (!Array.isArray(criteria)) return;
+
+  const seenIds = new Set<string>();
+
+  for (const [i, item] of criteria.entries()) {
+    if (typeof item !== "object" || item === null) {
+      issues.push({
+        severity: "error",
+        path: filePath,
+        message: `acceptanceCriteria[${i}]: 객체여야 합니다`,
+      });
+      continue;
+    }
+
+    const ac = item as Record<string, unknown>;
+    if (typeof ac.id !== "string" || ac.id.length === 0) {
+      issues.push({
+        severity: "error",
+        path: filePath,
+        message: `acceptanceCriteria[${i}]: id가 필요합니다`,
+      });
+    } else {
+      if (seenIds.has(ac.id)) {
+        issues.push({
+          severity: "error",
+          path: filePath,
+          message: `acceptanceCriteria: 중복된 id "${ac.id}"`,
+        });
+      }
+      seenIds.add(ac.id);
+    }
+
+    if (typeof ac.condition !== "string" || ac.condition.length === 0) {
+      issues.push({
+        severity: "error",
+        path: filePath,
+        message: `acceptanceCriteria[${i}]: condition이 필요합니다`,
+      });
+    }
+
+    if (typeof ac.testRef !== "object" || ac.testRef === null) {
+      issues.push({
+        severity: "error",
+        path: filePath,
+        message: `acceptanceCriteria[${i}]: testRef가 필요합니다`,
+      });
+    } else {
+      const testRef = ac.testRef as Record<string, unknown>;
+      if (typeof testRef.target !== "string") {
+        issues.push({
+          severity: "error",
+          path: filePath,
+          message: `acceptanceCriteria[${i}]: testRef.target이 필요합니다`,
+        });
+      }
+      if (typeof testRef.pattern !== "string") {
+        issues.push({
+          severity: "error",
+          path: filePath,
+          message: `acceptanceCriteria[${i}]: testRef.pattern이 필요합니다`,
+        });
+      }
+    }
   }
 }
 
@@ -140,12 +217,4 @@ function validateDependsOnSpecsReferences(
       message: `참조된 spec을 찾을 수 없습니다: "${rd}"`,
     });
   }
-}
-
-/** 특정 레벨의 Markdown 헤딩 텍스트를 추출한다 */
-function extractHeadings(content: string[], level: number): string[] {
-  const prefix = `${"#".repeat(level)} `;
-  return content
-    .filter((line) => line.startsWith(prefix) && !line.startsWith(`${prefix}#`))
-    .map((line) => line.slice(prefix.length).trim());
 }

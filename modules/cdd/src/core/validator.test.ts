@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadProject } from "./loader.js";
-import type { CddProject, ContractNode, SpecNode } from "./types.js";
+import type { CddProject, ContractDocument, ContractNode, SpecNode } from "./types.js";
 import { validateProject } from "./validator.js";
 
 const MIOMOCK_CONTRACT_DIR = path.resolve(
@@ -11,24 +11,26 @@ const MIOMOCK_CONTRACT_DIR = path.resolve(
 );
 
 describe("validator", () => {
-  it("miomock 코퍼스에서 error 수준 이슈가 없다", async () => {
+  it("miomock 코퍼스에서 error 수준 이슈가 없다 (cross-project sources 제외)", async () => {
     const project = await loadProject(MIOMOCK_CONTRACT_DIR);
     const issues = validateProject(project);
-    const errors = issues.filter((i) => i.severity === "error");
+    const errors = issues.filter(
+      (i) => i.severity === "error" && !i.message.includes("프로젝트 루트를 벗어납니다"),
+    );
     expect(errors).toEqual([]);
   });
 
-  it("Contract 필수 섹션 누락 시 에러를 생성한다", () => {
+  it("Contract overview가 비어있으면 경고를 생성한다", () => {
     const project = makeProject({
       contracts: [
         makeContractNode({
-          content: ["## Overview", "", "내용"],
+          overview: [],
         }),
       ],
     });
     const issues = validateProject(project);
-    const sectionErrors = issues.filter((i) => i.message.includes("Contract 필수 섹션 누락"));
-    expect(sectionErrors).toHaveLength(5);
+    const overviewWarnings = issues.filter((i) => i.message.includes("overview가 비어 있습니다"));
+    expect(overviewWarnings).toHaveLength(1);
   });
 
   it("잘못된 lastModified 형식에서 에러를 생성한다", () => {
@@ -36,7 +38,6 @@ describe("validator", () => {
       contracts: [
         makeContractNode({
           lastModified: "2026/03/09",
-          content: makeValidContractContent(),
         }),
       ],
     });
@@ -116,21 +117,21 @@ function makeProject(overrides: Partial<CddProject> = {}): CddProject {
 }
 
 function makeContractNode(
-  overrides: Partial<{
-    lastModified: string;
-    content: string[];
-    path: string;
-    domain: string;
-    basename: string;
-  }> = {},
+  overrides: Partial<ContractDocument & { path: string; domain: string; basename: string }> = {},
 ): ContractNode {
   return {
     path: overrides.path ?? "/test/contract/main.contract.json",
     domain: overrides.domain ?? "",
     basename: overrides.basename ?? "main",
     document: {
+      schema: overrides.schema ?? "default-contract",
       lastModified: overrides.lastModified ?? "2026-03-09",
-      content: overrides.content ?? makeValidContractContent(),
+      features: overrides.features ?? {},
+      overview: overrides.overview ?? ["시스템 개요"],
+      domainGlossary: overrides.domainGlossary ?? ["용어: 정의"],
+      userRoles: overrides.userRoles ?? ["사용자: 설명"],
+      businessRules: overrides.businessRules ?? ["규칙"],
+      edgeCases: overrides.edgeCases ?? ["엣지 케이스"],
     },
   };
 }
@@ -143,9 +144,13 @@ function makeSpecNode(
     schemaVersion: number;
     summary: string;
     description: string[];
-    acceptanceCriteria: string[];
+    acceptanceCriteria: Array<{
+      id: string;
+      condition: string;
+      testRef: { target: string; pattern: string };
+    }>;
     lastModified: string;
-    status: "draft" | "in-progress" | "done";
+    status: "draft" | "specifying" | "implementing" | "validating" | "done";
     sources: string[];
     contracts: string[];
     modules: Record<string, string>;
@@ -162,10 +167,16 @@ function makeSpecNode(
     domain: overrides.domain ?? "",
     basename: overrides.basename ?? "test",
     document: {
-      schemaVersion: overrides.schemaVersion ?? 1,
+      schemaVersion: overrides.schemaVersion ?? 2,
       summary: overrides.summary ?? "테스트 기능",
       description: overrides.description ?? ["테스트 설명"],
-      acceptanceCriteria: overrides.acceptanceCriteria ?? ["조건 A"],
+      acceptanceCriteria: overrides.acceptanceCriteria ?? [
+        {
+          id: "ac-test-1",
+          condition: "조건 A",
+          testRef: { target: "src/test.ts", pattern: "조건 A" },
+        },
+      ],
       lastModified: overrides.lastModified ?? "2026-03-09",
       status: overrides.status ?? "draft",
       sources: overrides.sources ?? ["src/test.ts"],
@@ -179,32 +190,4 @@ function makeSpecNode(
     resolvedContracts: overrides.resolvedContracts ?? [],
     resolvedDependsOnSpecs: overrides.resolvedDependsOnSpecs ?? [],
   };
-}
-
-function makeValidContractContent(): string[] {
-  return [
-    "## Overview",
-    "",
-    "개요",
-    "",
-    "## Domain Glossary",
-    "",
-    "용어",
-    "",
-    "## Features/Capabilities",
-    "",
-    "기능",
-    "",
-    "## User Roles/Actors",
-    "",
-    "역할",
-    "",
-    "## Business Rules/Constraints",
-    "",
-    "규칙",
-    "",
-    "## Edge Cases",
-    "",
-    "엣지 케이스",
-  ];
 }
