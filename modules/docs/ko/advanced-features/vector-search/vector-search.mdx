@@ -51,10 +51,10 @@ flowchart TD
 ### 기본 검색 API
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string, limit: number = 10) {
     // 1. 쿼리를 임베딩으로 변환
@@ -235,7 +235,7 @@ async searchWithThreshold(
 ### 1. 지식 베이스 검색
 
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async searchKnowledge(
     query: string,
@@ -292,7 +292,7 @@ await KnowledgeBaseModel.searchKnowledge("환불 방법", "FAQ");
 "이 상품과 유사한 제품"을 구현합니다:
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async recommendSimilarProducts(
     productId: number,
