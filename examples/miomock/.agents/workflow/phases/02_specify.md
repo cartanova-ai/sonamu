@@ -1,81 +1,78 @@
 # Phase 2: Specify
 
-Spec 명세를 세분화한다. draft → specifying → implementing 전이를 위한 모든 필드를 완성한다.
+Refine the Spec. Complete all fields required for the draft -> specifying -> implementing transition.
 
-## 선행 읽기 (필수)
+## Required reading (mandatory)
 
 - `../../api/contract/cdd.md`
 - `../00_cdd_contract.md`
 
-## 입력
+## Input
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-contract_paths: ["{참조 contract 경로}"]
-schema_path: "{schema 파일 경로}"
-findings: [] # 재스폰 시 이전 검증 실패 사항
+spec_path: "{spec file path}"
+contract_paths: ["{referenced contract paths}"]
+schema_path: "{schema file path}"
+findings: [] # previous verification failures on re-spawn
 ```
 
-## 작업 순서
+## Procedure
 
-### Step 1: draft → specifying 전이
+### Step 1: draft -> specifying transition
 
-현재 상태가 `draft`인 경우에만 수행한다.
+Only perform if current status is `draft`.
 
-1. Spec의 `contracts` 필드가 유효한 Contract를 참조하는지 확인한다.
-2. 오케스트레이터에 `cdd advance` 실행을 요청한다 (서브에이전트는 직접 전이하지 않음).
+1. Verify that the Spec's `contracts` field references a valid Contract.
+2. Request the orchestrator to execute `cdd advance` (sub-agent does not transition directly).
 
-### Step 2: Contract 분석
+### Step 2: Contract analysis
 
-1. 참조 Contract를 읽는다.
-2. Schema 파일을 읽어 어떤 custom field가 필요한지 파악한다.
-3. Contract의 `features`, `businessRules`, `edgeCases`에서 이 Spec이 커버해야 할 범위를 식별한다.
+1. Read the referenced Contract.
+2. Read the Schema file to identify which custom fields are needed.
+3. Identify the scope this Spec must cover from Contract's `features`, `businessRules`, `edgeCases`.
 
-### Step 3: Schema 필드 채우기
+### Step 3: Fill schema fields
 
-Schema의 `fields` 배열을 순회하며 각 필드를 채운다:
+Iterate through the Schema's `fields` array and fill each field:
 
-- `Record<string, string>` 타입: key-value 쌍으로 모듈/인터페이스/에러 등을 정의
-- `string[]` 타입: 순서가 있는 항목 목록 (흐름, 제약 등)
+- `Record<string, string>` type: define key-value pairs for modules/interfaces/errors etc.
+- `string[]` type: ordered item lists (flows, constraints, etc.)
 
-각 필드의 내용은:
-- Contract의 범위 내에서 작성한다.
-- Spec의 `summary`/`description`과 일관되어야 한다.
-- 필드 간 상호 참조가 일관적이어야 한다.
+Each field's content must:
+- Stay within the Contract's scope.
+- Be consistent with Spec's `summary`/`description`.
+- Maintain consistency across cross-references between fields.
 
-### Step 4: AC 정의
+### Step 4: Define ACs
 
-1. Contract의 `businessRules`, `edgeCases`에서 검증 가능한 조건을 도출한다.
-2. Schema 필드의 에러 처리, 제약 조건에서 추가 조건을 도출한다.
-3. 각 AC를 작성한다:
-   ```bash
-   cdd ac add {spec} --condition "조건문" --target "" --pattern ""
-   ```
-   - `condition`: pass/fail 판정 가능한 구체적 조건. "잘 동작한다" 같은 모호한 표현 금지.
-   - `testRef`는 이 단계에서 비워둔다 (implementing 단계에서 채움).
+1. Derive verifiable conditions from Contract's `businessRules`, `edgeCases`.
+2. Derive additional conditions from schema fields' error handling and constraints.
+3. Write each AC by directly editing the Spec JSON file's `acceptanceCriteria` array:
+   - `condition`: specific condition that can be judged as pass/fail. Vague expressions like "works well" are prohibited.
+   - `testRef` is left empty at this stage (filled during implementing phase).
 
-### Step 5: sources 계획
+### Step 5: Plan sources
 
-구현 예정 파일 경로를 `sources`에 추가한다 (프로젝트 루트 기준 상대 경로).
+Add planned implementation file paths to `sources` (relative to project root).
 
-### Step 6: findings 수정 (재스폰 시)
+### Step 6: Fix findings (on re-spawn)
 
-`findings`가 전달된 경우:
-1. 각 finding의 `field`와 `message`를 확인한다.
-2. 해당 필드를 수정한다.
-3. `severity: error`인 항목을 우선 수정한다.
+If `findings` are provided:
+1. Check each finding's `field` and `message`.
+2. Fix the corresponding field.
+3. Prioritize `severity: error` items.
 
-## 산출물
+## Output
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-fields_completed: ["{채운 필드 목록}"]
-ac_count: "{정의한 AC 수}"
-sources_planned: ["{계획한 소스 파일 목록}"]
+spec_path: "{spec file path}"
+fields_completed: ["{list of filled fields}"]
+ac_count: "{number of defined ACs}"
+sources_planned: ["{list of planned source files}"]
 ```
 
-## 금지 사항
+## Prohibitions
 
-- 코드를 작성하지 않는다.
-- Contract를 수정하지 않는다. 수정이 필요하면 오케스트레이터에 보고한다.
-- `cdd advance --commit`을 직접 실행하지 않는다.
+- Do not write code.
+- Do not modify Contract files. Report to orchestrator if modification is needed.
+- Do not execute `cdd advance --commit`.

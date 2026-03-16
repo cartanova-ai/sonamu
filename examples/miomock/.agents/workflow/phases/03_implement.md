@@ -1,94 +1,91 @@
 # Phase 3: Implement
 
-확정된 Spec에 따라 코드를 구현하고 테스트를 작성한다.
+Implement code and write tests according to the confirmed Spec.
 
-## 선행 읽기 (필수)
+## Required reading (mandatory)
 
 - `../../api/contract/cdd.md`
 - `../00_cdd_contract.md`
 
-## 입력
+## Input
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-contract_paths: ["{참조 contract 경로}"]
-schema_path: "{schema 파일 경로}"
-findings: [] # 재스폰 시 이전 검증 실패 사항
+spec_path: "{spec file path}"
+contract_paths: ["{referenced contract paths}"]
+schema_path: "{schema file path}"
+findings: [] # previous verification failures on re-spawn
 ```
 
-## 작업 순서
+## Procedure
 
-### Step 1: Spec 확인
+### Step 1: Review Spec
 
-1. Spec 파일을 읽고 현재 상태가 `implementing`인지 확인한다.
-2. Schema 파일을 읽고 custom field 구조를 파악한다.
-3. 모든 schema 필드와 AC를 숙지한다. 이것이 구현의 기준이다.
+1. Read the Spec file and confirm current status is `implementing`.
+2. Read the Schema file and understand the custom field structure.
+3. Internalize all schema fields and ACs. These are the implementation criteria.
 
-### Step 2: 테스트 작성 (테스트 우선)
+### Step 2: Write tests (test-first)
 
-1. AC 목록을 순회하며 각 AC에 대한 테스트를 작성한다.
-2. 테스트 파일 경로를 AC의 `testRef.target`에 설정한다:
-   ```bash
-   cdd spec set {spec} --field acceptanceCriteria
-   ```
-   또는 Spec 파일을 직접 편집하여 `testRef.target`과 `testRef.pattern`을 채운다.
-3. 테스트는 AC의 `condition`을 정확히 검증해야 한다.
-4. `testRef.pattern`은 테스트 케이스의 describe/it/test 이름과 매칭되는 정규식이다.
+1. Iterate through the AC list and write a test for each AC.
+2. Set the test file path in each AC's `testRef.target`:
+   Edit the Spec file directly to fill `testRef.target` and `testRef.pattern`.
+3. Tests must verify the AC's `condition` precisely.
+4. `testRef.pattern` is a regex that matches the describe/it/test name in the test file.
 
-### Step 3: 코드 구현
+### Step 3: Implement code
 
-1. Spec의 schema 필드에 정의된 구조에 따라 구현한다.
-   - 모듈 구조, 인터페이스, 데이터 흐름 등 schema 필드가 정의한 설계를 따른다.
-2. 구현 중 더 나은 구조가 보이더라도 코드를 먼저 변경하지 않는다.
-   - Spec 수정이 필요하면 오케스트레이터에 보고한다.
-3. 새 파일이 추가되면 Spec의 `sources`를 업데이트한다.
+1. Implement according to the structure defined in Spec's schema fields.
+   - Follow the design defined by schema fields: module structure, interfaces, data flow, etc.
+2. Even if a better structure appears during implementation, do not change code first.
+   - Report to orchestrator if Spec modification is needed.
+3. Update Spec's `sources` when new files are added.
 
-### Step 4: 테스트 실행
+### Step 4: Run tests
 
 ```bash
 cd examples/miomock/api
-pnpm sonamu test -s  # 준비 상태 확인
-pnpm sonamu test {테스트파일경로}  # 또는 pnpm test
+pnpm sonamu test -s  # check readiness
+pnpm sonamu test {test_file_path}  # or pnpm test
 ```
 
-실패 시 코드를 수정한다. Spec에 정의된 동작이 기준이다.
+On failure, fix the code. The behavior defined in Spec is the standard.
 
-### Step 5: 빌드 확인
+### Step 5: Build check
 
 ```bash
 pnpm build
 pnpm check  # Biome lint/format
 ```
 
-### Step 6: 커밋
+### Step 6: Commit
 
-Spec 변경과 코드 변경을 분리하여 커밋한다:
-- `[miomock-api] feat: {feature명} Spec testRef 설정` (Spec 변경)
-- `[miomock-api] feat: {feature명} 구현` (코드 변경)
+Separate Spec changes and code changes into distinct commits:
+- `[miomock-api] feat: {feature_name} Spec testRef setup` (Spec change)
+- `[miomock-api] feat: {feature_name} implementation` (code change)
 
-### Step 7: findings 수정 (재스폰 시)
+### Step 7: Fix findings (on re-spawn)
 
-`findings`가 전달된 경우:
-1. 각 finding을 확인하고 해당 코드/테스트/Spec을 수정한다.
-2. `severity: error`인 항목을 우선 수정한다.
-3. 테스트를 재실행하여 통과를 확인한다.
+If `findings` are provided:
+1. Check each finding and fix the corresponding code/test/Spec.
+2. Prioritize `severity: error` items.
+3. Re-run tests to confirm they pass.
 
-## 산출물
+## Output
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-files_changed: ["{변경 파일 목록}"]
-tests_added: ["{추가된 테스트 파일}"]
-ac_testref_filled: ["{testRef가 채워진 AC id 목록}"]
-commits: ["{커밋 해시}"]
+spec_path: "{spec file path}"
+files_changed: ["{list of changed files}"]
+tests_added: ["{list of added test files}"]
+ac_testref_filled: ["{list of AC ids with testRef filled}"]
+commits: ["{commit hashes}"]
 build_status: "pass|fail"
 test_status: "pass|fail"
 ```
 
-## 금지 사항
+## Prohibitions
 
-- Spec에 없는 기능을 구현하지 않는다.
-- Contract를 수정하지 않는다.
-- `cdd advance --commit`을 직접 실행하지 않는다.
-- Spec과 코드가 충돌하면 코드를 수정한다. Spec을 코드에 맞추지 않는다.
-- `as any`, `as unknown as T` 사용 금지.
+- Do not implement features not in the Spec.
+- Do not modify Contract files.
+- Do not execute `cdd advance --commit`.
+- If Spec and code conflict, fix the code. Never change Spec to match code.
+- `as any` and `as unknown as T` are strictly prohibited.

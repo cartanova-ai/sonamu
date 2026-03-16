@@ -1,52 +1,57 @@
 # CDD Shared Contract
 
-CDD 워크플로우의 모든 프롬프트에 공통 적용되는 정책.
+Common policies applied to all prompts in the CDD workflow.
 
-## 권위 순서
+## Authority order
 
-Contract > Spec > Code. 충돌 시 상위가 우선이다.
+Contract > Spec > Code. Higher authority takes precedence on conflict.
 
-## CDD 정책 원본
+## CDD policy source
 
-모든 서브에이전트는 작업 시작 전 아래 문서를 반드시 읽어야 한다:
+All sub-agents must read the following document before starting work:
 - `../../api/contract/cdd.md`
 
-## 역할 삼분법
+## Role separation
 
-| 역할 | 담당 | 설명 |
+| Role | Responsibility | Description |
 |---|---|---|
-| LLM | 실행 | 단일 액션 수행 (코드 작성, 명세 작성, 검증 수행) |
-| CLI | 판단 | 검증 + 다음 행동 결정 (gate 검증, 상태 전이) |
-| Spec 문서 | 기억 | 상태 + 명세 + 히스토리 + 계획 |
+| LLM | Execution | Perform single actions (write code, write specs, run validation) |
+| CLI | Judgment | Gate verification + next action decision (gate checks, state transitions) |
+| Spec document | Memory | State + specification + history + plan |
 
-## 서브에이전트 공통 규칙
+## Sub-agent common rules
 
-- leaf worker로서 다른 서브에이전트를 스폰할 수 없다.
-- 할당된 단계의 범위를 넘어서 작업하지 않는다.
-- 작업 완료 후 결과를 구조화된 형태로 반환한다.
-- Contract 파일은 읽기만 가능하다. 수정이 필요하면 오케스트레이터에 보고한다.
-- `cdd advance --commit`을 직접 실행하지 않는다. 오케스트레이터가 전이를 관리한다.
+- Leaf workers cannot spawn other sub-agents.
+- Do not work beyond the assigned phase scope.
+- Return results in structured format after completion.
+- Contract files are read-only. Report to orchestrator if modification is needed.
+- Do not execute `cdd advance --commit`. The orchestrator manages transitions.
 
-## CLI 실행 컨텍스트
+## CLI execution context
 
-- 작업 디렉토리: `examples/miomock/api`
-- CDD CLI는 `cdd` 명령으로 실행한다.
-- `cdd status`로 현재 상태를 확인한다.
-- 테스트 실행: `pnpm sonamu test -s`로 준비 상태 확인 후 `pnpm sonamu test` 또는 `pnpm test`
+- Working directory: `examples/miomock/api`
+- CDD CLI is executed via the `cdd` command.
+- Check current status with `cdd status`.
+- Run tests: check readiness with `pnpm sonamu test -s`, then `pnpm sonamu test` or `pnpm test`.
 
-## 커밋 정책
+## Language policy
 
-- 한국어, scope-first bracket conventional 형식: `[scope] type: 제목`
-- Spec 변경과 코드 변경은 가능하면 분리 커밋한다.
-- Co-Authored-By 트레일러를 추가하지 않는다.
+- All Contract and Spec content (summary, description, AC conditions, schema field values) must be written in Korean.
+- Code, file paths, and identifiers remain in English.
 
-## TypeScript 정책
+## Commit policy
 
-- `as any`, `as unknown as T` 사용 금지.
-- 적절한 타입 어노테이션, 제네릭, 타입 내로잉으로 해결한다.
+- Scope-first bracket conventional format: `[scope] type: title`
+- Separate Spec changes and code changes into distinct commits when possible.
+- Do not add Co-Authored-By trailers.
 
-## 검증 기준
+## TypeScript policy
 
-- `pnpm check` (Biome): 워크스페이스 루트 + 영향받는 서브프로젝트
-- 빌드: `pnpm build`
-- 테스트: `pnpm sonamu test` 또는 `pnpm test`
+- `as any` and `as unknown as T` are strictly prohibited.
+- Resolve type errors through proper type annotations, generics, and type narrowing.
+
+## Validation baseline
+
+- `pnpm check` (Biome): workspace root + affected subprojects
+- Build: `pnpm build`
+- Tests: `pnpm sonamu test` or `pnpm test`

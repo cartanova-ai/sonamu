@@ -1,93 +1,82 @@
 # Phase 4: Validate
 
-구현된 코드가 Spec의 AC를 충족하는지 검증한다.
+Verify that implemented code satisfies the Spec's ACs.
 
-## 선행 읽기 (필수)
+## Required reading (mandatory)
 
 - `../../api/contract/cdd.md`
 - `../00_cdd_contract.md`
 
-## 입력
+## Input
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-contract_paths: ["{참조 contract 경로}"]
-schema_path: "{schema 파일 경로}"
-findings: [] # 재스폰 시 이전 검증 실패 사항
+spec_path: "{spec file path}"
+contract_paths: ["{referenced contract paths}"]
+schema_path: "{schema file path}"
+findings: [] # previous verification failures on re-spawn
 ```
 
-## 작업 순서
+## Procedure
 
-### Step 1: 검증 대상 수집
+### Step 1: Collect verification targets
 
-1. Spec 파일을 읽는다.
-2. Schema 파일을 읽는다.
-3. `sources`의 모든 파일을 읽는다.
-4. AC의 `testRef.target` 파일을 모두 읽는다.
+1. Read the Spec file.
+2. Read the Schema file.
+3. Read all files listed in `sources`.
+4. Read all AC `testRef.target` files.
 
-### Step 2: CLI 검증 실행
+### Step 2: AC-test matching verification
+
+For each AC:
+
+1. Verify that a test matching `testRef.pattern` exists in the `testRef.target` file.
+2. Verify that the test actually validates the meaning of the `condition`.
+   - Is it not a vacuous test?
+   - Does it assert the core behavior of the condition?
+3. Record as finding if no match or semantic mismatch.
+
+### Step 3: Spec-code consistency verification
+
+For each required field in the Schema:
+
+1. Verify that the content described in the field is reflected in `sources` code.
+2. Verify there is no implementation outside Contract's scope.
+3. Record as finding if inconsistent.
+
+### Step 4: Run tests
 
 ```bash
-cd examples/miomock/api
-cdd ac check {spec}    # AC testRef 무결성 검증
-cdd check              # Spec-Code 일관성 검증
+pnpm sonamu test  # or pnpm test
 ```
 
-실패 항목이 있으면 기록한다.
+Record as finding if any tests fail.
 
-### Step 3: AC-테스트 매칭 검증
+### Step 5: Fix findings (on re-spawn)
 
-각 AC에 대해:
+If `findings` are provided, fix the corresponding code/tests.
+- If code does not match Spec, fix the code.
+- If tests do not match AC condition, fix the tests.
+- If Spec modification is needed, report to orchestrator.
 
-1. `testRef.target` 파일 내에서 `testRef.pattern`에 매칭되는 테스트가 있는지 확인한다.
-2. 해당 테스트가 `condition`의 의미를 실제로 검증하는지 확인한다.
-   - 빈 테스트(vacuous test)가 아닌지
-   - 조건의 핵심 동작을 assert하는지
-3. 매칭되지 않거나 의미가 불일치하면 finding으로 기록한다.
-
-### Step 4: Spec-코드 일관성 검증
-
-Schema의 각 required 필드에 대해:
-
-1. 필드에 기술된 내용이 `sources` 코드에 반영되었는지 확인한다.
-2. Contract의 범위를 벗어나는 구현이 없는지 확인한다.
-3. 불일치가 있으면 finding으로 기록한다.
-
-### Step 5: 테스트 실행
-
-```bash
-pnpm sonamu test  # 또는 pnpm test
-```
-
-실패하는 테스트가 있으면 finding으로 기록한다.
-
-### Step 6: findings 수정 (재스폰 시)
-
-`findings`가 전달된 경우, 해당 코드/테스트를 수정한다.
-- 코드가 Spec에 부합하지 않으면 코드를 수정한다.
-- 테스트가 AC condition에 부합하지 않으면 테스트를 수정한다.
-- Spec 수정이 필요한 경우 오케스트레이터에 보고한다.
-
-## 산출물
+## Output
 
 ```yaml
-spec_path: "{spec 파일 경로}"
-cli_check_result: "pass|fail"
+spec_path: "{spec file path}"
 ac_validation:
   - ac_id: "{AC id}"
     pattern_matched: true|false
     semantically_valid: true|false
-    message: "{불일치 시 사유}"
+    message: "{reason for mismatch}"
 spec_code_consistency:
-  - field: "{schema 필드명}"
+  - field: "{schema field name}"
     consistent: true|false
-    message: "{불일치 시 사유}"
+    message: "{reason for inconsistency}"
 test_result: "pass|fail"
 overall: "pass|fail"
 findings: [{ field, severity, message }]
 ```
 
-## 금지 사항
+## Prohibitions
 
-- Spec을 수정하지 않는다 (수정이 필요하면 오케스트레이터에 보고).
-- `cdd advance --commit`을 직접 실행하지 않는다.
+- Do not modify Spec files (report to orchestrator if modification is needed).
+- Do not execute `cdd advance --commit`.
