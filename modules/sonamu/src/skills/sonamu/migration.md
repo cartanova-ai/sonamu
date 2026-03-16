@@ -33,6 +33,8 @@ pnpm sonamu migrate run         # 실제 DB에 적용
 
 **예외:** PK 타입 변경 등 Sonamu가 자동 처리할 수 없는 특수 케이스만 raw SQL 허용 (아래 "PK 타입 변경" 섹션 참조)
 
+**CRITICAL: Cross-table 연쇄 변경은 단일 파일로 처리한다.** FK drop → 타입 변경 → FK restore처럼 여러 테이블에 걸친 연쇄 변경은 반드시 하나의 migration 파일 안에서 순서대로 실행해야 한다. 파일을 나누면 중간 상태에서 constraint 위반이 발생한다. (상세: 아래 "PK 타입 변경" 섹션 참조)
+
 ## 기본 구조
 
 ```typescript
@@ -176,7 +178,7 @@ grep -r "with.*User" --include="*.entity.json"
 
 ### 흔한 실수
 
-1. **여러 migration으로 분리**: Migration 1에서 PK 변경, Migration 2에서 FK 변경 시도 → FK constraint 위반
+1. **여러 migration으로 분리**: FK drop, 타입 변경, FK restore를 별도 파일로 나누면 첫 번째 파일 apply 직후 constraint 위반. 관련 변경은 항상 단일 파일로 통합할 것.
 
 2. **constraint 제거 없이 타입 변경**: `cannot alter type of a column used by a foreign key` 에러 발생
 
