@@ -19,7 +19,7 @@ let mockGenerateText: ReturnType<typeof vi.fn>;
 beforeEach(async () => {
   const ai = await import("ai");
   mockGenerateText = ai.generateText as ReturnType<typeof vi.fn>;
-  mockGenerateText.mockClear(); // 각 테스트 전에 mock 초기화
+  mockGenerateText.mockReset(); // 각 테스트 전에 mock 완전 초기화 (once 큐 포함)
 
   // 테스트에서 더미 API 키 설정
   process.env.ANTHROPIC_API_KEY = "test-api-key-for-mocking";
