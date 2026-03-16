@@ -18,6 +18,29 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 */
 
 /**
+ * 부모 Entity fixture 생성 시 함께 생성할 companion Entity 설정
+ *
+ * 예: User fixture 생성 시 credentials Account를 함께 생성
+ */
+export type FixtureCompanion = {
+  /** 함께 생성할 Entity 이름 */
+  entity: string;
+
+  /**
+   * 고정 오버라이드 값.
+   * "{{fieldName}}" 형식으로 부모 fixture의 필드 값을 참조할 수 있다.
+   * 예: { "account_id": "{{email}}" } → 부모 User의 email 값 사용
+   */
+  overrides?: Record<string, unknown>;
+
+  /**
+   * 부모 1개당 생성할 companion 개수. 기본값 1.
+   * 예: count: 2 → User 1개당 companion 2개 생성
+   */
+  count?: number;
+};
+
+/**
  * cone: 범용 메타데이터 시스템
  *
  * Entity, Prop, Enum, Subset에 "솔방울을 단다"는 개념으로 붙이는 단일 서술 메타데이터입니다.
@@ -31,6 +54,7 @@ export type Cone = {
   fixtureGenerator?: string; // Faker.js 코드 또는 커스텀 함수
   fixtureDefault?: unknown; // 기본값
   fixtureStrategy?: "sequence"; // string 타입이지만 DB sequence로 관리되는 PK (better-auth 등)
+  fixtureCompanions?: FixtureCompanion[]; // 부모 fixture 생성 시 함께 생성할 companion Entity 목록
 
   // 참조 데이터 관련
   dataSource?: {
