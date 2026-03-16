@@ -1,50 +1,29 @@
 # Contract-Driven Development (CDD)
 
-This project follows Contract-Driven Development (CDD). All development work must follow the rules below.
-
 ## Core Principles
 
-- The `.contract.json` files under the `contract/` directory are the Single Source of Truth (SSoT) for this project.
-- All development follows a **Waterfall process**. Move to the next stage only after the current stage is completed.
-- Authority flows in this order: **Contract -> Spec -> Code**.
-  - Code must always follow Spec.
-  - Spec must always follow Contract.
-- **1 Contract Feature = 1 Spec File**. Contract's `features` field key maps to Spec filename 1:1. Shared infrastructure across features may be separated into `shared/*.spec.json`.
-- Even if a better structure appears during implementation, do not change code first. Update Spec first, then update code.
-- Contract is human-managed. AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
-- Code-document consistency is verified by AI automated validation (1st pass) and review checklist (2nd pass for feature mapping/coverage).
+- Authority: **Contract > Spec > Code**. 충돌 시 상위가 우선.
+- **1 Contract Feature = 1 Spec File**. Contract `features` key = Spec 파일명 (1:1).
+- Contract는 사용자 소유. AI는 사용자 요청 없이 수정하지 않는다.
+- 구현 중 더 나은 구조가 보여도 코드를 먼저 변경하지 않는다. Spec을 먼저 수정한다.
 
 ## Project Structure
 
 ```text
-project/
-|- contract/
-|  |- schemas/
-|  |  |- default-contract.schema.json  # Contract field schema
-|  |  \- default-spec.schema.json      # Spec field schema
-|  |- main.contract.json                # project root contract
-|  |- {domain}/
-|  |  |- main.contract.json            # domain representative contract
-|  |  |- {sub-contract}.contract.json
-|  |  \- {feature-key}.spec.json       # 1 feature = 1 spec file
-|  \- shared/
-|     \- {shared-infra}.spec.json      # cross-feature shared infrastructure
-|- src/
-|  \- ...
-\- ...
+contract/
+  schemas/
+    *.schema.json             # Custom field schema
+  main.contract.json          # 프로젝트 루트 contract
+  {domain}/
+    main.contract.json        # 도메인 대표 contract
+    {feature-key}.spec.json   # 1 feature = 1 spec
+  shared/
+    {shared}.spec.json        # 공유 인프라
 ```
-
-- Format: `contract/schemas/*.schema.json` — defines custom field schemas for Contract and Spec.
-- Contract: `*.contract.json` — folder-based tree structure, with `main.contract.json` as the folder representative.
-- Spec: `*.spec.json` — one file per feature, placed in the same folder as related Contract files.
 
 ## Schema System
 
-Schema documents define the custom field structure for Contract and Spec files. Each Contract/Spec references a schema by ID.
-
-### Schema document (`.schema.json`)
-
-Location: `contract/schemas/`
+Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `contract/schemas/`
 
 ```json
 {
@@ -52,223 +31,45 @@ Location: `contract/schemas/`
   "type": "spec",
   "fields": [
     { "name": "modules", "type": "Record<string, string>", "required": true },
-    { "name": "interfaces", "type": "Record<string, string>", "required": true },
-    { "name": "dataFlow", "type": "string[]", "required": true },
-    { "name": "errorHandling", "type": "Record<string, string>", "required": true },
-    { "name": "constraints", "type": "string[]", "required": true }
+    { "name": "dataFlow", "type": "string[]", "required": true }
   ]
 }
 ```
 
-- `id` (string, required): Format identifier, referenced by Contract/Spec `schema` field
-- `type` (`"contract"` | `"spec"`, required): Target document type
-- `fields` (array, required): Custom field definitions
-
-Each field item:
-
-- `name` (string): Field name
-- `type` (string): Field type (see Type System below)
-- `required` (boolean): Whether the field is required
-
-Schema fields define only the **custom** portion of the document. Fixed fields are always present regardless of format.
-
-### Type System
-
-Schema types serve as **UI component rendering hints**. Validation only minimally checks that the value structure matches the type.
-
-- `string`: Text block. Prose text (summary, etc.). Validation: value is a string.
-- `string[]`: Ordered list. Ordered item listing (dataFlow, overview, etc.). Validation: value is a string array.
-- `Record<string, string>`: Key-value table. Key-value dictionary (modules, errorHandling, etc.). Validation: value is an object.
-- `Record<string, object>`: Key + structured card/panel. Dictionary with complex object values (API definitions, type definitions, etc.). Validation: value is an object. Internal structure is free-form.
-
-### Schema Independence
-
-Each Schema is fully independent. There is no inheritance or extension mechanism. If a domain needs a different structure, create a separate Schema.
+타입: `string`, `string[]`, `Record<string, string>`, `Record<string, object>`
 
 ## Document Model
 
 ### Contract (`.contract.json`)
 
-A business-logic document that non-developers can read. AI must treat this file as **read-only**. If an update is needed, AI should only propose the change to the user.
+고정 필드:
+- `schema` (string): Schema ID
+- `lastModified` (string, YYYY-MM-DD)
+- `features` (Record<string, string>): feature key -> 설명
 
-**Fixed fields** (always present, not defined by schema):
-
-- `schema` (string, required): Schema ID
-- `lastModified` (string YYYY-MM-DD, required): Last modified date
-- `features` (Record<string, string>, required): Feature list (key: feature key matching Spec filename, value: feature description)
-
-**Custom fields**: defined by the Schema document referenced in `schema`.
-
-Example (with `default-contract` schema):
-
-```json
-{
-  "schema": "default-contract",
-  "lastModified": "2026-03-09",
-  "features": {
-    "login": "Email/password-based user authentication",
-    "session": "Session issuance and renewal",
-    "password-reset": "Password reset via email verification"
-  },
-  "overview": [
-    "Authentication domain: user login and session management.",
-    "Includes email/password auth, session token management, and password reset."
-  ],
-  "domainGlossary": [
-    "Session: a token-based mechanism that maintains user auth state",
-    "Access Token: short-lived auth token (JWT)",
-    "Refresh Token: long-lived token for Access Token reissuance"
-  ],
-  "userRoles": [
-    "End user: uses the service",
-    "Admin: manages system settings and users"
-  ],
-  "businessRules": [
-    "Password: minimum 8 chars, requires alphanumeric + special char",
-    "Login failure 5 times -> account locked for 30 minutes"
-  ],
-  "edgeCases": [
-    "Under-14 signup attempt -> redirect to legal guardian consent flow",
-    "Login attempt on locked account -> show unlock time"
-  ]
-}
-```
+커스텀 필드: schema 참조.
 
 ### Spec (`.spec.json`)
 
-A feature-level technical document derived from Contract. Each file represents exactly one feature. The filename is the feature key (`login.spec.json` -> feature key `login`). AI can create and update Spec files. Deletion requires user approval.
+고정 필드:
+- `schema` (string): Schema ID
+- `summary` (string): 한 줄 요약
+- `description` (string[]): 상세 설명
+- `acceptanceCriteria` (AcceptanceCriterion[]): 구조화된 완료 조건
+- `lastModified` (string, YYYY-MM-DD)
+- `status`: `"draft"` | `"specifying"` | `"implementing"` | `"validating"` | `"done"`
+- `sources` (string[]): 구현/테스트 파일 (프로젝트 루트 기준)
+- `contracts` (string[]): 참조 Contract (Spec 파일 기준 상대 경로)
+- `dependsOnSpecs` (string[], optional): 의존 Spec (Spec 파일 기준 상대 경로)
 
-**Fixed fields** (always present, not defined by schema):
+커스텀 필드: schema 참조.
 
-- `schema` (string, required): Schema ID
-- `summary` (string, required): One-line feature summary
-- `description` (string[], required): Detailed feature description
-- `acceptanceCriteria` (AcceptanceCriterion[], required): Structured completion criteria with test references (see `acceptanceCriteria` field section)
-- `lastModified` (string YYYY-MM-DD, required): Last modified date
-- `status` (string, required): `"draft"` / `"specifying"` / `"implementing"` / `"validating"` / `"done"`
-- `sources` (string[], required): Implementation/test files (relative to project root)
-- `contracts` (string[], required): Referenced Contract files (relative to Spec file)
-- `dependsOnSpecs` (string[], optional): Dependent Spec files (relative to Spec file)
-
-**Custom fields**: defined by the Schema document referenced in `schema`.
-
-Example (with `default-spec` schema):
-
-```json
-{
-  "schema": "default-spec",
-  "summary": "Login processing and session issuance",
-  "description": [
-    "Validates user credentials and issues JWT-based sessions.",
-    "Includes password retry limit and account lockout policy."
-  ],
-  "acceptanceCriteria": [
-    {
-      "id": "ac-login-jwt",
-      "condition": "Valid email/password login returns a JWT token",
-      "testRef": {
-        "target": "src/auth/login.test.ts",
-        "pattern": "returns.*JWT"
-      }
-    },
-    {
-      "id": "ac-lockout",
-      "condition": "5 wrong password attempts locks account for 30 minutes",
-      "testRef": {
-        "target": "src/auth/login.test.ts",
-        "pattern": "lock.*5.*attempt"
-      }
-    },
-    {
-      "id": "ac-expired-401",
-      "condition": "Expired session request returns 401 response",
-      "testRef": {
-        "target": "src/auth/session.test.ts",
-        "pattern": "expired.*401"
-      }
-    }
-  ],
-  "lastModified": "2026-03-09",
-  "status": "implementing",
-  "sources": ["src/auth/login.ts", "src/auth/login.test.ts"],
-  "contracts": ["./main.contract.json"],
-  "dependsOnSpecs": ["./session.spec.json"],
-  "modules": {
-    "LoginService": "Handles login processing",
-    "SessionManager": "Manages sessions",
-    "RateLimiter": "Login retry limiting"
-  },
-  "interfaces": {
-    "LoginService.authenticate()": "Performs authentication",
-    "LoginService.validate()": "Validates input",
-    "POST /auth/login": "Login API endpoint"
-  },
-  "dataFlow": [
-    "1. Client -> LoginService.validate(): validate email/password input",
-    "2. LoginService.validate() -> LoginService.authenticate(): pass validated credentials",
-    "3. LoginService.authenticate() -> Database: query user record and compare password hash",
-    "4. LoginService.authenticate() -> SessionManager: request session creation on auth success",
-    "5. SessionManager -> Redis: store Refresh Token in whitelist",
-    "6. SessionManager -> Client: return Access Token + Refresh Token"
-  ],
-  "errorHandling": {
-    "InvalidCredentialsError": "Wrong password",
-    "AccountLockedError": "Account locked due to retry limit"
-  },
-  "constraints": [
-    "Session timeout: 30 min",
-    "Login retry limit: 5 attempts / 30 min",
-    "Password comparison: bcrypt"
-  ]
-}
-```
-
-**Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
-
-### Contract-Spec linking
-
-Contract's `features` field (fixed, `Record<string, string>`) is the structural link to Spec files.
-
-- Contract `features` key `"login"` -> Spec filename `login.spec.json` (1:1)
-- Contract `features` key `"session"` -> Spec filename `session.spec.json` (1:1)
-
-Rules:
-1. Contract `features` key = Spec filename (part before `.spec.json`)
-2. Spec `contracts` field points to referenced Contract files
-3. Spec `summary`/`description` describes which Contract feature this Spec implements (human-readable)
-4. Duplicate feature keys within the same Contract boundary are not allowed
-5. Renaming a Spec file = changing the feature key (Contract `features` must be synchronized)
-
-### `status` field
-
-5-stage workflow with enforced transition gates:
-
-```
-draft → specifying → implementing → validating → done
-                                                   ↓
-                                              implementing (regression)
-```
-
-- `draft`: Spec created, not yet started. Initial state.
-- `specifying`: Spec is being authored. Transition requires: `contracts` references valid Contract files.
-- `implementing`: Spec confirmed, implementation in progress. Transition requires: all required custom fields non-empty, `acceptanceCriteria` has at least 1 item.
-- `validating`: Implementation complete, validation in progress. Transition requires: all files listed in `sources` exist.
-- `done`: Validation passed, all acceptance criteria met. Transition requires: all AC `testRef.target` files exist.
-
-Only adjacent transitions are allowed (e.g., `draft` → `specifying`, not `draft` → `implementing`).
-
-**Regression**: When `sources`, `contracts`, or `acceptanceCriteria` change on a `done` Spec, `status` automatically reverts to `implementing`.
-
-### `acceptanceCriteria` field
-
-Structured completion criteria. Every AC must be provable by test code.
-
-**Structure** (AcceptanceCriterion):
+### AcceptanceCriterion
 
 ```json
 {
   "id": "ac-login-jwt",
-  "condition": "Valid email/password login returns a JWT token",
+  "condition": "유효한 이메일/비밀번호 로그인 시 JWT 토큰을 반환한다",
   "testRef": {
     "target": "src/auth/login.test.ts",
     "pattern": "returns.*JWT"
@@ -276,283 +77,32 @@ Structured completion criteria. Every AC must be provable by test code.
 }
 ```
 
-- `id` (string, required): Unique identifier within the Spec. Format: `ac-{feature}-{seq}`.
-- `condition` (string, required): Verifiable condition. Recommended format: "When X, then Y".
-- `testRef.target` (string, required): Test file path relative to project root.
-- `testRef.pattern` (string, required): Regex pattern to match the test case name/description in the test file.
+- `condition`: pass/fail 판정 가능한 구체적 조건. 모호한 표현 금지.
+- `testRef`는 specifying 단계에서 비워둘 수 있으나, done 전이 전 반드시 채워야 한다.
 
-**Authoring rules**:
-- Each item must be a verifiable, specific condition. Vague expressions like "should work well" are not allowed.
-- **Every AC must have a corresponding test.** If a condition cannot be tested, it should not be an AC.
-- Include conditions derived from Contract's business rules and Edge Cases.
-- Conditions derived from `constraints` and `errorHandling` may also be included.
-- `testRef` may be empty (`target: "", pattern: ""`) during `specifying` stage but must be filled before `done` transition.
+## Status Workflow
 
-**Validation (`cdd check`)**:
-1. Verifies `testRef.target` file exists.
-2. Verifies `testRef.pattern` matches content in the test file.
-3. Invalid regex patterns are reported as errors.
+```
+draft → specifying → implementing → validating → done
+```
 
-**Gate enforcement**: `done` transition is blocked if any AC `testRef.target` file does not exist.
+인접 전이만 허용. `cdd advance <spec>` 명령으로 전이하며, 각 전이에 Layer 1(기계적) + Layer 2(의미적) gate가 적용된다.
 
-### Spec detail level
+| 전이 | Layer 1 (CLI) | Layer 2 (AI) |
+|---|---|---|
+| draft → specifying | contracts가 유효한 Contract 참조 | 없음 |
+| specifying → implementing | summary/description 비어있지 않음, schema required 필드 비어있지 않음, AC >= 1개 | schema 필드-Contract 정합성, AC 검증 가능성, 전체 일관성 |
+| implementing → validating | sources 파일 존재, AC testRef.target 지정 및 파일 존재 | sources가 schema 명세 구현, testRef가 AC condition 검증 |
+| validating → done | testRef.pattern 매칭, 빌드/테스트 통과 | AC-테스트 의미적 매칭, 제약 조건 반영, 에러 시나리오 커버리지 |
 
-- Include: module structure, file/class responsibilities, function/API names with short descriptions, inter-module data flow.
-- Exclude: internal implementation logic, algorithm details, variable names, code snippets.
+`--commit` 플래그: Layer 2를 생략하고 즉시 전이 (Layer 2를 이미 통과했다는 호출자 선언).
 
-### Reference rules
-
-- `contracts` field: relative path from the Spec file (e.g. `"./payment.contract.json"`).
-- `sources` field: relative path from the project root (e.g. `"src/auth/login.ts"`).
-- `dependsOnSpecs` field: relative path from the Spec file (e.g. `"../shared/auth-session.spec.json"`).
-
-### Change history tracking
-
-Spec files do not store history internally. Git handles it.
+## CLI
 
 ```bash
-git log -- contract/auth/login.spec.json
-git log --follow -- contract/auth/login.spec.json  # track renames
+cdd advance <spec> [--commit]   # 다음 상태로 전진 (gate 검증 + delegate)
+cdd status [file]               # 상태 대시보드 / 개별 파일 상태
+cdd spec create <name>          # Spec 생성 (--schema, --domain, --contract)
 ```
 
----
-
-## Development Process
-
-All processes follow Waterfall. Each stage starts only after the previous stage is complete. If you need to change a previous stage artifact, go back, update the document first, then re-run downstream stages.
-
-### 1. New feature development
-
-```text
-Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/execution -> Consistency validation
-```
-
-**Step 1: Contract review**
-- Read related `.contract.json` files and identify business requirements for the target feature.
-- Confirm the feature key exists in Contract's `features` field.
-- If not defined, propose a Contract update to the user. Continue only after Contract is updated.
-
-**Step 2: Spec authoring/fix**
-- Create Spec: `cdd spec create {feature-key} --domain {domain} --contract {contract-path}`
-- Fill `contracts` with relative paths to base Contract files.
-- Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
-- Advance to `specifying`: `cdd advance {spec}` (requires valid `contracts` reference).
-- Fill all custom fields defined by the schema (`modules`, `interfaces`, `dataFlow`, etc.).
-- Define `acceptanceCriteria`: `cdd ac add {spec} --condition "..." --target "src/..." --pattern "..."`
-- Add planned implementation file paths to `sources`.
-- **All fields must be confirmed in this step.** After confirmation, advance to `implementing`: `cdd advance {spec}` (requires all custom fields non-empty, AC >= 1).
-
-**Step 3: Code implementation**
-- Implement exactly following the confirmed module structure and interfaces defined in Spec.
-- If a better structure appears during implementation, do not change code first. Go back to Step 2, update Spec first, then implement against the updated Spec.
-- If new files are added or plans change, update `sources` in Spec first.
-
-**Step 4: Test authoring and execution**
-- Write tests for implemented code.
-- Add test file paths to `sources`.
-- Run tests and confirm they pass.
-
-**Step 5: Consistency validation**
-- Verify AC testRef integrity: `cdd ac check {spec}`
-- Verify code-spec consistency: `cdd check`
-- Check whether `modules`, `interfaces`, and `dataFlow` match Spec.
-- **If mismatch exists, fix code.** Spec should not be changed to match code.
-- After all validations pass, advance through `validating` to `done`: `cdd advance {spec}` (twice) and update `lastModified` to today.
-
-### 2. Existing code changes
-
-```text
-Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Test execution -> Consistency validation
-```
-
-**Step 1: Impact analysis**
-- Analyze impact: `cdd impact {source-file}`
-- Check `contracts` and `dependsOnSpecs` in those Specs to identify chained impact scope.
-
-**Step 2: Contract/Spec review**
-- Read related Specs to understand current module structure and interfaces.
-- Read Contract as well to ensure the change does not violate business rules.
-- If the change conflicts with Contract business rules, notify the user and continue only after Contract update.
-
-**Step 3: Spec update/fix**
-- Determine whether the change affects Spec scope.
-  - Interface changes, module add/remove, data flow changes -> Spec update is required.
-  - Internal-only changes (refactoring, performance tuning) -> Spec update may be unnecessary, but verify `modules` is still accurate.
-- If Spec update is required, update and confirm Spec first.
-- If files are added/removed, update `sources`.
-- Update `acceptanceCriteria` if completion conditions have changed: `cdd ac add/remove {spec}`
-- If Spec was `done`, regression sets status to `implementing` automatically. Otherwise: `cdd regress {spec}` or `cdd advance {spec}`.
-- **Continue only after Spec is confirmed.**
-
-**Step 4: Code update**
-- Update code within confirmed Spec scope.
-- If a better structure appears, do not change code first. Go back to Step 3 and update Spec first.
-
-**Step 5: Test execution**
-- Confirm existing tests pass.
-- Add/update tests according to the change.
-
-**Step 6: Consistency validation**
-- Verify AC testRef integrity: `cdd ac check {spec}`
-- Verify code-spec consistency: `cdd check`
-- **If mismatch exists, fix code.**
-- After all validations pass, advance to `done`: `cdd advance {spec}` and update `lastModified` to today.
-
-### 3. Bug fixes
-
-```text
-Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> Code fix -> Tests -> Consistency validation
-```
-
-**Step 1: Bug analysis**
-- Identify root cause and related source files.
-
-**Step 2: Related Spec/Contract review**
-- Find Spec files whose `sources` include affected files.
-- Classify root cause:
-  - Business rule violation -> verify Spec and code against Contract.
-  - Implementation bug -> check Spec `errorHandling` and Contract `edgeCases`.
-  - Spec defect -> Spec failed to represent Contract correctly.
-
-**Step 3: Spec update/fix (if needed)**
-- If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
-- If the bug is a missing business case in Contract `edgeCases`, propose Contract update to user. After Contract update, update Spec.
-- Add missing conditions to `acceptanceCriteria`: `cdd ac add {spec} --condition "..." --target "..." --pattern "..."`
-- If Spec was `done`, regression sets status to `implementing` automatically. Otherwise: `cdd regress {spec}`.
-- **Continue only after Spec is confirmed.**
-
-**Step 4: Code fix**
-- Fix code according to confirmed Spec.
-
-**Step 5: Tests**
-- Add a reproducing test case for the bug.
-- Confirm tests pass after the fix.
-- Confirm existing tests are not broken.
-
-**Step 6: Consistency validation**
-- Verify AC testRef integrity: `cdd ac check {spec}`
-- Verify code-spec consistency: `cdd check`
-- **If mismatch exists, fix code.**
-- After all validations pass, advance to `done`: `cdd advance {spec}` and update `lastModified` to today.
-
----
-
-## Contract/Spec Authoring Guide
-
-### Contract authoring principles
-
-- Use language that non-developers can understand.
-- Do not include code, technical jargon, or implementation details.
-- `features` keys must match Spec filenames exactly.
-- Custom field content (overview, domainGlossary, etc.) should follow the schema's field types.
-- All `string[]` fields: each element is one self-contained line of content.
-
-### Spec authoring principles
-
-- `summary` must state the feature in one line. `description` provides detailed explanation.
-- `summary`/`description` must make it clear which Contract feature this Spec implements.
-- Custom fields must follow the schema's type definitions:
-  - `string`: prose text (e.g. summary)
-  - `string[]`: ordered items (e.g. dataFlow, constraints)
-  - `Record<string, string>`: key-value pairs (e.g. modules, interfaces, errorHandling)
-  - `Record<string, object>`: dictionary with complex object values (e.g. API definitions, type definitions)
-- `acceptanceCriteria` must contain verifiable, specific conditions.
-- `sources` must list all related implementation and test files.
-- `contracts` must list relative paths to base Contract files.
-- Empty sections: `[]` for `string[]` fields, `{}` for `Record` fields.
-
-### Reference path rules
-
-- `contracts` field: relative path from the Spec file.
-- `sources` field: relative path from the project root.
-- `dependsOnSpecs` field: relative path from the Spec file.
-
-### `lastModified` update rule
-
-- Whenever any field changes, update `lastModified` to today's date.
-
----
-
-## Validation System
-
-- `cdd validate`: Schema/path/reference integrity + Schema conformance
-- `cdd check`: Code <-> Spec <-> Contract consistency + `acceptanceCriteria` fulfillment
-- `cdd ac list {spec}`: AC 목록 + testRef 검증 상태 표시
-- `cdd ac check {spec}`: 단일 Spec의 AC testRef 전체 검증
-
-### `cdd validate` checks
-
-- Contract/Spec `schema` field points to a valid Schema ID
-- Fields marked `required: true` in Schema exist in the document
-- Field value structure matches the type defined in Schema (minimal type-level validation only)
-- Contract `features` keys match `*.spec.json` filenames in the same folder
-
-### `cdd check` flow
-
-1. Extract list of changed source files
-2. Scan all Spec `sources` -> identify related Specs
-3. Collect `contracts` from those Specs
-4. Determine whether code follows Spec
-5. Determine whether Spec follows Contract
-6. Verify all `acceptanceCriteria` are fulfilled
-
----
-
-## Edge Cases
-
-- Feature rename: `git mv` Spec file + synchronize Contract `features` key
-- Feature split: Existing + new files in same commit + synchronize Contract `features`
-- Feature merge: Consolidate into one file, delete rest, same commit + synchronize Contract `features`
-- Feature removal: Confirm removal from Contract `features`, delete Spec file with user approval
-- Format change: Create new Schema, update `schema` field in documents, migrate fields as needed
-
----
-
-## CLI Quick Reference
-
-```bash
-# 프로젝트 초기화
-cdd init [dir]
-
-# 프로젝트 조회
-cdd tree                              # Contract/Spec 트리 출력
-cdd status [file]                     # 전체 상태 대시보드 / 개별 파일 상태
-cdd validate                          # 구조/참조 무결성 검증
-cdd impact <file>                     # 소스 파일 변경 영향 분석
-cdd check                             # Spec-Code 일관성 검증
-
-# 워크플로우 전이
-cdd advance <spec>                    # 다음 상태로 전진 (게이트 강제)
-cdd regress <spec>                    # done → implementing 수동 회귀
-
-# AC 관리
-cdd ac add <spec> --condition "..." --target "..." --pattern "..." [--id "..."]
-cdd ac remove <spec> --id <id>
-cdd ac list <spec>                    # AC 목록 + testRef 검증 상태
-cdd ac check <spec>                   # AC testRef 전체 검증
-
-# Spec CRUD
-cdd spec create <name> [--domain ...] [--contract ...]
-cdd spec list [--status ...] [--domain ...] [--contract ...]
-cdd spec get <spec> [--field ...]
-cdd spec set <spec> --field ... --value ...
-cdd spec add <spec> --field ... --value ... [--key ...]
-cdd spec remove <spec> --field ... [--index ...] [--value ...] [--key ...]
-
-# 분석 (spec/source 자동 판별)
-cdd blame <file> [--since ...] [--until ...]
-cdd log <file> [--group-by day|week|month]
-cdd explain <file> [--commit ... | --since ... --until ...]
-```
-
----
-
-## Prohibitions
-
-- AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
-- AI must not delete Spec files without user approval.
-- Do not write code without checking Contract and Spec first.
-- Do not include implementation internals, algorithm details, or code snippets in Spec.
-- **Do not start implementation before Spec is confirmed.**
-- **If Spec and code conflict, do not change Spec to match code. Always fix code to match Spec.**
-- **If a better approach appears during implementation, do not change code first. Update Spec first.**
+자동화 워크플로우 프롬프트: `.agents/workflow/` 참조.
