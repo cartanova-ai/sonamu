@@ -333,15 +333,14 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 - If not defined, propose a Contract update to the user. Continue only after Contract is updated.
 
 **Step 2: Spec authoring/fix**
-- Create `{feature-key}.spec.json` in the same folder as related Contract files.
-- Set `schema` to the appropriate Spec schema ID.
-- Set `status` to `"draft"`, then advance to `"specifying"` (requires valid `contracts` reference).
+- Create Spec: `cdd spec create {feature-key} --domain {domain} --contract {contract-path}`
 - Fill `contracts` with relative paths to base Contract files.
 - Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
+- Advance to `specifying`: `cdd advance {spec}` (requires valid `contracts` reference).
 - Fill all custom fields defined by the schema (`modules`, `interfaces`, `dataFlow`, etc.).
-- Define `acceptanceCriteria` with structured entries (id, condition, testRef).
+- Define `acceptanceCriteria`: `cdd ac add {spec} --condition "..." --target "src/..." --pattern "..."`
 - Add planned implementation file paths to `sources`.
-- **All fields must be confirmed in this step.** After confirmation, advance `status` to `"implementing"` (requires all custom fields non-empty, AC >= 1).
+- **All fields must be confirmed in this step.** After confirmation, advance to `implementing`: `cdd advance {spec}` (requires all custom fields non-empty, AC >= 1).
 
 **Step 3: Code implementation**
 - Implement exactly following the confirmed module structure and interfaces defined in Spec.
@@ -354,11 +353,11 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 - Run tests and confirm they pass.
 
 **Step 5: Consistency validation**
-- Validate that implemented code follows the confirmed Spec exactly.
+- Verify AC testRef integrity: `cdd ac check {spec}`
+- Verify code-spec consistency: `cdd check`
 - Check whether `modules`, `interfaces`, and `dataFlow` match Spec.
-- Verify all `acceptanceCriteria` items are satisfied in code.
 - **If mismatch exists, fix code.** Spec should not be changed to match code.
-- After all validations pass, advance `status` through `"validating"` to `"done"` and update `lastModified` to today.
+- After all validations pass, advance through `validating` to `done`: `cdd advance {spec}` (twice) and update `lastModified` to today.
 
 ### 2. Existing code changes
 
@@ -367,7 +366,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 ```
 
 **Step 1: Impact analysis**
-- Find all Spec files whose `sources` include the target files.
+- Analyze impact: `cdd impact {source-file}`
 - Check `contracts` and `dependsOnSpecs` in those Specs to identify chained impact scope.
 
 **Step 2: Contract/Spec review**
@@ -381,8 +380,8 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
   - Internal-only changes (refactoring, performance tuning) -> Spec update may be unnecessary, but verify `modules` is still accurate.
 - If Spec update is required, update and confirm Spec first.
 - If files are added/removed, update `sources`.
-- Update `acceptanceCriteria` if completion conditions have changed.
-- Set `status` to `"implementing"`.
+- Update `acceptanceCriteria` if completion conditions have changed: `cdd ac add/remove {spec}`
+- If Spec was `done`, regression sets status to `implementing` automatically. Otherwise: `cdd regress {spec}` or `cdd advance {spec}`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code update**
@@ -394,10 +393,10 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 - Add/update tests according to the change.
 
 **Step 6: Consistency validation**
-- Validate that updated code follows confirmed Spec exactly.
-- Verify all `acceptanceCriteria` items are satisfied.
+- Verify AC testRef integrity: `cdd ac check {spec}`
+- Verify code-spec consistency: `cdd check`
 - **If mismatch exists, fix code.**
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
+- After all validations pass, advance to `done`: `cdd advance {spec}` and update `lastModified` to today.
 
 ### 3. Bug fixes
 
@@ -418,8 +417,8 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 **Step 3: Spec update/fix (if needed)**
 - If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
 - If the bug is a missing business case in Contract `edgeCases`, propose Contract update to user. After Contract update, update Spec.
-- Add missing conditions to `acceptanceCriteria` if applicable.
-- Set `status` to `"implementing"`.
+- Add missing conditions to `acceptanceCriteria`: `cdd ac add {spec} --condition "..." --target "..." --pattern "..."`
+- If Spec was `done`, regression sets status to `implementing` automatically. Otherwise: `cdd regress {spec}`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code fix**
@@ -431,10 +430,10 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - Confirm existing tests are not broken.
 
 **Step 6: Consistency validation**
-- Validate that fixed code follows confirmed Spec exactly.
-- Verify all `acceptanceCriteria` items are satisfied.
+- Verify AC testRef integrity: `cdd ac check {spec}`
+- Verify code-spec consistency: `cdd check`
 - **If mismatch exists, fix code.**
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
+- After all validations pass, advance to `done`: `cdd advance {spec}` and update `lastModified` to today.
 
 ---
 
@@ -478,6 +477,8 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 
 - `cdd validate`: Schema/path/reference integrity + Schema conformance
 - `cdd check`: Code <-> Spec <-> Contract consistency + `acceptanceCriteria` fulfillment
+- `cdd ac list {spec}`: AC 목록 + testRef 검증 상태 표시
+- `cdd ac check {spec}`: 단일 Spec의 AC testRef 전체 검증
 
 ### `cdd validate` checks
 
@@ -504,6 +505,45 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - Feature merge: Consolidate into one file, delete rest, same commit + synchronize Contract `features`
 - Feature removal: Confirm removal from Contract `features`, delete Spec file with user approval
 - Format change: Create new Schema, update `schema` field in documents, migrate fields as needed
+
+---
+
+## CLI Quick Reference
+
+```bash
+# 프로젝트 초기화
+cdd init [dir]
+
+# 프로젝트 조회
+cdd tree                              # Contract/Spec 트리 출력
+cdd status [file]                     # 전체 상태 대시보드 / 개별 파일 상태
+cdd validate                          # 구조/참조 무결성 검증
+cdd impact <file>                     # 소스 파일 변경 영향 분석
+cdd check                             # Spec-Code 일관성 검증
+
+# 워크플로우 전이
+cdd advance <spec>                    # 다음 상태로 전진 (게이트 강제)
+cdd regress <spec>                    # done → implementing 수동 회귀
+
+# AC 관리
+cdd ac add <spec> --condition "..." --target "..." --pattern "..." [--id "..."]
+cdd ac remove <spec> --id <id>
+cdd ac list <spec>                    # AC 목록 + testRef 검증 상태
+cdd ac check <spec>                   # AC testRef 전체 검증
+
+# Spec CRUD
+cdd spec create <name> [--domain ...] [--contract ...]
+cdd spec list [--status ...] [--domain ...] [--contract ...]
+cdd spec get <spec> [--field ...]
+cdd spec set <spec> --field ... --value ...
+cdd spec add <spec> --field ... --value ... [--key ...]
+cdd spec remove <spec> --field ... [--index ...] [--value ...] [--key ...]
+
+# 분석 (spec/source 자동 판별)
+cdd blame <file> [--since ...] [--until ...]
+cdd log <file> [--group-by day|week|month]
+cdd explain <file> [--commit ... | --since ... --until ...]
+```
 
 ---
 
