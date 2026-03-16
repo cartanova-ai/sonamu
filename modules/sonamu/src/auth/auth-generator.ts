@@ -206,6 +206,44 @@ export interface GenerateBetterAuthEntitiesOptions {
  * @param options 생성 옵션
  * @param options.plugins 활성화할 플러그인 ID 목록
  */
+/**
+ * 기존 프로젝트의 entity.json에 fixtureCompanions를 소급 추가합니다.
+ *
+ * betterAuthV1 기준으로 fixtureCompanions가 정의된 entity를 찾아
+ * 프로젝트 내 entity.json에 해당 prop의 cone에 fixtureCompanions가
+ * 없을 때만 추가합니다. 이미 있으면 스킵합니다.
+ */
+export async function addCompanionsToEntities(): Promise<void> {
+  for (const entityJson of betterAuthV1) {
+    const idProp = entityJson.props?.find((p) => p.name === "id");
+    if (!idProp?.cone?.fixtureCompanions) continue;
+
+    if (!EntityManager.exists(entityJson.id)) {
+      console.log(chalk.yellow(`[SKIP] ${entityJson.id} - not found`));
+      continue;
+    }
+
+    const entity = EntityManager.get(entityJson.id);
+    const existingIdProp = entity.props.find((p) => p.name === "id");
+    if (!existingIdProp) {
+      console.log(chalk.yellow(`[SKIP] ${entityJson.id}.id - prop not found`));
+      continue;
+    }
+
+    if (existingIdProp.cone?.fixtureCompanions) {
+      console.log(chalk.dim(`[SKIP] ${entityJson.id}.id - fixtureCompanions already exists`));
+      continue;
+    }
+
+    existingIdProp.cone = {
+      ...existingIdProp.cone,
+      fixtureCompanions: idProp.cone.fixtureCompanions,
+    };
+    await entity.save();
+    console.log(chalk.green(`[UPDATED] ${entityJson.id}.id - fixtureCompanions added`));
+  }
+}
+
 export async function generateBetterAuthEntities(
   options: GenerateBetterAuthEntitiesOptions = {},
 ): Promise<void> {

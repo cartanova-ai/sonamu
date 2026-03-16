@@ -13,7 +13,7 @@ import path from "path";
 import process from "process";
 import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
-import { generateBetterAuthEntities } from "../auth/auth-generator";
+import { addCompanionsToEntities, generateBetterAuthEntities } from "../auth/auth-generator";
 import {
   type BetterAuthPluginId,
   isValidPluginId,
@@ -179,6 +179,7 @@ async function bootstrap() {
         ["skills", "create", "#name"],
         ["test"],
         ["auth", "generate"],
+        ["auth", "add-companions"],
       ],
       runners: {
         migrate_status,
@@ -209,6 +210,7 @@ async function bootstrap() {
         skills_create,
         test: testCommand,
         auth_generate,
+        auth_add_companions,
       },
     });
   } finally {
@@ -1273,6 +1275,18 @@ async function auth_generate() {
   }
 
   await generateBetterAuthEntities({ plugins });
+}
+
+/**
+ * pnpm sonamu auth add-companions 하면 실행되는 함수입니다.
+ * 기존 프로젝트의 entity.json에 fixtureCompanions를 소급 추가합니다.
+ *
+ * 이미 fixtureCompanions가 있는 entity는 스킵합니다 (덮어쓰기 없음).
+ */
+async function auth_add_companions() {
+  console.log(chalk.yellow.bold("🔐 Adding fixtureCompanions to better-auth entities...\n"));
+  await addCompanionsToEntities();
+  console.log(chalk.bold("\n✅ Done!"));
 }
 
 /**
