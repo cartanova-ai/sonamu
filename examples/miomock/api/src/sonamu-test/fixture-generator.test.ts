@@ -150,16 +150,18 @@ describe("FixtureGenerator", () => {
         },
       ]);
 
-      // 반환된 결과 검증
-      expect(results.length).toBe(3);
-      expect(results[0]?.entityId).toBe("User");
-      expect(results[0]?.data).toHaveProperty("id");
-      expect(results[0]?.data).toHaveProperty("email");
-      expect(results[0]?.data).toHaveProperty("username");
-      expect(results[0]?.data.role).toBe("user");
+      // 반환된 결과 검증 (fixtureCompanions로 Account도 함께 생성됨)
+      const userResults = results.filter((r) => r.entityId === "User");
+      const accountResults = results.filter((r) => r.entityId === "Account");
+      expect(userResults.length).toBe(3);
+      expect(accountResults.length).toBe(3);
+      expect(userResults[0]?.data).toHaveProperty("id");
+      expect(userResults[0]?.data).toHaveProperty("email");
+      expect(userResults[0]?.data).toHaveProperty("username");
+      expect(userResults[0]?.data.role).toBe("user");
 
       // 각 User가 고유한 ID를 가지는지 확인
-      const ids = results.map((r) => r.data.id);
+      const ids = userResults.map((r) => r.data.id);
       expect(new Set(ids).size).toBe(3);
     });
 
@@ -172,7 +174,8 @@ describe("FixtureGenerator", () => {
         { entity: "User", count: 2, overrides: { role: "user" } },
       ]);
 
-      expect(results.length).toBe(3);
+      // fixtureCompanions로 Account도 함께 생성되므로 총 5개 (1 Company + 2 User + 2 Account)
+      expect(results.length).toBe(5);
 
       const companies = results.filter((r) => r.entityId === "Company");
       const users = results.filter((r) => r.entityId === "User");
@@ -185,6 +188,75 @@ describe("FixtureGenerator", () => {
       expect(companies[0]?.data.id).toBeGreaterThan(0);
       expect(users[0]?.data.id).toBeDefined();
       expect(typeof users[0]?.data.id).toBe("string");
+    });
+  });
+
+  describe("fixtureCompanions - User 생성 시 Account 자동 생성", () => {
+    test("User 1개 생성 시 Account 1개 자동 생성", async () => {
+      const generator = getGenerator();
+
+      const results = await generator.generateBatch([{ entity: "User", count: 1 }]);
+
+      const userResults = results.filter((r) => r.entityId === "User");
+      const accountResults = results.filter((r) => r.entityId === "Account");
+
+      expect(userResults.length).toBe(1);
+      expect(accountResults.length).toBe(1);
+
+      if (!userResults[0] || !accountResults[0]) {
+        throw new Error("userResults 또는 accountResults가 비어 있습니다");
+      }
+      const user = userResults[0];
+      const account = accountResults[0];
+
+      // FK 연결 확인
+      expect(account.data.user_id).toBe(user.data.id);
+      // {{email}} 템플릿 치환 확인
+      expect(account.data.account_id).toBe(user.data.email);
+      // 고정 override 확인
+      expect(account.data.provider_id).toBe("credential");
+    });
+
+    test("User N개 생성 시 Account N개 자동 생성 (1:1 매핑)", async () => {
+      const generator = getGenerator();
+
+      const results = await generator.generateBatch([{ entity: "User", count: 3 }]);
+
+      const userResults = results.filter((r) => r.entityId === "User");
+      const accountResults = results.filter((r) => r.entityId === "Account");
+
+      expect(userResults.length).toBe(3);
+      expect(accountResults.length).toBe(3);
+
+      // 각 User에 대해 매핑되는 Account가 정확히 1개씩 존재하는지 확인
+      for (const user of userResults) {
+        const matched = accountResults.filter((a) => a.data.user_id === user.data.id);
+        expect(matched.length).toBe(1);
+        expect(matched[0]?.data.account_id).toBe(user.data.email);
+      }
+    });
+
+    test("DB에 Account가 실제 저장되었는지 확인", async () => {
+      const generator = getGenerator();
+      const db = DB.getDB("test" as DBPreset);
+
+      const results = await generator.generateBatch([{ entity: "User", count: 1 }]);
+
+      const user = results.find((r) => r.entityId === "User");
+      if (!user) {
+        throw new Error("User 결과를 찾을 수 없습니다");
+      }
+      const accountFromResult = results.find((r) => r.entityId === "Account");
+      console.log("user.data.id:", user.data.id, typeof user.data.id);
+      console.log("accountFromResult:", accountFromResult?.data);
+      const allAccounts = await db("accounts").select("id", "user_id").limit(5);
+      console.log("accounts in DB:", allAccounts);
+
+      const dbAccount = await db("accounts").where("user_id", user.data.id).first();
+
+      expect(dbAccount).toBeDefined();
+      expect(dbAccount.provider_id).toBe("credential");
+      expect(dbAccount.account_id).toBe(user.data.email);
     });
   });
 

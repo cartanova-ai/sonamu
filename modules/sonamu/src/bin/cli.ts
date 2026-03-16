@@ -210,7 +210,7 @@ async function bootstrap() {
         skills_create,
         test: testCommand,
         auth_generate,
-        auth_add_companions,
+        "auth_add-companions": auth_add_companions,
       },
     });
   } finally {

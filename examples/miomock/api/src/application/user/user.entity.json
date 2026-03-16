@@ -11,9 +11,19 @@
       "name": "id",
       "desc": "ID",
       "type": "string",
-      "cone": { 
+      "cone": {
         "note": "사용자 고유 식별자. DB sequence로 자동 생성되는 숫자를 text로 저장",
-        "fixtureStrategy": "sequence"
+        "fixtureStrategy": "sequence",
+        "fixtureCompanions": [
+          {
+            "entity": "Account",
+            "overrides": {
+              "provider_id": "credential",
+              "account_id": "{{email}}",
+              "password": "{{email}}"
+            }
+          }
+        ]
       }
     },
     {
