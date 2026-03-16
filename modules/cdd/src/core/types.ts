@@ -51,6 +51,7 @@ export interface ContractDocument {
 
 /** Spec JSON 문서 구조 */
 export interface SpecDocument {
+  schema: string;
   schemaVersion: number;
   summary: string;
   description: string[];
@@ -103,42 +104,32 @@ export interface CddProject {
   specs: SpecNode[];
 }
 
-/** 검증 이슈 심각도 */
-export type IssueSeverity = "error" | "warning";
-
-/** 검증 이슈 */
-export interface ValidationIssue {
-  severity: IssueSeverity;
-  /** 관련 파일 절대 경로 */
-  path: string;
-  message: string;
+/** Schema 필드 정의 */
+export interface SchemaField {
+  name: string;
+  type: string;
+  renderer?: string;
+  required?: boolean;
 }
 
-/** Contract 필수 필드 목록 */
-export const CONTRACT_REQUIRED_FIELDS = [
-  "schema",
-  "lastModified",
-  "features",
-  "overview",
-  "domainGlossary",
-  "userRoles",
-  "businessRules",
-  "edgeCases",
-] as const;
+/** Schema 문서 */
+export interface SchemaDocument {
+  id: string;
+  type: "contract" | "spec";
+  fields: SchemaField[];
+}
 
-/** Spec 필수 필드 목록 */
-export const SPEC_REQUIRED_FIELDS = [
-  "schemaVersion",
-  "summary",
-  "description",
-  "acceptanceCriteria",
-  "lastModified",
-  "status",
-  "sources",
-  "contracts",
-  "modules",
-  "interfaces",
-  "dataFlow",
-  "errorHandling",
-  "constraints",
-] as const;
+/** delegate 모드에서 Layer 2 검증을 위해 출력하는 페이로드 */
+export interface DelegatePayload {
+  mode: "delegate";
+  gate: { layer1: "pass"; target: SpecStatus; spec: string };
+  instruction: string;
+  references: {
+    spec: string;
+    schema: string;
+    contracts: string[];
+    sources: string[];
+    testFiles: string[];
+  };
+  checks: string[];
+}

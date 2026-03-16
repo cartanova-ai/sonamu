@@ -5,6 +5,7 @@ import type {
   CddProject,
   ContractDocument,
   ContractNode,
+  SchemaDocument,
   SpecDocument,
   SpecNode,
 } from "./types.js";
@@ -81,6 +82,17 @@ export async function loadProject(contractDir: string): Promise<CddProject> {
   }
 
   return { contractDir: resolvedDir, projectRoot, contracts, specs };
+}
+
+/**
+ * spec의 schema 필드로 Schema 문서를 로드한다.
+ * 찾을 수 없으면 null을 반환한다.
+ */
+export function loadSchema(schemaId: string, project: CddProject): SchemaDocument | null {
+  const schemaPath = path.join(project.contractDir, "schemas", `${schemaId}.schema.json`);
+  if (!fs.existsSync(schemaPath)) return null;
+  const raw = fs.readFileSync(schemaPath, "utf-8");
+  return JSON.parse(raw) as SchemaDocument;
 }
 
 /** contract 디렉토리 기준 도메인명 파생 */

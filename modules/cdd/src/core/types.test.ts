@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CddProject,
-  CONTRACT_REQUIRED_FIELDS,
-  type ContractDocument,
-  type ContractNode,
-  SPEC_REQUIRED_FIELDS,
-  type SpecDocument,
-  type SpecNode,
-  type SpecStatus,
-  type ValidationIssue,
+import type {
+  CddProject,
+  ContractDocument,
+  ContractNode,
+  DelegatePayload,
+  SchemaDocument,
+  SpecDocument,
+  SpecNode,
+  SpecStatus,
 } from "./types.js";
 
 describe("types", () => {
@@ -31,6 +30,7 @@ describe("types", () => {
 
   it("SpecDocument 형상 확인", () => {
     const doc: SpecDocument = {
+      schema: "default-spec",
       schemaVersion: 2,
       summary: "테스트 기능",
       description: ["테스트 설명"],
@@ -51,6 +51,7 @@ describe("types", () => {
       errorHandling: { TestError: "테스트 에러" },
       constraints: ["제약 사항"],
     };
+    expect(doc.schema).toBe("default-spec");
     expect(doc.schemaVersion).toBe(2);
     expect(doc.summary).toBe("테스트 기능");
     expect(doc.status).toBe("draft");
@@ -58,6 +59,7 @@ describe("types", () => {
 
   it("SpecDocument에 dependsOnSpecs 옵션 필드를 포함할 수 있다", () => {
     const doc: SpecDocument = {
+      schema: "default-spec",
       schemaVersion: 2,
       summary: "의존성 테스트",
       description: [],
@@ -104,6 +106,7 @@ describe("types", () => {
       domain: "auth",
       basename: "user",
       document: {
+        schema: "default-spec",
         schemaVersion: 2,
         summary: "사용자",
         description: [],
@@ -136,27 +139,34 @@ describe("types", () => {
     expect(project.projectRoot).toBe("/abs");
   });
 
-  it("ValidationIssue 형상 확인", () => {
-    const issue: ValidationIssue = {
-      severity: "error",
-      path: "/some/file.json",
-      message: "필수 섹션 누락",
+  it("SchemaDocument 형상 확인", () => {
+    const schema: SchemaDocument = {
+      id: "default-spec",
+      type: "spec",
+      fields: [
+        { name: "modules", type: "Record<string, string>", required: true },
+        { name: "dataFlow", type: "string[]", required: true },
+      ],
     };
-    expect(issue.severity).toBe("error");
+    expect(schema.fields).toHaveLength(2);
+    expect(schema.fields[0].required).toBe(true);
   });
 
-  it("CONTRACT_REQUIRED_FIELDS 상수 확인", () => {
-    expect(CONTRACT_REQUIRED_FIELDS).toContain("schema");
-    expect(CONTRACT_REQUIRED_FIELDS).toContain("overview");
-    expect(CONTRACT_REQUIRED_FIELDS).toContain("edgeCases");
-    expect(CONTRACT_REQUIRED_FIELDS).toHaveLength(8);
-  });
-
-  it("SPEC_REQUIRED_FIELDS 상수 확인", () => {
-    expect(SPEC_REQUIRED_FIELDS).toContain("schemaVersion");
-    expect(SPEC_REQUIRED_FIELDS).toContain("summary");
-    expect(SPEC_REQUIRED_FIELDS).toContain("modules");
-    expect(SPEC_REQUIRED_FIELDS).toContain("constraints");
-    expect(SPEC_REQUIRED_FIELDS).toHaveLength(13);
+  it("DelegatePayload 형상 확인", () => {
+    const payload: DelegatePayload = {
+      mode: "delegate",
+      gate: { layer1: "pass", target: "implementing", spec: "auth/signin.spec.json" },
+      instruction: "검증하세요",
+      references: {
+        spec: "contract/auth/signin.spec.json",
+        schema: "contract/schemas/default-spec.schema.json",
+        contracts: ["contract/auth/main.contract.json"],
+        sources: [],
+        testFiles: [],
+      },
+      checks: ["A. 검증 항목"],
+    };
+    expect(payload.mode).toBe("delegate");
+    expect(payload.gate.layer1).toBe("pass");
   });
 });
