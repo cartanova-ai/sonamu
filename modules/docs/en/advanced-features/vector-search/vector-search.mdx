@@ -51,10 +51,10 @@ flowchart TD
 ### Basic Search API
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string, limit: number = 10) {
     // 1. Convert query to embedding
@@ -235,7 +235,7 @@ async searchWithThreshold(
 ### 1. Knowledge Base Search
 
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async searchKnowledge(
     query: string,
@@ -292,7 +292,7 @@ await KnowledgeBaseModel.searchKnowledge("refund method", "FAQ");
 Implementing "Products similar to this":
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async recommendSimilarProducts(
     productId: number,

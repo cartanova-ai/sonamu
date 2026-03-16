@@ -98,7 +98,7 @@ export function CddSchemaDetail({
   schemaKey: string;
   onSwitchToDocument: (path: string) => void;
 }) {
-  const { data, isLoading } = CddService.useReadCddSchema(schemaKey);
+  const { data, isLoading, refetch } = CddService.useReadCddSchema(schemaKey);
   const [editing, setEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("");
 
@@ -110,6 +110,7 @@ export function CddSchemaDetail({
   const handleEdit = () => {
     setEditing(true);
     CddService.editCddSchema(schemaKey)
+      .then(() => refetch())
       .catch(defaultCatch)
       .finally(() => setEditing(false));
   };
