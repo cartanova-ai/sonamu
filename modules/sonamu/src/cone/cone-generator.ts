@@ -204,6 +204,12 @@ INSTRUCTIONS:
    - DB sequence id: If a prop named "id" has type "string" and uses a DB sequence (indicated by dbDefault containing "nextval"), set fixtureStrategy: "sequence" and do NOT set fixtureGenerator. note should mention sequential number stored as string.
    - better-auth entity id: Account, Session, Verification 엔티티의 id는 better-auth가 crypto.randomUUID()로 생성하는 UUID다. fixtureStrategy: "sequence"를 절대 사용하지 말고, fixtureGenerator: "faker.string.uuid()"를 사용한다.
 
+11. fixtureCompanions (IMPORTANT - never generate or modify):
+   - fixtureCompanions is user-declared metadata that triggers automatic companion fixture creation when a parent fixture is generated.
+   - Do NOT generate or suggest fixtureCompanions for any prop. Only users declare this intentionally.
+   - If a prop's existing cone already contains fixtureCompanions, preserve it exactly as-is in the propCones output. Do not remove, alter, or omit it.
+   - Example: if User entity's "id" prop cone has fixtureCompanions, include it unchanged in propCones["id"].
+
 ${
   context.existingCones
     ? `
