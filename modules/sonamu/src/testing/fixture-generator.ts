@@ -1469,11 +1469,132 @@ Rules:
     // 3. targetDb에 삽입 (FixtureManager가 의존성 정렬 처리)
     const results = await FixtureManager.insertFixtures(this.targetDbName, fixtureRecords);
 
+    // 4. companion fixtures 생성 (fixtureCompanions가 선언된 경우)
+    const companionResults = await this.generateCompanions(specs, results);
+
+    const total = results.length + companionResults.length;
     !isTest() &&
-      console.log(
-        chalk.green(`Generated and saved ${results.length} fixtures to ${this.targetDbName}`),
-      );
-    return results;
+      console.log(chalk.green(`Generated and saved ${total} fixtures to ${this.targetDbName}`));
+    return [...results, ...companionResults];
+  }
+
+  /**
+   * 부모 fixture 결과를 기반으로 fixtureCompanions에 선언된 companion Entity를 생성합니다.
+   *
+   * generateBatch()에서만 호출되며, companion 생성 시 재귀를 방지하기 위해
+   * generateBatch()를 다시 호출하지 않고 직접 삽입합니다.
+   */
+  private async generateCompanions(
+    specs: Array<{ entity: string; count: number; overrides?: Record<string, unknown> }>,
+    parentResults: FixtureImportResult[],
+  ): Promise<FixtureImportResult[]> {
+    const allResults: FixtureImportResult[] = [];
+    const processedEntities = new Set<string>();
+
+    for (const spec of specs) {
+      if (processedEntities.has(spec.entity)) continue;
+      processedEntities.add(spec.entity);
+
+      const entity = this.entityManager.get(spec.entity);
+      const idProp = entity.props.find((p) => p.name === "id");
+      const companions = idProp?.cone?.fixtureCompanions;
+      if (!companions || companions.length === 0) continue;
+
+      const entityResults = parentResults.filter((r) => r.entityId === spec.entity);
+      if (entityResults.length === 0) continue;
+
+      for (const companion of companions) {
+        // companion entity에서 부모 entity로의 BelongsToOne FK 컬럼명 파악
+        const companionEntity = this.entityManager.get(companion.entity);
+        const fkProp = companionEntity.props.find(
+          (p) => isRelationProp(p) && isBelongsToOneRelationProp(p) && p.with === spec.entity,
+        );
+        if (!fkProp) {
+          !isTest() &&
+            console.warn(
+              chalk.yellow(
+                `[Companion] No BelongsToOne relation from ${companion.entity} to ${spec.entity}. Skipping.`,
+              ),
+            );
+          continue;
+        }
+        const fkColName = `${fkProp.name}_id`;
+
+        // companion의 idProp, usesSequence, count는 companion 단위로 고정
+        const companionIdProp = companionEntity.props.find((p) => p.name === "id");
+        const usesSequence =
+          companionIdProp?.type === "integer" ||
+          companionIdProp?.type === "bigInteger" ||
+          companionIdProp?.cone?.fixtureStrategy === "sequence";
+        const companionCount = companion.count ?? 1;
+
+        // 각 parent result에 대해 companion fixture 생성
+        const context = this.createContext();
+        const companionFixtureRecords: FixtureRecord[] = [];
+
+        for (const parentResult of entityResults) {
+          const resolvedOverrides = this.resolveTemplateOverrides(
+            companion.overrides ?? {},
+            parentResult.data,
+          );
+          resolvedOverrides[fkColName] = parentResult.data.id;
+
+          for (let i = 0; i < companionCount; i++) {
+            const fixture = await this.generate(companion.entity, resolvedOverrides, context);
+
+            const dataForRecord = usesSequence
+              ? { ...fixture, id: Math.floor(Math.random() * 1000000) }
+              : fixture;
+
+            const records = await FixtureManager.createFixtureRecord(
+              companionEntity,
+              dataForRecord as {
+                id: number | string;
+                [key: string]: string | number | boolean | null;
+              },
+              { singleRecord: true },
+            );
+            companionFixtureRecords.push(...records);
+          }
+        }
+
+        const companionResults = await FixtureManager.insertFixtures(
+          this.targetDbName,
+          companionFixtureRecords,
+        );
+        allResults.push(...companionResults);
+
+        !isTest() &&
+          console.log(
+            chalk.green(
+              `[Companion] Generated ${companionResults.length} ${companion.entity} fixtures`,
+            ),
+          );
+      }
+    }
+
+    return allResults;
+  }
+
+  /**
+   * overrides 값의 "{{fieldName}}" 템플릿을 부모 fixture 데이터로 치환합니다.
+   *
+   * 예: { "account_id": "{{email}}" } → { "account_id": "user@example.com" }
+   */
+  private resolveTemplateOverrides(
+    overrides: Record<string, unknown>,
+    parentData: { [key: string]: string | number | boolean | Date | null },
+  ): Record<string, unknown> {
+    const resolved: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(overrides)) {
+      if (typeof value === "string" && value.startsWith("{{") && value.endsWith("}}")) {
+        const fieldName = value.slice(2, -2).trim();
+        resolved[key] = parentData[fieldName];
+      } else {
+        resolved[key] = value;
+      }
+    }
+    return resolved;
   }
 
   /**
