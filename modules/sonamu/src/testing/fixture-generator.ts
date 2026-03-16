@@ -123,6 +123,16 @@ export class FixtureGenerator {
 
       // 1. Relation prop 처리
       if (isRelationProp(prop)) {
+        // BelongsToOne / OneToOne(hasJoinColumn)은 FK 컬럼명({prop.name}_id)으로도 override를 받는다
+        const fkColName = `${prop.name}_id`;
+        if (
+          fkColName in overrides &&
+          (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn))
+        ) {
+          fixture[fkColName] = overrides[fkColName];
+          continue;
+        }
+
         const relationValue = await this.generateRelationValue(entity, prop, context);
         // BelongsToOne, OneToOne(hasJoinColumn)의 경우 foreign key 컬럼명으로 저장
         if (
@@ -803,13 +813,16 @@ export class FixtureGenerator {
       const { createAnthropic } = await import("@ai-sdk/anthropic");
       const { generateText } = await import("ai");
 
-      const { text } = await generateText({
+      const rowResponse = await generateText({
         model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
         prompt: this.buildRowLLMPrompt(llmProps, entity),
       });
+      if (!rowResponse || typeof rowResponse.text !== "string") {
+        throw new Error("Invalid LLM response");
+      }
 
       // 응답을 파싱하여 각 필드에 대한 결과를 캐시에 저장
-      const rowResult = this.parseRowLLMResponse(text, llmProps);
+      const rowResult = this.parseRowLLMResponse(rowResponse.text, llmProps);
       for (const [fieldName, value] of Object.entries(rowResult)) {
         this.llmCache.set(`${rowKey}:${fieldName}`, value);
       }
@@ -844,12 +857,15 @@ export class FixtureGenerator {
     const { createAnthropic } = await import("@ai-sdk/anthropic");
     const { generateText } = await import("ai");
 
-    const { text } = await generateText({
+    const singleResponse = await generateText({
       model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
       prompt: this.buildLLMPrompt(fixtureHint, prop, entity),
     });
+    if (!singleResponse || typeof singleResponse.text !== "string") {
+      throw new Error("Invalid LLM response");
+    }
 
-    const value = this.parseLLMResponse(text, prop.type);
+    const value = this.parseLLMResponse(singleResponse.text, prop.type);
     if (this.options.enableLLMCache) {
       this.llmCache.set(cacheKey, value);
     }
@@ -944,7 +960,13 @@ ${outputShape}
 
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(jsonText);
+      const raw = JSON.parse(jsonText);
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        !isTest() &&
+          console.warn("[FixtureGenerator] Row LLM response is not a plain object:", text);
+        return {};
+      }
+      parsed = raw as Record<string, unknown>;
     } catch {
       !isTest() && console.warn("[FixtureGenerator] Failed to parse row LLM response:", text);
       return {};

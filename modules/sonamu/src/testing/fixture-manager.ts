@@ -495,7 +495,21 @@ export class FixtureManagerClass {
     this.fixtureRefMap = new Map();
     this.skippedFixtures = new Map();
 
-    const db = createKnexInstance(Sonamu.dbConfig[dbName]);
+    // 병렬 테스트 모드에서는 worker별 DB에 저장
+    const dbConfig =
+      process.env.SONAMU_WORKER_DB === "true" && process.env.VITEST_POOL_ID
+        ? (() => {
+            const workerId = parseInt(process.env.VITEST_POOL_ID ?? "1", 10);
+            const baseConfig = Sonamu.dbConfig[dbName];
+            const connection = baseConfig.connection as { database: string };
+            return {
+              ...baseConfig,
+              connection: { ...connection, database: `${connection.database}_${workerId}` },
+              pool: { min: 1, max: 1 },
+            };
+          })()
+        : Sonamu.dbConfig[dbName];
+    const db = createKnexInstance(dbConfig);
     const results: FixtureImportResult[] = [];
 
     try {
