@@ -201,12 +201,6 @@ export interface GenerateBetterAuthEntitiesOptions {
 }
 
 /**
- * better-auth 엔티티들을 Sonamu에 생성/업데이트
- *
- * @param options 생성 옵션
- * @param options.plugins 활성화할 플러그인 ID 목록
- */
-/**
  * 기존 프로젝트의 entity.json에 fixtureCompanions를 소급 추가합니다.
  *
  * betterAuthV1 기준으로 fixtureCompanions가 정의된 entity를 찾아
@@ -244,6 +238,12 @@ export async function addCompanionsToEntities(): Promise<void> {
   }
 }
 
+/**
+ * better-auth 엔티티들을 Sonamu에 생성/업데이트
+ *
+ * @param options 생성 옵션
+ * @param options.plugins 활성화할 플러그인 ID 목록
+ */
 export async function generateBetterAuthEntities(
   options: GenerateBetterAuthEntitiesOptions = {},
 ): Promise<void> {
