@@ -1611,6 +1611,11 @@ Rules:
     for (const [key, value] of Object.entries(overrides)) {
       if (typeof value === "string" && value.startsWith("{{") && value.endsWith("}}")) {
         const fieldName = value.slice(2, -2).trim();
+        if (!(fieldName in parentData)) {
+          throw new Error(
+            `템플릿 필드 "${fieldName}"이(가) 부모 fixture 데이터에 존재하지 않습니다 (override key: "${key}")`,
+          );
+        }
         resolved[key] = parentData[fieldName];
       } else {
         resolved[key] = value;
