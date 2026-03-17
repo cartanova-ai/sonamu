@@ -4,7 +4,7 @@ Refine the Spec. Complete all fields required for the draft -> specifying -> imp
 
 ## Required reading (mandatory)
 
-- `../../api/contract/cdd.md`
+- `../cdd.md`
 - `../00_cdd_contract.md`
 
 ## Input

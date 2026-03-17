@@ -9,7 +9,7 @@ Contract > Spec > Code. Higher authority takes precedence on conflict.
 ## CDD policy source
 
 All sub-agents must read the following document before starting work:
-- `../../api/contract/cdd.md`
+- `./cdd.md`
 
 ## Role separation
 

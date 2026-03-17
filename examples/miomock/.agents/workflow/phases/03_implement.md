@@ -4,7 +4,7 @@ Implement code and write tests according to the confirmed Spec.
 
 ## Required reading (mandatory)
 
-- `../../api/contract/cdd.md`
+- `../cdd.md`
 - `../00_cdd_contract.md`
 
 ## Input

@@ -9,7 +9,7 @@ Protocol for the main agent when assuming the CDD orchestrator role.
 ## Prerequisites
 
 1. Read `00_cdd_contract.md`.
-2. Read `../../api/contract/cdd.md`.
+2. Read `./cdd.md`.
 3. Check the target spec and current status: `cdd status <spec>`
 
 ## Orchestration flow

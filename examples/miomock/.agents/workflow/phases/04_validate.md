@@ -4,7 +4,7 @@ Verify that implemented code satisfies the Spec's ACs.
 
 ## Required reading (mandatory)
 
-- `../../api/contract/cdd.md`
+- `../cdd.md`
 - `../00_cdd_contract.md`
 
 ## Input

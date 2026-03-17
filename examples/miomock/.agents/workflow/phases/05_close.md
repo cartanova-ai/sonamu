@@ -4,7 +4,7 @@ Perform final verification for the validating -> done transition.
 
 ## Required reading (mandatory)
 
-- `../../api/contract/cdd.md`
+- `../cdd.md`
 - `../00_cdd_contract.md`
 
 ## Input

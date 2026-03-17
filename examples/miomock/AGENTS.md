@@ -7,7 +7,7 @@ Inherits root rules from `../../AGENTS.md`.
 - It is used for framework validation and practical pattern verification.
 
 ## CDD policy (miomock-only)
-- This scope follows Contract-Driven Development (CDD). Detailed policy: `contract/cdd.md`
+- This scope follows Contract-Driven Development (CDD). Detailed policy: `.agents/workflow/cdd.md`
 - Planning gate (mandatory): before any detailed implementation plan, lock Contract/Spec first.
   - Confirm relevant Contract requirements and fixed Spec sections.
   - If Spec is missing or outdated, create/update Spec first, then write implementation plan.

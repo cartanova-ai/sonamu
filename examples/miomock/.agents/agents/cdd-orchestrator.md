@@ -48,6 +48,6 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 
 ## Reference documents
 
-- CDD policy: `../../api/contract/cdd.md`
+- CDD policy: `../workflow/cdd.md`
 - Orchestration protocol: `../workflow/01_cdd_orchestrator.md`
 - Shared contract: `../workflow/00_cdd_contract.md`
