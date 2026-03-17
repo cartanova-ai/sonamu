@@ -22,7 +22,7 @@ This project follows Contract-Driven Development (CDD). All development work mus
 ## Project Structure
 
 ```text
-packages/api/contract/
+contract/
 |- main.contract.json          # project root contract
 |- {domain}/
 |  |- main.contract.json       # domain representative contract
@@ -36,7 +36,7 @@ packages/api/contract/
 Example:
 
 ```text
-packages/api/contract/
+contract/
 |- main.contract.json
 |- auth/
 |  |- main.contract.json
@@ -208,8 +208,8 @@ Whenever any Spec field changes, update `lastModified` to today's date.
 Spec files do not store history internally. Git handles it.
 
 ```bash
-git log -- packages/api/contract/auth/login.spec.json
-git log --follow -- packages/api/contract/auth/login.spec.json  # track renames
+git log -- contract/auth/login.spec.json
+git log --follow -- contract/auth/login.spec.json  # track renames
 ```
 
 ---
@@ -346,7 +346,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - 누락된 API, 잘못된 guard, 미구현 에러 처리 등을 목록으로 정리
 
 **Step 2: 감사 결과 파일로 기록**
-- `packages/api/contract/spec-vs-code-audit.md` 또는 `.claude/skills/project/spec-audit.md`에 기록
+- `contract/spec-vs-code-audit.md` 또는 `.claude/skills/project/spec-audit.md`에 기록
 - 형식: `[domain/feature] 항목 — 상태 (구현됨 / 누락 / 불일치)`
 - 이 파일을 새 세션에서 컨텍스트 복원용으로 활용 가능
 
