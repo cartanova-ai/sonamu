@@ -1,0 +1,80 @@
+# Phase 0: Contract Authoring
+
+Create and fill a Contract document based on the user's feature requirements.
+
+## Required reading (mandatory)
+
+- `../cdd.md`
+- `../00_cdd_contract.md`
+
+## Input
+
+```yaml
+feature_description: "{user's feature description}"
+domain: "{domain directory, optional}"
+schema: "{schema ID, default: default-contract}"
+contract_name: "{contract filename, default: main}"
+```
+
+## Procedure
+
+### Step 1: Create contract scaffold
+
+```bash
+cdd contract create {contract_name} --domain {domain} --schema {schema}
+```
+
+If the contract file already exists, read it instead of creating a new one.
+
+### Step 2: Read schema
+
+Read the schema file referenced by the contract's `schema` field.
+For each field in the schema's `fields` array, note its `name`, `type`, and `description`.
+
+### Step 3: Define features
+
+Based on the user's feature description, identify distinct features and add them to the `features` field as key-value pairs:
+- Key: feature identifier (used as Spec filename, kebab-case)
+- Value: one-line Korean description of the feature
+
+### Step 4: Fill schema fields
+
+For each schema field:
+1. Read the field's `description` to understand what content it should contain.
+   - If `description` is empty, infer from the field `name`.
+2. Fill the field according to its `type`:
+   - `string[]`: ordered list items
+   - `Record<string, string>`: key-value pairs
+   - `Record<string, object>`: structured entries
+3. Content must be written in Korean.
+4. Content must stay within the scope of the user's feature description.
+
+### Step 5: Resolve ambiguity
+
+If any of the following are unclear, ask the user before proceeding:
+- Feature boundaries (what constitutes a single feature vs. multiple features)
+- Domain terminology that needs definition
+- Business rules that are implied but not explicitly stated
+- Edge cases that may or may not be in scope
+
+### Step 6: User review
+
+Present the completed Contract to the user for review.
+If the user requests changes, apply them and re-present.
+The Contract is complete when the user confirms.
+
+## Output
+
+```yaml
+contract_path: "{created/updated contract file path}"
+features_defined: ["{list of feature keys}"]
+schema_fields_filled: ["{list of filled schema fields}"]
+questions_asked: ["{list of clarification questions, if any}"]
+```
+
+## Prohibitions
+
+- Do not create or modify Spec files.
+- Do not write code.
+- Do not make assumptions about ambiguous requirements. Ask the user.
+- Do not execute `cdd advance --commit`.

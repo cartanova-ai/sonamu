@@ -18,6 +18,7 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 
 | Phase | subagent_type | Description |
 |---|---|---|
+| 0. contract | `cdd-contract-writer` | Create/fill Contract document |
 | 1. draft | _(orchestrator direct)_ | Run `cdd spec create` directly |
 | 2. specifying | `cdd-specifier` | Refine specification, define ACs |
 | 3. implementing | `cdd-implementer` | Implement code + write tests |

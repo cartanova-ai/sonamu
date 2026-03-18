@@ -18,12 +18,15 @@ Protocol for the main agent when assuming the CDD orchestrator role.
 1. Identify target
    - User specified a spec -> use that spec
    - User described a feature -> explore contract/ directory
-     - Existing spec found -> use that spec
-     - No existing spec -> start from Phase 1 (draft)
+     - Existing contract found -> check if spec exists
+       - Existing spec found -> use that spec
+       - No existing spec -> start from Phase 1 (draft)
+     - No existing contract -> start from Phase 0 (contract authoring)
 
-2. Check current status: cdd status <spec>
+2. Check current status: cdd status <spec> (or inspect contract/ directory)
 
 3. Execute the Phase matching current status
+   - no contract  -> Phase 0 (spawn subagent_type: cdd-contract-writer)
    - draft        -> Phase 1: orchestrator runs `cdd spec create` directly (no sub-agent needed)
    - specifying   -> Phase 2 (spawn subagent_type: cdd-specifier)
    - implementing -> Phase 3 (spawn subagent_type: cdd-implementer)
@@ -47,10 +50,13 @@ Each Phase has a corresponding preset file in `.agents/agents/`. Specify the pre
 
 | Phase | subagent_type | Preset file | Model |
 |---|---|---|---|
+| 0. contract | `cdd-contract-writer` | `agents/cdd-contract-writer.md` | opus |
 | 2. specifying | `cdd-specifier` | `agents/cdd-specifier.md` | opus |
 | 3. implementing | `cdd-implementer` | `agents/cdd-implementer.md` | opus |
 | 4. validating | `cdd-validator` | `agents/cdd-validator.md` | sonnet |
 | 5. done | `cdd-closer` | `agents/cdd-closer.md` | sonnet |
+
+Phase 0 (contract): spawn `cdd-contract-writer` to create and fill the Contract document. The sub-agent runs `cdd contract create`, fills schema fields based on descriptions, and asks the user for clarification on ambiguities.
 
 Phase 1 (draft) does not require a sub-agent. The orchestrator directly runs:
 ```bash
