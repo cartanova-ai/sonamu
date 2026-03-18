@@ -5,7 +5,15 @@ import inflection from "inflection";
 import path from "path";
 import { prettifyError, z } from "zod";
 import { Sonamu } from "../api/sonamu";
-import { type EntityIndex, type EntityJson, EntityJsonSchema } from "../types/types";
+import {
+  type EntityIndex,
+  type EntityJson,
+  EntityJsonSchema,
+  isSearchTextJsonSourceZodType,
+  isSearchTextProp,
+  SonamuFileArraySchema,
+  SonamuFileSchema,
+} from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 import type { AbsolutePath } from "../utils/path-utils";
@@ -47,10 +55,11 @@ class EntityManagerClass {
         );
       }
 
-      await this.register(json);
+      await this.register(json, { deferSearchTextJsonSourceValidation: true });
     }
 
     await this.registerNonEntityTypeModulePaths();
+    await this.validateAllRegisteredSearchTextJsonSources();
 
     this.isAutoloaded = true;
   }
@@ -69,11 +78,94 @@ class EntityManagerClass {
     return await this.autoload(doSilent);
   }
 
-  async register(json: EntityJson): Promise<void> {
+  async register(
+    json: EntityJson,
+    options: { deferSearchTextJsonSourceValidation?: boolean } = {},
+  ): Promise<void> {
     const entity = new Entity(json);
     await entity.registerModulePaths();
+    if (!options.deferSearchTextJsonSourceValidation) {
+      await this.validateSearchTextJsonSources(entity);
+    }
     entity.registerTableSpecs();
     this.entities.set(json.id, entity);
+  }
+
+  async validateAllRegisteredSearchTextJsonSources(): Promise<void> {
+    for (const entity of this.entities.values()) {
+      await this.validateSearchTextJsonSources(entity);
+    }
+  }
+
+  private async validateSearchTextJsonSources(entity: Entity): Promise<void> {
+    const propsByName = new Map(entity.props.map((prop) => [prop.name, prop]));
+
+    for (const prop of entity.props) {
+      if (!isSearchTextProp(prop)) {
+        continue;
+      }
+
+      for (const source of prop.sourceColumns) {
+        const sourceProp = propsByName.get(source.name);
+        if (!sourceProp || sourceProp.type !== "json") {
+          continue;
+        }
+
+        const zodType = await this.resolveSearchTextJsonSourceType(entity, sourceProp.id);
+        if (!zodType) {
+          throw new Error(
+            `searchText source "${source.name}"의 json 타입 "${sourceProp.id}"을(를) 로드할 수 없습니다.`,
+          );
+        }
+
+        if (!isSearchTextJsonSourceZodType(zodType)) {
+          throw new Error(
+            `searchText source "${source.name}"의 json 타입 "${sourceProp.id}"은(는) unwrap 후 z.array(z.string()) 이어야 합니다.`,
+          );
+        }
+      }
+    }
+  }
+
+  private async resolveSearchTextJsonSourceType(
+    entity: Entity,
+    typeId: string,
+  ): Promise<z.ZodTypeAny | null> {
+    const localType = entity.types[typeId];
+    if (localType instanceof z.ZodType) {
+      return localType;
+    }
+
+    for (const registeredEntity of this.entities.values()) {
+      const registeredType = registeredEntity.types[typeId];
+      if (registeredType instanceof z.ZodType) {
+        return registeredType;
+      }
+    }
+
+    if (typeId === "SonamuFile") {
+      return SonamuFileSchema;
+    }
+    if (typeId === "SonamuFile[]") {
+      return SonamuFileArraySchema;
+    }
+
+    const modulePath = this.modulePaths.get(typeId);
+    if (!modulePath) {
+      return null;
+    }
+
+    const moduleFilePath = path.join(
+      Sonamu.apiRootPath,
+      runtimePath(`dist/application/${modulePath}.js`),
+    );
+    const importedMembers = await importMembers<unknown>(moduleFilePath);
+    const matched = importedMembers.find(({ name }) => name === typeId);
+    if (!matched || !(matched.value instanceof z.ZodType)) {
+      return null;
+    }
+
+    return matched.value;
   }
 
   get(entityId: string): Entity {

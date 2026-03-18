@@ -260,6 +260,8 @@ function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): Migration
       return "uuid[]";
     case "json":
       return "json";
+    case "searchText":
+      return "string";
     case "vector":
       return "vector";
     case "vector[]":

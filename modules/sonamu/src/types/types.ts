@@ -203,6 +203,14 @@ export type JsonProp = CommonProp & {
   type: "json";
   id: string;
 }; // PG: json / TS: any(id) / JSON: any
+export type SearchTextSourceColumn = {
+  name: string;
+  caseInsensitive: boolean;
+};
+export type SearchTextProp = CommonProp & {
+  type: "searchText";
+  sourceColumns: SearchTextSourceColumn[];
+}; // PG: text (generated) / TS: string / JSON: string
 export type UuidProp = CommonProp & {
   type: "uuid";
 }; // PG: uuid / TS: string / JSON: string
@@ -295,6 +303,7 @@ export type EntityProp =
   | UuidProp
   | UuidArrayProp
   | JsonProp
+  | SearchTextProp
   | VirtualProp
   | VectorProp
   | VectorArrayProp
@@ -357,12 +366,26 @@ export type BuiltInTypeId = (typeof BUILT_IN_TYPE_IDS)[number];
  */
 export type VectorOps = "vector_cosine_ops" | "vector_ip_ops" | "vector_l2_ops";
 
+export const KnownOpclassValues = [
+  "gin_trgm_ops",
+  "gist_trgm_ops",
+  "gin_bigm_ops",
+  "vector_cosine_ops",
+  "vector_ip_ops",
+  "vector_l2_ops",
+  "pgroonga_varchar_full_text_search_ops_v2",
+  "pgroonga_jsonb_full_text_search_ops_v2",
+] as const;
+export type KnownOpclass = (typeof KnownOpclassValues)[number];
+
 type EntityIndexColumn = {
   name: string;
   nullsFirst?: boolean;
   sortOrder?: "ASC" | "DESC";
   /** pgvector 인덱스에서 사용할 거리 연산자 (vector 컬럼에만 적용) */
   vectorOps?: VectorOps;
+  /** generic 인덱스 opclass (vectorOps는 하위호환 목적으로 유지) */
+  opclass?: KnownOpclass | string;
 };
 export type EntityIndex = {
   type: "index" | "unique" | "hnsw" | "ivfflat";
@@ -621,6 +644,9 @@ export function isUuidProp(p: unknown): p is UuidProp | UuidArrayProp {
 }
 export function isJsonProp(p: unknown): p is JsonProp {
   return (p as JsonProp)?.type === "json";
+}
+export function isSearchTextProp(p: unknown): p is SearchTextProp {
+  return (p as SearchTextProp)?.type === "searchText";
 }
 export function isVirtualProp(p: unknown): p is VirtualProp {
   return (p as VirtualProp)?.type === "virtual";
@@ -1217,6 +1243,21 @@ const JsonPropSchema = z
   })
   .strict();
 
+const SearchTextSourceColumnSchema = z
+  .object({
+    name: z.string(),
+    caseInsensitive: z.boolean(),
+  })
+  .strict();
+
+const SearchTextPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("searchText"),
+    sourceColumns: z.array(SearchTextSourceColumnSchema).min(1),
+  })
+  .strict();
+
 const VirtualPropSchema = z
   .object({
     ...BasePropFields,
@@ -1328,6 +1369,7 @@ const NormalPropTypes = [
   "uuid",
   "uuid[]",
   "json",
+  "searchText",
   "virtual",
   "vector",
   "vector[]",
@@ -1366,6 +1408,7 @@ export const NormalPropSchema = z
       NumericPropSchema,
       NumericArrayPropSchema,
       JsonPropSchema,
+      SearchTextPropSchema,
       VirtualPropSchema,
       VectorPropSchema,
       VectorArrayPropSchema,
@@ -1422,6 +1465,7 @@ const EntityIndexColumnSchema = z.object({
   nullsFirst: z.boolean().optional(),
   sortOrder: z.enum(["ASC", "DESC"]).optional(),
   vectorOps: z.enum(["vector_cosine_ops", "vector_ip_ops", "vector_l2_ops"]).optional(),
+  opclass: z.union([z.enum(KnownOpclassValues), z.string().min(1)]).optional(),
 });
 
 // EntityIndex 스키마 정의
@@ -1470,7 +1514,75 @@ const EnumDefSchema = z.union([
   }),
 ]);
 
-export const EntityJsonSchema = z
+function unwrapSearchTextJsonSourceType(zodType: z.ZodTypeAny): z.ZodTypeAny {
+  let current = zodType;
+
+  while (current instanceof z.ZodOptional || current instanceof z.ZodNullable) {
+    current = current.unwrap() as z.ZodTypeAny;
+  }
+
+  return current;
+}
+
+export function isSearchTextJsonSourceZodType(zodType: z.ZodTypeAny): boolean {
+  const baseType = unwrapSearchTextJsonSourceType(zodType);
+  if (!(baseType instanceof z.ZodArray)) {
+    return false;
+  }
+
+  const elementType = baseType.def.element;
+  return elementType instanceof z.ZodString;
+}
+
+function validateSearchTextSources(
+  props: readonly z.infer<typeof EntityPropSchema>[],
+  ctx: z.RefinementCtx,
+  propsPath: (string | number)[] = ["props"],
+): void {
+  const propsByName = new Map(
+    props.map((prop) => {
+      return [prop.name, prop];
+    }),
+  );
+
+  props.forEach((prop, propIndex) => {
+    if (prop.type !== "searchText") {
+      return;
+    }
+
+    prop.sourceColumns.forEach((source, sourceIndex) => {
+      const sourceProp = propsByName.get(source.name);
+      const sourcePath = [...propsPath, propIndex, "sourceColumns", sourceIndex, "name"];
+
+      if (!sourceProp) {
+        ctx.addIssue({
+          code: "custom",
+          message: `searchText source column "${source.name}"을(를) 찾을 수 없습니다.`,
+          path: sourcePath,
+        });
+        return;
+      }
+
+      if (sourceProp.type === "string" || sourceProp.type === "string[]") {
+        return;
+      }
+
+      if (sourceProp.type === "json") {
+        // json source의 최종 타입 유효성은 EntityManager.register() 단계에서
+        // 실제 Zod 타입을 해석하여 구조적으로 검증합니다.
+        return;
+      }
+
+      ctx.addIssue({
+        code: "custom",
+        message: `searchText source column "${source.name}"의 타입 "${sourceProp.type}"은(는) 지원되지 않습니다.`,
+        path: sourcePath,
+      });
+    });
+  });
+}
+
+const EntityJsonBaseSchema = z
   .object({
     id: z.string().describe("PascalCase로 된 Entity ID"),
     title: z.string().describe("Entity 이름"),
@@ -1484,18 +1596,31 @@ export const EntityJsonSchema = z
   })
   .strict();
 
+export const EntityJsonSchema = EntityJsonBaseSchema.superRefine((entity, ctx) => {
+  validateSearchTextSources(entity.props, ctx);
+});
+
+const TemplateEntitySchema = EntityJsonBaseSchema.omit({ id: true })
+  .extend({
+    entityId: z.string(),
+  })
+  .partial({
+    table: true,
+    props: true,
+    indexes: true,
+    subsets: true,
+    enums: true,
+  })
+  .superRefine((entity, ctx) => {
+    if (!entity.props) {
+      return;
+    }
+
+    validateSearchTextSources(entity.props, ctx);
+  });
+
 export const TemplateOptions = z.object({
-  entity: EntityJsonSchema.omit({ id: true })
-    .extend({
-      entityId: z.string(),
-    })
-    .partial({
-      table: true,
-      props: true,
-      indexes: true,
-      subsets: true,
-      enums: true,
-    }),
+  entity: TemplateEntitySchema,
   init_types: z.object({
     entityId: z.string(),
   }),

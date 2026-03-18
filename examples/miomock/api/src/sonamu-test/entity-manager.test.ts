@@ -1,6 +1,7 @@
-import { type EntityJson, EntityManager } from "sonamu";
+import { Entity, type EntityJson, EntityManager } from "sonamu";
 import { bootstrap } from "sonamu/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 bootstrap(vi);
 
@@ -690,6 +691,107 @@ describe("entityManager", () => {
         );
         expect(errors?.issues[1]?.path).toEqual(["props", 1, "type"]);
       });
+    });
+  });
+
+  describe("searchText json source runtime validation", () => {
+    function createSearchTextEntity(jsonTypeId: string): EntityJson {
+      return {
+        id: "SearchTextRuntimeValidation",
+        title: "SearchText Runtime Validation",
+        table: "search_text_runtime_validations",
+        props: [
+          { name: "id", type: "string" },
+          { name: "aliases", type: "json", id: jsonTypeId },
+          {
+            name: "search_text",
+            type: "searchText",
+            sourceColumns: [{ name: "aliases", caseInsensitive: true }],
+          },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      };
+    }
+
+    function createTypeProviderEntity(id: string): EntityJson {
+      return {
+        id,
+        title: `${id} Type Provider`,
+        table: `${id.toLowerCase()}_type_providers`,
+        props: [{ name: "id", type: "string" }],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      };
+    }
+
+    it("optional/nullable wrapper가 있는 string[] json 타입을 허용해야 한다", async () => {
+      const registerModulePathsSpy = vi
+        .spyOn(Entity.prototype, "registerModulePaths")
+        .mockImplementation(async function mockRegisterModulePaths(this: Entity) {
+          this.types = {
+            NullableStringArray: z.array(z.string()).nullable(),
+          };
+        });
+
+      try {
+        await expect(
+          EntityManager.register(createSearchTextEntity("NullableStringArray")),
+        ).resolves.toBeUndefined();
+      } finally {
+        registerModulePathsSpy.mockRestore();
+      }
+    });
+
+    it("element nullable string[] json 타입을 거부해야 한다", async () => {
+      const registerModulePathsSpy = vi
+        .spyOn(Entity.prototype, "registerModulePaths")
+        .mockImplementation(async function mockRegisterModulePaths(this: Entity) {
+          this.types = {
+            StringNullableArray: z.array(z.string().nullable()),
+          };
+        });
+
+      try {
+        await expect(
+          EntityManager.register(createSearchTextEntity("StringNullableArray")),
+        ).rejects.toThrow("unwrap 후 z.array(z.string()) 이어야 합니다.");
+      } finally {
+        registerModulePathsSpy.mockRestore();
+      }
+    });
+
+    it("deferred 검증에서는 cross-entity 타입을 등록 순서와 무관하게 해석해야 한다", async () => {
+      const registerModulePathsSpy = vi
+        .spyOn(Entity.prototype, "registerModulePaths")
+        .mockImplementation(async function mockRegisterModulePaths(this: Entity) {
+          if (this.id === "SearchTextProvider") {
+            this.types = { RemoteAliasArray: z.array(z.string()) };
+            return;
+          }
+          this.types = {};
+        });
+
+      try {
+        const consumer = {
+          ...createSearchTextEntity("RemoteAliasArray"),
+          id: "SearchTextConsumer",
+          table: "search_text_consumers",
+        };
+        await expect(
+          EntityManager.register(consumer, { deferSearchTextJsonSourceValidation: true }),
+        ).resolves.toBeUndefined();
+        await expect(
+          EntityManager.register(createTypeProviderEntity("SearchTextProvider")),
+        ).resolves.toBeUndefined();
+        await expect(
+          EntityManager.validateAllRegisteredSearchTextJsonSources(),
+        ).resolves.toBeUndefined();
+      } finally {
+        registerModulePathsSpy.mockRestore();
+      }
     });
   });
 });
