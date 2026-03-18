@@ -268,6 +268,65 @@ console.log(posts[0].highlights);  // string[]
 console.log(posts[0].score);       // number
 ```
 
+### pg_trgm 유사도 함수
+
+PostgreSQL의 `pg_trgm` 확장이 제공하는 유사도 점수를 SELECT에서 계산합니다. `whereFuzzy`로 후보를 필터링한 뒤, 이 함수들로 컬럼별 가중치 점수를 매길 수 있습니다.
+
+```typescript
+const results = await puri.table("items")
+  .whereFuzzy("items.search_text", query)
+  .select({
+    id: "items.id",
+    title_ko: "items.title_ko",
+    title_en: "items.title_en",
+
+    // word similarity — 쿼리가 컬럼의 부분 문자열과 얼마나 유사한지 (0~1)
+    title_score: Puri.wordSimilarity("items.title_ko", query),
+
+    // similarity — 두 문자열 전체의 유사도 (0~1)
+    full_score: Puri.similarity("items.title_ko", query),
+
+    // strict word similarity — word similarity보다 엄격한 부분 문자열 매칭 (0~1)
+    strict_score: Puri.strictWordSimilarity("items.title_ko", query),
+  })
+  .orderBy("title_score", "desc");
+
+// 타입 자동 추론
+results[0].title_score;   // number
+results[0].full_score;    // number
+results[0].strict_score;  // number
+```
+
+**가중치 점수 계산 예시:**
+
+유사도 함수의 반환값(`SqlExpression<"number">`)을 `rawNumber`와 조합하여 컬럼별 가중치 점수를 계산할 수 있습니다.
+
+```typescript
+const results = await puri.table("items")
+  .whereFuzzy("items.search_text", query)
+  .select({
+    id: "items.id",
+    title_ko: "items.title_ko",
+
+    // 개별 유사도 점수 (가중치 계산에 활용)
+    ko_score: Puri.wordSimilarity("items.title_ko", query),
+    en_score: Puri.wordSimilarity("items.title_en", query),
+  })
+  .orderBy("ko_score", "desc");
+```
+
+**함수별 비교:**
+
+| 함수 | PostgreSQL 함수 | 용도 |
+|------|-----------------|------|
+| `Puri.wordSimilarity(column, query)` | `word_similarity(query, column)` | 쿼리와 컬럼의 부분 문자열 유사도 |
+| `Puri.similarity(column, query)` | `similarity(column, query)` | 전체 문자열 유사도 |
+| `Puri.strictWordSimilarity(column, query)` | `strict_word_similarity(query, column)` | 엄격한 부분 문자열 유사도 |
+
+<Info>
+이 함수들은 `SqlExpression<"number">`를 반환하므로 `select` 내에서 사용할 수 있습니다. `pg_trgm` 확장이 설치되어 있어야 합니다.
+</Info>
+
 ## 실전 예시
 
 <Tabs>
