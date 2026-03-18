@@ -52,6 +52,8 @@ type PgIndex = {
   nulls_first: boolean;
   sort_order: "ASC" | "DESC";
   nulls_not_distinct: boolean;
+  column_order: number;
+  index_definition: string;
 };
 
 type PgForeign = {
@@ -63,14 +65,21 @@ type PgForeign = {
   delete_rule: string;
 };
 
+type RawCapableKnex = Pick<Knex, "raw">;
+
 class PostgreSQLSchemaReaderClass {
+  private readonly genericIndexTypes = new Set(["btree", "hash", "gin", "gist", "pgroonga"]);
+
   /**
    * DB에서 테이블 정보를 읽어서 MigrationSet을 만들어옵니다.
    * @param compareDB Knex 인스턴스
    * @param table 테이블 이름
    * @returns MigrationSet 객체
    */
-  async getMigrationSetFromDB(compareDB: Knex, table: string): Promise<MigrationSet | null> {
+  async getMigrationSetFromDB(
+    compareDB: RawCapableKnex,
+    table: string,
+  ): Promise<MigrationSet | null> {
     let dbColumns: PgColumn[], dbIndexes: PgIndex[], dbForeigns: PgForeign[];
     try {
       [dbColumns, dbIndexes, dbForeigns] = await this.readTable(compareDB, table);
@@ -154,18 +163,36 @@ class PostgreSQLSchemaReaderClass {
 
     // indexes 처리
     const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map((indexName) => {
-      const currentIndexes = dbIndexesGroup[indexName];
+      const currentIndexes = dbIndexesGroup[indexName]?.toSorted(
+        (left, right) => left.column_order - right.column_order,
+      );
       assert(currentIndexes);
 
       const firstIndex = currentIndexes[0];
-      const type = firstIndex.is_unique ? "unique" : "index";
+      const parsedIndexDefinition = this.parseIndexDefinition(firstIndex.index_definition);
+      const restoredIndexType = this.restoreMigrationIndexType(
+        firstIndex,
+        parsedIndexDefinition.accessMethod,
+      );
+      const using = this.restoreGenericUsing(
+        parsedIndexDefinition.accessMethod ?? firstIndex.index_type,
+      );
 
       return {
-        type,
+        type: restoredIndexType,
         name: indexName,
         columns: currentIndexes.map((idx) => ({
           name: idx.column_name,
-          ...(firstIndex.index_type === "btree"
+          ...(this.extractIndexColumnOpclass(
+            parsedIndexDefinition.columnDefinitions[idx.column_order - 1],
+          )
+            ? {
+                opclass: this.extractIndexColumnOpclass(
+                  parsedIndexDefinition.columnDefinitions[idx.column_order - 1],
+                ),
+              }
+            : {}),
+          ...(using === "btree"
             ? {
                 sortOrder: idx.sort_order,
                 nullsFirst: idx.nulls_first,
@@ -174,7 +201,8 @@ class PostgreSQLSchemaReaderClass {
         })),
 
         nullsNotDistinct: firstIndex.nulls_not_distinct,
-        using: firstIndex.index_type as "btree" | "hash" | "gin" | "gist" | "pgroonga" | undefined,
+        ...(using ? { using } : {}),
+        ...this.parseVectorIndexOptions(restoredIndexType, parsedIndexDefinition.withOptions),
       };
     });
 
@@ -214,7 +242,7 @@ class PostgreSQLSchemaReaderClass {
    * 기존 테이블 읽어서 cols, indexes, foreigns 반환
    */
   async readTable(
-    compareDB: Knex,
+    compareDB: RawCapableKnex,
     tableName: string,
   ): Promise<[PgColumn[], PgIndex[], PgForeign[]]> {
     // Columns 조회 (Generated Column 정보 포함)
@@ -278,7 +306,9 @@ class PostgreSQLSchemaReaderClass {
               WHEN (u.opt & 1) = 1 THEN 'DESC'
               ELSE 'ASC'
           END AS sort_order,
-          ix.indnullsnotdistinct AS nulls_not_distinct
+          ix.indnullsnotdistinct AS nulls_not_distinct,
+          u.ord AS column_order,
+          pg_get_indexdef(ix.indexrelid) AS index_definition
       FROM pg_class t
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON i.oid = ix.indexrelid
@@ -339,6 +369,333 @@ class PostgreSQLSchemaReaderClass {
     return [columns, indexes, foreigns];
   }
 
+  private restoreMigrationIndexType(
+    index: Pick<PgIndex, "is_unique" | "index_type">,
+    accessMethod?: string,
+  ): MigrationIndex["type"] {
+    const resolvedAccessMethod = (accessMethod ?? index.index_type).toLowerCase();
+
+    if (resolvedAccessMethod === "hnsw" || resolvedAccessMethod === "ivfflat") {
+      return resolvedAccessMethod;
+    }
+
+    return index.is_unique ? "unique" : "index";
+  }
+
+  private restoreGenericUsing(
+    accessMethod: string | undefined,
+  ): MigrationIndex["using"] | undefined {
+    if (!accessMethod) {
+      return undefined;
+    }
+
+    const normalized = accessMethod.toLowerCase();
+    if (!this.genericIndexTypes.has(normalized)) {
+      return undefined;
+    }
+
+    return normalized as MigrationIndex["using"];
+  }
+
+  private parseVectorIndexOptions(
+    type: MigrationIndex["type"],
+    withOptions: Record<string, string>,
+  ): Pick<MigrationIndex, "m" | "efConstruction" | "lists"> {
+    if (type === "hnsw") {
+      return {
+        ...(this.parseIntegerOption(withOptions.m) !== undefined
+          ? { m: this.parseIntegerOption(withOptions.m) }
+          : {}),
+        ...(this.parseIntegerOption(withOptions.ef_construction) !== undefined
+          ? { efConstruction: this.parseIntegerOption(withOptions.ef_construction) }
+          : {}),
+      };
+    }
+
+    if (type === "ivfflat") {
+      return {
+        ...(this.parseIntegerOption(withOptions.lists) !== undefined
+          ? { lists: this.parseIntegerOption(withOptions.lists) }
+          : {}),
+      };
+    }
+
+    return {};
+  }
+
+  private parseIntegerOption(value: string | undefined): number | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private extractIndexColumnOpclass(columnDefinition: string | undefined): string | undefined {
+    if (!columnDefinition) {
+      return undefined;
+    }
+
+    const trimmed = columnDefinition
+      .replace(/\s+NULLS\s+(FIRST|LAST)\s*$/i, "")
+      .replace(/\s+(ASC|DESC)\s*$/i, "")
+      .trim();
+    const tokens = this.tokenizeTopLevel(trimmed);
+
+    if (tokens.length < 2) {
+      return undefined;
+    }
+
+    if (tokens[tokens.length - 2]?.toUpperCase() === "COLLATE") {
+      return undefined;
+    }
+
+    return tokens.at(-1);
+  }
+
+  private parseIndexDefinition(indexDefinition: string): {
+    accessMethod?: string;
+    columnDefinitions: string[];
+    withOptions: Record<string, string>;
+  } {
+    const accessMethod = indexDefinition.match(/\bUSING\s+([a-z_][\w]*)/i)?.[1]?.toLowerCase();
+    const usingMatchIndex = indexDefinition.search(/\bUSING\b/i);
+    const columnsStart = usingMatchIndex >= 0 ? indexDefinition.indexOf("(", usingMatchIndex) : -1;
+    const columnsEnd =
+      columnsStart >= 0 ? this.findMatchingParenthesis(indexDefinition, columnsStart) : -1;
+    const columnDefinitions =
+      columnsStart >= 0 && columnsEnd > columnsStart
+        ? this.splitTopLevel(indexDefinition.slice(columnsStart + 1, columnsEnd), ",")
+        : [];
+
+    const withMatch = /\bWITH\s*\(/i.exec(indexDefinition);
+    const withStart = withMatch ? indexDefinition.indexOf("(", withMatch.index) : -1;
+    const withEnd = withStart >= 0 ? this.findMatchingParenthesis(indexDefinition, withStart) : -1;
+    const withOptions =
+      withStart >= 0 && withEnd > withStart
+        ? this.parseIndexOptionEntries(indexDefinition.slice(withStart + 1, withEnd))
+        : {};
+
+    return {
+      accessMethod,
+      columnDefinitions,
+      withOptions,
+    };
+  }
+
+  private parseIndexOptionEntries(optionSource: string): Record<string, string> {
+    return this.splitTopLevel(optionSource, ",").reduce<Record<string, string>>((result, entry) => {
+      const matched = entry.trim().match(/^([a-z_][\w]*)\s*=\s*(.+)$/i);
+      if (!matched) {
+        return result;
+      }
+
+      const [, key, rawValue] = matched;
+      result[key.toLowerCase()] = rawValue.trim().replace(/^['"]|['"]$/g, "");
+      return result;
+    }, {});
+  }
+
+  private splitTopLevel(source: string, delimiter: string): string[] {
+    const items: string[] = [];
+    let start = 0;
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let index = 0; index < source.length; index += 1) {
+      const char = source[index];
+      const nextChar = source[index + 1];
+
+      if (char === "'" && !inDoubleQuote) {
+        if (inSingleQuote && nextChar === "'") {
+          index += 1;
+          continue;
+        }
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote) {
+        if (inDoubleQuote && nextChar === '"') {
+          index += 1;
+          continue;
+        }
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (inSingleQuote || inDoubleQuote) {
+        continue;
+      }
+
+      if (char === "(") {
+        parenDepth += 1;
+        continue;
+      }
+      if (char === ")") {
+        parenDepth -= 1;
+        continue;
+      }
+      if (char === "[") {
+        bracketDepth += 1;
+        continue;
+      }
+      if (char === "]") {
+        bracketDepth -= 1;
+        continue;
+      }
+
+      if (char === delimiter && parenDepth === 0 && bracketDepth === 0) {
+        items.push(source.slice(start, index).trim());
+        start = index + 1;
+      }
+    }
+
+    const tail = source.slice(start).trim();
+    if (tail.length > 0) {
+      items.push(tail);
+    }
+
+    return items;
+  }
+
+  private tokenizeTopLevel(source: string): string[] {
+    const tokens: string[] = [];
+    let start = -1;
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    const pushToken = (endIndex: number) => {
+      if (start < 0) {
+        return;
+      }
+
+      const token = source.slice(start, endIndex).trim();
+      if (token.length > 0) {
+        tokens.push(token);
+      }
+      start = -1;
+    };
+
+    for (let index = 0; index < source.length; index += 1) {
+      const char = source[index];
+      const nextChar = source[index + 1];
+
+      if (char === "'" && !inDoubleQuote) {
+        if (start < 0) {
+          start = index;
+        }
+        if (inSingleQuote && nextChar === "'") {
+          index += 1;
+          continue;
+        }
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote) {
+        if (start < 0) {
+          start = index;
+        }
+        if (inDoubleQuote && nextChar === '"') {
+          index += 1;
+          continue;
+        }
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote) {
+        if (char === "(") {
+          if (start < 0) {
+            start = index;
+          }
+          parenDepth += 1;
+          continue;
+        }
+        if (char === ")") {
+          parenDepth -= 1;
+          continue;
+        }
+        if (char === "[") {
+          if (start < 0) {
+            start = index;
+          }
+          bracketDepth += 1;
+          continue;
+        }
+        if (char === "]") {
+          bracketDepth -= 1;
+          continue;
+        }
+
+        if (/\s/.test(char) && parenDepth === 0 && bracketDepth === 0) {
+          pushToken(index);
+          continue;
+        }
+      }
+
+      if (start < 0) {
+        start = index;
+      }
+    }
+
+    pushToken(source.length);
+    return tokens;
+  }
+
+  private findMatchingParenthesis(source: string, openIndex: number): number {
+    let depth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let index = openIndex; index < source.length; index += 1) {
+      const char = source[index];
+      const nextChar = source[index + 1];
+
+      if (char === "'" && !inDoubleQuote) {
+        if (inSingleQuote && nextChar === "'") {
+          index += 1;
+          continue;
+        }
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote) {
+        if (inDoubleQuote && nextChar === '"') {
+          index += 1;
+          continue;
+        }
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (inSingleQuote || inDoubleQuote) {
+        continue;
+      }
+
+      if (char === "(") {
+        depth += 1;
+        continue;
+      }
+
+      if (char === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          return index;
+        }
+      }
+    }
+
+    return -1;
+  }
+
   /**
    * 특정 테이블의 PK를 참조하는 다른 테이블의 FK 목록을 조회합니다.
    * PK 타입 변경 시 관련 FK 제약조건을 삭제/복구하기 위해 사용됩니다.
@@ -395,7 +752,7 @@ class PostgreSQLSchemaReaderClass {
    * pg_attribute의 atttypmod에서 차원 수를 추출합니다.
    */
   private async getVectorDimensions(
-    compareDB: Knex,
+    compareDB: RawCapableKnex,
     tableName: string,
   ): Promise<Record<string, number>> {
     const query = `

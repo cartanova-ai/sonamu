@@ -1,3 +1,4 @@
+import type { Knex } from "knex";
 import {
   EntityManager,
   getAlterIndexesTo,
@@ -8,7 +9,7 @@ import {
   setMigrationIndexDefaults,
 } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import {
   CompanyMigrationTestEntity,
@@ -435,6 +436,259 @@ describe("migration-set.ts", () => {
     });
   });
 
+  describe("PostgreSQLSchemaReader - pg_get_indexdef 파싱", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const createCompareDB = (rows: unknown[] = []) =>
+      ({
+        raw: vi.fn().mockResolvedValue({ rows }),
+      }) satisfies Pick<Knex, "raw">;
+
+    test("GIN 단일 컬럼 인덱스에서 opclass를 복원해야 한다", async () => {
+      const compareDB = createCompareDB();
+
+      vi.spyOn(PostgreSQLSchemaReader, "readTable").mockResolvedValue([
+        [
+          {
+            column_name: "search_text",
+            data_type: "text",
+            udt_name: "text",
+            character_maximum_length: null,
+            precision: null,
+            numeric_scale: null,
+            is_nullable: "NO",
+            column_default: null,
+            is_generated: "",
+            generation_expression: null,
+          },
+        ],
+        [
+          {
+            index_name: "idx_search_text_trgm",
+            column_name: "search_text",
+            is_unique: false,
+            is_primary: false,
+            index_type: "gin",
+            nulls_first: false,
+            sort_order: "ASC",
+            nulls_not_distinct: false,
+            column_order: 1,
+            index_definition:
+              "CREATE INDEX idx_search_text_trgm ON public.items USING gin (search_text gin_trgm_ops)",
+          },
+        ],
+        [],
+      ]);
+
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(compareDB, "items");
+      const index = migrationSet?.indexes.find((item) => item.name === "idx_search_text_trgm");
+
+      expect(index).toMatchObject({
+        type: "index",
+        using: "gin",
+        columns: [{ name: "search_text", opclass: "gin_trgm_ops" }],
+      });
+    });
+
+    test("GIST 다중 컬럼 인덱스에서 컬럼별 opclass를 복원해야 한다", async () => {
+      const compareDB = createCompareDB();
+
+      vi.spyOn(PostgreSQLSchemaReader, "readTable").mockResolvedValue([
+        [
+          {
+            column_name: "title_ko",
+            data_type: "text",
+            udt_name: "text",
+            character_maximum_length: null,
+            precision: null,
+            numeric_scale: null,
+            is_nullable: "NO",
+            column_default: null,
+            is_generated: "",
+            generation_expression: null,
+          },
+          {
+            column_name: "title_en",
+            data_type: "text",
+            udt_name: "text",
+            character_maximum_length: null,
+            precision: null,
+            numeric_scale: null,
+            is_nullable: "NO",
+            column_default: null,
+            is_generated: "",
+            generation_expression: null,
+          },
+        ],
+        [
+          {
+            index_name: "idx_titles_trgm_gist",
+            column_name: "title_ko",
+            is_unique: false,
+            is_primary: false,
+            index_type: "gist",
+            nulls_first: false,
+            sort_order: "ASC",
+            nulls_not_distinct: false,
+            column_order: 1,
+            index_definition:
+              "CREATE INDEX idx_titles_trgm_gist ON public.items USING gist (title_ko gist_trgm_ops, title_en gist_trgm_ops)",
+          },
+          {
+            index_name: "idx_titles_trgm_gist",
+            column_name: "title_en",
+            is_unique: false,
+            is_primary: false,
+            index_type: "gist",
+            nulls_first: false,
+            sort_order: "ASC",
+            nulls_not_distinct: false,
+            column_order: 2,
+            index_definition:
+              "CREATE INDEX idx_titles_trgm_gist ON public.items USING gist (title_ko gist_trgm_ops, title_en gist_trgm_ops)",
+          },
+        ],
+        [],
+      ]);
+
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(compareDB, "items");
+      const index = migrationSet?.indexes.find((item) => item.name === "idx_titles_trgm_gist");
+
+      expect(index).toMatchObject({
+        type: "index",
+        using: "gist",
+        columns: [
+          { name: "title_ko", opclass: "gist_trgm_ops" },
+          { name: "title_en", opclass: "gist_trgm_ops" },
+        ],
+      });
+    });
+
+    test("HNSW 인덱스는 type/opclass/WITH 옵션을 함께 복원해야 한다", async () => {
+      const compareDB = createCompareDB([{ column_name: "embedding", dimensions: 1536 }]);
+
+      vi.spyOn(PostgreSQLSchemaReader, "readTable").mockResolvedValue([
+        [
+          {
+            column_name: "embedding",
+            data_type: "USER-DEFINED",
+            udt_name: "vector",
+            character_maximum_length: null,
+            precision: null,
+            numeric_scale: null,
+            is_nullable: "NO",
+            column_default: null,
+            is_generated: "",
+            generation_expression: null,
+          },
+        ],
+        [
+          {
+            index_name: "idx_embedding_hnsw",
+            column_name: "embedding",
+            is_unique: false,
+            is_primary: false,
+            index_type: "hnsw",
+            nulls_first: false,
+            sort_order: "ASC",
+            nulls_not_distinct: false,
+            column_order: 1,
+            index_definition:
+              "CREATE INDEX idx_embedding_hnsw ON public.items USING hnsw (embedding vector_cosine_ops) WITH (m = 24, ef_construction = 80)",
+          },
+        ],
+        [],
+      ]);
+
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(compareDB, "items");
+      const index = migrationSet?.indexes.find((item) => item.name === "idx_embedding_hnsw");
+
+      expect(index).toMatchObject({
+        type: "hnsw",
+        columns: [{ name: "embedding", opclass: "vector_cosine_ops" }],
+        m: 24,
+        efConstruction: 80,
+      });
+      expect(index).not.toHaveProperty("using");
+      expect(
+        getAlterIndexesTo(
+          [
+            {
+              type: "hnsw",
+              name: "idx_embedding_hnsw",
+              columns: [{ name: "embedding", opclass: "vector_cosine_ops" }],
+              m: 24,
+              efConstruction: 80,
+            },
+          ],
+          migrationSet?.indexes ?? [],
+        ),
+      ).toEqual({ add: [], drop: [] });
+    });
+
+    test("IVFFlat 인덱스는 type/opclass/lists 옵션을 복원해야 한다", async () => {
+      const compareDB = createCompareDB([{ column_name: "embedding", dimensions: 1536 }]);
+
+      vi.spyOn(PostgreSQLSchemaReader, "readTable").mockResolvedValue([
+        [
+          {
+            column_name: "embedding",
+            data_type: "USER-DEFINED",
+            udt_name: "vector",
+            character_maximum_length: null,
+            precision: null,
+            numeric_scale: null,
+            is_nullable: "NO",
+            column_default: null,
+            is_generated: "",
+            generation_expression: null,
+          },
+        ],
+        [
+          {
+            index_name: "idx_embedding_ivfflat",
+            column_name: "embedding",
+            is_unique: false,
+            is_primary: false,
+            index_type: "ivfflat",
+            nulls_first: false,
+            sort_order: "ASC",
+            nulls_not_distinct: false,
+            column_order: 1,
+            index_definition:
+              "CREATE INDEX idx_embedding_ivfflat ON public.items USING ivfflat (embedding vector_ip_ops) WITH (lists = 250)",
+          },
+        ],
+        [],
+      ]);
+
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(compareDB, "items");
+      const index = migrationSet?.indexes.find((item) => item.name === "idx_embedding_ivfflat");
+
+      expect(index).toMatchObject({
+        type: "ivfflat",
+        columns: [{ name: "embedding", opclass: "vector_ip_ops" }],
+        lists: 250,
+      });
+      expect(index).not.toHaveProperty("using");
+      expect(
+        getAlterIndexesTo(
+          [
+            {
+              type: "ivfflat",
+              name: "idx_embedding_ivfflat",
+              columns: [{ name: "embedding", opclass: "vector_ip_ops" }],
+              lists: 250,
+            },
+          ],
+          migrationSet?.indexes ?? [],
+        ),
+      ).toEqual({ add: [], drop: [] });
+    });
+  });
+
   describe("setMigrationIndexDefaults", () => {
     test("BTREE 인덱스는 sortOrder/nullsFirst 기본값이 추가되어야 한다", () => {
       // given
@@ -533,6 +787,7 @@ describe("migration-set.ts", () => {
 
       // then
       expect(result.columns).toEqual([{ name: "embedding" }]);
+      expect(result.using).toBeUndefined();
     });
 
     test("IVFFlat 벡터 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
@@ -548,6 +803,7 @@ describe("migration-set.ts", () => {
 
       // then
       expect(result.columns).toEqual([{ name: "embedding" }]);
+      expect(result.using).toBeUndefined();
     });
 
     test("이미 sortOrder가 있는 경우 기존 값을 유지해야 한다", () => {
