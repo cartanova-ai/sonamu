@@ -10,6 +10,7 @@ import type {
   MigrationIndex,
   MigrationSet,
 } from "../types/types";
+import { isSearchTextProp } from "../types/types";
 import { formatCode } from "../utils/formatter";
 import { differenceWith, intersectionBy } from "../utils/utils";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
@@ -24,6 +25,718 @@ type ColumnDefinitionResult = {
   raw: string[];
 };
 
+type SearchTextHelperKind = "text-array" | "jsonb-array";
+
+type SearchTextExpressionToken =
+  | { type: "identifier"; value: string }
+  | { type: "quotedIdentifier"; value: string }
+  | { type: "string"; value: string }
+  | { type: "symbol"; value: "(" | ")" | "," }
+  | { type: "operator"; value: "||" | "::" };
+
+type SearchTextExpressionNode =
+  | { type: "identifier"; name: string; quoted: boolean }
+  | { type: "string"; value: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "function"; name: string; args: SearchTextExpressionNode[] }
+  | { type: "concat"; parts: SearchTextExpressionNode[] }
+  | { type: "collate"; expr: SearchTextExpressionNode; collation: string; quoted: boolean }
+  | { type: "cast"; expr: SearchTextExpressionNode; targetType: string };
+
+const SEARCH_TEXT_HELPER_DEFINITIONS: Record<SearchTextHelperKind, string> = {
+  "text-array": `await knex.raw(\`CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)
+RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE RETURNS NULL ON NULL INPUT
+AS $$
+  SELECT string_agg(
+    CASE WHEN ci THEN lower(value COLLATE "C") ELSE value COLLATE "C" END,
+    ' '
+  )
+  FROM unnest(arr) AS value
+$$\`);`,
+  "jsonb-array": `await knex.raw(\`CREATE OR REPLACE FUNCTION sonamu_jsonb_array_agg(arr jsonb, ci boolean DEFAULT true)
+RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE RETURNS NULL ON NULL INPUT
+AS $$
+  SELECT string_agg(
+    CASE WHEN ci THEN lower(value COLLATE "C") ELSE value COLLATE "C" END,
+    ' '
+  )
+  FROM jsonb_array_elements_text(arr)
+$$\`);`,
+};
+
+class SearchTextExpressionParser {
+  private index = 0;
+
+  constructor(private readonly tokens: SearchTextExpressionToken[]) {}
+
+  isAtEnd(): boolean {
+    return this.index >= this.tokens.length;
+  }
+
+  parseExpression(): SearchTextExpressionNode {
+    return this.parseConcat();
+  }
+
+  private parseConcat(): SearchTextExpressionNode {
+    const parts = [this.parsePostfix()];
+
+    while (this.matchOperator("||")) {
+      parts.push(this.parsePostfix());
+    }
+
+    return parts.length === 1 ? parts[0] : { type: "concat", parts };
+  }
+
+  private parsePostfix(): SearchTextExpressionNode {
+    let node = this.parsePrimary();
+
+    while (true) {
+      if (this.matchOperator("::")) {
+        node = {
+          type: "cast",
+          expr: node,
+          targetType: this.parseTypeName(),
+        };
+        continue;
+      }
+
+      if (this.matchIdentifier("collate")) {
+        const token = this.consumeCollationToken();
+        node = {
+          type: "collate",
+          expr: node,
+          collation: token.value,
+          quoted: token.type === "quotedIdentifier",
+        };
+        continue;
+      }
+
+      break;
+    }
+
+    return node;
+  }
+
+  private parsePrimary(): SearchTextExpressionNode {
+    const token = this.consumeToken("표현식");
+
+    if (token.type === "symbol" && token.value === "(") {
+      const node = this.parseExpression();
+      this.expectSymbol(")");
+      return node;
+    }
+
+    if (token.type === "string") {
+      return { type: "string", value: token.value };
+    }
+
+    if (token.type === "identifier" || token.type === "quotedIdentifier") {
+      const lowerName = token.value.toLowerCase();
+      if (token.type === "identifier" && (lowerName === "true" || lowerName === "false")) {
+        return { type: "boolean", value: lowerName === "true" };
+      }
+
+      if (this.matchSymbol("(")) {
+        if (token.type === "identifier" && lowerName === "trim" && this.isTrimBothFromForm()) {
+          this.index += 2;
+          const arg = this.parseExpression();
+          this.expectSymbol(")");
+          return { type: "function", name: "trim", args: [arg] };
+        }
+
+        const args = this.parseFunctionArgs();
+        return {
+          type: "function",
+          name: token.value,
+          args,
+        };
+      }
+
+      return {
+        type: "identifier",
+        name: token.value,
+        quoted: token.type === "quotedIdentifier",
+      };
+    }
+
+    throw new Error(`지원되지 않는 searchText expression token: ${token.type}`);
+  }
+
+  private parseFunctionArgs(): SearchTextExpressionNode[] {
+    if (this.matchSymbol(")")) {
+      return [];
+    }
+
+    const args: SearchTextExpressionNode[] = [];
+    do {
+      args.push(this.parseExpression());
+    } while (this.matchSymbol(","));
+
+    this.expectSymbol(")");
+    return args;
+  }
+
+  private parseTypeName(): string {
+    const parts: string[] = [];
+
+    while (true) {
+      const token = this.peek();
+      if (
+        token?.type === "identifier" ||
+        token?.type === "quotedIdentifier" ||
+        (token?.type === "symbol" &&
+          (token.value === "(" || token.value === ")" || token.value === ","))
+      ) {
+        if (token.type === "symbol") {
+          break;
+        }
+
+        parts.push(token.value.toLowerCase());
+        this.index += 1;
+        continue;
+      }
+
+      break;
+    }
+
+    if (parts.length === 0) {
+      throw new Error("타입 캐스팅 대상 타입을 찾을 수 없습니다.");
+    }
+
+    return parts.join(" ");
+  }
+
+  private consumeCollationToken(): Extract<
+    SearchTextExpressionToken,
+    { type: "identifier" | "quotedIdentifier" }
+  > {
+    const token = this.peek();
+    if (token?.type !== "identifier" && token?.type !== "quotedIdentifier") {
+      throw new Error("COLLATE 대상 식별자를 찾을 수 없습니다.");
+    }
+    this.index += 1;
+    return token;
+  }
+
+  private isTrimBothFromForm(): boolean {
+    const bothToken = this.peek();
+    const fromToken = this.peek(1);
+
+    return (
+      bothToken?.type === "identifier" &&
+      bothToken.value.toLowerCase() === "both" &&
+      fromToken?.type === "identifier" &&
+      fromToken.value.toLowerCase() === "from"
+    );
+  }
+
+  private expectSymbol(value: "(" | ")" | ","): void {
+    if (!this.matchSymbol(value)) {
+      throw new Error(`"${value}" 토큰이 필요합니다.`);
+    }
+  }
+
+  private matchSymbol(value: "(" | ")" | ","): boolean {
+    const token = this.peek();
+    if (token?.type === "symbol" && token.value === value) {
+      this.index += 1;
+      return true;
+    }
+    return false;
+  }
+
+  private matchOperator(value: "||" | "::"): boolean {
+    const token = this.peek();
+    if (token?.type === "operator" && token.value === value) {
+      this.index += 1;
+      return true;
+    }
+    return false;
+  }
+
+  private matchIdentifier(value: string): boolean {
+    const token = this.peek();
+    if (token?.type === "identifier" && token.value.toLowerCase() === value.toLowerCase()) {
+      this.index += 1;
+      return true;
+    }
+    return false;
+  }
+
+  private consumeToken(context: string): SearchTextExpressionToken {
+    const token = this.peek();
+    if (!token) {
+      throw new Error(`${context} 토큰이 필요합니다.`);
+    }
+    this.index += 1;
+    return token;
+  }
+
+  private peek(offset = 0): SearchTextExpressionToken | undefined {
+    return this.tokens[this.index + offset];
+  }
+}
+
+function getIndexColumnOpclass(column: MigrationIndex["columns"][number]): string | undefined {
+  return column.opclass ?? column.vectorOps;
+}
+
+function tokenizeSearchTextExpression(expression: string): SearchTextExpressionToken[] {
+  const tokens: SearchTextExpressionToken[] = [];
+  let index = 0;
+
+  while (index < expression.length) {
+    const char = expression[index];
+
+    if (char === undefined) {
+      break;
+    }
+
+    if (/\s/.test(char)) {
+      index += 1;
+      continue;
+    }
+
+    if (expression.startsWith("||", index)) {
+      tokens.push({ type: "operator", value: "||" });
+      index += 2;
+      continue;
+    }
+
+    if (expression.startsWith("::", index)) {
+      tokens.push({ type: "operator", value: "::" });
+      index += 2;
+      continue;
+    }
+
+    if (char === "(" || char === ")" || char === ",") {
+      tokens.push({ type: "symbol", value: char });
+      index += 1;
+      continue;
+    }
+
+    if (char === "'") {
+      let value = "";
+      index += 1;
+
+      while (index < expression.length) {
+        const current = expression[index];
+        if (current === "'") {
+          if (expression[index + 1] === "'") {
+            value += "'";
+            index += 2;
+            continue;
+          }
+
+          index += 1;
+          break;
+        }
+
+        if (current === undefined) {
+          break;
+        }
+
+        value += current;
+        index += 1;
+      }
+
+      tokens.push({ type: "string", value });
+      continue;
+    }
+
+    if (char === '"') {
+      let value = "";
+      index += 1;
+
+      while (index < expression.length) {
+        const current = expression[index];
+        if (current === '"') {
+          if (expression[index + 1] === '"') {
+            value += '"';
+            index += 2;
+            continue;
+          }
+
+          index += 1;
+          break;
+        }
+
+        if (current === undefined) {
+          break;
+        }
+
+        value += current;
+        index += 1;
+      }
+
+      tokens.push({ type: "quotedIdentifier", value });
+      continue;
+    }
+
+    if (/[A-Za-z_]/.test(char)) {
+      let value = char;
+      index += 1;
+
+      while (index < expression.length) {
+        const current = expression[index];
+        if (current !== undefined && /[A-Za-z0-9_$]/.test(current)) {
+          value += current;
+          index += 1;
+          continue;
+        }
+        break;
+      }
+
+      tokens.push({ type: "identifier", value });
+      continue;
+    }
+
+    throw new Error(`지원되지 않는 searchText expression 문자: ${char}`);
+  }
+
+  return tokens;
+}
+
+function canonicalizeSearchTextGeneratedExpression(expression: string): string {
+  try {
+    const parser = new SearchTextExpressionParser(tokenizeSearchTextExpression(expression));
+    const parsedExpression = parser.parseExpression();
+
+    if (!parser.isAtEnd()) {
+      throw new Error("searchText expression 파싱이 끝나지 않았습니다.");
+    }
+
+    return renderSearchTextExpression(normalizeSearchTextExpressionNode(parsedExpression));
+  } catch {
+    return normalizeSearchTextExpressionFallback(expression);
+  }
+}
+
+function normalizeSearchTextExpressionNode(
+  node: SearchTextExpressionNode,
+): SearchTextExpressionNode {
+  switch (node.type) {
+    case "identifier":
+      return {
+        ...node,
+        name: node.quoted ? node.name : node.name.toLowerCase(),
+      };
+    case "string":
+    case "boolean":
+      return node;
+    case "concat": {
+      const parts = node.parts.flatMap((part) => {
+        const normalizedPart = normalizeSearchTextExpressionNode(part);
+        return normalizedPart.type === "concat" ? normalizedPart.parts : [normalizedPart];
+      });
+      return { type: "concat", parts };
+    }
+    case "collate":
+      return {
+        type: "collate",
+        expr: normalizeSearchTextExpressionNode(node.expr),
+        collation: node.collation.toUpperCase() === "C" ? "C" : node.collation,
+        quoted: node.quoted || node.collation.toUpperCase() === "C",
+      };
+    case "cast": {
+      const normalizedExpr = normalizeSearchTextExpressionNode(node.expr);
+      const targetType = node.targetType.replace(/\s+/g, " ").trim().toLowerCase();
+      if (targetType === "text" || targetType === "character varying" || targetType === "varchar") {
+        return normalizedExpr;
+      }
+      return {
+        type: "cast",
+        expr: normalizedExpr,
+        targetType,
+      };
+    }
+    case "function": {
+      const name = node.name.toLowerCase();
+      let args = node.args.map((arg) => normalizeSearchTextExpressionNode(arg));
+
+      if ((name === "trim" || name === "btrim") && args.length === 1) {
+        return {
+          type: "function",
+          name: "trim",
+          args,
+        };
+      }
+
+      if (
+        (name === "sonamu_text_array_agg" || name === "sonamu_jsonb_array_agg") &&
+        args.length === 2 &&
+        args[1]?.type === "boolean" &&
+        args[1].value === true
+      ) {
+        args = [args[0]];
+      }
+
+      return {
+        type: "function",
+        name,
+        args,
+      };
+    }
+  }
+}
+
+function renderSearchTextExpression(node: SearchTextExpressionNode, parentPrecedence = 0): string {
+  const precedence = getSearchTextExpressionPrecedence(node);
+  const rendered = (() => {
+    switch (node.type) {
+      case "identifier":
+        return node.quoted ? `"${node.name.replaceAll('"', '""')}"` : node.name;
+      case "string":
+        return `'${node.value.replaceAll("'", "''")}'`;
+      case "boolean":
+        return node.value ? "true" : "false";
+      case "function":
+        return `${node.name}(${node.args
+          .map((arg) => renderSearchTextExpression(arg))
+          .join(", ")})`;
+      case "concat":
+        return node.parts.map((part) => renderSearchTextExpression(part, precedence)).join(" || ");
+      case "collate": {
+        const collation = node.quoted
+          ? `"${node.collation.replaceAll('"', '""')}"`
+          : node.collation;
+        return `${renderSearchTextExpression(node.expr, precedence)} COLLATE ${collation}`;
+      }
+      case "cast":
+        return `${renderSearchTextExpression(node.expr, precedence)}::${node.targetType}`;
+    }
+  })();
+
+  if (precedence < parentPrecedence) {
+    return `(${rendered})`;
+  }
+
+  return rendered;
+}
+
+function getSearchTextExpressionPrecedence(node: SearchTextExpressionNode): number {
+  switch (node.type) {
+    case "concat":
+      return 1;
+    case "collate":
+    case "cast":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function normalizeSearchTextExpressionFallback(expression: string): string {
+  return expression
+    .replace(/\s+/g, " ")
+    .replace(/\bTRIM\s*\(\s*BOTH\s+FROM\s+/gi, "trim(")
+    .replace(/::(?:text|character varying|varchar)\b/gi, "")
+    .replace(/,\s*true\b/gi, "")
+    .trim();
+}
+
+function visitSearchTextExpressionNode(
+  node: SearchTextExpressionNode,
+  visitor: (node: SearchTextExpressionNode) => void,
+): void {
+  visitor(node);
+
+  switch (node.type) {
+    case "concat":
+      node.parts.forEach((part) => {
+        visitSearchTextExpressionNode(part, visitor);
+      });
+      return;
+    case "collate":
+    case "cast":
+      visitSearchTextExpressionNode(node.expr, visitor);
+      return;
+    case "function":
+      node.args.forEach((arg) => {
+        visitSearchTextExpressionNode(arg, visitor);
+      });
+      return;
+    case "identifier":
+    case "string":
+    case "boolean":
+      return;
+  }
+}
+
+function getSearchTextHelperKindsFromExpression(expression: string): Set<SearchTextHelperKind> {
+  const helperKinds = new Set<SearchTextHelperKind>();
+  const addHelperKindFromName = (name: string) => {
+    const normalizedName = name.toLowerCase();
+    if (normalizedName === "sonamu_text_array_agg") {
+      helperKinds.add("text-array");
+    } else if (normalizedName === "sonamu_jsonb_array_agg") {
+      helperKinds.add("jsonb-array");
+    }
+  };
+
+  try {
+    const parser = new SearchTextExpressionParser(tokenizeSearchTextExpression(expression));
+    const parsedExpression = parser.parseExpression();
+
+    if (!parser.isAtEnd()) {
+      throw new Error("searchText helper expression 파싱이 끝나지 않았습니다.");
+    }
+
+    visitSearchTextExpressionNode(parsedExpression, (node) => {
+      if (node.type === "function") {
+        addHelperKindFromName(node.name);
+      }
+    });
+  } catch {
+    if (/\bsonamu_text_array_agg\s*\(/i.test(expression)) {
+      helperKinds.add("text-array");
+    }
+    if (/\bsonamu_jsonb_array_agg\s*\(/i.test(expression)) {
+      helperKinds.add("jsonb-array");
+    }
+  }
+
+  return helperKinds;
+}
+
+function resolveSearchTextColumns(table: string, columns: MigrationColumn[]): MigrationColumn[] {
+  const entity = (() => {
+    try {
+      return EntityManager.getByTable(table);
+    } catch {
+      return null;
+    }
+  })();
+
+  if (!entity) {
+    return columns;
+  }
+
+  const propsByName = new Map(entity.props.map((prop) => [prop.name, prop]));
+
+  return columns.map((column) => {
+    const prop = propsByName.get(column.name);
+    if (!prop || !isSearchTextProp(prop)) {
+      return column;
+    }
+
+    return {
+      ...column,
+      generated: {
+        type: "STORED",
+        expression: buildSearchTextGeneratedExpression(prop, propsByName),
+      },
+    };
+  });
+}
+
+function buildSearchTextGeneratedExpression(
+  prop: Extract<EntityProp, { type: "searchText" }>,
+  propsByName: Map<string, EntityProp>,
+): string {
+  const tokens = prop.sourceColumns.map((source) => {
+    const sourceProp = propsByName.get(source.name);
+    if (!sourceProp) {
+      throw new Error(`searchText source column "${source.name}"을(를) 찾을 수 없습니다.`);
+    }
+
+    if (sourceProp.type === "string") {
+      return source.caseInsensitive
+        ? `lower(COALESCE(${source.name}, '') COLLATE "C")`
+        : `COALESCE(${source.name}, '') COLLATE "C"`;
+    }
+
+    if (sourceProp.type === "string[]") {
+      return source.caseInsensitive
+        ? `COALESCE(sonamu_text_array_agg(${source.name}), '')`
+        : `COALESCE(sonamu_text_array_agg(${source.name}, false), '')`;
+    }
+
+    if (sourceProp.type === "json") {
+      return source.caseInsensitive
+        ? `COALESCE(sonamu_jsonb_array_agg(${source.name}), '')`
+        : `COALESCE(sonamu_jsonb_array_agg(${source.name}, false), '')`;
+    }
+
+    throw new Error(
+      `searchText source column "${source.name}"의 타입 "${sourceProp.type}"은(는) 지원되지 않습니다.`,
+    );
+  });
+
+  return `trim(${tokens.join(` || ' ' || `)})`;
+}
+
+function getSearchTextHelperDefinitions(table: string, columns: MigrationColumn[]): string[] {
+  const helperKinds = new Set<SearchTextHelperKind>();
+
+  columns.forEach((column) => {
+    if (!column.generated) {
+      return;
+    }
+
+    getSearchTextHelperKindsFromExpression(column.generated.expression).forEach((kind) => {
+      helperKinds.add(kind);
+    });
+  });
+
+  if (helperKinds.size > 0) {
+    return (["text-array", "jsonb-array"] as const)
+      .filter((kind) => helperKinds.has(kind))
+      .map((kind) => SEARCH_TEXT_HELPER_DEFINITIONS[kind]);
+  }
+
+  const entity = (() => {
+    try {
+      return EntityManager.getByTable(table);
+    } catch {
+      return null;
+    }
+  })();
+
+  if (!entity) {
+    return [];
+  }
+  const propsByName = new Map(entity.props.map((prop) => [prop.name, prop]));
+
+  columns.forEach((column) => {
+    const prop = propsByName.get(column.name);
+    if (!prop || !isSearchTextProp(prop)) {
+      return;
+    }
+
+    prop.sourceColumns.forEach((source) => {
+      const sourceProp = propsByName.get(source.name);
+      if (sourceProp?.type === "string[]") {
+        helperKinds.add("text-array");
+      } else if (sourceProp?.type === "json") {
+        helperKinds.add("jsonb-array");
+      }
+    });
+  });
+
+  return (["text-array", "jsonb-array"] as const)
+    .filter((kind) => helperKinds.has(kind))
+    .map((kind) => SEARCH_TEXT_HELPER_DEFINITIONS[kind]);
+}
+
+function getSearchTextColumnNames(table: string): Set<string> {
+  const entity = (() => {
+    try {
+      return EntityManager.getByTable(table);
+    } catch {
+      return null;
+    }
+  })();
+
+  if (!entity) {
+    return new Set();
+  }
+
+  return new Set(entity.props.filter(isSearchTextProp).map((prop) => prop.name));
+}
+
 /**
  * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
  */
@@ -32,13 +745,16 @@ async function generateCreateCode_ColumnAndIndexes(
   columns: MigrationColumn[],
   indexes: MigrationIndex[],
 ): Promise<GenMigrationCode> {
-  const columnDefs = genColumnDefinitions(table, columns);
+  const resolvedColumns = resolveSearchTextColumns(table, columns);
+  const columnDefs = genColumnDefinitions(table, resolvedColumns);
+  const helperDefinitions = getSearchTextHelperDefinitions(table, resolvedColumns);
 
   // 컬럼, 인덱스 처리
   const lines: string[] = [
     'import { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
+    ...helperDefinitions,
     `await knex.schema.createTable("${table}", (table) => {`,
     ...columnDefs.builder,
     "});",
@@ -252,15 +968,20 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   return `await knex.raw(
   \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} ${usingClause}(${index.columns
     .map((col) => {
+      const opclassClause = (() => {
+        const opclass = getIndexColumnOpclass(col);
+        return opclass ? ` ${opclass}` : "";
+      })();
+
       // 정렬 옵션은 btree만 사용 가능
       if (index.using !== "btree" && index.using !== undefined) {
-        return `${col.name}`;
+        return `${col.name}${opclassClause}`;
       }
 
       const sortOrderClause = col.sortOrder === undefined ? "" : ` ${col.sortOrder}`;
       const nullsFirstClause =
         col.nullsFirst === undefined ? "" : ` NULLS ${col.nullsFirst ? "FIRST" : "LAST"}`;
-      return `${col.name}${sortOrderClause}${nullsFirstClause}`;
+      return `${col.name}${opclassClause}${sortOrderClause}${nullsFirstClause}`;
     })
     .join(", ")})${nullsNotDistinctClause};\`
   );`;
@@ -314,7 +1035,7 @@ function getPgroongaColumnOption(column: EntityProp) {
  */
 function genVectorIndexDefinition(index: MigrationIndex, table: string): string {
   const column = index.columns[0];
-  const vectorOps = column.vectorOps ?? "vector_cosine_ops";
+  const vectorOps = getIndexColumnOpclass(column) ?? "vector_cosine_ops";
 
   // HNSW (Hierarchical Navigable Small World) - 권장: 빠른 검색, 높은 정확도
   if (index.type === "hnsw") {
@@ -419,6 +1140,8 @@ async function generateAlterCode_ColumnAndIndexes(
   dbForeigns: MigrationForeign[],
   compareDB?: Knex,
 ): Promise<GenMigrationCode[]> {
+  const resolvedEntityColumns = resolveSearchTextColumns(table, entityColumns);
+  const searchTextColumnNames = getSearchTextColumnNames(table);
   /*
     세부 비교 후 다른점 찾아서 코드 생성
 
@@ -432,7 +1155,7 @@ async function generateAlterCode_ColumnAndIndexes(
   */
 
   // PK(id) 컬럼 타입 변경 감지 및 처리
-  const entityIdCol = entityColumns.find((col) => col.name === "id");
+  const entityIdCol = resolvedEntityColumns.find((col) => col.name === "id");
   const dbIdCol = dbColumns.find((col) => col.name === "id");
 
   if (entityIdCol && dbIdCol && compareDB) {
@@ -444,7 +1167,7 @@ async function generateAlterCode_ColumnAndIndexes(
         table,
         entityIdCol,
         dbIdCol,
-        entityColumns,
+        resolvedEntityColumns,
         entityIndexes,
         dbColumns,
         dbIndexes,
@@ -455,25 +1178,48 @@ async function generateAlterCode_ColumnAndIndexes(
   }
 
   // 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
-  const alterColumnsTo = getAlterColumnsTo(entityColumns, dbColumns);
+  const alterColumnsTo = getAlterColumnsTo(resolvedEntityColumns, dbColumns, searchTextColumnNames);
 
   // 추출된 컬럼들을 기준으로 각각 라인 생성
   const alterColumnLinesTo = getAlterColumnLinesTo(
     alterColumnsTo,
-    entityColumns,
+    resolvedEntityColumns,
     table,
     dbForeigns,
   );
 
   // 인덱스의 add, drop 여부 확인
   const alterIndexesTo = getAlterIndexesTo(entityIndexes, dbIndexes);
+  const recreatedSearchTextColumnNames = new Set(
+    alterColumnsTo.alter
+      .filter((dbColumn) => {
+        const entityColumn = resolvedEntityColumns.find((col) => col.name === dbColumn.name);
+        return (
+          searchTextColumnNames.has(dbColumn.name) &&
+          dbColumn.generated !== undefined &&
+          entityColumn?.generated !== undefined
+        );
+      })
+      .map((column) => column.name),
+  );
+  const recreatedSearchTextDbIndexes = dbIndexes.filter(
+    (index) =>
+      index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
+      alterIndexesTo.drop.some((dropIndex) => dropIndex.name === index.name) === false,
+  );
+  const recreatedSearchTextEntityIndexes = entityIndexes.filter(
+    (index) =>
+      index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
+      alterIndexesTo.add.some((addIndex) => addIndex.name === index.name) === false,
+  );
+  const implicitlyDroppedDbIndexes = alterIndexesTo.drop.filter((index) =>
+    index.columns.every(({ name }) => alterColumnsTo.drop.some((column) => column.name === name)),
+  );
 
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
     (index) =>
-      index.columns.every(({ name }) =>
-        alterColumnsTo.drop.map((col) => col.name).includes(name),
-      ) === false,
+      implicitlyDroppedDbIndexes.some((droppedIndex) => droppedIndex.name === index.name) === false,
   );
 
   // 빈 코드 생성 방지
@@ -482,8 +1228,10 @@ async function generateAlterCode_ColumnAndIndexes(
     alterColumnLinesTo.add.up.raw.length > 0 ||
     alterColumnLinesTo.drop.up.builder.length > 0 ||
     alterColumnLinesTo.alter.up.builder.length > 0 ||
+    alterColumnLinesTo.alter.up.raw.length > 0 ||
     alterIndexesTo.add.length > 0 ||
-    indexNeedsToDrop.length > 0;
+    indexNeedsToDrop.length > 0 ||
+    recreatedSearchTextDbIndexes.length > 0;
   if (!hasUpChanges) {
     // 변경사항이 없으면 빈 배열 반환
     return [];
@@ -504,6 +1252,7 @@ async function generateAlterCode_ColumnAndIndexes(
   const upBuilderLines = [
     ...(alterColumnLinesTo.drop.up.builder.length > 0 ? alterColumnLinesTo.drop.up.builder : []),
     ...(alterColumnLinesTo.add.up.builder.length > 0 ? alterColumnLinesTo.add.up.builder : []),
+    ...recreatedSearchTextDbIndexes.map(genIndexDropDefinition),
     ...(alterColumnLinesTo.alter.up.builder.length > 0 ? alterColumnLinesTo.alter.up.builder : []),
     ...indexNeedsToDrop.map(genIndexDropDefinition),
   ];
@@ -511,12 +1260,15 @@ async function generateAlterCode_ColumnAndIndexes(
   // knex.raw()로 실행할 코드
   const upRawLines = [
     ...(alterColumnLinesTo.add.up.raw.length > 0 ? alterColumnLinesTo.add.up.raw : []),
+    ...(alterColumnLinesTo.alter.up.raw.length > 0 ? alterColumnLinesTo.alter.up.raw : []),
+    ...recreatedSearchTextEntityIndexes.map((index) => genIndexDefinition(index, table)),
     ...alterIndexesTo.add.map((index) => genIndexDefinition(index, table)),
   ];
 
   // down은 up의 역순 (add.down = drop rollback, drop.down = add rollback)
   const downBuilderLines = [
     ...(alterColumnLinesTo.add.down.builder.length > 0 ? alterColumnLinesTo.add.down.builder : []),
+    ...recreatedSearchTextEntityIndexes.map(genIndexDropDefinition),
     ...(alterColumnLinesTo.alter.down.builder.length > 0
       ? alterColumnLinesTo.alter.down.builder
       : []),
@@ -535,6 +1287,9 @@ async function generateAlterCode_ColumnAndIndexes(
 
   const downRawLines = [
     ...(alterColumnLinesTo.drop.down.raw.length > 0 ? alterColumnLinesTo.drop.down.raw : []),
+    ...(alterColumnLinesTo.alter.down.raw.length > 0 ? alterColumnLinesTo.alter.down.raw : []),
+    ...recreatedSearchTextDbIndexes.map((index) => genIndexDefinition(index, table)),
+    ...implicitlyDroppedDbIndexes.map((index) => genIndexDefinition(index, table)),
     ...indexNeedsToDrop.map((index) => genIndexDefinition(index, table)),
   ];
 
@@ -584,23 +1339,38 @@ async function generateAlterCode_ColumnAndIndexes(
 /**
  * 컬럼 비교를 위해 Generated Column의 expression을 제외한 객체를 생성
  */
-function normalizeColumnForComparison(col: MigrationColumn): MigrationColumn {
-  if (col.generated) {
+function normalizeColumnForComparison(
+  col: MigrationColumn,
+  searchTextColumnNames: Set<string>,
+): MigrationColumn {
+  if (!col.generated) {
+    return col;
+  }
+
+  if (!searchTextColumnNames.has(col.name)) {
     return {
       ...col,
-      generated: {
-        type: col.generated.type,
-        expression: "",
-      },
+      generated: undefined,
     };
   }
-  return col;
+
+  return {
+    ...col,
+    generated: {
+      ...col.generated,
+      expression: canonicalizeSearchTextGeneratedExpression(col.generated.expression),
+    },
+  };
 }
 
 /**
  * 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
  */
-function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
+function getAlterColumnsTo(
+  entityColumns: MigrationColumn[],
+  dbColumns: MigrationColumn[],
+  searchTextColumnNames: Set<string>,
+) {
   const columnsTo = {
     add: [] as MigrationColumn[],
     drop: [] as MigrationColumn[],
@@ -619,13 +1389,14 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
     columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
   }
 
-  // 동일 컬럼명의 세부 필드 비교 (Generated Column expression 제외)
+  // 동일 컬럼명의 세부 필드 비교
   const sameDbColumns = intersectionBy(dbColumns, entityColumns, (col) => col.name);
   const sameMdColumns = intersectionBy(entityColumns, dbColumns, (col) => col.name);
-  columnsTo.alter = differenceWith(
-    sameDbColumns,
-    sameMdColumns,
-    (a, b) => equal({ ...a, generated: undefined }, { ...b, generated: undefined }), // generated 컬럼은 alter로 처리하지 않음
+  columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
+    equal(
+      normalizeColumnForComparison(a, searchTextColumnNames),
+      normalizeColumnForComparison(b, searchTextColumnNames),
+    ),
   );
 
   return columnsTo;
@@ -640,6 +1411,7 @@ function getAlterColumnLinesTo(
   table: string,
   dbForeigns: MigrationForeign[],
 ) {
+  const searchTextColumnNames = getSearchTextColumnNames(table);
   const linesTo = {
     add: {
       up: { builder: [] as string[], raw: [] as string[] },
@@ -659,7 +1431,14 @@ function getAlterColumnLinesTo(
   const addColumnDefs = genColumnDefinitions(table, columnsTo.add);
   linesTo.add.up = {
     builder: addColumnDefs.builder.length > 0 ? ["// add", ...addColumnDefs.builder] : [],
-    raw: addColumnDefs.raw.length > 0 ? ["// add (generated)", ...addColumnDefs.raw] : [],
+    raw:
+      addColumnDefs.raw.length > 0
+        ? [
+            ...getSearchTextHelperDefinitions(table, columnsTo.add),
+            "// add (generated)",
+            ...addColumnDefs.raw,
+          ]
+        : [],
   };
   linesTo.add.down = {
     builder:
@@ -711,7 +1490,11 @@ function getAlterColumnLinesTo(
       ],
       raw:
         dropColumnDefs.raw.length > 0
-          ? ["// rollback - drop columns (generated)", ...dropColumnDefs.raw]
+          ? [
+              ...getSearchTextHelperDefinitions(table, columnsTo.drop),
+              "// rollback - drop columns (generated)",
+              ...dropColumnDefs.raw,
+            ]
           : [],
     },
   };
@@ -721,6 +1504,36 @@ function getAlterColumnLinesTo(
     (r, dbColumn) => {
       const entityColumn = entityColumns.find((col) => col.name === dbColumn.name);
       if (entityColumn === undefined) {
+        return r;
+      }
+
+      if (
+        searchTextColumnNames.has(dbColumn.name) &&
+        dbColumn.generated !== undefined &&
+        entityColumn.generated !== undefined
+      ) {
+        r.up.builder = [
+          ...r.up.builder,
+          "// alter generated column",
+          `table.dropColumns('${dbColumn.name}')`,
+        ];
+        r.up.raw = [
+          ...r.up.raw,
+          ...getSearchTextHelperDefinitions(table, [entityColumn]),
+          "// alter generated column",
+          genGeneratedColumnDefinition(table, entityColumn),
+        ];
+        r.down.builder = [
+          ...r.down.builder,
+          "// rollback - alter generated column",
+          `table.dropColumns('${dbColumn.name}')`,
+        ];
+        r.down.raw = [
+          ...r.down.raw,
+          ...getSearchTextHelperDefinitions(table, [dbColumn]),
+          "// rollback - alter generated column",
+          genGeneratedColumnDefinition(table, dbColumn),
+        ];
         return r;
       }
 
@@ -818,15 +1631,15 @@ function genIndexDropDefinition(index: MigrationIndex) {
  * DB 조회 결과와 비교하기 위한 인덱스 기본값 설정
  */
 export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
-  const supportsOrdering =
-    index.type !== "hnsw" && // type이 hnsw면 벡터 인덱스
-    index.type !== "ivfflat" && // type이 ivfflat면 벡터 인덱스
-    (!index.using || index.using === "btree"); // using 체크
+  const isVectorIndex = index.type === "hnsw" || index.type === "ivfflat";
+  const supportsOrdering = !isVectorIndex && (!index.using || index.using === "btree");
+  const normalizedUsing = isVectorIndex ? index.using : (index.using ?? "btree");
 
   return {
     ...index,
     columns: index.columns.map((col) => ({
       name: col.name,
+      ...(getIndexColumnOpclass(col) ? { opclass: getIndexColumnOpclass(col) } : {}),
       ...(supportsOrdering
         ? {
             sortOrder: col.sortOrder ?? "ASC",
@@ -835,7 +1648,7 @@ export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex
         : {}),
     })),
     nullsNotDistinct: index.nullsNotDistinct ?? false,
-    using: index.using ?? "btree",
+    ...(normalizedUsing ? { using: normalizedUsing } : {}),
   };
 }
 
@@ -1049,9 +1862,10 @@ export async function generateAlterCode(
   const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = [];
 
   // 1. columnsAndIndexes 처리
+  const searchTextColumnNames = getSearchTextColumnNames(entitySet.table);
   const isEqualColumns = equal(
-    entityColumns.map(normalizeColumnForComparison),
-    dbColumns.map(normalizeColumnForComparison),
+    entityColumns.map((column) => normalizeColumnForComparison(column, searchTextColumnNames)),
+    dbColumns.map((column) => normalizeColumnForComparison(column, searchTextColumnNames)),
   );
   const isEqualIndexes = equal(
     entityIndexes.map(setMigrationIndexDefaults),

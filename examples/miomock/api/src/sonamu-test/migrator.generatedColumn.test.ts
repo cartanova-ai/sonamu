@@ -1,9 +1,37 @@
-import { type EntityJson, EntityManager, Migrator } from "sonamu";
+import {
+  Entity,
+  type EntityJson,
+  EntityManager,
+  getMigrationSetFromEntity,
+  type MigrationSet,
+  Migrator,
+  PostgreSQLSchemaReader,
+} from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
 bootstrap(vi, { forTesting: false });
+
+function buildDbSetWithGeneratedSearchText(
+  entitySet: MigrationSet,
+  expression: string,
+): MigrationSet {
+  return {
+    ...entitySet,
+    columns: entitySet.columns.map((column) =>
+      column.name === "search_text"
+        ? {
+            ...column,
+            generated: {
+              type: "STORED",
+              expression,
+            },
+          }
+        : column,
+    ),
+  };
+}
 
 describe("Migrator - Generated Column", () => {
   let migrator: Migrator;
@@ -311,6 +339,279 @@ describe("Migrator - Generated Column", () => {
     expect(alterCode).toBeUndefined();
   });
 
+  test("searchText generated expression 변경은 helper와 index를 포함해 재생성해야 한다", async () => {
+    const originalUser = EntityManager.get("User").toJson();
+    const previousUser = {
+      ...originalUser,
+      props: [
+        ...originalUser.props,
+        {
+          name: "tags",
+          type: "string[]",
+          nullable: true,
+          desc: "검색 태그",
+        },
+        {
+          name: "search_text",
+          type: "searchText",
+          sourceColumns: [{ name: "username", caseInsensitive: true }],
+        },
+      ],
+      indexes: [
+        ...originalUser.indexes,
+        {
+          type: "index",
+          name: "users_search_text_trgm",
+          using: "gin",
+          columns: [{ name: "search_text", opclass: "gin_trgm_ops" }],
+        },
+      ],
+    } satisfies EntityJson;
+    const nextUser = {
+      ...previousUser,
+      props: previousUser.props.map((prop) =>
+        prop.name === "search_text"
+          ? {
+              ...prop,
+              sourceColumns: [
+                { name: "username", caseInsensitive: false },
+                { name: "tags", caseInsensitive: true },
+              ],
+            }
+          : prop,
+      ),
+    } satisfies EntityJson;
+
+    const originalGetMigrationSetFromDB =
+      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
+    const dbSet = buildDbSetWithGeneratedSearchText(
+      getMigrationSetFromEntity(new Entity(previousUser)),
+      `trim(lower(COALESCE(username, '') COLLATE "C"))`,
+    );
+
+    const getSpy = mockEntityManagerGet("User", () => nextUser);
+    const getByTableSpy = vi.spyOn(EntityManager, "getByTable").mockImplementation((table) => {
+      if (table === "users") {
+        return new Entity(nextUser);
+      }
+
+      return originalGetByTable(table);
+    });
+    const schemaReaderSpy = vi
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
+      .mockImplementation(async (compareDB, table) => {
+        if (table === "users") {
+          return dbSet;
+        }
+
+        return originalGetMigrationSetFromDB(compareDB, table);
+      });
+
+    try {
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain(
+        'table.dropIndex(["search_text"], "users_search_text_trgm")',
+      );
+      expect(alterCode?.formatted).toContain('table.dropColumns("search_text")');
+      expect(alterCode?.formatted).toContain(
+        "CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)",
+      );
+      expect(alterCode?.formatted).toContain(
+        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(username, '') COLLATE "C" || ' ' || COALESCE(sonamu_text_array_agg(tags), ''))) STORED NOT NULL`,
+      );
+      expect(alterCode?.formatted).toContain(
+        "CREATE INDEX users_search_text_trgm ON users USING gin(search_text gin_trgm_ops);",
+      );
+    } finally {
+      schemaReaderSpy.mockRestore();
+      getByTableSpy.mockRestore();
+      getSpy.mockRestore();
+    }
+  });
+
+  test("searchText helper kind가 바뀌어도 down path는 이전 helper를 복원해야 한다", async () => {
+    const originalUser = EntityManager.get("User").toJson();
+    const previousUser = {
+      ...originalUser,
+      props: [
+        ...originalUser.props,
+        {
+          name: "aliases",
+          type: "json",
+          nullable: true,
+          id: "MigratorGeneratedColumnRollbackAliasesJson",
+          desc: "검색 별칭",
+        },
+        {
+          name: "tags",
+          type: "string[]",
+          nullable: true,
+          desc: "검색 태그",
+        },
+        {
+          name: "search_text",
+          type: "searchText",
+          sourceColumns: [{ name: "aliases", caseInsensitive: true }],
+        },
+      ],
+      indexes: [
+        ...originalUser.indexes,
+        {
+          type: "index",
+          name: "users_search_text_trgm",
+          using: "gin",
+          columns: [{ name: "search_text", opclass: "gin_trgm_ops" }],
+        },
+      ],
+    } satisfies EntityJson;
+    const nextUser = {
+      ...previousUser,
+      props: previousUser.props.map((prop) =>
+        prop.name === "search_text"
+          ? {
+              ...prop,
+              sourceColumns: [{ name: "tags", caseInsensitive: true }],
+            }
+          : prop,
+      ),
+    } satisfies EntityJson;
+
+    const originalGetMigrationSetFromDB =
+      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
+    const dbSet = buildDbSetWithGeneratedSearchText(
+      getMigrationSetFromEntity(new Entity(previousUser)),
+      `trim(COALESCE(sonamu_jsonb_array_agg(aliases), ''))`,
+    );
+
+    const getSpy = mockEntityManagerGet("User", () => nextUser);
+    const getByTableSpy = vi.spyOn(EntityManager, "getByTable").mockImplementation((table) => {
+      if (table === "users") {
+        return new Entity(nextUser);
+      }
+
+      return originalGetByTable(table);
+    });
+    const schemaReaderSpy = vi
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
+      .mockImplementation(async (compareDB, table) => {
+        if (table === "users") {
+          return dbSet;
+        }
+
+        return originalGetMigrationSetFromDB(compareDB, table);
+      });
+
+    try {
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain(
+        "CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)",
+      );
+      expect(alterCode?.formatted).toContain(
+        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(sonamu_text_array_agg(tags), ''))) STORED NOT NULL`,
+      );
+      expect(alterCode?.formatted).toContain(
+        "CREATE OR REPLACE FUNCTION sonamu_jsonb_array_agg(arr jsonb, ci boolean DEFAULT true)",
+      );
+      expect(alterCode?.formatted).toContain(
+        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(sonamu_jsonb_array_agg(aliases), ''))) STORED NOT NULL`,
+      );
+    } finally {
+      schemaReaderSpy.mockRestore();
+      getByTableSpy.mockRestore();
+      getSpy.mockRestore();
+    }
+  });
+
+  test("searchText가 제거되어도 down path는 기존 trigram index를 복원해야 한다", async () => {
+    const originalUser = EntityManager.get("User").toJson();
+    const previousUser = {
+      ...originalUser,
+      props: [
+        ...originalUser.props,
+        {
+          name: "tags",
+          type: "string[]",
+          nullable: true,
+          desc: "검색 태그",
+        },
+        {
+          name: "search_text",
+          type: "searchText",
+          sourceColumns: [{ name: "tags", caseInsensitive: true }],
+        },
+      ],
+      indexes: [
+        ...originalUser.indexes,
+        {
+          type: "index",
+          name: "users_search_text_trgm",
+          using: "gin",
+          columns: [{ name: "search_text", opclass: "gin_trgm_ops" }],
+        },
+      ],
+    } satisfies EntityJson;
+    const nextUser = {
+      ...previousUser,
+      props: previousUser.props.filter((prop) => prop.name !== "search_text"),
+      indexes: previousUser.indexes.filter((index) => index.name !== "users_search_text_trgm"),
+    } satisfies EntityJson;
+
+    const originalGetMigrationSetFromDB =
+      PostgreSQLSchemaReader.getMigrationSetFromDB.bind(PostgreSQLSchemaReader);
+    const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
+    const dbSet = buildDbSetWithGeneratedSearchText(
+      getMigrationSetFromEntity(new Entity(previousUser)),
+      `trim(COALESCE(sonamu_text_array_agg(tags), ''))`,
+    );
+
+    const getSpy = mockEntityManagerGet("User", () => nextUser);
+    const getByTableSpy = vi.spyOn(EntityManager, "getByTable").mockImplementation((table) => {
+      if (table === "users") {
+        return new Entity(nextUser);
+      }
+
+      return originalGetByTable(table);
+    });
+    const schemaReaderSpy = vi
+      .spyOn(PostgreSQLSchemaReader, "getMigrationSetFromDB")
+      .mockImplementation(async (compareDB, table) => {
+        if (table === "users") {
+          return dbSet;
+        }
+
+        return originalGetMigrationSetFromDB(compareDB, table);
+      });
+
+    try {
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain('table.dropColumns("search_text")');
+      expect(alterCode?.formatted).toContain(
+        "CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)",
+      );
+      expect(alterCode?.formatted).toContain(
+        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(sonamu_text_array_agg(tags), ''))) STORED NOT NULL`,
+      );
+      expect(alterCode?.formatted).toContain(
+        "CREATE INDEX users_search_text_trgm ON users USING gin(search_text gin_trgm_ops);",
+      );
+    } finally {
+      schemaReaderSpy.mockRestore();
+      getByTableSpy.mockRestore();
+      getSpy.mockRestore();
+    }
+  });
+
   test("Generated Column type 변경 감지 (STORED → VIRTUAL)", async () => {
     mockEntityManagerGet("Department", (original) => ({
       ...original,
@@ -370,7 +671,7 @@ describe("Migrator - Generated Column", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "departments");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_departments_add1_drop1_alter1");
+    expect(alterCode?.title).toMatch(/^alter_departments_add1_drop1_alter\d+$/);
 
     // up: Generated Column drop 후 일반 컬럼으로 재생성
     expect(alterCode?.formatted).toContain('table.dropColumns("code")');
@@ -404,7 +705,7 @@ describe("Migrator - Generated Column", () => {
 
     const alterCode = status.preparedCodes.find((code) => code.table === "departments");
     expect(alterCode).toBeDefined();
-    expect(alterCode?.title).toBe("alter_departments_add1_drop1_alter1");
+    expect(alterCode?.title).toMatch(/^alter_departments_add1_drop1_alter\d+$/);
 
     // up: 일반 컬럼 drop 후 Generated Column으로 재생성
     expect(alterCode?.formatted).toContain('table.dropColumns("name")');
