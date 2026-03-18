@@ -11,7 +11,7 @@ import {
   Switch,
   useTypeForm,
 } from "@sonamu-kit/react-components";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { EntityIndex } from "sonamu";
 import z from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
@@ -27,6 +27,165 @@ type EntityIndexModalProps = {
   onCompleted?: (data: EntityIndex | null) => void;
 };
 
+const entityIndexFormSchema = z.object({
+  type: z.enum(["index", "unique", "hnsw", "ivfflat"]),
+  columns: z.array(
+    z.object({
+      name: z.string(),
+      nullsFirst: z.boolean().optional(),
+      sortOrder: z.enum(["ASC", "DESC"]).optional(),
+      opclass: z.string().min(1).optional(),
+    }),
+  ),
+  name: z.string().min(1).max(63),
+  using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
+  nullsNotDistinct: z.boolean().optional(),
+  m: z.number().int().positive().optional(),
+  efConstruction: z.number().int().positive().optional(),
+  lists: z.number().int().positive().optional(),
+});
+
+type EntityIndexForm = z.infer<typeof entityIndexFormSchema>;
+
+const textOpclassOptionsByUsing = {
+  gin: [
+    { value: "gin_trgm_ops", label: "gin_trgm_ops" },
+    { value: "gin_bigm_ops", label: "gin_bigm_ops" },
+  ],
+  gist: [{ value: "gist_trgm_ops", label: "gist_trgm_ops" }],
+};
+
+const vectorOpclassOptions = [
+  { value: "vector_cosine_ops", label: "Cosine Distance" },
+  { value: "vector_ip_ops", label: "Inner Product" },
+  { value: "vector_l2_ops", label: "L2 Distance" },
+];
+
+const vectorOpclassValueSet = new Set(vectorOpclassOptions.map((option) => option.value));
+const textOpclassValueSetByUsing = {
+  gin: new Set(textOpclassOptionsByUsing.gin.map((option) => option.value)),
+  gist: new Set(textOpclassOptionsByUsing.gist.map((option) => option.value)),
+};
+const knownTextOpclassValueSet = new Set([
+  ...textOpclassValueSetByUsing.gin,
+  ...textOpclassValueSetByUsing.gist,
+]);
+
+type IntegerField = "m" | "efConstruction" | "lists";
+type IntegerFieldValues = Record<IntegerField, string>;
+
+function normalizeOpclassValue(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function isPositiveInteger(value: string): boolean {
+  return /^[1-9]\d*$/.test(value.trim());
+}
+
+function parseOptionalPositiveInteger(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return undefined;
+  }
+
+  if (!isPositiveInteger(trimmed)) {
+    return undefined;
+  }
+
+  return Number(trimmed);
+}
+
+function isPgroongaOpclass(value: string): boolean {
+  return value.startsWith("pgroonga_");
+}
+
+function getCompatibleSubmittedOpclass(
+  type: EntityIndexForm["type"],
+  using: EntityIndexForm["using"],
+  value: string | undefined,
+): string | undefined {
+  const normalized = normalizeOpclassValue(value);
+  if (normalized === undefined) {
+    return undefined;
+  }
+
+  if (type === "hnsw" || type === "ivfflat") {
+    return vectorOpclassValueSet.has(normalized) ? normalized : undefined;
+  }
+
+  if (type !== "index" || using === undefined || using === "btree" || using === "hash") {
+    return undefined;
+  }
+
+  if (vectorOpclassValueSet.has(normalized)) {
+    return undefined;
+  }
+
+  if (using === "gin" || using === "gist") {
+    const allowedKnownOpclasses = textOpclassValueSetByUsing[using];
+    if (allowedKnownOpclasses.has(normalized)) {
+      return normalized;
+    }
+
+    if (isPgroongaOpclass(normalized)) {
+      return undefined;
+    }
+
+    if (knownTextOpclassValueSet.has(normalized)) {
+      return undefined;
+    }
+
+    return normalized;
+  }
+
+  if (knownTextOpclassValueSet.has(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function isHashSingleColumnIndex(
+  type: EntityIndexForm["type"],
+  using: EntityIndexForm["using"],
+): boolean {
+  return type === "index" && using === "hash";
+}
+
+function getSubmittedColumns(
+  type: EntityIndexForm["type"],
+  using: EntityIndexForm["using"],
+  columns: EntityIndexForm["columns"],
+): EntityIndexForm["columns"] {
+  return isHashSingleColumnIndex(type, using) ? columns.slice(0, 1) : columns;
+}
+
+function createInitialForm(oldOne?: EntityIndex): EntityIndexForm {
+  return {
+    type: oldOne?.type ?? "index",
+    name: oldOne?.name ?? "",
+    columns:
+      oldOne?.columns.map(({ vectorOps, opclass, ...column }) => ({
+        ...column,
+        opclass: opclass ?? vectorOps,
+      })) ?? [],
+    using: oldOne?.using,
+    nullsNotDistinct: oldOne?.nullsNotDistinct,
+    m: oldOne?.m,
+    efConstruction: oldOne?.efConstruction,
+    lists: oldOne?.lists,
+  };
+}
+
+function createInitialIntegerFieldValues(oldOne?: EntityIndex): IntegerFieldValues {
+  return {
+    m: oldOne?.m?.toString() ?? "",
+    efConstruction: oldOne?.efConstruction?.toString() ?? "",
+    lists: oldOne?.lists?.toString() ?? "",
+  };
+}
+
 export function EntityIndexModal({
   entityId,
   table,
@@ -37,26 +196,16 @@ export function EntityIndexModal({
 }: EntityIndexModalProps) {
   // TypeForm
   const { form, setForm, register, addError } = useTypeForm(
-    z.object({
-      type: z.enum(["index", "unique", "hnsw", "ivfflat"]),
-      columns: z.array(
-        z.object({
-          name: z.string(),
-          nullsFirst: z.boolean().optional(),
-          sortOrder: z.enum(["ASC", "DESC"]).optional(),
-        }),
-      ),
-      name: z.string().min(1).max(63),
-      using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
-      nullsNotDistinct: z.boolean().optional(),
-    }),
-    {
-      type: "index",
-      name: "",
-      columns: [],
-      ...oldOne,
-    },
+    entityIndexFormSchema,
+    createInitialForm(oldOne),
   );
+  const [integerFieldValues, setIntegerFieldValues] = useState<IntegerFieldValues>(() =>
+    createInitialIntegerFieldValues(oldOne),
+  );
+
+  useEffect(() => {
+    setIntegerFieldValues(createInitialIntegerFieldValues(oldOne));
+  }, [oldOne?.m, oldOne?.efConstruction, oldOne?.lists]);
 
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
@@ -72,41 +221,6 @@ export function EntityIndexModal({
     return () => document.removeEventListener("keydown", onKeydown);
   }, [form]);
 
-  // 타입 및 Using 변경에 따른 상태 동기화 및 제약조건 적용
-  useEffect(() => {
-    const newForm = { ...form };
-    let needsUpdate = false;
-
-    if (form.type === "unique") {
-      // Unique 인덱스는 btree만 사용 가능
-      if (form.using !== undefined) {
-        delete newForm.using;
-        needsUpdate = true;
-      }
-    } else {
-      // B-Tree가 아닌 경우 정렬 옵션 제거
-      if (form.using !== "btree" && form.using !== undefined) {
-        const hasSortOptions = form.columns.some(
-          (col) => col.sortOrder !== undefined || col.nullsFirst !== undefined,
-        );
-        if (hasSortOptions) {
-          newForm.columns = form.columns.map(({ name }) => ({ name }));
-          needsUpdate = true;
-        }
-      }
-
-      // Hash 인덱스는 단일 컬럼만 지원
-      if (form.using === "hash" && form.columns.length > 1) {
-        newForm.columns = [form.columns[0]];
-        needsUpdate = true;
-      }
-    }
-
-    if (needsUpdate) {
-      setForm(newForm);
-    }
-  }, [form.using, form.type, form.columns]);
-
   // 인덱스 이름 자동 생성
   useEffect(() => {
     if (!oldOne && form.columns.length > 0) {
@@ -120,8 +234,24 @@ export function EntityIndexModal({
     }
   }, [form.type, form.columns, table, oldOne, form.name, setForm]);
 
+  const isUniqueIndex = form.type === "unique";
+  const isVectorIndex = form.type === "hnsw" || form.type === "ivfflat";
+  const showsUsingControl = form.type === "index";
+  const showsSortControls =
+    form.type === "unique" ||
+    (form.type === "index" && (form.using === undefined || form.using === "btree"));
+  const showsTextOpclassControls =
+    form.type === "index" && (form.using === "gin" || form.using === "gist");
+  const knownTextOpclassOptions = showsTextOpclassControls
+    ? form.using === "gin"
+      ? textOpclassOptionsByUsing.gin
+      : textOpclassOptionsByUsing.gist
+    : [];
+
   const handleSubmit = () => {
     let hasError = false;
+    const validatedIntegerFields: Partial<Record<IntegerField, number>> = {};
+    const submittedColumns = getSubmittedColumns(form.type, form.using, form.columns);
 
     if (!form.name) {
       addError("name", { content: "Name is required.", pointing: "above" });
@@ -136,51 +266,141 @@ export function EntityIndexModal({
       hasError = true;
     }
 
-    if (form.using === "hash" && form.columns.length > 1) {
+    if (isHashSingleColumnIndex(form.type, form.using) && form.columns.length > 1) {
       addError("columns", { content: "Hash 인덱스는 단일 컬럼만 지원합니다.", pointing: "above" });
       hasError = true;
     }
 
+    const requiredIntegerFields: Array<{ field: IntegerField; label: string }> =
+      form.type === "hnsw"
+        ? [
+            { field: "m", label: "M" },
+            { field: "efConstruction", label: "EF Construction" },
+          ]
+        : form.type === "ivfflat"
+          ? [{ field: "lists", label: "Lists" }]
+          : [];
+
+    requiredIntegerFields.forEach(({ field, label }) => {
+      const rawValue = integerFieldValues[field];
+      const parsedValue = parseOptionalPositiveInteger(rawValue);
+
+      if (rawValue.trim() !== "" && parsedValue === undefined) {
+        addError(field, { content: `${label}는 양의 정수만 허용합니다.`, pointing: "above" });
+        hasError = true;
+        return;
+      }
+
+      if (parsedValue !== undefined) {
+        validatedIntegerFields[field] = parsedValue;
+      }
+    });
+
     if (!hasError) {
+      const payload: EntityIndex = {
+        type: form.type,
+        name: form.name,
+        columns: submittedColumns.map((column) => {
+          const nextColumn: EntityIndex["columns"][number] = { name: column.name };
+          const opclass = getCompatibleSubmittedOpclass(form.type, form.using, column.opclass);
+
+          if (showsSortControls) {
+            if (column.sortOrder !== undefined) {
+              nextColumn.sortOrder = column.sortOrder;
+            }
+            if (column.nullsFirst !== undefined) {
+              nextColumn.nullsFirst = column.nullsFirst;
+            }
+          }
+
+          if (opclass !== undefined) {
+            nextColumn.opclass = opclass;
+          }
+
+          return nextColumn;
+        }),
+      };
+
+      if (showsUsingControl && form.using !== undefined) {
+        payload.using = form.using;
+      }
+
+      if (isUniqueIndex && form.nullsNotDistinct !== undefined) {
+        payload.nullsNotDistinct = form.nullsNotDistinct;
+      }
+
+      if (form.type === "hnsw") {
+        if (validatedIntegerFields.m !== undefined) {
+          payload.m = validatedIntegerFields.m;
+        }
+        if (validatedIntegerFields.efConstruction !== undefined) {
+          payload.efConstruction = validatedIntegerFields.efConstruction;
+        }
+      }
+
+      if (form.type === "ivfflat" && validatedIntegerFields.lists !== undefined) {
+        payload.lists = validatedIntegerFields.lists;
+      }
+
       if (onCompleted) {
-        onCompleted(form);
+        onCompleted(payload);
       }
       onOpenChange(false);
     }
   };
 
   const handleColumnChange = (_: React.FormEvent, { value }: { value: string[] }) => {
-    console.log("handleColumnChange", value);
-    const newColumns = value.map((name) => {
-      const existing = form.columns.find((c) => c.name === name);
-      return existing ?? { name };
+    setForm((prev) => {
+      const newColumns = value.map((name) => {
+        const existing = prev.columns.find((column) => column.name === name);
+        return existing ?? { name };
+      });
+
+      return { ...prev, columns: newColumns };
     });
-    setForm({ ...form, columns: newColumns });
   };
 
-  const updateColumn = (index: number, changes: Partial<(typeof form.columns)[0]>) => {
-    const newColumns = [...form.columns];
-    // 값이 없으면(빈 문자열 등) 해당 키 삭제, 아니면 업데이트
-    const updatedCol = { ...newColumns[index], ...changes };
+  const updateColumn = (index: number, changes: Partial<EntityIndexForm["columns"][number]>) => {
+    setForm((prev) => {
+      const newColumns = [...prev.columns];
+      const updatedCol = { ...newColumns[index], ...changes };
 
-    Object.keys(changes).forEach((key) => {
-      if (changes[key as keyof typeof changes] === undefined) {
-        delete updatedCol[key as keyof typeof updatedCol];
-      }
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === undefined) {
+          delete updatedCol[key as keyof typeof updatedCol];
+        }
+      });
+
+      newColumns[index] = updatedCol;
+      return { ...prev, columns: newColumns };
     });
-
-    newColumns[index] = updatedCol;
-    setForm({ ...form, columns: newColumns });
   };
 
   const moveColumn = (index: number, direction: -1 | 1) => {
-    if (index + direction < 0 || index + direction >= form.columns.length) return;
-    const newColumns = [...form.columns];
-    [newColumns[index], newColumns[index + direction]] = [
-      newColumns[index + direction],
-      newColumns[index],
-    ];
-    setForm({ ...form, columns: newColumns });
+    setForm((prev) => {
+      if (index + direction < 0 || index + direction >= prev.columns.length) {
+        return prev;
+      }
+
+      const newColumns = [...prev.columns];
+      [newColumns[index], newColumns[index + direction]] = [
+        newColumns[index + direction],
+        newColumns[index],
+      ];
+
+      return { ...prev, columns: newColumns };
+    });
+  };
+
+  const updateIntegerField = (field: IntegerField, value: string) => {
+    setIntegerFieldValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setForm((prev) => ({
+      ...prev,
+      [field]: parseOptionalPositiveInteger(value),
+    }));
   };
 
   const typeOptions = ["index", "unique", "hnsw", "ivfflat"];
@@ -223,7 +443,7 @@ export function EntityIndexModal({
               </div>
 
               {/* Type & Option Row */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className={`grid gap-6 mb-6 ${isVectorIndex ? "grid-cols-1" : "grid-cols-2"}`}>
                 <div className="mb-[14px]">
                   <label className="block mb-1 font-bold">
                     Type <span className="text-red-500">*</span>
@@ -238,7 +458,7 @@ export function EntityIndexModal({
                   />
                 </div>
 
-                {form.type === "unique" ? (
+                {isUniqueIndex ? (
                   <div className="mb-[14px]">
                     <label className="block mb-1 font-bold">Nulls Not Distinct</label>
                     <Switch
@@ -248,7 +468,7 @@ export function EntityIndexModal({
                       }
                     />
                   </div>
-                ) : (
+                ) : showsUsingControl ? (
                   <div className="mb-[14px]">
                     <label className="block mb-1 font-bold">Using</label>
                     <Select
@@ -265,8 +485,55 @@ export function EntityIndexModal({
                       className="focus-0"
                     />
                   </div>
-                )}
+                ) : null}
               </div>
+
+              {form.type === "hnsw" && (
+                <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+                  <h5 className="text-sm font-bold mb-4">HNSW Options</h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-1 font-bold">M</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={integerFieldValues.m}
+                        onValueChange={(value) => updateIntegerField("m", value)}
+                        placeholder="16"
+                        className="focus-0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 font-bold">EF Construction</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={integerFieldValues.efConstruction}
+                        onValueChange={(value) => updateIntegerField("efConstruction", value)}
+                        placeholder="64"
+                        className="focus-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {form.type === "ivfflat" && (
+                <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+                  <h5 className="text-sm font-bold mb-4">IVFFlat Options</h5>
+                  <div className="max-w-xs">
+                    <label className="block mb-1 font-bold">Lists</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={integerFieldValues.lists}
+                      onValueChange={(value) => updateIntegerField("lists", value)}
+                      placeholder="100"
+                      className="focus-0"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Target Columns Area */}
               <div className="mb-[14px] columns-field">
@@ -301,7 +568,7 @@ export function EntityIndexModal({
 
                         <div className="flex items-center justify-between gap-3">
                           {/* B-Tree 정렬 옵션 */}
-                          {(form.using === "btree" || !form.using) && (
+                          {showsSortControls && (
                             <div className="flex gap-1 shrink-0">
                               <Select
                                 value={col.sortOrder}
@@ -325,6 +592,56 @@ export function EntityIndexModal({
                                 ]}
                                 placeholder="Nulls"
                                 className="tiny w-[100px]"
+                              />
+                            </div>
+                          )}
+
+                          {showsTextOpclassControls && (
+                            <div className="flex gap-2 shrink-0">
+                              <Select
+                                value={
+                                  knownTextOpclassOptions.some(
+                                    (option) => option.value === col.opclass,
+                                  )
+                                    ? col.opclass
+                                    : undefined
+                                }
+                                onValueChange={(value) =>
+                                  updateColumn(idx, { opclass: normalizeOpclassValue(value) })
+                                }
+                                clearable
+                                items={knownTextOpclassOptions}
+                                placeholder="Known opclass"
+                                className="tiny w-[180px]"
+                              />
+                              <Input
+                                value={
+                                  knownTextOpclassOptions.some(
+                                    (option) => option.value === col.opclass,
+                                  )
+                                    ? ""
+                                    : (col.opclass ?? "")
+                                }
+                                onValueChange={(value) =>
+                                  updateColumn(idx, { opclass: normalizeOpclassValue(value) })
+                                }
+                                placeholder="Custom opclass"
+                                className="h-8 w-[180px]"
+                              />
+                            </div>
+                          )}
+
+                          {isVectorIndex && (
+                            <div className="flex gap-2 shrink-0">
+                              <Select
+                                value={col.opclass}
+                                onValueChange={(value) =>
+                                  updateColumn(idx, { opclass: normalizeOpclassValue(value) })
+                                }
+                                clearable
+                                items={vectorOpclassOptions}
+                                placeholder="Distance metric"
+                                className="tiny w-[180px]"
                               />
                             </div>
                           )}
