@@ -1065,6 +1065,12 @@ const GeneratedColumnSchema = z.object({
   expression: z.string(),
 });
 
+const FixtureCompanionSchema = z.object({
+  entity: z.string(),
+  overrides: z.record(z.string(), z.unknown()).optional(),
+  count: z.number().int().positive().optional(),
+});
+
 /**
  * Cone 스키마 검증
  *
@@ -1077,6 +1083,7 @@ const ConeSchema = z
     fixtureGenerator: z.string().optional(),
     fixtureDefault: z.unknown().optional(),
     fixtureStrategy: z.literal("sequence").optional(),
+    fixtureCompanions: z.array(FixtureCompanionSchema).optional(),
     dataSource: z
       .object({
         strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),
