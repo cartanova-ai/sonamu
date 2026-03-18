@@ -17,12 +17,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: function Render(args) {
     const [value, setValue] = useState("");
-    return (
-      <div className="w-64 space-y-2">
-        <Input {...args} value={value} onValueChange={(v) => setValue(v)} />
-        <p className="text-sm text-muted-foreground">값: {value || "(비어있음)"}</p>
-      </div>
-    );
+    return <Input {...args} value={value} onValueChange={(v) => setValue(v)} />;
   },
 };
 
