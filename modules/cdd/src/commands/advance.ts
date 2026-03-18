@@ -113,7 +113,12 @@ function commitTransition(
 }
 
 function needsLayer2(target: SpecStatus): boolean {
-  return target === "implementing" || target === "validating" || target === "done";
+  return (
+    target === "specifying" ||
+    target === "implementing" ||
+    target === "validating" ||
+    target === "done"
+  );
 }
 
 // --- Layer 1 Gate ---
@@ -130,7 +135,7 @@ function checkGateLayer1(
 
   switch (target) {
     case "specifying":
-      gateSpecifying(spec, failures);
+      gateSpecifying(spec, doc, schema, failures);
       break;
 
     case "implementing":
@@ -149,12 +154,60 @@ function checkGateLayer1(
   return failures;
 }
 
-function gateSpecifying(spec: SpecNode, failures: GateFailure[]): void {
+function gateSpecifying(
+  spec: SpecNode,
+  doc: Record<string, unknown>,
+  schema: SchemaDocument | null,
+  failures: GateFailure[],
+): void {
   if (spec.resolvedContracts.length === 0) {
     failures.push({
       field: "contracts",
       message: "contracts 필드가 비어 있거나 유효한 Contract를 참조하지 않습니다",
     });
+  }
+
+  // schema required 필드가 Spec에 존재하고 비어있지 않은지 검증
+  if (schema) {
+    for (const field of schema.fields) {
+      if (!field.required) continue;
+      const value = doc[field.name];
+      validateSchemaField(field.name, field.type, value, failures);
+    }
+  }
+
+  // 고정 필드 검증
+  const summary = doc.summary as string | undefined;
+  if (!summary || summary.length === 0) {
+    failures.push({ field: "summary", message: "summary가 비어 있습니다" });
+  }
+
+  const description = doc.description as string[] | undefined;
+  if (!description || description.length === 0) {
+    failures.push({ field: "description", message: "description이 비어 있습니다" });
+  }
+
+  const ac = doc.acceptanceCriteria as Array<Record<string, unknown>> | undefined;
+  if (!ac || ac.length === 0) {
+    failures.push({
+      field: "acceptanceCriteria",
+      message: "acceptanceCriteria가 비어 있습니다",
+    });
+  } else {
+    for (const item of ac) {
+      if (!item.id || (typeof item.id === "string" && item.id.length === 0)) {
+        failures.push({
+          field: "acceptanceCriteria",
+          message: "AC의 id가 비어 있습니다",
+        });
+      }
+      if (!item.condition || (typeof item.condition === "string" && item.condition.length === 0)) {
+        failures.push({
+          field: "acceptanceCriteria",
+          message: `AC "${item.id ?? "?"}": condition이 비어 있습니다`,
+        });
+      }
+    }
   }
 }
 
@@ -388,6 +441,17 @@ function buildDelegatePayload(
 
 function buildLayer2Content(target: SpecStatus): { instruction: string; checks: string[] } {
   switch (target) {
+    case "specifying":
+      return {
+        instruction:
+          "다음 Spec의 내용이 스키마 필드별 description에 부합하는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
+        checks: [
+          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 Spec의 해당 필드가 description이 요구하는 내용을 담고 있는지 검증.",
+          "B. AC 검증: 각 AC condition이 pass/fail 판정 가능한 구체적 조건인가, 모호한 표현이 없는가",
+          "C. Contract 정합성: Spec이 참조 Contract의 features/businessRules 범위 내에서 작성되었는가, Contract에 없는 범위를 포함하지 않는가",
+        ],
+      };
+
     case "implementing":
       return {
         instruction:
