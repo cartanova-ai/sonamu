@@ -46,6 +46,7 @@ import {
   isNumericSingleProp,
   isOneToOneRelationProp,
   isRelationProp,
+  isSearchTextProp,
   isStringArrayProp,
   isStringSingleProp,
   isTsVectorProp,
@@ -248,6 +249,8 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     zodType = z.uuid().array();
   } else if (isJsonProp(prop)) {
     zodType = await getZodTypeById(prop.id);
+  } else if (isSearchTextProp(prop)) {
+    zodType = z.string();
   } else if (isVectorSingleProp(prop)) {
     zodType = z.array(z.number());
   } else if (isVectorArrayProp(prop)) {
@@ -354,6 +357,8 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
       stmt = `${prop.name}: ${prop.id}`;
       injectImportKeys.push(prop.id);
     }
+  } else if (isSearchTextProp(prop)) {
+    stmt = `${prop.name}: z.string()`;
   } else if (isVectorSingleProp(prop)) {
     stmt = `${prop.name}: z.array(z.number())`;
   } else if (isVectorArrayProp(prop)) {

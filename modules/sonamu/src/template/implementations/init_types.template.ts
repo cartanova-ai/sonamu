@@ -19,9 +19,24 @@ export class Template__init_types extends Template {
 
   render({ entityId }: TemplateOptions["init_types"]) {
     const names = EntityManager.getNamesFromId(entityId);
+    const entity = EntityManager.get(entityId);
 
-    const hasCreatedAt =
-      EntityManager.get(entityId).props.find((prop) => prop.name === "created_at") !== undefined;
+    const partialColumns = ["id"];
+    if (entity.props.some((prop) => prop.name === "created_at")) {
+      partialColumns.push("created_at");
+    }
+
+    const writeIneligibleColumns = entity.props
+      .filter(
+        (prop) =>
+          prop.type !== "relation" && (prop.generated !== undefined || prop.type === "searchText"),
+      )
+      .map((prop) => prop.name);
+
+    const omitGeneratedColumns =
+      writeIneligibleColumns.length > 0
+        ? `.omit({ ${writeIneligibleColumns.map((column) => `${column}: true`).join(", ")} })`
+        : "";
 
     return {
       ...this.getTargetAndPath(names),
@@ -34,9 +49,9 @@ export const ${entityId}ListParams = ${entityId}BaseListParams;
 export type ${entityId}ListParams = z.infer<typeof ${entityId}ListParams>;
 
 // ${entityId} - SaveParams
-export const ${entityId}SaveParams = ${entityId}BaseSchema.partial({ id: true${
-        hasCreatedAt ? ", created_at: true" : ""
-      } });
+export const ${entityId}SaveParams = ${entityId}BaseSchema${omitGeneratedColumns}.partial({ ${partialColumns
+        .map((column) => `${column}: true`)
+        .join(", ")} });
 export type ${entityId}SaveParams = z.infer<typeof ${entityId}SaveParams>;
 
       `.trim(),

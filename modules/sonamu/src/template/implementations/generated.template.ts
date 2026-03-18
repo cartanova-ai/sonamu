@@ -225,7 +225,10 @@ export class Template__generated extends Template {
      * - generated 속성이 있는 컬럼 (INSERT/UPDATE 시 값 제공 불가)
      */
     const generatedColumns = entity.props
-      .filter((prop) => prop.type !== "relation" && prop.generated !== undefined)
+      .filter(
+        (prop) =>
+          prop.type !== "relation" && (prop.generated !== undefined || prop.type === "searchText"),
+      )
       .map((prop) => prop.name);
 
     const hasMetadata =
