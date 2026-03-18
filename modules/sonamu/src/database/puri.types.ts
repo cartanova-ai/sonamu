@@ -301,6 +301,8 @@ export type FulltextColumns<TTables extends Record<string, any>> = {
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
 // 조건 연산자: 비교 연산자 + 패턴 매칭 연산자
 export type WhereOperator = ComparisonOperator | "like" | "not like" | "ilike" | "not ilike";
+export const FUZZY_OPERATORS = ["<%", "%", "<<%"] as const;
+export type FuzzyOperator = (typeof FUZZY_OPERATORS)[number];
 
 // SQL Expression 타입 정의
 export type SqlExpression<T extends "string" | "number" | "boolean" | "date" | "string[]"> = {

@@ -14,6 +14,7 @@ import type {
   Expand,
   ExtractColumnType,
   FulltextColumns,
+  FuzzyOperator,
   InsertData,
   InsertResult,
   LeftJoinedMarker,
@@ -34,7 +35,19 @@ import type {
   WhereCondition,
   WhereOperator,
 } from "./puri.types";
+import { FUZZY_OPERATORS } from "./puri.types";
 import type { ClearStatements } from "./puri-subset.types";
+
+function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
+  const normalized = operator?.trim() ?? "<%";
+  const fuzzyOperator = FUZZY_OPERATORS.find((candidate) => candidate === normalized);
+
+  if (!fuzzyOperator) {
+    throw new Error(`Invalid fuzzy operator: ${operator ?? ""}`);
+  }
+
+  return fuzzyOperator;
+}
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
@@ -136,6 +149,45 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       _return: "string",
       _sql: `LOWER(${column})`,
     };
+  }
+
+  private static escapeSqlLiteral(value: string): string {
+    return value.replaceAll("'", "''");
+  }
+
+  private static toTextOperand(column: string | SqlExpression<"string">): string {
+    if (typeof column === "object" && column._type === "sql_expression") {
+      return `(${column._sql})::text`;
+    }
+
+    return `${column}::text`;
+  }
+
+  static wordSimilarity(
+    column: string | SqlExpression<"string">,
+    query: string,
+  ): SqlExpression<"number"> {
+    return Puri.rawNumber(
+      `word_similarity('${Puri.escapeSqlLiteral(query)}'::text, ${Puri.toTextOperand(column)})`,
+    );
+  }
+
+  static similarity(
+    column: string | SqlExpression<"string">,
+    query: string,
+  ): SqlExpression<"number"> {
+    return Puri.rawNumber(
+      `similarity(${Puri.toTextOperand(column)}, '${Puri.escapeSqlLiteral(query)}'::text)`,
+    );
+  }
+
+  static strictWordSimilarity(
+    column: string | SqlExpression<"string">,
+    query: string,
+  ): SqlExpression<"number"> {
+    return Puri.rawNumber(
+      `strict_word_similarity('${Puri.escapeSqlLiteral(query)}'::text, ${Puri.toTextOperand(column)})`,
+    );
   }
 
   // Raw functions for SELECT
@@ -648,6 +700,25 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         : String(column);
 
     this.knexQuery.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, value]);
+    return this;
+  }
+
+  whereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+    column: TColumn,
+    value: string,
+    options?: {
+      operator?: FuzzyOperator;
+    },
+  ): this {
+    const operator = normalizeFuzzyOperator(options?.operator);
+    const textColumnExpr = Puri.toTextOperand(column);
+
+    if (operator === "%") {
+      this.knexQuery.whereRaw(`${textColumnExpr} ${operator} ?::text`, [value]);
+      return this;
+    }
+
+    this.knexQuery.whereRaw(`?::text ${operator} ${textColumnExpr}`, [value]);
     return this;
   }
 

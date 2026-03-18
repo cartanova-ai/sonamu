@@ -935,7 +935,147 @@ describe("Puri Query", () => {
     });
   });
 
-  describe("J. ETC", () => {
+  describe("J. FUZZY SEARCH (pg_trgm)", () => {
+    test("whereFuzzy - 기본(<%)", () => {
+      const db = UserModel.getPuri("r");
+      const query = db.table("documents").whereFuzzy("documents.title", "검색어").toQuery();
+
+      expect(query).toContain("'검색어'::text <% documents.title::text");
+    });
+
+    test("whereFuzzy - % 연산자", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("documents")
+        .whereFuzzy("documents.title", "검색어", {
+          operator: "%",
+        })
+        .toQuery();
+
+      expect(query).toContain("documents.title::text % '검색어'::text");
+    });
+
+    test("whereFuzzy - <<% 연산자", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("documents")
+        .whereFuzzy("documents.title", "검색어", {
+          operator: "<<%",
+        })
+        .toQuery();
+
+      expect(query).toContain("'검색어'::text <<% documents.title::text");
+    });
+
+    test("whereFuzzy - 연산자 공백 정규화", () => {
+      const db = UserModel.getPuri("r");
+      const puri = db.table("documents");
+      Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "  %  " }]);
+      const query = puri.toQuery();
+
+      expect(query).toContain("documents.title::text % '검색어'::text");
+    });
+
+    test("whereFuzzy - 잘못된 연산자 거부", () => {
+      const db = UserModel.getPuri("r");
+      const puri = db.table("documents");
+      const queryCountBefore = Naite.get("puri:executed-query").result().length;
+
+      expect(() =>
+        Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "||" }]),
+      ).toThrowError("Invalid fuzzy operator: ||");
+      expect(Naite.get("puri:executed-query").result()).toHaveLength(queryCountBefore);
+    });
+
+    test("whereFuzzy - single quote query escaping", () => {
+      const db = UserModel.getPuri("r");
+      const query = db.table("documents").whereFuzzy("documents.title", "l'amour").toQuery();
+
+      expect(query).toContain("'l''amour'::text <% documents.title::text");
+      expect(query).not.toContain("'l'amour'::text <% documents.title::text");
+    });
+
+    test("whereFuzzy - SqlExpression 전체를 캐스팅", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("documents")
+        .whereFuzzy(Puri.rawString("documents.title || documents.content"), "검색어")
+        .toQuery();
+
+      expect(query).toContain("'검색어'::text <% (documents.title || documents.content)::text");
+      expect(query).not.toContain("documents.title || documents.content::text");
+    });
+
+    test("wordSimilarity / similarity / strictWordSimilarity", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("documents")
+        .select({
+          word: Puri.wordSimilarity("documents.title", "검색어"),
+          whole: Puri.similarity("documents.title", "검색어"),
+          strict: Puri.strictWordSimilarity("documents.title", "검색어"),
+        })
+        .toQuery();
+
+      expect(query).toContain("word_similarity('검색어'::text, documents.title::text)");
+      expect(query).toContain("similarity(documents.title::text, '검색어'::text)");
+      expect(query).toContain("strict_word_similarity('검색어'::text, documents.title::text)");
+    });
+
+    test("wordSimilarity / similarity / strictWordSimilarity - single quote query escaping", () => {
+      const db = UserModel.getPuri("r");
+      const query = db
+        .table("documents")
+        .select({
+          word: Puri.wordSimilarity("documents.title", "l'amour"),
+          whole: Puri.similarity("documents.title", "l'amour"),
+          strict: Puri.strictWordSimilarity("documents.title", "l'amour"),
+        })
+        .toQuery();
+
+      expect(query).toContain("word_similarity('l''amour'::text, documents.title::text)");
+      expect(query).toContain("similarity(documents.title::text, 'l''amour'::text)");
+      expect(query).toContain("strict_word_similarity('l''amour'::text, documents.title::text)");
+      expect(query).not.toContain("word_similarity('l'amour'::text, documents.title::text)");
+      expect(query).not.toContain("similarity(documents.title::text, 'l'amour'::text)");
+      expect(query).not.toContain("strict_word_similarity('l'amour'::text, documents.title::text)");
+    });
+
+    test("wordSimilarity / similarity / strictWordSimilarity - SqlExpression 전체를 캐스팅", () => {
+      const db = UserModel.getPuri("r");
+      const expression = Puri.rawString("documents.title || documents.content");
+
+      const query = db
+        .table("documents")
+        .select({
+          word: Puri.wordSimilarity(expression, "검색어"),
+          whole: Puri.similarity(expression, "검색어"),
+          strict: Puri.strictWordSimilarity(expression, "검색어"),
+        })
+        .toQuery();
+
+      expect(query).toContain(
+        "word_similarity('검색어'::text, (documents.title || documents.content)::text)",
+      );
+      expect(query).toContain(
+        "similarity((documents.title || documents.content)::text, '검색어'::text)",
+      );
+      expect(query).toContain(
+        "strict_word_similarity('검색어'::text, (documents.title || documents.content)::text)",
+      );
+      expect(query).not.toContain(
+        "word_similarity('검색어'::text, documents.title || documents.content::text)",
+      );
+      expect(query).not.toContain(
+        "similarity(documents.title || documents.content::text, '검색어'::text)",
+      );
+      expect(query).not.toContain(
+        "strict_word_similarity('검색어'::text, documents.title || documents.content::text)",
+      );
+    });
+  });
+
+  describe("K. ETC", () => {
     test("first", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").orderBy("users.created_at", "desc").first();
