@@ -23,6 +23,9 @@ This project follows Contract-Driven Development (CDD). All development work mus
 
 ```text
 contract/
+|- schemas/
+|  |- default-contract.schema.json  # contract schema definition
+|  \- default-spec.schema.json       # spec schema definition
 |- main.contract.json          # project root contract
 |- {domain}/
 |  |- main.contract.json       # domain representative contract
@@ -58,22 +61,59 @@ contract/
 
 ## Document Model
 
+### Schema (`.schema.json`)
+
+Contract/Spec 문서의 포맷을 정의하는 파일. `contract/schemas/` 디렉터리에 위치한다.
+
+```json
+{
+  "id": "default-spec",
+  "type": "spec",
+  "fields": [
+    {
+      "name": "modules",
+      "type": "Record<string, string>",
+      "renderer": "label-grid",
+      "required": true,
+      "description": "구현에 사용되는 모듈 정의"
+    }
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `id` | 스키마 식별자 (Contract/Spec의 `schema` 필드에서 참조) |
+| `type` | `contract` \| `spec` |
+| `fields` | 문서에 포함될 커스텀 필드 목록 |
+| `fields[].name` | 필드명 |
+| `fields[].type` | `string`, `string[]`, `Record<string, string>`, `Record<string, object>` |
+| `fields[].renderer` | 렌더링 컴포넌트 (생략 시 디폴트 사용) |
+| `fields[].required` | 필수 여부 |
+| `fields[].description` | `cdd advance` Layer 2 검증 기준으로 사용됨 |
+
 ### Contract (`.contract.json`)
 
 A business-logic document that non-developers can read. AI must treat this file as **read-only**. If an update is needed, AI should only propose the change to the user.
 
 ```json
 {
+  "schema": "default-contract",
   "lastModified": "YYYY-MM-DD",
-  "content": ["## Overview", "", "Markdown lines as string array", ...]
+  "features": {
+    "login": "이메일/비밀번호 로그인 및 세션 발급"
+  },
+  "overview": [...],
+  "domainGlossary": [...],
+  "userRoles": [...],
+  "businessRules": [...],
+  "edgeCases": [...]
 }
 ```
 
-`content` is a `string[]` where each element is one line of Markdown.
+필수 필드: `schema`, `lastModified`, `features`. 나머지 필드는 적용된 schema의 `fields`에 따라 결정된다.
 
-`content` fixed sections:
-
-`Overview -> Domain Glossary -> Features/Capabilities -> User Roles/Actors -> Business Rules/Constraints -> Edge Cases`
+`features` 맵의 각 키는 Spec 파일명(feature key)과 1:1 매칭된다.
 
 ### Spec (`.spec.json`)
 
@@ -81,19 +121,33 @@ A feature-level technical document derived from Contract. Each file represents e
 
 ```json
 {
-  "schemaVersion": 1,
+  "schema": "default-spec",
+  "schemaVersion": 2,
   "summary": "Login processing and session issuance",
   "description": [
     "Validates user credentials and issues JWT-based sessions.",
     "Includes password retry limit and account lockout policy."
   ],
   "acceptanceCriteria": [
-    "Valid email/password login returns a JWT token",
-    "5 wrong password attempts locks account for 30 minutes",
-    "Expired session request returns 401 response"
+    {
+      "id": "ac-login-1",
+      "condition": "유효한 이메일/비밀번호 로그인 시 세션이 생성된다",
+      "testRef": {
+        "target": "packages/api/src/application/auth/login.test.ts",
+        "pattern": "ac-login-1"
+      }
+    },
+    {
+      "id": "ac-login-2",
+      "condition": "잘못된 비밀번호 입력 시 인증 실패 응답이 반환된다",
+      "testRef": {
+        "target": "",
+        "pattern": ""
+      }
+    }
   ],
   "lastModified": "YYYY-MM-DD",
-  "status": "draft | in-progress | done",
+  "status": "draft | specifying | implementing | validating | done",
   "sources": ["packages/api/src/application/auth/login.ts", "packages/api/src/application/auth/login.test.ts"],
   "contracts": ["./main.contract.json"],
   "dependsOnSpecs": ["./session.spec.json"],
@@ -122,12 +176,13 @@ A feature-level technical document derived from Contract. Each file represents e
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `schema` | `string` | Y | 적용된 schema id |
 | `schemaVersion` | `number` | Y | Schema version |
 | `summary` | `string` | Y | One-line feature summary |
 | `description` | `string[]` | Y | Detailed feature description |
-| `acceptanceCriteria` | `string[]` | Y | Completion criteria (verifiable conditions) |
+| `acceptanceCriteria` | `object[]` | Y | Completion criteria. 각 항목은 `id`, `condition`, `testRef` 포함 |
 | `lastModified` | `string` | Y | Last modified date (YYYY-MM-DD) |
-| `status` | `string` | Y | `"draft"` / `"in-progress"` / `"done"` |
+| `status` | `string` | Y | `"draft"` / `"specifying"` / `"implementing"` / `"validating"` / `"done"` |
 | `sources` | `string[]` | Y | Implementation/test files (relative to project root) |
 | `contracts` | `string[]` | Y | Referenced Contract files (relative to Spec file) |
 | `dependsOnSpecs` | `string[]` | N | Dependent Spec files (relative to Spec file) |
@@ -170,23 +225,44 @@ Contract is not extended as a structural source of feature keys. **Spec referenc
 
 | Value | Meaning | Transition condition |
 |---|---|---|
-| `draft` | Spec is being written, not confirmed yet | Initial state |
-| `in-progress` | Spec confirmed, implementation in progress | After all Spec sections are confirmed |
-| `done` | Implementation complete, consistency validation passed, all `acceptanceCriteria` met | After code passes consistency check against Spec |
+| `draft` | Spec 초안 작성 중, 미확정 | 초기 상태 |
+| `specifying` | 명세 세분화 중 | contracts 유효 참조, required 필드 충족, summary/description/AC 비어있지 않음 |
+| `implementing` | Spec 확정, 구현 진행 중 | 명세 전체 확정 후 |
+| `validating` | 구현 완료, AC 매칭 검증 중 | sources 파일 존재, AC testRef 지정 및 존재 |
+| `done` | 전체 AC 만족, 일관성 검증 통과 | testRef.pattern 매칭, 빌드/테스트 통과 |
 
-**Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `in-progress`.
+**Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `implementing`.
 
 ### `acceptanceCriteria` field
 
-Conditions that must be met for this Spec's implementation to be considered "done". AI uses these as a checklist during consistency validation.
+Conditions that must be met for this Spec's implementation to be considered "done". Each item is an object:
+
+```json
+{
+  "id": "ac-login-1",
+  "condition": "유효한 이메일/비밀번호 로그인 시 세션이 생성된다",
+  "testRef": {
+    "target": "packages/api/src/application/auth/login.test.ts",
+    "pattern": "ac-login-1"
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `id` | AC 식별자. `ac-{feature}-{n}` 형식 |
+| `condition` | 검증 가능한 구체적 조건 |
+| `testRef.target` | AC를 검증하는 테스트 파일 경로 |
+| `testRef.pattern` | 테스트 파일 내 항목 식별 패턴 (`pnpm cdd test <target> -p <pattern>`) |
 
 **Authoring rules**:
-- Each item must be a verifiable, specific condition. Vague expressions like "should work well" are not allowed.
+- `condition`은 검증 가능한 구체적 조건이어야 한다. 모호한 표현 불가.
 - Include conditions derived from Contract's business rules and Edge Cases.
 - Conditions derived from `constraints` and `errorHandling` may also be included.
-- Recommended format: "When X, then Y" (input-result).
+- Recommended format: "조건 X이면 Y이다" (input-result).
+- `testRef`는 `implementing` 단계에서 비워두고, `validating` 단계에서 채운다.
 
-**Validation usage**: When transitioning `status` to `"done"`, AI verifies all items are satisfied in code. If any item is unmet, `"done"` transition is blocked.
+**Validation usage**: `cdd advance <spec>` 실행 시 Layer 1/Layer 2 검증에 사용된다. `testRef.pattern` 매칭은 `validating → done` 전이 시 확인된다.
 
 ### Spec detail level
 
@@ -237,7 +313,7 @@ Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/e
 - Fill all structured fields (`modules`, `interfaces`, `dataFlow`, `errorHandling`, `constraints`).
 - Define `acceptanceCriteria` with verifiable completion conditions.
 - Add planned implementation file paths to `sources`.
-- **All fields must be confirmed in this step.** After confirmation, set `status` to `"in-progress"` and continue.
+- **All fields must be confirmed in this step.** After confirmation, set `status` to `"implementing"` and continue.
 
 **Step 3: Code implementation**
 - Implement exactly following the confirmed module structure and interfaces defined in Spec.
@@ -278,7 +354,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 - If Spec update is required, update and confirm Spec first.
 - If files are added/removed, update `sources`.
 - Update `acceptanceCriteria` if completion conditions have changed.
-- Set `status` to `"in-progress"`.
+- Set `status` to `"implementing"`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code update**
@@ -315,7 +391,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
 - If the bug is a missing business case in Contract `Edge Cases`, propose Contract update to user. After Contract update, update Spec.
 - Add missing conditions to `acceptanceCriteria` if applicable.
-- Set `status` to `"in-progress"`.
+- Set `status` to `"implementing"`.
 - **Continue only after Spec is confirmed.**
 
 **Step 4: Code fix**
@@ -341,7 +417,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 ```
 
 **Step 1: 전체 Spec 스캔**
-- `pnpm cdd spec list --status in-progress` 또는 `pnpm cdd tree`로 전체 Spec 현황 파악
+- `pnpm cdd spec list --status implementing` 또는 `pnpm cdd tree`로 전체 Spec 현황 파악
 - 각 Spec의 `acceptanceCriteria`와 `interfaces`를 기준으로 코드 구현 여부 확인
 - 누락된 API, 잘못된 guard, 미구현 에러 처리 등을 목록으로 정리
 
@@ -380,7 +456,7 @@ Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> C
 - In `interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
 - `dataFlow` and `constraints` use `string[]` format.
 - `errorHandling` uses `Record<string, string>` format (key: error name, value: trigger condition).
-- `acceptanceCriteria` must contain verifiable, specific conditions.
+- `acceptanceCriteria` is an `object[]`. Each item must have `id`, `condition`, `testRef`. `condition` must be a verifiable, specific condition.
 - `sources` must list all related implementation and test files.
 - `contracts` must list relative paths to base Contract files.
 - Empty sections: `[]` for `string[]` fields, `{}` for `Record<string, string>` fields.
@@ -396,6 +472,7 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 | Command | Description |
 |---|---|
 | `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
+| `cdd advance <spec> [--commit]` | Gate 검증 + delegate (Layer 1/2). `--commit`: Layer 2 통과 선언 후 즉시 상태 전이 |
 | `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
 | `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown) |
 | `cdd status <file>` | Spec/Contract status with relationship info (contracts, deps, dependents) |
@@ -403,6 +480,7 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 | `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
 | `cdd check` | Verify Code-Spec-Contract consistency + `acceptanceCriteria` fulfillment |
 | `cdd spec create <n>` | Create a Spec template. Requires `--domain <n>` or `--contract <path>` |
+| `cdd contract create [name]` | Contract 템플릿 생성. `name` 미지정 시 `main` |
 | `cdd spec set-status <spec> <status>` | Change Spec status |
 | `cdd spec list` | List Specs. Filters: `--status`, `--domain`, `--contract` |
 | `cdd spec get <spec>` | Show full Spec or a specific field (`--field`) |
