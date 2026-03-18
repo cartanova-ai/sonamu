@@ -29,9 +29,11 @@ class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
     private readonly socket: FastifyRequest["socket"],
     private readonly reply: FastifyReply,
   ) {
-    this.socket.on("close", () => {
+    const markClosed = () => {
       this._closed = true;
-    });
+    };
+    this.socket.on("close", markClosed);
+    this.socket.on("error", markClosed);
   }
 
   publish<K extends keyof z.infer<T>>(event: K, data: z.infer<T>[K]): void {
