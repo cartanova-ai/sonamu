@@ -16,22 +16,15 @@ describe("types", () => {
       schema: "default-contract",
       lastModified: "2026-03-09",
       features: { signin: "로그인 기능" },
-      overview: ["시스템 개요"],
-      domainGlossary: ["용어: 정의"],
-      userRoles: ["일반 사용자: 설명"],
-      businessRules: ["규칙 설명"],
-      edgeCases: ["엣지 케이스 설명"],
     };
     expect(doc.lastModified).toBe("2026-03-09");
     expect(doc.schema).toBe("default-contract");
     expect(doc.features).toEqual({ signin: "로그인 기능" });
-    expect(doc.overview).toHaveLength(1);
   });
 
   it("SpecDocument 형상 확인", () => {
     const doc: SpecDocument = {
       schema: "default-spec",
-      schemaVersion: 2,
       summary: "테스트 기능",
       description: ["테스트 설명"],
       acceptanceCriteria: [
@@ -45,14 +38,8 @@ describe("types", () => {
       status: "draft",
       sources: ["src/test.ts"],
       contracts: ["./main.contract.json"],
-      modules: { TestModule: "테스트 모듈" },
-      interfaces: { "TestModule.run()": "실행" },
-      dataFlow: ["1. 입력 -> 출력"],
-      errorHandling: { TestError: "테스트 에러" },
-      constraints: ["제약 사항"],
     };
     expect(doc.schema).toBe("default-spec");
-    expect(doc.schemaVersion).toBe(2);
     expect(doc.summary).toBe("테스트 기능");
     expect(doc.status).toBe("draft");
   });
@@ -60,7 +47,6 @@ describe("types", () => {
   it("SpecDocument에 dependsOnSpecs 옵션 필드를 포함할 수 있다", () => {
     const doc: SpecDocument = {
       schema: "default-spec",
-      schemaVersion: 2,
       summary: "의존성 테스트",
       description: [],
       acceptanceCriteria: [],
@@ -69,11 +55,6 @@ describe("types", () => {
       sources: [],
       contracts: ["./main.contract.json"],
       dependsOnSpecs: ["./other.spec.json"],
-      modules: {},
-      interfaces: {},
-      dataFlow: [],
-      errorHandling: {},
-      constraints: [],
     };
     expect(doc.dependsOnSpecs).toEqual(["./other.spec.json"]);
   });
@@ -92,11 +73,6 @@ describe("types", () => {
         schema: "default-contract",
         lastModified: "2026-01-01",
         features: {},
-        overview: [],
-        domainGlossary: [],
-        userRoles: [],
-        businessRules: [],
-        edgeCases: [],
       },
     };
     expect(cn.domain).toBe("");
@@ -107,7 +83,6 @@ describe("types", () => {
       basename: "user",
       document: {
         schema: "default-spec",
-        schemaVersion: 2,
         summary: "사용자",
         description: [],
         acceptanceCriteria: [],
@@ -115,11 +90,6 @@ describe("types", () => {
         status: "done",
         sources: [],
         contracts: [],
-        modules: {},
-        interfaces: {},
-        dataFlow: [],
-        errorHandling: {},
-        constraints: [],
       },
       resolvedContracts: ["/abs/contract/auth/main.contract.json"],
       resolvedDependsOnSpecs: [],

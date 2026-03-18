@@ -97,7 +97,7 @@ describe("loadProject", () => {
       JSON.stringify({ lastModified: "2026-01-01", status: "draft" }),
     );
 
-    await expect(loadProject(contractDir)).rejects.toThrow("schemaVersion 필드가 숫자가 아닙니다");
+    await expect(loadProject(contractDir)).rejects.toThrow("schema 필드가 문자열이 아닙니다");
 
     fs.rmSync(tmpDir, { recursive: true });
   });

@@ -60,7 +60,6 @@ export function runSpecCreate(
 
   const doc: Record<string, unknown> = {
     schema: schemaId,
-    schemaVersion: 2,
     summary: "",
     description: [],
     acceptanceCriteria: [],

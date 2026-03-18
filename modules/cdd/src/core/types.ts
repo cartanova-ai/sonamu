@@ -42,17 +42,13 @@ export interface ContractDocument {
   schema: string;
   lastModified: string;
   features: Record<string, string>;
-  overview: string[];
-  domainGlossary: string[];
-  userRoles: string[];
-  businessRules: string[];
-  edgeCases: string[];
+  /** 스키마 커스텀 필드를 위한 동적 접근 */
+  [key: string]: unknown;
 }
 
 /** Spec JSON 문서 구조 */
 export interface SpecDocument {
   schema: string;
-  schemaVersion: number;
   summary: string;
   description: string[];
   acceptanceCriteria: AcceptanceCriterion[];
@@ -61,11 +57,8 @@ export interface SpecDocument {
   sources: string[];
   contracts: string[];
   dependsOnSpecs?: string[];
-  modules: Record<string, string>;
-  interfaces: Record<string, string>;
-  dataFlow: string[];
-  errorHandling: Record<string, string>;
-  constraints: string[];
+  /** 스키마 커스텀 필드를 위한 동적 접근 */
+  [key: string]: unknown;
 }
 
 /** 로드된 Contract 노드 */
