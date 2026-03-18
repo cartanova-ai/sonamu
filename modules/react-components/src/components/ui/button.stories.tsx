@@ -1,35 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "./button";
+import { Button, buttonVariantsConfig } from "./button";
+
+const variantKeys = Object.keys(buttonVariantsConfig.variant);
+const sizeKeys = Object.keys(buttonVariantsConfig.size);
 
 const meta = {
   component: Button,
   tags: ["autodocs"],
   argTypes: {
-    variant: {
-      control: "select",
-      options: [
-        "default",
-        "destructive",
-        "outline",
-        "secondary",
-        "ghost",
-        "link",
-        "red",
-        "yellow",
-        "green",
-        "blue",
-        "cyan",
-        "purple",
-        "pink",
-        "orange",
-      ],
-    },
-    size: {
-      control: "select",
-      options: ["xs", "sm", "default", "lg", "xl"],
-    },
-    loading: { control: "boolean" },
-    disabled: { control: "boolean" },
+    variant: { control: "select", options: variantKeys },
+    size: { control: "select", options: sizeKeys },
   },
   args: {
     children: "Button",
@@ -47,21 +27,8 @@ export const Default: Story = {};
 export const Variants: Story = {
   render: (args) => (
     <div className="flex flex-wrap gap-2">
-      {(
-        [
-          "default",
-          "destructive",
-          "outline",
-          "secondary",
-          "ghost",
-          "link",
-          "red",
-          "green",
-          "blue",
-          "purple",
-        ] as const
-      ).map((v) => (
-        <Button key={v} {...args} variant={v}>
+      {variantKeys.map((v) => (
+        <Button key={v} {...args} variant={v as typeof args.variant}>
           {v}
         </Button>
       ))}
@@ -72,8 +39,8 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: (args) => (
     <div className="flex items-center gap-2">
-      {(["xs", "sm", "default", "lg", "xl"] as const).map((s) => (
-        <Button key={s} {...args} size={s}>
+      {sizeKeys.map((s) => (
+        <Button key={s} {...args} size={s as typeof args.size}>
           {s}
         </Button>
       ))}
