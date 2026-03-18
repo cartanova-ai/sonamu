@@ -1246,7 +1246,7 @@ const JsonPropSchema = z
 const SearchTextSourceColumnSchema = z
   .object({
     name: z.string(),
-    caseInsensitive: z.boolean().default(false),
+    caseInsensitive: z.boolean().optional(),
   })
   .strict();
 
