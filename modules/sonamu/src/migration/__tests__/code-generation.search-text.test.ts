@@ -140,7 +140,7 @@ describe("code-generation searchText/opclass DDL", () => {
       "CREATE OR REPLACE FUNCTION sonamu_jsonb_array_agg(arr jsonb, ci boolean DEFAULT true)",
     );
     expect(migration.formatted).toContain(
-      "ADD COLUMN \"search_text\" text GENERATED ALWAYS AS (trim(lower(COALESCE(title_ci, '') COLLATE \"C\") || ' ' || COALESCE(code_cs, '') COLLATE \"C\"",
+      "ADD COLUMN \"search_text\" text GENERATED ALWAYS AS (trim(lower(COALESCE(title_ci, '')) || ' ' || COALESCE(code_cs, '')",
     );
     expect(migration.formatted).toContain("COALESCE(sonamu_text_array_agg(tags_ci), '')");
     expect(migration.formatted).toContain("COALESCE(sonamu_text_array_agg(tags_cs, false), '')");
@@ -184,7 +184,7 @@ describe("code-generation searchText/opclass DDL", () => {
     const entitySet = getMigrationSetFromEntity(entity);
     const dbSet = buildDbSetWithGeneratedSearchText(
       entitySet,
-      `trim(lower(COALESCE(title_ci, '') COLLATE "C"))`,
+      `trim(lower(COALESCE(title_ci, '')))`,
     );
 
     const [migration] = await generateAlterCode(entitySet, dbSet);
@@ -197,13 +197,13 @@ describe("code-generation searchText/opclass DDL", () => {
       "CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)",
     );
     expect(migration.formatted).toContain(
-      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(title_ci, '') COLLATE "C" || ' ' || COALESCE(sonamu_text_array_agg(tags_ci), ''))) STORED NOT NULL`,
+      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(title_ci, '') || ' ' || COALESCE(sonamu_text_array_agg(tags_ci), ''))) STORED NOT NULL`,
     );
     expect(migration.formatted).toContain(
       "CREATE INDEX code_generation_search_text_alter_search_text_index ON",
     );
     expect(migration.formatted).toContain(
-      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(lower(COALESCE(title_ci, '') COLLATE "C"))) STORED NOT NULL`,
+      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(lower(COALESCE(title_ci, '')))) STORED NOT NULL`,
     );
   });
 
@@ -240,7 +240,7 @@ describe("code-generation searchText/opclass DDL", () => {
         ...entitySet,
         indexes: entitySet.indexes.map(setMigrationIndexDefaults),
       },
-      `TRIM(BOTH FROM ((COALESCE(username, ''::text) COLLATE "C") || ' '::text) || COALESCE(sonamu_text_array_agg(tags, true), ''::text))`,
+      `TRIM(BOTH FROM ((COALESCE(username, ''::text)) || ' '::text) || COALESCE(sonamu_text_array_agg(tags, true), ''::text))`,
     );
 
     const migrations = await generateAlterCode(entitySet, dbSet);
@@ -274,7 +274,7 @@ describe("code-generation searchText/opclass DDL", () => {
     const entitySet = getMigrationSetFromEntity(entity);
     const dbSet = buildDbSetWithGeneratedSearchText(
       entitySet,
-      `TRIM(BOTH FROM lower(COALESCE(title_ci, ''::text) COLLATE "C"))`,
+      `TRIM(BOTH FROM lower(COALESCE(title_ci, ''::text)))`,
     );
 
     const [migration] = await generateAlterCode(entitySet, dbSet);
@@ -285,7 +285,7 @@ describe("code-generation searchText/opclass DDL", () => {
     );
     expect(migration.formatted).toContain('table.dropColumns("search_text")');
     expect(migration.formatted).toContain(
-      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(title_ci, '') COLLATE "C")) STORED NOT NULL`,
+      `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(title_ci, ''))) STORED NOT NULL`,
     );
     expect(migration.formatted).toContain("lower(COALESCE(title_ci");
   });

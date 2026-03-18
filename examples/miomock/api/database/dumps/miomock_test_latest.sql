@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict uqPdarjymZ7lz5iVeX6E4baBPC8fFdUK4kRBcq6t5s8MDkyFa6Cuxa3PsObuirV
+\restrict a6wQYQ94TphROIjKsTA6VKZJ7pBmjLa1gh9cKYygk4CmtXLBcEXM2Fofs85qfQ0
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
--- Dumped by pg_dump version 18.1
+-- Dumped by pg_dump version 18.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2004,7 +2004,7 @@ INSERT INTO public.users VALUES ('1', '2024-01-01 01:00:00+09', 'kim@tech.com', 
 -- Name: audit_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.audit_logs_id_seq', 1, false);
+SELECT pg_catalog.setval('public.audit_logs_id_seq', 1, true);
 
 
 --
@@ -2025,7 +2025,7 @@ SELECT pg_catalog.setval('public.departments_id_seq', 13, true);
 -- Name: documents_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.documents_id_seq', 1, false);
+SELECT pg_catalog.setval('public.documents_id_seq', 1, true);
 
 
 --
@@ -2039,7 +2039,7 @@ SELECT pg_catalog.setval('public.employees_id_seq', 11, true);
 -- Name: files_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.files_id_seq', 1, false);
+SELECT pg_catalog.setval('public.files_id_seq', 1, true);
 
 
 --
@@ -2060,7 +2060,7 @@ SELECT pg_catalog.setval('public.knex_migrations_lock_index_seq', 1, true);
 -- Name: milestones_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.milestones_id_seq', 1, false);
+SELECT pg_catalog.setval('public.milestones_id_seq', 1, true);
 
 
 --
@@ -2497,5 +2497,5 @@ ALTER TABLE ONLY public.two_factors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uqPdarjymZ7lz5iVeX6E4baBPC8fFdUK4kRBcq6t5s8MDkyFa6Cuxa3PsObuirV
+\unrestrict a6wQYQ94TphROIjKsTA6VKZJ7pBmjLa1gh9cKYygk4CmtXLBcEXM2Fofs85qfQ0
 

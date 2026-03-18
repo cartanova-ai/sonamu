@@ -49,7 +49,7 @@ RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE RETURNS NULL ON NULL INPUT
 AS $$
   SELECT string_agg(
-    CASE WHEN ci THEN lower(value COLLATE "C") ELSE value COLLATE "C" END,
+    CASE WHEN ci THEN lower(value) ELSE value END,
     ' '
   )
   FROM unnest(arr) AS value
@@ -59,7 +59,7 @@ RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE RETURNS NULL ON NULL INPUT
 AS $$
   SELECT string_agg(
-    CASE WHEN ci THEN lower(value COLLATE "C") ELSE value COLLATE "C" END,
+    CASE WHEN ci THEN lower(value) ELSE value END,
     ' '
   )
   FROM jsonb_array_elements_text(arr)
@@ -644,8 +644,8 @@ function buildSearchTextGeneratedExpression(
 
     if (sourceProp.type === "string") {
       return source.caseInsensitive
-        ? `lower(COALESCE(${source.name}, '') COLLATE "C")`
-        : `COALESCE(${source.name}, '') COLLATE "C"`;
+        ? `lower(COALESCE(${source.name}, ''))`
+        : `COALESCE(${source.name}, '')`;
     }
 
     if (sourceProp.type === "string[]") {

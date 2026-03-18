@@ -387,7 +387,7 @@ describe("Migrator - Generated Column", () => {
     const originalGetByTable = EntityManager.getByTable.bind(EntityManager);
     const dbSet = buildDbSetWithGeneratedSearchText(
       getMigrationSetFromEntity(new Entity(previousUser)),
-      `trim(lower(COALESCE(username, '') COLLATE "C"))`,
+      `trim(lower(COALESCE(username, '')))`,
     );
 
     const getSpy = mockEntityManagerGet("User", () => nextUser);
@@ -421,7 +421,7 @@ describe("Migrator - Generated Column", () => {
         "CREATE OR REPLACE FUNCTION sonamu_text_array_agg(arr text[], ci boolean DEFAULT true)",
       );
       expect(alterCode?.formatted).toContain(
-        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(username, '') COLLATE "C" || ' ' || COALESCE(sonamu_text_array_agg(tags), ''))) STORED NOT NULL`,
+        `ADD COLUMN "search_text" text GENERATED ALWAYS AS (trim(COALESCE(username, '') || ' ' || COALESCE(sonamu_text_array_agg(tags), ''))) STORED NOT NULL`,
       );
       expect(alterCode?.formatted).toContain(
         "CREATE INDEX users_search_text_trgm ON users USING gin(search_text gin_trgm_ops);",

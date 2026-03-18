@@ -205,7 +205,7 @@ export type JsonProp = CommonProp & {
 }; // PG: json / TS: any(id) / JSON: any
 export type SearchTextSourceColumn = {
   name: string;
-  caseInsensitive: boolean;
+  caseInsensitive?: boolean;
 };
 export type SearchTextProp = CommonProp & {
   type: "searchText";
@@ -1246,7 +1246,7 @@ const JsonPropSchema = z
 const SearchTextSourceColumnSchema = z
   .object({
     name: z.string(),
-    caseInsensitive: z.boolean(),
+    caseInsensitive: z.boolean().default(false),
   })
   .strict();
 
