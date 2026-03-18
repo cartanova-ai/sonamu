@@ -44,7 +44,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint src",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "catalog:",
@@ -121,6 +123,11 @@
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vite-tsconfig-paths": "catalog:",
-    "@tanstack/router-plugin": "catalog:"
+    "@tanstack/router-plugin": "catalog:",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/react-vite": "catalog:",
+    "agentation": "catalog:",
+    "storybook": "catalog:"
   }
 }

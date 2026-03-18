@@ -50,6 +50,12 @@ catalog:
   '@logtape/logtape': 2.0.0
   '@logtape/pretty': 2.0.0
   '@logtape/redaction': 2.0.0
+  '@storybook/addon-a11y': ^10.2.19
+  '@storybook/addon-docs': ^10.2.19
+  '@storybook/react-vite': ^10.2.19
+  agentation: ^2.3.0
+  storybook: ^10.2.19
+
   '@radix-ui/react-accordion': ^1.2.12
   '@radix-ui/react-alert-dialog': ^1.1.15
   '@radix-ui/react-aspect-ratio': ^1.1.8

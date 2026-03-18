@@ -18,6 +18,7 @@ export default defineConfig({
     dts({
       insertTypesEntry: true,
       entryRoot: "src",
+      exclude: ["**/*.stories.tsx", "**/*.stories.ts"],
     }),
     Icons({
       compiler: "jsx",

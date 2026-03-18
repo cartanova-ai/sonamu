@@ -17,6 +17,7 @@ node_modules
 # Build outputs
 dist
 build
+storybook-static
 *.tsbuildinfo
 
 # IDE
