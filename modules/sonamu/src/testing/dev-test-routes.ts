@@ -200,10 +200,12 @@ export async function registerDevTestRoutes(
       };
       manager.addEventListener(listener);
 
-      request.socket.on("close", () => {
+      const cleanup = () => {
         clearInterval(heartbeatTimer);
         manager.removeEventListener(listener);
-      });
+      };
+      request.socket.on("close", cleanup);
+      request.socket.on("error", cleanup);
     });
   }
 

@@ -171,6 +171,46 @@ pnpm fixture gen --include User,Post --count 10 --save-to db
 `--use-llm` 사용 시 cone.note가 있는 필드는 `fixtureGenerator`보다 LLM이 우선합니다. 이를 통해 도메인에 맞는 더 현실적인 데이터를 생성할 수 있습니다.
 </Info>
 
+**Companion Fixture 자동 생성**:
+
+Entity의 cone에 `fixtureCompanions`가 선언되어 있으면, 부모 fixture 생성 시 companion Entity의 fixture도 함께 자동 생성됩니다. 예를 들어 better-auth 기반 프로젝트에서 User fixture를 생성하면 credentials Account도 자동으로 생성됩니다.
+
+`fixtureCompanions`는 Entity의 `id` prop cone에 선언합니다:
+
+```json
+{
+  "name": "id",
+  "type": "string",
+  "cone": {
+    "fixtureStrategy": "sequence",
+    "fixtureCompanions": [
+      {
+        "entity": "Account",
+        "overrides": {
+          "provider_id": "credential",
+          "account_id": "{{email}}",
+          "password": "{{email}}"
+        }
+      }
+    ]
+  }
+}
+```
+
+| 속성 | 설명 |
+|------|------|
+| `entity` | 함께 생성할 companion Entity 이름 |
+| `overrides` | companion fixture에 적용할 고정 오버라이드 값. `{{fieldName}}` 형식으로 부모 fixture의 필드 값을 참조할 수 있습니다 |
+| `count` | 부모 1개당 생성할 companion 개수 (기본값: 1) |
+
+better-auth를 사용하는 기존 프로젝트에 `fixtureCompanions`를 소급 적용하려면:
+
+```bash
+pnpm sonamu auth add-companions
+```
+
+이 명령어는 better-auth Entity(User 등)의 `entity.json`에 `fixtureCompanions` 설정이 없는 경우에만 자동으로 추가합니다. 이미 설정이 있는 Entity는 건너뜁니다.
+
 ### fetch - 운영 DB에서 데이터 가져오기
 
 **실제 운영 DB(또는 개발 DB)에서 데이터를 가져와** Fixture DB에 저장합니다. 현실적인 테스트 데이터가 필요할 때 사용합니다.

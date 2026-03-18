@@ -171,6 +171,46 @@ When generating a value for each field, the following strategies are applied in 
 When using `--use-llm`, LLM takes priority over `fixtureGenerator` for fields with cone.note. This allows generating more realistic, domain-appropriate data.
 </Info>
 
+**Automatic Companion Fixture Generation**:
+
+When an Entity's cone has `fixtureCompanions` declared, companion Entity fixtures are automatically created alongside the parent fixture. For example, in a better-auth based project, generating a User fixture will also automatically create a credentials Account.
+
+`fixtureCompanions` is declared in the Entity's `id` prop cone:
+
+```json
+{
+  "name": "id",
+  "type": "string",
+  "cone": {
+    "fixtureStrategy": "sequence",
+    "fixtureCompanions": [
+      {
+        "entity": "Account",
+        "overrides": {
+          "provider_id": "credential",
+          "account_id": "{{email}}",
+          "password": "{{email}}"
+        }
+      }
+    ]
+  }
+}
+```
+
+| Property | Description |
+|----------|-------------|
+| `entity` | Name of the companion Entity to create alongside |
+| `overrides` | Fixed override values for the companion fixture. Use `{{fieldName}}` syntax to reference field values from the parent fixture |
+| `count` | Number of companions to create per parent (default: 1) |
+
+To retroactively add `fixtureCompanions` to existing better-auth projects:
+
+```bash
+pnpm sonamu auth add-companions
+```
+
+This command automatically adds `fixtureCompanions` configuration to better-auth Entities (such as User) in their `entity.json`, only when the configuration does not already exist. Entities that already have the configuration are skipped.
+
 ### fetch - Fetch Data from Production DB
 
 **Fetch data from actual production (or development) DB** and save to Fixture DB. Use when you need realistic test data.
