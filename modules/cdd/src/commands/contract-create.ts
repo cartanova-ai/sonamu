@@ -16,10 +16,7 @@ export function runContractCreate(
   options: ContractCreateOptions,
   project: CddProject,
 ): OutputResult {
-  if (!name) {
-    console.error("사용법: cdd contract create <name> [--domain ...] [--schema ...]");
-    process.exit(1);
-  }
+  const resolvedName = name ?? "main";
 
   const schemaId = options.schema ?? "default-contract";
   const schema = loadSchema(schemaId, project);
@@ -40,7 +37,7 @@ export function runContractCreate(
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
-  const contractPath = path.join(targetDir, `${name}.contract.json`);
+  const contractPath = path.join(targetDir, `${resolvedName}.contract.json`);
   if (fs.existsSync(contractPath)) {
     return {
       data: {

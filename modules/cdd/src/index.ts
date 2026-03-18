@@ -91,7 +91,7 @@ Commands:
                                   --commit: Layer 2 생략, 즉시 전이
   status [file]                   전체 상태 대시보드 / 개별 파일 상태
   spec create <name>              Spec 템플릿 생성 (--schema, 기본: default-spec)
-  contract create <name>          Contract 템플릿 생성 (--schema, 기본: default-contract)
+  contract create [name]          Contract 템플릿 생성 (name 미지정 시 main, --schema 기본: default-contract)
 
 Options:
   --cwd <dir>         작업 디렉토리 지정 (기본: 현재 디렉토리)

@@ -20,6 +20,13 @@ contract_name: "{contract filename, default: main}"
 
 ### Step 1: Create contract scaffold
 
+If `contract_name` is not specified, omit it to default to `main`:
+```bash
+cdd contract create --domain {domain} --schema {schema}
+```
+This creates `main.contract.json` in the target domain directory.
+
+If the domain already has `main.contract.json`, specify a distinct name:
 ```bash
 cdd contract create {contract_name} --domain {domain} --schema {schema}
 ```
