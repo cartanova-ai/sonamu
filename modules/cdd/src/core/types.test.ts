@@ -144,8 +144,18 @@ describe("types", () => {
       id: "default-spec",
       type: "spec",
       fields: [
-        { name: "modules", type: "Record<string, string>", required: true },
-        { name: "dataFlow", type: "string[]", required: true },
+        {
+          name: "modules",
+          type: "Record<string, string>",
+          description: "모듈 구조와 책임 정의",
+          required: true,
+        },
+        {
+          name: "dataFlow",
+          type: "string[]",
+          description: "모듈 간 데이터 흐름 순서",
+          required: true,
+        },
       ],
     };
     expect(schema.fields).toHaveLength(2);

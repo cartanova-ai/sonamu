@@ -30,13 +30,18 @@ Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `con
   "id": "default-spec",
   "type": "spec",
   "fields": [
-    { "name": "modules", "type": "Record<string, string>", "required": true },
-    { "name": "dataFlow", "type": "string[]", "required": true }
+    { "name": "modules", "type": "Record<string, string>", "description": "모듈 구조와 책임 정의", "required": true },
+    { "name": "dataFlow", "type": "string[]", "description": "모듈 간 데이터 흐름 순서", "required": true }
   ]
 }
 ```
 
-타입: `string`, `string[]`, `Record<string, string>`, `Record<string, object>`
+필드 속성:
+- `name`: 필드 이름
+- `type`: 저장 구조 — `string`, `string[]`, `Record<string, string>`, `Record<string, object>`
+- `description` (필수): 이 필드가 어떤 내용을 담는지 설명. specifying 단계에서 내용 작성 기준으로 사용되고, Layer 2 검증에서 의미적 정합성 판단 기준이 됨.
+- `renderer`: UI 렌더링 컴포넌트 힌트 (선택)
+- `required`: 필수 여부 (선택)
 
 ## Document Model
 

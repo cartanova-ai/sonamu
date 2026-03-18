@@ -108,6 +108,7 @@ export interface CddProject {
 export interface SchemaField {
   name: string;
   type: string;
+  description: string;
   renderer?: string;
   required?: boolean;
 }

@@ -369,7 +369,7 @@ function buildDelegatePayload(
     .map((ac) => ac.testRef?.target)
     .filter((t): t is string => typeof t === "string" && t.length > 0);
 
-  const { instruction, checks } = buildLayer2Content(target, schema);
+  const { instruction, checks } = buildLayer2Content(target);
 
   return {
     mode: "delegate",
@@ -386,24 +386,14 @@ function buildDelegatePayload(
   };
 }
 
-function buildLayer2Content(
-  target: SpecStatus,
-  schema: SchemaDocument | null,
-): { instruction: string; checks: string[] } {
-  const schemaFieldNames = schema
-    ? schema.fields
-        .filter((f) => f.required)
-        .map((f) => f.name)
-        .join(", ")
-    : "(schema 없음)";
-
+function buildLayer2Content(target: SpecStatus): { instruction: string; checks: string[] } {
   switch (target) {
     case "implementing":
       return {
         instruction:
           "다음 Spec이 구현 단계로 진입할 준비가 되었는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
-          `A. 스키마 필드별 내용 검증: schema의 required 필드(${schemaFieldNames})에 대해 — Spec의 summary/description과 의미적으로 관련 있는가, Contract의 features/businessRules 범위와 정합하는가, 필드 간 상호 참조가 일관적인가`,
+          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 Spec의 해당 필드가 의미적으로 잘 작성되어 있는가 검증. Contract의 features/businessRules 범위와 정합하는가, 필드 간 상호 참조가 일관적인가 확인.",
           "B. AC 검증: 각 AC condition이 pass/fail 판정 가능한 구체적 조건인가, 모호한 표현이 없는가",
           "C. 전체 일관성: Spec이 Contract에 없는 범위를 포함하지 않는가, 필수 필드들이 하나의 기능 명세로서 빈틈 없이 연결되는가",
         ],
@@ -414,7 +404,7 @@ function buildLayer2Content(
         instruction:
           "다음 Spec의 구현이 완료되었는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
-          `A. 구현 완료 검증: sources의 코드가 schema의 required 필드(${schemaFieldNames})에 정의된 명세를 구현하는가`,
+          "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 sources의 코드가 명세를 구현하는가 확인",
           "B. 테스트 매칭 검증: 각 AC의 testRef.target 파일 내에서 testRef.pattern에 매칭되는 테스트가 있는가, 해당 테스트가 AC condition의 의미를 정확히 검증하는가 (vacuous test 아닌가)",
           "C. 명세-코드 일관성: 스키마 필드에 기술된 흐름/구조가 코드에 반영되었는가",
         ],
@@ -426,8 +416,8 @@ function buildLayer2Content(
           "최종 검증: 모든 AC가 충족되었는지 확인하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
           "A. AC-테스트 의미적 매칭: 각 테스트가 AC condition을 정확히 검증하는지 의미적 확인",
-          "B. 제약 조건 반영: 스키마의 제약 관련 필드가 코드에 반영되었는지 확인",
-          "C. 실패 시나리오 커버리지: 스키마의 에러 처리 관련 필드에 정의된 실패 시나리오가 테스트되었는지 확인",
+          "B. 제약 조건 반영: references.schema를 읽고, 제약 관련 필드가 코드에 반영되었는지 확인",
+          "C. 실패 시나리오 커버리지: references.schema를 읽고, 에러 처리 관련 필드에 정의된 실패 시나리오가 테스트되었는지 확인",
         ],
       };
 

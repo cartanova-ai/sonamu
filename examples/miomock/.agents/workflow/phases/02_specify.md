@@ -33,15 +33,19 @@ Only perform if current status is `draft`.
 
 ### Step 3: Fill schema fields
 
-Iterate through the Schema's `fields` array and fill each field:
+Read the Schema file and iterate through the `fields` array. For each field:
 
-- `Record<string, string>` type: define key-value pairs for modules/interfaces/errors etc.
-- `string[]` type: ordered item lists (flows, constraints, etc.)
+1. Read the field's `description` to understand what content this field should contain.
+2. Fill the field according to its `type`:
+   - `Record<string, string>` type: define key-value pairs
+   - `string[]` type: ordered item lists
+3. The content must match the field's `description` semantically.
 
 Each field's content must:
 - Stay within the Contract's scope.
 - Be consistent with Spec's `summary`/`description`.
 - Maintain consistency across cross-references between fields.
+- Accurately reflect what the field's `description` specifies.
 
 ### Step 4: Define ACs
 
