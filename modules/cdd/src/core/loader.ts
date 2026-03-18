@@ -120,9 +120,6 @@ function validateSpecStructure(parsed: unknown, filePath: string): void {
   if (!Array.isArray(obj.acceptanceCriteria)) {
     throw new Error(`acceptanceCriteria 필드가 배열이 아닙니다: ${filePath}`);
   }
-  if (typeof obj.lastModified !== "string") {
-    throw new Error(`lastModified 필드가 문자열이 아닙니다: ${filePath}`);
-  }
   if (typeof obj.status !== "string") {
     throw new Error(`status 필드가 문자열이 아닙니다: ${filePath}`);
   }
@@ -142,9 +139,6 @@ function validateContractStructure(parsed: unknown, filePath: string): void {
   const obj = parsed as Record<string, unknown>;
   if (typeof obj.schema !== "string") {
     throw new Error(`schema 필드가 문자열이 아닙니다: ${filePath}`);
-  }
-  if (typeof obj.lastModified !== "string") {
-    throw new Error(`lastModified 필드가 문자열이 아닙니다: ${filePath}`);
   }
   if (typeof obj.features !== "object" || obj.features === null || Array.isArray(obj.features)) {
     throw new Error(`features 필드가 객체가 아닙니다: ${filePath}`);

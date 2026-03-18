@@ -14,10 +14,8 @@ describe("types", () => {
   it("ContractDocument 형상 확인", () => {
     const doc: ContractDocument = {
       schema: "default-contract",
-      lastModified: "2026-03-09",
       features: { signin: "로그인 기능" },
     };
-    expect(doc.lastModified).toBe("2026-03-09");
     expect(doc.schema).toBe("default-contract");
     expect(doc.features).toEqual({ signin: "로그인 기능" });
   });
@@ -34,7 +32,6 @@ describe("types", () => {
           testRef: { target: "src/test.ts", pattern: "조건 A를 만족한다" },
         },
       ],
-      lastModified: "2026-03-09",
       status: "draft",
       sources: ["src/test.ts"],
       contracts: ["./main.contract.json"],
@@ -50,7 +47,6 @@ describe("types", () => {
       summary: "의존성 테스트",
       description: [],
       acceptanceCriteria: [],
-      lastModified: "2026-03-09",
       status: "draft",
       sources: [],
       contracts: ["./main.contract.json"],
@@ -71,7 +67,6 @@ describe("types", () => {
       basename: "main",
       document: {
         schema: "default-contract",
-        lastModified: "2026-01-01",
         features: {},
       },
     };
@@ -86,7 +81,6 @@ describe("types", () => {
         summary: "사용자",
         description: [],
         acceptanceCriteria: [],
-        lastModified: "2026-01-01",
         status: "done",
         sources: [],
         contracts: [],

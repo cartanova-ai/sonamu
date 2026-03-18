@@ -40,7 +40,6 @@ export interface AcceptanceCriterion {
 /** Contract JSON 문서 구조 */
 export interface ContractDocument {
   schema: string;
-  lastModified: string;
   features: Record<string, string>;
   /** 스키마 커스텀 필드를 위한 동적 접근 */
   [key: string]: unknown;
@@ -52,7 +51,6 @@ export interface SpecDocument {
   summary: string;
   description: string[];
   acceptanceCriteria: AcceptanceCriterion[];
-  lastModified: string;
   status: SpecStatus;
   sources: string[];
   contracts: string[];

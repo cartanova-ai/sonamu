@@ -44,12 +44,6 @@ const STATUS_MAP: Record<string, { label: string; color: string; dot: string }> 
     color: "bg-emerald-50 text-emerald-600 border-emerald-200",
     dot: "bg-emerald-500",
   },
-  // 하위 호환: schemaVersion 1
-  "in-progress": {
-    label: "In Progress",
-    color: "bg-blue-50 text-blue-600 border-blue-200",
-    dot: "bg-blue-500",
-  },
 };
 
 export function CddDocumentDetail({
@@ -283,7 +277,6 @@ export function CddDocumentDetail({
 
   const summary = doc.summary as string | undefined;
   const status = doc.status as string | undefined;
-  const lastModified = doc.lastModified as string | undefined;
   const schemaId = doc.schema as string | undefined;
   const statusInfo = STATUS_MAP[status ?? ""] ?? STATUS_MAP.draft;
 
@@ -297,9 +290,7 @@ export function CddDocumentDetail({
           <h1 className="text-sm font-bold leading-none mb-0.5 truncate">
             {fileType === "spec" ? (summary ?? node.name) : node.name}
           </h1>
-          <p className="text-[10px] text-slate-400 font-medium">
-            {[schemaId, lastModified].filter(Boolean).join(" · ") || "-"}
-          </p>
+          <p className="text-[10px] text-slate-400 font-medium">{schemaId || "-"}</p>
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">

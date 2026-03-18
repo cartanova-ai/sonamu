@@ -49,7 +49,6 @@ Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `con
 
 고정 필드:
 - `schema` (string): Schema ID
-- `lastModified` (string, YYYY-MM-DD)
 - `features` (Record<string, string>): feature key -> 설명
 
 커스텀 필드: schema 참조.
@@ -61,7 +60,6 @@ Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `con
 - `summary` (string): 한 줄 요약
 - `description` (string[]): 상세 설명
 - `acceptanceCriteria` (AcceptanceCriterion[]): 구조화된 완료 조건
-- `lastModified` (string, YYYY-MM-DD)
 - `status`: `"draft"` | `"specifying"` | `"implementing"` | `"validating"` | `"done"`
 - `sources` (string[]): 구현/테스트 파일 (프로젝트 루트 기준)
 - `contracts` (string[]): 참조 Contract (Spec 파일 기준 상대 경로)

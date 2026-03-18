@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
-import { todayString } from "../core/date.js";
 import { loadSchema } from "../core/loader.js";
 import type { CddProject } from "../core/types.js";
 import type { OutputResult } from "../utils/output.js";
@@ -54,7 +53,6 @@ export function runContractCreate(
 
   const doc: Record<string, unknown> = {
     schema: schemaId,
-    lastModified: todayString(),
     features: {},
   };
 

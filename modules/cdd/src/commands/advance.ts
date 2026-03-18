@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
-import { todayString } from "../core/date.js";
 import { loadSchema } from "../core/loader.js";
 import type {
   CddProject,
@@ -99,7 +98,6 @@ function commitTransition(
 ): OutputResult {
   const doc = { ...spec.document };
   doc.status = nextStatus;
-  doc.lastModified = todayString();
   fs.writeFileSync(spec.path, `${JSON.stringify(doc, null, 2)}\n`);
 
   const relPath = path.relative(project.projectRoot, spec.path);
