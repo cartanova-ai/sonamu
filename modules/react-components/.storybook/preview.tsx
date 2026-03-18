@@ -1,6 +1,6 @@
 import type { Preview } from "@storybook/react-vite";
 import { Agentation } from "agentation";
-import { SonamuProvider } from "../src/contexts/sonamu-context";
+import { SonamuProvider } from "@/contexts";
 import "../src/styles/globals.css";
 
 const preview: Preview = {
