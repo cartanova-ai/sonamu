@@ -3,7 +3,7 @@ title: '동기화 대상'
 description: '프론트엔드와 타입/Service 동기화 설정'
 ---
 
-import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 Sonamu는 Entity와 API가 변경되면 자동으로 타입 정의와 Service 코드를 생성하여 프론트엔드 프로젝트에 동기화합니다. `sync.targets`로 동기화할 프론트엔드를 지정합니다.
 
@@ -493,12 +493,12 @@ const users = await UserService.list();
 const user = await UserService.detail(1);
 ```
 
-→ [프론트엔드 통합 가이드](/frontend-integration/generated-services/using-services)
+→ [프론트엔드 통합 가이드](/ko/frontend-integration/generated-services/using-services)
 
 ## 다음 단계
 
 동기화 대상 설정을 완료했다면:
 
-- [frontend-integration](/frontend-integration/generated-services/how-services-work) - Service 사용법
-- [storage](/configuration/sonamu-config/storage) - 파일 스토리지 설정
-- [cache](/configuration/sonamu-config/cache) - 캐시 설정
+- [frontend-integration](/ko/frontend-integration/generated-services/how-services-work) - Service 사용법
+- [storage](/ko/configuration/sonamu-config/storage) - 파일 스토리지 설정
+- [cache](/ko/configuration/sonamu-config/cache) - 캐시 설정

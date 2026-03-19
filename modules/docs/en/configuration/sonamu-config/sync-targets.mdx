@@ -3,7 +3,7 @@ title: 'Sync Targets'
 description: 'Frontend type/service synchronization settings'
 ---
 
-import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 Sonamu automatically generates type definitions and Service code when Entities and APIs change, synchronizing them to frontend projects. Use `sync.targets` to specify the frontends to sync to.
 
@@ -493,12 +493,12 @@ const users = await UserService.list();
 const user = await UserService.detail(1);
 ```
 
-→ [Frontend Integration Guide](/frontend-integration/generated-services/using-services)
+→ [Frontend Integration Guide](/en/frontend-integration/generated-services/using-services)
 
 ## Next Steps
 
 After completing sync target configuration:
 
-- [frontend-integration](/frontend-integration/generated-services/how-services-work) - How to use Services
-- [storage](/configuration/sonamu-config/storage) - File storage settings
-- [cache](/configuration/sonamu-config/cache) - Cache settings
+- [frontend-integration](/en/frontend-integration/generated-services/how-services-work) - How to use Services
+- [storage](/en/configuration/sonamu-config/storage) - File storage settings
+- [cache](/en/configuration/sonamu-config/cache) - Cache settings

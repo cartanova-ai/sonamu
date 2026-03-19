@@ -3,7 +3,7 @@ title: 'Storage'
 description: 'File storage driver settings'
 ---
 
-import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
 Sonamu provides an integrated storage system for file uploads and storage. It supports local file system (fs) and AWS S3, and you can easily switch between them based on the environment.
 
@@ -497,7 +497,7 @@ export class FileModel {
 }
 ```
 
-→ [File Upload Guide](/api-development/file-upload/setup)
+→ [File Upload Guide](/en/api-development/file-upload/setup)
 
 ## S3 Bucket Setup
 
@@ -601,6 +601,6 @@ const key = `${Date.now()}.jpg`;
 
 After completing storage configuration:
 
-- [file-upload](/api-development/file-upload/setup) - Implement file upload in API
-- [cache](/configuration/sonamu-config/cache) - Cache settings
-- [advanced-features/storage](/advanced-features/storage/storage-drivers) - Advanced storage features
+- [file-upload](/en/api-development/file-upload/setup) - Implement file upload in API
+- [cache](/en/configuration/sonamu-config/cache) - Cache settings
+- [advanced-features/storage](/en/advanced-features/storage/storage-drivers) - Advanced storage features
