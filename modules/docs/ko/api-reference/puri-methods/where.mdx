@@ -304,6 +304,46 @@ await puri.table("posts")
 PGroonga 검색은 사용할 인덱스와 **동일한 컬럼 구성**으로 검색해야 인덱스가 사용됩니다.
 </Info>
 
+### whereFuzzy (pg_trgm)
+
+PostgreSQL의 `pg_trgm` 확장을 사용한 퍼지 문자열 매칭입니다. trigram 기반으로 오타에 강하고, generated column과 GIN 인덱스를 활용하면 다중 컬럼 검색에도 효과적입니다.
+
+```typescript
+// 기본 사용법 (word similarity, <% 연산자)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript");
+
+// WHERE 'typscript'::text <% items.search_text::text
+```
+
+**연산자 지정:**
+
+```typescript
+// similarity (% 연산자)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript", { operator: "%" });
+
+// WHERE items.search_text::text % 'typscript'::text
+
+// strict word similarity (<<% 연산자)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
+
+// WHERE 'typscript'::text <<% items.search_text::text
+```
+
+**연산자 비교:**
+
+| 연산자 | 의미 | SQL | 설명 |
+|--------|------|-----|------|
+| `<%` (기본) | word similarity | `'query'::text <% column::text` | 쿼리가 컬럼의 부분 문자열과 유사한지 확인 |
+| `%` | similarity | `column::text % 'query'::text` | 전체 문자열 간 유사도 비교 |
+| `<<%` | strict word similarity | `'query'::text <<% column::text` | word similarity보다 더 엄격한 부분 문자열 매칭 |
+
+<Info>
+`whereFuzzy`를 사용하려면 `pg_trgm` 확장이 설치되어 있어야 합니다. `CREATE EXTENSION IF NOT EXISTS pg_trgm`으로 설치할 수 있습니다. GIN 인덱스(`gin_trgm_ops`)를 생성하면 성능이 크게 향상됩니다.
+</Info>
+
 ## Raw SQL 조건
 
 ### whereRaw

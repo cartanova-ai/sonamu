@@ -268,6 +268,65 @@ console.log(posts[0].highlights);  // string[]
 console.log(posts[0].score);       // number
 ```
 
+### pg_trgm Similarity Functions
+
+Calculates similarity scores provided by PostgreSQL's `pg_trgm` extension in SELECT. After filtering candidates with `whereFuzzy`, these functions can be used to compute per-column weighted scores.
+
+```typescript
+const results = await puri.table("items")
+  .whereFuzzy("items.search_text", query)
+  .select({
+    id: "items.id",
+    title_ko: "items.title_ko",
+    title_en: "items.title_en",
+
+    // word similarity — how similar the query is to a substring of the column (0~1)
+    title_score: Puri.wordSimilarity("items.title_ko", query),
+
+    // similarity — overall similarity between two strings (0~1)
+    full_score: Puri.similarity("items.title_ko", query),
+
+    // strict word similarity — stricter substring matching than word similarity (0~1)
+    strict_score: Puri.strictWordSimilarity("items.title_ko", query),
+  })
+  .orderBy("title_score", "desc");
+
+// Types are automatically inferred
+results[0].title_score;   // number
+results[0].full_score;    // number
+results[0].strict_score;  // number
+```
+
+**Weighted score example:**
+
+The return values of similarity functions (`SqlExpression<"number">`) can be combined with `rawNumber` to compute per-column weighted scores.
+
+```typescript
+const results = await puri.table("items")
+  .whereFuzzy("items.search_text", query)
+  .select({
+    id: "items.id",
+    title_ko: "items.title_ko",
+
+    // Individual similarity scores (for weighted scoring)
+    ko_score: Puri.wordSimilarity("items.title_ko", query),
+    en_score: Puri.wordSimilarity("items.title_en", query),
+  })
+  .orderBy("ko_score", "desc");
+```
+
+**Function comparison:**
+
+| Function | PostgreSQL function | Purpose |
+|----------|---------------------|---------|
+| `Puri.wordSimilarity(column, query)` | `word_similarity(query, column)` | Substring similarity between query and column |
+| `Puri.similarity(column, query)` | `similarity(column, query)` | Overall string similarity |
+| `Puri.strictWordSimilarity(column, query)` | `strict_word_similarity(query, column)` | Strict substring similarity |
+
+<Info>
+These functions return `SqlExpression<"number">` and can be used within `select`. The `pg_trgm` extension must be installed.
+</Info>
+
 ## Practical Examples
 
 <Tabs>

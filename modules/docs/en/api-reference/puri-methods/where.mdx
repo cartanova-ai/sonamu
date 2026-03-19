@@ -304,6 +304,46 @@ await puri.table("posts")
 PGroonga search must use the **same column configuration** as the index to be used.
 </Info>
 
+### whereFuzzy (pg_trgm)
+
+Fuzzy string matching using PostgreSQL's `pg_trgm` extension. Based on trigrams, it is tolerant of typos. Combined with generated columns and GIN indexes, it is effective for multi-column search.
+
+```typescript
+// Basic usage (word similarity, <% operator)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript");
+
+// WHERE 'typscript'::text <% items.search_text::text
+```
+
+**Specifying operators:**
+
+```typescript
+// similarity (% operator)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript", { operator: "%" });
+
+// WHERE items.search_text::text % 'typscript'::text
+
+// strict word similarity (<<% operator)
+await puri.table("items")
+  .whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
+
+// WHERE 'typscript'::text <<% items.search_text::text
+```
+
+**Operator comparison:**
+
+| Operator | Meaning | SQL | Description |
+|----------|---------|-----|-------------|
+| `<%` (default) | word similarity | `'query'::text <% column::text` | Checks if query is similar to a substring of the column |
+| `%` | similarity | `column::text % 'query'::text` | Compares overall string similarity |
+| `<<%` | strict word similarity | `'query'::text <<% column::text` | Stricter substring matching than word similarity |
+
+<Info>
+`whereFuzzy` requires the `pg_trgm` extension. Install it with `CREATE EXTENSION IF NOT EXISTS pg_trgm`. Creating a GIN index (`gin_trgm_ops`) significantly improves performance.
+</Info>
+
 ## Raw SQL Conditions
 
 ### whereRaw
