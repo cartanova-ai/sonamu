@@ -1475,13 +1475,17 @@ Rules:
         // parentId 엔티티: DB에서 서브타입 행이 없는 부모 id를 조회하여 사용
         // (새 부모 생성 대신 기존 데이터 재활용)
         const idProp = specEntity.props.find((p) => p.name === "id");
-        const parentOverrides = (idProp?.cone?.fixtureParentOverrides as Record<string, unknown> | undefined) ?? {};
+        const parentOverrides =
+          (idProp?.cone?.fixtureParentOverrides as Record<string, unknown> | undefined) ?? {};
         const parentEntity = this.entityManager.get(specEntity.parentId);
 
         // 부모 테이블에서 서브타입 테이블에 없는 id를 조회
         let query = this.sourceDb(parentEntity.table).select(`${parentEntity.table}.id`);
         for (const [col, val] of Object.entries(parentOverrides)) {
-          query = query.where(`${parentEntity.table}.${col}`, val as string | number | boolean | null);
+          query = query.where(
+            `${parentEntity.table}.${col}`,
+            val as string | number | boolean | null,
+          );
         }
         query = query
           .leftJoin(specEntity.table, `${specEntity.table}.id`, `${parentEntity.table}.id`)
