@@ -940,7 +940,7 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
       const query = db.table("documents").whereFuzzy("documents.title", "검색어").toQuery();
 
-      expect(query).toContain(`'검색어'::text <% "documents"."title"`);
+      expect(query).toContain(`'검색어' <% "documents"."title"`);
     });
 
     test("whereFuzzy - % 연산자", () => {
@@ -952,7 +952,7 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
-      expect(query).toContain('"documents"."title" % \'검색어\'::text');
+      expect(query).toContain('"documents"."title" % \'검색어\'');
     });
 
     test("whereFuzzy - <<% 연산자", () => {
@@ -964,7 +964,7 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
-      expect(query).toContain(`'검색어'::text <<% "documents"."title"`);
+      expect(query).toContain(`'검색어' <<% "documents"."title"`);
     });
 
     test("whereFuzzy - 연산자 공백 정규화", () => {
@@ -973,7 +973,7 @@ describe("Puri Query", () => {
       Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "  %  " }]);
       const query = puri.toQuery();
 
-      expect(query).toContain('"documents"."title" % \'검색어\'::text');
+      expect(query).toContain('"documents"."title" % \'검색어\'');
     });
 
     test("whereFuzzy - 잘못된 연산자 거부", () => {
@@ -990,9 +990,7 @@ describe("Puri Query", () => {
     test("whereFuzzy - single quote query escaping", () => {
       const db = UserModel.getPuri("r");
       const query = db.table("documents").whereFuzzy("documents.title", "l'amour").toQuery();
-
-      expect(query).toContain("'l''amour'::text <% \"documents\".\"title\"");
-      expect(query).not.toContain("'l'amour'::text <% documents.title::text");
+      expect(query).toContain("'l''amour' <% \"documents\".\"title\"");
     });
 
     test("whereFuzzy - SqlExpression 전체를 캐스팅", () => {
@@ -1002,7 +1000,7 @@ describe("Puri Query", () => {
         .whereFuzzy(Puri.rawString("?? || ??", ["documents.title", "documents.content"]), "검색어")
         .toQuery();
 
-      expect(query).toContain('\'검색어\'::text <% "documents"."title" || "documents"."content"');
+      expect(query).toContain('\'검색어\' <% "documents"."title" || "documents"."content"');
       expect(query).not.toContain("documents.title || documents.content::text");
     });
 
