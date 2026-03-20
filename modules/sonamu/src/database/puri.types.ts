@@ -305,10 +305,13 @@ export const FUZZY_OPERATORS = ["<%", "%", "<<%"] as const;
 export type FuzzyOperator = (typeof FUZZY_OPERATORS)[number];
 
 // SQL Expression 타입 정의
-export type SqlExpression<T extends "string" | "number" | "boolean" | "date" | "string[]"> = {
+export type SqlExpression<
+  T extends "string" | "number" | "boolean" | "date" | "string[]" | "tsvector",
+> = {
   _type: "sql_expression"; // 또는 "computed_value"
   _return: T;
   _sql: string;
+  _params: unknown[];
 };
 
 // 결과 타입 가독성을 위한 타입 확장

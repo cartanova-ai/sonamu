@@ -98,113 +98,149 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `COUNT(${column})::integer`,
+      _sql: `COUNT(??)::integer`,
+      _params: [column],
     };
   }
   static sum(column: string): SqlExpression<"number"> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `SUM(${column})`,
+      _sql: `SUM(??)`,
+      _params: [column],
     };
   }
   static avg(column: string): SqlExpression<"number"> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `AVG(${column})`,
+      _sql: `AVG(??)`,
+      _params: [column],
     };
   }
   static max(column: string): SqlExpression<"number"> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `MAX(${column})`,
+      _sql: `MAX(??)`,
+      _params: [column],
     };
   }
   static min(column: string): SqlExpression<"number"> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `MIN(${column})`,
+      _sql: `MIN(??)`,
+      _params: [column],
     };
   }
   static concat(...args: string[]): SqlExpression<"string"> {
     return {
       _type: "sql_expression",
       _return: "string",
-      _sql: `CONCAT(${args.join(", ")})`,
+      _sql: `CONCAT(${args.map(() => "?").join(", ")})`,
+      _params: args,
     };
   }
   static upper(column: string): SqlExpression<"string"> {
     return {
       _type: "sql_expression",
       _return: "string",
-      _sql: `UPPER(${column})`,
+      _sql: "UPPER(??)",
+      _params: [column],
     };
   }
   static lower(column: string): SqlExpression<"string"> {
     return {
       _type: "sql_expression",
       _return: "string",
-      _sql: `LOWER(${column})`,
+      _sql: "LOWER(??)",
+      _params: [column],
     };
-  }
-
-  private static escapeSqlLiteral(value: string): string {
-    return value.replaceAll("'", "''");
-  }
-
-  private static toTextOperand(column: string | SqlExpression<"string">): string {
-    if (typeof column === "object" && column._type === "sql_expression") {
-      return `(${column._sql})::text`;
-    }
-
-    return `${column}::text`;
   }
 
   static wordSimilarity(
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    return Puri.rawNumber(
-      `word_similarity('${Puri.escapeSqlLiteral(query)}'::text, ${Puri.toTextOperand(column)})`,
-    );
+    if (typeof column === "string") {
+      return {
+        _type: "sql_expression",
+        _return: "number",
+        _sql: "word_similarity(?, ??)",
+        _params: [query, column],
+      };
+    }
+
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `word_similarity(?, ${column._sql})`,
+      _params: [query, ...column._params],
+    };
   }
 
   static similarity(
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    return Puri.rawNumber(
-      `similarity(${Puri.toTextOperand(column)}, '${Puri.escapeSqlLiteral(query)}'::text)`,
-    );
+    if (typeof column === "string") {
+      return {
+        _type: "sql_expression",
+        _return: "number",
+        _sql: "similarity(??, ?)",
+        _params: [column, query],
+      };
+    }
+
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `similarity(?, ${column._sql})`,
+      _params: [...column._params, query],
+    };
   }
 
   static strictWordSimilarity(
     column: string | SqlExpression<"string">,
     query: string,
   ): SqlExpression<"number"> {
-    return Puri.rawNumber(
-      `strict_word_similarity('${Puri.escapeSqlLiteral(query)}'::text, ${Puri.toTextOperand(column)})`,
-    );
+    if (typeof column === "string") {
+      return {
+        _type: "sql_expression",
+        _return: "number",
+        _sql: `strict_word_similarity(?, ??)`,
+        _params: [query, column],
+      };
+    }
+
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `strict_word_similarity(?, ${column._sql})`,
+      _params: [query, ...column._params],
+    };
   }
 
   // Raw functions for SELECT
-  static rawString(sql: string): SqlExpression<"string"> {
-    return { _type: "sql_expression", _return: "string", _sql: sql };
+  static rawString(sql: string, params: unknown[] = []): SqlExpression<"string"> {
+    return { _type: "sql_expression", _return: "string", _sql: sql, _params: params };
   }
-  static rawStringArray(sql: string): SqlExpression<"string[]"> {
-    return { _type: "sql_expression", _return: "string[]", _sql: sql };
+
+  static rawStringArray(sql: string, params: unknown[] = []): SqlExpression<"string[]"> {
+    return { _type: "sql_expression", _return: "string[]", _sql: sql, _params: params };
   }
-  static rawNumber(sql: string): SqlExpression<"number"> {
-    return { _type: "sql_expression", _return: "number", _sql: sql };
+
+  static rawNumber(sql: string, params: unknown[] = []): SqlExpression<"number"> {
+    return { _type: "sql_expression", _return: "number", _sql: sql, _params: params };
   }
-  static rawBoolean(sql: string): SqlExpression<"boolean"> {
-    return { _type: "sql_expression", _return: "boolean", _sql: sql };
+
+  static rawBoolean(sql: string, params: unknown[] = []): SqlExpression<"boolean"> {
+    return { _type: "sql_expression", _return: "boolean", _sql: sql, _params: params };
   }
-  static rawDate(sql: string): SqlExpression<"date"> {
-    return { _type: "sql_expression", _return: "date", _sql: sql };
+
+  static rawDate(sql: string, params: unknown[] = []): SqlExpression<"date"> {
+    return { _type: "sql_expression", _return: "date", _sql: sql, _params: params };
   }
 
   /**
@@ -233,25 +269,44 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
     const hlOptions = hlOptionParts.length > 0 ? `, '${hlOptionParts.join(", ")}'` : "";
 
-    // TODO: rawBinding 메서드 만들어서 XSS 방지
-    return Puri.rawString(
-      `ts_headline('${config}', ${column}, ${parser}('${config}', '${query}')${hlOptions})`,
-    );
+    return {
+      _type: "sql_expression",
+      _return: "string",
+      _sql: `ts_headline(?, ??, ${parser}(?, ?)${hlOptions})`,
+      _params: [config, column, config, query],
+    };
   }
 
   // ts_rank
-  static tsRank(column: string, query: string, options?: TsRankOptions): SqlExpression<"number"> {
+  static tsRank(
+    column: string | SqlExpression<"tsvector">,
+    query: string,
+    options?: TsRankOptions,
+  ): SqlExpression<"number"> {
     return Puri._tsRank("ts_rank", column, query, options);
   }
 
   // ts_rank_cd
-  static tsRankCd(column: string, query: string, options?: TsRankOptions): SqlExpression<"number"> {
+  static tsRankCd(
+    column: string | SqlExpression<"tsvector">,
+    query: string,
+    options?: TsRankOptions,
+  ): SqlExpression<"number"> {
     return Puri._tsRank("ts_rank_cd", column, query, options);
+  }
+
+  static toTsVector(column: string, config: string = "simple"): SqlExpression<"tsvector"> {
+    return {
+      _type: "sql_expression",
+      _return: "tsvector",
+      _sql: `to_tsvector(?, ??)`,
+      _params: [config, column],
+    };
   }
 
   static _tsRank(
     type: "ts_rank" | "ts_rank_cd",
-    column: string,
+    column: string | SqlExpression<"tsvector">,
     query: string,
     options?: TsRankOptions,
   ): SqlExpression<"number"> {
@@ -262,12 +317,30 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       weights,
     } = options ?? {};
 
-    const weightClause = weights ? `ARRAY[${weights.join(", ")}], ` : "";
-    const normalizationClause = normalization ? `, ${normalization}` : "";
+    const params = [];
+    let sqlTemplate = `${type}(`;
 
-    return Puri.rawNumber(
-      `${type}(${weightClause}${column}, ${parser}('${config}', '${query}')${normalizationClause})`,
-    );
+    if (weights) {
+      sqlTemplate += `ARRAY[${weights.map(() => "?").join(", ")}]::float4[], `;
+      params.push(...weights);
+    }
+
+    if (typeof column === "string") {
+      sqlTemplate += `??, ${parser}(?, ?)`;
+      params.push(column, config, query);
+    } else {
+      sqlTemplate += `${column._sql}, ${parser}(?, ?)`;
+      params.push(...column._params, config, query);
+    }
+
+    if (normalization) {
+      sqlTemplate += ", ?";
+      params.push(normalization);
+    }
+
+    sqlTemplate += ")";
+
+    return { _type: "sql_expression", _return: "number", _sql: sqlTemplate, _params: params };
   }
 
   /**
@@ -297,16 +370,21 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     columnOrColumns: string | string[],
     query: string | string[],
   ): SqlExpression<"string"> | SqlExpression<"string[]"> {
-    const queryClause = `ARRAY[${(Array.isArray(query) ? query : [query]).map((q) => `'${q}'`).join(",")}]`;
+    const queryArr = Array.isArray(query) ? query : [query];
+    const queryClause = `ARRAY[${queryArr.map(() => "?").join(", ")}]`;
 
     // 단일 컬럼인 경우
     if (typeof columnOrColumns === "string") {
-      return Puri.rawString(`pgroonga_highlight_html(${columnOrColumns}, ${queryClause})`);
+      return Puri.rawString(`pgroonga_highlight_html(??, ${queryClause})`, [
+        columnOrColumns,
+        ...queryArr,
+      ]);
     }
 
     // 컬럼 배열인 경우
     return Puri.rawStringArray(
-      `pgroonga_highlight_html(ARRAY[${columnOrColumns.join(",")}], ${queryClause})`,
+      `pgroonga_highlight_html(ARRAY[${columnOrColumns.map(() => "??").join(", ")}], ${queryClause})`,
+      [...columnOrColumns, ...queryArr],
     );
   }
 
@@ -322,7 +400,9 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
       if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
         // SQL 함수인 경우
-        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as "${alias}"`));
+        selectClauses.push(
+          this.knex.raw(`${columnOrFunction._sql} AS "${alias}"`, columnOrFunction._params),
+        );
       } else {
         // 일반 컬럼인 경우
         const columnPath = columnOrFunction as string;
@@ -331,7 +411,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
           selectClauses.push(columnPath);
         } else {
           // alias 지정
-          selectClauses.push(`${columnPath} as ${alias}`);
+          selectClauses.push(`${columnPath} AS ${alias}`);
         }
       }
     }
@@ -375,13 +455,15 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
       if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
-        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
+        selectClauses.push(
+          this.knex.raw(`${columnOrFunction._sql} AS ${alias}`, columnOrFunction._params),
+        );
       } else {
         const columnPath = columnOrFunction as string;
         if (alias === columnPath) {
           selectClauses.push(columnPath);
         } else {
-          selectClauses.push(`${columnPath} as ${alias}`);
+          selectClauses.push(this.knex.ref(columnPath).as(alias));
         }
       }
     }
@@ -711,14 +793,21 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     },
   ): this {
     const operator = normalizeFuzzyOperator(options?.operator);
-    const textColumnExpr = Puri.toTextOperand(column);
 
     if (operator === "%") {
-      this.knexQuery.whereRaw(`${textColumnExpr} ${operator} ?::text`, [value]);
+      if (typeof column === "object") {
+        this.knexQuery.whereRaw(`${column._sql} ${operator} ?::text`, [...column._params, value]);
+      } else {
+        this.knexQuery.whereRaw(`?? ${operator} ?::text`, [column, value]);
+      }
       return this;
     }
 
-    this.knexQuery.whereRaw(`?::text ${operator} ${textColumnExpr}`, [value]);
+    if (typeof column === "object") {
+      this.knexQuery.whereRaw(`?::text ${operator} ${column._sql}`, [value, ...column._params]);
+    } else {
+      this.knexQuery.whereRaw(`?::text ${operator} ??`, [value, column]);
+    }
     return this;
   }
 

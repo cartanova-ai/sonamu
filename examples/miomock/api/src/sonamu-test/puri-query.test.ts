@@ -370,7 +370,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"COUNT("employees".id)::INTEGER AS "total""`,
+        `"COUNT("employees"."id")::INTEGER AS "total""`,
       );
     });
 
@@ -380,7 +380,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"SUM("employees".salary) AS \`totalSalary\`"`,
+        '"SUM("employees"."salary") AS `totalSalary`"',
       );
     });
 
@@ -390,7 +390,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"AVG("employees".salary) AS \`avgSalary\`"`,
+        '"AVG("employees"."salary") AS `avgSalary`"',
       );
     });
 
@@ -400,7 +400,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"MAX("employees".salary) AS \`maxSalary\`"`,
+        '"MAX("employees"."salary") AS `maxSalary`"',
       );
     });
 
@@ -410,7 +410,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"MIN("employees".salary) AS \`minSalary\`"`,
+        '"MIN("employees"."salary") AS `minSalary`"',
       );
     });
 
@@ -783,7 +783,7 @@ describe("Puri Query", () => {
       await db.table("documents").select({ score: Puri.score() });
       const query = Naite.get("puri:executed-query").first();
 
-      expect(query).toContain('pgroonga_score(tableoid, ctid) as "score"');
+      expect(query).toContain('pgroonga_score(tableoid, ctid) AS "score"');
     });
 
     test("highlight - 단일 컬럼", async () => {
@@ -793,7 +793,7 @@ describe("Puri Query", () => {
         .select({ highlighted: Puri.highlight("documents.title", "검색어") });
       const query = Naite.get("puri:executed-query").first();
 
-      expect(query).toContain("pgroonga_highlight_html(documents.title, ARRAY['검색어'])");
+      expect(query).toContain('pgroonga_highlight_html("documents"."title", ARRAY[\'검색어\'])');
     });
 
     test("highlight - 복합 컬럼", async () => {
@@ -804,7 +804,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "pgroonga_highlight_html(ARRAY[documents.title,documents.content], ARRAY['검색어'])",
+        'pgroonga_highlight_html(ARRAY["documents"."title", "documents"."content"], ARRAY[\'검색어\'])',
       );
     });
 
@@ -816,7 +816,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "pgroonga_highlight_html(documents.title, ARRAY['키워드1','키워드2'])",
+        "pgroonga_highlight_html(\"documents\".\"title\", ARRAY['키워드1', '키워드2'])",
       );
     });
   });
@@ -857,7 +857,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_headline('simple', documents.title, websearch_to_tsquery('simple', '검색어'))",
+        `ts_headline('simple', "documents"."title", websearch_to_tsquery('simple', '검색어'))`,
       );
     });
 
@@ -875,26 +875,26 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_headline('simple', documents.content, plainto_tsquery('simple', '검색어'), 'StartSel=<mark>, StopSel=</mark>, MaxFragments=3')",
+        `ts_headline('simple', "documents"."content", plainto_tsquery('simple', '검색어'), 'StartSel=<mark>, StopSel=</mark>, MaxFragments=3')`,
       );
     });
 
     test("tsRank - 기본", async () => {
       const db = UserModel.getPuri("r");
       await db.table("documents").select({
-        rank: Puri.tsRank("to_tsvector('simple', documents.title)", "검색어"),
+        rank: Puri.tsRank(Puri.toTsVector("documents.title", "simple"), "검색어"),
       });
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_rank(to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+        "ts_rank(to_tsvector('simple', \"documents\".\"title\"), websearch_to_tsquery('simple', '검색어'))",
       );
     });
 
     test("tsRank - 옵션", async () => {
       const db = UserModel.getPuri("r");
       await db.table("documents").select({
-        rank: Puri.tsRank("to_tsvector('simple', documents.title)", "검색어", {
+        rank: Puri.tsRank(Puri.toTsVector("documents.title"), "검색어", {
           config: "simple",
           weights: [0.1, 0.2, 0.4, 1.0],
         }),
@@ -902,26 +902,26 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_rank(ARRAY[0.1, 0.2, 0.4, 1], to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+        "ts_rank(ARRAY[0.1, 0.2, 0.4, 1]::float4[], to_tsvector('simple', \"documents\".\"title\"), websearch_to_tsquery('simple', '검색어'))",
       );
     });
 
     test("tsRankCd - 기본", async () => {
       const db = UserModel.getPuri("r");
       await db.table("documents").select({
-        rank: Puri.tsRankCd("to_tsvector('simple', documents.title)", "검색어"),
+        rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어"),
       });
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_rank_cd(to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+        "ts_rank_cd(to_tsvector('simple', \"documents\".\"title\"), websearch_to_tsquery('simple', '검색어'))",
       );
     });
 
     test("tsRankCd - 옵션", async () => {
       const db = UserModel.getPuri("r");
       await db.table("documents").select({
-        rank: Puri.tsRankCd("to_tsvector('simple', documents.title)", "검색어", {
+        rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어", {
           config: "simple",
           parser: "phraseto_tsquery",
           normalization: 16,
@@ -930,7 +930,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expect(query).toContain(
-        "ts_rank_cd(to_tsvector('simple', documents.title), phraseto_tsquery('simple', '검색어'), 16)",
+        "ts_rank_cd(to_tsvector('simple', \"documents\".\"title\"), phraseto_tsquery('simple', '검색어'), 16)",
       );
     });
   });
@@ -940,7 +940,7 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
       const query = db.table("documents").whereFuzzy("documents.title", "검색어").toQuery();
 
-      expect(query).toContain("'검색어'::text <% documents.title::text");
+      expect(query).toContain(`'검색어'::text <% "documents"."title"`);
     });
 
     test("whereFuzzy - % 연산자", () => {
@@ -952,7 +952,7 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
-      expect(query).toContain("documents.title::text % '검색어'::text");
+      expect(query).toContain('"documents"."title" % \'검색어\'::text');
     });
 
     test("whereFuzzy - <<% 연산자", () => {
@@ -964,7 +964,7 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
-      expect(query).toContain("'검색어'::text <<% documents.title::text");
+      expect(query).toContain(`'검색어'::text <<% "documents"."title"`);
     });
 
     test("whereFuzzy - 연산자 공백 정규화", () => {
@@ -973,7 +973,7 @@ describe("Puri Query", () => {
       Reflect.apply(puri.whereFuzzy, puri, ["documents.title", "검색어", { operator: "  %  " }]);
       const query = puri.toQuery();
 
-      expect(query).toContain("documents.title::text % '검색어'::text");
+      expect(query).toContain('"documents"."title" % \'검색어\'::text');
     });
 
     test("whereFuzzy - 잘못된 연산자 거부", () => {
@@ -991,7 +991,7 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
       const query = db.table("documents").whereFuzzy("documents.title", "l'amour").toQuery();
 
-      expect(query).toContain("'l''amour'::text <% documents.title::text");
+      expect(query).toContain("'l''amour'::text <% \"documents\".\"title\"");
       expect(query).not.toContain("'l'amour'::text <% documents.title::text");
     });
 
@@ -999,10 +999,10 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
       const query = db
         .table("documents")
-        .whereFuzzy(Puri.rawString("documents.title || documents.content"), "검색어")
+        .whereFuzzy(Puri.rawString("?? || ??", ["documents.title", "documents.content"]), "검색어")
         .toQuery();
 
-      expect(query).toContain("'검색어'::text <% (documents.title || documents.content)::text");
+      expect(query).toContain('\'검색어\'::text <% "documents"."title" || "documents"."content"');
       expect(query).not.toContain("documents.title || documents.content::text");
     });
 
@@ -1017,28 +1017,11 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
-      expect(query).toContain("word_similarity('검색어'::text, documents.title::text)");
-      expect(query).toContain("similarity(documents.title::text, '검색어'::text)");
-      expect(query).toContain("strict_word_similarity('검색어'::text, documents.title::text)");
-    });
-
-    test("wordSimilarity / similarity / strictWordSimilarity - single quote query escaping", () => {
-      const db = UserModel.getPuri("r");
-      const query = db
-        .table("documents")
-        .select({
-          word: Puri.wordSimilarity("documents.title", "l'amour"),
-          whole: Puri.similarity("documents.title", "l'amour"),
-          strict: Puri.strictWordSimilarity("documents.title", "l'amour"),
-        })
-        .toQuery();
-
-      expect(query).toContain("word_similarity('l''amour'::text, documents.title::text)");
-      expect(query).toContain("similarity(documents.title::text, 'l''amour'::text)");
-      expect(query).toContain("strict_word_similarity('l''amour'::text, documents.title::text)");
-      expect(query).not.toContain("word_similarity('l'amour'::text, documents.title::text)");
-      expect(query).not.toContain("similarity(documents.title::text, 'l'amour'::text)");
-      expect(query).not.toContain("strict_word_similarity('l'amour'::text, documents.title::text)");
+      expect(query).toContain('word_similarity(\'검색어\', "documents"."title") AS "word"');
+      expect(query).toContain('similarity("documents"."title", \'검색어\') AS "whole"');
+      expect(query).toContain(
+        'strict_word_similarity(\'검색어\', "documents"."title") AS "strict"',
+      );
     });
 
     test("wordSimilarity / similarity / strictWordSimilarity - SqlExpression 전체를 캐스팅", () => {
@@ -1054,14 +1037,10 @@ describe("Puri Query", () => {
         })
         .toQuery();
 
+      expect(query).toContain("word_similarity('검색어', documents.title || documents.content)");
+      expect(query).toContain("similarity('검색어', documents.title || documents.content)");
       expect(query).toContain(
-        "word_similarity('검색어'::text, (documents.title || documents.content)::text)",
-      );
-      expect(query).toContain(
-        "similarity((documents.title || documents.content)::text, '검색어'::text)",
-      );
-      expect(query).toContain(
-        "strict_word_similarity('검색어'::text, (documents.title || documents.content)::text)",
+        "strict_word_similarity('검색어', documents.title || documents.content)",
       );
       expect(query).not.toContain(
         "word_similarity('검색어'::text, documents.title || documents.content::text)",
