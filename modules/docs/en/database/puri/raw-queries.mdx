@@ -91,6 +91,59 @@ const results = await db
 // Type: { projectId: number; memberNames: string[]; }[]
 ```
 
+## Parameter Bindings
+
+Raw functions support Knex-style parameter bindings. Use placeholders in the SQL string and pass binding values as the second argument.
+
+### Placeholder Rules
+
+| Placeholder | Purpose | Escaping |
+|---|---|---|
+| `?` | Value binding | Escaped as value (`'hello'`) |
+| `??` | Identifier binding | Escaped as identifier (`"table"."column"`) |
+
+### Value Bindings (`?`)
+
+Always use `?` bindings for user input or dynamic values.
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  isTarget: Puri.rawBoolean("salary > ? AND department_id = ?", [50000, 3]),
+});
+```
+
+### Identifier Bindings (`??`)
+
+Use `??` bindings when dynamically specifying table or column names. Strings in `table.column` format are automatically converted to `"table"."column"`.
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  value: Puri.rawNumber("ROUND(??, ?)", ["employees.salary", -3]),
+});
+// SQL: ROUND("employees"."salary", -3)
+```
+
+### Mixed Usage
+
+You can use `?` and `??` together in a single expression.
+
+```typescript
+const results = await db.table("documents").select({
+  highlighted: Puri.rawString(
+    "pgroonga_highlight_html(??, ARRAY[?])",
+    ["documents.title", "search term"],
+  ),
+});
+// SQL: pgroonga_highlight_html("documents"."title", ARRAY['search term'])
+```
+
+<Warning>
+  **Don't confuse `??` and `?`.** Using `?` for a column name will escape it as a value, causing SQL errors.
+  Conversely, using `??` for user input will escape it as an identifier, leading to unintended behavior.
+</Warning>
+
 ## Static SQL Functions
 
 Built-in SQL functions provided by Puri.

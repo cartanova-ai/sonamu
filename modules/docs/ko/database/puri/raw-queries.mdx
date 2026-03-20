@@ -91,6 +91,59 @@ const results = await db
 // 타입: { projectId: number; memberNames: string[]; }[]
 ```
 
+## 파라미터 바인딩
+
+Raw 함수는 Knex 스타일의 파라미터 바인딩을 지원합니다. SQL 문자열 내에 플레이스홀더를 사용하고, 두 번째 인자로 바인딩 값 배열을 전달합니다.
+
+### 플레이스홀더 규칙
+
+| 플레이스홀더 | 용도 | 이스케이핑 |
+|---|---|---|
+| `?` | 값 바인딩 | 값으로 이스케이핑 (`'hello'`) |
+| `??` | 식별자 바인딩 | 식별자로 이스케이핑 (`"table"."column"`) |
+
+### 값 바인딩 (`?`)
+
+사용자 입력이나 동적 값은 반드시 `?` 바인딩을 사용합니다.
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  isTarget: Puri.rawBoolean("salary > ? AND department_id = ?", [50000, 3]),
+});
+```
+
+### 식별자 바인딩 (`??`)
+
+테이블명이나 컬럼명을 동적으로 지정할 때는 `??` 바인딩을 사용합니다. `table.column` 형태의 문자열은 자동으로 `"table"."column"`으로 변환됩니다.
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  value: Puri.rawNumber("ROUND(??, ?)", ["employees.salary", -3]),
+});
+// SQL: ROUND("employees"."salary", -3)
+```
+
+### 혼합 사용
+
+하나의 표현식에서 `?`와 `??`를 함께 사용할 수 있습니다.
+
+```typescript
+const results = await db.table("documents").select({
+  highlighted: Puri.rawString(
+    "pgroonga_highlight_html(??, ARRAY[?])",
+    ["documents.title", "검색어"],
+  ),
+});
+// SQL: pgroonga_highlight_html("documents"."title", ARRAY['검색어'])
+```
+
+<Warning>
+  **`??`와 `?`를 혼동하지 마세요.** 컬럼명에 `?`를 사용하면 값으로 이스케이핑되어 SQL 오류가 발생합니다.
+  반대로 사용자 입력에 `??`를 사용하면 식별자로 이스케이핑되어 의도치 않은 동작이 발생할 수 있습니다.
+</Warning>
+
 ## Static SQL 함수
 
 Puri가 제공하는 내장 SQL 함수들입니다.
