@@ -12,18 +12,17 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 
 1. Read this document.
 2. Read `../workflow/01_cdd_orchestrator.md` and follow the orchestration protocol.
-3. Spawn sub-agents via Agent tool for each phase. Do not edit code directly.
+3. Spawn leaf workers for each phase. Do not edit code or Spec content directly.
 
 ## Sub-agent preset list
 
 | Phase | subagent_type | Description |
 |---|---|---|
 | 0. contract | `cdd-contract-writer` | Create/fill Contract document |
-| 1. draft | _(orchestrator direct)_ | Run `cdd spec create` directly |
-| 2. specifying | `cdd-specifier` | Refine specification, define ACs |
-| 3. implementing | `cdd-implementer` | Implement code + write tests |
-| 4. validating | `cdd-validator` | Verify AC matching + Spec-code consistency |
-| 5. done | `cdd-closer` | Final verification |
+| 1. draft | _(orchestrator direct)_ | Run `cdd spec create` scaffold only, then continue to Phase 2 |
+| 2. specifying | `cdd-specifier` | Refine specification, run the pre-commit check, then wait for user review before commit |
+| 3. implementing | `cdd-implementer` | Implement code, write tests, and finish the implementing pre-commit check |
+| 4. validating | `cdd-validator` | Fix validating-stage code/test issues and finish the final pre-commit verification |
 
 ## Absolute prohibitions
 
@@ -34,10 +33,17 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 - Do not rationalize "it's simple, I'll do it directly" or "I'll handle it quickly without a sub-agent".
 - There are no exceptions to this rule.
 
+Guardrails for common failure cases:
+- After `cdd spec create`, missing `summary`/`description`/AC/schema fields must be handled by `cdd-specifier`, not by the main session.
+- If validator reports that a Spec field must change, spawn `cdd-specifier`. Do not rewrite the Spec directly.
+- If preset spawning is unavailable, use inline fallback worker instructions. Do not replace the missing preset with direct execution in the main session.
+
 ## What the orchestrator CAN do
 
 - Execute CLI commands like `cdd advance`, `cdd status` (Bash tool)
-- Read files (Read tool) — for Layer 2 verification
+- Execute `cdd spec create` for scaffold creation only
+- Ask the user to review when `objective_packet.user_review=true`
+- Finalize the transition with `cdd advance --commit` after the worker reports readiness
 - Spawn sub-agents (Agent tool)
 - Communicate with the user
 

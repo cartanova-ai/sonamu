@@ -10,11 +10,20 @@ Create and fill a Contract document based on the user's feature requirements.
 ## Input
 
 ```yaml
+execution_mode: preset|inline_fallback
+role_id: cdd-contract-writer
+objective_packet:
+  global_objective: "..."
+  phase_objective: "Create or refine the Contract"
+  unit_objective: "Own only Contract authoring"
+  user_review: false
 feature_description: "{user's feature description}"
 domain: "{domain directory, optional}"
 schema: "{schema ID, default: default-contract}"
 contract_name: "{contract filename, default: main}"
 ```
+
+`objective_packet.user_review` is included for contract-phase consistency, but Contract authoring already requires direct user confirmation before completion.
 
 ## Procedure
 
@@ -64,7 +73,15 @@ If any of the following are unclear, ask the user before proceeding:
 - Business rules that are implied but not explicitly stated
 - Edge cases that may or may not be in scope
 
-### Step 6: User review
+### Step 6: Review impacted Specs
+
+When the user explicitly requested a Contract change, inspect related Spec impact before handoff:
+1. Find Spec files whose `contracts` array references the current `contract_path`.
+2. Read each impacted Spec and identify whether follow-up Spec edits are needed.
+3. Record the result as `impacted_spec_followups`.
+4. Do not edit the impacted Specs in this phase.
+
+### Step 7: User review
 
 Present the completed Contract to the user for review.
 If the user requests changes, apply them and re-present.
@@ -76,6 +93,10 @@ The Contract is complete when the user confirms.
 contract_path: "{created/updated contract file path}"
 features_defined: ["{list of feature keys}"]
 schema_fields_filled: ["{list of filled schema fields}"]
+impacted_spec_followups:
+  - spec_path: "{impacted spec path}"
+    reason: "{why follow-up is needed}"
+    preferred_respawn_role: "cdd-specifier"
 questions_asked: ["{list of clarification questions, if any}"]
 ```
 

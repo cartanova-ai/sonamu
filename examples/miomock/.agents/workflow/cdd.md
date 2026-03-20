@@ -1,29 +1,48 @@
 # Contract-Driven Development (CDD)
 
-## Core Principles
+## Core principles
 
-- Authority: **Contract > Spec > Code**. 충돌 시 상위가 우선.
-- **1 Contract Feature = 1 Spec File**. Contract `features` key = Spec 파일명 (1:1).
-- Contract는 사용자 소유. AI는 사용자 요청 없이 수정하지 않는다.
-- 구현 중 더 나은 구조가 보여도 코드를 먼저 변경하지 않는다. Spec을 먼저 수정한다.
+- Authority order: **Contract > Spec > Code**
+- **1 Contract feature = 1 Spec file**
+- Contract is user-owned. AI must not modify Contract without an explicit user request.
+- Every Contract, Spec, or feature-change request must review related artifacts before completion.
+- If implementation needs to change, update the Spec first, then change code.
+- Contract/Spec content (summary, description, AC conditions, schema field values) must be written in Korean. Code, file paths, and identifiers remain in English.
 
-## Project Structure
+## Automation model
+
+CDD separates the work into four responsibilities:
+
+| Responsibility | Role | Responsibility detail |
+|---|---|---|
+| Control plane | Orchestrator | Select the phase worker, manage user-review gates, run `cdd advance --commit`, manage loops |
+| Execution + verification | Leaf worker | Perform phase work, run `cdd advance`, resolve in-scope Layer 1 and Layer 2 findings, return commit-ready state |
+| Judgment gate | CLI | Run Layer 1 checks and emit delegate payload for Layer 2 |
+| Memory | Spec document | Persist state, specification, history, and code/test linkage across phases |
+
+Operational rules:
+- The orchestrator must not do Phase work directly in the main session.
+- The only direct orchestrator mutation is Phase 1 scaffold creation with `cdd spec create`.
+- Leaf workers own the step-by-step phase loop and the pre-commit `cdd advance <spec>` check.
+- If preset sub-agents are unavailable, use inline fallback instructions. Direct main-session execution is not a fallback mode.
+
+## Project structure
 
 ```text
 contract/
   schemas/
-    *.schema.json             # Custom field schema
-  main.contract.json          # 프로젝트 루트 contract
+    *.schema.json
+  main.contract.json
   {domain}/
-    main.contract.json        # 도메인 대표 contract
-    {feature-key}.spec.json   # 1 feature = 1 spec
+    main.contract.json
+    {feature-key}.spec.json
   shared/
-    {shared}.spec.json        # 공유 인프라
+    {shared}.spec.json
 ```
 
-## Schema System
+## Schema system
 
-Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `contract/schemas/`
+Schemas define the custom field structure for Contract and Spec documents. Location: `contract/schemas/`
 
 ```json
 {
@@ -36,36 +55,42 @@ Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `con
 }
 ```
 
-필드 속성:
-- `name`: 필드 이름
-- `type`: 저장 구조 — `string`, `string[]`, `Record<string, string>`, `Record<string, object>`
-- `description` (필수): 이 필드가 어떤 내용을 담는지 설명. specifying 단계에서 내용 작성 기준으로 사용되고, Layer 2 검증에서 의미적 정합성 판단 기준이 됨.
-- `renderer`: UI 렌더링 컴포넌트 힌트 (선택)
-- `required`: 필수 여부 (선택)
+Field meanings:
+- `name`: field name
+- `type`: storage shape such as `string`, `string[]`, `Record<string, string>`, `Record<string, object>`
+- `description`: semantic authoring rule and Layer 2 verification rule
+- `renderer`: optional UI rendering hint
+- `required`: optional required flag
 
-## Document Model
+## Document model
 
 ### Contract (`.contract.json`)
 
-고정 필드:
-- `schema` (string): Schema ID
-- `features` (Record<string, string>): feature key -> 설명
+Business logic and feature scope definition. Implementation details are excluded.
 
-커스텀 필드: schema 참조.
+Core fields:
+- `schema`
+- `features`
+
+Custom fields are defined by the referenced schema.
 
 ### Spec (`.spec.json`)
 
-고정 필드:
-- `schema` (string): Schema ID
-- `summary` (string): 한 줄 요약
-- `description` (string[]): 상세 설명
-- `acceptanceCriteria` (AcceptanceCriterion[]): 구조화된 완료 조건
-- `status`: `"draft"` | `"specifying"` | `"implementing"` | `"validating"` | `"done"`
-- `sources` (string[]): 구현/테스트 파일 (프로젝트 루트 기준)
-- `contracts` (string[]): 참조 Contract (Spec 파일 기준 상대 경로)
-- `dependsOnSpecs` (string[], optional): 의존 Spec (Spec 파일 기준 상대 경로)
+Implementation specification management. Connects Contract requirements to concrete code and tests.
 
-커스텀 필드: schema 참조.
+Core fields used by the current transition gates:
+- `schema`
+- `summary`
+- `description`
+- `acceptanceCriteria`
+- `status`
+- `sources`
+- `contracts`
+- `dependsOnSpecs` (optional)
+
+Compatibility fields may also exist in live miomock Specs, such as `schemaVersion` and `lastModified`. Treat them as document metadata, but follow the active gate logic above when judging transitions.
+
+Custom fields are defined by the referenced schema.
 
 ### AcceptanceCriterion
 
@@ -80,32 +105,75 @@ Schema는 Contract/Spec의 커스텀 필드 구조를 정의한다. 위치: `con
 }
 ```
 
-- `condition`: pass/fail 판정 가능한 구체적 조건. 모호한 표현 금지.
-- `testRef`는 specifying 단계에서 비워둘 수 있으나, done 전이 전 반드시 채워야 한다.
+- `condition` must be concrete and pass/fail verifiable.
+- `testRef` may remain empty during specification work, but must be filled before the Spec can finish.
 
-## Status Workflow
+## Status workflow
 
-```
+```text
 draft → specifying → implementing → validating → done
 ```
 
-인접 전이만 허용. `cdd advance <spec>` 명령으로 전이하며, 각 전이에 Layer 1(기계적) + Layer 2(의미적) gate가 적용된다.
+Only adjacent transitions are allowed. `cdd advance <spec>` enforces the gate for each transition.
 
-| 전이 | Layer 1 (CLI) | Layer 2 (AI) |
+| Transition | Layer 1 (CLI) | Layer 2 (worker semantic verification) |
 |---|---|---|
-| draft → specifying | contracts가 유효한 Contract 참조 | 없음 |
-| specifying → implementing | summary/description 비어있지 않음, schema required 필드 비어있지 않음, AC >= 1개 | schema 필드-Contract 정합성, AC 검증 가능성, 전체 일관성 |
-| implementing → validating | sources 파일 존재, AC testRef.target 지정 및 파일 존재 | sources가 schema 명세 구현, testRef가 AC condition 검증 |
-| validating → done | testRef.pattern 매칭, 빌드/테스트 통과 | AC-테스트 의미적 매칭, 제약 조건 반영, 에러 시나리오 커버리지 |
+| `draft -> specifying` | valid Contract reference, non-empty `summary`, `description`, ACs, required schema fields | schema field content matches field descriptions, ACs are verifiable, Spec stays within Contract scope |
+| `specifying -> implementing` | non-empty `summary`, `description`, ACs, required schema fields | schema field quality, AC quality, cross-field consistency, feature-level completeness |
+| `implementing -> validating` | `sources` files exist, AC `testRef.target` exists | code implements the Spec, tests validate AC meaning, Spec-code consistency |
+| `validating -> done` | AC `testRef.pattern` is non-empty and matches the test file, build/test pass | AC-test semantic match, constraints reflected, error-handling coverage |
 
-`--commit` 플래그: Layer 2를 생략하고 즉시 전이 (Layer 2를 이미 통과했다는 호출자 선언).
+`--commit` means the orchestrator is finalizing a transition after the worker has already completed the pre-commit checks. When `objective_packet.user_review=true`, the orchestrator must wait for user confirmation before running `cdd advance <spec> --commit`.
+
+## User review gate
+
+Each phase spawn includes `objective_packet.user_review`.
+
+Default values:
+- `cdd-contract-writer`: `false`
+- `cdd-specifier`: `true`
+- `cdd-implementer`: `false`
+- `cdd-validator`: `false`
+
+When `user_review=true`:
+- The worker still completes the full pre-commit phase loop.
+- The orchestrator must pause before `cdd advance --commit`.
+- After the review, the orchestrator either re-routes for more work or finalizes the transition.
+
+## Worker ownership
+
+- `cdd-specifier`: Spec content edits and pre-commit verification for `draft -> specifying` and `specifying -> implementing`
+- `cdd-implementer`: code, tests, `sources`, `acceptanceCriteria[].testRef`, and pre-commit verification for `implementing -> validating`
+- `cdd-validator`: validating-stage code/test fixes and final pre-commit verification for `validating -> done`
+
+If a worker discovers that another worker owns the required change, it must report that to the orchestrator instead of editing across the boundary.
+
+## Cross-artifact impact review
+
+- Contract-change requests must inspect Spec files whose `contracts` array references the changed Contract path.
+- `cdd-contract-writer` may report impacted Spec follow-up work, but must not edit Spec files directly.
+- Feature-change requests must resolve the matching feature Spec first and decide whether the target Spec needs modification or additional content.
+- Spec-change requests must inspect the target Spec's `contracts` and `dependsOnSpecs` before closing the phase.
+- After assessing and updating the target Spec as needed for a feature-change request, run the same related Spec and Contract review before closing the request.
+- `cdd-specifier` may update directly related Spec files when those updates are required to keep Specs consistent.
+- If Spec work reveals Contract drift and the user did not explicitly request a Contract edit, stop and escalate instead of editing the Contract.
+
+## Automation workflow
+
+1. The main agent assumes the CDD orchestrator role.
+2. If no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
+3. All subsequent Phase work is delegated to leaf workers.
+4. Each leaf worker performs its phase work, runs `cdd advance <spec>`, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit or the phase is blocked.
+5. If the worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
+6. If the worker returns ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before finalizing the transition.
+7. The orchestrator finalizes the transition with `cdd advance <spec> --commit`.
 
 ## CLI
 
 ```bash
-cdd advance <spec> [--commit]   # 다음 상태로 전진 (gate 검증 + delegate)
-cdd status [file]               # 상태 대시보드 / 개별 파일 상태
-cdd spec create <name>          # Spec 생성 (--schema, --domain, --contract)
+cdd advance <spec> [--commit]
+cdd status [file]
+cdd spec create <name>
 ```
 
-자동화 워크플로우 프롬프트: `.agents/workflow/` 참조.
+Automation prompts live under `.agents/workflow/`.
