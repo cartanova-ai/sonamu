@@ -196,7 +196,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `similarity(?, ${column._sql})`,
+      _sql: `similarity(${column._sql}, ?)`,
       _params: [...column._params, query],
     };
   }
@@ -796,17 +796,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
     if (operator === "%") {
       if (typeof column === "object") {
-        this.knexQuery.whereRaw(`${column._sql} ${operator} ?::text`, [...column._params, value]);
+        this.knexQuery.whereRaw(`${column._sql} ${operator} ?`, [...column._params, value]);
       } else {
-        this.knexQuery.whereRaw(`?? ${operator} ?::text`, [column, value]);
+        this.knexQuery.whereRaw(`?? ${operator} ?`, [column, value]);
       }
       return this;
     }
 
     if (typeof column === "object") {
-      this.knexQuery.whereRaw(`?::text ${operator} ${column._sql}`, [value, ...column._params]);
+      this.knexQuery.whereRaw(`? ${operator} ${column._sql}`, [value, ...column._params]);
     } else {
-      this.knexQuery.whereRaw(`?::text ${operator} ??`, [value, column]);
+      this.knexQuery.whereRaw(`? ${operator} ??`, [value, column]);
     }
     return this;
   }
@@ -833,13 +833,20 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
-  // ORDER BY
+  // ORDER BY (SqlExpression으로도 할 수 있어야 함)
   orderBy<TColumn extends ResultAvailableColumns<TTables, TResult>>(
-    column: TColumn,
+    column: TColumn | SqlExpression<"number"> | SqlExpression<"string">,
     direction: "asc" | "desc",
   ): this;
-  orderBy(column: string, direction: "asc" | "desc" = "asc"): this {
-    this.knexQuery.orderBy(column, direction);
+  orderBy(
+    column: string | SqlExpression<"number"> | SqlExpression<"string">,
+    direction: "asc" | "desc" = "asc",
+  ): this {
+    if (typeof column === "object") {
+      this.knexQuery.orderByRaw(`${column._sql} ${direction}`, column._params);
+    } else {
+      this.knexQuery.orderBy(column, direction);
+    }
     return this;
   }
 
@@ -1342,6 +1349,151 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhereNotIn(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhereNotIn(args[0], args[1]);
+    return this;
+  }
+
+  // WHERE MATCH
+  whereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this;
+  whereMatch(...args: any[]): this {
+    this.builder.whereRaw(`MATCH (${String(args[0])}) AGAINST (?)`, [args[1]]);
+    return this;
+  }
+
+  orWhereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this;
+  orWhereMatch(...args: any[]): this {
+    this.builder.orWhereRaw(`MATCH (${String(args[0])}) AGAINST (?)`, [args[1]]);
+    return this;
+  }
+
+  // WHERE SEARCH
+  whereSearch<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn | TColumn[],
+    value: string,
+    options?: {
+      weights?: number[]; // 정수 배열
+    },
+  ): this;
+  whereSearch(...args: any[]): this {
+    const { weights } = args[2] ?? {};
+    const columnExpr = Array.isArray(args[0])
+      ? `ARRAY[${args[0].map((c) => `${c}::text`).join(",")}]`
+      : args[0];
+    const pgroongaCondition = `pgroonga_condition(?${weights?.length ? `, weights => ARRAY[${weights.join(",")}]` : ""})`;
+    this.builder.whereRaw(`${columnExpr} &@~ ${pgroongaCondition}`, [args[1]]);
+
+    return this;
+  }
+
+  orWhereSearch<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn | TColumn[],
+    value: string,
+    options?: {
+      weights?: number[]; // 정수 배열
+    },
+  ): this;
+  orWhereSearch(...args: any[]): this {
+    const { weights } = args[2] ?? {};
+    const columnExpr = Array.isArray(args[0])
+      ? `ARRAY[${args[0].map((c) => `${c}::text`).join(",")}]`
+      : args[0];
+    const pgroongaCondition = `pgroonga_condition(?${weights?.length ? `, weights => ARRAY[${weights.join(",")}]` : ""})`;
+    this.builder.orWhereRaw(`${columnExpr} &@~ ${pgroongaCondition}`, [args[1]]);
+
+    return this;
+  }
+
+  // WHERE FULLTEXT
+  whereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+    column: TColumn,
+    value: string,
+    options?: TsQueryOptions | TsQueryConfig,
+  ): this;
+  whereTsSearch(...args: any[]): this {
+    const opts =
+      typeof args[2] === "string" ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
+
+    const parser = opts.parser ?? "websearch_to_tsquery";
+    const config = opts.config ?? "simple";
+    const columnExpr =
+      typeof args[0] === "object" && args[0]._type === "sql_expression"
+        ? args[0]._sql
+        : String(args[0]);
+
+    this.builder.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
+    return this;
+  }
+
+  orWhereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+    column: TColumn,
+    value: string,
+    options?: TsQueryOptions | TsQueryConfig,
+  ): this;
+  orWhereTsSearch(...args: any[]): this {
+    const opts =
+      typeof args[2] === "string" ? ({ config: args[2] } as TsQueryOptions) : (args[2] ?? {});
+
+    const parser = opts.parser ?? "websearch_to_tsquery";
+    const config = opts.config ?? "simple";
+    const columnExpr =
+      typeof args[0] === "object" && args[0]._type === "sql_expression"
+        ? args[0]._sql
+        : String(args[0]);
+
+    this.builder.orWhereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, args[1]]);
+    return this;
+  }
+
+  whereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+    column: TColumn,
+    value: string,
+    options?: {
+      operator?: FuzzyOperator;
+    },
+  ): this;
+  whereFuzzy(...args: any[]): this {
+    const operator = normalizeFuzzyOperator(args[2]?.operator);
+
+    if (operator === "%") {
+      if (typeof args[0] === "object") {
+        this.builder.whereRaw(`${args[0]._sql} ${operator} ?`, [...args[0]._params, args[1]]);
+      } else {
+        this.builder.whereRaw(`?? ${operator} ?`, [args[0], args[1]]);
+      }
+      return this;
+    }
+
+    if (typeof args[0] === "object") {
+      this.builder.whereRaw(`? ${operator} ${args[0]._sql}`, [args[1], ...args[0]._params]);
+    } else {
+      this.builder.whereRaw(`? ${operator} ??`, [args[1], args[0]]);
+    }
+    return this;
+  }
+
+  orWhereFuzzy<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+    column: TColumn,
+    value: string,
+    options?: {
+      operator?: FuzzyOperator;
+    },
+  ): this;
+  orWhereFuzzy(...args: any[]): this {
+    const operator = normalizeFuzzyOperator(args[2]?.operator);
+
+    if (operator === "%") {
+      if (typeof args[0] === "object") {
+        this.builder.orWhereRaw(`${args[0]._sql} ${operator} ?`, [...args[0]._params, args[1]]);
+      } else {
+        this.builder.orWhereRaw(`?? ${operator} ?`, [args[0], args[1]]);
+      }
+      return this;
+    }
+
+    if (typeof args[0] === "object") {
+      this.builder.orWhereRaw(`? ${operator} ${args[0]._sql}`, [args[1], ...args[0]._params]);
+    } else {
+      this.builder.orWhereRaw(`? ${operator} ??`, [args[1], args[0]]);
+    }
     return this;
   }
 
