@@ -18,7 +18,8 @@ function buildLibpqConnectionString(conn: Record<string, unknown>): string {
   const parts: string[] = [];
   for (const [jsKey, pqKey] of mapping) {
     if (conn[jsKey] != null) {
-      parts.push(`${pqKey}='${String(conn[jsKey]).replace(/'/g, "\\'")}'`);
+      const escaped = String(conn[jsKey]).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      parts.push(`${pqKey}='${escaped}'`);
     }
   }
 

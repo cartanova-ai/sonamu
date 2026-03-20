@@ -54,11 +54,13 @@ export default defineConfig({
   - 설치: `pnpm add pg`
   - 크로스 플랫폼 지원
   - 대부분의 경우 충분한 성능
+  - Sonamu가 자동으로 Node.js TCP 소켓 레벨 keepAlive를 설정합니다 (`keepAlive: true`, `keepAliveInitialDelayMillis: 10000`)
 
 - **`"pgnative"`**: C 바인딩을 사용하는 네이티브 드라이버
   - 설치: `pnpm add pg-native`
   - 더 빠른 성능 (특히 대량 데이터 처리)
   - 컴파일 필요, 플랫폼 의존성
+  - Sonamu가 자동으로 connection 객체를 libpq 연결 문자열로 변환하며, TCP keepAlive 파라미터(`keepalives=1`, `keepalives_idle=10`, `keepalives_interval=10`, `keepalives_count=5`)를 포함합니다
 
 <Tip>
 특별한 성능 요구사항이 없다면 `"pg"`를 사용하세요. 설치와 배포가 간단합니다.
@@ -159,24 +161,34 @@ export default defineConfig({
     name: "mydb",
     defaultOptions: {
       connection: { /* ... */ },
-      
+
       // 커넥션 풀 설정
       pool: {
         min: 2,
         max: 10,
-        acquireTimeoutMillis: 30000,
-        idleTimeoutMillis: 30000,
       },
-      
+
       // 쿼리 타임아웃
       acquireConnectionTimeout: 10000,
-      
+
       // 디버그 모드
       debug: process.env.NODE_ENV === "development",
     },
   },
 });
 ```
+
+Sonamu는 내부적으로 다음 pool 옵션을 자동 설정합니다. 사용자가 별도로 지정하지 않아도 적용되며, 사용자 설정이 있을 경우 아래 값으로 덮어씁니다:
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `propagateCreateError` | `false` | 커넥션 생성 에러를 풀 전체로 전파하지 않습니다 |
+| `idleTimeoutMillis` | `10000` | 유휴 커넥션이 10초 후 자동으로 해제됩니다 |
+| `reapIntervalMillis` | `1000` | 유휴 커넥션 정리 주기를 1초로 설정합니다 |
+| `acquireTimeoutMillis` | `30000` | 커넥션 획득 대기 시간을 30초로 제한합니다 |
+| `createTimeoutMillis` | `30000` | 커넥션 생성 대기 시간을 30초로 제한합니다 |
+
+또한 pool의 `afterCreate` 콜백에서 각 커넥션에 대해 소켓 레벨 keepAlive 설정과 에러 핸들러를 등록합니다. 에러가 발생한 커넥션은 자동으로 풀에서 제외됩니다.
 
 ## environments
 

@@ -54,11 +54,13 @@ export default defineConfig({
   - Install: `pnpm add pg`
   - Cross-platform support
   - Sufficient performance for most cases
+  - Sonamu automatically configures Node.js TCP socket-level keepAlive (`keepAlive: true`, `keepAliveInitialDelayMillis: 10000`)
 
 - **`"pgnative"`**: Native driver using C bindings
   - Install: `pnpm add pg-native`
   - Faster performance (especially for large data processing)
   - Requires compilation, platform-dependent
+  - Sonamu automatically converts the connection object to a libpq connection string and includes TCP keepAlive parameters (`keepalives=1`, `keepalives_idle=10`, `keepalives_interval=10`, `keepalives_count=5`)
 
 <Tip>
 Use `"pg"` unless you have specific performance requirements. Installation and deployment are simpler.
@@ -159,24 +161,34 @@ export default defineConfig({
     name: "mydb",
     defaultOptions: {
       connection: { /* ... */ },
-      
+
       // Connection pool settings
       pool: {
         min: 2,
         max: 10,
-        acquireTimeoutMillis: 30000,
-        idleTimeoutMillis: 30000,
       },
-      
+
       // Query timeout
       acquireConnectionTimeout: 10000,
-      
+
       // Debug mode
       debug: process.env.NODE_ENV === "development",
     },
   },
 });
 ```
+
+Sonamu automatically applies the following pool options internally. These are applied even without explicit user configuration, and will override user-provided values:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `propagateCreateError` | `false` | Does not propagate connection creation errors to the entire pool |
+| `idleTimeoutMillis` | `10000` | Idle connections are automatically released after 10 seconds |
+| `reapIntervalMillis` | `1000` | Idle connection cleanup interval is set to 1 second |
+| `acquireTimeoutMillis` | `30000` | Connection acquisition wait time is limited to 30 seconds |
+| `createTimeoutMillis` | `30000` | Connection creation wait time is limited to 30 seconds |
+
+Additionally, the pool's `afterCreate` callback registers socket-level keepAlive settings and error handlers for each connection. Connections that encounter errors are automatically excluded from the pool.
 
 ## environments
 
