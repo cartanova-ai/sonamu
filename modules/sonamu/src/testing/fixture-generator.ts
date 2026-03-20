@@ -149,7 +149,18 @@ export class FixtureGenerator {
       // 2. cone.note + LLM 사용 (useLLM이면 fixtureGenerator보다 우선)
       if (cone?.note && this.options.useLLM) {
         try {
-          fixture[prop.name] = await this.generateWithLLM(cone.note, prop, entity, rowKey);
+          const llmValue = await this.generateWithLLM(cone.note, prop, entity, rowKey);
+          // string 타입이고 length 제약이 있으면 초과 시 truncation
+          if (
+            typeof llmValue === "string" &&
+            "length" in prop &&
+            typeof prop.length === "number" &&
+            llmValue.length > prop.length
+          ) {
+            fixture[prop.name] = llmValue.slice(0, prop.length);
+          } else {
+            fixture[prop.name] = llmValue;
+          }
           continue;
         } catch (error) {
           console.warn(
@@ -1450,31 +1461,75 @@ Rules:
     specs: Array<{ entity: string; count: number; overrides?: Record<string, unknown> }>,
   ): Promise<FixtureImportResult[]> {
     const context = this.createContext();
-    const generatedFixtures: Array<{ entity: string; data: Record<string, unknown> }> = [];
+    const generatedFixtures: Array<{
+      entity: string;
+      data: Record<string, unknown>;
+      explicitId?: boolean;
+    }> = [];
 
     // 1. 각 spec별로 fixture 생성
     for (const spec of specs) {
-      for (let i = 0; i < spec.count; i++) {
-        const fixture = await this.generate(spec.entity, spec.overrides || {}, context);
-        generatedFixtures.push({
-          entity: spec.entity,
-          data: fixture,
-        });
+      const specEntity = this.entityManager.get(spec.entity);
+
+      if (specEntity.parentId) {
+        // parentId 엔티티: DB에서 서브타입 행이 없는 부모 id를 조회하여 사용
+        // (새 부모 생성 대신 기존 데이터 재활용)
+        const idProp = specEntity.props.find((p) => p.name === "id");
+        const parentOverrides = (idProp?.cone?.fixtureParentOverrides as Record<string, unknown> | undefined) ?? {};
+        const parentEntity = this.entityManager.get(specEntity.parentId);
+
+        // 부모 테이블에서 서브타입 테이블에 없는 id를 조회
+        let query = this.sourceDb(parentEntity.table).select(`${parentEntity.table}.id`);
+        for (const [col, val] of Object.entries(parentOverrides)) {
+          query = query.where(`${parentEntity.table}.${col}`, val as string | number | boolean | null);
+        }
+        query = query
+          .leftJoin(specEntity.table, `${specEntity.table}.id`, `${parentEntity.table}.id`)
+          .whereNull(`${specEntity.table}.id`)
+          .limit(spec.count);
+
+        const rows = await query;
+        const availableIds: number[] = rows.map((r: { id: number }) => r.id);
+
+        if (availableIds.length === 0) {
+          !isTest() &&
+            console.warn(
+              chalk.yellow(
+                `[parentId] ${spec.entity}: 서브타입이 없는 부모 레코드가 부족합니다. 건너뜁니다.`,
+              ),
+            );
+        } else {
+          for (const parentId of availableIds) {
+            const fixture = await this.generate(spec.entity, spec.overrides || {}, context);
+            fixture.id = parentId;
+            generatedFixtures.push({ entity: spec.entity, data: fixture, explicitId: true });
+          }
+        }
+      } else {
+        for (let i = 0; i < spec.count; i++) {
+          const fixture = await this.generate(spec.entity, spec.overrides || {}, context);
+          generatedFixtures.push({
+            entity: spec.entity,
+            data: fixture,
+          });
+        }
       }
     }
 
     // 2. FixtureRecord로 변환
     const fixtureRecords: FixtureRecord[] = [];
-    for (const { entity: entityName, data } of generatedFixtures) {
+    for (const { entity: entityName, data, explicitId } of generatedFixtures) {
       const entity = this.entityManager.get(entityName);
 
       // integer/bigInteger PK는 임시 ID 생성 (DB 시퀀스가 실제 ID 할당)
       // string PK는 generate()에서 이미 생성된 id 값을 그대로 사용
+      // parentId 엔티티는 부모의 실제 id를 그대로 사용 (시퀀스 미사용)
       const idProp = entity.props.find((p) => p.name === "id");
       const usesSequence =
-        idProp?.type === "integer" ||
-        idProp?.type === "bigInteger" ||
-        idProp?.cone?.fixtureStrategy === "sequence";
+        !explicitId &&
+        (idProp?.type === "integer" ||
+          idProp?.type === "bigInteger" ||
+          idProp?.cone?.fixtureStrategy === "sequence");
 
       const dataForRecord = usesSequence
         ? { ...data, id: Math.floor(Math.random() * 1000000) }

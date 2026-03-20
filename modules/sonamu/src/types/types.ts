@@ -55,6 +55,7 @@ export type Cone = {
   fixtureDefault?: unknown; // 기본값
   fixtureStrategy?: "sequence"; // string 타입이지만 DB sequence로 관리되는 PK (better-auth 등)
   fixtureCompanions?: FixtureCompanion[]; // 부모 fixture 생성 시 함께 생성할 companion Entity 목록
+  fixtureParentOverrides?: Record<string, unknown>; // parentId 엔티티의 부모 생성 시 사용할 override 값 (예: { achievement_type: "PAPER" })
 
   // 참조 데이터 관련
   dataSource?: {
@@ -1110,6 +1111,7 @@ const ConeSchema = z
     fixtureDefault: z.unknown().optional(),
     fixtureStrategy: z.literal("sequence").optional(),
     fixtureCompanions: z.array(FixtureCompanionSchema).optional(),
+    fixtureParentOverrides: z.record(z.string(), z.unknown()).optional(),
     dataSource: z
       .object({
         strategy: z.enum(["sample", "ids", "query", "file", "recent", "random"]),

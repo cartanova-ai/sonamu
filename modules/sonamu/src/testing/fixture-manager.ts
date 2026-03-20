@@ -752,16 +752,18 @@ export class FixtureManagerClass {
       // id 처리
       if (propName === "id") {
         const idProp = entity.props.find((p) => p.name === "id");
+        // parentId 엔티티의 id는 부모 엔티티의 FK이므로 시퀀스 미사용 (명시적으로 포함)
         const usesSequence =
-          idProp?.type === "integer" ||
-          idProp?.type === "bigInteger" ||
-          idProp?.cone?.fixtureStrategy === "sequence";
+          !entity.parentId &&
+          (idProp?.type === "integer" ||
+            idProp?.type === "bigInteger" ||
+            idProp?.cone?.fixtureStrategy === "sequence");
 
         if (isOverrideMode && existingRecord) {
           // Override: 기존 레코드의 값 사용 → UPDATE
           row[propName] = existingRecord.columns[propName]?.value;
         } else if (!usesSequence) {
-          // string PK: 생성된 id 값을 INSERT에 포함 (DB DEFAULT 없음)
+          // string PK 또는 parentId 엔티티 FK: 생성된 id 값을 INSERT에 포함
           row[propName] = column.value;
         }
         // integer/bigInteger PK: DB 시퀀스에 맡김 (값 제외)
