@@ -884,6 +884,8 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
   if (column.defaultTo !== undefined) {
     if (typeof column.defaultTo === "string" && column.defaultTo.startsWith(`"`)) {
       chains.push(`defaultTo(${column.defaultTo})`);
+    } else if (column.type === "json" && typeof column.defaultTo.startsWith('"')) {
+      chains.push(`defaultTo(knex.raw("${column.defaultTo.replaceAll('"', "'")}::jsonb"))`);
     } else {
       chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
     }
