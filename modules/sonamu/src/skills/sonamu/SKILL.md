@@ -250,6 +250,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | **AI Agents** | `ai-agents.md` | **BaseAgentClass, @tools 데코레이터, ToolLoopAgent, AsyncLocalStorage 상태** |
 | **Tasks** | `tasks.md` | **백그라운드 워크플로우, cron 스케줄링, durable step, 재시도 정책** |
 | **스킬 기여** | `skill-contribution.md` | **트러블슈팅 해결 → 스킬 반영 워크플로우 (매칭, 판정, 포맷, 승인)** |
+| **Framework 변경 판단** | `framework-change.md` | **프레임워크 수정 vs. 프로젝트 우회 판단 기준. @upload 파라미터 패턴** |
 | Frontend | `frontend.md` | Service, TanStack Query |
 | Scaffolding | `scaffolding.md` | UI Scaffolding 오류 해결 |
 
@@ -290,6 +291,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | **AI Agent 개발** | **ai-agents** |
 | **백그라운드 작업/스케줄링** | **tasks** |
 | **트러블슈팅 → 스킬 반영** | **skill-contribution** |
+| **프레임워크 버그/제약 발견 시 대응** | **framework-change** |
 
 ## 명령어 실행 경로
 

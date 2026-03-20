@@ -97,6 +97,7 @@ scope: "sonamu"       # "sonamu" (공식) 또는 "local" (프로젝트 고유)
 | `src/naite/*` | naite.md |
 | `src/cone/*` | cone.md |
 | `src/api/*` | api.md |
+| `src/template/*` | framework-change.md |
 | `src/model/*` | model.md |
 | `src/ssr/*` | (스킬 없음 — 새 파일 후보) |
 | `sonamu.config.ts` 관련 | config.md |
