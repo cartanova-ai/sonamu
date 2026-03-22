@@ -221,6 +221,59 @@ const userStats = await puri.table("posts")
 // LIMIT 10
 ```
 
+## SQL 표현식으로 정렬
+
+`orderBy`는 컬럼명 대신 `SqlExpression<"number">` 또는 `SqlExpression<"string">`을 받을 수 있습니다. 전문 검색 순위, 유사도 점수 등 계산된 값을 기준으로 정렬할 때 사용합니다.
+
+### 검색 순위 기준 정렬
+
+```typescript
+// ts_rank로 전문 검색 결과를 관련도 순으로 정렬
+const posts = await puri.table("posts")
+  .select({
+    id: "posts.id",
+    title: "posts.title",
+    rank: Puri.tsRank("posts.content_tsv", "typescript")
+  })
+  .orderBy(Puri.tsRank("posts.content_tsv", "typescript"), "desc");
+
+// ORDER BY ts_rank(posts.content_tsv, plainto_tsquery('simple', ?)) DESC
+```
+
+### 유사도 점수 기준 정렬
+
+```typescript
+// pg_trgm similarity로 유사도 높은 순 정렬
+const users = await puri.table("users")
+  .select({
+    id: "users.id",
+    name: "users.name",
+    score: Puri.similarity("users.name", "홍길동")
+  })
+  .orderBy(Puri.similarity("users.name", "홍길동"), "desc");
+
+// ORDER BY similarity(users.name, ?) DESC
+```
+
+### rawNumber로 커스텀 정렬
+
+```typescript
+// 커스텀 SQL 표현식으로 정렬
+const products = await puri.table("products")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)")
+  })
+  .orderBy(Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"), "desc");
+
+// ORDER BY (products.views * 0.3 + products.likes * 0.7) DESC
+```
+
+<Info>
+SQL 표현식을 사용할 때는 내부적으로 `orderByRaw`가 실행되며, 파라미터 바인딩이 자동으로 적용됩니다.
+</Info>
+
 ## 정렬 방향
 
 ### ASC (오름차순)
