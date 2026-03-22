@@ -221,6 +221,59 @@ const userStats = await puri.table("posts")
 // LIMIT 10
 ```
 
+## Sorting by SQL Expressions
+
+`orderBy` accepts `SqlExpression<"number">` or `SqlExpression<"string">` instead of a column name. This is useful when sorting by computed values such as full-text search rankings or similarity scores.
+
+### Sorting by Search Rank
+
+```typescript
+// Sort full-text search results by relevance using ts_rank
+const posts = await puri.table("posts")
+  .select({
+    id: "posts.id",
+    title: "posts.title",
+    rank: Puri.tsRank("posts.content_tsv", "typescript")
+  })
+  .orderBy(Puri.tsRank("posts.content_tsv", "typescript"), "desc");
+
+// ORDER BY ts_rank(posts.content_tsv, plainto_tsquery('simple', ?)) DESC
+```
+
+### Sorting by Similarity Score
+
+```typescript
+// Sort by pg_trgm similarity score
+const users = await puri.table("users")
+  .select({
+    id: "users.id",
+    name: "users.name",
+    score: Puri.similarity("users.name", "John")
+  })
+  .orderBy(Puri.similarity("users.name", "John"), "desc");
+
+// ORDER BY similarity(users.name, ?) DESC
+```
+
+### Custom Sorting with rawNumber
+
+```typescript
+// Sort by a custom SQL expression
+const products = await puri.table("products")
+  .select({
+    id: "products.id",
+    name: "products.name",
+    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)")
+  })
+  .orderBy(Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"), "desc");
+
+// ORDER BY (products.views * 0.3 + products.likes * 0.7) DESC
+```
+
+<Info>
+When using SQL expressions, `orderByRaw` is used internally and parameter bindings are automatically applied.
+</Info>
+
 ## Sort Directions
 
 ### ASC (Ascending)
