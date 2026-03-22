@@ -171,6 +171,10 @@ When generating a value for each field, the following strategies are applied in 
 When using `--use-llm`, LLM takes priority over `fixtureGenerator` for fields with cone.note. This allows generating more realistic, domain-appropriate data.
 </Info>
 
+<Info>
+If an LLM-generated string exceeds the field's `length` constraint, it is automatically truncated. For example, if LLM generates 120 characters for a `varchar(100)` field, only the first 100 characters are used.
+</Info>
+
 **Automatic Companion Fixture Generation**:
 
 When an Entity's cone has `fixtureCompanions` declared, companion Entity fixtures are automatically created alongside the parent fixture. For example, in a better-auth based project, generating a User fixture will also automatically create a credentials Account.
@@ -210,6 +214,37 @@ pnpm sonamu auth add-companions
 ```
 
 This command automatically adds `fixtureCompanions` configuration to better-auth Entities (such as User) in their `entity.json`, only when the configuration does not already exist. Entities that already have the configuration are skipped.
+
+**parentId Entity Fixture Generation**:
+
+Entities with `parentId` (subtypes in an inheritance relationship) are handled specially during `gen`. Instead of creating new parent records, the generator finds existing parent records in the DB that don't yet have a corresponding subtype row, and uses those IDs.
+
+For example, if `Paper` is a subtype of `Achievement` (`parentId: "Achievement"`):
+
+1. Queries the `achievements` table for IDs that don't have a corresponding row in the `papers` table
+2. Creates `Paper` fixtures with those IDs, forming the parent-child relationship
+
+To add conditions when querying parents, specify `fixtureParentOverrides` in the `id` prop's cone:
+
+```json
+{
+  "name": "id",
+  "type": "integer",
+  "cone": {
+    "fixtureParentOverrides": {
+      "achievement_type": "PAPER"
+    }
+  }
+}
+```
+
+| Property | Description |
+|----------|-------------|
+| `fixtureParentOverrides` | WHERE conditions applied when querying available parent records. For example, if there is a discriminator column for subtypes, filter by that value |
+
+<Warning>
+If there are not enough parent records without a subtype row, fixture generation for that entity is skipped. Make sure to generate sufficient parent entity fixtures beforehand.
+</Warning>
 
 ### fetch - Fetch Data from Production DB
 
