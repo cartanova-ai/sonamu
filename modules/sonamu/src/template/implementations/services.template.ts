@@ -156,9 +156,6 @@ export async function ${methodName}${typeParamsDef}(
   return fetch({
     method: 'POST',
     url: \`${apiBaseUrl}\`,
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
     onUploadProgress,
     data: formData,
     ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
