@@ -20,6 +20,19 @@ const users = await db.table({ u: "users" }).select({ id: "u.id" });
 
 ## SELECT
 
+> **CRITICAL: `.select()`는 반드시 객체 형식으로 사용한다.**
+>
+> 문자열 인수를 전달하면 문자열이 character 단위로 spread되어 `select "i" as "0", "d" as "1", ...` 같은 잘못된 SQL이 생성된다.
+> `as any` 캐스팅 후 체이닝할 때 특히 주의한다.
+>
+> ```typescript
+> // WRONG — character spread 버그
+> db.table("files").select("files.entity_id", "files.file_type")
+>
+> // CORRECT
+> db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" })
+> ```
+
 ```typescript
 // 기본 select
 const users = await db.table("users").select({ id: "id", name: "username" });

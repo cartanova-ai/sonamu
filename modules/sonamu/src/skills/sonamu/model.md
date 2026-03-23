@@ -136,6 +136,26 @@ return this.executeSubsetQuery({
 });
 ```
 
+> **CRITICAL: `executeSubsetQuery()` 반환 객체를 직접 mutate하지 않는다.**
+>
+> `result.rows = result.rows.map(...)` 또는 `(result as any).rows = ...` 방식으로 rows를 교체하면
+> `total` 카운트가 깨져 pagination이 오동작한다.
+>
+> 추가 계산이 필요한 virtual 필드는 `enhancers` 패턴으로 처리한다:
+>
+> ```typescript
+> // WRONG — pagination 파괴
+> const result = await this.executeSubsetQuery({ subset, qb, params });
+> (result as any).rows = result.rows.map((row) => ({ ...row, extra: "value" }));
+> return result as any;
+>
+> // CORRECT — enhancers 패턴
+> const enhancers = this.createEnhancers({
+>   A: (row) => ({ ...row, extra: "value" }),
+> });
+> return this.executeSubsetQuery({ subset, qb, params, enhancers });
+> ```
+
 ### queryMode
 
 params에 queryMode를 전달하여 반환값 제어:
