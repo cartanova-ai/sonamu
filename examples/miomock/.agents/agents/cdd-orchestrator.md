@@ -18,14 +18,15 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 
 | Phase | subagent_type | Description |
 |---|---|---|
-| 0. contract | `cdd-contract-writer` | Create/fill Contract document |
+| 0. contract | `cdd-contract-writer` | Create/fill Contract document and return a review-ready result |
 | 1. draft | _(orchestrator direct)_ | Run `cdd spec create` scaffold only, then continue to Phase 2 |
 | 2. specifying | `cdd-specifier` | Refine specification, run the pre-commit check, then wait for user review before commit |
-| 3A. implementing-tests | `cdd-test-writer` | Write acceptance tests from the Spec and fill `acceptanceCriteria[].testRef` |
-| 3B. implementing-code | `cdd-implementer` | Implement production code and fill the final `sources` list |
+| 3A. implementing-surface | `cdd-surface-scaffolder` | Prepare the minimal importable shared surface before the parallel pair starts |
+| 3B. implementing-tests | `cdd-test-writer` | Write acceptance tests from the Spec and fill `acceptanceCriteria[].testRef` |
+| 3C. implementing-code | `cdd-implementer` | Implement production code and fill the final `sources` list |
 | 4. validating | `cdd-validator` | Fix validating-stage code/test issues and finish the final pre-commit verification |
 
-Phase 3 uses a parallel pair. The orchestrator spawns both workers, fans in their outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
+Phase 3 may begin with an optional shared-surface scaffold worker. After that, it uses a parallel pair. The orchestrator decides whether scaffold work is needed, then spawns the downstream workers, fans in their outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
 
 ## Absolute prohibitions
 
@@ -46,7 +47,7 @@ Guardrails for common failure cases:
 - Execute CLI commands like `cdd advance`, `cdd status` (Bash tool)
 - Execute `cdd spec create` for scaffold creation only
 - Ask the user to review when `objective_packet.user_review=true`
-- Finalize the transition with `cdd advance --commit` after the worker reports readiness
+- Finalize Spec transitions with `cdd advance --commit` after the worker reports readiness
 - Spawn sub-agents (Agent tool)
 - Communicate with the user
 

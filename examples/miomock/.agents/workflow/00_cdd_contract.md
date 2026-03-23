@@ -24,7 +24,7 @@ All sub-agents must read the following document before starting work:
 | Role | Responsibility | Description |
 |---|---|---|
 | Orchestrator | Control plane | Select worker, manage user-review gates, run `cdd advance --commit`, manage re-spawn loops |
-| Leaf worker | Execution | Perform one phase-scoped mutation plus the in-scope Layer 1 and Layer 2 pre-commit loop in isolated context |
+| Leaf worker | Execution | Perform one phase-scoped mutation in isolated context; Spec-phase workers also own any assigned pre-commit loop |
 | CLI | Judgment gate | Run Layer 1 checks and emit delegate payload for Layer 2 |
 | Spec document | Memory | State + specification + implementation/test linkage |
 
@@ -44,46 +44,55 @@ Every spawned Phase task must include:
 
 ## User review defaults
 
-- `cdd-contract-writer`: `user_review=false`
+- `cdd-contract-writer`: `user_review=true`
 - `cdd-specifier`: `user_review=true`
+- `cdd-surface-scaffolder`: `user_review=false`
 - `cdd-test-writer`: `user_review=false`
 - `cdd-implementer`: `user_review=false`
 - `cdd-validator`: `user_review=false`
 
-`objective_packet.user_review` tells the orchestrator whether it must ask the user to review the completed phase before `cdd advance <spec> --commit`.
+`objective_packet.user_review` tells the orchestrator whether it must ask the user to review the completed phase before closure. For Spec transitions, that review gate sits before `cdd advance <spec> --commit`.
 
 ## Sub-agent common rules
 
 - Leaf workers cannot spawn other sub-agents.
 - Do not work beyond the assigned phase scope.
 - Return structured results after completion.
-- For Spec phases except the parallel `implementing` pair, execute `cdd advance <spec>` without `--commit` before returning.
+- `cdd-contract-writer` returns `ready_for_transition: true` when the Contract draft is ready for orchestrator review and follow-up routing. Contract authoring never runs `cdd advance`.
+- For Spec phases except the optional `implementing` surface scaffold and the parallel `implementing` pair, execute `cdd advance <spec>` without `--commit` before returning.
+- `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when the shared importable surface is ready.
 - `cdd-test-writer` and `cdd-implementer` return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then runs the integrated `cdd advance <spec>` check and re-routes findings by ownership.
-- Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true` or `ready_for_fan_in: true`.
+- Any worker that edits a Spec must preserve `schemaVersion` and refresh `lastModified` to today's `YYYY-MM-DD`.
+- Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true` or `ready_for_fan_in: true` when the phase owns that loop.
 - If a blocking issue belongs to another worker or requires Contract changes, stop and return the correct re-route target.
-- Include `ready_for_transition` or `ready_for_fan_in`, `preferred_respawn_role`, and `blocking_reason` when the next control-plane action matters.
+- Include `ready_for_transition`, `ready_for_parallel_pair`, or `ready_for_fan_in`, plus `preferred_respawn_role` and `blocking_reason`, when the next control-plane action matters.
 - Include `transition_readiness` when the worker owns a `cdd advance` loop so the orchestrator knows whether `cdd advance --commit` is safe to run.
 - Contract files are read-only. Report to orchestrator if modification is needed.
 - Do not execute `cdd advance --commit`. The orchestrator manages transitions.
 
 ## Spec ownership boundary
 
-- `cdd-specifier` owns `summary`, `description`, `acceptanceCriteria`, schema-defined Spec fields, and planned `sources`.
+- `cdd-specifier` owns `summary`, `description`, `acceptanceCriteria`, schema-defined Spec fields, planned `sources`, and `schemaVersion` normalization.
 - `cdd-specifier` also owns directly related Spec updates required after reviewing a target Spec's `contracts` and `dependsOnSpecs`.
+- `cdd-surface-scaffolder` owns shared type/interface/export files and minimal runtime stubs required so downstream tests and implementation can import planned modules. It must not edit Spec files.
 - `cdd-test-writer` owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
 - `cdd-implementer` owns production code, implementation support files, and the final `sources` list.
 - `cdd-validator` owns the final validation/fix loops plus the `validating -> done` pre-commit verification. It must not edit Spec files; if the fix requires changing `acceptanceCriteria[].testRef`, it must return `preferred_respawn_role: cdd-test-writer`.
 - If a Phase discovers that another worker owns the needed Spec change, it must report that fact to the orchestrator instead of editing across the boundary.
 
-## Parallel implementing contract
+## Implementing preparation and parallel contract
 
 When the active Spec status is `implementing`:
-- The orchestrator must spawn `cdd-test-writer` and `cdd-implementer` as a parallel pair.
+- The orchestrator must first decide whether planned imports are blocked by missing shared type/interface/export/runtime surface.
+- If that shared surface is missing, the orchestrator must spawn `cdd-surface-scaffolder` before the parallel pair.
+- `cdd-surface-scaffolder` may not edit the Spec and may not add business logic or tests.
+- Once the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` as a parallel pair.
 - Both workers receive the same `spec_path`, `contract_paths`, and `schema_path`, plus explicit ownership boundaries in `objective_packet.constraints`.
+- `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when imports, exports, and shared type/interface scaffolds are ready for downstream work.
 - `cdd-test-writer` may edit only `acceptanceCriteria[].testRef` inside the Spec.
 - `cdd-implementer` may edit only `sources` inside the Spec.
 - The orchestrator owns the integrated `cdd advance <spec>` loop after both workers return.
-- Re-spawn by ownership: `testRef` and test-semantic findings go to `cdd-test-writer`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
+- Re-spawn by ownership: missing shared type/interface/export/runtime surface goes to `cdd-surface-scaffolder`; `testRef` and test-semantic findings go to `cdd-test-writer`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
 
 ## Cross-artifact review rules
 
@@ -91,6 +100,8 @@ When the active Spec status is `implementing`:
 - Contract-phase results must include `impacted_spec_followups` for any downstream Spec updates that need routing.
 - Feature-change work must resolve the matching feature Spec first and confirm whether the target Spec needs edits or added content.
 - Spec-phase work must read the target Spec's `contracts` and `dependsOnSpecs` before returning `ready_for_transition: true`.
+- Spec-phase work should keep planned file layout and export boundaries concrete enough that the orchestrator can tell whether a shared surface scaffold is required before parallel implementation.
+- Contract-phase work must return clarifying questions to the orchestrator instead of attempting direct user interaction inside the worker.
 - If related Spec updates are needed for consistency, route them to or apply them within `cdd-specifier` scope.
 - If Contract drift is found and the user did not explicitly request Contract edits, return a blocking signal instead of mutating Contract files.
 

@@ -33,23 +33,26 @@ findings: [] # previous verification failures on re-spawn
 5. If the Spec is already `implementing` or later, stop and return `ready_for_transition: false`.
 6. For feature-change requests, decide whether the target Spec needs modification, additional content, or no change before touching related artifacts.
 
-### Step 2: Fill the core narrative
+### Step 2: Normalize metadata and fill the core narrative
 
-Write or refine the Spec's:
-- `summary`
-- `description`
+1. Preserve the current `schemaVersion` if it already exists.
+2. If `schemaVersion` is missing after scaffold creation, initialize it to `2` for the current miomock live envelope.
+3. Refresh `lastModified` to today's `YYYY-MM-DD` whenever you change the Spec in this phase.
+4. Write or refine the Spec's:
+   - `summary`
+   - `description`
 
 The narrative must stay within the referenced Contract scope and clearly describe one feature.
 
 ### Step 3: Fill schema-defined fields
 
-Read the Schema `fields` array and fill each field according to its `description` and `type`.
+Read the Schema `fields` array and fill each field according to its `name`, `type`, and `description` when present.
 
 Each field must:
 - stay within Contract scope
 - be consistent with `summary` and `description`
 - maintain consistency across cross-references between fields
-- accurately reflect what the field `description` requires
+- accurately reflect the field's intended role from its name/type and any description that exists
 
 ### Step 4: Define acceptance criteria
 
@@ -63,6 +66,7 @@ Each field must:
 
 Add planned implementation and test file paths to `sources` when they are knowable at Spec time.
 These are handoff hints for the parallel `implementing` workers; `cdd-implementer` still owns the final actual `sources` list.
+When the feature will require new shared types, interfaces, exports, DTO/schema files, or runtime entrypoints, make the planned file layout concrete enough that the orchestrator can tell whether `cdd-surface-scaffolder` should run before the parallel pair.
 
 ### Step 6: Fix findings on re-spawn
 
@@ -85,7 +89,7 @@ If `findings` are provided:
 1. Run `cdd advance <spec>` without `--commit`.
 2. If Layer 1 fails because required Spec content is still missing or malformed, fix the Spec and re-run the command.
 3. If the CLI emits delegate output, perform the Layer 2 semantic verification inside this worker:
-   - field descriptions are reflected faithfully
+   - field intent from schema names/types and any descriptions is reflected faithfully
    - ACs are concrete and testable
    - content stays within Contract scope
    - cross-field consistency is preserved
@@ -96,9 +100,10 @@ If `findings` are provided:
 
 Return `ready_for_transition: true` only when:
 - `summary` and `description` are coherent
+- `schemaVersion` and `lastModified` are valid
 - required schema fields are filled
 - ACs are concrete and non-empty
-- planned `sources` are coherent enough for downstream work
+- planned `sources` are coherent enough for downstream work, including any likely shared surface scaffold
 - related Specs are updated or explicitly routed for follow-up
 - the latest `cdd advance <spec>` check is clean for the current transition
 
@@ -110,6 +115,7 @@ transition_readiness:
   checked_with: "cdd advance <spec>"
   layer1_result: "pass|fail"
   layer2_result: "pass|fail"
+metadata_updated: ["{list such as schemaVersion,lastModified}"]
 fields_completed: ["{list of filled fields}"]
 ac_count: "{number of defined ACs}"
 sources_planned: ["{list of planned source files}"]

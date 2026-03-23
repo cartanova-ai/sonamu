@@ -48,9 +48,11 @@ export interface ContractDocument {
 /** Spec JSON 문서 구조 */
 export interface SpecDocument {
   schema: string;
+  schemaVersion?: number;
   summary: string;
   description: string[];
   acceptanceCriteria: AcceptanceCriterion[];
+  lastModified?: string;
   status: SpecStatus;
   sources: string[];
   contracts: string[];

@@ -64,6 +64,7 @@ Record a finding if build or tests fail.
 
 If `findings` are provided:
 - Fix code and tests that fail the validating-stage checks.
+- If the fix requires new shared type/interface/export/runtime surface without meaningful business-logic work, return `preferred_respawn_role: cdd-surface-scaffolder`.
 - If the fix requires changing `acceptanceCriteria[].testRef`, return `preferred_respawn_role: cdd-test-writer`.
 - If Spec narrative or schema-field modification is needed, report that to the orchestrator so it can spawn `cdd-specifier`.
 
@@ -71,14 +72,15 @@ If `findings` are provided:
 
 1. Run `cdd advance <spec>` without `--commit`.
 2. If Layer 1 fails because `testRef.pattern` or other `testRef` data is incomplete, return `preferred_respawn_role: cdd-test-writer` instead of patching the Spec directly.
-3. If Layer 1 fails because build status or test-file semantics are incomplete, fix the code/tests and re-run the command.
+3. If build/test evidence fails, or if Layer 1/Layer 2 still exposes test-file semantics gaps, fix the code/tests and re-run the command.
 4. If the CLI emits delegate output, perform the Layer 2 semantic verification inside this worker:
    - each mapped test semantically validates the AC condition
    - constraint-related expectations are reflected in code and tests
    - error-handling scenarios are covered with meaningful assertions
 5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
 6. If the remaining issue requires `testRef` changes, stop and return `preferred_respawn_role: cdd-test-writer`.
-7. If the remaining issue requires Spec narrative or schema-field changes, stop and return `preferred_respawn_role: cdd-specifier`.
+7. If the remaining issue requires shared type/interface/export/runtime surface work without Spec narrative changes, stop and return `preferred_respawn_role: cdd-surface-scaffolder`.
+8. If the remaining issue requires Spec narrative or schema-field changes, stop and return `preferred_respawn_role: cdd-specifier`.
 
 ## Output
 
@@ -104,7 +106,7 @@ error_handling_covered: true|false
 overall: "pass|fail"
 findings: [{ field, severity, message }]
 ready_for_transition: true|false
-preferred_respawn_role: "cdd-validator|cdd-test-writer|cdd-specifier"
+preferred_respawn_role: "cdd-validator|cdd-test-writer|cdd-surface-scaffolder|cdd-specifier"
 user_review_summary: "{brief Korean summary for orchestrator review handoff}"
 blocking_reason: "{empty when ready}"
 ```

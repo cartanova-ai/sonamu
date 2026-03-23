@@ -1,6 +1,6 @@
-# Phase 3B: Implement Code
+# Phase 3C: Implement Code
 
-Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Acceptance tests and `acceptanceCriteria[].testRef` are owned by `cdd-test-writer`.
+Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Shared importable surface preparation belongs to `cdd-surface-scaffolder`, and acceptance tests plus `acceptanceCriteria[].testRef` are owned by `cdd-test-writer`.
 
 ## Required reading (mandatory)
 
@@ -31,14 +31,16 @@ findings: [] # previous verification failures on re-spawn
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the Schema file and understand the custom field structure.
 3. Internalize all schema fields and ACs. These are the implementation criteria.
+4. Assume any required shared importable surface has already been prepared. If missing shared types/interfaces/exports block the implementation, report that gap instead of broadening this worker's scope.
 
 ### Step 2: Implement code
 
 1. Implement according to the structure defined in the Spec's schema fields.
 2. If a better structure appears during implementation, do not change code first.
 3. Report Spec-content changes back to the orchestrator so it can spawn `cdd-specifier`.
-4. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer`.
-5. Update `sources` when new implementation files are added or when you need to reconcile the integrated file list after fan-in.
+4. If new shared type/interface/export/runtime scaffolds are required before meaningful logic can proceed, return `preferred_respawn_role: cdd-surface-scaffolder`.
+5. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer`, keep `schemaVersion`, and refresh `lastModified`.
+6. Update `sources` when new implementation files are added or when you need to reconcile the integrated file list after fan-in.
 
 ### Step 3: Run focused verification
 
@@ -56,9 +58,10 @@ If tests already exist for your target behavior, you may run focused test files.
 If `findings` are provided:
 1. Fix the corresponding production code and `sources`.
 2. Do not update `acceptanceCriteria[].testRef`; that belongs to `cdd-test-writer`.
-3. If a finding requires changes to tests or test semantics only, return `preferred_respawn_role: cdd-test-writer`.
-4. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
-5. Re-run focused checks.
+3. If a finding requires shared type/interface/export/runtime surface work without business-logic changes, return `preferred_respawn_role: cdd-surface-scaffolder`.
+4. If a finding requires changes to tests or test semantics only, return `preferred_respawn_role: cdd-test-writer`.
+5. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
+6. Re-run focused checks.
 
 ### Step 5: Return readiness for fan-in
 
@@ -70,9 +73,7 @@ Return `ready_for_fan_in: true` only when:
 
 ### Step 6: Commit
 
-Separate Spec changes and code changes into distinct commits:
-- `[miomock-api] feat: {feature_name} sources sync` (Spec change)
-- `[miomock-api] feat: {feature_name} implementation` (code change)
+If this phase creates commits, separate Spec changes and code changes when practical, and follow the repository's Korean commit-message policy.
 
 ## Output
 
@@ -84,7 +85,7 @@ commits: ["{commit hashes}"]
 build_status: "pass|fail"
 test_status: "pass|fail"
 ready_for_fan_in: true|false
-preferred_respawn_role: "cdd-implementer|cdd-test-writer|cdd-specifier"
+preferred_respawn_role: "cdd-implementer|cdd-surface-scaffolder|cdd-test-writer|cdd-specifier"
 user_review_summary: "{brief Korean summary for orchestrator fan-in handoff}"
 blocking_reason: "{empty when ready}"
 ```
@@ -94,6 +95,7 @@ blocking_reason: "{empty when ready}"
 - Do not implement features not in the Spec.
 - Do not modify Contract files.
 - Do not modify `acceptanceCriteria[].testRef`.
+- Do not absorb shared type/interface/export/runtime scaffold work into this role when that work exists only to make imports resolvable.
 - Do not execute `cdd advance <spec>` or `cdd advance --commit`; the orchestrator owns the shared gate for this phase.
 - If Spec and code conflict, fix the code. Never change Spec to match code.
 - Do not rewrite `summary`, `description`, AC conditions, or schema-defined fields in this phase.

@@ -442,9 +442,9 @@ function buildLayer2Content(target: SpecStatus): { instruction: string; checks: 
     case "specifying":
       return {
         instruction:
-          "다음 Spec의 내용이 스키마 필드별 description에 부합하는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
+          "다음 Spec의 내용이 스키마 필드 정의에 부합하는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
-          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 Spec의 해당 필드가 description이 요구하는 내용을 담고 있는지 검증.",
+          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 Spec의 해당 필드가 의도된 내용을 담고 있는지 검증.",
           "B. AC 검증: 각 AC condition이 pass/fail 판정 가능한 구체적 조건인가, 모호한 표현이 없는가",
           "C. Contract 정합성: Spec이 참조 Contract의 features/businessRules 범위 내에서 작성되었는가, Contract에 없는 범위를 포함하지 않는가",
         ],
@@ -453,9 +453,9 @@ function buildLayer2Content(target: SpecStatus): { instruction: string; checks: 
     case "implementing":
       return {
         instruction:
-          "다음 Spec이 구현 단계로 진입할 준비가 되었는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
+          "다음 Spec이 구현 단계로 진입할 준비가 되었는지 스키마 필드 정의와 Contract 범위를 기준으로 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
-          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 Spec의 해당 필드가 의미적으로 잘 작성되어 있는가 검증. Contract의 features/businessRules 범위와 정합하는가, 필드 간 상호 참조가 일관적인가 확인.",
+          "A. 스키마 필드별 내용 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 Spec의 해당 필드가 의미적으로 잘 작성되어 있는가 검증. Contract의 features/businessRules 범위와 정합하는가, 필드 간 상호 참조가 일관적인가 확인.",
           "B. AC 검증: 각 AC condition이 pass/fail 판정 가능한 구체적 조건인가, 모호한 표현이 없는가",
           "C. 전체 일관성: Spec이 Contract에 없는 범위를 포함하지 않는가, 필수 필드들이 하나의 기능 명세로서 빈틈 없이 연결되는가",
         ],
@@ -464,9 +464,9 @@ function buildLayer2Content(target: SpecStatus): { instruction: string; checks: 
     case "validating":
       return {
         instruction:
-          "다음 Spec의 구현이 완료되었는지 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
+          "다음 Spec의 구현이 완료되었는지 스키마 필드 정의와 AC 의미를 기준으로 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
         checks: [
-          "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 description을 기준으로 sources의 코드가 명세를 구현하는가 확인",
+          "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 sources의 코드가 명세를 구현하는가 확인",
           "B. 테스트 매칭 검증: 각 AC의 testRef.target 파일 내에서 testRef.pattern에 매칭되는 테스트가 있는가, 해당 테스트가 AC condition의 의미를 정확히 검증하는가 (vacuous test 아닌가)",
           "C. 명세-코드 일관성: 스키마 필드에 기술된 흐름/구조가 코드에 반영되었는가",
         ],
