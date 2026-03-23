@@ -287,7 +287,7 @@ ALTER TABLE ONLY public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id)
 -- 2010~2017: CREATE INDEX
 CREATE INDEX projects_name_description_pgroonga_index ON public.projects ...;
 
--- ❌ 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - 이 전에 데이터 있어야 함!)
+-- WRONG 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - 이 전에 데이터 있어야 함!)
 ALTER TABLE ONLY public.departments 
     ADD CONSTRAINT departments_company_id_foreign FOREIGN KEY (company_id) REFERENCES public.companies(id);
 ```
@@ -298,8 +298,8 @@ ALTER TABLE ONLY public.departments
 
 | 위치 | 결과 |
 |------|------|
-| FK CONSTRAINT 전 | ✅ 정상 - 데이터 삽입 후 FK 검사 |
-| FK CONSTRAINT 후 | ❌ 실패 - 참조 테이블 데이터 없어서 FK 위반 |
+| FK CONSTRAINT 전 | OK - 데이터 삽입 후 FK 검사 |
+| FK CONSTRAINT 후 | FAIL - 참조 테이블 데이터 없어서 FK 위반 |
 
 ### 테이블 간 의존성 순서
 

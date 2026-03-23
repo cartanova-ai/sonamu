@@ -73,14 +73,14 @@ pnpm sonamu stub entity {EntityId}
 
 **올바른 예시:**
 
-- `pnpm sonamu stub entity Course` ✅
-- `pnpm sonamu stub entity User` ✅
-- `pnpm sonamu stub entity ConsultationHistory` ✅
+- `pnpm sonamu stub entity Course` (correct)
+- `pnpm sonamu stub entity User` (correct)
+- `pnpm sonamu stub entity ConsultationHistory` (correct)
 
 **잘못된 예시:**
 
-- `pnpm sonamu stub entity course` ❌ (소문자로 시작)
-- `pnpm gen stub entity Course` ❌ (잘못된 명령어)
+- `pnpm sonamu stub entity course` (wrong - 소문자로 시작)
+- `pnpm gen stub entity Course` (wrong - 잘못된 명령어)
 
 생성되는 파일: `api/src/application/{entity}/{entity}.entity.json`
 

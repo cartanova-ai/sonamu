@@ -57,7 +57,7 @@ description: Sonamu 프레임워크 소스 수정 vs. 프로젝트 레벨 우회
 `@upload` 메서드에 primitive 파라미터가 여러 개이면 `services.template.ts`의 `split(':')` 버그로 `useUploadMutation`이 잘못 생성된다.
 
 ```typescript
-// ❌ 이렇게 쓰면 codegen 깨짐
+// WRONG — 이렇게 쓰면 codegen 깨짐
 async upload(entity_type: string, entity_id: number, file_type: string)
 ```
 
@@ -70,7 +70,7 @@ mutationFn: (params: { params: string; ... }) => upload(params.params, params.fi
 ### 해결: 단일 객체로 묶는다
 
 ```typescript
-// ✅ 단일 객체 파라미터
+// CORRECT — 단일 객체 파라미터
 async upload(params: { entity_type: string; entity_id: number; file_type: string })
 ```
 

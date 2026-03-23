@@ -99,11 +99,11 @@ async me(): Promise<User | null> {
 > `@api`를 함께 붙이면 `checkSingleDecorator` 충돌로 **빌드 에러**가 발생한다.
 
 ```typescript
-// ✅ CORRECT
+// CORRECT
 @upload({ limits: { files: 10 }, guards: ["user"] })
 async upload(...): Promise<number[]> { }
 
-// ❌ WRONG — 빌드 에러 발생
+// WRONG — 빌드 에러 발생
 @api({ httpMethod: "POST", clients: ["axios-multipart"] })
 @upload({ limits: { files: 10 } })
 async upload(...): Promise<number[]> { }
@@ -127,10 +127,10 @@ async upload(...): Promise<number[]> { }
 > primitive 파라미터를 여러 개 쓰면 `services.template.ts`의 codegen 버그로 `useUploadMutation`이 잘못 생성된다.
 
 ```typescript
-// ❌ WRONG — codegen 깨짐 (mutationFn 인수 누락)
+// WRONG — codegen 깨짐 (mutationFn 인수 누락)
 async upload(entity_type: string, entity_id: number, file_type: string)
 
-// ✅ CORRECT — 단일 객체로 묶기
+// CORRECT — 단일 객체로 묶기
 async upload(params: { entity_type: string; entity_id: number; file_type: string })
 ```
 

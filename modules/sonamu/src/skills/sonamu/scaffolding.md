@@ -143,7 +143,7 @@ export const PostSaveParams = PostBaseSchema
 ### 완료 확인
 
 ```
-✅ Scaffolding 후 필수 체크리스트 완료
+Scaffolding 후 필수 체크리스트 완료
 → 다음 단계: 테스트 작성 (testing.md)
 
 ⚠️ types.ts nullable 필드 처리를 하지 않으면

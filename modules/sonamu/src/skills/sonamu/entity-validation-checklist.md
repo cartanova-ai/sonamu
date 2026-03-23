@@ -12,7 +12,7 @@ Entity를 생성한 후 반드시 다음 단계를 순서대로 수행하세요.
 ```
 1. stub 생성
 2. entity.json 작성
-3. ✅ 자동 검증 실행 (이 체크리스트)
+3. 자동 검증 실행 (이 체크리스트)
 4. model.ts, types.ts 생성
 5. sync 실행
 6. migration 생성
