@@ -2,13 +2,25 @@ import { useQuery } from "@tanstack/react-query";
 import { fetch } from "../../services/sonamu.shared";
 import type {
   CddContentEnvelope,
+  CddDashboardData,
   CddSchemaDetailEnvelope,
   CddSchemaSummary,
   CddTreeNode,
 } from "./types";
 
 export namespace CddService {
-  export function useCddTree() {
+  export function useCddDashboard() {
+    return useQuery({
+      queryKey: ["cdd", "dashboard"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/cdd/dashboard`,
+        }) as Promise<CddDashboardData>,
+    });
+  }
+
+  export function useCddTree(enabled = true) {
     return useQuery({
       queryKey: ["cdd", "tree"],
       queryFn: () =>
@@ -16,6 +28,7 @@ export namespace CddService {
           method: "GET",
           url: `/sonamu-ui/api/cdd/tree`,
         }) as Promise<{ exists: boolean; tree: CddTreeNode[] }>,
+      enabled,
     });
   }
 
@@ -57,7 +70,7 @@ export namespace CddService {
     });
   }
 
-  export function useCddSchemas() {
+  export function useCddSchemas(enabled = true) {
     return useQuery({
       queryKey: ["cdd", "schemas"],
       queryFn: () =>
@@ -65,6 +78,7 @@ export namespace CddService {
           method: "GET",
           url: `/sonamu-ui/api/cdd/schemas`,
         }) as Promise<{ schemas: CddSchemaSummary[] }>,
+      enabled,
     });
   }
 

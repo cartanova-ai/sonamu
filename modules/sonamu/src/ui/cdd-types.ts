@@ -59,6 +59,34 @@ export type CddSchemaDetailEnvelope = {
   hasIdMismatch: boolean;
 };
 
+/** Spec 문서 상태 */
+export type CddSpecStatus = "draft" | "specifying" | "implementing" | "validating" | "done";
+
+/** 대시보드 문서 요약 */
+export type CddDocumentSummary = {
+  path: string;
+  name: string;
+  fileType: CddFileType;
+  status?: CddSpecStatus;
+  schemaId?: string;
+  featureCount?: number;
+  acceptanceCriteriaCount?: number;
+  sourceCount?: number;
+  lastModified?: string;
+  parseError?: string;
+};
+
+/** 대시보드 통계 */
+export type CddDashboardData = {
+  exists: boolean;
+  stats: {
+    totalContracts: number;
+    totalSpecs: number;
+    statusDistribution: Record<CddSpecStatus, number>;
+  };
+  documents: CddDocumentSummary[];
+};
+
 /** Acceptance Criterion 테스트 참조 */
 export type AcceptanceCriterionTestRef = {
   target: string;

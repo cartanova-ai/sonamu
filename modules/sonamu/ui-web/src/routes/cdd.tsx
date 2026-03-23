@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { useCallback, useMemo, useState } from "react";
+import BarChart3Icon from "~icons/lucide/bar-chart-3";
 import FileCodeIcon from "~icons/lucide/file-code";
 import FileTextIcon from "~icons/lucide/file-text";
 import FolderOpenIcon from "~icons/lucide/folder-open";
@@ -8,6 +9,7 @@ import LayersIcon from "~icons/lucide/layers";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import SearchIcon from "~icons/lucide/search";
 import { useSonamuContext } from "../contexts/sonamu-provider";
+import { CddDashboard } from "./cdd/components/cdd_dashboard";
 import { CddDocumentDetail } from "./cdd/components/cdd_document_detail";
 import { CddSchemaDetail } from "./cdd/components/cdd_schema_detail";
 import { CddSchemaList } from "./cdd/components/cdd_schema_list";
@@ -20,13 +22,22 @@ export const Route = createFileRoute("/cdd")({
   component: CddPage,
 });
 
+const MODE_TABS: { key: CddMode; label: string }[] = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "documents", label: "Documents" },
+  { key: "schemas", label: "Schemas" },
+];
+
 function CddPage() {
   const { SD } = useSonamuContext();
-  const { data, error, refetch } = CddService.useCddTree();
-  const { data: schemasData, refetch: refetchSchemas } = CddService.useCddSchemas();
-  const isLoading = !error && !data;
+  const [mode, setMode] = useState<CddMode>("dashboard");
 
-  const [mode, setMode] = useState<CddMode>("documents");
+  const { refetch: refetchDashboard } = CddService.useCddDashboard();
+  const { data, error, refetch } = CddService.useCddTree(mode === "documents");
+  const { data: schemasData, refetch: refetchSchemas } = CddService.useCddSchemas(
+    mode === "schemas",
+  );
+  const isLoading = mode === "documents" && !error && !data;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeNodePath, setActiveNodePath] = useState<string | null>(null);
   const [activeSchemaKey, setActiveSchemaKey] = useState<string | null>(null);
@@ -57,7 +68,16 @@ function CddPage() {
     setActiveNodePath(path);
   }, []);
 
+  const handleNavigateToDocument = useCallback((docPath: string) => {
+    setMode("documents");
+    setActiveNodePath(docPath);
+  }, []);
+
   const renderMainContent = () => {
+    if (mode === "dashboard") {
+      return <CddDashboard onNavigateToDocument={handleNavigateToDocument} />;
+    }
+
     if (mode === "schemas") {
       if (activeSchemaKey) {
         return (
@@ -117,9 +137,12 @@ function CddPage() {
   };
 
   const handleRefresh = () => {
+    refetchDashboard();
     refetch();
     refetchSchemas();
   };
+
+  const showSidebarContent = mode !== "dashboard";
 
   return (
     <div className="flex h-[calc(100vh-var(--spacing-gnb))] bg-gray-50 text-gray-900">
@@ -138,85 +161,93 @@ function CddPage() {
 
         <div className="px-3 pt-2 pb-1">
           <div className="flex rounded-lg bg-gray-100 p-0.5">
-            <button
-              type="button"
-              className={classNames(
-                "flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all cursor-pointer",
-                mode === "documents"
-                  ? "bg-white text-gray-800 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700",
-              )}
-              onClick={() => setMode("documents")}
-            >
-              Documents
-            </button>
-            <button
-              type="button"
-              className={classNames(
-                "flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all cursor-pointer",
-                mode === "schemas"
-                  ? "bg-white text-gray-800 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700",
-              )}
-              onClick={() => setMode("schemas")}
-            >
-              Schemas
-            </button>
+            {MODE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={classNames(
+                  "flex-1 text-[10px] font-semibold py-1.5 rounded-md transition-all cursor-pointer",
+                  mode === tab.key
+                    ? "bg-white text-gray-800 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700",
+                )}
+                onClick={() => setMode(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="px-3 py-1.5">
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
-            <input
-              type="text"
-              placeholder={mode === "documents" ? SD("cdd.searchPlaceholder") : "Search schemas..."}
-              className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg text-xs transition-all outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        {showSidebarContent && (
+          <>
+            <div className="px-3 py-1.5">
+              <div className="relative">
+                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  placeholder={
+                    mode === "documents" ? SD("cdd.searchPlaceholder") : "Search schemas..."
+                  }
+                  className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg text-xs transition-all outline-none"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto px-1.5 py-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
+              {mode === "documents" && (
+                <>
+                  {isLoading && (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      {SD("common.loading")}
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="text-center py-8 text-red-500 text-sm">
+                      {SD("common.error")}
+                    </div>
+                  )}
+
+                  {data && !data.exists && (
+                    <div className="mx-2 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                      {SD("cdd.noContractDir")}
+                    </div>
+                  )}
+
+                  {data?.exists &&
+                    filteredTree.map((node) => (
+                      <CddTreeNodeItem
+                        key={node.path}
+                        node={node}
+                        depth={0}
+                        onRefetch={refetch}
+                        activeNodePath={activeNodePath}
+                        onSelect={setActiveNodePath}
+                      />
+                    ))}
+                </>
+              )}
+
+              {mode === "schemas" && (
+                <CddSchemaList
+                  schemas={filteredSchemas}
+                  activeSchemaKey={activeSchemaKey}
+                  onSelect={setActiveSchemaKey}
+                />
+              )}
+            </nav>
+          </>
+        )}
+
+        {mode === "dashboard" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
+            <BarChart3Icon className="w-8 h-8 text-gray-200 mb-2" />
+            <p className="text-xs text-gray-400">Dashboard view</p>
           </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-1.5 py-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
-          {mode === "documents" && (
-            <>
-              {isLoading && (
-                <div className="text-center py-8 text-gray-400 text-sm">{SD("common.loading")}</div>
-              )}
-
-              {error && (
-                <div className="text-center py-8 text-red-500 text-sm">{SD("common.error")}</div>
-              )}
-
-              {data && !data.exists && (
-                <div className="mx-2 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                  {SD("cdd.noContractDir")}
-                </div>
-              )}
-
-              {data?.exists &&
-                filteredTree.map((node) => (
-                  <CddTreeNodeItem
-                    key={node.path}
-                    node={node}
-                    depth={0}
-                    onRefetch={refetch}
-                    activeNodePath={activeNodePath}
-                    onSelect={setActiveNodePath}
-                  />
-                ))}
-            </>
-          )}
-
-          {mode === "schemas" && (
-            <CddSchemaList
-              schemas={filteredSchemas}
-              activeSchemaKey={activeSchemaKey}
-              onSelect={setActiveSchemaKey}
-            />
-          )}
-        </nav>
+        )}
 
         {mode === "documents" && data?.exists && (
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-2">

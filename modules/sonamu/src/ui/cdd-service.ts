@@ -5,16 +5,21 @@ import path from "path";
 import { Sonamu } from "../api/sonamu";
 import type {
   CddContentEnvelope,
+  CddDashboardData,
+  CddDocumentSummary,
   CddFileType,
   CddSchema,
   CddSchemaDetailEnvelope,
   CddSchemaReference,
   CddSchemaSummary,
+  CddSpecStatus,
   CddTreeNode,
 } from "./cdd-types";
 
 export type {
   CddContentEnvelope,
+  CddDashboardData,
+  CddDocumentSummary,
   CddFileType,
   CddSchema,
   CddSchemaDetailEnvelope,
@@ -22,6 +27,7 @@ export type {
   CddSchemaFieldType,
   CddSchemaReference,
   CddSchemaSummary,
+  CddSpecStatus,
   CddTreeNode,
 } from "./cdd-types";
 
@@ -346,6 +352,106 @@ export async function editSchema(
   await runEditor(editor, absPath);
 
   return { success: true, schemaKey };
+}
+
+const VALID_SPEC_STATUSES = new Set<CddSpecStatus>([
+  "draft",
+  "specifying",
+  "implementing",
+  "validating",
+  "done",
+]);
+
+/** 모든 contract/spec 문서를 스캔하여 대시보드 통계를 반환 */
+export function getDashboard(): CddDashboardData {
+  const contractDir = getContractDir();
+  if (!fs.existsSync(contractDir)) {
+    return {
+      exists: false,
+      stats: {
+        totalContracts: 0,
+        totalSpecs: 0,
+        statusDistribution: { draft: 0, specifying: 0, implementing: 0, validating: 0, done: 0 },
+      },
+      documents: [],
+    };
+  }
+
+  const documents: CddDocumentSummary[] = [];
+  const statusDistribution: Record<CddSpecStatus, number> = {
+    draft: 0,
+    specifying: 0,
+    implementing: 0,
+    validating: 0,
+    done: 0,
+  };
+
+  function scanForDashboard(dirPath: string): void {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "schemas") continue;
+        scanForDashboard(fullPath);
+      } else if (entry.isFile()) {
+        const fileType = detectFileType(entry.name);
+        if (!fileType) continue;
+        const relPath = path.relative(contractDir, fullPath);
+        try {
+          const raw = fs.readFileSync(fullPath, "utf-8");
+          const doc = JSON.parse(raw) as Record<string, unknown>;
+
+          const summary: CddDocumentSummary = {
+            path: relPath,
+            name: entry.name,
+            fileType,
+            schemaId: typeof doc.schema === "string" ? doc.schema : undefined,
+            lastModified: typeof doc.lastModified === "string" ? doc.lastModified : undefined,
+          };
+
+          if (fileType === "contract") {
+            const features = doc.features;
+            if (features && typeof features === "object" && !Array.isArray(features)) {
+              summary.featureCount = Object.keys(features).length;
+            }
+          } else {
+            const status = typeof doc.status === "string" ? doc.status : "draft";
+            summary.status = VALID_SPEC_STATUSES.has(status as CddSpecStatus)
+              ? (status as CddSpecStatus)
+              : "draft";
+            statusDistribution[summary.status]++;
+
+            if (Array.isArray(doc.acceptanceCriteria)) {
+              summary.acceptanceCriteriaCount = doc.acceptanceCriteria.length;
+            }
+            if (Array.isArray(doc.sources)) {
+              summary.sourceCount = doc.sources.length;
+            }
+          }
+
+          documents.push(summary);
+        } catch (err) {
+          documents.push({
+            path: relPath,
+            name: entry.name,
+            fileType,
+            parseError: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+  }
+
+  scanForDashboard(contractDir);
+
+  const totalContracts = documents.filter((d) => d.fileType === "contract" && !d.parseError).length;
+  const totalSpecs = documents.filter((d) => d.fileType === "spec" && !d.parseError).length;
+
+  return {
+    exists: true,
+    stats: { totalContracts, totalSpecs, statusDistribution },
+    documents,
+  };
 }
 
 /** 소스 파일을 외부 에디터로 열기 (대기하지 않음) */

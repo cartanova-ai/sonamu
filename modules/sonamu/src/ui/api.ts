@@ -41,6 +41,7 @@ import {
   editContent,
   editSchema,
   getCddTree,
+  getDashboard,
   listSchemas,
   openSourceFile,
   readContent,
@@ -1403,6 +1404,10 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       });
 
       // CDD API
+      server.get("/api/cdd/dashboard", async () => {
+        return getDashboard();
+      });
+
       server.get("/api/cdd/tree", async () => {
         return getCddTree();
       });
