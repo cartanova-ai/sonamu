@@ -477,6 +477,59 @@ db.vectorSimilarity("embedding", embedding, {
 
 ---
 
+## pg_trgm Fuzzy Search
+
+`CREATE EXTENSION IF NOT EXISTS pg_trgm` 필요. `searchText` prop으로 생성된 generated column과 GIN 인덱스를 함께 사용하는 것이 일반적이다.
+
+### whereFuzzy — 후보 필터링
+
+연산자별로 SQL 피연산자 순서가 다르다:
+
+| operator | 의미 | SQL |
+|----------|------|-----|
+| `<%` (기본) | word similarity | `'query' <% column` |
+| `%` | similarity | `column % 'query'` |
+| `<<%` | strict word similarity | `'query' <<% column` |
+
+```typescript
+puri.whereFuzzy("items.search_text", query);
+puri.whereFuzzy("items.search_text", query, { operator: "%" });
+puri.whereFuzzy("items.search_text", query, { operator: "<<%" });
+```
+
+### 유사도 점수 — Static 메서드
+
+`SqlExpression<"number">`를 반환하므로 select에서 점수 컬럼으로 활용한다:
+
+```typescript
+// Puri.wordSimilarity(column, query)       → word_similarity(?, ??)
+// Puri.similarity(column, query)           → similarity(??, ?)
+// Puri.strictWordSimilarity(column, query) → strict_word_similarity(?, ??)
+
+const results = await this.getPuri("r")
+  .table("items")
+  .whereFuzzy("items.search_text", query)
+  .select({
+    id: "items.id",
+    title: "items.title_ko",
+    score: Puri.rawNumber(
+      `word_similarity(?, items.title_ko) * 5 + word_similarity(?, items.title_en) * 3`,
+      [query, query]
+    ),
+  })
+  .orderByRaw("score DESC");
+```
+
+### 언어별 특성
+
+| 언어 | 적합성 | 비고 |
+|------|--------|------|
+| 영어 | 우수 | 단어 단위 분리 + word_similarity |
+| 한국어 | 양호 | 1-2글자 검색 시 성능 저하 |
+| 일본어 | 양호 | 1-2글자 검색 시 성능 저하 |
+
+---
+
 ## Rules
 
 - MUST use `getPuri("r")` for read queries, `getPuri("w")` for write queries

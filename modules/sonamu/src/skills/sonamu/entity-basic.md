@@ -374,6 +374,49 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 - `id` 필수 (타입명으로 사용)
 - 별도로 TypeScript 타입 정의 필요
 
+### searchText 필드 추가할 때 (pg_trgm Fuzzy Search용)
+
+여러 컬럼을 하나의 generated column으로 통합하는 전용 prop 타입이다. GIN 인덱스와 함께 쓴다.
+
+```json
+{
+  "props": [
+    { "name": "title_ko", "type": "string" },
+    { "name": "title_en", "type": "string" },
+    { "name": "tags",     "type": "string[]" },
+    {
+      "name": "search_text",
+      "type": "searchText",
+      "sourceColumns": [
+        { "name": "title_ko" },
+        { "name": "title_en", "caseInsensitive": true },
+        { "name": "tags" }
+      ]
+    }
+  ],
+  "indexes": [
+    {
+      "name": "idx_items_search_text",
+      "type": "index",
+      "columns": [{ "name": "search_text", "opclass": "gin_trgm_ops" }],
+      "using": "gin"
+    }
+  ]
+}
+```
+
+source column 타입별 SQL 표현:
+
+| source 타입 | caseInsensitive: true | caseInsensitive: false (기본) |
+|------------|----------------------|------------------------------|
+| `string` | `lower(COALESCE(col, ''))` | `COALESCE(col, '')` |
+| `string[]` | `sonamu_text_array_agg(col)` | `sonamu_text_array_agg(col, false)` |
+| `json` (z.array(z.string())) | `sonamu_jsonb_array_agg(col)` | `sonamu_jsonb_array_agg(col, false)` |
+
+- `string[]` 또는 `json(string[])` source가 있으면 마이그레이션에 헬퍼 함수 DDL이 자동 삽입됨
+- `searchText` 컬럼은 generated column이므로 SaveParams에서 자동 제외됨 — INSERT/UPDATE 불가
+- 쿼리 사용법: `puri.md` "pg_trgm Fuzzy Search" 섹션 참조
+
 ### 유니크 제약 추가할 때
 
 ```json

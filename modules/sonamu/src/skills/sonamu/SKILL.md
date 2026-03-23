@@ -247,6 +247,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | Auth Migration | `auth-migration.md` | better-auth 등 외부 인증 통합 시 User.id 타입 변경 |
 | **Auth Plugins** | `auth-plugins.md` | **better-auth 플러그인 래퍼 (admin, organization, 2fa, passkey 등 10종), snake_case 매핑** |
 | **벡터 검색** | `vector.md` | **pgvector 임베딩 (Voyage AI/OpenAI), 청킹, 하이브리드 검색** |
+| Puri 쿼리 빌더 | `puri.md` | SELECT, WHERE, JOIN, FTS, pg_trgm fuzzy search, pgvector |
 | **AI Agents** | `ai-agents.md` | **BaseAgentClass, @tools 데코레이터, ToolLoopAgent, AsyncLocalStorage 상태** |
 | **Tasks** | `tasks.md` | **백그라운드 워크플로우, cron 스케줄링, durable step, 재시도 정책** |
 | **스킬 기여** | `skill-contribution.md` | **트러블슈팅 해결 → 스킬 반영 워크플로우 (매칭, 판정, 포맷, 승인)** |
@@ -288,6 +289,7 @@ confirmed → cancelled (환자/의사 취소, 24시간 전까지만)
 | 다국어/번역 | i18n |
 | Scaffolding 오류 | scaffolding |
 | **벡터 검색/임베딩** | **vector** |
+| **pg_trgm Fuzzy Search** | **puri, entity-basic** |
 | **AI Agent 개발** | **ai-agents** |
 | **백그라운드 작업/스케줄링** | **tasks** |
 | **트러블슈팅 → 스킬 반영** | **skill-contribution** |
