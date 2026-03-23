@@ -262,6 +262,11 @@ Conditions that must be met for this Spec's implementation to be considered "don
 - Recommended format: "조건 X이면 Y이다" (input-result).
 - `testRef`는 `implementing` 단계에서 비워두고, `validating` 단계에서 채운다.
 
+**testRef 작성 시 주의사항**:
+- `testRef.target`은 실제로 존재하는 파일 경로만 기재한다. 존재하지 않는 경로(예: `admin/` 접두)는 MISSING 오류 발생.
+- `testRef.pattern`은 `it()/test()` 설명문에서 실제로 매칭되는 문자열을 사용한다. 테스트 작성 전이면 작성 예정 테스트명을 그대로 pattern으로 기입한다.
+- 구현이 완료됐음에도 testRef 경로 오류로 누락처럼 보이는 경우가 있다. `pnpm cdd test` 결과 MISSING/NO_MATCH가 나오면 코드가 아닌 testRef 경로/패턴부터 확인한다.
+
 **Validation usage**: `cdd advance <spec>` 실행 시 Layer 1/Layer 2 검증에 사용된다. `testRef.pattern` 매칭은 `validating → done` 전이 시 확인된다.
 
 ### Spec detail level

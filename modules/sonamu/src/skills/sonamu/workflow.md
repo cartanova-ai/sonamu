@@ -126,6 +126,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 - [ ] 모든 도메인 contract 작성 및 사용자 승인
 - [ ] 모든 domain spec 파일 작성 완료
 - [ ] 사용자 spec 검토 완료
+- [ ] `pnpm cdd test` 실행 시 MISSING 0, NO_MATCH 0 확인
 
 ---
 
@@ -141,6 +142,11 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
     - 설계하면서 사용자에게 비즈니스 로직에 맞는지 **지속적으로 디테일하게** 확인받을 것
     - 관계 유형(BelongsToOne, HasMany, ManyToMany) 결정 시 반드시 사용자 확인
     - 필드 구성, enum 값, nullable 여부 등 세부 사항도 확인
+    - **파일 첨부가 필요한 엔티티가 있는지 사용자에게 확인한다.** 있다면 다음을 질문한다:
+      - 어떤 엔티티에 파일을 첨부할 것인가?
+      - 파일 종류(file_type)를 어떻게 구분할 것인가? (예: `task_order`, `result_report` 등)
+      - 파일 첨부 여부에 따라 상태(status)가 자동 변경되는 로직이 있는가?
+      - 별도 File 엔티티를 두고 `entity_type` + `entity_id` 조합으로 연결할 것인가, 아니면 다른 방식으로 구현할 것인가?
 21. 최종 완료된 설계안을 `.claude/skills/project/architecture.md`에 기록
 
 **완료 기준:**
