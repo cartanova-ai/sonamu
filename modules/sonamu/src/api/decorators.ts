@@ -213,8 +213,10 @@ export function stream(options: StreamDecoratorOptions) {
       true,
     )}/${inflection.camelize(propertyKey, true)}`;
     const path = options.path ?? defaultPath;
+    // stream 전용 필드(events, type)는 ApiDecoratorOptions에 속하지 않으므로 제외
+    const { events: _, type: _type, ...apiOptions } = options;
     const optionsWithDefaults = {
-      ...options,
+      ...apiOptions,
       httpMethod: "GET" as HTTPMethods,
     };
 
