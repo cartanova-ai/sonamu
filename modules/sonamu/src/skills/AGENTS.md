@@ -39,3 +39,10 @@ See `.claude/skills/sonamu/SKILL.md` for the full skill list.
 ## Cross-workspace gate
 
 - For changes in this scope, root `pnpm check` (Biome) must pass before handoff.
+
+## TypeScript type safety policy
+
+- `as any` and `as unknown as T` are strictly prohibited.
+- Resolve type errors through correct type annotations, generic constraints, type narrowing, or interface extension.
+- Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits — find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting the result).
+- Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to runtime bugs.
