@@ -24,16 +24,16 @@ export interface SSEConnection<T extends z.ZodObject> {
 
 class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
   private _closed = false;
+  private readonly markClosed = () => {
+    this._closed = true;
+  };
 
   constructor(
     private readonly socket: FastifyRequest["socket"],
     private readonly reply: FastifyReply,
   ) {
-    const markClosed = () => {
-      this._closed = true;
-    };
-    this.socket.on("close", markClosed);
-    this.socket.on("error", markClosed);
+    this.socket.on("close", this.markClosed);
+    this.socket.on("error", this.markClosed);
   }
 
   publish<K extends keyof z.infer<T>>(event: K, data: z.infer<T>[K]): void {
@@ -53,6 +53,8 @@ class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
     }
 
     this._closed = true;
+    this.socket.off("close", this.markClosed);
+    this.socket.off("error", this.markClosed);
 
     this.reply.sse({
       event: "end",
