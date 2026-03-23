@@ -70,14 +70,25 @@ db.select({
 
 ### Raw SQL 표현식
 
+두 번째 인수 `params`로 바인드 파라미터를 전달할 수 있다. 값을 SQL에 직접 보간하지 말고 params를 사용한다.
+
 ```typescript
-// 타입별 raw 헬퍼 (반환 타입 추론)
+// 파라미터 없는 경우
 db.select({
   custom: Puri.rawString("COALESCE(nickname, username)"),
   total: Puri.rawNumber("price * quantity"),
   isActive: Puri.rawBoolean("status = 'active'"),
   expireAt: Puri.rawDate("created_at + INTERVAL '30 days'"),
   tags: Puri.rawStringArray("string_to_array(tags, ',')"),
+});
+
+// params 배열로 바인드 (SQL injection 방지)
+db.select({
+  score: Puri.rawNumber(
+    `word_similarity(?, items.title) * 5 + word_similarity(?, items.tags) * 2`,
+    [query, query]
+  ),
+  label: Puri.rawString(`COALESCE(??, ?)`, ["items.name", "미지정"]),
 });
 ```
 
@@ -335,25 +346,40 @@ db.select({
 
 ### tsRank / tsRankCd (검색 순위)
 
+첫 번째 인수에 컬럼명 문자열 대신 `Puri.toTsVector()`를 전달해야 한다.
+
 ```typescript
+// toTsVector()로 감싸서 전달 (필수)
 db.select({
-  rank: Puri.tsRank("search_vector", "검색어"),
+  rank: Puri.tsRank(Puri.toTsVector("documents.search_vector"), "검색어"),
 })
-.whereTsSearch("search_vector", "검색어")
+.whereTsSearch("documents.search_vector", "검색어")
 .orderBy("rank", "desc");
+
+// config 지정
+db.select({
+  rank: Puri.tsRank(Puri.toTsVector("documents.title", "korean"), "검색어"),
+});
 
 // 옵션
 db.select({
-  rank: Puri.tsRank("search_vector", "검색어", {
-    config: "korean",
-    normalization: 1,  // 문서 길이 정규화
+  rank: Puri.tsRank(Puri.toTsVector("documents.title"), "검색어", {
+    normalization: 1,        // 문서 길이 정규화
     weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A 가중치
   }),
 });
 
 // tsRankCd (Cover Density)
 db.select({
-  rank: Puri.tsRankCd("search_vector", "검색어"),
+  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어"),
+});
+
+// tsRankCd 옵션
+db.select({
+  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어", {
+    parser: "phraseto_tsquery",
+    normalization: 16,
+  }),
 });
 ```
 
