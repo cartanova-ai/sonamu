@@ -46,3 +46,16 @@ See `.claude/skills/sonamu/SKILL.md` for the full skill list.
 - Resolve type errors through correct type annotations, generic constraints, type narrowing, or interface extension.
 - Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits — find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting the result).
 - Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to runtime bugs.
+
+## Skill read triggers
+
+Read the listed skill file before attempting any workaround or fix in these situations:
+
+| Situation | Read before acting |
+|-----------|-------------------|
+| TypeScript error in Model code (type inference, "excessively deep", etc.) | `puri.md`, `model.md` |
+| Writing or modifying a `findMany()` / `executeSubsetQuery()` call | `model.md` |
+| Writing or modifying a `@upload` method | `api.md` |
+| Database query returning unexpected results | `puri.md` |
+| Migration error or schema change | `migration.md` |
+| Spec status gate or testRef validation failing | `cdd.md` |
