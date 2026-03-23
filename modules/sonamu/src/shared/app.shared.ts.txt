@@ -65,8 +65,17 @@ axios.defaults.transformResponse = [
   },
 ];
 
+// Axios + React Native FormData 호환성: Content-Type을 multipart/form-data로 명시 설정하고
+// transformRequest를 우회하여 Android에서 application/x-www-form-urlencoded로 잘못 설정되는 문제 방지
+// ref: https://github.com/axios/axios/issues/4800
 axios.interceptors.request.use((config) => {
   config.headers["Accept-Language"] = getCurrentLocale();
+  if (config.data instanceof FormData) {
+    if (config.headers instanceof axios.AxiosHeaders) {
+      config.headers.setContentType("multipart/form-data");
+    }
+    config.transformRequest = [(data: unknown) => data];
+  }
   return config;
 });
 
