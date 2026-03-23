@@ -30,8 +30,9 @@ findings: [] # previous verification failures on re-spawn
 
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the Schema file and internalize all acceptance criteria.
-3. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
-4. Assume any required shared importable surface has already been prepared. If it has not, report that gap instead of creating it here.
+3. Read the referenced Contract files and any related Specs from `dependsOnSpecs` when they constrain acceptance semantics.
+4. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
+5. Assume any required shared importable surface has already been prepared. If it has not, report that gap instead of creating it here.
 
 ### Step 2: Write acceptance tests
 
@@ -62,16 +63,24 @@ If `findings` are provided:
 4. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 5. Re-run focused tests.
 
-### Step 5: Return readiness for fan-in
+### Step 5: Review test-driven artifact impact
+
+1. Review whether the acceptance tests or `testRef` mappings exposed stale target-Spec narrative, AC intent, schema-defined constraints, or related Spec content.
+2. Inspect the current `sources`, then re-check referenced Contracts and `dependsOnSpecs` before returning.
+3. If the target Spec or related Specs need updates, return `preferred_respawn_role: cdd-specifier` with details instead of silently leaving drift.
+4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
+
+### Step 6: Return readiness for fan-in
 
 Return `ready_for_fan_in: true` only when:
 - each AC has a meaningful test mapping in `acceptanceCriteria[].testRef`
 - focused tests are complete for the owned scope
+- artifact reconciliation review is complete for the current test-driven findings
 - any shared-surface or production-code blocker is reported through `preferred_respawn_role`
 
-`ready_for_fan_in=true` may still be valid when the current test run fails only because the production behavior is not implemented yet. In that case, keep `preferred_respawn_role: cdd-implementer` and describe the gap clearly.
+`ready_for_fan_in=true` may still be valid when the current test run fails only because the production behavior is not implemented yet, or when owned test work is complete but later-phase Spec reconciliation is still required. In those cases, keep `preferred_respawn_role` set to the owning follow-up role and describe the gap clearly.
 
-### Step 6: Commit
+### Step 7: Commit
 
 If this phase creates commits, separate Spec changes and test-code changes when practical, and follow the repository's Korean commit-message policy.
 
@@ -84,6 +93,13 @@ tests_added: ["{list of added or updated test files}"]
 ac_testref_filled: ["{list of AC ids with testRef filled}"]
 commits: ["{commit hashes}"]
 test_status: "pass|fail"
+artifact_reconciliation:
+  sources_reviewed: ["{source paths reviewed}"]
+  contracts_reviewed: ["{contract paths reviewed}"]
+  dependsOnSpecs_reviewed: ["{related spec paths reviewed}"]
+  target_spec_update_needed: true|false
+  related_spec_followups: ["{related spec paths that still need follow-up}"]
+  contract_drift: true|false
 ready_for_fan_in: true|false
 preferred_respawn_role: "cdd-test-writer|cdd-surface-scaffolder|cdd-implementer|cdd-specifier"
 user_review_summary: "{brief Korean summary for orchestrator fan-in handoff}"

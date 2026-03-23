@@ -27,9 +27,10 @@ findings: [] # previous verification failures on re-spawn
 ### Step 1: Review current state
 
 1. Read the Spec file and confirm current status is `validating`.
-2. Read the Schema file.
-3. Read all files listed in `sources`.
-4. Read all AC `testRef.target` files.
+2. Read the referenced Contract files and any related Specs from `dependsOnSpecs`.
+3. Read the Schema file.
+4. Read all files listed in `sources`.
+5. Read all AC `testRef.target` files.
 
 ### Step 2: Verify AC-test matching
 
@@ -60,7 +61,13 @@ Record a finding if build or tests fail.
 2. Verify that failure scenarios defined in error-handling-related Schema fields are covered by tests.
 3. Record a finding if coverage is missing or semantically weak.
 
-### Step 6: Fix findings on re-spawn
+### Step 6: Review validation-driven artifact impact
+
+1. When validation fixes materially change behavior or expose missing documented behavior, re-check the target Spec's `sources`, `contracts`, and `dependsOnSpecs`.
+2. If validation confirms that the implementation is correct but the target Spec or related Specs are incomplete or stale, return `preferred_respawn_role: cdd-specifier`.
+3. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
+
+### Step 7: Fix findings on re-spawn
 
 If `findings` are provided:
 - Fix code and tests that fail the validating-stage checks.
@@ -68,7 +75,7 @@ If `findings` are provided:
 - If the fix requires changing `acceptanceCriteria[].testRef`, return `preferred_respawn_role: cdd-test-writer`.
 - If Spec narrative or schema-field modification is needed, report that to the orchestrator so it can spawn `cdd-specifier`.
 
-### Step 7: Run the pre-commit transition check
+### Step 8: Run the pre-commit transition check
 
 1. Run `cdd advance <spec>` without `--commit`.
 2. If Layer 1 fails because `testRef.pattern` or other `testRef` data is incomplete, return `preferred_respawn_role: cdd-test-writer` instead of patching the Spec directly.
@@ -80,7 +87,15 @@ If `findings` are provided:
 5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
 6. If the remaining issue requires `testRef` changes, stop and return `preferred_respawn_role: cdd-test-writer`.
 7. If the remaining issue requires shared type/interface/export/runtime surface work without Spec narrative changes, stop and return `preferred_respawn_role: cdd-surface-scaffolder`.
-8. If the remaining issue requires Spec narrative or schema-field changes, stop and return `preferred_respawn_role: cdd-specifier`.
+8. If the remaining issue requires Spec narrative or schema-field changes, or if the validated implementation is correct but the documented behavior is stale, stop and return `preferred_respawn_role: cdd-specifier`.
+
+### Step 9: Return transition readiness
+
+Return `ready_for_transition: true` only when:
+- the latest `cdd advance <spec>` check is clean
+- build/test evidence is acceptable for the current scope
+- artifact reconciliation review is complete and does not require unresolved Spec or Contract follow-up
+- no out-of-scope blocker remains
 
 ## Output
 
@@ -101,6 +116,13 @@ spec_code_consistency:
     message: "{reason for inconsistency}"
 build_status: "pass|fail"
 test_status: "pass|fail"
+artifact_reconciliation:
+  sources_reviewed: ["{source paths reviewed}"]
+  contracts_reviewed: ["{contract paths reviewed}"]
+  dependsOnSpecs_reviewed: ["{related spec paths reviewed}"]
+  target_spec_update_needed: true|false
+  related_spec_followups: ["{related spec paths that still need follow-up}"]
+  contract_drift: true|false
 constraints_reflected: true|false
 error_handling_covered: true|false
 overall: "pass|fail"

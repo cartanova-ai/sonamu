@@ -30,8 +30,10 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
   - Default `objective_packet.user_review=true`
 - Contract exists but no Spec exists: Phase 1 -> orchestrator runs `cdd spec create` scaffold only, then continues with the new `draft` Spec
 - Spec status is `draft` or `specifying`: Phase 2 -> spawn `cdd-specifier`
-  - This worker owns `summary`, `description`, `acceptanceCriteria`, schema-defined fields, and planned `sources`
+  - This worker owns `summary`, `description`, `acceptanceCriteria`, schema-defined fields, planned `sources`, and the normal specifying transition loop
   - Default `objective_packet.user_review=true`
+- Any Spec status when feature-change work or implementation/test/validation follow-up requires Spec-content updates: Phase 2 follow-up -> spawn `cdd-specifier` in artifact-reconciliation mode
+  - This worker preserves the current `status`, reconciles the target Spec and related Specs against live `sources`, `contracts`, and `dependsOnSpecs`, and returns `artifact_reconciliation_complete=true`
 - Spec status is `implementing`: Phase 3 -> optionally spawn `cdd-surface-scaffolder`, then spawn `cdd-test-writer` and `cdd-implementer` in parallel
   - `cdd-surface-scaffolder` owns shared type/interface/export/runtime scaffolds required so planned imports resolve before the parallel pair begins
   - `cdd-test-writer` owns tests, test support files, and `acceptanceCriteria[].testRef`
@@ -41,7 +43,7 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 - Spec status is `validating`: Phase 4 -> spawn `cdd-validator`
   - This worker owns validating-stage code/test fixes and the final `validating -> done` pre-commit verification
   - Default `objective_packet.user_review=false`
-- Spec status is `done`: complete and report to the user
+- Spec status is `done`: complete and report to the user only when no change request or artifact-reconciliation follow-up remains
 
 ## Orchestration flow
 
@@ -55,10 +57,11 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
    - No Contract -> spawn Phase 0
    - Contract exists but Spec is missing -> run Phase 1 scaffold creation, then continue
 
-3. Select the next worker from the current Spec status
+3. Select the next worker from the current Spec status and any outstanding reconciliation findings
    - draft/specifying -> Phase 2 specifier
    - implementing -> Phase 3 optional scaffold + parallel pair (`cdd-surface-scaffolder`, then `cdd-test-writer` + `cdd-implementer`)
    - validating -> Phase 4 validator
+   - any status with required Spec-content follow-up -> Phase 2 specifier in artifact-reconciliation mode
 
 4. Spawn the worker or worker pair with a complete phase packet
 
@@ -66,6 +69,7 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
    - blocked -> re-route or ask the user
    - ready_for_transition=true from `cdd-contract-writer` -> close review, then return to step 2 to resolve artifact state again
    - ready_for_transition=true from a Spec-phase owner -> continue
+   - artifact_reconciliation_complete=true from `cdd-specifier` -> resume the current phase owner or close the request if no further work remains
    - ready_for_parallel_pair=true from `cdd-surface-scaffolder` -> spawn the implementing pair
    - ready_for_fan_in=true from both implementing workers -> run integrated `cdd advance <spec>`
    - impacted_spec_followups or related_spec_followups -> route the follow-up Spec work before closing the overall request
@@ -91,6 +95,13 @@ Feature-change follow-up routing:
 - Require `cdd-specifier` to decide whether the target Spec needs modification, additional content, or no Spec change.
 - After the target Spec review, run the same related-artifact checks against `contracts` and `dependsOnSpecs` before closing the request.
 - If the requested feature change implies Contract drift, stop and ask the user whether Contract edits are explicitly requested.
+
+Implementation-change follow-up routing:
+- When the user asks to modify existing behavior, or when implementing/test/validating work changes confirmed behavior, interface, constraints, error handling, data shape, or file layout, run artifact reconciliation before closure.
+- Require the detecting worker to inspect the current `sources`, `contracts`, and `dependsOnSpecs`, then report whether the target Spec or related Specs need updates.
+- If target-Spec or related-Spec updates are needed, spawn `cdd-specifier` in artifact-reconciliation mode before closing the request or committing the phase.
+- After `cdd-specifier` completes later-phase reconciliation, resume the current phase owner for another verification pass unless the request is already complete.
+- If the reconciliation reports Contract drift, stop and ask the user whether Contract edits are explicitly requested.
 
 ## Spawn mode
 
@@ -243,14 +254,21 @@ Loop:
   4. Each worker performs only its owned edits and returns `ready_for_fan_in=true` or blocked.
   5. If either worker returns blocked:
      -> Re-spawn the preferred role or ask the user when the blocker exceeds worker ownership.
-  6. When both workers are ready, fan in their outputs and run `cdd advance <spec>` without `--commit` on the integrated state.
-  7. If Layer 1 or Layer 2 reports findings:
+  6. When both workers are ready, inspect their `artifact_reconciliation` output before running `cdd advance`.
+  7. If either worker reports target-Spec or related-Spec follow-up:
+     -> Spawn `cdd-specifier` in artifact-reconciliation mode.
+     -> If it returns blocked or reports Contract drift, ask the user as needed.
+     -> After reconciliation completes, re-spawn the affected implementing worker(s) for a fresh pass against the updated Spec, then return to step 6.
+  8. If either worker reports Contract drift without an explicit Contract-edit request:
+     -> Stop and ask the user.
+  9. When the integrated reconciliation state is ready, fan in their outputs and run `cdd advance <spec>` without `--commit` on the integrated state.
+  10. If Layer 1 or Layer 2 reports findings:
      -> Route shared type/interface/export/runtime surface findings to `cdd-surface-scaffolder`.
      -> Route `testRef` / acceptance-test findings to `cdd-test-writer`.
      -> Route `sources` / code-implementation findings to `cdd-implementer`.
      -> Route narrative / schema / Contract issues to `cdd-specifier`.
      -> Re-run the scaffold, the pair, or the single owner as needed, then return to step 6.
-  8. When the integrated state is clean, execute `cdd advance <spec> --commit`.
+  11. When the integrated state is clean, execute `cdd advance <spec> --commit`.
 ```
 
 Phase 2 may need to close two transitions in sequence:
@@ -266,6 +284,8 @@ If the Spec is still `draft` or `specifying` after a successful commit, keep rou
 | `summary`, `description`, AC condition, schema field, Contract reference, planned `sources` issue | `cdd-specifier` |
 | Contract ambiguity, missing business context, or requested Contract refinement while no Spec exists | `cdd-contract-writer` |
 | target feature Spec needs modification or added content | `cdd-specifier` |
+| implemented or validated behavior requires target Spec update before closure | `cdd-specifier` |
+| implementation-driven related Spec consistency update | `cdd-specifier` |
 | impacted Spec update discovered after Contract work | `cdd-specifier` |
 | related Spec update discovered from `contracts` or `dependsOnSpecs` review | `cdd-specifier` |
 | missing importable module, shared type/interface, runtime export, or runtime stub needed before parallel implementing work | `cdd-surface-scaffolder` |
