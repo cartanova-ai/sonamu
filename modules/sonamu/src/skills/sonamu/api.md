@@ -120,6 +120,30 @@ async upload(...): Promise<number[]> { }
 | `destination` | 스트림 모드 전용: 스토리지 드라이버 키 |
 | `keyGenerator` | 스트림 모드 전용: 저장 경로 생성 함수 |
 
+### 파라미터 규칙: 반드시 단일 객체로 묶기
+
+> **CRITICAL: `@upload` 메서드에 파라미터가 2개 이상이면 반드시 단일 객체로 묶는다.**
+>
+> primitive 파라미터를 여러 개 쓰면 `services.template.ts`의 codegen 버그로 `useUploadMutation`이 잘못 생성된다.
+
+```typescript
+// ❌ WRONG — codegen 깨짐 (mutationFn 인수 누락)
+async upload(entity_type: string, entity_id: number, file_type: string)
+
+// ✅ CORRECT — 단일 객체로 묶기
+async upload(params: { entity_type: string; entity_id: number; file_type: string })
+```
+
+호출부 패턴:
+```typescript
+uploadMutation.mutate({
+  params: { entity_type, entity_id, file_type },
+  files,
+})
+```
+
+> 자세한 원인 분석은 `framework-change.md`의 `@upload 다중 파라미터` 섹션 참고.
+
 ### 버퍼 모드 (기본)
 
 ```typescript
