@@ -16,14 +16,15 @@ CDD separates the work into four responsibilities:
 | Responsibility | Role | Responsibility detail |
 |---|---|---|
 | Control plane | Orchestrator | Select the phase worker, manage user-review gates, run `cdd advance --commit`, manage loops |
-| Execution + verification | Leaf worker | Perform phase work, run `cdd advance`, resolve in-scope Layer 1 and Layer 2 findings, return commit-ready state |
+| Execution + verification | Leaf worker | Perform phase work, resolve in-scope findings, and return commit-ready state; during `implementing`, the orchestrator fans in parallel worker outputs before re-running `cdd advance` |
 | Judgment gate | CLI | Run Layer 1 checks and emit delegate payload for Layer 2 |
 | Memory | Spec document | Persist state, specification, history, and code/test linkage across phases |
 
 Operational rules:
 - The orchestrator must not do Phase work directly in the main session.
 - The only direct orchestrator mutation is Phase 1 scaffold creation with `cdd spec create`.
-- Leaf workers own the step-by-step phase loop and the pre-commit `cdd advance <spec>` check.
+- Leaf workers own the step-by-step phase loop. For all phases except the parallel `implementing` pair, the phase owner also owns the pre-commit `cdd advance <spec>` check.
+- During `implementing`, the orchestrator spawns the test and code workers in parallel, fans in their outputs, re-runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker until the transition is ready.
 - If preset sub-agents are unavailable, use inline fallback instructions. Direct main-session execution is not a fallback mode.
 
 ## Project structure
@@ -80,15 +81,17 @@ Implementation specification management. Connects Contract requirements to concr
 
 Core fields used by the current transition gates:
 - `schema`
+- `schemaVersion`
 - `summary`
 - `description`
 - `acceptanceCriteria`
 - `status`
 - `sources`
 - `contracts`
+- `lastModified`
 - `dependsOnSpecs` (optional)
 
-Compatibility fields may also exist in live miomock Specs, such as `schemaVersion` and `lastModified`. Treat them as document metadata, but follow the active gate logic above when judging transitions.
+`schemaVersion` and `lastModified` are document metadata in addition to the transition-gated fields below. Keep them valid when touching Specs.
 
 Custom fields are defined by the referenced schema.
 
@@ -106,7 +109,7 @@ Custom fields are defined by the referenced schema.
 ```
 
 - `condition` must be concrete and pass/fail verifiable.
-- `testRef` may remain empty during specification work, but must be filled before the Spec can finish.
+- `testRef` may remain empty during specification work, but `cdd-test-writer` must fill it before the Spec can finish.
 
 ## Status workflow
 
@@ -132,6 +135,7 @@ Each phase spawn includes `objective_packet.user_review`.
 Default values:
 - `cdd-contract-writer`: `false`
 - `cdd-specifier`: `true`
+- `cdd-test-writer`: `false`
 - `cdd-implementer`: `false`
 - `cdd-validator`: `false`
 
@@ -143,10 +147,21 @@ When `user_review=true`:
 ## Worker ownership
 
 - `cdd-specifier`: Spec content edits and pre-commit verification for `draft -> specifying` and `specifying -> implementing`
-- `cdd-implementer`: code, tests, `sources`, `acceptanceCriteria[].testRef`, and pre-commit verification for `implementing -> validating`
+- `cdd-test-writer`: acceptance-test authoring plus `acceptanceCriteria[].testRef` ownership during `implementing`
+- `cdd-implementer`: production-code implementation plus final `sources` ownership during `implementing`
 - `cdd-validator`: validating-stage code/test fixes and final pre-commit verification for `validating -> done`
 
 If a worker discovers that another worker owns the required change, it must report that to the orchestrator instead of editing across the boundary.
+
+## Parallel implementing rules
+
+When the Spec status is `implementing`:
+- The orchestrator must spawn `cdd-test-writer` and `cdd-implementer` in parallel.
+- `cdd-test-writer` may edit only acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
+- `cdd-implementer` may edit only production code, implementation support files, and `sources`.
+- Neither worker may rewrite `summary`, `description`, AC `condition`, schema-defined fields, or Contract references.
+- The orchestrator fans in both worker outputs, runs `cdd advance <spec>` without `--commit` on the integrated state, and re-spawns only the worker that owns the reported finding.
+- If the integrated findings span both test ownership and code ownership, the orchestrator may re-spawn both workers in parallel again.
 
 ## Cross-artifact impact review
 
@@ -163,10 +178,11 @@ If a worker discovers that another worker owns the required change, it must repo
 1. The main agent assumes the CDD orchestrator role.
 2. If no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
 3. All subsequent Phase work is delegated to leaf workers.
-4. Each leaf worker performs its phase work, runs `cdd advance <spec>`, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit or the phase is blocked.
-5. If the worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
-6. If the worker returns ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before finalizing the transition.
-7. The orchestrator finalizes the transition with `cdd advance <spec> --commit`.
+4. For `implementing`, the orchestrator spawns `cdd-test-writer` and `cdd-implementer` in parallel, fans in both outputs, re-runs `cdd advance <spec>`, and re-spawns the owner of any remaining finding until the integrated state is ready.
+5. For the other phases, the phase owner performs its phase work, runs `cdd advance <spec>`, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit or the phase is blocked.
+6. If a worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
+7. If the active phase result is ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before finalizing the transition.
+8. The orchestrator finalizes the transition with `cdd advance <spec> --commit`.
 
 ## CLI
 

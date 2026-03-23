@@ -30,9 +30,11 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 - Spec status is `draft` or `specifying`: Phase 2 -> spawn `cdd-specifier`
   - This worker owns `summary`, `description`, `acceptanceCriteria`, schema-defined fields, and planned `sources`
   - Default `objective_packet.user_review=true`
-- Spec status is `implementing`: Phase 3 -> spawn `cdd-implementer`
-  - This worker owns code, tests, `sources`, and `acceptanceCriteria[].testRef`
-  - Default `objective_packet.user_review=false`
+- Spec status is `implementing`: Phase 3 -> spawn `cdd-test-writer` and `cdd-implementer` in parallel
+  - `cdd-test-writer` owns tests, test support files, and `acceptanceCriteria[].testRef`
+  - `cdd-implementer` owns production code, implementation support files, and the final `sources` list
+  - The orchestrator fans in both outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings by ownership
+  - Default `objective_packet.user_review=false` for both workers
 - Spec status is `validating`: Phase 4 -> spawn `cdd-validator`
   - This worker owns validating-stage code/test fixes and the final `validating -> done` pre-commit verification
   - Default `objective_packet.user_review=false`
@@ -52,14 +54,15 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 
 3. Select the next worker from the current Spec status
    - draft/specifying -> Phase 2 specifier
-   - implementing -> Phase 3 implementer
+   - implementing -> Phase 3 parallel pair (`cdd-test-writer` + `cdd-implementer`)
    - validating -> Phase 4 validator
 
-4. Spawn the worker with a complete phase packet
+4. Spawn the worker or worker pair with a complete phase packet
 
 5. Inspect the worker result
    - blocked -> re-route or ask the user
    - ready_for_transition=true -> continue
+   - ready_for_fan_in=true from both implementing workers -> run integrated `cdd advance <spec>`
    - impacted_spec_followups or related_spec_followups -> route the follow-up Spec work before closing the overall request
 
 6. If `objective_packet.user_review=true`, ask the user to review before commit
@@ -94,7 +97,8 @@ Use the preset file under `.agents/agents/`.
 |---|---|---|---|
 | 0. contract | `cdd-contract-writer` | `agents/cdd-contract-writer.md` | opus |
 | 2. specifying | `cdd-specifier` | `agents/cdd-specifier.md` | opus |
-| 3. implementing | `cdd-implementer` | `agents/cdd-implementer.md` | opus |
+| 3A. implementing-tests | `cdd-test-writer` | `agents/cdd-test-writer.md` | opus |
+| 3B. implementing-code | `cdd-implementer` | `agents/cdd-implementer.md` | opus |
 | 4. validating | `cdd-validator` | `agents/cdd-validator.md` | sonnet |
 
 ### Inline fallback mode
@@ -117,6 +121,7 @@ Recommended file references:
 |---|---|---|
 | `cdd-contract-writer` | `examples/miomock/.agents/agents/cdd-contract-writer.md` | `examples/miomock/.agents/workflow/phases/00_contract.md` |
 | `cdd-specifier` | `examples/miomock/.agents/agents/cdd-specifier.md` | `examples/miomock/.agents/workflow/phases/02_specify.md` |
+| `cdd-test-writer` | `examples/miomock/.agents/agents/cdd-test-writer.md` | `examples/miomock/.agents/workflow/phases/03_test.md` |
 | `cdd-implementer` | `examples/miomock/.agents/agents/cdd-implementer.md` | `examples/miomock/.agents/workflow/phases/03_implement.md` |
 | `cdd-validator` | `examples/miomock/.agents/agents/cdd-validator.md` | `examples/miomock/.agents/workflow/phases/04_validate.md` |
 
@@ -126,6 +131,7 @@ Recommended file references:
 |---|---|
 | `cdd-contract-writer` | `false` |
 | `cdd-specifier` | `true` |
+| `cdd-test-writer` | `false` |
 | `cdd-implementer` | `false` |
 | `cdd-validator` | `false` |
 
@@ -136,6 +142,7 @@ Every spawn must include a complete phase packet.
 ```yaml
 execution_mode: preset|inline_fallback
 role_id: cdd-specifier
+parallel_group: "{optional shared transition id for parallel phases}"
 objective_packet:
   global_objective: "Complete the target feature through the CDD workflow"
   phase_objective: "Bring the Spec from draft/specifying to implementing-ready"
@@ -154,12 +161,14 @@ dependencies: []
 parallelization_constraints: []
 done_criteria:
   - "Return ready_for_transition=true when this phase is complete"
+  - "For the parallel implementing pair, return ready_for_fan_in=true when the owned slice is complete"
 required_tools:
   - "cdd"
 required_skills: []
 spec_path: "{absolute spec path}"
 contract_paths: ["{absolute contract paths}"]
 schema_path: "{absolute schema path}"
+owned_spec_fields: ["{optional owned Spec keys for parallel phases}"]
 findings: []
 ```
 
@@ -175,7 +184,7 @@ After this command, the orchestrator must continue with Phase 2. Any subsequent 
 
 ## Generic gate loop
 
-Use this loop for every active transition. The worker owns the phase loop and the pre-commit `cdd advance` check. The orchestrator owns only user review and `--commit`.
+Use this loop for every active transition except the parallel `implementing` pair. The worker owns the phase loop and the pre-commit `cdd advance` check. The orchestrator owns only user review and `--commit`.
 
 ```
 Loop:
@@ -196,6 +205,23 @@ Loop:
   5. When the worker is ready and the review gate is closed, execute `cdd advance <spec> --commit`.
 ```
 
+For `implementing`, use a fan-out/fan-in loop instead:
+
+```
+Loop:
+  1. Spawn `cdd-test-writer` and `cdd-implementer` in parallel with the same Spec packet.
+  2. Each worker performs only its owned edits and returns `ready_for_fan_in=true` or blocked.
+  3. If either worker returns blocked:
+     -> Re-spawn the preferred role or ask the user when the blocker exceeds worker ownership.
+  4. When both workers are ready, fan in their outputs and run `cdd advance <spec>` without `--commit` on the integrated state.
+  5. If Layer 1 or Layer 2 reports findings:
+     -> Route `testRef` / acceptance-test findings to `cdd-test-writer`.
+     -> Route `sources` / code-implementation findings to `cdd-implementer`.
+     -> Route narrative / schema / Contract issues to `cdd-specifier`.
+     -> Re-run the pair or the single owner as needed, then return to step 4.
+  6. When the integrated state is clean, execute `cdd advance <spec> --commit`.
+```
+
 Phase 2 may need to close two transitions in sequence:
 - `draft -> specifying`
 - `specifying -> implementing`
@@ -210,8 +236,11 @@ If the Spec is still `draft` or `specifying` after a successful commit, keep rou
 | target feature Spec needs modification or added content | `cdd-specifier` |
 | impacted Spec update discovered after Contract work | `cdd-specifier` |
 | related Spec update discovered from `contracts` or `dependsOnSpecs` review | `cdd-specifier` |
-| `testRef.target`, `testRef.pattern`, missing/incorrect tests, implementation mismatch while status is `implementing` | `cdd-implementer` |
-| Code/test fix needed while status is `validating`, including final AC semantics, constraints, and error-handling coverage | `cdd-validator` |
+| `testRef.target`, `testRef.pattern`, missing/incorrect tests, or vacuous AC validation while status is `implementing` | `cdd-test-writer` |
+| `sources` gaps or code-implementation mismatch while status is `implementing` | `cdd-implementer` |
+| integrated `implementing` findings that require both test and code changes | `cdd-test-writer` + `cdd-implementer` |
+| code/test fix needed while status is `validating`, including final AC semantics, constraints, and error-handling coverage without `testRef` changes | `cdd-validator` |
+| validating-stage fix requires changing `testRef.target` or `testRef.pattern` | `cdd-test-writer` |
 | Contract drift or Contract change required | Stop and ask the user |
 
 The orchestrator must never patch a Spec directly to handle a "small" finding. Re-spawn the correct worker instead.

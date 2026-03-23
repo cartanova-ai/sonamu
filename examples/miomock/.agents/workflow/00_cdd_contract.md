@@ -46,6 +46,7 @@ Every spawned Phase task must include:
 
 - `cdd-contract-writer`: `user_review=false`
 - `cdd-specifier`: `user_review=true`
+- `cdd-test-writer`: `user_review=false`
 - `cdd-implementer`: `user_review=false`
 - `cdd-validator`: `user_review=false`
 
@@ -56,11 +57,12 @@ Every spawned Phase task must include:
 - Leaf workers cannot spawn other sub-agents.
 - Do not work beyond the assigned phase scope.
 - Return structured results after completion.
-- For Spec phases, execute `cdd advance <spec>` without `--commit` before returning.
-- Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true`.
+- For Spec phases except the parallel `implementing` pair, execute `cdd advance <spec>` without `--commit` before returning.
+- `cdd-test-writer` and `cdd-implementer` return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then runs the integrated `cdd advance <spec>` check and re-routes findings by ownership.
+- Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true` or `ready_for_fan_in: true`.
 - If a blocking issue belongs to another worker or requires Contract changes, stop and return the correct re-route target.
-- Include `ready_for_transition`, `preferred_respawn_role`, and `blocking_reason` when the next control-plane action matters.
-- Include `transition_readiness` so the orchestrator knows whether `cdd advance --commit` is safe to run.
+- Include `ready_for_transition` or `ready_for_fan_in`, `preferred_respawn_role`, and `blocking_reason` when the next control-plane action matters.
+- Include `transition_readiness` when the worker owns a `cdd advance` loop so the orchestrator knows whether `cdd advance --commit` is safe to run.
 - Contract files are read-only. Report to orchestrator if modification is needed.
 - Do not execute `cdd advance --commit`. The orchestrator manages transitions.
 
@@ -68,9 +70,20 @@ Every spawned Phase task must include:
 
 - `cdd-specifier` owns `summary`, `description`, `acceptanceCriteria`, schema-defined Spec fields, and planned `sources`.
 - `cdd-specifier` also owns directly related Spec updates required after reviewing a target Spec's `contracts` and `dependsOnSpecs`.
-- `cdd-implementer` owns code, tests, `sources`, and `acceptanceCriteria[].testRef`.
-- `cdd-validator` owns the final validation/fix loops plus the `validating -> done` pre-commit verification. It must not edit Spec files.
+- `cdd-test-writer` owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
+- `cdd-implementer` owns production code, implementation support files, and the final `sources` list.
+- `cdd-validator` owns the final validation/fix loops plus the `validating -> done` pre-commit verification. It must not edit Spec files; if the fix requires changing `acceptanceCriteria[].testRef`, it must return `preferred_respawn_role: cdd-test-writer`.
 - If a Phase discovers that another worker owns the needed Spec change, it must report that fact to the orchestrator instead of editing across the boundary.
+
+## Parallel implementing contract
+
+When the active Spec status is `implementing`:
+- The orchestrator must spawn `cdd-test-writer` and `cdd-implementer` as a parallel pair.
+- Both workers receive the same `spec_path`, `contract_paths`, and `schema_path`, plus explicit ownership boundaries in `objective_packet.constraints`.
+- `cdd-test-writer` may edit only `acceptanceCriteria[].testRef` inside the Spec.
+- `cdd-implementer` may edit only `sources` inside the Spec.
+- The orchestrator owns the integrated `cdd advance <spec>` loop after both workers return.
+- Re-spawn by ownership: `testRef` and test-semantic findings go to `cdd-test-writer`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
 
 ## Cross-artifact review rules
 

@@ -21,8 +21,11 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 | 0. contract | `cdd-contract-writer` | Create/fill Contract document |
 | 1. draft | _(orchestrator direct)_ | Run `cdd spec create` scaffold only, then continue to Phase 2 |
 | 2. specifying | `cdd-specifier` | Refine specification, run the pre-commit check, then wait for user review before commit |
-| 3. implementing | `cdd-implementer` | Implement code, write tests, and finish the implementing pre-commit check |
+| 3A. implementing-tests | `cdd-test-writer` | Write acceptance tests from the Spec and fill `acceptanceCriteria[].testRef` |
+| 3B. implementing-code | `cdd-implementer` | Implement production code and fill the final `sources` list |
 | 4. validating | `cdd-validator` | Fix validating-stage code/test issues and finish the final pre-commit verification |
+
+Phase 3 uses a parallel pair. The orchestrator spawns both workers, fans in their outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
 
 ## Absolute prohibitions
 

@@ -57,11 +57,12 @@ Each field must:
 2. Derive additional conditions from schema fields such as error handling and constraints.
 3. Write each AC directly in `acceptanceCriteria`.
 4. `condition` must be concrete and pass/fail verifiable.
-5. Leave `testRef.target` and `testRef.pattern` empty at this phase. Those are filled during implementation.
+5. Leave `testRef.target` and `testRef.pattern` empty at this phase. Those are filled later by `cdd-test-writer` during `implementing`.
 
 ### Step 5: Plan implementation sources
 
 Add planned implementation and test file paths to `sources` when they are knowable at Spec time.
+These are handoff hints for the parallel `implementing` workers; `cdd-implementer` still owns the final actual `sources` list.
 
 ### Step 6: Fix findings on re-spawn
 
