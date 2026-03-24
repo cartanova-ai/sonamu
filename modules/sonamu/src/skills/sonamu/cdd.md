@@ -26,6 +26,8 @@ contract/
 |- schemas/
 |  |- default-contract.schema.json  # contract schema definition
 |  \- default-spec.schema.json       # spec schema definition
+|- rules/
+|  \- *.rules.json              # reusable implementation conventions
 |- main.contract.json          # project root contract
 |- {domain}/
 |  |- main.contract.json       # domain representative contract
@@ -295,6 +297,43 @@ git log --follow -- contract/auth/login.spec.json  # track renames
 
 ---
 
+## Rule Files
+
+`contract/rules/*.rules.json` 파일로 프로젝트별 반복 개발 규칙을 관리한다.
+
+### 파일 포맷
+
+```json
+{
+  "description": "Rule-set의 범위와 목적 설명",
+  "rules": [
+    {
+      "id": "readonly-money-display-uses-numf",
+      "when": "금액을 읽기 전용 텍스트나 테이블 셀로 표시할 때",
+      "instruction": "numF()를 적용합니다.",
+      "examples": ["numF(row.totalAmount)", "numF(summary.budget)"]
+    }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `description` | rule set의 범위와 의도 |
+| `rules[].id` | 안정적인 식별자 (프롬프트 참조, diff, 리뷰 노트에 사용) |
+| `rules[].when` | 규칙의 적용 조건 |
+| `rules[].instruction` | worker가 따라야 할 구체적 지침 |
+| `rules[].examples` | 선택적 코드/사용 예시 |
+
+### 운영 규칙
+
+- Orchestrator는 phase 라우팅 전에 `contract/rules/`를 확인하고, 현재 작업에 해당하는 `*.rules.json` 파일을 읽는다.
+- Orchestrator는 worker를 스폰할 때 해당 파일 경로를 `rules_paths`로 전달한다.
+- 모든 worker는 변경 작업 시작 전에 `rules_paths`의 각 파일을 읽고, 담당 범위에 맞는 규칙을 적용한다.
+- 작업에 매칭되는 rule 파일이 없거나, 참조된 파일이 누락/형식 오류인 경우 blind하게 진행하지 않고 중단 후 보고한다.
+
+---
+
 ## Development Process
 
 All processes follow Waterfall. Each stage starts only after the previous stage is complete. If you need to change a previous stage artifact, go back, update the document first, then re-run downstream stages.
@@ -346,6 +385,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 **Step 1: Impact analysis**
 - Find all Spec files whose `sources` include the target files.
 - Check `contracts` and `dependsOnSpecs` in those Specs to identify chained impact scope.
+- 코드/테스트 변경 시: 변경된 파일을 `sources`로 참조하는 모든 Spec을 찾고, 그 Spec의 `contracts`와 `dependsOnSpecs`까지 정합성을 확인한다.
 
 **Step 2: Contract/Spec review**
 - Read related Specs to understand current module structure and interfaces.
@@ -374,6 +414,7 @@ Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Tes
 - Validate that updated code follows confirmed Spec exactly.
 - Verify all `acceptanceCriteria` items are satisfied.
 - **If mismatch exists, fix code.**
+- 관련 Spec(`dependsOnSpecs`에서 참조하는 Spec 포함), Contract 정합성도 함께 확인한다.
 - After all validations pass, set `status` to `"done"` and update `lastModified` to today.
 
 ### 3. Bug fixes
@@ -487,6 +528,7 @@ The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
 | `cdd spec create <n>` | Create a Spec template. Requires `--domain <n>` or `--contract <path>` |
 | `cdd contract create [name]` | Contract 템플릿 생성. `name` 미지정 시 `main` |
 | `cdd spec set-status <spec> <status>` | Change Spec status |
+| `cdd rules validate` | `contract/rules/*.rules.json` 포맷 검증 |
 | `cdd spec list` | List Specs. Filters: `--status`, `--domain`, `--contract` |
 | `cdd spec get <spec>` | Show full Spec or a specific field (`--field`) |
 | `cdd spec set <spec>` | Update a Spec field (`--field`, `--value`, `--json`) |
