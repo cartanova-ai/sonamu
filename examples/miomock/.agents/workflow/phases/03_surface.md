@@ -44,7 +44,6 @@ findings: [] # previous verification failures on re-spawn
 ### Step 3: Run focused verification
 
 ```bash
-cd examples/miomock/api
 pnpm build
 pnpm check
 ```

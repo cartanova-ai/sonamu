@@ -46,7 +46,6 @@ findings: [] # previous verification failures on re-spawn
 ### Step 3: Run focused verification
 
 ```bash
-cd examples/miomock/api
 pnpm sonamu test -s  # check readiness
 pnpm build
 pnpm check  # Biome lint/format

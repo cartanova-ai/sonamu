@@ -111,7 +111,6 @@ When the active Spec status is `implementing`:
 
 ## CLI execution context
 
-- Working directory: `examples/miomock/api`
 - CDD CLI is executed via the `cdd` command.
 - Check current status with `cdd status`.
 - Run tests: check readiness with `pnpm sonamu test -s`, then `pnpm sonamu test` or `pnpm test`.
