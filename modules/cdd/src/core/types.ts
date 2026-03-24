@@ -95,6 +95,7 @@ export interface CddProject {
   projectRoot: string;
   contracts: ContractNode[];
   specs: SpecNode[];
+  rules: RulesNode[];
 }
 
 /** Schema 필드 정의 */
@@ -111,6 +112,29 @@ export interface SchemaDocument {
   id: string;
   type: "contract" | "spec";
   fields: SchemaField[];
+}
+
+/** Rules 파일의 개별 규칙 */
+export interface RuleEntry {
+  id: string;
+  when: string;
+  instruction: string;
+  examples?: string[];
+}
+
+/** Rules JSON 문서 구조 */
+export interface RulesDocument {
+  description: string;
+  rules: RuleEntry[];
+}
+
+/** 로드된 Rules 노드 */
+export interface RulesNode {
+  /** 절대 경로 */
+  path: string;
+  /** 파일명 (확장자 제외, e.g. "web") */
+  basename: string;
+  document: RulesDocument;
 }
 
 /** delegate 모드에서 Layer 2 검증을 위해 출력하는 페이로드 */
