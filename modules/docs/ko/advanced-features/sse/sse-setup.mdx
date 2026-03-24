@@ -224,10 +224,8 @@ export const config: SonamuConfig = {
     message: z.string(),
   })
 })
-@api({
-  compress: false,  // 자동으로 압축 비활성화 (권장)
-})
-async *streamUpdates() {
+async streamUpdates(ctx: Context): Promise<void> {
+  // @stream 데코레이터가 자동으로 압축을 비활성화합니다.
   // ...
 }
 ```
@@ -393,10 +391,10 @@ curl -N http://localhost:3000/stream/updates
 <Warning>
 **SSE 설정 시 주의사항**:
 
-1. **압축 비활성화**: SSE는 스트리밍이므로 압축 금지
+1. **압축 비활성화**: SSE는 스트리밍이므로 압축 금지 (@stream 데코레이터가 자동 처리)
    ```typescript
-   @api({ compress: false })
-   async *streamData() { ... }
+   @stream({ type: 'sse', events: z.object({ message: z.string() }) })
+   async streamData(ctx: Context): Promise<void> { ... }
    ```
 
 2. **타임아웃 설정**: 장시간 연결 유지

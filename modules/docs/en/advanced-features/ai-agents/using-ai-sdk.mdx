@@ -84,35 +84,27 @@ for await (const chunk of result.textStream) {
 ### Integration with SSE
 
 ```typescript
-import { BaseModel, stream, api } from "sonamu";
+import { BaseModel, stream } from "sonamu";
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { z } from "zod";
 
+const ChatStreamEvents = z.object({
+  chunk: z.object({
+    text: z.string(),
+  }),
+  complete: z.object({
+    totalTokens: z.number(),
+  }),
+});
+
 class ChatModelClass extends BaseModel {
   @stream({
     type: 'sse',
-    events: z.object({
-      chunk: z.object({
-        text: z.string(),
-      }),
-      complete: z.object({
-        totalTokens: z.number(),
-      }),
-    })
+    events: ChatStreamEvents,
   })
-  @api({ compress: false })
-  async *streamChat(message: string, ctx: Context) {
-    const sse = ctx.createSSE(
-      z.object({
-        chunk: z.object({
-          text: z.string(),
-        }),
-        complete: z.object({
-          totalTokens: z.number(),
-        }),
-      })
-    );
+  async streamChat(message: string, ctx: Context): Promise<void> {
+    const sse = ctx.createSSE(ChatStreamEvents);
 
     try {
       const result = streamText({
