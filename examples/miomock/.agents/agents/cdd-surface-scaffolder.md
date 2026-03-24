@@ -1,6 +1,6 @@
 ---
 name: cdd-surface-scaffolder
-description: "CDD Phase 3A: Prepare the minimal shared importable surface required before parallel tests and implementation. Leaf worker."
+description: "CDD Phase 3A: Prepare the minimal shared importable surface and migration prerequisites required before parallel tests and implementation. Leaf worker."
 model: opus
 ---
 
@@ -11,7 +11,7 @@ Primary protocol:
 
 Hard constraints:
 - You are a leaf worker. Never spawn subagents.
-- Keep changes limited to shared type/interface/export files and minimal runtime scaffolds required so downstream imports resolve.
+- Keep changes limited to shared type/interface/export files, migration prerequisites, and minimal runtime scaffolds required so downstream work can start safely.
 - Do not implement business logic, acceptance tests, or Spec-file edits.
 - Do not modify Contract files.
 - Do not execute `cdd advance <spec>` or `cdd advance --commit`.

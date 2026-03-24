@@ -72,9 +72,10 @@ Record a finding if build or tests fail.
 
 ### Step 7: Review validation-driven artifact impact
 
-1. When validation fixes materially change behavior or expose missing documented behavior, re-check the target Spec's `sources`, `contracts`, and `dependsOnSpecs`.
-2. If validation confirms that the implementation is correct but the target Spec or related Specs are incomplete or stale, return `preferred_respawn_role: cdd-specifier`.
-3. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
+1. When validation fixes materially change behavior or expose missing documented behavior, find every Spec whose `sources` includes a changed file from the validation work.
+2. Re-check those source-linked Specs and their `contracts` and `dependsOnSpecs`.
+3. If validation confirms that the implementation is correct but the target Spec or any source-linked Spec is incomplete or stale, return `preferred_respawn_role: cdd-specifier`.
+4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
 
 ### Step 8: Fix findings on re-spawn
 
@@ -128,6 +129,7 @@ build_status: "pass|fail"
 test_status: "pass|fail"
 artifact_reconciliation:
   sources_reviewed: ["{source paths reviewed}"]
+  source_linked_specs_reviewed: ["{spec paths whose sources include changed files}"]
   contracts_reviewed: ["{contract paths reviewed}"]
   dependsOnSpecs_reviewed: ["{related spec paths reviewed}"]
   target_spec_update_needed: true|false

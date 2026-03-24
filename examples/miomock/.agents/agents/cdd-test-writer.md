@@ -13,7 +13,7 @@ Hard constraints:
 - You are a leaf worker. Never spawn subagents.
 - Keep changes limited to acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
 - Preserve `schemaVersion` and refresh `lastModified` when you edit the Spec.
-- If missing shared types, interfaces, exports, or importable runtime surface block the work, return that finding to the orchestrator for `cdd-surface-scaffolder`.
+- If missing shared types, interfaces, exports, importable runtime surface, or migration prerequisites block the work, return that finding to the orchestrator for `cdd-surface-scaffolder`.
 - If tests expose target-Spec, related-Spec, or Contract drift, report it to the orchestrator instead of silently closing the phase.
 - Do not implement production behavior or maintain `sources`; that belongs to `cdd-implementer`.
 - Do not modify Contract files.

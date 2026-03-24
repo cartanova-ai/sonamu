@@ -36,12 +36,13 @@ findings: [] # previous verification failures on re-spawn
 ### Step 2: Review current state
 
 1. Read the Spec file and record the current status.
-2. Read the referenced Contract files from the Spec `contracts` array.
-3. Read any related Spec files listed in `dependsOnSpecs`.
-4. Read the Schema file and identify all required custom fields.
-5. If the current status is `draft` or `specifying`, continue in transition mode.
-6. If the current status is `implementing`, `validating`, or `done`, continue in artifact-reconciliation mode: preserve the current `status` and reconcile Spec content only.
-7. For feature-change requests or later-phase follow-up, decide whether the target Spec needs modification, additional content, or no change before touching related artifacts.
+2. Read every existing file path referenced in `sources`; if a listed path does not exist yet, note that it still needs planned-only review rather than live-file inspection.
+3. Read the referenced Contract files from the Spec `contracts` array.
+4. Read any related Spec files listed in `dependsOnSpecs`.
+5. Read the Schema file and identify all required custom fields.
+6. If the current status is `draft` or `specifying`, continue in transition mode.
+7. If the current status is `implementing`, `validating`, or `done`, continue in artifact-reconciliation mode: preserve the current `status` and reconcile Spec content only.
+8. For feature-change requests or later-phase follow-up, decide whether the target Spec needs modification, additional content, or no change before touching related artifacts.
 
 ### Step 3: Normalize metadata and fill the core narrative
 
@@ -89,12 +90,13 @@ If `findings` are provided:
 ### Step 8: Review related artifact impact and later-phase drift
 
 1. Treat feature-change requests and later-phase drift follow-up as target-Spec-first work: update or extend the target Spec before deciding any downstream follow-up.
-2. Re-check the current `sources`, then the target Spec's `contracts` and `dependsOnSpecs` after your edits.
-3. Confirm whether related Specs also need updates to stay consistent.
-4. If implementation changed actual file layout, exported surface, documented constraints, or documented behavior, reconcile the target Spec to the confirmed implementation before closing.
-5. If consistency requires related Spec edits, update those related Specs within `cdd-specifier` scope and track them in `related_spec_updates`.
-6. If a related artifact review reveals contract drift, do not edit the Contract unless the user explicitly requested Contract changes.
-7. When contract drift blocks closure, return `ready_for_transition: false` and report `blocking_reason`.
+2. Re-check every document path referenced in the current `sources`, then the target Spec's `contracts` and `dependsOnSpecs` after your edits.
+3. Confirm whether any referenced source path, Contract, or related Spec contradicts the target Spec narrative, ACs, schema-defined fields, constraints, or planned file layout.
+4. If a referenced `sources` path is stale, missing beyond planned intent, or semantically inconsistent, reconcile the target Spec before closing.
+5. If implementation changed actual file layout, exported surface, documented constraints, or documented behavior, reconcile the target Spec to the confirmed implementation before closing.
+6. If consistency requires related Spec edits, update those related Specs within `cdd-specifier` scope and track them in `related_spec_updates`.
+7. If a related artifact review reveals contract drift, do not edit the Contract unless the user explicitly requested Contract changes.
+8. When contract drift blocks closure, return `ready_for_transition: false` and report `blocking_reason`.
 
 ### Step 9: Run the pre-commit transition check
 
@@ -106,6 +108,7 @@ If `findings` are provided:
    - ACs are concrete and testable
    - content stays within Contract scope
    - cross-field consistency is preserved
+   - every document referenced in `sources`, `dependsOnSpecs`, and `contracts` has been reviewed for consistency with the target Spec, with required Spec updates applied before the transition
 5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
 6. If you determine that the Contract must change, stop and return `ready_for_transition: false`.
 
@@ -116,12 +119,14 @@ Return `ready_for_transition: true` only when the current status is `draft` or `
 - `schemaVersion` and `lastModified` are valid
 - required schema fields are filled
 - ACs are concrete and non-empty
-- planned `sources` are coherent enough for downstream work, including any likely shared surface scaffold
+- planned `sources` are coherent enough for downstream work, including any likely shared-surface or migration-prerequisite scaffold
+- every referenced document in `sources`, `dependsOnSpecs`, and `contracts` is reviewed for consistency, with required Spec follow-up applied or explicitly routed
 - related Specs are updated or explicitly routed for follow-up
 - the latest `cdd advance <spec>` check is clean for the current transition
 
 Return `artifact_reconciliation_complete: true` only when the current status is `implementing`, `validating`, or `done` and:
 - the target Spec is reconciled against current `sources`
+- every referenced document in `sources`, `dependsOnSpecs`, and `contracts` is reviewed for consistency, with required Spec follow-up applied or explicitly routed
 - related Specs are updated or explicitly routed for follow-up
 - the current `status` is preserved
 - any Contract drift is reported instead of silently ignored
@@ -148,6 +153,7 @@ related_artifacts_reviewed:
   sources: ["{sources paths reviewed}"]
   contracts: ["{contract paths reviewed}"]
   dependsOnSpecs: ["{related spec paths reviewed}"]
+  missing_source_paths: ["{planned source paths that do not exist yet but were still checked for consistency}"]
 related_spec_updates: ["{related spec paths updated}"]
 related_spec_followups: ["{related spec paths that still need follow-up}"]
 contract_drift: true|false

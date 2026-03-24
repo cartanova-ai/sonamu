@@ -159,8 +159,8 @@ Only adjacent transitions are allowed. `cdd advance <spec>` enforces the gate fo
 | Transition | Layer 1 (CLI) | Layer 2 (worker semantic verification) |
 |---|---|---|
 | `draft -> specifying` | valid Contract reference, non-empty `summary`, `description`, ACs, required schema fields | schema field content matches field names/types and any field descriptions that exist, ACs are verifiable, Spec stays within Contract scope |
-| `specifying -> implementing` | non-empty `summary`, `description`, ACs, required schema fields | schema field quality, AC quality, cross-field consistency, feature-level completeness |
-| `implementing -> validating` | `sources` files exist, AC `testRef.target` exists | code implements the Spec, tests validate AC meaning, Spec-code consistency |
+| `specifying -> implementing` | non-empty `summary`, `description`, ACs, required schema fields | schema field quality, AC quality, cross-field consistency, feature-level completeness, and consistency against every document referenced in the target Spec's `sources`, `dependsOnSpecs`, and `contracts`; required target/related Spec updates must be completed before the transition |
+| `implementing -> validating` | `sources` files exist, AC `testRef.target` exists | code implements the Spec, tests validate AC meaning, Spec-code consistency, and every changed file is reconciled against all Specs whose `sources` include that file plus their `contracts` and `dependsOnSpecs`; required Spec follow-up must be completed or routed before the transition |
 | `validating -> done` | AC `testRef.pattern` is non-empty, valid as a regex, and matches the test file | AC-test semantic match, constraints reflected, error-handling coverage, build/test evidence |
 
 `--commit` means the orchestrator is finalizing a transition after the worker has already completed the pre-commit checks. Build/test execution remains worker-owned evidence during `validating`; the CLI Layer 1 gate does not run the test suite by itself.
@@ -185,7 +185,7 @@ When `user_review=true`:
 ## Worker ownership
 
 - `cdd-specifier`: Spec content edits, `schemaVersion` normalization, target/related Spec reconciliation after feature or implementation/test discoveries, and pre-commit verification for `draft -> specifying` and `specifying -> implementing`
-- `cdd-surface-scaffolder`: minimal shared type/interface/export/runtime scaffold work required before parallel `implementing` work can start safely
+- `cdd-surface-scaffolder`: minimal shared type/interface/export/runtime scaffold work plus Spec-driven migration preparation required before parallel `implementing` work can start safely
 - `cdd-test-writer`: acceptance-test authoring plus `acceptanceCriteria[].testRef` ownership during `implementing`
 - `cdd-implementer`: production-code implementation plus final `sources` ownership during `implementing`
 - `cdd-validator`: validating-stage code/test fixes and final pre-commit verification for `validating -> done`
@@ -196,22 +196,23 @@ Any worker that edits Spec fields it owns must preserve `schemaVersion` and refr
 ## Implementing preparation and parallel rules
 
 When the Spec status is `implementing`:
-- If the planned work requires new importable modules, shared types/interfaces, runtime exports, or placeholder entrypoints that do not yet exist, the orchestrator should first spawn `cdd-surface-scaffolder`.
-- `cdd-surface-scaffolder` may edit only shared type/interface/export files and the minimal runtime scaffolds needed so planned imports resolve. It must not add business logic, acceptance tests, or Spec changes.
+- If the planned work requires new importable modules, shared types/interfaces, runtime exports, placeholder entrypoints, or migration prerequisites described in the Spec before downstream work can proceed, the orchestrator should first spawn `cdd-surface-scaffolder`.
+- `cdd-surface-scaffolder` may edit only shared type/interface/export files, minimal runtime scaffolds, and migration prerequisites needed so planned imports resolve and prerequisite schema state exists. It must not add business logic, acceptance tests, or Spec changes.
 - After the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` in parallel.
 - The shared surface worker and the parallel pair must receive the same `rules_paths` so they apply one consistent rule set.
 - `cdd-test-writer` may edit only acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
 - `cdd-implementer` may edit only production code, implementation support files, and `sources`.
-- Both `cdd-test-writer` and `cdd-implementer` must re-route missing shared surface findings to `cdd-surface-scaffolder` instead of inventing or broadening their own scope.
+- Both `cdd-test-writer` and `cdd-implementer` must re-route missing shared surface or migration-prerequisite findings to `cdd-surface-scaffolder` instead of inventing or broadening their own scope.
 - Neither worker may rewrite `summary`, `description`, AC `condition`, schema-defined fields, or Contract references.
 - The orchestrator fans in both worker outputs, handles any artifact-reconciliation follow-up they report, runs `cdd advance <spec>` without `--commit` on the integrated state, and re-spawns only the worker that owns the reported finding.
-- If the integrated findings span shared surface plus test/code ownership, the orchestrator may re-run `cdd-surface-scaffolder`, the parallel pair, or both as needed.
+- If the integrated findings span shared surface or migration-prerequisite work plus test/code ownership, the orchestrator may re-run `cdd-surface-scaffolder`, the parallel pair, or both as needed.
 
 ## Artifact reconciliation
 
 - Artifact reconciliation is mandatory after any feature-change request and after any code/test change that alters confirmed behavior, interface, constraints, validation rules, error handling, data shape, or file layout.
-- Minimum scope: the target Spec, referenced Contracts, related Specs listed in `dependsOnSpecs`, and live implementation/test files in the current `sources`.
-- `cdd-test-writer`, `cdd-implementer`, and `cdd-validator` must inspect that scope and report whether the target Spec or related Specs need updates before the request can close.
+- Minimum scope for Spec-content work: every document path referenced in the target Spec's `sources`, plus every path listed in `dependsOnSpecs` and `contracts`.
+- Minimum scope for code/test work: every Spec whose `sources` includes a changed file, plus each source-linked Spec's `sources`, `contracts`, and `dependsOnSpecs`.
+- `cdd-test-writer`, `cdd-implementer`, and `cdd-validator` must inspect that scope and report whether the target Spec or any source-linked Spec needs updates before the request can close.
 - `cdd-specifier` owns Spec updates required by artifact reconciliation even when the current Spec status is `implementing`, `validating`, or `done`. In that mode it preserves the current `status` and refreshes `lastModified`.
 - If artifact reconciliation reveals Contract drift and the user did not explicitly request Contract edits, stop and escalate instead of mutating Contract files.
 
@@ -220,9 +221,9 @@ When the Spec status is `implementing`:
 - Contract-change requests must inspect Spec files whose `contracts` array references the changed Contract path.
 - `cdd-contract-writer` may report impacted Spec follow-up work, but must not edit Spec files directly.
 - Feature-change requests must resolve the matching feature Spec first and decide whether the target Spec needs modification or additional content.
-- Spec-change requests must inspect the target Spec's `contracts` and `dependsOnSpecs` before closing the phase.
-- Code/test-change work must inspect changed or confirmed `sources`, then re-check the target Spec's `contracts` and `dependsOnSpecs` before closure.
-- After assessing and updating the target Spec as needed for a feature-change request, run the same related Spec and Contract review before closing the request.
+- Spec-change requests must inspect every document path referenced in the target Spec's `sources`, `contracts`, and `dependsOnSpecs` before closing the phase.
+- Code/test-change work must inspect every Spec whose `sources` includes a changed file, then re-check those Specs' `sources`, `contracts`, and `dependsOnSpecs` before closure.
+- After assessing and updating the target Spec as needed for a feature-change request, run the same `sources`, `dependsOnSpecs`, and Contract review before closing the request.
 - If implementation or validation reveals target-Spec drift, route `cdd-specifier` before closing the request.
 - If implementation or validation reveals related Spec consistency updates, keep those updates in `cdd-specifier` scope.
 - `cdd-specifier` may update directly related Spec files when those updates are required to keep Specs consistent.
@@ -235,7 +236,7 @@ When the Spec status is `implementing`:
 3. If no Contract exists, the orchestrator spawns `cdd-contract-writer`, gathers user review, and then re-checks artifact state.
 4. If Contract exists but no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
 5. All subsequent Spec phase work is delegated to leaf workers, and every spawn includes the resolved `rules_paths`.
-6. For `implementing`, the orchestrator first decides whether a shared surface scaffold is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then spawns `cdd-test-writer` and `cdd-implementer` in parallel, inspects their artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
+6. For `implementing`, the orchestrator first decides whether a shared surface scaffold or migration prerequisite is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then spawns `cdd-test-writer` and `cdd-implementer` in parallel, inspects their artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
 7. For `draft`, `specifying`, and `validating`, the phase owner performs its phase work, runs `cdd advance <spec>` when that phase owns a transition, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit, later-phase artifact reconciliation is complete, or the phase is blocked.
 8. If a worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
 9. If the active phase result is ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before closing the phase.

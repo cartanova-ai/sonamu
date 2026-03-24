@@ -17,3 +17,4 @@ Hard constraints:
 - After every rules-file edit, run `cdd rules validate`.
 - Do not modify Contract, Spec, source, or test files as part of this utility.
 - If the request is ambiguous, return clarification questions or `blocking_reason` instead of guessing.
+- All content (field values) must be written in Korean.

@@ -1,6 +1,6 @@
 # Phase 3A: Surface Scaffold
 
-Prepare the minimal shared importable surface required before parallel test writing and code implementation can proceed safely. This worker owns shared types, interfaces, exports, DTO/schema support files, module entrypoints, and placeholder runtime stubs when they are needed only so downstream imports resolve. Business logic, acceptance tests, `acceptanceCriteria[].testRef`, and the final `sources` list belong to other workers.
+Prepare the minimal shared importable surface and migration prerequisites required before parallel test writing and code implementation can proceed safely. This worker owns shared types, interfaces, exports, DTO/schema support files, module entrypoints, placeholder runtime stubs, and Spec-driven migration preparation when those prerequisites are needed only so downstream work can start from the expected module and schema state. Business logic, acceptance tests, `acceptanceCriteria[].testRef`, and the final `sources` list belong to other workers.
 
 ## Required reading (mandatory)
 
@@ -18,7 +18,7 @@ objective_packet:
   unit_objective: "..."
   user_review: true|false
   constraints:
-    - "Only edit shared type/interface/export files and minimal runtime scaffolds required for planned imports"
+    - "Only edit shared type/interface/export files, migration prerequisites, and minimal runtime scaffolds required before downstream implementing work can proceed"
 rules_paths: ["{applicable rules file paths}"]
 spec_path: "{spec file path}"
 contract_paths: ["{referenced contract paths}"]
@@ -40,19 +40,26 @@ findings: [] # previous verification failures on re-spawn
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the Schema file and internalize the planned module boundaries, schema-defined structure, and ACs.
 3. Read the files already referenced in `sources`, plus any missing file paths implied by current imports or previous findings.
-4. Identify exactly which imports, exports, shared types/interfaces, DTO/schema helpers, or runtime entrypoints are missing and would block `cdd-test-writer` or `cdd-implementer`.
+4. Identify exactly which imports, exports, shared types/interfaces, DTO/schema helpers, runtime entrypoints, or migration prerequisites described in the Spec are missing and would block `cdd-test-writer` or `cdd-implementer`.
 
-### Step 3: Prepare the minimal importable surface
+### Step 3: Prepare the minimal importable surface and migration prerequisites
 
-1. Create or update only the minimum files, exports, and type/interface definitions required so the planned modules are importable.
-2. If a runtime symbol must exist before downstream work can start, add the smallest explicit placeholder body needed to keep imports resolvable.
-3. Use obvious non-final placeholders such as `throw new Error("Not implemented yet")` only when a runtime export is required.
-4. Do not add business logic, production behavior, or test assertions in this phase.
-5. Do not update Spec files. `cdd-implementer` still owns the final `sources` list.
+1. Create or update only the minimum files, exports, type/interface definitions, and migration prerequisites required so the planned modules and schema state are ready for downstream work.
+2. If the Spec describes table, column, enum, entity, or other schema changes that must exist before tests or implementation can run meaningfully, perform that migration-related preparation in this phase.
+3. When migration-related preparation was added or changed, apply it so the database state matches the prerequisite shape expected by downstream workers.
+4. If a runtime symbol must exist before downstream work can start, add the smallest explicit placeholder body needed to keep imports resolvable.
+5. Use obvious non-final placeholders such as `throw new Error("Not implemented yet")` only when a runtime export is required.
+6. Do not add business logic, production behavior, or test assertions in this phase.
+7. Do not update Spec files. `cdd-implementer` still owns the final `sources` list.
 
 ### Step 4: Run focused verification
 
 ```bash
+cd packages/api
+pnpm sonamu migrate generate   # migration 파일 생성
+pnpm sonamu migrate run         # 실제 DB에 적용
+
+cd - # 기존 루트 경로로 원복
 pnpm build
 pnpm check
 ```
@@ -62,7 +69,7 @@ If the shared surface cannot be finalized without changing Spec narrative, schem
 ### Step 5: Fix findings on re-spawn
 
 If `findings` are provided:
-1. Fix only the missing shared type/interface/export/runtime surface findings.
+1. Fix only the missing shared type/interface/export/runtime surface or migration-prerequisite findings.
 2. If the remaining blocker is now business logic rather than shared surface, return `preferred_respawn_role: cdd-implementer`.
 3. If the remaining blocker is test semantics rather than shared surface, return `preferred_respawn_role: cdd-test-writer`.
 4. If Spec narrative, schema-defined fields, or Contract scope must change, return `preferred_respawn_role: cdd-specifier`.
@@ -72,7 +79,7 @@ If `findings` are provided:
 
 Return `ready_for_parallel_pair: true` only when:
 - downstream workers can import the planned modules they need
-- required shared types/interfaces and runtime exports exist
+- required shared types/interfaces, runtime exports, and migration prerequisites exist
 - focused checks are complete for the owned surface scope
 - any remaining out-of-scope blocker is reported through `preferred_respawn_role`
 
@@ -84,6 +91,8 @@ rules_reviewed: ["{rule ids read from rules_paths}"]
 files_changed: ["{list of changed files}"]
 surface_files_prepared: ["{list of shared surface files added or updated}"]
 runtime_exports_prepared: ["{list of runtime exports or entrypoints prepared}"]
+migration_files_prepared: ["{list of migration-related files or schema prep artifacts added or updated}"]
+migration_status: "not_needed|applied|fail"
 build_status: "pass|fail"
 check_status: "pass|fail"
 ready_for_parallel_pair: true|false

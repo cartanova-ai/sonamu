@@ -13,7 +13,7 @@ Hard constraints:
 - You are a leaf worker. Never spawn subagents.
 - Keep changes limited to production-code implementation scope defined in Spec.
 - Preserve `schemaVersion` and refresh `lastModified` when you edit the Spec.
-- If missing shared types, interfaces, exports, or importable runtime surface block the work, return that finding to the orchestrator for `cdd-surface-scaffolder`.
+- If missing shared types, interfaces, exports, importable runtime surface, or migration prerequisites block the work, return that finding to the orchestrator for `cdd-surface-scaffolder`.
 - If implementation reveals target-Spec, related-Spec, or Contract drift, report it to the orchestrator instead of silently closing the phase.
 - Do not implement features not in the Spec.
 - Do not modify Contract files.

@@ -1,6 +1,6 @@
 # Phase 3C: Implement Code
 
-Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Shared importable surface preparation belongs to `cdd-surface-scaffolder`, and acceptance tests plus `acceptanceCriteria[].testRef` are owned by `cdd-test-writer`.
+Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and acceptance tests plus `acceptanceCriteria[].testRef` are owned by `cdd-test-writer`.
 
 ## Required reading (mandatory)
 
@@ -41,14 +41,14 @@ findings: [] # previous verification failures on re-spawn
 2. Read the referenced Contract files and any related Specs from `dependsOnSpecs`.
 3. Read the Schema file and understand the custom field structure.
 4. Internalize all schema fields and ACs. These are the implementation criteria.
-5. Assume any required shared importable surface has already been prepared. If missing shared types/interfaces/exports block the implementation, report that gap instead of broadening this worker's scope.
+5. Assume any required shared importable surface and migration prerequisite have already been prepared. If missing shared types/interfaces/exports or unapplied migration prerequisites block the implementation, report that gap instead of broadening this worker's scope.
 
 ### Step 3: Implement code
 
 1. Implement according to the structure defined in the Spec's schema fields.
 2. If a better structure appears during implementation, do not change code first.
 3. Report Spec-content changes back to the orchestrator so it can spawn `cdd-specifier`.
-4. If new shared type/interface/export/runtime scaffolds are required before meaningful logic can proceed, return `preferred_respawn_role: cdd-surface-scaffolder`.
+4. If new shared type/interface/export/runtime scaffolds or migration prerequisites are required before meaningful logic can proceed, return `preferred_respawn_role: cdd-surface-scaffolder`.
 5. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer`, keep `schemaVersion`, and refresh `lastModified`.
 6. Update `sources` when new implementation files are added or when you need to reconcile the integrated file list after fan-in.
 
@@ -67,17 +67,18 @@ If tests already exist for your target behavior, you may run focused test files.
 If `findings` are provided:
 1. Fix the corresponding production code and `sources`.
 2. Do not update `acceptanceCriteria[].testRef`; that belongs to `cdd-test-writer`.
-3. If a finding requires shared type/interface/export/runtime surface work without business-logic changes, return `preferred_respawn_role: cdd-surface-scaffolder`.
+3. If a finding requires shared type/interface/export/runtime surface work or migration-prerequisite work without business-logic changes, return `preferred_respawn_role: cdd-surface-scaffolder`.
 4. If a finding requires changes to tests or test semantics only, return `preferred_respawn_role: cdd-test-writer`.
 5. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 6. Re-run focused checks.
 
 ### Step 6: Review implementation-driven artifact impact
 
-1. Compare the implemented behavior, changed file layout, exported surface, constraints, and error handling against the target Spec.
-2. Inspect the current `sources`, then re-check the target Spec's `contracts` and `dependsOnSpecs` before returning.
-3. If the target Spec or related Specs need updates to reflect the confirmed implementation, return `preferred_respawn_role: cdd-specifier` with details instead of leaving code-only drift.
-4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
+1. Compare the implemented behavior, changed file layout, exported surface, constraints, and error handling against the target Spec and any other source-linked Spec impacted by the changed files.
+2. Find every Spec whose `sources` includes a changed file from this worker's output, including the target Spec when applicable.
+3. Re-check those source-linked Specs and their `sources`, `contracts`, and `dependsOnSpecs` before returning.
+4. If the target Spec or any source-linked Spec needs updates to reflect the confirmed implementation, return `preferred_respawn_role: cdd-specifier` with details instead of leaving code-only drift.
+5. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
 
 ### Step 7: Return readiness for fan-in
 
@@ -106,6 +107,7 @@ build_status: "pass|fail"
 test_status: "pass|fail"
 artifact_reconciliation:
   sources_reviewed: ["{source paths reviewed}"]
+  source_linked_specs_reviewed: ["{spec paths whose sources include changed files}"]
   contracts_reviewed: ["{contract paths reviewed}"]
   dependsOnSpecs_reviewed: ["{related spec paths reviewed}"]
   target_spec_update_needed: true|false
@@ -122,7 +124,7 @@ blocking_reason: "{empty when ready}"
 - Do not implement features not in the Spec.
 - Do not modify Contract files.
 - Do not modify `acceptanceCriteria[].testRef`.
-- Do not absorb shared type/interface/export/runtime scaffold work into this role when that work exists only to make imports resolvable.
+- Do not absorb shared type/interface/export/runtime scaffold work or migration-prerequisite work into this role when that work exists only to unblock downstream imports or schema readiness.
 - Do not execute `cdd advance <spec>` or `cdd advance --commit`; the orchestrator owns the shared gate for this phase.
 - If Spec and code conflict, fix the code. Never change Spec to match code.
 - Do not rewrite `summary`, `description`, AC conditions, or schema-defined fields in this phase.

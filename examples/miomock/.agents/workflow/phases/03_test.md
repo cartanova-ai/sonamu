@@ -1,6 +1,6 @@
 # Phase 3B: Write Tests
 
-Write acceptance tests from the confirmed Spec. This worker owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`. Shared importable surface preparation belongs to `cdd-surface-scaffolder`, and production code plus the final `sources` list are owned by `cdd-implementer`.
+Write acceptance tests from the confirmed Spec. This worker owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and production code plus the final `sources` list are owned by `cdd-implementer`.
 
 ## Required reading (mandatory)
 
@@ -41,7 +41,7 @@ findings: [] # previous verification failures on re-spawn
 2. Read the Schema file and internalize all acceptance criteria.
 3. Read the referenced Contract files and any related Specs from `dependsOnSpecs` when they constrain acceptance semantics.
 4. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
-5. Assume any required shared importable surface has already been prepared. If it has not, report that gap instead of creating it here.
+5. Assume any required shared importable surface and migration prerequisite have already been prepared. If they have not, report that gap instead of creating them here.
 
 ### Step 3: Write acceptance tests
 
@@ -58,7 +58,7 @@ pnpm sonamu test -s  # check readiness
 pnpm sonamu test {test_file_path}  # or pnpm test
 ```
 
-If the tests fail because required modules, shared types/interfaces, runtime exports, or placeholder runtime entrypoints are missing, keep the assertions intact, record the gap, and return `preferred_respawn_role: cdd-surface-scaffolder`.
+If the tests fail because required modules, shared types/interfaces, runtime exports, placeholder runtime entrypoints, or migration prerequisites are missing or unapplied, keep the assertions intact, record the gap, and return `preferred_respawn_role: cdd-surface-scaffolder`.
 
 If the tests fail because production behavior is missing after the shared surface already exists, keep the assertions intact, record the gap, and return `preferred_respawn_role: cdd-implementer` without weakening the test intent.
 
@@ -67,16 +67,17 @@ If the tests fail because production behavior is missing after the shared surfac
 If `findings` are provided:
 1. Fix the corresponding tests and `acceptanceCriteria[].testRef`.
 2. Do not update `sources`; that belongs to `cdd-implementer`.
-3. If a finding requires shared type/interface/export/runtime surface work, return `preferred_respawn_role: cdd-surface-scaffolder`.
+3. If a finding requires shared type/interface/export/runtime surface work or migration-prerequisite work, return `preferred_respawn_role: cdd-surface-scaffolder`.
 4. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 5. Re-run focused tests.
 
 ### Step 6: Review test-driven artifact impact
 
-1. Review whether the acceptance tests or `testRef` mappings exposed stale target-Spec narrative, AC intent, schema-defined constraints, or related Spec content.
-2. Inspect the current `sources`, then re-check referenced Contracts and `dependsOnSpecs` before returning.
-3. If the target Spec or related Specs need updates, return `preferred_respawn_role: cdd-specifier` with details instead of silently leaving drift.
-4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
+1. Review whether the acceptance tests or `testRef` mappings exposed stale target-Spec or other source-linked Spec narrative, AC intent, schema-defined constraints, or related Spec content.
+2. Find every Spec whose `sources` includes a changed file from this worker's output, including the target Spec when applicable.
+3. Re-check those source-linked Specs and their `sources`, referenced Contracts, and `dependsOnSpecs` before returning.
+4. If the target Spec or any source-linked Spec needs updates, return `preferred_respawn_role: cdd-specifier` with details instead of silently leaving drift.
+5. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
 
 ### Step 7: Return readiness for fan-in
 
@@ -84,7 +85,7 @@ Return `ready_for_fan_in: true` only when:
 - each AC has a meaningful test mapping in `acceptanceCriteria[].testRef`
 - focused tests are complete for the owned scope
 - artifact reconciliation review is complete for the current test-driven findings
-- any shared-surface or production-code blocker is reported through `preferred_respawn_role`
+- any shared-surface, migration-prerequisite, or production-code blocker is reported through `preferred_respawn_role`
 
 `ready_for_fan_in=true` may still be valid when the current test run fails only because the production behavior is not implemented yet, or when owned test work is complete but later-phase Spec reconciliation is still required. In those cases, keep `preferred_respawn_role` set to the owning follow-up role and describe the gap clearly.
 
@@ -104,6 +105,7 @@ commits: ["{commit hashes}"]
 test_status: "pass|fail"
 artifact_reconciliation:
   sources_reviewed: ["{source paths reviewed}"]
+  source_linked_specs_reviewed: ["{spec paths whose sources include changed files}"]
   contracts_reviewed: ["{contract paths reviewed}"]
   dependsOnSpecs_reviewed: ["{related spec paths reviewed}"]
   target_spec_update_needed: true|false
@@ -120,6 +122,6 @@ blocking_reason: "{empty when ready}"
 - Do not implement production behavior.
 - Do not modify Contract files.
 - Do not modify `sources`.
-- Do not create shared type/interface/export/runtime scaffolds outside test-owned files; that belongs to `cdd-surface-scaffolder`.
+- Do not create shared type/interface/export/runtime scaffolds or migration prerequisites outside test-owned files; that belongs to `cdd-surface-scaffolder`.
 - Do not rewrite `summary`, `description`, AC conditions, or schema-defined fields in this phase.
 - Do not execute `cdd advance <spec>` or `cdd advance --commit`.

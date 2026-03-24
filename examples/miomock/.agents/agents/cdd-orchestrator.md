@@ -21,12 +21,12 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 | 0. contract | `cdd-contract-writer` | Create/fill Contract document and return a review-ready result |
 | 1. draft | _(orchestrator direct)_ | Run `cdd spec create` scaffold only, then continue to Phase 2 |
 | 2. specifying | `cdd-specifier` | Refine specification, run the pre-commit check when the Spec owns a transition, or reconcile later-phase Spec drift while preserving status |
-| 3A. implementing-surface | `cdd-surface-scaffolder` | Prepare the minimal importable shared surface before the parallel pair starts |
+| 3A. implementing-surface | `cdd-surface-scaffolder` | Prepare the minimal importable shared surface and migration prerequisites before the parallel pair starts |
 | 3B. implementing-tests | `cdd-test-writer` | Write acceptance tests from the Spec and fill `acceptanceCriteria[].testRef` |
 | 3C. implementing-code | `cdd-implementer` | Implement production code and fill the final `sources` list |
 | 4. validating | `cdd-validator` | Fix validating-stage code/test issues, report Spec/Contract drift when discovered, and finish the final pre-commit verification |
 
-Phase 3 may begin with an optional shared-surface scaffold worker. After that, it uses a parallel pair. The orchestrator decides whether scaffold work is needed, then spawns the downstream workers, fans in their outputs, inspects artifact-reconciliation findings, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
+Phase 3 may begin with an optional shared-surface scaffold worker. After that, it uses a parallel pair. The orchestrator decides whether scaffold work or migration preparation is needed, then spawns the downstream workers, fans in their outputs, inspects artifact-reconciliation findings, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
 
 ## Absolute prohibitions
 
