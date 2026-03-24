@@ -6,6 +6,7 @@ Create and fill a Contract document based on the user's feature requirements.
 
 - `../cdd.md`
 - `../00_cdd_contract.md`
+- `rules_paths`
 
 ## Input
 
@@ -17,6 +18,7 @@ objective_packet:
   phase_objective: "Create or refine the Contract"
   unit_objective: "Own only Contract authoring"
   user_review: true
+rules_paths: ["{applicable rules file paths}"]
 feature_description: "{user's feature description}"
 domain: "{domain directory, optional}"
 schema: "{schema ID, default: default-contract}"
@@ -27,7 +29,14 @@ Contract authoring has no `cdd advance` step. `objective_packet.user_review` con
 
 ## Procedure
 
-### Step 1: Create contract scaffold
+### Step 1: Load applicable rules
+
+1. Read every file in `rules_paths`.
+2. Internalize each rule file's `description` and each rule object's `id`, `when`, `instruction`, and `examples` when present.
+3. Apply every rule that matches the current task and Contract-authoring scope.
+4. If a required rule file is missing, unreadable, or malformed, stop and return `ready_for_transition: false` with `blocking_reason`.
+
+### Step 2: Create contract scaffold
 
 If `contract_name` is not specified, omit it to default to `main`:
 ```bash
@@ -42,18 +51,18 @@ cdd contract create {contract_name} --domain {domain} --schema {schema}
 
 If the contract file already exists, read it instead of creating a new one.
 
-### Step 2: Read schema
+### Step 3: Read schema
 
 Read the schema file referenced by the contract's `schema` field.
 For each field in the schema's `fields` array, note its `name`, `type`, and `description` when present.
 
-### Step 3: Define features
+### Step 4: Define features
 
 Based on the user's feature description, identify distinct features and add them to the `features` field as key-value pairs:
 - Key: feature identifier (used as Spec filename, kebab-case)
 - Value: one-line Korean description of the feature
 
-### Step 4: Fill schema fields
+### Step 5: Fill schema fields
 
 For each schema field:
 1. Read the field's `name`, `type`, and `description` when present to understand what content it should contain.
@@ -65,7 +74,7 @@ For each schema field:
 3. Content must be written in Korean.
 4. Content must stay within the scope of the user's feature description.
 
-### Step 5: Resolve ambiguity
+### Step 6: Resolve ambiguity
 
 If any of the following are unclear, stop and return `questions_for_user` instead of guessing:
 - Feature boundaries (what constitutes a single feature vs. multiple features)
@@ -73,7 +82,7 @@ If any of the following are unclear, stop and return `questions_for_user` instea
 - Business rules that are implied but not explicitly stated
 - Edge cases that may or may not be in scope
 
-### Step 6: Review impacted Specs
+### Step 7: Review impacted Specs
 
 When the user explicitly requested a Contract change, inspect related Spec impact before handoff:
 1. Find Spec files whose `contracts` array references the current `contract_path`.
@@ -81,7 +90,7 @@ When the user explicitly requested a Contract change, inspect related Spec impac
 3. Record the result as `impacted_spec_followups`.
 4. Do not edit the impacted Specs in this phase.
 
-### Step 7: Prepare orchestrator review handoff
+### Step 8: Prepare orchestrator review handoff
 
 1. Prepare a concise `user_review_summary` for the orchestrator.
 2. Return `ready_for_transition: true` only when the Contract draft is internally complete and `questions_for_user` is empty.
@@ -91,6 +100,7 @@ When the user explicitly requested a Contract change, inspect related Spec impac
 
 ```yaml
 contract_path: "{created/updated contract file path}"
+rules_reviewed: ["{rule ids read from rules_paths}"]
 features_defined: ["{list of feature keys}"]
 schema_fields_filled: ["{list of filled schema fields}"]
 impacted_spec_followups:

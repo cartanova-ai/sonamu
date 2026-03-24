@@ -6,6 +6,7 @@ Refine the Spec until it is ready to enter `implementing`, or reconcile Spec con
 
 - `../cdd.md`
 - `../00_cdd_contract.md`
+- `rules_paths`
 
 ## Input
 
@@ -16,6 +17,7 @@ objective_packet:
   phase_objective: "..."
   unit_objective: "..."
   user_review: true|false
+rules_paths: ["{applicable rules file paths}"]
 spec_path: "{spec file path}"
 contract_paths: ["{referenced contract paths}"]
 schema_path: "{schema file path}"
@@ -24,7 +26,14 @@ findings: [] # previous verification failures on re-spawn
 
 ## Procedure
 
-### Step 1: Review current state
+### Step 1: Load applicable rules
+
+1. Read every file in `rules_paths`.
+2. Internalize each rule file's `description` and each rule object's `id`, `when`, `instruction`, and `examples` when present.
+3. Apply every rule that matches the current task and Spec-authoring scope.
+4. If a required rule file is missing, unreadable, or malformed, stop and return `ready_for_transition: false` with `blocking_reason`.
+
+### Step 2: Review current state
 
 1. Read the Spec file and record the current status.
 2. Read the referenced Contract files from the Spec `contracts` array.
@@ -34,7 +43,7 @@ findings: [] # previous verification failures on re-spawn
 6. If the current status is `implementing`, `validating`, or `done`, continue in artifact-reconciliation mode: preserve the current `status` and reconcile Spec content only.
 7. For feature-change requests or later-phase follow-up, decide whether the target Spec needs modification, additional content, or no change before touching related artifacts.
 
-### Step 2: Normalize metadata and fill the core narrative
+### Step 3: Normalize metadata and fill the core narrative
 
 1. Preserve the current `schemaVersion` if it already exists.
 2. If `schemaVersion` is missing after scaffold creation, initialize it to `2` for the current miomock live envelope.
@@ -45,7 +54,7 @@ findings: [] # previous verification failures on re-spawn
 
 The narrative must stay within the referenced Contract scope and clearly describe one feature.
 
-### Step 3: Fill schema-defined fields
+### Step 4: Fill schema-defined fields
 
 Read the Schema `fields` array and fill each field according to its `name`, `type`, and `description` when present.
 
@@ -55,7 +64,7 @@ Each field must:
 - maintain consistency across cross-references between fields
 - accurately reflect the field's intended role from its name/type and any description that exists
 
-### Step 4: Define acceptance criteria
+### Step 5: Define acceptance criteria
 
 1. Derive verifiable conditions from Contract `businessRules` and `edgeCases`.
 2. Derive additional conditions from schema fields such as error handling and constraints.
@@ -63,21 +72,21 @@ Each field must:
 4. `condition` must be concrete and pass/fail verifiable.
 5. Leave `testRef.target` and `testRef.pattern` empty at this phase. Those are filled later by `cdd-test-writer` during `implementing`.
 
-### Step 5: Plan implementation sources
+### Step 6: Plan implementation sources
 
 Add or refine planned implementation and test file paths in `sources` when they are knowable at Spec time or when later-phase reconciliation shows the documented file layout has drifted from the confirmed implementation.
 These are handoff hints for the parallel `implementing` workers; `cdd-implementer` still owns the final actual `sources` list.
 When the feature will require new shared types, interfaces, exports, DTO/schema files, or runtime entrypoints, make the planned file layout concrete enough that the orchestrator can tell whether `cdd-surface-scaffolder` should run before the parallel pair.
 When running in artifact-reconciliation mode, compare the current `sources` entries to the confirmed implementation/test layout and reconcile only the documented plan, not the ownership boundary.
 
-### Step 6: Fix findings on re-spawn
+### Step 7: Fix findings on re-spawn
 
 If `findings` are provided:
 1. Check each finding's `field` and `message`.
 2. Fix the corresponding Spec content.
 3. Prioritize `severity: error` items.
 
-### Step 7: Review related artifact impact and later-phase drift
+### Step 8: Review related artifact impact and later-phase drift
 
 1. Treat feature-change requests and later-phase drift follow-up as target-Spec-first work: update or extend the target Spec before deciding any downstream follow-up.
 2. Re-check the current `sources`, then the target Spec's `contracts` and `dependsOnSpecs` after your edits.
@@ -87,7 +96,7 @@ If `findings` are provided:
 6. If a related artifact review reveals contract drift, do not edit the Contract unless the user explicitly requested Contract changes.
 7. When contract drift blocks closure, return `ready_for_transition: false` and report `blocking_reason`.
 
-### Step 8: Run the pre-commit transition check
+### Step 9: Run the pre-commit transition check
 
 1. If the current status is `draft` or `specifying`, run `cdd advance <spec>` without `--commit`.
 2. If the current status is `implementing`, `validating`, or `done`, skip the transition check and preserve the current `status`.
@@ -100,7 +109,7 @@ If `findings` are provided:
 5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
 6. If you determine that the Contract must change, stop and return `ready_for_transition: false`.
 
-### Step 9: Return transition readiness
+### Step 10: Return transition readiness
 
 Return `ready_for_transition: true` only when the current status is `draft` or `specifying` and:
 - `summary` and `description` are coherent
@@ -121,6 +130,7 @@ Return `artifact_reconciliation_complete: true` only when the current status is 
 
 ```yaml
 spec_path: "{spec file path}"
+rules_reviewed: ["{rule ids read from rules_paths}"]
 current_status: "draft|specifying|implementing|validating|done"
 transition_readiness:
   checked_with: "cdd advance <spec>|not_run"

@@ -11,6 +11,13 @@ Contract > Spec > Code. Higher authority takes precedence on conflict.
 All sub-agents must read the following document before starting work:
 - `./cdd.md`
 
+## Rules directory
+
+The orchestrator and all sub-agents must inspect `contract/rules/` and read the applicable rule files before routing or phase work starts.
+
+- Rule files live under `contract/rules/`
+- The orchestrator resolves the applicable files and passes them as `rules_paths` in every phase packet
+
 ## Control-plane and execution split
 
 - The main agent acts as the CDD orchestrator and stays in control-plane scope.
@@ -39,6 +46,7 @@ Every spawned Phase task must include:
 - `done_criteria`
 - `required_tools`
 - `required_skills`
+- `rules_paths`
 - `findings` when re-spawning after gate failures
 - `spec_path`, `contract_paths`, and `schema_path` when the phase operates on a Spec
 
@@ -56,8 +64,11 @@ Every spawned Phase task must include:
 ## Sub-agent common rules
 
 - Leaf workers cannot spawn other sub-agents.
+- Read every file in `rules_paths` before starting the phase. Internalize `description` and each rule object's `id`, `when`, `instruction`, and `examples` when present.
+- Apply every rule that matches the current task and owned scope.
+- If `rules_paths` is missing for a governed task, or if any referenced rule file is unreadable or malformed, stop and return a blocking result instead of continuing.
 - Do not work beyond the assigned phase scope.
-- Return structured results after completion.
+- Return structured results after completion, including `rules_reviewed`.
 - `cdd-contract-writer` returns `ready_for_transition: true` when the Contract draft is ready for orchestrator review and follow-up routing. Contract authoring never runs `cdd advance`.
 - For Spec phases that own a status transition, execute `cdd advance <spec>` without `--commit` before returning. `cdd-specifier` skips this command when it is spawned only for later-phase artifact reconciliation.
 - `cdd-specifier` returns `artifact_reconciliation_complete: true` when it reconciles Spec content for a Spec already in `implementing`, `validating`, or `done`; in that mode it must preserve the current `status` and does not own a `cdd advance` loop.
@@ -88,7 +99,7 @@ When the active Spec status is `implementing`:
 - If that shared surface is missing, the orchestrator must spawn `cdd-surface-scaffolder` before the parallel pair.
 - `cdd-surface-scaffolder` may not edit the Spec and may not add business logic or tests.
 - Once the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` as a parallel pair.
-- Both workers receive the same `spec_path`, `contract_paths`, and `schema_path`, plus explicit ownership boundaries in `objective_packet.constraints`.
+- Both workers receive the same `spec_path`, `contract_paths`, `schema_path`, and `rules_paths`, plus explicit ownership boundaries in `objective_packet.constraints`.
 - `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when imports, exports, and shared type/interface scaffolds are ready for downstream work.
 - `cdd-test-writer` may edit only `acceptanceCriteria[].testRef` inside the Spec.
 - `cdd-implementer` may edit only `sources` inside the Spec.

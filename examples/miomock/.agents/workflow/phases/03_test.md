@@ -6,6 +6,7 @@ Write acceptance tests from the confirmed Spec. This worker owns acceptance test
 
 - `../cdd.md`
 - `../00_cdd_contract.md`
+- `rules_paths`
 
 ## Input
 
@@ -18,6 +19,7 @@ objective_packet:
   user_review: true|false
   constraints:
     - "Only edit acceptance tests, test support files, and acceptanceCriteria[].testRef"
+rules_paths: ["{applicable rules file paths}"]
 spec_path: "{spec file path}"
 contract_paths: ["{referenced contract paths}"]
 schema_path: "{schema file path}"
@@ -26,7 +28,14 @@ findings: [] # previous verification failures on re-spawn
 
 ## Procedure
 
-### Step 1: Review the Spec
+### Step 1: Load applicable rules
+
+1. Read every file in `rules_paths`.
+2. Internalize each rule file's `description` and each rule object's `id`, `when`, `instruction`, and `examples` when present.
+3. Apply every rule that matches the current task and test-writing scope.
+4. If a required rule file is missing, unreadable, or malformed, stop and return `ready_for_fan_in: false` with `blocking_reason`.
+
+### Step 2: Review the Spec
 
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the Schema file and internalize all acceptance criteria.
@@ -34,7 +43,7 @@ findings: [] # previous verification failures on re-spawn
 4. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
 5. Assume any required shared importable surface has already been prepared. If it has not, report that gap instead of creating it here.
 
-### Step 2: Write acceptance tests
+### Step 3: Write acceptance tests
 
 1. Iterate through the AC list and write or update at least one meaningful test for each AC.
 2. Re-read the current Spec before writing `acceptanceCriteria[].testRef` so you preserve non-owned `sources` updates from `cdd-implementer`, keep `schemaVersion`, and refresh `lastModified`.
@@ -42,7 +51,7 @@ findings: [] # previous verification failures on re-spawn
 4. `testRef.pattern` must match the `describe`/`it`/`test` name in the target file.
 5. Tests must verify the AC `condition` precisely and avoid vacuous assertions.
 
-### Step 3: Run focused verification
+### Step 4: Run focused verification
 
 ```bash
 pnpm sonamu test -s  # check readiness
@@ -53,7 +62,7 @@ If the tests fail because required modules, shared types/interfaces, runtime exp
 
 If the tests fail because production behavior is missing after the shared surface already exists, keep the assertions intact, record the gap, and return `preferred_respawn_role: cdd-implementer` without weakening the test intent.
 
-### Step 4: Fix findings on re-spawn
+### Step 5: Fix findings on re-spawn
 
 If `findings` are provided:
 1. Fix the corresponding tests and `acceptanceCriteria[].testRef`.
@@ -62,14 +71,14 @@ If `findings` are provided:
 4. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 5. Re-run focused tests.
 
-### Step 5: Review test-driven artifact impact
+### Step 6: Review test-driven artifact impact
 
 1. Review whether the acceptance tests or `testRef` mappings exposed stale target-Spec narrative, AC intent, schema-defined constraints, or related Spec content.
 2. Inspect the current `sources`, then re-check referenced Contracts and `dependsOnSpecs` before returning.
 3. If the target Spec or related Specs need updates, return `preferred_respawn_role: cdd-specifier` with details instead of silently leaving drift.
 4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
 
-### Step 6: Return readiness for fan-in
+### Step 7: Return readiness for fan-in
 
 Return `ready_for_fan_in: true` only when:
 - each AC has a meaningful test mapping in `acceptanceCriteria[].testRef`
@@ -79,7 +88,7 @@ Return `ready_for_fan_in: true` only when:
 
 `ready_for_fan_in=true` may still be valid when the current test run fails only because the production behavior is not implemented yet, or when owned test work is complete but later-phase Spec reconciliation is still required. In those cases, keep `preferred_respawn_role` set to the owning follow-up role and describe the gap clearly.
 
-### Step 7: Commit
+### Step 8: Commit
 
 If this phase creates commits, separate Spec changes and test-code changes when practical, and follow the repository's Korean commit-message policy.
 
@@ -87,6 +96,7 @@ If this phase creates commits, separate Spec changes and test-code changes when 
 
 ```yaml
 spec_path: "{spec file path}"
+rules_reviewed: ["{rule ids read from rules_paths}"]
 files_changed: ["{list of changed files}"]
 tests_added: ["{list of added or updated test files}"]
 ac_testref_filled: ["{list of AC ids with testRef filled}"]

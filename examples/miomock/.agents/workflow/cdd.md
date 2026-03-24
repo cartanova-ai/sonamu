@@ -23,6 +23,7 @@ CDD separates the work into four responsibilities:
 Operational rules:
 - The orchestrator must not do Phase work directly in the main session.
 - The only direct orchestrator mutation is Phase 1 scaffold creation with `cdd spec create`.
+- The orchestrator and every leaf worker must read the default rules file before routing or phase work starts.
 - Leaf workers own the step-by-step phase loop. Contract authoring has no `cdd advance` loop. For Spec phases that actually own a status transition, the phase owner also owns the pre-commit `cdd advance <spec>` check. `cdd-specifier` skips `cdd advance` when it is spawned only for later-phase artifact reconciliation.
 - During `implementing`, the orchestrator spawns the test and code workers in parallel, fans in their outputs, re-runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker until the transition is ready.
 - If preset sub-agents are unavailable, use inline fallback instructions. Direct main-session execution is not a fallback mode.
@@ -31,6 +32,8 @@ Operational rules:
 
 ```text
 contract/
+  rules/
+    *.rules.json
   schemas/
     *.schema.json
   main.contract.json
@@ -62,6 +65,38 @@ Field meanings:
 - `description`: optional semantic authoring rule and Layer 2 verification rule when present
 - `renderer`: optional UI rendering hint
 - `required`: optional required flag
+
+## Rule files
+
+Rule files capture reusable implementation conventions that the orchestrator and workers must internalize before phase work. They live under `contract/rules/`.
+
+Recommended shape:
+
+```json
+{
+  "description": "Rule-set purpose and scope",
+  "rules": [
+    {
+      "id": "readonly-money-display-uses-numf",
+      "when": "rendering read-only money values",
+      "instruction": "Use numF() for formatting.",
+      "examples": ["numF(row.totalAmount)"]
+    }
+  ]
+}
+```
+
+Field meanings:
+- `description`: explains the scope and intent of the rule set
+- `rules[].id`: stable identifier for prompt references, diffs, and review notes
+- `rules[].when`: short condition or trigger for the rule
+- `rules[].instruction`: concrete directive the worker must follow
+- `rules[].examples` (optional): representative code or usage examples
+
+Operational rules:
+- The orchestrator must inspect `contract/rules/`, resolve the applicable `*.rules.json` files for the current task, and read them before phase routing.
+- Every spawned worker must receive those file paths as `rules_paths`, read each file before making changes, and apply the relevant rules to the owned scope.
+- If a governed task cannot be matched to rule files, or if a referenced rule file is missing or malformed, stop and report the configuration gap instead of continuing blindly.
 
 ## Document model
 
@@ -164,6 +199,7 @@ When the Spec status is `implementing`:
 - If the planned work requires new importable modules, shared types/interfaces, runtime exports, or placeholder entrypoints that do not yet exist, the orchestrator should first spawn `cdd-surface-scaffolder`.
 - `cdd-surface-scaffolder` may edit only shared type/interface/export files and the minimal runtime scaffolds needed so planned imports resolve. It must not add business logic, acceptance tests, or Spec changes.
 - After the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` in parallel.
+- The shared surface worker and the parallel pair must receive the same `rules_paths` so they apply one consistent rule set.
 - `cdd-test-writer` may edit only acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
 - `cdd-implementer` may edit only production code, implementation support files, and `sources`.
 - Both `cdd-test-writer` and `cdd-implementer` must re-route missing shared surface findings to `cdd-surface-scaffolder` instead of inventing or broadening their own scope.
@@ -195,14 +231,15 @@ When the Spec status is `implementing`:
 ## Automation workflow
 
 1. The main agent assumes the CDD orchestrator role.
-2. If no Contract exists, the orchestrator spawns `cdd-contract-writer`, gathers user review, and then re-checks artifact state.
-3. If Contract exists but no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
-4. All subsequent Spec phase work is delegated to leaf workers.
-5. For `implementing`, the orchestrator first decides whether a shared surface scaffold is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then spawns `cdd-test-writer` and `cdd-implementer` in parallel, inspects their artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
-6. For `draft`, `specifying`, and `validating`, the phase owner performs its phase work, runs `cdd advance <spec>` when that phase owns a transition, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit, later-phase artifact reconciliation is complete, or the phase is blocked.
-7. If a worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
-8. If the active phase result is ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before closing the phase.
-9. For Spec transitions only, the orchestrator finalizes the transition with `cdd advance <spec> --commit`.
+2. The orchestrator resolves and reads the applicable rule files from `contract/rules/` before phase routing begins.
+3. If no Contract exists, the orchestrator spawns `cdd-contract-writer`, gathers user review, and then re-checks artifact state.
+4. If Contract exists but no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
+5. All subsequent Spec phase work is delegated to leaf workers, and every spawn includes the resolved `rules_paths`.
+6. For `implementing`, the orchestrator first decides whether a shared surface scaffold is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then spawns `cdd-test-writer` and `cdd-implementer` in parallel, inspects their artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
+7. For `draft`, `specifying`, and `validating`, the phase owner performs its phase work, runs `cdd advance <spec>` when that phase owns a transition, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit, later-phase artifact reconciliation is complete, or the phase is blocked.
+8. If a worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
+9. If the active phase result is ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before closing the phase.
+10. For Spec transitions only, the orchestrator finalizes the transition with `cdd advance <spec> --commit`.
 
 ## CLI
 

@@ -18,10 +18,11 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 
 1. Read `00_cdd_contract.md`.
 2. Read `./cdd.md`.
-3. Identify runtime spawn mode for each worker:
+3. Inspect `contract/rules/`, resolve the applicable rule files for the current task, and read them before phase routing.
+4. Identify runtime spawn mode for each worker:
    - `preset`: native preset sub-agent support is available
    - `inline_fallback`: otherwise
-4. Check the target Contract/Spec and current status with `cdd status <spec>` or by inspecting `contract/`.
+5. Check the target Contract/Spec and current status with `cdd status <spec>` or by inspecting `contract/`.
 
 ## Phase routing
 
@@ -53,32 +54,37 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
    - User described a feature -> inspect contract/ and resolve the matching Contract + Spec
    - User asked how to change an existing feature -> resolve the matching Spec first, then inspect whether that Spec needs edits or added content before routing follow-up work
 
-2. Resolve artifact state
+2. Resolve the applicable rule files
+   - Inspect `contract/rules/` from the active Contract root and select the applicable `*.rules.json` files for the current task
+   - Read those files before spawning any worker
+   - If the task is governed but no applicable rule file can be resolved, or if a referenced file is malformed, stop and report the configuration gap instead of continuing
+
+3. Resolve artifact state
    - No Contract -> spawn Phase 0
    - Contract exists but Spec is missing -> run Phase 1 scaffold creation, then continue
 
-3. Select the next worker from the current Spec status and any outstanding reconciliation findings
+4. Select the next worker from the current Spec status and any outstanding reconciliation findings
    - draft/specifying -> Phase 2 specifier
    - implementing -> Phase 3 optional scaffold + parallel pair (`cdd-surface-scaffolder`, then `cdd-test-writer` + `cdd-implementer`)
    - validating -> Phase 4 validator
    - any status with required Spec-content follow-up -> Phase 2 specifier in artifact-reconciliation mode
 
-4. Spawn the worker or worker pair with a complete phase packet
+5. Spawn the worker or worker pair with a complete phase packet, including `rules_paths`
 
-5. Inspect the worker result
+6. Inspect the worker result
    - blocked -> re-route or ask the user
-   - ready_for_transition=true from `cdd-contract-writer` -> close review, then return to step 2 to resolve artifact state again
+   - ready_for_transition=true from `cdd-contract-writer` -> close review, then return to step 3 to resolve artifact state again
    - ready_for_transition=true from a Spec-phase owner -> continue
    - artifact_reconciliation_complete=true from `cdd-specifier` -> resume the current phase owner or close the request if no further work remains
    - ready_for_parallel_pair=true from `cdd-surface-scaffolder` -> spawn the implementing pair
    - ready_for_fan_in=true from both implementing workers -> run integrated `cdd advance <spec>`
    - impacted_spec_followups or related_spec_followups -> route the follow-up Spec work before closing the overall request
 
-6. If `objective_packet.user_review=true`, ask the user to review before phase closure
+7. If `objective_packet.user_review=true`, ask the user to review before phase closure
 
-7. If the current phase is a Spec transition, execute `cdd advance <spec> --commit`
+8. If the current phase is a Spec transition, execute `cdd advance <spec> --commit`
 
-8. If the status is still below done, return to step 2 or step 3 as appropriate
+9. If the status is still below done, return to step 3 or step 4 as appropriate
 ```
 
 Contract-phase follow-up routing:
@@ -127,6 +133,7 @@ For inline fallback, pass:
 - `role_file_ref`
 - `prompt_file_ref`
 - `objective_packet`
+- `rules_paths`
 - `required_tools`
 - `required_skills`
 - `done_criteria`
@@ -185,6 +192,7 @@ done_criteria:
 required_tools:
   - "cdd"
 required_skills: []
+rules_paths: ["{absolute applicable rules file paths}"]
 spec_path: "{absolute spec path}"
 contract_paths: ["{absolute contract paths}"]
 schema_path: "{absolute schema path}"
@@ -314,6 +322,7 @@ When `objective_packet.user_review=true`, the orchestrator must:
 
 - If the same phase loops 3 or more times without closure, report to the user and ask for judgment.
 - If Contract modification is needed, report to the user and wait.
+- If the applicable rule files are missing or malformed, report to the user and wait.
 - If build/test failures repeat without forward progress, report to the user.
 
 ## Completion report

@@ -6,6 +6,7 @@ Implement production code according to the confirmed Spec. This worker owns prod
 
 - `../cdd.md`
 - `../00_cdd_contract.md`
+- `rules_paths`
 
 ## Input
 
@@ -18,6 +19,7 @@ objective_packet:
   user_review: true|false
   constraints:
     - "Only edit production code, implementation support files, and spec.sources"
+rules_paths: ["{applicable rules file paths}"]
 spec_path: "{spec file path}"
 contract_paths: ["{referenced contract paths}"]
 schema_path: "{schema file path}"
@@ -26,7 +28,14 @@ findings: [] # previous verification failures on re-spawn
 
 ## Procedure
 
-### Step 1: Review the Spec
+### Step 1: Load applicable rules
+
+1. Read every file in `rules_paths`.
+2. Internalize each rule file's `description` and each rule object's `id`, `when`, `instruction`, and `examples` when present.
+3. Apply every rule that matches the current task and implementation scope.
+4. If a required rule file is missing, unreadable, or malformed, stop and return `ready_for_fan_in: false` with `blocking_reason`.
+
+### Step 2: Review the Spec
 
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the referenced Contract files and any related Specs from `dependsOnSpecs`.
@@ -34,7 +43,7 @@ findings: [] # previous verification failures on re-spawn
 4. Internalize all schema fields and ACs. These are the implementation criteria.
 5. Assume any required shared importable surface has already been prepared. If missing shared types/interfaces/exports block the implementation, report that gap instead of broadening this worker's scope.
 
-### Step 2: Implement code
+### Step 3: Implement code
 
 1. Implement according to the structure defined in the Spec's schema fields.
 2. If a better structure appears during implementation, do not change code first.
@@ -43,7 +52,7 @@ findings: [] # previous verification failures on re-spawn
 5. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer`, keep `schemaVersion`, and refresh `lastModified`.
 6. Update `sources` when new implementation files are added or when you need to reconcile the integrated file list after fan-in.
 
-### Step 3: Run focused verification
+### Step 4: Run focused verification
 
 ```bash
 pnpm sonamu test -s  # check readiness
@@ -53,7 +62,7 @@ pnpm check  # Biome lint/format
 
 If tests already exist for your target behavior, you may run focused test files. On failure, fix the code. The behavior defined in the Spec is the standard.
 
-### Step 4: Fix findings on re-spawn
+### Step 5: Fix findings on re-spawn
 
 If `findings` are provided:
 1. Fix the corresponding production code and `sources`.
@@ -63,14 +72,14 @@ If `findings` are provided:
 5. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 6. Re-run focused checks.
 
-### Step 5: Review implementation-driven artifact impact
+### Step 6: Review implementation-driven artifact impact
 
 1. Compare the implemented behavior, changed file layout, exported surface, constraints, and error handling against the target Spec.
 2. Inspect the current `sources`, then re-check the target Spec's `contracts` and `dependsOnSpecs` before returning.
 3. If the target Spec or related Specs need updates to reflect the confirmed implementation, return `preferred_respawn_role: cdd-specifier` with details instead of leaving code-only drift.
 4. If the review reveals Contract drift, do not edit Contract files. Return a blocking reason for the orchestrator to escalate.
 
-### Step 6: Return readiness for fan-in
+### Step 7: Return readiness for fan-in
 
 Return `ready_for_fan_in: true` only when:
 - owned production-code work is complete for the current attempt
@@ -81,7 +90,7 @@ Return `ready_for_fan_in: true` only when:
 
 `ready_for_fan_in=true` may still be valid when owned code work is complete but later-phase Spec reconciliation is still required. In that case, keep `preferred_respawn_role: cdd-specifier` and describe the gap clearly.
 
-### Step 7: Commit
+### Step 8: Commit
 
 If this phase creates commits, separate Spec changes and code changes when practical, and follow the repository's Korean commit-message policy.
 
@@ -89,6 +98,7 @@ If this phase creates commits, separate Spec changes and code changes when pract
 
 ```yaml
 spec_path: "{spec file path}"
+rules_reviewed: ["{rule ids read from rules_paths}"]
 files_changed: ["{list of changed files}"]
 sources_updated: ["{list of source paths added or corrected}"]
 commits: ["{commit hashes}"]

@@ -1,0 +1,25 @@
+{
+  "description": "웹 UI 및 프론트엔드 구현 시 반복적으로 지켜야 하는 개발 규칙입니다. 작업 전 반드시 확인하고, 구현과 검증 결과에 반영합니다.",
+  "rules": [
+    {
+      "id": "readonly-money-display-uses-numf",
+      "when": "금액을 읽기 전용 텍스트나 테이블 셀로 표시할 때",
+      "instruction": "numF()를 적용합니다.",
+      "examples": ["numF(row.totalAmount)", "numF(summary.budget)"]
+    },
+    {
+      "id": "year-month-fields-must-not-use-numf",
+      "when": "year, start_year, end_year, month 값을 표시할 때",
+      "instruction": "numF()를 적용하지 않고 콤마 없이 그대로 표시합니다.",
+      "examples": ["project.start_year", "filters.month"]
+    },
+    {
+      "id": "search-fields-use-keywordinput",
+      "when": "검색 입력 필드를 추가하거나 교체할 때",
+      "instruction": "반드시 KeywordInput 컴포넌트를 사용합니다.",
+      "examples": [
+        "<KeywordInput value={keyword} onChange={setKeyword} />"
+      ]
+    }
+  ]
+}
