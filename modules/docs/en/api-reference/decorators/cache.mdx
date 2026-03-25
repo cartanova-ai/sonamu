@@ -32,31 +32,31 @@ class ProductModelClass extends BaseModelClass {
 Cache configuration is required in `sonamu.config.ts` to use caching.
 
 ```typescript
-import { bentostore } from "bentocache";
-import { memoryDriver } from "bentocache/drivers/memory";
-import { redisDriver } from "bentocache/drivers/redis";
 import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
 
 export default defineConfig({
-  cache: {
-    default: "multi",  // Default store
-    stores: {
-      // Memory only
-      memory: bentostore()
-        .useL1Layer(memoryDriver({ maxItems: 1000 })),
+  server: {
+    cache: {
+      default: "multi",  // Default store
+      stores: {
+        // Memory only
+        memory: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
 
-      // Redis only
-      redis: bentostore()
-        .useL1Layer(redisDriver({
-          connection: { host: "127.0.0.1", port: 6379 }
-        })),
+        // Redis only
+        redis: store()
+          .useL1Layer(drivers.redis({
+            connection: { host: "127.0.0.1", port: 6379 }
+          })),
 
-      // Multi-tier (Memory + Redis)
-      multi: bentostore()
-        .useL1Layer(memoryDriver({ maxItems: 1000 }))
-        .useL2Layer(redisDriver({
-          connection: { host: "127.0.0.1", port: 6379 }
-        }))
+        // Multi-tier (Memory + Redis)
+        multi: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" }))
+          .useL2Layer(drivers.redis({
+            connection: { host: "127.0.0.1", port: 6379 }
+          }))
+      }
     }
   }
 });
