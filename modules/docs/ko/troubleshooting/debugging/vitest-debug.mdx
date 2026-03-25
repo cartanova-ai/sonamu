@@ -361,7 +361,7 @@ open coverage/index.html
 
 ```typescript
 // src/models/user.model.ts
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async createUser(email: string) {
     if (!email) {
       // ❌ 이 분기가 테스트되지 않음

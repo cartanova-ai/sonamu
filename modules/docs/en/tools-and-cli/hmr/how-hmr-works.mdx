@@ -207,7 +207,7 @@ Adding user active status check logic:
 
 ```typescript
 // user.model.ts
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   static async findActive() {
     return this.findMany({
       where: { status: "active", deletedAt: null }
@@ -496,7 +496,7 @@ Essential for Sonamu's Entity-based structure where paths must be dynamically ge
 // user.model.ts (boundary)
 import { PostModel } from "./post.model";  // Original: ❌ / Sonamu: ✅
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }

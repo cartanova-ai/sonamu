@@ -68,7 +68,7 @@ Server-Sent Events(SSE) 스트림을 생성하는 함수입니다. Zod 스키마
 ```typescript
 import { z } from "zod";
 
-class MyModelClass extends BaseModel {
+class MyModelClass extends BaseModelClass {
   @api()
   @stream({
     type: "sse",
@@ -127,7 +127,7 @@ export default {
 **사용 예시:**
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findMany(ctx: Context) {
     const locale = ctx.locale; // "ko", "en", "ja" 중 하나
@@ -173,7 +173,7 @@ interface BufferedFile {
 **기본 사용 예시:**
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload({ limits: { files: 10 } })
   async upload(): Promise<{ files: SonamuFile[] }> {
     const { bufferedFiles } = Sonamu.getContext();
@@ -205,7 +205,7 @@ class FileModelClass extends BaseModel {
 ```typescript
 import sharp from "sharp";
 
-class ImageModelClass extends BaseModel {
+class ImageModelClass extends BaseModelClass {
   @upload({ limits: { files: 1 } })
   async uploadThumbnail(): Promise<{ url: string }> {
     const { bufferedFiles } = Sonamu.getContext();
@@ -264,7 +264,7 @@ interface UploadedFile {
 **Stream 모드 사용 예시:**
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload({ mode: "stream", limits: { files: 5 } })
   async uploadLargeFiles(): Promise<{ files: SonamuFile[] }> {
     const { uploadedFiles } = Sonamu.getContext();

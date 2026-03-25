@@ -118,7 +118,7 @@ Avoid dynamic imports within HMR boundaries:
 
 ```typescript
 // ❌ Dynamic import within HMR boundary
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async getRelated() {
     const { PostModel } = await import("../post/post.model");
     return PostModel.findMany();
@@ -128,7 +128,7 @@ class UserModelClass extends BaseModel {
 // ✅ Use static import
 import { PostModel } from "../post/post.model";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async getRelated() {
     return PostModel.findMany();
   }
@@ -219,14 +219,14 @@ Use lazy loading for heavy computations:
 // ❌ Execute immediately on module load
 const heavyData = processLargeDataset();
 
-export class UserModelClass extends BaseModel {
+export class UserModelClass extends BaseModelClass {
   // ...
 }
 
 // ✅ Execute only when needed
 let heavyData: any;
 
-export class UserModelClass extends BaseModel {
+export class UserModelClass extends BaseModelClass {
   private getHeavyData() {
     if (!heavyData) {
       heavyData = processLargeDataset();

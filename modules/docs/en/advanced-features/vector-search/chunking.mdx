@@ -8,7 +8,7 @@ description: "Splitting long documents into smaller pieces in Sonamu"
 You're building a feature to upload blog posts or manuals to your Sonamu app:
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument() {
@@ -86,7 +86,7 @@ const chunks = chunking.chunk("Long text...");
 ### Long Document Upload + Chunking
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadLongDocument() {

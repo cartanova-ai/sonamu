@@ -238,7 +238,7 @@ await Sonamu.cache.use("config").set({ key: "settings", value: {...} });
 데코레이터에서도 스토어 지정 가능:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // database 스토어 사용
   @cache({ store: "database", ttl: "1h" })
   @api()

@@ -118,7 +118,7 @@ HMR 경계 내에서는 동적 import를 피하세요:
 
 ```typescript
 // ❌ HMR 경계 내에서 동적 import
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async getRelated() {
     const { PostModel } = await import("../post/post.model");
     return PostModel.findMany();
@@ -128,7 +128,7 @@ class UserModelClass extends BaseModel {
 // ✅ 정적 import 사용
 import { PostModel } from "../post/post.model";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async getRelated() {
     return PostModel.findMany();
   }
@@ -219,14 +219,14 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 // ❌ 모듈 로딩 시 즉시 실행
 const heavyData = processLargeDataset();
 
-export class UserModelClass extends BaseModel {
+export class UserModelClass extends BaseModelClass {
   // ...
 }
 
 // ✅ 필요할 때만 실행
 let heavyData: any;
 
-export class UserModelClass extends BaseModel {
+export class UserModelClass extends BaseModelClass {
   private getHeavyData() {
     if (!heavyData) {
       heavyData = processLargeDataset();

@@ -67,7 +67,7 @@ You can mix vector search with regular SQL. A separate DB would require data syn
 
 **4. Natural integration with Sonamu Model**
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // Write vector search SQL with Puri
@@ -404,7 +404,7 @@ USING hnsw (embedding vector_cosine_ops);
 
 **Step 4: Search API (later)**
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // See vector-search.mdx

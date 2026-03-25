@@ -10,9 +10,9 @@ description: "메서드에 캐시 적용하기"
 ### 간단한 예제
 
 ```typescript
-import { BaseModel, cache, api } from "sonamu";
+import { BaseModelClass, cache, api } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @cache({ ttl: "10m" })
   @api()
   async findById(id: number) {
@@ -49,7 +49,7 @@ class UserModelClass extends BaseModel {
 <Tabs>
   <Tab title="자동 생성 (기본)" icon="wand-magic-sparkles">
     ```typescript
-    class UserModelClass extends BaseModel {
+    class UserModelClass extends BaseModelClass {
       @cache({ ttl: "10m" })
       async findById(id: number) {
         return this.findOne(['id', id]);
@@ -156,7 +156,7 @@ async getExpensiveData() {
 태그를 사용하여 관련 캐시를 그룹으로 무효화할 수 있습니다.
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product", "list"] })
   @api()
   async findAll() {
@@ -212,7 +212,7 @@ export const config: SonamuConfig = {
 };
 
 // Model에서 스토어 지정
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // api 스토어 사용 (기본)
   @cache({ ttl: "5m" })
   @api()
@@ -250,7 +250,7 @@ async getRealTimeData() {
 ### 1. API 응답 캐싱
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // 게시글 목록 (5분 캐시)
   @cache({ ttl: "5m", tags: ["post", "list"] })
   @api()
@@ -289,7 +289,7 @@ class PostModelClass extends BaseModel {
 ### 2. 데이터 변경 시 캐시 무효화
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product"] })
   @api()
   async findById(id: number) {
@@ -327,7 +327,7 @@ class ProductModelClass extends BaseModel {
 ### 3. 복잡한 키 생성
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   @cache({ 
     key: (userId: number, status: string, startDate: string) => 
       `order:user:${userId}:${status}:${startDate}`,
@@ -357,7 +357,7 @@ class OrderModelClass extends BaseModel {
 ### 4. Stale-While-Revalidate 활용
 
 ```typescript
-class AnalyticsModelClass extends BaseModel {
+class AnalyticsModelClass extends BaseModelClass {
   @cache({ 
     ttl: "5m",      // 5분 후 만료
     grace: "1h",    // 1시간 동안 Stale 값 사용
@@ -385,7 +385,7 @@ class AnalyticsModelClass extends BaseModel {
 ### 5. 설정값 영구 캐싱
 
 ```typescript
-class ConfigModelClass extends BaseModel {
+class ConfigModelClass extends BaseModelClass {
   @cache({ 
     key: "app-config",
     ttl: "forever",  // 영구 캐싱
@@ -413,7 +413,7 @@ class ConfigModelClass extends BaseModel {
 Model 내부에서 다른 메서드를 호출할 때도 캐시가 공유됩니다.
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // findMany에 캐시 적용
   @cache({ ttl: "10m", tags: ["user"] })
   @api()
@@ -534,7 +534,7 @@ interface SearchParams {
   pagination: { page: number; pageSize: number };
 }
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // ❌ 문제: 객체 순서가 바뀌면 다른 키 생성
   @cache({ ttl: "5m" })
   async search(params: SearchParams) {
@@ -583,7 +583,7 @@ class ProductModelClass extends BaseModel {
 #### 예제 2: 배열 파라미터
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // ❌ 문제: 배열 순서가 바뀌면 다른 키
   @cache({ ttl: "5m" })
   async findByTags(tags: string[]) {
@@ -610,7 +610,7 @@ class PostModelClass extends BaseModel {
 #### 예제 3: 날짜 파라미터
 
 ```typescript
-class ReportModelClass extends BaseModel {
+class ReportModelClass extends BaseModelClass {
   // ❌ 문제: Date 객체가 다르게 직렬화될 수 있음
   @cache({ ttl: "1h" })
   async generateReport(startDate: Date, endDate: Date) {
@@ -636,7 +636,7 @@ class ReportModelClass extends BaseModel {
 #### 예제 4: 사용자별 캐싱
 
 ```typescript
-class DashboardModelClass extends BaseModel {
+class DashboardModelClass extends BaseModelClass {
   // ✅ 사용자 ID를 키에 포함
   @cache({
     key: (userId: number) => `dashboard:user:${userId}`,
@@ -678,7 +678,7 @@ interface Node {
   parent?: Node;  // 순환 참조 가능
 }
 
-class TreeModelClass extends BaseModel {
+class TreeModelClass extends BaseModelClass {
   // ❌ 문제: 순환 참조 객체는 JSON.stringify 실패
   @cache({ ttl: "5m" })
   async buildTree(node: Node) {
@@ -718,7 +718,7 @@ interface ListFilters {
   searchQuery?: string;
 }
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // ✅ 필터를 정규화하여 일관된 키 생성
   @cache({
     key: (filters: ListFilters, page: number, pageSize: number) => {
@@ -754,7 +754,7 @@ class ProductModelClass extends BaseModel {
 #### 예제 7: 큰 객체 최적화
 
 ```typescript
-class AnalyticsModelClass extends BaseModel {
+class AnalyticsModelClass extends BaseModelClass {
   // ❌ 문제: 큰 객체는 캐시 키가 너무 길어짐
   @cache({ ttl: "1h" })
   async analyze(config: LargeConfigObject) {
@@ -826,7 +826,7 @@ class AnalyticsModelClass extends BaseModel {
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api()
   async findById(id: number) {
     const cacheKey = `user:${id}`;

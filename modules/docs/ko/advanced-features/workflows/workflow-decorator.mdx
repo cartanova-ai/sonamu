@@ -59,10 +59,10 @@ Workflow 이름을 생략하면 함수명을 snake_case로 변환하여 자동 �
 API 엔드포인트에서 Workflow를 실행하면 **즉시 응답을 반환**하고 백그라운드에서 작업이 진행됩니다. 사용자는 긴 작업을 기다리지 않아도 됩니다.
 
 ```typescript
-import { BaseModel, api, Sonamu } from "sonamu";
+import { BaseModelClass, api, Sonamu } from "sonamu";
 import { sendWelcomeEmail } from "../workflows/email.workflow";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async register(email: string, password: string) {
     // 사용자 저장

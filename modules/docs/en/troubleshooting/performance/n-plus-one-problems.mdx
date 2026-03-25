@@ -286,7 +286,7 @@ async function getUsersWithOrders() {
 Use the DataLoader pattern when repeated queries are needed:
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   // Orders loader by user
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
     const orders = await this.getPuri()
@@ -325,7 +325,7 @@ async function processUsers(users: User[]) {
 ### API Endpoint Optimization
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // N+1 occurring
   @api({ httpMethod: "GET" })
   async listPostsSlow() {

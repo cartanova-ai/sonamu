@@ -207,7 +207,7 @@ User의 활성 상태 체크 로직 추가:
 
 ```typescript
 // user.model.ts
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   static async findActive() {
     return this.findMany({ 
       where: { status: "active", deletedAt: null } 
@@ -496,7 +496,7 @@ Sonamu는 Entity 기반 구조라 경로를 동적으로 생성해야 하므로 
 // user.model.ts (boundary)
 import { PostModel } from "./post.model";  // 원본: ❌ / Sonamu: ✅
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }

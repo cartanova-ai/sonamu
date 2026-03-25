@@ -213,7 +213,7 @@ sequenceDiagram
 ### Grace 실전 예제
 
 ```typescript
-class AnalyticsModelClass extends BaseModel {
+class AnalyticsModelClass extends BaseModelClass {
   // 대시보드 통계 (무거운 집계)
   @cache({ 
     ttl: "5m",      // 5분마다 갱신
@@ -285,7 +285,7 @@ await adminCache.get({ key: "data" });  // "admin data"
 ### 사용자별 격리
 
 ```typescript
-class UserDataModelClass extends BaseModel {
+class UserDataModelClass extends BaseModelClass {
   @api()
   async getMyData(ctx: Context) {
     const userId = ctx.user.id;
@@ -323,7 +323,7 @@ class UserDataModelClass extends BaseModel {
 ### 멀티 테넌트
 
 ```typescript
-class TenantServiceModelClass extends BaseModel {
+class TenantServiceModelClass extends BaseModelClass {
   @api()
   async getData(tenantId: number) {
     // 테넌트별 namespace
@@ -465,7 +465,7 @@ async getData() {
 ### 레이어별 TTL
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // L1 (메모리): 짧은 TTL
   // L2 (Redis): 긴 TTL
   @cache({ 
@@ -541,7 +541,7 @@ class ProductModelClass extends BaseModel {
 ### 시간대별 전략
 
 ```typescript
-class DynamicCacheModelClass extends BaseModel {
+class DynamicCacheModelClass extends BaseModelClass {
   @api()
   async getData() {
     const hour = new Date().getHours();
@@ -568,7 +568,7 @@ class DynamicCacheModelClass extends BaseModel {
 서버 시작 시 미리 캐시를 채웁니다.
 
 ```typescript
-class CacheWarmerModelClass extends BaseModel {
+class CacheWarmerModelClass extends BaseModelClass {
   async warmupCache() {
     console.log("Warming up cache...");
     
@@ -602,7 +602,7 @@ await cacheWarmerModel.warmupCache();
 여러 항목을 한 번에 캐싱합니다.
 
 ```typescript
-class BatchCacheModelClass extends BaseModel {
+class BatchCacheModelClass extends BaseModelClass {
   async batchCache(ids: number[]) {
     // 1. 캐시되지 않은 ID 찾기
     const cacheKeys = ids.map(id => `item:${id}`);
@@ -643,7 +643,7 @@ class BatchCacheModelClass extends BaseModel {
 조건에 따라 캐싱 여부를 결정합니다.
 
 ```typescript
-class ConditionalCacheModelClass extends BaseModel {
+class ConditionalCacheModelClass extends BaseModelClass {
   @api()
   async getData(id: number, useCache: boolean = true) {
     const cacheKey = `data:${id}`;

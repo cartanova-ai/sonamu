@@ -8,7 +8,7 @@ description: "Generating text embeddings with Voyage AI and OpenAI in Sonamu"
 You're building a knowledge base app with Sonamu:
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // Keyword search
@@ -150,10 +150,10 @@ Get API keys from each provider's website:
 ### Generating Embeddings When Saving Documents
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async createDocument(title: string, content: string) {
     // 1. Generate embedding
@@ -327,7 +327,7 @@ You're building a customer support system with Sonamu.
 
 **Step 1: Document Upload API**
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadDocument() {

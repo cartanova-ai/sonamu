@@ -10,9 +10,9 @@ Sonamu의 `@api` 데코레이터에 `cacheControl` 옵션을 추가하여 **API 
 ### @api 데코레이터에 추가
 
 ```typescript
-import { BaseModel, api, CachePresets } from "sonamu";
+import { BaseModelClass, api, CachePresets } from "sonamu";
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.shortLived,  // 1분 캐시
@@ -237,7 +237,7 @@ async create(data: ProductSave) { ... }
 모든 사용자에게 동일한 응답입니다.
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 상품 목록
   @api({
     httpMethod: 'GET',
@@ -262,7 +262,7 @@ class ProductModelClass extends BaseModel {
 사용자별로 다른 응답입니다.
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   // 내 주문 내역
   @api({
     httpMethod: 'GET',
@@ -285,7 +285,7 @@ class OrderModelClass extends BaseModel {
 캐싱하면 안 되는 데이터입니다.
 
 ```typescript
-class PaymentModelClass extends BaseModel {
+class PaymentModelClass extends BaseModelClass {
   // 결제 정보
   @api({
     httpMethod: 'GET',
@@ -302,7 +302,7 @@ class PaymentModelClass extends BaseModel {
 ### 1. 전자상거래 API
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 상품 목록 (자주 변경, public)
   @api({
     httpMethod: 'GET',
@@ -362,7 +362,7 @@ class ProductModelClass extends BaseModel {
 ### 2. 블로그 API
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // 게시글 목록 (자주 추가, 5분)
   @api({
     httpMethod: 'GET',
@@ -399,7 +399,7 @@ class PostModelClass extends BaseModel {
 ### 3. 사용자 API
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // 공개 프로필 (public, 5분)
   @api({
     httpMethod: 'GET',

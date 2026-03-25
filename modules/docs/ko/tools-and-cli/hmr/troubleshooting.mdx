@@ -13,7 +13,7 @@ HMR 사용 중 발생할 수 있는 문제와 실전 해결 방법입니다.
 
 ```typescript
 // user.model.ts 수정
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   isActive(): boolean {
     return this.status === "active";  // 이 로직을 추가했는데...
   }
@@ -335,7 +335,7 @@ Model 간 순환 참조:
 // user.model.ts
 import { PostModel } from "../post/post.model";
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }
@@ -344,7 +344,7 @@ export class UserModel extends BaseModel {
 // post.model.ts  
 import { UserModel } from "../user/user.model";  // ← 🚨 순환 참조!
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor() {
     return UserModel.findById(this.userId);
   }
@@ -359,7 +359,7 @@ export class PostModel extends BaseModel {
 // user.model.ts
 import type { PostSaved } from "../post/post.types";  // ✅ 타입만
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts(): Promise<PostSaved[]> {
     // 동적 import로 실제 클래스 로드
     const { PostModel } = await import("../post/post.model");
@@ -370,7 +370,7 @@ export class UserModel extends BaseModel {
 // post.model.ts
 import type { UserSaved } from "../user/user.types";  // ✅ 타입만
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor(): Promise<UserSaved> {
     const { UserModel } = await import("../user/user.model");
     return UserModel.findById(this.userId);
@@ -398,7 +398,7 @@ import type { UserSaved } from "./shared-types";
 // post.model.ts에서만 user.model.ts를 참조
 import { UserModel } from "../user/user.model";  // ✅ 단방향
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor() {
     return UserModel.findById(this.userId);
   }

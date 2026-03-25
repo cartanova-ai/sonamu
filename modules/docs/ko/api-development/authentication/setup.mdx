@@ -100,7 +100,7 @@ better-auth가 제공하는 API 엔드포인트들이 자동으로 등록됩니�
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async me(): Promise<UserSubsetA | null> {
     const { user, session } = Sonamu.getContext();
@@ -131,7 +131,7 @@ type AuthContext = {
 ### 기본 Guard 사용
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // 로그인 필수
   @api({ httpMethod: "GET", guards: ["user"] })
   async getProfile() {

@@ -10,9 +10,9 @@ You can set **Cache-Control headers on API responses** by adding the `cacheContr
 ### Adding to @api Decorator
 
 ```typescript
-import { BaseModel, api, CachePresets } from "sonamu";
+import { BaseModelClass, api, CachePresets } from "sonamu";
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({
     httpMethod: 'GET',
     cacheControl: CachePresets.shortLived,  // 1 minute cache
@@ -237,7 +237,7 @@ async create(data: ProductSave) { ... }
 Same response for all users.
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // Product list
   @api({
     httpMethod: 'GET',
@@ -262,7 +262,7 @@ class ProductModelClass extends BaseModel {
 Different response for each user.
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   // My order history
   @api({
     httpMethod: 'GET',
@@ -285,7 +285,7 @@ class OrderModelClass extends BaseModel {
 Data that should not be cached.
 
 ```typescript
-class PaymentModelClass extends BaseModel {
+class PaymentModelClass extends BaseModelClass {
   // Payment information
   @api({
     httpMethod: 'GET',
@@ -302,7 +302,7 @@ class PaymentModelClass extends BaseModel {
 ### 1. E-commerce API
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // Product list (frequently changed, public)
   @api({
     httpMethod: 'GET',
@@ -362,7 +362,7 @@ class ProductModelClass extends BaseModel {
 ### 2. Blog API
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // Post list (frequently added, 5 minutes)
   @api({
     httpMethod: 'GET',
@@ -399,7 +399,7 @@ class PostModelClass extends BaseModel {
 ### 3. User API
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Public profile (public, 5 minutes)
   @api({
     httpMethod: 'GET',

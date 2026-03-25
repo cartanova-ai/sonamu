@@ -47,7 +47,7 @@ type User = {
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getMyProfile() {
     const { user } = Sonamu.getContext();
@@ -89,7 +89,7 @@ type Session = {
 **사용 예시:**
 
 ```typescript
-class SessionModelClass extends BaseModel {
+class SessionModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getSessionInfo() {
     const { session } = Sonamu.getContext();
@@ -145,7 +145,7 @@ export default {
 API 메서드에 인증을 요구하려면 `guards` 옵션을 사용할 수 있습니다:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getMyData() {
     const { user } = Sonamu.getContext();

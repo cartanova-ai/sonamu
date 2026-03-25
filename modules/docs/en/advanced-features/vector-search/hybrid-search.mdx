@@ -131,10 +131,10 @@ Now search_vector is automatically updated when products are added/modified.
 ### 2. Hybrid Search in Sonamu Model
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async hybridSearch(
     query: string,

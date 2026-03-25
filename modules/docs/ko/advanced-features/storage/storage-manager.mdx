@@ -183,7 +183,7 @@ export const config: SonamuConfig = {
 ### 용도별 디스크 사용
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // 프로필 사진 → 공개 디스크
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -306,7 +306,7 @@ export const config: SonamuConfig = {
 };
 
 // 사용
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   // 영구 저장 → S3
   async upload(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -332,7 +332,7 @@ class FileModelClass extends BaseModel {
 ### 1. 프로필 사진 업로드
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -360,7 +360,7 @@ class UserModelClass extends BaseModel {
 ### 2. 다중 파일 업로드
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
     const { files } = Sonamu.getContext();
@@ -380,7 +380,7 @@ class PostModelClass extends BaseModel {
 ### 3. 디스크별 분리
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async upload(type: 'public' | 'private') {
     const { files } = Sonamu.getContext();

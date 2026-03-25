@@ -125,9 +125,9 @@ Step 재시도 시에는 이전 step의 결과가 **데이터베이스에서 복
 `step.get()`은 Model 메서드를 step으로 실행하는 편리한 방법입니다. 별도로 함수를 감싸지 않아도 되어 코드가 간결해집니다.
 
 ```typescript
-import { BaseModel, workflow } from "sonamu";
+import { BaseModelClass, workflow } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async sendWelcomeEmail(userId: number) {
     const user = await this.findById(userId);
     await emailService.send({

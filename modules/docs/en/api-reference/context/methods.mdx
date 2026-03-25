@@ -50,7 +50,7 @@ export function requireAuth() {
 // src/models/post.model.ts
 import { requireAuth } from "../utils/auth-helper";
 
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string, content: string) {
     // Access user information through helper function without receiving Context directly
@@ -163,7 +163,7 @@ uploadedFiles?: UploadedFile[];  // stream mode
 #### Single File Upload (Buffer Mode)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { bufferedFiles } = Sonamu.getContext();
@@ -191,7 +191,7 @@ class FileModelClass extends BaseModel {
 #### Multiple File Upload (Buffer Mode)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
     const { bufferedFiles } = Sonamu.getContext();
@@ -226,7 +226,7 @@ class FileModelClass extends BaseModel {
 #### Large File Upload (Stream Mode)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload({ mode: "stream" })
   async uploadLargeFiles(ctx: Context) {
     const { uploadedFiles } = Sonamu.getContext();
@@ -274,7 +274,7 @@ export function validateFileTypes(allowedTypes: string[]) {
 ```
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @api()
   @upload()
   async uploadImages(ctx: Context) {
@@ -372,7 +372,7 @@ class UploadedFile {
 
 ```typescript
 // ✅ Correct usage
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string) {
     const user = this.getCurrentUser(); // Within same stack
@@ -385,7 +385,7 @@ class PostModelClass extends BaseModel {
 }
 
 // ❌ Incorrect usage
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string) {
     // setTimeout creates a new execution stack

@@ -106,7 +106,7 @@ Sonamu는 Model과 Frame에 자동으로 카테고리를 할당합니다:
 
 ```typescript
 // UserModel -> ["sonamu", "model", "user"]
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async createUser(email: string) {
     // 자동 로거 사용
     this.logger.info("사용자 생성", { email });

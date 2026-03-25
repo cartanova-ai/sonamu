@@ -163,7 +163,7 @@ Boundary 파일끼리는 정적 import가 가능합니다 (Sonamu의 개선사�
 // user.model.ts (boundary)
 import { PostModel } from "./post.model";  // ✅ OK - 둘 다 boundary
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }
@@ -219,7 +219,7 @@ role: EnumProp<"admin" | "user">
 
 ```typescript
 // user.model.ts
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   isAdmin(): boolean {
     return this.role === "admin";
   }
@@ -314,7 +314,7 @@ async create(body: PostForm) {
 
 ```typescript
 // product.model.ts
-export class ProductModel extends BaseModel {
+export class ProductModel extends BaseModelClass {
   hasStock(quantity: number): boolean {
     return this.stock >= quantity;
   }
@@ -338,7 +338,7 @@ export class ProductModel extends BaseModel {
 import { ProductModel } from "../product/product.model";  // ✅ OK
 import { PaymentService } from "../payment/payment.service";
 
-export class OrderModel extends BaseModel {
+export class OrderModel extends BaseModelClass {
   static async createOrder(productId: number, quantity: number, userId: number) {
     const product = await ProductModel.findById(productId);
     

@@ -251,7 +251,7 @@ pnpm migrate run
 ### 4. Update Code
 
 ```typescript title="user.model.ts"
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async updateProfileImage(userId: number, imageUrl: string) {
     await this.getPuri("w")
       .update({ profile_image: imageUrl })

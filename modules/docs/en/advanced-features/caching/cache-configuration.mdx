@@ -238,7 +238,7 @@ await Sonamu.cache.use("config").set({ key: "settings", value: {...} });
 You can also specify stores in decorators:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Use database store
   @cache({ store: "database", ttl: "1h" })
   @api()

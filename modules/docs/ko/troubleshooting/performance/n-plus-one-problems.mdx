@@ -286,7 +286,7 @@ async function getUsersWithOrders() {
 반복적인 조회가 필요한 경우 DataLoader 패턴을 사용합니다:
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   // 사용자별 주문 로더
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
     const orders = await this.getPuri()
@@ -325,7 +325,7 @@ async function processUsers(users: User[]) {
 ### API 엔드포인트 최적화
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // ❌ N+1 발생
   @api({ httpMethod: "GET" })
   async listPostsSlow() {

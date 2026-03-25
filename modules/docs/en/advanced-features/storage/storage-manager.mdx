@@ -183,7 +183,7 @@ export const config: SonamuConfig = {
 ### Using Disks by Purpose
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Profile photos → public disk
   async uploadAvatar(ctx: UploadContext) {
     const file = ctx.file;
@@ -304,7 +304,7 @@ export const config: SonamuConfig = {
 };
 
 // Usage
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   // Permanent storage → S3
   async upload(ctx: UploadContext) {
     return ctx.file.saveToDisk('uploads/file.pdf');  // S3
@@ -326,7 +326,7 @@ class FileModelClass extends BaseModel {
 ### 1. Profile Photo Upload
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
@@ -355,7 +355,7 @@ class UserModelClass extends BaseModel {
 ### 2. Multiple File Upload
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload({ mode: 'multiple' })
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
@@ -376,7 +376,7 @@ class PostModelClass extends BaseModel {
 ### 3. Separation by Disk
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload({ mode: 'single' })
   @api({ httpMethod: 'POST' })
   async upload(type: 'public' | 'private') {

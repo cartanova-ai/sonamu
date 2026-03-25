@@ -106,7 +106,7 @@ Sonamu automatically assigns categories to Models and Frames:
 
 ```typescript
 // UserModel -> ["sonamu", "model", "user"]
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async createUser(email: string) {
     // Use automatic logger
     this.logger.info("Creating user", { email });

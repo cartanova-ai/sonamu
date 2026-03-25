@@ -332,7 +332,7 @@ async function processAllUsers() {
 ```typescript
 import { cache } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @cache({ ttl: '5m' })  // 5분 캐싱
   async getActiveUsersCount(): Promise<number> {
     const result = await this.getPuri()
@@ -409,7 +409,7 @@ export default {
 ### 느린 쿼리 탐지
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async findActiveUsers() {
     const start = Date.now();
     

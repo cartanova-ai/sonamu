@@ -186,7 +186,7 @@ type User = {
 ```typescript title="Model에서 Enum 사용"
 import { UserRole } from "./user.types";
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async updateRole(userId: number, role: UserRole) {
     // role은 타입 안전함

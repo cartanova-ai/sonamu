@@ -544,11 +544,11 @@ const result = await HotelBookingAgent.use(
 ### Usage in API
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { HotelBookingAgent } from "./agents/hotel-booking";
 import { openai } from "@ai-sdk/openai";
 
-class ChatModelClass extends BaseModel {
+class ChatModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async chat(message: string, ctx: Context) {
     const result = await HotelBookingAgent.use(
