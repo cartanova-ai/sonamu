@@ -330,7 +330,7 @@ export const processOrder = workflow(
 // WorkflowManager 사용
 import { Sonamu } from "sonamu";
 
-const handle = await Sonamu.workflowManager.run(
+const handle = await Sonamu.workflows.run(
   {
     name: "process_order",
     version: "1.0"
@@ -690,7 +690,7 @@ await step.define({ name: "process-shipping" }, async () => { /* ... */ }).run()
 ### 실행 상태 확인
 
 ```typescript
-const handle = await Sonamu.workflowManager.run(
+const handle = await Sonamu.workflows.run(
   { name: "process_order" },
   { orderId: 123 }
 );

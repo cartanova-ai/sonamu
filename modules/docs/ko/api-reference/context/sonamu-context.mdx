@@ -84,10 +84,10 @@ class MyModelClass extends BaseModelClass {
     });
 
     // 진행률 전송
-    await sse.send("progress", { percent: 50 });
+    await sse.publish("progress", { percent: 50 });
     
     // 완료 이벤트 전송
-    await sse.send("complete", { result: "done" });
+    await sse.publish("complete", { result: "done" });
     
     return sse.getResponse();
   }
