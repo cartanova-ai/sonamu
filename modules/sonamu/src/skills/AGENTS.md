@@ -46,6 +46,16 @@ See `.claude/skills/sonamu/SKILL.md` for the full skill list.
 - Resolve type errors through correct type annotations, generic constraints, type narrowing, or interface extension.
 - Do not use `as any` to work around "excessively deep" or similar TypeScript inference limits — find the correct access pattern instead (e.g. use `getPuri("r")` directly rather than casting the result).
 - Chaining methods after `as any` bypasses all TypeScript signature checks and leads directly to runtime bugs.
+- Non-null assertion (`!`) is prohibited. Use optional chaining (`?.`) or type guard filters instead.
+
+## Code quality gate
+
+After editing any `.ts` or `.tsx` file, always run both checks before considering the task done:
+
+1. `npx tsc --noEmit --skipLibCheck` — type errors
+2. `pnpm biome check <file>` — lint and format
+
+Do not skip biome check even when tsc passes. Biome catches `noNonNullAssertion`, import order, and formatting issues that tsc does not.
 
 ## Skill read triggers
 
