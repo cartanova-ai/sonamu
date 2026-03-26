@@ -111,7 +111,7 @@ function checkSingleDecorator(target: DecoratorTarget, propertyKey: string, deco
   const method = target[propertyKey as keyof typeof target] as { __decoratorType?: symbol };
   if (method?.__decoratorType && method?.__decoratorType !== decoratorType) {
     throw new Error(
-      `@${String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api or @stream decorator on the same method.`,
+      `@${decoratorType.description ?? String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api or @stream decorator on the same method.`,
     );
   } else {
     method.__decoratorType = decoratorType;
