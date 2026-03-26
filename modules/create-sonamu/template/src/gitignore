@@ -63,3 +63,4 @@ Thumbs.db
 # Claude
 .claude/skills/sonamu
 .claude/CLAUDE.md
+.claude/settings.local.json
