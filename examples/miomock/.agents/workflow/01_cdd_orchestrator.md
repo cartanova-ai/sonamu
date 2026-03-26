@@ -35,11 +35,11 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
   - Default `objective_packet.user_review=true`
 - Any Spec status when feature-change work or implementation/test/validation follow-up requires Spec-content updates: Phase 2 follow-up -> spawn `cdd-specifier` in artifact-reconciliation mode
   - This worker preserves the current `status`, reconciles the target Spec against every document path in its `sources`, `contracts`, and `dependsOnSpecs`, updates related Specs when required, and returns `artifact_reconciliation_complete=true`
-- Spec status is `implementing`: Phase 3 -> optionally spawn `cdd-surface-scaffolder`, then spawn `cdd-test-writer` and `cdd-implementer` in parallel
+- Spec status is `implementing`: Phase 3 -> optionally spawn `cdd-surface-scaffolder`, then always spawn `cdd-implementer` and spawn `cdd-test-writer` only when `useTestRef=true`
   - `cdd-surface-scaffolder` owns shared type/interface/export/runtime scaffolds and migration prerequisites required so planned imports resolve and prerequisite schema state exists before the parallel pair begins
-  - `cdd-test-writer` owns tests, test support files, and `acceptanceCriteria[].testRef`
-  - `cdd-implementer` owns production code, implementation support files, and the final `sources` list
-  - The orchestrator decides whether scaffold work is needed, fans in the parallel outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings by ownership
+  - `cdd-test-writer` owns tests, test support files, and `acceptanceCriteria[].testRef` only when `useTestRef=true`
+  - `cdd-implementer` owns production code, implementation support files, and the final `sources` list, and it is the only implementing worker when `useTestRef=false`
+  - The orchestrator decides whether scaffold work is needed, inspects `useTestRef`, fans in the active worker outputs, runs `cdd advance <spec>` on the integrated state, and re-routes findings by ownership
   - Default `objective_packet.user_review=false` for all Phase 3 workers
 - Spec status is `validating`: Phase 4 -> spawn `cdd-validator`
   - This worker owns validating-stage code/test fixes and the final `validating -> done` pre-commit verification
@@ -65,7 +65,7 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 
 4. Select the next worker from the current Spec status and any outstanding reconciliation findings
    - draft/specifying -> Phase 2 specifier
-   - implementing -> Phase 3 optional scaffold + parallel pair (`cdd-surface-scaffolder`, then `cdd-test-writer` + `cdd-implementer`)
+   - implementing -> Phase 3 optional scaffold + active implementing workers (`cdd-surface-scaffolder`, then `cdd-implementer`, plus `cdd-test-writer` when `useTestRef=true`)
    - validating -> Phase 4 validator
    - any status with required Spec-content follow-up -> Phase 2 specifier in artifact-reconciliation mode
 
@@ -76,8 +76,8 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
    - ready_for_transition=true from `cdd-contract-writer` -> close review, then return to step 3 to resolve artifact state again
    - ready_for_transition=true from a Spec-phase owner -> continue
    - artifact_reconciliation_complete=true from `cdd-specifier` -> resume the current phase owner or close the request if no further work remains
-   - ready_for_parallel_pair=true from `cdd-surface-scaffolder` -> spawn the implementing pair
-   - ready_for_fan_in=true from both implementing workers -> run integrated `cdd advance <spec>`
+   - ready_for_parallel_pair=true from `cdd-surface-scaffolder` -> spawn the implementing workers required by `useTestRef`
+   - ready_for_fan_in=true from all active implementing workers -> run integrated `cdd advance <spec>`
    - impacted_spec_followups or related_spec_followups -> route the follow-up Spec work before closing the overall request
 
 7. If `objective_packet.user_review=true`, ask the user to review before phase closure
@@ -258,21 +258,21 @@ Loop:
      -> Spawn `cdd-surface-scaffolder`.
      -> If it returns blocked, re-spawn the preferred role or ask the user when the blocker exceeds worker ownership.
      -> When it returns `ready_for_parallel_pair=true`, continue.
-  3. Spawn `cdd-test-writer` and `cdd-implementer` in parallel with the same Spec packet.
-  4. Each worker performs only its owned edits and returns `ready_for_fan_in=true` or blocked.
+  3. Always spawn `cdd-implementer`, and also spawn `cdd-test-writer` when `useTestRef=true`, with the same Spec packet.
+  4. Each active worker performs only its owned edits and returns `ready_for_fan_in=true` or blocked.
   5. If either worker returns blocked:
      -> Re-spawn the preferred role or ask the user when the blocker exceeds worker ownership.
-  6. When both workers are ready, inspect their `artifact_reconciliation` output, including every source-linked Spec whose `sources` contained a changed file, before running `cdd advance`.
-  7. If either worker reports target-Spec, source-linked-Spec, or related-Spec follow-up:
+  6. When all active workers are ready, inspect their `artifact_reconciliation` output, including every source-linked Spec whose `sources` contained a changed file, before running `cdd advance`.
+  7. If any active worker reports target-Spec, source-linked-Spec, or related-Spec follow-up:
      -> Spawn `cdd-specifier` in artifact-reconciliation mode.
      -> If it returns blocked or reports Contract drift, ask the user as needed.
      -> After reconciliation completes, re-spawn the affected implementing worker(s) for a fresh pass against the updated Spec, then return to step 6.
-  8. If either worker reports Contract drift without an explicit Contract-edit request:
+  8. If any active worker reports Contract drift without an explicit Contract-edit request:
      -> Stop and ask the user.
   9. When the integrated reconciliation state is ready, fan in their outputs and run `cdd advance <spec>` without `--commit` on the integrated state.
   10. If Layer 1 or Layer 2 reports findings:
      -> Route shared type/interface/export/runtime surface or migration-prerequisite findings to `cdd-surface-scaffolder`.
-     -> Route `testRef` / acceptance-test findings to `cdd-test-writer`.
+     -> Route `testRef` / acceptance-test findings to `cdd-test-writer` only when `useTestRef=true`.
      -> Route `sources` / code-implementation findings to `cdd-implementer`.
      -> Route narrative / schema / related-document consistency / Contract issues to `cdd-specifier`.
      -> Re-run the scaffold, the pair, or the single owner as needed, then return to step 6.
@@ -297,12 +297,12 @@ If the Spec is still `draft` or `specifying` after a successful commit, keep rou
 | impacted Spec update discovered after Contract work | `cdd-specifier` |
 | related Spec update discovered from `contracts` or `dependsOnSpecs` review | `cdd-specifier` |
 | missing importable module, shared type/interface, runtime export, runtime stub, or migration prerequisite needed before parallel implementing work | `cdd-surface-scaffolder` |
-| `testRef.target`, `testRef.pattern`, missing/incorrect tests, or vacuous AC validation while status is `implementing` | `cdd-test-writer` |
+| `testRef.target`, `testRef.pattern`, missing/incorrect tests, or vacuous AC validation while status is `implementing` and `useTestRef=true` | `cdd-test-writer` |
 | `sources` gaps or code-implementation mismatch while status is `implementing` | `cdd-implementer` |
 | integrated `implementing` findings that require shared surface or migration-prerequisite work plus downstream test or code follow-up | `cdd-surface-scaffolder` then `cdd-test-writer` and/or `cdd-implementer` |
-| integrated `implementing` findings that require both test and code changes | `cdd-test-writer` + `cdd-implementer` |
+| integrated `implementing` findings that require both test and code changes while `useTestRef=true` | `cdd-test-writer` + `cdd-implementer` |
 | code/test fix needed while status is `validating`, including final AC semantics, constraints, and error-handling coverage without `testRef` changes | `cdd-validator` |
-| validating-stage fix requires changing `testRef.target` or `testRef.pattern` | `cdd-test-writer` |
+| validating-stage fix requires changing `testRef.target` or `testRef.pattern` while `useTestRef=true` | `cdd-test-writer` |
 | validating-stage fix requires new shared type/interface/export/runtime surface or migration prerequisite without changing Spec narrative | `cdd-surface-scaffolder` |
 | Contract drift or Contract change required | Stop and ask the user |
 

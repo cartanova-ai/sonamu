@@ -49,6 +49,7 @@ export interface ContractDocument {
 export interface SpecDocument {
   schema: string;
   schemaVersion?: number;
+  useTestRef?: boolean;
   summary: string;
   description: string[];
   acceptanceCriteria: AcceptanceCriterion[];

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
@@ -20,6 +21,20 @@ export interface AdvanceOptions {
 interface GateFailure {
   field: string;
   message: string;
+}
+
+interface CommandExecutionResult {
+  command: string;
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: Error;
+}
+
+interface ValidationTestRunResult {
+  mode: "sonamu" | "vitest";
+  statusCheck: CommandExecutionResult;
+  testRun: CommandExecutionResult;
 }
 
 export function runAdvance(
@@ -304,6 +319,10 @@ function validateSchemaField(
   }
 }
 
+function useTestRef(doc: Record<string, unknown>): boolean {
+  return doc.useTestRef !== false;
+}
+
 function gateValidating(
   doc: Record<string, unknown>,
   project: CddProject,
@@ -321,6 +340,10 @@ function gateValidating(
         message: `sources 파일이 존재하지 않습니다: "${source}"`,
       });
     }
+  }
+
+  if (!useTestRef(doc)) {
+    return;
   }
 
   const ac = doc.acceptanceCriteria as Array<Record<string, unknown>>;
@@ -341,6 +364,18 @@ function gateValidating(
       }
     }
   }
+
+  if (failures.length > 0) {
+    return;
+  }
+
+  const testRun = runValidationTests(project.projectRoot);
+  if (testRun.testRun.status !== 0) {
+    failures.push({
+      field: "tests",
+      message: formatTestExecutionFailure(testRun),
+    });
+  }
 }
 
 function gateDone(
@@ -348,6 +383,10 @@ function gateDone(
   project: CddProject,
   failures: GateFailure[],
 ): void {
+  if (!useTestRef(doc)) {
+    return;
+  }
+
   const ac = doc.acceptanceCriteria as Array<Record<string, unknown>>;
 
   for (const item of ac) {
@@ -416,11 +455,14 @@ function buildDelegatePayload(
     : "";
 
   const sources = doc.sources ?? [];
-  const testFiles = (doc.acceptanceCriteria ?? [])
-    .map((ac) => ac.testRef?.target)
-    .filter((t): t is string => typeof t === "string" && t.length > 0);
+  const shouldUseTestRef = doc.useTestRef !== false;
+  const testFiles = shouldUseTestRef
+    ? (doc.acceptanceCriteria ?? [])
+        .map((ac) => ac.testRef?.target)
+        .filter((t): t is string => typeof t === "string" && t.length > 0)
+    : [];
 
-  const { instruction, checks } = buildLayer2Content(target);
+  const { instruction, checks } = buildLayer2Content(target, shouldUseTestRef);
 
   return {
     mode: "delegate",
@@ -437,7 +479,10 @@ function buildDelegatePayload(
   };
 }
 
-function buildLayer2Content(target: SpecStatus): { instruction: string; checks: string[] } {
+function buildLayer2Content(
+  target: SpecStatus,
+  shouldUseTestRef: boolean,
+): { instruction: string; checks: string[] } {
   switch (target) {
     case "specifying":
       return {
@@ -463,27 +508,135 @@ function buildLayer2Content(target: SpecStatus): { instruction: string; checks: 
 
     case "validating":
       return {
-        instruction:
-          "다음 Spec의 구현이 완료되었는지 스키마 필드 정의와 AC 의미를 기준으로 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
-        checks: [
-          "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 sources의 코드가 명세를 구현하는가 확인",
-          "B. 테스트 매칭 검증: 각 AC의 testRef.target 파일 내에서 testRef.pattern에 매칭되는 테스트가 있는가, 해당 테스트가 AC condition의 의미를 정확히 검증하는가 (vacuous test 아닌가)",
-          "C. 명세-코드 일관성: 스키마 필드에 기술된 흐름/구조가 코드에 반영되었는가",
-        ],
+        instruction: shouldUseTestRef
+          ? "다음 Spec의 구현이 완료되었는지 스키마 필드 정의와 AC 의미를 기준으로 검증하세요. references의 파일들을 읽고 아래 checks를 수행하세요."
+          : "다음 Spec의 구현이 완료되었는지 스키마 필드 정의와 AC 의미를 기준으로 검증하세요. 이 Spec은 useTestRef=false 이므로 testRef 매칭 검증 없이 references의 파일들을 읽고 아래 checks를 수행하세요.",
+        checks: shouldUseTestRef
+          ? [
+              "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 sources의 코드가 명세를 구현하는가 확인",
+              "B. 테스트 매칭 검증: 각 AC의 testRef.target 파일 내에서 testRef.pattern에 매칭되는 테스트가 있는가, 해당 테스트가 AC condition의 의미를 정확히 검증하는가 (vacuous test 아닌가)",
+              "C. 명세-코드 일관성: 스키마 필드에 기술된 흐름/구조가 코드에 반영되었는가",
+            ]
+          : [
+              "A. 구현 완료 검증: references.schema를 읽고, 각 required 필드의 name/type과 description이 있으면 그 설명까지 함께 기준으로 삼아 sources의 코드가 명세를 구현하는가 확인",
+              "B. AC 의미 검증: 각 AC condition의 핵심 동작이 sources의 구현과 사용자 흐름에 반영되었는가 확인",
+              "C. 명세-코드 일관성: 스키마 필드에 기술된 흐름/구조와 제약이 코드에 반영되었는가",
+            ],
       };
 
     case "done":
       return {
-        instruction:
-          "최종 검증: 모든 AC가 충족되었는지 확인하세요. references의 파일들을 읽고 아래 checks를 수행하세요.",
-        checks: [
-          "A. AC-테스트 의미적 매칭: 각 테스트가 AC condition을 정확히 검증하는지 의미적 확인",
-          "B. 제약 조건 반영: references.schema를 읽고, 제약 관련 필드가 코드에 반영되었는지 확인",
-          "C. 실패 시나리오 커버리지: references.schema를 읽고, 에러 처리 관련 필드에 정의된 실패 시나리오가 테스트되었는지 확인",
-        ],
+        instruction: shouldUseTestRef
+          ? "최종 검증: 모든 AC가 충족되었는지 확인하세요. references의 파일들을 읽고 아래 checks를 수행하세요."
+          : "최종 검증: 모든 AC가 충족되었는지 확인하세요. 이 Spec은 useTestRef=false 이므로 testRef 기반 의미 매칭 없이 references의 파일들을 읽고 아래 checks를 수행하세요.",
+        checks: shouldUseTestRef
+          ? [
+              "A. AC-테스트 의미적 매칭: 각 테스트가 AC condition을 정확히 검증하는지 의미적 확인",
+              "B. 제약 조건 반영: references.schema를 읽고, 제약 관련 필드가 코드에 반영되었는지 확인",
+              "C. 실패 시나리오 커버리지: references.schema를 읽고, 에러 처리 관련 필드에 정의된 실패 시나리오가 테스트되었는지 확인",
+            ]
+          : [
+              "A. AC 충족 여부: 각 AC condition의 핵심 동작이 sources의 구현과 사용자 흐름에서 충족되는지 확인",
+              "B. 제약 조건 반영: references.schema를 읽고, 제약 관련 필드가 코드에 반영되었는지 확인",
+              "C. 실패 시나리오 반영: references.schema를 읽고, 에러 처리 관련 필드에 정의된 실패 시나리오가 코드 또는 화면 흐름에 반영되었는지 확인",
+            ],
       };
 
     default:
       return { instruction: "", checks: [] };
   }
+}
+
+function runValidationTests(projectRoot: string): ValidationTestRunResult {
+  const statusCheck = runPnpmCommand(projectRoot, ["sonamu", "test", "-s"]);
+  const statusOutput = stripAnsi(`${statusCheck.stdout}\n${statusCheck.stderr}`);
+  const useSonamu = statusCheck.status === 0 && /ready:\s*true\b/.test(statusOutput);
+
+  const testRun = useSonamu
+    ? runPnpmCommand(projectRoot, ["sonamu", "test"])
+    : runPnpmCommand(projectRoot, ["test"]);
+
+  return {
+    mode: useSonamu ? "sonamu" : "vitest",
+    statusCheck,
+    testRun,
+  };
+}
+
+function runPnpmCommand(projectRoot: string, args: string[]): CommandExecutionResult {
+  const result = spawnSync("pnpm", args, {
+    cwd: projectRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+    },
+  });
+
+  return {
+    command: `pnpm ${args.join(" ")}`,
+    status: result.status,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+    error: result.error,
+  };
+}
+
+function formatTestExecutionFailure(result: ValidationTestRunResult): string {
+  const detail = summarizeCommandOutput(result.testRun);
+  const mode =
+    result.mode === "sonamu"
+      ? "DevRunner 준비 확인 후 pnpm sonamu test를 실행했습니다"
+      : "DevRunner readiness를 확인하지 못해 pnpm test로 fallback했습니다";
+
+  if (result.testRun.error) {
+    return `테스트 실행 실패: ${result.testRun.command} (${mode}). ${result.testRun.error.message}`;
+  }
+
+  const statusText =
+    result.testRun.status === null
+      ? "종료 코드를 확인하지 못했습니다"
+      : `exit ${result.testRun.status}`;
+  return `테스트 실행 실패: ${result.testRun.command} (${statusText}). ${mode}. ${detail}`;
+}
+
+function summarizeCommandOutput(result: CommandExecutionResult): string {
+  const merged = stripAnsi(`${result.stderr}\n${result.stdout}`)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (merged.length === 0) {
+    return "명령 출력이 비어 있습니다.";
+  }
+
+  return merged.slice(0, 3).join(" / ");
+}
+
+function stripAnsi(value: string): string {
+  let result = "";
+
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === "\u001b" && value[index + 1] === "[") {
+      let cursor = index + 2;
+
+      while (cursor < value.length) {
+        const char = value[cursor];
+        if ((char >= "0" && char <= "9") || char === ";") {
+          cursor += 1;
+          continue;
+        }
+        break;
+      }
+
+      if (value[cursor] === "m") {
+        index = cursor;
+        continue;
+      }
+    }
+
+    result += value[index];
+  }
+
+  return result;
 }

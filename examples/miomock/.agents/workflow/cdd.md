@@ -25,7 +25,7 @@ Operational rules:
 - The only direct orchestrator mutation is Phase 1 scaffold creation with `cdd spec create`.
 - The orchestrator and every leaf worker must read the default rules file before routing or phase work starts.
 - Leaf workers own the step-by-step phase loop. Contract authoring has no `cdd advance` loop. For Spec phases that actually own a status transition, the phase owner also owns the pre-commit `cdd advance <spec>` check. `cdd-specifier` skips `cdd advance` when it is spawned only for later-phase artifact reconciliation.
-- During `implementing`, the orchestrator spawns the test and code workers in parallel, fans in their outputs, re-runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker until the transition is ready.
+- During `implementing`, the orchestrator always spawns `cdd-implementer`, and it also spawns `cdd-test-writer` only when the Spec keeps `useTestRef=true`. The orchestrator fans in the active worker outputs, re-runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker until the transition is ready.
 - If preset sub-agents are unavailable, use inline fallback instructions. Direct main-session execution is not a fallback mode.
 
 ## Project structure
@@ -116,6 +116,7 @@ Implementation specification management. Connects Contract requirements to concr
 
 Core fields used by the current transition gates:
 - `schema`
+- `useTestRef` (optional, default `true`)
 - `summary`
 - `description`
 - `acceptanceCriteria`
@@ -129,6 +130,10 @@ Live metadata fields that must be preserved on Spec edits:
 - `lastModified`
 
 Current miomock Specs use `schemaVersion: 2`. Workers that edit Spec fields must preserve `schemaVersion` and refresh `lastModified`.
+
+`useTestRef` controls whether AC-to-test mapping is required for the Spec.
+- Omitted means `true`.
+- Set `false` only for exceptional Specs, such as FE/web flows that intentionally close without acceptance-test ownership in this workflow.
 
 Custom fields are defined by the referenced schema.
 
@@ -146,7 +151,8 @@ Custom fields are defined by the referenced schema.
 ```
 
 - `condition` must be concrete and pass/fail verifiable.
-- `testRef` may remain empty during specification work, but `cdd-test-writer` must fill it before the Spec can finish.
+- When `useTestRef=true`, `testRef` may remain empty during specification work, but `cdd-test-writer` must fill it before the Spec can finish.
+- When `useTestRef=false`, `testRef` may remain empty through `done`.
 
 ## Status workflow
 
@@ -160,10 +166,10 @@ Only adjacent transitions are allowed. `cdd advance <spec>` enforces the gate fo
 |---|---|---|
 | `draft -> specifying` | valid Contract reference, non-empty `summary`, `description`, ACs, required schema fields | schema field content matches field names/types and any field descriptions that exist, ACs are verifiable, Spec stays within Contract scope |
 | `specifying -> implementing` | non-empty `summary`, `description`, ACs, required schema fields | schema field quality, AC quality, cross-field consistency, feature-level completeness, and consistency against every document referenced in the target Spec's `sources`, `dependsOnSpecs`, and `contracts`; required target/related Spec updates must be completed before the transition |
-| `implementing -> validating` | `sources` files exist, AC `testRef.target` exists | code implements the Spec, tests validate AC meaning, Spec-code consistency, and every changed file is reconciled against all Specs whose `sources` include that file plus their `contracts` and `dependsOnSpecs`; required Spec follow-up must be completed or routed before the transition |
-| `validating -> done` | AC `testRef.pattern` is non-empty, valid as a regex, and matches the test file | AC-test semantic match, constraints reflected, error-handling coverage, build/test evidence |
+| `implementing -> validating` | `sources` files exist; when `useTestRef=true`, every AC `testRef.target` exists and the CLI validating gate runs Sonamu-first tests | code implements the Spec, tests validate AC meaning when `useTestRef=true`, Spec-code consistency, and every changed file is reconciled against all Specs whose `sources` include that file plus their `contracts` and `dependsOnSpecs`; required Spec follow-up must be completed or routed before the transition |
+| `validating -> done` | when `useTestRef=true`, every AC `testRef.pattern` is non-empty, valid as a regex, and matches the test file | AC-test semantic match when `useTestRef=true`, constraints reflected, error-handling coverage, and final implementation evidence |
 
-`--commit` means the orchestrator is finalizing a transition after the worker has already completed the pre-commit checks. Build/test execution remains worker-owned evidence during `validating`; the CLI Layer 1 gate does not run the test suite by itself.
+`--commit` means the orchestrator is finalizing a transition after the worker has already completed the pre-commit checks. The CLI Layer 1 gate now runs the validating-stage Sonamu-first test command only when `useTestRef=true`; otherwise test execution remains worker-owned evidence for the current scope.
 
 ## User review gate
 
@@ -184,10 +190,10 @@ When `user_review=true`:
 
 ## Worker ownership
 
-- `cdd-specifier`: Spec content edits, `schemaVersion` normalization, target/related Spec reconciliation after feature or implementation/test discoveries, and pre-commit verification for `draft -> specifying` and `specifying -> implementing`
+- `cdd-specifier`: Spec content edits, `useTestRef` decisions, `schemaVersion` normalization, target/related Spec reconciliation after feature or implementation/test discoveries, and pre-commit verification for `draft -> specifying` and `specifying -> implementing`
 - `cdd-surface-scaffolder`: minimal shared type/interface/export/runtime scaffold work plus Spec-driven migration preparation required before parallel `implementing` work can start safely
-- `cdd-test-writer`: acceptance-test authoring plus `acceptanceCriteria[].testRef` ownership during `implementing`
-- `cdd-implementer`: production-code implementation plus final `sources` ownership during `implementing`
+- `cdd-test-writer`: acceptance-test authoring plus `acceptanceCriteria[].testRef` ownership during `implementing` when `useTestRef=true`
+- `cdd-implementer`: production-code implementation plus final `sources` ownership during `implementing`, and the sole implementing worker when `useTestRef=false`
 - `cdd-validator`: validating-stage code/test fixes and final pre-commit verification for `validating -> done`
 
 If a worker discovers that another worker owns the required change, it must report that to the orchestrator instead of editing across the boundary.
@@ -198,13 +204,13 @@ Any worker that edits Spec fields it owns must preserve `schemaVersion` and refr
 When the Spec status is `implementing`:
 - If the planned work requires new importable modules, shared types/interfaces, runtime exports, placeholder entrypoints, or migration prerequisites described in the Spec before downstream work can proceed, the orchestrator should first spawn `cdd-surface-scaffolder`.
 - `cdd-surface-scaffolder` may edit only shared type/interface/export files, minimal runtime scaffolds, and migration prerequisites needed so planned imports resolve and prerequisite schema state exists. It must not add business logic, acceptance tests, or Spec changes.
-- After the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` in parallel.
+- After the shared surface is ready, the orchestrator must always spawn `cdd-implementer`, and it must also spawn `cdd-test-writer` in parallel only when `useTestRef=true`.
 - The shared surface worker and the parallel pair must receive the same `rules_paths` so they apply one consistent rule set.
 - `cdd-test-writer` may edit only acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
 - `cdd-implementer` may edit only production code, implementation support files, and `sources`.
-- Both `cdd-test-writer` and `cdd-implementer` must re-route missing shared surface or migration-prerequisite findings to `cdd-surface-scaffolder` instead of inventing or broadening their own scope.
+- Every active implementing worker must re-route missing shared surface or migration-prerequisite findings to `cdd-surface-scaffolder` instead of inventing or broadening their own scope.
 - Neither worker may rewrite `summary`, `description`, AC `condition`, schema-defined fields, or Contract references.
-- The orchestrator fans in both worker outputs, handles any artifact-reconciliation follow-up they report, runs `cdd advance <spec>` without `--commit` on the integrated state, and re-spawns only the worker that owns the reported finding.
+- The orchestrator fans in the active worker outputs, handles any artifact-reconciliation follow-up they report, runs `cdd advance <spec>` without `--commit` on the integrated state, and re-spawns only the worker that owns the reported finding.
 - If the integrated findings span shared surface or migration-prerequisite work plus test/code ownership, the orchestrator may re-run `cdd-surface-scaffolder`, the parallel pair, or both as needed.
 
 ## Artifact reconciliation
@@ -236,7 +242,7 @@ When the Spec status is `implementing`:
 3. If no Contract exists, the orchestrator spawns `cdd-contract-writer`, gathers user review, and then re-checks artifact state.
 4. If Contract exists but no Spec exists, the orchestrator runs `cdd spec create` to create the scaffold.
 5. All subsequent Spec phase work is delegated to leaf workers, and every spawn includes the resolved `rules_paths`.
-6. For `implementing`, the orchestrator first decides whether a shared surface scaffold or migration prerequisite is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then spawns `cdd-test-writer` and `cdd-implementer` in parallel, inspects their artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
+6. For `implementing`, the orchestrator first decides whether a shared surface scaffold or migration prerequisite is needed. If it is, the orchestrator runs `cdd-surface-scaffolder`, then always spawns `cdd-implementer` and additionally spawns `cdd-test-writer` only when `useTestRef=true`, inspects the active workers' artifact-reconciliation output, routes `cdd-specifier` or user escalation when later-phase Spec/Contract drift is reported, then re-runs `cdd advance <spec>` and re-spawns the owner of any remaining finding until the integrated state is ready.
 7. For `draft`, `specifying`, and `validating`, the phase owner performs its phase work, runs `cdd advance <spec>` when that phase owns a transition, resolves in-scope Layer 1 and Layer 2 findings, and returns only when the next transition is ready for orchestrator commit, later-phase artifact reconciliation is complete, or the phase is blocked.
 8. If a worker returns blocked, the orchestrator re-spawns the correct worker or asks the user when the boundary exceeds worker ownership.
 9. If the active phase result is ready and `objective_packet.user_review=true`, the orchestrator asks the user to review before closing the phase.

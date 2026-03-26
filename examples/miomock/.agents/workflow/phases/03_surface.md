@@ -40,7 +40,7 @@ findings: [] # previous verification failures on re-spawn
 1. Read the Spec file and confirm current status is `implementing`.
 2. Read the Schema file and internalize the planned module boundaries, schema-defined structure, and ACs.
 3. Read the files already referenced in `sources`, plus any missing file paths implied by current imports or previous findings.
-4. Identify exactly which imports, exports, shared types/interfaces, DTO/schema helpers, runtime entrypoints, or migration prerequisites described in the Spec are missing and would block `cdd-test-writer` or `cdd-implementer`.
+4. Identify exactly which imports, exports, shared types/interfaces, DTO/schema helpers, runtime entrypoints, or migration prerequisites described in the Spec are missing and would block `cdd-implementer` and, when `useTestRef=true`, `cdd-test-writer`.
 
 ### Step 3: Prepare the minimal importable surface and migration prerequisites
 
@@ -71,7 +71,7 @@ If the shared surface cannot be finalized without changing Spec narrative, schem
 If `findings` are provided:
 1. Fix only the missing shared type/interface/export/runtime surface or migration-prerequisite findings.
 2. If the remaining blocker is now business logic rather than shared surface, return `preferred_respawn_role: cdd-implementer`.
-3. If the remaining blocker is test semantics rather than shared surface, return `preferred_respawn_role: cdd-test-writer`.
+3. If the remaining blocker is test semantics rather than shared surface and `useTestRef=true`, return `preferred_respawn_role: cdd-test-writer`.
 4. If Spec narrative, schema-defined fields, or Contract scope must change, return `preferred_respawn_role: cdd-specifier`.
 5. Re-run focused verification.
 

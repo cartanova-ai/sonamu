@@ -25,6 +25,7 @@ describe("types", () => {
   it("SpecDocument 형상 확인", () => {
     const doc: SpecDocument = {
       schema: "default-spec",
+      useTestRef: true,
       summary: "테스트 기능",
       description: ["테스트 설명"],
       acceptanceCriteria: [
@@ -39,6 +40,7 @@ describe("types", () => {
       contracts: ["./main.contract.json"],
     };
     expect(doc.schema).toBe("default-spec");
+    expect(doc.useTestRef).toBe(true);
     expect(doc.summary).toBe("테스트 기능");
     expect(doc.status).toBe("draft");
   });
@@ -55,6 +57,20 @@ describe("types", () => {
       dependsOnSpecs: ["./other.spec.json"],
     };
     expect(doc.dependsOnSpecs).toEqual(["./other.spec.json"]);
+  });
+
+  it("SpecDocument에 useTestRef 옵션 필드를 포함할 수 있다", () => {
+    const doc: SpecDocument = {
+      schema: "default-spec",
+      useTestRef: false,
+      summary: "웹 UI 테스트",
+      description: [],
+      acceptanceCriteria: [],
+      status: "draft",
+      sources: [],
+      contracts: ["./main.contract.json"],
+    };
+    expect(doc.useTestRef).toBe(false);
   });
 
   it("SpecStatus 값 제약 확인", () => {

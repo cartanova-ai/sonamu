@@ -48,7 +48,9 @@ findings: [] # previous verification failures on re-spawn
 
 1. Preserve the current `schemaVersion` if it already exists.
 2. If `schemaVersion` is missing after scaffold creation, initialize it to `2` for the current miomock live envelope.
-3. Refresh `lastModified` to today's `YYYY-MM-DD` whenever you change the Spec in this phase.
+3. If `useTestRef` is missing, initialize it to `true`.
+4. Set `useTestRef=false` only for exceptional Specs, such as FE/web flows that intentionally do not use acceptance-test ownership in this workflow.
+5. Refresh `lastModified` to today's `YYYY-MM-DD` whenever you change the Spec in this phase.
 4. Write or refine the Spec's:
    - `summary`
    - `description`
@@ -71,7 +73,8 @@ Each field must:
 2. Derive additional conditions from schema fields such as error handling and constraints.
 3. Write each AC directly in `acceptanceCriteria`.
 4. `condition` must be concrete and pass/fail verifiable.
-5. Leave `testRef.target` and `testRef.pattern` empty at this phase. Those are filled later by `cdd-test-writer` during `implementing`.
+5. When `useTestRef=true`, leave `testRef.target` and `testRef.pattern` empty at this phase. Those are filled later by `cdd-test-writer` during `implementing`.
+6. When `useTestRef=false`, keep `testRef` empty and make sure the AC wording is concrete enough to be validated directly against the implementation without test mapping.
 
 ### Step 6: Plan implementation sources
 
@@ -117,6 +120,7 @@ If `findings` are provided:
 Return `ready_for_transition: true` only when the current status is `draft` or `specifying` and:
 - `summary` and `description` are coherent
 - `schemaVersion` and `lastModified` are valid
+- `useTestRef` is set correctly for the intended workflow
 - required schema fields are filled
 - ACs are concrete and non-empty
 - planned `sources` are coherent enough for downstream work, including any likely shared-surface or migration-prerequisite scaffold

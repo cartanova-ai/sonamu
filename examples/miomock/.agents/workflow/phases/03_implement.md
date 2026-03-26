@@ -1,6 +1,6 @@
 # Phase 3C: Implement Code
 
-Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and acceptance tests plus `acceptanceCriteria[].testRef` are owned by `cdd-test-writer`.
+Implement production code according to the confirmed Spec. This worker owns production code, implementation support files, and the final `sources` list. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and acceptance tests plus `acceptanceCriteria[].testRef` are owned by `cdd-test-writer` only when `useTestRef=true`.
 
 ## Required reading (mandatory)
 
@@ -42,6 +42,7 @@ findings: [] # previous verification failures on re-spawn
 3. Read the Schema file and understand the custom field structure.
 4. Internalize all schema fields and ACs. These are the implementation criteria.
 5. Assume any required shared importable surface and migration prerequisite have already been prepared. If missing shared types/interfaces/exports or unapplied migration prerequisites block the implementation, report that gap instead of broadening this worker's scope.
+6. If `useTestRef=false`, treat this worker as the only implementing-phase worker after any required surface scaffold.
 
 ### Step 3: Implement code
 
@@ -49,7 +50,7 @@ findings: [] # previous verification failures on re-spawn
 2. If a better structure appears during implementation, do not change code first.
 3. Report Spec-content changes back to the orchestrator so it can spawn `cdd-specifier`.
 4. If new shared type/interface/export/runtime scaffolds or migration prerequisites are required before meaningful logic can proceed, return `preferred_respawn_role: cdd-surface-scaffolder`.
-5. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer`, keep `schemaVersion`, and refresh `lastModified`.
+5. Re-read the current Spec before writing `sources` so you preserve non-owned `testRef` updates from `cdd-test-writer` when `useTestRef=true`, keep `schemaVersion`, and refresh `lastModified`.
 6. Update `sources` when new implementation files are added or when you need to reconcile the integrated file list after fan-in.
 
 ### Step 4: Run focused verification
@@ -68,7 +69,7 @@ If `findings` are provided:
 1. Fix the corresponding production code and `sources`.
 2. Do not update `acceptanceCriteria[].testRef`; that belongs to `cdd-test-writer`.
 3. If a finding requires shared type/interface/export/runtime surface work or migration-prerequisite work without business-logic changes, return `preferred_respawn_role: cdd-surface-scaffolder`.
-4. If a finding requires changes to tests or test semantics only, return `preferred_respawn_role: cdd-test-writer`.
+4. If a finding requires changes to tests or test semantics only and `useTestRef=true`, return `preferred_respawn_role: cdd-test-writer`.
 5. If a finding requires changes to `summary`, `description`, AC conditions, schema-defined fields, or Contract references, report it to the orchestrator so it can spawn `cdd-specifier`.
 6. Re-run focused checks.
 

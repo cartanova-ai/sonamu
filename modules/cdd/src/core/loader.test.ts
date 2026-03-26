@@ -124,6 +124,29 @@ describe("loadProject", () => {
 
     fs.rmSync(tmpDir, { recursive: true });
   });
+
+  it("useTestRef가 boolean이 아니면 에러를 던진다", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdd-test-"));
+    const contractDir = path.join(tmpDir, "contract");
+    fs.mkdirSync(contractDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contractDir, "bad.spec.json"),
+      JSON.stringify({
+        schema: "default-spec",
+        useTestRef: "no",
+        summary: "bad",
+        description: [],
+        acceptanceCriteria: [],
+        status: "draft",
+        sources: [],
+        contracts: [],
+      }),
+    );
+
+    await expect(loadProject(contractDir)).rejects.toThrow("useTestRef 필드가 boolean이 아닙니다");
+
+    fs.rmSync(tmpDir, { recursive: true });
+  });
 });
 
 describe("validateRulesStructure", () => {

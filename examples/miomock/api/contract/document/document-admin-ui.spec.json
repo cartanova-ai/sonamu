@@ -1,6 +1,7 @@
 {
   "schema": "default-spec",
   "schemaVersion": 2,
+  "useTestRef": false,
   "summary": "문서 관리 Admin UI",
   "description": [
     "Contract 'document' 도메인의 관리자 화면 기능을 구현한다.",

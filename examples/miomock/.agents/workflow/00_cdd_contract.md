@@ -73,7 +73,7 @@ Every spawned Phase task must include:
 - For Spec phases that own a status transition, execute `cdd advance <spec>` without `--commit` before returning. `cdd-specifier` skips this command when it is spawned only for later-phase artifact reconciliation.
 - `cdd-specifier` returns `artifact_reconciliation_complete: true` when it reconciles Spec content for a Spec already in `implementing`, `validating`, or `done`; in that mode it must preserve the current `status` and does not own a `cdd advance` loop.
 - `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when the shared importable surface and required migration prerequisites are ready.
-- `cdd-test-writer` and `cdd-implementer` return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then resolves any reported artifact-reconciliation follow-up, runs the integrated `cdd advance <spec>` check, and re-routes findings by ownership.
+- The active implementing workers return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then resolves any reported artifact-reconciliation follow-up, runs the integrated `cdd advance <spec>` check, and re-routes findings by ownership.
 - Any worker that edits a Spec must preserve `schemaVersion` and refresh `lastModified` to today's `YYYY-MM-DD`.
 - Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true` or `ready_for_fan_in: true` when the phase owns that loop.
 - If a blocking issue belongs to another worker or requires Contract changes, stop and return the correct re-route target.
@@ -85,11 +85,11 @@ Every spawned Phase task must include:
 
 ## Spec ownership boundary
 
-- `cdd-specifier` owns `summary`, `description`, `acceptanceCriteria`, schema-defined Spec fields, planned `sources`, `schemaVersion` normalization, and later-phase target/related Spec reconciliation after feature or implementation/test discoveries.
+- `cdd-specifier` owns `summary`, `description`, `acceptanceCriteria`, `useTestRef`, schema-defined Spec fields, planned `sources`, `schemaVersion` normalization, and later-phase target/related Spec reconciliation after feature or implementation/test discoveries.
 - `cdd-surface-scaffolder` owns shared type/interface/export files, minimal runtime stubs, and Spec-driven migration prerequisites required so downstream tests and implementation can import planned modules and start from the expected schema state. It must not edit Spec files.
-- `cdd-test-writer` owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`.
-- `cdd-implementer` owns production code, implementation support files, and the final `sources` list.
-- `cdd-validator` owns the final validation/fix loops plus the `validating -> done` pre-commit verification. It must not edit Spec files; if the fix requires changing `acceptanceCriteria[].testRef`, it must return `preferred_respawn_role: cdd-test-writer`.
+- `cdd-test-writer` owns acceptance tests, test support files, and `acceptanceCriteria[].testRef` only when `useTestRef=true`.
+- `cdd-implementer` owns production code, implementation support files, and the final `sources` list, and it becomes the sole implementing worker when `useTestRef=false`.
+- `cdd-validator` owns the final validation/fix loops plus the `validating -> done` pre-commit verification. It must not edit Spec files; if the fix requires changing `acceptanceCriteria[].testRef` while `useTestRef=true`, it must return `preferred_respawn_role: cdd-test-writer`.
 - If a Phase discovers that another worker owns the needed Spec change, it must report that fact to the orchestrator instead of editing across the boundary.
 
 ## Implementing preparation and parallel contract
@@ -98,13 +98,13 @@ When the active Spec status is `implementing`:
 - The orchestrator must first decide whether planned imports or prerequisite schema changes are blocked by missing shared type/interface/export/runtime surface or migration preparation.
 - If that shared surface or migration prerequisite is missing, the orchestrator must spawn `cdd-surface-scaffolder` before the parallel pair.
 - `cdd-surface-scaffolder` may not edit the Spec and may not add business logic or tests.
-- Once the shared surface is ready, the orchestrator must spawn `cdd-test-writer` and `cdd-implementer` as a parallel pair.
-- Both workers receive the same `spec_path`, `contract_paths`, `schema_path`, and `rules_paths`, plus explicit ownership boundaries in `objective_packet.constraints`.
+- Once the shared surface is ready, the orchestrator must always spawn `cdd-implementer`, and it must also spawn `cdd-test-writer` when `useTestRef=true`.
+- Every active implementing worker receives the same `spec_path`, `contract_paths`, `schema_path`, and `rules_paths`, plus explicit ownership boundaries in `objective_packet.constraints`.
 - `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when imports, exports, shared type/interface scaffolds, and required migration prerequisites are ready for downstream work.
 - `cdd-test-writer` may edit only `acceptanceCriteria[].testRef` inside the Spec.
 - `cdd-implementer` may edit only `sources` inside the Spec.
-- The orchestrator owns the integrated `cdd advance <spec>` loop after both workers return.
-- Re-spawn by ownership: missing shared type/interface/export/runtime surface or migration prerequisite goes to `cdd-surface-scaffolder`; `testRef` and test-semantic findings go to `cdd-test-writer`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
+- The orchestrator owns the integrated `cdd advance <spec>` loop after the active implementing workers return.
+- Re-spawn by ownership: missing shared type/interface/export/runtime surface or migration prerequisite goes to `cdd-surface-scaffolder`; `testRef` and test-semantic findings go to `cdd-test-writer` only when `useTestRef=true`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
 
 ## Cross-artifact review rules
 

@@ -39,14 +39,19 @@ findings: [] # previous verification failures on re-spawn
 2. Read the referenced Contract files and any related Specs from `dependsOnSpecs`.
 3. Read the Schema file.
 4. Read all files listed in `sources`.
-5. Read all AC `testRef.target` files.
+5. When `useTestRef=true`, read all AC `testRef.target` files.
 
 ### Step 3: Verify AC-test matching
 
-For each AC:
-1. Verify that a test matching `testRef.pattern` exists in the `testRef.target` file.
+When `useTestRef=true`:
+1. For each AC, verify that a test matching `testRef.pattern` exists in the `testRef.target` file.
 2. Verify that the test actually validates the meaning of the `condition`.
 3. Record a finding if the match is missing or semantically weak.
+
+When `useTestRef=false`:
+1. Skip `testRef`-based matching.
+2. Verify each AC directly against the implementation and user-facing flow in `sources`.
+3. Record a finding if the implementation does not make the AC meaning observable.
 
 ### Step 4: Verify Spec-code consistency
 
@@ -57,17 +62,21 @@ For each required Schema field:
 
 ### Step 5: Run build and tests
 
+When `useTestRef=true`:
+
 ```bash
 pnpm build
 pnpm sonamu test  # or pnpm test
 ```
+
+When `useTestRef=false`, run only the build step that is meaningful for the current implementation scope and rely on direct implementation validation instead of test execution.
 
 Record a finding if build or tests fail.
 
 ### Step 6: Verify constraint and error-handling coverage
 
 1. Verify that constraint-related Schema fields are reflected in the code.
-2. Verify that failure scenarios defined in error-handling-related Schema fields are covered by tests.
+2. Verify that failure scenarios defined in error-handling-related Schema fields are covered by tests when `useTestRef=true`, or by direct implementation evidence when `useTestRef=false`.
 3. Record a finding if coverage is missing or semantically weak.
 
 ### Step 7: Review validation-driven artifact impact
@@ -82,20 +91,21 @@ Record a finding if build or tests fail.
 If `findings` are provided:
 - Fix code and tests that fail the validating-stage checks.
 - If the fix requires new shared type/interface/export/runtime surface without meaningful business-logic work, return `preferred_respawn_role: cdd-surface-scaffolder`.
-- If the fix requires changing `acceptanceCriteria[].testRef`, return `preferred_respawn_role: cdd-test-writer`.
+- If the fix requires changing `acceptanceCriteria[].testRef` and `useTestRef=true`, return `preferred_respawn_role: cdd-test-writer`.
 - If Spec narrative or schema-field modification is needed, report that to the orchestrator so it can spawn `cdd-specifier`.
 
 ### Step 9: Run the pre-commit transition check
 
 1. Run `cdd advance <spec>` without `--commit`.
-2. If Layer 1 fails because `testRef.pattern` or other `testRef` data is incomplete, return `preferred_respawn_role: cdd-test-writer` instead of patching the Spec directly.
-3. If build/test evidence fails, or if Layer 1/Layer 2 still exposes test-file semantics gaps, fix the code/tests and re-run the command.
+2. If Layer 1 fails because `testRef.pattern` or other `testRef` data is incomplete while `useTestRef=true`, return `preferred_respawn_role: cdd-test-writer` instead of patching the Spec directly.
+3. If build/test evidence fails, or if Layer 1/Layer 2 still exposes test-file semantics gaps while `useTestRef=true`, fix the code/tests and re-run the command.
 4. If the CLI emits delegate output, perform the Layer 2 semantic verification inside this worker:
-   - each mapped test semantically validates the AC condition
-   - constraint-related expectations are reflected in code and tests
-   - error-handling scenarios are covered with meaningful assertions
+   - when `useTestRef=true`, each mapped test semantically validates the AC condition
+   - when `useTestRef=false`, each AC condition is observable in the implementation or user flow without relying on `testRef`
+   - constraint-related expectations are reflected in code and, when applicable, tests
+   - error-handling scenarios are covered with meaningful assertions or implementation evidence
 5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
-6. If the remaining issue requires `testRef` changes, stop and return `preferred_respawn_role: cdd-test-writer`.
+6. If the remaining issue requires `testRef` changes and `useTestRef=true`, stop and return `preferred_respawn_role: cdd-test-writer`.
 7. If the remaining issue requires shared type/interface/export/runtime surface work without Spec narrative changes, stop and return `preferred_respawn_role: cdd-surface-scaffolder`.
 8. If the remaining issue requires Spec narrative or schema-field changes, or if the validated implementation is correct but the documented behavior is stale, stop and return `preferred_respawn_role: cdd-specifier`.
 
@@ -126,7 +136,7 @@ spec_code_consistency:
     consistent: true|false
     message: "{reason for inconsistency}"
 build_status: "pass|fail"
-test_status: "pass|fail"
+test_status: "pass|fail|not_run"
 artifact_reconciliation:
   sources_reviewed: ["{source paths reviewed}"]
   source_linked_specs_reviewed: ["{spec paths whose sources include changed files}"]

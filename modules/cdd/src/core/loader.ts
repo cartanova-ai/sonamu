@@ -118,6 +118,9 @@ function validateSpecStructure(parsed: unknown, filePath: string): void {
   if (typeof obj.summary !== "string") {
     throw new Error(`summary 필드가 문자열이 아닙니다: ${filePath}`);
   }
+  if (obj.useTestRef !== undefined && typeof obj.useTestRef !== "boolean") {
+    throw new Error(`useTestRef 필드가 boolean이 아닙니다: ${filePath}`);
+  }
   if (!Array.isArray(obj.description)) {
     throw new Error(`description 필드가 배열이 아닙니다: ${filePath}`);
   }

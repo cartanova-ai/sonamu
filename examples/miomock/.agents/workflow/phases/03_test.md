@@ -1,6 +1,6 @@
 # Phase 3B: Write Tests
 
-Write acceptance tests from the confirmed Spec. This worker owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and production code plus the final `sources` list are owned by `cdd-implementer`.
+Write acceptance tests from the confirmed Spec only when the Spec keeps `useTestRef=true`. This worker owns acceptance tests, test support files, and `acceptanceCriteria[].testRef`. Shared importable surface and migration-prerequisite preparation belong to `cdd-surface-scaffolder`, and production code plus the final `sources` list are owned by `cdd-implementer`.
 
 ## Required reading (mandatory)
 
@@ -38,10 +38,11 @@ findings: [] # previous verification failures on re-spawn
 ### Step 2: Review the Spec
 
 1. Read the Spec file and confirm current status is `implementing`.
-2. Read the Schema file and internalize all acceptance criteria.
-3. Read the referenced Contract files and any related Specs from `dependsOnSpecs` when they constrain acceptance semantics.
-4. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
-5. Assume any required shared importable surface and migration prerequisite have already been prepared. If they have not, report that gap instead of creating them here.
+2. Confirm `useTestRef=true`. If the Spec uses `useTestRef=false`, stop and return `ready_for_fan_in: false` with a blocking reason because this worker should not have been spawned.
+3. Read the Schema file and internalize all acceptance criteria.
+4. Read the referenced Contract files and any related Specs from `dependsOnSpecs` when they constrain acceptance semantics.
+5. Read any existing test files referenced from `acceptanceCriteria[].testRef` or planned in `sources`.
+6. Assume any required shared importable surface and migration prerequisite have already been prepared. If they have not, report that gap instead of creating them here.
 
 ### Step 3: Write acceptance tests
 
