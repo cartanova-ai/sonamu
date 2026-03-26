@@ -1059,6 +1059,40 @@ async function skills_sync_to(
     }
   }
 
+  // settings.local.json — project-local 모드에서만, 없을 때만 생성
+  if (options.copyProjectTemplates) {
+    const settingsLocalPath = path.join(claudeDir, "settings.local.json");
+    if (!(await exists(settingsLocalPath))) {
+      try {
+        const settingsContent = {
+          hooks: {
+            PostToolUse: [
+              {
+                matcher: "Edit|Write|MultiEdit",
+                hooks: [
+                  {
+                    type: "command",
+                    command: "pnpm biome check --changed 2>&1 | head -60",
+                  },
+                ],
+              },
+            ],
+          },
+        };
+        await writeFile(settingsLocalPath, `${JSON.stringify(settingsContent, null, 2)}\n`);
+        console.log(chalk.green(`✓ .claude/settings.local.json created`));
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `✗ Failed to create settings.local.json: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+      }
+    } else {
+      console.log(chalk.dim(`⏭ .claude/settings.local.json already exists (preserved)`));
+    }
+  }
+
   // CLAUDE.md 복사/업데이트
   if (await exists(sourceClaudeMd)) {
     try {
