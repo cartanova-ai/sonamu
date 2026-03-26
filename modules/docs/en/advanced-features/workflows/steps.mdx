@@ -125,9 +125,9 @@ When a Step is retried, previous step results are **restored from the database**
 `step.get()` is a convenient way to execute a Model method as a step. You don't need to wrap the function separately, making the code more concise.
 
 ```typescript
-import { BaseModel, workflow } from "sonamu";
+import { BaseModelClass, workflow } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async sendWelcomeEmail(userId: number) {
     const user = await this.findById(userId);
     await emailService.send({

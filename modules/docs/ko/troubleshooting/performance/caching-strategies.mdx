@@ -92,7 +92,7 @@ export default {
 ```typescript
 import { cache, Puri } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // 5분간 캐싱
   @cache({ ttl: '5m' })
   async getActiveUsersCount(): Promise<number> {
@@ -107,7 +107,7 @@ class UserModelClass extends BaseModel {
 ### TTL 설정
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 1시간 캐싱
   @cache({ ttl: '1h' })
   async getFeaturedProducts() {
@@ -143,7 +143,7 @@ class ProductModelClass extends BaseModel {
 ### 파라미터 기반 캐싱
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // 파라미터별로 다른 캐시 생성
   @cache({ ttl: '5m' })
   async getUsersByStatus(status: string) {
@@ -161,7 +161,7 @@ await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inac
 ### 캐시 키 커스터마이징
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @cache({ 
     ttl: '10m',
     key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`
@@ -233,7 +233,7 @@ class StatisticsService {
 ### 캐시 무효화
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams) {
     const user = await this.save(params);
@@ -281,7 +281,7 @@ class CacheService {
 ### 1. Read-Through 패턴
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async getProductWithCache(id: number): Promise<Product> {
     const cacheKey = `product:${id}`;
     
@@ -297,7 +297,7 @@ class ProductModelClass extends BaseModel {
 ### 2. Write-Through 패턴
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async updateProduct(id: number, params: ProductSaveParams) {
     // DB 업데이트
     const product = await this.save({ id, ...params });
@@ -313,7 +313,7 @@ class ProductModelClass extends BaseModel {
 ### 3. Cache-Aside 패턴
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async getProduct(id: number) {
     // 1. 캐시 확인
     const cached = await Sonamu.cache.get(`product:${id}`);
@@ -335,7 +335,7 @@ class ProductModelClass extends BaseModel {
 ### 4. Cache Warming
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 서버 시작 시 인기 상품 캐시 워밍
   async warmPopularProducts() {
     const popularProducts = await this.getPuri()
@@ -361,7 +361,7 @@ class ProductModelClass extends BaseModel {
 ### API 응답 캐싱
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // 목록 API - 10분 캐싱
   @cache({ ttl: '10m' })
   @api({ httpMethod: "GET" })
@@ -493,7 +493,7 @@ async getData() {
 ### 2. Event-Based
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createProduct(params: ProductSaveParams) {
     const product = await this.save(params);

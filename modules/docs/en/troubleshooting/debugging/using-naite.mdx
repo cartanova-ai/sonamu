@@ -183,7 +183,7 @@ test("conditional logging", async () => {
 You can log with Naite in business logic:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api()
   async createUser(name: string, email: string) {
     // Record log with Naite.t()
@@ -372,7 +372,7 @@ test("performance measurement", async () => {
 
 ```typescript
 // Do not use Naite in production code
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async createUser() {
     Naite.t("user.create", data); // Bad - Test only!
     return this.save(data);

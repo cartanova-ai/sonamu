@@ -100,7 +100,7 @@ Access authenticated user information through Context:
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async me(): Promise<UserSubsetA | null> {
     const { user, session } = Sonamu.getContext();
@@ -131,7 +131,7 @@ type AuthContext = {
 ### Basic Guard Usage
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Login required
   @api({ httpMethod: "GET", guards: ["user"] })
   async getProfile() {

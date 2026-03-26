@@ -163,7 +163,7 @@ Static imports between Boundary files are allowed (Sonamu's enhancement):
 // user.model.ts (boundary)
 import { PostModel } from "./post.model";  // ✅ OK - both are boundaries
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }
@@ -219,7 +219,7 @@ Console output:
 
 ```typescript
 // user.model.ts
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   isAdmin(): boolean {
     return this.role === "admin";
   }
@@ -314,7 +314,7 @@ On save, HMR:
 
 ```typescript
 // product.model.ts
-export class ProductModel extends BaseModel {
+export class ProductModel extends BaseModelClass {
   hasStock(quantity: number): boolean {
     return this.stock >= quantity;
   }
@@ -338,7 +338,7 @@ Save → 2 seconds later → Instantly reflected ✅
 import { ProductModel } from "../product/product.model";  // ✅ OK
 import { PaymentService } from "../payment/payment.service";
 
-export class OrderModel extends BaseModel {
+export class OrderModel extends BaseModelClass {
   static async createOrder(productId: number, quantity: number, userId: number) {
     const product = await ProductModel.findById(productId);
 

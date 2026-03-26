@@ -47,7 +47,7 @@ type User = {
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getMyProfile() {
     const { user } = Sonamu.getContext();
@@ -89,7 +89,7 @@ type Session = {
 **Usage example:**
 
 ```typescript
-class SessionModelClass extends BaseModel {
+class SessionModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getSessionInfo() {
     const { session } = Sonamu.getContext();
@@ -145,7 +145,7 @@ export default {
 To require authentication for API methods, you can use the `guards` option:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", guards: ["user"] })
   async getMyData() {
     const { user } = Sonamu.getContext();

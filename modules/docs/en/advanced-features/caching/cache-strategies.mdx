@@ -213,7 +213,7 @@ sequenceDiagram
 ### Grace Practical Examples
 
 ```typescript
-class AnalyticsModelClass extends BaseModel {
+class AnalyticsModelClass extends BaseModelClass {
   // Dashboard stats (heavy aggregation)
   @cache({
     ttl: "5m",      // Refresh every 5 minutes
@@ -285,7 +285,7 @@ await adminCache.get({ key: "data" });  // "admin data"
 ### Per-User Isolation
 
 ```typescript
-class UserDataModelClass extends BaseModel {
+class UserDataModelClass extends BaseModelClass {
   @api()
   async getMyData(ctx: Context) {
     const userId = ctx.user.id;
@@ -323,7 +323,7 @@ class UserDataModelClass extends BaseModel {
 ### Multi-Tenant
 
 ```typescript
-class TenantServiceModelClass extends BaseModel {
+class TenantServiceModelClass extends BaseModelClass {
   @api()
   async getData(tenantId: number) {
     // Per-tenant namespace
@@ -465,7 +465,7 @@ async getData() {
 ### TTL by Layer
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // L1 (memory): Short TTL
   // L2 (Redis): Long TTL
   @cache({
@@ -541,7 +541,7 @@ class ProductModelClass extends BaseModel {
 ### Time-Based Strategy
 
 ```typescript
-class DynamicCacheModelClass extends BaseModel {
+class DynamicCacheModelClass extends BaseModelClass {
   @api()
   async getData() {
     const hour = new Date().getHours();
@@ -568,7 +568,7 @@ class DynamicCacheModelClass extends BaseModel {
 Pre-populate cache on server start.
 
 ```typescript
-class CacheWarmerModelClass extends BaseModel {
+class CacheWarmerModelClass extends BaseModelClass {
   async warmupCache() {
     console.log("Warming up cache...");
 
@@ -602,7 +602,7 @@ await cacheWarmerModel.warmupCache();
 Cache multiple items at once.
 
 ```typescript
-class BatchCacheModelClass extends BaseModel {
+class BatchCacheModelClass extends BaseModelClass {
   async batchCache(ids: number[]) {
     // 1. Find uncached IDs
     const cacheKeys = ids.map(id => `item:${id}`);
@@ -643,7 +643,7 @@ class BatchCacheModelClass extends BaseModel {
 Decide whether to cache based on conditions.
 
 ```typescript
-class ConditionalCacheModelClass extends BaseModel {
+class ConditionalCacheModelClass extends BaseModelClass {
   @api()
   async getData(id: number, useCache: boolean = true) {
     const cacheKey = `data:${id}`;

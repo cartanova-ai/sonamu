@@ -92,7 +92,7 @@ export default {
 ```typescript
 import { cache, Puri } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Cache for 5 minutes
   @cache({ ttl: '5m' })
   async getActiveUsersCount(): Promise<number> {
@@ -107,7 +107,7 @@ class UserModelClass extends BaseModel {
 ### TTL Configuration
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // Cache for 1 hour
   @cache({ ttl: '1h' })
   async getFeaturedProducts() {
@@ -143,7 +143,7 @@ class ProductModelClass extends BaseModel {
 ### Parameter-based Caching
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Creates different cache entries per parameter
   @cache({ ttl: '5m' })
   async getUsersByStatus(status: string) {
@@ -161,7 +161,7 @@ await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inac
 ### Custom Cache Keys
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @cache({
     ttl: '10m',
     key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`
@@ -233,7 +233,7 @@ class StatisticsService {
 ### Cache Invalidation
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams) {
     const user = await this.save(params);
@@ -281,7 +281,7 @@ class CacheService {
 ### 1. Read-Through Pattern
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async getProductWithCache(id: number): Promise<Product> {
     const cacheKey = `product:${id}`;
 
@@ -297,7 +297,7 @@ class ProductModelClass extends BaseModel {
 ### 2. Write-Through Pattern
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async updateProduct(id: number, params: ProductSaveParams) {
     // Update DB
     const product = await this.save({ id, ...params });
@@ -313,7 +313,7 @@ class ProductModelClass extends BaseModel {
 ### 3. Cache-Aside Pattern
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   async getProduct(id: number) {
     // 1. Check cache
     const cached = await Sonamu.cache.get(`product:${id}`);
@@ -335,7 +335,7 @@ class ProductModelClass extends BaseModel {
 ### 4. Cache Warming
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // Warm popular products cache on server start
   async warmPopularProducts() {
     const popularProducts = await this.getPuri()
@@ -361,7 +361,7 @@ class ProductModelClass extends BaseModel {
 ### API Response Caching
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // List API - 10 minute cache
   @cache({ ttl: '10m' })
   @api({ httpMethod: "GET" })
@@ -493,7 +493,7 @@ async getData() {
 ### 2. Event-Based
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createProduct(params: ProductSaveParams) {
     const product = await this.save(params);

@@ -10,9 +10,9 @@ By adding the `compress` option to Sonamu's `@api` decorator, you can **finely c
 ### Adding to @api Decorator
 
 ```typescript
-import { BaseModel, api, CompressPresets } from "sonamu";
+import { BaseModelClass, api, CompressPresets } from "sonamu";
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({
     httpMethod: 'GET',
     compress: CompressPresets.aggressive,  // Aggressive compression for this API only
@@ -154,7 +154,7 @@ export const config: SonamuConfig = {
 };
 
 // Model - selective compression
-class DataModelClass extends BaseModel {
+class DataModelClass extends BaseModelClass {
   // Compress only this API
   @api({
     httpMethod: 'GET',
@@ -272,7 +272,7 @@ async getHTML() {
 ### 1. E-commerce API
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // Product list: default compression
   @api({
     httpMethod: 'GET',
@@ -323,7 +323,7 @@ class ProductModelClass extends BaseModel {
 ### 2. File Download API
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   // JSON file: aggressive compression
   @api({
     httpMethod: 'GET',
@@ -356,7 +356,7 @@ class FileModelClass extends BaseModel {
 ### 3. Statistics/Report API
 
 ```typescript
-class ReportModelClass extends BaseModel {
+class ReportModelClass extends BaseModelClass {
   // Real-time stats: conservative compression (fast response)
   @api({
     httpMethod: 'GET',
@@ -389,7 +389,7 @@ class ReportModelClass extends BaseModel {
 ### 4. Streaming API
 
 ```typescript
-class StreamModelClass extends BaseModel {
+class StreamModelClass extends BaseModelClass {
   // SSE stream: no compression
   @stream({
     type: 'sse',

@@ -13,7 +13,7 @@ Problems that may occur during HMR usage and practical solutions.
 
 ```typescript
 // Modified user.model.ts
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   isActive(): boolean {
     return this.status === "active";  // Added this logic but...
   }
@@ -335,7 +335,7 @@ Circular reference between Models:
 // user.model.ts
 import { PostModel } from "../post/post.model";
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts() {
     return PostModel.findMany({ where: { userId: this.id } });
   }
@@ -344,7 +344,7 @@ export class UserModel extends BaseModel {
 // post.model.ts
 import { UserModel } from "../user/user.model";  // ← 🚨 Circular reference!
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor() {
     return UserModel.findById(this.userId);
   }
@@ -359,7 +359,7 @@ export class PostModel extends BaseModel {
 // user.model.ts
 import type { PostSaved } from "../post/post.types";  // ✅ Types only
 
-export class UserModel extends BaseModel {
+export class UserModel extends BaseModelClass {
   async getPosts(): Promise<PostSaved[]> {
     // Load actual class via dynamic import
     const { PostModel } = await import("../post/post.model");
@@ -370,7 +370,7 @@ export class UserModel extends BaseModel {
 // post.model.ts
 import type { UserSaved } from "../user/user.types";  // ✅ Types only
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor(): Promise<UserSaved> {
     const { UserModel } = await import("../user/user.model");
     return UserModel.findById(this.userId);
@@ -398,7 +398,7 @@ import type { UserSaved } from "./shared-types";
 // Reference user.model.ts only from post.model.ts
 import { UserModel } from "../user/user.model";  // ✅ Unidirectional
 
-export class PostModel extends BaseModel {
+export class PostModel extends BaseModelClass {
   async getAuthor() {
     return UserModel.findById(this.userId);
   }

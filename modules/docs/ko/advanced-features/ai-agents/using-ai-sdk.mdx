@@ -84,7 +84,7 @@ for await (const chunk of result.textStream) {
 ### SSE와 통합
 
 ```typescript
-import { BaseModel, stream } from "sonamu";
+import { BaseModelClass, stream } from "sonamu";
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { z } from "zod";
@@ -98,7 +98,7 @@ const ChatStreamEvents = z.object({
   }),
 });
 
-class ChatModelClass extends BaseModel {
+class ChatModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: ChatStreamEvents,
@@ -238,12 +238,12 @@ console.log(result.object);
 ### 실전 예제
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async generateProductDescription(productName: string) {
     const result = await generateObject({
@@ -308,10 +308,10 @@ console.log(result.segments);
 ### 파일 업로드 + 음성 인식
 
 ```typescript
-import { BaseModel, upload, api } from "sonamu";
+import { BaseModelClass, upload, api } from "sonamu";
 import { rtzr } from 'sonamu/ai/providers/rtzr';
 
-class TranscriptionModelClass extends BaseModel {
+class TranscriptionModelClass extends BaseModelClass {
   @upload()
   async transcribeAudio() {
     const { files } = Sonamu.getContext();
@@ -396,11 +396,11 @@ console.log(result.text);
 ### 이미지 업로드 + 분석
 
 ```typescript
-import { BaseModel, upload, api } from "sonamu";
+import { BaseModelClass, upload, api } from "sonamu";
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
-class ImageAnalysisModelClass extends BaseModel {
+class ImageAnalysisModelClass extends BaseModelClass {
   @upload()
   async analyzeImage() {
     const { files } = Sonamu.getContext();
@@ -487,12 +487,12 @@ console.log('Cost:', cost);
 ### AI 채팅 API
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { z } from 'zod';
 
-class ChatModelClass extends BaseModel {
+class ChatModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async chat(
     message: string,

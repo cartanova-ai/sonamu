@@ -10,9 +10,9 @@ You can use the `@cache` decorator to automatically cache the results of Model o
 ### Simple Example
 
 ```typescript
-import { BaseModel, cache, api } from "sonamu";
+import { BaseModelClass, cache, api } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @cache({ ttl: "10m" })
   @api()
   async findById(id: number) {
@@ -49,7 +49,7 @@ If no key is specified, it is **automatically generated**.
 <Tabs>
   <Tab title="Auto-generated (Default)" icon="wand-magic-sparkles">
     ```typescript
-    class UserModelClass extends BaseModel {
+    class UserModelClass extends BaseModelClass {
       @cache({ ttl: "10m" })
       async findById(id: number) {
         return this.findOne(['id', id]);
@@ -156,7 +156,7 @@ async getExpensiveData() {
 You can use tags to invalidate related caches as a group.
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product", "list"] })
   @api()
   async findAll() {
@@ -212,7 +212,7 @@ export const config: SonamuConfig = {
 };
 
 // Specify store in Model
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Use api store (default)
   @cache({ ttl: "5m" })
   @api()
@@ -250,7 +250,7 @@ async getRealTimeData() {
 ### 1. API Response Caching
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // Post list (5 minute cache)
   @cache({ ttl: "5m", tags: ["post", "list"] })
   @api()
@@ -289,7 +289,7 @@ class PostModelClass extends BaseModel {
 ### 2. Cache Invalidation on Data Change
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product"] })
   @api()
   async findById(id: number) {
@@ -327,7 +327,7 @@ class ProductModelClass extends BaseModel {
 ### 3. Complex Key Generation
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   @cache({
     key: (userId: number, status: string, startDate: string) =>
       `order:user:${userId}:${status}:${startDate}`,
@@ -357,7 +357,7 @@ class OrderModelClass extends BaseModel {
 ### 4. Using Stale-While-Revalidate
 
 ```typescript
-class AnalyticsModelClass extends BaseModel {
+class AnalyticsModelClass extends BaseModelClass {
   @cache({
     ttl: "5m",      // Expires after 5 minutes
     grace: "1h",    // Use stale value for 1 hour
@@ -385,7 +385,7 @@ class AnalyticsModelClass extends BaseModel {
 ### 5. Permanent Caching for Configuration Values
 
 ```typescript
-class ConfigModelClass extends BaseModel {
+class ConfigModelClass extends BaseModelClass {
   @cache({
     key: "app-config",
     ttl: "forever",  // Permanent caching
@@ -413,7 +413,7 @@ class ConfigModelClass extends BaseModel {
 Cache is also shared when calling other methods within a Model.
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   // Apply cache to findMany
   @cache({ ttl: "10m", tags: ["user"] })
   @api()
@@ -524,7 +524,7 @@ You can also manipulate the cache directly without decorators.
 ```typescript
 import { Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api()
   async findById(id: number) {
     const cacheKey = `user:${id}`;

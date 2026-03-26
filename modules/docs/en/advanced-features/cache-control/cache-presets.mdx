@@ -539,7 +539,7 @@ export const config: SonamuConfig = {
 ### Strategy by API
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // List: Frequently changes → Short cache
   @api({
     httpMethod: 'GET',

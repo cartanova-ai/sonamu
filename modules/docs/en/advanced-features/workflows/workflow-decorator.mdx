@@ -59,10 +59,10 @@ Example: `sendWelcomeEmail` -> `send_welcome_email`
 When running a Workflow from an API endpoint, it **returns immediately** and the task proceeds in the background. Users don't have to wait for long-running tasks.
 
 ```typescript
-import { BaseModel, api, Sonamu } from "sonamu";
+import { BaseModelClass, api, Sonamu } from "sonamu";
 import { sendWelcomeEmail } from "../workflows/email.workflow";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async register(email: string, password: string) {
     // Save user

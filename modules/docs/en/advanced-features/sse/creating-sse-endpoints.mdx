@@ -12,9 +12,9 @@ A decorator for defining SSE endpoints.
 ### Basic Usage
 
 ```typescript
-import { BaseModel, stream, z } from "sonamu";
+import { BaseModelClass, stream, z } from "sonamu";
 
-class NotificationModelClass extends BaseModel {
+class NotificationModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({
@@ -158,7 +158,7 @@ await sse.end();
 ### 1. Real-time Notifications
 
 ```typescript
-class NotificationModelClass extends BaseModel {
+class NotificationModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({
@@ -217,7 +217,7 @@ class NotificationModelClass extends BaseModel {
 ### 2. Task Progress
 
 ```typescript
-class TaskModelClass extends BaseModel {
+class TaskModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({
@@ -285,7 +285,7 @@ class TaskModelClass extends BaseModel {
 ### 3. Live Feed
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({
@@ -348,7 +348,7 @@ class PostModelClass extends BaseModel {
 ### 4. Multiple Events
 
 ```typescript
-class ChatModelClass extends BaseModel {
+class ChatModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({
@@ -428,7 +428,7 @@ class ChatModelClass extends BaseModel {
 ### 5. Conditional Sending
 
 ```typescript
-class MonitorModelClass extends BaseModel {
+class MonitorModelClass extends BaseModelClass {
   @stream({
     type: 'sse',
     events: z.object({

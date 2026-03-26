@@ -183,7 +183,7 @@ test("조건부 로깅", async () => {
 비즈니스 로직에서 Naite로 로그를 남길 수 있습니다:
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api()
   async createUser(name: string, email: string) {
     // Naite.t()로 로그 기록
@@ -372,7 +372,7 @@ test("성능 측정", async () => {
 
 ```typescript
 // ❌ 프로덕션 코드에서 Naite 사용하지 말 것
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async createUser() {
     Naite.t("user.create", data); // ❌ 테스트 전용!
     return this.save(data);

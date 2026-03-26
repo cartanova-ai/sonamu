@@ -134,7 +134,7 @@ The server **automatically restarts** when modifying these files:
 
 ```typescript
 // Modifying user.model.ts
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findById(id: number) {
     return this.getPuri("r").where("id", id).first();

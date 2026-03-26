@@ -134,7 +134,7 @@ if (process.env.HOT === 'yes') {
 
 ```typescript
 // user.model.ts 수정
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findById(id: number) {
     return this.getPuri("r").where("id", id).first();

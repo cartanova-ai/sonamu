@@ -67,7 +67,7 @@ ORDER BY similarity DESC;
 
 **4. Sonamu Model과 통합이 자연스럽습니다**
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // Puri로 벡터 검색 SQL 작성
@@ -404,7 +404,7 @@ USING hnsw (embedding vector_cosine_ops);
 
 **4단계: 검색 API (나중에)**
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // vector-search.mdx 참고

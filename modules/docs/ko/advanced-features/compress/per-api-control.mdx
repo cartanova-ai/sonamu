@@ -10,9 +10,9 @@ Sonamu의 `@api` 데코레이터에 `compress` 옵션을 추가하여 **API별�
 ### @api 데코레이터에 추가
 
 ```typescript
-import { BaseModel, api, CompressPresets } from "sonamu";
+import { BaseModelClass, api, CompressPresets } from "sonamu";
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api({
     httpMethod: 'GET',
     compress: CompressPresets.aggressive,  // 이 API만 적극적 압축
@@ -154,7 +154,7 @@ export const config: SonamuConfig = {
 };
 
 // Model - 선택적 압축
-class DataModelClass extends BaseModel {
+class DataModelClass extends BaseModelClass {
   // 이 API만 압축
   @api({
     httpMethod: 'GET',
@@ -272,7 +272,7 @@ async getHTML() {
 ### 1. 전자상거래 API
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 상품 목록: 기본 압축
   @api({
     httpMethod: 'GET',
@@ -323,7 +323,7 @@ class ProductModelClass extends BaseModel {
 ### 2. 파일 다운로드 API
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   // JSON 파일: 적극적 압축
   @api({
     httpMethod: 'GET',
@@ -356,7 +356,7 @@ class FileModelClass extends BaseModel {
 ### 3. 통계/리포트 API
 
 ```typescript
-class ReportModelClass extends BaseModel {
+class ReportModelClass extends BaseModelClass {
   // 실시간 통계: 보수적 압축 (빠른 응답)
   @api({
     httpMethod: 'GET',
@@ -389,7 +389,7 @@ class ReportModelClass extends BaseModel {
 ### 4. 스트리밍 API
 
 ```typescript
-class StreamModelClass extends BaseModel {
+class StreamModelClass extends BaseModelClass {
   // SSE 스트림: 압축 안 함
   @stream({
     type: 'sse',

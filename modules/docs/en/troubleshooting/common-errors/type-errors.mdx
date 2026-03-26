@@ -10,7 +10,7 @@ This covers common TypeScript type-related errors in Sonamu and how to resolve t
 ### Symptoms
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async delete(id: number) {  // ❌
     // delete is a JavaScript reserved keyword
   }
@@ -119,7 +119,7 @@ If file is missing or outdated, re-run sync.
 ### Symptoms
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   async findByEmail(email: string) {
     return this.findOne({ email });
     // Error: Property 'findOne' does not exist on type 'UserModelClass'
@@ -169,7 +169,7 @@ pnpm sonamu sync
 ```typescript
 type OrderStatus = "pending" | "processing" | "completed";
 
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   async updateStatus(id: number, status: string) {  // ❌
     // status should be OrderStatus
   }
@@ -185,7 +185,7 @@ Specify explicit type:
 ```typescript
 type OrderStatus = "pending" | "processing" | "completed";
 
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   async updateStatus(id: number, status: OrderStatus) {  // ✅
     return this.updateOne(
       { id },
@@ -319,13 +319,13 @@ z.literal(`user:$\{string}`)  // Properly escaped
 
 ```typescript
 // user.model.ts
-export class UserModelClass extends BaseModel {
+export class UserModelClass extends BaseModelClass {
   // ...
 }
 export type User = { ... posts: Post[] };
 
 // post.model.ts
-export class PostModelClass extends BaseModel {
+export class PostModelClass extends BaseModelClass {
   // ...
 }
 export type Post = { ... author: User };

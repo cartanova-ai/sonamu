@@ -539,7 +539,7 @@ export const config: SonamuConfig = {
 ### API별 전략
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 목록: 자주 변경 → 짧은 캐시
   @api({
     httpMethod: 'GET',

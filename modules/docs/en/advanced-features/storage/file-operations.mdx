@@ -34,9 +34,9 @@ Used when creating file upload APIs.
 ### Single File Upload
 
 ```typescript
-import { BaseModel, api, upload, Sonamu } from "sonamu";
+import { BaseModelClass, api, upload, Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -68,7 +68,7 @@ await fetch('/api/user/uploadAvatar', {
 ### Multiple File Upload
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
     const { files } = Sonamu.getContext();
@@ -280,7 +280,7 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 ### 1. Profile Photo Upload
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload()
   @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
@@ -324,7 +324,7 @@ class UserModelClass extends BaseModel {
 ### 2. Multiple Image Upload
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload()
   @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
@@ -362,7 +362,7 @@ class PostModelClass extends BaseModel {
 ### 3. File Type Validation
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
@@ -402,7 +402,7 @@ class FileModelClass extends BaseModel {
 ### 4. Deduplication Check with MD5 Hash
 
 ```typescript
-class MediaModelClass extends BaseModel {
+class MediaModelClass extends BaseModelClass {
   @upload()
   @api({ httpMethod: 'POST' })
   async uploadMedia() {
@@ -448,7 +448,7 @@ class MediaModelClass extends BaseModel {
 ### 5. Disk Selection
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   @api({ httpMethod: 'POST' })
   async upload(visibility: 'public' | 'private', ctx: Context) {

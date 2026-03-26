@@ -31,7 +31,7 @@ const updatedPost = await postModel.findById(1);
 가장 기본적인 방법입니다.
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m" })
   @api()
   async findById(id: number) {
@@ -57,7 +57,7 @@ class PostModelClass extends BaseModel {
 태그를 사용하면 **관련 캐시를 그룹으로 삭제**할 수 있습니다.
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   // 태그 지정
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
@@ -107,7 +107,7 @@ await Sonamu.cache.clear();
 ### 계층적 태그 설계
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   // 상품 상세 (가장 구체적)
   @cache({ ttl: "1h", tags: ["product", "product:detail"] })
   @api()
@@ -145,7 +145,7 @@ class ProductModelClass extends BaseModel {
 ### 선택적 무효화
 
 ```typescript
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api()
   async create(data: ProductSave) {
     const result = await this.saveOne(data);
@@ -195,7 +195,7 @@ class ProductModelClass extends BaseModel {
 특정 엔티티에만 영향을 주는 태그를 동적으로 생성합니다.
 
 ```typescript
-class CommentModelClass extends BaseModel {
+class CommentModelClass extends BaseModelClass {
   @cache({ 
     key: (postId: number) => `comments:post:${postId}`,
     ttl: "10m",
@@ -242,7 +242,7 @@ async findByPostId(postId: number) {
 ### 1. 게시글 + 댓글 무효화
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
   async findById(id: number) {
@@ -258,7 +258,7 @@ class PostModelClass extends BaseModel {
   }
 }
 
-class CommentModelClass extends BaseModel {
+class CommentModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["comment"] })
   @api()
   async findByPostId(postId: number) {
@@ -280,7 +280,7 @@ class CommentModelClass extends BaseModel {
 ### 2. 사용자 + 권한 무효화
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["user"] })
   @api()
   async findById(id: number) {
@@ -290,7 +290,7 @@ class UserModelClass extends BaseModel {
   }
 }
 
-class UserRoleModelClass extends BaseModel {
+class UserRoleModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["user", "role"] })
   @api()
   async findByUserId(userId: number) {
@@ -312,7 +312,7 @@ class UserRoleModelClass extends BaseModel {
 ### 3. 카테고리 계층 구조
 
 ```typescript
-class CategoryModelClass extends BaseModel {
+class CategoryModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["category", "category:tree"] })
   @api()
   async getTree() {
@@ -338,7 +338,7 @@ class CategoryModelClass extends BaseModel {
   }
 }
 
-class ProductModelClass extends BaseModel {
+class ProductModelClass extends BaseModelClass {
   @api()
   async updateCategory(productId: number, categoryId: number) {
     const result = await this.updateOne(['id', productId], { category_id: categoryId });
@@ -354,7 +354,7 @@ class ProductModelClass extends BaseModel {
 ### 4. 집계 데이터 무효화
 
 ```typescript
-class OrderModelClass extends BaseModel {
+class OrderModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["order", "order:stats"] })
   @api()
   async getStats() {
@@ -385,7 +385,7 @@ Namespace를 사용하면 **사용자별, 테넌트별**로 캐시를 격리할 
 ### 사용자별 캐시
 
 ```typescript
-class UserDataModelClass extends BaseModel {
+class UserDataModelClass extends BaseModelClass {
   @api()
   async getMyData(ctx: Context) {
     const userId = ctx.user.id;
@@ -417,7 +417,7 @@ class UserDataModelClass extends BaseModel {
 ### 멀티 테넌트
 
 ```typescript
-class TenantDataModelClass extends BaseModel {
+class TenantDataModelClass extends BaseModelClass {
   @api()
   async getData(tenantId: number) {
     const tenantCache = Sonamu.cache.namespace(`tenant:${tenantId}`);

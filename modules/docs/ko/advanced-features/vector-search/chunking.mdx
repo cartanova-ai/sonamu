@@ -8,7 +8,7 @@ description: "Sonamu에서 긴 문서를 작은 조각으로 분할하기"
 Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들고 있습니다:
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @upload()
   async uploadDocument() {
     const { files } = Sonamu.getContext();
@@ -85,7 +85,7 @@ const chunks = chunking.chunk("긴 텍스트...");
 ### 긴 문서 업로드 + 청킹
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @upload()
   async uploadLongDocument() {
     const { files } = Sonamu.getContext();

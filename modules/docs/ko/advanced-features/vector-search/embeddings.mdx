@@ -8,7 +8,7 @@ description: "Sonamu에서 Voyage AI, OpenAI로 텍스트 임베딩 생성하기
 Sonamu로 지식 베이스 앱을 만들고 있습니다:
 
 ```typescript
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async search(query: string) {
     // 키워드 검색
@@ -150,10 +150,10 @@ API 키는 각 프로바이더 웹사이트에서 발급받습니다:
 ### 문서 저장 시 임베딩 생성
 
 ```typescript
-import { BaseModel, api } from "sonamu";
+import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
-class DocumentModelClass extends BaseModel {
+class DocumentModelClass extends BaseModelClass {
   @api({ httpMethod: 'POST' })
   async createDocument(title: string, content: string) {
     // 1. 임베딩 생성
@@ -327,7 +327,7 @@ Sonamu로 고객 지원 시스템을 만들고 있습니다.
 
 **1단계: 문서 업로드 API**
 ```typescript
-class KnowledgeBaseModelClass extends BaseModel {
+class KnowledgeBaseModelClass extends BaseModelClass {
   @upload()
   async uploadDocument() {
     const { files } = Sonamu.getContext();

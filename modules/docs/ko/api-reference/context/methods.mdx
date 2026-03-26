@@ -50,7 +50,7 @@ export function requireAuth() {
 // src/models/post.model.ts
 import { requireAuth } from "../utils/auth-helper";
 
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string, content: string) {
     // Context를 직접 받지 않아도 헬퍼 함수를 통해 사용자 정보 접근
@@ -163,7 +163,7 @@ uploadedFiles?: UploadedFile[];  // stream 모드
 #### 단일 파일 업로드 (Buffer 모드)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { bufferedFiles } = Sonamu.getContext();
@@ -191,7 +191,7 @@ class FileModelClass extends BaseModel {
 #### 다중 파일 업로드 (Buffer 모드)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
     const { bufferedFiles } = Sonamu.getContext();
@@ -226,7 +226,7 @@ class FileModelClass extends BaseModel {
 #### 대용량 파일 업로드 (Stream 모드)
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload({ mode: "stream" })
   async uploadLargeFiles(ctx: Context) {
     const { uploadedFiles } = Sonamu.getContext();
@@ -274,7 +274,7 @@ export function validateFileTypes(allowedTypes: string[]) {
 ```
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @api()
   @upload()
   async uploadImages(ctx: Context) {
@@ -372,7 +372,7 @@ class UploadedFile {
 
 ```typescript
 // ✅ 올바른 사용
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string) {
     const user = this.getCurrentUser(); // 같은 스택 내
@@ -385,7 +385,7 @@ class PostModelClass extends BaseModel {
 }
 
 // ❌ 잘못된 사용
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @api()
   async createPost(title: string) {
     // setTimeout은 새로운 실행 스택을 생성

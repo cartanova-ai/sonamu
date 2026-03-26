@@ -34,9 +34,9 @@ sequenceDiagram
 ### 단일 파일 업로드
 
 ```typescript
-import { BaseModel, api, upload, Sonamu } from "sonamu";
+import { BaseModelClass, api, upload, Sonamu } from "sonamu";
 
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -68,7 +68,7 @@ await fetch('/api/user/uploadAvatar', {
 ### 다중 파일 업로드
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
     const { files } = Sonamu.getContext();
@@ -280,7 +280,7 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 ### 1. 프로필 사진 업로드
 
 ```typescript
-class UserModelClass extends BaseModel {
+class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -323,7 +323,7 @@ class UserModelClass extends BaseModel {
 ### 2. 다중 이미지 업로드
 
 ```typescript
-class PostModelClass extends BaseModel {
+class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number, ctx: Context) {
     const { files } = Sonamu.getContext();
@@ -360,7 +360,7 @@ class PostModelClass extends BaseModel {
 ### 3. 파일 타입별 검증
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
     const { files } = Sonamu.getContext();
@@ -399,7 +399,7 @@ class FileModelClass extends BaseModel {
 ### 4. MD5 해시로 중복 체크
 
 ```typescript
-class MediaModelClass extends BaseModel {
+class MediaModelClass extends BaseModelClass {
   @upload()
   async uploadMedia() {
     const { files } = Sonamu.getContext();
@@ -444,7 +444,7 @@ class MediaModelClass extends BaseModel {
 ### 5. 디스크 선택
 
 ```typescript
-class FileModelClass extends BaseModel {
+class FileModelClass extends BaseModelClass {
   @upload()
   async upload(visibility: 'public' | 'private', ctx: Context) {
     const { files } = Sonamu.getContext();
