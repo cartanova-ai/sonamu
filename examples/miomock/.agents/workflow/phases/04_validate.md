@@ -98,13 +98,9 @@ If `findings` are provided:
 
 1. Run `cdd advance <spec>` without `--commit`.
 2. If Layer 1 fails because `testRef.pattern` or other `testRef` data is incomplete while `useTestRef=true`, return `preferred_respawn_role: cdd-test-writer` instead of patching the Spec directly.
-3. If build/test evidence fails, or if Layer 1/Layer 2 still exposes test-file semantics gaps while `useTestRef=true`, fix the code/tests and re-run the command.
-4. If the CLI emits delegate output, perform the Layer 2 semantic verification inside this worker:
-   - when `useTestRef=true`, each mapped test semantically validates the AC condition
-   - when `useTestRef=false`, each AC condition is observable in the implementation or user flow without relying on `testRef`
-   - constraint-related expectations are reflected in code and, when applicable, tests
-   - error-handling scenarios are covered with meaningful assertions or implementation evidence
-5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
+3. If build/test evidence fails, or if Layer 1 or the phase-owned validation evidence still exposes test-file semantics gaps while `useTestRef=true`, fix the code/tests and re-run the command.
+4. If the CLI emits delegate output, stop the self-loop and return that Layer 2 packet to the orchestrator.
+5. Do not consume the delegate payload inside this worker. The orchestrator-managed backend performs Layer 2 review.
 6. If the remaining issue requires `testRef` changes and `useTestRef=true`, stop and return `preferred_respawn_role: cdd-test-writer`.
 7. If the remaining issue requires shared type/interface/export/runtime surface work without Spec narrative changes, stop and return `preferred_respawn_role: cdd-surface-scaffolder`.
 8. If the remaining issue requires Spec narrative or schema-field changes, or if the validated implementation is correct but the documented behavior is stale, stop and return `preferred_respawn_role: cdd-specifier`.
@@ -112,10 +108,13 @@ If `findings` are provided:
 ### Step 10: Return transition readiness
 
 Return `ready_for_transition: true` only when:
-- the latest `cdd advance <spec>` check is clean
+- the latest `cdd advance <spec>` Layer 1 check is clean
 - build/test evidence is acceptable for the current scope
 - artifact reconciliation review is complete and does not require unresolved Spec or Contract follow-up
+- the delegate payload from `cdd advance <spec>` is attached for orchestrator-managed Layer 2 review
 - no out-of-scope blocker remains
+
+Return `ready_for_layer2_review: true` only when the latest `cdd advance <spec>` run produced a delegate payload after a clean Layer 1 result.
 
 ## Output
 
@@ -125,7 +124,7 @@ rules_reviewed: ["{rule ids read from rules_paths}"]
 transition_readiness:
   checked_with: "cdd advance <spec>"
   layer1_result: "pass|fail"
-  layer2_result: "pass|fail"
+  layer2_result: "pending|not_run"
 ac_validation:
   - ac_id: "{AC id}"
     pattern_matched: true|false
@@ -150,6 +149,8 @@ error_handling_covered: true|false
 overall: "pass|fail"
 findings: [{ field, severity, message }]
 ready_for_transition: true|false
+ready_for_layer2_review: true|false
+delegate_payload: "{delegate payload emitted by cdd advance, or empty when not emitted}"
 preferred_respawn_role: "cdd-validator|cdd-test-writer|cdd-surface-scaffolder|cdd-specifier"
 user_review_summary: "{brief Korean summary for orchestrator review handoff}"
 blocking_reason: "{empty when ready}"
@@ -159,3 +160,4 @@ blocking_reason: "{empty when ready}"
 
 - Do not modify Spec files (report to orchestrator if modification is needed).
 - Do not execute `cdd advance --commit`.
+- Do not consume the Layer 2 delegate payload inside this worker. Return it to the orchestrator unchanged.

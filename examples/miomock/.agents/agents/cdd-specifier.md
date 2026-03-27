@@ -17,4 +17,5 @@ Hard constraints:
 - Do not write code.
 - Do not modify Contract files. Report to orchestrator if modification is needed.
 - You may run `cdd advance`, but never `cdd advance --commit`.
+- When `cdd advance` emits a delegate payload, return it to the orchestrator instead of performing Layer 2 review inside this worker.
 - Do not execute `cdd advance --commit`.

@@ -8,6 +8,7 @@ Protocol for the main agent when assuming the CDD orchestrator role.
 
 The orchestrator may only:
 - execute CLI commands such as `cdd status`, `cdd spec create`, and `cdd advance`
+- select and invoke the Layer 2 review backend
 - inspect worker results and route follow-up work
 - spawn leaf workers
 - communicate with the user
@@ -44,6 +45,9 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 - Spec status is `validating`: Phase 4 -> spawn `cdd-validator`
   - This worker owns validating-stage code/test fixes and the final `validating -> done` pre-commit verification
   - Default `objective_packet.user_review=false`
+- Layer 2 packet is ready: review backend step -> use `Codex MCP` by default, fallback to `cdd-layer2-reviewer`
+  - The review backend reads the delegate payload emitted by `cdd advance <spec>` and returns findings only
+  - Findings are routed back to the owning phase worker; the review backend must not edit code, tests, or Specs
 - Spec status is `done`: complete and report to the user only when no change request or artifact-reconciliation follow-up remains
 
 ## Orchestration flow
@@ -74,15 +78,15 @@ The only direct artifact mutation allowed to the orchestrator is **Phase 1 scaff
 6. Inspect the worker result
    - blocked -> re-route or ask the user
    - ready_for_transition=true from `cdd-contract-writer` -> close review, then return to step 3 to resolve artifact state again
-   - ready_for_transition=true from a Spec-phase owner -> continue
+   - ready_for_layer2_review=true from a Spec-phase owner -> run the Layer 2 review backend on the returned delegate payload
    - artifact_reconciliation_complete=true from `cdd-specifier` -> resume the current phase owner or close the request if no further work remains
    - ready_for_parallel_pair=true from `cdd-surface-scaffolder` -> spawn the implementing workers required by `useTestRef`
-   - ready_for_fan_in=true from all active implementing workers -> run integrated `cdd advance <spec>`
+   - ready_for_fan_in=true from all active implementing workers -> run integrated `cdd advance <spec>` and then the Layer 2 review backend
    - impacted_spec_followups or related_spec_followups -> route the follow-up Spec work before closing the overall request
 
 7. If `objective_packet.user_review=true`, ask the user to review before phase closure
 
-8. If the current phase is a Spec transition, execute `cdd advance <spec> --commit`
+8. If the current phase is a Spec transition and the Layer 2 review backend is clean, execute `cdd advance <spec> --commit`
 
 9. If the status is still below done, return to step 3 or step 4 as appropriate
 ```
@@ -109,6 +113,17 @@ Implementation-change follow-up routing:
 - After `cdd-specifier` completes later-phase reconciliation, resume the current phase owner for another verification pass unless the request is already complete.
 - If the reconciliation reports Contract drift, stop and ask the user whether Contract edits are explicitly requested.
 
+## Layer 2 backend routing
+
+- Layer 2 semantic review is orchestrator-managed and uses the delegate payload emitted by `cdd advance <spec>`.
+- Default backend: `Codex MCP`
+- Fallback backend: `cdd-layer2-reviewer`
+- `Codex MCP` path must follow the inherited progress-file and human-in-the-loop policy.
+- If `Codex MCP` is unavailable, fails, times out, or is disallowed for the current run, spawn `cdd-layer2-reviewer` with the same review packet.
+- The backend returns findings only. The orchestrator must route each finding to the owning worker and never ask the review backend to patch the code or Spec directly.
+- If the backend returns `clean`, the orchestrator may close the review gate and continue toward `cdd advance --commit`.
+- If the backend returns `contract_drift`, stop and ask the user instead of routing a worker.
+
 ## Spawn mode
 
 ### Preset mode
@@ -123,6 +138,7 @@ Use the preset file under `.agents/agents/`.
 | 3B. implementing-tests | `cdd-test-writer` | `agents/cdd-test-writer.md` | opus |
 | 3C. implementing-code | `cdd-implementer` | `agents/cdd-implementer.md` | opus |
 | 4. validating | `cdd-validator` | `agents/cdd-validator.md` | sonnet |
+| L2. semantic-review fallback | `cdd-layer2-reviewer` | `agents/cdd-layer2-reviewer.md` | opus |
 
 ### Inline fallback mode
 
@@ -149,6 +165,7 @@ Recommended file references:
 | `cdd-test-writer` | `examples/miomock/.agents/agents/cdd-test-writer.md` | `examples/miomock/.agents/workflow/phases/03_test.md` |
 | `cdd-implementer` | `examples/miomock/.agents/agents/cdd-implementer.md` | `examples/miomock/.agents/workflow/phases/03_implement.md` |
 | `cdd-validator` | `examples/miomock/.agents/agents/cdd-validator.md` | `examples/miomock/.agents/workflow/phases/04_validate.md` |
+| `cdd-layer2-reviewer` | `examples/miomock/.agents/agents/cdd-layer2-reviewer.md` | `examples/miomock/.agents/workflow/layer2_review.md` |
 
 ## Default `user_review` mapping
 
@@ -186,7 +203,8 @@ objective_packet:
 dependencies: []
 parallelization_constraints: []
 done_criteria:
-  - "Return ready_for_transition=true when this phase is complete"
+  - "Return ready_for_transition=true when this phase-owned work is complete"
+  - "Return ready_for_layer2_review=true with delegate_payload when a Spec phase reaches a clean Layer 1 result and is waiting on orchestrator-managed Layer 2 review"
   - "Return ready_for_parallel_pair=true when shared surface and migration prerequisite preparation is complete"
   - "For the parallel implementing pair, return ready_for_fan_in=true when the owned slice is complete"
 required_tools:
@@ -228,7 +246,7 @@ Loop:
 
 ## Generic gate loop
 
-Use this loop for Spec transitions `draft -> specifying`, `specifying -> implementing`, and `validating -> done`. The worker owns the phase loop and the pre-commit `cdd advance` check. The orchestrator owns only user review and `--commit`.
+Use this loop for Spec transitions `draft -> specifying`, `specifying -> implementing`, and `validating -> done`. The worker owns the phase loop up to a clean Layer 1 result. The orchestrator owns Layer 2 backend selection, user review, and `--commit`.
 
 ```
 Loop:
@@ -237,16 +255,20 @@ Loop:
      -> phase-scoped edits
      -> `cdd advance <spec>` without `--commit`
      -> in-scope Layer 1 fixes
-     -> in-scope Layer 2 verification and fixes
-     -> re-run until `ready_for_transition=true` or the phase is blocked
+     -> return `delegate_payload` when Layer 1 is clean
+     -> re-run until `ready_for_layer2_review=true` or the phase is blocked
   3. If the worker returns blocked:
      -> Re-spawn the preferred role or ask the user when the blocker exceeds worker ownership.
      -> Do not edit directly in the main session.
-  4. If `objective_packet.user_review=true`:
+  4. When `ready_for_layer2_review=true`:
+     -> Run the Layer 2 backend with the returned delegate payload.
+     -> If the backend returns findings, re-spawn the owning worker with those findings and return to step 2.
+     -> If the backend reports Contract drift, stop and ask the user.
+  5. If `objective_packet.user_review=true`:
      -> Ask the user to review before commit.
      -> If the user requests more work in the same phase, re-spawn the same worker.
      -> If the user requests rollback to an earlier phase, route to that phase owner.
-  5. When the worker is ready and the review gate is closed, execute `cdd advance <spec> --commit`.
+  6. When the worker is ready, the Layer 2 backend is clean, and the review gate is closed, execute `cdd advance <spec> --commit`.
 ```
 
 For `implementing`, use an optional scaffold plus fan-out/fan-in loop instead:
@@ -270,13 +292,17 @@ Loop:
   8. If any active worker reports Contract drift without an explicit Contract-edit request:
      -> Stop and ask the user.
   9. When the integrated reconciliation state is ready, fan in their outputs and run `cdd advance <spec>` without `--commit` on the integrated state.
-  10. If Layer 1 or Layer 2 reports findings:
+  10. If integrated Layer 1 fails:
      -> Route shared type/interface/export/runtime surface or migration-prerequisite findings to `cdd-surface-scaffolder`.
      -> Route `testRef` / acceptance-test findings to `cdd-test-writer` only when `useTestRef=true`.
      -> Route `sources` / code-implementation findings to `cdd-implementer`.
      -> Route narrative / schema / related-document consistency / Contract issues to `cdd-specifier`.
      -> Re-run the scaffold, the pair, or the single owner as needed, then return to step 6.
-  11. When the integrated state is clean, execute `cdd advance <spec> --commit`.
+  11. If integrated Layer 1 is clean and `cdd advance <spec>` emits a Layer 2 packet:
+     -> Run the Layer 2 backend on that packet.
+     -> Route backend findings by ownership and return to step 6.
+     -> If the backend reports Contract drift, stop and ask the user.
+  12. When the integrated state is clean and the Layer 2 backend is clean, execute `cdd advance <spec> --commit`.
 ```
 
 Phase 2 may need to close two transitions in sequence:

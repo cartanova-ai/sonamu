@@ -12,7 +12,8 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 
 1. Read this document.
 2. Read `../workflow/01_cdd_orchestrator.md` and follow the orchestration protocol.
-3. Spawn leaf workers for each phase. Do not edit code or Spec content directly.
+3. Read `../workflow/layer2_review.md` and use it for the Layer 2 semantic gate.
+4. Spawn leaf workers for each phase. Do not edit code or Spec content directly.
 
 ## Sub-agent preset list
 
@@ -25,8 +26,9 @@ This document is NOT a spawnable sub-agent. The main agent (top-level conversati
 | 3B. implementing-tests | `cdd-test-writer` | Write acceptance tests from the Spec and fill `acceptanceCriteria[].testRef` |
 | 3C. implementing-code | `cdd-implementer` | Implement production code and fill the final `sources` list |
 | 4. validating | `cdd-validator` | Fix validating-stage code/test issues, report Spec/Contract drift when discovered, and finish the final pre-commit verification |
+| L2. semantic-review fallback | `cdd-layer2-reviewer` | Fallback semantic reviewer when the default Codex MCP backend is unavailable or fails |
 
-Phase 3 may begin with an optional shared-surface scaffold worker. After that, it uses a parallel pair. The orchestrator decides whether scaffold work or migration preparation is needed, then spawns the downstream workers, fans in their outputs, inspects artifact-reconciliation findings, runs `cdd advance <spec>` on the integrated state, and re-routes findings to the owning worker.
+Phase 3 may begin with an optional shared-surface scaffold worker. After that, it uses a parallel pair. The orchestrator decides whether scaffold work or migration preparation is needed, then spawns the downstream workers, fans in their outputs, inspects artifact-reconciliation findings, runs `cdd advance <spec>` on the integrated state, invokes Codex MCP as the default Layer 2 backend, and re-routes findings to the owning worker. If Codex MCP is unavailable, fails, or is disallowed for the run, the orchestrator falls back to `cdd-layer2-reviewer`.
 
 ## Absolute prohibitions
 
@@ -46,6 +48,7 @@ Guardrails for common failure cases:
 
 - Execute CLI commands like `cdd advance`, `cdd status` (Bash tool)
 - Execute `cdd spec create` for scaffold creation only
+- Invoke Codex MCP as the default Layer 2 backend and fall back to `cdd-layer2-reviewer`
 - Ask the user to review when `objective_packet.user_review=true`
 - Finalize Spec transitions with `cdd advance --commit` after the worker reports readiness
 - Spawn sub-agents (Agent tool)
@@ -62,3 +65,4 @@ Guardrails for common failure cases:
 - CDD policy: `../workflow/cdd.md`
 - Orchestration protocol: `../workflow/01_cdd_orchestrator.md`
 - Shared contract: `../workflow/00_cdd_contract.md`
+- Layer 2 review contract: `../workflow/layer2_review.md`

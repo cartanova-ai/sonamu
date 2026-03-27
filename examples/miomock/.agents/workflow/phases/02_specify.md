@@ -47,7 +47,7 @@ findings: [] # previous verification failures on re-spawn
 ### Step 3: Normalize metadata and fill the core narrative
 
 1. Preserve the current `schemaVersion` if it already exists.
-2. If `schemaVersion` is missing after scaffold creation, initialize it to `2` for the current miomock live envelope.
+2. If `schemaVersion` is missing after scaffold creation, initialize it to `2` for the current live Spec envelope.
 3. If `useTestRef` is missing, initialize it to `true`.
 4. Set `useTestRef=false` only for exceptional Specs, such as FE/web flows that intentionally do not use acceptance-test ownership in this workflow.
 5. Refresh `lastModified` to today's `YYYY-MM-DD` whenever you change the Spec in this phase.
@@ -106,13 +106,8 @@ If `findings` are provided:
 1. If the current status is `draft` or `specifying`, run `cdd advance <spec>` without `--commit`.
 2. If the current status is `implementing`, `validating`, or `done`, skip the transition check and preserve the current `status`.
 3. If Layer 1 fails because required Spec content is still missing or malformed, fix the Spec and re-run the command.
-4. If the CLI emits delegate output, perform the Layer 2 semantic verification inside this worker:
-   - field intent from schema names/types and any descriptions is reflected faithfully
-   - ACs are concrete and testable
-   - content stays within Contract scope
-   - cross-field consistency is preserved
-   - every document referenced in `sources`, `dependsOnSpecs`, and `contracts` has been reviewed for consistency with the target Spec, with required Spec updates applied before the transition
-5. Fix in-scope findings and re-run `cdd advance <spec>` until both layers pass or the phase is blocked.
+4. If the CLI emits delegate output, stop the self-loop and return that Layer 2 packet to the orchestrator.
+5. Do not consume the delegate payload inside this worker. The orchestrator-managed backend performs Layer 2 review.
 6. If you determine that the Contract must change, stop and return `ready_for_transition: false`.
 
 ### Step 10: Return transition readiness
@@ -126,7 +121,10 @@ Return `ready_for_transition: true` only when the current status is `draft` or `
 - planned `sources` are coherent enough for downstream work, including any likely shared-surface or migration-prerequisite scaffold
 - every referenced document in `sources`, `dependsOnSpecs`, and `contracts` is reviewed for consistency, with required Spec follow-up applied or explicitly routed
 - related Specs are updated or explicitly routed for follow-up
-- the latest `cdd advance <spec>` check is clean for the current transition
+- the latest `cdd advance <spec>` Layer 1 check is clean for the current transition
+- the delegate payload from `cdd advance <spec>` is attached for orchestrator-managed Layer 2 review
+
+Return `ready_for_layer2_review: true` only when the current status is `draft` or `specifying` and the latest `cdd advance <spec>` run produced a delegate payload after a clean Layer 1 result.
 
 Return `artifact_reconciliation_complete: true` only when the current status is `implementing`, `validating`, or `done` and:
 - the target Spec is reconciled against current `sources`
@@ -144,7 +142,7 @@ current_status: "draft|specifying|implementing|validating|done"
 transition_readiness:
   checked_with: "cdd advance <spec>|not_run"
   layer1_result: "pass|fail|not_run"
-  layer2_result: "pass|fail|not_run"
+  layer2_result: "pending|not_run"
 artifact_reconciliation_complete: true|false
 metadata_updated: ["{list such as schemaVersion,lastModified}"]
 fields_completed: ["{list of filled fields}"]
@@ -162,6 +160,8 @@ related_spec_updates: ["{related spec paths updated}"]
 related_spec_followups: ["{related spec paths that still need follow-up}"]
 contract_drift: true|false
 ready_for_transition: true|false
+ready_for_layer2_review: true|false
+delegate_payload: "{delegate payload emitted by cdd advance, or empty when not emitted}"
 preferred_respawn_role: "cdd-specifier"
 user_review_summary: "{brief Korean summary for orchestrator review handoff}"
 blocking_reason: "{empty when ready}"
@@ -173,4 +173,5 @@ blocking_reason: "{empty when ready}"
 - Do not modify Contract files. Report to orchestrator if modification is needed.
 - Do not execute `cdd advance --commit`.
 - Do not ask the orchestrator to fill missing Spec fields in the main session.
+- Do not consume the Layer 2 delegate payload inside this worker. Return it to the orchestrator unchanged.
 - In artifact-reconciliation mode, do not change the current `status` or absorb code/test work from later phases.

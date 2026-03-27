@@ -30,9 +30,10 @@ The orchestrator and all sub-agents must inspect `contract/rules/` and read the 
 
 | Role | Responsibility | Description |
 |---|---|---|
-| Orchestrator | Control plane | Select worker, manage user-review gates, run `cdd advance --commit`, manage re-spawn loops |
-| Leaf worker | Execution | Perform one phase-scoped mutation in isolated context; Spec-phase workers also own any assigned pre-commit loop |
-| CLI | Judgment gate | Run Layer 1 checks and emit delegate payload for Layer 2 |
+| Orchestrator | Control plane | Select worker, manage user-review gates, select the Layer 2 backend, run `cdd advance --commit`, manage re-spawn loops |
+| Leaf worker | Execution | Perform one phase-scoped mutation in isolated context; Spec-phase workers own pre-commit Layer 1 loops and owned finding fixes |
+| CLI | Judgment gate | Run Layer 1 checks and emit a Layer 2 review packet |
+| Layer 2 backend | Semantic review | Review the packet and return findings only; never absorb edit ownership |
 | Spec document | Memory | State + specification + implementation/test linkage |
 
 ## Phase spawn contract
@@ -73,15 +74,27 @@ Every spawned Phase task must include:
 - For Spec phases that own a status transition, execute `cdd advance <spec>` without `--commit` before returning. `cdd-specifier` skips this command when it is spawned only for later-phase artifact reconciliation.
 - `cdd-specifier` returns `artifact_reconciliation_complete: true` when it reconciles Spec content for a Spec already in `implementing`, `validating`, or `done`; in that mode it must preserve the current `status` and does not own a `cdd advance` loop.
 - `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when the shared importable surface and required migration prerequisites are ready.
-- The active implementing workers return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then resolves any reported artifact-reconciliation follow-up, runs the integrated `cdd advance <spec>` check, and re-routes findings by ownership.
+- The active implementing workers return `ready_for_fan_in: true` when their owned work is ready; the orchestrator then resolves any reported artifact-reconciliation follow-up, runs the integrated `cdd advance <spec>` check, sends the resulting Layer 2 packet to the review backend, and re-routes findings by ownership.
 - Any worker that edits a Spec must preserve `schemaVersion` and refresh `lastModified` to today's `YYYY-MM-DD`.
-- Resolve in-scope Layer 1 and Layer 2 findings inside the worker before returning `ready_for_transition: true` or `ready_for_fan_in: true` when the phase owns that loop.
+- Resolve in-scope Layer 1 findings inside the worker before returning. When `cdd advance <spec>` emits a delegate payload, return that packet to the orchestrator instead of performing Layer 2 review inside the phase worker.
 - If a blocking issue belongs to another worker or requires Contract changes, stop and return the correct re-route target.
 - Include `ready_for_transition`, `ready_for_parallel_pair`, `ready_for_fan_in`, or `artifact_reconciliation_complete`, plus `preferred_respawn_role` and `blocking_reason`, when the next control-plane action matters.
-- Include `transition_readiness` when the worker owns a `cdd advance` loop so the orchestrator knows whether `cdd advance --commit` is safe to run.
+- Include `transition_readiness` when the worker owns a `cdd advance` loop so the orchestrator knows whether Layer 1 is clean and whether a Layer 2 review packet is ready.
+- Include `ready_for_layer2_review` and `delegate_payload` when the current attempt is waiting on the orchestrator-managed review backend.
 - Include `artifact_reconciliation` details when implementation/test/validation work reviewed related Spec or Contract impact.
 - Contract files are read-only. Report to orchestrator if modification is needed.
 - Do not execute `cdd advance --commit`. The orchestrator manages transitions.
+
+## Layer 2 backend contract
+
+- Layer 2 semantic review is distinct from generic diff review.
+- This workflow-specific semantic gate is not the same as generic unit-level diff review, so it may use a different default backend.
+- Default backend: `Codex MCP`
+- Fallback backend: `cdd-layer2-reviewer`
+- The orchestrator owns backend selection and failure fallback.
+- The review backend must consume the Layer 2 packet emitted by `cdd advance <spec>` plus the current workflow context.
+- The review backend must return findings only and must never edit code, tests, or Specs directly.
+- `Codex MCP` review must follow the inherited human-in-the-loop and progress tracking rules from the shared workflow contract.
 
 ## Spec ownership boundary
 
@@ -103,7 +116,7 @@ When the active Spec status is `implementing`:
 - `cdd-surface-scaffolder` returns `ready_for_parallel_pair: true` when imports, exports, shared type/interface scaffolds, and required migration prerequisites are ready for downstream work.
 - `cdd-test-writer` may edit only `acceptanceCriteria[].testRef` inside the Spec.
 - `cdd-implementer` may edit only `sources` inside the Spec.
-- The orchestrator owns the integrated `cdd advance <spec>` loop after the active implementing workers return.
+- The orchestrator owns the integrated `cdd advance <spec>` loop and the follow-up Layer 2 backend call after the active implementing workers return.
 - Re-spawn by ownership: missing shared type/interface/export/runtime surface or migration prerequisite goes to `cdd-surface-scaffolder`; `testRef` and test-semantic findings go to `cdd-test-writer` only when `useTestRef=true`; `sources` and code-implementation findings go to `cdd-implementer`; narrative/schema/Contract findings go to `cdd-specifier`.
 
 ## Cross-artifact review rules

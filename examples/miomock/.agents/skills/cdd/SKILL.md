@@ -18,8 +18,10 @@ Read the following documents in order to fully assume the orchestrator role:
 1. **CDD policy**: [`${CLAUDE_SKILL_DIR}/../../workflow/cdd.md`](${CLAUDE_SKILL_DIR}/../../workflow/cdd.md)
 2. **Shared contract protocol**: [`${CLAUDE_SKILL_DIR}/../../workflow/00_cdd_contract.md`](${CLAUDE_SKILL_DIR}/../../workflow/00_cdd_contract.md)
 3. **Orchestration protocol**: [`${CLAUDE_SKILL_DIR}/../../workflow/01_cdd_orchestrator.md`](${CLAUDE_SKILL_DIR}/../../workflow/01_cdd_orchestrator.md)
+4. **Layer 2 review contract**: [`${CLAUDE_SKILL_DIR}/../../workflow/layer2_review.md`](${CLAUDE_SKILL_DIR}/../../workflow/layer2_review.md)
 
 After reading these documents, follow the orchestration protocol exactly.
+Use `Codex MCP` as the default Layer 2 semantic-review backend, and fall back to `cdd-layer2-reviewer` when Codex MCP is unavailable, fails, or is disallowed for the run.
 
 ## Sub-agent presets
 
@@ -33,6 +35,7 @@ Sub-agent definition files are located at `${CLAUDE_SKILL_DIR}/../../agents/`. U
 | 3B. tests | `cdd-test-writer` | `agents/cdd-test-writer.md` |
 | 3C. code | `cdd-implementer` | `agents/cdd-implementer.md` |
 | 4. validating | `cdd-validator` | `agents/cdd-validator.md` |
+| L2. semantic-review fallback | `cdd-layer2-reviewer` | `agents/cdd-layer2-reviewer.md` |
 
 ## Phase workflow reference
 
