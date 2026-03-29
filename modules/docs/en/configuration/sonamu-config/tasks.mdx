@@ -122,13 +122,13 @@ Uses Pub/Sub for distributing work among multiple Workers.
 
 **Type**: `boolean`
 
-**Default**: `false`
+**Default**: `true`
 
 ```typescript
 export default defineConfig({
   tasks: {
     workerOptions: {
-      usePubSub: true,  // Use Redis Pub/Sub
+      usePubSub: true,  // Use PostgreSQL LISTEN/NOTIFY
     },
   },
 });
@@ -136,10 +136,10 @@ export default defineConfig({
 
 **Behavior**:
 - `false`: Each Worker polls independently
-- `true`: Task notifications propagated via Redis Pub/Sub
+- `true`: New task notifications propagated instantly via PostgreSQL LISTEN/NOTIFY
 
 <Tip>
-When running multiple Workers, we recommend `usePubSub: true` for more efficient task distribution.
+Pub/Sub uses PostgreSQL's built-in LISTEN/NOTIFY mechanism, so no additional infrastructure (e.g., Redis) is required. It leverages the existing database connection.
 </Tip>
 
 ### listenDelay
@@ -250,7 +250,7 @@ export default defineConfig({
     enableWorker: true,
     workerOptions: {
       concurrency: 5,
-      usePubSub: true,   // Distribute via Redis Pub/Sub
+      usePubSub: true,   // Distribute via PostgreSQL LISTEN/NOTIFY
       listenDelay: 500,
     },
     contextProvider: (defaultContext) => ({
@@ -349,30 +349,41 @@ export default defineConfig({
 
 ## Using Workflows
 
-After tasks configuration, define background jobs with the `@workflow` decorator.
+After tasks configuration, define background jobs with the `workflow()` function.
 
 ```typescript
-import { workflow, step } from "sonamu";
+import { workflow } from "sonamu";
 
-export class EmailModel {
-  @workflow()
-  static async sendWelcomeEmail(userId: number) {
-    const user = await step("fetch-user", async () => {
-      return UserModel.findById(userId);
-    });
+export const sendWelcomeEmail = workflow(
+  { name: "send_welcome_email" },
+  async ({ input, step }) => {
+    const user = await step.define(
+      { name: "fetch_user" },
+      async () => {
+        return await UserModel.findById(input.userId);
+      }
+    ).run();
 
-    await step("send-email", async () => {
-      return sendEmail(user.email, "Welcome!");
-    });
+    await step.define(
+      { name: "send_email" },
+      async () => {
+        await sendEmail(user.email, "Welcome!");
+      }
+    ).run();
   }
-}
+);
 ```
 
 **Calling**:
 
 ```typescript
+import { Sonamu } from "sonamu";
+
 // Runs in background
-await EmailModel.sendWelcomeEmail(123);
+await Sonamu.workflows.run(
+  { name: "send_welcome_email", version: null },
+  { userId: 123 }
+);
 ```
 
 → [Workflow Usage](/en/advanced-features/workflows/workflow-decorator)
@@ -429,39 +440,16 @@ ENABLE_WORKER=true node dist/worker.js
 Using PM2 or Docker makes it easy to manage multiple Workers.
 </Tip>
 
-## Redis Setup (usePubSub: true)
+## Pub/Sub Behavior
 
-Redis is required to use `usePubSub: true`.
-
-### Redis Connection
-
-Redis is configured in the cache settings:
+When `usePubSub: true` (the default), the Worker receives new task notifications using PostgreSQL's built-in `LISTEN`/`NOTIFY` mechanism. No separate message broker (e.g., Redis) is required — it leverages the existing database connection.
 
 ```typescript
-import { createClient } from "redis";
-
-const redisConnection = createClient({
-  url: process.env.REDIS_URL ?? "redis://localhost:6379",
-});
-
-await redisConnection.connect();
-
 export default defineConfig({
-  server: {
-    cache: {
-      default: "main",
-      stores: {
-        main: store()
-          .useL2Layer(drivers.redis({ connection: redisConnection }))
-          .useBus(drivers.redisBus({ connection: redisConnection })),
-      },
-    },
-  },
-
   tasks: {
     enableWorker: true,
     workerOptions: {
-      usePubSub: true,  // Use Redis Pub/Sub
+      usePubSub: true,  // Use PostgreSQL LISTEN/NOTIFY (default)
     },
   },
 });
