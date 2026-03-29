@@ -33,7 +33,7 @@ export default defineConfig({
 
 **옵션**:
 - `enableWorker`: Worker 활성화 여부 (기본: daemon 모드에서만 true)
-- `workerOptions.concurrency`: 동시 실행 작업 수 (기본: CPU 코어 - 1)
+- `workerOptions.concurrency`: 동시 실행 작업 수 (기본: 1)
 - `workerOptions.usePubSub`: PostgreSQL LISTEN/NOTIFY 사용 (기본: true)
 - `workerOptions.listenDelay`: Pub/Sub 메시지 수신 후 대기 시간 (기본: 500ms)
 - `contextProvider`: Workflow 내에서 사용할 Context 생성 함수
