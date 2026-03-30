@@ -1,307 +1,96 @@
 ---
 name: sonamu-cdd
-description: Contract-Driven Development(CDD) 가이드. main.contract.json, 도메인별 contract, spec 작성 절차, CDD CLI, 개발 프로세스. Entity 설계 전에 반드시 완료해야 함. Use when writing contracts or specs before entity design.
+description: AC + Claim 기반 개발 가이드. *.contract.md(도메인 규칙), Rules, AC(테스트명), Claim(작업 지시서). 기능 구현 전 반드시 읽을 것. Use when planning or implementing features.
 ---
 
-# Contract-Driven Development (CDD)
+# AC + Claim 기반 개발
 
-This project follows Contract-Driven Development (CDD). All development work must follow the rules below.
+Spec 문서 없이 **3종의 영구 문서 + 일회성 Claim**으로 개발한다.
 
-## Core Principles
+**Ground truth는 코드다.** `*.contract.md`는 코드 결정의 근거를 기록하는 문서이지 선행 정의서가 아니다.
 
-- The `.contract.json` files under the `contract/` directory are the Single Source of Truth (SSoT) for this project.
-- All development follows a **Waterfall process**. Move to the next stage only after the current stage is completed.
-- Authority flows in this order: **Contract -> Spec -> Code**.
-  - Code must always follow Spec.
-  - Spec must always follow Contract.
-- **1 Contract Feature = 1 Spec File**. Each feature in Contract's `Features/Capabilities` maps to exactly one Spec file. Shared infrastructure across features may be separated into `shared/*.spec.json`.
-- Even if a better structure appears during implementation, do not change code first. Update Spec first, then update code.
-- Contract is human-managed. AI must not modify Contract files without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
-- Code-document consistency is verified by AI automated validation (1st pass) and review checklist (2nd pass for feature mapping/coverage).
+## 두 가지 개발 경로
 
-## Project Structure
+| 경로 | 순서 | 적용 상황 |
+|------|------|----------|
+| **신규 개발** | contract 작성 → Claim → `(AC → implement) × N` | 새 기능, 새 도메인 |
+| **코드 변경** | code 수정 → Claim 등록 → contract 확인/갱신 | 기존 기능 수정, 버그 픽스 |
 
-```text
-contract/
-|- schemas/
-|  |- default-contract.schema.json  # contract schema definition
-|  \- default-spec.schema.json       # spec schema definition
-|- rules/
-|  \- *.rules.json              # reusable implementation conventions
-|- main.contract.json          # project root contract
-|- {domain}/
-|  |- main.contract.json       # domain representative contract
-|  |- {sub-contract}.contract.json
-|  |- {feature-key}.spec.json  # 1 feature = 1 spec file
-|- shared/
-|  |- {shared-infra}.spec.json # cross-feature shared infrastructure
-\- ...
+**Claim은 유닛 단위다.** Claim 안에서 AC 작성과 구현은 교차 반복된다.
+
+```
+Claim C-001
+  ├─ AC: "이메일 중복 시 409를 반환한다"  → 구현
+  ├─ AC: "비밀번호가 8자 미만이면 400을 반환한다" → 구현
+  └─ AC: "성공 시 생성된 user_id를 반환한다" → 구현
 ```
 
-Example:
+AC 하나를 작성하는 행위는 그 자체로 설계 행위다 — 어떤 입력/출력을 기대하는지 명확히 함으로써 구현 방향을 먼저 확정한다. AC가 작고 구체적일수록 구현이 명확해진다.
 
-```text
-contract/
-|- main.contract.json
-|- auth/
-|  |- main.contract.json
-|  |- login.spec.json           # login feature spec (1:1)
-|  |- session.spec.json         # session feature spec (1:1)
-|  \- password-reset.spec.json  # password-reset feature spec (1:1)
-|- payment/
-|  |- main.contract.json
-|  |- checkout.spec.json        # checkout feature spec (1:1)
-|  \- refund.spec.json          # refund feature spec (1:1)
-\- shared/
-   \- auth-session.spec.json    # shared session infrastructure
-```
-
-- Contract: `*.contract.json` - folder-based tree structure, with `main.contract.json` as the folder representative.
-- Spec: `*.spec.json` - one file per feature, placed in the same folder as related Contract files. The filename is the feature key (`login.spec.json` -> feature key `login`).
+코드 변경 경로에서 `*.contract.md`를 갱신할 때는 변경 이유(근거)를 함께 기록한다.
 
 ---
 
-## Document Model
+## 영구 문서 (3종)
 
-### Schema (`.schema.json`)
+| 문서 | 위치 | 내용 | 갱신 시점 |
+|------|------|------|----------|
+| 비즈니스 로직 | `contract/**/*.contract.md` | 도메인 규칙 + 결정 근거 | 정책 변경 시 |
+| Rules | `contract/rules/*.rules.json` | 코드 컨벤션, UI/API 규칙 | 컨벤션 변경 시 |
+| AC | `*.test.ts` describe/test 이름 | 수락 기준 — 코드에 직접 존재 | 기능 추가/변경 시 |
 
-Contract/Spec 문서의 포맷을 정의하는 파일. `contract/schemas/` 디렉터리에 위치한다.
+### 비즈니스 로직 (`*.contract.md`)
 
-```json
-{
-  "id": "default-spec",
-  "type": "spec",
-  "fields": [
-    {
-      "name": "modules",
-      "type": "Record<string, string>",
-      "renderer": "label-grid",
-      "required": true,
-      "description": "구현에 사용되는 모듈 정의"
-    }
-  ]
-}
+도메인 규칙을 응집된 형태로 기술하고, 코드만으로는 파악하기 어려운 결정 근거를 함께 기록한다.
+처음부터 완벽할 필요 없다. 사용자와 대화하면서 점진적으로 정리한다.
+
+```markdown
+# {도메인} 비즈니스 로직
+
+## 규칙
+
+- 환불은 결제 후 7일 이내만 가능 [근거: PG사 정책]
+- 주문 상태 전환: 대기 → 확인 → 배송 → 완료
+- 할인 적용 순서: 멤버십 등급 > 쿠폰 > 프로모션
+
+## 워크플로우
+
+1. ...
+2. ...
 ```
 
-| Field | Description |
-|---|---|
-| `id` | 스키마 식별자 (Contract/Spec의 `schema` 필드에서 참조) |
-| `type` | `contract` \| `spec` |
-| `fields` | 문서에 포함될 커스텀 필드 목록 |
-| `fields[].name` | 필드명 |
-| `fields[].type` | `string`, `string[]`, `Record<string, string>`, `Record<string, object>` |
-| `fields[].renderer` | 렌더링 컴포넌트 (생략 시 디폴트 사용) |
-| `fields[].required` | 필수 여부 |
-| `fields[].description` | `cdd advance` Layer 2 검증 기준으로 사용됨 |
+### AC = 테스트 이름
 
-### Contract (`.contract.json`)
+AC를 별도 문서로 관리하지 않는다. 테스트 파일의 describe/test 이름이 AC 그 자체다.
 
-A business-logic document that non-developers can read. AI must treat this file as **read-only**. If an update is needed, AI should only propose the change to the user.
+**AC 작성 원칙:**
+- **작고 구체적으로**: 하나의 AC = 하나의 행동/결과. 모호한 AC는 구현 범위를 불명확하게 만든다.
+- **입력과 기대 결과를 이름에 담는다**: `"이메일 중복 시 409를 반환한다"` > `"에러를 반환한다"`
+- **AC 작성이 곧 설계**: AC를 먼저 작성하면 구현 전에 인터페이스와 경계 조건이 확정된다.
 
-```json
-{
-  "schema": "default-contract",
-  "lastModified": "YYYY-MM-DD",
-  "features": {
-    "login": "이메일/비밀번호 로그인 및 세션 발급"
-  },
-  "overview": [...],
-  "domainGlossary": [...],
-  "userRoles": [...],
-  "businessRules": [...],
-  "edgeCases": [...]
-}
+```typescript
+describe('회원가입', () => {
+  // 좋은 AC: 조건과 결과가 명확
+  test('이메일 중복 시 409를 반환한다', () => { /* TODO */ });
+  test('비밀번호가 8자 미만이면 400을 반환한다', () => { /* TODO */ });
+  test('성공 시 생성된 user_id를 반환한다', () => { /* TODO */ });
+
+  // 나쁜 AC: 범위가 너무 넓음
+  // test('회원가입이 동작한다', () => { ... });
+});
 ```
 
-필수 필드: `schema`, `lastModified`, `features`. 나머지 필드는 적용된 schema의 `fields`에 따라 결정된다.
-
-`features` 맵의 각 키는 Spec 파일명(feature key)과 1:1 매칭된다.
-
-### Spec (`.spec.json`)
-
-A feature-level technical document derived from Contract. Each file represents exactly one feature. AI can create and update Spec files. Deletion requires user approval.
-
-```json
-{
-  "schema": "default-spec",
-  "schemaVersion": 2,
-  "summary": "Login processing and session issuance",
-  "description": [
-    "Validates user credentials and issues JWT-based sessions.",
-    "Includes password retry limit and account lockout policy."
-  ],
-  "acceptanceCriteria": [
-    {
-      "id": "ac-login-1",
-      "condition": "유효한 이메일/비밀번호 로그인 시 세션이 생성된다",
-      "testRef": {
-        "target": "packages/api/src/application/auth/login.test.ts",
-        "pattern": "ac-login-1"
-      }
-    },
-    {
-      "id": "ac-login-2",
-      "condition": "잘못된 비밀번호 입력 시 인증 실패 응답이 반환된다",
-      "testRef": {
-        "target": "",
-        "pattern": ""
-      }
-    }
-  ],
-  "lastModified": "YYYY-MM-DD",
-  "status": "draft | specifying | implementing | validating | done",
-  "sources": ["packages/api/src/application/auth/login.ts", "packages/api/src/application/auth/login.test.ts"],
-  "contracts": ["./main.contract.json"],
-  "dependsOnSpecs": ["./session.spec.json"],
-  "modules": {
-    "LoginService": "Handles login processing",
-    "SessionManager": "Manages sessions"
-  },
-  "interfaces": {
-    "LoginService.authenticate()": "Performs authentication",
-    "LoginService.validate()": "Validates input"
-  },
-  "dataFlow": [
-    "1. Client -> LoginService.validate(): validate email/password input",
-    "2. LoginService.validate() -> LoginService.authenticate(): pass validated credentials",
-    "3. LoginService.authenticate() -> Database: query user record and compare password hash",
-    "4. LoginService.authenticate() -> SessionManager: request session creation on auth success",
-    "5. SessionManager -> Client: return Access Token + Refresh Token"
-  ],
-  "errorHandling": {
-    "InvalidCredentialsError": "Wrong password",
-    "AccountLockedError": "Account locked after 5 retries"
-  },
-  "constraints": ["Session timeout: 30 min", "Login retry limit: 5 attempts"]
-}
-```
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `schema` | `string` | Y | 적용된 schema id |
-| `schemaVersion` | `number` | Y | Schema version |
-| `summary` | `string` | Y | One-line feature summary |
-| `description` | `string[]` | Y | Detailed feature description |
-| `acceptanceCriteria` | `object[]` | Y | Completion criteria. 각 항목은 `id`, `condition`, `testRef` 포함 |
-| `lastModified` | `string` | Y | Last modified date (YYYY-MM-DD) |
-| `status` | `string` | Y | `"draft"` / `"specifying"` / `"implementing"` / `"validating"` / `"done"` |
-| `sources` | `string[]` | Y | Implementation/test files (relative to project root) |
-| `contracts` | `string[]` | Y | Referenced Contract files (relative to Spec file) |
-| `dependsOnSpecs` | `string[]` | N | Dependent Spec files (relative to Spec file) |
-| `modules` | `Record<string, string>` | Y | Module structure (key: module name, value: role) |
-| `interfaces` | `Record<string, string>` | Y | Functions/APIs (key: function name, value: description) |
-| `dataFlow` | `string[]` | Y | Inter-module data flow |
-| `errorHandling` | `Record<string, string>` | Y | Error handling (key: error name, value: trigger condition) |
-| `constraints` | `string[]` | Y | Technical constraints |
-| `guards` | `string[]` | N | Access control guards (e.g. `["admin"]`, `["admin", "sot"]`) |
-| `testCases` | `string[]` | N | Key test scenarios derived from errorHandling/acceptanceCriteria (used as fixture/test design hints) |
-| `fixtureStrategy` | `string` | N | Notes on fixture generation order or dependencies (e.g. "User → Department → Lab 순으로 생성") |
-
-**Empty section notation**: `string[]` -> `[]`, `Record<string, string>` -> `{}`
-
-### 엔티티 레벨 권장 추가 항목 (constraints에 명시)
-
-다음 항목들은 Entity 설계에 영향을 주므로 `constraints` 또는 별도 필드에 명시해 두면 Entity 설계 시 혼선을 방지할 수 있다.
-
-| 항목 | 예시 |
-|---|---|
-| PK 타입 전략 | `"User.id는 string (better-auth). 나머지는 number auto-increment"` |
-| i18n 대상 여부 | `"name 필드는 ko/en 다국어 지원 (naite 패턴 사용)"` |
-| 파일 업로드 여부 | `"thumbnail: SonamuFile (eager upload)"` |
-| ManyToMany FK 타입 일치 | `"user__roles: user_id(string FK), role_id(number FK) 혼합"` |
-| Read-only 엔티티 | `"Log 엔티티는 insert only. save/del 불필요"` |
-
-**Spec is higher authority than code.** Code must always follow the confirmed Spec. If Spec and code conflict, code is wrong.
-
-### Contract-Spec linking
-
-Contract is not extended as a structural source of feature keys. **Spec references Contract unidirectionally.**
-
-1. **Spec filename = feature key**: `login.spec.json` -> `login`
-2. **`contracts` field** points to referenced Contract files
-3. **`summary`/`description`** describes which Contract feature this Spec implements (human-readable)
-4. Duplicate feature keys within the same Contract boundary are not allowed
-5. Renaming a Spec file = changing the feature key
-
-### `status` field
-
-| Value | Meaning | Transition condition |
-|---|---|---|
-| `draft` | Spec 초안 작성 중, 미확정 | 초기 상태 |
-| `specifying` | 명세 세분화 중 | contracts 유효 참조, required 필드 충족, summary/description/AC 비어있지 않음 |
-| `implementing` | Spec 확정, 구현 진행 중 | 명세 전체 확정 후 |
-| `validating` | 구현 완료, AC 매칭 검증 중 | sources 파일 존재, AC testRef 지정 및 존재 |
-| `done` | 전체 AC 만족, 일관성 검증 통과 | testRef.pattern 매칭, 빌드/테스트 통과 |
-
-**Regression**: When `sources`, `contracts`, `dependsOnSpecs`, or `acceptanceCriteria` change on a `done` Spec, `status` reverts to `implementing`.
-
-### `acceptanceCriteria` field
-
-Conditions that must be met for this Spec's implementation to be considered "done". Each item is an object:
-
-```json
-{
-  "id": "ac-login-1",
-  "condition": "유효한 이메일/비밀번호 로그인 시 세션이 생성된다",
-  "testRef": {
-    "target": "packages/api/src/application/auth/login.test.ts",
-    "pattern": "ac-login-1"
-  }
-}
-```
-
-| Field | Description |
-|---|---|
-| `id` | AC 식별자. `ac-{feature}-{n}` 형식 |
-| `condition` | 검증 가능한 구체적 조건 |
-| `testRef.target` | AC를 검증하는 테스트 파일 경로 |
-| `testRef.pattern` | 테스트 파일 내 항목 식별 패턴 (`pnpm cdd test <target> -p <pattern>`) |
-
-**Authoring rules**:
-- `condition`은 검증 가능한 구체적 조건이어야 한다. 모호한 표현 불가.
-- Include conditions derived from Contract's business rules and Edge Cases.
-- Conditions derived from `constraints` and `errorHandling` may also be included.
-- Recommended format: "조건 X이면 Y이다" (input-result).
-- `testRef`는 `implementing` 단계에서 비워두고, `validating` 단계에서 채운다.
-
-**testRef 작성 시 주의사항**:
-- `testRef.target`은 실제로 존재하는 파일 경로만 기재한다. 존재하지 않는 경로(예: `admin/` 접두)는 MISSING 오류 발생.
-- `testRef.pattern`은 `it()/test()` 설명문에서 실제로 매칭되는 문자열을 사용한다. 테스트 작성 전이면 작성 예정 테스트명을 그대로 pattern으로 기입한다.
-- 구현이 완료됐음에도 testRef 경로 오류로 누락처럼 보이는 경우가 있다. `pnpm cdd test` 결과 MISSING/NO_MATCH가 나오면 코드가 아닌 testRef 경로/패턴부터 확인한다.
-
-**Validation usage**: `cdd advance <spec>` 실행 시 Layer 1/Layer 2 검증에 사용된다. `testRef.pattern` 매칭은 `validating → done` 전이 시 확인된다.
-
-### Spec detail level
-
-- Include: module structure, file/class responsibilities, function/API names with short descriptions, inter-module data flow.
-- Exclude: internal implementation logic, algorithm details, variable names, code snippets.
-
-### Reference rules
-
-- `contracts` field: relative path from the Spec file (e.g. `"./payment.contract.json"`).
-- `sources` field: relative path from the project root (e.g. `"packages/api/src/application/auth/login.ts"`).
-- `dependsOnSpecs` field: relative path from the Spec file (e.g. `"../shared/auth-session.spec.json"`).
-
-### `lastModified` update rule
-
-Whenever any Spec field changes, update `lastModified` to today's date.
-
-### Change history tracking
-
-Spec files do not store history internally. Git handles it.
+CLI로 관리:
 
 ```bash
-git log -- contract/auth/login.spec.json
-git log --follow -- contract/auth/login.spec.json  # track renames
+# AC 추가 (빈 테스트 스켈레톤 생성)
+pnpm cdd ac add <파일> [--describe <그룹>] <테스트명>
+
+# AC 목록 조회
+pnpm cdd ac list [파일]
 ```
 
----
-
-## Rule Files
-
-`contract/rules/*.rules.json` 파일로 프로젝트별 반복 개발 규칙을 관리한다.
-
-### 파일 포맷
+### Rules 파일
 
 ```json
 {
@@ -318,291 +107,121 @@ git log --follow -- contract/auth/login.spec.json  # track renames
 ```
 
 | 필드 | 설명 |
-|---|---|
-| `description` | rule set의 범위와 의도 |
-| `rules[].id` | 안정적인 식별자 (프롬프트 참조, diff, 리뷰 노트에 사용) |
+|------|------|
+| `description` | rule-set의 범위와 의도 |
+| `rules[].id` | 안정적인 식별자 |
 | `rules[].when` | 규칙의 적용 조건 |
-| `rules[].instruction` | worker가 따라야 할 구체적 지침 |
+| `rules[].instruction` | 따라야 할 구체적 지침 |
 | `rules[].examples` | 선택적 코드/사용 예시 |
 
-### 운영 규칙
+---
 
-- Orchestrator는 phase 라우팅 전에 `contract/rules/`를 확인하고, 현재 작업에 해당하는 `*.rules.json` 파일을 읽는다.
-- Orchestrator는 worker를 스폰할 때 해당 파일 경로를 `rules_paths`로 전달한다.
-- 모든 worker는 변경 작업 시작 전에 `rules_paths`의 각 파일을 읽고, 담당 범위에 맞는 규칙을 적용한다.
-- 작업에 매칭되는 rule 파일이 없거나, 참조된 파일이 누락/형식 오류인 경우 blind하게 진행하지 않고 중단 후 보고한다.
+## 일회성 문서: Claim
+
+서브에이전트에 전달하는 작업 지시서. `tmp/claims/`에 YAML로 생성, 완료 후 폐기.
+
+```yaml
+id: "C-001"
+type: "surface|test|implement"
+objective: "한 줄 목표"
+context: |
+  objective만으로 부족한 배경.
+  *.contract.md에서 발췌하거나 플래닝에서 생성.
+scope:
+  read: ["참고할 파일 경로"]
+  write: ["수정/생성할 파일 경로"]
+ac_targets:
+  - "파일경로::describe그룹::테스트명"
+rules:
+  - "contract/rules/api.rules.json"
+depends_on: []
+findings: []
+```
+
+| 필드 | 역할 |
+|------|------|
+| `id` | 추적용 식별자 |
+| `type` | 서브에이전트 종류 결정 |
+| `objective` | 스코프 앵커 — 서브에이전트가 벗어나지 않는 기준 |
+| `context` | 배경 정보. *.contract.md에서 발췌하거나 플래닝에서 생성 |
+| `scope.read` | 컨텍스트 로딩 범위 |
+| `scope.write` | 소유권 경계 — 이 밖의 파일 수정 금지 |
+| `ac_targets` | 만족시킬 AC (`파일::describe::테스트명` 형식) |
+| `rules` | 적용할 규칙 파일 경로 |
+| `depends_on` | 선행 Claim ID |
+| `findings` | 리뷰 실패 시 재시도 컨텍스트 |
+
+### type별 역할
+
+| type | 역할 | 편집 범위 | 금지 |
+|------|------|----------|------|
+| `surface` | 공유 타입/인터페이스/마이그레이션 등 선행 작업 | 공유 타입, 마이그레이션 | 비즈니스 로직, 테스트 |
+| `test` | AC별 테스트 구현 | 테스트 파일, 테스트 지원 파일 | 프로덕션 코드 |
+| `implement` | AC 작성과 프로덕션 코드를 교차 반복 구현 | 테스트 파일 + 프로덕션 코드 | — |
+
+`implement` Claim은 TDD 사이클을 따른다: AC 하나 작성 → 구현 → 테스트 통과 확인 → 다음 AC. AC와 구현이 함께 있는 것이 기본이다. `test` Claim은 구현 없이 테스트 스켈레톤만 필요할 때(선행 설계, 스펙 확정)에만 사용한다.
 
 ---
 
-## Development Process
+## 개발 프로세스 (6단계)
 
-All processes follow Waterfall. Each stage starts only after the previous stage is complete. If you need to change a previous stage artifact, go back, update the document first, then re-run downstream stages.
+### 1. 플래닝
 
-### 1. New feature development
+`contract/{domain}/*.contract.md`와 **실제 코드**를 함께 참고하여 구현 계획 초안 작성.
+코드와 *.contract.md가 충돌하면 코드를 우선한다 (ground truth). *.contract.md가 오래된 것일 수 있음.
+사용자가 특정 *.contract.md를 지정하면 해당 파일만, 아니면 `contract/**/*.contract.md` 전체를 읽는다.
 
-```text
-Contract review -> Spec authoring/fix -> Code implementation -> Test authoring/execution -> Consistency validation
-```
+### 2. AC 구체화
 
-**Step 1: Contract review**
-- Read related `.contract.json` files and identify business requirements for the target feature.
-- Confirm the feature is defined under Contract `Features/Capabilities`.
-- If not defined, propose a Contract update to the user. Continue only after Contract is updated.
+사용자와 논의하며 `pnpm cdd ac add`로 테스트 스켈레톤 생성.
+`pnpm cdd ac list`로 확정된 AC 목록 확인.
 
-**Step 2: Spec authoring/fix**
-- Create `{feature-key}.spec.json` in the same folder as related Contract files.
-- Set `status` to `"draft"`.
-- Fill `contracts` with relative paths to base Contract files.
-- Fill `summary` and `description` to clearly state which Contract feature this Spec implements.
-- Fill all structured fields (`modules`, `interfaces`, `dataFlow`, `errorHandling`, `constraints`).
-- Define `acceptanceCriteria` with verifiable completion conditions.
-- Add planned implementation file paths to `sources`.
-- **All fields must be confirmed in this step.** After confirmation, set `status` to `"implementing"` and continue.
+**AC는 작은 단위로 쪼갠다.** Claim 하나에 5~10개의 구체적 AC가 전체를 포괄하는 2~3개보다 낫다. AC 목록이 곧 구현 체크리스트가 된다.
 
-**Step 3: Code implementation**
-- Implement exactly following the confirmed module structure and interfaces defined in Spec.
-- If a better structure appears during implementation, do not change code first. Go back to Step 2, update Spec first, then implement against the updated Spec.
-- If new files are added or plans change, update `sources` in Spec first.
+### 3. 계획 픽스 (Claim 구성)
 
-**Step 4: Test authoring and execution**
-- Write tests for implemented code.
-- Add test file paths to `sources`.
-- Run tests and confirm they pass.
+사용자 확인 후 Claim을 `tmp/claims/`에 YAML로 작성.
+`surface` → `implement` 순으로 분해하고 `depends_on`으로 선후관계 명시.
 
-**Step 5: Consistency validation**
-- Validate that implemented code follows the confirmed Spec exactly.
-- Check whether `modules`, `interfaces`, and `dataFlow` match Spec.
-- Verify all `acceptanceCriteria` items are satisfied in code.
-- **If mismatch exists, fix code.** Spec should not be changed to match code.
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
+각 `implement` Claim은 독립적으로 완결되어야 한다: AC 작성 + 구현 + 테스트 통과까지.
 
-### 2. Existing code changes
+### 4. 실행
 
-```text
-Impact analysis -> Contract/Spec review -> Spec update/fix -> Code update -> Test execution -> Consistency validation
-```
+**서브에이전트 모드 (기본)**: `Agent` tool로 워커 스폰.
+- 적합: Claim이 독립적이거나 순차적 작업. 불확실하면 이 모드가 기본값.
 
-**Step 1: Impact analysis**
-- Find all Spec files whose `sources` include the target files.
-- Check `contracts` and `dependsOnSpecs` in those Specs to identify chained impact scope.
-- 코드/테스트 변경 시: 변경된 파일을 `sources`로 참조하는 모든 Spec을 찾고, 그 Spec의 `contracts`와 `dependsOnSpecs`까지 정합성을 확인한다.
+**에이전트팀 모드**: `TeamCreate`로 팀 구성, 워커 간 `SendMessage`로 직접 통신.
+- 적합: test-writer와 implementer가 밀결합된 코드를 다룰 때, 워커가 서로의 중간 결과물을 자주 참조할 때.
 
-**Step 2: Contract/Spec review**
-- Read related Specs to understand current module structure and interfaces.
-- Read Contract as well to ensure the change does not violate business rules.
-- If the change conflicts with Contract business rules, notify the user and continue only after Contract update.
+### 5. 리뷰
 
-**Step 3: Spec update/fix**
-- Determine whether the change affects Spec scope.
-  - Interface changes, module add/remove, data flow changes -> Spec update is required.
-  - Internal-only changes (refactoring, performance tuning) -> Spec update may be unnecessary, but verify `modules` is still accurate.
-- If Spec update is required, update and confirm Spec first.
-- If files are added/removed, update `sources`.
-- Update `acceptanceCriteria` if completion conditions have changed.
-- Set `status` to `"implementing"`.
-- **Continue only after Spec is confirmed.**
+모든 implement Claim 완료 후 리뷰어 스폰.
+`findings`가 있으면 해당 Claim의 서브에이전트에 전달하여 재스폰.
 
-**Step 4: Code update**
-- Update code within confirmed Spec scope.
-- If a better structure appears, do not change code first. Go back to Step 3 and update Spec first.
+### 6. AC 검증
 
-**Step 5: Test execution**
-- Confirm existing tests pass.
-- Add/update tests according to the change.
-
-**Step 6: Consistency validation**
-- Validate that updated code follows confirmed Spec exactly.
-- Verify all `acceptanceCriteria` items are satisfied.
-- **If mismatch exists, fix code.**
-- 관련 Spec(`dependsOnSpecs`에서 참조하는 Spec 포함), Contract 정합성도 함께 확인한다.
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
-
-### 3. Bug fixes
-
-```text
-Bug analysis -> Related Spec/Contract review -> Spec update/fix (if needed) -> Code fix -> Tests -> Consistency validation
-```
-
-**Step 1: Bug analysis**
-- Identify root cause and related source files.
-
-**Step 2: Related Spec/Contract review**
-- Find Spec files whose `sources` include affected files.
-- Classify root cause:
-  - Business rule violation -> verify Spec and code against Contract.
-  - Implementation bug -> check Spec `errorHandling` and Contract `Edge Cases`.
-  - Spec defect -> Spec failed to represent Contract correctly.
-
-**Step 3: Spec update/fix (if needed)**
-- If the bug is a missing technical case in Spec `errorHandling` or `constraints`, update those fields first.
-- If the bug is a missing business case in Contract `Edge Cases`, propose Contract update to user. After Contract update, update Spec.
-- Add missing conditions to `acceptanceCriteria` if applicable.
-- Set `status` to `"implementing"`.
-- **Continue only after Spec is confirmed.**
-
-**Step 4: Code fix**
-- Fix code according to confirmed Spec.
-
-**Step 5: Tests**
-- Add a reproducing test case for the bug.
-- Confirm tests pass after the fix.
-- Confirm existing tests are not broken.
-
-**Step 6: Consistency validation**
-- Validate that fixed code follows confirmed Spec exactly.
-- Verify all `acceptanceCriteria` items are satisfied.
-- **If mismatch exists, fix code.**
-- After all validations pass, set `status` to `"done"` and update `lastModified` to today.
-
-### 4. Spec-Code Audit (정합성 감사)
-
-구현이 어느 정도 진행된 시점에서 전체 Spec과 코드의 정합성을 일괄 점검하는 패턴. 특히 여러 세션에 걸쳐 개발이 진행된 경우, 또는 구현 완료 후 리뷰 전에 실행한다.
-
-```text
-전체 Spec 스캔 -> 누락/불일치 목록 작성 -> 우선순위 정렬 -> 순차 수정
-```
-
-**Step 1: 전체 Spec 스캔**
-- `pnpm cdd spec list --status implementing` 또는 `pnpm cdd tree`로 전체 Spec 현황 파악
-- 각 Spec의 `acceptanceCriteria`와 `interfaces`를 기준으로 코드 구현 여부 확인
-- 누락된 API, 잘못된 guard, 미구현 에러 처리 등을 목록으로 정리
-
-**Step 2: 감사 결과 파일로 기록**
-- `contract/spec-vs-code-audit.md` 또는 `.claude/skills/project/spec-audit.md`에 기록
-- 형식: `[domain/feature] 항목 — 상태 (구현됨 / 누락 / 불일치)`
-- 이 파일을 새 세션에서 컨텍스트 복원용으로 활용 가능
-
-**Step 3: 우선순위 기반 수정**
-- 가장 쉽고 확실한 것부터 순서 번호를 붙여 처리
-- 각 항목 완료 시 감사 파일에 완료 표시
-
-**활용 시점**:
-- 긴 세션 종료 후 새 세션 시작 시 — 현황 파악 비용 최소화
-- Claude Desktop에서 전체 Spec 스캔 → Claude Code에서 불일치 수정하는 분업 패턴에서 유용
-- 도메인 단위 구현 완료 후 PR 전 최종 점검
-
----
-
-## Contract/Spec Authoring Guide
-
-### Contract authoring principles
-
-- Use language that non-developers can understand.
-- Do not include code, technical jargon, or implementation details.
-- Define project-specific terms in `Domain Glossary`.
-- Each item in `Features/Capabilities` must include clear business rules.
-- `Business Rules/Constraints` should contain only global rules that cross individual features.
-- `Edge Cases` should define business-level boundary conditions and decisions.
-
-### Spec authoring principles
-
-- `summary` must state the feature in one line. `description` provides detailed explanation.
-- `summary`/`description` must make it clear which Contract feature this Spec implements.
-- `modules` and `interfaces` use `Record<string, string>` format (key: name, value: description).
-- In `interfaces`, include only function/API names and short descriptions (no signatures or implementation logic).
-- `dataFlow` and `constraints` use `string[]` format.
-- `errorHandling` uses `Record<string, string>` format (key: error name, value: trigger condition).
-- `acceptanceCriteria` is an `object[]`. Each item must have `id`, `condition`, `testRef`. `condition` must be a verifiable, specific condition.
-- `sources` must list all related implementation and test files.
-- `contracts` must list relative paths to base Contract files.
-- Empty sections: `[]` for `string[]` fields, `{}` for `Record<string, string>` fields.
+테스트 실행 → 전체 통과 시 완료.
+실패 시 implementer에 실패 로그 전달 → 수정 → 5번부터 반복.
+동일 실패 3회 반복 시 사용자에게 보고.
 
 ---
 
 ## CDD CLI (`@sonamu-kit/cdd`)
 
-The `cdd` CLI tool automates CDD workflow tasks. Run via `pnpm cdd <command>`.
-
-### Commands
-
-| Command | Description |
-|---|---|
-| `cdd init [dir]` | Initialize a CDD project (creates `contract/`, `main.contract.json`, `cdd.md`) |
-| `cdd advance <spec> [--commit]` | Gate 검증 + delegate (Layer 1/2). `--commit`: Layer 2 통과 선언 후 즉시 상태 전이 |
-| `cdd tree` | Display Contract/Spec tree grouped by domain with status colors |
-| `cdd status` | Show project dashboard (Contract/Spec counts, status breakdown) |
-| `cdd status <file>` | Spec/Contract status with relationship info (contracts, deps, dependents) |
-| `cdd validate` | Verify schema/path/reference integrity (file existence, path resolution, required fields) |
-| `cdd impact <file>` | Analyze source file change impact (direct Specs, chain Contracts, indirect Specs) |
-| `cdd check` | Verify Code-Spec-Contract consistency + `acceptanceCriteria` fulfillment |
-| `cdd spec create <n>` | Create a Spec template. Requires `--domain <n>` or `--contract <path>` |
-| `cdd contract create [name]` | Contract 템플릿 생성. `name` 미지정 시 `main` |
-| `cdd spec set-status <spec> <status>` | Change Spec status |
-| `cdd rules validate` | `contract/rules/*.rules.json` 포맷 검증 |
-| `cdd spec list` | List Specs. Filters: `--status`, `--domain`, `--contract` |
-| `cdd spec get <spec>` | Show full Spec or a specific field (`--field`) |
-| `cdd spec set <spec>` | Update a Spec field (`--field`, `--value`, `--json`) |
-| `cdd spec add <spec>` | Add an item to an array/map field (`--field`, `--value`, `--key`) |
-| `cdd spec remove <spec>` | Remove an item from an array/map field (`--field`, `--index`/`--value`/`--key`) |
-| `cdd spec blame <feature>` | Contributor analysis per Spec (ownership, score, AI role summary) |
-| `cdd spec log <feature>` | Change timeline grouped by time period and author |
-| `cdd spec explain <feature>` | AI-powered diff analysis: what changed, why, and impact level |
-| `cdd source blame <file>` | Contributor analysis per source file |
-| `cdd source log <file>` | Source file change timeline grouped by time period and author |
-| `cdd source explain <file>` | AI-powered source file diff analysis |
-
-### Common Options
-
-- `--cwd <dir>` : Set working directory (default: current directory)
-- `--raw` / `--json` : Force raw JSON output (auto-enabled in pipe/CI environments)
-- `-h, --help` : Show help
-
-### Git + AI Options (blame, log, explain)
-
-- `--since=<date>` : Start date filter (ISO 8601, e.g. `2025-01-01`)
-- `--until=<date>` : End date filter (ISO 8601, default: HEAD)
-- `--group-by=day|week|month` : Grouping interval for `spec log` / `source log` (default: `day`)
-- `--commit=<hash>` : Analyze a single commit for `spec explain` / `source explain`
-
-AI uses `claude --model haiku` via local CLI.
-
-### Usage Examples
-
 ```bash
-# List in-progress specs
-pnpm cdd spec list --status in-progress
-
-# Show full spec
-pnpm cdd spec get signin
-
-# Update a field
-pnpm cdd spec set signin --field summary --value "Updated summary"
-
-# Add a constraint
-pnpm cdd spec add signin --field constraints --value "New constraint"
-
-# Contributor analysis for a spec
-pnpm cdd spec blame signin
-
-# Weekly changelog for a spec
-pnpm cdd spec log signin --group-by=week
-
-# Explain changes in a date range
-pnpm cdd spec explain signin --since=2025-03-01
-
-# JSON output for scripting
-pnpm cdd spec list --raw | jq '.[].status'
+pnpm cdd <command>
 ```
 
----
+| 커맨드 | 설명 |
+|--------|------|
+| `cdd init [dir]` | CDD 프로젝트 초기화 (`contract/`, `*.contract.md` 템플릿 생성) |
+| `cdd ac add <파일> <테스트명>` | 테스트 파일에 빈 테스트 스켈레톤 추가. `--describe <그룹>` 옵션으로 describe 블록 지정 |
+| `cdd ac list [파일]` | 테스트 파일의 describe/test 트리 출력 |
+| `cdd validate` | 스키마/경로/참조 무결성 검증 |
+| `cdd rules validate` | `contract/rules/*.rules.json` 포맷 검증 |
 
-## Edge Cases
+### 공통 옵션
 
-| Situation | Handling |
-|---|---|
-| Feature rename | `git mv` to rename Spec file |
-| Feature split | Keep/delete existing file + create new files, in the same commit |
-| Feature merge | Consolidate into one file, delete the rest, in the same commit |
-| Feature removal | Confirm removal from Contract, delete Spec file with user approval |
-
----
-
-## Prohibitions
-
-- AI must not modify Contract files without user request.
-- AI must not delete Spec files without user approval.
-- Do not write code without checking Contract and Spec first.
-- Do not include implementation internals, algorithm details, or code snippets in Spec.
-- **Do not start implementation (Entity design) before Spec is confirmed.**
-- **If Spec and code conflict, do not change Spec to match code. Always fix code to match Spec.**
-- **If a better approach appears during implementation, do not change code first. Update Spec first.**
+- `--cwd <dir>`: 작업 디렉토리 지정 (기본값: 현재 디렉토리)
+- `--raw` / `--json`: JSON 출력 강제 (CI 환경에서 자동 활성화)
+- `-h, --help`: 도움말 표시

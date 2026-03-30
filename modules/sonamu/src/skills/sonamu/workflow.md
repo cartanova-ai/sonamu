@@ -30,15 +30,14 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 2. Sonamu skills를 읽고 `pnpm create sonamu [프로젝트명] --yes`로 프로젝트 생성
 3. `pnpm install` 실행
 
-### 2. 요구사항 기록 및 비즈니스 로직 파악
+### 2. 요구사항 파악 및 도메인 식별
 
-**CRITICAL: 이 단계(Step 4~6)를 완료하기 전에 auth generate나 인프라 기동으로 넘어가지 않는다.**
+**CRITICAL: 이 단계(Step 4~5)를 완료하기 전에 auth generate나 인프라 기동으로 넘어가지 않는다.**
 
-4. 사용자가 입력한 prompt를 프로젝트 루트의 `.claude/skills/project/requirements.md`에 기록
-5. 비즈니스 로직 파악 후 **작은 단위로** 사용자에게 확인받기
+4. 요구사항을 파악하고 도메인을 식별. 도메인별로 작은 단위로 사용자에게 확인받기
    - 한 번에 전체를 확인하지 말고 도메인별로 나누어 확인
    - "이 부분이 맞나요?" 식으로 구체적으로 질문
-6. 비즈니스 로직 최종 승인 완료 시 `.claude/skills/project/business-logic.md`에 기록
+5. 식별된 도메인 목록을 사용자에게 확인받기. PHASE 1에서 도메인별 `*.contract.md`를 작성함
 
 ### 3. 설정 확인
 
@@ -77,7 +76,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 **완료 기준:**
 
 - [ ] 프로젝트 생성 완료
-- [ ] requirements.md, business-logic.md 기록 완료
+- [ ] 도메인 목록 식별 및 사용자 승인 완료
 - [ ] sonamu.config.ts, .env 설정 확인 및 사용자 승인 완료
 - [ ] Docker, dev 서버 실행 중
 - [ ] Auth 엔티티 생성 및 migration 완료
@@ -85,58 +84,46 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ---
 
-## PHASE 0.5: Contract 및 Spec 작성
+## PHASE 1: 도메인 Logic 문서화
 
 **참조 스킬:** cdd.md
 
-**CRITICAL: 이 PHASE가 완료되기 전에 엔티티 설계(PHASE 1)를 시작하지 않는다.**
+**CRITICAL: 이 PHASE가 완료되기 전에 엔티티 설계(PHASE 2)를 시작하지 않는다.**
 
-### 7. main.contract.json 작성
+### 7. 도메인별 `*.contract.md` 작성
 
-20. `packages/api/contract/main.contract.json` 생성
-    - `requirements.md`, `business-logic.md` 기반으로 작성
-    - 전체 프로젝트 Overview, 하위 도메인 목록, Domain Glossary, User Roles, Business Rules, Edge Cases 포함
-    - `content`는 Markdown 한 줄씩 `string[]`로 작성
-21. 사용자에게 보고 후 승인 대기
-
-### 8. 도메인별 contract 작성
-
-22. `business-logic.md`에서 도메인을 식별하고 도메인 목록을 사용자에게 확인받기
-23. 도메인별로 `packages/api/contract/{domain}/main.contract.json` 작성
+20. PHASE 0에서 확인된 도메인별로 `contract/{domain}/{domain}.contract.md` 작성
     - 도메인 폴더명은 영문 소문자 (예: `auth`, `organization`, `research`)
-    - 각 도메인 contract 작성 후 사용자 확인받기 (도메인별로 하나씩)
-    - Features/Capabilities 섹션을 상세하게 작성한다 (이후 spec의 1:1 기반이 됨)
+    - 도메인 규칙, 상태 전이, 권한, Edge Cases 등 코드만으로 파악하기 어려운 결정 근거 포함
+    - 처음부터 완벽할 필요 없음 — 사용자와 대화하면서 점진적으로 정리
+21. 도메인별로 작성 후 사용자에게 확인받기 (도메인별로 하나씩)
 
-### 9. Spec 작성
+**`*.contract.md` 형식:**
 
-**CRITICAL: 1 Feature = 1 Spec 파일. 도메인 contract의 Features/Capabilities에 정의된 기능 하나당 spec 파일 하나.**
+```markdown
+# {도메인} 비즈니스 로직
 
-24. 각 도메인의 Features/Capabilities를 기반으로 spec 파일 목록 작성 후 사용자 확인
-25. 도메인별로 spec 파일 작성
-    - spec 파일은 해당 도메인 폴더에 위치
-    - 파일명은 feature key (예: `signin.spec.json`)
-    - `status: "draft"`로 시작
-26. 전체 spec 작성 완료 후 사용자에게 검토 요청
-    - 사용자 검토 및 수정 반영
-    - 모든 spec 검토 완료 후에만 다음 PHASE로 진행
+## 규칙
+- 규칙과 결정 근거
+
+## 워크플로우
+1. ...
+```
 
 **완료 기준:**
 
-- [ ] `packages/api/contract/main.contract.json` 작성 및 사용자 승인
-- [ ] 모든 도메인 contract 작성 및 사용자 승인
-- [ ] 모든 domain spec 파일 작성 완료
-- [ ] 사용자 spec 검토 완료
-- [ ] `pnpm cdd test` 실행 시 MISSING 0, NO_MATCH 0 확인
+- [ ] 모든 도메인의 `contract/{domain}/{domain}.contract.md` 작성 완료
+- [ ] 사용자 도메인별 확인 완료
 
 ---
 
-## PHASE 1: 엔티티 설계
+## PHASE 2: 엔티티 설계
 
 **참조 스킬:** entity-basic.md, entity-relations.md
 
-**전제 조건:** PHASE 0.5 완료 (모든 spec 사용자 검토 완료)
+**전제 조건:** PHASE 1 완료 (모든 도메인 `*.contract.md` 사용자 확인 완료)
 
-### 10. 엔티티 설계
+### 8. 엔티티 설계
 
 20. 사용자 요구사항에 맞는 엔티티 설계
     - 설계하면서 사용자에게 비즈니스 로직에 맞는지 **지속적으로 디테일하게** 확인받을 것
@@ -156,22 +143,22 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ---
 
-## PHASE 2: 엔티티 생성 및 마이그레이션
+## PHASE 3: 엔티티 생성 및 마이그레이션
 
 **참조 스킬:** entity-basic.md, entity-validation-checklist.md, migration.md
 
-### 8. 엔티티 생성
+### 9. 엔티티 생성
 
 22. 설계에 따라 **batch로** entity.json 생성
 23. biome check, type check
 24. 문제 없이 빌드되는지 확인
 
-### 9. 마이그레이션
+### 10. 마이그레이션
 
 25. 사용자에게 Sonamu UI와 CLI 중 어떤 방식으로 migration을 진행할지 확인 후 실행
 26. 실제 테이블이 생성되었는지 확인
 
-### 10. Cone 및 Scaffolding
+### 11. Cone 및 Scaffolding
 
 **참조 스킬:** cone.md
 
@@ -205,44 +192,47 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ---
 
-## PHASE 3: 테스트 및 API 구현
+## PHASE 4: 테스트 및 API 구현
 
-**참조 스킬:** testing.md, testing-devrunner.md, naite.md
+**참조 스킬:** testing.md, testing-devrunner.md, naite.md, cdd.md
 
-### 11. 테스트 계획
+### 12. AC 구체화 및 Claim 구성
 
-33. 테스트 계획을 batch로 세우기 — **항상 User 관련 테스트가 우선**
-34. `.claude/skills/project/test-plan.md`에 기록
-35. `architecture.md`에 test-plan.md 링크 추가
+**AC(수락 기준)는 테스트 파일의 describe/test 이름이다.** 별도 문서로 관리하지 않는다.
 
-### 12. Batch별 테스트 및 API 구현 (반복)
+33. `contract/**/*.contract.md`와 실제 코드를 참고하여 도메인별 AC 목록 초안 작성
+    - **항상 User 관련 테스트가 우선**
+34. 사용자와 논의하며 `pnpm cdd ac add`로 테스트 스켈레톤 생성
+35. `pnpm cdd ac list`로 확정된 AC 목록 확인
+36. Claim을 `tmp/claims/`에 YAML로 작성 (`surface` → `implement` 순)
+    - 상세 Claim 형식은 cdd.md 참조
 
-각 batch마다 다음을 반복:
+### 13. Claim 실행 (반복)
 
-36. **하나의 batch 비즈니스 로직에 맞는 테스트 코드 작성**
-37. biome check, type check
-38. **model의 API 구현**
+각 Claim마다:
+
+37. **AC 작성 + 구현 교차 반복** (AC 하나 → 구현 → 다음 AC → 구현)
+38. biome check, type check
 39. **`pnpm sonamu test`로 테스트 돌려보기**
     - dev 서버가 올라가있지 않으면 올린 뒤 실행
 
-### 13. 전체 검증
+### 14. 전체 검증
 
-40. 모든 batch 완료 후 전체 biome check, type check 및 빌드 확인
+40. 모든 Claim 완료 후 전체 biome check, type check 및 빌드 확인
 41. **`pnpm sonamu test`로 전체 테스트 실행**
 
 **완료 기준:**
 
-- [ ] test-plan.md 기록 완료
-- [ ] 모든 batch의 테스트 통과
-- [ ] 모든 batch의 API 구현 완료
+- [ ] 모든 도메인 AC 정의 완료 (테스트 파일에 스켈레톤으로 존재)
+- [ ] 모든 Claim 실행 완료
+- [ ] 모든 테스트 통과
 - [ ] 전체 biome check, type check, build 통과
-- [ ] 전체 테스트 통과
 
 ---
 
-## PHASE 4: Fixture 생성
+## PHASE 5: Fixture 생성
 
-### 14. Fixture 생성
+### 15. Fixture 생성
 
 42. 사용자에게 fixture 생성할지 확인
 43. 모든 엔티티의 prop에 `cone.note`가 존재하는지 체크
@@ -254,7 +244,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
     - `pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm`
     - **CRITICAL**: User.id string PK를 위한 `users_id_seq`가 생성되어 있어야 함 (PHASE 0 Step 18-19에서 설정)
     - 상세 내용은 `auth-migration.md` "Better-auth 엔티티 Fixture 생성" 섹션 참조
-46. 승인하면 테스트에서 batch로 나눈 대로 fixture 생성 (LLM 사용 필수)
+46. 승인하면 Claim 단위로 fixture 생성 (LLM 사용 필수)
     - `--use-llm` 옵션은 반드시 사용 (cone.note 기반 도메인 맥락 반영 필수)
 47. 실제 DB에 생성되었는지 사용자에게 확인 요청
 48. **`pnpm sonamu test`로 전체 테스트 재실행**
@@ -271,21 +261,19 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ---
 
-## PHASE 5: Frontend 개발
+## PHASE 6: Frontend 개발
 
 **참조 스킬:** frontend.md
 
-### 15. Frontend 계획
+### 16. Frontend 계획
 
 49. Frontend 개발 진행할지 사용자에게 확인
-50. 승인 후 테스트에서 나눈 batch로 Frontend 개발 계획 세우기
-51. `.claude/skills/project/frontend-plan.md`에 기록
-52. `architecture.md`에 frontend-plan.md 링크 추가
+50. 승인 후 도메인별 Frontend 개발 계획을 `contract/{domain}/{domain}.contract.md`에 추가하거나 사용자와 구두로 확인
 
-### 16. Batch별 Frontend 개발 (반복)
+### 17. Batch별 Frontend 개발 (반복)
 
-53. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
-54. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
+51. batch 대로 조금씩 진행하며 **사용자에게 확인 요청**
+52. 사용자가 브라우저에서 확인 후 Claude Code에게 피드백
     - "확인했다"
     - "로직대로 된다"
     - "이 부분이 잘 안 된다"
@@ -293,7 +281,6 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 **완료 기준:**
 
-- [ ] frontend-plan.md 기록 완료
 - [ ] 모든 batch의 Frontend 구현 완료
 - [ ] 사용자 확인 및 피드백 반영 완료
 
@@ -301,16 +288,20 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 ## 프로젝트 문서 구조
 
-워크플로우 진행 중 다음 문서들이 프로젝트 루트의 `.claude/skills/project/`에 생성된다:
+워크플로우 진행 중 다음 문서들이 생성된다:
 
 ```
+contract/
+└── {domain}/
+    └── {domain}.contract.md  # PHASE 1: 도메인 규칙 + 결정 근거 (영구 문서)
+
 .claude/skills/project/
-├── requirements.md      # PHASE 0: 사용자 요구사항 원문
-├── business-logic.md    # PHASE 0: 파악한 비즈니스 로직 (사용자 승인)
-├── architecture.md      # PHASE 1: 엔티티 설계안 + test-plan, frontend-plan 링크
-├── test-plan.md         # PHASE 3: batch별 테스트 계획
-└── frontend-plan.md     # PHASE 5: batch별 Frontend 개발 계획
+└── architecture.md           # PHASE 2: 엔티티 설계안
+
+tmp/claims/                   # PHASE 4: 실행 중 Claim YAML (완료 후 폐기)
 ```
+
+**Ground truth는 코드다.** `*.contract.md`는 코드 결정의 근거를 기록하는 문서이지 선행 정의서가 아니다. 코드와 `*.contract.md`가 충돌하면 코드를 우선한다.
 
 ---
 
@@ -320,6 +311,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 2. **테스트는 `pnpm sonamu test`** — `pnpm test`는 CI용
 3. **순서를 지킬 것** — 단계를 건너뛰지 않음
 4. **사용자에게 자주 확인** — 추측하지 말고 질문
-5. **batch 단위로 작업** — 한 번에 모든 것을 하지 않음
+5. **Claim 단위로 작업** — 한 번에 모든 것을 하지 않음
 6. **User 관련이 항상 우선** — 테스트, API, Frontend 모두
-7. **문서를 기록** — requirements, business-logic, architecture, test-plan, frontend-plan
+7. **Ground truth는 코드** — `*.contract.md`는 근거 기록, 코드와 충돌 시 코드 우선
+8. **신규는 contract→Claim→AC→implement, 변경은 code→Claim→contract 갱신**
