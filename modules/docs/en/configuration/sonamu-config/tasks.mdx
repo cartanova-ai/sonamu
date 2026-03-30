@@ -461,18 +461,22 @@ export default defineConfig({
 
 ```typescript
 // ❌ Bad: Trying HTTP response in Worker
-@workflow()
-static async processData() {
-  const ctx = getContext();
-  ctx.reply.send({ done: true });  // null in Worker!
-}
+export const processData = workflow(
+  { name: "process_data" },
+  async () => {
+    const ctx = getContext();
+    ctx.reply.send({ done: true });  // null in Worker!
+  }
+);
 
 // ✅ Good: Save results to DB
-@workflow()
-static async processData() {
-  const result = await heavyProcessing();
-  await ResultModel.save({ data: result });
-}
+export const processData = workflow(
+  { name: "process_data" },
+  async () => {
+    const result = await heavyProcessing();
+    await ResultModel.save({ data: result });
+  }
+);
 ```
 
 ### 2. enableWorker Setting
