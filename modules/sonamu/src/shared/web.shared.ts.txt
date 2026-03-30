@@ -61,7 +61,7 @@ export async function fetch(options: AxiosRequestConfig) {
     });
     return res.data;
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response && e.response.data) {
+    if (axios.isAxiosError(e) && e.response?.data) {
       const d = e.response.data as {
         message: string;
         issues: core.$ZodIssue[];
