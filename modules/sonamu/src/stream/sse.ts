@@ -12,21 +12,47 @@ export function createSSEFactory<T extends z.ZodObject>(
 
 export function createMockSSEFactory<T extends z.ZodObject>(_events: T): SSEConnection<T> {
   return {
+    get closed() {
+      return false;
+    },
+    onClose: (_callback) => {},
     publish: (_event, _data) => {},
     end: () => Promise.resolve(),
   };
 }
 
 export interface SSEConnection<T extends z.ZodObject> {
+  get closed(): boolean;
+  onClose(callback: () => void): void;
   publish<K extends keyof z.infer<T>>(event: K, data: z.infer<T>[K]): void;
   end(): Promise<void>;
 }
 
 class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
   private _closed = false;
+  private _closeCallbacks: Array<() => void> = [];
+
   private readonly markClosed = () => {
     this._closed = true;
+    this.fireCloseCallbacks();
   };
+
+  get closed(): boolean {
+    return this._closed;
+  }
+
+  onClose(callback: () => void): void {
+    this._closeCallbacks.push(callback);
+  }
+
+  // 콜백을 한 번만 실행하고 배열을 비워 중복 호출을 방지
+  private fireCloseCallbacks(): void {
+    const callbacks = this._closeCallbacks;
+    this._closeCallbacks = [];
+    for (const cb of callbacks) {
+      cb();
+    }
+  }
 
   constructor(
     private readonly socket: FastifyRequest["socket"],
@@ -55,6 +81,7 @@ class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
     this._closed = true;
     this.socket.off("close", this.markClosed);
     this.socket.off("error", this.markClosed);
+    this.fireCloseCallbacks();
 
     this.reply.sse({
       event: "end",
