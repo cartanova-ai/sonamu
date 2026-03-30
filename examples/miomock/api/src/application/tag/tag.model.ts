@@ -196,6 +196,7 @@ class TagModelClass extends BaseModelClass<
 
   @api({ httpMethod: "POST", clients: ["axios"] })
   async runWorkflow(): Promise<void> {
+    if (!Sonamu.workflows) throw new Error("Workflows not initialized");
     const handle = await Sonamu.workflows.run({ name: "test-workflow", version: null }, {});
     console.log("handle", handle);
   }

@@ -144,11 +144,7 @@ class SonamuClass {
   }
 
   private _workflows: WorkflowManager | null = null;
-  get workflows(): WorkflowManager {
-    if (this._workflows === null) {
-      throw new Error("Sonamu has not been initialized");
-    }
-
+  get workflows(): WorkflowManager | null {
     return this._workflows;
   }
 
@@ -204,8 +200,10 @@ class SonamuClass {
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
-    this.config.database.database = this.config.database.database ?? "pg";
-    this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
+    if (this.config.database) {
+      this.config.database.database = this.config.database.database ?? "pg";
+      this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
+    }
 
     // 로깅 설정
     const { configureLogTape } = await import("../logger/configure");
@@ -216,11 +214,13 @@ class SonamuClass {
     }
 
     // DB 로드
-    const { DB } = await import("../database/db");
-    this.dbConfig = DB.generateDBConfig(this.config.database);
-    if (!doSilent) {
-      const chalk = (await import("chalk")).default;
-      console.log(chalk.green("DB Config Loaded!"));
+    if (this.config.database) {
+      const { DB } = await import("../database/db");
+      this.dbConfig = DB.generateDBConfig(this.config.database);
+      if (!doSilent) {
+        const chalk = (await import("chalk")).default;
+        console.log(chalk.green("DB Config Loaded!"));
+      }
     }
 
     // Entity 로드
@@ -1306,6 +1306,11 @@ class SonamuClass {
   }
 
   private async initializeWorkflows(options: SonamuTaskOptions | undefined) {
+    // database 설정이 없으면 WorkflowManager를 초기화하지 않음
+    if (!this.config.database) {
+      return;
+    }
+
     const { WorkflowManager } = await import("../tasks/workflow-manager");
     // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
     this._workflows = new WorkflowManager(DB.getDBConfig("w"));
@@ -1321,7 +1326,7 @@ class SonamuClass {
     };
 
     if (enableWorker) {
-      this.workflows.setupWorker({
+      this._workflows?.setupWorker({
         ...defaultWorkerOptions,
         ...options.workerOptions,
       });
@@ -1334,7 +1339,7 @@ class SonamuClass {
 
     server.addHook("onClose", async () => {
       await options.lifecycle?.onShutdown?.(server);
-      await this.workflows.destroy();
+      await this.workflows?.destroy();
       await this.destroy();
     });
 
@@ -1358,7 +1363,7 @@ class SonamuClass {
     server
       .listen({ port, host })
       .then(async () => {
-        await this.workflows.startWorker();
+        await this.workflows?.startWorker();
         await options.lifecycle?.onStart?.(server);
       })
       .catch(async (err) => {

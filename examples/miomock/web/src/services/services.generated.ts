@@ -725,9 +725,6 @@ export namespace FileService {
     return fetch({
       method: "POST",
       url: `/api/file/upload`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
       data: formData,
     });
@@ -757,9 +754,6 @@ export namespace FileService {
     return fetch({
       method: "POST",
       url: `/api/file/inlineUpload`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
       data: formData,
     });
@@ -797,9 +791,6 @@ export namespace FileService {
     return fetch({
       method: "POST",
       url: `/api/file/inlineUploadFlat`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
       data: formData,
     });
@@ -837,9 +828,6 @@ export namespace FileService {
     return fetch({
       method: "POST",
       url: `/api/file/testBufferUpload`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
       data: formData,
     });
@@ -880,9 +868,6 @@ export namespace FileService {
     return fetch({
       method: "POST",
       url: `/api/file/testStreamUpload`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
       data: formData,
     });

@@ -31,6 +31,10 @@ export function createGlobalSetup() {
       };
     }
 
+    if (!config.database) {
+      throw new Error("database 설정이 필요합니다 (병렬 테스팅)");
+    }
+
     const maxWorkers = config.test.maxWorkers ?? 4;
     const templateDb = `${config.database.name}_test`;
 
