@@ -74,3 +74,8 @@ Read the listed skill file before attempting any workaround or fix in these situ
 | Writing Puri SELECT / WHERE / JOIN / FTS / pgvector queries | `puri.md` |
 | Implementing `@upload` file upload or deciding parameter pattern | `api.md`, `framework-change.md` |
 | Reading or writing files under `contract/rules/` | `cdd.md` |
+| Implementing `BaseAgentClass` or `@tools` decorator | `ai-agents.md` |
+| Implementing background jobs or cron scheduling | `tasks.md` |
+| Batch-saving relation data (upsert) | `upsert.md` |
+| Adding a new entity or enum and registering i18n keys | `i18n.md` |
+| Implementing pgvector embeddings or vector search | `vector.md` |
