@@ -114,6 +114,21 @@ pnpm cdd ac list [파일]
 | `rules[].instruction` | 따라야 할 구체적 지침 |
 | `rules[].examples` | 선택적 코드/사용 예시 |
 
+`contract/rules/`에는 `*.known-issues.json`도 선택적으로 둘 수 있다. 알려진 버그, 프레임워크 제약, 임시 우회법 등 "지금 당장은 고칠 수 없지만 알고 있어야 하는 것"을 기록한다. Claim 실행 시 `rules` 필드에 포함하면 서브에이전트가 같은 실수를 반복하지 않는다.
+
+```json
+{
+  "description": "알려진 이슈 및 우회법",
+  "issues": [
+    {
+      "id": "upload-multipart-form-required",
+      "symptom": "@upload 메서드 호출 시 Content-Type: application/json으로 보내면 파일이 누락됨",
+      "workaround": "multipart/form-data로 전송해야 함. api.md @upload 패턴 참조"
+    }
+  ]
+}
+```
+
 ---
 
 ## 일회성 문서: Claim
