@@ -200,7 +200,10 @@ export async function registerDevTestRoutes(
       };
       manager.addEventListener(listener);
 
+      let cleaned = false;
       const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
         clearInterval(heartbeatTimer);
         manager.removeEventListener(listener);
       };
