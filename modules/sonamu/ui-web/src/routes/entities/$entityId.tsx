@@ -333,6 +333,27 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       ]),
     );
   }, [entity]);
+
+  const scrollToAndHighlight = (elementId: string, highlightClasses: string[]) => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.remove(...highlightClasses);
+      void el.offsetWidth;
+      el.classList.add(...highlightClasses);
+      setTimeout(() => {
+        el.classList.remove(...highlightClasses);
+      }, 1500);
+    }
+  };
+
+  const enumPropMap = useMemo(() => {
+    if (!entity) {
+      return new Map<string, string>();
+    }
+    return new Map(entity.props.filter((p) => p.type === "enum").map((p) => [p.id, p.name]));
+  }, [entity]);
+
   const enumLabelsArrayToEnumLabels = (enumLabelsArray: {
     [enumId: string]: { key: string; label: string }[];
   }) => {
@@ -893,7 +914,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           <div className="flex gap-4">
             <div className="flex-1">
               <h3>{SD("entity.props")}</h3>
-              <Table className="border rounded-lg bg-white">
+              <Table className="border border-separate border-spacing-0 rounded-lg bg-white overflow-hidden">
                 <TableHeader className="bg-gray-50">
                   <TableRow>
                     <TableHead>{SD("entity.prop.name")}</TableHead>
@@ -962,7 +983,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 4)}>
                         {prop.type === "enum" && (
-                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#6b7280] text-white">
+                          <span
+                            className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#6b7280] text-white cursor-pointer hover:bg-[#4b5563] transition-colors"
+                            onClick={() =>
+                              scrollToAndHighlight(`enum-${prop.id}`, ["animate-blink-highlight"])
+                            }
+                          >
                             {prop.id}
                           </span>
                         )}
@@ -1014,7 +1040,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             </div>
             <div className="flex-[0.5]">
               <h3>{SD("entity.indexes")}</h3>
-              <Table className="border rounded-lg bg-white">
+              <Table className="border border-separate border-spacing-0 rounded-lg bg-white overflow-hidden">
                 <TableHeader className="bg-gray-50">
                   <TableRow>
                     <TableHead>{SD("entity.index.type")}</TableHead>
@@ -1063,8 +1089,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 </h3>
                 <div className="flex flex-wrap gap-8">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
-                    <div className="w-80" key={enumsIndex}>
-                      <Table id={`enum-${enumId}`} className="border rounded-lg bg-white">
+                    <div id={`enum-${enumId}`} className="w-80 rounded-lg" key={enumsIndex}>
+                      <Table className="border border-separate border-spacing-0 rounded-lg bg-white overflow-hidden">
                         <TableHeader className="bg-gray-50">
                           <TableRow>
                             <TableHead
@@ -1078,7 +1104,24 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                               }}
                             >
                               <div className="flex items-center gap-2">
-                                {enumId}
+                                <span
+                                  id={`enum-title-${enumId}`}
+                                  className={
+                                    enumPropMap.has(enumId)
+                                      ? "cursor-pointer hover:text-blue-600 transition-colors"
+                                      : undefined
+                                  }
+                                  onClick={
+                                    enumPropMap.has(enumId)
+                                      ? () =>
+                                          scrollToAndHighlight(`prop-${enumPropMap.get(enumId)}`, [
+                                            "bg-blue-50",
+                                          ])
+                                      : undefined
+                                  }
+                                >
+                                  {enumId}
+                                </span>
                                 <ConeButton
                                   size="sm"
                                   onClick={() => {
@@ -1165,7 +1208,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                   />
                 </h3>
                 {entity && entity.flattenSubsetRows.length > 0 && (
-                  <Table className="border rounded-lg bg-white">
+                  <Table className="border border-separate border-spacing-0 rounded-lg bg-white overflow-hidden">
                     <TableHeader className="bg-gray-50">
                       <TableRow>
                         <TableHead>Field</TableHead>
