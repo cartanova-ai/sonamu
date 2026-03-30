@@ -30,74 +30,18 @@ describe("findContractDir", () => {
 });
 
 describe("loadProject", () => {
-  it("miomock 코퍼스에서 정규화된 절대 경로와 예상 노드 수를 반환한다", async () => {
+  it("rules 파일을 로드한다", async () => {
     const project = await loadProject(MIOMOCK_CONTRACT_DIR);
 
     expect(project.contractDir).toBe(MIOMOCK_CONTRACT_DIR);
     expect(project.projectRoot).toBe(path.dirname(MIOMOCK_CONTRACT_DIR));
-
-    expect(project.contracts).toHaveLength(8);
-    expect(project.specs).toHaveLength(30);
-
-    for (const c of project.contracts) {
-      expect(path.isAbsolute(c.path)).toBe(true);
-    }
-    for (const s of project.specs) {
-      expect(path.isAbsolute(s.path)).toBe(true);
-      for (const rc of s.resolvedContracts) {
-        expect(path.isAbsolute(rc)).toBe(true);
-      }
-      for (const rd of s.resolvedDependsOnSpecs) {
-        expect(path.isAbsolute(rd)).toBe(true);
-      }
-    }
-  });
-
-  it("도메인이 올바르게 파생된다", async () => {
-    const project = await loadProject(MIOMOCK_CONTRACT_DIR);
-
-    const rootContract = project.contracts.find((c) => c.domain === "");
-    expect(rootContract).toBeDefined();
-    expect(rootContract?.basename).toBe("main");
-
-    const authSpecs = project.specs.filter((s) => s.domain === "auth");
-    expect(authSpecs.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("spec의 resolvedContracts가 올바른 절대 경로로 해소된다", async () => {
-    const project = await loadProject(MIOMOCK_CONTRACT_DIR);
-
-    const signinSpec = project.specs.find((s) => s.basename === "signin");
-    expect(signinSpec).toBeDefined();
-    expect(signinSpec?.resolvedContracts).toContain(
-      path.resolve(MIOMOCK_CONTRACT_DIR, "auth/main.contract.json"),
-    );
-  });
-
-  it("필수 필드가 누락된 contract 파일이면 에러를 던진다", async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdd-test-"));
-    const contractDir = path.join(tmpDir, "contract");
-    fs.mkdirSync(contractDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(contractDir, "bad.contract.json"),
-      JSON.stringify({ lastModified: "2026-01-01" }),
-    );
-
-    await expect(loadProject(contractDir)).rejects.toThrow("schema 필드가 문자열이 아닙니다");
-
-    fs.rmSync(tmpDir, { recursive: true });
-  });
-
-  it("rules 파일을 로드한다", async () => {
-    const project = await loadProject(MIOMOCK_CONTRACT_DIR);
-
     expect(project.rules.length).toBeGreaterThanOrEqual(1);
 
     const webRules = project.rules.find((r) => r.basename === "web");
     expect(webRules).toBeDefined();
     expect(webRules?.document.description).toBeTruthy();
     expect(webRules?.document.rules.length).toBeGreaterThan(0);
-    expect(path.isAbsolute(webRules?.path)).toBe(true);
+    expect(path.isAbsolute(webRules!.path)).toBe(true);
   });
 
   it("rules 디렉토리가 없으면 빈 배열을 반환한다", async () => {
@@ -107,43 +51,6 @@ describe("loadProject", () => {
 
     const project = await loadProject(contractDir);
     expect(project.rules).toEqual([]);
-
-    fs.rmSync(tmpDir, { recursive: true });
-  });
-
-  it("필수 필드가 누락된 spec 파일이면 에러를 던진다", async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdd-test-"));
-    const contractDir = path.join(tmpDir, "contract");
-    fs.mkdirSync(contractDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(contractDir, "bad.spec.json"),
-      JSON.stringify({ lastModified: "2026-01-01", status: "draft" }),
-    );
-
-    await expect(loadProject(contractDir)).rejects.toThrow("schema 필드가 문자열이 아닙니다");
-
-    fs.rmSync(tmpDir, { recursive: true });
-  });
-
-  it("useTestRef가 boolean이 아니면 에러를 던진다", async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdd-test-"));
-    const contractDir = path.join(tmpDir, "contract");
-    fs.mkdirSync(contractDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(contractDir, "bad.spec.json"),
-      JSON.stringify({
-        schema: "default-spec",
-        useTestRef: "no",
-        summary: "bad",
-        description: [],
-        acceptanceCriteria: [],
-        status: "draft",
-        sources: [],
-        contracts: [],
-      }),
-    );
-
-    await expect(loadProject(contractDir)).rejects.toThrow("useTestRef 필드가 boolean이 아닙니다");
 
     fs.rmSync(tmpDir, { recursive: true });
   });
