@@ -111,7 +111,7 @@ pnpm sonamu cone gen Post --locale en
 #### LLM이 참조하는 정보
 
 1. Entity JSON 구조 (props, subsets, enums, relations)
-2. 프로젝트 스킬 파일 (`.claude/skills/project/requirements.md`, `business-logic.md` 등)
+2. 도메인 규칙 파일 (`contract/**/*.contract.md`)
 3. 기존 cone 메타데이터 (보존 모드 시)
 
 ### 2. stub entity — Entity 생성 시 자동 cone 생성
@@ -302,9 +302,8 @@ relation prop에서 참조 데이터 조회 방식을 지정합니다.
 
 ### LLM cone 생성 품질 높이기
 
-1. `.claude/skills/project/requirements.md`에 프로젝트 요구사항을 상세히 기록
-2. `business-logic.md`에 비즈니스 로직을 기록
-3. `cone gen` 실행 — LLM이 이 파일들을 컨텍스트로 사용
+1. `contract/{domain}/{domain}.contract.md`에 도메인 규칙과 결정 근거를 상세히 기록
+2. `cone gen` 실행 — LLM이 `contract/**/*.contract.md`를 컨텍스트로 사용
 
 ### cone 재생성이 필요한 시점
 

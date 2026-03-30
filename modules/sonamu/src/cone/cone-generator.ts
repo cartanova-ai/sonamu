@@ -84,35 +84,55 @@ function getApiKey(): string {
 }
 
 /**
- * 프로젝트 루트의 .claude/skills/project/*.md 파일들을 읽어 컨텍스트로 반환합니다.
+ * 도메인별 {domain}.contract.md와 architecture.md를 읽어 컨텍스트로 반환합니다.
  *
- * requirements.md 등 프로젝트의 비즈니스 요구사항과 도메인 지식을 담은 파일들을
- * cone 생성 시 LLM에게 전달하여 현실적인 메타데이터를 생성하도록 합니다.
+ * - contract/{domain}/{domain}.contract.md: 도메인 규칙과 결정 근거 (주 참조 대상)
+ * - .claude/skills/project/architecture.md: 엔티티 설계 구조 (보조 참조)
+ *
+ * cone 생성 시 LLM에게 전달하여 도메인 맥락에 맞는 메타데이터를 생성하도록 합니다.
  */
 function readProjectSkills(): string {
   try {
     const { Sonamu } = require("../api");
     const projectRoot = Sonamu.appRootPath;
-    const skillsDir = path.join(projectRoot, ".claude", "skills", "project");
-
-    if (!fs.existsSync(skillsDir)) {
-      return "";
-    }
-
-    const files = fs
-      .readdirSync(skillsDir)
-      .filter((f: string) => f.endsWith(".md"))
-      .sort();
-    if (files.length === 0) {
-      return "";
-    }
-
     const contents: string[] = [];
-    for (const file of files) {
-      const filePath = path.join(skillsDir, file);
-      const content = fs.readFileSync(filePath, "utf-8").trim();
+
+    // contract/**/*.contract.md 수집
+    const contractDir = path.join(projectRoot, "contract");
+    if (fs.existsSync(contractDir)) {
+      const domains = fs
+        .readdirSync(contractDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name);
+
+      for (const domain of domains) {
+        const domainDir = path.join(contractDir, domain);
+        const contractFiles = fs
+          .readdirSync(domainDir)
+          .filter((f: string) => f.endsWith(".contract.md"));
+
+        for (const file of contractFiles) {
+          const filePath = path.join(domainDir, file);
+          const content = fs.readFileSync(filePath, "utf-8").trim();
+          if (content) {
+            contents.push(`--- contract/${domain}/${file} ---\n${content}`);
+          }
+        }
+      }
+    }
+
+    // .claude/skills/project/architecture.md 보조 참조
+    const architecturePath = path.join(
+      projectRoot,
+      ".claude",
+      "skills",
+      "project",
+      "architecture.md",
+    );
+    if (fs.existsSync(architecturePath)) {
+      const content = fs.readFileSync(architecturePath, "utf-8").trim();
       if (content) {
-        contents.push(`--- ${file} ---\n${content}`);
+        contents.push(`--- architecture.md ---\n${content}`);
       }
     }
 
