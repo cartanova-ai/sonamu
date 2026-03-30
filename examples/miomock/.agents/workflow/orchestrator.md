@@ -4,13 +4,36 @@ The main agent reads this document and assumes the orchestrator role.
 
 ## Main-session boundary
 
-The orchestrator never edits code or tests directly. All implementation work is delegated to sub-agents.
+The orchestrator never edits code or tests directly. All implementation work is delegated to workers.
 
 What the orchestrator CAN do:
 - Run CLI commands (`pnpm sonamu ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
 - Create/manage Unit packets (`tmp/units/`)
-- Spawn sub-agents (Agent tool)
+- Spawn workers (Agent tool or TeamCreate)
 - Communicate with the user
+
+## Execution mode
+
+Determined at bootstrap, before any work begins.
+
+- If `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set: **team mode** (default).
+- If `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is NOT set: **sub-agent mode** (only option).
+- The user may explicitly request either mode, overriding the default.
+
+### Team mode
+
+The orchestrator creates a team at bootstrap via `TeamCreate` with all workers (`cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). The team persists for the entire run. Workers can communicate directly via `SendMessage` and share a task list.
+
+### Sub-agent mode
+
+Workers are spawned on-demand via the `Agent` tool. Results pass only through the orchestrator. Workers cannot communicate with each other.
+
+## Bootstrap
+
+1. Determine execution mode (see above).
+2. If team mode: create the team via `TeamCreate` with all worker agents.
+3. Read `cdd.md` and this document.
+4. Proceed to step 1 (Planning).
 
 ## 1. Planning
 
@@ -38,37 +61,52 @@ What the orchestrator CAN do:
 
 ## 4. Execution
 
-1. Spawn `surface` Units (those with no `depends_on`) first.
-2. After surface completion, spawn `test` + `implement` Units in parallel.
-3. Each sub-agent edits only within `scope.write`.
-4. If a sub-agent reports needing changes outside `scope.write`, adjust the packet and re-spawn.
+Worker mapping (same for both modes):
 
-Sub-agent mapping:
+| type | worker | agent definition |
+|---|---|---|
+| `surface` | `cdd-surface-scaffolder` | `agents/cdd-surface-scaffolder.md` |
+| `test` | `cdd-test-writer` | `agents/cdd-test-writer.md` |
+| `implement` | `cdd-implementer` | `agents/cdd-implementer.md` |
 
-| type | subagent_type |
-|---|---|
-| `surface` | `cdd-surface-scaffolder` |
-| `test` | `cdd-test-writer` |
-| `implement` | `cdd-implementer` |
+### Sub-agent mode execution
+
+1. Spawn `surface` Units (those with no `depends_on`) first via `Agent` tool.
+2. After surface completion, spawn `test` + `implement` Units in parallel via `Agent` tool.
+3. Each worker edits only within `scope.write`.
+4. If a worker reports needing changes outside `scope.write`, adjust the packet and re-spawn.
+
+### Team mode execution
+
+1. Assign `surface` tasks to `cdd-surface-scaffolder` via `TaskCreate`.
+2. After surface completion, assign `test` and `implement` tasks via `TaskCreate` with `depends_on`.
+3. Workers coordinate directly via `SendMessage`:
+   - Interface/type changes: notify the other worker immediately.
+   - Shared file conflicts: negotiate ownership before editing.
+4. If a worker reports needing changes outside `scope.write`, update the task and reassign.
+5. The orchestrator monitors progress and intervenes only on blocks or conflicts.
 
 ## 5. Review
 
-1. After all implementation Units complete, spawn `cdd-reviewer`.
+1. After all implementation Units complete, run review:
+   - Team mode: assign review task to `cdd-reviewer` via `TaskCreate`.
+   - Sub-agent mode: spawn `cdd-reviewer` via `Agent` tool.
 2. Review scope: all changed files + applied Rules.
-3. If findings exist, pass them to the owning Unit's sub-agent via `findings` and re-spawn.
+3. If findings exist, pass them to the owning worker via `findings` and re-execute.
 
 ## 6. AC verification
 
 1. Run `pnpm sonamu test` (or target specific test files).
 2. All pass -> done.
 3. On failure:
-   - Pass failure log to the relevant `implement` Unit's sub-agent via `findings`.
+   - Pass failure log to the relevant `implement` worker via `findings`.
    - After fix, repeat from step 5 (review).
 4. If the same failure repeats 3 times, report to user.
 
 ## Completion report
 
 ```yaml
+execution_mode: "sub-agent|team"
 units_completed: ["U-001", "U-002"]
 files_changed: ["list of changed files"]
 ac_results:

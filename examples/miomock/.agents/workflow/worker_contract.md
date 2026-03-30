@@ -1,10 +1,10 @@
-# CDD Sub-agent Common Rules
+# CDD Worker Common Rules
 
-All CDD sub-agents must read this document and `cdd.md` before starting work.
+All CDD workers must read this document and `cdd.md` before starting work.
 
 ## Common constraints
 
-- Leaf worker. Cannot spawn other sub-agents.
+- Leaf worker. Cannot spawn other agents.
 - May only modify/create files listed in `scope.write`.
 - If changes outside `scope.write` are needed, report to orchestrator and stop.
 - Read and apply every rule file listed in `rules` before starting work.
@@ -26,6 +26,13 @@ All CDD sub-agents must read this document and `cdd.md` before starting work.
 3. Work within the `scope.write` boundary.
 4. Run type-specific verification.
 5. Return result.
+
+## Team mode communication
+
+When running in team mode, workers may communicate directly via `SendMessage`:
+- Notify the other worker when changing a shared interface, type, or export.
+- Negotiate before editing a file that might overlap with another worker's scope.
+- Do NOT expand your own `scope.write` based on peer messages. Request scope changes through the orchestrator.
 
 ## Verification criteria
 
