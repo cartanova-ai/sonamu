@@ -14,8 +14,44 @@ description: Sonamu better-auth 인증 시스템. 엔티티 자동 생성, Guard
 - 생성 로직: `modules/sonamu/src/auth/auth-generator.ts`
 - 엔티티 정의: `modules/sonamu/src/auth/better-auth-entities.ts`
 
+**IMPORTANT: generate 실행 전에 반드시 사용자에게 플러그인 사용 여부를 확인해야 합니다.**
+
+플러그인 선택은 generate 시점에 함께 이루어지며, 나중에 추가도 가능하지만 처음부터 명시하는 것이 좋습니다.
+지원 플러그인 목록과 용도는 `auth-plugins.md`를 참고하세요.
+
+### 플러그인 확인 흐름
+
+**[Step 1] generate 전 확인 (필수)**
+
+> "어떤 인증 방식을 사용할 계획인가요? 기본 이메일/소셜 로그인 외에 추가 플러그인이 필요한지 확인해 주세요.
+> 지원 플러그인: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
+
+**[Step 1-A] 사용자가 "나중에 하겠다"고 응답한 경우:**
+
+아래 안내를 제공한 후 플러그인 없이 generate를 진행합니다:
+
+> "알겠습니다. 플러그인은 초기 마이그레이션 실행 전까지 추가하는 것이 가장 좋습니다.
+> 마이그레이션 전에 다시 확인드리겠습니다."
+
+그리고 **`plugins_deferred: true`** 상태를 기억합니다.
+
+**[Step 2] migrate run 직전 재확인 (CRITICAL — `plugins_deferred: true`인 경우 반드시 실행)**
+
+마이그레이션을 실행하기 전, 반드시 다시 확인합니다:
+
+> "마이그레이션 실행 전입니다. 지금이 플러그인을 추가하기 가장 좋은 시점입니다.
+> 추가할 플러그인이 있으면 알려주세요. 없으면 그대로 진행합니다.
+> 지원 플러그인: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
+
+- 플러그인 추가 시: `pnpm sonamu auth generate --plugins <목록>` 실행 후 migrate 진행
+- 없으면: migrate 그대로 진행
+
 ```bash
+# 플러그인 없이 기본 엔티티만
 pnpm sonamu auth generate
+
+# 플러그인 포함
+pnpm sonamu auth generate --plugins admin,2fa,username
 ```
 
 생성되는 4개 엔티티 (`betterAuthV1` 배열):
@@ -242,7 +278,10 @@ Enum 추가:
 ## 체크리스트
 
 설정 후 확인 사항:
-- [ ] `pnpm sonamu auth generate` 실행
+- [ ] **[generate 전] 사용자에게 플러그인 필요 여부 확인**
+  - "나중에" 응답 시 → `plugins_deferred: true` 기억, 최적 시점 안내
+- [ ] `pnpm sonamu auth generate [--plugins ...]` 실행
+- [ ] **[migrate 전] `plugins_deferred: true`인 경우 플러그인 재확인** (CRITICAL)
 - [ ] 마이그레이션 생성 및 적용
 - [ ] `sonamu.config.ts`에 `server.auth` 설정
 - [ ] `guardHandler` 구현
