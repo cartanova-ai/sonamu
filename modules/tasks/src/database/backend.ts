@@ -157,6 +157,8 @@ export class BackendPostgres implements Backend {
     await this.pubsub?.destroy();
     this.pubsub = null;
     await this.knex.destroy();
+    this._knex = null;
+    this.initialized = false;
   }
 
   async createWorkflowRun(params: CreateWorkflowRunParams): Promise<WorkflowRun> {

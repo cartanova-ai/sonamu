@@ -73,6 +73,8 @@ export class Worker {
 
     // wait for all active executions to finish
     while (this.activeExecutions.size > 0) await sleep(100);
+
+    this.subscribed = false;
   }
 
   /**
@@ -136,7 +138,7 @@ export class Worker {
   }
 
   /*
-   * Cclaim and process a workflow run for the given worker ID. Do not await the
+   * Claim and process a workflow run for the given worker ID. Do not await the
    * processing here to avoid blocking the caller.
    * Returns the claimed workflow run, or null if none was available.
    */
