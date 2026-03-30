@@ -415,7 +415,7 @@ export class BaseModelClass<
       const { default: SqlParser } = await import("node-sql-parser");
       const parser = new SqlParser.Parser();
       const parsedQuery = parser.astify(countPuri.toQuery(), {
-        database: Sonamu.config.database?.database,
+        database: Sonamu.config.database.database,
       });
 
       const leftJoinTables = getJoinTables(parsedQuery, ["LEFT JOIN"]);

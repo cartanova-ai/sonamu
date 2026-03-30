@@ -283,7 +283,7 @@ export class Syncer {
 
   async autoloadWorkflows() {
     this.workflows = await loadWorkflows();
-    await Sonamu.workflows?.synchronize(this.workflows);
+    await Sonamu.workflows.synchronize(this.workflows);
   }
 
   async autoloadSSRRoutes(): Promise<void> {

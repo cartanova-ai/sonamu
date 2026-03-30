@@ -65,7 +65,7 @@ describe("Migrator - getStatus", () => {
   test("각 db의 connections 확인", async () => {
     await migrator.getStatus();
 
-    const dbUser = Sonamu.config.database?.defaultOptions.connection?.user ?? "root";
+    const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
     expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
       // 이거 아래에 나타나는 순서가 중요한 테스트입니다!
       // 이 순서는 Sonamu UI의 DB Migration 탭에 표시되는 순서와 동일합니다.

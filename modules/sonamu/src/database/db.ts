@@ -157,7 +157,7 @@ export class DBClass {
     this.workerDBs.clear();
   }
 
-  public generateDBConfig(config: NonNullable<SonamuConfig["database"]>): SonamuDBConfig {
+  public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
     const defaultKnexConfig: Partial<DatabaseConfig> = assign(
       {
         client: "postgresql",

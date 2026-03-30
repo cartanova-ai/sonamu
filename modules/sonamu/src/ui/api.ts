@@ -1087,12 +1087,15 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       // Tasks API
       server.get("/api/tasks/status", async () => {
-        return { active: Sonamu.workflows !== null };
+        try {
+          Sonamu.workflows;
+          return { active: true };
+        } catch {
+          return { active: false };
+        }
       });
 
       server.get("/api/tasks/workflowDefinitions", async () => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const definitions = Sonamu.workflows.workflowDefinitions;
         return { definitions };
       });
@@ -1109,8 +1112,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           createdBefore?: string;
         };
       }>("/api/tasks/workflowRuns", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         const { limit, after, before, order, status, workflowName, createdAfter, createdBefore } =
           request.query;
@@ -1129,8 +1130,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.get<{
         Params: { id: string };
       }>("/api/tasks/workflowRuns/:id", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         const workflowRun = await backend.getWorkflowRun({
           workflowRunId: request.params.id,
@@ -1144,8 +1143,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post<{
         Params: { id: string };
       }>("/api/tasks/workflowRuns/:id/cancel", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         return backend.cancelWorkflowRun({
           workflowRunId: request.params.id,
@@ -1155,8 +1152,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post<{
         Params: { id: string };
       }>("/api/tasks/workflowRuns/:id/pause", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         return backend.pauseWorkflowRun({
           workflowRunId: request.params.id,
@@ -1166,8 +1161,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post<{
         Params: { id: string };
       }>("/api/tasks/workflowRuns/:id/resume", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         return backend.resumeWorkflowRun({
           workflowRunId: request.params.id,
@@ -1182,8 +1175,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           before?: string;
         };
       }>("/api/tasks/workflowRuns/:id/steps", async (request) => {
-        if (!Sonamu.workflows)
-          throw new Error("Workflows not initialized (database not configured)");
         const backend = Sonamu.workflows.backend;
         const { limit, after, before } = request.query;
         return backend.listStepAttempts({
