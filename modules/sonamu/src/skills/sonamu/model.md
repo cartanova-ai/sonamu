@@ -395,7 +395,7 @@ async enroll(courseId: number, userId: number): Promise<Enrollment> {
   const { total } = await this.findMany({ course_id: courseId });
   
   if (total >= course.max_students) {
-    throw new Error("정원이 가듍 찼습니다");
+    throw new Error("정원이 가득 찼습니다");
   }
   
   // 3단계: 실행

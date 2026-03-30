@@ -246,7 +246,7 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 42. 사용자에게 fixture 생성할지 확인
 43. 모든 엔티티의 prop에 `cone.note`가 존재하는지 체크
-    - cone.note가 비어있는 prop이 있으면 사용자에게 보고하고 `pnpm sonamu cone generate --use-llm`으로 cone을 재생성할지 확인
+    - cone.note가 비어있는 prop이 있으면 사용자에게 보고하고 `pnpm sonamu cone gen --use-llm`으로 cone을 재생성할지 확인
     - cone.note가 있어야 LLM이 맥락에 맞는 fixture 데이터를 생성할 수 있다
 44. 생성할 데이터의 최소 row 수 확인 (최소 10 ~ 최대 100)
 45. **better-auth 엔티티 먼저 생성** (의존성 순서 필수):

@@ -243,6 +243,12 @@ export const {Entity}SaveParams = {Entity}BaseSchema.partial({
 
 ### exhaustive() 타입 에러
 
+`exhaustive`는 sonamu에서 제공하는 유틸리티 함수입니다.
+
+```typescript
+import { exhaustive } from "sonamu";
+```
+
 Scaffolding 템플릿은 `OrderBy` enum의 **첫 번째 값만** 자동 처리합니다.
 
 ```typescript
