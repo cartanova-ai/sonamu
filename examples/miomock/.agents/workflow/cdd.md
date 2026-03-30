@@ -78,6 +78,6 @@ findings: []
 ## CLI
 
 ```bash
-pnpm sonamu ac add <file> [--describe <group>] <test-name>
-pnpm sonamu ac list [file]
+pnpm cdd ac add <file> [--describe <group>] <test-name>
+pnpm cdd ac list [file]
 ```

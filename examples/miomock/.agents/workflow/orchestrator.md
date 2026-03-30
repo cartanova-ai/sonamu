@@ -7,7 +7,7 @@ The main agent reads this document and assumes the orchestrator role.
 The orchestrator never edits code or tests directly. All implementation work is delegated to workers.
 
 What the orchestrator CAN do:
-- Run CLI commands (`pnpm sonamu ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
+- Run CLI commands (`pnpm cdd ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
 - Create/manage Unit packets (`tmp/units/`)
 - Spawn workers (Agent tool or TeamCreate)
 - Communicate with the user
@@ -46,8 +46,8 @@ Workers are spawned on-demand via the `Agent` tool. Results pass only through th
 ## 2. AC concretization
 
 1. Discuss with user to finalize ACs.
-2. Generate test skeletons via `pnpm sonamu ac add`.
-3. Confirm the finalized AC list via `pnpm sonamu ac list`.
+2. Generate test skeletons via `pnpm cdd ac add`.
+3. Confirm the finalized AC list via `pnpm cdd ac list`.
 
 ## 3. Plan finalization and Unit Packet composition
 

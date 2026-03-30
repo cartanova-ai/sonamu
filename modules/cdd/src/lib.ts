@@ -3,7 +3,6 @@ export type {
   CddProject,
   ContractDocument,
   ContractNode,
-  DelegatePayload,
   SchemaDocument,
   SchemaField,
   SpecDocument,
