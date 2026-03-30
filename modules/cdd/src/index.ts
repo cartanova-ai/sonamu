@@ -4,7 +4,6 @@ import minimist from "minimist";
 import { runAcAdd } from "./commands/ac-add.js";
 import { runAcList } from "./commands/ac-list.js";
 import { runRulesValidate } from "./commands/rules-validate.js";
-import { runStatus } from "./commands/status.js";
 import { findContractDir, loadProject } from "./core/loader.js";
 import type { OutputResult } from "./utils/output.js";
 import { printOutput } from "./utils/output.js";
@@ -41,16 +40,6 @@ switch (command) {
     }
     break;
   }
-  case "status": {
-    const contractDir = findContractDir(cwd);
-    if (!contractDir) {
-      console.error("contract/ 디렉토리를 찾을 수 없습니다.");
-      process.exit(1);
-    }
-    const project = await loadProject(contractDir);
-    result = runStatus(cmdArgs[0], project);
-    break;
-  }
   case "rules": {
     if (cmdArgs[0] === "validate") {
       const contractDir = findContractDir(cwd);
@@ -82,7 +71,6 @@ function printHelp(): void {
 Commands:
   ac add <file> [--describe <group>] <test-name>  AC 추가 (빈 테스트 스켈레톤 생성)
   ac list [file]                                   AC 목록 조회 (describe/test 트리)
-  status [file]                                    전체 상태 대시보드 / 개별 파일 상태
   rules validate                                   Rules 파일 구조 검증
 
 Options:
