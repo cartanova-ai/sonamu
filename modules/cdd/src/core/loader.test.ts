@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -41,7 +42,8 @@ describe("loadProject", () => {
     expect(webRules).toBeDefined();
     expect(webRules?.document.description).toBeTruthy();
     expect(webRules?.document.rules.length).toBeGreaterThan(0);
-    expect(path.isAbsolute(webRules!.path)).toBe(true);
+    assert(webRules?.path);
+    expect(path.isAbsolute(webRules.path)).toBe(true);
   });
 
   it("rules 디렉토리가 없으면 빈 배열을 반환한다", async () => {

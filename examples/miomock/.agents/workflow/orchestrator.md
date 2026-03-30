@@ -42,10 +42,11 @@ Workers are spawned on-demand via the `Agent` tool. Results pass only through th
 3. Read relevant existing code.
 4. Read applicable Rules files (`contract/rules/`).
 5. Draft implementation plan -> present to user.
+6. If the plan contradicts or extends the current contract, propose contract updates to the user before proceeding. Do not skip this.
 
 ## 2. AC concretization
 
-1. Discuss with user to finalize ACs.
+1. Discuss with user to finalize ACs. Some features may intentionally have no AC (e.g. DB migrations, UI-only work).
 2. Generate test skeletons via `pnpm cdd ac add`.
 3. Confirm the finalized AC list via `pnpm cdd ac list`.
 
