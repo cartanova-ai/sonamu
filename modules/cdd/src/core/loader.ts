@@ -1,16 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
-import type {
-  CddProject,
-  ContractDocument,
-  ContractNode,
-  RulesDocument,
-  RulesNode,
-  SchemaDocument,
-  SpecDocument,
-  SpecNode,
-} from "./types.js";
+import type { CddProject, RulesDocument, RulesNode } from "./types.js";
 
 const CONTRACT_DIR_NAME = "contract";
 
@@ -40,102 +31,9 @@ export function findContractDir(startDir: string): string | null {
 export async function loadProject(contractDir: string): Promise<CddProject> {
   const resolvedDir = path.resolve(contractDir);
   const projectRoot = path.dirname(resolvedDir);
-
-  const jsonFiles = await fg("**/*.json", {
-    cwd: resolvedDir,
-    absolute: false,
-    onlyFiles: true,
-  });
-
-  const contracts: ContractNode[] = [];
-  const specs: SpecNode[] = [];
-
-  for (const relPath of jsonFiles.sort()) {
-    const absPath = path.resolve(resolvedDir, relPath);
-    const raw = fs.readFileSync(absPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-
-    if (relPath.endsWith(".contract.json")) {
-      validateContractStructure(parsed, absPath);
-      const doc = parsed as ContractDocument;
-      contracts.push({
-        path: absPath,
-        domain: deriveDomain(resolvedDir, absPath),
-        basename: path.basename(relPath, ".contract.json"),
-        document: doc,
-      });
-    } else if (relPath.endsWith(".spec.json")) {
-      validateSpecStructure(parsed, absPath);
-      const doc = parsed as SpecDocument;
-      const specDir = path.dirname(absPath);
-      const resolvedContracts = (doc.contracts ?? []).map((c) => path.resolve(specDir, c));
-      const resolvedDependsOnSpecs = (doc.dependsOnSpecs ?? []).map((d) =>
-        path.resolve(specDir, d),
-      );
-      specs.push({
-        path: absPath,
-        domain: deriveDomain(resolvedDir, absPath),
-        basename: path.basename(relPath, ".spec.json"),
-        document: doc,
-        resolvedContracts,
-        resolvedDependsOnSpecs,
-      });
-    }
-  }
-
   const rules = await loadRules(resolvedDir);
 
-  return { contractDir: resolvedDir, projectRoot, contracts, specs, rules };
-}
-
-/**
- * spec의 schema 필드로 Schema 문서를 로드한다.
- * 찾을 수 없으면 null을 반환한다.
- */
-export function loadSchema(schemaId: string, project: CddProject): SchemaDocument | null {
-  const schemaPath = path.join(project.contractDir, "schemas", `${schemaId}.schema.json`);
-  if (!fs.existsSync(schemaPath)) return null;
-  const raw = fs.readFileSync(schemaPath, "utf-8");
-  return JSON.parse(raw) as SchemaDocument;
-}
-
-/** contract 디렉토리 기준 도메인명 파생 */
-function deriveDomain(contractDir: string, filePath: string): string {
-  const rel = path.relative(contractDir, path.dirname(filePath));
-  if (rel === "" || rel === ".") {
-    return "";
-  }
-  return rel;
-}
-
-/** Spec JSON 필수 고정 필드 구조 검증 (커스텀 필드는 advance gate에서 스키마 기반 검증) */
-function validateSpecStructure(parsed: unknown, filePath: string): void {
-  const obj = parsed as Record<string, unknown>;
-
-  if (typeof obj.schema !== "string") {
-    throw new Error(`schema 필드가 문자열이 아닙니다: ${filePath}`);
-  }
-  if (typeof obj.summary !== "string") {
-    throw new Error(`summary 필드가 문자열이 아닙니다: ${filePath}`);
-  }
-  if (obj.useTestRef !== undefined && typeof obj.useTestRef !== "boolean") {
-    throw new Error(`useTestRef 필드가 boolean이 아닙니다: ${filePath}`);
-  }
-  if (!Array.isArray(obj.description)) {
-    throw new Error(`description 필드가 배열이 아닙니다: ${filePath}`);
-  }
-  if (!Array.isArray(obj.acceptanceCriteria)) {
-    throw new Error(`acceptanceCriteria 필드가 배열이 아닙니다: ${filePath}`);
-  }
-  if (typeof obj.status !== "string") {
-    throw new Error(`status 필드가 문자열이 아닙니다: ${filePath}`);
-  }
-  if (!Array.isArray(obj.sources)) {
-    throw new Error(`sources 필드가 배열이 아닙니다: ${filePath}`);
-  }
-  if (!Array.isArray(obj.contracts)) {
-    throw new Error(`contracts 필드가 배열이 아닙니다: ${filePath}`);
-  }
+  return { contractDir: resolvedDir, projectRoot, rules };
 }
 
 /**
@@ -214,19 +112,5 @@ export function validateRulesStructure(parsed: unknown, filePath: string): void 
         }
       }
     }
-  }
-}
-
-/** Contract JSON 필수 고정 필드 구조 검증 (커스텀 필드는 advance gate에서 스키마 기반 검증) */
-function validateContractStructure(parsed: unknown, filePath: string): void {
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new Error(`잘못된 JSON 구조입니다: ${filePath}`);
-  }
-  const obj = parsed as Record<string, unknown>;
-  if (typeof obj.schema !== "string") {
-    throw new Error(`schema 필드가 문자열이 아닙니다: ${filePath}`);
-  }
-  if (typeof obj.features !== "object" || obj.features === null || Array.isArray(obj.features)) {
-    throw new Error(`features 필드가 객체가 아닙니다: ${filePath}`);
   }
 }
