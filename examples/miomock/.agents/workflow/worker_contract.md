@@ -11,6 +11,12 @@ All CDD workers must read this document and `cdd.md` before starting work.
 - Business logic documents (`contract/`) are read-only.
 - `as any` and `as unknown as T` are strictly prohibited.
 
+## Session lifecycle
+
+- In team mode, workers persist for the entire CDD session. Do not exit after completing a task.
+- After returning a result, wait for the next assignment from the orchestrator.
+- Context from previous tasks in the same session may be referenced but `scope.write` resets per Claim.
+
 ## Ownership by type
 
 | type | May edit | Must not edit |

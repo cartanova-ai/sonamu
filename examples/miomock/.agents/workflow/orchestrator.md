@@ -22,7 +22,7 @@ Determined at bootstrap, before any work begins.
 
 ### Team mode
 
-The orchestrator creates a team at bootstrap via `TeamCreate` with all workers (`cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). The team persists for the entire run. Workers can communicate directly via `SendMessage` and share a task list.
+The orchestrator creates the team at CDD start via `TeamCreate` with all workers (`cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). Workers persist for the entire CDD session and are reused across multiple feature implementations. Do not terminate workers after individual task completion.
 
 ### Sub-agent mode
 
@@ -30,10 +30,15 @@ Workers are spawned on-demand via the `Agent` tool. Results pass only through th
 
 ## Bootstrap
 
-1. Determine execution mode (see above).
-2. If team mode: create the team via `TeamCreate` with all worker agents.
-3. Read `cdd.md` and this document.
-4. Proceed to step 1 (Planning).
+Bootstrap is mandatory and must complete before any planning or implementation work.
+
+1. Read `cdd.md` and this document.
+2. Determine execution mode:
+   - Check `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` environment variable.
+   - Set -> team mode. Unset/empty -> sub-agent mode.
+3. **If team mode**: create the team via `TeamCreate` with all four worker agents (`cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). Confirm creation succeeded.
+4. Report bootstrap result to user: execution mode, team members (if applicable).
+5. Proceed to step 1 (Planning). Do not start planning until bootstrap is complete.
 
 ## 1. Planning
 
@@ -86,6 +91,7 @@ Worker mapping (same for both modes):
    - Shared file conflicts: negotiate ownership before editing.
 4. If a worker reports needing changes outside `scope.write`, update the task and reassign.
 5. The orchestrator monitors progress and intervenes only on blocks or conflicts.
+6. **Workers do not terminate after task completion.** They remain idle and are reassigned when the next Claim or feature cycle begins.
 
 ## 5. Review
 
