@@ -8,7 +8,7 @@ The orchestrator never edits code or tests directly. All implementation work is 
 
 What the orchestrator CAN do:
 - Run CLI commands (`pnpm cdd ac add/list`, `pnpm sonamu test`, `pnpm build`, `pnpm check`)
-- Create/manage Unit packets (`tmp/units/`)
+- Create/manage Claims (`tmp/claims/`)
 - Spawn workers (Agent tool or TeamCreate)
 - Communicate with the user
 
@@ -49,14 +49,14 @@ Workers are spawned on-demand via the `Agent` tool. Results pass only through th
 2. Generate test skeletons via `pnpm cdd ac add`.
 3. Confirm the finalized AC list via `pnpm cdd ac list`.
 
-## 3. Plan finalization and Unit Packet composition
+## 3. Plan finalization and Claim composition
 
-1. After user confirmation, decompose work into Units.
-2. Assign type to each Unit:
+1. After user confirmation, decompose work into Claims.
+2. Assign type to each Claim:
    - `surface`: Shared types/interfaces/migrations and other prerequisites
    - `test`: Test implementation per AC
    - `implement`: Production code implementation
-3. Generate Unit packet YAMLs in `tmp/units/`.
+3. Generate Claim YAMLs in `tmp/claims/`.
 4. Set execution order via `depends_on`.
 
 ## 4. Execution
@@ -71,10 +71,10 @@ Worker mapping (same for both modes):
 
 ### Sub-agent mode execution
 
-1. Spawn `surface` Units (those with no `depends_on`) first via `Agent` tool.
-2. After surface completion, spawn `test` + `implement` Units in parallel via `Agent` tool.
+1. Spawn `surface` Claims (those with no `depends_on`) first via `Agent` tool.
+2. After surface completion, spawn `test` + `implement` Claims in parallel via `Agent` tool.
 3. Each worker edits only within `scope.write`.
-4. If a worker reports needing changes outside `scope.write`, adjust the packet and re-spawn.
+4. If a worker reports needing changes outside `scope.write`, adjust the claim and re-spawn.
 
 ### Team mode execution
 
@@ -88,7 +88,7 @@ Worker mapping (same for both modes):
 
 ## 5. Review
 
-1. After all implementation Units complete, run review:
+1. After all implementation Claims complete, run review:
    - Team mode: assign review task to `cdd-reviewer` via `TaskCreate`.
    - Sub-agent mode: spawn `cdd-reviewer` via `Agent` tool.
 2. Review scope: all changed files + applied Rules.
@@ -107,7 +107,7 @@ Worker mapping (same for both modes):
 
 ```yaml
 execution_mode: "sub-agent|team"
-units_completed: ["U-001", "U-002"]
+claims_completed: ["C-001", "C-002"]
 files_changed: ["list of changed files"]
 ac_results:
   total: N

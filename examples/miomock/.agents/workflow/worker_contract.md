@@ -21,7 +21,7 @@ All CDD workers must read this document and `cdd.md` before starting work.
 
 ## Work procedure
 
-1. Read all files listed in the Unit packet's `rules`.
+1. Read all files listed in the Claim's `rules`.
 2. Read `scope.read` files to understand context.
 3. Work within the `scope.write` boundary.
 4. Run type-specific verification.
@@ -45,7 +45,7 @@ When running in team mode, workers may communicate directly via `SendMessage`:
 ## Return format
 
 ```yaml
-id: "U-001"
+id: "C-001"
 status: "done|blocked"
 files_changed: ["changed files"]
 blocking_reason: ""

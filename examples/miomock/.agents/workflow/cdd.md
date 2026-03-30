@@ -4,7 +4,7 @@
 
 - Code is the source of truth. Documents only record what is not visible in the code.
 - AC (Acceptance Criteria) = test names. The describe/test in test files ARE the AC.
-- Implementation plans (Unit packets) are disposable. They exist as work instructions for sub-agents and are discarded after completion.
+- Implementation plans (Claims) are disposable. They exist as work instructions for sub-agents and are discarded after completion.
 - The orchestrator never edits code directly. All implementation is delegated to sub-agents.
 
 ## Permanent documents
@@ -15,12 +15,12 @@
 | Rules | `contract/rules/*.rules.json` | Code conventions, UI/API rules (split by FE/BE) | Convention changes |
 | AC | describe/test in `*.test.ts` | Per-feature acceptance criteria. Pass/fail basis | Feature add/change |
 
-## Disposable documents: Unit Packet
+## Disposable documents: Claim
 
-Work instructions delivered to sub-agents. Created as YAML in `tmp/units/` and discarded after implementation.
+Work instructions delivered to sub-agents. Created as YAML in `tmp/claims/` and discarded after implementation.
 
 ```yaml
-id: "U-001"
+id: "C-001"
 type: "surface|test|implement"
 objective: "One-line goal"
 context: |
@@ -47,14 +47,14 @@ findings: []
 | `scope.write` | Ownership boundary. Editing outside this is prohibited |
 | `ac_targets` | ACs to satisfy. For implement: "must pass to complete". For test: "write tests for these" |
 | `rules` | Paths to applicable rule files |
-| `depends_on` | Predecessor Unit IDs. Determines parallel/sequential execution |
+| `depends_on` | Predecessor Claim IDs. Determines parallel/sequential execution |
 | `findings` | Retry context from review failures |
 
 ## Implementation process
 
 1. **Planning**: Draft implementation plan referencing business logic + actual code + user request.
 2. **AC concretization**: Discuss with user, generate test skeletons via `pnpm sonamu ac add`.
-3. **Plan finalization**: After user confirmation, compose Unit packets (surface / test / implement).
+3. **Plan finalization**: After user confirmation, compose Claims (surface / test / implement).
 4. **Execution**: Sub-agents run surface work -> then test writing + code implementation (parallel).
 5. **Review**: Code review via reviewer agent.
 6. **AC verification**: Run tests -> on failure, pass failure log to implementer -> fix -> repeat from step 5.
