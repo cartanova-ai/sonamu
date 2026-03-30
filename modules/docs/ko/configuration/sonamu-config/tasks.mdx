@@ -122,13 +122,13 @@ export default defineConfig({
 
 **타입**: `boolean`
 
-**기본값**: `false`
+**기본값**: `true`
 
 ```typescript
 export default defineConfig({
   tasks: {
     workerOptions: {
-      usePubSub: true,  // Redis Pub/Sub 사용
+      usePubSub: true,  // PostgreSQL LISTEN/NOTIFY 사용
     },
   },
 });
@@ -136,10 +136,10 @@ export default defineConfig({
 
 **동작 방식**:
 - `false`: 각 Worker가 독립적으로 작업 풀링
-- `true`: Redis Pub/Sub으로 작업 알림 전파
+- `true`: PostgreSQL LISTEN/NOTIFY로 새 작업 알림을 즉시 전파
 
 <Tip>
-여러 Worker를 실행하는 경우 `usePubSub: true`를 권장합니다. 작업 할당이 더 효율적입니다.
+Pub/Sub은 PostgreSQL의 내장 LISTEN/NOTIFY 메커니즘을 사용하므로, 별도의 인프라(Redis 등) 설치가 필요하지 않습니다. 이미 구성된 데이터베이스 연결을 그대로 활용합니다.
 </Tip>
 
 ### listenDelay
@@ -250,7 +250,7 @@ export default defineConfig({
     enableWorker: true,
     workerOptions: {
       concurrency: 5,
-      usePubSub: true,   // Redis Pub/Sub으로 분산
+      usePubSub: true,   // PostgreSQL LISTEN/NOTIFY로 분산
       listenDelay: 500,
     },
     contextProvider: (defaultContext) => ({
@@ -349,30 +349,41 @@ export default defineConfig({
 
 ## Workflow 사용
 
-tasks 설정 후 `@workflow` 데코레이터로 백그라운드 작업을 정의합니다.
+tasks 설정 후 `workflow()` 함수로 백그라운드 작업을 정의합니다.
 
 ```typescript
-import { workflow, step } from "sonamu";
+import { workflow } from "sonamu";
 
-export class EmailModel {
-  @workflow()
-  static async sendWelcomeEmail(userId: number) {
-    const user = await step("fetch-user", async () => {
-      return UserModel.findById(userId);
-    });
-    
-    await step("send-email", async () => {
-      return sendEmail(user.email, "Welcome!");
-    });
+export const sendWelcomeEmail = workflow(
+  { name: "send_welcome_email" },
+  async ({ input, step }) => {
+    const user = await step.define(
+      { name: "fetch_user" },
+      async () => {
+        return await UserModel.findById(input.userId);
+      }
+    ).run();
+
+    await step.define(
+      { name: "send_email" },
+      async () => {
+        await sendEmail(user.email, "Welcome!");
+      }
+    ).run();
   }
-}
+);
 ```
 
 **호출**:
 
 ```typescript
+import { Sonamu } from "sonamu";
+
 // 백그라운드에서 실행
-await EmailModel.sendWelcomeEmail(123);
+await Sonamu.workflows.run(
+  { name: "send_welcome_email", version: null },
+  { userId: 123 }
+);
 ```
 
 → [Workflow 사용법](/ko/advanced-features/workflows/workflow-decorator)
@@ -429,39 +440,16 @@ ENABLE_WORKER=true node dist/worker.js
 PM2나 Docker를 사용하면 여러 Worker를 쉽게 관리할 수 있습니다.
 </Tip>
 
-## Redis 설정 (usePubSub: true)
+## Pub/Sub 동작 방식
 
-`usePubSub: true`를 사용하려면 Redis가 필요합니다.
-
-### Redis 연결
-
-Redis는 cache 설정에서 구성됩니다:
+`usePubSub: true`(기본값)일 때, Worker는 PostgreSQL의 내장 `LISTEN`/`NOTIFY` 메커니즘을 사용하여 새 작업 알림을 수신합니다. 별도의 메시지 브로커(Redis 등)가 필요하지 않으며, 이미 구성된 데이터베이스 연결을 그대로 활용합니다.
 
 ```typescript
-import { createClient } from "redis";
-
-const redisConnection = createClient({
-  url: process.env.REDIS_URL ?? "redis://localhost:6379",
-});
-
-await redisConnection.connect();
-
 export default defineConfig({
-  server: {
-    cache: {
-      default: "main",
-      stores: {
-        main: store()
-          .useL2Layer(drivers.redis({ connection: redisConnection }))
-          .useBus(drivers.redisBus({ connection: redisConnection })),
-      },
-    },
-  },
-  
   tasks: {
     enableWorker: true,
     workerOptions: {
-      usePubSub: true,  // Redis Pub/Sub 사용
+      usePubSub: true,  // PostgreSQL LISTEN/NOTIFY 사용 (기본값)
     },
   },
 });
