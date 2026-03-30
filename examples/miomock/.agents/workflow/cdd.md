@@ -11,7 +11,7 @@
 
 | Document | Location | Content | Updated when |
 |---|---|---|---|
-| Business logic | `contract/{domain}/logic.md` | Domain rules in cohesive form + decision rationale that code alone does not convey | Policy changes |
+| Business logic | `contract/**/*.contract.md` | Domain rules in cohesive form + decision rationale that code alone does not convey | Policy changes |
 | Rules | `contract/rules/*.rules.json` | Code conventions, UI/API rules (split by FE/BE) | Convention changes |
 | AC | describe/test in `*.test.ts` | Per-feature acceptance criteria. Pass/fail basis | Feature add/change |
 

@@ -38,7 +38,7 @@ Workers are spawned on-demand via the `Agent` tool. Results pass only through th
 ## 1. Planning
 
 1. Understand the user's request.
-2. Read relevant business logic docs (`contract/{domain}/logic.md`).
+2. Read business logic docs: if the user specified a contract file, read that file only. Otherwise, read all `contract/**/*.contract.md` files.
 3. Read relevant existing code.
 4. Read applicable Rules files (`contract/rules/`).
 5. Draft implementation plan -> present to user.
