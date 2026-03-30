@@ -68,4 +68,9 @@ Read the listed skill file before attempting any workaround or fix in these situ
 | Writing or modifying a `@upload` method | `api.md` |
 | Database query returning unexpected results | `puri.md` |
 | Migration error or schema change | `migration.md` |
-| Spec status gate or testRef validation failing | `cdd.md` |
+| Starting AC+Claim-based development or writing a Claim | `cdd.md` |
+| Applying Auth Guards or handling session/permission logic | `auth.md` |
+| Implementing polymorphic relations with `entity_type` + `entity_id` pattern | `entity-relations.md` |
+| Writing Puri SELECT / WHERE / JOIN / FTS / pgvector queries | `puri.md` |
+| Implementing `@upload` file upload or deciding parameter pattern | `api.md`, `framework-change.md` |
+| Reading or writing files under `contract/rules/` | `cdd.md` |
