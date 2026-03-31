@@ -983,7 +983,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 4)}>
-                        {prop.type === "enum" && (
+                        {(prop.type === "enum" || prop.type === "enum[]") && (
                           <span
                             className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#6b7280] text-white cursor-pointer hover:bg-[#4b5563] transition-colors"
                             onClick={() =>
