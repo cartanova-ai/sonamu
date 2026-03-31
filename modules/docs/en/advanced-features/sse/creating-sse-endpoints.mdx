@@ -120,6 +120,31 @@ class NotificationModelClass extends BaseModelClass {
 
 The SSE connection object created by `ctx.createSSE()`.
 
+### closed
+
+A read-only property indicating whether the connection has been closed. Becomes `true` after the client disconnects or `end()` is called.
+
+```typescript
+if (sse.closed) {
+  return;
+}
+sse.publish('status', { message: 'still alive' });
+```
+
+### onClose(callback)
+
+Registers a callback to be invoked when the connection closes. Fires on both client-side disconnection and `end()` calls. Useful for cleaning up timers or external resources.
+
+```typescript
+const interval = setInterval(() => {
+  sse.publish('heartbeat', { ts: Date.now() });
+}, 5000);
+
+sse.onClose(() => {
+  clearInterval(interval);
+});
+```
+
 ### publish(event, data)
 
 Sends an event to the client.
