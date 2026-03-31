@@ -85,6 +85,10 @@ export async function runAcList(fileRef: string | undefined, cwd: string): Promi
   };
 }
 
+/**
+ * test("name"), it("name") — 테스트명이 첫 번째 문자열 인자
+ * testAs({...}, "name") — 첫 번째 인자가 객체, 두 번째가 테스트명 (멀티라인)
+ */
 function parseAcEntries(content: string): AcEntry[] {
   const entries: AcEntry[] = [];
   const lines = content.split("\n");
@@ -92,6 +96,10 @@ function parseAcEntries(content: string): AcEntry[] {
   let currentDescribe: string | null = null;
   let describeDepth = 0;
   let braceDepth = 0;
+  // testAs 멀티라인 파싱용 상태
+  let pendingTestAs = false;
+  let testAsBraceDepth = 0;
+  let testAsNeedName = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -108,6 +116,54 @@ function parseAcEntries(content: string): AcEntry[] {
         describe: currentDescribe,
         test: testMatch[1],
       });
+    }
+
+    // testAs: 첫 번째 인자(객체)가 닫힌 후 두 번째 인자(문자열)에서 테스트명 추출
+    if (!pendingTestAs && trimmed.match(/^testAs\s*\(/)) {
+      const inlineMatch = trimmed.match(/^testAs\s*\(\s*\{[^}]*\}\s*,\s*["'`](.+?)["'`]/);
+      if (inlineMatch) {
+        entries.push({ describe: currentDescribe, test: inlineMatch[1] });
+      } else {
+        pendingTestAs = true;
+        testAsBraceDepth = 0;
+        testAsNeedName = false;
+        for (const ch of trimmed) {
+          if (ch === "{") testAsBraceDepth++;
+          if (ch === "}") testAsBraceDepth--;
+        }
+        if (testAsBraceDepth <= 0) {
+          testAsNeedName = true;
+          const nameMatch = trimmed.match(/}\s*,\s*["'`](.+?)["'`]/);
+          if (nameMatch) {
+            entries.push({ describe: currentDescribe, test: nameMatch[1] });
+            pendingTestAs = false;
+            testAsNeedName = false;
+          }
+        }
+      }
+    } else if (pendingTestAs) {
+      if (!testAsNeedName) {
+        for (const ch of trimmed) {
+          if (ch === "{") testAsBraceDepth++;
+          if (ch === "}") testAsBraceDepth--;
+        }
+        if (testAsBraceDepth <= 0) {
+          testAsNeedName = true;
+          const nameMatch = trimmed.match(/}\s*,\s*["'`](.+?)["'`]/);
+          if (nameMatch) {
+            entries.push({ describe: currentDescribe, test: nameMatch[1] });
+            pendingTestAs = false;
+            testAsNeedName = false;
+          }
+        }
+      } else {
+        const nameMatch = trimmed.match(/^["'`](.+?)["'`]/);
+        if (nameMatch) {
+          entries.push({ describe: currentDescribe, test: nameMatch[1] });
+          pendingTestAs = false;
+          testAsNeedName = false;
+        }
+      }
     }
 
     for (const ch of trimmed) {
