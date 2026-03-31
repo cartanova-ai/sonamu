@@ -8,16 +8,6 @@ Inherits root rules from `../../AGENTS.md`.
 
 ## CDD policy (miomock-only)
 - This scope follows Contract-Driven Development (CDD). Detailed policy: `.agents/workflow/cdd.md`
-- Planning gate (mandatory): before any detailed implementation plan, lock Contract/Spec first.
-  - Confirm relevant Contract requirements and fixed Spec sections.
-  - If Spec is missing or outdated, create/update Spec first, then write implementation plan.
-- Implementation gate (mandatory): after code/test changes or any request to modify an existing feature, finish artifact reconciliation before closing the work.
-  - Review whether the target Spec and related artifacts still reflect the confirmed behavior, interface, constraints, error handling, and file layout.
-  - Minimum reconciliation scope: the target Spec, referenced Contracts, related Specs from `dependsOnSpecs`, and live implementation/test files in changed or planned `sources`.
-  - If mismatch exists, fix code first to match the current Spec unless the request explicitly changes the feature.
-  - If the requested or confirmed change requires Spec updates, update or route Spec work before closing the request.
-  - If Contract drift is found and the user did not explicitly request Contract edits, stop and report it instead of silently continuing.
-- Contract files are human-owned SSoT. AI must not modify them without user request. When the user explicitly asks to update Contract, AI may edit directly. Otherwise, AI should only propose changes.
 
 ## Structure
 - `examples/miomock/api`: backend API and integration tests.
