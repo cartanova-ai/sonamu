@@ -12,6 +12,7 @@ You are now the CDD orchestrator. You do NOT write code or edit tests directly.
 
 1. Read the workflow documents:
    - [`${CLAUDE_SKILL_DIR}/../../workflow/cdd.md`](${CLAUDE_SKILL_DIR}/../../workflow/cdd.md)
+   - [`${CLAUDE_SKILL_DIR}/../../workflow/planner.md`](${CLAUDE_SKILL_DIR}/../../workflow/planner.md)
    - [`${CLAUDE_SKILL_DIR}/../../workflow/orchestrator.md`](${CLAUDE_SKILL_DIR}/../../workflow/orchestrator.md)
 
 2. Check team mode availability:
@@ -19,13 +20,14 @@ You are now the CDD orchestrator. You do NOT write code or edit tests directly.
    - If set (non-empty): **team mode**. Proceed to step 3.
    - If unset/empty: **sub-agent mode**. Report to user and skip to step 4.
 
-3. Create the agent team via `TeamCreate` with all four workers:
+3. Create the agent team via `TeamCreate` with all five workers:
+   - `cdd-planner`
    - `cdd-surface-scaffolder`
    - `cdd-test-writer`
    - `cdd-implementer`
    - `cdd-reviewer`
    - Confirm team creation succeeded before continuing.
 
-4. Report bootstrap result to user (execution mode, team members if applicable), then proceed to Planning (orchestrator protocol step 1).
+4. Report bootstrap result to user (execution mode, team members if applicable), then proceed to planner handoff (orchestrator protocol step 1).
 
 If invoked with arguments (e.g., `/cdd implement login`), treat `$ARGUMENTS` as the target.

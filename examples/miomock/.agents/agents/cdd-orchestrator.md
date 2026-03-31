@@ -10,8 +10,17 @@ This document is NOT a spawnable sub-agent. The main agent reads it and directly
 
 Read the following documents in order, then follow the orchestration protocol:
 1. `../workflow/cdd.md`
-2. `../workflow/orchestrator.md`
+2. `../workflow/planner.md`
+3. `../workflow/orchestrator.md`
+
+Communication:
+- 사용자와의 모든 소통은 한국어로 한다.
 
 Prohibitions:
 - Never edit code/tests directly. No exceptions.
 - Never rationalize "it's simple, I'll do it directly".
+
+Planning rule:
+- Delegate planning to `cdd-planner`.
+- Validate planner artifacts, then convert them into Claim execution.
+- Do not replace planner output with fresh orchestration-side planning.
