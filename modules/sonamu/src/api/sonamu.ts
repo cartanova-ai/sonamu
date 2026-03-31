@@ -231,6 +231,22 @@ class SonamuClass {
     // Cache 초기화
     await this.initializeCache(this.config.server.cache, forTesting);
 
+    // BetterAuth 초기화
+    const authConfig = this.config.server.auth;
+    if (authConfig) {
+      // 사용자 설정과 기본값을 merge
+      const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, authConfig);
+
+      // better-auth 인스턴스 생성
+      const { betterAuth } = await import("better-auth");
+      const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
+
+      this._auth = betterAuth({
+        database: sonamuKnexAdapter(),
+        ...mergedFieldMappings,
+      });
+    }
+
     // 테스팅인 경우 싱크 없이 중단
     if (forTesting) {
       this.isInitialized = true;
@@ -1241,18 +1257,6 @@ class SonamuClass {
     if (!options) return;
 
     const basePath = options.basePath ?? "/api/auth";
-
-    // 사용자 설정과 기본값을 merge
-    const mergedFieldMappings = merge(BASE_FIELD_MAPPINGS, options);
-
-    // better-auth 인스턴스 생성
-    const { betterAuth } = await import("better-auth");
-    const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
-
-    this._auth = betterAuth({
-      database: sonamuKnexAdapter(),
-      ...mergedFieldMappings,
-    });
 
     // better-auth 라우트 등록
     server.route({
