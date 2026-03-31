@@ -289,10 +289,16 @@ export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuCo
  */
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
   const start = performance.now();
-  const configPath =
-    process.env.HOT === "yes" || process.env.VITEST === "true"
-      ? `${rootPath}/src/sonamu.config.ts`
-      : `${rootPath}/dist/sonamu.config.js`;
+  const shouldLoadSourceConfig = process.env.HOT === "yes" || process.env.VITEST === "true";
+  const configPath = shouldLoadSourceConfig
+    ? `${rootPath}/src/sonamu.config.ts`
+    : `${rootPath}/dist/sonamu.config.js`;
+
+  if (shouldLoadSourceConfig) {
+    const { ensureTsLoaderRegistered } = await import("../bin/ts-loader-registration");
+    await ensureTsLoaderRegistered(rootPath);
+  }
+
   const { default: config } = await import(`file://${configPath}`);
   const importTime = performance.now() - start;
   process.env.NODE_ENV !== "test" &&
