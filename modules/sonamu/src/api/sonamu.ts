@@ -9,7 +9,6 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import mime, { lookup as mimeLookup } from "mime-types";
 import os from "os";
 import path from "path";
-import type { PoolConfig } from "pg";
 import type { ZodObject } from "zod";
 import {
   BASE_FIELD_MAPPINGS,
@@ -1248,10 +1247,10 @@ class SonamuClass {
 
     // better-auth 인스턴스 생성
     const { betterAuth } = await import("better-auth");
-    const { Pool } = await import("pg");
+    const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
 
     this._auth = betterAuth({
-      database: new Pool(DB.getDBConfig("w").connection as PoolConfig),
+      database: sonamuKnexAdapter(),
       ...mergedFieldMappings,
     });
 
