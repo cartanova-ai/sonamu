@@ -22,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
+import PencilIcon from "~icons/lucide/pencil";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import SparklesIcon from "~icons/lucide/sparkles";
@@ -1093,16 +1094,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Table className="border border-separate border-spacing-0 rounded-lg bg-white overflow-hidden">
                         <TableHeader className="bg-gray-50">
                           <TableRow>
-                            <TableHead
-                              colSpan={2}
-                              onDoubleClick={() => {
-                                const newEnumId = prompt(SD("entity.prompt.changeEnumId"), enumId);
-                                if (!newEnumId) {
-                                  return;
-                                }
-                                editEnumId(enumId, newEnumId);
-                              }}
-                            >
+                            <TableHead colSpan={2}>
                               <div className="flex items-center gap-2">
                                 <span
                                   id={`enum-title-${enumId}`}
@@ -1126,6 +1118,21 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   size="sm"
                                   onClick={() => {
                                     setEnumConeModal({ open: true, enumId });
+                                  }}
+                                />
+                                <Button
+                                  size="xs"
+                                  variant="yellow"
+                                  icon={<PencilIcon />}
+                                  onClick={() => {
+                                    const newEnumId = prompt(
+                                      SD("entity.prompt.changeEnumId"),
+                                      enumId,
+                                    );
+                                    if (!newEnumId) {
+                                      return;
+                                    }
+                                    editEnumId(enumId, newEnumId);
                                   }}
                                 />
                                 <Button
