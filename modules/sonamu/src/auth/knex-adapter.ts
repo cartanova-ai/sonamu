@@ -24,23 +24,23 @@ export const sonamuKnexAdapter = () => {
   let lazyOptions: BetterAuthOptions | null = null;
 
   const createCustomAdapter = (
-    db: Knex | Knex.Transaction,
+    getDb: () => Knex | Knex.Transaction,
   ): AdapterFactoryCustomizeAdapterCreator => {
     return () => ({
       create: async ({ model, data }) => {
-        const [row] = await db(model).insert(data).returning("*");
+        const [row] = await getDb()(model).insert(data).returning("*");
         return row;
       },
 
       findOne: async ({ model, where }) => {
-        let query = db(model);
+        let query = getDb()(model);
         query = applyWhere(query, where);
         const row = await query.first();
         return row ?? null;
       },
 
       findMany: async ({ model, where, limit, offset, sortBy }) => {
-        let query = db(model);
+        let query = getDb()(model);
         if (where) {
           query = applyWhere(query, where);
         }
@@ -57,34 +57,34 @@ export const sonamuKnexAdapter = () => {
       },
 
       update: async ({ model, where, update }) => {
-        let query = db(model);
+        let query = getDb()(model);
         query = applyWhere(query, where);
         const [row] = await query.update(update).returning("*");
         return row ?? null;
       },
 
       updateMany: async ({ model, where, update }) => {
-        let query = db(model);
+        let query = getDb()(model);
         query = applyWhere(query, where);
         const count = await query.update(update);
         return count;
       },
 
       delete: async ({ model, where }) => {
-        let query = db(model);
+        let query = getDb()(model);
         query = applyWhere(query, where);
         await query.del();
       },
 
       deleteMany: async ({ model, where }) => {
-        let query = db(model);
+        let query = getDb()(model);
         query = applyWhere(query, where);
         const count = await query.del();
         return count;
       },
 
       count: async ({ model, where }) => {
-        let query = db(model);
+        let query = getDb()(model);
         if (where) {
           query = applyWhere(query, where);
         }
@@ -112,7 +112,7 @@ export const sonamuKnexAdapter = () => {
         return cb(
           createAdapterFactory({
             config: adapterConfig,
-            adapter: createCustomAdapter(trx),
+            adapter: createCustomAdapter(() => trx),
           })(options),
         );
       });
@@ -121,7 +121,7 @@ export const sonamuKnexAdapter = () => {
 
   const adapterCreator = createAdapterFactory({
     config: adapterConfig,
-    adapter: createCustomAdapter(DB.getDB("w")),
+    adapter: createCustomAdapter(() => DB.getDB("w")),
   });
 
   return (options: BetterAuthOptions) => {
