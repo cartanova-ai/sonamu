@@ -1,282 +1,287 @@
 ---
 title: "useSSEStream"
-description: "Server-Sent Events real-time streaming implementation"
+description: "Server-Sent Events real-time streaming"
 ---
 
-`useSSEStream` is a hook for implementing real-time streaming using Server-Sent Events (SSE). It features auto-reconnection, type-safe event handlers, and is ideal for AI chat streaming and file upload progress.
+`useSSEStream` is a hook for managing real-time data streaming via Server-Sent Events (SSE). It provides auto-reconnection, type-safe event handlers, and connection state tracking.
 
 ## Core Features
 
 <CardGroup cols={2}>
-  <Card title="Real-time Streaming" icon="broadcast-tower">
-    SSE based
+  <Card title="Real-time Streaming" icon="bolt">
+    Server to client
 
-    Unidirectional server push
+    Unidirectional real-time data
   </Card>
   <Card title="Auto-reconnection" icon="rotate">
-    Connection drop handling
+    Automatic retry on failure
 
-    Configurable retry
+    Configurable count/interval
   </Card>
   <Card title="Type Safety" icon="shield-check">
-    Typed event handlers
+    Per-event type definition
 
-    Auto-completion support
+    Generic-based
   </Card>
-  <Card title="Auto-generated" icon="wand-magic-sparkles">
-    Generated in services
+  <Card title="Connection State" icon="signal">
+    isConnected, error tracking
 
-    Ready to use immediately
+    UI feedback ready
   </Card>
 </CardGroup>
 
 ## What is SSE?
 
-**Server-Sent Events (SSE)** is a standard for servers to push data to clients in real-time over HTTP.
+Server-Sent Events is a technology for **unidirectional** real-time data transmission from server to client.
 
-### SSE vs WebSocket
+### WebSocket vs SSE
 
-| Feature | SSE | WebSocket |
-|---------|-----|-----------|
-| Direction | Unidirectional (Server → Client) | Bidirectional |
-| Protocol | HTTP | ws:// |
-| Connection | Auto-reconnects | Manual handling needed |
-| Use case | News feeds, progress, logs | Chat, games, collaboration |
+| Feature | WebSocket | SSE |
+|---------|-----------|-----|
+| Direction | Bidirectional (Full-duplex) | Unidirectional (Server → Client) |
+| Protocol | WS/WSS | HTTP/HTTPS |
+| Reconnection | Manual implementation | Browser auto-reconnect |
+| Complexity | High | Low |
+| Use Cases | Chat, games | Notifications, logs, progress |
 
 <Info>
 **When to use SSE**
 
-- AI chat streaming
-- File upload progress
+- Server-to-client only data push
+- AI response streaming (ChatGPT style)
 - Real-time log monitoring
-- Stock price updates
-- Server notifications
-
-For scenarios requiring only server-to-client push, SSE is simpler and more reliable than WebSocket.
+- File upload/processing progress
+- Server event notifications
 </Info>
 
 ## Basic Usage
 
-### Type Definition
-
-First, define the event types the server will send.
+### Import
 
 ```typescript
+import { useSSEStream } from "./sonamu.shared";
+```
+
+<Info>
+`useSSEStream` is defined in `sonamu.shared.ts`, which is generated during project scaffolding. `services.generated.ts` auto-generates wrapper functions for each `@stream` API, using `useSSEStream` internally.
+</Info>
+
+### Type Definition
+
+```typescript
+// Event type definition
 type AIStreamEvents = {
-  token: { text: string };        // Streaming text tokens
-  done: {};                        // Completion event
-  error: { message: string };      // Error event
+  token: { text: string };     // token event: text chunks
+  usage: { tokens: number };   // usage event: token count
+  end: string;                  // end event: completion signal
 };
 ```
 
-### Hook Usage
+### Basic Usage
 
 ```typescript
-import { useSSEStream } from "@/services/services.generated";
 import { useState } from "react";
+import { useSSEStream } from "./sonamu.shared";
 
-export function AIChatPage() {
+export function AIChat() {
   const [response, setResponse] = useState("");
-  const [prompt, setPrompt] = useState("");
+  const [totalTokens, setTotalTokens] = useState(0);
 
-  const { status, error, reconnect } = useSSEStream<AIStreamEvents>(
-    "/api/ai/stream",           // SSE endpoint
-    { prompt },                 // Parameters
+  const { isConnected, error, isEnded } = useSSEStream<AIStreamEvents>(
+    "/api/ai/stream",  // SSE endpoint
+    { prompt: "Hello, AI!" },  // Query parameters
     {
       // Event handlers
       token: (data) => {
-        setResponse(prev => prev + data.text);
+        // Append each text chunk
+        setResponse((prev) => prev + data.text);
       },
-      done: () => {
-        console.log("Streaming complete");
+      usage: (data) => {
+        // Update token usage
+        setTotalTokens(data.tokens);
       },
-      error: (data) => {
-        console.error("Error:", data.message);
+      end: () => {
+        // Streaming complete
+        console.log("Stream ended");
       },
     },
     {
-      // Options
-      enabled: prompt !== "",   // Only connect when prompt exists
-      retry: 3,                 // Retry up to 3 times on connection drop
-      retryInterval: 3000,      // Retry every 3 seconds
+      enabled: true,      // Auto-connect
+      retry: 3,           // Max 3 retries
+      retryInterval: 3000, // 3 second interval
     }
   );
 
   return (
     <div>
-      <input
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Enter question"
-      />
-
-      <div className="response">
-        {response}
-      </div>
-
-      <div className="status">
-        Status: {status}
-        {error && <span className="error">{error}</span>}
-      </div>
-
-      {status === "error" && (
-        <button onClick={reconnect}>Reconnect</button>
-      )}
+      {isConnected && <div className="text-green-500">Connected</div>}
+      {error && <div className="text-red-500">Error: {error}</div>}
+      <div className="whitespace-pre-wrap">{response}</div>
+      {isEnded && <div>Tokens used: {totalTokens}</div>}
     </div>
   );
 }
 ```
 
-**Parameters**:
-1. **endpoint**: SSE API path
-2. **params**: Parameters to send to server
-3. **eventHandlers**: Handler for each event type
-4. **options**: Connection options (enabled, retry, retryInterval)
+## API Reference
 
-## Backend Implementation
-
-### Generator Function Pattern
-
-Use generator functions in the backend to send SSE events.
+### useSSEStream
 
 ```typescript
-// ai.functions.ts (backend)
-import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+function useSSEStream<T extends Record<string, any>>(
+  url: string,
+  params: Record<string, any>,
+  handlers: {
+    [K in keyof T]?: (data: T[K]) => void;
+  },
+  options?: SSEStreamOptions
+): SSEStreamState
+```
 
-export async function* streamChat(prompt: string) {
-  const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+### Parameters
 
-  const result = await streamText({
-    model: openai("gpt-4"),
-    prompt,
-  });
+#### url
+The SSE endpoint URL.
 
-  // Stream tokens
-  for await (const chunk of result.textStream) {
-    yield { event: "token" as const, data: { text: chunk } };
-  }
+```typescript
+useSSEStream("/api/ai/stream", params, handlers);
+```
 
-  // Send completion event
-  yield { event: "done" as const, data: {} };
+#### params
+Object to be sent as URL query parameters.
+
+```typescript
+useSSEStream(
+  "/api/ai/stream",
+  {
+    prompt: "Hello",
+    model: "gpt-4",
+    temperature: 0.7,
+  },
+  handlers
+);
+
+// Actual request URL:
+// /api/ai/stream?prompt=Hello&model=gpt-4&temperature=0.7
+```
+
+#### handlers
+Handler functions for each event type.
+
+```typescript
+{
+  token: (data: { text: string }) => {
+    // Handle token event
+  },
+  usage: (data: { tokens: number }) => {
+    // Handle usage event
+  },
+  end: () => {
+    // Handle end event
+  },
 }
 ```
 
-**Key Points**:
-- Use `async function*` (generator function)
-- `yield` object with `event` and `data`
-- `event`: Event type (must match frontend type definition)
-- `data`: Event payload
+**Special events**:
+- `end`: When the server explicitly signals stream termination
+- `message`: Default message when no event type is specified
 
-### Error Handling
+#### options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Auto-connect toggle |
+| `retry` | `number` | `3` | Max retry count |
+| `retryInterval` | `number` | `3000` | Retry interval (ms) |
+
+### Return Value (SSEStreamState)
 
 ```typescript
-export async function* streamChat(prompt: string) {
-  try {
-    const result = await streamText({ /* ... */ });
-
-    for await (const chunk of result.textStream) {
-      yield { event: "token" as const, data: { text: chunk } };
-    }
-
-    yield { event: "done" as const, data: {} };
-  } catch (error) {
-    // Send error event
-    yield {
-      event: "error" as const,
-      data: { message: error instanceof Error ? error.message : "Unknown error" }
-    };
-  }
-}
+type SSEStreamState = {
+  isConnected: boolean;  // Current connection state
+  error: string | null;  // Error message
+  retryCount: number;    // Current retry count
+  isEnded: boolean;      // Normal termination flag
+};
 ```
 
-## Real-world Examples
+## Practical Examples
 
-### AI Chat Streaming
+### AI Response Streaming
 
 ```typescript
-import { useSSEStream } from "@/services/services.generated";
 import { useState } from "react";
+import { useSSEStream } from "./sonamu.shared";
 import { Button, Textarea } from "@sonamu-kit/react-components/components";
 
-type ChatStreamEvents = {
+type AIStreamEvents = {
   token: { text: string };
-  done: {};
-  error: { message: string };
+  end: string;
 };
 
-export function ChatPage() {
-  const [messages, setMessages] = useState<Array<{ role: "user" | "ai"; text: string }>>([]);
+export function AIChat() {
   const [prompt, setPrompt] = useState("");
-  const [currentResponse, setCurrentResponse] = useState("");
+  const [response, setResponse] = useState("");
+  const [enabled, setEnabled] = useState(false);
 
-  const { status } = useSSEStream<ChatStreamEvents>(
+  const { isConnected, error, isEnded } = useSSEStream<AIStreamEvents>(
     "/api/ai/chat",
-    { prompt, history: messages },
+    { prompt },
     {
       token: (data) => {
-        setCurrentResponse(prev => prev + data.text);
+        setResponse((prev) => prev + data.text);
       },
-      done: () => {
-        // Add completed response to messages
-        setMessages(prev => [
-          ...prev,
-          { role: "user", text: prompt },
-          { role: "ai", text: currentResponse },
-        ]);
-        setCurrentResponse("");
-        setPrompt("");
-      },
-      error: (data) => {
-        alert(`Error: ${data.message}`);
+      end: () => {
+        console.log("AI response complete");
+        setEnabled(false);  // Close connection
       },
     },
     {
-      enabled: prompt !== "",
-      retry: 3,
+      enabled,
+      retry: 1,  // Only 1 retry for AI requests
+      retryInterval: 1000,
     }
   );
 
+  const handleSubmit = () => {
+    setResponse("");  // Clear previous response
+    setEnabled(true);  // Start stream
+  };
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* Chat history */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((msg, i) => (
-          <div key={i} className={msg.role === "user" ? "text-right" : "text-left"}>
-            <div className="inline-block p-2 rounded bg-gray-100 mb-2">
-              {msg.text}
-            </div>
-          </div>
-        ))}
+    <div className="space-y-4">
+      <Textarea
+        value={prompt}
+        onValueChange={setPrompt}
+        placeholder="Enter your question"
+        rows={3}
+      />
 
-        {/* Current streaming response */}
-        {currentResponse && (
-          <div className="text-left">
-            <div className="inline-block p-2 rounded bg-blue-50 mb-2">
-              {currentResponse}
-              <span className="animate-pulse">▊</span>
-            </div>
-          </div>
-        )}
-      </div>
+      <Button
+        onClick={handleSubmit}
+        disabled={isConnected || !prompt}
+      >
+        {isConnected ? "Responding..." : "Ask"}
+      </Button>
 
-      {/* Input area */}
-      <div className="p-4 border-t flex gap-2">
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter message..."
-          disabled={status === "connecting" || status === "open"}
-        />
-        <Button
-          onClick={() => setPrompt(prompt)}
-          disabled={status === "connecting" || status === "open" || !prompt}
-        >
-          Send
-        </Button>
-      </div>
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {response && (
+        <div className="p-4 bg-gray-50 rounded">
+          <div className="whitespace-pre-wrap">{response}</div>
+          {isConnected && <span className="animate-pulse">▊</span>}
+        </div>
+      )}
+
+      {isEnded && (
+        <div className="text-sm text-gray-500">
+          Response complete
+        </div>
+      )}
     </div>
   );
 }
@@ -285,63 +290,87 @@ export function ChatPage() {
 ### File Upload Progress
 
 ```typescript
-type UploadProgressEvents = {
-  progress: { percent: number; uploaded: number; total: number };
-  complete: { url: string };
+type UploadEvents = {
+  progress: { percent: number; loaded: number; total: number };
+  complete: { fileUrl: string };
   error: { message: string };
 };
 
-export function FileUploadPage() {
+export function FileUploader() {
   const [file, setFile] = useState<File | null>(null);
+  const [uploadId, setUploadId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
-  const { status } = useSSEStream<UploadProgressEvents>(
-    "/api/files/upload-stream",
-    { fileId: file?.name },
+  const { isConnected, error } = useSSEStream<UploadEvents>(
+    "/api/file/upload/progress",
+    { uploadId: uploadId ?? "" },
     {
       progress: (data) => {
         setProgress(data.percent);
       },
       complete: (data) => {
-        setUploadedUrl(data.url);
-        alert("Upload complete!");
+        setFileUrl(data.fileUrl);
       },
       error: (data) => {
-        alert(`Upload failed: ${data.message}`);
+        alert(data.message);
       },
     },
     {
-      enabled: file !== null,
+      enabled: uploadId !== null,
       retry: 5,
       retryInterval: 2000,
     }
   );
 
+  const handleUpload = async () => {
+    if (!file) return;
+
+    // 1. Start upload (get uploadId)
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/file/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const { uploadId } = await response.json();
+
+    // 2. Track progress via SSE
+    setUploadId(uploadId);
+  };
+
   return (
     <div>
       <input
         type="file"
-        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
       />
 
-      {status === "open" && (
+      <Button onClick={handleUpload} disabled={!file || isConnected}>
+        Upload
+      </Button>
+
+      {isConnected && (
         <div>
-          <div className="progress-bar">
+          <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="progress-fill"
+              className="bg-blue-600 h-2 rounded-full transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div>{progress}%</div>
+          <p>{progress}%</p>
         </div>
       )}
 
-      {uploadedUrl && (
+      {fileUrl && (
         <div>
-          <a href={uploadedUrl} target="_blank">View uploaded file</a>
+          Upload complete: <a href={fileUrl}>{fileUrl}</a>
         </div>
       )}
+
+      {error && <div className="text-red-500">{error}</div>}
     </div>
   );
 }
@@ -350,47 +379,51 @@ export function FileUploadPage() {
 ### Real-time Log Monitoring
 
 ```typescript
-type LogStreamEvents = {
-  log: { level: "info" | "warn" | "error"; message: string; timestamp: string };
-  end: {};
+type LogEvents = {
+  log: { level: string; message: string; timestamp: string };
 };
 
-export function LogMonitorPage() {
+export function LogViewer() {
   const [logs, setLogs] = useState<Array<{ level: string; message: string; timestamp: string }>>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [enabled, setEnabled] = useState(true);
 
-  const { status, reconnect } = useSSEStream<LogStreamEvents>(
+  const { isConnected, error } = useSSEStream<LogEvents>(
     "/api/logs/stream",
-    { service: "api-server" },
+    { level: "info" },
     {
       log: (data) => {
-        setLogs(prev => [...prev, data]);
-      },
-      end: () => {
-        setIsMonitoring(false);
+        setLogs((prev) => [...prev, data].slice(-100));  // Keep only last 100
       },
     },
     {
-      enabled: isMonitoring,
-      retry: 10,
+      enabled,
+      retry: 10,  // Keep reconnecting for logs
       retryInterval: 5000,
     }
   );
 
   return (
     <div>
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setIsMonitoring(true)}>Start Monitoring</button>
-        <button onClick={() => setIsMonitoring(false)}>Stop</button>
-        {status === "error" && <button onClick={reconnect}>Reconnect</button>}
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant={enabled ? "red" : "default"}
+          onClick={() => setEnabled(!enabled)}
+        >
+          {enabled ? "Stop" : "Start"}
+        </Button>
+
+        {isConnected && <span className="text-green-500">● Connected</span>}
+        {error && <span className="text-red-500">● {error}</span>}
       </div>
 
-      <div className="log-container">
+      <div className="bg-black text-green-400 p-4 rounded font-mono text-sm h-96 overflow-y-auto">
         {logs.map((log, i) => (
-          <div key={i} className={`log-${log.level}`}>
-            <span className="timestamp">{log.timestamp}</span>
-            <span className="level">{log.level}</span>
-            <span className="message">{log.message}</span>
+          <div key={i} className="mb-1">
+            <span className="text-gray-500">[{log.timestamp}]</span>{" "}
+            <span className={log.level === "error" ? "text-red-400" : ""}>
+              {log.level.toUpperCase()}
+            </span>{" "}
+            {log.message}
           </div>
         ))}
       </div>
@@ -399,263 +432,235 @@ export function LogMonitorPage() {
 }
 ```
 
-## Options
+## Backend Implementation
 
-### enabled
+SSE endpoints are created using the `@stream` decorator and `ctx.createSSE()`.
 
-Control connection activation/deactivation.
+### Basic SSE API
+
+```typescript
+// ai.model.ts (backend)
+import { BaseModelClass, stream, Sonamu, z } from "sonamu";
+
+class AIModelClass extends BaseModelClass {
+  @stream({
+    type: 'sse',
+    events: z.object({
+      token: z.object({ text: z.string() }),
+      usage: z.object({ tokens: z.number() }),
+    }),
+    guards: ["login"],
+  })
+  async chat(prompt: string): Promise<void> {
+    const ctx = Sonamu.getContext();
+    const sse = ctx.createSSE(
+      z.object({
+        token: z.object({ text: z.string() }),
+        usage: z.object({ tokens: z.number() }),
+      })
+    );
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content ?? "";
+      if (text) {
+        sse.publish('token', { text });
+      }
+    }
+
+    sse.publish('usage', { tokens: 42 });
+    await sse.end();
+  }
+}
+```
+
+### publish Format
+
+```typescript
+sse.publish('eventName', { /* data */ });
+```
+
+**Examples**:
+```typescript
+sse.publish('token', { text: "Hello" });
+sse.publish('usage', { tokens: 42 });
+await sse.end();  // Sends end event and closes the stream
+```
+
+<Info>
+For detailed SSE endpoint implementation, see [Creating SSE Endpoints](/en/advanced-features/sse/creating-sse-endpoints).
+</Info>
+
+## Advanced Features
+
+### Conditional Connection
 
 ```typescript
 const [shouldConnect, setShouldConnect] = useState(false);
 
-useSSEStream<Events>(
-  "/api/stream",
-  params,
-  handlers,
-  { enabled: shouldConnect }
-);
-```
-
-**Use cases**:
-- Wait for user input before connecting
-- Enable based on authentication state
-- Conditional connection based on page state
-
-### retry
-
-Number of reconnection attempts on connection drop.
-
-```typescript
-useSSEStream<Events>(
-  "/api/stream",
-  params,
+const { isConnected } = useSSEStream(
+  "/api/notifications",
+  {},
   handlers,
   {
-    enabled: true,
-    retry: 5,              // Retry up to 5 times
-    retryInterval: 3000,   // Retry every 3 seconds
+    enabled: shouldConnect,  // Won't connect when false
   }
 );
+
+// Start connection via user action
+<Button onClick={() => setShouldConnect(true)}>
+  Subscribe to notifications
+</Button>
 ```
 
-**Default**: `3`
-
-### retryInterval
-
-Interval between reconnection attempts (milliseconds).
+### Dynamic Parameters
 
 ```typescript
-useSSEStream<Events>(
+const [filter, setFilter] = useState("all");
+
+useSSEStream(
+  "/api/logs/stream",
+  { level: filter },  // Reconnects when filter changes
+  handlers
+);
+
+// When filter changes, the connection is automatically dropped and reconnected with new params
+```
+
+### Manual Reconnection
+
+```typescript
+const [reconnectTrigger, setReconnectTrigger] = useState(0);
+
+useSSEStream(
   "/api/stream",
-  params,
-  handlers,
+  { trigger: reconnectTrigger },  // Reconnects when trigger changes
+  handlers
+);
+
+// Manual reconnection
+<Button onClick={() => setReconnectTrigger(prev => prev + 1)}>
+  Reconnect
+</Button>
+```
+
+### Multiple Streams
+
+```typescript
+// Stream 1: AI response
+const stream1 = useSSEStream<AIEvents>(
+  "/api/ai/chat",
+  { prompt: "Hello" },
   {
-    enabled: true,
-    retry: 3,
-    retryInterval: 5000,   // 5 seconds
+    token: (data) => setAiResponse(prev => prev + data.text),
   }
 );
-```
 
-**Default**: `3000` (3 seconds)
-
-## Return Values
-
-### status
-
-Current connection state.
-
-```typescript
-const { status } = useSSEStream<Events>(/* ... */);
-
-// status values:
-// - "connecting": Connecting
-// - "open": Connected
-// - "error": Error occurred
-// - "closed": Connection closed
-```
-
-**Usage**:
-```typescript
-{status === "connecting" && <Spinner />}
-{status === "open" && <div className="status-indicator green" />}
-{status === "error" && <div className="status-indicator red" />}
-```
-
-### error
-
-Error message (available when status is "error").
-
-```typescript
-const { status, error } = useSSEStream<Events>(/* ... */);
-
-{status === "error" && (
-  <div className="error-message">
-    Connection failed: {error}
-  </div>
-)}
-```
-
-### reconnect
-
-Function to manually reconnect.
-
-```typescript
-const { status, reconnect } = useSSEStream<Events>(/* ... */);
-
-{status === "error" && (
-  <button onClick={reconnect}>
-    Reconnect
-  </button>
-)}
-```
-
-## Auto-reconnection
-
-`useSSEStream` automatically reconnects on connection drops.
-
-### Reconnection Flow
-
-1. Connection drops → `status` becomes "error"
-2. Wait `retryInterval`
-3. Retry connection
-4. Repeat up to `retry` times
-5. On final failure → Stay in "error" state
-
-### Reconnection State Display
-
-```typescript
-const { status, error, reconnect } = useSSEStream<Events>(
-  "/api/stream",
-  params,
-  handlers,
-  { enabled: true, retry: 3, retryInterval: 3000 }
-);
-
-return (
-  <div>
-    {status === "connecting" && (
-      <div>
-        <Spinner />
-        <span>Connecting...</span>
-      </div>
-    )}
-
-    {status === "open" && (
-      <div className="status-ok">
-        ✓ Connected
-      </div>
-    )}
-
-    {status === "error" && (
-      <div className="status-error">
-        <span>Connection failed: {error}</span>
-        <button onClick={reconnect}>Retry</button>
-      </div>
-    )}
-
-    {status === "closed" && (
-      <div>Connection closed</div>
-    )}
-  </div>
+// Stream 2: Notifications
+const stream2 = useSSEStream<NotificationEvents>(
+  "/api/notifications",
+  {},
+  {
+    notification: (data) => showNotification(data),
+  }
 );
 ```
 
 ## Cautions
 
-### 1. Event Handler Stability
+### 1. EventSource Limit
 
-Event handlers are managed with `useRef` internally, so frequent recreation doesn't cause reconnections.
+- HTTP/1.1 limits to 6 concurrent connections per domain
+- Avoid opening too many SSE connections simultaneously
+
+### 2. Memory Management
+
+Don't accumulate streaming data indefinitely.
 
 ```typescript
-// ✅ OK: Can define inline
-useSSEStream<Events>(
-  "/api/stream",
-  params,
-  {
-    token: (data) => setResponse(prev => prev + data.text),
-    done: () => console.log("Done"),
+// Bad: Unbounded memory growth
+const [logs, setLogs] = useState<string[]>([]);
+
+useSSEStream("/api/logs", {}, {
+  log: (data) => {
+    setLogs(prev => [...prev, data.message]);  // Grows forever
   },
-  options
-);
+});
 
-// Also OK: Can use useCallback
-const handleToken = useCallback((data) => {
-  setResponse(prev => prev + data.text);
+// Good: Keep only last N entries
+useSSEStream("/api/logs", {}, {
+  log: (data) => {
+    setLogs(prev => [...prev, data.message].slice(-100));  // Last 100 only
+  },
+});
+```
+
+### 3. Error Handling
+
+```typescript
+const { error, isEnded } = useSSEStream(url, params, {
+  error: (data) => {
+    // Error event from server
+    console.error("Server error:", data);
+  },
+});
+
+// Connection failure error
+if (error) {
+  console.error("Connection error:", error);
+}
+```
+
+### 4. Component Unmount
+
+Connections are automatically closed when the component unmounts.
+
+```typescript
+useEffect(() => {
+  // useSSEStream handles cleanup automatically
+  return () => {
+    // No manual cleanup needed
+  };
 }, []);
-```
-
-### 2. Parameter Changes
-
-When `params` changes, connection is dropped and reconnected.
-
-```typescript
-const [userId, setUserId] = useState(1);
-
-// When userId changes, reconnects with new params
-useSSEStream<Events>(
-  "/api/user-stream",
-  { userId },  // Reconnects when userId changes
-  handlers,
-  { enabled: true }
-);
-```
-
-### 3. enabled Changes
-
-When `enabled` changes from false → true, connects; from true → false, disconnects.
-
-```typescript
-const [isActive, setIsActive] = useState(false);
-
-useSSEStream<Events>(
-  "/api/stream",
-  params,
-  handlers,
-  { enabled: isActive }  // Connects/disconnects with isActive toggle
-);
 ```
 
 ## Troubleshooting
 
-### Connection Fails
+### SSE Not Connecting
 
-**Causes**:
-1. Backend SSE endpoint not implemented
-2. Incorrect endpoint path
-3. CORS issues
-
-**Solution**:
-- Check backend generator function implementation
-- Verify endpoint path
-- Configure CORS headers (backend must allow SSE)
-
-### No Events Received Despite Connection
-
-**Cause**: Event type mismatch
+**Cause**: CORS configuration or endpoint error
 
 **Solution**:
 ```typescript
-// Backend must use matching event types
-yield { event: "token" as const, data: { text: "..." } };
-
-// Frontend event type must match
-type Events = {
-  token: { text: string };  // ✅ Must match
+// Backend: sonamu.config.ts
+export default {
+  api: {
+    cors: {
+      origin: "http://localhost:5173",
+      credentials: true,
+    },
+  },
 };
 ```
 
-### Too Many Reconnections
+### Reconnection Keeps Failing
 
-**Cause**: Backend keeps rejecting connections
+**Cause**: Backend server is down or network issue
 
-**Solution**:
-- Check backend error logs
-- Reduce `retry` count
-- Increase `retryInterval`
+**Solution**: Adjust `retry` and `retryInterval`, or display an error UI.
+
+### Data Not Parsing
+
+**Cause**: Server sending non-JSON format
+
+**Solution**: Use `sse.publish('eventName', jsonObject)` format on the backend.
 
 ## Related Documentation
 
-- [Using Services](/en/frontend-integration/generated-services/using-services) - API call methods
-- [TanStack Query Integration](/en/frontend-integration/generated-services/tanstack-query) - Cache management
-- [AI Agents](/en/advanced-features/ai-agents/using-ai-sdk) - AI SDK integration
+- [Creating SSE Endpoints](/en/advanced-features/sse/creating-sse-endpoints) - Backend implementation
+- [Using Services](/en/frontend-integration/generated-services/using-services) - API calls

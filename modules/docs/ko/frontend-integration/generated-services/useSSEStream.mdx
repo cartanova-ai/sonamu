@@ -59,12 +59,12 @@ Server-Sent Events는 서버에서 클라이언트로 실시간 데이터를 **�
 ### Import
 
 ```typescript
-import { useSSEStream } from "@sonamu-kit/react-components";
+import { useSSEStream } from "./sonamu.shared";
 ```
 
-<Warning>
-`useSSEStream`은 `services.generated.ts`가 아니라 `@sonamu-kit/react-components`에서 import합니다.
-</Warning>
+<Info>
+`useSSEStream`은 프로젝트 스캐폴딩 시 생성되는 `sonamu.shared.ts`에 정의되어 있습니다. `services.generated.ts`에서는 각 `@stream` API에 대한 래퍼 함수를 자동 생성하며, 내부적으로 `useSSEStream`을 사용합니다.
+</Info>
 
 ### 타입 정의
 
@@ -81,7 +81,7 @@ type AIStreamEvents = {
 
 ```typescript
 import { useState } from "react";
-import { useSSEStream } from "@sonamu-kit/react-components";
+import { useSSEStream } from "./sonamu.shared";
 
 export function AIChat() {
   const [response, setResponse] = useState("");
@@ -211,7 +211,7 @@ type SSEStreamState = {
 
 ```typescript
 import { useState } from "react";
-import { useSSEStream } from "@sonamu-kit/react-components";
+import { useSSEStream } from "./sonamu.shared";
 import { Button, Textarea } from "@sonamu-kit/react-components/components";
 
 type AIStreamEvents = {
@@ -434,57 +434,67 @@ export function LogViewer() {
 
 ## 백엔드 구현
 
-SSE 엔드포인트는 `@api` 데코레이터의 `sse: true` 옵션으로 만듭니다.
+SSE 엔드포인트는 `@stream` 데코레이터와 `ctx.createSSE()`로 만듭니다.
 
 ### 기본 SSE API
 
 ```typescript
 // ai.model.ts (백엔드)
-import { api } from "sonamu";
+import { BaseModelClass, stream, Sonamu, z } from "sonamu";
 
-class AIModelClass {
-  @api({
-    httpMethod: "GET",
-    sse: true,  // SSE 활성화
+class AIModelClass extends BaseModelClass {
+  @stream({
+    type: 'sse',
+    events: z.object({
+      token: z.object({ text: z.string() }),
+      usage: z.object({ tokens: z.number() }),
+    }),
     guards: ["login"],
   })
-  async *chat(params: { prompt: string }) {
-    // 제너레이터 함수로 스트리밍
+  async chat(prompt: string): Promise<void> {
+    const ctx = Sonamu.getContext();
+    const sse = ctx.createSSE(
+      z.object({
+        token: z.object({ text: z.string() }),
+        usage: z.object({ tokens: z.number() }),
+      })
+    );
+
     const stream = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: [{ role: "user", content: params.prompt }],
+      messages: [{ role: "user", content: prompt }],
       stream: true,
     });
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content ?? "";
       if (text) {
-        // 'token' 이벤트 전송
-        yield { event: "token", data: { text } };
+        sse.publish('token', { text });
       }
     }
 
-    // 'end' 이벤트 전송
-    yield { event: "end", data: "complete" };
+    sse.publish('usage', { tokens: 42 });
+    await sse.end();
   }
 }
 ```
 
-### yield 형식
+### publish 형식
 
 ```typescript
-yield {
-  event: "이벤트명",  // 필수
-  data: { /* 데이터 */ },  // 필수
-};
+sse.publish('이벤트명', { /* 데이터 */ });
 ```
 
 **예시**:
 ```typescript
-yield { event: "token", data: { text: "Hello" } };
-yield { event: "usage", data: { tokens: 42 } };
-yield { event: "end", data: "complete" };
+sse.publish('token', { text: "Hello" });
+sse.publish('usage', { tokens: 42 });
+await sse.end();  // 스트림 종료 시 end 이벤트 전송
 ```
+
+<Info>
+SSE 엔드포인트 구현에 대한 자세한 내용은 [SSE 엔드포인트 만들기](/ko/advanced-features/sse/creating-sse-endpoints)를 참고하세요.
+</Info>
 
 ## 고급 기능
 
@@ -648,7 +658,7 @@ export default {
 
 **원인**: 서버에서 JSON이 아닌 형식으로 데이터 전송
 
-**해결**: 백엔드에서 `yield { event, data: JSON객체 }` 형식을 사용하세요.
+**해결**: 백엔드에서 `sse.publish('이벤트명', JSON객체)` 형식을 사용하세요.
 
 ## 관련 문서
 
