@@ -130,72 +130,78 @@ export const sonamuKnexAdapter = () => {
   };
 };
 
+/**
+ * Better Auth의 공식 어댑터(Kysely, Drizzle, Prisma, MongoDB) 패턴에 맞춰
+ * AND 그룹과 OR 그룹을 분리한 뒤 top-level AND로 결합합니다.
+ * 결과: (A AND B AND ...) AND (C OR D OR ...)
+ */
 export function applyWhere(
   query: Knex.QueryBuilder,
   conditions: CleanedWhere[],
 ): Knex.QueryBuilder {
-  const hasOr = conditions.some((c) => c.connector === "OR");
-  const hasAnd = conditions.some((c) => c.connector !== "OR");
+  const andGroup = conditions.filter((c) => c.connector !== "OR");
+  const orGroup = conditions.filter((c) => c.connector === "OR");
 
-  if (hasAnd && hasOr) {
-    throw new Error(
-      "Mixed AND/OR connector conditions are not supported. Use only AND or only OR within a single where clause.",
-    );
-  }
-
-  for (const condition of conditions) {
-    const { field, value, operator, connector } = condition;
-    const method = connector === "OR" ? "orWhere" : "where";
-
-    switch (operator) {
-      case "eq":
-        if (value === null) {
-          query = query[method === "orWhere" ? "orWhereNull" : "whereNull"](field);
-        } else {
-          query = query[method](field, "=", value);
-        }
-        break;
-      case "ne":
-        if (value === null) {
-          query = query[method === "orWhere" ? "orWhereNotNull" : "whereNotNull"](field);
-        } else {
-          query = query[method](field, "!=", value);
-        }
-        break;
-      case "lt":
-        query = query[method](field, "<", value);
-        break;
-      case "lte":
-        query = query[method](field, "<=", value);
-        break;
-      case "gt":
-        query = query[method](field, ">", value);
-        break;
-      case "gte":
-        query = query[method](field, ">=", value);
-        break;
-      case "in":
-        query = query[method === "orWhere" ? "orWhereIn" : "whereIn"](
-          field,
-          value as (string | number)[],
-        );
-        break;
-      case "not_in":
-        query = query[method === "orWhere" ? "orWhereNotIn" : "whereNotIn"](
-          field,
-          value as (string | number)[],
-        );
-        break;
-      case "contains":
-        query = query[method](field, "like", `%${value}%`);
-        break;
-      case "starts_with":
-        query = query[method](field, "like", `${value}%`);
-        break;
-      case "ends_with":
-        query = query[method](field, "like", `%${value}`);
-        break;
+  if (andGroup.length > 0) {
+    for (const condition of andGroup) {
+      query = applyCondition(query, condition, "where");
     }
   }
+
+  if (orGroup.length > 0) {
+    query = query.where(function (this: Knex.QueryBuilder) {
+      for (let i = 0; i < orGroup.length; i++) {
+        applyCondition(this, orGroup[i], i === 0 ? "where" : "orWhere");
+      }
+    });
+  }
+
   return query;
+}
+
+function applyCondition(
+  query: Knex.QueryBuilder,
+  condition: CleanedWhere,
+  method: "where" | "orWhere",
+): Knex.QueryBuilder {
+  const { field, value, operator } = condition;
+
+  switch (operator) {
+    case "eq":
+      if (value === null) {
+        return query[method === "orWhere" ? "orWhereNull" : "whereNull"](field);
+      }
+      return query[method](field, "=", value);
+    case "ne":
+      if (value === null) {
+        return query[method === "orWhere" ? "orWhereNotNull" : "whereNotNull"](field);
+      }
+      return query[method](field, "!=", value);
+    case "lt":
+      return query[method](field, "<", value);
+    case "lte":
+      return query[method](field, "<=", value);
+    case "gt":
+      return query[method](field, ">", value);
+    case "gte":
+      return query[method](field, ">=", value);
+    case "in":
+      return query[method === "orWhere" ? "orWhereIn" : "whereIn"](
+        field,
+        value as (string | number)[],
+      );
+    case "not_in":
+      return query[method === "orWhere" ? "orWhereNotIn" : "whereNotIn"](
+        field,
+        value as (string | number)[],
+      );
+    case "contains":
+      return query[method](field, "like", `%${value}%`);
+    case "starts_with":
+      return query[method](field, "like", `${value}%`);
+    case "ends_with":
+      return query[method](field, "like", `%${value}`);
+    default:
+      return query;
+  }
 }
