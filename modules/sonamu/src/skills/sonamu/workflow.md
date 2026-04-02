@@ -196,30 +196,12 @@ description: Sonamu 전체 개발 워크플로우. 프로젝트 생성부터 Fro
 
 **참조 스킬:** testing.md, testing-devrunner.md, naite.md, cdd.md
 
-### 12. AC 구체화 및 Claim 구성
+### 12. CDD 실행
 
-**AC(수락 기준)는 테스트 파일의 describe/test 이름이다.** 별도 문서로 관리하지 않는다.
+- 개념 정의 (Claim 구조, AC 원칙, contract.md 목적): `.claude/skills/sonamu/cdd.md`
+- 실행 프로토콜 (실행 흐름, Claim 형식, 리뷰 단계): `.claude/workflow/cdd.md`
 
-33. `contract/**/*.contract.md`와 실제 코드를 참고하여 도메인별 AC 목록 초안 작성
-    - **항상 User 관련 테스트가 우선**
-34. 사용자와 논의하며 `pnpm cdd ac add`로 테스트 스켈레톤 생성
-35. `pnpm cdd ac list`로 확정된 AC 목록 확인
-36. Claim을 `tmp/claims/`에 YAML로 작성 (`surface` → `implement` 순)
-    - 상세 Claim 형식은 cdd.md 참조
-
-### 13. Claim 실행 (반복)
-
-각 Claim마다:
-
-37. **AC 작성 + 구현 교차 반복** (AC 하나 → 구현 → 다음 AC → 구현)
-38. biome check, type check
-39. **`pnpm sonamu test`로 테스트 돌려보기**
-    - dev 서버가 올라가있지 않으면 올린 뒤 실행
-
-### 14. 전체 검증
-
-40. 모든 Claim 완료 후 전체 biome check, type check 및 빌드 확인
-41. **`pnpm sonamu test`로 전체 테스트 실행**
+두 문서를 모두 읽은 뒤 실행한다.
 
 **완료 기준:**
 
