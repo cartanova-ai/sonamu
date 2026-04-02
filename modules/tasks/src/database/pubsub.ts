@@ -6,6 +6,7 @@ export type OnSubscribed = (result: Result<string | null>) => void | Promise<voi
 
 export class PostgresPubSub {
   private _destroyed = false;
+  private _connecting = false;
   private _onClosed: () => Promise<void>;
   private _onNotification: (msg: { channel: string; payload: unknown }) => Promise<void>;
   private _onError: (error: Error) => Promise<void>;
@@ -59,16 +60,24 @@ export class PostgresPubSub {
 
   // acquire new raw connection and set up listeners
   async connect() {
-    const connection = await this.knex.client.acquireRawConnection();
-    connection.on("close", this._onClosed);
-    connection.on("notification", this._onNotification);
-    connection.on("error", this._onError);
+    // 동시 재연결 시도로 인한 연결 누수를 방지합니다.
+    if (this._connecting) return;
+    this._connecting = true;
 
-    for (const channel of this._listeners.keys()) {
-      connection.query(`LISTEN ${channel}`);
+    try {
+      const connection = await this.knex.client.acquireRawConnection();
+      connection.on("close", this._onClosed);
+      connection.on("notification", this._onNotification);
+      connection.on("error", this._onError);
+
+      for (const channel of this._listeners.keys()) {
+        connection.query(`LISTEN ${channel}`);
+      }
+
+      this._connection = connection;
+    } finally {
+      this._connecting = false;
     }
-
-    this._connection = connection;
   }
 
   // destroy the listener and close the connection, do not destroy the knex connection
