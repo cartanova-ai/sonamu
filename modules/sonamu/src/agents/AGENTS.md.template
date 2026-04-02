@@ -1,0 +1,37 @@
+# Guide for Coding Agents
+
+## CDD policy
+
+This project follows Contract-Driven Development (CDD).
+
+- Detailed protocol: `.agents/workflow/cdd.md`
+- Concept reference: `.claude/skills/sonamu/cdd.md`
+- Start CDD work: `/cdd` slash command
+
+## Canonical control files
+
+- Primary instructions: `AGENTS.md` and `.agents/`
+- `CLAUDE.md` and `.claude/` are compatibility symlinks — do not edit them directly
+
+## Core workflow
+
+1. Delegate planning to `cdd-planner`
+2. Orchestrator converts approved plan into Claims (`tmp/claims/`)
+3. surface → (surface review) → test + implement (parallel) → stage reviews → integration review → AC verification
+
+## TypeScript type safety policy
+
+- `as any` and `as unknown as T` are strictly prohibited
+- Non-null assertion (`!`) is prohibited — use optional chaining (`?.`) or type guards
+
+## Commit message policy
+
+- Format: `[scope] type: short title`
+- Messages in Korean
+- No Co-Authored-By trailers
+
+## Absolute prohibitions
+
+- Do not edit generated files (`*.generated.ts`, `sonamu.generated.*`)
+- Do not execute migrations without explicit user confirmation
+- Do not deploy
