@@ -1,39 +1,33 @@
 # CDD Planner Protocol
 
-The `cdd-planner` is a leaf worker that converts the user request, contract context, Rules, and current codebase state into reusable planning artifacts for the CDD orchestrator.
+Follow `00_shared_contract.md` and `01_cdd.md` first.
+
+The `cdd-planner` is a leaf worker that converts `bootstrap_context`, contract, Rules, and current codebase state into planning artifacts for the CDD orchestrator.
 
 The planner never edits code, never creates Claim YAML files, and never spawns other agents.
 
-## Inputs
+## Upstream inputs
 
-- User request
-- Relevant business logic documents (`contract/**/*.contract.md`)
-- Applicable Rules files (`contract/rules/*.rules.json`)
-- Relevant existing code, tests, and generated artifacts
-- Current AC state (`pnpm cdd ac list` output if available)
-- Execution-mode capability state (team vs sub-agent)
+| Input | Source | Required |
+|---|---|---|
+| `bootstrap_context` | Orchestrator | Yes |
+| Contract files (`contract/**/*.contract.md`) | Filesystem | Yes |
+| Rules files (`contract/rules/*.rules.json`) | Filesystem | When applicable |
+| Relevant code and tests | Filesystem | Yes |
+| Current AC state (`pnpm cdd ac list`) | Orchestrator | When available |
 
 ## Required actions
 
-1. Lock the planning scope from contract + code + user request.
-2. Read only the contract files relevant to the requested feature. If the user named a contract file, prefer that file.
-3. Read the Rules files that govern the affected area.
+1. Lock the planning scope from `bootstrap_context.scope_in` and `bootstrap_context.scope_out`.
+2. Read only the contract files listed in `bootstrap_context.affected_contracts`. If the user named a contract file, prefer that file.
+3. Read the Rules files listed in `bootstrap_context.affected_rules`.
 4. Read the code and tests that constrain implementation shape.
 5. Detect whether the requested plan contradicts, extends, or leaves gaps in the current contract.
-   - If contract updates are required, return that explicitly in `plan_document`.
+   - If contract updates are required, return that explicitly in `plan_document.status: needs_contract_update`.
    - Do not silently absorb contract drift.
-6. Produce `plan_document` with:
-   - objective summary
-   - contract and Rules basis
-   - AC strategy
-   - stage sequencing
-   - validation matrix
-   - risk notes and blockers
-7. Produce `claim_blueprint` as a machine-readable precursor to Claim YAML generation.
-   - The blueprint is not a Claim file.
-   - The orchestrator converts it into `tmp/claims/*.yaml` only after user approval.
-8. Produce `execution_graph` that enforces this control flow:
-   - `surface -> surface_review -> {test + implement} -> each_review -> integration_review -> ac_verification`
+6. Produce `plan_document`.
+7. Produce `claim_blueprint`.
+8. Produce `execution_graph`.
 9. Surface planning must explicitly cover downstream prerequisites:
    - shared types/interfaces/exports
    - migration work
@@ -41,13 +35,15 @@ The planner never edits code, never creates Claim YAML files, and never spawns o
    - Sonamu model scaffolding
    - any frame/module entry readiness required before test or implementation starts
 10. When migration or scaffolding is needed, require Sonamu CLI usage and include both:
-   - `required_skills`
-   - `required_cli_commands`
+    - `required_skills`
+    - `required_cli_commands`
 11. Use these canonical Sonamu skill references when applicable:
-   - `modules/sonamu/src/skills/sonamu/migration.md`
-   - `modules/sonamu/src/skills/sonamu/scaffolding.md`
+    - `modules/sonamu/src/skills/sonamu/migration.md`
+    - `modules/sonamu/src/skills/sonamu/scaffolding.md`
 
-## Output artifacts
+## Downstream output
+
+Return all three artifacts together. The orchestrator validates and executes them. The planner must not create `tmp/claims/*.yaml` directly.
 
 ### `plan_document`
 
@@ -61,6 +57,10 @@ plan_document:
     - "contract/rules/..."
   code_basis:
     - "src/..."
+  contract_update_needed:
+    - file: "contract/main.contract.md"
+      reason: "..."
+      proposed_change: "..."
   ac_strategy:
     status: "existing|needs_generation|partial_update"
     notes:
@@ -153,8 +153,10 @@ execution_graph:
       to: "ac_verification"
 ```
 
-## Handoff contract
+## Hard constraints
 
-- Return `plan_document`, `claim_blueprint`, and `execution_graph` together.
-- The orchestrator validates and executes these artifacts.
-- The planner must not duplicate orchestration work by drafting `tmp/claims/*.yaml` directly.
+- No code or test edits.
+- No Claim YAML creation in `tmp/claims/`.
+- No nested spawns.
+- If the plan requires contract changes, surface that explicitly instead of assuming approval.
+- `scope.write` in each blueprint entry must be minimal — only files the worker actually needs to create or modify.

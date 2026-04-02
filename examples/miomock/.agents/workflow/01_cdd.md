@@ -1,8 +1,10 @@
 # Contract-Driven Development (CDD)
 
+Follow `00_shared_contract.md` first.
+
 ## Core principles
 
-- Code is the source of truth. Documents record domain rules in cohesive form and their decision rationale.
+- Code is the source of truth. Contract documents record domain rules in cohesive form and their decision rationale.
 - AC (Acceptance Criteria) = test names. The describe/test in test files ARE the AC.
 - Implementation plans (Claims) are disposable. They exist as work instructions for sub-agents and are discarded after completion.
 - The planner builds planning artifacts. The orchestrator validates the approved plan, decomposes it into Claims, and manages execution.
@@ -12,17 +14,9 @@
 
 | Document | Location | Content | Updated when |
 |---|---|---|---|
-| Business logic | `contract/**/*.contract.md` | Domain rules in cohesive form + decision rationale (see definition below) | Policy changes |
+| Business logic | `contract/**/*.contract.md` | Domain rules in cohesive form + decision rationale | Policy changes |
 | Rules | `contract/rules/*.rules.json` | Code conventions, UI/API rules (split by FE/BE) | Convention changes |
 | AC | describe/test in `*.test.ts` | Per-feature acceptance criteria. Pass/fail basis | Feature add/change |
-
-## Disposable planning artifacts
-
-| Artifact | Content | Created by | Consumed by |
-|---|---|---|---|
-| `plan_document` | Stage-aware plan grounded in contract + Rules + code | Planner | Orchestrator + user |
-| `claim_blueprint` | Machine-readable Claim precursor with scope/dependency metadata | Planner | Orchestrator |
-| `execution_graph` | Ordered execution and review flow | Planner | Orchestrator |
 
 ## What is business logic
 
@@ -44,7 +38,16 @@ What does NOT belong:
 - UI layout or component structure
 - Code conventions (these go in Rules)
 
-## Disposable execution document: Claim
+## Disposable planning artifacts
+
+| Artifact | Content | Created by | Consumed by | Schema |
+|---|---|---|---|---|
+| `bootstrap_context` | Refined scope, constraints, non-goals from user request | Orchestrator | Planner | `02_orchestrator.md#bootstrap` |
+| `plan_document` | Stage-aware plan grounded in contract + Rules + code | Planner | Orchestrator + user | `03_planner.md#plan-document` |
+| `claim_blueprint` | Machine-readable Claim precursor with scope/dependency metadata | Planner | Orchestrator | `03_planner.md#claim-blueprint` |
+| `execution_graph` | Ordered execution and review flow | Planner | Orchestrator | `03_planner.md#execution-graph` |
+
+## Claim format
 
 Work instructions delivered to sub-agents. Created as YAML in `tmp/claims/` and discarded after implementation.
 
@@ -109,15 +112,17 @@ Migration and scaffolding must use Sonamu CLI. Do not hand-write migration files
 
 If the approved plan requires a Frame class or adjacent runtime shell that has no dedicated scaffold command, surface still owns making that downstream-ready after running the required Sonamu CLI sync/scaffold steps for surrounding prerequisites.
 
-## Implementation process
+## Implementation process (high-level)
 
-1. **Planning**: The planner creates `plan_document`, `claim_blueprint`, and `execution_graph` from business logic + actual code + user request. If the plan contradicts the contract, propose contract updates to the user first.
-2. **AC concretization**: Discuss with user, generate test skeletons via `pnpm cdd ac add`. Some features may intentionally have no AC (e.g. DB migrations, UI-only work).
-3. **Plan finalization**: After user confirmation, the orchestrator converts the approved `claim_blueprint` into Claims (`surface / test / implement`).
-4. **Execution**: Run surface Claims first so migration, sync, scaffolding, and shared prerequisites are ready before downstream work starts.
-5. **Stage review**: Review surface Claims first. After surface review passes, run test + implement Claims in parallel and review each stage independently.
-6. **Integration review**: After stage reviews pass, review the combined changed set for cross-cutting issues.
-7. **AC verification**: Run tests -> on failure, pass failure log to the owning worker -> fix -> repeat from the relevant review stage. Claims with no `ac_targets` skip this step.
+1. **Bootstrap**: Orchestrator refines user request into `bootstrap_context`.
+2. **Planning**: Planner creates `plan_document`, `claim_blueprint`, and `execution_graph`.
+3. **AC concretization**: Discuss with user, generate test skeletons via `pnpm cdd ac add`.
+4. **Plan finalization**: After user confirmation, orchestrator converts `claim_blueprint` into Claims.
+5. **Execution**: Surface Claims first, then test + implement in parallel.
+6. **Stage review**: Surface review first, then test + implement reviews independently.
+7. **Integration review**: Cross-cutting review across all changed files.
+8. **AC verification**: Run tests, fix failures, repeat from relevant review stage.
+9. **Handoff**: Package results for user delivery.
 
 ## Rules file format
 
