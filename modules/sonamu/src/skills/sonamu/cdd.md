@@ -152,6 +152,29 @@ pnpm cdd ac list [파일]
 
 ---
 
+## 플래닝 아티팩트 (일회성)
+
+플래너가 생성하는 일회성 산출물. Claim을 만들기 전 단계다.
+
+| 아티팩트 | 역할 | 생성자 | 소비자 |
+|---------|------|--------|--------|
+| `plan_document` | contract + 코드 기반 단계별 계획, 검증 매트릭스, 리스크 노트 | 플래너 | 오케스트레이터 + 사용자 |
+| `claim_blueprint` | Claim YAML의 기계 가독형 전구체 (scope/의존성 메타데이터 포함) | 플래너 | 오케스트레이터 |
+| `execution_graph` | 실행 순서 및 리뷰 흐름 | 플래너 | 오케스트레이터 |
+
+**플래너 규칙:**
+- 코드나 테스트를 직접 편집하지 않는다
+- `tmp/claims/*.yaml`을 직접 생성하지 않는다 — blueprint만 반환한다
+- contract와 코드를 비교해 contract 업데이트가 필요하면 `plan_document`에 명시한다
+
+**실행 그래프 기본 형태:**
+
+```
+surface → surface_review → test + implement(병렬) → 각 stage_review → integration_review → ac_verification
+```
+
+---
+
 ## 일회성 문서: Claim
 
 서브에이전트에 전달하는 작업 지시서. `tmp/claims/`에 YAML로 생성, 완료 후 폐기.
@@ -170,6 +193,13 @@ ac_targets:
   - "파일경로::describe그룹::테스트명"
 rules:
   - "contract/rules/api.rules.json"
+required_skills:
+  - "modules/sonamu/src/skills/sonamu/migration.md"
+required_cli_commands:
+  - "pnpm sonamu sync"
+  - "pnpm sonamu scaffold model User"
+expected_generated_targets:
+  - "src/application/user/user.model.ts"
 depends_on: []
 findings: []
 ```
@@ -184,6 +214,9 @@ findings: []
 | `scope.write` | 소유권 경계 — 이 밖의 파일 수정 금지 |
 | `ac_targets` | 만족시킬 AC (`파일::describe::테스트명` 형식) |
 | `rules` | 적용할 규칙 파일 경로 |
+| `required_skills` | Claim 수행에 필요한 canonical skill 파일 경로. 워커가 작업 전에 반드시 읽는다 |
+| `required_cli_commands` | 마이그레이션/scaffolding/sync 등 필수 CLI 명령어 |
+| `expected_generated_targets` | 이 Claim이 완료된 후 downstream에 준비되어야 할 파일/모듈 |
 | `depends_on` | 선행 Claim ID |
 | `findings` | 리뷰 실패 시 재시도 컨텍스트 |
 
@@ -199,13 +232,16 @@ findings: []
 
 ---
 
-## 개발 프로세스 (6단계)
+## 개발 프로세스 (7단계)
 
-### 1. 플래닝
+### 1. 플래닝 (플래너에게 위임)
 
-`contract/{domain}/*.contract.md`와 **실제 코드**를 함께 참고하여 구현 계획 초안 작성.
-코드와 *.contract.md가 충돌하면 코드를 우선한다 (ground truth). *.contract.md가 오래된 것일 수 있음.
-사용자가 특정 *.contract.md를 지정하면 해당 파일만, 아니면 `contract/**/*.contract.md` 전체를 읽는다.
+플래너가 `contract/**/*.contract.md` + **실제 코드** + 사용자 요청을 바탕으로 계획 초안 작성.
+코드와 *.contract.md가 충돌하면 코드를 우선한다 (ground truth).
+
+플래너 반환물: `plan_document`, `claim_blueprint`, `execution_graph`
+
+플랜이 contract와 충돌하거나 새 도메인 규칙이 드러나면, 구현 전에 사용자에게 **contract 업데이트를 먼저 제안**한다. 조용히 넘기지 않는다.
 
 ### 2. AC 구체화
 
@@ -214,31 +250,55 @@ findings: []
 
 **AC는 작은 단위로 쪼갠다.** Claim 하나에 5~10개의 구체적 AC가 전체를 포괄하는 2~3개보다 낫다. AC 목록이 곧 구현 체크리스트가 된다.
 
+일부 기능(DB 마이그레이션, UI-only 작업 등)은 의도적으로 AC 없이 진행할 수 있다.
+
 ### 3. 계획 픽스 (Claim 구성)
 
-사용자 확인 후 Claim을 `tmp/claims/`에 YAML로 작성.
-`surface` → `implement` 순으로 분해하고 `depends_on`으로 선후관계 명시.
+사용자 확인 후 오케스트레이터가 `claim_blueprint`를 `tmp/claims/*.yaml`로 변환.
+`surface` → `(test + implement 병렬)` 순으로 분해하고 `depends_on`으로 선후관계 명시.
 
-각 `implement` Claim은 독립적으로 완결되어야 한다: AC 작성 + 구현 + 테스트 통과까지.
+`surface` Claim이 반드시 먼저 나온다: 공유 타입, 마이그레이션, sync, scaffolding 등 downstream 선행 조건 전체.
 
 ### 4. 실행
 
-**서브에이전트 모드 (기본)**: `Agent` tool로 워커 스폰.
-- 적합: Claim이 독립적이거나 순차적 작업. 불확실하면 이 모드가 기본값.
+**서브에이전트 모드**: `Agent` tool로 워커 온디맨드 스폰.
+- 불확실하면 이 모드가 기본값.
 
-**에이전트팀 모드**: `TeamCreate`로 팀 구성, 워커 간 `SendMessage`로 직접 통신.
-- 적합: test-writer와 implementer가 밀결합된 코드를 다룰 때, 워커가 서로의 중간 결과물을 자주 참조할 때.
+**에이전트팀 모드** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 환경변수 설정 시): `TeamCreate`로 팀 생성. 워커는 세션 내내 유지되고 재사용됨.
+- 적합: test-writer와 implementer가 공유 인터페이스를 자주 참조할 때.
 
-### 5. 리뷰
+| 워커 | 역할 |
+|------|------|
+| `cdd-planner` | 플래닝 아티팩트 생성 |
+| `cdd-surface-scaffolder` | 타입/마이그레이션/scaffolding 선행작업 |
+| `cdd-test-writer` | 테스트 구현 (skeleton-only 시) |
+| `cdd-implementer` | AC + 프로덕션 코드 교차 구현 (TDD) |
+| `cdd-reviewer` | 단계별/통합 리뷰 |
 
-모든 implement Claim 완료 후 리뷰어 스폰.
-`findings`가 있으면 해당 Claim의 서브에이전트에 전달하여 재스폰.
+### 5. 단계별 리뷰
+
+**순서는 고정이다:**
+1. surface 완료 → surface 리뷰
+2. surface 리뷰 통과 후 → test + implement 병렬 실행
+3. 각 stage 완료 → 해당 stage 리뷰 (컨텍스트 격리)
+4. 모든 stage 리뷰 통과 → 통합 리뷰 (전체 변경 파일 대상)
+
+`findings`가 있으면 해당 Claim 워커에 전달 → 수정 → 해당 stage부터 재리뷰.
+
+**fast-path**: 30줄 이하, docs/formatting/config만 변경, 모든 게이트 통과 → 리뷰어 스폰 생략.
 
 ### 6. AC 검증
 
 테스트 실행 → 전체 통과 시 완료.
-실패 시 implementer에 실패 로그 전달 → 수정 → 5번부터 반복.
+실패 시 해당 워커에 실패 로그 전달 → 수정 → 5번부터 반복.
 동일 실패 3회 반복 시 사용자에게 보고.
+
+### 7. 사용자 핸드오프
+
+아래 조건이 모두 충족되면 전달:
+1. 단위 리뷰 종료
+2. 통합 리뷰 종료
+3. 미해결 항목 0건
 
 ---
 
@@ -252,7 +312,7 @@ pnpm cdd <command>
 |--------|------|
 | `cdd init [dir]` | CDD 프로젝트 초기화 (`contract/`, `*.contract.md` 템플릿 생성) |
 | `cdd ac add <파일> <테스트명>` | 테스트 파일에 빈 테스트 스켈레톤 추가. `--describe <그룹>` 옵션으로 describe 블록 지정 |
-| `cdd ac list [파일]` | 테스트 파일의 describe/test 트리 출력 |
+| `cdd ac list [파일]` | 테스트 파일의 describe/test 트리 출력. `test()`, `it()`, `testAs()` 패턴 모두 파싱 |
 | `cdd validate` | 스키마/경로/참조 무결성 검증 |
 | `cdd rules validate` | `contract/rules/*.rules.json` 포맷 검증 |
 
