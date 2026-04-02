@@ -464,7 +464,7 @@ export default defineConfig({
 export const processData = workflow(
   { name: "process_data" },
   async () => {
-    const ctx = getContext();
+    const ctx = Sonamu.getContext();
     ctx.reply.send({ done: true });  // Worker에서는 null!
   }
 );

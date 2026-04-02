@@ -120,6 +120,31 @@ class NotificationModelClass extends BaseModelClass {
 
 `ctx.createSSE()`로 생성된 SSE 연결 객체입니다.
 
+### closed
+
+연결이 종료되었는지 여부를 나타내는 읽기 전용 속성입니다. 클라이언트가 연결을 끊거나 `end()`를 호출한 후 `true`가 됩니다.
+
+```typescript
+if (sse.closed) {
+  return;
+}
+sse.publish('status', { message: 'still alive' });
+```
+
+### onClose(callback)
+
+연결이 종료될 때 호출될 콜백을 등록합니다. 클라이언트 측 연결 종료와 `end()` 호출 모두에서 실행됩니다. 타이머나 외부 리소스 정리에 활용할 수 있습니다.
+
+```typescript
+const interval = setInterval(() => {
+  sse.publish('heartbeat', { ts: Date.now() });
+}, 5000);
+
+sse.onClose(() => {
+  clearInterval(interval);
+});
+```
+
 ### publish(event, data)
 
 이벤트를 클라이언트로 전송합니다.

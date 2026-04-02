@@ -248,12 +248,12 @@ GET /api/auth/sign-in/social?provider=google
 인증된 요청에서는 Context를 통해 사용자 정보에 접근할 수 있습니다.
 
 ```typescript
-import { api, getContext } from "sonamu";
+import { api, Sonamu } from "sonamu";
 
 export class MyModel {
   @api()
   static async myApi() {
-    const ctx = getContext();
+    const ctx = Sonamu.getContext();
 
     // 현재 로그인한 사용자
     const user = ctx.user;  // User | null
@@ -325,7 +325,7 @@ export default defineConfig({
     apiConfig: {
       guardHandler: async (guard, request) => {
         // Context에서 user 가져오기
-        const { user } = getContext();
+        const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
           throw new UnauthorizedError("로그인이 필요합니다");
@@ -761,7 +761,7 @@ export default defineConfig({
 
     apiConfig: {
       guardHandler: async (guard) => {
-        const { user } = getContext();
+        const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
           throw new UnauthorizedError("로그인이 필요합니다");

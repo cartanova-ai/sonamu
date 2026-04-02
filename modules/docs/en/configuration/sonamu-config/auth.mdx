@@ -248,12 +248,12 @@ For the complete API list, refer to the [better-auth documentation](https://www.
 In authenticated requests, you can access user information through Context.
 
 ```typescript
-import { api, getContext } from "sonamu";
+import { api, Sonamu } from "sonamu";
 
 export class MyModel {
   @api()
   static async myApi() {
-    const ctx = getContext();
+    const ctx = Sonamu.getContext();
 
     // Currently logged-in user
     const user = ctx.user;  // User | null
@@ -325,7 +325,7 @@ export default defineConfig({
     apiConfig: {
       guardHandler: async (guard, request) => {
         // Get user from Context
-        const { user } = getContext();
+        const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
           throw new UnauthorizedError("Login required");
@@ -761,7 +761,7 @@ export default defineConfig({
 
     apiConfig: {
       guardHandler: async (guard) => {
-        const { user } = getContext();
+        const { user } = Sonamu.getContext();
 
         if (guard === "auth" && !user) {
           throw new UnauthorizedError("Login required");
