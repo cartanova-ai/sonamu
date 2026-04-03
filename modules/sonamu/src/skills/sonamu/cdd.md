@@ -194,7 +194,7 @@ ac_targets:
 rules:
   - "contract/rules/api.rules.json"
 required_skills:
-  - "modules/sonamu/src/skills/sonamu/migration.md"
+  - ".claude/skills/sonamu/migration.md"
 required_cli_commands:
   - "pnpm sonamu sync"
   - "pnpm sonamu scaffold model User"
