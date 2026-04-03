@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm biome check --changed 2>&1 | head -60"
+          }
+        ]
+      }
+    ]
+  }
+}

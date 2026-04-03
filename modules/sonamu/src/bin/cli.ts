@@ -1352,23 +1352,21 @@ async function auth_add_companions() {
 
 /**
  * 워크스페이스 루트를 찾습니다.
- * 우선순위: pnpm-workspace.yaml > CLAUDE.md > 루트 package.json (workspaces 필드)
+ * 우선순위: pnpm-workspace.yaml > package.json(workspaces) > .agents/
+ *
+ * CLAUDE.md는 서브패키지에도 존재할 수 있으므로 사용하지 않습니다.
+ * .agents/는 agents init이 생성하는 디렉토리로, 워크스페이스 루트에만 존재합니다.
  */
 async function findWorkspaceRoot() {
   let dir = process.cwd();
 
   while (dir !== path.dirname(dir)) {
-    // 1. pnpm-workspace.yaml 파일이 있는지 확인. 있으면 확실한 monorepo 루트.
+    // 1. pnpm-workspace.yaml: 확실한 monorepo 루트.
     if (await exists(path.join(dir, "pnpm-workspace.yaml"))) {
       return dir;
     }
 
-    // 2. CLAUDE.md 파일이 있는지 확인. 있으면 프로젝트 루트로 간주함.
-    if (await exists(path.join(dir, "CLAUDE.md"))) {
-      return dir;
-    }
-
-    // 3. package.json에 workspaces 필드가 있으면 루트.
+    // 2. package.json에 workspaces 필드가 있으면 monorepo 루트.
     const packagePath = path.join(dir, "package.json");
     if (await exists(packagePath)) {
       try {
@@ -1380,6 +1378,12 @@ async function findWorkspaceRoot() {
         // 파싱 실패시 무시
       }
     }
+
+    // 3. .agents/: agents init이 생성한 디렉토리. 서브패키지에는 존재하지 않음.
+    if (await exists(path.join(dir, ".agents"))) {
+      return dir;
+    }
+
     dir = path.dirname(dir);
   }
 
