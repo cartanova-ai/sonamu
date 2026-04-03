@@ -1,220 +1,220 @@
 ---
 name: sonamu-fixture-cli
-description: Sonamu Fixture CLI 사용 가이드. fixture gen/fetch/explore 명령어로 테스트 데이터 생성 및 관리. Use when creating or managing fixture data.
+description: Sonamu Fixture CLI usage guide. Create and manage test data with the fixture gen/fetch/explore commands. Use when creating or managing fixture data.
 ---
 
-# Fixture CLI 사용 가이드
+# Fixture CLI Usage Guide
 
-Sonamu는 테스트용 fixture 데이터를 생성하고 관리하기 위한 CLI 명령어를 제공합니다.
+Sonamu provides CLI commands for generating and managing fixture data for testing.
 
-**참고**: Fixture 생성 팁은 아래 "실전 팁" 섹션 참조
+**Note**: See the "Practical Tips" section below for fixture generation tips.
 
 ---
 
-## 3-Tier DB 구조 이해 (필수)
+## Understanding the 3-Tier DB Structure (Required)
 
-Sonamu는 3단계 데이터베이스 구조를 사용합니다. **이 구조를 이해하지 못하면 fixture 명령어 사용 시 혼란이 발생합니다.**
+Sonamu uses a three-tier database structure. **Without understanding this structure, using fixture commands will be confusing.**
 
 ```
-production/development master (실제 DB)
+production/development master (live DB)
           ↓ (fixture fetch)
      project_fixture (fixture DB)
           ↓ (fixture sync)
        project_test (test DB)
 ```
 
-### DB별 역할
+### Role of Each DB
 
-| DB | 용도 | 데이터 출처 |
-|----|------|-----------|
-| `project` | 운영/개발 실제 DB | 실제 사용자 데이터 |
-| `project_fixture` | 테스트용 참조 데이터 저장소 | fetch로 가져오거나 gen으로 생성 |
-| `project_test` | 테스트 실행 환경 | fixture에서 sync |
+| DB | Purpose | Data origin |
+|----|---------|-------------|
+| `project` | Production/development live DB | Real user data |
+| `project_fixture` | Reference data store for testing | Imported via fetch or generated via gen |
+| `project_test` | Test execution environment | Synced from fixture |
 
-### 명령어별 DB 사용
+### Which DB Each Command Uses
 
-| 명령어 | sourceDb | targetDb | 설명 |
-|--------|----------|----------|------|
-| `fixture gen` | fixture DB | fixture DB | fixture DB 내부에서 참조 관계 해결 및 생성 |
-| `fixture fetch` | production master | fixture DB | 실제 DB → fixture DB로 import |
-| `fixture sync` | fixture DB | test DB | fixture DB → test DB로 동기화 (기존) |
+| Command | sourceDb | targetDb | Description |
+|---------|----------|----------|-------------|
+| `fixture gen` | fixture DB | fixture DB | Resolves and generates relations within the fixture DB |
+| `fixture fetch` | production master | fixture DB | Imports from live DB → fixture DB |
+| `fixture sync` | fixture DB | test DB | Synchronizes fixture DB → test DB (existing behavior) |
 
-**CRITICAL**: sourceDb와 targetDb를 잘못 설정하면 FK 참조 오류가 발생합니다.
+**CRITICAL**: Incorrect sourceDb or targetDb settings will cause FK reference errors.
 
 ---
 
-## CLI 명령어
+## CLI Commands
 
-### 1. fixture gen - 새로운 fixture 생성
+### 1. fixture gen - Generate new fixtures
 
-faker 기반으로 새로운 테스트 데이터를 생성합니다.
+Generates new test data based on faker.
 
-**CRITICAL: `--use-llm` 옵션은 실제 프로젝트에서 항상 사용해야 한다.** `--use-llm` 없이 생성하면 cone.note 기반 도메인 맥락이 반영되지 않아 faker 기본값만 사용되므로, 의미 없는 데이터가 생성될 수 있다. LLM이 `contract/**/*.contract.md`를 참조해 맥락에 맞는 데이터를 생성하려면 이 옵션이 필수이다.
+**CRITICAL: The `--use-llm` option must always be used in real projects.** Without `--use-llm`, domain context from cone.note is not applied and only faker defaults are used, potentially producing meaningless data. This option is required for the LLM to reference `contract/**/*.contract.md` and generate contextually appropriate data.
 
-**CRITICAL: fixture gen을 실행하기 전에 `cone.note`가 주요 prop에 존재하는지 확인한다.** cone.note가 없으면 LLM이 맥락을 파악할 수 없어 의미 있는 데이터 생성이 불가능하다. cone.note가 부족하면 `pnpm sonamu cone generate --use-llm`으로 cone을 재생성한다.
+**CRITICAL: Before running fixture gen, verify that `cone.note` exists for key props.** Without cone.note, the LLM cannot understand context and cannot generate meaningful data. If cone.note is insufficient, regenerate it with `pnpm sonamu cone generate --use-llm`.
 
-#### 기본 사용법
+#### Basic Usage
 
 ```bash
-# 대화형 모드 (권장)
+# Interactive mode (recommended)
 pnpm sonamu fixture gen
 
-# Entity 지정
+# Specify Entity
 pnpm sonamu fixture gen --include User --count 10
 
-# 여러 Entity 지정
+# Multiple Entities
 pnpm sonamu fixture gen --include User,Post,Comment --count 5
 
-# 전체 Entity
+# All Entities
 pnpm sonamu fixture gen --all --count 3
 
-# 전체에서 일부 제외
+# All minus exclusions
 pnpm sonamu fixture gen --all --exclude Admin,Log --count 3
 ```
 
-#### 저장 옵션
+#### Save Options
 
 ```bash
-# DB 저장 (기본값)
+# Save to DB (default)
 pnpm sonamu fixture gen --include User --count 10 --save-to db
 
-# 파일로 저장 (테이블명.json)
+# Save to file (tablename.json)
 pnpm sonamu fixture gen --include User --count 10 --save-to file
 # → test/fixtures/users.json
 
-# 파일명 지정
+# Specify filename
 pnpm sonamu fixture gen --include User --count 10 --save-to file:my-users.json
 # → test/fixtures/my-users.json
 
-# 출력만 (저장 안 함)
+# Output only (do not save)
 pnpm sonamu fixture gen --include User --count 10 --save-to none
 ```
 
-#### 옵션
+#### Options
 
-- `--include <entities>`: 생성할 Entity 목록 (쉼표 구분)
-- `--all`: 모든 Entity
-- `--exclude <entities>`: --all과 함께 사용, 제외할 Entity
-- `--count <number>`: 각 Entity별 생성 개수 (기본값: 5)
-- `--save-to <target>`: 저장 방식 - `db` | `file` | `file:name.json` | `none`
-- `--use-llm`: cone.note 기반 LLM 생성 활성화 (ANTHROPIC_API_KEY 필요)
-- `--no-cache`: LLM 캐시 비활성화 (기본값: 캐시 ON)
-- `--llm-model <model>`: LLM 모델 지정 (기본값: `claude-sonnet-4-5`)
+- `--include <entities>`: List of Entities to generate (comma-separated)
+- `--all`: All Entities
+- `--exclude <entities>`: Used with --all; Entities to exclude
+- `--count <number>`: Number to generate per Entity (default: 5)
+- `--save-to <target>`: Save mode - `db` | `file` | `file:name.json` | `none`
+- `--use-llm`: Enable LLM-based generation from cone.note (requires ANTHROPIC_API_KEY)
+- `--no-cache`: Disable LLM cache (default: cache ON)
+- `--llm-model <model>`: Specify LLM model (default: `claude-sonnet-4-5`)
 
 ---
 
-### 2. fixture fetch - 실제 DB에서 import
+### 2. fixture fetch - Import from live DB
 
-실제 운영/개발 DB에서 데이터를 가져와 fixture DB에 저장합니다.
+Fetches data from the production/development DB and saves it to the fixture DB.
 
-#### 기본 사용법
+#### Basic Usage
 
 ```bash
-# 대화형 모드
+# Interactive mode
 pnpm sonamu fixture fetch
 
-# 최근 데이터 가져오기
+# Fetch recent data
 pnpm sonamu fixture fetch --include User --strategy recent --limit 10
 
-# 여러 Entity
+# Multiple Entities
 pnpm sonamu fixture fetch --include User,Post --strategy sample --limit 5
 
-# 전체 Entity
+# All Entities
 pnpm sonamu fixture fetch --all --strategy recent --limit 3
 ```
 
-#### 전략 (Strategy)
+#### Strategies
 
-| 전략 | 설명 | 예시 |
-|------|------|------|
-| `recent` | 최근 데이터 (created_at 기준) | `--strategy recent --limit 10` |
-| `sample` | 균등 샘플링 | `--strategy sample --limit 10` |
-| `random` | 랜덤 샘플링 | `--strategy random --limit 10` |
+| Strategy | Description | Example |
+|----------|-------------|---------|
+| `recent` | Most recent data (by created_at) | `--strategy recent --limit 10` |
+| `sample` | Uniform sampling | `--strategy sample --limit 10` |
+| `random` | Random sampling | `--strategy random --limit 10` |
 
-**CRITICAL**: fetch는 관련 데이터를 **재귀적으로 가져옵니다** (maxDepth: 2)
-- User를 fetch하면 → User의 department, institution도 함께 import
-- Post를 fetch하면 → Post의 author(User)도 함께 import
+**CRITICAL**: fetch retrieves related data **recursively** (maxDepth: 2)
+- Fetching User → also imports User's department and institution
+- Fetching Post → also imports Post's author (User)
 
-#### 옵션
+#### Options
 
-- `--include <entities>`: import할 Entity 목록
-- `--all`: 모든 Entity
-- `--exclude <entities>`: --all과 함께 사용, 제외할 Entity
-- `--strategy <strategy>`: 조회 전략 - `recent` | `sample` | `random` (기본값: recent)
-- `--limit <number>`: 각 Entity별 조회 개수 (기본값: 10)
+- `--include <entities>`: List of Entities to import
+- `--all`: All Entities
+- `--exclude <entities>`: Used with --all; Entities to exclude
+- `--strategy <strategy>`: Fetch strategy - `recent` | `sample` | `random` (default: recent)
+- `--limit <number>`: Number of records per Entity (default: 10)
 
 ---
 
-### 3. fixture explore - 데이터 조회 (저장 안 함)
+### 3. fixture explore - Query data (without saving)
 
-실제 DB의 데이터를 조회하여 콘솔에 출력합니다. **저장하지 않고 조회만** 합니다.
+Queries data from the live DB and prints it to the console. **Query only — nothing is saved.**
 
-#### 기본 사용법
+#### Basic Usage
 
 ```bash
-# 대화형 모드
+# Interactive mode
 pnpm sonamu fixture explore
 
-# 최근 User 조회
+# Query recent Users
 pnpm sonamu fixture explore --include User --strategy recent --limit 10
 
-# 샘플링
+# Sampling
 pnpm sonamu fixture explore --include Department --strategy sample --limit 5
 ```
 
-#### 언제 사용하나?
+#### When to use
 
-- 실제 DB에 어떤 데이터가 있는지 빠르게 확인
-- fixture fetch 전에 미리 확인
-- 데이터 분포 파악
+- Quickly check what data exists in the live DB
+- Preview before running fixture fetch
+- Understand data distribution
 
 ---
 
-## 실전 사용 시나리오
+## Practical Scenarios
 
-### 시나리오 1: 빈 DB에서 시작
+### Scenario 1: Starting from an empty DB
 
 ```bash
-# 1. 기본 fixture 생성
+# 1. Generate base fixtures
 pnpm sonamu fixture gen --all --exclude Admin,Log --count 5
 
-# 2. fixture → test DB 동기화
+# 2. Sync fixture → test DB
 pnpm sonamu fixture sync
 
-# 3. 테스트 실행
+# 3. Run tests
 pnpm test
 ```
 
-### 시나리오 2: 실제 데이터 기반 테스트
+### Scenario 2: Testing with real data
 
 ```bash
-# 1. 실제 DB에서 최근 데이터 가져오기
+# 1. Fetch recent data from live DB
 pnpm sonamu fixture fetch --include User,Department --strategy recent --limit 20
 
-# 2. 부족한 데이터 추가 생성
+# 2. Generate additional data
 pnpm sonamu fixture gen --include Post,Comment --count 50
 
-# 3. fixture → test DB 동기화
+# 3. Sync fixture → test DB
 pnpm sonamu fixture sync
 
-# 4. 테스트 실행
+# 4. Run tests
 pnpm test
 ```
 
-### 시나리오 3: 특정 시나리오 테스트 준비
+### Scenario 3: Preparing for a specific scenario test
 
 ```bash
-# 1. 특정 Entity만 생성
+# 1. Generate specific Entities only
 pnpm sonamu fixture gen --include User --count 3
 
-# 2. 대화형으로 추가 생성
+# 2. Generate additional interactively
 pnpm sonamu fixture gen
-# ? Fixture를 생성할 Entity를 선택하세요: Post, Comment 선택
-# ? 각 Entity별 생성 개수: 10
+# ? Select entities to generate fixtures for: choose Post, Comment
+# ? Count per entity: 10
 
-# 3. 파일로 저장 (버전 관리)
+# 3. Save to file (for version control)
 pnpm sonamu fixture gen --include User --count 10 --save-to file
-# → test/fixtures/users.json 생성
+# → creates test/fixtures/users.json
 
 # 4. fixture sync
 pnpm sonamu fixture sync
@@ -222,17 +222,17 @@ pnpm sonamu fixture sync
 
 ---
 
-## 실전 팁
+## Practical Tips
 
-### 1. 한국어 데이터 자동 생성
+### 1. Automatic Korean data generation
 
-FixtureGenerator는 특정 필드명에 대해 한국어 데이터를 자동으로 생성합니다:
+FixtureGenerator automatically generates Korean data for specific field names:
 
-**자동 한국어 생성 필드**:
-- `name`, `username`: 한국 사람 이름 (`fakerKO.person.fullName()`)
-- Entity가 `Department`이고 prop이 `name`: 한국 부서명
+**Fields with automatic Korean generation**:
+- `name`, `username`: Korean full name (`fakerKO.person.fullName()`)
+- Entity is `Department` and prop is `name`: Korean department name
 
-**예시 결과**:
+**Example output**:
 ```typescript
 // User
 { name: "김민준", username: "이서연" }
@@ -241,44 +241,44 @@ FixtureGenerator는 특정 필드명에 대해 한국어 데이터를 자동으�
 { name: "개발팀 1팀", name: "글로벌 마케팅팀" }
 ```
 
-**커스터마이징**:
+**Customization**:
 ```typescript
-// fixture-generator.ts에서 수정
+// Edit in fixture-generator.ts
 if (entity?.id === "Department" && prop.name === "name") {
   const departments = ["개발팀", "기획팀", "마케팅팀", "영업팀"];
   // ...
 }
 ```
 
-### 2. Unique Constraint 처리
+### 2. Handling Unique Constraints
 
-unique constraint가 있는 필드는 중복 방지 전략이 필요합니다.
+Fields with unique constraints require a deduplication strategy.
 
-**문제 상황**:
+**Problem**:
 ```sql
--- departments 테이블
+-- departments table
 UNIQUE (company_id, name)
 ```
 
-**해결: 자동 변형**
+**Solution: Automatic variation**
 ```typescript
-// 같은 company_id에 "개발팀"이 여러 번 생성되지 않도록
-// 70% 확률로 prefix/suffix 자동 추가
+// Prevents "개발팀" from being generated multiple times under the same company_id
+// Automatically adds prefix/suffix with 70% probability
 
-// 결과:
+// Result:
 "개발팀"           // 30%
 "개발팀 1팀"       // 20%
 "개발팀 본부"      // 20%
 "글로벌 개발팀"    // 30%
 ```
 
-**구현 위치**: `fixture-generator.ts`의 `generateDefaultValue()`
+**Implementation location**: `generateDefaultValue()` in `fixture-generator.ts`
 
-### 3. BelongsToOne FK 설정
+### 3. BelongsToOne FK Setup
 
-BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, 코드에서도 `_id` 접미사를 사용해야 합니다.
+BelongsToOne relations auto-generate a `{name}_id` column, so code must use the `_id` suffix.
 
-**Entity 정의**:
+**Entity definition**:
 ```json
 {
   "type": "relation",
@@ -288,45 +288,45 @@ BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, 코드에�
 }
 ```
 
-**FixtureGenerator 내부**:
+**Inside FixtureGenerator**:
 ```typescript
 // ✓ CORRECT
 fixture[`${prop.name}_id`] = relationValue;  // company_id
 
 // ✗ WRONG
-fixture[prop.name] = relationValue;  // company (FK가 NULL로 저장됨!)
+fixture[prop.name] = relationValue;  // company (FK saved as NULL!)
 ```
 
-**실수하기 쉬운 이유**:
-- Entity JSON에서는 `name: "company"`로 정의
-- DB 컬럼은 `company_id`로 자동 생성
-- 코드에서는 `company_id` 사용해야 함
+**Easy to get wrong because**:
+- Entity JSON defines `name: "company"`
+- DB column is auto-created as `company_id`
+- Code must use `company_id`
 
-### 4. 순서 문제 해결
+### 4. Resolving Ordering Issues
 
-fixture gen은 **자동으로 의존성 순서를 정렬**합니다 (FixtureManager의 RelationGraph 사용).
+fixture gen **automatically sorts by dependency order** (uses FixtureManager's RelationGraph).
 
-**예시**:
+**Example**:
 ```bash
-# Department는 Company를 참조하지만 순서 걱정 불필요
+# Department references Company, but no need to worry about order
 pnpm sonamu fixture gen --include Department,Company --count 5
 
-# 내부적으로:
-# 1. Company 먼저 생성 (FK 없음)
-# 2. Department 생성 (company_id 참조)
+# Internally:
+# 1. Company generated first (no FK)
+# 2. Department generated next (references company_id)
 ```
 
-**주의**: 순환 참조는 경고 발생
+**Note**: Circular references will produce a warning.
 
-**내부 구현 (RelationGraph):**
+**Internal implementation (RelationGraph):**
 
-`FixtureManager`는 `RelationGraph` 클래스(`_relation-graph.ts`)를 사용하여 의존성 그래프를 구축하고 위상 정렬(topological sort)하여 삽입 순서를 결정합니다. BelongsToOne과 OneToOne(hasJoinColumn) 관계를 분석하여 부모 엔티티가 항상 자식보다 먼저 삽입되도록 보장합니다.
+`FixtureManager` uses the `RelationGraph` class (`_relation-graph.ts`) to build a dependency graph and topologically sort it to determine insertion order. It analyzes BelongsToOne and OneToOne (hasJoinColumn) relations to guarantee that parent entities are always inserted before children.
 
-### 5. DB 시퀀스 리셋
+### 5. DB Sequence Reset
 
-fixture 생성 후 ID 시퀀스가 맞지 않을 수 있습니다.
+After generating fixtures, ID sequences may be out of sync.
 
-**확인**:
+**Check**:
 ```bash
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
 SELECT sequencename, last_value
@@ -336,16 +336,16 @@ ORDER BY sequencename;
 "
 ```
 
-**리셋**:
+**Reset**:
 ```sql
--- 각 테이블마다
+-- Per table
 SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments), true);
 SELECT setval('companies_id_seq', (SELECT MAX(id) FROM companies), true);
 ```
 
-**자동화**:
+**Automated**:
 ```bash
-# 모든 시퀀스 리셋 스크립트
+# Reset all sequences script
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
 SELECT 'SELECT setval(''' || sequencename || ''', (SELECT COALESCE(MAX(id), 1) FROM ' ||
   replace(sequencename, '_id_seq', '') || '), true);'
@@ -354,34 +354,34 @@ WHERE schemaname = 'public' AND sequencename LIKE '%_id_seq';
 " | grep SELECT | PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture
 ```
 
-### 6. 파일 저장 활용
+### 6. Using File Storage
 
-파일로 저장하면 **버전 관리**가 가능합니다.
+Saving to file enables **version control**.
 
 ```bash
-# 1. 파일로 저장
+# 1. Save to file
 pnpm sonamu fixture gen --include User --count 10 --save-to file
 # → test/fixtures/users.json
 
-# 2. git에 커밋
+# 2. Commit to git
 git add test/fixtures/users.json
 git commit -m "Add user fixtures for testing"
 
-# 3. 다른 개발자도 동일한 데이터로 테스트 가능
+# 3. Other developers can test with the same data
 ```
 
-**언제 사용?**
-- CI/CD 환경에서 일관된 테스트 데이터 필요
-- 특정 시나리오 재현
-- 팀원 간 테스트 데이터 공유
+**When to use**:
+- Consistent test data needed in CI/CD environments
+- Reproducing specific scenarios
+- Sharing test data across team members
 
 ---
 
-## 고급: cone 메타데이터 (선택사항)
+## Advanced: cone Metadata (Optional)
 
-Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 세밀하게 제어할 수 있습니다.
+Adding `cone` metadata to Entity JSON gives you finer control over fixture generation.
 
-### dataSource - 참조 전략 지정
+### dataSource - Specify a reference strategy
 
 ```json
 {
@@ -403,15 +403,15 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
-**지원 전략**:
-- `sample`: 균등 샘플링
-- `recent`: 최근 데이터 (created_at 기준)
-- `random`: 랜덤 샘플링
-- `ids`: 특정 ID 지정
-- `query`: 사용자 정의 쿼리
-- `file`: 파일에서 로드
+**Supported strategies**:
+- `sample`: Uniform sampling
+- `recent`: Most recent data (by created_at)
+- `random`: Random sampling
+- `ids`: Specific IDs
+- `query`: Custom query
+- `file`: Load from file
 
-### fixtureGenerator - 커스텀 생성 로직
+### fixtureGenerator - Custom generation logic
 
 ```json
 {
@@ -423,9 +423,9 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
-**보안 주의**: eval 사용으로 인한 보안 위험 (신뢰할 수 있는 표현식만 사용)
+**Security note**: Security risk due to eval usage (only use trusted expressions)
 
-### fixtureDefault - 기본값 지정
+### fixtureDefault - Specify a default value
 
 ```json
 {
@@ -437,152 +437,152 @@ Entity JSON에 `cone` 메타데이터를 추가하면 fixture 생성을 더욱 �
 }
 ```
 
-### note - 설명 및 LLM 연동 트리거
+### note - Description and LLM trigger
 
 ```json
 {
   "name": "phone",
   "type": "string",
   "cone": {
-    "note": "010-XXXX-XXXX 형식의 한국 전화번호"
+    "note": "Korean phone number in 010-XXXX-XXXX format"
   }
 }
 ```
 
-**동작 방식**:
-- `--use-llm` 없을 때: 개발자/LLM 참고용 설명 역할만 함 (cone-generator가 읽어 메타데이터 생성 시 활용)
-- `--use-llm` 있을 때: fixture gen이 Claude API를 호출하여 note 내용 기반의 실제 값 생성
+**How it works**:
+- Without `--use-llm`: serves only as a reference description for developers/LLMs (used by cone-generator when generating metadata)
+- With `--use-llm`: fixture gen calls the Claude API and generates actual values based on the note content
 
-**용도**:
-- 단순 faker.js로 표현하기 어려운 맥락있는 텍스트 (자기소개, 설명문 등)
-- 개발자에게 필드의 의미와 생성 패턴 설명
-- 길이 제한 없음 (짧은 패턴 또는 긴 설명 모두 가능)
+**Use cases**:
+- Contextual text that is hard to express with simple faker.js (self-introductions, descriptions, etc.)
+- Explaining the field's meaning and generation pattern to developers
+- No length limit (short patterns or long descriptions are both fine)
 
 ---
 
-### LLM 기반 데이터 생성
+### LLM-based Data Generation
 
-`--use-llm` 플래그를 사용하면 `cone.note`가 Claude API 호출 트리거로 작동합니다.
+When the `--use-llm` flag is used, `cone.note` acts as the trigger for Claude API calls.
 
-#### 우선순위 체인
+#### Priority chain
 
 ```
-1. override 값 (generate() 호출 시 전달)
-2. cone.note + LLM  ← --use-llm 플래그 시 활성화 (API key 있을 때 최우선)
-3. fixtureGenerator (faker.js 표현식)  ← LLM 실패 시 fallback
-4. fixtureDefault (고정 기본값)
-5. 타입별 기본값 (자동 생성)
+1. override value (passed at generate() call time)
+2. cone.note + LLM  ← activated with --use-llm flag (highest priority when API key is present)
+3. fixtureGenerator (faker.js expression)  ← fallback when LLM fails
+4. fixtureDefault (fixed default value)
+5. type-based default (auto-generated)
 ```
 
-#### CLI 사용법
+#### CLI usage
 
 ```bash
-# LLM 활성화
+# Enable LLM
 pnpm sonamu fixture gen --include User --count 10 --use-llm
 
-# 캐시 비활성화
+# Disable cache
 pnpm sonamu fixture gen --include User --count 10 --use-llm --no-cache
 ```
 
-#### API 키 설정
+#### API Key Setup
 
 ```bash
-# 방법 1: 환경변수
+# Option 1: environment variable
 export ANTHROPIC_API_KEY=sk-ant-...
 
-# 방법 2: sonamu.config.ts
+# Option 2: sonamu.config.ts
 export default defineConfig({
   secret: { anthropic_api_key: "sk-ant-..." }
 });
 ```
 
-#### 캐싱 동작
+#### Caching behavior
 
-- `useLLM=true` 시 하나의 row에서 LLM 대상 필드 전체를 **단일 LLM 호출**로 생성 (필드별 개별 호출 아님)
-- 단일 호출 덕분에 `name`, `name_en`, `name_cn`, `email` 등 연관 필드 간 일관성이 자동으로 보장됨
-- 생성된 결과는 `rowKey:fieldName` 키로 인메모리 캐시에 저장되어, 같은 row 내 다음 필드 처리 시 즉시 반환
-- 캐시는 같은 FixtureGenerator 인스턴스 내에서만 유효
-- `--no-cache`로 캐시 비활성화 가능 (단, row 단위 생성 방식 자체는 유지됨)
+- When `useLLM=true`, all LLM-targeted fields in a single row are generated in **a single LLM call** (not per-field individual calls)
+- This single call guarantees automatic consistency across correlated fields such as `name`, `name_en`, `name_cn`, `email`
+- Generated results are stored in an in-memory cache keyed by `rowKey:fieldName`, and returned immediately for subsequent fields in the same row
+- Cache is valid only within the same FixtureGenerator instance
+- Cache can be disabled with `--no-cache` (the row-level generation approach itself is preserved)
 
-#### Fallback 동작
+#### Fallback behavior
 
-- API 키 없음 → fixtureDefault 또는 타입 기본값으로 fallback (에러 없음)
-- LLM 호출 실패 → 동일하게 fallback (콘솔 경고만 출력)
+- No API key → falls back to fixtureDefault or type default (no error)
+- LLM call fails → same fallback (console warning only)
 
-#### note vs fixtureGenerator 선택 기준
+#### When to choose note vs fixtureGenerator
 
-| 상황 | 추천 |
-|------|------|
-| 이메일, 이름, 숫자 등 단순한 값 | `fixtureGenerator` (faker.js) |
-| 자기소개, 설명문 등 맥락있는 텍스트 | `cone.note` + `--use-llm` (LLM) |
-| 특정 값 목록에서 선택 | `fixtureGenerator` (arrayElement) |
-
----
-
-## FixtureGenerator 옵션 (FixtureGeneratorOptions)
-
-**소스코드:** `modules/sonamu/src/testing/fixture-generator.ts`
-
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `locale` | `"ko"` \| `"en"` \| `"ja"` | `"ko"` | 생성 데이터 로케일 |
-| `useLLM` | boolean | `false` | LLM 기반 데이터 생성 (`--use-llm`) |
-| `enableLLMCache` | boolean | `true` | LLM 결과 캐싱 (`--no-cache`로 비활성화) |
-| `llmModel` | string | `"claude-sonnet-4-5"` | 사용할 LLM 모델 |
+| Situation | Recommended |
+|-----------|-------------|
+| Simple values such as email, name, number | `fixtureGenerator` (faker.js) |
+| Contextual text such as self-introductions or descriptions | `cone.note` + `--use-llm` (LLM) |
+| Selecting from a specific list of values | `fixtureGenerator` (arrayElement) |
 
 ---
 
-## 문제 해결
+## FixtureGenerator Options (FixtureGeneratorOptions)
 
-### 문제 1: "Cannot generate non-nullable relation without dataSource"
+**Source:** `modules/sonamu/src/testing/fixture-generator.ts`
 
-**원인**: BelongsToOne relation이 nullable이 아닌데 참조할 데이터가 없음
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `locale` | `"ko"` \| `"en"` \| `"ja"` | `"ko"` | Locale for generated data |
+| `useLLM` | boolean | `false` | LLM-based data generation (`--use-llm`) |
+| `enableLLMCache` | boolean | `true` | Cache LLM results (disable with `--no-cache`) |
+| `llmModel` | string | `"claude-sonnet-4-5"` | LLM model to use |
 
-**해결**:
+---
+
+## Troubleshooting
+
+### Problem 1: "Cannot generate non-nullable relation without dataSource"
+
+**Cause**: BelongsToOne relation is non-nullable but there is no data to reference
+
+**Solution**:
 ```bash
-# 참조 Entity를 먼저 생성
+# Generate the referenced Entity first
 pnpm sonamu fixture gen --include Company --count 5
 
-# 그 다음 Department 생성
+# Then generate Department
 pnpm sonamu fixture gen --include Department --count 10
 ```
 
-또는:
+Or:
 ```bash
-# 함께 생성 (자동 순서 정렬)
+# Generate together (auto-sorted by dependency order)
 pnpm sonamu fixture gen --include Company,Department --count 5
 ```
 
-### 문제 2: "duplicate key value violates unique constraint"
+### Problem 2: "duplicate key value violates unique constraint"
 
-**원인**: unique constraint가 있는 필드에 중복 값 생성
+**Cause**: Duplicate values generated for a field with a unique constraint
 
-**해결**:
-1. `fixture-generator.ts`에서 해당 Entity의 필드별 생성 로직 수정
-2. prefix/suffix 추가 또는 UUID 사용
-3. count 줄이기
+**Solution**:
+1. Modify the per-field generation logic for that Entity in `fixture-generator.ts`
+2. Add prefix/suffix or use UUID
+3. Reduce count
 
-### 문제 3: FK 참조 오류 "violates foreign key constraint"
+### Problem 3: FK reference error "violates foreign key constraint"
 
-**원인**: sourceDb와 targetDb 설정 문제
+**Cause**: Incorrect sourceDb/targetDb configuration
 
-**확인**:
+**Check**:
 ```typescript
-// fixture.ts 확인
+// Verify in fixture.ts
 const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
 ```
 
-**올바른 설정**:
+**Correct configuration**:
 - `fixture gen`: sourceDb = fixtureDb, targetDb = fixtureDb
 - `fixture fetch`: sourceDb = production, targetDb = fixtureDb
 
 ---
 
-## 참고 자료
+## References
 
-- **3-Tier DB 구조**: `database.md` "3-Tier DB 구조" 섹션
-- **Fixture 생성 팁**: `testing.md` "Fixture 데이터 생성 팁" 섹션
-- **BelongsToOne FK**: `entity-relations.md` "코드에서 FK 사용하기" 섹션
-- **실제 구현**: `modules/sonamu/src/bin/fixture.ts`
-- **생성 로직**: `modules/sonamu/src/testing/fixture-generator.ts`
+- **3-Tier DB Structure**: "3-Tier DB Structure" section in `database.md`
+- **Fixture generation tips**: "Fixture Data Generation Tips" section in `testing.md`
+- **BelongsToOne FK**: "Using FK in Code" section in `entity-relations.md`
+- **Implementation**: `modules/sonamu/src/bin/fixture.ts`
+- **Generation logic**: `modules/sonamu/src/testing/fixture-generator.ts`

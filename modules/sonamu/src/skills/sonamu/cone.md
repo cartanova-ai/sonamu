@@ -1,159 +1,159 @@
 ---
 name: sonamu-cone
-description: Cone 메타데이터 생성 및 관리 가이드. Entity의 fixture 생성, 문서화, 검색에 활용되는 메타데이터. LLM 또는 템플릿 기반 생성 지원. Use when creating or managing cone metadata for entities.
+description: Guide for creating and managing cone metadata. Used for fixture generation, documentation, and search across Entity fields. Supports LLM-based or template-based generation. Use when creating or managing cone metadata for entities.
 ---
 
-# Cone 메타데이터 가이드
+# Cone Metadata Guide
 
-Cone은 Entity의 각 prop, subset, enum에 대한 메타데이터입니다.
-Fixture 생성 시 LLM이 맥락에 맞는 현실적인 데이터를 생성하기 위해 `cone.note`를 참조합니다.
-
----
-
-## Cone의 역할
-
-| 용도 | 설명 |
-|------|------|
-| **Fixture 생성** | `cone.note` 기반으로 LLM이 맥락에 맞는 테스트 데이터 생성 |
-| **Scaffolding** | cone 정보를 활용하여 model, view 템플릿 생성 |
-| **문서화** | Entity 구조와 필드 의미를 설명하는 메타데이터 |
+Cone is metadata for each prop, subset, and enum of an Entity.
+During fixture generation, the LLM references `cone.note` to produce realistic, context-appropriate data.
 
 ---
 
-## Cone 필드 종류
+## Role of Cone
+
+| Purpose | Description |
+|---------|-------------|
+| **Fixture generation** | LLM generates contextually appropriate test data based on `cone.note` |
+| **Scaffolding** | Uses cone information to generate model and view templates |
+| **Documentation** | Metadata describing Entity structure and the meaning of each field |
+
+---
+
+## Cone Field Types
 
 ### Entity cone
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `note` | string | Entity의 목적, 비즈니스 컨텍스트, fixture 생성 가이드 |
-| `tags` | string[] | 분류 태그 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `note` | string | Entity purpose, business context, and fixture generation guide |
+| `tags` | string[] | Classification tags |
 
 ### Prop cone
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `note` | string | **최우선.** 필드의 비즈니스 의미, 구체적 예시, 값 범위, 형식 제약. LLM이 읽고 데이터를 생성하는 입력 |
-| `fixtureGenerator` | string | **Fallback.** faker.js 표현식. API key 없을 때의 대체 수단 |
-| `fixtureDefault` | any | 고정 기본값 |
-| `fixtureStrategy` | string | `"sequence"` — DB 시퀀스로 id 자동 생성 시 사용 |
-| `dataSource` | object | relation prop의 참조 데이터 조회 전략 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `note` | string | **Highest priority.** Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
+| `fixtureGenerator` | string | **Fallback.** faker.js expression. Fallback when no API key is available |
+| `fixtureDefault` | any | Fixed default value |
+| `fixtureStrategy` | string | `"sequence"` — used when id is auto-assigned by a DB sequence |
+| `dataSource` | object | Strategy for fetching reference data for relation props |
 
 ### Subset cone
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `note` | string | 서브셋의 용도, 포함 필드, 사용 시점 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `note` | string | Subset purpose, included fields, and when it is used |
 
 ### Enum cone
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `note` | string | enum의 의미와 사용 맥락 |
-| `values` | object | 각 enum 값에 대한 `{ note: string }` |
+| Field | Type | Description |
+|-------|------|-------------|
+| `note` | string | Meaning and usage context of the enum |
+| `values` | object | `{ note: string }` for each enum value |
 
 ---
 
-## Fixture 생성 시 우선순위
+## Priority During Fixture Generation
 
-`--use-llm` 플래그 사용 시:
+When the `--use-llm` flag is used:
 
 ```
-1. override 값 (generate() 호출 시 전달)
-2. cone.note + LLM  ← API key 있을 때 최우선
-3. fixtureGenerator (faker.js 표현식)  ← LLM 실패 시 fallback
-4. fixtureDefault (고정 기본값)
-5. 타입별 기본값 (자동 생성)
+1. override value (passed at generate() call time)
+2. cone.note + LLM  ← highest priority when API key is present
+3. fixtureGenerator (faker.js expression)  ← fallback when LLM fails
+4. fixtureDefault (fixed default value)
+5. type-based default (auto-generated)
 ```
 
-**CRITICAL: `cone.note`가 비어있으면 LLM이 맥락 없이 데이터를 생성하므로 품질이 떨어진다. Fixture 생성 전에 반드시 cone.note 존재 여부를 확인한다.**
+**CRITICAL: If `cone.note` is empty, the LLM generates data without context, resulting in poor quality. Always verify that cone.note exists before running fixture generation.**
 
 ---
 
-## CLI 명령어
+## CLI Commands
 
-### 1. cone gen — LLM으로 cone 생성 (권장)
+### 1. cone gen — Generate cone with LLM (recommended)
 
-프로젝트의 요구사항(`.claude/skills/project/*.md`)과 Entity 구조를 LLM에게 전달하여 맥락에 맞는 cone을 생성합니다.
+Passes the project requirements (`.claude/skills/project/*.md`) and Entity structure to the LLM to generate contextually appropriate cone.
 
-**ANTHROPIC_API_KEY 필요** (`.env` 또는 `sonamu.config.ts`의 `secret.anthropic_api_key`)
+**Requires ANTHROPIC_API_KEY** (`.env` or `sonamu.config.ts`'s `secret.anthropic_api_key`)
 
 ```bash
-# 단일 Entity
+# Single Entity
 pnpm sonamu cone gen Post
 
-# 전체 Entity
+# All Entities
 pnpm sonamu cone gen --all
 
-# 기존 cone 전체 재생성 (덮어쓰기)
+# Regenerate all existing cones (overwrite)
 pnpm sonamu cone gen Post --regenerate
 
-# 전체 Entity 재생성
+# Regenerate all Entities
 pnpm sonamu cone gen --all --regenerate
 
-# 로케일 지정
+# Specify locale
 pnpm sonamu cone gen Post --locale en
 ```
 
-#### 옵션
+#### Options
 
-| 옵션 | 설명 |
-|------|------|
-| `--all` | 모든 Entity의 cone 생성 |
-| `--regenerate` | 기존 cone을 덮어씀 (기본: note가 없는 것만 생성) |
-| `--locale <ko\|en\|ja>` | 생성 언어 (기본: `sonamu.config.ts`의 `i18n.defaultLocale` 또는 `ko`) |
+| Option | Description |
+|--------|-------------|
+| `--all` | Generate cone for all Entities |
+| `--regenerate` | Overwrite existing cone (default: only generate for fields with no note) |
+| `--locale <ko\|en\|ja>` | Generation language (default: `i18n.defaultLocale` from `sonamu.config.ts`, or `ko`) |
 
-#### 동작 방식
+#### How it works
 
-- **기본 모드**: `onlyEmpty` — cone.note가 비어있는 prop만 새로 생성, 기존 note는 보존
-- **`--regenerate` 모드**: 전체 재생성, 기존 cone 덮어쓰기
+- **Default mode**: `onlyEmpty` — only generates for props where cone.note is empty; existing notes are preserved
+- **`--regenerate` mode**: full regeneration, overwrites existing cone
 
-#### LLM이 참조하는 정보
+#### Information referenced by the LLM
 
-1. Entity JSON 구조 (props, subsets, enums, relations)
-2. 도메인 규칙 파일 (`contract/**/*.contract.md`)
-3. 기존 cone 메타데이터 (보존 모드 시)
+1. Entity JSON structure (props, subsets, enums, relations)
+2. Domain rule files (`contract/**/*.contract.md`)
+3. Existing cone metadata (in preserve mode)
 
-### 2. stub entity — Entity 생성 시 자동 cone 생성
+### 2. stub entity — Auto-generate cone when creating an Entity
 
 ```bash
-# 기본: 템플릿 cone 자동 생성 (API key 불필요)
+# Default: auto-generate template cone (no API key required)
 pnpm sonamu stub entity Post
 
-# LLM으로 cone 생성
+# Generate cone with LLM
 pnpm sonamu stub entity Post --ai
 
-# cone 생성 스킵
+# Skip cone generation
 pnpm sonamu stub entity Post --no-cones
 ```
 
-#### 템플릿 cone vs LLM cone
+#### Template cone vs LLM cone
 
-| 항목 | 템플릿 cone | LLM cone |
-|------|------------|----------|
-| API key | 불필요 | 필수 |
-| 품질 | faker-mappings 기반 기본값 | 프로젝트 맥락 반영 |
-| 속도 | 즉시 | 수 초 소요 |
-| 업그레이드 | `cone gen`으로 LLM 업그레이드 가능 | — |
+| Item | Template cone | LLM cone |
+|------|--------------|----------|
+| API key | Not required | Required |
+| Quality | Defaults based on faker-mappings | Reflects project context |
+| Speed | Immediate | Takes a few seconds |
+| Upgrade | Can be upgraded with `cone gen` | — |
 
 ---
 
-## 주요 cone 패턴
+## Key Cone Patterns
 
-### 일반 필드
+### General field
 
 ```json
 {
   "name": "title",
   "type": "string",
   "cone": {
-    "note": "게시글 제목. 20~50자 내외의 한국어 제목",
+    "note": "Post title. A Korean title roughly 20–50 characters long",
     "fixtureGenerator": "faker.lorem.sentence()"
   }
 }
 ```
 
-### relation 필드 (BelongsToOne)
+### Relation field (BelongsToOne)
 
 ```json
 {
@@ -162,7 +162,7 @@ pnpm sonamu stub entity Post --no-cones
   "with": "User",
   "relationType": "BelongsToOne",
   "cone": {
-    "note": "글 작성자. 기존 User 데이터를 참조",
+    "note": "Post author. References existing User data",
     "dataSource": {
       "strategy": "recent",
       "config": { "limit": 5 }
@@ -171,22 +171,22 @@ pnpm sonamu stub entity Post --no-cones
 }
 ```
 
-### 상관 필드 (name + name_en 등)
+### Correlated fields (name + name_en, etc.)
 
-상관 필드에는 `fixtureGenerator`를 설정하지 않는다. LLM이 row 단위로 한 번에 생성하여 일관성을 보장한다.
+Do not set `fixtureGenerator` on correlated fields. The LLM generates them together per row to ensure consistency.
 
 ```json
 {
   "name": "name",
-  "cone": { "note": "한국어 이름 (예: 김민수)" }
+  "cone": { "note": "Korean name (e.g. 김민수)" }
 },
 {
   "name": "name_en",
-  "cone": { "note": "name의 로마자 표기 (예: Kim Minsu). name과 동일 인물이어야 함" }
+  "cone": { "note": "Romanized form of name (e.g. Kim Minsu). Must refer to the same person as name" }
 }
 ```
 
-### DB 시퀀스 PK
+### DB sequence PK
 
 ```json
 {
@@ -194,53 +194,53 @@ pnpm sonamu stub entity Post --no-cones
   "type": "string",
   "cone": {
     "fixtureStrategy": "sequence",
-    "note": "DB 시퀀스가 자동 할당하는 순차 번호 (문자열 저장)"
+    "note": "Sequential number automatically assigned by the DB sequence (stored as string)"
   }
 }
 ```
 
-### better-auth 엔티티 PK (Account / Session / Verification)
+### better-auth entity PK (Account / Session / Verification)
 
-better-auth가 관리하는 엔티티의 id는 `crypto.randomUUID()`로 생성되는 UUID다.
-`fixtureStrategy: "sequence"`를 사용하면 fixture sync 시 `MAX(id::bigint)` 오류가 발생하므로 반드시 `fixtureGenerator: "faker.string.uuid()"`를 사용한다.
+The id of entities managed by better-auth is a UUID generated via `crypto.randomUUID()`.
+Using `fixtureStrategy: "sequence"` causes a `MAX(id::bigint)` error during fixture sync, so always use `fixtureGenerator: "faker.string.uuid()"`.
 
 ```json
 {
   "name": "id",
   "type": "string",
   "cone": {
-    "note": "better-auth가 crypto.randomUUID()로 생성하는 UUID 형식의 식별자",
+    "note": "UUID-format identifier generated by better-auth via crypto.randomUUID()",
     "fixtureGenerator": "faker.string.uuid()"
   }
 }
 ```
 
-### enum 필드
+### Enum field
 
 ```json
 {
   "name": "status",
   "type": "enum",
   "cone": {
-    "note": "게시글 상태. draft/published/archived 중 선택"
+    "note": "Post status. One of draft/published/archived"
   }
 }
 ```
 
 ---
 
-## dataSource 전략
+## dataSource Strategies
 
-relation prop에서 참조 데이터 조회 방식을 지정합니다.
+Specifies how reference data is fetched for relation props.
 
-| 전략 | 설명 |
-|------|------|
-| `recent` | 최근 데이터 (created_at 기준) |
-| `sample` | 균등 샘플링 |
-| `random` | 랜덤 샘플링 |
-| `ids` | 특정 ID 지정 |
-| `query` | 사용자 정의 쿼리 |
-| `file` | 파일에서 로드 |
+| Strategy | Description |
+|----------|-------------|
+| `recent` | Most recent data (by created_at) |
+| `sample` | Uniform sampling |
+| `random` | Random sampling |
+| `ids` | Specific IDs |
+| `query` | Custom query |
+| `file` | Load from file |
 
 ```json
 "dataSource": {
@@ -249,22 +249,22 @@ relation prop에서 참조 데이터 조회 방식을 지정합니다.
 }
 ```
 
-### DataExplorer 옵션 상세
+### DataExplorer Options Detail
 
-**소스코드:** `modules/sonamu/src/testing/data-explorer.ts`
+**Source:** `modules/sonamu/src/testing/data-explorer.ts`
 
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `strategy` | string | — | 조회 전략 (위 표 참고) |
-| `limit` | number | — | 최대 조회 건수 |
-| `where` | object \| function | — | WHERE 조건 (객체 또는 Knex QueryBuilder 함수) |
-| `orderBy` | string | — | 정렬 기준 |
-| `ids` | number[] | — | `ids` 전략 시 특정 ID 목록 |
-| `filePath` | string | — | `file` 전략 시 파일 경로 |
-| `useCache` | boolean | `false` | 캐싱 사용 여부 |
-| `cacheTtl` | number | `300` | 캐시 TTL (초 단위) |
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `strategy` | string | — | Fetch strategy (see table above) |
+| `limit` | number | — | Maximum number of records to fetch |
+| `where` | object \| function | — | WHERE condition (object or Knex QueryBuilder function) |
+| `orderBy` | string | — | Sort criteria |
+| `ids` | number[] | — | Specific ID list for `ids` strategy |
+| `filePath` | string | — | File path for `file` strategy |
+| `useCache` | boolean | `false` | Whether to use caching |
+| `cacheTtl` | number | `300` | Cache TTL (in seconds) |
 
-**where 조건 사용 예시:**
+**Example using a where condition:**
 
 ```json
 "dataSource": {
@@ -276,47 +276,47 @@ relation prop에서 참조 데이터 조회 방식을 지정합니다.
 }
 ```
 
-### 관계 탐색 옵션 (ExploreWithRelationsOptions)
+### Relation Traversal Options (ExploreWithRelationsOptions)
 
-`fixture gen`에서 관련 데이터를 함께 가져올 때 사용됩니다.
+Used in `fixture gen` to fetch related data alongside the target data.
 
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `includeRelations` | boolean | `true` | 관련 데이터 포함 여부 |
-| `maxDepth` | number | `2` | 재귀 탐색 최대 깊이 |
-
----
-
-## 실전 팁
-
-### cone.note 작성 요령
-
-**note는 fixture 데이터 생성의 최우선 입력이다.** LLM은 note를 읽고 맥락에 맞는 데이터를 생성한다. 따라서 구체적이고 도메인에 특화된 내용을 담아야 한다.
-
-- **구체적으로**: "문자열" 보다 "010-XXXX-XXXX 형식의 한국 전화번호"
-- **비즈니스 맥락 포함**: "직원의 연봉. 3000만원~1.5억원 범위"
-- **구체적 예시 포함**: "예: AI 기반 신약 개발 플랫폼 구축, 친환경 에너지 저장 시스템 개발"
-- **값 범위 명시**: "5천만원(50,000)에서 50억원(5,000,000) 사이"
-- **상관 필드 명시**: "name_en은 name의 로마자 표기이어야 함"
-- **길이/형식 제한**: "20~100자 한국어 자기소개"
-
-### LLM cone 생성 품질 높이기
-
-1. `contract/{domain}/{domain}.contract.md`에 도메인 규칙과 결정 근거를 상세히 기록
-2. `cone gen` 실행 — LLM이 `contract/**/*.contract.md`를 컨텍스트로 사용
-
-### cone 재생성이 필요한 시점
-
-- Entity에 새 prop 추가 후
-- 비즈니스 요구사항 변경 후
-- fixture 데이터 품질이 떨어질 때
-- `--regenerate` 없이 실행하면 기존 note는 보존되고 빈 것만 채워짐
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `includeRelations` | boolean | `true` | Whether to include related data |
+| `maxDepth` | number | `2` | Maximum depth for recursive traversal |
 
 ---
 
-## 참고 자료
+## Practical Tips
 
-- **Fixture CLI**: `fixture-cli.md` — fixture gen/fetch/explore 명령어
-- **Testing**: `testing.md` — 테스트 작성 및 fixture 활용
-- **소스코드**: `modules/sonamu/src/cone/cone-generator.ts`
-- **템플릿 cone**: `modules/sonamu/src/entity/entity-template-cone.ts`
+### Writing effective cone.note
+
+**note is the primary input for fixture data generation.** The LLM reads note to produce contextually appropriate data, so it must contain specific, domain-specialized content.
+
+- **Be specific**: "Korean phone number in 010-XXXX-XXXX format" rather than "string"
+- **Include business context**: "Employee salary. Range: 30,000,000–150,000,000 KRW"
+- **Include concrete examples**: "e.g. AI-based drug discovery platform development, eco-friendly energy storage system development"
+- **State value ranges explicitly**: "Between 50,000,000 (50,000) and 5,000,000,000 (5,000,000)"
+- **Describe correlated fields**: "name_en must be the romanized form of name"
+- **Specify length/format constraints**: "Korean self-introduction, 20–100 characters"
+
+### Improving LLM cone generation quality
+
+1. Record domain rules and decision rationale in detail in `contract/{domain}/{domain}.contract.md`
+2. Run `cone gen` — the LLM uses `contract/**/*.contract.md` as context
+
+### When to regenerate cone
+
+- After adding a new prop to an Entity
+- After a business requirement change
+- When fixture data quality is poor
+- Running without `--regenerate` preserves existing notes and only fills in empty ones
+
+---
+
+## References
+
+- **Fixture CLI**: `fixture-cli.md` — fixture gen/fetch/explore commands
+- **Testing**: `testing.md` — writing tests and using fixtures
+- **Source code**: `modules/sonamu/src/cone/cone-generator.ts`
+- **Template cone**: `modules/sonamu/src/entity/entity-template-cone.ts`

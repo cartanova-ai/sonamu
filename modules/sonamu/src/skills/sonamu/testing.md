@@ -1,28 +1,28 @@
 ---
 name: sonamu-testing
-description: Sonamu 테스트 작성. bootstrap, test/testAs 함수, Fixture 생성, Naite.get() 검증, expectQuery/expectUB 헬퍼, Mock 패턴. Use when writing or structuring test code for Models and APIs.
+description: Writing Sonamu tests. bootstrap, test/testAs functions, Fixture creation, Naite.get() assertions, expectQuery/expectUB helpers, Mock patterns. Use when writing or structuring test code for Models and APIs.
 ---
 
-# Sonamu 테스트 시스템
+# Sonamu Test System
 
-Sonamu는 Vitest 기반 테스트 환경을 제공한다. 각 테스트는 트랜잭션으로 격리되어 자동 롤백된다.
+Sonamu provides a Vitest-based test environment. Each test is isolated in a transaction and automatically rolled back.
 
-**예시 프로젝트**: `sonamu/examples/miomock` - 실제 테스트 코드 참고
+**Example project**: `sonamu/examples/miomock` - reference for real test code
 
-**WARNING: 엔티티 10개 이상 프로젝트는 반드시 배치 전략 사용** (아래 "대규모 프로젝트 전략" 참고)
+**WARNING: Projects with 10 or more entities must use a batch strategy** (see "Large-Scale Project Strategy" below)
 
-**참고 문서**:
+**Reference documents**:
 
-- **Fixture CLI 명령어**: `fixture-cli.md` - fixture gen/fetch/explore 사용법, 3-Tier DB 구조
-- **Fixture 생성 팁**: 이 문서 하단 "Fixture 데이터 생성 팁" 섹션 또는 `fixture-cli.md` "실전 팁" 섹션
+- **Fixture CLI commands**: `fixture-cli.md` - fixture gen/fetch/explore usage, 3-Tier DB structure
+- **Fixture creation tips**: "Fixture Data Creation Tips" section at the bottom of this document, or the "Practical Tips" section in `fixture-cli.md`
 
 ---
 
-## Quick Start - 테스트 작성 빠른 시작
+## Quick Start - Getting Started with Tests Quickly
 
-**전제조건**: scaffolding 완료, types.ts nullable 필드 처리 완료
+**Prerequisites**: scaffolding completed, nullable field handling in types.ts completed
 
-### 1단계: test-helpers.ts 확장
+### Step 1: Extend test-helpers.ts
 
 ```typescript
 // packages/api/src/application/__tests__/test-helpers.ts
@@ -34,7 +34,7 @@ import UserModel from "../user/user.model";
 import PostModel from "../post/post.model";
 import CommentModel from "../comment/comment.model";
 
-// User 헬퍼
+// User helper
 export async function createTestUser(
   params?: Partial<UserSaveParams>,
 ): Promise<number> {
@@ -47,13 +47,13 @@ export async function createTestUser(
   return id;
 }
 
-// User with dependencies (의존성 체인)
+// User with dependencies (dependency chain)
 export async function createTestUserWithDeps() {
   const userId = await createTestUser();
   return { userId };
 }
 
-// Post 헬퍼
+// Post helper
 export async function createTestPost(
   authorId: number,
   params?: Partial<PostSaveParams>,
@@ -75,7 +75,7 @@ export async function createTestPostWithDeps() {
   return { userId, postId };
 }
 
-// Comment 헬퍼
+// Comment helper
 export async function createTestComment(
   postId: number,
   authorId: number,
@@ -99,66 +99,66 @@ export async function createTestCommentWithDeps() {
 }
 ```
 
-**CRITICAL 패턴**:
+**CRITICAL patterns**:
 
-- `createTestX()`: 기본 생성 헬퍼 (params로 override 가능)
-- `createTestXWithDeps()`: 의존성 자동 처리 헬퍼 (모든 필요 데이터 함께 생성)
-- FK 필드는 `_id` 접미사 사용 (`author_id`, `post_id`)
-- 반환: 주로 ID 반환, WithDeps는 객체로 여러 ID 반환
+- `createTestX()`: basic creation helper (overridable via params)
+- `createTestXWithDeps()`: helper that automatically handles dependencies (creates all required data together)
+- FK fields use the `_id` suffix (`author_id`, `post_id`)
+- Returns: primarily returns ID; WithDeps returns an object with multiple IDs
 
-**CRITICAL: 모든 필수 필드 포함 필수!**
+**CRITICAL: All required fields must be included!**
 
-Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE` 쿼리를 사용합니다.
-업데이트 시에도 **모든 필수 필드(NOT NULL 제약이 있는 필드)**를 포함해야 합니다.
+Sonamu's `ubUpsert` uses PostgreSQL's `ON CONFLICT ... DO UPDATE` query.
+Even for updates, **all required fields (fields with NOT NULL constraints)** must be included.
 
-필수 필드 누락 시:
+When required fields are missing:
 
 ```typescript
-// BAD - content 필수 필드 누락
+// BAD - missing required field content
 const post: PostSaveParams = {
   author_id: authorId,
   title: "Test",
-  // content 누락! → ubUpsert ON CONFLICT UPDATE 시 NULL 설정 시도 → DB 에러
+  // content missing! → ubUpsert ON CONFLICT UPDATE attempts to set NULL → DB error
 };
 // Error: null value in column "content" violates not-null constraint
 ```
 
-### 필수 필드 vs 선택 필드 구분
+### Distinguishing Required vs Optional Fields
 
-**1. entity.json 확인**
+**1. Check entity.json**
 
 ```json
 // post.entity.json
 {
   "props": [
-    { "name": "id", "type": "integer" }, // 자동 생성 - 제외
-    { "name": "title", "type": "string", "length": 255 }, // 필수! (nullable 없음)
-    { "name": "content", "type": "string" }, // 필수! (nullable 없음)
-    { "name": "category", "type": "string", "nullable": true }, // 선택 (nullable)
-    { "name": "author_id", "type": "integer" }, // 필수! (FK, nullable 없음)
-    { "name": "view_count", "type": "integer", "dbDefault": "0" }, // 필수이지만 DB 기본값 있음
-    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" } // 자동
+    { "name": "id", "type": "integer" }, // auto-generated - exclude
+    { "name": "title", "type": "string", "length": 255 }, // required! (no nullable)
+    { "name": "content", "type": "string" }, // required! (no nullable)
+    { "name": "category", "type": "string", "nullable": true }, // optional (nullable)
+    { "name": "author_id", "type": "integer" }, // required! (FK, no nullable)
+    { "name": "view_count", "type": "integer", "dbDefault": "0" }, // required but has DB default
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" } // automatic
   ]
 }
 ```
 
-**필수 필드 (Required)**: `nullable: true`가 **없는** 필드
+**Required fields**: Fields **without** `nullable: true`
 
 - `title`, `content`, `author_id`
-- test-helpers.ts에서 **반드시** 기본값 제공
+- **Must** provide default values in test-helpers.ts
 
-**선택 필드 (Optional)**: `nullable: true`가 **있는** 필드
+**Optional fields**: Fields **with** `nullable: true`
 
 - `category`
-- test-helpers.ts에서 생략 가능
+- Can be omitted in test-helpers.ts
 
-**제외 필드**:
+**Excluded fields**:
 
-- `id`: 자동 증가 (save 시 자동 생성)
-- `created_at`: dbDefault가 있어 자동 설정
-- `view_count`: dbDefault="0"이 있어 자동 설정
+- `id`: auto-increment (auto-generated on save)
+- `created_at`: automatically set by dbDefault
+- `view_count`: automatically set by dbDefault="0"
 
-**2. test-helpers.ts 작성**
+**2. Write test-helpers.ts**
 
 ```typescript
 export async function createTestPost(
@@ -166,32 +166,32 @@ export async function createTestPost(
   params?: Partial<PostSaveParams>,
 ): Promise<number> {
   const post: PostSaveParams = {
-    // 필수 필드는 반드시 포함 (nullable이 없는 필드)
+    // Required fields must be included (fields without nullable)
     author_id: authorId,
-    title: "Test Post", // 필수!
-    content: "Test content", // 필수!
+    title: "Test Post", // required!
+    content: "Test content", // required!
 
-    // 선택 필드는 생략 가능 (nullable: true인 필드)
-    // category: null,  // 생략 가능
+    // Optional fields can be omitted (fields with nullable: true)
+    // category: null,  // can be omitted
 
-    // dbDefault가 있는 필드도 생략 가능
-    // view_count: 0,  // dbDefault="0"이므로 생략 가능
+    // Fields with dbDefault can also be omitted
+    // view_count: 0,  // can be omitted since dbDefault="0"
 
-    ...params, // override 허용
+    ...params, // allow override
   };
   const saved = await PostModel.save(post);
   return saved.id;
 }
 ```
 
-**규칙 요약**:
+**Rule summary**:
 
-1. entity.json에서 `nullable: true` 없는 필드 = 필수 필드
-2. 필수 필드는 test-helpers.ts에 **반드시** 기본값 포함
-3. `id`, `created_at`, `dbDefault` 있는 필드는 제외 가능
-4. ubUpsert의 ON CONFLICT UPDATE 시에도 필수 필드 필요
+1. Fields without `nullable: true` in entity.json = required fields
+2. Required fields **must** have default values in test-helpers.ts
+3. `id`, `created_at`, fields with `dbDefault` can be excluded
+4. Required fields are also needed for ubUpsert's ON CONFLICT UPDATE
 
-### 2단계: 테스트 파일 작성
+### Step 2: Write the test file
 
 ```typescript
 // packages/api/src/application/post/__tests__/post.test.ts
@@ -201,11 +201,11 @@ import { describe, test, expect, vi } from "vitest";
 import PostModel from "../post.model";
 import { createTestPostWithDeps } from "../../__tests__/test-helpers";
 
-bootstrap(vi); // CRITICAL: 필수!
+bootstrap(vi); // CRITICAL: required!
 
 describe("PostModel", () => {
-  describe("A. Create (생성)", () => {
-    test("게시글 생성", async () => {
+  describe("A. Create", () => {
+    test("create post", async () => {
       const { userId, postId } = await createTestPostWithDeps();
 
       const post = await PostModel.findById(postId, ["A"]);
@@ -214,7 +214,7 @@ describe("PostModel", () => {
     });
   });
 
-  describe("B. Read (조회)", () => {
+  describe("B. Read", () => {
     test("findById - Subset A", async () => {
       const { postId } = await createTestPostWithDeps();
 
@@ -224,7 +224,7 @@ describe("PostModel", () => {
       expect(post).toHaveProperty("content");
     });
 
-    test("findMany - 목록 조회", async () => {
+    test("findMany - list query", async () => {
       await createTestPostWithDeps();
       await createTestPostWithDeps();
 
@@ -233,8 +233,8 @@ describe("PostModel", () => {
     });
   });
 
-  describe("C. Update (수정)", () => {
-    test("게시글 수정", async () => {
+  describe("C. Update", () => {
+    test("update post", async () => {
       const { postId } = await createTestPostWithDeps();
 
       await PostModel.save([
@@ -249,8 +249,8 @@ describe("PostModel", () => {
     });
   });
 
-  describe("D. Delete (삭제)", () => {
-    test("게시글 삭제", async () => {
+  describe("D. Delete", () => {
+    test("delete post", async () => {
       const { postId } = await createTestPostWithDeps();
 
       await PostModel.del(postId);
@@ -260,21 +260,21 @@ describe("PostModel", () => {
     });
   });
 
-  describe("E. Business Logic (비즈니스 로직)", () => {
-    test("게시글 발행부터 댓글 추가까지 전체 프로세스", async () => {
-      // 1. 게시글 작성
+  describe("E. Business Logic", () => {
+    test("full process from post creation to adding a comment", async () => {
+      // 1. create post
       const { userId, postId } = await createTestPostWithDeps({
-        title: "새 글",
-        content: "내용",
+        title: "New Post",
+        content: "Content",
       });
 
-      // 2. 다른 사용자가 댓글 작성
+      // 2. another user writes a comment
       const commenterId = await createTestUser();
       const commentId = await createTestComment(postId, commenterId, {
-        content: "좋은 글이네요!",
+        content: "Great post!",
       });
 
-      // 3. 게시글 조회 (댓글 포함)
+      // 3. fetch post (with comments)
       const post = await PostModel.findById(postId, ["A"]);
       expect(post.comments).toHaveLength(1);
       expect(post.comments[0].id).toBe(commentId);
@@ -283,110 +283,110 @@ describe("PostModel", () => {
 });
 ```
 
-**패턴 요약**:
+**Pattern summary**:
 
-- `bootstrap(vi)` 호출 필수
-- `describe` + `test` 패턴 (순서: A. Create, B. Read, C. Update, D. Delete, E. Business Logic)
-- `createTestXWithDeps()` 헬퍼로 의존성 자동 해결
-- Business Logic 섹션이 가장 중요! (실제 업무 시나리오 구현)
+- `bootstrap(vi)` call is required
+- `describe` + `test` pattern (order: A. Create, B. Read, C. Update, D. Delete, E. Business Logic)
+- Use `createTestXWithDeps()` helper to automatically resolve dependencies
+- The Business Logic section is the most important! (implements real business scenarios)
 
-### 3단계: 테스트 실행
+### Step 3: Run tests
 
 ```bash
-# dev 서버가 내려가 있으면 먼저 실행
+# Start dev server if it's down
 pnpm sonamu dev
 
-# 개발 중 테스트 (기본)
+# Tests during development (default)
 pnpm sonamu test
 pnpm sonamu test user.model
 ```
 
-**완료!** 상세한 내용은 아래 섹션 참조.
+**Done!** See the sections below for detailed information.
 
 ---
 
-## 테스트 작성 전 체크리스트
+## Pre-Test Writing Checklist
 
-- [ ] **엔티티 설계 완료 확인** - `pnpm db:migration` 및 `pnpm scaffolding` 오류 없이 완료
-- [ ] **테스트 작성 계획 수립** - 업무 프로세스별 엔티티 그룹핑 (→ 아래 "테스트 작성 계획 수립" 참조)
-- [ ] **types.ts nullable 처리 (FIRST!)** - 엔티티 생성 직후 nullable 필드 partial + extend 처리 (→ 아래 "엔티티 생성 후 즉시 해야 할 작업" 참조)
-- [ ] **Seed Data 준비** - FK 제약으로 인한 기본 데이터 필요 (→ database.md "최소 seed data" 참고)
-- [ ] **테스트 헬퍼 함수** - 복잡한 엔티티 의존성 처리용 헬퍼 준비
-- [ ] **엔티티 10개 이상 시** - 배치 전략 수립 (아래 "대규모 프로젝트 전략" 참고)
+- [ ] **Confirm entity design is complete** - `pnpm db:migration` and `pnpm scaffolding` completed without errors
+- [ ] **Plan test writing** - group entities by business process (→ see "Test Writing Plan" below)
+- [ ] **Handle nullable fields in types.ts (FIRST!)** - immediately after entity creation, apply partial + extend handling for nullable fields (→ see "Tasks to Do Immediately After Entity Creation" below)
+- [ ] **Prepare Seed Data** - base data required due to FK constraints (→ see "minimum seed data" in database.md)
+- [ ] **Test helper functions** - prepare helpers for handling complex entity dependencies
+- [ ] **For 10 or more entities** - plan batch strategy (see "Large-Scale Project Strategy" below)
 
-## 테스트 작성 핵심 원칙
+## Core Test Writing Principles
 
-### 1. 실제 구조 확인 우선
+### 1. Verify Actual Structure First
 
-**CRITICAL: 테스트 계획 전에 반드시 실제 엔티티 구조를 확인하세요.**
+**CRITICAL: Always verify the actual entity structure before planning tests.**
 
-테스트를 작성하기 전에 다음을 확인해야 합니다:
+Before writing tests, you must verify the following:
 
 ```typescript
-// STEP 1: entity.json 확인
-// - 실제 필드명과 타입
-// - nullable 여부
-// - enum 값 목록
-// - relation 구조
+// STEP 1: Check entity.json
+// - actual field names and types
+// - nullable status
+// - enum value list
+// - relation structure
 
-// STEP 2: types.ts 확인
-// - SaveParams의 partial 설정
-// - nullable 필드의 nullish 처리
-// - ManyToMany relation의 _ids 배열
+// STEP 2: Check types.ts
+// - partial settings in SaveParams
+// - nullish handling for nullable fields
+// - _ids arrays for ManyToMany relations
 
-// STEP 3: sonamu.generated.ts 확인
-// - Enum 타입 정의
-// - Subset 타입 구조
-// - BaseSchema 구조
+// STEP 3: Check sonamu.generated.ts
+// - Enum type definitions
+// - Subset type structure
+// - BaseSchema structure
 ```
 
-**잘못된 접근:**
+**Wrong approach:**
 
 ```typescript
-// BAD - 추측으로 테스트 작성
-test("사용자 생성", async () => {
+// BAD - writing tests based on guesses
+test("create user", async () => {
   const [userId] = await UserModel.save([
     {
       name: "Test",
-      status: "active", // 실제로는 "normal"일 수 있음
-      role: "user", // 실제로는 "normal"일 수 있음
+      status: "active", // may actually be "normal"
+      role: "user", // may actually be "normal"
     },
   ]);
 });
 ```
 
-**올바른 접근:**
+**Correct approach:**
 
 ```typescript
-// GOOD - entity.json 확인 후 작성
-// 1. user.entity.json 확인:
+// GOOD - write after checking entity.json
+// 1. Check user.entity.json:
 //    - role: enum ["admin", "normal", "guest"]
 //    - status: enum ["active", "inactive"] with dbDefault: "active"
 //    - name: string (required)
 //    - email: string (nullable)
 
-// 2. user.types.ts 확인:
-//    - SaveParams에서 status, email이 partial 처리됨
+// 2. Check user.types.ts:
+//    - status, email are partial in SaveParams
 
-// 3. 테스트 작성
-test("사용자 생성", async () => {
+// 3. Write test
+test("create user", async () => {
   const [userId] = await UserModel.save([
     {
       name: "Test",
-      role: "normal", // entity.json의 정확한 enum 값
-      // status는 dbDefault가 있어 생략 가능
-      // email은 nullable이므로 생략 가능
+      role: "normal", // exact enum value from entity.json
+      // status can be omitted since it has dbDefault
+      // email can be omitted since it's nullable
     },
   ]);
 });
 ```
 
-### 2. Subset 구조 이해
+### 2. Understanding Subset Structure
 
-**중첩된 관계는 dot notation으로 접근합니다.**
+**Access nested relations using dot notation.**
 
 ```typescript
-// entity.json에서 Subset 정의 확인
+// Check Subset definition in entity.json
 {
   "subsets": {
     "A": [
@@ -394,36 +394,36 @@ test("사용자 생성", async () => {
       "title",
       "evaluation_form.id",           // BelongsToOne relation
       "evaluation_form.title",
-      "evaluation_form.category.id",  // 중첩 relation
+      "evaluation_form.category.id",  // nested relation
       "evaluation_form.category.name"
     ]
   }
 }
 
-// 테스트에서 접근
-test("평가 항목 조회", async () => {
+// Access in tests
+test("fetch evaluation item", async () => {
   const { itemId } = await createTestEvaluationItemWithDeps();
 
   const item = await EvaluationItemModel.findById("A", itemId);
 
-  // CORRECT - dot notation으로 중첩 접근
+  // CORRECT - nested access via dot notation
   expect(item.evaluation_form.id).toBe(formId);
-  expect(item.evaluation_form.category.name).toBe("역량평가");
+  expect(item.evaluation_form.category.name).toBe("Competency Evaluation");
 
-  // WRONG - 직접 FK 접근 시도
-  // expect(item.evaluation_form_id).toBe(formId);  // 타입 에러!
+  // WRONG - attempting direct FK access
+  // expect(item.evaluation_form_id).toBe(formId);  // type error!
 });
 ```
 
-**중요 규칙:**
+**Important rules:**
 
-- BelongsToOne relation의 FK는 Subset에서 `relation.id` 형태로 정의됨
-- 테스트에서는 `entity.relation.field` 형태로 접근
-- 직접 `entity.relation_id` 접근은 불가능 (Subset에 포함되지 않음)
+- FK of BelongsToOne relation is defined as `relation.id` form in Subset
+- Access in tests as `entity.relation.field` form
+- Direct `entity.relation_id` access is not possible (not included in Subset)
 
-### 3. DECIMAL 타입 처리
+### 3. Handling DECIMAL Types
 
-**DECIMAL 타입은 PostgreSQL에서 `.00` 접미사를 포함하여 반환됩니다.**
+**DECIMAL types are returned from PostgreSQL with a `.00` suffix.**
 
 ```typescript
 // entity.json
@@ -433,157 +433,157 @@ test("평가 항목 조회", async () => {
   ]
 }
 
-// Migration에서 생성됨
+// Generated in migration
 table.decimal("salary", 10, 2);  // DECIMAL(10,2)
 
-// 테스트 작성
-test("급여 정보 조회", async () => {
+// Writing tests
+test("fetch salary info", async () => {
   const [userId] = await UserModel.save([{
     name: "Test",
-    salary: 75000,  // 입력: 숫자
+    salary: 75000,  // input: number
   }]);
 
   const user = await UserModel.findById("A", userId);
 
-  // WRONG - 정확한 비교는 실패할 수 있음
-  // expect(user.salary).toBe(75000);  // DB에서 "75000.00" 반환 가능
+  // WRONG - exact comparison may fail
+  // expect(user.salary).toBe(75000);  // DB may return "75000.00"
 
-  // CORRECT - toMatch()로 패턴 매칭
+  // CORRECT - pattern matching with toMatch()
   expect(String(user.salary)).toMatch(/^75000(\.00)?$/);
 
-  // 또는 숫자 변환 후 비교
+  // Or convert to number and compare
   expect(Number(user.salary)).toBe(75000);
 
-  // 또는 범위 체크
+  // Or range check
   expect(user.salary).toBeGreaterThanOrEqual(74999.99);
   expect(user.salary).toBeLessThanOrEqual(75000.01);
 });
 ```
 
-**DECIMAL 타입 비교 패턴:**
+**DECIMAL type comparison patterns:**
 
 ```typescript
-// 패턴 1: 문자열 패턴 매칭
+// Pattern 1: string pattern matching
 expect(String(value)).toMatch(/^1234\.56$/);
-expect(String(value)).toMatch(/^1234(\.56)?$/); // .56 선택적
+expect(String(value)).toMatch(/^1234(\.56)?$/); // .56 optional
 
-// 패턴 2: 숫자 변환 후 비교
+// Pattern 2: convert to number and compare
 expect(Number(value)).toBe(1234.56);
 
-// 패턴 3: 범위 체크 (부동소수점 오차 고려)
-expect(value).toBeCloseTo(1234.56, 2); // 소수점 2자리까지
+// Pattern 3: range check (considering floating point errors)
+expect(value).toBeCloseTo(1234.56, 2); // up to 2 decimal places
 
-// 패턴 4: toMatchObject (객체 비교 시)
+// Pattern 4: toMatchObject (when comparing objects)
 expect(result).toMatchObject({
-  salary: expect.any(Number), // 타입만 체크
+  salary: expect.any(Number), // type check only
 });
 ```
 
-## Enum 값 사용 규칙
+## Enum Value Usage Rules
 
-**CRITICAL: entity.json에 정의된 enum 값만 사용해야 합니다.**
+**CRITICAL: Only use enum values defined in entity.json.**
 
-### 규칙
+### Rules
 
-1. entity.json에서 enum 필드의 정확한 값 목록 확인
-2. 가능하면 `sonamu.generated.ts`의 TypeScript enum 타입 사용 (타입 안전)
-3. test-helpers.ts에 기본값으로 유효한 enum 값 설정
-4. 임의의 문자열 사용 금지
+1. Check the exact value list for enum fields in entity.json
+2. If possible, use TypeScript enum types from `sonamu.generated.ts` (type-safe)
+3. Set valid enum values as defaults in test-helpers.ts
+4. Do not use arbitrary strings
 
 ```typescript
-// WRONG: 추측으로 작성
-role: "user"; // entity.json에는 "normal"로 정의됨
-status: "in_progress"; // entity.json에는 "pending"로 정의됨
+// WRONG: written based on guesses
+role: "user"; // entity.json defines it as "normal"
+status: "in_progress"; // entity.json defines it as "pending"
 
-// CORRECT: entity.json 확인 후 작성
-role: "normal"; // entity.json의 정확한 값
-status: "pending"; // entity.json의 정확한 값
+// CORRECT: written after checking entity.json
+role: "normal"; // exact value from entity.json
+status: "pending"; // exact value from entity.json
 
-// BEST: TypeScript enum 사용
+// BEST: use TypeScript enum
 import { UserRoleEnum } from "../sonamu.generated";
 role: UserRoleEnum.normal;
 ```
 
-**핵심 원칙: entity.json이 단일 진실 공급원(Single Source of Truth)입니다.**
+**Core principle: entity.json is the Single Source of Truth.**
 
-## 테스트 작성 계획 수립
+## Test Writing Plan
 
-### 엔티티 설계 프롬프트 기반 계획
+### Planning Based on Entity Design Prompt
 
-엔티티 설계 완료 후 (migration + scaffolding 성공 확인), **엔티티 설계 시점에 명시한 업무 프로세스와 데이터 흐름**에 따라 테스트를 그룹핑한다.
+After entity design is complete (confirming migration + scaffolding succeed), group tests according to **the business processes and data flows specified at the time of entity design**.
 
-**CRITICAL:** 단순 알파벳 순서나 개별 엔티티가 아니라, **업무 흐름 단위**로 테스트를 묶어서 작성한다.
+**CRITICAL:** Group tests by **business flow units**, not by simple alphabetical order or individual entities.
 
-### 1단계: 엔티티 설계 프롬프트 재확인
+### Step 1: Re-examine the Entity Design Prompt
 
-설계 요청 시 작성한 프롬프트에서 다음 정보를 추출:
+Extract the following from the prompt written at the time of the design request:
 
-- 업무 프로세스 흐름
-- 엔티티 간 관계 (relation)
-- 데이터 생성 순서
-- 주요 사용 시나리오
+- Business process flow
+- Relationships between entities (relations)
+- Data creation order
+- Key usage scenarios
 
-### 2단계: 업무 프로세스별 그룹핑
+### Step 2: Group by Business Process
 
-단순 우선순위가 아닌, **업무 흐름 단위**로 엔티티를 묶는다.
+Group entities by **business flow units**, not simple priority.
 
-**고객 상담 시스템 예시:**
+**Customer consultation system example:**
 
 ```
-그룹 1: 기반 인프라
-Organization (유관기관)
-└─ User (사용자)
-   └─ LoginHistory (로그인 이력)
+Group 1: Core Infrastructure
+Organization (related agency)
+└─ User
+   └─ LoginHistory
 
-업무 흐름: 기관 등록 → 사용자 생성 → 로그인
-테스트 순서: Organization → User → LoginHistory
+Business flow: register agency → create user → login
+Test order: Organization → User → LoginHistory
 
-그룹 2: 피해유형 관리
-DamageType (피해유형, self-referencing)
-└─ CounterMeasure (대응방안)
+Group 2: Damage Type Management
+DamageType (self-referencing)
+└─ CounterMeasure
 
-업무 흐름: 피해유형 계층 구성 → 각 유형별 대응방안 작성
-테스트 순서: DamageType → CounterMeasure
+Business flow: build damage type hierarchy → write countermeasures for each type
+Test order: DamageType → CounterMeasure
 
-그룹 3: 상담 프로세스 (핵심 업무)
-User (신청인) + User (상담사) + DamageType
-└─ Consultation (상담)
-   ├─ ConsultationChannelLog (채널 로그)
-   └─ ConsultationHistory (상담 이력)
+Group 3: Consultation Process (core business)
+User (applicant) + User (counselor) + DamageType
+└─ Consultation
+   ├─ ConsultationChannelLog
+   └─ ConsultationHistory
 
-업무 흐름:
-1. 신청인이 상담 접수
-2. 상담사 배정
-3. 피해유형 분류
-4. 채널별 소통 (온라인/전화/SMS/카카오)
-5. 상태 변경 이력 기록
+Business flow:
+1. Applicant submits consultation request
+2. Assign counselor
+3. Classify damage type
+4. Communication by channel (online/phone/SMS/KakaoTalk)
+5. Record status change history
 
-테스트 순서: Consultation → ConsultationChannelLog → ConsultationHistory
+Test order: Consultation → ConsultationChannelLog → ConsultationHistory
 
-그룹 4: 콘텐츠 관리 (독립적)
-FAQ (자주묻는질문)
-Banner (배너)
-Material (자료실)
-Notice (공지사항)
+Group 4: Content Management (independent)
+FAQ
+Banner
+Material
+Notice
 
-업무 흐름: 각각 독립적으로 CRUD
-테스트 순서: 순서 무관 (병렬 작성 가능)
+Business flow: independent CRUD for each
+Test order: any order (can be written in parallel)
 ```
 
-### 3단계: 그룹별 작업 순서
+### Step 3: Work Order per Group
 
-**각 그룹마다:**
+**For each group:**
 
-1. **types.ts 수정** - 그룹 내 모든 엔티티의 nullable 필드를 한 번에 처리
-2. **test-helpers.ts 확장** - 그룹 내 엔티티들의 헬퍼 함수를 함께 작성
-3. **테스트 파일 작성** - 그룹 내에서는 의존성 순서대로 작성
-4. **Business Logic 테스트** - 실제 업무 시나리오 구현 (핵심!)
-5. **테스트 통과 확인** - 다음 그룹으로 진행
+1. **Modify types.ts** - handle nullable fields for all entities in the group at once
+2. **Extend test-helpers.ts** - write helper functions for entities in the group together
+3. **Write test files** - write in dependency order within the group
+4. **Business Logic tests** - implement real business scenarios (the key!)
+5. **Verify tests pass** - proceed to next group
 
-**test-helpers.ts 예시 (의존성 체인 고려):**
+**test-helpers.ts example (considering dependency chains):**
 
 ```typescript
-// 의존성 체인을 고려한 헬퍼 작성
+// Write helpers considering dependency chains
 export async function createTestUserWithDeps() {
   const organizationId = await createTestOrganization();
   const userId = await createTestUser(organizationId);
@@ -607,99 +607,99 @@ export async function createTestConsultationWithDeps() {
 }
 ```
 
-### 4단계: Business Logic 테스트 (핵심!)
+### Step 4: Business Logic Tests (the key!)
 
-**IMPORTANT:** E. Business Logic 섹션이 가장 중요하다.
+**IMPORTANT:** The E. Business Logic section is the most important.
 
-이 섹션에서:
+In this section:
 
-- 엔티티 설계 프롬프트에 명시된 **실제 업무 시나리오** 구현
-- 엔티티 간 **상호작용** 테스트
-- **데이터 흐름** 검증
+- Implement **real business scenarios** specified in the entity design prompt
+- Test **interactions** between entities
+- Validate **data flows**
 
-이것이 단순 CRUD 테스트와의 차별점이며, **설계 의도를 검증하는 핵심**이다.
+This is what differentiates it from simple CRUD tests, and it's **the core that validates design intent**.
 
-**Business Logic 테스트 예시 (상담 프로세스):**
+**Business Logic test example (consultation process):**
 
 ```typescript
 describe("E. Business Logic", () => {
-  test("상담 접수부터 완료까지 전체 프로세스", async () => {
-    // 1. 상담 접수 + 의존성 생성
+  test("full process from consultation submission to completion", async () => {
+    // 1. submit consultation + create dependencies
     const { consultationId, counselorId } =
       await createTestConsultationWithDeps();
-    // 2. 채널 로그 기록 (온라인 접수, 전화 상담)
+    // 2. record channel logs (online submission, phone consultation)
     await createTestConsultationChannelLog(consultationId, {
       channel: "online",
     });
     await createTestConsultationChannelLog(consultationId, {
       channel: "phone",
     });
-    // 3. 상태 이력 기록
+    // 3. record status history
     await createTestConsultationHistory(consultationId, counselorId, {
       status: "consulting",
     });
-    // 4. 상담 완료
+    // 4. complete consultation
     await ConsultationModel.save([{ id: consultationId, status: "completed" }]);
-    // 5. 검증: 상태, 채널 로그 2건, 이력 확인
+    // 5. verify: status, 2 channel logs, history
     const c = await ConsultationModel.findById("A", consultationId);
     expect(c.status).toBe("completed");
   });
 });
 ```
 
-### 주의사항
+### Notes
 
 **DO:**
 
-- 엔티티 설계 프롬프트를 항상 참고
-- 업무 프로세스 흐름대로 그룹핑
-- 의존성 순서를 고려한 테스트 순서
-- 실제 사용 시나리오 기반 Business Logic 테스트
-- test-helpers에 의존성 체인 명확히 구현
+- Always reference the entity design prompt
+- Group by business process flow
+- Test order that considers dependency order
+- Business Logic tests based on real usage scenarios
+- Clearly implement dependency chains in test-helpers
 
 **DON'T:**
 
-- 단순히 알파벳 순서로 테스트 작성
-- 엔티티를 개별적으로만 테스트 (통합 관점 누락)
-- 업무 흐름과 무관한 우선순위 설정
-- 엔티티 설계 의도를 무시한 테스트
+- Write tests in simple alphabetical order
+- Only test entities individually (missing integration perspective)
+- Set priorities unrelated to business flow
+- Write tests that ignore the intent of the entity design
 
-### 그룹별 체크리스트
+### Checklist per Group
 
-프로세스 그룹별로 테스트 작성 완료 시:
+When test writing for a process group is complete:
 
-- [ ] 그룹 내 모든 엔티티의 types.ts nullable 필드 처리 완료
-- [ ] 그룹 내 의존성 체인을 반영한 test-helpers 작성
-- [ ] 그룹 내 각 엔티티의 모듈 테스트 파일 작성
-- [ ] **핵심 업무 시나리오가 Business Logic 테스트에 포함됨**
-- [ ] 모든 테스트 통과 확인 (`pnpm sonamu test`)
-- [ ] 다음 그룹으로 진행
+- [ ] Nullable field handling in types.ts completed for all entities in the group
+- [ ] test-helpers written reflecting dependency chains within the group
+- [ ] Module test file written for each entity in the group
+- [ ] **Key business scenarios included in Business Logic tests**
+- [ ] All tests pass confirmed (`pnpm sonamu test`)
+- [ ] Proceed to next group
 
-## 엔티티 생성 후 즉시 해야 할 작업
+## Tasks to Do Immediately After Entity Creation
 
-### types.ts nullable 필드 처리 (필수)
+### Handling nullable Fields in types.ts (Required)
 
-엔티티를 생성하고 `sonamu generate`로 types.ts가 생성되면, **테스트 작성 전** 즉시 nullable 필드를 처리하세요.
+After creating an entity and generating types.ts with `sonamu generate`, immediately handle nullable fields **before writing tests**.
 
-#### 작업 순서
+#### Work Order
 
-1. `sonamu generate` 실행
-2. 생성된 `*.types.ts` 파일 확인
-3. nullable 필드를 partial + extend + nullish 처리
-4. 테스트 작성 시작
+1. Run `sonamu generate`
+2. Check the generated `*.types.ts` file
+3. Apply partial + extend + nullish handling for nullable fields
+4. Start writing tests
 
-#### 처리 대상 필드
+#### Fields to Process
 
-- `nullable: true`인 모든 필드
-- `dbDefault`가 있는 필드 (`.optional().default(value)`)
-- FK 관계 필드 중 nullable인 것
+- All fields with `nullable: true`
+- Fields with `dbDefault` (`.optional().default(value)`)
+- FK relation fields that are nullable
 
-#### 실전 예시
+#### Practical Example
 
-**STEP 1: sonamu generate 실행 후 생성된 파일**
+**STEP 1: File generated after running sonamu generate**
 
 ```typescript
-// faq.types.ts (자동 생성)
+// faq.types.ts (auto-generated)
 import type { z } from "zod"; // WRONG: type import
 import { FAQBaseListParams, FAQBaseSchema } from "../sonamu.generated";
 
@@ -714,11 +714,11 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
 ```
 
-**STEP 2: 즉시 수정 (nullable 필드 + Zod import 처리)**
+**STEP 2: Immediate fix (nullable fields + Zod import handling)**
 
 ```typescript
-// faq.types.ts (수정 완료)
-import { z } from "zod"; // CORRECT: 일반 import로 수정
+// faq.types.ts (fix complete)
+import { z } from "zod"; // CORRECT: change to regular import
 import { FAQBaseListParams, FAQBaseSchema } from "../sonamu.generated";
 
 export const FAQListParams = FAQBaseListParams;
@@ -728,11 +728,11 @@ export const FAQSaveParams = FAQBaseSchema.partial({
   id: true,
   created_at: true,
   updated_at: true,
-  // nullable 필드 추가
+  // add nullable fields
   category: true,
   order_num: true,
 }).extend({
-  // nullable 필드를 nullish로 재정의
+  // redefine nullable fields as nullish
   category: z.string().nullish(), // string | null | undefined
   order_num: z.number().nullish(), // number | null | undefined
   updated_at: z.date().nullish(), // date | null | undefined
@@ -741,335 +741,335 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 export type FAQSaveParams = z.infer<typeof FAQSaveParams>;
 ```
 
-#### 왜 이렇게 해야 하나?
+#### Why Is This Necessary?
 
-**문제:** Zod의 `nullable()`은 `T | null`이지만 여전히 required입니다.
+**Problem:** Zod's `nullable()` gives `T | null` but it's still required.
 
 ```typescript
 // entity.json
 { "name": "category", "type": "string", "nullable": true }
 
-// 생성된 BaseSchema
+// Generated BaseSchema
 z.object({
   category: z.string().nullable(),  // string | null (required!)
 })
 
-// partial만 적용
+// applying partial only
 .partial({ category: true })  // category?: string | null
 
-// WRONG: undefined는 string | null에 할당 불가
+// WRONG: undefined cannot be assigned to string | null
 const [id] = await FAQModel.save([{
-  question: "질문",
-  answer: "답변",
-  // category 생략 시 타입 에러!
+  question: "Question",
+  answer: "Answer",
+  // omitting category causes type error!
 }]);
 ```
 
-**해결:** `partial()` + `extend()` + `nullish()` 조합
+**Solution:** Combination of `partial()` + `extend()` + `nullish()`
 
 ```typescript
-// CORRECT: 올바른 처리
+// CORRECT: proper handling
 FAQBaseSchema.partial({ category: true }).extend({
   category: z.string().nullish(),
 }); // string | null | undefined
 
-// 테스트에서 자유롭게 생략 가능
+// Can freely omit in tests
 const [id] = await FAQModel.save([
   {
-    question: "질문",
-    answer: "답변",
-    // category 생략 가능!
+    question: "Question",
+    answer: "Answer",
+    // category can be omitted!
   },
 ]);
 ```
 
-#### 적용 기준
+#### Application Criteria
 
-| 필드 타입                        | 처리 방법                       |
+| Field type | Handling |
 | -------------------------------- | ------------------------------- |
-| `id`, `created_at`, `updated_at` | 항상 partial (자동 생성)        |
-| `dbDefault`가 있는 필드          | `.optional().default(value)`    |
-| `nullable: true`인 필드          | partial + extend + `.nullish()` |
-| 필수 필드                        | partial 제외                    |
+| `id`, `created_at`, `updated_at` | Always partial (auto-generated) |
+| Fields with `dbDefault` | `.optional().default(value)` |
+| Fields with `nullable: true` | partial + extend + `.nullish()` |
+| Required fields | Excluded from partial |
 
-#### 체크리스트
+#### Checklist
 
-- [ ] `import type { z }`를 `import { z }`로 수정
-- [ ] nullable 필드를 partial에 추가
-- [ ] extend로 nullish 재정의
-- [ ] dbDefault 필드는 `.optional().default()` 사용
-- [ ] 필수 필드는 partial 제외 확인
+- [ ] Change `import type { z }` to `import { z }`
+- [ ] Add nullable fields to partial
+- [ ] Redefine as nullish via extend
+- [ ] Use `.optional().default()` for dbDefault fields
+- [ ] Confirm required fields are excluded from partial
 
-**상세 타입 안전성 가이드:** 아래 "TypeScript 타입 안전성" 및 "타입 안전성 주의사항" 섹션 참조
+**Detailed type safety guide:** See "TypeScript Type Safety" and "Type Safety Notes" sections below
 
-## TypeScript 타입 안전성
+## TypeScript Type Safety
 
-### 배열 인덱싱 시 옵셔널 체이닝 필수
+### Optional Chaining Required When Indexing Arrays
 
-배열에서 인덱스로 요소에 접근한 후 프로퍼티에 접근할 때는 반드시 옵셔널 체이닝(`?.`)을 사용해야 합니다.
+When accessing a property after indexing into an array, you must use optional chaining (`?.`).
 
-**이유:**
+**Reason:**
 
-- 배열 인덱싱(`array[0]`, `array[1]` 등)은 항상 `undefined`를 반환할 수 있음
-- TypeScript는 `array[0]`의 타입을 `T | undefined`로 추론
-- 옵셔널 체이닝 없이 프로퍼티 접근 시 컴파일 에러 발생
+- Array indexing (`array[0]`, `array[1]`, etc.) can always return `undefined`
+- TypeScript infers the type of `array[0]` as `T | undefined`
+- Accessing a property without optional chaining causes a compile error
 
-**잘못된 예:**
+**Wrong:**
 
 ```typescript
-// 타입 에러: Object is possibly 'undefined'
-expect(list.rows[0].title).toBe("테스트");
-expect(searchResults.rows[0].name).toContain("검색어");
+// Type error: Object is possibly 'undefined'
+expect(list.rows[0].title).toBe("test");
+expect(searchResults.rows[0].name).toContain("keyword");
 ```
 
-**올바른 예:**
+**Correct:**
 
 ```typescript
-// 옵셔널 체이닝 사용
-expect(list.rows[0]?.title).toBe("테스트");
-expect(searchResults.rows[0]?.name).toContain("검색어");
+// Use optional chaining
+expect(list.rows[0]?.title).toBe("test");
+expect(searchResults.rows[0]?.name).toContain("keyword");
 
-// 또는 먼저 존재 확인 후 접근
+// Or verify existence first, then access
 expect(list.rows.length).toBeGreaterThanOrEqual(1);
-expect(list.rows[0].title).toBe("테스트"); // 이제 안전
+expect(list.rows[0].title).toBe("test"); // now safe
 ```
 
-### 권장 패턴
+### Recommended Patterns
 
-테스트 코드에서 배열 요소 접근 시:
+When accessing array elements in test code:
 
-**패턴 1: 옵셔널 체이닝 사용**
+**Pattern 1: Use optional chaining**
 
 ```typescript
 const result = await Model.findMany("A", { num: 10, page: 1 });
 expect(result.rows[0]?.field).toBe(expectedValue);
 ```
 
-**패턴 2: 길이 검증 후 접근**
+**Pattern 2: Verify length, then access**
 
 ```typescript
 const result = await Model.findMany("A", { num: 10, page: 1 });
 expect(result.rows.length).toBeGreaterThanOrEqual(1);
-expect(result.rows[0].field).toBe(expectedValue); // 타입 안전
+expect(result.rows[0].field).toBe(expectedValue); // type-safe
 ```
 
-**패턴 3: find() 사용 시 옵셔널 체이닝 필수**
+**Pattern 3: Optional chaining required when using find()**
 
 ```typescript
 const list = await Model.findMany("A", { num: 10, page: 1 });
 const item = list.rows.find((r) => r.id === targetId);
-expect(item?.field).toBe(expectedValue); // find()는 undefined 반환 가능
+expect(item?.field).toBe(expectedValue); // find() can return undefined
 ```
 
-### 일반 규칙
+### General Rules
 
-- 배열 인덱싱 후 프로퍼티 접근: `array[0]?.property`
-- `find()`, `filter()[0]` 등 결과: 항상 `?.` 사용
-- 객체 중첩 접근: `obj.nested?.deep?.property`
-- Non-null assertion(`!`)은 확신이 있을 때만 사용
+- Property access after array indexing: `array[0]?.property`
+- Results of `find()`, `filter()[0]`, etc.: always use `?.`
+- Nested object access: `obj.nested?.deep?.property`
+- Non-null assertion (`!`) only when certain
 
-## Model 기본 메서드 (테스트 대상)
+## Model Basic Methods (Test Targets)
 
-Sonamu Model은 다음 메서드를 기본 제공한다. 테스트는 이 메서드들을 대상으로 작성한다:
+Sonamu Model provides the following methods by default. Tests are written targeting these methods:
 
-| 메서드                     | 용도               | 반환                          |
+| Method | Purpose | Returns |
 | -------------------------- | ------------------ | ----------------------------- |
-| `findById(subset, id)`     | 단건 조회          | `Promise<Subset>`             |
-| `findMany(subset, params)` | 목록 조회          | `Promise<ListResult<Subset>>` |
-| `save(rows)`               | 생성/수정 (upsert) | `Promise<number[]>` (ids)     |
-| `del(ids)`                 | 삭제               | `Promise<number>` (삭제 건수) |
+| `findById(subset, id)` | Fetch single record | `Promise<Subset>` |
+| `findMany(subset, params)` | Fetch list | `Promise<ListResult<Subset>>` |
+| `save(rows)` | Create/update (upsert) | `Promise<number[]>` (ids) |
+| `del(ids)` | Delete | `Promise<number>` (delete count) |
 
-**주의:** `delete`가 아니라 `del`이다. JavaScript 예약어 회피를 위함.
+**Note:** It's `del`, not `delete`. This avoids JavaScript reserved words.
 
-## 대규모 프로젝트 전략 (10개 이상 엔티티)
+## Large-Scale Project Strategy (10 or more entities)
 
-**CRITICAL: 엔티티가 10개 이상인 프로젝트는 한 번에 작업하지 마세요.**
+**CRITICAL: Do not work on all entities at once if a project has 10 or more entities.**
 
-### 문제점
+### Problems
 
-- 55개 엔티티를 한번에 작업하면 컨텍스트 혼란 발생
-- 잘못된 파일 수정, 필수 내용 삭제 등 심각한 실수 위험
-- 관계 추적 불가능, 테스트 작성 중 방향 상실
+- Working on 55 entities at once causes context confusion
+- Serious risk of errors such as modifying the wrong file or deleting required content
+- Cannot track relationships, lose direction while writing tests
 
-### 해결책: 배치 단위 작업
+### Solution: Batch Work Units
 
-**규칙: 연관된 엔티티끼리 묶어 5-10개씩 배치로 진행**
-
-```
-1차 배치: User, Institution, Role 관련 (5개)
-  → 테스트 완료 → 커밋
-
-2차 배치: Survey, Question, Response 관련 (7개)
-  → 테스트 완료 → 커밋
-
-3차 배치: Report, Statistics 관련 (6개)
-  → 테스트 완료 → 커밋
-```
-
-### 배치 그룹화 기준
-
-**도메인별 그룹화 (권장):**
+**Rule: Group related entities together and work in batches of 5–10**
 
 ```
-인증/권한: User, Role, Permission, Session
-설문: Survey, Question, Choice, Response
-보고서: Report, Chart, Export
-관리: Institution, Department, Settings
+Batch 1: User, Institution, Role related (5 entities)
+  → Tests complete → Commit
+
+Batch 2: Survey, Question, Response related (7 entities)
+  → Tests complete → Commit
+
+Batch 3: Report, Statistics related (6 entities)
+  → Tests complete → Commit
 ```
 
-**의존성별 그룹화:**
+### Batch Grouping Criteria
+
+**Grouping by domain (recommended):**
 
 ```
-1차: 독립 엔티티 (User, Institution 등)
-2차: 1차에 의존하는 엔티티 (Survey → Institution)
-3차: 2차에 의존하는 엔티티 (Question → Survey)
+Auth/Permissions: User, Role, Permission, Session
+Surveys: Survey, Question, Choice, Response
+Reports: Report, Chart, Export
+Administration: Institution, Department, Settings
 ```
 
-### 배치 작업 프로세스
-
-**각 배치마다:**
-
-1. 해당 배치 엔티티 목록 명시
-2. 테스트 헬퍼 작성 (createTest...)
-3. 모든 엔티티 테스트 작성 완료
-4. 전체 테스트 실행 확인
-5. **Git commit 후 다음 배치 진행**
-
-**배치 사이 확인사항:**
-
-- [ ] 현재 배치 테스트 모두 통과
-- [ ] 기존 배치 테스트 여전히 통과 (회귀 방지)
-- [ ] 커밋 완료 (롤백 지점 확보)
-
-### 작업 시작 전 선언
-
-**IMPORTANT: 각 배치 시작 전 명시적으로 선언하세요**
+**Grouping by dependencies:**
 
 ```
-"1차 배치 시작: User, Institution, Role 엔티티 (5개)
-- User: user.model.test.ts 작성
-- Institution: institution.model.test.ts 작성
-- Role: role.model.test.ts 작성
-수정할 파일만 작업, 다른 파일 건드리지 않음
-진행할까요?"
+1st: Independent entities (User, Institution, etc.)
+2nd: Entities depending on 1st (Survey → Institution)
+3rd: Entities depending on 2nd (Question → Survey)
 ```
 
-### 위험 신호 감지
+### Batch Work Process
 
-다음 상황이 발생하면 **즉시 작업 중단**:
+**For each batch:**
 
-- 배치 범위 밖의 엔티티를 수정하려고 함
-- 같은 질문을 반복함
-- 엔티티 관계를 혼동함
-- 이미 완료한 파일을 다시 수정하려고 함
+1. List entities in the batch explicitly
+2. Write test helpers (createTest...)
+3. Complete tests for all entities
+4. Confirm all tests pass
+5. **Git commit, then proceed to next batch**
 
-## 테스트 실행
+**Between-batch checklist:**
 
-**원칙: 개발 중에는 `pnpm sonamu test`를 사용한다.** dev 서버는 항상 실행 중이라고 가정한다. 만약 dev 서버가 내려가 있다면 `pnpm sonamu dev`로 먼저 띄운 뒤 테스트한다. `pnpm test`는 CI 환경에서만 사용한다.
+- [ ] All tests in current batch pass
+- [ ] Previous batch tests still pass (prevent regression)
+- [ ] Commit complete (establish rollback point)
+
+### Declare Before Starting Work
+
+**IMPORTANT: Declare explicitly before starting each batch**
+
+```
+"Starting batch 1: User, Institution, Role entities (5)
+- User: write user.model.test.ts
+- Institution: write institution.model.test.ts
+- Role: write role.model.test.ts
+Only work on files to be modified, do not touch other files
+Shall we proceed?"
+```
+
+### Warning Signs
+
+**Stop work immediately** if any of the following occur:
+
+- Attempting to modify entities outside the batch scope
+- Asking the same question repeatedly
+- Confusing entity relationships
+- Trying to re-modify files already completed
+
+## Running Tests
+
+**Principle: Use `pnpm sonamu test` during development.** Assume the dev server is always running. If the dev server is down, start it first with `pnpm sonamu dev`, then run tests. Use `pnpm test` only in CI environments.
 
 ```bash
-# dev 서버 확인 (내려가 있으면 먼저 실행)
+# Check dev server (start if it's down)
 pnpm sonamu dev
 
-# 개발 중 테스트 (기본)
+# Tests during development (default)
 pnpm sonamu test
 pnpm sonamu test user.model
 pnpm sonamu test user.model -p "findMany"
 
-# CI 환경에서만
+# CI environments only
 pnpm test
 ```
 
-### DevRunner — `sonamu test` (기본 테스트 실행 방식)
+### DevRunner — `sonamu test` (Default Test Execution Method)
 
-`sonamu test`는 `sonamu dev` 프로세스 내부에 상주하는 Vitest Node API 인스턴스를 통해 테스트를 실행한다. 매번 Vitest를 새로 기동하는 대신 이미 초기화된 인스턴스를 재사용하므로 실행 속도가 3.2x 빠르고, HMR과 연동되어 소스 변경 즉시 최신 코드로 테스트된다.
+`sonamu test` runs tests through a Vitest Node API instance that resides inside the `sonamu dev` process. Instead of starting Vitest fresh each time, it reuses an already-initialized instance, making execution 3.2x faster, and it integrates with HMR so tests always run against the latest code immediately after source changes.
 
-#### 사전 준비
+#### Prerequisites
 
-**1. sonamu.config.ts에서 devRunner 활성화:**
+**1. Enable devRunner in sonamu.config.ts:**
 
 ```typescript
 export default defineConfig({
   test: {
     devRunner: {
       enabled: true,
-      // routePrefix: "/__test__",   // optional, 기본값
-      // vitestConfigPath: undefined, // optional, 기본값: vitest.config.ts (api-root 상대경로)
+      // routePrefix: "/__test__",   // optional, default value
+      // vitestConfigPath: undefined, // optional, default: vitest.config.ts (relative to api-root)
     },
   },
 });
 ```
 
-설정 타입 (`SonamuDevRunnerConfig`):
+Configuration type (`SonamuDevRunnerConfig`):
 
-- `enabled: boolean` — DevRunner 활성화 여부 (기본: false)
-- `routePrefix?: string` — 테스트 엔드포인트 경로 접두사 (기본: `/__test__`)
-- `vitestConfigPath?: string` — vitest.config.ts 경로 (api-root 상대경로)
+- `enabled: boolean` — Whether to enable DevRunner (default: false)
+- `routePrefix?: string` — Test endpoint path prefix (default: `/__test__`)
+- `vitestConfigPath?: string` — vitest.config.ts path (relative to api-root)
 
-**2. dev 서버 실행:**
+**2. Start the dev server:**
 
 ```bash
-sonamu dev  # 또는 pnpm dev
+sonamu dev  # or pnpm dev
 ```
 
-dev 서버 기동 시 `isLocal() && devRunner.enabled` 조건에서 `DevVitestManager`가 자동 초기화되고, Fastify에 테스트 엔드포인트가 등록된다.
+When the dev server starts, `DevVitestManager` is automatically initialized under the `isLocal() && devRunner.enabled` condition, and test endpoints are registered with Fastify.
 
-#### CLI 사용법
+#### CLI Usage
 
 ```bash
-# 전체 테스트
+# Run all tests
 sonamu test
 
-# 파일 지정 (파일명 일부로 매칭 — globTestSpecifications 사용)
+# Specify file (matched by partial filename — uses globTestSpecifications)
 sonamu test user.model
 
-# 여러 파일
+# Multiple files
 sonamu test user.model order.model
 
-# 특정 테스트 케이스만 (테스트명 패턴)
+# Run specific test cases only (test name pattern)
 sonamu test user.model --pattern "findMany"
 sonamu test user.model -p "findMany"
 
-# Naite trace 출력
+# Print Naite traces
 sonamu test user.model --traces
 sonamu test user.model -t
 
-# 파일 + 패턴 + trace 조합
+# Combine file + pattern + trace
 sonamu test user.model -p "findMany" -t
 ```
 
-인자 처리 규칙:
+Argument processing rules:
 
-- `--pattern` / `-p`: 테스트명 문자열 필터 (`setGlobalTestNamePattern` → 실행 후 `resetGlobalTestNamePattern`)
-- `--traces` / `-t`: boolean 플래그, Naite trace 출력 활성화
-- `-`로 시작하지 않는 인자: 파일 목록으로 처리
-- 다중 파일 전달 허용
-- 서버 응답의 `ok: false`는 exit code 1로 반영
+- `--pattern` / `-p`: test name string filter (`setGlobalTestNamePattern` → `resetGlobalTestNamePattern` after execution)
+- `--traces` / `-t`: boolean flag, enables Naite trace output
+- Arguments not starting with `-`: treated as file list
+- Multiple files allowed
+- `ok: false` in server response is reflected as exit code 1
 
-**→ Naite trace, HMR 연동, HTTP API, 내부 아키텍처, 성능 비교, 트러블슈팅 상세: `testing-devrunner.md`**
+**→ Naite traces, HMR integration, HTTP API, internal architecture, performance comparison, troubleshooting details: `testing-devrunner.md`**
 
-## sonamu.config.ts 테스트 설정 및 설정 파일
+## sonamu.config.ts Test Configuration and Config Files
 
-**→ 설정 타입 정의, DevRunner/병렬 설정, 활성화 조건, 병렬 DB 흐름, vitest.config.ts/global.ts 상세: `testing-devrunner.md`**
+**→ Configuration type definitions, DevRunner/parallel settings, activation conditions, parallel DB flow, vitest.config.ts/global.ts details: `testing-devrunner.md`**
 
-핵심 설정만 요약:
+Key settings summary only:
 
 ```typescript
 // sonamu.config.ts
 export default defineConfig({
   test: {
-    devRunner: { enabled: true }, // pnpm sonamu test 사용 시 필수
-    // parallel: true,              // 선택: Worker별 DB 분리
-    // maxWorkers: 4,               // 선택: 병렬 Worker 수
+    devRunner: { enabled: true }, // required to use pnpm sonamu test
+    // parallel: true,              // optional: separate DB per worker
+    // maxWorkers: 4,               // optional: number of parallel workers
   },
 });
 ```
 
-## 테스트 기본 패턴
+## Test Basic Patterns
 
 ### bootstrap
 
-모든 테스트 파일에서 `bootstrap(vi)` 호출 필수:
+`bootstrap(vi)` call required in all test files:
 
 ```typescript
 import { bootstrap, test } from "sonamu/test";
@@ -1078,33 +1078,33 @@ import { describe, expect, vi } from "vitest";
 bootstrap(vi);
 
 describe("MyTest", () => {
-  test("테스트 케이스", async () => {
+  test("test case", async () => {
     // ...
   });
 });
 ```
 
-**bootstrap 옵션:**
+**bootstrap options:**
 
 ```typescript
-// 기본값: forTesting: true (빠름, Syncer/Task 생략)
+// Default: forTesting: true (fast, skips Syncer/Task)
 bootstrap(vi);
 
-// forTesting: false - 전체 초기화 (Syncer, Task, EntityManager 등 모두 로드)
-// migrator, syncer, template 등의 테스트에서 사용
+// forTesting: false - full initialization (loads Syncer, Task, EntityManager, etc.)
+// Used in tests for migrator, syncer, template, etc.
 bootstrap(vi, { forTesting: false });
 ```
 
 ### test vs testAs
 
 ```typescript
-// 비인증 테스트 - Context.user가 null
-test("비인증 테스트", async () => {
+// Unauthenticated test - Context.user is null
+test("unauthenticated test", async () => {
   const me = await UserModel.me();
   expect(me).toBeNull();
 });
 
-// 인증 테스트 - Context.user 설정됨
+// Authenticated test - Context.user is set
 import type { UserSubsetSS } from "../sonamu.generated";
 
 const adminUser: UserSubsetSS = {
@@ -1115,7 +1115,7 @@ const adminUser: UserSubsetSS = {
   role: "admin",
 };
 
-testAs(adminUser, "관리자 권한 테스트", async () => {
+testAs(adminUser, "admin permission test", async () => {
   const me = await UserModel.me();
   expect(me?.role).toBe("admin");
 });
@@ -1127,7 +1127,7 @@ testAs(adminUser, "관리자 권한 테스트", async () => {
 test.each([
   { input: "user@example.com", expected: true },
   { input: "invalid-email", expected: false },
-])("이메일 검증: $input → $expected", async ({ input, expected }) => {
+])("email validation: $input → $expected", async ({ input, expected }) => {
   expect(validateEmail(input)).toBe(expected);
 });
 ```
@@ -1148,12 +1148,12 @@ export const loadFixtures = createFixtureLoader({
 });
 ```
 
-### 테스트에서 사용
+### Using in tests
 
 ```typescript
 import { loadFixtures } from "../../testing/fixture";
 
-test("회사 정보 수정", async () => {
+test("update company info", async () => {
   const f0 = await loadFixtures(["company01"]);
 
   await CompanyModel.save([
@@ -1168,31 +1168,31 @@ test("회사 정보 수정", async () => {
 });
 ```
 
-## Naite (테스트 추적 시스템)
+## Naite (Test Tracing System)
 
-**→ 상세 가이드 (키 목록, 체이닝 필터, wildcard, del, 내부 구조): `naite.md`**
+**→ Detailed guide (key list, chaining filters, wildcard, del, internal structure): `naite.md`**
 
-Naite는 소스 코드에서 `Naite.t("key", value)`로 값을 기록하고, 테스트에서 `Naite.get("key")`로 검증하는 추적 시스템이다.
+Naite is a tracing system that records values with `Naite.t("key", value)` in source code and validates them with `Naite.get("key")` in tests.
 
-### 테스트에서 자주 쓰는 패턴
+### Commonly Used Patterns in Tests
 
 ```typescript
 import { Naite } from "sonamu";
 
-// 쿼리 검증
+// Query validation
 expect(Naite.get("esq-query").first()).not.contain("limit");
 
-// UpsertBuilder 동작 검증
+// UpsertBuilder behavior validation
 const trace = Naite.get("puri:ub-upserted").first();
 expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
 
-// 조회 메서드: .first(), .last(), .at(n), .result() (전체 배열)
-// 필터: .fromFile("user.model.ts"), .fromFunction("findById"), .where("data.tableName", "=", "users")
+// Fetch methods: .first(), .last(), .at(n), .result() (full array)
+// Filters: .fromFile("user.model.ts"), .fromFunction("findById"), .where("data.tableName", "=", "users")
 ```
 
-## 테스트 헬퍼: expectQuery
+## Test Helper: expectQuery
 
-SQL 쿼리의 특정 부분만 검증하는 헬퍼 (miomock 참고):
+Helper for validating specific parts of SQL queries (see miomock for reference):
 
 ```typescript
 // api/src/testing/expect-query.ts
@@ -1219,12 +1219,12 @@ export function expectQuery(query: string, part?: QueryPart) {
 }
 ```
 
-### 사용 예시
+### Usage Examples
 
 ```typescript
 import { expectQuery } from "../testing/expect-query";
 
-test("select 쿼리 검증", async () => {
+test("validate select query", async () => {
   const db = UserModel.getPuri("r");
   await db.table("users").select({ id: "users.id" });
   const query = Naite.get("puri:executed-query").first();
@@ -1236,7 +1236,7 @@ test("select 쿼리 검증", async () => {
   );
 });
 
-test("where 조건 검증", async () => {
+test("validate where condition", async () => {
   const db = UserModel.getPuri("r");
   await db.table("users").where("users.id", 1);
   const query = Naite.get("puri:executed-query").first();
@@ -1244,7 +1244,7 @@ test("where 조건 검증", async () => {
   expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
 });
 
-test("join 검증", async () => {
+test("validate join", async () => {
   const db = UserModel.getPuri("r");
   await db
     .table("employees")
@@ -1257,9 +1257,9 @@ test("join 검증", async () => {
 });
 ```
 
-## 테스트 헬퍼: expectUB
+## Test Helper: expectUB
 
-UpsertBuilder 상태 검증 헬퍼 (miomock 참고):
+UpsertBuilder state validation helper (see miomock for reference):
 
 ```typescript
 // api/src/testing/expect-ub.ts
@@ -1282,23 +1282,23 @@ export function expectUB<P extends UBPart>(
   tableName?: string,
   index?: number,
 ) {
-  // ... 구현
+  // ... implementation
 }
 ```
 
-### 사용 예시
+### Usage Examples
 
 ```typescript
 import { expectUB } from "../testing/expect-ub";
 
-test("UpsertBuilder 상태 검증", async () => {
+test("validate UpsertBuilder state", async () => {
   const ub = new UpsertBuilder();
 
-  // 초기 상태
+  // initial state
   expectUB(ub, "hasTable", "users").toBe(false);
   expectUB(ub, "tables").toEqual([]);
 
-  // register 후
+  // after register
   ub.register("users", {
     email: "test@test.com",
     username: "test",
@@ -1313,13 +1313,13 @@ test("UpsertBuilder 상태 검증", async () => {
     username: "test",
   });
 
-  // upsert 후 초기화 확인
+  // confirm reset after upsert
   await ub.upsert(wdb, "users");
   expectUB(ub, "rowCount", "users").toBe(0);
 });
 ```
 
-## Mock 패턴
+## Mock Patterns
 
 ### setup-mocks.ts
 
@@ -1333,7 +1333,7 @@ vi.mock("fs/promises", async (importOriginal) => {
   return {
     ...actual,
     access: vi.fn((path, mode) => {
-      // 가상 파일 시스템 체크
+      // virtual file system check
       const vfs = Naite.get("mock:fs/promises:virtualFileSystem").result();
       if (vfs.some((v) => v === path)) {
         return Promise.resolve();
@@ -1358,7 +1358,7 @@ vi.mock("fs/promises", async (importOriginal) => {
 import { Entity, EntityManager, type EntityJson } from "sonamu";
 import { vi } from "vitest";
 
-// EntityManager.get 모킹
+// Mocking EntityManager.get
 export function mockEntityManagerGet(
   targetEntityId: string,
   overrideCallback: (original: EntityJson) => EntityJson,
@@ -1374,12 +1374,12 @@ export function mockEntityManagerGet(
 }
 ```
 
-## CRUD 테스트 패턴
+## CRUD Test Patterns
 
 ### Create & Read
 
 ```typescript
-test("Create - 새 유저 생성", async () => {
+test("Create - create new user", async () => {
   const [userId] = await UserModel.save([
     {
       email: "newuser@test.com",
@@ -1399,7 +1399,7 @@ test("Create - 새 유저 생성", async () => {
 ### Update
 
 ```typescript
-test("Update - 유저 수정", async () => {
+test("Update - update user", async () => {
   const f0 = await loadFixtures(["user01"]);
 
   await UserModel.save([
@@ -1414,161 +1414,161 @@ test("Update - 유저 수정", async () => {
 });
 ```
 
-### 에러 테스트
+### Error Tests
 
 ```typescript
-test("존재하지 않는 유저 조회 시 에러", async () => {
+test("error when fetching non-existent user", async () => {
   await expect(UserModel.findById("A", 99999)).rejects.toThrow("not found");
 });
 
-test("해결되지 않은 참조 에러", async () => {
+test("unresolved reference error", async () => {
   const ub = new UpsertBuilder();
   const companyRef = ub.register("companies", { name: "Test" });
   ub.register("departments", { company_id: companyRef, name: "Dept" });
 
-  // 잘못된 순서로 upsert 시도
+  // attempt upsert in wrong order
   await expect(ub.upsert(wdb, "departments")).rejects.toThrow(
-    /해결되지 않은 참조/,
+    /unresolved reference/,
   );
 });
 ```
 
-## 테스트 구조화 패턴
+## Test Structuring Patterns
 
 ```typescript
 describe("UpsertBuilder", () => {
-  describe("A. 기본 등록 (register)", () => {
-    test("register() 호출 시 UBRef 반환", async () => {
+  describe("A. Basic registration (register)", () => {
+    test("register() returns UBRef", async () => {
       /* ... */
     });
-    test("여러 번 register() 시 rows 누적", async () => {
-      /* ... */
-    });
-  });
-
-  describe("B. 테이블 관리", () => {
-    test("getTable()/hasTable() 기본 동작", async () => {
+    test("multiple register() calls accumulate rows", async () => {
       /* ... */
     });
   });
 
-  describe("C. Upsert 실행", () => {
-    test("upsert() - 새 row 삽입", async () => {
-      /* ... */
-    });
-    test("upsert() - 기존 row 업데이트", async () => {
-      /* ... */
-    });
-    test("insertOnly() - 삽입만 수행", async () => {
+  describe("B. Table management", () => {
+    test("basic behavior of getTable()/hasTable()", async () => {
       /* ... */
     });
   });
 
-  describe("D. 에러 처리", () => {
-    test("존재하지 않는 테이블에 upsert → 빈 배열", async () => {
+  describe("C. Upsert execution", () => {
+    test("upsert() - insert new row", async () => {
       /* ... */
     });
-    test("해결되지 않은 참조 → 에러", async () => {
+    test("upsert() - update existing row", async () => {
+      /* ... */
+    });
+    test("insertOnly() - insert only", async () => {
+      /* ... */
+    });
+  });
+
+  describe("D. Error handling", () => {
+    test("upsert on non-existent table → empty array", async () => {
+      /* ... */
+    });
+    test("unresolved reference → error", async () => {
       /* ... */
     });
   });
 });
 ```
 
-## 파일 구조
+## File Structure
 
 ```
 api/src/testing/
-├── fixture.ts       # createFixtureLoader 정의
+├── fixture.ts       # createFixtureLoader definition
 ├── global.ts        # globalSetup (dotenv, setup export)
-├── setup-mocks.ts   # 전역 Mock 설정
-├── test-helpers.ts  # 테스트 유틸 함수
-├── expect-query.ts  # SQL 쿼리 검증 헬퍼
-└── expect-ub.ts     # UpsertBuilder 검증 헬퍼
+├── setup-mocks.ts   # global Mock configuration
+├── test-helpers.ts  # test utility functions
+├── expect-query.ts  # SQL query validation helper
+└── expect-ub.ts     # UpsertBuilder validation helper
 ```
 
 ## Rules
 
-- 모든 테스트 파일에서 `bootstrap(vi)` 호출 필수
-- 각 테스트는 자동으로 롤백됨 (테스트 격리)
-- 비인증 테스트는 `test`, 인증 테스트는 `testAs` 사용
-- Fixture는 `createFixtureLoader`로 정의하고 `loadFixtures`로 로드
-- Naite로 쿼리/UpsertBuilder 동작 추적 및 검증
-- `toMatchInlineSnapshot()` 활용하여 스냅샷 테스트 권장
-- Mock은 `setup-mocks.ts`에서 전역 설정하거나 테스트 내에서 `vi.spyOn` 사용
+- `bootstrap(vi)` call required in all test files
+- Each test is automatically rolled back (test isolation)
+- Use `test` for unauthenticated tests, `testAs` for authenticated tests
+- Define fixtures with `createFixtureLoader` and load with `loadFixtures`
+- Use Naite to track and validate query/UpsertBuilder behavior
+- Recommend snapshot tests using `toMatchInlineSnapshot()`
+- Configure Mocks globally in `setup-mocks.ts` or use `vi.spyOn` within tests
 
-## 타입 안전성 주의사항
+## Type Safety Notes
 
-### Zod import 방식
+### Zod Import Method
 
-**CRITICAL: 테스트 파일에서 Zod를 import할 때는 반드시 일반 import를 사용해야 합니다.**
+**CRITICAL: Always use regular imports when importing Zod in test files.**
 
 ```typescript
-// CORRECT - 테스트 파일에서
+// CORRECT - in test files
 import { z } from "zod";
 import { describe, expect, vi } from "vitest";
 
-// WRONG - type import 사용 시 런타임 에러 발생
-import type { z } from "zod"; // 테스트 실행 시 에러!
+// WRONG - runtime error when using type import
+import type { z } from "zod"; // error when test runs!
 ```
 
-**이유:** 테스트에서 `z.infer<>`나 Zod 스키마를 직접 사용하기 때문에 런타임에 Zod 객체가 필요합니다.
+**Reason:** Because `z.infer<>` and Zod schemas are used directly in tests, the Zod object is needed at runtime.
 
-**적용 위치:**
+**Where this applies:**
 
-- `*.model.test.ts` - 모든 테스트 파일
-- `test-helpers.ts` - Zod 스키마를 사용하는 헬퍼 파일
+- `*.model.test.ts` - all test files
+- `test-helpers.ts` - helper files that use Zod schemas
 
-### SaveParams의 partial 설정 확인
+### Checking partial Settings in SaveParams
 
-`Model.save()` 테스트 시 `*.types.ts`의 `SaveParams` partial 설정을 확인해야 함:
+When testing `Model.save()`, you must check the `SaveParams` partial settings in `*.types.ts`:
 
 ```typescript
 // user.types.ts
-import { z } from "zod"; // types 파일에서도 일반 import
+import { z } from "zod"; // regular import in types files too
 import { UserBaseSchema } from "../sonamu.generated";
 
 export const UserSaveParams = UserBaseSchema.partial({
-  id: true, // 자동 생성
-  created_at: true, // 자동 생성
-  updated_at: true, // 자동 생성
+  id: true, // auto-generated
+  created_at: true, // auto-generated
+  updated_at: true, // auto-generated
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 
-### Nullable 필드 처리 패턴
+### Nullable Field Handling Pattern
 
-**→ 위 "엔티티 생성 후 즉시 해야 할 작업" 섹션 참조** (partial + extend + nullish 패턴)
+**→ See "Tasks to Do Immediately After Entity Creation" section above** (partial + extend + nullish pattern)
 
-### Nullish Coalescing 사용
+### Use Nullish Coalescing
 
-변수가 `T | undefined` 타입일 수 있는 경우 nullish coalescing 필수:
+Nullish coalescing is required when a variable can be of type `T | undefined`:
 
 ```typescript
-// WRONG: userId가 number | undefined일 수 있음
+// WRONG: userId may be number | undefined
 const user = await UserModel.findById("A", userId);
 
-// CORRECT: nullish coalescing으로 undefined 방어
+// CORRECT: guard against undefined with nullish coalescing
 const user = await UserModel.findById("A", userId ?? 0);
 ```
 
-특히 이전 단계에서 생성한 ID를 사용할 때 주의:
+Especially be careful when using IDs created in a previous step:
 
 ```typescript
 const [userId] = await UserModel.save([{ ... }]);
 
-// WRONG: userId가 number | undefined
+// WRONG: userId is number | undefined
 const user = await UserModel.findById("A", userId);
 
 // CORRECT:
 const user = await UserModel.findById("A", userId ?? 0);
 ```
 
-### SaveParams import 위치
+### SaveParams Import Location
 
-SaveParams 타입은 sonamu.generated가 아닌 각 엔티티의 types.ts에서 export됩니다.
+SaveParams types are exported from each entity's types.ts, not from sonamu.generated.
 
-**잘못된 예:**
+**Wrong:**
 
 ```typescript
 // test-helpers.ts
@@ -1578,7 +1578,7 @@ import type {
 } from "../application/sonamu.generated"; // WRONG
 ```
 
-**올바른 예:**
+**Correct:**
 
 ```typescript
 // test-helpers.ts
@@ -1586,48 +1586,48 @@ import type { UserSaveParams } from "../application/user/user.types";
 import type { TaskSaveParams } from "../application/task/task.types";
 ```
 
-**이유:**
+**Reason:**
 
-- sonamu.generated에는 BaseSchema와 BaseListParams만 export됨
-- SaveParams는 각 엔티티의 types.ts에서 BaseSchema.partial()로 정의됨
+- sonamu.generated only exports BaseSchema and BaseListParams
+- SaveParams is defined with BaseSchema.partial() in each entity's types.ts
 
-## 실전 주의사항 (Common Pitfalls)
+## Practical Notes (Common Pitfalls)
 
-### 1. Fixture 데이터 준비 필수
+### 1. Fixture Data Preparation Required
 
-**문제:** Foreign key constraint로 인해 기본 데이터 없으면 테스트 실패
+**Problem:** Tests fail without base data due to foreign key constraints
 
-**해결:**
+**Solution:**
 
 ```sql
 -- database/scripts/seed-initial-data.sql
-INSERT INTO institutions (id, name, code) VALUES (1, '본원', 'HQ');
-INSERT INTO departments (id, name, institution_id) VALUES (1, '연구부', 1);
-INSERT INTO roles (id, code, name) VALUES (1, 'ADMIN', '관리자');
+INSERT INTO institutions (id, name, code) VALUES (1, 'HQ', 'HQ');
+INSERT INTO departments (id, name, institution_id) VALUES (1, 'Research', 1);
+INSERT INTO roles (id, code, name) VALUES (1, 'ADMIN', 'Administrator');
 ```
 
 ```bash
-# 1. seed 데이터를 test DB에 적용
+# 1. apply seed data to test DB
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -f database/scripts/seed-initial-data.sql
 
-# 2. dump 생성
+# 2. create dump
 pnpm dump
 
-# 3. fixture DB에 적용
+# 3. apply to fixture DB
 pnpm seed
 
-# 4. sonamu fixture sync (선택사항)
+# 4. sonamu fixture sync (optional)
 pnpm sonamu fixture sync
 ```
 
-### 2. SaveParams 타입 설계 (Partial)
+### 2. SaveParams Type Design (Partial)
 
-**문제 1:** Update 시 일부 필드만 변경하면 타입 에러 발생
+**Problem 1:** Type error occurs when changing only some fields on update
 
-**문제 2:** 테스트 헬퍼에서 override를 Partial로 받을 때 타입 에러 발생
+**Problem 2:** Type error occurs when receiving overrides as Partial in test helpers
 
 ```typescript
-// WRONG - nullable 필드가 partial 미설정
+// WRONG - nullable fields not set to partial
 export const QuestionSaveParams = QuestionBaseSchema.partial({
   id: true,
   created_at: true,
@@ -1640,22 +1640,22 @@ export async function createTestQuestion(
 ) {
   const [id] = await QuestionModel.save([
     {
-      content: "테스트질문",
+      content: "test question",
       parent_id: null,
       answer_group_id: null,
-      ...override, // 타입 에러: undefined는 null로 할당 불가
+      ...override, // type error: undefined cannot be assigned to null
     },
   ]);
   return id;
 }
 ```
 
-**해결:** nullable/dbDefault 필드를 partial로 설정
+**Solution:** Set nullable/dbDefault fields to partial
 
 ```typescript
 // api/src/application/user/user.types.ts
 export const UserSaveParams = UserBaseSchema.partial({
-  id: true, // update 시 필요
+  id: true, // needed for update
   created_at: true, // dbDefault
   password: true, // nullable
   email: true, // nullable
@@ -1669,27 +1669,27 @@ export const UserSaveParams = UserBaseSchema.partial({
 });
 ```
 
-**적용 기준:**
+**Application criteria:**
 
-- id, created_at, updated_at: 항상 partial (자동 생성)
-- dbDefault가 있는 필드: partial 처리
-- nullable: true인 FK 필드: partial 처리
-- nullable: true인 일반 필드 (description 등): partial 처리
+- id, created_at, updated_at: always partial (auto-generated)
+- Fields with dbDefault: set to partial
+- FK fields with nullable: true: set to partial
+- Regular fields with nullable: true (e.g. description): set to partial
 
-**핵심:** 필수 필드(employee_no, login_id, name, institution_id)는 partial 제외하여 타입 안정성 유지
+**Key:** Required fields (employee_no, login_id, name, institution_id) are excluded from partial to maintain type safety
 
-### 3. Update 시 Relation 필드 제외 패턴
+### 3. Excluding Relation Fields on Update
 
-**문제:** Subset에는 relation 객체가 포함되지만, SaveParams에는 FK만 있어서 에러 발생
+**Problem:** Subset includes relation objects, but SaveParams only has FK, causing errors
 
 ```typescript
 // WRONG
 const user = await UserModel.findById("A", userId);
 await UserModel.save([{ ...user, status: "inactive" }]);
-// → "column 'department' does not exist" 에러
+// → "column 'department' does not exist" error
 ```
 
-**해결:** Relation 필드 제외 + FK 명시적 추가
+**Solution:** Exclude relation fields + explicitly add FK
 
 ```typescript
 // CORRECT
@@ -1698,81 +1698,81 @@ const { institution, department, ...userData } = user;
 await UserModel.save([
   {
     ...userData,
-    institution_id: user.institution.id, // FK 명시적 추가
+    institution_id: user.institution.id, // explicitly add FK
     department_id: user.department?.id ?? null,
     status: "inactive",
   },
 ]);
 ```
 
-**이유:** `UserSubsetA`는 `institution`, `department` 객체를 포함하지만, `institution_id`, `department_id` FK는 포함하지 않음
+**Reason:** `UserSubsetA` includes `institution`, `department` objects, but does not include `institution_id`, `department_id` FKs
 
-### 4. ubUpsert는 Upsert 동작
+### 4. ubUpsert is an Upsert Operation
 
-**문제:** Unique constraint 위반 테스트가 실패함
+**Problem:** Unique constraint violation tests fail
 
 ```typescript
-// 실패하는 테스트
-test("사번은 고유해야 함", async () => {
+// failing test
+test("employee number must be unique", async () => {
   await UserModel.save([{ employee_no: "001", ... }]);
 
-  // 중복된 사번으로 생성 시도
+  // attempt to create with duplicate employee number
   await expect(
     UserModel.save([{ employee_no: "001", ... }])
-  ).rejects.toThrow();  // 에러 안 던지고 UPDATE됨
+  ).rejects.toThrow();  // does not throw error, performs UPDATE instead
 });
 ```
 
-**원인:** Sonamu의 `save()`는 `ubUpsert` 사용 → conflict 시 에러 대신 UPDATE
+**Cause:** Sonamu's `save()` uses `ubUpsert` → on conflict, performs UPDATE instead of throwing error
 
-**해결:** 이런 테스트는 skip 처리
+**Solution:** Skip such tests
 
 ```typescript
-test.skip("사번은 고유해야 함 (ubUpsert는 upsert 동작하므로 skip)", async () => {
+test.skip("employee number must be unique (skipped because ubUpsert performs upsert)", async () => {
   // ...
 });
 ```
 
-### 5. testAs 사용법
+### 5. testAs Usage
 
-**문제:** test 안에서 testAs 호출하면 에러 발생
+**Problem:** Calling testAs inside test causes an error
 
 ```typescript
 // WRONG
-test("권한 테스트", async () => {
-  await testAs(adminUser, "설명", async () => { ... });
-  // → "Calling the test function inside another test function is not allowed" 에러
+test("permission test", async () => {
+  await testAs(adminUser, "description", async () => { ... });
+  // → "Calling the test function inside another test function is not allowed" error
 });
 
-// CORRECT - test를 대체
-testAs(adminUser, "권한 테스트", async () => {
+// CORRECT - use as a replacement for test
+testAs(adminUser, "permission test", async () => {
   const result = await UserModel.del([userId]);
   expect(result).toBe(1);
 });
 ```
 
-### 6. Naite로 Model 쿼리 검증
+### 6. Validating Model Queries with Naite
 
-**Model에 Naite 기록 추가:**
+**Add Naite recording to Model:**
 
 ```typescript
 // user.model.ts
 import { Naite } from "sonamu";
 
 async findMany(...) {
-  // ... qb 구성 ...
+  // ... build qb ...
 
-  // 테스트를 위한 쿼리 기록
+  // record query for testing
   Naite.t("esq-query", qb.toQuery());
 
   return this.executeSubsetQuery({ ... });
 }
 ```
 
-**Test에서 검증:**
+**Validate in test:**
 
 ```typescript
-test("num: 0일 때 limit 없어야 함", async () => {
+test("should not have limit when num: 0", async () => {
   await UserModel.findMany("A", { num: 0, page: 1 });
 
   expect(Naite.get("esq-query").first()).not.contain("limit");
@@ -1780,81 +1780,81 @@ test("num: 0일 때 limit 없어야 함", async () => {
 });
 ```
 
-### 7. 에러 메시지는 다국어 고려
+### 7. Consider Multilingual Error Messages
 
 ```typescript
-// WRONG: 영어 메시지만 검증
+// WRONG: only validates English message
 await expect(UserModel.findById("A", 99999)).rejects.toThrow("not found");
 
-// CORRECT: 한글 메시지 부분 매칭
-await expect(UserModel.findById("A", 99999)).rejects.toThrow("존재하지 않는");
+// CORRECT: partial match on actual error message
+await expect(UserModel.findById("A", 99999)).rejects.toThrow("does not exist");
 ```
 
-### 8. pnpm Workspace와 Vitest 인스턴스 충돌
+### 8. pnpm Workspace and Vitest Instance Conflicts
 
-**문제:** "Vitest failed to access its internal state" 에러
+**Problem:** "Vitest failed to access its internal state" error
 
-**원인:** sonamu가 `link:`로 연결되어 있으면, sonamu와 프로젝트의 vitest가 다른 peer dependency 조합으로 별도 경로에 설치됨
+**Cause:** When sonamu is connected via `link:`, sonamu and the project's vitest are installed at separate paths with different peer dependency combinations
 
-**임시 해결 (테스트용):**
+**Temporary fix (for testing):**
 
 ```json
 // packages/api/package.json
 {
   "dependencies": {
-    "sonamu": "0.8.0" // link 대신 버전 명시
+    "sonamu": "0.8.0" // specify version instead of link
   }
 }
 ```
 
-**근본 해결:** sonamu 개발자에게 문의 (프레임워크 내부 이슈)
+**Fundamental fix:** Contact sonamu developers (framework internal issue)
 
 ### 9. assert() for Truthy Checks
 
 ```typescript
 import assert from "assert";
 
-test("사용자 생성", async () => {
+test("create user", async () => {
   const [userId] = await UserModel.save([{ ... }]);
 
-  // truthy 체크
+  // truthy check
   assert(userId);
 
-  // 이후 userId는 number로 확실히 타입 추론됨
+  // userId is now safely inferred as number
   const user = await UserModel.findById("A", userId);
 });
 ```
 
-### 10. 테스트 데이터는 직접 생성
+### 10. Create Test Data Directly
 
-**miomock 컨벤션:** Fixture 최소화, 데이터는 테스트 내에서 직접 생성
+**miomock convention:** Minimize fixtures, create data directly within tests
 
 ```typescript
-// 권장 패턴
-test("사용자 생성", async () => {
+// recommended pattern
+test("create user", async () => {
   const [userId] = await UserModel.save([
     {
       employee_no: "2026001",
       login_id: "testuser",
-      name: "테스트유저",
+      name: "Test User",
       institution_id: 1,
-      // ... 필요한 필드들
+      // ... required fields
     },
   ]);
 
   const user = await UserModel.findById("A", userId);
-  expect(user.name).toBe("테스트유저");
+  expect(user.name).toBe("Test User");
 });
 
-// Fixture는 공통 데이터에만 사용
-const f = await loadFixtures(["institution01"]); // 기관 같은 공통 데이터만
+// Fixtures only for shared data
+const f = await loadFixtures(["institution01"]); // only for shared data like institutions
 ```
 
-## 복잡한 엔티티 테스트 전략
+## Complex Entity Test Strategy
 
-엔티티 간 의존성이 복잡한 경우 (Institution → Department → User → Task → TaskParticipant) 테스트 헬퍼 함수를 활용한다.
+When dependencies between entities are complex (Institution → Department → User → Task → TaskParticipant), use test helper functions.
 
-### 테스트 헬퍼 함수 정의
+### Defining Test Helper Functions
 
 ```typescript
 // api/src/testing/test-helpers.ts
@@ -1864,7 +1864,7 @@ import { DepartmentModel } from "../application/department/department.model";
 import { UserModel } from "../application/user/user.model";
 import { TaskModel } from "../application/task/task.model";
 
-// 각 헬퍼는 최소 필수 필드만 요구하고, 나머지는 기본값 제공
+// each helper requires only the minimum required fields and provides defaults for the rest
 let counter = 0;
 function uniqueId(prefix: string) {
   return `${prefix}_${Date.now()}_${++counter}`;
@@ -1875,7 +1875,7 @@ export async function createTestInstitution(
 ) {
   const [id] = await InstitutionModel.save([
     {
-      name: "테스트기관",
+      name: "Test Institution",
       code: uniqueId("INST"),
       ...override,
     },
@@ -1890,7 +1890,7 @@ export async function createTestDepartment(
 ) {
   const [id] = await DepartmentModel.save([
     {
-      name: "테스트부서",
+      name: "Test Department",
       code: uniqueId("DEPT"),
       dept_type: "division",
       institution_id: institutionId,
@@ -1911,7 +1911,7 @@ export async function createTestUser(
     {
       employee_no: uniqueId("EMP"),
       login_id: uniqueId("login"),
-      name: "테스트사용자",
+      name: "Test User",
       institution_id: institutionId,
       ...override,
     },
@@ -1927,7 +1927,7 @@ export async function createTestTask(
   const [id] = await TaskModel.save([
     {
       task_no: uniqueId("TASK"),
-      title: "테스트과제",
+      title: "Test Task",
       year: new Date().getFullYear(),
       begin_date: new Date(),
       end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
@@ -1939,7 +1939,7 @@ export async function createTestTask(
   return id;
 }
 
-// 의존성 체인을 한 번에 생성
+// create the entire dependency chain at once
 export async function createTestTaskWithDeps(
   taskOverride?: Partial<TaskSaveParams>,
 ) {
@@ -1958,33 +1958,33 @@ export async function createTestUserWithDeps(
 }
 ```
 
-### 테스트에서 사용
+### Using in Tests
 
 ```typescript
 import { createTestTaskWithDeps, createTestUser } from "../../testing/test-helpers";
 
 describe("TaskModel", () => {
-  // GOOD: 헬퍼 함수로 간결하게
-  test("Create - 최소 필수 필드로 생성", async () => {
+  // GOOD: concise with helper functions
+  test("Create - create with minimum required fields", async () => {
     const { taskId } = await createTestTaskWithDeps();
 
     const task = await TaskModel.findById("D", taskId);
     expect(task.id).toBe(taskId);
   });
 
-  // GOOD: 특정 필드 커스터마이즈
-  test("Create - 특정 상태로 생성", async () => {
+  // GOOD: customize specific fields
+  test("Create - create with specific status", async () => {
     const { taskId } = await createTestTaskWithDeps({
       status: "approved",
-      title: "승인된 과제",
+      title: "Approved Task",
     });
 
     const task = await TaskModel.findById("D", taskId);
     expect(task.status).toBe("approved");
   });
 
-  // BAD: 매 테스트마다 의존성 직접 생성 (반복적)
-  test("Create - 직접 생성 (권장하지 않음)", async () => {
+  // BAD: creating dependencies directly in every test (repetitive)
+  test("Create - direct creation (not recommended)", async () => {
     const [institutionId] = await InstitutionModel.save([{ name: "...", code: "..." }]);
     assert(institutionId);
     const [userId] = await UserModel.save([{ ... }]);
@@ -1996,14 +1996,14 @@ describe("TaskModel", () => {
 });
 ```
 
-### Subset → SaveParams 변환 헬퍼
+### Subset → SaveParams Conversion Helper
 
-findById 결과를 수정 후 다시 save할 때 relation을 FK로 변환해야 한다:
+When modifying findById results and saving again, relations must be converted to FKs:
 
 ```typescript
 // api/src/testing/test-helpers.ts
 
-// Task Subset A → SaveParams 변환
+// Task Subset A → SaveParams conversion
 export function taskToSaveParams(task: TaskSubsetA): TaskSaveParams {
   const {
     program,
@@ -2024,7 +2024,7 @@ export function taskToSaveParams(task: TaskSubsetA): TaskSaveParams {
   };
 }
 
-// 범용 헬퍼 (주의: relation 필드명이 다른 경우 직접 작성 필요)
+// generic helper (note: write directly if relation field names differ)
 export function relationToFk<T extends Record<string, any>>(
   data: T,
   relationFields: string[],
@@ -2044,7 +2044,7 @@ export function relationToFk<T extends Record<string, any>>(
 }
 ```
 
-### Update 테스트 간소화
+### Simplifying Update Tests
 
 ```typescript
 import {
@@ -2052,30 +2052,30 @@ import {
   taskToSaveParams,
 } from "../../testing/test-helpers";
 
-test("Update - 과제 정보 수정", async () => {
+test("Update - update task info", async () => {
   const { taskId } = await createTestTaskWithDeps();
 
   const task = await TaskModel.findById("A", taskId);
   await TaskModel.save([
     {
       ...taskToSaveParams(task),
-      title: "수정된 제목",
+      title: "Updated Title",
     },
   ]);
 
   const updated = await TaskModel.findById("A", taskId);
-  expect(updated.title).toBe("수정된 제목");
+  expect(updated.title).toBe("Updated Title");
 });
 ```
 
-### 주의사항
+### Notes
 
-**beforeAll/beforeEach 사용 금지:**
+**Do not use beforeAll/beforeEach:**
 
-sonamu의 테스트 환경에서 beforeAll/beforeEach로 데이터를 생성하면 sonamu 내부 코드를 바라보게 될 수 있다. 대신 각 테스트 내에서 헬퍼 함수를 호출한다.
+In sonamu's test environment, creating data with beforeAll/beforeEach may end up referencing sonamu internal code. Instead, call helper functions within each test.
 
 ```typescript
-// WRONG: beforeAll 사용
+// WRONG: using beforeAll
 describe("TaskModel", () => {
   let taskId: number;
   beforeAll(async () => {
@@ -2084,49 +2084,49 @@ describe("TaskModel", () => {
   });
 
   test("...", async () => {
-    // taskId 사용 - 문제 발생 가능
+    // using taskId - may cause problems
   });
 });
 
-// CORRECT: 각 테스트에서 생성
+// CORRECT: create in each test
 describe("TaskModel", () => {
   test("...", async () => {
     const { taskId } = await createTestTaskWithDeps();
-    // taskId 사용
+    // use taskId
   });
 });
 ```
 
 ---
 
-## 흔한 실수와 해결 방법
+## Common Mistakes and Solutions
 
-### ubUpsert는 unique constraint 에러를 던지지 않습니다
+### ubUpsert Does Not Throw Unique Constraint Errors
 
-**→ 위 "실전 주의사항 #4. ubUpsert는 Upsert 동작" 참조**
+**→ See "Practical Notes #4. ubUpsert is an Upsert Operation" above**
 
-### Transaction isolation과 테스트 격리
+### Transaction Isolation and Test Isolation
 
-각 테스트는 독립된 트랜잭션에서 실행되므로 데이터가 격리됩니다. 같은 테스트 내에서도 생성한 데이터가 쿼리에 즉시 보이지 않을 수 있습니다.
+Each test runs in an independent transaction so data is isolated. Even within the same test, data you created may not be immediately visible in queries.
 
 ```typescript
-// BAD: 정확한 개수를 기대하면 실패할 수 있음
-test("역할명 검색", async () => {
-  await createTestRole({ name: "관리자A" });
-  await createTestRole({ name: "관리자B" });
+// BAD: expecting exact count may fail
+test("search by role name", async () => {
+  await createTestRole({ name: "AdminA" });
+  await createTestRole({ name: "AdminB" });
 
   const { rows } = await RoleModel.findMany("A", {
-    keyword: "관리자",
+    keyword: "Admin",
   });
 
-  // Transaction isolation으로 인해 2개가 보이지 않을 수 있음
+  // may not see 2 due to transaction isolation
   expect(rows.length).toBe(2);
 });
 
-// GOOD: 고유 식별자와 유연한 assertion 사용
-test("역할명 검색", async () => {
-  // 고유한 식별자로 충돌 방지
-  const testName = `검색테스트_${Date.now()}`;
+// GOOD: use unique identifier and flexible assertion
+test("search by role name", async () => {
+  // unique identifier to prevent conflicts
+  const testName = `SearchTest_${Date.now()}`;
   await createTestRole({ name: `${testName}A` });
   await createTestRole({ name: `${testName}B` });
 
@@ -2134,28 +2134,28 @@ test("역할명 검색", async () => {
     keyword: testName,
   });
 
-  // 최소 1개 이상 확인
+  // verify at least 1
   expect(rows.length).toBeGreaterThanOrEqual(1);
-  // 내용 검증
+  // content validation
   expect(rows.some((r) => r.name.includes(testName))).toBe(true);
 });
 ```
 
-**패턴:**
+**Patterns:**
 
-- 고유 식별자 사용: `Date.now()`, `uuid()` 등으로 충돌 방지
-- 유연한 assertion: `toBeGreaterThanOrEqual(1)` 대신 `toBe(2)` 사용
-- 내용 검증: 개수보다 실제 데이터가 맞는지 확인
+- Use unique identifiers: `Date.now()`, `uuid()`, etc. to prevent conflicts
+- Flexible assertions: use `toBeGreaterThanOrEqual(1)` instead of `toBe(2)`
+- Content validation: verify actual data matches rather than count
 
-### 정렬 테스트의 조건부 검증
+### Conditional Validation for Sorting Tests
 
-정렬 테스트에서 모든 데이터가 조회되지 않을 수 있으므로 조건부 검증을 사용합니다:
+Since not all data may be returned in sorting tests, use conditional validation:
 
 ```typescript
-// BAD: 항상 두 항목이 조회된다고 가정
-test("정렬 - ID 최신순", async () => {
-  const id1 = await createTestRole({ name: "역할1" });
-  const id2 = await createTestRole({ name: "역할2" });
+// BAD: assumes two items are always returned
+test("sort - newest ID first", async () => {
+  const id1 = await createTestRole({ name: "Role1" });
+  const id2 = await createTestRole({ name: "Role2" });
 
   const { rows } = await RoleModel.findMany("A", {
     orderBy: "id-desc",
@@ -2164,14 +2164,14 @@ test("정렬 - ID 최신순", async () => {
   const id2Index = rows.findIndex((r) => r.id === id2);
   const id1Index = rows.findIndex((r) => r.id === id1);
 
-  // 둘 중 하나라도 없으면 실패
+  // fails if either is missing
   expect(id2Index).toBeLessThan(id1Index);
 });
 
-// GOOD: 조건부 검증
-test("정렬 - ID 최신순", async () => {
-  const id1 = await createTestRole({ name: "역할1" });
-  const id2 = await createTestRole({ name: "역할2" });
+// GOOD: conditional validation
+test("sort - newest ID first", async () => {
+  const id1 = await createTestRole({ name: "Role1" });
+  const id2 = await createTestRole({ name: "Role2" });
 
   const { rows } = await RoleModel.findMany("A", {
     orderBy: "id-desc",
@@ -2180,7 +2180,7 @@ test("정렬 - ID 최신순", async () => {
   const testRoles = rows.filter((r) => [id1, id2].includes(r.id));
   expect(testRoles.length).toBeGreaterThanOrEqual(1);
 
-  // 두 역할이 모두 조회된 경우에만 순서 검증
+  // only validate order when both roles are returned
   if (testRoles.length === 2) {
     const id2Index = rows.findIndex((r) => r.id === id2);
     const id1Index = rows.findIndex((r) => r.id === id1);
@@ -2189,10 +2189,10 @@ test("정렬 - ID 최신순", async () => {
 });
 ```
 
-**핵심:** Transaction isolation으로 인한 불확실성을 받아들이고, 검증 가능한 경우에만 assertion을 수행합니다.
+**Key:** Accept the uncertainty caused by transaction isolation, and only assert when validation is possible.
 
 ---
 
-## Fixture 데이터 생성 팁
+## Fixture Data Creation Tips
 
-**→ 상세 가이드 (unique constraint 처리, 한국어 데이터, gen vs fetch 선택, DB 시퀀스 리셋, FixtureGenerator 커스터마이징): `fixture-cli.md` "실전 팁" 섹션**
+**→ Detailed guide (unique constraint handling, gen vs fetch selection, DB sequence reset, FixtureGenerator customization): `fixture-cli.md` "Practical Tips" section**

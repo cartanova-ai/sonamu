@@ -1,132 +1,132 @@
 ---
 name: sonamu-entity-relations
-description: Sonamu Entity 관계 정의 시 참조. BelongsToOne, HasMany, OneToOne, ManyToMany 설정과 흔한 실수 방지. Use when defining entity relationships.
+description: Reference for defining Sonamu Entity relationships. BelongsToOne, HasMany, OneToOne, ManyToMany configuration and common mistake prevention. Use when defining entity relationships.
 ---
 
-# Entity 관계 정의
+# Entity Relationship Definitions
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/` - ManyToMany 관계 전체 예시
-- `sonamu/examples/miomock/api/src/application/employee/` - BelongsToOne 관계 예시
-- `sonamu/examples/miomock/api/src/application/company/` - HasMany 관계 예시
+**Reference for working code:**
+- `sonamu/examples/miomock/api/src/application/project/` - full ManyToMany relationship example
+- `sonamu/examples/miomock/api/src/application/employee/` - BelongsToOne relationship example
+- `sonamu/examples/miomock/api/src/application/company/` - HasMany relationship example
 
-## 관계 선택 가이드
+## Relationship Selection Guide
 
-### 1:N vs N:M 판단 기준
+### 1:N vs N:M Decision Criteria
 
-| 질문 | 1:N (BelongsToOne) | N:M (ManyToMany 또는 중간 엔티티) |
+| Question | 1:N (BelongsToOne) | N:M (ManyToMany or intermediate entity) |
 |------|-------------------|----------------------------------|
-| A 하나가 B 여러 개에 속할 수 있나? | 아니오 | 예 |
-| 관계에 추가 정보가 필요한가? | 아니오 | 예 → 중간 엔티티 |
-| "A는 B에 속한다"로 표현 가능한가? | 예 | 아니오 |
+| Can one A belong to multiple Bs? | No | Yes |
+| Does the relationship need additional information? | No | Yes → intermediate entity |
+| Can it be expressed as "A belongs to B"? | Yes | No |
 
-**예시:**
-- 게시글 → 작성자: 1:N (게시글 하나는 작성자 한 명)
-- 게시글 ↔ 태그: N:M (게시글 여러 개에 태그 여러 개)
-- 연구원 ↔ 과제: N:M + 중간 엔티티 (참여율, 역할 등 추가 정보)
+**Examples:**
+- Post → Author: 1:N (a post has one author)
+- Post ↔ Tag: N:M (multiple posts have multiple tags)
+- Researcher ↔ Task: N:M + intermediate entity (participation rate, role, and other additional info)
 
-### 중간 엔티티가 필요한 경우
+### When an Intermediate Entity Is Needed
 
-N:M 관계에 **추가 정보**가 있으면 ManyToMany 대신 **중간 엔티티**를 사용합니다.
+If an N:M relationship has **additional information**, use an **intermediate entity** instead of ManyToMany.
 
-| 상황 | ManyToMany | 중간 엔티티 |
+| Situation | ManyToMany | Intermediate entity |
 |------|-----------|------------|
-| 단순 연결만 필요 | ✓ | |
-| 관계에 날짜/기간 필요 | | ✓ |
-| 관계에 역할/상태 필요 | | ✓ |
-| 관계에 수량/비율 필요 | | ✓ |
-| 관계 이력 관리 필요 | | ✓ |
+| Only a simple connection is needed | ✓ | |
+| Relationship needs a date/period | | ✓ |
+| Relationship needs a role/status | | ✓ |
+| Relationship needs a quantity/ratio | | ✓ |
+| Relationship history management needed | | ✓ |
 
-**중간 엔티티 예시:**
+**Intermediate entity example:**
 ```
-연구원 ↔ 과제
-  └─ 참여연구원 (중간 엔티티)
+Researcher ↔ Task
+  └─ ProjectResearcher (intermediate entity)
        - researcher: BelongsToOne → User
        - task: BelongsToOne → Task
-       - role: enum (책임자/참여자)
-       - participation_rate: integer (참여율)
-       - begin_at, end_at: date (참여기간)
+       - role: enum (lead/participant)
+       - participation_rate: integer
+       - begin_at, end_at: date
 ```
 
-### 공동 소유/공동 성과 패턴
+### Joint Ownership / Joint Achievement Pattern
 
-하나의 결과물에 여러 사람이 연결되는 경우:
+When multiple people are connected to a single result:
 
 ```
-성과 ↔ 연구원
-  └─ 성과참여자 (중간 엔티티)
+Achievement ↔ Researcher
+  └─ AchievementParticipant (intermediate entity)
        - achievement: BelongsToOne → Achievement
        - researcher: BelongsToOne → User
-       - is_primary: boolean (최초 등록자 여부)
-       - contribution_rate: integer (기여율, 선택)
+       - is_primary: boolean (whether they are the original registrant)
+       - contribution_rate: integer (optional)
 ```
 
-**핵심**: 성과는 한 번만 등록되고, 참여자들이 연결됨 (중복 방지)
+**Key point**: The achievement is registered once, and participants are linked to it (prevents duplication)
 
-### 상태 이력 패턴
+### Status History Pattern
 
-상태 변경 이력을 관리해야 하는 경우:
+When status change history needs to be managed:
 
 ```
-신청서 (ApplyDeliberation)
-  └─ 신청이력 (ApplyDeliberationHistory)
+Application (ApplyDeliberation)
+  └─ ApplicationHistory (ApplyDeliberationHistory)
        - apply_deliberation: BelongsToOne → ApplyDeliberation
-       - status: enum (이전 상태 또는 변경된 상태)
+       - status: enum (previous status or changed status)
        - changed_at: date
        - changed_by: BelongsToOne → User
-       - reason: string (사유)
+       - reason: string
 ```
 
-### 변경 신청 패턴
+### Change Request Pattern
 
-데이터 변경에 승인 프로세스가 필요한 경우:
+When data changes require an approval process:
 
 ```
-과제 (Task)
-  └─ 과제변경신청 (TaskChangeRequest)
+Task
+  └─ TaskChangeRequest
        - task: BelongsToOne → Task
-       - status: enum (신청/승인/반려)
-       - reason: string (변경 사유)
+       - status: enum (requested/approved/rejected)
+       - reason: string
        - requested_by: BelongsToOne → User
        - requested_at: date
        - approved_by: BelongsToOne → User (nullable)
        - approved_at: date (nullable)
 
-  └─ 변경이력 (TaskChangeHistory)
+  └─ TaskChangeHistory
        - change_request: BelongsToOne → TaskChangeRequest
-       - change_type: enum (추가/삭제/수정)
-       - target_user: BelongsToOne → User (변경 대상)
-       - before_value: json (변경 전, 선택)
-       - after_value: json (변경 후, 선택)
+       - change_type: enum (add/delete/update)
+       - target_user: BelongsToOne → User (subject of change)
+       - before_value: json (before change, optional)
+       - after_value: json (after change, optional)
 ```
 
 ---
 
-## 흔한 도메인 패턴
+## Common Domain Patterns
 
-### 조직 구조 (기관-부서-사용자)
+### Organizational Structure (Institution-Department-User)
 
 ```
-Institution (기관)
+Institution
   └─ departments: HasMany → Department
 
-Department (부서)
+Department
   └─ institution: BelongsToOne → Institution
   └─ employees: HasMany → User
 
-User (사용자)
+User
   └─ institution: BelongsToOne → Institution
   └─ department: BelongsToOne → Department
 ```
 
-### 프로젝트 참여 (프로젝트-참여자)
+### Project Participation (Project-Participant)
 
 ```
-Project (프로젝트)
+Project
   └─ participants: HasMany → ProjectParticipant
   └─ owner: BelongsToOne → User
 
-ProjectParticipant (참여자) [중간 엔티티]
+ProjectParticipant [intermediate entity]
   └─ project: BelongsToOne → Project
   └─ user: BelongsToOne → User
   └─ role: enum
@@ -134,61 +134,61 @@ ProjectParticipant (참여자) [중간 엔티티]
   └─ begin_at, end_at: date
 ```
 
-### 위원회-위원
+### Committee-Member
 
 ```
-Committee (위원회)
+Committee
   └─ members: HasMany → CommitteeMember
 
-CommitteeMember (위원) [중간 엔티티]
+CommitteeMember [intermediate entity]
   └─ committee: BelongsToOne → Committee
   └─ user: BelongsToOne → User
-  └─ member_type: enum (내부/외부)
+  └─ member_type: enum (internal/external)
   └─ participate_year: string
 ```
 
-### 심사/평가 (대상-심사위원-결과)
+### Review/Evaluation (Target-Reviewer-Result)
 
 ```
-EvaluationTarget (평가대상)
+EvaluationTarget
   └─ committee: BelongsToOne → Committee
-  └─ target_entity: BelongsToOne → Task (또는 다형성)
+  └─ target_entity: BelongsToOne → Task (or polymorphic)
 
-EvaluationResult (평가결과)
+EvaluationResult
   └─ target: BelongsToOne → EvaluationTarget
   └─ evaluator: BelongsToOne → CommitteeMember
-  └─ score: integer 또는 enum (가결/부결)
+  └─ score: integer or enum (approved/rejected)
   └─ opinion: string
 ```
 
-### 단계별 데이터 흐름 (신청 → 확정)
+### Step-by-Step Data Flow (Application → Confirmation)
 
-데이터가 단계별로 넘어가는 경우:
+When data moves through stages:
 
 ```
-ApplyDeliberation (심의신청)
-  └─ task: OneToOne → Task (가결 시 생성된 과제 참조)
+ApplyDeliberation
+  └─ task: OneToOne → Task (references the task created on approval)
 
-Task (과제)
-  └─ apply_deliberation: BelongsToOne → ApplyDeliberation (원본 신청 참조)
+Task
+  └─ apply_deliberation: BelongsToOne → ApplyDeliberation (references the original application)
 ```
 
-**핵심**: 양방향 참조로 어느 쪽에서든 조회 가능
+**Key point**: Bidirectional references allow querying from either side
 
 ---
 
-## 어떤 관계를 사용해야 하나?
+## Which Relationship to Use?
 
-| 상황 | 관계 타입 | 예시 |
+| Situation | Relationship type | Example |
 |------|----------|------|
-| "A는 B에 속한다" (N:1) | `BelongsToOne` | Post → User (작성자) |
-| "A는 여러 B를 가진다" (1:N) | `HasMany` | User → Posts |
-| "A와 B는 1:1이다" | `OneToOne` | User ↔ Employee |
-| "A와 B는 다대다다" | `ManyToMany` | Post ↔ Tag |
+| "A belongs to B" (N:1) | `BelongsToOne` | Post → User (author) |
+| "A has many Bs" (1:N) | `HasMany` | User → Posts |
+| "A and B are 1:1" | `OneToOne` | User ↔ Employee |
+| "A and B are many-to-many" | `ManyToMany` | Post ↔ Tag |
 
-## BelongsToOne (N:1) - 가장 흔함
+## BelongsToOne (N:1) - Most Common
 
-**상황**: Post가 User에 속할 때 (작성자)
+**Situation**: When a Post belongs to a User (author)
 
 ```json
 {
@@ -199,25 +199,25 @@ Task (과제)
   "nullable": true,
   "onUpdate": "CASCADE",
   "onDelete": "SET NULL",
-  "desc": "작성자"
+  "desc": "author"
 }
 ```
 
-**자동 생성**: `author_id` 컬럼 (FK)
+**Auto-generated**: `author_id` column (FK)
 
-**주의**: `author_id`를 props에 직접 정의하지 말 것 (자동 생성됨)
+**Note**: Do not define `author_id` directly in props (it is auto-generated)
 
-**선택 옵션:**
-- `customJoinClause`: 커스텀 JOIN 조건 SQL (FK 대신 직접 JOIN 조건 지정)
-- `useConstraint`: FK constraint 생성 여부 (기본: `true`). `false`면 FK 컬럼은 생성되지만 DB constraint는 생성하지 않음
+**Optional options:**
+- `customJoinClause`: custom JOIN condition SQL (specify JOIN condition directly instead of FK)
+- `useConstraint`: whether to create FK constraint (default: `true`). If `false`, the FK column is created but no DB constraint is generated
 
-### 코드에서 FK 사용하기
+### Using FK in Code
 
-BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, Model이나 FixtureGenerator 등 코드에서 이를 직접 다룰 때는 올바른 필드명을 사용해야 합니다.
+Since a BelongsToOne relationship automatically creates a `{name}_id` column, use the correct field name when working with it directly in Model, FixtureGenerator, etc.
 
-**올바른 패턴:**
+**Correct pattern:**
 ```typescript
-// Entity 정의
+// Entity definition
 {
   "type": "relation",
   "name": "company",
@@ -225,53 +225,53 @@ BelongsToOne 관계는 `{name}_id` 컬럼을 자동 생성하므로, Model이나
   "relationType": "BelongsToOne"
 }
 
-// Model save() 또는 FixtureGenerator에서
+// In Model save() or FixtureGenerator
 const department = {
-  name: "개발팀",
-  company_id: 1  // ✓ CORRECT: {relation_name}_id 형태
+  name: "Engineering",
+  company_id: 1  // ✓ CORRECT: {relation_name}_id form
 };
 
 await puri.ubRegister("departments", department);
 ```
 
-**잘못된 패턴 (흔한 실수):**
+**Wrong pattern (common mistake):**
 ```typescript
-// ✗ WRONG: relation name을 직접 사용
+// ✗ WRONG: using relation name directly
 const department = {
-  name: "개발팀",
-  company: 1  // FK가 설정되지 않음! company_id가 NULL로 저장됨
+  name: "Engineering",
+  company: 1  // FK is not set! company_id is saved as NULL
 };
 
-// ✗ WRONG: 객체로 전달
+// ✗ WRONG: passing as object
 const department = {
-  name: "개발팀",
-  company: { id: 1 }  // FK가 설정되지 않음!
+  name: "Engineering",
+  company: { id: 1 }  // FK is not set!
 };
 ```
 
-**FixtureGenerator 예시:**
+**FixtureGenerator example:**
 ```typescript
-// fixture-generator.ts 내부
+// inside fixture-generator.ts
 if (isBelongsToOneRelationProp(prop) ||
     (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
   const relationValue = await this.generateRelationValue(entity, prop, context);
 
-  // ✓ CORRECT: {prop.name}_id로 FK 설정
+  // ✓ CORRECT: set FK as {prop.name}_id
   fixture[`${prop.name}_id`] = relationValue;
 } else {
   fixture[prop.name] = relationValue;
 }
 ```
 
-**핵심:**
-- Entity JSON: `"name": "company"` (relation 이름)
-- DB 컬럼: `company_id` (자동 생성)
-- TypeScript 코드: `company_id` 사용 (FK 설정)
-- Entity subset: `"company.id"` 형태 (FieldExpr)
+**Key points:**
+- Entity JSON: `"name": "company"` (relation name)
+- DB column: `company_id` (auto-generated)
+- TypeScript code: use `company_id` (setting FK)
+- Entity subset: `"company.id"` form (FieldExpr)
 
-## HasMany (1:N) - 역방향 조회용
+## HasMany (1:N) - For Reverse Lookup
 
-**상황**: User의 Posts를 조회하고 싶을 때
+**Situation**: When you want to query a User's Posts
 
 ```json
 {
@@ -280,38 +280,38 @@ if (isBelongsToOneRelationProp(prop) ||
   "with": "Post",
   "relationType": "HasMany",
   "joinColumn": "author_id",
-  "desc": "작성한 게시글"
+  "desc": "authored posts"
 }
 ```
 
-**필수**: `joinColumn` = 상대 테이블의 FK 컬럼명
+**Required**: `joinColumn` = FK column name in the related table
 
-**선택**: `fromColumn` = 자기 테이블의 매칭 컬럼 (기본: `id`). 비표준 PK로 JOIN해야 할 때 사용
+**Optional**: `fromColumn` = matching column in your own table (default: `id`). Use when JOIN needs to use a non-standard PK
 
-**중요**: `joinColumn` 필드가 정의되지 않으면 Zod 스키마 검증 오류가 발생합니다.
+**Important**: If the `joinColumn` field is not defined, a Zod schema validation error will occur.
 
-**DB 컬럼 생성 안 됨** (virtual)
+**No DB column is created** (virtual)
 
-**언제 필요한가?**
-- Subset에서 `user.posts.title` 같은 역방향 조회가 필요할 때
-- 필요 없으면 생략해도 됨
+**When is it needed?**
+- When reverse lookup like `user.posts.title` is needed in a Subset
+- Can be omitted if not needed
 
-### HasMany 성능 최적화
+### HasMany Performance Optimization
 
-HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
-- 부모 레코드 ID들을 배치(batch)로 수집
-- 단일 `whereIn` 쿼리로 모든 자식 레코드 조회
-- **N+1 쿼리 문제 발생하지 않음**
+HasMany relationships are automatically optimized using the **DataLoader pattern**:
+- Parent record IDs are collected in batches
+- All child records are queried in a single `whereIn` query
+- **No N+1 query problem**
 
-이 최적화는 자동으로 적용되므로 추가 설정이 필요 없습니다.
+This optimization is applied automatically and requires no additional configuration.
 
-**구현 위치**: `modules/sonamu/src/database/base-model.ts`의 `processLoaders` 메서드
+**Implementation location**: `processLoaders` method in `modules/sonamu/src/database/base-model.ts`
 
 ## OneToOne (1:1)
 
-**상황**: User와 Employee가 1:1일 때
+**Situation**: When User and Employee are 1:1
 
-**FK를 가지는 쪽** (Employee):
+**The side holding the FK** (Employee):
 ```json
 {
   "type": "relation",
@@ -321,11 +321,11 @@ HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
   "hasJoinColumn": true,
   "onUpdate": "CASCADE",
   "onDelete": "CASCADE",
-  "desc": "사용자"
+  "desc": "user"
 }
 ```
 
-**FK가 없는 쪽** (User):
+**The side without the FK** (User):
 ```json
 {
   "type": "relation",
@@ -333,19 +333,19 @@ HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
   "with": "Employee",
   "relationType": "OneToOne",
   "nullable": true,
-  "desc": "직원정보"
+  "desc": "employee info"
 }
 ```
 
-**핵심**: `hasJoinColumn: true`인 쪽에만 FK 생성 (생략 시 FK 없음, optional 옵션)
+**Key point**: FK is only created on the side with `hasJoinColumn: true` (omitting it means no FK; it is an optional option)
 
-**선택 옵션 (`hasJoinColumn: true`일 때):**
-- `customJoinClause`: 커스텀 JOIN 조건 SQL
-- `useConstraint`: FK constraint 생성 여부 (기본: `true`)
+**Optional options (when `hasJoinColumn: true`):**
+- `customJoinClause`: custom JOIN condition SQL
+- `useConstraint`: whether to create FK constraint (default: `true`)
 
 ## ManyToMany (N:M)
 
-**상황**: Post와 Tag가 다대다일 때
+**Situation**: When Post and Tag are many-to-many
 
 ```json
 {
@@ -356,47 +356,47 @@ HasMany 관계는 자동으로 **DataLoader 패턴**으로 최적화됩니다:
   "joinTable": "posts__tags",
   "onUpdate": "CASCADE",
   "onDelete": "CASCADE",
-  "desc": "태그"
+  "desc": "tags"
 }
 ```
 
-**필수**: `joinTable`, `onUpdate`, `onDelete`
+**Required**: `joinTable`, `onUpdate`, `onDelete`
 
-### ManyToMany 네이밍 규칙
+### ManyToMany Naming Conventions
 
-**joinTable (조인 테이블명)**: 언더바 **2개** 사용
+**joinTable (join table name)**: use **double** underscore
 ```
 User ↔ Role → user__roles
-Post ↔ Tag → posts__tags (알파벳 순 권장)
+Post ↔ Tag → posts__tags (alphabetical order recommended)
 ```
 
-**joinColumn (조인 테이블 컬럼명)**: 언더바 **1개** 사용
+**joinColumn (join table column name)**: use **single** underscore
 ```
-user__roles 테이블:
-  - user_id (언더바 1개)
-  - role_id (언더바 1개)
+user__roles table:
+  - user_id (single underscore)
+  - role_id (single underscore)
 ```
 
-**예시**:
+**Example**:
 ```typescript
 // Entity: User
 {
   "name": "roles",
   "relationType": "ManyToMany",
   "with": "Role",
-  "joinTable": "user__roles"  // 언더바 2개
+  "joinTable": "user__roles"  // double underscore
 }
 
-// Model save()에서 사용:
+// In Model save():
 puri.ubRegister("user__roles", {
-  user_id,   // 언더바 1개
-  role_id    // 언더바 1개
+  user_id,   // single underscore
+  role_id    // single underscore
 });
 ```
 
-## 자기 참조
+## Self-Reference
 
-**상황**: Employee의 manager도 Employee일 때
+**Situation**: When an Employee's manager is also an Employee
 
 ```json
 {
@@ -407,71 +407,71 @@ puri.ubRegister("user__roles", {
   "nullable": true,
   "onUpdate": "CASCADE",
   "onDelete": "SET NULL",
-  "desc": "상위 매니저"
+  "desc": "direct manager"
 }
 ```
 
-**필수**: `nullable: true` (최상위는 manager 없음)
+**Required**: `nullable: true` (top-level has no manager)
 
 ## IMPORTANT: parentId and Parent Subset HasMany Cannot Be Used Together
 
-### 문제 상황
+### Problem
 
-parentId를 설정하면 자식 엔티티의 **BaseSchema에서 FK 컬럼이 제거**됩니다.
-이 상태에서 부모의 subset에 자식을 HasMany로 포함시키면 SSO LoaderQuery가
-`whereIn("child.parent_fk", fromIds)`를 실행하는데, FK가 없어서 TypeScript 오류 발생.
+When parentId is set, the **FK column is removed from the child entity's BaseSchema**.
+In this state, if the parent's subset includes the child via HasMany, the SSO LoaderQuery
+executes `whereIn("child.parent_fk", fromIds)`, but since the FK is missing, a TypeScript error occurs.
 
 ```
-오류: '{child_table}.{parent_fk}' is not assignable to type 'AvailableColumns'
+Error: '{child_table}.{parent_fk}' is not assignable to type 'AvailableColumns'
 ```
 
-### 해결: 둘 중 하나 선택
+### Solution: Choose One of the Two
 
-| 요구사항 | 선택 | parentId | 부모 subset에서 HasMany |
+| Requirement | Choice | parentId | HasMany in parent subset |
 |---------|------|----------|------------------------|
-| 부모 상세에서 자식 목록 함께 조회 | 독립 엔티티 | ✗ 미사용 | ✓ 가능 |
-| 자식은 부모 통해서만 CRUD | parentId 사용 | ✓ 사용 | ✗ 불가 |
+| Query child list together in parent detail view | Independent entity | ✗ not used | ✓ possible |
+| Child is CRUD'd only through parent | Use parentId | ✓ used | ✗ not possible |
 
-### 판단 기준
+### Decision Criteria
 
-| 질문 | 예 → 독립 엔티티 | 아니오 → parentId |
+| Question | Yes → Independent entity | No → parentId |
 |------|-----------------|------------------|
-| 자식만 단독 조회/수정할 일이 있나? | ✓ | |
-| 관리자 화면에 자식 별도 목록 페이지 필요? | ✓ | |
-| 부모 상세에서 자식 목록을 subset으로 조회? | ✓ | |
+| Will the child ever be queried/modified standalone? | ✓ | |
+| Does the admin screen need a separate child list page? | ✓ | |
+| Is the child list queried as a subset in the parent detail? | ✓ | |
 
-### 예시
+### Example
 
 ```json
-// DO NOT - Incorrect (오류 발생)
+// DO NOT - Incorrect (causes error)
 // entity: ApplyDeliberationResearcher
-{ "parentId": "apply_deliberation_id" }  // FK가 BaseSchema에서 제거됨
+{ "parentId": "apply_deliberation_id" }  // FK removed from BaseSchema
 
 // entity: ApplyDeliberation subset
-{ "A": ["*", { "researchers": ["*"] }] }  // SSO LoaderQuery 오류
+{ "A": ["*", { "researchers": ["*"] }] }  // SSO LoaderQuery error
 
-// DO - Correct (독립 엔티티로 변경, parentId 제거)
-// entity: ApplyDeliberationResearcher - parentId 없음, FK가 BaseSchema에 유지됨
+// DO - Correct (change to independent entity, remove parentId)
+// entity: ApplyDeliberationResearcher - no parentId, FK is preserved in BaseSchema
 // entity: ApplyDeliberation subset
-{ "A": ["*", { "researchers": ["*"] }] }  // 정상 작동
+{ "A": ["*", { "researchers": ["*"] }] }  // works correctly
 ```
 
 ---
 
-## FK 참조 규칙 (FieldExpr)
+## FK Reference Rules (FieldExpr)
 
-BelongsToOne 관계를 정의하면 `{name}_id` 컬럼이 자동 생성됩니다. **subsets에서는 `{name}.id` 형태(FieldExpr)로 참조**하고, **indexes에서는 실제 DB 컬럼명(`{name}_id`)을 사용**합니다.
+When a BelongsToOne relationship is defined, a `{name}_id` column is automatically created. **In subsets, reference using the `{name}.id` form (FieldExpr)**, and **in indexes, use the actual DB column name (`{name}_id`)**.
 
-### 적용 대상
+### Where It Applies
 
-| 위치 | 사용 형식 | 예시 |
+| Location | Format | Example |
 |------|----------|------|
 | subsets | FieldExpr (`relation.field`) | `"user.id"` |
-| indexes | 실제 DB 컬럼명 | `"user_id"` |
-| unique | 실제 DB 컬럼명 | `["user_id", "date"]` |
+| indexes | actual DB column name | `"user_id"` |
+| unique | actual DB column name | `["user_id", "date"]` |
 | search | FieldExpr (`relation.field`) | `"user.id"` |
 
-### 예시
+### Example
 
 ```json
 {
@@ -480,7 +480,7 @@ BelongsToOne 관계를 정의하면 `{name}_id` 컬럼이 자동 생성됩니다
     { "type": "relation", "name": "user", "with": "User", "relationType": "BelongsToOne" }
   ],
   "subsets": {
-    "A": ["id", "user.id", "api_path"]  // FieldExpr 사용
+    "A": ["id", "user.id", "api_path"]  // use FieldExpr
   },
   "indexes": [
     {
@@ -492,33 +492,33 @@ BelongsToOne 관계를 정의하면 `{name}_id` 컬럼이 자동 생성됩니다
 }
 ```
 
-### subsets에서의 에러 메시지
+### Error Message in Subsets
 
 ```
-Error: ApiLog -- 잘못된 FieldExpr 'user_id' (사용 가능한 props: id, created_at, ..., user)
+Error: ApiLog -- invalid FieldExpr 'user_id' (available props: id, created_at, ..., user)
 ```
 
-subsets에서 이 에러가 보이면 `user_id` → `user.id`로 변경하세요. indexes에서는 `user_id`가 올바른 형식입니다.
+If you see this error in subsets, change `user_id` → `user.id`. In indexes, `user_id` is the correct format.
 
-> **참고:** indexes와 subsets의 참조 방식 차이에 대한 상세 설명은 `entity-basic.md`의 "IMPORTANT: indexes에서 FK 컬럼명은 실제 DB 컬럼명을 사용한다" 섹션을 참고하세요.
+> **Note:** For a detailed explanation of the difference in reference methods between indexes and subsets, see the "IMPORTANT: In indexes, use the actual DB column name for FK columns" section in `entity-basic.md`.
 
 ---
 
-## 흔한 실수
+## Common Mistakes
 
-| 실수 | 해결 |
+| Mistake | Fix |
 |------|------|
-| 별도 `"relations": [...]` 섹션 사용 | `props` 안에 `"type": "relation"`으로 정의 |
-| BelongsToOne에서 `{name}_id` 직접 정의 | 삭제 (자동 생성됨) |
-| Subset에서 `user_id` 직접 사용 | `user.id` 형태로 변경 |
-| OneToOne에서 FK 의도와 불일치 | FK 가지는 쪽에 `hasJoinColumn: true` 명시 (optional, 생략 시 FK 없음) |
-| HasMany에서 `joinColumn` 누락 | 상대 테이블의 FK 컬럼명 지정 |
-| ManyToMany에서 `onUpdate/onDelete` 누락 | 필수로 추가 |
-| joinTable 이름 불일치 | 일관된 네이밍 권장 (알파벳 순) |
-| 자기참조에서 `nullable: false` | `nullable: true`로 변경 |
+| Using a separate `"relations": [...]` section | Define with `"type": "relation"` inside `props` |
+| Directly defining `{name}_id` in BelongsToOne | Delete it (auto-generated) |
+| Using `user_id` directly in Subset | Change to `user.id` form |
+| Mismatch of FK intent in OneToOne | Explicitly set `hasJoinColumn: true` on the side holding the FK (optional, no FK if omitted) |
+| Missing `joinColumn` in HasMany | Specify the FK column name in the related table |
+| Missing `onUpdate/onDelete` in ManyToMany | Add as required |
+| Inconsistent joinTable name | Consistent naming recommended (alphabetical order) |
+| `nullable: false` in self-reference | Change to `nullable: true` |
 
-## Subset에서 관계 사용
-- `subset.md` 참조
+## Using Relationships in Subsets
+- See `subset.md`
 ```json
 {
   "subsets": {
@@ -533,23 +533,23 @@ subsets에서 이 에러가 보이면 `user_id` → `user.id`로 변경하세요
 }
 ```
 
-- dot notation으로 중첩 가능
-- JOIN 자동 생성
+- Nesting is possible via dot notation
+- JOIN is auto-generated
 
 ---
 
-## ManyToMany 관계의 타입 정의
+## Type Definitions for ManyToMany Relationships
 
-ManyToMany 관계는 Entity JSON에서 정의하지만, SaveParams에는 join 테이블 데이터를 배열로 전달해야 합니다.
+ManyToMany relationships are defined in Entity JSON, but SaveParams must pass join table data as an array.
 
-참고: sonamu/examples/miomock/api/src/application/project
+Reference: sonamu/examples/miomock/api/src/application/project
 
-### SaveParams에서 ManyToMany 처리
+### Handling ManyToMany in SaveParams
 
-**패턴: BaseSchema.partial().extend() 사용**
+**Pattern: Use BaseSchema.partial().extend()**
 
 ```typescript
-// project.types.ts (miomock 예시)
+// project.types.ts (miomock example)
 import { z } from "zod";
 import { ProjectBaseSchema } from "../sonamu.generated";
 
@@ -563,26 +563,26 @@ export const ProjectSaveParams = ProjectBaseSchema
     tag_ids: z.array(z.number().int().positive()),       // ManyToMany: tags
   })
   .omit({
-    virtual_test: true,           // virtual 필드 제거
+    virtual_test: true,           // remove virtual fields
     virtual_query_test: true,
-    textsearchable_index_col: true,  // generated 필드 제거
+    textsearchable_index_col: true,  // remove generated fields
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
-**중요:**
-- BaseSchema에는 ManyToMany 관계 필드가 없으므로 `.extend()`로 추가
-- 필드명은 `{relation_name}_ids` 형태 (예: employee → employee_ids, tags → tag_ids)
-- 타입 검증: `z.array(z.number().int().positive())` - 양수 정수만 허용
-- virtual/generated 필드는 `.omit()`으로 제거
-- 양방향 ManyToMany는 한쪽에서만 관리 (Project만, Employee는 관리 안함)
+**Important:**
+- Since BaseSchema does not have ManyToMany relation fields, add them with `.extend()`
+- Field name should be in the `{relation_name}_ids` form (e.g. employee → employee_ids, tags → tag_ids)
+- Type validation: `z.array(z.number().int().positive())` - only positive integers allowed
+- Remove virtual/generated fields with `.omit()`
+- Bidirectional ManyToMany is managed from one side only (Project only, not Employee)
 
-### Model.save()에서 처리 (권장 패턴)
+### Handling in Model.save() (Recommended Pattern)
 
-**효율적인 패턴: whereNotIn으로 변경분만 삭제**
+**Efficient pattern: Delete only changed entries with whereNotIn**
 
 ```typescript
-// project.model.ts (miomock 예시)
+// project.model.ts (miomock example)
 async save(spa: ProjectSaveParams[]): Promise<number[]> {
   const puri = this.getPuri("w");
 
@@ -610,11 +610,11 @@ async save(spa: ProjectSaveParams[]): Promise<number[]> {
     const peIds = await trx.ubUpsert("projects__employees");
     const ptIds = await trx.ubUpsert("project_tags");
 
-    // 핵심: whereNotIn으로 현재 요청에 없는 관계만 삭제 (효율적)
+    // Key: delete only relationships not in the current request with whereNotIn (efficient)
     await trx
       .table("projects__employees")
       .whereIn("project_id", ids)
-      .whereNotIn("id", peIds)  // ubUpsert 결과에 없는 것만 삭제
+      .whereNotIn("id", peIds)  // delete only those not in ubUpsert result
       .delete();
 
     await trx
@@ -628,7 +628,7 @@ async save(spa: ProjectSaveParams[]): Promise<number[]> {
 }
 ```
 
-**기본 패턴: 전체 삭제 후 재등록 (간단하지만 비효율적)**
+**Basic pattern: Delete all then re-register (simple but inefficient)**
 
 ```typescript
 async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
@@ -644,13 +644,13 @@ async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
   return wdb.transaction(async (trx) => {
     const ids = await trx.ubUpsert("question_collections");
 
-    // 전체 삭제 (비효율적이지만 간단)
+    // Delete all (inefficient but simple)
     await trx
       .table("question_collections__survey_categories")
       .whereIn("question_collection_id", ids)
       .delete();
 
-    // 새 관계 등록
+    // Register new relationships
     ids.forEach((collectionId, index) => {
       const categoryIds = categoryIdsList[index];
       if (categoryIds && categoryIds.length > 0) {
@@ -669,48 +669,48 @@ async save(spa: QuestionCollectionSaveParams[]): Promise<number[]> {
 }
 ```
 
-### Update 시 주의사항
+### Notes on Update
 
-Update 테스트에서 조회한 데이터를 다시 save할 때, ManyToMany 관계 필드를 다시 제공해야 합니다:
+When re-saving data queried in an update test, ManyToMany relationship fields must be provided again:
 
 ```typescript
-// WRONG - category_ids 없이 save하면 관계가 모두 삭제됨
+// WRONG - saving without category_ids will delete all relationships
 const { categories, ...collectionData } = collection;
 await QuestionCollectionModel.save([
-  { ...collectionData, title: "수정된제목" }
+  { ...collectionData, title: "Updated Title" }
 ]);
 
-// CORRECT - categories에서 ids 추출하여 전달
+// CORRECT - extract ids from categories and pass them
 const { categories, ...collectionData } = collection;
 const category_ids = categories?.map(c => c.id) ?? [];
 await QuestionCollectionModel.save([
-  { ...collectionData, category_ids, title: "수정된제목" }
+  { ...collectionData, category_ids, title: "Updated Title" }
 ]);
 ```
 
-### 양방향 ManyToMany 관리
+### Managing Bidirectional ManyToMany
 
-**원칙: 한쪽에서만 관리**
+**Principle: Manage from one side only**
 
 ```typescript
 // Project Entity: employee (ManyToMany)
-// Employee Entity: projs (ManyToMany, 같은 join 테이블)
+// Employee Entity: projs (ManyToMany, same join table)
 
-// project.types.ts - employee_ids 관리
+// project.types.ts - manages employee_ids
 export const ProjectSaveParams = ProjectBaseSchema
   .extend({
     employee_ids: z.array(z.number().int().positive()),
   });
 
-// employee.types.ts - proj_ids 관리 안함
+// employee.types.ts - does not manage proj_ids
 export const EmployeeSaveParams = EmployeeBaseSchema
   .partial({ id: true, created_at: true });
-// proj_ids를 추가하지 않음
+// proj_ids is not added
 ```
 
-**이유:**
-- 양쪽에서 관리하면 동기화 문제 발생
-- 주 Entity(Project)에서만 관리하는 것이 명확
-- Employee 조회 시 projs는 자동으로 join되어 조회됨
+**Reason:**
+- Managing from both sides causes synchronization issues
+- Managing from the primary Entity (Project) only is clearer
+- When querying Employee, projs are automatically joined and returned
 
-**핵심:** ManyToMany 관계는 Entity JSON에서 정의되지만, 코드에서는 `{relation}_ids` 배열로 명시적으로 관리하며, 양방향 관계는 한쪽에서만 관리합니다.
+**Key point:** ManyToMany relationships are defined in Entity JSON, but in code they are explicitly managed as `{relation}_ids` arrays, and bidirectional relationships are managed from one side only.

@@ -1,77 +1,77 @@
 ---
 name: sonamu-auth
-description: Sonamu better-auth 인증 시스템. 엔티티 자동 생성, Guards 설정, Context 접근. Use when setting up authentication or implementing auth-related features.
+description: Sonamu better-auth authentication system. Automatic entity generation, Guards configuration, Context access. Use when setting up authentication or implementing auth-related features.
 ---
 
-# better-auth 인증 시스템
+# better-auth Authentication System
 
-> 이 문서는 실제 Sonamu 소스코드를 기반으로 작성되었습니다.
+> This document is based on actual Sonamu source code.
 
-## 엔티티 자동 생성
+## Automatic Entity Generation
 
-**소스코드:**
-- CLI: `modules/sonamu/src/bin/cli.ts` (auth_generate 함수)
-- 생성 로직: `modules/sonamu/src/auth/auth-generator.ts`
-- 엔티티 정의: `modules/sonamu/src/auth/better-auth-entities.ts`
+**Source code:**
+- CLI: `modules/sonamu/src/bin/cli.ts` (auth_generate function)
+- Generation logic: `modules/sonamu/src/auth/auth-generator.ts`
+- Entity definitions: `modules/sonamu/src/auth/better-auth-entities.ts`
 
-**IMPORTANT: generate 실행 전에 반드시 사용자에게 플러그인 사용 여부를 확인해야 합니다.**
+**IMPORTANT: Before running generate, you must confirm with the user which plugins they want to use.**
 
-플러그인 선택은 generate 시점에 함께 이루어지며, 나중에 추가도 가능하지만 처음부터 명시하는 것이 좋습니다.
-지원 플러그인 목록과 용도는 `auth-plugins.md`를 참고하세요.
+Plugin selection happens at generate time and can be added later, but it is best to specify them from the start.
+Refer to `auth-plugins.md` for the list of supported plugins and their purposes.
 
-### 플러그인 확인 흐름
+### Plugin Confirmation Flow
 
-**[Step 1] generate 전 확인 (필수)**
+**[Step 1] Confirm before generate (required)**
 
-> "어떤 인증 방식을 사용할 계획인가요? 기본 이메일/소셜 로그인 외에 추가 플러그인이 필요한지 확인해 주세요.
-> 지원 플러그인: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
+> "What authentication method do you plan to use? Please confirm whether you need additional plugins beyond the default email/social login.
+> Supported plugins: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
 
-**[Step 1-A] 사용자가 "나중에 하겠다"고 응답한 경우:**
+**[Step 1-A] If the user responds "I'll do it later":**
 
-아래 안내를 제공한 후 플러그인 없이 generate를 진행합니다:
+Provide the following guidance and proceed with generate without plugins:
 
-> "알겠습니다. 플러그인은 초기 마이그레이션 실행 전까지 추가하는 것이 가장 좋습니다.
-> 마이그레이션 전에 다시 확인드리겠습니다."
+> "Understood. It's best to add plugins before the initial migration is run.
+> I'll confirm again before the migration."
 
-그리고 **`plugins_deferred: true`** 상태를 기억합니다.
+And remember the **`plugins_deferred: true`** state.
 
-**[Step 2] migrate run 직전 재확인 (CRITICAL — `plugins_deferred: true`인 경우 반드시 실행)**
+**[Step 2] Re-confirm just before migrate run (CRITICAL — must be done if `plugins_deferred: true`)**
 
-마이그레이션을 실행하기 전, 반드시 다시 확인합니다:
+Before running the migration, always confirm again:
 
-> "마이그레이션 실행 전입니다. 지금이 플러그인을 추가하기 가장 좋은 시점입니다.
-> 추가할 플러그인이 있으면 알려주세요. 없으면 그대로 진행합니다.
-> 지원 플러그인: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
+> "You are about to run a migration. This is the best time to add plugins.
+> If you want to add any plugins, please let me know. Otherwise, we'll proceed as-is.
+> Supported plugins: `admin`, `organization`, `2fa`, `username`, `phone-number`, `api-key`, `jwt`, `passkey`, `sso`, `anonymous`"
 
-- 플러그인 추가 시: `pnpm sonamu auth generate --plugins <목록>` 실행 후 migrate 진행
-- 없으면: migrate 그대로 진행
+- If adding plugins: run `pnpm sonamu auth generate --plugins <list>` then proceed with migrate
+- If none: proceed with migrate as-is
 
 ```bash
-# 플러그인 없이 기본 엔티티만
+# Basic entities only, no plugins
 pnpm sonamu auth generate
 
-# 플러그인 포함
+# With plugins
 pnpm sonamu auth generate --plugins admin,2fa,username
 ```
 
-생성되는 4개 엔티티 (`betterAuthV1` 배열):
+The 4 entities generated (`betterAuthV1` array):
 
-| 엔티티 | 테이블 | 주요 필드 |
+| Entity | Table | Key fields |
 |--------|--------|-----------|
 | User | users | id, name, email, email_verified, image |
 | Session | sessions | id, token, expires_at, user_id |
 | Account | accounts | id, provider_id, access_token, user_id |
 | Verification | verifications | id, identifier, value, expires_at |
 
-**동작 방식:**
-- 엔티티가 없으면 새로 생성
-- 기존 엔티티가 있으면 누락된 필드만 추가
-- 타입이 변경된 필드는 자동 업데이트
-- snake_case 컬럼명 사용 (better-auth는 camelCase)
+**How it works:**
+- If the entity does not exist, it is created fresh
+- If the entity already exists, only missing fields are added
+- Fields with changed types are updated automatically
+- Uses snake_case column names (better-auth uses camelCase)
 
-## 필드 매핑 (자동 적용)
+## Field Mapping (Applied Automatically)
 
-**소스코드:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
+**Source code:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
 
 | better-auth | Sonamu |
 |-------------|--------|
@@ -80,16 +80,16 @@ pnpm sonamu auth generate --plugins admin,2fa,username
 | `userId` | `user_id` |
 | `expiresAt` | `expires_at` |
 
-## Config 설정
+## Config Setup
 
-**소스코드:** `modules/sonamu/src/api/config.ts` (SonamuServerOptions.auth)
+**Source code:** `modules/sonamu/src/api/config.ts` (SonamuServerOptions.auth)
 
 ```typescript
 // sonamu.config.ts
 server: {
   auth: {
     emailAndPassword: { enabled: true },
-    // 소셜 로그인 추가 시
+    // To add social login:
     // socialProviders: {
     //   google: {
     //     clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -100,18 +100,18 @@ server: {
 }
 ```
 
-## API 엔드포인트 (자동 등록)
+## API Endpoints (Auto-registered)
 
-| 경로 | 메서드 | 설명 |
+| Path | Method | Description |
 |------|--------|------|
-| `/api/auth/sign-up/email` | POST | 회원가입 |
-| `/api/auth/sign-in/email` | POST | 로그인 |
-| `/api/auth/sign-out` | POST | 로그아웃 |
-| `/api/auth/get-session` | GET | 세션 조회 |
+| `/api/auth/sign-up/email` | POST | Sign up |
+| `/api/auth/sign-in/email` | POST | Sign in |
+| `/api/auth/sign-out` | POST | Sign out |
+| `/api/auth/get-session` | GET | Get session |
 
-## Context에서 user/session 접근
+## Accessing user/session from Context
 
-**소스코드:** `modules/sonamu/src/api/context.ts` (AuthContext 타입 정의)
+**Source code:** `modules/sonamu/src/api/context.ts` (AuthContext type definition)
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -122,42 +122,42 @@ async me(): Promise<UserSubsetA | null> {
   
   if (!user) return null;
   
-  // user.id, user.email, user.name 등 접근 가능
+  // user.id, user.email, user.name, etc. are accessible
   return this.findById("A", user.id);
 }
 ```
 
-## Guards 활용
+## Using Guards
 
-**소스코드:** `modules/sonamu/src/api/decorators.ts` (GuardKeys 인터페이스)
+**Source code:** `modules/sonamu/src/api/decorators.ts` (GuardKeys interface)
 
-### 기본 제공 Guard
+### Built-in Guards
 
-Sonamu는 3가지 기본 Guard를 제공합니다:
-- `query`: 모든 사용자 허용 (비로그인 포함)
-- `user`: 로그인한 사용자만 허용
-- `admin`: 관리자 권한 사용자만 허용
+Sonamu provides 3 default guards:
+- `query`: allows all users (including unauthenticated)
+- `user`: allows only authenticated users
+- `admin`: allows only users with admin privileges
 
 ```typescript
-// 로그인 필수
+// Login required
 @api({ httpMethod: "GET", guards: ["user"] })
 async getProfile() {
   const { user } = Sonamu.getContext();
   return { userId: user.id };
 }
 
-// 관리자 권한 (User에 role 필드 추가 필요)
+// Admin only (requires adding a role field to the User entity)
 @api({ httpMethod: "DELETE", guards: ["admin"] })
 async deleteUser(id: string) {
-  // 관리자만 실행 가능
+  // Only admins can execute
 }
 ```
 
-### 커스텀 Guard 추가
+### Adding Custom Guards
 
-기본 Guard 외에 추가 권한이 필요한 경우, `src/typings/sonamu.d.ts`에서 `GuardKeys` 인터페이스를 확장합니다.
+If additional permissions beyond the default guards are needed, extend the `GuardKeys` interface in `src/typings/sonamu.d.ts`.
 
-**파일 위치:** `src/typings/sonamu.d.ts`
+**File location:** `src/typings/sonamu.d.ts`
 
 ```typescript
 import {} from "sonamu";
@@ -167,7 +167,7 @@ declare module "sonamu" {
     query: true;
     user: true;
     admin: true;
-    // 커스텀 Guard 추가
+    // Custom guards
     manager: true;
     evaluator: true;
     superadmin: true;
@@ -175,25 +175,25 @@ declare module "sonamu" {
 }
 ```
 
-이제 추가한 Guard를 `@api` 데코레이터에서 사용할 수 있습니다:
+You can now use the added guards in the `@api` decorator:
 
 ```typescript
-// 매니저 권한
+// Manager permission
 @api({ httpMethod: "GET", guards: ["manager"] })
 async getReports() {
-  // 매니저만 실행 가능
+  // Only managers can execute
 }
 
-// 여러 Guard 동시 허용
+// Allow multiple guards simultaneously
 @api({ httpMethod: "POST", guards: ["admin", "manager"] })
 async createReport() {
-  // admin 또는 manager 권한 필요
+  // Requires admin or manager permission
 }
 ```
 
-## guardHandler 구현
+## Implementing guardHandler
 
-**소스코드:** `modules/sonamu/src/api/config.ts` (SonamuFastifyConfig.guardHandler)
+**Source code:** `modules/sonamu/src/api/config.ts` (SonamuFastifyConfig.guardHandler)
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -206,94 +206,94 @@ apiConfig: {
     switch (guard) {
       case "user":
         if (!user) {
-          throw new Error("로그인이 필요합니다");
+          throw new Error("Login is required");
         }
         break;
         
       case "admin":
-        // User 엔티티에 role 필드 추가 필요
+        // Requires adding a role field to the User entity
         if (!user || (user as any).role !== "admin") {
-          throw new Error("관리자만 접근 가능합니다");
+          throw new Error("Only admins can access this");
         }
         break;
       
       case "manager":
-        // 커스텀 Guard: 매니저 권한
+        // Custom guard: manager permission
         if (!user || !["admin", "manager"].includes((user as any).role)) {
-          throw new Error("매니저 권한이 필요합니다");
+          throw new Error("Manager permission is required");
         }
         break;
       
       case "evaluator":
-        // 커스텀 Guard: 평가위원 권한
+        // Custom guard: evaluator permission
         if (!user || !["admin", "evaluator"].includes((user as any).role)) {
-          throw new Error("평가위원 권한이 필요합니다");
+          throw new Error("Evaluator permission is required");
         }
         break;
         
       case "query":
-        // 모든 사용자 허용
+        // Allow all users
         break;
     }
   },
 }
 ```
 
-## User 엔티티에 role 추가 (권한 기반 인증)
+## Adding role to the User Entity (Role-based Authorization)
 
-**참고:** better-auth의 기본 User 엔티티(`modules/sonamu/src/auth/better-auth-entities.ts`)는 `role` 필드가 없습니다.
+**Note:** The default User entity from better-auth (`modules/sonamu/src/auth/better-auth-entities.ts`) does not have a `role` field.
 
-권한 기반 인증이 필요하면 User 엔티티에 직접 추가:
+If role-based authorization is needed, add it directly to the User entity:
 
 ```json
 // src/application/sonamu.entity.json
 {
   "id": "User",
   "props": [
-    // ... 기존 필드들
+    // ... existing fields
     {
       "name": "role",
       "type": "string",
       "default": "user",
-      "desc": "사용자 역할 (user, admin, manager)"
+      "desc": "User role (user, admin, manager)"
     }
   ]
 }
 ```
 
-Enum 추가:
+Adding an enum:
 
 ```json
 {
   "enums": {
     "UserRole": {
-      "user": "일반 사용자",
-      "admin": "관리자",
-      "manager": "매니저"
+      "user": "Regular user",
+      "admin": "Administrator",
+      "manager": "Manager"
     }
   }
 }
 ```
 
-## 체크리스트
+## Checklist
 
-설정 후 확인 사항:
-- [ ] **[generate 전] 사용자에게 플러그인 필요 여부 확인**
-  - "나중에" 응답 시 → `plugins_deferred: true` 기억, 최적 시점 안내
-- [ ] `pnpm sonamu auth generate [--plugins ...]` 실행
-- [ ] **[migrate 전] `plugins_deferred: true`인 경우 플러그인 재확인** (CRITICAL)
-- [ ] 마이그레이션 생성 및 적용
-- [ ] `sonamu.config.ts`에 `server.auth` 설정
-- [ ] `guardHandler` 구현
-- [ ] Context에서 user/session 접근 확인
-- [ ] 권한 기반 인증 필요 시 User 엔티티에 role 추가
+After setup, verify:
+- [ ] **[Before generate] Confirm with user whether plugins are needed**
+  - If "later" → remember `plugins_deferred: true`, guide on optimal timing
+- [ ] Run `pnpm sonamu auth generate [--plugins ...]`
+- [ ] **[Before migrate] Re-confirm plugins if `plugins_deferred: true`** (CRITICAL)
+- [ ] Create and apply migration
+- [ ] Configure `server.auth` in `sonamu.config.ts`
+- [ ] Implement `guardHandler`
+- [ ] Confirm user/session access from Context
+- [ ] Add role to User entity if role-based authorization is needed
 
-## 참고
+## Reference
 
-**Skills 문서:**
-- 상세 설정: `config.md`의 "server.auth 상세" 섹션
-- Context API: `api.md`의 "Context 접근" 섹션
+**Skills documentation:**
+- Detailed configuration: "server.auth details" section in `config.md`
+- Context API: "Context access" section in `api.md`
 
-**공식 문서:**
-- 한글: `modules/docs/ko/api-development/authentication/setup.mdx`
-- 영어: `modules/docs/en/api-development/authentication/setup.mdx`
+**Official documentation:**
+- Korean: `modules/docs/ko/api-development/authentication/setup.mdx`
+- English: `modules/docs/en/api-development/authentication/setup.mdx`

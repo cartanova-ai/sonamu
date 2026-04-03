@@ -1,33 +1,33 @@
 ---
 name: sonamu-tasks
-description: Sonamu Tasks 워크플로우 시스템. 백그라운드 작업, 스케줄링, durable step 실행. Use when implementing background workflows, scheduled tasks, or multi-step async processes.
+description: Sonamu Tasks workflow system. Background jobs, scheduling, durable step execution. Use when implementing background workflows, scheduled tasks, or multi-step async processes.
 ---
 
-# Tasks (워크플로우 시스템)
+# Tasks (Workflow System)
 
-PostgreSQL 기반 durable workflow engine. `@sonamu-kit/tasks` 패키지를 사용한다.
+PostgreSQL-based durable workflow engine. Uses the `@sonamu-kit/tasks` package.
 
-**소스코드:**
-- 데코레이터: `modules/sonamu/src/tasks/decorator.ts`
+**Source code:**
+- Decorator: `modules/sonamu/src/tasks/decorator.ts`
 - StepWrapper: `modules/sonamu/src/tasks/step-wrapper.ts`
 - WorkflowManager: `modules/sonamu/src/tasks/workflow-manager.ts`
 - @sonamu-kit/tasks: `modules/tasks/`
 
-## 워크플로우 정의
+## Workflow Definition
 
-`workflow()` 함수로 정의한다. export하면 syncer가 자동 수집하여 WorkflowManager에 등록한다.
+Define with the `workflow()` function. When exported, the syncer automatically collects and registers it with WorkflowManager.
 
 ```typescript
 import { workflow } from "sonamu";
 
-// 방법 1: 데코레이터 + 함수 분리
+// Method 1: decorator + function separated
 export const myTask = workflow({
   version: "1",
 })(async ({ input, step, logger, version }) => {
   // ...
 });
 
-// 방법 2: 데코레이터 + 함수 인라인
+// Method 2: decorator + function inlined
 export const myTask = workflow({
   version: "1",
 }, async ({ input, step, logger, version }) => {
@@ -37,28 +37,28 @@ export const myTask = workflow({
 
 ### DefineWorkflowOptions
 
-| 옵션 | 타입 | 필수 | 설명 |
+| Option | Type | Required | Description |
 |------|------|------|------|
-| `version` | `string` | Y | 워크플로우 버전 (변경 시 기존 실행과 구분) |
-| `name` | `string` | N | 워크플로우 이름 (기본: 함수명을 underscore 변환) |
-| `schema` | `StandardSchemaV1` | N | input 검증 스키마 (Zod 등) |
-| `schedules` | `Schedule[]` | N | cron 스케줄 배열 |
-| `retryPolicy` | `RetryPolicy` | N | 재시도 정책 |
+| `version` | `string` | Y | Workflow version (distinguishes from existing runs when changed) |
+| `name` | `string` | N | Workflow name (default: function name converted to underscore case) |
+| `schema` | `StandardSchemaV1` | N | Input validation schema (Zod, etc.) |
+| `schedules` | `Schedule[]` | N | Array of cron schedules |
+| `retryPolicy` | `RetryPolicy` | N | Retry policy |
 
-### 워크플로우 함수 파라미터
+### Workflow Function Parameters
 
-| 파라미터 | 타입 | 설명 |
+| Parameter | Type | Description |
 |---------|------|------|
-| `input` | `Input` | 워크플로우 실행 시 전달된 입력값 |
-| `step` | `StepWrapper` | Step 정의/실행 도구 |
-| `logger` | `Logger` | @logtape/logtape 로거 |
-| `version` | `string \| null` | 현재 워크플로우 버전 |
+| `input` | `Input` | Input value passed when the workflow runs |
+| `step` | `StepWrapper` | Tool for defining/executing steps |
+| `logger` | `Logger` | @logtape/logtape logger |
+| `version` | `string \| null` | Current workflow version |
 
 ## Step
 
-워크플로우 내의 원자적 실행 단위. 실패 시 해당 Step부터 재시도된다.
+An atomic unit of execution within a workflow. On failure, retry begins from that step.
 
-### step.define — 인라인 함수
+### step.define — Inline Function
 
 ```typescript
 const result = await step.define({ name: "fetch-data" }, async () => {
@@ -67,73 +67,73 @@ const result = await step.define({ name: "fetch-data" }, async () => {
 }).run();
 ```
 
-### step.get — 기존 메서드 래핑
+### step.get — Wrapping an Existing Method
 
 ```typescript
-// Model 메서드를 Step으로 감싸기
+// Wrap a Model method as a Step
 const result = await step.get(MyModel, "processData").run(inputData);
 
-// 커스텀 이름 지정
+// Specify a custom name
 const result = await step.get({ name: "custom_step" }, MyService, "execute").run(params);
 ```
 
-`step.get`의 오버로드:
-- `step.get(object, methodName)` — Step 이름은 methodName을 underscore 변환
-- `step.get({ name }, object, methodName)` — Step 이름 직접 지정
+Overloads for `step.get`:
+- `step.get(object, methodName)` — Step name is the methodName converted to underscore case
+- `step.get({ name }, object, methodName)` — Step name specified directly
 
-### step.sleep — Durable 대기
+### step.sleep — Durable Wait
 
 ```typescript
 await step.sleep("wait-before-retry", "30m");
 await step.sleep("daily-delay", "1d");
 ```
 
-서버가 재시작되어도 대기 시간이 유지된다.
+The wait time is preserved even if the server restarts.
 
-**DurationString 형식:** `{숫자}{단위}` — 예: `"5s"`, `"30m"`, `"2h"`, `"7d"`, `"1w"`, `"1y"`
+**DurationString format:** `{number}{unit}` — e.g. `"5s"`, `"30m"`, `"2h"`, `"7d"`, `"1w"`, `"1y"`
 
-## 스케줄링 (cron)
+## Scheduling (cron)
 
 ```typescript
 export const dailyReport = workflow({
   version: "1",
   schedules: [{
-    expression: "0 9 * * *",    // 매일 오전 9시
-    name: "daily-report",        // 선택 (기본: 워크플로우명[expression])
-    input: () => ({ date: new Date().toISOString() }),  // 선택
+    expression: "0 9 * * *",    // every day at 9am
+    name: "daily-report",        // optional (default: workflowName[expression])
+    input: () => ({ date: new Date().toISOString() }),  // optional
   }],
 }, async ({ input, step }) => {
   // ...
 });
 ```
 
-| 필드 | 타입 | 필수 | 설명 |
+| Field | Type | Required | Description |
 |------|------|------|------|
-| `expression` | `string` | Y | cron 표현식 |
-| `name` | `string` | N | 스케줄 이름 (기본: `워크플로우명[expression]`) |
-| `input` | `Executable<Input>` | N | 실행 시 전달할 입력값 (함수 또는 값) |
+| `expression` | `string` | Y | cron expression |
+| `name` | `string` | N | Schedule name (default: `workflowName[expression]`) |
+| `input` | `Executable<Input>` | N | Input value to pass on execution (function or value) |
 
-타임존은 `sonamu.config.ts`의 `api.timezone` 설정을 따른다.
+The timezone follows the `api.timezone` setting in `sonamu.config.ts`.
 
-## 재시도 정책
+## Retry Policy
 
-### 정적 정책 (기본)
+### Static Policy (Default)
 
 ```typescript
 export const reliableTask = workflow({
   version: "1",
   retryPolicy: {
-    maxAttempts: 5,           // 최대 재시도 횟수 (기본: 5)
-    initialIntervalMs: 1000,  // 첫 재시도 대기 (기본: 1000ms)
-    backoffCoefficient: 2,    // 대기 시간 배수 (기본: 2)
-    maximumIntervalMs: 60000, // 최대 대기 시간
+    maxAttempts: 5,           // maximum retry attempts (default: 5)
+    initialIntervalMs: 1000,  // first retry wait time (default: 1000ms)
+    backoffCoefficient: 2,    // wait time multiplier (default: 2)
+    maximumIntervalMs: 60000, // maximum wait time
   },
 }, async ({ step }) => {
   // ...
 });
 ```
 
-### 동적 정책
+### Dynamic Policy
 
 ```typescript
 retryPolicy: {
@@ -145,77 +145,77 @@ retryPolicy: {
 }
 ```
 
-## sonamu.config.ts 설정
+## sonamu.config.ts Configuration
 
 ```typescript
 export default defineConfig({
   tasks: {
     enableWorker: true,
     workerOptions: {
-      concurrency: 4,       // 동시 실행 수 (기본: CPU 코어 - 1)
-      usePubSub: true,      // DB pub/sub 사용 (기본: true)
-      listenDelay: 500,      // pub/sub 수신 후 실행 지연 ms (기본: 500)
+      concurrency: 4,       // concurrent execution count (default: CPU cores - 1)
+      usePubSub: true,      // use DB pub/sub (default: true)
+      listenDelay: 500,      // execution delay after pub/sub receive in ms (default: 500)
     },
     contextProvider: (defaultContext) => {
-      // 워크플로우 내에서 사용할 Context 구성
+      // build Context to use within workflows
       return { ...defaultContext };
     },
   },
 });
 ```
 
-| 옵션 | 타입 | 설명 |
+| Option | Type | Description |
 |------|------|------|
-| `enableWorker` | `boolean` | Worker 활성화 여부 (daemon 모드에서만 사용) |
-| `workerOptions.concurrency` | `number` | 동시 실행 태스크 수 |
-| `workerOptions.usePubSub` | `boolean` | PostgreSQL pub/sub 사용 |
-| `workerOptions.listenDelay` | `number` | pub/sub 수신 후 실행 지연 (ms) |
-| `contextProvider` | `(ctx) => Context` | 워크플로우 실행 시 Context 생성 함수 |
+| `enableWorker` | `boolean` | Whether to enable Worker (use only in daemon mode) |
+| `workerOptions.concurrency` | `number` | Number of concurrently executing tasks |
+| `workerOptions.usePubSub` | `boolean` | Use PostgreSQL pub/sub |
+| `workerOptions.listenDelay` | `number` | Execution delay after pub/sub receive (ms) |
+| `contextProvider` | `(ctx) => Context` | Context creation function when workflow runs |
 
-## 수동 실행
+## Manual Execution
 
 ```typescript
 import { Sonamu } from "sonamu";
 
-// WorkflowManager를 통해 실행
+// Run via WorkflowManager
 const handle = await Sonamu.workflowManager.run(
   { name: "my-task", version: "1" },
   { target: "manual" }
 );
 
-// 결과 대기
+// Wait for result
 const result = await handle.result();
 ```
 
-## 파일 배치
+## File Placement
 
 ```
 packages/api/src/application/
 ├── {domain}/
 │   ├── {domain}.model.ts
 │   ├── {domain}.types.ts
-│   └── {domain}.workflow.ts    ← 워크플로우 파일
+│   └── {domain}.workflow.ts    ← workflow file
 ```
 
-워크플로우 파일에서 `workflow()`로 정의하고 export하면 syncer가 자동 수집한다.
+Define with `workflow()` and export in the workflow file; the syncer will collect it automatically.
 
-## 아키텍처
+## Architecture
 
 ```
-Dev Server 시작
-  → WorkflowManager 초기화 (BackendPostgres)
-  → Worker 시작 (enableWorker: true일 때)
-  → syncer가 .workflow.ts 파일 수집
-  → WorkflowManager.synchronize()로 등록
-  → cron 스케줄 자동 시작
+Dev Server startup
+  → WorkflowManager initialization (BackendPostgres)
+  → Worker startup (when enableWorker: true)
+  → syncer collects .workflow.ts files
+  → registers via WorkflowManager.synchronize()
+  → cron schedules start automatically
 
-HMR 시
-  → 변경된 파일의 워크플로우 재등록 (synchronize)
+On HMR
+  → re-register workflows from changed files (synchronize)
 
-실행 흐름
-  → run() 호출 → DB에 워크플로우 실행 레코드 생성
-  → Worker가 pub/sub으로 수신 → Step 순차 실행
-  → 각 Step 완료 시 DB에 체크포인트 저장
-  → 실패 시 retryPolicy에 따라 해당 Step부터 재시도
-  → 서버 재시작 시 미완료 워크플로우를 DB에서 복구하여 계속 실행
+Execution flow
+  → run() called → workflow execution record created in DB
+  → Worker receives via pub/sub → steps executed sequentially
+  → checkpoint saved to DB on each step completion
+  → on failure: retry from that step according to retryPolicy
+  → on server restart: incomplete workflows recovered from DB and continue
 ```

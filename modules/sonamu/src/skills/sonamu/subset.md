@@ -1,15 +1,15 @@
 ---
 name: sonamu-subset
-description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation으로 관계 필드 포함. Use when defining which fields to return in API responses.
+description: Define API response field scope with Sonamu Subsets. Include relation fields using dot notation. Use when defining which fields to return in API responses.
 ---
 
-# Subset 정의
+# Subset Definition
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - 복잡한 Subset 예시
-- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - 기본 Subset 예시
+**Working code references:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - complex Subset example
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - basic Subset example
 
-## 기본 구조
+## Basic Structure
 
 ```json
 {
@@ -21,20 +21,20 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 }
 ```
 
-## 네이밍 규칙
+## Naming Conventions
 
-**WARNING: Subset 이름은 A, P, SS만 사용합니다. S, D, L 등 임의의 이름은 사용하지 마세요.**
+**WARNING: Only use A, P, and SS as Subset names. Do not use arbitrary names like S, D, or L.**
 
-| Subset | 용도 |
-|--------|------|
-| `A` | All - 전체 필드 (상세, 관리자). **필수** |
-| `P` | Partial/Profile - 부분 필드, 관계 포함 (목록 조회용) |
-| `SS` | Super Simple/Summary - 최소 필드, ID+이름 정도 (드롭다운, 선택용) |
-| `P2`, `P3` | 추가 프로파일 (특수한 경우에만) |
+| Subset | Purpose |
+|--------|---------|
+| `A` | All - all fields (detail view, admin). **Required** |
+| `P` | Partial/Profile - partial fields including relations (for list views) |
+| `SS` | Super Simple/Summary - minimal fields, just ID + name (for dropdowns, selects) |
+| `P2`, `P3` | Additional profiles (only for special cases) |
 
-### IMPORTANT: Subset A는 모든 필드 포함 필수
+### IMPORTANT: Subset A Must Include All Fields
 
-**Subset A는 Entity의 모든 일반 필드와 주요 relation 필드를 포함해야 합니다.**
+**Subset A must include all regular fields and major relation fields of the Entity.**
 
 **DO:**
 ```json
@@ -56,38 +56,38 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 ```json
 {
   "subsets": {
-    "A": ["id", "title"]  // created_at, status, author 누락 - 잘못됨
+    "A": ["id", "title"]  // created_at, status, author omitted - incorrect
   }
 }
 ```
 
-**규칙:**
-- 모든 일반 필드(id, created_at, 비즈니스 필드 등)를 포함
-- BelongsToOne relation은 최소한 `.id`와 표시용 필드(`.name`, `.title` 등) 포함
-- HasMany relation은 선택적 (필요한 경우만 포함)
+**Rules:**
+- Include all regular fields (id, created_at, business fields, etc.)
+- For BelongsToOne relations, include at least `.id` and a display field (`.name`, `.title`, etc.)
+- HasMany relations are optional (include only when needed)
 
-### 단일 Subset만 필요한 경우
+### When Only a Single Subset Is Needed
 
 ```json
-// DO - Correct: A만 생성
+// DO - Correct: create only A
 { "subsets": { "A": ["id", "name", "created_at"] } }
 ```
 
 ### DO NOT - Incorrect Subset Names
 
 ```json
-// Incorrect: S, D, L 등 사용 금지
+// Incorrect: do not use S, D, L, etc.
 {
   "subsets": {
     "A": [...],
-    "S": [...],  // NEVER - SS를 사용할 것
-    "D": [...],  // NEVER - 사용하지 말 것
-    "L": [...]   // NEVER - P를 사용할 것
+    "S": [...],  // NEVER - use SS instead
+    "D": [...],  // NEVER - do not use
+    "L": [...]   // NEVER - use P instead
   }
 }
 ```
 
-## Relation 필드 (Dot Notation)
+## Relation Fields (Dot Notation)
 
 ```json
 {
@@ -102,18 +102,18 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 }
 ```
 
-- BelongsToOne/OneToOne: 자동 LEFT JOIN
-- HasMany/ManyToMany: DataLoader로 자동 최적화
+- BelongsToOne/OneToOne: automatic LEFT JOIN
+- HasMany/ManyToMany: automatically optimized with DataLoader
 
-## ID만 참조 최적화
+## ID-Only Reference Optimization
 
 ```json
 { "SS": ["id", "title", "user.id"] }
 ```
 
-- `user.id`만 참조하면 JOIN 없이 `user_id` 컬럼 사용
+- Referencing only `user.id` reads the `user_id` column directly without a JOIN
 
-## Internal 필드
+## Internal Fields
 
 ```json
 {
@@ -123,9 +123,9 @@ description: Sonamu Subset으로 API 응답 필드 범위 정의. dot notation�
 }
 ```
 
-- 쿼리에 포함되지만 API 응답 타입에서 제외
+- Included in the query but excluded from the API response type
 
-## Model에서 사용
+## Usage in Models
 
 ```typescript
 // findById
@@ -145,22 +145,22 @@ const result = await UserModel.executeSubsetQuery({
 });
 ```
 
-## 주의사항
+## Notes
 
-- 기본 Subset `A`는 필수
-- 중첩 depth 3단계 이하 권장
-- 목록용 Subset은 불필요한 관계 제외
-- **FK 컬럼은 relation 표기 사용**: BelongsToOne 관계의 FK 컬럼(예: `user_id`)은 Subset에서 `user.id` 형태로 접근해야 함. 이는 Sonamu가 relation 표기를 인식하여 `.id`만 참조 시 자동으로 FK 컬럼을 직접 읽는 최적화를 수행하기 때문
+- The base Subset `A` is required
+- Nesting depth of 3 or fewer levels is recommended
+- Exclude unnecessary relations from list-purpose Subsets
+- **Use relation notation for FK columns**: FK columns for BelongsToOne relations (e.g. `user_id`) must be accessed in Subsets using the `user.id` form. This is because Sonamu recognizes the relation notation and automatically optimizes by reading the FK column directly when only `.id` is referenced.
 
 ```json
-// DO NOT - Incorrect: FK 컬럼 직접 사용
+// DO NOT - Incorrect: using FK column directly
 { "A": ["id", "user_id", "title"] }
 
-// DO - Correct: relation.field 형식 사용 (자동 최적화)
+// DO - Correct: use relation.field format (auto-optimized)
 { "A": ["id", "user.id", "title"] }
-// → Sonamu가 user_id 컬럼을 직접 읽음 (JOIN 없음)
+// → Sonamu reads the user_id column directly (no JOIN)
 ```
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - Subset 정의 예시
-- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne 관계 예시
+**Working code references:**
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - Subset definition examples
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne relation examples

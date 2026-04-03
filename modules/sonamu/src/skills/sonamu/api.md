@@ -1,11 +1,11 @@
 ---
 name: sonamu-api
-description: Sonamu @api 데코레이터로 Model 메서드를 HTTP 엔드포인트로 노출. httpMethod, guards, clients 옵션 설정. Use when exposing Model methods as API endpoints.
+description: Expose Model methods as HTTP endpoints with the Sonamu @api decorator. Configure httpMethod, guards, and clients options. Use when exposing Model methods as API endpoints.
 ---
 
-# @api 데코레이터
+# @api Decorator
 
-## 기본 사용
+## Basic Usage
 
 ```typescript
 @api({ httpMethod: "GET" })
@@ -13,35 +13,35 @@ async findById(id: number): Promise<User> { }
 // → GET /user/findById?id=1
 ```
 
-## 옵션
+## Options
 
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
+| Option | Description | Default |
+|--------|-------------|---------|
 | `httpMethod` | GET, POST, PUT, DELETE, PATCH | GET |
-| `clients` | 생성할 클라이언트 타입 | `["axios"]` |
-| `resourceName` | TanStack Query의 queryKey | - |
-| `guards` | 인증/권한 가드 | - |
-| `path` | 커스텀 경로 | `/{model}/{method}` |
-| `description` | API 설명 (문서화용) | - |
-| `timeout` | 요청 타임아웃 (ms) | - |
-| `contentType` | 응답 Content-Type | `application/json` |
-| `cacheControl` | Cache-Control 헤더 설정 | - |
-| `compress` | 응답 압축 설정 (`false`로 비활성화 가능) | - |
+| `clients` | Client types to generate | `["axios"]` |
+| `resourceName` | queryKey for TanStack Query | - |
+| `guards` | Authentication/authorization guards | - |
+| `path` | Custom path | `/{model}/{method}` |
+| `description` | API description (for documentation) | - |
+| `timeout` | Request timeout (ms) | - |
+| `contentType` | Response Content-Type | `application/json` |
+| `cacheControl` | Cache-Control header setting | - |
+| `compress` | Response compression setting (can disable with `false`) | - |
 
-## clients 옵션
+## clients Options
 
-| Client | 용도 |
-|--------|------|
-| `axios` | 일반 API 호출 |
-| `axios-multipart` | 파일 업로드 (axios) |
-| `tanstack-query` | 조회용 Query hook |
-| `tanstack-mutation` | 변경용 Mutation hook |
-| `tanstack-mutation-multipart` | 파일 업로드 Mutation |
-| `window-fetch` | 브라우저 fetch API |
+| Client | Purpose |
+|--------|---------|
+| `axios` | General API calls |
+| `axios-multipart` | File upload (axios) |
+| `tanstack-query` | Query hook for reads |
+| `tanstack-mutation` | Mutation hook for writes |
+| `tanstack-mutation-multipart` | File upload Mutation |
+| `window-fetch` | Browser fetch API |
 
-## 패턴별 예시
+## Pattern Examples
 
-### 조회 API
+### Read API
 
 ```typescript
 @api({
@@ -52,7 +52,7 @@ async findById(id: number): Promise<User> { }
 async findMany(params: UserListParams): Promise<ListResult<User>> { }
 ```
 
-### 변경 API
+### Write API
 
 ```typescript
 @api({
@@ -62,14 +62,14 @@ async findMany(params: UserListParams): Promise<ListResult<User>> { }
 async save(params: UserSaveParams[]): Promise<number[]> { }
 ```
 
-### 권한 필요 API
+### API Requiring Authorization
 
 ```typescript
 @api({ httpMethod: "POST", guards: ["admin"] })
 async del(ids: number[]): Promise<number> { }
 ```
 
-## Context 접근
+## Context Access
 
 ```typescript
 import { Sonamu } from "sonamu";
@@ -81,60 +81,60 @@ async me(): Promise<User | null> {
 }
 ```
 
-| Context 속성 | 설명 |
-|-------------|------|
-| `user` | 인증된 사용자 (better-auth User, null이면 미인증) |
-| `session` | 현재 세션 정보 (better-auth Session, null이면 미인증) |
+| Context Property | Description |
+|-----------------|-------------|
+| `user` | Authenticated user (better-auth User, null if unauthenticated) |
+| `session` | Current session info (better-auth Session, null if unauthenticated) |
 | `request` | FastifyRequest |
 | `reply` | FastifyReply |
-| `headers` | HTTP 요청 헤더 |
-| `bufferedFiles` | 버퍼 모드 업로드 파일 |
-| `uploadedFiles` | 스트림 모드 업로드 파일 |
-| `locale` | 요청 언어 |
+| `headers` | HTTP request headers |
+| `bufferedFiles` | Buffer mode uploaded files |
+| `uploadedFiles` | Stream mode uploaded files |
+| `locale` | Request locale |
 
-## 파일 업로드 (@upload)
+## File Upload (@upload)
 
-> **CRITICAL: `@upload`는 `@api` 없이 단독으로 사용한다.**
-> `@upload`를 붙이면 POST 엔드포인트와 `axios-multipart`/`tanstack-mutation-multipart` 클라이언트가 **자동 생성**된다.
-> `@api`를 함께 붙이면 `checkSingleDecorator` 충돌로 **빌드 에러**가 발생한다.
+> **CRITICAL: `@upload` is used standalone without `@api`.**
+> Adding `@upload` **automatically generates** a POST endpoint and `axios-multipart`/`tanstack-mutation-multipart` clients.
+> Adding `@api` alongside it causes a **build error** due to `checkSingleDecorator` conflict.
 
 ```typescript
 // CORRECT
 @upload({ limits: { files: 10 }, guards: ["user"] })
 async upload(...): Promise<number[]> { }
 
-// WRONG — 빌드 에러 발생
+// WRONG — causes build error
 @api({ httpMethod: "POST", clients: ["axios-multipart"] })
 @upload({ limits: { files: 10 } })
 async upload(...): Promise<number[]> { }
 ```
 
-**`@upload` 지원 옵션** (`httpMethod`, `clients`는 지원하지 않음 — 자동 설정됨)
+**`@upload` supported options** (`httpMethod`, `clients` are not supported — set automatically)
 
-| 옵션 | 설명 |
-|------|------|
-| `guards` | 인증/권한 가드 |
-| `limits` | 파일 개수/크기 제한 (`{ files: N }`) |
-| `consume` | `"buffer"` (기본) 또는 `"stream"` |
-| `description` | API 문서 설명 |
-| `destination` | 스트림 모드 전용: 스토리지 드라이버 키 |
-| `keyGenerator` | 스트림 모드 전용: 저장 경로 생성 함수 |
+| Option | Description |
+|--------|-------------|
+| `guards` | Authentication/authorization guards |
+| `limits` | File count/size limits (`{ files: N }`) |
+| `consume` | `"buffer"` (default) or `"stream"` |
+| `description` | API documentation description |
+| `destination` | Stream mode only: storage driver key |
+| `keyGenerator` | Stream mode only: function to generate storage path |
 
-### 파라미터 규칙: 반드시 단일 객체로 묶기
+### Parameter Rule: Must Wrap in a Single Object
 
-> **CRITICAL: `@upload` 메서드에 파라미터가 2개 이상이면 반드시 단일 객체로 묶는다.**
+> **CRITICAL: If an `@upload` method has 2 or more parameters, they must be wrapped into a single object.**
 >
-> primitive 파라미터를 여러 개 쓰면 `services.template.ts`의 codegen 버그로 `useUploadMutation`이 잘못 생성된다.
+> Using multiple primitive parameters causes a codegen bug in `services.template.ts` that generates `useUploadMutation` incorrectly.
 
 ```typescript
-// WRONG — codegen 깨짐 (mutationFn 인수 누락)
+// WRONG — codegen breaks (missing mutationFn argument)
 async upload(entity_type: string, entity_id: number, file_type: string)
 
-// CORRECT — 단일 객체로 묶기
+// CORRECT — wrap in a single object
 async upload(params: { entity_type: string; entity_id: number; file_type: string })
 ```
 
-호출부 패턴:
+Call site pattern:
 ```typescript
 uploadMutation.mutate({
   params: { entity_type, entity_id, file_type },
@@ -142,40 +142,40 @@ uploadMutation.mutate({
 })
 ```
 
-> 자세한 원인 분석은 `framework-change.md`의 `@upload 다중 파라미터` 섹션 참고.
+> For detailed root cause analysis, see the `@upload multiple parameters` section in `framework-change.md`.
 
-### 버퍼 모드 (기본)
+### Buffer Mode (Default)
 
 ```typescript
 @upload({ limits: { files: 10 } })
 async uploadFiles(): Promise<{ files: SonamuFile[] }> {
   const { bufferedFiles } = Sonamu.getContext();
-  // bufferedFiles[].buffer로 파일 데이터 접근
+  // Access file data via bufferedFiles[].buffer
 }
 ```
 
-### 스트림 모드 (대용량)
+### Stream Mode (Large Files)
 
 ```typescript
 @upload({
   consume: "stream",
-  destination: "s3",  // 또는 "fs"
+  destination: "s3",  // or "fs"
   keyGenerator: (file) => `uploads/${Date.now()}-${file.filename}`,
   limits: { files: 5 },
 })
 async uploadLargeFiles(): Promise<{ urls: string[] }> {
   const { uploadedFiles } = Sonamu.getContext();
-  // uploadedFiles[].key로 저장된 경로 접근
+  // Access stored path via uploadedFiles[].key
 }
 ```
 
 ---
 
-## 실전 비즈니스 로직 패턴
+## Real-world Business Logic Patterns
 
-### 트랜잭션과 이력 기록
+### Transaction with History Logging
 
-상태 변경 시 트랜잭션으로 메인 데이터와 이력을 함께 처리하는 패턴:
+Pattern for atomically handling main data and history together when changing state:
 
 ```typescript
 // consultation.model.ts
@@ -189,7 +189,7 @@ async changeStatus(
   const wdb = this.getPuri("w");
   
   return wdb.transaction(async (trx) => {
-    // 1. 상담 업데이트
+    // 1. Update consultation
     await trx.ubRegister("consultations", {
       id,
       status,
@@ -197,7 +197,7 @@ async changeStatus(
     });
     await trx.ubUpsert("consultations");
     
-    // 2. 상태 변경 이력 기록
+    // 2. Record status change history
     await trx.ubRegister("consultation_histories", {
       consultation_id: id,
       status,
@@ -206,20 +206,20 @@ async changeStatus(
     });
     await trx.ubUpsert("consultation_histories");
     
-    // 3. 결과 반환
+    // 3. Return result
     return this.findById("A", id);
   });
 }
 ```
 
-**핵심 포인트:**
-- 트랜잭션으로 원자성 보장
-- ubRegister + ubUpsert 패턴
-- 변경 후 최신 데이터 반환
+**Key points:**
+- Atomicity guaranteed by transaction
+- ubRegister + ubUpsert pattern
+- Return latest data after change
 
-### 검증 로직과 비즈니스 규칙
+### Validation Logic and Business Rules
 
-등록 전 중복 체크, 정원 확인 등 복잡한 검증을 수행하는 패턴:
+Pattern for complex validation such as duplicate checks and capacity checks before registration:
 
 ```typescript
 @api({ httpMethod: "POST", guards: ["user"] })
@@ -227,49 +227,49 @@ async enroll(
   courseId: number,
   userId: number
 ): Promise<Enrollment> {
-  // 1. 중복 등록 방지
+  // 1. Prevent duplicate registration
   const existing = await this.findOne("A", {
     course_id: courseId,
     user_id: userId,
   });
   
   if (existing) {
-    throw new Error("이미 등록된 강좌입니다");
+    throw new Error("Already enrolled in this course");
   }
   
-  // 2. 정원 확인
+  // 2. Check capacity
   const course = await CourseModel.findById("A", courseId);
   const { total } = await this.findMany({ course_id: courseId });
   
   if (total >= course.max_students) {
-    throw new Error("정원이 가득 찼습니다");
+    throw new Error("Course is at capacity");
   }
   
-  // 3. 등록 실행
+  // 3. Enroll
   const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
   return this.findById("A", id);
 }
 ```
 
-**핵심 포인트:**
-- 단계별 검증 (중복 → 정원)
-- 명확한 에러 메시지
-- 검증 통과 후 저장
+**Key points:**
+- Step-by-step validation (duplicate → capacity)
+- Clear error messages
+- Save after validation passes
 
-### 권한 가드 활용
+### Using Authorization Guards
 
-사용자 역할에 따른 접근 제어:
+Access control based on user role:
 
 ```typescript
-// 일반 사용자 전용
+// Regular user only
 @api({ httpMethod: "POST", guards: ["user"] })
 async save(spa: PostSaveParams[]): Promise<number[]> { }
 
-// 관리자 전용
+// Admin only
 @api({ httpMethod: "POST", guards: ["admin"] })
 async del(ids: number[]): Promise<number> { }
 
-// 현재 로그인 사용자 정보 활용
+// Using currently logged-in user info
 @api({ httpMethod: "GET", guards: ["user"] })
 async myConsultations(): Promise<ListResult<Consultation>> {
   const { user } = Sonamu.getContext();
@@ -277,56 +277,56 @@ async myConsultations(): Promise<ListResult<Consultation>> {
 }
 ```
 
-### API 테스트 작성
+### Writing API Tests
 
-Business Logic 테스트에서 커스텀 API를 검증:
+Validating custom APIs in Business Logic tests:
 
 ```typescript
 // consultation.test.ts
 describe("E. Business Logic", () => {
-  test("상태 변경 API", async () => {
+  test("Status change API", async () => {
     const { consultationId } = await createTestConsultationWithDeps();
     
-    // 커스텀 API 호출
+    // Call custom API
     const updated = await ConsultationModel.changeStatus(
       consultationId,
       "completed",
-      "상담 완료"
+      "Consultation complete"
     );
     
     expect(updated.status).toBe("completed");
     
-    // 이력 기록 확인
+    // Verify history was recorded
     const histories = await ConsultationHistoryModel.findMany({
       consultation_id: consultationId,
     });
     expect(histories.rows).toHaveLength(1);
   });
   
-  test("등록 검증", async () => {
+  test("Enrollment validation", async () => {
     const courseId = 1;
     const userId = 1;
     
-    // 첫 등록 성공
+    // First enrollment succeeds
     await EnrollmentModel.enroll(courseId, userId);
     
-    // 중복 등록 실패
+    // Duplicate enrollment fails
     await expect(
       EnrollmentModel.enroll(courseId, userId)
-    ).rejects.toThrow("이미 등록된 강좌입니다");
+    ).rejects.toThrow("Already enrolled in this course");
   });
 });
 ```
 
 ---
 
-## 컨벤션과 베스트 프랙티스
+## Conventions and Best Practices
 
-### 에러 메시지 패턴
+### Error Message Pattern
 
-일관된 에러 메시지를 위해 `this.modelName`과 `SD()` 함수를 사용합니다.
+Use `this.modelName` and the `SD()` function for consistent error messages.
 
-**BAD: 하드코딩된 모델명**
+**BAD: Hardcoded model name**
 ```typescript
 // findById
 if (!rows[0]) {
@@ -337,27 +337,27 @@ if (!rows[0]) {
 throw new BadRequestException(SD("error.unknownSearchField")(params.search));
 ```
 
-**GOOD: this.modelName 사용**
+**GOOD: Using this.modelName**
 ```typescript
-// findById - 모델명 자동 인식
+// findById - auto-detects model name
 if (!rows[0]) {
   throw new NotFoundException(SD("notFound")(this.modelName, id));
 }
 
-// findMany - 짧고 명확한 키
+// findMany - short and clear key
 throw new BadRequestException(SD("search.invalidField")(params.search));
 ```
 
-**장점:**
-- DRY 원칙 준수: 모델명 한 곳에서 관리
-- 리팩토링 안전: 모델명 변경 시 에러 메시지 자동 반영
-- 짧은 i18n 키: `notFound`, `search.invalidField`가 더 간결
+**Benefits:**
+- DRY principle: model name managed in one place
+- Refactoring safe: error messages auto-reflect model name changes
+- Short i18n keys: `notFound`, `search.invalidField` are more concise
 
-### satisfies 키워드
+### satisfies Keyword
 
-TypeScript의 satisfies 키워드로 타입 추론을 유지하면서 타입 체크합니다.
+Use TypeScript's satisfies keyword to preserve type inference while checking types.
 
-**BAD: 타입 추론 상실**
+**BAD: Loss of type inference**
 ```typescript
 const params: RoleListParams = {
   num: 24,
@@ -368,7 +368,7 @@ const params: RoleListParams = {
 };
 ```
 
-**GOOD: satisfies로 타입 체크 + 추론 유지**
+**GOOD: Type check + preserved inference with satisfies**
 ```typescript
 const params = {
   num: 24,
@@ -379,27 +379,27 @@ const params = {
 } satisfies RoleListParams;
 ```
 
-**장점:**
-- 컴파일 타임 검증: params가 RoleListParams 타입을 만족하는지 확인
-- 타입 추론 유지: params의 실제 타입이 좁혀진 상태로 유지됨
-- IDE 지원 향상: 자동완성과 타입 체크가 더 정확
+**Benefits:**
+- Compile-time verification: checks that params satisfies the RoleListParams type
+- Preserved type inference: params keeps its narrowed type
+- Better IDE support: more accurate autocomplete and type checking
 
-### debug 옵션
+### debug Option
 
-executeSubsetQuery의 debug 옵션은 기본값이 false이므로 명시할 필요 없습니다.
+The debug option in executeSubsetQuery defaults to false, so it does not need to be specified explicitly.
 
-**BAD: 불필요한 debug: false**
+**BAD: Unnecessary debug: false**
 ```typescript
 return this.executeSubsetQuery({
   subset,
   qb,
   params,
   enhancers,
-  debug: false,  // 기본값이므로 불필요
+  debug: false,  // unnecessary — it's the default
 });
 ```
 
-**GOOD: 기본값 활용**
+**GOOD: Use the default**
 ```typescript
 return this.executeSubsetQuery({
   subset,
@@ -409,20 +409,20 @@ return this.executeSubsetQuery({
 });
 ```
 
-**debug: true를 사용하는 경우:**
+**When to use debug: true:**
 ```typescript
-// 디버깅 시에만 명시
+// Only specify when debugging
 return this.executeSubsetQuery({
   subset,
   qb,
   params,
-  debug: true,  // SQL 쿼리 로그 출력
+  debug: true,  // Print SQL query log
 });
 ```
 
-## @stream 데코레이터 (SSE)
+## @stream Decorator (SSE)
 
-Server-Sent Events 엔드포인트를 생성합니다.
+Creates a Server-Sent Events endpoint.
 
 ```typescript
 import { stream } from "sonamu";
@@ -439,29 +439,29 @@ import { z } from "zod";
 async processStream() { ... }
 ```
 
-| 옵션 | 설명 | 필수 |
-|------|------|------|
-| `type` | `"sse"` (현재 SSE만 지원) | 예 |
-| `events` | Zod 스키마로 이벤트 키별 페이로드 정의 | 예 |
-| `path` | 커스텀 경로 | - |
-| `resourceName` | 리소스 이름 | - |
-| `guards` | 인증/권한 가드 | - |
+| Option | Description | Required |
+|--------|-------------|----------|
+| `type` | `"sse"` (only SSE currently supported) | Yes |
+| `events` | Define event keys and payloads with Zod schema | Yes |
+| `path` | Custom path | - |
+| `resourceName` | Resource name | - |
+| `guards` | Authentication/authorization guards | - |
 
-## @transactional 데코레이터
+## @transactional Decorator
 
-메서드 전체를 자동 트랜잭션으로 감쌉니다. 이미 트랜잭션 컨텍스트 안이면 재사용합니다.
+Wraps the entire method in an automatic transaction. Reuses an existing transaction context if one is already active.
 
 ```typescript
 import { transactional } from "sonamu";
 
 @transactional({ isolation: "serializable" })
 async transferFunds(fromId: number, toId: number, amount: number) {
-  // this.getPuri("w")가 자동으로 트랜잭션 안에서 실행됨
+  // this.getPuri("w") automatically runs inside the transaction
 }
 ```
 
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `isolation` | 트랜잭션 격리 수준 (read uncommitted/read committed/repeatable read/serializable) | - |
-| `readOnly` | 읽기 전용 트랜잭션 | `false` |
-| `dbPreset` | DB 프리셋 | `"w"` |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `isolation` | Transaction isolation level (read uncommitted/read committed/repeatable read/serializable) | - |
+| `readOnly` | Read-only transaction | `false` |
+| `dbPreset` | DB preset | `"w"` |

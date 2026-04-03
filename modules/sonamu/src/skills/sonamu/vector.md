@@ -1,43 +1,43 @@
 ---
 name: sonamu-vector
-description: pgvector 기반 벡터 검색. Embedding(Voyage AI/OpenAI), Chunking, 하이브리드 검색(Vector+FTS) 지원. Use when implementing vector search, semantic search, or text embedding features.
+description: pgvector-based vector search. Embedding (Voyage AI/OpenAI), Chunking, hybrid search (Vector+FTS) support. Use when implementing vector search, semantic search, or text embedding features.
 ---
 
-# 벡터 검색 가이드
+# Vector Search Guide
 
-Sonamu는 pgvector 기반 벡터 검색을 지원합니다. Voyage AI와 OpenAI 임베딩 프로바이더를 통합 지원하며, 하이브리드 검색(Vector + Full-Text Search)도 가능합니다.
+Sonamu supports pgvector-based vector search. It integrates both Voyage AI and OpenAI embedding providers, and also supports hybrid search (Vector + Full-Text Search).
 
-**소스코드:** `modules/sonamu/src/vector/`
+**Source code:** `modules/sonamu/src/vector/`
 
 ---
 
-## 구조
+## Structure
 
-| 파일 | 역할 |
+| File | Role |
 |------|------|
-| `types.ts` | 전체 타입 정의 (EmbeddingProvider, VectorSearchResult, VectorConfig 등) |
-| `config.ts` | 기본 설정값 + `createVectorConfig()` 헬퍼 |
-| `embedding.ts` | Embedding 클라이언트 (Voyage AI, OpenAI 통합) |
-| `chunking.ts` | 텍스트 청킹 (긴 문서 분할) |
+| `types.ts` | Full type definitions (EmbeddingProvider, VectorSearchResult, VectorConfig, etc.) |
+| `config.ts` | Default configuration values + `createVectorConfig()` helper |
+| `embedding.ts` | Embedding client (Voyage AI and OpenAI integration) |
+| `chunking.ts` | Text chunking (splitting long documents) |
 
 ---
 
-## 임베딩 프로바이더
+## Embedding Providers
 
-| 프로바이더 | 모델 | 차원 | maxTokens | batchSize | 패키지 |
+| Provider | Model | Dimensions | maxTokens | batchSize | Package |
 |-----------|------|------|-----------|-----------|--------|
 | `voyage` | `voyage-3` | 1024 | 32000 | 128 | `voyageai` |
 | `openai` | `text-embedding-3-small` | 1536 | 8191 | 100 | `@ai-sdk/openai` |
 
-### API 키 설정
+### API Key Configuration
 
 ```bash
-# 환경변수
+# Environment variables
 export VOYAGE_API_KEY=pa-...
 export OPENAI_API_KEY=sk-...
 ```
 
-또는 `sonamu.config.ts`:
+Or in `sonamu.config.ts`:
 ```typescript
 export default defineConfig({
   secret: {
@@ -47,80 +47,80 @@ export default defineConfig({
 });
 ```
 
-키 우선순위: `Sonamu.secrets.voyage_api_key` → `process.env.VOYAGE_API_KEY`
+Key priority: `Sonamu.secrets.voyage_api_key` → `process.env.VOYAGE_API_KEY`
 
 ---
 
-## Embedding 사용법
+## Embedding Usage
 
 ```typescript
 import { Embedding } from "sonamu/vector";
 
-// 단일 텍스트
-const result = await Embedding.embedOne("검색할 텍스트", "voyage", "query");
+// Single text
+const result = await Embedding.embedOne("text to search", "voyage", "query");
 // result: { embedding: number[], model: "voyage-3", tokenCount: 15 }
 
-// 다수 텍스트 (batchSize 초과 시 자동 분할)
+// Multiple texts (auto-splits when exceeding batchSize)
 const results = await Embedding.embed(
-  ["텍스트1", "텍스트2", ...],
+  ["text1", "text2", ...],
   "voyage",
   "document",         // inputType: "document" | "query"
-  (processed, total) => console.log(`${processed}/${total}`),  // 진행률 콜백
+  (processed, total) => console.log(`${processed}/${total}`),  // progress callback
 );
 
-// 차원 수 확인
+// Check number of dimensions
 Embedding.getDimensions("voyage");  // 1024
 Embedding.getDimensions("openai");  // 1536
 ```
 
-### Voyage AI inputType (비대칭 임베딩)
+### Voyage AI inputType (Asymmetric Embedding)
 
-| inputType | 용도 |
+| inputType | Use case |
 |-----------|------|
-| `"document"` | DB에 저장할 문서 임베딩 시 |
-| `"query"` | 검색 쿼리 임베딩 시 |
+| `"document"` | When embedding documents to store in DB |
+| `"query"` | When embedding search queries |
 
-**CRITICAL: 저장 시 `"document"`, 검색 시 `"query"`를 사용해야 비대칭 임베딩이 올바르게 작동합니다.**
+**CRITICAL: Use `"document"` when storing and `"query"` when searching for asymmetric embedding to work correctly.**
 
 ---
 
-## Chunking 사용법
+## Chunking Usage
 
-긴 문서를 적절한 크기로 분할합니다.
+Splits long documents into appropriately-sized pieces.
 
 ```typescript
 import { Chunking } from "sonamu/vector";
 
 const chunker = new Chunking({
-  chunkSize: 500,     // 청크 최대 크기 (문자 수)
-  chunkOverlap: 50,   // 청크 간 겹침
-  minChunkSize: 50,   // 최소 청크 크기
+  chunkSize: 500,     // Maximum chunk size (character count)
+  chunkOverlap: 50,   // Overlap between chunks
+  minChunkSize: 50,   // Minimum chunk size
 });
 
-// 청킹 필요 여부
-chunker.needsChunking("짧은 텍스트");  // false
+// Check if chunking is needed
+chunker.needsChunking("short text");  // false
 
-// 청크 분할
+// Split into chunks
 const chunks = chunker.chunk(longText);
 // chunks: [{ index: 0, text: "...", startOffset: 0, endOffset: 500 }, ...]
 
-// 예상 청크 수
+// Estimate number of chunks
 chunker.estimateChunkCount(longText);  // 5
 ```
 
-### 청킹 기본 설정
+### Chunking Default Settings
 
-| 옵션 | 기본값 | 설명 |
+| Option | Default | Description |
 |------|--------|------|
-| `chunkSize` | 500 | 청크 최대 크기 (문자 수) |
-| `chunkOverlap` | 50 | 청크 간 겹침 |
-| `minChunkSize` | 50 | 최소 청크 크기 |
-| `skipThreshold` | 200 | 이 크기 이하면 청킹 없이 통과 |
-| `separators` | `["\n\n", "\n", "。", ". ", ...]` | 분할 기준 (우선순위 순) |
+| `chunkSize` | 500 | Maximum chunk size (character count) |
+| `chunkOverlap` | 50 | Overlap between chunks |
+| `minChunkSize` | 50 | Minimum chunk size |
+| `skipThreshold` | 200 | Passes through without chunking if at or below this size |
+| `separators` | `["\n\n", "\n", "。", ". ", ...]` | Split delimiters (in priority order) |
 
 ---
 
-## 검색 설정
+## Search Configuration
 
 ```typescript
 import { createVectorConfig } from "sonamu/vector";
@@ -128,20 +128,20 @@ import { createVectorConfig } from "sonamu/vector";
 const config = createVectorConfig({
   search: {
     defaultLimit: 10,
-    similarityThreshold: 0.5,  // 이 값 이하는 결과에서 제외
-    vectorWeight: 0.7,         // 하이브리드 검색 시 벡터 가중치
-    ftsWeight: 0.3,            // 하이브리드 검색 시 FTS 가중치
+    similarityThreshold: 0.5,  // Results below this value are excluded
+    vectorWeight: 0.7,         // Vector weight in hybrid search
+    ftsWeight: 0.3,            // FTS weight in hybrid search
   },
   pgvector: {
-    iterativeScan: true,       // pgvector iterative scan 사용
-    efSearch: 100,             // HNSW 인덱스 검색 정확도
+    iterativeScan: true,       // Use pgvector iterative scan
+    efSearch: 100,             // HNSW index search accuracy
   },
 });
 ```
 
 ---
 
-## 타입 정의
+## Type Definitions
 
 ### VectorSearchResult
 
@@ -166,10 +166,10 @@ interface HybridSearchResult<T> extends VectorSearchResult<T> {
 
 ```typescript
 interface VectorSearchOptions {
-  embeddingColumn?: string;  // 임베딩 컬럼명 (기본: "embedding")
+  embeddingColumn?: string;  // Embedding column name (default: "embedding")
   limit?: number;
-  threshold?: number;        // 유사도 임계값
-  where?: string;            // SQL WHERE 조건
+  threshold?: number;        // Similarity threshold
+  where?: string;            // SQL WHERE condition
 }
 ```
 
@@ -177,36 +177,36 @@ interface VectorSearchOptions {
 
 ```typescript
 interface HybridSearchOptions extends VectorSearchOptions {
-  vectorWeight?: number;     // 벡터 검색 가중치
-  ftsWeight?: number;        // FTS 가중치
-  ftsColumn?: string;        // FTS 대상 컬럼명
+  vectorWeight?: number;     // Vector search weight
+  ftsWeight?: number;        // FTS weight
+  ftsColumn?: string;        // Target column name for FTS
 }
 ```
 
 ---
 
-## pgvector DB 설정
+## pgvector DB Setup
 
-### 확장 설치
+### Install Extension
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-### 임베딩 컬럼 추가
+### Add Embedding Column
 
 ```sql
--- Voyage AI (1024차원)
+-- Voyage AI (1024 dimensions)
 ALTER TABLE documents ADD COLUMN embedding vector(1024);
 
--- OpenAI (1536차원)
+-- OpenAI (1536 dimensions)
 ALTER TABLE documents ADD COLUMN embedding vector(1536);
 ```
 
-### HNSW 인덱스
+### HNSW Index
 
 ```sql
--- 코사인 유사도 기반 인덱스
+-- Cosine similarity-based index
 CREATE INDEX ON documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
@@ -214,8 +214,8 @@ WITH (m = 16, ef_construction = 64);
 
 ---
 
-## 참고
+## References
 
-- **소스코드**: `modules/sonamu/src/vector/`
-- **pgvector 공식**: https://github.com/pgvector/pgvector
+- **Source code**: `modules/sonamu/src/vector/`
+- **pgvector official**: https://github.com/pgvector/pgvector
 - **Voyage AI**: https://docs.voyageai.com/

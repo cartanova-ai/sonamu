@@ -1,130 +1,130 @@
 ---
 name: sonamu-naite
-description: Naite 추적 시스템. 소스코드에서 Naite.t()로 값 기록, 테스트에서 Naite.get()으로 검증. 체이닝 필터(fromFile, fromFunction, where), wildcard 패턴, DevRunner trace 출력 지원. Use when tracing/debugging Model internals, verifying queries, or inspecting UpsertBuilder behavior.
+description: Naite tracing system. Record values in source code with Naite.t(), verify in tests with Naite.get(). Supports chaining filters (fromFile, fromFunction, where), wildcard patterns, and DevRunner trace output. Use when tracing/debugging Model internals, verifying queries, or inspecting UpsertBuilder behavior.
 ---
 
-# Naite (추적 시스템)
+# Naite (Tracing System)
 
-Naite는 소스 코드에서 값을 기록하고, 테스트에서 검증하는 추적 시스템이다.
+Naite is a tracing system for recording values in source code and verifying them in tests.
 
-**소스코드:** `modules/sonamu/src/naite/naite.ts`
+**Source code:** `modules/sonamu/src/naite/naite.ts`
 
-**동작 원리:**
-1. **소스 코드**: `Naite.t("key", value)` 로 값 기록
-2. **테스트 코드**: `Naite.get("key")` 로 기록된 값 조회/검증
+**How it works:**
+1. **Source code**: Record values with `Naite.t("key", value)`
+2. **Test code**: Retrieve recorded values with `Naite.get("key")`
 
 ---
 
-## 소스 코드에서 기록 (Naite.t)
+## Recording in Source Code (Naite.t)
 
 ```typescript
-// Model 또는 라이브러리 코드에서
+// In Model or library code
 import { Naite } from "sonamu";
 
-// 쿼리 기록
+// Record a query
 Naite.t("esq-query", qb.toQuery());
 
-// UpsertBuilder 내부
+// Inside UpsertBuilder
 Naite.t("puri:ub-register", { tableName, uuid, isUuidReused, row });
 Naite.t("puri:ub-upserted", { tableName, mode, rowCount, returnedIds });
 ```
 
 ---
 
-## 테스트에서 검증 (Naite.get)
+## Verifying in Tests (Naite.get)
 
 ```typescript
-// 테스트 코드에서
+// In test code
 import { Naite } from "sonamu";
 
-// 기록된 쿼리 검증
+// Verify a recorded query
 expect(Naite.get("esq-query").first()).not.contain("limit");
 
-// UpsertBuilder 동작 검증
+// Verify UpsertBuilder behavior
 const trace = Naite.get("puri:ub-upserted").first();
 expect(trace).toMatchObject({ tableName: "users", rowCount: 3 });
 ```
 
 ---
 
-## 주요 Naite 키 (Sonamu 내장)
+## Built-in Naite Keys (Sonamu)
 
-| 키 | 설명 | 데이터 |
-|---|---|---|
-| `esq-query` | 실행된 SQL 쿼리 | 쿼리 문자열 |
-| `puri:executed-query` | Puri에서 실행된 쿼리 | 쿼리 문자열 |
-| `puri:ub-register` | UpsertBuilder register 호출 | `{ tableName, uuid, isUuidReused, row }` |
-| `puri:ub-upserted` | UpsertBuilder upsert 완료 | `{ tableName, mode, rowCount, returnedIds }` |
-| `puri:ub-ref-resolved` | UBRef → 실제 ID 치환 | `{ tableName, field, from, to }` |
-| `puri:ub-batch-updated` | updateBatch 완료 | `{ tableName, rowCount, whereColumns }` |
-| `puri:ub-clean-orphans` | cleanOrphans 실행 | `{ tableName, cleanOrphans, deletedCount }` |
-| `puri:ub-inherit` | inherit 옵션 적용 | `{ tableName, inheritColumns, excludedFromUpdate }` |
-| `mock:fs/promises:virtualFileSystem` | 가상 파일 시스템 경로 | 파일 경로 문자열 |
-| `fs/promises:writeFile` | writeFile 호출 | `{ path, data }` |
-| `fs/promises:rm` | rm 호출 | `{ path, options }` |
+| Key | Description | Data |
+|-----|-------------|------|
+| `esq-query` | Executed SQL query | Query string |
+| `puri:executed-query` | Query executed by Puri | Query string |
+| `puri:ub-register` | UpsertBuilder register call | `{ tableName, uuid, isUuidReused, row }` |
+| `puri:ub-upserted` | UpsertBuilder upsert complete | `{ tableName, mode, rowCount, returnedIds }` |
+| `puri:ub-ref-resolved` | UBRef → actual ID substitution | `{ tableName, field, from, to }` |
+| `puri:ub-batch-updated` | updateBatch complete | `{ tableName, rowCount, whereColumns }` |
+| `puri:ub-clean-orphans` | cleanOrphans executed | `{ tableName, cleanOrphans, deletedCount }` |
+| `puri:ub-inherit` | inherit option applied | `{ tableName, inheritColumns, excludedFromUpdate }` |
+| `mock:fs/promises:virtualFileSystem` | Virtual file system path | File path string |
+| `fs/promises:writeFile` | writeFile call | `{ path, data }` |
+| `fs/promises:rm` | rm call | `{ path, options }` |
 
 ---
 
-## 커스텀 키로 기록
+## Recording with Custom Keys
 
 ```typescript
-// 소스 코드에서 커스텀 키로 기록
+// Record with a custom key in source code
 Naite.t("user:created", { userId: 1, email: "test@test.com" });
 
-// Mock용 가상 파일 시스템
+// Virtual file system for mocking
 Naite.t("mock:fs/promises:virtualFileSystem", "/path/to/virtual/file.ts");
 ```
 
 ---
 
-## Naite.get() 조회 메서드
+## Naite.get() Retrieval Methods
 
 ```typescript
-// 기본 조회
-Naite.get("key").first()     // 첫 번째 데이터
-Naite.get("key").last()      // 마지막 데이터
-Naite.get("key").at(2)       // n번째 데이터
-Naite.get("key").result()    // 전체 데이터 배열
-Naite.get("key").getTraces() // 원본 trace 배열 (콜스택 포함)
+// Basic retrieval
+Naite.get("key").first()     // first entry
+Naite.get("key").last()      // last entry
+Naite.get("key").at(2)       // nth entry
+Naite.get("key").result()    // all entries as an array
+Naite.get("key").getTraces() // raw trace array (includes call stack)
 
-// wildcard 패턴
-Naite.get("puri:*").result()           // puri: 접두사 모두
-Naite.get("syncer:*:user").result()    // syncer:XXX:user 패턴
+// Wildcard patterns
+Naite.get("puri:*").result()           // all with puri: prefix
+Naite.get("syncer:*:user").result()    // syncer:XXX:user pattern
 ```
 
 ---
 
-## 체이닝 필터
+## Chaining Filters
 
 ```typescript
-// 파일명으로 필터링
+// Filter by file name
 Naite.get("esq-query")
-  .fromFile("user.model.ts")  // 해당 파일에서 기록된 것만
+  .fromFile("user.model.ts")  // only entries recorded from this file
   .result();
 
-// 함수명으로 필터링
+// Filter by function name
 Naite.get("puri:executed-query")
-  .fromFunction("findById")                    // 해당 함수에서 호출된 것만
+  .fromFunction("findById")                    // only entries called from this function
   .result();
 
-// fromFunction 옵션
+// fromFunction options
 Naite.get("key")
-  .fromFunction("save", { from: "direct" })    // 직접 호출만 (stack[0])
-  .fromFunction("save", { from: "indirect" })  // 간접 호출만 (stack[1+])
-  .fromFunction("save", { from: "both" })      // 모두 (기본값)
+  .fromFunction("save", { from: "direct" })    // direct calls only (stack[0])
+  .fromFunction("save", { from: "indirect" })  // indirect calls only (stack[1+])
+  .fromFunction("save", { from: "both" })      // both (default)
 
-// 데이터 경로 기반 필터링 (radash get 경로)
+// Filter by data path (radash get path)
 Naite.get("puri:ub-register")
-  .where("data.tableName", "=", "users")    // tableName이 users인 것만
+  .where("data.tableName", "=", "users")    // only where tableName is "users"
   .where("data.rowCount", ">", 5)           // rowCount > 5
   .result();
 
-// where 연산자: ">", "<", ">=", "<=", "=", "!=", "includes"
+// where operators: ">", "<", ">=", "<=", "=", "!=", "includes"
 Naite.get("key")
-  .where("data.query", "includes", "WHERE")  // 문자열 포함 체크
+  .where("data.query", "includes", "WHERE")  // check if string includes substring
   .result();
 
-// 체이닝 조합
+// Combining filters
 Naite.get("puri:executed-query")
   .fromFunction("findMany")
   .where("data", "includes", "users")
@@ -133,27 +133,27 @@ Naite.get("puri:executed-query")
 
 ---
 
-## Naite.del() - 값 삭제
+## Naite.del() - Delete Values
 
 ```typescript
 Naite.t("mock:fs/promises:virtualFileSystem", "/virtual/path");
-// ... 테스트 ...
+// ... test ...
 Naite.del("mock:fs/promises:virtualFileSystem");
 ```
 
 ---
 
-## 테스트 예시
+## Test Examples
 
 ```typescript
-test("쿼리에 limit이 없어야 함", async () => {
+test("query should not have a limit", async () => {
   await UserModel.findMany("A", { num: 0, page: 1 });
 
   expect(Naite.get("esq-query").first()).not.contain("limit");
   expect(Naite.get("esq-query").first()).not.contain("offset");
 });
 
-test("UpsertBuilder register 추적", async () => {
+test("trace UpsertBuilder register", async () => {
   const ub = new UpsertBuilder();
   const ref = ub.register("users", { email: "test@test.com", username: "test" });
 
@@ -165,8 +165,8 @@ test("UpsertBuilder register 추적", async () => {
   });
 });
 
-test("upsert 완료 추적", async () => {
-  // ... upsert 실행 ...
+test("trace upsert completion", async () => {
+  // ... run upsert ...
   
   const trace = Naite.get("puri:ub-upserted").first();
   expect(trace).toMatchObject({
@@ -179,23 +179,23 @@ test("upsert 완료 추적", async () => {
 
 ---
 
-## DevRunner에서 trace 확인
+## Viewing Traces in DevRunner
 
-`sonamu test --traces` 플래그로 CLI에서 Naite trace를 직접 확인할 수 있다:
+Use the `sonamu test --traces` flag to view Naite traces directly in the CLI:
 
 ```bash
 sonamu test user.model --traces
 sonamu test user.model -t
 ```
 
-출력 예시:
+Example output:
 ```
 Tests: 5 passed, 0 failed, 5 total
 Duration: 791ms
 
 Traces:
 
-  UserModel > BaseModel 기본 기능 확인 > Model.findMany() with num = 0
+  UserModel > BaseModel basic functionality > Model.findMany() with num = 0
   user.model.test.ts
 
     [esq-query] user.model.ts:113
@@ -205,13 +205,13 @@ Traces:
     select COUNT(*)::integer as "total" from "users" limit 1
 ```
 
-trace 데이터는 `testCase.meta().traces` (bootstrap.ts의 `afterEach`에서 수집)에서 가져오며, `SerializedTrace` 타입 (`naite.ts`에서 export)으로 직렬화된다.
+Trace data is fetched from `testCase.meta().traces` (collected in `afterEach` of `bootstrap.ts`) and serialized as the `SerializedTrace` type (exported from `naite.ts`).
 
-DevRunner 상세: `testing-devrunner.md` 참고
+See `testing-devrunner.md` for DevRunner details.
 
 ---
 
-## 내부 구조
+## Internal Structure
 
 ### NaiteStore
 
@@ -221,18 +221,18 @@ type NaiteStore = Map<string, NaiteTrace[]>;
 interface NaiteTrace {
   key: string;
   data: any;
-  stack: StackFrame[];  // 콜스택 정보
+  stack: StackFrame[];  // call stack information
   at: Date;
 }
 
 interface StackFrame {
   functionName: string | null;
-  filePath: string;     // TS 파일 기준 경로
-  lineNumber: number;   // TS 파일 기준 라인 번호
+  filePath: string;     // path relative to TS file
+  lineNumber: number;   // line number in TS file
 }
 ```
 
-### SerializedTrace (API 응답/DevRunner용)
+### SerializedTrace (for API responses / DevRunner)
 
 ```typescript
 type SerializedTrace = {
@@ -246,19 +246,19 @@ type SerializedTrace = {
 
 ---
 
-## 디버깅 활용
+## Debugging Uses
 
-Naite는 테스트 외에도 소스코드 동작 분석에 활용할 수 있다:
+Naite can also be used for source code behavior analysis beyond tests:
 
-- **쿼리 추적**: `esq-query`, `puri:executed-query`로 실제 실행되는 SQL 확인
-- **UpsertBuilder 분석**: `puri:ub-*` 키들로 register → upsert → ref-resolved → batch-updated 전체 흐름 추적
-- **파일 I/O 추적**: `fs/promises:*` 키로 syncer 등이 수행하는 파일 작업 확인
-- **특정 함수 격리**: `.fromFunction("findById")` 체이닝으로 특정 메서드 내부에서 발생한 trace만 필터링
+- **Query tracing**: Use `esq-query` and `puri:executed-query` to see the actual SQL being executed
+- **UpsertBuilder analysis**: Trace the full flow (register → upsert → ref-resolved → batch-updated) with `puri:ub-*` keys
+- **File I/O tracing**: Use `fs/promises:*` keys to see file operations performed by the syncer and others
+- **Isolate a specific function**: Use `.fromFunction("findById")` chaining to filter traces to only those originating from a specific method
 
 ---
 
-## 참고
+## References
 
-- **테스트 작성 가이드**: `testing.md`
-- **DevRunner 상세**: `testing-devrunner.md`
-- **expectQuery 헬퍼** (Naite 기반): `testing.md` "테스트 헬퍼: expectQuery" 섹션
+- **Testing guide**: `testing.md`
+- **DevRunner details**: `testing-devrunner.md`
+- **expectQuery helper** (Naite-based): see "Test Helpers: expectQuery" section in `testing.md`

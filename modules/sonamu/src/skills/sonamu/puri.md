@@ -1,32 +1,32 @@
 ---
 name: sonamu-puri
-description: Sonamu Puri 타입 안전 쿼리 빌더. SELECT, WHERE, JOIN, 집계함수, FTS, 벡터검색, 트랜잭션. Use when writing database queries in Model.
+description: Sonamu Puri type-safe query builder. SELECT, WHERE, JOIN, aggregate functions, FTS, vector search, transactions. Use when writing database queries in Model.
 ---
 
-# Puri 쿼리 빌더
+# Puri Query Builder
 
-## 쿼리 시작
+## Starting a Query
 
 ```typescript
-// 읽기
+// Read
 const users = await this.getPuri("r").table("users").select({ id: "id", name: "username" });
 
-// 쓰기
+// Write
 await this.getPuri("w").table("users").where("id", 1).update({ is_active: false });
 
-// Alias 사용
+// Using aliases
 const users = await db.table({ u: "users" }).select({ id: "u.id" });
 ```
 
 ## SELECT
 
-> **CRITICAL: `.select()`는 반드시 객체 형식으로 사용한다.**
+> **CRITICAL: `.select()` must always be used with an object argument.**
 >
-> 문자열 인수를 전달하면 문자열이 character 단위로 spread되어 `select "i" as "0", "d" as "1", ...` 같은 잘못된 SQL이 생성된다.
-> `as any` 캐스팅 후 체이닝할 때 특히 주의한다.
+> Passing a string argument causes the string to be spread character-by-character, generating incorrect SQL like `select "i" as "0", "d" as "1", ...`.
+> Be especially careful when chaining after an `as any` cast.
 >
 > ```typescript
-> // WRONG — character spread 버그
+> // WRONG — character spread bug
 > db.table("files").select("files.entity_id", "files.file_type")
 >
 > // CORRECT
@@ -34,13 +34,13 @@ const users = await db.table({ u: "users" }).select({ id: "u.id" });
 > ```
 
 ```typescript
-// 기본 select
+// Basic select
 const users = await db.table("users").select({ id: "id", name: "username" });
 
-// 모든 컬럼
+// All columns
 const users = await db.table("users").selectAll();
 
-// 중첩 객체 (hydrate 시 자동 변환)
+// Nested objects (auto-converted during hydration)
 db.select({
   id: "users.id",
   parent: {
@@ -49,13 +49,13 @@ db.select({
   }
 });
 
-// 기존 select에 추가
+// Append to existing select
 db.select({ id: "id" }).appendSelect({ name: "username" });
 ```
 
-## Static 함수 (SELECT용)
+## Static Functions (for SELECT)
 
-### 집계 함수
+### Aggregate Functions
 
 ```typescript
 // COUNT
@@ -71,7 +71,7 @@ db.select({
 });
 ```
 
-### 문자열 함수
+### String Functions
 
 ```typescript
 db.select({
@@ -81,12 +81,12 @@ db.select({
 });
 ```
 
-### Raw SQL 표현식
+### Raw SQL Expressions
 
-두 번째 인수 `params`로 바인드 파라미터를 전달할 수 있다. 값을 SQL에 직접 보간하지 말고 params를 사용한다.
+Bind parameters can be passed as the second argument `params`. Do not interpolate values directly into SQL; use params instead.
 
 ```typescript
-// 파라미터 없는 경우
+// Without parameters
 db.select({
   custom: Puri.rawString("COALESCE(nickname, username)"),
   total: Puri.rawNumber("price * quantity"),
@@ -95,26 +95,26 @@ db.select({
   tags: Puri.rawStringArray("string_to_array(tags, ',')"),
 });
 
-// params 배열로 바인드 (SQL injection 방지)
+// Bind with params array (prevents SQL injection)
 db.select({
   score: Puri.rawNumber(
     `word_similarity(?, items.title) * 5 + word_similarity(?, items.tags) * 2`,
     [query, query]
   ),
-  label: Puri.rawString(`COALESCE(??, ?)`, ["items.name", "미지정"]),
+  label: Puri.rawString(`COALESCE(??, ?)`, ["items.name", "Unspecified"]),
 });
 ```
 
 ## WHERE
 
 ```typescript
-// 기본
+// Basic
 db.where("role", "admin")
 db.where("age", ">=", 18)
 db.where("deleted_at", null)           // IS NULL
 db.where("deleted_at", "!=", null)     // IS NOT NULL
 
-// 복수 조건 (AND)
+// Multiple conditions (AND)
 db.where("role", "admin").where("is_active", true)
 
 // IN / NOT IN
@@ -128,7 +128,7 @@ db.where("email", "like", `%${keyword}%`)
 db.whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024])
 ```
 
-### WHERE 그룹핑 (괄호)
+### WHERE Grouping (Parentheses)
 
 ```typescript
 // (role = 'admin' OR role = 'moderator') AND is_active = true
@@ -136,7 +136,7 @@ db.whereGroup((g) => {
   g.where("role", "admin").orWhere("role", "moderator");
 }).where("is_active", true);
 
-// OR 그룹
+// OR group
 db.where("status", "active")
   .orWhereGroup((g) => {
     g.where("role", "admin").where("is_verified", true);
@@ -155,19 +155,19 @@ db.table("employees")
 db.table("employees")
   .leftJoin("departments", "employees.department_id", "departments.id")
 
-// Alias 사용
+// Using aliases
 db.table({ e: "employees" })
   .join({ u: "users" }, "e.user_id", "u.id")
   .leftJoin({ d: "departments" }, "e.department_id", "d.id")
 
-// 콜백으로 복잡한 JOIN 조건
+// Complex JOIN conditions with callback
 db.table("orders")
   .join("products", (j) => {
     j.on("orders.product_id", "products.id")
      .on("orders.store_id", "products.store_id");
   })
 
-// 서브쿼리 JOIN
+// Subquery JOIN
 const subquery = db.table("order_items")
   .select({ order_id: "order_id", total: Puri.sum("amount") })
   .groupBy("order_id");
@@ -182,7 +182,7 @@ db.table("orders")
 ```typescript
 db.orderBy("created_at", "desc")
   .limit(20)
-  .offset(40)  // 3페이지
+  .offset(40)  // Page 3
 ```
 
 ## GROUP BY & HAVING
@@ -197,14 +197,14 @@ db.table("orders")
   .groupBy("user_id")
   .having("COUNT(*) > 5");
 
-// 컬럼, 연산자, 값 형태
+// Column, operator, value form
 db.groupBy("user_id").having("count", ">", 10);
 ```
 
 ## INSERT
 
 ```typescript
-// 기본 INSERT
+// Basic INSERT
 await db.table("users").insert({ username: "john", email: "john@test.com" });
 
 // RETURNING
@@ -212,12 +212,12 @@ const [{ id }] = await db.table("users")
   .insert({ username: "john" })
   .returning("id");
 
-// 복수 컬럼 RETURNING
+// Multiple columns RETURNING
 const [row] = await db.table("users")
   .insert({ username: "john" })
   .returning(["id", "created_at"]);
 
-// 전체 컬럼 RETURNING
+// All columns RETURNING
 const [user] = await db.table("users")
   .insert({ username: "john" })
   .returning("*");
@@ -229,14 +229,14 @@ const [user] = await db.table("users")
 // DO NOTHING
 await db.table("users")
   .insert({ id: 1, username: "john" })
-  .onConflict("id");  // 또는 .onConflict("id", "nothing")
+  .onConflict("id");  // or .onConflict("id", "nothing")
 
-// DO UPDATE - 특정 컬럼만
+// DO UPDATE - specific columns only
 await db.table("users")
   .insert({ id: 1, username: "john", email: "new@test.com" })
   .onConflict("id", { update: ["username", "email"] });
 
-// DO UPDATE - 값 지정
+// DO UPDATE - with specified values
 await db.table("users")
   .insert({ id: 1, username: "john" })
   .onConflict("id", {
@@ -246,7 +246,7 @@ await db.table("users")
     }
   });
 
-// 복합 키 충돌
+// Composite key conflict
 await db.table("user_settings")
   .insert({ user_id: 1, key: "theme", value: "dark" })
   .onConflict(["user_id", "key"], { update: ["value"] });
@@ -268,13 +268,13 @@ await db.table("users").where("id", 1).decrement("credit", 100);
 await db.table("users").where("id", 1).delete();
 ```
 
-## 결과 메서드
+## Result Methods
 
-| 메서드 | 반환 | 설명 |
-|--------|------|------|
-| `await query` | `T[]` | 배열 결과 (Puri는 Thenable) |
-| `first()` | `Promise<T \| undefined>` | 첫 번째 레코드 |
-| `pluck("col")` | `Promise<V[]>` | 특정 컬럼만 배열 |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `await query` | `T[]` | Array result (Puri is Thenable) |
+| `first()` | `Promise<T \| undefined>` | First record |
+| `pluck("col")` | `Promise<V[]>` | Array of a specific column only |
 
 ```typescript
 const users = await db.table("users").select({ id: "id" });           // T[]
@@ -282,31 +282,31 @@ const user = await db.table("users").where("id", 1).first();          // T | und
 const ids = await db.table("users").where("role", "admin").pluck("id"); // number[]
 ```
 
-## 유틸리티
+## Utilities
 
 ```typescript
-// 쿼리 문자열 확인
+// Inspect query string
 const sql = db.table("users").where("id", 1).toQuery();
 
-// 디버그 로그 출력 (콘솔에 쿼리 출력 후 체이닝 계속)
+// Debug log output (prints query to console, then continues chaining)
 await db.table("users").where("id", 1).debug().first();
 
-// 쿼리 복제
+// Clone a query
 const baseQuery = db.table("users").where("is_active", true);
 const query1 = baseQuery.clone().where("role", "admin");
 const query2 = baseQuery.clone().where("role", "user");
 
-// 쿼리 부분 초기화
-db.clear("select")   // SELECT 절 초기화
-db.clear("order")    // ORDER BY 초기화
-db.clear("limit")    // LIMIT 초기화
-db.clear("offset")   // OFFSET 초기화
+// Clear parts of a query
+db.clear("select")   // Clear SELECT clause
+db.clear("order")    // Clear ORDER BY
+db.clear("limit")    // Clear LIMIT
+db.clear("offset")   // Clear OFFSET
 
-// 특정 JOIN 제거
+// Remove a specific JOIN
 db.clearJoin("alias")
 ```
 
-## 트랜잭션
+## Transactions
 
 ```typescript
 await this.getPuri("w").transaction(async (trx) => {
@@ -323,30 +323,30 @@ await this.getPuri("w").transaction(async (trx) => {
 ### whereTsSearch
 
 ```typescript
-// 기본 검색 (websearch_to_tsquery, simple config)
-db.whereTsSearch("search_vector", "검색어")
+// Basic search (websearch_to_tsquery, simple config)
+db.whereTsSearch("search_vector", "search term")
 
-// config 지정
-db.whereTsSearch("search_vector", "검색어", "korean")
+// Specify config
+db.whereTsSearch("search_vector", "search term", "korean")
 
-// 상세 옵션
-db.whereTsSearch("search_vector", "검색어", {
+// Detailed options
+db.whereTsSearch("search_vector", "search term", {
   parser: "plainto_tsquery",  // websearch_to_tsquery | plainto_tsquery | phraseto_tsquery
   config: "korean",
 })
 ```
 
-### tsHighlight (검색어 하이라이팅)
+### tsHighlight (Search Term Highlighting)
 
 ```typescript
 db.select({
   title: "title",
-  highlighted: Puri.tsHighlight("content", "검색어"),
+  highlighted: Puri.tsHighlight("content", "search term"),
 });
 
-// 옵션
+// Options
 db.select({
-  highlighted: Puri.tsHighlight("content", "검색어", {
+  highlighted: Puri.tsHighlight("content", "search term", {
     config: "korean",
     startSel: "<mark>",
     stopSel: "</mark>",
@@ -357,39 +357,39 @@ db.select({
 });
 ```
 
-### tsRank / tsRankCd (검색 순위)
+### tsRank / tsRankCd (Search Ranking)
 
-첫 번째 인수에 컬럼명 문자열 대신 `Puri.toTsVector()`를 전달해야 한다.
+The first argument must be `Puri.toTsVector()` rather than a column name string.
 
 ```typescript
-// toTsVector()로 감싸서 전달 (필수)
+// Must wrap with toTsVector() (required)
 db.select({
-  rank: Puri.tsRank(Puri.toTsVector("documents.search_vector"), "검색어"),
+  rank: Puri.tsRank(Puri.toTsVector("documents.search_vector"), "search term"),
 })
-.whereTsSearch("documents.search_vector", "검색어")
+.whereTsSearch("documents.search_vector", "search term")
 .orderBy("rank", "desc");
 
-// config 지정
+// Specify config
 db.select({
-  rank: Puri.tsRank(Puri.toTsVector("documents.title", "korean"), "검색어"),
+  rank: Puri.tsRank(Puri.toTsVector("documents.title", "korean"), "search term"),
 });
 
-// 옵션
+// Options
 db.select({
-  rank: Puri.tsRank(Puri.toTsVector("documents.title"), "검색어", {
-    normalization: 1,        // 문서 길이 정규화
-    weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A 가중치
+  rank: Puri.tsRank(Puri.toTsVector("documents.title"), "search term", {
+    normalization: 1,        // Document length normalization
+    weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A weights
   }),
 });
 
 // tsRankCd (Cover Density)
 db.select({
-  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어"),
+  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "search term"),
 });
 
-// tsRankCd 옵션
+// tsRankCd options
 db.select({
-  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "검색어", {
+  rank: Puri.tsRankCd(Puri.toTsVector("documents.title"), "search term", {
     parser: "phraseto_tsquery",
     normalization: 16,
   }),
@@ -403,19 +403,19 @@ db.select({
 ### whereSearch
 
 ```typescript
-// 단일 컬럼 검색
-db.whereSearch("title", "검색어")
+// Single column search
+db.whereSearch("title", "search term")
 
-// 복합 컬럼 검색 (인덱스와 동일한 컬럼 구성 필요)
-db.whereSearch(["title", "content"], "검색어")
+// Multi-column search (requires same column composition as index)
+db.whereSearch(["title", "content"], "search term")
 
-// 가중치 옵션
-db.whereSearch(["title", "content"], "검색어", {
-  weights: [10, 1],  // title에 10배 가중치
+// Weight options
+db.whereSearch(["title", "content"], "search term", {
+  weights: [10, 1],  // 10x weight on title
 })
 ```
 
-### score (검색 점수)
+### score (Search Score)
 
 ```typescript
 db.select({
@@ -423,26 +423,26 @@ db.select({
   title: "title",
   score: Puri.score(),
 })
-.whereSearch("title", "검색어")
+.whereSearch("title", "search term")
 .orderBy("score", "desc");
 ```
 
-### highlight (하이라이팅)
+### highlight (Highlighting)
 
 ```typescript
-// 단일 컬럼
+// Single column
 db.select({
-  highlighted: Puri.highlight("title", "검색어"),
+  highlighted: Puri.highlight("title", "search term"),
 });
 
-// 복합 컬럼 (배열 반환)
+// Multiple columns (returns array)
 db.select({
-  highlighted: Puri.highlight(["title", "content"], "검색어"),
+  highlighted: Puri.highlight(["title", "content"], "search term"),
 });
 
-// 검색어 배열
+// Array of search terms
 db.select({
-  highlighted: Puri.highlight("title", ["검색어1", "검색어2"]),
+  highlighted: Puri.highlight("title", ["term1", "term2"]),
 });
 ```
 
@@ -453,9 +453,9 @@ db.select({
 ### vectorSimilarity
 
 ```typescript
-const embedding = await getEmbedding("검색 쿼리");
+const embedding = await getEmbedding("search query");
 
-// 기본 (cosine similarity)
+// Default (cosine similarity)
 const results = await db.table("documents")
   .select({ id: "id", title: "title" })
   .vectorSimilarity("embedding", embedding);
@@ -468,39 +468,39 @@ db.vectorSimilarity("embedding", embedding, { method: "l2" });
 // Inner product
 db.vectorSimilarity("embedding", embedding, { method: "inner_product" });
 
-// threshold 필터
+// threshold filter
 db.vectorSimilarity("embedding", embedding, {
   method: "cosine",
-  threshold: 0.7,  // similarity >= 0.7 만
+  threshold: 0.7,  // only similarity >= 0.7
 });
 
-// distinctOn (중복 제거)
+// distinctOn (deduplicate)
 db.vectorSimilarity("embedding", embedding, {
-  distinctOn: "document_id",  // document_id별 최고 유사도만
+  distinctOn: "document_id",  // best similarity per document_id only
 });
 ```
 
-**반환값**: `similarity` 컬럼이 자동 추가됨
+**Return value**: `similarity` column is automatically added
 
-| method | similarity 의미 | 정렬 |
-|--------|----------------|------|
-| cosine | 1 - distance (높을수록 유사) | desc |
-| l2 | distance (낮을수록 유사) | asc |
-| inner_product | -distance (높을수록 유사) | desc |
+| method | similarity meaning | sort order |
+|--------|-------------------|------------|
+| cosine | 1 - distance (higher = more similar) | desc |
+| l2 | distance (lower = more similar) | asc |
+| inner_product | -distance (higher = more similar) | desc |
 
 ---
 
 ## pg_trgm Fuzzy Search
 
-`CREATE EXTENSION IF NOT EXISTS pg_trgm` 필요. `searchText` prop으로 생성된 generated column과 GIN 인덱스를 함께 사용하는 것이 일반적이다.
+Requires `CREATE EXTENSION IF NOT EXISTS pg_trgm`. Typically used together with a generated column created via the `searchText` prop and a GIN index.
 
-### whereFuzzy — 후보 필터링
+### whereFuzzy — Candidate Filtering
 
-연산자별로 SQL 피연산자 순서가 다르다:
+The SQL operand order differs per operator:
 
-| operator | 의미 | SQL |
-|----------|------|-----|
-| `<%` (기본) | word similarity | `'query' <% column` |
+| operator | meaning | SQL |
+|----------|---------|-----|
+| `<%` (default) | word similarity | `'query' <% column` |
 | `%` | similarity | `column % 'query'` |
 | `<<%` | strict word similarity | `'query' <<% column` |
 
@@ -510,9 +510,9 @@ puri.whereFuzzy("items.search_text", query, { operator: "%" });
 puri.whereFuzzy("items.search_text", query, { operator: "<<%" });
 ```
 
-### 유사도 점수 — Static 메서드
+### Similarity Scores — Static Methods
 
-`SqlExpression<"number">`를 반환하므로 select에서 점수 컬럼으로 활용한다:
+Returns `SqlExpression<"number">`, so use it as a score column in select:
 
 ```typescript
 // Puri.wordSimilarity(column, query)       → word_similarity(?, ??)
@@ -533,13 +533,13 @@ const results = await this.getPuri("r")
   .orderByRaw("score DESC");
 ```
 
-### 언어별 특성
+### Language-specific Characteristics
 
-| 언어 | 적합성 | 비고 |
-|------|--------|------|
-| 영어 | 우수 | 단어 단위 분리 + word_similarity |
-| 한국어 | 양호 | 1-2글자 검색 시 성능 저하 |
-| 일본어 | 양호 | 1-2글자 검색 시 성능 저하 |
+| Language | Suitability | Notes |
+|----------|-------------|-------|
+| English | Excellent | Word-level splitting + word_similarity |
+| Korean | Good | Performance degrades for 1-2 character searches |
+| Japanese | Good | Performance degrades for 1-2 character searches |
 
 ---
 
@@ -548,4 +548,4 @@ const results = await this.getPuri("r")
 - MUST use `getPuri("r")` for read queries, `getPuri("w")` for write queries
 - MUST include WHERE condition for UPDATE/DELETE operations
 - MUST use `transaction()` for multiple write operations
-- JSON/JSONB 컬럼은 insert/update 시 자동으로 JSON.stringify 처리됨
+- JSON/JSONB columns are automatically JSON.stringify'd on insert/update

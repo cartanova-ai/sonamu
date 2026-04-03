@@ -1,64 +1,64 @@
 ---
 name: sonamu-auth-plugins
-description: better-auth 플러그인 래퍼 및 엔티티 자동 생성. Sonamu snake_case 스키마 매핑 포함. Use when adding auth plugins like admin, organization, 2fa, passkey, phone-number, jwt, api-key, sso, username, anonymous.
+description: better-auth plugin wrappers and automatic entity generation. Includes Sonamu snake_case schema mapping. Use when adding auth plugins like admin, organization, 2fa, passkey, phone-number, jwt, api-key, sso, username, anonymous.
 ---
 
-# better-auth 플러그인 가이드
+# better-auth Plugin Guide
 
-Sonamu는 better-auth 플러그인을 snake_case 스키마 매핑과 함께 래핑하여 제공합니다.
-`auth generate --plugins` 명령어로 플러그인 엔티티를 자동 생성할 수 있습니다.
+Sonamu wraps better-auth plugins with snake_case schema mapping.
+Use the `auth generate --plugins` command to auto-generate plugin entities.
 
-**소스코드:**
-- 래퍼: `modules/sonamu/src/auth/plugins/wrappers/`
-- 엔티티 정의: `modules/sonamu/src/auth/plugins/entity-definitions/`
-- 생성기: `modules/sonamu/src/auth/auth-generator.ts`
-
----
-
-## 지원 플러그인
-
-| 플러그인 ID | 래퍼 함수 | 패키지 | 용도 |
-|------------|----------|--------|------|
-| `admin` | `admin()` | `better-auth/plugins` | 관리자 기능, 사용자 밴/언밴, 세션 impersonation |
-| `organization` | `organization()` | `better-auth/plugins` | 조직, 팀, 멤버, 초대 관리 |
-| `2fa` | `twoFactor()` | `better-auth/plugins` | TOTP 기반 2단계 인증 |
-| `username` | `username()` | `better-auth/plugins` | 사용자명 기반 인증 |
-| `phone-number` | `phoneNumber()` | `better-auth/plugins` | 전화번호 인증 |
-| `api-key` | `apiKey()` | `better-auth/plugins` | API 키 발급/관리, Rate Limit |
-| `jwt` | `jwt()` | `better-auth/plugins` | JWT 토큰 + JWKS 키 관리 |
-| `passkey` | `passkey()` | `@better-auth/passkey` | WebAuthn/Passkey 인증 |
-| `sso` | `sso()` | `@better-auth/sso` | OIDC/SAML SSO 연동 |
-| `anonymous` | `anonymous()` | `better-auth/plugins` | 익명 사용자 지원 |
+**Source code:**
+- Wrappers: `modules/sonamu/src/auth/plugins/wrappers/`
+- Entity definitions: `modules/sonamu/src/auth/plugins/entity-definitions/`
+- Generator: `modules/sonamu/src/auth/auth-generator.ts`
 
 ---
 
-## CLI 사용법
+## Supported Plugins
+
+| Plugin ID | Wrapper function | Package | Purpose |
+|-----------|-----------------|---------|---------|
+| `admin` | `admin()` | `better-auth/plugins` | Admin features, user ban/unban, session impersonation |
+| `organization` | `organization()` | `better-auth/plugins` | Organization, team, member, and invitation management |
+| `2fa` | `twoFactor()` | `better-auth/plugins` | TOTP-based two-factor authentication |
+| `username` | `username()` | `better-auth/plugins` | Username-based authentication |
+| `phone-number` | `phoneNumber()` | `better-auth/plugins` | Phone number authentication |
+| `api-key` | `apiKey()` | `better-auth/plugins` | API key issuance/management, rate limiting |
+| `jwt` | `jwt()` | `better-auth/plugins` | JWT tokens + JWKS key management |
+| `passkey` | `passkey()` | `@better-auth/passkey` | WebAuthn/Passkey authentication |
+| `sso` | `sso()` | `@better-auth/sso` | OIDC/SAML SSO integration |
+| `anonymous` | `anonymous()` | `better-auth/plugins` | Anonymous user support |
+
+---
+
+## CLI Usage
 
 ```bash
-# 기본 엔티티만 (User, Session, Account, Verification)
+# Base entities only (User, Session, Account, Verification)
 pnpm sonamu auth generate
 
-# 플러그인 포함
+# With plugins
 pnpm sonamu auth generate --plugins admin,organization
 
-# 여러 플러그인
+# Multiple plugins
 pnpm sonamu auth generate --plugins admin,2fa,phone-number,username
 ```
 
-### 동작 방식
+### How It Works
 
-1. **기본 엔티티** 생성/업데이트 (User, Session, Account, Verification)
-2. **플러그인별** 처리:
-   - `entities`: 새 테이블 생성 (예: Organization → organizations, members, invitations, teams, team_members)
-   - `additionalProps`: 기존 엔티티에 필드 추가 (예: admin → User에 ban_reason, ban_expires 추가)
-   - `additionalIndexes`: 기존 엔티티에 인덱스 추가
-3. 이미 존재하는 엔티티는 **누락된 필드만 추가**, 기존 필드 보존
+1. **Base entities** are created/updated (User, Session, Account, Verification)
+2. **Per-plugin** processing:
+   - `entities`: creates new tables (e.g. Organization → organizations, members, invitations, teams, team_members)
+   - `additionalProps`: adds fields to existing entities (e.g. admin → adds ban_reason, ban_expires to User)
+   - `additionalIndexes`: adds indexes to existing entities
+3. Entities that already exist have **only missing fields added**; existing fields are preserved
 
 ---
 
-## 래퍼 사용법 (sonamu.config.ts)
+## Wrapper Usage (sonamu.config.ts)
 
-Sonamu 래퍼를 사용하면 snake_case 스키마 매핑이 자동 적용됩니다.
+Using Sonamu wrappers automatically applies snake_case schema mapping.
 
 ```typescript
 // sonamu.config.ts
@@ -79,45 +79,45 @@ export default defineConfig({
 });
 ```
 
-**CRITICAL: `better-auth/plugins`에서 직접 import하지 마세요.** Sonamu 래퍼를 거쳐야 snake_case 매핑이 적용됩니다.
+**CRITICAL: Do not import directly from `better-auth/plugins`.** You must go through the Sonamu wrapper for snake_case mapping to apply.
 
 ```typescript
-// WRONG - snake_case 매핑 안 됨
+// WRONG - snake_case mapping not applied
 import { admin } from "better-auth/plugins";
 
-// CORRECT - Sonamu 래퍼
+// CORRECT - Sonamu wrapper
 import { admin } from "sonamu/auth/plugins";
 ```
 
 ---
 
-## 플러그인별 상세
+## Per-Plugin Details
 
 ### admin
 
-**추가 엔티티:** 없음
-**User에 추가되는 필드:** `role`, `banned`, `ban_reason`, `ban_expires`
-**Session에 추가되는 필드:** `impersonated_by`
+**Additional entities:** None
+**Fields added to User:** `role`, `banned`, `ban_reason`, `ban_expires`
+**Fields added to Session:** `impersonated_by`
 
 ```typescript
 import { admin } from "sonamu/auth/plugins";
 
-// 기본 사용
+// Basic usage
 admin()
 
-// 옵션 커스터마이즈 (스키마 매핑은 자동 병합)
+// Customize options (schema mapping is automatically merged)
 admin({ defaultRole: "user" })
 ```
 
-스키마 매핑:
+Schema mapping:
 - `banReason` → `ban_reason`
 - `banExpires` → `ban_expires`
 - `impersonatedBy` → `impersonated_by`
 
 ### organization
 
-**추가 엔티티:** Organization, Member, Invitation, Team, TeamMember
-**Session에 추가되는 필드:** `active_organization_id`, `active_team_id`
+**Additional entities:** Organization, Member, Invitation, Team, TeamMember
+**Fields added to Session:** `active_organization_id`, `active_team_id`
 
 ```typescript
 import { organization } from "sonamu/auth/plugins";
@@ -125,8 +125,8 @@ import { organization } from "sonamu/auth/plugins";
 organization()
 ```
 
-스키마 매핑:
-- 모든 테이블: `createdAt` → `created_at`
+Schema mapping:
+- All tables: `createdAt` → `created_at`
 - Member: `userId` → `user_id`, `organizationId` → `organization_id`
 - Invitation: `inviterId` → `inviter_id`, `organizationId` → `organization_id`, `teamId` → `team_id`, `expiresAt` → `expires_at`
 - Team: `organizationId` → `organization_id`, `updatedAt` → `updated_at`
@@ -135,8 +135,8 @@ organization()
 
 ### 2fa (twoFactor)
 
-**추가 엔티티:** TwoFactor
-**User에 추가되는 필드:** `two_factor_enabled`
+**Additional entities:** TwoFactor
+**Fields added to User:** `two_factor_enabled`
 
 ```typescript
 import { twoFactor } from "sonamu/auth/plugins";
@@ -144,13 +144,13 @@ import { twoFactor } from "sonamu/auth/plugins";
 twoFactor()
 ```
 
-스키마 매핑:
+Schema mapping:
 - User: `twoFactorEnabled` → `two_factor_enabled`
 - TwoFactor: `userId` → `user_id`, `backupCodes` → `backup_codes`
 
 ### username
 
-**User에 추가되는 필드:** `display_username`
+**Fields added to User:** `display_username`
 
 ```typescript
 import { username } from "sonamu/auth/plugins";
@@ -158,26 +158,26 @@ import { username } from "sonamu/auth/plugins";
 username()
 ```
 
-스키마 매핑:
+Schema mapping:
 - `displayUsername` → `display_username`
 
 ### phone-number
 
-**User에 추가되는 필드:** `phone_number`, `phone_number_verified`
+**Fields added to User:** `phone_number`, `phone_number_verified`
 
 ```typescript
 import { phoneNumber } from "sonamu/auth/plugins";
 
-phoneNumber({ sendOTP: async ({ phoneNumber, otp }) => { /* SMS 발송 */ } })
+phoneNumber({ sendOTP: async ({ phoneNumber, otp }) => { /* send SMS */ } })
 ```
 
-스키마 매핑:
+Schema mapping:
 - `phoneNumber` → `phone_number`
 - `phoneNumberVerified` → `phone_number_verified`
 
 ### api-key
 
-**추가 엔티티:** ApiKey (테이블: `api_keys`)
+**Additional entities:** ApiKey (table: `api_keys`)
 
 ```typescript
 import { apiKey } from "sonamu/auth/plugins";
@@ -185,7 +185,7 @@ import { apiKey } from "sonamu/auth/plugins";
 apiKey()
 ```
 
-스키마 매핑:
+Schema mapping:
 - `userId` → `user_id`, `lastRequest` → `last_request`, `requestCount` → `request_count`
 - `rateLimitEnabled` → `rate_limit_enabled`, `rateLimitTimeWindow` → `rate_limit_time_window`
 - `rateLimitMax` → `rate_limit_max`, `refillInterval` → `refill_interval`
@@ -194,7 +194,7 @@ apiKey()
 
 ### jwt
 
-**추가 엔티티:** Jwks (테이블: `jwks`)
+**Additional entities:** Jwks (table: `jwks`)
 
 ```typescript
 import { jwt } from "sonamu/auth/plugins";
@@ -202,14 +202,14 @@ import { jwt } from "sonamu/auth/plugins";
 jwt()
 ```
 
-스키마 매핑:
+Schema mapping:
 - `publicKey` → `public_key`, `privateKey` → `private_key`
 - `createdAt` → `created_at`, `expiresAt` → `expires_at`
 
 ### passkey
 
-**추가 엔티티:** Passkey (테이블: `passkeys`)
-**패키지:** `@better-auth/passkey` (별도 설치 필요)
+**Additional entities:** Passkey (table: `passkeys`)
+**Package:** `@better-auth/passkey` (must be installed separately)
 
 ```bash
 pnpm add @better-auth/passkey
@@ -221,13 +221,13 @@ import { passkey } from "sonamu/auth/plugins";
 passkey({ rpID: "localhost", rpName: "My App" })
 ```
 
-스키마 매핑:
+Schema mapping:
 - `publicKey` → `public_key`, `userId` → `user_id`, `credentialID` → `credential_id`
 - `deviceType` → `device_type`, `backedUp` → `backed_up`, `createdAt` → `created_at`
 
 ### sso
 
-**패키지:** `@better-auth/sso` (별도 설치 필요)
+**Package:** `@better-auth/sso` (must be installed separately)
 
 ```bash
 pnpm add @better-auth/sso
@@ -239,14 +239,14 @@ import { sso } from "sonamu/auth/plugins";
 sso()
 ```
 
-테이블: `sso_providers`
-스키마 매핑:
+Table: `sso_providers`
+Schema mapping:
 - `oidcConfig` → `oidc_config`, `samlConfig` → `saml_config`
 - `userId` → `user_id`, `providerId` → `provider_id`, `organizationId` → `organization_id`
 
 ### anonymous
 
-**User에 추가되는 필드:** `is_anonymous`
+**Fields added to User:** `is_anonymous`
 
 ```typescript
 import { anonymous } from "sonamu/auth/plugins";
@@ -254,14 +254,14 @@ import { anonymous } from "sonamu/auth/plugins";
 anonymous()
 ```
 
-스키마 매핑:
+Schema mapping:
 - `isAnonymous` → `is_anonymous`
 
 ---
 
-## 커스텀 스키마 옵션
+## Custom Schema Options
 
-래퍼 함수에 추가 옵션을 전달하면 Sonamu 기본 매핑과 자동 병합됩니다:
+Passing additional options to a wrapper function automatically merges them with Sonamu's default mapping:
 
 ```typescript
 admin({
@@ -269,29 +269,29 @@ admin({
   schema: {
     user: {
       fields: {
-        customField: "custom_field",  // 추가 매핑
+        customField: "custom_field",  // additional mapping
       },
     },
   },
 })
 ```
 
-내부적으로 `merge(ADMIN_SCHEMA, options.schema)`가 실행되어 Sonamu 매핑이 보존됩니다.
+Internally, `merge(ADMIN_SCHEMA, options.schema)` is executed to preserve the Sonamu mapping.
 
 ---
 
-## 플러그인 추가 후 작업 순서
+## Steps After Adding a Plugin
 
-1. `pnpm sonamu auth generate --plugins <플러그인 목록>`
-2. Sonamu UI에서 생성된 엔티티 확인
-3. `pnpm sonamu migrate run`으로 마이그레이션 실행
-4. `sonamu.config.ts`에 래퍼 함수 추가
-5. 필요시 `guardHandler`에 플러그인별 권한 로직 추가
+1. `pnpm sonamu auth generate --plugins <plugin list>`
+2. Confirm generated entities in Sonamu UI
+3. Run migration with `pnpm sonamu migrate run`
+4. Add wrapper functions to `sonamu.config.ts`
+5. If needed, add plugin-specific permission logic to `guardHandler`
 
 ---
 
-## 참고
+## References
 
-- **기본 인증 설정:** `auth.md`
-- **PK 타입 변경 (better-auth → string PK):** `auth-migration.md`
-- **소스코드:** `modules/sonamu/src/auth/plugins/`
+- **Basic auth configuration:** `auth.md`
+- **Changing PK type (better-auth → string PK):** `auth-migration.md`
+- **Source code:** `modules/sonamu/src/auth/plugins/`

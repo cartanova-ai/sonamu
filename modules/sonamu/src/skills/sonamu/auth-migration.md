@@ -1,24 +1,24 @@
 ---
 name: sonamu-auth-migration
-description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (integer→string). Entity, Migration, SaveParams, test-helpers 전체 프로세스. PK 타입 변경 후 플러그인 Entity/Migration 작성 패턴. Use when migrating User.id from integer to string PK, or writing plugin Entity/Migration after PK type change.
+description: Changing User.id type (integer→string) when integrating external auth such as better-auth. Full process covering Entity, Migration, SaveParams, test-helpers. Patterns for writing plugin Entity/Migration after PK type change. Use when migrating User.id from integer to string PK, or writing plugin Entity/Migration after PK type change.
 ---
 
-# Auth 시스템 Migration (better-auth 등 외부 인증 통합)
+# Auth System Migration (Integrating External Auth such as better-auth)
 
 ## Situation
 
-외부 인증 시스템(better-auth, NextAuth 등)을 기존 Sonamu 프로젝트에 통합할 때 User.id 타입 변경이 필요한 경우
+When User.id type change is needed to integrate an external authentication system (better-auth, NextAuth, etc.) with an existing Sonamu project
 
 ## Problem
 
-- better-auth는 User.id를 string(text) 타입으로 요구
-- 기존 시스템은 integer 타입 사용
-- User를 참조하는 모든 FK도 함께 변경 필요
-- Migration 순서 실수 시 FK constraint 위반
+- better-auth requires User.id to be of type string (text)
+- The existing system uses integer type
+- All FKs referencing User must be changed together
+- FK constraint violations occur if migration order is wrong
 
 ## Solution
 
-### 1. Entity 타입 변경
+### 1. Change Entity Type
 
 ```json
 // user.entity.json
@@ -27,39 +27,39 @@ description: better-auth 등 외부 인증 통합 시 User.id 타입 변경 (int
 }
 ```
 
-주의: integer에서 string으로 변경
+Note: changing from integer to string
 
-### 2. 영향받는 FK 확인
+### 2. Identify Affected FKs
 
 ```bash
-# User를 참조하는 모든 relation 찾기
+# Find all relations referencing User
 grep -r "with.*User" --include="*.entity.json"
 ```
 
-일반적으로 영향받는 테이블:
+Tables commonly affected:
 
 - accounts.user_id
 - sessions.user_id
-- evaluation_committees.evaluator_id (또는 다른 User 참조 FK)
+- evaluation_committees.evaluator_id (or other User-referencing FKs)
 - project_participants.user_id
 - reports.submitted_by_id
 
-### 3. Migration 작성 순서 (필수)
+### 3. Migration Write Order (Required)
 
-잘못된 순서 - FK constraint 위반:
+Wrong order - FK constraint violation:
 
 ```typescript
-// 잘못된 예
+// wrong example
 await knex.schema.alterTable("accounts", (table) => {
-  table.text("user_id").alter(); // 실패: FK가 아직 users.id(integer)를 참조 중
+  table.text("user_id").alter(); // fails: FK still references users.id(integer)
 });
 ```
 
-올바른 순서:
+Correct order:
 
 ```typescript
 export async function up(knex: Knex): Promise<void> {
-  // 1단계: 모든 FK 제약조건 제거
+  // Step 1: Remove all FK constraints
   await knex.raw(
     'ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"',
   );
@@ -76,10 +76,10 @@ export async function up(knex: Knex): Promise<void> {
     'ALTER TABLE "reports" DROP CONSTRAINT "reports_submitted_by_id_foreign"',
   );
 
-  // 2단계: PK 제약조건 제거
+  // Step 2: Remove PK constraint
   await knex.raw('ALTER TABLE "users" DROP CONSTRAINT "users_pkey"');
 
-  // 3단계: 모든 컬럼 타입 변경 (부모 PK + 자식 FK)
+  // Step 3: Change all column types (parent PK + child FKs)
   await knex.raw(
     'ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text',
   );
@@ -99,12 +99,12 @@ export async function up(knex: Knex): Promise<void> {
     'ALTER TABLE "reports" ALTER COLUMN "submitted_by_id" TYPE text USING "submitted_by_id"::text',
   );
 
-  // 4단계: PK 제약조건 복구
+  // Step 4: Restore PK constraint
   await knex.raw(
     'ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")',
   );
 
-  // 5단계: FK 제약조건 복구
+  // Step 5: Restore FK constraints
   await knex.raw(
     'ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE',
   );
@@ -123,32 +123,32 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-핵심 원칙:
+Core principles:
 
-1. FK constraint가 존재하는 상태에서는 참조 컬럼 타입 변경 불가
-2. 모든 FK 제거 후 타입 변경, 그 다음 FK 복구
-3. 하나의 migration에서 모든 변경을 처리
+1. Column type cannot be changed while FK constraints exist
+2. Remove all FKs, then change types, then restore FKs
+3. Handle all changes in a single migration
 
-### 4. Migration 재생성 시 주의사항
+### 4. Notes When Regenerating Migrations
 
-Entity 변경 후 `pnpm generate` 실행 시 중복 migration이 생성됨:
+Running `pnpm generate` after entity changes creates duplicate migrations:
 
 ```
-20260203154926_alter_accounts_alter5.ts           (accounts.user_id만 변경)
-20260203154927_alter_evaluation_committees.ts    (evaluator_id만 변경)
-20260203154928_alter_project_participants.ts     (user_id만 변경)
-20260203154929_alter_reports.ts                  (submitted_by_id만 변경)
-20260203154930_alter_sessions.ts                 (user_id만 변경)
-20260203154931_alter_users_pk_type.ts           (통합: 모든 타입 변경)
+20260203154926_alter_accounts_alter5.ts           (changes accounts.user_id only)
+20260203154927_alter_evaluation_committees.ts    (changes evaluator_id only)
+20260203154928_alter_project_participants.ts     (changes user_id only)
+20260203154929_alter_reports.ts                  (changes submitted_by_id only)
+20260203154930_alter_sessions.ts                 (changes user_id only)
+20260203154931_alter_users_pk_type.ts           (consolidated: changes all types)
 ```
 
-문제점:
+Problems:
 
-- 개별 migration들(154926-154930)이 FK 타입만 변경 시도
-- 통합 migration(154931)도 같은 컬럼들을 변경
-- 순서대로 실행하면 154926이 먼저 실행되어 FK constraint 위반
+- Individual migrations (154926-154930) attempt to change only FK types
+- The consolidated migration (154931) changes the same columns
+- Running in order causes 154926 to execute first and violate FK constraints
 
-해결 방법 1: 개별 migration 삭제
+Fix 1: Delete individual migrations
 
 ```bash
 rm 20260203154926_alter_accounts_alter5.ts
@@ -156,56 +156,56 @@ rm 20260203154927_alter_evaluation_committees.ts
 rm 20260203154928_alter_project_participants.ts
 rm 20260203154929_alter_reports.ts
 rm 20260203154930_alter_sessions.ts
-# 20260203154931_alter_users_pk_type.ts만 유지
+# Keep only 20260203154931_alter_users_pk_type.ts
 ```
 
-해결 방법 2: 개별 migration에서 user_id 관련 변경 제거
+Fix 2: Remove user_id-related changes from individual migrations
 
-- accounts, sessions migration에 updated_at 변경만 남기고 user_id 변경 제거
-- evaluation_committees, project_participants, reports migration 삭제
-- 통합 migration에서만 타입 변경 수행
+- Leave only updated_at changes in accounts, sessions migrations and remove user_id changes
+- Delete evaluation_committees, project_participants, reports migrations
+- Perform type changes in the consolidated migration only
 
-### 5. SaveParams 타입 정의
+### 5. SaveParams Type Definitions
 
-Auth 관련 엔티티는 nullable 필드가 많으므로 SaveParams에서 모두 optional 처리 필요:
+Auth-related entities have many nullable fields, so all must be treated as optional in SaveParams:
 
 ```typescript
 // account.types.ts
 export const AccountSaveParams = AccountBaseSchema.partial({
-  id: true, // create와 update 구분을 위해
-  created_at: true, // dbDefault로 자동 생성
-  updated_at: true, // dbDefault로 자동 생성
-  access_token: true, // nullable - OAuth 전용
-  refresh_token: true, // nullable - OAuth 전용
-  id_token: true, // nullable - OAuth 전용
+  id: true, // to distinguish create vs update
+  created_at: true, // auto-generated via dbDefault
+  updated_at: true, // auto-generated via dbDefault
+  access_token: true, // nullable - OAuth only
+  refresh_token: true, // nullable - OAuth only
+  id_token: true, // nullable - OAuth only
   access_token_expires_at: true, // nullable
   refresh_token_expires_at: true, // nullable
-  scope: true, // nullable - OAuth 전용
-  password: true, // nullable - credential 전용
+  scope: true, // nullable - OAuth only
+  password: true, // nullable - credential only
 });
 ```
 
-원칙:
+Principles:
 
-- id: optional (create 시 생성, update 시 필수)
-- created_at, updated_at: optional (dbDefault로 자동 생성)
-- entity에서 nullable: true인 모든 필드: optional
+- id: optional (generated on create, required on update)
+- created_at, updated_at: optional (auto-generated via dbDefault)
+- All fields with nullable: true in entity: optional
 
-이렇게 하지 않으면 테스트 작성 시 타입 에러 발생:
+Not doing this causes type errors when writing tests:
 
 ```typescript
-// SaveParams에서 password가 optional이 아니면
+// If password is not optional in SaveParams
 await AccountModel.save([
   {
     provider_id: "google",
-    // password 필드를 제공하지 않으면 타입 에러 발생
+    // type error if password field is not provided
   },
 ]);
 ```
 
-### 6. 테스트 작성 패턴
+### 6. Test Writing Patterns
 
-나쁜 예 - OAuth 계정에 불필요한 필드 제공:
+Bad example - providing unnecessary fields for OAuth account:
 
 ```typescript
 await AccountModel.save([
@@ -217,7 +217,7 @@ await AccountModel.save([
     access_token: "token_123",
     refresh_token: "refresh_123",
     id_token: "id_token_123",
-    password: "hashed_password", // OAuth에는 불필요
+    password: "hashed_password", // unnecessary for OAuth
     scope: "openid profile email",
     access_token_expires_at: new Date(),
     refresh_token_expires_at: new Date(),
@@ -227,10 +227,10 @@ await AccountModel.save([
 ]);
 ```
 
-좋은 예 - 필수 필드와 의미있는 필드만 제공:
+Good example - provide only required and meaningful fields:
 
 ```typescript
-// OAuth 계정
+// OAuth account
 await AccountModel.save([
   {
     id: `acc_${Date.now()}`,
@@ -241,7 +241,7 @@ await AccountModel.save([
   },
 ]);
 
-// Credential 계정
+// Credential account
 await AccountModel.save([
   {
     id: `acc_${Date.now()}`,
@@ -253,50 +253,50 @@ await AccountModel.save([
 ]);
 ```
 
-원칙:
+Principles:
 
-- 각 provider 타입에 맞는 필드만 제공
-- nullable 필드는 테스트에 필요한 경우에만 제공
-- dbDefault 필드(created_at, updated_at)는 제공하지 않음
+- Provide only fields appropriate to each provider type
+- Provide nullable fields only when needed for the test
+- Do not provide dbDefault fields (created_at, updated_at)
 
-### 7. test-helpers 타입 수정
+### 7. Updating test-helpers Types
 
-User.id가 string으로 변경되면 모든 헬퍼 함수의 타입도 수정 필요:
+When User.id changes to string, all helper function types must be updated too:
 
-잘못된 타입:
+Wrong types:
 
 ```typescript
 export async function createTestUser(): Promise<Number> { ... }
 export async function createTestProjectParticipant(
   projectId: number,
-  userId: number,  // 잘못됨
+  userId: number,  // wrong
 ): Promise<number> { ... }
 ```
 
-올바른 타입:
+Correct types:
 
 ```typescript
 export async function createTestUser(): Promise<string> { ... }
 export async function createTestProjectParticipant(
   projectId: number,
-  userId: string,  // 수정
+  userId: string,  // fixed
 ): Promise<number> { ... }
 ```
 
-확인 방법:
+How to check:
 
 ```bash
-# test-helpers에서 user 관련 파라미터 찾기
+# Find user-related parameters in test-helpers
 grep -n "userId.*number" src/testing/test-helpers.ts
 grep -n "evaluatorId.*number" src/testing/test-helpers.ts
 grep -n "submittedById.*number" src/testing/test-helpers.ts
 ```
 
-### 8. HasMany 관계의 joinColumn 처리
+### 8. Handling joinColumn in HasMany Relationships
 
-HasMany 관계 설정 시 joinColumn에 지정한 컬럼이 자식 엔티티에 존재해야 함:
+When configuring a HasMany relationship, the column specified in joinColumn must exist in the child entity:
 
-잘못된 설정:
+Wrong configuration:
 
 ```json
 // project.entity.json
@@ -307,7 +307,7 @@ HasMany 관계 설정 시 joinColumn에 지정한 컬럼이 자식 엔티티에 
   ]
 }
 
-// file.entity.json - entity_id 컬럼 없음
+// file.entity.json - no entity_id column
 {
   "props": [
     { "name": "id", "type": "integer" },
@@ -316,39 +316,39 @@ HasMany 관계 설정 시 joinColumn에 지정한 컬럼이 자식 엔티티에 
 }
 ```
 
-에러 발생:
+Error:
 
 ```
 column files.entity_id does not exist
 ```
 
-올바른 설정:
+Correct configuration:
 
 ```json
-// file.entity.json - entity_id 컬럼 추가
+// file.entity.json - add entity_id column
 {
   "props": [
     { "name": "id", "type": "integer" },
-    { "name": "entity_id", "type": "integer", "desc": "엔티티 ID" },
+    { "name": "entity_id", "type": "integer", "desc": "entity ID" },
     { "name": "url", "type": "string" }
   ]
 }
 ```
 
-주의사항:
+Notes:
 
-- joinColumn은 자식 테이블의 실제 컬럼명
-- 자식 엔티티에 해당 컬럼이 반드시 존재해야 함
-- subset에도 포함시켜야 조회 가능
+- joinColumn is the actual column name in the child table
+- That column must exist in the child entity
+- Must also be included in subsets to be queryable
 
-### 9. better-auth 플러그인 통합
+### 9. Integrating better-auth Plugins
 
-#### PluginSchema 타입 매핑
+#### PluginSchema Type Mapping
 
-better-auth 플러그인은 PluginSchema 타입으로 스키마를 정의합니다. camelCase 필드명이 자동으로 snake_case DB 컬럼명으로 매핑됩니다:
+better-auth plugins define schemas with the PluginSchema type. camelCase field names are automatically mapped to snake_case DB column names:
 
 ```typescript
-// better-auth 플러그인 스키마 예시
+// better-auth plugin schema example
 const schema = {
   user: {
     fields: {
@@ -361,10 +361,10 @@ const schema = {
   },
 };
 
-// DB에는 phone_number로 저장됨 (snake_case)
+// stored as phone_number in DB (snake_case)
 ```
 
-Sonamu Entity에서는 DB 컬럼명(snake_case)을 그대로 사용:
+In Sonamu Entity, use the DB column name (snake_case) as-is:
 
 ```json
 // user.entity.json
@@ -374,49 +374,49 @@ Sonamu Entity에서는 DB 컬럼명(snake_case)을 그대로 사용:
       "name": "phone_number",
       "type": "string",
       "nullable": true,
-      "desc": "전화번호"
+      "desc": "phone number"
     }
   ]
 }
 ```
 
-#### 플러그인 카테고리
+#### Plugin Categories
 
-| 카테고리     | 플러그인                                                    | 영향                                     |
+| Category | Plugins | Impact |
 | ------------ | ----------------------------------------------------------- | ---------------------------------------- |
-| 기본 인증    | email/password, OAuth, magic link, email OTP, multi-session | User/Session/Account/Verification 테이블 |
-| 사용자 확장  | username, phone number, admin, anonymous                    | User 테이블 필드 추가                    |
-| 보안         | two-factor, passkey                                         | 새 테이블 필요 (TwoFactor, Passkey)      |
-| 엔터프라이즈 | organization, API key, SSO, JWT                             | 새 테이블 필요 (Organization, Member 등) |
+| Basic auth | email/password, OAuth, magic link, email OTP, multi-session | User/Session/Account/Verification tables |
+| User extension | username, phone number, admin, anonymous | Adds fields to User table |
+| Security | two-factor, passkey | New tables needed (TwoFactor, Passkey) |
+| Enterprise | organization, API key, SSO, JWT | New tables needed (Organization, Member, etc.) |
 
-#### 스키마 요구사항별 분류
+#### Classification by Schema Requirements
 
-**기존 테이블 확장만 필요 (User/Session에 필드 추가)**: username, phone number, admin, anonymous, multi-session
+**Only existing table extension needed (add fields to User/Session)**: username, phone number, admin, anonymous, multi-session
 
-**새 테이블 필요**: OAuth(Account), magic link/email OTP(Verification), two-factor(TwoFactor), passkey(Passkey), organization(Organization, Member, Invitation), API key(APIKey), SSO(SAMLProvider, SAMLConnection)
+**New tables needed**: OAuth(Account), magic link/email OTP(Verification), two-factor(TwoFactor), passkey(Passkey), organization(Organization, Member, Invitation), API key(APIKey), SSO(SAMLProvider, SAMLConnection)
 
-#### Entity 작성 패턴
+#### Entity Writing Patterns
 
-**기존 테이블 확장** — User entity.json에 플러그인 필드 추가:
+**Extending existing tables** — add plugin fields to User entity.json:
 
 ```json
-// user.entity.json - 플러그인별 추가 필드 예시
+// user.entity.json - example additional fields by plugin
 // phone-number: phone_number(nullable), phone_number_verified(boolean, dbDefault:"false")
 // admin: role(enum, dbDefault:"'user'"), banned(nullable), ban_reason(nullable), ban_expires(nullable)
 // username: username(string)
 // anonymous: is_anonymous(boolean, dbDefault:"false")
 ```
 
-**새 테이블 생성** — Account/TwoFactor 등: `pnpm sonamu stub entity`로 생성 후 플러그인 스키마에 맞는 필드 추가. 주요 주의사항:
+**Creating new tables** — For Account/TwoFactor etc.: generate with `pnpm sonamu stub entity` then add fields matching the plugin schema. Key notes:
 
-- `id`는 `string` 타입 (32자 alphanumeric)
-- FK(`user_id`)도 `string` 타입 (User.id가 string이므로)
-- `nullable` 필드는 반드시 `"nullable": true` 명시
-- better-auth의 camelCase → Sonamu는 snake_case 사용
+- `id` is `string` type (32-character alphanumeric)
+- FK (`user_id`) is also `string` type (since User.id is string)
+- `nullable` fields must explicitly have `"nullable": true`
+- better-auth uses camelCase → Sonamu uses snake_case
 
-#### Migration 패턴
+#### Migration Patterns
 
-**기존 테이블 필드 추가** — `alterTable`로 플러그인 필드 추가:
+**Adding fields to existing tables** — add plugin fields with `alterTable`:
 
 ```typescript
 await knex.schema.alterTable("users", (table) => {
@@ -426,198 +426,198 @@ await knex.schema.alterTable("users", (table) => {
 });
 ```
 
-**새 테이블 생성** — FK 없이 먼저 생성, 이후 FK 추가 (분리 필수!):
+**Creating new tables** — create without FK first, then add FK (must be separated!):
 
 ```typescript
-// 1단계: 테이블 생성 (FK 없이)
+// Step 1: create table (without FK)
 await knex.schema.createTable("two_factors", (table) => {
   table.text("id").primary();
-  table.text("user_id").notNullable(); // FK 컬럼만, foreign() 없이
+  table.text("user_id").notNullable(); // FK column only, no foreign()
   table.text("secret").notNullable();
 });
-// 2단계: FK 추가
+// Step 2: add FK
 await knex.schema.alterTable("two_factors", (table) => {
   table.foreign("user_id").references("users.id");
 });
 ```
 
-#### Sonamu 구현 예시
+#### Sonamu Implementation Examples
 
-현재 Sonamu에서 구현된 플러그인:
+Currently implemented plugins in Sonamu:
 
-- phone-number 플러그인: User.phone_number, User.phone_number_verified
-- two-factor 플러그인: TwoFactor 테이블 (id, secret, backup_codes, user_id)
+- phone-number plugin: User.phone_number, User.phone_number_verified
+- two-factor plugin: TwoFactor table (id, secret, backup_codes, user_id)
 
-참조 경로:
+Reference paths:
 
-- 예제 프로젝트: `sonamu/examples/miomock/`
+- Example project: `sonamu/examples/miomock/`
 - User Entity: `examples/miomock/api/src/application/user/user.entity.json`
 - TwoFactor Entity: `examples/miomock/api/src/application/two_factor/two_factor.entity.json`
 
-#### 플러그인 추가 순서
+#### Plugin Addition Steps
 
-1. Entity 작성: `{entity}.entity.json`에 필드 정의
-2. Migration 생성: Sonamu UI에서 자동 생성 또는 수동 작성
-3. SaveParams 수정: nullable 필드는 모두 partial 처리
-4. Model 작성: 비즈니스 로직 구현
-5. test-helpers 수정: userId 등 타입이 변경된 파라미터 수정
-6. 테스트 작성: 각 provider/플러그인별 테스트 케이스 작성
+1. Write Entity: define fields in `{entity}.entity.json`
+2. Generate Migration: auto-generate from Sonamu UI or write manually
+3. Update SaveParams: make all nullable fields partial
+4. Write Model: implement business logic
+5. Update test-helpers: fix parameters whose types changed, such as userId
+6. Write tests: write test cases for each provider/plugin
 
-#### 플러그인별 주의사항
+#### Plugin-Specific Notes
 
-- **OAuth**: provider별로 다른 필드 사용. SaveParams에서 access_token/refresh_token/password 모두 optional
-- **two-factor**: backup_codes는 JSON 문자열, secret은 TOTP 라이브러리로 생성
-- **organization**: 3개 테이블 FK 관계. Migration 순서: Organization → Member, Invitation
-- **passkey**: public_key는 WebAuthn 표준, counter는 replay 방지용
-- **SSO**: metadata_url에서 IdP 메타데이터 자동 로드
+- **OAuth**: different fields used per provider. access_token/refresh_token/password all optional in SaveParams
+- **two-factor**: backup_codes is a JSON string, secret is generated by a TOTP library
+- **organization**: 3-table FK relationships. Migration order: Organization → Member, Invitation
+- **passkey**: public_key is WebAuthn standard, counter is for replay prevention
+- **SSO**: IdP metadata is automatically loaded from metadata_url
 
 ## Common Mistakes
 
-### 실수 1: Migration을 순서대로 개별 적용
+### Mistake 1: Applying Migrations Individually in Order
 
 ```bash
-# 잘못된 방법
-pnpm migration:apply  # accounts.user_id 변경이 먼저 실행되어 실패
+# wrong approach
+pnpm migration:apply  # fails because accounts.user_id change runs first
 ```
 
-이유: accounts.user_id를 text로 변경하려 할 때 users.id는 아직 integer이므로 FK constraint 위반
+Reason: when trying to change accounts.user_id to text, users.id is still integer, so FK constraint violation
 
-올바른 방법: 하나의 migration에서 모든 변경 처리
+Correct approach: handle all changes in a single migration
 
-### 실수 2: test-helpers 타입 미수정
+### Mistake 2: Not Updating test-helpers Types
 
 ```typescript
-// User.id가 string인데 헬퍼 함수는 number 반환
+// helper function returns number even though User.id is string
 async function createTestUser(): Promise<number> { ... }
 
-// 사용 시 타입 에러
-const userId = await createTestUser();  // string을 number에 할당 불가
+// type error on use
+const userId = await createTestUser();  // cannot assign string to number
 await createTestProjectParticipant(projectId, userId);
 ```
 
-수정 필요:
+Fixes needed:
 
-- createTestUser 반환 타입: string
-- userId를 받는 모든 헬퍼 함수 파라미터: string
+- createTestUser return type: string
+- All helper function parameters that receive userId: string
 
-### 실수 3: HasMany joinColumn 누락
+### Mistake 3: Missing HasMany joinColumn
 
 ```json
 // Parent
 { "name": "files", "relationType": "HasMany", "joinColumn": "entity_id" }
 
-// Child에 entity_id 없으면 에러
+// error if Child does not have entity_id
 ```
 
-에러 메시지: `column files.entity_id does not exist`
+Error message: `column files.entity_id does not exist`
 
-해결: Child 엔티티에 joinColumn에 지정한 컬럼 추가
+Fix: add the column specified in joinColumn to the Child entity
 
-### 실수 4: SaveParams에 nullable 필드를 optional로 처리하지 않음
+### Mistake 4: Not Making Nullable Fields Optional in SaveParams
 
 ```typescript
-// SaveParams에서 password를 optional로 안하면
+// if password is not optional in SaveParams
 await AccountModel.save([
   {
     provider_id: "google",
-    // password 없으면 타입 에러
+    // type error if password is absent
   },
 ]);
 ```
 
-### 실수 5: 중복 migration 미정리
+### Mistake 5: Not Cleaning Up Duplicate Migrations
 
-Entity 변경 후 generate하면 개별 migration + 통합 migration 둘 다 생성됨. 개별 migration들을 제거하지 않으면 순서대로 실행되어 FK constraint 위반
+After entity changes, generating creates both individual migrations and a consolidated migration. If the individual migrations are not removed, they run in order and violate FK constraints
 
-### 실수 6: PluginSchema 필드명을 Sonamu Entity에 그대로 사용
+### Mistake 6: Using PluginSchema Field Names Directly in Sonamu Entity
 
-better-auth의 camelCase(`phoneNumber`)가 아닌 snake_case(`phone_number`)를 Sonamu Entity에서 사용해야 함. better-auth가 camelCase→snake_case 자동 변환.
+Must use snake_case (`phone_number`) in Sonamu Entity, not better-auth's camelCase (`phoneNumber`). better-auth automatically converts camelCase → snake_case.
 
-### 실수 7: 새 테이블 생성 시 FK를 테이블 생성과 동시에 추가
+### Mistake 7: Adding FK at the Same Time as Table Creation for New Tables
 
-테이블 생성과 FK 추가를 분리해야 함. 테이블 생성 시 `foreign()`을 함께 쓰면 참조 테이블이 아직 없을 수 있음. → 위 "Migration 패턴" 참조.
+Table creation and FK addition must be separated. Using `foreign()` together with table creation may reference a table that does not exist yet. → See "Migration Patterns" above.
 
 ## Checklist
 
-**Entity 수정:**
+**Entity updates:**
 
-- [ ] User.id 타입을 string으로 변경
-- [ ] User를 참조하는 모든 FK 엔티티 확인 (grep으로 검색)
-- [ ] HasMany 관계가 있다면 joinColumn 컬럼이 자식 엔티티에 존재하는지 확인
-- [ ] better-auth 플러그인별 필요한 필드 확인 (기존 테이블 확장 vs 새 테이블)
+- [ ] Change User.id type to string
+- [ ] Check all FK entities referencing User (search with grep)
+- [ ] If there are HasMany relationships, confirm the joinColumn column exists in the child entity
+- [ ] Check required fields per better-auth plugin (extend existing table vs. new table)
 
-**Migration 작성:**
+**Writing Migration:**
 
-- [ ] 통합 migration 작성 (FK 제거 - 타입 변경 - FK 복구 순서)
-- [ ] 중복 생성된 개별 migration 파일 삭제
-- [ ] down 함수도 올바른 순서로 작성
-- [ ] 새 테이블 생성 시 FK 순서 확인 (테이블 생성 → FK 추가)
+- [ ] Write consolidated migration (FK removal → type change → FK restore order)
+- [ ] Delete individually generated duplicate migration files
+- [ ] Write down function in correct order too
+- [ ] Check FK order when creating new tables (create table → add FK)
 
-**타입 정의:**
+**Type definitions:**
 
-- [ ] SaveParams에 nullable 필드 모두 partial 처리
-- [ ] SaveParams에 dbDefault 필드(created_at, updated_at) partial 처리
-- [ ] test-helpers의 userId 관련 파라미터를 string으로 수정
-- [ ] test-helpers의 반환 타입 수정 (Promise<String> -> Promise<string>)
+- [ ] Make all nullable fields partial in SaveParams
+- [ ] Make dbDefault fields (created_at, updated_at) partial in SaveParams
+- [ ] Change userId-related parameters in test-helpers to string
+- [ ] Fix return types in test-helpers (Promise<String> -> Promise<string>)
 
-**테스트 코드:**
+**Test code:**
 
-- [ ] 테스트에서 불필요한 nullable 필드 제거
-- [ ] OAuth 계정과 credential 계정 테스트 분리
-- [ ] 각 provider에 맞는 필드만 제공
-- [ ] 플러그인별 테스트 케이스 작성 (phone-number, two-factor 등)
+- [ ] Remove unnecessary nullable fields from tests
+- [ ] Separate tests for OAuth accounts and credential accounts
+- [ ] Provide only fields appropriate to each provider
+- [ ] Write test cases per plugin (phone-number, two-factor, etc.)
 
-**실행:**
+**Execution:**
 
-- [ ] stub 재생성: `pnpm stub`
-- [ ] Migration 생성: `pnpm generate`
-- [ ] 중복 migration 정리
-- [ ] Migration 적용: `pnpm migration:apply`
-- [ ] 전체 테스트 실행: `pnpm test`
+- [ ] Regenerate stubs: `pnpm stub`
+- [ ] Generate migration: `pnpm generate`
+- [ ] Clean up duplicate migrations
+- [ ] Apply migration: `pnpm migration:apply`
+- [ ] Run all tests: `pnpm test`
 
-## Better-auth 엔티티 Fixture 생성
+## Generating better-auth Entity Fixtures
 
-### 생성 순서 (필수)
+### Generation Order (Required)
 
-better-auth 엔티티는 FK 의존성 때문에 반드시 다음 순서로 fixture를 생성해야 한다.
+better-auth entities must have fixtures generated in the following order due to FK dependencies.
 
 ```
-User → Account → Session → Verification (선택)
+User → Account → Session → Verification (optional)
 ```
 
-Account, Session은 user_id(string FK)를 통해 User를 참조하므로 User가 먼저 생성되어야 한다.
+Account and Session reference User via user_id (string FK), so User must be created first.
 
-### 생성 명령
+### Generation Commands
 
 ```bash
-# 1. User 먼저 생성
+# 1. Generate User first
 pnpm sonamu fixture gen --include User --count 10 --use-llm
 
-# 2. Account 생성 (User에 의존)
+# 2. Generate Account (depends on User)
 pnpm sonamu fixture gen --include Account --count 10 --use-llm
 
-# 3. Session 생성 (User에 의존)
+# 3. Generate Session (depends on User)
 pnpm sonamu fixture gen --include Session --count 10 --use-llm
 
-# 또는 User를 포함하여 함께 생성 (자동 순서 정렬)
+# Or generate together including User (auto-sorted order)
 pnpm sonamu fixture gen --include User,Account,Session --count 10 --use-llm
 ```
 
-### User.id 시퀀스 설정 필수
+### User.id Sequence Setup Required
 
-better-auth User 엔티티는 id가 string 타입이지만, fixture gen이 자동으로 숫자 시퀀스를 사용한다. **PHASE 0에서 users_id_seq를 생성하지 않았다면 fixture gen이 실패한다.**
+The better-auth User entity has id as string type, but fixture gen automatically uses a numeric sequence. **If users_id_seq was not created in PHASE 0, fixture gen will fail.**
 
 ```sql
--- 반드시 먼저 설정되어 있어야 함
+-- must be set up in advance
 CREATE SEQUENCE users_id_seq;
 ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')::text;
 ```
 
-이미 설정되어 있어야 하지만 누락된 경우 위 쿼리를 실행한 후 fixture gen을 진행한다.
+If it has already been set up but is missing, run the above query before proceeding with fixture gen.
 
-### cone.fixtureStrategy 설정 권장
+### cone.fixtureStrategy Configuration Recommended
 
-User entity.json의 id prop에 `"fixtureStrategy": "sequence"`가 설정되어 있는지 확인한다:
+Check that `"fixtureStrategy": "sequence"` is set on the id prop in User entity.json:
 
 ```json
 {
@@ -625,17 +625,17 @@ User entity.json의 id prop에 `"fixtureStrategy": "sequence"`가 설정되어 �
   "type": "string",
   "cone": {
     "fixtureStrategy": "sequence",
-    "note": "better-auth가 관리하는 사용자 ID (string 타입)"
+    "note": "User ID managed by better-auth (string type)"
   }
 }
 ```
 
-### Account 생성 시 주의사항
+### Notes When Generating Account
 
-Account는 credential 계정과 OAuth 계정의 구조가 다르다:
+Account has different structure for credential accounts and OAuth accounts:
 
 ```typescript
-// credential 계정 (이메일/비밀번호)
+// credential account (email/password)
 {
   provider_id: "credential",
   account_id: "user@example.com",
@@ -643,21 +643,21 @@ Account는 credential 계정과 OAuth 계정의 구조가 다르다:
   password: hashedPassword,
 }
 
-// OAuth 계정 (Google 등)
+// OAuth account (Google, etc.)
 {
   provider_id: "google",
   account_id: "google-oauth-id-12345",
   user_id: existingUserId,
-  // password 없음
+  // no password
 }
 ```
 
-`--use-llm`과 cone.note를 적절히 설정하면 LLM이 맥락에 맞는 provider_id와 account_id를 생성해준다.
+Setting `--use-llm` and cone.note appropriately allows the LLM to generate contextually appropriate provider_id and account_id.
 
 ## Related Skills
 
-- migration: Migration 작성 기본, PK 타입 변경
-- entity-basic: Entity 타입 정의
-- entity-relations: BelongsToOne, HasMany 관계
-- testing: 테스트 작성 패턴
-- fixture-cli: Fixture 생성 CLI 사용법
+- migration: Migration basics, PK type changes
+- entity-basic: Entity type definitions
+- entity-relations: BelongsToOne, HasMany relationships
+- testing: Test writing patterns
+- fixture-cli: Fixture generation CLI usage

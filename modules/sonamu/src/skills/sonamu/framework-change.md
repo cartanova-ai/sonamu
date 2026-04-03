@@ -1,82 +1,82 @@
 ---
 name: sonamu-framework-change
-description: Sonamu 프레임워크 소스 수정 vs. 프로젝트 레벨 우회 판단 기준. @upload 파라미터 패턴 포함. Use when a Sonamu bug or limitation is discovered during project development.
+description: Criteria for deciding between modifying Sonamu framework source vs. applying project-level workarounds. Includes the @upload parameter pattern. Use when a Sonamu bug or limitation is discovered during project development.
 ---
 
-# Sonamu Framework 변경 판단
+# Sonamu Framework Change Decision
 
-프레임워크 버그나 제약을 발견했을 때, 프레임워크를 직접 수정할지 프로젝트 레벨에서 우회할지 판단하는 기준.
+Criteria for deciding whether to directly modify the framework or apply a project-level workaround when a framework bug or limitation is discovered.
 
 ---
 
-## 판단 rubric
+## Decision rubric
 
-아래 4개 축을 평가한다:
+Evaluate along the following 4 axes:
 
-| 축 | 프로젝트 우회 | 프레임워크 수정 |
+| Axis | Project workaround | Framework fix |
 |----|-------------|----------------|
-| **재현 범위** | 특정 사용 패턴에서만 발생 | 어떤 사용 방식에서도 발생 |
-| **우회 비용** | 프로젝트 한 곳 수정으로 해결 | 모든 프로젝트에 우회 전파 필요 |
-| **영향 범위** | 프레임워크 변경 시 다른 프로젝트 파급 불확실 | 변경 범위가 격리되고 부작용 명확 |
-| **소유권** | 해당 코드 작성자가 있어 논의 필요 | 버그가 명확하고 리뷰 경로 확보됨 |
+| **Reproduction scope** | Only occurs in specific usage patterns | Occurs regardless of usage pattern |
+| **Workaround cost** | Resolved by modifying one place in the project | Workaround must be propagated to all projects |
+| **Impact scope** | Uncertain ripple effects on other projects if framework is changed | Change scope is isolated and side effects are clear |
+| **Ownership** | The code has a known author and discussion is needed | Bug is clear and a review path is available |
 
-**프로젝트 우회 선택 기준**: 4개 축 중 2개 이상이 "프로젝트 우회"에 해당하면 우선 우회한다.
+**Criteria for choosing project workaround**: If 2 or more of the 4 axes lean toward "project workaround", apply the workaround first.
 
-**프레임워크 수정 선택 기준**: 재현 범위가 "어떤 사용 방식에서도"이고 우회 비용이 높으면 수정을 검토한다.
+**Criteria for choosing framework fix**: If the reproduction scope is "any usage pattern" and the workaround cost is high, consider a fix.
 
 ---
 
-## 판단 불가 시 → 사용자에게 물어본다
+## When the decision is unclear → Ask the user
 
-다음 중 하나라도 해당하면 혼자 결정하지 않는다:
+Do not decide alone if any of the following apply:
 
-- 재현 범위 확인이 어려움 (다른 프로젝트의 사용 패턴을 모름)
-- 프레임워크 소유자(CTO 등)가 명확히 있고, 해당 코드를 최근 작성함
-- 우회 방법이 API 시맨틱을 훼손할 가능성이 있음
+- Reproduction scope is difficult to confirm (unknown usage patterns in other projects)
+- The framework owner (e.g. CTO) is clearly identified and recently wrote the code
+- The workaround might compromise API semantics
 
 ```
-"프레임워크 버그로 보입니다. 프로젝트 레벨 우회가 가능하지만,
-프레임워크 수정이 더 적절할 수 있습니다. 어떻게 할까요?"
+"This appears to be a framework bug. A project-level workaround is possible,
+but a framework fix may be more appropriate. How would you like to proceed?"
 ```
 
 ---
 
-## 프로젝트 우회 시 기록 의무
+## Documentation obligation when applying a workaround
 
-우회를 선택했으면 다음 두 곳에 기록한다:
+If a workaround is chosen, record it in the following two places:
 
-1. **spec의 `knownIssues`**: 버그 원인, 우회 방법, 호출 패턴, 근본 원인 경로
-2. **memory**: sync 등 반복 작업에서 우회가 되돌아올 가능성이 있으면 주의사항 기록
+1. **`knownIssues` in the spec**: bug cause, workaround approach, call pattern, root cause file path
+2. **memory**: if the workaround may be reverted by repeated operations like sync, record a caution note
 
 ---
 
-## 구체 패턴: `@upload` 다중 파라미터
+## Concrete pattern: `@upload` multiple parameters
 
-### 문제
+### Problem
 
-`@upload` 메서드에 primitive 파라미터가 여러 개이면 `services.template.ts`의 `split(':')` 버그로 `useUploadMutation`이 잘못 생성된다.
+When an `@upload` method has multiple primitive parameters, a `split(':')` bug in `services.template.ts` causes `useUploadMutation` to be generated incorrectly.
 
 ```typescript
-// WRONG — 이렇게 쓰면 codegen 깨짐
+// WRONG — codegen breaks with this pattern
 async upload(entity_type: string, entity_id: number, file_type: string)
 ```
 
-생성 결과:
+Generated result:
 ```typescript
-// mutationFn이 params.params, params.files만 전달 (entity_id, file_type 누락)
+// mutationFn only passes params.params and params.files (entity_id and file_type are missing)
 mutationFn: (params: { params: string; ... }) => upload(params.params, params.files)
 ```
 
-### 해결: 단일 객체로 묶는다
+### Fix: wrap in a single object
 
 ```typescript
-// CORRECT — 단일 객체 파라미터
+// CORRECT — single object parameter
 async upload(params: { entity_type: string; entity_id: number; file_type: string })
 ```
 
-Sonamu 백엔드가 `qs`로 `params[entity_type]` 형태의 중첩 formData를 자동 역직렬화하므로 동작에 영향 없다.
+The Sonamu backend automatically deserializes nested formData in the form `params[entity_type]` using `qs`, so this has no effect on runtime behavior.
 
-호출부 패턴:
+Call-site pattern:
 ```typescript
 uploadMutation.mutate({
   params: { entity_type, entity_id, file_type },
@@ -84,11 +84,11 @@ uploadMutation.mutate({
 })
 ```
 
-**규칙**: `@upload` 메서드에 파라미터가 2개 이상 필요하면 반드시 단일 객체로 묶는다.
+**Rule**: If an `@upload` method requires 2 or more parameters, always wrap them in a single object.
 
 ---
 
-## 참고
+## Reference
 
-- 버그 발생 소스: `modules/sonamu/src/template/implementations/services.template.ts`
-- 관련 스킬: `api.md`, `skill-contribution.md`
+- Bug source: `modules/sonamu/src/template/implementations/services.template.ts`
+- Related skills: `api.md`, `skill-contribution.md`

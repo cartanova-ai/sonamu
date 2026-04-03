@@ -1,74 +1,74 @@
 ---
 name: sonamu-database
-description: Sonamu 데이터베이스 설정, Seed Data 관리, 문제 해결. Docker 포트 충돌, DB 연결 설정. Use when database issues occur.
+description: Sonamu database configuration, Seed Data management, troubleshooting. Docker port conflicts, DB connection configuration. Use when database issues occur.
 ---
 
-# 데이터베이스 설정
+# Database Configuration
 
-## Docker DB 실행
+## Starting Docker DB
 
 ```bash
 cd packages/api
 pnpm docker:up
 ```
 
-## 3-Tier DB 구조
+## 3-Tier DB Structure
 
-Sonamu는 3단계 데이터베이스 구조를 사용합니다. 각 DB의 역할과 데이터 흐름을 이해하는 것이 중요합니다.
+Sonamu uses a 3-tier database structure. It is important to understand the role of each DB and the data flow.
 
 ```
-production/development master (실제 DB)
+production/development master (actual DB)
           ↓ (fixture fetch)
      project_fixture (fixture DB)
           ↓ (fixture sync)
        project_test (test DB)
 ```
 
-### DB별 역할
+### Role of Each DB
 
-| DB | 용도 | 데이터 출처 | 명령어 |
-|----|------|-----------|--------|
-| `project` | 운영/개발 실제 DB | 실제 사용자 데이터 | 직접 생성 |
-| `project_fixture` | 테스트용 참조 데이터 저장소 | production에서 fetch 또는 gen으로 생성 | `pnpm sonamu fixture gen/fetch` |
-| `project_test` | 테스트 실행 환경 | fixture에서 sync | `pnpm sonamu fixture sync` |
+| DB | Purpose | Data Source | Command |
+|----|---------|------------|---------|
+| `project` | Production/development actual DB | Real user data | Created directly |
+| `project_fixture` | Reference data store for testing | Fetched from production or generated with gen | `pnpm sonamu fixture gen/fetch` |
+| `project_test` | Test execution environment | Synced from fixture | `pnpm sonamu fixture sync` |
 
-### 데이터 흐름
+### Data Flow
 
-**1. fixture fetch (실제 데이터 가져오기)**
+**1. fixture fetch (fetch real data)**
 ```bash
 pnpm sonamu fixture fetch --include User --limit 10
 ```
 - production/development master → fixture DB
-- 실제 운영 데이터를 테스트용으로 복사
-- 관련 데이터(FK)도 함께 가져옴
+- Copies actual production data for testing
+- Related data (FKs) is also fetched
 
-**2. fixture gen (더미 데이터 생성)**
+**2. fixture gen (generate dummy data)**
 ```bash
 pnpm sonamu fixture gen --include Department --count 5
 ```
-- fixture DB 내부에서 faker 기반 생성
-- 참조 관계(FK) 자동 해결
-- 한국어 데이터 생성 지원
+- Generated inside fixture DB using faker
+- Automatically resolves reference relationships (FKs)
+- Supports Korean data generation
 
-**3. fixture sync (테스트 DB 동기화)**
+**3. fixture sync (sync test DB)**
 ```bash
 pnpm sonamu fixture sync
 ```
 - fixture DB → test DB
-- 테스트 실행 전 최신 상태로 동기화
-- 각 테스트는 트랜잭션으로 격리되어 자동 롤백
+- Sync to the latest state before running tests
+- Each test is isolated with a transaction that auto-rolls back
 
-### 주의사항
+### Notes
 
-**CRITICAL: sourceDb vs targetDb 혼동 방지**
+**CRITICAL: Prevent sourceDb vs targetDb confusion**
 
-- `fixture gen`: sourceDb=fixture, targetDb=fixture (fixture 내부에서 생성)
+- `fixture gen`: sourceDb=fixture, targetDb=fixture (generated inside fixture)
 - `fixture fetch`: sourceDb=production, targetDb=fixture (production → fixture)
-- 잘못 설정하면 FK 참조 오류 발생
+- Incorrect configuration causes FK reference errors
 
-**예시 (올바른 설정)**:
+**Example (correct configuration)**:
 ```typescript
-// fixture gen: fixture DB 내에서 참조 및 저장
+// fixture gen: reference and save within fixture DB
 const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityManager);
 
@@ -78,182 +78,182 @@ const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
 const generator = new FixtureGenerator(sourceDb, fixtureDb, "fixture", EntityManager);
 ```
 
-**참고**: Fixture CLI 명령어 상세 사용법은 `fixture-cli.md` 참조
+**Note**: For detailed Fixture CLI command usage, see `fixture-cli.md`
 
 ---
 
-## Seed Data 관리
+## Seed Data Management
 
-테스트를 위한 기본 데이터(seed data)는 dump 파일에 추가하여 관리한다.
+Base data for testing (seed data) is managed by adding it to dump files.
 
-### 전체 워크플로우 개요
+### Overall Workflow
 
-Seed data 관리는 2단계로 진행된다:
+Seed data management proceeds in 2 phases:
 
-| 단계 | 목적 | 대상 DB |
-|------|------|---------|
-| **Phase 1** | 개발/테스트용 seed 준비 | `project_test`, `project_fixture` |
-| **Phase 2** | 실제 DB에 seed 적용 | `project` (실제 DB) |
+| Phase | Purpose | Target DB |
+|-------|---------|-----------|
+| **Phase 1** | Prepare seed for development/testing | `project_test`, `project_fixture` |
+| **Phase 2** | Apply seed to the actual DB | `project` (actual DB) |
 
 ---
 
-### Phase 1: 개발/테스트용 Seed 준비
+### Phase 1: Prepare Seed for Development/Testing
 
-개발 중 테스트를 위한 더미 데이터를 준비하는 단계.
+The step of preparing dummy data for testing during development.
 
-#### 1-1. 초기 dump 생성 (테이블 구조만)
+#### 1-1. Generate Initial Dump (Table Structure Only)
 
 ```bash
 pnpm dump
 ```
 
-이 시점에서 생성된 `database/scripts/dump.sql`은:
-- CREATE TABLE 구문
-- CREATE SEQUENCE 구문
+The `database/scripts/dump.sql` generated at this point contains:
+- CREATE TABLE statements
+- CREATE SEQUENCE statements
 - ALTER TABLE ... PRIMARY KEY
 - ALTER TABLE ... FOREIGN KEY
-- **INSERT문은 없음** (아직 데이터가 없으므로)
+- **No INSERT statements** (no data yet)
 
-#### 1-2. dump 파일에 INSERT문 추가
+#### 1-2. Add INSERT Statements to Dump File
 
-`database/scripts/dump.sql` 파일을 열고, **FK CONSTRAINT 전**에 INSERT문을 추가한다.
+Open `database/scripts/dump.sql` and add INSERT statements **before the FK CONSTRAINT** section.
 
-**중요: FK 의존성 순서를 고려하여 작성**
+**Important: Write in order considering FK dependency order**
 ```sql
--- 독립 테이블부터
+-- Independent tables first
 INSERT INTO public.institutions (id, created_at, name, code) VALUES
-  (1, '2024-01-01 00:00:00+09', '본원', 'HQ');
+  (1, '2024-01-01 00:00:00+09', 'Headquarters', 'HQ');
 
--- 참조 테이블 (institutions를 참조)
+-- Reference tables (referencing institutions)
 INSERT INTO public.departments (id, created_at, name, code, institution_id) VALUES
-  (1, '2024-01-01 00:00:00+09', '연구부', 'RND', 1);
+  (1, '2024-01-01 00:00:00+09', 'Research', 'RND', 1);
 
--- 시퀀스 값 설정 (INSERT 후)
+-- Set sequence values (after INSERT)
 SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
 SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
 ```
 
-#### 1-3. test DB에 적용
+#### 1-3. Apply to Test DB
 
 ```bash
 pnpm seed
 ```
 
-`database/scripts/seed.sh`가 실행되며:
-- `SOURCE_DB="${DATABASE_NAME}_test"` → dump.sql을 test DB에 적용
+`database/scripts/seed.sh` runs and:
+- `SOURCE_DB="${DATABASE_NAME}_test"` → applies dump.sql to the test DB
 
-#### 1-4. fixture DB에 동기화
+#### 1-4. Sync to Fixture DB
 
 ```bash
 pnpm sonamu fixture sync
 ```
 
-test DB의 데이터를 fixture DB로 복사.
+Copies test DB data to the fixture DB.
 
 ---
 
-### Phase 2: 실제 DB에 Seed 적용
+### Phase 2: Apply Seed to Actual DB
 
 **⚠️ CRITICAL WARNING:**
-- 이 단계는 실제 DB(`project`)에 데이터를 넣는다
-- 기존 데이터가 있다면 덮어쓰여질 수 있다
-- **반드시 사용자에게 확인 후 진행해야 한다**
+- This step inserts data into the actual DB (`project`)
+- Existing data may be overwritten
+- **You must confirm with the user before proceeding**
 
-**Claude Code 규칙:**
+**Claude Code Rules:**
 ```
-실제 DB에 seed를 적용하기 전에:
-1. 사용자에게 "실제 데이터베이스(project)에 seed 데이터를 적용하시겠습니까?" 질문
-2. 사용자가 명시적으로 승인할 때만 진행
-3. 승인 없이 절대 실행하지 말것
+Before applying seed to the actual DB:
+1. Ask the user: "Would you like to apply seed data to the actual database (project)?"
+2. Only proceed when the user explicitly approves
+3. Never run without approval
 ```
 
-#### 2-1. 현재 상태 확인
+#### 2-1. Verify Current State
 
 ```bash
-# test/fixture DB에 데이터가 들어가 있어야 함
+# Data must already be in test/fixture DBs
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test -c "SELECT COUNT(*) FROM users;"
 ```
 
-#### 2-2. 최종 dump 생성
+#### 2-2. Generate Final Dump
 
 ```bash
-# test/fixture의 데이터가 포함된 dump 생성
+# Generate a dump that includes test/fixture data
 pnpm dump
 ```
 
-이번 dump에는 **INSERT문이 포함**되어 있다 (1-2에서 추가한 데이터).
+This dump **includes INSERT statements** (the data added in step 1-2).
 
-#### 2-3. seed.sh 파일 수정
+#### 2-3. Modify seed.sh File
 
-`database/scripts/seed.sh`를 열고 FIXTURE_DB 변경:
+Open `database/scripts/seed.sh` and change FIXTURE_DB:
 
 ```bash
-# 변경 전 (개발/테스트 단계)
+# Before (development/testing phase)
 FIXTURE_DB="${DATABASE_NAME}_fixture"
 
-# 변경 후 (실제 DB에 seed)
+# After (seeding actual DB)
 FIXTURE_DB="${DATABASE_NAME}"
 ```
 
-#### 2-4. 실제 DB에 seed 실행
+#### 2-4. Run Seed on Actual DB
 
-**⚠️ 사용자 승인 후에만 실행:**
+**⚠️ Run only after user approval:**
 
 ```bash
 pnpm seed
 ```
 
-이제 실제 DB(`project`)에 seed 데이터가 적용된다.
+Seed data is now applied to the actual DB (`project`).
 
-#### 2-5. 확인
+#### 2-5. Verify
 
 ```bash
-# 실제 DB에서 데이터 확인
+# Verify data in actual DB
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project -c "SELECT * FROM departments LIMIT 5;"
 ```
 
-#### 2-6. seed.sh 원복 (중요!)
+#### 2-6. Restore seed.sh (Important!)
 
-실제 DB seed 완료 후, seed.sh를 원래대로 되돌려야 다음 개발 시 test DB를 사용한다:
+After the actual DB seed is complete, restore seed.sh to its original state so the next development cycle uses the test DB:
 
 ```bash
 # database/scripts/seed.sh
-FIXTURE_DB="${DATABASE_NAME}_fixture"  # 원복
+FIXTURE_DB="${DATABASE_NAME}_fixture"  # restored
 ```
 
 ---
 
-### 요약: Phase 1 vs Phase 2
+### Summary: Phase 1 vs Phase 2
 
-| 항목 | Phase 1 (개발/테스트) | Phase 2 (실제 DB) |
-|------|---------------------|------------------|
-| **시점** | 개발 중 테스트 데이터 준비 | 개발 완료 후 실제 데이터 준비 |
-| **dump 횟수** | 1회 (테이블 구조) | 2회 (데이터 포함) |
-| **대상 DB** | `project_test` → `project_fixture` | `project` |
+| Item | Phase 1 (Development/Testing) | Phase 2 (Actual DB) |
+|------|-------------------------------|---------------------|
+| **Timing** | Preparing test data during development | Preparing actual data after development is complete |
+| **Dump count** | 1 time (table structure) | 2 times (includes data) |
+| **Target DB** | `project_test` → `project_fixture` | `project` |
 | **seed.sh** | `FIXTURE_DB="${DATABASE_NAME}_fixture"` | `FIXTURE_DB="${DATABASE_NAME}"` |
-| **사용자 승인** | 불필요 | **반드시 필요** |
+| **User approval** | Not required | **Required** |
 
 ---
 
-### 구 워크플로우 (Phase 1 간단 버전)
+### Legacy Workflow (Phase 1 Simple Version)
 
 ```bash
-# 1. test DB에 기본 데이터 직접 추가 (psql 또는 Sonamu UI 사용)
+# 1. Directly add base data to test DB (using psql or Sonamu UI)
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_test
 
-# 2. dump 생성
+# 2. Generate dump
 pnpm dump
 
-# 3. fixture DB에 적용
+# 3. Apply to fixture DB
 pnpm seed
 
-# 4. (선택) sonamu fixture sync
+# 4. (Optional) sonamu fixture sync
 pnpm sonamu fixture sync
 ```
 
-### dump 파일에 seed data 추가 시 위치
+### Position for Adding Seed Data in Dump File
 
-**pg_dump --inserts 출력 순서 (miomock 기준):**
+**pg_dump --inserts output order (based on miomock):**
 
 ```sql
 -- 1~40: SET statements & Extensions
@@ -273,9 +273,9 @@ ALTER SEQUENCE public.companies_id_seq OWNED BY public.companies.id;
 -- 480~564: ALTER TABLE ... DEFAULT (Name: xxx id; Type: DEFAULT)
 ALTER TABLE ONLY public.companies ALTER COLUMN id SET DEFAULT nextval(...);
 
--- ⭐ 574~1770: INSERT INTO ... ← SEED DATA 추가 위치
-INSERT INTO public.companies VALUES (1, '2025-11-25 00:17:02+09', '테크놀로지 주식회사');
-INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', '개발팀', 1, NULL, DEFAULT);
+-- ⭐ 574~1770: INSERT INTO ... ← SEED DATA INSERTION POSITION
+INSERT INTO public.companies VALUES (1, '2025-11-25 00:17:02+09', 'Tech Corp');
+INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', 'Dev Team', 1, NULL, DEFAULT);
 INSERT INTO public.employees VALUES (1, '2024-01-01 01:00:00+09', 1, 3, 'EMP001', 75000.00, ...);
 
 -- 1775~1862: SELECT pg_catalog.setval (Name: xxx_id_seq; Type: SEQUENCE SET)
@@ -287,86 +287,86 @@ ALTER TABLE ONLY public.companies ADD CONSTRAINT companies_pkey PRIMARY KEY (id)
 -- 2010~2017: CREATE INDEX
 CREATE INDEX projects_name_description_pgroonga_index ON public.projects ...;
 
--- WRONG 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - 이 전에 데이터 있어야 함!)
+-- 2024~: ALTER TABLE ... FOREIGN KEY (FK constraint - data must exist before this!)
 ALTER TABLE ONLY public.departments 
     ADD CONSTRAINT departments_company_id_foreign FOREIGN KEY (company_id) REFERENCES public.companies(id);
 ```
 
-### CRITICAL: Seed Data 위치 규칙
+### CRITICAL: Seed Data Placement Rule
 
-**seed data는 반드시 FK CONSTRAINT 전에 추가해야 한다.**
+**Seed data must be added before FK CONSTRAINTs.**
 
-| 위치 | 결과 |
-|------|------|
-| FK CONSTRAINT 전 | OK - 데이터 삽입 후 FK 검사 |
-| FK CONSTRAINT 후 | FAIL - 참조 테이블 데이터 없어서 FK 위반 |
+| Position | Result |
+|----------|--------|
+| Before FK CONSTRAINT | OK - FK check after data insertion |
+| After FK CONSTRAINT | FAIL - FK violation because referenced table has no data |
 
-### 테이블 간 의존성 순서
+### Table Dependency Order
 
-seed data INSERT 순서는 **FK 의존성**을 따라야 한다:
+Seed data INSERT order must follow **FK dependencies**:
 
 ```sql
--- 1. 독립 테이블 먼저 (FK 없는 테이블)
-INSERT INTO public.institutions (id, name, code) VALUES (1, '본원', 'HQ');
+-- 1. Independent tables first (tables without FKs)
+INSERT INTO public.institutions (id, name, code) VALUES (1, 'Headquarters', 'HQ');
 
--- 2. 1을 참조하는 테이블
-INSERT INTO public.departments (id, name, institution_id) VALUES (1, '연구부', 1);
+-- 2. Tables referencing step 1
+INSERT INTO public.departments (id, name, institution_id) VALUES (1, 'Research', 1);
 
--- 3. 1, 2를 참조하는 테이블
-INSERT INTO public.users (id, name, institution_id, department_id) VALUES (1, '관리자', 1, 1);
+-- 3. Tables referencing steps 1 and 2
+INSERT INTO public.users (id, name, institution_id, department_id) VALUES (1, 'Admin', 1, 1);
 ```
 
-### 시퀀스 값 설정
+### Setting Sequence Values
 
-seed data 추가 후 시퀀스 현재값도 업데이트해야 한다:
+After adding seed data, the sequence current values must also be updated:
 
 ```sql
--- seed data의 최대 id 이후로 시퀀스 설정
-SELECT pg_catalog.setval('public.users_id_seq', 10, true);  -- 다음 id는 11부터
+-- Set sequence to after the maximum id in seed data
+SELECT pg_catalog.setval('public.users_id_seq', 10, true);  -- next id starts from 11
 SELECT pg_catalog.setval('public.departments_id_seq', 5, true);
 ```
 
-### 예시: 최소 seed data
+### Example: Minimal Seed Data
 
 ```sql
--- institutions (독립)
+-- institutions (independent)
 INSERT INTO public.institutions (id, created_at, name, code) VALUES 
-  (1, '2024-01-01 00:00:00+09', '본원', 'HQ');
+  (1, '2024-01-01 00:00:00+09', 'Headquarters', 'HQ');
 
--- departments (institutions 참조)
+-- departments (references institutions)
 INSERT INTO public.departments (id, created_at, name, code, institution_id, is_active) VALUES 
-  (1, '2024-01-01 00:00:00+09', '연구부', 'RND', 1, true);
+  (1, '2024-01-01 00:00:00+09', 'Research', 'RND', 1, true);
 
--- 시퀀스 설정
+-- Set sequences
 SELECT pg_catalog.setval('public.institutions_id_seq', 1, true);
 SELECT pg_catalog.setval('public.departments_id_seq', 1, true);
 ```
 
 ---
 
-## 포트 충돌 해결
+## Resolving Port Conflicts
 
-`pnpm docker:up` 실행 시 포트가 이미 사용중이라는 오류가 발생하면:
+If a port-already-in-use error occurs when running `pnpm docker:up`:
 
-### 1단계: 실행 중인 컨테이너 확인
+### Step 1: Check Running Containers
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
 
-### 2단계: 컨테이너명 비교
+### Step 2: Compare Container Names
 
-**현재 프로젝트의 컨테이너명 확인:**
+**Check the current project's container name:**
 ```bash
-# packages/api/.env 파일에서 CONTAINER_NAME 확인
+# Check CONTAINER_NAME in packages/api/.env
 cat packages/api/.env | grep CONTAINER_NAME
 ```
 
-### 3단계: 상황별 처리
+### Step 3: Handle by Situation
 
-#### 컨테이너명이 동일한 경우
+#### If Container Names are the Same
 
-이전에 같은 프로젝트의 컨테이너가 띄워져 있는 것. 내리고 다시 올리기:
+A container from the same project was started earlier. Bring it down and bring it back up:
 
 ```bash
 cd packages/api
@@ -374,67 +374,67 @@ pnpm docker:down
 pnpm docker:up
 ```
 
-#### 컨테이너명이 다른 경우
+#### If Container Names are Different
 
-다른 프로젝트가 같은 포트를 사용 중. 새 프로젝트의 포트를 변경해야 함.
+Another project is using the same port. The new project's port must be changed.
 
-**수정할 파일 2개:**
+**Two files to modify:**
 
 1. `packages/api/.env`
 ```bash
-# 변경 전
+# Before
 DB_PORT=5432
 
-# 변경 후 (5433~5439 중 사용하지 않는 포트)
+# After (use an unused port between 5433–5439)
 DB_PORT=5433
 ```
 
 2. `packages/api/database/docker-compose.yml`
 ```yaml
-# 변경 전
+# Before
 ports:
   - "5432:5432"
 
-# 변경 후
+# After
 ports:
   - "5433:5432"
 ```
 
 3. `packages/api/src/sonamu.config.ts`
 ```typescript
-// 변경 전
+// Before
 port: 5432,
 
-// 변경 후
+// After
 port: 5433,
 ```
 
-**포트 선택 가이드:**
-- PostgreSQL 기본 포트: 5432
-- 사용 가능한 범위: 5433 ~ 5439
-- `docker ps`로 현재 사용 중인 포트 확인 후 중복되지 않는 번호 선택
+**Port Selection Guide:**
+- PostgreSQL default port: 5432
+- Available range: 5433 ~ 5439
+- Check currently used ports with `docker ps` and choose a number that is not duplicated
 
-### 변경 후 재실행
+### Restart After Changes
 
 ```bash
 pnpm docker:up
 ```
 
-## DB 연결 설정 파일
+## DB Connection Configuration Files
 
-| 파일 | 용도 |
-|------|------|
-| `packages/api/.env` | 환경변수 (DB_HOST, DB_PORT, DB_USER 등) |
-| `packages/api/database/docker-compose.yml` | Docker 컨테이너 설정 |
-| `packages/api/src/sonamu.config.ts` | Sonamu DB 연결 설정 |
+| File | Purpose |
+|------|---------|
+| `packages/api/.env` | Environment variables (DB_HOST, DB_PORT, DB_USER, etc.) |
+| `packages/api/database/docker-compose.yml` | Docker container configuration |
+| `packages/api/src/sonamu.config.ts` | Sonamu DB connection configuration |
 
-## .env 기본 설정
+## .env Default Settings
 
 ```bash
 DB_HOST=0.0.0.0
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=1234
-CONTAINER_NAME=[프로젝트명]-container
-DATABASE_NAME=[프로젝트명]
+CONTAINER_NAME=[project-name]-container
+DATABASE_NAME=[project-name]
 ```

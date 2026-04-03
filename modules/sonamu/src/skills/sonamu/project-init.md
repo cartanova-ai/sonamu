@@ -1,261 +1,261 @@
 ---
 name: sonamu-project-init
-description: Sonamu 프로젝트 생성 및 초기화. Entity 설계 요청 시 프로젝트 존재 여부 먼저 확인. Use before entity design.
+description: Sonamu project creation and initialization. Check whether a project already exists before starting entity design. Use before entity design.
 ---
 
-# 프로젝트 초기화
+# Project Initialization
 
-## Entity 설계 요청 시 질문 순서
+## Question Order When Entity Design Is Requested
 
-**한 번에 하나씩, 순서대로 진행:**
+**One question at a time, in order:**
 
 ```
-0. 작업 경로 확인 ← 최우선
-1. 프로젝트 생성 확인
-2. (프로젝트 없으면) 생성 여부 확인
-3. (생성 원하면) 프로젝트명 확인
-4. (생성 원하면) 기본값 사용 vs 옵션 설정
-5. 프로젝트 생성 실행
-6. (요구사항 제공 시) 요구사항 문서화 ← 중요!
-7. 설정 확인/커스터마이징 (config.md 참조)
-8. → entity-basic.md로 이동
+0. Confirm working directory ← top priority
+1. Check if project already exists
+2. (If no project) Ask whether to create one
+3. (If yes to create) Ask for project name
+4. (If yes to create) Use defaults vs configure options
+5. Run project creation
+6. (If requirements provided) Document requirements ← important!
+7. Review/customize configuration (see config.md)
+8. → Proceed to entity-basic.md
 ```
 
 ---
 
-## 요구사항 문서화
+## Documenting Requirements
 
-**사용자가 프로젝트 생성과 함께 요구사항을 제공한 경우, 반드시 문서화합니다.**
+**If the user provides requirements along with the project creation request, always document them.**
 
-### 프로세스
+### Process
 
-1. **프로젝트 생성 완료 확인**
-   - `pnpm create sonamu` 완료
-   - `pnpm install` 완료
-   - `.claude/skills/project/` 디렉토리 자동 생성 확인
+1. **Confirm project creation is complete**
+   - `pnpm create sonamu` complete
+   - `pnpm install` complete
+   - Confirm `.claude/skills/project/` directory was auto-created
 
-2. **요구사항 작성**
+2. **Write requirements**
    ```bash
-   # .claude/skills/project/requirements.md 파일에 작성
+   # Write to .claude/skills/project/requirements.md
    ```
 
-3. **작성 내용**
-   - 프로젝트 개요
-   - 핵심 기능 목록
-   - 사용자 역할 정의
-   - 주요 엔티티 목록
-   - 비즈니스 규칙
-   - 기술 스택
-   - 추가 요구사항
+3. **Content to include**
+   - Project overview
+   - Core feature list
+   - User role definitions
+   - Key entity list
+   - Business rules
+   - Tech stack
+   - Additional requirements
 
-4. **지속적 참조**
-   - 이후 모든 개발 과정에서 이 문서를 참조
-   - Entity 설계, API 개발, 비즈니스 로직 구현 시 일관성 유지
+4. **Ongoing reference**
+   - Refer to this document throughout all subsequent development
+   - Maintain consistency during entity design, API development, and business logic implementation
 
-### 예시 시나리오
+### Example Scenario
 
 ```
-사용자: "연구과제 관리 시스템을 만들려고 해.
-        공고, 과제, 평가 관리가 필요하고,
-        관리자/평가위원/신청자 역할이 있어."
+User: "I want to build a research project management system.
+       I need announcement, project, and evaluation management,
+       with roles for admin, reviewer, and applicant."
 
 Claude:
-1. 프로젝트 경로 확인
-2. "pnpm create sonamu research_system --yes" 실행
-3. 프로젝트 생성 완료
-4. .claude/skills/project/requirements.md에 다음 내용 작성:
+1. Confirm project path
+2. Run "pnpm create sonamu research_system --yes"
+3. Project creation complete
+4. Write the following to .claude/skills/project/requirements.md:
 
 ---
-# 연구과제 관리 시스템
+# Research Project Management System
 
-## 프로젝트 개요
-연구과제 공모, 지원, 평가를 관리하는 시스템
+## Project Overview
+A system for managing research project calls, applications, and evaluations
 
-## 핵심 기능
-- 공고 관리 (생성, 수정, 발행, 마감)
-- 과제 지원 및 관리
-- 평가 프로세스 (평가위원 배정, 평가표 작성, 점수 산정)
-- 사용자 권한 관리
+## Core Features
+- Announcement management (create, edit, publish, close)
+- Project application and management
+- Evaluation process (reviewer assignment, evaluation form creation, score calculation)
+- User permission management
 
-## 사용자 역할
-- 관리자: 전체 시스템 관리, 공고 생성, 평가위원 배정
-- 평가위원: 평가표 작성, 점수 부여
-- 신청자: 과제 지원, 진행 상황 확인
+## User Roles
+- Admin: full system management, announcement creation, reviewer assignment
+- Reviewer: write evaluation forms, assign scores
+- Applicant: apply for projects, check progress
 
-## 주요 엔티티
-- Announcement (공고)
-- Project (과제)
-- Evaluation (평가)
-- User (사용자)
+## Key Entities
+- Announcement
+- Project
+- Evaluation
+- User
 - ...
 ---
 
-5. 이후 Entity 설계 시 이 문서 참조하여 일관되게 진행
+5. Reference this document for consistent entity design going forward
 ```
 
-### 중요 사항
+### Important Notes
 
-**반드시 문서화해야 하는 경우:**
-- 사용자가 프로젝트 생성과 함께 요구사항/기능 명세를 제공한 경우
-- 비즈니스 규칙이나 특별한 제약사항이 있는 경우
+**Always document when:**
+- The user provides requirements or a feature specification together with project creation
+- There are business rules or special constraints
 
-**문서화 시점:**
-- 프로젝트 생성 직후
-- Entity 설계 시작 전
+**When to document:**
+- Immediately after project creation
+- Before starting entity design
 
-**문서 활용:**
-- Entity 설계 시 참조
-- API 비즈니스 로직 구현 시 참조
-- 테스트 케이스 작성 시 참조
-- 프론트엔드 UI 설계 시 참조
+**How the document is used:**
+- Reference during entity design
+- Reference during API business logic implementation
+- Reference when writing test cases
+- Reference during frontend UI design
 
 ---
 
-## 0. 작업 경로 확인
+## 0. Confirm Working Directory
 
-**프로젝트 생성 전 반드시 확인:**
+**Must confirm before creating a project:**
 
-개발자들은 종종 프로젝트 유형에 따라 작업 디렉토리를 분리합니다:
-- 회사/프레임워크 프로젝트: `~/Development/`
-- 개인 프로젝트: `~/dev/programming/`
-- 클라이언트 작업: `~/Projects/clients/`
+Developers often separate working directories by project type:
+- Company/framework projects: `~/Development/`
+- Personal projects: `~/dev/programming/`
+- Client work: `~/Projects/clients/`
 
-### 확인 프로세스
+### Confirmation Process
 
-1. **현재 작업 디렉토리 파악**
+1. **Determine the current working directory**
    ```bash
-   pwd  # 현재 디렉토리 확인
+   pwd  # check current directory
    ```
 
-2. **사용자에게 확인 질문**
+2. **Ask the user to confirm**
    ```
-   "현재 {현재_디렉토리}에서 요청하셨는데, 여기에 프로젝트를 생성할까요?
-   다른 경로에서 작업하신다면 프로젝트를 생성할 디렉토리를 말씀해 주세요.
+   "You are currently in {current_directory}. Should I create the project here?
+   If you work in a different location, please tell me the directory to create the project in.
 
-   1. 현재 디렉토리에 생성
-   2. 다른 디렉토리 지정"
+   1. Create in current directory
+   2. Specify a different directory"
    ```
 
-3. **선택에 따른 처리**
+3. **Handle each choice**
 
-   **1번 선택 시:**
-   - 현재 디렉토리에서 바로 진행
-   - 다음 단계(프로젝트 생성 확인)로 이동
+   **If option 1:**
+   - Proceed directly in the current directory
+   - Move to the next step (confirm project creation)
 
-   **2번 선택 시:**
-   - "프로젝트를 생성할 디렉토리 경로를 알려주세요."
-   - 경로 받은 후: `cd {지정_경로}`
-   - 디렉토리 존재 여부 확인
-   - 디렉토리 없으면: `mkdir -p {지정_경로} && cd {지정_경로}`
-   - 다음 단계로 이동
+   **If option 2:**
+   - "Please provide the directory path where you want to create the project."
+   - After receiving the path: `cd {specified_path}`
+   - Check whether the directory exists
+   - If it doesn't exist: `mkdir -p {specified_path} && cd {specified_path}`
+   - Move to the next step
 
-### 예시 대화
+### Example Conversation
 
 ```
-사용자: "설문조사 시스템을 만들려고 해. Entity 설계해줘."
+User: "I want to build a survey system. Design the entities for me."
 
-Claude: "현재 /Users/noa/Documents에서 요청하셨는데, 여기에 프로젝트를 생성할까요?
-다른 경로에서 작업하신다면 프로젝트를 생성할 디렉토리를 말씀해 주세요.
+Claude: "You are currently in /Users/noa/Documents. Should I create the project here?
+If you work in a different location, please tell me the directory to create the project in.
 
-1. 현재 디렉토리에 생성
-2. 다른 디렉토리 지정"
+1. Create in current directory
+2. Specify a different directory"
 
-사용자: "2"
+User: "2"
 
-Claude: "프로젝트를 생성할 디렉토리 경로를 알려주세요."
+Claude: "Please provide the directory path where you want to create the project."
 
-사용자: "/Users/noa/Development"
+User: "/Users/noa/Development"
 
-Claude: "/Users/noa/Development로 이동합니다.
+Claude: "Moving to /Users/noa/Development.
 
-Sonamu 프로젝트가 이미 생성되어 있나요?"
+Is a Sonamu project already set up there?"
 ```
 
-### 주의사항
+### Notes
 
-- **상대 경로도 허용**: `~/Development`, `../projects` 등
-- **틸드(~) 확장**: 홈 디렉토리 자동 확장
-- **경로 검증**: 존재하지 않는 경로는 생성 여부 확인
-- **Working directory 변경**: 경로 이동 후 모든 명령어는 새 경로 기준
+- **Relative paths are accepted**: `~/Development`, `../projects`, etc.
+- **Tilde (~) expansion**: home directory is expanded automatically
+- **Path validation**: ask whether to create the directory if it doesn't exist
+- **Working directory change**: all subsequent commands use the new path
 
 ---
 
-## 전체 프로세스 상세
+## Full Process Details
 
-### A. Sonamu 개발자용 (로컬 링크)
+### A. For Sonamu Developers (Local Link)
 
-> **로컬 링크를 사용하는 이유:**
-> - Skills 원본에서 직접 동기화
-> - 로컬 Sonamu 변경사항 즉시 반영
-> - 프레임워크 개발 시 필수
+> **Why use a local link:**
+> - Sync directly from the Skills source
+> - Local Sonamu changes take effect immediately
+> - Required for framework development
 
-#### 1. 프로젝트 생성
+#### 1. Create the Project
 ```bash
-pnpm create sonamu [프로젝트명] --yes
+pnpm create sonamu [project-name] --yes
 ```
 
-CLI 옵션은 `create-sonamu.md` 참조.
+See `create-sonamu.md` for CLI options.
 
-#### 2. Sonamu 링크 설정
+#### 2. Set Up the Sonamu Link
 
-`pnpm-workspace.yaml`의 `overrides` 섹션에 추가:
+Add to the `overrides` section of `pnpm-workspace.yaml`:
 
 ```yaml
 overrides:
   sonamu: link:../../sonamu/modules/sonamu
 ```
 
-> **경로 예시:**
-> - Sonamu가 `~/Development/sonamu`에 있는 경우
-> - 프로젝트가 `~/Development/my_project`에 있는 경우
+> **Path example:**
+> - If Sonamu is at `~/Development/sonamu`
+> - And the project is at `~/Development/my_project`
 > - → `link:../../sonamu/modules/sonamu`
 
-#### 3. 의존성 설치 및 빌드
+#### 3. Install Dependencies and Build
 
-프로젝트 루트에서:
+From the project root:
 ```bash
 pnpm install
 pnpm -r build
 ```
 
-> **빌드 실패 시:** 리소스 초기화 실패일 수 있음. 4번 도커를 먼저 띄운 후 5번 dev 서버 실행하고 재시도.
+> **If build fails:** may be a resource initialization failure. Start Docker first (step 4), then start the dev server (step 5) and retry.
 
-#### 4. DB 실행
+#### 4. Start the DB
 ```bash
 cd packages/api
 pnpm docker:up
 ```
 
-> 포트 충돌 오류 발생 시 → `database.md` 참조
+> If a port conflict error occurs → see `database.md`
 
-#### 5. 개발 서버 실행
+#### 5. Start the Dev Server
 ```bash
 pnpm dev
 ```
 
-> 3번 빌드가 실패했다면, dev 서버가 올라온 후 프로젝트 루트에서 `pnpm -r build` 재시도
+> If step 3 build failed, retry `pnpm -r build` from the project root after the dev server is running
 
 > Sonamu UI: http://localhost:34900/sonamu-ui
 
-#### 6. Auth 엔티티 생성 (별도 터미널)
+#### 6. Generate Auth Entities (Separate Terminal)
 
-**dev 서버 실행 중**에 다른 터미널에서:
+In a separate terminal **while the dev server is running**:
 
 ```bash
 cd packages/api
 pnpm sonamu auth generate
 ```
 
-> **주의:** dev 모드에서 실행해야 types 파일도 자동 생성됨
+> **Note:** Must run in dev mode for types files to be auto-generated as well
 
-#### 7. Subset 확인
+#### 7. Check Subsets
 
-Sonamu UI (`http://localhost:34900/sonamu-ui`)의 Entity 메뉴에서:
-- User, Account, Session, Verification 엔티티의 subset 체크
+In the Sonamu UI (`http://localhost:34900/sonamu-ui`) Entity menu:
+- Check subsets for User, Account, Session, Verification entities
 
 #### 8. DB Migration
 
-Sonamu UI에서 마이그레이션 실행
+Run migrations from Sonamu UI
 
 #### 9. Scaffolding
 
@@ -266,192 +266,192 @@ pnpm sonamu scaffold model Session
 pnpm sonamu scaffold model Verification
 ```
 
-#### 10. Skills 동기화 (선택)
+#### 10. Sync Skills (Optional)
 
-Skills 원본 동기화가 필요한 경우:
+If you need to sync from the Skills source:
 
 ```bash
 cd packages/api
 pnpm sonamu skills sync
 ```
 
-프로젝트 루트에 `.claude/skills/sonamu/` 생성됨.
+`.claude/skills/sonamu/` will be created at the project root.
 
 ---
 
-### B. Sonamu 사용자용 (npm 버전)
+### B. For Sonamu Users (npm Version)
 
-> **npm 버전 사용 시:**
-> - Skills는 npm 패키지에 포함됨
-> - 로컬 링크 불필요
-> - 일반 사용자용
+> **When using the npm version:**
+> - Skills are included in the npm package
+> - No local link needed
+> - For general users
 
-#### 1-3. 프로젝트 생성 및 설정
+#### 1-3. Create and Configure the Project
 ```bash
-pnpm create sonamu [프로젝트명] --yes
-cd [프로젝트명]
+pnpm create sonamu [project-name] --yes
+cd [project-name]
 pnpm install
 pnpm -r build
 ```
 
-> **빌드 실패 시:** A의 3번과 동일 처리 - 도커 먼저 띄운 후 dev 실행, 재빌드
+> **If build fails:** Same as A step 3 - start Docker first, then start dev, then rebuild
 
-#### 4-9. A의 4-9 단계 동일
+#### 4-9. Same as A Steps 4-9
 
-(단, Skills 동기화는 불필요)
+(Skills sync is not needed)
 
 ---
 
-## 예시 대화
+## Example Conversations
 
 ### DO - Correct Example
 
 ```
-사용자: "설문조사 시스템을 만들려고 해. Entity 설계해줘."
+User: "I want to build a survey system. Design the entities for me."
 
-Claude: "현재 /Users/noa/Documents에서 요청하셨는데, 여기에 프로젝트를 생성할까요?
-다른 경로에서 작업하신다면 프로젝트를 생성할 디렉토리를 말씀해 주세요.
+Claude: "You are currently in /Users/noa/Documents. Should I create the project here?
+If you work in a different location, please tell me the directory to create the project in.
 
-1. 현재 디렉토리에 생성
-2. 다른 디렉토리 지정"
+1. Create in current directory
+2. Specify a different directory"
 
-사용자: "1"
+User: "1"
 
-Claude: "Sonamu 프로젝트가 이미 생성되어 있나요?"
+Claude: "Is a Sonamu project already set up here?"
 
-사용자: "아니"
+User: "No"
 
-Claude: "pnpm create sonamu로 프로젝트를 생성할까요?"
+Claude: "Should I create a project with pnpm create sonamu?"
 
-사용자: "응"
+User: "Yes"
 
-Claude: "프로젝트명을 알려주세요. (예: survey_system)"
+Claude: "What should the project name be? (e.g. survey_system)"
 
-사용자: "survey_system"
+User: "survey_system"
 
-Claude: "기본값으로 빠르게 생성할까요, 아니면 DB 설정 등을 직접 하시겠어요?
-1. 기본값으로 생성 (--yes)
-2. 옵션 직접 설정"
+Claude: "Should I create it quickly with defaults, or would you like to configure DB settings and other options yourself?
+1. Create with defaults (--yes)
+2. Configure options manually"
 
-사용자: "1"
+User: "1"
 
-Claude: "다음 명령어로 생성합니다:
+Claude: "Creating with the following command:
 pnpm create sonamu survey_system --yes
 
-생성 완료 후 추가 설정이 필요하면 알려주세요."
+Let me know if you need any additional configuration after creation."
 ```
 
 ### DO NOT - Incorrect Example
 
 ```
-사용자: "설문조사 시스템을 만들려고 해. Entity 설계해줘."
+User: "I want to build a survey system. Design the entities for me."
 
-Claude: "설문조사 시스템 Entity를 설계하기 전에 확인할게요.
+Claude: "Before designing the survey system entities, let me confirm a few things.
 
-1. 어느 경로에 프로젝트를 생성할까요?
-2. Sonamu 프로젝트가 이미 생성되어 있나요?
-3. 프로젝트명은 무엇으로 할까요?
-4. 기본값으로 생성할까요, 옵션을 직접 설정할까요?"
+1. Which directory should I create the project in?
+2. Is a Sonamu project already set up?
+3. What should the project name be?
+4. Should I use defaults or configure options manually?"
 ```
 
-**잘못된 이유:**
-- 여러 질문을 한 번에 던짐 (한 번에 하나씩 질문해야 함)
-- 질문 순서가 명확하지 않음
+**Why this is wrong:**
+- Asking multiple questions at once (should ask one at a time)
+- The question order is not clear
 
 ---
 
-## 프로젝트 생성 후 설정
+## Post-Creation Configuration
 
-프로젝트 생성 후 사용자에게 확인할 사항:
+Items to confirm with the user after project creation:
 
-### 1. .env 확인
+### 1. Check .env
 
 ```
-Claude: "packages/api/.env 파일이 생성되었습니다. 기본 설정을 확인해볼까요?"
+Claude: "The packages/api/.env file has been created. Would you like to review the default settings?"
 ```
 
-기본 생성된 .env:
+Default generated .env:
 ```env
 DB_HOST=0.0.0.0
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=1234
-CONTAINER_NAME={프로젝트명}-container
-DATABASE_NAME={프로젝트명}
-PROJECT_NAME={프로젝트명}
-SESSION_SECRET={자동생성}
-SESSION_SALT={자동생성}
+CONTAINER_NAME={project-name}-container
+DATABASE_NAME={project-name}
+PROJECT_NAME={project-name}
+SESSION_SECRET={auto-generated}
+SESSION_SALT={auto-generated}
 ```
 
-### 1.5 template 기본값 잔류 체크 (CRITICAL)
+### 1.5 Check for Leftover Template Defaults (CRITICAL)
 
-`pnpm create sonamu`로 생성된 프로젝트에는 placeholder 값이 있다. **반드시 실제 값으로 교체해야 한다.**
+Projects created with `pnpm create sonamu` contain placeholder values. **These must be replaced with real values.**
 
 ```bash
-# 확인: 기본값이 남아있는지 검색
+# Check: search for leftover default values
 grep -r 'SonamuProject' packages/api/src/
 ```
 
 **`packages/api/src/sonamu.config.ts`:**
 ```typescript
-// DO NOT - template 기본값 그대로
+// DO NOT - template default left as-is
 projectName: process.env.PROJECT_NAME ?? "SonamuProject"
 
-// DO - 실제 프로젝트명으로
+// DO - replace with real project name
 projectName: process.env.PROJECT_NAME ?? "NIFOS"
 ```
 
-**교체 체크리스트:**
-- [ ] `sonamu.config.ts`의 `projectName` 기본값
-- [ ] `package.json` (root)의 `name` 필드
-- [ ] `.env`의 `PROJECT_NAME`, `DATABASE_NAME`
-- [ ] `.env`의 `SESSION_SECRET`, `SESSION_SALT` (운영 전 반드시 교체)
+**Replacement checklist:**
+- [ ] `projectName` default in `sonamu.config.ts`
+- [ ] `name` field in `package.json` (root)
+- [ ] `PROJECT_NAME`, `DATABASE_NAME` in `.env`
+- [ ] `SESSION_SECRET`, `SESSION_SALT` in `.env` (must replace before going to production)
 
-### 2. 추가 설정 필요 여부 확인
-
-```
-Claude: "추가로 설정할 항목이 있나요?
-- 세션 보안 설정 (프로덕션용)
-- S3 파일 업로드
-- 서버 포트 변경
-- 없음 (바로 진행)"
-```
-
-각 항목별 설정은 `config.md` 참조.
-
-### 3. 설정 완료 후 진행
+### 2. Check Whether Additional Configuration Is Needed
 
 ```
-Claude: "설정이 완료되었습니다. 다음 단계로 진행할까요?
+Claude: "Is there anything else you need to configure?
+- Session security settings (for production)
+- S3 file upload
+- Change server port
+- Nothing (proceed immediately)"
+```
+
+See `config.md` for configuration details for each item.
+
+### 3. Proceed After Configuration
+
+```
+Claude: "Configuration is complete. Ready to proceed to the next step?
 
 1. cd survey_system/packages/api
 2. pnpm docker:up
 3. pnpm dev
-4. (별도 터미널) pnpm sonamu auth generate"
+4. (separate terminal) pnpm sonamu auth generate"
 ```
 
 ---
 
-## 기존 프로젝트 확인
+## Checking an Existing Project
 
-사용자가 "프로젝트 있어"라고 답하면 경로를 물어보세요:
+If the user says "I already have a project", ask for the path:
 
 ```
-Claude: "프로젝트 경로를 알려주세요."
+Claude: "Please tell me the project path."
 ```
 
-경로를 받은 후 `packages/api/src/application/` 존재 여부로 확인 가능합니다.
+After receiving the path, you can confirm by checking whether `packages/api/src/application/` exists.
 
 ---
 
-## 설정 관련 질문 처리
+## Handling Configuration Questions
 
-사용자가 설정 관련 질문을 하면 `config.md`를 참조하여 답변:
+When the user asks a configuration-related question, refer to `config.md` for the answer:
 
-| 질문 | 참조 |
-|------|------|
-| ".env 어떻게 설정해?" | config.md - .env 파일 |
-| "S3 연결하려면?" | config.md - server.storage |
-| "세션 설정 바꾸려면?" | config.md - server.plugins.session |
-| "포트 바꾸려면?" | config.md - server.listen |
-| "캐시 설정?" | config.md - server.cache |
+| Question | Reference |
+|----------|-----------|
+| "How do I configure .env?" | config.md - .env file |
+| "How do I connect S3?" | config.md - server.storage |
+| "How do I change the session settings?" | config.md - server.plugins.session |
+| "How do I change the port?" | config.md - server.listen |
+| "Cache settings?" | config.md - server.cache |

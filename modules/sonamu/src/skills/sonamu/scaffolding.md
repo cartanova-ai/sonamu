@@ -1,41 +1,41 @@
 ---
 name: sonamu-scaffolding
-description: Sonamu UI Scaffolding 사용 시 참조. 흔한 오류와 해결 방법. Use when scaffolding models or views.
+description: Reference for using Sonamu UI Scaffolding. Common errors and solutions. Use when scaffolding models or views.
 ---
 
-# Scaffolding 트러블슈팅
+# Scaffolding Troubleshooting
 
-## CRITICAL: Scaffolding 필수 항목
+## CRITICAL: Required Scaffolding Items
 
-**모든 엔티티에 대해 다음 5가지를 모두 scaffolding 해야 한다:**
+**The following 5 items must all be scaffolded for every entity:**
 
-| 항목 | 설명 |
+| Item | Description |
 |------|------|
-| `model` | BaseModelClass 기반 CRUD 모델 |
-| `model_test` | 모델 테스트 파일 |
-| `view_list` | 목록 화면 컴포넌트 |
-| `view_search_input` | 검색 입력 컴포넌트 |
-| `view_form` | 생성/수정 폼 컴포넌트 |
+| `model` | CRUD model based on BaseModelClass |
+| `model_test` | Model test file |
+| `view_list` | List view component |
+| `view_search_input` | Search input component |
+| `view_form` | Create/edit form component |
 
-**DO NOT:** model과 model_test만 scaffolding하고 view 관련을 건너뛰는 것
+**DO NOT:** scaffold only model and model_test and skip the view-related items
 
 ---
 
-## Scaffolding 전 체크리스트
+## Pre-Scaffolding Checklist
 
-**`packages/api`** 디렉토리에서 실행:
+Run from the **`packages/api`** directory:
 
-1. **Entity 변경 감지 대기**: Entity 생성 후 syncer가 `types.ts` 자동 생성할 때까지 대기 (2-3초)
-2. **types.ts 파일 확인**: 자동 생성되지 않았다면 수동 생성
-3. **Migration 생성 및 실행**: Sonamu UI에서 Migration 생성 → `pnpm sonamu migrate run`
-4. **TypeScript 빌드 완료**: `pnpm build`로 `dist/` 폴더에 `.js` 파일 생성
-5. **개발 서버 재시작**: `pnpm dev` (빌드 후 재시작 필요)
+1. **Wait for entity change detection**: After creating an entity, wait for the syncer to auto-generate `types.ts` (2-3 seconds)
+2. **Check types.ts file**: If not auto-generated, create it manually
+3. **Create and run migration**: Create migration from Sonamu UI → `pnpm sonamu migrate run`
+4. **Complete TypeScript build**: Run `pnpm build` to generate `.js` files in `dist/`
+5. **Restart dev server**: `pnpm dev` (restart required after build)
 
-## Scaffolding 후 필수 체크리스트
+## Post-Scaffolding Required Checklist
 
-**CRITICAL: Scaffolding 완료 후 반드시 다음 작업을 수행하세요.**
+**CRITICAL: After scaffolding is complete, you must perform the following steps.**
 
-### 1. Build 테스트
+### 1. Build Test
 ```bash
 cd packages/api
 pnpm build
@@ -43,57 +43,57 @@ pnpm build
 cd packages/web
 pnpm build
 ```
-- [ ] API 빌드 성공
-- [ ] Web 빌드 성공
+- [ ] API build succeeds
+- [ ] Web build succeeds
 
-### 2. Dev 서버 재시작
+### 2. Restart Dev Server
 ```bash
 cd packages/api
 pnpm dev
 ```
-- [ ] 서버 정상 작동
+- [ ] Server running normally
 
-### 3. Relation이 있는 경우 (i18n 키 추가)
+### 3. If Relations Exist (Add i18n Keys)
 
-**필수**: Entity에 BelongsToOne 또는 relation이 있으면 반드시 수행
+**Required**: Must be done if the entity has a BelongsToOne or any relation
 
 ```typescript
 // packages/api/src/i18n/ko.ts
 export default {
-  // ... 기존 키들
+  // ... existing keys
   
-  // Relation 있는 Entity마다 추가
-  "entity.Post.author_id": "작성자",
-  "entity.Question.collection_id": "소속 모음집",
-  "entity.Question.parent_id": "상위 질문",
-  "entity.Employee.department_id": "부서",
-  "entity.Task.principal_investigator_id": "연구책임자",
+  // Add for each entity with relations
+  "entity.Post.author_id": "Author",
+  "entity.Question.collection_id": "Collection",
+  "entity.Question.parent_id": "Parent Question",
+  "entity.Employee.department_id": "Department",
+  "entity.Task.principal_investigator_id": "Principal Investigator",
   
   // ...
 } as const;
 ```
 
-**패턴**: `entity.{EntityId}.{relation}_id`
-- relation 이름에 `_id` 접미사 추가
-- 예: `author` relation → `author_id` 키
+**Pattern**: `entity.{EntityId}.{relation}_id`
+- Add `_id` suffix to the relation name
+- Example: `author` relation → `author_id` key
 
-- [ ] Relation 있는 모든 Entity의 i18n 키 추가 완료
+- [ ] i18n keys added for all entities with relations
 
-### 4. OrderBy 케이스 추가 (id-desc 외 사용 시)
+### 4. Add OrderBy Cases (When values other than id-desc are used)
 
-**선택**: entity.json의 OrderBy enum에 `id-desc` 외 값이 있으면 수행
+**Optional**: Perform if the OrderBy enum in entity.json has values other than `id-desc`
 
 ```typescript
 // packages/api/src/application/{entity}/{entity}.model.ts
 
-// 생성된 코드
+// Generated code
 if (params.orderBy === "id-desc") {
   qb.orderBy("posts.id", "desc");
 } else {
-  exhaustive(params.orderBy);  // 타입 에러 발생!
+  exhaustive(params.orderBy);  // type error!
 }
 
-// 수정: 나머지 case 추가
+// Fix: add the remaining cases
 if (params.orderBy === "id-desc") {
   qb.orderBy("posts.id", "desc");
 } else if (params.orderBy === "created_at-desc") {
@@ -101,33 +101,33 @@ if (params.orderBy === "id-desc") {
 } else if (params.orderBy === "name-asc") {
   qb.orderBy("posts.name", "asc");
 } else {
-  exhaustive(params.orderBy);  // 이제 타입 에러 없음
+  exhaustive(params.orderBy);  // no more type errors
 }
 ```
 
-- [ ] OrderBy 케이스 추가 완료
+- [ ] OrderBy cases added
 
-### 5. types.ts nullable 필드 처리 (테스트 전 필수!)
+### 5. Handle Nullable Fields in types.ts (Required Before Testing!)
 
-**필수**: 모든 Entity의 types.ts에서 nullable 필드 처리
+**Required**: Handle nullable fields in types.ts for all entities
 
 ```typescript
 // packages/api/src/application/{entity}/{entity}.types.ts
 
-// 생성된 코드
+// Generated code
 export const PostSaveParams = PostBaseSchema.partial({
   id: true,
   created_at: true,
 });
 
-// 수정: nullable 필드 추가
+// Fix: add nullable fields
 export const PostSaveParams = PostBaseSchema
   .partial({
     id: true,
     created_at: true,
-    updated_at: true,      // nullable 필드
-    category: true,        // nullable 필드
-    description: true,     // nullable 필드
+    updated_at: true,      // nullable field
+    category: true,        // nullable field
+    description: true,     // nullable field
   })
   .extend({
     updated_at: z.date().nullish(),
@@ -136,36 +136,36 @@ export const PostSaveParams = PostBaseSchema
   });
 ```
 
-**상세 가이드**: `testing.md`의 "엔티티 생성 후 즉시 해야 할 작업" 참조
+**Detailed guide**: See "Tasks to do immediately after entity creation" in `testing.md`
 
-- [ ] 모든 Entity의 types.ts nullable 필드 처리 완료
+- [ ] Nullable fields handled in types.ts for all entities
 
-### 완료 확인
+### Completion Confirmation
 
 ```
-Scaffolding 후 필수 체크리스트 완료
-→ 다음 단계: 테스트 작성 (testing.md)
+Post-scaffolding required checklist complete
+→ Next step: write tests (testing.md)
 
-⚠️ types.ts nullable 필드 처리를 하지 않으면
-   테스트 작성 시 타입 에러가 발생합니다!
+⚠️ If nullable fields in types.ts are not handled,
+   type errors will occur when writing tests!
 ```
 
 ---
 
-## 흔한 오류
+## Common Errors
 
-| 오류 | 원인 | 해결 |
+| Error | Cause | Fix |
 |------|------|------|
-| "존재하지 않는 모듈 패스 요청 {Type}" | types.ts 미생성 또는 미컴파일 | 대기/수동생성 → build → dev 재시작 |
-| exhaustive() 타입 에러 | OrderBy 첫 번째 값만 자동 처리 | 위 "4. OrderBy 케이스 추가" 참조 |
-| i18n 키 없음 (relation) | `author_id` vs `author` | 위 "3. Relation이 있는 경우" 참조 |
-| IdAsyncSelect API 불일치 | 구버전 scaffolding 템플릿 사용 | 아래 "IdAsyncSelect API 마이그레이션" 참조 |
+| "Non-existent module path requested {Type}" | types.ts not created or not compiled | Wait/create manually → build → restart dev |
+| exhaustive() type error | Only the first OrderBy value is handled automatically | See "4. Add OrderBy Cases" above |
+| Missing i18n key (relation) | `author_id` vs `author` | See "3. If Relations Exist" above |
+| IdAsyncSelect API mismatch | Old scaffolding template used | See "IdAsyncSelect API Migration" below |
 
-## 상세 설명
+## Detailed Explanations
 
-### "존재하지 않는 모듈 패스 요청" 오류
+### "Non-existent module path requested" Error
 
-Scaffolding은 `dist/application/{entity}/{entity}.types.js`에서 export된 타입을 읽어 모듈 경로를 등록합니다.
+Scaffolding reads types exported from `dist/application/{entity}/{entity}.types.js` to register module paths.
 
 ```typescript
 // modules/sonamu/src/entity/entity.ts
@@ -174,16 +174,16 @@ const typesFilePath = path.join(
   runtimePath(`dist/application/${typesModulePath}.js`),
 );
 if (await exists(typesFilePath)) {
-  // 타입 등록
+  // register type
 }
 ```
 
-### types.ts 자동 생성 메커니즘
+### Automatic types.ts Generation Mechanism
 
-Entity 생성 시 syncer의 `handleTruthSourceChanges`가 자동으로 `init_types` 템플릿을 실행합니다:
+When an entity is created, the syncer's `handleTruthSourceChanges` automatically runs the `init_types` template:
 
 ```typescript
-// modules/sonamu/src/syncer/syncer.ts - handleTruthSourceChanges 함수
+// modules/sonamu/src/syncer/syncer.ts - handleTruthSourceChanges function
 if (entityId) {
   const entity = EntityManager.get(entityId);
   const typeFilePath = path.join(...);
@@ -193,25 +193,25 @@ if (entityId) {
 }
 ```
 
-**자동 생성 조건**:
-- `parentId`가 없는 경우 (최상위 Entity)
-- `types.ts` 파일이 아직 존재하지 않는 경우
+**Auto-generation conditions**:
+- When `parentId` is absent (top-level entity)
+- When the `types.ts` file does not yet exist
 
-**오류 발생 원인**:
-- Entity 생성 직후 syncer가 아직 실행되지 않은 상태에서 scaffolding 시도
-- types.ts는 생성되었으나 빌드가 완료되지 않아 `.js` 파일이 없는 상태
+**Causes of errors**:
+- Attempting scaffolding immediately after entity creation before the syncer has run
+- types.ts was created but the build has not completed so the `.js` file is missing
 
-**해결 순서** (`packages/api`에서 실행):
-1. Entity 생성 후 syncer가 types.ts 생성할 때까지 잠시 대기 (2-3초)
-2. types.ts가 없으면 수동 생성 (아래 템플릿 참고)
-3. Migration 생성 (Sonamu UI) 및 실행 (`pnpm sonamu migrate run`)
-4. `pnpm build`로 TypeScript 컴파일
-5. `pnpm dev` 재시작
-6. Scaffolding 재시도
+**Resolution order** (run from `packages/api`):
+1. Wait briefly after entity creation for the syncer to generate types.ts (2-3 seconds)
+2. If types.ts is missing, create it manually (see template below)
+3. Create migration (Sonamu UI) and run it (`pnpm sonamu migrate run`)
+4. Compile TypeScript with `pnpm build`
+5. Restart `pnpm dev`
+6. Retry scaffolding
 
-### types.ts 수동 생성 (필요시)
+### Manual types.ts Creation (If Needed)
 
-syncer 타이밍 문제로 자동 생성되지 않은 경우:
+For cases where auto-generation did not occur due to a syncer timing issue:
 
 ```typescript
 // {entity}.types.ts
@@ -229,38 +229,38 @@ export type {Entity}SaveParams = z.infer<typeof {Entity}SaveParams>;
 
 **IMPORTANT: Entity with `updated_at` field**:
 
-Entity에 `updated_at` 필드가 정의되어 있으면 SaveParams의 partial에도 포함해야 합니다.
-Form에서 `updated_at`을 직접 입력받지 않으므로 optional로 설정해야 타입 오류가 발생하지 않습니다.
+If the entity has an `updated_at` field defined, it must also be included in the partial of SaveParams.
+Since the form does not accept `updated_at` as direct input, it must be optional to avoid type errors.
 
 ```typescript
-// updated_at이 있는 Entity의 경우
+// For entities with updated_at
 export const {Entity}SaveParams = {Entity}BaseSchema.partial({
   id: true,
   created_at: true,
-  updated_at: true  // ← 추가
+  updated_at: true  // ← add this
 });
 ```
 
-### exhaustive() 타입 에러
+### exhaustive() Type Error
 
-`exhaustive`는 sonamu에서 제공하는 유틸리티 함수입니다.
+`exhaustive` is a utility function provided by sonamu.
 
 ```typescript
 import { exhaustive } from "sonamu";
 ```
 
-Scaffolding 템플릿은 `OrderBy` enum의 **첫 번째 값만** 자동 처리합니다.
+The scaffolding template only handles the **first value** of the `OrderBy` enum automatically.
 
 ```typescript
-// 생성된 코드
+// Generated code
 if (params.orderBy === "id-desc") {
   qb.orderBy("posts.id", "desc");
 } else {
-  exhaustive(params.orderBy);  // 나머지 case 미처리 → 타입 에러
+  exhaustive(params.orderBy);  // remaining cases unhandled → type error
 }
 ```
 
-**해결**: 모든 OrderBy case를 직접 추가
+**Fix**: Manually add all OrderBy cases
 
 ```typescript
 if (params.orderBy === "id-desc") {
@@ -272,63 +272,63 @@ if (params.orderBy === "id-desc") {
 }
 ```
 
-### i18n 키 오류 (relation prop)
+### i18n Key Error (relation prop)
 
-Entity의 relation prop은 `author`로 정의되고, `sd.generated.ts`의 i18n label은 `entity.Post.author`로 생성됩니다.
-**하지만** 스캐폴딩된 form.tsx 템플릿은 FK 컬럼명인 `author_id`를 사용합니다.
+An entity's relation prop is defined as `author`, and the i18n label in `sd.generated.ts` is generated as `entity.Post.author`.
+**However**, the scaffolded form.tsx template uses the FK column name `author_id`.
 
 ```typescript
-// 스캐폴딩된 form.tsx (실제 생성되는 코드)
-{SD("entity.Post.author_id")}  // ← _id 접미사 사용
+// Scaffolded form.tsx (actually generated code)
+{SD("entity.Post.author_id")}  // ← uses _id suffix
 
-// sd.generated.ts (자동 생성되는 키)
-"entity.Post.author": "작성자"  // ← _id 없음
+// sd.generated.ts (auto-generated keys)
+"entity.Post.author": "Author"  // ← no _id
 ```
 
-**해결 방법 (둘 중 하나 선택)**:
+**Fix (choose one)**:
 
-1. **ko.ts에 `_id` 키 수동 추가** (권장):
+1. **Manually add `_id` key to ko.ts** (recommended):
 ```typescript
 // packages/api/src/i18n/ko.ts
 export default {
-  // ... 기존 키들
-  "entity.Post.author_id": "작성자",
-  "entity.Question.collection_id": "소속 모음집",
-  "entity.Question.parent_id": "상위 질문",
+  // ... existing keys
+  "entity.Post.author_id": "Author",
+  "entity.Question.collection_id": "Collection",
+  "entity.Question.parent_id": "Parent Question",
   // ...
 } as const;
 ```
 
-2. **form.tsx에서 `_id` 제거** (수동 수정 필요):
+2. **Remove `_id` from form.tsx** (requires manual edit):
 ```typescript
-// 스캐폴딩 후 수동 수정
-{SD("entity.Post.author")}  // _id 제거
+// Manual edit after scaffolding
+{SD("entity.Post.author")}  // remove _id
 ```
 
-**권장**: 첫 번째 방법 - ko.ts에 `_id` 키 추가. sync 시 유지되며 여러 form에서 재사용 가능.
+**Recommended**: First option - add the `_id` key to ko.ts. It is preserved during sync and can be reused across multiple forms.
 
-### IdAsyncSelect API 마이그레이션
+### IdAsyncSelect API Migration
 
-#### 발생 배경
+#### Background
 
-Sonamu의 `@sonamu-kit/react-components` 패키지가 업데이트되면서 IdAsyncSelect API가 변경되었으나, scaffolding 생성 코드(`scaffolding/react-components.ts`)는 구 API 기준으로 코드를 생성합니다.
+When the `@sonamu-kit/react-components` package was updated, the IdAsyncSelect API changed, but the scaffolding generation code (`scaffolding/react-components.ts`) still generates code based on the old API.
 
-따라서 `pnpm sonamu scaffold` 실행 시 구 API 기반 래퍼 컴포넌트가 생성되며, 최신 패키지를 사용하는 프로젝트에서는 빌드 오류가 발생합니다.
+Therefore, running `pnpm sonamu scaffold` generates wrapper components based on the old API, causing build errors in projects using the latest package.
 
-#### 구체적인 API 변경 사항
+#### Specific API Changes
 
-**구 API (scaffolding이 생성하는 코드):**
+**Old API (code generated by scaffolding):**
 ```typescript
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,
   value,
   onValueChange,
-  listParams,      // ← 구 API
-  textField = "name",  // ← 구 API
-  pageField,       // ← 구 API
+  listParams,      // ← old API
+  textField = "name",  // ← old API
+  pageField,       // ← old API
   ...
 }: UserIdAsyncSelectProps<T>) {
-  // 수동 상태 관리
+  // manual state management
   const [searchText, setSearchText] = useState("");
 
   const handleSearch = useCallback((text: string) => {
@@ -336,7 +336,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   }, []);
 
   return (
-    <AsyncSelect  // ← 구 컴포넌트
+    <AsyncSelect  // ← old component
       config={UserAsyncIdConfig}
       subset={subset}
       listParams={{ ...listParams, [textField]: searchText }}
@@ -349,71 +349,71 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 }
 ```
 
-**신 API (실제 패키지 API):**
+**New API (actual package API):**
 ```typescript
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,
   value,
   onValueChange,
-  baseListParams,    // ← 신 API
-  displayField = "name",  // ← 신 API
-  // pageField 없음  // ← 제거됨
+  baseListParams,    // ← new API
+  displayField = "name",  // ← new API
+  // pageField removed  // ← removed
   ...
 }: UserIdAsyncSelectProps<T>) {
-  // 상태 관리 없음 (내부에서 처리)
+  // no state management (handled internally)
 
   return (
-    <IdAsyncSelect<number>  // ← 신 컴포넌트 + 제네릭
+    <IdAsyncSelect<number>  // ← new component + generic
       config={UserAsyncIdConfig}
       subset={subset}
       baseListParams={baseListParams}
       displayField={displayField}
-      // 내부에서 검색 처리
+      // search handled internally
       ...
     />
   );
 }
 ```
 
-#### 주요 변경점
+#### Key Changes
 
-1. **컴포넌트명**: `AsyncSelect` → `IdAsyncSelect<T>` (제네릭 추가)
-2. **Props 이름**:
+1. **Component name**: `AsyncSelect` → `IdAsyncSelect<T>` (generic added)
+2. **Prop names**:
    - `listParams` → `baseListParams`
    - `textField` → `displayField`
-   - `pageField` 삭제
-3. **검색 로직**: 외부 상태관리 → 내부 처리 (useState, useCallback, onSearch 불필요)
-4. **제네릭 타입**: PK 타입 명시 필요 (`<number>` 또는 `<string>`)
+   - `pageField` removed
+3. **Search logic**: external state management → internal handling (useState, useCallback, onSearch no longer needed)
+4. **Generic type**: PK type must be specified explicitly (`<number>` or `<string>`)
 
-#### 수정이 필요한 파일들
+#### Files That Need Updating
 
 ```
 src/components/
   ├── user/UserIdAsyncSelect.tsx
   ├── account/AccountIdAsyncSelect.tsx
   ├── announcement/AnnouncementIdAsyncSelect.tsx
-  └── ... (모든 *IdAsyncSelect.tsx 파일)
+  └── ... (all *IdAsyncSelect.tsx files)
 ```
 
-#### 마이그레이션 체크리스트
+#### Migration Checklist
 
-- [ ] 컴포넌트 import 변경: `AsyncSelect` → `IdAsyncSelect`
-- [ ] 제네릭 타입 파라미터 추가: `<number>` 또는 `<string>` (PK 타입에 따라)
-- [ ] Props 타입 정의 업데이트:
+- [ ] Change component import: `AsyncSelect` → `IdAsyncSelect`
+- [ ] Add generic type parameter: `<number>` or `<string>` (depending on PK type)
+- [ ] Update Props type definitions:
   - [ ] `listParams` → `baseListParams`
   - [ ] `textField` → `displayField`
-  - [ ] `pageField` 제거
-- [ ] 수동 상태 관리 제거:
-  - [ ] `useState`, `useCallback` 제거
-  - [ ] `onSearch` 핸들러 제거
-- [ ] JSX 내 props 이름 변경:
+  - [ ] Remove `pageField`
+- [ ] Remove manual state management:
+  - [ ] Remove `useState`, `useCallback`
+  - [ ] Remove `onSearch` handler
+- [ ] Update prop names in JSX:
   - [ ] `listParams={...}` → `baseListParams={...}`
   - [ ] `textField={...}` → `displayField={...}`
-  - [ ] `pageField` 제거
-  - [ ] `onSearch` 제거
+  - [ ] Remove `pageField`
+  - [ ] Remove `onSearch`
 
-#### 왜 이런 일이 발생하나?
+#### Why does this happen?
 
-Sonamu의 scaffolding 생성 코드가 최신 패키지 API를 반영하지 못한 상태에서, 사용자가 로컬의 Sonamu 소스를 수정하면서 패키지는 업데이트되었지만 scaffolding 템플릿은 그대로인 상황에서 발생합니다.
+This occurs when the scaffolding generation code in Sonamu has not been updated to reflect the latest package API, while the user has modified the local Sonamu source and the package has been updated but the scaffolding template has not.
 
-**해결책**: 생성된 컴포넌트를 위 체크리스트에 따라 수동으로 수정하거나, Sonamu 코어의 scaffolding 템플릿을 최신 API로 업데이트해야 합니다.
+**Fix**: Manually update the generated components according to the checklist above, or update the scaffolding template in the Sonamu core to use the latest API.

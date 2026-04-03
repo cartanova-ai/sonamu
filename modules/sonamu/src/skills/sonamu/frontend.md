@@ -1,86 +1,86 @@
 ---
 name: sonamu-frontend
-description: Sonamu 프론트엔드 연동. 자동 생성 Service, TanStack Query hook, useTypeForm/useListParams/useSelection, FileInput, MultiSelect, SonamuProvider (react-components v0.1.8+). Use when calling APIs, building forms, handling file uploads, or managing list/selection states.
+description: Sonamu frontend integration. Auto-generated Service, TanStack Query hooks, useTypeForm/useListParams/useSelection, FileInput, MultiSelect, SonamuProvider (react-components v0.1.8+). Use when calling APIs, building forms, handling file uploads, or managing list/selection states.
 ---
 
 # Frontend Service
 
-## 빠른 참조
+## Quick Reference
 
 ### Hooks
 
-| Hook            | 용도                       | 주요 반환값                                      |
-| --------------- | -------------------------- | ------------------------------------------------ |
-| `useTypeForm`   | 폼 상태 관리 (Zod 기반)    | form, setForm, register, submit, addError, reset |
-| `useListParams` | URL 동기화 리스트 파라미터 | listParams, setListParams, register              |
-| `useSelection`  | 체크박스 다중 선택         | selectedKeys, toggle, selectAll, deselectAll     |
-| `useModal`      | 모달 상태 관리             | open, modal                                      |
-| `useToast`      | 토스트 알림                | toast                                            |
+| Hook            | Purpose                              | Key Return Values                                        |
+| --------------- | ------------------------------------ | -------------------------------------------------------- |
+| `useTypeForm`   | Form state management (Zod-based)    | form, setForm, register, submit, addError, reset |
+| `useListParams` | URL-synced list parameters           | listParams, setListParams, register              |
+| `useSelection`  | Checkbox multi-selection             | selectedKeys, toggle, selectAll, deselectAll     |
+| `useModal`      | Modal state management               | open, modal                                      |
+| `useToast`      | Toast notifications                  | toast                                            |
 
-### 컴포넌트
+### Components
 
-| 컴포넌트      | 용도         | 주요 Props                                          |
-| ------------- | ------------ | --------------------------------------------------- |
-| `Input`       | 텍스트 입력  | value, onValueChange                                |
-| `Textarea`    | 여러 줄 입력 | value, onValueChange                                |
-| `Checkbox`    | 체크박스     | value (boolean), onValueChange, label               |
-| `Select`      | 단일 선택    | items, value, onValueChange, placeholder, clearable |
-| `MultiSelect` | 다중 선택    | options, value (array), onValueChange, maxCount     |
-| `EnumSelect`  | Enum 선택    | enum, labels, value, onValueChange                  |
-| `FileInput`   | 파일 업로드  | uploadMode, viewMode, multiple, maxFiles            |
+| Component     | Purpose              | Key Props                                           |
+| ------------- | -------------------- | --------------------------------------------------- |
+| `Input`       | Text input           | value, onValueChange                                |
+| `Textarea`    | Multi-line input     | value, onValueChange                                |
+| `Checkbox`    | Checkbox             | value (boolean), onValueChange, label               |
+| `Select`      | Single select        | items, value, onValueChange, placeholder, clearable |
+| `MultiSelect` | Multi-select         | options, value (array), onValueChange, maxCount     |
+| `EnumSelect`  | Enum select          | enum, labels, value, onValueChange                  |
+| `FileInput`   | File upload          | uploadMode, viewMode, multiple, maxFiles            |
 
-### Service (자동 생성)
+### Service (Auto-generated)
 
-| 메서드            | 용도             | 예시                                |
-| ----------------- | ---------------- | ----------------------------------- |
-| `get{Entity}`     | 단일 조회        | `UserService.getUser("A", 123)`     |
-| `get{Entities}`   | 목록 조회        | `UserService.getUsers("P", params)` |
-| `save`            | 저장 (생성/수정) | `UserService.save([data])`          |
-| `del`             | 삭제             | `UserService.del([1, 2, 3])`        |
-| `use{Entity}`     | 단일 조회 hook   | `UserService.useUser("A", id)`      |
-| `use{Entities}`   | 목록 조회 hook   | `UserService.useUsers("P", params)` |
-| `useSaveMutation` | 저장 mutation    | `UserService.useSaveMutation()`     |
+| Method            | Purpose                  | Example                                |
+| ----------------- | ------------------------ | -------------------------------------- |
+| `get{Entity}`     | Fetch single record      | `UserService.getUser("A", 123)`        |
+| `get{Entities}`   | Fetch list               | `UserService.getUsers("P", params)`    |
+| `save`            | Save (create/update)     | `UserService.save([data])`             |
+| `del`             | Delete                   | `UserService.del([1, 2, 3])`           |
+| `use{Entity}`     | Single fetch hook        | `UserService.useUser("A", id)`         |
+| `use{Entities}`   | List fetch hook          | `UserService.useUsers("P", params)`    |
+| `useSaveMutation` | Save mutation            | `UserService.useSaveMutation()`        |
 
-### 유틸리티
+### Utilities
 
-| 함수               | 용도                 | 예시                                              |
-| ------------------ | -------------------- | ------------------------------------------------- |
-| `dateF`            | 날짜 포맷            | `dateF(new Date())` → `"2024-01-15"`              |
-| `datetimeF`        | 날짜시간 포맷        | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
-| `numF`             | 숫자 포맷            | `numF(1234567)` → `"1,234,567"`                   |
-| `hidden`           | 조건부 hidden 클래스 | `hidden(true)` → `"hidden"`                       |
-| `arrayableToArray` | 배열 변환            | `arrayableToArray("a")` → `["a"]`                 |
+| Function           | Purpose                      | Example                                              |
+| ------------------ | ---------------------------- | ---------------------------------------------------- |
+| `dateF`            | Date formatting              | `dateF(new Date())` → `"2024-01-15"`              |
+| `datetimeF`        | Datetime formatting          | `datetimeF(new Date())` → `"2024-01-15 10:30:00"` |
+| `numF`             | Number formatting            | `numF(1234567)` → `"1,234,567"`                   |
+| `hidden`           | Conditional hidden class     | `hidden(true)` → `"hidden"`                       |
+| `arrayableToArray` | Convert to array             | `arrayableToArray("a")` → `["a"]`                 |
 
-### 설정
+### Configuration
 
-| 항목             | 설명                                    | 필수 여부                           |
-| ---------------- | --------------------------------------- | ----------------------------------- |
-| `SonamuProvider` | 전역 설정 Provider (uploader, auth, SD) | 필수 (uploader는 FileInput 사용 시) |
-| `uploader`       | 파일 업로드 함수                        | FileInput 사용 시 필수              |
-| `auth`           | 인증 상태 및 함수                       | 옵션                                |
-| `SD`             | 다국어 함수                             | 옵션                                |
+| Item             | Description                                      | Required                                  |
+| ---------------- | ------------------------------------------------ | ----------------------------------------- |
+| `SonamuProvider` | Global configuration Provider (uploader, auth, SD) | Required (uploader required for FileInput) |
+| `uploader`       | File upload function                             | Required when using FileInput             |
+| `auth`           | Authentication state and functions               | Optional                                  |
+| `SD`             | Internationalization function                    | Optional                                  |
 
 ---
 
 # Frontend Service
 
-## 기본 사용
+## Basic Usage
 
 ```typescript
 import { UserService } from "@/services/services.generated";
 
-// 단일 조회 (Subset 필수) - get{Entity} 형태
+// Single fetch (Subset required) - get{Entity} form
 const user = await UserService.getUser("A", 123);
 
-// 목록 조회 - get{Entities} 형태
+// List fetch - get{Entities} form
 const { rows, total } = await UserService.getUsers("P", { num: 20, page: 1 });
 
-// 저장
+// Save
 const [userId] = await UserService.save([
   { email: "new@test.com", username: "newuser" },
 ]);
 
-// 삭제
+// Delete
 const count = await UserService.del([1, 2, 3]);
 ```
 
@@ -90,7 +90,7 @@ const count = await UserService.del([1, 2, 3]);
 
 ```typescript
 function UserProfile({ userId }: { userId: number }) {
-  // use{Entity} 형태 (단일), use{Entities} 형태 (목록)
+  // use{Entity} form (single), use{Entities} form (list)
   const { data: user, isLoading, error } = UserService.useUser("A", userId);
 
   if (isLoading) return <div>Loading...</div>;
@@ -113,11 +113,11 @@ function EditProfile() {
     });
   }
 
-  return <button disabled={saveMutation.isPending}>저장</button>;
+  return <button disabled={saveMutation.isPending}>Save</button>;
 }
 ```
 
-### 조건부 페칭
+### Conditional Fetching
 
 ```typescript
 const { data } = UserService.useUser("A", userId!, {
@@ -125,7 +125,7 @@ const { data } = UserService.useUser("A", userId!, {
 });
 ```
 
-### 캐시 무효화
+### Cache Invalidation
 
 ```typescript
 const queryClient = useQueryClient();
@@ -134,9 +134,9 @@ queryClient.invalidateQueries({ queryKey: ["User", "findById", "A", userId] });
 
 ## useTypeForm
 
-Zod 스키마 기반 타입 안전 폼 관리 (react-components v0.1.8+)
+Type-safe form management based on Zod schemas (react-components v0.1.8+)
 
-### 반환값
+### Return Values
 
 ```typescript
 const {
@@ -151,29 +151,29 @@ const {
 } = useTypeForm(Schema, defaultValue);
 ```
 
-| 반환값        | 타입                                                | 설명                       |
-| ------------- | --------------------------------------------------- | -------------------------- |
-| `form`        | `z.infer<Schema>`                                   | 현재 폼 데이터             |
-| `setForm`     | `React.Dispatch<SetStateAction<...>>`               | 폼 상태 업데이트 함수      |
-| `register`    | `(field: string) => RegisterReturn`                 | 필드 등록 함수             |
-| `submit`      | `(callback) => () => Promise<R>`                    | 제출 핸들러 생성           |
-| `addError`    | `(path: string, error: string \| ErrorObj) => void` | 에러 수동 추가             |
-| `removeError` | `(path: string) => void`                            | 특정 필드 에러 제거        |
-| `clearError`  | `() => void`                                        | 모든 에러 제거             |
-| `reset`       | `() => void`                                        | 폼을 defaultValue로 초기화 |
+| Return Value  | Type                                                | Description                              |
+| ------------- | --------------------------------------------------- | ---------------------------------------- |
+| `form`        | `z.infer<Schema>`                                   | Current form data                        |
+| `setForm`     | `React.Dispatch<SetStateAction<...>>`               | Form state update function               |
+| `register`    | `(field: string) => RegisterReturn`                 | Field registration function              |
+| `submit`      | `(callback) => () => Promise<R>`                    | Submit handler factory                   |
+| `addError`    | `(path: string, error: string \| ErrorObj) => void` | Manually add an error                    |
+| `removeError` | `(path: string) => void`                            | Remove error for a specific field        |
+| `clearError`  | `() => void`                                        | Clear all errors                         |
+| `reset`       | `() => void`                                        | Reset form to defaultValue               |
 
-### register 반환 객체
+### register Return Object
 
 ```typescript
 register(fieldName) // Returns:
 {
-  value: any,                           // 현재 필드 값
-  onValueChange: (value: any) => void,  // 값 변경 핸들러
-  error?: { content: string }           // 에러 객체 (있는 경우)
+  value: any,                           // Current field value
+  onValueChange: (value: any) => void,  // Value change handler
+  error?: { content: string }           // Error object (if present)
 }
 ```
 
-### 기본 사용법
+### Basic Usage
 
 ```tsx
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
@@ -191,7 +191,7 @@ function RegisterForm() {
     await UserService.save([form]);
   });
 
-  // 방법 1: spread operator (권장)
+  // Method 1: spread operator (recommended)
   const emailProps = register("email");
 
   return (
@@ -201,21 +201,21 @@ function RegisterForm() {
         <span className="error">{emailProps.error.content}</span>
       )}
 
-      {/* 방법 2: 인라인 (짧은 경우) */}
+      {/* Method 2: inline (for short cases) */}
       <Input {...register("username")} />
       {register("username").error && (
         <span className="error">{register("username").error.content}</span>
       )}
 
-      <button onClick={handleSubmit}>등록</button>
+      <button onClick={handleSubmit}>Register</button>
     </form>
   );
 }
 ```
 
-### IMPORTANT: react-components UI 컴포넌트 사용
+### IMPORTANT: react-components UI Component Usage
 
-react-components의 모든 UI 컴포넌트는 `value/onValueChange` 패턴을 따릅니다:
+All UI components in react-components follow the `value/onValueChange` pattern:
 
 ```tsx
 import { Input, Checkbox, Select, Textarea } from "@sonamu-kit/react-components/components";
@@ -229,41 +229,41 @@ import { Input, Checkbox, Select, Textarea } from "@sonamu-kit/react-components/
 // Checkbox (boolean)
 <Checkbox {...register("agreed")} />
 
-// Select (items prop 사용)
+// Select (using items prop)
 <Select
   {...register("status")}
   items={[
-    { value: "active", label: "활성" },
-    { value: "inactive", label: "비활성" }
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" }
   ]}
-  placeholder="상태 선택"
+  placeholder="Select status"
 />
 
-// Select 간단한 형태 (string[] | number[])
+// Select simple form (string[] | number[])
 <Select
   {...register("priority")}
   items={["high", "medium", "low"]}
-  placeholder="우선순위"
+  placeholder="Priority"
 />
 ```
 
-**Select 컴포넌트 주요 props:**
+**Select component key props:**
 
-- `items`: 선택 항목 배열 (`V[]` 또는 `{ value: V, label?: ReactNode, disabled?: boolean }[]`)
-- `placeholder`: 선택 전 표시 텍스트
-- `clearable`: X 버튼으로 선택 해제 가능 여부
-- `renderItem`: 커스텀 렌더링 함수
+- `items`: Array of selectable items (`V[]` or `{ value: V, label?: ReactNode, disabled?: boolean }[]`)
+- `placeholder`: Text shown before selection
+- `clearable`: Whether the X button can deselect
+- `renderItem`: Custom render function
 
 ### IMPORTANT: Form Required Field Initial Values
 
-SaveParams에 required로 정의된 필드는 form 초기값에 **반드시 포함**:
+Fields defined as required in SaveParams **must be included** in the form initial values:
 
-| 타입              | 초기값                 |
+| Type              | Initial Value          |
 | ----------------- | ---------------------- |
 | string (required) | `""`                   |
 | number (required) | `0`                    |
 | Date (required)   | `new Date()`           |
-| enum (required)   | 기본값 (예: `"draft"`) |
+| enum (required)   | Default value (e.g. `"draft"`) |
 | FK (required)     | `0`                    |
 | nullable          | `null`                 |
 
@@ -280,9 +280,9 @@ const { form, setForm, register } = useTypeForm(TaskSaveParams, {
 
 ### IMPORTANT: Accessing Relation Objects When Loading Data
 
-스캐폴딩된 form이 `row.collection?.id` 같은 relation 객체에 접근하면, subset A에 해당 relation이 포함되어 있어야 합니다.
+If a scaffolded form accesses relation objects like `row.collection?.id`, that relation must be included in subset A.
 
-**오류**: `Property 'collection' does not exist on type` → entity.json subset A에 `"collection.id"` 추가
+**Error**: `Property 'collection' does not exist on type` → Add `"collection.id"` to subset A in entity.json
 
 ```json
 // question.entity.json > subsets > A
@@ -296,25 +296,25 @@ const { form, setForm, register } = useTypeForm(TaskSaveParams, {
 ]
 ```
 
-**대안**: FK가 이미 row에 있으면 relation 접근 없이 `...row`만으로 충분 (subset 수정 불필요)
+**Alternative**: If the FK is already on `row`, using `...row` alone is sufficient without accessing the relation (no subset modification needed)
 
 ### IMPORTANT: SD() Translation Key for FK Fields
 
-스캐폴딩된 form은 `SD("entity.Task.institution_id")`를 사용하지만, `sd.generated.ts`에는 `_id` 없는 키만 생성됩니다.
+Scaffolded forms use `SD("entity.Task.institution_id")`, but `sd.generated.ts` only generates keys without `_id`.
 
-**해결**: `ko.ts`에 `_id` 키 수동 추가
+**Fix**: Manually add the `_id` key to `ko.ts`
 
 ```typescript
 // packages/api/src/i18n/ko.ts
-"entity.Task.institution_id": "소속기관",
-"entity.Question.collection_id": "소속 모음집",
+"entity.Task.institution_id": "Institution",
+"entity.Question.collection_id": "Collection",
 ```
 
-`ko.ts`는 api → web으로 복사되므로 한 번만 추가하면 됨.
+Since `ko.ts` is copied from api → web, you only need to add it once.
 
 ## useListParams
 
-URL 쿼리 파라미터와 동기화되는 리스트 파라미터 관리 (페이지네이션, 필터링)
+List parameter management synchronized with URL query parameters (pagination, filtering)
 
 ```typescript
 import { useListParams } from "@sonamu-kit/react-components/lib";
@@ -337,34 +337,34 @@ function UserListPage() {
 
   return (
     <div>
-      {/* 검색 (변경 시 page=1로 리셋) */}
-      <Input {...register("search")} placeholder="검색" />
+      {/* Search (resets page=1 on change) */}
+      <Input {...register("search")} placeholder="Search" />
 
-      {/* 필터 (변경 시 page=1로 리셋) */}
+      {/* Filter (resets page=1 on change) */}
       <Select {...register("status")} items={["active", "inactive"]} />
 
-      {/* 페이지네이션 (page만 변경) */}
+      {/* Pagination (changes page only) */}
       <button onClick={() => setListParams({ ...listParams, page: listParams.page - 1 })}>
-        이전
+        Previous
       </button>
       <span>Page {listParams.page}</span>
       <button onClick={() => setListParams({ ...listParams, page: listParams.page + 1 })}>
-        다음
+        Next
       </button>
     </div>
   );
 }
 ```
 
-**핵심:**
+**Key points:**
 
-- URL과 자동 동기화 (`?page=2&status=active`)
-- `register`는 page 외 필드 변경 시 자동으로 page를 1로 리셋
-- Zod 스키마로 타입 안전성 보장
+- Automatically syncs with URL (`?page=2&status=active`)
+- `register` automatically resets page to 1 when any field other than page changes
+- Type safety guaranteed by Zod schema
 
 ## useSelection
 
-체크박스 다중 선택 관리 (Shift 키 범위 선택 지원)
+Checkbox multi-selection management (supports Shift-click range selection)
 
 ```typescript
 import { useSelection } from "@sonamu-kit/react-components/lib";
@@ -393,10 +393,10 @@ function UserListPage() {
       <Checkbox
         value={isAllSelected}
         onValueChange={isAllSelected ? deselectAll : selectAll}
-        label="전체 선택"
+        label="Select all"
       />
       <button onClick={handleDelete} disabled={selectedKeys.length === 0}>
-        선택 삭제 ({selectedKeys.length})
+        Delete selected ({selectedKeys.length})
       </button>
 
       {data?.rows.map((user, index) => (
@@ -413,19 +413,19 @@ function UserListPage() {
 }
 ```
 
-**핵심:**
+**Key points:**
 
-- Shift 키 + 클릭으로 범위 선택
-- `selectedKeys`: 현재 선택된 키 배열
-- `isAllSelected`: 전체 선택 여부
+- Range selection with Shift + click
+- `selectedKeys`: Array of currently selected keys
+- `isAllSelected`: Whether all items are selected
 
 ## IdAsyncSelect
 
-Entity의 레코드를 비동기로 검색하여 선택하는 컴포넌트입니다. Entity의 Primary Key 타입에 따라 제네릭 타입을 명시해야 합니다.
+Component for asynchronously searching and selecting Entity records. The generic type must be specified according to the Entity's Primary Key type.
 
-### 기본 사용법
+### Basic Usage
 
-IdAsyncSelect는 일반적으로 Entity별 래퍼 컴포넌트로 사용합니다:
+IdAsyncSelect is typically used as a per-Entity wrapper component:
 
 ```typescript
 import { IdAsyncSelect } from "@sonamu-kit/react-components/components";
@@ -454,7 +454,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   baseListParams,
   displayField = "name",
   valueField = "id",
-  placeholder = "사용자",
+  placeholder = "User",
   clearable,
   disabled,
   className,
@@ -479,25 +479,25 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 }
 ```
 
-**주요 Props:**
+**Key Props:**
 
-- `config`: 자동 생성된 AsyncIdConfig (EntityAsyncIdConfig 형태)
-- `subset`: 조회할 Subset 키
-- `baseListParams`: 목록 조회 필터 파라미터
-- `displayField`: 화면에 표시할 필드명 (기본값: Entity에 따라 다름)
-- `valueField`: value로 사용할 필드명 (기본값: "id")
-- `multiple`: 다중 선택 여부
-- `value`: 현재 선택된 값 (PK 타입에 따라 number 또는 string)
-- `onValueChange`: 값 변경 핸들러
+- `config`: Auto-generated AsyncIdConfig (EntityAsyncIdConfig form)
+- `subset`: Subset key to query
+- `baseListParams`: List filter parameters
+- `displayField`: Field name to display (default varies by Entity)
+- `valueField`: Field name used as value (default: "id")
+- `multiple`: Whether multi-selection is enabled
+- `value`: Currently selected value (number or string depending on PK type)
+- `onValueChange`: Value change handler
 
-### Cascade Dropdown 패턴 (계층 선택)
+### Cascade Dropdown Pattern (Hierarchical Selection)
 
-부서 → 과소 → 연구실처럼 상위 선택에 따라 하위 목록이 변해야 하는 경우, `baseListParams`를 동적으로 전달하면 된다.
+When lower-level lists should change based on higher-level selection (e.g. Department → Division → Lab), pass `baseListParams` dynamically.
 
-**핵심 동작**: `baseListParams` prop이 변경되면 `IdAsyncSelect` 내부 React Query가 새 파라미터로 자동 재조회한다. (v0.2.5+에서 수정된 버그 - 이전 버전은 초기값만 사용하고 변경을 반영하지 않았음)
+**Key behavior**: When the `baseListParams` prop changes, the React Query inside `IdAsyncSelect` automatically re-fetches with the new parameters. (Bug fixed in v0.2.5+ — previous versions only used the initial value and did not reflect changes)
 
 ```tsx
-// 예시: 부서 → 과소 → 연구실 3단계 cascade
+// Example: 3-level cascade Department → Division → Lab
 function UserForm() {
   const { form, register, setForm } = useTypeForm(UserSaveParams, {
     dept_id: null,
@@ -507,29 +507,29 @@ function UserForm() {
 
   return (
     <form>
-      {/* 1단계: 부서 선택 (전체 목록 → preload 또는 기본 IdAsyncSelect) */}
+      {/* Level 1: Department selection (full list → preload or default IdAsyncSelect) */}
       <DepartmentIdAsyncSelect
         subset="A"
         {...register("dept_id")}
         onValueChange={(v) => {
-          // 부서 변경 시 하위 값 초기화
+          // Reset lower values when department changes
           setForm((prev) => ({ ...prev, dept_id: v ?? null, division_id: null, lab_id: null }));
         }}
       />
 
-      {/* 2단계: 과소 선택 (선택된 부서의 과소만 조회) */}
+      {/* Level 2: Division selection (only divisions in selected department) */}
       <DivisionIdAsyncSelect
         subset="A"
         baseListParams={form.dept_id ? { department_id: form.dept_id } : undefined}
         disabled={!form.dept_id}
         {...register("division_id")}
         onValueChange={(v) => {
-          // 과소 변경 시 연구실 초기화
+          // Reset lab when division changes
           setForm((prev) => ({ ...prev, division_id: v ?? null, lab_id: null }));
         }}
       />
 
-      {/* 3단계: 연구실 선택 (선택된 과소의 연구실만 조회) */}
+      {/* Level 3: Lab selection (only labs in selected division) */}
       <LabIdAsyncSelect
         subset="A"
         baseListParams={form.division_id ? { division_id: form.division_id } : undefined}
@@ -541,41 +541,41 @@ function UserForm() {
 }
 ```
 
-**주의사항**:
-- 상위가 변경될 때 하위 값을 명시적으로 `null`로 초기화해야 한다. IdAsyncSelect는 자동으로 초기화하지 않는다.
-- `disabled` prop으로 상위가 선택되지 않은 경우 하위를 비활성화하는 것이 UX에 좋다.
-- `baseListParams`가 `undefined`이면 IdAsyncSelect는 enabled=false 상태로 조회하지 않는다.
+**Notes**:
+- You must explicitly reset lower values to `null` when a higher-level value changes. IdAsyncSelect does not reset automatically.
+- Using the `disabled` prop to disable lower levels when the parent is not selected improves UX.
+- If `baseListParams` is `undefined`, IdAsyncSelect stays in enabled=false state and does not fetch.
 
-**Spec에 명시할 항목** (cascade가 있는 경우 spec.json의 acceptanceCriteria에 추가 권장):
+**Items to specify in Spec** (recommended to add to acceptanceCriteria in spec.json when cascade is present):
 ```json
 "acceptanceCriteria": [
-  "부서 선택 시 해당 부서의 과소만 드롭다운으로 조회된다",
-  "과소 선택 시 해당 과소의 연구실만 드롭다운으로 조회된다",
-  "부서 변경 시 하위 과소/연구실 선택이 초기화된다"
+  "When a department is selected, only divisions belonging to that department appear in the dropdown",
+  "When a division is selected, only labs belonging to that division appear in the dropdown",
+  "When the department changes, the lower division/lab selections are reset"
 ]
 ```
 
 ### IMPORTANT: String Primary Key Support
 
-대부분 Entity는 Number PK (`IdAsyncSelect<number>`)이지만, better-auth 관련 Entity는 String PK를 사용합니다.
+Most Entities use Number PK (`IdAsyncSelect<number>`), but better-auth related Entities use String PK.
 
-**String PK Entity**: User, Account, Session, Verification
+**String PK Entities**: User, Account, Session, Verification
 
-**변경 포인트** (scaffolding 후 수동 수정 필요):
+**Points to change** (manual modification required after scaffolding):
 
 ```typescript
-// Number PK (기본)
+// Number PK (default)
 value?: number | number[] | null;
 onValueChange?: (value: number | number[] | undefined) => void;
 <IdAsyncSelect<number> config={PostAsyncIdConfig} ... />
 
-// String PK (User, Account 등) — 아래 3곳 모두 string으로 변경
+// String PK (User, Account, etc.) — change all 3 places to string
 value?: string | string[] | null;
 onValueChange?: (value: string | string[] | undefined) => void;
 <IdAsyncSelect<string> config={AccountAsyncIdConfig} ... />
 ```
 
-### 폼에서 사용
+### Usage in Forms
 
 ```tsx
 function PostForm() {
@@ -600,7 +600,7 @@ function PostForm() {
 
 ## FileInput
 
-파일 업로드 컴포넌트 (이미지/일반 파일, eager/lazy 모드)
+File upload component (image/general files, eager/lazy modes)
 
 ```typescript
 import { FileInput } from "@sonamu-kit/react-components/components";
@@ -614,30 +614,30 @@ function ProfileForm() {
 
   return (
     <form>
-      {/* 단일 이미지 - eager 업로드 */}
+      {/* Single image - eager upload */}
       <FileInput
         {...register("avatar")}
         uploadMode="eager"
         viewMode="image"
-        placeholder="프로필 이미지"
+        placeholder="Profile image"
         accept="image/*"
         previewSize="md"
       />
 
-      {/* 다중 파일 - lazy 업로드 */}
+      {/* Multiple files - lazy upload */}
       <FileInput
         {...register("documents")}
         uploadMode="lazy"
         viewMode="file"
         multiple
         maxFiles={5}
-        placeholder="문서 첨부"
+        placeholder="Attach documents"
       />
 
       <button onClick={submit(async (form) => {
-        // lazy 모드: submit 시 자동 업로드
+        // lazy mode: auto-uploads on submit
         await ProfileService.save([form]);
-      })}>저장</button>
+      })}>Save</button>
     </form>
   );
 }
@@ -645,18 +645,18 @@ function ProfileForm() {
 
 **Props:**
 
-- `uploadMode`: `"eager"` (즉시 업로드) | `"lazy"` (submit 시 업로드)
-- `viewMode`: `"image"` (이미지 프리뷰) | `"file"` (파일명)
-- `multiple`: 다중 파일 선택 여부
-- `maxFiles`: 최대 파일 개수
+- `uploadMode`: `"eager"` (upload immediately) | `"lazy"` (upload on submit)
+- `viewMode`: `"image"` (image preview) | `"file"` (filename)
+- `multiple`: Whether multiple files can be selected
+- `maxFiles`: Maximum number of files
 - `previewSize`: `"sm" | "md" | "lg" | "xl"`
-- `clearable`: X 버튼으로 제거 가능
+- `clearable`: Whether the X button can remove the file
 
-**IMPORTANT**: SonamuProvider에 uploader 함수 필수 설정 (아래 참조)
+**IMPORTANT**: uploader function must be configured in SonamuProvider (see below)
 
-## Select (다중 선택 모드)
+## Select (Multi-select Mode)
 
-`Select` 컴포넌트에 `multiple: true`를 설정하면 다중 선택 모드로 동작합니다.
+Setting `multiple: true` on the `Select` component enables multi-select mode.
 
 ```typescript
 import { Select } from "@sonamu-kit/react-components/components";
@@ -678,31 +678,31 @@ function TagForm() {
       {...register("tag_ids")}
       items={items}
       multiple
-      placeholder="태그 선택"
+      placeholder="Select tags"
     />
   );
 }
 ```
 
-**다중 선택 전용 Props:**
+**Multi-select specific Props:**
 
-- `multiple`: `true` (다중 선택 활성화)
-- `maxCount`: 표시할 최대 배지 개수
-- `hideSelectAll`: 전체 선택 버튼 숨기기
-- `searchable`: 검색 입력 활성화
+- `multiple`: `true` (enables multi-select)
+- `maxCount`: Maximum number of badges to display
+- `hideSelectAll`: Hide the select all button
+- `searchable`: Enable search input
 
-**공통 Props:**
+**Common Props:**
 
-- `items`: `SelectItemDef[]` (값만 또는 `{ value, label, disabled }` 형태)
-- `placeholder`: 선택 전 표시 텍스트
-- `clearable`: X 버튼으로 전체 해제
-- `disabled`: 비활성화
-- `renderItem`: 커스텀 렌더링 함수
-- `async`: `true` 설정 시 `onSearch` 콜백으로 비동기 검색 지원
+- `items`: `SelectItemDef[]` (values only or `{ value, label, disabled }` form)
+- `placeholder`: Text shown before selection
+- `clearable`: X button to deselect all
+- `disabled`: Disable the component
+- `renderItem`: Custom render function
+- `async`: When set to `true`, supports async search via `onSearch` callback
 
 ## EnumSelect
 
-Zod enum과 연동된 Select (라벨 매핑)
+Select integrated with Zod enum (label mapping)
 
 ```typescript
 import { EnumSelect } from "@sonamu-kit/react-components/components";
@@ -711,9 +711,9 @@ import { z } from "zod";
 const StatusEnum = z.enum(["draft", "published", "archived"]);
 
 const statusLabels = {
-  draft: "초안",
-  published: "발행됨",
-  archived: "보관됨",
+  draft: "Draft",
+  published: "Published",
+  archived: "Archived",
 } as const;
 
 function PostForm() {
@@ -726,30 +726,30 @@ function PostForm() {
       {...register("status")}
       enum={StatusEnum}
       labels={statusLabels}
-      placeholder="상태 선택"
+      placeholder="Select status"
       clearable
     />
   );
 }
 ```
 
-**핵심:**
+**Key points:**
 
-- Zod enum 타입 안전성
-- labels 객체로 표시명 매핑
-- enum.options를 자동으로 items로 변환
+- Zod enum type safety
+- Display name mapping via labels object
+- Automatically converts enum.options to items
 
 ## SonamuProvider
 
-react-components 전체에서 사용하는 전역 설정
+Global configuration used across react-components
 
 ```typescript
-// App.tsx 또는 루트 컴포넌트
+// App.tsx or root component
 import { SonamuProvider } from "@sonamu-kit/react-components/contexts";
 import type { SonamuFile } from "@sonamu-kit/react-components/contexts";
 
 function App() {
-  // 파일 업로더 함수 (FileInput, useTypeForm에서 사용)
+  // File uploader function (used by FileInput, useTypeForm)
   const uploader = async (files: File[]): Promise<SonamuFile[]> => {
     const formData = new FormData();
     files.forEach(file => formData.append("files", file));
@@ -762,7 +762,7 @@ function App() {
     return response.json();
   };
 
-  // 인증 상태 (옵션)
+  // Authentication state (optional)
   const auth = {
     user: currentUser,
     loading: isLoading,
@@ -771,7 +771,7 @@ function App() {
     refetch: async () => { /* ... */ },
   };
 
-  // 다국어 함수 (옵션)
+  // Internationalization function (optional)
   const SD = (key: string) => dictionary[key] ?? key;
 
   return (
@@ -782,13 +782,13 @@ function App() {
 }
 ```
 
-**필수 Props:**
+**Required Props:**
 
-- `uploader`: `(files: File[]) => Promise<SonamuFile[]>` - FileInput에서 사용
-- `auth`: 인증 상태 및 함수 (옵션)
-- `SD`: 다국어 함수 (옵션)
+- `uploader`: `(files: File[]) => Promise<SonamuFile[]>` - Used by FileInput
+- `auth`: Authentication state and functions (optional)
+- `SD`: Internationalization function (optional)
 
-## 유틸리티 함수
+## Utility Functions
 
 ```typescript
 import {
@@ -800,27 +800,27 @@ import {
   sqlDateToDateString,
 } from "@sonamu-kit/react-components/lib";
 
-// 날짜 포매팅
+// Date formatting
 dateF(new Date());           // "2024-01-15"
 dateF("2024-01-15T10:30:00"); // "2024-01-15"
 datetimeF(new Date());       // "2024-01-15 10:30:00"
 
-// 숫자 포매팅
+// Number formatting
 numF(1234567);  // "1,234,567"
 
-// 조건부 hidden 클래스
+// Conditional hidden class
 <div className={hidden(isHidden)}>...</div>
 
 // SQL date → date string
 sqlDateToDateString("2024-01-15T10:30:00.000Z");  // "2024-01-15"
 
-// 배열 변환
+// Convert to array
 arrayableToArray("single");      // ["single"]
 arrayableToArray(["a", "b"]);    // ["a", "b"]
 arrayableToArray(undefined);     // []
 ```
 
-## 에러 처리
+## Error Handling
 
 ```typescript
 import { isSonamuError } from "@/lib/sonamu.shared";
@@ -857,9 +857,9 @@ registerSSR({
 });
 ```
 
-## 프로젝트 초기 설정
+## Initial Project Setup
 
-**→ `create-sonamu.md` "프로젝트명 변경" 섹션 참조** (index.html, \_\_root.tsx, index.tsx, Sidebar.tsx 4개 파일 변경)
+**→ See the "Project Name Change" section in `create-sonamu.md`** (change 4 files: index.html, \_\_root.tsx, index.tsx, Sidebar.tsx)
 
 ## Rules
 
@@ -869,9 +869,9 @@ registerSSR({
 
 ---
 
-## 전체 컴포넌트 구현 예시
+## Full Component Implementation Examples
 
-### 목록 페이지
+### List Page
 
 ```typescript
 function ConsultationListPage() {
@@ -880,17 +880,17 @@ function ConsultationListPage() {
 
   return (
     <div>
-      {/* useSelection으로 선택 관리 */}
+      {/* Manage selection with useSelection */}
       {data?.rows.map((row) => (
         <div key={row.id}>{row.title} - {row.status}</div>
       ))}
-      {/* 페이지네이션: params.page 조작 */}
+      {/* Pagination: manipulate params.page */}
     </div>
   );
 }
 ```
 
-### 편집 페이지
+### Edit Page
 
 ```typescript
 function ConsultationFormPage() {
@@ -899,7 +899,7 @@ function ConsultationFormPage() {
     title: "", content: "", status: "pending", user_id: 0,
   });
 
-  // 수정 모드: 데이터 로드
+  // Edit mode: load data
   useEffect(() => {
     if (id) ConsultationService.getConsultation("A", Number(id)).then((row) => setForm((prev) => ({ ...prev, ...row })));
   }, [id]);
@@ -914,18 +914,18 @@ function ConsultationFormPage() {
     <form>
       <Input {...register("title")} />
       <Textarea {...register("content")} />
-      <Select {...register("status")} items={[{value:"pending",label:"대기중"},{value:"completed",label:"완료"}]} />
-      <button onClick={handleSubmit} disabled={saveMutation.isPending}>저장</button>
+      <Select {...register("status")} items={[{value:"pending",label:"Pending"},{value:"completed",label:"Completed"}]} />
+      <button onClick={handleSubmit} disabled={saveMutation.isPending}>Save</button>
     </form>
   );
 }
 ```
 
-### 캐시 무효화
+### Cache Invalidation
 
 ```typescript
 const queryClient = useQueryClient();
-await ConsultationService.changeStatus(id, newStatus, "상태 변경");
+await ConsultationService.changeStatus(id, newStatus, "Status change");
 queryClient.invalidateQueries({
   queryKey: ["Consultation", "findById", "A", id],
 });

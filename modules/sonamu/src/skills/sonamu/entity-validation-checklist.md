@@ -1,32 +1,32 @@
 ---
 name: sonamu-entity-validation-checklist
-description: Entity 생성 후 필수 검증 체크리스트. entity.json 검증(인덱스 type, Subset FieldExpr, 중복 컨럼, Boolean dbDefault), 필수 파일 생성, sync, migration, scaffolding 단계별 검증. Use when entity.json validation fails or verifying entity creation steps.
+description: Required validation checklist after entity creation. Covers entity.json validation (index type, Subset FieldExpr, duplicate columns, Boolean dbDefault), required file generation, sync, migration, and scaffolding steps. Use when entity.json validation fails or verifying entity creation steps.
 ---
 
-# Entity 생성 후 검증 체크리스트
+# Entity Creation Validation Checklist
 
-Entity를 생성한 후 반드시 다음 단계를 순서대로 수행하세요. 각 단계를 건너뛰면 scaffolding 오류가 발생합니다.
+After creating an entity, you must perform the following steps in order. Skipping any step will cause scaffolding errors.
 
-## 전체 워크플로우
+## Overall Workflow
 
 ```
-1. stub 생성
-2. entity.json 작성
-3. 자동 검증 실행 (이 체크리스트)
-4. model.ts, types.ts 생성
-5. sync 실행
-6. migration 생성
-7. migration apply
-8. scaffolding 실행
+1. Generate stub
+2. Write entity.json
+3. Run automated validation (this checklist)
+4. Create model.ts, types.ts
+5. Run sync
+6. Create migration
+7. Apply migration
+8. Run scaffolding
 ```
 
-## PHASE 1: entity.json 검증 (sync 전)
+## PHASE 1: entity.json Validation (Before Sync)
 
-Entity.json 파일을 작성한 직후, **sync 실행 전에** 다음을 검증하세요.
+Immediately after writing your entity.json file, validate the following **before running sync**.
 
-### 1.1 Index 검증
+### 1.1 Index Validation
 
-**모든 index에 `type` 필드가 있는가?**
+**Does every index have a `type` field?**
 
 ```json
 // DO NOT - Incorrect
@@ -40,50 +40,50 @@ Entity.json 파일을 작성한 직후, **sync 실행 전에** 다음을 검증�
 ]
 ```
 
-**검증 방법:**
+**How to validate:**
 ```bash
-# 모든 entity.json에서 type 없는 index 찾기
+# Find indexes without type in all entity.json files
 grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
   xargs -I {} sh -c 'grep -L "\"type\":" {}'
 ```
 
-### 1.2 Subset 검증
+### 1.2 Subset Validation
 
-**Foreign key를 직접 참조하지 않았는가?**
+**Are you avoiding direct foreign key references?**
 
 ```json
-// DO NOT - Incorrect: foreign key 직접 참조
+// DO NOT - Incorrect: direct foreign key reference
 "subsets": {
   "A": ["id", "user_id", "task_id"]
 }
 
-// DO - Correct: relation을 통한 참조 (Sonamu가 .id만 참조 시 자동 최적화)
+// DO - Correct: reference through relation (Sonamu auto-optimizes when only .id is referenced)
 "subsets": {
   "A": ["id", "user.id", "task.id"]
 }
 ```
 
-**규칙:**
+**Rules:**
 - `{relation_name}_id` → `{relation_name}.id`
-- BelongsToOne relation이 있으면 반드시 `relation.id` 형식 사용
-- Sonamu가 `.id`만 참조하는 경우 FK 컬럼을 직접 읽어 JOIN을 생략하는 최적화 수행
+- If a BelongsToOne relation exists, always use `relation.id` format
+- Sonamu optimizes by reading the FK column directly and skipping JOINs when only `.id` is referenced
 
-**검증 방법:**
+**How to validate:**
 ```bash
-# entity.json에서 _id로 끝나는 subset 필드 찾기
+# Find subset fields ending in _id in entity.json
 grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 ```
 
-**실제 동작 코드 참고:**
+**Reference working code:**
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json`
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
 
-### 1.3 Subset A 완전성 검증
+### 1.3 Subset A Completeness Validation
 
-**Subset A에 모든 필드가 포함되어 있는가?**
+**Does Subset A include all fields?**
 
 ```json
-// DO - Correct: 모든 props 포함
+// DO - Correct: all props included
 {
   "props": [
     { "name": "id" },
@@ -103,20 +103,20 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 }
 ```
 
-**검증 항목:**
-- [ ] 모든 일반 필드 포함
-- [ ] 모든 relation은 최소한 `.id` 포함
-- [ ] nullable이 아닌 relation은 필수 필드들도 포함
+**Validation checklist:**
+- [ ] All regular fields included
+- [ ] All relations include at least `.id`
+- [ ] Non-nullable relations also include required fields
 
-### 1.4 중복 컬럼 검증
+### 1.4 Duplicate Column Validation
 
-**BelongsToOne relation과 foreign key를 중복 정의하지 않았는가?**
+**Are BelongsToOne relations and their foreign keys not defined twice?**
 
 ```json
-// DO NOT - Incorrect: 중복 정의
+// DO NOT - Incorrect: duplicate definition
 {
   "props": [
-    { "name": "user_id", "type": "integer" },  // 삭제해야 함
+    { "name": "user_id", "type": "integer" },  // should be removed
     {
       "type": "relation",
       "name": "user",
@@ -126,7 +126,7 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
   ]
 }
 
-// DO - Correct: relation만 정의
+// DO - Correct: define relation only
 {
   "props": [
     {
@@ -139,16 +139,16 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 }
 ```
 
-**검증 방법:**
+**How to validate:**
 ```bash
-# BelongsToOne relation이 있는데 _id 필드도 있는지 확인
+# Check if a BelongsToOne relation also has an _id field
 grep -A 5 '"relationType": "BelongsToOne"' your-entity.entity.json
 grep '"name": ".*_id"' your-entity.entity.json
 ```
 
-### 1.5 Boolean dbDefault 검증
+### 1.5 Boolean dbDefault Validation
 
-**Boolean 타입의 dbDefault가 문자열 "true"/"false"인가?**
+**Is the dbDefault for Boolean types the string "true"/"false"?**
 
 ```json
 // DO NOT - Incorrect
@@ -160,31 +160,31 @@ grep '"name": ".*_id"' your-entity.entity.json
 { "name": "is_deleted", "type": "boolean", "dbDefault": "false" }
 ```
 
-### 1.6 OrderBy Enum 검증
+### 1.6 OrderBy Enum Validation
 
-**OrderBy enum에 `id-desc`만 있는가?**
+**Does the OrderBy enum contain only `id-desc`?**
 
 ```json
-// DO NOT - Incorrect: scaffolding 오류 발생!
+// DO NOT - Incorrect: causes scaffolding errors!
 "enums": {
   "ProductOrderBy": {
-    "id-desc": "ID최신순",
-    "name-asc": "이름순",
-    "created_at-desc": "등록일순"
+    "id-desc": "ID Latest",
+    "name-asc": "By Name",
+    "created_at-desc": "By Registration Date"
   }
 }
 
 // DO - Correct
 "enums": {
-  "ProductOrderBy": { "id-desc": "ID최신순" }
+  "ProductOrderBy": { "id-desc": "ID Latest" }
 }
 ```
 
-**이유:** Scaffolding이 생성하는 model 코드는 `id-desc`만 처리합니다.
+**Reason:** The model code generated by scaffolding only handles `id-desc`.
 
-### 1.7 Enum dbDefault 검증
+### 1.7 Enum dbDefault Validation
 
-**Enum 타입의 dbDefault가 이스케이프된 큰따옴표로 감싸져 있는가?**
+**Is the dbDefault for Enum types wrapped in escaped double quotes?**
 
 ```json
 // DO NOT - Incorrect
@@ -195,36 +195,36 @@ grep '"name": ".*_id"' your-entity.entity.json
 { "name": "status", "type": "enum", "id": "Status", "dbDefault": "\"pending\"" }
 ```
 
-## PHASE 2: 필수 파일 생성 검증
+## PHASE 2: Required File Generation Validation
 
-### 2.1 model.ts 파일 생성
+### 2.1 model.ts File Creation
 
-**entity 폴더에 `{entity}.model.ts` 파일이 있는가?**
+**Does the entity folder contain a `{entity}.model.ts` file?**
 
 ```bash
-# 확인
+# Check
 ls packages/api/src/application/your-entity/your-entity.model.ts
 ```
 
-**없으면 수동 생성 필요** (다른 entity의 model.ts 참고)
+**If missing, manual creation is required** (refer to another entity's model.ts)
 
-필수 메서드:
+Required methods:
 - `findById`
 - `findOne`
 - `findMany`
 - `save`
 - `del`
 
-### 2.2 types.ts 파일 생성
+### 2.2 types.ts File Creation
 
-**entity 폴더에 `{entity}.types.ts` 파일이 있는가?**
+**Does the entity folder contain a `{entity}.types.ts` file?**
 
 ```bash
-# 확인
+# Check
 ls packages/api/src/application/your-entity/your-entity.types.ts
 ```
 
-**필수 내용:**
+**Required content:**
 ```typescript
 import { z } from "zod";
 import {
@@ -235,7 +235,7 @@ import {
 export const YourEntityListParams = YourEntityBaseListParams;
 export type YourEntityListParams = z.infer<typeof YourEntityListParams>;
 
-// 기본 패턴 (relation 없음)
+// Basic pattern (no relations)
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
@@ -243,9 +243,9 @@ export const YourEntitySaveParams = YourEntityBaseSchema.partial({
 export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
-**ManyToMany relation이 있는 경우:**
+**If a ManyToMany relation exists:**
 ```typescript
-// ManyToMany 관계: {relation_name}_ids 배열 추가
+// ManyToMany relation: add {relation_name}_ids array
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
@@ -256,29 +256,29 @@ export const YourEntitySaveParams = YourEntityBaseSchema.partial({
 export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany 예시
-- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - 기본 패턴
+**Reference working code:**
+- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany example
+- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - basic pattern
 
-## PHASE 3: Sync 실행 및 검증
+## PHASE 3: Sync Execution and Validation
 
-### 3.1 Sync 실행
+### 3.1 Run Sync
 
 ```bash
 cd packages/api
 pnpm sonamu sync
 ```
 
-### 3.2 Sync 결과 검증
+### 3.2 Sync Result Validation
 
-**sonamu.lock에 3개 파일이 모두 등록되었는가?**
+**Are all 3 files registered in sonamu.lock?**
 
 ```bash
-# 확인
+# Check
 grep "your-entity" packages/api/sonamu.lock
 ```
 
-**기대 결과:**
+**Expected result:**
 ```json
 [
   {
@@ -296,102 +296,102 @@ grep "your-entity" packages/api/sonamu.lock
 ]
 ```
 
-### 3.3 Web 패키지 동기화 검증
+### 3.3 Web Package Sync Validation
 
-**web 패키지에 필요한 파일들이 생성되었는가?**
+**Have the required files been generated in the web package?**
 
 ```bash
-# Service 생성 확인
+# Check service generation
 grep "YourEntityService" packages/web/src/services/services.generated.ts
 
-# Component 생성 확인
+# Check component generation
 ls packages/web/src/components/your-entity/
 
-# Route 생성 확인
+# Check route generation
 ls packages/web/src/routes/admin/your-entities/
 ```
 
-### 3.4 i18n 키 생성 검증
+### 3.4 i18n Key Generation Validation
 
-**Foreign key 필드의 라벨이 생성되었는가?**
+**Have labels been generated for foreign key fields?**
 
 ```bash
-# 확인
+# Check
 grep "entity.YourEntity" packages/web/src/i18n/sd.generated.ts
 ```
 
-## PHASE 4: Migration 검증
+## PHASE 4: Migration Validation
 
-### 4.1 Migration 파일 생성
+### 4.1 Create Migration File
 
 ```bash
 cd packages/api
 pnpm sonamu migration:create
 ```
 
-### 4.2 Migration 파일 검증
+### 4.2 Migration File Validation
 
-**생성된 migration 파일 확인:**
+**Check the generated migration file:**
 
 ```bash
 ls packages/api/src/migrations/*_create__your_entities.ts
 ```
 
-**검증 항목:**
-- [ ] 테이블명이 올바른가? (복수형, snake_case)
-- [ ] 모든 컬럼이 정의되었는가?
-- [ ] Foreign key 제약조건이 있는가?
-- [ ] Index가 생성되는가?
-- [ ] Boolean 컬럼의 default가 올바른가? (true/false)
+**Validation checklist:**
+- [ ] Is the table name correct? (plural, snake_case)
+- [ ] Are all columns defined?
+- [ ] Are foreign key constraints present?
+- [ ] Are indexes created?
+- [ ] Is the default for Boolean columns correct? (true/false)
 
 ### 4.3 Migration Dry-run
 
 ```bash
-# Migration 적용 전 SQL 확인
+# Check SQL before applying migration
 cd packages/api
 pnpm sonamu migration:latest --dry-run
 ```
 
-**확인 사항:**
-- SQL 문법 오류 없음
-- 중복 컬럼 정의 없음
-- Boolean default 타입 오류 없음
+**Check for:**
+- No SQL syntax errors
+- No duplicate column definitions
+- No Boolean default type errors
 
-## PHASE 5: Scaffolding 검증
+## PHASE 5: Scaffolding Validation
 
-### 5.1 Scaffolding 실행 전 체크
+### 5.1 Pre-Scaffolding Check
 
-**모든 이전 단계가 완료되었는가?**
+**Have all previous steps been completed?**
 
-- [ ] entity.json 검증 완료
-- [ ] model.ts, types.ts 생성 완료
-- [ ] sync 실행 완료
-- [ ] migration 생성 및 apply 완료
+- [ ] entity.json validation complete
+- [ ] model.ts, types.ts created
+- [ ] sync executed
+- [ ] migration created and applied
 
-### 5.2 Scaffolding 실행
+### 5.2 Run Scaffolding
 
 ```bash
 cd packages/api
 pnpm sonamu scaffold your-entity
 ```
 
-### 5.3 Build 검증
+### 5.3 Build Validation
 
 ```bash
-# API 빌드
+# API build
 cd packages/api
 pnpm build
 
-# Web 빌드
+# Web build
 cd packages/web
 pnpm build
 ```
 
-**빌드 오류가 없어야 합니다!**
+**There must be no build errors!**
 
-## 자동 검증 스크립트 (선택사항)
+## Automated Validation Script (Optional)
 
-다음 스크립트를 `packages/api/scripts/validate-entity.sh`로 저장:
+Save the following script as `packages/api/scripts/validate-entity.sh`:
 
 ```bash
 #!/bin/bash
@@ -442,27 +442,27 @@ fi
 echo "[COMPLETE] Entity validation complete!"
 ```
 
-**사용법:**
+**Usage:**
 ```bash
 chmod +x packages/api/scripts/validate-entity.sh
 ./packages/api/scripts/validate-entity.sh your-entity
 ```
 
-## 체크리스트 요약
+## Checklist Summary
 
-Entity 생성 시 **반드시** 다음 순서로 진행:
+When creating an entity, **always** proceed in the following order:
 
 1. STEP 1: `pnpm sonamu stub entity YourEntity`
-2. STEP 2: `your-entity.entity.json` 작성
-3. STEP 3: **이 체크리스트로 검증** (CRITICAL - 반드시 수행)
-4. STEP 4: `your-entity.model.ts` 생성
-5. STEP 5: `your-entity.types.ts` 생성
+2. STEP 2: Write `your-entity.entity.json`
+3. STEP 3: **Validate using this checklist** (CRITICAL - must be performed)
+4. STEP 4: Create `your-entity.model.ts`
+5. STEP 5: Create `your-entity.types.ts`
 6. STEP 6: `pnpm sonamu sync`
-7. STEP 7: Sync 결과 검증 (sonamu.lock, web 파일들)
+7. STEP 7: Validate sync results (sonamu.lock, web files)
 8. STEP 8: `pnpm sonamu migration:create`
-9. STEP 9: Migration 파일 검증
+9. STEP 9: Validate migration file
 10. STEP 10: `pnpm sonamu migration:latest` (apply)
 11. STEP 11: `pnpm sonamu scaffold your-entity`
-12. STEP 12: Build 테스트
+12. STEP 12: Build test
 
-**각 단계를 건너뛰지 마세요!** 순서가 중요합니다.
+**Do not skip any step!** Order matters.

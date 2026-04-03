@@ -1,16 +1,16 @@
 ---
 name: sonamu-model
-description: Sonamu Model 클래스 작성. BaseModelClass 상속, CRUD 메서드 패턴, 비즈니스 로직, executeSubsetQuery 옵션. Use when implementing Model classes with business logic.
+description: Writing Sonamu Model classes. BaseModelClass inheritance, CRUD method patterns, business logic, executeSubsetQuery options. Use when implementing Model classes with business logic.
 ---
 
-# Model 클래스
+# Model Class
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save 구현
-- `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` - 기본 CRUD 패턴
-- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - 테스트 예시
+**Reference working code:**
+- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
+- `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` - basic CRUD pattern
+- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - test examples
 
-## 기본 구조
+## Basic Structure
 
 ```typescript
 import { api, BaseModelClass, ListResult, NotFoundException } from "sonamu";
@@ -32,18 +32,18 @@ class UserModelClass extends BaseModelClass<
 export const UserModel = new UserModelClass();
 ```
 
-## CRUD 패턴
+## CRUD Pattern
 
-Sonamu Model은 다음 기본 메서드를 제공한다:
+Sonamu Model provides the following basic methods:
 
-| 메서드 | 용도 | 비고 |
+| Method | Purpose | Notes |
 |--------|------|------|
-| `findById` | 단건 조회 | |
-| `findMany` | 목록 조회 | |
-| `save` | 생성/수정 | upsert 동작 |
-| `del` | 삭제 | `delete` 아님 주의 |
+| `findById` | Retrieve single record | |
+| `findMany` | Retrieve list | |
+| `save` | Create/update | upsert behavior |
+| `del` | Delete | Note: not `delete` |
 
-**JavaScript 예약어 회피:** `delete`는 JS 예약어이므로 `del`로 명명. TypeScript에서는 컴파일 오류 없이 `delete`를 메서드명으로 사용할 수 있지만, 런타임에서 문제가 발생할 수 있어 Sonamu는 `del`을 사용한다.
+**Avoiding JavaScript reserved words:** `delete` is a JS reserved word, so it is named `del`. While TypeScript allows `delete` as a method name without a compile error, it can cause runtime issues, so Sonamu uses `del`.
 
 ### findById
 
@@ -101,55 +101,55 @@ async del(ids: number[]): Promise<number> {
 }
 ```
 
-## BaseModel 메서드
+## BaseModel Methods
 
-| 메서드 | 설명 |
+| Method | Description |
 |--------|------|
-| `getPuri("r")` | 읽기 쿼리 빌더 |
-| `getPuri("w")` | 쓰기 쿼리 빌더 |
-| `getSubsetQueries(subset)` | Subset 쿼리 빌더 (`{ qb, onSubset }` 반환) |
-| `executeSubsetQuery(options)` | Subset 쿼리 실행 |
-| `createEnhancers(enhancers)` | Enhancer 객체 생성 헬퍼 (타입 추론) |
+| `getPuri("r")` | Read query builder |
+| `getPuri("w")` | Write query builder |
+| `getSubsetQueries(subset)` | Subset query builder (returns `{ qb, onSubset }`) |
+| `executeSubsetQuery(options)` | Execute subset query |
+| `createEnhancers(enhancers)` | Enhancer object creation helper (type inference) |
 
 ## getSubsetQueries
 
 ```typescript
 const { qb, onSubset } = this.getSubsetQueries(subset);
 
-// qb: 조건 추가용 쿼리 빌더
+// qb: query builder for adding conditions
 qb.where("users.status", "active");
 
-// onSubset: 특정 서브셋 전용 타입이 필요할 때
-const typedQb = onSubset("A");  // 서브셋 A의 타입으로 추론
+// onSubset: when you need the type for a specific subset
+const typedQb = onSubset("A");  // infers as subset A's type
 ```
 
-## executeSubsetQuery 옵션
+## executeSubsetQuery Options
 
 ```typescript
 return this.executeSubsetQuery({
-  subset,           // 서브셋 키
-  qb,               // 쿼리 빌더
-  params,           // ListParams (num, page, queryMode, sonamuFilter 등)
-  debug: true,      // 쿼리 로그 출력 (기본값: false)
-  optimizeCountQuery: true,  // COUNT 쿼리 최적화 - 불필요한 LEFT JOIN 제거 (기본값: false)
-  enhancers,        // Enhancer 함수 객체 (옵션)
+  subset,           // subset key
+  qb,               // query builder
+  params,           // ListParams (num, page, queryMode, sonamuFilter, etc.)
+  debug: true,      // print query log (default: false)
+  optimizeCountQuery: true,  // COUNT query optimization - removes unnecessary LEFT JOINs (default: false)
+  enhancers,        // Enhancer function object (optional)
 });
 ```
 
-> **CRITICAL: `executeSubsetQuery()` 반환 객체를 직접 mutate하지 않는다.**
+> **CRITICAL: Do not directly mutate the object returned by `executeSubsetQuery()`.**
 >
-> `result.rows = result.rows.map(...)` 또는 `(result as any).rows = ...` 방식으로 rows를 교체하면
-> `total` 카운트가 깨져 pagination이 오동작한다.
+> Replacing rows via `result.rows = result.rows.map(...)` or `(result as any).rows = ...`
+> will break the `total` count and cause pagination to malfunction.
 >
-> 추가 계산이 필요한 virtual 필드는 `enhancers` 패턴으로 처리한다:
+> Use the `enhancers` pattern for virtual fields that require additional computation:
 >
 > ```typescript
-> // WRONG — pagination 파괴
+> // WRONG — breaks pagination
 > const result = await this.executeSubsetQuery({ subset, qb, params });
 > (result as any).rows = result.rows.map((row) => ({ ...row, extra: "value" }));
 > return result as any;
 >
-> // CORRECT — enhancers 패턴
+> // CORRECT — enhancers pattern
 > const enhancers = this.createEnhancers({
 >   A: (row) => ({ ...row, extra: "value" }),
 > });
@@ -158,45 +158,45 @@ return this.executeSubsetQuery({
 
 ### queryMode
 
-params에 queryMode를 전달하여 반환값 제어:
+Pass queryMode in params to control the return value:
 
 ```typescript
-// 리스트만 (COUNT 쿼리 스킵) - 성능 최적화
+// List only (skip COUNT query) - performance optimization
 const { rows } = await this.findMany(subset, { ...params, queryMode: "list" });
 
-// 카운트만 (리스트 스킵)
+// Count only (skip list)
 const { total } = await this.findMany(subset, { ...params, queryMode: "count" });
 
-// 둘 다 (기본값)
+// Both (default)
 const { rows, total } = await this.findMany(subset, { ...params, queryMode: "both" });
 ```
 
 ### sonamuFilter (FilterQuery)
 
-params.sonamuFilter로 필터 조건 자동 적용:
+Automatically apply filter conditions via params.sonamuFilter:
 
-**전제조건:** entity.json에서 해당 prop에 `"toFilter": true`가 설정되어 있어야 함. 설정되지 않은 필드는 필터링 대상에서 제외된다.
+**Prerequisite:** The corresponding prop in entity.json must have `"toFilter": true` set. Fields without this setting are excluded from filtering.
 
 ```typescript
-// 클라이언트에서 전달된 필터
+// Filter passed from the client
 const params = {
   num: 10,
   page: 1,
   sonamuFilter: {
-    status: "active",              // eq (기본)
+    status: "active",              // eq (default)
     age: { gte: 18 },              // >=
     role: { in: ["admin", "user"] },
     email: { contains: "@test" },  // LIKE %...%
   }
 };
 
-// Model에서 자동 적용됨
+// Automatically applied in the Model
 return this.executeSubsetQuery({ subset, qb, params });
 ```
 
-**타입별 허용 연산자:**
+**Allowed operators by type:**
 
-| 타입 | 연산자 |
+| Type | Operators |
 |------|--------|
 | `string` | eq, ne, contains, startsWith, endsWith, in, notIn, isNull, isNotNull |
 | `integer` | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull |
@@ -206,11 +206,11 @@ return this.executeSubsetQuery({ subset, qb, params });
 | `enum` | eq, ne, in, notIn, isNull, isNotNull |
 | `json` | isNull, isNotNull |
 
-**연산자 예시:**
+**Operator examples:**
 
-| 연산자 | SQL | 예시 |
+| Operator | SQL | Example |
 |--------|-----|------|
-| `eq` (기본) | `=` | `{ status: "active" }` |
+| `eq` (default) | `=` | `{ status: "active" }` |
 | `ne` | `!=` | `{ status: { ne: "deleted" } }` |
 | `gt`, `gte` | `>`, `>=` | `{ age: { gte: 18 } }` |
 | `lt`, `lte` | `<`, `<=` | `{ price: { lte: 1000 } }` |
@@ -219,32 +219,32 @@ return this.executeSubsetQuery({ subset, qb, params });
 | `startsWith` | `LIKE ...%` | `{ code: { startsWith: "A" } }` |
 | `endsWith` | `LIKE %...` | `{ ext: { endsWith: ".pdf" } }` |
 | `isNull`, `isNotNull` | `IS NULL` | `{ deleted_at: { isNull: true } }` |
-| `before`, `after` | `<`, `>` (날짜) | `{ created_at: { after: "2024-01-01" } }` |
+| `before`, `after` | `<`, `>` (date) | `{ created_at: { after: "2024-01-01" } }` |
 | `between` | `BETWEEN` | `{ price: { between: [100, 500] } }` |
 
-**타입 정의 (`ApplySonamuFilter`):**
+**Type definition (`ApplySonamuFilter`):**
 
 ```typescript
 import type { ApplySonamuFilter } from "sonamu";
 
-// ListParams에서 sonamuFilter 타입 정의
+// Define sonamuFilter type in ListParams
 type ProjectListParams = {
   num: number;
   page: number;
   sonamuFilter?: ApplySonamuFilter<
-    ProjectSubsetA,       // 엔티티 타입
-    "id" | "created_at",   // 제외할 필드 (TOmitKeys)
-    "budget"              // numeric으로 취급할 필드 (TNumericKeys)
+    ProjectSubsetA,       // entity type
+    "id" | "created_at",   // fields to exclude (TOmitKeys)
+    "budget"              // fields to treat as numeric (TNumericKeys)
   >;
 };
 ```
 
 ## Enhancers
 
-virtual 필드 계산 등 쿼리 후 가공:
+Post-query processing for virtual field computation and similar needs:
 
 ```typescript
-// Enhancer 정의
+// Define enhancer
 const enhancers = this.createEnhancers({
   A: async (row) => ({
     ...row,
@@ -256,11 +256,11 @@ const enhancers = this.createEnhancers({
   }),
 });
 
-// executeSubsetQuery에서 사용
+// Use in executeSubsetQuery
 return this.executeSubsetQuery({ subset, qb, params, enhancers });
 ```
 
-## Types 파일
+## Types File
 
 ```typescript
 // user.types.ts
@@ -270,7 +270,7 @@ import { UserOrderBy, UserSearchField, UserBaseSchema, UserBaseListParams } from
 export const UserListParams = UserBaseListParams;
 export type UserListParams = z.infer<typeof UserListParams>;
 
-// 기본 패턴: BaseSchema에서 partial 처리
+// Basic pattern: partial from BaseSchema
 export const UserSaveParams = UserBaseSchema.partial({
   id: true,
   created_at: true,
@@ -278,9 +278,9 @@ export const UserSaveParams = UserBaseSchema.partial({
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 
-### SaveParams 패턴
+### SaveParams Patterns
 
-**기본 패턴 (relation 없음):**
+**Basic pattern (no relations):**
 ```typescript
 import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
 
@@ -294,9 +294,9 @@ export const UserSaveParams = UserBaseSchema.partial({
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 
-**ManyToMany relation이 있는 경우:**
+**If a ManyToMany relation exists:**
 ```typescript
-// ManyToMany 관계: {relation_name}_ids 배열 추가
+// ManyToMany relation: add {relation_name}_ids array
 export const ProjectSaveParams = ProjectBaseSchema.partial({
   id: true,
   created_at: true,
@@ -306,49 +306,49 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
     tag_ids: z.array(z.number().int().positive()),
   })
   .omit({
-    // virtual 필드, 시스템 생성 필드 등은 omit
+    // omit virtual fields, system-generated fields, etc.
     virtual_test: true,
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
-**BelongsToOne relation의 nullable 필드 처리:**
+**Handling nullable fields in BelongsToOne relations:**
 ```typescript
-// nullable relation은 자동으로 optional이므로 추가 partial 불필요
+// Nullable relations are automatically optional, so no extra partial is needed
 export const ResponseSaveParams = ResponseBaseSchema.partial({
   id: true,
   created_at: true,
-  updated_at: true,  // timestamp 필드도 partial 처리
+  updated_at: true,  // also make timestamp fields partial
 });
 export type ResponseSaveParams = z.infer<typeof ResponseSaveParams>;
 ```
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams 예시
-- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams 예시
+**Reference working code:**
+- `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams example
+- `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams example
 
-### Model에서 Relation 처리
+### Handling Relations in the Model
 
-**Update 시 relation 객체 제거:**
+**Removing relation objects on update:**
 ```typescript
-// Test에서 Update 시 사용하는 패턴
+// Pattern used in tests for updates
 const original = await UserModel.findById("A", userId);
 
-// Relation 객체 제거하고 FK만 추출
+// Remove relation object and extract FK only
 const { institution, ...userData } = original;
 
 await UserModel.save([
   {
     ...userData,
-    institution_id: institution?.id ?? null,  // FK 명시적 추가
-    name: "수정된이름",
+    institution_id: institution?.id ?? null,  // explicitly add FK
+    name: "Updated Name",
   },
 ]);
 ```
 
-**ManyToMany save 시:**
+**ManyToMany save:**
 ```typescript
-// ManyToMany는 _ids 배열로 전달
+// ManyToMany is passed as an _ids array
 await ProjectModel.save([
   {
     id: projectId,
@@ -359,11 +359,11 @@ await ProjectModel.save([
 ]);
 ```
 
-**실제 동작 코드 참고:**
-- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save 구현
-- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save 테스트 예시
+**Reference working code:**
+- `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
+- `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save test example
 
-## 트랜잭션
+## Transactions
 
 ```typescript
 await this.getPuri("w").transaction(async (trx) => {
@@ -372,57 +372,57 @@ await this.getPuri("w").transaction(async (trx) => {
 });
 ```
 
-## 검증 패턴
+## Validation Patterns
 
-### 단계별 검증
+### Step-by-step Validation
 
-비즈니스 규칙을 단계별로 검증하는 패턴:
+A pattern for validating business rules step by step:
 
 ```typescript
 async enroll(courseId: number, userId: number): Promise<Enrollment> {
-  // 1단계: 중복 체크
+  // Step 1: Duplicate check
   const existing = await this.findOne("A", {
     course_id: courseId,
     user_id: userId,
   });
   
   if (existing) {
-    throw new Error("이미 등록된 강좌입니다");
+    throw new Error("Already enrolled in this course");
   }
   
-  // 2단계: 정원 확인
+  // Step 2: Capacity check
   const course = await CourseModel.findById("A", courseId);
   const { total } = await this.findMany({ course_id: courseId });
   
   if (total >= course.max_students) {
-    throw new Error("정원이 가득 찼습니다");
+    throw new Error("The course is full");
   }
   
-  // 3단계: 실행
+  // Step 3: Execute
   const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
   return this.findById("A", id);
 }
 ```
 
-### 조건부 검증
+### Conditional Validation
 
-조건에 따라 다른 검증 수행:
+Perform different validations depending on conditions:
 
 ```typescript
 async save(spa: TaskSaveParams[]): Promise<number[]> {
   for (const sp of spa) {
-    // 상태가 완료일 때만 완료일 필수
+    // completion date is required only when status is completed
     if (sp.status === "completed" && !sp.completed_at) {
-      throw new Error("완료 상태는 완료일이 필요합니다");
+      throw new Error("A completion date is required for completed status");
     }
     
-    // 예산이 있을 때만 금액 범위 체크
+    // Check amount range only when budget is present
     if (sp.budget !== null && sp.budget < 0) {
-      throw new Error("예산은 0 이상이어야 합니다");
+      throw new Error("Budget must be 0 or greater");
     }
   }
   
-  // 검증 통과 후 저장
+  // Save after validation passes
   const wdb = this.getPuri("w");
   spa.forEach((sp) => wdb.ubRegister("tasks", sp));
   
@@ -432,28 +432,28 @@ async save(spa: TaskSaveParams[]): Promise<number[]> {
 }
 ```
 
-### 관련 데이터 검증
+### Validating Against Related Data
 
-다른 테이블과의 관계를 검증:
+Validate relationships with other tables:
 
 ```typescript
 async save(spa: ResponseSaveParams[]): Promise<number[]> {
   for (const sp of spa) {
-    // 설문이 아직 열려있는지 확인
+    // Check if the survey is still open
     const collection = await CollectionModel.findById("A", sp.collection_id);
     
     if (collection.status === "closed") {
-      throw new Error("이미 종료된 설문입니다");
+      throw new Error("This survey has already ended");
     }
     
-    // 응답 기간 확인
+    // Check response period
     const now = new Date();
     if (now < collection.begin_date || now > collection.end_date) {
-      throw new Error("응답 가능 기간이 아닙니다");
+      throw new Error("This is not within the response period");
     }
   }
   
-  // 검증 통과 후 저장
+  // Save after validation passes
   const wdb = this.getPuri("w");
   spa.forEach((sp) => wdb.ubRegister("responses", sp));
   
@@ -463,32 +463,32 @@ async save(spa: ResponseSaveParams[]): Promise<number[]> {
 }
 ```
 
-**핵심 포인트:**
-- 검증 실패 시 명확한 에러 메시지
-- 검증을 모두 통과한 후에만 저장
-- 비즈니스 규칙을 코드로 강제
+**Key points:**
+- Clear error messages when validation fails
+- Only save after all validations pass
+- Enforce business rules through code
 
 ---
 
 ## IMPORTANT: Verify orderBy After Scaffolding
 
-### 문제
+### Problem
 
-Sonamu UI에서 스캐폴딩 실행 시 model 파일이 **재생성**되면서 기본값(`id-desc`)만 남고 커스텀 orderBy 케이스가 사라집니다.
+When scaffolding is run from Sonamu UI, the model file is **regenerated**, leaving only the default value (`id-desc`) and losing any custom orderBy cases.
 
 ```
-오류: Argument of type 'xxx-asc' is not assignable to parameter of type 'never'
+Error: Argument of type 'xxx-asc' is not assignable to parameter of type 'never'
 ```
 
-### 해결
+### Fix
 
-스캐폴딩 후 model 파일에서 entity.json의 **모든 orderBy enum 케이스**를 exhaustive() 처리해야 합니다.
+After scaffolding, you must exhaustively handle **all orderBy enum cases** from entity.json in the model file.
 
 ```typescript
-// entity.json의 orderBy enum
-{ "TaskOrderBy": { "id-desc": "ID최신순", "created_at-desc": "등록일순", "title-asc": "제목순" } }
+// entity.json orderBy enum
+{ "TaskOrderBy": { "id-desc": "ID Latest", "created_at-desc": "By Date", "title-asc": "By Title" } }
 
-// model - 스캐폴딩 후 반드시 확인/추가
+// model - must verify/add after scaffolding
 if (params.orderBy) {
   if (params.orderBy === "id-desc") {
     qb.orderBy("tasks.id", "desc");
@@ -497,26 +497,26 @@ if (params.orderBy) {
   } else if (params.orderBy === "title-asc") {
     qb.orderBy("tasks.title", "asc");
   } else {
-    exhaustive(params.orderBy);  // 누락 시 컴파일 오류
+    exhaustive(params.orderBy);  // compile error if any case is missing
   }
 }
 ```
 
-### 체크리스트
+### Checklist
 
-- 스캐폴딩 후 model의 orderBy 케이스 확인
-- entity.json의 orderBy enum과 일치하는지 확인
-- search 케이스, enhancers 등 다른 커스텀 로직도 확인
+- Verify orderBy cases in model after scaffolding
+- Confirm they match the orderBy enum in entity.json
+- Also check other custom logic such as search cases and enhancers
 
 ---
 
-## 코드 품질과 일관성
+## Code Quality and Consistency
 
-### DRY 원칙: this.modelName 사용
+### DRY principle: use this.modelName
 
-에러 메시지에서 모델명을 하드코딩하지 않고 `this.modelName`을 사용합니다.
+Use `this.modelName` instead of hardcoding the model name in error messages.
 
-**BAD: 모델명 하드코딩**
+**BAD: hardcoded model name**
 ```typescript
 // department.model.ts
 if (!rows[0]) {
@@ -529,206 +529,206 @@ if (!rows[0]) {
 }
 ```
 
-**GOOD: this.modelName 활용**
+**GOOD: use this.modelName**
 ```typescript
-// 모든 Model 공통
+// Common to all Models
 if (!rows[0]) {
   throw new NotFoundException(SD("notFound")(this.modelName, id));
 }
 ```
 
-**장점:**
-- 복붙 실수 방지: 다른 모델 코드 복사 시 모델명 수정 불필요
-- 일관성: 모든 모델이 동일한 패턴 사용
-- 유지보수: constructor의 modelName만 변경하면 모든 에러 메시지 자동 반영
+**Benefits:**
+- Prevents copy-paste mistakes: no need to update the model name when copying from another model
+- Consistency: all models use the same pattern
+- Maintainability: changing modelName in the constructor automatically reflects in all error messages
 
-### 일관된 i18n 키 사용
+### Consistent i18n Key Usage
 
-프로젝트 전체에서 동일한 목적의 i18n 키를 일관되게 사용합니다.
+Use the same i18n keys consistently for the same purpose across the entire project.
 
-**BAD: 중복된 i18n 키**
+**BAD: duplicate i18n keys**
 ```typescript
-// 여러 모델에서 서로 다른 키 사용
+// Different keys used across models
 throw new NotFoundException(SD("error.entityNotFound")(this.modelName, id));
 throw new NotFoundException(SD("error.notFound")(this.modelName, id));
 throw new NotFoundException(SD("notFound")(this.modelName, id));
 
-// 검색 필드 오류
+// Search field error
 throw new BadRequestException(SD("error.unknownSearchField")(params.search));
 throw new BadRequestException(SD("error.invalidSearchField")(params.search));
 ```
 
-**GOOD: 표준 i18n 키 사용**
+**GOOD: use standard i18n keys**
 ```typescript
-// Entity 조회 실패 - 짧고 명확
+// Entity lookup failure - short and clear
 throw new NotFoundException(SD("notFound")(this.modelName, id));
 
-// 검색 필드 오류 - search 네임스페이스
+// Search field error - search namespace
 throw new BadRequestException(SD("search.invalidField")(params.search));
 ```
 
-**권장 i18n 키 패턴:**
-| 상황 | i18n 키 | 사용처 |
+**Recommended i18n key patterns:**
+| Situation | i18n key | Used in |
 |------|---------|--------|
-| Entity 조회 실패 | `notFound` | findById |
-| 잘못된 검색 필드 | `search.invalidField` | findMany search |
-| 필수 필드 누락 | `validation.required` | save 검증 |
-| 권한 없음 | `error.forbidden` | guards 실패 |
-| 로그인 필요 | `error.loginRequired` | Context.user null |
+| Entity lookup failure | `notFound` | findById |
+| Invalid search field | `search.invalidField` | findMany search |
+| Missing required field | `validation.required` | save validation |
+| Unauthorized | `error.forbidden` | guards failure |
+| Login required | `error.loginRequired` | Context.user null |
 
-### 벌크 리팩토링 전략
+### Bulk Refactoring Strategy
 
-여러 모델 파일을 일관되게 수정할 때 sed를 활용한 자동화:
+When consistently modifying multiple model files, use sed for automation:
 
-**1단계: 패턴 확인**
+**Step 1: Confirm pattern**
 ```bash
-# 수정 대상 파일 찾기
+# Find files to modify
 grep -r 'SD("error.entityNotFound")' packages/api/src/application/*/
 ```
 
-**2단계: 변경 검증 (dry-run)**
+**Step 2: Validate changes (dry-run)**
 ```bash
-# 변경될 내용 미리 확인
+# Preview changes before applying
 sed -n 's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/p' file.ts
 ```
 
-**3단계: 일괄 적용**
+**Step 3: Apply in bulk**
 ```bash
-# 모든 model 파일 수정
+# Modify all model files
 find packages/api/src/application -name "*.model.ts" -exec sed -i '' \
   's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/g' {} \;
 ```
 
-**4단계: 빌드로 검증**
+**Step 4: Validate with build**
 ```bash
-# TypeScript 타입 체크
+# TypeScript type check
 pnpm typecheck
 
-# 전체 빌드
+# Full build
 pnpm build
 ```
 
-**주의사항:**
-- 반드시 git commit 후 실행 (롤백 가능하도록)
-- dry-run으로 변경 내용 먼저 확인
-- 빌드로 타입 오류 체크
-- 테스트 실행으로 동작 검증
+**Cautions:**
+- Always run after a git commit (to allow rollback)
+- Confirm changes with dry-run first
+- Check for type errors with build
+- Verify behavior with tests
 
-### 타입 체크 패턴
+### Type Check Patterns
 
 **satisfies vs as const:**
 
 ```typescript
-// BAD: 타입 단언으로 타입 체크 우회
+// BAD: bypasses type checking with type assertion
 const params = {
   num: 24,
   page: 1,
   search: "id" as const,
-  orderBy: "wrong-value" as const,  // 오류 감지 안 됨
+  orderBy: "wrong-value" as const,  // error not detected
   ...rawParams,
 } as RoleListParams;
 
-// GOOD: satisfies로 컴파일 타임 검증
+// GOOD: compile-time validation with satisfies
 const params = {
   num: 24,
   page: 1,
   search: "id" as const,
-  orderBy: "wrong-value" as const,  // 컴파일 오류 발생!
+  orderBy: "wrong-value" as const,  // compile error!
   ...rawParams,
 } satisfies RoleListParams;
 ```
 
-**적용 권장 위치:**
-- findMany의 params 기본값
-- 복잡한 객체 리터럴 (타입 체크가 중요한 경우)
+**Recommended usage locations:**
+- Default values for params in findMany
+- Complex object literals (where type checking is important)
 
-### IMPORTANT: ListParams / findMany / SearchField 동기화
+### IMPORTANT: ListParams / findMany / SearchField Synchronization
 
-다음 세 가지는 항상 일관성을 유지해야 한다. 하나라도 어긋나면 선언만 있고 동작하지 않거나, 런타임 오류가 발생한다.
+The following three must always remain consistent. If any one is out of sync, the feature either exists as a declaration only with no behavior, or a runtime error will occur.
 
-1. `entity.json`의 `SearchField` enum values
-2. `types.ts`의 `ListParams` 필드 정의
-3. `model.ts`의 `findMany` 내 필터/검색 처리 코드
+1. `SearchField` enum values in `entity.json`
+2. `ListParams` field definitions in `types.ts`
+3. Filter/search handling code in `findMany` in `model.ts`
 
-**체크리스트:**
-- [ ] SearchField에 선언된 모든 값이 findMany에 구현되어 있는가?
-- [ ] 주석 처리된 필터 분기가 있다면 제거하거나 구현하거나 둘 중 하나
-- [ ] 요구사항의 "~별 필터", "~로 검색" 기능이 ListParams에 반영되어 있는가?
+**Checklist:**
+- [ ] Are all values declared in SearchField implemented in findMany?
+- [ ] If any filter branch is commented out, either remove it or implement it
+- [ ] Are "filter by ~", "search by ~" features from requirements reflected in ListParams?
 
-**특히 승인 워크플로우가 있는 엔티티는 status 필터를 반드시 추가한다.**
-(단계별 건수 클릭 → 해당 목록만 필터링 조회 패턴이 공통으로 요구됨)
+**In particular, entities with an approval workflow must always add a status filter.**
+(Clicking count by stage → filter to show only that list is a commonly required pattern)
 
 ```typescript
-// types.ts - 승인 워크플로우 엔티티 예시
+// types.ts - approval workflow entity example
 export const AchievementListParams = AchievementBaseListParams.extend({
   status: z.nativeEnum(AchievementStatus).optional(),
   achievement_type: z.nativeEnum(AchievementType).optional(),
   submitter_id: z.string().optional(),
 });
 
-// model.ts - 대응하는 필터 구현
+// model.ts - corresponding filter implementation
 if (params.status) qb.where("achievements.status", params.status);
 if (params.achievement_type) qb.where("achievements.achievement_type", params.achievement_type);
 if (params.submitter_id) qb.where("achievements.submitter_id", params.submitter_id);
 ```
 
-**DO NOT - 선언/구현 불일치:**
+**DO NOT - declaration/implementation mismatch:**
 ```typescript
-// entity.json에 SearchField "title" 선언
-// model.ts에서 "id" 케이스만 처리하고 "title"은 주석 처리
+// SearchField "title" declared in entity.json
+// model.ts only handles "id" case, "title" is commented out
 if (params.search === "id") {
   // ...
 } /* else if (params.search === "title") {
-  // TODO: 미구현
+  // TODO: not implemented
 } */
 ```
 
-### 코드 리뷰 체크리스트
+### Code Review Checklist
 
-새로운 Model 작성 시:
-- [ ] `this.modelName` 사용 (하드코딩 금지)
-- [ ] 표준 i18n 키 사용 (`notFound`, `search.invalidField`)
-- [ ] satisfies 키워드 활용 (타입 안전성)
-- [ ] debug 옵션 불필요하게 명시하지 않음
-- [ ] orderBy 모든 케이스 exhaustive 처리
-- [ ] ManyToMany relation이 있으면 _ids 배열 SaveParams에 추가
-- [ ] `@upload` 메서드에 `@api`가 붙어 있지 않은가? (`@upload`는 단독 사용, 함께 쓰면 빌드 에러)
-- [ ] SearchField enum과 findMany 구현이 일치하는가?
-- [ ] 승인 워크플로우 엔티티에 status/type 필터가 ListParams와 findMany 양쪽에 모두 있는가?
+When writing a new Model:
+- [ ] Use `this.modelName` (no hardcoding)
+- [ ] Use standard i18n keys (`notFound`, `search.invalidField`)
+- [ ] Use the `satisfies` keyword (type safety)
+- [ ] Do not unnecessarily specify the debug option
+- [ ] Exhaustively handle all orderBy cases
+- [ ] If a ManyToMany relation exists, add _ids array to SaveParams
+- [ ] Does the `@upload` method have `@api` on it? (`@upload` is used standalone; using both together causes a build error)
+- [ ] Do the SearchField enum and findMany implementation match?
+- [ ] For entities with approval workflows, are status/type filters present in both ListParams and findMany?
 
-20개 Model 일괄 수정 시:
-- [ ] miomock 같은 레퍼런스 코드와 패턴 비교
-- [ ] 불일치하는 패턴 우선순위 정리
-- [ ] sed 등으로 자동화 스크립트 작성
-- [ ] 변경 전 git commit
-- [ ] dry-run으로 변경 내용 검증
-- [ ] pnpm typecheck로 타입 오류 확인
-- [ ] pnpm test로 동작 검증
-- [ ] `any` 타입 사용 여부 (사용 금지)
+When bulk-modifying 20+ Models:
+- [ ] Compare patterns with reference code like miomock
+- [ ] Prioritize inconsistent patterns
+- [ ] Write an automation script using sed or similar
+- [ ] Commit to git before making changes
+- [ ] Validate changes with dry-run
+- [ ] Check for type errors with pnpm typecheck
+- [ ] Verify behavior with pnpm test
+- [ ] Check for `any` type usage (prohibited)
 
-### any 타입 금지
+### Prohibition on any type
 
-`any` 타입은 TypeScript의 타입 안전성을 무력화하므로 **절대 사용하지 않는다.**
+The `any` type neutralizes TypeScript's type safety and must **never be used**.
 
-**BAD: any 사용**
+**BAD: using any**
 ```typescript
 const { category_ids, ...data } = sp as any;
 function process(input: any) { ... }
 ```
 
-**GOOD: 정확한 타입 또는 unknown 사용**
+**GOOD: use precise types or unknown**
 ```typescript
-// 정확한 타입으로 구조 분해
+// Destructure with a precise type
 const { category_ids, ...data } = sp as QuestionCollectionSaveParams;
 
-// 타입을 알 수 없을 때는 unknown (any 대신)
+// Use unknown when the type is not known (instead of any)
 function process(input: unknown) {
   if (typeof input === "string") { ... }
 }
 ```
 
-**규칙:**
-- `any`는 사용 금지
-- 타입을 모를 때는 `unknown` 사용 후 타입 가드로 좁힌다
-- 구조 분해 시 타입 단언이 필요하면 정확한 타입명을 명시한다 (`as ConcreteType`)
-- `eslint-disable @typescript-eslint/no-explicit-any` 같은 억제 주석도 사용 금지
+**Rules:**
+- `any` is prohibited
+- When the type is unknown, use `unknown` and narrow with a type guard
+- When a type assertion is needed during destructuring, specify the exact type name (`as ConcreteType`)
+- Suppression comments like `eslint-disable @typescript-eslint/no-explicit-any` are also prohibited

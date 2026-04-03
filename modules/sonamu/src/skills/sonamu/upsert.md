@@ -1,94 +1,94 @@
 ---
 name: sonamu-upsert
-description: Sonamu UpsertBuilder로 복잡한 관계 데이터 저장. ubRegister, ubUpsert, insertOnly, updateBatch 패턴, FK 순서, cleanOrphans. Use when saving related data with foreign key dependencies.
+description: Saving complex relational data with Sonamu UpsertBuilder. ubRegister, ubUpsert, insertOnly, updateBatch patterns, FK ordering, cleanOrphans. Use when saving related data with foreign key dependencies.
 ---
 
 # UpsertBuilder
 
-## UBRef 타입
+## UBRef Type
 
-`ubRegister()`가 반환하는 참조 객체:
+The reference object returned by `ubRegister()`:
 
 ```typescript
 type UBRef = {
-  uuid: string;   // 고유 식별자
-  of: string;     // 테이블명
-  use?: string;   // 참조할 필드 (기본값: "id")
+  uuid: string;   // unique identifier
+  of: string;     // table name
+  use?: string;   // field to reference (default: "id")
 };
 ```
 
-## 기본 패턴
+## Basic Pattern
 
 ```typescript
 const wdb = this.getPuri("w");
 
-// 데이터 등록 (UBRef 반환)
+// Register data (returns UBRef)
 const userRef = wdb.ubRegister("users", { email: "john@test.com", username: "john" });
 
-// 관계 데이터에 UBRef 사용
+// Use UBRef in related data
 wdb.ubRegister("employees", { user_id: userRef, department_id: deptId });
 
-// 트랜잭션 내에서 순서대로 저장
+// Save in order inside a transaction
 return wdb.transaction(async (trx) => {
-  await trx.ubUpsert("users");       // 먼저 저장 (FK 참조됨)
-  return trx.ubUpsert("employees");  // 나중에 저장 (FK 사용)
+  await trx.ubUpsert("users");       // Save first (referenced by FK)
+  return trx.ubUpsert("employees");  // Save after (uses FK)
 });
 ```
 
-## CRITICAL: 필수 필드 포함 필수
+## CRITICAL: All Required Fields Must Be Included
 
-**ubUpsert는 PostgreSQL의 `ON CONFLICT ... DO UPDATE` 쿼리를 사용합니다.**
+**ubUpsert uses PostgreSQL's `ON CONFLICT ... DO UPDATE` query.**
 
-업데이트 시에도 **모든 필수 필드(NOT NULL 제약이 있는 필드)**를 포함해야 합니다.
+Even when updating, **all required fields (fields with NOT NULL constraints)** must be included.
 
 ```typescript
-// BAD - 필수 필드 누락
+// BAD - missing required field
 wdb.ubRegister("posts", {
   id: 1,
   title: "Updated Title",
-  // content 필수 필드 누락! → ON CONFLICT UPDATE 시 NULL 설정 시도 → DB 에러
+  // content required field missing! → ON CONFLICT UPDATE tries to set NULL → DB error
 });
 // Error: null value in column "content" violates not-null constraint
 
-// GOOD - 모든 필수 필드 포함
+// GOOD - all required fields included
 wdb.ubRegister("posts", {
   id: 1,
   title: "Updated Title",
-  content: "Updated Content",  // 필수 필드 포함!
-  author_id: 1,                // FK도 필수 필드면 포함!
+  content: "Updated Content",  // required field included!
+  author_id: 1,                // FK also included if required!
 });
 ```
 
-**필수 필드 확인 방법**:
-1. entity.json의 props 확인
-2. `nullable: true`가 **없는** 필드 = 필수 필드
-3. `id`, `created_at`, `dbDefault` 있는 필드는 제외 가능
+**How to identify required fields**:
+1. Check props in entity.json
+2. Fields without `nullable: true` = required fields
+3. `id`, `created_at`, fields with `dbDefault` can be omitted
 
 ```json
-// entity.json 예시
+// entity.json example
 {
   "props": [
-    { "name": "id", "type": "integer" },  // 제외 가능
-    { "name": "title", "type": "string" },  // 필수! (nullable 없음)
-    { "name": "content", "type": "string" },  // 필수! (nullable 없음)
-    { "name": "category", "type": "string", "nullable": true },  // 선택
-    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }  // 제외 가능
+    { "name": "id", "type": "integer" },  // can be omitted
+    { "name": "title", "type": "string" },  // required! (no nullable)
+    { "name": "content", "type": "string" },  // required! (no nullable)
+    { "name": "category", "type": "string", "nullable": true },  // optional
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }  // can be omitted
   ]
 }
 ```
 
-## 저장 순서 (중요!)
+## Save Order (Important!)
 
-FK가 참조하는 테이블을 먼저 저장:
+Save the table referenced by FK first:
 
 ```typescript
-await trx.ubUpsert("companies");   // 1. 의존성 없음
-await trx.ubUpsert("departments"); // 2. company_id 필요
-await trx.ubUpsert("users");       // 3. 의존성 없음
-await trx.ubUpsert("employees");   // 4. user_id, department_id 필요
+await trx.ubUpsert("companies");   // 1. No dependencies
+await trx.ubUpsert("departments"); // 2. Needs company_id
+await trx.ubUpsert("users");       // 3. No dependencies
+await trx.ubUpsert("employees");   // 4. Needs user_id, department_id
 ```
 
-## Model save 패턴
+## Model save Pattern
 
 ```typescript
 @api({ httpMethod: "POST" })
@@ -102,25 +102,25 @@ async save(spa: UserSaveParams[]): Promise<number[]> {
 }
 ```
 
-## 관계 데이터 저장
+## Saving Related Data
 
 ```typescript
 await this.getPuri("w").transaction(async (trx) => {
-  // User 등록
+  // Register User
   const userRef = trx.ubRegister("users", {
     email: data.email,
     username: data.username,
     password: bcrypt.hashSync(data.password, 10),
   });
 
-  // Employee 등록 (userRef 사용)
+  // Register Employee (using userRef)
   trx.ubRegister("employees", {
     user_id: userRef,
     department_id: data.departmentId,
     salary: data.salary,
   });
 
-  // 순서대로 저장
+  // Save in order
   await trx.ubUpsert("users");
   const [employeeId] = await trx.ubUpsert("employees");
   return employeeId;
@@ -130,16 +130,16 @@ await this.getPuri("w").transaction(async (trx) => {
 ## Upsert (Insert or Update)
 
 ```typescript
-// id 없으면 INSERT
+// INSERT when no id
 wdb.ubRegister("users", { email: "new@test.com", username: "new" });
 
-// id 있으면 UPDATE
+// UPDATE when id is present
 wdb.ubRegister("users", { id: 1, email: "updated@test.com" });
 ```
 
-**충돌 처리**: Entity의 unique index가 있으면 자동으로 사전 조회하여 기존 레코드의 id를 채운 후 UPDATE 수행
+**Conflict handling**: If the Entity has a unique index, automatically pre-fetches to populate the existing record's id, then performs UPDATE
 
-## ManyToMany 관계
+## ManyToMany Relationships
 
 ```typescript
 await wdb.transaction(async (trx) => {
@@ -157,52 +157,52 @@ await wdb.transaction(async (trx) => {
 });
 ```
 
-## 자기 참조 (Self-Reference)
+## Self-Reference
 
-계층 구조(예: 카테고리, 조직도)에서 자기 참조 관계는 자동으로 레벨별 순차 처리:
+In hierarchical structures (e.g. categories, org charts), self-referential relationships are automatically processed level by level:
 
 ```typescript
 await wdb.transaction(async (trx) => {
-  // 루트 카테고리
+  // Root category
   const rootRef = trx.ubRegister("categories", { name: "Root", parent_id: null });
   
-  // 자식 카테고리 (rootRef 참조)
+  // Child category (references rootRef)
   const childRef = trx.ubRegister("categories", { name: "Child", parent_id: rootRef });
   
-  // 손자 카테고리 (childRef 참조)
+  // Grandchild category (references childRef)
   trx.ubRegister("categories", { name: "Grandchild", parent_id: childRef });
 
-  // 내부적으로 레벨별 순차 처리 (Root → Child → Grandchild)
+  // Internally processed level by level (Root → Child → Grandchild)
   await trx.ubUpsert("categories");
 });
 ```
 
-## insertOnly (INSERT 전용)
+## insertOnly (INSERT Only)
 
-UPDATE 없이 INSERT만 수행:
+Perform INSERT without UPDATE:
 
 ```typescript
 await trx.insertOnly("logs", { chunkSize: 1000 });
 ```
 
-## updateBatch (배치 업데이트)
+## updateBatch (Batch Update)
 
-대량 UPDATE 작업:
+Bulk UPDATE operations:
 
 ```typescript
-// 여러 레코드 등록
+// Register multiple records
 wdb.ubRegister("users", { id: 1, status: "active" });
 wdb.ubRegister("users", { id: 2, status: "active" });
 wdb.ubRegister("users", { id: 3, status: "inactive" });
 
 await wdb.transaction(async (trx) => {
   await trx.updateBatch("users", {
-    chunkSize: 500,      // 배치 크기 (기본값: 500)
-    where: "id",         // WHERE 조건 컬럼 (기본값: "id")
+    chunkSize: 500,      // batch size (default: 500)
+    where: "id",         // WHERE condition column (default: "id")
   });
 });
 
-// 복합 키로 WHERE 조건
+// Composite key for WHERE condition
 await trx.updateBatch("user_settings", {
   where: ["user_id", "setting_key"],
 });
@@ -210,19 +210,19 @@ await trx.updateBatch("user_settings", {
 
 ## UpsertOptions
 
-`ubUpsert()`의 옵션:
+Options for `ubUpsert()`:
 
 ```typescript
 type UpsertOptions = {
-  chunkSize?: number;      // 배치 크기
-  cleanOrphans?: string | string[];  // 고아 레코드 삭제 기준 FK 컬럼
-  inherit?: string[];      // UPDATE 시 기존 값 유지할 컬럼
+  chunkSize?: number;      // batch size
+  cleanOrphans?: string | string[];  // FK column(s) to use as basis for deleting orphan records
+  inherit?: string[];      // columns to preserve existing values on UPDATE
 };
 ```
 
 ### chunkSize
 
-대량 데이터 처리 시 배치 크기 지정:
+Specify batch size for large data processing:
 
 ```typescript
 await trx.ubUpsert("logs", { chunkSize: 1000 });
@@ -230,15 +230,15 @@ await trx.ubUpsert("logs", { chunkSize: 1000 });
 
 ### cleanOrphans
 
-FK 기준으로 고아 레코드 자동 삭제:
+Automatically delete orphan records based on FK:
 
 ```typescript
-// 단일 FK
+// Single FK
 await trx.ubUpsert("order_items", {
-  cleanOrphans: "order_id",  // order_id가 같고 이번에 upsert 안 된 레코드 삭제
+  cleanOrphans: "order_id",  // delete records with the same order_id that were not upserted this time
 });
 
-// 복합 FK
+// Composite FK
 await trx.ubUpsert("project_members", {
   cleanOrphans: ["project_id", "team_id"],
 });
@@ -246,31 +246,31 @@ await trx.ubUpsert("project_members", {
 
 ### inherit
 
-UPDATE 시 특정 컬럼은 기존 값 유지:
+Preserve existing values for specific columns on UPDATE:
 
 ```typescript
 await trx.ubUpsert("users", {
-  inherit: ["created_at", "password"],  // 이 컬럼들은 UPDATE에서 제외
+  inherit: ["created_at", "password"],  // these columns are excluded from UPDATE
 });
 ```
 
-## ubUpsertOrInsert (조건부 모드)
+## ubUpsertOrInsert (Conditional Mode)
 
-upsert 또는 insert 모드를 런타임에 선택합니다.
+Select upsert or insert mode at runtime.
 
 ```typescript
-await trx.ubUpsertOrInsert("logs", "insert");   // INSERT 전용
-await trx.ubUpsertOrInsert("users", "upsert");  // UPSERT (기본)
+await trx.ubUpsertOrInsert("logs", "insert");   // INSERT only
+await trx.ubUpsertOrInsert("users", "upsert");  // UPSERT (default)
 await trx.ubUpsertOrInsert("users", "upsert", { cleanOrphans: "team_id" });
 ```
 
-| 파라미터 | 타입 | 설명 |
+| Parameter | Type | Description |
 |----------|------|------|
-| `tableName` | string | 테이블명 |
-| `mode` | `"upsert"` \| `"insert"` | 동작 모드 |
-| `options` | `UpsertOptions` | chunkSize, cleanOrphans, inherit (ubUpsert와 동일) |
+| `tableName` | string | table name |
+| `mode` | `"upsert"` \| `"insert"` | operation mode |
+| `options` | `UpsertOptions` | chunkSize, cleanOrphans, inherit (same as ubUpsert) |
 
-`mode: "insert"`일 때 `insertOnly`와 달리 `UpsertOptions` (cleanOrphans, inherit)를 사용할 수 있습니다.
+When `mode: "insert"`, unlike `insertOnly`, `UpsertOptions` (cleanOrphans, inherit) can be used.
 
 ## Rules
 

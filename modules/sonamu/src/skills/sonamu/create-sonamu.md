@@ -1,61 +1,61 @@
 ---
 name: create-sonamu
-description: pnpm create sonamu CLI 옵션 레퍼런스. 프로젝트 생성 시 참조.
+description: pnpm create sonamu CLI option reference. Use when creating a new project.
 ---
 
 # create-sonamu CLI
 
-## 기본 사용법
+## Basic Usage
 
 ```bash
-pnpm create sonamu [프로젝트명]
+pnpm create sonamu [project-name]
 ```
 
-## 빠른 생성 (권장)
+## Quick Create (Recommended)
 
-모든 옵션을 기본값으로 사용:
+Use all options with default values:
 
 ```bash
-pnpm create sonamu [프로젝트명] --yes
+pnpm create sonamu [project-name] --yes
 ```
 
-## CLI 옵션
+## CLI Options
 
-### 일반 옵션
+### General Options
 
-| 옵션 | 설명 | 기본값 |
+| Option | Description | Default |
 |------|------|--------|
-| `--yes`, `-y` | 모든 옵션 기본값 사용 | - |
-| `--skip-pnpm` | pnpm install 스킵 | false |
-| `--skip-docker` | Docker 설정 스킵 | false |
-| `--pnpm y/n` | pnpm 설치 여부 | y |
-| `--docker y/n` | Docker 설정 여부 | y |
+| `--yes`, `-y` | Use all options with default values | - |
+| `--skip-pnpm` | Skip pnpm install | false |
+| `--skip-docker` | Skip Docker setup | false |
+| `--pnpm y/n` | Whether to install pnpm | y |
+| `--docker y/n` | Whether to configure Docker | y |
 
-### Docker/DB 옵션
+### Docker/DB Options
 
-| 옵션 | 설명 | 기본값 |
+| Option | Description | Default |
 |------|------|--------|
-| `--docker-project` | Docker 프로젝트명 | `[프로젝트명]-docker` |
-| `--container-name` | 컨테이너명 | `[프로젝트명]-container` |
-| `--db-name` | 데이터베이스명 | `[프로젝트명]` |
-| `--db-user` | DB 사용자 | `postgres` |
-| `--db-password` | DB 비밀번호 | `1234` |
+| `--docker-project` | Docker project name | `[project-name]-docker` |
+| `--container-name` | Container name | `[project-name]-container` |
+| `--db-name` | Database name | `[project-name]` |
+| `--db-user` | DB user | `postgres` |
+| `--db-password` | DB password | `1234` |
 
-## 사용 예시
+## Usage Examples
 
-### 기본값으로 빠르게 생성
+### Quick create with defaults
 
 ```bash
 pnpm create sonamu my_project --yes
 ```
 
-### Docker 없이 생성
+### Create without Docker
 
 ```bash
 pnpm create sonamu my_project --skip-docker
 ```
 
-### DB 설정 커스텀
+### Custom DB configuration
 
 ```bash
 pnpm create sonamu my_project \
@@ -64,7 +64,7 @@ pnpm create sonamu my_project \
   --db-password secret123
 ```
 
-### 전체 커스텀
+### Fully custom
 
 ```bash
 pnpm create sonamu my_project \
@@ -75,10 +75,10 @@ pnpm create sonamu my_project \
   --db-password 1234
 ```
 
-## 생성 후 구조
+## Generated Structure
 
 ```
-[프로젝트명]/
+[project-name]/
 ├── packages/
 │   ├── api/
 │   │   ├── src/
@@ -94,95 +94,95 @@ pnpm create sonamu my_project \
 └── package.json
 ```
 
-## 생성 후 다음 단계
+## Next Steps After Creation
 
-1. DB 컨테이너 실행 (Docker 설정한 경우)
+1. Start the DB container (if Docker was configured)
    ```bash
-   cd [프로젝트명]/packages/api/
+   cd [project-name]/packages/api/
    pnpm docker:up
    ```
-   > 포트 충돌 오류 발생 시 → `database.md` 참조
+   > If a port conflict error occurs → see `database.md`
 
-2. Skills 동기화
+2. Sync Skills
    ```bash
-   cd [프로젝트명]/packages/api
+   cd [project-name]/packages/api
    pnpm sonamu skills sync
    ```
-   > sonamu가 npm 버전이면 실패함. 아래 "Sonamu 링크 설정" 참조
+   > Will fail if sonamu is an npm version. See "Sonamu Link Setup" below.
 
-3. 개발 서버 실행
+3. Start the dev server
    ```bash
-   cd [프로젝트명]/packages/api
+   cd [project-name]/packages/api
    pnpm dev
    ```
 
-4. Entity 설계 진행 → `entity-basic.md` 참조
+4. Proceed to Entity design → see `entity-basic.md`
 
-## Sonamu 링크 설정
+## Sonamu Link Setup
 
-**Skills 동기화는 sonamu가 로컬 링크로 참조되어야 동작합니다.**
+**Skills sync only works when sonamu is referenced as a local link.**
 
-### 확인 방법
+### How to check
 
-`packages/api/package.json`에서 sonamu 의존성 확인:
+Check the sonamu dependency in `packages/api/package.json`:
 
 ```json
-// ✓ 링크 참조 (Skills 동기화 가능)
+// ✓ Link reference (Skills sync possible)
 "sonamu": "link:/path/to/sonamu/modules/sonamu"
 
-// ✗ npm 버전 (Skills 동기화 불가)
+// ✗ npm version (Skills sync not available)
 "sonamu": "^0.7.47"
 ```
 
-### 링크로 변경하는 방법
+### How to change to a link
 
-1. `packages/api/package.json`에서 sonamu 버전을 링크로 변경:
+1. Change the sonamu version to a link in `packages/api/package.json`:
    ```json
    "dependencies": {
      "sonamu": "link:/path/to/sonamu/modules/sonamu"
    }
    ```
 
-2. `pnpm install` 실행
+2. Run `pnpm install`
 
-3. `pnpm sonamu skills sync` 다시 실행
+3. Run `pnpm sonamu skills sync` again
 
-### 링크 경로 예시
+### Link path examples
 
-| sonamu 위치 | 링크 경로 |
+| sonamu location | Link path |
 |------------|----------|
 | `~/Development/sonamu` | `link:~/Development/sonamu/modules/sonamu` |
-| 프로젝트와 같은 디렉토리 | `link:../../sonamu/modules/sonamu` |
+| Same directory as project | `link:../../sonamu/modules/sonamu` |
 
-## 프로젝트명 변경 (신규 프로젝트 생성 시)
+## Renaming the Project (when creating a new project)
 
-프로젝트 생성 후, 프론트엔드의 "Sonamu" 텍스트를 프로젝트명으로 변경해야 합니다.
+After generating the project, you need to replace the "Sonamu" text in the frontend with your project name.
 
-**변경해야 할 파일 4개:**
+**4 files to update:**
 
-1. **`packages/web/index.html`** - 브라우저 탭 제목
+1. **`packages/web/index.html`** - Browser tab title
 ```html
-<title>{프로젝트명}</title>
+<title>{project-name}</title>
 ```
 
-2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head 설정 (가장 중요!)
+2. **`packages/web/src/routes/__root.tsx`** - TanStack Router head configuration (most important!)
 ```typescript
 head: () => ({
-  meta: [{ title: "{프로젝트명}" }],
+  meta: [{ title: "{project-name}" }],
 }),
 ```
-**중요:** `__root.tsx`를 변경하지 않으면 HMR 시 title이 "Sonamu"로 되돌아갑니다!
+**Important:** If you don't update `__root.tsx`, the title will revert to "Sonamu" on HMR!
 
-3. **`packages/web/src/routes/index.tsx`** - 메인 페이지 제목
+3. **`packages/web/src/routes/index.tsx`** - Main page title
 ```tsx
-<h1 className="text-2xl font-bold mb-4">Welcome to {프로젝트명}</h1>
+<h1 className="text-2xl font-bold mb-4">Welcome to {project-name}</h1>
 ```
 
-4. **`packages/web/src/components/Sidebar.tsx`** - 사이드바 앱 이름
+4. **`packages/web/src/components/Sidebar.tsx`** - Sidebar app name
 ```typescript
-const title = isAdmin ? "Admin" : "{프로젝트명}";
+const title = isAdmin ? "Admin" : "{project-name}";
 ```
 
-**확인 방법:**
-- 브라우저 탭에 프로젝트명이 표시되는지 확인
-- 파일 저장 시 HMR로 탭 제목이 변경되지 않는지 확인 (변경되면 `__root.tsx` 누락)
+**How to verify:**
+- Check that the project name is shown in the browser tab
+- Confirm that the tab title does not change on file save via HMR (if it does, `__root.tsx` is missing)

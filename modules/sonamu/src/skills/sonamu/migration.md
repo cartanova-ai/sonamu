@@ -1,51 +1,51 @@
 ---
 name: sonamu-migration
-description: Sonamu 데이터베이스 마이그레이션. CREATE/ALTER TABLE, FK 순서, up/down 함수. Use when modifying database schema.
+description: Sonamu database migration. CREATE/ALTER TABLE, FK ordering, up/down functions. Use when modifying database schema.
 ---
 
 # Migration
 
-## CRITICAL: Migration은 Sonamu UI 또는 CLI로 생성한다
+## CRITICAL: Migrations are generated via Sonamu UI or CLI
 
-**Migration 파일을 직접 작성하거나 SQL을 직접 실행하지 않는다.** Sonamu가 entity.json 변경사항을 감지하여 정확한 migration 파일을 생성해준다.
+**Do not write migration files manually or execute SQL directly.** Sonamu detects entity.json changes and generates accurate migration files.
 
-**사전 준비:**
-- `/packages/api`에서 `pnpm dev` 실행 중이어야 함
+**Prerequisites:**
+- `pnpm dev` must be running in `/packages/api`
 
-**방법 1: Sonamu UI (사용자에게 확인 후 선택)**
-1. 브라우저에서 Sonamu UI 접속: `http://localhost:34900/sonamu-ui`
-2. Migration 메뉴에서 prepared 리스트 확인
-3. "Generate" 버튼으로 migration 파일 생성
-4. "Apply" 버튼으로 실제 DB에 적용
+**Method 1: Sonamu UI (confirm with user before choosing)**
+1. Open Sonamu UI in browser: `http://localhost:34900/sonamu-ui`
+2. Check the prepared list in the Migration menu
+3. Generate a migration file with the "Generate" button
+4. Apply to the actual DB with the "Apply" button
 
-**방법 2: CLI**
+**Method 2: CLI**
 ```bash
 cd packages/api
-pnpm sonamu migrate generate   # migration 파일 생성
-pnpm sonamu migrate run         # 실제 DB에 적용
+pnpm sonamu migrate generate   # Generate migration file
+pnpm sonamu migrate run         # Apply to actual DB
 ```
 
-**CRITICAL: 사용자에게 UI와 CLI 중 어떤 방식으로 진행할지 물어본 후 진행한다.**
+**CRITICAL: Ask the user whether to proceed with UI or CLI before starting.**
 
 **DO NOT:**
-- Migration 파일을 수동으로 작성
-- `CREATE TABLE`, `ALTER TABLE` 등 SQL을 직접 실행
+- Write migration files manually
+- Execute SQL directly (`CREATE TABLE`, `ALTER TABLE`, etc.)
 
-**예외:** PK 타입 변경 등 Sonamu가 자동 처리할 수 없는 특수 케이스만 raw SQL 허용 (아래 "PK 타입 변경" 섹션 참조)
+**Exception:** Only raw SQL is allowed for special cases that Sonamu cannot handle automatically, such as PK type changes (see "PK Type Change" section below)
 
-**CRITICAL: Cross-table 연쇄 변경은 단일 파일로 처리한다.** FK drop → 타입 변경 → FK restore처럼 여러 테이블에 걸친 연쇄 변경은 반드시 하나의 migration 파일 안에서 순서대로 실행해야 한다. 파일을 나누면 중간 상태에서 constraint 위반이 발생한다. (상세: 아래 "PK 타입 변경" 섹션 참조)
+**CRITICAL: Handle cross-table cascading changes in a single file.** Cascading changes across multiple tables — such as FK drop → type change → FK restore — must be executed in order within a single migration file. Splitting into separate files causes constraint violations in intermediate states. (Details: see "PK Type Change" section below)
 
-## 기본 구조
+## Basic Structure
 
 ```typescript
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  // 변경 적용
+  // Apply changes
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // 변경 롤백
+  // Rollback changes
 }
 ```
 
@@ -71,14 +71,14 @@ export async function down(knex: Knex): Promise<void> {
 ## ALTER TABLE
 
 ```typescript
-// 컬럼 추가
+// Add column
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.string("phone", 20).nullable();
   });
 }
 
-// 컬럼 삭제
+// Drop column
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.dropColumns("phone");
@@ -104,100 +104,100 @@ export async function down(knex: Knex): Promise<void> {
 }
 ```
 
-## PK 타입 변경
+## PK Type Change
 
-### 상황
-기존 테이블의 PK 타입을 변경해야 하는 경우 (예: integer -> text, bigint -> uuid 등). 해당 PK를 참조하는 FK들이 여러 테이블에 존재하는 상황.
+### Situation
+When the PK type of an existing table must be changed (e.g. integer -> text, bigint -> uuid), with FKs referencing that PK in multiple tables.
 
-### 필수 순서
+### Required Order
 
-참조 무결성이 있는 컬럼(FK가 참조하는 PK)의 타입을 변경할 때는 반드시 다음 순서를 따라야 함:
+When changing the type of a column that has referential integrity (a PK referenced by FKs), the following order must be followed:
 
 ```typescript
 export async function up(knex: Knex): Promise<void> {
-  // 1단계: 해당 PK를 참조하는 모든 FK constraint DROP
+  // Step 1: DROP all FK constraints referencing this PK
   await knex.raw('ALTER TABLE "child_table_1" DROP CONSTRAINT "child_table_1_parent_id_foreign"');
   await knex.raw('ALTER TABLE "child_table_2" DROP CONSTRAINT "child_table_2_parent_id_foreign"');
 
-  // 2단계: PK constraint DROP
+  // Step 2: DROP the PK constraint
   await knex.raw('ALTER TABLE "parent_table" DROP CONSTRAINT "parent_table_pkey"');
 
-  // 3단계: PK 컬럼과 모든 FK 컬럼의 타입을 동시에 변경
+  // Step 3: Change types of the PK column and all FK columns simultaneously
   await knex.raw('ALTER TABLE "parent_table" ALTER COLUMN "id" TYPE new_type USING "id"::new_type');
   await knex.raw('ALTER TABLE "child_table_1" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
   await knex.raw('ALTER TABLE "child_table_2" ALTER COLUMN "parent_id" TYPE new_type USING "parent_id"::new_type');
 
-  // 4단계: PK constraint ADD
+  // Step 4: ADD the PK constraint
   await knex.raw('ALTER TABLE "parent_table" ADD CONSTRAINT "parent_table_pkey" PRIMARY KEY ("id")');
 
-  // 5단계: 모든 FK constraint ADD
+  // Step 5: ADD all FK constraints
   await knex.raw('ALTER TABLE "child_table_1" ADD CONSTRAINT "child_table_1_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
   await knex.raw('ALTER TABLE "child_table_2" ADD CONSTRAINT "child_table_2_parent_id_foreign" FOREIGN KEY ("parent_id") REFERENCES "parent_table"("id") ON UPDATE RESTRICT ON DELETE RESTRICT');
 }
 ```
 
-### 핵심 원칙
+### Core Principles
 
-1. **FK constraint가 존재하는 상태에서는 참조 컬럼 타입 변경 불가**: PostgreSQL은 FK와 참조되는 PK의 타입이 일치하지 않으면 에러 발생. 반드시 constraint를 먼저 제거해야 함.
+1. **Cannot change the type of a referenced column while FK constraints exist**: PostgreSQL throws an error if the types of the FK and referenced PK do not match. Constraints must be removed first.
 
-2. **하나의 migration에서 모든 변경 처리**: 여러 migration으로 나누면 중간 상태에서 constraint 위반. PK와 모든 FK의 타입 변경을 한 번에 수행.
+2. **Handle all changes in a single migration**: Splitting into multiple migrations causes constraint violations in intermediate states. Change the types of the PK and all FKs in one go.
 
-3. **knex schema builder 대신 raw SQL 사용 권장**: 명확한 실행 순서 보장, constraint 이름 명시 가능, 복잡한 타입 변환(USING) 지원.
+3. **Prefer raw SQL over the knex schema builder**: Guarantees clear execution order, allows explicit constraint naming, and supports complex type conversions (USING).
 
-### 실제 예시: users.id integer -> text
+### Real Example: users.id integer -> text
 
 ```typescript
 export async function up(knex: Knex): Promise<void> {
-  // 1. FK 제약조건 제거
+  // 1. Remove FK constraints
   await knex.raw('ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"');
   await knex.raw('ALTER TABLE "sessions" DROP CONSTRAINT "sessions_user_id_foreign"');
 
-  // 2. PK 제약조건 제거
+  // 2. Remove PK constraint
   await knex.raw('ALTER TABLE "users" DROP CONSTRAINT "users_pkey"');
 
-  // 3. 타입 변경 (USING 절로 변환 명시)
+  // 3. Change types (explicit conversion with USING clause)
   await knex.raw('ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text');
   await knex.raw('ALTER TABLE "accounts" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
   await knex.raw('ALTER TABLE "sessions" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
 
-  // 4. PK 제약조건 복구
+  // 4. Restore PK constraint
   await knex.raw('ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")');
 
-  // 5. FK 제약조건 복구
+  // 5. Restore FK constraints
   await knex.raw('ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
   await knex.raw('ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT ON DELETE CASCADE');
 }
 ```
 
-### FK 참조 테이블 찾기
+### Finding FK Reference Tables
 
 ```bash
-# Entity에서 특정 엔티티를 참조하는 relation 찾기
+# Find relations referencing a specific entity in entity files
 grep -r "with.*User" --include="*.entity.json"
 ```
 
-### 흔한 실수
+### Common Mistakes
 
-1. **여러 migration으로 분리**: FK drop, 타입 변경, FK restore를 별도 파일로 나누면 첫 번째 파일 apply 직후 constraint 위반. 관련 변경은 항상 단일 파일로 통합할 것.
+1. **Splitting into multiple migrations**: Separating FK drop, type change, and FK restore into separate files causes a constraint violation immediately after the first file is applied. Always consolidate related changes into a single file.
 
-2. **constraint 제거 없이 타입 변경**: `cannot alter type of a column used by a foreign key` 에러 발생
+2. **Changing type without removing constraint**: Causes `cannot alter type of a column used by a foreign key` error
 
-3. **USING 절 누락**: `column "id" cannot be cast automatically to type text` 에러 발생. integer -> text는 `USING "id"::text` 필수.
+3. **Missing USING clause**: Causes `column "id" cannot be cast automatically to type text` error. `USING "id"::text` is required for integer -> text.
 
-4. **constraint 이름 불일치**: `SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'accounts'`로 정확한 constraint 이름 확인 필요.
+4. **Constraint name mismatch**: Verify the exact constraint name with `SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'accounts'`.
 
-## 명령어
+## Commands
 
-**`packages/api`** 디렉토리에서 실행:
+Run from the **`packages/api`** directory:
 
 ```bash
 cd packages/api
-pnpm sonamu migrate run      # 로컬 DB에 모든 Migration 실행
-pnpm sonamu migrate status   # 상태 확인
-pnpm sonamu migrate apply    # 특정 DB 설정 대상으로 적용
+pnpm sonamu migrate run      # Run all pending migrations on local DB
+pnpm sonamu migrate status   # Check migration status
+pnpm sonamu migrate apply    # Apply to a specific DB configuration target
 ```
 
-**주의**: `migrate up`, `migrate rollback`은 CLI에서 제공하지 않음. Sonamu UI에서 롤백 가능.
+**Note**: `migrate up` and `migrate rollback` are not provided in the CLI. Rollback is available from Sonamu UI.
 
 ## Entity Type → DB Type
 
@@ -223,13 +223,13 @@ pnpm sonamu migrate apply    # 특정 DB 설정 대상으로 적용
 | `vector[]` | `vector(n)[]` | `table.specificType(name, 'vector(n)[]')` |
 | `tsvector` | `tsvector` | `table.specificType(name, 'tsvector')` |
 
-## 실행 순서 (중요!)
+## Execution Order (Important!)
 
 ```
-1. CREATE TABLE companies       (의존성 없음)
-2. CREATE TABLE departments     (company_id 컬럼만)
-3. CREATE TABLE users           (의존성 없음)
-4. CREATE TABLE employees       (user_id, department_id 컬럼만)
+1. CREATE TABLE companies       (no dependencies)
+2. CREATE TABLE departments     (company_id column only)
+3. CREATE TABLE users           (no dependencies)
+4. CREATE TABLE employees       (user_id, department_id columns only)
 5. FOREIGN KEY departments      (company_id → companies.id)
 6. FOREIGN KEY employees        (user_id → users.id, etc.)
 ```
@@ -244,50 +244,50 @@ pnpm sonamu migrate apply    # 특정 DB 설정 대상으로 적용
 
 ### 1. MUST Build dist First
 
-sync 명령은 `dist/sonamu.config.js`를 참조합니다. 없으면 오류 발생.
+The sync command references `dist/sonamu.config.js`. An error will occur if it does not exist.
 
 ```bash
 cd packages/api
 npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
 ```
 
-### 2. DB 연결 확인
+### 2. Verify DB Connection
 
 ```bash
-# Docker 컨테이너 확인
+# Check Docker containers
 docker ps | grep container
 
-# sonamu.config.ts에서 DB 설정 확인
+# Check DB configuration in sonamu.config.ts
 # - host, port, database, user, password
-# - PostgreSQL vs MySQL 구분
+# - Distinguish PostgreSQL vs MySQL
 ```
 
-### 3. 순환 참조 시
+### 3. Circular References
 
-마이그레이션을 분리하거나, FK를 nullable로 설정 후 나중에 추가.
+Split the migration, or set the FK to nullable and add it later.
 
-## 전체 워크플로우
+## Full Workflow
 
 ```bash
 cd packages/api
 
-# 1. config 빌드
+# 1. Build config
 npx swc src/sonamu.config.ts -o dist/sonamu.config.js --config-file .swcrc
 
-# 2. sync 실행
+# 2. Run sync
 pnpm sonamu sync
 
-# 3. Sonamu UI에서 마이그레이션 생성/실행
+# 3. Generate/run migration from Sonamu UI
 
-# 4. 스캐폴딩 실행
+# 4. Run scaffolding
 
-# 5. model orderBy 케이스 확인/추가 (model.md 참조)
+# 5. Check/add orderBy cases in model (see model.md)
 
-# 6. API 빌드
+# 6. Build API
 npm run build
 
-# 7. Web form 확인/수정 (frontend.md 참조)
+# 7. Check/fix web form (see frontend.md)
 
-# 8. Web 빌드
+# 8. Build web
 cd ../web && npm run build
 ```
