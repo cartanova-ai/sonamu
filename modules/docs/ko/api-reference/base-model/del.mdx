@@ -65,21 +65,21 @@ await UserModel.del([]);
 
 **타입:** `Promise<number>`
 
-삭제된 레코드의 개수를 반환합니다.
+전달한 ID 배열의 길이(`ids.length`)를 반환합니다. DB에서 실제로 삭제된 행 수가 아니라, 삭제를 요청한 ID의 개수입니다.
 
 ```typescript
-// 3개 삭제
+// 3개의 ID를 전달
 const count = await UserModel.del([1, 2, 3]);
-console.log(`${count} users deleted`);  // "3 users deleted"
+console.log(`${count} users requested`);  // "3 users requested"
 
-// 존재하지 않는 ID 포함
+// 존재하지 않는 ID 포함 - 반환값은 여전히 ids.length
 const count = await UserModel.del([1, 999, 1000]);
-console.log(`${count} users deleted`);  // "1 users deleted" (1번만 존재)
+console.log(`${count} ids passed`);  // "3 ids passed" (ID 999, 1000이 DB에 없어도 3)
 ```
 
-<Info>
-존재하지 않는 ID는 무시되며 에러를 발생시키지 않습니다.
-</Info>
+<Warning>
+반환값은 DB에서 실제로 삭제된 행 수가 아닙니다. 존재하지 않는 ID가 포함되어 있어도 에러를 발생시키지 않으며, 반환값은 항상 `ids.length`입니다.
+</Warning>
 
 ## 기본 사용법
 
@@ -90,12 +90,10 @@ import { UserModel } from "./user/user.model";
 
 class UserService {
   async deleteUser(userId: number) {
-    const count = await UserModel.del([userId]);
-    
-    if (count === 0) {
-      throw new Error("User not found");
-    }
-    
+    // del()은 ids.length를 반환하므로, 존재 여부는 별도로 확인합니다.
+    await UserModel.findById("A", userId); // 미존재 시 NotFoundException
+    await UserModel.del([userId]);
+
     return { success: true };
   }
 }
@@ -541,20 +539,13 @@ async deleteUserWithPosts(userId: number) {
 
 ```typescript
 async deleteUserSafely(userId: number) {
-  // 사용자 존재 확인
-  try {
-    await UserModel.findById("A", userId);
-  } catch (error) {
-    if (error instanceof NotFoundException) {
-      throw new BadRequestException("사용자를 찾을 수 없습니다");
-    }
-    throw error;
-  }
-  
+  // 사용자 존재 확인 (미존재 시 NotFoundException)
+  await UserModel.findById("A", userId);
+
   // 삭제
-  const count = await UserModel.del([userId]);
-  
-  return { success: count > 0 };
+  await UserModel.del([userId]);
+
+  return { success: true };
 }
 ```
 
@@ -619,11 +610,11 @@ await UserModel.del(123);
 await UserModel.del([123]);
 ```
 
-### 2. 반환값은 개수
+### 2. 반환값은 ids.length
 
 ```typescript
 const count = await UserModel.del([1, 2, 3]);
-console.log(count);  // 3 (또는 실제 삭제된 개수)
+console.log(count);  // 3 (전달한 ID 배열의 길이)
 ```
 
 ### 3. CASCADE 주의

@@ -65,21 +65,21 @@ await UserModel.del([]);
 
 **Type:** `Promise<number>`
 
-Returns the count of deleted records.
+Returns the length of the passed ID array (`ids.length`). This is not the number of rows actually deleted from the database.
 
 ```typescript
-// Delete 3 records
+// Pass 3 IDs
 const count = await UserModel.del([1, 2, 3]);
-console.log(`${count} users deleted`);  // "3 users deleted"
+console.log(`${count} ids requested`);  // "3 ids requested"
 
-// Including non-existent IDs
+// Including non-existent IDs - return value is still ids.length
 const count = await UserModel.del([1, 999, 1000]);
-console.log(`${count} users deleted`);  // "1 users deleted" (only ID 1 exists)
+console.log(`${count} ids passed`);  // "3 ids passed" (3 even though IDs 999, 1000 don't exist)
 ```
 
-<Info>
-Non-existent IDs are ignored and don't throw errors.
-</Info>
+<Warning>
+The return value is not the number of rows actually deleted from the database. Non-existent IDs are silently ignored without errors, and the return value is always `ids.length`.
+</Warning>
 
 ## Basic Usage
 
@@ -90,11 +90,9 @@ import { UserModel } from "./user/user.model";
 
 class UserService {
   async deleteUser(userId: number) {
-    const count = await UserModel.del([userId]);
-
-    if (count === 0) {
-      throw new Error("User not found");
-    }
+    // del() returns ids.length, so check existence separately.
+    await UserModel.findById("A", userId); // throws NotFoundException if not found
+    await UserModel.del([userId]);
 
     return { success: true };
   }
@@ -541,20 +539,13 @@ async deleteUserWithPosts(userId: number) {
 
 ```typescript
 async deleteUserSafely(userId: number) {
-  // Check user exists
-  try {
-    await UserModel.findById("A", userId);
-  } catch (error) {
-    if (error instanceof NotFoundException) {
-      throw new BadRequestException("User not found");
-    }
-    throw error;
-  }
+  // Check existence (throws NotFoundException if not found)
+  await UserModel.findById("A", userId);
 
   // Delete
-  const count = await UserModel.del([userId]);
+  await UserModel.del([userId]);
 
-  return { success: count > 0 };
+  return { success: true };
 }
 ```
 
@@ -619,11 +610,11 @@ await UserModel.del(123);
 await UserModel.del([123]);
 ```
 
-### 2. Return Value is Count
+### 2. Return Value is ids.length
 
 ```typescript
 const count = await UserModel.del([1, 2, 3]);
-console.log(count);  // 3 (or actual deleted count)
+console.log(count);  // 3 (length of passed ID array)
 ```
 
 ### 3. CASCADE Caution
