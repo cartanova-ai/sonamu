@@ -159,6 +159,7 @@ async function bootstrap() {
         ["fixture", "explore"],
         ["migrate", "run"],
         ["migrate", "apply", "#targets"],
+        ["migrate", "generate"],
         ["migrate", "status"],
         ["stub", "practice", "#name"],
         ["stub", "entity", "#name"],
@@ -185,6 +186,7 @@ async function bootstrap() {
         migrate_status,
         migrate_run,
         migrate_apply,
+        migrate_generate,
         fixture_init,
         fixture_import,
         fixture_sync,
@@ -544,6 +546,31 @@ async function migrate_run() {
 
   // 로컬 데이터베이스에 대해서만 전체 마이그레이션에서 동작
   await migrator.runAction("apply", targets as (keyof SonamuDBConfig)[]);
+}
+
+async function migrate_generate() {
+  await setupMigrator();
+
+  const { conns } = await migrator.getStatus();
+  const hasStatus0 = conns.some((conn) => conn.status === 0);
+  if (!hasStatus0) {
+    console.log(
+      chalk.red(
+        "마이그레이션 파일을 생성하려면 기존 마이그레이션이 최소 하나의 DB에 모두 적용되어 있어야 합니다.",
+      ),
+    );
+    for (const conn of conns) {
+      if (conn.pending.length > 0) {
+        console.log(chalk.yellow(`  ${conn.name}: pending ${conn.pending.length}개`));
+      }
+    }
+    process.exit(1);
+  }
+
+  const count = await migrator.generatePreparedCodes();
+  if (count > 0) {
+    console.log(chalk.green(`${count}개의 마이그레이션 파일이 생성되었습니다.`));
+  }
 }
 
 async function migrate_status() {
