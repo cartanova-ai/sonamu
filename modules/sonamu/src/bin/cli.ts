@@ -5,7 +5,7 @@ dotenv.config();
 
 import assert from "assert";
 import { execSync, spawn } from "child_process";
-import { cp, lstat, mkdir, readdir, readFile, readlink, rm, symlink, writeFile } from "fs/promises";
+import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import os from "os";
@@ -179,8 +179,6 @@ async function bootstrap() {
         ["start"],
         ["skills", "sync"],
         ["skills", "create", "#name"],
-        ["agents", "init"],
-        ["agents", "sync"],
         ["test"],
         ["auth", "generate"],
         ["auth", "add-companions"],
@@ -212,8 +210,6 @@ async function bootstrap() {
         start,
         skills_sync,
         skills_create,
-        agents_init,
-        agents_sync,
         test: testCommand,
         auth_generate,
         "auth_add-companions": auth_add_companions,
@@ -1275,178 +1271,6 @@ status: draft
 
   await writeFile(filePath, template);
   console.log(chalk.green(`✓ Created .claude/skills/local/${sanitized}.md`));
-}
-
-/**
- * pnpm sonamu agents init 하면 실행되는 함수입니다.
- * CDD 에이전트 워크플로우를 프로젝트에 최초 설정합니다.
- *
- * --force: 이미 존재하는 파일도 덮어씁니다.
- */
-async function agents_init() {
-  const { flags } = parseCliOptions();
-  const force = flags.has("force");
-
-  const workspaceRoot = await findWorkspaceRoot();
-  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "agents");
-
-  if (!(await exists(sourceBase))) {
-    console.error(chalk.red("✗ Agents source not found in sonamu package."));
-    return;
-  }
-
-  const agentsDir = path.join(workspaceRoot, ".agents");
-  const agentsMd = path.join(workspaceRoot, "AGENTS.md");
-  const claudeLink = path.join(workspaceRoot, ".claude");
-  const claudeMdLink = path.join(workspaceRoot, "CLAUDE.md");
-
-  if ((await exists(agentsDir)) && !force) {
-    console.log(chalk.dim("⏭ .agents/ already exists (preserved). Use --force to overwrite."));
-  } else {
-    if (force) {
-      await rm(agentsDir, { recursive: true, force: true });
-    }
-    await cp(sourceBase, agentsDir, { recursive: true });
-    // AGENTS.md.template → .agents/AGENTS.md.template 로 복사됨.
-    // 실제 루트 AGENTS.md는 아래에서 별도 생성
-    await rm(path.join(agentsDir, "AGENTS.md.template"), { force: true });
-    console.log(chalk.green("✓ .agents/ created"));
-  }
-
-  // 루트 AGENTS.md: 없을 때만 생성
-  if (!(await exists(agentsMd))) {
-    const templatePath = path.join(sourceBase, "AGENTS.md.template");
-    if (!(await exists(templatePath))) {
-      console.error(chalk.red("✗ AGENTS.md.template not found in sonamu package."));
-      return;
-    }
-    const templateContent = await readFile(templatePath, "utf-8");
-
-    // package.json에서 프로젝트 이름 읽기 (있으면 주석으로 삽입)
-    let projectName = "";
-    const pkgPath = path.join(workspaceRoot, "package.json");
-    if (await exists(pkgPath)) {
-      try {
-        const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-        projectName = pkg.name ?? "";
-      } catch {
-        // 무시
-      }
-    }
-
-    const header = projectName ? `# ${projectName} — Agent Instructions\n\n` : "";
-    await writeFile(agentsMd, `${header}${templateContent}`);
-    console.log(chalk.green("✓ AGENTS.md created"));
-  } else {
-    console.log(chalk.dim("⏭ AGENTS.md already exists (preserved)"));
-  }
-
-  // .claude/ → .agents/ 심링크
-  await ensureSymlink(claudeLink, ".agents", force);
-
-  // CLAUDE.md → AGENTS.md 심링크
-  await ensureSymlink(claudeMdLink, "AGENTS.md", force);
-
-  console.log(chalk.cyan("\n  agents init complete."));
-  console.log(chalk.dim("  Run 'pnpm sonamu skills sync' first if you haven't already."));
-  console.log(chalk.dim("  Then use /cdd slash command to start CDD workflow."));
-}
-
-/**
- * pnpm sonamu agents sync 하면 실행되는 함수입니다.
- * .agents/ 내 워크플로우/에이전트 파일을 최신 sonamu 소스로 업데이트합니다.
- * AGENTS.md와 프로젝트 커스텀 파일은 보존됩니다.
- *
- * --dry-run: 실제 변경 없이 변경 대상 파일만 출력합니다.
- */
-async function agents_sync() {
-  const { flags } = parseCliOptions();
-  const dryRun = flags.has("dry-run");
-
-  const workspaceRoot = await findWorkspaceRoot();
-  const sourceBase = path.resolve(import.meta.dirname, "..", "..", "src", "agents");
-
-  if (!(await exists(sourceBase))) {
-    console.error(chalk.red("✗ Agents source not found in sonamu package."));
-    return;
-  }
-
-  const agentsDir = path.join(workspaceRoot, ".agents");
-  if (!(await exists(agentsDir))) {
-    console.log(chalk.yellow("⚠ .agents/ not found. Run 'pnpm sonamu agents init' first."));
-    return;
-  }
-
-  // sonamu가 소유하는 디렉토리만 업데이트 (AGENTS.md는 프로젝트 소유이므로 제외)
-  const syncTargets = ["agents", "workflow", "skills"];
-  let updatedCount = 0;
-
-  for (const target of syncTargets) {
-    const src = path.join(sourceBase, target);
-    const dest = path.join(agentsDir, target);
-
-    if (!(await exists(src))) {
-      console.log(
-        chalk.yellow(`⚠ .agents/${target}/ skipped (source not found in sonamu package)`),
-      );
-      continue;
-    }
-
-    if (dryRun) {
-      console.log(chalk.dim(`  [dry-run] would update .agents/${target}/`));
-      updatedCount++;
-      continue;
-    }
-
-    await rm(dest, { recursive: true, force: true });
-    await cp(src, dest, { recursive: true });
-    console.log(chalk.green(`✓ .agents/${target}/ updated`));
-    updatedCount++;
-  }
-
-  if (dryRun) {
-    console.log(chalk.cyan(`\n  [dry-run] ${updatedCount} directories would be updated.`));
-  } else {
-    console.log(chalk.cyan(`\n  agents sync complete. ${updatedCount} directories updated.`));
-  }
-}
-
-/**
- * 심링크를 생성하는 내부 헬퍼입니다.
- * 이미 올바른 대상을 가리키는 심링크가 있으면 스킵합니다.
- * 잘못된 대상을 가리키거나 force가 true이면 재생성합니다.
- */
-async function ensureSymlink(linkPath: string, target: string, force = false) {
-  const name = path.basename(linkPath);
-  try {
-    const stat = await lstat(linkPath);
-    if (stat.isSymbolicLink()) {
-      const current = await readlink(linkPath);
-      if (current === target && !force) {
-        console.log(chalk.dim(`⏭ ${name} symlink already exists (preserved)`));
-        return;
-      }
-      // 대상이 다르거나 --force: 제거 후 재생성
-      await rm(linkPath, { force: true });
-    } else {
-      // 심링크가 아닌 파일/디렉토리가 있으면 스킵 (force여도 덮어쓰지 않음)
-      console.log(chalk.dim(`⏭ ${name} already exists (not a symlink, preserved)`));
-      return;
-    }
-  } catch {
-    // 존재하지 않으면 그대로 생성
-  }
-
-  try {
-    await symlink(target, linkPath);
-    console.log(chalk.green(`✓ ${name} → ${target} symlink created`));
-  } catch (error) {
-    console.log(
-      chalk.yellow(
-        `⚠ Failed to create ${name} symlink: ${error instanceof Error ? error.message : String(error)}`,
-      ),
-    );
-  }
 }
 
 /**
