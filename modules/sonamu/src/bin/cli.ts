@@ -75,9 +75,7 @@ function parseCliOptions(argv: string[] = process.argv): {
 }
 
 async function bootstrap() {
-  const notToInit = ["dev", "build", "start", "skills", "agents", "test"].includes(
-    process.argv[2] ?? "",
-  );
+  const notToInit = ["dev", "build", "start", "skills", "test"].includes(process.argv[2] ?? "");
   if (!notToInit) {
     await Sonamu.init(false, false);
   }
