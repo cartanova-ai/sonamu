@@ -1,6 +1,8 @@
 # CDD Orchestrator Protocol
 
-The main agent reads this document and assumes the orchestrator role.
+Follow `00_shared_contract.md` and `01_cdd.md` first.
+
+The main agent reads this document and assumes the orchestrator role. This is NOT a spawnable sub-agent.
 
 ## Main-session boundary
 
@@ -12,35 +14,46 @@ What the orchestrator CAN do:
 - Delegate planning to `cdd-planner`
 - Create/manage Claims (`tmp/claims/`)
 - Spawn workers (Agent tool or TeamCreate)
+- Update contract documents (with user confirmation only)
 - Communicate with the user
-
-## Execution mode
-
-Determined at bootstrap, before any work begins.
-
-- If `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set: **team mode** (default).
-- If `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is NOT set: **sub-agent mode** (only option).
-- The user may explicitly request either mode, overriding the default.
-
-### Team mode
-
-The orchestrator creates the team at CDD start via `TeamCreate` with reusable workers (`cdd-planner`, `cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). Workers persist for the entire CDD session and are reused across multiple feature implementations. Do not terminate workers after individual task completion.
-
-### Sub-agent mode
-
-Workers are spawned on-demand via the `Agent` tool. Results pass only through the orchestrator. Workers cannot communicate with each other.
 
 ## Bootstrap
 
-Bootstrap is mandatory and must complete before any planning or implementation work.
+Bootstrap is mandatory and must complete before any planning or implementation work. The output is `bootstrap_context`.
 
-1. Read `cdd.md` and this document.
+### Procedure
+
+1. Read `00_shared_contract.md`, `01_cdd.md`, and this document.
 2. Determine execution mode:
    - Check `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` environment variable.
    - Set -> team mode. Unset/empty -> sub-agent mode.
-3. **If team mode**: create the team via `TeamCreate` with all five worker agents (`cdd-planner`, `cdd-surface-scaffolder`, `cdd-test-writer`, `cdd-implementer`, `cdd-reviewer`). Confirm creation succeeded.
-4. Report bootstrap result to user: execution mode, team members (if applicable).
-5. Proceed to step 1 (Planner handoff). Do not start planning until bootstrap is complete.
+3. Identify scope from the user request:
+   - Scope in: what this CDD cycle will deliver.
+   - Scope out / non-goals: what is explicitly excluded.
+   - Affected contract files (`contract/**/*.contract.md`).
+   - Affected Rules files (`contract/rules/*.rules.json`).
+   - Unresolved questions: anything that blocks planning.
+4. Resolve unresolved questions with the user. Do not proceed until count is 0.
+5. **If team mode**: create the team via `TeamCreate` with all five worker agents. Confirm creation succeeded.
+6. Produce `bootstrap_context` and report to user.
+
+### `bootstrap_context` schema
+
+```yaml
+bootstrap_context:
+  user_request: "original request verbatim"
+  scope_in:
+    - "deliverable 1"
+    - "deliverable 2"
+  scope_out:
+    - "non-goal 1"
+  affected_contracts:
+    - "contract/main.contract.md"
+  affected_rules:
+    - "contract/rules/api.rules.json"
+  execution_mode: "team|sub-agent"
+  unresolved_questions: []  # must be empty before proceeding
+```
 
 ## 1. Planner handoff
 
@@ -48,11 +61,11 @@ Bootstrap is mandatory and must complete before any planning or implementation w
    - Team mode: assign the planning task to `cdd-planner`.
    - Sub-agent mode: spawn `cdd-planner`.
 2. Provide the planner with:
-   - user request
-   - relevant contract files
-   - applicable Rules files
+   - `bootstrap_context`
+   - relevant contract file contents
+   - applicable Rules file contents
    - relevant code/test context
-   - current AC state if available
+   - current AC state if available (`pnpm cdd ac list`)
 3. Receive `plan_document`, `claim_blueprint`, and `execution_graph`.
 4. Validate that the planner output is internally consistent and matches current contract + code.
 5. Present the plan to the user.
@@ -96,7 +109,7 @@ Worker mapping (same for both modes):
 5. Review completed implement Claims with `cdd-reviewer` using `review_scope: unit` and `stage: implement`.
 6. If both stage reviews are clean, run `cdd-reviewer` once more with `review_scope: integration`.
 7. Each worker edits only within `scope.write`.
-8. If a worker reports needing changes outside `scope.write`, adjust the claim and re-spawn.
+8. If a worker reports needing changes outside `scope.write`, adjust the Claim and re-spawn.
 
 ### Team mode execution
 
@@ -114,33 +127,43 @@ Worker mapping (same for both modes):
 
 ## 5. Review loops
 
+### Stage review
+
 1. Surface review is mandatory before test or implementation starts.
 2. Test and implement reviews run after each stage completes.
 3. Review scope always includes the changed files, applied Rules, and worker evidence relevant to that stage.
-4. If findings exist, pass them to the owning worker via `findings` and re-execute only the affected stage.
-5. After stage reviews are clean, run an integration review across all changed files.
+
+### Feedback loop
+
+When a review returns `status: needs_fix`:
+
+1. Classify each finding by severity (`high` / `medium`).
+2. Group findings by owning Claim ID.
+3. For each affected Claim:
+   - Append findings to the Claim's `findings` field.
+   - Re-spawn or reassign the owning worker with the updated Claim.
+4. After fix, re-run the stage review for the affected stage only.
+5. If the same finding persists after 3 fix attempts, escalate to the user.
+
+### Integration review
+
+After all stage reviews are clean, run `cdd-reviewer` with `review_scope: integration` across all changed files.
+
+If integration review returns findings, apply the same feedback loop but scope fixes to the cross-cutting issue.
 
 ## 6. AC verification
 
 1. Run `pnpm sonamu test` (or target specific test files).
-2. All pass -> done.
+2. All pass -> proceed to handoff.
 3. On failure:
    - Pass failure log to the relevant owner via `findings`.
    - After fix, repeat from the relevant stage review.
 4. If the same failure repeats 3 times, report to user.
 
-## Completion report
+## 7. Handoff
 
-```yaml
-execution_mode: "sub-agent|team"
-planner_artifacts:
-  - "plan_document"
-  - "claim_blueprint"
-  - "execution_graph"
-claims_completed: ["C-001", "C-002"]
-files_changed: ["list of changed files"]
-ac_results:
-  total: N
-  passed: N
-  failed: 0
-```
+After AC verification passes and all reviews are clean:
+
+1. Produce `handoff_bundle` per `06_handoff.md`.
+2. Present to user.
+3. Clean up `tmp/claims/` after user confirms.
