@@ -1,92 +1,92 @@
 ---
 name: sonamu-skill-contribution
-description: 트러블슈팅 해결 후 스킬 반영 워크플로우. 기존 스킬 매칭, 중복 판정, 포맷 표준, 사용자 승인 게이트. Use when a troubleshooting session concludes and the resolution should be captured as reusable knowledge.
+description: Workflow for reflecting troubleshooting resolutions into skills. Covers existing skill matching, duplication check, format standards, and user approval gate. Use when a troubleshooting session concludes and the resolution should be captured as reusable knowledge.
 ---
 
-# 트러블슈팅 → 스킬 반영 워크플로우
+# Troubleshooting → Skill Contribution Workflow
 
-트러블슈팅을 해결한 뒤, 그 지식을 스킬에 반영하는 프로세스.
-
----
-
-## 트리거
-
-| 트리거 | 주체 | 예시 |
-|--------|------|------|
-| **명시적 요청** | 사용자 | "이거 스킬로 정리해줘", "이 해결법 기록해줘" |
-| **에이전트 제안** | 에이전트 | 아래 감지 패턴에 해당하면 "이 내용을 스킬에 반영할까요?" 제안 |
-
-### 에이전트 감지 패턴
-
-다음 흐름이 대화에서 관찰되면 제안한다:
-
-1. **에러/실패 → 조사 → 수정 → 성공** 패턴이 완료됨
-2. 해결 과정에서 **프레임워크 내부 동작**이나 **문서화되지 않은 제약**이 밝혀짐
-3. 동일 문제를 **다른 사용자/프로젝트에서도 겪을 가능성**이 있음
-
-다음의 경우에는 제안하지 않는다:
-- 단순 오타, import 누락 등 코딩 실수
-- 프로젝트 고유 비즈니스 로직 버그
-- 일회성 환경 문제 (특정 머신의 포트 충돌 등)
+The process for capturing knowledge from a resolved troubleshooting session into skills.
 
 ---
 
-## 단계
+## Triggers
+
+| Trigger | Owner | Example |
+|---------|-------|---------|
+| **Explicit request** | User | "Document this in skills", "Record this fix" |
+| **Agent suggestion** | Agent | When a detection pattern below is met, propose: "Should I add this to skills?" |
+
+### Agent detection patterns
+
+Suggest contribution when the following flow is observed in the conversation:
+
+1. **Error/failure → investigation → fix → success** pattern completes
+2. The resolution reveals **internal framework behavior** or **undocumented constraints**
+3. The same problem is **likely to occur in other projects or for other users**
+
+Do not suggest when:
+- Simple typos or missing imports
+- Project-specific business logic bugs
+- One-off environment issues (e.g., port conflict on a specific machine)
+
+---
+
+## Steps
 
 ```
-[1] 추출 — 문제/원인/해결/소스 정리
-[2] 매칭 — 기존 스킬과 대조
-[3] 판정 — 어디에 넣을지 결정
-[4] 드래프트 — 내용 작성
-[5] 승인 — 사용자 확인
-[6] 반영 — 파일 수정/생성
+[1] Extract  — summarize problem / cause / solution / source
+[2] Match    — compare against existing skills
+[3] Decide   — determine where to put it
+[4] Draft    — write the content
+[5] Approve  — get user confirmation
+[6] Apply    — update or create the file
 ```
 
 ---
 
-## [1] 추출
+## [1] Extract
 
-대화에서 다음 구조로 정리한다:
+Summarize from the conversation using the following structure:
 
 ```yaml
-symptom: "증상 한 줄 (에러 메시지 또는 현상)"
-cause: "원인 설명"
-solution: "해결 방법 (구체적 명령어/코드 포함)"
-source_paths:         # 관련 소스코드 경로
+symptom: "one-line description (error message or observed behavior)"
+cause: "explanation of root cause"
+solution: "resolution steps (include specific commands/code)"
+source_paths:         # related source file paths
   - "src/testing/dev-vitest-manager.ts"
-tags:                 # 매칭에 사용할 키워드
+tags:                 # keywords for matching
   - "testing"
   - "devrunner"
-scope: "sonamu"       # "sonamu" (공식) 또는 "local" (프로젝트 고유)
+scope: "sonamu"       # "sonamu" (framework-level) or "local" (project-specific)
 ```
 
-### scope 판정 기준
+### Scope decision criteria
 
-| 조건 | scope |
-|------|-------|
-| Sonamu 프레임워크 자체의 동작/제약 | `sonamu` |
-| Sonamu CLI, config, migration 등 공통 도구 관련 | `sonamu` |
-| 특정 프로젝트의 비즈니스 로직/설정 | `local` |
-| 판단 어려움 | 사용자에게 물어본다 |
+| Condition | scope |
+|-----------|-------|
+| Relates to Sonamu framework behavior or constraints | `sonamu` |
+| Relates to Sonamu CLI, config, migration, or shared tooling | `sonamu` |
+| Relates to a specific project's business logic or configuration | `local` |
+| Unclear | Ask the user |
 
 ---
 
-## [2] 매칭 — 기존 스킬 대조
+## [2] Match — Compare Against Existing Skills
 
-**반드시 기존 스킬을 먼저 읽고 중복 여부를 확인한다.** 새 파일 생성은 최후의 수단.
+**Always read existing skills first and check for duplication.** Creating a new file is a last resort.
 
-### 매칭 우선순위
+### Match priority
 
-| 순위 | 방법 | 설명 |
-|------|------|------|
-| 1 | **소스 경로** | `source_paths`가 기존 스킬의 "소스코드" 참조와 겹치는지 확인 |
-| 2 | **태그/키워드** | 각 스킬의 YAML `description`과 tags 대조 |
-| 3 | **SKILL.md 작업별 테이블** | 문제 도메인이 어떤 작업 행에 해당하는지 역참조 |
+| Priority | Method | Description |
+|----------|--------|-------------|
+| 1 | **Source paths** | Check whether `source_paths` overlap with source references in existing skills |
+| 2 | **Tags/keywords** | Compare against each skill's YAML `description` and tags |
+| 3 | **SKILL.md task table** | Cross-reference which task row maps to the problem domain |
 
-### 소스 경로 → 스킬 매핑 (주요)
+### Source path → skill mapping (key paths)
 
-| 소스 경로 패턴 | 대응 스킬 |
-|---------------|----------|
+| Source path pattern | Corresponding skill |
+|---------------------|---------------------|
 | `src/testing/*` | testing.md, testing-devrunner.md, naite.md, fixture-cli.md |
 | `src/database/puri*` | puri.md |
 | `src/database/migrator*` | migration.md |
@@ -99,144 +99,144 @@ scope: "sonamu"       # "sonamu" (공식) 또는 "local" (프로젝트 고유)
 | `src/api/*` | api.md |
 | `src/template/*` | framework-change.md |
 | `src/model/*` | model.md |
-| `src/ssr/*` | (스킬 없음 — 새 파일 후보) |
-| `sonamu.config.ts` 관련 | config.md |
+| `src/ssr/*` | (no skill — candidate for new file) |
+| `sonamu.config.ts` related | config.md |
 
-이 테이블에 없는 경로면 태그/키워드 매칭으로 넘어간다.
+If the path is not in this table, fall through to tag/keyword matching.
 
-### 매칭 실행
+### Matching steps
 
-1. `SKILL.md`의 Skills 목록 테이블을 읽는다
-2. 후보 스킬 파일(1~3개)을 읽는다
-3. 해당 스킬 내에 **동일하거나 유사한 내용이 이미 있는지** 확인한다
-
----
-
-## [3] 판정
-
-| 매칭 결과 | 판정 | 설명 |
-|----------|------|------|
-| 기존 스킬에 **동일 내용 있음** | **SKIP** | "이미 {skill}.md에 문서화되어 있습니다" 보고 |
-| 매칭 + 해당 스킬에 **트러블슈팅 섹션 있음** | **APPEND** | 기존 섹션에 항목 추가 |
-| 매칭 + 해당 스킬에 **트러블슈팅 섹션 없음** | **ADD_SECTION** | 해당 스킬 끝에 트러블슈팅 섹션 신설 |
-| 매칭 없음 + scope=`sonamu` | **NEW_FILE** | 새 스킬 파일 생성 (드묾) |
-| 매칭 없음 + scope=`local` | **LOCAL** | `.claude/skills/local/`에 생성 |
-
-**CRITICAL: APPEND와 ADD_SECTION이 전체의 대부분을 차지해야 한다.** NEW_FILE은 정말로 기존 스킬 어디에도 맞지 않을 때만.
+1. Read the Skills list table in `SKILL.md`
+2. Read candidate skill files (1–3 files)
+3. Check whether **identical or similar content already exists** in those skills
 
 ---
 
-## [4] 드래프트 — 포맷 표준
+## [3] Decide
 
-### 트러블슈팅 섹션 포맷
+| Match result | Decision | Description |
+|--------------|----------|-------------|
+| **Same content exists** in an existing skill | **SKIP** | Report: "Already documented in {skill}.md" |
+| Match found + skill has **troubleshooting section** | **APPEND** | Add item to existing section |
+| Match found + skill has **no troubleshooting section** | **ADD_SECTION** | Add a new troubleshooting section at the end |
+| No match + scope=`sonamu` | **NEW_FILE** | Create a new skill file (rare) |
+| No match + scope=`local` | **LOCAL** | Create in `.claude/skills/local/` |
 
-기존 `testing-devrunner.md`의 패턴을 표준으로 한다:
+**CRITICAL: APPEND and ADD_SECTION should account for the vast majority of cases.** NEW_FILE is only for when the content genuinely does not fit anywhere in the existing skills.
+
+---
+
+## [4] Draft — Format Standards
+
+### Troubleshooting section format
+
+Use the pattern from `testing-devrunner.md` as the standard:
 
 ```markdown
-## 트러블슈팅
+## Troubleshooting
 
-### "에러 메시지 또는 증상 한 줄"
-→ 원인 설명
-→ 해결: 구체적 해결 방법 (명령어/코드/설정 포함)
+### "Error message or one-line symptom"
+→ Explanation of root cause
+→ Fix: specific resolution (commands / code / config)
 ```
 
-여러 항목이 있으면 ### 단위로 나열한다.
+List multiple items as separate `###` entries.
 
-### 예시 — APPEND
+### Example — APPEND
 
-cone.md에 추가하는 경우:
+Adding to cone.md:
 
 ```markdown
-### "pnpm sonamu cone gen --all 실행 시 'ANTHROPIC_API_KEY is not set' 에러"
-→ .env에 키가 없거나 packages/api/.env가 아닌 루트 .env에만 설정한 경우
-→ 해결: `packages/api/.env`에 `ANTHROPIC_API_KEY=sk-ant-...` 추가
+### "pnpm sonamu cone gen --all fails with 'ANTHROPIC_API_KEY is not set'"
+→ Key is missing from .env or was set only in root .env rather than packages/api/.env
+→ Fix: add `ANTHROPIC_API_KEY=sk-ant-...` to `packages/api/.env`
 ```
 
-### 예시 — ADD_SECTION
+### Example — ADD_SECTION
 
-puri.md 끝에 새 섹션을 추가하는 경우:
+Adding a new section at the end of puri.md:
 
 ```markdown
 ---
 
-## 트러블슈팅
+## Troubleshooting
 
-### "leftJoin 후 nullable 필드 타입이 non-null로 추론됨"
-→ Puri의 타입 추론은 join 방향을 반영하지 않음. leftJoin 결과는 런타임에 null일 수 있지만 타입에는 반영 안 됨
-→ 해결: subset에서 해당 필드를 optional로 명시하거나, 사용 시 null 체크 추가
+### "nullable field type inferred as non-null after leftJoin"
+→ Puri type inference does not account for join direction. leftJoin results may be null at runtime but are not reflected as optional in the types.
+→ Fix: explicitly mark the field as optional in the subset, or add a null check at the call site
 ```
 
-### 예시 — LOCAL
+### Example — LOCAL
 
 `.claude/skills/local/kopri-deployment.md`:
 
 ```markdown
 ---
 name: kopri-deployment
-description: KOPRI 프로젝트 배포 시 주의사항. Use when deploying KOPRI project.
+description: Deployment notes for the KOPRI project. Use when deploying KOPRI project.
 ---
 
-# KOPRI 배포 트러블슈팅
+# KOPRI Deployment Troubleshooting
 
-## 트러블슈팅
+## Troubleshooting
 
-### "Docker build 시 sharp 패키지 설치 실패"
-→ Alpine 이미지에서 sharp의 native dependency가 빠짐
-→ 해결: Dockerfile에 `RUN apk add --no-cache vips-dev` 추가
+### "sharp package installation fails during Docker build"
+→ Alpine image is missing native dependencies for sharp
+→ Fix: add `RUN apk add --no-cache vips-dev` to Dockerfile
 ```
 
 ---
 
-## [5] 승인 — 사용자 확인 게이트
+## [5] Approve — User Confirmation Gate
 
-에이전트가 사용자에게 보여줄 내용:
+Show the user:
 
-1. **판정 결과**: 어디에 넣을지 + 이유 한 줄
-2. **내용 미리보기**: 추가/수정될 마크다운
-3. **승인 요청**
+1. **Decision**: where to put it + one-line reason
+2. **Content preview**: the markdown to be added or modified
+3. **Approval request**
 
 ```
-판정: cone.md에 트러블슈팅 항목 추가 (APPEND)
-이유: source_paths가 src/cone/에 해당, cone.md에 트러블슈팅 섹션이 이미 존재
+Decision: APPEND — adding troubleshooting entry to cone.md
+Reason: source_paths match src/cone/; troubleshooting section already exists in cone.md
 
-추가 내용:
-### "cone gen 시 'No entity found' 에러"
+Content to add:
+### "cone gen fails with 'No entity found'"
 → ...
 
-반영할까요?
+Shall I apply this?
 ```
 
-**승인 없이 반영하지 않는다.**
+**Do not apply without approval.**
 
 ---
 
-## [6] 반영
+## [6] Apply
 
-| 판정 | 액션 |
-|------|------|
-| SKIP | 없음 |
-| APPEND | 해당 스킬의 트러블슈팅 섹션에 ### 항목 추가 |
-| ADD_SECTION | 해당 스킬 파일 끝 (`## 참고` 바로 위 또는 파일 끝)에 `## 트러블슈팅` 섹션 + 항목 추가 |
-| NEW_FILE | 새 .md 파일 생성 + **SKILL.md 두 테이블에 등록** |
-| LOCAL | `.claude/skills/local/{name}.md` 생성 |
+| Decision | Action |
+|----------|--------|
+| SKIP | None |
+| APPEND | Add `###` entry to the troubleshooting section in the skill |
+| ADD_SECTION | Add `## Troubleshooting` section + entry at the end of the skill (just before `## References` if it exists, otherwise at the very end) |
+| NEW_FILE | Create new .md file + **register in both tables in SKILL.md** |
+| LOCAL | Create `.claude/skills/local/{name}.md` |
 
-### ADD_SECTION 삽입 위치
+### ADD_SECTION insertion position
 
-- `## 참고` 섹션이 있으면 그 **바로 위**
-- 없으면 파일 **맨 끝**
+- If a `## References` section exists, insert **immediately before it**
+- Otherwise, insert at the **very end** of the file
 
-### NEW_FILE 시 필수 작업
+### NEW_FILE required actions
 
-1. `skills/sonamu/` 에 파일 생성
-2. YAML frontmatter (name, description) 포함
-3. `SKILL.md` "Skills 목록" 테이블에 행 추가
-4. `SKILL.md` "작업별 Skill 선택" 테이블에 행 추가
-5. `workflow.md`에서 관련 PHASE가 있으면 참조 스킬에 추가
+1. Create file in `skills/sonamu/`
+2. Include YAML frontmatter (name, description)
+3. Add a row to the "Skills List" table in `SKILL.md`
+4. Add a row to the "Task-to-Skill" table in `SKILL.md`
+5. If a related PHASE exists in `.claude/workflow/project_init.md`, add the new skill to its reference skills
 
 ---
 
-## 참고
+## References
 
-- **스킬 목록 및 구조**: `SKILL.md`
-- **에이전트 규칙**: `AGENTS.md`
-- **프로젝트별 로컬 스킬**: `.claude/skills/local/`
+- **Skill list and structure**: `SKILL.md`
+- **Agent rules**: `AGENTS.md`
+- **Project-local skills**: `.claude/skills/local/`

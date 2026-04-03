@@ -1,161 +1,161 @@
 ---
 name: sonamu-entity-basic
-description: Sonamu Entity 생성/수정 시 참조. 필드 타입, 요구사항 분석, 부모-자식 관계, OrderBy/Enum 규칙. Use when creating or modifying entities. 검증 체크리스트는 entity-validation-checklist.md 참조.
+description: Reference for creating or modifying Sonamu entities. Field types, requirements analysis, parent-child relationships, OrderBy/Enum rules. Use when creating or modifying entities. See entity-validation-checklist.md for the validation checklist.
 ---
 
-# Entity 기본 구조
+# Entity Basics
 
-**실제 동작 코드 참고:**
+**Working code references:**
 
-- `sonamu/examples/miomock/api/src/application/user/user.entity.json` - 기본 Entity 예시
-- `sonamu/examples/miomock/api/src/application/project/project.entity.json` - 복잡한 Entity 예시
-- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne 관계 예시
+- `sonamu/examples/miomock/api/src/application/user/user.entity.json` — basic entity example
+- `sonamu/examples/miomock/api/src/application/project/project.entity.json` — complex entity example
+- `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` — BelongsToOne relationship example
 
-## 사용자 요청 시작 시나리오
+## When a User Requests a New System
 
-사용자가 시스템 구축을 요청하면 다음 순서로 진행:
+When the user requests a system to be built, proceed in the following order:
 
-**1. 요구사항 분석** (누락된 Entity 확인)
+**1. Analyze requirements** (identify missing entities)
 
-- "사용자(User) Entity가 필요한가요?"
-- "추가로 필요한 Entity가 있나요?"
+- "Do you need a User entity?"
+- "Are there any other entities needed?"
 
-**2. Entity 간 관계 확인** (한 번에 하나씩 질문)
+**2. Confirm relationships between entities** (one question at a time)
 
-- "A와 B는 1:N인가요, N:M인가요?"
-- "챕터는 강좌의 자식으로 함께 관리할까요?"
+- "Is A to B a 1:N or N:M relationship?"
+- "Should chapters be managed as children of courses?"
 
-**3. parentId 사용 여부 결정**
+**3. Decide whether to use parentId**
 
-- "부모 없이 존재 불가한가요?"
-- "부모와 함께 생성/삭제되나요?"
+- "Can it exist without a parent?"
+- "Should it be created and deleted together with the parent?"
 
-**4. 사용자 최종 확인**
+**4. Final confirmation with the user**
 
-- Entity 목록 확정
-- 관계 다이어그램 또는 명확한 설명 제공
+- Finalize entity list
+- Provide a relationship diagram or clear description
 
-### 엔티티 설계 완료 체크리스트
+### Entity Design Done Checklist
 
-- [ ] 모든 필수 Entity 식별 완료
-- [ ] Entity 간 관계 정의 완료
-- [ ] parentId 사용 여부 결정
-- [ ] 사용자 확인 완료
+- [ ] All required entities identified
+- [ ] Relationships between entities defined
+- [ ] parentId usage decided
+- [ ] User confirmation complete
 
-**완료 시:** 다음 단계 "Entity 생성 워크플로우" 시작
+**When done:** proceed to "Entity Creation Workflow"
 
-**전체 워크플로우 참조:** `workflow.md` - 5단계 전체 가이드
+**Full workflow reference:** `.claude/workflow/project_init.md`
 
 ---
 
-## Entity 생성 워크플로우
+## Entity Creation Workflow
 
-**사전 준비: CRITICAL!**
+**Prerequisite: CRITICAL!**
 
-**반드시 `/packages/api`에서 `pnpm dev`를 먼저 실행하세요!**
+**Always run `pnpm dev` in `/packages/api` before starting!**
 
 ```bash
 cd packages/api
-pnpm dev  # 이 상태로 유지하면서 작업
+pnpm dev  # keep this running during all work
 ```
 
-> **이유**: dev 모드에서 syncer가 entity.json 변경을 감지하여 types.ts를 자동 생성합니다.
+> **Why**: In dev mode, the syncer detects changes to entity.json and auto-generates types.ts.
 >
-> auth 엔티티뻐만 아니라 **모든 엔티티 생성 시 dev 모드가 필수**입니다.
+> Dev mode is required **for all entity creation**, not just auth entities.
 
-### 1단계: stub 생성
+### Step 1: Generate stub
 
-**CRITICAL: EntityId는 반드시 대문자로 시작해야 합니다!**
+**CRITICAL: EntityId must always start with an uppercase letter!**
 
 ```bash
 pnpm sonamu stub entity {EntityId}
 ```
 
-**올바른 예시:**
+**Correct examples:**
 
 - `pnpm sonamu stub entity Course` (correct)
 - `pnpm sonamu stub entity User` (correct)
 - `pnpm sonamu stub entity ConsultationHistory` (correct)
 
-**잘못된 예시:**
+**Incorrect examples:**
 
-- `pnpm sonamu stub entity course` (wrong - 소문자로 시작)
-- `pnpm gen stub entity Course` (wrong - 잘못된 명령어)
+- `pnpm sonamu stub entity course` (wrong — starts with lowercase)
+- `pnpm gen stub entity Course` (wrong — incorrect command)
 
-생성되는 파일: `api/src/application/{entity}/{entity}.entity.json`
+Generated file: `api/src/application/{entity}/{entity}.entity.json`
 
-### 2단계: stub 파일 수정
+### Step 2: Edit the stub file
 
-생성된 entity.json 파일에 props, relations, subsets 추가
+Add props, relations, and subsets to the generated entity.json file.
 
-### 3단계: 검증 및 필수 파일 생성
+### Step 3: Validate and generate required files
 
-**CRITICAL: sync 실행 전에 반드시 검증하세요!**
+**CRITICAL: Always validate before running sync!**
 
-**A. entity.json 검증** (`entity-validation-checklist.md` PHASE 1 참조)
+**A. Validate entity.json** (see `entity-validation-checklist.md` PHASE 1)
 
-- [ ] 인덱스에 type 필드 있는가?
-- [ ] Subset에서 FK를 직접 참조하지 않고 relation.id 형식 사용?
-- [ ] Boolean dbDefault가 "true"/"false" 문자열?
-- [ ] OrderBy enum은 id-desc만 있는가?
-- [ ] Enum dbDefault는 이스케이프된 큰따옴표? (예: `"\"pending\""`)
+- [ ] Does every index have a `type` field?
+- [ ] Does the subset use `relation.id` format instead of directly referencing FK columns?
+- [ ] Is the Boolean `dbDefault` a string (`"true"` / `"false"`)?
+- [ ] Does the OrderBy enum contain only `id-desc`?
+- [ ] Is the Enum `dbDefault` using escaped double quotes? (e.g., `"\"pending\""`)
 
-**B. model.ts (수동 생성 필수)**
+**B. model.ts (must be created manually)**
 
-- 반드시 수동 생성 필요
-- 다른 entity의 model.ts 참고하여 작성
-- 필수 메서드: findById, findOne, findMany, save, del
-- 템플릿은 `entity-validation-checklist.md` PHASE 2 참조
+- Must be created manually
+- Reference another entity's model.ts as a template
+- Required methods: findById, findOne, findMany, save, del
+- See `entity-validation-checklist.md` PHASE 2 for template
 
-**C. types.ts (자동 생성 - 대기 필요)**
+**C. types.ts (auto-generated — wait for it)**
 
-- **pnpm dev 실행 중이면** syncer가 2-3초 내 자동 생성
-- 확인: `ls packages/api/src/application/{entity}/{entity}.types.ts`
-- 생성 안 되면:
-  1. pnpm dev가 실행 중인지 확인
-  2. 여전히 안 되면 수동 생성 (템플릿은 `entity-validation-checklist.md` PHASE 2 참조)
+- **If `pnpm dev` is running**, the syncer will auto-generate it within 2–3 seconds
+- Check: `ls packages/api/src/application/{entity}/{entity}.types.ts`
+- If not generated:
+  1. Verify `pnpm dev` is running
+  2. If still not generated, create manually (see `entity-validation-checklist.md` PHASE 2 for template)
 
-**완료 확인:**
+**Done criteria:**
 
-- [ ] entity.json 검증 통과
-- [ ] model.ts 존재
-- [ ] types.ts 존재 (자동 생성 또는 수동 생성)
+- [ ] entity.json validation passed
+- [ ] model.ts exists
+- [ ] types.ts exists (auto-generated or manually created)
 
-### 4단계: sync
+### Step 4: Sync
 
 ```bash
 pnpm sonamu sync
 ```
 
-**주의:** Entity JSON을 직접 작성하지 말고, 반드시 stub 명령어로 생성 후 수정할 것.
+**Note:** Do not write entity JSON by hand. Always generate using the stub command, then edit.
 
-### 5단계: Migration 및 Scaffolding
+### Step 5: Migration and Scaffolding
 
-1. Migration 생성 및 apply
-2. Scaffolding 실행
-3. Build 테스트
+1. Generate and apply migration
+2. Run scaffolding
+3. Test the build
 
-**전체 워크플로우:** `entity-validation-checklist.md`에서 단계별 체크리스트 확인
+**Full workflow:** see step-by-step checklist in `entity-validation-checklist.md`
 
-### 6단계: types.ts nullable 필드 처리 (필수)
+### Step 6: Handle nullable fields in types.ts (required)
 
-**CRITICAL: 테스트 작성 전 즉시 처리하세요!**
+**CRITICAL: Do this immediately after scaffolding, before writing tests!**
 
-scaffolding 완료 후 생성된 `*.types.ts` 파일에서 nullable 필드를 처리해야 합니다.
+After scaffolding completes, nullable fields in the generated `*.types.ts` must be handled.
 
 ```typescript
-// 자동 생성된 types.ts
+// Auto-generated types.ts
 export const FAQSaveParams = FAQBaseSchema.partial({
   id: true,
   created_at: true,
 });
 
-// CORRECT: 즉시 수정 - nullable 필드 추가
+// CORRECT: update immediately — add nullable fields
 export const FAQSaveParams = FAQBaseSchema.partial({
   id: true,
   created_at: true,
-  category: true, // nullable 추가
-  order_num: true, // nullable 추가
+  category: true, // nullable added
+  order_num: true, // nullable added
 }).extend({
   category: z.string().nullish(),
   order_num: z.number().nullish(),
@@ -163,220 +163,219 @@ export const FAQSaveParams = FAQBaseSchema.partial({
 });
 ```
 
-**상세 가이드:** `testing.md`의 "엔티티 생성 후 즉시 해야 할 작업" 참조
+**Detailed guide:** see "Actions to take immediately after entity creation" in `testing.md`
 
-## 새 Entity 생성 시 체크리스트
+## Checklist for New Entity Creation
 
-1. **id**: PascalCase (예: `User`, `BlogPost`)
-2. **table**: snake_case 복수형 (예: `users`, `blog_posts`) - 생략 가능
-3. **title**: 한글 표시명
-4. **props 권장**: `id`, `created_at` (스키마에서 강제되지 않으나 Best Practice)
-5. **enums 권장**: `{EntityId}OrderBy`, `{EntityId}SearchField` (스키마에서 강제되지 않으나 Best Practice)
+1. **id**: PascalCase (e.g., `User`, `BlogPost`)
+2. **table**: snake_case plural (e.g., `users`, `blog_posts`) — can be omitted
+3. **title**: display name
+4. **Recommended props**: `id`, `created_at` (not enforced by schema but best practice)
+5. **Recommended enums**: `{EntityId}OrderBy`, `{EntityId}SearchField` (not enforced but best practice)
 
 ## IMPORTANT: Analyze Requirements Before Creating Entity
 
-**STOP! Entity를 만들기 전에 질문을 하나씩 하세요.**
+**STOP! Ask questions one at a time before creating any entity.**
 
-### 누락된 Entity 확인
+### Identify missing entities
 
-사용자가 명시적으로 언급한 Entity만 생성하지 말 것. **한 번에 하나씩 질문:**
+Do not only create entities explicitly mentioned by the user. **Ask one at a time:**
 
-- "사용자(User) Entity가 필요한가요?" → 응답 대기
-- "User의 역할이 여러 개인가요?" → 응답 대기
-- "추가로 필요한 Entity가 있나요?" → 응답 대기
+- "Do you need a User entity?" → wait for response
+- "Does the User have multiple roles?" → wait for response
+- "Are there any other entities needed?" → wait for response
 
-**User Entity 주의**: `id`는 자동 증가 시퀀스(PK)이며 로그인 아이디가 아님. better-auth 사용 시 별도 `login_id` 불필요 (auth 테이블이 관리).
+**Note on User entity**: `id` is an auto-increment sequence (PK) and is not a login ID. When using better-auth, a separate `login_id` is not needed (managed by the auth table).
 
-**자주 누락되는 Entity**: 컨텐츠(Comment, Like, Tag, Category), 커머스(Review, Cart, Payment), 예약(Reservation, Schedule), 교육(Enrollment, Progress)
+**Commonly missed entities**: Content (Comment, Like, Tag, Category), Commerce (Review, Cart, Payment), Reservation (Reservation, Schedule), Education (Enrollment, Progress)
 
-### 여러 Entity 요청 시 - 관계 확인
+### When multiple entities are requested — confirm relationships
 
-2개 이상 Entity 요청 시 **코드 작성 전에 관계를 하나씩 질문**:
+When 2+ entities are requested, **ask about relationships one at a time before writing any code**:
 
-- BelongsToOne, HasMany, ManyToMany, parentId 중 어떤 관계인지
-- 부모-자식 종속(삭제 시 함께 삭제)인지 독립적인지
+- Which relationship type: BelongsToOne, HasMany, ManyToMany, or parentId
+- Whether it is a parent-child dependency (delete together) or independent
 
-### 설계 전 반드시 확인
+### Always confirm before designing
 
-**1. Polymorphic Association** (`entity_type + entity_id` 패턴):
+**1. Polymorphic Association** (`entity_type + entity_id` pattern):
 
-- string PK 엔티티(better-auth User 등)가 있으면 → `entity_id`를 `string` 타입으로 통일
-- 없으면 → `integer` 사용 가능
+- If there is a string PK entity (e.g., better-auth User) → use `string` type for `entity_id` uniformly
+- Otherwise → `integer` is fine
 
-**2. 도메인 용어 ↔ 엔티티 영문 ID 매핑**: 코드 작성 전에 사용자와 확정 (예: "위탁연구과제" → `ResearchContract`). 중간에 바뀌면 전체 rename 필요.
+**2. Domain term ↔ entity English ID mapping**: finalize with the user before writing any code (e.g., "위탁연구과제" → `ResearchContract`). Changing this later requires a full rename.
 
-## 부모-자식 관계 (parentId)
+## Parent-Child Relationships (parentId)
 
-### parentId란?
+### What is parentId?
 
-자식 Entity가 부모 Entity에 종속되어 함께 관리될 때 사용하는 최상위 옵션.
+A top-level option used when a child entity is managed as a dependent of a parent entity.
 
-- parentId 설정 시: 자식은 독립 CRUD 없이 부모를 통해 생성/수정/삭제
-- parentId 미설정 시: 독립 Entity로 별도 CRUD 가능
+- With parentId: the child has no independent CRUD — it is created, updated, and deleted through the parent
+- Without parentId: an independent entity with its own CRUD
 
-### 언제 parentId를 사용하나?
+### When to use parentId
 
-| 상황                     | parentId | 예시                       |
-| ------------------------ | -------- | -------------------------- |
-| 부모 없이 존재 불가      | O        | 주문아이템 → 주문          |
-| 부모와 함께 생성/삭제    | O        | 챕터 → 강좌, 레슨 → 챕터   |
-| 독립적으로 CRUD 가능     | X        | 댓글 → 게시글              |
-| 여러 부모에 속할 수 있음 | X        | 태그 → 게시글 (ManyToMany) |
+| Situation | parentId | Example |
+|-----------|----------|---------|
+| Cannot exist without a parent | Yes | OrderItem → Order |
+| Created and deleted together with parent | Yes | Chapter → Course, Lesson → Chapter |
+| Can be independently CRUD'd | No | Comment → Post |
+| Can belong to multiple parents | No | Tag → Post (ManyToMany) |
 
-### parentId 사용 예시
+### parentId usage example
 
 ```json
 {
   "id": "OrderItem",
   "table": "order_items",
-  "title": "주문아이템",
+  "title": "Order Item",
   "parentId": "Order",
   "props": [...]
 }
 ```
 
-### parentId 엔티티는 types.ts가 생성되지 않음
+### Child entities with parentId do not generate types.ts
 
-parentId가 설정된 자식 엔티티(예: Chapter, Lesson)는 독립적인 `types.ts` 파일이 생성되지 않습니다. 이는 정상 동작이며, 자식 엔티티는 부모 엔티티를 통해 함께 관리되기 때문입니다. 독립 CRUD와 types.ts가 필요한 경우 parentId를 사용하지 않아야 합니다.
+Child entities with parentId set (e.g., Chapter, Lesson) do not get their own `types.ts` file. This is expected behavior — child entities are managed through the parent. If you need independent CRUD and types.ts, do not use parentId.
 
-### parentId 자식 엔티티 폴더 위치
+### Folder location for parentId child entities
 
-parentId가 설정된 자식 엔티티는 **루트 부모 엔티티와 같은 폴더**에 위치해야 합니다.
+Child entities with parentId must be placed **in the same folder as the root parent entity**.
 
-| 구조                         | 설명                                        |
-| ---------------------------- | ------------------------------------------- |
-| `course/course.entity.json`  | 루트 엔티티                                 |
-| `course/chapter.entity.json` | parentId: "Course" → 같은 폴더              |
-| `course/lesson.entity.json`  | parentId: "Chapter" → 같은 폴더 (루트 기준) |
-| `course/course.types.ts`     | types.ts는 루트만 생성됨                    |
+| Structure | Description |
+|-----------|-------------|
+| `course/course.entity.json` | Root entity |
+| `course/chapter.entity.json` | parentId: "Course" → same folder |
+| `course/lesson.entity.json` | parentId: "Chapter" → same folder (based on root) |
+| `course/course.types.ts` | types.ts generated only for root |
 
-**주의**: 자식 엔티티를 별도 폴더(`chapter/chapter.entity.json`)에 생성하면 안 됩니다.
+**Note:** Do not create child entities in a separate folder (e.g., `chapter/chapter.entity.json`).
 
 ### IMPORTANT: When Uncertain - Ask User (Never Guess)
 
-**추측하지 말고 질문하세요.** 다음과 같은 상황에서는 사용자에게 직접 물어볼 것:
+**Do not guess — ask.** In situations like the following, ask the user directly:
 
-- "챕터를 강좌의 자식으로 함께 관리할까요, 아니면 독립 Entity로 만들까요?"
-- "주문아이템을 주문과 함께 저장할까요, 아니면 별도로 관리할까요?"
+- "Should chapters be managed as children of courses, or created as an independent entity?"
+- "Should order items be saved together with the order, or managed separately?"
 
-**확신이 없으면 질문하세요. 틀린 설계보다 질문 한 번이 낫습니다.**
+**When in doubt, ask. One question is better than a wrong design.**
 
-**판단에 도움이 되는 질문들 (사용자에게 물어볼 것):**
+**Helpful questions to ask the user:**
 
-- "이 데이터를 부모 없이 단독으로 조회/수정할 일이 있나요?"
-- "부모가 삭제되면 이 데이터도 함께 삭제되어야 하나요?"
-- "관리자 화면에서 별도 목록 페이지가 필요한가요?"
+- "Will this data ever need to be queried or updated independently without a parent?"
+- "Should this data be deleted when the parent is deleted?"
+- "Does the admin UI need a separate list page for this?"
 
-## 최소 템플릿
+## Minimal Template
 
 ```json
 {
   "id": "Product",
   "table": "products",
-  "title": "상품",
+  "title": "Product",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
     {
       "name": "created_at",
       "type": "date",
       "dbDefault": "CURRENT_TIMESTAMP",
-      "desc": "등록일시"
+      "desc": "Created at"
     },
-    { "name": "name", "type": "string", "length": 255, "desc": "상품명" }
+    { "name": "name", "type": "string", "length": 255, "desc": "Product name" }
   ],
   "indexes": [],
   "subsets": { "A": ["id", "name", "created_at"] },
   "enums": {
-    "ProductOrderBy": { "id-desc": "ID최신순" },
-    "ProductSearchField": { "id": "ID", "name": "상품명" }
+    "ProductOrderBy": { "id-desc": "Newest" },
+    "ProductSearchField": { "id": "ID", "name": "Name" }
   }
 }
 ```
 
-## 상황별 가이드
+## Situation-Specific Guides
 
-### 문자열 필드 추가할 때
+### Adding a string field
 
 ```json
-{ "name": "title", "type": "string", "length": 255, "desc": "제목" }
+{ "name": "title", "type": "string", "length": 255, "desc": "Title" }
 ```
 
-- `length` 생략 시 → `text` 타입으로 저장 (긴 텍스트용)
+- Omitting `length` → stored as `text` type (for long text)
 
-### Enum 필드 추가할 때
+### Adding an enum field
 
 ```json
-// 1. props에 추가
-{ "name": "status", "type": "enum", "id": "ProductStatus", "desc": "상태" }
+// 1. Add to props
+{ "name": "status", "type": "enum", "id": "ProductStatus", "desc": "Status" }
 
-// 2. enums에 정의 (MUST - 누락 시 오류 발생)
-"ProductStatus": { "draft": "임시저장", "published": "공개", "archived": "보관" }
+// 2. Define in enums (MUST — missing this causes errors)
+"ProductStatus": { "draft": "Draft", "published": "Published", "archived": "Archived" }
 ```
 
-### IMPORTANT: 고정값 필드는 반드시 enum으로
+### IMPORTANT: Always use enum for fixed-value fields
 
-선택지가 정해진 필드를 `string`으로 정의하면 DB 정합성이 깨진다.
+Defining a field with a fixed set of choices as `string` breaks DB integrity.
 
-**판단: "이 값이 코드 외부에서 자유롭게 입력될 수 있는가?"** No → enum, Yes → string
+**Rule: "Can this value be freely entered from outside the code?"** No → enum, Yes → string
 
-**enum 후보 식별**: `faker.helpers.arrayElement([...])` 형태의 string, "다음 중 하나/구분/유형" 나열, 셀렉트박스/라디오버튼 표시 필드
+**Enum candidates**: strings that look like `faker.helpers.arrayElement([...])`, fields described as "one of the following / type / category", select boxes / radio buttons
 
 ```json
-// WRONG: string으로 정의
-{ "name": "budget_item", "type": "string", "desc": "비목명" }
-// CORRECT: enum으로 정의
-{ "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "비목" }
+// WRONG: defined as string
+{ "name": "budget_item", "type": "string", "desc": "Budget item" }
+// CORRECT: defined as enum
+{ "name": "budget_item", "type": "enum", "id": "BudgetItem", "desc": "Budget item" }
 ```
 
-### nullable 필드 추가할 때
+### Adding a nullable field
 
 ```json
-{ "name": "deleted_at", "type": "date", "nullable": true, "desc": "삭제일시" }
+{ "name": "deleted_at", "type": "date", "nullable": true, "desc": "Deleted at" }
 ```
 
-**CRITICAL: nullable 속성의 중요성**
+**CRITICAL: Importance of the nullable attribute**
 
-`nullable: true`가 **없는** 필드는 **필수 필드**로 간주됩니다.
+A field without `nullable: true` is treated as **required**.
 
-Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하므로,
-업데이트 시에도 **모든 필수 필드**를 포함해야 합니다.
+Sonamu's `ubUpsert` uses PostgreSQL `ON CONFLICT ... DO UPDATE`, so **all required fields** must be included even on updates.
 
 ```json
-// 예시
+// example
 {
   "props": [
-    { "name": "title", "type": "string" }, // 필수! (nullable 없음)
-    { "name": "content", "type": "string" }, // 필수! (nullable 없음)
-    { "name": "category", "type": "string", "nullable": true } // 선택 (nullable 있음)
+    { "name": "title", "type": "string" },    // required (no nullable)
+    { "name": "content", "type": "string" },  // required (no nullable)
+    { "name": "category", "type": "string", "nullable": true } // optional
   ]
 }
 ```
 
-**규칙**:
+**Rules**:
 
-- 선택 필드가 아니면 `nullable: true` 추가 금지
-- 선택 필드라면 반드시 `nullable: true` 명시
-- 테스트/API에서 필수 필드는 항상 값 제공 필요
+- Do not add `nullable: true` to fields that are not optional
+- Always specify `nullable: true` for optional fields
+- Required fields must always have a value in tests and API calls
 
-**상세**: `testing.md` "Quick Start" 및 `upsert.md` "CRITICAL: 필수 필드 포함 필수" 참조
+**Details:** see "Quick Start" in `testing.md` and "CRITICAL: Required fields must be included" in `upsert.md`
 
-### JSON 필드 추가할 때
+### Adding a JSON field
 
 ```json
 {
   "name": "metadata",
   "type": "json",
   "id": "ProductMetadata",
-  "desc": "메타데이터"
+  "desc": "Metadata"
 }
 ```
 
-- `id` 필수 (타입명으로 사용)
-- 별도로 TypeScript 타입 정의 필요
+- `id` is required (used as the type name)
+- A separate TypeScript type definition is needed
 
-### searchText 필드 추가할 때 (pg_trgm Fuzzy Search용)
+### Adding a searchText field (for pg_trgm Fuzzy Search)
 
-여러 컬럼을 하나의 generated column으로 통합하는 전용 prop 타입이다. GIN 인덱스와 함께 쓴다.
+A dedicated prop type that consolidates multiple columns into a single generated column. Used with a GIN index.
 
 ```json
 {
@@ -405,19 +404,19 @@ Sonamu의 `ubUpsert`는 PostgreSQL의 `ON CONFLICT ... DO UPDATE`를 사용하�
 }
 ```
 
-source column 타입별 SQL 표현:
+SQL expressions per source column type:
 
-| source 타입 | caseInsensitive: true | caseInsensitive: false (기본) |
-|------------|----------------------|------------------------------|
+| source type | caseInsensitive: true | caseInsensitive: false (default) |
+|------------|----------------------|----------------------------------|
 | `string` | `lower(COALESCE(col, ''))` | `COALESCE(col, '')` |
 | `string[]` | `sonamu_text_array_agg(col)` | `sonamu_text_array_agg(col, false)` |
 | `json` (z.array(z.string())) | `sonamu_jsonb_array_agg(col)` | `sonamu_jsonb_array_agg(col, false)` |
 
-- `string[]` 또는 `json(string[])` source가 있으면 마이그레이션에 헬퍼 함수 DDL이 자동 삽입됨
-- `searchText` 컬럼은 generated column이므로 SaveParams에서 자동 제외됨 — INSERT/UPDATE 불가
-- 쿼리 사용법: `puri.md` "pg_trgm Fuzzy Search" 섹션 참조
+- If a `string[]` or `json(string[])` source is present, helper function DDL is automatically inserted in the migration
+- `searchText` columns are generated columns and are excluded from SaveParams — INSERT/UPDATE is not allowed
+- For query usage: see the "pg_trgm Fuzzy Search" section in `puri.md`
 
-### 유니크 제약 추가할 때
+### Adding a unique constraint
 
 ```json
 {
@@ -427,7 +426,7 @@ source column 타입별 SQL 표현:
 }
 ```
 
-### 복합 유니크 제약
+### Composite unique constraint
 
 ```json
 {
@@ -437,19 +436,19 @@ source column 타입별 SQL 표현:
 }
 ```
 
-### IMPORTANT: indexes에서 FK 컨럼명은 실제 DB 컨럼명을 사용한다
+### IMPORTANT: Use the actual DB column name in indexes
 
-**indexes와 subsets에서 FK 컨럼을 참조하는 방식이 다르다. 혼동하지 않는다.**
+**The way FK columns are referenced differs between indexes and subsets. Do not confuse them.**
 
-| 위치      | 사용 형식                  | 예시                                  |
-| --------- | -------------------------- | ------------------------------------- |
-| `indexes` | 실제 DB 컨럼명             | `role_id`, `user_id`, `department_id` |
+| Location | Format | Example |
+|----------|--------|---------|
+| `indexes` | Actual DB column name | `role_id`, `user_id`, `department_id` |
 | `subsets` | FieldExpr (relation.field) | `role.id`, `user.id`, `department.id` |
 
 **DO NOT:**
 
 ```json
-// indexes에서 FieldExpr 사용 → 오류
+// Using FieldExpr in indexes → error
 "indexes": [
   { "name": "ix_role", "type": "index", "columns": [{ "name": "role.id" }] }
 ]
@@ -458,185 +457,185 @@ source column 타입별 SQL 표현:
 **DO:**
 
 ```json
-// indexes는 실제 DB 컨럼명
+// indexes use actual DB column names
 "indexes": [
   { "name": "ix_role_id", "type": "index", "columns": [{ "name": "role_id" }] }
 ]
 
-// subsets는 FieldExpr
+// subsets use FieldExpr
 "subsets": {
   "A": ["id", "role.id", "role.name"]
 }
 ```
 
-### IMPORTANT: unique 제약은 비즈니스 규칙 기준으로
+### IMPORTANT: Unique constraints based on business rules
 
-기술적 판단이 아니라 **"같은 조합이 두 번 insert되면?"** → 오류여야 하면 unique, 허용이면 index만.
+Not a technical decision — ask **"What if the same combination is inserted twice?"** → if it should error, use unique; if it should be allowed, use index only.
 
-**복합 unique가 필요한 패턴**: 연도별 설정(`type, dept_id, year`), 사용자-역할 매핑, 연차별 예산(`project_id, year, budget_item`), 좋아요/북마크(`user_id, entity_id`)
+**Patterns that need composite unique**: per-year settings (`type, dept_id, year`), user-role mappings, per-year budgets (`project_id, year, budget_item`), likes/bookmarks (`user_id, entity_id`)
 
-## 흔한 실수
+## Common Mistakes
 
-| 실수                                 | 해결                                                                     |
-| ------------------------------------ | ------------------------------------------------------------------------ |
-| `id` prop 누락                       | 추가 권장 (대부분의 Model 로직에서 필요)                                 |
-| `created_at` prop 누락               | 추가 권장, `dbDefault: "CURRENT_TIMESTAMP"`                              |
-| `OrderBy` enum 누락                  | `{EntityId}OrderBy` 추가 권장 (findMany 정렬에 필요)                     |
-| `SearchField` enum 누락              | `{EntityId}SearchField` 추가 권장 (검색 기능에 필요)                     |
-| enum prop의 `id`가 enums에 없음      | enums 섹션에 정의 추가                                                   |
-| json prop에 `id` 누락                | `id` 필드 추가                                                           |
-| `"type": "text"` 직접 사용           | `text`는 유효하지 않음. `"type": "string"` + length 생략으로 사용        |
-| `OrderBy` enum에 여러 값 추가        | **기본은 `id-desc`만 생성** (아래 참조)                                  |
-| 고정 선택지 필드를 `string`으로 정의 | enum으로 변환 (fixtureGenerator가 arrayElement인 필드 확인)              |
-| unique 제약 없는 연도별/매핑 테이블  | 비즈니스 규칙 기준으로 복합 unique 추가                                  |
-| 정수 필드에 `number` 타입 사용       | `integer` 사용 (소수점 필요 시 `numeric`)                                |
-| indexes에서 `role.id` 형식 사용      | indexes는 실제 DB 컨럼명(`role_id`), subsets만 FieldExpr(`role.id`) 사용 |
+| Mistake | Fix |
+|---------|-----|
+| Missing `id` prop | Recommended to add (needed by most Model logic) |
+| Missing `created_at` prop | Recommended to add with `dbDefault: "CURRENT_TIMESTAMP"` |
+| Missing `OrderBy` enum | Add `{EntityId}OrderBy` (needed for findMany sorting) |
+| Missing `SearchField` enum | Add `{EntityId}SearchField` (needed for search) |
+| enum prop `id` not defined in enums | Add definition to the enums section |
+| Missing `id` on json prop | Add the `id` field |
+| Using `"type": "text"` directly | `text` is invalid. Use `"type": "string"` without a length |
+| Adding multiple values to `OrderBy` enum | **Default is `id-desc` only** (see below) |
+| Defining fixed-choice fields as `string` | Convert to enum (check for fields with arrayElement-style fixtureGenerator) |
+| Yearly/mapping tables without unique constraints | Add composite unique based on business rules |
+| Using `number` type for integer fields | Use `integer` (use `numeric` only when decimal precision is needed) |
+| Using `role.id` format in indexes | indexes use actual DB column name (`role_id`); only subsets use FieldExpr (`role.id`) |
 
-## Entity 스키마 검증 오류 해결
+## Resolving Entity Schema Validation Errors
 
-**→ `entity-validation-checklist.md` PHASE 1 참조** (인덱스 type 누락, Subset FieldExpr, 중복 컬럼, Boolean dbDefault 등)
+**→ See `entity-validation-checklist.md` PHASE 1** (missing index type, Subset FieldExpr, duplicate columns, Boolean dbDefault, etc.)
 
-**빠른 체크리스트:**
+**Quick checklist:**
 
-- [ ] 모든 인덱스에 `type` 필드 있는가? (`"index"` | `"unique"` | `"hnsw"` | `"ivfflat"`)
-- [ ] Subset에서 FK를 `relation.id` 형식으로 참조하는가? (`user_id` ✗ → `user.id` ✓)
-- [ ] BelongsToOne relation과 FK 컬럼을 중복 정의하지 않았는가?
-- [ ] Boolean dbDefault가 `"true"` / `"false"` 문자열인가? (0, 1 ✗)
-- [ ] Subset A에 모든 필드가 포함되어 있는가?
-- [ ] indexes의 columns에 실제 DB 컬럼명(`role_id`)을 사용했는가? (FieldExpr `role.id` ✗)
+- [ ] Does every index have a `type` field? (`"index"` | `"unique"` | `"hnsw"` | `"ivfflat"`)
+- [ ] Does the subset reference FK using `relation.id` format? (`user_id` ✗ → `user.id` ✓)
+- [ ] No duplicate definition of BelongsToOne relation and FK column?
+- [ ] Is Boolean `dbDefault` a string (`"true"` / `"false"`)? (0, 1 ✗)
+- [ ] Are all fields included in Subset A?
+- [ ] Do index columns use actual DB column names (`role_id`)? (FieldExpr `role.id` ✗)
 
 ## IMPORTANT: OrderBy Enum Generation Rule
 
-**IMPORTANT: Scaffolding 시에는 `id-desc`만 사용하는 것을 강력히 권장합니다.**
+**IMPORTANT: It is strongly recommended to use only `id-desc` during initial scaffolding.**
 
 ```json
-// RECOMMENDED - 초기 Scaffolding용
-"ProductOrderBy": { "id-desc": "ID최신순" }
+// RECOMMENDED — for initial scaffolding
+"ProductOrderBy": { "id-desc": "Newest" }
 
-// AVOID - Scaffolding 전에는 피하세요
-"ProductOrderBy": { "id-desc": "ID최신순", "name-asc": "이름순", "created_at-desc": "등록일순" }
+// AVOID — do not add these before scaffolding
+"ProductOrderBy": { "id-desc": "Newest", "name-asc": "Name (A-Z)", "created_at-desc": "Newest first" }
 ```
 
-### 왜 id-desc만 권장하나?
+### Why only id-desc?
 
-Scaffolding이 생성하는 model 코드는 `id-desc`만 자동 처리합니다. OrderBy enum에 다른 값이 있으면:
+The model code generated by scaffolding handles only `id-desc` automatically. If the OrderBy enum has other values:
 
-1. Scaffolding은 정상 동작하지만, model의 `exhaustive()` 함수에서 타입 오류 발생
-2. 개발자가 수동으로 model에 케이스 추가 필요
-3. 이 작업이 누락되면 런타임 에러 발생 가능
+1. Scaffolding succeeds, but a type error occurs in the model's `exhaustive()` function
+2. The developer must manually add cases to the model
+3. If this is missed, a runtime error may occur
 
-**이것은 기술적 제약이 아닌 Scaffolding의 best practice입니다.** 복잡한 OrderBy는 Scaffolding 완료 후 추가하는 것이 안전합니다.
+**This is not a technical constraint — it is scaffolding best practice.** Add complex OrderBy values after scaffolding is complete.
 
-### 추가 정렬 옵션이 필요할 때
+### When additional sort options are needed
 
-나중에 정렬 옵션이 필요하면:
+When sort options are required later:
 
-1. entity.json의 OrderBy enum에 값 추가
-2. model의 orderBy 분기문에 해당 케이스 추가
+1. Add values to the OrderBy enum in entity.json
+2. Add the corresponding cases to the orderBy branch in the model
 
 ```typescript
-// model.ts - orderBy 케이스 추가 예시
+// model.ts — adding orderBy cases
 if (params.orderBy === "id-desc") {
   qb.orderBy("products.id", "desc");
 } else if (params.orderBy === "name-asc") {
-  // 추가
+  // added
   qb.orderBy("products.name", "asc");
 } else {
   exhaustive(params.orderBy);
 }
 ```
 
-**규칙**: 처음에는 `id-desc`만 생성 → scaffolding 완료 후 필요시 추가
+**Rule**: start with `id-desc` only → add others as needed after scaffolding
 
-## IMPORTANT: integer vs number 타입 선택 기준
+## IMPORTANT: integer vs number Type Selection
 
-**CRITICAL: 숫자 필드 생성 시 반드시 아래 기준을 따른다. 잘못된 타입 선택은 불필요한 ALTER migration을 유발한다.**
+**CRITICAL: Always follow the criteria below when creating numeric fields. Wrong type choice causes unnecessary ALTER migrations.**
 
-PostgreSQL 기준:
+PostgreSQL mapping:
 
-- `integer` → DB `integer` (정수)
-- `number` → DB `numeric(p,s)` (소수점 포함 정밀 숫자)
+- `integer` → DB `integer` (whole numbers)
+- `number` → DB `numeric(p,s)` (precise decimal numbers)
 
-| 용도                           | Entity 타입                       | 예시                             |
-| ------------------------------ | --------------------------------- | -------------------------------- |
-| PK, FK, 카운트, 순서, 수량     | `integer`                         | id, user_id, order_num, quantity |
-| 금액, 비율, 소수점이 필요한 값 | `number` (+ `precision`, `scale`) | price, rate, weight, score       |
+| Use case | Entity type | Example |
+|----------|-------------|---------|
+| PK, FK, count, order, quantity | `integer` | id, user_id, order_num, quantity |
+| Amount, ratio, values requiring decimal | `number` (+ `precision`, `scale`) | price, rate, weight, score |
 
 **DO NOT:**
 
 ```json
-{ "name": "order_num", "type": "number", "desc": "정렬순서" }
-{ "name": "quantity", "type": "number", "desc": "수량" }
+{ "name": "order_num", "type": "number", "desc": "Sort order" }
+{ "name": "quantity", "type": "number", "desc": "Quantity" }
 ```
 
 **DO:**
 
 ```json
-{ "name": "order_num", "type": "integer", "desc": "정렬순서" }
-{ "name": "quantity", "type": "integer", "desc": "수량" }
-{ "name": "price", "type": "number", "precision": 12, "scale": 2, "desc": "금액" }
-{ "name": "rate", "type": "number", "precision": 5, "scale": 2, "desc": "비율" }
+{ "name": "order_num", "type": "integer", "desc": "Sort order" }
+{ "name": "quantity", "type": "integer", "desc": "Quantity" }
+{ "name": "price", "type": "number", "precision": 12, "scale": 2, "desc": "Price" }
+{ "name": "rate", "type": "number", "precision": 5, "scale": 2, "desc": "Rate" }
 ```
 
-**판단 기준: "이 값에 소수점이 필요한가?"**
+**Decision rule: "Does this value ever need a decimal point?"**
 
 - No → `integer`
-- Yes → `number` (반드시 `precision`, `scale` 명시)
+- Yes → `number` (always specify `precision` and `scale`)
 
-## 공통 옵션 (CommonProp)
+## Common Options (CommonProp)
 
-모든 prop 타입에 적용 가능한 공통 옵션:
+Options applicable to all prop types:
 
-| 옵션 | 타입 | 설명 |
-|------|------|------|
-| `name` | string | 필드명 (필수) |
-| `desc` | string | 필드 설명 |
-| `nullable` | boolean | NULL 허용 여부 (기본: false) |
-| `toFilter` | true | sonamuFilter의 필터링 대상으로 등록. model.md 참조 |
-| `cone` | Cone | LLM 기반 fixture 생성 메타데이터. cone.md 참조 |
+| Option | Type | Description |
+|--------|------|-------------|
+| `name` | string | Field name (required) |
+| `desc` | string | Field description |
+| `nullable` | boolean | Whether NULL is allowed (default: false) |
+| `toFilter` | true | Register as a sonamuFilter filtering target. See model.md |
+| `cone` | Cone | LLM-based fixture generation metadata. See cone.md |
 
-## 타입별 필수 옵션
+## Required Options by Type
 
-| 타입         | 필수         | 선택                                                        |
-| ------------ | ------------ | ----------------------------------------------------------- |
-| `string`     | -            | `length` (없으면 text), `zodFormat` (email, uuid 등)        |
-| `integer`    | -            | -                                                           |
-| `bigInteger` | -            | -                                                           |
-| `number`     | -            | `precision`, `scale`, `numberType` (real/double precision/numeric) |
-| `numeric`    | -            | `precision`, `scale`                                        |
-| `enum`       | `id`         | `nullable`, `dbDefault`, `length`                           |
-| `json`       | `id`         | `dbDefault: "{}"`                                           |
-| `date`       | -            | `dbDefault`, `precision`                                    |
-| `boolean`    | -            | `dbDefault: "false"`                                        |
-| `virtual`    | `id`         | `virtualType` (query/code, 기본: code)                      |
-| `vector`     | `dimensions` | -                                                           |
-| `tsvector`   | -            | -                                                           |
+| Type | Required | Optional |
+|------|----------|---------|
+| `string` | — | `length` (text if omitted), `zodFormat` (email, uuid, etc.) |
+| `integer` | — | — |
+| `bigInteger` | — | — |
+| `number` | — | `precision`, `scale`, `numberType` (real/double precision/numeric) |
+| `numeric` | — | `precision`, `scale` |
+| `enum` | `id` | `nullable`, `dbDefault`, `length` |
+| `json` | `id` | `dbDefault: "{}"` |
+| `date` | — | `dbDefault`, `precision` |
+| `boolean` | — | `dbDefault: "false"` |
+| `virtual` | `id` | `virtualType` (query/code, default: code) |
+| `vector` | `dimensions` | — |
+| `tsvector` | — | — |
 
 ## IMPORTANT: ENUM Type dbDefault Setting
 
-ENUM 필드에 기본값을 설정할 때는 **이스케이프된 큰따옴표**로 값을 감싸야 합니다.
+When setting a default value on an ENUM field, the value must be wrapped in **escaped double quotes**.
 
 ### DO NOT - Incorrect Examples
 
 ```json
-// Incorrect: 따옴표 없음 - SQL에서 컬럼 참조로 해석되어 오류 발생
+// Incorrect: no quotes — interpreted as a column reference in SQL, causes error
 { "name": "status", "type": "enum", "id": "ApprovalStatus", "dbDefault": "pending" }
-// 오류: cannot use column reference in DEFAULT expression
+// Error: cannot use column reference in DEFAULT expression
 
-// Incorrect: 작은따옴표 사용 - Biome format error 발생
+// Incorrect: single quotes — causes Biome format error
 { "name": "status", "type": "enum", "id": "ApprovalStatus", "dbDefault": "'pending'" }
 ```
 
 ### DO - Correct Example
 
 ```json
-// Correct: 이스케이프된 큰따옴표 사용
+// Correct: escaped double quotes
 {
   "name": "status",
   "type": "enum",
   "id": "ApprovalStatus",
   "dbDefault": "\"pending\"",
-  "desc": "결재상태"
+  "desc": "Approval status"
 }
 ```
 
