@@ -999,11 +999,23 @@ async function skills_sync() {
   }
 
   if (isGlobal) {
-    await skills_sync_to(path.join(os.homedir(), ".claude"), sourceSkillsDir, sourceClaudeMd, {
+    const homeClaudeDir = path.join(os.homedir(), ".claude");
+    await skills_sync_to(homeClaudeDir, sourceSkillsDir, sourceClaudeMd, {
       useSymlink: false,
       copyProjectTemplates: false,
       isGlobal: true,
     });
+
+    // ~/.claude/commands/sonamu-skills.md 설치
+    const sourceCommandsDir = path.join(sourceBase, "commands");
+    const sourceCommand = path.join(sourceCommandsDir, "sonamu-skills.md");
+    if (await exists(sourceCommand)) {
+      const targetCommandsDir = path.join(homeClaudeDir, "commands");
+      await mkdir(targetCommandsDir, { recursive: true });
+      await cp(sourceCommand, path.join(targetCommandsDir, "sonamu-skills.md"));
+      console.log(chalk.green(`✓ /sonamu-skills command installed → ~/.claude/commands/`));
+    }
+
     console.log(chalk.cyan(`\n  Global sync complete → ~/.claude/skills/sonamu/`));
     console.log(chalk.dim(`  These skills are available in all Claude Code sessions.`));
     console.log(
