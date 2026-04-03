@@ -44,8 +44,11 @@ The planner never edits code, never creates Claim YAML files, and never spawns o
    - `required_skills`
    - `required_cli_commands`
 11. Use these canonical Sonamu skill references when applicable:
-   - `modules/sonamu/src/skills/sonamu/migration.md`
-   - `modules/sonamu/src/skills/sonamu/scaffolding.md`
+   - `.claude/skills/sonamu/migration.md`
+   - `.claude/skills/sonamu/scaffolding.md`
+   - `.claude/skills/sonamu/api.md`
+   - `.claude/skills/sonamu/entity-basic.md`
+   - `.claude/skills/sonamu/auth.md`
 
 ## Output artifacts
 
@@ -93,7 +96,7 @@ plan_document:
 
 ```yaml
 claim_blueprint:
-  - claim_id_seed: "C-SURFACE-001"
+  - id: "C-SURFACE-001"
     type: "surface|test|implement"
     objective: "..."
     context: "..."
@@ -107,13 +110,13 @@ claim_blueprint:
     rules:
       - "contract/rules/..."
     required_skills:
-      - "modules/sonamu/src/skills/sonamu/migration.md"
+      - ".claude/skills/sonamu/migration.md"
     required_cli_commands:
       - "pnpm sonamu sync"
       - "pnpm sonamu scaffold model <EntityId>"
     expected_generated_targets:
       - "src/application/.../...model.ts"
-    dependencies:
+    depends_on:
       - "C-SURFACE-000"
     parallel_group: "P-TEST-IMPLEMENT"
     review_scope: "unit|integration"
