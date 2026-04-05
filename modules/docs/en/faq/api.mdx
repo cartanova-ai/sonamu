@@ -140,22 +140,28 @@ async updateProfile(
 
 <Accordion title="How do I create a file upload API?">
 
+The `@upload` decorator is used independently without `@api`.
+
 **Single file:**
 
 ```typescript
-import { api, upload, Sonamu } from "sonamu";
+import { upload, Sonamu } from "sonamu";
 
-@api({ httpMethod: "POST" })
-@upload({ mode: "single" })
+@upload()
 async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
 
-  const key = `avatars/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+  if (!file) {
+    throw new Error("File is required");
+  }
+
+  const md5 = await file.md5();
+  const key = `avatars/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   return { url, filename: file.filename };
 }
@@ -164,20 +170,24 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
 **Multiple files:**
 
 ```typescript
-import { api, upload, Sonamu } from "sonamu";
+import { upload, Sonamu } from "sonamu";
 
-@api({ httpMethod: "POST" })
-@upload({ mode: "multiple" })
+@upload()
 async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }> {
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getContext();
+  const { bufferedFiles } = Sonamu.getContext();
+
+  if (!bufferedFiles || bufferedFiles.length === 0) {
+    throw new Error("At least one file is required");
+  }
 
   const results = [];
-  for (const file of files) {
-    const key = `files/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+  for (const file of bufferedFiles) {
+    const md5 = await file.md5();
+    const key = `files/${md5}.${file.extname}`;
+    const url = await file.saveToDisk("fs", key);
     results.push({ url, filename: file.filename });
   }
 

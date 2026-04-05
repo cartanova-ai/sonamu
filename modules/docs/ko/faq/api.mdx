@@ -152,11 +152,16 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
-  const key = `avatars/${Date.now()}_${file.filename}`;
-  const url = await file.saveToDisk(key);
+  if (!file) {
+    throw new Error("파일이 필요합니다");
+  }
+
+  const md5 = await file.md5();
+  const key = `avatars/${md5}.${file.extname}`;
+  const url = await file.saveToDisk("fs", key);
 
   return { url, filename: file.filename };
 }
@@ -172,12 +177,17 @@ async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data
 
-  const { files } = Sonamu.getContext();
+  const { bufferedFiles } = Sonamu.getContext();
+
+  if (!bufferedFiles || bufferedFiles.length === 0) {
+    throw new Error("파일이 필요합니다");
+  }
 
   const results = [];
-  for (const file of files) {
-    const key = `files/${Date.now()}_${file.filename}`;
-    const url = await file.saveToDisk(key);
+  for (const file of bufferedFiles) {
+    const md5 = await file.md5();
+    const key = `files/${md5}.${file.extname}`;
+    const url = await file.saveToDisk("fs", key);
     results.push({ url, filename: file.filename });
   }
 

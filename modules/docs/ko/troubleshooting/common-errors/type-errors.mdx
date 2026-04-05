@@ -383,35 +383,35 @@ import type { User, Post } from "@/types";
 ```typescript
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
-  // Type: UploadedFile | undefined
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
+  const buffer = file.buffer;  // ❌ file이 undefined일 수 있음
 }
 ```
 
 ### 원인
 
-`UploadedFile` 클래스에 `buffer` 속성이 없습니다. `toBuffer()` 메서드를 사용해야 합니다.
+`bufferedFiles?.[0]`의 타입은 `BufferedFile | undefined`이므로, null 체크 없이 속성에 접근하면 타입 오류가 발생합니다.
 
 ### 해결 방법
 
 ```typescript
 @upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
   if (!file) {
     throw new BadRequestException("파일이 필요합니다");
   }
 
-  // ✅ toBuffer() 메서드 사용
-  const buffer = await file.toBuffer();
+  // ✅ null 체크 후 buffer 접근
+  const buffer = file.buffer;
 
   // 또는 파일 저장
-  const url = await file.saveToDisk(`uploads/${file.filename}`);
+  const md5 = await file.md5();
+  const url = await file.saveToDisk("fs", `uploads/${md5}.${file.extname}`);
 
   return { url, size: file.size };
 }
