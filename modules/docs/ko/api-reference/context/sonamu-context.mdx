@@ -238,7 +238,7 @@ class ImageModelClass extends BaseModelClass {
 uploadedFiles?: UploadedFile[]
 ```
 
-Stream 모드로 업로드된 파일 목록입니다. `@upload({ mode: "stream" })` 설정 시 존재합니다.
+Stream 모드로 업로드된 파일 목록입니다. `@upload({ consume: "stream", destination: "..." })` 설정 시 존재합니다.
 
 파일이 이미 저장소에 스트리밍 완료된 상태로, URL/key 등 메타데이터만 접근 가능합니다. 대용량 파일 업로드에 적합합니다.
 
@@ -265,7 +265,7 @@ interface UploadedFile {
 
 ```typescript
 class FileModelClass extends BaseModelClass {
-  @upload({ mode: "stream", limits: { files: 5 } })
+  @upload({ consume: "stream", destination: "s3", limits: { files: 5 } })
   async uploadLargeFiles(): Promise<{ files: SonamuFile[] }> {
     const { uploadedFiles } = Sonamu.getContext();
 

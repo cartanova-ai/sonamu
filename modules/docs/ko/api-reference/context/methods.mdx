@@ -227,7 +227,7 @@ class FileModelClass extends BaseModelClass {
 
 ```typescript
 class FileModelClass extends BaseModelClass {
-  @upload({ mode: "stream" })
+  @upload({ consume: "stream", destination: "s3" })
   async uploadLargeFiles(ctx: Context) {
     const { uploadedFiles } = Sonamu.getContext();
 
@@ -411,7 +411,7 @@ async uploadFile() {
 
 // ✅ 올바른 사용 (Stream 모드)
 @api()
-@upload({ mode: "stream" })
+@upload({ consume: "stream", destination: "s3" })
 async uploadFile() {
   const { uploadedFiles } = Sonamu.getContext();
   const file = uploadedFiles?.[0]; // OK
