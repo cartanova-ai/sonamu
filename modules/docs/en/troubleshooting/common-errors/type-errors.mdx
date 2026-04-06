@@ -381,39 +381,37 @@ import type { User, Post } from "@/types";
 ### Symptoms
 
 ```typescript
-@api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
-  // Type: UploadedFile | undefined
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
-  const buffer = file.buffer;  // ❌ Property 'buffer' does not exist
+  const buffer = file.buffer;  // ❌ file may be undefined
 }
 ```
 
 ### Cause
 
-`UploadedFile` class doesn't have a `buffer` property. You need to use the `toBuffer()` method.
+The type of `bufferedFiles?.[0]` is `BufferedFile | undefined`, so accessing a property without a null check causes a type error.
 
 ### Solution
 
 ```typescript
-@api()
-@upload({ mode: "single" })
+@upload()
 async uploadFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0];
 
   if (!file) {
     throw new BadRequestException("File is required");
   }
 
-  // ✅ Use toBuffer() method
-  const buffer = await file.toBuffer();
+  // ✅ Access buffer after null check
+  const buffer = file.buffer;
 
   // Or save file
-  const url = await file.saveToDisk(`uploads/${file.filename}`);
+  const md5 = await file.md5();
+  const url = await file.saveToDisk("fs", `uploads/${md5}.${file.extname}`);
 
   return { url, size: file.size };
 }
