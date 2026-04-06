@@ -187,6 +187,49 @@ Documents are persisted as files, so project context is preserved even when the 
 | **Troubleshooting → skill contribution** | **skill-contribution** |
 | **Framework bug / constraint response** | **framework-change** |
 
+## Skill Selection by CDD Claim Type
+
+**For Planners:** Use this table to populate `required_skills` in each Claim blueprint.
+
+### `surface` — Entity / Schema / Shared Type Work
+
+| Case | Required Skills |
+|------|----------------|
+| Add new entity | `entity-basic`, `entity-relations`, `migration`, `cone`, `fixture-cli`, `i18n` |
+| Define subset | `entity-basic`, `subset` |
+| Add auth entity | `auth`, `auth-migration` |
+| Add auth plugin | `auth-plugins` |
+| Add batch save structure | `upsert` |
+| Add vector search structure | `vector`, `entity-basic` |
+| Resolve scaffolding errors | `scaffolding` |
+
+### `test` — Test Writing
+
+| Case | Required Skills |
+|------|----------------|
+| Business logic tests | `testing`, `testing-devrunner` |
+| Tests requiring fixtures | `testing`, `fixture-cli` |
+| Debugging / tracing | `naite` |
+
+### `implement` — Business Logic Implementation
+
+| Case | Required Skills |
+|------|----------------|
+| Model CRUD implementation | `model`, `puri` |
+| API endpoint implementation | `api`, `model` |
+| File upload implementation | `api`, `framework-change` |
+| SQL query writing | `puri` |
+| Internationalization | `i18n` |
+| Auth guard / session handling | `auth` |
+| Auth plugin implementation | `auth-plugins` |
+| Batch save implementation | `upsert`, `model` |
+| AI Agent implementation | `ai-agents` |
+| Background job / scheduling | `tasks` |
+| Vector search implementation | `vector`, `puri` |
+| Frontend integration | `frontend`, `scaffolding` |
+
+---
+
 ## Command Execution Path
 
 All `pnpm` commands are run from the **`packages/api`** directory.

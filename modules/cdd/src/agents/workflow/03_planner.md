@@ -40,6 +40,7 @@ The planner never edits code, never creates Claim YAML files, and never spawns o
 11. Use these canonical Sonamu skill references when applicable:
     - `modules/sonamu/src/skills/sonamu/migration.md`
     - `modules/sonamu/src/skills/sonamu/scaffolding.md`
+12. When selecting `required_skills` for each Claim, refer to the **Skill Selection by CDD Claim Type** table in `modules/sonamu/src/skills/sonamu/SKILL.md`. Match the Claim's type (`surface` / `test` / `implement`) and work case to determine the exact skill files to include.
 
 ## Downstream output
 
