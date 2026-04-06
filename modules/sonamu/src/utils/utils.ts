@@ -1,7 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import fs from "fs";
 import path from "path";
-import { cluster } from "radashi";
 import type { AbsolutePath } from "./path-utils";
 
 export function findAppRootPath(): AbsolutePath {
@@ -67,10 +66,6 @@ export function assertDefined<T>(value: T | undefined, message?: string): T {
   return value;
 }
 
-// lodash chunk 대체 (radash cluster 사용)
-export function chunk<T>(array: T[], size: number): T[][] {
-  return cluster(array, Math.ceil(array.length / size));
-}
 // lodash intersectionBy 대체
 export function intersectionBy<T, K>(
   arr1: readonly T[],

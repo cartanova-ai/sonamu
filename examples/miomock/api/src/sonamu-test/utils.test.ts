@@ -3,7 +3,6 @@ import {
   assertDefined,
   assertExists,
   assertNotNull,
-  chunk,
   differenceWith,
   exhaustive,
   findApiRootPath,
@@ -233,53 +232,6 @@ describe("utils", () => {
     test("커스텀 에러 메시지", () => {
       // 커스텀 에러 메시지 지정 가능
       expect(() => assertDefined(undefined, "Config is undefined")).toThrow("Config is undefined");
-    });
-  });
-
-  describe("chunk (배열 분할)", () => {
-    test.each([
-      {
-        array: [1, 2, 3, 4, 5],
-        size: 2,
-        expected: [
-          [1, 2, 3],
-          [4, 5],
-        ],
-        description: "5개를 2청크로",
-      },
-      {
-        array: [1, 2, 3, 4],
-        size: 2,
-        expected: [
-          [1, 2],
-          [3, 4],
-        ],
-        description: "4개를 2청크로 (균등)",
-      },
-      {
-        array: [],
-        size: 2,
-        expected: [],
-        description: "빈 배열은 빈 배열 반환",
-      },
-      {
-        array: [1, 2, 3],
-        size: 1,
-        expected: [[1, 2, 3]],
-        description: "size=1이면 전체가 1개 청크",
-      },
-    ])("$description", ({ array, size, expected }) => {
-      expect(chunk(array, size)).toEqual(expected);
-    });
-
-    test("DB 배치 처리", () => {
-      // 100개의 데이터를 3개 청크로 나눠서 DB에 배치 insert
-      const rows = Array.from({ length: 100 }, (_, i) => ({ id: i }));
-      const chunks = chunk(rows, 3);
-
-      expect(chunks.length).toBe(3); // 3개의 청크로 분할
-      // 각 청크의 총 개수는 원본과 동일해야 함
-      expect(chunks.flat()).toHaveLength(100);
     });
   });
 

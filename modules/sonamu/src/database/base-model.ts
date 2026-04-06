@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
 import { getLogger, type Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
-import { cloneDeep, group, isObject, omit, set } from "radashi";
+import { cloneDeep, cluster, group, isObject, omit, set } from "radashi";
 import { type ListResult, normalizeFilterQuery, validateSonamuFilters } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
@@ -9,7 +9,6 @@ import type { FilterOperator, FilterQuery } from "../filter/types";
 import { convertDomainToCategory } from "../logger/category";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
-import { chunk } from "../utils/utils";
 import type { EnhancerMap, ResolveSubsetIntersection } from "./base-model.types";
 import type { DBPreset } from "./db";
 import { DB } from "./db";
@@ -91,7 +90,7 @@ export class BaseModelClass<
     }
 
     let resultIds: number[] = [];
-    for (const items of chunk(unqKeys, chunkSize)) {
+    for (const items of cluster(unqKeys, chunkSize)) {
       const dbRows = await wdb(tableName)
         .select("id", wdb.raw(selectField))
         .whereIn(whereInField as string, items);

@@ -1,11 +1,11 @@
 import { getLogger } from "@logtape/logtape";
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
-import { isArray, unique } from "radashi";
+import { cluster, isArray, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
-import { assertDefined, chunk, nonNullable } from "../utils/utils";
+import { assertDefined, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
 
@@ -290,7 +290,7 @@ export class UpsertBuilder {
 
       // 현재 레벨 upsert
       const chunkSize = options?.chunkSize;
-      const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
+      const levelChunks = chunkSize ? cluster(resolvedRows, chunkSize) : [resolvedRows];
       const selectFields = unique(["id", ...extractFields]);
 
       for (let index = 0; index < levelChunks.length; index++) {
