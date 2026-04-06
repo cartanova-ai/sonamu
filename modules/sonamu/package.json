@@ -55,6 +55,10 @@
       "import": "./dist/filter/index.js",
       "types": "./dist/filter/index.d.ts"
     },
+    "./auth/plugins": {
+      "import": "./dist/auth/plugins/index.js",
+      "types": "./dist/auth/plugins/index.d.ts"
+    },
     "./cdd-types": {
       "import": "./dist/ui/cdd-types.js",
       "types": "./dist/ui/cdd-types.d.ts"
