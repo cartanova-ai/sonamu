@@ -23,7 +23,7 @@
   },
   "scripts": {
     "dev": "nodemon exec",
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "build": "tsdown",
     "check": "tsc --noEmit && oxlint src && oxfmt --check src",
     "check:type": "tsc --noEmit",
     "check:format": "oxfmt src",
@@ -45,11 +45,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@swc/cli": "catalog:",
-    "@swc/core": "catalog:",
     "@types/inflection": "catalog:",
     "@types/node": "catalog:",
     "nodemon": "catalog:",
+    "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
