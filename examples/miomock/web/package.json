@@ -38,7 +38,7 @@
     "@types/qs": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react-swc": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "sass": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
