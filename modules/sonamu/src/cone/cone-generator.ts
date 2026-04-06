@@ -63,7 +63,7 @@ function getApiKey(): string {
   try {
     // Sonamu가 초기화되어 있는 경우
     const { Sonamu } = require("../api");
-    apiKey = Sonamu.secret?.anthropic_api_key;
+    apiKey = Sonamu.secrets?.anthropic_api_key;
   } catch {
     // Sonamu가 초기화되지 않은 경우 (테스트 등)
     apiKey = undefined;
@@ -294,7 +294,7 @@ async function callAnthropicAPI(
     });
 
     const { text, usage } = await generateText({
-      model: anthropic("claude-sonnet-4-5"),
+      model: anthropic("claude-sonnet-4-6"),
       prompt,
     });
 

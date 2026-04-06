@@ -57,7 +57,7 @@ export class FixtureGenerator {
       locale: options?.locale || "ko",
       useLLM: options?.useLLM || false,
       enableLLMCache: options?.enableLLMCache !== false,
-      llmModel: options?.llmModel || "claude-sonnet-4-5",
+      llmModel: options?.llmModel || "claude-sonnet-4-6",
     };
   }
 
@@ -825,7 +825,7 @@ export class FixtureGenerator {
       const { generateText } = await import("ai");
 
       const rowResponse = await generateText({
-        model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
+        model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-6"),
         prompt: this.buildRowLLMPrompt(llmProps, entity),
       });
       if (!rowResponse || typeof rowResponse.text !== "string") {
@@ -869,7 +869,7 @@ export class FixtureGenerator {
     const { generateText } = await import("ai");
 
     const singleResponse = await generateText({
-      model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-5"),
+      model: createAnthropic({ apiKey })(this.options.llmModel || "claude-sonnet-4-6"),
       prompt: this.buildLLMPrompt(fixtureHint, prop, entity),
     });
     if (!singleResponse || typeof singleResponse.text !== "string") {
@@ -1208,7 +1208,7 @@ Rules:
 
     try {
       const { Sonamu } = require("../api");
-      apiKey = Sonamu.secret?.anthropic_api_key;
+      apiKey = Sonamu.secrets?.anthropic_api_key;
     } catch {
       // Sonamu가 초기화되지 않은 경우 (테스트 환경 등)
     }
