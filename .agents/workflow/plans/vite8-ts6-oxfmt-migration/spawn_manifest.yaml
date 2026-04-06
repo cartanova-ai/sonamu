@@ -1,0 +1,806 @@
+# Spawn Manifest: Vite 8 / TypeScript 6.0 / Oxfmt+Oxlint Migration
+# All units strictly sequential. No parallel groups.
+
+units:
+  # =======================================================================
+  # Phase 1: Vite 8.0.3 + Vitest 4.1.2
+  # =======================================================================
+
+  - unit_id: U-101
+    owner_role: implementation-primary
+    model_hint: opus
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "implementation-primary"
+        preset_file: ".agents/agents/implementation-primary.md"
+      inline_fallback:
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/02_implement.md"
+        role_id: "implementation-primary"
+        required_tools:
+          - Read
+          - Edit
+          - Write
+          - Bash
+          - Glob
+          - Grep
+        objective_packet:
+          objective_id: "OBJ-101"
+          objective_revision: 1
+          global_objective: "Sonamu 모노레포 툴체인 마이그레이션: Vite 8, Vitest 4.1.2, TypeScript 6, Oxfmt+Oxlint"
+          phase_objective: "Phase 1: Vite 7.3.0 → 8.0.3, Vitest ^4.0.10 → ^4.1.2"
+          unit_objective: |
+            다음 변경을 순서대로 수행한다:
+            1. pnpm-workspace.yaml catalog 버전 업데이트:
+               - vite: 7.3.0 → 8.0.3 (exact pin)
+               - vitest: ^4.0.10 → ^4.1.2
+               - @vitest/coverage-v8: ^4.0.12 → ^4.1.2
+               - @vitejs/plugin-react: 4.7.0 → 6.0.1 (exact pin)
+               - @vitejs/plugin-react-swc: ^4.1.3 → ^4.3.0
+            2. modules/create-sonamu/template/src/package.json의 vite, vitest, plugin 버전 직접 업데이트 (catalog 외부)
+            3. pnpm install 실행
+            4. rollupOptions → rolldownOptions 변경 대상:
+               - modules/react-components/vite.config.ts: rollupOptions → rolldownOptions (external만 있으므로 rename 충분)
+               - examples/miomock/web/vite.config.ts: rollupOptions → rolldownOptions + manualChunks object → function form으로 변환
+               - modules/create-sonamu/template/src/packages/web/vite.config.ts: 동일 패턴
+               - react-sui는 EXCLUDED. rollupOptions 유지 (Vite 8 compatibility alias).
+            5. manualChunks 변환 방식:
+               기존: manualChunks: { "vendor-react": ["react", "react-dom"], ... }
+               신규: manualChunks: (id) => { if (id.includes("react-dom") || id.includes("react")) return "vendor-react"; if (id.includes("@tanstack")) return "vendor-tanstack"; }
+            6. 각 vite.config.ts에서 esbuild: key 사용 여부 확인 후 있으면 oxc: 로 변경
+            7. Vitest internals 타입 호환성 확인:
+               - modules/sonamu/src/testing/dev-vitest-manager.ts (createVitest, Vitest 타입)
+               - modules/sonamu/src/testing/naite-vitest-reporter.ts (Reporter 타입)
+               - examples/miomock/api/custom-sequencer.ts (Sequencer 타입)
+               타입 에러 발생 시 Vitest 4.1 API에 맞게 수정
+          non_goals:
+            - "react-sui 마이그레이션"
+            - "TypeScript 업그레이드 (Phase 2에서 처리)"
+            - "Biome/ESLint 제거 (Phase 3에서 처리)"
+            - "생성된 파일 편집 (*.generated.ts 등)"
+            - "배포 또는 마이그레이션 실행"
+          success_criteria:
+            - "pnpm install 성공 (lock file 업데이트됨)"
+            - "pnpm --filter react-components build 성공"
+            - "pnpm --filter ui-web build 성공"
+            - "pnpm --filter miomock-web build 성공"
+            - "pnpm --filter sonamu build 성공"
+            - "pnpm --filter miomock-api test 성공 (Vitest internals regression)"
+            - "rollupOptions가 rolldownOptions로 변경됨 (react-components, miomock/web, template/web)"
+            - "manualChunks가 function form으로 변환됨"
+          constraints:
+            - "as any, as unknown as T 금지"
+            - "생성된 파일 직접 편집 금지"
+            - "react-sui 수정 금지"
+            - "pnpm check (Biome) 루트에서 통과해야 함 (Phase 3 전까지 Biome 사용)"
+            - "커밋 메시지: [sonamu, miomock] chore: Vite 8.0.3 + Vitest 4.1.2 카탈로그 및 설정 마이그레이션"
+          required_evidence:
+            - "pnpm install 성공 로그"
+            - "pnpm --filter sonamu build 성공 로그"
+            - "pnpm --filter miomock-api test 성공 로그"
+            - "pnpm --filter miomock-web build 성공 로그"
+    must_verify_behaviors:
+      - "Vite 8로 빌드된 react-components 라이브러리 번들이 생성됨"
+      - "Vite 8로 빌드된 miomock-web 애플리케이션이 청크 분리되어 생성됨"
+      - "Vitest 4.1.2에서 pnpm --filter miomock-api test가 회귀 없이 통과함"
+      - "dev-vitest-manager.ts, naite-vitest-reporter.ts, custom-sequencer.ts 타입 에러 없음"
+    gate_profile:
+      common_required:
+        - root_pnpm_check
+        - project_build
+        - project_test
+      project_overrides:
+        modules/sonamu:
+          required:
+            - "pnpm --filter sonamu build"
+            - "pnpm --filter sonamu test:type"
+        examples/miomock/api:
+          required:
+            - "pnpm --filter miomock-api test"
+        modules/react-components:
+          required:
+            - "pnpm --filter @sonamu-kit/react-components build"
+        examples/miomock/web:
+          required:
+            - "pnpm --filter miomock-web build"
+        modules/sonamu/ui-web:
+          required:
+            - "pnpm --filter ui-web build"
+    dependencies: []
+    parallel_group: P-1
+    required_tools:
+      - Read
+      - Edit
+      - Write
+      - Bash
+      - Glob
+      - Grep
+    required_skills: []
+    review_scope: unit
+    done_criteria:
+      - "모든 gate_profile 항목 통과"
+      - "커밋 생성됨"
+      - "unit_execution_report 반환됨"
+
+  - unit_id: U-101-review
+    owner_role: reviewer
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "reviewer"
+        preset_file: ".agents/agents/reviewer.md"
+      inline_fallback:
+        role_id: "reviewer"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    objective_packet:
+      objective_id: "OBJ-101-review"
+      objective_revision: 1
+      global_objective: "U-101 구현 결과 검토"
+      unit_objective: "Vite 8 마이그레이션 diff 검토: rolldown 전환 정확성, manualChunks 변환, Vitest internals 타입 안전성"
+      success_criteria:
+        - "bugs, requirement conformance, performance/security 순서로 검토"
+        - "high/medium 심각도 findings만 보고"
+    dependencies:
+      - U-101
+    parallel_group: P-1
+    review_scope: unit
+    done_criteria:
+      - "unit_review_result 반환됨"
+      - "status: clean 또는 findings 전달됨"
+
+  # =======================================================================
+  # Phase 2: TypeScript 6.0
+  # =======================================================================
+
+  - unit_id: U-201
+    owner_role: implementation-primary
+    model_hint: opus
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "implementation-primary"
+        preset_file: ".agents/agents/implementation-primary.md"
+      inline_fallback:
+        role_id: "implementation-primary"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/02_implement.md"
+        required_tools:
+          - Read
+          - Edit
+          - Write
+          - Bash
+          - Glob
+          - Grep
+        objective_packet:
+          objective_id: "OBJ-201"
+          objective_revision: 1
+          global_objective: "Sonamu 모노레포 툴체인 마이그레이션: Vite 8, Vitest 4.1.2, TypeScript 6, Oxfmt+Oxlint"
+          phase_objective: "Phase 2: TypeScript ^5.9.3 → 6.0"
+          unit_objective: |
+            다음 변경을 순서대로 수행한다:
+            1. pnpm-workspace.yaml catalog: typescript: ^5.9.3 → 6.0 (또는 ^6.0.0)
+            2. pnpm install 실행
+            3. 아래 tsconfig 파일에 types 추가:
+               - modules/sonamu/tsconfig.json: ["fastify-sse-v2"] → ["fastify-sse-v2", "node"]
+               - examples/miomock/api/tsconfig.json: (없음) → ["node"] 추가
+               - modules/create-sonamu/tsconfig.json: (없음) → ["node"] 추가
+               - modules/create-sonamu/template/src/packages/api/tsconfig.json: (없음) → ["node"] 추가
+               - modules/sonamu/ui-web/tsconfig.json: (없음) → ["node"] 추가
+               - modules/react-components/tsconfig.json: (없음) → ["node"] 추가
+               - modules/react-components/tsconfig.node.json: (없음) → ["node"] 추가
+               - examples/miomock/web/tsconfig.app.json: (없음) → ["node"] 추가
+               - examples/miomock/web/tsconfig.node.json: (없음) → ["node"] 추가
+               - modules/create-sonamu/template/src/packages/web/tsconfig.app.json: (없음) → ["node"] 추가
+               - modules/create-sonamu/template/src/packages/web/tsconfig.node.json: (없음) → ["node"] 추가
+               - modules/hmr-hook/tsconfig.json: (없음) → ["node"] 추가
+               - modules/hmr-runner/tsconfig.json: (없음) → ["node"] 추가
+               - modules/ts-loader/tsconfig.json: (없음) → ["node"] 추가
+               - modules/tasks/tsconfig.json: (없음) → ["node"] 추가
+               - modules/cdd/tsconfig.json: (없음) → ["node"] 추가
+            4. noUncheckedSideEffectImports 처리:
+               CSS import가 있는 web 패키지 tsconfig에 "noUncheckedSideEffectImports": false 추가:
+               - modules/react-components/tsconfig.json
+               - modules/sonamu/ui-web/tsconfig.json
+               - examples/miomock/web/tsconfig.app.json
+               - modules/create-sonamu/template/src/packages/web/tsconfig.app.json
+               또한 modules/react-components/tsconfig.json의 include에 vite-env.d.ts가 포함되는지 확인.
+               포함되지 않으면 include에 추가하거나 src/ 아래로 이동.
+            5. baseUrl + paths 사용 여부 확인: 있으면 ts5to6 호환성 검토
+            6. 각 패키지 빌드 및 타입 체크 실행
+          non_goals:
+            - "Vite 설정 변경 (Phase 1 완료됨)"
+            - "Biome/ESLint 제거 (Phase 3에서 처리)"
+            - "생성된 파일 편집"
+            - "배포 또는 마이그레이션 실행"
+          success_criteria:
+            - "pnpm install 성공"
+            - "pnpm --filter sonamu test:type 성공"
+            - "pnpm --filter sonamu build 성공"
+            - "pnpm --filter miomock-api test 성공"
+            - "pnpm --filter ui-web build 성공"
+            - "pnpm --filter @sonamu-kit/react-components build 성공"
+            - "pnpm --filter miomock-web build 성공"
+            - "모든 지정된 tsconfig에 types 필드 추가됨"
+          constraints:
+            - "as any, as unknown as T 금지"
+            - "생성된 파일 직접 편집 금지"
+            - "pnpm check (Biome) 루트에서 통과해야 함"
+            - "커밋 메시지: [*] chore: TypeScript 6.0 업그레이드 및 tsconfig types/noUncheckedSideEffectImports 수정"
+          required_evidence:
+            - "pnpm --filter sonamu test:type 성공 로그"
+            - "pnpm --filter sonamu build 성공 로그"
+            - "pnpm --filter miomock-api test 성공 로그"
+    must_verify_behaviors:
+      - "modules/sonamu/tsconfig.json에 node 타입이 포함됨"
+      - "examples/miomock/api/tsconfig.json에 types: [node] 추가됨"
+      - "web 패키지에서 noUncheckedSideEffectImports: false 설정됨"
+      - "pnpm --filter sonamu test:type가 TypeScript 6.0 하에서 회귀 없이 통과"
+      - "pnpm --filter miomock-api test가 TypeScript 6.0 하에서 회귀 없이 통과"
+    gate_profile:
+      common_required:
+        - root_pnpm_check
+        - project_build
+        - project_test
+      project_overrides:
+        modules/sonamu:
+          required:
+            - "pnpm --filter sonamu build"
+            - "pnpm --filter sonamu test:type"
+        examples/miomock/api:
+          required:
+            - "pnpm --filter miomock-api test"
+        modules/react-components:
+          required:
+            - "pnpm --filter @sonamu-kit/react-components build"
+        examples/miomock/web:
+          required:
+            - "pnpm --filter miomock-web build"
+        modules/sonamu/ui-web:
+          required:
+            - "pnpm --filter ui-web build"
+    dependencies:
+      - U-101
+      - U-101-review
+    parallel_group: P-2
+    required_tools:
+      - Read
+      - Edit
+      - Bash
+      - Glob
+      - Grep
+    required_skills: []
+    review_scope: unit
+    done_criteria:
+      - "모든 gate_profile 항목 통과"
+      - "커밋 생성됨"
+      - "unit_execution_report 반환됨"
+
+  - unit_id: U-201-review
+    owner_role: reviewer
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "reviewer"
+        preset_file: ".agents/agents/reviewer.md"
+      inline_fallback:
+        role_id: "reviewer"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    objective_packet:
+      objective_id: "OBJ-201-review"
+      objective_revision: 1
+      global_objective: "U-201 구현 결과 검토"
+      unit_objective: "TypeScript 6.0 마이그레이션 diff 검토: types 필드 정확성, noUncheckedSideEffectImports 처리, 타입 안전성"
+      success_criteria:
+        - "bugs, requirement conformance, performance/security 순서로 검토"
+        - "high/medium 심각도 findings만 보고"
+    dependencies:
+      - U-201
+    parallel_group: P-2
+    review_scope: unit
+    done_criteria:
+      - "unit_review_result 반환됨"
+
+  # =======================================================================
+  # Phase 3a: formatter.ts 교체 (Biome Node.js API → oxfmt + oxlint)
+  # =======================================================================
+
+  - unit_id: U-301
+    owner_role: implementation-primary
+    model_hint: opus
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "implementation-primary"
+        preset_file: ".agents/agents/implementation-primary.md"
+      inline_fallback:
+        role_id: "implementation-primary"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/02_implement.md"
+        required_tools:
+          - Read
+          - Edit
+          - Write
+          - Bash
+          - Glob
+          - Grep
+        objective_packet:
+          objective_id: "OBJ-301"
+          objective_revision: 1
+          global_objective: "Sonamu 모노레포 툴체인 마이그레이션: Vite 8, Vitest 4.1.2, TypeScript 6, Oxfmt+Oxlint"
+          phase_objective: "Phase 3a: formatter.ts Biome Node.js API → oxfmt + oxlint CLI 교체"
+          unit_objective: |
+            modules/sonamu/src/utils/formatter.ts를 다음과 같이 교체한다:
+
+            현재 의존성: @biomejs/js-api/nodejs (Biome 클래스)
+            신규 의존성: oxfmt (Node.js API), oxlint (CLI via execa)
+
+            신규 flow (formatter.ts):
+            1. import { format, type FormatOptions } from "oxfmt"
+               const formatOptions: FormatOptions = {
+                 printWidth: 100, tabWidth: 2, useTabs: false,
+                 singleQuote: false, jsxSingleQuote: false,
+                 trailingComma: "all", semi: true, endOfLine: "lf",
+                 bracketSpacing: true, experimentalSortImports: true,
+               };
+            2. formatCode(code, parser, filePath):
+               a. const result1 = await format(filePath, code, formatOptions)
+               b. tmp 파일에 result1.code 저장 (crypto.randomUUID()로 유니크 파일명)
+               c. execa("oxlint", ["--fix", "--fix-suggestions", tmpFilePath]) 실행
+               d. tmp 파일 읽기
+               e. const result2 = await format(filePath, tmpFileContent, formatOptions)
+               f. tmp 파일 삭제, result2.code 반환
+            3. JSON parser: filePath가 .json이면 oxfmt가 자동 감지. formatOptions에 parser 옵션 불필요.
+            4. setupBiome 함수 제거 (oxfmt는 설정 불필요, 함수 호출부도 정리)
+            5. formatCode를 async 함수로 변환 (현재 동기). 호출부(code-generation.ts 등) await 추가.
+
+            oxfmt가 pnpm-workspace.yaml catalog에 추가되어 있어야 함.
+            modules/sonamu/package.json에 oxfmt 의존성 추가.
+            @biomejs/js-api, @biomejs/wasm-nodejs를 modules/sonamu/package.json에서 제거.
+
+            oxfmt Node.js API 확인:
+            - `import { format } from "oxfmt"` → format(filePath, source, options) → Promise<{ code: string }>
+            - 실제 API가 다르면 oxfmt 패키지 타입 정의를 확인하고 그에 맞게 작성.
+
+            formatCode 호출부 (await 추가 필요):
+            - modules/sonamu/src/syncer/code-generation.ts
+            - modules/sonamu/src/database/sonamu-dictionary.ts
+            - modules/sonamu/src/syncer/code-generator.ts
+            - modules/sonamu/src/application/entity/entity.ts
+            - modules/sonamu/src/sonamu.ts
+          non_goals:
+            - "Biome 전체 제거 (U-302에서 처리)"
+            - "ESLint 제거 (U-302에서 처리)"
+            - "biome-ignore 주석 마이그레이션 (U-302에서 처리)"
+            - "pnpm check 스크립트 변경 (U-302에서 처리)"
+            - "생성된 파일 편집"
+          success_criteria:
+            - "formatter.ts가 Biome API 없이 동작함"
+            - "oxfmt, execa import 사용"
+            - "formatCode가 async 함수로 변환됨"
+            - "모든 호출부에 await 추가됨"
+            - "setupBiome 함수 및 그 호출부 제거됨"
+            - "pnpm --filter sonamu build 성공"
+            - "pnpm --filter sonamu test:type 성공"
+            - "pnpm --filter miomock-api test 성공 (코드 생성 regression)"
+          constraints:
+            - "as any, as unknown as T 금지"
+            - "생성된 파일 직접 편집 금지"
+            - "formatCode를 동기로 유지하지 않음 (async로 변환)"
+            - "temp 파일은 crypto.randomUUID()로 유니크 경로 사용"
+            - "커밋 메시지: [sonamu] refactor: formatter.ts Biome Node.js API → oxfmt + oxlint CLI 교체"
+          required_evidence:
+            - "pnpm --filter sonamu build 성공 로그"
+            - "pnpm --filter sonamu test:type 성공 로그"
+            - "pnpm --filter miomock-api test 성공 로그 (코드 생성 포함)"
+    must_verify_behaviors:
+      - "formatCode(code, 'typescript', filePath)가 올바르게 포맷 + lint-fix된 코드를 반환함"
+      - "formatCode(code, 'json', filePath)가 JSON 파일에 대해 올바르게 포맷됨"
+      - "pnpm --filter miomock-api test에서 코드 생성 관련 테스트가 회귀 없이 통과"
+      - "formatCode 비동기화로 인해 타입 에러가 없음 (모든 호출부에 await)"
+    gate_profile:
+      common_required:
+        - root_pnpm_check
+        - project_build
+        - project_test
+      project_overrides:
+        modules/sonamu:
+          required:
+            - "pnpm --filter sonamu build"
+            - "pnpm --filter sonamu test:type"
+        examples/miomock/api:
+          required:
+            - "pnpm --filter miomock-api test"
+    dependencies:
+      - U-201
+      - U-201-review
+    parallel_group: P-3
+    required_tools:
+      - Read
+      - Edit
+      - Write
+      - Bash
+      - Glob
+      - Grep
+    required_skills: []
+    review_scope: unit
+    done_criteria:
+      - "모든 gate_profile 항목 통과"
+      - "커밋 생성됨"
+      - "unit_execution_report 반환됨"
+
+  - unit_id: U-301-review
+    owner_role: reviewer
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "reviewer"
+        preset_file: ".agents/agents/reviewer.md"
+      inline_fallback:
+        role_id: "reviewer"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    objective_packet:
+      objective_id: "OBJ-301-review"
+      objective_revision: 1
+      global_objective: "U-301 구현 결과 검토"
+      unit_objective: "formatter.ts 재작성 diff 검토: async 변환 정확성, temp 파일 안전성, oxfmt API 사용 정확성, 호출부 await 누락"
+      success_criteria:
+        - "bugs, requirement conformance, performance/security 순서로 검토"
+        - "high/medium 심각도 findings만 보고"
+    dependencies:
+      - U-301
+    parallel_group: P-3
+    review_scope: unit
+    done_criteria:
+      - "unit_review_result 반환됨"
+
+  # =======================================================================
+  # Phase 3b: Biome + ESLint 전면 제거 및 Oxfmt+Oxlint 전환 완료
+  # =======================================================================
+
+  - unit_id: U-302
+    owner_role: implementation-primary
+    model_hint: opus
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "implementation-primary"
+        preset_file: ".agents/agents/implementation-primary.md"
+      inline_fallback:
+        role_id: "implementation-primary"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/02_implement.md"
+        required_tools:
+          - Read
+          - Edit
+          - Write
+          - Bash
+          - Glob
+          - Grep
+        objective_packet:
+          objective_id: "OBJ-302"
+          objective_revision: 1
+          global_objective: "Sonamu 모노레포 툴체인 마이그레이션: Vite 8, Vitest 4.1.2, TypeScript 6, Oxfmt+Oxlint"
+          phase_objective: "Phase 3b: Biome + ESLint 전면 제거, Oxfmt + Oxlint 설정 완성"
+          unit_objective: |
+            다음 변경을 순서대로 수행한다:
+
+            [1] pnpm-workspace.yaml catalog에 oxfmt, oxlint 추가; @biomejs/biome, @biomejs/js-api, @biomejs/wasm-nodejs 제거
+
+            [2] 루트 .oxfmtrc.json 생성 (Biome 포매터 설정 이전):
+                {
+                  "printWidth": 100,
+                  "tabWidth": 2,
+                  "useTabs": false,
+                  "singleQuote": false,
+                  "jsxSingleQuote": false,
+                  "trailingComma": "all",
+                  "semi": true,
+                  "endOfLine": "lf",
+                  "bracketSpacing": true,
+                  "experimentalSortImports": true
+                }
+
+            [3] 루트 .oxlintrc.json 생성 (biome.json linter 설정 이전):
+                - 기본: "extends": ["oxlint:recommended"]
+                - noUnusedImports → eslint/no-unused-vars 매핑
+                - noDoubleEquals → eqeqeq: "error"
+                - noFocusedTests → 해당 oxlint 규칙 확인 후 매핑
+                - 비활성화된 biome a11y/style/complexity/suspicious 규칙들 → 해당 oxlint 규칙 비활성화
+                - 파일 excludes: dist, build, node_modules, examples/**/web/src/services/**/*,
+                  modules/create-sonamu/template (biome.json ignores와 동일)
+
+            [4] 루트 package.json scripts 업데이트:
+                - "format": "biome format --write" → "format": "oxfmt --write ."
+                - "check": "biome check" → "check": "oxlint . && oxfmt --check ."
+                - "check:fix": "biome check --write --unsafe" → "check:fix": "oxlint --fix --fix-suggestions . && oxfmt --write ."
+                - devDependencies에서 @biomejs/biome 제거, oxfmt + oxlint 추가
+
+            [5] 각 패키지 package.json scripts 업데이트:
+                - modules/sonamu: biome 스크립트 제거 (이미 U-301에서 @biomejs/js-api 제거됨)
+                - modules/cdd: "check": "biome check ..." → "check": "oxlint ... && oxfmt ..."
+                - modules/hmr-hook: "lint"/"format" biome → oxlint/oxfmt
+                - modules/hmr-runner: 동일
+                - modules/tasks: "check"/"check:format" biome → oxlint/oxfmt
+                - modules/create-sonamu: devDependencies에서 @biomejs/biome 제거
+                - modules/react-components: "lint": "eslint src" → "lint": "oxlint src"
+                  ESLint devDeps 제거: eslint, @typescript-eslint/*, eslint-plugin-*
+
+            [6] modules/sonamu/ui-web:
+                - .eslintrc.cjs 삭제
+                - package.json에서 eslint 관련 devDependencies 제거 (있으면)
+
+            [7] scripts/verify.ts:
+                - exec("pnpm biome check") → exec("pnpm check") 두 곳 모두
+
+            [8] create-sonamu/template 설정 이전:
+                - modules/create-sonamu/template/src/biome.json 삭제
+                - modules/create-sonamu/template/src/.oxfmtrc.json 생성 (위와 동일 설정)
+                - modules/create-sonamu/template/src/.oxlintrc.json 생성
+                - 템플릿 package.json scripts: biome → oxfmt/oxlint
+
+            [9] biome-ignore 주석 마이그레이션:
+                - 278개 biome-ignore 주석 systematic 변환
+                - "biome-ignore lint/suspicious/noExplicitAny:" → "oxlint-disable-next-line no-explicit-any"
+                - 기타 규칙: oxlint 동등 규칙이 있으면 변환, 없으면 주석 제거
+                - biome-ignore-all → 파일 상단 oxlint-disable (해당 규칙이 있는 경우)
+                - 우선순위: sonamu/src (70개), miomock/api (18개), ui-web (11개), 기타
+
+            [10] pnpm install 실행 (lock file 갱신)
+
+            [11] 전체 포맷 패스: pnpm format (oxfmt --write .)
+
+            [12] 최종 검증 게이트 전부 실행
+          non_goals:
+            - "formatter.ts 변경 (U-301 완료됨)"
+            - "react-sui 수정"
+            - "생성된 파일 편집"
+            - "배포 또는 마이그레이션 실행"
+          success_criteria:
+            - "pnpm check (oxlint + oxfmt) 루트에서 성공"
+            - "pnpm --filter sonamu build 성공"
+            - "pnpm --filter sonamu test:type 성공"
+            - "pnpm --filter miomock-api test 성공"
+            - "pnpm --filter ui-web build 성공"
+            - "pnpm --filter @sonamu-kit/react-components build 성공"
+            - "@biomejs/biome가 어떤 package.json에도 남아 있지 않음"
+            - ".eslintrc.cjs 삭제됨"
+            - "루트 .oxfmtrc.json과 .oxlintrc.json 존재함"
+            - "biome-ignore 주석이 oxlint-disable 또는 제거로 대체됨"
+          constraints:
+            - "as any, as unknown as T 금지"
+            - "생성된 파일 직접 편집 금지"
+            - "react-sui 수정 금지"
+            - "커밋 메시지: [*] chore: Biome + ESLint 제거 및 Oxfmt + Oxlint 전환 완료"
+          required_evidence:
+            - "pnpm check 성공 로그 (oxlint + oxfmt)"
+            - "pnpm --filter sonamu build 성공 로그"
+            - "pnpm --filter miomock-api test 성공 로그"
+            - "@biomejs/biome 잔존 여부 확인 출력"
+    must_verify_behaviors:
+      - "pnpm check가 oxlint + oxfmt 조합으로 루트에서 통과함"
+      - "biome.json이 더 이상 사용되지 않음 (삭제 또는 비활성화)"
+      - "모든 패키지에서 biome 관련 스크립트가 oxfmt/oxlint로 교체됨"
+      - "pnpm --filter miomock-api test 회귀 없음"
+      - "react-components lint 스크립트가 oxlint로 동작함"
+    gate_profile:
+      common_required:
+        - root_pnpm_check
+        - project_build
+        - project_test
+      project_overrides:
+        modules/sonamu:
+          required:
+            - "pnpm --filter sonamu build"
+            - "pnpm --filter sonamu test:type"
+        examples/miomock/api:
+          required:
+            - "pnpm --filter miomock-api test"
+        modules/react-components:
+          required:
+            - "pnpm --filter @sonamu-kit/react-components build"
+        modules/sonamu/ui-web:
+          required:
+            - "pnpm --filter ui-web build"
+        examples/miomock/web:
+          optional:
+            - "pnpm --filter miomock-web build"
+    dependencies:
+      - U-301
+      - U-301-review
+    parallel_group: P-3
+    required_tools:
+      - Read
+      - Edit
+      - Write
+      - Bash
+      - Glob
+      - Grep
+    required_skills: []
+    review_scope: unit
+    done_criteria:
+      - "모든 gate_profile 항목 통과"
+      - "커밋 생성됨"
+      - "unit_execution_report 반환됨"
+
+  - unit_id: U-302-review
+    owner_role: reviewer
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "reviewer"
+        preset_file: ".agents/agents/reviewer.md"
+      inline_fallback:
+        role_id: "reviewer"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    objective_packet:
+      objective_id: "OBJ-302-review"
+      objective_revision: 1
+      global_objective: "U-302 구현 결과 검토"
+      unit_objective: "Biome/ESLint 전면 제거 diff 검토: 설정 정확성, biome-ignore 마이그레이션 누락, 스크립트 전환 완전성"
+      success_criteria:
+        - "bugs, requirement conformance, performance/security 순서로 검토"
+        - "high/medium 심각도 findings만 보고"
+    dependencies:
+      - U-302
+    parallel_group: P-3
+    review_scope: unit
+    done_criteria:
+      - "unit_review_result 반환됨"
+
+  # =======================================================================
+  # Branch-level Review
+  # =======================================================================
+
+  - unit_id: U-BRANCH-REVIEW
+    owner_role: reviewer
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "reviewer"
+        preset_file: ".agents/agents/reviewer.md"
+      inline_fallback:
+        role_id: "reviewer"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    objective_packet:
+      objective_id: "OBJ-BRANCH-REVIEW"
+      objective_revision: 1
+      global_objective: "vite-8 브랜치 전체 최종 검토"
+      unit_objective: "전체 브랜치 diff (master → vite-8)에 대한 통합 검토: 3개 Phase 상호작용, 누락된 파일, 정책 위반"
+      success_criteria:
+        - "bugs → requirement conformance → performance/security 순서로 검토"
+        - "large output은 temp 파일에 저장하고 경로만 반환"
+    dependencies:
+      - U-302
+      - U-302-review
+    parallel_group: P-FINAL
+    review_scope: full-branch
+    done_criteria:
+      - "branch_review_result 반환됨"
+      - "status: clean 또는 findings가 orchestrator에게 전달됨"
+
+  # =======================================================================
+  # Handoff
+  # =======================================================================
+
+  - unit_id: U-HANDOFF
+    owner_role: handoff
+    model_hint: sonnet
+    spawn_authority: orchestrator_only
+    nested_spawn: forbidden
+    escalation_path: return_to_orchestrator
+    execution_mode_candidates:
+      preset:
+        preset_name: "handoff"
+        preset_file: ".agents/agents/handoff.md"
+      inline_fallback:
+        role_id: "handoff"
+        role_file_ref: ".agents/workflow/subagents/00_agent_roles.md"
+        prompt_file_ref: ".agents/workflow/prompts/05_user_review_handoff.md"
+    objective_packet:
+      objective_id: "OBJ-HANDOFF"
+      objective_revision: 1
+      global_objective: "vite-8 브랜치 마이그레이션 완료 사용자 인계"
+      unit_objective: "실행 추적, 검토 결과, 잔여 항목을 포함한 handoff_bundle 생성"
+      non_goals:
+        - "배포 또는 마이그레이션 실행 주장"
+    dependencies:
+      - U-BRANCH-REVIEW
+    parallel_group: P-FINAL
+    review_scope: unit
+    done_criteria:
+      - "handoff_bundle 반환됨"
+      - "사용자에게 결과 전달됨"
+
+# =======================================================================
+# Subagent Execution-Mode Matrix
+# =======================================================================
+
+execution_mode_matrix:
+  - unit_id: U-101
+    role: implementation-primary
+    preset: ".agents/agents/implementation-primary.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/02_implement.md"
+    default_mode: preset
+  - unit_id: U-101-review
+    role: reviewer
+    preset: ".agents/agents/reviewer.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    default_mode: preset
+  - unit_id: U-201
+    role: implementation-primary
+    preset: ".agents/agents/implementation-primary.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/02_implement.md"
+    default_mode: preset
+  - unit_id: U-201-review
+    role: reviewer
+    preset: ".agents/agents/reviewer.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    default_mode: preset
+  - unit_id: U-301
+    role: implementation-primary
+    preset: ".agents/agents/implementation-primary.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/02_implement.md"
+    default_mode: preset
+  - unit_id: U-301-review
+    role: reviewer
+    preset: ".agents/agents/reviewer.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    default_mode: preset
+  - unit_id: U-302
+    role: implementation-primary
+    preset: ".agents/agents/implementation-primary.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/02_implement.md"
+    default_mode: preset
+  - unit_id: U-302-review
+    role: reviewer
+    preset: ".agents/agents/reviewer.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    default_mode: preset
+  - unit_id: U-BRANCH-REVIEW
+    role: reviewer
+    preset: ".agents/agents/reviewer.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/06_codex_output_and_sessions.md"
+    default_mode: preset
+    note: "full-branch review — Codex MCP 사용 권장 (default backend for full-branch)"
+  - unit_id: U-HANDOFF
+    role: handoff
+    preset: ".agents/agents/handoff.md"
+    inline_fallback_prompt: ".agents/workflow/prompts/05_user_review_handoff.md"
+    default_mode: preset
+
+# =======================================================================
+# Sequential Execution Order (strict)
+# =======================================================================
+# P-1: U-101 → U-101-review → (fix loop if needed)
+# P-2: U-201 → U-201-review → (fix loop if needed)
+# P-3: U-301 → U-301-review → (fix loop if needed) → U-302 → U-302-review → (fix loop if needed)
+# P-FINAL: U-BRANCH-REVIEW → U-HANDOFF

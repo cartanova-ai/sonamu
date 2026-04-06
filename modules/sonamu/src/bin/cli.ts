@@ -1113,7 +1113,7 @@ async function skills_sync_to(
                 hooks: [
                   {
                     type: "command",
-                    command: "pnpm biome check --changed 2>&1 | head -60",
+                    command: "pnpm check 2>&1 | head -60",
                   },
                 ],
               },

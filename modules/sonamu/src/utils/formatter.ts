@@ -1,5 +1,6 @@
 import { execFileSync } from "child_process";
 import { readFileSync, unlinkSync, writeFileSync } from "fs";
+import { createRequire } from "module";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -7,6 +8,8 @@ import { format } from "oxfmt";
 
 import { Naite } from "../naite/naite";
 import { isTest } from "./controller";
+
+const _require = createRequire(import.meta.url);
 
 const OXFMT_OPTIONS = {
   printWidth: 100,
@@ -23,7 +26,7 @@ const OXFMT_OPTIONS = {
 
 function resolveOxlintBin(): string {
   try {
-    return require.resolve("oxlint/bin/oxlint");
+    return _require.resolve("oxlint/bin/oxlint");
   } catch {
     return "oxlint";
   }

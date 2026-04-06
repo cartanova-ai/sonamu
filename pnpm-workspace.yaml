@@ -19,8 +19,6 @@ catalog:
   "@aws-sdk/s3-request-presigner": ^3.958.0
   "@better-auth/passkey": ~1.4.18
   "@better-auth/sso": ~1.4.18
-  "@biomejs/js-api": ^4.0.0
-  "@biomejs/wasm-nodejs": ^2.3.7
   "@changesets/cli": ^2.29.4
   "@dagrejs/dagre": ^1.1.8
   "@dnd-kit/core": ^4.0.3
