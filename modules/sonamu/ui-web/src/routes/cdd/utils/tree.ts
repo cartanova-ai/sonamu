@@ -34,11 +34,11 @@ export function filterTree(nodes: CddTreeNode[], query: string): CddTreeNode[] {
 }
 
 export function sortTree(nodes: CddTreeNode[], isRoot = false): CddTreeNode[] {
-  const fileTypeOrder = (ft?: string) => (ft === "contract" ? 0 : ft === "spec" ? 1 : 2);
+  const fileTypeOrder = (ft?: string) => (ft === "contract" ? 0 : ft === "rules" ? 1 : 2);
   const sorted = [...nodes].sort((a, b) => {
     if (isRoot) {
-      const aIsMain = a.name === "main.contract.json";
-      const bIsMain = b.name === "main.contract.json";
+      const aIsMain = a.name === "main.contract.md";
+      const bIsMain = b.name === "main.contract.md";
       if (aIsMain && !bIsMain) return -1;
       if (!aIsMain && bIsMain) return 1;
     }

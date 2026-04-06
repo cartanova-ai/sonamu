@@ -5,7 +5,6 @@ import ChevronRightIcon from "~icons/lucide/chevron-right";
 import FolderIcon from "~icons/lucide/folder";
 import FolderOpenIcon from "~icons/lucide/folder-open";
 import PencilIcon from "~icons/lucide/pencil";
-import { useSonamuContext } from "../../../contexts/sonamu-provider";
 import { defaultCatch } from "../../../services/sonamu.shared";
 import { CddService } from "../service";
 import type { CddTreeNode } from "../types";
@@ -24,7 +23,6 @@ export function CddTreeNodeItem({
   activeNodePath: string | null;
   onSelect: (path: string) => void;
 }) {
-  const { SD } = useSonamuContext();
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
   const isActive = activeNodePath === node.path;
@@ -90,14 +88,14 @@ export function CddTreeNodeItem({
 
         <span className="flex-1 truncate text-xs font-medium">{node.name}</span>
 
-        {node.type === "file" && node.fileType === "contract" && (
+        {node.type === "file" && (
           <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0">
             <button
               type="button"
               className="p-1 hover:text-gray-900 cursor-pointer disabled:opacity-50"
               onClick={handleEdit}
               disabled={editing}
-              title={editing ? SD("cdd.editing") : SD("cdd.editContent")}
+              title={editing ? "Opening..." : "Edit"}
             >
               <PencilIcon className="w-3 h-3" />
             </button>

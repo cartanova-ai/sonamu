@@ -4,36 +4,37 @@ import os from "os";
 import path from "path";
 import { Sonamu } from "../api/sonamu";
 import type {
-  CddContentEnvelope,
-  CddDashboardData,
-  CddDocumentSummary,
+  CddAcEntry,
+  CddAcFile,
+  CddAcListResult,
+  CddContentResult,
   CddFileType,
-  CddSchema,
-  CddSchemaDetailEnvelope,
-  CddSchemaReference,
-  CddSchemaSummary,
-  CddSpecStatus,
+  CddRuleDetail,
+  CddRuleEntry,
+  CddRuleSummary,
   CddTreeNode,
 } from "./cdd-types";
 
 export type {
-  CddContentEnvelope,
-  CddDashboardData,
-  CddDocumentSummary,
+  CddAcEntry,
+  CddAcFile,
+  CddAcListResult,
+  CddContentResult,
   CddFileType,
-  CddSchema,
-  CddSchemaDetailEnvelope,
-  CddSchemaField,
-  CddSchemaFieldType,
-  CddSchemaReference,
-  CddSchemaSummary,
-  CddSpecStatus,
+  CddRuleDetail,
+  CddRuleEntry,
+  CddRuleSummary,
   CddTreeNode,
 } from "./cdd-types";
 
 /** contract/ 디렉터리 절대 경로 반환 (apiRootPath 기준) */
 function getContractDir(): string {
   return path.join(Sonamu.apiRootPath, "..", "..", "contract");
+}
+
+/** 프로젝트 루트 경로 반환 */
+function getProjectRoot(): string {
+  return path.join(Sonamu.apiRootPath, "..", "..");
 }
 
 /** 경로가 contract/ 디렉터리 내부인지 검증 */
@@ -47,8 +48,8 @@ function assertInsideContractDir(filePath: string): void {
 
 /** 파일명에서 CddFileType 판별 */
 function detectFileType(fileName: string): CddFileType | undefined {
-  if (fileName.endsWith(".contract.json")) return "contract";
-  if (fileName.endsWith(".spec.json")) return "spec";
+  if (fileName.endsWith(".contract.md")) return "contract";
+  if (fileName.endsWith(".rules.json")) return "rules";
   return undefined;
 }
 
@@ -62,16 +63,19 @@ function scanDirectory(dirPath: string, relativeTo: string): CddTreeNode[] {
     const relPath = path.relative(relativeTo, fullPath);
 
     if (entry.isDirectory()) {
+      if (entry.name === "rules") continue;
       const children = scanDirectory(fullPath, relativeTo);
-      nodes.push({
-        name: entry.name,
-        path: relPath,
-        type: "directory",
-        children,
-      });
+      if (children.length > 0) {
+        nodes.push({
+          name: entry.name,
+          path: relPath,
+          type: "directory",
+          children,
+        });
+      }
     } else if (entry.isFile()) {
       const fileType = detectFileType(entry.name);
-      if (fileType) {
+      if (fileType && fileType !== "rules") {
         nodes.push({
           name: entry.name,
           path: relPath,
@@ -95,17 +99,8 @@ export function getCddTree(): { exists: boolean; tree: CddTreeNode[] } {
   return { exists: true, tree };
 }
 
-/** schema ID로 schema 파일을 찾아 반환 */
-function resolveSchema(schemaId: string): CddSchema | null {
-  const contractDir = getContractDir();
-  const schemaPath = path.join(contractDir, "schemas", `${schemaId}.schema.json`);
-  if (!fs.existsSync(schemaPath)) return null;
-  const raw = fs.readFileSync(schemaPath, "utf-8");
-  return JSON.parse(raw) as CddSchema;
-}
-
-/** JSON 파일의 전체 내용을 읽어 schema와 함께 envelope로 반환 */
-export function readContent(filePath: string): CddContentEnvelope {
+/** 파일 내용을 읽어 반환 (contract.md → markdown 원문, rules.json → JSON 문자열) */
+export function readContent(filePath: string): CddContentResult {
   assertInsideContractDir(filePath);
 
   const contractDir = getContractDir();
@@ -115,20 +110,16 @@ export function readContent(filePath: string): CddContentEnvelope {
     throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
   }
 
-  const raw = fs.readFileSync(absPath, "utf-8");
-  const document = JSON.parse(raw) as Record<string, unknown>;
+  const content = fs.readFileSync(absPath, "utf-8");
   const fileType = detectFileType(path.basename(filePath));
-  const schemaId = typeof document.schema === "string" ? document.schema : null;
-  const schema = schemaId ? resolveSchema(schemaId) : null;
 
   return {
-    document,
-    schema,
+    content,
     fileType: fileType ?? "contract",
   };
 }
 
-/** JSON 파일을 외부 에디터로 직접 편집 */
+/** 파일을 외부 에디터로 직접 편집 */
 export async function editContent(
   filePath: string,
 ): Promise<{ success: boolean; filePath: string }> {
@@ -203,257 +194,6 @@ function runEditor(editor: { bin: string; args: string[] }, filePath: string): P
   });
 }
 
-/* ========================================================================
- * Schema 관리 API
- * ======================================================================== */
-
-/** contract/schemas/ 디렉터리 내 .schema.json 파일 경로 목록 반환 */
-function scanSchemaFiles(): { absPath: string; relPath: string; fileName: string }[] {
-  const schemasDir = path.join(getContractDir(), "schemas");
-  if (!fs.existsSync(schemasDir)) return [];
-
-  return fs
-    .readdirSync(schemasDir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith(".schema.json"))
-    .map((e) => ({
-      absPath: path.join(schemasDir, e.name),
-      relPath: `schemas/${e.name}`,
-      fileName: e.name,
-    }));
-}
-
-/** 특정 schemaId를 참조하는 contract/spec 문서들을 재귀 수집 */
-function collectSchemaReferences(
-  schemaId: string,
-  dirPath: string,
-  relativeTo: string,
-): CddSchemaReference[] {
-  if (!fs.existsSync(dirPath)) return [];
-  const refs: CddSchemaReference[] = [];
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "schemas") continue;
-      refs.push(...collectSchemaReferences(schemaId, fullPath, relativeTo));
-    } else if (entry.isFile()) {
-      const fileType = detectFileType(entry.name);
-      if (!fileType) continue;
-      try {
-        const raw = fs.readFileSync(fullPath, "utf-8");
-        const doc = JSON.parse(raw) as Record<string, unknown>;
-        if (doc.schema === schemaId) {
-          refs.push({
-            path: path.relative(relativeTo, fullPath),
-            fileType,
-            name: entry.name,
-          });
-        }
-      } catch {
-        // JSON 파싱 실패 시 무시
-      }
-    }
-  }
-  return refs;
-}
-
-/** schema 파일명에서 기대되는 id 추출 */
-function expectedSchemaId(fileName: string): string {
-  return fileName.replace(/\.schema\.json$/, "");
-}
-
-/** schemas/ 하위 경로가 contract/schemas/ 내부인지 검증 */
-function assertInsideSchemaDir(schemaKey: string): void {
-  const schemasDir = path.join(getContractDir(), "schemas");
-  const resolved = path.resolve(schemasDir, `${schemaKey}.schema.json`);
-  if (!resolved.startsWith(schemasDir + path.sep) && resolved !== schemasDir) {
-    throw new Error(`유효하지 않은 스키마 키입니다: ${schemaKey}`);
-  }
-}
-
-/** schema 목록 반환 */
-export function listSchemas(): { schemas: CddSchemaSummary[] } {
-  const contractDir = getContractDir();
-  const files = scanSchemaFiles();
-  const schemas: CddSchemaSummary[] = [];
-
-  for (const file of files) {
-    const key = expectedSchemaId(file.fileName);
-    try {
-      const raw = fs.readFileSync(file.absPath, "utf-8");
-      const schema = JSON.parse(raw) as CddSchema;
-      const refs = collectSchemaReferences(schema.id, contractDir, contractDir);
-      schemas.push({
-        key,
-        id: schema.id,
-        path: file.relPath,
-        type: schema.type,
-        fieldCount: schema.fields.length,
-        referenceCount: refs.length,
-        hasIdMismatch: schema.id !== key,
-      });
-    } catch (err) {
-      schemas.push({
-        key,
-        id: key,
-        path: file.relPath,
-        type: "contract",
-        fieldCount: 0,
-        referenceCount: 0,
-        hasIdMismatch: false,
-        parseError: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  return { schemas };
-}
-
-/** schema 상세 반환 (파일명 기반 key로 조회) */
-export function readSchema(schemaKey: string): CddSchemaDetailEnvelope {
-  assertInsideSchemaDir(schemaKey);
-
-  const contractDir = getContractDir();
-  const absPath = path.join(contractDir, "schemas", `${schemaKey}.schema.json`);
-
-  if (!fs.existsSync(absPath)) {
-    throw new Error(`스키마를 찾을 수 없습니다: ${schemaKey}`);
-  }
-
-  const raw = fs.readFileSync(absPath, "utf-8");
-  const schema = JSON.parse(raw) as CddSchema;
-  const relPath = path.relative(contractDir, absPath);
-  const references = collectSchemaReferences(schema.id, contractDir, contractDir);
-
-  return {
-    key: schemaKey,
-    path: relPath,
-    schema,
-    references,
-    hasIdMismatch: schema.id !== schemaKey,
-  };
-}
-
-/** schema 파일을 외부 에디터로 편집 (파일명 기반 key로 조회) */
-export async function editSchema(
-  schemaKey: string,
-): Promise<{ success: boolean; schemaKey: string }> {
-  assertInsideSchemaDir(schemaKey);
-
-  const contractDir = getContractDir();
-  const absPath = path.join(contractDir, "schemas", `${schemaKey}.schema.json`);
-
-  if (!fs.existsSync(absPath)) {
-    throw new Error(`스키마를 찾을 수 없습니다: ${schemaKey}`);
-  }
-
-  const editor = resolveEditorCli();
-  await runEditor(editor, absPath);
-
-  return { success: true, schemaKey };
-}
-
-const VALID_SPEC_STATUSES = new Set<CddSpecStatus>([
-  "draft",
-  "specifying",
-  "implementing",
-  "validating",
-  "done",
-]);
-
-/** 모든 contract/spec 문서를 스캔하여 대시보드 통계를 반환 */
-export function getDashboard(): CddDashboardData {
-  const contractDir = getContractDir();
-  if (!fs.existsSync(contractDir)) {
-    return {
-      exists: false,
-      stats: {
-        totalContracts: 0,
-        totalSpecs: 0,
-        statusDistribution: { draft: 0, specifying: 0, implementing: 0, validating: 0, done: 0 },
-      },
-      documents: [],
-    };
-  }
-
-  const documents: CddDocumentSummary[] = [];
-  const statusDistribution: Record<CddSpecStatus, number> = {
-    draft: 0,
-    specifying: 0,
-    implementing: 0,
-    validating: 0,
-    done: 0,
-  };
-
-  function scanForDashboard(dirPath: string): void {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "schemas") continue;
-        scanForDashboard(fullPath);
-      } else if (entry.isFile()) {
-        const fileType = detectFileType(entry.name);
-        if (!fileType) continue;
-        const relPath = path.relative(contractDir, fullPath);
-        try {
-          const raw = fs.readFileSync(fullPath, "utf-8");
-          const doc = JSON.parse(raw) as Record<string, unknown>;
-
-          const summary: CddDocumentSummary = {
-            path: relPath,
-            name: entry.name,
-            fileType,
-            schemaId: typeof doc.schema === "string" ? doc.schema : undefined,
-            lastModified: typeof doc.lastModified === "string" ? doc.lastModified : undefined,
-          };
-
-          if (fileType === "contract") {
-            const features = doc.features;
-            if (features && typeof features === "object" && !Array.isArray(features)) {
-              summary.featureCount = Object.keys(features).length;
-            }
-          } else {
-            const status = typeof doc.status === "string" ? doc.status : "draft";
-            summary.status = VALID_SPEC_STATUSES.has(status as CddSpecStatus)
-              ? (status as CddSpecStatus)
-              : "draft";
-            statusDistribution[summary.status]++;
-
-            if (Array.isArray(doc.acceptanceCriteria)) {
-              summary.acceptanceCriteriaCount = doc.acceptanceCriteria.length;
-            }
-            if (Array.isArray(doc.sources)) {
-              summary.sourceCount = doc.sources.length;
-            }
-          }
-
-          documents.push(summary);
-        } catch (err) {
-          documents.push({
-            path: relPath,
-            name: entry.name,
-            fileType,
-            parseError: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-    }
-  }
-
-  scanForDashboard(contractDir);
-
-  const totalContracts = documents.filter((d) => d.fileType === "contract" && !d.parseError).length;
-  const totalSpecs = documents.filter((d) => d.fileType === "spec" && !d.parseError).length;
-
-  return {
-    exists: true,
-    stats: { totalContracts, totalSpecs, statusDistribution },
-    documents,
-  };
-}
-
 /** 소스 파일을 외부 에디터로 열기 (대기하지 않음) */
 export function openSourceFile(filePath: string): void {
   const absPath = path.isAbsolute(filePath) ? filePath : path.resolve(Sonamu.apiRootPath, filePath);
@@ -468,4 +208,210 @@ export function openSourceFile(filePath: string): void {
     detached: true,
   });
   child.unref();
+}
+
+/* ========================================================================
+ * Rules API
+ * ======================================================================== */
+
+/** contract/rules/ 디렉터리 내 .rules.json 파일 목록 반환 */
+export function listRules(): { rules: CddRuleSummary[] } {
+  const contractDir = getContractDir();
+  const rulesDir = path.join(contractDir, "rules");
+  if (!fs.existsSync(rulesDir)) return { rules: [] };
+
+  const entries = fs.readdirSync(rulesDir, { withFileTypes: true });
+  const rules: CddRuleSummary[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".rules.json")) continue;
+
+    const key = entry.name.replace(/\.rules\.json$/, "");
+    const relPath = `rules/${entry.name}`;
+    const absPath = path.join(rulesDir, entry.name);
+
+    try {
+      const raw = fs.readFileSync(absPath, "utf-8");
+      const doc = JSON.parse(raw) as { description?: string; rules?: unknown[] };
+      rules.push({
+        key,
+        path: relPath,
+        description: typeof doc.description === "string" ? doc.description : "",
+        ruleCount: Array.isArray(doc.rules) ? doc.rules.length : 0,
+      });
+    } catch (err) {
+      rules.push({
+        key,
+        path: relPath,
+        description: "",
+        ruleCount: 0,
+        parseError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return { rules };
+}
+
+/** rules 파일 상세 반환 */
+export function readRule(ruleKey: string): CddRuleDetail {
+  const contractDir = getContractDir();
+  const absPath = path.join(contractDir, "rules", `${ruleKey}.rules.json`);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`Rules 파일을 찾을 수 없습니다: ${ruleKey}`);
+  }
+
+  const raw = fs.readFileSync(absPath, "utf-8");
+  const doc = JSON.parse(raw) as { description?: string; rules?: CddRuleEntry[] };
+
+  return {
+    key: ruleKey,
+    path: `rules/${ruleKey}.rules.json`,
+    description: typeof doc.description === "string" ? doc.description : "",
+    rules: Array.isArray(doc.rules) ? doc.rules : [],
+  };
+}
+
+/* ========================================================================
+ * AC API (modules/cdd ac-list 파싱 로직 복사)
+ * ======================================================================== */
+
+/** describe/test 패턴 파싱 */
+function parseAcEntries(content: string): CddAcEntry[] {
+  const entries: CddAcEntry[] = [];
+  const lines = content.split("\n");
+
+  let currentDescribe: string | null = null;
+  let describeDepth = 0;
+  let braceDepth = 0;
+  let pendingTestAs = false;
+  let testAsBraceDepth = 0;
+  let testAsNeedName = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    const describeMatch = trimmed.match(/^describe\(["'`](.+?)["'`]/);
+    if (describeMatch) {
+      currentDescribe = describeMatch[1];
+      describeDepth = braceDepth;
+    }
+
+    const testMatch = trimmed.match(/^(?:test|it)\(["'`](.+?)["'`]/);
+    if (testMatch) {
+      entries.push({
+        describe: currentDescribe,
+        test: testMatch[1],
+      });
+    }
+
+    if (!pendingTestAs && trimmed.match(/^testAs\s*\(/)) {
+      const inlineMatch = trimmed.match(/^testAs\s*\(\s*\{[^}]*\}\s*,\s*["'`](.+?)["'`]/);
+      if (inlineMatch) {
+        entries.push({ describe: currentDescribe, test: inlineMatch[1] });
+      } else {
+        pendingTestAs = true;
+        testAsBraceDepth = 0;
+        testAsNeedName = false;
+        for (const ch of trimmed) {
+          if (ch === "{") testAsBraceDepth++;
+          if (ch === "}") testAsBraceDepth--;
+        }
+        if (testAsBraceDepth <= 0) {
+          testAsNeedName = true;
+          const nameMatch = trimmed.match(/}\s*,\s*["'`](.+?)["'`]/);
+          if (nameMatch) {
+            entries.push({ describe: currentDescribe, test: nameMatch[1] });
+            pendingTestAs = false;
+            testAsNeedName = false;
+          }
+        }
+      }
+    } else if (pendingTestAs) {
+      if (!testAsNeedName) {
+        for (const ch of trimmed) {
+          if (ch === "{") testAsBraceDepth++;
+          if (ch === "}") testAsBraceDepth--;
+        }
+        if (testAsBraceDepth <= 0) {
+          testAsNeedName = true;
+          const nameMatch = trimmed.match(/}\s*,\s*["'`](.+?)["'`]/);
+          if (nameMatch) {
+            entries.push({ describe: currentDescribe, test: nameMatch[1] });
+            pendingTestAs = false;
+            testAsNeedName = false;
+          }
+        }
+      } else {
+        const nameMatch = trimmed.match(/^["'`](.+?)["'`]/);
+        if (nameMatch) {
+          entries.push({ describe: currentDescribe, test: nameMatch[1] });
+          pendingTestAs = false;
+          testAsNeedName = false;
+        }
+      }
+    }
+
+    for (const ch of trimmed) {
+      if (ch === "{") braceDepth++;
+      if (ch === "}") {
+        braceDepth--;
+        if (currentDescribe && braceDepth <= describeDepth) {
+          currentDescribe = null;
+        }
+      }
+    }
+  }
+
+  return entries;
+}
+
+/** 프로젝트 내 *.test.ts 파일을 스캔하여 AC 목록 반환 */
+export function getAcList(): CddAcListResult {
+  const projectRoot = getProjectRoot();
+  const files = findTestFiles(projectRoot);
+
+  const acFiles: CddAcFile[] = [];
+  for (const absPath of files) {
+    const content = fs.readFileSync(absPath, "utf-8");
+    const entries = parseAcEntries(content);
+    if (entries.length > 0) {
+      acFiles.push({
+        path: path.relative(projectRoot, absPath),
+        entries,
+      });
+    }
+  }
+
+  const total = acFiles.reduce((sum, f) => sum + f.entries.length, 0);
+  return { files: acFiles, total };
+}
+
+/** *.test.ts 파일을 재귀 탐색 (node_modules, dist 제외) */
+function findTestFiles(dir: string): string[] {
+  const results: string[] = [];
+  const IGNORE = new Set(["node_modules", "dist", ".git", "contract"]);
+
+  function walk(currentDir: string): void {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (IGNORE.has(entry.name)) continue;
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith(".test.ts")) {
+        results.push(fullPath);
+      }
+    }
+  }
+
+  walk(dir);
+  results.sort();
+  return results;
 }

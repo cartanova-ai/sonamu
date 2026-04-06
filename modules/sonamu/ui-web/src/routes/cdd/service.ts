@@ -1,25 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetch } from "../../services/sonamu.shared";
 import type {
-  CddContentEnvelope,
-  CddDashboardData,
-  CddSchemaDetailEnvelope,
-  CddSchemaSummary,
+  CddAcListResult,
+  CddContentResult,
+  CddRuleDetail,
+  CddRuleSummary,
   CddTreeNode,
 } from "./types";
 
 export namespace CddService {
-  export function useCddDashboard() {
-    return useQuery({
-      queryKey: ["cdd", "dashboard"],
-      queryFn: () =>
-        fetch({
-          method: "GET",
-          url: `/sonamu-ui/api/cdd/dashboard`,
-        }) as Promise<CddDashboardData>,
-    });
-  }
-
   export function useCddTree(enabled = true) {
     return useQuery({
       queryKey: ["cdd", "tree"],
@@ -32,7 +21,7 @@ export namespace CddService {
     });
   }
 
-  export function readCddContent(filePath: string): Promise<CddContentEnvelope> {
+  export function readCddContent(filePath: string): Promise<CddContentResult> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/cdd/readContent`,
@@ -70,45 +59,47 @@ export namespace CddService {
     });
   }
 
-  export function useCddSchemas(enabled = true) {
+  export function useCddRules(enabled = true) {
     return useQuery({
-      queryKey: ["cdd", "schemas"],
+      queryKey: ["cdd", "rules"],
       queryFn: () =>
         fetch({
           method: "GET",
-          url: `/sonamu-ui/api/cdd/schemas`,
-        }) as Promise<{ schemas: CddSchemaSummary[] }>,
+          url: `/sonamu-ui/api/cdd/rules`,
+        }) as Promise<{ rules: CddRuleSummary[] }>,
       enabled,
     });
   }
 
-  export function readCddSchema(schemaKey: string): Promise<CddSchemaDetailEnvelope> {
+  export function readCddRule(ruleKey: string): Promise<CddRuleDetail> {
     return fetch({
       method: "POST",
-      url: `/sonamu-ui/api/cdd/readSchema`,
-      data: { schemaKey },
+      url: `/sonamu-ui/api/cdd/readRule`,
+      data: { ruleKey },
     });
   }
 
-  export function useReadCddSchema(schemaKey: string | null) {
+  export function useReadCddRule(ruleKey: string | null) {
     return useQuery({
-      queryKey: ["cdd", "readSchema", schemaKey],
+      queryKey: ["cdd", "readRule", ruleKey],
       queryFn: ({ queryKey }) => {
         const key = queryKey[2];
-        if (typeof key !== "string") throw new Error("schemaKey is required");
-        return readCddSchema(key);
+        if (typeof key !== "string") throw new Error("ruleKey is required");
+        return readCddRule(key);
       },
-      enabled: schemaKey !== null,
+      enabled: ruleKey !== null,
     });
   }
 
-  export function editCddSchema(
-    schemaKey: string,
-  ): Promise<{ success: boolean; schemaKey: string }> {
-    return fetch({
-      method: "POST",
-      url: `/sonamu-ui/api/cdd/editSchema`,
-      data: { schemaKey },
+  export function useCddAc(enabled = true) {
+    return useQuery({
+      queryKey: ["cdd", "ac"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/cdd/ac`,
+        }) as Promise<CddAcListResult>,
+      enabled,
     });
   }
 }

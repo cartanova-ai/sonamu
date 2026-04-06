@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { useCallback, useMemo, useState } from "react";
-import BarChart3Icon from "~icons/lucide/bar-chart-3";
-import FileCodeIcon from "~icons/lucide/file-code";
 import FileTextIcon from "~icons/lucide/file-text";
 import FolderOpenIcon from "~icons/lucide/folder-open";
-import LayersIcon from "~icons/lucide/layers";
+import ListChecksIcon from "~icons/lucide/list-checks";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import ScaleIcon from "~icons/lucide/scale";
 import SearchIcon from "~icons/lucide/search";
-import { useSonamuContext } from "../contexts/sonamu-provider";
-import { CddDashboard } from "./cdd/components/cdd_dashboard";
-import { CddDocumentDetail } from "./cdd/components/cdd_document_detail";
-import { CddSchemaDetail } from "./cdd/components/cdd_schema_detail";
-import { CddSchemaList } from "./cdd/components/cdd_schema_list";
+import { CddAcView } from "./cdd/components/cdd_ac_view";
+import { CddContractDetail } from "./cdd/components/cdd_contract_detail";
+import { CddRuleDetail } from "./cdd/components/cdd_rule_detail";
+import { CddRulesList } from "./cdd/components/cdd_rules_list";
 import { CddTreeNodeItem } from "./cdd/components/cdd_tree_node_item";
 import { CddService } from "./cdd/service";
 import type { CddMode, CddTreeNode } from "./cdd/types";
@@ -23,81 +21,80 @@ export const Route = createFileRoute("/cdd")({
 });
 
 const MODE_TABS: { key: CddMode; label: string }[] = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "documents", label: "Documents" },
-  { key: "schemas", label: "Schemas" },
+  { key: "rules", label: "Rules" },
+  { key: "contracts", label: "Contracts" },
+  { key: "ac", label: "AC" },
 ];
 
 function CddPage() {
-  const { SD } = useSonamuContext();
-  const [mode, setMode] = useState<CddMode>("dashboard");
+  const [mode, setMode] = useState<CddMode>("contracts");
 
-  const { refetch: refetchDashboard } = CddService.useCddDashboard();
-  const { data, error, refetch } = CddService.useCddTree(mode === "documents");
-  const { data: schemasData, refetch: refetchSchemas } = CddService.useCddSchemas(
-    mode === "schemas",
-  );
-  const isLoading = mode === "documents" && !error && !data;
+  const {
+    data: treeData,
+    error: treeError,
+    refetch: refetchTree,
+  } = CddService.useCddTree(mode === "contracts");
+  const { data: rulesData, refetch: refetchRules } = CddService.useCddRules(mode === "rules");
+  const isTreeLoading = mode === "contracts" && !treeError && !treeData;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeNodePath, setActiveNodePath] = useState<string | null>(null);
-  const [activeSchemaKey, setActiveSchemaKey] = useState<string | null>(null);
+  const [activeRuleKey, setActiveRuleKey] = useState<string | null>(null);
 
-  const sortedTree = useMemo(() => (data?.tree ? sortTree(data.tree, true) : []), [data?.tree]);
-
+  const sortedTree = useMemo(
+    () => (treeData?.tree ? sortTree(treeData.tree, true) : []),
+    [treeData?.tree],
+  );
   const filteredTree = useMemo(
     () => filterTree(sortedTree, searchQuery),
     [sortedTree, searchQuery],
   );
-
-  const fileCount = useMemo(() => (data?.tree ? countFiles(data.tree) : 0), [data?.tree]);
+  const fileCount = useMemo(
+    () => (treeData?.tree ? countFiles(treeData.tree) : 0),
+    [treeData?.tree],
+  );
 
   const activeNode: CddTreeNode | null = useMemo(() => {
-    if (!activeNodePath || !data?.tree) return null;
-    return findTreeNode(data.tree, activeNodePath);
-  }, [activeNodePath, data?.tree]);
+    if (!activeNodePath || !treeData?.tree) return null;
+    return findTreeNode(treeData.tree, activeNodePath);
+  }, [activeNodePath, treeData?.tree]);
 
-  const filteredSchemas = useMemo(() => {
-    const schemas = schemasData?.schemas ?? [];
-    if (!searchQuery.trim()) return schemas;
+  const filteredRules = useMemo(() => {
+    const rules = rulesData?.rules ?? [];
+    if (!searchQuery.trim()) return rules;
     const q = searchQuery.toLowerCase();
-    return schemas.filter((s) => s.id.toLowerCase().includes(q) || s.key.toLowerCase().includes(q));
-  }, [schemasData?.schemas, searchQuery]);
+    return rules.filter(
+      (r) => r.key.toLowerCase().includes(q) || r.description.toLowerCase().includes(q),
+    );
+  }, [rulesData?.rules, searchQuery]);
 
-  const handleSwitchToDocument = useCallback((path: string) => {
-    setMode("documents");
-    setActiveNodePath(path);
-  }, []);
+  const handleRefresh = useCallback(() => {
+    refetchTree();
+    refetchRules();
+  }, [refetchTree, refetchRules]);
 
-  const handleNavigateToDocument = useCallback((docPath: string) => {
-    setMode("documents");
-    setActiveNodePath(docPath);
-  }, []);
+  const showSidebarContent = mode !== "ac";
 
   const renderMainContent = () => {
-    if (mode === "dashboard") {
-      return <CddDashboard onNavigateToDocument={handleNavigateToDocument} />;
+    if (mode === "ac") {
+      return <CddAcView />;
     }
 
-    if (mode === "schemas") {
-      if (activeSchemaKey) {
-        return (
-          <CddSchemaDetail
-            schemaKey={activeSchemaKey}
-            onSwitchToDocument={handleSwitchToDocument}
-          />
-        );
+    if (mode === "rules") {
+      if (activeRuleKey) {
+        return <CddRuleDetail ruleKey={activeRuleKey} />;
       }
       return (
         <>
           <header className="h-14 border-b border-gray-100 flex items-center px-8 shrink-0">
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span>Schemas</span>
+              <span>Rules</span>
             </div>
           </header>
           <div className="flex-1 flex items-center justify-center p-12">
             <div className="text-center text-gray-400 space-y-2">
-              <LayersIcon className="w-12 h-12 mx-auto text-gray-200" />
-              <p className="text-sm">Select a schema to view its details</p>
+              <ScaleIcon className="w-12 h-12 mx-auto text-gray-200" />
+              <p className="text-sm">Select a rule to view its details</p>
             </div>
           </div>
         </>
@@ -105,16 +102,14 @@ function CddPage() {
     }
 
     if (activeNode?.type === "file") {
-      return (
-        <CddDocumentDetail node={activeNode} onRefetch={refetch} onSelect={setActiveNodePath} />
-      );
+      return <CddContractDetail node={activeNode} onRefetch={refetchTree} />;
     }
 
     return (
       <>
         <header className="h-14 border-b border-gray-100 flex items-center px-8 shrink-0">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>{SD("cdd.title")}</span>
+            <span>Contracts</span>
           </div>
         </header>
         <div className="flex-1 flex items-center justify-center p-12">
@@ -127,8 +122,8 @@ function CddPage() {
           ) : (
             <div className="text-center text-gray-400 space-y-2">
               <FileTextIcon className="w-12 h-12 mx-auto text-gray-200" />
-              <p className="text-sm">{SD("cdd.selectDocument")}</p>
-              <p className="text-xs text-gray-300">{SD("cdd.selectDocumentDesc")}</p>
+              <p className="text-sm">Select a document to view</p>
+              <p className="text-xs text-gray-300">Browse contract files from the sidebar</p>
             </div>
           )}
         </div>
@@ -136,24 +131,16 @@ function CddPage() {
     );
   };
 
-  const handleRefresh = () => {
-    refetchDashboard();
-    refetch();
-    refetchSchemas();
-  };
-
-  const showSidebarContent = mode !== "dashboard";
-
   return (
     <div className="flex h-[calc(100vh-var(--spacing-gnb))] bg-gray-50 text-gray-900">
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm shrink-0">
         <div className="px-4 h-12 border-b border-gray-100 flex items-center justify-between">
-          <h1 className="font-bold text-base text-gray-800">{SD("cdd.title")}</h1>
+          <h1 className="font-bold text-base text-gray-800">CDD</h1>
           <button
             type="button"
             className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer"
             onClick={handleRefresh}
-            title={SD("cdd.refresh")}
+            title="Refresh"
           >
             <RefreshCwIcon className="w-3.5 h-3.5" />
           </button>
@@ -171,7 +158,10 @@ function CddPage() {
                     ? "bg-white text-gray-800 shadow-sm"
                     : "text-gray-500 hover:text-gray-700",
                 )}
-                onClick={() => setMode(tab.key)}
+                onClick={() => {
+                  setMode(tab.key);
+                  setSearchQuery("");
+                }}
               >
                 {tab.label}
               </button>
@@ -186,9 +176,7 @@ function CddPage() {
                 <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
                 <input
                   type="text"
-                  placeholder={
-                    mode === "documents" ? SD("cdd.searchPlaceholder") : "Search schemas..."
-                  }
+                  placeholder={mode === "contracts" ? "Search contracts..." : "Search rules..."}
                   className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg text-xs transition-all outline-none"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -197,33 +185,27 @@ function CddPage() {
             </div>
 
             <nav className="flex-1 overflow-y-auto px-1.5 py-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-[10px] [&::-webkit-scrollbar-thumb:hover]:bg-gray-300">
-              {mode === "documents" && (
+              {mode === "contracts" && (
                 <>
-                  {isLoading && (
-                    <div className="text-center py-8 text-gray-400 text-sm">
-                      {SD("common.loading")}
-                    </div>
+                  {isTreeLoading && (
+                    <div className="text-center py-8 text-gray-400 text-sm">Loading...</div>
                   )}
 
-                  {error && (
-                    <div className="text-center py-8 text-red-500 text-sm">
-                      {SD("common.error")}
-                    </div>
-                  )}
+                  {treeError && <div className="text-center py-8 text-red-500 text-sm">Error</div>}
 
-                  {data && !data.exists && (
+                  {treeData && !treeData.exists && (
                     <div className="mx-2 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                      {SD("cdd.noContractDir")}
+                      contract/ directory not found
                     </div>
                   )}
 
-                  {data?.exists &&
+                  {treeData?.exists &&
                     filteredTree.map((node) => (
                       <CddTreeNodeItem
                         key={node.path}
                         node={node}
                         depth={0}
-                        onRefetch={refetch}
+                        onRefetch={refetchTree}
                         activeNodePath={activeNodePath}
                         onSelect={setActiveNodePath}
                       />
@@ -231,45 +213,33 @@ function CddPage() {
                 </>
               )}
 
-              {mode === "schemas" && (
-                <CddSchemaList
-                  schemas={filteredSchemas}
-                  activeSchemaKey={activeSchemaKey}
-                  onSelect={setActiveSchemaKey}
+              {mode === "rules" && (
+                <CddRulesList
+                  rules={filteredRules}
+                  activeRuleKey={activeRuleKey}
+                  onSelect={setActiveRuleKey}
                 />
               )}
             </nav>
           </>
         )}
 
-        {mode === "dashboard" && (
+        {mode === "ac" && (
           <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-            <BarChart3Icon className="w-8 h-8 text-gray-200 mb-2" />
-            <p className="text-xs text-gray-400">Dashboard view</p>
+            <ListChecksIcon className="w-8 h-8 text-gray-200 mb-2" />
+            <p className="text-xs text-gray-400">AC view</p>
           </div>
         )}
 
-        {mode === "documents" && data?.exists && (
-          <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-2">
-            <div className="grid grid-cols-2 gap-1.5 text-[10px] text-gray-500">
-              <div className="flex items-center gap-1.5">
-                <FileTextIcon className="w-3 h-3 text-gray-400" />
-                <span className="font-medium">Contract</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <FileCodeIcon className="w-3 h-3 text-gray-400" />
-                <span className="font-medium">Spec</span>
-              </div>
-            </div>
-            <div className="text-xs text-gray-400">
-              {SD("cdd.documentCount").replace("{count}", String(fileCount))}
-            </div>
-          </div>
-        )}
-
-        {mode === "schemas" && schemasData && (
+        {mode === "contracts" && treeData?.exists && (
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-            <div className="text-xs text-gray-400">{schemasData.schemas.length} schemas</div>
+            <div className="text-xs text-gray-400">{fileCount} files</div>
+          </div>
+        )}
+
+        {mode === "rules" && rulesData && (
+          <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <div className="text-xs text-gray-400">{rulesData.rules.length} rules</div>
           </div>
         )}
       </aside>

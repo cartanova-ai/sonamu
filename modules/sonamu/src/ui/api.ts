@@ -39,13 +39,12 @@ import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
 import {
   editContent,
-  editSchema,
+  getAcList,
   getCddTree,
-  getDashboard,
-  listSchemas,
+  listRules,
   openSourceFile,
   readContent,
-  readSchema,
+  readRule,
 } from "./cdd-service";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
@@ -1404,10 +1403,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       });
 
       // CDD API
-      server.get("/api/cdd/dashboard", async () => {
-        return getDashboard();
-      });
-
       server.get("/api/cdd/tree", async () => {
         return getCddTree();
       });
@@ -1428,19 +1423,19 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return { success: true };
       });
 
-      // CDD Schema API
-      server.get("/api/cdd/schemas", async () => {
-        return listSchemas();
+      // CDD Rules API
+      server.get("/api/cdd/rules", async () => {
+        return listRules();
       });
 
-      server.post<{ Body: { schemaKey: string } }>("/api/cdd/readSchema", async (request) => {
-        const { schemaKey } = request.body;
-        return readSchema(schemaKey);
+      server.post<{ Body: { ruleKey: string } }>("/api/cdd/readRule", async (request) => {
+        const { ruleKey } = request.body;
+        return readRule(ruleKey);
       });
 
-      server.post<{ Body: { schemaKey: string } }>("/api/cdd/editSchema", async (request) => {
-        const { schemaKey } = request.body;
-        return editSchema(schemaKey);
+      // CDD AC API
+      server.get("/api/cdd/ac", async () => {
+        return getAcList();
       });
 
       // ui-web 빌드 파일 서빙

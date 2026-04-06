@@ -1,6 +1,7 @@
 import classNames from "classnames";
-import FileCodeIcon from "~icons/lucide/file-code";
+import BookOpenIcon from "~icons/lucide/book-open";
 import FileTextIcon from "~icons/lucide/file-text";
+import ScaleIcon from "~icons/lucide/scale";
 
 export function CddFileIcon({
   fileType,
@@ -8,7 +9,7 @@ export function CddFileIcon({
   isActive,
   className,
 }: {
-  fileType?: "contract" | "spec";
+  fileType?: "contract" | "rules";
   name: string;
   isActive?: boolean;
   className?: string;
@@ -16,11 +17,11 @@ export function CddFileIcon({
   const size = className ?? "w-[18px] h-[18px]";
   const color = isActive ? "text-blue-600" : "text-gray-400";
 
-  if (name === "main.contract.json") {
-    return <FileTextIcon className={classNames(size, color)} />;
+  if (name === "main.contract.md") {
+    return <BookOpenIcon className={classNames(size, color)} />;
   }
-  if (fileType === "spec") {
-    return <FileCodeIcon className={classNames(size, color)} />;
+  if (fileType === "rules") {
+    return <ScaleIcon className={classNames(size, color)} />;
   }
   return <FileTextIcon className={classNames(size, color)} />;
 }

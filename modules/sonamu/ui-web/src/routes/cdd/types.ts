@@ -1,26 +1,13 @@
 export type {
-  AcceptanceCriterion,
-  CddContentEnvelope,
-  CddDashboardData,
-  CddDocumentSummary,
+  CddAcEntry,
+  CddAcFile,
+  CddAcListResult,
+  CddContentResult,
   CddFileType,
-  CddSchema,
-  CddSchemaDetailEnvelope,
-  CddSchemaField,
-  CddSchemaFieldType,
-  CddSchemaReference,
-  CddSchemaSummary,
-  CddSpecStatus,
+  CddRuleDetail,
+  CddRuleEntry,
+  CddRuleSummary,
   CddTreeNode,
 } from "sonamu/cdd-types";
 
-export type { CddRendererType } from "./field-renderers/registry";
-
-export type CddMode = "dashboard" | "documents" | "schemas";
-
-export type SectionDescriptor = {
-  id: string;
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  render: () => React.ReactNode;
-};
+export type CddMode = "rules" | "contracts" | "ac";
