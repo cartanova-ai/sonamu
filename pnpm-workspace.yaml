@@ -209,7 +209,7 @@ catalog:
   tsicli: ^1.0.5
   tsup: ^8.1.0
   tsx: ^4.20.6
-  typescript: ^5.9.3
+  typescript: ^6.0.0
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2

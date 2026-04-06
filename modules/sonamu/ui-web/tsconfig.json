@@ -21,6 +21,8 @@
 
     /* Linting */
     "strict": true,
+    "types": ["node"],
+    "noUncheckedSideEffectImports": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true

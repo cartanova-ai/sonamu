@@ -40,7 +40,8 @@
     "resolveJsonModule": true,
 
     "skipLibCheck": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": [

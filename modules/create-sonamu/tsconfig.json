@@ -5,6 +5,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
     "module": "ESNext",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": ["node"]
   }
 }
