@@ -54,7 +54,7 @@ export class Template__services extends Template {
             (param) =>
               !ApiParamType.isContext(param.type) &&
               !ApiParamType.isRefKnex(param.type) &&
-              !(param.optional === true && param.name.startsWith("_")),
+              !(param.optional && param.name.startsWith("_")),
           );
 
           const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
@@ -91,7 +91,7 @@ export function ${methodNameStreamCamelized}(
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional && param.name.startsWith("_")),
         );
 
         // 타입 파라미터 정의

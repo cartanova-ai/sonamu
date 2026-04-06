@@ -194,7 +194,7 @@ class EntityManagerClass {
   }
 
   getAllIds(): string[] {
-    return Array.from(EntityManager.entities.keys()).sort();
+    return Array.from(EntityManager.entities.keys()).toSorted();
   }
 
   getAllEntities(): Entity[] {

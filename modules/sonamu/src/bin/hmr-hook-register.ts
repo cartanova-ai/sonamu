@@ -19,4 +19,5 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
   console.log("🔥 HMR-hook initialized");
 }
 
+// oxlint-disable-next-line
 export {};

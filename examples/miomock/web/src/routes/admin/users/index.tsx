@@ -65,7 +65,7 @@ function UserList({}: UserListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);

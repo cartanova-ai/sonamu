@@ -187,7 +187,7 @@ function useSelectCommon<Item>(
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   // async 모드에서 선택된 옵션 캐시
-  const [reservedOptions, setReservedOptions] = useState<Map<string, NormalizedItem<Value>>>(
+  const [reservedOptions, setReservedOptions] = useState(
     new Map(),
   );
 

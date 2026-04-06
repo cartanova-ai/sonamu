@@ -53,8 +53,8 @@ const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive"
 function AuditLogList() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("");
-  const [actionFilter, setActionFilter] = useState<string>("");
+  const [entityTypeFilter, setEntityTypeFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
 

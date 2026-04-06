@@ -43,7 +43,7 @@ export class SlackConfirm {
    * 마이그레이션 목록의 해시를 생성합니다.
    */
   getMigrationsHash(migrations: string[]): string {
-    const sorted = [...migrations].sort();
+    const sorted = [...migrations].toSorted();
     return crypto.createHash("md5").update(sorted.join(",")).digest("hex").slice(0, 12);
   }
 

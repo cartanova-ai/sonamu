@@ -38,7 +38,7 @@ export function EnumSelect<TValue extends string = string>({
 }: EnumSelectProps<TValue>) {
   // Zod enum에서 options 추출 (빈 문자열 필터링 - Radix UI 제약)
   const validOptions = React.useMemo(() => {
-    return zodEnum.options.filter((key: unknown) => (key as string) !== "") as TValue[];
+    return zodEnum.options.filter((key: unknown) => (key as string) !== "");
   }, [zodEnum]);
 
   // items 구성

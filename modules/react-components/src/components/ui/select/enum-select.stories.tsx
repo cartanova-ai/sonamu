@@ -27,7 +27,7 @@ type MetaArgs = typeof meta.args;
 
 export const Single: StoryObj<MetaArgs> = {
   render: function Render(args) {
-    const [value, setValue] = useState<string>("");
+    const [value, setValue] = useState("");
     return <EnumSelect {...args} value={value} onValueChange={(v) => setValue(v as string)} />;
   },
 };

@@ -55,7 +55,7 @@ class SonamuClass {
   public getContext(): Context {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
-      return store.context as Context;
+      return store.context;
     }
 
     if (process.env.NODE_ENV === "test") {
@@ -285,7 +285,7 @@ class SonamuClass {
   }
 
   async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
-    if (this.isInitialized === false) {
+    if (!this.isInitialized) {
       await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
 
@@ -338,7 +338,7 @@ class SonamuClass {
       doSilent?: boolean;
     },
   ) {
-    if (this.isInitialized === false) {
+    if (!this.isInitialized) {
       await this.init(options?.doSilent, options?.enableSync);
     }
 

@@ -41,7 +41,7 @@ function parseQuery(query: string): AST {
     assert(ast);
     return ast;
   } catch (e) {
-    throw new Error(`Failed to parse SQL query: ${query}\n${e}`);
+    throw new Error(`Failed to parse SQL query: ${query}\n${e}`, { cause: e });
   }
 }
 

@@ -519,7 +519,7 @@ export class Syncer {
   async checkExists(
     entityId: string,
     enums: {
-      [name: string]: z.ZodEnum<Readonly<Record<string, string | number>>>;
+      [name: string]: z.ZodEnum;
     },
   ): Promise<Record<`${TemplateKey}${string}`, boolean>> {
     const keys: TemplateKey[] = TemplateKey.options;

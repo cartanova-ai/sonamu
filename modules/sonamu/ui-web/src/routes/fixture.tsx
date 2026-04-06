@@ -50,7 +50,7 @@ function FixtureIndex() {
 
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
   const [importResults, setImportResults] = useState<FixtureImportResult[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const [activeTab, setActiveTab] = useState(0);
 
@@ -60,7 +60,7 @@ function FixtureIndex() {
   const [duplicateCheckColumns, setDuplicateCheckColumns] = useState<DuplicateCheckColumns>({});
 
   // 중복 확인 설정용 임시 상태
-  const [dupCheckEntityId, setDupCheckEntityId] = useState<string>("");
+  const [dupCheckEntityId, setDupCheckEntityId] = useState("");
   const [dupCheckSelectedColumns, setDupCheckSelectedColumns] = useState<string[]>([]);
 
   // 저장 대상 상세 보기

@@ -500,7 +500,7 @@ export class Entity {
             }
 
             if (isOneToOneRelationProp(relation)) {
-              if (relation.hasJoinColumn === true && (relation.nullable ?? false) === false) {
+              if (relation.hasJoinColumn && ! (relation.nullable ?? false)) {
                 return "inner";
               } else {
                 return "outer";
@@ -738,7 +738,7 @@ export class Entity {
         }
         return propName;
       })
-      .filter((f) => f !== null) as string[];
+      .filter((f) => f !== null);
   }
 
   /**
@@ -748,7 +748,7 @@ export class Entity {
   private hasForeignKey(prop: RelationProp): boolean {
     return (
       prop.relationType === "BelongsToOne" ||
-      (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
+      (prop.relationType === "OneToOne" &&  prop.hasJoinColumn)
     );
   }
 
@@ -1095,12 +1095,12 @@ export class Entity {
           isOpen: children.length > 0,
           has: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) => child.has[subsetKey] === true)];
+              return [subsetKey, children.every((child) =>  child.has[subsetKey])];
             }),
           ),
           isInternal: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) => child.isInternal[subsetKey] === true)];
+              return [subsetKey, children.every((child) =>  child.isInternal[subsetKey])];
             }),
           ),
         };
@@ -1283,7 +1283,7 @@ export class Entity {
   }
 
   getEntityIdFromSubsetField(subsetField: string): string {
-    if (subsetField.includes(".") === false) {
+    if (!subsetField.includes(".")) {
       return this.id;
     }
 

@@ -209,7 +209,7 @@ export class UpsertBuilder {
     mode: "upsert" | "insert",
     options?: UpsertOptions<TTable>,
   ): Promise<IdType<DatabaseSchemaExtend, TTable>[]> {
-    if (this.hasTable(tableName) === false) {
+    if (!this.hasTable(tableName)) {
       return [];
     }
 
@@ -498,7 +498,7 @@ export class UpsertBuilder {
       where: options?.where ?? "id",
     };
 
-    if (this.hasTable(tableName) === false) {
+    if (!this.hasTable(tableName)) {
       return;
     }
     const table = this.tables.get(tableName);

@@ -8,7 +8,7 @@ type EditableInputProps = Omit<InputProps, "onChange"> & {
 };
 export function EditableInput({ onChange, value: originValue, ...inputProps }: EditableInputProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState<string>(originValue);
+  const [value, setValue] = useState(originValue);
 
   useEffect(() => {
     if (value !== originValue) {

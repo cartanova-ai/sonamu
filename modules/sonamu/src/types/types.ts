@@ -297,7 +297,7 @@ export type EntityProp =
   | NumberArrayProp
   | NumericProp
   | NumericArrayProp
-  | NumericProp
+   
   | BooleanProp
   | BooleanArrayProp
   | DateProp

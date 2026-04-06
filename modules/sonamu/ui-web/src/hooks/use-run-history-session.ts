@@ -108,7 +108,7 @@ export function useRunHistorySession(): {
   const [history, setHistory] = useState<StoredRunHistory>(readFromStorage);
   const [storageWarning, setStorageWarning] = useState<RunHistoryStorageWarning | null>(null);
   // sessionStorage에 저장 불가능한 runId를 추적하여 후속 쓰기 시 제외합니다.
-  const unpersistableRef = useRef<Set<string>>(new Set());
+  const unpersistableRef = useRef(new Set());
 
   const addRun = useCallback((entry: Omit<StoredRunEntry, "dateKey">) => {
     setHistory((prev) => {

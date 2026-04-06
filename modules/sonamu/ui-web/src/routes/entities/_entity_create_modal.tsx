@@ -61,7 +61,7 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
         }
         return false;
       })
-      .some((e) => e === true);
+      .some((e) =>  e);
     if (ifError) {
       return;
     }

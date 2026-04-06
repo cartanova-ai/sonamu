@@ -45,7 +45,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
 
       const typeParameters: ApiParamType.TypeParam[] = (node.typeParameters ?? []).map(
         (typeParam) => {
-          const tp = typeParam as ts.TypeParameterDeclaration;
+          const tp = typeParam;
 
           return {
             t: "type-param",
@@ -188,7 +188,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
               name: {
                 escapedText: `[${res.name}${res.optional ? "?" : ""}: ${res.type}]`,
               } as ts.Identifier,
-              type: member.type as ts.TypeNode,
+              type: member.type,
             });
           } else {
             return resolveParamDec({

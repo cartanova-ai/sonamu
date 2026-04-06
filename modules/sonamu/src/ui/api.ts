@@ -524,16 +524,14 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             throw new Error(`이미 존재하는 enumId입니다: ${newEnumId}`);
           }
 
-          entity.enumLabels[newEnumId] = {
-            ...(newEnumId.endsWith("Status")
-              ? {
-                  active: "노출",
-                  hidden: "숨김",
-                }
-              : {
-                  "": "",
-                }),
-          };
+          entity.enumLabels[newEnumId] = newEnumId.endsWith("Status")
+            ? {
+                active: "노출",
+                hidden: "숨김",
+              }
+            : {
+                "": "",
+              };
           await entity.save();
 
           return 1;
@@ -754,7 +752,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
               const pendingMigrations = [
                 ...new Set(
                   conns
-                    .filter((conn) => targets.includes(conn.connKey as keyof SonamuDBConfig))
+                    .filter((conn) => targets.includes(conn.connKey))
                     .flatMap((conn) => conn.pending),
                 ),
               ];
@@ -1194,7 +1192,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
        */
       server.get("/api/sonamu/health", async (request) => {
         const address = request.server.server.address();
-        const port = address && typeof address === "object" ? (address as AddressInfo).port : 0;
+        const port = address && typeof address === "object" ? (address).port : 0;
 
         return {
           ok: true,

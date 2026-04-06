@@ -31,7 +31,7 @@ export class RelationGraph {
       }
 
       for (const [, column] of Object.entries(fixture.columns)) {
-        const prop = column.prop as EntityProp;
+        const prop = column.prop;
 
         if (isRelationProp(prop)) {
           if (

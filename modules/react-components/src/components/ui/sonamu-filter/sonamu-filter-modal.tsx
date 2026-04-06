@@ -24,7 +24,7 @@ export function SonamuFilterModal({
   const { SD } = useSonamuBaseContext();
 
   // Apply된 최종 상태
-  const [appliedRules, setAppliedRules] = useState<Rule[]>(initialRules);
+  const [appliedRules, setAppliedRules] = useState(initialRules);
   // 작업 중 상태
   const [rules, setRules] = useState<Rule[]>([]);
 

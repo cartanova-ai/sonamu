@@ -78,7 +78,7 @@ export function withProps<T extends object>(obj: T): ChainWrapper<T> {
   return {
     set: <P extends string, V>(path: P, value: V) => {
       const nextObj = withProp(obj, path, value);
-      return withProps(nextObj) as ChainWrapper<SetPath<T, P, V>>;
+      return withProps(nextObj);
     },
     value: () => obj,
   };

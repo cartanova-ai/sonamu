@@ -330,7 +330,7 @@ export class SonamuDictionary {
    */
   generateProjectDict(locale: string, entries: DictEntry[], isDefaultLocale: boolean): string {
     // key 알파벳 순 정렬
-    const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
+    const sorted = [...entries].toSorted((a, b) => a.key.localeCompare(b.key));
 
     const lines: string[] = [];
 

@@ -21,7 +21,7 @@ type ApiLog = {
 
 export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
-  const requestStartTimes = useRef<Map<string, number>>(new Map());
+  const requestStartTimes = useRef(new Map());
 
   // Axios interceptor 설정
   useEffect(() => {
@@ -80,7 +80,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         return response;
       },
       (error) => {
-        const logId = (error.config as any)?.__logId;
+        const logId = (error.config)?.__logId;
         const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {

@@ -277,7 +277,7 @@ export class FixtureManagerClass {
       }),
     );
 
-    return [...unique(relQueries.reverse().flat()), selfQuery];
+    return [...unique(relQueries.toReversed().flat()), selfQuery];
   }
 
   async destroy() {
@@ -871,12 +871,12 @@ export class FixtureManagerClass {
         if (isManyToManyRelationProp(prop) && Array.isArray(column.value)) {
           // 선택되지 않은 ManyToMany 관계는 저장하지 않음
           const targetTable = EntityManager.get(prop.with);
-          if (this.builder.hasTable(targetTable.table) === false) continue;
+          if (!this.builder.hasTable(targetTable.table)) continue;
 
           const relatedIds = column.value as number[];
           if (relatedIds.length === 0) continue;
 
-          const joinTable = (prop as ManyToManyRelationProp).joinTable;
+          const joinTable = (prop).joinTable;
           const relatedEntity = EntityManager.get(prop.with);
 
           const sourceColumn = `${inflection.singularize(entity.table)}_id`;

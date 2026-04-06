@@ -109,7 +109,7 @@ describe("Hydrate", () => {
 describe("LoadersResult", () => {
   it("단일 로더의 결과 타입을 생성한다", () => {
     type MockLoaderQb = (
-      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      qbWrapper: PuriWrapper,
       fromIds: number[] | string[],
     ) => MockPuri<{ id: number; title: string; refId: number }>;
 
@@ -129,12 +129,12 @@ describe("LoadersResult", () => {
 
   it("중첩 로더를 처리한다", () => {
     type CommentLoaderQb = (
-      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      qbWrapper: PuriWrapper,
       fromIds: number[] | string[],
     ) => MockPuri<{ id: number; content: string; refId: number }>;
 
     type PostLoaderQb = (
-      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      qbWrapper: PuriWrapper,
       fromIds: number[] | string[],
     ) => MockPuri<{ id: number; title: string; refId: number }>;
 
@@ -163,12 +163,12 @@ describe("LoadersResult", () => {
 
   it("중첩 로더의 as 경로도 hydrate한다", () => {
     type IngredientLoaderQb = (
-      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      qbWrapper: PuriWrapper,
       fromIds: number[] | string[],
     ) => MockPuri<{ id: number; name: string; refId: number }>;
 
     type PrescriptionItemLoaderQb = (
-      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      qbWrapper: PuriWrapper,
       fromIds: number[] | string[],
     ) => MockPuri<{
       id: number;
@@ -211,7 +211,7 @@ describe("LoadersResult", () => {
       as: "projects";
       refId: "id";
       qb: (
-        qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+        qbWrapper: PuriWrapper,
         fromIds: number[] | string[],
       ) => MockPuri<{ id: number; name: string; refId: number }>;
     };
@@ -219,7 +219,7 @@ describe("LoadersResult", () => {
       as: "department";
       refId: "id";
       qb: (
-        qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+        qbWrapper: PuriWrapper,
         fromIds: number[] | string[],
       ) => MockPuri<{ id: number; name: string; company_name: string; refId: number }>;
     };
@@ -227,7 +227,7 @@ describe("LoadersResult", () => {
       as: "employees";
       refId: "id";
       qb: (
-        qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+        qbWrapper: PuriWrapper,
         fromIds: number[] | string[],
       ) => MockPuri<{ id: number; employee_number: string; refId: number }>;
       loaders: [
@@ -235,7 +235,7 @@ describe("LoadersResult", () => {
           as: "user";
           refId: "id";
           qb: (
-            qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+            qbWrapper: PuriWrapper,
             fromIds: number[] | string[],
           ) => MockPuri<{ id: number; name: string; email: string; refId: number }>;
         },
@@ -265,7 +265,7 @@ describe("InferAllSubsets", () => {
   describe("서브셋이 하나인 경우", () => {
     it("로더 없이 기본 Subset 결과를 추론한다", () => {
       // SubsetQuery
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         user__name: string;
         user__email: string;
@@ -296,7 +296,7 @@ describe("InferAllSubsets", () => {
 
     it("로더를 포함한 Subset 결과를 추론한다", () => {
       // SubsetQuery
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         company__id: number;
         company__name: string;
@@ -312,7 +312,7 @@ describe("InferAllSubsets", () => {
         as: "company__departments";
         refId: "company__id";
         qb: (
-          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          qbWrapper: PuriWrapper,
           fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; refId: number }>;
       };
@@ -320,7 +320,7 @@ describe("InferAllSubsets", () => {
         as: "department__projects";
         refId: "department__id";
         qb: (
-          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          qbWrapper: PuriWrapper,
           fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
       };
@@ -348,7 +348,7 @@ describe("InferAllSubsets", () => {
 
     it("중첩 로더를 포함한 Subset 결과를 추론한다", () => {
       // SubsetQuery
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         company__name: string;
       }>;
@@ -361,7 +361,7 @@ describe("InferAllSubsets", () => {
         as: "company__departments";
         refId: "company__id";
         qb: (
-          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          qbWrapper: PuriWrapper,
           fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; refId: number }>;
         loaders: [
@@ -369,7 +369,7 @@ describe("InferAllSubsets", () => {
             as: "projects";
             refId: "id";
             qb: (
-              qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+              qbWrapper: PuriWrapper,
               fromIds: number[] | string[],
             ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
           },
@@ -399,7 +399,7 @@ describe("InferAllSubsets", () => {
     });
 
     it("중첩 로더 경로 alias를 포함한 Subset 결과를 추론한다", () => {
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         root__id: number;
       }>;
@@ -411,7 +411,7 @@ describe("InferAllSubsets", () => {
         as: "root__items";
         refId: "root__id";
         qb: (
-          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          qbWrapper: PuriWrapper,
           fromIds: number[] | string[],
         ) => MockPuri<{
           id: number;
@@ -424,7 +424,7 @@ describe("InferAllSubsets", () => {
             as: "test__inner_items";
             refId: "test__id";
             qb: (
-              qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+              qbWrapper: PuriWrapper,
               fromIds: number[] | string[],
             ) => MockPuri<{ id: number; name: string; refId: number }>;
           },
@@ -459,18 +459,18 @@ describe("InferAllSubsets", () => {
   describe("서브셋이 여러 개인 경우", () => {
     it("로더 없이 기본 Subset 결과를 추론한다", () => {
       // SubsetQuery
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         email: string;
         department__name: string;
       }>;
-      type SubsetFnP = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnP = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         department__name: string;
       }>;
-      type SubsetFnSS = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnSS = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         email: string;
@@ -502,18 +502,18 @@ describe("InferAllSubsets", () => {
 
     it("로더를 포함한 Subset 결과를 추론한다", () => {
       // SubsetQuery
-      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnA = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         email: string;
         department__name: string;
       }>;
-      type SubsetFnP = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnP = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         department__name: string;
       }>;
-      type SubsetFnSS = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+      type SubsetFnSS = (qbWrapper: PuriWrapper) => MockPuri<{
         id: number;
         name: string;
         email: string;
@@ -530,7 +530,7 @@ describe("InferAllSubsets", () => {
         as: "projects";
         refId: "id";
         qb: (
-          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          qbWrapper: PuriWrapper,
           fromIds: number[] | string[],
         ) => MockPuri<{ id: number; name: string; status: string; refId: number }>;
         loaders: [
@@ -538,7 +538,7 @@ describe("InferAllSubsets", () => {
             as: "tags";
             refId: "id";
             qb: (
-              qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+              qbWrapper: PuriWrapper,
               fromIds: number[] | string[],
             ) => MockPuri<{ id: number; name: string; refId: number }>;
           },

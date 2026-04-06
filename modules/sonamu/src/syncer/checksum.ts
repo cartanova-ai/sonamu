@@ -59,7 +59,7 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
     )
   )
     .flat()
-    .sort();
+    .toSorted();
 
   const fileChecksums = await Promise.all(
     filePaths.map(async (filePath) => {

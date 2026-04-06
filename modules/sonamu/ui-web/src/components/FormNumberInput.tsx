@@ -13,7 +13,7 @@ export function FormNumberInput({
   value: propValue,
   ...props
 }: FormNumberInputProps) {
-  const [str, setStr] = useState<string>("");
+  const [str, setStr] = useState("");
 
   useEffect(() => {
     if (Number((str ?? "").replace(/[.]/g, "")) !== propValue) {

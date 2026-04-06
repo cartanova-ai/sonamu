@@ -43,7 +43,7 @@ function I18nIndex() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 미사용 키 상태
-  const [unusedKeys, setUnusedKeys] = useState<Set<string>>(new Set());
+  const [unusedKeys, setUnusedKeys] = useState(new Set());
   const [usageCheckError, setUsageCheckError] = useState<string | null>(null);
 
   // 키 추가 모달 상태
@@ -146,7 +146,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: editValue,
-          source: row.source as "entity" | "project" | "sonamu",
+          source: row.source,
           values,
         });
       } else {
@@ -154,7 +154,7 @@ function I18nIndex() {
         await SonamuUIService.updateI18n({
           oldKey,
           newKey: oldKey,
-          source: row.source as "entity" | "project" | "sonamu",
+          source: row.source,
           values: { [field]: editValue },
         });
       }

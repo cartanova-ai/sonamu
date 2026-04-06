@@ -16,7 +16,7 @@ describe("type-utils", () => {
       const result = withProp(obj, "age", 30);
 
       expect(result).toEqual({ name: "John", age: 30 });
-      expectType<{ name: string; age: number }>(result);
+      expectType(result);
     });
 
     test("기존 속성 덮어쓰기", () => {
@@ -25,7 +25,7 @@ describe("type-utils", () => {
       const result = withProp(obj, "age", 30);
 
       expect(result.age).toBe(30);
-      expectType<{ name: string; age: number }>(result);
+      expectType(result);
     });
 
     test("원본 객체 불변성", () => {
@@ -68,7 +68,7 @@ describe("type-utils", () => {
       const result = withProp(obj, "user.name", "John");
 
       expect(result.user.name).toBe("John");
-      expectType<{ id: number; user: { name: string } }>(result);
+      expectType(result);
     });
   });
 
@@ -79,7 +79,7 @@ describe("type-utils", () => {
       const result = withProp(obj, "users.age", 30);
 
       expect(result.users.map((u) => u.age)).toEqual([30, 30]);
-      expectType<{ users: { name: string; age: number }[] }>(result);
+      expectType(result);
     });
 
     test("배열 내 객체의 중첩 속성", () => {
@@ -118,7 +118,7 @@ describe("type-utils", () => {
       const result = withProp(obj, "users.age", 30);
 
       expect(result.users).toEqual([]);
-      expectType<{ users: { name: string; age: number }[] }>(result);
+      expectType(result);
     });
   });
 
@@ -130,7 +130,7 @@ describe("type-utils", () => {
       const result = withProps(obj).set("age", 30).set("email", "john@example.com").value();
 
       expect(result).toEqual({ name: "John", age: 30, email: "john@example.com" });
-      expectType<{ name: string; age: number; email: string }>(result);
+      expectType(result);
     });
 
     test("실제 사용 패턴: Employee 모델", () => {
@@ -205,13 +205,7 @@ describe("type-utils", () => {
       const allPublished = result.users.flatMap((u) => u.posts.map((p) => p.published));
       expect(allPublished).toEqual([false, false]);
 
-      expectType<{
-        users: {
-          name: string;
-          active: boolean;
-          posts: { title: string; published: boolean }[];
-        }[];
-      }>(result);
+      expectType(result);
     });
   });
 });

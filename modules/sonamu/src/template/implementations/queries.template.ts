@@ -50,7 +50,7 @@ export class Template__queries extends Template {
           (param) =>
             !ApiParamType.isContext(param.type) &&
             !ApiParamType.isRefKnex(param.type) &&
-            !(param.optional === true && param.name.startsWith("_")),
+            !(param.optional && param.name.startsWith("_")),
         );
 
         // 타입 파라미터 이름 수집

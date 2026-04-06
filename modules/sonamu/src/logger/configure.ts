@@ -103,12 +103,12 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
 
   const sinks = {
     "fastify-console": defaultFastifySink(fastifyCategory),
-    ...(options.sinks ?? {}),
+    ...options.sinks,
   } as Record<TSinkId | "fastify-console", Sink>;
 
   const filters = {
     "fastify-console": defaultFastifyFilter(fastifyCategory),
-    ...(options.filters ?? {}),
+    ...options.filters,
   } as Record<TFilterId | "fastify-console", FilterLike>;
 
   const loggers: Set<LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">> =

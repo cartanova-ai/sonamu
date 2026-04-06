@@ -45,7 +45,7 @@ const createSDFallback = <D extends Dictionary = RCKeys>() => {
   };
 };
 
-const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
+const SonamuContext = createContext({} as SonamuContextValue);
 
 export function SonamuProvider<
   D extends Dictionary = Dictionary,
@@ -53,7 +53,7 @@ export function SonamuProvider<
 >({ children, authOptions, ...value }: SonamuProviderProps<D, O>) {
   const authRef = useRef<SonamuAuthClient<O> | undefined>(undefined);
   if (authOptions && !authRef.current) {
-    authRef.current = createAuthClient<O>(authOptions);
+    authRef.current = createAuthClient(authOptions);
   }
 
   const normalizedValue: SonamuContextValue<D, O> = {

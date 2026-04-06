@@ -65,7 +65,7 @@ function ProjectList({}: ProjectListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);

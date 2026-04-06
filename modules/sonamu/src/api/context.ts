@@ -14,7 +14,7 @@ import type { createSSEFactory } from "../stream/sse";
 export interface ContextExtend {}
 export type Context = {
   request: FastifyRequest;
-  reply: FastifyReply<Server, IncomingMessage, ServerResponse, RouteGenericInterface, unknown>;
+  reply: FastifyReply<Server, IncomingMessage, ServerResponse, RouteGenericInterface>;
   headers: IncomingHttpHeaders;
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;

@@ -10,7 +10,7 @@ type InputWithSuggestionProps = {
 } & InputProps;
 export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWithSuggestionProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState<string>(
+  const [value, setValue] = useState(
     inputProps.value === undefined || inputProps.value === null ? "" : String(inputProps.value),
   );
 

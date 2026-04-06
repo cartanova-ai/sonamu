@@ -1,6 +1,5 @@
-/* oxlint-disable @typescript-eslint/no-unused-vars */ // d.ts
-
-import {} from "sonamu";
+// oxlint-disable-next-line
+import * as Sonamu from "sonamu";
 
 declare module "sonamu" {
   export interface ContextExtend {

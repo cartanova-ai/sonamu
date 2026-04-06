@@ -415,11 +415,9 @@ class PostgreSQLSchemaReaderClass {
     }
 
     if (type === "ivfflat") {
-      return {
-        ...(this.parseIntegerOption(withOptions.lists) !== undefined
-          ? { lists: this.parseIntegerOption(withOptions.lists) }
-          : {}),
-      };
+      return this.parseIntegerOption(withOptions.lists) !== undefined
+        ? { lists: this.parseIntegerOption(withOptions.lists) }
+        : {};
     }
 
     return {};

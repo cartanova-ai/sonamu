@@ -196,7 +196,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         return null;
       })
       .filter(Boolean)
-      .sort((a, b) => (b?.bestScore ?? 0) - (a?.bestScore ?? 0));
+      .toSorted((a, b) => (b?.bestScore ?? 0) - (a?.bestScore ?? 0));
   }, [entities, search]);
 
   const handleSelect = (url: string, elementId?: string) => {

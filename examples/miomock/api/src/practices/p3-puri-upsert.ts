@@ -153,8 +153,8 @@ async function examples() {
 
     assert(joinRecords.length === 2);
     assert(
-      JSON.stringify(joinRecords.map((r) => r.employee_id).sort()) ===
-        JSON.stringify(employeeIds.sort()),
+      JSON.stringify(joinRecords.map((r) => r.employee_id).toSorted()) ===
+        JSON.stringify(employeeIds.toSorted()),
     );
 
     console.log("✅ ManyToMany relations created successfully");

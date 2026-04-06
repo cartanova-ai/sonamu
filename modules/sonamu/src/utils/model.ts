@@ -20,7 +20,7 @@ export function asArray<T>(param: T | T[]): T[] {
   if (Array.isArray(param)) {
     return param;
   } else {
-    return [param as T] as T[];
+    return [param] as T[];
   }
 }
 

@@ -526,7 +526,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         const toAppend = targetFields.filter((field) => !entity.subsets[subsetKey].includes(field));
         if (toAppend.length === 0) {
           // 모두 선택된 경우 전체 선택 해제
-          return oldSubset.filter((field) => targetFields.includes(field) === false);
+          return oldSubset.filter((field) => ! targetFields.includes(field));
         } else {
           console.log({ toAppend });
           // 선택 추가

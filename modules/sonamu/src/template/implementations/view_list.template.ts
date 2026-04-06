@@ -267,7 +267,7 @@ export class Template__view_list extends Template {
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
 
-      .sort((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
+      .toSorted((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
       .map((col) => {
         const rendered = this.renderColumn(entityId, col, names);
 
@@ -306,7 +306,7 @@ export class Template__view_list extends Template {
           ["enums", "number-id", "number-fk_id", "string-fk_id"].includes(col.renderType),
       )
       // orderBy가 가장 뒤로 오게 순서 조정
-      .sort((a) => {
+      .toSorted((a) => {
         return a.name === "orderBy" ? 1 : -1;
       });
 

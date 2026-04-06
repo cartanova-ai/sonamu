@@ -71,7 +71,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: unique([...result.importKeys, ...ts.importKeys].sort()),
+          importKeys: unique([...result.importKeys, ...ts.importKeys].toSorted()),
         };
       },
       {
@@ -148,17 +148,15 @@ export class Template__generated extends Template {
     }
     return {
       label: `Enums: ${entity.id}`,
-      lines: [
-        ...Object.entries(entity.enumLabels)
-          .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
-          .flatMap(([enumId, enumLabel]) => [
-            `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
-              (el) => `"${el}"`,
-            )}]).describe("${enumId}");`,
-            `export type ${enumId} = z.infer<typeof ${enumId}>;`,
-            `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
-          ]),
-      ],
+      lines: Object.entries(entity.enumLabels)
+        .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
+        .flatMap(([enumId, enumLabel]) => [
+          `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
+            (el) => `"${el}"`,
+          )}]).describe("${enumId}");`,
+          `export type ${enumId} = z.infer<typeof ${enumId}>;`,
+          `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
+        ]),
       importKeys: [],
     };
   }

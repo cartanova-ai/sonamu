@@ -186,7 +186,7 @@ export class NaiteQuery {
    */
   where(path: string, operator: ComparisonOperator | "includes", value: any): NaiteQuery {
     const filtered = this.traces.filter((trace) => {
-      const actual = get(trace, path) as any;
+      const actual = get(trace, path);
 
       switch (operator) {
         case ">":

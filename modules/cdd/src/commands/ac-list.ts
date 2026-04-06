@@ -37,7 +37,7 @@ export async function runAcList(fileRef: string | undefined, cwd: string): Promi
       absolute: true,
       ignore: ["**/node_modules/**", "**/dist/**"],
     });
-    files.push(...found.sort());
+    files.push(...found.toSorted());
   }
 
   const results: AcFileResult[] = [];

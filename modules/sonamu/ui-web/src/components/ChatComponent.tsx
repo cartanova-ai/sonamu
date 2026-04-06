@@ -17,7 +17,7 @@ type ChatComponentProps = {
 
 export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: ChatComponentProps) {
   const [input, setInput] = useState("");
-  const [processedToolCallIds, setProcessedToolCallIds] = useState<Set<string>>(new Set());
+  const [processedToolCallIds, setProcessedToolCallIds] = useState(new Set());
   const [toolState, setToolState] = useState<ToolState>("idle");
   const [toolName, setToolName] = useState<string | null>(null);
   const [summaryMessage, setSummaryMessage] = useState<string | null>(null);

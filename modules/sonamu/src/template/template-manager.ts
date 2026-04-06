@@ -92,7 +92,7 @@ class TemplateManagerClass {
   register(template: Template): void {
     this.templates.set(template.key, template);
     // 하위 호환
-    Template._getTemplatesMap().set(template.key as TemplateKey, template);
+    Template._getTemplatesMap().set(template.key, template);
   }
 
   /**
@@ -132,7 +132,7 @@ class TemplateManagerClass {
    * 모든 템플릿 키 목록
    */
   getAllKeys(): string[] {
-    return Array.from(this.templates.keys()).sort();
+    return Array.from(this.templates.keys()).toSorted();
   }
 
   /**

@@ -251,7 +251,7 @@ export function EntityPropModal({
                     {(() => {
                       if (form.dbDefault === undefined || form.dbDefault === "") {
                         return "undefined";
-                      } else if (Number.isNaN(Number(form.dbDefault)) === false) {
+                      } else if (!Number.isNaN(Number(form.dbDefault))) {
                         return "number";
                       } else if (form.dbDefault.startsWith('"') && form.dbDefault.endsWith('"')) {
                         return "string";
@@ -536,7 +536,7 @@ export function EntityPropModal({
                           onValueChange={(value) =>
                             setForm({
                               ...form,
-                              onUpdate: value as RelationOn | undefined,
+                              onUpdate: value,
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}
@@ -552,7 +552,7 @@ export function EntityPropModal({
                           onValueChange={(value) =>
                             setForm({
                               ...form,
-                              onDelete: value as RelationOn | undefined,
+                              onDelete: value,
                             })
                           }
                           items={[...EntityPropZodSchema.RelationOn.options]}

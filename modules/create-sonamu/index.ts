@@ -48,7 +48,7 @@ async function init() {
   });
 
   // 첫 번째 인자를 프로젝트명으로 사용
-  const argProjectName = argv._[0] as string | undefined;
+  const argProjectName = argv._[0];
   const useDefaults = argv.yes || argv.y;
 
   // Helper: 'y', 'yes', 'true', '1' → true / 'n', 'no', 'false', '0' → false / undefined → undefined
@@ -224,7 +224,7 @@ async function init() {
 
   // Build catalog for the new project
   const catalogEntries: string[] = [];
-  for (const pkgName of Object.keys(parentCatalog).sort()) {
+  for (const pkgName of Object.keys(parentCatalog).toSorted()) {
     catalogEntries.push(`  "${pkgName}": ${parentCatalog[pkgName]}`);
   }
 
@@ -261,10 +261,10 @@ overrides:
   let isPnpm = true; // 기본값
   const pnpmOption = parseYesNo(argv.pnpm);
 
-  if (argv["skip-pnpm"] || pnpmOption === false) {
+  if (argv["skip-pnpm"] || ! pnpmOption) {
     // --skip-pnpm 또는 --pnpm n 옵션으로 스킵
     isPnpm = false;
-  } else if (pnpmOption === true || useDefaults) {
+  } else if (pnpmOption || useDefaults) {
     // --pnpm y 또는 --yes 옵션이면 자동 진행
     isPnpm = true;
   } else {
@@ -301,10 +301,10 @@ overrides:
   let isDatabase = true; // 기본값
   const dockerOption = parseYesNo(argv.docker);
 
-  if (argv["skip-docker"] || dockerOption === false) {
+  if (argv["skip-docker"] || ! dockerOption) {
     // --skip-docker 또는 --docker n 옵션으로 스킵
     isDatabase = false;
-  } else if (dockerOption === true || useDefaults) {
+  } else if (dockerOption || useDefaults) {
     // --docker y 또는 --yes 옵션이면 자동 진행
     isDatabase = true;
   } else {
@@ -327,7 +327,7 @@ overrides:
     console.log(`\nSetting up a database using Docker...`);
 
     // --docker y 옵션이 있으면 DB 옵션도 기본값 사용
-    const useDbDefaults = useDefaults || dockerOption === true;
+    const useDbDefaults = useDefaults ||  dockerOption;
 
     // 프롬프트로 입력받은 DB 정보 .env 파일에 추가
     let answers: PromptDatabaseAnswers;

@@ -303,7 +303,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
       // AsyncLocalStorage 컨텍스트 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
       const startTransaction = async () => {
-        const puri = this.getPuri(dbPreset) as PuriWrapper;
+        const puri = this.getPuri(dbPreset);
 
         return puri.knex.transaction(
           async (trx) => {

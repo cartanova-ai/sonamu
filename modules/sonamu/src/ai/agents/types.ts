@@ -23,7 +23,7 @@ export interface ToolDecoratorOptions<INPUT, OUTPUT = unknown> {
 export type RegisteredToolDefinition = {
   name: string;
   description?: string;
-  schema: ToolDecoratorSchema<unknown, unknown>;
+  schema: ToolDecoratorSchema<unknown>;
   needsApproval?: Tool["needsApproval"];
   toModelOutput?: Tool["toModelOutput"];
   providerOptions?: ProviderOptions;

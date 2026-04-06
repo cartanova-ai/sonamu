@@ -390,7 +390,7 @@ async function runExamples() {
       .where("id", userId.id)
       .first();
     assert(user);
-    assert(user.is_verified === true);
+    assert(user.is_verified);
     assert(user.last_login_at !== null);
     console.log("✅ Nested transaction completed successfully");
 

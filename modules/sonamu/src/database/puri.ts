@@ -482,7 +482,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // DISTINCT
   distinct<TColumns extends AvailableColumns<TTables>>(...columns: TColumns[]): this;
   distinct(...columns: string[]): this {
-    this.knexQuery.distinct(...(columns as string[]));
+    this.knexQuery.distinct(...(columns));
     return this;
   }
 
@@ -989,7 +989,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // GROUP BY
   groupBy<TColumns extends ResultAvailableColumns<TTables, TResult>>(...columns: TColumns[]): this;
   groupBy(...columns: string[]): this {
-    this.knexQuery.groupBy(...(columns as string[]));
+    this.knexQuery.groupBy(...(columns));
     return this;
   }
 

@@ -48,7 +48,7 @@ function isRunCompletedPayload(v: unknown): v is TestSSEEventMap["runCompleted"]
   )
     return false;
   if (!isRecord(v.result)) return false;
-  const result = v.result as Record<string, unknown>;
+  const result = v.result;
   return (
     typeof result.ok === "boolean" && isRecord(result.summary) && Array.isArray(result.results)
   );
@@ -60,7 +60,7 @@ function isRunErroredPayload(v: unknown): v is TestSSEEventMap["runErrored"] {
     typeof v.runId === "string" &&
     typeof v.finishedAt === "string" &&
     isRecord(v.error) &&
-    typeof (v.error as Record<string, unknown>).message === "string"
+    typeof (v.error).message === "string"
   );
 }
 
@@ -114,7 +114,7 @@ export function useTestEvents(options?: { enabled?: boolean }): {
   const enabled = options?.enabled ?? true;
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const listenersRef = useRef<Map<keyof TestSSEEventMap, Set<EventHandler<keyof TestSSEEventMap>>>>(
+  const listenersRef = useRef(
     new Map(),
   );
   const retryCountRef = useRef(0);

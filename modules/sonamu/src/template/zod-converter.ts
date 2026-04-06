@@ -67,13 +67,13 @@ import { runtimePath } from "../utils/path-utils";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
-type AnyZodObject = z.ZodObject<$ZodLooseShape>;
+type AnyZodObject = z.ZodObject;
 type AnyZodNullable = z.ZodNullable<z.ZodType>;
 type AnyZodDefault = z.ZodDefault<z.ZodType>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
-type AnyZodTemplateLiteral = z.ZodTemplateLiteral<string>;
+type AnyZodTemplateLiteral = z.ZodTemplateLiteral;
 
 /**
  * 내장 타입 정의 (Zod 스키마 + UI 렌더링 타입)

@@ -14,7 +14,7 @@ import { TransactionContext } from "./transaction-context";
  * undefined/null인 인자는 무시됩니다.
  */
 function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
-  return configs.reduce<T>((acc, config) => (config ? assign(acc, config as T) : acc), {} as T);
+  return configs.reduce((acc, config) => (config ? assign(acc, config as T) : acc), {} as T);
 }
 
 export type DBPreset = "w" | "r";

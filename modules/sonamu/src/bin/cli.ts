@@ -761,7 +761,7 @@ async function stub_practice(name: string) {
         const [, seqNo] = fileName.match(/^p([0-9]+)-/) ?? ["0", "0"];
         return parseInt(seqNo);
       })
-      .sort((a, b) => b - a);
+      .toSorted((a, b) => b - a);
 
     if (filteredSeqs.length > 0) {
       return filteredSeqs[0];

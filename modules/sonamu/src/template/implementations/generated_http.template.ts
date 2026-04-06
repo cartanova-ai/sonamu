@@ -67,7 +67,7 @@ export class Template__generated_http extends Template {
     };
   }
 
-  zodTypeToReqDefault(zodType: z.ZodType<unknown>, name: string): unknown {
+  zodTypeToReqDefault(zodType: z.ZodType, name: string): unknown {
     if (zodType instanceof z.ZodObject) {
       return Object.fromEntries(
         Object.keys(zodType.shape).map((key) => [
@@ -144,7 +144,9 @@ export class Template__generated_http extends Template {
       return def;
     } catch (error) {
       console.error(error);
-      throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`);
+      throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`, {
+        cause: error,
+      });
     }
   }
 }

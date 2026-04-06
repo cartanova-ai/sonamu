@@ -26,7 +26,7 @@ export function TableColumnAsyncSelect({
   className,
 }: TableColumnAsyncSelectProps) {
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
-  const [selectedValues, setSelectedValues] = useState<string[]>(value);
+  const [selectedValues, setSelectedValues] = useState(value);
 
   useEffect(() => {
     SonamuUIService.getTableColumns(entityId)

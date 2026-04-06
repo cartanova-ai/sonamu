@@ -23,7 +23,7 @@ import type { Expand } from "./puri.types";
  * SubsetQuery 함수 시그니처
  * PuriWrapper를 받아 Puri 쿼리 빌더를 반환
  */
-export type PuriSubsetFn = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>;
+export type PuriSubsetFn = (qbWrapper: PuriWrapper) => Puri<any, any, any>;
 
 /**
  * Puri 인스턴스에서 TResult 타입 추출
@@ -40,7 +40,7 @@ export type ExtractPuriResult<T> = T extends Puri<any, any, infer R> ? R : never
  * @param fromIds - 부모 레코드 ID 배열
  */
 export type PuriLoaderQbFn = (
-  qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+  qbWrapper: PuriWrapper,
   fromIds: number[] | string[],
 ) => Puri<any, any, any>;
 

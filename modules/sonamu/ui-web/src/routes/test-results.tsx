@@ -1028,7 +1028,7 @@ function TraceList({ traces }: { traces: SerializedTrace[] }) {
   const [expandedTraceKeys, setExpandedTraceKeys] = useState<Set<string>>(() => new Set());
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const corpusCacheRef = useRef<Map<string, string>>(new Map());
+  const corpusCacheRef = useRef(new Map());
 
   // 렌더 중 동기적으로 캐시를 초기화하여 traces 변경 직후 첫 렌더에서 stale 캐시 히트를 방지합니다.
   const prevTracesRef = useRef(traces);

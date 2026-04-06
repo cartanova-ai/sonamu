@@ -10,7 +10,7 @@ export type SQLDateRangePickerProps = {
   label?: string | ReactNode;
   value?: SQLDateTimeString[];
   onChange?: (
-    e: React.SyntheticEvent<Element, Event> | undefined,
+    e: React.SyntheticEvent<Element> | undefined,
     data: { value: SQLDateTimeString[] },
   ) => void;
 };

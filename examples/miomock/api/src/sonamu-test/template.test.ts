@@ -91,7 +91,7 @@ describe("TemplateManager", () => {
         expect(keys.length).toBeGreaterThanOrEqual(15);
 
         // 정렬 확인
-        const sortedKeys = [...keys].sort();
+        const sortedKeys = [...keys].toSorted();
         expect(keys).toEqual(sortedKeys);
       });
 

@@ -25,7 +25,7 @@ export type AsyncIdConfig<
     subset: T,
     params?: any,
     options?: { enabled?: boolean },
-  ) => UseQueryResult<Record<string, unknown>, Error>;
+  ) => UseQueryResult<Record<string, unknown>>;
 };
 
 // SubsetMapping에서 선택된 subset의 필드 키를 추출하는 유틸리티 타입
@@ -203,7 +203,7 @@ export function IdAsyncSelect<
 
   // 실제 쿼리 파라미터: baseListParams(외부 필터) + keyword(사용자 검색어) 병합
   const queryParams = {
-    ...(baseListParams ?? {}),
+    ...baseListParams,
     ...(keyword ? { keyword } : {}),
   };
 
@@ -243,12 +243,12 @@ export function IdAsyncSelect<
 
   // selectedQuery로 로드한 데이터가 있으면 우선 사용, 없으면 현재 rows에서 찾기
   const selectedRow = ((selectedQuery.data?.rows as Record<string, unknown>[] | undefined)?.[0] ||
-    selectedInRows) as Record<string, unknown> | undefined;
+    selectedInRows);
 
   // ============================================================
   // Multi 모드: 선택된 값들 로드
   // ============================================================
-  const multiValues = multiple && Array.isArray(value) ? (value as TValue[]) : [];
+  const multiValues = multiple && Array.isArray(value) ? (value) : [];
 
   // 먼저 현재 rows에서 찾기
   const selectedMultiInRows = useMemo(

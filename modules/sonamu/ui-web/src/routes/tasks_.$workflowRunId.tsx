@@ -62,7 +62,7 @@ function WorkflowRunDetailPage() {
 
   const steps = stepsData?.data ?? [];
 
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [expandedSteps, setExpandedSteps] = useState(new Set());
   const toggleStep = (id: string) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);

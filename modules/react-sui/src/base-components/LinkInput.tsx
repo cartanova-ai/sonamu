@@ -2,13 +2,13 @@ import { Button, Input, type InputProps } from "semantic-ui-react";
 
 export function LinkInput(
   props: InputProps & {
-    handleButtonClick?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+    handleButtonClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: string | null }) => void;
   },
 ) {
   const handleButtonClick =
     props.handleButtonClick ??
-    ((_e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    ((_e: React.MouseEvent<HTMLButtonElement>) => {
       if (isValidUrl(props.value)) {
         window.open(props.value);
       }

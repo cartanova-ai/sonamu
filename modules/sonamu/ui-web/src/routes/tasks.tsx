@@ -242,7 +242,7 @@ function TasksIndex() {
 
   const [cursors, setCursors] = useState<{ after?: string; before?: string }>({});
   const [filterStatus, setFilterStatus] = useState<FilterableStatus[]>([]);
-  const [filterWorkflowName, setFilterWorkflowName] = useState<string>("");
+  const [filterWorkflowName, setFilterWorkflowName] = useState("");
   const [filterCreatedAfter, setFilterCreatedAfter] = useState<Date | undefined>();
   const [filterCreatedBefore, setFilterCreatedBefore] = useState<Date | undefined>();
 

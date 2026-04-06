@@ -55,7 +55,7 @@ async function loadRules(contractDir: string): Promise<RulesNode[]> {
 
   const nodes: RulesNode[] = [];
 
-  for (const relPath of rulesFiles.sort()) {
+  for (const relPath of rulesFiles.toSorted()) {
     const absPath = path.resolve(rulesDir, relPath);
     const raw = fs.readFileSync(absPath, "utf-8");
     const parsed: unknown = JSON.parse(raw);

@@ -325,7 +325,7 @@ export class HotHookLoader {
     // 여기에서는 실제 파일의 변경을 감지해야 하므로,
     // result.importAttributes.ts가 존재할 경우 이를 사용합니다.
     const actualSourcePath = result.importAttributes?.ts
-      ? fileURLToPath(new URL(result.importAttributes.ts as string))
+      ? fileURLToPath(new URL(result.importAttributes.ts))
       : resultPath;
 
     // 나중에 parent로 사용될 때를 위해 매핑 저장

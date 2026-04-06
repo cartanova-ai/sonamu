@@ -22,7 +22,7 @@ export default function EntityChatComponent({
   onEntityUpdated,
 }: EntityChatComponentProps) {
   const [input, setInput] = useState("");
-  const [processedToolCallIds, setProcessedToolCallIds] = useState<Set<string>>(new Set());
+  const [processedToolCallIds, setProcessedToolCallIds] = useState(new Set());
   const [toolState, setToolState] = useState<ToolState>("idle");
   const [toolName, setToolName] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

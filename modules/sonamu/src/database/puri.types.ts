@@ -348,7 +348,7 @@ export type InsertData<T> = Omit<
 };
 
 // Insert Result 타입
-export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
+export type InsertResult = Pick<QueryResult, "command" | "rowCount" | "rows" | "oid">;
 
 // SubsetQuery를 위한 타입 유틸리티
 export type ExtractTTables<T extends Puri<any, any, any>> =

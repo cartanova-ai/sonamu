@@ -1016,7 +1016,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...ids].toSorted((a, b) => a.localeCompare(b));
 
       // [expect] 3개 ID 생성됨
       expect(ids).toHaveLength(3);
@@ -1790,7 +1790,7 @@ describe("Upsert Builder", () => {
       }
 
       const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a.localeCompare(b));
+      const sortedIds = [...ids].toSorted((a, b) => a.localeCompare(b));
 
       // [expect] 3명 생성됨
       expect(ids).toHaveLength(3);

@@ -181,7 +181,7 @@ function shouldHaveDataSource(prop: EntityProp): boolean {
 
   // OneToOne은 hasJoinColumn: true인 경우에만 dataSource 필요
   if (isOneToOneRelationProp(prop)) {
-    return (prop as OneToOneRelationProp).hasJoinColumn === true;
+    return  (prop as OneToOneRelationProp).hasJoinColumn;
   }
 
   return false;

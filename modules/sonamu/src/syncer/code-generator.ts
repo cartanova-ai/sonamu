@@ -52,7 +52,7 @@ export async function generateTemplate<T extends TemplateKey>(
   ).flat();
 
   const filteredPathAndCodes: PathAndCode[] = await (async () => {
-    if (generateOptions.overwrite === true) {
+    if (generateOptions.overwrite) {
       return pathAndCodes;
     } else {
       return await filterAsync(pathAndCodes, async (pathAndCode) => {
@@ -128,12 +128,14 @@ async function resolveRenderedTemplate(
         } catch (error) {
           throw new Error(
             `[resolveRenderedTemplate:${key}] ${importKey} 모듈 경로 찾기 실패: ${error}`,
+            { cause: error },
           );
         }
         let importPath = modulePath;
         if (modulePath.includes("/") || modulePath.includes(".")) {
           importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [
-            p.startsWith(".") === false,
+            !
+            p.startsWith("."),
             `./${p}`,
           ]);
         }
@@ -156,7 +158,7 @@ async function resolveRenderedTemplate(
       }[],
     )
     // 셀프 참조 방지
-    .filter((importDef) => filePath.endsWith(`${importDef.from.replace("./", "")}.ts`) === false);
+    .filter((importDef) => ! filePath.endsWith(`${importDef.from.replace("./", "")}.ts`));
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [

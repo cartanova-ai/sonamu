@@ -56,7 +56,7 @@ export function DateSelectorMultiple({
   const [tempIsRangeMode, setTempIsRangeMode] = React.useState(defaultRangeMode);
   const [tempSingleDate, setTempSingleDate] = React.useState<Date | undefined>();
   const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
 
   // Initialize temp states when popover opens
   React.useEffect(() => {

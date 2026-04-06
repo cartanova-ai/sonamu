@@ -463,7 +463,7 @@ export class BaseModelClass<
         return qb.limit(num).offset(num * (page - 1));
       }
     })();
-    let unloadedRows = (await limitedQb) as any[];
+    let unloadedRows = (await limitedQb);
 
     if (debug) {
       qb.debug();

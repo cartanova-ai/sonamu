@@ -32,12 +32,12 @@ export class Serve extends BaseCommand {
   })
   declare onKey: string[];
 
-  #httpServer?: ExecaChildProcess<string>;
+  #httpServer?: ExecaChildProcess;
   #keybindingManager = new KeybindingManager();
   #onReloadAsked?: (updatedFile: string, shouldBeReloadable: boolean) => void;
   #onFileInvalidated?: (invalidatedFiles: string[]) => void;
 
-  #intentionalExits = new WeakSet<ExecaChildProcess<string>>();
+  #intentionalExits = new WeakSet<ExecaChildProcess>();
   #restartTimer?: NodeJS.Timeout;
   #crashResetTimer?: NodeJS.Timeout;
   #keypressListener?: (_str: string, key: Key) => void;
@@ -93,7 +93,7 @@ export class Serve extends BaseCommand {
   /**
    * 서버 시작 후 일정 시간(5초) 정상 운영 시 크래시 카운터를 리셋합니다
    */
-  #scheduleCrashCounterReset(server: ExecaChildProcess<string>) {
+  #scheduleCrashCounterReset(server: ExecaChildProcess) {
     this.#clearCrashResetTimer();
     this.#crashResetTimer = setTimeout(() => {
       if (this.#intentionalExits.has(server)) return;

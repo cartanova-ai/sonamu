@@ -5,7 +5,7 @@ export class PrioritySequencer implements TestSequencer {
   async sort(files: TestSpecification[]) {
     const priority = ["migrator", "syncer", "type-safety"];
 
-    return files.sort((a, b) => {
+    return files.toSorted((a, b) => {
       const aPriority = priority.findIndex((p) => a.moduleId.includes(p));
       const bPriority = priority.findIndex((p) => b.moduleId.includes(p));
 

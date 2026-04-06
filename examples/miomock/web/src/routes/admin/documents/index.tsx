@@ -62,7 +62,7 @@ export const Route = createFileRoute("/admin/documents/")({
 function DocumentList() {
   const navigate = useNavigate();
 
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; title?: string } | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);

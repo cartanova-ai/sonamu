@@ -175,7 +175,7 @@ export class FixtureGenerator {
       // 3. fixtureGenerator 사용
       if (cone?.fixtureGenerator) {
         fixture[prop.name] = await this.executeGenerator(
-          cone.fixtureGenerator as string,
+          cone.fixtureGenerator,
           prop,
           entity,
         );
@@ -1477,7 +1477,7 @@ Rules:
         // (새 부모 생성 대신 기존 데이터 재활용)
         const idProp = specEntity.props.find((p) => p.name === "id");
         const parentOverrides =
-          (idProp?.cone?.fixtureParentOverrides as Record<string, unknown> | undefined) ?? {};
+          (idProp?.cone?.fixtureParentOverrides) ?? {};
         const parentEntity = this.entityManager.get(specEntity.parentId);
 
         // 부모 테이블에서 서브타입 테이블에 없는 id를 조회

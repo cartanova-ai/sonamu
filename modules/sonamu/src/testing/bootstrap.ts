@@ -88,7 +88,7 @@ declare module "vitest" {
 }
 
 export const test = Object.assign(
-  async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+  async (title: string, fn: TestFunction, options?: TestOptions) => {
     return vitestTest(title, options, async (context) => {
       await runWithMockContext(async () => {
         try {
@@ -102,9 +102,9 @@ export const test = Object.assign(
     });
   },
   {
-    skip: async (title: string, fn: TestFunction<object>, options?: TestOptions) =>
+    skip: async (title: string, fn: TestFunction, options?: TestOptions) =>
       vitestTest.skip(title, options, fn),
-    only: async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+    only: async (title: string, fn: TestFunction, options?: TestOptions) => {
       return vitestTest.only(title, options, async (context) => {
         await runWithMockContext(async () => {
           try {
@@ -118,7 +118,7 @@ export const test = Object.assign(
       });
     },
     todo: (title: string) => vitestTest.todo(title),
-    each: vitestTest.each.bind(vitestTest) as typeof vitestTest.each,
+    each: vitestTest.each.bind(vitestTest),
   },
 );
 
@@ -126,7 +126,7 @@ export const testAs = Object.assign(
   async <User extends Context["user"]>(
     user: User,
     title: string,
-    fn: TestFunction<object>,
+    fn: TestFunction,
     options?: TestOptions,
   ) => {
     return vitestTest(title, options, async (context) => {
@@ -151,13 +151,13 @@ export const testAs = Object.assign(
     skip: async <User extends Context["user"]>(
       _user: User,
       title: string,
-      fn: TestFunction<object>,
+      fn: TestFunction,
       options?: TestOptions,
     ) => vitestTest.skip(title, options, fn),
     only: async <User extends Context["user"]>(
       user: User,
       title: string,
-      fn: TestFunction<object>,
+      fn: TestFunction,
       options?: TestOptions,
     ) => {
       return vitestTest.only(title, options, async (context) => {

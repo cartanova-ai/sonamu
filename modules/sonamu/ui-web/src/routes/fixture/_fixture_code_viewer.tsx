@@ -85,8 +85,8 @@ const FixtureCode = ({
   theme?: ThemeKey;
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
-  const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
-  const [codes, setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
+  const [selectedSubset, setSelectedSubset] = useState(subsetKeys[0]);
+  const [codes, setCodes] = useState(new Map());
 
   const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
     return `${camelize(entityId, true)}${id

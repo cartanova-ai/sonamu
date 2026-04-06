@@ -20,7 +20,7 @@ export function UserSearchInput({
   input: { value: inputValue, onValueChange: inputOnValueChange },
   dropdown: dropdownProps,
 }: UserSearchInputProps) {
-  const [keyword, setKeyword] = useState<string>(inputValue ?? "");
+  const [keyword, setKeyword] = useState(inputValue ?? "");
 
   const handleSearch = () => {
     inputOnValueChange?.(keyword || undefined);

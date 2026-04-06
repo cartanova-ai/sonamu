@@ -26,8 +26,8 @@ import { type ApiParam, ApiParamType } from "../types/types";
 import type { ExtendedApi } from "./decorators";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
-type AnyZodObject = z.ZodObject<$ZodLooseShape>;
-type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
+type AnyZodObject = z.ZodObject;
+type AnyZodLiteral = z.ZodLiteral;
 
 /**
  * Promise 타입을 한 번 언래핑하여 내부 타입을 반환합니다.
@@ -55,7 +55,7 @@ export function getZodTypeFromApiParamType(
   references: {
     [id: string]: z.ZodType;
   },
-): z.ZodType<unknown> {
+): z.ZodType {
   switch (paramType) {
     case "string":
       return z.string();
@@ -166,7 +166,7 @@ export function getZodTypeFromApiParamType(
             } else {
               return z.intersection(result, resolvedType);
             }
-          }, z.unknown() as z.ZodType<unknown>);
+          }, z.unknown() as z.ZodType);
         }
         case "tuple-type": {
           const tupleType = paramType as ApiParamType.TupleType;
@@ -232,7 +232,7 @@ export function getZodObjectFromApi(
       (param) =>
         !ApiParamType.isContext(param.type) &&
         !ApiParamType.isRefKnex(param.type) &&
-        !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
+        !(param.optional && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
     ),
     references,
   );
@@ -282,7 +282,7 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
       ? `(${elementsType})[]`
       : `${elementsType}[]`;
   } else if (ApiParamType.isRef(paramType)) {
-    if (["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) === false) {
+    if (!["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id)) {
       // importKeys 인젝션
       injectImportKeys.push(paramType.id);
     }

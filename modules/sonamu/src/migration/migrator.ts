@@ -43,7 +43,7 @@ export class Migrator {
         name: f.replace(".ts", ""),
         path: path.join(srcMigrationsDir, f),
       }))
-      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
+      .toSorted((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
 
     Naite.t("migrator:getMigrationCodes:results", codes);
     return codes;
@@ -63,7 +63,7 @@ export class Migrator {
     Naite.t("migrator:getStatus:codes", codes);
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => key.endsWith("_slave") === false,
+      (key) => ! key.endsWith("_slave"),
     ) as (keyof typeof Sonamu.dbConfig)[];
 
     let migrationStatusError: string | undefined;
@@ -115,7 +115,7 @@ export class Migrator {
               connection.port
             }/${connection.database}` as ConnString,
             currentVersion,
-            status: status as number | "error",
+            status: status,
             pending,
           };
         } finally {
@@ -177,7 +177,7 @@ export class Migrator {
       targets
         .map((target) => ({
           connKey: target,
-          options: Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig],
+          options: Sonamu.dbConfig[target],
         }))
         .filter((c) => c.options !== undefined),
       ({ options }) =>
@@ -244,7 +244,7 @@ export class Migrator {
    */
   validateDeletable(conns: MigrationStatus["conns"], codeNames: string[]) {
     const appliedCodes = codeNames.filter((codeName) =>
-      conns.some((conn) => conn.pending.includes(codeName) === false),
+      conns.some((conn) => ! conn.pending.includes(codeName)),
     );
 
     return {

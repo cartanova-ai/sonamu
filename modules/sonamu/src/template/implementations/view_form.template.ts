@@ -208,7 +208,7 @@ export class Template__view_form extends Template {
     const { zodTypeToRenderingNode } = await import("../zod-converter");
     const saveParamsNode = zodTypeToRenderingNode(SaveParamsZodType);
 
-    const columns = ((saveParamsNode?.children ?? []) as RenderingNode[])
+    const columns = ((saveParamsNode?.children ?? []))
       .filter((col) => col.name !== "id")
       .map((col) => {
         const propCandidate = entity.props.find((prop) => prop.name === col.name);
