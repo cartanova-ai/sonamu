@@ -37,7 +37,9 @@ import {
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
+import type { CddAddRuleRequest } from "./cdd-service";
 import {
+  addRule,
   editContent,
   getAcList,
   getCddTree,
@@ -1431,6 +1433,10 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       server.post<{ Body: { ruleKey: string } }>("/api/cdd/readRule", async (request) => {
         const { ruleKey } = request.body;
         return readRule(ruleKey);
+      });
+
+      server.post<{ Body: CddAddRuleRequest }>("/api/cdd/addRule", async (request) => {
+        return addRule(request.body);
       });
 
       // CDD AC API

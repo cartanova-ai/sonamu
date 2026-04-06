@@ -39,6 +39,14 @@ export type CddRuleDetail = {
   rules: CddRuleEntry[];
 };
 
+/** Rule 추가 요청 */
+export type CddAddRuleRequest = {
+  ruleKey: string;
+  when: string;
+  instruction: string;
+  examples?: string[];
+};
+
 /** AC 엔트리 */
 export type CddAcEntry = {
   describe: string | null;

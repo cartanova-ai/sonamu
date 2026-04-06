@@ -7,6 +7,7 @@ import type {
   CddAcEntry,
   CddAcFile,
   CddAcListResult,
+  CddAddRuleRequest,
   CddContentResult,
   CddFileType,
   CddRuleDetail,
@@ -19,6 +20,7 @@ export type {
   CddAcEntry,
   CddAcFile,
   CddAcListResult,
+  CddAddRuleRequest,
   CddContentResult,
   CddFileType,
   CddRuleDetail,
@@ -271,6 +273,68 @@ export function readRule(ruleKey: string): CddRuleDetail {
     description: typeof doc.description === "string" ? doc.description : "",
     rules: Array.isArray(doc.rules) ? doc.rules : [],
   };
+}
+
+/** rules 파일에 규칙 추가 */
+export function addRule(req: CddAddRuleRequest): CddRuleDetail {
+  const contractDir = getContractDir();
+  const rulesDir = path.join(contractDir, "rules");
+  const absPath = path.join(rulesDir, `${req.ruleKey}.rules.json`);
+
+  if (!fs.existsSync(absPath)) {
+    throw new Error(`Rules 파일을 찾을 수 없습니다: ${req.ruleKey}`);
+  }
+
+  const raw = fs.readFileSync(absPath, "utf-8");
+  const doc = JSON.parse(raw) as { description?: string; rules?: CddRuleEntry[] };
+  const rules: CddRuleEntry[] = Array.isArray(doc.rules) ? doc.rules : [];
+
+  const nextId = generateNextRuleId(rules);
+  const newEntry: CddRuleEntry = {
+    id: nextId,
+    when: req.when,
+    instruction: req.instruction,
+  };
+  if (req.examples && req.examples.length > 0) {
+    newEntry.examples = req.examples;
+  }
+
+  rules.push(newEntry);
+  doc.rules = rules;
+
+  fs.writeFileSync(absPath, `${JSON.stringify(doc, null, 2)}\n`, "utf-8");
+
+  return {
+    key: req.ruleKey,
+    path: `rules/${req.ruleKey}.rules.json`,
+    description: typeof doc.description === "string" ? doc.description : "",
+    rules,
+  };
+}
+
+/** 기존 id 패턴을 분석하여 다음 순번 id 생성 */
+function generateNextRuleId(rules: CddRuleEntry[]): string {
+  if (rules.length === 0) return "R-001";
+
+  const numericPattern = /^(.+?)(\d+)$/;
+  let bestPrefix = "R-";
+  let maxNum = 0;
+
+  for (const rule of rules) {
+    const match = numericPattern.exec(rule.id);
+    if (match) {
+      const prefix = match[1];
+      const num = Number.parseInt(match[2], 10);
+      if (num > maxNum) {
+        bestPrefix = prefix;
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  const padLen = Math.max(3, String(maxNum).length);
+  return `${bestPrefix}${String(nextNum).padStart(padLen, "0")}`;
 }
 
 /* ========================================================================

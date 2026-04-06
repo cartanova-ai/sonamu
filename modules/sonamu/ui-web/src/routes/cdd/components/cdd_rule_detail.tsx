@@ -1,12 +1,15 @@
 import { useState } from "react";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
+import PlusIcon from "~icons/lucide/plus";
 import ScaleIcon from "~icons/lucide/scale";
 import { CddService } from "../service";
 import type { CddRuleEntry } from "../types";
+import { CddAddRuleModal } from "./cdd_add_rule_modal";
 
 export function CddRuleDetail({ ruleKey }: { ruleKey: string }) {
-  const { data, isLoading } = CddService.useReadCddRule(ruleKey);
+  const { data, isLoading, refetch } = CddService.useReadCddRule(ruleKey);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   if (isLoading || !data) {
     return (
@@ -31,6 +34,14 @@ export function CddRuleDetail({ ruleKey }: { ruleKey: string }) {
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs font-semibold cursor-pointer"
+            onClick={() => setShowAddModal(true)}
+          >
+            <PlusIcon className="w-3 h-3" />
+            Add Rule
+          </button>
         </div>
       </nav>
 
@@ -44,6 +55,14 @@ export function CddRuleDetail({ ruleKey }: { ruleKey: string }) {
           )}
         </div>
       </div>
+
+      {showAddModal && (
+        <CddAddRuleModal
+          ruleKey={ruleKey}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => refetch()}
+        />
+      )}
     </div>
   );
 }

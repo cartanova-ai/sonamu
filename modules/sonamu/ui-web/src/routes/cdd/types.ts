@@ -2,6 +2,7 @@ export type {
   CddAcEntry,
   CddAcFile,
   CddAcListResult,
+  CddAddRuleRequest,
   CddContentResult,
   CddFileType,
   CddRuleDetail,

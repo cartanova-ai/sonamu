@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetch } from "../../services/sonamu.shared";
 import type {
   CddAcListResult,
+  CddAddRuleRequest,
   CddContentResult,
   CddRuleDetail,
   CddRuleSummary,
@@ -100,6 +101,14 @@ export namespace CddService {
           url: `/sonamu-ui/api/cdd/ac`,
         }) as Promise<CddAcListResult>,
       enabled,
+    });
+  }
+
+  export function addCddRule(req: CddAddRuleRequest): Promise<CddRuleDetail> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/cdd/addRule`,
+      data: req,
     });
   }
 }
