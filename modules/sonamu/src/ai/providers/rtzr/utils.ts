@@ -1,11 +1,6 @@
 import { APICallError } from "@ai-sdk/provider";
-import {
-  extractResponseHeaders,
-  type FetchFunction,
-  isAbortError,
-  type ResponseHandler,
-  withUserAgentSuffix,
-} from "@ai-sdk/provider-utils";
+import { extractResponseHeaders, isAbortError, withUserAgentSuffix } from "@ai-sdk/provider-utils";
+import type { FetchFunction, ResponseHandler } from "@ai-sdk/provider-utils";
 
 const FETCH_FAILED_ERROR_MESSAGES = ["fetch failed", "failed to fetch"];
 

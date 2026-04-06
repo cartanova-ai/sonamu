@@ -134,8 +134,7 @@ async function resolveRenderedTemplate(
         let importPath = modulePath;
         if (modulePath.includes("/") || modulePath.includes(".")) {
           importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [
-            !
-            p.startsWith("."),
+            !p.startsWith("."),
             `./${p}`,
           ]);
         }
@@ -158,7 +157,7 @@ async function resolveRenderedTemplate(
       }[],
     )
     // 셀프 참조 방지
-    .filter((importDef) => ! filePath.endsWith(`${importDef.from.replace("./", "")}.ts`));
+    .filter((importDef) => !filePath.endsWith(`${importDef.from.replace("./", "")}.ts`));
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [

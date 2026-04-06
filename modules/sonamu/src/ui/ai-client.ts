@@ -9,13 +9,12 @@ import { z } from "zod";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  type EntityProp,
-  type FixtureRecord,
   getEnumDefValues,
   isInternalSubsetField,
   normalizeSubsetField,
   TemplateOptions,
 } from "../types/types";
+import type { EntityProp, FixtureRecord } from "../types/types";
 import { nonNullable } from "../utils/utils";
 
 type ValidationError = {

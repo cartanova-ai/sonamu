@@ -1,4 +1,5 @@
-import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
+import { DndContext, useDraggable } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   Button,
   Dialog,

@@ -11,16 +11,14 @@ import os from "os";
 import path from "path";
 import process from "process";
 
-import knex, { type Knex } from "knex";
+import knex from "knex";
+import type { Knex } from "knex";
 import { tsicli } from "tsicli";
 
 import { Sonamu } from "../api";
 import { addCompanionsToEntities, generateBetterAuthEntities } from "../auth/auth-generator";
-import {
-  type BetterAuthPluginId,
-  isValidPluginId,
-  SUPPORTED_PLUGIN_IDS,
-} from "../auth/plugins/entity-definitions";
+import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins/entity-definitions";
+import type { BetterAuthPluginId } from "../auth/plugins/entity-definitions";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
@@ -35,7 +33,8 @@ import {
 } from "../utils/console-util";
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
-import { API_ARTIFACTS, type BuildArtifact, WEB_ARTIFACTS } from "./build-config";
+import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
+import type { BuildArtifact } from "./build-config";
 import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
 import { testCommand } from "./test-command";
 
@@ -625,7 +624,7 @@ async function fixture_init() {
   }
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
-  for await (const { label, config, toSkip } of targets) {
+  for (const { label, config, toSkip } of targets) {
     const conn = config.connection as Knex.ConnectionConfig;
 
     if (toSkip === true) {

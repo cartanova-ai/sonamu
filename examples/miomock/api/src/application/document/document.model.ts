@@ -3,12 +3,10 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
-  type ExtractTTables,
   exhaustive,
-  type ListResult,
   NotFoundException,
-  type VectorColumns,
 } from "sonamu";
+import type { ExtractTTables, ListResult, VectorColumns } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
 import { SD } from "../../i18n/sd.generated";

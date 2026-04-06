@@ -1147,7 +1147,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated.ts.snap",
       );
@@ -1169,7 +1169,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("snapshot-test.entity.json"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/entity.json.snap",
       );
@@ -1183,7 +1183,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sync-fixture.types.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/init_types.ts.snap",
       );
@@ -1201,7 +1201,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.http"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated.http.snap",
       );
@@ -1215,7 +1215,7 @@ describe("Syncer", () => {
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.sso.ts"));
 
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/generated_sso.ts.snap",
       );
@@ -1237,7 +1237,7 @@ describe("Syncer", () => {
         .find((f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes(".types.ts"));
 
       // 파일이 존재하는지 확인 후 스냅샷과 비교
-      await assert(writeFile);
+      assert(writeFile);
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/copied-types.ts.snap",
       );

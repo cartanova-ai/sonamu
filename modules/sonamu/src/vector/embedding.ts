@@ -1,5 +1,6 @@
 import type { OpenAIProvider } from "@ai-sdk/openai";
-import { type EmbeddingModel, embedMany } from "ai";
+import { embedMany } from "ai";
+import type { EmbeddingModel } from "ai";
 import type { VoyageAIClient } from "voyageai";
 
 import { Sonamu } from "../api/sonamu";

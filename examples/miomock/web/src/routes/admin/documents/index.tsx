@@ -17,17 +17,16 @@ import {
   extractFieldMetaFromSchema,
   Input,
   Pagination,
-  type Rule,
   SonamuFilterModal,
   SonamuFilterPopover,
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import type { Rule, TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";

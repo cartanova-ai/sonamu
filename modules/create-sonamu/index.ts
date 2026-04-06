@@ -261,7 +261,7 @@ overrides:
   let isPnpm = true; // 기본값
   const pnpmOption = parseYesNo(argv.pnpm);
 
-  if (argv["skip-pnpm"] || ! pnpmOption) {
+  if (argv["skip-pnpm"] || !pnpmOption) {
     // --skip-pnpm 또는 --pnpm n 옵션으로 스킵
     isPnpm = false;
   } else if (pnpmOption || useDefaults) {
@@ -301,7 +301,7 @@ overrides:
   let isDatabase = true; // 기본값
   const dockerOption = parseYesNo(argv.docker);
 
-  if (argv["skip-docker"] || ! dockerOption) {
+  if (argv["skip-docker"] || !dockerOption) {
     // --skip-docker 또는 --docker n 옵션으로 스킵
     isDatabase = false;
   } else if (dockerOption || useDefaults) {
@@ -327,7 +327,7 @@ overrides:
     console.log(`\nSetting up a database using Docker...`);
 
     // --docker y 옵션이 있으면 DB 옵션도 기본값 사용
-    const useDbDefaults = useDefaults ||  dockerOption;
+    const useDbDefaults = useDefaults || dockerOption;
 
     // 프롬프트로 입력받은 DB 정보 .env 파일에 추가
     let answers: PromptDatabaseAnswers;

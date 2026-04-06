@@ -1,7 +1,8 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // 동적 라우트 로드에서 any 허용
 
 import { last, set } from "radashi";
-import React, { type ComponentType } from "react";
+import React from "react";
+import type { ComponentType } from "react";
 import { Route } from "react-router-dom";
 
 type ModulePromise = () => Promise<{ default: ComponentType<any> }>;

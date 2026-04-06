@@ -52,7 +52,7 @@ export async function delEntity(entityId: string): Promise<{ delPaths: string[] 
     }
   })(); // iife
 
-  for await (const delPath of delPaths) {
+  for (const delPath of delPaths) {
     if (await exists(delPath)) {
       !isTest() && console.log(chalk.red(`DELETE ${delPath}`));
       await rm(delPath, { recursive: true, force: true });

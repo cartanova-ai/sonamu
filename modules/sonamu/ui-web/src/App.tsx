@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 
 import SearchModal from "./components/SearchModal";
 import { useSonamuContext } from "./contexts/sonamu-provider";
-import { type Locale, SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
+import { SUPPORTED_LOCALES, useLocale, useSetLocale } from "./i18n";
+import type { Locale } from "./i18n";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
 interface AppProps {

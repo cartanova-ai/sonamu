@@ -5,8 +5,10 @@ import type { SchemaInput, SchemaOutput, WorkflowRun } from "./core/workflow";
 import { validateInput } from "./core/workflow";
 import type { WorkflowFunction } from "./execution";
 import { WorkflowRegistry } from "./registry";
-import { Worker, type WorkerOptions } from "./worker";
-import { defineWorkflow, defineWorkflowSpec, type Workflow, type WorkflowSpec } from "./workflow";
+import { Worker } from "./worker";
+import type { WorkerOptions } from "./worker";
+import { defineWorkflow, defineWorkflowSpec } from "./workflow";
+import type { Workflow, WorkflowSpec } from "./workflow";
 
 const DEFAULT_RESULT_POLL_INTERVAL_MS = 1000; // 1s
 const DEFAULT_RESULT_TIMEOUT_MS = 5 * 60 * 1000; // 5m

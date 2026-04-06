@@ -123,7 +123,7 @@ export class DevVitestManager {
 
     const vitest = await createVitest("test", cliOptions, viteOverrides);
     try {
-      await vitest.init();
+      await vitest.standalone();
     } catch (err) {
       await vitest.close();
       throw err;

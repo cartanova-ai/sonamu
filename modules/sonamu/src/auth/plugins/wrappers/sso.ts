@@ -1,4 +1,5 @@
-import { sso as _sso, type SSOOptions } from "@better-auth/sso";
+import { sso as _sso } from "@better-auth/sso";
+import type { SSOOptions } from "@better-auth/sso";
 
 export type { SSOOptions } from "@better-auth/sso";
 

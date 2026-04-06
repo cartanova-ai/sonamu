@@ -1,9 +1,11 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
-import { getLogger, type Logger } from "@logtape/logtape";
+import { getLogger } from "@logtape/logtape";
+import type { Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
 import { cloneDeep, cluster, group, isObject, omit, set } from "radashi";
 
-import { type ListResult, normalizeFilterQuery, validateSonamuFilters } from "..";
+import { normalizeFilterQuery, validateSonamuFilters } from "..";
+import type { ListResult } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
 import type { FilterOperator, FilterQuery } from "../filter/types";
@@ -463,7 +465,7 @@ export class BaseModelClass<
         return qb.limit(num).offset(num * (page - 1));
       }
     })();
-    let unloadedRows = (await limitedQb);
+    let unloadedRows = await limitedQb;
 
     if (debug) {
       qb.debug();

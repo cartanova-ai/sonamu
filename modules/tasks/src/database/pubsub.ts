@@ -2,7 +2,8 @@ import assert from "assert";
 
 import type { Knex } from "knex";
 
-import { err, ok, type Result } from "../core/result";
+import { err, ok } from "../core/result";
+import type { Result } from "../core/result";
 
 export type OnSubscribed = (result: Result<string | null>) => void | Promise<void>;
 

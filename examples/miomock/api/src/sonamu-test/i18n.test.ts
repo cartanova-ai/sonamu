@@ -3,7 +3,8 @@ import fs from "fs";
 /* oxlint-disable no-template-curly-in-string */ // template 테스트 시 사용
 import { Workbook } from "@sheetkit/node";
 import { Sonamu } from "sonamu";
-import { createFormat, type DictEntry, josa, plural, sonamuDictionary } from "sonamu/dict";
+import { createFormat, josa, plural, sonamuDictionary } from "sonamu/dict";
+import type { DictEntry } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
 import { describe, expect, test, vi } from "vitest";
 

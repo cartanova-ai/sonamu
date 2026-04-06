@@ -1,9 +1,9 @@
 import { passkeyClient } from "@better-auth/passkey/client";
 import {
   SonamuProvider as BaseSonamuProvider,
-  type SonamuFile,
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
+import type { SonamuFile } from "@sonamu-kit/react-components";
 import type { BetterAuthClientOptions } from "better-auth/client";
 import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
 import type { ReactNode } from "react";

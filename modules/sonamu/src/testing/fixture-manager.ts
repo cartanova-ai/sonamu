@@ -12,24 +12,27 @@ import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
-import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
+import { UpsertBuilder } from "../database/upsert-builder";
+import type { UBRef } from "../database/upsert-builder";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  type BelongsToOneRelationProp,
-  type DatabaseSchemaExtend,
-  type EntityProp,
-  type FixtureImportResult,
-  type FixtureRecord,
-  type FixtureSearchOptions,
   isBelongsToOneRelationProp,
   isHasManyRelationProp,
   isManyToManyRelationProp,
   isOneToOneRelationProp,
   isRelationProp,
   isVirtualProp,
-  type ManyToManyRelationProp,
-  type OneToOneRelationProp,
+} from "../types/types";
+import type {
+  BelongsToOneRelationProp,
+  DatabaseSchemaExtend,
+  EntityProp,
+  FixtureImportResult,
+  FixtureRecord,
+  FixtureSearchOptions,
+  ManyToManyRelationProp,
+  OneToOneRelationProp,
 } from "../types/types";
 import { isTest } from "../utils/controller";
 import { RelationGraph } from "./_relation-graph";
@@ -876,7 +879,7 @@ export class FixtureManagerClass {
           const relatedIds = column.value as number[];
           if (relatedIds.length === 0) continue;
 
-          const joinTable = (prop).joinTable;
+          const joinTable = prop.joinTable;
           const relatedEntity = EntityManager.get(prop.with);
 
           const sourceColumn = `${inflection.singularize(entity.table)}_id`;

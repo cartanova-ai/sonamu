@@ -3,7 +3,6 @@ import inflection from "inflection";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  type EntityProp,
   isBelongsToOneRelationProp,
   isHasManyRelationProp,
   isManyToManyRelationProp,
@@ -14,12 +13,15 @@ import {
   isStringProp,
   isVectorProp,
   isVirtualProp,
-  type MigrationColumn,
-  type MigrationColumnType,
-  type MigrationForeign,
-  type MigrationIndex,
-  type MigrationJoinTable,
-  type MigrationSetAndJoinTable,
+} from "../types/types";
+import type {
+  EntityProp,
+  MigrationColumn,
+  MigrationColumnType,
+  MigrationForeign,
+  MigrationIndex,
+  MigrationJoinTable,
+  MigrationSetAndJoinTable,
 } from "../types/types";
 import { exhaustive } from "../utils/utils";
 
@@ -183,7 +185,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               length: pkProp.length,
             }),
         });
-        if ((prop.useConstraint ?? true)) {
+        if (prop.useConstraint ?? true) {
           r.foreigns.push({
             columns: [idColumnName],
             to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
@@ -206,7 +208,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
 
   // indexes
   migrationSet.indexes = entity.indexes.filter((index) =>
-    index.columns.find((col) => ! col.name.includes(".")),
+    index.columns.find((col) => !col.name.includes(".")),
   );
 
   return migrationSet;

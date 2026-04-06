@@ -22,11 +22,11 @@ import XCircleIcon from "~icons/lucide/x-circle";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
-import {
-  SonamuUIService,
-  type StepAttempt,
-  type WorkflowDefinitionInfo,
-  type WorkflowRun,
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import type {
+  StepAttempt,
+  WorkflowDefinitionInfo,
+  WorkflowRun,
 } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";

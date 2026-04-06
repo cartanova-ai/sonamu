@@ -1,7 +1,6 @@
 import { execFileSync } from "child_process";
 import { readFileSync, unlinkSync, writeFileSync } from "fs";
 import { createRequire } from "module";
-import { tmpdir } from "os";
 import { join } from "path";
 
 import { format } from "oxfmt";
@@ -48,8 +47,9 @@ export async function formatCode(
       .filter((e) => e.severity === "Error")
       .map((e) => e.message);
     if (errorMessages.length > 0) {
-      !isTest() && console.error("oxfmt format errors:", errorMessages);
-      throw new Error(`oxfmt format error: ${errorMessages.join(", ")}`);
+      // 파싱 에러가 있는 코드는 포맷팅 없이 원본 반환 (Biome formatWithErrors: false와 동일)
+      Naite.t("formatCode:parse-error", errorMessages);
+      return code;
     }
   }
   Naite.t("formatCode:formatted", formatted.code);
@@ -59,43 +59,28 @@ export async function formatCode(
     return formatted.code;
   }
 
-  // TypeScript: oxlint --fix로 lint fix 수행 (unused import 제거 등)
+  // TypeScript: oxlint --fix로 lint fix 수행 (unused import 제거, type import 변환 등)
+  // cwd 아래에 생성해야 nested config(.oxlintrc.json)과 tsconfig를 찾을 수 있음
   const tmpFile = join(
-    tmpdir(),
-    `sonamu-fmt-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
+    process.cwd(),
+    `.sonamu-fmt-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
   );
   try {
     writeFileSync(tmpFile, formatted.code, "utf-8");
 
     const oxlintBin = resolveOxlintBin();
     try {
-      execFileSync(
-        oxlintBin,
-        [
-          "--fix",
-          "--fix-suggestions",
-          "-D",
-          "correctness",
-          "-D",
-          "suspicious",
-          "-A",
-          "no-unused-vars",
-          tmpFile,
-        ],
-        {
-          stdio: "pipe",
-          timeout: 10000,
-        },
-      );
+      execFileSync(oxlintBin, ["--fix", "--fix-suggestions", "--type-aware", tmpFile], {
+        stdio: "pipe",
+        timeout: 10000,
+      });
     } catch (execError: unknown) {
       // oxlint은 lint 에러가 있으면 exit code != 0으로 종료하지만 --fix는 적용됨
       if (execError instanceof Error) {
         const errObj = execError as Error & { status?: number | null; code?: string };
         if (typeof errObj.status === "number") {
-          // exit code가 있는 경우 정상적인 lint 결과 (fix 적용 완료)
           Naite.t("formatCode:oxlint-exit", errObj.status);
         } else {
-          // ENOENT, EACCES 등 실행 자체 실패
           throw execError;
         }
       } else {

@@ -1,7 +1,8 @@
 import type z from "zod";
 
 import { Sonamu } from "../../api";
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import { EntityManager } from "../../entity/entity-manager";
+import type { EntityNamesRecord } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
 import type { TemplateOptions } from "../../types/types";
 import { Template } from "../template";

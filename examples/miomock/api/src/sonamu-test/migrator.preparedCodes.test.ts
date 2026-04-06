@@ -1,4 +1,5 @@
-import { type EntityJson, EntityManager, Migrator, Naite } from "sonamu";
+import { EntityManager, Migrator, Naite } from "sonamu";
+import type { EntityJson } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 
@@ -171,7 +172,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -256,7 +257,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(\`CREATE INDEX users_bio_index ON users USING gist(bio);\`);
@@ -300,7 +301,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -336,7 +337,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -373,7 +374,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(
@@ -412,7 +413,7 @@ describe("Migrator - preparedCodes 생성", () => {
     expect(alterCode).toBeDefined();
     expect(alterCode?.formatted).toMatchInlineSnapshot(
       `
-      "import type { Knex } from "knex";
+      "import { type Knex } from "knex";
 
       export async function up(knex: Knex): Promise<void> {
         await knex.raw(

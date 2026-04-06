@@ -1,13 +1,7 @@
-import {
-  DB,
-  type DBPreset,
-  Entity,
-  type EntityJson,
-  EntityManager,
-  type Template,
-  TemplateManager,
-} from "sonamu";
-import { type Mock, vi } from "vitest";
+import { DB, Entity, EntityManager, TemplateManager } from "sonamu";
+import type { DBPreset, EntityJson, Template } from "sonamu";
+import { vi } from "vitest";
+import type { Mock } from "vitest";
 
 /**
  * EntityManager.get을 모킹하여 특정 엔티티만 override하고 나머지는 원본을 반환합니다.

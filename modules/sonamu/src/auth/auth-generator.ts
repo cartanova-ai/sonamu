@@ -4,11 +4,8 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import type { EntityIndex, EntityJson, EntityProp } from "../types/types";
 import { betterAuthV1 } from "./better-auth-entities";
-import {
-  type BetterAuthPluginId,
-  ENTITY_DEFINITIONS,
-  isValidPluginId,
-} from "./plugins/entity-definitions";
+import { ENTITY_DEFINITIONS, isValidPluginId } from "./plugins/entity-definitions";
+import type { BetterAuthPluginId } from "./plugins/entity-definitions";
 
 /**
  * 누락된 props 찾기

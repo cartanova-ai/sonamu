@@ -1,12 +1,11 @@
-import {
-  configure,
-  type Filter,
-  type FilterLike,
-  getConsoleSink,
-  type LoggerConfig,
-  type LogRecord,
-  type Sink,
-  type TextFormatter,
+import { configure, getConsoleSink } from "@logtape/logtape";
+import type {
+  Filter,
+  FilterLike,
+  LoggerConfig,
+  LogRecord,
+  Sink,
+  TextFormatter,
 } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import type { FastifyReply, FastifyRequest } from "fastify";

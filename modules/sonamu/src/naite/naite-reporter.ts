@@ -11,7 +11,8 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
 
 import { createHash } from "crypto";
-import { connect, type Socket } from "net";
+import { connect } from "net";
+import type { Socket } from "net";
 import { homedir } from "os";
 import { join } from "path";
 

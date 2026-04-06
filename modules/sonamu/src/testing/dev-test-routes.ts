@@ -6,7 +6,8 @@ import { z } from "zod";
 import type { SonamuDevRunnerConfig } from "../api/config";
 import { Sonamu } from "../api/sonamu";
 import type { SerializedTrace } from "../naite/naite";
-import { createSSEFactory, type SSEConnection } from "../stream/sse";
+import { createSSEFactory } from "../stream/sse";
+import type { SSEConnection } from "../stream/sse";
 import type { ManagerStatus, RunResult, TestCaseResult } from "./dev-vitest-manager";
 import { DevVitestManager } from "./dev-vitest-manager";
 

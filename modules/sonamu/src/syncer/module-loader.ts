@@ -10,7 +10,8 @@ import type { WorkflowMetadata } from "../tasks/decorator";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
-import { type AbsolutePath, runtimePath } from "../utils/path-utils";
+import { runtimePath } from "../utils/path-utils";
+import type { AbsolutePath } from "../utils/path-utils";
 import { readApisFromFile } from "./api-parser";
 
 export type LoadedApis = {

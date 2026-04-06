@@ -7,12 +7,12 @@ import {
   combineHeaders,
   convertBase64ToUint8Array,
   createJsonResponseHandler,
-  type FetchFunction,
   getFromApi,
   mediaTypeToExtension,
   parseProviderOptions,
   postFormDataToApi,
 } from "@ai-sdk/provider-utils";
+import type { FetchFunction } from "@ai-sdk/provider-utils";
 import { isEmpty } from "radashi";
 
 import {
@@ -21,11 +21,8 @@ import {
   rtzrTranscriptionResultResponseSchema,
 } from "./api";
 import { RtzrClientError, rtzrFailedResponseHandler } from "./error";
-import {
-  type RtzrTranscriptionModelId,
-  type RtzrTranscriptionProviderOptions,
-  rtzrTranscriptionProviderOptions,
-} from "./options";
+import { rtzrTranscriptionProviderOptions } from "./options";
+import type { RtzrTranscriptionModelId, RtzrTranscriptionProviderOptions } from "./options";
 
 export type RtzrTranscriptionCallOptions = Omit<
   TranscriptionModelV3CallOptions,

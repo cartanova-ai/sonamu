@@ -1,4 +1,5 @@
-import { Input, type InputProps } from "@sonamu-kit/react-components";
+import { Input } from "@sonamu-kit/react-components";
+import type { InputProps } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 
 type FormNumberInputProps = Omit<InputProps, "onChange" | "type"> & {

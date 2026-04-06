@@ -18,8 +18,8 @@
     "publish:image": "tsx scripts/publish-image.ts",
     "publish:packages": "tsx scripts/publish.ts",
     "format": "oxfmt",
-    "check": "oxlint && oxfmt --check",
-    "check:fix": "oxlint --fix --fix-suggestions && oxfmt",
+    "check": "oxlint --type-aware && oxfmt --check",
+    "check:fix": "oxlint --type-aware --fix --fix-suggestions && oxfmt",
     "verify:clean": "tsx scripts/verify.ts clean",
     "verify:fast": "tsx scripts/verify.ts fast",
     "prepare": "git config core.hooksPath .githooks"
@@ -32,6 +32,7 @@
     "npm-run-all": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
+    "oxlint-tsgolint": "^0.19.0",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "zx": "catalog:"

@@ -1,4 +1,5 @@
-import { Handle, type Node, type NodeProps, NodeResizeControl, Position } from "@xyflow/react";
+import { Handle, NodeResizeControl, Position } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 
 import "./graph.scss";
 import type { SetStateAction } from "react";

@@ -1,4 +1,5 @@
-import { DB, isRefField, Naite, Sonamu, type SonamuFile, type UBRef, UpsertBuilder } from "sonamu";
+import { DB, isRefField, Naite, Sonamu, UpsertBuilder } from "sonamu";
+import type { SonamuFile, UBRef } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 

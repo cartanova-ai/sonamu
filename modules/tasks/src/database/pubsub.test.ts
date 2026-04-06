@@ -1,9 +1,11 @@
-import knex, { type Knex } from "knex";
+import knex from "knex";
+import type { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { Result } from "../core/result";
 import { KNEX_GLOBAL_CONFIG } from "../testing/connection";
-import { type OnSubscribed, PostgresPubSub } from "./pubsub";
+import { PostgresPubSub } from "./pubsub";
+import type { OnSubscribed } from "./pubsub";
 
 describe("PostgresPubSub", () => {
   let knexInstance: Knex;

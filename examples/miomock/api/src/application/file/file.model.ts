@@ -4,12 +4,11 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
   Sonamu,
-  type SonamuFile,
   upload,
 } from "sonamu";
+import type { ListResult, SonamuFile } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";

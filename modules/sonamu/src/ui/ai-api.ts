@@ -1,4 +1,5 @@
-import { convertToModelMessages, type UIMessage } from "ai";
+import { convertToModelMessages } from "ai";
+import type { UIMessage } from "ai";
 import type { FastifyInstance } from "fastify";
 
 import { SD } from "../dict/sd";

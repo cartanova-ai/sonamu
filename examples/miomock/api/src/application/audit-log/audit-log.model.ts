@@ -6,9 +6,9 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   NotFoundException,
 } from "sonamu";
+import type { ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import type { AuditLogSubsetKey, AuditLogSubsetMapping } from "../sonamu.generated";

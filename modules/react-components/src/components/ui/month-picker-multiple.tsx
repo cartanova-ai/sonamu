@@ -59,9 +59,7 @@ export function MonthPickerMultiple({
   const [tempDate, setTempDate] = React.useState<Date | undefined>();
   const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
   const [tempYear, setTempYear] = React.useState(new Date().getFullYear());
-  const [tempRangeStartYear, setTempRangeStartYear] = React.useState(
-    new Date().getFullYear(),
-  );
+  const [tempRangeStartYear, setTempRangeStartYear] = React.useState(new Date().getFullYear());
   const [tempRangeEndYear, setTempRangeEndYear] = React.useState(new Date().getFullYear());
 
   const years = React.useMemo(

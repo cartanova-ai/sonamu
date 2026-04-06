@@ -1,0 +1,31 @@
+{
+  "plugins": ["typescript", "import", "react", "jsx-a11y", "unicorn"],
+  "rules": {
+    "no-empty-pattern": "off",
+    "radix": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@typescript-eslint/ban-types": "off",
+    "react/no-array-index-key": "off",
+    "no-focused-tests": "warn",
+    "eqeqeq": "warn",
+    "react/react-in-jsx-scope": "off",
+    "jsx-a11y/label-has-associated-control": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/role-has-required-aria-props": "off",
+    "jsx-a11y/no-noninteractive-tabindex": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "fixStyle": "inline-type-imports",
+        "disallowTypeAnnotations": false
+      }
+    ],
+    "@typescript-eslint/no-floating-promises": "off",
+    "@typescript-eslint/no-unsafe-type-assertion": "off",
+    "@typescript-eslint/no-unnecessary-type-arguments": "off"
+  }
+}

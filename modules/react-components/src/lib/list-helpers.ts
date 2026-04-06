@@ -91,7 +91,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   }, [allKeys, selection]);
 
   const selectedKeys = Array.from(selection)
-    .filter(([key, value]) => allKeys.includes(key) &&  value)
+    .filter(([key, value]) => allKeys.includes(key) && value)
     .map(([key]) => key);
 
   return {
@@ -107,7 +107,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
     isAllSelected: selectedKeys.length === allKeys.length,
     handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement>, index: number) => {
       const input = e.currentTarget.getElementsByTagName("input");
-      if (e.shiftKey && ! input[0]?.checked) {
+      if (e.shiftKey && !input[0]?.checked) {
         const [begin, end] = (() => {
           if (lastIndex < index) {
             return [lastIndex, index];

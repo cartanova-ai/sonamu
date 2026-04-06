@@ -15,20 +15,18 @@ import Trash2Icon from "~icons/lucide/trash-2";
 import XCircleIcon from "~icons/lucide/x-circle";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import {
-  type RunHistoryStorageWarning,
-  useRunHistorySession,
-} from "../hooks/use-run-history-session";
+import { useRunHistorySession } from "../hooks/use-run-history-session";
+import type { RunHistoryStorageWarning } from "../hooks/use-run-history-session";
 import { useTestEvents } from "../hooks/use-test-events";
-import {
-  type ManagerStatus,
-  type RunResult,
-  type SerializedTrace,
-  SonamuUIService,
-  type StoredRunEntry,
-  type TestCaseResult,
-  type TestSSEEventMap,
-  type TestState,
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import type {
+  ManagerStatus,
+  RunResult,
+  SerializedTrace,
+  StoredRunEntry,
+  TestCaseResult,
+  TestSSEEventMap,
+  TestState,
 } from "../services/sonamu-ui.service";
 
 export const Route = createFileRoute("/test-results")({

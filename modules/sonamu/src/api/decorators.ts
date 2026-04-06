@@ -11,11 +11,8 @@ import type { CacheControlConfig } from "../cache-control/types";
 import type { CompressConfig } from "../compress/types";
 import { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
-import {
-  PuriTransactionWrapper,
-  type PuriWrapper,
-  type TransactionalOptions,
-} from "../database/puri-wrapper";
+import { PuriTransactionWrapper } from "../database/puri-wrapper";
+import type { TransactionalOptions } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
 import { convertDomainToCategory } from "../logger/category";
 import type { DriverKey } from "../storage/drivers";

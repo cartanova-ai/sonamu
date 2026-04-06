@@ -2,7 +2,8 @@ import inflection from "inflection";
 import { flat } from "radashi";
 import { z } from "zod";
 
-import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import { EntityManager } from "../../entity/entity-manager";
+import type { EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateOptions } from "../../types/types";
 import {
   getEnumInfoFromColName,

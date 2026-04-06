@@ -6,7 +6,8 @@ import equal from "fast-deep-equal";
 import qs from "qs";
 import { get, isObject, set, unique } from "radashi";
 import type React from "react";
-import { type ReactElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { ReactElement } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
 import { z } from "zod";
@@ -202,10 +203,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
       if (name === "page") {
         return {
           activePage: listParams.page ?? 1,
-          onPageChange: (
-            _event: React.MouseEvent<HTMLAnchorElement>,
-            data: PaginationProps,
-          ) => {
+          onPageChange: (_event: React.MouseEvent<HTMLAnchorElement>, data: PaginationProps) => {
             setListParams({
               ...listParams,
               page: Number(data.activePage ?? 1),
@@ -263,7 +261,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   }, [allKeys, selection]);
 
   const selectedKeys = Array.from(selection)
-    .filter(([key, value]) => allKeys.includes(key) &&  value)
+    .filter(([key, value]) => allKeys.includes(key) && value)
     .map(([key]) => key);
 
   return {
@@ -279,7 +277,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
     isAllSelected: selectedKeys.length === allKeys.length,
     handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement>, index: number) => {
       const input = e.currentTarget.getElementsByTagName("input");
-      if (e.shiftKey && ! input[0]?.checked) {
+      if (e.shiftKey && !input[0]?.checked) {
         const [begin, end] = (() => {
           if (lastIndex < index) {
             return [lastIndex, index];

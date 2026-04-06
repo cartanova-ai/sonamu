@@ -8,7 +8,8 @@ import inflection from "inflection";
 import { range } from "radashi";
 
 import { Sonamu } from "../api/sonamu";
-import { DB, type SonamuDBConfig } from "../database/db";
+import { DB } from "../database/db";
+import type { SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { sonamuDictionary } from "../dict/sonamu-dictionary";
@@ -19,23 +20,25 @@ import {
   isSoException,
   ServiceUnavailableException,
 } from "../exceptions/so-exceptions";
-import { type MigrationResult, Migrator } from "../migration/migrator";
-import { SlackConfirm, type SlackConfirmPendingResult } from "../migration/slack-confirm";
+import { Migrator } from "../migration/migrator";
+import type { MigrationResult } from "../migration/migrator";
+import { SlackConfirm } from "../migration/slack-confirm";
+import type { SlackConfirmPendingResult } from "../migration/slack-confirm";
 import { TemplateManager } from "../template/template-manager";
 import { DataExplorer } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
-import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
-import {
-  BUILT_IN_TYPE_IDS,
-  type Cone,
-  type EntityIndex,
-  type EntityProp,
-  type EntitySubsetRow,
-  type FixtureRecord,
-  type FixtureSearchOptions,
-  type FlattenSubsetRow,
-  type PathAndCode,
-  TemplateKey,
+import { FixtureManager } from "../testing/fixture-manager";
+import type { DuplicateCheckOptions } from "../testing/fixture-manager";
+import { BUILT_IN_TYPE_IDS, TemplateKey } from "../types/types";
+import type {
+  Cone,
+  EntityIndex,
+  EntityProp,
+  EntitySubsetRow,
+  FixtureRecord,
+  FixtureSearchOptions,
+  FlattenSubsetRow,
+  PathAndCode,
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
@@ -1192,7 +1195,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
        */
       server.get("/api/sonamu/health", async (request) => {
         const address = request.server.server.address();
-        const port = address && typeof address === "object" ? (address).port : 0;
+        const port = address && typeof address === "object" ? address.port : 0;
 
         return {
           ok: true,

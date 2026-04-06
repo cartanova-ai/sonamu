@@ -1,6 +1,7 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri 테스트 코드이므로 any 사용
 
-import { type DatabaseSchemaExtend, type Puri, Sonamu } from "sonamu";
+import { Sonamu } from "sonamu";
+import type { DatabaseSchemaExtend, Puri } from "sonamu";
 
 import type {
   CompanyBaseSchema,

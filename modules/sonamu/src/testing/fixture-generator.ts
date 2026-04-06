@@ -6,12 +6,10 @@ import type { EntityManager } from "../entity/entity-manager";
 import type { EntityProp, FixtureImportResult, FixtureRecord } from "../types/types";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
 import { isTest } from "../utils/controller";
-import {
-  DataExplorer,
-  type ExploreWithRelationsOptions,
-  type ExploreWithRelationsResult,
-} from "./data-explorer";
-import { type FakerMappings, fakerMappings } from "./faker-mappings";
+import { DataExplorer } from "./data-explorer";
+import type { ExploreWithRelationsOptions, ExploreWithRelationsResult } from "./data-explorer";
+import { fakerMappings } from "./faker-mappings";
+import type { FakerMappings } from "./faker-mappings";
 import { FixtureManager } from "./fixture-manager";
 
 export type Locale = "ko" | "en" | "ja";
@@ -174,11 +172,7 @@ export class FixtureGenerator {
 
       // 3. fixtureGenerator 사용
       if (cone?.fixtureGenerator) {
-        fixture[prop.name] = await this.executeGenerator(
-          cone.fixtureGenerator,
-          prop,
-          entity,
-        );
+        fixture[prop.name] = await this.executeGenerator(cone.fixtureGenerator, prop, entity);
         continue;
       }
 
@@ -1476,8 +1470,7 @@ Rules:
         // parentId 엔티티: DB에서 서브타입 행이 없는 부모 id를 조회하여 사용
         // (새 부모 생성 대신 기존 데이터 재활용)
         const idProp = specEntity.props.find((p) => p.name === "id");
-        const parentOverrides =
-          (idProp?.cone?.fixtureParentOverrides) ?? {};
+        const parentOverrides = idProp?.cone?.fixtureParentOverrides ?? {};
         const parentEntity = this.entityManager.get(specEntity.parentId);
 
         // 부모 테이블에서 서브타입 테이블에 없는 id를 조회

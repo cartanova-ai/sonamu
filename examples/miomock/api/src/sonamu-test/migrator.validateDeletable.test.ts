@@ -1,4 +1,5 @@
-import { type MigrationStatus, Migrator } from "sonamu";
+import { Migrator } from "sonamu";
+import type { MigrationStatus } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 

@@ -2,9 +2,11 @@
 
 import type { BetterAuthClientOptions } from "better-auth/client";
 import { createAuthClient } from "better-auth/react";
-import { createContext, type ReactNode, useContext, useRef } from "react";
+import { createContext, useContext, useRef } from "react";
+import type { ReactNode } from "react";
 
-import { type RCKeyName, type RCKeys, rcKeysEn } from "../i18n/rc-keys";
+import { rcKeysEn } from "../i18n/rc-keys";
+import type { RCKeyName, RCKeys } from "../i18n/rc-keys";
 import type { Dictionary, SDReturnType, SonamuFile } from "./types";
 
 /** createAuthClient의 반환 타입을 옵션으로부터 추론하는 유틸리티 타입 */

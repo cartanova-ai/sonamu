@@ -226,7 +226,6 @@ function TwoFactorSetupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  autoFocus
                 />
               </div>
 
@@ -313,7 +312,6 @@ function TwoFactorSetupPage() {
                   value={verifyCode}
                   onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
                   onKeyDown={handleKeyDown}
-                  autoFocus
                 />
               </div>
 

@@ -8,14 +8,13 @@ import { prettifyError, z } from "zod";
 
 import { Sonamu } from "../api/sonamu";
 import {
-  type EntityIndex,
-  type EntityJson,
   EntityJsonSchema,
   isSearchTextJsonSourceZodType,
   isSearchTextProp,
   SonamuFileArraySchema,
   SonamuFileSchema,
 } from "../types/types";
+import type { EntityIndex, EntityJson } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 import type { AbsolutePath } from "../utils/path-utils";

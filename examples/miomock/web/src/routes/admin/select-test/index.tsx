@@ -18,11 +18,8 @@ import {
   CompanyService,
   EmployeeAsyncIdConfig,
 } from "@/services/services.generated";
-import {
-  CompanyBaseSchema,
-  type CompanySubsetA,
-  type EmployeeSubsetA,
-} from "@/services/sonamu.generated";
+import { CompanyBaseSchema } from "@/services/sonamu.generated";
+import type { CompanySubsetA, EmployeeSubsetA } from "@/services/sonamu.generated";
 
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({
@@ -297,8 +294,8 @@ function SelectTestPage() {
                     error={companyError}
                     onSearch={handleCompanySearch}
                     searchDebounce={300}
-                    valueKey={(company) => String((company).id)}
-                    renderItem={(company) => (company).name}
+                    valueKey={(company) => String(company.id)}
+                    renderItem={(company) => company.name}
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-blue-200">
@@ -424,8 +421,8 @@ function SelectTestPage() {
                     onSearch={handleMultiCompanySearch}
                     searchDebounce={300}
                     maxCount={2}
-                    valueKey={(company) => String((company).id)}
-                    renderItem={(company) => (company).name}
+                    valueKey={(company) => String(company.id)}
+                    renderItem={(company) => company.name}
                     className="bg-white"
                   />
                   <div className="p-3 bg-white rounded border border-green-200">

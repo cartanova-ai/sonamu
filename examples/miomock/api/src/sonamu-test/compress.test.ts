@@ -1,13 +1,6 @@
 import fastify from "fastify";
-import {
-  type CompressConfig,
-  type CompressOptions,
-  CompressPresets,
-  type Context,
-  Sonamu,
-  type SonamuFastifyConfig,
-  toFastifyCompressOption,
-} from "sonamu";
+import { CompressPresets, Sonamu, toFastifyCompressOption } from "sonamu";
+import type { CompressConfig, CompressOptions, Context, SonamuFastifyConfig } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 

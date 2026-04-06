@@ -3,11 +3,10 @@ import {
   EntityManager,
   getAlterIndexesTo,
   getMigrationSetFromEntity,
-  type MigrationIndex,
-  type PgColumn,
   PostgreSQLSchemaReader,
   setMigrationIndexDefaults,
 } from "sonamu";
+import type { MigrationIndex, PgColumn } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 

@@ -13,12 +13,14 @@ import type { z } from "zod";
 import type { WorkflowMetadata } from "..";
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
-import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { EntityManager } from "../entity/entity-manager";
+import type { EntityNamesRecord } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { TemplateManager } from "../template/template-manager";
 import type { GenerateOptions, PathAndCode } from "../types/types";
-import { TemplateKey, type TemplateOptions } from "../types/types";
+import { TemplateKey } from "../types/types";
+import type { TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { isTest } from "../utils/controller";
@@ -28,20 +30,10 @@ import { runWithGracefulShutdown } from "../utils/process-utils";
 import { findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
-import {
-  checksumPatternGroup,
-  type FileType,
-  getChecksumPatternGroupInAbsolutePath,
-} from "./file-patterns";
-import {
-  type LoadedApis,
-  type LoadedModels,
-  type LoadedTypes,
-  loadApis,
-  loadModels,
-  loadTypes,
-  loadWorkflows,
-} from "./module-loader";
+import { checksumPatternGroup, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import type { FileType } from "./file-patterns";
+import { loadApis, loadModels, loadTypes, loadWorkflows } from "./module-loader";
+import type { LoadedApis, LoadedModels, LoadedTypes } from "./module-loader";
 import * as SyncerActions from "./syncer-actions";
 
 type DiffGroups = {

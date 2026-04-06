@@ -80,7 +80,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         return response;
       },
       (error) => {
-        const logId = (error.config)?.__logId;
+        const logId = error.config?.__logId;
         const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {

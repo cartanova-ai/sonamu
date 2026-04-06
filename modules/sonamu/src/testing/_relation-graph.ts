@@ -1,5 +1,5 @@
 import { EntityManager } from "../entity/entity-manager";
-import type { EntityProp, FixtureRecord, RelationNode } from "../types/types";
+import type { FixtureRecord, RelationNode } from "../types/types";
 import {
   isBelongsToOneRelationProp,
   isManyToManyRelationProp,

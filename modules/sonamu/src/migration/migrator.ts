@@ -7,7 +7,8 @@ import type { Knex } from "knex";
 import { group, sum, unique } from "radashi";
 
 import { Sonamu } from "../api";
-import { DB, type SonamuDBConfig } from "../database/db";
+import { DB } from "../database/db";
+import type { SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
@@ -63,7 +64,7 @@ export class Migrator {
     Naite.t("migrator:getStatus:codes", codes);
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => ! key.endsWith("_slave"),
+      (key) => !key.endsWith("_slave"),
     ) as (keyof typeof Sonamu.dbConfig)[];
 
     let migrationStatusError: string | undefined;
@@ -244,7 +245,7 @@ export class Migrator {
    */
   validateDeletable(conns: MigrationStatus["conns"], codeNames: string[]) {
     const appliedCodes = codeNames.filter((codeName) =>
-      conns.some((conn) => ! conn.pending.includes(codeName)),
+      conns.some((conn) => !conn.pending.includes(codeName)),
     );
 
     return {

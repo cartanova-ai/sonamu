@@ -8,7 +8,8 @@ import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
 import { assertDefined, nonNullable } from "../utils/utils";
-import { batchUpdate, type RowWithId } from "./_batch_update";
+import { batchUpdate } from "./_batch_update";
+import type { RowWithId } from "./_batch_update";
 import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
 
 const logger = getLogger(["sonamu", "internal", "upsert-builder"]);

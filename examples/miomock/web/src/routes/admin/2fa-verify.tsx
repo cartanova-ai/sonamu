@@ -86,7 +86,6 @@ function TwoFactorVerifyPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               onKeyDown={handleKeyDown}
-              autoFocus
             />
           </div>
 

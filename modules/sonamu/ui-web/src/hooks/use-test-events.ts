@@ -60,7 +60,7 @@ function isRunErroredPayload(v: unknown): v is TestSSEEventMap["runErrored"] {
     typeof v.runId === "string" &&
     typeof v.finishedAt === "string" &&
     isRecord(v.error) &&
-    typeof (v.error).message === "string"
+    typeof v.error.message === "string"
   );
 }
 
@@ -114,9 +114,7 @@ export function useTestEvents(options?: { enabled?: boolean }): {
   const enabled = options?.enabled ?? true;
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const listenersRef = useRef(
-    new Map(),
-  );
+  const listenersRef = useRef(new Map());
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);

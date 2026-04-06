@@ -4,12 +4,12 @@ import {
   BadRequestException,
   BaseModelClass,
   exhaustive,
-  type ListResult,
   Naite,
   NotFoundException,
   Sonamu,
   transactional,
 } from "sonamu";
+import type { ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";

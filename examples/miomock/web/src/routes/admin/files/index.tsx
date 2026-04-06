@@ -19,11 +19,11 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
+import type { TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
@@ -44,7 +44,8 @@ import {
   FileSearchField,
   FileSearchFieldLabel,
 } from "@/services/sonamu.generated";
-import { type SonamuFile, SonamuFileSchema } from "@/services/sonamu.shared";
+import { SonamuFileSchema } from "@/services/sonamu.shared";
+import type { SonamuFile } from "@/services/sonamu.shared";
 
 export const Route = createFileRoute("/admin/files/")({
   head: () => ({

@@ -469,7 +469,6 @@ function normalizeSearchTextExpressionNode(
         (name === "sonamu_text_array_agg" || name === "sonamu_jsonb_array_agg") &&
         args.length === 2 &&
         args[1]?.type === "boolean" &&
-        
         args[1].value
       ) {
         args = [args[0]];
@@ -1209,14 +1208,12 @@ async function generateAlterCode_ColumnAndIndexes(
   const recreatedSearchTextDbIndexes = dbIndexes.filter(
     (index) =>
       index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
-      !
-      alterIndexesTo.drop.some((dropIndex) => dropIndex.name === index.name),
+      !alterIndexesTo.drop.some((dropIndex) => dropIndex.name === index.name),
   );
   const recreatedSearchTextEntityIndexes = entityIndexes.filter(
     (index) =>
       index.columns.some(({ name }) => recreatedSearchTextColumnNames.has(name)) &&
-      !
-      alterIndexesTo.add.some((addIndex) => addIndex.name === index.name),
+      !alterIndexesTo.add.some((addIndex) => addIndex.name === index.name),
   );
   const implicitlyDroppedDbIndexes = alterIndexesTo.drop.filter((index) =>
     index.columns.every(({ name }) => alterColumnsTo.drop.some((column) => column.name === name)),
@@ -1224,9 +1221,7 @@ async function generateAlterCode_ColumnAndIndexes(
 
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
-    (index) =>
-      !
-      implicitlyDroppedDbIndexes.some((droppedIndex) => droppedIndex.name === index.name),
+    (index) => !implicitlyDroppedDbIndexes.some((droppedIndex) => droppedIndex.name === index.name),
   );
 
   // 빈 코드 생성 방지
@@ -1285,8 +1280,7 @@ async function generateAlterCode_ColumnAndIndexes(
     ...alterIndexesTo.add
       .filter(
         (index) =>
-          !
-          index.columns.every((indexCol) =>
+          !index.columns.every((indexCol) =>
             alterColumnsTo.add.map((col) => col.name).includes(indexCol.name),
           ),
       )

@@ -187,9 +187,7 @@ function useSelectCommon<Item>(
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   // async 모드에서 선택된 옵션 캐시
-  const [reservedOptions, setReservedOptions] = useState(
-    new Map(),
-  );
+  const [reservedOptions, setReservedOptions] = useState(new Map());
 
   // 값 → 키 변환
   const getKeyForValue = useCallback(

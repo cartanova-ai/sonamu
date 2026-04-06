@@ -28,8 +28,6 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
   BUILT_IN_TYPE_IDS,
-  type EntityProp,
-  type EntityPropNode,
   isBelongsToOneRelationProp,
   isBigIntegerArrayProp,
   isBigIntegerSingleProp,
@@ -57,11 +55,10 @@ import {
   isVectorArrayProp,
   isVectorSingleProp,
   isVirtualProp,
-  type RenderingNode,
   SonamuFileArraySchema,
   SonamuFileSchema,
-  type ZodStringFormat,
 } from "../types/types";
+import type { EntityProp, EntityPropNode, RenderingNode, ZodStringFormat } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
 

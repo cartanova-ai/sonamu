@@ -53,7 +53,7 @@ declare module "@tanstack/react-router" {
 
 // async IIFE로 감싸서 top-level await 제거
 // (top-level await가 있으면 Vite 빌드 시 코드 스플릿 청크가 메인 엔트리를 import하면서 순환 의존성 데드락 발생)
-(async () => {
+void (async () => {
   await router.load();
 
   // SSR/CSR 모두 document 전체에 렌더링

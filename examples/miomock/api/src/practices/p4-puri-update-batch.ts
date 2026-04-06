@@ -60,7 +60,7 @@ async function examples() {
     // 검증
     assert(updatedUsers.every((u) => u.username.startsWith("updated_user")));
     assert(updatedUsers.every((u) => u.bio?.startsWith("Updated bio")));
-    assert(updatedUsers.every((u) =>  u.is_verified));
+    assert(updatedUsers.every((u) => u.is_verified));
 
     // 정리
     await trx.table("users").whereIn("id", userIds).delete();

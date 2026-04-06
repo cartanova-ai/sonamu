@@ -8,12 +8,6 @@ import { z } from "zod";
 
 import { Sonamu } from "../api/sonamu";
 import {
-  type Cone,
-  type EntityIndex,
-  type EntityJson,
-  type EntityProp,
-  type EntityPropNode,
-  type EntitySubsetRow,
   getEnumDefValues,
   getSubsetFields,
   isBelongsToOneRelationProp,
@@ -26,9 +20,17 @@ import {
   isVirtualCodeProp,
   isVirtualProp,
   normalizeSubsetField,
-  type RelationProp,
-  type SubsetField,
-  type SubsetQuery,
+} from "../types/types";
+import type {
+  Cone,
+  EntityIndex,
+  EntityJson,
+  EntityProp,
+  EntityPropNode,
+  EntitySubsetRow,
+  RelationProp,
+  SubsetField,
+  SubsetQuery,
 } from "../types/types";
 import { importMembers } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";
@@ -500,7 +502,7 @@ export class Entity {
             }
 
             if (isOneToOneRelationProp(relation)) {
-              if (relation.hasJoinColumn && ! (relation.nullable ?? false)) {
+              if (relation.hasJoinColumn && !(relation.nullable ?? false)) {
                 return "inner";
               } else {
                 return "outer";
@@ -748,7 +750,7 @@ export class Entity {
   private hasForeignKey(prop: RelationProp): boolean {
     return (
       prop.relationType === "BelongsToOne" ||
-      (prop.relationType === "OneToOne" &&  prop.hasJoinColumn)
+      (prop.relationType === "OneToOne" && prop.hasJoinColumn)
     );
   }
 
@@ -1095,12 +1097,12 @@ export class Entity {
           isOpen: children.length > 0,
           has: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) =>  child.has[subsetKey])];
+              return [subsetKey, children.every((child) => child.has[subsetKey])];
             }),
           ),
           isInternal: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [subsetKey, children.every((child) =>  child.isInternal[subsetKey])];
+              return [subsetKey, children.every((child) => child.isInternal[subsetKey])];
             }),
           ),
         };

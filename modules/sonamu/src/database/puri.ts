@@ -6,7 +6,8 @@ import chalk from "chalk";
 import inflection from "inflection";
 import type { Knex } from "knex";
 
-import { EntityManager, type TableSpec } from "../entity/entity-manager";
+import { EntityManager } from "../entity/entity-manager";
+import type { TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import type { ClearStatements } from "./puri-subset.types";
 import type {
@@ -482,7 +483,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // DISTINCT
   distinct<TColumns extends AvailableColumns<TTables>>(...columns: TColumns[]): this;
   distinct(...columns: string[]): this {
-    this.knexQuery.distinct(...(columns));
+    this.knexQuery.distinct(...columns);
     return this;
   }
 
@@ -989,7 +990,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // GROUP BY
   groupBy<TColumns extends ResultAvailableColumns<TTables, TResult>>(...columns: TColumns[]): this;
   groupBy(...columns: string[]): this {
-    this.knexQuery.groupBy(...(columns));
+    this.knexQuery.groupBy(...columns);
     return this;
   }
 

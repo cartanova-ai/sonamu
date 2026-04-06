@@ -1,4 +1,5 @@
-import { Button, Input, type InputProps } from "semantic-ui-react";
+import { Button, Input } from "semantic-ui-react";
+import type { InputProps } from "semantic-ui-react";
 
 export function LinkInput(
   props: InputProps & {
@@ -22,7 +23,7 @@ export function LinkInput(
     try {
       new URL(someString ?? "");
       return true;
-    } catch (_) {
+    } catch {
       return false;
     }
   };

@@ -1,4 +1,5 @@
-import { getLogger, type Logger } from "@logtape/logtape";
+import { getLogger } from "@logtape/logtape";
+import type { Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
 
 import type { DBPreset } from "../database/db";

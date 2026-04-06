@@ -1,6 +1,7 @@
 import path from "node:path";
 
-import knex, { type Knex } from "knex";
+import knex from "knex";
+import type { Knex } from "knex";
 
 export const DEFAULT_SCHEMA = "sonamu_tasks";
 

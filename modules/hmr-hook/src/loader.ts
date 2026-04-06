@@ -4,7 +4,8 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { MessagePort } from "node:worker_threads";
 
-import chokidar, { type FSWatcher } from "chokidar";
+import chokidar from "chokidar";
+import type { FSWatcher } from "chokidar";
 
 import debug from "./debug.js";
 import DependencyTree from "./dependency_tree.js";

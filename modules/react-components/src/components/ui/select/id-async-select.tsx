@@ -242,13 +242,13 @@ export function IdAsyncSelect<
   );
 
   // selectedQuery로 로드한 데이터가 있으면 우선 사용, 없으면 현재 rows에서 찾기
-  const selectedRow = ((selectedQuery.data?.rows as Record<string, unknown>[] | undefined)?.[0] ||
-    selectedInRows);
+  const selectedRow =
+    (selectedQuery.data?.rows as Record<string, unknown>[] | undefined)?.[0] || selectedInRows;
 
   // ============================================================
   // Multi 모드: 선택된 값들 로드
   // ============================================================
-  const multiValues = multiple && Array.isArray(value) ? (value) : [];
+  const multiValues = multiple && Array.isArray(value) ? value : [];
 
   // 먼저 현재 rows에서 찾기
   const selectedMultiInRows = useMemo(

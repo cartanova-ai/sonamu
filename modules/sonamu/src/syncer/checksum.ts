@@ -1,5 +1,7 @@
-import crypto, { type BinaryLike } from "crypto";
-import { createReadStream, type PathLike } from "fs";
+import crypto from "crypto";
+import type { BinaryLike } from "crypto";
+import { createReadStream } from "fs";
+import type { PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 

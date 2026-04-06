@@ -43,7 +43,8 @@ import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
 import type { Context } from "./context";
 import type { ExtendedApi } from "./decorators";
-import { getSecrets, type SonamuSecrets } from "./secret";
+import { getSecrets } from "./secret";
+import type { SonamuSecrets } from "./secret";
 
 class SonamuClass {
   public isInitialized: boolean = false;

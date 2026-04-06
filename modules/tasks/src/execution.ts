@@ -2,7 +2,8 @@ import type { Backend } from "./backend";
 import type { DurationString } from "./core/duration";
 import { serializeError } from "./core/error";
 import type { JsonValue } from "./core/json";
-import { isDynamicRetryPolicy, type RetryPolicy } from "./core/retry";
+import { isDynamicRetryPolicy } from "./core/retry";
+import type { RetryPolicy } from "./core/retry";
 import type { StepAttempt, StepAttemptCache } from "./core/step";
 import {
   addToStepAttemptCache,

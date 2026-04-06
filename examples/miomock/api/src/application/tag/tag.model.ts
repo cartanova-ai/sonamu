@@ -7,10 +7,10 @@ import {
   BaseModelClass,
   cache,
   exhaustive,
-  type ListResult,
   NotFoundException,
   Sonamu,
 } from "sonamu";
+import type { ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
