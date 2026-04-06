@@ -1,6 +1,12 @@
 import { fakerMappings } from "../testing/faker-mappings";
-import type { FakerMappingConfig } from "../testing/faker-mappings";
-import type { Cone, EntityJson, EntityProp, OneToOneRelationProp, SubsetDef } from "../types/types";
+import { type FakerMappingConfig } from "../testing/faker-mappings";
+import {
+  type Cone,
+  type EntityJson,
+  type EntityProp,
+  type OneToOneRelationProp,
+  type SubsetDef,
+} from "../types/types";
 import {
   isBelongsToOneRelationProp,
   isEnumDefWithCone,

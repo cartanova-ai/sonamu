@@ -18,7 +18,7 @@ import FormIcon from "~icons/mdi/form-select";
 import { SD } from "@/i18n/sd.generated";
 import { FileSaveParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
-import type { FileSubsetA } from "@/services/sonamu.generated";
+import { type FileSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
 const formSearchSchema = z.object({

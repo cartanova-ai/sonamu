@@ -6,7 +6,7 @@ import { DB } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { EntityManager } from "../entity/entity-manager";
 import { DataExplorer } from "../testing/data-explorer";
-import type { DataExplorerStrategy } from "../testing/data-explorer";
+import { type DataExplorerStrategy } from "../testing/data-explorer";
 import { FixtureGenerator } from "../testing/fixture-generator";
 
 interface FixtureCommandOptions {

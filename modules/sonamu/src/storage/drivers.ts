@@ -1,6 +1,6 @@
 import { FSDriver } from "flydrive/drivers/fs";
-import type { FSDriverOptions } from "flydrive/drivers/fs/types";
-import type { S3DriverOptions } from "flydrive/drivers/s3/types";
+import { type FSDriverOptions } from "flydrive/drivers/fs/types";
+import { type S3DriverOptions } from "flydrive/drivers/s3/types";
 
 import { SonamuS3Driver } from "./s3-driver";
 

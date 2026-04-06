@@ -1,7 +1,7 @@
 import { BentoCache, bentostore } from "bentocache";
 import { memoryDriver } from "bentocache/drivers/memory";
 
-import type { CacheConfig, CacheManager } from "./types";
+import { type CacheConfig, type CacheManager } from "./types";
 
 /**
  * BentoCache 인스턴스를 생성합니다.

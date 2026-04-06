@@ -5,7 +5,7 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 
-import type { SSRQuery } from "sonamu/ssr";
+import  { type SSRQuery } from "sonamu/ssr";
 
 // SSRQuery 헬퍼 함수
 function createSSRQuery(
@@ -17,31 +17,31 @@ function createSSRQuery(
   return { modelName, methodName, params, serviceKey, __brand: "SSRQuery" } as SSRQuery;
 }
 
-import type { AuditLogListParams } from "./audit-log/audit-log.types";
-import type { CompanyListParams } from "./company/company.types";
-import type { ActivityPeriod } from "./dashboard/dashboard.types";
-import type { DepartmentListParams } from "./department/department.types";
-import type { DocumentListParams, DocumentSemanticParams } from "./document/document.types";
-import type { EmployeeListParams } from "./employee/employee.types";
-import type { FileListParams } from "./file/file.types";
-import type { MilestoneListParams } from "./milestone/milestone.types";
-import type { ProjectListParams } from "./project/project.types";
-import type {
-  AuditLogSubsetKey,
-  CompanySubsetKey,
-  DepartmentSubsetKey,
-  DocumentSubsetKey,
-  EmployeeSubsetKey,
-  FileSubsetKey,
-  MilestoneSubsetKey,
-  ProjectSubsetKey,
-  SyncFixtureSubsetKey,
-  TagSubsetKey,
-  UserSubsetKey,
+import { type AuditLogListParams } from "./audit-log/audit-log.types";
+import { type CompanyListParams } from "./company/company.types";
+import { type ActivityPeriod } from "./dashboard/dashboard.types";
+import { type DepartmentListParams } from "./department/department.types";
+import { type DocumentListParams, type DocumentSemanticParams } from "./document/document.types";
+import { type EmployeeListParams } from "./employee/employee.types";
+import { type FileListParams } from "./file/file.types";
+import { type MilestoneListParams } from "./milestone/milestone.types";
+import { type ProjectListParams } from "./project/project.types";
+import {
+  type AuditLogSubsetKey,
+  type CompanySubsetKey,
+  type DepartmentSubsetKey,
+  type DocumentSubsetKey,
+  type EmployeeSubsetKey,
+  type FileSubsetKey,
+  type MilestoneSubsetKey,
+  type ProjectSubsetKey,
+  type SyncFixtureSubsetKey,
+  type TagSubsetKey,
+  type UserSubsetKey,
 } from "./sonamu.generated";
-import type { SyncFixtureListParams } from "./sync-fixture/sync-fixture.types";
-import type { TagListParams } from "./tag/tag.types";
-import type { UserListParams } from "./user/user.types";
+import { type SyncFixtureListParams } from "./sync-fixture/sync-fixture.types";
+import { type TagListParams } from "./tag/tag.types";
+import { type UserListParams } from "./user/user.types";
 
 export namespace UserService {
   export const getUser = <T extends UserSubsetKey>(subset: T, id: string): SSRQuery =>

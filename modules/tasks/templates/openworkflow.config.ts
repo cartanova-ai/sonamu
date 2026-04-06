@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 import { BackendPostgres, defineConfig } from "../src/index";
 

@@ -1,7 +1,7 @@
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import * as React from "react";
 
-import type { Override } from "../../lib/types";
+import { type Override } from "../../lib/types";
 import { cn, normalizeToArray } from "../../lib/utils";
 
 type SliderProps = Override<

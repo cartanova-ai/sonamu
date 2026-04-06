@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { type z } from "zod";
 
 import { FileBaseListParams, FileBaseSchema } from "../sonamu.generated";
 

@@ -1,4 +1,4 @@
-import type { LocalizedString } from "../dict/types";
+import { type LocalizedString } from "../dict/types";
 
 export abstract class SoException extends Error {
   constructor(

@@ -10,14 +10,14 @@ import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import { formatCode } from "../utils/formatter";
 import { SD } from "./sd";
-import type {
-  DictEntry,
-  DictionaryResult,
-  DictionaryRow,
-  EntityKeyInfo,
-  I18nConfig,
-  ImportResult,
-  UsageResult,
+import {
+  type DictEntry,
+  type DictionaryResult,
+  type DictionaryRow,
+  type EntityKeyInfo,
+  type I18nConfig,
+  type ImportResult,
+  type UsageResult,
 } from "./types";
 
 /**

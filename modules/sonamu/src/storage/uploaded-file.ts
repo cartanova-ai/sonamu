@@ -1,5 +1,5 @@
 import { BaseFile } from "./base-file";
-import type { DriverKey } from "./drivers";
+import { type DriverKey } from "./drivers";
 
 /**
  * Stream 모드로 업로드된 파일

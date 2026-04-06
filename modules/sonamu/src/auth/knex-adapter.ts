@@ -1,10 +1,10 @@
-import type { BetterAuthOptions } from "better-auth";
-import type {
-  AdapterFactoryCustomizeAdapterCreator,
-  DBTransactionAdapter,
+import { type BetterAuthOptions } from "better-auth";
+import {
+  type AdapterFactoryCustomizeAdapterCreator,
+  type DBTransactionAdapter,
 } from "better-auth/adapters";
 import { createAdapterFactory } from "better-auth/adapters";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 import { DB } from "../database/db";
 

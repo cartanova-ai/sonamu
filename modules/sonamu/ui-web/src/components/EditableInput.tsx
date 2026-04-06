@@ -1,5 +1,5 @@
 import { Input } from "@sonamu-kit/react-components";
-import type { InputProps } from "@sonamu-kit/react-components";
+import { type InputProps } from "@sonamu-kit/react-components";
 import classNames from "classnames";
 import { useEffect, useState } from "react";
 

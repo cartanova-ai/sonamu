@@ -1,8 +1,8 @@
 import { Disk } from "flydrive";
 
 import { assertDefined } from "../utils/utils";
-import type { DriverKey } from "./drivers";
-import type { StorageConfig } from "./types";
+import { type DriverKey } from "./drivers";
+import { type StorageConfig } from "./types";
 
 /**
  * 여러 디스크를 관리하는 매니저

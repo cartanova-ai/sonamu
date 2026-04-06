@@ -1,11 +1,11 @@
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { assign } from "radashi";
 
 import { Sonamu } from "../api";
-import type { DatabaseConfig, SonamuConfig } from "../api/config";
+import { type DatabaseConfig, type SonamuConfig } from "../api/config";
 import { createKnexInstance } from "./knex";
 import { TransactionContext } from "./transaction-context";
 

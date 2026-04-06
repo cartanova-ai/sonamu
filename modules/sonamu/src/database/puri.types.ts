@@ -1,10 +1,10 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri.types.ts는 다양한 타입을 사용하고 있습니다.
 
-import type { QueryResult } from "pg";
+import { type QueryResult } from "pg";
 
-import type { DatabaseForeignKeys, DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { PuriSubsetFn } from "./puri-subset.types";
+import { type DatabaseForeignKeys, type DatabaseSchemaExtend } from "../types/types";
+import { type Puri } from "./puri";
+import { type PuriSubsetFn } from "./puri-subset.types";
 
 // ============================================
 // 내부 타입 키 (메타데이터)

@@ -1,5 +1,5 @@
 import { jwt as _jwt } from "better-auth/plugins";
-import type { JwtOptions } from "better-auth/plugins";
+import { type JwtOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

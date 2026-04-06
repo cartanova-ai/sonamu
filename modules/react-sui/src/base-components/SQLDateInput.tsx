@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { Input } from "semantic-ui-react";
-import type { InputProps } from "semantic-ui-react";
+import { type InputProps } from "semantic-ui-react";
 
 export function SQLDateInput(
   props: InputProps & {

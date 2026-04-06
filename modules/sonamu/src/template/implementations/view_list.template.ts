@@ -3,14 +3,14 @@ import { flat } from "radashi";
 import { z } from "zod";
 
 import { EntityManager } from "../../entity/entity-manager";
-import type { EntityNamesRecord } from "../../entity/entity-manager";
-import type { RenderingNode, TemplateOptions } from "../../types/types";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { type RenderingNode, type TemplateOptions } from "../../types/types";
 import {
   getEnumInfoFromColName,
   getRelationNameFromColumnName,
   getRelationPropFromColName,
 } from "../helpers";
-import type { RenderedTemplate } from "../template";
+import { type RenderedTemplate } from "../template";
 import { Template } from "../template";
 
 export class Template__view_list extends Template {

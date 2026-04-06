@@ -8,7 +8,7 @@ import { runAgentsInit } from "./commands/agents-init.js";
 import { runAgentsSync } from "./commands/agents-sync.js";
 import { runRulesValidate } from "./commands/rules-validate.js";
 import { findContractDir, loadProject } from "./core/loader.js";
-import type { OutputResult } from "./utils/output.js";
+import { type OutputResult } from "./utils/output.js";
 import { printOutput } from "./utils/output.js";
 
 const args = minimist(process.argv.slice(2), {

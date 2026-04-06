@@ -1,6 +1,6 @@
-import type { ModuleFormat } from "node:module";
+import { type ModuleFormat } from "node:module";
 
-import type { FileSystemAsync } from "@loaderkit/resolve/fs";
+import { type FileSystemAsync } from "@loaderkit/resolve/fs";
 import JSON5 from "json5";
 
 import { testAnyJavaScript, testAnyTypeScript } from "./translate.js";

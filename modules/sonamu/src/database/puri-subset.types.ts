@@ -10,10 +10,10 @@
  * - Hydrate: flat한 결과를 중첩 객체로 변환 (예: user__name → { user: { name } })
  */
 
-import type { DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { PuriWrapper } from "./puri-wrapper";
-import type { Expand } from "./puri.types";
+import { type DatabaseSchemaExtend } from "../types/types";
+import { type Puri } from "./puri";
+import { type PuriWrapper } from "./puri-wrapper";
+import { type Expand } from "./puri.types";
 
 // ============================================================================
 // 기본 타입 정의

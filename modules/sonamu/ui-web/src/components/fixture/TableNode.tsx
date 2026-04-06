@@ -1,9 +1,9 @@
 import { Handle, NodeResizeControl, Position } from "@xyflow/react";
-import type { Node, NodeProps } from "@xyflow/react";
+import { type Node, type NodeProps } from "@xyflow/react";
 
 import "./graph.scss";
-import type { SetStateAction } from "react";
-import type { FixtureRecord } from "sonamu";
+import { type SetStateAction } from "react";
+import { type FixtureRecord } from "sonamu";
 
 import EntityTable from "../../components/fixture/EntityTable";
 

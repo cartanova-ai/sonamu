@@ -4,10 +4,10 @@ import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
 
-import type { SonamuFile } from "@/contexts";
+import { type SonamuFile } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
 
-import type { ErrorObj } from "./types";
+import { type ErrorObj } from "./types";
 
 /**
  * FormRegisterReturn

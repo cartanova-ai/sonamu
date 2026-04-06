@@ -7,10 +7,10 @@
  * Enhancer, SubsetQuery 교집합 등 Model 계층에서 필요한 타입 정의.
  */
 
-import type { DatabaseSchemaExtend } from "../types/types";
-import type { Puri } from "./puri";
-import type { PuriSubsetFn } from "./puri-subset.types";
-import type { ExtractTTables } from "./puri.types";
+import { type DatabaseSchemaExtend } from "../types/types";
+import { type Puri } from "./puri";
+import { type PuriSubsetFn } from "./puri-subset.types";
+import { type ExtractTTables } from "./puri.types";
 
 // ============================================================================
 // Subset 교집합 계산 (onSubset 메서드용)

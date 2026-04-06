@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import knex from "knex";
 
 export function createKnexInstance(config: Knex.Config): Knex {

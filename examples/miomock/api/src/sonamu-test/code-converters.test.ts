@@ -13,11 +13,11 @@ import {
   getZodTypeFromApiParamType,
   unwrapPromiseOnce,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
-import type {
-  ApiDecoratorOptions,
-  ExtendedApi,
+import {
+  type ApiDecoratorOptions,
+  type ExtendedApi,
 } from "../../../../../modules/sonamu/dist/api/decorators";
-import type { ApiParam, ApiParamType } from "../../../../../modules/sonamu/dist/types/types";
+import { type ApiParam, type ApiParamType } from "../../../../../modules/sonamu/dist/types/types";
 
 describe("code-converters", () => {
   const options: ApiDecoratorOptions = {

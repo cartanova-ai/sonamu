@@ -1,5 +1,5 @@
-import type { BentoCache } from "bentocache";
-import type { RawCommonOptions } from "bentocache/types";
+import { type BentoCache } from "bentocache";
+import { type RawCommonOptions } from "bentocache/types";
 
 /**
  * 캐시 설정 (sonamu.config.ts에서 사용)

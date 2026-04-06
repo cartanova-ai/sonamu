@@ -6,7 +6,7 @@ import Loader2Icon from "~icons/lucide/loader2";
 import UploadIcon from "~icons/lucide/upload";
 import XIcon from "~icons/lucide/x";
 
-import type { SonamuFile } from "@/contexts";
+import { type SonamuFile } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
 import { cn, useObjectUrls } from "@/lib/utils";
 

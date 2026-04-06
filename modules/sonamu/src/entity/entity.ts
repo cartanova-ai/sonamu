@@ -21,16 +21,16 @@ import {
   isVirtualProp,
   normalizeSubsetField,
 } from "../types/types";
-import type {
-  Cone,
-  EntityIndex,
-  EntityJson,
-  EntityProp,
-  EntityPropNode,
-  EntitySubsetRow,
-  RelationProp,
-  SubsetField,
-  SubsetQuery,
+import {
+  type Cone,
+  type EntityIndex,
+  type EntityJson,
+  type EntityProp,
+  type EntityPropNode,
+  type EntitySubsetRow,
+  type RelationProp,
+  type SubsetField,
+  type SubsetQuery,
 } from "../types/types";
 import { importMembers } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";

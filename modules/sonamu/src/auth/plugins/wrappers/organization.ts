@@ -1,5 +1,5 @@
 import { organization as _organization } from "better-auth/plugins";
-import type { OrganizationOptions } from "better-auth/plugins";
+import { type OrganizationOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

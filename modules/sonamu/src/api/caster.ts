@@ -1,7 +1,7 @@
 import assert from "assert";
 
 import { z } from "zod";
-import type { $ZodType } from "zod/v4/core";
+import { type $ZodType } from "zod/v4/core";
 
 function isNumberType(zodType: $ZodType): zodType is z.ZodNumber {
   return zodType instanceof z.ZodNumber;

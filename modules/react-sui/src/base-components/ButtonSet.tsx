@@ -1,5 +1,5 @@
 import { Button } from "semantic-ui-react";
-import type { ButtonProps, SemanticCOLORS } from "semantic-ui-react";
+import { type ButtonProps, type SemanticCOLORS } from "semantic-ui-react";
 
 export type ButtonSetProps = {
   options?: {

@@ -1,6 +1,6 @@
 import CheckCircle2Icon from "~icons/lucide/check-circle-2";
 
-import type { FieldRendererProps } from "./types";
+import { type FieldRendererProps } from "./types";
 
 export function ChecklistRenderer({ value }: FieldRendererProps) {
   const items = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];

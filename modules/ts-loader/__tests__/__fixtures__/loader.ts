@@ -1,9 +1,9 @@
 import * as assert from "node:assert/strict";
-import type {
-  LoadFnOutput,
-  LoadHookContext,
-  ResolveFnOutput,
-  ResolveHookContext,
+import {
+  type LoadFnOutput,
+  type LoadHookContext,
+  type ResolveFnOutput,
+  type ResolveHookContext,
 } from "node:module";
 import { createContext, SourceTextModule } from "node:vm";
 
@@ -14,7 +14,7 @@ import {
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
 
 import { makeResolveAndLoad } from "#ts/esm";
-import type { LoaderFileSystem } from "#ts/utility/scope";
+import { type LoaderFileSystem } from "#ts/utility/scope";
 
 /** @internal */
 export function makeTestLoader(files: Record<string, string>) {

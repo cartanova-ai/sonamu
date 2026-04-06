@@ -1,7 +1,7 @@
-import type { Entity } from "../entity/entity";
+import { type Entity } from "../entity/entity";
 import { isEnumProp } from "../types/types";
 import { operatorsByPropType } from "./types";
-import type { FilterOperator, FilterQuery } from "./types";
+import { type FilterOperator, type FilterQuery } from "./types";
 
 // ============================================================
 // Query Normalization

@@ -6,17 +6,17 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import type { Edge } from "@xyflow/react";
+import { type Edge } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
 import "./graph.scss";
 import { group } from "radashi";
 import { useEffect, useMemo } from "react";
-import type { SetStateAction } from "react";
-import type { FixtureRecord } from "sonamu";
+import { type SetStateAction } from "react";
+import { type FixtureRecord } from "sonamu";
 
 import TableNode from "../../components/fixture/TableNode";
-import type { TableNodeRFNode } from "../../components/fixture/TableNode";
+import { type TableNodeRFNode } from "../../components/fixture/TableNode";
 import { TableEdge } from "./TableEdge";
 
 type FixtureGraphProps = {

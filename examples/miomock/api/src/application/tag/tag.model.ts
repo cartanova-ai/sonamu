@@ -10,13 +10,13 @@ import {
   NotFoundException,
   Sonamu,
 } from "sonamu";
-import type { ListResult } from "sonamu";
+import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
-import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import { type TagSubsetKey, type TagSubsetMapping } from "../sonamu.generated";
 import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
-import type { TagListParams, TagSaveParams } from "./tag.types";
+import { type TagListParams, type TagSaveParams } from "./tag.types";
 
 /*
   Tag Model

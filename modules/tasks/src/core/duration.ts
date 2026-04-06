@@ -1,4 +1,4 @@
-import type { Result } from "./result";
+import { type Result } from "./result";
 import { err, ok } from "./result";
 
 type Years = "years" | "year" | "yrs" | "yr" | "y";

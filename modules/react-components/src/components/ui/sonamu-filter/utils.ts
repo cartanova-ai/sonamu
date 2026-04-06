@@ -1,9 +1,9 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Zod 타입 접근
-import type { z } from "zod";
+import { type z } from "zod";
 
-import type { FilterPropType } from "../../../lib/types";
+import { type FilterPropType } from "../../../lib/types";
 import { zodTypeToFilterPropTypeMap } from "./constants";
-import type { FieldMeta, ZodWithDef } from "./types";
+import { type FieldMeta, type ZodWithDef } from "./types";
 
 /**
  * ZodNullable, ZodOptional 등의 래퍼를 벗겨내고 내부 타입을 반환

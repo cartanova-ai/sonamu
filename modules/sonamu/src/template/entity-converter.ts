@@ -5,7 +5,7 @@ import z from "zod";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import type { EntityPropNode, RenderingNode } from "../types/types";
+import { type EntityPropNode, type RenderingNode } from "../types/types";
 import { propToZodType, zodTypeToRenderingNode } from "./zod-converter";
 
 /**

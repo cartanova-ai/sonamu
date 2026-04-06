@@ -1,7 +1,7 @@
 import path from "path";
 
 import { Sonamu } from "../api/sonamu";
-import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
+import { type AbsolutePath, type ApiRelativePath } from "../utils/path-utils";
 
 /**
  * Syncer가 관심 가지고 지켜보는 파일들입니다.

@@ -1,16 +1,20 @@
 import { randomUUID } from "crypto";
 
 import { getLogger } from "@logtape/logtape";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { cluster, isArray, unique } from "radashi";
 
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
+import {
+  type DatabaseForeignKeys,
+  type DatabaseSchemaExtend,
+  type EntityIndex,
+} from "../types/types";
 import { assertDefined, nonNullable } from "../utils/utils";
 import { batchUpdate } from "./_batch_update";
-import type { RowWithId } from "./_batch_update";
-import type { ColumnKeys, ForeignKeyColumns, IdType, TableName } from "./puri.types";
+import { type RowWithId } from "./_batch_update";
+import { type ColumnKeys, type ForeignKeyColumns, type IdType, type TableName } from "./puri.types";
 
 const logger = getLogger(["sonamu", "internal", "upsert-builder"]);
 

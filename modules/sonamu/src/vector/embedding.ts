@@ -1,16 +1,16 @@
-import type { OpenAIProvider } from "@ai-sdk/openai";
+import { type OpenAIProvider } from "@ai-sdk/openai";
 import { embedMany } from "ai";
-import type { EmbeddingModel } from "ai";
-import type { VoyageAIClient } from "voyageai";
+import { type EmbeddingModel } from "ai";
+import { type VoyageAIClient } from "voyageai";
 
 import { Sonamu } from "../api/sonamu";
 import { DEFAULT_VECTOR_CONFIG } from "./config";
-import type {
-  EmbeddingProvider,
-  EmbeddingResult,
-  ProgressCallback,
-  VectorConfig,
-  VectorInputType,
+import {
+  type EmbeddingProvider,
+  type EmbeddingResult,
+  type ProgressCallback,
+  type VectorConfig,
+  type VectorInputType,
 } from "./types";
 
 /**

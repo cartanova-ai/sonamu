@@ -5,10 +5,10 @@ import inflection from "inflection";
 import ts from "typescript";
 
 import { registeredApis } from "../api/decorators";
-import type { ExtendedApi } from "../api/decorators";
+import { type ExtendedApi } from "../api/decorators";
 import { validateMethodName } from "../api/validator";
-import type { ApiParam, ApiParamType } from "../types/types";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type ApiParam, type ApiParamType } from "../types/types";
+import { type AbsolutePath } from "../utils/path-utils";
 
 /**
  * TypeScript 파일을 파싱하여 API 메소드 정보를 추출합니다.

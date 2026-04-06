@@ -5,7 +5,7 @@ import equal from "fast-deep-equal";
 import { unique } from "radashi";
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { z } from "zod";
+import { type z } from "zod";
 
 // radashi에 intersection이 없으므로 직접 구현
 function intersection<T>(arr1: T[], arr2: T[]): T[] {

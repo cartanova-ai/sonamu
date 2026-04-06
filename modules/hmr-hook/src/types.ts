@@ -1,4 +1,4 @@
-import type { MessagePort } from "node:worker_threads";
+import { type MessagePort } from "node:worker_threads";
 
 export type FileChangeAction = "change" | "add" | "unlink";
 export type MessageChannelMessage =

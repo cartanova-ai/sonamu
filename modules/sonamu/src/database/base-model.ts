@@ -1,24 +1,28 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
 import { getLogger } from "@logtape/logtape";
-import type { Logger } from "@logtape/logtape";
-import type { Knex } from "knex";
+import { type Logger } from "@logtape/logtape";
+import { type Knex } from "knex";
 import { cloneDeep, cluster, group, isObject, omit, set } from "radashi";
 
 import { normalizeFilterQuery, validateSonamuFilters } from "..";
-import type { ListResult } from "..";
+import { type ListResult } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
-import type { FilterOperator, FilterQuery } from "../filter/types";
+import { type FilterOperator, type FilterQuery } from "../filter/types";
 import { convertDomainToCategory } from "../logger/category";
-import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
+import { type DatabaseSchemaExtend, type SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
-import type { EnhancerMap, ResolveSubsetIntersection } from "./base-model.types";
-import type { DBPreset } from "./db";
+import { type EnhancerMap, type ResolveSubsetIntersection } from "./base-model.types";
+import { type DBPreset } from "./db";
 import { DB } from "./db";
 import { Puri } from "./puri";
-import type { InferAllSubsets, PuriLoaderQueries, PuriSubsetFn } from "./puri-subset.types";
+import {
+  type InferAllSubsets,
+  type PuriLoaderQueries,
+  type PuriSubsetFn,
+} from "./puri-subset.types";
 import { PuriWrapper } from "./puri-wrapper";
-import type { UnionExtractedTTables } from "./puri.types";
+import { type UnionExtractedTTables } from "./puri.types";
 import { UpsertBuilder } from "./upsert-builder";
 
 type UnknownDBRecord = Record<string, unknown>;

@@ -1,4 +1,4 @@
-import type { JsonValue } from "./json";
+import { type JsonValue } from "./json";
 
 export type SerializedError = {
   name?: string;

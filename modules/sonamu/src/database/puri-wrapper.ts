@@ -1,13 +1,23 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // PuriWrapper는 다양한 타입을 사용하고 있습니다.
 
 import chalk from "chalk";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
-import type { DatabaseSchemaExtend } from "../types/types";
-import type { DBPreset } from "./db";
+import { type DatabaseSchemaExtend } from "../types/types";
+import { type DBPreset } from "./db";
 import { Puri } from "./puri";
-import type { ColumnKeys, IdType, OmitInternalTypeKeys, PuriTable } from "./puri.types";
-import type { InsertOnlyOptions, UBRef, UpsertBuilder, UpsertOptions } from "./upsert-builder";
+import {
+  type ColumnKeys,
+  type IdType,
+  type OmitInternalTypeKeys,
+  type PuriTable,
+} from "./puri.types";
+import {
+  type InsertOnlyOptions,
+  type UBRef,
+  type UpsertBuilder,
+  type UpsertOptions,
+} from "./upsert-builder";
 
 type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
 

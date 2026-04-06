@@ -5,11 +5,11 @@ import { DepartmentModel } from "../department/department.model";
 import { DocumentModel } from "../document/document.model";
 import { EmployeeModel } from "../employee/employee.model";
 import { ProjectModel } from "../project/project.model";
-import type {
-  ActivityGroup,
-  ActivityItem,
-  ActivityPeriod,
-  DashboardStats,
+import {
+  type ActivityGroup,
+  type ActivityItem,
+  type ActivityPeriod,
+  type DashboardStats,
 } from "./dashboard.types";
 
 class DashboardFrameClass extends BaseFrameClass {

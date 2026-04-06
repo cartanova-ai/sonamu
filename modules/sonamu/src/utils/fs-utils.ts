@@ -1,5 +1,5 @@
 import { constants } from "fs";
-import type { PathLike } from "fs";
+import { type PathLike } from "fs";
 import { access, readFile, stat, writeFile } from "fs/promises";
 import path, { dirname } from "path";
 

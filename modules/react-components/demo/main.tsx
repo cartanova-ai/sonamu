@@ -1,7 +1,7 @@
 import ReactDOM from "react-dom/client";
 
 import { SonamuProvider } from "../src/contexts";
-import type { SonamuFile } from "../src/contexts";
+import { type SonamuFile } from "../src/contexts";
 
 import "../src/styles/globals.css";
 import App from "./App";

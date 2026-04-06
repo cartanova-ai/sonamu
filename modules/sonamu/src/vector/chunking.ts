@@ -1,5 +1,5 @@
 import { DEFAULT_VECTOR_CONFIG } from "./config";
-import type { Chunk, ChunkingConfig } from "./types";
+import { type Chunk, type ChunkingConfig } from "./types";
 
 /**
  * 텍스트 청킹

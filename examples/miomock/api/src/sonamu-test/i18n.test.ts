@@ -4,7 +4,7 @@ import fs from "fs";
 import { Workbook } from "@sheetkit/node";
 import { Sonamu } from "sonamu";
 import { createFormat, josa, plural, sonamuDictionary } from "sonamu/dict";
-import type { DictEntry } from "sonamu/dict";
+import { type DictEntry } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
 import { describe, expect, test, vi } from "vitest";
 

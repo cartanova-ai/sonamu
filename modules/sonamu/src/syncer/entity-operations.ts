@@ -6,7 +6,7 @@ import { Sonamu } from "../api/sonamu";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
-import type { TemplateOptions } from "../types/types";
+import { type TemplateOptions } from "../types/types";
 import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateTemplate } from "./code-generator";

@@ -9,16 +9,21 @@ import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
-import type { RenderedTemplate } from "../template/template";
+import { type RenderedTemplate } from "../template/template";
 import { TemplateManager } from "../template/template-manager";
 import { BUILT_IN_TYPES } from "../template/zod-converter";
-import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
+import {
+  type GenerateOptions,
+  type PathAndCode,
+  type TemplateKey,
+  type TemplateOptions,
+} from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.

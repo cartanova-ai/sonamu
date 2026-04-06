@@ -1,4 +1,4 @@
-import type { FilterOperator, FilterPropType } from "../../../lib/types";
+import { type FilterOperator, type FilterPropType } from "../../../lib/types";
 
 /**
  * Operator UI 라벨

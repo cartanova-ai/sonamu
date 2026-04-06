@@ -4,7 +4,7 @@ import inflection from "inflection";
 import { unique } from "radashi";
 
 import { Sonamu } from "../../api";
-import type { Entity } from "../../entity/entity";
+import { type Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import {
   isBelongsToOneRelationProp,
@@ -12,7 +12,7 @@ import {
   isOneToOneRelationProp,
 } from "../../types/types";
 import { Template } from "../template";
-import type { SourceCode } from "./generated.template";
+import { type SourceCode } from "./generated.template";
 
 /**
  * better-auth additionalFields의 type 값을 TypeScript 타입 문자열로 변환합니다.

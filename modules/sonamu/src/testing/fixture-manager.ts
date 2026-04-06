@@ -5,16 +5,16 @@ import { inspect } from "util";
 
 import chalk from "chalk";
 import inflection from "inflection";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { unique } from "radashi";
 
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
-import type { SonamuDBConfig } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { UpsertBuilder } from "../database/upsert-builder";
-import type { UBRef } from "../database/upsert-builder";
-import type { Entity } from "../entity/entity";
+import { type UBRef } from "../database/upsert-builder";
+import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
   isBelongsToOneRelationProp,
@@ -24,15 +24,15 @@ import {
   isRelationProp,
   isVirtualProp,
 } from "../types/types";
-import type {
-  BelongsToOneRelationProp,
-  DatabaseSchemaExtend,
-  EntityProp,
-  FixtureImportResult,
-  FixtureRecord,
-  FixtureSearchOptions,
-  ManyToManyRelationProp,
-  OneToOneRelationProp,
+import {
+  type BelongsToOneRelationProp,
+  type DatabaseSchemaExtend,
+  type EntityProp,
+  type FixtureImportResult,
+  type FixtureRecord,
+  type FixtureSearchOptions,
+  type ManyToManyRelationProp,
+  type OneToOneRelationProp,
 } from "../types/types";
 import { isTest } from "../utils/controller";
 import { RelationGraph } from "./_relation-graph";

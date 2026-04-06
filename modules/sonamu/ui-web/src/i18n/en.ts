@@ -1,7 +1,7 @@
 /**
  * Sonamu UI English Dictionary
  */
-import type { Dictionary } from "@sonamu-kit/react-components";
+import { type Dictionary } from "@sonamu-kit/react-components";
 
 import type ko from "./ko";
 import { rcKeysEn } from "./rc-keys";

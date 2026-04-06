@@ -1,7 +1,7 @@
 "use client";
 
 import useEmblaCarousel from "embla-carousel-react";
-import type { UseEmblaCarouselType } from "embla-carousel-react";
+import { type UseEmblaCarouselType } from "embla-carousel-react";
 import * as React from "react";
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import ArrowRightIcon from "~icons/lucide/arrow-right";

@@ -1,7 +1,7 @@
 import crypto from "crypto";
-import type { BinaryLike } from "crypto";
+import { type BinaryLike } from "crypto";
 import { createReadStream } from "fs";
-import type { PathLike } from "fs";
+import { type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -11,7 +11,7 @@ import { isEqual } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
-import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
+import { type AbsolutePath, type ApiRelativePath } from "../utils/path-utils";
 import { differenceWith } from "../utils/utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 

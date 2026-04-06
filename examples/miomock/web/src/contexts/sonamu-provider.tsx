@@ -3,12 +3,12 @@ import {
   SonamuProvider as BaseSonamuProvider,
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
-import type { SonamuFile } from "@sonamu-kit/react-components";
-import type { BetterAuthClientOptions } from "better-auth/client";
+import { type SonamuFile } from "@sonamu-kit/react-components";
+import { type BetterAuthClientOptions } from "better-auth/client";
 import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 
-import type { MergedDictionary } from "@/i18n/sd.generated";
+import { type MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 import { FileService } from "@/services/services.generated";
 

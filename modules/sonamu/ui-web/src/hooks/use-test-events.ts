@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ManagerStatus, TestSSEEventMap } from "../services/sonamu-ui.service";
+import { type ManagerStatus, type TestSSEEventMap } from "../services/sonamu-ui.service";
 
 type EventHandler<K extends keyof TestSSEEventMap> = (payload: TestSSEEventMap[K]) => void;
 

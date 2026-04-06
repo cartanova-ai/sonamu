@@ -8,7 +8,12 @@ import GlobeIcon from "~icons/lucide/globe";
 import ListIcon from "~icons/lucide/list";
 import TerminalIcon from "~icons/lucide/terminal";
 
-import type { CddSchema, CddSchemaField, CddSchemaFieldType, SectionDescriptor } from "../types";
+import {
+  type CddSchema,
+  type CddSchemaField,
+  type CddSchemaFieldType,
+  type SectionDescriptor,
+} from "../types";
 import { humanize, isPlainObject } from "../utils/schema";
 import { CardGridRenderer } from "./card_grid_renderer";
 import { ChecklistRenderer } from "./checklist_renderer";
@@ -21,7 +26,7 @@ import { StringListRenderer } from "./string_list_renderer";
 import { StringRecordRenderer } from "./string_record_renderer";
 import { TableRenderer } from "./table_renderer";
 import { TagListRenderer } from "./tag_list_renderer";
-import type { FieldRendererDefinition } from "./types";
+import { type FieldRendererDefinition } from "./types";
 
 const isEmptyString = (v: unknown) => typeof v !== "string" || v.trim() === "";
 const isEmptyArray = (v: unknown) => !Array.isArray(v) || v.length === 0;

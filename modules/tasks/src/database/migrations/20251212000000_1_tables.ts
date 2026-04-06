@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 import { DEFAULT_SCHEMA } from "../base";
 

@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { api, BaseModelClass, Sonamu, transactional } from "sonamu";
 
-import type { UserSaveParams } from "../application/user/user.types";
+import { type UserSaveParams } from "../application/user/user.types";
 
 /**
  * @transactional 데코레이터 사용 예제

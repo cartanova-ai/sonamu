@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import { type FastifyInstance } from "fastify";
 import type z from "zod";
 
 import { isSoException } from "./so-exceptions";

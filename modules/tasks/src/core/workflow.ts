@@ -1,6 +1,6 @@
-import type { SerializedError } from "./error";
-import type { JsonValue } from "./json";
-import type { StandardSchemaV1 } from "./schema";
+import { type SerializedError } from "./error";
+import { type JsonValue } from "./json";
+import { type StandardSchemaV1 } from "./schema";
 
 /**
  * Status of a workflow run through its lifecycle.

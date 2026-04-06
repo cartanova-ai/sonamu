@@ -1,6 +1,6 @@
 import inflection from "inflection";
 
-import type { Entity } from "../entity/entity";
+import { type Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
   isBelongsToOneRelationProp,
@@ -14,14 +14,14 @@ import {
   isVectorProp,
   isVirtualProp,
 } from "../types/types";
-import type {
-  EntityProp,
-  MigrationColumn,
-  MigrationColumnType,
-  MigrationForeign,
-  MigrationIndex,
-  MigrationJoinTable,
-  MigrationSetAndJoinTable,
+import {
+  type EntityProp,
+  type MigrationColumn,
+  type MigrationColumnType,
+  type MigrationForeign,
+  type MigrationIndex,
+  type MigrationJoinTable,
+  type MigrationSetAndJoinTable,
 } from "../types/types";
 import { exhaustive } from "../utils/utils";
 

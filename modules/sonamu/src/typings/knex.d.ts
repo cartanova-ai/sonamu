@@ -2,7 +2,7 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // d.ts
 /* oxlint-disable @typescript-eslint/no-unused-vars */ // d.ts
 
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 declare module "knex" {
   namespace Knex {

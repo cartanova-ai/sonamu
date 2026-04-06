@@ -1,4 +1,4 @@
-import type { Cone } from "sonamu";
+import { type Cone } from "sonamu";
 import { BaseModel, EntityManager } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterAll, beforeEach, describe, expect, vi } from "vitest";

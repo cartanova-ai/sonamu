@@ -3,7 +3,7 @@
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import * as React from "react";
 
-import type { Override } from "../../lib/types";
+import { type Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 type SwitchProps = Override<

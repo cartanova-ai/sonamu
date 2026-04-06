@@ -1,11 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, test as vitestTest } from "vitest";
-import type { TestFunction, TestOptions, VitestUtils } from "vitest";
+import { type TestFunction, type TestOptions, type VitestUtils } from "vitest";
 
-import type { Context } from "../api/context";
+import { type Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
 import { DB } from "../database/db";
 import { Naite } from "../naite/naite";
-import type { SerializedTrace } from "../naite/naite";
+import { type SerializedTrace } from "../naite/naite";
 import { NaiteReporter } from "../naite/naite-reporter";
 
 export interface BootstrapOptions {

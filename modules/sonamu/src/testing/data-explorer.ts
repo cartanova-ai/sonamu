@@ -1,8 +1,8 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
-import type { CacheManager } from "../cache/types";
-import type { Entity } from "../entity/entity";
-import type { EntityManager } from "../entity/entity-manager";
+import { type CacheManager } from "../cache/types";
+import { type Entity } from "../entity/entity";
+import { type EntityManager } from "../entity/entity-manager";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
 
 export type DataExplorerStrategy = "sample" | "ids" | "query" | "file" | "recent" | "random";

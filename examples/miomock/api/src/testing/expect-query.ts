@@ -1,5 +1,5 @@
 import { Parser } from "node-sql-parser";
-import type { AST, Binary, OrderBy } from "node-sql-parser";
+import { type AST, type Binary, type OrderBy } from "node-sql-parser";
 import { Sonamu } from "sonamu";
 import { assert, expect } from "vitest";
 

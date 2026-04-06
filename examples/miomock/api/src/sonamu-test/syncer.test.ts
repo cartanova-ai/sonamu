@@ -1,21 +1,21 @@
 import assert from "assert";
 import { join } from "path";
 
-import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonamu";
+import { type EntityJson, type EntityProp, type TemplateKey, type TemplateOptions } from "sonamu";
 import { getEnumDefValues, Naite, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 
 import { SD } from "../../../../../modules/sonamu/dist/dict/sd";
-import type { EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
+import { type EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
 import {
   AlreadyProcessedException,
   BadRequestException,
 } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import * as SyncerActions from "../../../../../modules/sonamu/dist/syncer/syncer-actions";
-import type { RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
+import { type RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
 import { TemplateManager } from "../../../../../modules/sonamu/dist/template/template-manager";
-import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
+import { type AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 import { mockTemplateManagerGet } from "../testing/test-helpers";
 
 interface WriteFileRecord {

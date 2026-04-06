@@ -16,17 +16,17 @@ import XCircleIcon from "~icons/lucide/x-circle";
 
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useRunHistorySession } from "../hooks/use-run-history-session";
-import type { RunHistoryStorageWarning } from "../hooks/use-run-history-session";
+import { type RunHistoryStorageWarning } from "../hooks/use-run-history-session";
 import { useTestEvents } from "../hooks/use-test-events";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import type {
-  ManagerStatus,
-  RunResult,
-  SerializedTrace,
-  StoredRunEntry,
-  TestCaseResult,
-  TestSSEEventMap,
-  TestState,
+import {
+  type ManagerStatus,
+  type RunResult,
+  type SerializedTrace,
+  type StoredRunEntry,
+  type TestCaseResult,
+  type TestSSEEventMap,
+  type TestState,
 } from "../services/sonamu-ui.service";
 
 export const Route = createFileRoute("/test-results")({

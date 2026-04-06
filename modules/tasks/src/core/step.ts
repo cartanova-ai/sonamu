@@ -1,7 +1,7 @@
-import type { DurationString } from "./duration";
+import { type DurationString } from "./duration";
 import { parseDuration } from "./duration";
-import type { JsonValue } from "./json";
-import type { Result } from "./result";
+import { type JsonValue } from "./json";
+import { type Result } from "./result";
 import { err, ok } from "./result";
 
 /**

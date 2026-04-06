@@ -1,15 +1,15 @@
 import chalk from "chalk";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
-import type { Entity } from "../entity/entity";
-import type { EntityManager } from "../entity/entity-manager";
-import type { EntityProp, FixtureImportResult, FixtureRecord } from "../types/types";
+import { type Entity } from "../entity/entity";
+import { type EntityManager } from "../entity/entity-manager";
+import { type EntityProp, type FixtureImportResult, type FixtureRecord } from "../types/types";
 import { isBelongsToOneRelationProp, isOneToOneRelationProp, isRelationProp } from "../types/types";
 import { isTest } from "../utils/controller";
 import { DataExplorer } from "./data-explorer";
-import type { ExploreWithRelationsOptions, ExploreWithRelationsResult } from "./data-explorer";
+import { type ExploreWithRelationsOptions, type ExploreWithRelationsResult } from "./data-explorer";
 import { fakerMappings } from "./faker-mappings";
-import type { FakerMappings } from "./faker-mappings";
+import { type FakerMappings } from "./faker-mappings";
 import { FixtureManager } from "./fixture-manager";
 
 export type Locale = "ko" | "en" | "ja";

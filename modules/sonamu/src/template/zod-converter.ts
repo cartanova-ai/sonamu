@@ -22,7 +22,7 @@ import path from "path";
 
 import inflection from "inflection";
 import { z } from "zod";
-import type { $ZodLooseShape } from "zod/v4/core";
+import { type $ZodLooseShape } from "zod/v4/core";
 
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
@@ -58,7 +58,12 @@ import {
   SonamuFileArraySchema,
   SonamuFileSchema,
 } from "../types/types";
-import type { EntityProp, EntityPropNode, RenderingNode, ZodStringFormat } from "../types/types";
+import {
+  type EntityProp,
+  type EntityPropNode,
+  type RenderingNode,
+  type ZodStringFormat,
+} from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
 

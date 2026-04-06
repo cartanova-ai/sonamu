@@ -2,7 +2,7 @@
 
 import { last, set } from "radashi";
 import React from "react";
-import type { ComponentType } from "react";
+import { type ComponentType } from "react";
 import { Route } from "react-router-dom";
 
 type ModulePromise = () => Promise<{ default: ComponentType<any> }>;

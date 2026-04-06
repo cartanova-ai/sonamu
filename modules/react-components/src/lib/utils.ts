@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import type { ClassValue } from "clsx";
+import { type ClassValue } from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 

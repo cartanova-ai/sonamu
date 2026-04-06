@@ -1,7 +1,7 @@
 import assert from "assert";
 import { randomUUID } from "node:crypto";
 
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { Puri, Sonamu } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";

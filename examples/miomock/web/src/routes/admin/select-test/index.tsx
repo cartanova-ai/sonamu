@@ -19,7 +19,7 @@ import {
   EmployeeAsyncIdConfig,
 } from "@/services/services.generated";
 import { CompanyBaseSchema } from "@/services/sonamu.generated";
-import type { CompanySubsetA, EmployeeSubsetA } from "@/services/sonamu.generated";
+import { type CompanySubsetA, type EmployeeSubsetA } from "@/services/sonamu.generated";
 
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({

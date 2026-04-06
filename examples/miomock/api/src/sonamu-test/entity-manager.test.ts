@@ -1,5 +1,5 @@
 import { Entity, EntityManager } from "sonamu";
-import type { EntityJson } from "sonamu";
+import { type EntityJson } from "sonamu";
 import { bootstrap } from "sonamu/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";

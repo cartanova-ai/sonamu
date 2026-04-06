@@ -1,6 +1,6 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // AsyncIdConfig의 useList params는 contravariance 때문에 any 필요 (unknown 사용시 구체적 타입 전달 불가)
 
-import type { UseQueryResult } from "@tanstack/react-query";
+import { type UseQueryResult } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { useSonamuBaseContext } from "@/contexts";

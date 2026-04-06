@@ -2,7 +2,7 @@
 
 import qs from "qs";
 import { isObject } from "radashi";
-import type { z } from "zod";
+import { type z } from "zod";
 
 import { caster } from "./caster";
 

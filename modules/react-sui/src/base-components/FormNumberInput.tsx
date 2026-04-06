@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Form } from "semantic-ui-react";
-import type { FormInputProps } from "semantic-ui-react";
+import { type FormInputProps } from "semantic-ui-react";
 
 export function FormNumberInput({
   inputType,

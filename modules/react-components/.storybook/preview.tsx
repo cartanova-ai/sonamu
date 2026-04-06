@@ -1,4 +1,4 @@
-import type { Preview } from "@storybook/react-vite";
+import { type Preview } from "@storybook/react-vite";
 import { Agentation } from "agentation";
 
 import { SonamuProvider } from "@/contexts";

@@ -1,6 +1,6 @@
 import Markdown from "react-markdown";
 
-import type { FieldRendererProps } from "./types";
+import { type FieldRendererProps } from "./types";
 
 export function StringBlockRenderer({ value }: FieldRendererProps) {
   if (typeof value !== "string") return null;

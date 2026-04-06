@@ -1,5 +1,5 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { z } from "zod";
+import { type FastifyReply, type FastifyRequest } from "fastify";
+import { type z } from "zod";
 
 // NOTE(Haze, 251106): context provider에서 인자를 채워주면 createSSE(events)만으로 사용 가능
 export function createSSEFactory<T extends z.ZodObject>(

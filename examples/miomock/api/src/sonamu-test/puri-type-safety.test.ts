@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Naite, Puri } from "sonamu";
-import type { InsertResult } from "sonamu";
+import { type InsertResult } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, expectTypeOf, vi } from "vitest";
 

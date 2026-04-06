@@ -6,13 +6,13 @@ import {
   exhaustive,
   NotFoundException,
 } from "sonamu";
-import type { ListResult } from "sonamu";
+import { type ListResult } from "sonamu";
 
 import { SD } from "../../i18n/sd.generated";
 import { ProjectModel } from "../project/project.model";
-import type { MilestoneSubsetKey, MilestoneSubsetMapping } from "../sonamu.generated";
+import { type MilestoneSubsetKey, type MilestoneSubsetMapping } from "../sonamu.generated";
 import { milestoneLoaderQueries, milestoneSubsetQueries } from "../sonamu.generated.sso";
-import type { MilestoneListParams, MilestoneSaveParams } from "./milestone.types";
+import { type MilestoneListParams, type MilestoneSaveParams } from "./milestone.types";
 
 /*
   Milestone Model

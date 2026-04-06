@@ -1,12 +1,12 @@
 import assert from "assert";
 
 import { DB, Naite } from "sonamu";
-import type { Context } from "sonamu";
+import { type Context } from "sonamu";
 import { bootstrap, runWithContext, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 
 import { ProjectModel } from "./project.model";
-import type { ProjectAskStreamEvents } from "./project.types";
+import { type ProjectAskStreamEvents } from "./project.types";
 
 bootstrap(vi);
 

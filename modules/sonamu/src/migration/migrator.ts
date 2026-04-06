@@ -3,24 +3,24 @@ import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 
 import chalk from "chalk";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { group, sum, unique } from "radashi";
 
 import { Sonamu } from "../api";
 import { DB } from "../database/db";
-import type { SonamuDBConfig } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
-import type { GenMigrationCode, MigrationSet } from "../types/types";
+import { type GenMigrationCode, type MigrationSet } from "../types/types";
 import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
-import type { ConnString, MigrationCode, MigrationStatus } from "./types";
+import { type ConnString, type MigrationCode, type MigrationStatus } from "./types";
 
 export type MigrationResult = {
   connKey: string;

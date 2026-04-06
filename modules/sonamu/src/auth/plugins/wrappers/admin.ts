@@ -1,5 +1,5 @@
 import { admin as _admin } from "better-auth/plugins";
-import type { AdminOptions } from "better-auth/plugins";
+import { type AdminOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

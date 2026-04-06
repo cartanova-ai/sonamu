@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import type { Override } from "../../lib/types";
+import { type Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 export type InputProps = Override<

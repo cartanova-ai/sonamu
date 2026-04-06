@@ -1,14 +1,14 @@
 import { relative } from "node:path";
 import { emitKeypressEvents } from "node:readline";
-import type { Key } from "node:readline";
+import { type Key } from "node:readline";
 
 import { args, BaseCommand, flags } from "@adonisjs/ace";
 import { execa } from "execa";
-import type { ExecaChildProcess } from "execa";
+import { type ExecaChildProcess } from "execa";
 
 import { runNode } from "./helpers.js";
 import { KeybindingManager, parseKeybinding } from "./keybinding.js";
-import type { Action, KeyBinding } from "./keybinding.js";
+import { type Action, type KeyBinding } from "./keybinding.js";
 
 export class Serve extends BaseCommand {
   static commandName = "serve";

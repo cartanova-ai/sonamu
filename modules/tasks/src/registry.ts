@@ -1,4 +1,4 @@
-import type { Workflow } from "./workflow";
+import { type Workflow } from "./workflow";
 
 /**
  * A registry for storing and retrieving workflows by name and version.

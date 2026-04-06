@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CddProject, RulesDocument, RulesNode } from "./types.js";
+import { type CddProject, type RulesDocument, type RulesNode } from "./types.js";
 
 describe("types", () => {
   it("CddProject 형상 확인", () => {

@@ -3,11 +3,11 @@ import assert from "assert";
 import { unique } from "radashi";
 
 import { Sonamu } from "../../api";
-import type { Entity } from "../../entity/entity";
+import { type Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
 import { isVirtualCodeProp, isVirtualQueryProp } from "../../types/types";
-import type { EntityIndex, EntityPropNode } from "../../types/types";
+import { type EntityIndex, type EntityPropNode } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import { BUILT_IN_TYPES, propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";

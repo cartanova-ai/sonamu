@@ -1,10 +1,10 @@
-import type { LoadHook, ResolveHook } from "node:module";
+import { type LoadHook, type ResolveHook } from "node:module";
 
 import { resolve as cjsResolve } from "@loaderkit/resolve/cjs";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
-import type { FileSystemAsync } from "@loaderkit/resolve/fs";
+import { type FileSystemAsync } from "@loaderkit/resolve/fs";
 
-import type { LoaderFileSystem, PackageJson, ResolutionConfig } from "./utility/scope.js";
+import { type LoaderFileSystem, type PackageJson, type ResolutionConfig } from "./utility/scope.js";
 import { makeResolveTypeScriptPackage, resolveFormat, resolvePackage } from "./utility/scope.js";
 import { transpileSource } from "./utility/swc.js";
 import {

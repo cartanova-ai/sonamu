@@ -2,7 +2,7 @@ import qs from "qs";
 import { z } from "zod";
 
 import { getZodObjectFromApi } from "../../api/code-converters";
-import type { ExtendedApi } from "../../api/decorators";
+import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
 import { Template } from "../template";
 

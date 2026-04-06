@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-import type { FastifyRequest } from "fastify";
+import { type FastifyRequest } from "fastify";
 
-import type { AbsolutePath } from "./path-utils";
+import { type AbsolutePath } from "./path-utils";
 
 export function findAppRootPath(): AbsolutePath {
   const apiRootPath = findApiRootPath();

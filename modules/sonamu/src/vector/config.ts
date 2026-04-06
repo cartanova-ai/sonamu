@@ -1,4 +1,4 @@
-import type { VectorConfig } from "./types";
+import { type VectorConfig } from "./types";
 
 /**
  * 벡터 검색 기본 설정

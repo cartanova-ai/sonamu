@@ -19,12 +19,12 @@
  */
 
 import { z } from "zod";
-import type { core } from "zod/v4";
-import type { $ZodLooseShape } from "zod/v4/core";
+import { type core } from "zod/v4";
+import { type $ZodLooseShape } from "zod/v4/core";
 
 import { ApiParamType } from "../types/types";
-import type { ApiParam } from "../types/types";
-import type { ExtendedApi } from "./decorators";
+import { type ApiParam } from "../types/types";
+import { type ExtendedApi } from "./decorators";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodObject = z.ZodObject;

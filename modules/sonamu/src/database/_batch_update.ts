@@ -4,7 +4,7 @@
 */
 
 import { getLogger } from "@logtape/logtape";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 const logger = getLogger(["sonamu", "internal", "batch-update"]);
 

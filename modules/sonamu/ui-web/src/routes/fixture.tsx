@@ -10,7 +10,7 @@ import {
 } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import type { FixtureImportResult, FixtureRecord } from "sonamu";
+import { type FixtureImportResult, type FixtureRecord } from "sonamu";
 import { z } from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -25,7 +25,7 @@ import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import type { ExtendedEntity } from "../services/sonamu-ui.service";
+import { type ExtendedEntity } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
 import FixtureCodeViewer from "./fixture/_fixture_code_viewer";
 import FixtureRecordViewer from "./fixture/_fixture_record_viewer";

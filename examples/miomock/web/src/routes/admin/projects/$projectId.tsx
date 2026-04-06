@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import type { TableCol } from "@sonamu-kit/react-components/components";
+import { type TableCol } from "@sonamu-kit/react-components/components";
 import { dateF, datetimeF, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";

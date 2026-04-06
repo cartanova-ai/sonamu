@@ -1,5 +1,5 @@
 import { twoFactor as _twoFactor } from "better-auth/plugins";
-import type { TwoFactorOptions } from "better-auth/plugins";
+import { type TwoFactorOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

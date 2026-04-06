@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import type { TableCol } from "@sonamu-kit/react-components/components";
+import { type TableCol } from "@sonamu-kit/react-components/components";
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useState } from "react";

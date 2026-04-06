@@ -1,5 +1,5 @@
 import { Template, TemplateManager, TemplateManagerClass } from "sonamu";
-import type { TemplateKey, TemplateOptions } from "sonamu";
+import { type TemplateKey, type TemplateOptions } from "sonamu";
 import { bootstrap } from "sonamu/test";
 import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 

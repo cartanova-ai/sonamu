@@ -10,13 +10,13 @@ import Markdown from "react-markdown";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
 // 울며 겨자먹기 workaround입니다. 누가 고쳐주세요 ㅠㅡㅠ
 import { Prism } from "react-syntax-highlighter";
-import type { SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
-import type { FixtureImportResult } from "sonamu";
+import { type FixtureImportResult } from "sonamu";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import ClipboardIcon from "~icons/lucide/clipboard";
 
-import type { ExtendedEntity } from "../../services/sonamu-ui.service";
+import { type ExtendedEntity } from "../../services/sonamu-ui.service";
 
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 

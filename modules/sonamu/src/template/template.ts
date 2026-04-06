@@ -1,7 +1,7 @@
 import path from "path";
 
-import type { EntityNamesRecord } from "../entity/entity-manager";
-import type { TemplateKey, TemplateOptions } from "../types/types";
+import { type EntityNamesRecord } from "../entity/entity-manager";
+import { type TemplateKey, type TemplateOptions } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 

@@ -1,4 +1,4 @@
-import type { BetterAuthEntityDef } from "./types";
+import { type BetterAuthEntityDef } from "./types";
 
 /**
  * better-auth API Key 플러그인 엔티티 정의

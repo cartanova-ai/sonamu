@@ -6,10 +6,10 @@ import {
   apiParamTypeToTsType,
   unwrapPromiseOnce,
 } from "../../api/code-converters";
-import type { ExtendedApi } from "../../api/decorators";
+import { type ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager } from "../../entity/entity-manager";
-import type { TemplateOptions } from "../../types/types";
+import { type TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";

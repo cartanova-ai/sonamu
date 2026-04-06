@@ -14,10 +14,10 @@ import {
   SonamuFileArraySchema,
   SonamuFileSchema,
 } from "../types/types";
-import type { EntityIndex, EntityJson } from "../types/types";
+import { type EntityIndex, type EntityJson } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 import { runtimePath } from "../utils/path-utils";
 import { Entity } from "./entity";
 

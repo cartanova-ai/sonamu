@@ -14,7 +14,7 @@ import { CddRuleDetail } from "./cdd/components/cdd_rule_detail";
 import { CddRulesList } from "./cdd/components/cdd_rules_list";
 import { CddTreeNodeItem } from "./cdd/components/cdd_tree_node_item";
 import { CddService } from "./cdd/service";
-import type { CddMode, CddTreeNode } from "./cdd/types";
+import { type CddMode, type CddTreeNode } from "./cdd/types";
 import { countFiles, filterTree, findTreeNode, sortTree } from "./cdd/utils/tree";
 
 export const Route = createFileRoute("/cdd")({

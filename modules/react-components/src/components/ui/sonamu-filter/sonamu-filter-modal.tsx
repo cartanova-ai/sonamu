@@ -6,7 +6,7 @@ import PlusIcon from "~icons/lucide/plus";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "../..";
 import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { RuleRowInput } from "./rule-row-input";
-import type { Rule, SonamuFilterModalProps } from "./types";
+import { type Rule, type SonamuFilterModalProps } from "./types";
 import { extractFieldMetaFromSchema } from "./utils";
 
 /**

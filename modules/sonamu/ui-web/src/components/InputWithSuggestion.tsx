@@ -1,5 +1,5 @@
 import { Button, Input } from "@sonamu-kit/react-components";
-import type { InputProps } from "@sonamu-kit/react-components";
+import { type InputProps } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import LanguagesIcon from "~icons/lucide/languages";
 

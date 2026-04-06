@@ -4,7 +4,7 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as React from "react";
 import CheckIcon from "~icons/lucide/check";
 
-import type { Override } from "../../lib/types";
+import { type Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 type CheckboxProps = Override<

@@ -1,4 +1,4 @@
-import type { CddTreeNode } from "../types";
+import { type CddTreeNode } from "../types";
 
 export function countFiles(nodes: CddTreeNode[]): number {
   let count = 0;

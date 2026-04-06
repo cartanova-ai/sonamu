@@ -9,11 +9,11 @@
 /*
   fetch
 */
-import type { AxiosRequestConfig } from "axios";
+import  { type AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
 import { z } from 'zod';
-import type { core } from 'zod';
+import  { type core } from 'zod';
 import { EventSource } from "eventsource";
 import { getCurrentLocale } from "../i18n/sd.generated";
 

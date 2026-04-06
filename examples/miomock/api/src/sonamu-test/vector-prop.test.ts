@@ -1,5 +1,5 @@
 import { Entity, EntityManager, getMigrationSetFromEntity, PostgreSQLSchemaReader } from "sonamu";
-import type { PgColumn } from "sonamu";
+import { type PgColumn } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
 

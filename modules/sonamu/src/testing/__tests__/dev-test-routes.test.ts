@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ManagerStatus, RunResult } from "../dev-vitest-manager";
+import { type ManagerStatus, type RunResult } from "../dev-vitest-manager";
 
 // vi.hoisted를 사용하여 mock 객체를 vi.mock 호이스팅 이전에 초기화
 const mockManager = vi.hoisted(() => ({

@@ -4,7 +4,7 @@ import { getLogger } from "@logtape/logtape";
 import { get } from "radashi";
 
 import { Sonamu } from "../api/sonamu";
-import type { ComparisonOperator } from "../database/puri.types";
+import { type ComparisonOperator } from "../database/puri.types";
 import { convertNaiteKeyToCategory } from "../logger/category";
 import { isSerializable } from "../utils/object-utils";
 

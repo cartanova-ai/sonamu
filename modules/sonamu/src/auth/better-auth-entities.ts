@@ -1,6 +1,6 @@
-import type { BetterAuthOptions } from "better-auth";
+import { type BetterAuthOptions } from "better-auth";
 
-import type { EntityJson } from "../types/types";
+import { type EntityJson } from "../types/types";
 
 /**
  * better-auth v1 엔티티 정의

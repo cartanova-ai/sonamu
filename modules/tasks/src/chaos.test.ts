@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import { OpenWorkflow } from "./client";
 import { createBackend } from "./testing/connection";
-import type { Worker } from "./worker";
+import { type Worker } from "./worker";
 
 const TOTAL_STEPS = 50;
 const WORKER_COUNT = 3;

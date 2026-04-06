@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { DayPicker } from "react-day-picker";
-import type { DateRange, Matcher } from "react-day-picker";
+import { type DateRange, type Matcher } from "react-day-picker";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 

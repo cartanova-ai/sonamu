@@ -1,5 +1,5 @@
-import type { ExtendedApi } from "../api/decorators.js";
-import type { SSRRoute } from "../ssr/types.js";
+import { type ExtendedApi } from "../api/decorators.js";
+import { type SSRRoute } from "../ssr/types.js";
 
 /**
  * Cache-Control 헤더 설정을 위한 타입입니다.

@@ -6,7 +6,7 @@ import PencilIcon from "~icons/lucide/pencil";
 
 import { defaultCatch } from "../../../services/sonamu.shared";
 import { CddService } from "../service";
-import type { CddTreeNode } from "../types";
+import { type CddTreeNode } from "../types";
 import { CddFileIcon } from "./cdd_file_icon";
 
 export function CddContractDetail({

@@ -4,39 +4,39 @@ import assert from "assert";
 
 import chalk from "chalk";
 import inflection from "inflection";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 
 import { EntityManager } from "../entity/entity-manager";
-import type { TableSpec } from "../entity/entity-manager";
+import { type TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type { ClearStatements } from "./puri-subset.types";
-import type {
-  AvailableColumns,
-  ColumnKeys,
-  ComparisonOperator,
-  Expand,
-  ExtractColumnType,
-  FulltextColumns,
-  FuzzyOperator,
-  InsertData,
-  InsertResult,
-  LeftJoinedMarker,
-  LeftJoinMarkerFor,
-  NumericColumns,
-  OnConflictAction,
-  ParseSelectObject,
-  ResultAvailableColumns,
-  SelectAllResult,
-  SelectObject,
-  SingleTableValue,
-  SqlExpression,
-  TsHighlightOptions,
-  TsQueryConfig,
-  TsQueryOptions,
-  TsRankOptions,
-  VectorColumns,
-  WhereCondition,
-  WhereOperator,
+import { type ClearStatements } from "./puri-subset.types";
+import {
+  type AvailableColumns,
+  type ColumnKeys,
+  type ComparisonOperator,
+  type Expand,
+  type ExtractColumnType,
+  type FulltextColumns,
+  type FuzzyOperator,
+  type InsertData,
+  type InsertResult,
+  type LeftJoinedMarker,
+  type LeftJoinMarkerFor,
+  type NumericColumns,
+  type OnConflictAction,
+  type ParseSelectObject,
+  type ResultAvailableColumns,
+  type SelectAllResult,
+  type SelectObject,
+  type SingleTableValue,
+  type SqlExpression,
+  type TsHighlightOptions,
+  type TsQueryConfig,
+  type TsQueryOptions,
+  type TsRankOptions,
+  type VectorColumns,
+  type WhereCondition,
+  type WhereOperator,
 } from "./puri.types";
 import { FUZZY_OPERATORS } from "./puri.types";
 

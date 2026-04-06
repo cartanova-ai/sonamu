@@ -12,11 +12,11 @@ import { useState } from "react";
 import ArrowRightIcon from "~icons/lucide/arrow-right";
 
 import { SD } from "@/i18n/sd.generated";
-import type {
-  ActiveProjectItem,
-  ActivityGroup,
-  ActivityPeriod,
-  DocumentStats,
+import {
+  type ActiveProjectItem,
+  type ActivityGroup,
+  type ActivityPeriod,
+  type DocumentStats,
 } from "@/services/dashboard/dashboard.types";
 import { DashboardService } from "@/services/services.generated";
 import { AuditLogActionLabel } from "@/services/sonamu.generated";

@@ -1,10 +1,10 @@
 import { describe, expectTypeOf, it } from "vitest";
 
-import type {
-  AvailableColumns,
-  ExtractColumnType,
-  LeftJoinedMarker,
-  ParseSelectObject,
+import {
+  type AvailableColumns,
+  type ExtractColumnType,
+  type LeftJoinedMarker,
+  type ParseSelectObject,
 } from "./puri.types";
 
 // ============================================================================

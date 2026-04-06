@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { StoredRunEntry, StoredRunHistory } from "../services/sonamu-ui.service";
+import { type StoredRunEntry, type StoredRunHistory } from "../services/sonamu-ui.service";
 
 const STORAGE_KEY = "sonamu.ui.test-result-viewer.v1";
 const MAX_RUNS = 100;

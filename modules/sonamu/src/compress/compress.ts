@@ -1,4 +1,4 @@
-import type { CompressConfig, CompressOptions } from "./types";
+import { type CompressConfig, type CompressOptions } from "./types";
 
 /**
  * 압축 프리셋입니다.

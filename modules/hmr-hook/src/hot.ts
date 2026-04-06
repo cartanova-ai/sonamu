@@ -2,7 +2,11 @@ import { register } from "node:module";
 import { MessageChannel } from "node:worker_threads";
 
 import debug from "./debug.js";
-import type { InitializeHookOptions, InitOptions, MessageChannelMessage } from "./types.js";
+import {
+  type InitializeHookOptions,
+  type InitOptions,
+  type MessageChannelMessage,
+} from "./types.js";
 
 class Hot {
   #options!: InitOptions;

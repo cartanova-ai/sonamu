@@ -16,7 +16,10 @@ import {
   zodTypeToTsTypeDef,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/template/zod-converter";
-import type { EntityProp, EntityPropNode } from "../../../../../modules/sonamu/dist/types/types";
+import {
+  type EntityProp,
+  type EntityPropNode,
+} from "../../../../../modules/sonamu/dist/types/types";
 import {
   SonamuFileArraySchema,
   SonamuFileSchema,

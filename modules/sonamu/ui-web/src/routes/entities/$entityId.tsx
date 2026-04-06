@@ -19,7 +19,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
 import { unique } from "radashi";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
+import { type EntityIndex, type EntityProp, type FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
 import PencilIcon from "~icons/lucide/pencil";

@@ -2,16 +2,16 @@ import path from "path";
 
 import { z } from "zod";
 
-import type { BaseFrameClass } from "../api/base-frame";
-import type { ApiDecoratorOptions } from "../api/decorators";
+import { type BaseFrameClass } from "../api/base-frame";
+import { type ApiDecoratorOptions } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
-import type { BaseModelClass } from "../database/base-model";
-import type { WorkflowMetadata } from "../tasks/decorator";
-import type { ApiParam, ApiParamType } from "../types/types";
+import { type BaseModelClass } from "../database/base-model";
+import { type WorkflowMetadata } from "../tasks/decorator";
+import { type ApiParam, type ApiParamType } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
 import { runtimePath } from "../utils/path-utils";
-import type { AbsolutePath } from "../utils/path-utils";
+import { type AbsolutePath } from "../utils/path-utils";
 import { readApisFromFile } from "./api-parser";
 
 export type LoadedApis = {

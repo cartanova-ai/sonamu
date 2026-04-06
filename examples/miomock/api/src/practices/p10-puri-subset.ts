@@ -1,14 +1,14 @@
 /* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri 테스트 코드이므로 any 사용
 
 import { Sonamu } from "sonamu";
-import type { DatabaseSchemaExtend, Puri } from "sonamu";
+import { type DatabaseSchemaExtend, type Puri } from "sonamu";
 
-import type {
-  CompanyBaseSchema,
-  DepartmentBaseSchema,
-  EmployeeBaseSchema,
-  UserBaseSchema,
-  UserSubsetKey,
+import {
+  type CompanyBaseSchema,
+  type DepartmentBaseSchema,
+  type EmployeeBaseSchema,
+  type UserBaseSchema,
+  type UserSubsetKey,
 } from "../application/sonamu.generated";
 import { UserModel } from "../application/user/user.model";
 

@@ -1,5 +1,5 @@
 import { username as _username } from "better-auth/plugins";
-import type { UsernameOptions } from "better-auth/plugins";
+import { type UsernameOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

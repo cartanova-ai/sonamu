@@ -1,12 +1,12 @@
 import path from "node:path";
 
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { ViteDevServer } from "vite";
+import { type FastifyReply, type FastifyRequest } from "fastify";
+import { type ViteDevServer } from "vite";
 
 import { applyCacheHeaders } from "../cache-control/cache-control";
-import type { CacheControlRequest } from "../cache-control/types";
-import type { SonamuFastifyConfig } from "../types/types";
-import type { PreloadedData, SSRRoute } from "./types";
+import { type CacheControlRequest } from "../cache-control/types";
+import { type SonamuFastifyConfig } from "../types/types";
+import { type PreloadedData, type SSRRoute } from "./types";
 
 export async function renderSSR(
   url: string,

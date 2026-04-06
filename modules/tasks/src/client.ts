@@ -1,14 +1,14 @@
-import type { Backend } from "./backend";
+import { type Backend } from "./backend";
 import { serializeRetryPolicy } from "./core/retry";
-import type { StandardSchemaV1 } from "./core/schema";
-import type { SchemaInput, SchemaOutput, WorkflowRun } from "./core/workflow";
+import { type StandardSchemaV1 } from "./core/schema";
+import { type SchemaInput, type SchemaOutput, type WorkflowRun } from "./core/workflow";
 import { validateInput } from "./core/workflow";
-import type { WorkflowFunction } from "./execution";
+import { type WorkflowFunction } from "./execution";
 import { WorkflowRegistry } from "./registry";
 import { Worker } from "./worker";
-import type { WorkerOptions } from "./worker";
+import { type WorkerOptions } from "./worker";
 import { defineWorkflow, defineWorkflowSpec } from "./workflow";
-import type { Workflow, WorkflowSpec } from "./workflow";
+import { type Workflow, type WorkflowSpec } from "./workflow";
 
 const DEFAULT_RESULT_POLL_INTERVAL_MS = 1000; // 1s
 const DEFAULT_RESULT_TIMEOUT_MS = 5 * 60 * 1000; // 5m

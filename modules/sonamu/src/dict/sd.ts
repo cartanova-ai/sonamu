@@ -6,7 +6,7 @@
 import { Sonamu } from "../api/sonamu";
 import en from "./en";
 import ko from "./ko";
-import type { LocalizedString } from "./types";
+import { type LocalizedString } from "./types";
 
 type SonamuDict = typeof ko;
 type DictKey = keyof SonamuDict;

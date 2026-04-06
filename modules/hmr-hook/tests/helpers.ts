@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { getActiveTest } from "@japa/runner";
 import { join } from "desm";
-import type { NodeOptions } from "execa";
+import { type NodeOptions } from "execa";
 import { execaNode } from "execa";
 import fs from "fs-extra";
 import { pEvent } from "p-event";

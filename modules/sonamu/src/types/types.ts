@@ -1,9 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import { type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import type { ApiDecoratorOptions, Context } from "../api";
-import type { CacheControlHandler } from "../cache-control/types";
-import type { GuardKey } from "./../api/decorators";
+import { type ApiDecoratorOptions, type Context } from "../api";
+import { type CacheControlHandler } from "../cache-control/types";
+import { type GuardKey } from "./../api/decorators";
 
 /*
   Utility Types

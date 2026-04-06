@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { type z } from "zod";
 
 import { TagBaseListParams, TagBaseSchema } from "../sonamu.generated";
 

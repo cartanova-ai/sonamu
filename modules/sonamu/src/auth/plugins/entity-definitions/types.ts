@@ -1,4 +1,4 @@
-import type { EntityIndex, EntityJson, EntityProp } from "../../../types/types";
+import { type EntityIndex, type EntityJson, type EntityProp } from "../../../types/types";
 
 /**
  * better-auth 플러그인 ID

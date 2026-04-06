@@ -1,6 +1,6 @@
 import { execaNode } from "execa";
 
-import type { RunOptions } from "./types.js";
+import { type RunOptions } from "./types.js";
 
 const DEFAULT_NODE_ARGS = ["--enable-source-maps"];
 

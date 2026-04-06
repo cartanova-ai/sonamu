@@ -1,7 +1,7 @@
-import type {
-  SharedV3Warning,
-  TranscriptionModelV3,
-  TranscriptionModelV3CallOptions,
+import {
+  type SharedV3Warning,
+  type TranscriptionModelV3,
+  type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import {
   combineHeaders,
@@ -12,7 +12,7 @@ import {
   parseProviderOptions,
   postFormDataToApi,
 } from "@ai-sdk/provider-utils";
-import type { FetchFunction } from "@ai-sdk/provider-utils";
+import { type FetchFunction } from "@ai-sdk/provider-utils";
 import { isEmpty } from "radashi";
 
 import {
@@ -22,7 +22,7 @@ import {
 } from "./api";
 import { RtzrClientError, rtzrFailedResponseHandler } from "./error";
 import { rtzrTranscriptionProviderOptions } from "./options";
-import type { RtzrTranscriptionModelId, RtzrTranscriptionProviderOptions } from "./options";
+import { type RtzrTranscriptionModelId, type RtzrTranscriptionProviderOptions } from "./options";
 
 export type RtzrTranscriptionCallOptions = Omit<
   TranscriptionModelV3CallOptions,

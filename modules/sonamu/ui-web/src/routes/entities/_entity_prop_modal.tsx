@@ -12,7 +12,7 @@ import {
   useTypeForm,
 } from "@sonamu-kit/react-components";
 import { useEffect, useMemo } from "react";
-import type { EntityProp } from "sonamu";
+import { type EntityProp } from "sonamu";
 import { z } from "zod";
 import CodeIcon from "~icons/lucide/code";
 
@@ -23,8 +23,6 @@ import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
-
-type RelationOn = z.infer<typeof EntityPropZodSchema.RelationOn>;
 
 type EntityPropModalProps = {
   entityId: string;

@@ -5,7 +5,7 @@
   },
   {
     "path": "src/application/account/account.types.ts",
-    "checksum": "d61f746a325b5dc5b1eea7408817112523b68693"
+    "checksum": "e3eb94ebf05aee54fd9e915710335b0b1b38cbfa"
   },
   {
     "path": "src/application/audit-log/audit-log.entity.json",
@@ -13,11 +13,11 @@
   },
   {
     "path": "src/application/audit-log/audit-log.model.ts",
-    "checksum": "4daa0fdfedfa037e45eb713427bcbbbd24aa32b4"
+    "checksum": "325e61017f6f2a4001a3e644b6a207cdca5cc856"
   },
   {
     "path": "src/application/audit-log/audit-log.types.ts",
-    "checksum": "a3e588c8ea15382fe3ee9ffe31261d67b68ef3e7"
+    "checksum": "83fede1d0b1994e9258342233ff84f0cd6c1ce0e"
   },
   {
     "path": "src/application/company/company.entity.json",
@@ -25,15 +25,15 @@
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "89f01321c934b8386e3dfe0449f75661b665a17a"
+    "checksum": "27fa83cca9c48a171db1f2aeb6b54ca16c77e76b"
   },
   {
     "path": "src/application/company/company.types.ts",
-    "checksum": "d21f52c6a07c5233afcc8c27872232b1d6eb9909"
+    "checksum": "221e6fe6bce6eb6beb299a552818db307e6775c0"
   },
   {
     "path": "src/application/dashboard/dashboard.frame.ts",
-    "checksum": "c1acfa25f1376501a34faa4ea07e98e997e73f3e"
+    "checksum": "349fc2c9b2bbf0f7d5dc52b99ae1a35ac41a19d3"
   },
   {
     "path": "src/application/dashboard/dashboard.types.ts",
@@ -45,11 +45,11 @@
   },
   {
     "path": "src/application/department/department.model.ts",
-    "checksum": "cd5c6c1a55ccb8b3f06dccc6d5e40fb7d1e4f13a"
+    "checksum": "2ffae393f279b29e0e9078347204d20efe98956c"
   },
   {
     "path": "src/application/department/department.types.ts",
-    "checksum": "eaf5d0329812592f6e386cc2bc67ee4f6bdccb91"
+    "checksum": "77f8500a8039a46c80a755eb232f393eb284ecfc"
   },
   {
     "path": "src/application/document/document.entity.json",
@@ -57,11 +57,11 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "ab037a35e1ec4d69b4158d2b4ded09c640095290"
+    "checksum": "906460b75207024c39442da390c9b9eaef11c1c3"
   },
   {
     "path": "src/application/document/document.types.ts",
-    "checksum": "78f15f43e6552df35c650463091a6fc3b9988897"
+    "checksum": "96a506a29c5fe0499e2292750b45e6e35f39e8c1"
   },
   {
     "path": "src/application/employee/employee.entity.json",
@@ -69,11 +69,11 @@
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "125d87ef6ce52097c41be560ea8191435152d43e"
+    "checksum": "cd9a09301d813d3d6d9651d4a84d20f9946c3e26"
   },
   {
     "path": "src/application/employee/employee.types.ts",
-    "checksum": "942e5c879c7ed6b420f555425cc1925a7c3d1209"
+    "checksum": "5431475701576a0935f7307439bf889a03691f06"
   },
   {
     "path": "src/application/file/file.entity.json",
@@ -81,11 +81,11 @@
   },
   {
     "path": "src/application/file/file.model.ts",
-    "checksum": "4cae1e25b291be5e07c7df7af6a4e3dfbb4f8041"
+    "checksum": "4f065e76220f1b5ac1486f2055cf2e3d6eb8db3c"
   },
   {
     "path": "src/application/file/file.types.ts",
-    "checksum": "4ab4a3010613b1a2391bb5db30253cd5b802521e"
+    "checksum": "c42f343b64e554f82ba3bf7905a3ce40d7877ddd"
   },
   {
     "path": "src/application/milestone/milestone.entity.json",
@@ -93,11 +93,11 @@
   },
   {
     "path": "src/application/milestone/milestone.model.ts",
-    "checksum": "c4e583f255f9b8b2a616cd62449ad94995909583"
+    "checksum": "0e66650671fbb2a223f4476e96b7447133181e86"
   },
   {
     "path": "src/application/milestone/milestone.types.ts",
-    "checksum": "71f2488a081534f5511cab64601fdb2ab10732fb"
+    "checksum": "e1cd5086bd18e53baf12924c314ce34d8fbe5051"
   },
   {
     "path": "src/application/passkey/passkey.entity.json",
@@ -105,7 +105,7 @@
   },
   {
     "path": "src/application/passkey/passkey.types.ts",
-    "checksum": "79de06130f51bdab961d505fb7c749a7f67b37b2"
+    "checksum": "913c72f06340bdada9c7624c444d3ec985fc6851"
   },
   {
     "path": "src/application/project/project.entity.json",
@@ -113,11 +113,11 @@
   },
   {
     "path": "src/application/project/project.model.ts",
-    "checksum": "c117844e43829c44f3f50a3c7c11ae5cda04917a"
+    "checksum": "3a53e286960b486deee45035f3220a520d678180"
   },
   {
     "path": "src/application/project/project.types.ts",
-    "checksum": "59ce2858cd7db2c84e516eec5ca90bdd6e844c1c"
+    "checksum": "8c69d501778f3d2f02b6546a334307664c6278e4"
   },
   {
     "path": "src/application/session/session.entity.json",
@@ -125,7 +125,7 @@
   },
   {
     "path": "src/application/session/session.types.ts",
-    "checksum": "53aaf4aaf9f3c38f89290762873dbcd1dd6858a0"
+    "checksum": "952e555b3515b1421904802e70c395753ac731c2"
   },
   {
     "path": "src/application/sonamu.generated.ts",
@@ -137,11 +137,11 @@
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.model.ts",
-    "checksum": "edfc5acc9b2f6b06be7d59cc53cd0f0cc06103df"
+    "checksum": "447549d33c2c6c3238c5937c55c99a61ea5dd1dd"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.types.ts",
-    "checksum": "a6f0b24ccb3dc8210361ccc174c1ec109769114b"
+    "checksum": "a2916eada313b6c7e228ebbedbd0ec14552ae90e"
   },
   {
     "path": "src/application/tag/tag.entity.json",
@@ -149,11 +149,11 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "e5bae69fc74172d6d44fe156e9c6a164da530efb"
+    "checksum": "f0dd4f06521c4d6e452acad9d2208582c35441dc"
   },
   {
     "path": "src/application/tag/tag.types.ts",
-    "checksum": "8b6bb5381463ee93ddc7374f3e848cd510204ffa"
+    "checksum": "800299909fc0a7bb568462aff851b759aca1264b"
   },
   {
     "path": "src/application/tag/tag.workflow.ts",
@@ -165,7 +165,7 @@
   },
   {
     "path": "src/application/two-factor/two-factor.types.ts",
-    "checksum": "552b251c28ee95aa165e0acc681c0ea20d9d4f3b"
+    "checksum": "d86e1516698f9b01c4e331eb1830448abf566419"
   },
   {
     "path": "src/application/user/user.entity.json",
@@ -173,15 +173,15 @@
   },
   {
     "path": "src/application/user/user.model.ts",
-    "checksum": "c88113683efb5ec036bc3a76c9ef35bcd21d3283"
+    "checksum": "a8da1b2b28f4d01ec3c54843eb4dcbd5f2fd83aa"
   },
   {
     "path": "src/application/user/user.types.ts",
-    "checksum": "33c1e2b14fee289f8114b80255ae1d7a4b84fd00"
+    "checksum": "6454e6105fd10e75a24cc7244ff331991a238576"
   },
   {
     "path": "src/application/user/user.workflow.ts",
-    "checksum": "a9e683fb4813807cbbca1a299a1c34c8798cd9a2"
+    "checksum": "c60503e9bf1f6ccebd587709ced80feb7ae3a59d"
   },
   {
     "path": "src/application/verification/verification.entity.json",
@@ -189,15 +189,15 @@
   },
   {
     "path": "src/application/verification/verification.types.ts",
-    "checksum": "4822b113893f2f4daaec1613e6389ae4aee4f0da"
+    "checksum": "2ff74d489d72a80ace7c04682e281307535204f8"
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "4dc23c4989e31d3f410239ca4229cfe312985c7a"
+    "checksum": "b817d8a689f5593d86ff9507b820ce92dbbe0792"
   },
   {
     "path": "src/i18n/ja.ts",
-    "checksum": "85eb78197477e63789f39a14ecd1255ed3920067"
+    "checksum": "a9815282c703ffb74c5ec120c73de4b1963cb8df"
   },
   {
     "path": "src/i18n/ko.ts",
@@ -209,6 +209,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "cee1459360eb04b0f8573d1918c141ed7958ac40"
+    "checksum": "21649a39b27da7df498be3957c07d7e3f7716f87"
   }
 ]

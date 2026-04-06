@@ -1,16 +1,16 @@
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import fs from "fs/promises";
-import type { IncomingMessage, Server, ServerResponse } from "http";
+import { type IncomingMessage, type Server, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
 
 import { dispose as logtapeDispose } from "@logtape/logtape";
-import type { Auth } from "better-auth";
-import type { FSWatcher } from "chokidar";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { type Auth } from "better-auth";
+import { type FSWatcher } from "chokidar";
+import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
-import type { ZodObject } from "zod";
+import { type ZodObject } from "zod";
 
 import {
   BASE_FIELD_MAPPINGS,
@@ -22,29 +22,29 @@ import {
   NotFoundException,
 } from "..";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
-import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
-import type { CacheConfig, CacheManager } from "../cache/types";
+import { type CacheControlConfig, type CacheControlRequest } from "../cache-control/types";
+import { type CacheConfig, type CacheManager } from "../cache/types";
 import { toFastifyCompressOption } from "../compress/compress";
-import type { CompressOptions } from "../compress/types";
-import type { SonamuDBConfig } from "../database/db";
+import { type CompressOptions } from "../compress/types";
+import { type SonamuDBConfig } from "../database/db";
 import { SD } from "../dict/sd";
-import type { LocalizedString } from "../dict/types";
+import { type LocalizedString } from "../dict/types";
 import { Naite } from "../naite/naite";
 import { BufferedFile } from "../storage/buffered-file";
-import type { StorageManager } from "../storage/storage-manager";
-import type { KeyGenerator } from "../storage/types";
+import { type StorageManager } from "../storage/storage-manager";
+import { type KeyGenerator } from "../storage/types";
 import { UploadedFile } from "../storage/uploaded-file";
-import type { Syncer } from "../syncer/syncer";
-import type { WorkflowManager } from "../tasks/workflow-manager";
-import type { DevVitestManager } from "../testing/dev-vitest-manager";
-import type { SonamuFastifyConfig } from "../types/types";
+import { type Syncer } from "../syncer/syncer";
+import { type WorkflowManager } from "../tasks/workflow-manager";
+import { type DevVitestManager } from "../testing/dev-vitest-manager";
+import { type SonamuFastifyConfig } from "../types/types";
 import { exists, fileExists } from "../utils/fs-utils";
-import type { AbsolutePath } from "../utils/path-utils";
-import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
-import type { Context } from "./context";
-import type { ExtendedApi } from "./decorators";
+import { type AbsolutePath } from "../utils/path-utils";
+import { type SonamuConfig, type SonamuServerOptions, type SonamuTaskOptions } from "./config";
+import { type Context } from "./context";
+import { type ExtendedApi } from "./decorators";
 import { getSecrets } from "./secret";
-import type { SonamuSecrets } from "./secret";
+import { type SonamuSecrets } from "./secret";
 
 class SonamuClass {
   public isInitialized: boolean = false;

@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { type z } from "zod";
 
 import { VerificationBaseListParams, VerificationBaseSchema } from "../sonamu.generated";
 

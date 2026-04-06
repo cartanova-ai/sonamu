@@ -1,5 +1,5 @@
 import { phoneNumber as _phoneNumber } from "better-auth/plugins";
-import type { PhoneNumberOptions } from "better-auth/plugins";
+import { type PhoneNumberOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

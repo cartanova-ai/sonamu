@@ -15,7 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { diff, unique } from "radashi";
 import { Fragment, useState } from "react";
-import type { SonamuDBConfig } from "sonamu";
+import { type SonamuDBConfig } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";

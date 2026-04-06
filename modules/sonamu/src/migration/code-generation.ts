@@ -1,15 +1,15 @@
 import equal from "fast-deep-equal";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { alphabetical, diff } from "radashi";
 
 import { EntityManager, Naite } from "..";
-import type {
-  EntityProp,
-  GenMigrationCode,
-  MigrationColumn,
-  MigrationForeign,
-  MigrationIndex,
-  MigrationSet,
+import {
+  type EntityProp,
+  type GenMigrationCode,
+  type MigrationColumn,
+  type MigrationForeign,
+  type MigrationIndex,
+  type MigrationSet,
 } from "../types/types";
 import { isSearchTextProp } from "../types/types";
 import { formatCode } from "../utils/formatter";

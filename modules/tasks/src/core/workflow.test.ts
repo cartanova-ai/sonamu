@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type { StandardSchemaV1 } from "./schema";
+import { type StandardSchemaV1 } from "./schema";
 import { DEFAULT_WORKFLOW_RESULT_CONFIG, isTerminalStatus, validateInput } from "./workflow";
 
 describe("validateInput", () => {

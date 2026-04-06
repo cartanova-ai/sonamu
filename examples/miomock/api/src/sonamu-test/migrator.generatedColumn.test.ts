@@ -5,7 +5,7 @@ import {
   Migrator,
   PostgreSQLSchemaReader,
 } from "sonamu";
-import type { EntityJson, MigrationSet } from "sonamu";
+import { type EntityJson, type MigrationSet } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 

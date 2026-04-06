@@ -1,10 +1,10 @@
 import { convertToModelMessages } from "ai";
-import type { UIMessage } from "ai";
-import type { FastifyInstance } from "fastify";
+import { type UIMessage } from "ai";
+import { type FastifyInstance } from "fastify";
 
 import { SD } from "../dict/sd";
 import { BadRequestException } from "../exceptions/so-exceptions";
-import type { FixtureRecord } from "../types/types";
+import { type FixtureRecord } from "../types/types";
 import { aiClient } from "./ai-client";
 
 export async function setAiApi(server: FastifyInstance) {

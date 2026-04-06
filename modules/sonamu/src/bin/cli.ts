@@ -12,14 +12,14 @@ import path from "path";
 import process from "process";
 
 import knex from "knex";
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import { tsicli } from "tsicli";
 
 import { Sonamu } from "../api";
 import { addCompanionsToEntities, generateBetterAuthEntities } from "../auth/auth-generator";
 import { isValidPluginId, SUPPORTED_PLUGIN_IDS } from "../auth/plugins/entity-definitions";
-import type { BetterAuthPluginId } from "../auth/plugins/entity-definitions";
-import type { SonamuDBConfig } from "../database/db";
+import { type BetterAuthPluginId } from "../auth/plugins/entity-definitions";
+import { type SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
@@ -34,7 +34,7 @@ import {
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath, findAppRootPath } from "../utils/utils";
 import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
-import type { BuildArtifact } from "./build-config";
+import { type BuildArtifact } from "./build-config";
 import { fixtureExploreCommand, fixtureFetchCommand, fixtureGenCommand } from "./fixture";
 import { testCommand } from "./test-command";
 

@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import type { Backend } from "..//backend";
-import type { SerializableRetryPolicy } from "../core/retry";
-import type { StepAttempt } from "../core/step";
-import type { WorkflowRun } from "../core/workflow";
+import { type Backend } from "..//backend";
+import { type SerializableRetryPolicy } from "../core/retry";
+import { type StepAttempt } from "../core/step";
+import { type WorkflowRun } from "../core/workflow";
 
 /**
  * Options for the Backend test suite.

@@ -1,23 +1,23 @@
 import assert from "assert";
 
-import type { FastifyMultipartBaseOptions } from "@fastify/multipart";
+import { type FastifyMultipartBaseOptions } from "@fastify/multipart";
 import { getLogger } from "@logtape/logtape";
-import type { HTTPMethods } from "fastify";
+import { type HTTPMethods } from "fastify";
 import inflection from "inflection";
 import { isEqual } from "radashi";
-import type { z } from "zod";
+import { type z } from "zod";
 
-import type { CacheControlConfig } from "../cache-control/types";
-import type { CompressConfig } from "../compress/types";
+import { type CacheControlConfig } from "../cache-control/types";
+import { type CompressConfig } from "../compress/types";
 import { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
 import { PuriTransactionWrapper } from "../database/puri-wrapper";
-import type { TransactionalOptions } from "../database/puri-wrapper";
+import { type TransactionalOptions } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
 import { convertDomainToCategory } from "../logger/category";
-import type { DriverKey } from "../storage/drivers";
-import type { KeyGenerator } from "../storage/types";
-import type { ApiParam, ApiParamType } from "../types/types";
+import { type DriverKey } from "../storage/drivers";
+import { type KeyGenerator } from "../storage/types";
+import { type ApiParam, type ApiParamType } from "../types/types";
 import { BaseFrameClass } from "./base-frame";
 
 export interface GuardKeys {

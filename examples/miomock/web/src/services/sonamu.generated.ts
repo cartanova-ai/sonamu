@@ -6,8 +6,7 @@
 /** biome-ignore-all assist: generated는 무시 */
 /** biome-ignore-all format: generated는 무시 */
 
-import type { ApplySonamuFilter} from "./sonamu.shared";
-import { SonamuFileArraySchema, SonamuQueryMode, zArrayable } from "./sonamu.shared";
+import { type ApplySonamuFilter, SonamuFileArraySchema, SonamuQueryMode, zArrayable } from "./sonamu.shared";
 import { z } from "zod";
 
 // CustomScalar: AuditLogValue

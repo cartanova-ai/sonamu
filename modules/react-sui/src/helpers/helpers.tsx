@@ -7,9 +7,9 @@ import qs from "qs";
 import { get, isObject, set, unique } from "radashi";
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { ReactElement } from "react";
+import { type ReactElement } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import type { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
+import { type PaginationProps, type SemanticWIDTHS } from "semantic-ui-react";
 import { z } from "zod";
 
 import { caster } from "./caster";

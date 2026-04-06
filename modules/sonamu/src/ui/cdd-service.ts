@@ -4,17 +4,17 @@ import os from "os";
 import path from "path";
 
 import { Sonamu } from "../api/sonamu";
-import type {
-  CddAcEntry,
-  CddAcFile,
-  CddAcListResult,
-  CddAddRuleRequest,
-  CddContentResult,
-  CddFileType,
-  CddRuleDetail,
-  CddRuleEntry,
-  CddRuleSummary,
-  CddTreeNode,
+import {
+  type CddAcEntry,
+  type CddAcFile,
+  type CddAcListResult,
+  type CddAddRuleRequest,
+  type CddContentResult,
+  type CddFileType,
+  type CddRuleDetail,
+  type CddRuleEntry,
+  type CddRuleSummary,
+  type CddTreeNode,
 } from "./cdd-types";
 
 export type {

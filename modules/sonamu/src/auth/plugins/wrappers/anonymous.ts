@@ -1,5 +1,5 @@
 import { anonymous as _anonymous } from "better-auth/plugins";
-import type { AnonymousOptions } from "better-auth/plugins";
+import { type AnonymousOptions } from "better-auth/plugins";
 
 import { merge } from "../../../utils/utils";
 

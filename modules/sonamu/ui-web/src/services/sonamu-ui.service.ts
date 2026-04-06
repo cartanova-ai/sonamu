@@ -1,18 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import type {
-  Cone,
-  DuplicateCheckOptions,
-  Entity,
-  EntityIndex,
-  EntityProp,
-  FixtureImportResult,
-  FixtureRecord,
-  FixtureSearchOptions,
-  FlattenSubsetRow,
-  MigrationResult,
-  MigrationStatus,
-  PathAndCode,
-  SonamuDBConfig,
+import {
+  type Cone,
+  type DuplicateCheckOptions,
+  type Entity,
+  type EntityIndex,
+  type EntityProp,
+  type FixtureImportResult,
+  type FixtureRecord,
+  type FixtureSearchOptions,
+  type FlattenSubsetRow,
+  type MigrationResult,
+  type MigrationStatus,
+  type PathAndCode,
+  type SonamuDBConfig,
 } from "sonamu";
 
 import { fetch } from "./sonamu.shared";

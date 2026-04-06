@@ -1,4 +1,4 @@
-import type { UpsertBuilder } from "sonamu";
+import { type UpsertBuilder } from "sonamu";
 import { expect } from "vitest";
 
 /**

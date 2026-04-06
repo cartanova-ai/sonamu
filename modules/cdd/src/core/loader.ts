@@ -3,7 +3,7 @@ import path from "node:path";
 
 import fg from "fast-glob";
 
-import type { CddProject, RulesDocument, RulesNode } from "./types.js";
+import { type CddProject, type RulesDocument, type RulesNode } from "./types.js";
 
 const CONTRACT_DIR_NAME = "contract";
 

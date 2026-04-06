@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager } from "../../entity/entity-manager";
-import type { EntityNamesRecord } from "../../entity/entity-manager";
-import type { TemplateOptions } from "../../types/types";
+import { type EntityNamesRecord } from "../../entity/entity-manager";
+import { type TemplateOptions } from "../../types/types";
 import { extractObjectDeclaration } from "../helpers";
 import { Template } from "../template";
 

@@ -2,10 +2,10 @@ import chalk from "chalk";
 
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
-import type { EntityIndex, EntityJson, EntityProp } from "../types/types";
+import { type EntityIndex, type EntityJson, type EntityProp } from "../types/types";
 import { betterAuthV1 } from "./better-auth-entities";
 import { ENTITY_DEFINITIONS, isValidPluginId } from "./plugins/entity-definitions";
-import type { BetterAuthPluginId } from "./plugins/entity-definitions";
+import { type BetterAuthPluginId } from "./plugins/entity-definitions";
 
 /**
  * 누락된 props 찾기

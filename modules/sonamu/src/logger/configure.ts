@@ -1,14 +1,14 @@
 import { configure, getConsoleSink } from "@logtape/logtape";
-import type {
-  Filter,
-  FilterLike,
-  LoggerConfig,
-  LogRecord,
-  Sink,
-  TextFormatter,
+import {
+  type Filter,
+  type FilterLike,
+  type LoggerConfig,
+  type LogRecord,
+  type Sink,
+  type TextFormatter,
 } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import { type FastifyReply, type FastifyRequest } from "fastify";
 
 import { isSameCategory } from "./category";
 

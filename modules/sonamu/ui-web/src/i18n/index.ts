@@ -1,4 +1,4 @@
-import type { SDReturnType } from "@sonamu-kit/react-components";
+import { type SDReturnType } from "@sonamu-kit/react-components";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 
 import en from "./en";

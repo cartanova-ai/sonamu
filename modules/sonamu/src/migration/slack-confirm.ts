@@ -5,9 +5,9 @@ import os from "os";
 import path from "path";
 
 import { Sonamu } from "../api";
-import type { SonamuDBConfig } from "../database/db";
+import { type SonamuDBConfig } from "../database/db";
 import { SD } from "../dict/sd";
-import type { MigrationResult } from "./migrator";
+import { type MigrationResult } from "./migrator";
 
 export type SlackConfirmResult = {
   status: "approved" | "rejected" | "pending" | "not_configured" | "error";

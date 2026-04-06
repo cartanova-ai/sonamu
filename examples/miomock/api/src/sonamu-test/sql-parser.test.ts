@@ -1,4 +1,4 @@
-import type { ColumnRef } from "node-sql-parser";
+import { type ColumnRef } from "node-sql-parser";
 import { Parser } from "node-sql-parser";
 import { describe, expect, test } from "vitest";
 
