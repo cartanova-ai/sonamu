@@ -13,7 +13,7 @@ type GlobalWithTsLoaderRegisterState = typeof globalThis & {
 function resetRegisterState() {
   const globalState = globalThis as GlobalWithTsLoaderRegisterState;
   delete globalState[tsLoaderRegisterStateKey];
-  delete process.env.SWCRC_PATH;
+  delete process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
 }
 
 describe("ensureTsLoaderRegistered", () => {
@@ -52,11 +52,11 @@ describe("ensureTsLoaderRegistered", () => {
     expect(registerMock).toHaveBeenCalledWith("@sonamu-kit/ts-loader/loader", {
       parentURL: expect.stringContaining("/src/bin/ts-loader-registration"),
     });
-    expect(process.env.SWCRC_PATH).toBe("/tmp/fixture-api/.swcrc");
+    expect(process.env.TS_LOADER_TRANSFORM_CONFIG_PATH).toBe("/tmp/fixture-api/.swcrc");
 
     await module.ensureTsLoaderRegistered("/tmp/another-api");
 
     expect(registerMock).toHaveBeenCalledTimes(1);
-    expect(process.env.SWCRC_PATH).toBe("/tmp/fixture-api/.swcrc");
+    expect(process.env.TS_LOADER_TRANSFORM_CONFIG_PATH).toBe("/tmp/fixture-api/.swcrc");
   });
 });

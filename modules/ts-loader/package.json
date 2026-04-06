@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@loaderkit/resolve": "catalog:",
-    "@swc/core": "catalog:",
-    "json5": "catalog:"
+    "json5": "catalog:",
+    "oxc-transform": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

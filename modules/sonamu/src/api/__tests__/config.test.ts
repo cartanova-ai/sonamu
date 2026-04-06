@@ -18,7 +18,7 @@ type GlobalWithTsLoaderRegisterState = typeof globalThis & {
 function resetRegisterState() {
   const globalState = globalThis as GlobalWithTsLoaderRegisterState;
   delete globalState[tsLoaderRegisterStateKey];
-  delete process.env.SWCRC_PATH;
+  delete process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
 }
 
 async function createTempRoot(): Promise<string> {
@@ -123,7 +123,7 @@ describe("loadConfig", () => {
   const tempRoots: string[] = [];
   const originalHot = process.env.HOT;
   const originalVitest = process.env.VITEST;
-  const originalSwcrcPath = process.env.SWCRC_PATH;
+  const originalTransformConfigPath = process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
 
   beforeEach(() => {
     vi.resetModules();
@@ -150,10 +150,10 @@ describe("loadConfig", () => {
       process.env.VITEST = originalVitest;
     }
 
-    if (originalSwcrcPath === undefined) {
-      delete process.env.SWCRC_PATH;
+    if (originalTransformConfigPath === undefined) {
+      delete process.env.TS_LOADER_TRANSFORM_CONFIG_PATH;
     } else {
-      process.env.SWCRC_PATH = originalSwcrcPath;
+      process.env.TS_LOADER_TRANSFORM_CONFIG_PATH = originalTransformConfigPath;
     }
 
     await Promise.all(

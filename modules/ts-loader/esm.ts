@@ -6,7 +6,7 @@ import { type FileSystemAsync } from "@loaderkit/resolve/fs";
 
 import { type LoaderFileSystem, type PackageJson, type ResolutionConfig } from "./utility/scope.js";
 import { makeResolveTypeScriptPackage, resolveFormat, resolvePackage } from "./utility/scope.js";
-import { transpileSource } from "./utility/swc.js";
+import { transpileSource } from "./utility/transform.js";
 import {
   absoluteJavaScriptToTypeScript,
   absoluteTypeScriptToJavaScript,

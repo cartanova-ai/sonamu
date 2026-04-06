@@ -53,6 +53,7 @@
     "src/**/*.test-hold.ts",
     "src/**/*.ignore.ts",
     "vitest.config.ts",
+    "tsdown.config.ts",
     "wasted_src/**",
     "_templates/**",
     "**/__mocks__/**"

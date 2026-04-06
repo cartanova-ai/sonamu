@@ -84,7 +84,7 @@
     "dev": "nodemon exec",
     "prebuild": "tsx ../../scripts/hard-link.ts",
     "build": "run-s 'build:sonamu' 'build:ui-web'",
-    "build:sonamu": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "build:sonamu": "tsdown && tsc --emitDeclarationOnly",
     "build:ui-web": "cd ui-web && pnpm install && pnpm build",
     "test:type": "vitest --typecheck test-d.ts",
     "test:unit": "vitest run --config vitest.config.ts"
@@ -142,7 +142,6 @@
     "vitest": "catalog:"
   },
   "devDependencies": {
-    "@swc/cli": "catalog:",
     "@types/bcrypt": "catalog:",
     "@types/inflection": "catalog:",
     "@types/mime-types": "catalog:",
@@ -151,6 +150,7 @@
     "@types/prompts": "catalog:",
     "@types/qs": "catalog:",
     "nodemon": "catalog:",
+    "tsdown": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:"
   },

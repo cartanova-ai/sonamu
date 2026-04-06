@@ -27,13 +27,13 @@ async function setupSwcConfig(apiRoot: string) {
   try {
     const projectSwcrcPath = path.join(apiRoot, ".swcrc");
     if (await exists(projectSwcrcPath)) {
-      process.env.SWCRC_PATH = projectSwcrcPath;
+      process.env.TS_LOADER_TRANSFORM_CONFIG_PATH = projectSwcrcPath;
       return;
     }
 
     const sonamuSwcrcPath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
     if (await exists(sonamuSwcrcPath)) {
-      process.env.SWCRC_PATH = sonamuSwcrcPath;
+      process.env.TS_LOADER_TRANSFORM_CONFIG_PATH = sonamuSwcrcPath;
       return;
     }
   } catch {
