@@ -225,14 +225,10 @@ test("사용자 조회", async () => {
 // 내부 동작
 function getMockContext(): Context {
   return {
-    ip: "127.0.0.1",
-    session: {},
+    session: null,
     user: null,  // 기본값: 로그인하지 않은 상태
-    passport: {
-      login: async () => {},
-      logout: () => {},
-    },
     naiteStore: Naite.createStore(),
+    locale: "",
   };
 }
 
@@ -264,8 +260,7 @@ Mock Context는 실제 HTTP 요청 Context와 동일한 인터페이스를 제�
 | 속성 | 타입 | Mock 값 | 설명 |
 |------|------|---------|------|
 | `user` | `User \| null` | `null` | 인증된 사용자 (`testAs`로 설정) |
-| `session` | `Record<string, any>` | `{}` | 세션 데이터 |
-| `passport` | `Passport` | Mock 객체 | 인증 헬퍼 |
+| `session` | `Session \| null` | `null` | 세션 정보 |
 
 #### 요청 메타데이터
 
@@ -366,11 +361,11 @@ testAs(
     expect(context.user?.username).toBe("testuser");
     expect(context.user?.role).toBe("admin");
 
-    // passport도 user를 포함
-    expect(context.passport).toBeDefined();
+    // session도 함께 확인
+    expect(context.session).toBeDefined();
 
     // 나머지는 동일
-    expect(context.ip).toBe("127.0.0.1");
+    expect(context.locale).toBeDefined();
     expect(context.isMock).toBe(true);
   }
 );
@@ -399,15 +394,14 @@ test("커스텀 IP 설정", async () => {
 <Warning>
 **주의사항**:
 1. **Mock Context는 테스트용**: 실제 HTTP 요청과 다를 수 있음
-2. **Passport 동작 안함**: `login()`, `logout()` 호출은 무시됨
-3. **세션 유지 안됨**: 테스트 종료 시 모든 상태 초기화
-4. **Context 수정 비권장**: 직접 수정보다 `testAs()` 사용 권장
+2. **세션 유지 안됨**: 테스트 종료 시 모든 상태 초기화
+3. **Context 수정 비권장**: 직접 수정보다 `testAs()` 사용 권장
 </Warning>
 
 <Info>
 **Context 속성 요약**:
 - **기본**: ip, userAgent, origin, referer, acceptLanguage
-- **인증**: user, session, passport
+- **인증**: user, session
 - **메타데이터**: requestId, timestamp, method, path
 - **테스트**: naiteStore, isMock
 </Info>

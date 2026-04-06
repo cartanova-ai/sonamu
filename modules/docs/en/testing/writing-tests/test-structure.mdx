@@ -225,14 +225,10 @@ The `test` function automatically injects Mock Context.
 // Internal operation
 function getMockContext(): Context {
   return {
-    ip: "127.0.0.1",
-    session: {},
+    session: null,
     user: null,  // Default: not logged in
-    passport: {
-      login: async () => {},
-      logout: () => {},
-    },
     naiteStore: Naite.createStore(),
+    locale: "",
   };
 }
 

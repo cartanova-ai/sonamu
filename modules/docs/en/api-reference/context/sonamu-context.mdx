@@ -24,7 +24,7 @@ type Context = {
 
 The Context type is composed of **Intersection Types (`&`)**:
 - Base Context object (request, reply, etc.)
-- `AuthContext`: Authentication-related properties (user, passport)
+- `AuthContext`: Authentication-related properties (user, session)
 - `ContextExtend`: Project-specific extension properties
 
 This structure allows Context to be extensible while maintaining type safety.
@@ -298,8 +298,8 @@ class FileModelClass extends BaseModelClass {
 
 Context also includes properties from [AuthContext](/en/api-reference/context/auth-context):
 
-- `user`: Current authenticated user information
-- `passport`: Authentication-related methods (login, logout)
+- `user`: Current authenticated user information (`User | null`)
+- `session`: Current session information (`Session | null`)
 
 ## Extending Context
 

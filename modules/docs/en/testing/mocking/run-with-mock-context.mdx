@@ -15,18 +15,15 @@ Mock Context includes the following properties:
 
 ```typescript
 type Context = {
-  ip: string;              // Client IP address
-  session: object;         // Session data
-  user: PassportUser | null;  // Authenticated user info
-  passport: {
-    login: (user: PassportUser) => Promise<void>;
-    logout: () => void;
-  };
-  naiteStore: NaiteStore;  // Naite log storage
   request: FastifyRequest;
   reply: FastifyReply;
   headers: IncomingHttpHeaders;
-  // ... other properties
+  createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
+  naiteStore: NaiteStore;  // Naite log storage
+  locale: string;          // Request locale
+  user: User | null;       // Authenticated user info (better-auth)
+  session: Session | null; // Session info (better-auth)
+  // ... ContextExtend properties
 };
 ```
 
@@ -34,14 +31,10 @@ A simplified Mock Context is provided in tests:
 
 ```typescript
 {
-  ip: "127.0.0.1",
-  session: {},
+  session: null,
   user: null,
-  passport: {
-    login: async () => {},
-    logout: () => {},
-  },
   naiteStore: Naite.createStore(),
+  locale: "",
 }
 ```
 
@@ -246,24 +239,19 @@ Mock Context is created as follows:
 ```typescript
 function getMockContext(): Context {
   return {
-    ip: "127.0.0.1",
-    session: {},
+    session: null,
     user: null,
-    passport: {
-      login: async () => {},
-      logout: () => {},
-    },
     naiteStore: Naite.createStore(),
+    locale: "",
   } as unknown as Context;
 }
 ```
 
 **Features**:
-- `ip`: `127.0.0.1` representing local environment
-- `session`: Initialized as empty object
+- `session`: Initialized as `null` (unauthenticated state)
 - `user`: Default is `null` (unauthenticated state)
-- `passport`: Mock functions, actual auth logic doesn't execute
 - `naiteStore`: Independent log storage per test
+- `locale`: Initialized as empty string
 
 ### AsyncLocalStorage Isolation
 

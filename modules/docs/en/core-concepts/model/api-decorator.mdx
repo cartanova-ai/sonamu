@@ -572,7 +572,7 @@ async del(ids: number[]): Promise<number> {
   httpMethod: "POST",
   clients: ["axios", "tanstack-mutation"],
 })
-async login(params: LoginParams): Promise<{ user: User; token: string }> {
+async login(params: LoginParams): Promise<{ user: User }> {
   const { email, password } = params;
   
   // Find user
@@ -590,14 +590,9 @@ async login(params: LoginParams): Promise<{ user: User; token: string }> {
     throw new UnauthorizedException("Email or password does not match");
   }
   
-  // Create session
-  const context = Sonamu.getContext();
-  await context.passport.login(user);
-  
-  // Generate token (optional)
-  const token = jwt.sign({ userId: user.id }, SECRET_KEY);
-  
-  return { user, token };
+  // Authentication is handled by better-auth's HTTP endpoint (/api/auth/sign-in/email).
+  // Model methods only handle user lookup and verification.
+  return { user };
 }
 
 @api({

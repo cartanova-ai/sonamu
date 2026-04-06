@@ -249,9 +249,7 @@ class PostFrame {
         // Delete user
         await UserModel.del([user.id]);
 
-        // End session
-        Sonamu.getContext().passport.logout();
-
+        // Session termination is handled by better-auth's HTTP endpoint (/api/auth/sign-out).
         return { success: true };
       }
     }

@@ -570,7 +570,7 @@ async del(ids: number[]): Promise<number> {
   httpMethod: "POST",
   clients: ["axios", "tanstack-mutation"],
 })
-async login(params: LoginParams): Promise<{ user: User; token: string }> {
+async login(params: LoginParams): Promise<{ user: User }> {
   const { email, password } = params;
   
   // 사용자 조회
@@ -588,14 +588,9 @@ async login(params: LoginParams): Promise<{ user: User; token: string }> {
     throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
   }
   
-  // 세션 생성
-  const context = Sonamu.getContext();
-  await context.passport.login(user);
-  
-  // 토큰 생성 (선택)
-  const token = jwt.sign({ userId: user.id }, SECRET_KEY);
-  
-  return { user, token };
+  // 인증은 better-auth의 HTTP 엔드포인트(/api/auth/sign-in/email)로 처리됩니다.
+  // 모델 메서드에서는 사용자 조회 및 검증만 담당합니다.
+  return { user };
 }
 
 @api({

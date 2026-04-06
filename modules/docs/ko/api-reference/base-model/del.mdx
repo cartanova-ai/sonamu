@@ -248,10 +248,8 @@ class PostFrame {
         
         // 사용자 삭제
         await UserModel.del([user.id]);
-        
-        // 세션 종료
-        Sonamu.getContext().passport.logout();
-        
+
+        // 세션 종료는 better-auth의 HTTP 엔드포인트(/api/auth/sign-out)로 처리됩니다.
         return { success: true };
       }
     }
