@@ -294,7 +294,7 @@ export class SonamuDictionary {
 
     // 파일 재생성
     const content = this.generateProjectDict(locale, existingEntries, isDefaultLocale);
-    const formatted = formatCode(content, "typescript", filePath);
+    const formatted = await formatCode(content, "typescript", filePath);
     fs.writeFileSync(filePath, formatted, "utf-8");
   }
 
@@ -408,11 +408,15 @@ export class SonamuDictionary {
   /**
    * dict 파일을 저장합니다.
    */
-  private saveDictFile(locale: string, entries: DictEntry[], isDefaultLocale: boolean): void {
+  private async saveDictFile(
+    locale: string,
+    entries: DictEntry[],
+    isDefaultLocale: boolean,
+  ): Promise<void> {
     const i18nDir = this.ensureI18nDir();
     const dictPath = path.join(i18nDir, `${locale}.ts`);
     const content = this.generateProjectDict(locale, entries, isDefaultLocale);
-    const formatted = formatCode(content, "typescript", dictPath);
+    const formatted = await formatCode(content, "typescript", dictPath);
     fs.writeFileSync(dictPath, formatted, "utf-8");
   }
 
@@ -834,7 +838,7 @@ export class SonamuDictionary {
     for (const locale of locales) {
       const entries = projectDictEntries[locale];
       if (entries.length > 0) {
-        this.saveDictFile(locale, entries, locale === defaultLocale);
+        await this.saveDictFile(locale, entries, locale === defaultLocale);
         updatedLocales++;
       }
     }
@@ -902,7 +906,7 @@ export class SonamuDictionary {
       }
 
       // dict 파일 저장
-      this.saveDictFile(locale, entries, locale === defaultLocale);
+      await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }
 
@@ -939,7 +943,7 @@ export class SonamuDictionary {
         isFunction: this.isExpressionFunction(cellValue),
       });
 
-      this.saveDictFile(locale, entries, locale === defaultLocale);
+      await this.saveDictFile(locale, entries, locale === defaultLocale);
     }
   }
 
@@ -962,7 +966,7 @@ export class SonamuDictionary {
         entries.splice(index, 1);
         deleted = true;
 
-        this.saveDictFile(locale, entries, locale === defaultLocale);
+        await this.saveDictFile(locale, entries, locale === defaultLocale);
       }
     }
 

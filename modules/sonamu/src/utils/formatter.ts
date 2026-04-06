@@ -1,116 +1,124 @@
-import { Biome } from "@biomejs/js-api/nodejs";
+import { execFileSync } from "child_process";
+import { readFileSync, unlinkSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { format } from "oxfmt";
+import { join } from "path";
 import { Naite } from "../naite/naite";
 import { isTest } from "./controller";
 
-const biome = new Biome();
-let projectKey: number = -1;
+const OXFMT_OPTIONS = {
+  printWidth: 100,
+  tabWidth: 2,
+  useTabs: false,
+  singleQuote: false,
+  jsxSingleQuote: false,
+  trailingComma: "all" as const,
+  semi: true,
+  endOfLine: "lf" as const,
+  bracketSpacing: true,
+  sortImports: true,
+};
 
-export function setupBiome(path: string) {
-  if (projectKey !== -1) {
-    return;
+function resolveOxlintBin(): string {
+  try {
+    return require.resolve("oxlint/bin/oxlint");
+  } catch {
+    return "oxlint";
   }
-
-  projectKey = biome.openProject(path).projectKey;
-  biome.applyConfiguration(projectKey, {
-    formatter: {
-      enabled: true,
-      formatWithErrors: false,
-      indentStyle: "space",
-      indentWidth: 2,
-      lineEnding: "lf",
-      lineWidth: 100,
-      attributePosition: "auto",
-    },
-    linter: {
-      enabled: true,
-      rules: {
-        recommended: true,
-        style: {
-          useNodejsImportProtocol: "off",
-        },
-        correctness: {
-          useParseIntRadix: "off",
-          noEmptyPattern: "off",
-          noUnusedImports: {
-            level: "warn",
-            fix: "safe",
-          },
-        },
-        a11y: {
-          noLabelWithoutControl: "off",
-        },
-        complexity: {
-          noBannedTypes: "off",
-        },
-        suspicious: {
-          noArrayIndexKey: "off",
-        },
-      },
-    },
-    javascript: {
-      formatter: {
-        jsxQuoteStyle: "double",
-        quoteProperties: "asNeeded",
-        trailingCommas: "all",
-        semicolons: "always",
-        arrowParentheses: "always",
-        bracketSpacing: true,
-        bracketSameLine: false,
-        quoteStyle: "double",
-        attributePosition: "auto",
-      },
-    },
-    json: {
-      formatter: {
-        indentWidth: 2,
-      },
-    },
-    assist: {
-      enabled: true,
-      actions: {
-        source: {
-          organizeImports: "on",
-        },
-      },
-    },
-  });
 }
 
-export function formatCode(code: string, parser: "typescript" | "json", filePath: string) {
+export async function formatCode(
+  code: string,
+  parser: "typescript" | "json",
+  _filePath: string,
+): Promise<string> {
   Naite.t("formatCode", { code, parser });
 
-  if (projectKey === -1) {
-    console.warn("Biome is not setup. Please call setupBiome first.");
-    return code;
+  const fileName = parser === "json" ? "file.json" : "file.ts";
+
+  // oxfmt 포맷팅
+  const formatted = await format(fileName, code, OXFMT_OPTIONS);
+  if (formatted.errors.length > 0) {
+    const errorMessages = formatted.errors
+      .filter((e) => e.severity === "Error")
+      .map((e) => e.message);
+    if (errorMessages.length > 0) {
+      !isTest() && console.error("oxfmt format errors:", errorMessages);
+      throw new Error(`oxfmt format error: ${errorMessages.join(", ")}`);
+    }
+  }
+  Naite.t("formatCode:formatted", formatted.code);
+
+  // JSON은 포맷팅만 수행
+  if (parser === "json") {
+    return formatted.code;
   }
 
-  // 포맷팅을 먼저 해야함
-  const formatted = biome.formatContent(projectKey, code, { filePath });
-  Naite.t("formatCode:formatted", formatted);
-  if (formatted.diagnostics.filter((d) => d.severity === "error").length > 0) {
-    console.error(formatted.diagnostics);
-    throw new Error("Biome format error");
-  }
+  // TypeScript: oxlint --fix로 lint fix 수행 (unused import 제거 등)
+  const tmpFile = join(
+    tmpdir(),
+    `sonamu-fmt-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
+  );
+  try {
+    writeFileSync(tmpFile, formatted.code, "utf-8");
 
-  // 린팅을 그 다음에
-  const linted = biome.lintContent(projectKey, formatted.content, {
-    filePath,
-    fixFileMode: "safeAndUnsafeFixes",
-  });
-  if (linted.diagnostics.filter((d) => d.severity === "error").length > 0) {
-    Naite.t("formatCode:linted:content", linted.content);
-    Naite.t("formatCode:linted:diagnostics", linted.diagnostics);
-    !isTest() && console.dir(linted.diagnostics, { depth: null });
-    throw new Error("Biome lint error");
-  }
-  Naite.t("formatCode:linted", linted);
+    const oxlintBin = resolveOxlintBin();
+    try {
+      execFileSync(
+        oxlintBin,
+        [
+          "--fix",
+          "--fix-suggestions",
+          "-D",
+          "correctness",
+          "-D",
+          "suspicious",
+          "-A",
+          "no-unused-vars",
+          tmpFile,
+        ],
+        {
+          stdio: "pipe",
+          timeout: 10000,
+        },
+      );
+    } catch (execError: unknown) {
+      // oxlint은 lint 에러가 있으면 exit code != 0으로 종료하지만 --fix는 적용됨
+      if (execError instanceof Error) {
+        const errObj = execError as Error & { status?: number | null; code?: string };
+        if (typeof errObj.status === "number") {
+          // exit code가 있는 경우 정상적인 lint 결과 (fix 적용 완료)
+          Naite.t("formatCode:oxlint-exit", errObj.status);
+        } else {
+          // ENOENT, EACCES 등 실행 자체 실패
+          throw execError;
+        }
+      } else {
+        throw execError;
+      }
+    }
 
-  // 포맷팅 한 번 더 (import 구문에 type 키워드 추가되는 경우 maxWidth 초과로 인한 에러 발생)
-  const formattedAgain = biome.formatContent(projectKey, linted.content, { filePath });
-  if (formattedAgain.diagnostics.filter((d) => d.severity === "error").length > 0) {
-    console.error(formattedAgain.diagnostics);
-    throw new Error("Biome format error");
-  }
+    const lintFixed = readFileSync(tmpFile, "utf-8");
+    Naite.t("formatCode:linted", lintFixed);
 
-  return formattedAgain.content;
+    // lint fix 후 재포맷 (import 구문 변경으로 인한 정렬 등)
+    const reformatted = await format(fileName, lintFixed, OXFMT_OPTIONS);
+    if (reformatted.errors.length > 0) {
+      const errorMessages = reformatted.errors
+        .filter((e) => e.severity === "Error")
+        .map((e) => e.message);
+      if (errorMessages.length > 0) {
+        !isTest() && console.error("oxfmt reformat errors:", errorMessages);
+        throw new Error(`oxfmt reformat error: ${errorMessages.join(", ")}`);
+      }
+    }
+
+    return reformatted.code;
+  } finally {
+    try {
+      unlinkSync(tmpFile);
+    } catch {
+      // 임시 파일 정리 실패는 무시
+    }
+  }
 }

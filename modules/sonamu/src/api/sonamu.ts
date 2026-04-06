@@ -269,13 +269,7 @@ class SonamuClass {
     await TemplateManager.autoload();
     await this.syncer.autoloadSSRRoutes();
 
-    const { isLocal, isTest } = await import("../utils/controller");
-    if (isLocal()) {
-      // 로컬에서는 코드 생성을 위해 Biome 셋업이 필요함 (현재 apiRootPath 전달하여 실행)
-      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
-    }
-
-    const { isHotReloadServer } = await import("../utils/controller");
+    const { isLocal, isTest, isHotReloadServer } = await import("../utils/controller");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
       await this.startWatcher();

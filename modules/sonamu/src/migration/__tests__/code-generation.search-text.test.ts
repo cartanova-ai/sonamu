@@ -3,7 +3,6 @@ import { Sonamu } from "../../api";
 import { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import type { MigrationSet } from "../../types/types";
-import { setupBiome } from "../../utils/formatter";
 import {
   generateAlterCode,
   generateCreateCode,
@@ -13,7 +12,6 @@ import { getMigrationSetFromEntity } from "../migration-set";
 
 const TEST_API_ROOT = "/Users/Nebuleto/Workspace/sonamu/modules/sonamu";
 
-setupBiome(TEST_API_ROOT);
 Sonamu.apiRootPath = TEST_API_ROOT;
 
 let entitySeq = 0;
