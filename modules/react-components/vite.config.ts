@@ -56,7 +56,7 @@ export default defineConfig({
       formats: ["es"],
       fileName: (format) => `react-components.${format}.js`,
     },
-    rollupOptions: {
+    rolldownOptions: {
       external: ["react", "react-dom", "@tanstack/react-router", /^better-auth/, /^@better-auth/],
     },
   },

@@ -115,9 +115,9 @@ catalog:
   '@types/react-syntax-highlighter': ^15.5.13
   '@types/supertest': ^6.0.3
   '@typescript/native-preview': ^7.0.0-dev.20251225.1
-  '@vitejs/plugin-react': 4.7.0
-  '@vitejs/plugin-react-swc': ^4.1.3
-  '@vitest/coverage-v8': ^4.0.12
+  '@vitejs/plugin-react': 6.0.1
+  '@vitejs/plugin-react-swc': ^4.3.0
+  '@vitest/coverage-v8': ^4.1.2
   '@xyflow/react': ^12.9.3
   ai: ^6.0.1
   autoprefixer: ^10.4.20
@@ -213,10 +213,10 @@ catalog:
   unplugin-icons: 0.20.2
   uuid: ^13.0.0
   vaul: ^1.1.2
-  vite: 7.3.0
+  vite: 8.0.3
   vite-plugin-dts: 4.5.4
   vite-tsconfig-paths: ^5.1.4
-  vitest: ^4.0.10
+  vitest: ^4.1.2
   voyageai: ^0.0.8
   xlsx: ^0.18.5
   zod: ^4.3.6
