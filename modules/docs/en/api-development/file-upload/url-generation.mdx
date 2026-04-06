@@ -38,18 +38,17 @@ Public URL is automatically generated after calling `saveToDisk()`.
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async upload(params: {
-    file: UploadedFile;
-  }): Promise<{
+  @upload()
+  async upload(): Promise<{
     url: string;
     signedUrl: string;
   }> {
-    const { file } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Save file
-    await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    await file.saveToDisk("fs", `uploads/${Date.now()}.${file.extname}`);
     
     // URLs auto-generated
     const publicUrl = file.url!;        // Public URL

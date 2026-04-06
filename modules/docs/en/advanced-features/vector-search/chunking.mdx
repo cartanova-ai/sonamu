@@ -9,12 +9,11 @@ You're building a feature to upload blog posts or manuals to your Sonamu app:
 
 ```typescript
 class DocumentModelClass extends BaseModelClass {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
-    const content = await file.toBuffer().then(b => b.toString());
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
+    const content = file.buffer.toString();
 
     // Attempting to generate embedding
     const embedding = await Embedding.embedOne(content, 'voyage', 'document');
@@ -87,12 +86,11 @@ const chunks = chunking.chunk("Long text...");
 
 ```typescript
 class DocumentModelClass extends BaseModelClass {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadLongDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
-    const content = await file.toBuffer().then(b => b.toString());
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
+    const content = file.buffer.toString();
 
     // 1. Chunking
     const chunking = new Chunking({
@@ -242,12 +240,11 @@ You're building a development documentation search system with Sonamu.
 **Step 1: Conditional Chunking**
 
 ```typescript
-@upload({ mode: 'single' })
-@api({ httpMethod: 'POST' })
+@upload()
 async uploadTechDoc() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
-  const content = await file.toBuffer().then(b => b.toString());
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
+  const content = file.buffer.toString();
 
   const chunking = new Chunking({
     chunkSize: 500,

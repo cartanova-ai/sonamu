@@ -51,16 +51,13 @@ class FileModelClass extends BaseModelClass<
   }
   
   // Single file upload
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadSingle(params: {
-    file: UploadedFile;
-    title?: string;
-  }): Promise<{
+  @upload()
+  async uploadSingle(): Promise<{
     fileId: number;
     url: string;
   }> {
-    const { file, title } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
     
     if (!file) {
       throw new Error("File is required");
@@ -74,7 +71,7 @@ class FileModelClass extends BaseModelClass<
     });
     
     // Save file
-    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
     
     // Save metadata to DB
     const wdb = this.getPuri("w");
@@ -85,7 +82,6 @@ class FileModelClass extends BaseModelClass<
         mime_type: file.mimetype,
         size: file.size,
         url,
-        title,
       })
       .returning({ id: "id" });
     
@@ -110,31 +106,27 @@ class FileModelClass extends BaseModelClass<
     super("File", fileSubsetQueries, fileLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "multiple" })
-  async uploadMultiple(params: {
-    files: UploadedFile[];
-    category?: string;
-  }): Promise<{
+  @upload()
+  async uploadMultiple(): Promise<{
     uploadedFiles: Array<{
       fileId: number;
       filename: string;
       url: string;
     }>;
   }> {
-    const { files, category } = params;
+    const { bufferedFiles } = Sonamu.getContext();
     
-    if (!files || files.length === 0) {
+    if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new Error("At least one file is required");
     }
     
     const uploadedFiles = [];
     const wdb = this.getPuri("w");
     
-    for (const file of files) {
+    for (const file of bufferedFiles) {
       // Save file
       const key = `uploads/${Date.now()}-${file.filename}`;
-      const url = await file.saveToDisk(key);
+      const url = await file.saveToDisk("fs", key);
       
       // Save to DB
       const [record] = await wdb
@@ -144,7 +136,6 @@ class FileModelClass extends BaseModelClass<
           mime_type: file.mimetype,
           size: file.size,
           url,
-          category,
         })
         .returning({ id: "id" });
       
@@ -254,34 +245,26 @@ class FileModelClass extends BaseModelClass<
     super("File", fileSubsetQueries, fileLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadToS3(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload()
+  async uploadToS3(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Save to S3 disk
-    const url = await file.saveToDisk(
-      `uploads/${Date.now()}-${file.filename}`,
-      "s3" // Disk name
-    );
+    const url = await file.saveToDisk("s3", `uploads/${Date.now()}-${file.filename}`);
     
     return { url };
   }
   
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadPublic(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload()
+  async uploadPublic(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Save to public disk
-    const url = await file.saveToDisk(
-      `public/${Date.now()}-${file.filename}`,
-      "public"
-    );
+    const url = await file.saveToDisk("public", `public/${Date.now()}-${file.filename}`);
     
     return { url };
   }
@@ -335,12 +318,10 @@ class ImageModelClass extends BaseModelClass<
     super("Image", imageSubsetQueries, imageLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadImage(params: {
-    image: UploadedFile;
-  }): Promise<{ imageId: number; url: string }> {
-    const { image } = params;
+  @upload()
+  async uploadImage(): Promise<{ imageId: number; url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
     
     // Check file exists
     if (!image) {
@@ -366,7 +347,7 @@ class ImageModelClass extends BaseModelClass<
     }
     
     // Save image
-    const url = await image.saveToDisk(`images/${Date.now()}.${ext}`);
+    const url = await image.saveToDisk("fs", `images/${Date.now()}.${ext}`);
     
     // Save to DB
     const wdb = this.getPuri("w");
@@ -403,11 +384,8 @@ class UserModelClass extends BaseModelClass<
     super("User", userSubsetQueries, userLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadProfileImage(params: {
-    image: UploadedFile;
-  }): Promise<{
+  @upload()
+  async uploadProfileImage(): Promise<{
     imageId: number;
     url: string;
   }> {
@@ -417,7 +395,8 @@ class UserModelClass extends BaseModelClass<
       throw new Error("Authentication required");
     }
     
-    const { image } = params;
+    const { bufferedFiles } = context;
+    const image = bufferedFiles?.[0];
     
     // Validation
     if (!image) {
@@ -436,7 +415,7 @@ class UserModelClass extends BaseModelClass<
     // Save file
     const ext = image.extname;
     const key = `profiles/${context.user.id}/${Date.now()}.${ext}`;
-    const url = await image.saveToDisk(key);
+    const url = await image.saveToDisk("fs", key);
     
     // Delete existing profile image
     const rdb = this.getPuri("r");
@@ -493,12 +472,10 @@ class PostModelClass extends BaseModelClass<
     super("Post", postSubsetQueries, postLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "multiple" })
+  @upload()
   async createWithAttachments(params: {
     title: string;
     content: string;
-    attachments?: UploadedFile[];
   }): Promise<{
     postId: number;
     attachmentUrls: string[];
@@ -509,7 +486,8 @@ class PostModelClass extends BaseModelClass<
       throw new Error("Authentication required");
     }
     
-    const { title, content, attachments } = params;
+    const { bufferedFiles } = context;
+    const { title, content } = params;
     
     const wdb = this.getPuri("w");
     
@@ -526,8 +504,8 @@ class PostModelClass extends BaseModelClass<
     const attachmentUrls: string[] = [];
     
     // Process attachments
-    if (attachments && attachments.length > 0) {
-      for (const file of attachments) {
+    if (bufferedFiles && bufferedFiles.length > 0) {
+      for (const file of bufferedFiles) {
         // Validation
         if (file.size > 20 * 1024 * 1024) {
           throw new Error(`File ${file.filename} too large (max 20MB)`);
@@ -536,7 +514,7 @@ class PostModelClass extends BaseModelClass<
         // Save
         const ext = file.extname;
         const key = `posts/${post.id}/${Date.now()}.${ext}`;
-        const url = await file.saveToDisk(key);
+        const url = await file.saveToDisk("fs", key);
         
         // Save attachment info to DB
         await wdb.table("post_attachments").insert({
@@ -677,7 +655,7 @@ export function FileUpload() {
 <Warning>
 **Cautions when setting up file upload**:
 1. Fastify multipart plugin must be registered
-2. `@upload` decorator is used with `@api`
+2. `@upload` is used independently (without `@api`)
 3. Set file size limits
 4. MIME type validation
 5. Check Storage configuration

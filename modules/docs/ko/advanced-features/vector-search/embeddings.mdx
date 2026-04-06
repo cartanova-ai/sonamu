@@ -330,11 +330,11 @@ Sonamu로 고객 지원 시스템을 만들고 있습니다.
 class KnowledgeBaseModelClass extends BaseModelClass {
   @upload()
   async uploadDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     // 파일 읽기
-    const content = await file.toBuffer().then(b => b.toString());
+    const content = file.buffer.toString();
     
     // 임베딩 생성
     const embedding = await Embedding.embedOne(

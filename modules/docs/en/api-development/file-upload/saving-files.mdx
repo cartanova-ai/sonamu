@@ -40,15 +40,14 @@ The `saveToDisk()` method of `UploadedFile` is the simplest way to save files.
 import type { UploadedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async upload(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload()
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Save file (default disk)
-    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
     
     return { url };
   }
@@ -59,18 +58,14 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadToS3(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload()
+  async uploadToS3(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Save to S3 disk
-    const url = await file.saveToDisk(
-      `uploads/${Date.now()}-${file.filename}`,
-      "s3" // Disk name
-    );
+    const url = await file.saveToDisk("s3", `uploads/${Date.now()}-${file.filename}`);
     
     return { url };
   }
@@ -255,12 +250,11 @@ const signedUrl = await disk.getSignedUrl(key, expiresIn);
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async upload(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
-    const { file } = params;
+  @upload()
+  async upload(): Promise<{ url: string }> {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // Generate date-based path
     const now = new Date();
@@ -270,7 +264,7 @@ class FileModel extends BaseModelClass {
     
     const key = `uploads/${year}/${month}/${day}/${Date.now()}.${file.extname}`;
     
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
     
     return { url };
   }
@@ -281,23 +275,22 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async upload(params: {
-    file: UploadedFile;
-  }): Promise<{ url: string }> {
+  @upload()
+  async upload(): Promise<{ url: string }> {
     const context = Sonamu.getContext();
     
     if (!context.user) {
       throw new Error("Authentication required");
     }
     
-    const { file } = params;
+    const { bufferedFiles } = context;
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     // User-specific path
     const key = `users/${context.user.id}/${Date.now()}.${file.extname}`;
     
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk("fs", key);
     
     return { url };
   }
@@ -308,19 +301,20 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class MediaModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
+  @upload()
   async uploadMedia(params: {
-    file: UploadedFile;
     category: "public" | "private";
   }): Promise<{ url: string }> {
-    const { file, category } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
+    const { category } = params;
     
     // Select disk by category
     const diskName = category === "public" ? "public" : "private";
     
     const key = `media/${Date.now()}.${file.extname}`;
-    const url = await file.saveToDisk(key, diskName);
+    const url = await file.saveToDisk(diskName, key);
     
     return { url };
   }
@@ -333,26 +327,25 @@ class MediaModel extends BaseModelClass {
 import sharp from "sharp";
 
 class ImageModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadOptimized(params: {
-    image: UploadedFile;
-  }): Promise<{
+  @upload()
+  async uploadOptimized(): Promise<{
     originalUrl: string;
     thumbnailUrl: string;
     mediumUrl: string;
   }> {
-    const { image } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const image = bufferedFiles?.[0];
+    if (!image) throw new Error("Image is required");
     
     // Original image Buffer
-    const buffer = await image.toBuffer();
+    const buffer = image.buffer;
     
     const timestamp = Date.now();
     const ext = image.extname;
     
     // Save original
     const originalKey = `images/original/${timestamp}.${ext}`;
-    const originalUrl = await image.saveToDisk(originalKey);
+    const originalUrl = await image.saveToDisk("fs", originalKey);
     
     // Get Storage Manager
     const disk = Sonamu.storage.use();
@@ -394,21 +387,20 @@ class ImageModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
-  @upload({ mode: "single" })
-  async uploadWithBackup(params: {
-    file: UploadedFile;
-  }): Promise<{
+  @upload()
+  async uploadWithBackup(): Promise<{
     primaryUrl: string;
     backupUrl: string;
   }> {
-    const { file } = params;
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
+    if (!file) throw new Error("File is required");
     
     const key = `uploads/${Date.now()}.${file.extname}`;
-    const buffer = await file.toBuffer();
+    const buffer = file.buffer;
     
     // Save to primary disk
-    const primaryUrl = await file.saveToDisk(key, "s3");
+    const primaryUrl = await file.saveToDisk("s3", key);
     
     // Also save to backup disk
     const backupDisk = Sonamu.storage.use("backup");

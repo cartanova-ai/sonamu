@@ -185,23 +185,25 @@ export const config: SonamuConfig = {
 ```typescript
 class UserModelClass extends BaseModelClass {
   // 프로필 사진 → 공개 디스크
+  @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
     const url = await file.saveToDisk(
-      `avatars/${ctx.user.id}.png`,
-      'public'  // 공개 디스크
+      'public',
+      `avatars/${ctx.user.id}.png`
     );
     return url;
   }
   
-  // 개인 문서 → 기본 디스크 (private)
+  // 개인 문서 → 기본 디스크
+  @upload()
   async uploadDocument(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
     const url = await file.saveToDisk(
+      'fs',
       `documents/${ctx.user.id}/${file.filename}`
-      // 기본 디스크 사용
     );
     return url;
   }
@@ -308,18 +310,19 @@ export const config: SonamuConfig = {
 // 사용
 class FileModelClass extends BaseModelClass {
   // 영구 저장 → S3
-  async upload(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
-    return file.saveToDisk('uploads/file.pdf');  // S3
+  @upload({ consume: 'stream', destination: 's3' })
+  async upload() {
+    const { uploadedFiles } = Sonamu.getContext();
+    return uploadedFiles?.[0]?.url;  // S3 URL (이미 스트리밍 완료)
   }
 
   // 임시 처리 → 로컬
-  async processTempFile(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+  @upload()
+  async processTempFile() {
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0];
     const tempPath = `temp/${Date.now()}.tmp`;
-    await file.saveToDisk(tempPath, 'fs');  // 로컬
+    await file.saveToDisk('fs', tempPath);  // 로컬
     
     // 처리 후 삭제
     await Sonamu.storage.use('fs').delete(tempPath);
@@ -335,8 +338,8 @@ class FileModelClass extends BaseModelClass {
 class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
@@ -347,7 +350,7 @@ class UserModelClass extends BaseModelClass {
     const key = `avatars/${filename}`;
 
     // 기본 디스크에 저장
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
 
     // DB 업데이트
     await this.updateOne(['id', ctx.user.id], { avatar_url: url });
@@ -363,12 +366,12 @@ class UserModelClass extends BaseModelClass {
 class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
     const urls = await Promise.all(
-      files.map(async (file, index) => {
+      (bufferedFiles ?? []).map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
-        return await file.saveToDisk(key);
+        return await file.saveToDisk('fs', key);
       })
     );
     
@@ -383,18 +386,18 @@ class PostModelClass extends BaseModelClass {
 class FileModelClass extends BaseModelClass {
   @upload()
   async upload(type: 'public' | 'private') {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
     }
     
     // 타입에 따라 다른 디스크 사용
-    const disk = type === 'public' ? 'public' : undefined;
+    const diskName = type === 'public' ? 'public' : 'fs';
     const key = `${type}/${Date.now()}-${file.filename}`;
     
-    const url = await file.saveToDisk(key, disk);
+    const url = await file.saveToDisk(diskName, key);
     
     return { url, type };
   }

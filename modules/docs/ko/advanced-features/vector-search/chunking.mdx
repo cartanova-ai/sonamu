@@ -11,9 +11,9 @@ Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들�
 class DocumentModelClass extends BaseModelClass {
   @upload()
   async uploadDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
-    const content = await file.toBuffer().then(b => b.toString());
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
+    const content = file.buffer.toString();
 
     // 임베딩 생성 시도
     const embedding = await Embedding.embedOne(content, 'voyage', 'document');
@@ -88,9 +88,9 @@ const chunks = chunking.chunk("긴 텍스트...");
 class DocumentModelClass extends BaseModelClass {
   @upload()
   async uploadLongDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
-    const content = await file.toBuffer().then(b => b.toString());
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
+    const content = file.buffer.toString();
     
     // 1. 청킹
     const chunking = new Chunking({
@@ -241,11 +241,10 @@ Sonamu로 개발 문서 검색 시스템을 만들고 있습니다.
 
 ```typescript
 @upload()
-@api({ httpMethod: 'POST' })
 async uploadTechDoc() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
-  const content = await file.toBuffer().then(b => b.toString());
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
+  const content = file.buffer.toString();
   
   const chunking = new Chunking({
     chunkSize: 500,

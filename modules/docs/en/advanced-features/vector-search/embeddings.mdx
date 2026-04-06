@@ -328,14 +328,13 @@ You're building a customer support system with Sonamu.
 **Step 1: Document Upload API**
 ```typescript
 class KnowledgeBaseModelClass extends BaseModelClass {
-  @upload({ mode: 'single' })
-  @api({ httpMethod: 'POST' })
+  @upload()
   async uploadDocument() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
 
     // Read file
-    const content = await file.toBuffer().then(b => b.toString());
+    const content = file.buffer.toString();
 
     // Generate embedding
     const embedding = await Embedding.embedOne(

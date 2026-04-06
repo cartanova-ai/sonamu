@@ -309,18 +309,17 @@ https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expire
 ### UploadedFile's signedUrl
 
 ```typescript
-@upload({ mode: 'single' })
-@api({ httpMethod: 'POST' })
+@upload()
 async uploadPrivateFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
 
   if (!file) {
     throw new Error('No file provided');
   }
 
   // Save
-  await file.saveToDisk('private/doc.pdf', 's3');
+  await file.saveToDisk('s3', 'private/doc.pdf');
 
   return {
     url: file.url,           // Unsigned URL
@@ -409,11 +408,11 @@ export const config: SonamuConfig = {
 **Usage**:
 ```typescript
 // Images
-await file.saveToDisk('photo.jpg', 'images');
+await file.saveToDisk('images', 'photo.jpg');
 // URL: https://images.cdn.example.com/photo.jpg
 
 // Videos
-await file.saveToDisk('video.mp4', 'videos');
+await file.saveToDisk('videos', 'video.mp4');
 // URL: https://videos.cdn.example.com/video.mp4
 ```
 

@@ -311,15 +311,15 @@ https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expire
 ```typescript
 @upload()
 async uploadPrivateFile() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
   if (!file) {
     throw new Error('파일이 없습니다');
   }
 
   // 저장
-  await file.saveToDisk('private/doc.pdf', 's3');
+  await file.saveToDisk('s3', 'private/doc.pdf');
 
   return {
     url: file.url,           // Unsigned URL
@@ -408,11 +408,11 @@ export const config: SonamuConfig = {
 **사용**:
 ```typescript
 // 이미지
-await file.saveToDisk('photo.jpg', 'images');
+await file.saveToDisk('images', 'photo.jpg');
 // URL: https://images.cdn.example.com/photo.jpg
 
 // 비디오
-await file.saveToDisk('video.mp4', 'videos');
+await file.saveToDisk('videos', 'video.mp4');
 // URL: https://videos.cdn.example.com/video.mp4
 ```
 

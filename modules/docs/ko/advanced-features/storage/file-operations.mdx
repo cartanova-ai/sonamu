@@ -19,7 +19,7 @@ sequenceDiagram
     API->>API: @upload 데코레이터 실행
     API->>UploadedFile: new UploadedFile(rawFile)
     UploadedFile->>UploadedFile: 메타데이터 추출
-    API->>UploadedFile: saveToDisk(key, disk)
+    API->>UploadedFile: saveToDisk(disk, key)
     UploadedFile->>Disk: put(key, buffer)
     Disk->>Storage: 파일 저장
     Disk-->>UploadedFile: URL 반환
@@ -39,15 +39,15 @@ import { BaseModelClass, api, upload, Sonamu } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
     }
 
     // 파일 저장
-    const url = await file.saveToDisk(`avatars/${ctx.user.id}.png`);
+    const url = await file.saveToDisk('fs', `avatars/${ctx.user.id}.png`);
 
     return { url };
   }
@@ -71,17 +71,17 @@ await fetch('/api/user/uploadAvatar', {
 class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (files.length === 0) {
+    if ((bufferedFiles?.length ?? 0) === 0) {
       throw new Error('파일이 없습니다');
     }
     
     // 모든 파일 저장
     const urls = await Promise.all(
-      files.map(async (file, index) => {
+      (bufferedFiles ?? []).map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
-        return await file.saveToDisk(key);
+        return await file.saveToDisk('fs', key);
       })
     );
     
@@ -109,23 +109,23 @@ await fetch('/api/post/uploadImages?postId=1', {
 
 ```typescript
 // Context에서 업로드된 파일 접근
-const { files } = Sonamu.getContext();
+const { bufferedFiles } = Sonamu.getContext();
 
-// files는 UploadedFile[] (optional 배열)
+// bufferedFiles는 BufferedFile[] (optional 배열)
 type Context = {
   // ...
-  files?: UploadedFile[];
+  bufferedFiles?: BufferedFile[];
 };
 ```
 
 **단일 파일 접근**: 배열의 첫 번째 요소 사용
 ```typescript
-const file = files?.[0];  // 첫 번째 파일
+const file = bufferedFiles?.[0];  // 첫 번째 파일
 ```
 
 **다중 파일 접근**: 배열 순회
 ```typescript
-for (const file of files) {
+for (const file of (bufferedFiles ?? [])) {
   // 각 파일 처리
 }
 ```
@@ -135,19 +135,19 @@ for (const file of files) {
 ```typescript
 @upload()
 async upload() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // 첫 번째 파일 사용
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
   if (!file) {
     throw new Error('파일이 필요합니다');
   }
 
-  // file은 UploadedFile 인스턴스
+  // file은 BufferedFile 인스턴스
   console.log(file.filename);   // 원본 파일명
   console.log(file.mimetype);   // MIME 타입
   console.log(file.size);       // 파일 크기
 
-  return await file.saveToDisk('uploads/file.pdf');
+  return await file.saveToDisk('fs', 'uploads/file.pdf');
 }
 ```
 
@@ -162,8 +162,8 @@ async upload() {
     **원본 파일명**
     
     ```typescript
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
     console.log(file.filename);  // 'avatar.png'
     ```
   </Tab>
@@ -204,7 +204,7 @@ async upload() {
     **저장 후 URL** (unsigned)
     
     ```typescript
-    await file.saveToDisk('uploads/file.pdf');
+    await file.saveToDisk('fs', 'uploads/file.pdf');
     console.log(file.url);
     // '/uploads/file.pdf' (fs)
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf' (s3)
@@ -215,7 +215,7 @@ async upload() {
     **저장 후 서명된 URL** (S3)
     
     ```typescript
-    await file.saveToDisk('uploads/file.pdf');
+    await file.saveToDisk('s3', 'uploads/file.pdf');
     console.log(file.signedUrl);
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf?X-Amz-...'
     ```
@@ -226,28 +226,26 @@ async upload() {
 
 ### 메서드
 
-#### toBuffer()
+#### buffer
 
-파일을 Buffer로 변환합니다.
+파일을 Buffer로 접근합니다.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // 첫 번째 파일 사용
-const buffer = await file.toBuffer();
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
+const buffer = file.buffer;
 
 console.log(buffer instanceof Buffer);  // true
 console.log(buffer.length);  // 파일 크기 (바이트)
 ```
-
-**캐싱**: 한 번 호출하면 캐싱됨 (재호출 시 빠름)
 
 #### md5()
 
 파일의 MD5 해시를 계산합니다.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // 첫 번째 파일 사용
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 const hash = await file.md5();
 
 console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
@@ -258,19 +256,19 @@ console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
 - 파일 무결성 검증
 - 고유한 파일명 생성
 
-#### saveToDisk(key, diskName?)
+#### saveToDisk(diskName, key)
 
 파일을 디스크에 저장합니다.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // 첫 번째 파일 사용
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
-// 기본 디스크에 저장
-const url = await file.saveToDisk('uploads/file.pdf');
+// fs 디스크에 저장
+const url = await file.saveToDisk('fs', 'uploads/file.pdf');
 
 // 특정 디스크에 저장
-const url = await file.saveToDisk('uploads/file.pdf', 's3');
+const url = await file.saveToDisk('s3', 'uploads/file.pdf');
 ```
 
 **반환값**: 저장된 파일의 URL (unsigned)
@@ -283,8 +281,8 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
@@ -307,7 +305,7 @@ class UserModelClass extends BaseModelClass {
     const key = `avatars/user-${ctx.user.id}-${timestamp}.${ext}`;
 
     // 저장
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
 
     // DB 업데이트
     await this.updateOne(['id', ctx.user.id], {
@@ -326,15 +324,15 @@ class UserModelClass extends BaseModelClass {
 class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number, ctx: Context) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
     // 파일 개수 제한
-    if (files.length > 10) {
+    if ((bufferedFiles?.length ?? 0) > 10) {
       throw new Error('최대 10개까지 업로드 가능합니다');
     }
     
     // 이미지만 필터링
-    const imageFiles = files.filter(file => 
+    const imageFiles = (bufferedFiles ?? []).filter(file => 
       file.mimetype.startsWith('image/')
     );
     
@@ -348,7 +346,7 @@ class PostModelClass extends BaseModelClass {
         const timestamp = Date.now();
         const ext = file.extname || 'png';
         const key = `posts/${postId}/image-${index}-${timestamp}.${ext}`;
-        return await file.saveToDisk(key);
+        return await file.saveToDisk('fs', key);
       })
     );
     
@@ -363,8 +361,8 @@ class PostModelClass extends BaseModelClass {
 class FileModelClass extends BaseModelClass {
   @upload()
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
@@ -389,7 +387,7 @@ class FileModelClass extends BaseModelClass {
     
     // 파일 저장
     const key = `documents/${type}/${Date.now()}-${file.filename}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
     
     return { url, type, filename: file.filename };
   }
@@ -402,8 +400,8 @@ class FileModelClass extends BaseModelClass {
 class MediaModelClass extends BaseModelClass {
   @upload()
   async uploadMedia() {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
@@ -425,7 +423,7 @@ class MediaModelClass extends BaseModelClass {
     
     // 새 파일 저장
     const key = `media/${hash}.${file.extname}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
     
     // DB에 저장
     await this.saveOne({
@@ -447,19 +445,19 @@ class MediaModelClass extends BaseModelClass {
 class FileModelClass extends BaseModelClass {
   @upload()
   async upload(visibility: 'public' | 'private', ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // 첫 번째 파일 사용
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // 첫 번째 파일 사용
 
     if (!file) {
       throw new Error('파일이 없습니다');
     }
     
     // visibility에 따라 다른 디스크 사용
-    const disk = visibility === 'public' ? 'public' : 'private';
+    const diskName = visibility === 'public' ? 'public' : 'fs';
     const key = `${visibility}/${ctx.user.id}/${Date.now()}-${file.filename}`;
     
     // 저장
-    const url = await file.saveToDisk(key, disk);
+    const url = await file.saveToDisk(diskName, key);
     
     // DB에 저장
     await this.saveOne({
@@ -604,13 +602,13 @@ async deleteFile(key: string) {
 2. **고유한 파일명 사용**: 덮어쓰기 방지
    ```typescript
    // ❌ 원본 파일명 사용
-   await file.saveToDisk(`uploads/${file.filename}`);
+   await file.saveToDisk('fs', `uploads/${file.filename}`);
    
    // ✅ 타임스탬프 추가
-   await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+   await file.saveToDisk('fs', `uploads/${Date.now()}-${file.filename}`);
    
    // ✅ UUID 사용
-   await file.saveToDisk(`uploads/${uuid()}.${file.extname}`);
+   await file.saveToDisk('fs', `uploads/${uuid()}.${file.extname}`);
    ```
 
 3. **경로 검증**: 디렉토리 트래버설 방지

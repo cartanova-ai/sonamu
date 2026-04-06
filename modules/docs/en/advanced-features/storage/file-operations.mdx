@@ -19,7 +19,7 @@ sequenceDiagram
     API->>API: @upload decorator execution
     API->>UploadedFile: new UploadedFile(rawFile)
     UploadedFile->>UploadedFile: Extract metadata
-    API->>UploadedFile: saveToDisk(key, disk)
+    API->>UploadedFile: saveToDisk(disk, key)
     UploadedFile->>Disk: put(key, buffer)
     Disk->>Storage: Save file
     Disk-->>UploadedFile: Return URL
@@ -39,15 +39,15 @@ import { BaseModelClass, api, upload, Sonamu } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @upload()
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
     }
 
     // Save file
-    const url = await file.saveToDisk(`avatars/${ctx.user.id}.png`);
+    const url = await file.saveToDisk('fs', `avatars/${ctx.user.id}.png`);
 
     return { url };
   }
@@ -71,17 +71,17 @@ await fetch('/api/user/uploadAvatar', {
 class PostModelClass extends BaseModelClass {
   @upload()
   async uploadImages(postId: number) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
-    if (files.length === 0) {
+    if ((bufferedFiles?.length ?? 0) === 0) {
       throw new Error('No files provided');
     }
 
     // Save all files
     const urls = await Promise.all(
-      files.map(async (file, index) => {
+      (bufferedFiles ?? []).map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
-        return await file.saveToDisk(key);
+        return await file.saveToDisk('fs', key);
       })
     );
 
@@ -109,23 +109,23 @@ Access uploaded files through the `files` property of **Sonamu.getContext()**.
 
 ```typescript
 // Access uploaded files from Context
-const { files } = Sonamu.getContext();
+const { bufferedFiles } = Sonamu.getContext();
 
-// files is UploadedFile[] (optional array)
+// bufferedFiles is BufferedFile[] (optional array)
 type Context = {
   // ...
-  files?: UploadedFile[];
+  bufferedFiles?: BufferedFile[];
 };
 ```
 
 **Single file access**: Use the first element of the array
 ```typescript
-const file = files?.[0];  // First file
+const file = bufferedFiles?.[0];  // First file
 ```
 
 **Multiple file access**: Iterate through the array
 ```typescript
-for (const file of files) {
+for (const file of (bufferedFiles ?? [])) {
   // Process each file
 }
 ```
@@ -135,19 +135,19 @@ for (const file of files) {
 ```typescript
 @upload()
 async upload() {
-  const { files } = Sonamu.getContext();
-  const file = files?.[0]; // Use first file
+  const { bufferedFiles } = Sonamu.getContext();
+  const file = bufferedFiles?.[0]; // Use first file
 
   if (!file) {
     throw new Error('File is required');
   }
 
-  // file is an UploadedFile instance
+  // file is a BufferedFile instance
   console.log(file.filename);   // Original filename
   console.log(file.mimetype);   // MIME type
   console.log(file.size);       // File size
 
-  return await file.saveToDisk('uploads/file.pdf');
+  return await file.saveToDisk('fs', 'uploads/file.pdf');
 }
 ```
 
@@ -162,8 +162,8 @@ A class that wraps uploaded files.
     **Original filename**
 
     ```typescript
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
     console.log(file.filename);  // 'avatar.png'
     ```
   </Tab>
@@ -226,28 +226,26 @@ A class that wraps uploaded files.
 
 ### Methods
 
-#### toBuffer()
+#### buffer
 
-Converts the file to a Buffer.
+Accesses the file data as a Buffer.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // Use first file
-const buffer = await file.toBuffer();
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // Use first file
+const buffer = file.buffer;
 
 console.log(buffer instanceof Buffer);  // true
 console.log(buffer.length);  // File size (bytes)
 ```
-
-**Caching**: Cached after first call (fast on subsequent calls)
 
 #### md5()
 
 Calculates the MD5 hash of the file.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // Use first file
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // Use first file
 const hash = await file.md5();
 
 console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
@@ -258,19 +256,19 @@ console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
 - File integrity verification
 - Unique filename generation
 
-#### saveToDisk(key, diskName?)
+#### saveToDisk(diskName, key)
 
 Saves the file to disk.
 
 ```typescript
-const { files } = Sonamu.getContext();
-const file = files?.[0]; // Use first file
+const { bufferedFiles } = Sonamu.getContext();
+const file = bufferedFiles?.[0]; // Use first file
 
-// Save to default disk
-const url = await file.saveToDisk('uploads/file.pdf');
+// Save to fs disk
+const url = await file.saveToDisk('fs', 'uploads/file.pdf');
 
 // Save to specific disk
-const url = await file.saveToDisk('uploads/file.pdf', 's3');
+const url = await file.saveToDisk('s3', 'uploads/file.pdf');
 ```
 
 **Return value**: URL of the saved file (unsigned)
@@ -282,10 +280,9 @@ const url = await file.saveToDisk('uploads/file.pdf', 's3');
 ```typescript
 class UserModelClass extends BaseModelClass {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -308,7 +305,7 @@ class UserModelClass extends BaseModelClass {
     const key = `avatars/user-${ctx.user.id}-${timestamp}.${ext}`;
 
     // Save
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
 
     // Update DB
     await this.updateOne(['id', ctx.user.id], {
@@ -326,17 +323,16 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 class PostModelClass extends BaseModelClass {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadImages(postId: number, ctx: Context) {
-    const { files } = Sonamu.getContext();
+    const { bufferedFiles } = Sonamu.getContext();
 
     // Limit number of files
-    if (files.length > 10) {
+    if ((bufferedFiles?.length ?? 0) > 10) {
       throw new Error('Maximum 10 files can be uploaded');
     }
 
     // Filter images only
-    const imageFiles = files.filter(file =>
+    const imageFiles = (bufferedFiles ?? []).filter(file =>
       file.mimetype.startsWith('image/')
     );
 
@@ -350,7 +346,7 @@ class PostModelClass extends BaseModelClass {
         const timestamp = Date.now();
         const ext = file.extname || 'png';
         const key = `posts/${postId}/image-${index}-${timestamp}.${ext}`;
-        return await file.saveToDisk(key);
+        return await file.saveToDisk('fs', key);
       })
     );
 
@@ -364,10 +360,9 @@ class PostModelClass extends BaseModelClass {
 ```typescript
 class FileModelClass extends BaseModelClass {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadDocument(type: 'pdf' | 'excel' | 'word') {
-    const { files } = Sonamu.getContext();
-    const file = files?.[0]; // Use first file
+    const { bufferedFiles } = Sonamu.getContext();
+    const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
       throw new Error('No file provided');
@@ -392,7 +387,7 @@ class FileModelClass extends BaseModelClass {
 
     // Save file
     const key = `documents/${type}/${Date.now()}-${file.filename}`;
-    const url = await file.saveToDisk(key);
+    const url = await file.saveToDisk('fs', key);
 
     return { url, type, filename: file.filename };
   }
@@ -609,13 +604,13 @@ async deleteFile(key: string) {
 2. **Use unique filenames**: Prevent overwrites
    ```typescript
    // ❌ Using original filename
-   await file.saveToDisk(`uploads/${file.filename}`);
+   await file.saveToDisk('fs', `uploads/${file.filename}`);
 
    // ✅ Add timestamp
-   await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+   await file.saveToDisk('fs', `uploads/${Date.now()}-${file.filename}`);
 
    // ✅ Use UUID
-   await file.saveToDisk(`uploads/${uuid()}.${file.extname}`);
+   await file.saveToDisk('fs', `uploads/${uuid()}.${file.extname}`);
    ```
 
 3. **Path validation**: Prevent directory traversal
