@@ -64,14 +64,10 @@ export function bootstrap(vi: VitestUtils, options?: BootstrapOptions) {
 
 function getMockContext(): Context {
   return {
-    ip: "127.0.0.1",
-    session: {},
+    session: null,
     user: null,
-    passport: {
-      login: async () => {},
-      logout: () => {},
-    },
     naiteStore: Naite.createStore(),
+    locale: "",
   } as unknown as Context;
 }
 
