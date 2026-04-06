@@ -1,6 +1,6 @@
 ---
-title: 'where'
-description: 'WHERE 절로 조건 필터링'
+title: "where"
+description: "WHERE 절로 조건 필터링"
 ---
 
 `where`는 쿼리 결과를 필터링하는 조건을 지정하는 메서드입니다. 다양한 연산자와 조건 조합을 지원하며, 타입 안전하게 필터링할 수 있습니다.
@@ -10,7 +10,8 @@ description: 'WHERE 절로 조건 필터링'
 ### 단순 등호 조건
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .where("users.status", "active")
   .select({ id: "users.id", name: "users.name" });
 
@@ -21,19 +22,17 @@ const users = await puri.table("users")
 
 ```typescript
 // 보다 큰
-await puri.table("users")
-  .where("users.age", ">", 18);
+await puri.table("users").where("users.age", ">", 18);
 
 // 보다 작거나 같음
-await puri.table("orders")
-  .where("orders.amount", "<=", 1000);
+await puri.table("orders").where("orders.amount", "<=", 1000);
 
 // 같지 않음
-await puri.table("posts")
-  .where("posts.status", "!=", "deleted");
+await puri.table("posts").where("posts.status", "!=", "deleted");
 ```
 
 **지원 연산자:**
+
 - `=` - 같음 (기본값)
 - `!=` - 같지 않음
 - `>` - 보다 큼
@@ -50,16 +49,17 @@ await puri.table("posts")
 여러 AND 조건을 객체로 지정할 수 있습니다.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .where({
     "users.status": "active",
     "users.role": "admin",
-    "users.verified": true
+    "users.verified": true,
   })
   .select({ id: "users.id", name: "users.name" });
 
-// WHERE users.status = 'active' 
-//   AND users.role = 'admin' 
+// WHERE users.status = 'active'
+//   AND users.role = 'admin'
 //   AND users.verified = true
 ```
 
@@ -69,14 +69,12 @@ const users = await puri.table("users")
 
 ```typescript
 // 명시적 null 체크
-await puri.table("users")
-  .where("users.deleted_at", null);
+await puri.table("users").where("users.deleted_at", null);
 
 // WHERE users.deleted_at IS NULL
 
 // 연산자 사용
-await puri.table("users")
-  .where("users.deleted_at", "=", null);
+await puri.table("users").where("users.deleted_at", "=", null);
 
 // WHERE users.deleted_at IS NULL
 ```
@@ -84,8 +82,7 @@ await puri.table("users")
 ### IS NOT NULL
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "!=", null);
+await puri.table("users").where("users.email", "!=", null);
 
 // WHERE users.email IS NOT NULL
 ```
@@ -96,27 +93,22 @@ await puri.table("users")
 
 ```typescript
 // 포함
-await puri.table("users")
-  .where("users.email", "like", "%@gmail.com");
+await puri.table("users").where("users.email", "like", "%@gmail.com");
 
 // 시작
-await puri.table("users")
-  .where("users.name", "like", "John%");
+await puri.table("users").where("users.name", "like", "John%");
 
 // 끝
-await puri.table("users")
-  .where("users.phone", "like", "%1234");
+await puri.table("users").where("users.phone", "like", "%1234");
 
 // 어디든 포함
-await puri.table("posts")
-  .where("posts.title", "like", "%typescript%");
+await puri.table("posts").where("posts.title", "like", "%typescript%");
 ```
 
 ### NOT LIKE
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "not like", "%spam%");
+await puri.table("users").where("users.email", "not like", "%spam%");
 
 // WHERE users.email NOT LIKE '%spam%'
 ```
@@ -127,8 +119,7 @@ PostgreSQL에서 대소문자를 구분하지 않는 패턴 매칭을 수행합�
 
 ```typescript
 // 대소문자 무관하게 검색
-await puri.table("users")
-  .where("users.name", "ilike", "%john%");
+await puri.table("users").where("users.name", "ilike", "%john%");
 
 // WHERE users.name ILIKE '%john%'
 // 'John', 'JOHN', 'john' 모두 매칭
@@ -137,15 +128,15 @@ await puri.table("users")
 ### NOT ILIKE (PostgreSQL)
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "not ilike", "%SPAM%");
+await puri.table("users").where("users.email", "not ilike", "%SPAM%");
 
 // WHERE users.email NOT ILIKE '%SPAM%'
 // 'spam', 'Spam', 'SPAM' 모두 제외
 ```
 
 <Info>
-`ilike`와 `not ilike`는 PostgreSQL 전용 연산자입니다. MySQL에서는 `LOWER()` 함수와 `like`를 조합하여 유사한 효과를 얻을 수 있습니다.
+  `ilike`와 `not ilike`는 PostgreSQL 전용 연산자입니다. MySQL에서는 `LOWER()` 함수와 `like`를
+  조합하여 유사한 효과를 얻을 수 있습니다.
 </Info>
 
 ## whereIn / whereNotIn
@@ -155,14 +146,12 @@ await puri.table("users")
 ```typescript
 // IN
 const userIds = [1, 2, 3, 4, 5];
-await puri.table("users")
-  .whereIn("users.id", userIds);
+await puri.table("users").whereIn("users.id", userIds);
 
 // WHERE users.id IN (1, 2, 3, 4, 5)
 
 // NOT IN
-await puri.table("users")
-  .whereNotIn("users.status", ["banned", "suspended"]);
+await puri.table("users").whereNotIn("users.status", ["banned", "suspended"]);
 
 // WHERE users.status NOT IN ('banned', 'suspended')
 ```
@@ -171,8 +160,7 @@ await puri.table("users")
 
 ```typescript
 // 빈 배열은 항상 false
-await puri.table("users")
-  .whereIn("users.id", []);
+await puri.table("users").whereIn("users.id", []);
 
 // WHERE 1 = 0 (아무것도 반환하지 않음)
 ```
@@ -184,45 +172,42 @@ await puri.table("users")
 괄호로 묶인 조건들을 만듭니다.
 
 ```typescript
-await puri.table("users")
+await puri
+  .table("users")
   .where("users.role", "admin")
   .whereGroup((group) => {
-    group.where("users.status", "active")
-         .orWhere("users.status", "pending");
+    group.where("users.status", "active").orWhere("users.status", "pending");
   });
 
-// WHERE users.role = 'admin' 
+// WHERE users.role = 'admin'
 //   AND (users.status = 'active' OR users.status = 'pending')
 ```
 
 ### orWhereGroup (OR 그룹)
 
 ```typescript
-await puri.table("products")
+await puri
+  .table("products")
   .where("products.published", true)
   .orWhereGroup((group) => {
-    group.where("products.featured", true)
-         .where("products.stock", ">", 0);
+    group.where("products.featured", true).where("products.stock", ">", 0);
   });
 
-// WHERE products.published = true 
+// WHERE products.published = true
 //   OR (products.featured = true AND products.stock > 0)
 ```
 
 ### 중첩 그룹
 
 ```typescript
-await puri.table("orders")
-  .whereGroup((outer) => {
-    outer.where("orders.status", "completed")
-         .whereGroup((inner) => {
-           inner.where("orders.amount", ">", 1000)
-                .orWhere("orders.vip", true);
-         });
+await puri.table("orders").whereGroup((outer) => {
+  outer.where("orders.status", "completed").whereGroup((inner) => {
+    inner.where("orders.amount", ">", 1000).orWhere("orders.vip", true);
   });
+});
 
 // WHERE (
-//   orders.status = 'completed' 
+//   orders.status = 'completed'
 //   AND (orders.amount > 1000 OR orders.vip = true)
 // )
 ```
@@ -234,23 +219,19 @@ await puri.table("orders")
 MySQL의 FULLTEXT 인덱스를 사용합니다.
 
 ```typescript
-await puri.table("posts")
-  .whereMatch("posts.content", "typescript programming");
+await puri.table("posts").whereMatch("posts.content", "typescript programming");
 
 // WHERE MATCH (posts.content) AGAINST ('typescript programming')
 ```
 
-<Info>
-`whereMatch`를 사용하려면 해당 컬럼에 FULLTEXT 인덱스가 있어야 합니다.
-</Info>
+<Info>`whereMatch`를 사용하려면 해당 컬럼에 FULLTEXT 인덱스가 있어야 합니다.</Info>
 
 ### whereTsSearch (PostgreSQL)
 
 PostgreSQL의 tsvector를 사용합니다.
 
 ```typescript
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript programming");
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript programming");
 
 // WHERE posts.content_tsv @@ websearch_to_tsquery('simple', 'typescript programming')
 ```
@@ -259,15 +240,13 @@ await puri.table("posts")
 
 ```typescript
 // 파서 지정
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript", {
-    parser: "plainto_tsquery",  // 또는 "to_tsquery", "phraseto_tsquery"
-    config: "english"  // 언어 설정
-  });
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript", {
+  parser: "plainto_tsquery", // 또는 "to_tsquery", "phraseto_tsquery"
+  config: "english", // 언어 설정
+});
 
 // 간단한 config만 지정
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript", "english");
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript", "english");
 ```
 
 ### whereSearch (PGroonga)
@@ -276,33 +255,25 @@ PGroonga 확장을 사용한 전문 검색입니다.
 
 ```typescript
 // 단일 컬럼 검색
-await puri.table("posts")
-  .whereSearch("posts.title", "타입스크립트");
+await puri.table("posts").whereSearch("posts.title", "타입스크립트");
 
 // WHERE posts.title &@~ pgroonga_condition('타입스크립트')
 
 // 여러 컬럼 검색 (배열)
-await puri.table("posts")
-  .whereSearch(
-    ["posts.title", "posts.content"],
-    "타입스크립트"
-  );
+await puri.table("posts").whereSearch(["posts.title", "posts.content"], "타입스크립트");
 
-// WHERE ARRAY[posts.title::text, posts.content::text] 
+// WHERE ARRAY[posts.title::text, posts.content::text]
 //   &@~ pgroonga_condition('타입스크립트')
 
 // 가중치 지정
-await puri.table("posts")
-  .whereSearch(
-    ["posts.title", "posts.content"],
-    "타입스크립트",
-    { weights: [10, 1] }  // title이 content보다 10배 중요
-  );
+await puri.table("posts").whereSearch(
+  ["posts.title", "posts.content"],
+  "타입스크립트",
+  { weights: [10, 1] }, // title이 content보다 10배 중요
+);
 ```
 
-<Info>
-PGroonga 검색은 사용할 인덱스와 **동일한 컬럼 구성**으로 검색해야 인덱스가 사용됩니다.
-</Info>
+<Info>PGroonga 검색은 사용할 인덱스와 **동일한 컬럼 구성**으로 검색해야 인덱스가 사용됩니다.</Info>
 
 ### whereFuzzy (pg_trgm)
 
@@ -310,8 +281,7 @@ PostgreSQL의 `pg_trgm` 확장을 사용한 퍼지 문자열 매칭입니다. tr
 
 ```typescript
 // 기본 사용법 (word similarity, <% 연산자)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript");
+await puri.table("items").whereFuzzy("items.search_text", "typscript");
 
 // WHERE 'typscript'::text <% items.search_text::text
 ```
@@ -320,28 +290,27 @@ await puri.table("items")
 
 ```typescript
 // similarity (% 연산자)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript", { operator: "%" });
+await puri.table("items").whereFuzzy("items.search_text", "typscript", { operator: "%" });
 
 // WHERE items.search_text::text % 'typscript'::text
 
 // strict word similarity (<<% 연산자)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
+await puri.table("items").whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
 
 // WHERE 'typscript'::text <<% items.search_text::text
 ```
 
 **연산자 비교:**
 
-| 연산자 | 의미 | SQL | 설명 |
-|--------|------|-----|------|
-| `<%` (기본) | word similarity | `'query'::text <% column::text` | 쿼리가 컬럼의 부분 문자열과 유사한지 확인 |
-| `%` | similarity | `column::text % 'query'::text` | 전체 문자열 간 유사도 비교 |
-| `<<%` | strict word similarity | `'query'::text <<% column::text` | word similarity보다 더 엄격한 부분 문자열 매칭 |
+| 연산자      | 의미                   | SQL                              | 설명                                           |
+| ----------- | ---------------------- | -------------------------------- | ---------------------------------------------- |
+| `<%` (기본) | word similarity        | `'query'::text <% column::text`  | 쿼리가 컬럼의 부분 문자열과 유사한지 확인      |
+| `%`         | similarity             | `column::text % 'query'::text`   | 전체 문자열 간 유사도 비교                     |
+| `<<%`       | strict word similarity | `'query'::text <<% column::text` | word similarity보다 더 엄격한 부분 문자열 매칭 |
 
 <Info>
-`whereFuzzy`를 사용하려면 `pg_trgm` 확장이 설치되어 있어야 합니다. `CREATE EXTENSION IF NOT EXISTS pg_trgm`으로 설치할 수 있습니다. GIN 인덱스(`gin_trgm_ops`)를 생성하면 성능이 크게 향상됩니다.
+  `whereFuzzy`를 사용하려면 `pg_trgm` 확장이 설치되어 있어야 합니다. `CREATE EXTENSION IF NOT EXISTS
+  pg_trgm`으로 설치할 수 있습니다. GIN 인덱스(`gin_trgm_ops`)를 생성하면 성능이 크게 향상됩니다.
 </Info>
 
 ## Raw SQL 조건
@@ -352,22 +321,19 @@ await puri.table("items")
 
 ```typescript
 // 파라미터 없음
-await puri.table("users")
-  .whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
+await puri.table("users").whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
 
 // 파라미터 바인딩
-await puri.table("users")
-  .whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
+await puri.table("users").whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
 
 // 여러 조건
-await puri.table("orders")
+await puri
+  .table("orders")
   .whereRaw("DATE(orders.created_at) = ?", ["2024-01-01"])
   .whereRaw("orders.amount > ?", [1000]);
 ```
 
-<Warning>
-SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하세요.
-</Warning>
+<Warning>SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하세요.</Warning>
 
 ## 실전 예시
 
@@ -430,6 +396,7 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
       return query.orderBy("orders.created_at", "desc");
     }
     ```
+
   </Tab>
 
   <Tab title="복잡한 조건" icon="filter">
@@ -511,16 +478,16 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
         // 날짜 범위
         .where("activities.created_at", ">=", startDate)
         .where("activities.created_at", "<=", new Date())
-        
+
         // 활성 사용자만
         .whereGroup((group) => {
           group.where("activities.user_status", "active")
                .orWhere("activities.user_status", "premium");
         })
-        
+
         // 특정 타입 제외
         .whereNotIn("activities.type", ["system", "automated"])
-        
+
         .select({
           id: "activities.id",
           type: "activities.type",
@@ -530,6 +497,7 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
         .orderBy("activities.created_at", "desc");
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -538,12 +506,13 @@ SQL 인젝션을 방지하기 위해 항상 파라미터 바인딩을 사용하�
 모든 `where` 메서드는 체이닝 가능하며, 기본적으로 **AND**로 연결됩니다.
 
 ```typescript
-const result = await puri.table("users")
-  .where("users.role", "admin")         // AND
-  .where("users.status", "active")       // AND
-  .where("users.age", ">", 18)          // AND
+const result = await puri
+  .table("users")
+  .where("users.role", "admin") // AND
+  .where("users.status", "active") // AND
+  .where("users.age", ">", 18) // AND
   .whereIn("users.country", ["KR", "US"]) // AND
-  .where("users.verified", true);        // AND
+  .where("users.verified", true); // AND
 ```
 
 ## OR 조건
@@ -551,22 +520,23 @@ const result = await puri.table("users")
 ### WhereGroup 내에서 orWhere
 
 ```typescript
-await puri.table("users")
-  .whereGroup((group) => {
-    group.where("users.role", "admin")
-         .orWhere("users.role", "moderator")
-         .orWhere("users.role", "editor");
-  });
+await puri.table("users").whereGroup((group) => {
+  group
+    .where("users.role", "admin")
+    .orWhere("users.role", "moderator")
+    .orWhere("users.role", "editor");
+});
 
 // WHERE (
-//   users.role = 'admin' 
-//   OR users.role = 'moderator' 
+//   users.role = 'admin'
+//   OR users.role = 'moderator'
 //   OR users.role = 'editor'
 // )
 ```
 
 <Info>
-최상위 레벨에는 `orWhere`가 없습니다. OR 조건은 `whereGroup` 또는 `orWhereGroup` 내에서 사용하세요.
+  최상위 레벨에는 `orWhere`가 없습니다. OR 조건은 `whereGroup` 또는 `orWhereGroup` 내에서
+  사용하세요.
 </Info>
 
 ## 타입 안정성
@@ -575,20 +545,16 @@ WHERE 조건은 타입 안전하게 검증됩니다.
 
 ```typescript
 // ✅ 올바른 컬럼
-await puri.table("users")
-  .where("users.email", "like", "%@gmail.com");
+await puri.table("users").where("users.email", "like", "%@gmail.com");
 
 // ❌ 타입 에러: 존재하지 않는 컬럼
-await puri.table("users")
-  .where("users.unknown_field", "value");
+await puri.table("users").where("users.unknown_field", "value");
 
 // ✅ 올바른 타입
-await puri.table("users")
-  .where("users.age", 25);  // number
+await puri.table("users").where("users.age", 25); // number
 
 // ❌ 타입 에러: 잘못된 타입
-await puri.table("users")
-  .where("users.age", "25");  // string (age는 number)
+await puri.table("users").where("users.age", "25"); // string (age는 number)
 ```
 
 ## 성능 최적화
@@ -597,12 +563,10 @@ await puri.table("users")
 
 ```typescript
 // ✅ 좋음: 인덱스 컬럼 사용
-await puri.table("users")
-  .where("users.email", "user@example.com");  // email에 인덱스 필요
+await puri.table("users").where("users.email", "user@example.com"); // email에 인덱스 필요
 
 // ❌ 나쁨: 함수 사용 (인덱스 무효화)
-await puri.table("users")
-  .whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
+await puri.table("users").whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
 ```
 
 ### 2. LIKE/ILIKE 패턴
@@ -618,8 +582,8 @@ await puri.table("users")
 ```
 
 <Info>
-PostgreSQL에서 `ilike`는 대소문자 무시 검색에 편리하지만, 대용량 데이터에서는 성능에 영향을 줄 수 있습니다.
-이런 경우 `citext` 타입이나 `pg_trgm` 확장의 인덱스 사용을 고려하세요.
+  PostgreSQL에서 `ilike`는 대소문자 무시 검색에 편리하지만, 대용량 데이터에서는 성능에 영향을 줄 수
+  있습니다. 이런 경우 `citext` 타입이나 `pg_trgm` 확장의 인덱스 사용을 고려하세요.
 </Info>
 
 ### 3. IN vs 여러 OR
@@ -657,8 +621,7 @@ PostgreSQL에서 `ilike`는 대소문자 무시 검색에 편리하지만, 대�
 ```typescript
 // whereIn에 빈 배열을 전달하면 결과 없음
 const ids = [];
-await puri.table("users")
-  .whereIn("users.id", ids);  // 아무것도 반환하지 않음
+await puri.table("users").whereIn("users.id", ids); // 아무것도 반환하지 않음
 
 // 조건부로 처리
 if (ids.length > 0) {
@@ -694,35 +657,19 @@ const userInput = "'; DROP TABLE users; --";
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="select" 
-    icon="list-check" 
-    href="/ko/api-reference/puri-methods/select"
-  >
+  <Card title="select" icon="list-check" href="/ko/api-reference/puri-methods/select">
     조회할 필드 선택하기
   </Card>
-  
-  <Card 
-    title="join" 
-    icon="link" 
-    href="/ko/api-reference/puri-methods/join"
-  >
-    테이블 조인하기
-  </Card>
-  
-  <Card 
-    title="order-by" 
-    icon="arrow-down-1-9" 
-    href="/ko/api-reference/puri-methods/order-by"
-  >
-    결과 정렬하기
-  </Card>
-  
-  <Card 
-    title="limit" 
-    icon="hashtag" 
-    href="/ko/api-reference/puri-methods/limit"
-  >
+
+<Card title="join" icon="link" href="/ko/api-reference/puri-methods/join">
+  테이블 조인하기
+</Card>
+
+<Card title="order-by" icon="arrow-down-1-9" href="/ko/api-reference/puri-methods/order-by">
+  결과 정렬하기
+</Card>
+
+  <Card title="limit" icon="hashtag" href="/ko/api-reference/puri-methods/limit">
     결과 개수 제한하기
   </Card>
 </CardGroup>

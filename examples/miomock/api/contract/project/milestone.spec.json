@@ -67,9 +67,7 @@
   "lastModified": "2026-03-09",
   "status": "implementing",
   "sources": [],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "Milestone": "milestones 테이블. project_id(FK), name, description, due_date, completed_at, created_at",
     "MilestoneModel": "CRUD + 완료/완료취소 처리를 담당한다"

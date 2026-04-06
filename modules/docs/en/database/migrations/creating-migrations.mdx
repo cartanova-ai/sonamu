@@ -9,24 +9,16 @@ Sonamu detects Entity changes and automatically generates Migration files.
 
 <CardGroup cols={2}>
   <Card title="Modify Entity" icon="pen">
-    Edit JSON file
-    
-    Fields, types, indexes
+    Edit JSON file Fields, types, indexes
   </Card>
   <Card title="Sonamu UI" icon="wand-magic-sparkles">
-    Generate button
-    
-    Auto compare and generate
+    Generate button Auto compare and generate
   </Card>
   <Card title="Review Migration" icon="file-code">
-    src/migrations/*.ts
-    
-    Review up/down
+    src/migrations/*.ts Review up/down
   </Card>
   <Card title="Execute" icon="play">
-    pnpm sonamu migrate
-    
-    Apply to DB
+    pnpm sonamu migrate Apply to DB
   </Card>
 </CardGroup>
 
@@ -45,7 +37,7 @@ First, modify the Entity JSON file:
     { "name": "id", "type": "integer" },
     { "name": "email", "type": "string", "length": 255 },
     { "name": "username", "type": "string", "length": 255 },
-    { "name": "phone", "type": "string", "length": 20, "nullable": true }  // ← New field added
+    { "name": "phone", "type": "string", "length": 20, "nullable": true } // ← New field added
   ]
 }
 ```
@@ -90,7 +82,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 <Info>
-Sonamu compares Entity with the current DB schema and generates migrations only for differences.
+  Sonamu compares Entity with the current DB schema and generates migrations only for differences.
 </Info>
 
 ## Generated Migration Types
@@ -98,6 +90,7 @@ Sonamu compares Entity with the current DB schema and generates migrations only 
 ### New Table Creation
 
 **Adding Entity**:
+
 ```json
 // src/application/post/post.entity.json
 {
@@ -112,6 +105,7 @@ Sonamu compares Entity with the current DB schema and generates migrations only 
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143100_create__posts.ts
 export async function up(knex: Knex): Promise<void> {
@@ -130,16 +124,18 @@ export async function down(knex: Knex): Promise<void> {
 ### Adding Column
 
 **Entity Change**:
+
 ```json
 {
   "props": [
     // ... existing fields
-    { "name": "bio", "type": "string", "nullable": true }  // ← Added
+    { "name": "bio", "type": "string", "nullable": true } // ← Added
   ]
 }
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143200_alter_users_add1.ts
 export async function up(knex: Knex): Promise<void> {
@@ -158,6 +154,7 @@ export async function down(knex: Knex): Promise<void> {
 ### Dropping Column
 
 **Entity Change**:
+
 ```json
 {
   "props": [
@@ -169,6 +166,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143300_alter_users_drop1.ts
 export async function up(knex: Knex): Promise<void> {
@@ -188,49 +186,50 @@ export async function down(knex: Knex): Promise<void> {
 <Warning>
 **Column deletion caution!**
 
-Data cannot be recovered on rollback. 
+Data cannot be recovered on rollback.
 Proceed carefully in production.
+
 </Warning>
 
 ### Changing Column Type
 
 **Entity Change**:
+
 ```json
 {
   "name": "age",
-  "type": "integer"  // Changed from string to integer
+  "type": "integer" // Changed from string to integer
 }
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143400_alter_users_modify1.ts
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN age TYPE integer USING age::integer`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN age TYPE integer USING age::integer`);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN age TYPE varchar(255)`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN age TYPE varchar(255)`);
 }
 ```
 
 ### Adding Index
 
 **Entity Change**:
+
 ```json
 {
   "indexes": [
     { "type": "unique", "column": "email" },
-    { "type": "index", "column": "username" }  // ← Added
+    { "type": "index", "column": "username" } // ← Added
   ]
 }
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143500_alter_users_index1.ts
 export async function up(knex: Knex): Promise<void> {
@@ -249,6 +248,7 @@ export async function down(knex: Knex): Promise<void> {
 ### Adding Foreign Key
 
 **Entity Change**:
+
 ```json
 {
   "props": [
@@ -263,6 +263,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 **Generated Migration**:
+
 ```typescript
 // 20251220143600_foreign__employees__department_id.ts
 export async function up(knex: Knex): Promise<void> {
@@ -287,27 +288,27 @@ export async function down(knex: Knex): Promise<void> {
 Multiple changes result in multiple migrations:
 
 **Entity Changes**:
+
 ```json
 {
   "props": [
-    { "name": "phone", "type": "string", "nullable": true },  // Added
-    { "name": "bio", "type": "string", "nullable": true }     // Added
+    { "name": "phone", "type": "string", "nullable": true }, // Added
+    { "name": "bio", "type": "string", "nullable": true } // Added
   ],
   "indexes": [
-    { "type": "index", "column": "phone" }  // Added
+    { "type": "index", "column": "phone" } // Added
   ]
 }
 ```
 
 **Generated Migrations**:
+
 ```
 20251220143700_alter_users_add1.ts      (2 columns added)
 20251220143701_alter_users_index1.ts    (index added)
 ```
 
-<Info>
-Sonamu separates migrations by change type for easier management.
-</Info>
+<Info>Sonamu separates migrations by change type for easier management.</Info>
 
 ## Migration Filename Convention
 
@@ -321,6 +322,7 @@ Sonamu separates migrations by change type for easier management.
 - **number**: `add1`, `add2`, etc. when multiple of the same action
 
 **Examples**:
+
 ```
 20251220143022_create__users.ts
 20251220143100_alter_users_add1.ts
@@ -359,7 +361,7 @@ You can manually modify auto-generated migrations:
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.string("phone", 20).nullable();
-    
+
     // Manual addition: set default value
     table.string("country_code", 3).notNullable().defaultTo("+82");
   });
@@ -367,10 +369,8 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 <Warning>
-**Manual modification cautions**:
-- Also modify the down function
-- May be overwritten on next Generate
-- Separate complex logic into separate migrations
+  **Manual modification cautions**: - Also modify the down function - May be overwritten on next
+  Generate - Separate complex logic into separate migrations
 </Warning>
 
 ## Special Cases
@@ -384,7 +384,7 @@ export async function up(knex: Knex): Promise<void> {
     `ALTER TABLE "users" 
      ADD COLUMN "full_name" varchar(510) 
      GENERATED ALWAYS AS (first_name || ' ' || last_name) 
-     STORED`
+     STORED`,
   );
 }
 ```
@@ -397,12 +397,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.string("status", 20).nullable();
   });
-  
+
   // 2. Migrate data
   await knex("users").update({
     status: knex.raw("CASE WHEN is_active THEN 'active' ELSE 'inactive' END"),
   });
-  
+
   // 3. nullable → notNullable
   await knex.raw(`ALTER TABLE users ALTER COLUMN status SET NOT NULL`);
 }
@@ -413,7 +413,7 @@ export async function up(knex: Knex): Promise<void> {
 ```typescript
 export async function up(knex: Knex): Promise<void> {
   const hasColumn = await knex.schema.hasColumn("users", "phone");
-  
+
   if (!hasColumn) {
     await knex.schema.alterTable("users", (table) => {
       table.string("phone", 20).nullable();

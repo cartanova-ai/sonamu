@@ -11,24 +11,16 @@ Sonamu에서 Server-Side Rendering(SSR)을 설정하고 사용하는 방법을 �
 
 <CardGroup cols={2}>
   <Card title="TanStack Router" icon="route">
-    파일 기반 라우팅
-    
-    Type-safe 네비게이션
+    파일 기반 라우팅 Type-safe 네비게이션
   </Card>
   <Card title="Vite SSR" icon="bolt">
-    빠른 빌드
-    
-    HMR 지원
+    빠른 빌드 HMR 지원
   </Card>
   <Card title="Direct API Call" icon="server">
-    HTTP 오버헤드 없음
-    
-    빠른 응답
+    HTTP 오버헤드 없음 빠른 응답
   </Card>
   <Card title="TanStack Query" icon="arrows-rotate">
-    Hydration 자동화
-    
-    캐싱 통합
+    Hydration 자동화 캐싱 통합
   </Card>
 </CardGroup>
 
@@ -316,6 +308,7 @@ Sonamu는 **하이브리드 접근 방식**을 사용합니다:
 ```
 
 **장점**:
+
 - 빠른 First Contentful Paint
 - SEO 최적화
 - 초기 데이터 즉시 표시
@@ -329,6 +322,7 @@ Sonamu는 **하이브리드 접근 방식**을 사용합니다:
 ```
 
 **장점**:
+
 - 서버 부하 감소
 - 간단한 구현
 - 빠른 개발
@@ -358,6 +352,7 @@ sonamu build web      # Web만 빌드
 ```
 
 **빌드 결과**:
+
 ```
 web/dist/                               # Web 빌드 원본
 ├── client/                             # 클라이언트 번들
@@ -378,12 +373,10 @@ api/dist/                               # API 빌드 결과
 ## 주의사항
 
 <Warning>
-**Sonamu SSR 사용 시 주의사항**:
-1. **TanStack Router 기반**: Next.js App Router가 아닙니다
-2. **entry-server.generated.tsx는 자동 생성**: 직접 수정하지 마세요
-3. **window 객체 주의**: 서버에서는 window가 없습니다
-4. **dateReviver 필수**: Date 객체 직렬화/역직렬화 처리
-5. **registerSSR 사용**: 데이터 프리로딩은 다음 문서 참고
+  **Sonamu SSR 사용 시 주의사항**: 1. **TanStack Router 기반**: Next.js App Router가 아닙니다 2.
+  **entry-server.generated.tsx는 자동 생성**: 직접 수정하지 마세요 3. **window 객체 주의**:
+  서버에서는 window가 없습니다 4. **dateReviver 필수**: Date 객체 직렬화/역직렬화 처리 5.
+  **registerSSR 사용**: 데이터 프리로딩은 다음 문서 참고
 </Warning>
 
 ## 다음 단계
@@ -392,7 +385,11 @@ api/dist/                               # API 빌드 결과
   <Card title="데이터 프리로딩" icon="bolt" href="/ko/frontend-integration/ssr/preloading-data">
     registerSSR 사용법
   </Card>
-  <Card title="Hydration 전략" icon="droplet" href="/ko/frontend-integration/ssr/hydration-strategies">
+  <Card
+    title="Hydration 전략"
+    icon="droplet"
+    href="/ko/frontend-integration/ssr/hydration-strategies"
+  >
     하이드레이션 최적화
   </Card>
   <Card title="캐시 제어" icon="database" href="/ko/frontend-integration/ssr/cache-control">

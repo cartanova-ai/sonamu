@@ -20,18 +20,18 @@ All CDD execution workers must read this document before starting work.
 
 Every worker receives a Claim YAML (schema in `01_cdd.md#claim-format`) with:
 
-| Field | How the worker uses it |
-|---|---|
-| `objective` | Scope boundary. Do not exceed this. |
-| `context` | Background for understanding the task. |
-| `scope.read` | Files to read for context. Load these first. |
-| `scope.write` | Files to create/modify. Absolute boundary. |
-| `ac_targets` | ACs to satisfy (implement) or write tests for (test). |
-| `rules` | Rule files to read and comply with. |
-| `required_skills` | Skill files to follow. |
-| `required_cli_commands` | CLI commands to execute. |
-| `expected_generated_targets` | Files that must exist after completion. |
-| `findings` | Review feedback from previous attempt. Address these first. |
+| Field                        | How the worker uses it                                      |
+| ---------------------------- | ----------------------------------------------------------- |
+| `objective`                  | Scope boundary. Do not exceed this.                         |
+| `context`                    | Background for understanding the task.                      |
+| `scope.read`                 | Files to read for context. Load these first.                |
+| `scope.write`                | Files to create/modify. Absolute boundary.                  |
+| `ac_targets`                 | ACs to satisfy (implement) or write tests for (test).       |
+| `rules`                      | Rule files to read and comply with.                         |
+| `required_skills`            | Skill files to follow.                                      |
+| `required_cli_commands`      | CLI commands to execute.                                    |
+| `expected_generated_targets` | Files that must exist after completion.                     |
+| `findings`                   | Review feedback from previous attempt. Address these first. |
 
 ## Work procedure
 
@@ -46,19 +46,19 @@ Every worker receives a Claim YAML (schema in `01_cdd.md#claim-format`) with:
 
 ## Ownership by type
 
-| type | May edit | Must not edit |
-|---|---|---|
-| `surface` | Shared types/interfaces/exports, migrations, Sonamu model scaffolds, downstream runtime prerequisites, minimal frame/module shells | Business logic, tests |
-| `test` | Test files, test support files | Production code |
-| `implement` | Production code, implementation support files | Test files (running tests is allowed) |
+| type        | May edit                                                                                                                           | Must not edit                         |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `surface`   | Shared types/interfaces/exports, migrations, Sonamu model scaffolds, downstream runtime prerequisites, minimal frame/module shells | Business logic, tests                 |
+| `test`      | Test files, test support files                                                                                                     | Production code                       |
+| `implement` | Production code, implementation support files                                                                                      | Test files (running tests is allowed) |
 
 ## Verification criteria
 
-| type | Completion condition |
-|---|---|
-| `surface` | `pnpm build` passes and downstream migration/scaffolding prerequisites are ready |
-| `test` | Meaningful test bodies written for all AC skeletons |
-| `implement` | `pnpm build` + `pnpm check` pass |
+| type        | Completion condition                                                             |
+| ----------- | -------------------------------------------------------------------------------- |
+| `surface`   | `pnpm build` passes and downstream migration/scaffolding prerequisites are ready |
+| `test`      | Meaningful test bodies written for all AC skeletons                              |
+| `implement` | `pnpm build` + `pnpm check` pass                                                 |
 
 ## Downstream output: `worker_result`
 
@@ -78,23 +78,23 @@ worker_result:
     verification_output: "build/check pass summary"
 ```
 
-| Field | Meaning |
-|---|---|
-| `status: done` | Work completed within scope. |
-| `status: blocked` | Cannot proceed. See `blocking_reason`. |
-| `blocking_reason` | Why the worker stopped (scope violation, missing prerequisite, ambiguity). |
+| Field               | Meaning                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `status: done`      | Work completed within scope.                                                              |
+| `status: blocked`   | Cannot proceed. See `blocking_reason`.                                                    |
+| `blocking_reason`   | Why the worker stopped (scope violation, missing prerequisite, ambiguity).                |
 | `needs_respawn_for` | A different worker type is required (e.g., `surface` work discovered during `implement`). |
-| `evidence` | Required when the Claim performed migration, sync, or scaffolding work. |
+| `evidence`          | Required when the Claim performed migration, sync, or scaffolding work.                   |
 
 ## Error handling
 
-| Situation | Required action |
-|---|---|
-| Need to edit outside `scope.write` | Set `status: blocked`, describe in `blocking_reason`. |
-| Build/check fails after fix attempt | Set `status: blocked`, include error output in `verification_output`. |
-| Missing prerequisite from upstream Claim | Set `status: blocked`, name the missing prerequisite. |
-| Ambiguity in Claim that `scope.read` cannot resolve | Set `status: blocked`, describe the ambiguity. |
-| `findings` from review cannot be addressed within scope | Set `status: blocked`, explain which findings require scope change. |
+| Situation                                               | Required action                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| Need to edit outside `scope.write`                      | Set `status: blocked`, describe in `blocking_reason`.                 |
+| Build/check fails after fix attempt                     | Set `status: blocked`, include error output in `verification_output`. |
+| Missing prerequisite from upstream Claim                | Set `status: blocked`, name the missing prerequisite.                 |
+| Ambiguity in Claim that `scope.read` cannot resolve     | Set `status: blocked`, describe the ambiguity.                        |
+| `findings` from review cannot be addressed within scope | Set `status: blocked`, explain which findings require scope change.   |
 
 ## Session lifecycle (team mode)
 
@@ -105,6 +105,7 @@ worker_result:
 ## Team mode communication
 
 When running in team mode, workers may communicate directly via `SendMessage`:
+
 - Notify the other worker when changing a shared interface, type, or export.
 - Negotiate before editing a file that might overlap with another worker's scope.
 - Do NOT expand your own `scope.write` based on peer messages. Request scope changes through the orchestrator.

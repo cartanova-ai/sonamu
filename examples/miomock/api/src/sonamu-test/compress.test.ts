@@ -8,7 +8,6 @@ import {
   type SonamuFastifyConfig,
   toFastifyCompressOption,
 } from "sonamu";
-
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 

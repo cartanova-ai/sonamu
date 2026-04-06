@@ -1,5 +1,7 @@
 import assert from "assert";
+
 import { unique } from "radashi";
+
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
@@ -132,9 +134,7 @@ export class Template__generated extends Template {
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
-        "/** biome-ignore-all format: generated는 무시 */",
+        "/* oxlint-disable */",
         "",
         `import { z } from 'zod';`,
         `import { ${sonamuImports.join(",")} } from "sonamu";`,
@@ -260,13 +260,11 @@ export class Template__generated extends Template {
                     .map((col) => `"${col}"`)
                     .join(", ")}],`
                 : "") +
-              (
-                generatedColumns.length > 0
-                  ? `readonly __generated__: readonly [${generatedColumns
-                      .map((col) => `"${col}"`)
-                      .join(", ")}],`
-                  : ""
-              ) +
+              (generatedColumns.length > 0
+                ? `readonly __generated__: readonly [${generatedColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "") +
               (hasVectorColumns.length > 0
                 ? `readonly __vector__: readonly [${hasVectorColumns
                     .map((col) => `"${col}"`)

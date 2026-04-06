@@ -2,8 +2,9 @@ import { Button, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
-import { defaultCatch } from "../services/sonamu.shared";
+
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 
 type TypeIdAsyncSelectProps = {
   filter?: "enums" | "types";

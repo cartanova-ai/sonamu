@@ -1,8 +1,6 @@
 import { Button } from "@sonamu-kit/react-components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
-import { SD } from "@/i18n/sd.generated";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
 import ClipboardListIcon from "~icons/lucide/clipboard-list";
@@ -16,6 +14,9 @@ import TestTubeIcon from "~icons/lucide/test-tube";
 import UploadIcon from "~icons/lucide/upload";
 import UsersIcon from "~icons/lucide/users";
 import ListIcon from "~icons/mdi/format-list-bulleted";
+
+import { useSonamuContext } from "@/contexts/sonamu-provider";
+import { SD } from "@/i18n/sd.generated";
 
 interface SidebarProps {
   className?: string;

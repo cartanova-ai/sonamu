@@ -6,6 +6,7 @@ description: Reference for defining Sonamu Entity relationships. BelongsToOne, H
 # Entity Relationship Definitions
 
 **Reference for working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/` - full ManyToMany relationship example
 - `sonamu/examples/miomock/api/src/application/employee/` - BelongsToOne relationship example
 - `sonamu/examples/miomock/api/src/application/company/` - HasMany relationship example
@@ -14,13 +15,14 @@ description: Reference for defining Sonamu Entity relationships. BelongsToOne, H
 
 ### 1:N vs N:M Decision Criteria
 
-| Question | 1:N (BelongsToOne) | N:M (ManyToMany or intermediate entity) |
-|------|-------------------|----------------------------------|
-| Can one A belong to multiple Bs? | No | Yes |
-| Does the relationship need additional information? | No | Yes → intermediate entity |
-| Can it be expressed as "A belongs to B"? | Yes | No |
+| Question                                           | 1:N (BelongsToOne) | N:M (ManyToMany or intermediate entity) |
+| -------------------------------------------------- | ------------------ | --------------------------------------- |
+| Can one A belong to multiple Bs?                   | No                 | Yes                                     |
+| Does the relationship need additional information? | No                 | Yes → intermediate entity               |
+| Can it be expressed as "A belongs to B"?           | Yes                | No                                      |
 
 **Examples:**
+
 - Post → Author: 1:N (a post has one author)
 - Post ↔ Tag: N:M (multiple posts have multiple tags)
 - Researcher ↔ Task: N:M + intermediate entity (participation rate, role, and other additional info)
@@ -29,15 +31,16 @@ description: Reference for defining Sonamu Entity relationships. BelongsToOne, H
 
 If an N:M relationship has **additional information**, use an **intermediate entity** instead of ManyToMany.
 
-| Situation | ManyToMany | Intermediate entity |
-|------|-----------|------------|
-| Only a simple connection is needed | ✓ | |
-| Relationship needs a date/period | | ✓ |
-| Relationship needs a role/status | | ✓ |
-| Relationship needs a quantity/ratio | | ✓ |
-| Relationship history management needed | | ✓ |
+| Situation                              | ManyToMany | Intermediate entity |
+| -------------------------------------- | ---------- | ------------------- |
+| Only a simple connection is needed     | ✓          |                     |
+| Relationship needs a date/period       |            | ✓                   |
+| Relationship needs a role/status       |            | ✓                   |
+| Relationship needs a quantity/ratio    |            | ✓                   |
+| Relationship history management needed |            | ✓                   |
 
 **Intermediate entity example:**
+
 ```
 Researcher ↔ Task
   └─ ProjectResearcher (intermediate entity)
@@ -179,12 +182,12 @@ Task
 
 ## Which Relationship to Use?
 
-| Situation | Relationship type | Example |
-|------|----------|------|
-| "A belongs to B" (N:1) | `BelongsToOne` | Post → User (author) |
-| "A has many Bs" (1:N) | `HasMany` | User → Posts |
-| "A and B are 1:1" | `OneToOne` | User ↔ Employee |
-| "A and B are many-to-many" | `ManyToMany` | Post ↔ Tag |
+| Situation                  | Relationship type | Example              |
+| -------------------------- | ----------------- | -------------------- |
+| "A belongs to B" (N:1)     | `BelongsToOne`    | Post → User (author) |
+| "A has many Bs" (1:N)      | `HasMany`         | User → Posts         |
+| "A and B are 1:1"          | `OneToOne`        | User ↔ Employee      |
+| "A and B are many-to-many" | `ManyToMany`      | Post ↔ Tag           |
 
 ## BelongsToOne (N:1) - Most Common
 
@@ -208,6 +211,7 @@ Task
 **Note**: Do not define `author_id` directly in props (it is auto-generated)
 
 **Optional options:**
+
 - `customJoinClause`: custom JOIN condition SQL (specify JOIN condition directly instead of FK)
 - `useConstraint`: whether to create FK constraint (default: `true`). If `false`, the FK column is created but no DB constraint is generated
 
@@ -216,6 +220,7 @@ Task
 Since a BelongsToOne relationship automatically creates a `{name}_id` column, use the correct field name when working with it directly in Model, FixtureGenerator, etc.
 
 **Correct pattern:**
+
 ```typescript
 // Entity definition
 {
@@ -235,25 +240,26 @@ await puri.ubRegister("departments", department);
 ```
 
 **Wrong pattern (common mistake):**
+
 ```typescript
 // ✗ WRONG: using relation name directly
 const department = {
   name: "Engineering",
-  company: 1  // FK is not set! company_id is saved as NULL
+  company: 1, // FK is not set! company_id is saved as NULL
 };
 
 // ✗ WRONG: passing as object
 const department = {
   name: "Engineering",
-  company: { id: 1 }  // FK is not set!
+  company: { id: 1 }, // FK is not set!
 };
 ```
 
 **FixtureGenerator example:**
+
 ```typescript
 // inside fixture-generator.ts
-if (isBelongsToOneRelationProp(prop) ||
-    (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
+if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
   const relationValue = await this.generateRelationValue(entity, prop, context);
 
   // ✓ CORRECT: set FK as {prop.name}_id
@@ -264,6 +270,7 @@ if (isBelongsToOneRelationProp(prop) ||
 ```
 
 **Key points:**
+
 - Entity JSON: `"name": "company"` (relation name)
 - DB column: `company_id` (auto-generated)
 - TypeScript code: use `company_id` (setting FK)
@@ -293,12 +300,14 @@ if (isBelongsToOneRelationProp(prop) ||
 **No DB column is created** (virtual)
 
 **When is it needed?**
+
 - When reverse lookup like `user.posts.title` is needed in a Subset
 - Can be omitted if not needed
 
 ### HasMany Performance Optimization
 
 HasMany relationships are automatically optimized using the **DataLoader pattern**:
+
 - Parent record IDs are collected in batches
 - All child records are queried in a single `whereIn` query
 - **No N+1 query problem**
@@ -312,6 +321,7 @@ This optimization is applied automatically and requires no additional configurat
 **Situation**: When User and Employee are 1:1
 
 **The side holding the FK** (Employee):
+
 ```json
 {
   "type": "relation",
@@ -326,6 +336,7 @@ This optimization is applied automatically and requires no additional configurat
 ```
 
 **The side without the FK** (User):
+
 ```json
 {
   "type": "relation",
@@ -340,6 +351,7 @@ This optimization is applied automatically and requires no additional configurat
 **Key point**: FK is only created on the side with `hasJoinColumn: true` (omitting it means no FK; it is an optional option)
 
 **Optional options (when `hasJoinColumn: true`):**
+
 - `customJoinClause`: custom JOIN condition SQL
 - `useConstraint`: whether to create FK constraint (default: `true`)
 
@@ -365,12 +377,14 @@ This optimization is applied automatically and requires no additional configurat
 ### ManyToMany Naming Conventions
 
 **joinTable (join table name)**: use **double** underscore
+
 ```
 User ↔ Role → user__roles
 Post ↔ Tag → posts__tags (alphabetical order recommended)
 ```
 
 **joinColumn (join table column name)**: use **single** underscore
+
 ```
 user__roles table:
   - user_id (single underscore)
@@ -378,6 +392,7 @@ user__roles table:
 ```
 
 **Example**:
+
 ```typescript
 // Entity: User
 {
@@ -427,18 +442,18 @@ Error: '{child_table}.{parent_fk}' is not assignable to type 'AvailableColumns'
 
 ### Solution: Choose One of the Two
 
-| Requirement | Choice | parentId | HasMany in parent subset |
-|---------|------|----------|------------------------|
-| Query child list together in parent detail view | Independent entity | ✗ not used | ✓ possible |
-| Child is CRUD'd only through parent | Use parentId | ✓ used | ✗ not possible |
+| Requirement                                     | Choice             | parentId   | HasMany in parent subset |
+| ----------------------------------------------- | ------------------ | ---------- | ------------------------ |
+| Query child list together in parent detail view | Independent entity | ✗ not used | ✓ possible               |
+| Child is CRUD'd only through parent             | Use parentId       | ✓ used     | ✗ not possible           |
 
 ### Decision Criteria
 
-| Question | Yes → Independent entity | No → parentId |
-|------|-----------------|------------------|
-| Will the child ever be queried/modified standalone? | ✓ | |
-| Does the admin screen need a separate child list page? | ✓ | |
-| Is the child list queried as a subset in the parent detail? | ✓ | |
+| Question                                                    | Yes → Independent entity | No → parentId |
+| ----------------------------------------------------------- | ------------------------ | ------------- |
+| Will the child ever be queried/modified standalone?         | ✓                        |               |
+| Does the admin screen need a separate child list page?      | ✓                        |               |
+| Is the child list queried as a subset in the parent detail? | ✓                        |               |
 
 ### Example
 
@@ -464,23 +479,21 @@ When a BelongsToOne relationship is defined, a `{name}_id` column is automatical
 
 ### Where It Applies
 
-| Location | Format | Example |
-|------|----------|------|
-| subsets | FieldExpr (`relation.field`) | `"user.id"` |
-| indexes | actual DB column name | `"user_id"` |
-| unique | actual DB column name | `["user_id", "date"]` |
-| search | FieldExpr (`relation.field`) | `"user.id"` |
+| Location | Format                       | Example               |
+| -------- | ---------------------------- | --------------------- |
+| subsets  | FieldExpr (`relation.field`) | `"user.id"`           |
+| indexes  | actual DB column name        | `"user_id"`           |
+| unique   | actual DB column name        | `["user_id", "date"]` |
+| search   | FieldExpr (`relation.field`) | `"user.id"`           |
 
 ### Example
 
 ```json
 {
   "id": "ApiLog",
-  "props": [
-    { "type": "relation", "name": "user", "with": "User", "relationType": "BelongsToOne" }
-  ],
+  "props": [{ "type": "relation", "name": "user", "with": "User", "relationType": "BelongsToOne" }],
   "subsets": {
-    "A": ["id", "user.id", "api_path"]  // use FieldExpr
+    "A": ["id", "user.id", "api_path"] // use FieldExpr
   },
   "indexes": [
     {
@@ -506,29 +519,25 @@ If you see this error in subsets, change `user_id` → `user.id`. In indexes, `u
 
 ## Common Mistakes
 
-| Mistake | Fix |
-|------|------|
-| Using a separate `"relations": [...]` section | Define with `"type": "relation"` inside `props` |
-| Directly defining `{name}_id` in BelongsToOne | Delete it (auto-generated) |
-| Using `user_id` directly in Subset | Change to `user.id` form |
-| Mismatch of FK intent in OneToOne | Explicitly set `hasJoinColumn: true` on the side holding the FK (optional, no FK if omitted) |
-| Missing `joinColumn` in HasMany | Specify the FK column name in the related table |
-| Missing `onUpdate/onDelete` in ManyToMany | Add as required |
-| Inconsistent joinTable name | Consistent naming recommended (alphabetical order) |
-| `nullable: false` in self-reference | Change to `nullable: true` |
+| Mistake                                       | Fix                                                                                          |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Using a separate `"relations": [...]` section | Define with `"type": "relation"` inside `props`                                              |
+| Directly defining `{name}_id` in BelongsToOne | Delete it (auto-generated)                                                                   |
+| Using `user_id` directly in Subset            | Change to `user.id` form                                                                     |
+| Mismatch of FK intent in OneToOne             | Explicitly set `hasJoinColumn: true` on the side holding the FK (optional, no FK if omitted) |
+| Missing `joinColumn` in HasMany               | Specify the FK column name in the related table                                              |
+| Missing `onUpdate/onDelete` in ManyToMany     | Add as required                                                                              |
+| Inconsistent joinTable name                   | Consistent naming recommended (alphabetical order)                                           |
+| `nullable: false` in self-reference           | Change to `nullable: true`                                                                   |
 
 ## Using Relationships in Subsets
+
 - See `subset.md`
+
 ```json
 {
   "subsets": {
-    "A": [
-      "id",
-      "title",
-      "author.id",
-      "author.username",
-      "author.department.name"
-    ]
+    "A": ["id", "title", "author.id", "author.username", "author.department.name"]
   }
 }
 ```
@@ -553,24 +562,24 @@ Reference: sonamu/examples/miomock/api/src/application/project
 import { z } from "zod";
 import { ProjectBaseSchema } from "../sonamu.generated";
 
-export const ProjectSaveParams = ProjectBaseSchema
-  .partial({
-    id: true,
-    created_at: true,
-  })
+export const ProjectSaveParams = ProjectBaseSchema.partial({
+  id: true,
+  created_at: true,
+})
   .extend({
-    employee_ids: z.array(z.number().int().positive()),  // ManyToMany: employee
-    tag_ids: z.array(z.number().int().positive()),       // ManyToMany: tags
+    employee_ids: z.array(z.number().int().positive()), // ManyToMany: employee
+    tag_ids: z.array(z.number().int().positive()), // ManyToMany: tags
   })
   .omit({
-    virtual_test: true,           // remove virtual fields
+    virtual_test: true, // remove virtual fields
     virtual_query_test: true,
-    textsearchable_index_col: true,  // remove generated fields
+    textsearchable_index_col: true, // remove generated fields
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
 **Important:**
+
 - Since BaseSchema does not have ManyToMany relation fields, add them with `.extend()`
 - Field name should be in the `{relation_name}_ids` form (e.g. employee → employee_ids, tags → tag_ids)
 - Type validation: `z.array(z.number().int().positive())` - only positive integers allowed
@@ -676,16 +685,12 @@ When re-saving data queried in an update test, ManyToMany relationship fields mu
 ```typescript
 // WRONG - saving without category_ids will delete all relationships
 const { categories, ...collectionData } = collection;
-await QuestionCollectionModel.save([
-  { ...collectionData, title: "Updated Title" }
-]);
+await QuestionCollectionModel.save([{ ...collectionData, title: "Updated Title" }]);
 
 // CORRECT - extract ids from categories and pass them
 const { categories, ...collectionData } = collection;
-const category_ids = categories?.map(c => c.id) ?? [];
-await QuestionCollectionModel.save([
-  { ...collectionData, category_ids, title: "Updated Title" }
-]);
+const category_ids = categories?.map((c) => c.id) ?? [];
+await QuestionCollectionModel.save([{ ...collectionData, category_ids, title: "Updated Title" }]);
 ```
 
 ### Managing Bidirectional ManyToMany
@@ -697,18 +702,17 @@ await QuestionCollectionModel.save([
 // Employee Entity: projs (ManyToMany, same join table)
 
 // project.types.ts - manages employee_ids
-export const ProjectSaveParams = ProjectBaseSchema
-  .extend({
-    employee_ids: z.array(z.number().int().positive()),
-  });
+export const ProjectSaveParams = ProjectBaseSchema.extend({
+  employee_ids: z.array(z.number().int().positive()),
+});
 
 // employee.types.ts - does not manage proj_ids
-export const EmployeeSaveParams = EmployeeBaseSchema
-  .partial({ id: true, created_at: true });
+export const EmployeeSaveParams = EmployeeBaseSchema.partial({ id: true, created_at: true });
 // proj_ids is not added
 ```
 
 **Reason:**
+
 - Managing from both sides causes synchronization issues
 - Managing from the primary Entity (Project) only is clearer
 - When querying Employee, projs are automatically joined and returned

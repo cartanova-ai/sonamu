@@ -14,8 +14,8 @@ import { BaseModelClass, api, CachePresets } from "sonamu";
 
 class ProductModelClass extends BaseModelClass {
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1분 캐시
+    httpMethod: "GET",
+    cacheControl: CachePresets.shortLived, // 1분 캐시
   })
   async findAll() {
     return this.findMany({});
@@ -24,6 +24,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **결과**:
+
 ```http
 HTTP/1.1 200 OK
 Cache-Control: public, max-age=60
@@ -228,6 +229,7 @@ async delete(id: number) {
 })
 async create(data: ProductSave) { ... }
 ```
+
 </Warning>
 
 ## 데이터 특성별 전략
@@ -240,11 +242,11 @@ async create(data: ProductSave) { ... }
 class ProductModelClass extends BaseModelClass {
   // 상품 목록
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: {
-      visibility: 'public',  // CDN 캐싱 가능
+      visibility: "public", // CDN 캐싱 가능
       maxAge: 60,
-    }
+    },
   })
   async findAll() {
     return this.findMany({});
@@ -253,6 +255,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **특징**:
+
 - 브라우저 + CDN에서 캐싱
 - 네트워크 트래픽 최소화
 - 서버 부하 감소
@@ -265,18 +268,19 @@ class ProductModelClass extends BaseModelClass {
 class OrderModelClass extends BaseModelClass {
   // 내 주문 내역
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // 브라우저만 캐싱
+    httpMethod: "GET",
+    cacheControl: CachePresets.private, // 브라우저만 캐싱
   })
   async getMyOrders(ctx: Context) {
-    return this.findMany({ 
-      where: [['user_id', ctx.user.id]] 
+    return this.findMany({
+      where: [["user_id", ctx.user.id]],
     });
   }
 }
 ```
 
 **특징**:
+
 - 브라우저에만 캐싱 (CDN 불가)
 - 다른 사용자에게 노출 방지
 
@@ -288,11 +292,11 @@ class OrderModelClass extends BaseModelClass {
 class PaymentModelClass extends BaseModelClass {
   // 결제 정보
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.noStore,  // 캐시 금지
+    httpMethod: "GET",
+    cacheControl: CachePresets.noStore, // 캐시 금지
   })
   async getPaymentInfo(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
@@ -305,53 +309,53 @@ class PaymentModelClass extends BaseModelClass {
 class ProductModelClass extends BaseModelClass {
   // 상품 목록 (자주 변경, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.shortLived,  // 1분
+    httpMethod: "GET",
+    cacheControl: CachePresets.shortLived, // 1분
   })
   async findAll(page: number) {
     return this.findMany({ page, num: 20 });
   }
-  
+
   // 상품 상세 (가끔 변경, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.mediumLived,  // 5분
+    httpMethod: "GET",
+    cacheControl: CachePresets.mediumLived, // 5분
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
-  
+
   // 카테고리 (거의 안 변함, public)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.longLived,  // 1시간
+    httpMethod: "GET",
+    cacheControl: CachePresets.longLived, // 1시간
   })
   async getCategories() {
     return this.categories;
   }
-  
+
   // 재고 (실시간, no-cache)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.noCache,  // 매번 재검증
+    httpMethod: "GET",
+    cacheControl: CachePresets.noCache, // 매번 재검증
   })
   async getStock(productId: number) {
     return this.checkStock(productId);
   }
-  
+
   // 장바구니 (개인, private)
   @api({
-    httpMethod: 'GET',
-    cacheControl: CachePresets.private,  // 브라우저만
+    httpMethod: "GET",
+    cacheControl: CachePresets.private, // 브라우저만
   })
   async getMyCart(ctx: Context) {
     return this.getCart(ctx.user.id);
   }
-  
+
   // 주문 생성 (Mutation, no-store)
   @api({
-    httpMethod: 'POST',
-    cacheControl: CachePresets.noStore,  // 캐시 금지
+    httpMethod: "POST",
+    cacheControl: CachePresets.noStore, // 캐시 금지
   })
   async createOrder(data: OrderSave) {
     return this.saveOne(data);
@@ -365,29 +369,29 @@ class ProductModelClass extends BaseModelClass {
 class PostModelClass extends BaseModelClass {
   // 게시글 목록 (자주 추가, 5분)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async findAll(page: number) {
     return this.findMany({ page, num: 10 });
   }
-  
+
   // 게시글 상세 (가끔 수정, 10분)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: {
-      visibility: 'public',
-      maxAge: 600,  // 10분
-      staleWhileRevalidate: 1800,  // 30분간 Stale 사용
-    }
+      visibility: "public",
+      maxAge: 600, // 10분
+      staleWhileRevalidate: 1800, // 30분간 Stale 사용
+    },
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
-  
+
   // 인기 게시글 (1시간)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.longLived,
   })
   async getPopular() {
@@ -402,29 +406,29 @@ class PostModelClass extends BaseModelClass {
 class UserModelClass extends BaseModelClass {
   // 공개 프로필 (public, 5분)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.mediumLived,
   })
   async getPublicProfile(username: string) {
-    return this.findOne(['username', username]);
+    return this.findOne(["username", username]);
   }
-  
+
   // 내 프로필 (private, 재검증)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     cacheControl: CachePresets.private,
   })
   async getMyProfile(ctx: Context) {
-    return this.findOne(['id', ctx.user.id]);
+    return this.findOne(["id", ctx.user.id]);
   }
-  
+
   // 프로필 업데이트 (no-store)
   @api({
-    httpMethod: 'PUT',
+    httpMethod: "PUT",
     cacheControl: CachePresets.noStore,
   })
   async updateProfile(ctx: Context, data: Partial<UserSave>) {
-    return this.updateOne(['id', ctx.user.id], data);
+    return this.updateOne(["id", ctx.user.id], data);
   }
 }
 ```
@@ -450,6 +454,7 @@ async getData() {
 ```
 
 **효과**:
+
 - 브라우저: 1분마다 CDN에 요청
 - CDN: 5분마다 서버에 요청
 - 서버 부하 최소화
@@ -494,6 +499,7 @@ async getProducts(ctx: Context) {
 ```
 
 **결과**:
+
 ```
 GET /api/products (Accept-Language: ko) → 한국어 응답 캐싱
 GET /api/products (Accept-Language: en) → 영어 응답 캐싱
@@ -512,29 +518,29 @@ export const config: SonamuConfig = {
     apiConfig: {
       cacheControlHandler: (req) => {
         // API 요청만 처리
-        if (req.type !== 'api') {
+        if (req.type !== "api") {
           return undefined;
         }
-        
+
         // HTTP 메서드별 처리
-        if (req.method !== 'GET') {
-          return CachePresets.noStore;  // Mutation은 no-store
+        if (req.method !== "GET") {
+          return CachePresets.noStore; // Mutation은 no-store
         }
-        
+
         // API 경로별 처리
-        if (req.path.includes('/admin/')) {
-          return CachePresets.noStore;  // 관리자 API는 no-store
+        if (req.path.includes("/admin/")) {
+          return CachePresets.noStore; // 관리자 API는 no-store
         }
-        
-        if (req.path.includes('/private/')) {
-          return CachePresets.private;  // 개인 API는 private
+
+        if (req.path.includes("/private/")) {
+          return CachePresets.private; // 개인 API는 private
         }
-        
+
         // 기본값: 1분 캐시
         return CachePresets.shortLived;
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -542,25 +548,25 @@ export const config: SonamuConfig = {
 
 ```typescript
 cacheControlHandler: (req) => {
-  if (req.type !== 'api') return undefined;
-  
+  if (req.type !== "api") return undefined;
+
   // ExtendedApi 정보 활용
   if (req.api) {
     const { modelName, methodName } = req.api;
-    
+
     // 특정 Model만 긴 캐시
-    if (modelName === 'ConfigModel') {
+    if (modelName === "ConfigModel") {
       return CachePresets.longLived;
     }
-    
+
     // 특정 메서드는 캐시 금지
-    if (methodName.startsWith('create') || methodName.startsWith('update')) {
+    if (methodName.startsWith("create") || methodName.startsWith("update")) {
       return CachePresets.noStore;
     }
   }
-  
+
   return CachePresets.shortLived;
-}
+};
 ```
 
 ## BentoCache와 함께 사용
@@ -579,6 +585,7 @@ async getProducts() {
 ```
 
 **효과**:
+
 1. **0~60초**: 브라우저 캐시 (서버 요청 없음)
 2. **60초~10분**: 서버 요청하지만 BentoCache 사용 (DB 조회 없음)
 3. **10분 이후**: DB 조회 → 다시 캐싱
@@ -597,31 +604,34 @@ graph LR
 **API Cache-Control 사용 시 주의사항**:
 
 1. **GET만 캐싱**: POST, PUT, DELETE는 반드시 `noStore` 사용
+
    ```typescript
    // ❌ 위험
    @api({ httpMethod: 'POST', cacheControl: { maxAge: 60 } })
-   
+
    // ✅ 안전
    @api({ httpMethod: 'POST', cacheControl: CachePresets.noStore })
    ```
 
 2. **개인 데이터는 private**: CDN 캐싱 방지
+
    ```typescript
    // ❌ 위험: CDN에 개인 데이터 캐싱
    @api({ cacheControl: { visibility: 'public', maxAge: 60 } })
    async getMyOrders(ctx: Context) { ... }
-   
+
    // ✅ 안전
    @api({ cacheControl: CachePresets.private })
    async getMyOrders(ctx: Context) { ... }
    ```
 
 3. **자주 변경되는 데이터는 짧은 TTL**: 오래된 데이터 방지
+
    ```typescript
    // ❌ 재고가 실시간인데 1시간 캐싱
    @api({ cacheControl: CachePresets.longLived })
    async getStock() { ... }
-   
+
    // ✅ 짧은 TTL 또는 no-cache
    @api({ cacheControl: CachePresets.noCache })
    async getStock() { ... }
@@ -638,18 +648,26 @@ graph LR
    })
    async getMyData(ctx: Context) { ... }
    ```
-</Warning>
+   </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Cache-Control이란?" icon="circle-question" href="/ko/advanced-features/cache-control/what-is-cache-control">
+  <Card
+    title="Cache-Control이란?"
+    icon="circle-question"
+    href="/ko/advanced-features/cache-control/what-is-cache-control"
+  >
     HTTP 캐싱 기본 개념
   </Card>
   <Card title="Cache Presets" icon="list" href="/ko/advanced-features/cache-control/cache-presets">
     사전 정의된 캐시 설정
   </Card>
-  <Card title="SSR에서 사용하기" icon="window" href="/ko/advanced-features/cache-control/using-in-ssr">
+  <Card
+    title="SSR에서 사용하기"
+    icon="window"
+    href="/ko/advanced-features/cache-control/using-in-ssr"
+  >
     SSR 페이지에 Cache-Control 적용
   </Card>
 </CardGroup>

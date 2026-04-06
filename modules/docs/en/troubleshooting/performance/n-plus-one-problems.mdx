@@ -1,6 +1,6 @@
 ---
-title: 'N+1 Problems'
-description: 'Solving N+1 query problems'
+title: "N+1 Problems"
+description: "Solving N+1 query problems"
 ---
 
 This guide covers understanding N+1 query problems and how to solve them using Sonamu's Subset and Relation features.
@@ -15,15 +15,13 @@ The N+1 problem is a performance issue where 1 main query triggers N additional 
 // N+1 problem occurring
 async function getUsersWithOrders() {
   // 1. Fetch users (1 query)
-  const users = await UserModel.getPuri().select("id", "name");  // 100 users
+  const users = await UserModel.getPuri().select("id", "name"); // 100 users
 
   // 2. Fetch orders for each user (N queries)
   for (const user of users) {
-    const orders = await OrderModel.getPuri()
-      .select("*")
-      .where({ user_id: user.id });
+    const orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
 
-    user.orders = orders;  // 100 queries!
+    user.orders = orders; // 100 queries!
   }
 
   return users;
@@ -33,6 +31,7 @@ async function getUsersWithOrders() {
 ```
 
 **Performance Impact:**
+
 - 100 users = 101 queries
 - 1000 users = 1001 queries
 - Accumulated network round-trip time
@@ -90,7 +89,7 @@ async function getUsersWithOrders() {
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb,
-    params: { num: 100, page: 1 }
+    params: { num: 100, page: 1 },
   });
 
   // result.rows[0].orders is already loaded
@@ -103,6 +102,7 @@ async function getUsersWithOrders() {
 ```
 
 **Internal Operation:**
+
 1. Fetch users (1 query)
 2. Fetch all orders with user IDs in batch (1 query)
 3. Join in memory
@@ -135,10 +135,10 @@ const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
-result.rows.forEach(post => {
+result.rows.forEach((post) => {
   console.log(`${post.title} by ${post.author.name}`);
 });
 ```
@@ -177,11 +177,11 @@ const { qb } = OrderModel.getSubsetQueries("Detail");
 const result = await OrderModel.executeSubsetQuery({
   subset: "Detail",
   qb: qb.where({ status: "completed" }),
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
 // All relations are already loaded
-result.rows.forEach(order => {
+result.rows.forEach((order) => {
   console.log(`Order ${order.id}`);
   console.log(`User: ${order.user.name}`);
   console.log(`Items: ${order.items.length}`);
@@ -205,7 +205,7 @@ result.rows.forEach(order => {
         },
         {
           "name": "post",
-          "subset": "WithAuthor"  // Nested: post + post author
+          "subset": "WithAuthor" // Nested: post + post author
         }
       ]
     }
@@ -219,10 +219,10 @@ const { qb } = CommentModel.getSubsetQueries("WithAll");
 const result = await CommentModel.executeSubsetQuery({
   subset: "WithAll",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
-result.rows.forEach(comment => {
+result.rows.forEach((comment) => {
   console.log(`${comment.author.name}: ${comment.content}`);
   console.log(`  on "${comment.post.title}" by ${comment.post.author.name}`);
 });
@@ -244,9 +244,7 @@ async function getUsersWithOrders() {
   const users = await UserModel.getPuri().select("id", "name");
 
   for (const user of users) {
-    user.orders = await OrderModel.getPuri()
-      .select("*")
-      .where({ user_id: user.id });
+    user.orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
   }
 
   return users;
@@ -257,21 +255,22 @@ async function getUsersWithOrders() {
   // 1. Fetch users
   const users = await UserModel.getPuri().select("id", "name");
 
-  const userIds = users.map(u => u.id);
+  const userIds = users.map((u) => u.id);
 
   // 2. Fetch all orders at once
-  const orders = await OrderModel.getPuri()
-    .select("*")
-    .whereIn("user_id", userIds);
+  const orders = await OrderModel.getPuri().select("*").whereIn("user_id", userIds);
 
   // 3. Map in memory
-  const ordersByUserId = orders.reduce((acc, order) => {
-    if (!acc[order.user_id]) acc[order.user_id] = [];
-    acc[order.user_id].push(order);
-    return acc;
-  }, {} as Record<number, Order[]>);
+  const ordersByUserId = orders.reduce(
+    (acc, order) => {
+      if (!acc[order.user_id]) acc[order.user_id] = [];
+      acc[order.user_id].push(order);
+      return acc;
+    },
+    {} as Record<number, Order[]>,
+  );
 
-  users.forEach(user => {
+  users.forEach((user) => {
     user.orders = ordersByUserId[user.id] || [];
   });
 
@@ -289,14 +288,10 @@ Use the DataLoader pattern when repeated queries are needed:
 class OrderModelClass extends BaseModelClass {
   // Orders loader by user
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
-    const orders = await this.getPuri()
-      .select("*")
-      .whereIn("user_id", userIds);
+    const orders = await this.getPuri().select("*").whereIn("user_id", userIds);
 
     // Group by user_id
-    const grouped = userIds.map(userId =>
-      orders.filter(o => o.user_id === userId)
-    );
+    const grouped = userIds.map((userId) => orders.filter((o) => o.user_id === userId));
 
     return grouped;
   });
@@ -348,7 +343,7 @@ class PostModelClass extends BaseModelClass {
     return this.executeSubsetQuery({
       subset: "WithAuthorAndComments",
       qb: qb.orderBy("created_at", "desc"),
-      params: { num: 20, page: 1 }
+      params: { num: 20, page: 1 },
     });
   }
 }
@@ -375,7 +370,7 @@ class DashboardService {
       stats.push({
         user: user.name,
         orderCount: orderCount[0].count,
-        totalSpent: totalSpent[0].total
+        totalSpent: totalSpent[0].total,
       });
     }
 
@@ -389,7 +384,7 @@ class DashboardService {
         "users.id",
         "users.name",
         knex.raw("COUNT(orders.id) as order_count"),
-        knex.raw("COALESCE(SUM(orders.total), 0) as total_spent")
+        knex.raw("COALESCE(SUM(orders.total), 0) as total_spent"),
       )
       .leftJoin("orders", "orders.user_id", "users.id")
       .groupBy("users.id");
@@ -406,13 +401,14 @@ class DashboardService {
 export default {
   database: {
     defaultOptions: {
-      debug: true  // Output all queries
-    }
-  }
+      debug: true, // Output all queries
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
 Check the console after execution:
+
 ```
 SELECT * FROM users;
 SELECT * FROM orders WHERE user_id = 1;
@@ -438,11 +434,11 @@ test("N+1 problem check", async () => {
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb: qb.limit(10),
-    params: { num: 10, page: 1 }
+    params: { num: 10, page: 1 },
   });
 
   // Verify query count
-  expect(queryCount).toBeLessThan(5);  // Would be 11+ with N+1
+  expect(queryCount).toBeLessThan(5); // Would be 11+ with N+1
   expect(result.rows).toHaveLength(10);
 });
 ```
@@ -479,7 +475,7 @@ const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
 // Manual loading - avoid
@@ -524,9 +520,9 @@ for (const post of posts) {
 export default {
   database: {
     defaultOptions: {
-      debug: process.env.NODE_ENV === "development"
-    }
-  }
+      debug: process.env.NODE_ENV === "development",
+    },
+  },
 } satisfies SonamuConfig;
 ```
 

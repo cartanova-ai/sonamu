@@ -1,6 +1,6 @@
 ---
-title: 'Port Already in Use'
-description: 'Resolving port conflicts'
+title: "Port Already in Use"
+description: "Resolving port conflicts"
 ---
 
 This covers port conflict issues and how to resolve them.
@@ -51,10 +51,10 @@ taskkill /PID <ProcessID> /F
 export default {
   server: {
     listen: {
-      port: 10281,  // Use different port
-      host: "localhost"
-    }
-  }
+      port: 10281, // Use different port
+      host: "localhost",
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -72,9 +72,9 @@ Sonamu UI uses the same port as the API server and is accessed via the `/sonamu-
 export default {
   server: {
     listen: {
-      port: 10280
-    }
-  }
+      port: 10280,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -97,9 +97,9 @@ Use different ports for each project:
 export default {
   server: {
     listen: {
-      port: 10280
-    }
-  }
+      port: 10280,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -110,9 +110,9 @@ export default {
 export default {
   server: {
     listen: {
-      port: 10380
-    }
-  }
+      port: 10380,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 

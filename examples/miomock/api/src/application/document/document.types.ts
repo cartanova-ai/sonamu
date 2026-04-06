@@ -1,5 +1,6 @@
 import { SonamuSemanticParams } from "sonamu";
 import { z } from "zod";
+
 import { DocumentBaseListParams, DocumentBaseSchema } from "../sonamu.generated";
 
 // Document - SemanticParams

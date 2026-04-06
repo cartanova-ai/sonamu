@@ -14,8 +14,8 @@ import { BaseModelClass, api, CompressPresets } from "sonamu";
 
 class ProductModelClass extends BaseModelClass {
   @api({
-    httpMethod: 'GET',
-    compress: CompressPresets.aggressive,  // 이 API만 적극적 압축
+    httpMethod: "GET",
+    compress: CompressPresets.aggressive, // 이 API만 적극적 압축
   })
   async findAll() {
     return this.findMany({});
@@ -130,6 +130,7 @@ async getAlreadyCompressed() {
 ```
 
 **사용 사례**:
+
 - 이미 압축된 파일 (이미지, 비디오, zip)
 - 매우 작은 응답 (< 100 바이트)
 - 실시간 스트리밍
@@ -145,28 +146,28 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        global: false,  // 기본적으로 압축 안 함
+        global: false, // 기본적으로 압축 안 함
         threshold: 1024,
         encodings: ["br", "gzip", "deflate"],
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 // Model - 선택적 압축
 class DataModelClass extends BaseModelClass {
   // 이 API만 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: true,
   })
   async getLargeData() {
     return this.findMany({ num: 10000 });
   }
-  
+
   // 압축 안 함 (기본값)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
   })
   async getSmallData() {
     return { status: "ok" };
@@ -175,6 +176,7 @@ class DataModelClass extends BaseModelClass {
 ```
 
 **장점**:
+
 - 불필요한 압축 방지
 - CPU 사용량 최소화
 - 정확한 제어
@@ -275,43 +277,43 @@ async getHTML() {
 class ProductModelClass extends BaseModelClass {
   // 상품 목록: 기본 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async findAll(page: number) {
     return this.findMany({ page, num: 20 });
   }
-  
+
   // 상품 상세: 기본 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
-  
+
   // 대량 데이터 내보내기: 적극적 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async exportAll() {
     return this.findMany({ num: 100000 });
   }
-  
+
   // 상품 이미지: 압축 안 함
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: false,
   })
   async getImage(id: number) {
     return this.sendFile(`products/${id}.jpg`);
   }
-  
+
   // 생성/수정: 압축 안 함 (작은 응답)
   @api({
-    httpMethod: 'POST',
+    httpMethod: "POST",
     compress: false,
   })
   async create(data: ProductSave) {
@@ -326,25 +328,25 @@ class ProductModelClass extends BaseModelClass {
 class FileModelClass extends BaseModelClass {
   // JSON 파일: 적극적 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async downloadJSON(id: number) {
     return this.getJSONFile(id);
   }
-  
+
   // 이미 압축된 파일: 압축 안 함
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: false,
   })
   async downloadZip(id: number) {
     return this.getZipFile(id);
   }
-  
+
   // 텍스트 파일: 기본 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async downloadText(id: number) {
@@ -359,25 +361,25 @@ class FileModelClass extends BaseModelClass {
 class ReportModelClass extends BaseModelClass {
   // 실시간 통계: 보수적 압축 (빠른 응답)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.conservative,
   })
   async getRealTimeStats() {
     return this.calculateRealTimeStats();
   }
-  
+
   // 일간 리포트: 기본 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async getDailyReport(date: string) {
     return this.generateDailyReport(date);
   }
-  
+
   // 대용량 분석: 적극적 압축
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async getFullAnalysis(startDate: string, endDate: string) {
@@ -392,13 +394,13 @@ class ReportModelClass extends BaseModelClass {
 class StreamModelClass extends BaseModelClass {
   // SSE 스트림: 압축 안 함
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       message: z.string(),
     }),
   })
   @api({
-    compress: false,  // 스트리밍은 압축 안 함
+    compress: false, // 스트리밍은 압축 안 함
   })
   async *streamUpdates() {
     yield { message: "update 1" };
@@ -416,21 +418,21 @@ import { registerSSR, CompressPresets } from "sonamu";
 
 // HTML 페이지: 적극적 압축
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   compress: CompressPresets.aggressive,
 });
 
 // 작은 페이지: 기본 압축
 registerSSR({
-  path: '/about',
+  path: "/about",
   Component: About,
   compress: CompressPresets.default,
 });
 
 // 압축 비활성화
 registerSSR({
-  path: '/stream',
+  path: "/stream",
   Component: StreamPage,
   compress: false,
 });
@@ -496,18 +498,19 @@ async getData() {
 })
 async getData() {
   const data = this.findMany({});
-  
+
   // 개발 환경에서 크기 로깅
   if (process.env.NODE_ENV === 'development') {
     const size = JSON.stringify(data).length;
     console.log(`Response size: ${size} bytes`);
   }
-  
+
   return data;
 }
 ```
 
 브라우저 개발자 도구에서 확인:
+
 ```
 Network 탭 → 요청 선택 → Headers 탭
 
@@ -526,6 +529,7 @@ Size:
 **API별 압축 제어 시 주의사항**:
 
 1. **이미 압축된 콘텐츠는 비활성화**: 이미지, 비디오, zip
+
    ```typescript
    // ✅ 올바른 예
    @api({ compress: false })
@@ -533,6 +537,7 @@ Size:
    ```
 
 2. **작은 응답은 압축 비효율적**: < 1KB는 압축 안 하는 게 나음
+
    ```typescript
    // ✅ 작은 응답
    @api({ compress: false })
@@ -540,6 +545,7 @@ Size:
    ```
 
 3. **스트리밍은 압축 비활성화**: SSE, WebSocket
+
    ```typescript
    // ✅ 스트리밍
    @stream({ type: 'sse', events: ... })
@@ -548,6 +554,7 @@ Size:
    ```
 
 4. **일관된 전략 사용**: 비슷한 API는 같은 설정
+
    ```typescript
    // ✅ 일관성
    // 모든 조회 API: default
@@ -559,7 +566,7 @@ Size:
    ```typescript
    // aggressive 사용 시 서버 CPU 사용률 모니터링 필요
    ```
-</Warning>
+   </Warning>
 
 ## 디버깅 팁
 
@@ -590,12 +597,12 @@ ls -lh compressed.json  # 10KB
 ```typescript
 // 테스트 코드에서 확인
 const response = await server.inject({
-  method: 'GET',
-  url: '/api/products',
-  headers: { 'accept-encoding': 'br, gzip' }
+  method: "GET",
+  url: "/api/products",
+  headers: { "accept-encoding": "br, gzip" },
 });
 
-console.log(response.headers['content-encoding']);  // "br" 또는 "gzip"
+console.log(response.headers["content-encoding"]); // "br" 또는 "gzip"
 ```
 
 ## 다음 단계
@@ -607,7 +614,11 @@ console.log(response.headers['content-encoding']);  // "br" 또는 "gzip"
   <Card title="압축 프리셋" icon="list" href="/ko/advanced-features/compress/compress-presets">
     사전 정의된 압축 설정
   </Card>
-  <Card title="성능 최적화" icon="gauge-high" href="/ko/advanced-features/compress/performance-optimization">
+  <Card
+    title="성능 최적화"
+    icon="gauge-high"
+    href="/ko/advanced-features/compress/performance-optimization"
+  >
     압축 최적화 전략
   </Card>
 </CardGroup>

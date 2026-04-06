@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import minimist from "minimist";
+
 import { runAcAdd } from "./commands/ac-add.js";
 import { runAcList } from "./commands/ac-list.js";
 import { runAgentsInit } from "./commands/agents-init.js";

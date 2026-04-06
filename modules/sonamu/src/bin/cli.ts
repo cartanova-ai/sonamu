@@ -6,12 +6,14 @@ dotenv.config();
 import assert from "assert";
 import { execSync, spawn } from "child_process";
 import { cp, mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
-import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import os from "os";
 import path from "path";
 import process from "process";
+
+import knex, { type Knex } from "knex";
 import { tsicli } from "tsicli";
+
 import { Sonamu } from "../api";
 import { addCompanionsToEntities, generateBetterAuthEntities } from "../auth/auth-generator";
 import {

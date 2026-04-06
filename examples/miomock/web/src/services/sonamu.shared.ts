@@ -3,8 +3,8 @@
  * 최초 1회 생성되며, 이후에는 덮어쓰지 않습니다.
  * 필요시 직접 수정할 수 있습니다.
  */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: shared */
-/** biome-ignore-all lint/suspicious/noExplicitAny: shared */
+/* oxlint-disable react-hooks/exhaustive-deps */ // shared
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // shared
 
 /*
   fetch

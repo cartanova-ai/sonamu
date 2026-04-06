@@ -1,8 +1,10 @@
 import { execFileSync } from "child_process";
 import { readFileSync, unlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { format } from "oxfmt";
 import { join } from "path";
+
+import { format } from "oxfmt";
+
 import { Naite } from "../naite/naite";
 import { isTest } from "./controller";
 

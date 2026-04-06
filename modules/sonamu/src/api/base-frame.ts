@@ -1,5 +1,6 @@
 import { getLogger, type Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
+
 import type { DBPreset } from "../database/db";
 // Static imports kept for non-async functions (getDB, getUpsertBuilder)
 import { DB } from "../database/db";

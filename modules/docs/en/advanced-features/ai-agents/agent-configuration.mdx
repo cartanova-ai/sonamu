@@ -22,6 +22,7 @@ graph LR
 ```
 
 **Characteristics**:
+
 - LLM selects and executes appropriate tools based on context
 - Automatically performs multi-step tasks
 - Maintains context throughout conversations
@@ -75,6 +76,7 @@ ANTHROPIC_API_KEY=sk-ant-...
     - `gpt-4-turbo`: GPT-4 Turbo
     - `gpt-4`: GPT-4
     - `gpt-3.5-turbo`: GPT-3.5 Turbo
+
   </Tab>
 
   <Tab title="Anthropic" icon="robot">
@@ -89,6 +91,7 @@ ANTHROPIC_API_KEY=sk-ant-...
     - `claude-3-opus-20240229`: Claude 3 Opus
     - `claude-3-sonnet-20240229`: Claude 3 Sonnet
     - `claude-3-haiku-20240307`: Claude 3 Haiku
+
   </Tab>
 
   <Tab title="Custom" icon="screwdriver-wrench">
@@ -100,6 +103,7 @@ ANTHROPIC_API_KEY=sk-ant-...
       apiKey: process.env.CUSTOM_API_KEY,
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -111,9 +115,9 @@ The agent configuration object.
 import type { AgentConfig } from "sonamu/ai";
 
 const config: AgentConfig = {
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   instructions: "You are a hotel booking assistant.",
-  toolChoice: 'auto',
+  toolChoice: "auto",
   temperature: 0.7,
   maxOutputTokens: 1000,
 };
@@ -134,6 +138,7 @@ const config: AgentConfig = {
       // model: anthropic('claude-3-5-sonnet-20241022'),
     }
     ```
+
   </Tab>
 
   <Tab title="instructions" icon="book">
@@ -148,6 +153,7 @@ const config: AgentConfig = {
       `,
     }
     ```
+
   </Tab>
 
   <Tab title="toolChoice" icon="wrench">
@@ -164,6 +170,7 @@ const config: AgentConfig = {
     - `'auto'`: AI uses tools when needed (default)
     - `'none'`: No tool usage
     - `'required'`: Must use tools
+
   </Tab>
 
   <Tab title="temperature" icon="temperature-half">
@@ -180,6 +187,7 @@ const config: AgentConfig = {
     - `0.0`: Deterministic (consistent responses)
     - `0.7`: Balanced (default)
     - `1.5+`: Creative (varied responses)
+
   </Tab>
 </Tabs>
 
@@ -187,26 +195,26 @@ const config: AgentConfig = {
 
 ```typescript
 const config: AgentConfig = {
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
 
   // Token limits
   maxOutputTokens: 1000,
 
   // Advanced parameters
-  topP: 0.9,                    // Top-P sampling
-  topK: 50,                     // Top-K sampling
-  presencePenalty: 0.0,         // Topic repetition suppression
-  frequencyPenalty: 0.0,        // Word repetition suppression
+  topP: 0.9, // Top-P sampling
+  topK: 50, // Top-K sampling
+  presencePenalty: 0.0, // Topic repetition suppression
+  frequencyPenalty: 0.0, // Word repetition suppression
 
   // Stop conditions
-  stopSequences: ['\n\n'],      // Stop sequences
+  stopSequences: ["\n\n"], // Stop sequences
 
   // Reproducibility
-  seed: 12345,                  // Fixed seed
+  seed: 12345, // Fixed seed
 
   // HTTP headers
   headers: {
-    'X-Custom-Header': 'value',
+    "X-Custom-Header": "value",
   },
 };
 ```
@@ -216,19 +224,19 @@ const config: AgentConfig = {
 ### 1. Customer Support Chatbot
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
+import { openai } from "@ai-sdk/openai";
 import type { AgentConfig } from "sonamu/ai";
 
 const config: AgentConfig = {
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   instructions: `
     You are an e-commerce customer support chatbot.
     - Help with order lookup, delivery tracking, and refund processing.
     - Always respond politely and clearly.
     - Use tools when needed to provide accurate information.
   `,
-  toolChoice: 'auto',
-  temperature: 0.3,  // Consistent responses
+  toolChoice: "auto",
+  temperature: 0.3, // Consistent responses
   maxOutputTokens: 500,
 };
 ```
@@ -236,19 +244,19 @@ const config: AgentConfig = {
 ### 2. Creative Content Generation
 
 ```typescript
-import { anthropic } from '@ai-sdk/anthropic';
+import { anthropic } from "@ai-sdk/anthropic";
 import type { AgentConfig } from "sonamu/ai";
 
 const config: AgentConfig = {
-  model: anthropic('claude-3-5-sonnet-20241022'),
+  model: anthropic("claude-3-5-sonnet-20241022"),
   instructions: `
     You are a blog writing assistant.
     - Write creative content on given topics.
     - Consider SEO optimization.
     - Search for related information when needed.
   `,
-  toolChoice: 'auto',
-  temperature: 1.0,  // Creative
+  toolChoice: "auto",
+  temperature: 1.0, // Creative
   maxOutputTokens: 2000,
 };
 ```
@@ -256,19 +264,19 @@ const config: AgentConfig = {
 ### 3. Data Analysis Agent
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
+import { openai } from "@ai-sdk/openai";
 import type { AgentConfig } from "sonamu/ai";
 
 const config: AgentConfig = {
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
   instructions: `
     You are a data analysis expert.
     - Generate and execute SQL queries.
     - Analyze data and provide insights.
     - Create visualization charts.
   `,
-  toolChoice: 'required',  // Always use tools
-  temperature: 0.0,  // Accurate queries
+  toolChoice: "required", // Always use tools
+  temperature: 0.0, // Accurate queries
   maxOutputTokens: 1500,
 };
 ```
@@ -276,17 +284,17 @@ const config: AgentConfig = {
 ### 4. Multimodal Agent
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
+import { openai } from "@ai-sdk/openai";
 import type { AgentConfig } from "sonamu/ai";
 
 const config: AgentConfig = {
-  model: openai('gpt-4o'),  // Image support
+  model: openai("gpt-4o"), // Image support
   instructions: `
     You are an image analysis and description expert.
     - Analyze images and describe them in detail.
     - Search for related information when needed.
   `,
-  toolChoice: 'auto',
+  toolChoice: "auto",
   temperature: 0.5,
   maxOutputTokens: 1000,
 };
@@ -297,16 +305,16 @@ const config: AgentConfig = {
 ### Development Environment
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 const config: AgentConfig = {
   model: isDevelopment
-    ? openai('gpt-3.5-turbo')  // Fast and cheap
-    : openai('gpt-4o'),        // For production
+    ? openai("gpt-3.5-turbo") // Fast and cheap
+    : openai("gpt-4o"), // For production
 
   instructions: "...",
 
-  temperature: isDevelopment ? 0.0 : 0.7,  // Development: consistency
+  temperature: isDevelopment ? 0.0 : 0.7, // Development: consistency
   maxOutputTokens: isDevelopment ? 500 : 2000,
 };
 ```
@@ -315,7 +323,7 @@ const config: AgentConfig = {
 
 ```typescript
 const config: AgentConfig = {
-  model: openai('gpt-4o', {
+  model: openai("gpt-4o", {
     apiKey: process.env.OPENAI_API_KEY,
   }),
 
@@ -326,12 +334,12 @@ const config: AgentConfig = {
   maxOutputTokens: 1000,
 
   // Reproducibility
-  seed: parseInt(process.env.AGENT_SEED || '0'),
+  seed: parseInt(process.env.AGENT_SEED || "0"),
 
   // Monitoring headers
   headers: {
-    'X-Environment': 'production',
-    'X-Version': process.env.APP_VERSION,
+    "X-Environment": "production",
+    "X-Version": process.env.APP_VERSION,
   },
 };
 ```
@@ -340,22 +348,22 @@ const config: AgentConfig = {
 
 ### Model Selection
 
-| Model | Performance | Cost | Speed | Recommended Use |
-|-------|-------------|------|-------|-----------------|
-| GPT-4o | Highest | High | Medium | Complex tasks |
-| GPT-4 Turbo | High | Medium | Fast | General tasks |
-| GPT-3.5 Turbo | Medium | Low | Very fast | Simple tasks |
-| Claude 3.5 Sonnet | Highest | Medium | Fast | Coding, analysis |
-| Claude 3 Haiku | Low | Very low | Very fast | Simple tasks |
+| Model             | Performance | Cost     | Speed     | Recommended Use  |
+| ----------------- | ----------- | -------- | --------- | ---------------- |
+| GPT-4o            | Highest     | High     | Medium    | Complex tasks    |
+| GPT-4 Turbo       | High        | Medium   | Fast      | General tasks    |
+| GPT-3.5 Turbo     | Medium      | Low      | Very fast | Simple tasks     |
+| Claude 3.5 Sonnet | Highest     | Medium   | Fast      | Coding, analysis |
+| Claude 3 Haiku    | Low         | Very low | Very fast | Simple tasks     |
 
 ### Token Limits
 
 ```typescript
 const config: AgentConfig = {
-  model: openai('gpt-4o'),
+  model: openai("gpt-4o"),
 
   // Output token limit
-  maxOutputTokens: 500,  // Cost savings
+  maxOutputTokens: 500, // Cost savings
 
   // Concise instructions
   instructions: "Respond briefly.",
@@ -368,25 +376,29 @@ const config: AgentConfig = {
 **Important considerations when configuring agents**:
 
 1. **API Key Security**: Environment variables required
+
    ```typescript
    // ❌ Hardcoded
-   model: openai('gpt-4o', { apiKey: 'sk-...' })
+   model: openai("gpt-4o", { apiKey: "sk-..." });
 
    // ✅ Environment variable
-   model: openai('gpt-4o', { apiKey: process.env.OPENAI_API_KEY })
+   model: openai("gpt-4o", { apiKey: process.env.OPENAI_API_KEY });
    ```
 
 2. **Token Limits**: Set maxOutputTokens
+
    ```typescript
    maxOutputTokens: 1000,  // Cost control
    ```
 
 3. **Temperature Range**: 0.0 ~ 2.0
+
    ```typescript
    temperature: 0.7,  // Appropriate value
    ```
 
 4. **toolChoice Selection**: Configure based on use case
+
    ```typescript
    // Data analysis: required
    // General conversation: auto
@@ -394,16 +406,17 @@ const config: AgentConfig = {
    ```
 
 5. **Instructions Clarity**: Specific instructions
+
    ```typescript
    // ❌ Vague
-   instructions: "Help me"
+   instructions: "Help me";
 
    // ✅ Clear
-   instructions: "Customer support chatbot that helps with order lookup, delivery tracking, and refund processing"
+   instructions: "Customer support chatbot that helps with order lookup, delivery tracking, and refund processing";
    ```
 
 6. **Cost Monitoring**: Track token usage in production
-</Warning>
+   </Warning>
 
 ## Next Steps
 

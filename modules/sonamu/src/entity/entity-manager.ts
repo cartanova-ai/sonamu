@@ -1,9 +1,11 @@
 import assert from "assert";
-import chalk from "chalk";
 import { glob, readFile } from "fs/promises";
-import inflection from "inflection";
 import path from "path";
+
+import chalk from "chalk";
+import inflection from "inflection";
 import { prettifyError, z } from "zod";
+
 import { Sonamu } from "../api/sonamu";
 import {
   type EntityIndex,

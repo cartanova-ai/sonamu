@@ -34,6 +34,7 @@ sequenceDiagram
 ```
 
 **Benefits**:
+
 - Transfer size: 100KB to 10KB (90% reduction)
 - Download time: 1 second to 0.1 second (10x faster)
 - Bandwidth savings
@@ -48,13 +49,14 @@ import { type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: true,  // Enable compression (default settings)
+      compress: true, // Enable compression (default settings)
     },
   },
 };
 ```
 
 **Default behavior**:
+
 - threshold: 1024 (only compress 1KB or larger)
 - encodings: `["br", "gzip", "deflate"]` (in priority order)
 - Automatically applied to all APIs
@@ -71,6 +73,7 @@ export const config: SonamuConfig = {
       compress: false,  // Disable
     }
     ```
+
   </Tab>
 
   <Tab title="CompressOptions" icon="gear">
@@ -87,6 +90,7 @@ export const config: SonamuConfig = {
       } as FastifyCompressOptions
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -106,11 +110,13 @@ plugins: {
 ```
 
 **Characteristics**:
+
 - Compression ratio: Best (15-20% better than gzip)
 - Speed: Slow (high CPU usage)
 - Support: Modern browsers (not supported in IE)
 
 **Suitable for**:
+
 - Static content (can be pre-compressed)
 - When bandwidth is critical
 - When server CPU has capacity
@@ -129,11 +135,13 @@ plugins: {
 ```
 
 **Characteristics**:
+
 - Compression ratio: Medium
 - Speed: Fast
 - Support: All browsers
 
 **Suitable for**:
+
 - Dynamic API responses
 - Real-time compression
 - When compatibility is important
@@ -152,6 +160,7 @@ plugins: {
 ```
 
 **Characteristics**:
+
 - Compression ratio: Similar to gzip
 - Speed: Fast
 - Support: Most browsers
@@ -171,6 +180,7 @@ plugins: {
 ```
 
 **How it works**:
+
 ```
 Browser request: Accept-Encoding: br, gzip, deflate
 
@@ -193,11 +203,13 @@ plugins: {
 ```
 
 **Reasons**:
+
 - Small data has low compression efficiency
 - Compression/decompression overhead may be larger
 - HTTP header size increases
 
 **Recommended values**:
+
 - Default: `1024` (1KB)
 - Aggressive: `256` (256B)
 - Conservative: `4096` (4KB)
@@ -206,10 +218,10 @@ plugins: {
 
 ```typescript
 // 100 byte response
-threshold: 1024  // No compression (too small)
+threshold: 1024; // No compression (too small)
 
 // 2KB response
-threshold: 1024  // Compress (>= 1KB)
+threshold: 1024; // Compress (>= 1KB)
 ```
 
 ## Custom Types
@@ -225,12 +237,14 @@ plugins: {
 ```
 
 **Default behavior**: Compresses most text-based responses
+
 - `text/*` (text/html, text/css, text/plain)
 - `application/json`
 - `application/javascript`
 - `application/xml`
 
 **Images/videos are already compressed**:
+
 - `image/png`, `image/jpeg` (already compressed formats)
 - `video/mp4` (already compressed format)
 - Additional compression has no effect
@@ -242,8 +256,8 @@ plugins: {
   compress: {
     customTypes: (contentType: string) => {
       // Only compress JSON
-      return contentType === 'application/json';
-    }
+      return contentType === "application/json";
+    };
   }
 }
 ```
@@ -256,13 +270,14 @@ plugins: {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: true,  // Simply enable
+      compress: true, // Simply enable
     },
   },
 };
 ```
 
 **Settings used**:
+
 - threshold: 1024 (1KB)
 - encodings: `["br", "gzip", "deflate"]`
 
@@ -273,15 +288,16 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        threshold: 256,  // Compress small responses too
-        encodings: ["br", "gzip", "deflate"],  // All algorithms
-      }
+        threshold: 256, // Compress small responses too
+        encodings: ["br", "gzip", "deflate"], // All algorithms
+      },
     },
   },
 };
 ```
 
 **Characteristics**:
+
 - Maximum compression ratio (brotli priority)
 - Compress everything 256 bytes and above
 - Bandwidth optimization
@@ -294,14 +310,15 @@ export const config: SonamuConfig = {
     plugins: {
       compress: {
         threshold: 1024,
-        encodings: ["gzip", "deflate"],  // Exclude brotli
-      }
+        encodings: ["gzip", "deflate"], // Exclude brotli
+      },
     },
   },
 };
 ```
 
 **Characteristics**:
+
 - Support for old browsers like IE
 - Use gzip only (stable)
 
@@ -333,6 +350,7 @@ async getData() {
 ```
 
 **Use case**:
+
 - Most APIs don't need compression
 - Selectively compress specific APIs
 
@@ -343,15 +361,16 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        threshold: 4096,  // Only compress 4KB or larger
-        encodings: ["gzip"],  // gzip only (fast)
-      }
+        threshold: 4096, // Only compress 4KB or larger
+        encodings: ["gzip"], // gzip only (fast)
+      },
     },
   },
 };
 ```
 
 **Characteristics**:
+
 - Minimize CPU usage
 - Only compress large responses
 - Fast processing
@@ -362,22 +381,25 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: process.env.NODE_ENV === 'production'
-        ? {
-            threshold: 256,
-            encodings: ["br", "gzip", "deflate"],
-          }
-        : false,  // Disable in development environment
+      compress:
+        process.env.NODE_ENV === "production"
+          ? {
+              threshold: 256,
+              encodings: ["br", "gzip", "deflate"],
+            }
+          : false, // Disable in development environment
     },
   },
 };
 ```
 
 **Development environment**: Disable compression
+
 - Easier debugging
 - Fast response (no compression overhead)
 
 **Production**: Aggressive compression
+
 - Bandwidth savings
 - Improved user experience
 
@@ -414,6 +436,7 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
 **Precautions when using compression**:
 
 1. **Exclude already compressed files**: Images and videos have no compression benefit
+
    ```typescript
    compress: {
      customTypes: /^text\/|application\/json/,  // Text only
@@ -421,6 +444,7 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
    ```
 
 2. **Don't compress small responses**: Use threshold setting
+
    ```typescript
    compress: {
      threshold: 1024,  // Don't compress under 1KB
@@ -428,18 +452,19 @@ curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
    ```
 
 3. **Consider CPU load**: brotli has high CPU usage
+
    ```typescript
    // Avoid using brotli on low-spec servers
-   encodings: ["br"]
+   encodings: ["br"];
 
    // Use gzip (fast)
-   encodings: ["gzip"]
+   encodings: ["gzip"];
    ```
 
 4. **brotli only supported over HTTPS**: Use gzip over HTTP
 
 5. **Watch for decompression errors**: Verify that the client decompresses properly
-</Warning>
+   </Warning>
 
 ## Performance Impact
 
@@ -474,13 +499,21 @@ async getStatus() {
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Compression Presets" icon="list" href="/en/advanced-features/compress/compress-presets">
+  <Card
+    title="Compression Presets"
+    icon="list"
+    href="/en/advanced-features/compress/compress-presets"
+  >
     Predefined compression settings
   </Card>
   <Card title="Per-API Control" icon="code" href="/en/advanced-features/compress/per-api-control">
     Compression settings in @api decorator
   </Card>
-  <Card title="Performance Optimization" icon="gauge-high" href="/en/advanced-features/compress/performance-optimization">
+  <Card
+    title="Performance Optimization"
+    icon="gauge-high"
+    href="/en/advanced-features/compress/performance-optimization"
+  >
     Compression optimization strategies
   </Card>
 </CardGroup>

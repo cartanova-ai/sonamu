@@ -1,4 +1,5 @@
 import { plural } from "sonamu/dict";
+
 import { defineLocale } from "./sd.generated";
 
 /**

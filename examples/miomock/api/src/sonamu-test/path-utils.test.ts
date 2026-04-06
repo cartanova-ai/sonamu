@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { runtimePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 
 describe("path-utils", () => {

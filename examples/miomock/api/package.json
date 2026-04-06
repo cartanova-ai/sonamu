@@ -1,10 +1,10 @@
 {
   "name": "miomock-api",
   "version": "1.0.0",
+  "description": "Miomock API 서버입니다. 프로젝트의 모든 명령은 여기서 실행해주세요 :)",
+  "license": "MIT",
   "type": "module",
   "main": "index.js",
-  "license": "MIT",
-  "description": "Miomock API 서버입니다. 프로젝트의 모든 명령은 여기서 실행해주세요 :)",
   "scripts": {
     "dev": "sonamu dev",
     "build": "sonamu build",
@@ -25,6 +25,10 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@logtape/pretty": "catalog:",
+    "@logtape/redaction": "catalog:",
+    "@sonamu-kit/cdd": "workspace:^",
     "@swc/core": "catalog:",
     "ai": "catalog:",
     "bcrypt": "catalog:",
@@ -35,15 +39,10 @@
     "knex": "catalog:",
     "pg": "catalog:",
     "radashi": "catalog:",
-    "@sonamu-kit/cdd": "workspace:^",
     "sonamu": "workspace:^",
-    "zod": "catalog:",
-    "@logtape/logtape": "catalog:",
-    "@logtape/pretty": "catalog:",
-    "@logtape/redaction": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@fastify/compress": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/mdi": "catalog:",

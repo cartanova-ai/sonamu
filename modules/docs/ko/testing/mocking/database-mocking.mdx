@@ -21,16 +21,16 @@ flowchart LR
         T1Insert --> T1Test["검증"]
         T1Test --> T1Rollback["롤백"]
     end
-    
+
     subgraph Test2["테스트 2"]
         direction TB
         T2Start["트랜잭션 시작"] --> T2Update["데이터 수정"]
         T2Update --> T2Test["검증"]
         T2Test --> T2Rollback["롤백"]
     end
-    
+
     T1Rollback --> T2Start
-    
+
     style Test1 fill:#e3f2fd
     style Test2 fill:#e3f2fd
 ```
@@ -71,24 +71,25 @@ export function bootstrap(vi: VitestUtils) {
   beforeAll(async () => {
     await Sonamu.initForTesting();
   });
-  
+
   beforeEach(async () => {
     await DB.createTestTransaction();  // 트랜잭션 시작
   });
-  
+
   afterEach(async ({ task }) => {
     vi.useRealTimers();
     await DB.clearTestTransaction();   // 트랜잭션 롤백
-    
+
     // Naite 로그 전송
     await NaiteReporter.reportTestResult({...});
   });
-  
+
   afterAll(() => {});
 }
 ```
 
 **핵심**:
+
 1. `beforeEach`: 각 테스트 시작 전 트랜잭션 생성
 2. `afterEach`: 각 테스트 종료 후 트랜잭션 롤백
 3. 테스트 성공/실패 여부와 무관하게 항상 롤백
@@ -120,11 +121,11 @@ export const config: SonamuConfig = {
       // 테스트 환경 설정
       test: {
         connection: {
-          database: "myapp_test",  // 별도의 테스트 DB
+          database: "myapp_test", // 별도의 테스트 DB
         },
         pool: {
           min: 1,
-          max: 1,  // 단일 연결 풀 (트랜잭션 격리)
+          max: 1, // 단일 연결 풀 (트랜잭션 격리)
         },
       },
       development: {
@@ -153,6 +154,7 @@ mysql -u root -e "CREATE DATABASE myapp_test;"
 </CodeGroup>
 
 **중요**:
+
 - 테스트 DB는 개발/운영 DB와 **완전히 분리**
 - `pool.max: 1`로 설정하여 단일 연결 사용 (트랜잭션 격리 보장)
 
@@ -168,7 +170,7 @@ getDB(which: DBPreset): Knex {
     if (this.testTransaction) {
       return this.testTransaction;
     }
-    
+
     // 없으면 wdb 반환 (단일 연결 풀)
     if (!this.wdb) {
       this.wdb = createKnexInstance({
@@ -178,7 +180,7 @@ getDB(which: DBPreset): Knex {
     }
     return this.wdb;
   }
-  
+
   // 개발/운영 환경 로직
   // ...
 }
@@ -202,6 +204,7 @@ async createTestTransaction(): Promise<Knex.Transaction> {
 ```
 
 **작동 방식**:
+
 1. Write DB 인스턴스 가져오기
 2. 새 트랜잭션 시작
 3. `testTransaction` 속성에 저장
@@ -220,6 +223,7 @@ async clearTestTransaction(): Promise<void> {
 ```
 
 **작동 방식**:
+
 1. 현재 트랜잭션 롤백 (모든 변경사항 취소)
 2. `testTransaction`을 `null`로 초기화
 3. 다음 테스트를 위한 준비 완료
@@ -242,33 +246,33 @@ test("사용자 생성 및 조회", async () => {
     email: "john@example.com",
   });
   expect(created.id).toBeDefined();
-  
+
   // 조회
   const found = await userModel.findById(created.id);
   expect(found?.username).toBe("john");
-  
+
   // afterEach에서 자동 롤백 → DB에 실제로는 저장되지 않음
 });
 
 test("사용자 업데이트", async () => {
   // 새로운 트랜잭션 시작 → 이전 테스트 데이터 없음
   const user = await userModel.create({ username: "jane" });
-  
+
   // 업데이트
   await userModel.update(user.id, { username: "jane_updated" });
-  
+
   // 검증
   const updated = await userModel.findById(user.id);
   expect(updated?.username).toBe("jane_updated");
-  
+
   // 롤백
 });
 
 test("사용자 삭제", async () => {
   const user = await userModel.create({ username: "bob" });
-  
+
   await userModel.delete(user.id);
-  
+
   const deleted = await userModel.findById(user.id);
   expect(deleted).toBeNull();
 });
@@ -280,25 +284,25 @@ test("사용자 삭제", async () => {
 test("게시글과 댓글 생성", async () => {
   // 사용자 생성
   const user = await userModel.create({ username: "john" });
-  
+
   // 게시글 생성
   const post = await postModel.create({
     author_id: user.id,
     title: "Hello World",
   });
-  
+
   // 댓글 생성
   const comment = await commentModel.create({
     post_id: post.id,
     author_id: user.id,
     content: "Nice post!",
   });
-  
+
   // 검증
   const comments = await commentModel.findByPostId(post.id);
   expect(comments.length).toBe(1);
   expect(comments[0].content).toBe("Nice post!");
-  
+
   // 롤백 → user, post, comment 모두 삭제됨
 });
 ```
@@ -308,21 +312,19 @@ test("게시글과 댓글 생성", async () => {
 ```typescript
 test("중복 사용자명 에러", async () => {
   await userModel.create({ username: "john" });
-  
+
   // 중복 사용자명으로 생성 시도
-  await expect(
-    userModel.create({ username: "john" })
-  ).rejects.toThrow("이미 존재하는 사용자명입니다");
-  
+  await expect(userModel.create({ username: "john" })).rejects.toThrow(
+    "이미 존재하는 사용자명입니다",
+  );
+
   // 에러 발생해도 트랜잭션은 롤백됨
 });
 
 test("제약 조건 위반", async () => {
   // NOT NULL 제약 조건 위반
-  await expect(
-    userModel.create({ username: null as any })
-  ).rejects.toThrow();
-  
+  await expect(userModel.create({ username: null as any })).rejects.toThrow();
+
   // 롤백으로 DB 상태는 깨끗함
 });
 ```
@@ -333,27 +335,27 @@ test("제약 조건 위반", async () => {
 test("주문 생성 전체 흐름", async () => {
   // 1. 사용자 생성
   const user = await userModel.create({ username: "customer" });
-  
+
   // 2. 상품 생성
   const product = await productModel.create({
     name: "노트북",
     price: 1000000,
     stock: 10,
   });
-  
+
   // 3. 주문 생성 (재고 감소 포함)
   const order = await orderModel.create({
     user_id: user.id,
     items: [{ product_id: product.id, quantity: 2 }],
   });
-  
+
   // 4. 재고 확인
   const updatedProduct = await productModel.findById(product.id);
-  expect(updatedProduct?.stock).toBe(8);  // 10 - 2
-  
+  expect(updatedProduct?.stock).toBe(8); // 10 - 2
+
   // 5. 주문 확인
   expect(order.total_amount).toBe(2000000);
-  
+
   // 전체 롤백 → 사용자, 상품, 주문 모두 삭제, 재고도 원상복구
 });
 ```
@@ -372,7 +374,7 @@ bootstrap(vi);
 test("테스트 1: 데이터 생성", async () => {
   const user = await userModel.create({ username: "test1" });
   expect(user.id).toBeDefined();
-  
+
   const count = await userModel.count();
   expect(count).toBe(1);
 });
@@ -381,8 +383,8 @@ test("테스트 2: 격리 확인", async () => {
   // 이전 테스트의 데이터가 롤백되었으므로
   // DB는 깨끗한 상태여야 함
   const count = await userModel.count();
-  expect(count).toBe(0);  // ✅ 통과
-  
+  expect(count).toBe(0); // ✅ 통과
+
   // 새로운 데이터 생성
   await userModel.create({ username: "test2" });
   const newCount = await userModel.count();
@@ -391,7 +393,7 @@ test("테스트 2: 격리 확인", async () => {
 
 test("테스트 3: 다시 격리 확인", async () => {
   const count = await userModel.count();
-  expect(count).toBe(0);  // ✅ 통과
+  expect(count).toBe(0); // ✅ 통과
 });
 ```
 
@@ -405,20 +407,20 @@ import { DB } from "sonamu";
 test("수동 트랜잭션 제어", async () => {
   // 현재 테스트 트랜잭션 가져오기
   const trx = DB.testTransaction;
-  
+
   if (!trx) {
     throw new Error("트랜잭션이 없습니다");
   }
-  
+
   // 트랜잭션 내에서 직접 쿼리 실행
   await trx("users").insert({
     username: "manual",
     email: "manual@example.com",
   });
-  
+
   const users = await trx("users").where({ username: "manual" });
   expect(users.length).toBe(1);
-  
+
   // afterEach에서 자동 롤백됨
 });
 ```
@@ -431,6 +433,7 @@ test("수동 트랜잭션 제어", async () => {
 **트랜잭션으로 롤백되지 않는 작업들**:
 
 1. **파일 시스템 작업**
+
    ```typescript
    test("파일 업로드", async () => {
      await fs.writeFile("/tmp/test.txt", "data");
@@ -439,6 +442,7 @@ test("수동 트랜잭션 제어", async () => {
    ```
 
 2. **외부 API 호출**
+
    ```typescript
    test("결제 API 호출", async () => {
      await paymentAPI.charge(1000);
@@ -447,6 +451,7 @@ test("수동 트랜잭션 제어", async () => {
    ```
 
 3. **DDL 문 (PostgreSQL의 경우 예외)**
+
    ```typescript
    test("테이블 생성", async () => {
      await DB.getDB("w").schema.createTable("temp", (t) => {
@@ -465,7 +470,7 @@ test("수동 트랜잭션 제어", async () => {
      // vi.useFakeTimers()로 제어 가능
    });
    ```
-</Warning>
+   </Warning>
 
 ### 파일 시스템 Mocking
 
@@ -477,16 +482,16 @@ import { access, constants } from "fs/promises";
 
 test("가상 파일 시스템", async () => {
   const filePath = "/tmp/virtual-file.txt";
-  
+
   // 가상 파일 등록
   Naite.t("mock:fs/promises:virtualFileSystem", filePath);
-  
+
   // 파일 존재 확인
   await expect(access(filePath, constants.F_OK)).resolves.toBeUndefined();
-  
+
   // Mock 삭제
   Naite.del("mock:fs/promises:virtualFileSystem");
-  
+
   // 이제 파일이 존재하지 않음
   await expect(access(filePath, constants.F_OK)).rejects.toThrow();
 });
@@ -511,6 +516,7 @@ test: {
 ```
 
 **이유**:
+
 - 트랜잭션 격리를 보장하려면 같은 연결을 사용해야 함
 - 여러 연결을 사용하면 트랜잭션이 공유되지 않음
 
@@ -535,7 +541,7 @@ export default defineConfig({
     pool: "forks",
     poolOptions: {
       forks: {
-        singleFork: true,  // 단일 프로세스
+        singleFork: true, // 단일 프로세스
       },
     },
   },
@@ -556,7 +562,7 @@ export default defineConfig({
 4. **DDL 주의**: MySQL에서는 DDL 문이 즉시 커밋되어 롤백되지 않습니다. 테스트에서 테이블 생성/삭제는 피하세요.
 
 5. **병렬 실행 제한**: 트랜잭션 격리를 위해 테스트는 순차 실행이 권장됩니다.
-</Warning>
+   </Warning>
 
 ## 다음 단계
 

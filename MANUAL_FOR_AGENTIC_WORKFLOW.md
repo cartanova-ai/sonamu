@@ -145,16 +145,19 @@ flowchart TD
 ## 코딩 에이전트별 차이
 
 ### Claude Code
+
 - `.claude/agents/*.md` preset(subagent)을 사용할 수 있습니다.
 - Orchestrator는 preset 기반 역할 분배를 우선 사용합니다.
 - Orchestrator는 코드를 직접 수정하지 않습니다.
 
 ### OpenAI Codex (App / CLI)
+
 - Codex는 프로젝트 `.codex/config.toml`의 `[agents.<role>]` 설정의 preset(subagent)를 사용할 수 있습니다.
 - Orchestrator는 preset 기반 역할 분배를 우선 사용합니다.
 - Orchestrator는 코드를 직접 수정하지 않습니다.
 
 ### 기타 코딩 에이전트(Codex, OpenCode, Amp, Cursor 등)
+
 - preset 미지원 환경을 기본으로 보고 inline fallback으로 운영합니다.
 - 아래 파일 참조를 spawn payload에 명시합니다.
   - `/Users/Nebuleto/Workspace/sonamu/.agents/workflow/subagents/00_agent_roles.md`
@@ -167,12 +170,13 @@ flowchart TD
 1. 스펙, 이슈, 요구사항을 읽습니다.
 2. 궁금한 점이 있다면 질문하여 요구사항을 고정합니다.
 3. 다음 항목을 확정합니다.
-  - 성공 기준
-  - In-scope/Out-of-scope
-  - 제약/Non-goal
-  - 영향 패키지
-  - 프레임워크 분류(기본은 프로젝트 구조/AGENTS 패키지 맵 기준, 신규/예외만 재분류)
-  - 필수 도구/필수 스킬
+
+- 성공 기준
+- In-scope/Out-of-scope
+- 제약/Non-goal
+- 영향 패키지
+- 프레임워크 분류(기본은 프로젝트 구조/AGENTS 패키지 맵 기준, 신규/예외만 재분류)
+- 필수 도구/필수 스킬
 
 ### 2. Plan 단계
 
@@ -199,6 +203,7 @@ flowchart TD
 3. 성능/보안 위험
 
 #### 1) 단위 작업에 대한 리뷰 루프
+
 - 구현 서브 에이전트가 자동 게이트(lint, type-check, test)를 통과하고 커밋한 뒤 Orchestrator에 반환합니다.
 - Orchestrator가 **별도의 reviewer 서브 에이전트**를 스폰하여 유닛 리뷰를 수행합니다.
 - reviewer는 구현 에이전트의 컨텍스트를 공유하지 않으며, diff와 `must_verify_behaviors`, 게이트 결과만 받습니다 (컨텍스트 격리).
@@ -206,6 +211,7 @@ flowchart TD
 - **fast-path**: 사소한 변경(30줄 이하, docs/formatting/config만 변경, 모든 게이트 통과)은 reviewer 스폰을 건너뛰고 바로 통과합니다.
 
 #### 2) 브랜치 리뷰 루프
+
 - 모든 유닛 리뷰가 종료된 후 Codex MCP로 브랜치 전체 리뷰를 수행합니다 (최종 품질 게이트).
 - 이슈가 있으면 피드백 처리 후 재리뷰합니다.
 - 미해결 항목이 0이 될 때까지 반복합니다.
@@ -244,10 +250,12 @@ flowchart TD
 1. generated 파일(`*.generated.ts`, `sonamu.generated.*`, `queries.generated.ts`)은 직접 수정하지 않습니다.
 2. `entity.json` 변경/마이그레이션 실행은 원칙적으로 사용자 주도(Sonamu UI/CLI)로 진행하며, 에이전트 직접 수행 시 사전 확인을 받습니다.
 3. 다음 작업은 에이전트가 직접 수행할 수 없습니다.
-  - 에이전트에 의한 사용자의 명시적 동의 없는 배포와 마이그레이션 실행 (`entity.json` 및 마이그레이션은 원칙적으로 Sonamu UI나 CLI로 수행합니다.)
-  - 로컬 DB의 수정 작업
-  - 원격 DB 직접 접속 / 조회 / 수정
-  - Terraform / AWS CLI를 이용한 Infrastructure 변경 적용
+
+- 에이전트에 의한 사용자의 명시적 동의 없는 배포와 마이그레이션 실행 (`entity.json` 및 마이그레이션은 원칙적으로 Sonamu UI나 CLI로 수행합니다.)
+- 로컬 DB의 수정 작업
+- 원격 DB 직접 접속 / 조회 / 수정
+- Terraform / AWS CLI를 이용한 Infrastructure 변경 적용
+
 4. 리뷰 출력이 길어지면 임시 파일 경로만 본문에 남기고, 메타데이터만 대화에 포함합니다.
 5. 서브에이전트에서 분해가 필요해지면 leaf worker가 직접 재분해하지 말고 orchestrator로 승격합니다.
 6. 구현보다 계획 해상도가 낮다면 구현을 늦추고 Bootstrap/Plan 품질을 먼저 끌어올립니다.
@@ -255,10 +263,12 @@ flowchart TD
 ## 자율주행 모드 운영
 
 다음 조건 중 하나라도 만족하면 자율주행으로 간주합니다.
+
 - 사용자 메시지에 `[자율주행]` 포함
 - “묻지 말고 끝까지 진행” 같은 명시적 요청
 
 자율주행 중 규칙:
+
 1. 중간 질문 없이 완료까지 진행합니다.
 2. 금지사항은 그대로 유지합니다.
 3. 불확실성은 `검토 필요 사항`으로 기록하고 진행합니다.
@@ -328,14 +338,14 @@ Bootstrap에서 요구사항이 고정되면 플래닝을 지시합니다. 플�
 
 ### 전체 흐름 요약
 
-| 단계 | 사용자 액션 | 에이전트 동작 |
-|------|------------|--------------|
-| Bootstrap | 요구사항 전달, 질의응답 | 질문으로 범위 확정 |
-| Plan | 플래닝 지시, 결과 검토/피드백 | `planner`가 단위 분해 |
-| Orchestrate | Orchestrator 실행 지시 | 메인 에이전트가 Orchestrator로 전환 및 분배 |
-| Unit Review | (자율주행 시 자동) | 로컬 reviewer 서브에이전트가 컨텍스트 격리 리뷰 |
-| Branch Review | Codex MCP 리뷰 응답 확인 (일반 모드) | Codex MCP 브랜치 전체 리뷰 |
-| Handoff | 최종 결과 확인/피드백 | 미해결 0건 확인 후 전달 |
+| 단계          | 사용자 액션                          | 에이전트 동작                                   |
+| ------------- | ------------------------------------ | ----------------------------------------------- |
+| Bootstrap     | 요구사항 전달, 질의응답              | 질문으로 범위 확정                              |
+| Plan          | 플래닝 지시, 결과 검토/피드백        | `planner`가 단위 분해                           |
+| Orchestrate   | Orchestrator 실행 지시               | 메인 에이전트가 Orchestrator로 전환 및 분배     |
+| Unit Review   | (자율주행 시 자동)                   | 로컬 reviewer 서브에이전트가 컨텍스트 격리 리뷰 |
+| Branch Review | Codex MCP 리뷰 응답 확인 (일반 모드) | Codex MCP 브랜치 전체 리뷰                      |
+| Handoff       | 최종 결과 확인/피드백                | 미해결 0건 확인 후 전달                         |
 
 ## 핫픽스/버그 수정 시 Codex MCP 문제 해결 에스컬레이션
 
@@ -363,9 +373,9 @@ flowchart TD
 
 ### 2단계 위임 모델
 
-| 단계 | 트리거 | Codex가 받는 것 | 에이전트 역할 |
-|------|--------|----------------|-------------|
-| 분석 위임 | 근본 원인 파악 난항 | 에러 로그, 재현 경로, 시도한 가설 | progress file 모니터링, 분석 결과 적용 |
+| 단계      | 트리거                                    | Codex가 받는 것                                  | 에이전트 역할                                    |
+| --------- | ----------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| 분석 위임 | 근본 원인 파악 난항                       | 에러 로그, 재현 경로, 시도한 가설                | progress file 모니터링, 분석 결과 적용           |
 | 전체 위임 | `self_attempt_count >= max_self_attempts` | 전체 버그 컨텍스트 + 코드베이스 참조 + 시도 이력 | progress file 모니터링, 완성된 수정 수령 및 검증 |
 
 ### 사용자 확인 모드

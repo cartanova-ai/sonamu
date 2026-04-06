@@ -9,24 +9,16 @@ Learn how Sonamu detects API changes at compile time to prevent runtime errors i
 
 <CardGroup cols={2}>
   <Card title="Instant Detection" icon="bolt">
-    On API changes
-    
-    Compile-time errors
+    On API changes Compile-time errors
   </Card>
   <Card title="Runtime Safety" icon="shield-check">
-    Discover before deploy
-    
-    Production stability
+    Discover before deploy Production stability
   </Card>
   <Card title="IDE Integration" icon="code">
-    Red underlines
-    
-    Immediate feedback
+    Red underlines Immediate feedback
   </Card>
   <Card title="Safe Refactoring" icon="rotate">
-    Large-scale changes
-    
-    Impact range visibility
+    Large-scale changes Impact range visibility
   </Card>
 </CardGroup>
 
@@ -43,7 +35,7 @@ In traditional development, API changes are only discovered **at runtime**.
 // Frontend (unaware of change)
 function UserProfile({ userId }: { userId: number }) {
   const user = await fetchUser(userId);
-  
+
   return (
     <div>
       {/* Runtime error! username field doesn't exist */}
@@ -54,6 +46,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **Problems with runtime errors**:
+
 1. **Occurs in production**: Users experience directly
 2. **Delayed discovery**: Only discovered via QA or user reports
 3. **Hard to debug**: Need to trace where problem occurred
@@ -81,12 +74,12 @@ async getUser(): Promise<{
 // Frontend (compile-time error occurs!)
 function UserProfile({ userId }: { userId: number }) {
   const { data } = UserService.useUser("A", userId);
-  
+
   return (
     <div>
       {/* ❌ Compile error! Property 'username' does not exist */}
       <h1>{data.user.username}</h1>
-      
+
       {/* ✅ After fix */}
       <h1>{data.user.displayName}</h1>
     </div>
@@ -95,6 +88,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **Benefits of compile-time errors**:
+
 1. ✨ **Instant discovery**: IDE shows immediately while coding
 2. ✨ **Fix before deploy**: Resolve all issues before production deploy
 3. ✨ **Impact range visibility**: See all places affected by change
@@ -120,6 +114,7 @@ console.log(data.user.username); // ❌ Compile error
 ```
 
 **IDE error message**:
+
 ```
 Property 'username' does not exist on type '{ id: number; displayName: string; }'.
 Did you mean 'displayName'?
@@ -138,11 +133,12 @@ async getUser(): Promise<{
 
 // Frontend
 const { data } = await UserService.getUser("A", 123);
-const nextYear = data.user.age + 1; 
+const nextYear = data.user.age + 1;
 // ❌ Compile error: string + number
 ```
 
 **IDE error message**:
+
 ```
 Operator '+' cannot be applied to types 'string' and 'number'.
 ```
@@ -168,11 +164,13 @@ const bioLength = data.user.bio.length;
 ```
 
 **IDE error message**:
+
 ```
 Object is possibly 'undefined'.
 ```
 
 **Fix**:
+
 ```typescript
 // ✅ Use optional chaining
 const bioLength = data.user.bio?.length;
@@ -224,6 +222,7 @@ await UserService.searchUsers({
 ```
 
 **IDE error message**:
+
 ```
 Type 'string' is not assignable to type 'number'.
 ```
@@ -246,6 +245,7 @@ console.log(data.posts.title);
 ```
 
 **Fix**:
+
 ```typescript
 // ✅ Handle array
 data.posts.forEach((post) => {
@@ -292,6 +292,7 @@ async getUser(): Promise<{
 **After running pnpm generate**:
 
 All error locations are displayed in IDE:
+
 ```
 src/components/UserProfile.tsx:15 - Property 'name' does not exist
 src/components/UserCard.tsx:8 - Property 'name' does not exist
@@ -300,6 +301,7 @@ src/pages/users/[id].tsx:42 - Property 'email' does not exist
 ```
 
 **Fix process**:
+
 1. Check all errors in IDE's "Problems" panel
 2. Visit each location and fix to match new structure
 3. When all errors are resolved, compilation succeeds
@@ -322,10 +324,10 @@ You can utilize TypeScript's powerful refactoring features.
 // IDE automatically changes throughout project
 
 // Before
-data.user.username
+data.user.username;
 
 // After (auto-changed)
-data.user.displayName
+data.user.displayName;
 ```
 
 ## Practical Workflow
@@ -353,6 +355,7 @@ pnpm generate
 ```
 
 **Output**:
+
 ```
 ✓ Analyzing API methods...
 ✓ Generating services.generated.ts...
@@ -367,14 +370,15 @@ pnpm tsc --noEmit
 ```
 
 **Output (error occurs)**:
+
 ```
-src/components/UserProfile.tsx:15:23 - error TS2339: 
+src/components/UserProfile.tsx:15:23 - error TS2339:
 Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
 
 15     <h1>{data.user.username}</h1>
                       ~~~~~~~~
 
-src/components/UserCard.tsx:8:35 - error TS2339: 
+src/components/UserCard.tsx:8:35 - error TS2339:
 Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
 
 8   const name = user.username;
@@ -402,6 +406,7 @@ pnpm tsc --noEmit
 ```
 
 **Output (success)**:
+
 ```
 ✓ No errors found!
 ```
@@ -423,26 +428,27 @@ on: [push, pull_request]
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '22'
-      
+          node-version: "22"
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Generate Services
         run: pnpm generate
-      
+
       - name: TypeScript Check
         run: pnpm tsc --noEmit
 ```
 
 **Benefits**:
+
 - Auto-detect type errors in Pull Requests
 - Block merge if type errors exist
 - Ensure code quality across the team
@@ -508,56 +514,76 @@ console.log(data.user.displayName);
 ### Common Error Messages
 
 **1. Property does not exist**
+
 ```
 Property 'username' does not exist on type 'User'.
 ```
+
 → Field was deleted or renamed
 
 **2. Type is not assignable**
+
 ```
 Type 'string' is not assignable to type 'number'.
 ```
+
 → Type was changed
 
 **3. Object is possibly undefined**
+
 ```
 Object is possibly 'undefined'.
 ```
+
 → Changed from required to optional
 
 **4. Cannot find name**
+
 ```
 Cannot find name 'UserService'.
 ```
+
 → Service not regenerated or import missing
 
 **5. Expected N arguments, but got M**
+
 ```
 Expected 2 arguments, but got 1.
 ```
+
 → API parameters added/removed
 
 ## Cautions
 
 <Warning>
-**Cautions when handling compile-time errors**:
-1. **pnpm generate required**: Always run after API changes
-2. **No @ts-ignore**: Don't ignore type errors
-3. **No any type**: Breaks type safety
-4. **Fix all errors**: Even one left can cause runtime error
-5. **CI/CD integration**: Set up auto type checking
+  **Cautions when handling compile-time errors**: 1. **pnpm generate required**: Always run after
+  API changes 2. **No @ts-ignore**: Don't ignore type errors 3. **No any type**: Breaks type safety
+  4. **Fix all errors**: Even one left can cause runtime error 5. **CI/CD integration**: Set up auto
+  type checking
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="API Type Inference" icon="wand-magic-sparkles" href="/en/frontend-integration/type-safety/api-type-inference">
+  <Card
+    title="API Type Inference"
+    icon="wand-magic-sparkles"
+    href="/en/frontend-integration/type-safety/api-type-inference"
+  >
     Understanding type inference
   </Card>
-  <Card title="Shared Types" icon="share-nodes" href="/en/frontend-integration/type-safety/shared-types">
+  <Card
+    title="Shared Types"
+    icon="share-nodes"
+    href="/en/frontend-integration/type-safety/shared-types"
+  >
     Type file structure
   </Card>
-  <Card title="Using Services" icon="code" href="/en/frontend-integration/generated-services/using-services">
+  <Card
+    title="Using Services"
+    icon="code"
+    href="/en/frontend-integration/generated-services/using-services"
+  >
     Service usage
   </Card>
   <Card title="Testing" icon="vial" href="/en/testing/overview">

@@ -39,9 +39,7 @@
     "src/application/project/project.types.ts",
     "src/application/project/project.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "ProjectModel": "프로젝트 생성/조회/수정/삭제를 담당한다",
     "Project Types": "프로젝트 엔티티 및 상태/파라미터 스키마를 정의한다"

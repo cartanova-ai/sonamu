@@ -1,4 +1,5 @@
 import type { ViteUserConfig } from "vitest/config";
+
 import { loadConfig } from "../api/config";
 
 type VitestConfig = ViteUserConfig["test"];

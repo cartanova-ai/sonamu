@@ -24,11 +24,7 @@ Sonamu는 개발자 경험을 최우선으로 설계되었습니다.
 
 하루에 50번 수정한다면? 전통적 방식은 25분 낭비, Sonamu는 1.7분입니다.
 
-<Card
-  title="HMR 동작 원리"
-  icon="bolt"
-  href="/ko/tools-and-cli/hmr/how-hmr-works"
->
+<Card title="HMR 동작 원리" icon="bolt" href="/ko/tools-and-cli/hmr/how-hmr-works">
   HMR 시스템의 내부 동작 방식 자세히 알아보기
 </Card>
 
@@ -48,11 +44,7 @@ Entity 정의, Subset 관리, Migration 실행을 웹 UI에서 직접 할 수 �
   ></video>
 </Frame>
 
-<Card
-  title="Sonamu UI 가이드"
-  icon="window"
-  href="/ko/tools-and-cli/sonamu-ui/getting-started"
->
+<Card title="Sonamu UI 가이드" icon="window" href="/ko/tools-and-cli/sonamu-ui/getting-started">
   Sonamu UI 시작하기
 </Card>
 
@@ -66,7 +58,7 @@ graph LR
     B --> C[Zod 스키마]
     C --> D[API 재등록]
     D --> E[Service 업데이트]
-    
+
     style A fill:#4f46e5,color:#fff
     style E fill:#10b981,color:#fff
 ```
@@ -79,11 +71,7 @@ graph LR
 4. **모듈 재로드**: 최신 코드로 재로드
 5. **API 재등록**: 변경된 API 엔드포인트 재등록
 
-<Card
-  title="Syncer 이해하기"
-  icon="rotate"
-  href="/ko/core-concepts/auto-generation/syncer"
->
+<Card title="Syncer 이해하기" icon="rotate" href="/ko/core-concepts/auto-generation/syncer">
   자동 생성 시스템의 핵심
 </Card>
 
@@ -91,49 +79,29 @@ graph LR
 
 <CardGroup cols={2}>
   <Card title="HMR" icon="bolt">
-    서버 재시작 없이 즉시 반영
-    
-    수정 → 저장 → 2초 후 테스트
+    서버 재시작 없이 즉시 반영 수정 → 저장 → 2초 후 테스트
   </Card>
   <Card title="Sonamu UI" icon="window">
-    시각적 Entity 관리
-    
-    JSON 편집 불필요
+    시각적 Entity 관리 JSON 편집 불필요
   </Card>
   <Card title="Syncer" icon="rotate">
-    모든 코드 자동 동기화
-    
-    타입, 스키마, Service
+    모든 코드 자동 동기화 타입, 스키마, Service
   </Card>
   <Card title="타입 에러 감지" icon="triangle-exclamation">
-    변경 즉시 컴파일 에러
-    
-    런타임 에러 방지
+    변경 즉시 컴파일 에러 런타임 에러 방지
   </Card>
 </CardGroup>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card
-    title="HMR 동작 원리"
-    icon="bolt"
-    href="/ko/tools-and-cli/hmr/how-hmr-works"
-  >
+  <Card title="HMR 동작 원리" icon="bolt" href="/ko/tools-and-cli/hmr/how-hmr-works">
     HMR 시스템 이해하기
   </Card>
-  <Card
-    title="Sonamu UI"
-    icon="window"
-    href="/ko/tools-and-cli/sonamu-ui/getting-started"
-  >
+  <Card title="Sonamu UI" icon="window" href="/ko/tools-and-cli/sonamu-ui/getting-started">
     UI 사용법 가이드
   </Card>
-  <Card
-    title="Syncer"
-    icon="rotate"
-    href="/ko/core-concepts/auto-generation/syncer"
-  >
+  <Card title="Syncer" icon="rotate" href="/ko/core-concepts/auto-generation/syncer">
     자동 생성 시스템
   </Card>
   <Card

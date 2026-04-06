@@ -14,8 +14,8 @@ import { BaseModelClass, api, CompressPresets } from "sonamu";
 
 class ProductModelClass extends BaseModelClass {
   @api({
-    httpMethod: 'GET',
-    compress: CompressPresets.aggressive,  // Aggressive compression for this API only
+    httpMethod: "GET",
+    compress: CompressPresets.aggressive, // Aggressive compression for this API only
   })
   async findAll() {
     return this.findMany({});
@@ -38,6 +38,7 @@ class ProductModelClass extends BaseModelClass {
       return this.findMany({});
     }
     ```
+
   </Tab>
 
   <Tab title="boolean" icon="toggle-on">
@@ -62,6 +63,7 @@ class ProductModelClass extends BaseModelClass {
       return this.findMany({ num: 10000 });
     }
     ```
+
   </Tab>
 
   <Tab title="Custom Options" icon="screwdriver-wrench">
@@ -79,6 +81,7 @@ class ProductModelClass extends BaseModelClass {
       return this.findMany({});
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -130,6 +133,7 @@ async getAlreadyCompressed() {
 ```
 
 **Use cases**:
+
 - Already compressed files (images, videos, zip)
 - Very small responses (< 100 bytes)
 - Real-time streaming
@@ -145,19 +149,19 @@ export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: {
-        global: false,  // No compression by default
+        global: false, // No compression by default
         threshold: 1024,
         encodings: ["br", "gzip", "deflate"],
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 // Model - selective compression
 class DataModelClass extends BaseModelClass {
   // Compress only this API
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: true,
   })
   async getLargeData() {
@@ -166,7 +170,7 @@ class DataModelClass extends BaseModelClass {
 
   // No compression (default)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
   })
   async getSmallData() {
     return { status: "ok" };
@@ -175,6 +179,7 @@ class DataModelClass extends BaseModelClass {
 ```
 
 **Advantages**:
+
 - Prevent unnecessary compression
 - Minimize CPU usage
 - Precise control
@@ -275,7 +280,7 @@ async getHTML() {
 class ProductModelClass extends BaseModelClass {
   // Product list: default compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async findAll(page: number) {
@@ -284,16 +289,16 @@ class ProductModelClass extends BaseModelClass {
 
   // Product detail: default compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Bulk data export: aggressive compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async exportAll() {
@@ -302,7 +307,7 @@ class ProductModelClass extends BaseModelClass {
 
   // Product image: no compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: false,
   })
   async getImage(id: number) {
@@ -311,7 +316,7 @@ class ProductModelClass extends BaseModelClass {
 
   // Create/update: no compression (small response)
   @api({
-    httpMethod: 'POST',
+    httpMethod: "POST",
     compress: false,
   })
   async create(data: ProductSave) {
@@ -326,7 +331,7 @@ class ProductModelClass extends BaseModelClass {
 class FileModelClass extends BaseModelClass {
   // JSON file: aggressive compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async downloadJSON(id: number) {
@@ -335,7 +340,7 @@ class FileModelClass extends BaseModelClass {
 
   // Already compressed file: no compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: false,
   })
   async downloadZip(id: number) {
@@ -344,7 +349,7 @@ class FileModelClass extends BaseModelClass {
 
   // Text file: default compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async downloadText(id: number) {
@@ -359,7 +364,7 @@ class FileModelClass extends BaseModelClass {
 class ReportModelClass extends BaseModelClass {
   // Real-time stats: conservative compression (fast response)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.conservative,
   })
   async getRealTimeStats() {
@@ -368,7 +373,7 @@ class ReportModelClass extends BaseModelClass {
 
   // Daily report: default compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async getDailyReport(date: string) {
@@ -377,7 +382,7 @@ class ReportModelClass extends BaseModelClass {
 
   // Large-scale analysis: aggressive compression
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async getFullAnalysis(startDate: string, endDate: string) {
@@ -392,13 +397,13 @@ class ReportModelClass extends BaseModelClass {
 class StreamModelClass extends BaseModelClass {
   // SSE stream: no compression
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       message: z.string(),
     }),
   })
   @api({
-    compress: false,  // No compression for streaming
+    compress: false, // No compression for streaming
   })
   async *streamUpdates() {
     yield { message: "update 1" };
@@ -416,21 +421,21 @@ import { registerSSR, CompressPresets } from "sonamu";
 
 // HTML page: aggressive compression
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   compress: CompressPresets.aggressive,
 });
 
 // Small page: default compression
 registerSSR({
-  path: '/about',
+  path: "/about",
   Component: About,
   compress: CompressPresets.default,
 });
 
 // Disable compression
 registerSSR({
-  path: '/stream',
+  path: "/stream",
   Component: StreamPage,
   compress: false,
 });
@@ -508,6 +513,7 @@ async getData() {
 ```
 
 Check in browser developer tools:
+
 ```
 Network tab -> Select request -> Headers tab
 
@@ -526,6 +532,7 @@ Size:
 **Precautions for per-API compression control**:
 
 1. **Disable for already compressed content**: images, videos, zip
+
    ```typescript
    // Good example
    @api({ compress: false })
@@ -533,6 +540,7 @@ Size:
    ```
 
 2. **Compression is inefficient for small responses**: Better not to compress < 1KB
+
    ```typescript
    // Small response
    @api({ compress: false })
@@ -540,6 +548,7 @@ Size:
    ```
 
 3. **Disable compression for streaming**: SSE, WebSocket
+
    ```typescript
    // Streaming
    @stream({ type: 'sse', events: ... })
@@ -548,6 +557,7 @@ Size:
    ```
 
 4. **Use consistent strategy**: Similar APIs should have the same settings
+
    ```typescript
    // Consistency
    // All query APIs: default
@@ -559,7 +569,7 @@ Size:
    ```typescript
    // Server CPU usage monitoring needed when using aggressive
    ```
-</Warning>
+   </Warning>
 
 ## Debugging Tips
 
@@ -590,24 +600,36 @@ ls -lh compressed.json  # 10KB
 ```typescript
 // Check in test code
 const response = await server.inject({
-  method: 'GET',
-  url: '/api/products',
-  headers: { 'accept-encoding': 'br, gzip' }
+  method: "GET",
+  url: "/api/products",
+  headers: { "accept-encoding": "br, gzip" },
 });
 
-console.log(response.headers['content-encoding']);  // "br" or "gzip"
+console.log(response.headers["content-encoding"]); // "br" or "gzip"
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Compression Configuration" icon="gear" href="/en/advanced-features/compress/compress-configuration">
+  <Card
+    title="Compression Configuration"
+    icon="gear"
+    href="/en/advanced-features/compress/compress-configuration"
+  >
     Global compression plugin settings
   </Card>
-  <Card title="Compression Presets" icon="list" href="/en/advanced-features/compress/compress-presets">
+  <Card
+    title="Compression Presets"
+    icon="list"
+    href="/en/advanced-features/compress/compress-presets"
+  >
     Predefined compression settings
   </Card>
-  <Card title="Performance Optimization" icon="gauge-high" href="/en/advanced-features/compress/performance-optimization">
+  <Card
+    title="Performance Optimization"
+    icon="gauge-high"
+    href="/en/advanced-features/compress/performance-optimization"
+  >
     Compression optimization strategies
   </Card>
 </CardGroup>

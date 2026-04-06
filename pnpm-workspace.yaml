@@ -1,124 +1,123 @@
 packages:
   - examples/**/*
   - modules/**/*
-  - '!modules/create-sonamu/template/**/*'
+  - "!modules/create-sonamu/template/**/*"
 
 catalog:
-  '@uiw/react-json-view': 2.0.0-alpha.41
-  '@adonisjs/ace': ^13.3.0
-  '@adonisjs/tsconfig': ^1.4.1
-  '@ai-sdk/anthropic': ^3.0.0
-  '@ai-sdk/openai': ^3.0.0
-  '@ai-sdk/provider': ^3.0.0
-  '@ai-sdk/provider-utils': ^4.0.0
-  '@ai-sdk/react': ^2.0.104
-  '@aws-sdk/client-ecr-public': ^3.958.0
-  '@aws-sdk/client-s3': ^3.958.0
-  '@aws-sdk/ecr-public': ^3.958.0
-  '@aws-sdk/lib-storage': ^3.971.0
-  '@aws-sdk/s3-request-presigner': ^3.958.0
-  '@better-auth/passkey': ~1.4.18
-  '@better-auth/sso': ~1.4.18
-  '@biomejs/biome': ^2.3.13
-  '@biomejs/js-api': ^4.0.0
-  '@biomejs/wasm-nodejs': ^2.3.7
-  '@changesets/cli': ^2.29.4
-  '@dagrejs/dagre': ^1.1.8
-  '@dnd-kit/core': ^4.0.3
-  '@dnd-kit/sortable': ^5.1.0
-  '@dnd-kit/utilities': ^3.2.2
-  '@faker-js/faker': ^9.2.0
-  '@fastify/compress': ^7.0.3
-  '@fastify/cors': ^8.1.0
-  '@fastify/formbody': ^7.1.0
-  '@fastify/middie': ^8.3.0
-  '@fastify/multipart': ^8
-  '@fastify/passport': ^2.2.0
-  '@fastify/static': ^7
-  '@hookform/resolvers': ^5.2.2
-  '@iconify-json/lucide': ^1.2.82
-  '@iconify-json/mdi': ^1.2.3
-  '@iconify/json': ^2.2.421
-  '@iconify/react': ^6.0.2
-  '@japa/assert': ^4.1.1
-  '@japa/file-system': ^2.3.2
-  '@japa/runner': ^4.4.0
-  '@japa/snapshot': ^2.0.9
-  '@julr/tooling-configs': ^4.0.0
-  '@loaderkit/resolve': ^1.0.4
-  '@logtape/fastify': 2.0.0
-  '@logtape/logtape': 2.0.0
-  '@logtape/pretty': 2.0.0
-  '@logtape/redaction': 2.0.0
-  '@storybook/addon-a11y': ^10.2.19
-  '@storybook/addon-docs': ^10.2.19
-  '@storybook/react-vite': ^10.2.19
+  "@uiw/react-json-view": 2.0.0-alpha.41
+  "@adonisjs/ace": ^13.3.0
+  "@adonisjs/tsconfig": ^1.4.1
+  "@ai-sdk/anthropic": ^3.0.0
+  "@ai-sdk/openai": ^3.0.0
+  "@ai-sdk/provider": ^3.0.0
+  "@ai-sdk/provider-utils": ^4.0.0
+  "@ai-sdk/react": ^2.0.104
+  "@aws-sdk/client-ecr-public": ^3.958.0
+  "@aws-sdk/client-s3": ^3.958.0
+  "@aws-sdk/ecr-public": ^3.958.0
+  "@aws-sdk/lib-storage": ^3.971.0
+  "@aws-sdk/s3-request-presigner": ^3.958.0
+  "@better-auth/passkey": ~1.4.18
+  "@better-auth/sso": ~1.4.18
+  "@biomejs/js-api": ^4.0.0
+  "@biomejs/wasm-nodejs": ^2.3.7
+  "@changesets/cli": ^2.29.4
+  "@dagrejs/dagre": ^1.1.8
+  "@dnd-kit/core": ^4.0.3
+  "@dnd-kit/sortable": ^5.1.0
+  "@dnd-kit/utilities": ^3.2.2
+  "@faker-js/faker": ^9.2.0
+  "@fastify/compress": ^7.0.3
+  "@fastify/cors": ^8.1.0
+  "@fastify/formbody": ^7.1.0
+  "@fastify/middie": ^8.3.0
+  "@fastify/multipart": ^8
+  "@fastify/passport": ^2.2.0
+  "@fastify/static": ^7
+  "@hookform/resolvers": ^5.2.2
+  "@iconify-json/lucide": ^1.2.82
+  "@iconify-json/mdi": ^1.2.3
+  "@iconify/json": ^2.2.421
+  "@iconify/react": ^6.0.2
+  "@japa/assert": ^4.1.1
+  "@japa/file-system": ^2.3.2
+  "@japa/runner": ^4.4.0
+  "@japa/snapshot": ^2.0.9
+  "@julr/tooling-configs": ^4.0.0
+  "@loaderkit/resolve": ^1.0.4
+  "@logtape/fastify": 2.0.0
+  "@logtape/logtape": 2.0.0
+  "@logtape/pretty": 2.0.0
+  "@logtape/redaction": 2.0.0
+  "@storybook/addon-a11y": ^10.2.19
+  "@storybook/addon-docs": ^10.2.19
+  "@storybook/react-vite": ^10.2.19
   agentation: ^2.3.0
   storybook: ^10.2.19
 
-  '@radix-ui/react-accordion': ^1.2.12
-  '@radix-ui/react-alert-dialog': ^1.1.15
-  '@radix-ui/react-aspect-ratio': ^1.1.8
-  '@radix-ui/react-avatar': ^1.1.11
-  '@radix-ui/react-checkbox': ^1.3.3
-  '@radix-ui/react-collapsible': ^1.1.12
-  '@radix-ui/react-context-menu': ^2.2.16
-  '@radix-ui/react-dialog': ^1.1.15
-  '@radix-ui/react-dropdown-menu': ^2.1.16
-  '@radix-ui/react-hover-card': ^1.1.15
-  '@radix-ui/react-label': ^2.1.8
-  '@radix-ui/react-menubar': ^1.1.16
-  '@radix-ui/react-navigation-menu': ^1.2.14
-  '@radix-ui/react-popover': ^1.1.15
-  '@radix-ui/react-progress': ^1.1.8
-  '@radix-ui/react-radio-group': ^1.3.8
-  '@radix-ui/react-scroll-area': ^1.2.10
-  '@radix-ui/react-select': ^2.2.6
-  '@radix-ui/react-separator': ^1.1.8
-  '@radix-ui/react-slider': ^1.3.6
-  '@radix-ui/react-slot': ^1.1.1
-  '@radix-ui/react-switch': ^1.2.6
-  '@radix-ui/react-tabs': ^1.1.13
-  '@radix-ui/react-toast': ^1.2.15
-  '@radix-ui/react-toggle': ^1.1.10
-  '@radix-ui/react-toggle-group': ^1.1.11
-  '@radix-ui/react-tooltip': ^1.2.8
-  '@sheetkit/node': ^0.5.0
-  '@svgr/core': ^8.1.0
-  '@svgr/plugin-jsx': ^8.1.0
-  '@svgr/plugin-svgo': ^8.1.0
-  '@swc/cli': ^0.7.8
-  '@swc/core': ^1.13.5
-  '@tailwindcss/postcss': ^4.0.0
-  '@tailwindcss/typography': ^0.5.19
-  '@tailwindcss/vite': ^4.1.17
-  '@tanstack/react-query': ^5.90.12
-  '@tanstack/react-query-devtools': ^5.91.1
-  '@tanstack/react-router': 1.143.11
-  '@tanstack/react-router-devtools': 1.143.11
-  '@tanstack/router-plugin': 1.143.11
-  '@types/bcrypt': ^6
-  '@types/fs-extra': ^11.0.4
-  '@types/inflection': ^2.0.0
-  '@types/lodash-es': ^4.17.12
-  '@types/luxon': ^3.0.3
-  '@types/mime-types': ^3.0.1
-  '@types/minimist': ^1.2.5
-  '@types/node': 25.0.7
-  '@types/pg': ^8.15.6
-  '@types/picomatch': ^4.0.0
-  '@types/prompts': ^2.0.14
-  '@types/prop-types': ^15.7.15
-  '@types/qs': ^6.14.0
-  '@types/react': ^19.2.7
-  '@types/react-dom': ^19.2.3
-  '@types/react-syntax-highlighter': ^15.5.13
-  '@types/supertest': ^6.0.3
-  '@typescript/native-preview': ^7.0.0-dev.20251225.1
-  '@vitejs/plugin-react': 6.0.1
-  '@vitejs/plugin-react-swc': ^4.3.0
-  '@vitest/coverage-v8': ^4.1.2
-  '@xyflow/react': ^12.9.3
+  "@radix-ui/react-accordion": ^1.2.12
+  "@radix-ui/react-alert-dialog": ^1.1.15
+  "@radix-ui/react-aspect-ratio": ^1.1.8
+  "@radix-ui/react-avatar": ^1.1.11
+  "@radix-ui/react-checkbox": ^1.3.3
+  "@radix-ui/react-collapsible": ^1.1.12
+  "@radix-ui/react-context-menu": ^2.2.16
+  "@radix-ui/react-dialog": ^1.1.15
+  "@radix-ui/react-dropdown-menu": ^2.1.16
+  "@radix-ui/react-hover-card": ^1.1.15
+  "@radix-ui/react-label": ^2.1.8
+  "@radix-ui/react-menubar": ^1.1.16
+  "@radix-ui/react-navigation-menu": ^1.2.14
+  "@radix-ui/react-popover": ^1.1.15
+  "@radix-ui/react-progress": ^1.1.8
+  "@radix-ui/react-radio-group": ^1.3.8
+  "@radix-ui/react-scroll-area": ^1.2.10
+  "@radix-ui/react-select": ^2.2.6
+  "@radix-ui/react-separator": ^1.1.8
+  "@radix-ui/react-slider": ^1.3.6
+  "@radix-ui/react-slot": ^1.1.1
+  "@radix-ui/react-switch": ^1.2.6
+  "@radix-ui/react-tabs": ^1.1.13
+  "@radix-ui/react-toast": ^1.2.15
+  "@radix-ui/react-toggle": ^1.1.10
+  "@radix-ui/react-toggle-group": ^1.1.11
+  "@radix-ui/react-tooltip": ^1.2.8
+  "@sheetkit/node": ^0.5.0
+  "@svgr/core": ^8.1.0
+  "@svgr/plugin-jsx": ^8.1.0
+  "@svgr/plugin-svgo": ^8.1.0
+  "@swc/cli": ^0.7.8
+  "@swc/core": ^1.13.5
+  "@tailwindcss/postcss": ^4.0.0
+  "@tailwindcss/typography": ^0.5.19
+  "@tailwindcss/vite": ^4.1.17
+  "@tanstack/react-query": ^5.90.12
+  "@tanstack/react-query-devtools": ^5.91.1
+  "@tanstack/react-router": 1.143.11
+  "@tanstack/react-router-devtools": 1.143.11
+  "@tanstack/router-plugin": 1.143.11
+  "@types/bcrypt": ^6
+  "@types/fs-extra": ^11.0.4
+  "@types/inflection": ^2.0.0
+  "@types/lodash-es": ^4.17.12
+  "@types/luxon": ^3.0.3
+  "@types/mime-types": ^3.0.1
+  "@types/minimist": ^1.2.5
+  "@types/node": 25.0.7
+  "@types/pg": ^8.15.6
+  "@types/picomatch": ^4.0.0
+  "@types/prompts": ^2.0.14
+  "@types/prop-types": ^15.7.15
+  "@types/qs": ^6.14.0
+  "@types/react": ^19.2.7
+  "@types/react-dom": ^19.2.3
+  "@types/react-syntax-highlighter": ^15.5.13
+  "@types/supertest": ^6.0.3
+  "@typescript/native-preview": ^7.0.0-dev.20251225.1
+  "@vitejs/plugin-react": 6.0.1
+  "@vitejs/plugin-react-swc": ^4.3.0
+  "@vitest/coverage-v8": ^4.1.2
+  "@xyflow/react": ^12.9.3
   ai: ^6.0.1
   autoprefixer: ^10.4.20
   axios: ^1.13.2
@@ -225,8 +224,8 @@ catalog:
   zx: ^8.8.5
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@swc/core'
+  - "@parcel/watcher"
+  - "@swc/core"
   - bcrypt
   - esbuild
   - libpq
@@ -235,8 +234,8 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
-  axios@<0.30.0: '>=0.30.0'
-  axios@<0.30.2: '>=0.30.2'
-  axios@>=0.8.1 <0.28.0: '>=0.28.0'
-  mdast-util-to-hast@>=13.0.0 <13.2.1: '>=13.2.1'
-  prismjs@<1.30.0: '>=1.30.0'
+  axios@<0.30.0: ">=0.30.0"
+  axios@<0.30.2: ">=0.30.2"
+  axios@>=0.8.1 <0.28.0: ">=0.28.0"
+  mdast-util-to-hast@>=13.0.0 <13.2.1: ">=13.2.1"
+  prismjs@<1.30.0: ">=1.30.0"

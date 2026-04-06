@@ -1,6 +1,6 @@
 ---
-title: '동기화 대상'
-description: '프론트엔드와 타입/Service 동기화 설정'
+title: "동기화 대상"
+description: "프론트엔드와 타입/Service 동기화 설정"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -14,7 +14,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   sync: {
-    targets: ["web"],  // web 폴더로 동기화
+    targets: ["web"], // web 폴더로 동기화
   },
   // ...
 });
@@ -29,7 +29,7 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   sync: {
-    targets: ["web", "app"],  // 2개 프로젝트에 동기화
+    targets: ["web", "app"], // 2개 프로젝트에 동기화
   },
 });
 ```
@@ -50,36 +50,36 @@ Entity나 API가 변경되면 Sonamu는 다음 파일들을 자동으로 생성�
 ### 디렉토리 구조
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/" description="백엔드">
-      <FileItem name="src/">
-        <FileItem name="application/">
-          <FileItem name="user/">
-            <FileItem name="user.entity.json" />
-            <FileItem name="user.model.ts" />
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/" description="백엔드">
+        <FileItem name="src/">
+          <FileItem name="application/">
+            <FileItem name="user/">
+              <FileItem name="user.entity.json" />
+              <FileItem name="user.model.ts" />
+            </FileItem>
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/" description="첫 번째 target">
+        <FileItem name="src/">
+          <FileItem name="services/">
+            <FileItem name="user.types.ts" description="자동 생성" />
+            <FileItem name="user.service.ts" description="자동 생성" />
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="app/" description="두 번째 target">
+        <FileItem name="src/">
+          <FileItem name="services/">
+            <FileItem name="user.types.ts" description="자동 생성" />
+            <FileItem name="user.service.ts" description="자동 생성" />
           </FileItem>
         </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/" description="첫 번째 target">
-      <FileItem name="src/">
-        <FileItem name="services/">
-          <FileItem name="user.types.ts" description="자동 생성" />
-          <FileItem name="user.service.ts" description="자동 생성" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-    <FileItem name="app/" description="두 번째 target">
-      <FileItem name="src/">
-        <FileItem name="services/">
-          <FileItem name="user.types.ts" description="자동 생성" />
-          <FileItem name="user.service.ts" description="자동 생성" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## 단일 프론트엔드
@@ -98,12 +98,12 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-project/">
-    <FileItem name="api/" description="Sonamu 백엔드" />
-    <FileItem name="web/" description="React/Vue 프론트엔드" />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="my-project/">
+      <FileItem name="api/" description="Sonamu 백엔드" />
+      <FileItem name="web/" description="React/Vue 프론트엔드" />
+    </FileItem>
+  </FileTree>
 </Card>
 
 **동기화되는 위치**: `web/src/services/`
@@ -124,21 +124,23 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-project/">
-    <FileItem name="api/" description="Sonamu 백엔드" />
-    <FileItem name="web/" description="웹 프론트엔드" />
-    <FileItem name="app/" description="모바일 앱" />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="my-project/">
+      <FileItem name="api/" description="Sonamu 백엔드" />
+      <FileItem name="web/" description="웹 프론트엔드" />
+      <FileItem name="app/" description="모바일 앱" />
+    </FileItem>
+  </FileTree>
 </Card>
 
 **동기화되는 위치**:
+
 - `web/src/services/`
 - `app/src/services/`
 
 <Tip>
-각 프론트엔드는 동일한 타입과 Service를 공유하므로, API 변경 시 모든 클라이언트가 자동으로 업데이트됩니다.
+  각 프론트엔드는 동일한 타입과 Service를 공유하므로, API 변경 시 모든 클라이언트가 자동으로
+  업데이트됩니다.
 </Tip>
 
 ## target 디렉토리 위치
@@ -146,13 +148,13 @@ export default defineConfig({
 기본적으로 Sonamu는 프로젝트 루트에서 target 이름과 동일한 디렉토리를 찾습니다.
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/" description="Sonamu가 실행되는 위치" />
-    <FileItem name="web/" description='targets: ["web"]' />
-    <FileItem name="mobile-app/" description='targets: ["mobile-app"]' />
-  </FileItem>
-</FileTree>
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/" description="Sonamu가 실행되는 위치" />
+      <FileItem name="web/" description='targets: ["web"]' />
+      <FileItem name="mobile-app/" description='targets: ["mobile-app"]' />
+    </FileItem>
+  </FileTree>
 </Card>
 
 ### 커스텀 경로
@@ -170,19 +172,19 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="workspace/">
-    <FileItem name="backend/">
-      <FileItem name="api/" description="Sonamu 실행 위치" />
+  <FileTree>
+    <FileItem name="workspace/">
+      <FileItem name="backend/">
+        <FileItem name="api/" description="Sonamu 실행 위치" />
+      </FileItem>
+      <FileItem name="frontend/">
+        <FileItem name="web/" description="../frontend/web" />
+      </FileItem>
+      <FileItem name="mobile/">
+        <FileItem name="app/" description="../mobile/app" />
+      </FileItem>
     </FileItem>
-    <FileItem name="frontend/">
-      <FileItem name="web/" description="../frontend/web" />
-    </FileItem>
-    <FileItem name="mobile/">
-      <FileItem name="app/" description="../mobile/app" />
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## 동기화 확인
@@ -234,11 +236,11 @@ export class UserService {
   static async list(params: UserListParams): Promise<UserSaved[]> {
     return apiClient.get("/api/user/list", { params });
   }
-  
+
   static async detail(id: number): Promise<UserSaved> {
     return apiClient.get(`/api/user/${id}/detail`);
   }
-  
+
   static async save(form: UserForm): Promise<UserSaved> {
     return apiClient.post("/api/user/save", form);
   }
@@ -252,15 +254,13 @@ export class UserService {
 ```typescript
 export default defineConfig({
   sync: {
-    targets: [],  // 동기화 하지 않음
+    targets: [], // 동기화 하지 않음
   },
   // ...
 });
 ```
 
-<Note>
-API 전용 프로젝트(예: 마이크로서비스)에서는 동기화를 비활성화할 수 있습니다.
-</Note>
+<Note>API 전용 프로젝트(예: 마이크로서비스)에서는 동기화를 비활성화할 수 있습니다.</Note>
 
 ## 실전 예시
 
@@ -271,11 +271,11 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "MyApp",
-  
+
   sync: {
     targets: ["web"],
   },
-  
+
   // ...
 });
 ```
@@ -283,31 +283,31 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="my-app/">
-    <FileItem name="api/">
-      <FileItem name="src/">
-        <FileItem name="application/">
-          <FileItem name="user/" />
-          <FileItem name="post/" />
-          <FileItem name="comment/" />
+  <FileTree>
+    <FileItem name="my-app/">
+      <FileItem name="api/">
+        <FileItem name="src/">
+          <FileItem name="application/">
+            <FileItem name="user/" />
+            <FileItem name="post/" />
+            <FileItem name="comment/" />
+          </FileItem>
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/">
+        <FileItem name="src/">
+          <FileItem name="services/" description="동기화 위치">
+            <FileItem name="user.types.ts" />
+            <FileItem name="user.service.ts" />
+            <FileItem name="post.types.ts" />
+            <FileItem name="post.service.ts" />
+            <FileItem name="comment.types.ts" />
+            <FileItem name="comment.service.ts" />
+          </FileItem>
         </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/">
-      <FileItem name="src/">
-        <FileItem name="services/" description="동기화 위치">
-          <FileItem name="user.types.ts" />
-          <FileItem name="user.service.ts" />
-          <FileItem name="post.types.ts" />
-          <FileItem name="post.service.ts" />
-          <FileItem name="comment.types.ts" />
-          <FileItem name="comment.service.ts" />
-        </FileItem>
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ### 웹 + 모바일 앱
@@ -317,11 +317,11 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "EcommerceApp",
-  
+
   sync: {
     targets: ["web", "mobile"],
   },
-  
+
   // ...
 });
 ```
@@ -329,31 +329,31 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="ecommerce/">
-    <FileItem name="api/" description="Sonamu 백엔드">
-      <FileItem name="src/application/">
-        <FileItem name="product/" />
-        <FileItem name="order/" />
-        <FileItem name="user/" />
+  <FileTree>
+    <FileItem name="ecommerce/">
+      <FileItem name="api/" description="Sonamu 백엔드">
+        <FileItem name="src/application/">
+          <FileItem name="product/" />
+          <FileItem name="order/" />
+          <FileItem name="user/" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="web/" description="React 웹 앱">
+        <FileItem name="src/services/">
+          <FileItem name="product.types.ts" />
+          <FileItem name="product.service.ts" />
+          <FileItem name="..." />
+        </FileItem>
+      </FileItem>
+      <FileItem name="mobile/" description="React Native 앱">
+        <FileItem name="src/services/">
+          <FileItem name="product.types.ts" />
+          <FileItem name="product.service.ts" />
+          <FileItem name="..." />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="web/" description="React 웹 앱">
-      <FileItem name="src/services/">
-        <FileItem name="product.types.ts" />
-        <FileItem name="product.service.ts" />
-        <FileItem name="..." />
-      </FileItem>
-    </FileItem>
-    <FileItem name="mobile/" description="React Native 앱">
-      <FileItem name="src/services/">
-        <FileItem name="product.types.ts" />
-        <FileItem name="product.service.ts" />
-        <FileItem name="..." />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ### Monorepo 구조
@@ -363,15 +363,11 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   projectName: "MonorepoApp",
-  
+
   sync: {
-    targets: [
-      "../packages/web-client",
-      "../packages/admin-panel",
-      "../packages/mobile-app",
-    ],
+    targets: ["../packages/web-client", "../packages/admin-panel", "../packages/mobile-app"],
   },
-  
+
   // ...
 });
 ```
@@ -379,26 +375,26 @@ export default defineConfig({
 **프로젝트 구조**:
 
 <Card>
-<FileTree>
-  <FileItem name="monorepo/">
-    <FileItem name="apps/">
-      <FileItem name="api/" description="Sonamu 실행 위치">
-        <FileItem name="sonamu.config.ts" />
+  <FileTree>
+    <FileItem name="monorepo/">
+      <FileItem name="apps/">
+        <FileItem name="api/" description="Sonamu 실행 위치">
+          <FileItem name="sonamu.config.ts" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="packages/">
+        <FileItem name="web-client/" description="고객용 웹">
+          <FileItem name="src/services/" />
+        </FileItem>
+        <FileItem name="admin-panel/" description="관리자 패널">
+          <FileItem name="src/services/" />
+        </FileItem>
+        <FileItem name="mobile-app/" description="모바일 앱">
+          <FileItem name="src/services/" />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="packages/">
-      <FileItem name="web-client/" description="고객용 웹">
-        <FileItem name="src/services/" />
-      </FileItem>
-      <FileItem name="admin-panel/" description="관리자 패널">
-        <FileItem name="src/services/" />
-      </FileItem>
-      <FileItem name="mobile-app/" description="모바일 앱">
-        <FileItem name="src/services/" />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 ## 동기화 주의사항
@@ -429,7 +425,7 @@ import { UserService } from "./user.service";
 export class UserServiceWrapper {
   static async listActiveUsers() {
     const users = await UserService.list();
-    return users.filter(u => u.status === "active");
+    return users.filter((u) => u.status === "active");
   }
 }
 ```
@@ -446,6 +442,7 @@ export class UserServiceWrapper {
 ```
 
 **이유**:
+
 - 팀원들이 백엔드를 실행하지 않아도 프론트엔드 개발 가능
 - CI/CD에서 Sonamu 없이 프론트엔드만 빌드 가능
 

@@ -130,7 +130,7 @@ class Hot {
    */
   async dump() {
     this.#messageChannel.port1.postMessage({ type: "hmr-hook:dump" });
-    // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) =>
       this.#messageChannel.port1.once("message", (message) => resolve(message)),
     );
@@ -155,7 +155,7 @@ class Hot {
       path,
       action,
     });
-    // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) => {
       const listener = (message: MessageChannelMessage) => {
         if (message.type === "hmr-hook:manual-invalidate-done") {
@@ -180,7 +180,7 @@ class Hot {
     this.#messageChannel.port1.postMessage({
       type: "hmr-hook:invalidate-all",
     });
-    // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) => {
       const listener = (message: MessageChannelMessage) => {
         if (message.type === "hmr-hook:invalidate-all-done") {

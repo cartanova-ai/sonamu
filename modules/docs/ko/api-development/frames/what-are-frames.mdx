@@ -9,24 +9,16 @@ Frame은 데이터베이스 Entity와 연결되지 않은 독립적인 API 엔�
 
 <CardGroup cols={2}>
   <Card title="Entity 불필요" icon="circle-xmark">
-    DB 테이블 없이 작동
-    
-    자유로운 API 구현
+    DB 테이블 없이 작동 자유로운 API 구현
   </Card>
   <Card title="간단한 구조" icon="diagram-project">
-    BaseFrameClass 상속
-    
-    @api 데코레이터 사용
+    BaseFrameClass 상속 @api 데코레이터 사용
   </Card>
   <Card title="다양한 용도" icon="wand-magic-sparkles">
-    헬스체크, 유틸리티
-    
-    외부 API 프록시
+    헬스체크, 유틸리티 외부 API 프록시
   </Card>
   <Card title="독립적 로직" icon="code">
-    비즈니스 로직만 구현
-    
-    Entity 제약 없음
+    비즈니스 로직만 구현 Entity 제약 없음
   </Card>
 </CardGroup>
 
@@ -45,14 +37,14 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries); // ← Entity와 연결
   }
-  
+
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     // users 테이블 조회
     const rdb = this.getPuri("r");
     return rdb.table("users").select("*");
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     // users 테이블에 삽입
@@ -65,6 +57,7 @@ class UserModelClass extends BaseModelClass<
 ```
 
 **Model의 특징**:
+
 - Entity(DB 테이블)와 1:1 매핑
 - CRUD 작업 중심
 - UpsertBuilder, Subset 활용
@@ -76,7 +69,7 @@ class UserModelClass extends BaseModelClass<
 // Entity 없는 독립적 API
 class HealthFrame extends BaseFrameClass {
   frameName = "Health"; // ← Entity와 무관
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: "ok" | "error";
@@ -90,7 +83,7 @@ class HealthFrame extends BaseFrameClass {
       uptime: process.uptime(),
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ pong: string }> {
     return { pong: "pong" };
@@ -99,6 +92,7 @@ class HealthFrame extends BaseFrameClass {
 ```
 
 **Frame의 특징**:
+
 - Entity와 무관한 독립적 로직
 - 유틸리티, 헬스체크, 프록시 등
 - 자유로운 API 구조
@@ -106,29 +100,29 @@ class HealthFrame extends BaseFrameClass {
 
 ## 비교 표
 
-| 특징 | Model | Frame |
-|------|-------|-------|
-| Entity 연결 | ✅ 필수 | ❌ 불필요 |
-| DB 접근 | CRUD 중심 | 선택적 |
-| 사용 사례 | 데이터 관리 | 유틸리티, 프록시 |
-| 복잡도 | 높음 | 낮음 |
-| UpsertBuilder | ✅ 사용 | ❌ 불필요 |
-| Subset | ✅ 사용 | ❌ 불필요 |
+| 특징          | Model       | Frame            |
+| ------------- | ----------- | ---------------- |
+| Entity 연결   | ✅ 필수     | ❌ 불필요        |
+| DB 접근       | CRUD 중심   | 선택적           |
+| 사용 사례     | 데이터 관리 | 유틸리티, 프록시 |
+| 복잡도        | 높음        | 낮음             |
+| UpsertBuilder | ✅ 사용     | ❌ 불필요        |
+| Subset        | ✅ 사용     | ❌ 불필요        |
 
 ```mermaid
 flowchart TD
     A[API 요구사항] --> B{Entity 필요?}
     B -->|Yes| C[BaseModelClass<br/>Entity 기반]
     B -->|No| D[BaseFrameClass<br/>독립적 API]
-    
+
     C --> E[CRUD 작업]
     C --> F[관계 데이터]
     C --> G[타입 안전성]
-    
+
     D --> H[헬스체크]
     D --> I[유틸리티]
     D --> J[외부 API 프록시]
-    
+
     style C fill:#e3f2fd
     style D fill:#fff9c4
     style E fill:#e8f5e9
@@ -144,24 +138,28 @@ flowchart TD
 ### ✅ Frame을 사용해야 하는 경우
 
 1. **헬스체크 API**
+
    ```typescript
    // GET /api/health/check
    // Entity 없이 서버 상태만 확인
    ```
 
 2. **유틸리티 API**
+
    ```typescript
    // POST /api/utils/hash
    // 문자열 해시 계산 등 단순 기능
    ```
 
 3. **외부 API 프록시**
+
    ```typescript
    // GET /api/weather/current
    // 외부 날씨 API를 내부 API로 래핑
    ```
 
 4. **집계 통계**
+
    ```typescript
    // GET /api/stats/dashboard
    // 여러 테이블의 통계를 집계
@@ -176,11 +174,13 @@ flowchart TD
 ### ❌ Model을 사용해야 하는 경우
 
 1. **Entity CRUD 작업**
+
    ```typescript
    // User, Product, Order 등의 생성/조회/수정/삭제
    ```
 
 2. **관계 데이터 처리**
+
    ```typescript
    // User → Profile, Order → OrderItems
    ```
@@ -214,9 +214,7 @@ api/src/frames/
     └── utils.frame.ts
 ```
 
-<Info>
-Frame은 Entity 정의 없이 `.frame.ts` 파일만 있으면 됩니다.
-</Info>
+<Info>Frame은 Entity 정의 없이 `.frame.ts` 파일만 있으면 됩니다.</Info>
 
 ## 간단한 예제
 
@@ -225,7 +223,7 @@ Frame은 Entity 정의 없이 `.frame.ts` 파일만 있으면 됩니다.
 ```typescript
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: "ok" | "error";
@@ -234,7 +232,7 @@ class HealthFrame extends BaseFrameClass {
   }> {
     // DB 연결 체크
     let dbStatus: "connected" | "disconnected" = "disconnected";
-    
+
     try {
       const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
@@ -242,14 +240,14 @@ class HealthFrame extends BaseFrameClass {
     } catch (error) {
       console.error("Database connection failed:", error);
     }
-    
+
     return {
       status: dbStatus === "connected" ? "ok" : "error",
       timestamp: new Date(),
       database: dbStatus,
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ message: string }> {
     return { message: "pong" };
@@ -268,20 +266,17 @@ import crypto from "crypto";
 
 class UtilsFrame extends BaseFrameClass {
   frameName = "Utils";
-  
+
   @api({ httpMethod: "POST" })
   async hash(params: {
     text: string;
     algorithm: "md5" | "sha256" | "sha512";
   }): Promise<{ hash: string }> {
-    const hash = crypto
-      .createHash(params.algorithm)
-      .update(params.text)
-      .digest("hex");
-    
+    const hash = crypto.createHash(params.algorithm).update(params.text).digest("hex");
+
     return { hash };
   }
-  
+
   @api({ httpMethod: "POST" })
   async uuid(): Promise<{ uuid: string }> {
     return { uuid: crypto.randomUUID() };
@@ -299,24 +294,16 @@ class UtilsFrame extends BaseFrameClass {
 
 <CardGroup cols={2}>
   <Card title="빠른 구현" icon="rocket">
-    Entity 정의 불필요
-    
-    간단한 구조
+    Entity 정의 불필요 간단한 구조
   </Card>
   <Card title="유연성" icon="arrows-turn-to-dots">
-    제약 없는 로직
-    
-    자유로운 API 설계
+    제약 없는 로직 자유로운 API 설계
   </Card>
   <Card title="독립성" icon="shield">
-    DB 스키마 독립적
-    
-    외부 API 연동 용이
+    DB 스키마 독립적 외부 API 연동 용이
   </Card>
   <Card title="테스트 용이" icon="flask">
-    단순한 로직
-    
-    Mock 불필요
+    단순한 로직 Mock 불필요
   </Card>
 </CardGroup>
 
@@ -324,14 +311,10 @@ class UtilsFrame extends BaseFrameClass {
 
 <CardGroup cols={2}>
   <Card title="타입 안전성 감소" icon="triangle-exclamation">
-    Entity 타입 미사용
-    
-    수동 타입 관리
+    Entity 타입 미사용 수동 타입 관리
   </Card>
   <Card title="자동 생성 미지원" icon="circle-xmark">
-    Subset, Types 자동 생성 없음
-    
-    수동 작성 필요
+    Subset, Types 자동 생성 없음 수동 작성 필요
   </Card>
 </CardGroup>
 
@@ -382,15 +365,21 @@ class MiscFrame extends BaseFrameClass {
 // ✅ 좋음: 관련된 기능을 하나의 Frame에
 class CryptoUtilsFrame extends BaseFrameClass {
   frameName = "CryptoUtils";
-  
+
   @api({ httpMethod: "POST" })
-  async hash(params: HashParams): Promise<{ hash: string }> { /* ... */ }
-  
+  async hash(params: HashParams): Promise<{ hash: string }> {
+    /* ... */
+  }
+
   @api({ httpMethod: "POST" })
-  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> { /* ... */ }
-  
+  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
+    /* ... */
+  }
+
   @api({ httpMethod: "POST" })
-  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> { /* ... */ }
+  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
+    /* ... */
+  }
 }
 ```
 

@@ -9,24 +9,16 @@ Sonamu는 Entity 정의를 기반으로 TypeScript 타입, Zod 스키마, API �
 
 <CardGroup cols={2}>
   <Card title="타입 & 스키마" icon="brackets-curly">
-    TypeScript 타입과 Zod 스키마
-    
-    *.types.ts, sonamu.generated.ts
+    TypeScript 타입과 Zod 스키마 *.types.ts, sonamu.generated.ts
   </Card>
   <Card title="API 클라이언트" icon="code">
-    HTTP 클라이언트 함수
-    
-    services.generated.ts
+    HTTP 클라이언트 함수 services.generated.ts
   </Card>
   <Card title="쿼리 헬퍼" icon="database">
-    Subset 쿼리 함수들
-    
-    sonamu.generated.sso.ts
+    Subset 쿼리 함수들 sonamu.generated.sso.ts
   </Card>
   <Card title="React 컴포넌트" icon="react">
-    Form, List, Select 컴포넌트
-    
-    view_*.tsx
+    Form, List, Select 컴포넌트 view_*.tsx
   </Card>
 </CardGroup>
 
@@ -125,32 +117,19 @@ export const userSubsetQueries = {
   A: (puri: PuriWrapper) =>
     puri
       .table("users")
-      .select([
-        "users.id",
-        "users.email",
-        "users.username",
-        "users.role",
-        "users.created_at",
-      ]),
-      
+      .select(["users.id", "users.email", "users.username", "users.role", "users.created_at"]),
+
   P: (puri: PuriWrapper) =>
     puri
       .table("users")
-      .select([
-        "users.id",
-        "users.email",
-        "users.username",
-      ])
+      .select(["users.id", "users.email", "users.username"])
       .leftJoin("employees", "employees.user_id", "users.id")
       .select([
         "employees.id as employee__id",
         "employees.department_id as employee__department_id",
       ]),
-      
-  SS: (puri: PuriWrapper) =>
-    puri
-      .table("users")
-      .select(["users.id", "users.email"]),
+
+  SS: (puri: PuriWrapper) => puri.table("users").select(["users.id", "users.email"]),
 };
 
 // Loader 쿼리 함수들 (HasMany, ManyToMany)
@@ -163,11 +142,7 @@ export const userLoaderQueries = {
         puri
           .table("posts")
           .whereIn("posts.user_id", ids)
-          .select([
-            "posts.id",
-            "posts.user_id as refId",
-            "posts.title",
-          ]),
+          .select(["posts.id", "posts.user_id as refId", "posts.title"]),
     },
   ],
 };
@@ -193,7 +168,7 @@ export async function findUserById(id: number): Promise<User> {
 }
 
 export async function findManyUsers(
-  params?: UserListParams
+  params?: UserListParams,
 ): Promise<ListResult<UserListParams, User>> {
   const { data } = await axios.get("/user/findMany", { params });
   return data;
@@ -232,7 +207,8 @@ export function useSaveUser() {
 **수정 가능 여부**: ❌ 자동 재생성됨
 
 <Info>
-**타겟별 생성**: `sonamu.config.ts`의 `sync.targets`에 지정된 각 타겟(`web`, `app` 등)에 복사됩니다.
+  **타겟별 생성**: `sonamu.config.ts`의 `sync.targets`에 지정된 각 타겟(`web`, `app` 등)에
+  복사됩니다.
 </Info>
 
 ### 5. HTTP Test File (`sonamu.generated.http`)
@@ -290,36 +266,39 @@ export function UserList() {
   const [params, setParams] = useState({ num: 20, page: 1 });
   const { data, isLoading } = useUsers(params);
 
-  return (
-    <div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Email</th>
-            <th>Username</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.rows.map((user) => (
-            <tr key={user.id}>
-              <td>{user.id}</td>
-              <td>{user.email}</td>
-              <td>{user.username}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
+return (
+
+<div>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Email</th>
+<th>Username</th>
+</tr>
+</thead>
+<tbody>
+{data?.rows.map((user) => (
+<tr key={user.id}>
+<td>{user.id}</td>
+<td>{user.email}</td>
+<td>{user.username}</td>
+</tr>
+))}
+</tbody>
+</table>
+
       <Pagination
         total={data?.total ?? 0}
         page={params.page}
         onChange={(page) => setParams({ ...params, page })}
       />
     </div>
-  );
+
+);
 }
-```
+
+````
 
 ```tsx title="web/src/pages/user/UserSearchInput.tsx"
 export function UserSearchInput({
@@ -337,7 +316,8 @@ export function UserSearchInput({
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 **생성 시점**: `pnpm sonamu generate view_list --entity User`
@@ -353,7 +333,7 @@ import { UserSaveParams } from "@/services/user/user.types";
 export function UserForm({ userId }: { userId?: number }) {
   const { data: user } = useUserById(userId);
   const { mutate: save } = useSaveUser();
-  
+
   const handleSubmit = (values: UserSaveParams) => {
     save([values], {
       onSuccess: () => {
@@ -364,17 +344,8 @@ export function UserForm({ userId }: { userId?: number }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <input
-        name="email"
-        type="email"
-        defaultValue={user?.email}
-        required
-      />
-      <input
-        name="username"
-        defaultValue={user?.username}
-        required
-      />
+      <input name="email" type="email" defaultValue={user?.email} required />
+      <input name="username" defaultValue={user?.username} required />
       <select name="role" defaultValue={user?.role ?? "normal"}>
         <option value="admin">관리자</option>
         <option value="normal">일반 사용자</option>
@@ -404,19 +375,21 @@ export function UserIdAsyncSelect({
   const [keyword, setKeyword] = useState("");
   const { data } = useUsers({ keyword, num: 10 });
 
-  return (
-    <AsyncSelect
-      value={value}
-      onChange={onChange}
-      onSearch={setKeyword}
-      options={data?.rows.map((u) => ({
-        value: u.id,
-        label: u.email,
-      }))}
-    />
-  );
+return (
+
+<AsyncSelect
+value={value}
+onChange={onChange}
+onSearch={setKeyword}
+options={data?.rows.map((u) => ({
+value: u.id,
+label: u.email,
+}))}
+/>
+);
 }
-```
+
+````
 
 ```tsx title="web/src/components/user/UserRoleSelect.tsx"
 // Enum Select
@@ -434,7 +407,8 @@ export function UserRoleSelect({
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 ## SSR 관련 파일
@@ -453,7 +427,7 @@ export const userQueries = {
       queryKey: ["User", "findById", id],
       queryFn: () => findUserById(id),
     }),
-    
+
   findMany: (params?: UserListParams) =>
     queryOptions({
       queryKey: ["Users", "findMany", params],
@@ -477,9 +451,7 @@ export async function loader({ params }) {
 
   // SSR 데이터 프리페칭
   if (params.userId) {
-    await queryClient.prefetchQuery(
-      userQueries.findById(Number(params.userId))
-    );
+    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
   }
 
   return {
@@ -523,24 +495,25 @@ export const SD = {
 
 ## 생성 파일 요약표
 
-| 파일 | 위치 | 생성 시점 | 수정 가능 |
-|------|------|-----------|-----------|
-| `{entity}.types.ts` | `api/src/application/{entity}/` | Entity 저장 | ❌ |
-| `sonamu.generated.ts` | `api/src/application/` | Entity 저장 | ❌ |
-| `sonamu.generated.sso.ts` | `api/src/application/` | Entity 저장 | ❌ |
-| `services.generated.ts` | `web/src/services/` | Model 변경 | ❌ |
-| `sonamu.generated.http` | `api/` | Model 변경 | ❌ |
-| `queries.generated.ts` | `web/src/` | Model 변경 | ❌ |
-| `entry-server.generated.tsx` | `web/src/` | Model 변경 | ❌ |
-| `sd.generated.ts` | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌ |
-| `{Entity}List.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}Form.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}SearchInput.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}IdAsyncSelect.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
-| `{EnumId}Select.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+| 파일                         | 위치                               | 생성 시점        | 수정 가능 |
+| ---------------------------- | ---------------------------------- | ---------------- | --------- |
+| `{entity}.types.ts`          | `api/src/application/{entity}/`    | Entity 저장      | ❌        |
+| `sonamu.generated.ts`        | `api/src/application/`             | Entity 저장      | ❌        |
+| `sonamu.generated.sso.ts`    | `api/src/application/`             | Entity 저장      | ❌        |
+| `services.generated.ts`      | `web/src/services/`                | Model 변경       | ❌        |
+| `sonamu.generated.http`      | `api/`                             | Model 변경       | ❌        |
+| `queries.generated.ts`       | `web/src/`                         | Model 변경       | ❌        |
+| `entry-server.generated.tsx` | `web/src/`                         | Model 변경       | ❌        |
+| `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌        |
+| `{Entity}List.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
+| `{Entity}Form.tsx`           | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
+| `{Entity}SearchInput.tsx`    | `web/src/pages/{entity}/`          | Scaffold         | ✅        |
+| `{Entity}IdAsyncSelect.tsx`  | `web/src/components/{entity}/`     | Scaffold         | ✅        |
+| `{EnumId}Select.tsx`         | `web/src/components/{entity}/`     | Scaffold         | ✅        |
 
 <Warning>
-**자동 재생성 파일**: `*.generated.*` 파일은 절대 수정하지 마세요. 변경 사항이 자동으로 덮어씌워집니다.
+  **자동 재생성 파일**: `*.generated.*` 파일은 절대 수정하지 마세요. 변경 사항이 자동으로
+  덮어씌워집니다.
 </Warning>
 
 ## 다음 단계
@@ -549,10 +522,18 @@ export const SD = {
   <Card title="Syncer" icon="rotate" href="/ko/core-concepts/auto-generation/syncer">
     자동 생성의 핵심 Syncer 이해하기
   </Card>
-  <Card title="When Files Regenerate" icon="clock" href="/ko/core-concepts/auto-generation/when-files-regenerate">
+  <Card
+    title="When Files Regenerate"
+    icon="clock"
+    href="/ko/core-concepts/auto-generation/when-files-regenerate"
+  >
     파일이 언제 재생성되는지 알아보기
   </Card>
-  <Card title="Customizing Generated Code" icon="pen-to-square" href="/ko/core-concepts/auto-generation/customizing-generated-code">
+  <Card
+    title="Customizing Generated Code"
+    icon="pen-to-square"
+    href="/ko/core-concepts/auto-generation/customizing-generated-code"
+  >
     생성된 코드 커스터마이징 방법
   </Card>
   <Card title="Creating Entities" icon="plus" href="/ko/core-concepts/entity/defining-entities">

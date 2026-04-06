@@ -23,36 +23,33 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     // Context 가져오기
     const context = Sonamu.getContext();
-    
+
     // user 정보 접근
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", context.user.id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", context.user.id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
 ```
 
 <Info>
-`Sonamu.getContext()`는 현재 실행 중인 API 요청의 Context를 반환합니다.
-비동기 작업 중에도 올바른 Context를 반환합니다.
+  `Sonamu.getContext()`는 현재 실행 중인 API 요청의 Context를 반환합니다. 비동기 작업 중에도 올바른
+  Context를 반환합니다.
 </Info>
 
 ## 언제 사용하나?
@@ -73,12 +70,12 @@ class PostModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async create(params: PostSaveParams): Promise<{ postId: number }> {
     const context = Sonamu.getContext();
-    
+
     // 로그인 확인
     if (!context.user) {
       throw new Error("Login required");
     }
-    
+
     // 작성자로 현재 사용자 설정
     const wdb = this.getPuri("w");
     const [post] = await wdb
@@ -89,7 +86,7 @@ class PostModelClass extends BaseModelClass<
         author: context.user.username,
       })
       .returning({ id: "id" });
-    
+
     return { postId: post.id };
   }
 }
@@ -111,17 +108,17 @@ class AdminModelClass extends BaseModelClass<
   @api({ httpMethod: "DELETE" })
   async deleteUser(userId: number): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // 인증 확인
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     // 권한 확인
     if (context.user.role !== "admin") {
       throw new Error("Admin permission required");
     }
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -142,36 +139,30 @@ class PostModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "PUT" })
-  async update(
-    postId: number,
-    params: PostSaveParams
-  ): Promise<void> {
+  async update(postId: number, params: PostSaveParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // 게시글 조회
-    const post = await rdb
-      .table("posts")
-      .where("id", postId)
-      .first();
-    
+    const post = await rdb.table("posts").where("id", postId).first();
+
     if (!post) {
       throw new Error("Post not found");
     }
-    
+
     // 소유권 확인 (작성자이거나 관리자만)
     const isOwner = post.user_id === context.user.id;
     const isAdmin = context.user.role === "admin";
-    
+
     if (!isOwner && !isAdmin) {
       throw new Error("Permission denied");
     }
-    
+
     // 수정
     const wdb = this.getPuri("w");
     await wdb.table("posts").where("id", postId).update(params);
@@ -195,9 +186,9 @@ class AnalyticsModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async trackEvent(params: EventParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     const wdb = this.getPuri("w");
-    
+
     // Request 정보 기록
     await wdb.table("analytics").insert({
       ...params,
@@ -228,23 +219,17 @@ class FileModelClass extends BaseModelClass<
   async download(fileId: number): Promise<Buffer> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // 다운로드 헤더 설정
     context.reply.header("Content-Type", file.mime_type);
-    context.reply.header(
-      "Content-Disposition",
-      `attachment; filename="${file.filename}"`
-    );
-    
+    context.reply.header("Content-Disposition", `attachment; filename="${file.filename}"`);
+
     return Buffer.from(file.content);
   }
 }
@@ -259,28 +244,28 @@ class BaseModelClass {
   // 인증 확인 헬퍼
   protected requireAuth(): ContextUser {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       context.reply.status(401);
       throw new Error("Authentication required");
     }
-    
+
     return context.user;
   }
-  
+
   // 권한 확인 헬퍼
   protected requireRole(role: UserRole): ContextUser {
     const user = this.requireAuth();
-    
+
     if (user.role !== role) {
       const context = Sonamu.getContext();
       context.reply.status(403);
       throw new Error(`${role} permission required`);
     }
-    
+
     return user;
   }
-  
+
   // 관리자 확인 헬퍼
   protected requireAdmin(): ContextUser {
     return this.requireRole("admin");
@@ -302,16 +287,16 @@ class UserModelClass extends BaseModelClass<
   async remove(userId: number): Promise<void> {
     // 간단하게 권한 확인
     this.requireAdmin();
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
-  
+
   @api({ httpMethod: "GET" })
   async getMyProfile(): Promise<User> {
     // 로그인만 확인
     const user = this.requireAuth();
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("users").where("id", user.id).first();
   }
@@ -325,26 +310,23 @@ class BaseModelClass {
   protected async requireOwnership(
     tableName: string,
     itemId: number,
-    userIdField: string = "user_id"
+    userIdField: string = "user_id",
   ): Promise<void> {
     const user = this.requireAuth();
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const item = await rdb
-      .table(tableName)
-      .where("id", itemId)
-      .first();
-    
+
+    const item = await rdb.table(tableName).where("id", itemId).first();
+
     if (!item) {
       context.reply.status(404);
       throw new Error("Item not found");
     }
-    
+
     // 소유자이거나 관리자만 허용
     const isOwner = item[userIdField] === user.id;
     const isAdmin = user.role === "admin";
-    
+
     if (!isOwner && !isAdmin) {
       context.reply.status(403);
       throw new Error("Permission denied");
@@ -367,7 +349,7 @@ class PostModelClass extends BaseModelClass<
   async remove(postId: number): Promise<void> {
     // 소유권 자동 확인
     await this.requireOwnership("posts", postId);
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("posts").where("id", postId).delete();
   }
@@ -392,28 +374,28 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     return this.getUserById(context.user.id);
   }
-  
+
   // private 메서드에서도 사용 가능
   private async getUserById(userId: number): Promise<User> {
     const context = Sonamu.getContext();
-    
+
     // 요청 로깅
     console.log("getUserById called from IP:", context.request.ip);
-    
+
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", userId).first();
-    
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -424,13 +406,13 @@ class UserModelClass extends BaseModelClass<
 ```typescript
 class AnalyticsFrame extends BaseFrameClass {
   frameName = "Analytics";
-  
+
   @api({ httpMethod: "POST" })
   async track(params: TrackParams): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("analytics").insert({
       event_type: params.eventType,
       event_data: JSON.stringify(params.data),
@@ -457,34 +439,28 @@ class NotificationModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  async sendBulk(params: {
-    userIds: number[];
-    message: string;
-  }): Promise<void> {
+  async sendBulk(params: { userIds: number[]; message: string }): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // 비동기 작업에서도 Context 접근 가능
     const promises = params.userIds.map(async (userId) => {
       const innerContext = Sonamu.getContext();
-      
+
       // 동일한 Context
       console.log(innerContext.user?.id === context.user?.id); // true
-      
+
       return this.sendNotification(userId, params.message);
     });
-    
+
     await Promise.all(promises);
   }
-  
-  private async sendNotification(
-    userId: number,
-    message: string
-  ): Promise<void> {
+
+  private async sendNotification(userId: number, message: string): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     // 여기서도 동일한 Context
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("notifications").insert({
       user_id: userId,
       message,
@@ -504,7 +480,7 @@ class BaseModelClass {
   protected async logAudit(action: string, details: any): Promise<void> {
     const context = Sonamu.getContext();
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("audit_logs").insert({
       user_id: context.user?.id,
       action,
@@ -529,16 +505,16 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     this.requireAdmin();
-    
+
     const rdb = this.getPuri("r");
     const user = await rdb.table("users").where("id", userId).first();
-    
+
     // 감사 로그 기록
     await this.logAudit("USER_DELETE", {
       targetUserId: userId,
       targetUsername: user.username,
     });
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).delete();
   }
@@ -561,24 +537,22 @@ class ApiModelClass extends BaseModelClass<
   private async checkRateLimit(): Promise<void> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const key = context.user
-      ? `user:${context.user.id}`
-      : `ip:${context.request.ip}`;
-    
+
+    const key = context.user ? `user:${context.user.id}` : `ip:${context.request.ip}`;
+
     const oneMinuteAgo = new Date(Date.now() - 60000);
-    
+
     const [{ count }] = await rdb
       .table("request_logs")
       .where("key", key)
       .where("timestamp", ">=", oneMinuteAgo)
       .count({ count: "*" });
-    
+
     if (count >= 100) {
       context.reply.status(429);
       throw new Error("Too many requests");
     }
-    
+
     // 요청 기록
     const wdb = this.getPuri("w");
     await wdb.table("request_logs").insert({
@@ -586,11 +560,11 @@ class ApiModelClass extends BaseModelClass<
       timestamp: new Date(),
     });
   }
-  
+
   @api({ httpMethod: "GET" })
   async list(): Promise<any[]> {
     await this.checkRateLimit();
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("items").select("*");
   }
@@ -612,32 +586,32 @@ class I18nModelClass extends BaseModelClass<
 
   private getLanguage(): string {
     const context = Sonamu.getContext();
-    
+
     // Accept-Language 헤더에서 언어 추출
     const acceptLanguage = context.request.headers["accept-language"];
-    
+
     if (acceptLanguage) {
       const lang = acceptLanguage.split(",")[0].split("-")[0];
       return lang;
     }
-    
+
     return "en"; // 기본값
   }
-  
+
   @api({ httpMethod: "GET" })
   async getMessages(): Promise<Record<string, string>> {
     const language = this.getLanguage();
     const rdb = this.getPuri("r");
-    
-    const messages = await rdb
-      .table("translations")
-      .where("language", language)
-      .select("*");
-    
-    return messages.reduce((acc, msg) => {
-      acc[msg.key] = msg.value;
-      return acc;
-    }, {} as Record<string, string>);
+
+    const messages = await rdb.table("translations").where("language", language).select("*");
+
+    return messages.reduce(
+      (acc, msg) => {
+        acc[msg.key] = msg.value;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
   }
 }
 ```
@@ -645,12 +619,9 @@ class I18nModelClass extends BaseModelClass<
 ## 주의사항
 
 <Warning>
-**Context 사용 시 주의사항**:
-1. API 메서드 내에서만 호출 가능
-2. 생성자나 클래스 필드에서 호출 불가
-3. 비동기 경계를 넘어도 같은 Context 유지
-4. 여러 번 호출해도 같은 객체 반환
-5. Context는 읽기 전용으로 사용 권장
+  **Context 사용 시 주의사항**: 1. API 메서드 내에서만 호출 가능 2. 생성자나 클래스 필드에서 호출
+  불가 3. 비동기 경계를 넘어도 같은 Context 유지 4. 여러 번 호출해도 같은 객체 반환 5. Context는
+  읽기 전용으로 사용 권장
 </Warning>
 
 ### 흔한 실수
@@ -664,7 +635,7 @@ class UserModelClass extends BaseModelClass<
   typeof userLoaderQueries
 > {
   private currentUser?: ContextUser;
-  
+
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
     // 생성자에서는 Context 없음
@@ -714,7 +685,7 @@ class UserModelClass extends BaseModelClass<
     const context = Sonamu.getContext(); // ← 정상
     // ...
   }
-  
+
   private async helperMethod(): Promise<void> {
     // API 메서드에서 호출된 경우 정상
     const context = Sonamu.getContext(); // ← 정상
@@ -729,7 +700,11 @@ class UserModelClass extends BaseModelClass<
   <Card title="SonamuContext" icon="cube" href="/ko/api-development/context/sonamu-context">
     Context 구조 이해하기
   </Card>
-  <Card title="커스텀 Context" icon="puzzle-piece" href="/ko/api-development/context/custom-context">
+  <Card
+    title="커스텀 Context"
+    icon="puzzle-piece"
+    href="/ko/api-development/context/custom-context"
+  >
     Context 확장하기
   </Card>
   <Card title="@api 데코레이터" icon="at" href="/ko/api-development/creating-apis/api-decorator">

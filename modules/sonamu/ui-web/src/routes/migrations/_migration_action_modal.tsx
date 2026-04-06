@@ -18,8 +18,9 @@ import CheckIcon from "~icons/lucide/check";
 import Loader2Icon from "~icons/lucide/loader-2";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
-import { defaultCatch } from "../../services/sonamu.shared";
+
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../../services/sonamu.shared";
 
 type MigrationActionModalProps = {
   action: "apply" | "rollback" | "shadow";

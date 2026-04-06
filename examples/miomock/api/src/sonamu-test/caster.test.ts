@@ -1,6 +1,7 @@
 import { test } from "sonamu/test";
 import { describe, expect } from "vitest";
 import z from "zod";
+
 import { caster, fastifyCaster } from "../../../../../modules/sonamu/dist/api/caster";
 
 describe("caster", () => {
@@ -163,7 +164,7 @@ describe("caster", () => {
       test("빈 배열은 그대로 반환", () => {
         const schema = z.array(z.number());
 
-        // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함
         const raw: any[] = [];
         const result = caster(schema, raw);
         expect(result).toEqual([]);

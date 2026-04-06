@@ -80,6 +80,7 @@ export const User = z.object({
   // ...
 });
 ```
+
 </Step>
 
 <Step title="2. sonamu.generated.ts">
@@ -100,6 +101,7 @@ export type UserSubsetMapping = { ... };
 // Model exports
 export * from "./user/user.model";
 ```
+
 </Step>
 
 <Step title="3. sonamu.generated.sso.ts">
@@ -117,18 +119,20 @@ export const userSubsetQueries = {
 
 export const userLoaderQueries = { ... };
 ```
+
 </Step>
 
 <Step title="4. 타겟 복사">
 위 파일들이 타겟 프로젝트에 복사됨
 
 **위치**:
+
 - `web/src/services/user/user.types.ts`
 - `web/src/services/sonamu.generated.ts`
 - `web/src/services/sonamu.generated.sso.ts`
 - `app/src/services/...` (동일)
-</Step>
-</Steps>
+  </Step>
+  </Steps>
 
 ### 트리거 예시
 
@@ -161,16 +165,19 @@ export const userLoaderQueries = { ... };
 ✅ Copied: web/src/services/sonamu.generated.ts
 ✅ Copied: web/src/services/sonamu.generated.sso.ts
 ```
+
 </CodeGroup>
 
 <Warning>
 `{entity}.types.ts`는 **처음 Entity 생성 시에만** 자동 생성됩니다. 이후에는 수동으로 관리해야 합니다.
 
 이미 존재하는 `user.types.ts`를 재생성하려면:
+
 ```bash
 rm api/src/application/user/user.types.ts
 # Entity 다시 저장
 ```
+
 </Warning>
 
 ## Model 저장 시
@@ -184,6 +191,7 @@ rm api/src/application/user/user.types.ts
 API 클라이언트 함수와 TanStack Query hooks
 
 **위치**:
+
 - `web/src/services/services.generated.ts`
 - `app/src/services/services.generated.ts`
 
@@ -199,6 +207,7 @@ export function useSaveUser() { ... }
 ```
 
 **생성 기준**: Model의 `@api` 데코레이터가 있는 메서드
+
 </Step>
 
 <Step title="2. sonamu.generated.http">
@@ -218,6 +227,7 @@ Content-Type: application/json
 
 { "params": [...] }
 ```
+
 </Step>
 
 <Step title="3. queries.generated.ts">
@@ -229,12 +239,14 @@ SSR용 Query Options
 
 ```typescript
 export const userQueries = {
-  findById: (id: number) => queryOptions({
-    queryKey: ["User", "findById", id],
-    queryFn: () => findUserById(id),
-  }),
+  findById: (id: number) =>
+    queryOptions({
+      queryKey: ["User", "findById", id],
+      queryFn: () => findUserById(id),
+    }),
 };
 ```
+
 </Step>
 
 <Step title="4. entry-server.generated.tsx">
@@ -247,17 +259,16 @@ SSR Entry Server 코드
 ```tsx
 export async function loader({ params }) {
   const queryClient = new QueryClient();
-  
+
   // SSR 데이터 프리페칭
   if (params.userId) {
-    await queryClient.prefetchQuery(
-      userQueries.findById(Number(params.userId))
-    );
+    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
   }
-  
+
   return { dehydratedState: dehydrate(queryClient) };
 }
 ```
+
 </Step>
 </Steps>
 
@@ -271,12 +282,13 @@ class UserModelClass extends BaseModelClass {
     // ...
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
-  async save(params: UserSaveParams[]): Promise<number[]> {
-    // ...
-  }
+@api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+async save(params: UserSaveParams[]): Promise<number[]> {
+// ...
 }
-```
+}
+
+````
 
 ```bash title="실행 결과"
 🔄 Invalidated:
@@ -288,7 +300,8 @@ class UserModelClass extends BaseModelClass {
 ✅ Generated: entry-server.generated.tsx
 
 ✨ HMR completed in 234ms
-```
+````
+
 </CodeGroup>
 
 ## Types 저장 시
@@ -296,7 +309,8 @@ class UserModelClass extends BaseModelClass {
 `.types.ts` 파일을 저장하면 스키마 파일들이 재생성되고, 타겟에 복사됩니다.
 
 <Note>
-`.types.ts` 파일은 Single Source of Truth로 취급됩니다. 변경 시 Entity 변경과 동일하게 스키마 파일들이 재생성됩니다.
+  `.types.ts` 파일은 Single Source of Truth로 취급됩니다. 변경 시 Entity 변경과 동일하게 스키마
+  파일들이 재생성됩니다.
 </Note>
 
 ### 재생성되는 파일
@@ -310,6 +324,7 @@ class UserModelClass extends BaseModelClass {
 **항상 재생성**: ✅
 
 Types 파일에서 정의한 Zod 스키마들이 이 파일에 반영됩니다.
+
 </Step>
 
 <Step title="2. sonamu.generated.sso.ts">
@@ -320,12 +335,14 @@ Subset 쿼리 함수들
 **항상 재생성**: ✅
 
 Types 변경에 따른 타입 정합성을 유지하기 위해 함께 재생성됩니다.
+
 </Step>
 
 <Step title="3. 타겟 복사">
 수정된 Types 파일과 재생성된 파일들이 타겟 프로젝트에 복사
 
 **위치**:
+
 - `web/src/services/{entity}/{entity}.types.ts`
 - `web/src/services/sonamu.generated.ts`
 - `web/src/services/sonamu.generated.sso.ts`
@@ -334,6 +351,7 @@ Types 변경에 따른 타입 정합성을 유지하기 위해 함께 재생성�
 **항상 복사**: ✅
 
 **import 변환**: `sonamu` → `./sonamu.shared`
+
 </Step>
 </Steps>
 
@@ -345,8 +363,8 @@ import { z } from "zod";
 
 // 커스텀 타입 추가
 export const UserLoginParams = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+email: z.string().email(),
+password: z.string().min(8),
 });
 
 export type UserLoginParams = z.infer<typeof UserLoginParams>;
@@ -359,6 +377,7 @@ export type UserLoginParams = z.infer<typeof UserLoginParams>;
 ✅ Copied: web/src/services/sonamu.generated.ts
 ✅ Copied: web/src/services/sonamu.generated.sso.ts
 ```
+
 </CodeGroup>
 
 ## Config 저장 시
@@ -372,6 +391,7 @@ export type UserLoginParams = z.infer<typeof UserLoginParams>;
 API 서버 정보를 담은 환경 변수 파일
 
 **위치**:
+
 - `web/.sonamu.env`
 - `app/.sonamu.env`
 
@@ -381,6 +401,7 @@ API 서버 정보를 담은 환경 변수 파일
 API_HOST=localhost
 API_PORT=3000
 ```
+
 </Step>
 </Steps>
 
@@ -402,6 +423,7 @@ export default {
 ✅ Updated: web/.sonamu.env
 ✅ Updated: app/.sonamu.env
 ```
+
 </CodeGroup>
 
 ## i18n 파일 저장 시
@@ -415,14 +437,16 @@ export default {
 i18n 파일이 타겟에 복사됨
 
 **위치**:
+
 - `web/src/i18n/{locale}.ts`
 - `app/src/i18n/{locale}.ts`
-</Step>
+  </Step>
 
 <Step title="2. sd.generated.ts">
 Sonamu Dictionary 파일 생성
 
 **위치**:
+
 - `api/src/sd.generated.ts`
 - `web/src/sd.generated.ts`
 - `app/src/sd.generated.ts`
@@ -438,6 +462,7 @@ export const SD = {
   },
 } as const;
 ```
+
 </Step>
 </Steps>
 
@@ -445,18 +470,19 @@ export const SD = {
 
 파일 변경과 재생성 관계를 한눈에 보여주는 표입니다.
 
-| 변경 파일 | {entity}.types.ts | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | entry-server.generated.tsx | .sonamu.env | sd.generated.ts |
-|-----------|-------------------|---------------------|-------------------------|----------------------|----------------------|---------------------|---------------------------|-------------|-----------------|
-| **{entity}.entity.json** | ✅ (첫 생성) | ✅ | ✅ | - | - | - | - | - | - |
-| **{entity}.model.ts** | - | - | - | ✅ | ✅ | ✅ | ✅ | - | - |
-| **{entity}.types.ts** | *복사* | ✅ | ✅ | - | - | - | - | - | - |
-| **sonamu.config.ts** | - | - | - | - | - | - | - | ✅ | - |
-| **i18n/{locale}.ts** | - | - | - | - | - | - | - | - | ✅ |
+| 변경 파일                | {entity}.types.ts | sonamu.generated.ts | sonamu.generated.sso.ts | services.generated.ts | sonamu.generated.http | queries.generated.ts | entry-server.generated.tsx | .sonamu.env | sd.generated.ts |
+| ------------------------ | ----------------- | ------------------- | ----------------------- | --------------------- | --------------------- | -------------------- | -------------------------- | ----------- | --------------- |
+| **{entity}.entity.json** | ✅ (첫 생성)      | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
+| **{entity}.model.ts**    | -                 | -                   | -                       | ✅                    | ✅                    | ✅                   | ✅                         | -           | -               |
+| **{entity}.types.ts**    | _복사_            | ✅                  | ✅                      | -                     | -                     | -                    | -                          | -           | -               |
+| **sonamu.config.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | -                          | ✅          | -               |
+| **i18n/{locale}.ts**     | -                 | -                   | -                       | -                     | -                     | -                    | -                          | -           | ✅              |
 
 **범례**:
+
 - ✅ = 항상 재생성
 - ✅ (첫 생성) = 첫 생성 시에만
-- *복사* = 타겟에 복사
+- _복사_ = 타겟에 복사
 - - = 재생성 안됨
 
 ## 재생성 방지하기
@@ -470,7 +496,7 @@ export const SD = {
 export async function findUserById(id: number): Promise<User> {
   // 커스텀 로직 추가
   console.log("Finding user:", id);
-  
+
   const { data } = await axios.get("/user/findById", { params: { id } });
   return data;
 }
@@ -486,10 +512,11 @@ import { findUserById } from "../services.generated";
 
 // 래퍼 함수 생성
 export async function findUserByIdWithLog(id: number) {
-  console.log("Finding user:", id);
-  return findUserById(id);
+console.log("Finding user:", id);
+return findUserById(id);
 }
-```
+
+````
 
 **장점**: 생성 파일 건드리지 않음
 </Tab>
@@ -503,9 +530,10 @@ export const UserLoginParams = z.object({
 });
 
 // 이 파일은 재생성되지 않음!
-```
+````
 
 **장점**: Types와 함께 관리
+
 </Tab>
 
 <Tab title="Model에서 처리">
@@ -518,6 +546,7 @@ async findByIdWithLog(id: number): Promise<User> {
 ```
 
 **장점**: API로 자동 노출됨
+
 </Tab>
 </Tabs>
 
@@ -554,7 +583,7 @@ import { Sonamu } from "sonamu";
 await Sonamu.syncer.generateTemplate(
   "services",
   {},
-  { overwrite: true }  // 기존 파일 덮어쓰기
+  { overwrite: true }, // 기존 파일 덮어쓰기
 );
 ```
 
@@ -568,6 +597,7 @@ await Sonamu.syncer.generateTemplate(
 
     - Types/Entity 변경 → 스키마 재생성
     - Model 변경 → 서비스 및 HTTP 파일 재생성
+
   </Accordion>
   
   <Accordion title="불필요한 타겟 제거">
@@ -605,7 +635,11 @@ await Sonamu.syncer.generateTemplate(
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Customizing Generated Code" icon="pen-to-square" href="/ko/core-concepts/auto-generation/customizing-generated-code">
+  <Card
+    title="Customizing Generated Code"
+    icon="pen-to-square"
+    href="/ko/core-concepts/auto-generation/customizing-generated-code"
+  >
     생성된 코드를 안전하게 커스터마이징하기
   </Card>
   <Card title="Syncer" icon="rotate" href="/ko/core-concepts/auto-generation/syncer">

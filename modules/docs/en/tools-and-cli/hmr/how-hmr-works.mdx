@@ -46,21 +46,23 @@ No need to refresh the browser, restart the server, or run build commands.
 
 ## Difference from Other Frameworks
 
-| Framework | HMR Support | Auto-generated Code Sync | Entity Change Reflection |
-|-----------|-------------|--------------------------|--------------------------|
-| NestJS | ❌ None | - | Manual restart required |
-| Express | ❌ None | - | nodemon restart |
-| Fastify | ⚠️ Partial support | - | Manual restart required |
-| **Sonamu** | **✅ Full support** | **✅ Automatic** | **✅ Instant reflection** |
+| Framework  | HMR Support         | Auto-generated Code Sync | Entity Change Reflection  |
+| ---------- | ------------------- | ------------------------ | ------------------------- |
+| NestJS     | ❌ None             | -                        | Manual restart required   |
+| Express    | ❌ None             | -                        | nodemon restart           |
+| Fastify    | ⚠️ Partial support  | -                        | Manual restart required   |
+| **Sonamu** | **✅ Full support** | **✅ Automatic**         | **✅ Instant reflection** |
 
 ### What Makes Sonamu Special
 
 Typical Node.js HMR:
+
 - Simply reloads files
 - Auto-generated code needs manual management
 - Multiple files need manual modification on Entity change
 
 **Sonamu HMR:**
+
 - File reload + automatic Syncer execution
 - Entity change → All related code auto-generated/updated
 - All dependent files auto-reloaded
@@ -119,7 +121,7 @@ Adding a `nickname` field to User Entity:
 
 ```typescript
 // Add nickname to User Entity
-nickname: StringProp({ maxLength: 50 })
+nickname: StringProp({ maxLength: 50 });
 ```
 
 **Step 2: Instantly on save**
@@ -210,7 +212,7 @@ Adding user active status check logic:
 export class UserModel extends BaseModelClass {
   static async findActive() {
     return this.findMany({
-      where: { status: "active", deletedAt: null }
+      where: { status: "active", deletedAt: null },
     });
   }
 
@@ -345,7 +347,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
-    boundaries: [`./src/**/*.ts`],  // All .ts files are HMR targets
+    boundaries: [`./src/**/*.ts`], // All .ts files are HMR targets
   });
 
   console.log("🔥 HMR-hook initialized");
@@ -433,6 +435,7 @@ await this.doSyncActions([diffFilePath]);
 ```
 
 Generated files:
+
 - TypeScript type file (`user.types.ts`)
 - Zod schema (`user.zod.ts`)
 - Frontend Service (`UserService.ts`)
@@ -481,11 +484,11 @@ Sonamu's `@sonamu-kit/hmr-hook` forked the original hot-hook with the following 
 ```typescript
 // Original hot-hook: ❌ Not possible
 const modelPath = `./models/${entityId}.model`;
-await import(modelPath);  // Error!
+await import(modelPath); // Error!
 
 // Sonamu hmr-hook: ✅ Possible
 const modelPath = `./models/${entityId}.model`;
-await import(modelPath);  // Works
+await import(modelPath); // Works
 ```
 
 Essential for Sonamu's Entity-based structure where paths must be dynamically generated.
@@ -494,7 +497,7 @@ Essential for Sonamu's Entity-based structure where paths must be dynamically ge
 
 ```typescript
 // user.model.ts (boundary)
-import { PostModel } from "./post.model";  // Original: ❌ / Sonamu: ✅
+import { PostModel } from "./post.model"; // Original: ❌ / Sonamu: ✅
 
 export class UserModel extends BaseModelClass {
   async getPosts() {
@@ -579,9 +582,7 @@ HOT=yes pnpm dev
 HOT=no pnpm dev
 ```
 
-<Note>
-HMR is automatically disabled in production builds, and static builds are generated.
-</Note>
+<Note>HMR is automatically disabled in production builds, and static builds are generated.</Note>
 
 ## Development Tips
 

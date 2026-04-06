@@ -3,15 +3,18 @@
 This directory is the canonical workflow bundle for coding agents in this repository.
 
 ## Goal
+
 Provide one fully integrated workflow where each prompt consumes explicit artifacts from previous steps and produces explicit artifacts for next steps.
 
 ## Agent topology
+
 - The **orchestrator** role is always assumed by the **main agent** (top-level conversation). It is never spawned as a sub-agent.
 - Only the main agent can spawn sub-agents via the Task tool.
 - All spawned sub-agents are **leaf workers** and cannot spawn further sub-agents.
 - When the user requests orchestrated execution, the main agent reads `.agents/agents/orchestrator.md` and `prompts/07_orchestrator.md` to assume the orchestrator role.
 
 ## Canonical execution order
+
 1. `prompts/00_bootstrap.md`
 2. `prompts/01_plan.md` (planner sub-agent)
 3. `prompts/07_orchestrator.md` (main agent assumes this role)
@@ -22,9 +25,11 @@ Provide one fully integrated workflow where each prompt consumes explicit artifa
 8. `prompts/04_hotfix.md` (same pipeline with urgency constraints)
 
 ## Shared contract
+
 All prompts must follow `prompts/00_shared_contract.md`.
 
 ## Artifact chain
+
 - Bootstrap output: `bootstrap_context`
 - Planning outputs: `plan_document`, `spawn_manifest`
 - Orchestration output: per-unit `objective_packet` payloads and execution trace
@@ -34,6 +39,7 @@ All prompts must follow `prompts/00_shared_contract.md`.
 - Final output: `handoff_bundle`
 
 ## Subagent compatibility
+
 - Claude preset mode:
   - use `.claude/agents/*.md` (canonical source: `.agents/agents/*.md`)
   - Exception: `orchestrator.md` is a role-assumption document, not a spawnable preset.
@@ -44,5 +50,6 @@ All prompts must follow `prompts/00_shared_contract.md`.
 - The main agent (as orchestrator) decides mode (`preset` or `inline_fallback`) per spawn and records the reason.
 
 ## Scope
+
 - Keep `docs/` untouched.
 - This bundle is the active integration target for runtime orchestration.

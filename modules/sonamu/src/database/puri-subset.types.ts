@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri Subset 타입 시스템에서 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri Subset 타입 시스템에서 any를 허용함
 
 /**
  * Puri Subset 타입 시스템
@@ -12,8 +12,8 @@
 
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
-import type { Expand } from "./puri.types";
 import type { PuriWrapper } from "./puri-wrapper";
+import type { Expand } from "./puri.types";
 
 // ============================================================================
 // 기본 타입 정의

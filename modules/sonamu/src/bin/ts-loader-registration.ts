@@ -1,5 +1,6 @@
 import { register } from "node:module";
 import * as path from "node:path";
+
 import { exists } from "../utils/fs-utils.js";
 
 const tsLoaderRegisterStateKey = Symbol.for("sonamu.ts-loader-register.state");

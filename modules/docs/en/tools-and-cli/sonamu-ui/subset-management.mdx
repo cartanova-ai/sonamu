@@ -1,12 +1,14 @@
 ---
-title: 'Subset Management'
-description: 'Define and manage Entity Subsets'
+title: "Subset Management"
+description: "Define and manage Entity Subsets"
 ---
 
 Subset is a feature that **pre-defines specific field combinations of an Entity** to efficiently manage API responses. You can visually define and edit Subsets in the **Entity tab** of Sonamu UI.
 
 <Info>
-Subsets are not managed in a separate tab. They are managed in the **Subsets sheet within the Entity tab**. After selecting an Entity, you work in the Subsets sheet alongside Properties, Indexes, Relations, and Enums.
+  Subsets are not managed in a separate tab. They are managed in the **Subsets sheet within the
+  Entity tab**. After selecting an Entity, you work in the Subsets sheet alongside Properties,
+  Indexes, Relations, and Enums.
 </Info>
 
 ## What is a Subset?
@@ -15,12 +17,12 @@ A Subset is a **predefined field group that selectively retrieves only some fiel
 
 ### Why Use Subsets
 
-| Problem | Subset Solution |
-|---------|-----------------|
-| Unnecessary data transfer | Select only needed fields |
-| Inconsistent responses | Standardized field combinations |
-| Complex JOINs | Control relationship data inclusion |
-| Performance degradation | Query minimum data only |
+| Problem                   | Subset Solution                     |
+| ------------------------- | ----------------------------------- |
+| Unnecessary data transfer | Select only needed fields           |
+| Inconsistent responses    | Standardized field combinations     |
+| Complex JOINs             | Control relationship data inclusion |
+| Performance degradation   | Query minimum data only             |
 
 ### Example
 
@@ -44,8 +46,12 @@ To manage Subsets in Sonamu UI:
 3. Click **Subsets** among the sheet tabs at the top
 
 <Columns cols={2}>
-<Frame caption="Managing Subsets in the Subsets sheet of Entity tab"><img src="/images/sonamuUI-relation-result.png" alt="Entity Relations Screen" /></Frame>
-<Frame><img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets Screen" /></Frame>
+  <Frame caption="Managing Subsets in the Subsets sheet of Entity tab">
+    <img src="/images/sonamuUI-relation-result.png" alt="Entity Relations Screen" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-relation-subsets.png" alt="Entity Subsets Screen" />
+  </Frame>
 </Columns>
 
 ### Screen Layout
@@ -75,20 +81,19 @@ Click **Subsets** among the sheet tabs at the top.
 
 Click the **[Add Subset]** button to create a new Subset.
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Subset ID** | Subset identifier (A-Z) | `A`, `B`, `C` |
-| **Description** | Subset description | `For list`, `For detail` |
+| Field           | Description             | Example                  |
+| --------------- | ----------------------- | ------------------------ |
+| **Subset ID**   | Subset identifier (A-Z) | `A`, `B`, `C`            |
+| **Description** | Subset description      | `For list`, `For detail` |
 
-<Info>
-Subset IDs typically use **single alphabet letters** (A, B, C...).
-</Info>
+<Info>Subset IDs typically use **single alphabet letters** (A, B, C...).</Info>
 
 ### 5. Select Fields
 
 Select the fields to include in the created Subset:
 
 **Basic fields**:
+
 ```
 ☑ id          ← Required (always included)
 ☑ email
@@ -99,6 +104,7 @@ Select the fields to include in the created Subset:
 ```
 
 **Relation fields**:
+
 ```
 ☐ posts → Post.Subset A
 ☐ profile → Profile.Subset B
@@ -122,6 +128,7 @@ Select the fields to include in the created Subset:
 ```
 
 **Usage example**:
+
 ```typescript
 // User list
 const users = await UserModel.findMany({ subset: "A" });
@@ -146,6 +153,7 @@ const users = await UserModel.findMany({ subset: "A" });
 ```
 
 **Usage example**:
+
 ```typescript
 // User detail
 const user = await UserModel.findById(1, { subset: "B" });
@@ -169,6 +177,7 @@ const user = await UserModel.findById(1, { subset: "B" });
 ```
 
 **Usage example**:
+
 ```typescript
 // Post + author + comments
 const post = await PostModel.findById(1, { subset: "C" });
@@ -224,8 +233,8 @@ When selected, querying User also fetches authored Post list:
 ```
 
 <Warning>
-**N+1 problem caution**: Including hasMany relations in Subsets may cause additional queries.
-Only include when necessary.
+  **N+1 problem caution**: Including hasMany relations in Subsets may cause additional queries. Only
+  include when necessary.
 </Warning>
 
 ## Editing Subsets
@@ -238,6 +247,7 @@ Only include when necessary.
 4. Click **[Save]** button
 
 **Changes applied immediately**:
+
 ```
 Before: { id, email, name }
 After:  { id, email, name, bio, created_at }
@@ -251,7 +261,7 @@ After:  { id, email, name, bio, created_at }
 4. Click **[Confirm]** in the confirmation modal
 
 <Warning>
-**Deleting used Subset**: If there are APIs using the Subset you're deleting, errors may occur.
+  **Deleting used Subset**: If there are APIs using the Subset you're deleting, errors may occur.
 </Warning>
 
 ## Practical Examples
@@ -362,7 +372,7 @@ class UserModelClass extends BaseModelClass {
       subset: "B",
       qb,
       params: { num: 1, page: 1 },
-    }).then(result => result.rows[0]);
+    }).then((result) => result.rows[0]);
   }
 }
 ```

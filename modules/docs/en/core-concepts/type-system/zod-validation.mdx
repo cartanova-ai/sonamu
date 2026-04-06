@@ -34,10 +34,10 @@ import { z } from "zod";
 
 // Auto-generated from Entity
 export const User = z.object({
-  id: z.number().int(),
-  email: z.string().max(100),
-  age: z.number().int(),
-  role: z.enum(["admin", "normal"]),
+id: z.number().int(),
+email: z.string().max(100),
+age: z.number().int(),
+role: z.enum(["admin", "normal"]),
 });
 
 export type User = z.infer<typeof User>;
@@ -65,19 +65,20 @@ export type LoginParams = z.infer<typeof LoginParams>;
 import { User } from "./user.types";
 
 try {
-  const user = User.parse({
-    id: 1,
-    email: "john@test.com",
-    age: 30,
-    role: "admin",
-  });
-  // ✅ Validation success, user is User type
-  console.log(user.email);
+const user = User.parse({
+id: 1,
+email: "john@test.com",
+age: 30,
+role: "admin",
+});
+// ✅ Validation success, user is User type
+console.log(user.email);
 } catch (error) {
-  // ❌ ZodError on validation failure
-  console.error(error);
+// ❌ ZodError on validation failure
+console.error(error);
 }
-```
+
+````
 
 ```typescript title="safeParse (error-safe)"
 import { User } from "./user.types";
@@ -101,7 +102,7 @@ if (result.success) {
   //   { path: ["role"], message: "Invalid enum value" }
   // ]
 }
-```
+````
 
 </CodeGroup>
 
@@ -128,13 +129,14 @@ email.parse("john@test.com");  // ✅
 const withLength = z.string().max(100);
 withLength.parse("a".repeat(100)); // ✅
 withLength.parse("a".repeat(101)); // ❌
-```
+
+````
 
 ```typescript title="Email validation"
 const email = z.string().email();
 email.parse("john@test.com");  // ✅
 email.parse("invalid-email");  // ❌
-```
+````
 
 ```typescript title="URL validation"
 const url = z.string().url();
@@ -271,13 +273,14 @@ const user = z.object({
 });
 
 user.parse({
-  name: "John",
-  profile: {
-    bio: "Hello",
-    website: "https://john.com",
-  },
+name: "John",
+profile: {
+bio: "Hello",
+website: "https://john.com",
+},
 }); // ✅
-```
+
+````
 
 ```typescript title="Optional fields"
 const user = z.object({
@@ -289,7 +292,7 @@ const user = z.object({
 user.parse({ name: "John" });  // ✅ (nickname is undefined)
 user.parse({ name: "John", nickname: "JD" });  // ✅
 user.parse({ name: "John", bio: null });  // ✅
-```
+````
 
 </CodeGroup>
 
@@ -301,14 +304,15 @@ const role = z.enum(["admin", "moderator", "normal"]);
 
 role.parse("admin"); // ✅
 role.parse("guest"); // ❌ Invalid enum value
-```
+
+````
 
 ```typescript title="Enum array"
 const roles = z.enum(["admin", "moderator", "normal"]).array();
 
 roles.parse(["admin", "normal"]);  // ✅
 roles.parse(["admin", "guest"]);  // ❌
-```
+````
 
 </CodeGroup>
 
@@ -345,7 +349,8 @@ const password = z.string()
 
 password.parse("Abc12345!"); // ✅
 password.parse("abc12345"); // ❌ No uppercase
-```
+
+````
 
 ```typescript title="superRefine (multiple errors)"
 const user = z.object({
@@ -368,7 +373,7 @@ const user = z.object({
     });
   }
 });
-```
+````
 
 </CodeGroup>
 
@@ -379,7 +384,8 @@ const user = z.object({
 const age = z.string().transform(val => parseInt(val, 10));
 
 age.parse("30"); // ✅ 30 (number)
-```
+
+````
 
 ```typescript title="preprocess (preprocessing)"
 const email = z.preprocess(
@@ -388,7 +394,7 @@ const email = z.preprocess(
 );
 
 email.parse("  JOHN@TEST.COM  ");  // ✅ "john@test.com"
-```
+````
 
 ```typescript title="coerce (type coercion)"
 const age = z.coerce.number();
@@ -410,14 +416,15 @@ const settings = z.object({
 
 settings.parse({}); // ✅ { theme: "light", notifications: true }
 settings.parse({ theme: "dark" }); // ✅ { theme: "dark", notifications: true }
-```
+
+````
 
 ```typescript title="catch (default on error)"
 const count = z.number().catch(0);
 
 count.parse(10);  // ✅ 10
 count.parse("invalid");  // ✅ 0 (default instead of error)
-```
+````
 
 </CodeGroup>
 
@@ -472,7 +479,7 @@ export const UserSaveParams = z
     {
       message: "Password is required for new users",
       path: ["password"],
-    }
+    },
   );
 ```
 
@@ -520,7 +527,7 @@ const payment = z
     {
       message: "Discount cannot exceed payment amount",
       path: ["discount"],
-    }
+    },
   );
 ```
 
@@ -551,14 +558,10 @@ function UserForm() {
   return (
     <form onSubmit={onSubmit}>
       <input {...form.register("email")} />
-      {form.formState.errors.email && (
-        <span>{form.formState.errors.email.message}</span>
-      )}
+      {form.formState.errors.email && <span>{form.formState.errors.email.message}</span>}
 
       <input {...form.register("username")} />
-      {form.formState.errors.username && (
-        <span>{form.formState.errors.username.message}</span>
-      )}
+      {form.formState.errors.username && <span>{form.formState.errors.username.message}</span>}
 
       <button type="submit">Save</button>
     </form>
@@ -703,18 +706,10 @@ const profileOnly = user.pick({ profile: true });
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/en/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/en/core-concepts/type-system/e2e-type-safety">
     End-to-end type safety
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/en/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/en/core-concepts/type-system/entity-types">
     Entity type conversion
   </Card>
   <Card
@@ -724,11 +719,7 @@ const profileOnly = user.pick({ profile: true });
   >
     Using generated types
   </Card>
-  <Card
-    title="Model Testing"
-    icon="flask"
-    href="/en/testing/model-testing/unit-tests"
-  >
+  <Card title="Model Testing" icon="flask" href="/en/testing/model-testing/unit-tests">
     Testing Zod validation
   </Card>
 </CardGroup>

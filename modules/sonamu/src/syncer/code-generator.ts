@@ -1,7 +1,9 @@
-import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+
+import chalk from "chalk";
 import { unique } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";

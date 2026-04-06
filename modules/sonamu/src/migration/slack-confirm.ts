@@ -3,6 +3,7 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+
 import { Sonamu } from "../api";
 import type { SonamuDBConfig } from "../database/db";
 import { SD } from "../dict/sd";

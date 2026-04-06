@@ -1,7 +1,9 @@
-import { getLogger } from "@logtape/logtape";
 import { randomUUID } from "crypto";
+
+import { getLogger } from "@logtape/logtape";
 import type { Knex } from "knex";
 import { cluster, isArray, unique } from "radashi";
+
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";

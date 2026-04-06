@@ -12,21 +12,25 @@ Sonamu에서 사용자 인증을 설정하는 방법을 알아봅니다. Sonamu�
     검증된 인증 라이브러리
 
     이메일/비밀번호, 소셜 로그인
+
   </Card>
   <Card title="자동 엔티티 생성" icon="wand-magic-sparkles">
     CLI로 엔티티 자동 생성
 
     User, Session, Account, Verification
+
   </Card>
   <Card title="Context 기반" icon="diagram-project">
     요청마다 사용자 정보
 
     Sonamu.getContext()
+
   </Card>
   <Card title="Guards 시스템" icon="lock">
     선언적 권한 제어
 
     @api guards 옵션
+
   </Card>
 </CardGroup>
 
@@ -42,15 +46,15 @@ pnpm sonamu auth generate
 
 이 명령어는 4개의 엔티티를 생성합니다:
 
-| 엔티티 | 테이블 | 설명 |
-|--------|--------|------|
-| User | users | 사용자 정보 (id, name, email, email_verified, image) |
-| Session | sessions | 세션 정보 (id, token, expires_at, user_id) |
-| Account | accounts | 소셜 계정 연결 (id, provider_id, access_token, user_id) |
-| Verification | verifications | 이메일 인증 등 (id, identifier, value, expires_at) |
+| 엔티티       | 테이블        | 설명                                                    |
+| ------------ | ------------- | ------------------------------------------------------- |
+| User         | users         | 사용자 정보 (id, name, email, email_verified, image)    |
+| Session      | sessions      | 세션 정보 (id, token, expires_at, user_id)              |
+| Account      | accounts      | 소셜 계정 연결 (id, provider_id, access_token, user_id) |
+| Verification | verifications | 이메일 인증 등 (id, identifier, value, expires_at)      |
 
 <Info>
-기존 엔티티가 있으면 누락된 필드만 추가됩니다. 필드 타입이 변경된 경우 자동으로 업데이트됩니다.
+  기존 엔티티가 있으면 누락된 필드만 추가됩니다. 필드 타입이 변경된 경우 자동으로 업데이트됩니다.
 </Info>
 
 ### 2. 마이그레이션 실행
@@ -86,12 +90,12 @@ export default {
 
 better-auth가 제공하는 API 엔드포인트들이 자동으로 등록됩니다:
 
-| 경로 | 메서드 | 설명 |
-|------|--------|------|
-| `/api/auth/sign-up/email` | POST | 이메일 회원가입 |
-| `/api/auth/sign-in/email` | POST | 이메일 로그인 |
-| `/api/auth/sign-out` | POST | 로그아웃 |
-| `/api/auth/get-session` | GET | 현재 세션 조회 |
+| 경로                      | 메서드 | 설명            |
+| ------------------------- | ------ | --------------- |
+| `/api/auth/sign-up/email` | POST   | 이메일 회원가입 |
+| `/api/auth/sign-in/email` | POST   | 이메일 로그인   |
+| `/api/auth/sign-out`      | POST   | 로그아웃        |
+| `/api/auth/get-session`   | GET    | 현재 세션 조회  |
 
 ## Context에서 사용자 정보 접근
 
@@ -235,6 +239,7 @@ better-auth의 기본 User 엔티티에는 `role` 필드가 없습니다. 권한
 ### 1. Sonamu UI에서 필드 추가
 
 User 엔티티에 `role` 필드를 추가합니다:
+
 - 이름: `role`
 - 타입: `string`
 - 기본값: `"user"`
@@ -302,12 +307,12 @@ const session = await authClient.getSession();
 
 better-auth는 camelCase를 사용하지만, Sonamu는 snake_case를 사용합니다. 다음 필드들이 자동으로 매핑됩니다:
 
-| better-auth | Sonamu |
-|-------------|--------|
+| better-auth     | Sonamu           |
+| --------------- | ---------------- |
 | `emailVerified` | `email_verified` |
-| `createdAt` | `created_at` |
-| `userId` | `user_id` |
-| `expiresAt` | `expires_at` |
+| `createdAt`     | `created_at`     |
+| `userId`        | `user_id`        |
+| `expiresAt`     | `expires_at`     |
 
 ## 체크리스트
 
@@ -323,7 +328,11 @@ better-auth는 camelCase를 사용하지만, Sonamu는 snake_case를 사용합�
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="세션 관리" icon="clock-rotate-left" href="/ko/api-development/authentication/session-management">
+  <Card
+    title="세션 관리"
+    icon="clock-rotate-left"
+    href="/ko/api-development/authentication/session-management"
+  >
     세션과 토큰 관리
   </Card>
   <Card title="Context" icon="diagram-project" href="/ko/api-development/context/sonamu-context">
@@ -332,7 +341,11 @@ better-auth는 camelCase를 사용하지만, Sonamu는 snake_case를 사용합�
   <Card title="@api 데코레이터" icon="at" href="/ko/api-development/creating-apis/api-decorator">
     API 데코레이터 옵션
   </Card>
-  <Card title="에러 처리" icon="triangle-exclamation" href="/ko/api-reference/exceptions/sonamu-error">
+  <Card
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/ko/api-reference/exceptions/sonamu-error"
+  >
     인증 에러 처리
   </Card>
 </CardGroup>

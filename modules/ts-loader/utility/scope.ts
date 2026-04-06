@@ -1,6 +1,8 @@
 import type { ModuleFormat } from "node:module";
+
 import type { FileSystemAsync } from "@loaderkit/resolve/fs";
 import JSON5 from "json5";
+
 import { testAnyJavaScript, testAnyTypeScript } from "./translate.js";
 
 const testCommonJS = /\.c[jt]sx?$/i;
@@ -143,14 +145,14 @@ export async function resolvePackage(fs: FileSystemAsync, fileOrDirectory: URL) 
  */
 export function makeResolveTypeScriptPackage(fs: LoaderFileSystem) {
   const makeLocation = (fragment: string, relativeToFile: URL) => {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: 의도적으로 문자열 비교에 사용
+    // oxlint-disable-next-line no-template-curly-in-string -- 의도적으로 문자열 비교에 사용
     if (fragment.startsWith("${configDir}")) {
       // Inject `tsconfig.json` location
       // Replace slashes, and ensure template fragment ends in a slash
       const template = replaceFragmentDirectorySlashes(fragment);
       // Remove final slash from replacement, which we know exists
       const replacement = new URL(".", relativeToFile).href.slice(0, -1);
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: 의도적으로 문자열 치환에 사용
+      // oxlint-disable-next-line no-template-curly-in-string -- 의도적으로 문자열 치환에 사용
       return new URL(template.replace("${configDir}", replacement));
     } else {
       // Returns a directory file:// URL ending in one "/"

@@ -9,24 +9,16 @@ Properly defining API parameters provides type safety and clear API documentatio
 
 <CardGroup cols={2}>
   <Card title="Type Safety" icon="shield">
-    Compile-time validation
-    
-    Autocomplete support
+    Compile-time validation Autocomplete support
   </Card>
   <Card title="Clear Contract" icon="file-contract">
-    Auto-generated API spec
-    
-    Client guide
+    Auto-generated API spec Client guide
   </Card>
   <Card title="Validation" icon="check-double">
-    Automatic type validation
-    
-    Early error detection
+    Automatic type validation Early error detection
   </Card>
   <Card title="Documentation" icon="book">
-    Add descriptions with comments
-    
-    Easy maintenance
+    Add descriptions with comments Easy maintenance
   </Card>
 </CardGroup>
 
@@ -42,21 +34,21 @@ class UserModel extends BaseModelClass {
     // GET /api/user/getUser?id=1
     // ...
   }
-  
+
   // String
   @api({ httpMethod: "GET" })
   async findByEmail(email: string): Promise<User | null> {
     // GET /api/user/findByEmail?email=test@example.com
     // ...
   }
-  
+
   // Boolean
   @api({ httpMethod: "GET" })
   async listActive(active: boolean): Promise<User[]> {
     // GET /api/user/listActive?active=true
     // ...
   }
-  
+
   // Date
   @api({ httpMethod: "GET" })
   async listByDate(fromDate: Date, toDate: Date): Promise<User[]> {
@@ -77,7 +69,7 @@ class UserModel extends BaseModelClass {
     const rdb = this.getPuri("r");
     return rdb.table("users").whereIn("id", ids).select("*");
   }
-  
+
   // String array
   @api({ httpMethod: "GET" })
   async findByRoles(roles: UserRole[]): Promise<User[]> {
@@ -105,7 +97,7 @@ class UserModel extends BaseModelClass {
   @transactional()
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     // Autocomplete available for params.email, params.username, etc.
     const [user] = await wdb
       .table("users")
@@ -116,7 +108,7 @@ class UserModel extends BaseModelClass {
         role: params.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -137,7 +129,7 @@ interface UserListParams {
   // Required parameters
   page: number;
   pageSize: number;
-  
+
   // Optional parameters
   search?: string;
   role?: UserRole;
@@ -153,35 +145,35 @@ class UserModel extends BaseModelClass {
     total: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     // Handle optional parameters
     if (params.search) {
       query = query.where("username", "like", `%${params.search}%`);
     }
-    
+
     if (params.role) {
       query = query.where("role", params.role);
     }
-    
+
     if (params.isActive !== undefined) {
       query = query.where("is_active", params.isActive);
     }
-    
+
     // Sorting (provide defaults)
     const sortBy = params.sortBy || "created_at";
     const sortOrder = params.sortOrder || "desc";
     query = query.orderBy(sortBy, sortOrder);
-    
+
     // Pagination
     const users = await query
       .limit(params.pageSize)
       .offset((params.page - 1) * params.pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return { users, total: count };
   }
 }
@@ -195,7 +187,7 @@ interface RegisterParams {
   email: string;
   username: string;
   password: string;
-  
+
   // Profile info (nested)
   profile: {
     bio: string;
@@ -206,7 +198,7 @@ interface RegisterParams {
       linkedin?: string;
     };
   };
-  
+
   // Settings (nested)
   preferences: {
     theme: "light" | "dark";
@@ -223,7 +215,7 @@ class UserModel extends BaseModelClass {
   @transactional()
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     // Create User
     const userRef = wdb.ubRegister("users", {
       email: params.email,
@@ -231,7 +223,7 @@ class UserModel extends BaseModelClass {
       password: params.password,
       role: "normal",
     });
-    
+
     // Create Profile
     wdb.ubRegister("profiles", {
       user_id: userRef,
@@ -239,7 +231,7 @@ class UserModel extends BaseModelClass {
       avatar_url: params.profile.avatarUrl || null,
       social_links: JSON.stringify(params.profile.socialLinks || {}),
     });
-    
+
     // Create Preferences
     wdb.ubRegister("user_preferences", {
       user_id: userRef,
@@ -248,11 +240,11 @@ class UserModel extends BaseModelClass {
       email_notifications: params.preferences.notifications.email,
       push_notifications: params.preferences.notifications.push,
     });
-    
+
     const [userId] = await wdb.ubUpsert("users");
     await wdb.ubUpsert("profiles");
     await wdb.ubUpsert("user_preferences");
-    
+
     return { userId };
   }
 }
@@ -285,27 +277,24 @@ interface UpdateUserParams {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "PUT" })
   @transactional()
-  async update(
-    id: number,
-    params: UpdateUserParams
-  ): Promise<void> {
+  async update(id: number, params: UpdateUserParams): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     const updateData: any = {};
-    
+
     if (params.role) {
       // Enum value validation is automatic
       updateData.role = params.role;
     }
-    
+
     if (params.status) {
       updateData.status = params.status;
     }
-    
+
     if (params.bio !== undefined) {
       updateData.bio = params.bio;
     }
-    
+
     await wdb.table("users").where("id", id).update(updateData);
   }
 }
@@ -326,9 +315,9 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async search(params: SearchParams): Promise<User[]> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     // Determine search field based on searchIn
     switch (params.searchIn) {
       case "username":
@@ -348,7 +337,7 @@ class UserModel extends BaseModelClass {
         });
         break;
     }
-    
+
     return query.orderBy(params.sortBy, params.order).select("*");
   }
 }
@@ -407,29 +396,29 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // Validate parameters
     this.validateCreateParams(params);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // ...
   }
-  
+
   private validateCreateParams(params: CreateUserParams): void {
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(params.email)) {
       throw new Error("Invalid email format");
     }
-    
+
     // Username length validation
     if (params.username.length < 3 || params.username.length > 20) {
       throw new Error("Username must be between 3 and 20 characters");
     }
-    
+
     // Password strength validation
     if (params.password.length < 8) {
       throw new Error("Password must be at least 8 characters");
     }
-    
+
     // Age validation
     if (params.age !== undefined && (params.age < 18 || params.age > 120)) {
       throw new Error("Age must be between 18 and 120");
@@ -460,9 +449,9 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // Validate with Zod
     const validated = CreateUserSchema.parse(params);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // validated has guaranteed types
     const [user] = await wdb
       .table("users")
@@ -474,7 +463,7 @@ class UserModel extends BaseModelClass {
         role: validated.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -494,7 +483,7 @@ interface UserListParams {
    * @example 1
    */
   page: number;
-  
+
   /**
    * Number of items per page
    * @example 20
@@ -502,25 +491,25 @@ interface UserListParams {
    * @max 100
    */
   pageSize: number;
-  
+
   /**
    * Search keyword (searches in username, email)
    * @example "john"
    */
   search?: string;
-  
+
   /**
    * User role filter
    * @example "admin"
    */
   role?: "admin" | "manager" | "normal";
-  
+
   /**
    * Sort field
    * @default "created_at"
    */
   sortBy?: "created_at" | "username" | "email";
-  
+
   /**
    * Sort order
    * @default "desc"
@@ -556,11 +545,11 @@ class UserModel extends BaseModelClass {
     };
   }> {
     const rdb = this.getPuri("r");
-    
+
     // Default value handling
     const page = Math.max(1, params.page);
     const pageSize = Math.min(100, Math.max(1, params.pageSize));
-    
+
     // ...
   }
 }
@@ -572,45 +561,43 @@ class UserModel extends BaseModelClass {
 interface ProductFilterParams {
   // Category
   category?: string;
-  
+
   // Price range
   minPrice?: number;
   maxPrice?: number;
-  
+
   // Stock status
   inStock?: boolean;
-  
+
   // Brands
   brands?: string[];
-  
+
   // Tags
   tags?: string[];
-  
+
   // Search
   search?: string;
 }
 
 class ProductModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
-  async search(
-    params: ProductFilterParams & PaginationParams
-  ): Promise<Product[]> {
+  async search(params: ProductFilterParams & PaginationParams): Promise<Product[]> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("products");
-    
+
     if (params.category) {
       query = query.where("category", params.category);
     }
-    
+
     if (params.minPrice !== undefined) {
       query = query.where("price", ">=", params.minPrice);
     }
-    
+
     if (params.maxPrice !== undefined) {
       query = query.where("price", "<=", params.maxPrice);
     }
-    
+
     if (params.inStock !== undefined) {
       if (params.inStock) {
         query = query.where("stock", ">", 0);
@@ -618,11 +605,11 @@ class ProductModel extends BaseModelClass {
         query = query.where("stock", "=", 0);
       }
     }
-    
+
     if (params.brands && params.brands.length > 0) {
       query = query.whereIn("brand", params.brands);
     }
-    
+
     // ...
   }
 }
@@ -631,7 +618,11 @@ class ProductModel extends BaseModelClass {
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Return Types" icon="arrow-turn-down-left" href="/en/api-development/creating-apis/return-types">
+  <Card
+    title="Return Types"
+    icon="arrow-turn-down-left"
+    href="/en/api-development/creating-apis/return-types"
+  >
     Defining response types
   </Card>
   <Card title="@api Decorator" icon="at" href="/en/api-development/creating-apis/api-decorator">
@@ -640,7 +631,11 @@ class ProductModel extends BaseModelClass {
   <Card title="HTTP Methods" icon="globe" href="/en/api-development/creating-apis/http-methods">
     GET, POST, PUT, DELETE
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/error-handling"
+  >
     API error handling
   </Card>
 </CardGroup>

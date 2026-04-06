@@ -11,6 +11,7 @@
 현재 `/admin/` 인덱스 페이지(플레이스홀더)를 **경영진 대시보드**로 교체한다.
 
 **교체 대상 파일:**
+
 ```
 /examples/miomock/web/src/routes/admin/index.tsx
 ```
@@ -22,11 +23,13 @@
 ## 2. API 엔드포인트
 
 ### 2-1. GET `/api/dashboard/getStats`
+
 - **응답:** `DashboardStats` (조직/프로젝트/문서 현황 전체)
 - **인증:** 불필요 (guards 없음)
 - **TanStack Query 리소스명:** `DashboardStats`
 
 ### 2-2. GET `/api/dashboard/getRecentActivity`
+
 - **파라미터:** `period: "7" | "30" | "all"` (기본값: "7")
 - **응답:** `ActivityGroup[]` (날짜별 그룹핑된 활동 목록)
 - **인증:** 컨텍스트의 user.role에 따라 자동 필터링
@@ -46,6 +49,7 @@ DashboardService.useRecentActivity(period?, options?)
 ```
 
 만약 자동 생성이 안 되면, 수동으로 axios + queryOptions 패턴으로 작성:
+
 ```typescript
 import axios from "axios";
 import { queryOptions, useQuery } from "@tanstack/react-query";
@@ -79,25 +83,27 @@ export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
 ## 3. 타입 정의
 
 이미 동기화 완료:
+
 ```
 /examples/miomock/web/src/services/dashboard/dashboard.types.ts
 ```
 
 ### DashboardStats
+
 ```typescript
 {
   organization: {
     companyCount: number;
     departmentCount: number;
     employeeCount: number;
-  };
+  }
   projects: {
     statusCounts: {
       planning: number;
       in_progress: number;
       completed: number;
       cancelled: number;
-    };
+    }
     activeProjects: Array<{
       id: number;
       name: string;
@@ -105,26 +111,27 @@ export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
       milestoneTotal: number;
       milestoneCompleted: number;
     }>;
-  };
+  }
   documents: {
     total: number;
     draft: number;
     published: number;
     archived: number;
-  };
+  }
 }
 ```
 
 ### ActivityGroup
+
 ```typescript
 {
-  date: string;          // "today" | "yesterday" | "2026-03-08"
-  label: string;         // "오늘 (3건)" | "어제 (5건)" | "3월 8일 (2건)"
+  date: string; // "today" | "yesterday" | "2026-03-08"
+  label: string; // "오늘 (3건)" | "어제 (5건)" | "3월 8일 (2건)"
   items: Array<{
     id: number;
     actor_id: string | null;
     action: "create" | "update" | "delete";
-    entity_type: string;   // "Company" | "Department" | "Employee" | "Project" | "Tag" | "Document"
+    entity_type: string; // "Company" | "Department" | "Employee" | "Project" | "Tag" | "Document"
     entity_id: number;
     created_at: Date;
   }>;
@@ -132,8 +139,9 @@ export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
 ```
 
 ### ActivityPeriod
+
 ```typescript
-"7" | "30" | "all"
+"7" | "30" | "all";
 ```
 
 ---
@@ -188,11 +196,11 @@ export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
 
 숫자와 레이블로 구성된 단일 정보 단위.
 
-| Props | 타입 | 설명 |
-|-------|------|------|
-| label | string | 카드 제목 ("회사", "부서" 등) |
-| value | number | 표시할 숫자 |
-| icon? | ReactNode | 아이콘 (선택) |
+| Props | 타입      | 설명                          |
+| ----- | --------- | ----------------------------- |
+| label | string    | 카드 제목 ("회사", "부서" 등) |
+| value | number    | 표시할 숫자                   |
+| icon? | ReactNode | 아이콘 (선택)                 |
 
 - sonamu-kit의 `Card` 컴포넌트 사용
 - 숫자는 크게 (text-2xl font-bold), 레이블은 작게 (text-sm text-muted-foreground)
@@ -201,21 +209,21 @@ export const getRecentActivityQueryOptions = (period: ActivityPeriod = "7") =>
 
 4개 상태를 가로 배치. 각 카드에 상태명 + 카운트.
 
-| 상태 | 한국어 | Badge variant |
-|------|--------|---------------|
-| planning | 기획 중 | outline |
+| 상태        | 한국어  | Badge variant     |
+| ----------- | ------- | ----------------- |
+| planning    | 기획 중 | outline           |
 | in_progress | 진행 중 | default (primary) |
-| completed | 완료 | secondary |
-| cancelled | 취소 | destructive |
+| completed   | 완료    | secondary         |
+| cancelled   | 취소    | destructive       |
 
 ### 5-3. 진행중 프로젝트 TOP 5 테이블
 
 sonamu-kit `Table` 사용.
 
-| 컬럼 | 필드 | 비고 |
-|------|------|------|
-| 프로젝트명 | name | 링크: `/admin/projects/${id}` |
-| 마감일 | deadline | null이면 "-" 표시 |
+| 컬럼            | 필드                                | 비고                              |
+| --------------- | ----------------------------------- | --------------------------------- |
+| 프로젝트명      | name                                | 링크: `/admin/projects/${id}`     |
+| 마감일          | deadline                            | null이면 "-" 표시                 |
 | 마일스톤 진행률 | milestoneCompleted / milestoneTotal | "3/5" 형식 + 프로그레스 바 (선택) |
 
 - 빈 상태: "진행중인 프로젝트가 없습니다"
@@ -227,37 +235,43 @@ sonamu-kit `Table` 사용.
 ### 5-5. 활동 타임라인
 
 #### 기간 필터 (세그먼트 버튼)
+
 ```
 [7일] [30일] [전체]
 ```
+
 - 기본 선택: 7일
 - 선택 시 `period` 파라미터 변경 → API 재호출
 - `useState`로 관리, queryKey에 포함
 
 #### 날짜 그룹 헤더
+
 - `group.label` 그대로 표시 (예: "오늘 (3건)")
 - 구분선 + 굵은 텍스트
 
 #### 활동 항목
 
 각 항목 표시 형식:
+
 ```
 ● [action 뱃지] [entity_type] #[entity_id] · [경과시간]
 ```
 
 | action | 뱃지 텍스트 | 뱃지 variant |
-|--------|------------|--------------|
-| create | 생성 | default |
-| update | 수정 | secondary |
-| delete | 삭제 | destructive |
+| ------ | ----------- | ------------ |
+| create | 생성        | default      |
+| update | 수정        | secondary    |
+| delete | 삭제        | destructive  |
 
 경과시간: `created_at`을 현재 시각과 비교하여 상대적 표시
+
 - 1분 미만: "방금 전"
 - 1시간 미만: "N분 전"
 - 24시간 미만: "N시간 전"
 - 그 외: 날짜 표시
 
 #### 더보기 버튼
+
 - 텍스트: "더보기 →"
 - 클릭 시: `navigate({ to: "/admin/audit-logs" })`
 - 위치: 타임라인 하단 우측 정렬
@@ -266,30 +280,33 @@ sonamu-kit `Table` 사용.
 
 ## 6. 빈 상태 (Empty State) 처리
 
-| 상황 | 메시지 |
-|------|--------|
-| 회사/부서/직원 0건 | 카드에 "0" 표시 (별도 메시지 불필요) |
-| 진행중 프로젝트 0개 | "진행중인 프로젝트가 없습니다" |
-| 진행중 프로젝트 < 5 | 있는 만큼만 표시 |
-| 문서 0건 | 카드에 "0" 표시 |
-| 활동 로그 0건 | "최근 활동이 없습니다" |
-| 기간 내 활동 0건 | "해당 기간에 활동이 없습니다" |
+| 상황                | 메시지                               |
+| ------------------- | ------------------------------------ |
+| 회사/부서/직원 0건  | 카드에 "0" 표시 (별도 메시지 불필요) |
+| 진행중 프로젝트 0개 | "진행중인 프로젝트가 없습니다"       |
+| 진행중 프로젝트 < 5 | 있는 만큼만 표시                     |
+| 문서 0건            | 카드에 "0" 표시                      |
+| 활동 로그 0건       | "최근 활동이 없습니다"               |
+| 기간 내 활동 0건    | "해당 기간에 활동이 없습니다"        |
 
 ---
 
 ## 7. 기존 프로젝트 패턴 & 컨벤션
 
 ### 라우팅
+
 - 파일: `web/src/routes/admin/index.tsx`
 - `createFileRoute("/admin/")` + `component: AdminIndexPage`
 
 ### 디자인 시스템
+
 - sonamu-kit 컴포넌트: `Card`, `CardHeader`, `CardContent`, `CardTitle`, `Badge`, `Button`, `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableCell`, `TableHead`
 - import 경로: `@sonamu-kit/react-components` 또는 `@sonamu-kit/react-components/components`
 - 아이콘: `~icons/lucide/{name}` (unplugin-icons)
 - 레이아웃: `container mx-auto p-8`, Card 기반
 
 ### i18n
+
 - `SD()` 함수 사용: `import { SD } from "@/i18n/sd.generated"`
 - 기존 대시보드 키: `dashboard.title`, `dashboard.welcome` 등
 - **새로 추가 필요한 i18n 키:**
@@ -323,6 +340,7 @@ sonamu-kit `Table` 사용.
 ```
 
 ### 인증 컨텍스트
+
 ```typescript
 const { auth } = useSonamuContext();
 const session = auth.useSession();
@@ -331,6 +349,7 @@ const user = session.data?.user ?? null;
 ```
 
 ### 스타일 토큰
+
 - Primary: indigo (`rgba(94, 105, 209, 1)`)
 - Accent: blue (`rgba(93, 133, 255, 1)`)
 - Destructive: red (`rgba(239, 68, 68, 1)`)
@@ -342,18 +361,18 @@ const user = session.data?.user ?? null;
 
 ## 8. 참조 파일 목록
 
-| 파일 | 역할 |
-|------|------|
-| `api/contract/dashboard/main.contract.json` | 비즈니스 규칙 SSoT |
-| `api/contract/dashboard/dashboard-stats.spec.json` | Stats API 스펙 |
-| `api/contract/dashboard/activity-timeline.spec.json` | Timeline API 스펙 |
-| `api/src/application/dashboard/dashboard.types.ts` | 백엔드 타입 원본 |
-| `api/src/application/dashboard/dashboard.frame.ts` | 백엔드 구현 |
-| `web/src/services/dashboard/dashboard.types.ts` | 프론트 타입 (동기화됨) |
-| `web/src/routes/admin/index.tsx` | **교체 대상** |
-| `web/src/routes/admin/audit-logs/index.tsx` | 참조: 기존 페이지 패턴 |
-| `web/src/components/Sidebar.tsx` | 사이드바 (변경 불필요) |
-| `api/docs/brainstorms/2026-03-10-dashboard-brainstorm.md` | 브레인스토밍 기록 |
+| 파일                                                      | 역할                   |
+| --------------------------------------------------------- | ---------------------- |
+| `api/contract/dashboard/main.contract.json`               | 비즈니스 규칙 SSoT     |
+| `api/contract/dashboard/dashboard-stats.spec.json`        | Stats API 스펙         |
+| `api/contract/dashboard/activity-timeline.spec.json`      | Timeline API 스펙      |
+| `api/src/application/dashboard/dashboard.types.ts`        | 백엔드 타입 원본       |
+| `api/src/application/dashboard/dashboard.frame.ts`        | 백엔드 구현            |
+| `web/src/services/dashboard/dashboard.types.ts`           | 프론트 타입 (동기화됨) |
+| `web/src/routes/admin/index.tsx`                          | **교체 대상**          |
+| `web/src/routes/admin/audit-logs/index.tsx`               | 참조: 기존 페이지 패턴 |
+| `web/src/components/Sidebar.tsx`                          | 사이드바 (변경 불필요) |
+| `api/docs/brainstorms/2026-03-10-dashboard-brainstorm.md` | 브레인스토밍 기록      |
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: '@api'
-description: 'API 엔드포인트 생성 데코레이터'
+title: "@api"
+description: "API 엔드포인트 생성 데코레이터"
 ---
 
 `@api` 데코레이터는 Model 또는 Frame 클래스의 메서드를 HTTP API 엔드포인트로 노출합니다.
@@ -10,11 +10,7 @@ description: 'API 엔드포인트 생성 데코레이터'
 ```typescript
 import { BaseModelClass, api } from "sonamu";
 
-class UserModelClass extends BaseModelClass<
-  UserSubsetKey,
-  UserSubsetMapping,
-  UserSubsetQueries
-> {
+class UserModelClass extends BaseModelClass<UserSubsetKey, UserSubsetMapping, UserSubsetQueries> {
   @api({ httpMethod: "GET" })
   async findById(subset: UserSubsetKey, id: number) {
     const rdb = this.getPuri("r");
@@ -73,9 +69,7 @@ async findById(id: number) {
 }
 ```
 
-<Info>
-경로는 자동으로 camelCase로 변환됩니다. `UserModel.findById` → `/user/findById`
-</Info>
+<Info>경로는 자동으로 camelCase로 변환됩니다. `UserModel.findById` → `/user/findById`</Info>
 
 ### contentType
 
@@ -134,20 +128,18 @@ async downloadFile(fileId: number, ctx: Context) {
 
 **contentType 사용 케이스**:
 
-| Content-Type | 사용 케이스 | 반환 타입 |
-|--------------|------------|----------|
-| `text/plain` | CSV, TXT 파일 다운로드 | `string` |
-| `text/html` | HTML 렌더링 (SSR) | `string` |
-| `text/xml` | XML 데이터 반환 | `string` |
-| `application/json` | JSON 데이터 (기본값) | `object` |
+| Content-Type               | 사용 케이스                         | 반환 타입                |
+| -------------------------- | ----------------------------------- | ------------------------ |
+| `text/plain`               | CSV, TXT 파일 다운로드              | `string`                 |
+| `text/html`                | HTML 렌더링 (SSR)                   | `string`                 |
+| `text/xml`                 | XML 데이터 반환                     | `string`                 |
+| `application/json`         | JSON 데이터 (기본값)                | `object`                 |
 | `application/octet-stream` | 바이너리 파일 (이미지, PDF, ZIP 등) | `Buffer` or `Uint8Array` |
 
 <Info>
-**application/octet-stream 사용 시 주의사항**:
-- 반드시 `Buffer` 또는 `Uint8Array`를 반환해야 합니다
-- `Content-Disposition` 헤더로 다운로드 파일명을 지정할 수 있습니다
-- 파일명에 한글이 포함된 경우 `encodeURIComponent()`로 인코딩하세요
-- 대용량 파일은 스트리밍 방식을 고려하세요
+  **application/octet-stream 사용 시 주의사항**: - 반드시 `Buffer` 또는 `Uint8Array`를 반환해야
+  합니다 - `Content-Disposition` 헤더로 다운로드 파일명을 지정할 수 있습니다 - 파일명에 한글이
+  포함된 경우 `encodeURIComponent()`로 인코딩하세요 - 대용량 파일은 스트리밍 방식을 고려하세요
 </Info>
 
 ### clients
@@ -158,12 +150,12 @@ async downloadFile(fileId: number, ctx: Context) {
 
 ```typescript
 type ServiceClient =
-  | "axios"                          // Axios 클라이언트
-  | "axios-multipart"                // Multipart form-data
-  | "tanstack-query"                 // TanStack Query (읽기)
-  | "tanstack-mutation"              // TanStack Mutation (쓰기)
-  | "tanstack-mutation-multipart"    // TanStack Mutation (파일 업로드)
-  | "window-fetch";                  // Native Fetch API
+  | "axios" // Axios 클라이언트
+  | "axios-multipart" // Multipart form-data
+  | "tanstack-query" // TanStack Query (읽기)
+  | "tanstack-mutation" // TanStack Mutation (쓰기)
+  | "tanstack-mutation-multipart" // TanStack Mutation (파일 업로드)
+  | "window-fetch"; // Native Fetch API
 ```
 
 ```typescript
@@ -262,20 +254,19 @@ async getPublicData() {
 ```
 
 **CacheControlConfig 타입:**
+
 ```typescript
 type CacheControlConfig = {
-  maxAge?: string;        // 브라우저 캐시 시간
-  sMaxAge?: string;       // CDN/프록시 캐시 시간
-  public?: boolean;       // public/private
-  noCache?: boolean;      // no-cache
-  noStore?: boolean;      // no-store
+  maxAge?: string; // 브라우저 캐시 시간
+  sMaxAge?: string; // CDN/프록시 캐시 시간
+  public?: boolean; // public/private
+  noCache?: boolean; // no-cache
+  noStore?: boolean; // no-store
   mustRevalidate?: boolean;
 };
 ```
 
-<Tip>
-시간 표기: `"10s"`, `"5m"`, `"1h"`, `"1d"` 형식 지원
-</Tip>
+<Tip>시간 표기: `"10s"`, `"5m"`, `"1h"`, `"1d"` 형식 지원</Tip>
 
 ### compress
 
@@ -343,6 +334,7 @@ class PostModelClass extends BaseModelClass {
 ```
 
 **규칙:**
+
 1. 클래스 이름에서 "ModelClass" 제거
 2. 나머지를 camelCase로 변환
 3. `/{modelName}/{methodName}` 형식
@@ -358,6 +350,7 @@ class AuthFrameClass extends BaseFrameClass {
 ```
 
 **규칙:**
+
 1. 클래스 이름에서 "FrameClass" 제거
 2. 나머지를 camelCase로 변환
 3. `/{frameName}/{methodName}` 형식
@@ -376,9 +369,7 @@ async save(data: UserSaveParams) {
 }
 ```
 
-<Warning>
-`@api`를 먼저, `@transactional`을 나중에 작성하세요.
-</Warning>
+<Warning>`@api`를 먼저, `@transactional`을 나중에 작성하세요.</Warning>
 
 ### @cache
 
@@ -417,8 +408,9 @@ async subscribe() {}
 ```
 
 **에러 메시지:**
+
 ```
-@api decorator can only be used once on UserModel.subscribe. 
+@api decorator can only be used once on UserModel.subscribe.
 You can use only one of @api or @stream decorator on the same method.
 ```
 
@@ -434,9 +426,10 @@ async list() {}
 ```
 
 **에러 메시지:**
+
 ```
-@api decorator on UserModel.list has conflicting path: /users/all. 
-The decorator is trying to override the existing path(/users/list) 
+@api decorator on UserModel.list has conflicting path: /users/all.
+The decorator is trying to override the existing path(/users/list)
 with the new path(/users/all).
 ```
 
@@ -487,21 +480,23 @@ export type UserFindByIdResult = UserSubsetMapping[UserSubsetKey];
 ### 3. 클라이언트 코드 생성
 
 **Axios:**
+
 ```typescript
 // web/src/services/UserService.ts
 export const UserService = {
   async findById(params: UserFindByIdParams) {
     return axios.get<UserFindByIdResult>("/user/findById", { params });
-  }
+  },
 };
 ```
 
 **TanStack Query:**
+
 ```typescript
 export const useUserFindById = (params: UserFindByIdParams) => {
   return useQuery({
     queryKey: ["user", "findById", params],
-    queryFn: () => UserService.findById(params)
+    queryFn: () => UserService.findById(params),
   });
 };
 ```
@@ -564,6 +559,7 @@ async findById(id: number) {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="캐싱" icon="bolt">
@@ -592,14 +588,15 @@ async findById(id: number) {
       async update(id: number, data: ProductUpdateParams) {
         const wdb = this.getDB("w");
         const result = await this.upsert(wdb, { id, ...data });
-        
+
         // 캐시 무효화
         await Sonamu.cache.deleteByTags(["products"]);
-        
+
         return result;
       }
     }
     ```
+
   </Tab>
 
   <Tab title="권한 제어" icon="shield-check">
@@ -643,6 +640,7 @@ async findById(id: number) {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="커스텀 경로" icon="route">
@@ -674,41 +672,26 @@ async findById(id: number) {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="@stream" 
-    icon="tower-broadcast" 
-    href="/ko/api-reference/decorators/stream"
-  >
+  <Card title="@stream" icon="tower-broadcast" href="/ko/api-reference/decorators/stream">
     SSE 스트리밍 API 만들기
   </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
-    href="/ko/api-reference/decorators/transactional"
-  >
-    데이터베이스 트랜잭션 사용하기
-  </Card>
-  
-  <Card 
-    title="@upload" 
-    icon="upload" 
-    href="/ko/api-reference/decorators/upload"
-  >
-    파일 업로드 API 만들기
-  </Card>
-  
-  <Card 
-    title="@cache" 
-    icon="database" 
-    href="/ko/api-reference/decorators/cache"
-  >
+
+<Card title="@transactional" icon="arrows-rotate" href="/ko/api-reference/decorators/transactional">
+  데이터베이스 트랜잭션 사용하기
+</Card>
+
+<Card title="@upload" icon="upload" href="/ko/api-reference/decorators/upload">
+  파일 업로드 API 만들기
+</Card>
+
+  <Card title="@cache" icon="database" href="/ko/api-reference/decorators/cache">
     메서드 결과 캐싱하기
   </Card>
 </CardGroup>

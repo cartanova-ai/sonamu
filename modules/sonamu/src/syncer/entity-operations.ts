@@ -1,5 +1,7 @@
-import chalk from "chalk";
 import { rm } from "fs/promises";
+
+import chalk from "chalk";
+
 import { Sonamu } from "../api/sonamu";
 import { SD } from "../dict/sd";
 import { EntityManager } from "../entity/entity-manager";

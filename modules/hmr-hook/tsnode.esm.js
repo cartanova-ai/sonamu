@@ -14,6 +14,6 @@
 | Because, loaders have been deprecated.
 */
 
-import { register } from 'node:module'
+import { register } from "node:module";
 
-register('ts-node/esm', import.meta.url)
+register("ts-node/esm", import.meta.url);

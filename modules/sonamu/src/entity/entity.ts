@@ -1,9 +1,11 @@
 import assert from "assert";
 import { writeFile } from "fs/promises";
-import inflection from "inflection";
 import path from "path";
+
+import inflection from "inflection";
 import { group, unique } from "radashi";
 import { z } from "zod";
+
 import { Sonamu } from "../api/sonamu";
 import {
   type Cone,
@@ -209,7 +211,7 @@ export class Entity {
    */
   private buildNestedSelectObject(
     selectItems: string[],
-    // biome-ignore lint/suspicious/noExplicitAny: 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
   ): Record<string, any> {
     const result: ReturnType<typeof this.buildNestedSelectObject> = {};
 
@@ -275,7 +277,7 @@ export class Entity {
    * @param withBraces true면 중괄호 포함, false면 내용만 반환
    */
   private stringifyNestedSelectObject(
-    // biome-ignore lint/suspicious/noExplicitAny: 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
     obj: Record<string, any>,
     indent: number = 0,
     withBraces: boolean = true,

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import type { DurationString } from "./duration";
 import { parseDuration } from "./duration";
 import { err, ok } from "./result";

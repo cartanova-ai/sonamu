@@ -1,6 +1,6 @@
 ---
-title: 'Source Maps'
-description: 'Using source maps'
+title: "Source Maps"
+description: "Using source maps"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -12,6 +12,7 @@ This covers effective debugging methods using TypeScript source maps.
 Source maps are files that map compiled JavaScript code back to the original TypeScript code. This allows you to see the original TypeScript code in error stack traces and debuggers.
 
 **Usage:**
+
 - View original TypeScript locations in error stack traces
 - Set breakpoints in TypeScript code in debuggers
 - Map production errors to original code
@@ -23,9 +24,9 @@ Source maps are files that map compiled JavaScript code back to the original Typ
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true,           // Generate source maps
-    "inlineSourceMap": false,    // Generate as separate files
-    "inlineSources": false,      // Don't include original sources
+    "sourceMap": true, // Generate source maps
+    "inlineSourceMap": false, // Generate as separate files
+    "inlineSources": false, // Don't include original sources
     "outDir": "dist"
   }
 }
@@ -135,10 +136,7 @@ Sonamu uses tsx, so source maps work without additional configuration.
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ]
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
     },
     {
       "type": "node",
@@ -180,12 +178,13 @@ Sonamu uses tsx, so source maps work without additional configuration.
 {
   "compilerOptions": {
     "sourceMap": true,
-    "inlineSources": false  // Don't include original sources
+    "inlineSources": false // Don't include original sources
   }
 }
 ```
 
 **When deploying to production:**
+
 ```bash
 # Exclude source map files
 dist/
@@ -221,7 +220,7 @@ ls -la dist/**/*.map
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true  // Explicitly enable
+    "sourceMap": true // Explicitly enable
   }
 }
 ```
@@ -247,9 +246,9 @@ pnpm tsx dist/index.js
 ```json
 // launch.json
 {
-  "sourceMaps": true,  // Verify enabled
+  "sourceMaps": true, // Verify enabled
   "outFiles": [
-    "${workspaceFolder}/dist/**/*.js"  // Correct path
+    "${workspaceFolder}/dist/**/*.js" // Correct path
   ]
 }
 ```
@@ -296,15 +295,13 @@ cat dist/index.js.map | jq .sources
 import { SourceMapConsumer } from "source-map";
 import fs from "fs";
 
-const rawSourceMap = JSON.parse(
-  fs.readFileSync("dist/index.js.map", "utf-8")
-);
+const rawSourceMap = JSON.parse(fs.readFileSync("dist/index.js.map", "utf-8"));
 
 SourceMapConsumer.with(rawSourceMap, null, (consumer) => {
   // Compiled position -> Original position
   const pos = consumer.originalPositionFor({
     line: 45,
-    column: 15
+    column: 15,
   });
 
   console.log(pos);
@@ -327,8 +324,8 @@ Vite automatically generates and serves source maps:
 // vite.config.ts
 export default defineConfig({
   build: {
-    sourcemap: true  // Include in production builds
-  }
+    sourcemap: true, // Include in production builds
+  },
 });
 ```
 
@@ -353,7 +350,7 @@ export default defineConfig({
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true  // Essential for development
+    "sourceMap": true // Essential for development
   }
 }
 ```
@@ -413,14 +410,14 @@ async function mapError(error: Error) {
 
   const original = consumer.originalPositionFor({
     line: parseInt(line),
-    column: parseInt(column)
+    column: parseInt(column),
   });
 
   return {
     ...error,
     originalFile: original.source,
     originalLine: original.line,
-    originalColumn: original.column
+    originalColumn: original.column,
   };
 }
 ```

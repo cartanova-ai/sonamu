@@ -6,6 +6,7 @@ import {
   withoutTrailingSlash,
   withUserAgentSuffix,
 } from "@ai-sdk/provider-utils";
+
 import { RtzrTranscriptionModel } from "./model";
 import type { RtzrTranscriptionModelId } from "./options";
 

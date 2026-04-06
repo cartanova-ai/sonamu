@@ -9,24 +9,16 @@ Learn how to generate URLs for accessing files after saving.
 
 <CardGroup cols={2}>
   <Card title="Public URL" icon="globe">
-    Public access
-    
-    Permanent link
+    Public access Permanent link
   </Card>
   <Card title="Signed URL" icon="lock">
-    Time-limited access
-    
-    Enhanced security
+    Time-limited access Enhanced security
   </Card>
   <Card title="Auto Generation" icon="wand-magic-sparkles">
-    Auto after saveToDisk
-    
-    url, signedUrl properties
+    Auto after saveToDisk url, signedUrl properties
   </Card>
   <Card title="Storage Manager" icon="database">
-    getUrl()
-    
-    getSignedUrl()
+    getUrl() getSignedUrl()
   </Card>
 </CardGroup>
 
@@ -46,14 +38,14 @@ class FileModel extends BaseModelClass {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
     if (!file) throw new Error("File is required");
-    
+
     // Save file
     await file.saveToDisk("fs", `uploads/${Date.now()}.${file.extname}`);
-    
+
     // URLs auto-generated
-    const publicUrl = file.url!;        // Public URL
-    const signedUrl = file.signedUrl!;  // Signed URL
-    
+    const publicUrl = file.url!; // Public URL
+    const signedUrl = file.signedUrl!; // Signed URL
+
     return {
       url: publicUrl,
       signedUrl,
@@ -62,9 +54,7 @@ class FileModel extends BaseModelClass {
 }
 ```
 
-<Info>
-`url` and `signedUrl` are only available after calling `saveToDisk()`.
-</Info>
+<Info>`url` and `signedUrl` are only available after calling `saveToDisk()`.</Info>
 
 ## Generating URLs with Storage Manager
 
@@ -77,20 +67,17 @@ class FileModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getFileUrl(fileId: number): Promise<{ url: string }> {
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Generate URL with Storage Manager
     const disk = Sonamu.storage.use(file.disk_name);
     const url = await disk.getUrl(file.key);
-    
+
     return { url };
   }
 }
@@ -103,28 +90,25 @@ class FileModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getDownloadUrl(
     fileId: number,
-    expiresIn: number = 3600 // 1 hour
+    expiresIn: number = 3600, // 1 hour
   ): Promise<{
     url: string;
     expiresAt: Date;
   }> {
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Generate Signed URL
     const disk = Sonamu.storage.use(file.disk_name);
     const url = await disk.getSignedUrl(file.key, expiresIn);
-    
+
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
-    
+
     return {
       url,
       expiresAt,
@@ -187,16 +171,13 @@ class FileModel extends BaseModelClass {
   }> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Download log
     const wdb = this.getPuri("w");
     await wdb.table("download_logs").insert({
@@ -206,12 +187,12 @@ class FileModel extends BaseModelClass {
       user_agent: context.request.headers["user-agent"],
       downloaded_at: new Date(),
     });
-    
+
     // Generate Signed URL (1 hour)
     const disk = Sonamu.storage.use(file.disk_name);
     const url = await disk.getSignedUrl(file.key, 3600);
     const expiresAt = new Date(Date.now() + 3600 * 1000);
-    
+
     return {
       url,
       filename: file.filename,
@@ -232,18 +213,15 @@ class ImageModel extends BaseModelClass {
     medium: string;
   }> {
     const rdb = this.getPuri("r");
-    
-    const image = await rdb
-      .table("images")
-      .where("id", imageId)
-      .first();
-    
+
+    const image = await rdb.table("images").where("id", imageId).first();
+
     if (!image) {
       throw new Error("Image not found");
     }
-    
+
     const disk = Sonamu.storage.use(image.disk_name);
-    
+
     return {
       original: await disk.getUrl(image.original_key),
       thumbnail: await disk.getUrl(image.thumbnail_key),
@@ -264,18 +242,15 @@ class DocumentModel extends BaseModelClass {
   }> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
-    
-    const document = await rdb
-      .table("documents")
-      .where("id", documentId)
-      .first();
-    
+
+    const document = await rdb.table("documents").where("id", documentId).first();
+
     if (!document) {
       throw new Error("Document not found");
     }
-    
+
     const disk = Sonamu.storage.use(document.disk_name);
-    
+
     // Public documents get Public URL
     if (document.is_public) {
       const url = await disk.getUrl(document.key);
@@ -284,19 +259,19 @@ class DocumentModel extends BaseModelClass {
         type: "public",
       };
     }
-    
+
     // Private documents get Signed URL
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     // Check permission
     if (document.user_id !== context.user.id && context.user.role !== "admin") {
       throw new Error("Access denied");
     }
-    
+
     const url = await disk.getSignedUrl(document.key, 3600);
-    
+
     return {
       url,
       type: "signed",
@@ -310,41 +285,42 @@ class DocumentModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  async getBatchUrls(params: {
-    fileIds: number[];
-  }): Promise<{
-    urls: Record<number, {
-      url: string;
-      signedUrl: string;
-    }>;
+  async getBatchUrls(params: { fileIds: number[] }): Promise<{
+    urls: Record<
+      number,
+      {
+        url: string;
+        signedUrl: string;
+      }
+    >;
   }> {
     const { fileIds } = params;
-    
+
     if (fileIds.length > 100) {
       throw new Error("Maximum 100 files at once");
     }
-    
+
     const rdb = this.getPuri("r");
-    
-    const files = await rdb
-      .table("files")
-      .whereIn("id", fileIds)
-      .select("*");
-    
-    const urls: Record<number, {
-      url: string;
-      signedUrl: string;
-    }> = {};
-    
+
+    const files = await rdb.table("files").whereIn("id", fileIds).select("*");
+
+    const urls: Record<
+      number,
+      {
+        url: string;
+        signedUrl: string;
+      }
+    > = {};
+
     for (const file of files) {
       const disk = Sonamu.storage.use(file.disk_name);
-      
+
       urls[file.id] = {
         url: await disk.getUrl(file.key),
         signedUrl: await disk.getSignedUrl(file.key, 3600),
       };
     }
-    
+
     return { urls };
   }
 }
@@ -359,7 +335,7 @@ import Redis from "ioredis";
 
 class FileModel extends BaseModelClass {
   private redis = new Redis(process.env.REDIS_URL);
-  
+
   @api({ httpMethod: "GET" })
   async getSignedUrlCached(fileId: number): Promise<{
     url: string;
@@ -368,38 +344,35 @@ class FileModel extends BaseModelClass {
     // Check cache
     const cacheKey = `signed-url:${fileId}`;
     const cached = await this.redis.get(cacheKey);
-    
+
     if (cached) {
       const data = JSON.parse(cached);
       return data;
     }
-    
+
     // Query file info
     const rdb = this.getPuri("r");
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Generate Signed URL
     const disk = Sonamu.storage.use(file.disk_name);
     const expiresIn = 3600; // 1 hour
     const url = await disk.getSignedUrl(file.key, expiresIn);
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
-    
+
     const result = { url, expiresAt };
-    
+
     // Save to cache (shorter than expiration time)
     await this.redis.setex(
       cacheKey,
       expiresIn - 60, // 1 minute buffer
-      JSON.stringify(result)
+      JSON.stringify(result),
     );
-    
+
     return result;
   }
 }
@@ -414,28 +387,25 @@ class FileModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getCDNUrl(fileId: number): Promise<{ url: string }> {
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Generate CloudFront URL
     const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
-    
+
     if (cloudFrontDomain) {
       const url = `https://${cloudFrontDomain}/${file.key}`;
       return { url };
     }
-    
+
     // Regular URL if no CloudFront
     const disk = Sonamu.storage.use(file.disk_name);
     const url = await disk.getUrl(file.key);
-    
+
     return { url };
   }
 }
@@ -448,28 +418,25 @@ class FileModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getCDNUrl(fileId: number): Promise<{ url: string }> {
     const rdb = this.getPuri("r");
-    
-    const file = await rdb
-      .table("files")
-      .where("id", fileId)
-      .first();
-    
+
+    const file = await rdb.table("files").where("id", fileId).first();
+
     if (!file) {
       throw new Error("File not found");
     }
-    
+
     // Generate Cloud CDN URL
     const cdnDomain = process.env.CLOUD_CDN_DOMAIN;
-    
+
     if (cdnDomain) {
       const url = `https://${cdnDomain}/${file.key}`;
       return { url };
     }
-    
+
     // Regular URL if no CDN
     const disk = Sonamu.storage.use(file.disk_name);
     const url = await disk.getUrl(file.key);
-    
+
     return { url };
   }
 }
@@ -482,29 +449,26 @@ class FileModel extends BaseModelClass {
 ```typescript
 class FileModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  async getUploadUrl(params: {
-    filename: string;
-    contentType: string;
-  }): Promise<{
+  async getUploadUrl(params: { filename: string; contentType: string }): Promise<{
     uploadUrl: string;
     key: string;
   }> {
     const { filename, contentType } = params;
-    
+
     // Generate safe key
     const ext = filename.split(".").pop();
     const key = `uploads/${Date.now()}.${ext}`;
-    
+
     // Generate Presigned Upload URL (5 minutes)
     const disk = Sonamu.storage.use();
     const uploadUrl = await disk.getSignedUrl(key, 300);
-    
+
     return {
       uploadUrl,
       key,
     };
   }
-  
+
   @api({ httpMethod: "POST" })
   async confirmUpload(params: {
     key: string;
@@ -516,15 +480,15 @@ class FileModel extends BaseModelClass {
     url: string;
   }> {
     const { key, filename, contentType, size } = params;
-    
+
     // Check file existence
     const disk = Sonamu.storage.use();
     const exists = await disk.exists(key);
-    
+
     if (!exists) {
       throw new Error("File not uploaded");
     }
-    
+
     // Save metadata to DB
     const wdb = this.getPuri("w");
     const [record] = await wdb
@@ -537,7 +501,7 @@ class FileModel extends BaseModelClass {
         url: await disk.getUrl(key),
       })
       .returning({ id: "id" });
-    
+
     return {
       fileId: record.id,
       url: await disk.getUrl(key),
@@ -559,17 +523,16 @@ class FileModel extends BaseModelClass {
   }> {
     // Extract expiration time from Signed URL
     const urlObj = new URL(url);
-    const expires = urlObj.searchParams.get("Expires") ||
-                    urlObj.searchParams.get("X-Amz-Date");
-    
+    const expires = urlObj.searchParams.get("Expires") || urlObj.searchParams.get("X-Amz-Date");
+
     if (!expires) {
       // Public URL (no expiration)
       return { valid: true };
     }
-    
+
     const expiresAt = new Date(parseInt(expires) * 1000);
     const valid = expiresAt > new Date();
-    
+
     return {
       valid,
       expiresAt,
@@ -581,12 +544,9 @@ class FileModel extends BaseModelClass {
 ## Cautions
 
 <Warning>
-**Cautions when generating URLs**:
-1. Set expiration time for Signed URLs
-2. Use Public URLs carefully as they are permanent
-3. Consider cache invalidation when using CDN
-4. Recommend URL logging for usage tracking
-5. Use Signed URLs for sensitive files
+  **Cautions when generating URLs**: 1. Set expiration time for Signed URLs 2. Use Public URLs
+  carefully as they are permanent 3. Consider cache invalidation when using CDN 4. Recommend URL
+  logging for usage tracking 5. Use Signed URLs for sensitive files
 </Warning>
 
 ## Next Steps
@@ -595,7 +555,11 @@ class FileModel extends BaseModelClass {
   <Card title="File Upload Setup" icon="gear" href="/en/api-development/file-upload/setup">
     @upload decorator
   </Card>
-  <Card title="UploadedFile Class" icon="file" href="/en/api-development/file-upload/uploaded-file-class">
+  <Card
+    title="UploadedFile Class"
+    icon="file"
+    href="/en/api-development/file-upload/uploaded-file-class"
+  >
     File info access
   </Card>
   <Card title="Saving Files" icon="floppy-disk" href="/en/api-development/file-upload/saving-files">

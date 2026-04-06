@@ -28,47 +28,47 @@ Only `high` and `medium` severity findings are actionable. `low` findings are in
 
 ### Surface review
 
-| Priority | Check |
-|---|---|
-| high | Required migration/scaffolding/sync work used Sonamu CLI when the task required it |
-| high | Shared types/interfaces are correct and consistent with the contract |
-| high | No business logic or test code in surface files |
-| high | Migration files are safe (no data loss, reversible when possible) |
-| high | Surface outputs leave downstream-ready model/frame/runtime prerequisites for test and implement work |
-| medium | Worker evidence matches the changed files and generated/scaffolded targets |
-| medium | Exports are minimal — only what downstream consumers need |
-| medium | Naming follows project conventions |
+| Priority | Check                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| high     | Required migration/scaffolding/sync work used Sonamu CLI when the task required it                   |
+| high     | Shared types/interfaces are correct and consistent with the contract                                 |
+| high     | No business logic or test code in surface files                                                      |
+| high     | Migration files are safe (no data loss, reversible when possible)                                    |
+| high     | Surface outputs leave downstream-ready model/frame/runtime prerequisites for test and implement work |
+| medium   | Worker evidence matches the changed files and generated/scaffolded targets                           |
+| medium   | Exports are minimal — only what downstream consumers need                                            |
+| medium   | Naming follows project conventions                                                                   |
 
 ### Test review
 
-| Priority | Check |
-|---|---|
-| high | Every AC in `ac_targets` has a corresponding test with meaningful assertions |
-| high | No vacuous assertions (e.g. `expect(true).toBe(true)`) |
-| high | No production code changes |
-| medium | Tests are isolated — no implicit dependency on execution order |
-| medium | Test data setup is minimal and clearly tied to the AC being tested |
+| Priority | Check                                                                        |
+| -------- | ---------------------------------------------------------------------------- |
+| high     | Every AC in `ac_targets` has a corresponding test with meaningful assertions |
+| high     | No vacuous assertions (e.g. `expect(true).toBe(true)`)                       |
+| high     | No production code changes                                                   |
+| medium   | Tests are isolated — no implicit dependency on execution order               |
+| medium   | Test data setup is minimal and clearly tied to the AC being tested           |
 
 ### Implement review
 
-| Priority | Check |
-|---|---|
-| high | `as any` and `as unknown as T` are absent |
-| high | Rules compliance (every applicable rule checked) |
-| high | Ownership boundary respected — no test file edits |
-| high | AC logic is correct — implementation satisfies the acceptance criteria |
-| medium | Error handling preserves root cause with actionable context |
-| medium | No unnecessary abstractions or over-engineering |
+| Priority | Check                                                                  |
+| -------- | ---------------------------------------------------------------------- |
+| high     | `as any` and `as unknown as T` are absent                              |
+| high     | Rules compliance (every applicable rule checked)                       |
+| high     | Ownership boundary respected — no test file edits                      |
+| high     | AC logic is correct — implementation satisfies the acceptance criteria |
+| medium   | Error handling preserves root cause with actionable context            |
+| medium   | No unnecessary abstractions or over-engineering                        |
 
 ### Integration review
 
-| Priority | Check |
-|---|---|
-| high | Cross-module type consistency (surface types match implementation usage) |
-| high | No circular dependencies introduced |
-| high | Contract compliance — implementation matches business logic docs |
-| medium | Shared interface changes are reflected in all consumers |
-| medium | No duplicate logic across Claims |
+| Priority | Check                                                                    |
+| -------- | ------------------------------------------------------------------------ |
+| high     | Cross-module type consistency (surface types match implementation usage) |
+| high     | No circular dependencies introduced                                      |
+| high     | Contract compliance — implementation matches business logic docs         |
+| medium   | Shared interface changes are reflected in all consumers                  |
+| medium   | No duplicate logic across Claims                                         |
 
 ## Fast-path
 

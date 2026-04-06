@@ -11,6 +11,7 @@
 ### 배경
 
 Sonamu는 이제 모든 라우팅을 관리한다:
+
 - `/api/*` - Backend APIs (@api 데코레이터)
 - `/assets/*` - 정적 파일 (Vite 빌드 결과물)
 - SSR 라우트 - registerSSR()로 등록된 라우트
@@ -44,9 +45,9 @@ Sonamu는 이제 모든 라우팅을 관리한다:
  * Cache-Control 설정 객체
  */
 export type CacheControlConfig = {
-  visibility: 'public' | 'private' | 'no-cache' | 'no-store';
-  maxAge?: number;  // seconds
-  sMaxAge?: number;  // CDN용 (s-maxage)
+  visibility: "public" | "private" | "no-cache" | "no-store";
+  maxAge?: number; // seconds
+  sMaxAge?: number; // CDN용 (s-maxage)
   mustRevalidate?: boolean;
   immutable?: boolean;
   staleWhileRevalidate?: number;
@@ -57,22 +58,20 @@ export type CacheControlConfig = {
  * 요청 타입별 정보
  */
 export type CacheControlRequest = {
-  type: 'api' | 'assets' | 'ssr' | 'csr' | 'unknown';
-  url: string;        // '/api/companies?page=1'
-  path: string;       // '/api/companies'
-  method: string;     // 'GET', 'POST', etc.
-  
+  type: "api" | "assets" | "ssr" | "csr" | "unknown";
+  url: string; // '/api/companies?page=1'
+  path: string; // '/api/companies'
+  method: string; // 'GET', 'POST', etc.
+
   // type에 따라 추가 정보
-  api?: ExtendedApi;    // type === 'api'일 때
-  route?: SSRRoute;     // type === 'ssr'일 때
+  api?: ExtendedApi; // type === 'api'일 때
+  route?: SSRRoute; // type === 'ssr'일 때
 };
 
 /**
  * 전역 Cache-Control 핸들러
  */
-export type CacheControlHandler = (
-  req: CacheControlRequest
-) => CacheControlConfig | undefined;
+export type CacheControlHandler = (req: CacheControlRequest) => CacheControlConfig | undefined;
 ```
 
 ### 2.2 프리셋
@@ -89,52 +88,52 @@ export const CachePresets = {
    * 사용: API 응답, 실시간 데이터
    */
   noCache: {
-    visibility: 'no-cache' as const,
+    visibility: "no-cache" as const,
   },
-  
+
   /**
    * 짧은 캐시 (1분)
    * 사용: CSR fallback, 자주 바뀌지 않는 API
    */
   shortLived: {
-    visibility: 'public' as const,
+    visibility: "public" as const,
     maxAge: 60,
   },
-  
+
   /**
    * SSR 캐시 (10초 + stale-while-revalidate)
    * 사용: SSR 페이지
    */
   ssr: {
-    visibility: 'public' as const,
+    visibility: "public" as const,
     maxAge: 10,
     staleWhileRevalidate: 30,
   },
-  
+
   /**
    * 중간 캐시 (5분)
    * 사용: 거의 안 바뀌는 데이터 (약관, 설정값 등)
    */
   mediumLived: {
-    visibility: 'public' as const,
+    visibility: "public" as const,
     maxAge: 300,
   },
-  
+
   /**
    * 긴 캐시 (1시간)
    * 사용: 정적 컨텐츠, 거의 안 바뀌는 리소스
    */
   longLived: {
-    visibility: 'public' as const,
+    visibility: "public" as const,
     maxAge: 3600,
   },
-  
+
   /**
    * 영구 캐시 (1년 + immutable)
    * 사용: Hash가 포함된 정적 파일 (/assets/index-abc123.js)
    */
   immutable: {
-    visibility: 'public' as const,
+    visibility: "public" as const,
     maxAge: 31536000,
     immutable: true,
   },
@@ -145,34 +144,34 @@ export const CachePresets = {
  */
 export function buildCacheControl(config: CacheControlConfig): string {
   const parts: string[] = [];
-  
+
   parts.push(config.visibility);
-  
+
   if (config.maxAge !== undefined) {
     parts.push(`max-age=${config.maxAge}`);
   }
-  
+
   if (config.sMaxAge !== undefined) {
     parts.push(`s-maxage=${config.sMaxAge}`);
   }
-  
+
   if (config.immutable) {
-    parts.push('immutable');
+    parts.push("immutable");
   }
-  
+
   if (config.mustRevalidate) {
-    parts.push('must-revalidate');
+    parts.push("must-revalidate");
   }
-  
+
   if (config.staleWhileRevalidate !== undefined) {
     parts.push(`stale-while-revalidate=${config.staleWhileRevalidate}`);
   }
-  
+
   if (config.staleIfError !== undefined) {
     parts.push(`stale-if-error=${config.staleIfError}`);
   }
-  
-  return parts.join(', ');
+
+  return parts.join(", ");
 }
 ```
 
@@ -193,45 +192,45 @@ export function buildCacheControl(config: CacheControlConfig): string {
 ### 3.1 sonamu.config.ts - 전역 설정
 
 ```typescript
-import { CachePresets } from 'sonamu/utils/cache-control';
+import { CachePresets } from "sonamu/utils/cache-control";
 
 export default {
   cacheControlHandler: (req) => {
     switch (req.type) {
-      case 'assets':
+      case "assets":
         // Hash 포함된 파일: 영구 캐시
         if (req.path.match(/-[a-f0-9]+\./)) {
           return CachePresets.immutable;
         }
         return CachePresets.longLived;
-        
-      case 'api':
+
+      case "api":
         // GET 요청만 캐싱 고려
-        if (req.method === 'GET') {
+        if (req.method === "GET") {
           // 특정 경로는 짧은 캐시
-          if (req.path.startsWith('/api/static-data')) {
+          if (req.path.startsWith("/api/static-data")) {
             return CachePresets.shortLived;
           }
-          if (req.path.startsWith('/api/terms')) {
+          if (req.path.startsWith("/api/terms")) {
             return CachePresets.mediumLived;
           }
         }
         // 기본: 캐시 없음
         return CachePresets.noCache;
-        
-      case 'ssr':
+
+      case "ssr":
         // SSR 페이지: 10초 캐시
         return CachePresets.ssr;
-        
-      case 'csr':
+
+      case "csr":
         // CSR fallback (index.html): 1분 캐시
         return CachePresets.shortLived;
-        
-      case 'unknown':
+
+      case "unknown":
         return CachePresets.noCache;
     }
-  }
-}
+  },
+};
 ```
 
 ### 3.2 개별 API 캐싱
@@ -274,43 +273,34 @@ async createCompany(ctx: Context, data: CompanyInput) {
 ```typescript
 // 프리셋 사용
 registerSSR({
-  path: '/admin/companies',
-  cacheControl: CachePresets.ssr,  // 10초 캐시
-  preload: () => [
-    UserService.me(),
-    CompanyService.getCompanies("A", { num: 10, page: 1 }),
-  ],
+  path: "/admin/companies",
+  cacheControl: CachePresets.ssr, // 10초 캐시
+  preload: () => [UserService.me(), CompanyService.getCompanies("A", { num: 10, page: 1 })],
 });
 
 // 더 긴 캐시 (거의 안 바뀌는 페이지)
 registerSSR({
-  path: '/terms',
-  cacheControl: CachePresets.mediumLived,  // 5분
-  preload: () => [
-    TermsService.getTerms(),
-  ],
+  path: "/terms",
+  cacheControl: CachePresets.mediumLived, // 5분
+  preload: () => [TermsService.getTerms()],
 });
 
 // 실시간 업데이트 필요한 페이지
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   cacheControl: CachePresets.noCache,
-  preload: ({ id }) => [
-    ProductService.getProduct("A", parseInt(id)),
-  ],
+  preload: ({ id }) => [ProductService.getProduct("A", parseInt(id))],
 });
 
 // 커스텀 설정
 registerSSR({
-  path: '/blog/:slug',
+  path: "/blog/:slug",
   cacheControl: {
-    visibility: 'public',
-    maxAge: 300,  // 5분
-    staleWhileRevalidate: 3600,  // 1시간
+    visibility: "public",
+    maxAge: 300, // 5분
+    staleWhileRevalidate: 3600, // 1시간
   },
-  preload: ({ slug }) => [
-    BlogService.getPost("A", slug),
-  ],
+  preload: ({ slug }) => [BlogService.getPost("A", slug)],
 });
 ```
 
@@ -321,10 +311,12 @@ registerSSR({
 ### 4.1 Phase 1: 타입 및 유틸리티
 
 **파일**:
+
 - `modules/sonamu/src/types/cache-control.ts`
 - `modules/sonamu/src/utils/cache-control.ts`
 
 **작업**:
+
 1. `CacheControlConfig` 타입 정의
 2. `CacheControlRequest` 타입 정의
 3. `CacheControlHandler` 타입 정의
@@ -335,19 +327,21 @@ registerSSR({
 ### 4.2 Phase 2: Config 확장
 
 **파일**:
+
 - `modules/sonamu/src/types/sonamu-config.ts`
 
 **작업**:
+
 1. `SonamuFastifyConfig`에 `cacheControlHandler` 추가
 2. JSDoc 문서 작성
 
-```typescript
+````typescript
 export type SonamuFastifyConfig = {
   // ... 기존 설정
-  
+
   /**
    * 전역 Cache-Control 핸들러
-   * 
+   *
    * @example
    * ```typescript
    * cacheControlHandler: (req) => {
@@ -360,15 +354,17 @@ export type SonamuFastifyConfig = {
    */
   cacheControlHandler?: CacheControlHandler;
 };
-```
+````
 
 ### 4.3 Phase 3: @api 데코레이터 확장
 
 **파일**:
+
 - `modules/sonamu/src/decorators/api.ts`
 - `modules/sonamu/src/types/api.ts`
 
 **작업**:
+
 1. `ApiDecoratorOptions`에 `cacheControl` 필드 추가
 2. `ExtendedApi`에 `cacheControl` 필드 포함
 
@@ -382,9 +378,11 @@ export type ApiDecoratorOptions = {
 ### 4.4 Phase 4: API 라우터 적용
 
 **파일**:
+
 - `modules/sonamu/src/api/api-router.ts`
 
 **작업**:
+
 1. API 응답 전 Cache-Control 헤더 추가
 2. 우선순위 로직 구현
 
@@ -392,17 +390,17 @@ export type ApiDecoratorOptions = {
 function getCacheControl(
   api: ExtendedApi,
   request: FastifyRequest,
-  config: SonamuFastifyConfig
+  config: SonamuFastifyConfig,
 ): string {
   // 1. 개별 지정
   if (api.options.cacheControl) {
     return buildCacheControl(api.options.cacheControl);
   }
-  
+
   // 2. 전역 핸들러
   if (config.cacheControlHandler) {
     const result = config.cacheControlHandler({
-      type: 'api',
+      type: "api",
       url: request.url,
       path: request.routeOptions.url,
       method: request.method,
@@ -412,22 +410,24 @@ function getCacheControl(
       return buildCacheControl(result);
     }
   }
-  
+
   // 3. 기본값
   return buildCacheControl(CachePresets.noCache);
 }
 
 // 응답 전
-reply.header('Cache-Control', getCacheControl(api, request, config));
+reply.header("Cache-Control", getCacheControl(api, request, config));
 ```
 
 ### 4.5 Phase 5: SSR 라우트 확장
 
 **파일**:
+
 - `modules/sonamu/src/ssr/types.ts`
 - `modules/sonamu/src/ssr/renderer.ts`
 
 **작업**:
+
 1. `SSRRoute`에 `cacheControl` 필드 추가
 2. `renderSSR` 함수에서 Cache-Control 헤더 설정
 
@@ -436,79 +436,78 @@ export type SSRRoute = {
   path: string;
   preload?: (params: Record<string, string>) => PreloadConfig;
   head?: (dehydratedState: unknown) => HeadConfig;
-  cacheControl?: CacheControlConfig;  // ← 추가
+  cacheControl?: CacheControlConfig; // ← 추가
 };
 
 // renderer.ts
-function getCacheControl(
-  route: SSRRoute,
-  url: string,
-  config: SonamuFastifyConfig
-): string {
+function getCacheControl(route: SSRRoute, url: string, config: SonamuFastifyConfig): string {
   // 1. 개별 지정
   if (route.cacheControl) {
     return buildCacheControl(route.cacheControl);
   }
-  
+
   // 2. 전역 핸들러
   if (config.cacheControlHandler) {
     const result = config.cacheControlHandler({
-      type: 'ssr',
+      type: "ssr",
       url,
       path: route.path,
-      method: 'GET',
+      method: "GET",
       route,
     });
     if (result) {
       return buildCacheControl(result);
     }
   }
-  
+
   // 3. 기본값
   return buildCacheControl(CachePresets.ssr);
 }
 
 // renderSSR 함수 내
-reply.header('Cache-Control', getCacheControl(route, url, config));
+reply.header("Cache-Control", getCacheControl(route, url, config));
 ```
 
 ### 4.6 Phase 6: 정적 파일 서빙 적용
 
 **파일**:
+
 - `modules/sonamu/src/api/sonamu.ts` (setupStaticWebServer)
 
 **작업**:
+
 1. Assets 서빙 시 Cache-Control 헤더 추가
 2. CSR fallback 시 Cache-Control 헤더 추가
 
 ```typescript
 // Assets 서빙
-server.get('/assets/:filename', (request, reply) => {
+server.get("/assets/:filename", (request, reply) => {
   const { filename } = request.params;
   const url = `/assets/${filename}`;
-  
+
   const cacheControl = getCacheControlForAssets(url, config);
-  reply.header('Cache-Control', cacheControl);
-  
+  reply.header("Cache-Control", cacheControl);
+
   // ... serve file
 });
 
 // CSR fallback
 server.setNotFoundHandler(async (request, reply) => {
   // ... SSR 체크 로직
-  
+
   // CSR fallback
   const cacheControl = getCacheControlForCSR(request.url, config);
-  reply.header('Cache-Control', cacheControl);
-  
-  const html = fs.readFileSync(indexPath, 'utf-8');
-  reply.type('text/html').send(html);
+  reply.header("Cache-Control", cacheControl);
+
+  const html = fs.readFileSync(indexPath, "utf-8");
+  reply.type("text/html").send(html);
 });
 ```
 
 ### 4.7 Phase 7: 문서화 및 마이그레이션 가이드
 
 **작업**:
+
 1. API 문서 작성
 2. 마이그레이션 가이드 작성 (기존 프로젝트 대응)
 3. 예제 프로젝트 업데이트 (miomock)
@@ -520,24 +519,23 @@ server.setNotFoundHandler(async (request, reply) => {
 ### 5.1 유닛 테스트
 
 ```typescript
-describe('buildCacheControl', () => {
-  it('should build basic no-cache header', () => {
-    expect(buildCacheControl(CachePresets.noCache)).toBe('no-cache');
+describe("buildCacheControl", () => {
+  it("should build basic no-cache header", () => {
+    expect(buildCacheControl(CachePresets.noCache)).toBe("no-cache");
   });
-  
-  it('should build public cache with max-age', () => {
-    expect(buildCacheControl(CachePresets.shortLived))
-      .toBe('public, max-age=60');
+
+  it("should build public cache with max-age", () => {
+    expect(buildCacheControl(CachePresets.shortLived)).toBe("public, max-age=60");
   });
-  
-  it('should build immutable cache', () => {
-    expect(buildCacheControl(CachePresets.immutable))
-      .toBe('public, max-age=31536000, immutable');
+
+  it("should build immutable cache", () => {
+    expect(buildCacheControl(CachePresets.immutable)).toBe("public, max-age=31536000, immutable");
   });
-  
-  it('should include stale-while-revalidate', () => {
-    expect(buildCacheControl(CachePresets.ssr))
-      .toBe('public, max-age=10, stale-while-revalidate=30');
+
+  it("should include stale-while-revalidate", () => {
+    expect(buildCacheControl(CachePresets.ssr)).toBe(
+      "public, max-age=10, stale-while-revalidate=30",
+    );
   });
 });
 ```
@@ -545,36 +543,35 @@ describe('buildCacheControl', () => {
 ### 5.2 통합 테스트
 
 ```typescript
-describe('Cache-Control Integration', () => {
-  it('API: should use individual cacheControl', async () => {
-    const response = await request(app).get('/api/terms');
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+describe("Cache-Control Integration", () => {
+  it("API: should use individual cacheControl", async () => {
+    const response = await request(app).get("/api/terms");
+    expect(response.headers["cache-control"]).toBe("public, max-age=300");
   });
-  
-  it('API: should use global handler', async () => {
-    const response = await request(app).get('/api/companies');
-    expect(response.headers['cache-control']).toBe('public, max-age=60');
+
+  it("API: should use global handler", async () => {
+    const response = await request(app).get("/api/companies");
+    expect(response.headers["cache-control"]).toBe("public, max-age=60");
   });
-  
-  it('API: should default to no-cache for POST', async () => {
-    const response = await request(app).post('/api/companies').send({});
-    expect(response.headers['cache-control']).toBe('no-cache');
+
+  it("API: should default to no-cache for POST", async () => {
+    const response = await request(app).post("/api/companies").send({});
+    expect(response.headers["cache-control"]).toBe("no-cache");
   });
-  
-  it('SSR: should use individual cacheControl', async () => {
-    const response = await request(app).get('/terms');
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+
+  it("SSR: should use individual cacheControl", async () => {
+    const response = await request(app).get("/terms");
+    expect(response.headers["cache-control"]).toBe("public, max-age=300");
   });
-  
-  it('CSR: should use shortLived preset', async () => {
-    const response = await request(app).get('/some-csr-route');
-    expect(response.headers['cache-control']).toBe('public, max-age=60');
+
+  it("CSR: should use shortLived preset", async () => {
+    const response = await request(app).get("/some-csr-route");
+    expect(response.headers["cache-control"]).toBe("public, max-age=60");
   });
-  
-  it('Assets: should use immutable for hashed files', async () => {
-    const response = await request(app).get('/assets/index-abc123.js');
-    expect(response.headers['cache-control'])
-      .toBe('public, max-age=31536000, immutable');
+
+  it("Assets: should use immutable for hashed files", async () => {
+    const response = await request(app).get("/assets/index-abc123.js");
+    expect(response.headers["cache-control"]).toBe("public, max-age=31536000, immutable");
   });
 });
 ```
@@ -586,6 +583,7 @@ describe('Cache-Control Integration', () => {
    - 캐시 히트/미스 확인
 
 2. **curl로 헤더 확인**:
+
    ```bash
    curl -I http://localhost:10280/api/companies
    curl -I http://localhost:10280/admin/companies
@@ -609,16 +607,18 @@ describe('Cache-Control Integration', () => {
 ### 6.2 권장 마이그레이션 순서
 
 1. **Phase 1**: sonamu.config.ts에 전역 핸들러 추가
+
    ```typescript
    cacheControlHandler: (req) => {
-     if (req.type === 'assets') return CachePresets.immutable;
-     if (req.type === 'ssr') return CachePresets.ssr;
-     if (req.type === 'csr') return CachePresets.shortLived;
-     if (req.type === 'api') return CachePresets.noCache;
-   }
+     if (req.type === "assets") return CachePresets.immutable;
+     if (req.type === "ssr") return CachePresets.ssr;
+     if (req.type === "csr") return CachePresets.shortLived;
+     if (req.type === "api") return CachePresets.noCache;
+   };
    ```
 
 2. **Phase 2**: 자주 호출되는 GET API에 캐싱 추가
+
    ```typescript
    @api({
      httpMethod: 'GET',
@@ -665,15 +665,12 @@ describe('Cache-Control Integration', () => {
 class CompanyModel {
   async save(ctx: Context, data: CompanyInput) {
     const result = await super.save(data);
-    
+
     // CloudFront invalidation (optional)
     if (ctx.config.cloudfront?.enabled) {
-      await invalidateCloudFront([
-        '/api/companies/*',
-        '/admin/companies',
-      ]);
+      await invalidateCloudFront(["/api/companies/*", "/admin/companies"]);
     }
-    
+
     return result;
   }
 }
@@ -708,6 +705,7 @@ cacheControl: {
 ## 9. 체크리스트
 
 ### Phase 1: 타입 및 유틸리티
+
 - [ ] CacheControlConfig 타입 정의
 - [ ] CacheControlRequest 타입 정의
 - [ ] CachePresets 객체 생성
@@ -715,32 +713,39 @@ cacheControl: {
 - [ ] 유닛 테스트 작성
 
 ### Phase 2: Config 확장
+
 - [ ] SonamuFastifyConfig에 cacheControlHandler 추가
 - [ ] JSDoc 문서 작성
 
 ### Phase 3: @api 데코레이터 확장
+
 - [ ] ApiDecoratorOptions에 cacheControl 필드 추가
 - [ ] ExtendedApi 타입 업데이트
 
 ### Phase 4: API 라우터 적용
+
 - [ ] getCacheControl 함수 구현
 - [ ] API 응답 전 헤더 추가
 - [ ] 우선순위 로직 테스트
 
 ### Phase 5: SSR 라우트 확장
+
 - [ ] SSRRoute에 cacheControl 필드 추가
 - [ ] renderSSR에서 헤더 설정
 
 ### Phase 6: 정적 파일 서빙
+
 - [ ] Assets 서빙 시 헤더 추가
 - [ ] CSR fallback 시 헤더 추가
 
 ### Phase 7: 문서화
+
 - [ ] API 문서 작성
 - [ ] 마이그레이션 가이드 작성
 - [ ] 예제 프로젝트 업데이트
 
 ### 테스트
+
 - [ ] 유닛 테스트 통과
 - [ ] 통합 테스트 통과
 - [ ] Chrome DevTools 수동 테스트

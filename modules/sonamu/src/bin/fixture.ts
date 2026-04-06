@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import prompts from "prompts";
+
 import { Sonamu } from "../api";
 import { DB } from "../database/db";
 import { createKnexInstance } from "../database/knex";

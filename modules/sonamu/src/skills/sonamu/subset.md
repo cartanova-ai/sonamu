@@ -6,6 +6,7 @@ description: Define API response field scope with Sonamu Subsets. Include relati
 # Subset Definition
 
 **Working code references:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json` - complex Subset example
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - basic Subset example
 
@@ -25,18 +26,19 @@ description: Define API response field scope with Sonamu Subsets. Include relati
 
 **WARNING: Only use A, P, and SS as Subset names. Do not use arbitrary names like S, D, or L.**
 
-| Subset | Purpose |
-|--------|---------|
-| `A` | All - all fields (detail view, admin). **Required** |
-| `P` | Partial/Profile - partial fields including relations (for list views) |
-| `SS` | Super Simple/Summary - minimal fields, just ID + name (for dropdowns, selects) |
-| `P2`, `P3` | Additional profiles (only for special cases) |
+| Subset     | Purpose                                                                        |
+| ---------- | ------------------------------------------------------------------------------ |
+| `A`        | All - all fields (detail view, admin). **Required**                            |
+| `P`        | Partial/Profile - partial fields including relations (for list views)          |
+| `SS`       | Super Simple/Summary - minimal fields, just ID + name (for dropdowns, selects) |
+| `P2`, `P3` | Additional profiles (only for special cases)                                   |
 
 ### IMPORTANT: Subset A Must Include All Fields
 
 **Subset A must include all regular fields and major relation fields of the Entity.**
 
 **DO:**
+
 ```json
 {
   "props": [
@@ -53,15 +55,17 @@ description: Define API response field scope with Sonamu Subsets. Include relati
 ```
 
 **DO NOT:**
+
 ```json
 {
   "subsets": {
-    "A": ["id", "title"]  // created_at, status, author omitted - incorrect
+    "A": ["id", "title"] // created_at, status, author omitted - incorrect
   }
 }
 ```
 
 **Rules:**
+
 - Include all regular fields (id, created_at, business fields, etc.)
 - For BelongsToOne relations, include at least `.id` and a display field (`.name`, `.title`, etc.)
 - HasMany relations are optional (include only when needed)
@@ -92,12 +96,7 @@ description: Define API response field scope with Sonamu Subsets. Include relati
 ```json
 {
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.salary",
-      "employee.department.name"
-    ]
+    "P": ["id", "username", "employee.salary", "employee.department.name"]
   }
 }
 ```
@@ -162,5 +161,6 @@ const result = await UserModel.executeSubsetQuery({
 ```
 
 **Working code references:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json` - Subset definition examples
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json` - BelongsToOne relation examples

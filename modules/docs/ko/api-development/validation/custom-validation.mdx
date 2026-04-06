@@ -9,24 +9,16 @@ Zod 외에 커스텀 검증 로직을 구현하여 비즈니스 규칙을 적용
 
 <CardGroup cols={2}>
   <Card title="비즈니스 규칙" icon="briefcase">
-    도메인 특화 검증
-    
-    복잡한 조건 처리
+    도메인 특화 검증 복잡한 조건 처리
   </Card>
   <Card title="DB 검증" icon="database">
-    중복 체크
-    
-    참조 무결성
+    중복 체크 참조 무결성
   </Card>
   <Card title="외부 API" icon="cloud">
-    외부 서비스 검증
-    
-    실시간 데이터 확인
+    외부 서비스 검증 실시간 데이터 확인
   </Card>
   <Card title="재사용성" icon="recycle">
-    검증 로직 공유
-    
-    일관된 규칙 적용
+    검증 로직 공유 일관된 규칙 적용
   </Card>
 </CardGroup>
 
@@ -40,45 +32,34 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // 검증 실행
     await this.validateCreateParams(params);
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
-  
-  private async validateCreateParams(
-    params: CreateUserParams
-  ): Promise<void> {
+
+  private async validateCreateParams(params: CreateUserParams): Promise<void> {
     // 이메일 중복 체크
     const rdb = this.getPuri("r");
-    const existing = await rdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await rdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // 사용자명 중복 체크
-    const existingUsername = await rdb
-      .table("users")
-      .where("username", params.username)
-      .first();
-    
+    const existingUsername = await rdb.table("users").where("username", params.username).first();
+
     if (existingUsername) {
       throw new Error("Username already taken");
     }
-    
+
     // 비밀번호 강도 체크
     if (!/[A-Z]/.test(params.password)) {
       throw new Error("Password must contain at least one uppercase letter");
     }
-    
+
     if (!/[0-9]/.test(params.password)) {
       throw new Error("Password must contain at least one number");
     }
@@ -92,83 +73,79 @@ class UserModel extends BaseModelClass {
 // validators/user.validator.ts
 export class UserValidator {
   private rdb: any;
-  
+
   constructor(rdb: any) {
     this.rdb = rdb;
   }
-  
+
   async validateEmail(email: string): Promise<void> {
     // 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error("Invalid email format");
     }
-    
+
     // 중복 검증
-    const existing = await this.rdb
-      .table("users")
-      .where("email", email)
-      .first();
-    
+    const existing = await this.rdb.table("users").where("email", email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // 도메인 블랙리스트 확인
     const domain = email.split("@")[1];
     const blockedDomains = ["tempmail.com", "throwaway.com"];
-    
+
     if (blockedDomains.includes(domain)) {
       throw new Error("Email domain not allowed");
     }
   }
-  
+
   async validateUsername(username: string): Promise<void> {
     // 길이 검증
     if (username.length < 3 || username.length > 20) {
       throw new Error("Username must be 3-20 characters");
     }
-    
+
     // 형식 검증
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       throw new Error("Username can only contain letters, numbers, and underscores");
     }
-    
+
     // 예약어 확인
     const reserved = ["admin", "root", "system", "api", "test"];
     if (reserved.includes(username.toLowerCase())) {
       throw new Error("Username is reserved");
     }
-    
+
     // 중복 검증
-    const existing = await this.rdb
-      .table("users")
-      .where("username", username)
-      .first();
-    
+    const existing = await this.rdb.table("users").where("username", username).first();
+
     if (existing) {
       throw new Error("Username already taken");
     }
   }
-  
+
   validatePassword(password: string): void {
     // 최소 길이
     if (password.length < 8) {
       throw new Error("Password must be at least 8 characters");
     }
-    
+
     // 복잡도
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
     const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
+
     const strength = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
-    
+
     if (strength < 3) {
-      throw new Error("Password must contain at least 3 of: uppercase, lowercase, number, special character");
+      throw new Error(
+        "Password must contain at least 3 of: uppercase, lowercase, number, special character",
+      );
     }
-    
+
     // 일반적인 비밀번호 체크
     const common = ["password", "123456", "qwerty", "admin"];
     if (common.includes(password.toLowerCase())) {
@@ -183,19 +160,16 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     const rdb = this.getPuri("r");
     const validator = new UserValidator(rdb);
-    
+
     // 검증
     await validator.validateEmail(params.email);
     await validator.validateUsername(params.username);
     validator.validatePassword(params.password);
-    
+
     // 생성
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -207,47 +181,40 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class UserModel extends BaseModelClass {
-  private async checkDuplicate(
-    field: string,
-    value: any,
-    excludeId?: number
-  ): Promise<void> {
+  private async checkDuplicate(field: string, value: any, excludeId?: number): Promise<void> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users").where(field, value);
-    
+
     if (excludeId) {
       query = query.whereNot("id", excludeId);
     }
-    
+
     const existing = await query.first();
-    
+
     if (existing) {
       throw new Error(`${field} already exists`);
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     await this.checkDuplicate("email", params.email);
     await this.checkDuplicate("username", params.username);
-    
+
     // ...
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async update(
-    userId: number,
-    params: UpdateUserParams
-  ): Promise<void> {
+  async update(userId: number, params: UpdateUserParams): Promise<void> {
     if (params.email) {
       await this.checkDuplicate("email", params.email, userId);
     }
-    
+
     if (params.username) {
       await this.checkDuplicate("username", params.username, userId);
     }
-    
+
     // ...
   }
 }
@@ -257,50 +224,39 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class PostModel extends BaseModelClass {
-  private async validateReferences(
-    params: CreatePostParams
-  ): Promise<void> {
+  private async validateReferences(params: CreatePostParams): Promise<void> {
     const rdb = this.getPuri("r");
-    
+
     // 작성자 존재 확인
-    const user = await rdb
-      .table("users")
-      .where("id", params.userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", params.userId).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 카테고리 존재 확인
     if (params.categoryId) {
-      const category = await rdb
-        .table("categories")
-        .where("id", params.categoryId)
-        .first();
-      
+      const category = await rdb.table("categories").where("id", params.categoryId).first();
+
       if (!category) {
         throw new Error("Category not found");
       }
     }
-    
+
     // 태그 존재 확인
     if (params.tagIds && params.tagIds.length > 0) {
-      const tags = await rdb
-        .table("tags")
-        .whereIn("id", params.tagIds)
-        .select("id");
-      
+      const tags = await rdb.table("tags").whereIn("id", params.tagIds).select("id");
+
       if (tags.length !== params.tagIds.length) {
         throw new Error("Some tags not found");
       }
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreatePostParams): Promise<{ postId: number }> {
     await this.validateReferences(params);
-    
+
     // ...
   }
 }
@@ -318,44 +274,30 @@ class OrderModel extends BaseModelClass {
     delivered: [],
     cancelled: [],
   };
-  
-  private async validateStateTransition(
-    orderId: number,
-    newState: string
-  ): Promise<void> {
+
+  private async validateStateTransition(orderId: number, newState: string): Promise<void> {
     const rdb = this.getPuri("r");
-    
-    const order = await rdb
-      .table("orders")
-      .where("id", orderId)
-      .first();
-    
+
+    const order = await rdb.table("orders").where("id", orderId).first();
+
     if (!order) {
       throw new Error("Order not found");
     }
-    
+
     const currentState = order.state;
     const allowedTransitions = this.STATE_TRANSITIONS[currentState] || [];
-    
+
     if (!allowedTransitions.includes(newState)) {
-      throw new Error(
-        `Cannot transition from ${currentState} to ${newState}`
-      );
+      throw new Error(`Cannot transition from ${currentState} to ${newState}`);
     }
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async updateState(
-    orderId: number,
-    newState: string
-  ): Promise<void> {
+  async updateState(orderId: number, newState: string): Promise<void> {
     await this.validateStateTransition(orderId, newState);
-    
+
     const wdb = this.getPuri("w");
-    await wdb
-      .table("orders")
-      .where("id", orderId)
-      .update({ state: newState });
+    await wdb.table("orders").where("id", orderId).update({ state: newState });
   }
 }
 ```
@@ -366,42 +308,36 @@ class OrderModel extends BaseModelClass {
 
 ```typescript
 class EventModel extends BaseModelClass {
-  private validateEventDates(
-    startDate: Date,
-    endDate: Date
-  ): void {
+  private validateEventDates(startDate: Date, endDate: Date): void {
     const now = new Date();
-    
+
     // 과거 날짜 불가
     if (startDate < now) {
       throw new Error("Event start date cannot be in the past");
     }
-    
+
     // 시작일이 종료일보다 이전
     if (startDate >= endDate) {
       throw new Error("Start date must be before end date");
     }
-    
+
     // 최대 기간 제한 (예: 30일)
     const maxDuration = 30 * 24 * 60 * 60 * 1000; // 30일
     if (endDate.getTime() - startDate.getTime() > maxDuration) {
       throw new Error("Event duration cannot exceed 30 days");
     }
-    
+
     // 최소 준비 시간 (예: 1일)
     const minPreparationTime = 24 * 60 * 60 * 1000; // 1일
     if (startDate.getTime() - now.getTime() < minPreparationTime) {
       throw new Error("Event must be scheduled at least 1 day in advance");
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateEventParams): Promise<{ eventId: number }> {
-    this.validateEventDates(
-      new Date(params.startDate),
-      new Date(params.endDate)
-    );
-    
+    this.validateEventDates(new Date(params.startDate), new Date(params.endDate));
+
     // ...
   }
 }
@@ -411,76 +347,64 @@ class EventModel extends BaseModelClass {
 
 ```typescript
 class OrderModel extends BaseModelClass {
-  private async validateOrderItems(
-    items: OrderItem[]
-  ): Promise<void> {
+  private async validateOrderItems(items: OrderItem[]): Promise<void> {
     if (items.length === 0) {
       throw new Error("Order must contain at least one item");
     }
-    
+
     if (items.length > 100) {
       throw new Error("Order cannot contain more than 100 items");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     for (const item of items) {
       // 수량 검증
       if (item.quantity <= 0) {
         throw new Error("Item quantity must be positive");
       }
-      
+
       if (item.quantity > 1000) {
         throw new Error("Item quantity cannot exceed 1000");
       }
-      
+
       // 제품 존재 및 재고 확인
-      const product = await rdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await rdb.table("products").where("id", item.productId).first();
+
       if (!product) {
         throw new Error(`Product ${item.productId} not found`);
       }
-      
+
       if (!product.is_available) {
         throw new Error(`Product ${product.name} is not available`);
       }
-      
+
       if (product.stock < item.quantity) {
-        throw new Error(
-          `Insufficient stock for ${product.name}. Available: ${product.stock}`
-        );
+        throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`);
       }
-      
+
       // 가격 검증 (클라이언트가 보낸 가격과 실제 가격 비교)
       if (item.price !== product.price) {
-        throw new Error(
-          `Price mismatch for ${product.name}. Current price: ${product.price}`
-        );
+        throw new Error(`Price mismatch for ${product.name}. Current price: ${product.price}`);
       }
     }
-    
+
     // 총액 검증
-    const totalAmount = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    
+    const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     if (totalAmount < 1000) {
       throw new Error("Minimum order amount is 1000");
     }
-    
+
     if (totalAmount > 10000000) {
       throw new Error("Maximum order amount is 10,000,000");
     }
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateOrderParams): Promise<{ orderId: number }> {
     await this.validateOrderItems(params.items);
-    
+
     // ...
   }
 }
@@ -492,81 +416,75 @@ class OrderModel extends BaseModelClass {
 class DocumentModel extends BaseModelClass {
   private async validateAccess(
     documentId: number,
-    requiredPermission: "read" | "write" | "delete"
+    requiredPermission: "read" | "write" | "delete",
   ): Promise<void> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const rdb = this.getPuri("r");
-    
+
     // 문서 조회
-    const document = await rdb
-      .table("documents")
-      .where("id", documentId)
-      .first();
-    
+    const document = await rdb.table("documents").where("id", documentId).first();
+
     if (!document) {
       throw new Error("Document not found");
     }
-    
+
     // 소유자는 모든 권한
     if (document.owner_id === context.user.id) {
       return;
     }
-    
+
     // 관리자는 모든 권한
     if (context.user.role === "admin") {
       return;
     }
-    
+
     // 권한 확인
     const permission = await rdb
       .table("document_permissions")
       .where("document_id", documentId)
       .where("user_id", context.user.id)
       .first();
-    
+
     if (!permission) {
       throw new Error("Access denied");
     }
-    
+
     const permissionLevel = {
       read: 1,
       write: 2,
       delete: 3,
     };
-    
+
     if (permissionLevel[permission.level] < permissionLevel[requiredPermission]) {
       throw new Error(`Insufficient permission: ${requiredPermission} required`);
     }
   }
-  
+
   @api({ httpMethod: "GET" })
   async get(documentId: number): Promise<Document> {
     await this.validateAccess(documentId, "read");
-    
+
     const rdb = this.getPuri("r");
     return rdb.table("documents").where("id", documentId).first();
   }
-  
+
   @api({ httpMethod: "PUT" })
-  async update(
-    documentId: number,
-    params: UpdateDocumentParams
-  ): Promise<void> {
+  async update(documentId: number, params: UpdateDocumentParams): Promise<void> {
     await this.validateAccess(documentId, "write");
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("documents").where("id", documentId).update(params);
   }
-  
+
   @api({ httpMethod: "DELETE" })
   async remove(documentId: number): Promise<void> {
     await this.validateAccess(documentId, "delete");
-    
+
     const wdb = this.getPuri("w");
     await wdb.table("documents").where("id", documentId).delete();
   }
@@ -582,22 +500,19 @@ import axios from "axios";
 
 class EmailValidator {
   private apiKey = process.env.EMAIL_VALIDATION_API_KEY;
-  
+
   async validateEmail(email: string): Promise<void> {
     try {
-      const response = await axios.get(
-        `https://api.emailvalidation.com/validate`,
-        {
-          params: {
-            email,
-            apiKey: this.apiKey,
-          },
-          timeout: 5000,
-        }
-      );
-      
+      const response = await axios.get(`https://api.emailvalidation.com/validate`, {
+        params: {
+          email,
+          apiKey: this.apiKey,
+        },
+        timeout: 5000,
+      });
+
       const { valid, reason } = response.data;
-      
+
       if (!valid) {
         throw new Error(`Invalid email: ${reason}`);
       }
@@ -623,12 +538,10 @@ class AddressValidator {
     country: string;
   }): Promise<void> {
     try {
-      const response = await axios.post(
-        "https://api.address-verification.com/verify",
-        address,
-        { timeout: 5000 }
-      );
-      
+      const response = await axios.post("https://api.address-verification.com/verify", address, {
+        timeout: 5000,
+      });
+
       if (!response.data.valid) {
         throw new Error("Address could not be verified");
       }
@@ -649,32 +562,27 @@ class UserModel extends BaseModelClass {
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // 1. Zod 스키마 검증
     const validated = CreateUserSchema.parse(params);
-    
+
     // 2. 커스텀 검증
     await this.validateCreateParams(validated);
-    
+
     // 3. 생성
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
-  
-  private async validateCreateParams(
-    params: CreateUserParams
-  ): Promise<void> {
+
+  private async validateCreateParams(params: CreateUserParams): Promise<void> {
     const rdb = this.getPuri("r");
     const validator = new UserValidator(rdb);
-    
+
     // 병렬 검증 (독립적인 검증들)
     await Promise.all([
       validator.validateEmail(params.email),
       validator.validateUsername(params.username),
     ]);
-    
+
     // 순차 검증 (비밀번호는 동기)
     validator.validatePassword(params.password);
   }
@@ -687,62 +595,49 @@ class UserModel extends BaseModelClass {
 // validators/base.validator.ts
 export abstract class BaseValidator {
   protected rdb: any;
-  
+
   constructor(rdb: any) {
     this.rdb = rdb;
   }
-  
+
   protected async checkUnique(
     table: string,
     field: string,
     value: any,
-    excludeId?: number
+    excludeId?: number,
   ): Promise<void> {
     let query = this.rdb.table(table).where(field, value);
-    
+
     if (excludeId) {
       query = query.whereNot("id", excludeId);
     }
-    
+
     const existing = await query.first();
-    
+
     if (existing) {
       throw new Error(`${field} already exists`);
     }
   }
-  
-  protected async checkExists(
-    table: string,
-    id: number
-  ): Promise<void> {
-    const record = await this.rdb
-      .table(table)
-      .where("id", id)
-      .first();
-    
+
+  protected async checkExists(table: string, id: number): Promise<void> {
+    const record = await this.rdb.table(table).where("id", id).first();
+
     if (!record) {
       throw new Error(`${table} not found`);
     }
   }
-  
-  protected validateLength(
-    value: string,
-    min: number,
-    max: number,
-    fieldName: string
-  ): void {
+
+  protected validateLength(value: string, min: number, max: number, fieldName: string): void {
     if (value.length < min || value.length > max) {
-      throw new Error(
-        `${fieldName} must be ${min}-${max} characters`
-      );
+      throw new Error(`${fieldName} must be ${min}-${max} characters`);
     }
   }
-  
+
   protected validatePattern(
     value: string,
     pattern: RegExp,
     fieldName: string,
-    message: string
+    message: string,
   ): void {
     if (!pattern.test(value)) {
       throw new Error(`${fieldName}: ${message}`);
@@ -753,13 +648,8 @@ export abstract class BaseValidator {
 // 사용
 class UserValidator extends BaseValidator {
   async validateEmail(email: string): Promise<void> {
-    this.validatePattern(
-      email,
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      "Email",
-      "Invalid format"
-    );
-    
+    this.validatePattern(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email", "Invalid format");
+
     await this.checkUnique("users", "email", email);
   }
 }
@@ -768,21 +658,25 @@ class UserValidator extends BaseValidator {
 ## 주의사항
 
 <Warning>
-**커스텀 검증 시 주의사항**:
-1. 검증은 비즈니스 로직 전에 실행
-2. 명확한 에러 메시지 제공
-3. 과도한 DB 쿼리 지양
-4. 외부 API 호출 시 타임아웃 설정
-5. 검증 로직 재사용 고려
+  **커스텀 검증 시 주의사항**: 1. 검증은 비즈니스 로직 전에 실행 2. 명확한 에러 메시지 제공 3.
+  과도한 DB 쿼리 지양 4. 외부 API 호출 시 타임아웃 설정 5. 검증 로직 재사용 고려
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="자동 검증" icon="wand-magic-sparkles" href="/ko/api-development/validation/automatic-validation">
+  <Card
+    title="자동 검증"
+    icon="wand-magic-sparkles"
+    href="/ko/api-development/validation/automatic-validation"
+  >
     Zod 기반 검증
   </Card>
-  <Card title="에러 처리" icon="triangle-exclamation" href="/ko/api-development/validation/error-handling">
+  <Card
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/ko/api-development/validation/error-handling"
+  >
     SonamuError 사용하기
   </Card>
   <Card title="@api 데코레이터" icon="at" href="/ko/api-development/creating-apis/api-decorator">

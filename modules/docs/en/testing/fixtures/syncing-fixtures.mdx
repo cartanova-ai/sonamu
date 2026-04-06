@@ -9,24 +9,16 @@ Learn how to sync Fixture DB data to Test DB to prepare the test environment.
 
 <CardGroup cols={2}>
   <Card title="Complete Copy" icon="copy">
-    All data
-    
-    Schema + Records
+    All data Schema + Records
   </Card>
   <Card title="Clean Start" icon="broom">
-    Test DB initialization
-    
-    Consistent environment
+    Test DB initialization Consistent environment
   </Card>
   <Card title="Fast Execution" icon="bolt">
-    pg_dump + pg_restore
-    
-    Efficient copy
+    pg_dump + pg_restore Efficient copy
   </Card>
   <Card title="Auto Execution" icon="gear">
-    Auto after import
-    
-    Manual also available
+    Auto after import Manual also available
   </Card>
 </CardGroup>
 
@@ -41,6 +33,7 @@ pnpm sonamu fixture sync
 ```
 
 This command:
+
 1. Completely initializes Test DB
 2. Dumps Fixture DB
 3. Restores to Test DB
@@ -54,7 +47,7 @@ This command:
 async function sync() {
   const fixtureConn = Sonamu.dbConfig.fixture.connection;
   const testConn = Sonamu.dbConfig.test.connection;
-  
+
   // 1. Terminate Test DB connections
   execSync(`psql -h ${testConn.host} -p ${testConn.port} -U ${testConn.user} 
     -d postgres -c "
@@ -63,21 +56,21 @@ async function sync() {
       WHERE datname = '${testConn.database}'
         AND pid <> pg_backend_pid();
     "`);
-  
+
   // 2. Recreate Test DB
   execSync(`psql -h ${testConn.host} -U ${testConn.user} -d postgres 
     -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`);
-  
+
   execSync(`psql -h ${testConn.host} -U ${testConn.user} -d postgres 
     -c "CREATE DATABASE \\"${testConn.database}\\""`);
-  
+
   // 3. Fixture DB → Test DB copy
   const dumpCmd = `pg_dump -h ${fixtureConn.host} -p ${fixtureConn.port} 
     -U ${fixtureConn.user} -d ${fixtureConn.database} -Fc`;
-  
+
   const restoreCmd = `pg_restore -h ${testConn.host} -p ${testConn.port} 
     -U ${testConn.user} -d ${testConn.database} --no-owner --no-acl`;
-  
+
   execSync(`${dumpCmd} | PGPASSWORD="${testConn.password}" ${restoreCmd}`);
 }
 ```
@@ -174,6 +167,7 @@ pg_dump -d myapp_fixture -Fc
 ```
 
 **Benefits**:
+
 - Compressed, smaller size
 - Selective restore possible with `pg_restore`
 - Fast speed
@@ -187,6 +181,7 @@ pg_restore -d myapp_test --no-owner --no-acl
 ```
 
 **Reason**:
+
 - Users may differ between local and remote
 - Prevents permission conflicts
 
@@ -199,10 +194,10 @@ Sync is automatically called when running `pnpm sonamu fixture import`:
 ```typescript
 async function fixture_import(entityId: string, recordIds: number[]) {
   await setupFixtureManager();
-  
+
   // 1. Import
   await FixtureManager.importFixture(entityId, recordIds);
-  
+
   // 2. Sync (auto)
   await FixtureManager.sync();
 }
@@ -272,7 +267,7 @@ Sync is faster when running Fixture DB locally:
     "fixture": {
       "client": "pg",
       "connection": {
-        "host": "localhost",  // Local
+        "host": "localhost", // Local
         "database": "myapp_fixture"
       }
     },
@@ -324,19 +319,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup PostgreSQL
         run: |
           docker run -d -p 5432:5432 \
             -e POSTGRES_PASSWORD=postgres \
             postgres:14
-      
+
       - name: Initialize Fixture
         run: pnpm sonamu fixture init
-      
+
       - name: Sync Fixture
         run: pnpm sonamu fixture sync
-      
+
       - name: Run Tests
         run: pnpm test
 ```
@@ -367,6 +362,7 @@ Error: connection to server at "fixture-db.example.com" failed
 ```
 
 **Solution**:
+
 - Check network connection
 - Check Fixture DB server status
 - Check firewall settings
@@ -378,6 +374,7 @@ Error: must be owner of database myapp_test
 ```
 
 **Solution**:
+
 ```sql
 -- Change Test DB owner
 ALTER DATABASE myapp_test OWNER TO current_user;
@@ -390,6 +387,7 @@ Error: database "myapp_test" is being accessed by other users
 ```
 
 **Solution**:
+
 ```sql
 -- Terminate all connections
 SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -399,6 +397,7 @@ WHERE datname = 'myapp_test'
 ```
 
 Or:
+
 ```bash
 # Stop application and try again
 pnpm sonamu fixture sync
@@ -407,12 +406,10 @@ pnpm sonamu fixture sync
 ## Cautions
 
 <Warning>
-**Cautions when syncing fixtures**:
-1. **Test DB initialization**: All existing data will be deleted
-2. **Permissions required**: DROP/CREATE permissions for Test DB
-3. **Connection termination**: Will fail if tests are running
-4. **Network**: Takes time if Fixture DB is remote
-5. **Data size**: Sync is slow if Fixture is large
+  **Cautions when syncing fixtures**: 1. **Test DB initialization**: All existing data will be
+  deleted 2. **Permissions required**: DROP/CREATE permissions for Test DB 3. **Connection
+  termination**: Will fail if tests are running 4. **Network**: Takes time if Fixture DB is remote
+  5. **Data size**: Sync is slow if Fixture is large
 </Warning>
 
 ## Next Steps

@@ -9,24 +9,16 @@ The `@api` decorator automatically transforms Model class methods into HTTP API 
 
 <CardGroup cols={2}>
   <Card title="Automatic Routing" icon="route">
-    Transform methods to APIs
-    
-    Auto-generate URLs
+    Transform methods to APIs Auto-generate URLs
   </Card>
   <Card title="Type Safety" icon="shield">
-    Parameter type validation
-    
-    Compile-time checks
+    Parameter type validation Compile-time checks
   </Card>
   <Card title="HTTP Methods" icon="globe">
-    GET, POST, PUT, DELETE
-    
-    RESTful API support
+    GET, POST, PUT, DELETE RESTful API support
   </Card>
   <Card title="Error Handling" icon="triangle-exclamation">
-    Automatic error conversion
-    
-    Consistent response format
+    Automatic error conversion Consistent response format
   </Card>
 </CardGroup>
 
@@ -48,20 +40,17 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -70,6 +59,7 @@ export const UserModel = new UserModelClass();
 ```
 
 **Generated endpoint**:
+
 - URL: `GET /api/user/getUser`
 - Parameters: `{ id: number }`
 - Response: `User` object
@@ -86,33 +76,30 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // GET request
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     const rdb = this.getPuri("r");
     return rdb.table("users").select("*");
   }
-  
+
   // POST request
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    const [userId] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+    const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return { userId: userId.id };
   }
-  
+
   // PUT request
   @api({ httpMethod: "PUT" })
   async update(id: number, params: Partial<UserSaveParams>): Promise<void> {
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", id).update(params);
   }
-  
+
   // DELETE request
   @api({ httpMethod: "DELETE" })
   async remove(id: number): Promise<void> {
@@ -138,13 +125,13 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries); // ← Model name used in URL
   }
-  
+
   @api({ httpMethod: "GET" })
   async getProfile(userId: number) {
     // URL: GET /api/user/getProfile
     // ...
   }
-  
+
   @api({ httpMethod: "POST" })
   async register(params: RegisterParams) {
     // URL: POST /api/user/register
@@ -160,12 +147,12 @@ flowchart LR
     A[Model Class] --> B[modelName: User]
     C[Method] --> D[getProfile]
     E[httpMethod] --> F[GET]
-    
+
     B --> G[/api/user]
     D --> G
     F --> H[GET /api/user/getProfile]
     G --> H
-    
+
     style A fill:#e3f2fd
     style C fill:#e8f5e9
     style E fill:#fff9c4
@@ -173,10 +160,8 @@ flowchart LR
 ```
 
 <Info>
-**URL Rules**:
-- Base path: `/api/{modelName}/{methodName}`
-- modelName is converted to lowercase
-- Example: `UserModel.getProfile` → `/api/user/getProfile`
+  **URL Rules**: - Base path: `/api/{modelName}/{methodName}` - modelName is converted to lowercase
+  - Example: `UserModel.getProfile` → `/api/user/getProfile`
 </Info>
 
 ## Parameter Handling
@@ -200,14 +185,14 @@ class UserModelClass extends BaseModelClass<
     // GET /api/user/getUser?id=1
     // ...
   }
-  
+
   // String parameter
   @api({ httpMethod: "GET" })
   async findByEmail(email: string): Promise<User | null> {
     // GET /api/user/findByEmail?email=test@example.com
     // ...
   }
-  
+
   // Boolean parameter
   @api({ httpMethod: "GET" })
   async listActive(active: boolean): Promise<User[]> {
@@ -245,27 +230,27 @@ class UserModelClass extends BaseModelClass<
     total: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (params.search) {
       query = query.where("username", "like", `%${params.search}%`);
     }
-    
+
     if (params.role) {
       query = query.where("role", params.role);
     }
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return { users, total: count };
   }
 }
@@ -290,13 +275,13 @@ class OrderModelClass extends BaseModelClass<
   async createOrder(
     userId: number,
     items: OrderItem[],
-    shippingAddress: string
+    shippingAddress: string,
   ): Promise<{ orderId: number }> {
     // POST /api/order/createOrder
     // Body: { userId: 1, items: [...], shippingAddress: "..." }
-    
+
     const wdb = this.getPuri("w");
-    
+
     const [order] = await wdb
       .table("orders")
       .insert({
@@ -305,7 +290,7 @@ class OrderModelClass extends BaseModelClass<
         status: "pending",
       })
       .returning({ id: "id" });
-    
+
     // Save order items
     for (const item of items) {
       await wdb.table("order_items").insert({
@@ -314,7 +299,7 @@ class OrderModelClass extends BaseModelClass<
         quantity: item.quantity,
       });
     }
-    
+
     return { orderId: order.id };
   }
 }
@@ -341,21 +326,21 @@ class UserModelClass extends BaseModelClass<
     // ...
     return user;
   }
-  
+
   // Return array
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {
     // ...
     return users;
   }
-  
+
   // void (no response)
   @api({ httpMethod: "DELETE" })
   async remove(id: number): Promise<void> {
     // ...
     // Empty response on success
   }
-  
+
   // Return number
   @api({ httpMethod: "GET" })
   async count(): Promise<number> {
@@ -389,18 +374,18 @@ class UserModelClass extends BaseModelClass<
     };
   }> {
     const rdb = this.getPuri("r");
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await rdb
       .table("users")
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       data: users,
       pagination: {
@@ -434,17 +419,14 @@ class UserModelClass extends BaseModelClass<
   @transactional()
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     // Check duplicates
-    const existing = await wdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await wdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // Create User
     wdb.ubRegister("users", {
       email: params.email,
@@ -452,28 +434,22 @@ class UserModelClass extends BaseModelClass<
       password: params.password,
       role: "normal",
     });
-    
+
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return { userId };
   }
-  
+
   // Reverse order also works
   @transactional()
   @api({ httpMethod: "PUT" })
-  async updateProfile(
-    userId: number,
-    params: ProfileParams
-  ): Promise<void> {
+  async updateProfile(userId: number, params: ProfileParams): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({
-        bio: params.bio,
-        avatar_url: params.avatarUrl,
-      });
+
+    await wdb.table("users").where("id", userId).update({
+      bio: params.bio,
+      avatar_url: params.avatarUrl,
+    });
   }
 }
 ```
@@ -496,30 +472,24 @@ class UserModelClass extends BaseModelClass<
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       // Error object → HTTP 500
       throw new Error("User not found");
     }
-    
+
     return user;
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     try {
-      const [userId] = await wdb
-        .table("users")
-        .insert(params)
-        .returning({ id: "id" });
-      
+      const [userId] = await wdb.table("users").insert(params).returning({ id: "id" });
+
       return { userId: userId.id };
     } catch (error) {
       // DB error → HTTP 500
@@ -530,8 +500,8 @@ class UserModelClass extends BaseModelClass<
 ```
 
 <Warning>
-By default, all errors are converted to HTTP 500.
-For custom error handling, you need to implement a separate error handler.
+  By default, all errors are converted to HTTP 500. For custom error handling, you need to implement
+  a separate error handler.
 </Warning>
 
 ## Practical Examples
@@ -561,36 +531,33 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   // Create
   @api({ httpMethod: "POST" })
   @transactional()
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     wdb.ubRegister("users", params);
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return { userId };
   }
-  
+
   // Read (single)
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
-  
+
   // Read (list)
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
@@ -598,51 +565,42 @@ class UserModelClass extends BaseModelClass<
     total: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (params.search) {
       query = query.where("username", "like", `%${params.search}%`);
     }
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return { users, total: count };
   }
-  
+
   // Update
   @api({ httpMethod: "PUT" })
   @transactional()
-  async update(
-    id: number,
-    params: Partial<UserSaveParams>
-  ): Promise<void> {
+  async update(id: number, params: Partial<UserSaveParams>): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update(params);
+
+    await wdb.table("users").where("id", id).update(params);
   }
-  
+
   // Delete
   @api({ httpMethod: "DELETE" })
   @transactional()
   async remove(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+
+    await wdb.table("users").where("id", id).delete();
   }
 }
 ```
@@ -659,7 +617,7 @@ class OrderModelClass extends BaseModelClass<
   constructor() {
     super("Order", orderSubsetQueries, orderLoaderQueries);
   }
-  
+
   @api({ httpMethod: "POST" })
   @transactional()
   async placeOrder(params: {
@@ -672,30 +630,24 @@ class OrderModelClass extends BaseModelClass<
     totalAmount: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // 1. Check inventory
     for (const item of params.items) {
-      const product = await wdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await wdb.table("products").where("id", item.productId).first();
+
       if (!product || product.stock < item.quantity) {
         throw new Error(`Insufficient stock for product ${item.productId}`);
       }
     }
-    
+
     // 2. Calculate total
     let totalAmount = 0;
     for (const item of params.items) {
-      const product = await wdb
-        .table("products")
-        .where("id", item.productId)
-        .first();
-      
+      const product = await wdb.table("products").where("id", item.productId).first();
+
       totalAmount += product.price * item.quantity;
     }
-    
+
     // 3. Create order
     const [order] = await wdb
       .table("orders")
@@ -707,7 +659,7 @@ class OrderModelClass extends BaseModelClass<
         status: "pending",
       })
       .returning({ id: "id" });
-    
+
     // 4. Create order items
     for (const item of params.items) {
       await wdb.table("order_items").insert({
@@ -715,14 +667,11 @@ class OrderModelClass extends BaseModelClass<
         product_id: item.productId,
         quantity: item.quantity,
       });
-      
+
       // Deduct inventory
-      await wdb
-        .table("products")
-        .where("id", item.productId)
-        .decrement("stock", item.quantity);
+      await wdb.table("products").where("id", item.productId).decrement("stock", item.quantity);
     }
-    
+
     return {
       orderId: order.id,
       totalAmount,
@@ -757,9 +706,9 @@ class UserModelClass extends BaseModelClass<
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // TypeScript validates params type
     // params.email, params.username, etc. have autocomplete
-    
+
     const wdb = this.getPuri("w");
-    
+
     // ✅ OK if types match
     const [userId] = await wdb
       .table("users")
@@ -770,7 +719,7 @@ class UserModelClass extends BaseModelClass<
         role: params.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: userId.id };
   }
 }
@@ -805,21 +754,15 @@ class UserModelClass extends BaseModelClass<
     profile: Profile | null;
   }> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
-    const profile = await rdb
-      .table("profiles")
-      .where("user_id", id)
-      .first();
-    
+
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+
     // ✅ Return must match the declared structure
     return {
       user,
@@ -832,12 +775,9 @@ class UserModelClass extends BaseModelClass<
 ## Cautions
 
 <Warning>
-**Cautions when using @api**:
-1. Only usable in Model classes
-2. Method must be `async` function
-3. `modelName` property is required
-4. Specifying parameter/return types is recommended
-5. Propagate errors with throw
+  **Cautions when using @api**: 1. Only usable in Model classes 2. Method must be `async` function
+  3. `modelName` property is required 4. Specifying parameter/return types is recommended 5.
+  Propagate errors with throw
 </Warning>
 
 ### Common Mistakes
@@ -895,12 +835,12 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     // ...
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: UserSaveParams): Promise<{ userId: number }> {
     // ...
@@ -919,10 +859,18 @@ export const UserModel = new UserModelClass();
   <Card title="Parameters" icon="sliders" href="/en/api-development/creating-apis/parameters">
     Type definitions and validation
   </Card>
-  <Card title="Return Types" icon="arrow-turn-down-left" href="/en/api-development/creating-apis/return-types">
+  <Card
+    title="Return Types"
+    icon="arrow-turn-down-left"
+    href="/en/api-development/creating-apis/return-types"
+  >
     Defining response types
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/error-handling"
+  >
     API error handling
   </Card>
 </CardGroup>

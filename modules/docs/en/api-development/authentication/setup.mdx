@@ -12,21 +12,25 @@ Learn how to set up user authentication in Sonamu. Sonamu provides an integrated
     Proven authentication library
 
     Email/password, Social login
+
   </Card>
   <Card title="Auto Entity Generation" icon="wand-magic-sparkles">
     Generate entities via CLI
 
     User, Session, Account, Verification
+
   </Card>
   <Card title="Context Based" icon="diagram-project">
     User info per request
 
     Sonamu.getContext()
+
   </Card>
   <Card title="Guards System" icon="lock">
     Declarative permission control
 
     @api guards option
+
   </Card>
 </CardGroup>
 
@@ -42,15 +46,16 @@ pnpm sonamu auth generate
 
 This command generates 4 entities:
 
-| Entity | Table | Description |
-|--------|-------|-------------|
-| User | users | User info (id, name, email, email_verified, image) |
-| Session | sessions | Session info (id, token, expires_at, user_id) |
-| Account | accounts | Social account linking (id, provider_id, access_token, user_id) |
-| Verification | verifications | Email verification etc. (id, identifier, value, expires_at) |
+| Entity       | Table         | Description                                                     |
+| ------------ | ------------- | --------------------------------------------------------------- |
+| User         | users         | User info (id, name, email, email_verified, image)              |
+| Session      | sessions      | Session info (id, token, expires_at, user_id)                   |
+| Account      | accounts      | Social account linking (id, provider_id, access_token, user_id) |
+| Verification | verifications | Email verification etc. (id, identifier, value, expires_at)     |
 
 <Info>
-If entities already exist, only missing fields are added. Fields with changed types are automatically updated.
+  If entities already exist, only missing fields are added. Fields with changed types are
+  automatically updated.
 </Info>
 
 ### 2. Run Migrations
@@ -86,12 +91,12 @@ This enables basic email/password authentication.
 
 API endpoints provided by better-auth are automatically registered:
 
-| Path | Method | Description |
-|------|--------|-------------|
-| `/api/auth/sign-up/email` | POST | Email signup |
-| `/api/auth/sign-in/email` | POST | Email login |
-| `/api/auth/sign-out` | POST | Logout |
-| `/api/auth/get-session` | GET | Get current session |
+| Path                      | Method | Description         |
+| ------------------------- | ------ | ------------------- |
+| `/api/auth/sign-up/email` | POST   | Email signup        |
+| `/api/auth/sign-in/email` | POST   | Email login         |
+| `/api/auth/sign-out`      | POST   | Logout              |
+| `/api/auth/get-session`   | GET    | Get current session |
 
 ## Accessing User Info in Context
 
@@ -235,6 +240,7 @@ The default User entity in better-auth doesn't have a `role` field. If you need 
 ### 1. Add Field in Sonamu UI
 
 Add `role` field to User entity:
+
 - Name: `role`
 - Type: `string`
 - Default: `"user"`
@@ -302,12 +308,12 @@ const session = await authClient.getSession();
 
 better-auth uses camelCase, but Sonamu uses snake_case. The following fields are automatically mapped:
 
-| better-auth | Sonamu |
-|-------------|--------|
+| better-auth     | Sonamu           |
+| --------------- | ---------------- |
 | `emailVerified` | `email_verified` |
-| `createdAt` | `created_at` |
-| `userId` | `user_id` |
-| `expiresAt` | `expires_at` |
+| `createdAt`     | `created_at`     |
+| `userId`        | `user_id`        |
+| `expiresAt`     | `expires_at`     |
 
 ## Checklist
 
@@ -323,7 +329,11 @@ Things to verify after setting up authentication:
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Session Management" icon="clock-rotate-left" href="/en/api-development/authentication/session-management">
+  <Card
+    title="Session Management"
+    icon="clock-rotate-left"
+    href="/en/api-development/authentication/session-management"
+  >
     Managing sessions and tokens
   </Card>
   <Card title="Context" icon="diagram-project" href="/en/api-development/context/sonamu-context">
@@ -332,7 +342,11 @@ Things to verify after setting up authentication:
   <Card title="@api Decorator" icon="at" href="/en/api-development/creating-apis/api-decorator">
     API decorator options
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-reference/exceptions/sonamu-error">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-reference/exceptions/sonamu-error"
+  >
     Handling authentication errors
   </Card>
 </CardGroup>

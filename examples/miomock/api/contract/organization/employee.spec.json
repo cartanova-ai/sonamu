@@ -79,9 +79,7 @@
     "src/application/employee/employee.types.ts",
     "src/application/employee/employee.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "EmployeeModel": "직원 CRUD, 조직 배치, 중첩 관계 조회를 담당한다",
     "Employee Types": "직원 파라미터, 서브셋, 검색/정렬 스키마를 정의한다"

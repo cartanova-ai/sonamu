@@ -1,10 +1,12 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
 
 import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
+
 import type { SonamuFile } from "@/contexts";
 import { useSonamuBaseContext } from "@/contexts";
+
 import type { ErrorObj } from "./types";
 
 /**

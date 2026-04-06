@@ -1,6 +1,6 @@
 ---
-title: 'HMR Issues'
-description: 'Troubleshooting HMR problems'
+title: "HMR Issues"
+description: "Troubleshooting HMR problems"
 ---
 
 This covers problems that occur in Sonamu's Hot Module Replacement (HMR) system and how to solve them.
@@ -41,7 +41,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
 
   await hot.init({
     rootDirectory: process.env.API_ROOT_PATH,
-    boundaries: [`./src/**/*.ts`],  // All .ts files
+    boundaries: [`./src/**/*.ts`], // All .ts files
   });
 
   console.log("🔥 HMR-hook initialized");
@@ -154,6 +154,7 @@ TypeScript server didn't recognize HMR changes.
 #### 1. Restart TypeScript Server
 
 **VSCode:**
+
 ```
 Command Palette (Cmd+Shift+P or Ctrl+Shift+P)
 > TypeScript: Restart TS Server
@@ -205,7 +206,7 @@ if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
     boundaries: [
       // Include only frequently changed files
       `./src/application/**/*.model.ts`,
-      `./src/application/**/*.helper.ts`
+      `./src/application/**/*.helper.ts`,
     ],
   });
 }
@@ -348,7 +349,7 @@ HMR system tried to load ESM module as CommonJS.
 import { UserModel } from "./user.model";
 
 // ✅
-import { UserModel } from "./user.model.js";  // Use .js for ESM
+import { UserModel } from "./user.model.js"; // Use .js for ESM
 ```
 
 #### 3. tsconfig.json Configuration

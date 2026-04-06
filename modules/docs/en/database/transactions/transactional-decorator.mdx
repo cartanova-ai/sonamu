@@ -9,24 +9,16 @@ The `@transactional` decorator automatically wraps methods in transactions, redu
 
 <CardGroup cols={2}>
   <Card title="Automatic Transactions" icon="wand-magic-sparkles">
-    Automatically wraps method execution in transaction
-    
-    Commits on success, rollbacks on failure
+    Automatically wraps method execution in transaction Commits on success, rollbacks on failure
   </Card>
   <Card title="Cleaner Code" icon="broom">
-    No need to call transaction()
-    
-    Improved readability
+    No need to call transaction() Improved readability
   </Card>
   <Card title="Isolation Level" icon="shield">
-    Configure transaction isolation level
-    
-    Concurrency control
+    Configure transaction isolation level Concurrency control
   </Card>
   <Card title="Nested Transactions" icon="layer-group">
-    Automatic context sharing
-    
-    Savepoint support
+    Automatic context sharing Savepoint support
   </Card>
 </CardGroup>
 
@@ -38,7 +30,7 @@ The `@transactional` decorator automatically wraps methods in transactions, redu
 class UserModel extends BaseModelClass {
   async createUser(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // ❌ Need to call transaction() every time
     return wdb.transaction(async (trx) => {
       trx.ubRegister("users", data);
@@ -56,7 +48,7 @@ class UserModel extends BaseModelClass {
   @transactional()
   async createUser(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // ✅ Work directly without calling transaction()
     wdb.ubRegister("users", data);
     const [userId] = await wdb.ubUpsert("users");
@@ -65,9 +57,7 @@ class UserModel extends BaseModelClass {
 }
 ```
 
-<Info>
-Methods decorated with `@transactional()` automatically run within a transaction.
-</Info>
+<Info>Methods decorated with `@transactional()` automatically run within a transaction.</Info>
 
 ## How It Works
 
@@ -81,7 +71,7 @@ flowchart TD
     E -->|No| G[Auto COMMIT]
     F --> H[Throw Error]
     G --> I[Return Result]
-    
+
     style A fill:#e3f2fd
     style B fill:#fff9c4
     style C fill:#e8f5e9
@@ -102,7 +92,7 @@ class UserModel extends BaseModelClass {
     const wdb = this.getPuri("w"); // write DB
     // ...
   }
-  
+
   // Explicit specification
   @transactional({ dbPreset: "w" })
   async method2() {
@@ -122,21 +112,21 @@ class UserModel extends BaseModelClass {
     const wdb = this.getPuri("w");
     // Can read uncommitted data (Dirty Read)
   }
-  
+
   // READ COMMITTED
   @transactional({ isolation: "read committed" })
   async readCommitted() {
     const wdb = this.getPuri("w");
     // Only read committed data (Non-repeatable Read possible)
   }
-  
+
   // REPEATABLE READ (default)
   @transactional({ isolation: "repeatable read" })
   async repeatableRead() {
     const wdb = this.getPuri("w");
     // Guarantees same results within same transaction
   }
-  
+
   // SERIALIZABLE
   @transactional({ isolation: "serializable" })
   async serializable() {
@@ -147,10 +137,8 @@ class UserModel extends BaseModelClass {
 ```
 
 <Warning>
-**Isolation Level Considerations**:
-- Higher isolation levels reduce concurrency
-- SERIALIZABLE has significant performance impact
-- REPEATABLE READ is appropriate for most cases
+  **Isolation Level Considerations**: - Higher isolation levels reduce concurrency - SERIALIZABLE
+  has significant performance impact - REPEATABLE READ is appropriate for most cases
 </Warning>
 
 ## Practical Examples
@@ -164,12 +152,12 @@ class UserModel extends BaseModelClass {
     users: UserSaveParams[]
   ): Promise<number[]> {
     const wdb = this.getPuri("w");
-    
+
     // Register multiple Users
     users.forEach((user) => {
       wdb.ubRegister("users", user);
     });
-    
+
     // Batch save
     const ids = await wdb.ubUpsert("users");
     return ids;
@@ -188,26 +176,21 @@ const ids = await UserModel.createMultipleUsers([
 ```typescript
 class UserModel extends BaseModelClass {
   @transactional()
-  async createUserWithValidation(
-    data: UserSaveParams
-  ): Promise<number> {
+  async createUserWithValidation(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // Duplicate check
-    const existing = await wdb
-      .table("users")
-      .where("email", data.email)
-      .first();
-    
+    const existing = await wdb.table("users").where("email", data.email).first();
+
     if (existing) {
       // Error thrown → automatic rollback
       throw new Error("Email already exists");
     }
-    
+
     // Create User
     wdb.ubRegister("users", data);
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return userId;
   }
 }
@@ -232,18 +215,18 @@ class CompanyModel extends BaseModelClass {
     employeeIds: number[];
   }> {
     const wdb = this.getPuri("w");
-    
+
     // 1. Company
     const companyRef = wdb.ubRegister("companies", {
       name: data.companyName,
     });
-    
+
     // 2. Department
     const deptRef = wdb.ubRegister("departments", {
       name: data.departmentName,
       company_id: companyRef,
     });
-    
+
     // 3. Users & Employees
     data.employees.forEach((emp) => {
       const userRef = wdb.ubRegister("users", {
@@ -252,7 +235,7 @@ class CompanyModel extends BaseModelClass {
         password: "hashed",
         role: "normal",
       });
-      
+
       wdb.ubRegister("employees", {
         user_id: userRef,
         department_id: deptRef,
@@ -260,13 +243,13 @@ class CompanyModel extends BaseModelClass {
         salary: emp.salary,
       });
     });
-    
+
     // 4. Save in order
     const [companyId] = await wdb.ubUpsert("companies");
     const [departmentId] = await wdb.ubUpsert("departments");
     await wdb.ubUpsert("users");
     const employeeIds = await wdb.ubUpsert("employees");
-    
+
     return { companyId, departmentId, employeeIds };
   }
 }
@@ -279,26 +262,23 @@ class UserModel extends BaseModelClass {
   @transactional({ isolation: "repeatable read" })
   async updateLastLogin(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // 1. Get current login time
     const user = await wdb
       .table("users")
       .select({ last_login: "last_login_at" })
       .where("id", userId)
       .first();
-    
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 2. Update login time
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({
-        last_login_at: new Date(),
-      });
-    
+    await wdb.table("users").where("id", userId).update({
+      last_login_at: new Date(),
+    });
+
     // Repeatable Read: Not affected by other transaction changes
   }
 }
@@ -311,33 +291,24 @@ class UserModel extends BaseModelClass {
 ```typescript
 class UserModel extends BaseModelClass {
   @transactional()
-  async createUserWithProfile(
-    userData: UserSaveParams,
-    bio: string
-  ): Promise<number> {
+  async createUserWithProfile(userData: UserSaveParams, bio: string): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // Create User
-    const [userId] = await wdb
-      .table("users")
-      .insert(userData)
-      .returning("id");
-    
+    const [userId] = await wdb.table("users").insert(userData).returning("id");
+
     // Call another @transactional method
     // Shares same transaction context
     await this.updateBio(userId, bio);
-    
+
     return userId;
   }
-  
+
   @transactional()
   async updateBio(userId: number, bio: string): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({ bio });
+
+    await wdb.table("users").where("id", userId).update({ bio });
   }
 }
 ```
@@ -355,17 +326,15 @@ flowchart TD
     H --> J[Bio UPDATE]
     J --> K[Method End]
     K --> L[COMMIT]
-    
+
     style C fill:#e8f5e9
     style H fill:#c8e6c9
     style L fill:#66bb6a
 ```
 
 <Info>
-**Benefits of Nested Transactions**:
-- Improved code reusability
-- Freedom to combine methods
-- Automatic transaction boundary management
+  **Benefits of Nested Transactions**: - Improved code reusability - Freedom to combine methods -
+  Automatic transaction boundary management
 </Info>
 
 ## Using with @api
@@ -377,30 +346,22 @@ class UserController extends BaseModelClass {
   // Can use both decorators together
   @api({ httpMethod: "POST" })
   @transactional()
-  async createUser(
-    params: UserSaveParams
-  ): Promise<{ userId: number }> {
+  async createUser(params: UserSaveParams): Promise<{ userId: number }> {
     const wdb = this.getPuri("w");
-    
+
     wdb.ubRegister("users", params);
     const [userId] = await wdb.ubUpsert("users");
-    
+
     return { userId };
   }
-  
+
   // Order doesn't matter
   @transactional()
   @api({ httpMethod: "PUT" })
-  async updateUser(
-    id: number,
-    params: Partial<UserSaveParams>
-  ): Promise<void> {
+  async updateUser(id: number, params: Partial<UserSaveParams>): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update(params);
+
+    await wdb.table("users").where("id", id).update(params);
   }
 }
 ```
@@ -411,24 +372,16 @@ class UserController extends BaseModelClass {
 
 <CardGroup cols={2}>
   <Card title="Cleaner Code" icon="broom">
-    No need for transaction() calls
-    
-    Removes boilerplate
+    No need for transaction() calls Removes boilerplate
   </Card>
   <Card title="Readability" icon="eye">
-    Clear transaction boundaries
-    
-    Focus on business logic
+    Clear transaction boundaries Focus on business logic
   </Card>
   <Card title="Auto Management" icon="robot">
-    Auto commit/rollback handling
-    
-    Prevents mistakes
+    Auto commit/rollback handling Prevents mistakes
   </Card>
   <Card title="Reusability" icon="recycle">
-    Easy method composition
-    
-    Nested transaction support
+    Easy method composition Nested transaction support
   </Card>
 </CardGroup>
 
@@ -436,14 +389,10 @@ class UserController extends BaseModelClass {
 
 <CardGroup cols={2}>
   <Card title="Constraints" icon="lock">
-    Only usable at method level
-    
-    Partial transactions not possible
+    Only usable at method level Partial transactions not possible
   </Card>
   <Card title="Debugging" icon="bug">
-    Transaction boundaries are hidden
-    
-    May be harder to trace issues
+    Transaction boundaries are hidden May be harder to trace issues
   </Card>
 </CardGroup>
 
@@ -452,12 +401,14 @@ class UserController extends BaseModelClass {
 ### When to Use?
 
 ✅ **Recommended**:
+
 - Entire method is one transaction
 - Multiple DB operations require atomicity
 - Code reuse is important
 - API handler methods
 
 ❌ **Not Recommended**:
+
 - Partial transactions within method
 - Complex transaction control needed
 - Transaction boundaries need to be explicit
@@ -477,16 +428,16 @@ async createUser(data: UserSaveParams): Promise<number> {
 // Pattern 2: Manual transaction (for complex cases)
 async createUserComplex(data: UserSaveParams): Promise<number> {
   const wdb = this.getPuri("w");
-  
+
   return wdb.transaction(async (trx) => {
     // Complex transaction logic
     const [id] = await trx.table("users").insert(data).returning("id");
-    
+
     // Conditional rollback
     if (someCondition) {
       await trx.rollback();
     }
-    
+
     return id;
   });
 }
@@ -495,11 +446,8 @@ async createUserComplex(data: UserSaveParams): Promise<number> {
 ## Important Notes
 
 <Warning>
-**Must Follow**:
-1. Method must be `async` function
-2. Access DB with `this.getPuri()`
-3. Propagate errors with throw (auto rollback)
-4. Nested transactions share same context
+  **Must Follow**: 1. Method must be `async` function 2. Access DB with `this.getPuri()` 3.
+  Propagate errors with throw (auto rollback) 4. Nested transactions share same context
 </Warning>
 
 ### Common Mistakes
@@ -511,7 +459,7 @@ class UserModel extends BaseModelClass {
   async wrongUsage1(data: UserSaveParams): Promise<number> {
     // Don't store getPuri in different variable
     const db = this.getPuri("w");
-    
+
     // Hiding errors with catch prevents rollback
     try {
       db.ubRegister("users", data);
@@ -522,17 +470,17 @@ class UserModel extends BaseModelClass {
       return 0; // ❌ Hiding error → no rollback
     }
   }
-  
+
   // ✅ Correct usage
   @transactional()
   async correctUsage(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     // Propagate errors with throw
     if (!data.email) {
       throw new Error("Email is required");
     }
-    
+
     wdb.ubRegister("users", data);
     const [id] = await wdb.ubUpsert("users");
     return id;
@@ -543,7 +491,11 @@ class UserModel extends BaseModelClass {
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Manual Transactions" icon="hand" href="/en/database/transactions/manual-transactions">
+  <Card
+    title="Manual Transactions"
+    icon="hand"
+    href="/en/database/transactions/manual-transactions"
+  >
     Using transaction() directly
   </Card>
   <Card title="Best Practices" icon="star" href="/en/database/transactions/best-practices">

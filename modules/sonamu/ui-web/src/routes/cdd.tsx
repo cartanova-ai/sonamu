@@ -7,6 +7,7 @@ import ListChecksIcon from "~icons/lucide/list-checks";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ScaleIcon from "~icons/lucide/scale";
 import SearchIcon from "~icons/lucide/search";
+
 import { CddAcView } from "./cdd/components/cdd_ac_view";
 import { CddContractDetail } from "./cdd/components/cdd_contract_detail";
 import { CddRuleDetail } from "./cdd/components/cdd_rule_detail";

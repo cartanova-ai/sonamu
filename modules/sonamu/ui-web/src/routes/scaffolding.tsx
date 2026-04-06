@@ -20,9 +20,10 @@ import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import { defaultCatch } from "../services/sonamu.shared";
 import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 
 export const Route = createFileRoute("/scaffolding")({
   component: ScaffoldingIndex,

@@ -17,11 +17,11 @@ Once the build completes, optimized JavaScript files are generated in the `dist`
 
 You can build API and Web separately.
 
-| Command | Description |
-|---------|-------------|
-| `pnpm build` | Full API + Web build (default, skips Web build if no Web directory) |
-| `pnpm build api` | Build API project only |
-| `pnpm build web` | Build Web project only |
+| Command          | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| `pnpm build`     | Full API + Web build (default, skips Web build if no Web directory) |
+| `pnpm build api` | Build API project only                                              |
+| `pnpm build web` | Build Web project only                                              |
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 
@@ -50,6 +50,7 @@ Cleanly removes residual files from previous builds.
 ```
 
 **Directories removed**:
+
 - `dist/` - API build output
 - `web/dist/` - Web build output
 - `web-dist/` - Copied Web output
@@ -65,12 +66,14 @@ Determines the SWC configuration file to use for the build.
 ```
 
 **Using custom config**:
+
 ```bash
 # Create .swcrc in project root
 touch .swcrc
 ```
 
 **Using default config**:
+
 ```
 Using default .swcrc from sonamu package...
 ```
@@ -94,6 +97,7 @@ Compiles TypeScript to JavaScript.
     ```
 
     **Build tool**: [SWC](https://swc.rs/) - Rust-based ultra-fast TypeScript compiler
+
   </Step>
 
   <Step title="Complete">
@@ -123,6 +127,7 @@ If a Web project exists, builds it and copies to the API project.
     ```
 
     Optimizes and bundles static assets.
+
   </Step>
 
   <Step title="Copy files">
@@ -131,6 +136,7 @@ If a Web project exists, builds it and copies to the API project.
     ```
 
     Copies for serving from API server.
+
   </Step>
 
   <Step title="Complete">
@@ -143,6 +149,7 @@ If a Web project exists, builds it and copies to the API project.
 </Steps>
 
 **Web build output**:
+
 - `web/dist/` - Original build result
 - `web-dist/` - Copy for serving from API server
 
@@ -178,15 +185,15 @@ Create a `.swcrc` file in the project root to customize the build.
 
 **Key options**:
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `target` | Compilation target | `es2022` |
-| `decorators` | Decorator support | `true` |
-| `sourceMaps` | Generate source maps | `true` |
-| `keepClassNames` | Preserve class names | `true` |
+| Option           | Description          | Default  |
+| ---------------- | -------------------- | -------- |
+| `target`         | Compilation target   | `es2022` |
+| `decorators`     | Decorator support    | `true`   |
+| `sourceMaps`     | Generate source maps | `true`   |
+| `keepClassNames` | Preserve class names | `true`   |
 
 <Tip>
-If no `.swcrc` file exists, **optimized default configuration** provided by Sonamu is used.
+  If no `.swcrc` file exists, **optimized default configuration** provided by Sonamu is used.
 </Tip>
 
 ## Build Output
@@ -213,6 +220,7 @@ If no `.swcrc` file exists, **optimized default configuration** provided by Sona
 </FileTree>
 
 **Features**:
+
 - TypeScript → JavaScript conversion
 - Decorator transformation complete
 - Source maps included (`.js.map`)
@@ -232,6 +240,7 @@ If no `.swcrc` file exists, **optimized default configuration** provided by Sona
 </FileTree>
 
 **Features**:
+
 - Code minification
 - Asset hashing (cache busting)
 - Tree shaking (remove unused code)
@@ -279,11 +288,13 @@ pnpm build  # 2 seconds
 ### Build Failure
 
 **Problem**: Build fails with TypeScript error
+
 ```
 Error: Cannot find module 'some-module'
 ```
 
 **Solution**:
+
 ```bash
 # 1. Type check
 pnpm tsc --noEmit
@@ -299,11 +310,13 @@ pnpm install
 ### SWC Configuration Error
 
 **Problem**: `.swcrc` configuration error
+
 ```
 Error: Invalid .swcrc configuration
 ```
 
 **Solution**:
+
 ```bash
 # Restore to default config
 rm .swcrc
@@ -313,11 +326,13 @@ pnpm build
 ### Web Build Failure
 
 **Problem**: Vite build error
+
 ```
 Error: Could not resolve './some-file'
 ```
 
 **Solution**:
+
 ```bash
 # Move to Web project directory
 cd web
@@ -346,6 +361,7 @@ pnpm start
 ```
 
 **Production execution features**:
+
 - **Fast startup**: Run pre-compiled JavaScript
 - **Low memory**: No TypeScript transformation overhead
 - **Source map support**: Show original file location on errors
@@ -359,6 +375,7 @@ node --enable-source-maps dist/index.js
 ```
 
 **Option description**:
+
 - `--enable-source-maps`: Show original TypeScript file location on errors
 - `dist/index.js`: Built entry point
 
@@ -380,13 +397,13 @@ Setting up CI/CD pipelines enables **automatic building and deployment** wheneve
 
 ### Why is CI/CD Needed?
 
-| Benefit | Description |
-|---------|-------------|
-| **Automation** | Eliminate manual build/deploy tasks |
-| **Consistency** | Always build the same way |
-| **Fast feedback** | Immediately detect build failures |
-| **Safety** | Deploy only after tests pass |
-| **Traceability** | Preserve all deployment records |
+| Benefit           | Description                         |
+| ----------------- | ----------------------------------- |
+| **Automation**    | Eliminate manual build/deploy tasks |
+| **Consistency**   | Always build the same way           |
+| **Fast feedback** | Immediately detect build failures   |
+| **Safety**        | Deploy only after tests pass        |
+| **Traceability**  | Preserve all deployment records     |
 
 ### GitHub Actions
 
@@ -397,7 +414,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]  # Run when pushing to main branch
+    branches: [main] # Run when pushing to main branch
 
 jobs:
   build:
@@ -416,7 +433,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
 
       # 4. Install dependencies
       - run: pnpm install
@@ -438,22 +455,16 @@ jobs:
     Use `actions/checkout@v3` to fetch repository code.
   </Step>
 
-  <Step title="Install pnpm">
-    Install pnpm package manager with `pnpm/action-setup@v2`.
-  </Step>
+<Step title="Install pnpm">Install pnpm package manager with `pnpm/action-setup@v2`.</Step>
 
-  <Step title="Setup Node.js">
-    Install Node.js and enable pnpm cache with `actions/setup-node@v3`.
-    Cache makes dependency installation much faster.
-  </Step>
+<Step title="Setup Node.js">
+  Install Node.js and enable pnpm cache with `actions/setup-node@v3`. Cache makes dependency
+  installation much faster.
+</Step>
 
-  <Step title="Install dependencies">
-    Install project dependencies with `pnpm install`.
-  </Step>
+<Step title="Install dependencies">Install project dependencies with `pnpm install`.</Step>
 
-  <Step title="Build">
-    Perform production build with `pnpm build`.
-  </Step>
+<Step title="Build">Perform production build with `pnpm build`.</Step>
 
   <Step title="Deploy">
     Upload build output to server. Various methods like rsync, scp, FTP can be used.
@@ -476,12 +487,12 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
       - run: pnpm install
-      - run: pnpm test  # Run tests
+      - run: pnpm test # Run tests
 
   build:
-    needs: test  # Build only after tests pass
+    needs: test # Build only after tests pass
     runs-on: ubuntu-latest
     steps:
       # ... build steps
@@ -495,8 +506,8 @@ Separate Staging and Production environments:
 on:
   push:
     branches:
-      - develop    # Deploy to Staging
-      - main       # Deploy to Production
+      - develop # Deploy to Staging
+      - main # Deploy to Production
 
 jobs:
   deploy:
@@ -566,19 +577,19 @@ CMD ["pnpm", "start"]
 
 **Benefits of multi-stage builds**:
 
-| Benefit | Description |
-|---------|-------------|
+| Benefit              | Description                          |
+| -------------------- | ------------------------------------ |
 | **Small image size** | Exclude build tools from final image |
-| **Fast deployment** | Smaller images have faster pull/push |
-| **Security** | Remove unnecessary development tools |
-| **Layer caching** | Reuse if dependencies unchanged |
+| **Fast deployment**  | Smaller images have faster pull/push |
+| **Security**         | Remove unnecessary development tools |
+| **Layer caching**    | Reuse if dependencies unchanged      |
 
 ### Docker Compose
 
 Use Docker Compose to run with database:
 
 ```yaml title="docker-compose.yml"
-version: '3.8'
+version: "3.8"
 
 services:
   api:
@@ -606,6 +617,7 @@ volumes:
 ```
 
 **Run**:
+
 ```bash
 # Build and run
 docker-compose up --build
@@ -621,12 +633,12 @@ docker-compose down
 
 Production builds are **much faster and more efficient** than development server.
 
-| Metric | Development Server | Production Build | Difference |
-|--------|-------------------|------------------|------------|
-| Startup time | 2-3s | 0.5s | **4-6x faster** |
-| Memory usage | 200MB | 100MB | **50% reduction** |
-| Request handling | Slower | Faster | **2-3x faster** |
-| File size | Original | Compressed | **30-50% smaller** |
+| Metric           | Development Server | Production Build | Difference         |
+| ---------------- | ------------------ | ---------------- | ------------------ |
+| Startup time     | 2-3s               | 0.5s             | **4-6x faster**    |
+| Memory usage     | 200MB              | 100MB            | **50% reduction**  |
+| Request handling | Slower             | Faster           | **2-3x faster**    |
+| File size        | Original           | Compressed       | **30-50% smaller** |
 
 **Why production is faster**:
 
@@ -648,6 +660,7 @@ time (pnpm build && pnpm start)
 ```
 
 **API response time comparison**:
+
 ```bash
 # Development server
 curl -w "\n%{time_total}s\n" http://localhost:3000/api/users

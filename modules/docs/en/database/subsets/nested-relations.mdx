@@ -9,24 +9,16 @@ LoaderQuery is a system for efficiently loading 1:N and N:M relation data.
 
 <CardGroup cols={2}>
   <Card title="1:N Relations" icon="arrow-right-to-bracket">
-    Parent → Multiple children
-    
-    HasMany
+    Parent → Multiple children HasMany
   </Card>
   <Card title="N:M Relations" icon="diagram-project">
-    Bidirectional many-to-many
-    
-    ManyToMany
+    Bidirectional many-to-many ManyToMany
   </Card>
   <Card title="N+1 Solution" icon="gauge-high">
-    Efficient data loading
-    
-    Batch Loading
+    Efficient data loading Batch Loading
   </Card>
   <Card title="Nested Loaders" icon="layer-group">
-    Recursive relation loading
-    
-    Nested Relations
+    Recursive relation loading Nested Relations
   </Card>
 </CardGroup>
 
@@ -94,11 +86,9 @@ Suitable for HasMany or ManyToMany relations:
     {
       as: "posts",
       refId: "user_id",
-      qb: (qb, fromIds) => 
-        qb.table("posts")
-          .whereIn("user_id", fromIds)
-    }
-  ]
+      qb: (qb, fromIds) => qb.table("posts").whereIn("user_id", fromIds),
+    },
+  ];
 }
 
 // SQL: SELECT * FROM posts WHERE user_id IN (1, 2, 3)
@@ -118,10 +108,11 @@ export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
   // Add posts loader to Subset A
   A: [
     {
-      as: "posts",              // Result field name
-      refId: "user_id",         // Reference field (posts.user_id)
-      qb: (qb, fromIds) => 
-        qb.table("posts")
+      as: "posts", // Result field name
+      refId: "user_id", // Reference field (posts.user_id)
+      qb: (qb, fromIds) =>
+        qb
+          .table("posts")
           .whereIn("user_id", fromIds)
           .select({
             id: "id",
@@ -134,9 +125,7 @@ export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
 };
 ```
 
-<Info>
-LoaderQuery automatically performs **Batch Loading** to solve the N+1 problem.
-</Info>
+<Info>LoaderQuery automatically performs **Batch Loading** to solve the N+1 problem.</Info>
 
 ## 1:N Relations (HasMany)
 
@@ -149,8 +138,9 @@ export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
     {
       as: "employees",
       refId: "department_id",
-      qb: (qb, fromIds) => 
-        qb.table("employees")
+      qb: (qb, fromIds) =>
+        qb
+          .table("employees")
           .whereIn("department_id", fromIds)
           .join("users", "employees.user_id", "users.id")
           .select({
@@ -183,7 +173,7 @@ const dept = await DepartmentModel.findById(1, ["P"]);
 // }
 
 console.log(`${dept.name} department employees: ${dept.employees.length}`);
-dept.employees.forEach(emp => {
+dept.employees.forEach((emp) => {
   console.log(`- ${emp.username} (${emp.employee_number})`);
 });
 ```
@@ -199,8 +189,9 @@ export const ProjectSubsetLoaders: SubsetLoaderMap<"Project"> = {
     {
       as: "members",
       refId: "project_id",
-      qb: (qb, fromIds) => 
-        qb.table("projects__employees")
+      qb: (qb, fromIds) =>
+        qb
+          .table("projects__employees")
           .whereIn("project_id", fromIds)
           .join("employees", "projects__employees.employee_id", "employees.id")
           .join("users", "employees.user_id", "users.id")
@@ -208,7 +199,7 @@ export const ProjectSubsetLoaders: SubsetLoaderMap<"Project"> = {
             id: "employees.id",
             username: "users.username",
             employee_number: "employees.employee_number",
-            role: "projects__employees.role",  // Junction table field
+            role: "projects__employees.role", // Junction table field
           }),
     },
   ],
@@ -234,7 +225,7 @@ const project = await ProjectModel.findById(1, ["P"]);
 
 console.log(`Project: ${project.name}`);
 console.log(`${project.members.length} participants:`);
-project.members.forEach(member => {
+project.members.forEach((member) => {
   console.log(`- ${member.username} (${member.role})`);
 });
 ```
@@ -254,23 +245,25 @@ export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
     {
       as: "employees",
       refId: "department_id",
-      qb: (qb, fromIds) => 
-        qb.table("employees")
+      qb: (qb, fromIds) =>
+        qb
+          .table("employees")
           .whereIn("department_id", fromIds)
           .join("users", "employees.user_id", "users.id")
           .select({
             id: "employees.id",
             username: "users.username",
-            user_id: "users.id",  // ← refId for next Loader
+            user_id: "users.id", // ← refId for next Loader
           }),
-      
+
       // Nested Loader: Employee → Projects
       loaders: [
         {
           as: "projects",
           refId: "employee_id",
-          qb: (qb, fromIds) => 
-            qb.table("projects__employees")
+          qb: (qb, fromIds) =>
+            qb
+              .table("projects__employees")
               .whereIn("employee_id", fromIds)
               .join("projects", "projects__employees.project_id", "projects.id")
               .select({
@@ -314,7 +307,10 @@ export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
 ## How Batch Loading Works
 
 <Frame>
-  <img src="/images/subsets/batch-loading-solution.png" alt="N+1 problem and Batch Loading solution" />
+  <img
+    src="/images/subsets/batch-loading-solution.png"
+    alt="N+1 problem and Batch Loading solution"
+  />
 </Frame>
 
 ### N+1 Problem
@@ -328,7 +324,7 @@ for (const user of users) {
     where: [["user_id", user.id]],
     subsetKey: "L",
   }); // N queries (one per user)
-  
+
   console.log(`${user.username}: ${posts.length} posts`);
 }
 
@@ -340,13 +336,13 @@ for (const user of users) {
 ```typescript
 // ✅ Solved with Batch Loading
 const users = await UserModel.findMany({
-  subsetKey: "A",  // A Subset includes posts Loader
+  subsetKey: "A", // A Subset includes posts Loader
 });
 
 // Query 1: SELECT * FROM users
 // Query 2: SELECT * FROM posts WHERE user_id IN (1, 2, 3, ...)
 
-users.forEach(user => {
+users.forEach((user) => {
   console.log(`${user.username}: ${user.posts.length} posts`);
 });
 
@@ -360,11 +356,11 @@ users.forEach(user => {
 ```typescript
 async getDepartmentWithEmployees(deptId: number) {
   const dept = await DepartmentModel.findById(deptId, ["P"]);
-  
+
   if (!dept) {
     throw new NotFoundException("Department not found");
   }
-  
+
   return {
     id: dept.id,
     name: dept.name,
@@ -384,23 +380,23 @@ async getDepartmentWithEmployees(deptId: number) {
 ```typescript
 async getProjectDashboard(projectId: number) {
   const project = await ProjectModel.findById(projectId, ["Dashboard"]);
-  
+
   if (!project) {
     throw new NotFoundException("Project not found");
   }
-  
+
   return {
     id: project.id,
     name: project.name,
     status: project.status,
-    
+
     // Members from LoaderQuery
     members: project.members.map(m => ({
       id: m.id,
       name: m.username,
       role: m.role,
     })),
-    
+
     // Tasks from LoaderQuery
     tasks: project.tasks.map(t => ({
       id: t.id,
@@ -408,7 +404,7 @@ async getProjectDashboard(projectId: number) {
       status: t.status,
       assignee: t.assignee_name,
     })),
-    
+
     stats: {
       memberCount: project.members.length,
       taskCount: project.tasks.length,
@@ -430,17 +426,17 @@ const summary = {
     username: user.username,
     email: user.email,
   },
-  
+
   activity: {
     totalPosts: user.posts.length,
-    recentPosts: user.posts.slice(0, 5).map(p => ({
+    recentPosts: user.posts.slice(0, 5).map((p) => ({
       id: p.id,
       title: p.title,
       createdAt: p.created_at,
     })),
-    
+
     totalComments: user.comments.length,
-    recentComments: user.comments.slice(0, 5).map(c => ({
+    recentComments: user.comments.slice(0, 5).map((c) => ({
       id: c.id,
       content: c.content,
       postTitle: c.post_title,
@@ -459,7 +455,7 @@ const summary = {
 {
   as: "employees",
   refId: "department_id",
-  qb: (qb, fromIds) => 
+  qb: (qb, fromIds) =>
     qb.table("employees")
       .whereIn("department_id", fromIds)
       .selectAll(),  // All fields (including password, etc.)
@@ -469,7 +465,7 @@ const summary = {
 {
   as: "employees",
   refId: "department_id",
-  qb: (qb, fromIds) => 
+  qb: (qb, fromIds) =>
     qb.table("employees")
       .whereIn("department_id", fromIds)
       .select({
@@ -487,7 +483,7 @@ const summary = {
 {
   as: "recentPosts",
   refId: "user_id",
-  qb: (qb, fromIds) => 
+  qb: (qb, fromIds) =>
     qb.table("posts")
       .whereIn("user_id", fromIds)
       .orderBy("created_at", "desc")
@@ -502,7 +498,7 @@ const summary = {
 {
   as: "completedProjects",
   refId: "employee_id",
-  qb: (qb, fromIds) => 
+  qb: (qb, fromIds) =>
     qb.table("projects__employees")
       .whereIn("employee_id", fromIds)
       .join("projects", "projects__employees.project_id", "projects.id")

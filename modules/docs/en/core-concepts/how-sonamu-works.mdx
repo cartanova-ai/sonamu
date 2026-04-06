@@ -15,11 +15,13 @@ All development starts with **entity definition**. Define the data structure fir
 </Step>
 
 <Step title="2. Type Safety">
-**Complete type safety** is guaranteed from backend to frontend. Errors can be caught at compile time.
+  **Complete type safety** is guaranteed from backend to frontend. Errors can be caught at compile
+  time.
 </Step>
 
 <Step title="3. Code Generation">
-Repetitive boilerplate code is **automatically generated**. Developers can focus only on business logic.
+  Repetitive boilerplate code is **automatically generated**. Developers can focus only on business
+  logic.
 </Step>
 
 <Step title="4. Developer Experience">
@@ -39,7 +41,7 @@ graph TD
     D["💼 Business Logic<br/><br/>Model (.model.ts)<br/>• CRUD methods<br/>• Custom logic<br/>• @api decorator"] --> E
     E["🔌 API Layer<br/><br/>Fastify Server<br/>• REST API<br/>• Auto validation (Zod)<br/>• Error handling"] --> F
     F["⚛️ Frontend Integration<br/><br/>Service (Web/App)<br/>• Type-safe API Client<br/>• Axios / TanStack Query<br/>• React Components"]
-    
+
     style A fill:#e3f2fd
     style B fill:#fff3e0
     style C fill:#f3e5f5
@@ -82,11 +84,8 @@ graph TD
 ```
 
 <Check>
-**Role of Entity Definition**
-- Source of database schema
-- Basis for TypeScript type generation
-- Definition of API interfaces
-- Standard for frontend types
+  **Role of Entity Definition** - Source of database schema - Basis for TypeScript type generation -
+  Definition of API interfaces - Standard for frontend types
 </Check>
 
 ### 2. Type System
@@ -104,11 +103,12 @@ export type User = z.infer<typeof UserBaseSchema>;
 
 // Custom types (can be written directly)
 export const UserSaveParams = UserBaseSchema.partial({
-  id: true,
-  created_at: true,
+id: true,
+created_at: true,
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
-```
+
+````
 
 ```typescript title="sonamu.generated.ts (all Base schemas)"
 // Auto-generated - do not modify!
@@ -126,7 +126,7 @@ export type UserSubsetMapping = {
   A: User;
   C: Pick<User, "id" | "email" | "name">;
 };
-```
+````
 
 ```typescript title="sonamu.generated.sso.ts (query definitions)"
 // Auto-generated - do not modify!
@@ -135,13 +135,13 @@ export const userSubsetQueries = {
   C: `SELECT id, email, name FROM users`,
 };
 ```
+
 </CodeGroup>
 
 <Note>
-**Three Type Files**
-1. `{entity}.types.ts` - Per-entity types (extensible)
-2. `sonamu.generated.ts` - All Base schemas (auto-generated)
-3. `sonamu.generated.sso.ts` - Subset queries (auto-generated)
+  **Three Type Files** 1. `{entity}.types.ts` - Per-entity types (extensible) 2.
+  `sonamu.generated.ts` - All Base schemas (auto-generated) 3. `sonamu.generated.sso.ts` - Subset
+  queries (auto-generated)
 </Note>
 
 ### 3. Model (Business Logic)
@@ -164,10 +164,7 @@ class UserModelClass extends BaseModelClass<
 
   // CRUD API
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     const user = await this.db().where("id", id).first();
     return user;
   }
@@ -190,19 +187,16 @@ export const UserModel = new UserModelClass();
 ```
 
 <Check>
-**Model Features**
-- **Auto REST API generation** with `@api` decorator
-- **Basic CRUD methods** provided by inheriting `BaseModelClass`
-- Type-safe DB queries with **Puri query builder**
-- Focus only on **business logic**
+  **Model Features** - **Auto REST API generation** with `@api` decorator - **Basic CRUD methods**
+  provided by inheriting `BaseModelClass` - Type-safe DB queries with **Puri query builder** - Focus
+  only on **business logic**
 </Check>
 
 ### 4. Syncer (Synchronization System)
 
 **Syncer** is Sonamu's core engine. It detects file changes and automatically generates code.
 
-<Frame caption="📸 Needed: Syncer operation flowchart (file change detection → code generation → synchronization)">
-</Frame>
+<Frame caption="📸 Needed: Syncer operation flowchart (file change detection → code generation → synchronization)"></Frame>
 
 ```typescript
 // Main roles of Syncer
@@ -228,9 +222,8 @@ export const UserModel = new UserModelClass();
 ```
 
 <Info>
-**When Syncer Runs**
-- **Auto**: During file changes while `pnpm dev` is running (HMR)
-- **Manual**: When `pnpm sync` command is executed
+  **When Syncer Runs** - **Auto**: During file changes while `pnpm dev` is running (HMR) -
+  **Manual**: When `pnpm sync` command is executed
 </Info>
 
 ### 5. API Layer (REST API)
@@ -262,12 +255,8 @@ curl http://localhost:34900/api/users/1?subset=A
 ```
 
 <Check>
-**What's Auto-Generated**
-- ✅ REST API routes
-- ✅ Request parameter validation (Zod)
-- ✅ Response types
-- ✅ Error handling
-- ✅ API documentation (sonamu.generated.http)
+  **What's Auto-Generated** - ✅ REST API routes - ✅ Request parameter validation (Zod) - ✅
+  Response types - ✅ Error handling - ✅ API documentation (sonamu.generated.http)
 </Check>
 
 ### 6. Frontend Service (Frontend Integration)
@@ -283,10 +272,7 @@ export class UserService {
     return res.data;
   }
 
-  static async changePassword(
-    userId: number,
-    newPassword: string,
-  ): Promise<void> {
+  static async changePassword(userId: number, newPassword: string): Promise<void> {
     await axios.post("/api/users/changePassword", {
       userId,
       newPassword,
@@ -296,8 +282,8 @@ export class UserService {
 ```
 
 <Check>
-**Type Safety**
-Backend types are synchronized directly to the frontend, so type mismatch errors can be caught at **compile time**!
+  **Type Safety** Backend types are synchronized directly to the frontend, so type mismatch errors
+  can be caught at **compile time**!
 </Check>
 
 ## Development Flow
@@ -321,14 +307,8 @@ Let's see how Sonamu works during actual development:
 </Step>
 
 <Step title="2. Migration (Migration tab)">
-```sql
-CREATE TABLE posts (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL
-);
-```
-**On execution:**
-- Table created in database
+  ```sql CREATE TABLE posts ( id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL ); ``` **On
+  execution:** - Table created in database
 </Step>
 
 <Step title="3. Write Model (manual or scaffolding)">
@@ -356,8 +336,7 @@ console.log(post.invalid); // ❌ Compile error!
 </Step>
 </Steps>
 
-<Frame caption="🎬 Needed: Animation or video showing the above 4-step flow">
-</Frame>
+<Frame caption="🎬 Needed: Animation or video showing the above 4-step flow"></Frame>
 
 ## HMR (Hot Module Replacement)
 
@@ -382,14 +361,12 @@ graceful shutdown → reload
 ```
 
 <Check>
-**Benefits of HMR**
-- ✅ **Fast feedback** - Reflected within 1-2 seconds after code change
-- ✅ **State preservation** - Database connections, etc. maintained
-- ✅ **Auto sync** - Frontend Service auto-updated
+  **Benefits of HMR** - ✅ **Fast feedback** - Reflected within 1-2 seconds after code change - ✅
+  **State preservation** - Database connections, etc. maintained - ✅ **Auto sync** - Frontend
+  Service auto-updated
 </Check>
 
-<Frame caption="📸 Needed: Terminal logs showing HMR in action (file change → invalidate → restart)">
-</Frame>
+<Frame caption="📸 Needed: Terminal logs showing HMR in action (file change → invalidate → restart)"></Frame>
 
 ## Auto Generation Mechanism
 
@@ -436,6 +413,7 @@ Auto-synced:
 - `sonamu.generated.sso.ts` - Overwritten on next sync
 
 These files are always auto-generated, so don't modify them directly!
+
 </Warning>
 
 ## Type Safety Flow
@@ -493,6 +471,7 @@ console.log(user.invalid); // ❌ Compile error!
 4. Service → UI type checking
 
 When types change at any stage, it's reflected across the entire chain and errors are caught at compile time!
+
 </Check>
 
 ## Key Advantages of Sonamu
@@ -522,7 +501,7 @@ Sonamu approach:
 
 ```typescript
 // ❌ Traditional approach: runtime error
-const user = await fetch("/api/users/1").then(r => r.json());
+const user = await fetch("/api/users/1").then((r) => r.json());
 console.log(user.eamil); // Typo! Only discovered at runtime ⚠️
 
 // ✅ Sonamu: compile error
@@ -577,7 +556,7 @@ Sonamu's powerful features come with some constraints:
 2. **Cannot modify auto-generated files**: Manual modifications get overwritten
 3. **Entity-centric design required**: Must follow the Sonamu way
 4. **Complex queries**: Very complex cases may require Raw SQL
-</Warning>
+   </Warning>
 
 <Check>
 **But the advantages far outweigh**
@@ -587,6 +566,7 @@ Sonamu's powerful features come with some constraints:
 ✅ Improved maintainability
 ✅ Code consistency
 ✅ Team productivity improvement
+
 </Check>
 
 ## Next Steps
@@ -600,7 +580,11 @@ Now that you understand how Sonamu works, learn about each component in detail:
   <Card title="Understanding Models" icon="code" href="/en/core-concepts/model/what-is-model">
     Learn the role of Models and how to write business logic.
   </Card>
-  <Card title="Auto Generation Mechanism" icon="wand-magic-sparkles" href="/en/core-concepts/auto-generation/what-gets-generated">
+  <Card
+    title="Auto Generation Mechanism"
+    icon="wand-magic-sparkles"
+    href="/en/core-concepts/auto-generation/what-gets-generated"
+  >
     Learn which files are automatically generated.
   </Card>
   <Card title="Type System" icon="shield" href="/en/core-concepts/type-system/entity-types">

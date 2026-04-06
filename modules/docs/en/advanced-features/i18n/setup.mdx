@@ -16,16 +16,16 @@ export default defineConfig({
   // ... other settings
 
   i18n: {
-    defaultLocale: "ko",           // Default language
+    defaultLocale: "ko", // Default language
     supportedLocales: ["ko", "en"], // List of supported languages
   },
 });
 ```
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `defaultLocale` | `string` | Default language code (fallback) |
-| `supportedLocales` | `string[]` | All supported language codes |
+| Option             | Type       | Description                      |
+| ------------------ | ---------- | -------------------------------- |
+| `defaultLocale`    | `string`   | Default language code (fallback) |
+| `supportedLocales` | `string[]` | All supported language codes     |
 
 ## Directory Structure
 
@@ -74,11 +74,10 @@ export default {
 ```
 
 <Tip>
-**Recommended key naming pattern**: Using namespace patterns like `"domain.item"` helps organize keys systematically and makes IDE autocomplete more convenient.
-- `"common.*"` - Common UI
-- `"error.*"` - Error messages
-- `"validation.*"` - Validation messages
-- `"entity.*"` - Entity related
+  **Recommended key naming pattern**: Using namespace patterns like `"domain.item"` helps organize
+  keys systematically and makes IDE autocomplete more convenient. - `"common.*"` - Common UI -
+  `"error.*"` - Error messages - `"validation.*"` - Validation messages - `"entity.*"` - Entity
+  related
 </Tip>
 
 ### Other Locale Dictionary (en.ts)
@@ -109,7 +108,8 @@ export default defineLocale({
 ```
 
 <Note>
-`defineLocale` is exported from `sd.generated.ts` and provides type checking based on the keys from defaultLocale.
+  `defineLocale` is exported from `sd.generated.ts` and provides type checking based on the keys
+  from defaultLocale.
 </Note>
 
 ## Locale Configuration
@@ -150,9 +150,10 @@ import { Sonamu } from "sonamu";
 
 export async function localeMiddleware(request: FastifyRequest) {
   // Extract locale from Accept-Language header or query parameter
-  const locale = request.headers["accept-language"]?.split(",")[0]?.split("-")[0]
-    || request.query.locale
-    || "ko";
+  const locale =
+    request.headers["accept-language"]?.split(",")[0]?.split("-")[0] ||
+    request.query.locale ||
+    "ko";
 
   // Set locale in Context
   const ctx = Sonamu.getContext();
@@ -161,7 +162,10 @@ export async function localeMiddleware(request: FastifyRequest) {
 ```
 
 <Note>
-When the client calls `setLocale()`, the axios interceptor automatically sends the `Accept-Language` header, and the server's locale middleware reads it so that `SD()` calls return translations in the correct language. Client-server locale synchronization works without any additional configuration.
+  When the client calls `setLocale()`, the axios interceptor automatically sends the
+  `Accept-Language` header, and the server's locale middleware reads it so that `SD()` calls return
+  translations in the correct language. Client-server locale synchronization works without any
+  additional configuration.
 </Note>
 
 ## Verifying Initialization
@@ -174,6 +178,7 @@ pnpm sync
 ```
 
 The generated `sd.generated.ts` includes:
+
 - Labels extracted from Entity (`entityLabels`)
 - `SD()` function
 - `localizedColumn()` function

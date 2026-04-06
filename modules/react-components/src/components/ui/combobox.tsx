@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useSonamuBaseContext } from "@/contexts";
 import CheckIcon from "~icons/lucide/check";
 import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
 import XCircleIcon from "~icons/lucide/x-circle";
+
+import { useSonamuBaseContext } from "@/contexts";
+
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import {
@@ -62,7 +64,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
     const finalSearchPlaceholder = searchPlaceholder ?? SD("common.searchPlaceholder");
     const finalEmptyText = emptyText ?? SD("rc.combobox.noResults");
 
-    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
+    // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleSelect = (currentValue: string) => {

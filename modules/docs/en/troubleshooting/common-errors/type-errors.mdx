@@ -1,6 +1,6 @@
 ---
-title: 'Type Errors'
-description: 'Resolving type errors'
+title: "Type Errors"
+description: "Resolving type errors"
 ---
 
 This covers common TypeScript type-related errors in Sonamu and how to resolve them.
@@ -11,7 +11,8 @@ This covers common TypeScript type-related errors in Sonamu and how to resolve t
 
 ```typescript
 class UserModelClass extends BaseModelClass {
-  async delete(id: number) {  // ❌
+  async delete(id: number) {
+    // ❌
     // delete is a JavaScript reserved keyword
   }
 }
@@ -54,18 +55,80 @@ async getReturn() { }
 
 ```typescript
 const RESERVED_KEYWORDS = [
-  "break", "case", "catch", "class", "const", "continue", "debugger",
-  "default", "delete", "do", "else", "enum", "export", "extends",
-  "false", "finally", "for", "function", "if", "import", "in",
-  "instanceof", "new", "null", "return", "super", "switch",
-  "this", "throw", "true", "try", "typeof", "var", "void",
-  "while", "with", "yield", "let", "static", "implements",
-  "interface", "package", "private", "protected", "public",
-  "await", "abstract", "as", "asserts", "any", "async",
-  "boolean", "constructor", "declare", "get", "infer", "is",
-  "keyof", "module", "namespace", "never", "readonly", "require",
-  "number", "object", "set", "string", "symbol", "type",
-  "undefined", "unique", "unknown", "from", "of"
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "new",
+  "null",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+  "let",
+  "static",
+  "implements",
+  "interface",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "await",
+  "abstract",
+  "as",
+  "asserts",
+  "any",
+  "async",
+  "boolean",
+  "constructor",
+  "declare",
+  "get",
+  "infer",
+  "is",
+  "keyof",
+  "module",
+  "namespace",
+  "never",
+  "readonly",
+  "require",
+  "number",
+  "object",
+  "set",
+  "string",
+  "symbol",
+  "type",
+  "undefined",
+  "unique",
+  "unknown",
+  "from",
+  "of",
 ];
 ```
 
@@ -95,6 +158,7 @@ pnpm sonamu sync
 #### 2. Restart TypeScript Server
 
 **VSCode:**
+
 ```
 Command Palette (Cmd+Shift+P)
 > TypeScript: Restart TS Server
@@ -170,7 +234,8 @@ pnpm sonamu sync
 type OrderStatus = "pending" | "processing" | "completed";
 
 class OrderModelClass extends BaseModelClass {
-  async updateStatus(id: number, status: string) {  // ❌
+  async updateStatus(id: number, status: string) {
+    // ❌
     // status should be OrderStatus
   }
 }
@@ -186,11 +251,9 @@ Specify explicit type:
 type OrderStatus = "pending" | "processing" | "completed";
 
 class OrderModelClass extends BaseModelClass {
-  async updateStatus(id: number, status: OrderStatus) {  // ✅
-    return this.updateOne(
-      { id },
-      { status }
-    );
+  async updateStatus(id: number, status: OrderStatus) {
+    // ✅
+    return this.updateOne({ id }, { status });
   }
 }
 ```
@@ -253,7 +316,7 @@ type WithTimestamps = {
 type User = {
   id: number;
   email: string;
-} & WithTimestamps;  // Intersection type
+} & WithTimestamps; // Intersection type
 
 // Type displayed complexly
 ```
@@ -267,7 +330,7 @@ From Sonamu 0.7.29+, intersection/union types are automatically wrapped with par
 type User = {
   id: number;
   email: string;
-} & (WithTimestamps);  // Parentheses added for clarity
+} & WithTimestamps; // Parentheses added for clarity
 ```
 
 Re-run sync after update:
@@ -310,7 +373,7 @@ Sonamu automatically handles backslash escaping:
 Generated Zod schema:
 
 ```typescript
-z.literal(`user:$\{string}`)  // Properly escaped
+z.literal(`user:$\{string}`); // Properly escaped
 ```
 
 ## Circular Reference Type Error
@@ -422,12 +485,13 @@ async uploadFile() {
 ### Symptoms
 
 ```typescript
-function isUser(value: any): boolean {  // ❌
+function isUser(value: any): boolean {
+  // ❌
   return value && typeof value.id === "number";
 }
 
 if (isUser(data)) {
-  console.log(data.email);  // Error: Property 'email' does not exist
+  console.log(data.email); // Error: Property 'email' does not exist
 }
 ```
 
@@ -440,16 +504,13 @@ Type guard function doesn't perform type narrowing.
 Use type predicate:
 
 ```typescript
-function isUser(value: any): value is User {  // ✅
-  return (
-    value &&
-    typeof value.id === "number" &&
-    typeof value.email === "string"
-  );
+function isUser(value: any): value is User {
+  // ✅
+  return value && typeof value.id === "number" && typeof value.email === "string";
 }
 
 if (isUser(data)) {
-  console.log(data.email);  // ✅ Type safe
+  console.log(data.email); // ✅ Type safe
 }
 ```
 
@@ -460,7 +521,7 @@ if (isUser(data)) {
 ```typescript
 async function fetchData<T>(url: string): Promise<T> {
   const response = await fetch(url);
-  return response.json();  // Type: any
+  return response.json(); // Type: any
 }
 
 const users = await fetchData("/api/users");
@@ -479,10 +540,7 @@ const users = await fetchData<User[]>("/api/users");
 Or type validation:
 
 ```typescript
-async function fetchData<T>(
-  url: string,
-  validator: (data: unknown) => data is T
-): Promise<T> {
+async function fetchData<T>(url: string, validator: (data: unknown) => data is T): Promise<T> {
   const response = await fetch(url);
   const data = await response.json();
 

@@ -1,6 +1,7 @@
 import type { EnhancerMap, RequiredEnhancerKeys } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expectTypeOf, vi } from "vitest";
+
 import type {
   ProjectSubsetA,
   ProjectSubsetKey,

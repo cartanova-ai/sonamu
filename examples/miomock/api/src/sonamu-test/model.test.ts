@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { asArray, objToMap } from "../../../../../modules/sonamu/dist/utils/model";
 
 describe("model", () => {

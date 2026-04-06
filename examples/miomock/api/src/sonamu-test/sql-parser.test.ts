@@ -1,6 +1,7 @@
 import type { ColumnRef } from "node-sql-parser";
 import { Parser } from "node-sql-parser";
 import { describe, expect, test } from "vitest";
+
 import {
   getJoinTables,
   getTableName,
@@ -32,7 +33,7 @@ describe("sql-parser", () => {
         table: {
           type: "default",
           value: "posts",
-          // biome-ignore lint/suspicious/noExplicitAny: node-sql-parser의 ColumnRef.table 타입 정의가 불완전함 (실제로는 객체도 가능함)
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- node-sql-parser의 ColumnRef.table 타입 정의가 불완전함 (실제로는 객체도 가능함)
         } as any,
         column: "title",
       };

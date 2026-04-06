@@ -10,6 +10,7 @@ Sonamu provides powerful caching capabilities based on [BentoCache](https://bent
 BentoCache is a TypeScript cache library that supports multi-tier caching.
 
 **Key Features**:
+
 - **L1/L2 Layers**: Memory (fast) + Persistent storage (slower but shareable)
 - **Various Drivers**: Memory, Redis, File, Knex support
 - **Bus System**: Distributed cache invalidation
@@ -31,8 +32,7 @@ export const config: SonamuConfig = {
     cache: {
       default: "main",
       stores: {
-        main: store()
-          .useL1Layer(drivers.memory({ maxSize: "100mb" }))
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
       },
     },
   },
@@ -40,6 +40,7 @@ export const config: SonamuConfig = {
 ```
 
 **Required Fields**:
+
 - `default`: Name of the default store to use
 - `stores`: Store configuration object (at least 1 required)
 
@@ -49,24 +50,19 @@ Sonamu provides 5 types of drivers:
 
 <CardGroup cols={2}>
   <Card title="memory" icon="microchip">
-    Memory-based cache
-    (Fast but cleared on process restart)
+    Memory-based cache (Fast but cleared on process restart)
   </Card>
   <Card title="redis" icon="database">
-    Redis-based cache
-    (Shareable across multiple processes)
+    Redis-based cache (Shareable across multiple processes)
   </Card>
   <Card title="file" icon="file">
-    File system-based cache
-    (Persistent storage)
+    File system-based cache (Persistent storage)
   </Card>
   <Card title="knex" icon="table">
-    Database-based cache
-    (Uses existing DB)
+    Database-based cache (Uses existing DB)
   </Card>
   <Card title="redisBus" icon="tower-broadcast">
-    Distributed cache invalidation bus
-    (Synchronization across multiple servers)
+    Distributed cache invalidation bus (Synchronization across multiple servers)
   </Card>
 </CardGroup>
 
@@ -91,13 +87,16 @@ redisDriver({ connection: {...} });
 L1 is stored in local memory and is **the fastest**.
 
 ```typescript
-store().useL1Layer(drivers.memory({
-  maxSize: "100mb",  // Maximum size
-  maxItems: 1000,    // Maximum number of items
-}))
+store().useL1Layer(
+  drivers.memory({
+    maxSize: "100mb", // Maximum size
+    maxItems: 1000, // Maximum number of items
+  }),
+);
 ```
 
 **Characteristics**:
+
 - Valid only within the process
 - Cleared on server restart
 - No network I/O (fastest)
@@ -126,6 +125,7 @@ L2 is **shareable storage** across multiple processes/servers.
     - Share cache across multiple servers
     - Persistent storage (retained after restart)
     - Fast network access
+
   </Tab>
 
   <Tab title="File" icon="file">
@@ -143,6 +143,7 @@ L2 is **shareable storage** across multiple processes/servers.
     **File Disadvantages**:
     - Difficult to share across servers
     - Relatively slow
+
   </Tab>
 
   <Tab title="Knex (DB)" icon="table">
@@ -164,6 +165,7 @@ L2 is **shareable storage** across multiple processes/servers.
     **Knex Disadvantages**:
     - May increase DB load
     - Relatively slow
+
   </Tab>
 </Tabs>
 
@@ -179,16 +181,18 @@ const redis = new Redis({ host: "localhost", port: 6379 });
 store()
   .useL1Layer(drivers.memory({ maxSize: "100mb" }))
   .useL2Layer(drivers.redis({ connection: redis }))
-  .useBus(drivers.redisBus({ connection: redis }))
+  .useBus(drivers.redisBus({ connection: redis }));
 ```
 
 **Without Bus**:
+
 ```
 Server 1: deleteByTag("product") → L1/L2 deleted
 Server 2: Still using stale cache ❌
 ```
 
 **With Bus**:
+
 ```
 Server 1: deleteByTag("product") → L1/L2 deleted + Bus notification
 Server 2: Receives Bus message → L1 deleted ✅
@@ -202,11 +206,10 @@ You can use multiple stores for different purposes:
 export const config: SonamuConfig = {
   server: {
     cache: {
-      default: "api",  // Default store
+      default: "api", // Default store
       stores: {
         // API response caching (short TTL, memory only)
-        api: store()
-          .useL1Layer(drivers.memory({ maxSize: "200mb" })),
+        api: store().useL1Layer(drivers.memory({ maxSize: "200mb" })),
 
         // Database query caching (long TTL, Redis shared)
         database: store()
@@ -243,13 +246,13 @@ class UserModelClass extends BaseModelClass {
   @cache({ store: "database", ttl: "1h" })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Use config store
   @cache({ store: "config", ttl: "forever" })
   async getSettings() {
-    return this.findOne(['key', 'settings']);
+    return this.findOne(["key", "settings"]);
   }
 }
 ```
@@ -268,7 +271,7 @@ export const config: SonamuConfig = {
           drivers.memory({
             maxSize: "500mb",
             maxItems: 10000,
-          })
+          }),
         ),
       },
     },
@@ -277,6 +280,7 @@ export const config: SonamuConfig = {
 ```
 
 **Suitable Cases**:
+
 - Single server operation
 - Fast cache regeneration
 - Infrequent server restarts
@@ -308,6 +312,7 @@ export const config: SonamuConfig = {
 ```
 
 **Suitable Cases**:
+
 - Load balancer + multiple servers
 - Need to share cache across servers
 - Maintain cache after server restart
@@ -317,7 +322,9 @@ export const config: SonamuConfig = {
 ```typescript
 import Redis from "ioredis";
 
-const redis = new Redis({ /* ... */ });
+const redis = new Redis({
+  /* ... */
+});
 
 export const config: SonamuConfig = {
   server: {
@@ -325,8 +332,7 @@ export const config: SonamuConfig = {
       default: "main",
       stores: {
         // Fast lookup (API responses)
-        main: store()
-          .useL1Layer(drivers.memory({ maxSize: "300mb" })),
+        main: store().useL1Layer(drivers.memory({ maxSize: "300mb" })),
 
         // Sharing required (user sessions)
         shared: store()
@@ -350,10 +356,10 @@ export const config: SonamuConfig = {
 
 ```typescript
 drivers.memory({
-  maxSize: "100mb",     // Maximum size (string or bytes)
-  maxItems: 1000,       // Maximum number of items
-  maxItemSize: "10mb",  // Maximum size per item
-})
+  maxSize: "100mb", // Maximum size (string or bytes)
+  maxItems: 1000, // Maximum number of items
+  maxItemSize: "10mb", // Maximum size per item
+});
 ```
 
 **Size Units**: `"10kb"`, `"5mb"`, `"1gb"` or bytes (`1024`)
@@ -372,17 +378,17 @@ const redis = new Redis({
 
 drivers.redis({
   connection: redis,
-  keyPrefix: "cache:",  // Key prefix (optional)
-})
+  keyPrefix: "cache:", // Key prefix (optional)
+});
 ```
 
 ### File Driver
 
 ```typescript
 drivers.file({
-  directory: ".cache",  // Storage directory
-  prefix: "sonamu",     // Filename prefix (optional)
-})
+  directory: ".cache", // Storage directory
+  prefix: "sonamu", // Filename prefix (optional)
+});
 ```
 
 ### Knex Driver
@@ -392,11 +398,12 @@ import { DB } from "sonamu";
 
 drivers.knex({
   connection: DB.getDB("w"),
-  tableName: "cache_items",  // Table name (default)
-})
+  tableName: "cache_items", // Table name (default)
+});
 ```
 
 **Table Schema** (auto-created):
+
 ```sql
 CREATE TABLE cache_items (
   key TEXT PRIMARY KEY,
@@ -410,8 +417,8 @@ CREATE TABLE cache_items (
 ```typescript
 drivers.redisBus({
   connection: redis,
-  channelPrefix: "cache:",  // Channel prefix (optional)
-})
+  channelPrefix: "cache:", // Channel prefix (optional)
+});
 ```
 
 ## Test Environment
@@ -432,6 +439,7 @@ test("cache test", async () => {
 ```
 
 **Internal Implementation**:
+
 ```typescript
 // sonamu/src/api/sonamu.ts
 private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {
@@ -450,15 +458,17 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
 **Cache Configuration Cautions**:
 
 1. **Memory Limits**: Setting `maxSize` too large can cause OOM (Out of Memory)
+
    ```typescript
    // ❌ Bad example
-   drivers.memory({ maxSize: "10gb" })  // Larger than server memory
+   drivers.memory({ maxSize: "10gb" }); // Larger than server memory
 
    // ✅ Good example
-   drivers.memory({ maxSize: "500mb" })  // Appropriate size
+   drivers.memory({ maxSize: "500mb" }); // Appropriate size
    ```
 
 2. **Redis Connection Sharing**: Use the **same instance** for driver and bus
+
    ```typescript
    // ✅ Good example
    const redis = new Redis({...});
@@ -468,6 +478,7 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
    ```
 
 3. **Store Name Matching**: The `store` option in decorators must match names defined in configuration
+
    ```typescript
    // sonamu.config.ts
    stores: {
@@ -482,20 +493,22 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
    ```
 
 4. **Using L2 Without Bus**: If multiple servers use only L2 (Redis), L1 won't be synchronized
+
    ```typescript
    // ❌ Risky: L1 inconsistency possible between servers
    store()
      .useL1Layer(drivers.memory({ maxSize: "100mb" }))
-     .useL2Layer(drivers.redis({ connection: redis }))
+     .useL2Layer(drivers.redis({ connection: redis }));
    // No Bus → L1 on other servers remains unchanged during invalidation
 
    // ✅ Safe: L1 synchronized via Bus
    store()
      .useL1Layer(drivers.memory({ maxSize: "100mb" }))
      .useL2Layer(drivers.redis({ connection: redis }))
-     .useBus(drivers.redisBus({ connection: redis }))
+     .useBus(drivers.redisBus({ connection: redis }));
    ```
-</Warning>
+
+   </Warning>
 
 ## Next Steps
 
@@ -503,7 +516,11 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
   <Card title="@cache Decorator" icon="at" href="/en/advanced-features/caching/cache-decorator">
     Apply caching to methods
   </Card>
-  <Card title="Cache Invalidation" icon="trash" href="/en/advanced-features/caching/cache-invalidation">
+  <Card
+    title="Cache Invalidation"
+    icon="trash"
+    href="/en/advanced-features/caching/cache-invalidation"
+  >
     Tag-based cache invalidation
   </Card>
   <Card title="Cache Strategies" icon="chess" href="/en/advanced-features/caching/cache-strategies">

@@ -1,4 +1,5 @@
 import type { BetterAuthOptions } from "better-auth";
+
 import type { EntityJson } from "../types/types";
 
 /**

@@ -11,8 +11,8 @@ description: "Sonamu UI로 첫 번째 엔티티를 생성하고 API 만들기"
 - API 서버가 http://localhost:34900 에서 실행 중이어야 합니다.
 
 <Tip>
-  API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:34900/sonamu-ui
-  에서 자동으로 제공됩니다.
+  API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:34900/sonamu-ui 에서 자동으로
+  제공됩니다.
 </Tip>
 
 ## 1단계: Sonamu UI 접속
@@ -167,9 +167,8 @@ Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭하여 현재 존재하는
 </Frame>
 
 <Note>
-  Subset은 API에서 데이터를 조회할 때 어떤 프롭들을 포함할지 미리 정의하는
-  기능입니다. 자세한 내용은 [Subset
-  가이드](/ko/database/subsets/what-are-subsets)를 참고하세요.
+  Subset은 API에서 데이터를 조회할 때 어떤 프롭들을 포함할지 미리 정의하는 기능입니다. 자세한 내용은
+  [Subset 가이드](/ko/database/subsets/what-are-subsets)를 참고하세요.
 </Note>
 
 </Step>
@@ -331,8 +330,8 @@ pnpm sonamu scaffold model_test Post
 </Frame>
 
 <Info>
-  생성된 Model 파일은 기본적인 CRUD API를 포함하고 있습니다. 필요에 따라
-  비즈니스 로직을 추가하거나 수정할 수 있습니다.
+  생성된 Model 파일은 기본적인 CRUD API를 포함하고 있습니다. 필요에 따라 비즈니스 로직을 추가하거나
+  수정할 수 있습니다.
 </Info>
 
 API 서버가 HMR(Hot Module Replacement)로 자동 재시작됩니다:
@@ -432,13 +431,13 @@ http://localhost:34900/api/posts?subset=A 로 접속하여 JSON 응답을 확인
 <Warning>
   **스캐폴딩의 장점**
 
-  스캐폴딩을 사용하면:
+스캐폴딩을 사용하면:
 
-  - Model 파일을 직접 작성할 필요 없이 기본 CRUD API가 자동 생성됩니다
-  - 테스트 파일 템플릿도 함께 생성되어 테스트 작성이 쉬워집니다
-  - 프로젝트의 일관된 코드 스타일을 유지할 수 있습니다
-  - 생성된 코드는 언제든지 수정하여 비즈니스 로직을 추가할 수 있습니다
-</Warning>
+- Model 파일을 직접 작성할 필요 없이 기본 CRUD API가 자동 생성됩니다
+- 테스트 파일 템플릿도 함께 생성되어 테스트 작성이 쉬워집니다
+- 프로젝트의 일관된 코드 스타일을 유지할 수 있습니다
+- 생성된 코드는 언제든지 수정하여 비즈니스 로직을 추가할 수 있습니다
+  </Warning>
 
 ## 다음 단계
 
@@ -448,30 +447,15 @@ http://localhost:34900/api/posts?subset=A 로 접속하여 JSON 응답을 확인
     icon="diagram-project"
     href="/ko/getting-started/development-workflow"
   >
-    Sonamu의 전체 개발 워크플로우를 이해하고 효율적으로 작업하는 방법을
-    배워보세요.
+    Sonamu의 전체 개발 워크플로우를 이해하고 효율적으로 작업하는 방법을 배워보세요.
   </Card>
-  <Card
-    title="Relation 정의하기"
-    icon="link"
-    href="/ko/core-concepts/entity/relations"
-  >
+  <Card title="Relation 정의하기" icon="link" href="/ko/core-concepts/entity/relations">
     엔티티 간의 관계를 정의하고 JOIN 쿼리를 작성하는 방법을 알아보세요.
   </Card>
-  <Card
-    title="Puri 쿼리 빌더"
-    icon="database"
-    href="/ko/database/puri/basic-queries"
-  >
-    타입 안전한 쿼리 빌더로 복잡한 데이터베이스 쿼리를 작성하는 방법을
-    배워보세요.
+  <Card title="Puri 쿼리 빌더" icon="database" href="/ko/database/puri/basic-queries">
+    타입 안전한 쿼리 빌더로 복잡한 데이터베이스 쿼리를 작성하는 방법을 배워보세요.
   </Card>
-  <Card
-    title="테스트 작성하기"
-    icon="flask"
-    href="/ko/testing/writing-tests/test-structure"
-  >
-    자동 생성된 테스트 템플릿을 기반으로 Model의 비즈니스 로직을 테스트하는
-    방법을 알아보세요.
+  <Card title="테스트 작성하기" icon="flask" href="/ko/testing/writing-tests/test-structure">
+    자동 생성된 테스트 템플릿을 기반으로 Model의 비즈니스 로직을 테스트하는 방법을 알아보세요.
   </Card>
 </CardGroup>

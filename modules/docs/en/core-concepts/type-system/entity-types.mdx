@@ -49,15 +49,16 @@ type Post = {
 
 </CodeGroup>
 
-| Entity Type    | TypeScript Type | Description        |
-| -------------- | --------------- | ------------------ |
-| `integer`      | `number`        | 32bit integer      |
-| `integer[]`    | `number[]`      | Integer array      |
+| Entity Type    | TypeScript Type | Description                   |
+| -------------- | --------------- | ----------------------------- |
+| `integer`      | `number`        | 32bit integer                 |
+| `integer[]`    | `number[]`      | Integer array                 |
 | `bigInteger`   | `bigint`        | 64bit integer (large numbers) |
-| `bigInteger[]` | `bigint[]`      | Large integer array |
+| `bigInteger[]` | `bigint[]`      | Large integer array           |
 
 <Info>
-  **bigInteger vs integer**: `integer` is sufficient for IDs or counts, but use `bigInteger` for timestamps (milliseconds) or very large numbers.
+  **bigInteger vs integer**: `integer` is sufficient for IDs or counts, but use `bigInteger` for
+  timestamps (milliseconds) or very large numbers.
 </Info>
 
 ### String Types
@@ -83,13 +84,14 @@ type User = {
 
 </CodeGroup>
 
-| Entity Type | TypeScript Type | Description    |
-| ----------- | --------------- | -------------- |
-| `string`    | `string`        | String         |
-| `string[]`  | `string[]`      | String array   |
+| Entity Type | TypeScript Type | Description  |
+| ----------- | --------------- | ------------ |
+| `string`    | `string`        | String       |
+| `string[]`  | `string[]`      | String array |
 
 <Tip>
-  The `length` attribute doesn't affect TypeScript types, but is converted to `.max(length)` validation in Zod.
+  The `length` attribute doesn't affect TypeScript types, but is converted to `.max(length)`
+  validation in Zod.
 </Tip>
 
 ### Boolean Types
@@ -169,7 +171,8 @@ type Document = {
 </CodeGroup>
 
 <Info>
-  TypeScript doesn't have a dedicated UUID type, so it's represented as `string`. Format is validated with `.uuid()` in Zod validation.
+  TypeScript doesn't have a dedicated UUID type, so it's represented as `string`. Format is
+  validated with `.uuid()` in Zod validation.
 </Info>
 
 ## Numeric Precision Types
@@ -207,10 +210,10 @@ type Product = {
 
 </CodeGroup>
 
-| Entity Type | TypeScript Type | PostgreSQL Type                       | Use Case                 |
-| ----------- | --------------- | ------------------------------------- | ------------------------ |
+| Entity Type | TypeScript Type | PostgreSQL Type                       | Use Case                              |
+| ----------- | --------------- | ------------------------------------- | ------------------------------------- |
 | `number`    | `number`        | `real`, `double precision`, `numeric` | General calculations (floating point) |
-| `numeric`   | `string`        | `numeric`                             | Financial calculations (fixed point) |
+| `numeric`   | `string`        | `numeric`                             | Financial calculations (fixed point)  |
 
 <Warning>
 **Choosing number vs numeric**:
@@ -323,7 +326,8 @@ type Post = {
 </CodeGroup>
 
 <Info>
-  The `json` type references the Zod schema specified by `id`. This schema must be defined directly in `{entity}.types.ts`.
+  The `json` type references the Zod schema specified by `id`. This schema must be defined directly
+  in `{entity}.types.ts`.
 </Info>
 
 ## Virtual Type
@@ -481,7 +485,8 @@ type User = {
 </CodeGroup>
 
 <Info>
-  `HasMany` and `ManyToMany` are not included in base types. When you define a Subset, those types are included in the Subset type.
+  `HasMany` and `ManyToMany` are not included in base types. When you define a Subset, those types
+  are included in the Subset type.
 </Info>
 
 ## Nullable Handling
@@ -540,35 +545,35 @@ tags: (string | null)[]  // Define as custom type
 
 Mapping table of all Entity Prop types to TypeScript types.
 
-| Entity Type                | TypeScript Type | Notes                              |
-| -------------------------- | --------------- | ---------------------------------- |
-| `integer`                  | `number`        | 32bit integer                      |
-| `integer[]`                | `number[]`      | Integer array                      |
-| `bigInteger`               | `bigint`        | 64bit integer                      |
-| `bigInteger[]`             | `bigint[]`      | Large integer array                |
-| `string`                   | `string`        | String                             |
-| `string[]`                 | `string[]`      | String array                       |
-| `number`                   | `number`        | Floating point                     |
-| `number[]`                 | `number[]`      | Floating point array               |
-| `numeric`                  | `string`        | Fixed point (precision as string)  |
-| `numeric[]`                | `string[]`      | Fixed point array                  |
-| `boolean`                  | `boolean`       | Boolean                            |
-| `boolean[]`                | `boolean[]`     | Boolean array                      |
-| `date`                     | `Date`          | Date (string in JSON)              |
-| `date[]`                   | `Date[]`        | Date array                         |
-| `uuid`                     | `string`        | UUID string                        |
-| `uuid[]`                   | `string[]`      | UUID array                         |
-| `enum`                     | `EnumType`      | Union type                         |
-| `enum[]`                   | `EnumType[]`    | Union type array                   |
-| `json`                     | `CustomType`    | Custom object type                 |
-| `virtual`                  | `CustomType`    | Computed field                     |
-| `vector`                   | `number[]`      | Vector (pgvector)                  |
-| `vector[]`                 | `number[][]`    | Vector array                       |
-| `tsvector`                 | `string`        | Full-text search (PostgreSQL)      |
-| `BelongsToOne`             | `number`        | Foreign Key (FK)                   |
-| `OneToOne` (hasJoinColumn) | `number`        | Foreign Key (FK)                   |
-| `HasMany`                  | -               | Not in Base type                   |
-| `ManyToMany`               | -               | Not in Base type                   |
+| Entity Type                | TypeScript Type | Notes                             |
+| -------------------------- | --------------- | --------------------------------- |
+| `integer`                  | `number`        | 32bit integer                     |
+| `integer[]`                | `number[]`      | Integer array                     |
+| `bigInteger`               | `bigint`        | 64bit integer                     |
+| `bigInteger[]`             | `bigint[]`      | Large integer array               |
+| `string`                   | `string`        | String                            |
+| `string[]`                 | `string[]`      | String array                      |
+| `number`                   | `number`        | Floating point                    |
+| `number[]`                 | `number[]`      | Floating point array              |
+| `numeric`                  | `string`        | Fixed point (precision as string) |
+| `numeric[]`                | `string[]`      | Fixed point array                 |
+| `boolean`                  | `boolean`       | Boolean                           |
+| `boolean[]`                | `boolean[]`     | Boolean array                     |
+| `date`                     | `Date`          | Date (string in JSON)             |
+| `date[]`                   | `Date[]`        | Date array                        |
+| `uuid`                     | `string`        | UUID string                       |
+| `uuid[]`                   | `string[]`      | UUID array                        |
+| `enum`                     | `EnumType`      | Union type                        |
+| `enum[]`                   | `EnumType[]`    | Union type array                  |
+| `json`                     | `CustomType`    | Custom object type                |
+| `virtual`                  | `CustomType`    | Computed field                    |
+| `vector`                   | `number[]`      | Vector (pgvector)                 |
+| `vector[]`                 | `number[][]`    | Vector array                      |
+| `tsvector`                 | `string`        | Full-text search (PostgreSQL)     |
+| `BelongsToOne`             | `number`        | Foreign Key (FK)                  |
+| `OneToOne` (hasJoinColumn) | `number`        | Foreign Key (FK)                  |
+| `HasMany`                  | -               | Not in Base type                  |
+| `ManyToMany`               | -               | Not in Base type                  |
 
 ## Practical Example
 
@@ -663,18 +668,10 @@ export const User = z.object({
   >
     Runtime validation with Zod
   </Card>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/en/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/en/core-concepts/type-system/e2e-type-safety">
     End-to-end type safety
   </Card>
-  <Card
-    title="Field Types"
-    icon="list"
-    href="/en/core-concepts/entity/field-types"
-  >
+  <Card title="Field Types" icon="list" href="/en/core-concepts/entity/field-types">
     Complete Entity field type reference
   </Card>
 </CardGroup>

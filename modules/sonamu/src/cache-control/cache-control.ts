@@ -1,4 +1,5 @@
 import type { FastifyReply } from "fastify";
+
 import type { CacheControlConfig } from "./types.js";
 
 /**

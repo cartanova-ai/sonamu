@@ -10,6 +10,7 @@ import {
 } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import type { FastifyReply, FastifyRequest } from "fastify";
+
 import { isSameCategory } from "./category";
 
 export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {

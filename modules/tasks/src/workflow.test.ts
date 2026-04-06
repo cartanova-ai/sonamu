@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { defineWorkflow, defineWorkflowSpec } from "./workflow";
 
 describe("defineWorkflowSpec", () => {

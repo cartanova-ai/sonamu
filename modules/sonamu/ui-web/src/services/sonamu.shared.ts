@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: fetching 함수는 any사용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // fetching 함수는 any사용
 
 import axios, { type AxiosRequestConfig } from "axios";
 import type { ZodIssue } from "zod";

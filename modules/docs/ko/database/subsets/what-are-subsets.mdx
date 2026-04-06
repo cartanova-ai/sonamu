@@ -9,24 +9,16 @@ Subset은 Entity의 데이터를 다양한 형태로 조회하기 위한 **미�
 
 <CardGroup cols={2}>
   <Card title="유연한 조회" icon="table-cells">
-    상황에 맞는 데이터 형식
-    
-    A, P, SS 등
+    상황에 맞는 데이터 형식 A, P, SS 등
   </Card>
   <Card title="타입 안전성" icon="shield">
-    컴파일 타임 검증
-    
-    자동 타입 추론
+    컴파일 타임 검증 자동 타입 추론
   </Card>
   <Card title="관계 로딩" icon="link">
-    JOIN과 Loader 통합
-    
-    1:N, N:M 지원
+    JOIN과 Loader 통합 1:N, N:M 지원
   </Card>
   <Card title="성능 최적화" icon="gauge-high">
-    필요한 필드만 선택
-    
-    N+1 문제 해결
+    필요한 필드만 선택 N+1 문제 해결
   </Card>
 </CardGroup>
 
@@ -78,13 +70,13 @@ flowchart TD
     A[Subset] --> B[1. SubsetQuery<br/>필드 선택 + JOIN]
     A --> C[2. LoaderQuery<br/>1:N, N:M 로딩]
     A --> D[3. Hydrate<br/>Flat → 중첩 객체]
-    
+
     B --> E[기본 쿼리 실행]
     C --> F[관계 데이터 로딩]
     E --> D
     F --> D
     D --> G[최종 결과]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#fff9c4
@@ -116,8 +108,9 @@ const loaders = {
   employees: {
     as: "employees",
     refId: "department_id",
-    qb: (qb, fromIds) => 
-      qb.table("employees")
+    qb: (qb, fromIds) =>
+      qb
+        .table("employees")
         .whereIn("department_id", fromIds)
         .select({ id: "id", name: "username" }),
   },
@@ -164,7 +157,7 @@ flowchart LR
         name: Eng
       }
     }}"]
-    
+
     style A fill:#fff9c4
     style B fill:#e8f5e9
     style C fill:#e3f2fd
@@ -174,17 +167,15 @@ flowchart LR
 
 일반적인 Subset 이름 패턴:
 
-| Subset | 의미 | 사용 예시 |
-|--------|------|----------|
-| **A** | All (전체) | 관리자 페이지 상세 |
-| **P** | Profile (프로필) | 사용자 프로필 조회 |
-| **L** | List (목록) | 목록 API, 테이블 행 |
-| **SS** | Summary (요약) | 드롭다운, 간단한 정보 |
-| **C** | Card (카드) | 카드 UI 컴포넌트 |
+| Subset | 의미             | 사용 예시             |
+| ------ | ---------------- | --------------------- |
+| **A**  | All (전체)       | 관리자 페이지 상세    |
+| **P**  | Profile (프로필) | 사용자 프로필 조회    |
+| **L**  | List (목록)      | 목록 API, 테이블 행   |
+| **SS** | Summary (요약)   | 드롭다운, 간단한 정보 |
+| **C**  | Card (카드)      | 카드 UI 컴포넌트      |
 
-<Info>
-Subset 이름은 자유롭게 정의할 수 있습니다. 팀 내에서 일관된 규칙을 사용하세요.
-</Info>
+<Info>Subset 이름은 자유롭게 정의할 수 있습니다. 팀 내에서 일관된 규칙을 사용하세요.</Info>
 
 ## 실전 예제
 
@@ -197,7 +188,7 @@ async list(params: UserListParams) {
     listParams: params,
     subsetKey: "L",  // List Subset 사용
   });
-  
+
   // 타입: { id: number; username: string; role: string; created_at: Date }[]
   return users.map(user => ({
     id: user.id,
@@ -214,11 +205,11 @@ async list(params: UserListParams) {
 // GET /users/:id/profile
 async getProfile(userId: number) {
   const user = await UserModel.findById(userId, ["P"]);
-  
+
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   // 타입: {
   //   id: number;
   //   username: string;
@@ -227,7 +218,7 @@ async getProfile(userId: number) {
   //     department: { name: string }
   //   }
   // }
-  
+
   return {
     id: user.id,
     username: user.username,
@@ -276,6 +267,7 @@ const user = await UserModel.getPuri("r")
 - 일회성 데이터 마이그레이션
 
 일반적인 CRUD는 **항상 Subset 사용**을 권장합니다.
+
 </Tip>
 
 ## 다음 단계

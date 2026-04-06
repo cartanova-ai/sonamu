@@ -1,5 +1,6 @@
 import { relative } from "node:path";
 import { emitKeypressEvents, type Key } from "node:readline";
+
 import { args, BaseCommand, flags } from "@adonisjs/ace";
 import { type ExecaChildProcess, execa } from "execa";
 

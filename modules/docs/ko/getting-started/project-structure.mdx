@@ -24,7 +24,11 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 </FileTree>
 
 <Frame caption="VS Code에서 열린 Sonamu 프로젝트 전체 디렉토리 구조">
-  <img src="/images/projectStructure1.png" alt="프로젝트 전체 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure1.png"
+    alt="프로젝트 전체 구조"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 ### pnpm 워크스페이스
@@ -66,7 +70,11 @@ catalog:
 </FileTree>
 
 <Frame caption="packages/api 디렉토리의 실제 파일 구조">
-  <img src="/images/projectStructure2.png" alt="packages/api 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure2.png"
+    alt="packages/api 디렉토리 구조"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Accordion title="주요 파일 설명">
@@ -109,10 +117,7 @@ catalog:
         <FileItem name="{entity}.types.ts" description="타입 + Zod 스키마" />
         <FileItem name="{entity}.model.test.ts" description="테스트 (선택)" />
       </FileItem>
-      <FileItem
-        name="sonamu.generated.ts"
-        description="Base 스키마 (자동 생성)"
-      />
+      <FileItem name="sonamu.generated.ts" description="Base 스키마 (자동 생성)" />
     </FileItem>
     <FileItem name="i18n/" description="다국어 설정">
       <FileItem name="ko.ts" description="한국어 번역" />
@@ -135,7 +140,11 @@ catalog:
 </FileTree>
 
 <Frame caption="packages/api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)">
-  <img src="/images/projectStructure3.png" alt="packages/api/src 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure3.png"
+    alt="packages/api/src 디렉토리 구조"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
@@ -149,6 +158,7 @@ catalog:
 - **{entity}.model.test.ts**: `pnpm scaffold model_test` 또는 Sonamu UI의 Scaffolding 탭에서 생성 (선택사항)
 
 처음 프로젝트를 생성했을 때는 `application/` 폴더가 비어 있습니다. 첫 번째 엔티티를 생성하면 해당 폴더가 만들어집니다.
+
 </Note>
 
 <Accordion title="주요 디렉토리 설명">
@@ -204,22 +214,18 @@ catalog:
 </Accordion>
 
 <Info>
-**더 알아보기 - 엔티티 파일**
-- [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) - entity.json 작성법
-- [Model 만들기](/ko/core-concepts/model/creating-models) - model.ts 작성 가이드
-- [타입 시스템](/ko/core-concepts/type-system/entity-types) - types.ts 이해하기
-- [자동 생성되는 것들](/ko/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이 자동 생성되는지
-- [테스트 작성하기](/ko/testing/writing-tests/test-structure) - 테스트 파일 구조
+  **더 알아보기 - 엔티티 파일** - [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) -
+  entity.json 작성법 - [Model 만들기](/ko/core-concepts/model/creating-models) - model.ts 작성
+  가이드 - [타입 시스템](/ko/core-concepts/type-system/entity-types) - types.ts 이해하기 - [자동
+  생성되는 것들](/ko/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이 자동
+  생성되는지 - [테스트 작성하기](/ko/testing/writing-tests/test-structure) - 테스트 파일 구조
 </Info>
 
 ### database/ 디렉토리
 
 <FileTree>
   <FileItem name="packages/api/database/">
-    <FileItem
-      name="docker-compose.yml"
-      description="PostgreSQL 컨테이너 설정"
-    />
+    <FileItem name="docker-compose.yml" description="PostgreSQL 컨테이너 설정" />
     <FileItem name="fixtures/">
       <FileItem name="init.sh" description="데이터베이스 초기화 스크립트" />
     </FileItem>
@@ -259,12 +265,12 @@ catalog:
 </Accordion>
 
 <Info>
-**더 알아보기 - 설정 파일**
-- [sonamu.config.ts 설정](/ko/configuration/sonamu-config/project-settings) - 프로젝트 전체 설정
-- [데이터베이스 설정](/ko/configuration/sonamu-config/database) - DB 연결 및 설정
-- [서버 설정](/ko/configuration/sonamu-config/server) - Fastify 서버 설정
-- [TypeScript 설정](/ko/configuration/typescript/tsconfig) - 컴파일러 옵션
-- [환경 변수](/ko/configuration/environment-variables/env-setup) - .env 파일 관리
+  **더 알아보기 - 설정 파일** - [sonamu.config.ts
+  설정](/ko/configuration/sonamu-config/project-settings) - 프로젝트 전체 설정 - [데이터베이스
+  설정](/ko/configuration/sonamu-config/database) - DB 연결 및 설정 - [서버
+  설정](/ko/configuration/sonamu-config/server) - Fastify 서버 설정 - [TypeScript
+  설정](/ko/configuration/typescript/tsconfig) - 컴파일러 옵션 - [환경
+  변수](/ko/configuration/environment-variables/env-setup) - .env 파일 관리
 </Info>
 
 ## Web 디렉토리 (프론트엔드)
@@ -285,7 +291,11 @@ catalog:
 </FileTree>
 
 <Frame caption="packages/web 디렉토리의 실제 파일 구조">
-  <img src="/images/projectStructure4.png" alt="packages/web 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure4.png"
+    alt="packages/web 디렉토리 구조"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Accordion title="주요 파일 설명">
@@ -376,10 +386,10 @@ catalog:
 </Accordion>
 
 <Info>
-**더 알아보기 - 프론트엔드**
-- [Service 작동 원리](/ko/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘
-- [Service 사용하기](/ko/frontend-integration/generated-services/using-services) - API 호출 방법
-- [공유 타입](/ko/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
+  **더 알아보기 - 프론트엔드** - [Service 작동
+  원리](/ko/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘 -
+  [Service 사용하기](/ko/frontend-integration/generated-services/using-services) - API 호출 방법 -
+  [공유 타입](/ko/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
 </Info>
 
 ## 엔티티 생성 시 파일 구조 예시
@@ -408,8 +418,16 @@ User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
 
 <Frame caption="User 엔티티 생성 후 packages/api/src/application/user 폴더의 실제 파일 구조">
   <div className="grid grid-cols-2 gap-4">
-    <img src="/images/projectStructure5.png" alt="user 폴더 구조 1" style={{borderRadius: '0.75rem'}} />
-    <img src="/images/projectStructure6.png" alt="user 폴더 구조 2" style={{borderRadius: '0.75rem'}} />
+    <img
+      src="/images/projectStructure5.png"
+      alt="user 폴더 구조 1"
+      style={{ borderRadius: "0.75rem" }}
+    />
+    <img
+      src="/images/projectStructure6.png"
+      alt="user 폴더 구조 2"
+      style={{ borderRadius: "0.75rem" }}
+    />
   </div>
 </Frame>
 
@@ -502,21 +520,24 @@ export class UserService {
 </CodeGroup>
 
 <Frame caption="VS Code에서 user.entity.json, user.model.ts, user.types.ts 파일을 나란히 열어 놓은 화면 (split view)">
-  <img src="/images/projectStructure7.png" alt="VS Code split view" style={{width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/projectStructure7.png"
+    alt="VS Code split view"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
-  **자동 생성 vs 직접 작성** - `.entity.json`: Sonamu UI에서 작성 - `.model.ts`:
-  직접 작성 - `.types.ts`: 자동 생성되지만 확장 가능 - `sonamu.generated.ts`:
-  자동 생성 - 수정 금지 - `{entity}.service.ts`: 자동 생성 - 수정 금지
+  **자동 생성 vs 직접 작성** - `.entity.json`: Sonamu UI에서 작성 - `.model.ts`: 직접 작성 -
+  `.types.ts`: 자동 생성되지만 확장 가능 - `sonamu.generated.ts`: 자동 생성 - 수정 금지 - `{entity}
+  .service.ts`: 자동 생성 - 수정 금지
 </Note>
 
 <Info>
-**더 알아보기 - 파일별 가이드**
-- [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) - entity.json 작성법
-- [@api 데코레이터](/ko/core-concepts/model/api-decorator) - model.ts에서 API 정의
-- [Entity Types](/ko/core-concepts/type-system/entity-types) - types.ts 활용하기
-- [Generated Types](/ko/core-concepts/type-system/generated-types) - sonamu.generated.ts 이해
+  **더 알아보기 - 파일별 가이드** - [엔티티 정의하기](/ko/core-concepts/entity/defining-entities) -
+  entity.json 작성법 - [@api 데코레이터](/ko/core-concepts/model/api-decorator) - model.ts에서 API
+  정의 - [Entity Types](/ko/core-concepts/type-system/entity-types) - types.ts 활용하기 - [Generated
+  Types](/ko/core-concepts/type-system/generated-types) - sonamu.generated.ts 이해
 </Info>
 
 ## 개발 시 주요 작업 위치
@@ -534,9 +555,8 @@ export class UserService {
 | 공통 컴포넌트     | `packages/web/src/admin-common/`                               | 직접 작성 |
 
 <Warning>
-  **자동 생성 파일 주의사항** - `sonamu.generated.ts`: 절대 수정하지 마세요 - `
-  {entity}.service.ts`: 절대 수정하지 마세요 - `{entity}.types.ts`: 확장은
-  가능하지만 자동 생성 부분은 수정하지 마세요
+  **자동 생성 파일 주의사항** - `sonamu.generated.ts`: 절대 수정하지 마세요 - `{entity}.service.ts`:
+  절대 수정하지 마세요 - `{entity}.types.ts`: 확장은 가능하지만 자동 생성 부분은 수정하지 마세요
 </Warning>
 
 ## 다음 단계
@@ -544,13 +564,8 @@ export class UserService {
 프로젝트 구조를 이해했다면, 이제 첫 번째 엔티티를 만들어보세요:
 
 <CardGroup cols={2}>
-  <Card
-    title="첫 엔티티 만들기"
-    icon="database"
-    href="/ko/getting-started/first-entity"
-  >
-    Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를
-    정의하세요.
+  <Card title="첫 엔티티 만들기" icon="database" href="/ko/getting-started/first-entity">
+    Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를 정의하세요.
   </Card>
   <Card
     title="개발 워크플로우"

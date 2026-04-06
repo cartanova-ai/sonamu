@@ -9,24 +9,16 @@ Learn how Sonamu automatically infers backend API types in the frontend to provi
 
 <CardGroup cols={2}>
   <Card title="Auto Type Generation" icon="wand-magic-sparkles">
-    Backend → Frontend
-    
-    No manual work needed
+    Backend → Frontend No manual work needed
   </Card>
   <Card title="Complete Inference" icon="shield-check">
-    Parameters to responses
-    
-    All types guaranteed
+    Parameters to responses All types guaranteed
   </Card>
   <Card title="Real-time Sync" icon="arrows-rotate">
-    On API changes
-    
-    Auto updates
+    On API changes Auto updates
   </Card>
   <Card title="IDE Support" icon="code">
-    Auto-completion
-    
-    Type hints
+    Auto-completion Type hints
   </Card>
 </CardGroup>
 
@@ -58,6 +50,7 @@ async function getUser(id: number): Promise<{ user: User }> {
 ```
 
 **Problems**:
+
 1. **Duplicate work**: Define same type twice in backend and frontend
 2. **Sync missed**: Frontend type update missed when backend changes
 3. **Runtime errors**: Type mismatch discovered only at runtime
@@ -101,6 +94,7 @@ export namespace UserService {
 ```
 
 **Benefits**:
+
 - Backend types are **automatically copied** to frontend
 - **Automatically synced** when API changes
 - **Single source of truth** (backend is the only type source)
@@ -126,7 +120,7 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "GET" })
   async getProfile(userId: number): Promise<{
     user: {
@@ -143,13 +137,14 @@ class UserModelClass extends BaseModelClass<
   }> {
     const user = await this.findById(userId);
     const stats = await this.getStats(userId);
-    
+
     return { user, stats };
   }
 }
 ```
 
 **Using TypeScript's type system**:
+
 - Explicitly declare return types
 - Nested objects, union types, literal types all supported
 - All TypeScript type features available
@@ -165,16 +160,16 @@ import * as ts from "typescript";
 function extractApiType(methodNode: ts.MethodDeclaration) {
   // 1. Extract return type
   const returnType = typeChecker.getTypeAtLocation(methodNode.type);
-  
+
   // 2. Convert type info to TypeScript code
   const typeString = typeChecker.typeToString(returnType);
-  
+
   // 3. Extract parameter types
-  const parameters = methodNode.parameters.map(param => ({
+  const parameters = methodNode.parameters.map((param) => ({
     name: param.name.getText(),
     type: typeChecker.getTypeAtLocation(param.type),
   }));
-  
+
   return {
     returnType: typeString,
     parameters,
@@ -183,6 +178,7 @@ function extractApiType(methodNode: ts.MethodDeclaration) {
 ```
 
 **AST (Abstract Syntax Tree)**:
+
 - Represents TypeScript code as tree structure
 - Allows programmatic extraction of type information
 - Obtains 100% accurate type information
@@ -196,13 +192,13 @@ Insert extracted types into Service code.
 export namespace UserService {
   // Parameter types also accurately inferred
   export async function getProfile(
-    userId: number  // ← Same type as backend
+    userId: number, // ← Same type as backend
   ): Promise<{
     user: {
       id: number;
       username: string;
       email: string;
-      role: "admin" | "user";  // ← Literal types preserved
+      role: "admin" | "user"; // ← Literal types preserved
       createdAt: Date;
     };
     stats: {
@@ -219,6 +215,7 @@ export namespace UserService {
 ```
 
 **Type preservation**:
+
 - Union types (`"admin" | "user"`)
 - Nested objects
 - Array types
@@ -236,11 +233,8 @@ export namespace UserService {
       queryKey: ["User", "getProfile", userId],
       queryFn: () => getProfile(userId),
     });
-  
-  export const useProfile = (
-    userId: number,
-    options?: { enabled?: boolean }
-  ) =>
+
+  export const useProfile = (userId: number, options?: { enabled?: boolean }) =>
     useQuery({
       ...getProfileQueryOptions(userId),
       ...options,
@@ -249,6 +243,7 @@ export namespace UserService {
 ```
 
 **Type chain**:
+
 ```
 Backend Method
   → TypeScript AST
@@ -314,7 +309,7 @@ export type UserSubsetMapping = {
 export namespace UserService {
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -332,6 +327,7 @@ const fullUser = await UserService.getUser("C", 123);
 ```
 
 **Mapped Types**:
+
 - Return exact type based on Subset with `UserSubsetMapping[T]`
 - Uses TypeScript's conditional types
 
@@ -413,9 +409,9 @@ import { UserService } from "@/services/services.generated";
 
 function UserProfile({ userId }: { userId: number }) {
   const { data, isLoading } = UserService.useProfile(userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
-  
+
   // data's type is automatically inferred
   return (
     <div>
@@ -429,6 +425,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **IDE auto-completion**:
+
 - When typing `data.`, `user`, `stats` are auto-suggested
 - When typing `data.user.`, all fields are auto-suggested
 - Immediate error display on wrong field access
@@ -486,7 +483,7 @@ export namespace PostService {
 function CreatePostForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     await PostService.createPost({
       title: "Hello",
       content: "World",
@@ -547,27 +544,41 @@ console.log(user.bio?.length); // ✅ Optional chaining required
 ## Cautions
 
 <Warning>
-**Cautions when using API type inference**:
-1. **Explicit type declaration required** in backend API
-2. Don't use `any` type (type inference impossible)
-3. Run `pnpm generate` to update types
-4. **Don't manually modify** generated type files
-5. Recommended to **separate complex types into interfaces**
+  **Cautions when using API type inference**: 1. **Explicit type declaration required** in backend
+  API 2. Don't use `any` type (type inference impossible) 3. Run `pnpm generate` to update types 4.
+  **Don't manually modify** generated type files 5. Recommended to **separate complex types into
+  interfaces**
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Compile-time Errors" icon="triangle-exclamation" href="/en/frontend-integration/type-safety/compile-time-errors">
+  <Card
+    title="Compile-time Errors"
+    icon="triangle-exclamation"
+    href="/en/frontend-integration/type-safety/compile-time-errors"
+  >
     API change detection
   </Card>
-  <Card title="Shared Types" icon="share-nodes" href="/en/frontend-integration/type-safety/shared-types">
+  <Card
+    title="Shared Types"
+    icon="share-nodes"
+    href="/en/frontend-integration/type-safety/shared-types"
+  >
     Type file structure
   </Card>
-  <Card title="How Services Work" icon="diagram-project" href="/en/frontend-integration/generated-services/how-services-work">
+  <Card
+    title="How Services Work"
+    icon="diagram-project"
+    href="/en/frontend-integration/generated-services/how-services-work"
+  >
     Understanding auto-generation
   </Card>
-  <Card title="Using Services" icon="code" href="/en/frontend-integration/generated-services/using-services">
+  <Card
+    title="Using Services"
+    icon="code"
+    href="/en/frontend-integration/generated-services/using-services"
+  >
     Service usage
   </Card>
 </CardGroup>

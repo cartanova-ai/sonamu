@@ -1,8 +1,10 @@
-import ReactDOM from "react-dom/client";
-import "./index.css";
 import { TooltipProvider } from "@sonamu-kit/react-components";
+
+import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import ReactDOM from "react-dom/client";
+
 import { SonamuProviderWrapper } from "./contexts/sonamu-provider";
 import { routeTree } from "./routeTree.gen";
 

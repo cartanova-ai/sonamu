@@ -1,7 +1,8 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Naite는 expect와 호응하도록 any를 허용함
 
 import { getLogger } from "@logtape/logtape";
 import { get } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
 import type { ComparisonOperator } from "../database/puri.types";
 import { convertNaiteKeyToCategory } from "../logger/category";

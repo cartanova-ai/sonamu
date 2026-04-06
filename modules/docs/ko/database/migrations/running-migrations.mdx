@@ -9,24 +9,16 @@ description: "pnpm sonamu migrate로 데이터베이스 적용하기"
 
 <CardGroup cols={2}>
   <Card title="migrate run" icon="play">
-    모든 Migration 실행
-    
-    DB 최신 상태로
+    모든 Migration 실행 DB 최신 상태로
   </Card>
   <Card title="migrate status" icon="list-check">
-    실행 상태 확인
-    
-    pending 목록
+    실행 상태 확인 pending 목록
   </Card>
   <Card title="migrate latest" icon="forward">
-    최신까지 실행
-    
-    run과 동일
+    최신까지 실행 run과 동일
   </Card>
   <Card title="migrate up" icon="arrow-up">
-    한 번에 하나씩
-    
-    단계별 실행
+    한 번에 하나씩 단계별 실행
   </Card>
 </CardGroup>
 
@@ -39,6 +31,7 @@ pnpm sonamu migrate run
 ```
 
 **실행 결과**:
+
 ```
 Batch 1 run: 3 migrations
 ✅ 20251220143022_create__users.ts
@@ -46,9 +39,7 @@ Batch 1 run: 3 migrations
 ✅ 20251220143200_foreign__posts__user_id.ts
 ```
 
-<Info>
-`migrate run`은 아직 실행되지 않은 모든 Migration을 순서대로 실행합니다.
-</Info>
+<Info>`migrate run`은 아직 실행되지 않은 모든 Migration을 순서대로 실행합니다.</Info>
 
 ### 실행 상태 확인
 
@@ -57,6 +48,7 @@ pnpm sonamu migrate status
 ```
 
 **출력 예시**:
+
 ```
 Executed migrations:
   ✅ 20251220143022_create__users.ts
@@ -85,7 +77,7 @@ flowchart TD
     B --> C["3. create__employees.ts<br/>(batch 1)"]
     C --> D["4. foreign__departments.ts<br/>(batch 1)"]
     D --> E["5. foreign__employees.ts<br/>(batch 1)"]
-    
+
     style A fill:#e3f2fd
     style B fill:#e3f2fd
     style C fill:#e3f2fd
@@ -102,20 +94,20 @@ pnpm sonamu migrate up
 ```
 
 **첫 번째 실행**:
+
 ```
 Batch 1 run: 1 migration
 ✅ 20251220143022_create__users.ts
 ```
 
 **두 번째 실행**:
+
 ```
 Batch 2 run: 1 migration
 ✅ 20251220143100_create__posts.ts
 ```
 
-<Info>
-`migrate up`은 pending 중 가장 오래된 Migration 하나만 실행합니다.
-</Info>
+<Info>`migrate up`은 pending 중 가장 오래된 Migration 하나만 실행합니다.</Info>
 
 ## Batch 시스템
 
@@ -127,11 +119,11 @@ Batch 2 run: 1 migration
 SELECT * FROM knex_migrations ORDER BY id;
 ```
 
-| id | name | batch | migration_time |
-|----|------|-------|----------------|
-| 1 | 20251220143022_create__users.ts | 1 | 2025-12-20 14:30:22 |
-| 2 | 20251220143100_create__posts.ts | 1 | 2025-12-20 14:30:22 |
-| 3 | 20251220143200_alter_users_add1.ts | 2 | 2025-12-20 15:00:00 |
+| id  | name                               | batch | migration_time      |
+| --- | ---------------------------------- | ----- | ------------------- |
+| 1   | 20251220143022_create\_\_users.ts  | 1     | 2025-12-20 14:30:22 |
+| 2   | 20251220143100_create\_\_posts.ts  | 1     | 2025-12-20 14:30:22 |
+| 3   | 20251220143200_alter_users_add1.ts | 2     | 2025-12-20 15:00:00 |
 
 ### Batch의 역할
 
@@ -179,11 +171,8 @@ NODE_ENV=production pnpm sonamu migrate run
 ```
 
 <Warning>
-**프로덕션 실행 전 주의사항**:
-1. 스테이징에서 먼저 테스트
-2. 백업 완료 확인
-3. 다운타임 계획
-4. 롤백 계획 준비
+  **프로덕션 실행 전 주의사항**: 1. 스테이징에서 먼저 테스트 2. 백업 완료 확인 3. 다운타임 계획 4.
+  롤백 계획 준비
 </Warning>
 
 ## 트랜잭션
@@ -200,7 +189,7 @@ export async function up(knex: Knex): Promise<void> {
     table.increments().primary();
     table.string("email", 255).notNullable();
   });
-  
+
   // 에러 발생 시 위 CREATE TABLE도 롤백됨
   await knex.schema.createTable("profiles", (table) => {
     table.increments().primary();
@@ -215,14 +204,12 @@ export async function up(knex: Knex): Promise<void> {
 // knexfile.ts에서 설정
 export default {
   migrations: {
-    disableTransactions: true,  // 트랜잭션 비활성화
+    disableTransactions: true, // 트랜잭션 비활성화
   },
 };
 ```
 
-<Info>
-일부 DDL 작업은 트랜잭션을 지원하지 않을 수 있습니다.
-</Info>
+<Info>일부 DDL 작업은 트랜잭션을 지원하지 않을 수 있습니다.</Info>
 
 ## 에러 처리
 
@@ -233,6 +220,7 @@ pnpm sonamu migrate run
 ```
 
 **에러 발생**:
+
 ```
 Batch 1 run: 3 migrations
 ✅ 20251220143022_create__users.ts
@@ -242,6 +230,7 @@ Batch 1 run: 3 migrations
 ```
 
 **처리 방법**:
+
 1. Migration 파일 수정
 2. 다시 실행 시도
 
@@ -254,10 +243,8 @@ Batch 1 run: 2 migrations (1 successful, 1 failed)
 ```
 
 <Warning>
-Migration이 실패하면:
-- 해당 Migration만 롤백
-- 이전 Migration은 유지
-- knex_migrations 테이블에 기록 안 됨
+  Migration이 실패하면: - 해당 Migration만 롤백 - 이전 Migration은 유지 - knex_migrations 테이블에
+  기록 안 됨
 </Warning>
 
 ## 실행 로그 확인
@@ -269,6 +256,7 @@ pnpm sonamu migrate run --verbose
 ```
 
 **출력**:
+
 ```
 Running migration: 20251220143022_create__users.ts
 SQL: CREATE TABLE "users" (
@@ -291,15 +279,15 @@ Total time: 77ms
 
 ```sql
 -- 모든 실행 기록
-SELECT * FROM knex_migrations 
+SELECT * FROM knex_migrations
 ORDER BY migration_time DESC;
 
 -- 최근 batch
-SELECT * FROM knex_migrations 
+SELECT * FROM knex_migrations
 WHERE batch = (SELECT MAX(batch) FROM knex_migrations);
 
 -- 특정 Migration 확인
-SELECT * FROM knex_migrations 
+SELECT * FROM knex_migrations
 WHERE name LIKE '%users%';
 ```
 
@@ -320,15 +308,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
-      
+          node-version: "20"
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Run migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -376,7 +364,7 @@ DATABASE_URL=postgresql://blue-db pnpm sonamu migrate run
 // Step 1: 새 컬럼 추가 (nullable)
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.string("new_field").nullable();  // ← nullable
+    table.string("new_field").nullable(); // ← nullable
   });
 }
 
@@ -386,9 +374,7 @@ export async function up(knex: Knex): Promise<void> {
 
 // Step 4: NOT NULL 제약 추가
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw(
-    `ALTER TABLE users ALTER COLUMN new_field SET NOT NULL`
-  );
+  await knex.raw(`ALTER TABLE users ALTER COLUMN new_field SET NOT NULL`);
 }
 ```
 

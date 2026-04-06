@@ -1,6 +1,6 @@
 ---
-title: 'Category Logging'
-description: 'Log category system and hierarchy'
+title: "Category Logging"
+description: "Log category system and hierarchy"
 ---
 
 LogTape structures logs with a category system. Sonamu automatically generates categories for Model, Frame, Workflow, and Agent classes.
@@ -12,6 +12,7 @@ A category represents the source of logs in a hierarchical structure.
 **Format**: `["a", "b", "c"]` array
 
 **Examples:**
+
 - `["fastify"]` - Fastify framework
 - `["sonamu", "model", "user-model"]` - UserModel class
 - `["sonamu", "workflow", "email-send"]` - EmailSendWorkflow
@@ -22,41 +23,42 @@ A category represents the source of logs in a hierarchical structure.
 Categories are needed to systematically manage logs.
 
 **1. Log Source Identification**
+
 ```typescript
 // Where did the log originate?
-["fastify"]                    // HTTP request
-["sonamu", "model"]            // Model layer
-["app", "payment"]             // Payment logic
+["fastify"][("sonamu", "model")][("app", "payment")]; // HTTP request // Model layer // Payment logic
 ```
 
 **2. Selective Logging**
+
 ```typescript
 // Log only specific parts
 loggers: [
   {
-    category: ["sonamu", "model"],  // Only Model at debug level
+    category: ["sonamu", "model"], // Only Model at debug level
     lowestLevel: "debug",
   },
   {
-    category: ["fastify"],          // Fastify at info level
+    category: ["fastify"], // Fastify at info level
     lowestLevel: "info",
   },
-]
+];
 ```
 
 **3. Separate Log Storage**
+
 ```typescript
 // Different files for different parts
 loggers: [
   {
     category: ["sonamu", "model"],
-    sinks: ["modelLog"],           // models.log
+    sinks: ["modelLog"], // models.log
   },
   {
     category: ["app", "payment"],
-    sinks: ["paymentLog"],         // payment.log
+    sinks: ["paymentLog"], // payment.log
   },
-]
+];
 ```
 
 ### Benefits of Hierarchical Structure
@@ -64,8 +66,9 @@ loggers: [
 Why categories are hierarchical:
 
 **1. Clear Structure**
+
 ```typescript
-["sonamu", "model", "user-model"]
+["sonamu", "model", "user-model"];
 //  ↓        ↓        ↓
 //  framework  type    specific name
 ```
@@ -73,23 +76,23 @@ Why categories are hierarchical:
 You can see at a glance where a log originated
 
 **2. Flexible Filtering**
+
 ```typescript
 // All Sonamu logs
-category: ["sonamu"]
+category: ["sonamu"];
 
 // Only Model layer
-category: ["sonamu", "model"]
+category: ["sonamu", "model"];
 
 // Only UserModel
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 ```
 
 **3. Collision Prevention**
+
 ```typescript
 // Can distinguish "user" logs from different projects
-["sonamu", "model", "user-model"]  // Sonamu's user
-["app", "user", "service"]          // Application's user
-["external", "api", "user"]        // External API's user
+["sonamu", "model", "user-model"][("app", "user", "service")][("external", "api", "user")]; // Sonamu's user // Application's user // External API's user
 ```
 
 ### Why Only Exact Matching?
@@ -98,54 +101,55 @@ LogTape only matches categories that **exactly match**.
 
 ```typescript
 // ❌ Partial matching not supported
-category: ["sonamu"]
+category: ["sonamu"];
 // → Logs from ["sonamu", "model", "user-model"] won't match
 
 // ✅ Must match exactly
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → Only matches ["sonamu", "model", "user-model"] logs
 ```
 
 **Reasons:**
 
 1. **Clarity**
+
 ```typescript
 // If partial matching was allowed?
-category: ["sonamu"]
+category: ["sonamu"];
 // → ["sonamu", "model", "user-model"]
 // → ["sonamu", "workflow", "email-send"]
 // → ["sonamu", "agent", "payment-agent"]
 // → Too many logs would match!
 
 // Exact matching
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → Matches exactly the logs you want
 ```
 
 2. **Performance**
+
 ```typescript
 // If wildcard matching was allowed?
-category: ["sonamu", "*"]  // All sonamu subcategories
+category: ["sonamu", "*"]; // All sonamu subcategories
 // → Pattern matching required every time (slow)
 
 // Exact matching
-category: ["sonamu", "model"]
+category: ["sonamu", "model"];
 // → Simple string comparison (fast)
 ```
 
 3. **Predictability**
+
 ```typescript
 // Confusion with partial matching
 loggers: [
   { category: ["sonamu"], lowestLevel: "info" },
   { category: ["sonamu", "model"], lowestLevel: "debug" },
-]
+];
 // → Where would ["sonamu", "model", "user-model"] logs match?
 
 // Clear with exact matching
-loggers: [
-  { category: ["sonamu", "model"], lowestLevel: "debug" },
-]
+loggers: [{ category: ["sonamu", "model"], lowestLevel: "debug" }];
 // → Only matches ["sonamu", "model"], very clear!
 ```
 
@@ -156,12 +160,13 @@ loggers: [
 Categories narrow down progressively.
 
 ```typescript
-["sonamu", "model", "user-model"]
+["sonamu", "model", "user-model"];
 //  ↓        ↓        ↓
 //  namespace  type    specific name
 ```
 
 **Configuration example:**
+
 ```typescript
 export default defineConfig({
   logging: {
@@ -172,14 +177,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // Model only
       {
         category: ["sonamu", "model"],
         sinks: ["modelLog"],
         lowestLevel: "debug",
       },
-      
+
       // UserModel only
       {
         category: ["sonamu", "model", "user-model"],
@@ -188,7 +193,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -201,11 +206,11 @@ LogTape only matches categories that **exactly match**.
 
 ```typescript
 // ❌ Partial matching not supported
-category: ["sonamu"]
+category: ["sonamu"];
 // → Logs from ["sonamu", "model", "user-model"] won't match
 
 // ✅ Must match exactly
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → Only matches ["sonamu", "model", "user-model"] logs
 ```
 
@@ -222,11 +227,13 @@ Sonamu automatically generates categories for specific classes.
 ```
 
 **Conversion rules:**
+
 1. Remove `ModelClass` from class name
 2. Convert PascalCase → snake_case
 3. Convert snake_case → kebab-case
 
 **Examples:**
+
 ```
 UserModelClass
 → User (remove ModelClass)
@@ -256,11 +263,13 @@ OrderItemModelClass
 ```
 
 **Conversion rules:**
+
 1. Remove `Workflow` from class name (suffix only)
 2. Convert PascalCase → snake_case
 3. Convert snake_case → kebab-case
 
 **Examples:**
+
 ```
 EmailSendWorkflow
 → EmailSend (remove Workflow)
@@ -288,11 +297,13 @@ Naite test keys follow special category conversion rules.
 ```
 
 **Conversion rules:**
+
 1. Split by `.`
 2. Split each part by `:`
 3. Flatten
 
 **Examples:**
+
 ```
 "user.findOne"
 → ["user", "findOne"]
@@ -317,7 +328,7 @@ export default defineConfig({
       userLog: getFileSink("logs/user-model.log"),
       postLog: getFileSink("logs/post-model.log"),
     },
-    
+
     loggers: [
       {
         category: ["sonamu", "model", "user-model"],
@@ -331,7 +342,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -350,14 +361,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "debug",
       },
-      
+
       // Workflow: info level
       {
         category: ["sonamu", "workflow"],
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // Agent: warning level
       {
         category: ["sonamu", "agent"],
@@ -366,7 +377,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -382,7 +393,7 @@ export default defineConfig({
       sonamuLog: getFileSink("logs/sonamu.log"),
       appLog: getFileSink("logs/app.log"),
     },
-    
+
     loggers: [
       // Sonamu internal
       {
@@ -390,7 +401,7 @@ export default defineConfig({
         sinks: ["sonamuLog"],
         lowestLevel: "info",
       },
-      
+
       // Application
       {
         category: ["app"],
@@ -399,7 +410,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -422,13 +433,14 @@ logger.error("Payment failed", { error: "timeout" });
 ```
 
 **Configuration:**
+
 ```typescript
 export default defineConfig({
   logging: {
     sinks: {
       paymentLog: getFileSink("logs/payment.log"),
     },
-    
+
     loggers: [
       {
         category: ["app", "payment", "processor"],
@@ -437,7 +449,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -457,7 +469,7 @@ export default defineConfig({
     sinks: {
       console: getConsoleSink(),
     },
-    
+
     loggers: [
       // Fastify: info
       {
@@ -465,14 +477,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // All Sonamu internal: debug
       {
         category: ["sonamu"],
         sinks: ["console"],
         lowestLevel: "debug",
       },
-      
+
       // App logic: debug
       {
         category: ["app"],
@@ -481,7 +493,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -501,7 +513,7 @@ export default defineConfig({
       workflowLog: getFileSink("logs/workflow.log"),
       errorLog: getFileSink("logs/error.log"),
     },
-    
+
     loggers: [
       // Fastify: warning and above
       {
@@ -509,14 +521,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "warning",
       },
-      
+
       // Workflow: full recording
       {
         category: ["sonamu", "workflow"],
         sinks: ["workflowLog"],
         lowestLevel: "info",
       },
-      
+
       // Errors only to separate file
       {
         category: ["sonamu"],
@@ -525,7 +537,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -545,7 +557,7 @@ export default defineConfig({
       orderDomain: getFileSink("logs/order-domain.log"),
       paymentDomain: getFileSink("logs/payment-domain.log"),
     },
-    
+
     loggers: [
       // User related
       {
@@ -558,7 +570,7 @@ export default defineConfig({
         sinks: ["userDomain"],
         lowestLevel: "debug",
       },
-      
+
       // Order related
       {
         category: ["sonamu", "model", "order-model"],
@@ -570,7 +582,7 @@ export default defineConfig({
         sinks: ["orderDomain"],
         lowestLevel: "debug",
       },
-      
+
       // Payment related
       {
         category: ["app", "payment"],
@@ -579,7 +591,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -589,7 +601,8 @@ export default defineConfig({
 ## Internal Operation Principles
 
 <Note>
-This section explains how Sonamu's category system works internally. The functions shown here are used automatically by Sonamu and cannot be called directly by users.
+  This section explains how Sonamu's category system works internally. The functions shown here are
+  used automatically by Sonamu and cannot be called directly by users.
 </Note>
 
 ### isSameCategory()
@@ -629,9 +642,10 @@ convertDomainToCategory("PaymentAgentClass", "agent");
 **Internal use:** Automatically assigns categories when Model, Frame, Workflow, and Agent classes are created.
 
 **Conversion logic:**
+
 1. Remove suffix from class name (`ModelClass`, `FrameClass`, `AgentClass`, `Workflow`)
 2. Convert PascalCase → snake_case
-3. Convert snake_case → kebab-case (`_` → `-`)
+3. Convert snake*case → kebab-case (`*`→`-`)
 4. Compose as `["sonamu", type, name]` format
 
 ### convertNaiteKeyToCategory()
@@ -650,6 +664,7 @@ convertNaiteKeyToCategory("admin.company:detail");
 **Internal use:** Automatically generates log categories when running Naite tests.
 
 **Conversion logic:**
+
 1. Split by `.`
 2. Split each part by `:`
 3. Flatten
@@ -660,13 +675,13 @@ convertNaiteKeyToCategory("admin.company:detail");
 
 ```typescript
 // ❌ No wildcards
-category: ["sonamu", "*"]  // Won't work
+category: ["sonamu", "*"]; // Won't work
 
 // ❌ No partial matching
-category: ["sonamu"]  // Won't match ["sonamu", "model"]
+category: ["sonamu"]; // Won't match ["sonamu", "model"]
 
 // ✅ Exact categories only
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 ```
 
 ### 2. Categories are readonly Arrays
@@ -683,70 +698,58 @@ const category: string[] = ["app", "payment"];
 
 ```typescript
 // ✅ Correct names
-class UserModelClass { }          // → ["sonamu", "model", "user-model"]
-class OrderItemModelClass { }     // → ["sonamu", "model", "order-item-model"]
-class EmailSendWorkflow { }       // → ["sonamu", "workflow", "email-send"]
+class UserModelClass {} // → ["sonamu", "model", "user-model"]
+class OrderItemModelClass {} // → ["sonamu", "model", "order-item-model"]
+class EmailSendWorkflow {} // → ["sonamu", "workflow", "email-send"]
 
 // ❌ Convention violations (won't auto-convert)
-class User { }                    // Not a Model
-class UserModel { }               // Missing "Class" suffix
-class WorkflowEmailSend { }       // "Workflow" as prefix (should be suffix)
+class User {} // Not a Model
+class UserModel {} // Missing "Class" suffix
+class WorkflowEmailSend {} // "Workflow" as prefix (should be suffix)
 ```
 
 ### 4. Fastify Category Duplication
 
 ```typescript
 // ❌ Conflict with Fastify category
-fastifyCategory: ["sonamu", "model"]
+fastifyCategory: ["sonamu", "model"];
 
 loggers: [
   {
-    category: ["sonamu", "model"],  // Mixed with Fastify logs!
+    category: ["sonamu", "model"], // Mixed with Fastify logs!
     // ...
   },
-]
+];
 
 // ✅ Separate categories
-fastifyCategory: ["fastify"]
+fastifyCategory: ["fastify"];
 
 loggers: [
   {
     category: ["sonamu", "model"],
     // ...
   },
-]
+];
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="Fastify Logging" 
-    icon="bolt" 
-    href="/en/configuration/logging/fastify-logging"
-  >
+  <Card title="Fastify Logging" icon="bolt" href="/en/configuration/logging/fastify-logging">
     Customize HTTP request/response logging
   </Card>
-  
-  <Card 
-    title="Sinks & Filters" 
-    icon="filter" 
-    href="/en/configuration/logging/sinks-and-filters"
-  >
-    Control log output with custom Sinks and Filters
-  </Card>
-  
-  <Card 
-    title="LogTape Setup" 
-    icon="gear" 
-    href="/en/configuration/logging/logtape-setup"
-  >
-    Learn basic logging configuration and concepts
-  </Card>
-  
-  <Card 
-    title="LogTape Official Documentation" 
-    icon="book-open" 
+
+<Card title="Sinks & Filters" icon="filter" href="/en/configuration/logging/sinks-and-filters">
+  Control log output with custom Sinks and Filters
+</Card>
+
+<Card title="LogTape Setup" icon="gear" href="/en/configuration/logging/logtape-setup">
+  Learn basic logging configuration and concepts
+</Card>
+
+  <Card
+    title="LogTape Official Documentation"
+    icon="book-open"
     href="https://github.com/dahlia/logtape"
   >
     Check LogTape's advanced features and APIs

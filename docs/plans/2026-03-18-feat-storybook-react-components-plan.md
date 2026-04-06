@@ -43,18 +43,18 @@ react-components 패키지(62개+ shadcn/ui 기반 컴포넌트)에 Storybook 10
 
 ## Key Decisions
 
-| 항목 | 결정 | 근거 |
-|---|---|---|
-| Storybook 버전 | 10.2.19 | 최신 안정 버전, ESM-only (Node.js 20.16+) |
-| 프레임워크 | `@storybook/react-vite` | 기존 Vite 빌드와 호환 |
-| 스토리 파일 위치 | 컴포넌트 옆 co-location | Agentation 워크플로 최적화, Storybook 공식 권장 |
-| SonamuProvider | preview.tsx global decorator | 16개 컴포넌트 의존, 일괄 적용이 효율적 |
-| Agentation | preview.tsx decorator로 통합 | SON-385 스코프에 포함 |
-| 의존성 관리 | pnpm catalog 등록 | 모노레포 버전 일관성 |
-| 다크 모드 | 후속 작업 | 초기 스코프 축소 |
-| demo/ 앱 | 유지 (공존) | 통합 시연용 역할 분리 |
-| 포트 | 6006 (Storybook 기본값) | demo 10290과 충돌 없음 |
-| 브랜치 | 별도 브랜치에서 작업 | 단계별 커밋, 푸시는 사용자가 직접 수행 |
+| 항목             | 결정                         | 근거                                            |
+| ---------------- | ---------------------------- | ----------------------------------------------- |
+| Storybook 버전   | 10.2.19                      | 최신 안정 버전, ESM-only (Node.js 20.16+)       |
+| 프레임워크       | `@storybook/react-vite`      | 기존 Vite 빌드와 호환                           |
+| 스토리 파일 위치 | 컴포넌트 옆 co-location      | Agentation 워크플로 최적화, Storybook 공식 권장 |
+| SonamuProvider   | preview.tsx global decorator | 16개 컴포넌트 의존, 일괄 적용이 효율적          |
+| Agentation       | preview.tsx decorator로 통합 | SON-385 스코프에 포함                           |
+| 의존성 관리      | pnpm catalog 등록            | 모노레포 버전 일관성                            |
+| 다크 모드        | 후속 작업                    | 초기 스코프 축소                                |
+| demo/ 앱         | 유지 (공존)                  | 통합 시연용 역할 분리                           |
+| 포트             | 6006 (Storybook 기본값)      | demo 10290과 충돌 없음                          |
+| 브랜치           | 별도 브랜치에서 작업         | 단계별 커밋, 푸시는 사용자가 직접 수행          |
 
 ## Branch Strategy
 
@@ -87,6 +87,7 @@ agentation: "^2.3.0"
 **파일**: `modules/react-components/package.json`
 
 devDependencies 추가 (catalog 참조):
+
 ```json
 {
   "storybook": "catalog:",
@@ -98,6 +99,7 @@ devDependencies 추가 (catalog 참조):
 ```
 
 scripts 추가:
+
 ```json
 {
   "storybook": "storybook dev -p 6006",
@@ -118,10 +120,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
-  addons: [
-    "@storybook/addon-a11y",
-    "@storybook/addon-docs",
-  ],
+  addons: ["@storybook/addon-a11y", "@storybook/addon-docs"],
   framework: "@storybook/react-vite",
   async viteFinal(config) {
     const { mergeConfig } = await import("vite");
@@ -129,10 +128,7 @@ const config: StorybookConfig = {
     const Icons = (await import("unplugin-icons/vite")).default;
 
     return mergeConfig(config, {
-      plugins: [
-        tailwindcss(),
-        Icons({ compiler: "jsx", jsx: "react", autoInstall: false }),
-      ],
+      plugins: [tailwindcss(), Icons({ compiler: "jsx", jsx: "react", autoInstall: false })],
       resolve: {
         alias: {
           "@": path.resolve(dirname, "../src"),
@@ -146,6 +142,7 @@ export default config;
 ```
 
 > **Research Insights**:
+>
 > - **`mergeConfig` 사용**: `config.plugins?.push()` 대신 Vite 공식 `mergeConfig`로 안전하게 병합한다.
 > - **Dynamic import**: Tailwind v4 플러그인은 `await import()`로 로드해야 CJS 호환성 경고를 방지한다.
 > - **`@/` 경로 별칭 필수**: 컴포넌트가 `@/contexts`, `@/lib/utils` 등을 사용한다. 이 설정 없이는 모든 컴포넌트가 import 해석에 실패한다.
@@ -186,6 +183,7 @@ export default preview;
 ```
 
 > **Research Insights**:
+>
 > - **mockUploader 제거**: 초기 스토리 대상에 FileInput이 없으므로 불필요. 또한 원래 플랜의 mockUploader에 타입 버그가 있었음 (`SonamuFile`은 `{ name, mime_type }`인데 `{ filename, mimetype }`으로 작성). SonamuProvider는 props 없이도 동작함 (SD는 영어 fallback, uploader는 미호출 시 문제 없음).
 > - **`auth` 미전달**: `authOptions` 없으면 auth 클라이언트 생성을 건너뜀 (`useRef`로 보호).
 > - **Decorator 실행 순서**: global -> component -> story 순서이며, 렌더링은 안쪽에서 바깥쪽으로.
@@ -199,7 +197,7 @@ dts({
   rollupTypes: true,
   tsconfigPath: "./tsconfig.json",
   exclude: ["**/*.stories.tsx", "**/*.stories.ts"],
-})
+});
 ```
 
 > **Research Insight**: rollup은 `build.lib.entry`에서 도달 가능한 파일만 번들링하므로 JS 번들에는 자동 제외되지만, `vite-plugin-dts`는 `entryRoot: "src"` 기준으로 모든 TSX를 대상으로 하므로 명시적 제외가 필수.
@@ -217,6 +215,7 @@ storybook-static/
 **파일**: `modules/react-components/src/components/ui/button.stories.tsx`
 
 검증 항목:
+
 - Tailwind v4 CSS 변수 로딩 (색상, 반경, 폰트)
 - unplugin-icons (`~icons/lucide/loader`) 렌더링
 - CVA variants/sizes Controls 탐색
@@ -225,11 +224,13 @@ storybook-static/
 - `pnpm build` 시 dist/에 stories 미포함 확인
 
 스토리 구성:
+
 - `Default`: 기본 버튼
 - `Variants`: variant별 렌더링 (모든 variant를 나열하는 render 함수)
 - `Sizes`: size별 렌더링
 
 > **Research Insights**:
+>
 > - **CVA argTypes 수동 지정**: CVA는 런타임 유틸리티이므로 Storybook이 variant를 자동 감지 못함. `argTypes`에서 `variant`, `size`를 `control: 'select'`로 명시.
 > - **`satisfies Meta<typeof Button>`** 패턴 사용 (not `as const satisfies`).
 > - **Storybook 10 import 경로**: `import type { Meta, StoryObj } from "@storybook/react-vite"`.
@@ -287,6 +288,7 @@ export const Sizes: Story = {
 ```
 
 **Phase 1 커밋 후 검증**:
+
 - [ ] `pnpm storybook`: Storybook 개발 서버 6006 포트에서 기동
 - [ ] Button 3개 스토리 렌더링 확인
 - [ ] `pnpm build`: dist/에 stories 미포함 확인
@@ -331,6 +333,7 @@ export const Default: Story = {
 - 스토리: `SingleSync`, `MultiSync`
 
 > **Research Insights**:
+>
 > - **제네릭 타입 처리**: `satisfies Meta<SelectProps<string>>` 패턴으로 구체적 타입 파라미터 지정. `typeof Select`는 forwardRef + 타입 단언으로 제네릭이 소거되므로 Props 타입을 직접 전달.
 > - **`render` 함수 선언식**: `render: function Render(args) { ... }` 형태 사용. Arrow function은 ESLint `react-hooks/rules-of-hooks` 규칙 위반 가능.
 > - **`useArgs` import 경로**: `import { useArgs } from "storybook/preview-api"` (Storybook 10, `@storybook/preview-api`가 아님).
@@ -359,6 +362,7 @@ export const Default: Story = {
 - 스토리: `Default`
 
 **Phase 2 커밋 후 검증**:
+
 - [ ] 5개 컴포넌트 스토리 전부 렌더링 확인
 - [ ] Input의 타이핑이 정상 (커서 점프 없음)
 - [ ] Select의 값 변경이 Controls에 반영
@@ -377,22 +381,22 @@ export const Default: Story = {
 
 ### Storybook 10 Import 경로 정리
 
-| 용도 | Import 경로 |
-|---|---|
-| `Preview`, `Meta`, `StoryObj` 타입 | `@storybook/react-vite` |
-| `useArgs` 훅 | `storybook/preview-api` |
-| `expect`, `fn`, `userEvent`, `within` | `storybook/test` |
+| 용도                                  | Import 경로             |
+| ------------------------------------- | ----------------------- |
+| `Preview`, `Meta`, `StoryObj` 타입    | `@storybook/react-vite` |
+| `useArgs` 훅                          | `storybook/preview-api` |
+| `expect`, `fn`, `userEvent`, `within` | `storybook/test`        |
 
 ### viteFinal 플러그인 분류
 
-| 기존 vite.config.ts 플러그인 | Storybook viteFinal | 이유 |
-|---|---|---|
-| `react()` | 미추가 | `@storybook/react-vite`가 자동 제공 |
-| `tailwindcss()` | 추가 | CSS 처리 필수 |
-| `Icons()` | 추가 | `~icons/*` 가상 모듈 해석 필수 |
-| `tanstackRouter()` | 미추가 | demo 전용, Storybook에서 에러 유발 |
-| `dts()` | 미추가 | 라이브러리 빌드 전용 |
-| `copy-styles` | 미추가 | dist 복사 전용 |
+| 기존 vite.config.ts 플러그인 | Storybook viteFinal | 이유                                |
+| ---------------------------- | ------------------- | ----------------------------------- |
+| `react()`                    | 미추가              | `@storybook/react-vite`가 자동 제공 |
+| `tailwindcss()`              | 추가                | CSS 처리 필수                       |
+| `Icons()`                    | 추가                | `~icons/*` 가상 모듈 해석 필수      |
+| `tanstackRouter()`           | 미추가              | demo 전용, Storybook에서 에러 유발  |
+| `dts()`                      | 미추가              | 라이브러리 빌드 전용                |
+| `copy-styles`                | 미추가              | dist 복사 전용                      |
 
 ### `@/` 경로 별칭
 
@@ -408,10 +412,10 @@ export const Default: Story = {
 
 ### useArgs vs useState 선택 기준
 
-| 컴포넌트 유형 | 패턴 | 이유 |
-|---|---|---|
-| Select, Checkbox, Toggle | `useArgs` | Controls 양방향 동기화, 커서 점프 이슈 없음 |
-| Input, Textarea | `useState` | text input에서 `useArgs`의 비동기 업데이트가 커서 점프 유발 |
+| 컴포넌트 유형            | 패턴       | 이유                                                        |
+| ------------------------ | ---------- | ----------------------------------------------------------- |
+| Select, Checkbox, Toggle | `useArgs`  | Controls 양방향 동기화, 커서 점프 이슈 없음                 |
+| Input, Textarea          | `useState` | text input에서 `useArgs`의 비동기 업데이트가 커서 점프 유발 |
 
 ### CVA argTypes
 
@@ -442,16 +446,16 @@ Dialog, Sheet, Select 등 Radix UI 기반 컴포넌트는 portal로 렌더링된
 
 ## Dependencies & Risks
 
-| 리스크 | 영향 | 대응 |
-|---|---|---|
-| `@/` 경로 별칭 누락 | 모든 컴포넌트 import 실패 | viteFinal `resolve.alias` 설정 (필수) |
-| React 플러그인 중복 등록 | Storybook 시작 실패 | viteFinal에서 react() 미추가 |
-| Storybook 10 + Tailwind v4 호환 | 스타일 미적용 | dynamic import + mergeConfig 패턴 |
-| unplugin-icons 빌드 실패 | 5개 컴포넌트 렌더 불가 | Phase 1에서 조기 검증 |
-| useArgs text input 커서 점프 | UX 저하 | Input은 useState 사용 |
-| Select 제네릭 타입 추론 실패 | 타입 에러 | Meta<SelectProps<string>> 직접 지정 |
-| pnpm 호이스팅 이슈 | 모듈 해석 실패 | clean install 후 Storybook 시작 검증 |
-| `@source` 디렉티브 경로 해석 | Tailwind 클래스 미생성 | Phase 1에서 검증, 필요 시 경로 조정 |
+| 리스크                          | 영향                      | 대응                                  |
+| ------------------------------- | ------------------------- | ------------------------------------- |
+| `@/` 경로 별칭 누락             | 모든 컴포넌트 import 실패 | viteFinal `resolve.alias` 설정 (필수) |
+| React 플러그인 중복 등록        | Storybook 시작 실패       | viteFinal에서 react() 미추가          |
+| Storybook 10 + Tailwind v4 호환 | 스타일 미적용             | dynamic import + mergeConfig 패턴     |
+| unplugin-icons 빌드 실패        | 5개 컴포넌트 렌더 불가    | Phase 1에서 조기 검증                 |
+| useArgs text input 커서 점프    | UX 저하                   | Input은 useState 사용                 |
+| Select 제네릭 타입 추론 실패    | 타입 에러                 | Meta<SelectProps<string>> 직접 지정   |
+| pnpm 호이스팅 이슈              | 모듈 해석 실패            | clean install 후 Storybook 시작 검증  |
+| `@source` 디렉티브 경로 해석    | Tailwind 클래스 미생성    | Phase 1에서 검증, 필요 시 경로 조정   |
 
 ## Out of Scope
 

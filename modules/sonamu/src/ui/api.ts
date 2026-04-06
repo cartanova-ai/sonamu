@@ -1,10 +1,12 @@
 import { execSync } from "child_process";
-import type { FastifyInstance } from "fastify";
 import fs from "fs";
-import inflection from "inflection";
 import type { AddressInfo } from "net";
 import path from "path";
+
+import type { FastifyInstance } from "fastify";
+import inflection from "inflection";
 import { range } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
 import { DB, type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";

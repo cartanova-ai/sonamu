@@ -33,9 +33,9 @@ react-components 패키지(70개+ shadcn/ui 기반 컴포넌트)에 Storybook 10
 
 ### demo/와의 역할 분리
 
-| 환경 | 역할 |
-|---|---|
-| demo/ | 컴포넌트 간 통합, 페이지 단위 시연, TanStack Router 라우팅 확인 |
+| 환경      | 역할                                                                |
+| --------- | ------------------------------------------------------------------- |
+| demo/     | 컴포넌트 간 통합, 페이지 단위 시연, TanStack Router 라우팅 확인     |
 | Storybook | 개별 컴포넌트 명세, props 탐색, 상태별 시각화, Agentation AI 피드백 |
 
 ## Key Decisions
@@ -49,16 +49,19 @@ react-components 패키지(70개+ shadcn/ui 기반 컴포넌트)에 Storybook 10
 ## Target Components (Phase 1)
 
 ### Form 계열
+
 - **Button**: 기본 variants, sizes, disabled, loading
 - **Input**: text, password, disabled, error
 - **Select** (Sonamu 커스텀): 기본 선택, 검색, 비동기 로딩
 
 ### Layout/Overlay 계열
+
 - **Dialog**: open/close, sizes, form dialog
 - **Sheet**: side variants
 - **Tabs**: 기본 탭, 동적 탭
 
 ### Sonamu 커스텀
+
 - **EnumSelect**: enum 기반 선택
 - **SonamuFilter**: 필터 모달/팝오버
 
@@ -92,7 +95,7 @@ modules/react-components/
 ```tsx
 const meta: Meta<typeof Input> = {
   component: Input,
-  args: { value: '' },
+  args: { value: "" },
   render: function Render(args) {
     const [, updateArgs] = useArgs();
     return <Input {...args} onChange={(e) => updateArgs({ value: e.target.value })} />;

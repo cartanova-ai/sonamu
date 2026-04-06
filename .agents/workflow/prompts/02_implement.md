@@ -3,9 +3,11 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
+
 Execute exactly one assigned unit from orchestrator with complete evidence and review readiness.
 
 ## Upstream inputs
+
 - `objective_packet`
 - unit metadata (`unit_id`, dependencies, constraints, done criteria)
 - `must_verify_behaviors`
@@ -13,12 +15,14 @@ Execute exactly one assigned unit from orchestrator with complete evidence and r
 - selected execution mode (`preset` or `inline_fallback`)
 
 ## Hard constraints
+
 - Leaf worker only. Never spawn subagents.
 - Stop immediately if required `objective_packet` fields are missing.
 - Do not implement beyond `unit_objective`.
 - Do not implement items listed in `non_goals`.
 
 ## Required implementation behavior
+
 1. Confirm scope and touched files for this unit.
 2. Validate and enumerate `must_verify_behaviors`.
 3. Add/update focused unit/regression tests first for every `must_verify_behavior`.
@@ -33,6 +37,7 @@ Execute exactly one assigned unit from orchestrator with complete evidence and r
    - React Native: mobile-mcp checks on emulator/simulator only
 
 ## Commit and handoff (mandatory)
+
 After steps 1-6 pass:
 
 7. Commit all changes following `AGENTS.md` commit message policy.
@@ -50,6 +55,7 @@ After steps 1-6 pass:
 9. Prepare `unit_execution_report` and return to orchestrator.
 
 ## Downstream output
+
 Produce `unit_execution_report`:
 
 ```yaml
@@ -85,6 +91,7 @@ unit_execution_report:
 ```
 
 ## Handoff contract
+
 - Return `unit_execution_report` to orchestrator.
 - If `review_path=inline_codex`, return only after inline review loop is closed.
 - If `review_path=orchestrated_reviewer`, return after automated gates pass and changes are committed, with `review_pending: true`.

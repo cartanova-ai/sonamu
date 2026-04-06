@@ -194,10 +194,7 @@ describe("Document Vector Search", () => {
 
 ```typescript
 // 현재 방식: VectorSearch 클래스 직접 사용
-const vectorSearch = new VectorSearch<SyncFixtureSubsetA>(
-  DB.getDB("w"),
-  "sync_fixtures"
-);
+const vectorSearch = new VectorSearch<SyncFixtureSubsetA>(DB.getDB("w"), "sync_fixtures");
 const results = await vectorSearch.search(query, "voyage", { limit: 10 });
 ```
 
@@ -314,6 +311,7 @@ class Puri {
 ```
 
 **문제점:**
+
 1. 모든 문서가 비슷한 벡터가 될 가능성 높음 (검색 변별력 부족)
 2. recall/precision 측정을 위한 ground truth 없음
 3. status 하나만으로는 다양한 필터링 시나리오 테스트 어려움
@@ -332,13 +330,13 @@ ALTER TABLE documents ADD COLUMN content_tsv TSVECTOR
 
 #### 2. 컨텐츠 다양화
 
-| 문서 유형 | 템플릿 특징 | 예시 |
-|----------|------------|------|
-| 튜토리얼 | 단계별 설명, 코드 예제 포함 | "Step 1: 환경 설정..." |
+| 문서 유형    | 템플릿 특징                  | 예시                                                 |
+| ------------ | ---------------------------- | ---------------------------------------------------- | ----- | --- | ------- | --- |
+| 튜토리얼     | 단계별 설명, 코드 예제 포함  | "Step 1: 환경 설정..."                               |
 | API 레퍼런스 | 함수 시그니처, 파라미터 설명 | "function fetchData(url: string): Promise<Response>" |
-| 트러블슈팅 | 에러 메시지, 해결 방법 | "Error: ECONNREFUSED..." |
-| 코드 스니펫 | 순수 코드 위주 | "```typescript\nconst result = await..." |
-| 비교 분석 | 표 형식, 장단점 | "| React | Vue | Angular |" |
+| 트러블슈팅   | 에러 메시지, 해결 방법       | "Error: ECONNREFUSED..."                             |
+| 코드 스니펫  | 순수 코드 위주               | "```typescript\nconst result = await..."             |
+| 비교 분석    | 표 형식, 장단점              | "                                                    | React | Vue | Angular | "   |
 
 #### 3. 테스트 쿼리 세트
 

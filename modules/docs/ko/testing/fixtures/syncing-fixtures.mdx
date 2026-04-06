@@ -9,24 +9,16 @@ Fixture DB의 데이터를 Test DB로 동기화하여 테스트 환경을 준비
 
 <CardGroup cols={2}>
   <Card title="완전 복사" icon="copy">
-    모든 데이터
-    
-    스키마 + 레코드
+    모든 데이터 스키마 + 레코드
   </Card>
   <Card title="깨끗한 시작" icon="broom">
-    Test DB 초기화
-    
-    일관된 환경
+    Test DB 초기화 일관된 환경
   </Card>
   <Card title="빠른 실행" icon="bolt">
-    pg_dump + pg_restore
-    
-    효율적인 복사
+    pg_dump + pg_restore 효율적인 복사
   </Card>
   <Card title="자동 실행" icon="gear">
-    import 후 자동
-    
-    수동 실행 가능
+    import 후 자동 수동 실행 가능
   </Card>
 </CardGroup>
 
@@ -41,6 +33,7 @@ pnpm sonamu fixture sync
 ```
 
 이 명령어는:
+
 1. Test DB를 완전히 초기화
 2. Fixture DB를 덤프
 3. Test DB에 복원
@@ -54,7 +47,7 @@ pnpm sonamu fixture sync
 async function sync() {
   const fixtureConn = Sonamu.dbConfig.fixture.connection;
   const testConn = Sonamu.dbConfig.test.connection;
-  
+
   // 1. Test DB 연결 종료
   execSync(`psql -h ${testConn.host} -p ${testConn.port} -U ${testConn.user} 
     -d postgres -c "
@@ -63,21 +56,21 @@ async function sync() {
       WHERE datname = '${testConn.database}'
         AND pid <> pg_backend_pid();
     "`);
-  
+
   // 2. Test DB 재생성
   execSync(`psql -h ${testConn.host} -U ${testConn.user} -d postgres 
     -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`);
-  
+
   execSync(`psql -h ${testConn.host} -U ${testConn.user} -d postgres 
     -c "CREATE DATABASE \\"${testConn.database}\\""`);
-  
+
   // 3. Fixture DB → Test DB 복사
   const dumpCmd = `pg_dump -h ${fixtureConn.host} -p ${fixtureConn.port} 
     -U ${fixtureConn.user} -d ${fixtureConn.database} -Fc`;
-  
+
   const restoreCmd = `pg_restore -h ${testConn.host} -p ${testConn.port} 
     -U ${testConn.user} -d ${testConn.database} --no-owner --no-acl`;
-  
+
   execSync(`${dumpCmd} | PGPASSWORD="${testConn.password}" ${restoreCmd}`);
 }
 ```
@@ -174,6 +167,7 @@ pg_dump -d myapp_fixture -Fc
 ```
 
 **장점**:
+
 - 압축되어 크기가 작음
 - `pg_restore`로 선택적 복원 가능
 - 빠른 속도
@@ -187,6 +181,7 @@ pg_restore -d myapp_test --no-owner --no-acl
 ```
 
 **이유**:
+
 - 로컬과 원격의 사용자가 다를 수 있음
 - 권한 충돌 방지
 
@@ -199,10 +194,10 @@ pg_restore -d myapp_test --no-owner --no-acl
 ```typescript
 async function fixture_import(entityId: string, recordIds: number[]) {
   await setupFixtureManager();
-  
+
   // 1. Import
   await FixtureManager.importFixture(entityId, recordIds);
-  
+
   // 2. Sync (자동)
   await FixtureManager.sync();
 }
@@ -272,7 +267,7 @@ Fixture DB를 로컬에서 운영하면 sync가 빠릅니다:
     "fixture": {
       "client": "pg",
       "connection": {
-        "host": "localhost",  // 로컬
+        "host": "localhost", // 로컬
         "database": "myapp_fixture"
       }
     },
@@ -324,19 +319,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup PostgreSQL
         run: |
           docker run -d -p 5432:5432 \
             -e POSTGRES_PASSWORD=postgres \
             postgres:14
-      
+
       - name: Initialize Fixture
         run: pnpm sonamu fixture init
-      
+
       - name: Sync Fixture
         run: pnpm sonamu fixture sync
-      
+
       - name: Run Tests
         run: pnpm test
 ```
@@ -367,6 +362,7 @@ Error: connection to server at "fixture-db.example.com" failed
 ```
 
 **해결**:
+
 - 네트워크 연결 확인
 - Fixture DB 서버 상태 확인
 - 방화벽 설정 확인
@@ -378,6 +374,7 @@ Error: must be owner of database myapp_test
 ```
 
 **해결**:
+
 ```sql
 -- Test DB 소유자 변경
 ALTER DATABASE myapp_test OWNER TO current_user;
@@ -390,6 +387,7 @@ Error: database "myapp_test" is being accessed by other users
 ```
 
 **해결**:
+
 ```sql
 -- 모든 연결 종료
 SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -399,6 +397,7 @@ WHERE datname = 'myapp_test'
 ```
 
 또는:
+
 ```bash
 # 애플리케이션 중지 후 다시 시도
 pnpm sonamu fixture sync
@@ -407,12 +406,9 @@ pnpm sonamu fixture sync
 ## 주의사항
 
 <Warning>
-**Fixture 동기화 시 주의사항**:
-1. **Test DB 초기화**: 기존 데이터가 모두 삭제됨
-2. **권한 필요**: Test DB에 대한 DROP/CREATE 권한
-3. **연결 종료**: 실행 중인 테스트가 있으면 실패
-4. **네트워크**: Fixture DB가 원격이면 시간이 걸림
-5. **데이터 크기**: Fixture가 크면 sync가 느림
+  **Fixture 동기화 시 주의사항**: 1. **Test DB 초기화**: 기존 데이터가 모두 삭제됨 2. **권한 필요**:
+  Test DB에 대한 DROP/CREATE 권한 3. **연결 종료**: 실행 중인 테스트가 있으면 실패 4. **네트워크**:
+  Fixture DB가 원격이면 시간이 걸림 5. **데이터 크기**: Fixture가 크면 sync가 느림
 </Warning>
 
 ## 다음 단계

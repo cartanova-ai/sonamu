@@ -9,13 +9,13 @@ You're building a knowledge base app with Sonamu:
 
 ```typescript
 class DocumentModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string) {
     // Keyword search
     const results = await this.findMany({
       wq: [
-        ['title', 'LIKE', `%${query}%`],
-        ['content', 'LIKE', `%${query}%`],
+        ["title", "LIKE", `%${query}%`],
+        ["content", "LIKE", `%${query}%`],
       ],
     });
     return results;
@@ -24,12 +24,14 @@ class DocumentModelClass extends BaseModelClass {
 ```
 
 What happens when a user searches for "TypeScript framework"?
+
 - "Sonamu is a **TypeScript framework**" - Found
 - "Sonamu is a Node.js API **library**" - Not found (different keywords)
 - "Sonamu is a **TS framework**" - Not found (abbreviation)
 - "TypeScript **framwork**" - Not found (typo)
 
 **Limitations of keyword search**:
+
 - Doesn't handle synonyms
 - Fails when expressions differ
 - Vulnerable to typos
@@ -57,6 +59,7 @@ flowchart LR
 ```
 
 **Key points**:
+
 - Converting to numbers enables **distance calculation**
 - Close vectors = semantically similar texts
 - Distant vectors = semantically different texts
@@ -86,11 +89,11 @@ import { Embedding } from "sonamu/vector";
 // Single text embedding
 const result = await Embedding.embedOne(
   "Sonamu is a TypeScript framework",
-  'voyage'  // 'voyage' | 'openai'
+  "voyage", // 'voyage' | 'openai'
 );
 
-console.log(result.embedding);  // [0.123, -0.456, ...] (1024 dimensions)
-console.log(result.model);      // "voyage-3"
+console.log(result.embedding); // [0.123, -0.456, ...] (1024 dimensions)
+console.log(result.model); // "voyage-3"
 console.log(result.tokenCount); // 8
 ```
 
@@ -100,24 +103,26 @@ console.log(result.tokenCount); // 8
 
 Sonamu supports two embedding providers:
 
-| Item | Voyage AI | OpenAI |
-|------|-----------|--------|
-| **Korean performance** | Excellent | Good |
-| **English performance** | Excellent | Excellent |
-| **Dimensions** | 1024 | 1536 |
-| **Max tokens** | 32,000 | 8,191 |
-| **Batch size** | 128 | 100 |
-| **Asymmetric embeddings** | Yes (document/query distinction) | No |
-| **Sonamu recommendation** | Highly recommended | Recommended |
+| Item                      | Voyage AI                        | OpenAI      |
+| ------------------------- | -------------------------------- | ----------- |
+| **Korean performance**    | Excellent                        | Good        |
+| **English performance**   | Excellent                        | Excellent   |
+| **Dimensions**            | 1024                             | 1536        |
+| **Max tokens**            | 32,000                           | 8,191       |
+| **Batch size**            | 128                              | 100         |
+| **Asymmetric embeddings** | Yes (document/query distinction) | No          |
+| **Sonamu recommendation** | Highly recommended               | Recommended |
 
 ### Selection Criteria for Sonamu Projects
 
 **Recommend Voyage AI**:
+
 - Korean services (excellent Korean performance)
 - Long document processing (32,000 tokens)
 - Search accuracy matters (asymmetric embeddings)
 
 **Recommend OpenAI**:
+
 - Global services (balanced multilingual support)
 - Already using OpenAI API
 
@@ -142,6 +147,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 Get API keys from each provider's website:
+
 - Voyage AI: https://www.voyageai.com/
 - OpenAI: https://platform.openai.com/
 
@@ -154,20 +160,20 @@ import { BaseModelClass, api } from "sonamu";
 import { Embedding } from "sonamu/vector";
 
 class DocumentModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async createDocument(title: string, content: string) {
     // 1. Generate embedding
     const result = await Embedding.embedOne(
       `${title}\n\n${content}`,
-      'voyage',
-      'document'  // document embedding
+      "voyage",
+      "document", // document embedding
     );
 
     // 2. Save to DB (Sonamu's saveOne)
     const doc = await this.saveOne({
       title,
       content,
-      embedding: result.embedding,  // array of 1024 numbers
+      embedding: result.embedding, // array of 1024 numbers
       token_count: result.tokenCount,
     });
 
@@ -177,6 +183,7 @@ class DocumentModelClass extends BaseModelClass {
 ```
 
 **Flow**:
+
 1. User uploads document via POST /documents
 2. Sonamu API generates embedding via Voyage AI
 3. PostgreSQL stores text + embedding together
@@ -214,11 +221,13 @@ Voyage AI distinguishes between **document** and **query** embeddings.
 ### Why the Distinction?
 
 **Document**:
+
 - Long text
 - Detailed information
 - Storage purpose
 
 **Query**:
+
 - Short text
 - Search terms
 - Search purpose
@@ -231,22 +240,23 @@ Documents and queries have **different characteristics**. Voyage AI considers th
 // When saving documents: document
 const docEmbedding = await Embedding.embedOne(
   "Sonamu is a TypeScript full-stack framework. It provides API, DB, authentication, and more.",
-  'voyage',
-  'document'  // for documents
+  "voyage",
+  "document", // for documents
 );
 
 // When searching: query
 const queryEmbedding = await Embedding.embedOne(
   "TypeScript framework",
-  'voyage',
-  'query'  // for search
+  "voyage",
+  "query", // for search
 );
 ```
 
 **OpenAI does not support asymmetric embeddings**:
+
 ```typescript
 // OpenAI ignores inputType
-await Embedding.embedOne(text, 'openai', 'document');  // 'document' is ignored
+await Embedding.embedOne(text, "openai", "document"); // 'document' is ignored
 ```
 
 ## Batch Processing
@@ -288,6 +298,7 @@ async batchCreateDocuments(documents: Array<{
 ```
 
 **Automatic splitting**:
+
 - Voyage AI: 128 at a time
 - OpenAI: 100 at a time
 
@@ -326,6 +337,7 @@ async importDocuments(files: string[]) {
 You're building a customer support system with Sonamu.
 
 **Step 1: Document Upload API**
+
 ```typescript
 class KnowledgeBaseModelClass extends BaseModelClass {
   @upload()
@@ -337,11 +349,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
     const content = file.buffer.toString();
 
     // Generate embedding
-    const embedding = await Embedding.embedOne(
-      content,
-      'voyage',
-      'document'
-    );
+    const embedding = await Embedding.embedOne(content, "voyage", "document");
 
     // Save
     return await this.saveOne({
@@ -354,6 +362,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 ```
 
 **Step 2: Search API**
+
 ```typescript
 @api({ httpMethod: 'POST' })
 async searchSimilar(query: string) {
@@ -375,6 +384,7 @@ async searchSimilar(query: string) {
 ```
 
 **Step 3: Handling User Requests**
+
 ```
 POST /api/knowledge-base/search
 { "query": "What is the refund policy?" }
@@ -420,17 +430,15 @@ async createDocument(title: string, content: string) {
 ### Token Calculation
 
 ```typescript
-const result = await Embedding.embedOne(
-  "Sonamu is a TypeScript full-stack framework",
-  'voyage'
-);
+const result = await Embedding.embedOne("Sonamu is a TypeScript full-stack framework", "voyage");
 
-console.log(`Tokens: ${result.tokenCount}`);  // 12
+console.log(`Tokens: ${result.tokenCount}`); // 12
 ```
 
 ### Cost Estimation
 
 **Voyage AI** ($0.13 per 1M tokens):
+
 ```typescript
 // 1000 documents, average 500 tokens
 // = 500,000 tokens
@@ -438,6 +446,7 @@ console.log(`Tokens: ${result.tokenCount}`);  // 12
 ```
 
 **OpenAI** ($0.02 per 1M tokens):
+
 ```typescript
 // 1000 documents, average 500 tokens
 // = 500,000 tokens
@@ -447,6 +456,7 @@ console.log(`Tokens: ${result.tokenCount}`);  // 12
 ### Cost Reduction Tips
 
 **1. Caching**
+
 ```typescript
 const cache = new Map<string, number[]>();
 
@@ -455,17 +465,18 @@ async function getCachedEmbedding(text: string) {
     return cache.get(text)!;
   }
 
-  const result = await Embedding.embedOne(text, 'voyage');
+  const result = await Embedding.embedOne(text, "voyage");
   cache.set(text, result.embedding);
   return result.embedding;
 }
 ```
 
 **2. Deduplication**
+
 ```typescript
 // Embed identical texts only once
 const uniqueTexts = [...new Set(texts)];
-const embeddings = await Embedding.embed(uniqueTexts, 'voyage');
+const embeddings = await Embedding.embed(uniqueTexts, "voyage");
 ```
 
 ## Cautions
@@ -474,11 +485,13 @@ const embeddings = await Embedding.embed(uniqueTexts, 'voyage');
 **Cautions when using embeddings in Sonamu**:
 
 1. **API key required**: Set environment variables
+
    ```bash
    VOYAGE_API_KEY=pa-...
    ```
 
 2. **Dimension match**: Must match DB schema
+
    ```sql
    -- Voyage AI
    CREATE TABLE docs (embedding vector(1024));
@@ -488,12 +501,13 @@ const embeddings = await Embedding.embed(uniqueTexts, 'voyage');
    ```
 
 3. **document vs query**: Voyage distinguishes, OpenAI ignores
+
    ```typescript
    // When saving
-   await Embedding.embedOne(text, 'voyage', 'document');
+   await Embedding.embedOne(text, "voyage", "document");
 
    // When searching
-   await Embedding.embedOne(text, 'voyage', 'query');
+   await Embedding.embedOne(text, "voyage", "query");
    ```
 
 4. **Token limits**: Chunking needed for very long texts
@@ -501,25 +515,34 @@ const embeddings = await Embedding.embed(uniqueTexts, 'voyage');
    - OpenAI: 8,191 tokens
 
 5. **NULL handling**: Can store NULL on embedding failure
+
    ```typescript
-   embedding: result?.embedding || null
+   embedding: result?.embedding || null;
    ```
 
 6. **Cost monitoring**: Track token usage
    ```typescript
    console.log(`Total tokens: ${result.tokenCount}`);
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 Embedding generation is complete. Now it's time to implement the search API in Sonamu Model.
 
 <CardGroup cols={3}>
-  <Card title="pgvector Setup" icon="database" href="/en/advanced-features/vector-search/pgvector-setup">
+  <Card
+    title="pgvector Setup"
+    icon="database"
+    href="/en/advanced-features/vector-search/pgvector-setup"
+  >
     Creating PostgreSQL vector tables
   </Card>
-  <Card title="Vector Search" icon="magnifying-glass" href="/en/advanced-features/vector-search/vector-search">
+  <Card
+    title="Vector Search"
+    icon="magnifying-glass"
+    href="/en/advanced-features/vector-search/vector-search"
+  >
     Implementing search API in Sonamu Model
   </Card>
   <Card title="Chunking" icon="scissors" href="/en/advanced-features/vector-search/chunking">

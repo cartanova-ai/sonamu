@@ -1,6 +1,6 @@
 ---
-title: 'N+1 문제'
-description: 'N+1 쿼리 문제 해결하기'
+title: "N+1 문제"
+description: "N+1 쿼리 문제 해결하기"
 ---
 
 N+1 쿼리 문제를 이해하고 Sonamu의 Subset과 Relation 기능으로 해결하는 방법을 다룹니다.
@@ -15,17 +15,15 @@ N+1 문제는 1개의 메인 쿼리 후, N개의 추가 쿼리가 발생하는 �
 // ❌ N+1 문제 발생
 async function getUsersWithOrders() {
   // 1. 사용자 조회 (1번 쿼리)
-  const users = await UserModel.getPuri().select("id", "name");  // 100명의 사용자
-  
+  const users = await UserModel.getPuri().select("id", "name"); // 100명의 사용자
+
   // 2. 각 사용자의 주문 조회 (N번 쿼리)
   for (const user of users) {
-    const orders = await OrderModel.getPuri()
-      .select("*")
-      .where({ user_id: user.id });
-    
-    user.orders = orders;  // 100번 쿼리!
+    const orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
+
+    user.orders = orders; // 100번 쿼리!
   }
-  
+
   return users;
 }
 
@@ -33,6 +31,7 @@ async function getUsersWithOrders() {
 ```
 
 **성능 영향:**
+
 - 100명 사용자 → 101번 쿼리
 - 1000명 사용자 → 1001번 쿼리
 - 네트워크 왕복 시간 누적
@@ -85,17 +84,17 @@ Entity에서 Subset을 정의합니다:
 async function getUsersWithOrders() {
   // getSubsetQueries로 쿼리 빌더 얻기
   const { qb } = UserModel.getSubsetQueries("WithOrders");
-  
+
   // 자동으로 최적화된 쿼리 실행
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb,
-    params: { num: 100, page: 1 }
+    params: { num: 100, page: 1 },
   });
-  
+
   // result.rows[0].orders는 이미 로드됨
   // 추가 쿼리 없음!
-  
+
   return result.rows;
 }
 
@@ -103,6 +102,7 @@ async function getUsersWithOrders() {
 ```
 
 **내부 동작:**
+
 1. 사용자 조회 (1번)
 2. 모든 사용자 ID로 주문 일괄 조회 (1번)
 3. 메모리에서 조인
@@ -135,10 +135,10 @@ const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
-result.rows.forEach(post => {
+result.rows.forEach((post) => {
   console.log(`${post.title} by ${post.author.name}`);
 });
 ```
@@ -177,11 +177,11 @@ const { qb } = OrderModel.getSubsetQueries("Detail");
 const result = await OrderModel.executeSubsetQuery({
   subset: "Detail",
   qb: qb.where({ status: "completed" }),
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
 // 모든 관계가 이미 로드됨
-result.rows.forEach(order => {
+result.rows.forEach((order) => {
   console.log(`Order ${order.id}`);
   console.log(`User: ${order.user.name}`);
   console.log(`Items: ${order.items.length}`);
@@ -205,7 +205,7 @@ result.rows.forEach(order => {
         },
         {
           "name": "post",
-          "subset": "WithAuthor"  // 중첩: 게시글 + 게시글 작성자
+          "subset": "WithAuthor" // 중첩: 게시글 + 게시글 작성자
         }
       ]
     }
@@ -219,10 +219,10 @@ const { qb } = CommentModel.getSubsetQueries("WithAll");
 const result = await CommentModel.executeSubsetQuery({
   subset: "WithAll",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
-result.rows.forEach(comment => {
+result.rows.forEach((comment) => {
   console.log(`${comment.author.name}: ${comment.content}`);
   console.log(`  on "${comment.post.title}" by ${comment.post.author.name}`);
 });
@@ -242,13 +242,11 @@ Subset이 없는 경우 whereIn으로 최적화할 수 있습니다:
 // ❌ N+1 문제
 async function getUsersWithOrders() {
   const users = await UserModel.getPuri().select("id", "name");
-  
+
   for (const user of users) {
-    user.orders = await OrderModel.getPuri()
-      .select("*")
-      .where({ user_id: user.id });
+    user.orders = await OrderModel.getPuri().select("*").where({ user_id: user.id });
   }
-  
+
   return users;
 }
 
@@ -256,25 +254,26 @@ async function getUsersWithOrders() {
 async function getUsersWithOrders() {
   // 1. 사용자 조회
   const users = await UserModel.getPuri().select("id", "name");
-  
-  const userIds = users.map(u => u.id);
-  
+
+  const userIds = users.map((u) => u.id);
+
   // 2. 모든 주문 한 번에 조회
-  const orders = await OrderModel.getPuri()
-    .select("*")
-    .whereIn("user_id", userIds);
-  
+  const orders = await OrderModel.getPuri().select("*").whereIn("user_id", userIds);
+
   // 3. 메모리에서 매핑
-  const ordersByUserId = orders.reduce((acc, order) => {
-    if (!acc[order.user_id]) acc[order.user_id] = [];
-    acc[order.user_id].push(order);
-    return acc;
-  }, {} as Record<number, Order[]>);
-  
-  users.forEach(user => {
+  const ordersByUserId = orders.reduce(
+    (acc, order) => {
+      if (!acc[order.user_id]) acc[order.user_id] = [];
+      acc[order.user_id].push(order);
+      return acc;
+    },
+    {} as Record<number, Order[]>,
+  );
+
+  users.forEach((user) => {
     user.orders = ordersByUserId[user.id] || [];
   });
-  
+
   return users;
 }
 
@@ -289,18 +288,14 @@ async function getUsersWithOrders() {
 class OrderModelClass extends BaseModelClass {
   // 사용자별 주문 로더
   private userOrdersLoader = new DataLoader(async (userIds: number[]) => {
-    const orders = await this.getPuri()
-      .select("*")
-      .whereIn("user_id", userIds);
-    
+    const orders = await this.getPuri().select("*").whereIn("user_id", userIds);
+
     // user_id별로 그룹화
-    const grouped = userIds.map(userId => 
-      orders.filter(o => o.user_id === userId)
-    );
-    
+    const grouped = userIds.map((userId) => orders.filter((o) => o.user_id === userId));
+
     return grouped;
   });
-  
+
   async getOrdersByUserId(userId: number): Promise<Order[]> {
     return this.userOrdersLoader.load(userId);
   }
@@ -330,25 +325,25 @@ class PostModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async listPostsSlow() {
     const posts = await this.getPuri().select("id", "title", "content");
-    
+
     // N+1 발생!
     for (const post of posts) {
       post.author = await UserModel.findById(post.author_id);
       post.comments = await CommentModel.getPuri().where({ post_id: post.id });
     }
-    
+
     return posts;
   }
-  
+
   // ✅ Subset으로 최적화
   @api({ httpMethod: "GET" })
   async listPostsFast() {
     const { qb } = this.getSubsetQueries("WithAuthorAndComments");
-    
+
     return this.executeSubsetQuery({
       subset: "WithAuthorAndComments",
       qb: qb.orderBy("created_at", "desc"),
-      params: { num: 20, page: 1 }
+      params: { num: 20, page: 1 },
     });
   }
 }
@@ -361,27 +356,27 @@ class DashboardService {
   // ❌ N+1 발생
   async getDashboardSlow() {
     const users = await UserModel.getPuri().select("id", "name");
-    
+
     const stats = [];
     for (const user of users) {
       const orderCount = await OrderModel.getPuri()
         .select({ count: Puri.count() })
         .where({ user_id: user.id });
-      
+
       const totalSpent = await OrderModel.getPuri()
         .select({ total: Puri.sum("total") })
         .where({ user_id: user.id });
-      
+
       stats.push({
         user: user.name,
         orderCount: orderCount[0].count,
-        totalSpent: totalSpent[0].total
+        totalSpent: totalSpent[0].total,
       });
     }
-    
+
     return stats;
   }
-  
+
   // ✅ JOIN으로 최적화
   async getDashboardFast() {
     return UserModel.getPuri()
@@ -389,7 +384,7 @@ class DashboardService {
         "users.id",
         "users.name",
         knex.raw("COUNT(orders.id) as order_count"),
-        knex.raw("COALESCE(SUM(orders.total), 0) as total_spent")
+        knex.raw("COALESCE(SUM(orders.total), 0) as total_spent"),
       )
       .leftJoin("orders", "orders.user_id", "users.id")
       .groupBy("users.id");
@@ -406,13 +401,14 @@ class DashboardService {
 export default {
   database: {
     defaultOptions: {
-      debug: true  // 모든 쿼리 출력
-    }
-  }
+      debug: true, // 모든 쿼리 출력
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
 실행 후 콘솔을 확인하세요:
+
 ```
 SELECT * FROM users;
 SELECT * FROM orders WHERE user_id = 1;
@@ -429,20 +425,20 @@ SELECT * FROM orders WHERE user_id = 3;
 test("N+1 문제 확인", async () => {
   // 쿼리 카운터
   let queryCount = 0;
-  
+
   const db = UserModel.getPuri().getDB();
   db.on("query", () => queryCount++);
-  
+
   // 테스트
   const { qb } = UserModel.getSubsetQueries("WithOrders");
   const result = await UserModel.executeSubsetQuery({
     subset: "WithOrders",
     qb: qb.limit(10),
-    params: { num: 10, page: 1 }
+    params: { num: 10, page: 1 },
   });
-  
+
   // 쿼리 수 검증
-  expect(queryCount).toBeLessThan(5);  // N+1이면 11번 이상
+  expect(queryCount).toBeLessThan(5); // N+1이면 11번 이상
   expect(result.rows).toHaveLength(10);
 });
 ```
@@ -479,7 +475,7 @@ const { qb } = PostModel.getSubsetQueries("WithAuthor");
 const result = await PostModel.executeSubsetQuery({
   subset: "WithAuthor",
   qb,
-  params: { num: 20, page: 1 }
+  params: { num: 20, page: 1 },
 });
 
 // ❌ 수동 로딩
@@ -524,9 +520,9 @@ for (const post of posts) {
 export default {
   database: {
     defaultOptions: {
-      debug: process.env.NODE_ENV === "development"
-    }
-  }
+      debug: process.env.NODE_ENV === "development",
+    },
+  },
 } satisfies SonamuConfig;
 ```
 

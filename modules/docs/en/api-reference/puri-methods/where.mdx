@@ -1,6 +1,6 @@
 ---
-title: 'where'
-description: 'Filter Conditions with WHERE Clause'
+title: "where"
+description: "Filter Conditions with WHERE Clause"
 ---
 
 `where` is a method that specifies conditions to filter query results. It supports various operators and condition combinations, enabling type-safe filtering.
@@ -10,7 +10,8 @@ description: 'Filter Conditions with WHERE Clause'
 ### Simple Equality Condition
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .where("users.status", "active")
   .select({ id: "users.id", name: "users.name" });
 
@@ -21,19 +22,17 @@ const users = await puri.table("users")
 
 ```typescript
 // Greater than
-await puri.table("users")
-  .where("users.age", ">", 18);
+await puri.table("users").where("users.age", ">", 18);
 
 // Less than or equal
-await puri.table("orders")
-  .where("orders.amount", "<=", 1000);
+await puri.table("orders").where("orders.amount", "<=", 1000);
 
 // Not equal
-await puri.table("posts")
-  .where("posts.status", "!=", "deleted");
+await puri.table("posts").where("posts.status", "!=", "deleted");
 ```
 
 **Supported Operators:**
+
 - `=` - Equal (default)
 - `!=` - Not equal
 - `>` - Greater than
@@ -50,11 +49,12 @@ await puri.table("posts")
 You can specify multiple AND conditions as an object.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .where({
     "users.status": "active",
     "users.role": "admin",
-    "users.verified": true
+    "users.verified": true,
   })
   .select({ id: "users.id", name: "users.name" });
 
@@ -69,14 +69,12 @@ const users = await puri.table("users")
 
 ```typescript
 // Explicit null check
-await puri.table("users")
-  .where("users.deleted_at", null);
+await puri.table("users").where("users.deleted_at", null);
 
 // WHERE users.deleted_at IS NULL
 
 // Using operator
-await puri.table("users")
-  .where("users.deleted_at", "=", null);
+await puri.table("users").where("users.deleted_at", "=", null);
 
 // WHERE users.deleted_at IS NULL
 ```
@@ -84,8 +82,7 @@ await puri.table("users")
 ### IS NOT NULL
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "!=", null);
+await puri.table("users").where("users.email", "!=", null);
 
 // WHERE users.email IS NOT NULL
 ```
@@ -96,27 +93,22 @@ await puri.table("users")
 
 ```typescript
 // Contains
-await puri.table("users")
-  .where("users.email", "like", "%@gmail.com");
+await puri.table("users").where("users.email", "like", "%@gmail.com");
 
 // Starts with
-await puri.table("users")
-  .where("users.name", "like", "John%");
+await puri.table("users").where("users.name", "like", "John%");
 
 // Ends with
-await puri.table("users")
-  .where("users.phone", "like", "%1234");
+await puri.table("users").where("users.phone", "like", "%1234");
 
 // Contains anywhere
-await puri.table("posts")
-  .where("posts.title", "like", "%typescript%");
+await puri.table("posts").where("posts.title", "like", "%typescript%");
 ```
 
 ### NOT LIKE
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "not like", "%spam%");
+await puri.table("users").where("users.email", "not like", "%spam%");
 
 // WHERE users.email NOT LIKE '%spam%'
 ```
@@ -127,8 +119,7 @@ Performs case-insensitive pattern matching in PostgreSQL.
 
 ```typescript
 // Search regardless of case
-await puri.table("users")
-  .where("users.name", "ilike", "%john%");
+await puri.table("users").where("users.name", "ilike", "%john%");
 
 // WHERE users.name ILIKE '%john%'
 // Matches 'John', 'JOHN', 'john', etc.
@@ -137,15 +128,15 @@ await puri.table("users")
 ### NOT ILIKE (PostgreSQL)
 
 ```typescript
-await puri.table("users")
-  .where("users.email", "not ilike", "%SPAM%");
+await puri.table("users").where("users.email", "not ilike", "%SPAM%");
 
 // WHERE users.email NOT ILIKE '%SPAM%'
 // Excludes 'spam', 'Spam', 'SPAM', etc.
 ```
 
 <Info>
-`ilike` and `not ilike` are PostgreSQL-specific operators. In MySQL, you can achieve similar results by combining `LOWER()` function with `like`.
+  `ilike` and `not ilike` are PostgreSQL-specific operators. In MySQL, you can achieve similar
+  results by combining `LOWER()` function with `like`.
 </Info>
 
 ## whereIn / whereNotIn
@@ -155,14 +146,12 @@ await puri.table("users")
 ```typescript
 // IN
 const userIds = [1, 2, 3, 4, 5];
-await puri.table("users")
-  .whereIn("users.id", userIds);
+await puri.table("users").whereIn("users.id", userIds);
 
 // WHERE users.id IN (1, 2, 3, 4, 5)
 
 // NOT IN
-await puri.table("users")
-  .whereNotIn("users.status", ["banned", "suspended"]);
+await puri.table("users").whereNotIn("users.status", ["banned", "suspended"]);
 
 // WHERE users.status NOT IN ('banned', 'suspended')
 ```
@@ -171,8 +160,7 @@ await puri.table("users")
 
 ```typescript
 // Empty array always returns false
-await puri.table("users")
-  .whereIn("users.id", []);
+await puri.table("users").whereIn("users.id", []);
 
 // WHERE 1 = 0 (returns nothing)
 ```
@@ -184,11 +172,11 @@ await puri.table("users")
 Creates conditions wrapped in parentheses.
 
 ```typescript
-await puri.table("users")
+await puri
+  .table("users")
   .where("users.role", "admin")
   .whereGroup((group) => {
-    group.where("users.status", "active")
-         .orWhere("users.status", "pending");
+    group.where("users.status", "active").orWhere("users.status", "pending");
   });
 
 // WHERE users.role = 'admin'
@@ -198,11 +186,11 @@ await puri.table("users")
 ### orWhereGroup (OR Group)
 
 ```typescript
-await puri.table("products")
+await puri
+  .table("products")
   .where("products.published", true)
   .orWhereGroup((group) => {
-    group.where("products.featured", true)
-         .where("products.stock", ">", 0);
+    group.where("products.featured", true).where("products.stock", ">", 0);
   });
 
 // WHERE products.published = true
@@ -212,14 +200,11 @@ await puri.table("products")
 ### Nested Groups
 
 ```typescript
-await puri.table("orders")
-  .whereGroup((outer) => {
-    outer.where("orders.status", "completed")
-         .whereGroup((inner) => {
-           inner.where("orders.amount", ">", 1000)
-                .orWhere("orders.vip", true);
-         });
+await puri.table("orders").whereGroup((outer) => {
+  outer.where("orders.status", "completed").whereGroup((inner) => {
+    inner.where("orders.amount", ">", 1000).orWhere("orders.vip", true);
   });
+});
 
 // WHERE (
 //   orders.status = 'completed'
@@ -234,23 +219,19 @@ await puri.table("orders")
 Uses MySQL's FULLTEXT index.
 
 ```typescript
-await puri.table("posts")
-  .whereMatch("posts.content", "typescript programming");
+await puri.table("posts").whereMatch("posts.content", "typescript programming");
 
 // WHERE MATCH (posts.content) AGAINST ('typescript programming')
 ```
 
-<Info>
-To use `whereMatch`, the column must have a FULLTEXT index.
-</Info>
+<Info>To use `whereMatch`, the column must have a FULLTEXT index.</Info>
 
 ### whereTsSearch (PostgreSQL)
 
 Uses PostgreSQL's tsvector.
 
 ```typescript
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript programming");
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript programming");
 
 // WHERE posts.content_tsv @@ websearch_to_tsquery('simple', 'typescript programming')
 ```
@@ -259,15 +240,13 @@ await puri.table("posts")
 
 ```typescript
 // Specify parser
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript", {
-    parser: "plainto_tsquery",  // or "to_tsquery", "phraseto_tsquery"
-    config: "english"  // Language configuration
-  });
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript", {
+  parser: "plainto_tsquery", // or "to_tsquery", "phraseto_tsquery"
+  config: "english", // Language configuration
+});
 
 // Specify config only
-await puri.table("posts")
-  .whereTsSearch("posts.content_tsv", "typescript", "english");
+await puri.table("posts").whereTsSearch("posts.content_tsv", "typescript", "english");
 ```
 
 ### whereSearch (PGroonga)
@@ -276,33 +255,25 @@ Full-text search using the PGroonga extension.
 
 ```typescript
 // Single column search
-await puri.table("posts")
-  .whereSearch("posts.title", "타입스크립트");
+await puri.table("posts").whereSearch("posts.title", "타입스크립트");
 
 // WHERE posts.title &@~ pgroonga_condition('타입스크립트')
 
 // Multiple column search (array)
-await puri.table("posts")
-  .whereSearch(
-    ["posts.title", "posts.content"],
-    "타입스크립트"
-  );
+await puri.table("posts").whereSearch(["posts.title", "posts.content"], "타입스크립트");
 
 // WHERE ARRAY[posts.title::text, posts.content::text]
 //   &@~ pgroonga_condition('타입스크립트')
 
 // Specify weights
-await puri.table("posts")
-  .whereSearch(
-    ["posts.title", "posts.content"],
-    "타입스크립트",
-    { weights: [10, 1] }  // title is 10x more important than content
-  );
+await puri.table("posts").whereSearch(
+  ["posts.title", "posts.content"],
+  "타입스크립트",
+  { weights: [10, 1] }, // title is 10x more important than content
+);
 ```
 
-<Info>
-PGroonga search must use the **same column configuration** as the index to be used.
-</Info>
+<Info>PGroonga search must use the **same column configuration** as the index to be used.</Info>
 
 ### whereFuzzy (pg_trgm)
 
@@ -310,8 +281,7 @@ Fuzzy string matching using PostgreSQL's `pg_trgm` extension. Based on trigrams,
 
 ```typescript
 // Basic usage (word similarity, <% operator)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript");
+await puri.table("items").whereFuzzy("items.search_text", "typscript");
 
 // WHERE 'typscript'::text <% items.search_text::text
 ```
@@ -320,28 +290,27 @@ await puri.table("items")
 
 ```typescript
 // similarity (% operator)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript", { operator: "%" });
+await puri.table("items").whereFuzzy("items.search_text", "typscript", { operator: "%" });
 
 // WHERE items.search_text::text % 'typscript'::text
 
 // strict word similarity (<<% operator)
-await puri.table("items")
-  .whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
+await puri.table("items").whereFuzzy("items.search_text", "typscript", { operator: "<<%" });
 
 // WHERE 'typscript'::text <<% items.search_text::text
 ```
 
 **Operator comparison:**
 
-| Operator | Meaning | SQL | Description |
-|----------|---------|-----|-------------|
-| `<%` (default) | word similarity | `'query'::text <% column::text` | Checks if query is similar to a substring of the column |
-| `%` | similarity | `column::text % 'query'::text` | Compares overall string similarity |
-| `<<%` | strict word similarity | `'query'::text <<% column::text` | Stricter substring matching than word similarity |
+| Operator       | Meaning                | SQL                              | Description                                             |
+| -------------- | ---------------------- | -------------------------------- | ------------------------------------------------------- |
+| `<%` (default) | word similarity        | `'query'::text <% column::text`  | Checks if query is similar to a substring of the column |
+| `%`            | similarity             | `column::text % 'query'::text`   | Compares overall string similarity                      |
+| `<<%`          | strict word similarity | `'query'::text <<% column::text` | Stricter substring matching than word similarity        |
 
 <Info>
-`whereFuzzy` requires the `pg_trgm` extension. Install it with `CREATE EXTENSION IF NOT EXISTS pg_trgm`. Creating a GIN index (`gin_trgm_ops`) significantly improves performance.
+  `whereFuzzy` requires the `pg_trgm` extension. Install it with `CREATE EXTENSION IF NOT EXISTS
+  pg_trgm`. Creating a GIN index (`gin_trgm_ops`) significantly improves performance.
 </Info>
 
 ## Raw SQL Conditions
@@ -352,22 +321,19 @@ You can write complex SQL conditions directly.
 
 ```typescript
 // No parameters
-await puri.table("users")
-  .whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
+await puri.table("users").whereRaw("YEAR(users.created_at) = YEAR(CURRENT_DATE)");
 
 // Parameter binding
-await puri.table("users")
-  .whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
+await puri.table("users").whereRaw("users.age BETWEEN ? AND ?", [18, 65]);
 
 // Multiple conditions
-await puri.table("orders")
+await puri
+  .table("orders")
   .whereRaw("DATE(orders.created_at) = ?", ["2024-01-01"])
   .whereRaw("orders.amount > ?", [1000]);
 ```
 
-<Warning>
-Always use parameter binding to prevent SQL injection.
-</Warning>
+<Warning>Always use parameter binding to prevent SQL injection.</Warning>
 
 ## Real-World Examples
 
@@ -430,6 +396,7 @@ Always use parameter binding to prevent SQL injection.
       return query.orderBy("orders.created_at", "desc");
     }
     ```
+
   </Tab>
 
   <Tab title="Complex Conditions" icon="filter">
@@ -464,6 +431,7 @@ Always use parameter binding to prevent SQL injection.
         .orderBy("products.created_at", "desc");
     }
     ```
+
   </Tab>
 
   <Tab title="Full-Text Search" icon="magnifying-glass">
@@ -499,6 +467,7 @@ Always use parameter binding to prevent SQL injection.
         .limit(20);
     }
     ```
+
   </Tab>
 
   <Tab title="Date Range" icon="calendar">
@@ -530,6 +499,7 @@ Always use parameter binding to prevent SQL injection.
         .orderBy("activities.created_at", "desc");
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -538,12 +508,13 @@ Always use parameter binding to prevent SQL injection.
 All `where` methods are chainable and are connected with **AND** by default.
 
 ```typescript
-const result = await puri.table("users")
-  .where("users.role", "admin")         // AND
-  .where("users.status", "active")       // AND
-  .where("users.age", ">", 18)          // AND
+const result = await puri
+  .table("users")
+  .where("users.role", "admin") // AND
+  .where("users.status", "active") // AND
+  .where("users.age", ">", 18) // AND
   .whereIn("users.country", ["KR", "US"]) // AND
-  .where("users.verified", true);        // AND
+  .where("users.verified", true); // AND
 ```
 
 ## OR Conditions
@@ -551,12 +522,12 @@ const result = await puri.table("users")
 ### orWhere within WhereGroup
 
 ```typescript
-await puri.table("users")
-  .whereGroup((group) => {
-    group.where("users.role", "admin")
-         .orWhere("users.role", "moderator")
-         .orWhere("users.role", "editor");
-  });
+await puri.table("users").whereGroup((group) => {
+  group
+    .where("users.role", "admin")
+    .orWhere("users.role", "moderator")
+    .orWhere("users.role", "editor");
+});
 
 // WHERE (
 //   users.role = 'admin'
@@ -566,7 +537,7 @@ await puri.table("users")
 ```
 
 <Info>
-There is no `orWhere` at the top level. Use OR conditions within `whereGroup` or `orWhereGroup`.
+  There is no `orWhere` at the top level. Use OR conditions within `whereGroup` or `orWhereGroup`.
 </Info>
 
 ## Type Safety
@@ -575,20 +546,16 @@ WHERE conditions are validated type-safely.
 
 ```typescript
 // ✅ Valid column
-await puri.table("users")
-  .where("users.email", "like", "%@gmail.com");
+await puri.table("users").where("users.email", "like", "%@gmail.com");
 
 // ❌ Type error: Non-existent column
-await puri.table("users")
-  .where("users.unknown_field", "value");
+await puri.table("users").where("users.unknown_field", "value");
 
 // ✅ Valid type
-await puri.table("users")
-  .where("users.age", 25);  // number
+await puri.table("users").where("users.age", 25); // number
 
 // ❌ Type error: Wrong type
-await puri.table("users")
-  .where("users.age", "25");  // string (age is number)
+await puri.table("users").where("users.age", "25"); // string (age is number)
 ```
 
 ## Performance Optimization
@@ -597,12 +564,10 @@ await puri.table("users")
 
 ```typescript
 // ✅ Good: Use indexed column
-await puri.table("users")
-  .where("users.email", "user@example.com");  // email needs index
+await puri.table("users").where("users.email", "user@example.com"); // email needs index
 
 // ❌ Bad: Using functions (invalidates index)
-await puri.table("users")
-  .whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
+await puri.table("users").whereRaw("LOWER(users.email) = ?", ["user@example.com"]);
 ```
 
 ### 2. LIKE/ILIKE Patterns
@@ -618,8 +583,8 @@ await puri.table("users")
 ```
 
 <Info>
-In PostgreSQL, `ilike` is convenient for case-insensitive search, but it can affect performance on large datasets.
-Consider using `citext` type or `pg_trgm` extension indexes for such cases.
+  In PostgreSQL, `ilike` is convenient for case-insensitive search, but it can affect performance on
+  large datasets. Consider using `citext` type or `pg_trgm` extension indexes for such cases.
 </Info>
 
 ### 3. IN vs Multiple ORs
@@ -657,8 +622,7 @@ Consider using `citext` type or `pg_trgm` extension indexes for such cases.
 ```typescript
 // whereIn with empty array returns no results
 const ids = [];
-await puri.table("users")
-  .whereIn("users.id", ids);  // Returns nothing
+await puri.table("users").whereIn("users.id", ids); // Returns nothing
 
 // Handle conditionally
 if (ids.length > 0) {
@@ -702,21 +666,13 @@ const userInput = "'; DROP TABLE users; --";
     Select fields to retrieve
   </Card>
 
-  <Card
-    title="join"
-    icon="link"
-    href="/en/api-reference/puri-methods/join"
-  >
-    Join tables
-  </Card>
+<Card title="join" icon="link" href="/en/api-reference/puri-methods/join">
+  Join tables
+</Card>
 
-  <Card
-    title="order-by"
-    icon="arrow-down-1-9"
-    href="/en/api-reference/puri-methods/order-by"
-  >
-    Sort results
-  </Card>
+<Card title="order-by" icon="arrow-down-1-9" href="/en/api-reference/puri-methods/order-by">
+  Sort results
+</Card>
 
   <Card
     title="limit"

@@ -7,6 +7,7 @@ import {
 import type { BetterAuthClientOptions } from "better-auth/client";
 import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins";
 import type { ReactNode } from "react";
+
 import type { MergedDictionary } from "@/i18n/sd.generated";
 import { SD } from "@/i18n/sd.generated";
 import { FileService } from "@/services/services.generated";

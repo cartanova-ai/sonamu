@@ -1,4 +1,5 @@
 import { registerSSR } from "sonamu/ssr";
+
 import { CompanyService } from "../application/queries.generated";
 
 // 테스트용: 회사 목록 페이지 SSR

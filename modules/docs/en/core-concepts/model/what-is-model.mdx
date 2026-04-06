@@ -9,24 +9,16 @@ Model is a core layer of Sonamu that handles business logic and data access. Bas
 
 <CardGroup cols={2}>
   <Card title="Data Access" icon="database">
-    Database CRUD operations
-    
-    Type-safe queries through Puri query builder
+    Database CRUD operations Type-safe queries through Puri query builder
   </Card>
   <Card title="Business Logic" icon="code">
-    Implementing domain rules
-    
-    Data validation, transformation, calculation
+    Implementing domain rules Data validation, transformation, calculation
   </Card>
   <Card title="API Endpoints" icon="globe">
-    Automatic HTTP API generation
-    
-    REST API provided via @api decorator
+    Automatic HTTP API generation REST API provided via @api decorator
   </Card>
   <Card title="Type Safety" icon="shield-check">
-    Compile-time type checking
-    
-    Auto-generated types based on Entity
+    Compile-time type checking Auto-generated types based on Entity
   </Card>
 </CardGroup>
 
@@ -38,25 +30,27 @@ flowchart TD
     API[API Layer]
     Model[Model Layer]
     DB[(Database)]
-    
+
     Client -->|HTTP Request| API
     API -->|@api decorator| Model
     Model -->|Puri Query| DB
     DB -->|Data| Model
     Model -->|Type-safe Response| API
     API -->|JSON| Client
-    
+
     style Model fill:#4f46e5,color:#fff
 ```
 
 **Layer Structure**:
+
 1. **Client** - Frontend (React, Vue, etc.)
 2. **API Layer** - HTTP endpoints (@api decorator)
 3. **Model Layer** - Business logic ⭐
 4. **Database** - PostgreSQL
 
 <Info>
-Model is the **business logic layer** between API Layer and Database. All data access and business rules are handled in Model.
+  Model is the **business logic layer** between API Layer and Database. All data access and business
+  rules are handled in Model.
 </Info>
 
 ## Model Class Structure
@@ -69,10 +63,10 @@ import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 
 class UserModelClass extends BaseModelClass<
-  UserSubsetKey,              // "A" | "P" | "SS"
-  UserSubsetMapping,          // Type for each subset
-  typeof userSubsetQueries,   // Subset query functions
-  typeof userLoaderQueries    // Loader query functions
+  UserSubsetKey, // "A" | "P" | "SS"
+  UserSubsetMapping, // Type for each subset
+  typeof userSubsetQueries, // Subset query functions
+  typeof userLoaderQueries // Loader query functions
 > {
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
@@ -89,28 +83,29 @@ export const UserModel = new UserModelClass();
 
 ### Generic Type Parameters
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `TSubsetKey` | Union type of Subset keys | `"A" \| "P" \| "SS"` |
+| Parameter        | Description                    | Example                  |
+| ---------------- | ------------------------------ | ------------------------ |
+| `TSubsetKey`     | Union type of Subset keys      | `"A" \| "P" \| "SS"`     |
 | `TSubsetMapping` | Result type mapping per Subset | `{ A: UserA, P: UserP }` |
-| `TSubsetQueries` | Subset query function type | Auto-generated |
-| `TLoaderQueries` | Loader query type | Auto-generated |
+| `TSubsetQueries` | Subset query function type     | Auto-generated           |
+| `TLoaderQueries` | Loader query type              | Auto-generated           |
 
 <Tip>
-These generic types are automatically generated in `sonamu.generated.ts` and `sonamu.generated.sso.ts`, so you don't need to write them manually.
+  These generic types are automatically generated in `sonamu.generated.ts` and
+  `sonamu.generated.sso.ts`, so you don't need to write them manually.
 </Tip>
 
 ## Model vs Entity vs Types
 
 Let's clarify commonly confused concepts in Sonamu:
 
-| Category | Entity | Types | Model |
-|----------|--------|-------|-------|
-| **File** | `{entity}.entity.json` | `{entity}.types.ts` | `{entity}.model.ts` |
-| **Role** | Data structure definition | Type definition | Business logic |
-| **Creation** | Manual (Sonamu UI) | Auto-generated | Manual (Scaffold) |
-| **Content** | Tables, columns, relations | TypeScript types, Zod | Methods, API, queries |
-| **Change frequency** | Low | Auto-regenerated | High |
+| Category             | Entity                     | Types                 | Model                 |
+| -------------------- | -------------------------- | --------------------- | --------------------- |
+| **File**             | `{entity}.entity.json`     | `{entity}.types.ts`   | `{entity}.model.ts`   |
+| **Role**             | Data structure definition  | Type definition       | Business logic        |
+| **Creation**         | Manual (Sonamu UI)         | Auto-generated        | Manual (Scaffold)     |
+| **Content**          | Tables, columns, relations | TypeScript types, Zod | Methods, API, queries |
+| **Change frequency** | Low                        | Auto-regenerated      | High                  |
 
 **Examples**:
 
@@ -139,13 +134,12 @@ export type UserSubsetA = User;
 class UserModelClass extends BaseModelClass {
   async findById(id: number): Promise<User> {
     // Business logic
-    const user = await this.puri()
-      .where("id", id)
-      .first();
+    const user = await this.puri().where("id", id).first();
     return user;
   }
 }
 ```
+
 </CodeGroup>
 
 ## Features Provided by Model
@@ -159,7 +153,7 @@ const user = await UserModel.findById("A", 1);
 
 // ✅ Compile error: invalid subset
 const user = await UserModel.findById("INVALID", 1);
-//                                      ^^^^^^^^^ 
+//                                      ^^^^^^^^^
 // Error: Argument of type '"INVALID"' is not assignable
 ```
 
@@ -171,16 +165,17 @@ async findMany<T extends UserSubsetKey>(
   params: UserListParams
 ): Promise<ListResult<UserSubsetMapping[T]>> {
   const { qb } = this.getSubsetQueries(subset);
-  
+
   // Automatically SELECT only fields matching the subset
   qb.where("id", params.id);
-  
+
   return this.executeSubsetQuery({ subset, qb, params });
 }
 ```
 
 <Info>
-Subsets reduce network traffic and improve performance by selecting only the fields needed for API responses.
+  Subsets reduce network traffic and improve performance by selecting only the fields needed for API
+  responses.
 </Info>
 
 ### 3. Automatic API Generation
@@ -193,6 +188,7 @@ async findById(id: number): Promise<User> {
 ```
 
 **What gets auto-generated**:
+
 - HTTP endpoint: `GET /user/findById?id=1`
 - TypeScript client code
 - TanStack Query hooks
@@ -224,13 +220,13 @@ async save(params: UserSaveParams[]): Promise<number[]> {
       throw new BadRequestException("Users under 18 cannot register");
     }
   }
-  
+
   // Data transformation
   const hashedParams = params.map(p => ({
     ...p,
     password: bcrypt.hashSync(p.password, 10)
   }));
-  
+
   // Save
   return this.getPuri("w").ubUpsert("users", hashedParams);
 }
@@ -249,24 +245,24 @@ class UserModelClass extends BaseModelClass {
   async save(params: UserSaveParams[]): Promise<number[]> {
     // ...
   }
-  
+
   // Read
   @api({ httpMethod: "GET" })
   async findById(id: number): Promise<User> {
     // ...
   }
-  
+
   @api({ httpMethod: "GET" })
   async findMany(params: UserListParams): Promise<ListResult<User>> {
     // ...
   }
-  
+
   // Update
   @api({ httpMethod: "PUT" })
   async update(id: number, params: UserUpdateParams): Promise<User> {
     // ...
   }
-  
+
   // Delete
   @api({ httpMethod: "DELETE" })
   async del(ids: number[]): Promise<number> {
@@ -285,17 +281,17 @@ class UserModelClass extends BaseModelClass {
   async login(params: LoginParams): Promise<{ user: User }> {
     // Login logic
   }
-  
+
   @api({ httpMethod: "POST" })
   async logout(): Promise<{ message: string }> {
     // Logout logic
   }
-  
+
   @api({ httpMethod: "GET" })
   async me(): Promise<User | null> {
     // Current user info
   }
-  
+
   @api({ httpMethod: "POST" })
   async changePassword(params: ChangePasswordParams): Promise<void> {
     // Password change
@@ -307,17 +303,17 @@ class UserModelClass extends BaseModelClass {
 
 `BaseModelClass` provides the following utility methods:
 
-| Method | Description | Return Type |
-|--------|-------------|-------------|
-| `getDB(preset)` | Get database connection | `Knex` |
-| `getPuri(preset)` | Get Puri query builder | `PuriWrapper` |
-| `getSubsetQueries(subset)` | Get Subset query builder | `{ qb, onSubset }` |
-| `executeSubsetQuery(params)` | Execute Subset query | `ListResult` |
-| `createEnhancers(enhancers)` | Enhancer creation helper | `EnhancerMap` |
+| Method                       | Description              | Return Type        |
+| ---------------------------- | ------------------------ | ------------------ |
+| `getDB(preset)`              | Get database connection  | `Knex`             |
+| `getPuri(preset)`            | Get Puri query builder   | `PuriWrapper`      |
+| `getSubsetQueries(subset)`   | Get Subset query builder | `{ qb, onSubset }` |
+| `executeSubsetQuery(params)` | Execute Subset query     | `ListResult`       |
+| `createEnhancers(enhancers)` | Enhancer creation helper | `EnhancerMap`      |
 
 <Info>
-**Learn More**
-- [BaseModel Methods](/en/core-concepts/model/basemodel-methods) - Detailed method guide
+  **Learn More** - [BaseModel Methods](/en/core-concepts/model/basemodel-methods) - Detailed method
+  guide
 </Info>
 
 ## Advantages of Model

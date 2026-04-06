@@ -1,12 +1,14 @@
-/** biome-ignore-all lint/suspicious/noThenProperty: Puri는 thenable 인터페이스를 구현하고 있습니다. */
-/** biome-ignore-all lint/suspicious/noExplicitAny: Puri는 다양한 타입을 사용하고 있습니다. */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Puri는 다양한 타입을 사용하고 있습니다.
 
 import assert from "assert";
+
 import chalk from "chalk";
 import inflection from "inflection";
 import type { Knex } from "knex";
+
 import { EntityManager, type TableSpec } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
+import type { ClearStatements } from "./puri-subset.types";
 import type {
   AvailableColumns,
   ColumnKeys,
@@ -36,7 +38,6 @@ import type {
   WhereOperator,
 } from "./puri.types";
 import { FUZZY_OPERATORS } from "./puri.types";
-import type { ClearStatements } from "./puri-subset.types";
 
 function normalizeFuzzyOperator(operator?: string): FuzzyOperator {
   const normalized = operator?.trim() ?? "<%";

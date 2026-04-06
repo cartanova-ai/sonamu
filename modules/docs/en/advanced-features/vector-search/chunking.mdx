@@ -16,13 +16,14 @@ class DocumentModelClass extends BaseModelClass {
     const content = file.buffer.toString();
 
     // Attempting to generate embedding
-    const embedding = await Embedding.embedOne(content, 'voyage', 'document');
+    const embedding = await Embedding.embedOne(content, "voyage", "document");
     // Error: Token limit exceeded (32,000 tokens)
   }
 }
 ```
 
 **Problem**:
+
 - Long documents (10,000+ words)
 - Exceeds embedding API token limit
 - Cannot embed the entire document at once
@@ -45,6 +46,7 @@ flowchart LR
 ```
 
 **Key points**:
+
 - Long document -> multiple chunks
 - Each chunk -> individual embedding
 - During search -> return the most relevant chunks
@@ -52,15 +54,18 @@ flowchart LR
 ### Why is it Necessary?
 
 **1. Token Limits**
+
 - Voyage AI: 32,000 tokens
 - OpenAI: 8,191 tokens
 - Long documents exceed limits
 
 **2. Search Accuracy**
+
 - Shorter chunks yield more accurate results
 - Searching "refund method" -> returns only the refund section
 
 **3. Context Preservation**
+
 - Keep related information together
 - Split without breaking sentences
 
@@ -70,11 +75,11 @@ flowchart LR
 import { Chunking } from "sonamu/vector";
 
 const chunking = new Chunking({
-  chunkSize: 500,        // chunk size (characters)
-  chunkOverlap: 50,      // overlap size
-  minChunkSize: 50,      // minimum size
-  skipThreshold: 200,    // skip splitting if short
-  separators: ['\n\n', '\n', '. '],  // separators
+  chunkSize: 500, // chunk size (characters)
+  chunkOverlap: 50, // overlap size
+  minChunkSize: 50, // minimum size
+  skipThreshold: 200, // skip splitting if short
+  separators: ["\n\n", "\n", ". "], // separators
 });
 
 const chunks = chunking.chunk("Long text...");
@@ -102,9 +107,9 @@ class DocumentModelClass extends BaseModelClass {
 
     // 2. Embedding per chunk
     const embeddings = await Embedding.embed(
-      chunks.map(c => c.text),
-      'voyage',
-      'document'
+      chunks.map((c) => c.text),
+      "voyage",
+      "document",
     );
 
     // 3. Create parent document
@@ -124,8 +129,8 @@ class DocumentModelClass extends BaseModelClass {
           start_offset: chunk.startOffset,
           end_offset: chunk.endOffset,
           embedding: embeddings[i].embedding,
-        })
-      )
+        }),
+      ),
     );
 
     return {
@@ -170,16 +175,18 @@ CREATE INDEX ON document_chunks USING hnsw (embedding vector_cosine_ops);
 
 ```typescript
 const chunking = new Chunking({
-  chunkSize: 500,  // 500 characters
+  chunkSize: 500, // 500 characters
 });
 ```
 
 **Recommended values**:
+
 - Short search: 200-300 characters
 - General: 400-600 characters
 - Long context: 800-1000 characters
 
 **Considerations**:
+
 - Korean: ~1 character = ~1 token
 - English: ~1 character = ~0.7 tokens
 
@@ -188,7 +195,7 @@ const chunking = new Chunking({
 ```typescript
 const chunking = new Chunking({
   chunkSize: 500,
-  chunkOverlap: 50,  // 10%
+  chunkOverlap: 50, // 10%
 });
 ```
 
@@ -210,8 +217,8 @@ const chunking = new Chunking({
 });
 
 // Don't split if 200 characters or less
-const text = "Short text";  // 50 characters
-const chunks = chunking.chunk(text);  // [entire text as 1 chunk]
+const text = "Short text"; // 50 characters
+const chunks = chunking.chunk(text); // [entire text as 1 chunk]
 ```
 
 **Efficiency**: No chunking needed for short documents
@@ -221,10 +228,10 @@ const chunks = chunking.chunk(text);  // [entire text as 1 chunk]
 ```typescript
 const chunking = new Chunking({
   separators: [
-    '\n\n',  // 1st priority: paragraph
-    '\n',    // 2nd priority: line
-    '. ',    // 3rd priority: sentence
-    ', ',    // 4th priority: comma
+    "\n\n", // 1st priority: paragraph
+    "\n", // 2nd priority: line
+    ". ", // 3rd priority: sentence
+    ", ", // 4th priority: comma
   ],
 });
 ```
@@ -334,6 +341,7 @@ async searchDocs(query: string, limit: number = 5) {
 ```
 
 **Response example**:
+
 ```json
 [
   {
@@ -357,11 +365,11 @@ async searchDocs(query: string, limit: number = 5) {
 const markdownChunking = new Chunking({
   chunkSize: 600,
   separators: [
-    '\n## ',   // Heading 2
-    '\n### ',  // Heading 3
-    '\n\n',    // Paragraph
-    '\n',      // Line
-    '. ',      // Sentence
+    "\n## ", // Heading 2
+    "\n### ", // Heading 3
+    "\n\n", // Paragraph
+    "\n", // Line
+    ". ", // Sentence
   ],
 });
 
@@ -386,19 +394,19 @@ const chunks = markdownChunking.chunk(markdown);
 
 ### When is Chunking Necessary?
 
-| Document Type | Average Length | Chunking Needed | Reason |
-|---------------|----------------|-----------------|--------|
-| FAQ items | < 200 chars | No | Short |
-| Blog posts | 1,000 chars | Optional | Medium |
-| Technical docs | 5,000 chars | Yes | Long |
-| Manuals | 20,000 chars | Required | Very long |
-| Chat messages | < 100 chars | No | Short |
+| Document Type  | Average Length | Chunking Needed | Reason    |
+| -------------- | -------------- | --------------- | --------- |
+| FAQ items      | < 200 chars    | No              | Short     |
+| Blog posts     | 1,000 chars    | Optional        | Medium    |
+| Technical docs | 5,000 chars    | Yes             | Long      |
+| Manuals        | 20,000 chars   | Required        | Very long |
+| Chat messages  | < 100 chars    | No              | Short     |
 
 ### Decision in Sonamu
 
 ```typescript
 const chunking = new Chunking({
-  skipThreshold: 300,  // Skip if 300 chars or less
+  skipThreshold: 300, // Skip if 300 chars or less
 });
 
 if (chunking.needsChunking(content)) {
@@ -414,15 +422,17 @@ if (chunking.needsChunking(content)) {
 **Cautions when using chunking in Sonamu**:
 
 1. **Don't make chunkSize too small**
+
    ```typescript
    // Too small
-   chunkSize: 50
+   chunkSize: 50;
 
    // Appropriate
-   chunkSize: 400-600
+   chunkSize: 400 - 600;
    ```
 
 2. **Keep chunkOverlap reasonable**
+
    ```typescript
    // Recommended: 10-20%
    chunkSize: 500,
@@ -430,15 +440,17 @@ if (chunking.needsChunking(content)) {
    ```
 
 3. **Separator order matters**
+
    ```typescript
    // Correct: larger units first
-   separators: ['\n\n', '\n', '. ']
+   separators: ["\n\n", "\n", ". "];
 
    // Wrong: smaller units first
-   separators: [' ', '.', '\n']
+   separators: [" ", ".", "\n"];
    ```
 
 4. **Maintain parent-child relationship**
+
    ```sql
    -- Connect with parent_id
    CREATE TABLE document_chunks (
@@ -447,6 +459,7 @@ if (chunking.needsChunking(content)) {
    ```
 
 5. **Remove duplicates when searching**
+
    ```typescript
    // Multiple chunks from same document -> group into one
    const grouped = new Map();
@@ -458,12 +471,16 @@ if (chunking.needsChunking(content)) {
    start_offset: chunk.startOffset,
    end_offset: chunk.endOffset,
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Vector Search" icon="magnifying-glass" href="/en/advanced-features/vector-search/vector-search">
+  <Card
+    title="Vector Search"
+    icon="magnifying-glass"
+    href="/en/advanced-features/vector-search/vector-search"
+  >
     Implementing chunk-based search API
   </Card>
   <Card title="Embeddings" icon="brain" href="/en/advanced-features/vector-search/embeddings">

@@ -17,12 +17,13 @@ class UserModelClass extends BaseModelClass {
   @api()
   async findById(id: number) {
     // This method is cached for 10 minutes
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
 
 **How It Works**:
+
 1. First call: DB query → Cache result
 2. Second call (within 10 minutes): Return from cache (no DB query)
 3. After 10 minutes: Query DB again → Refresh cache
@@ -66,6 +67,7 @@ If no key is specified, it is **automatically generated**.
     - Single primitive (string/number/boolean): Used as-is
     - Complex objects: Uses JSON.stringify
     - No arguments: `ModelName.methodName` without suffix
+
   </Tab>
 
   <Tab title="String Key" icon="text">
@@ -88,6 +90,7 @@ If no key is specified, it is **automatically generated**.
     ```
 
     **When arguments exist**: Auto-generated in `key:args` format
+
   </Tab>
 
   <Tab title="Function Key" icon="code">
@@ -105,6 +108,7 @@ If no key is specified, it is **automatically generated**.
     ```
 
     **Useful for complex key generation**
+
   </Tab>
 </Tabs>
 
@@ -143,11 +147,13 @@ async getExpensiveData() {
 ```
 
 **How It Works**:
+
 1. **0~1 minute**: Return fresh cache
 2. **1~11 minutes**: Immediately return stale cache + background refresh
 3. **After 11 minutes**: Cache miss, recalculate
 
 **Advantages**:
+
 - Users always get fast response (even if stale, returns immediately)
 - Refreshed in background so next user gets fresh data
 
@@ -166,12 +172,12 @@ class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product"] })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   @api()
   async update(id: number, data: Partial<Product>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Invalidate all caches with product tag
     await Sonamu.cache.deleteByTag({ tags: ["product"] });
@@ -182,6 +188,7 @@ class ProductModelClass extends BaseModelClass {
 ```
 
 **Invalidation Pattern**:
+
 ```typescript
 // When update() is called
 await Sonamu.cache.deleteByTag({ tags: ["product"] });
@@ -224,7 +231,7 @@ class UserModelClass extends BaseModelClass {
   @cache({ store: "database", ttl: "1h" })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 }
 ```
@@ -258,7 +265,7 @@ class PostModelClass extends BaseModelClass {
     return this.findMany({
       num: 20,
       page,
-      order: [['created_at', 'desc']]
+      order: [["created_at", "desc"]],
     });
   }
 
@@ -266,21 +273,21 @@ class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Popular posts (1 hour cache)
   @cache({
     key: "popular-posts",
     ttl: "1h",
-    tags: ["post", "popular"]
+    tags: ["post", "popular"],
   })
   @api()
   async findPopular() {
     return this.findMany({
       num: 10,
-      where: [['view_count', '>', 1000]],
-      order: [['view_count', 'desc']]
+      where: [["view_count", ">", 1000]],
+      order: [["view_count", "desc"]],
     });
   }
 }
@@ -293,7 +300,7 @@ class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product"] })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   @cache({ ttl: "30m", tags: ["product", "list"] })
@@ -314,7 +321,7 @@ class ProductModelClass extends BaseModelClass {
 
   @api()
   async update(id: number, data: Partial<ProductSave>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Invalidate all product tags (detail + list)
     await Sonamu.cache.deleteByTag({ tags: ["product"] });
@@ -332,20 +339,16 @@ class OrderModelClass extends BaseModelClass {
     key: (userId: number, status: string, startDate: string) =>
       `order:user:${userId}:${status}:${startDate}`,
     ttl: "10m",
-    tags: ["order"]
+    tags: ["order"],
   })
   @api()
-  async findByUserAndStatus(
-    userId: number,
-    status: string,
-    startDate: string
-  ) {
+  async findByUserAndStatus(userId: number, status: string, startDate: string) {
     return this.findMany({
       where: [
-        ['user_id', userId],
-        ['status', status],
-        ['created_at', '>=', startDate]
-      ]
+        ["user_id", userId],
+        ["status", status],
+        ["created_at", ">=", startDate],
+      ],
     });
   }
 }
@@ -359,9 +362,9 @@ class OrderModelClass extends BaseModelClass {
 ```typescript
 class AnalyticsModelClass extends BaseModelClass {
   @cache({
-    ttl: "5m",      // Expires after 5 minutes
-    grace: "1h",    // Use stale value for 1 hour
-    tags: ["analytics"]
+    ttl: "5m", // Expires after 5 minutes
+    grace: "1h", // Use stale value for 1 hour
+    tags: ["analytics"],
   })
   @api()
   async getDashboardStats() {
@@ -378,6 +381,7 @@ class AnalyticsModelClass extends BaseModelClass {
 ```
 
 **Scenario**:
+
 - 0~5 minutes: Fresh cache
 - 5~65 minutes: Immediately return stale cache + background recalculation
 - After 65 minutes: Cache miss, recalculate
@@ -388,12 +392,12 @@ class AnalyticsModelClass extends BaseModelClass {
 class ConfigModelClass extends BaseModelClass {
   @cache({
     key: "app-config",
-    ttl: "forever",  // Permanent caching
-    tags: ["config"]
+    ttl: "forever", // Permanent caching
+    tags: ["config"],
   })
   @api()
   async getAppConfig() {
-    return this.findOne(['key', 'app_config']);
+    return this.findOne(["key", "app_config"]);
   }
 
   @api()
@@ -424,8 +428,8 @@ class UserModelClass extends BaseModelClass {
   // findById internally calls findMany
   async findById(id: number) {
     const { rows } = await this.findMany({
-      where: [['id', id]],
-      num: 1
+      where: [["id", id]],
+      num: 1,
     });
     return rows[0];
   }
@@ -433,6 +437,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **How It Works**:
+
 ```typescript
 // First call
 await userModel.findById(123);
@@ -445,7 +450,7 @@ await userModel.findById(123);
 // → Return from cache (no DB query)
 
 // Direct findMany call also uses same cache
-await userModel.findMany({ where: [['id', 123]], num: 1 });
+await userModel.findMany({ where: [["id", 123]], num: 1 });
 // → Return from cache
 ```
 
@@ -478,6 +483,7 @@ function serializeArgs(args: unknown[]): string {
 ```
 
 **Examples**:
+
 ```typescript
 // Single primitive
 serializeArgs([123]) → "123"
@@ -536,14 +542,14 @@ class UserModelClass extends BaseModelClass {
     }
 
     // DB query
-    const user = await this.findOne(['id', id]);
+    const user = await this.findOne(["id", id]);
 
     // Cache
     await Sonamu.cache.set({
       key: cacheKey,
       value: user,
       ttl: "10m",
-      tags: ["user"]
+      tags: ["user"],
     });
 
     return user;
@@ -552,6 +558,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **Decorator vs Direct Manipulation**:
+
 - **Decorator**: Concise, declarative, automatic key generation
 - **Direct Manipulation**: Complex logic, conditional caching, fine-grained control
 
@@ -561,6 +568,7 @@ class UserModelClass extends BaseModelClass {
 **@cache Decorator Cautions**:
 
 1. **Cache Manager Initialization Required**: Error if no cache configuration in `sonamu.config.ts`
+
    ```typescript
    // Error: CacheManager is not initialized
    @cache({ ttl: "10m" })
@@ -568,6 +576,7 @@ class UserModelClass extends BaseModelClass {
    ```
 
 2. **Async Methods Only**: Cannot be used with synchronous methods
+
    ```typescript
    // ❌ Error
    @cache({ ttl: "10m" })
@@ -579,6 +588,7 @@ class UserModelClass extends BaseModelClass {
    ```
 
 3. **Store Name Matching**: The `store` option must match names defined in configuration
+
    ```typescript
    // sonamu.config.ts
    stores: {
@@ -593,6 +603,7 @@ class UserModelClass extends BaseModelClass {
    ```
 
 4. **Serializable Values Only**: Functions, Symbols, etc. cannot be cached
+
    ```typescript
    // ❌ Bad example
    @cache({ ttl: "10m" })
@@ -614,6 +625,7 @@ class UserModelClass extends BaseModelClass {
    ```
 
 5. **Argument Order Matters**: Same values in different order result in different keys
+
    ```typescript
    @cache({ ttl: "10m" })
    async find(name: string, age: number) { ... }
@@ -621,15 +633,24 @@ class UserModelClass extends BaseModelClass {
    find("John", 30)  // Key: "Model.find:["John",30]"
    find(30, "John")  // Key: "Model.find:[30,"John"]" (different key!)
    ```
-</Warning>
+
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache Configuration" icon="gear" href="/en/advanced-features/caching/cache-configuration">
+  <Card
+    title="Cache Configuration"
+    icon="gear"
+    href="/en/advanced-features/caching/cache-configuration"
+  >
     Configure Stores and Drivers
   </Card>
-  <Card title="Cache Invalidation" icon="trash" href="/en/advanced-features/caching/cache-invalidation">
+  <Card
+    title="Cache Invalidation"
+    icon="trash"
+    href="/en/advanced-features/caching/cache-invalidation"
+  >
     Tag-based cache invalidation
   </Card>
   <Card title="Cache Strategies" icon="chess" href="/en/advanced-features/caching/cache-strategies">

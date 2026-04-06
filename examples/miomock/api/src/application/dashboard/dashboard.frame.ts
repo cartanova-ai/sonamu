@@ -1,4 +1,5 @@
 import { api, BaseFrameClass, Sonamu } from "sonamu";
+
 import { CompanyModel } from "../company/company.model";
 import { DepartmentModel } from "../department/department.model";
 import { DocumentModel } from "../document/document.model";

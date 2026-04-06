@@ -13,6 +13,7 @@ When building web apps with Sonamu, you'll implement features like these:
 - **Customer support**: "Find similar questions"
 
 Traditional keyword search (`LIKE '%keyword%'`) has limitations:
+
 - Searching "TypeScript framework" won't find "Node.js API library"
 - Vulnerable to typos ("typescript" vs "tyepscript")
 - Doesn't handle synonyms ("framework" vs "library")
@@ -25,29 +26,33 @@ To implement vector search, you need a database that can store and search vector
 
 ### Options
 
-| Method | Pros | Cons | Sonamu Recommendation |
-|--------|------|------|----------------------|
-| **pgvector** | Use existing PostgreSQL, no additional infrastructure, JOIN with existing data | Lower performance than dedicated vector DBs | Highly recommended |
-| **Pinecone** | Optimized for vector search, managed service | Additional cost, separate sync needed | Low |
-| **Elasticsearch** | Powerful search features | Heavy, complex setup | Medium |
-| **Weaviate/Milvus** | Dedicated vector DB | Separate infrastructure, learning curve | Low |
+| Method              | Pros                                                                           | Cons                                        | Sonamu Recommendation |
+| ------------------- | ------------------------------------------------------------------------------ | ------------------------------------------- | --------------------- |
+| **pgvector**        | Use existing PostgreSQL, no additional infrastructure, JOIN with existing data | Lower performance than dedicated vector DBs | Highly recommended    |
+| **Pinecone**        | Optimized for vector search, managed service                                   | Additional cost, separate sync needed       | Low                   |
+| **Elasticsearch**   | Powerful search features                                                       | Heavy, complex setup                        | Medium                |
+| **Weaviate/Milvus** | Dedicated vector DB                                                            | Separate infrastructure, learning curve     | Low                   |
 
 ### Why pgvector is Recommended for Sonamu Projects
 
 **1. You're already using PostgreSQL**
+
 ```typescript
 // sonamu.config.ts
 export default defineConfig({
   database: {
     client: "pg",
-    connection: { /* ... */ }
-  }
+    connection: {
+      /* ... */
+    },
+  },
 });
 ```
 
 Sonamu is PostgreSQL + Knex based. No need to add a separate database for vector search.
 
 **2. Can be used with existing data**
+
 ```sql
 -- JOIN with existing data
 SELECT
@@ -62,13 +67,15 @@ ORDER BY similarity DESC;
 You can mix vector search with regular SQL. A separate DB would require data synchronization.
 
 **3. Simple infrastructure**
+
 - Pinecone: Separate API, cost, sync
 - pgvector: Just install extension, no additional cost
 
 **4. Natural integration with Sonamu Model**
+
 ```typescript
 class DocumentModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string) {
     // Write vector search SQL with Puri
     const results = await this.getPuri().raw(`...`);
@@ -91,6 +98,7 @@ flowchart LR
 ```
 
 **Key features**:
+
 - `vector(N)` data type (N-dimensional vector)
 - Similarity operators (`<=>`, `<->`, `<#>`)
 - Indexes (IVFFlat, HNSW)
@@ -102,6 +110,7 @@ pnpm add pgvector voyageai
 ```
 
 **Packages**:
+
 - `pgvector`: PostgreSQL pgvector type support (use with Knex)
 - `voyageai`: Voyage AI embeddings (recommended for Korean)
 - `@ai-sdk/openai`: OpenAI embeddings (optional)
@@ -122,6 +131,7 @@ pnpm add pgvector voyageai
     make
     sudo make install
     ```
+
   </Tab>
 
   <Tab title="macOS (Homebrew)" icon="apple">
@@ -130,6 +140,7 @@ pnpm add pgvector voyageai
     ```
 
     The simplest option. Homebrew installs it automatically.
+
   </Tab>
 
   <Tab title="Docker" icon="docker">
@@ -152,6 +163,7 @@ pnpm add pgvector voyageai
     ```
 
     pgvector is already included.
+
   </Tab>
 
   <Tab title="Cloud (Supabase/Neon)" icon="cloud">
@@ -163,6 +175,7 @@ pnpm add pgvector voyageai
     ```
 
     A good choice when deploying Sonamu projects to the cloud.
+
   </Tab>
 </Tabs>
 
@@ -230,12 +243,12 @@ import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   // 1. Enable pgvector extension
-  await knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
+  await knex.raw("CREATE EXTENSION IF NOT EXISTS vector");
 
   // 2. Add embedding column
-  await knex.schema.table('documents', (table) => {
+  await knex.schema.table("documents", (table) => {
     // Voyage AI uses 1024 dimensions
-    table.specificType('embedding', 'vector(1024)');
+    table.specificType("embedding", "vector(1024)");
   });
 
   // 3. Index comes later (after data accumulates)
@@ -246,13 +259,14 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.table('documents', (table) => {
-    table.dropColumn('embedding');
+  await knex.schema.table("documents", (table) => {
+    table.dropColumn("embedding");
   });
 }
 ```
 
 **Run**:
+
 ```bash
 pnpm sonamu migrate:latest
 ```
@@ -266,26 +280,26 @@ If creating a new table:
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
+  await knex.raw("CREATE EXTENSION IF NOT EXISTS vector");
 
-  await knex.schema.createTable('knowledge_base', (table) => {
-    table.increments('id').primary();
-    table.text('title').notNullable();
-    table.text('content').notNullable();
-    table.string('category', 50);
+  await knex.schema.createTable("knowledge_base", (table) => {
+    table.increments("id").primary();
+    table.text("title").notNullable();
+    table.text("content").notNullable();
+    table.string("category", 50);
 
     // Vector column
-    table.specificType('embedding', 'vector(1024)');
+    table.specificType("embedding", "vector(1024)");
 
     table.timestamps(true, true);
 
     // Regular index
-    table.index('category');
+    table.index("category");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists('knowledge_base');
+  await knex.schema.dropTableIfExists("knowledge_base");
 }
 ```
 
@@ -297,15 +311,16 @@ Different embedding models have different vector dimensions:
 import { Embedding } from "sonamu/vector";
 
 // Voyage AI: 1024 dimensions
-const voyageDim = Embedding.getDimensions('voyage');
-console.log(voyageDim);  // 1024
+const voyageDim = Embedding.getDimensions("voyage");
+console.log(voyageDim); // 1024
 
 // OpenAI: 1536 dimensions
-const openaiDim = Embedding.getDimensions('openai');
-console.log(openaiDim);  // 1536
+const openaiDim = Embedding.getDimensions("openai");
+console.log(openaiDim); // 1536
 ```
 
 **Match dimensions when creating tables**:
+
 ```sql
 -- When using Voyage AI
 CREATE TABLE docs (
@@ -326,12 +341,12 @@ CREATE TABLE docs (
 
 ```typescript
 // Bad order
-await knex.raw('CREATE INDEX ...');  // Index first
-await DocumentModel.saveOne({ embedding });  // Data later
+await knex.raw("CREATE INDEX ..."); // Index first
+await DocumentModel.saveOne({ embedding }); // Data later
 
 // Good order
-await DocumentModel.saveOne({ embedding });  // Data first (100+ entries)
-await knex.raw('CREATE INDEX ...');  // Index later
+await DocumentModel.saveOne({ embedding }); // Data first (100+ entries)
+await knex.raw("CREATE INDEX ..."); // Index later
 ```
 
 The index won't be optimized without data.
@@ -353,6 +368,7 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 **Parameters**:
+
 - `m = 16`: Number of connections (default, usually OK)
 - `ef_construction = 64`: Search size during construction
 
@@ -374,6 +390,7 @@ WITH (lists = 100);
 You're building an internal knowledge base with Sonamu.
 
 **Step 1: Table Design**
+
 ```sql
 CREATE TABLE knowledge_base (
   id SERIAL PRIMARY KEY,
@@ -386,6 +403,7 @@ CREATE TABLE knowledge_base (
 ```
 
 **Step 2: Data Entry (later)**
+
 ```typescript
 // Save after generating embeddings (see embeddings.mdx)
 await KnowledgeBaseModel.saveOne({
@@ -397,15 +415,17 @@ await KnowledgeBaseModel.saveOne({
 ```
 
 **Step 3: Create Index (after 100+ data entries)**
+
 ```sql
 CREATE INDEX ON knowledge_base
 USING hnsw (embedding vector_cosine_ops);
 ```
 
 **Step 4: Search API (later)**
+
 ```typescript
 class KnowledgeBaseModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string) {
     // See vector-search.mdx
     const results = await this.getPuri().raw(`...`);
@@ -420,12 +440,14 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 **Cautions when setting up pgvector**:
 
 1. **Dimension match**: Table and embedding model dimensions must be the same
+
    ```sql
    -- Voyage AI (1024)
    CREATE TABLE docs (embedding vector(1024));
    ```
 
 2. **Index comes later**: Create after 100+ data entries
+
    ```typescript
    // 1. Data first
    await saveDocuments();
@@ -435,12 +457,14 @@ class KnowledgeBaseModelClass extends BaseModelClass {
    ```
 
 3. **Allow NULL**: May not be able to create embeddings for all documents immediately
+
    ```sql
    -- Allow NULL (can update later)
    embedding vector(1024)
    ```
 
 4. **Manage with Migration**: Use Migration instead of direct SQL
+
    ```bash
    pnpm sonamu migrate:latest
    ```
@@ -449,17 +473,25 @@ class KnowledgeBaseModelClass extends BaseModelClass {
    ```sql
    SELECT vector_version();
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 pgvector installation is complete. Now it's time to generate embeddings and implement search.
 
 <CardGroup cols={2}>
-  <Card title="Generating Embeddings" icon="brain" href="/en/advanced-features/vector-search/embeddings">
+  <Card
+    title="Generating Embeddings"
+    icon="brain"
+    href="/en/advanced-features/vector-search/embeddings"
+  >
     Creating embeddings with Voyage AI in Sonamu
   </Card>
-  <Card title="Vector Search" icon="magnifying-glass" href="/en/advanced-features/vector-search/vector-search">
+  <Card
+    title="Vector Search"
+    icon="magnifying-glass"
+    href="/en/advanced-features/vector-search/vector-search"
+  >
     Implementing search API in Sonamu Model
   </Card>
 </CardGroup>

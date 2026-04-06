@@ -1,5 +1,7 @@
 import assert from "assert";
+
 import { api, BaseModelClass, Sonamu, transactional } from "sonamu";
+
 import type { UserSaveParams } from "../application/user/user.types";
 
 /**

@@ -1,6 +1,6 @@
 ---
-title: 'Tasks'
-description: 'Workflow and background job settings'
+title: "Tasks"
+description: "Workflow and background job settings"
 ---
 
 Sonamu provides a Workflow system for handling asynchronous background jobs. You can separate long-running tasks to the background to improve API response times and distribute work across Worker processes.
@@ -39,18 +39,20 @@ Determines whether to enable the Worker process.
 ```typescript
 export default defineConfig({
   tasks: {
-    enableWorker: true,  // Enable Worker
+    enableWorker: true, // Enable Worker
   },
 });
 ```
 
 **What is a Worker?**
+
 - Processes tasks in a separate process
 - No impact on main API server
 - Can run multiple Workers for distributed processing
 
 <Tip>
-In production environments, we recommend setting `enableWorker: true` and running a dedicated Worker process.
+  In production environments, we recommend setting `enableWorker: true` and running a dedicated
+  Worker process.
 </Tip>
 
 ### Control via Environment Variable
@@ -58,9 +60,7 @@ In production environments, we recommend setting `enableWorker: true` and runnin
 ```typescript
 export default defineConfig({
   tasks: {
-    enableWorker: !["true", "1"].includes(
-      process.env.DISABLE_WORKER ?? "false"
-    ),
+    enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false"),
   },
 });
 ```
@@ -101,19 +101,20 @@ The number of tasks the Worker will process simultaneously.
 export default defineConfig({
   tasks: {
     workerOptions: {
-      concurrency: 1,  // Process 1 task at a time
+      concurrency: 1, // Process 1 task at a time
     },
   },
 });
 ```
 
 **Recommended values**:
+
 - `1` - Simple tasks, sequential processing required
 - `2-5` - General background tasks
 - `10+` - Lightweight I/O-bound tasks
 
 <Note>
-Higher `concurrency` processes more tasks simultaneously but increases CPU and memory usage.
+  Higher `concurrency` processes more tasks simultaneously but increases CPU and memory usage.
 </Note>
 
 ### usePubSub
@@ -128,18 +129,20 @@ Uses Pub/Sub for distributing work among multiple Workers.
 export default defineConfig({
   tasks: {
     workerOptions: {
-      usePubSub: true,  // Use PostgreSQL LISTEN/NOTIFY
+      usePubSub: true, // Use PostgreSQL LISTEN/NOTIFY
     },
   },
 });
 ```
 
 **Behavior**:
+
 - `false`: Each Worker polls independently
 - `true`: New task notifications propagated instantly via PostgreSQL LISTEN/NOTIFY
 
 <Tip>
-Pub/Sub uses PostgreSQL's built-in LISTEN/NOTIFY mechanism, so no additional infrastructure (e.g., Redis) is required. It leverages the existing database connection.
+  Pub/Sub uses PostgreSQL's built-in LISTEN/NOTIFY mechanism, so no additional infrastructure (e.g.,
+  Redis) is required. It leverages the existing database connection.
 </Tip>
 
 ### listenDelay
@@ -154,13 +157,14 @@ The interval (in milliseconds) for checking tasks.
 export default defineConfig({
   tasks: {
     workerOptions: {
-      listenDelay: 500,  // Check every 0.5 seconds
+      listenDelay: 500, // Check every 0.5 seconds
     },
   },
 });
 ```
 
 **Recommended values**:
+
 - `100-500ms` - Tasks requiring fast response
 - `500-1000ms` - General background tasks
 - `1000-5000ms` - Non-urgent tasks
@@ -186,6 +190,7 @@ export default defineConfig({
 ```
 
 **defaultContext includes**:
+
 - `reply` - Fastify reply object (null in worker)
 - `request` - Fastify request object (null in worker)
 - `headers` - Request headers
@@ -213,7 +218,7 @@ export default defineConfig({
 ```
 
 <Warning>
-In Worker Context, `request` and `reply` are `null`. HTTP-related features cannot be used.
+  In Worker Context, `request` and `reply` are `null`. HTTP-related features cannot be used.
 </Warning>
 
 ## Basic Examples
@@ -228,7 +233,7 @@ export default defineConfig({
     enableWorker: process.env.NODE_ENV === "production",
     workerOptions: {
       concurrency: 1,
-      usePubSub: false,  // Single Worker
+      usePubSub: false, // Single Worker
       listenDelay: 500,
     },
     contextProvider: (defaultContext) => ({
@@ -250,7 +255,7 @@ export default defineConfig({
     enableWorker: true,
     workerOptions: {
       concurrency: 5,
-      usePubSub: true,   // Distribute via PostgreSQL LISTEN/NOTIFY
+      usePubSub: true, // Distribute via PostgreSQL LISTEN/NOTIFY
       listenDelay: 500,
     },
     contextProvider: (defaultContext) => ({
@@ -281,7 +286,7 @@ export default defineConfig({
     workerOptions: {
       concurrency: isProd ? 5 : 1,
       usePubSub: isProd,
-      listenDelay: isDev ? 100 : 500,  // Development: fast response
+      listenDelay: isDev ? 100 : 500, // Development: fast response
     },
 
     contextProvider: (defaultContext) => ({
@@ -300,8 +305,8 @@ export default defineConfig({
   tasks: {
     enableWorker: true,
     workerOptions: {
-      concurrency: 10,   // 10 concurrent tasks
-      usePubSub: true,   // Multiple Worker support
+      concurrency: 10, // 10 concurrent tasks
+      usePubSub: true, // Multiple Worker support
       listenDelay: 1000, // 1 second interval
     },
     contextProvider: (defaultContext) => ({
@@ -357,20 +362,18 @@ import { workflow } from "sonamu";
 export const sendWelcomeEmail = workflow(
   { name: "send_welcome_email" },
   async ({ input, step }) => {
-    const user = await step.define(
-      { name: "fetch_user" },
-      async () => {
+    const user = await step
+      .define({ name: "fetch_user" }, async () => {
         return await UserModel.findById(input.userId);
-      }
-    ).run();
+      })
+      .run();
 
-    await step.define(
-      { name: "send_email" },
-      async () => {
+    await step
+      .define({ name: "send_email" }, async () => {
         await sendEmail(user.email, "Welcome!");
-      }
-    ).run();
-  }
+      })
+      .run();
+  },
 );
 ```
 
@@ -380,10 +383,7 @@ export const sendWelcomeEmail = workflow(
 import { Sonamu } from "sonamu";
 
 // Runs in background
-await Sonamu.workflows.run(
-  { name: "send_welcome_email", version: null },
-  { userId: 123 }
-);
+await Sonamu.workflows.run({ name: "send_welcome_email", version: null }, { userId: 123 });
 ```
 
 → [Workflow Usage](/en/advanced-features/workflows/workflow-decorator)
@@ -436,9 +436,7 @@ ENABLE_WORKER=true node dist/worker.js
 ENABLE_WORKER=true node dist/worker.js
 ```
 
-<Tip>
-Using PM2 or Docker makes it easy to manage multiple Workers.
-</Tip>
+<Tip>Using PM2 or Docker makes it easy to manage multiple Workers.</Tip>
 
 ## Pub/Sub Behavior
 
@@ -449,7 +447,7 @@ export default defineConfig({
   tasks: {
     enableWorker: true,
     workerOptions: {
-      usePubSub: true,  // Use PostgreSQL LISTEN/NOTIFY (default)
+      usePubSub: true, // Use PostgreSQL LISTEN/NOTIFY (default)
     },
   },
 });
@@ -461,32 +459,26 @@ export default defineConfig({
 
 ```typescript
 // ❌ Bad: Trying HTTP response in Worker
-export const processData = workflow(
-  { name: "process_data" },
-  async () => {
-    const ctx = Sonamu.getContext();
-    ctx.reply.send({ done: true });  // null in Worker!
-  }
-);
+export const processData = workflow({ name: "process_data" }, async () => {
+  const ctx = Sonamu.getContext();
+  ctx.reply.send({ done: true }); // null in Worker!
+});
 
 // ✅ Good: Save results to DB
-export const processData = workflow(
-  { name: "process_data" },
-  async () => {
-    const result = await heavyProcessing();
-    await ResultModel.save({ data: result });
-  }
-);
+export const processData = workflow({ name: "process_data" }, async () => {
+  const result = await heavyProcessing();
+  await ResultModel.save({ data: result });
+});
 ```
 
 ### 2. enableWorker Setting
 
 ```typescript
 // ❌ Bad: No Worker in production
-enableWorker: false  // All tasks run in main process!
+enableWorker: false; // All tasks run in main process!
 
 // ✅ Good: Different per environment
-enableWorker: process.env.NODE_ENV === "production"
+enableWorker: process.env.NODE_ENV === "production";
 ```
 
 ### 3. Excessive concurrency

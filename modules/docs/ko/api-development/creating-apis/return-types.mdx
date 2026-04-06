@@ -9,24 +9,16 @@ API 반환 타입을 명확하게 정의하면 클라이언트와 서버 간의 
 
 <CardGroup cols={2}>
   <Card title="타입 안전성" icon="shield">
-    컴파일 타임 검증
-    
-    런타임 에러 방지
+    컴파일 타임 검증 런타임 에러 방지
   </Card>
   <Card title="자동완성" icon="wand-magic-sparkles">
-    IDE 지원
-    
-    개발 생산성 향상
+    IDE 지원 개발 생산성 향상
   </Card>
   <Card title="명확한 계약" icon="file-contract">
-    API 명세 자동화
-    
-    클라이언트 가이드
+    API 명세 자동화 클라이언트 가이드
   </Card>
   <Card title="리팩토링 안전" icon="code">
-    타입 변경 추적
-    
-    영향 범위 파악
+    타입 변경 추적 영향 범위 파악
   </Card>
 </CardGroup>
 
@@ -47,16 +39,13 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -100,7 +89,7 @@ class UserModel extends BaseModelClass {
     await wdb.table("users").where("id", id).delete();
     // 반환값 없음 → HTTP 204 No Content
   }
-  
+
   @api({ httpMethod: "PUT" })
   @transactional()
   async update(id: number, params: UpdateUserParams): Promise<void> {
@@ -122,7 +111,7 @@ class UserModel extends BaseModelClass {
     const [{ count }] = await rdb.table("users").count({ count: "*" });
     return count;
   }
-  
+
   // 불리언 반환
   @api({ httpMethod: "GET" })
   async exists(email: string): Promise<boolean> {
@@ -130,7 +119,7 @@ class UserModel extends BaseModelClass {
     const user = await rdb.table("users").where("email", email).first();
     return !!user;
   }
-  
+
   // 문자열 반환
   @api({ httpMethod: "GET" })
   async getStatus(id: number): Promise<string> {
@@ -155,12 +144,9 @@ class UserModel extends BaseModelClass {
     message: string;
   }> {
     const wdb = this.getPuri("w");
-    
-    const [user] = await wdb
-      .table("users")
-      .insert(params)
-      .returning({ id: "id" });
-    
+
+    const [user] = await wdb.table("users").insert(params).returning({ id: "id" });
+
     return {
       userId: user.id,
       message: "User created successfully",
@@ -192,20 +178,20 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<PaginatedResponse<User>> {
     const rdb = this.getPuri("r");
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     // 데이터 조회
     const users = await rdb
       .table("users")
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     // 전체 개수
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       data: users,
       pagination: {
@@ -250,38 +236,35 @@ interface UserDetailResponse {
 
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
-  async getDetail(
-    userId: number,
-    currentUserId?: number
-  ): Promise<UserDetailResponse> {
+  async getDetail(userId: number, currentUserId?: number): Promise<UserDetailResponse> {
     const rdb = this.getPuri("r");
-    
+
     // User 조회
     const user = await rdb.table("users").where("id", userId).first();
     if (!user) throw new Error("User not found");
-    
+
     // Profile 조회
     const profile = await rdb.table("profiles").where("user_id", userId).first();
-    
+
     // 통계
     const [{ postCount }] = await rdb
       .table("posts")
       .where("user_id", userId)
       .count({ postCount: "*" });
-    
+
     const [{ followerCount }] = await rdb
       .table("follows")
       .where("following_id", userId)
       .count({ followerCount: "*" });
-    
+
     const [{ followingCount }] = await rdb
       .table("follows")
       .where("follower_id", userId)
       .count({ followingCount: "*" });
-    
+
     // 메타 정보
     const isOwner = currentUserId === userId;
-    
+
     const isFollowing = currentUserId
       ? !!(await rdb
           .table("follows")
@@ -289,7 +272,7 @@ class UserModel extends BaseModelClass {
           .where("following_id", userId)
           .first())
       : false;
-    
+
     return {
       user,
       profile: profile || null,
@@ -313,27 +296,22 @@ class UserModel extends BaseModelClass {
 ### 조건부 응답
 
 ```typescript
-type UserResponse = 
-  | { success: true; user: User }
-  | { success: false; error: string };
+type UserResponse = { success: true; user: User } | { success: false; error: string };
 
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findByEmail(email: string): Promise<UserResponse> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("email", email)
-      .first();
-    
+
+    const user = await rdb.table("users").where("email", email).first();
+
     if (!user) {
       return {
         success: false,
         error: "User not found",
       };
     }
-    
+
     return {
       success: true,
       user,
@@ -355,12 +333,9 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findByUsername(username: string): Promise<User | null> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("username", username)
-      .first();
-    
+
+    const user = await rdb.table("users").where("username", username).first();
+
     return user || null;
   }
 }
@@ -398,12 +373,9 @@ class UserModel extends BaseModelClass {
   async get(id: number): Promise<ApiResponse<User>> {
     try {
       const rdb = this.getPuri("r");
-      
-      const user = await rdb
-        .table("users")
-        .where("id", id)
-        .first();
-      
+
+      const user = await rdb.table("users").where("id", id).first();
+
       if (!user) {
         return {
           success: false,
@@ -414,7 +386,7 @@ class UserModel extends BaseModelClass {
           timestamp: new Date(),
         };
       }
-      
+
       return {
         success: true,
         data: user,
@@ -449,18 +421,18 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<ListResponse<User>> {
     const rdb = this.getPuri("r");
-    
+
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
-    
+
     const users = await rdb
       .table("users")
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       items: users,
       total: count,
@@ -482,15 +454,15 @@ class UserModel extends BaseModelClass {
   @transactional()
   async update(
     id: number,
-    params: Partial<User>
+    params: Partial<User>,
   ): Promise<{
     updated: Partial<User>;
     timestamp: Date;
   }> {
     const wdb = this.getPuri("w");
-    
+
     await wdb.table("users").where("id", id).update(params);
-    
+
     return {
       updated: params,
       timestamp: new Date(),
@@ -528,17 +500,14 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getWithRelations(id: number): Promise<UserWithRelations> {
     const rdb = this.getPuri("r");
-    
+
     const user = await rdb.table("users").where("id", id).first();
     if (!user) throw new Error("User not found");
-    
+
     const profile = await rdb.table("profiles").where("user_id", id).first();
-    
-    const posts = await rdb
-      .table("posts")
-      .where("user_id", id)
-      .select("*");
-    
+
+    const posts = await rdb.table("posts").where("user_id", id).select("*");
+
     const followers = await rdb
       .table("follows")
       .join("users", "follows.follower_id", "users.id")
@@ -548,7 +517,7 @@ class UserModel extends BaseModelClass {
         username: "users.username",
         avatarUrl: "users.avatar_url",
       });
-    
+
     return {
       user,
       profile: profile || null,
@@ -580,21 +549,16 @@ interface BatchCreateResponse {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
   @transactional()
-  async createBatch(
-    users: CreateUserParams[]
-  ): Promise<BatchCreateResponse> {
+  async createBatch(users: CreateUserParams[]): Promise<BatchCreateResponse> {
     const wdb = this.getPuri("w");
-    
+
     const created: number[] = [];
     const failed: Array<{ index: number; error: string }> = [];
-    
+
     for (let i = 0; i < users.length; i++) {
       try {
-        const [user] = await wdb
-          .table("users")
-          .insert(users[i])
-          .returning({ id: "id" });
-        
+        const [user] = await wdb.table("users").insert(users[i]).returning({ id: "id" });
+
         created.push(user.id);
       } catch (error) {
         failed.push({
@@ -603,7 +567,7 @@ class UserModel extends BaseModelClass {
         });
       }
     }
-    
+
     return {
       created,
       failed,
@@ -635,16 +599,14 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async list(): Promise<UserListSubset[]> {
     const rdb = this.getPuri("r");
-    
+
     // Subset을 사용하면 필요한 필드만 조회
-    return rdb
-      .table("users")
-      .select({
-        id: "id",
-        email: "email",
-        username: "username",
-        role: "role",
-      });
+    return rdb.table("users").select({
+      id: "id",
+      email: "email",
+      username: "username",
+      role: "role",
+    });
   }
 }
 ```
@@ -678,10 +640,10 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<DataResponse<User>> {
     const rdb = this.getPuri("r");
-    
+
     const user = await rdb.table("users").where("id", id).first();
     if (!user) throw new Error("User not found");
-    
+
     return {
       data: user,
       timestamp: new Date(),
@@ -706,28 +668,28 @@ class UserModel extends BaseModelClass {
     // ...
     return { userId };
   }
-  
+
   // Read - 전체 객체 반환
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     // ...
     return user;
   }
-  
+
   // Update - void 또는 업데이트 요약
   @api({ httpMethod: "PUT" })
   @transactional()
   async update(id: number, params: UpdateUserParams): Promise<void> {
     // ...
   }
-  
+
   // Delete - void
   @api({ httpMethod: "DELETE" })
   @transactional()
   async remove(id: number): Promise<void> {
     // ...
   }
-  
+
   // List - 페이지네이션 응답
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
@@ -762,38 +724,35 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getStats(): Promise<UserStatsResponse> {
     const rdb = this.getPuri("r");
-    
+
     // 전체 사용자
     const [{ total }] = await rdb.table("users").count({ total: "*" });
-    
+
     // 활성 사용자
-    const [{ active }] = await rdb
-      .table("users")
-      .where("is_active", true)
-      .count({ active: "*" });
-    
+    const [{ active }] = await rdb.table("users").where("is_active", true).count({ active: "*" });
+
     // 오늘 가입자
     const [{ newToday }] = await rdb
       .table("users")
       .where("created_at", ">=", new Date().toISOString().split("T")[0])
       .count({ newToday: "*" });
-    
+
     // 역할별 통계
     const roleStats = await rdb
       .table("users")
       .select({ role: "role" })
       .count({ count: "*" })
       .groupBy("role");
-    
+
     const usersByRole = {
       admin: roleStats.find((s) => s.role === "admin")?.count || 0,
       manager: roleStats.find((s) => s.role === "manager")?.count || 0,
       normal: roleStats.find((s) => s.role === "normal")?.count || 0,
     };
-    
+
     // 성장 추이 (최근 7일)
     const userGrowth = []; // ... 구현
-    
+
     return {
       totalUsers: total,
       activeUsers: active,
@@ -808,12 +767,8 @@ class UserModel extends BaseModelClass {
 ## 주의사항
 
 <Warning>
-**반환 타입 정의 시 주의사항**:
-1. 항상 명시적으로 타입 정의
-2. `any` 타입 사용 지양
-3. null과 undefined 구분
-4. 민감한 정보 제외 (password 등)
-5. 일관된 응답 구조 유지
+  **반환 타입 정의 시 주의사항**: 1. 항상 명시적으로 타입 정의 2. `any` 타입 사용 지양 3. null과
+  undefined 구분 4. 민감한 정보 제외 (password 등) 5. 일관된 응답 구조 유지
 </Warning>
 
 ### 흔한 실수
@@ -825,20 +780,20 @@ class UserModel extends BaseModelClass {
   async get(id: number): Promise<any> {
     // 타입 안전성 없음
   }
-  
+
   // ❌ 나쁨: 타입 미지정
   @api({ httpMethod: "GET" })
   async list() {
     // Promise<unknown>으로 추론됨
   }
-  
+
   // ❌ 나쁨: 민감한 정보 포함
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     // User에 password 필드 포함 → 보안 위험
     return fullUser;
   }
-  
+
   // ✅ 좋음: 명시적 타입, 민감 정보 제외
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<UserPublicInfo> {

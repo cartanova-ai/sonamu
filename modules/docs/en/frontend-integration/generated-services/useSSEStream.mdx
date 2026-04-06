@@ -12,21 +12,25 @@ description: "Server-Sent Events real-time streaming"
     Server to client
 
     Unidirectional real-time data
+
   </Card>
   <Card title="Auto-reconnection" icon="rotate">
     Automatic retry on failure
 
     Configurable count/interval
+
   </Card>
   <Card title="Type Safety" icon="shield-check">
     Per-event type definition
 
     Generic-based
+
   </Card>
   <Card title="Connection State" icon="signal">
     isConnected, error tracking
 
     UI feedback ready
+
   </Card>
 </CardGroup>
 
@@ -36,13 +40,13 @@ Server-Sent Events is a technology for **unidirectional** real-time data transmi
 
 ### WebSocket vs SSE
 
-| Feature | WebSocket | SSE |
-|---------|-----------|-----|
-| Direction | Bidirectional (Full-duplex) | Unidirectional (Server → Client) |
-| Protocol | WS/WSS | HTTP/HTTPS |
-| Reconnection | Manual implementation | Browser auto-reconnect |
-| Complexity | High | Low |
-| Use Cases | Chat, games | Notifications, logs, progress |
+| Feature      | WebSocket                   | SSE                              |
+| ------------ | --------------------------- | -------------------------------- |
+| Direction    | Bidirectional (Full-duplex) | Unidirectional (Server → Client) |
+| Protocol     | WS/WSS                      | HTTP/HTTPS                       |
+| Reconnection | Manual implementation       | Browser auto-reconnect           |
+| Complexity   | High                        | Low                              |
+| Use Cases    | Chat, games                 | Notifications, logs, progress    |
 
 <Info>
 **When to use SSE**
@@ -52,7 +56,7 @@ Server-Sent Events is a technology for **unidirectional** real-time data transmi
 - Real-time log monitoring
 - File upload/processing progress
 - Server event notifications
-</Info>
+  </Info>
 
 ## Basic Usage
 
@@ -63,7 +67,9 @@ import { useSSEStream } from "./sonamu.shared";
 ```
 
 <Info>
-`useSSEStream` is defined in `sonamu.shared.ts`, which is generated during project scaffolding. `services.generated.ts` auto-generates wrapper functions for each `@stream` API, using `useSSEStream` internally.
+  `useSSEStream` is defined in `sonamu.shared.ts`, which is generated during project scaffolding.
+  `services.generated.ts` auto-generates wrapper functions for each `@stream` API, using
+  `useSSEStream` internally.
 </Info>
 
 ### Type Definition
@@ -71,9 +77,9 @@ import { useSSEStream } from "./sonamu.shared";
 ```typescript
 // Event type definition
 type AIStreamEvents = {
-  token: { text: string };     // token event: text chunks
-  usage: { tokens: number };   // usage event: token count
-  end: string;                  // end event: completion signal
+  token: { text: string }; // token event: text chunks
+  usage: { tokens: number }; // usage event: token count
+  end: string; // end event: completion signal
 };
 ```
 
@@ -134,13 +140,14 @@ function useSSEStream<T extends Record<string, any>>(
   handlers: {
     [K in keyof T]?: (data: T[K]) => void;
   },
-  options?: SSEStreamOptions
-): SSEStreamState
+  options?: SSEStreamOptions,
+): SSEStreamState;
 ```
 
 ### Parameters
 
 #### url
+
 The SSE endpoint URL.
 
 ```typescript
@@ -148,6 +155,7 @@ useSSEStream("/api/ai/stream", params, handlers);
 ```
 
 #### params
+
 Object to be sent as URL query parameters.
 
 ```typescript
@@ -158,7 +166,7 @@ useSSEStream(
     model: "gpt-4",
     temperature: 0.7,
   },
-  handlers
+  handlers,
 );
 
 // Actual request URL:
@@ -166,6 +174,7 @@ useSSEStream(
 ```
 
 #### handlers
+
 Handler functions for each event type.
 
 ```typescript
@@ -183,25 +192,26 @@ Handler functions for each event type.
 ```
 
 **Special events**:
+
 - `end`: When the server explicitly signals stream termination
 - `message`: Default message when no event type is specified
 
 #### options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Auto-connect toggle |
-| `retry` | `number` | `3` | Max retry count |
-| `retryInterval` | `number` | `3000` | Retry interval (ms) |
+| Option          | Type      | Default | Description         |
+| --------------- | --------- | ------- | ------------------- |
+| `enabled`       | `boolean` | `true`  | Auto-connect toggle |
+| `retry`         | `number`  | `3`     | Max retry count     |
+| `retryInterval` | `number`  | `3000`  | Retry interval (ms) |
 
 ### Return Value (SSEStreamState)
 
 ```typescript
 type SSEStreamState = {
-  isConnected: boolean;  // Current connection state
-  error: string | null;  // Error message
-  retryCount: number;    // Current retry count
-  isEnded: boolean;      // Normal termination flag
+  isConnected: boolean; // Current connection state
+  error: string | null; // Error message
+  retryCount: number; // Current retry count
+  isEnded: boolean; // Normal termination flag
 };
 ```
 
@@ -444,7 +454,7 @@ import { BaseModelClass, stream, Sonamu, z } from "sonamu";
 
 class AIModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       token: z.object({ text: z.string() }),
       usage: z.object({ tokens: z.number() }),
@@ -457,7 +467,7 @@ class AIModelClass extends BaseModelClass {
       z.object({
         token: z.object({ text: z.string() }),
         usage: z.object({ tokens: z.number() }),
-      })
+      }),
     );
 
     const stream = await openai.chat.completions.create({
@@ -469,11 +479,11 @@ class AIModelClass extends BaseModelClass {
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content ?? "";
       if (text) {
-        sse.publish('token', { text });
+        sse.publish("token", { text });
       }
     }
 
-    sse.publish('usage', { tokens: 42 });
+    sse.publish("usage", { tokens: 42 });
     await sse.end();
   }
 }
@@ -482,18 +492,22 @@ class AIModelClass extends BaseModelClass {
 ### publish Format
 
 ```typescript
-sse.publish('eventName', { /* data */ });
+sse.publish("eventName", {
+  /* data */
+});
 ```
 
 **Examples**:
+
 ```typescript
-sse.publish('token', { text: "Hello" });
-sse.publish('usage', { tokens: 42 });
-await sse.end();  // Sends end event and closes the stream
+sse.publish("token", { text: "Hello" });
+sse.publish("usage", { tokens: 42 });
+await sse.end(); // Sends end event and closes the stream
 ```
 
 <Info>
-For detailed SSE endpoint implementation, see [Creating SSE Endpoints](/en/advanced-features/sse/creating-sse-endpoints).
+  For detailed SSE endpoint implementation, see [Creating SSE
+  Endpoints](/en/advanced-features/sse/creating-sse-endpoints).
 </Info>
 
 ## Advanced Features
@@ -525,8 +539,8 @@ const [filter, setFilter] = useState("all");
 
 useSSEStream(
   "/api/logs/stream",
-  { level: filter },  // Reconnects when filter changes
-  handlers
+  { level: filter }, // Reconnects when filter changes
+  handlers,
 );
 
 // When filter changes, the connection is automatically dropped and reconnected with new params
@@ -557,8 +571,8 @@ const stream1 = useSSEStream<AIEvents>(
   "/api/ai/chat",
   { prompt: "Hello" },
   {
-    token: (data) => setAiResponse(prev => prev + data.text),
-  }
+    token: (data) => setAiResponse((prev) => prev + data.text),
+  },
 );
 
 // Stream 2: Notifications
@@ -567,7 +581,7 @@ const stream2 = useSSEStream<NotificationEvents>(
   {},
   {
     notification: (data) => showNotification(data),
-  }
+  },
 );
 ```
 
@@ -586,18 +600,26 @@ Don't accumulate streaming data indefinitely.
 // Bad: Unbounded memory growth
 const [logs, setLogs] = useState<string[]>([]);
 
-useSSEStream("/api/logs", {}, {
-  log: (data) => {
-    setLogs(prev => [...prev, data.message]);  // Grows forever
+useSSEStream(
+  "/api/logs",
+  {},
+  {
+    log: (data) => {
+      setLogs((prev) => [...prev, data.message]); // Grows forever
+    },
   },
-});
+);
 
 // Good: Keep only last N entries
-useSSEStream("/api/logs", {}, {
-  log: (data) => {
-    setLogs(prev => [...prev, data.message].slice(-100));  // Last 100 only
+useSSEStream(
+  "/api/logs",
+  {},
+  {
+    log: (data) => {
+      setLogs((prev) => [...prev, data.message].slice(-100)); // Last 100 only
+    },
   },
-});
+);
 ```
 
 ### 3. Error Handling
@@ -636,6 +658,7 @@ useEffect(() => {
 **Cause**: CORS configuration or endpoint error
 
 **Solution**:
+
 ```typescript
 // Backend: sonamu.config.ts
 export default {

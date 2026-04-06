@@ -35,12 +35,12 @@ class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m" })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   @api()
   async update(id: number, data: Partial<PostSave>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Delete specific key
     await Sonamu.cache.delete({ key: `Post.findById:${id}` });
@@ -62,7 +62,7 @@ class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   @cache({ ttl: "5m", tags: ["post", "list"] })
@@ -73,7 +73,7 @@ class PostModelClass extends BaseModelClass {
 
   @api()
   async update(id: number, data: Partial<PostSave>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Delete all caches with "post" tag
     await Sonamu.cache.deleteByTag({ tags: ["post"] });
@@ -89,7 +89,7 @@ class PostModelClass extends BaseModelClass {
 
 ```typescript
 await Sonamu.cache.deleteMany({
-  keys: ["user:1", "user:2", "user:3"]
+  keys: ["user:1", "user:2", "user:3"],
 });
 ```
 
@@ -112,7 +112,7 @@ class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["product", "product:detail"] })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
 
   // Product list
@@ -126,7 +126,7 @@ class ProductModelClass extends BaseModelClass {
   @cache({ ttl: "30m", tags: ["product", "product:list", "product:category"] })
   @api()
   async findByCategory(categoryId: number) {
-    return this.findMany({ where: [['category_id', categoryId]] });
+    return this.findMany({ where: [["category_id", categoryId]] });
   }
 
   // Popular products
@@ -134,9 +134,9 @@ class ProductModelClass extends BaseModelClass {
   @api()
   async findPopular() {
     return this.findMany({
-      where: [['view_count', '>', 1000]],
-      order: [['view_count', 'desc']],
-      num: 10
+      where: [["view_count", ">", 1000]],
+      order: [["view_count", "desc"]],
+      num: 10,
     });
   }
 }
@@ -158,7 +158,7 @@ class ProductModelClass extends BaseModelClass {
 
   @api()
   async update(id: number, data: Partial<ProductSave>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Invalidate detail + list
     await Sonamu.cache.deleteByTag({ tags: ["product:detail", "product:list"] });
@@ -168,8 +168,8 @@ class ProductModelClass extends BaseModelClass {
 
   @api()
   async updateViewCount(id: number) {
-    const result = await this.updateOne(['id', id], {
-      view_count: this.raw('view_count + 1')
+    const result = await this.updateOne(["id", id], {
+      view_count: this.raw("view_count + 1"),
     });
 
     // View count change only invalidates popular products cache
@@ -180,7 +180,7 @@ class ProductModelClass extends BaseModelClass {
 
   @api()
   async deleteProduct(id: number) {
-    const result = await this.deleteOne(['id', id]);
+    const result = await this.deleteOne(["id", id]);
 
     // Invalidate all product-related cache
     await Sonamu.cache.deleteByTag({ tags: ["product"] });
@@ -199,11 +199,11 @@ class CommentModelClass extends BaseModelClass {
   @cache({
     key: (postId: number) => `comments:post:${postId}`,
     ttl: "10m",
-    tags: (postId: number) => [`comment`, `comment:post:${postId}`]
+    tags: (postId: number) => [`comment`, `comment:post:${postId}`],
   })
   @api()
   async findByPostId(postId: number) {
-    return this.findMany({ where: [['post_id', postId]] });
+    return this.findMany({ where: [["post_id", postId]] });
   }
 
   @api()
@@ -212,7 +212,7 @@ class CommentModelClass extends BaseModelClass {
 
     // Invalidate only that post's comment cache
     await Sonamu.cache.deleteByTag({
-      tags: [`comment:post:${data.post_id}`]
+      tags: [`comment:post:${data.post_id}`],
     });
 
     return result;
@@ -246,7 +246,7 @@ class PostModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["post"] })
   @api()
   async findById(id: number) {
-    const post = await this.findOne(['id', id]);
+    const post = await this.findOne(["id", id]);
     const comments = await commentModel.findByPostId(id);
     return { ...post, comments };
   }
@@ -262,7 +262,7 @@ class CommentModelClass extends BaseModelClass {
   @cache({ ttl: "10m", tags: ["comment"] })
   @api()
   async findByPostId(postId: number) {
-    return this.findMany({ where: [['post_id', postId]] });
+    return this.findMany({ where: [["post_id", postId]] });
   }
 
   @api()
@@ -284,7 +284,7 @@ class UserModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["user"] })
   @api()
   async findById(id: number) {
-    const user = await this.findOne(['id', id]);
+    const user = await this.findOne(["id", id]);
     const roles = await userRoleModel.findByUserId(id);
     return { ...user, roles };
   }
@@ -294,7 +294,7 @@ class UserRoleModelClass extends BaseModelClass {
   @cache({ ttl: "1h", tags: ["user", "role"] })
   @api()
   async findByUserId(userId: number) {
-    return this.findMany({ where: [['user_id', userId]] });
+    return this.findMany({ where: [["user_id", userId]] });
   }
 
   @api()
@@ -322,14 +322,14 @@ class CategoryModelClass extends BaseModelClass {
   @cache({ ttl: "30m", tags: ["category", "category:products"] })
   @api()
   async getWithProducts(id: number) {
-    const category = await this.findOne(['id', id]);
+    const category = await this.findOne(["id", id]);
     const products = await productModel.findByCategory(id);
     return { ...category, products };
   }
 
   @api()
   async update(id: number, data: Partial<CategorySave>) {
-    const result = await this.updateOne(['id', id], data);
+    const result = await this.updateOne(["id", id], data);
 
     // Invalidate only category tree
     await Sonamu.cache.deleteByTag({ tags: ["category:tree"] });
@@ -341,7 +341,7 @@ class CategoryModelClass extends BaseModelClass {
 class ProductModelClass extends BaseModelClass {
   @api()
   async updateCategory(productId: number, categoryId: number) {
-    const result = await this.updateOne(['id', productId], { category_id: categoryId });
+    const result = await this.updateOne(["id", productId], { category_id: categoryId });
 
     // Invalidate category-product connection cache
     await Sonamu.cache.deleteByTag({ tags: ["category:products", "product"] });
@@ -360,15 +360,15 @@ class OrderModelClass extends BaseModelClass {
   async getStats() {
     const [total, pending, completed] = await Promise.all([
       this.count(),
-      this.count({ where: [['status', 'pending']] }),
-      this.count({ where: [['status', 'completed']] }),
+      this.count({ where: [["status", "pending"]] }),
+      this.count({ where: [["status", "completed"]] }),
     ]);
     return { total, pending, completed };
   }
 
   @api()
   async updateStatus(id: number, status: string) {
-    const result = await this.updateOne(['id', id], { status });
+    const result = await this.updateOne(["id", id], { status });
 
     // Invalidate stats cache
     await Sonamu.cache.deleteByTag({ tags: ["order:stats"] });
@@ -395,8 +395,8 @@ class UserDataModelClass extends BaseModelClass {
       key: "my-data",
       ttl: "10m",
       factory: async () => {
-        return this.findMany({ where: [['user_id', userId]] });
-      }
+        return this.findMany({ where: [["user_id", userId]] });
+      },
     });
   }
 
@@ -427,8 +427,8 @@ class TenantDataModelClass extends BaseModelClass {
       ttl: "1h",
       tags: ["tenant-data"],
       factory: async () => {
-        return this.findMany({ where: [['tenant_id', tenantId]] });
-      }
+        return this.findMany({ where: [["tenant_id", tenantId]] });
+      },
     });
   }
 
@@ -461,10 +461,12 @@ async update(id: number, data: Partial<PostSave>) {
 ```
 
 **Advantages**:
+
 - Simple and clear
 - No stale data
 
 **Disadvantages**:
+
 - Reduced hit rate due to frequent cache deletion
 
 ### 2. Lazy Invalidation (Delayed Invalidation)
@@ -489,10 +491,12 @@ async update(id: number, data: Partial<PostSave>) {
 ```
 
 **Advantages**:
+
 - High cache hit rate
 - Simple code
 
 **Disadvantages**:
+
 - Potentially stale data for up to 5 minutes
 
 ### 3. Hybrid
@@ -537,10 +541,12 @@ async update(id: number, data: Partial<PostSave>) {
 ```
 
 **Advantages**:
+
 - Cache always up-to-date
 - High hit rate
 
 **Disadvantages**:
+
 - Complex cache key management
 - Write performance degradation
 
@@ -564,7 +570,7 @@ export const config: SonamuConfig = {
         main: store()
           .useL1Layer(drivers.memory({ maxSize: "200mb" }))
           .useL2Layer(drivers.redis({ connection: redis }))
-          .useBus(drivers.redisBus({ connection: redis })),  // Add Bus
+          .useBus(drivers.redisBus({ connection: redis })), // Add Bus
       },
     },
   },
@@ -572,6 +578,7 @@ export const config: SonamuConfig = {
 ```
 
 **How It Works**:
+
 ```
 Server 1: deleteByTag("product")
   ↓
@@ -588,17 +595,19 @@ Without Bus, each server's L1 is independent:
 // Configuration without Bus
 store()
   .useL1Layer(drivers.memory({ maxSize: "200mb" }))
-  .useL2Layer(drivers.redis({ connection: redis }))
+  .useL2Layer(drivers.redis({ connection: redis }));
 // No Bus
 ```
 
 **Problem**:
+
 ```
 Server 1: deleteByTag("product") → L1/L2 deleted
 Server 2: Still has stale cache in L1 ❌
 ```
 
 **Solutions**:
+
 1. Add Bus (recommended)
 2. Use only L2 without L1 (slower)
 3. Use short TTL (accept stale data)
@@ -610,7 +619,7 @@ Server 2: Still has stale cache in L1 ❌
 ```typescript
 // Check if specific key exists
 const exists = await Sonamu.cache.has({ key: "post:1" });
-console.log(exists);  // true or false
+console.log(exists); // true or false
 
 // Get value
 const value = await Sonamu.cache.get({ key: "post:1" });
@@ -624,15 +633,15 @@ You cannot check affected keys before invalidation, but consistent tag usage mak
 ```typescript
 // Tag naming convention
 const tags = {
-  post: ["post"],                    // All posts
-  postDetail: ["post", "detail"],    // Post detail
-  postList: ["post", "list"],        // Post list
-  comment: ["comment"],              // All comments
+  post: ["post"], // All posts
+  postDetail: ["post", "detail"], // Post detail
+  postList: ["post", "list"], // Post list
+  comment: ["comment"], // All comments
 };
 
 // Clear intent during invalidation
-await Sonamu.cache.deleteByTag({ tags: ["post", "list"] });  // Lists only
-await Sonamu.cache.deleteByTag({ tags: ["post"] });          // All posts
+await Sonamu.cache.deleteByTag({ tags: ["post", "list"] }); // Lists only
+await Sonamu.cache.deleteByTag({ tags: ["post"] }); // All posts
 ```
 
 ## Cautions
@@ -641,6 +650,7 @@ await Sonamu.cache.deleteByTag({ tags: ["post"] });          // All posts
 **Cache Invalidation Cautions**:
 
 1. **Avoid Excessive Invalidation**: Too frequent invalidation reduces cache effectiveness
+
    ```typescript
    // ❌ Bad example: Delete all cache on every view count increment
    async incrementViewCount(id: number) {
@@ -656,6 +666,7 @@ await Sonamu.cache.deleteByTag({ tags: ["post"] });          // All posts
    ```
 
 2. **Maintain Tag Consistency**: Consistent tag usage ensures accurate invalidation
+
    ```typescript
    // ❌ Inconsistent
    @cache({ tags: ["Post"] })  // Uppercase
@@ -667,6 +678,7 @@ await Sonamu.cache.deleteByTag({ tags: ["post"] });          // All posts
    ```
 
 3. **Prevent Circular Invalidation**: If A invalidates B and B invalidates A, infinite loop occurs
+
    ```typescript
    // ❌ Dangerous: Circular invalidation
    class AModel {
@@ -687,12 +699,16 @@ await Sonamu.cache.deleteByTag({ tags: ["post"] });          // All posts
    ```
 
 4. **Bus Required in Distributed Environment**: Operating multiple servers without Bus causes inconsistency
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Cache Configuration" icon="gear" href="/en/advanced-features/caching/cache-configuration">
+  <Card
+    title="Cache Configuration"
+    icon="gear"
+    href="/en/advanced-features/caching/cache-configuration"
+  >
     Configure Stores and Drivers
   </Card>
   <Card title="@cache Decorator" icon="at" href="/en/advanced-features/caching/cache-decorator">

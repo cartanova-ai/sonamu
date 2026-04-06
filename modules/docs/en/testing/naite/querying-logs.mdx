@@ -12,21 +12,25 @@ Learn how to query recorded logs using Naite.get() and chaining methods.
     Flexible key matching
 
     Hierarchical queries
+
   </Card>
   <Card title="Chaining Queries" icon="link">
     fromFile, fromFunction
 
     where conditions
+
   </Card>
   <Card title="Various Results" icon="list">
     result, first, last
 
     at(index)
+
   </Card>
   <Card title="Callstack Usage" icon="layer-group">
     Call location tracking
 
     Debugging support
+
   </Card>
 </CardGroup>
 
@@ -75,9 +79,15 @@ const createLogs = Naite.get("*:create").result();
 When ending with `*`, prefix matching:
 
 ```typescript
-Naite.t("syncer:renderTemplate", { /* ... */ });
-Naite.t("syncer:renderTemplate:user", { /* ... */ });
-Naite.t("syncer:writeFile", { /* ... */ });
+Naite.t("syncer:renderTemplate", {
+  /* ... */
+});
+Naite.t("syncer:renderTemplate:user", {
+  /* ... */
+});
+Naite.t("syncer:writeFile", {
+  /* ... */
+});
 
 // "syncer:*" → All keys starting with syncer: regardless of length
 const logs = Naite.get("syncer:*").result();
@@ -92,9 +102,15 @@ const logs = Naite.get("syncer:*").result();
 When `*` is in the middle:
 
 ```typescript
-Naite.t("syncer:renderTemplate:user", { /* ... */ });
-Naite.t("syncer:writeFile:user", { /* ... */ });
-Naite.t("syncer:renderTemplate:post", { /* ... */ });
+Naite.t("syncer:renderTemplate:user", {
+  /* ... */
+});
+Naite.t("syncer:writeFile:user", {
+  /* ... */
+});
+Naite.t("syncer:renderTemplate:post", {
+  /* ... */
+});
 
 // "syncer:*:user" → Middle part is * (same length)
 const logs = Naite.get("syncer:*:user").result();
@@ -110,8 +126,12 @@ const logs = Naite.get("syncer:*:user").result();
 Without wildcard, only exact key matches:
 
 ```typescript
-Naite.t("user:create", { /* ... */ });
-Naite.t("user:create:validation", { /* ... */ });
+Naite.t("user:create", {
+  /* ... */
+});
+Naite.t("user:create:validation", {
+  /* ... */
+});
 
 // "user:create" → Exact match only
 const logs = Naite.get("user:create").result();
@@ -135,9 +155,7 @@ test("file filtering", async () => {
   Naite.t("test:log", { file: "post.model.test.ts" });
 
   // Query only logs from user.model.test.ts
-  const userLogs = Naite.get("test:log")
-    .fromFile("user.model.test.ts")
-    .result();
+  const userLogs = Naite.get("test:log").fromFile("user.model.test.ts").result();
 
   expect(userLogs).toHaveLength(1);
   expect(userLogs[0].file).toBe("user.model.test.ts");
@@ -145,6 +163,7 @@ test("file filtering", async () => {
 ```
 
 **How it works**:
+
 ```typescript
 // Checks if callstack's filePath ends with /.../{fileName}
 fromFile(fileName: string): NaiteQuery {
@@ -175,9 +194,7 @@ test("function filtering", async () => {
   await writeFile("output.ts");
 
   // Only logs called from renderTemplate
-  const renderLogs = Naite.get("syncer:*")
-    .fromFunction("renderTemplate")
-    .result();
+  const renderLogs = Naite.get("syncer:*").fromFunction("renderTemplate").result();
 
   expect(renderLogs).toHaveLength(1);
   expect(renderLogs[0].template).toBe("user.model.ts");
@@ -185,19 +202,21 @@ test("function filtering", async () => {
 ```
 
 **Options**:
+
 ```typescript
 // Direct calls only (stack[0])
-fromFunction("renderTemplate", { from: "direct" })
+fromFunction("renderTemplate", { from: "direct" });
 
 // Indirect calls only (stack[1+])
-fromFunction("renderTemplate", { from: "indirect" })
+fromFunction("renderTemplate", { from: "indirect" });
 
 // Both (default)
-fromFunction("renderTemplate", { from: "both" })
-fromFunction("renderTemplate") // Same
+fromFunction("renderTemplate", { from: "both" });
+fromFunction("renderTemplate"); // Same
 ```
 
 **Practical example**:
+
 ```typescript
 async function processUser(userId: number) {
   Naite.t("user:process:start", { userId });
@@ -215,17 +234,13 @@ test("call relationship tracking", async () => {
   await processUser(123);
 
   // Only logs directly called from processUser
-  const directLogs = Naite.get("user:*")
-    .fromFunction("processUser", { from: "direct" })
-    .result();
+  const directLogs = Naite.get("user:*").fromFunction("processUser", { from: "direct" }).result();
 
   // user:process:start, user:process:done
   expect(directLogs).toHaveLength(2);
 
   // All logs in processUser's call chain
-  const allLogs = Naite.get("user:*")
-    .fromFunction("processUser", { from: "both" })
-    .result();
+  const allLogs = Naite.get("user:*").fromFunction("processUser", { from: "both" }).result();
 
   // user:process:start, user:create, user:process:done
   expect(allLogs).toHaveLength(3);
@@ -243,41 +258,39 @@ test("condition filtering", async () => {
   Naite.t("user:create", { userId: 3, status: "active" });
 
   // userId > 1
-  const logs = Naite.get("user:create")
-    .where("data.userId", ">", 1)
-    .result();
+  const logs = Naite.get("user:create").where("data.userId", ">", 1).result();
 
   expect(logs).toHaveLength(2);
   expect(logs[0].userId).toBe(2);
   expect(logs[1].userId).toBe(3);
 
   // Only where status is active
-  const activeLogs = Naite.get("user:create")
-    .where("data.status", "=", "active")
-    .result();
+  const activeLogs = Naite.get("user:create").where("data.status", "=", "active").result();
 
   expect(activeLogs).toHaveLength(2);
 });
 ```
 
 **Supported operators**:
+
 ```typescript
-where("data.userId", ">", 10)   // Greater than
-where("data.userId", "<", 100)  // Less than
-where("data.userId", ">=", 10)  // Greater than or equal
-where("data.userId", "<=", 100) // Less than or equal
-where("data.status", "=", "active")   // Equal
-where("data.status", "!=", "deleted") // Not equal
-where("data.username", "includes", "john") // Contains (string)
+where("data.userId", ">", 10); // Greater than
+where("data.userId", "<", 100); // Less than
+where("data.userId", ">=", 10); // Greater than or equal
+where("data.userId", "<=", 100); // Less than or equal
+where("data.status", "=", "active"); // Equal
+where("data.status", "!=", "deleted"); // Not equal
+where("data.username", "includes", "john"); // Contains (string)
 ```
 
 **Path specification**:
+
 ```typescript
 // Access data field
-where("data.userId", "=", 123)
+where("data.userId", "=", 123);
 
 // Access nested objects (uses radashi's get)
-where("data.user.profile.age", ">", 18)
+where("data.user.profile.age", ">", 18);
 ```
 
 ## Chaining Combinations
@@ -374,9 +387,7 @@ test("post creation flow", async () => {
   expect(output.postId).toBeGreaterThan(0);
 
   // Verify DB query
-  const dbLogs = Naite.get("post:create:*")
-    .fromFunction("insertInto")
-    .result();
+  const dbLogs = Naite.get("post:create:*").fromFunction("insertInto").result();
   expect(dbLogs.length).toBeGreaterThan(0);
 });
 ```
@@ -386,20 +397,16 @@ test("post creation flow", async () => {
 ```typescript
 test("Syncer template rendering", async () => {
   await Sonamu.syncer.generateTemplate("model", {
-    entityId: "User"
+    entityId: "User",
   });
 
   // Verify renderTemplate function call
-  const renderLogs = Naite.get("syncer:*")
-    .fromFunction("renderTemplate")
-    .result();
+  const renderLogs = Naite.get("syncer:*").fromFunction("renderTemplate").result();
 
   expect(renderLogs.length).toBeGreaterThan(0);
 
   // Verify User entity processing
-  const userLogs = Naite.get("syncer:*")
-    .where("data.entityId", "=", "User")
-    .result();
+  const userLogs = Naite.get("syncer:*").where("data.entityId", "=", "User").result();
 
   expect(userLogs.length).toBeGreaterThan(0);
 });
@@ -503,9 +510,7 @@ function matchesPattern(key: string, pattern: string): boolean {
   }
 
   // Each part is * or exact match
-  return patternParts.every((part, i) =>
-    part === "*" || part === keyParts[i]
-  );
+  return patternParts.every((part, i) => part === "*" || part === keyParts[i]);
 }
 ```
 
@@ -515,11 +520,13 @@ function matchesPattern(key: string, pattern: string): boolean {
 
 ```typescript
 // ✅ Correct way: Hierarchical structure
-Naite.t("module:function:action", { /* ... */ });
+Naite.t("module:function:action", {
+  /* ... */
+});
 
 // Use wildcards when querying
-Naite.get("module:*")           // Entire module
-Naite.get("module:function:*")  // Specific function
+Naite.get("module:*"); // Entire module
+Naite.get("module:function:*"); // Specific function
 ```
 
 ### 2. Optimize Chaining Order
@@ -527,9 +534,9 @@ Naite.get("module:function:*")  // Specific function
 ```typescript
 // ✅ Good way: Order by most filtering first
 Naite.get("user:*")
-  .fromFile("user.model.test.ts")  // File filter (filters most)
-  .fromFunction("createUser")      // Function filter
-  .where("data.userId", ">", 100)  // Data filter
+  .fromFile("user.model.test.ts") // File filter (filters most)
+  .fromFunction("createUser") // Function filter
+  .where("data.userId", ">", 100) // Data filter
   .result();
 ```
 
@@ -548,12 +555,9 @@ expect(logs[0].username).toBe("john");
 ## Cautions
 
 <Warning>
-**Cautions when using Naite.get()**:
-1. **Empty results**: Returns empty array if no logs
-2. **Order**: Returns in recorded order
-3. **Chaining**: Each method returns a new NaiteQuery
-4. **Wildcards**: Understand pattern matching rules
-5. **where path**: Uses radashi's get path format
+  **Cautions when using Naite.get()**: 1. **Empty results**: Returns empty array if no logs 2.
+  **Order**: Returns in recorded order 3. **Chaining**: Each method returns a new NaiteQuery 4.
+  **Wildcards**: Understand pattern matching rules 5. **where path**: Uses radashi's get path format
 </Warning>
 
 ## Next Steps

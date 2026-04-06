@@ -48,9 +48,9 @@ test("external API call", async () => {
   vi.mocked(axios.get).mockResolvedValue({
     data: { id: 1, name: "John" },
   });
-  
+
   const result = await userService.fetchUser(1);
-  
+
   expect(result.name).toBe("John");
   expect(axios.get).toHaveBeenCalledWith("/api/users/1");
 });
@@ -67,15 +67,15 @@ import { emailService } from "../services/email.service";
 test("verify email sending", async () => {
   // Create Spy to track function calls
   const sendSpy = vi.spyOn(emailService, "send").mockResolvedValue(true);
-  
+
   await userService.register({ email: "user@example.com" });
-  
+
   // Verify email send function was called
   expect(sendSpy).toHaveBeenCalledWith({
     to: "user@example.com",
     subject: "Welcome!",
   });
-  
+
   // Clean up Spy
   sendSpy.mockRestore();
 });
@@ -91,28 +91,29 @@ import { test, vi } from "vitest";
 test("setTimeout test", async () => {
   // Use fake timers
   vi.useFakeTimers();
-  
+
   let executed = false;
   setTimeout(() => {
     executed = true;
   }, 1000);
-  
+
   // Before 1 second
   expect(executed).toBe(false);
-  
+
   // Advance time by 1 second
   vi.advanceTimersByTime(1000);
-  
+
   // After 1 second
   expect(executed).toBe(true);
-  
+
   // Restore to real timers
   vi.useRealTimers();
 });
 ```
 
 <Info>
-**bootstrap() and timers**: Sonamu's `bootstrap()` function automatically calls `vi.useRealTimers()` in `afterEach` to restore timers. No need to call it separately.
+  **bootstrap() and timers**: Sonamu's `bootstrap()` function automatically calls
+  `vi.useRealTimers()` in `afterEach` to restore timers. No need to call it separately.
 </Info>
 
 ### Date Mocking
@@ -125,11 +126,11 @@ import { test, vi } from "vitest";
 test("check today's date", () => {
   // Fix to January 1, 2025
   vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
-  
+
   const today = new Date();
   expect(today.getFullYear()).toBe(2025);
-  expect(today.getMonth()).toBe(0);  // 0 = January
-  
+  expect(today.getMonth()).toBe(0); // 0 = January
+
   // Restore system time
   vi.useRealTimers();
 });
@@ -153,27 +154,21 @@ import { expect } from "vitest";
 
 test("virtual file system", async () => {
   const filePath = "/tmp/my-virtual-file.txt";
-  
+
   // 1. File doesn't actually exist
-  await expect(
-    access(filePath, constants.F_OK)
-  ).rejects.toThrow();
-  
+  await expect(access(filePath, constants.F_OK)).rejects.toThrow();
+
   // 2. Register virtual file with Naite
   Naite.t("mock:fs/promises:virtualFileSystem", filePath);
-  
+
   // 3. Now behaves as if file "exists"
-  await expect(
-    access(filePath, constants.F_OK)
-  ).resolves.toBeUndefined();
-  
+  await expect(access(filePath, constants.F_OK)).resolves.toBeUndefined();
+
   // 4. Delete Mock
   Naite.del("mock:fs/promises:virtualFileSystem");
-  
+
   // 5. No longer exists
-  await expect(
-    access(filePath, constants.F_OK)
-  ).rejects.toThrow();
+  await expect(access(filePath, constants.F_OK)).rejects.toThrow();
 });
 ```
 
@@ -187,34 +182,30 @@ import { expect } from "vitest";
 
 test("check file existence", async () => {
   const uploadPath = "/uploads/user/123/profile.jpg";
-  
+
   // Register virtual file
   Naite.t("mock:fs/promises:virtualFileSystem", uploadPath);
-  
+
   // Test file service
   const exists = await fileService.checkExists(uploadPath);
   expect(exists).toBe(true);
-  
+
   // Clean up Mock
   Naite.del("mock:fs/promises:virtualFileSystem");
 });
 
 test("check multiple files", async () => {
-  const files = [
-    "/uploads/file1.pdf",
-    "/uploads/file2.pdf",
-    "/uploads/file3.pdf",
-  ];
-  
+  const files = ["/uploads/file1.pdf", "/uploads/file2.pdf", "/uploads/file3.pdf"];
+
   // Register multiple files
   for (const file of files) {
     Naite.t("mock:fs/promises:virtualFileSystem", file);
   }
-  
+
   // Batch check
   const results = await fileService.checkMultiple(files);
-  expect(results.every(r => r.exists)).toBe(true);
-  
+  expect(results.every((r) => r.exists)).toBe(true);
+
   // Clean up
   Naite.del("mock:fs/promises:virtualFileSystem");
 });
@@ -228,15 +219,13 @@ Naite detects special key patterns (`mock:*`) to intercept corresponding behavio
 // Sonamu internal (pseudocode)
 async function access(path: string) {
   // Check mock:fs/promises:virtualFileSystem in Naite
-  const mocked = Naite.get("mock:fs/promises:virtualFileSystem")
-    .result()
-    .includes(path);
-  
+  const mocked = Naite.get("mock:fs/promises:virtualFileSystem").result().includes(path);
+
   if (mocked) {
     // If virtual file is registered, succeed
     return Promise.resolve();
   }
-  
+
   // Check actual file system
   return realAccess(path);
 }
@@ -252,10 +241,10 @@ Implement Mock classes directly for complex external services.
 // __mocks__/payment.service.ts
 export class MockPaymentService {
   private payments: Map<string, any> = new Map();
-  
+
   async charge(amount: number, userId: number) {
     const paymentId = `mock_${Date.now()}`;
-    
+
     this.payments.set(paymentId, {
       id: paymentId,
       amount,
@@ -263,27 +252,27 @@ export class MockPaymentService {
       status: "success",
       createdAt: new Date(),
     });
-    
+
     return {
       success: true,
       paymentId,
     };
   }
-  
+
   async getPayment(paymentId: string) {
     return this.payments.get(paymentId) ?? null;
   }
-  
+
   async refund(paymentId: string) {
     const payment = this.payments.get(paymentId);
     if (!payment) {
       throw new Error("Payment not found");
     }
-    
+
     payment.status = "refunded";
     return { success: true };
   }
-  
+
   // Test helper
   clear() {
     this.payments.clear();
@@ -312,13 +301,13 @@ test("order payment", async () => {
     items: [{ productId: 1, quantity: 2 }],
     totalAmount: 50000,
   });
-  
+
   // Execute Mock payment
   const result = await orderService.processPayment(order.id);
-  
+
   expect(result.success).toBe(true);
   expect(result.paymentId).toBeDefined();
-  
+
   // Verify payment recorded in Mock
   const payment = await mockPayment.getPayment(result.paymentId);
   expect(payment?.amount).toBe(50000);
@@ -330,16 +319,14 @@ test("payment failure scenario", async () => {
   mockPayment.charge = async () => {
     throw new Error("Card declined");
   };
-  
+
   const order = await orderService.create({
     userId: 1,
     items: [{ productId: 1, quantity: 1 }],
     totalAmount: 10000,
   });
-  
-  await expect(
-    orderService.processPayment(order.id)
-  ).rejects.toThrow("Card declined");
+
+  await expect(orderService.processPayment(order.id)).rejects.toThrow("Card declined");
 });
 ```
 
@@ -363,25 +350,21 @@ test("fetch weather info", async () => {
       humidity: 60,
     },
   });
-  
+
   const weather = await weatherService.getCurrentWeather("Seoul");
-  
+
   expect(weather.temperature).toBe(25);
   expect(weather.condition).toBe("Sunny");
-  expect(axios.get).toHaveBeenCalledWith(
-    expect.stringContaining("Seoul")
-  );
+  expect(axios.get).toHaveBeenCalledWith(expect.stringContaining("Seoul"));
 });
 
 test("API error handling", async () => {
   // Simulate network error
-  vi.mocked(axios.get).mockRejectedValue(
-    new Error("Network Error")
+  vi.mocked(axios.get).mockRejectedValue(new Error("Network Error"));
+
+  await expect(weatherService.getCurrentWeather("Seoul")).rejects.toThrow(
+    "Failed to fetch weather information",
   );
-  
-  await expect(
-    weatherService.getCurrentWeather("Seoul")
-  ).rejects.toThrow("Failed to fetch weather information");
 });
 ```
 
@@ -397,18 +380,18 @@ test("registration SMS sending", async () => {
   const sendSpy = vi
     .spyOn(smsService, "send")
     .mockResolvedValue({ success: true, messageId: "mock_123" });
-  
+
   await userService.register({
     phone: "010-1234-5678",
     name: "John Doe",
   });
-  
+
   // Verify SMS was sent
   expect(sendSpy).toHaveBeenCalledWith({
     to: "010-1234-5678",
     message: expect.stringContaining("verification code"),
   });
-  
+
   sendSpy.mockRestore();
 });
 ```
@@ -424,23 +407,20 @@ import { expect } from "vitest";
 test("image upload and processing", async () => {
   const originalPath = "/tmp/upload/original.jpg";
   const thumbnailPath = "/tmp/upload/thumbnail.jpg";
-  
+
   // Register virtual file
   Naite.t("mock:fs/promises:virtualFileSystem", originalPath);
-  
+
   // Image processing (thumbnail creation)
   await imageService.createThumbnail(originalPath, thumbnailPath);
-  
+
   // Assume thumbnail is also virtually created
   Naite.t("mock:fs/promises:virtualFileSystem", thumbnailPath);
-  
+
   // Verify both files exist
-  const exists = await imageService.checkBothExist(
-    originalPath,
-    thumbnailPath
-  );
+  const exists = await imageService.checkBothExist(originalPath, thumbnailPath);
   expect(exists).toBe(true);
-  
+
   // Clean up
   Naite.del("mock:fs/promises:virtualFileSystem");
 });
@@ -456,12 +436,12 @@ test("API key configuration", () => {
   // Mock environment variables
   vi.stubEnv("API_KEY", "test_key_12345");
   vi.stubEnv("API_URL", "https://test.api.com");
-  
+
   const config = configService.load();
-  
+
   expect(config.apiKey).toBe("test_key_12345");
   expect(config.apiUrl).toBe("https://test.api.com");
-  
+
   // Restore environment variables
   vi.unstubAllEnvs();
 });
@@ -477,11 +457,11 @@ graph TB
     Service["Service<br/>(Business Logic)"]
     Repository["Repository<br/>(DB Access)"]
     External["External API<br/>(External Service)"]
-    
+
     Controller --> Service
     Service --> Repository
     Service --> External
-    
+
     style Controller fill:#e3f2fd
     style Service fill:#fff3e0
     style Repository fill:#e8f5e9
@@ -491,35 +471,38 @@ graph TB
 **Mocking by test level**:
 
 1. **Unit test**: Mock all dependencies
+
    ```typescript
    test("Service unit test", async () => {
      // Mock both Repository and External API
      const mockRepo = { findById: vi.fn() };
      const mockApi = { fetch: vi.fn() };
-     
+
      const service = new UserService(mockRepo, mockApi);
      await service.getUser(1);
    });
    ```
 
 2. **Integration test**: Mock only external dependencies
+
    ```typescript
    test("Service + Repository integration test", async () => {
      // Mock only External API, use real DB
      vi.mock("axios");
-     
+
      const user = await userService.getUser(1);
    });
    ```
 
 3. **E2E test**: Minimize mocking
+
    ```typescript
    test("full flow test", async () => {
      // Only mock costly operations (payment, SMS, etc.)
      vi.spyOn(paymentService, "charge").mockResolvedValue({
        success: true,
      });
-     
+
      const response = await request(app).post("/api/orders");
    });
    ```
@@ -584,7 +567,7 @@ import { mockApiResponses } from "./__fixtures__/api-responses";
 
 test("admin permission test", async () => {
   vi.mocked(userService.findById).mockResolvedValue(mockUsers.admin);
-  
+
   const hasPermission = await authService.checkAdmin(1);
   expect(hasPermission).toBe(true);
 });
@@ -593,7 +576,7 @@ test("weather API success", async () => {
   vi.mocked(axios.get).mockResolvedValue({
     data: mockApiResponses.weather.success,
   });
-  
+
   const weather = await weatherService.get("Seoul");
   expect(weather.temperature).toBe(25);
 });
@@ -607,6 +590,7 @@ test("weather API success", async () => {
 1. **Avoid excessive mocking**: Too many mocks can diverge from actual behavior. Only mock what's necessary.
 
 2. **Clean up mocks**: Not cleaning mocks in `afterEach` can affect other tests.
+
    ```typescript
    afterEach(() => {
      vi.restoreAllMocks();
@@ -617,10 +601,11 @@ test("weather API success", async () => {
 3. **Match mock and real behavior**: If mock behavior differs from the real service, tests may pass but fail in production.
 
 4. **Type safety**: Specify types for mocks to prevent runtime errors.
+
    ```typescript
    // ❌ No type
    vi.mocked(service.method).mockResolvedValue({});
-   
+
    // ✅ With type
    vi.mocked(service.method).mockResolvedValue({
      id: 1,
@@ -629,7 +614,7 @@ test("weather API success", async () => {
    ```
 
 5. **Naite Mock scope**: `mock:*` keys work globally, so always delete them at test end.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

@@ -9,24 +9,16 @@ Sonamu의 Search Input 컴포넌트로 실시간 검색과 자동완성 기능�
 
 <CardGroup cols={2}>
   <Card title="실시간 검색" icon="bolt">
-    타이핑하면서 검색
-    
-    즉각적인 결과
+    타이핑하면서 검색 즉각적인 결과
   </Card>
   <Card title="자동완성" icon="wand-magic-sparkles">
-    추천 검색어
-    
-    빠른 선택
+    추천 검색어 빠른 선택
   </Card>
   <Card title="디바운스" icon="clock">
-    API 호출 최적화
-    
-    불필요한 요청 제거
+    API 호출 최적화 불필요한 요청 제거
   </Card>
   <Card title="하이라이팅" icon="highlighter">
-    검색어 강조
-    
-    가독성 향상
+    검색어 강조 가독성 향상
   </Card>
 </CardGroup>
 
@@ -41,13 +33,13 @@ Sonamu의 Search Input 컴포넌트로 실시간 검색과 자동완성 기능�
 function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
-  
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const { results } = await searchService.search({ query });
     setResults(results);
   }
-  
+
   return (
     <form onSubmit={handleSearch}>
       <input
@@ -61,6 +53,7 @@ function SearchPage() {
 ```
 
 **문제점**:
+
 1. **버튼 클릭 필요**: 엔터키나 버튼을 눌러야만 검색
 2. **피드백 지연**: 결과를 보려면 검색 실행 필요
 3. **자동완성 없음**: 사용자가 모든 것을 타이핑해야 함
@@ -82,6 +75,7 @@ Sonamu의 Search Input은 **타이핑하면서 실시간으로 검색**하고 **
 ```
 
 **장점**:
+
 1. ✨ **즉각적인 피드백**: 타이핑하면서 결과 확인
 2. ✨ **자동완성**: 추천 검색어로 빠른 입력
 3. ✨ **디바운스**: 불필요한 API 호출 최소화
@@ -99,7 +93,7 @@ import { useState } from "react";
 
 function SearchPage() {
   const [query, setQuery] = useState("");
-  
+
   return (
     <div>
       <SearchInput
@@ -107,7 +101,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search posts..."
       />
-      
+
       {query && (
         <div>Searching for: {query}</div>
       )}
@@ -124,7 +118,7 @@ function SearchPage() {
 function SearchWithSuggestions() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
   // 검색어 변경 시 제안 로드
   useEffect(() => {
     if (query) {
@@ -135,7 +129,7 @@ function SearchWithSuggestions() {
       setSuggestions([]);
     }
   }, [query]);
-  
+
   return (
     <SearchInput
       value={query}
@@ -163,7 +157,7 @@ function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const debouncedQuery = useDebounce(query, 300);
-  
+
   // 디바운스된 쿼리로 검색
   useEffect(() => {
     if (debouncedQuery) {
@@ -174,7 +168,7 @@ function SearchPage() {
       setResults([]);
     }
   }, [debouncedQuery]);
-  
+
   return (
     <div>
       <SearchInput
@@ -182,7 +176,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search..."
       />
-      
+
       <div className="results">
         {results.map((result) => (
           <div key={result.id}>{result.title}</div>
@@ -204,7 +198,7 @@ function EntitySearch() {
   const [entityType, setEntityType] = useState<"users" | "posts">("users");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
-  
+
   useEffect(() => {
     if (query) {
       const service = entityType === "users" ? userService : postService;
@@ -213,7 +207,7 @@ function EntitySearch() {
       });
     }
   }, [query, entityType]);
-  
+
   return (
     <div>
       <div className="entity-selector">
@@ -230,18 +224,18 @@ function EntitySearch() {
           Posts
         </button>
       </div>
-      
+
       <SearchInput
         value={query}
         onChange={setQuery}
         placeholder={`Search ${entityType}...`}
       />
-      
+
       <div className="results">
         {results.map((result) => (
           <div key={result.id}>
-            {entityType === "users" 
-              ? result.username 
+            {entityType === "users"
+              ? result.username
               : result.title
             }
           </div>
@@ -264,12 +258,12 @@ function AdvancedSearch() {
     dateRange: null,
     author: null,
   });
-  
+
   const { results, isLoading } = useSearch({
     query,
     ...filters,
   });
-  
+
   return (
     <div>
       <div className="search-bar">
@@ -279,7 +273,7 @@ function AdvancedSearch() {
           placeholder="Search posts..."
         />
       </div>
-      
+
       <div className="filters">
         <select
           value={filters.category || ""}
@@ -290,7 +284,7 @@ function AdvancedSearch() {
           <option value="news">News</option>
         </select>
       </div>
-      
+
       <div className="results">
         {isLoading ? (
           <div>Loading...</div>
@@ -313,7 +307,7 @@ function AdvancedSearch() {
 function SearchWithHistory() {
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<string[]>([]);
-  
+
   // 로컬 스토리지에서 히스토리 로드
   useEffect(() => {
     const saved = localStorage.getItem("search-history");
@@ -321,17 +315,17 @@ function SearchWithHistory() {
       setHistory(JSON.parse(saved));
     }
   }, []);
-  
+
   function handleSearch(searchQuery: string) {
     // 히스토리에 추가
     const newHistory = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10);
     setHistory(newHistory);
     localStorage.setItem("search-history", JSON.stringify(newHistory));
-    
+
     // 검색 실행
     setQuery(searchQuery);
   }
-  
+
   return (
     <SearchInput
       value={query}
@@ -349,15 +343,15 @@ function SearchWithHistory() {
 검색어를 결과에서 강조 표시합니다.
 
 ```typescript
-function SearchResults({ results, query }: { 
-  results: any[]; 
+function SearchResults({ results, query }: {
+  results: any[];
   query: string;
 }) {
   function highlightText(text: string, highlight: string) {
     if (!highlight) return text;
-    
+
     const parts = text.split(new RegExp(`(${highlight})`, "gi"));
-    return parts.map((part, i) => 
+    return parts.map((part, i) =>
       part.toLowerCase() === highlight.toLowerCase() ? (
         <mark key={i}>{part}</mark>
       ) : (
@@ -365,7 +359,7 @@ function SearchResults({ results, query }: {
       )
     );
   }
-  
+
   return (
     <div>
       {results.map((result) => (
@@ -390,32 +384,29 @@ function SearchResults({ results, query }: {
 import { useState, useEffect } from "react";
 import { useDebounce } from "./useDebounce";
 
-export function useSearch<T>(
-  searchFn: (query: string) => Promise<T[]>,
-  debounceMs: number = 300
-) {
+export function useSearch<T>(searchFn: (query: string) => Promise<T[]>, debounceMs: number = 300) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const debouncedQuery = useDebounce(query, debounceMs);
-  
+
   useEffect(() => {
     if (!debouncedQuery) {
       setResults([]);
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     searchFn(debouncedQuery)
       .then(setResults)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [debouncedQuery]);
-  
+
   return {
     query,
     setQuery,
@@ -433,7 +424,7 @@ function SearchPage() {
   const { query, setQuery, results, isLoading } = useSearch(
     (q) => postService.search({ query: q }).then(r => r.posts)
   );
-  
+
   return (
     <div>
       <SearchInput
@@ -441,7 +432,7 @@ function SearchPage() {
         onChange={setQuery}
         placeholder="Search posts..."
       />
-      
+
       {isLoading ? (
         <div>Searching...</div>
       ) : (
@@ -467,22 +458,22 @@ import { useDebounce } from "./useDebounce";
 
 export function useSearchSuggestions(
   getSuggestionsFn: (query: string) => Promise<string[]>,
-  minLength: number = 2
+  minLength: number = 2,
 ) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  
+
   const debouncedQuery = useDebounce(query, 200);
-  
+
   useEffect(() => {
     if (debouncedQuery.length < minLength) {
       setSuggestions([]);
       return;
     }
-    
+
     getSuggestionsFn(debouncedQuery).then(setSuggestions);
   }, [debouncedQuery]);
-  
+
   return {
     query,
     setQuery,
@@ -509,9 +500,9 @@ function GlobalSearch() {
     posts: [],
     comments: [],
   });
-  
+
   const debouncedQuery = useDebounce(query, 300);
-  
+
   useEffect(() => {
     if (debouncedQuery) {
       // 여러 엔티티 동시 검색
@@ -528,7 +519,7 @@ function GlobalSearch() {
       });
     }
   }, [debouncedQuery]);
-  
+
   return (
     <div className="global-search">
       <SearchInput
@@ -536,7 +527,7 @@ function GlobalSearch() {
         onChange={setQuery}
         placeholder="Search everything..."
       />
-      
+
       {query && (
         <div className="results">
           {results.users.length > 0 && (
@@ -547,7 +538,7 @@ function GlobalSearch() {
               ))}
             </div>
           )}
-          
+
           {results.posts.length > 0 && (
             <div className="result-section">
               <h3>Posts ({results.posts.length})</h3>
@@ -556,7 +547,7 @@ function GlobalSearch() {
               ))}
             </div>
           )}
-          
+
           {results.comments.length > 0 && (
             <div className="result-section">
               <h3>Comments ({results.comments.length})</h3>
@@ -582,17 +573,17 @@ function Header() {
   const { query, setQuery, results, isLoading } = useSearch(
     (q) => searchService.globalSearch({ query: q })
   );
-  
+
   return (
     <header>
       <div className="logo">My App</div>
-      
+
       <div className="search-container">
         {/* 검색 아이콘 */}
         <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
           🔍
         </button>
-        
+
         {/* 검색 모달 */}
         {isSearchOpen && (
           <div className="search-modal">
@@ -602,9 +593,9 @@ function Header() {
               placeholder="Search..."
               autoFocus
             />
-            
+
             {isLoading && <div>Loading...</div>}
-            
+
             {results.length > 0 && (
               <div className="quick-results">
                 {results.slice(0, 5).map((result) => (
@@ -621,7 +612,7 @@ function Header() {
           </div>
         )}
       </div>
-      
+
       <nav>{/* 네비게이션 메뉴 */}</nav>
     </header>
   );
@@ -654,7 +645,7 @@ import { useQuery } from "@tanstack/react-query";
 
 function useSearchWithCache(query: string) {
   const debouncedQuery = useDebounce(query, 300);
-  
+
   const { data, error, isLoading } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: () => searchService.search({ query: debouncedQuery }),
@@ -662,7 +653,7 @@ function useSearchWithCache(query: string) {
     staleTime: 5000, // 5초간 fresh 상태 유지
     refetchOnWindowFocus: false, // 포커스 시 재검증 안함
   });
-  
+
   return {
     results: data?.results || [],
     isLoading,
@@ -678,14 +669,13 @@ function useSearchWithCache(query: string) {
 ```typescript
 useEffect(() => {
   const abortController = new AbortController();
-  
+
   if (debouncedQuery) {
-    searchService.search(
-      { query: debouncedQuery },
-      { signal: abortController.signal }
-    ).then(setResults);
+    searchService
+      .search({ query: debouncedQuery }, { signal: abortController.signal })
+      .then(setResults);
   }
-  
+
   return () => {
     abortController.abort();
   };
@@ -695,28 +685,40 @@ useEffect(() => {
 ## 주의사항
 
 <Warning>
-**Search Input 사용 시 주의사항**:
-1. **디바운스 필수**: 300~500ms 권장
-2. 최소 검색 길이 설정 (보통 2~3자)
-3. **빈 문자열 처리**: 모든 결과 반환 방지
-4. **키보드 네비게이션** 지원 (접근성)
-5. 검색 API는 **인덱스 최적화** 필수
-6. 결과가 많으면 **페이지네이션** 고려
+  **Search Input 사용 시 주의사항**: 1. **디바운스 필수**: 300~500ms 권장 2. 최소 검색 길이 설정
+  (보통 2~3자) 3. **빈 문자열 처리**: 모든 결과 반환 방지 4. **키보드 네비게이션** 지원 (접근성) 5.
+  검색 API는 **인덱스 최적화** 필수 6. 결과가 많으면 **페이지네이션** 고려
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="ID Async Select" icon="list-dropdown" href="/ko/frontend-integration/react-components/id-async-select">
+  <Card
+    title="ID Async Select"
+    icon="list-dropdown"
+    href="/ko/frontend-integration/react-components/id-async-select"
+  >
     관계 데이터 선택
   </Card>
-  <Card title="커스텀 컴포넌트" icon="sliders" href="/ko/frontend-integration/react-components/custom-components">
+  <Card
+    title="커스텀 컴포넌트"
+    icon="sliders"
+    href="/ko/frontend-integration/react-components/custom-components"
+  >
     컴포넌트 커스터마이징
   </Card>
-  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/ko/frontend-integration/react-components/scaffolding-views">
+  <Card
+    title="View Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/frontend-integration/react-components/scaffolding-views"
+  >
     자동 뷰 생성
   </Card>
-  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/ko/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query Hook"
+    icon="arrows-rotate"
+    href="/ko/frontend-integration/generated-services/tanstack-query"
+  >
     데이터 캐싱
   </Card>
 </CardGroup>

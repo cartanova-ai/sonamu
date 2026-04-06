@@ -28,5 +28,5 @@ export type CacheDecoratorOptions = {
 /**
  * CacheManager 타입 (BentoCache 확장)
  */
-// biome-ignore lint/suspicious/noExplicitAny: BentoCache의 제네릭 타입을 그대로 사용
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- BentoCache의 제네릭 타입을 그대로 사용
 export type CacheManager = BentoCache<any>;

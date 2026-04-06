@@ -79,9 +79,7 @@
     "src/application/department/department.types.ts",
     "src/application/department/department.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "DepartmentModel": "부서 CRUD, 계층 구조, employee_count 인핸서를 담당한다",
     "Department Types": "부서 파라미터, 서브셋, 검색/정렬 스키마를 정의한다"

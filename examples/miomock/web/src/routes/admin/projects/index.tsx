@@ -31,6 +31,12 @@ import {
 import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import FilterIcon from "~icons/mdi/filter-variant";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
+
 import { SD } from "@/i18n/sd.generated";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
@@ -42,11 +48,6 @@ import {
   ProjectSearchFieldLabel,
   ProjectStatusLabel,
 } from "@/services/sonamu.generated";
-import EditIcon from "~icons/lucide/square-pen";
-import TrashIcon from "~icons/lucide/trash-2";
-import FilterIcon from "~icons/mdi/filter-variant";
-import ListIcon from "~icons/mdi/format-list-bulleted";
-import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/projects/")({
   head: () => ({

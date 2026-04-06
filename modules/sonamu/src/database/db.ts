@@ -1,7 +1,9 @@
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
+
 import type { Knex } from "knex";
 import { assign } from "radashi";
+
 import { Sonamu } from "../api";
 import type { DatabaseConfig, SonamuConfig } from "../api/config";
 import { createKnexInstance } from "./knex";
@@ -176,32 +178,26 @@ export class DBClass {
       config.defaultOptions,
     );
 
-    // biome-ignore format: 설정 구조 가독성을 위해 여러 줄로 유지
+    // oxfmt-ignore -- 설정 구조 가독성을 위해 여러 줄로 유지
     return {
       // 여기에 나열한 순서대로 Sonamu UI의 DB Migration 탭에 표시됩니다.
       test: mergeConfigs(
-        defaultKnexConfig, 
+        defaultKnexConfig,
         { connection: { database: `${config.name}_test` } },
-        config.environments?.test
+        config.environments?.test,
       ),
       fixture: mergeConfigs(
-        defaultKnexConfig, 
+        defaultKnexConfig,
         { connection: { database: `${config.name}_fixture` } },
         config.environments?.fixture,
       ),
-      development_master: mergeConfigs(
-        defaultKnexConfig, 
-        config.environments?.development
-      ),
+      development_master: mergeConfigs(defaultKnexConfig, config.environments?.development),
       development_slave: mergeConfigs(
         defaultKnexConfig,
         config.environments?.development,
         config.environments?.development_slave,
       ),
-      production_master: mergeConfigs(
-        defaultKnexConfig, 
-        config.environments?.production
-      ),
+      production_master: mergeConfigs(defaultKnexConfig, config.environments?.production),
       production_slave: mergeConfigs(
         defaultKnexConfig,
         config.environments?.production,

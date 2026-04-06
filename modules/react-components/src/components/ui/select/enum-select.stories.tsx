@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+
 import { EnumSelect } from "./enum-select";
 
 const fruitEnum = { options: ["apple", "banana", "cherry", "grape"] as const };

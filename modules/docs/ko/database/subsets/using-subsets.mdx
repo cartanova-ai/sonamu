@@ -65,7 +65,8 @@ const result = await UserModel.executeSubsetQuery({
 ```
 
 <Info>
-`getSubsetQueries("P")`는 Subset P에 정의된 JOIN과 SELECT를 자동으로 적용한 쿼리 빌더(`qb`)를 반환합니다.
+  `getSubsetQueries("P")`는 Subset P에 정의된 JOIN과 SELECT를 자동으로 적용한 쿼리 빌더(`qb`)를
+  반환합니다.
 </Info>
 
 ## Subset 쿼리 확장
@@ -75,8 +76,7 @@ const result = await UserModel.executeSubsetQuery({
 ```typescript
 const { qb } = UserModel.getSubsetQueries("L");
 
-qb.where("users.role", "admin")
-  .where("users.is_verified", true);
+qb.where("users.role", "admin").where("users.is_verified", true);
 
 const result = await UserModel.executeSubsetQuery({
   subset: "L",
@@ -105,8 +105,7 @@ const result = await UserModel.executeSubsetQuery({
 ```typescript
 const { qb, onSubset } = UserModel.getSubsetQueries("P");
 
-qb.where("users.role", "normal")
-  .orderBy("employee.salary", "desc");
+qb.where("users.role", "normal").orderBy("employee.salary", "desc");
 
 // onSubset으로 특정 Subset의 테이블에 접근
 onSubset("P").where("employee__department.name", "Engineering");
@@ -137,12 +136,12 @@ onSubsetL("L").where("employee__department.name", "Engineering");
 const user = await UserModel.findById(1, ["P"]);
 
 // TypeScript가 자동으로 타입 추론
-user.id;        // number
-user.username;  // string
-user.employee;  // { salary: string; department: { name: string } } | null
+user.id; // number
+user.username; // string
+user.employee; // { salary: string; department: { name: string } } | null
 
 // ❌ Compile Error
-user.password;  // Property 'password' does not exist
+user.password; // Property 'password' does not exist
 ```
 
 ### Subset 교집합 (Multiple Subsets)
@@ -156,15 +155,16 @@ user.password;  // Property 'password' does not exist
 const user = await UserModel.findById(1, ["A", "P"]);
 
 // 타입: 두 Subset에 공통으로 있는 필드만 사용 가능
-user.id;        // ✅ OK (A, P 모두 포함)
-user.username;  // ✅ OK (A, P 모두 포함)
-user.email;     // ✅ OK (A, P 모두 포함)
+user.id; // ✅ OK (A, P 모두 포함)
+user.username; // ✅ OK (A, P 모두 포함)
+user.email; // ✅ OK (A, P 모두 포함)
 
-user.employee;  // ❌ Type Error (A에는 없음, P에만 있음)
-user.bio;       // ❌ Type Error (P에는 없음, A에만 있음)
+user.employee; // ❌ Type Error (A에는 없음, P에만 있음)
+user.bio; // ❌ Type Error (P에는 없음, A에만 있음)
 ```
 
 **교집합이 동작하는 이유**:
+
 - `["A", "P"]`는 Union이 아닌 **Intersection** 타입을 생성
 - 런타임에는 두 Subset 중 **더 큰 Subset**의 데이터가 반환됨
 - 하지만 타입 시스템은 **공통 필드만 보장**
@@ -252,7 +252,7 @@ const userP = await getUserDataGeneric(1, "P");  // 타입: UserSubsetMapping["P
 const { qb, onSubset } = UserModel.getSubsetQueries("A");
 
 // Subset A와 P 조건 모두 적용 (교집합 타입)
-onSubset(["A", "P"]).where("users.username", "like", "%john%");  // ✅ OK
+onSubset(["A", "P"]).where("users.username", "like", "%john%"); // ✅ OK
 
 // ❌ Type Error: employee는 교집합에 없음
 // onSubset(["A", "P"]).where("employee__department.name", "Engineering");
@@ -278,10 +278,10 @@ onSubset(["L", "P"]).where("users.id", 1);
 ```
 
 <Warning>
-**교집합 사용 시 주의사항**:
-1. **런타임 데이터 ≠ 타입**: 런타임에는 더 큰 Subset의 모든 필드가 반환되지만, 타입 시스템은 교집합만 보장
-2. **의도하지 않은 교집합**: 여러 Subset을 배열로 전달할 때 실수로 교집합이 발생할 수 있음
-3. **타입 가드 권장**: 조건부로 Subset을 선택할 때는 타입 가드를 사용하여 정확한 타입 추론
+  **교집합 사용 시 주의사항**: 1. **런타임 데이터 ≠ 타입**: 런타임에는 더 큰 Subset의 모든 필드가
+  반환되지만, 타입 시스템은 교집합만 보장 2. **의도하지 않은 교집합**: 여러 Subset을 배열로 전달할
+  때 실수로 교집합이 발생할 수 있음 3. **타입 가드 권장**: 조건부로 Subset을 선택할 때는 타입 가드를
+  사용하여 정확한 타입 추론
 </Warning>
 
 <Info>
@@ -291,6 +291,7 @@ onSubset(["L", "P"]).where("users.id", 1);
 - 불필요한 필드 노출을 방지하고 싶을 때
 
 대부분의 경우 **단일 Subset** 사용을 권장합니다.
+
 </Info>
 
 ## 실전 예제
@@ -405,7 +406,7 @@ async getUser(userId: number, detailed: boolean) {
 ```typescript
 async getUserData(userId: number, role: UserRole) {
   const subsets = role === "admin" ? ["A"] : ["P"];
-  
+
   return await UserModel.findById(userId, subsets);
   // 타입: UserSubsetMapping["A"] | UserSubsetMapping["P"] | undefined
 }
@@ -419,13 +420,13 @@ async getUserData(userId: number, role: UserRole) {
 // ❌ 나쁨: 목록에서 Subset A 사용 (과도한 데이터)
 const users = await UserModel.findMany({
   listParams: { page: 1, pageSize: 20 },
-  subsetKey: "A",  // 모든 필드 로딩
+  subsetKey: "A", // 모든 필드 로딩
 });
 
 // ✅ 좋음: 목록에는 Subset L 사용
 const users = await UserModel.findMany({
   listParams: { page: 1, pageSize: 20 },
-  subsetKey: "L",  // 필요한 필드만
+  subsetKey: "L", // 필요한 필드만
 });
 ```
 
@@ -495,11 +496,8 @@ const users = await puri
 ```
 
 <Tip>
-**Subset을 사용하세요!**
-- 타입 안전성 보장
-- 코드 재사용성 향상
-- 유지보수 편리
-- 쿼리 일관성 유지
+  **Subset을 사용하세요!** - 타입 안전성 보장 - 코드 재사용성 향상 - 유지보수 편리 - 쿼리 일관성
+  유지
 </Tip>
 
 ## 다음 단계

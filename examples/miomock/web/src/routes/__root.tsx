@@ -1,5 +1,6 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+
 import App from "@/App";
 import { SonamuProvider } from "@/contexts/sonamu-provider";
 

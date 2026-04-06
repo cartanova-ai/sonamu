@@ -9,24 +9,16 @@ Puri의 고급 기능들을 활용하여 복잡한 데이터베이스 작업을 
 
 <CardGroup cols={2}>
   <Card title="Transaction" icon="arrows-rotate">
-    트랜잭션으로 데이터 일관성 보장
-    
-    ACID 속성
+    트랜잭션으로 데이터 일관성 보장 ACID 속성
   </Card>
   <Card title="서브쿼리" icon="layer-group">
-    중첩 쿼리로 복잡한 조건 표현
-    
-    FROM, WHERE, SELECT
+    중첩 쿼리로 복잡한 조건 표현 FROM, WHERE, SELECT
   </Card>
   <Card title="Upsert" icon="code-merge">
-    INSERT OR UPDATE 한번에
-    
-    ON CONFLICT
+    INSERT OR UPDATE 한번에 ON CONFLICT
   </Card>
   <Card title="Vector Search" icon="magnifying-glass-chart">
-    AI 임베딩 유사도 검색
-    
-    pgvector
+    AI 임베딩 유사도 검색 pgvector
   </Card>
 </CardGroup>
 
@@ -68,11 +60,8 @@ await db.transaction(async (trx) => {
 ```
 
 <Info>
-**트랜잭션의 ACID 속성**:
-- **Atomicity**: 모두 성공 또는 모두 실패
-- **Consistency**: 데이터 일관성 유지
-- **Isolation**: 동시 실행 격리
-- **Durability**: 영구 저장
+  **트랜잭션의 ACID 속성**: - **Atomicity**: 모두 성공 또는 모두 실패 - **Consistency**: 데이터
+  일관성 유지 - **Isolation**: 동시 실행 격리 - **Durability**: 영구 저장
 </Info>
 
 ### 명시적 롤백
@@ -88,10 +77,7 @@ await db.transaction(async (trx) => {
   });
 
   // 조건에 따라 롤백
-  const existingUser = await trx
-    .table("users")
-    .where("email", "test@test.com")
-    .first();
+  const existingUser = await trx.table("users").where("email", "test@test.com").first();
 
   if (existingUser) {
     // 수동 롤백
@@ -132,14 +118,11 @@ try {
 
 ```typescript
 // 서브쿼리 정의
-const activeUsers = db
-  .table("users")
-  .where("is_active", true)
-  .select({
-    id: "id",
-    username: "username",
-    email: "email",
-  });
+const activeUsers = db.table("users").where("is_active", true).select({
+  id: "id",
+  username: "username",
+  email: "email",
+});
 
 // 서브쿼리를 테이블처럼 사용
 const results = await db
@@ -157,14 +140,11 @@ const results = await db
 
 ```typescript
 // 평균 급여보다 높은 직원
-const results = await db
-  .table("employees")
-  .select({
-    id: "id",
-    name: "username",
-    salary: "salary",
-  })
-  .whereRaw(`
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salary: "salary",
+}).whereRaw(`
     salary > (SELECT AVG(salary) FROM employees)
   `);
 ```
@@ -172,18 +152,16 @@ const results = await db
 ### SELECT 절 서브쿼리
 
 ```typescript
-const results = await db
-  .table("users")
-  .select({
-    id: "id",
-    username: "username",
-    postCount: Puri.rawNumber(`
+const results = await db.table("users").select({
+  id: "id",
+  username: "username",
+  postCount: Puri.rawNumber(`
       (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
     `),
-    commentCount: Puri.rawNumber(`
+  commentCount: Puri.rawNumber(`
       (SELECT COUNT(*) FROM comments WHERE comments.user_id = users.id)
     `),
-  });
+});
 ```
 
 ## WHERE 그룹 - 복잡한 조건
@@ -194,11 +172,7 @@ const results = await db
 const results = await db
   .table("users")
   .select({ id: "id", name: "username" })
-  .whereGroup((g) =>
-    g
-      .where("role", "admin")
-      .orWhere("role", "moderator")
-  )
+  .whereGroup((g) => g.where("role", "admin").orWhere("role", "moderator"))
   .where("is_active", true);
 
 // SQL: WHERE (role = 'admin' OR role = 'moderator') AND is_active = true
@@ -212,16 +186,8 @@ const results = await db
   .select({ id: "id", name: "username" })
   .whereGroup((g) =>
     g
-      .whereGroup((g2) =>
-        g2
-          .where("department_id", 1)
-          .where("salary", ">", 50000)
-      )
-      .orWhereGroup((g2) =>
-        g2
-          .where("department_id", 2)
-          .where("salary", ">", 60000)
-      )
+      .whereGroup((g2) => g2.where("department_id", 1).where("salary", ">", 50000))
+      .orWhereGroup((g2) => g2.where("department_id", 2).where("salary", ">", 60000)),
   );
 
 // SQL: WHERE (
@@ -401,10 +367,8 @@ await db.transaction(async (trx) => {
 ```
 
 <Info>
-**UBRef의 장점**:
-- 외래 키를 신경 쓰지 않고 관계 정의
-- 자동으로 의존 순서 해결
-- 트랜잭션 내에서 ID 자동 할당
+  **UBRef의 장점**: - 외래 키를 신경 쓰지 않고 관계 정의 - 자동으로 의존 순서 해결 - 트랜잭션 내에서
+  ID 자동 할당
 </Info>
 
 ### Many-to-Many 관계
@@ -538,10 +502,8 @@ const results = await db
 ```
 
 <Tip>
-**Vector Search 메서드 선택**:
-- **cosine**: 일반적인 임베딩 검색 (OpenAI, Cohere 등)
-- **l2**: 거리 기반 검색
-- **inner_product**: 정규화된 벡터에 적합
+  **Vector Search 메서드 선택**: - **cosine**: 일반적인 임베딩 검색 (OpenAI, Cohere 등) - **l2**:
+  거리 기반 검색 - **inner_product**: 정규화된 벡터에 적합
 </Tip>
 
 ## Full-text Search
@@ -628,10 +590,7 @@ await db.table("users").insert(users);
 ```typescript
 await db.transaction(async (trx) => {
   for (const userId of userIds) {
-    await trx
-      .table("users")
-      .where("id", userId)
-      .update({ is_active: true });
+    await trx.table("users").where("id", userId).update({ is_active: true });
   }
 });
 ```
@@ -640,16 +599,10 @@ await db.transaction(async (trx) => {
 
 ```typescript
 // IN 사용
-await db
-  .table("users")
-  .whereIn("id", [1, 2, 3, 4, 5])
-  .delete();
+await db.table("users").whereIn("id", [1, 2, 3, 4, 5]).delete();
 
 // 조건
-await db
-  .table("users")
-  .where("last_login", "<", "2023-01-01")
-  .delete();
+await db.table("users").where("last_login", "<", "2023-01-01").delete();
 ```
 
 ## 성능 최적화
@@ -665,11 +618,11 @@ CREATE INDEX idx_posts_user_id ON posts(user_id);
 CREATE INDEX idx_users_role_active ON users(role, is_active);
 
 -- 벡터 인덱스 (HNSW)
-CREATE INDEX idx_documents_embedding ON documents 
+CREATE INDEX idx_documents_embedding ON documents
 USING hnsw (embedding vector_cosine_ops);
 
 -- Full-text 인덱스
-CREATE INDEX idx_posts_content_pgroonga ON posts 
+CREATE INDEX idx_posts_content_pgroonga ON posts
 USING pgroonga (content);
 ```
 
@@ -680,12 +633,10 @@ USING pgroonga (content);
 await db.table("users").selectAll();
 
 // ✅ 좋음: 필요한 컬럼만
-await db
-  .table("users")
-  .select({
-    id: "id",
-    name: "username",
-  });
+await db.table("users").select({
+  id: "id",
+  name: "username",
+});
 ```
 
 ### JOIN 최적화

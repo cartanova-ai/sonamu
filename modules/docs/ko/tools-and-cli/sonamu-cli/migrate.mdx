@@ -25,6 +25,7 @@ pnpm migrate status
 ```
 
 **출력 예시**:
+
 ```
 Development Master: ✓ Up to date (v20240115_143022)
 Testing: ⚠ 2 pending migrations
@@ -36,6 +37,7 @@ Prepared migrations:
 ```
 
 **상태 종류**:
+
 - `✓ Up to date`: 모든 마이그레이션 적용 완료
 - `⚠ N pending`: N개의 미적용 마이그레이션
 - `❌ Error`: 데이터베이스 연결 실패
@@ -49,6 +51,7 @@ pnpm migrate run
 ```
 
 **실행 과정**:
+
 ```
 Running migrations...
 
@@ -64,12 +67,14 @@ All migrations completed successfully!
 ```
 
 **자동 생성 및 적용**:
+
 - Entity 변경사항을 감지
 - 마이그레이션 코드 자동 생성
 - 모든 대상 DB에 순차 적용
 
 <Info>
-Sonamu는 Entity 정의를 분석하여 필요한 마이그레이션을 **자동으로 생성**합니다. 수동으로 마이그레이션 파일을 작성할 필요가 없습니다.
+  Sonamu는 Entity 정의를 분석하여 필요한 마이그레이션을 **자동으로 생성**합니다. 수동으로
+  마이그레이션 파일을 작성할 필요가 없습니다.
 </Info>
 
 ## 마이그레이션 생성
@@ -131,6 +136,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 **구조**:
+
 - `up()`: 마이그레이션 적용 (테이블 생성, 컬럼 추가 등)
 - `down()`: 마이그레이션 롤백 (변경사항 되돌리기)
 
@@ -138,14 +144,14 @@ export async function down(knex: Knex): Promise<void> {
 
 Sonamu가 자동으로 감지하고 마이그레이션을 생성하는 변경사항:
 
-| 변경 타입 | 설명 | 예시 |
-|-----------|------|------|
-| 테이블 생성 | 새 Entity 추가 | `PostEntity` 생성 |
-| 컬럼 추가 | 새 프로퍼티 추가 | `phone` 필드 추가 |
-| 컬럼 수정 | 타입/길이 변경 | `varchar(100)` → `varchar(255)` |
-| 컬럼 삭제 | 프로퍼티 제거 | `deprecated_field` 삭제 |
-| 인덱스 추가 | 인덱스 정의 | `indexes` 배열 |
-| 외래키 추가 | 관계 정의 | `belongsTo` 관계 |
+| 변경 타입   | 설명             | 예시                            |
+| ----------- | ---------------- | ------------------------------- |
+| 테이블 생성 | 새 Entity 추가   | `PostEntity` 생성               |
+| 컬럼 추가   | 새 프로퍼티 추가 | `phone` 필드 추가               |
+| 컬럼 수정   | 타입/길이 변경   | `varchar(100)` → `varchar(255)` |
+| 컬럼 삭제   | 프로퍼티 제거    | `deprecated_field` 삭제         |
+| 인덱스 추가 | 인덱스 정의      | `indexes` 배열                  |
+| 외래키 추가 | 관계 정의        | `belongsTo` 관계                |
 
 ## 다중 데이터베이스 관리
 
@@ -195,6 +201,7 @@ export default {
 ```
 
 **마이그레이션 대상**:
+
 - `_master`로 끝나는 데이터베이스
 - `_slave`가 아닌 모든 데이터베이스
 
@@ -253,9 +260,7 @@ pnpm migrate run
 ```typescript title="user.model.ts"
 class UserModelClass extends BaseModelClass {
   async updateProfileImage(userId: number, imageUrl: string) {
-    await this.getPuri("w")
-      .update({ profile_image: imageUrl })
-      .where("id", userId);
+    await this.getPuri("w").update({ profile_image: imageUrl }).where("id", userId);
   }
 }
 ```
@@ -289,7 +294,7 @@ import { Migrator, Sonamu } from "sonamu";
 
 Sonamu.runScript(async () => {
   const migrator = new Migrator();
-  
+
   console.log("Rolling back last migration batch...");
   await migrator.runAction("rollback", ["development_master", "test"]);
   console.log("Rollback completed!");
@@ -297,33 +302,37 @@ Sonamu.runScript(async () => {
 ```
 
 **실행**:
+
 ```bash
 pnpm tsx src/scripts/rollback-migration.ts
 ```
 
 <Warning>
-**데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **프로덕션에서는 매우 신중하게** 사용하세요.
+  **데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **프로덕션에서는 매우 신중하게**
+  사용하세요.
 </Warning>
 
 ### 사용 가능한 액션
 
 `Migrator.runAction()` 메서드가 지원하는 액션:
 
-| 액션 | 설명 | 사용 예시 |
-|------|------|----------|
-| `apply` | 마이그레이션 적용 | 새 스키마 변경 적용 |
-| `rollback` | 마지막 배치 롤백 | 실수한 마이그레이션 되돌리기 |
+| 액션       | 설명              | 사용 예시                    |
+| ---------- | ----------------- | ---------------------------- |
+| `apply`    | 마이그레이션 적용 | 새 스키마 변경 적용          |
+| `rollback` | 마지막 배치 롤백  | 실수한 마이그레이션 되돌리기 |
 
 ## 문제 해결
 
 ### 마이그레이션 충돌
 
 **문제**: 여러 개발자가 동시에 마이그레이션 생성
+
 ```
 Error: Migration conflict detected
 ```
 
 **해결**:
+
 ```bash
 # 1. 최신 코드 가져오기
 git pull
@@ -338,11 +347,13 @@ pnpm migrate run
 ### 데이터베이스 연결 실패
 
 **문제**: DB 연결 실패
+
 ```
 Error: connect ECONNREFUSED 127.0.0.1:3306
 ```
 
 **해결**:
+
 ```bash
 # 1. MySQL 실행 확인
 mysql -u root -p -e "SHOW DATABASES;"
@@ -357,6 +368,7 @@ mysql -u root -p -e "CREATE DATABASE myapp_dev;"
 ### 마이그레이션 순서 오류
 
 **문제**: 잘못된 순서로 적용됨
+
 ```
 Error: Foreign key constraint violation
 ```
@@ -366,6 +378,7 @@ Error: Foreign key constraint violation
 외래키 참조 관계가 있는 경우, 참조되는 테이블이 먼저 생성되어야 합니다.
 
 **수정 방법 1: 프로그래매틱 롤백 후 재적용**
+
 ```typescript
 // 롤백
 const migrator = new Migrator();
@@ -379,6 +392,7 @@ await migrator.runAction("apply", ["development_master"]);
 ```
 
 **수정 방법 2: Entity 정의 순서 조정**
+
 ```typescript
 // users 테이블을 먼저 생성하도록 Entity 파일 순서 조정
 // 그 후 pnpm migrate run

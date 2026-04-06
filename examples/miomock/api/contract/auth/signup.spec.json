@@ -31,9 +31,7 @@
     "src/application/user/user.types.ts",
     "src/application/user/user.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "UserModel": "사용자 생성/수정 저장 로직을 담당한다",
     "User Types": "가입 입력 파라미터와 사용자 엔티티 스키마를 정의한다"

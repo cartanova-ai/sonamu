@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type z from "zod";
+
 import { isSoException } from "./so-exceptions";
 
 export function setupErrorHandler(server: FastifyInstance) {

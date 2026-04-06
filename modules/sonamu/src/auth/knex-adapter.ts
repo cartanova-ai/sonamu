@@ -5,6 +5,7 @@ import type {
 } from "better-auth/adapters";
 import { createAdapterFactory } from "better-auth/adapters";
 import type { Knex } from "knex";
+
 import { DB } from "../database/db";
 
 interface CleanedWhere {

@@ -71,9 +71,7 @@
     "src/application/dashboard/dashboard.frame.test.ts",
     "src/application/dashboard/dashboard.types.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "DashboardModel": "대시보드 전용 모델. 별도 테이블 없이 기존 모델의 메서드를 조합하여 메트릭을 집계한다"
   },

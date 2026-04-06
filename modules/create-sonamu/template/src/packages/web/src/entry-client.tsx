@@ -8,7 +8,7 @@ import { dateReviver } from "./services/sonamu.shared";
 // SSR 데이터 타입
 declare global {
   interface Window {
-    // biome-ignore lint/suspicious/noExplicitAny: SSR 데이터를 any 타입으로 받아야 함
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- SSR 데이터를 any 타입으로 받아야 함
     __SONAMU_SSR__?: any;
     __SONAMU_SSR_CONFIG__?: {
       disableHydrate?: boolean;

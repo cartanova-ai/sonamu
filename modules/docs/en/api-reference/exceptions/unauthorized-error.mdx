@@ -1,6 +1,6 @@
 ---
-title: 'UnauthorizedException'
-description: '401 exception for authentication and authorization handling'
+title: "UnauthorizedException"
+description: "401 exception for authentication and authorization handling"
 ---
 
 `UnauthorizedException` is used when authentication is required or permissions are insufficient. It returns HTTP 401 status code and is used for situations like login required, session expired, or insufficient permissions.
@@ -9,10 +9,7 @@ description: '401 exception for authentication and authorization handling'
 
 ```typescript
 class UnauthorizedException extends SoException {
-  constructor(
-    message: LocalizedString,
-    payload?: unknown,
-  );
+  constructor(message: LocalizedString, payload?: unknown);
 }
 ```
 
@@ -403,34 +400,28 @@ async complexAuthEndpoint(ctx: Context, postId: number) {
 ```typescript
 throw new UnauthorizedException("Login required", {
   loginUrl: "/auth/login",
-  returnUrl: ctx.request.url
+  returnUrl: ctx.request.url,
 });
 ```
 
 ### Permission Upgrade Prompt
 
 ```typescript
-throw new UnauthorizedException(
-  "Premium feature",
-  {
-    requiredPlan: "premium",
-    currentPlan: "basic",
-    upgradeUrl: "/subscription/upgrade",
-    features: ["Advanced analytics", "Unlimited projects", "Priority support"]
-  }
-);
+throw new UnauthorizedException("Premium feature", {
+  requiredPlan: "premium",
+  currentPlan: "basic",
+  upgradeUrl: "/subscription/upgrade",
+  features: ["Advanced analytics", "Unlimited projects", "Priority support"],
+});
 ```
 
 ### Expiration Information
 
 ```typescript
-throw new UnauthorizedException(
-  "Session has expired",
-  {
-    expiredAt: session.expiresAt,
-    refreshUrl: "/auth/refresh"
-  }
-);
+throw new UnauthorizedException("Session has expired", {
+  expiredAt: session.expiresAt,
+  refreshUrl: "/auth/refresh",
+});
 ```
 
 ## Client Response Examples

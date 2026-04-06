@@ -1,6 +1,6 @@
 ---
-title: 'join'
-description: 'Joining Tables'
+title: "join"
+description: "Joining Tables"
 ---
 
 `join` and `leftJoin` are methods for connecting multiple tables to query relational data. They support type-safe table joins and complex join conditions.
@@ -10,13 +10,11 @@ description: 'Joining Tables'
 ### INNER JOIN
 
 ```typescript
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"
-  });
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name",
+});
 
 // SELECT posts.id as post_id, posts.title, users.name as author_name
 // FROM posts
@@ -26,13 +24,11 @@ const posts = await puri.table("posts")
 ### LEFT JOIN
 
 ```typescript
-const posts = await puri.table("posts")
-  .leftJoin("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"  // nullable
-  });
+const posts = await puri.table("posts").leftJoin("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name", // nullable
+});
 
 // SELECT posts.id as post_id, posts.title, users.name as author_name
 // FROM posts
@@ -40,8 +36,8 @@ const posts = await puri.table("posts")
 ```
 
 <Info>
-**INNER JOIN**: Returns only matching records from both tables
-**LEFT JOIN**: Returns all records from the left table (right side can be null)
+  **INNER JOIN**: Returns only matching records from both tables **LEFT JOIN**: Returns all records
+  from the left table (right side can be null)
 </Info>
 
 ## Table Aliases
@@ -49,12 +45,10 @@ const posts = await puri.table("posts")
 ### Using Aliases
 
 ```typescript
-const posts = await puri.table("posts")
-  .join({ u: "users" }, "posts.user_id", "u.id")
-  .select({
-    post_id: "posts.id",
-    author_name: "u.name"  // Using alias
-  });
+const posts = await puri.table("posts").join({ u: "users" }, "posts.user_id", "u.id").select({
+  post_id: "posts.id",
+  author_name: "u.name", // Using alias
+});
 
 // FROM posts
 // INNER JOIN users AS u ON posts.user_id = u.id
@@ -63,13 +57,14 @@ const posts = await puri.table("posts")
 ### Joining Same Table Multiple Times
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join({ author: "users" }, "posts.author_id", "author.id")
   .leftJoin({ editor: "users" }, "posts.editor_id", "editor.id")
   .select({
     post_id: "posts.id",
     author_name: "author.name",
-    editor_name: "editor.name"  // nullable
+    editor_name: "editor.name", // nullable
   });
 
 // FROM posts
@@ -84,14 +79,14 @@ const posts = await puri.table("posts")
 You can combine multiple conditions.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
-    j.on("orders.user_id", "users.id")
-     .on("orders.country", "users.country");
+    j.on("orders.user_id", "users.id").on("orders.country", "users.country");
   })
   .select({
     order_id: "orders.id",
-    user_name: "users.name"
+    user_name: "users.name",
   });
 
 // FROM orders
@@ -102,14 +97,17 @@ const result = await puri.table("orders")
 ### OR Conditions
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("categories", (j) => {
-    j.on("products.category_id", "categories.id")
-     .orOn("products.parent_category_id", "categories.id");
+    j.on("products.category_id", "categories.id").orOn(
+      "products.parent_category_id",
+      "categories.id",
+    );
   })
   .select({
     product_name: "products.name",
-    category_name: "categories.name"
+    category_name: "categories.name",
   });
 
 // LEFT JOIN categories ON products.category_id = categories.id
@@ -121,11 +119,12 @@ const result = await puri.table("products")
 Use `onVal()` instead of `on()` when comparing a column with a literal value. `on()` treats its arguments as column references, so `onVal()` is required to bind values as parameters.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
     j.on("orders.user_id", "users.id")
-     .onVal("users.status", "=", "active")  // Bind value as parameter
-     .onVal("orders.created_at", ">", new Date("2024-01-01"));
+      .onVal("users.status", "=", "active") // Bind value as parameter
+      .onVal("orders.created_at", ">", new Date("2024-01-01"));
   })
   .selectAll();
 ```
@@ -135,14 +134,14 @@ const result = await puri.table("orders")
 `onVal` safely compares a column with a literal value using **parameter binding** in join conditions. While `on` is used for column-to-column comparisons, `onVal` is used for column-to-value comparisons.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("users", (j) => {
-    j.on("orders.user_id", "users.id")
-     .onVal("users.status", "active");  // Parameter binding
+    j.on("orders.user_id", "users.id").onVal("users.status", "active"); // Parameter binding
   })
   .select({
     order_id: "orders.id",
-    user_name: "users.name"
+    user_name: "users.name",
   });
 
 // INNER JOIN users ON orders.user_id = users.id
@@ -152,10 +151,10 @@ const result = await puri.table("orders")
 You can also specify an operator.
 
 ```typescript
-const result = await puri.table("orders")
+const result = await puri
+  .table("orders")
   .join("shipments", (j) => {
-    j.on("orders.id", "shipments.order_id")
-     .onVal("shipments.status", "!=", "cancelled");
+    j.on("orders.id", "shipments.order_id").onVal("shipments.status", "!=", "cancelled");
   })
   .selectAll();
 
@@ -168,15 +167,16 @@ const result = await puri.table("orders")
 `andOnVal` is an explicit AND version of `onVal`, and `orOnVal` compares values with OR conditions.
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("promotions", (j) => {
     j.on("products.id", "promotions.product_id")
-     .onVal("promotions.active", true)
-     .orOnVal("promotions.featured", true);
+      .onVal("promotions.active", true)
+      .orOnVal("promotions.featured", true);
   })
   .select({
     product_name: "products.name",
-    promo_name: "promotions.name"
+    promo_name: "promotions.name",
   });
 
 // LEFT JOIN promotions ON products.id = promotions.product_id
@@ -185,7 +185,8 @@ const result = await puri.table("products")
 ```
 
 <Info>
-**on vs onVal**: `on("col1", "col2")` compares two columns. `onVal("col", value)` compares a column with a value, binding the value as a SQL parameter.
+  **on vs onVal**: `on("col1", "col2")` compares two columns. `onVal("col", value)` compares a
+  column with a value, binding the value as a SQL parameter.
 </Info>
 
 ## Subquery Joins
@@ -194,25 +195,27 @@ You can join subqueries as tables.
 
 ```typescript
 // Create subquery
-const recentOrders = puri.table("orders")
+const recentOrders = puri
+  .table("orders")
   .where("orders.created_at", ">", new Date("2024-01-01"))
   .select({
     user_id: "orders.user_id",
-    order_count: Puri.count()
+    order_count: Puri.count(),
   })
   .groupBy("orders.user_id");
 
 // Join subquery
-const result = await puri.table("users")
+const result = await puri
+  .table("users")
   .join(
-    { ro: recentOrders },  // Alias required
+    { ro: recentOrders }, // Alias required
     "users.id",
-    "ro.user_id"
+    "ro.user_id",
   )
   .select({
     user_id: "users.id",
     user_name: "users.name",
-    order_count: "ro.order_count"
+    order_count: "ro.order_count",
   });
 
 // FROM users
@@ -229,7 +232,8 @@ const result = await puri.table("users")
 You can sequentially join multiple tables.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join("users", "posts.user_id", "users.id")
   .leftJoin("categories", "posts.category_id", "categories.id")
   .leftJoin("tags", "posts.id", "tags.post_id")
@@ -246,7 +250,7 @@ const posts = await puri.table("posts")
     category_name: "categories.name",
 
     // tags (nullable)
-    tag_name: "tags.name"
+    tag_name: "tags.name",
   });
 
 // FROM posts
@@ -282,6 +286,7 @@ const posts = await puri.table("posts")
         .limit(20);
     }
     ```
+
   </Tab>
 
   <Tab title="Orders + Users + Products" icon="cart-shopping">
@@ -315,6 +320,7 @@ const posts = await puri.table("posts")
         });
     }
     ```
+
   </Tab>
 
   <Tab title="Statistics Query" icon="chart-bar">
@@ -347,6 +353,7 @@ const posts = await puri.table("posts")
         .orderBy("post_count", "desc");
     }
     ```
+
   </Tab>
 
   <Tab title="Self Join" icon="users">
@@ -374,6 +381,7 @@ const posts = await puri.table("posts")
         .orderBy("emp.name", "asc");
     }
     ```
+
   </Tab>
 
   <Tab title="Subquery Join" icon="layer-group">
@@ -405,6 +413,7 @@ const posts = await puri.table("posts")
         .limit(limit);
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -413,18 +422,19 @@ const posts = await puri.table("posts")
 You can group complex join conditions.
 
 ```typescript
-const result = await puri.table("products")
+const result = await puri
+  .table("products")
   .leftJoin("discounts", (j) => {
-    j.on("products.id", "discounts.product_id")
-     .on((nested) => {
-       nested.onVal("discounts.start_date", "<=", new Date())
-             .onVal("discounts.end_date", ">=", new Date());
-     });
+    j.on("products.id", "discounts.product_id").on((nested) => {
+      nested
+        .onVal("discounts.start_date", "<=", new Date())
+        .onVal("discounts.end_date", ">=", new Date());
+    });
   })
   .select({
     product_id: "products.id",
     product_name: "products.name",
-    discount_rate: "discounts.rate"
+    discount_rate: "discounts.rate",
   });
 
 // LEFT JOIN discounts ON products.id = discounts.product_id
@@ -439,16 +449,14 @@ const result = await puri.table("products")
 LEFT JOIN results are automatically inferred as nullable types.
 
 ```typescript
-const posts = await puri.table("posts")
-  .leftJoin("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    title: "posts.title",
-    author_name: "users.name"  // string | null
-  });
+const posts = await puri.table("posts").leftJoin("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  title: "posts.title",
+  author_name: "users.name", // string | null
+});
 
 // Type check
-posts.forEach(post => {
+posts.forEach((post) => {
   if (post.author_name !== null) {
     console.log(post.author_name.toUpperCase());
   }
@@ -502,18 +510,16 @@ posts.forEach(post => {
 Columns from joined tables support automatic type completion and validation.
 
 ```typescript
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",      // ✅ OK
-    user_name: "users.name",   // ✅ OK
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id", // ✅ OK
+  user_name: "users.name", // ✅ OK
 
-    // ❌ Type error: Non-existent column
-    unknown: "posts.unknown_field",
+  // ❌ Type error: Non-existent column
+  unknown: "posts.unknown_field",
 
-    // ❌ Type error: Non-joined table
-    category: "categories.name"
-  });
+  // ❌ Type error: Non-joined table
+  category: "categories.name",
+});
 ```
 
 ## Cautions
@@ -563,18 +569,14 @@ const posts = await puri.table("posts")
 ```typescript
 // ❌ Bad: N+1 queries
 for (const post of posts) {
-  const user = await puri.table("users")
-    .where("users.id", post.user_id)
-    .first();
+  const user = await puri.table("users").where("users.id", post.user_id).first();
 }
 
 // ✅ Good: JOIN once
-const posts = await puri.table("posts")
-  .join("users", "posts.user_id", "users.id")
-  .select({
-    post_id: "posts.id",
-    user_name: "users.name"
-  });
+const posts = await puri.table("posts").join("users", "posts.user_id", "users.id").select({
+  post_id: "posts.id",
+  user_name: "users.name",
+});
 ```
 
 ## JOIN vs Loader
@@ -596,9 +598,7 @@ Puri provides two methods for loading relational data.
 // Handle with Subset Loader (separate query)
 ```
 
-<Info>
-JOIN multiplies rows, so use **Loader for 1:N relationships**.
-</Info>
+<Info>JOIN multiplies rows, so use **Loader for 1:N relationships**.</Info>
 
 ## Next Steps
 
@@ -611,21 +611,13 @@ JOIN multiplies rows, so use **Loader for 1:N relationships**.
     Filter conditions
   </Card>
 
-  <Card
-    title="select"
-    icon="list-check"
-    href="/en/api-reference/puri-methods/select"
-  >
-    Select fields to retrieve
-  </Card>
+<Card title="select" icon="list-check" href="/en/api-reference/puri-methods/select">
+  Select fields to retrieve
+</Card>
 
-  <Card
-    title="order-by"
-    icon="arrow-down-1-9"
-    href="/en/api-reference/puri-methods/order-by"
-  >
-    Sort results
-  </Card>
+<Card title="order-by" icon="arrow-down-1-9" href="/en/api-reference/puri-methods/order-by">
+  Sort results
+</Card>
 
   <Card
     title="Subset"

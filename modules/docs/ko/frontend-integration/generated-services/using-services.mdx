@@ -9,24 +9,16 @@ description: "자동 생성된 Service로 API 호출하기"
 
 <CardGroup cols={2}>
   <Card title="Namespace 호출" icon="cube">
-    UserService.getUser()
-    
-    간결한 문법
+    UserService.getUser() 간결한 문법
   </Card>
   <Card title="타입 안전" icon="shield-check">
-    자동 완성
-    
-    컴파일 검증
+    자동 완성 컴파일 검증
   </Card>
   <Card title="Subset 지원" icon="layer-group">
-    필요한 필드만
-    
-    성능 최적화
+    필요한 필드만 성능 최적화
   </Card>
   <Card title="TanStack Query" icon="arrows-rotate">
-    useUser Hook
-    
-    자동 캐싱
+    useUser Hook 자동 캐싱
   </Card>
 </CardGroup>
 
@@ -67,16 +59,15 @@ await UserService.updateProfile({
 ```
 
 **특징**:
+
 - `await`으로 비동기 호출
 - 응답은 자동으로 파싱됨 (fetch 함수 내부 처리)
 - 타입이 완전히 보장됨
 - **Subset 파라미터 필수** (getUser 등)
 
 <Info>
-**Namespace 기반 구조**:
-- ❌ 클래스 인스턴스: `new UserService()` 불필요
-- ✅ 정적 함수: `UserService.getUser()` 직접 호출
-- 모든 함수가 독립적으로 동작
+  **Namespace 기반 구조**: - ❌ 클래스 인스턴스: `new UserService()` 불필요 - ✅ 정적 함수:
+  `UserService.getUser()` 직접 호출 - 모든 함수가 독립적으로 동작
 </Info>
 
 ### Subset 시스템 이해하기
@@ -86,13 +77,13 @@ Sonamu의 핵심 기능인 Subset 시스템입니다.
 ```typescript
 // Subset "A": 기본 정보
 const basicUser = await UserService.getUser("A", 123);
-console.log(basicUser.id);       // ✅ OK
+console.log(basicUser.id); // ✅ OK
 console.log(basicUser.username); // ✅ OK
-console.log(basicUser.bio);      // ❌ 컴파일 에러 (Subset A에 없음)
+console.log(basicUser.bio); // ❌ 컴파일 에러 (Subset A에 없음)
 
 // Subset "B": bio 포함
 const userWithBio = await UserService.getUser("B", 123);
-console.log(userWithBio.bio);    // ✅ OK
+console.log(userWithBio.bio); // ✅ OK
 
 // Subset "C": 전체 필드
 const fullUser = await UserService.getUser("C", 123);
@@ -100,6 +91,7 @@ console.log(fullUser.createdAt); // ✅ OK
 ```
 
 **Subset을 사용하는 이유**:
+
 1. **성능**: 필요한 필드만 조회하여 네트워크 비용 절감
 2. **타입 안전**: 각 Subset마다 정확한 타입 반환
 3. **명시성**: 어떤 데이터가 필요한지 코드에서 명확히 표현
@@ -116,11 +108,11 @@ import { UserService } from "@/services/services.generated";
 function UserProfile({ userId }: { userId: number }) {
   // 자동 생성된 Hook 사용
   const { data: user, error, isLoading } = UserService.useUser("A", userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   if (!user) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{user.username}</h1>
@@ -131,6 +123,7 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 **TanStack Query Hook의 장점**:
+
 - 자동 캐싱 (같은 userId 재사용)
 - 자동 재검증 (포커스 시, 재연결 시)
 - 로딩/에러 상태 자동 관리
@@ -149,7 +142,7 @@ function UserProfile({ userId }: { userId: number }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -163,14 +156,14 @@ function UserProfile({ userId }: { userId: number }) {
         setLoading(false);
       }
     }
-    
+
     fetchUser();
   }, [userId]);
-  
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!user) return <div>User not found</div>;
-  
+
   return (
     <div>
       <h1>{user.username}</h1>
@@ -181,7 +174,8 @@ function UserProfile({ userId }: { userId: number }) {
 ```
 
 <Info>
-**권장**: 가능하면 TanStack Query Hook을 사용하세요. 자동 캐싱, 재검증, 상태 관리를 모두 제공하여 코드가 훨씬 간결해집니다.
+  **권장**: 가능하면 TanStack Query Hook을 사용하세요. 자동 캐싱, 재검증, 상태 관리를 모두 제공하여
+  코드가 훨씬 간결해집니다.
 </Info>
 
 ### 이벤트 핸들러
@@ -196,18 +190,18 @@ function EditProfile({ userId }: { userId: number }) {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
-  
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     try {
       setSaving(true);
-      
+
       await UserService.updateProfile({
         username,
         bio,
       });
-      
+
       alert("Profile updated!");
     } catch (error) {
       alert("Failed to update profile");
@@ -216,7 +210,7 @@ function EditProfile({ userId }: { userId: number }) {
       setSaving(false);
     }
   }
-  
+
   return (
     <form onSubmit={handleSubmit}>
       <input
@@ -225,13 +219,13 @@ function EditProfile({ userId }: { userId: number }) {
         onChange={(e) => setUsername(e.target.value)}
         placeholder="Username"
       />
-      
+
       <textarea
         value={bio}
         onChange={(e) => setBio(e.target.value)}
         placeholder="Bio"
       />
-      
+
       <button type="submit" disabled={saving}>
         {saving ? "Saving..." : "Save"}
       </button>
@@ -270,7 +264,7 @@ function RegisterForm() {
         onError: (error) => {
           console.error("Registration failed:", error);
         },
-      }
+      },
     );
   });
 
@@ -288,6 +282,7 @@ function RegisterForm() {
 ```
 
 **useTypeForm의 장점**:
+
 - ✅ **타입 안전**: Zod 스키마에서 타입 자동 추론
 - ✅ **자동 유효성 검사**: 스키마 규칙 자동 적용
 - ✅ **간결한 코드**: `useState` + 이벤트 핸들러 불필요
@@ -295,7 +290,8 @@ function RegisterForm() {
 - ✅ **통합 컴포넌트**: Input, Button 등 즉시 사용 가능
 
 <Info>
-**권장**: 새로운 폼을 작성할 때는 `useTypeForm`을 사용하세요. 보일러플레이트 코드를 크게 줄이고 타입 안전성을 보장합니다.
+  **권장**: 새로운 폼을 작성할 때는 `useTypeForm`을 사용하세요. 보일러플레이트 코드를 크게 줄이고
+  타입 안전성을 보장합니다.
 </Info>
 
 **에러 표시 예제**:
@@ -339,14 +335,15 @@ function RegisterFormWithErrors() {
 
 **패턴 비교**:
 
-| 패턴 | 코드량 | 타입 안전 | 유효성 검사 | 권장도 |
-|------|--------|----------|------------|--------|
-| **useTypeForm** | ⭐️⭐️⭐️ 적음 | ✅ 완벽 | ✅ 자동 | ⭐️⭐️⭐️ 최고 |
-| useEffect + useState | ⭐️ 많음 | ⚠️ 수동 | ❌ 수동 | ⭐️ 낮음 |
-| 이벤트 핸들러 | ⭐️⭐️ 보통 | ⚠️ 수동 | ❌ 수동 | ⭐️⭐️ 보통 |
+| 패턴                 | 코드량      | 타입 안전 | 유효성 검사 | 권장도      |
+| -------------------- | ----------- | --------- | ----------- | ----------- |
+| **useTypeForm**      | ⭐️⭐️⭐️ 적음 | ✅ 완벽   | ✅ 자동     | ⭐️⭐️⭐️ 최고 |
+| useEffect + useState | ⭐️ 많음     | ⚠️ 수동   | ❌ 수동     | ⭐️ 낮음     |
+| 이벤트 핸들러        | ⭐️⭐️ 보통   | ⚠️ 수동   | ❌ 수동     | ⭐️⭐️ 보통   |
 
 <Tip>
-`@sonamu-kit/react-components`는 Material-UI, Ant Design 등 다른 UI 라이브러리와도 함께 사용할 수 있습니다.
+  `@sonamu-kit/react-components`는 Material-UI, Ant Design 등 다른 UI 라이브러리와도 함께 사용할 수
+  있습니다.
 </Tip>
 
 ## SSR에서 Service 사용하기
@@ -366,8 +363,7 @@ export namespace UserService {
   export const getUser = <T extends UserSubsetKey>(subset: T, id: number): SSRQuery =>
     createSSRQuery("UserModel", "findById", [subset, id], ["User", "getUser"]);
 
-  export const me = (): SSRQuery =>
-    createSSRQuery("UserModel", "me", [], ["User", "me"]);
+  export const me = (): SSRQuery => createSSRQuery("UserModel", "me", [], ["User", "me"]);
 }
 ```
 
@@ -393,24 +389,25 @@ registerSSR({
 
 ### 프론트엔드 Service vs SSR Service
 
-| 항목 | 프론트엔드 Service | SSR Service |
-|------|-------------------|-------------|
+| 항목          | 프론트엔드 Service                       | SSR Service                                |
+| ------------- | ---------------------------------------- | ------------------------------------------ |
 | **파일 위치** | `web/src/services/services.generated.ts` | `api/src/application/queries.generated.ts` |
-| **반환값** | `Promise<Data>` (HTTP 요청) | `SSRQuery` (객체) |
-| **사용 위치** | 브라우저 (React 컴포넌트) | 백엔드 (`registerSSR`) |
-| **HTTP 요청** | ✅ 실제 API 호출 | ❌ 백엔드 Model 직접 실행 |
+| **반환값**    | `Promise<Data>` (HTTP 요청)              | `SSRQuery` (객체)                          |
+| **사용 위치** | 브라우저 (React 컴포넌트)                | 백엔드 (`registerSSR`)                     |
+| **HTTP 요청** | ✅ 실제 API 호출                         | ❌ 백엔드 Model 직접 실행                  |
 
 ```typescript
 // 프론트엔드 Service (브라우저)
-const user = await UserService.getUser("A", 123);  // HTTP GET /api/user/findById
+const user = await UserService.getUser("A", 123); // HTTP GET /api/user/findById
 
 // SSR Service (백엔드)
-const query = UserService.getUser("A", 123);  // SSRQuery 객체 반환
+const query = UserService.getUser("A", 123); // SSRQuery 객체 반환
 // → Sonamu가 UserModel.findById("A", 123) 직접 실행
 ```
 
 <Info>
-**핵심 차이점**: SSR Service는 HTTP 요청 없이 백엔드 Model 메서드를 직접 실행하므로 네트워크 오버헤드가 없습니다.
+  **핵심 차이점**: SSR Service는 HTTP 요청 없이 백엔드 Model 메서드를 직접 실행하므로 네트워크
+  오버헤드가 없습니다.
 </Info>
 
 ### 더 알아보기
@@ -443,11 +440,11 @@ export namespace UserService {
   // 정적 함수들
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
-      url: `/api/user/getUser?${qs.stringify({ subset, id })}`
+      url: `/api/user/getUser?${qs.stringify({ subset, id })}`,
     });
   }
 
@@ -455,22 +452,21 @@ export namespace UserService {
     return fetch({
       method: "POST",
       url: `/api/user/save`,
-      data: { spa }
+      data: { spa },
     });
   }
 
   // TanStack Query Hook
-  export const useUser = <T extends UserSubsetKey>(
-    subset: T,
-    id: number
-  ) => useQuery({
-    queryKey: ["User", "getUser", subset, id],
-    queryFn: () => getUser(subset, id)
-  });
+  export const useUser = <T extends UserSubsetKey>(subset: T, id: number) =>
+    useQuery({
+      queryKey: ["User", "getUser", subset, id],
+      queryFn: () => getUser(subset, id),
+    });
 }
 ```
 
 **Namespace의 특징**:
+
 - **무상태 (Stateless)**: 인스턴스를 생성하지 않음
 - **정적 호출**: `UserService.getUser()` 직접 호출
 - **타입 안전**: TypeScript Namespace로 완벽한 타입 추론
@@ -500,9 +496,9 @@ export async function getUser(subset: string, id: number) {
     url: `/api/user/getUser?subset=${subset}&id=${id}`,
     // Context는 HTTP 헤더로 전달됨
     headers: {
-      "Authorization": `Bearer ${getToken()}`,
-      "Cookie": document.cookie,  // 세션 정보
-    }
+      Authorization: `Bearer ${getToken()}`,
+      Cookie: document.cookie, // 세션 정보
+    },
   });
 }
 ```
@@ -517,9 +513,9 @@ class UserModelClass extends BaseModelClass {
     // Context는 HTTP 요청에서 자동 파싱됨
     const context = Sonamu.getContext();
 
-    console.log(context.user);      // 인증된 사용자
-    console.log(context.session);   // 세션 정보
-    console.log(context.ip);        // 클라이언트 IP
+    console.log(context.user); // 인증된 사용자
+    console.log(context.session); // 세션 정보
+    console.log(context.ip); // 클라이언트 IP
 
     // 권한 체크 등 가능
     if (!context.user) {
@@ -548,6 +544,7 @@ flowchart LR
 ```
 
 **생성 단계**:
+
 1. **백엔드**: Model에 `@api` 데코레이터 작성
 2. **Sonamu Sync**: `pnpm sonamu sync` 실행
 3. **자동 생성**: `services.generated.ts` 파일 생성
@@ -570,6 +567,7 @@ export default async function UserPage() {
 ```
 
 **왜 `new UserModel()`을 해도 되나요?**
+
 - Model은 **무상태**이므로 매번 새로 생성해도 안전
 - Constructor에서 초기화하는 것은 Subset 쿼리뿐
 - Context는 `Sonamu.getContext()`로 동적으로 가져옴
@@ -594,28 +592,25 @@ class UserModelClass extends BaseModelClass {
 
 #### Service vs Model 비교
 
-| 항목 | Service (Frontend) | Model (Backend) |
-|------|-------------------|-----------------|
-| **타입** | Namespace | Class Instance |
+| 항목          | Service (Frontend)      | Model (Backend)        |
+| ------------- | ----------------------- | ---------------------- |
+| **타입**      | Namespace               | Class Instance         |
 | **호출 방식** | `UserService.getUser()` | `userModel.findById()` |
-| **상태** | 무상태 (Stateless) | 무상태 (Stateless) |
-| **의존성** | 없음 | BaseModelClass |
-| **Context** | HTTP 헤더로 전달 | `Sonamu.getContext()` |
-| **사용 위치** | Client Component | Server Component / API |
-| **생성 방법** | 자동 생성 | 개발자 작성 |
+| **상태**      | 무상태 (Stateless)      | 무상태 (Stateless)     |
+| **의존성**    | 없음                    | BaseModelClass         |
+| **Context**   | HTTP 헤더로 전달        | `Sonamu.getContext()`  |
+| **사용 위치** | Client Component        | Server Component / API |
+| **생성 방법** | 자동 생성               | 개발자 작성            |
 
 <Warning>
-**Model 인스턴스 생성 시 주의사항**:
-1. **Server Components에서만**: Client Component에서는 Model을 import할 수 없음
-2. **매번 생성**: 싱글톤 패턴 사용 불필요 (무상태이므로)
-3. **Context 접근**: `Sonamu.getContext()`는 요청 컨텍스트에서 자동으로 가져옴
+  **Model 인스턴스 생성 시 주의사항**: 1. **Server Components에서만**: Client Component에서는
+  Model을 import할 수 없음 2. **매번 생성**: 싱글톤 패턴 사용 불필요 (무상태이므로) 3. **Context
+  접근**: `Sonamu.getContext()`는 요청 컨텍스트에서 자동으로 가져옴
 </Warning>
 
 <Info>
-**권장 패턴**:
-- **Client Component**: Service 사용
-- **Server Component**: Model 직접 사용
-- **API 엔드포인트**: Model에 `@api` 데코레이터
+  **권장 패턴**: - **Client Component**: Service 사용 - **Server Component**: Model 직접 사용 -
+  **API 엔드포인트**: Model에 `@api` 데코레이터
 </Info>
 
 ### Client Components
@@ -631,15 +626,15 @@ import { UserService } from "@/services/services.generated";
 
 export function EditButton({ userId }: { userId: number }) {
   const [editing, setEditing] = useState(false);
-  
+
   async function handleEdit() {
     setEditing(true);
-    
+
     try {
       await UserService.updateProfile({
         username: "newname",
       });
-      
+
       alert("Updated!");
     } catch (error) {
       alert("Failed!");
@@ -647,7 +642,7 @@ export function EditButton({ userId }: { userId: number }) {
       setEditing(false);
     }
   }
-  
+
   return (
     <button onClick={handleEdit} disabled={editing}>
       {editing ? "Saving..." : "Edit"}
@@ -676,12 +671,12 @@ async function updateUser() {
       // Sonamu 에러 (타입 안전)
       console.log("Status:", error.code);
       console.log("Message:", error.message);
-      
+
       // Zod 유효성 검사 에러
       error.issues.forEach((issue) => {
         console.log(`${issue.path.join(".")}: ${issue.message}`);
       });
-      
+
       // HTTP 상태 코드별 처리
       if (error.code === 401) {
         // 인증 에러
@@ -709,17 +704,17 @@ import { isSonamuError } from "@/lib/sonamu.shared";
 function EditProfile({ userId }: { userId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   async function handleSubmit(data: any) {
     setError(null);
     setValidationErrors({});
-    
+
     try {
       await UserService.updateProfile(data);
     } catch (err) {
       if (isSonamuError(err)) {
         setError(err.message);
-        
+
         // Zod 유효성 검사 에러를 필드별로 매핑
         const fieldErrors: Record<string, string> = {};
         err.issues.forEach((issue) => {
@@ -732,11 +727,11 @@ function EditProfile({ userId }: { userId: number }) {
       }
     }
   }
-  
+
   return (
     <div>
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={(e) => {
         e.preventDefault();
         handleSubmit({/* data */});
@@ -767,7 +762,7 @@ async function loadUserDashboard(userId: number) {
   const user = await UserService.getUser("A", userId);
   const posts = await PostService.getPostsByUser(userId);
   const comments = await PostService.getCommentsByUser(userId);
-  
+
   return { user, posts, comments };
 }
 
@@ -778,12 +773,13 @@ async function loadUserDashboardFast(userId: number) {
     PostService.getPostsByUser(userId),
     PostService.getCommentsByUser(userId),
   ]);
-  
+
   return { user, posts, comments };
 }
 ```
 
 **성능 비교**:
+
 - 순차: 300ms + 200ms + 150ms = 650ms
 - 병렬: max(300ms, 200ms, 150ms) = 300ms
 
@@ -822,10 +818,10 @@ function UserProfile({ userId }: { userId: number | null }) {
     userId!,
     { enabled: userId !== null } // userId가 null이면 호출 안함
   );
-  
+
   if (!userId) return <div>Please select a user</div>;
   if (!user) return <div>Loading...</div>;
-  
+
   return <div>{user.username}</div>;
 }
 ```
@@ -838,15 +834,13 @@ import { UserService } from "@/services/services.generated";
 
 function EditProfile({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
-  
+
   async function handleUpdate(data: any) {
     await UserService.updateProfile(data);
-    
+
     // 특정 쿼리 무효화
-    queryClient.invalidateQueries(
-      UserService.getUserQueryOptions("A", userId)
-    );
-    
+    queryClient.invalidateQueries(UserService.getUserQueryOptions("A", userId));
+
     // 또는 모든 User 쿼리 무효화
     queryClient.invalidateQueries({
       queryKey: ["User"],
@@ -860,14 +854,14 @@ function EditProfile({ userId }: { userId: number }) {
 ```typescript
 function UserList({ userIds }: { userIds: number[] }) {
   const queryClient = useQueryClient();
-  
+
   // 호버 시 미리 로드
   function handleMouseEnter(userId: number) {
     queryClient.prefetchQuery(
       UserService.getUserQueryOptions("A", userId)
     );
   }
-  
+
   return (
     <ul>
       {userIds.map((id) => (
@@ -895,7 +889,7 @@ import { isSonamuError } from "@/lib/sonamu.shared";
 function UserManagement() {
   // 목록 조회 (Subset A)
   const { data: users, refetch } = UserService.useUsers("A");
-  
+
   // 생성
   async function handleCreate(data: { username: string; email: string }) {
     try {
@@ -908,7 +902,7 @@ function UserManagement() {
       }
     }
   }
-  
+
   // 수정
   async function handleUpdate(id: number, data: { username: string }) {
     try {
@@ -921,11 +915,11 @@ function UserManagement() {
       }
     }
   }
-  
+
   // 삭제
   async function handleDelete(id: number) {
     if (!confirm("Are you sure?")) return;
-    
+
     try {
       await UserService.delete(id);
       refetch();
@@ -936,7 +930,7 @@ function UserManagement() {
       }
     }
   }
-  
+
   return (
     <div>
       <h1>Users</h1>
@@ -959,29 +953,38 @@ function UserManagement() {
 ## 주의사항
 
 <Warning>
-**Service 사용 시 주의사항**:
-1. 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정 금지**
-2. **Subset 파라미터 필수**: getUser 등에서 subset 지정 필요
-3. Server Components에서는 Service 대신 **백엔드 모델 직접 호출**
-4. 에러 처리 시 `isSonamuError()` **타입 가드 사용**
-5. TanStack Query Hook은 **컴포넌트 내부**에서만 호출
-6. `await` 키워드 필수 (모든 Service 함수는 async)
-7. Namespace이므로 **new 불필요**: `UserService.getUser()` 직접 호출
+  **Service 사용 시 주의사항**: 1. 생성된 Service 파일(`services.generated.ts`)은 **절대 수동 수정
+  금지** 2. **Subset 파라미터 필수**: getUser 등에서 subset 지정 필요 3. Server Components에서는
+  Service 대신 **백엔드 모델 직접 호출** 4. 에러 처리 시 `isSonamuError()` **타입 가드 사용** 5.
+  TanStack Query Hook은 **컴포넌트 내부**에서만 호출 6. `await` 키워드 필수 (모든 Service 함수는
+  async) 7. Namespace이므로 **new 불필요**: `UserService.getUser()` 직접 호출
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Service 동작 원리" icon="diagram-project" href="/ko/frontend-integration/generated-services/how-services-work">
+  <Card
+    title="Service 동작 원리"
+    icon="diagram-project"
+    href="/ko/frontend-integration/generated-services/how-services-work"
+  >
     자동 생성 이해하기
   </Card>
-  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/ko/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query Hook"
+    icon="arrows-rotate"
+    href="/ko/frontend-integration/generated-services/tanstack-query"
+  >
     React에서 더 쉽게
   </Card>
   <Card title="인증" icon="shield-halved" href="/ko/api-development/authentication/setup">
     인증 시스템
   </Card>
-  <Card title="에러 처리" icon="triangle-exclamation" href="/ko/api-development/validation/error-handling">
+  <Card
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/ko/api-development/validation/error-handling"
+  >
     에러 처리 패턴
   </Card>
 </CardGroup>

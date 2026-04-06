@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOption
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
+
 import type { CacheConfig } from "../cache/types";
 import type { SonamuDBConfig } from "../database/db";
 import type { SonamuLoggingOptions } from "../logger/configure";

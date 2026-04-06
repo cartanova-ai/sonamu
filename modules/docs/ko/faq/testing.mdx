@@ -1,6 +1,6 @@
 ---
-title: '테스팅'
-description: '테스트 작성과 실행에 관한 질문'
+title: "테스팅"
+description: "테스트 작성과 실행에 관한 질문"
 ---
 
 ## 테스트 기본
@@ -11,6 +11,7 @@ description: '테스트 작성과 실행에 관한 질문'
 Sonamu는 **Vitest**를 사용합니다.
 
 **특징:**
+
 - Vite 기반으로 매우 빠른 실행 속도
 - Jest 호환 API
 - TypeScript 네이티브 지원
@@ -70,7 +71,7 @@ describe("UserModel", () => {
   test("save", async () => {
     const user = await UserModel.save({
       name: "Test User",
-      email: "test@example.com"
+      email: "test@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("Test User");
@@ -95,11 +96,11 @@ describe("UserModel", () => {
 class UserModelClass extends BaseModelClass {
   static async setTestData() {
     await this.truncate();
-    
+
     await this.bulkInsert([
       { id: 1, name: "John", email: "john@example.com" },
       { id: 2, name: "Jane", email: "jane@example.com" },
-      { id: 3, name: "Bob", email: "bob@example.com" }
+      { id: 3, name: "Bob", email: "bob@example.com" },
     ]);
   }
 }
@@ -142,7 +143,7 @@ describe("UserModel", () => {
     const user = await UserModel.save({ name: "New User" });
     expect(user.id).toBeGreaterThan(3);
   });
-  
+
   test("delete user", async () => {
     await UserModel.del(1);
     const user = await UserModel.findById(1);
@@ -178,7 +179,7 @@ describe("UserModel CRUD", () => {
   test("save - create", async () => {
     const user = await UserModel.save({
       name: "New User",
-      email: "new@example.com"
+      email: "new@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("New User");
@@ -187,7 +188,7 @@ describe("UserModel CRUD", () => {
   test("save - update", async () => {
     const user = await UserModel.save({
       id: 1,
-      name: "Updated Name"
+      name: "Updated Name",
     });
     expect(user.id).toBe(1);
     expect(user.name).toBe("Updated Name");
@@ -275,7 +276,7 @@ describe("User API", () => {
   test("createUser", async () => {
     const user = await UserModel.createUser({
       name: "API Test User",
-      email: "apitest@example.com"
+      email: "apitest@example.com",
     });
     expect(user.id).toBeGreaterThan(0);
     expect(user.name).toBe("API Test User");
@@ -283,7 +284,7 @@ describe("User API", () => {
 
   test("updateUser", async () => {
     const user = await UserModel.updateUser(1, {
-      name: "Updated via API"
+      name: "Updated via API",
     });
     expect(user.id).toBe(1);
     expect(user.name).toBe("Updated via API");
@@ -309,20 +310,18 @@ describe("User API Errors", () => {
     await expect(
       UserModel.createUser({
         name: "Test",
-        email: "john@example.com"  // 이미 존재
-      })
+        email: "john@example.com", // 이미 존재
+      }),
     ).rejects.toThrow(BadRequestError);
   });
 
   test("findById - 존재하지 않는 ID", async () => {
-    await expect(
-      UserModel.findById(99999)
-    ).rejects.toThrow(NotFoundError);
+    await expect(UserModel.findById(99999)).rejects.toThrow(NotFoundError);
   });
 
   test("deleteUser - 권한 없음", async () => {
     await expect(
-      UserModel.deleteUser(1)  // 권한 체크 실패
+      UserModel.deleteUser(1), // 권한 체크 실패
     ).rejects.toThrow(ForbiddenError);
   });
 });
@@ -342,15 +341,9 @@ describe("User API Errors", () => {
 describe("Transactions", () => {
   test("트랜잭션 성공", async () => {
     await UserModel.transaction(async (trx) => {
-      const user = await UserModel.save(
-        { name: "Tx User" },
-        { trx }
-      );
-      const profile = await ProfileModel.save(
-        { user_id: user.id, bio: "Bio" },
-        { trx }
-      );
-      
+      const user = await UserModel.save({ name: "Tx User" }, { trx });
+      const profile = await ProfileModel.save({ user_id: user.id, bio: "Bio" }, { trx });
+
       expect(user.id).toBeGreaterThan(0);
       expect(profile.user_id).toBe(user.id);
     });
@@ -358,7 +351,7 @@ describe("Transactions", () => {
 
   test("트랜잭션 롤백", async () => {
     const initialCount = await UserModel.count();
-    
+
     try {
       await UserModel.transaction(async (trx) => {
         await UserModel.save({ name: "Rollback User" }, { trx });
@@ -367,9 +360,9 @@ describe("Transactions", () => {
     } catch (error) {
       // 에러 무시
     }
-    
+
     const finalCount = await UserModel.count();
-    expect(finalCount).toBe(initialCount);  // 변화 없음
+    expect(finalCount).toBe(initialCount); // 변화 없음
   });
 });
 ```
@@ -388,9 +381,9 @@ describe("Async Operations", () => {
   test("파일 업로드", async () => {
     const file = {
       buffer: Buffer.from("test content"),
-      originalname: "test.txt"
+      originalname: "test.txt",
     } as Express.Multer.File;
-    
+
     const result = await UserModel.uploadAvatar(file);
     expect(result.url).toBeDefined();
     expect(result.url).toContain("avatar");
@@ -413,29 +406,28 @@ import { vi } from "vitest";
 describe("Mocking", () => {
   test("외부 서비스 Mock", async () => {
     // EmailService.send를 Mock
-    const sendMock = vi.spyOn(EmailService, "send")
-      .mockResolvedValue({ success: true });
-    
+    const sendMock = vi.spyOn(EmailService, "send").mockResolvedValue({ success: true });
+
     await UserModel.sendWelcomeEmail(1);
-    
+
     expect(sendMock).toHaveBeenCalledTimes(1);
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "john@example.com",
-        subject: "Welcome!"
-      })
+        subject: "Welcome!",
+      }),
     );
-    
+
     sendMock.mockRestore();
   });
 
   test("Date.now Mock", async () => {
     const mockDate = new Date("2025-01-01");
     vi.setSystemTime(mockDate);
-    
+
     const user = await UserModel.save({ name: "Test" });
     expect(user.created_at).toEqual(mockDate);
-    
+
     vi.useRealTimers();
   });
 });
@@ -457,7 +449,7 @@ describe("Validation", () => {
     ["john@example.com", true],
     ["invalid-email", false],
     ["", false],
-    ["test@", false]
+    ["test@", false],
   ])("이메일 검증: %s -> %s", async (email, expected) => {
     const isValid = await UserModel.validateEmail(email);
     expect(isValid).toBe(expected);
@@ -468,7 +460,7 @@ describe("UserRole", () => {
   test.each([
     ["admin", true],
     ["user", false],
-    ["guest", false]
+    ["guest", false],
   ])("관리자 권한: %s -> %s", async (role, expected) => {
     const user = await UserModel.findById(1);
     user.role = role;
@@ -485,20 +477,20 @@ describe("UserRole", () => {
 ```typescript
 describe("UserModel", () => {
   describe("CRUD Operations", () => {
-    test("create", async () => { });
-    test("read", async () => { });
-    test("update", async () => { });
-    test("delete", async () => { });
+    test("create", async () => {});
+    test("read", async () => {});
+    test("update", async () => {});
+    test("delete", async () => {});
   });
 
   describe("Validations", () => {
-    test("email validation", async () => { });
-    test("password strength", async () => { });
+    test("email validation", async () => {});
+    test("password strength", async () => {});
   });
 
   describe("Relations", () => {
-    test("posts", async () => { });
-    test("profile", async () => { });
+    test("posts", async () => {});
+    test("profile", async () => {});
   });
 });
 ```
@@ -514,6 +506,7 @@ describe("UserModel", () => {
 <Accordion title="테스트 작성 시 주의사항">
 
 **DO:**
+
 - ✅ 각 테스트는 독립적으로 실행 가능해야 함
 - ✅ `beforeAll`이나 `beforeEach`로 테스트 데이터 초기화
 - ✅ 의미 있는 테스트 이름 사용
@@ -521,6 +514,7 @@ describe("UserModel", () => {
 - ✅ 에러 케이스도 반드시 테스트
 
 **DON'T:**
+
 - ❌ 테스트 간 의존성 만들지 않기
 - ❌ 실제 외부 서비스 호출하지 않기 (Mock 사용)
 - ❌ 프로덕션 DB 사용하지 않기

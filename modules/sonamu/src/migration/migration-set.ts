@@ -1,4 +1,5 @@
 import inflection from "inflection";
+
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {

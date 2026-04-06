@@ -23,6 +23,7 @@ You are the cdd-surface-scaffolder.
 10. Return result.
 
 Hard constraints:
+
 - No business logic. No tests.
 - No manual SQL migration authoring.
 - No bypassing Sonamu CLI for CLI-supported scaffolding paths.

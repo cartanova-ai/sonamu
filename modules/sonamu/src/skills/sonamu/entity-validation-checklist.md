@@ -41,6 +41,7 @@ Immediately after writing your entity.json file, validate the following **before
 ```
 
 **How to validate:**
+
 ```bash
 # Find indexes without type in all entity.json files
 grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
@@ -64,17 +65,20 @@ grep -r '"indexes"' packages/api/src/application/*/\*.entity.json | \
 ```
 
 **Rules:**
+
 - `{relation_name}_id` → `{relation_name}.id`
 - If a BelongsToOne relation exists, always use `relation.id` format
 - Sonamu optimizes by reading the FK column directly and skipping JOINs when only `.id` is referenced
 
 **How to validate:**
+
 ```bash
 # Find subset fields ending in _id in entity.json
 grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 ```
 
 **Reference working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.entity.json`
 - `sonamu/examples/miomock/api/src/application/employee/employee.entity.json`
 
@@ -92,18 +96,13 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
     { "type": "relation", "name": "user" }
   ],
   "subsets": {
-    "A": [
-      "id",
-      "created_at",
-      "title",
-      "user.id",
-      "user.name"
-    ]
+    "A": ["id", "created_at", "title", "user.id", "user.name"]
   }
 }
 ```
 
 **Validation checklist:**
+
 - [ ] All regular fields included
 - [ ] All relations include at least `.id`
 - [ ] Non-nullable relations also include required fields
@@ -140,6 +139,7 @@ grep -A 20 '"subsets"' your-entity.entity.json | grep '_id"'
 ```
 
 **How to validate:**
+
 ```bash
 # Check if a BelongsToOne relation also has an _id field
 grep -A 5 '"relationType": "BelongsToOne"' your-entity.entity.json
@@ -209,6 +209,7 @@ ls packages/api/src/application/your-entity/your-entity.model.ts
 **If missing, manual creation is required** (refer to another entity's model.ts)
 
 Required methods:
+
 - `findById`
 - `findOne`
 - `findMany`
@@ -225,12 +226,10 @@ ls packages/api/src/application/your-entity/your-entity.types.ts
 ```
 
 **Required content:**
+
 ```typescript
 import { z } from "zod";
-import {
-  YourEntityBaseListParams,
-  YourEntityBaseSchema,
-} from "../sonamu.generated";
+import { YourEntityBaseListParams, YourEntityBaseSchema } from "../sonamu.generated";
 
 export const YourEntityListParams = YourEntityBaseListParams;
 export type YourEntityListParams = z.infer<typeof YourEntityListParams>;
@@ -244,19 +243,20 @@ export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
 **If a ManyToMany relation exists:**
+
 ```typescript
 // ManyToMany relation: add {relation_name}_ids array
 export const YourEntitySaveParams = YourEntityBaseSchema.partial({
   id: true,
   created_at: true,
-})
-  .extend({
-    relation_name_ids: z.array(z.number().int().positive()),
-  });
+}).extend({
+  relation_name_ids: z.array(z.number().int().positive()),
+});
 export type YourEntitySaveParams = z.infer<typeof YourEntitySaveParams>;
 ```
 
 **Reference working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany example
 - `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - basic pattern
 
@@ -279,6 +279,7 @@ grep "your-entity" packages/api/sonamu.lock
 ```
 
 **Expected result:**
+
 ```json
 [
   {
@@ -338,6 +339,7 @@ ls packages/api/src/migrations/*_create__your_entities.ts
 ```
 
 **Validation checklist:**
+
 - [ ] Is the table name correct? (plural, snake_case)
 - [ ] Are all columns defined?
 - [ ] Are foreign key constraints present?
@@ -353,6 +355,7 @@ pnpm sonamu migration:latest --dry-run
 ```
 
 **Check for:**
+
 - No SQL syntax errors
 - No duplicate column definitions
 - No Boolean default type errors
@@ -443,6 +446,7 @@ echo "[COMPLETE] Entity validation complete!"
 ```
 
 **Usage:**
+
 ```bash
 chmod +x packages/api/scripts/validate-entity.sh
 ./packages/api/scripts/validate-entity.sh your-entity

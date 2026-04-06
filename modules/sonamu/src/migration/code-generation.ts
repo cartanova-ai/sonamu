@@ -1,6 +1,7 @@
 import equal from "fast-deep-equal";
 import type { Knex } from "knex";
 import { alphabetical, diff } from "radashi";
+
 import { EntityManager, Naite } from "..";
 import type {
   EntityProp,

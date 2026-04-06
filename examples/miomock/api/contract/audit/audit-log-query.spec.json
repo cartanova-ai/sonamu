@@ -27,9 +27,7 @@
   "lastModified": "2026-03-09",
   "status": "implementing",
   "sources": [],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "AuditLogModel": "감사 로그 목록 조회(findMany)를 담당한다"
   },
@@ -41,7 +39,5 @@
     "2. created_at DESC 정렬, 페이지네이션 적용하여 반환"
   ],
   "errorHandling": {},
-  "constraints": [
-    "기본 정렬: created_at DESC"
-  ]
+  "constraints": ["기본 정렬: created_at DESC"]
 }

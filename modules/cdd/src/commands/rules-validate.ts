@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import chalk from "chalk";
+
 import type { CddProject } from "../core/types.js";
 import type { OutputResult } from "../utils/output.js";
 

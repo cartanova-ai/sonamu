@@ -20,7 +20,7 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
   userId: number;
 }> {
   constructor() {
-    super('CustomerSupportAgent');
+    super("CustomerSupportAgent");
   }
 
   @tools({
@@ -34,14 +34,14 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
         status: z.string(),
         items: z.array(z.string()),
       }),
-    }
+    },
   })
   async getOrder(input: { orderId: number }) {
     // Order retrieval logic
     return {
       orderId: input.orderId,
-      status: 'shipped',
-      items: ['Product A', 'Product B'],
+      status: "shipped",
+      items: ["Product A", "Product B"],
     };
   }
 }
@@ -87,6 +87,7 @@ async toolMethod(input: InputType) {
     ```
 
     **Important**: The LLM reads this description to decide whether to use the tool.
+
   </Tab>
 
   <Tab title="schema" icon="code">
@@ -109,6 +110,7 @@ async toolMethod(input: InputType) {
 
     **input**: Required
     **output**: Optional (helps with type inference)
+
   </Tab>
 
   <Tab title="name" icon="tag">
@@ -121,6 +123,7 @@ async toolMethod(input: InputType) {
       schema: { /* ... */ }
     })
     ```
+
   </Tab>
 
   <Tab title="needsApproval" icon="check">
@@ -135,6 +138,7 @@ async toolMethod(input: InputType) {
     ```
 
     **Use Case**: Dangerous operations like data deletion or payments
+
   </Tab>
 </Tabs>
 
@@ -151,7 +155,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
   locale: string;
 }> {
   constructor() {
-    super('HotelBookingAgent');
+    super("HotelBookingAgent");
   }
 
   @tools({
@@ -163,31 +167,28 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         checkOut: z.string().describe("Check-out date (YYYY-MM-DD)"),
         guests: z.number().describe("Number of guests"),
       }),
-      output: z.array(z.object({
-        hotelId: z.number(),
-        name: z.string(),
-        price: z.number(),
-        rating: z.number(),
-      })),
-    }
+      output: z.array(
+        z.object({
+          hotelId: z.number(),
+          name: z.string(),
+          price: z.number(),
+          rating: z.number(),
+        }),
+      ),
+    },
   })
-  async searchHotels(input: {
-    city: string;
-    checkIn: string;
-    checkOut: string;
-    guests: number;
-  }) {
+  async searchHotels(input: { city: string; checkIn: string; checkOut: string; guests: number }) {
     // Search hotels from DB
     const hotels = await HotelModel.findMany({
       wq: [
-        ['city', input.city],
-        ['available_from', '<=', input.checkIn],
-        ['available_to', '>=', input.checkOut],
-        ['capacity', '>=', input.guests],
+        ["city", input.city],
+        ["available_from", "<=", input.checkIn],
+        ["available_to", ">=", input.checkOut],
+        ["capacity", ">=", input.guests],
       ],
     });
 
-    return hotels.data.map(hotel => ({
+    return hotels.data.map((hotel) => ({
       hotelId: hotel.id,
       name: hotel.name,
       price: hotel.price_per_night,
@@ -210,14 +211,9 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         totalPrice: z.number(),
       }),
     },
-    needsApproval: true,  // User approval before booking
+    needsApproval: true, // User approval before booking
   })
-  async bookHotel(input: {
-    hotelId: number;
-    checkIn: string;
-    checkOut: string;
-    guests: number;
-  }) {
+  async bookHotel(input: { hotelId: number; checkIn: string; checkOut: string; guests: number }) {
     const userId = this.store?.userId;
 
     // Create booking
@@ -227,7 +223,7 @@ class HotelBookingAgentClass extends BaseAgentClass<{
       check_in: input.checkIn,
       check_out: input.checkOut,
       guests: input.guests,
-      status: 'confirmed',
+      status: "confirmed",
     });
 
     return {
@@ -248,18 +244,18 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         refundAmount: z.number(),
       }),
     },
-    needsApproval: true,  // User approval before cancellation
+    needsApproval: true, // User approval before cancellation
   })
   async cancelBooking(input: { bookingId: number }) {
     const booking = await BookingModel.findById(input.bookingId);
 
     // Process cancellation
-    await BookingModel.updateOne(['id', booking.id], {
-      status: 'cancelled',
+    await BookingModel.updateOne(["id", booking.id], {
+      status: "cancelled",
     });
 
     // Process refund
-    const refundAmount = booking.total_price * 0.9;  // 10% fee
+    const refundAmount = booking.total_price * 0.9; // 10% fee
 
     return {
       success: true,
@@ -281,7 +277,7 @@ class DataAnalystAgentClass extends BaseAgentClass<{
   sessionId: string;
 }> {
   constructor() {
-    super('DataAnalystAgent');
+    super("DataAnalystAgent");
   }
 
   @tools({
@@ -294,12 +290,12 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         rows: z.array(z.record(z.any())),
         rowCount: z.number(),
       }),
-    }
+    },
   })
   async executeQuery(input: { query: string }) {
     // Safety validation (only allow SELECT)
     if (!/^SELECT/i.test(input.query.trim())) {
-      throw new Error('Only SELECT queries are allowed');
+      throw new Error("Only SELECT queries are allowed");
     }
 
     const result = await DB.query(input.query);
@@ -317,19 +313,19 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         data: z.array(z.record(z.any())),
         xAxis: z.string().describe("X-axis column name"),
         yAxis: z.string().describe("Y-axis column name"),
-        chartType: z.enum(['bar', 'line', 'pie']),
+        chartType: z.enum(["bar", "line", "pie"]),
       }),
       output: z.object({
         chartId: z.string(),
         config: z.any(),
       }),
-    }
+    },
   })
   async createChart(input: {
     data: Array<Record<string, any>>;
     xAxis: string;
     yAxis: string;
-    chartType: 'bar' | 'line' | 'pie';
+    chartType: "bar" | "line" | "pie";
   }) {
     const chartId = `chart_${Date.now()}`;
 
@@ -337,11 +333,13 @@ class DataAnalystAgentClass extends BaseAgentClass<{
     const config = {
       type: input.chartType,
       data: {
-        labels: input.data.map(row => row[input.xAxis]),
-        datasets: [{
-          label: input.yAxis,
-          data: input.data.map(row => row[input.yAxis]),
-        }],
+        labels: input.data.map((row) => row[input.xAxis]),
+        datasets: [
+          {
+            label: input.yAxis,
+            data: input.data.map((row) => row[input.yAxis]),
+          },
+        ],
       },
     };
 
@@ -361,19 +359,20 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         min: z.number(),
         max: z.number(),
       }),
-    }
+    },
   })
   async calculateStats(input: { data: number[] }) {
     const sorted = [...input.data].sort((a, b) => a - b);
     const sum = input.data.reduce((a, b) => a + b, 0);
     const mean = sum / input.data.length;
 
-    const median = sorted.length % 2 === 0
-      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
-      : sorted[Math.floor(sorted.length / 2)];
+    const median =
+      sorted.length % 2 === 0
+        ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+        : sorted[Math.floor(sorted.length / 2)];
 
-    const variance = input.data.reduce((acc, val) =>
-      acc + Math.pow(val - mean, 2), 0) / input.data.length;
+    const variance =
+      input.data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / input.data.length;
     const stdDev = Math.sqrt(variance);
 
     return {
@@ -399,7 +398,7 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
   userId: number;
 }> {
   constructor() {
-    super('EmailAutomationAgent');
+    super("EmailAutomationAgent");
   }
 
   @tools({
@@ -409,26 +408,28 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
         query: z.string().describe("Search query"),
         limit: z.number().default(10),
       }),
-      output: z.array(z.object({
-        id: z.number(),
-        from: z.string(),
-        subject: z.string(),
-        preview: z.string(),
-        receivedAt: z.string(),
-      })),
-    }
+      output: z.array(
+        z.object({
+          id: z.number(),
+          from: z.string(),
+          subject: z.string(),
+          preview: z.string(),
+          receivedAt: z.string(),
+        }),
+      ),
+    },
   })
   async searchEmails(input: { query: string; limit: number }) {
     const emails = await EmailModel.findMany({
       wq: [
-        ['user_id', this.store?.userId],
-        ['subject', 'LIKE', `%${input.query}%`],
+        ["user_id", this.store?.userId],
+        ["subject", "LIKE", `%${input.query}%`],
       ],
       num: input.limit,
-      order: [['received_at', 'DESC']],
+      order: [["received_at", "DESC"]],
     });
 
-    return emails.data.map(email => ({
+    return emails.data.map((email) => ({
       id: email.id,
       from: email.from_address,
       subject: email.subject,
@@ -442,15 +443,15 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
     schema: {
       input: z.object({
         emailId: z.number(),
-        folder: z.enum(['inbox', 'archive', 'trash', 'spam']),
+        folder: z.enum(["inbox", "archive", "trash", "spam"]),
       }),
       output: z.object({
         success: z.boolean(),
       }),
-    }
+    },
   })
   async moveEmail(input: { emailId: number; folder: string }) {
-    await EmailModel.updateOne(['id', input.emailId], {
+    await EmailModel.updateOne(["id", input.emailId], {
       folder: input.folder,
     });
 
@@ -467,13 +468,13 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
       output: z.object({
         success: z.boolean(),
       }),
-    }
+    },
   })
   async addLabels(input: { emailId: number; labels: string[] }) {
     const email = await EmailModel.findById(input.emailId);
     const currentLabels = email.labels || [];
 
-    await EmailModel.updateOne(['id', input.emailId], {
+    await EmailModel.updateOne(["id", input.emailId], {
       labels: [...currentLabels, ...input.labels],
     });
 
@@ -493,13 +494,9 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
         sentAt: z.string(),
       }),
     },
-    needsApproval: true,  // Approval before sending
+    needsApproval: true, // Approval before sending
   })
-  async sendEmail(input: {
-    to: string;
-    subject: string;
-    body: string;
-  }) {
+  async sendEmail(input: { to: string; subject: string; body: string }) {
     // Email sending logic
     const result = await sendEmailService(input);
 
@@ -525,11 +522,11 @@ import { openai } from "@ai-sdk/openai";
 
 const result = await HotelBookingAgent.use(
   {
-    model: openai('gpt-4o'),
+    model: openai("gpt-4o"),
     instructions: "You are a hotel booking assistant.",
-    toolChoice: 'auto',
+    toolChoice: "auto",
   },
-  { userId: 123, locale: 'en' },  // Initial store values
+  { userId: 123, locale: "en" }, // Initial store values
   async (agent) => {
     // Execute agent
     const response = await agent.generateText({
@@ -537,7 +534,7 @@ const result = await HotelBookingAgent.use(
     });
 
     return response.text;
-  }
+  },
 );
 ```
 
@@ -549,22 +546,22 @@ import { HotelBookingAgent } from "./agents/hotel-booking";
 import { openai } from "@ai-sdk/openai";
 
 class ChatModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async chat(message: string, ctx: Context) {
     const result = await HotelBookingAgent.use(
       {
-        model: openai('gpt-4o'),
+        model: openai("gpt-4o"),
         instructions: "You are a hotel booking assistant.",
-        toolChoice: 'auto',
+        toolChoice: "auto",
       },
-      { userId: ctx.user.id, locale: ctx.locale || 'en' },
+      { userId: ctx.user.id, locale: ctx.locale || "en" },
       async (agent) => {
         const response = await agent.generateText({
           prompt: message,
         });
 
         return response;
-      }
+      },
     );
 
     return {
@@ -627,23 +624,26 @@ async getUserProfile() {
 **Important considerations when writing agents**:
 
 1. **Tool Description Clarity**: Write detailed descriptions that the LLM can understand
+
    ```typescript
    // ❌ Unclear
-   description: "Order lookup"
+   description: "Order lookup";
 
    // ✅ Clear
-   description: "Takes an order ID and returns detailed order information (status, items, price)"
+   description: "Takes an order ID and returns detailed order information (status, items, price)";
    ```
 
 2. **Detailed Input Schema**: Use describe()
+
    ```typescript
    input: z.object({
      orderId: z.number().describe("Unique ID of the order to retrieve"),
      includeItems: z.boolean().describe("Whether to include the list of order items"),
-   })
+   });
    ```
 
 3. **Require Approval for Dangerous Operations**: needsApproval
+
    ```typescript
    @tools({
      description: "Cancel order",
@@ -653,6 +653,7 @@ async getUserProfile() {
    ```
 
 4. **Error Handling**: Clear error messages
+
    ```typescript
    async getOrder(input: { orderId: number }) {
      const order = await OrderModel.findById(input.orderId);
@@ -664,10 +665,11 @@ async getUserProfile() {
    ```
 
 5. **Check for Undefined When Accessing Store**
+
    ```typescript
    const userId = this.store?.userId;
    if (!userId) {
-     throw new Error('User information not available');
+     throw new Error("User information not available");
    }
    ```
 
@@ -678,12 +680,16 @@ async getUserProfile() {
      // ...
    })
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Agent Configuration" icon="gear" href="/en/advanced-features/ai-agents/agent-configuration">
+  <Card
+    title="Agent Configuration"
+    icon="gear"
+    href="/en/advanced-features/ai-agents/agent-configuration"
+  >
     Configure agent basics
   </Card>
   <Card title="Using the AI SDK" icon="code" href="/en/advanced-features/ai-agents/using-ai-sdk">

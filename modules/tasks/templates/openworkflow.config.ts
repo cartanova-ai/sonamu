@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+
 import { BackendPostgres, defineConfig } from "../src/index";
 
 const config: Knex.Config = {

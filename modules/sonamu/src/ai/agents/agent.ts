@@ -1,10 +1,12 @@
+import { AsyncLocalStorage } from "async_hooks";
+
 import type { Tool, ToolExecutionOptions } from "@ai-sdk/provider-utils";
 import { tool } from "@ai-sdk/provider-utils";
 import { getLogger, type Logger } from "@logtape/logtape";
 import type { Agent, ToolSet } from "ai";
 import { ToolLoopAgent } from "ai";
-import { AsyncLocalStorage } from "async_hooks";
 import inflection from "inflection";
+
 import { convertDomainToCategory } from "../../logger/category";
 import type { AgentConfig, RegisteredToolDefinition, ToolDecoratorOptions } from "./types";
 

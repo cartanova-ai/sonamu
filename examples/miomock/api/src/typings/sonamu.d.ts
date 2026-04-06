@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/correctness/noUnusedImports: d.ts */
+/* oxlint-disable @typescript-eslint/no-unused-vars */ // d.ts
 
 import {} from "sonamu";
 

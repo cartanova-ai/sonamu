@@ -1,6 +1,6 @@
 ---
-title: 'Advanced Methods'
-description: 'Advanced Query Methods'
+title: "Advanced Methods"
+description: "Advanced Query Methods"
 ---
 
 Puri provides various advanced query methods including aggregation, modification, and vector search.
@@ -12,11 +12,12 @@ Puri provides various advanced query methods including aggregation, modification
 Groups results.
 
 ```typescript
-const stats = await puri.table("orders")
+const stats = await puri
+  .table("orders")
   .select({
     user_id: "orders.user_id",
     total_orders: Puri.count(),
-    total_amount: Puri.sum("orders.amount")
+    total_amount: Puri.sum("orders.amount"),
   })
   .groupBy("orders.user_id");
 
@@ -29,17 +30,16 @@ Returns results with duplicates removed. Uses the SQL `DISTINCT` clause.
 
 ```typescript
 // Remove duplicate rows
-const categories = await puri.table("products")
+const categories = await puri
+  .table("products")
   .distinct("products.category")
   .select({ category: "products.category" });
 
 // Multiple columns
-const pairs = await puri.table("orders")
-  .distinct("orders.user_id", "orders.status")
-  .select({
-    user_id: "orders.user_id",
-    status: "orders.status"
-  });
+const pairs = await puri.table("orders").distinct("orders.user_id", "orders.status").select({
+  user_id: "orders.user_id",
+  status: "orders.status",
+});
 ```
 
 ### having
@@ -47,10 +47,11 @@ const pairs = await puri.table("orders")
 Filters grouped results.
 
 ```typescript
-const activeUsers = await puri.table("orders")
+const activeUsers = await puri
+  .table("orders")
   .select({
     user_id: "orders.user_id",
-    order_count: Puri.count()
+    order_count: Puri.count(),
   })
   .groupBy("orders.user_id")
   .having("order_count", ">", 10);
@@ -66,18 +67,16 @@ Inserts new records.
 
 ```typescript
 // Single insert
-const [id] = await puri.table("users")
-  .insert({
-    email: "john@example.com",
-    name: "John Doe"
-  });
+const [id] = await puri.table("users").insert({
+  email: "john@example.com",
+  name: "John Doe",
+});
 
 // Batch insert
-const ids = await puri.table("users")
-  .insert([
-    { email: "john@example.com", name: "John" },
-    { email: "jane@example.com", name: "Jane" }
-  ]);
+const ids = await puri.table("users").insert([
+  { email: "john@example.com", name: "John" },
+  { email: "jane@example.com", name: "Jane" },
+]);
 ```
 
 ### update
@@ -85,12 +84,10 @@ const ids = await puri.table("users")
 Updates records.
 
 ```typescript
-const count = await puri.table("users")
-  .where("users.id", 1)
-  .update({
-    name: "John Smith",
-    updated_at: new Date()
-  });
+const count = await puri.table("users").where("users.id", 1).update({
+  name: "John Smith",
+  updated_at: new Date(),
+});
 
 console.log(`${count} rows updated`);
 ```
@@ -100,9 +97,7 @@ console.log(`${count} rows updated`);
 Deletes records.
 
 ```typescript
-const count = await puri.table("users")
-  .where("users.status", "inactive")
-  .delete();
+const count = await puri.table("users").where("users.status", "inactive").delete();
 
 console.log(`${count} rows deleted`);
 ```
@@ -113,14 +108,10 @@ Increments/decrements numeric columns.
 
 ```typescript
 // Increment views
-await puri.table("posts")
-  .where("posts.id", 123)
-  .increment("posts.views", 1);
+await puri.table("posts").where("posts.id", 123).increment("posts.views", 1);
 
 // Decrement stock
-await puri.table("products")
-  .where("products.id", 456)
-  .decrement("products.stock", 5);
+await puri.table("products").where("products.id", 456).decrement("products.stock", 5);
 ```
 
 ## Fetching Results
@@ -130,7 +121,8 @@ await puri.table("products")
 Fetches only the first record.
 
 ```typescript
-const user = await puri.table("users")
+const user = await puri
+  .table("users")
   .where("users.email", "john@example.com")
   .select({ id: "users.id", name: "users.name" })
   .first();
@@ -143,15 +135,12 @@ const user = await puri.table("users")
 Fetches only specific column values as an array.
 
 ```typescript
-const userIds = await puri.table("users")
-  .where("users.status", "active")
-  .pluck("users.id");
+const userIds = await puri.table("users").where("users.status", "active").pluck("users.id");
 
 // userIds: number[]
 // [1, 2, 3, 4, 5]
 
-const emails = await puri.table("users")
-  .pluck("users.email");
+const emails = await puri.table("users").pluck("users.email");
 
 // emails: string[]
 // ["john@example.com", "jane@example.com", ...]
@@ -164,17 +153,18 @@ const emails = await puri.table("users")
 Vector similarity search using pgvector.
 
 ```typescript
-const queryEmbedding = [0.1, 0.2, 0.3, /* ... */];  // 1536 dimensions
+const queryEmbedding = [0.1, 0.2, 0.3 /* ... */]; // 1536 dimensions
 
-const results = await puri.table("documents")
+const results = await puri
+  .table("documents")
   .vectorSimilarity("documents.embedding", queryEmbedding, {
-    method: "cosine",  // or "l2", "inner_product"
-    threshold: 0.7     // Only similarity >= 0.7
+    method: "cosine", // or "l2", "inner_product"
+    threshold: 0.7, // Only similarity >= 0.7
   })
   .select({
     id: "documents.id",
     title: "documents.title",
-    similarity: "similarity"  // Automatically added
+    similarity: "similarity", // Automatically added
   })
   .limit(10);
 
@@ -182,6 +172,7 @@ const results = await puri.table("documents")
 ```
 
 **Options:**
+
 - `method`: Similarity measurement method
   - `cosine`: Cosine similarity (0~1, higher is more similar)
   - `l2`: Euclidean distance (lower is more similar)
@@ -195,16 +186,17 @@ The `distinctOn` option allows you to retrieve only the most similar result for 
 
 ```typescript
 // Get the most similar document per category
-const results = await puri.table("documents")
+const results = await puri
+  .table("documents")
   .vectorSimilarity("documents.embedding", queryEmbedding, {
     method: "cosine",
-    distinctOn: "documents.category_id"  // One most similar document per category
+    distinctOn: "documents.category_id", // One most similar document per category
   })
   .select({
     id: "documents.id",
     title: "documents.title",
     category_id: "documents.category_id",
-    similarity: "similarity"
+    similarity: "similarity",
   })
   .limit(10);
 ```
@@ -213,17 +205,19 @@ You can combine `distinctOn` with `threshold`:
 
 ```typescript
 // Get the most similar document per author with similarity >= 0.6
-const results = await puri.table("documents")
+const results = await puri
+  .table("documents")
   .vectorSimilarity("documents.embedding", queryEmbedding, {
     method: "cosine",
     distinctOn: "documents.author_id",
-    threshold: 0.6
+    threshold: 0.6,
   })
   .limit(5);
 ```
 
 <Note>
-When using the `distinctOn` option, the query is internally wrapped in a subquery and sorted by `similarity` in descending order in the outer query.
+  When using the `distinctOn` option, the query is internally wrapped in a subquery and sorted by
+  `similarity` in descending order in the outer query.
 </Note>
 
 ## Upsert (INSERT or UPDATE)
@@ -234,29 +228,32 @@ Specifies action on conflict.
 
 ```typescript
 // DO NOTHING
-await puri.table("users")
+await puri
+  .table("users")
   .insert({ email: "john@example.com", name: "John" })
   .onConflict(["email"], "nothing");
 
 // INSERT ... ON CONFLICT (email) DO NOTHING
 
 // DO UPDATE
-await puri.table("users")
+await puri
+  .table("users")
   .insert({ email: "john@example.com", name: "John Smith" })
   .onConflict(["email"], {
-    update: ["name"]  // Update only name
+    update: ["name"], // Update only name
   });
 
 // INSERT ... ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
 
 // Object form
-await puri.table("users")
+await puri
+  .table("users")
   .insert({ email: "john@example.com", count: 1 })
   .onConflict(["email"], {
     update: {
-      count: Puri.rawNumber("users.count + 1"),  // SQL expression
-      updated_at: new Date()
-    }
+      count: Puri.rawNumber("users.count + 1"), // SQL expression
+      updated_at: new Date(),
+    },
   });
 ```
 
@@ -266,12 +263,14 @@ Returns inserted/updated records.
 
 ```typescript
 // All columns
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .insert({ email: "john@example.com", name: "John" })
   .returning("*");
 
 // Specific columns
-const [user] = await puri.table("users")
+const [user] = await puri
+  .table("users")
   .insert({ email: "john@example.com", name: "John" })
   .returning(["id", "email"]);
 
@@ -285,15 +284,16 @@ console.log(user.id, user.email);
 Clones a query.
 
 ```typescript
-const baseQuery = puri.table("users")
-  .where("users.status", "active");
+const baseQuery = puri.table("users").where("users.status", "active");
 
 // Clone and add different conditions
-const admins = await baseQuery.clone()
+const admins = await baseQuery
+  .clone()
   .where("users.role", "admin")
   .select({ id: "users.id", name: "users.name" });
 
-const editors = await baseQuery.clone()
+const editors = await baseQuery
+  .clone()
   .where("users.role", "editor")
   .select({ id: "users.id", name: "users.name" });
 ```
@@ -303,10 +303,11 @@ const editors = await baseQuery.clone()
 Prints generated SQL to console.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .where("users.status", "active")
   .select({ id: "users.id", name: "users.name" })
-  .debug();  // Print SQL
+  .debug(); // Print SQL
 
 // [Puri Debug] SELECT users.id, users.name FROM users WHERE users.status = 'active'
 ```
@@ -316,7 +317,8 @@ const users = await puri.table("users")
 Returns SQL query string.
 
 ```typescript
-const query = puri.table("users")
+const query = puri
+  .table("users")
   .where("users.status", "active")
   .select({ id: "users.id", name: "users.name" });
 
@@ -330,9 +332,12 @@ console.log(sql);
 Executes raw SQL.
 
 ```typescript
-const result = await puri.raw(`
+const result = await puri.raw(
+  `
   SELECT * FROM users WHERE status = ?
-`, ["active"]);
+`,
+  ["active"],
+);
 ```
 
 ## Real-World Examples
@@ -361,6 +366,7 @@ const result = await puri.raw(`
         .orderBy("total_spent", "desc");
     }
     ```
+
   </Tab>
 
   <Tab title="Batch Update" icon="pen-to-square">
@@ -381,6 +387,7 @@ const result = await puri.raw(`
       return count;
     }
     ```
+
   </Tab>
 
   <Tab title="Upsert Pattern" icon="arrow-up-from-bracket">
@@ -430,6 +437,7 @@ const result = await puri.raw(`
         .limit(limit);
     }
     ```
+
   </Tab>
 
   <Tab title="Transaction" icon="arrows-rotate">
@@ -463,6 +471,7 @@ const result = await puri.raw(`
       });
     }
     ```
+
   </Tab>
 
   <Tab title="Conditional Query" icon="code-branch">
@@ -508,6 +517,7 @@ const result = await puri.raw(`
         .limit(50);
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -517,12 +527,11 @@ const result = await puri.raw(`
 
 ```typescript
 // ✅ Good: Batch at once
-await puri.table("users")
-  .insert([
-    { email: "user1@example.com", name: "User 1" },
-    { email: "user2@example.com", name: "User 2" },
-    // ... 1000 items
-  ]);
+await puri.table("users").insert([
+  { email: "user1@example.com", name: "User 1" },
+  { email: "user2@example.com", name: "User 2" },
+  // ... 1000 items
+]);
 
 // ❌ Bad: One by one in loop
 for (const user of users) {
@@ -534,13 +543,12 @@ for (const user of users) {
 
 ```typescript
 // ✅ Good: increment (atomic, fast)
-await puri.table("posts")
-  .where("posts.id", 123)
-  .increment("posts.views", 1);
+await puri.table("posts").where("posts.id", 123).increment("posts.views", 1);
 
 // ❌ Bad: SELECT → UPDATE (race condition, slow)
 const post = await puri.table("posts").where("posts.id", 123).first();
-await puri.table("posts")
+await puri
+  .table("posts")
   .where("posts.id", 123)
   .update({ views: post.views + 1 });
 ```
@@ -549,24 +557,26 @@ await puri.table("posts")
 
 ```typescript
 // ✅ Good: Filter with WHERE first
-await puri.table("orders")
-  .where("orders.status", "completed")  // Filter before GROUP BY
+await puri
+  .table("orders")
+  .where("orders.status", "completed") // Filter before GROUP BY
   .select({
     user_id: "orders.user_id",
-    total: Puri.sum("orders.amount")
+    total: Puri.sum("orders.amount"),
   })
   .groupBy("orders.user_id")
-  .having("total", ">", 1000);  // Filter after GROUP BY
+  .having("total", ">", 1000); // Filter after GROUP BY
 
 // ❌ Inefficient: All HAVING
-await puri.table("orders")
+await puri
+  .table("orders")
   .select({
     user_id: "orders.user_id",
-    total: Puri.sum("orders.amount")
+    total: Puri.sum("orders.amount"),
   })
   .groupBy("orders.user_id")
   .having("total", ">", 1000)
-  .having(/* status condition */);  // Inefficient
+  .having(/* status condition */); // Inefficient
 ```
 
 ## Cautions
@@ -631,21 +641,13 @@ USING hnsw (embedding vector_cosine_ops);
     Select fields to retrieve
   </Card>
 
-  <Card
-    title="where"
-    icon="filter"
-    href="/en/api-reference/puri-methods/where"
-  >
-    Filter conditions
-  </Card>
+<Card title="where" icon="filter" href="/en/api-reference/puri-methods/where">
+  Filter conditions
+</Card>
 
-  <Card
-    title="UpsertBuilder"
-    icon="layer-group"
-    href="/en/database/upsert-builder/basic-usage"
-  >
-    Handle bulk upserts
-  </Card>
+<Card title="UpsertBuilder" icon="layer-group" href="/en/database/upsert-builder/basic-usage">
+  Handle bulk upserts
+</Card>
 
   <Card
     title="Transactions"

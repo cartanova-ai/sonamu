@@ -18,7 +18,8 @@ Entity는 다음을 포함하는 데이터 모델 정의입니다:
 ## Entity 정의 방법
 
 <Note>
-Entity는 **Sonamu UI**(`http://localhost:34900/sonamu-ui`)에서 시각적으로 정의하는 것을 권장합니다. Sonamu UI는 자동 완성, 유효성 검사, 실시간 미리보기 기능을 제공합니다.
+  Entity는 **Sonamu UI**(`http://localhost:34900/sonamu-ui`)에서 시각적으로 정의하는 것을
+  권장합니다. Sonamu UI는 자동 완성, 유효성 검사, 실시간 미리보기 기능을 제공합니다.
 </Note>
 
 ### entity.json 파일 구조
@@ -28,7 +29,7 @@ Entity는 `entity.json` 파일로 저장되며, 다음과 같은 구조를 가�
 ```json
 {
   "id": "User",
-  "table": "users", 
+  "table": "users",
   "title": "사용자",
   "props": [...],
   "indexes": [...],
@@ -51,10 +52,7 @@ Entity의 고유 식별자입니다. **PascalCase**로 작성합니다.
 }
 ```
 
-<Info>
-- Entity 클래스명, 타입명에 사용됩니다
-- 예: `UserModel`, `User`, `UserBaseSchema`
-</Info>
+<Info>- Entity 클래스명, 타입명에 사용됩니다 - 예: `UserModel`, `User`, `UserBaseSchema`</Info>
 
 ### table
 
@@ -67,9 +65,8 @@ Entity의 고유 식별자입니다. **PascalCase**로 작성합니다.
 ```
 
 <Tip>
-테이블명을 생략하면 Entity ID를 기반으로 자동 생성됩니다:
-- `User` → `users`
-- `BlogPost` → `blog_posts`
+  테이블명을 생략하면 Entity ID를 기반으로 자동 생성됩니다: - `User` → `users` - `BlogPost` →
+  `blog_posts`
 </Tip>
 
 ### title
@@ -98,18 +95,17 @@ Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정�
 
 **기본 속성 옵션**:
 
-| 옵션 | 타입 | 설명 | 기본값 |
-|------|------|------|--------|
-| `name` | string | 속성명 (snake_case) | *필수* |
-| `type` | string | 데이터 타입 | *필수* |
-| `desc` | string | 설명 | - |
-| `nullable` | boolean | NULL 허용 여부 | `false` |
-| `dbDefault` | string | DB 기본값 | - |
+| 옵션        | 타입    | 설명                | 기본값  |
+| ----------- | ------- | ------------------- | ------- |
+| `name`      | string  | 속성명 (snake_case) | _필수_  |
+| `type`      | string  | 데이터 타입         | _필수_  |
+| `desc`      | string  | 설명                | -       |
+| `nullable`  | boolean | NULL 허용 여부      | `false` |
+| `dbDefault` | string  | DB 기본값           | -       |
 
 <Info>
-**더 알아보기**
-- [Field Types](/ko/core-concepts/entity/field-types) - 사용 가능한 모든 데이터 타입
-- [Relations](/ko/core-concepts/entity/relations) - Entity 간 관계 정의
+  **더 알아보기** - [Field Types](/ko/core-concepts/entity/field-types) - 사용 가능한 모든 데이터
+  타입 - [Relations](/ko/core-concepts/entity/relations) - Entity 간 관계 정의
 </Info>
 
 ## 선택 필드
@@ -126,9 +122,7 @@ Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정�
 }
 ```
 
-<Warning>
-parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. 신중하게 사용하세요.
-</Warning>
+<Warning>parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. 신중하게 사용하세요.</Warning>
 
 ### indexes
 
@@ -143,7 +137,7 @@ parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. �
       "columns": [{ "name": "email" }]
     },
     {
-      "type": "index", 
+      "type": "index",
       "name": "users_created_at_idx",
       "columns": [{ "name": "created_at" }]
     }
@@ -152,6 +146,7 @@ parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. �
 ```
 
 **인덱스 타입**:
+
 - `index` - 일반 인덱스 (검색 성능 향상)
 - `unique` - 유니크 인덱스 (중복 방지)
 - `hnsw` - Vector 검색용 HNSW 인덱스
@@ -189,8 +184,9 @@ type UserSubsetA = {
   email: string;
   username: string;
   created_at: Date;
-}
+};
 ```
+
 </CodeGroup>
 
 **Relation 필드 포함**:
@@ -198,18 +194,14 @@ type UserSubsetA = {
 ```json
 {
   "subsets": {
-    "P": [
-      "id",
-      "username",
-      "employee.id",
-      "employee.department.name"
-    ]
+    "P": ["id", "username", "employee.id", "employee.department.name"]
   }
 }
 ```
 
 <Info>
-Subset의 ``.`` 표기법으로 연관 Entity의 필드를 포함할 수 있습니다. Sonamu가 자동으로 JOIN을 생성합니다.
+  Subset의 ``.`` 표기법으로 연관 Entity의 필드를 포함할 수 있습니다. Sonamu가 자동으로 JOIN을
+  생성합니다.
 </Info>
 
 ### enums
@@ -270,9 +262,7 @@ async updateRole(userId: number, role: Role) {
     { "name": "is_verified", "type": "boolean", "desc": "인증 여부", "dbDefault": "false" },
     { "name": "deleted_at", "type": "date", "nullable": true, "desc": "삭제일시" }
   ],
-  "indexes": [
-    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }
-  ],
+  "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
     "A": ["id", "email", "username", "role", "created_at"],
     "P": ["id", "email", "username", "role"]
@@ -313,7 +303,14 @@ async updateRole(userId: number, role: Role) {
       "onDelete": "SET NULL"
     },
     { "name": "employee_number", "type": "string", "length": 32, "desc": "사번" },
-    { "name": "salary", "type": "numeric", "precision": 10, "scale": 2, "nullable": true, "desc": "급여" },
+    {
+      "name": "salary",
+      "type": "numeric",
+      "precision": 10,
+      "scale": 2,
+      "nullable": true,
+      "desc": "급여"
+    },
     { "name": "hire_date", "type": "date", "nullable": true, "desc": "입사일" }
   ],
   "indexes": [
@@ -343,6 +340,7 @@ async updateRole(userId: number, role: Role) {
 ## Sonamu UI에서 Entity 정의하기
 
 1. **Sonamu UI 접속**
+
    ```bash
    # API 서버 실행 후
    http://localhost:34900/sonamu-ui
@@ -369,12 +367,20 @@ async updateRole(userId: number, role: Role) {
    - Migration 자동 생성
 
 <Frame caption="Sonamu UI에서 Entity 생성하는 전체 과정">
-<video autoPlay muted loop playsInline controls className="w-full rounded-xl" preload="metadata" src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"></video>
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"
+  ></video>
 </Frame>
 
 <Info>
-**더 알아보기**
-- [Sonamu UI 사용하기](/ko/core-concepts/entity/using-sonamu-ui) - UI 상세 가이드
+  **더 알아보기** - [Sonamu UI 사용하기](/ko/core-concepts/entity/using-sonamu-ui) - UI 상세 가이드
 </Info>
 
 ## Entity 정의 후 자동 생성되는 것들
@@ -399,18 +405,15 @@ Entity를 정의하고 저장하면 Sonamu가 자동으로 다음을 생성합�
 ## 주의사항
 
 <Warning>
-**Entity 정의 수정 시 주의**
-- 이미 배포된 테이블의 컬럼을 삭제하거나 타입을 변경할 때는 신중하게 진행하세요
-- 마이그레이션을 통해 단계적으로 변경하는 것을 권장합니다
-- Relation을 변경할 때는 참조 무결성을 고려하세요
+  **Entity 정의 수정 시 주의** - 이미 배포된 테이블의 컬럼을 삭제하거나 타입을 변경할 때는 신중하게
+  진행하세요 - 마이그레이션을 통해 단계적으로 변경하는 것을 권장합니다 - Relation을 변경할 때는 참조
+  무결성을 고려하세요
 </Warning>
 
 <Tip>
-**Entity 설계 팁**
-- ID는 항상 `integer` 타입으로 시작하세요
-- `created_at`, `updated_at` 필드를 포함하세요
-- Unique 제약이 필요한 필드는 인덱스로 명시하세요
-- 자주 검색되는 필드에는 인덱스를 추가하세요
+  **Entity 설계 팁** - ID는 항상 `integer` 타입으로 시작하세요 - `created_at`, `updated_at` 필드를
+  포함하세요 - Unique 제약이 필요한 필드는 인덱스로 명시하세요 - 자주 검색되는 필드에는 인덱스를
+  추가하세요
 </Tip>
 
 ## 다음 단계

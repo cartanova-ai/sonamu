@@ -107,11 +107,11 @@ pnpm add pgvector
 
 ### 2.5 pgvector 이미지 태그 옵션
 
-| 태그 | 설명 |
-|------|------|
-| `pgvector/pgvector:pg18` | PostgreSQL 18 + pgvector (최신) |
-| `pgvector/pgvector:pg17` | PostgreSQL 17 + pgvector |
-| `pgvector/pgvector:0.8.1-pg18` | 특정 pgvector 버전 지정 |
+| 태그                           | 설명                            |
+| ------------------------------ | ------------------------------- |
+| `pgvector/pgvector:pg18`       | PostgreSQL 18 + pgvector (최신) |
+| `pgvector/pgvector:pg17`       | PostgreSQL 17 + pgvector        |
+| `pgvector/pgvector:0.8.1-pg18` | 특정 pgvector 버전 지정         |
 
 ---
 
@@ -152,10 +152,10 @@ pnpm add pgvector
 
 Voyage AI는 **비대칭 임베딩**을 사용합니다:
 
-| 상황 | input_type | 설명 |
-|------|------------|------|
-| DB에 저장할 때 | `"document"` | 긴 문서용 변환 |
-| 검색할 때 | `"query"` | 짧은 질문용 변환 |
+| 상황           | input_type   | 설명             |
+| -------------- | ------------ | ---------------- |
+| DB에 저장할 때 | `"document"` | 긴 문서용 변환   |
+| 검색할 때      | `"query"`    | 짧은 질문용 변환 |
 
 ```typescript
 // ✅ 저장 시 (VectorSearch 내부에서 자동 처리)
@@ -179,12 +179,12 @@ SET hnsw.iterative_scan = relaxed_order;
 
 ### 3.5 pgvector 연산자
 
-| 연산자 | 설명 | 용도 |
-|--------|------|------|
-| `<=>` | Cosine distance | ✅ 텍스트 유사도 (권장) |
-| `<->` | L2 distance (Euclidean) | 거리 기반 검색 |
-| `<#>` | Inner product (negative) | 정규화된 벡터, 추천 시스템 |
-| `<+>` | L1 distance (Manhattan) | 특수한 경우 |
+| 연산자 | 설명                     | 용도                       |
+| ------ | ------------------------ | -------------------------- |
+| `<=>`  | Cosine distance          | ✅ 텍스트 유사도 (권장)    |
+| `<->`  | L2 distance (Euclidean)  | 거리 기반 검색             |
+| `<#>`  | Inner product (negative) | 정규화된 벡터, 추천 시스템 |
+| `<+>`  | L1 distance (Manhattan)  | 특수한 경우                |
 
 ---
 
@@ -229,10 +229,10 @@ CREATE INDEX idx_sync_fixtures_fts ON sync_fixtures USING GIN (content_tsv);
 
 ### 4.3 인덱스 옵션 비교
 
-| 인덱스 | 장점 | 단점 | 권장 용도 |
-|--------|------|------|-----------|
-| **HNSW** | 빠른 검색, 높은 정확도 | 빌드 시간 김 | 일반적인 경우 (권장) |
-| **IVFFlat** | 빠른 빌드, 낮은 메모리 | 정확도 낮음 | 1M+ 레코드 대용량 |
+| 인덱스      | 장점                   | 단점         | 권장 용도            |
+| ----------- | ---------------------- | ------------ | -------------------- |
+| **HNSW**    | 빠른 검색, 높은 정확도 | 빌드 시간 김 | 일반적인 경우 (권장) |
+| **IVFFlat** | 빠른 빌드, 낮은 메모리 | 정확도 낮음  | 1M+ 레코드 대용량    |
 
 ```sql
 -- IVFFlat 인덱스 (대용량)
@@ -247,13 +247,13 @@ WITH (lists = 100);  -- sqrt(rows) 권장
 
 ### 5.1 구현 완료 현황
 
-| 구분 | 상태 | 비고 |
-|------|------|------|
-| Docker 환경 (pgvector/pgvector:pg18) | ✅ | init.sql에 extension 추가 완료 |
-| Sonamu 타입 시스템 (VectorProp, VectorArrayProp) | ✅ | type guard, Zod 스키마 포함 |
-| 마이그레이션 코드 생성 | ✅ | `table.specificType('embedding', 'vector(1536)')` |
-| Sonamu UI (dimensions 입력) | ✅ | |
-| Embedding/VectorSearch 서비스 | ✅ | sonamu 모듈에 구현 |
+| 구분                                             | 상태 | 비고                                              |
+| ------------------------------------------------ | ---- | ------------------------------------------------- |
+| Docker 환경 (pgvector/pgvector:pg18)             | ✅   | init.sql에 extension 추가 완료                    |
+| Sonamu 타입 시스템 (VectorProp, VectorArrayProp) | ✅   | type guard, Zod 스키마 포함                       |
+| 마이그레이션 코드 생성                           | ✅   | `table.specificType('embedding', 'vector(1536)')` |
+| Sonamu UI (dimensions 입력)                      | ✅   |                                                   |
+| Embedding/VectorSearch 서비스                    | ✅   | sonamu 모듈에 구현                                |
 
 ### 5.2 타입 정의
 
@@ -306,15 +306,15 @@ export function isVectorProp(p: unknown): p is VectorProp | VectorArrayProp {
 
 ```typescript
 // 자동 생성됨
-table.specificType('embedding', 'vector(1024)').nullable();
+table.specificType("embedding", "vector(1024)").nullable();
 ```
 
 ### 5.5 Zod 스키마 변환
 
 ```typescript
 // vector 타입의 Zod 스키마
-embedding: z.array(z.number())           // vector
-embeddings: z.array(z.array(z.number())) // vector[]
+embedding: z.array(z.number()); // vector
+embeddings: z.array(z.array(z.number())); // vector[]
 ```
 
 ---
@@ -346,7 +346,7 @@ import {
 export const DEFAULT_VECTOR_CONFIG = {
   // Voyage AI 설정
   voyage: {
-    apiKey: "",  // Sonamu.secrets.voyage_api_key에서 자동 로드
+    apiKey: "", // Sonamu.secrets.voyage_api_key에서 자동 로드
     baseUrl: "https://api.voyageai.com/v1/embeddings",
     model: "voyage-3",
     dimensions: 1024,
@@ -356,7 +356,7 @@ export const DEFAULT_VECTOR_CONFIG = {
 
   // OpenAI 설정
   openai: {
-    apiKey: "",  // Sonamu.secrets.openai_api_key에서 자동 로드
+    apiKey: "", // Sonamu.secrets.openai_api_key에서 자동 로드
     baseUrl: "https://api.openai.com/v1/embeddings",
     model: "text-embedding-3-small",
     dimensions: 1536,
@@ -374,7 +374,7 @@ export const DEFAULT_VECTOR_CONFIG = {
 
   // pgvector 설정
   pgvector: {
-    iterativeScan: true,  // WHERE 절 필터링 시 정확한 결과 보장
+    iterativeScan: true, // WHERE 절 필터링 시 정확한 결과 보장
     efSearch: 100,
   },
 };
@@ -406,25 +406,24 @@ export interface VectorSearchResult<T = Record<string, unknown>> {
 }
 
 /** 하이브리드 검색 결과 (Vector + FTS) */
-export interface HybridSearchResult<T = Record<string, unknown>>
-  extends VectorSearchResult<T> {
+export interface HybridSearchResult<T = Record<string, unknown>> extends VectorSearchResult<T> {
   vectorScore?: number;
   ftsScore?: number;
 }
 
 /** 벡터 검색 옵션 */
 export interface VectorSearchOptions {
-  embeddingColumn?: string;  // 기본값: "content_embedding"
-  limit?: number;            // 기본값: 10
-  threshold?: number;        // 기본값: 0.5
-  where?: string;            // SQL WHERE 절 (예: "is_active = true")
+  embeddingColumn?: string; // 기본값: "content_embedding"
+  limit?: number; // 기본값: 10
+  threshold?: number; // 기본값: 0.5
+  where?: string; // SQL WHERE 절 (예: "is_active = true")
 }
 
 /** 하이브리드 검색 옵션 */
 export interface HybridSearchOptions extends VectorSearchOptions {
-  vectorWeight?: number;     // 기본값: 0.7
-  ftsWeight?: number;        // 기본값: 0.3
-  ftsColumn?: string;        // 기본값: "content_tsv"
+  vectorWeight?: number; // 기본값: 0.7
+  ftsWeight?: number; // 기본값: 0.3
+  ftsColumn?: string; // 기본값: "content_tsv"
 }
 
 /** 임베딩 저장 항목 */
@@ -453,7 +452,7 @@ export class Embedding {
   async embed(
     texts: string[],
     provider: EmbeddingProvider,
-    inputType?: VectorInputType
+    inputType?: VectorInputType,
   ): Promise<EmbeddingResult[]>;
 
   /**
@@ -462,7 +461,7 @@ export class Embedding {
   async embedOne(
     text: string,
     provider: EmbeddingProvider,
-    inputType?: VectorInputType
+    inputType?: VectorInputType,
   ): Promise<EmbeddingResult>;
 
   /**
@@ -474,7 +473,7 @@ export class Embedding {
     texts: string[],
     provider: EmbeddingProvider,
     inputType?: VectorInputType,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<EmbeddingResult[]>;
 
   /**
@@ -511,7 +510,7 @@ export class VectorSearch<T = Record<string, unknown>> {
     id: number,
     text: string,
     provider: EmbeddingProvider,
-    embeddingColumn?: string  // 기본값: "content_embedding"
+    embeddingColumn?: string, // 기본값: "content_embedding"
   ): Promise<void>;
 
   /**
@@ -523,7 +522,7 @@ export class VectorSearch<T = Record<string, unknown>> {
     items: EmbeddingItem[],
     provider: EmbeddingProvider,
     embeddingColumn?: string,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<void>;
 
   /**
@@ -534,7 +533,7 @@ export class VectorSearch<T = Record<string, unknown>> {
   async search(
     query: string,
     provider: EmbeddingProvider,
-    options?: VectorSearchOptions
+    options?: VectorSearchOptions,
   ): Promise<VectorSearchResult<T>[]>;
 
   /**
@@ -544,7 +543,7 @@ export class VectorSearch<T = Record<string, unknown>> {
   async hybridSearch(
     query: string,
     provider: EmbeddingProvider,
-    options?: HybridSearchOptions
+    options?: HybridSearchOptions,
   ): Promise<HybridSearchResult<T>[]>;
 
   /**
@@ -559,10 +558,7 @@ export class VectorSearch<T = Record<string, unknown>> {
   /**
    * 임베딩이 없는 항목 ID 조회
    */
-  async getItemsWithoutEmbedding(
-    embeddingColumn?: string,
-    limit?: number
-  ): Promise<number[]>;
+  async getItemsWithoutEmbedding(embeddingColumn?: string, limit?: number): Promise<number[]>;
 
   /**
    * Embedding 인스턴스 반환 (고급 사용)
@@ -594,10 +590,7 @@ let _vectorSearch: VectorSearch<SyncFixtureSubsetA> | null = null;
 export function getVectorSearch(): VectorSearch<SyncFixtureSubsetA> {
   if (!_vectorSearch) {
     // DB.getDB("w")는 Knex 인스턴스를 반환
-    _vectorSearch = new VectorSearch<SyncFixtureSubsetA>(
-      DB.getDB("w"),
-      "sync_fixtures"
-    );
+    _vectorSearch = new VectorSearch<SyncFixtureSubsetA>(DB.getDB("w"), "sync_fixtures");
   }
   return _vectorSearch;
 }
@@ -605,10 +598,7 @@ export function getVectorSearch(): VectorSearch<SyncFixtureSubsetA> {
 /**
  * name + description을 합쳐서 임베딩용 텍스트 생성
  */
-export function buildEmbeddingText(
-  name: string,
-  description: string | null
-): string {
+export function buildEmbeddingText(name: string, description: string | null): string {
   return `${name}\n${description || ""}`.trim();
 }
 
@@ -620,7 +610,7 @@ export async function saveSyncFixtureEmbedding(
   name: string,
   description: string | null,
   provider: EmbeddingProvider = "voyage",
-  embeddingColumn: string = "content_embedding"
+  embeddingColumn: string = "content_embedding",
 ): Promise<void> {
   const text = buildEmbeddingText(name, description);
   const vectorSearch = getVectorSearch();
@@ -634,19 +624,14 @@ export async function saveSyncFixtureEmbeddingsBatch(
   items: Array<{ id: number; name: string; description: string | null }>,
   provider: EmbeddingProvider = "voyage",
   embeddingColumn: string = "content_embedding",
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: (processed: number, total: number) => void,
 ): Promise<void> {
   const vectorSearch = getVectorSearch();
   const embeddingItems = items.map((item) => ({
     id: item.id,
     text: buildEmbeddingText(item.name, item.description),
   }));
-  await vectorSearch.saveEmbeddingsBatch(
-    embeddingItems,
-    provider,
-    embeddingColumn,
-    onProgress
-  );
+  await vectorSearch.saveEmbeddingsBatch(embeddingItems, provider, embeddingColumn, onProgress);
 }
 
 /**
@@ -660,7 +645,7 @@ export async function searchSyncFixtures(
     limit?: number;
     threshold?: number;
     where?: string;
-  } = {}
+  } = {},
 ): Promise<VectorSearchResult<SyncFixtureSubsetA>[]> {
   const vectorSearch = getVectorSearch();
   return vectorSearch.search(query, options.provider ?? "voyage", {
@@ -683,7 +668,7 @@ export async function hybridSearchSyncFixtures(
     limit?: number;
     vectorWeight?: number;
     ftsWeight?: number;
-  } = {}
+  } = {},
 ): Promise<HybridSearchResult<SyncFixtureSubsetA>[]> {
   const vectorSearch = getVectorSearch();
   return vectorSearch.hybridSearch(query, options.provider ?? "voyage", {
@@ -698,9 +683,7 @@ export async function hybridSearchSyncFixtures(
 /**
  * 임베딩 현황 조회
  */
-export async function getSyncFixtureEmbeddingStatus(
-  embeddingColumn: string = "content_embedding"
-) {
+export async function getSyncFixtureEmbeddingStatus(embeddingColumn: string = "content_embedding") {
   const vectorSearch = getVectorSearch();
   return vectorSearch.getEmbeddingStatus(embeddingColumn);
 }
@@ -739,7 +722,7 @@ async function migrateEmbeddings() {
     (processed, total) => {
       const pct = ((processed / total) * 100).toFixed(1);
       console.log(`진행률: ${processed}/${total} (${pct}%)`);
-    }
+    },
   );
 
   // 결과 확인
@@ -804,7 +787,7 @@ results.forEach((r, i) => {
     `${i + 1}. [Total: ${r.similarity.toFixed(4)}] ` +
       `[Vec: ${r.vectorScore?.toFixed(4)}] ` +
       `[FTS: ${r.ftsScore?.toFixed(4)}] ` +
-      `${r.data.name}`
+      `${r.data.name}`,
   );
 });
 ```
@@ -862,29 +845,29 @@ npx vitest run src/sonamu-test/vector.test.ts
 
 ### 9.1 스펙 비교
 
-| 항목 | Voyage AI (voyage-3) | OpenAI (text-embedding-3-small) |
-|------|---------------------|--------------------------------|
-| 차원 | 1024 | 1536 |
-| 컨텍스트 | 32K tokens | 8K tokens |
-| 가격 | $0.06/1M tokens | $0.02/1M tokens |
-| 비대칭 임베딩 | ✅ (document/query) | ❌ |
+| 항목          | Voyage AI (voyage-3) | OpenAI (text-embedding-3-small) |
+| ------------- | -------------------- | ------------------------------- |
+| 차원          | 1024                 | 1536                            |
+| 컨텍스트      | 32K tokens           | 8K tokens                       |
+| 가격          | $0.06/1M tokens      | $0.02/1M tokens                 |
+| 비대칭 임베딩 | ✅ (document/query)  | ❌                              |
 
 ### 9.2 벤치마크 결과 (1000개 기준)
 
-| 항목 | Voyage AI | OpenAI | 비교 |
-|------|-----------|--------|------|
-| 임베딩 | ~12초 | ~60초 | Voyage 5x 빠름 |
-| 검색 | ~12ms | ~15ms | 비슷 |
-| 저장공간 | 1024 * 4 = 4KB | 1536 * 4 = 6KB | Voyage 33% 절약 |
+| 항목     | Voyage AI       | OpenAI          | 비교            |
+| -------- | --------------- | --------------- | --------------- |
+| 임베딩   | ~12초           | ~60초           | Voyage 5x 빠름  |
+| 검색     | ~12ms           | ~15ms           | 비슷            |
+| 저장공간 | 1024 \* 4 = 4KB | 1536 \* 4 = 6KB | Voyage 33% 절약 |
 
 ### 9.3 선택 가이드
 
-| 상황 | 권장 |
-|------|------|
-| 속도/성능 중시 | Voyage AI |
-| 비용 중시 | OpenAI |
-| 긴 문서 처리 | Voyage AI (32K context) |
-| 한국어 특화 | 둘 다 양호 |
+| 상황           | 권장                    |
+| -------------- | ----------------------- |
+| 속도/성능 중시 | Voyage AI               |
+| 비용 중시      | OpenAI                  |
+| 긴 문서 처리   | Voyage AI (32K context) |
+| 한국어 특화    | 둘 다 양호              |
 
 ---
 
@@ -964,12 +947,12 @@ LIMIT 10;
 
 ### 10.6 환경별 pgvector 지원
 
-| 환경 | 지원 여부 | 비고 |
-|------|----------|------|
-| AWS RDS | ✅ | PostgreSQL 15.4+ |
-| GCP Cloud SQL | ✅ | PostgreSQL 15+ |
-| Supabase | ✅ | 기본 제공 |
-| Azure Database | ⚠️ | Flexible Server만 |
+| 환경           | 지원 여부 | 비고              |
+| -------------- | --------- | ----------------- |
+| AWS RDS        | ✅        | PostgreSQL 15.4+  |
+| GCP Cloud SQL  | ✅        | PostgreSQL 15+    |
+| Supabase       | ✅        | 기본 제공         |
+| Azure Database | ⚠️        | Flexible Server만 |
 
 ---
 

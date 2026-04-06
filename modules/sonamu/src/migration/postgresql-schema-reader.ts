@@ -1,6 +1,8 @@
 import assert from "assert";
+
 import type { Knex } from "knex";
 import { group } from "radashi";
+
 import type {
   MigrationColumn,
   MigrationForeign,

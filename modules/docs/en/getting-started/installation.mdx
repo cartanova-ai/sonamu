@@ -13,9 +13,7 @@ The following environment is required to use Sonamu:
 - **pnpm** v10.23 or higher
 - **Docker** (for running the database)
 
-<Tip>
-  If pnpm is not installed, you can enable it with the `corepack enable` command.
-</Tip>
+<Tip>If pnpm is not installed, you can enable it with the `corepack enable` command.</Tip>
 
 <Frame caption="Running node --version, pnpm --version, docker --version in terminal">
   <img src="/images/installation1.png" alt="Checking Node.js, pnpm, Docker versions" />
@@ -63,21 +61,22 @@ pnpm create sonamu myapp \
 pnpm create sonamu myapp --db-name myapp --db-password secret123
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--yes`, `-y` | Use all default options | - |
-| `--pnpm` | pnpm installation (`y`/`n`) | (prompts) |
-| `--docker` | Docker DB setup (`y`/`n`) | (prompts) |
-| `--skip-pnpm` | Skip pnpm setup (same as `--pnpm n`) | false |
-| `--skip-docker` | Skip Docker DB setup (same as `--docker n`) | false |
-| `--docker-project`, `--docker-pj-name` | Docker Compose project name | {project}-docker |
-| `--db-user` | Database username | postgres |
-| `--db-name` | Database name | {project} |
-| `--db-password` | Database password | 1234 |
-| `--container-name` | Docker container name | {project}-container |
+| Option                                 | Description                                 | Default             |
+| -------------------------------------- | ------------------------------------------- | ------------------- |
+| `--yes`, `-y`                          | Use all default options                     | -                   |
+| `--pnpm`                               | pnpm installation (`y`/`n`)                 | (prompts)           |
+| `--docker`                             | Docker DB setup (`y`/`n`)                   | (prompts)           |
+| `--skip-pnpm`                          | Skip pnpm setup (same as `--pnpm n`)        | false               |
+| `--skip-docker`                        | Skip Docker DB setup (same as `--docker n`) | false               |
+| `--docker-project`, `--docker-pj-name` | Docker Compose project name                 | {project}-docker    |
+| `--db-user`                            | Database username                           | postgres            |
+| `--db-name`                            | Database name                               | {project}           |
+| `--db-password`                        | Database password                           | 1234                |
+| `--container-name`                     | Docker container name                       | {project}-container |
 
 <Note>
-In `--pnpm y` and `--docker y`, you can also use `yes`, `true`, or `1` instead of `y`. Similarly, `n` can be replaced with `no`, `false`, or `0`.
+  In `--pnpm y` and `--docker y`, you can also use `yes`, `true`, or `1` instead of `y`. Similarly,
+  `n` can be replaced with `no`, `false`, or `0`.
 </Note>
 
 <Frame caption="Running pnpm create sonamu with inline options default values">
@@ -343,17 +342,18 @@ export default defineConfig(({ command, isSsrBuild }) => ({
 
 Default ports are configured as follows:
 
-| Service    | Port | Description                  |
-| ---------- | ---- | ---------------------------- |
-| API Server | 34900 | Fastify-based REST API       |
-| Sonamu UI  | -    | http://localhost:34900/sonamu-ui |
-| Web App    | 5173 | Vite development server (Vite default, SSR support) |
-| PostgreSQL | 5432 | Database                     |
+| Service    | Port  | Description                                         |
+| ---------- | ----- | --------------------------------------------------- |
+| API Server | 34900 | Fastify-based REST API                              |
+| Sonamu UI  | -     | http://localhost:34900/sonamu-ui                    |
+| Web App    | 5173  | Vite development server (Vite default, SSR support) |
+| PostgreSQL | 5432  | Database                                            |
 
 <Note>
-- **Sonamu UI**: Access via the API server's `/sonamu-ui` path, not a separate port.
-- API server port: Modify the `port` constant in `packages/api/src/sonamu.config.ts` (in this case, also modify `API_PORT` in `packages/web/.sonamu.env`)
-- Web app port: Modify `server.port` in `packages/web/vite.config.ts`
+  - **Sonamu UI**: Access via the API server's `/sonamu-ui` path, not a separate port. - API server
+  port: Modify the `port` constant in `packages/api/src/sonamu.config.ts` (in this case, also modify
+  `API_PORT` in `packages/web/.sonamu.env`) - Web app port: Modify `server.port` in
+  `packages/web/vite.config.ts`
 </Note>
 
 ## Next Steps

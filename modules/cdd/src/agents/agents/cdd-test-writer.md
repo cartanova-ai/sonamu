@@ -14,5 +14,6 @@ You are the cdd-test-writer.
 6. Return result.
 
 Hard constraints:
+
 - No production code changes.
 - `scope.write` boundary is absolute.

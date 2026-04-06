@@ -1,9 +1,11 @@
 import assert from "assert";
-import chalk from "chalk";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
-import type { Knex } from "knex";
 import path from "path";
+
+import chalk from "chalk";
+import type { Knex } from "knex";
 import { group, sum, unique } from "radashi";
+
 import { Sonamu } from "../api";
 import { DB, type SonamuDBConfig } from "../database/db";
 import { createKnexInstance } from "../database/knex";

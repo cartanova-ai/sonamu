@@ -15,29 +15,29 @@ async findById(id: number): Promise<User> { }
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `httpMethod` | GET, POST, PUT, DELETE, PATCH | GET |
-| `clients` | Client types to generate | `["axios"]` |
-| `resourceName` | queryKey for TanStack Query | - |
-| `guards` | Authentication/authorization guards | - |
-| `path` | Custom path | `/{model}/{method}` |
-| `description` | API description (for documentation) | - |
-| `timeout` | Request timeout (ms) | - |
-| `contentType` | Response Content-Type | `application/json` |
-| `cacheControl` | Cache-Control header setting | - |
-| `compress` | Response compression setting (can disable with `false`) | - |
+| Option         | Description                                             | Default             |
+| -------------- | ------------------------------------------------------- | ------------------- |
+| `httpMethod`   | GET, POST, PUT, DELETE, PATCH                           | GET                 |
+| `clients`      | Client types to generate                                | `["axios"]`         |
+| `resourceName` | queryKey for TanStack Query                             | -                   |
+| `guards`       | Authentication/authorization guards                     | -                   |
+| `path`         | Custom path                                             | `/{model}/{method}` |
+| `description`  | API description (for documentation)                     | -                   |
+| `timeout`      | Request timeout (ms)                                    | -                   |
+| `contentType`  | Response Content-Type                                   | `application/json`  |
+| `cacheControl` | Cache-Control header setting                            | -                   |
+| `compress`     | Response compression setting (can disable with `false`) | -                   |
 
 ## clients Options
 
-| Client | Purpose |
-|--------|---------|
-| `axios` | General API calls |
-| `axios-multipart` | File upload (axios) |
-| `tanstack-query` | Query hook for reads |
-| `tanstack-mutation` | Mutation hook for writes |
-| `tanstack-mutation-multipart` | File upload Mutation |
-| `window-fetch` | Browser fetch API |
+| Client                        | Purpose                  |
+| ----------------------------- | ------------------------ |
+| `axios`                       | General API calls        |
+| `axios-multipart`             | File upload (axios)      |
+| `tanstack-query`              | Query hook for reads     |
+| `tanstack-mutation`           | Mutation hook for writes |
+| `tanstack-mutation-multipart` | File upload Mutation     |
+| `window-fetch`                | Browser fetch API        |
 
 ## Pattern Examples
 
@@ -81,16 +81,16 @@ async me(): Promise<User | null> {
 }
 ```
 
-| Context Property | Description |
-|-----------------|-------------|
-| `user` | Authenticated user (better-auth User, null if unauthenticated) |
-| `session` | Current session info (better-auth Session, null if unauthenticated) |
-| `request` | FastifyRequest |
-| `reply` | FastifyReply |
-| `headers` | HTTP request headers |
-| `bufferedFiles` | Buffer mode uploaded files |
-| `uploadedFiles` | Stream mode uploaded files |
-| `locale` | Request locale |
+| Context Property | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| `user`           | Authenticated user (better-auth User, null if unauthenticated)      |
+| `session`        | Current session info (better-auth Session, null if unauthenticated) |
+| `request`        | FastifyRequest                                                      |
+| `reply`          | FastifyReply                                                        |
+| `headers`        | HTTP request headers                                                |
+| `bufferedFiles`  | Buffer mode uploaded files                                          |
+| `uploadedFiles`  | Stream mode uploaded files                                          |
+| `locale`         | Request locale                                                      |
 
 ## File Upload (@upload)
 
@@ -111,13 +111,13 @@ async upload(...): Promise<number[]> { }
 
 **`@upload` supported options** (`httpMethod`, `clients` are not supported — set automatically)
 
-| Option | Description |
-|--------|-------------|
-| `guards` | Authentication/authorization guards |
-| `limits` | File count/size limits (`{ files: N }`) |
-| `consume` | `"buffer"` (default) or `"stream"` |
-| `description` | API documentation description |
-| `destination` | Stream mode only: storage driver key |
+| Option         | Description                                         |
+| -------------- | --------------------------------------------------- |
+| `guards`       | Authentication/authorization guards                 |
+| `limits`       | File count/size limits (`{ files: N }`)             |
+| `consume`      | `"buffer"` (default) or `"stream"`                  |
+| `description`  | API documentation description                       |
+| `destination`  | Stream mode only: storage driver key                |
 | `keyGenerator` | Stream mode only: function to generate storage path |
 
 ### Parameter Rule: Must Wrap in a Single Object
@@ -135,11 +135,12 @@ async upload(params: { entity_type: string; entity_id: number; file_type: string
 ```
 
 Call site pattern:
+
 ```typescript
 uploadMutation.mutate({
   params: { entity_type, entity_id, file_type },
   files,
-})
+});
 ```
 
 > For detailed root cause analysis, see the `@upload multiple parameters` section in `framework-change.md`.
@@ -187,7 +188,7 @@ async changeStatus(
   memo?: string
 ): Promise<Consultation> {
   const wdb = this.getPuri("w");
-  
+
   return wdb.transaction(async (trx) => {
     // 1. Update consultation
     await trx.ubRegister("consultations", {
@@ -196,7 +197,7 @@ async changeStatus(
       updated_at: new Date()
     });
     await trx.ubUpsert("consultations");
-    
+
     // 2. Record status change history
     await trx.ubRegister("consultation_histories", {
       consultation_id: id,
@@ -205,7 +206,7 @@ async changeStatus(
       created_at: new Date(),
     });
     await trx.ubUpsert("consultation_histories");
-    
+
     // 3. Return result
     return this.findById("A", id);
   });
@@ -213,6 +214,7 @@ async changeStatus(
 ```
 
 **Key points:**
+
 - Atomicity guaranteed by transaction
 - ubRegister + ubUpsert pattern
 - Return latest data after change
@@ -232,19 +234,19 @@ async enroll(
     course_id: courseId,
     user_id: userId,
   });
-  
+
   if (existing) {
     throw new Error("Already enrolled in this course");
   }
-  
+
   // 2. Check capacity
   const course = await CourseModel.findById("A", courseId);
   const { total } = await this.findMany({ course_id: courseId });
-  
+
   if (total >= course.max_students) {
     throw new Error("Course is at capacity");
   }
-  
+
   // 3. Enroll
   const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
   return this.findById("A", id);
@@ -252,6 +254,7 @@ async enroll(
 ```
 
 **Key points:**
+
 - Step-by-step validation (duplicate → capacity)
 - Clear error messages
 - Save after validation passes
@@ -286,34 +289,34 @@ Validating custom APIs in Business Logic tests:
 describe("E. Business Logic", () => {
   test("Status change API", async () => {
     const { consultationId } = await createTestConsultationWithDeps();
-    
+
     // Call custom API
     const updated = await ConsultationModel.changeStatus(
       consultationId,
       "completed",
-      "Consultation complete"
+      "Consultation complete",
     );
-    
+
     expect(updated.status).toBe("completed");
-    
+
     // Verify history was recorded
     const histories = await ConsultationHistoryModel.findMany({
       consultation_id: consultationId,
     });
     expect(histories.rows).toHaveLength(1);
   });
-  
+
   test("Enrollment validation", async () => {
     const courseId = 1;
     const userId = 1;
-    
+
     // First enrollment succeeds
     await EnrollmentModel.enroll(courseId, userId);
-    
+
     // Duplicate enrollment fails
-    await expect(
-      EnrollmentModel.enroll(courseId, userId)
-    ).rejects.toThrow("Already enrolled in this course");
+    await expect(EnrollmentModel.enroll(courseId, userId)).rejects.toThrow(
+      "Already enrolled in this course",
+    );
   });
 });
 ```
@@ -327,6 +330,7 @@ describe("E. Business Logic", () => {
 Use `this.modelName` and the `SD()` function for consistent error messages.
 
 **BAD: Hardcoded model name**
+
 ```typescript
 // findById
 if (!rows[0]) {
@@ -338,6 +342,7 @@ throw new BadRequestException(SD("error.unknownSearchField")(params.search));
 ```
 
 **GOOD: Using this.modelName**
+
 ```typescript
 // findById - auto-detects model name
 if (!rows[0]) {
@@ -349,6 +354,7 @@ throw new BadRequestException(SD("search.invalidField")(params.search));
 ```
 
 **Benefits:**
+
 - DRY principle: model name managed in one place
 - Refactoring safe: error messages auto-reflect model name changes
 - Short i18n keys: `notFound`, `search.invalidField` are more concise
@@ -358,6 +364,7 @@ throw new BadRequestException(SD("search.invalidField")(params.search));
 Use TypeScript's satisfies keyword to preserve type inference while checking types.
 
 **BAD: Loss of type inference**
+
 ```typescript
 const params: RoleListParams = {
   num: 24,
@@ -369,6 +376,7 @@ const params: RoleListParams = {
 ```
 
 **GOOD: Type check + preserved inference with satisfies**
+
 ```typescript
 const params = {
   num: 24,
@@ -380,6 +388,7 @@ const params = {
 ```
 
 **Benefits:**
+
 - Compile-time verification: checks that params satisfies the RoleListParams type
 - Preserved type inference: params keeps its narrowed type
 - Better IDE support: more accurate autocomplete and type checking
@@ -389,17 +398,19 @@ const params = {
 The debug option in executeSubsetQuery defaults to false, so it does not need to be specified explicitly.
 
 **BAD: Unnecessary debug: false**
+
 ```typescript
 return this.executeSubsetQuery({
   subset,
   qb,
   params,
   enhancers,
-  debug: false,  // unnecessary — it's the default
+  debug: false, // unnecessary — it's the default
 });
 ```
 
 **GOOD: Use the default**
+
 ```typescript
 return this.executeSubsetQuery({
   subset,
@@ -410,13 +421,14 @@ return this.executeSubsetQuery({
 ```
 
 **When to use debug: true:**
+
 ```typescript
 // Only specify when debugging
 return this.executeSubsetQuery({
   subset,
   qb,
   params,
-  debug: true,  // Print SQL query log
+  debug: true, // Print SQL query log
 });
 ```
 
@@ -439,13 +451,13 @@ import { z } from "zod";
 async processStream() { ... }
 ```
 
-| Option | Description | Required |
-|--------|-------------|----------|
-| `type` | `"sse"` (only SSE currently supported) | Yes |
-| `events` | Define event keys and payloads with Zod schema | Yes |
-| `path` | Custom path | - |
-| `resourceName` | Resource name | - |
-| `guards` | Authentication/authorization guards | - |
+| Option         | Description                                    | Required |
+| -------------- | ---------------------------------------------- | -------- |
+| `type`         | `"sse"` (only SSE currently supported)         | Yes      |
+| `events`       | Define event keys and payloads with Zod schema | Yes      |
+| `path`         | Custom path                                    | -        |
+| `resourceName` | Resource name                                  | -        |
+| `guards`       | Authentication/authorization guards            | -        |
 
 ## @transactional Decorator
 
@@ -460,8 +472,8 @@ async transferFunds(fromId: number, toId: number, amount: number) {
 }
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `isolation` | Transaction isolation level (read uncommitted/read committed/repeatable read/serializable) | - |
-| `readOnly` | Read-only transaction | `false` |
-| `dbPreset` | DB preset | `"w"` |
+| Option      | Description                                                                                | Default |
+| ----------- | ------------------------------------------------------------------------------------------ | ------- |
+| `isolation` | Transaction isolation level (read uncommitted/read committed/repeatable read/serializable) | -       |
+| `readOnly`  | Read-only transaction                                                                      | `false` |
+| `dbPreset`  | DB preset                                                                                  | `"w"`   |

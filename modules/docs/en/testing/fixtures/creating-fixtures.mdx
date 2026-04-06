@@ -9,24 +9,16 @@ Learn how to define reusable test data using Sonamu's createFixtureLoader.
 
 <CardGroup cols={2}>
   <Card title="createFixtureLoader" icon="code">
-    Type-safe definition
-    
-    Auto-completion support
+    Type-safe definition Auto-completion support
   </Card>
   <Card title="Reusable" icon="recycle">
-    Define once
-    
-    Share across tests
+    Define once Share across tests
   </Card>
   <Card title="Relation Handling" icon="link">
-    Auto BelongsTo resolution
-    
-    Nested data
+    Auto BelongsTo resolution Nested data
   </Card>
   <Card title="Selective Loading" icon="filter">
-    Load only what you need
-    
-    Fast tests
+    Load only what you need Fast tests
   </Card>
 </CardGroup>
 
@@ -51,7 +43,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   admin: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -73,22 +65,19 @@ export const loadFixtures = createFixtureLoader({
  *
  * Creates a function that loads fixtures for use in tests
  */
-export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(
-  loaders: T
-) {
+export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(loaders: T) {
   return async function loadFixtures<K extends keyof T>(
     names: K[],
   ): Promise<{ [P in K]: Awaited<ReturnType<T[P]>> }> {
     return Object.fromEntries(
-      await Promise.all(
-        names.map(async (name) => [name, await loaders[name]()])
-      ),
+      await Promise.all(names.map(async (name) => [name, await loaders[name]()])),
     );
   };
 }
 ```
 
 **Features**:
+
 - Type-safe: TypeScript infers fixture names and return types
 - Parallel loading: Multiple fixtures loaded simultaneously with `Promise.all`
 - Selective: Load only needed fixtures
@@ -114,7 +103,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // Premium user
   premiumUser: async () => {
     const userModel = new UserModel();
@@ -127,7 +116,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // Admin
   adminUser: async () => {
     const userModel = new UserModel();
@@ -162,25 +151,25 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // Author's post (reuses author fixture)
   authorPost: async () => {
     // Load other fixture
     const { author } = await loadFixtures(["author"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Author's First Post",
       content: "This is the content",
-      author_id: author.id,  // Set relation
+      author_id: author.id, // Set relation
     });
     return post;
   },
-  
+
   // Post comment (reuses authorPost fixture)
   postComment: async () => {
     const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-    
+
     const commentModel = new CommentModel();
     const { comment } = await commentModel.create({
       content: "Great post!",
@@ -200,7 +189,7 @@ export const loadFixtures = createFixtureLoader({
   users10: async () => {
     const userModel = new UserModel();
     const users = [];
-    
+
     for (let i = 1; i <= 10; i++) {
       const { user } = await userModel.create({
         username: `user${i}`,
@@ -209,21 +198,21 @@ export const loadFixtures = createFixtureLoader({
       });
       users.push(user);
     }
-    
+
     return users;
   },
-  
+
   // User with their posts
   userWith5Posts: async () => {
     const userModel = new UserModel();
     const postModel = new PostModel();
-    
+
     const { user } = await userModel.create({
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
     });
-    
+
     const posts = [];
     for (let i = 1; i <= 5; i++) {
       const { post } = await postModel.create({
@@ -233,7 +222,7 @@ export const loadFixtures = createFixtureLoader({
       });
       posts.push(post);
     }
-    
+
     return { user, posts };
   },
 });
@@ -248,14 +237,14 @@ export const loadFixtures = createFixtureLoader({
     const userModel = new UserModel();
     const postModel = new PostModel();
     const commentModel = new CommentModel();
-    
+
     // 1. Create author
     const { user: author } = await userModel.create({
       username: "author",
       email: "author@example.com",
       password: "password",
     });
-    
+
     // 2. Create readers
     const readers = await Promise.all([
       userModel.create({
@@ -269,14 +258,14 @@ export const loadFixtures = createFixtureLoader({
         password: "password",
       }),
     ]);
-    
+
     // 3. Create post
     const { post } = await postModel.create({
       title: "Popular Post",
       content: "This post has many comments",
       author_id: author.id,
     });
-    
+
     // 4. Create comments
     const comments = await Promise.all([
       commentModel.create({
@@ -295,12 +284,12 @@ export const loadFixtures = createFixtureLoader({
         author_id: author.id,
       }),
     ]);
-    
+
     return {
       author,
-      readers: readers.map(r => r.user),
+      readers: readers.map((r) => r.user),
       post,
-      comments: comments.map(c => c.comment),
+      comments: comments.map((c) => c.comment),
     };
   },
 });
@@ -322,11 +311,11 @@ bootstrap(vi);
 test("get author's posts", async () => {
   // Load fixtures
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   // Test
   const postModel = new PostModel();
   const { posts } = await postModel.getPostsByAuthor(author.id);
-  
+
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(authorPost.id);
 });
@@ -338,11 +327,11 @@ test("get author's posts", async () => {
 test("type-safe fixture usage", async () => {
   // ✅ IDE provides fixture name auto-completion
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   // ✅ Type inference
-  author.username;  // string
+  author.username; // string
   authorPost.title; // string
-  
+
   // ❌ Non-existent fixture
   const { invalid } = await loadFixtures(["invalid"]); // Type error!
 });
@@ -354,7 +343,7 @@ test("type-safe fixture usage", async () => {
 test("load only needed fixtures", async () => {
   // Only what's needed
   const { author } = await loadFixtures(["author"]);
-  
+
   // authorPost not loaded → creation cost saved
 });
 
@@ -365,7 +354,7 @@ test("load multiple fixtures simultaneously", async () => {
     "premiumUser",
     "adminUser",
   ]);
-  
+
   expect(author.role).toBe("user");
   expect(premiumUser.role).toBe("premium");
   expect(adminUser.role).toBe("admin");
@@ -379,19 +368,37 @@ test("load multiple fixtures simultaneously", async () => {
 ```typescript
 // ✅ Correct: Names with clear purpose
 export const loadFixtures = createFixtureLoader({
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
-  premiumSubscription: async () => { /* ... */ },
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
+  premiumSubscription: async () => {
+    /* ... */
+  },
 });
 
 // ❌ Wrong: Unclear names
 export const loadFixtures = createFixtureLoader({
-  user1: async () => { /* ... */ },
-  user2: async () => { /* ... */ },
-  post1: async () => { /* ... */ },
-  thing: async () => { /* ... */ },
+  user1: async () => {
+    /* ... */
+  },
+  user2: async () => {
+    /* ... */
+  },
+  post1: async () => {
+    /* ... */
+  },
+  thing: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -422,7 +429,9 @@ export const loadFixtures = createFixtureLoader({
       password: "password",
       bio: "Very long bio...",
       avatar: "https://...",
-      preferences: { /* complex object */ },
+      preferences: {
+        /* complex object */
+      },
       // Fields not needed for test
     });
     return user;
@@ -445,11 +454,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   userPost: async () => {
     // Reuse user fixture
     const { user } = await loadFixtures(["user"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Post",
@@ -458,11 +467,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return post;
   },
-  
+
   userPostComment: async () => {
     // Reuse userPost fixture (user automatically included)
     const { user, userPost } = await loadFixtures(["user", "userPost"]);
-    
+
     const commentModel = new CommentModel();
     const { comment } = await commentModel.create({
       content: "Comment",
@@ -480,17 +489,31 @@ export const loadFixtures = createFixtureLoader({
 // ✅ Correct: Consistent naming and structure
 export const loadFixtures = createFixtureLoader({
   // User related
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  premiumUser: async () => { /* ... */ },
-  
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  premiumUser: async () => {
+    /* ... */
+  },
+
   // Post related
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
-  
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
+
   // Scenarios
-  blogScenario: async () => { /* ... */ },
-  forumScenario: async () => { /* ... */ },
+  blogScenario: async () => {
+    /* ... */
+  },
+  forumScenario: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -523,12 +546,10 @@ export const loadFixtures = createFixtureLoader({
 ## Cautions
 
 <Warning>
-**Cautions when writing fixtures**:
-1. **Transaction-based**: Auto-rollback after each test
-2. **Minimal data**: Create only minimum data needed for test
-3. **Independence**: Fixtures should be independent of each other
-4. **Reuse**: Actively utilize common fixtures
-5. **Clear names**: Fixture names should clearly express purpose
+  **Cautions when writing fixtures**: 1. **Transaction-based**: Auto-rollback after each test 2.
+  **Minimal data**: Create only minimum data needed for test 3. **Independence**: Fixtures should be
+  independent of each other 4. **Reuse**: Actively utilize common fixtures 5. **Clear names**:
+  Fixture names should clearly express purpose
 </Warning>
 
 ## Next Steps

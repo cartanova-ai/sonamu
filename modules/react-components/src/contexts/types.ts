@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 제네릭 기본값으로 any 사용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 제네릭 기본값으로 any 사용
 
 /**
  * ⚠️ 이 타입은 sonamu/types.ts와 동기화되어야 함

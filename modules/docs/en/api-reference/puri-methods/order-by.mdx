@@ -1,6 +1,6 @@
 ---
-title: 'orderBy'
-description: 'Sort query results'
+title: "orderBy"
+description: "Sort query results"
 ---
 
 `orderBy` is a method for sorting query results by specific columns. You can sort in ascending (ASC) or descending (DESC) order, and can sort by multiple columns.
@@ -10,7 +10,8 @@ description: 'Sort query results'
 ### Ascending (ASC)
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", name: "users.name" })
   .orderBy("users.name", "asc");
 
@@ -20,7 +21,8 @@ const users = await puri.table("users")
 ### Descending (DESC)
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({ id: "posts.id", title: "posts.title", created_at: "posts.created_at" })
   .orderBy("posts.created_at", "desc");
 
@@ -32,15 +34,17 @@ const posts = await puri.table("posts")
 You can sort by multiple columns by chaining `orderBy`.
 
 ```typescript
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({ id: "users.id", role: "users.role", name: "users.name" })
-  .orderBy("users.role", "asc")      // First: role ascending
-  .orderBy("users.name", "asc");     // Second: name ascending
+  .orderBy("users.role", "asc") // First: role ascending
+  .orderBy("users.name", "asc"); // Second: name ascending
 
 // ORDER BY users.role ASC, users.name ASC
 ```
 
 **Sort Priority:**
+
 1. First `orderBy` - Primary sort
 2. Second `orderBy` - Secondary sort (when primary is same)
 3. Third `orderBy` - Tertiary sort (when secondary is also same)
@@ -69,6 +73,7 @@ const users = await puri.table("users")
       })
       .orderBy("users.updated_at", "desc");
     ```
+
   </Tab>
 
   <Tab title="Alphabetical" icon="arrow-down-a-z">
@@ -89,6 +94,7 @@ const users = await puri.table("users")
       })
       .orderBy("products.name", "desc");
     ```
+
   </Tab>
 
   <Tab title="Complex Sorting" icon="layer-group">
@@ -116,6 +122,7 @@ const users = await puri.table("users")
       .orderBy("products.rating", "desc")    // High ratings
       .orderBy("products.sales", "desc");    // High sales
     ```
+
   </Tab>
 
   <Tab title="Numeric Sorting" icon="arrow-down-1-9">
@@ -140,6 +147,7 @@ const users = await puri.table("users")
       .orderBy("posts.views", "desc")
       .limit(10);
     ```
+
   </Tab>
 
   <Tab title="NULL Handling" icon="ban">
@@ -162,6 +170,7 @@ const users = await puri.table("users")
       })
       .orderBy("posts.deleted_at", "asc");  // NULL comes first
     ```
+
   </Tab>
 </Tabs>
 
@@ -170,15 +179,16 @@ const users = await puri.table("users")
 You can also sort by columns from joined tables.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .join("users", "posts.user_id", "users.id")
   .select({
     post_id: "posts.id",
     title: "posts.title",
-    author_name: "users.name"
+    author_name: "users.name",
   })
-  .orderBy("users.name", "asc")          // By author name
-  .orderBy("posts.created_at", "desc");  // Latest first for same author
+  .orderBy("users.name", "asc") // By author name
+  .orderBy("posts.created_at", "desc"); // Latest first for same author
 
 // ORDER BY users.name ASC, posts.created_at DESC
 ```
@@ -188,13 +198,14 @@ const posts = await puri.table("posts")
 You can also sort by aliases specified in SELECT.
 
 ```typescript
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({
     id: "posts.id",
     title: "posts.title",
-    view_count: "posts.views"  // Alias specified
+    view_count: "posts.views", // Alias specified
   })
-  .orderBy("view_count", "desc");  // Using alias
+  .orderBy("view_count", "desc"); // Using alias
 
 // SELECT posts.views as view_count
 // ORDER BY view_count DESC
@@ -205,13 +216,14 @@ const posts = await puri.table("posts")
 You can sort by aggregate function results with GROUP BY.
 
 ```typescript
-const userStats = await puri.table("posts")
+const userStats = await puri
+  .table("posts")
   .select({
     user_id: "posts.user_id",
-    post_count: Puri.count()
+    post_count: Puri.count(),
   })
   .groupBy("posts.user_id")
-  .orderBy("post_count", "desc")  // Most posts first
+  .orderBy("post_count", "desc") // Most posts first
   .limit(10);
 
 // SELECT user_id, COUNT(*) as post_count
@@ -229,11 +241,12 @@ const userStats = await puri.table("posts")
 
 ```typescript
 // Sort full-text search results by relevance using ts_rank
-const posts = await puri.table("posts")
+const posts = await puri
+  .table("posts")
   .select({
     id: "posts.id",
     title: "posts.title",
-    rank: Puri.tsRank("posts.content_tsv", "typescript")
+    rank: Puri.tsRank("posts.content_tsv", "typescript"),
   })
   .orderBy(Puri.tsRank("posts.content_tsv", "typescript"), "desc");
 
@@ -244,11 +257,12 @@ const posts = await puri.table("posts")
 
 ```typescript
 // Sort by pg_trgm similarity score
-const users = await puri.table("users")
+const users = await puri
+  .table("users")
   .select({
     id: "users.id",
     name: "users.name",
-    score: Puri.similarity("users.name", "John")
+    score: Puri.similarity("users.name", "John"),
   })
   .orderBy(Puri.similarity("users.name", "John"), "desc");
 
@@ -259,11 +273,12 @@ const users = await puri.table("users")
 
 ```typescript
 // Sort by a custom SQL expression
-const products = await puri.table("products")
+const products = await puri
+  .table("products")
   .select({
     id: "products.id",
     name: "products.name",
-    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)")
+    weighted: Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"),
   })
   .orderBy(Puri.rawNumber("(products.views * 0.3 + products.likes * 0.7)"), "desc");
 
@@ -271,7 +286,8 @@ const products = await puri.table("products")
 ```
 
 <Info>
-When using SQL expressions, `orderByRaw` is used internally and parameter bindings are automatically applied.
+  When using SQL expressions, `orderByRaw` is used internally and parameter bindings are
+  automatically applied.
 </Info>
 
 ## Sort Directions
@@ -300,9 +316,7 @@ When using SQL expressions, `orderByRaw` is used internally and parameter bindin
 // 40, 35, 30, 25, 18, NULL
 ```
 
-<Info>
-**Default is ASC**. If direction is not specified, it sorts in ascending order.
-</Info>
+<Info>**Default is ASC**. If direction is not specified, it sorts in ascending order.</Info>
 
 ## Performance Optimization
 
@@ -317,6 +331,7 @@ When using SQL expressions, `orderByRaw` is used internally and parameter bindin
 ```
 
 **Recommended Indexes:**
+
 ```sql
 CREATE INDEX idx_users_created_at ON users(created_at DESC);
 CREATE INDEX idx_posts_published_created ON posts(published, created_at DESC);
@@ -390,13 +405,10 @@ CREATE INDEX idx_products_category_price ON products(category, price);
 
 ```typescript
 // ❌ Bad: Sort entire large dataset
-const allUsers = await puri.table("users")
-  .orderBy("users.created_at", "desc");  // Sort millions of rows
+const allUsers = await puri.table("users").orderBy("users.created_at", "desc"); // Sort millions of rows
 
 // ✅ Good: Limit with LIMIT
-const recentUsers = await puri.table("users")
-  .orderBy("users.created_at", "desc")
-  .limit(100);  // Only top 100
+const recentUsers = await puri.table("users").orderBy("users.created_at", "desc").limit(100); // Only top 100
 ```
 
 ## Type Safety
@@ -405,16 +417,13 @@ const recentUsers = await puri.table("users")
 
 ```typescript
 // ✅ Valid column
-await puri.table("users")
-  .orderBy("users.created_at", "desc");
+await puri.table("users").orderBy("users.created_at", "desc");
 
 // ❌ Type error: Non-existent column
-await puri.table("users")
-  .orderBy("users.unknown_field", "desc");
+await puri.table("users").orderBy("users.unknown_field", "desc");
 
 // ❌ Type error: Invalid direction
-await puri.table("users")
-  .orderBy("users.name", "invalid");  // Only "asc" or "desc" allowed
+await puri.table("users").orderBy("users.name", "invalid"); // Only "asc" or "desc" allowed
 ```
 
 ## Next Steps
@@ -428,21 +437,13 @@ await puri.table("users")
     Limit result count
   </Card>
 
-  <Card
-    title="where"
-    icon="filter"
-    href="/en/api-reference/puri-methods/where"
-  >
-    Filter with conditions
-  </Card>
+<Card title="where" icon="filter" href="/en/api-reference/puri-methods/where">
+  Filter with conditions
+</Card>
 
-  <Card
-    title="select"
-    icon="list-check"
-    href="/en/api-reference/puri-methods/select"
-  >
-    Select fields to query
-  </Card>
+<Card title="select" icon="list-check" href="/en/api-reference/puri-methods/select">
+  Select fields to query
+</Card>
 
   <Card
     title="join"

@@ -1,6 +1,6 @@
 ---
-title: '캐싱 전략'
-description: '캐싱으로 성능 개선하기'
+title: "캐싱 전략"
+description: "캐싱으로 성능 개선하기"
 ---
 
 Sonamu의 BentoCache를 활용한 효과적인 캐싱 전략을 다룹니다.
@@ -10,6 +10,7 @@ Sonamu의 BentoCache를 활용한 효과적인 캐싱 전략을 다룹니다.
 Sonamu는 [BentoCache](https://bentocache.dev/)를 사용하여 강력한 캐싱 기능을 제공합니다.
 
 **주요 특징:**
+
 - 다양한 드라이버 (메모리, Redis, PostgreSQL 등)
 - TTL (Time To Live) 설정
 - 네임스페이스 기반 관리
@@ -29,14 +30,15 @@ export default {
     cache: {
       default: "memory",
       stores: {
-        memory: bentostore()
-          .useL1Layer(memoryDriver({ 
+        memory: bentostore().useL1Layer(
+          memoryDriver({
             maxItems: 10_000,
-            maxSize: 100_000_000  // 100MB
-          }))
-      }
-    }
-  }
+            maxSize: 100_000_000, // 100MB
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -51,17 +53,18 @@ export default {
     cache: {
       default: "redis",
       stores: {
-        redis: bentostore()
-          .useL1Layer(redisDriver({
+        redis: bentostore().useL1Layer(
+          redisDriver({
             connection: {
               host: process.env.REDIS_HOST || "localhost",
               port: 6379,
-              password: process.env.REDIS_PASSWORD
-            }
-          }))
-      }
-    }
-  }
+              password: process.env.REDIS_PASSWORD,
+            },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -73,15 +76,15 @@ export default {
     cache: {
       default: "memory",
       stores: {
-        memory: bentostore()
-          .useL1Layer(memoryDriver({ maxSize: 50_000_000 })),
-        redis: bentostore()
-          .useL1Layer(redisDriver({
-            connection: { host: "localhost", port: 6379 }
-          }))
-      }
-    }
-  }
+        memory: bentostore().useL1Layer(memoryDriver({ maxSize: 50_000_000 })),
+        redis: bentostore().useL1Layer(
+          redisDriver({
+            connection: { host: "localhost", port: 6379 },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -94,11 +97,9 @@ import { cache, Puri } from "sonamu";
 
 class UserModelClass extends BaseModelClass {
   // 5분간 캐싱
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri()
-      .select({ count: Puri.count() })
-      .where({ status: "active" });
+    const result = await this.getPuri().select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -109,31 +110,27 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 class ProductModelClass extends BaseModelClass {
   // 1시간 캐싱
-  @cache({ ttl: '1h' })
+  @cache({ ttl: "1h" })
   async getFeaturedProducts() {
-    return this.getPuri()
-      .select("*")
-      .where({ featured: true });
+    return this.getPuri().select("*").where({ featured: true });
   }
-  
+
   // 1일 캐싱
-  @cache({ ttl: '1d' })
+  @cache({ ttl: "1d" })
   async getCategoryCounts() {
-    return this.getPuri()
-      .select("category", knex.raw("COUNT(*) as count"))
-      .groupBy("category");
+    return this.getPuri().select("category", knex.raw("COUNT(*) as count")).groupBy("category");
   }
-  
+
   // 영구 캐싱 (수동 무효화 필요)
   @cache({ ttl: 0 })
   async getProductCategories() {
-    return this.getPuri()
-      .select("DISTINCT category");
+    return this.getPuri().select("DISTINCT category");
   }
 }
 ```
 
 **TTL 형식:**
+
 - `'5s'`: 5초
 - `'5m'`: 5분
 - `'1h'`: 1시간
@@ -145,16 +142,14 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class UserModelClass extends BaseModelClass {
   // 파라미터별로 다른 캐시 생성
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   async getUsersByStatus(status: string) {
-    return this.getPuri()
-      .select("id", "name", "email")
-      .where({ status });
+    return this.getPuri().select("id", "name", "email").where({ status });
   }
 }
 
 // 각각 다른 캐시 키로 저장됨
-await UserModel.getUsersByStatus("active");   // UserModel.getUsersByStatus:active
+await UserModel.getUsersByStatus("active"); // UserModel.getUsersByStatus:active
 await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inactive
 ```
 
@@ -162,9 +157,9 @@ await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inac
 
 ```typescript
 class PostModelClass extends BaseModelClass {
-  @cache({ 
-    ttl: '10m',
-    key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`
+  @cache({
+    ttl: "10m",
+    key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`,
   })
   async getUserPosts(userId: number, page: number = 1) {
     return this.getPuri()
@@ -186,45 +181,45 @@ import { Sonamu, Puri } from "sonamu";
 class StatisticsService {
   async getDailyStats(date: string) {
     const cacheKey = `stats:daily:${date}`;
-    
+
     // 캐시 확인
     const cached = await Sonamu.cache.get(cacheKey);
     if (cached) {
       console.log("캐시 히트!");
       return cached;
     }
-    
+
     // 캐시 미스 - 계산
     console.log("캐시 미스, 계산 중...");
     const stats = await this.calculateDailyStats(date);
-    
+
     // 캐시 저장 (24시간)
-    await Sonamu.cache.set(cacheKey, stats, { ttl: '24h' });
-    
+    await Sonamu.cache.set(cacheKey, stats, { ttl: "24h" });
+
     return stats;
   }
-  
+
   private async calculateDailyStats(date: string) {
     // 복잡한 통계 계산
     const [userCount, orderCount, revenue] = await Promise.all([
       UserModel.getPuri()
         .select({ count: Puri.count() })
-        .then(r => r[0].count),
+        .then((r) => r[0].count),
       OrderModel.getPuri()
         .select({ count: Puri.count() })
         .where("created_at", ">=", date)
-        .then(r => r[0].count),
+        .then((r) => r[0].count),
       OrderModel.getPuri()
         .select({ total: Puri.sum("total") })
         .where("created_at", ">=", date)
-        .then(r => r[0].total)
+        .then((r) => r[0].total),
     ]);
-    
+
     return {
       date,
       userCount,
       orderCount,
-      revenue
+      revenue,
     };
   }
 }
@@ -237,20 +232,20 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createUser(params: UserSaveParams) {
     const user = await this.save(params);
-    
+
     // 관련 캐시 무효화
     await Sonamu.cache.delete("users:active:count");
     await Sonamu.cache.delete("users:stats");
-    
+
     return user;
   }
-  
+
   @api({ httpMethod: "PUT" })
   async updateUserStatus(id: number, status: string) {
     await this.save({ id, status });
-    
+
     // 패턴 매칭으로 관련 캐시 무효화
-    await Sonamu.cache.clear();  // 주의: 전체 캐시 삭제
+    await Sonamu.cache.clear(); // 주의: 전체 캐시 삭제
   }
 }
 ```
@@ -262,16 +257,13 @@ class CacheService {
   async getWithCache(key: string, factory: () => Promise<any>) {
     return Sonamu.cache.getOrSet({
       key,
-      ttl: '1h',
-      factory
+      ttl: "1h",
+      factory,
     });
   }
-  
+
   async getUser(userId: number) {
-    return this.getWithCache(
-      `user:${userId}`,
-      () => UserModel.findById(userId)
-    );
+    return this.getWithCache(`user:${userId}`, () => UserModel.findById(userId));
   }
 }
 ```
@@ -284,11 +276,11 @@ class CacheService {
 class ProductModelClass extends BaseModelClass {
   async getProductWithCache(id: number): Promise<Product> {
     const cacheKey = `product:${id}`;
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
-      ttl: '1h',
-      factory: () => this.findById(id)
+      ttl: "1h",
+      factory: () => this.findById(id),
     });
   }
 }
@@ -301,10 +293,10 @@ class ProductModelClass extends BaseModelClass {
   async updateProduct(id: number, params: ProductSaveParams) {
     // DB 업데이트
     const product = await this.save({ id, ...params });
-    
+
     // 캐시도 함께 업데이트
-    await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
-    
+    await Sonamu.cache.set(`product:${id}`, product, { ttl: "1h" });
+
     return product;
   }
 }
@@ -318,15 +310,15 @@ class ProductModelClass extends BaseModelClass {
     // 1. 캐시 확인
     const cached = await Sonamu.cache.get(`product:${id}`);
     if (cached) return cached;
-    
+
     // 2. DB 조회
     const product = await this.findById(id);
-    
+
     // 3. 캐시 저장 (응답 후 비동기)
     setImmediate(async () => {
-      await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
+      await Sonamu.cache.set(`product:${id}`, product, { ttl: "1h" });
     });
-    
+
     return product;
   }
 }
@@ -342,15 +334,11 @@ class ProductModelClass extends BaseModelClass {
       .select("*")
       .where({ featured: true })
       .orWhere("view_count", ">", 1000);
-    
+
     for (const product of popularProducts) {
-      await Sonamu.cache.set(
-        `product:${product.id}`,
-        product,
-        { ttl: '1h' }
-      );
+      await Sonamu.cache.set(`product:${product.id}`, product, { ttl: "1h" });
     }
-    
+
     console.log(`${popularProducts.length}개 상품 캐시 워밍 완료`);
   }
 }
@@ -363,7 +351,7 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class PostModelClass extends BaseModelClass {
   // 목록 API - 10분 캐싱
-  @cache({ ttl: '10m' })
+  @cache({ ttl: "10m" })
   @api({ httpMethod: "GET" })
   async listPosts(page: number = 1) {
     return this.getPuri()
@@ -372,28 +360,28 @@ class PostModelClass extends BaseModelClass {
       .offset((page - 1) * 20)
       .limit(20);
   }
-  
+
   // 상세 API - 5분 캐싱
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   @api({ httpMethod: "GET" })
   async getPost(id: number) {
     const { qb } = this.getSubsetQueries("Detail");
     const result = await this.executeSubsetQuery({
       subset: "Detail",
       qb: qb.where({ id }),
-      params: { num: 1, page: 1 }
+      params: { num: 1, page: 1 },
     });
     return result.rows[0];
   }
-  
+
   // 생성 API - 관련 캐시 무효화
   @api({ httpMethod: "POST" })
   async createPost(params: PostSaveParams) {
     const post = await this.save(params);
-    
+
     // 목록 캐시 무효화는 자동으로 처리됨 (키가 다르므로)
     // 특정 캐시만 무효화하려면 수동으로 처리
-    
+
     return post;
   }
 }
@@ -406,42 +394,37 @@ class DashboardService {
   // 대시보드 통계 - 5분 캐싱
   async getDashboardStats() {
     const cacheKey = "dashboard:stats";
-    
+
     return Sonamu.cache.getOrSet({
       key: cacheKey,
-      ttl: '5m',
+      ttl: "5m",
       factory: async () => {
         // 여러 집계 쿼리 병렬 실행
-        const [
-          totalUsers,
-          activeUsers,
-          totalOrders,
-          todayRevenue
-        ] = await Promise.all([
+        const [totalUsers, activeUsers, totalOrders, todayRevenue] = await Promise.all([
           UserModel.getPuri()
             .select({ count: Puri.count() })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           UserModel.getPuri()
             .select({ count: Puri.count() })
             .where({ status: "active" })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           OrderModel.getPuri()
             .select({ count: Puri.count() })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           OrderModel.getPuri()
             .select({ total: Puri.sum("total") })
             .where("created_at", ">=", new Date().toISOString().split("T")[0])
-            .then(r => r[0].total)
+            .then((r) => r[0].total),
         ]);
-        
+
         return {
           totalUsers,
           activeUsers,
           totalOrders,
           todayRevenue,
-          cachedAt: new Date()
+          cachedAt: new Date(),
         };
-      }
+      },
     });
   }
 }
@@ -456,21 +439,17 @@ class AuthService {
     const sessionData = {
       userId,
       token,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
-    
-    await Sonamu.cache.set(
-      `session:${token}`,
-      sessionData,
-      { ttl: '24h' }
-    );
+
+    await Sonamu.cache.set(`session:${token}`, sessionData, { ttl: "24h" });
   }
-  
+
   // 세션 조회
   async getSession(token: string) {
     return Sonamu.cache.get(`session:${token}`);
   }
-  
+
   // 로그아웃
   async logout(token: string) {
     await Sonamu.cache.delete(`session:${token}`);
@@ -497,13 +476,13 @@ class ProductModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async createProduct(params: ProductSaveParams) {
     const product = await this.save(params);
-    
+
     // 관련 캐시 무효화
     await this.invalidateProductCaches();
-    
+
     return product;
   }
-  
+
   private async invalidateProductCaches() {
     // 개별 삭제
     await Sonamu.cache.delete("featured:products");
@@ -534,15 +513,15 @@ async getAppConfig() { }
 
 ```typescript
 // ✅ 명확하고 계층적인 키
-"user:123"
-"user:123:posts"
-"stats:daily:2025-01-11"
-"product:category:electronics"
+"user:123";
+"user:123:posts";
+"stats:daily:2025-01-11";
+"product:category:electronics";
 
 // ❌ 불명확한 키
-"u123"
-"data"
-"temp"
+"u123";
+"data";
+"temp";
 ```
 
 ### 3. 캐시 크기 관리
@@ -556,7 +535,7 @@ async cacheUser(user: User) {
     email: user.email
     // 대용량 필드 제외
   };
-  
+
   await Sonamu.cache.set(`user:${user.id}`, lightUser, { ttl: '1h' });
 }
 ```
@@ -572,9 +551,9 @@ export default {
         await ProductModel.warmPopularProducts();
         await CategoryModel.warmAllCategories();
         console.log("캐시 워밍 완료");
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -590,7 +569,7 @@ async getDataWithFallback(id: number) {
     console.error("캐시 오류:", error);
     // 캐시 실패해도 계속 진행
   }
-  
+
   // DB 조회 (캐시 없거나 실패 시)
   return this.findById(id);
 }

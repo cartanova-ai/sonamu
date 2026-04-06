@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함. */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 캐스팅에는 any가 필요함.
 import { z } from "zod";
 import type { $ZodType } from "zod/v4/core";
 

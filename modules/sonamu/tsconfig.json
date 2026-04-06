@@ -42,7 +42,7 @@
 
     /* Advanced Options */
     "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true,
+    "noErrorTruncation": true
   },
   "exclude": [
     "node_modules",
@@ -55,6 +55,6 @@
     "vitest.config.ts",
     "wasted_src/**",
     "_templates/**",
-    "**/__mocks__/**",
-  ],
+    "**/__mocks__/**"
+  ]
 }

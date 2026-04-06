@@ -1,6 +1,6 @@
 ---
-title: 'Vitest Debug'
-description: 'Debugging tests'
+title: "Vitest Debug"
+description: "Debugging tests"
 ---
 
 This covers effective methods for debugging tests written with Vitest.
@@ -24,28 +24,18 @@ Sonamu uses Vitest as its test framework. It provides various debugging methods.
       "request": "launch",
       "name": "Debug Current Test File",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "vitest",
-        "run",
-        "${file}"
-      ],
+      "runtimeArgs": ["vitest", "run", "${file}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true,
-      "resolveSourceMapLocations": [
-        "${workspaceFolder}/**",
-        "!**/node_modules/**"
-      ]
+      "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug All Tests",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "vitest",
-        "run"
-      ],
+      "runtimeArgs": ["vitest", "run"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true
@@ -94,7 +84,7 @@ test("create user", async () => {
 test("logging complex objects", async () => {
   const data = {
     user: { id: 1, email: "test@example.com" },
-    items: [1, 2, 3]
+    items: [1, 2, 3],
   };
 
   // Pretty print
@@ -174,6 +164,7 @@ When you modify a file, related tests are automatically re-run.
 ### Watch Mode Shortcuts
 
 During test execution:
+
 - `a`: Re-run all tests
 - `f`: Re-run failed tests only
 - `t`: Filter specific tests
@@ -190,6 +181,7 @@ pnpm vitest --ui
 Opens `http://localhost:51204/__vitest__/` in the browser
 
 **Features:**
+
 - Visualize test hierarchy
 - Filter failed tests
 - Re-run individual tests
@@ -259,7 +251,7 @@ test("slow operation", async () => {
   // Increase from default 5 seconds to 30 seconds
   const result = await slowOperation();
   expect(result).toBeDefined();
-}, 30000);  // 30 second timeout
+}, 30000); // 30 second timeout
 ```
 
 ## Debugging Mocks
@@ -316,7 +308,7 @@ test("check DB query", async () => {
   const result = await UserModel.getPuri()
     .select("*")
     .where({ email: "test@example.com" })
-    .debug()  // Output query
+    .debug() // Output query
     .getOne();
 
   console.log("Result:", result);
@@ -332,13 +324,11 @@ test("verify data creation", async () => {
   await UserModel.create({ email });
 
   // Check directly from DB
-  const users = await UserModel.getPuri()
-    .select("*")
-    .getMany();
+  const users = await UserModel.getPuri().select("*").getMany();
 
   console.log("All users:", users);
 
-  const created = users.find(u => u.email === email);
+  const created = users.find((u) => u.email === email);
   console.log("Created user:", created);
 
   expect(created).toBeDefined();
@@ -374,9 +364,7 @@ class UserModelClass extends BaseModelClass {
 
 // Add test
 test("error when creating without email", async () => {
-  await expect(
-    UserModel.createUser("")
-  ).rejects.toThrow("Email required");
+  await expect(UserModel.createUser("")).rejects.toThrow("Email required");
 });
 ```
 
@@ -395,14 +383,14 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
 
     // Debugging options
-    bail: 1,  // Stop on first failure
-    reporters: ["verbose"],  // Verbose output
-    logHeapUsage: true,  // Output memory usage
+    bail: 1, // Stop on first failure
+    reporters: ["verbose"], // Verbose output
+    logHeapUsage: true, // Output memory usage
 
     // Increase timeouts
     testTimeout: 10000,
-    hookTimeout: 10000
-  }
+    hookTimeout: 10000,
+  },
 });
 ```
 
@@ -427,9 +415,9 @@ Some tests may have issues when running in parallel:
 export default defineConfig({
   test: {
     pool: "forks",
-    maxWorkers: 1,  // Single worker
-    isolate: false  // Disable isolation
-  }
+    maxWorkers: 1, // Single worker
+    isolate: false, // Disable isolation
+  },
 });
 ```
 
@@ -459,7 +447,7 @@ test("snapshot debugging", () => {
   const data = {
     id: 1,
     name: "Test",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   // timestamp keeps changing
@@ -468,7 +456,7 @@ test("snapshot debugging", () => {
   // Exclude dynamic values
   expect({
     ...data,
-    timestamp: expect.any(String)
+    timestamp: expect.any(String),
   }).toMatchSnapshot();
 });
 ```
@@ -510,7 +498,7 @@ describe("User Tests", () => {
   beforeEach(async () => {
     console.log("Setup started");
     testUser = await UserModel.create({
-      email: "test@example.com"
+      email: "test@example.com",
     });
     console.log("Setup completed:", testUser.id);
   });
@@ -537,8 +525,8 @@ describe("User Tests", () => {
 // vitest.config.ts
 export default defineConfig({
   test: {
-    logHeapUsage: true  // Output memory usage
-  }
+    logHeapUsage: true, // Output memory usage
+  },
 });
 ```
 
@@ -551,7 +539,7 @@ test("verify resource cleanup", async () => {
   try {
     await db.query("SELECT 1");
   } finally {
-    await db.destroy();  // Always cleanup
+    await db.destroy(); // Always cleanup
     console.log("DB connection cleanup completed");
   }
 });
@@ -568,23 +556,21 @@ test("entire user flow", async () => {
 });
 
 // Split into small units
-test("create user", async () => { });
-test("get user", async () => { });
-test("update user", async () => { });
-test("delete user", async () => { });
+test("create user", async () => {});
+test("get user", async () => {});
+test("update user", async () => {});
+test("delete user", async () => {});
 ```
 
 ### 2. Meaningful Test Names
 
 ```typescript
 // Unclear name
-test("test1", async () => { });
+test("test1", async () => {});
 
 // Clear name
 test("BadRequestException when creating user without email", async () => {
-  await expect(
-    UserModel.create({ email: "" })
-  ).rejects.toThrow(BadRequestException);
+  await expect(UserModel.create({ email: "" })).rejects.toThrow(BadRequestException);
 });
 ```
 
@@ -612,10 +598,9 @@ test("verify complex conditions", async () => {
   const result = await complexCalculation();
 
   // Make clear what went wrong on failure
-  expect(
-    result.total,
-    `total should be ${result.expected} but was ${result.total}`
-  ).toBe(result.expected);
+  expect(result.total, `total should be ${result.expected} but was ${result.total}`).toBe(
+    result.expected,
+  );
 });
 ```
 

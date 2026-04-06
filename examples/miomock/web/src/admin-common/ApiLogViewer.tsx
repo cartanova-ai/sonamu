@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: axios 사용 시 타입 추론 어려우므로 허용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // axios 사용 시 타입 추론 어려우므로 허용
 
 import { Button, Card, CardContent, CardHeader } from "@sonamu-kit/react-components/components";
 import axios from "axios";

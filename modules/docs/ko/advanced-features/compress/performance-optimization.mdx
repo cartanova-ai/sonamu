@@ -41,12 +41,12 @@ Threshold는 압축할 최소 크기입니다.
 
 ### Threshold별 효과
 
-| 크기 | Threshold: 256 | Threshold: 1024 | Threshold: 4096 |
-|------|---------------|----------------|----------------|
-| 100B | 압축 ❌ (오버헤드) | 압축 ❌ | 압축 ❌ |
-| 500B | 압축 ⚠️ (효과 작음) | 압축 ❌ | 압축 ❌ |
-| 2KB | 압축 ✅ | 압축 ✅ | 압축 ❌ |
-| 10KB | 압축 ✅ | 압축 ✅ | 압축 ✅ |
+| 크기 | Threshold: 256      | Threshold: 1024 | Threshold: 4096 |
+| ---- | ------------------- | --------------- | --------------- |
+| 100B | 압축 ❌ (오버헤드)  | 압축 ❌         | 압축 ❌         |
+| 500B | 압축 ⚠️ (효과 작음) | 압축 ❌         | 압축 ❌         |
+| 2KB  | 압축 ✅             | 압축 ✅         | 압축 ❌         |
+| 10KB | 압축 ✅             | 압축 ✅         | 압축 ✅         |
 
 ### 권장 Threshold
 
@@ -107,14 +107,14 @@ const thresholds = [256, 512, 1024, 2048, 4096];
 
 for (const threshold of thresholds) {
   console.time(`threshold-${threshold}`);
-  
+
   // 100번 요청
   for (let i = 0; i < 100; i++) {
-    await fetch('/api/products', {
-      headers: { 'Accept-Encoding': 'gzip' }
+    await fetch("/api/products", {
+      headers: { "Accept-Encoding": "gzip" },
     });
   }
-  
+
   console.timeEnd(`threshold-${threshold}`);
 }
 
@@ -125,12 +125,12 @@ for (const threshold of thresholds) {
 
 ### Brotli vs Gzip
 
-| 기준 | Brotli (br) | Gzip |
-|------|------------|------|
-| 압축률 | 최고 (15~20% 더 압축) | 중간 |
-| 압축 속도 | 느림 (CPU 사용 ↑) | 빠름 |
-| 압축 해제 속도 | 빠름 | 빠름 |
-| 브라우저 지원 | 모던 브라우저 | 모든 브라우저 |
+| 기준           | Brotli (br)           | Gzip          |
+| -------------- | --------------------- | ------------- |
+| 압축률         | 최고 (15~20% 더 압축) | 중간          |
+| 압축 속도      | 느림 (CPU 사용 ↑)     | 빠름          |
+| 압축 해제 속도 | 빠름                  | 빠름          |
+| 브라우저 지원  | 모던 브라우저         | 모든 브라우저 |
 
 ### 사용 전략
 
@@ -198,8 +198,8 @@ for (const threshold of thresholds) {
 ### 환경별 전략
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
-const isFastNetwork = process.env.NETWORK_SPEED === 'fast';
+const isProduction = process.env.NODE_ENV === "production";
+const isFastNetwork = process.env.NETWORK_SPEED === "fast";
 
 export const config: SonamuConfig = {
   server: {
@@ -216,9 +216,9 @@ export const config: SonamuConfig = {
               threshold: 256,
               encodings: ["br", "gzip", "deflate"],
             }
-        : false  // 개발: 압축 없음
-    }
-  }
+        : false, // 개발: 압축 없음
+    },
+  },
 };
 ```
 
@@ -278,6 +278,7 @@ sequenceDiagram
 ```
 
 **레이어별 최적화**:
+
 1. **브라우저 캐시**: 0ms (가장 빠름)
 2. **CDN 캐시**: 10ms (네트워크만)
 3. **서버 캐시**: 50ms (압축만, DB 없음)
@@ -306,6 +307,7 @@ async getData() {
 ```
 
 **CloudFront 설정**:
+
 - Origin에서 압축된 응답 수신
 - CloudFront가 그대로 캐싱
 - 엣지에서 빠르게 제공
@@ -343,19 +345,19 @@ const files = readdirSync(assetsDir);
 for (const file of files) {
   if (/\.(js|css|html|json|svg)$/.test(file)) {
     const content = readFileSync(`${assetsDir}/${file}`);
-    
+
     // Brotli (최고 압축률)
     const br = brotliCompressSync(content, {
       params: {
-        [zlib.constants.BROTLI_PARAM_QUALITY]: 11  // 최고 품질
-      }
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 11, // 최고 품질
+      },
     });
     writeFileSync(`${assetsDir}/${file}.br`, br);
-    
+
     // Gzip (호환성)
     const gz = gzipSync(content, { level: 9 });
     writeFileSync(`${assetsDir}/${file}.gz`, gz);
-    
+
     console.log(`${file}: ${content.length} → br: ${br.length}, gz: ${gz.length}`);
   }
 }
@@ -365,34 +367,35 @@ for (const file of files) {
 
 ```typescript
 // 사전 압축된 파일 제공
-server.get('/assets/:filename', async (req, reply) => {
+server.get("/assets/:filename", async (req, reply) => {
   const { filename } = req.params;
-  const acceptEncoding = req.headers['accept-encoding'] || '';
-  
+  const acceptEncoding = req.headers["accept-encoding"] || "";
+
   // Brotli 지원
-  if (acceptEncoding.includes('br')) {
+  if (acceptEncoding.includes("br")) {
     const brFile = `./dist/assets/${filename}.br`;
     if (fs.existsSync(brFile)) {
-      reply.header('Content-Encoding', 'br');
-      return reply.sendFile(`${filename}.br`, { root: './dist/assets' });
+      reply.header("Content-Encoding", "br");
+      return reply.sendFile(`${filename}.br`, { root: "./dist/assets" });
     }
   }
-  
+
   // Gzip 지원
-  if (acceptEncoding.includes('gzip')) {
+  if (acceptEncoding.includes("gzip")) {
     const gzFile = `./dist/assets/${filename}.gz`;
     if (fs.existsSync(gzFile)) {
-      reply.header('Content-Encoding', 'gzip');
-      return reply.sendFile(`${filename}.gz`, { root: './dist/assets' });
+      reply.header("Content-Encoding", "gzip");
+      return reply.sendFile(`${filename}.gz`, { root: "./dist/assets" });
     }
   }
-  
+
   // 압축 없음
-  return reply.sendFile(filename, { root: './dist/assets' });
+  return reply.sendFile(filename, { root: "./dist/assets" });
 });
 ```
 
 **장점**:
+
 - 런타임 CPU 부하 없음
 - 최고 압축률 (quality 11)
 - 즉시 응답
@@ -426,10 +429,10 @@ async getData() {
   const start = performance.now();
   const data = await this.findMany({});
   const dbTime = performance.now() - start;
-  
+
   console.log(`DB: ${dbTime.toFixed(2)}ms`);
   // 압축 시간은 Fastify가 자동 처리
-  
+
   return data;
 }
 ```
@@ -535,71 +538,76 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
 **피해야 할 실수**:
 
 1. **모든 응답을 압축**: 작은 응답은 비효율적
+
    ```typescript
    // ❌ 잘못된 예
-   threshold: 0  // 모든 응답 압축
-   
+   threshold: 0; // 모든 응답 압축
+
    // ✅ 올바른 예
-   threshold: 1024  // 1KB 이상만
+   threshold: 1024; // 1KB 이상만
    ```
 
 2. **이미 압축된 파일 재압축**: 효과 없음
+
    ```typescript
    // ❌ JPEG, PNG, MP4 압축
    @api({ compress: true })
    async getImage() { ... }
-   
+
    // ✅ 압축 제외
    @api({ compress: false })
    async getImage() { ... }
    ```
 
 3. **스트리밍 압축**: 지연 발생
+
    ```typescript
    // ❌ SSE 압축
    @stream({ type: 'sse' })
    @api({ compress: true })
    async *streamData() { ... }
-   
+
    // ✅ 압축 비활성화
    @api({ compress: false })
    async *streamData() { ... }
    ```
 
 4. **개발 환경에서 압축**: 디버깅 어려움
+
    ```typescript
    // ✅ 환경별 설정
-   compress: process.env.NODE_ENV === 'production'
-     ? CompressPresets.default
-     : false
+   compress: process.env.NODE_ENV === "production" ? CompressPresets.default : false;
    ```
 
 5. **Brotli를 실시간 압축**: CPU 부하 높음
+
    ```typescript
    // ⚠️ 주의: API 응답에 brotli
    compress: {
-     encodings: ["br"]  // 느림
+     encodings: ["br"]; // 느림
    }
-   
+
    // ✅ gzip 사용
    compress: {
-     encodings: ["gzip"]  // 빠름
+     encodings: ["gzip"]; // 빠름
    }
    ```
-</Warning>
+
+   </Warning>
 
 ## 성능 벤치마크
 
 실제 100KB JSON 응답 기준:
 
-| 설정 | 압축 시간 | 전송 크기 | 네트워크 시간 | 총 시간 |
-|------|----------|----------|-------------|---------|
-| 압축 없음 | 0ms | 100KB | 1000ms | 1000ms |
-| Gzip | 2ms | 14KB | 140ms | 142ms |
-| Brotli | 5ms | 12KB | 120ms | 125ms |
-| Pre-compressed | 0ms | 12KB | 120ms | 120ms |
+| 설정           | 압축 시간 | 전송 크기 | 네트워크 시간 | 총 시간 |
+| -------------- | --------- | --------- | ------------- | ------- |
+| 압축 없음      | 0ms       | 100KB     | 1000ms        | 1000ms  |
+| Gzip           | 2ms       | 14KB      | 140ms         | 142ms   |
+| Brotli         | 5ms       | 12KB      | 120ms         | 125ms   |
+| Pre-compressed | 0ms       | 12KB      | 120ms         | 120ms   |
 
-**결론**: 
+**결론**:
+
 - Gzip: 85% 시간 절약
 - Brotli: 87% 시간 절약
 - Pre-compressed: 88% 시간 절약 (최고)

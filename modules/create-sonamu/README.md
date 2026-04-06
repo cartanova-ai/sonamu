@@ -42,6 +42,7 @@ pnpm create sonamu
 ```
 
 > **프로젝트명 규칙**
+>
 > - 공백(space) 사용 불가
 > - 하이픈(`-`) 사용 불가 (PostgreSQL DB 이름, 환경변수 호환성)
 > - 언더스코어(`_`) 권장 (예: `my_project`, `test_app`)
@@ -92,18 +93,18 @@ pnpm create sonamu my_app \
 
 #### 사용 가능한 옵션
 
-| 옵션               | 설명                             | 기본값                 |
-| ------------------ | -------------------------------- | ---------------------- |
-| `--yes`, `-y`      | 모든 질문에 기본값으로 자동 응답 | -                      |
-| `--pnpm`           | pnpm 설치 여부 (`y`/`n`)         | (프롬프트로 질문)      |
-| `--docker`         | Docker DB 설정 여부 (`y`/`n`)    | (프롬프트로 질문)      |
-| `--skip-pnpm`      | pnpm 설치 건너뛰기 (`--pnpm n`과 동일) | false             |
-| `--skip-docker`    | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false        |
-| `--db-user`        | 데이터베이스 사용자              | postgres               |
-| `--db-password`    | 데이터베이스 비밀번호            | 1234                   |
-| `--db-name`        | 데이터베이스 이름                | {프로젝트명}           |
-| `--container-name` | Docker 컨테이너 이름             | {프로젝트명}-container |
-| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명 | {프로젝트명}-docker |
+| 옵션                                   | 설명                                          | 기본값                 |
+| -------------------------------------- | --------------------------------------------- | ---------------------- |
+| `--yes`, `-y`                          | 모든 질문에 기본값으로 자동 응답              | -                      |
+| `--pnpm`                               | pnpm 설치 여부 (`y`/`n`)                      | (프롬프트로 질문)      |
+| `--docker`                             | Docker DB 설정 여부 (`y`/`n`)                 | (프롬프트로 질문)      |
+| `--skip-pnpm`                          | pnpm 설치 건너뛰기 (`--pnpm n`과 동일)        | false                  |
+| `--skip-docker`                        | Docker DB 설정 건너뛰기 (`--docker n`과 동일) | false                  |
+| `--db-user`                            | 데이터베이스 사용자                           | postgres               |
+| `--db-password`                        | 데이터베이스 비밀번호                         | 1234                   |
+| `--db-name`                            | 데이터베이스 이름                             | {프로젝트명}           |
+| `--container-name`                     | Docker 컨테이너 이름                          | {프로젝트명}-container |
+| `--docker-project`, `--docker-pj-name` | Docker Compose 프로젝트명                     | {프로젝트명}-docker    |
 
 > **참고**: `--pnpm y`, `--docker y`에서 `y`는 `yes`, `true`, `1`로도 지정할 수 있습니다. 마찬가지로 `n`은 `no`, `false`, `0`으로도 지정할 수 있습니다.
 
@@ -163,13 +164,14 @@ pnpm dev
 
 > 여러 프로젝트를 동시에 실행할 수 있습니다.
 
-| 서비스         | 포트               | URL                              |
-| -------------- | ------------------ | -------------------------------- |
-| **API + Web (통합)** | `BASE_PORT` (34900) | http://localhost:34900     |
-| **Sonamu UI**  | -                  | http://localhost:34900/sonamu-ui  |
-| **PostgreSQL** | 5432               | -                                |
+| 서비스               | 포트                | URL                              |
+| -------------------- | ------------------- | -------------------------------- |
+| **API + Web (통합)** | `BASE_PORT` (34900) | http://localhost:34900           |
+| **Sonamu UI**        | -                   | http://localhost:34900/sonamu-ui |
+| **PostgreSQL**       | 5432                | -                                |
 
 **참고**:
+
 - `sonamu dev` (= `sonamu dev all`)은 API와 Web을 하나의 포트(one-port)로 통합 서빙합니다
 - Sonamu UI는 API 서버에 통합되어 있어 별도 실행이 필요 없습니다
 - Web만 별도로 실행하려면 `sonamu dev web`을 사용하세요
@@ -180,40 +182,40 @@ pnpm dev
 
 ### API (`api/`)
 
-| 명령어           | 설명                                      |
-| ---------------- | ----------------------------------------- |
-| `pnpm dev`       | 통합 개발 서버 시작 (= `sonamu dev all`)  |
-| `pnpm build`     | 전체 프로덕션 빌드 (= `sonamu build all`) |
-| `pnpm build api` | API만 빌드 (= `sonamu build api`)         |
-| `pnpm build web` | Web만 빌드 (= `sonamu build web`)         |
-| `pnpm start`     | 프로덕션 서버 실행                        |
-| `pnpm test`      | 테스트 실행                               |
-| `pnpm docker:up`     | Docker 데이터베이스 시작                  |
-| `pnpm docker:down`   | Docker 데이터베이스 중지                  |
-| `pnpm docker:reset`  | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
-| `pnpm dump`      | 테스트 DB → 덤프 파일 생성                |
-| `pnpm seed`      | 덤프 파일 → fixture DB 적용               |
-| `pnpm sonamu skills sync` | 공식 Skills 동기화                   |
-| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성             |
+| 명령어                             | 설명                                      |
+| ---------------------------------- | ----------------------------------------- |
+| `pnpm dev`                         | 통합 개발 서버 시작 (= `sonamu dev all`)  |
+| `pnpm build`                       | 전체 프로덕션 빌드 (= `sonamu build all`) |
+| `pnpm build api`                   | API만 빌드 (= `sonamu build api`)         |
+| `pnpm build web`                   | Web만 빌드 (= `sonamu build web`)         |
+| `pnpm start`                       | 프로덕션 서버 실행                        |
+| `pnpm test`                        | 테스트 실행                               |
+| `pnpm docker:up`                   | Docker 데이터베이스 시작                  |
+| `pnpm docker:down`                 | Docker 데이터베이스 중지                  |
+| `pnpm docker:reset`                | 데이터베이스 초기화 (볼륨 삭제 후 재시작) |
+| `pnpm dump`                        | 테스트 DB → 덤프 파일 생성                |
+| `pnpm seed`                        | 덤프 파일 → fixture DB 적용               |
+| `pnpm sonamu skills sync`          | 공식 Skills 동기화                        |
+| `pnpm sonamu skills create <name>` | 커스텀 Skill 생성                         |
 
 ### 개발 서버 모드
 
-| 명령어                          | 설명                                     |
-| ------------------------------- | ---------------------------------------- |
-| `sonamu dev`                    | 통합 모드 (= `sonamu dev all`)           |
-| `sonamu dev all`                | 통합 모드 (one-port: API + Web)          |
-| `sonamu dev api`                | API-only 모드 (Vite 통합 비활성)         |
-| `sonamu dev web`                | Vite 단독 실행                           |
-| `sonamu dev web -- --port 3028` | Vite 옵션 전달                           |
+| 명령어                          | 설명                             |
+| ------------------------------- | -------------------------------- |
+| `sonamu dev`                    | 통합 모드 (= `sonamu dev all`)   |
+| `sonamu dev all`                | 통합 모드 (one-port: API + Web)  |
+| `sonamu dev api`                | API-only 모드 (Vite 통합 비활성) |
+| `sonamu dev web`                | Vite 단독 실행                   |
+| `sonamu dev web -- --port 3028` | Vite 옵션 전달                   |
 
 ### 빌드
 
-| 명령어             | 설명                                      |
-| ------------------ | ----------------------------------------- |
-| `sonamu build`     | 전체 빌드 (= `sonamu build all`)          |
-| `sonamu build all` | 전체 빌드 (API + Web)                     |
-| `sonamu build api` | API만 빌드                                |
-| `sonamu build web` | Web만 빌드                                |
+| 명령어             | 설명                             |
+| ------------------ | -------------------------------- |
+| `sonamu build`     | 전체 빌드 (= `sonamu build all`) |
+| `sonamu build all` | 전체 빌드 (API + Web)            |
+| `sonamu build api` | API만 빌드                       |
+| `sonamu build web` | Web만 빌드                       |
 
 **참고**: `sonamu build web`은 클라이언트와 SSR 서버를 모두 빌드합니다. 빌드 결과는 `web/dist/`에 생성되고, `api/web-dist/`로 복사됩니다.
 
@@ -336,6 +338,7 @@ pnpm sonamu skills sync
 ```
 
 이 명령은:
+
 - 최신 공식 Skills를 `.claude/skills/sonamu`로 동기화 (symlink 또는 복사)
 - `CLAUDE.md`의 Sonamu 관련 섹션을 업데이트 (마커 영역만)
 
@@ -375,12 +378,13 @@ await knex.schema.createTable('users', ...)
 
 // 2. posts 테이블 나중에 생성 (users 참조)
 await knex.schema.createTable('posts', (table) => {
-  table.integer('user_id').references('users.id')
+table.integer('user_id').references('users.id')
 })
 \`\`\`
 ```
 
 **파일명 규칙**:
+
 - 자동으로 안전한 이름으로 변환됩니다
 - 예: `"bug fix"` → `bug-fix.md`
 - 예: `"마이그레이션/헬퍼"` → `마이그레이션-헬퍼.md`
@@ -389,21 +393,21 @@ await knex.schema.createTable('posts', (table) => {
 
 생성된 프로젝트에 포함된 주요 Skills:
 
-| Skill | 설명 |
-|-------|------|
-| **project-init** | 프로젝트 생성 및 초기화 |
-| **entity-basic** | Entity 생성/수정 기본 |
+| Skill                | 설명                                        |
+| -------------------- | ------------------------------------------- |
+| **project-init**     | 프로젝트 생성 및 초기화                     |
+| **entity-basic**     | Entity 생성/수정 기본                       |
 | **entity-relations** | Entity 관계 정의 (BelongsToOne, HasMany 등) |
-| **model** | Model 클래스 작성 패턴 |
-| **api** | @api 데코레이터로 API 노출 |
-| **puri** | 타입 안전 쿼리 빌더 사용법 |
-| **subset** | API 응답 필드 범위 정의 |
-| **upsert** | 관계 데이터 저장 (UpsertBuilder) |
-| **testing** | 테스트 작성 (bootstrap, test, testAs) |
-| **migration** | 데이터베이스 마이그레이션 |
-| **frontend** | 프론트엔드에서 API 호출 |
-| **i18n** | 다국어 지원 |
-| **workflow** | 전체 개발 워크플로우 |
+| **model**            | Model 클래스 작성 패턴                      |
+| **api**              | @api 데코레이터로 API 노출                  |
+| **puri**             | 타입 안전 쿼리 빌더 사용법                  |
+| **subset**           | API 응답 필드 범위 정의                     |
+| **upsert**           | 관계 데이터 저장 (UpsertBuilder)            |
+| **testing**          | 테스트 작성 (bootstrap, test, testAs)       |
+| **migration**        | 데이터베이스 마이그레이션                   |
+| **frontend**         | 프론트엔드에서 API 호출                     |
+| **i18n**             | 다국어 지원                                 |
+| **workflow**         | 전체 개발 워크플로우                        |
 
 ### Claude Code 사용 팁
 
@@ -435,11 +439,11 @@ Claude는 `.claude/skills/sonamu`의 지식을 활용하여 Sonamu 방식에 맞
 
 ### 데이터베이스 구성
 
-| DB 이름            | 용도            |
-| ------------------ | --------------- |
-| `{name}`           | 메인 개발 DB    |
-| `{name}_fixture`   | fixture DB      |
-| `{name}_test`      | 테스트 실행용   |
+| DB 이름          | 용도          |
+| ---------------- | ------------- |
+| `{name}`         | 메인 개발 DB  |
+| `{name}_fixture` | fixture DB    |
+| `{name}_test`    | 테스트 실행용 |
 
 ### Fixture 워크플로우
 

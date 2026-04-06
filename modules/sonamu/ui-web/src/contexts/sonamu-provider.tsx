@@ -4,6 +4,7 @@ import {
   useSonamuBaseContext,
 } from "@sonamu-kit/react-components";
 import type { ReactNode } from "react";
+
 import { type UiWebDictionary, useSD } from "../i18n";
 
 export function createSonamuConfig(): SonamuContextValue<UiWebDictionary> {

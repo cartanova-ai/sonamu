@@ -60,35 +60,23 @@ Correct order:
 ```typescript
 export async function up(knex: Knex): Promise<void> {
   // Step 1: Remove all FK constraints
-  await knex.raw(
-    'ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"',
-  );
-  await knex.raw(
-    'ALTER TABLE "sessions" DROP CONSTRAINT "sessions_user_id_foreign"',
-  );
+  await knex.raw('ALTER TABLE "accounts" DROP CONSTRAINT "accounts_user_id_foreign"');
+  await knex.raw('ALTER TABLE "sessions" DROP CONSTRAINT "sessions_user_id_foreign"');
   await knex.raw(
     'ALTER TABLE "evaluation_committees" DROP CONSTRAINT "evaluation_committees_evaluator_id_foreign"',
   );
   await knex.raw(
     'ALTER TABLE "project_participants" DROP CONSTRAINT "project_participants_user_id_foreign"',
   );
-  await knex.raw(
-    'ALTER TABLE "reports" DROP CONSTRAINT "reports_submitted_by_id_foreign"',
-  );
+  await knex.raw('ALTER TABLE "reports" DROP CONSTRAINT "reports_submitted_by_id_foreign"');
 
   // Step 2: Remove PK constraint
   await knex.raw('ALTER TABLE "users" DROP CONSTRAINT "users_pkey"');
 
   // Step 3: Change all column types (parent PK + child FKs)
-  await knex.raw(
-    'ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text',
-  );
-  await knex.raw(
-    'ALTER TABLE "accounts" ALTER COLUMN "user_id" TYPE text USING "user_id"::text',
-  );
-  await knex.raw(
-    'ALTER TABLE "sessions" ALTER COLUMN "user_id" TYPE text USING "user_id"::text',
-  );
+  await knex.raw('ALTER TABLE "users" ALTER COLUMN "id" TYPE text USING "id"::text');
+  await knex.raw('ALTER TABLE "accounts" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
+  await knex.raw('ALTER TABLE "sessions" ALTER COLUMN "user_id" TYPE text USING "user_id"::text');
   await knex.raw(
     'ALTER TABLE "evaluation_committees" ALTER COLUMN "evaluator_id" TYPE text USING "evaluator_id"::text',
   );
@@ -100,9 +88,7 @@ export async function up(knex: Knex): Promise<void> {
   );
 
   // Step 4: Restore PK constraint
-  await knex.raw(
-    'ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")',
-  );
+  await knex.raw('ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id")');
 
   // Step 5: Restore FK constraints
   await knex.raw(
@@ -382,12 +368,12 @@ In Sonamu Entity, use the DB column name (snake_case) as-is:
 
 #### Plugin Categories
 
-| Category | Plugins | Impact |
-| ------------ | ----------------------------------------------------------- | ---------------------------------------- |
-| Basic auth | email/password, OAuth, magic link, email OTP, multi-session | User/Session/Account/Verification tables |
-| User extension | username, phone number, admin, anonymous | Adds fields to User table |
-| Security | two-factor, passkey | New tables needed (TwoFactor, Passkey) |
-| Enterprise | organization, API key, SSO, JWT | New tables needed (Organization, Member, etc.) |
+| Category       | Plugins                                                     | Impact                                         |
+| -------------- | ----------------------------------------------------------- | ---------------------------------------------- |
+| Basic auth     | email/password, OAuth, magic link, email OTP, multi-session | User/Session/Account/Verification tables       |
+| User extension | username, phone number, admin, anonymous                    | Adds fields to User table                      |
+| Security       | two-factor, passkey                                         | New tables needed (TwoFactor, Passkey)         |
+| Enterprise     | organization, API key, SSO, JWT                             | New tables needed (Organization, Member, etc.) |
 
 #### Classification by Schema Requirements
 

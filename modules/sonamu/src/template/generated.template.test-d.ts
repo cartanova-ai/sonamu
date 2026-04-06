@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
+
 import type { InsertData } from "../database/puri.types";
 
 type GeneratedTemplateRow = {

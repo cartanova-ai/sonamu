@@ -1,6 +1,7 @@
 import { Button, Input, type InputProps } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
 import LanguagesIcon from "~icons/lucide/languages";
+
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type InputWithSuggestionProps = {

@@ -6,6 +6,7 @@
 ## 프로젝트 목표
 
 Sonamu의 백엔드 중심 철학을 유지하면서 SSR 기능을 통합:
+
 - API 서버와 Web 서버를 단일 서버로 통합
 - 개발자는 순수 CSR + React 멘탈 모델로 개발
 - SSR이 필요한 일부 라우트에만 선택적 SSR 적용
@@ -26,37 +27,44 @@ Sonamu의 백엔드 중심 철학을 유지하면서 SSR 기능을 통합:
 ### 1. services.generated.ts - 단일 파일 통합
 
 **구조**:
+
 ```typescript
 // web/src/services/services.generated.ts
 export namespace UserService {
   // axios 함수 (항상 생성)
-  export async function getUser(subset, id) { /* fetch */ }
-  
+  export async function getUser(subset, id) {
+    /* fetch */
+  }
+
   // queryOptions (clients: ['tanstack-query'])
-  export const getUserQueryOptions = (subset, id) => queryOptions({
-    queryKey: ['User', 'getUser', subset, id],  // ← 엔티티 prefix
-    queryFn: () => getUser(subset, id)  // ← axios 재사용
-  });
-  
+  export const getUserQueryOptions = (subset, id) =>
+    queryOptions({
+      queryKey: ["User", "getUser", subset, id], // ← 엔티티 prefix
+      queryFn: () => getUser(subset, id), // ← axios 재사용
+    });
+
   // React hook (clients: ['tanstack-query'])
-  export const useUser = (subset, id, options?) => useQuery({
-    ...getUserQueryOptions(subset, id),
-    ...options  // ← enabled 등 지원
-  });
-  
+  export const useUser = (subset, id, options?) =>
+    useQuery({
+      ...getUserQueryOptions(subset, id),
+      ...options, // ← enabled 등 지원
+    });
+
   // Mutation (clients: ['tanstack-mutation'])
-  export const useSaveMutation = () => useMutation({
-    mutationFn: save
-  });
+  export const useSaveMutation = () =>
+    useMutation({
+      mutationFn: save,
+    });
 }
 ```
 
 **사용**:
+
 ```typescript
-import { UserService } from '@/services/services.generated';
+import { UserService } from "@/services/services.generated";
 
 // Query
-const { data } = UserService.useUser('A', 1);
+const { data } = UserService.useUser("A", 1);
 
 // Mutation
 const { mutate } = UserService.useSaveMutation();
@@ -65,33 +73,37 @@ const { mutate } = UserService.useSaveMutation();
 ### 2. queries.generated.ts - SSR용 타입 안전한 preload 설정
 
 **구조**:
+
 ```typescript
 // api/src/queries.generated.ts
 export namespace UserService {
-  export const getUser = (subset, id): SSRQuery => ({
-    modelName: 'UserModel',     // ExtendedApi의 modelName
-    methodName: 'findById',     // API 메소드명
-    params: [subset, id]        // Context 제외한 실제 파라미터
-  } as SSRQuery);
+  export const getUser = (subset, id): SSRQuery =>
+    ({
+      modelName: "UserModel", // ExtendedApi의 modelName
+      methodName: "findById", // API 메소드명
+      params: [subset, id], // Context 제외한 실제 파라미터
+    }) as SSRQuery;
 }
 ```
 
 **사용**:
+
 ```typescript
 // api/src/ssr/routes.ts
-import { UserService } from '@/queries.generated';
+import { UserService } from "@/queries.generated";
 
 registerSSR({
-  path: '/users/:id',
+  path: "/users/:id",
   preload: (params) => [
-    UserService.getUser('A', Number(params.id))  // ← 타입 체크 완벽!
-  ]
+    UserService.getUser("A", Number(params.id)), // ← 타입 체크 완벽!
+  ],
 });
 ```
 
 ### 3. SSR 데이터 로딩 방식 (핵심)
 
 **기존 계획 (HTTP 경유):**
+
 ```
 registerSSR → preloadConfig
 → entry-server가 web의 Services 호출 (axios)
@@ -100,6 +112,7 @@ registerSSR → preloadConfig
 ```
 
 **새로운 방식 (직접 호출):**
+
 ```
 registerSSR → preloadConfig
 → Sonamu.invokeApiForSSR로 Model 메소드 직접 호출
@@ -108,6 +121,7 @@ registerSSR → preloadConfig
 ```
 
 **구현**:
+
 ```typescript
 // Sonamu renderSSR 내부
 const preloadConfig = route.preload(params);
@@ -115,17 +129,15 @@ const preloadConfig = route.preload(params);
 const preloadedData = [];
 for (const { modelName, methodName, params } of preloadConfig) {
   const api = Sonamu.syncer.apis.find(
-    a => a.modelName === modelName && a.methodName === methodName
+    (a) => a.modelName === modelName && a.methodName === methodName,
   );
-  
+
   // HTTP 없이 직접 Model 호출 (ALS로 Context 자동 주입)
-  const result = await Sonamu.invokeApiForSSR(
-    api, params, request, reply, config
-  );
-  
+  const result = await Sonamu.invokeApiForSSR(api, params, request, reply, config);
+
   preloadedData.push({
-    queryKey: [modelName.replace('Model', ''), methodName, ...params],
-    data: result
+    queryKey: [modelName.replace("Model", ""), methodName, ...params],
+    data: result,
   });
 }
 
@@ -134,22 +146,24 @@ const { html, dehydratedState } = await ssrRender(url, preloadedData);
 ```
 
 **장점**:
+
 - ✅ HTTP 오버헤드 제거 (서버 내부에서 직접 호출)
 - ✅ SonamuContext 세션 정보 완벽 동기화 (ALS 활용)
 
 ### 4. entry-server.generated.tsx - 자동 생성되는 SSR 엔트리
 
 **Sonamu가 생성**:
+
 ```typescript
 // web/src/entry-server.generated.tsx
 export async function render(url, preloadedData) {
   const queryClient = new QueryClient();
-  
+
   // prefetch 대신 setQueryData로 직접 주입
   for (const { queryKey, data } of preloadedData) {
     queryClient.setQueryData(queryKey, data);
   }
-  
+
   // 렌더링...
   return { html, dehydratedState };
 }
@@ -170,6 +184,7 @@ pnpm build              # API 빌드
 ```
 
 **결과 구조**:
+
 ```
 api/
   public/
@@ -217,13 +232,13 @@ sonamu/
 ```typescript
 // api/src/application/user/user.api.ts
 class UserApi {
-  @api({ 
+  @api({
     httpMethod: 'GET',
     clients: ['axios', 'tanstack-query']  // ← Query 생성
   })
   async findById(...) {}
-  
-  @api({ 
+
+  @api({
     httpMethod: 'POST',
     clients: ['axios', 'tanstack-mutation']  // ← Mutation 생성
   })
@@ -238,6 +253,7 @@ pnpm sonamu sync
 ```
 
 **생성되는 파일**:
+
 - `api/src/queries.generated.ts` - SSR용 (modelName, methodName, params)
 - `web/src/services/services.generated.ts` - Web용
 - `web/src/entry-server.generated.tsx` - SSR 엔트리
@@ -246,16 +262,14 @@ pnpm sonamu sync
 
 ```typescript
 // api/src/ssr/routes.ts
-import { UserService } from '@/queries.generated';
+import { UserService } from "@/queries.generated";
 
 registerSSR({
-  path: '/users/:id',
-  preload: (params) => [
-    UserService.getUser('A', Number(params.id))
-  ],
+  path: "/users/:id",
+  preload: (params) => [UserService.getUser("A", Number(params.id))],
   head: (dehydratedState) => ({
-    title: 'User Detail'
-  })
+    title: "User Detail",
+  }),
 });
 ```
 
@@ -268,7 +282,7 @@ import { UserService } from '@/services/services.generated';
 function UserDetailPage() {
   const { id } = useParams();
   const { data: user } = UserService.useUser('A', Number(id));
-  
+
   return <div>{user?.name}</div>;
 }
 ```
@@ -287,26 +301,31 @@ http://localhost:10280
 ## 주요 특징
 
 ### 타입 안전성
+
 - API 프로젝트에서 SSR preload 설정 시 완전한 타입 체크
 - `queries.generated.ts`와 `services.generated.ts` 시그니처 동기화
 - Branded Type (SSRQuery)으로 실수 방지
 
 ### 프로젝트 분리 유지
+
 - api/web은 별개 tsconfig.json
 - 각각 독립적인 빌드 프로세스
 - 프론트엔드는 순수 React/CSR 코드만 작성
 
 ### 선택적 SSR
+
 - SEO가 필요한 일부 라우트만 SSR
 - 대부분의 페이지는 CSR로 동작
 - 복잡도 최소화
 
 ### 단일 서버 운영
+
 - 개발: 하나의 포트 (10280)
 - 프로덕션: 하나의 인프라
 - CORS 문제 없음
 
 ### 성능 최적화
+
 - **HTTP 오버헤드 제거**: 서버 내부에서 직접 Model 호출
 - **세션 자동 동기화**: AsyncLocalStorage(ALS) 활용
 - **최소한의 데이터 전송**: 필요한 쿼리만 preload
@@ -314,6 +333,7 @@ http://localhost:10280
 ## 다음 단계
 
 각 Phase 문서를 순서대로 진행하세요:
+
 1. Phase 1에서 Tanstack Query 기반 구축
 2. Phase 2에서 Tanstack Router 적용
 3. Phase 3에서 단일 서버 통합 (CSR)

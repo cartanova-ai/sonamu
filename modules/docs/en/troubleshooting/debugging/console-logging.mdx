@@ -1,6 +1,6 @@
 ---
-title: 'Console Logging'
-description: 'Debugging with logs'
+title: "Console Logging"
+description: "Debugging with logs"
 ---
 
 This covers debugging methods using Sonamu's LogTape-based logging system.
@@ -10,6 +10,7 @@ This covers debugging methods using Sonamu's LogTape-based logging system.
 Sonamu provides structured logging using [@logtape/logtape](https://github.com/dahlia/logtape).
 
 **Key features:**
+
 - Category-based logging
 - Various log levels (debug, info, warn, error, fatal)
 - Custom Sink/Filter support
@@ -34,11 +35,11 @@ logger.error("Error occurred", { error: err.message });
 ```typescript
 const logger = getLogger(["myapp", "api"]);
 
-logger.debug("Debug information");     // Development only
-logger.info("General information");    // Production as well
-logger.warn("Warning");               // Needs attention
-logger.error("Error");                // Error occurred
-logger.fatal("Fatal error");          // Unrecoverable error
+logger.debug("Debug information"); // Development only
+logger.info("General information"); // Production as well
+logger.warn("Warning"); // Needs attention
+logger.error("Error"); // Error occurred
+logger.fatal("Fatal error"); // Unrecoverable error
 ```
 
 ## Logging Configuration
@@ -53,13 +54,12 @@ export default {
 
     // Add custom Sinks
     sinks: {
-      "file": getFileSink("logs/app.log")
+      file: getFileSink("logs/app.log"),
     },
 
     // Add custom Filters
     filters: {
-      "production-only": (record) =>
-        process.env.NODE_ENV === "production"
+      "production-only": (record) => process.env.NODE_ENV === "production",
     },
 
     // Logger configuration
@@ -67,10 +67,10 @@ export default {
       {
         category: ["myapp"],
         sinks: ["console", "file"],
-        lowestLevel: "info"
-      }
-    ]
-  }
+        lowestLevel: "info",
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -78,7 +78,7 @@ export default {
 
 ```typescript
 export default {
-  logging: false  // Disable all logging
+  logging: false, // Disable all logging
 } satisfies SonamuConfig;
 ```
 
@@ -195,7 +195,7 @@ async function apiCall() {
     if (!response.ok) {
       logger.warn("API response failed", {
         status: response.status,
-        url
+        url,
       });
     }
 
@@ -204,7 +204,7 @@ async function apiCall() {
     logger.error("API call error", {
       error: error.message,
       stack: error.stack,
-      url
+      url,
     });
     throw error;
   }
@@ -221,16 +221,16 @@ import { getFileSink } from "@logtape/logtape";
 export default {
   logging: {
     sinks: {
-      "error-file": getFileSink("logs/errors.log")
+      "error-file": getFileSink("logs/errors.log"),
     },
     loggers: [
       {
         category: ["myapp"],
         sinks: ["error-file"],
-        lowestLevel: "error"  // Only log errors to file
-      }
-    ]
-  }
+        lowestLevel: "error", // Only log errors to file
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -242,19 +242,19 @@ import { getPrettyFormatter } from "@logtape/pretty";
 
 const customSink = getConsoleSink({
   formatter: getPrettyFormatter({
-    timestamp: "date-time-timezone",  // Include timezone
-    categoryWidth: 30,                 // Category width
-    categoryTruncate: "end",          // Truncation position
-    colors: true                       // Enable colors
-  })
+    timestamp: "date-time-timezone", // Include timezone
+    categoryWidth: 30, // Category width
+    categoryTruncate: "end", // Truncation position
+    colors: true, // Enable colors
+  }),
 });
 
 export default {
   logging: {
     sinks: {
-      "custom-console": customSink
-    }
-  }
+      "custom-console": customSink,
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -274,15 +274,15 @@ export default {
           return record.level !== "debug";
         }
         return true;
-      }
+      },
     },
     loggers: [
       {
         category: ["myapp"],
-        filters: ["no-debug-in-prod"]
-      }
-    ]
-  }
+        filters: ["no-debug-in-prod"],
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -296,16 +296,16 @@ const apiOnlyFilter = (record: LogRecord) => {
 export default {
   logging: {
     filters: {
-      "api-only": apiOnlyFilter
+      "api-only": apiOnlyFilter,
     },
     loggers: [
       {
         category: ["api"],
         filters: ["api-only"],
-        sinks: ["api-file"]
-      }
-    ]
-  }
+        sinks: ["api-file"],
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -321,10 +321,10 @@ export default {
     loggers: [
       {
         category: ["myapp"],
-        lowestLevel: isDev ? "debug" : "info"  // Development: debug, Production: info
-      }
-    ]
-  }
+        lowestLevel: isDev ? "debug" : "info", // Development: debug, Production: info
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -336,18 +336,18 @@ export default {
     loggers: [
       {
         category: ["myapp", "critical"],
-        lowestLevel: "warn"  // Warnings and above only
+        lowestLevel: "warn", // Warnings and above only
       },
       {
         category: ["myapp", "debug"],
-        lowestLevel: "debug"  // Include debug
+        lowestLevel: "debug", // Include debug
       },
       {
         category: ["myapp"],
-        lowestLevel: "info"  // Default
-      }
-    ]
-  }
+        lowestLevel: "info", // Default
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -364,8 +364,8 @@ logger.info("User action", {
   timestamp: new Date().toISOString(),
   metadata: {
     ip: request.ip,
-    userAgent: request.headers["user-agent"]
-  }
+    userAgent: request.headers["user-agent"],
+  },
 });
 ```
 
@@ -380,8 +380,8 @@ try {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      cause: error.cause
-    }
+      cause: error.cause,
+    },
   });
 }
 ```
@@ -401,7 +401,7 @@ async function measureOperation() {
 
     logger.info("Operation completed", {
       duration: `${duration.toFixed(2)}ms`,
-      result
+      result,
     });
 
     if (duration > 1000) {
@@ -430,7 +430,7 @@ logger.error("error");
 logger.info("User creation completed", { userId, email });
 logger.error("Database connection failed", {
   host,
-  error: err.message
+  error: err.message,
 });
 ```
 
@@ -438,11 +438,11 @@ logger.error("Database connection failed", {
 
 ```typescript
 // Appropriate usage by level
-logger.debug("Variable value check", { value });           // Development only
-logger.info("API request completed", { statusCode });      // General information
+logger.debug("Variable value check", { value }); // Development only
+logger.info("API request completed", { statusCode }); // General information
 logger.warn("Retry needed", { attempt, maxRetries }); // Needs attention
-logger.error("Processing failed", { error });              // Error
-logger.fatal("Server shutdown", { reason });             // Fatal
+logger.error("Processing failed", { error }); // Error
+logger.fatal("Server shutdown", { reason }); // Fatal
 ```
 
 ### 3. Excluding Sensitive Information
@@ -451,13 +451,13 @@ logger.fatal("Server shutdown", { reason });             // Fatal
 // Logging sensitive information
 logger.info("Login", {
   email,
-  password  // Bad
+  password, // Bad
 });
 
 // Masking sensitive information
 logger.info("Login", {
   email,
-  hasPassword: !!password  // Good
+  hasPassword: !!password, // Good
 });
 ```
 
@@ -465,15 +465,12 @@ logger.info("Login", {
 
 ```typescript
 // Hierarchical category structure
-["myapp", "user", "auth"]
-["myapp", "user", "profile"]
-["myapp", "order", "payment"]
-["myapp", "order", "shipping"]
-
-// Inconsistent categories
-["auth"]
-["user-profile"]
-["payments"]
+["myapp", "user", "auth"][("myapp", "user", "profile")][("myapp", "order", "payment")][
+  ("myapp", "order", "shipping")
+][
+  // Inconsistent categories
+  "auth"
+]["user-profile"]["payments"];
 ```
 
 ## Debugging Tips
@@ -491,10 +488,10 @@ export default {
     loggers: [
       {
         category: ["myapp"],
-        lowestLevel: process.env.LOG_LEVEL || "info"
-      }
-    ]
-  }
+        lowestLevel: process.env.LOG_LEVEL || "info",
+      },
+    ],
+  },
 } satisfies SonamuConfig;
 ```
 

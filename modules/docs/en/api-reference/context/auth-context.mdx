@@ -1,6 +1,6 @@
 ---
-title: 'AuthContext'
-description: 'Sonamu authentication context reference'
+title: "AuthContext"
+description: "Sonamu authentication context reference"
 ---
 
 AuthContext is part of Context, providing user authentication state and session information. It is implemented based on [better-auth](https://www.better-auth.com/).
@@ -23,7 +23,7 @@ type AuthContext = {
 ### user
 
 ```typescript
-user: User | null
+user: User | null;
 ```
 
 Information about the currently authenticated user. `null` if not logged in.
@@ -68,7 +68,7 @@ class UserModelClass extends BaseModelClass {
 ### session
 
 ```typescript
-session: Session | null
+session: Session | null;
 ```
 
 Current session information. `null` if not logged in.
@@ -191,7 +191,8 @@ export default {
 ```
 
 <Info>
-`guardHandler` runs inside AsyncLocalStorage, so you can access the current request's Context via `Sonamu.getContext()`.
+  `guardHandler` runs inside AsyncLocalStorage, so you can access the current request's Context via
+  `Sonamu.getContext()`.
 </Info>
 
 ## Extending User Type

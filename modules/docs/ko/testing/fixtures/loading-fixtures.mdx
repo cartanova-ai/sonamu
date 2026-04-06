@@ -58,7 +58,7 @@ async function importFixture(entityId: string, ids: number[]) {
     ids.map(async (id) => {
       // 각 ID에 대한 import 쿼리 생성
       return await this.getImportQueries(entityId, "id", id);
-    })
+    }),
   );
 
   // 쿼리 실행
@@ -86,11 +86,7 @@ pnpm sonamu fixture import User 1
 **내부 동작**:
 
 ```typescript
-async function getImportQueries(
-  entityId: string,
-  field: string,
-  id: number
-): Promise<string[]> {
+async function getImportQueries(entityId: string, field: string, id: number): Promise<string[]> {
   // 순환 참조 방지
   const recordKey = `${entityId}#${field}#${id}`;
   if (this.visitedRecords.has(recordKey)) {
@@ -113,9 +109,7 @@ async function getImportQueries(
       const relatedId = row[`${relation.name}_id`];
       if (relatedId) {
         // 재귀적으로 관련 데이터 가져오기
-        relatedQueries.push(
-          ...(await this.getImportQueries(relation.with, "id", relatedId))
-        );
+        relatedQueries.push(...(await this.getImportQueries(relation.with, "id", relatedId)));
       }
     }
   }
@@ -329,43 +323,24 @@ pnpm sonamu fixture import User 6,7,8,9,10
 ## 주의사항
 
 <Warning>
-  **Fixture 로딩 시 주의사항**:
-  1. **최소 데이터**: 필요한 최소한의 레코드만 가져오기
-  2. **관계 확인**: BelongsTo는 자동, HasMany는 수동
-  3. **중복 안전**: INSERT IGNORE로 중복 방지
-  4. **순환 참조**: 자동으로 처리됨
-  5. **권한 확인**: Fixture DB에 쓰기 권한 필요
+  **Fixture 로딩 시 주의사항**: 1. **최소 데이터**: 필요한 최소한의 레코드만 가져오기 2. **관계
+  확인**: BelongsTo는 자동, HasMany는 수동 3. **중복 안전**: INSERT IGNORE로 중복 방지 4. **순환
+  참조**: 자동으로 처리됨 5. **권한 확인**: Fixture DB에 쓰기 권한 필요
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card
-    title="테스트 DB"
-    icon="database"
-    href="/ko/testing/fixtures/test-database"
-  >
+  <Card title="테스트 DB" icon="database" href="/ko/testing/fixtures/test-database">
     테스트 DB 설정
   </Card>
-  <Card
-    title="Fixture 생성"
-    icon="plus"
-    href="/ko/testing/fixtures/creating-fixtures"
-  >
+  <Card title="Fixture 생성" icon="plus" href="/ko/testing/fixtures/creating-fixtures">
     fixture.ts 작성하기
   </Card>
-  <Card
-    title="Fixture 동기화"
-    icon="arrows-rotate"
-    href="/ko/testing/fixtures/syncing-fixtures"
-  >
+  <Card title="Fixture 동기화" icon="arrows-rotate" href="/ko/testing/fixtures/syncing-fixtures">
     Fixture → Test DB
   </Card>
-  <Card
-    title="테스트 작성"
-    icon="vial"
-    href="/ko/testing/writing-tests/test-structure"
-  >
+  <Card title="테스트 작성" icon="vial" href="/ko/testing/writing-tests/test-structure">
     테스트 구조 이해하기
   </Card>
 </CardGroup>

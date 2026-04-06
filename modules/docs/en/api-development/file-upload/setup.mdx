@@ -9,24 +9,16 @@ Sonamu allows you to easily handle file uploads through the `@upload` decorator.
 
 <CardGroup cols={2}>
   <Card title="@upload Decorator" icon="at">
-    Automatic file parsing
-    
-    Single/multiple file support
+    Automatic file parsing Single/multiple file support
   </Card>
   <Card title="UploadedFile Class" icon="file">
-    File info access
-    
-    saveToDisk() method
+    File info access saveToDisk() method
   </Card>
   <Card title="Storage Manager" icon="database">
-    local, S3, GCS integration
-    
-    Flexible storage
+    local, S3, GCS integration Flexible storage
   </Card>
   <Card title="Auto URL Generation" icon="link">
-    Public URL
-    
-    Signed URL
+    Public URL Signed URL
   </Card>
 </CardGroup>
 
@@ -49,7 +41,7 @@ class FileModelClass extends BaseModelClass<
   constructor() {
     super("File", fileSubsetQueries, fileLoaderQueries);
   }
-  
+
   // Single file upload
   @upload()
   async uploadSingle(): Promise<{
@@ -58,21 +50,21 @@ class FileModelClass extends BaseModelClass<
   }> {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
-    
+
     if (!file) {
       throw new Error("File is required");
     }
-    
+
     // File info
     console.log({
       filename: file.filename,
       mimetype: file.mimetype,
       size: file.size,
     });
-    
+
     // Save file
     const url = await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
-    
+
     // Save metadata to DB
     const wdb = this.getPuri("w");
     const [record] = await wdb
@@ -84,7 +76,7 @@ class FileModelClass extends BaseModelClass<
         url,
       })
       .returning({ id: "id" });
-    
+
     return {
       fileId: record.id,
       url,
@@ -115,19 +107,19 @@ class FileModelClass extends BaseModelClass<
     }>;
   }> {
     const { bufferedFiles } = Sonamu.getContext();
-    
+
     if (!bufferedFiles || bufferedFiles.length === 0) {
       throw new Error("At least one file is required");
     }
-    
+
     const uploadedFiles = [];
     const wdb = this.getPuri("w");
-    
+
     for (const file of bufferedFiles) {
       // Save file
       const key = `uploads/${Date.now()}-${file.filename}`;
       const url = await file.saveToDisk("fs", key);
-      
+
       // Save to DB
       const [record] = await wdb
         .table("files")
@@ -138,14 +130,14 @@ class FileModelClass extends BaseModelClass<
           url,
         })
         .returning({ id: "id" });
-      
+
       uploadedFiles.push({
         fileId: record.id,
         filename: file.filename,
         url,
       });
     }
-    
+
     return { uploadedFiles };
   }
 }
@@ -163,7 +155,7 @@ import type { StorageConfig } from "sonamu";
 
 export const storageConfig: StorageConfig = {
   default: "local", // Default disk
-  
+
   disks: {
     // Local storage
     local: {
@@ -171,7 +163,7 @@ export const storageConfig: StorageConfig = {
       root: "uploads",
       url: process.env.APP_URL || "http://localhost:3000",
     },
-    
+
     // AWS S3
     s3: {
       driver: "s3",
@@ -183,7 +175,7 @@ export const storageConfig: StorageConfig = {
       },
       endpoint: process.env.S3_ENDPOINT, // MinIO, etc.
     },
-    
+
     // Google Cloud Storage
     gcs: {
       driver: "gcs",
@@ -191,7 +183,7 @@ export const storageConfig: StorageConfig = {
       projectId: process.env.GCS_PROJECT_ID!,
       keyFilename: process.env.GCS_KEY_FILENAME!,
     },
-    
+
     // Separate disk for public files
     public: {
       driver: "s3",
@@ -250,22 +242,22 @@ class FileModelClass extends BaseModelClass<
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
     if (!file) throw new Error("File is required");
-    
+
     // Save to S3 disk
     const url = await file.saveToDisk("s3", `uploads/${Date.now()}-${file.filename}`);
-    
+
     return { url };
   }
-  
+
   @upload()
   async uploadPublic(): Promise<{ url: string }> {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
     if (!file) throw new Error("File is required");
-    
+
     // Save to public disk
     const url = await file.saveToDisk("public", `public/${Date.now()}-${file.filename}`);
-    
+
     return { url };
   }
 }
@@ -289,9 +281,9 @@ const app = fastify({
 // Register multipart plugin
 app.register(multipart, {
   limits: {
-    fileSize: 50 * 1024 * 1024,  // Max file size (50MB)
-    files: 10,                    // Max number of files
-    fields: 10,                   // Max number of fields
+    fileSize: 50 * 1024 * 1024, // Max file size (50MB)
+    files: 10, // Max number of files
+    fields: 10, // Max number of fields
   },
 });
 
@@ -299,9 +291,7 @@ app.register(multipart, {
 // ...
 ```
 
-<Info>
-Sonamu's `@upload` decorator automatically handles Fastify multipart.
-</Info>
+<Info>Sonamu's `@upload` decorator automatically handles Fastify multipart.</Info>
 
 ## File Validation
 
@@ -322,33 +312,33 @@ class ImageModelClass extends BaseModelClass<
   async uploadImage(): Promise<{ imageId: number; url: string }> {
     const { bufferedFiles } = Sonamu.getContext();
     const image = bufferedFiles?.[0];
-    
+
     // Check file exists
     if (!image) {
       throw new Error("Image is required");
     }
-    
+
     // Check size
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (image.size > maxSize) {
       throw new Error(`Image too large (max ${maxSize / 1024 / 1024}MB)`);
     }
-    
+
     // Check MIME type
     const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(image.mimetype)) {
       throw new Error(`Invalid image type: ${image.mimetype}`);
     }
-    
+
     // Check extension
     const ext = image.extname;
     if (!ext || !["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
       throw new Error(`Invalid image extension: ${ext}`);
     }
-    
+
     // Save image
     const url = await image.saveToDisk("fs", `images/${Date.now()}.${ext}`);
-    
+
     // Save to DB
     const wdb = this.getPuri("w");
     const [record] = await wdb
@@ -360,7 +350,7 @@ class ImageModelClass extends BaseModelClass<
         url,
       })
       .returning({ id: "id" });
-    
+
     return {
       imageId: record.id,
       url,
@@ -390,53 +380,47 @@ class UserModelClass extends BaseModelClass<
     url: string;
   }> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const { bufferedFiles } = context;
     const image = bufferedFiles?.[0];
-    
+
     // Validation
     if (!image) {
       throw new Error("Image is required");
     }
-    
+
     if (image.size > 5 * 1024 * 1024) {
       throw new Error("Image too large (max 5MB)");
     }
-    
+
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(image.mimetype)) {
       throw new Error("Invalid image type");
     }
-    
+
     // Save file
     const ext = image.extname;
     const key = `profiles/${context.user.id}/${Date.now()}.${ext}`;
     const url = await image.saveToDisk("fs", key);
-    
+
     // Delete existing profile image
     const rdb = this.getPuri("r");
-    const oldImage = await rdb
-      .table("profile_images")
-      .where("user_id", context.user.id)
-      .first();
-    
+    const oldImage = await rdb.table("profile_images").where("user_id", context.user.id).first();
+
     if (oldImage) {
       // Delete existing image (using Storage Manager)
       const disk = Sonamu.storage.use();
       await disk.delete(oldImage.key);
-      
+
       // Delete DB record
       const wdb = this.getPuri("w");
-      await wdb
-        .table("profile_images")
-        .where("id", oldImage.id)
-        .delete();
+      await wdb.table("profile_images").where("id", oldImage.id).delete();
     }
-    
+
     // Save new image
     const wdb = this.getPuri("w");
     const [record] = await wdb
@@ -450,7 +434,7 @@ class UserModelClass extends BaseModelClass<
         url,
       })
       .returning({ id: "id" });
-    
+
     return {
       imageId: record.id,
       url,
@@ -473,24 +457,21 @@ class PostModelClass extends BaseModelClass<
   }
 
   @upload()
-  async createWithAttachments(params: {
-    title: string;
-    content: string;
-  }): Promise<{
+  async createWithAttachments(params: { title: string; content: string }): Promise<{
     postId: number;
     attachmentUrls: string[];
   }> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Authentication required");
     }
-    
+
     const { bufferedFiles } = context;
     const { title, content } = params;
-    
+
     const wdb = this.getPuri("w");
-    
+
     // Create post
     const [post] = await wdb
       .table("posts")
@@ -500,9 +481,9 @@ class PostModelClass extends BaseModelClass<
         content,
       })
       .returning({ id: "id" });
-    
+
     const attachmentUrls: string[] = [];
-    
+
     // Process attachments
     if (bufferedFiles && bufferedFiles.length > 0) {
       for (const file of bufferedFiles) {
@@ -510,12 +491,12 @@ class PostModelClass extends BaseModelClass<
         if (file.size > 20 * 1024 * 1024) {
           throw new Error(`File ${file.filename} too large (max 20MB)`);
         }
-        
+
         // Save
         const ext = file.extname;
         const key = `posts/${post.id}/${Date.now()}.${ext}`;
         const url = await file.saveToDisk("fs", key);
-        
+
         // Save attachment info to DB
         await wdb.table("post_attachments").insert({
           post_id: post.id,
@@ -525,11 +506,11 @@ class PostModelClass extends BaseModelClass<
           size: file.size,
           url,
         });
-        
+
         attachmentUrls.push(url);
       }
     }
-    
+
     return {
       postId: post.id,
       attachmentUrls,
@@ -545,45 +526,45 @@ class PostModelClass extends BaseModelClass<
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>File Upload</title>
-</head>
-<body>
-  <h1>Upload File</h1>
-  
-  <form id="uploadForm">
-    <input type="file" name="file" required />
-    <input type="text" name="title" placeholder="Title" />
-    <button type="submit">Upload</button>
-  </form>
-  
-  <div id="result"></div>
-  
-  <script>
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const formData = new FormData(e.target);
-      
-      try {
-        const response = await fetch('http://localhost:3000/api/file/uploadSingle', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        const result = await response.json();
-        
-        document.getElementById('result').innerHTML = `
+  <head>
+    <title>File Upload</title>
+  </head>
+  <body>
+    <h1>Upload File</h1>
+
+    <form id="uploadForm">
+      <input type="file" name="file" required />
+      <input type="text" name="title" placeholder="Title" />
+      <button type="submit">Upload</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+      document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+        try {
+          const response = await fetch("http://localhost:3000/api/file/uploadSingle", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          document.getElementById("result").innerHTML = `
           <p>Uploaded!</p>
           <p>File ID: ${result.fileId}</p>
           <p>URL: <a href="${result.url}" target="_blank">${result.url}</a></p>
         `;
-      } catch (error) {
-        console.error('Upload failed:', error);
-      }
-    });
-  </script>
-</body>
+        } catch (error) {
+          console.error("Upload failed:", error);
+        }
+      });
+    </script>
+  </body>
 </html>
 ```
 
@@ -596,24 +577,24 @@ export function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!file) return;
-    
+
     setUploading(true);
-    
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("title", "My Upload");
-    
+
     try {
       const response = await fetch("http://localhost:3000/api/file/uploadSingle", {
         method: "POST",
         body: formData,
       });
-      
+
       const data = await response.json();
       setResult(data);
     } catch (error) {
@@ -622,22 +603,22 @@ export function FileUpload() {
       setUploading(false);
     }
   };
-  
+
   return (
     <div>
       <h1>Upload File</h1>
-      
+
       <form onSubmit={handleSubmit}>
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
-        
+
         <button type="submit" disabled={!file || uploading}>
           {uploading ? "Uploading..." : "Upload"}
         </button>
       </form>
-      
+
       {result && (
         <div>
           <p>Uploaded!</p>
@@ -653,18 +634,19 @@ export function FileUpload() {
 ## Cautions
 
 <Warning>
-**Cautions when setting up file upload**:
-1. Fastify multipart plugin must be registered
-2. `@upload` is used independently (without `@api`)
-3. Set file size limits
-4. MIME type validation
-5. Check Storage configuration
+  **Cautions when setting up file upload**: 1. Fastify multipart plugin must be registered 2.
+  `@upload` is used independently (without `@api`) 3. Set file size limits 4. MIME type validation
+  5. Check Storage configuration
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="UploadedFile Class" icon="file" href="/en/api-development/file-upload/uploaded-file-class">
+  <Card
+    title="UploadedFile Class"
+    icon="file"
+    href="/en/api-development/file-upload/uploaded-file-class"
+  >
     File info and methods
   </Card>
   <Card title="Saving Files" icon="floppy-disk" href="/en/api-development/file-upload/saving-files">

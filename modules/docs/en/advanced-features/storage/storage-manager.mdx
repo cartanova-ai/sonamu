@@ -11,20 +11,21 @@ Sonamu provides a unified file storage system based on **Flydrive**. You can use
 
 ```typescript
 // ❌ Different APIs for each driver
-if (env === 'local') {
-  fs.writeFileSync('uploads/avatar.png', buffer);
-  url = '/uploads/avatar.png';
+if (env === "local") {
+  fs.writeFileSync("uploads/avatar.png", buffer);
+  url = "/uploads/avatar.png";
 } else {
   await s3.putObject({
-    Bucket: 'my-bucket',
-    Key: 'uploads/avatar.png',
-    Body: buffer
+    Bucket: "my-bucket",
+    Key: "uploads/avatar.png",
+    Body: buffer,
   });
-  url = 'https://s3.amazonaws.com/my-bucket/uploads/avatar.png';
+  url = "https://s3.amazonaws.com/my-bucket/uploads/avatar.png";
 }
 ```
 
 **Problems**:
+
 - Different code for each environment
 - Code changes required when switching drivers
 - URL generation logic is scattered
@@ -33,11 +34,12 @@ if (env === 'local') {
 
 ```typescript
 // ✅ Unified interface
-await Sonamu.storage.use().put('uploads/avatar.png', buffer);
-const url = await Sonamu.storage.use().getUrl('uploads/avatar.png');
+await Sonamu.storage.use().put("uploads/avatar.png", buffer);
+const url = await Sonamu.storage.use().getUrl("uploads/avatar.png");
 ```
 
 **Benefits**:
+
 - Driver-independent code
 - Switch drivers by just changing configuration
 - Consistent URL generation
@@ -68,8 +70,8 @@ A **Disk** is a single driver instance that stores files.
 const disk = Sonamu.storage.use();
 
 // Use specific disk
-const s3Disk = Sonamu.storage.use('s3');
-const fsDisk = Sonamu.storage.use('fs');
+const s3Disk = Sonamu.storage.use("s3");
+const fsDisk = Sonamu.storage.use("fs");
 ```
 
 ## Basic Configuration
@@ -82,21 +84,22 @@ import { drivers, type SonamuConfig } from "sonamu";
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 'fs',  // Default disk
+      default: "fs", // Default disk
       drivers: {
         fs: drivers.fs({
-          location: './uploads',  // Storage location
+          location: "./uploads", // Storage location
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
 **Configuration elements**:
+
 - `default`: Name of the default disk to use
 - `drivers`: Driver factories by disk name
 
@@ -109,10 +112,10 @@ export const config: SonamuConfig = {
 const disk = Sonamu.storage.use();
 
 // Save file
-await disk.put('avatar.png', buffer);
+await disk.put("avatar.png", buffer);
 
 // Get URL
-const url = await disk.getUrl('avatar.png');
+const url = await disk.getUrl("avatar.png");
 // => '/uploads/avatar.png' (fs)
 // => 'https://bucket.s3.amazonaws.com/avatar.png' (s3)
 ```
@@ -121,12 +124,12 @@ const url = await disk.getUrl('avatar.png');
 
 ```typescript
 // fs disk
-const fsDisk = Sonamu.storage.use('fs');
-await fsDisk.put('temp/file.txt', 'content');
+const fsDisk = Sonamu.storage.use("fs");
+await fsDisk.put("temp/file.txt", "content");
 
 // s3 disk
-const s3Disk = Sonamu.storage.use('s3');
-await s3Disk.put('backup/file.txt', 'content');
+const s3Disk = Sonamu.storage.use("s3");
+await s3Disk.put("backup/file.txt", "content");
 ```
 
 ## Managing Multiple Disks
@@ -137,14 +140,14 @@ await s3Disk.put('backup/file.txt', 'content');
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: process.env.STORAGE_DISK || 'fs',
+      default: process.env.STORAGE_DISK || "fs",
       drivers: {
         // Local development
         fs: drivers.fs({
-          location: './uploads',
+          location: "./uploads",
           urlBuilder: {
             generateURL: (key) => `/uploads/${key}`,
-          }
+          },
         }),
 
         // Production (S3)
@@ -156,9 +159,8 @@ export const config: SonamuConfig = {
           region: process.env.AWS_REGION!,
           bucket: process.env.AWS_BUCKET!,
           urlBuilder: {
-            generateURL: (key) =>
-              `https://${process.env.AWS_BUCKET}.s3.amazonaws.com/${key}`,
-          }
+            generateURL: (key) => `https://${process.env.AWS_BUCKET}.s3.amazonaws.com/${key}`,
+          },
         }),
 
         // Public files
@@ -172,11 +174,11 @@ export const config: SonamuConfig = {
           urlBuilder: {
             generateURL: (key) =>
               `https://${process.env.AWS_PUBLIC_BUCKET}.s3.amazonaws.com/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -189,10 +191,7 @@ class UserModelClass extends BaseModelClass {
   async uploadAvatar() {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
-    const url = await file.saveToDisk(
-      'public',
-      `avatars/${Sonamu.getContext().user?.id}.png`
-    );
+    const url = await file.saveToDisk("public", `avatars/${Sonamu.getContext().user?.id}.png`);
     return url;
   }
 
@@ -202,8 +201,8 @@ class UserModelClass extends BaseModelClass {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
     const url = await file.saveToDisk(
-      'fs',
-      `documents/${Sonamu.getContext().user?.id}/${file.filename}`
+      "fs",
+      `documents/${Sonamu.getContext().user?.id}/${file.filename}`,
     );
     return url;
   }
@@ -211,9 +210,7 @@ class UserModelClass extends BaseModelClass {
   // Backup → separate disk
   async backupData(data: any) {
     const json = JSON.stringify(data);
-    await Sonamu.storage
-      .use('backup')
-      .put(`backups/${Date.now()}.json`, json);
+    await Sonamu.storage.use("backup").put(`backups/${Date.now()}.json`, json);
   }
 }
 ```
@@ -248,6 +245,7 @@ class UserModelClass extends BaseModelClass {
     - No AWS account needed
     - Fast development
     - No cost
+
   </Tab>
 
   <Tab title="Production Environment" icon="server">
@@ -281,6 +279,7 @@ class UserModelClass extends BaseModelClass {
     - Unlimited capacity
     - CDN integration
     - Reliable service
+
   </Tab>
 </Tabs>
 
@@ -290,30 +289,32 @@ class UserModelClass extends BaseModelClass {
 export const config: SonamuConfig = {
   server: {
     storage: {
-      default: 's3',
+      default: "s3",
       drivers: {
         // Main storage: S3
-        s3: drivers.s3({ /* ... */ }),
+        s3: drivers.s3({
+          /* ... */
+        }),
 
         // Temporary files: Local
         fs: drivers.fs({
-          location: './temp',
+          location: "./temp",
           urlBuilder: {
             generateURL: (key) => `/temp/${key}`,
-          }
+          },
         }),
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 // Usage
 class FileModelClass extends BaseModelClass {
   // Permanent storage → S3
-  @upload({ consume: 'stream', destination: 's3' })
+  @upload({ consume: "stream", destination: "s3" })
   async upload() {
     const { uploadedFiles } = Sonamu.getContext();
-    return uploadedFiles?.[0]?.url;  // S3 URL (already streamed)
+    return uploadedFiles?.[0]?.url; // S3 URL (already streamed)
   }
 
   // Temporary processing → Local
@@ -322,10 +323,10 @@ class FileModelClass extends BaseModelClass {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0];
     const tempPath = `temp/${Date.now()}.tmp`;
-    await file.saveToDisk('fs', tempPath);  // Local
+    await file.saveToDisk("fs", tempPath); // Local
 
     // Delete after processing
-    await Sonamu.storage.use('fs').delete(tempPath);
+    await Sonamu.storage.use("fs").delete(tempPath);
   }
 }
 ```
@@ -342,7 +343,7 @@ class UserModelClass extends BaseModelClass {
     const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Filename: user-{id}-{timestamp}.{ext}
@@ -350,10 +351,10 @@ class UserModelClass extends BaseModelClass {
     const key = `avatars/${filename}`;
 
     // Save to default disk
-    const url = await file.saveToDisk('fs', key);
+    const url = await file.saveToDisk("fs", key);
 
     // Update DB
-    await this.updateOne(['id', ctx.user.id], { avatar_url: url });
+    await this.updateOne(["id", ctx.user.id], { avatar_url: url });
 
     return { url };
   }
@@ -371,8 +372,8 @@ class PostModelClass extends BaseModelClass {
     const urls = await Promise.all(
       (bufferedFiles ?? []).map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
-        return await file.saveToDisk('fs', key);
-      })
+        return await file.saveToDisk("fs", key);
+      }),
     );
 
     return { urls };
@@ -385,16 +386,16 @@ class PostModelClass extends BaseModelClass {
 ```typescript
 class FileModelClass extends BaseModelClass {
   @upload()
-  async upload(type: 'public' | 'private') {
+  async upload(type: "public" | "private") {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Use different disk based on type
-    const diskName = type === 'public' ? 'public' : 'fs';
+    const diskName = type === "public" ? "public" : "fs";
     const key = `${type}/${Date.now()}-${file.filename}`;
 
     const url = await file.saveToDisk(diskName, key);
@@ -415,8 +416,8 @@ Returns a disk instance.
 const disk = Sonamu.storage.use();
 
 // Specific disk
-const s3 = Sonamu.storage.use('s3');
-const fs = Sonamu.storage.use('fs');
+const s3 = Sonamu.storage.use("s3");
+const fs = Sonamu.storage.use("fs");
 ```
 
 **Return value**: `Disk` instance (Flydrive)
@@ -440,24 +441,24 @@ The Disk returned by Storage Manager is a Flydrive Disk instance.
 const disk = Sonamu.storage.use();
 
 // Save file
-await disk.put('path/to/file.txt', 'content');
-await disk.put('path/to/file.txt', buffer);
+await disk.put("path/to/file.txt", "content");
+await disk.put("path/to/file.txt", buffer);
 
 // Read file
-const content = await disk.get('path/to/file.txt');
+const content = await disk.get("path/to/file.txt");
 
 // Check file existence
-const exists = await disk.exists('path/to/file.txt');
+const exists = await disk.exists("path/to/file.txt");
 
 // Delete file
-await disk.delete('path/to/file.txt');
+await disk.delete("path/to/file.txt");
 
 // Get URL
-const url = await disk.getUrl('path/to/file.txt');
+const url = await disk.getUrl("path/to/file.txt");
 
 // Get Signed URL (S3)
-const signedUrl = await disk.getSignedUrl('path/to/file.txt', {
-  expiresIn: '1h'
+const signedUrl = await disk.getSignedUrl("path/to/file.txt", {
+  expiresIn: "1h",
 });
 ```
 
@@ -467,6 +468,7 @@ const signedUrl = await disk.getSignedUrl('path/to/file.txt', {
 **Cautions when using Storage Manager**:
 
 1. **Environment variables required**: AWS credentials needed for S3
+
    ```typescript
    // ❌ No hardcoding
    credentials: {
@@ -482,54 +484,61 @@ const signedUrl = await disk.getSignedUrl('path/to/file.txt', {
    ```
 
 2. **Disk name typos**: Error when using non-existent disk
+
    ```typescript
    // ❌ Typo
-   Sonamu.storage.use('S3')  // Error!
+   Sonamu.storage.use("S3"); // Error!
 
    // ✅ Correct name
-   Sonamu.storage.use('s3')
+   Sonamu.storage.use("s3");
    ```
 
 3. **Path separator**: Use `/` for platform independence
+
    ```typescript
    // ✅ Always use forward slash
-   await disk.put('uploads/avatar.png', buffer);
+   await disk.put("uploads/avatar.png", buffer);
 
    // ❌ Don't use backslash
-   await disk.put('uploads\\avatar.png', buffer);
+   await disk.put("uploads\\avatar.png", buffer);
    ```
 
 4. **URL builder required**: fs driver requires urlBuilder configuration
+
    ```typescript
    // ❌ No urlBuilder
    fs: drivers.fs({
-     location: './uploads',
-   })
+     location: "./uploads",
+   });
 
    // ✅ urlBuilder configured
    fs: drivers.fs({
-     location: './uploads',
+     location: "./uploads",
      urlBuilder: {
        generateURL: (key) => `/uploads/${key}`,
-     }
-   })
+     },
+   });
    ```
 
 5. **Lazy Initialization**: Disks are initialized on first use
    ```typescript
    // Configuration errors are discovered when use() is called
    try {
-     const disk = Sonamu.storage.use('s3');
+     const disk = Sonamu.storage.use("s3");
    } catch (error) {
      // Invalid S3 configuration, etc.
    }
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Storage Drivers" icon="hard-drive" href="/en/advanced-features/storage/storage-drivers">
+  <Card
+    title="Storage Drivers"
+    icon="hard-drive"
+    href="/en/advanced-features/storage/storage-drivers"
+  >
     Detailed fs, S3 driver configuration
   </Card>
   <Card title="File Operations" icon="upload" href="/en/advanced-features/storage/file-operations">

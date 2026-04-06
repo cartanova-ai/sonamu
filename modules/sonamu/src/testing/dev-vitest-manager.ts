@@ -9,6 +9,7 @@ import type {
   TestSuite,
   Vitest,
 } from "vitest/node";
+
 import type { SerializedTrace } from "../naite/naite";
 
 // 테스트 한 건의 trace 모음

@@ -9,15 +9,15 @@ Sonamu supports various data types, and each type is appropriately mapped to Pos
 
 Options that apply to all field types.
 
-| Option | Type | Description | Default |
-|--------|------|-------------|---------|
-| `name` | string | Field name (snake_case) | *required* |
-| `type` | string | Data type | *required* |
-| `desc` | string | Field description | - |
-| `nullable` | boolean | Allow NULL | `false` |
-| `toFilter` | boolean | Enable search filtering | `false` |
-| `dbDefault` | string | Database default value | - |
-| `generated` | GeneratedColumn | Computed column setting | - |
+| Option      | Type            | Description             | Default    |
+| ----------- | --------------- | ----------------------- | ---------- |
+| `name`      | string          | Field name (snake_case) | _required_ |
+| `type`      | string          | Data type               | _required_ |
+| `desc`      | string          | Field description       | -          |
+| `nullable`  | boolean         | Allow NULL              | `false`    |
+| `toFilter`  | boolean         | Enable search filtering | `false`    |
+| `dbDefault` | string          | Database default value  | -          |
+| `generated` | GeneratedColumn | Computed column setting | -          |
 
 ### Generated Column
 
@@ -35,14 +35,15 @@ A column that automatically generates computed values.
 ```
 
 **Options**:
+
 - `type`: `STORED` | `VIRTUAL`
   - `STORED`: Physically stored (can create indexes)
   - `VIRTUAL`: Calculated only on query (saves memory)
 - `expression`: SQL expression
 
 <Warning>
-- `VIRTUAL` type cannot be used with array types, json, or vector
-- `generated` and `dbDefault` cannot be used together
+  - `VIRTUAL` type cannot be used with array types, json, or vector - `generated` and `dbDefault`
+  cannot be used together
 </Warning>
 
 ## Numeric Types
@@ -85,9 +86,7 @@ A column that automatically generates computed values.
   </Tab>
 </Tabs>
 
-<Tip>
-**Use cases**: ID, count, age, order, year
-</Tip>
+<Tip>**Use cases**: ID, count, age, order, year</Tip>
 
 ### bigInteger / bigInteger[]
 
@@ -127,7 +126,8 @@ A column that automatically generates computed values.
 </Tabs>
 
 <Warning>
-Values exceeding JavaScript's `Number.MAX_SAFE_INTEGER` (2^53 - 1) must use `bigint` to maintain accuracy.
+  Values exceeding JavaScript's `Number.MAX_SAFE_INTEGER` (2^53 - 1) must use `bigint` to maintain
+  accuracy.
 </Warning>
 
 ### number / number[]
@@ -176,15 +176,13 @@ Floating-point or fixed-point numeric type.
 
 **numberType Selection Guide**:
 
-| Type | Precision | Memory | Use Cases |
-|------|-----------|--------|-----------|
-| `numeric` | Exact (recommended) | High | Money, currency |
-| `real` | Approximate (6 digits) | 4 bytes | Scientific data |
+| Type               | Precision               | Memory  | Use Cases                 |
+| ------------------ | ----------------------- | ------- | ------------------------- |
+| `numeric`          | Exact (recommended)     | High    | Money, currency           |
+| `real`             | Approximate (6 digits)  | 4 bytes | Scientific data           |
 | `double precision` | Approximate (15 digits) | 8 bytes | Coordinates, measurements |
 
-<Tip>
-**Money handling**: Setting `precision: 10, scale: 2` allows storing up to 99,999,999.99
-</Tip>
+<Tip>**Money handling**: Setting `precision: 10, scale: 2` allows storing up to 99,999,999.99</Tip>
 
 ### numeric / numeric[]
 
@@ -235,6 +233,7 @@ High-precision numeric type. Processed as **string** in TypeScript.
 - `numeric`: `string` type in TypeScript (maintains precision)
 
 Use `numeric` when you need large numbers or very precise decimal calculations.
+
 </Warning>
 
 ## String Types
@@ -263,6 +262,7 @@ Variable-length string type.
     **Additional Options**:
     - `length`: Maximum length (uses `text` type when omitted)
     - `zodFormat`: Zod 4 String Format validation (see below)
+
   </Tab>
 
   <Tab title="Array">
@@ -278,6 +278,7 @@ Variable-length string type.
     - PostgreSQL: `text[]` or `varchar(n)[]`
     - TypeScript: `string[]`
     - JSON: `string[]`
+
   </Tab>
 </Tabs>
 
@@ -298,48 +299,47 @@ The `zodFormat` option automatically applies Zod's string format validation when
 
 **Supported Formats**:
 
-| Category | Format | Description |
-|----------|--------|-------------|
-| Basic | `email` | Email address format |
-| | `uuid` | UUID format |
-| | `url` | URL format |
-| | `httpUrl` | HTTP/HTTPS URL format |
-| | `hostname` | Hostname format |
-| | `emoji` | Emoji format |
-| | `jwt` | JWT token format |
-| Encoding | `base64` | Base64 encoding |
-| | `base64url` | URL-safe Base64 encoding |
-| | `hex` | Hexadecimal string |
-| ID | `nanoid` | NanoID format |
-| | `cuid` | CUID format |
-| | `cuid2` | CUID2 format |
-| | `ulid` | ULID format |
-| Network | `ipv4` | IPv4 address |
-| | `ipv6` | IPv6 address |
-| | `mac` | MAC address |
-| | `cidrv4` | IPv4 CIDR notation |
-| | `cidrv6` | IPv6 CIDR notation |
-| Hash | `hashMd5` | MD5 hash |
-| | `hashSha1` | SHA-1 hash |
-| | `hashSha256` | SHA-256 hash |
-| | `hashSha384` | SHA-384 hash |
-| | `hashSha512` | SHA-512 hash |
-| ISO | `isoDate` | ISO 8601 date (YYYY-MM-DD) |
-| | `isoTime` | ISO 8601 time (HH:MM:SS) |
-| | `isoDatetime` | ISO 8601 datetime |
-| | `isoDuration` | ISO 8601 duration |
+| Category | Format        | Description                |
+| -------- | ------------- | -------------------------- |
+| Basic    | `email`       | Email address format       |
+|          | `uuid`        | UUID format                |
+|          | `url`         | URL format                 |
+|          | `httpUrl`     | HTTP/HTTPS URL format      |
+|          | `hostname`    | Hostname format            |
+|          | `emoji`       | Emoji format               |
+|          | `jwt`         | JWT token format           |
+| Encoding | `base64`      | Base64 encoding            |
+|          | `base64url`   | URL-safe Base64 encoding   |
+|          | `hex`         | Hexadecimal string         |
+| ID       | `nanoid`      | NanoID format              |
+|          | `cuid`        | CUID format                |
+|          | `cuid2`       | CUID2 format               |
+|          | `ulid`        | ULID format                |
+| Network  | `ipv4`        | IPv4 address               |
+|          | `ipv6`        | IPv6 address               |
+|          | `mac`         | MAC address                |
+|          | `cidrv4`      | IPv4 CIDR notation         |
+|          | `cidrv6`      | IPv6 CIDR notation         |
+| Hash     | `hashMd5`     | MD5 hash                   |
+|          | `hashSha1`    | SHA-1 hash                 |
+|          | `hashSha256`  | SHA-256 hash               |
+|          | `hashSha384`  | SHA-384 hash               |
+|          | `hashSha512`  | SHA-512 hash               |
+| ISO      | `isoDate`     | ISO 8601 date (YYYY-MM-DD) |
+|          | `isoTime`     | ISO 8601 time (HH:MM:SS)   |
+|          | `isoDatetime` | ISO 8601 datetime          |
+|          | `isoDuration` | ISO 8601 duration          |
 
 <Tip>
-**length Setting Guide**:
-- Short text (name, email): `255`
-- Long text (description, content): omit (text type)
-- Fixed length (zip code, phone number): specify exact length
+  **length Setting Guide**: - Short text (name, email): `255` - Long text (description, content):
+  omit (text type) - Fixed length (zip code, phone number): specify exact length
 </Tip>
 
 <Tip>
-**Difference between zodFormat and uuid type**:
-- `type: "uuid"`: Uses PostgreSQL's native `uuid` column type, enabling UUID-specific indexes and functions
-- `type: "string"` + `zodFormat: "uuid"`: Uses PostgreSQL's `text`/`varchar` column while validating UUID format only at the API level
+  **Difference between zodFormat and uuid type**: - `type: "uuid"`: Uses PostgreSQL's native `uuid`
+  column type, enabling UUID-specific indexes and functions - `type: "string"` + `zodFormat:
+  "uuid"`: Uses PostgreSQL's `text`/`varchar` column while validating UUID format only at the API
+  level
 </Tip>
 
 ### enum / enum[]
@@ -414,12 +414,10 @@ const UserRole = z.enum(["admin", "normal"]);
 // TypeScript Type
 type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
 ```
+
 </CodeGroup>
 
-<Info>
-**Learn More**
-- [Enums](/en/core-concepts/entity/enums) - Detailed Enum guide
-</Info>
+<Info>**Learn More** - [Enums](/en/core-concepts/entity/enums) - Detailed Enum guide</Info>
 
 ## Boolean Type
 
@@ -459,9 +457,7 @@ Type for storing true/false values.
   </Tab>
 </Tabs>
 
-<Tip>
-**Default value setting**: `dbDefault: "true"` or `dbDefault: "false"`
-</Tip>
+<Tip>**Default value setting**: `dbDefault: "true"` or `dbDefault: "false"`</Tip>
 
 ## Date/Time Types
 
@@ -502,9 +498,8 @@ Type for storing date and time.
 </Tabs>
 
 <Tip>
-**Commonly used default values**:
-- `CURRENT_TIMESTAMP`: Current time
-- `CURRENT_DATE`: Current date (time 00:00:00)
+  **Commonly used default values**: - `CURRENT_TIMESTAMP`: Current time - `CURRENT_DATE`: Current
+  date (time 00:00:00)
 </Tip>
 
 ## UUID Type
@@ -546,7 +541,8 @@ Universally Unique Identifier (UUID) type.
 </Tabs>
 
 <Info>
-**UUID Generation**: Using PostgreSQL's `gen_random_uuid()` function as `dbDefault` enables auto-generation.
+  **UUID Generation**: Using PostgreSQL's `gen_random_uuid()` function as `dbDefault` enables
+  auto-generation.
 </Info>
 
 ## Structured Data Types
@@ -566,11 +562,13 @@ Type for storing structured data in JSON format.
 ```
 
 **Mapping**:
+
 - PostgreSQL: `json`
 - TypeScript: User-defined type (`ProductMetadata`)
 - JSON: `any`
 
 **Additional Options**:
+
 - `id`: TypeScript type ID (defined in `.types.ts`)
 
 **Type Definition Example**:
@@ -595,10 +593,12 @@ export type ProductMetadata = {
   tags: string[];
 };
 ```
+
 </CodeGroup>
 
 <Warning>
-JSON types can be difficult to index and may have lower performance. It's recommended to separate frequently searched fields into separate columns.
+  JSON types can be difficult to index and may have lower performance. It's recommended to separate
+  frequently searched fields into separate columns.
 </Warning>
 
 ### virtual
@@ -616,11 +616,13 @@ Virtual fields not stored in the database.
 ```
 
 **Mapping**:
+
 - PostgreSQL: Not stored
 - TypeScript: User-defined type (or `string`, `number`, etc.)
 - JSON: Included (after calculation)
 
 **Additional Options**:
+
 - `id`: TypeScript type ID
 - `virtualType`: `code` | `query` (default: `code`)
   - `code`: Calculated with TypeScript code
@@ -666,9 +668,8 @@ Virtual fields not stored in the database.
 </Tabs>
 
 <Tip>
-**virtualType Selection Guide**:
-- Simple string concatenation, arithmetic calculations → `query`
-- Complex business logic, external API calls → `code`
+  **virtualType Selection Guide**: - Simple string concatenation, arithmetic calculations → `query`
+  - Complex business logic, external API calls → `code`
 </Tip>
 
 ## Vector Types
@@ -748,9 +749,8 @@ async searchSimilar(queryEmbedding: number[]) {
 ```
 
 <Info>
-**Learn More**
-- [Vector Search](/en/advanced-features/vector-search/setup) - Detailed vector search guide
-- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector extension
+  **Learn More** - [Vector Search](/en/advanced-features/vector-search/setup) - Detailed vector
+  search guide - [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector extension
 </Info>
 
 ### tsvector
@@ -769,6 +769,7 @@ Type for PostgreSQL Full-Text Search.
 ```
 
 **Mapping**:
+
 - PostgreSQL: `tsvector`
 - TypeScript: `string`
 - JSON: `string`
@@ -789,7 +790,8 @@ Type for PostgreSQL Full-Text Search.
 ```
 
 <Info>
-**Full-Text Search**: A type optimized for keyword searching in natural language text. Supports morphological analysis, stemming, etc.
+  **Full-Text Search**: A type optimized for keyword searching in natural language text. Supports
+  morphological analysis, stemming, etc.
 </Info>
 
 ## Relation Type
@@ -807,53 +809,53 @@ Type for defining relationships with other Entities.
 ```
 
 **Relation Types**:
+
 - `BelongsToOne`: N:1 relationship
 - `OneToOne`: 1:1 relationship
 - `HasMany`: 1:N relationship
 - `ManyToMany`: N:M relationship
 
 <Info>
-**Learn More**
-- [Relations](/en/core-concepts/entity/relations) - Detailed Relation guide
+  **Learn More** - [Relations](/en/core-concepts/entity/relations) - Detailed Relation guide
 </Info>
 
 ## Type Selection Guide
 
 ### Storing Numbers
 
-| Data | Type | Reason |
-|------|------|--------|
-| ID, age, count | `integer` | Common integers |
-| Large ID, timestamp | `bigInteger` | Large range needed |
-| Money, price | `number` (precision, scale) | Precise decimals |
-| Scientific measurements | `number` (numberType: real) | Approximate values allowed |
-| High-precision calculations | `numeric` | Prevent precision loss |
+| Data                        | Type                        | Reason                     |
+| --------------------------- | --------------------------- | -------------------------- |
+| ID, age, count              | `integer`                   | Common integers            |
+| Large ID, timestamp         | `bigInteger`                | Large range needed         |
+| Money, price                | `number` (precision, scale) | Precise decimals           |
+| Scientific measurements     | `number` (numberType: real) | Approximate values allowed |
+| High-precision calculations | `numeric`                   | Prevent precision loss     |
 
 ### Storing Strings
 
-| Data | Type | Reason |
-|------|------|--------|
-| Name, email | `string` (length: 255) | Common text |
-| Description, content | `string` (omit length) | Long text |
-| Status, role | `enum` | Limited value list |
-| UUID, token | `uuid` | Unique identifier |
+| Data                 | Type                   | Reason             |
+| -------------------- | ---------------------- | ------------------ |
+| Name, email          | `string` (length: 255) | Common text        |
+| Description, content | `string` (omit length) | Long text          |
+| Status, role         | `enum`                 | Limited value list |
+| UUID, token          | `uuid`                 | Unique identifier  |
 
 ### Storing Date/Time
 
-| Data | Type | Setting |
-|------|------|---------|
+| Data       | Type   | Setting                          |
+| ---------- | ------ | -------------------------------- |
 | Created at | `date` | `dbDefault: "CURRENT_TIMESTAMP"` |
-| Updated at | `date` | Update trigger needed |
-| Date only | `date` | Time is 00:00:00 |
+| Updated at | `date` | Update trigger needed            |
+| Date only  | `date` | Time is 00:00:00                 |
 
 ### Complex Data
 
-| Data | Type | Reason |
-|------|------|--------|
-| Settings, metadata | `json` | Structured data |
-| Computed fields | `virtual` | No storage needed |
-| Text embeddings | `vector` | AI search |
-| Full-text search | `tsvector` | Keyword search |
+| Data               | Type       | Reason            |
+| ------------------ | ---------- | ----------------- |
+| Settings, metadata | `json`     | Structured data   |
+| Computed fields    | `virtual`  | No storage needed |
+| Text embeddings    | `vector`   | AI search         |
+| Full-text search   | `tsvector` | Keyword search    |
 
 ## Next Steps
 

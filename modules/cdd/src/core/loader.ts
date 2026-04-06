@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import fg from "fast-glob";
+
 import type { CddProject, RulesDocument, RulesNode } from "./types.js";
 
 const CONTRACT_DIR_NAME = "contract";

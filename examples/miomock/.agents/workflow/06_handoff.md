@@ -46,7 +46,7 @@ handoff_bundle:
     total: N
     passed: N
     failed: 0
-    skipped: 0  # features with no AC by design
+    skipped: 0 # features with no AC by design
   review_trace:
     surface: "clean (round 1)"
     test: "clean (round 1)"

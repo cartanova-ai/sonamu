@@ -1,11 +1,13 @@
 import assert from "assert";
-import chalk from "chalk";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
+import { inspect } from "util";
+
+import chalk from "chalk";
 import inflection from "inflection";
 import type { Knex } from "knex";
 import { unique } from "radashi";
-import { inspect } from "util";
+
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";

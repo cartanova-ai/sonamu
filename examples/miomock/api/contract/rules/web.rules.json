@@ -17,9 +17,7 @@
       "id": "search-fields-use-keywordinput",
       "when": "검색 입력 필드를 추가하거나 교체할 때",
       "instruction": "반드시 KeywordInput 컴포넌트를 사용합니다.",
-      "examples": [
-        "<KeywordInput value={keyword} onChange={setKeyword} />"
-      ]
+      "examples": ["<KeywordInput value={keyword} onChange={setKeyword} />"]
     }
   ]
 }

@@ -1,6 +1,8 @@
-import type { FastifyRequest } from "fastify";
 import fs from "fs";
 import path from "path";
+
+import type { FastifyRequest } from "fastify";
+
 import type { AbsolutePath } from "./path-utils";
 
 export function findAppRootPath(): AbsolutePath {

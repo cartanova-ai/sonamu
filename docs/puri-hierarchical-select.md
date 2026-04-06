@@ -3,12 +3,15 @@
 ## 1. 프로젝트 개요
 
 ### 1.1 Sonamu란?
+
 Sonamu는 TypeScript 기반의 풀스택 프레임워크로, Entity 정의로부터 타입, API, 쿼리를 자동 생성합니다.
 
 ### 1.2 Puri란?
+
 Puri는 Sonamu의 TypeScript-safe 쿼리 빌더로, Knex를 래핑하여 타입 안전한 SQL 쿼리를 작성할 수 있게 해줍니다.
 
 ### 1.3 핵심 파일 위치
+
 ```
 sonamu/
 ├── modules/sonamu/src/
@@ -50,6 +53,7 @@ sonamu/
 ### 2.2 문제점
 
 #### 문제 1: 타입 추론의 혼란
+
 ```typescript
 // SQL 결과 (flat)
 { id: 1, name: "개발팀", parent__id: null, parent__name: null }
@@ -64,6 +68,7 @@ sonamu/
 ```
 
 #### 문제 2: Nullable 필드와의 구분 불가
+
 ```typescript
 // employee.salary는 스키마상 nullable
 { employee__id: 1, employee__salary: null }
@@ -72,26 +77,29 @@ sonamu/
 ```
 
 #### 문제 3: 타입 표현의 부정확
+
 ```typescript
 // 기존 타입 (부정확)
 type Result = {
   parent__id: number | null;
   parent__name: string | null;
-}
+};
 
 // 원하는 타입 (정확)
 type Result = {
   parent: {
     id: number;
     name: string;
-  } | null;  // 객체 단위로 nullable
-}
+  } | null; // 객체 단위로 nullable
+};
 ```
 
 ### 2.3 Hydrate 타입의 한계
 
 #### Hydrate의 역할
+
 `Hydrate<T>` 타입은 flat한 결과를 nested 객체로 변환합니다:
+
 ```typescript
 // 입력
 { parent__id: number | null; parent__name: string | null }
@@ -101,6 +109,7 @@ type Result = {
 ```
 
 #### 핵심 한계: Join 정보 부재
+
 `Hydrate`은 키 패턴(`__`)만 보고 그룹핑합니다. Join 정보(TTables)가 없습니다:
 
 ```typescript
@@ -113,6 +122,7 @@ type Result = {
 ```
 
 #### 결과: 필드 단위 nullability 유지
+
 ```typescript
 // flat 구조에서 leftJoin 시 타입 추론
 parent__id: number | null    // leftJoin이라서 | null 추가됨
@@ -133,7 +143,7 @@ parent: {
 // ParseSelectObject: Puri 클래스 내부에서 사용
 class Puri<TSchema, TTables, TResult> {
   // TTables: 조인된 테이블들 + 마커 정보
-  
+
   select<TSelect>(selectObj: TSelect): Puri<..., ParseSelectObject<TTables, TSelect>>
   // TTables 직접 접근 가능
 }
@@ -144,13 +154,13 @@ type Hydrate<T> = /* T만 있음, TTables 없음 */
 
 #### 정보 접근 비교
 
-| | `ParseSelectObject` | `Hydrate` |
-|---|---|---|
-| 위치 | Puri 내부 | 외부 (결과 후처리) |
-| TTables 접근 | 가능 | 불가 |
-| 조인 마커 체크 | `LeftJoinedMarker` 확인 | 키 패턴만 확인 |
-| 스키마 타입 | `TTables[alias][column]` | 이미 nullable 적용됨 |
-| nullability 결정 | 객체 단위 | 필드 단위 (그대로 유지) |
+|                  | `ParseSelectObject`      | `Hydrate`               |
+| ---------------- | ------------------------ | ----------------------- |
+| 위치             | Puri 내부                | 외부 (결과 후처리)      |
+| TTables 접근     | 가능                     | 불가                    |
+| 조인 마커 체크   | `LeftJoinedMarker` 확인  | 키 패턴만 확인          |
+| 스키마 타입      | `TTables[alias][column]` | 이미 nullable 적용됨    |
+| nullability 결정 | 객체 단위                | 필드 단위 (그대로 유지) |
 
 #### 핵심 차이
 
@@ -191,11 +201,11 @@ SELECT p.id AS parent__id ...        flat SQL
 
 #### 요약
 
-| 역할 | 중첩 구조 기여 |
-|------|---------------|
+| 역할      | 중첩 구조 기여                  |
+| --------- | ------------------------------- |
 | 타입 추론 | 객체 단위 nullability 추론 가능 |
-| 가독성 | 구조를 명시적으로 표현 |
-| 런타임 | flat으로 변환되어 처리됨 |
+| 가독성    | 구조를 명시적으로 표현          |
+| 런타임    | flat으로 변환되어 처리됨        |
 
 중첩 구조는 타입과 가독성을 위한 추상화이며, 런타임은 기존 방식 그대로입니다.
 
@@ -232,6 +242,7 @@ SELECT p.id AS parent__id ...        flat SQL
 ### 4.1 FK Nullable 여부로 자동 추론
 
 #### 핵심 아이디어
+
 `leftJoin` 시 사용된 FK 컬럼의 nullable 여부를 스키마에서 직접 확인하여 마커를 자동으로 결정합니다.
 
 ```
@@ -244,6 +255,7 @@ employees (메인 테이블)
 - **non-null FK로 leftJoin**: 마커 없음 → 객체가 `T`
 
 #### 예시
+
 ```typescript
 // employees.department_id는 nullable
 // → department: { ... } | null
@@ -275,7 +287,7 @@ type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault | 
 export type LeftJoinedMarker = { [K in LeftJoinedKey]: true };
 
 // 컬럼이 nullable인지 확인 (스키마에서 직접 추출)
-export type IsNullableColumn<TTables, Path extends string> = 
+export type IsNullableColumn<TTables, Path extends string> =
   Path extends `${infer TAlias}.${infer TColumn}`
     ? TAlias extends keyof TTables
       ? TColumn extends keyof TTables[TAlias]
@@ -285,13 +297,13 @@ export type IsNullableColumn<TTables, Path extends string> =
     : false;
 
 // FK nullable 여부에 따른 마커 타입 결정
-export type LeftJoinMarkerFor<TTables, Path extends string> = 
+export type LeftJoinMarkerFor<TTables, Path extends string> =
   IsNullableColumn<TTables, Path> extends true
     ? LeftJoinedMarker
     : {};  // non-null FK면 마커 없음
 
 // 경로 조합 헬퍼
-type JoinPath<Prefix extends string, Key extends string> = 
+type JoinPath<Prefix extends string, Key extends string> =
   Prefix extends "" ? Key : `${Prefix}__${Key}`;
 
 // 중첩 객체 키가 leftJoin 테이블인지 확인
@@ -302,7 +314,7 @@ type IsLeftJoinedTable<TTables, TableKey> = TableKey extends keyof TTables
   : false;
 
 // 메인 파싱 타입
-export type ParseSelectObject<TTables, TSelect> = 
+export type ParseSelectObject<TTables, TSelect> =
   ParseSelectObjectWithPath<TTables, TSelect, "">;
 
 // 경로를 추적하며 재귀적으로 파싱
@@ -325,11 +337,11 @@ type ParseSelectObjectInner<TTables, TSelect, Prefix extends string> = Expand<{
 }>;
 
 // 컬럼 타입 추출 (LeftJoinedMarker가 있으면 nullable 추가)
-export type ExtractColumnType<TTables, Path extends string> = 
+export type ExtractColumnType<TTables, Path extends string> =
   /* TTables[Alias] extends LeftJoinedMarker이면 | null 추가 */;
 
 // 컬럼 타입 추출 (leftJoin nullability 무시 - 내부 필드용)
-type ExtractColumnTypeRaw<TTables, Path extends string> = 
+type ExtractColumnTypeRaw<TTables, Path extends string> =
   /* 항상 원본 타입 반환 */;
 ```
 
@@ -371,7 +383,7 @@ class Puri<TSchema, TTables, TResult> {
     TLeft extends AvailableColumns<TTables>,
   >(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
-    left: TLeft,  // FK 컬럼 경로 (예: "employees.department_id")
+    left: TLeft, // FK 컬럼 경로 (예: "employees.department_id")
     right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
@@ -386,6 +398,7 @@ class Puri<TSchema, TTables, TResult> {
 ### 4.4 코드 생성 로직 (entity.ts)
 
 #### SubsetQuery 타입 (types.ts)
+
 ```typescript
 export type SubsetQuery = {
   select: string[];
@@ -400,6 +413,7 @@ export type SubsetQuery = {
 ```
 
 #### getPuriSubsetQuery에서 joinMethod 결정
+
 ```typescript
 // entity.ts - getPuriSubsetQuery 내부
 for (const join of subsetQuery.joins) {
@@ -410,6 +424,7 @@ for (const join of subsetQuery.joins) {
 ```
 
 #### buildNestedSelectObject - flat select를 입체적으로 변환
+
 ```typescript
 private buildNestedSelectObject(
   selectItems: string[],
@@ -571,6 +586,7 @@ export const departmentLoaderQueries = {
 ## 6. appendSelect 동작
 
 ### 6.1 기본 동작
+
 ```typescript
 appendSelect<TSelect extends SelectObject<TTables>>(
   selectObj: TSelect,
@@ -580,20 +596,20 @@ appendSelect<TSelect extends SelectObject<TTables>>(
 TypeScript intersection(`&`)을 사용하여 기존 타입과 새 타입을 합칩니다.
 
 ### 6.2 객체 머징
+
 ```typescript
 // 단순 케이스
-qb.select({ user: { id: "user.id" } })
-  .appendSelect({ name: "users.name" });
+qb.select({ user: { id: "user.id" } }).appendSelect({ name: "users.name" });
 // Result: { user: { id: number }, name: string }
 
 // 같은 객체 확장
-qb.select({ user: { id: "user.id" } })
-  .appendSelect({ user: { name: "user.name" } });
+qb.select({ user: { id: "user.id" } }).appendSelect({ user: { name: "user.name" } });
 // Result: { user: { id: number } & { name: string } }
 // = { user: { id: number; name: string } }
 ```
 
 ### 6.3 주의사항
+
 - nullability가 다른 경우 타입이 복잡해질 수 있습니다.
 - 가능하면 한 번에 select를 정의하는 것을 권장합니다.
 
@@ -606,17 +622,17 @@ qb.select({ user: { id: "user.id" } })
 SQL 결과만으로는 "leftJoin miss"와 "필드가 NULL"을 구분할 수 없습니다.
 
 ```sql
-SELECT 
+SELECT
   e.id,
   d.name AS department__name
 FROM employees e
 LEFT JOIN departments d ON e.department_id = d.id
 ```
 
-| 상황 | SQL 결과 |
-|------|----------|
+| 상황                            | SQL 결과                 |
+| ------------------------------- | ------------------------ |
 | department 없음 (leftJoin miss) | `department__name: NULL` |
-| department 있음, name이 NULL | `department__name: NULL` |
+| department 있음, name이 NULL    | `department__name: NULL` |
 
 둘 다 똑같이 `NULL`이라서 구분이 불가능합니다.
 
@@ -642,14 +658,14 @@ LEFT JOIN departments d ON e.department_id = d.id
 
 #### 타입-런타임 불일치
 
-| | 타입 (ParseSelectObject) | 런타임 (hydrate) |
-|---|---|---|
-| department 있고 name이 null | `{ name: null }` | `null` |
+|                             | 타입 (ParseSelectObject) | 런타임 (hydrate) |
+| --------------------------- | ------------------------ | ---------------- |
+| department 있고 name이 null | `{ name: null }`         | `null`           |
 
 ```typescript
 // 타입은 접근 가능하다고 함
 if (row.department) {
-  console.log(row.department.name);  // string | null
+  console.log(row.department.name); // string | null
 }
 
 // 런타임에서는 department가 null이라서 if문 통과 못함
@@ -669,10 +685,10 @@ if (row.department) {
 })
 ```
 
-| 상황 | department__id | department__name | hydrate 결과 |
-|------|----------------|------------------|-------------|
-| department 없음 | `NULL` | `NULL` | `{ department: null }` |
-| department 있음, name이 NULL | `100` | `NULL` | `{ department: { id: 100, name: null } }` |
+| 상황                         | department\_\_id | department\_\_name | hydrate 결과                              |
+| ---------------------------- | ---------------- | ------------------ | ----------------------------------------- |
+| department 없음              | `NULL`           | `NULL`             | `{ department: null }`                    |
+| department 있음, name이 NULL | `100`            | `NULL`             | `{ department: { id: 100, name: null } }` |
 
 ```typescript
 // 비권장: id 없이
@@ -706,21 +722,25 @@ return fields.every((field) => row[field] === null);
 ## 8. 테스트 및 검증
 
 ### 8.1 빌드
+
 ```bash
 cd modules/sonamu && npm run build
 ```
 
 ### 8.2 코드 생성
+
 ```bash
 cd examples/miomock/api && npx sonamu sync
 ```
 
 ### 8.3 타입 체크
+
 ```bash
 cd examples/miomock/api && npx tsc --noEmit
 ```
 
 ### 8.4 테스트 스냅샷 업데이트
+
 ```bash
 cd examples/miomock/api && npx vitest run src/sonamu-test/syncer.test.ts -u
 ```

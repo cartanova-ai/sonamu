@@ -25,16 +25,16 @@ graph TB
         B3["user.entity.ts<br/>📋 Entity"]
         B4["helpers.ts<br/>🛠️ Utils"]
     end
-    
+
     B1 -.-> R1["⚡ 2초"]:::fast
-    
+
     style B1 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B2 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B3 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style B4 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
-    
+
     style boundary fill:#F1F8E9,stroke:#7CB342,stroke-width:3px
-    
+
     classDef fast fill:#90EE90,stroke:#2E7D32,stroke-width:2px
 ```
 
@@ -48,15 +48,15 @@ graph TB
         N2[".env<br/>🔑 Env"]
         N3["package.json<br/>📦 Deps"]
     end
-    
+
     N1 -.-> R2["🔄 30초"]:::slow
-    
+
     style N1 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
     style N2 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
     style N3 fill:#FFEBEE,stroke:#F44336,stroke-width:2px
-    
+
     style nonboundary fill:#FFF3E0,stroke:#FB8C00,stroke-width:3px
-    
+
     classDef slow fill:#FFD700,stroke:#F57F17,stroke-width:2px
 ```
 
@@ -82,7 +82,7 @@ Sonamu는 기본적으로 프로젝트의 모든 TypeScript 파일을 Boundary�
 // hmr-hook-register.ts
 await hot.init({
   rootDirectory: process.env.API_ROOT_PATH,
-  boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일이 boundary
+  boundaries: [`./src/**/*.ts`], // 모든 .ts 파일이 boundary
 });
 ```
 
@@ -129,7 +129,7 @@ app.get("/users", async (req, res) => {
 // server.ts
 app.get("/users", async (req, res) => {
   const { UserModel } = await import("./application/user/user.model");
-  
+
   // UserModel을 수정하면 다음 요청 시 최신 코드가 로드됨!
   const users = await UserModel.findMany();
   res.json(users);
@@ -145,7 +145,7 @@ app.get("/users", async (req, res) => {
 async autoloadModels() {
   for (const entity of entities) {
     const modelPath = `${entity.path}/${entity.id}.model`;
-    
+
     // 동적 import로 로드 ✅
     const module = await import(modelPath);
     this.models[entity.id] = module[`${entity.id}Model`];
@@ -161,7 +161,7 @@ Boundary 파일끼리는 정적 import가 가능합니다 (Sonamu의 개선사�
 
 ```typescript
 // user.model.ts (boundary)
-import { PostModel } from "./post.model";  // ✅ OK - 둘 다 boundary
+import { PostModel } from "./post.model"; // ✅ OK - 둘 다 boundary
 
 export class UserModel extends BaseModelClass {
   async getPosts() {
@@ -171,6 +171,7 @@ export class UserModel extends BaseModelClass {
 ```
 
 이것이 가능한 이유:
+
 - 두 파일 모두 Boundary이므로
 - 둘 다 Syncer에 의해 동적으로 로드됨
 - 서로 참조해도 HMR이 정상 작동함
@@ -181,11 +182,11 @@ Non-boundary 파일이 Boundary를 정적 import하면 HMR이 작동하지 않�
 
 ```typescript
 // server.ts (non-boundary)
-import { UserModel } from "./user.model";  // ❌ 전체 재시작 필요
+import { UserModel } from "./user.model"; // ❌ 전체 재시작 필요
 
 // server.ts (non-boundary) - 올바른 방법
 async function loadModels() {
-  const { UserModel } = await import("./user.model");  // ✅ OK
+  const { UserModel } = await import("./user.model"); // ✅ OK
 }
 ```
 
@@ -199,10 +200,11 @@ async function loadModels() {
 
 ```typescript
 // Sonamu UI에서 User에 role 추가
-role: EnumProp<"admin" | "user">
+role: EnumProp<"admin" | "user">;
 ```
 
 저장하면 HMR이 자동으로:
+
 - `user.entity.ts` 업데이트
 - `user.types.ts` 재생성
 - `UserModel` 재로드
@@ -223,7 +225,7 @@ export class UserModel extends BaseModelClass {
   isAdmin(): boolean {
     return this.role === "admin";
   }
-  
+
   canCreatePost(): boolean {
     return this.isAdmin() || this.role === "user";
   }
@@ -231,6 +233,7 @@ export class UserModel extends BaseModelClass {
 ```
 
 저장하면 HMR이:
+
 - `UserModel` 재로드
 - `UserModel`을 사용하는 모든 API 재로드
 
@@ -243,16 +246,17 @@ import { UserModel } from "../user/user.model";  // ✅ 둘 다 boundary
 @api({ httpMethod: "POST" })
 async create(body: PostForm) {
   const user = await UserModel.findById(body.userId);
-  
+
   if (!user.canCreatePost()) {  // 👈 방금 추가한 메서드 바로 사용!
     throw new UnauthorizedError("You don't have permission to create posts");
   }
-  
+
   return PostModel.save(body);
 }
 ```
 
 저장하면 HMR이:
+
 - `PostApi.create` 재등록
 - **서버 재시작 없이 바로 테스트 가능!**
 
@@ -291,23 +295,23 @@ async create(body: PostForm) {
 **파일 구조:**
 
 <Card>
-<FileTree>
-  <FileItem name="src/application/">
-    <FileItem name="product/">
-      <FileItem name="product.model.ts" description="재고 체크" />
+  <FileTree>
+    <FileItem name="src/application/">
+      <FileItem name="product/">
+        <FileItem name="product.model.ts" description="재고 체크" />
+      </FileItem>
+      <FileItem name="order/">
+        <FileItem name="order.model.ts" description="주문 생성" />
+        <FileItem name="order.api.ts" description="API 엔드포인트" />
+      </FileItem>
+      <FileItem name="payment/">
+        <FileItem name="payment.service.ts" description="결제 처리" />
+      </FileItem>
+      <FileItem name="notification/">
+        <FileItem name="notification.service.ts" description="알림 발송" />
+      </FileItem>
     </FileItem>
-    <FileItem name="order/">
-      <FileItem name="order.model.ts" description="주문 생성" />
-      <FileItem name="order.api.ts" description="API 엔드포인트" />
-    </FileItem>
-    <FileItem name="payment/">
-      <FileItem name="payment.service.ts" description="결제 처리" />
-    </FileItem>
-    <FileItem name="notification/">
-      <FileItem name="notification.service.ts" description="알림 발송" />
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 **1단계: 재고 체크 로직**
@@ -318,12 +322,12 @@ export class ProductModel extends BaseModelClass {
   hasStock(quantity: number): boolean {
     return this.stock >= quantity;
   }
-  
+
   async reserveStock(quantity: number) {
     if (!this.hasStock(quantity)) {
       throw new BadRequestError("Out of stock");
     }
-    
+
     await this.update({ stock: this.stock - quantity });
   }
 }
@@ -335,16 +339,16 @@ export class ProductModel extends BaseModelClass {
 
 ```typescript
 // order.model.ts
-import { ProductModel } from "../product/product.model";  // ✅ OK
+import { ProductModel } from "../product/product.model"; // ✅ OK
 import { PaymentService } from "../payment/payment.service";
 
 export class OrderModel extends BaseModelClass {
   static async createOrder(productId: number, quantity: number, userId: number) {
     const product = await ProductModel.findById(productId);
-    
+
     // ProductModel.reserveStock()을 바로 사용 가능!
     await product.reserveStock(quantity);
-    
+
     const order = await this.save({
       productId,
       quantity,
@@ -352,7 +356,7 @@ export class OrderModel extends BaseModelClass {
       totalPrice: product.price * quantity,
       status: "pending",
     });
-    
+
     return order;
   }
 }
@@ -369,14 +373,14 @@ import { OrderModel } from "./order.model";
 @api({ httpMethod: "POST" })
 async create(body: { productId: number; quantity: number }) {
   const userId = getSonamuContext().userId!;
-  
+
   // OrderModel.createOrder()를 바로 사용!
   const order = await OrderModel.createOrder(
     body.productId,
     body.quantity,
     userId
   );
-  
+
   return order;
 }
 ```
@@ -408,7 +412,7 @@ Boundary 파일에서는 `import.meta.hot` API를 사용하여 HMR 동작을 세
 // notification.service.ts
 export class NotificationService {
   private static timer: NodeJS.Timeout;
-  
+
   static startPolling() {
     this.timer = setInterval(() => {
       console.log("Checking notifications...");
@@ -437,7 +441,7 @@ import.meta.hot?.dispose(() => {
 // websocket-manager.ts
 class WebSocketManager {
   private static connections = new Map<string, WebSocket>();
-  
+
   static connect(url: string) {
     const ws = new WebSocket(url);
     this.connections.set(url, ws);
@@ -513,7 +517,7 @@ export class CacheManager {
   static set(key: string, value: any) {
     cache.set(key, value);
   }
-  
+
   static get(key: string) {
     return cache.get(key);
   }
@@ -532,11 +536,11 @@ const requestCounts = import.meta.hot?.boundary.requestCounts || new Map<string,
 export class RateLimiter {
   static check(userId: string): boolean {
     const count = requestCounts.get(userId) || 0;
-    
+
     if (count >= 100) {
-      return false;  // Rate limit exceeded
+      return false; // Rate limit exceeded
     }
-    
+
     requestCounts.set(userId, count + 1);
     return true;
   }
@@ -547,7 +551,8 @@ import.meta.hot?.boundary.requestCounts = requestCounts;
 ```
 
 <Warning>
-`boundary` 객체는 HMR 사이클 간 데이터를 유지하지만, 서버 재시작 시에는 초기화됩니다. 영구 저장이 필요한 데이터는 데이터베이스나 Redis를 사용하세요.
+  `boundary` 객체는 HMR 사이클 간 데이터를 유지하지만, 서버 재시작 시에는 초기화됩니다. 영구 저장이
+  필요한 데이터는 데이터베이스나 Redis를 사용하세요.
 </Warning>
 
 ## 타입 정의
@@ -575,11 +580,11 @@ Sonamu 프로젝트에는 이미 타입 정의가 포함되어 있으므로 별�
 
 ```typescript
 const dump = await hot.dump();
-const userModel = dump.find(d => d.nodePath.includes("user.model.ts"));
+const userModel = dump.find((d) => d.nodePath.includes("user.model.ts"));
 
-console.log(`Boundary: ${userModel?.boundary}`);       // true
-console.log(`Reloadable: ${userModel?.reloadable}`);   // true
-console.log(`Children:`, userModel?.children);          // 의존하는 파일들
+console.log(`Boundary: ${userModel?.boundary}`); // true
+console.log(`Reloadable: ${userModel?.reloadable}`); // true
+console.log(`Children:`, userModel?.children); // 의존하는 파일들
 ```
 
 출력 예시:
@@ -605,7 +610,7 @@ const dump = await hot.dump();
 for (const node of dump) {
   if (node.boundary) {
     console.log(`📦 ${node.nodePath}`);
-    
+
     for (const child of node.children || []) {
       console.log(`   └─ ${child}`);
     }
@@ -625,10 +630,8 @@ for (const node of dump) {
 ```
 
 <Tip>
-개발 중 HMR이 작동하지 않는다면:
-1. 해당 파일이 Boundary로 지정되어 있는지 확인
-2. 동적으로 import되는지 확인
-3. 순환 의존성이 없는지 확인
+  개발 중 HMR이 작동하지 않는다면: 1. 해당 파일이 Boundary로 지정되어 있는지 확인 2. 동적으로
+  import되는지 확인 3. 순환 의존성이 없는지 확인
 </Tip>
 
 ## 성능 최적화
@@ -662,7 +665,7 @@ import { CommentModel } from "../comment/comment.model";
 // ... 많은 import
 
 // ✅ 좋은 예
-import { UserModel } from "../user/user.model";  // 실제로 사용하는 것만
+import { UserModel } from "../user/user.model"; // 실제로 사용하는 것만
 ```
 
 ## 요약

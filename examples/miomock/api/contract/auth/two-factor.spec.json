@@ -34,12 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/two-factor/two-factor.types.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/two-factor/two-factor.types.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "TwoFactor": "TOTP 기반 2단계 인증 엔티티. 비밀키와 백업 코드를 관리한다"
   },
@@ -55,7 +51,5 @@
   "errorHandling": {
     "InvalidOTPCode": "잘못된 OTP 코드"
   },
-  "constraints": [
-    "사용자 삭제 시 TwoFactor CASCADE 삭제"
-  ]
+  "constraints": ["사용자 삭제 시 TwoFactor CASCADE 삭제"]
 }

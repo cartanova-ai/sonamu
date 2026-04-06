@@ -12,21 +12,25 @@ Sonamu의 검색 기능은 **SearchFieldSelect** (검색 대상 필드)와 **Inp
     다양한 필드에서 검색
 
     사용자가 필드 선택
+
   </Card>
   <Card title="자동 생성" icon="wand-magic-sparkles">
     SearchField enum 기반
 
     레이블 자동 매핑
+
   </Card>
   <Card title="URL 동기화" icon="link">
     useListParams 통합
 
     북마크 가능한 검색
+
   </Card>
   <Card title="타입 안전" icon="shield-check">
     백엔드와 자동 동기화
 
     컴파일 타임 검증
+
   </Card>
 </CardGroup>
 
@@ -40,11 +44,7 @@ SearchFieldSelect는 백엔드에 `SearchField` enum이 정의되면 자동으�
 // user.types.ts (백엔드)
 import { z } from "zod";
 
-export const UserSearchField = z.enum([
-  "id",
-  "username",
-  "email",
-]);
+export const UserSearchField = z.enum(["id", "username", "email"]);
 
 export const UserListParams = UserBaseListParams.extend({
   search: UserSearchField.optional(),
@@ -57,6 +57,7 @@ export const UserListParams = UserBaseListParams.extend({
 **컴포넌트**: `web/src/components/user/UserSearchFieldSelect.tsx`
 
 **레이블**: `web/src/services/sonamu.generated.ts`
+
 ```typescript
 export const UserSearchFieldLabel = {
   id: "ID",
@@ -106,6 +107,7 @@ export function UserListPage() {
 ```
 
 **동작 흐름**:
+
 1. 사용자가 SearchFieldSelect에서 "이메일" 선택
 2. Input에 "admin" 입력
 3. URL 업데이트: `?search=email&keyword=admin`
@@ -175,6 +177,7 @@ export type UserSearchFieldSelectProps = {
 **clearable 사용 시나리오**
 
 검색 필드를 선택하지 않고 전체 필드에서 검색하고 싶을 때 유용합니다. 단, 백엔드에서 전체 검색 로직을 별도로 구현해야 합니다.
+
 </Info>
 
 ## 검색 패턴
@@ -191,6 +194,7 @@ if (params.search && params.keyword) {
 ```
 
 **사용자 경험**:
+
 - 검색 필드: ID
 - 키워드: "123"
 - 결과: ID가 정확히 123인 사용자
@@ -209,6 +213,7 @@ if (params.search && params.keyword) {
 ```
 
 **사용자 경험**:
+
 - 검색 필드: 이메일
 - 키워드: "admin"
 - 결과: "admin@example.com", "super.admin@test.com" 등
@@ -545,7 +550,7 @@ if (params.search && params.keyword) {
   } else if (params.search === "username") {
     qb.where("users.username", "like", `%${params.keyword}%`);
   } else {
-    exhaustive(params.search);  // 컴파일 타임 검증
+    exhaustive(params.search); // 컴파일 타임 검증
   }
 }
 ```
@@ -571,10 +576,9 @@ if (params.search && params.keyword) {
 ```typescript
 // 백엔드: user.model.ts
 if (params.search === "fulltext" && params.keyword) {
-  qb.whereRaw(
-    "MATCH(users.username, users.bio) AGAINST(? IN NATURAL LANGUAGE MODE)",
-    [params.keyword]
-  );
+  qb.whereRaw("MATCH(users.username, users.bio) AGAINST(? IN NATURAL LANGUAGE MODE)", [
+    params.keyword,
+  ]);
 }
 ```
 
@@ -585,6 +589,7 @@ if (params.search === "fulltext" && params.keyword) {
 **원인**: 백엔드에 `SearchField` enum이 없음
 
 **해결**:
+
 ```typescript
 // user.types.ts (백엔드)
 export const UserSearchField = z.enum(["id", "username", "email"]);
@@ -606,6 +611,7 @@ export const UserListParams = UserBaseListParams.extend({
 **원인**: 데이터베이스 charset/collation 설정
 
 **해결**:
+
 ```sql
 -- MySQL
 ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -1,7 +1,9 @@
 import assert from "assert";
-import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import path, { dirname } from "path";
+
+import chalk from "chalk";
+
 import { Sonamu } from "../api/sonamu";
 import type { EntityNamesRecord } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";

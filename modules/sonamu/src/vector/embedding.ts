@@ -1,6 +1,7 @@
 import type { OpenAIProvider } from "@ai-sdk/openai";
 import { type EmbeddingModel, embedMany } from "ai";
 import type { VoyageAIClient } from "voyageai";
+
 import { Sonamu } from "../api/sonamu";
 import { DEFAULT_VECTOR_CONFIG } from "./config";
 import type {

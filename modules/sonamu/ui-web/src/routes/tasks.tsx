@@ -19,15 +19,16 @@ import PlayCircleIcon from "~icons/lucide/play-circle";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import RotateCcwIcon from "~icons/lucide/rotate-ccw";
 import XCircleIcon from "~icons/lucide/x-circle";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { useLocale } from "../i18n";
-import { defaultCatch } from "../services/sonamu.shared";
 import {
   SonamuUIService,
   type StepAttempt,
   type WorkflowDefinitionInfo,
   type WorkflowRun,
 } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 import { formatDateTime, formatDuration, STATUS_STYLES } from "../utils/tasks";
 
 const WORKFLOW_RUN_STATUS_OPTIONS = [

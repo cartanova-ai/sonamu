@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+
 import { Button, buttonVariantsConfig } from "./button";
 
 const variantKeys = Object.keys(buttonVariantsConfig.variant);

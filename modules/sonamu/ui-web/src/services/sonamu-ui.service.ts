@@ -14,6 +14,7 @@ import type {
   PathAndCode,
   SonamuDBConfig,
 } from "sonamu";
+
 import { fetch } from "./sonamu.shared";
 
 export type ExtendedEntity = Entity & {

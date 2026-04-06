@@ -12,7 +12,6 @@ import {
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
-import { useSonamuContext } from "@/contexts/sonamu-provider";
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import CopyIcon from "~icons/lucide/copy";
@@ -20,6 +19,8 @@ import KeyIcon from "~icons/lucide/key";
 import LockIcon from "~icons/lucide/lock";
 import ShieldIcon from "~icons/lucide/shield";
 import ShieldOffIcon from "~icons/lucide/shield-off";
+
+import { useSonamuContext } from "@/contexts/sonamu-provider";
 
 export const Route = createFileRoute("/admin/2fa-setup")({ component: TwoFactorSetupPage });
 

@@ -1,5 +1,6 @@
 import inflection from "inflection";
 import { diff, unique } from "radashi";
+
 import {
   apiParamToTsCode,
   apiParamTypeToTsType,
@@ -253,11 +254,7 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
           // paramsDef 예: "params: { category: string }" → "{ category: string }"
           const paramsTypeDef =
             paramsWithoutContext.length > 0
-              ? paramsDef
-                  .split(":")
-                  .slice(1)
-                  .join(":")
-                  .trim() // "params: { category: string }" → "{ category: string }"
+              ? paramsDef.split(":").slice(1).join(":").trim() // "params: { category: string }" → "{ category: string }"
               : "";
 
           const mutationParamType =
@@ -367,8 +364,7 @@ export const ${names.capital}AsyncIdConfig: AsyncIdConfig<${names.capital}Subset
         " * @generated",
         " * 직접 수정하지 마세요.",
         " */",
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
+        "/* oxlint-disable */",
         "",
         `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,

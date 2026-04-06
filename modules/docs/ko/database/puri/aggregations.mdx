@@ -9,24 +9,16 @@ Puri는 SQL의 강력한 집계 함수를 타입 안전하게 사용할 수 있�
 
 <CardGroup cols={2}>
   <Card title="COUNT" icon="hashtag">
-    레코드 개수 세기
-    
-    Puri.count()
+    레코드 개수 세기 Puri.count()
   </Card>
   <Card title="SUM/AVG" icon="calculator">
-    합계와 평균 계산
-    
-    Puri.sum(), Puri.avg()
+    합계와 평균 계산 Puri.sum(), Puri.avg()
   </Card>
   <Card title="MAX/MIN" icon="arrow-up-wide-short">
-    최대값과 최소값 찾기
-    
-    Puri.max(), Puri.min()
+    최대값과 최소값 찾기 Puri.max(), Puri.min()
   </Card>
   <Card title="GROUP BY" icon="layer-group">
-    그룹별로 집계하기
-    
-    groupBy(), having()
+    그룹별로 집계하기 groupBy(), having()
   </Card>
 </CardGroup>
 
@@ -45,7 +37,8 @@ const result = await db
 
 console.log(result.total); // 150
 // 타입: { total: number }
-```
+
+````
 
 ```typescript title="특정 컬럼 COUNT"
 const result = await db
@@ -56,7 +49,7 @@ const result = await db
   .first();
 
 // COUNT(id) - NULL 제외
-```
+````
 
 ```typescript title="DISTINCT COUNT"
 const result = await db
@@ -68,11 +61,12 @@ const result = await db
 
 // 중복 제거 후 개수
 ```
+
 </CodeGroup>
 
 <Info>
-`Puri.count()`는 `COUNT(*)`를 생성합니다. NULL을 포함한 모든 행을 셉니다.
-`Puri.count("column")`은 해당 컬럼이 NULL이 아닌 행만 셉니다.
+  `Puri.count()`는 `COUNT(*)`를 생성합니다. NULL을 포함한 모든 행을 셉니다. `Puri.count("column")`은
+  해당 컬럼이 NULL이 아닌 행만 셉니다.
 </Info>
 
 ### COUNT with GROUP BY
@@ -109,7 +103,8 @@ const result = await db
 
 console.log(result.totalSalary); // 5000000
 // 타입: { totalSalary: number }
-```
+
+````
 
 ```typescript title="조건부 SUM"
 const result = await db
@@ -121,7 +116,8 @@ const result = await db
   .first();
 
 // 특정 부서의 급여 합계
-```
+````
+
 </CodeGroup>
 
 ### SUM with GROUP BY
@@ -155,7 +151,8 @@ const result = await db
 
 console.log(result.avgSalary); // 65000
 // 타입: { avgSalary: number }
-```
+
+````
 
 ```typescript title="ROUND와 함께"
 const result = await db
@@ -166,7 +163,8 @@ const result = await db
   .first();
 
 // 소수점 2자리까지 반올림
-```
+````
+
 </CodeGroup>
 
 ## MAX / MIN - 최대값 / 최소값
@@ -252,9 +250,8 @@ const results = await db
 ```
 
 <Warning>
-**GROUP BY 규칙**:
-- SELECT에 있는 집계 함수가 아닌 모든 컬럼은 GROUP BY에 있어야 합니다
-- GROUP BY에 없는 컬럼은 SELECT할 수 없습니다 (집계 함수 제외)
+  **GROUP BY 규칙**: - SELECT에 있는 집계 함수가 아닌 모든 컬럼은 GROUP BY에 있어야 합니다 - GROUP
+  BY에 없는 컬럼은 SELECT할 수 없습니다 (집계 함수 제외)
 </Warning>
 
 ### GROUP BY with JOIN
@@ -295,9 +292,8 @@ const results = await db
 ```
 
 <Info>
-**WHERE vs HAVING**:
-- `WHERE`: GROUP BY **전**에 필터링 (개별 행 대상)
-- `HAVING`: GROUP BY **후**에 필터링 (집계 결과 대상)
+  **WHERE vs HAVING**: - `WHERE`: GROUP BY **전**에 필터링 (개별 행 대상) - `HAVING`: GROUP BY
+  **후**에 필터링 (집계 결과 대상)
 </Info>
 
 ### HAVING with 집계 함수
@@ -326,9 +322,9 @@ const results = await db
     departmentId: "department_id",
     avgSalary: Puri.avg("salary"),
   })
-  .where("hire_date", ">=", "2020-01-01")  // 개별 행 필터
+  .where("hire_date", ">=", "2020-01-01") // 개별 행 필터
   .groupBy("department_id")
-  .having("avgSalary", ">", 65000);         // 집계 결과 필터
+  .having("avgSalary", ">", 65000); // 집계 결과 필터
 
 // 2020년 이후 입사자 중, 부서별 평균 급여 6.5만 이상
 ```
@@ -344,16 +340,16 @@ const stats = await db
   .select({
     deptId: "departments.id",
     deptName: "departments.name",
-    
+
     // 직원 수
     empCount: Puri.count("employees.id"),
-    
+
     // 급여 통계
     minSalary: Puri.min("employees.salary"),
     maxSalary: Puri.max("employees.salary"),
     avgSalary: Puri.avg("employees.salary"),
     totalSalary: Puri.sum("employees.salary"),
-    
+
     // 입사일 통계
     earliestHire: Puri.min("employees.hire_date"),
     latestHire: Puri.max("employees.hire_date"),
@@ -413,15 +409,15 @@ const stats = await db
   .table("projects")
   .select({
     totalProjects: Puri.count("id"),
-    
+
     activeProjects: Puri.rawNumber(`
       COUNT(CASE WHEN status = 'in_progress' THEN 1 END)
     `),
-    
+
     completedProjects: Puri.rawNumber(`
       COUNT(CASE WHEN status = 'completed' THEN 1 END)
     `),
-    
+
     cancelledProjects: Puri.rawNumber(`
       COUNT(CASE WHEN status = 'cancelled' THEN 1 END)
     `),
@@ -440,11 +436,11 @@ const salaryRanges = await db
     under50k: Puri.rawNumber(`
       COUNT(CASE WHEN salary < 50000 THEN 1 END)
     `),
-    
+
     range50to70k: Puri.rawNumber(`
       COUNT(CASE WHEN salary BETWEEN 50000 AND 70000 THEN 1 END)
     `),
-    
+
     above70k: Puri.rawNumber(`
       COUNT(CASE WHEN salary > 70000 THEN 1 END)
     `),
@@ -579,7 +575,7 @@ await db
 // ✅ 좋음: 집계 전 불필요한 행 제거
 await db
   .table("employees")
-  .where("is_active", true)        // 먼저 필터
+  .where("is_active", true) // 먼저 필터
   .where("hire_date", ">=", "2020-01-01")
   .select({
     departmentId: "department_id",
@@ -596,15 +592,15 @@ await db
 const result = await db
   .table("employees")
   .select({
-    count: Puri.count("id"),           // number
-    avgSalary: Puri.avg("salary"),     // number
-    maxDate: Puri.max("hire_date"),    // string (날짜는 문자열로 반환)
+    count: Puri.count("id"), // number
+    avgSalary: Puri.avg("salary"), // number
+    maxDate: Puri.max("hire_date"), // string (날짜는 문자열로 반환)
   })
   .first();
 
-result.count;      // number
-result.avgSalary;  // number
-result.maxDate;    // string
+result.count; // number
+result.avgSalary; // number
+result.maxDate; // string
 ```
 
 ## 다음 단계
@@ -613,7 +609,11 @@ result.maxDate;    // string
   <Card title="Raw Queries" icon="code" href="/ko/database/puri/raw-queries">
     복잡한 SQL 직접 작성하기
   </Card>
-  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/ko/database/puri/advanced-patterns">
+  <Card
+    title="Advanced Patterns"
+    icon="wand-magic-sparkles"
+    href="/ko/database/puri/advanced-patterns"
+  >
     윈도우 함수와 고급 패턴
   </Card>
   <Card title="Joins" icon="link" href="/ko/database/puri/joins">

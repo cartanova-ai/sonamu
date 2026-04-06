@@ -1,6 +1,6 @@
 ---
-title: 'BadRequestException'
-description: '잘못된 요청 처리를 위한 400 예외'
+title: "BadRequestException"
+description: "잘못된 요청 처리를 위한 400 예외"
 ---
 
 `BadRequestException`은 클라이언트의 요청이 잘못된 경우 사용하는 예외입니다. HTTP 400 상태 코드를 반환하며, 유효성 검증 실패, 잘못된 매개변수, 요청 형식 오류 등에 사용됩니다.
@@ -9,10 +9,7 @@ description: '잘못된 요청 처리를 위한 400 예외'
 
 ```typescript
 class BadRequestException extends SoException {
-  constructor(
-    message: LocalizedString,
-    payload?: unknown,
-  );
+  constructor(message: LocalizedString, payload?: unknown);
 }
 ```
 
@@ -24,11 +21,11 @@ async createPost(title: string, content: string) {
   if (!title || title.trim().length === 0) {
     throw new BadRequestException("제목은 필수입니다");
   }
-  
+
   if (content.length > 10000) {
     throw new BadRequestException("본문은 10,000자를 초과할 수 없습니다");
   }
-  
+
   return this.create({ title, content });
 }
 ```
@@ -112,7 +109,7 @@ async transferMoney(
   }
 
   const fromAccount = await AccountModel.findById(fromAccountId);
-  
+
   if (fromAccount.userId !== ctx.user!.id) {
     throw new BadRequestException("본인 계좌에서만 이체할 수 있습니다");
   }
@@ -213,7 +210,7 @@ async createReservation(
   const daysDiff = Math.ceil(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  
+
   if (daysDiff > maxDays) {
     throw new BadRequestException(
       `예약 기간은 최대 ${maxDays}일까지 가능합니다`,
@@ -333,8 +330,8 @@ async createProduct(
 throw new BadRequestException("입력 데이터 검증 실패", {
   errors: [
     { field: "email", code: "INVALID_FORMAT" },
-    { field: "password", code: "TOO_SHORT", minLength: 8 }
-  ]
+    { field: "password", code: "TOO_SHORT", minLength: 8 },
+  ],
 });
 ```
 
@@ -343,8 +340,8 @@ throw new BadRequestException("입력 데이터 검증 실패", {
 ```typescript
 throw new BadRequestException("파일 크기 초과", {
   size: file.size,
-  limit: 5242880,  // 5MB in bytes
-  unit: "bytes"
+  limit: 5242880, // 5MB in bytes
+  unit: "bytes",
 });
 ```
 
@@ -354,7 +351,7 @@ throw new BadRequestException("파일 크기 초과", {
 throw new BadRequestException("일일 요청 한도 초과", {
   limit: 100,
   used: 100,
-  resetsAt: new Date("2024-01-01T00:00:00Z")
+  resetsAt: new Date("2024-01-01T00:00:00Z"),
 });
 ```
 

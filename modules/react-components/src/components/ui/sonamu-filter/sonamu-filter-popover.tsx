@@ -1,7 +1,7 @@
+import { Popover, PopoverContent, PopoverTrigger } from "../..";
 import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { datetimeF, numF } from "../../../lib";
 import type { FilterOperator } from "../../../lib/types";
-import { Popover, PopoverContent, PopoverTrigger } from "../..";
 import { operatorLabels } from "./constants";
 import type { Rule, SonamuFilterPopoverProps } from "./types";
 

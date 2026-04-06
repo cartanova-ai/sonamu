@@ -1,8 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+
 import type { ApiDecoratorOptions, Context } from "../api";
-import type { GuardKey } from "./../api/decorators";
 import type { CacheControlHandler } from "../cache-control/types";
+import type { GuardKey } from "./../api/decorators";
 
 /*
   Utility Types
@@ -10,7 +11,7 @@ import type { CacheControlHandler } from "../cache-control/types";
 export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
-// biome-ignore lint/suspicious/noExplicitAny: any is used to make the type distributive
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- any is used to make the type distributive
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 /*
@@ -1750,9 +1751,9 @@ export type RelationNode = {
   related: Set<string>;
 };
 
-// biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
+// oxlint-disable-next-line @typescript-eslint/no-empty-interface -- sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
 export interface DatabaseSchemaExtend {}
-// biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
+// oxlint-disable-next-line @typescript-eslint/no-empty-interface -- sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
 export interface DatabaseForeignKeys {}
 export type ManyToManyBaseSchema<
   FromIdKey extends string,

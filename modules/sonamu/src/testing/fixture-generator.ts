@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Knex } from "knex";
+
 import type { Entity } from "../entity/entity";
 import type { EntityManager } from "../entity/entity-manager";
 import type { EntityProp, FixtureImportResult, FixtureRecord } from "../types/types";

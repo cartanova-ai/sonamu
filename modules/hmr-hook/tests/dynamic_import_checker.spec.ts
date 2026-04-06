@@ -1,4 +1,5 @@
 import { join } from "node:path";
+
 import { test } from "@japa/runner";
 
 import { DynamicImportChecker } from "../src/dynamic_import_checker.js";

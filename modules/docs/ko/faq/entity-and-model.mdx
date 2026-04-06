@@ -1,6 +1,6 @@
 ---
-title: 'Entity와 Model'
-description: 'Entity와 Model 정의에 관한 질문'
+title: "Entity와 Model"
+description: "Entity와 Model 정의에 관한 질문"
 ---
 
 ## Entity 기본
@@ -72,6 +72,7 @@ Entity 수정 시 마이그레이션은 **자동 생성되지 않고**, Sonamu U
 **마이그레이션 생성 대상 (Prepared Migration Codes에 표시):**
 
 **Props 변경:**
+
 - 프롭 추가/삭제
 - 프롭 타입 변경 (`string` → `numeric` 등)
 - `StringProp` 길이 변경 (`length`)
@@ -80,17 +81,20 @@ Entity 수정 시 마이그레이션은 **자동 생성되지 않고**, Sonamu U
 - `NumberProp`이 `numberType: "numeric"`인 경우 `precision`, `scale` 변경
 
 **관계(relation) 변경:**
+
 - BelongsToOne 추가/삭제 (FK 컬럼 생성/삭제)
 - OneToOne 추가/삭제 (`hasJoinColumn: true`인 경우)
 - ManyToMany 추가/삭제 (조인 테이블 생성/삭제)
 - onUpdate, onDelete 변경
 
 **인덱스(indexes) 변경:**
+
 - 인덱스 추가/삭제
 - unique, index, fulltext 타입 변경
 - 인덱스 컬럼 변경
 
 **테이블 변경:**
+
 - 테이블명 변경
 
 **마이그레이션 생성하지 않는 변경:**
@@ -112,23 +116,28 @@ Entity 수정 시 마이그레이션은 **자동 생성되지 않고**, Sonamu U
 <Accordion title="Sonamu UI에서 새 Entity를 만들면 어떤 순서로 파일들이 생성되나요?">
 
 **1. Entity JSON 파일 생성**
+
 - `{entity}.entity.json`
 - 위치: `api/src/application/{entity}/{entity}.entity.json`
 
 **2. 타입 파일 자동 생성**
+
 - `{entity}.types.ts`
 - 위치: `api/src/application/{entity}/{entity}.types.ts`
 
 **3. 생성 파일 갱신**
+
 - `sonamu.generated.sso.ts`
 - `sonamu.generated.ts`
 - 위치: `api/src/application/`
 
 **4. 프론트엔드 파일 복사**
+
 - `user.types.ts` → `web/src/services/user/user.types.ts`
 - `sonamu.generated.ts` → `web/src/services/sonamu.generated.ts`
 
 **5. `sonamu.lock` 갱신**
+
 - 새로 생성된 파일들의 체크섬 저장
 
 **주의:**
@@ -152,9 +161,9 @@ Entity 수정 시 마이그레이션은 **자동 생성되지 않고**, Sonamu U
 ```json
 {
   "enums": {
-    "UserRole": { 
-      "normal": "노멀", 
-      "admin": "관리자" 
+    "UserRole": {
+      "normal": "노멀",
+      "admin": "관리자"
     },
     "UserOrderBy": {
       "id-desc": "ID최신순"
@@ -193,11 +202,13 @@ export const CompanyStatsType = z.object({
   totalDepartments: z.number(),
   totalEmployees: z.number(),
   avgSalary: z.number(),
-  departments: z.array(z.object({
-    id: z.number(),
-    name: z.string(),
-    employeeCount: z.number(),
-  })),
+  departments: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      employeeCount: z.number(),
+    }),
+  ),
 });
 
 export type CompanyStatsType = z.infer<typeof CompanyStatsType>;
@@ -209,17 +220,17 @@ export type CompanyStatsType = z.infer<typeof CompanyStatsType>;
 // company.model.ts
 const enhancers = this.createEnhancers({
   WithStats: async (row) => {
-    const departments = await DepartmentModel.findMany('P', {
+    const departments = await DepartmentModel.findMany("P", {
       company_id: row.id,
     });
-    
+
     return {
       ...row,
       company_stats: {
         totalDepartments: departments.rows.length,
         totalEmployees: departments.rows.reduce((sum, d) => sum + d.employee_count, 0),
         avgSalary: calculateAvgSalary(departments.rows),
-        departments: departments.rows.map(d => ({
+        departments: departments.rows.map((d) => ({
           id: d.id,
           name: d.name,
           employeeCount: d.employee_count,
@@ -256,15 +267,19 @@ const enhancers = this.createEnhancers({
 `relation` 타입의 필드로 정의합니다:
 
 **OneToOne:** 1:1 관계
+
 - `hasJoinColumn`으로 FK 소유 지정
 
 **BelongsToOne:** N:1 관계 (Many-to-One)
+
 - FK 키를 가진 Entity에서 정의
 
 **HasMany:** 1:N 관계 (One-to-Many)
+
 - virtual 관계 (FK가 상대편에 있음)
 
 **ManyToMany:** N:M 관계
+
 - `joinTable` 필요
 
 각 관계는 FK 키가 있는 Entity에서 `onUpdate`, `onDelete` 옵션으로 참조 무결성을 설정할 수 있습니다.
@@ -435,6 +450,7 @@ class UserUtilFrameClass extends BaseFrameClass {
 <Accordion title="Entity의 스키마를 검증하려면 어떻게 하나요?">
 
 **Sonamu UI:**
+
 - Entity 편집 시 실시간 오류 표시
 
 **EntityManager:**
@@ -444,6 +460,7 @@ const errors = EntityManager.schemaValidate(entity);
 ```
 
 **Syncer:**
+
 - `pnpm dev` 실행 시 자동 검증 및 에러 출력
 
 **검증 항목:**

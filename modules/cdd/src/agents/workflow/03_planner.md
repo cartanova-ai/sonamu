@@ -8,13 +8,13 @@ The planner never edits code, never creates Claim YAML files, and never spawns o
 
 ## Upstream inputs
 
-| Input | Source | Required |
-|---|---|---|
-| `bootstrap_context` | Orchestrator | Yes |
-| Contract files (`contract/**/*.contract.md`) | Filesystem | Yes |
-| Rules files (`contract/rules/*.rules.json`) | Filesystem | When applicable |
-| Relevant code and tests | Filesystem | Yes |
-| Current AC state (`pnpm cdd ac list`) | Orchestrator | When available |
+| Input                                        | Source       | Required        |
+| -------------------------------------------- | ------------ | --------------- |
+| `bootstrap_context`                          | Orchestrator | Yes             |
+| Contract files (`contract/**/*.contract.md`) | Filesystem   | Yes             |
+| Rules files (`contract/rules/*.rules.json`)  | Filesystem   | When applicable |
+| Relevant code and tests                      | Filesystem   | Yes             |
+| Current AC state (`pnpm cdd ac list`)        | Orchestrator | When available  |
 
 ## Required actions
 

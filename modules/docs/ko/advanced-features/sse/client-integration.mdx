@@ -22,29 +22,29 @@ function useSSEStream<T extends Record<string, any>>(
 
 **매개변수:**
 
-| 매개변수 | 타입 | 설명 |
-|----------|------|------|
-| `url` | `string` | SSE 엔드포인트 경로 |
-| `params` | `Record<string, any>` | 쿼리 파라미터 |
+| 매개변수   | 타입                                        | 설명                 |
+| ---------- | ------------------------------------------- | -------------------- |
+| `url`      | `string`                                    | SSE 엔드포인트 경로  |
+| `params`   | `Record<string, any>`                       | 쿼리 파라미터        |
 | `handlers` | `{ [K in keyof T]?: (data: T[K]) => void }` | 이벤트 타입별 핸들러 |
-| `options` | `SSEStreamOptions` | 연결 옵션 (선택) |
+| `options`  | `SSEStreamOptions`                          | 연결 옵션 (선택)     |
 
 **옵션:**
 
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `enabled` | `boolean` | `true` | 연결 활성화 여부 |
-| `retry` | `number` | `3` | 최대 재시도 횟수 |
-| `retryInterval` | `number` | `3000` | 재시도 간격 (ms) |
+| 옵션            | 타입      | 기본값 | 설명             |
+| --------------- | --------- | ------ | ---------------- |
+| `enabled`       | `boolean` | `true` | 연결 활성화 여부 |
+| `retry`         | `number`  | `3`    | 최대 재시도 횟수 |
+| `retryInterval` | `number`  | `3000` | 재시도 간격 (ms) |
 
 **반환값 (`SSEStreamState`):**
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `isConnected` | `boolean` | 현재 연결 상태 |
-| `error` | `string \| null` | 에러 메시지 |
-| `retryCount` | `number` | 현재 재시도 횟수 |
-| `isEnded` | `boolean` | 서버가 `end` 이벤트를 전송하여 정상 종료됨 |
+| 필드          | 타입             | 설명                                       |
+| ------------- | ---------------- | ------------------------------------------ |
+| `isConnected` | `boolean`        | 현재 연결 상태                             |
+| `error`       | `string \| null` | 에러 메시지                                |
+| `retryCount`  | `number`         | 현재 재시도 횟수                           |
+| `isEnded`     | `boolean`        | 서버가 `end` 이벤트를 전송하여 정상 종료됨 |
 
 ### 사용 예제
 
@@ -82,7 +82,8 @@ function NotificationList({ userId }: { userId: number }) {
 ```
 
 <Note>
-`useSSEStream`은 `Accept-Language` 헤더를 자동으로 전달하므로, 서버에서 locale 기반 응답을 반환할 수 있습니다.
+  `useSSEStream`은 `Accept-Language` 헤더를 자동으로 전달하므로, 서버에서 locale 기반 응답을 반환할
+  수 있습니다.
 </Note>
 
 ## EventSource API (직접 사용)
@@ -93,22 +94,22 @@ function NotificationList({ userId }: { userId: number }) {
 
 ```typescript
 // SSE 연결 생성
-const source = new EventSource('/stream/notifications?userId=1');
+const source = new EventSource("/stream/notifications?userId=1");
 
 // 이벤트 리스너 등록
-source.addEventListener('notification', (event) => {
+source.addEventListener("notification", (event) => {
   const data = JSON.parse(event.data);
-  console.log('Notification:', data);
+  console.log("Notification:", data);
 });
 
 // 연결 종료 이벤트
-source.addEventListener('end', () => {
+source.addEventListener("end", () => {
   source.close();
 });
 
 // 에러 처리
 source.onerror = (error) => {
-  console.error('SSE Error:', error);
+  console.error("SSE Error:", error);
   source.close();
 };
 ```
@@ -120,7 +121,7 @@ source.onerror = (error) => {
 ### 커스텀 Hook
 
 ```typescript
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 function useSSE<T>(url: string, eventName: string) {
   const [data, setData] = useState<T | null>(null);
@@ -143,13 +144,13 @@ function useSSE<T>(url: string, eventName: string) {
       }
     });
 
-    source.addEventListener('end', () => {
+    source.addEventListener("end", () => {
       source.close();
       setIsConnected(false);
     });
 
     source.onerror = (err) => {
-      setError(new Error('SSE connection failed'));
+      setError(new Error("SSE connection failed"));
       setIsConnected(false);
       source.close();
     };
@@ -216,7 +217,7 @@ function NotificationCenter({ userId }: { userId: number }) {
     source.addEventListener('notification', (event) => {
       const notification = JSON.parse(event.data) as Notification;
       setNotifications(prev => [notification, ...prev].slice(0, 10));
-      
+
       // 브라우저 알림
       if (Notification.permission === 'granted') {
         new Notification(notification.message);
@@ -341,10 +342,10 @@ function LiveFeed() {
 
     source.addEventListener('newPost', (event) => {
       const post = JSON.parse(event.data) as Post;
-      
+
       // 새 게시물을 상단에 추가
       setPosts(prev => [post, ...prev]);
-      
+
       // 알림 표시
       showToast(`New post: ${post.title}`);
     });
@@ -405,7 +406,7 @@ function ChatRoom({ roomId }: { roomId: number }) {
     // 타이핑 상태 이벤트
     source.addEventListener('typing', (event) => {
       const data = JSON.parse(event.data) as TypingStatus;
-      setTypingUsers(prev => 
+      setTypingUsers(prev =>
         data.isTyping
           ? [...prev, data.userId]
           : prev.filter(id => id !== data.userId)
@@ -496,7 +497,7 @@ function useSSEWithReconnect<T>(
         if (retriesRef.current < maxRetries) {
           retriesRef.current += 1;
           const delay = Math.min(1000 * Math.pow(2, retriesRef.current), 30000);
-          
+
           reconnectTimeout = setTimeout(() => {
             console.log(`Reconnecting... (${retriesRef.current}/${maxRetries})`);
             connect();
@@ -538,7 +539,7 @@ function ReconnectingNotifications() {
 ## Vue 통합
 
 ```typescript
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from "vue";
 
 export function useSSE<T>(url: string, eventName: string) {
   const data = ref<T | null>(null);
@@ -556,7 +557,7 @@ export function useSSE<T>(url: string, eventName: string) {
       data.value = JSON.parse(event.data);
     });
 
-    source.addEventListener('end', () => {
+    source.addEventListener("end", () => {
       source?.close();
       isConnected.value = false;
     });
@@ -586,7 +587,7 @@ export function useSSE<T>(url: string, eventName: string) {
 
 ```typescript
 // EventSource는 자동으로 쿠키를 전송합니다
-const source = new EventSource('/stream/notifications');
+const source = new EventSource("/stream/notifications");
 ```
 
 **주의**: CORS 사용 시 `credentials: 'include'` 불필요 (자동)
@@ -596,11 +597,12 @@ const source = new EventSource('/stream/notifications');
 EventSource는 커스텀 헤더를 지원하지 않으므로, URL 파라미터를 사용합니다:
 
 ```typescript
-const token = localStorage.getItem('token');
+const token = localStorage.getItem("token");
 const source = new EventSource(`/stream/notifications?token=${token}`);
 ```
 
 **서버 측**:
+
 ```typescript
 @stream({
   type: 'sse',
@@ -614,7 +616,7 @@ async streamNotifications(token: string): Promise<void> {
   if (!user) {
     throw new Error('Unauthorized');
   }
-  
+
   // ...
 }
 ```
@@ -624,19 +626,19 @@ async streamNotifications(token: string): Promise<void> {
 ### 연결 실패
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 
 source.onerror = (error) => {
-  console.error('Connection failed:', error);
-  
+  console.error("Connection failed:", error);
+
   // 상태 코드 확인 (EventSource는 제공하지 않음)
   // 대신 서버에서 에러 이벤트 전송
 };
 
 // 서버에서 에러 이벤트 전송
-source.addEventListener('error', (event) => {
+source.addEventListener("error", (event) => {
   const data = JSON.parse(event.data);
-  console.error('Server error:', data.message);
+  console.error("Server error:", data.message);
   source.close();
 });
 ```
@@ -644,23 +646,23 @@ source.addEventListener('error', (event) => {
 ### 타임아웃 처리
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 let timeoutId: NodeJS.Timeout;
 
 // 타임아웃 설정 (30초)
 const resetTimeout = () => {
   clearTimeout(timeoutId);
   timeoutId = setTimeout(() => {
-    console.log('Connection timeout');
+    console.log("Connection timeout");
     source.close();
   }, 30000);
 };
 
-source.addEventListener('message', () => {
+source.addEventListener("message", () => {
   resetTimeout();
 });
 
-source.addEventListener('end', () => {
+source.addEventListener("end", () => {
   clearTimeout(timeoutId);
   source.close();
 });
@@ -679,14 +681,14 @@ Request:
 
 Response:
   Content-Type: text/event-stream
-  
+
 EventStream 탭:
   event: notification
   data: {"id": 1, "message": "Hello"}
-  
+
   event: notification
   data: {"id": 2, "message": "World"}
-  
+
   event: end
   data: END
 ```
@@ -694,23 +696,23 @@ EventStream 탭:
 ### 로깅
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 
 source.onopen = () => {
-  console.log('[SSE] Connected');
+  console.log("[SSE] Connected");
 };
 
-source.addEventListener('message', (event) => {
-  console.log('[SSE] Message:', event.data);
+source.addEventListener("message", (event) => {
+  console.log("[SSE] Message:", event.data);
 });
 
-source.addEventListener('end', () => {
-  console.log('[SSE] End');
+source.addEventListener("end", () => {
+  console.log("[SSE] End");
   source.close();
 });
 
 source.onerror = (error) => {
-  console.error('[SSE] Error:', error);
+  console.error("[SSE] Error:", error);
 };
 ```
 
@@ -720,25 +722,28 @@ source.onerror = (error) => {
 **클라이언트 SSE 사용 시 주의사항**:
 
 1. **연결 정리**: 컴포넌트 언마운트 시 반드시 close()
+
    ```typescript
    useEffect(() => {
-     const source = new EventSource('/stream/data');
+     const source = new EventSource("/stream/data");
      return () => {
-       source.close();  // 필수!
+       source.close(); // 필수!
      };
    }, []);
    ```
 
 2. **이벤트 이름 일치**: 서버와 클라이언트 이벤트 이름 동일해야 함
+
    ```typescript
    // 서버: sse.publish('notification', ...)
    // 클라이언트: source.addEventListener('notification', ...)
    ```
 
 3. **JSON 파싱**: 데이터는 항상 문자열로 전달됨
+
    ```typescript
-   source.addEventListener('data', (event) => {
-     const data = JSON.parse(event.data);  // 파싱 필수
+   source.addEventListener("data", (event) => {
+     const data = JSON.parse(event.data); // 파싱 필수
    });
    ```
 
@@ -746,6 +751,7 @@ source.onerror = (error) => {
    - 해결: 연결 재사용 또는 HTTP/2 사용
 
 5. **재연결 처리**: 네트워크 끊김 시 자동 재연결 구현
+
    ```typescript
    source.onerror = () => {
      setTimeout(() => {
@@ -755,15 +761,16 @@ source.onerror = (error) => {
    ```
 
 6. **메모리 누수**: 오래된 데이터 정리
+
    ```typescript
-   setNotifications(prev => prev.slice(0, 100));  // 최대 100개
+   setNotifications((prev) => prev.slice(0, 100)); // 최대 100개
    ```
 
 7. **CORS 설정**: 다른 도메인에서 사용 시 서버 CORS 설정 필요
    ```typescript
    // 서버: cors: { origin: 'https://example.com' }
    ```
-</Warning>
+   </Warning>
 
 ## Polyfill (IE 지원)
 
@@ -774,12 +781,12 @@ npm install event-source-polyfill
 ```
 
 ```typescript
-import { EventSourcePolyfill } from 'event-source-polyfill';
+import { EventSourcePolyfill } from "event-source-polyfill";
 
-const source = new EventSourcePolyfill('/stream/data', {
+const source = new EventSourcePolyfill("/stream/data", {
   headers: {
-    'Authorization': `Bearer ${token}`
-  }
+    Authorization: `Bearer ${token}`,
+  },
 });
 ```
 
@@ -789,7 +796,11 @@ const source = new EventSourcePolyfill('/stream/data', {
   <Card title="SSE 설정" icon="gear" href="/ko/advanced-features/sse/sse-setup">
     SSE 플러그인 설정하기
   </Card>
-  <Card title="SSE 엔드포인트 만들기" icon="code" href="/ko/advanced-features/sse/creating-sse-endpoints">
+  <Card
+    title="SSE 엔드포인트 만들기"
+    icon="code"
+    href="/ko/advanced-features/sse/creating-sse-endpoints"
+  >
     @stream 데코레이터로 SSE API 구축
   </Card>
 </CardGroup>

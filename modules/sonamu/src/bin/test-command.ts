@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import chalk from "chalk";
+
 import type { SonamuConfig } from "../api/config";
 import { loadConfig } from "../api/config";
 import type { RunResult, TestCaseResult } from "../testing";

@@ -1,7 +1,9 @@
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import "../src/styles/globals.css";
+
 import { type SonamuFile, SonamuProvider } from "../src/contexts";
+
+import "../src/styles/globals.css";
+import App from "./App";
 
 // Mock uploader 함수
 const mockUploader = async (files: File[]): Promise<SonamuFile[]> => {

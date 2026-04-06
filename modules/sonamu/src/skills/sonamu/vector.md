@@ -13,21 +13,21 @@ Sonamu supports pgvector-based vector search. It integrates both Voyage AI and O
 
 ## Structure
 
-| File | Role |
-|------|------|
-| `types.ts` | Full type definitions (EmbeddingProvider, VectorSearchResult, VectorConfig, etc.) |
-| `config.ts` | Default configuration values + `createVectorConfig()` helper |
-| `embedding.ts` | Embedding client (Voyage AI and OpenAI integration) |
-| `chunking.ts` | Text chunking (splitting long documents) |
+| File           | Role                                                                              |
+| -------------- | --------------------------------------------------------------------------------- |
+| `types.ts`     | Full type definitions (EmbeddingProvider, VectorSearchResult, VectorConfig, etc.) |
+| `config.ts`    | Default configuration values + `createVectorConfig()` helper                      |
+| `embedding.ts` | Embedding client (Voyage AI and OpenAI integration)                               |
+| `chunking.ts`  | Text chunking (splitting long documents)                                          |
 
 ---
 
 ## Embedding Providers
 
-| Provider | Model | Dimensions | maxTokens | batchSize | Package |
-|-----------|------|------|-----------|-----------|--------|
-| `voyage` | `voyage-3` | 1024 | 32000 | 128 | `voyageai` |
-| `openai` | `text-embedding-3-small` | 1536 | 8191 | 100 | `@ai-sdk/openai` |
+| Provider | Model                    | Dimensions | maxTokens | batchSize | Package          |
+| -------- | ------------------------ | ---------- | --------- | --------- | ---------------- |
+| `voyage` | `voyage-3`               | 1024       | 32000     | 128       | `voyageai`       |
+| `openai` | `text-embedding-3-small` | 1536       | 8191      | 100       | `@ai-sdk/openai` |
 
 ### API Key Configuration
 
@@ -38,6 +38,7 @@ export OPENAI_API_KEY=sk-...
 ```
 
 Or in `sonamu.config.ts`:
+
 ```typescript
 export default defineConfig({
   secret: {
@@ -75,10 +76,10 @@ Embedding.getDimensions("openai");  // 1536
 
 ### Voyage AI inputType (Asymmetric Embedding)
 
-| inputType | Use case |
-|-----------|------|
+| inputType    | Use case                                |
+| ------------ | --------------------------------------- |
 | `"document"` | When embedding documents to store in DB |
-| `"query"` | When embedding search queries |
+| `"query"`    | When embedding search queries           |
 
 **CRITICAL: Use `"document"` when storing and `"query"` when searching for asymmetric embedding to work correctly.**
 
@@ -92,31 +93,31 @@ Splits long documents into appropriately-sized pieces.
 import { Chunking } from "sonamu/vector";
 
 const chunker = new Chunking({
-  chunkSize: 500,     // Maximum chunk size (character count)
-  chunkOverlap: 50,   // Overlap between chunks
-  minChunkSize: 50,   // Minimum chunk size
+  chunkSize: 500, // Maximum chunk size (character count)
+  chunkOverlap: 50, // Overlap between chunks
+  minChunkSize: 50, // Minimum chunk size
 });
 
 // Check if chunking is needed
-chunker.needsChunking("short text");  // false
+chunker.needsChunking("short text"); // false
 
 // Split into chunks
 const chunks = chunker.chunk(longText);
 // chunks: [{ index: 0, text: "...", startOffset: 0, endOffset: 500 }, ...]
 
 // Estimate number of chunks
-chunker.estimateChunkCount(longText);  // 5
+chunker.estimateChunkCount(longText); // 5
 ```
 
 ### Chunking Default Settings
 
-| Option | Default | Description |
-|------|--------|------|
-| `chunkSize` | 500 | Maximum chunk size (character count) |
-| `chunkOverlap` | 50 | Overlap between chunks |
-| `minChunkSize` | 50 | Minimum chunk size |
-| `skipThreshold` | 200 | Passes through without chunking if at or below this size |
-| `separators` | `["\n\n", "\n", "。", ". ", ...]` | Split delimiters (in priority order) |
+| Option          | Default                           | Description                                              |
+| --------------- | --------------------------------- | -------------------------------------------------------- |
+| `chunkSize`     | 500                               | Maximum chunk size (character count)                     |
+| `chunkOverlap`  | 50                                | Overlap between chunks                                   |
+| `minChunkSize`  | 50                                | Minimum chunk size                                       |
+| `skipThreshold` | 200                               | Passes through without chunking if at or below this size |
+| `separators`    | `["\n\n", "\n", "。", ". ", ...]` | Split delimiters (in priority order)                     |
 
 ---
 
@@ -128,13 +129,13 @@ import { createVectorConfig } from "sonamu/vector";
 const config = createVectorConfig({
   search: {
     defaultLimit: 10,
-    similarityThreshold: 0.5,  // Results below this value are excluded
-    vectorWeight: 0.7,         // Vector weight in hybrid search
-    ftsWeight: 0.3,            // FTS weight in hybrid search
+    similarityThreshold: 0.5, // Results below this value are excluded
+    vectorWeight: 0.7, // Vector weight in hybrid search
+    ftsWeight: 0.3, // FTS weight in hybrid search
   },
   pgvector: {
-    iterativeScan: true,       // Use pgvector iterative scan
-    efSearch: 100,             // HNSW index search accuracy
+    iterativeScan: true, // Use pgvector iterative scan
+    efSearch: 100, // HNSW index search accuracy
   },
 });
 ```
@@ -166,10 +167,10 @@ interface HybridSearchResult<T> extends VectorSearchResult<T> {
 
 ```typescript
 interface VectorSearchOptions {
-  embeddingColumn?: string;  // Embedding column name (default: "embedding")
+  embeddingColumn?: string; // Embedding column name (default: "embedding")
   limit?: number;
-  threshold?: number;        // Similarity threshold
-  where?: string;            // SQL WHERE condition
+  threshold?: number; // Similarity threshold
+  where?: string; // SQL WHERE condition
 }
 ```
 
@@ -177,9 +178,9 @@ interface VectorSearchOptions {
 
 ```typescript
 interface HybridSearchOptions extends VectorSearchOptions {
-  vectorWeight?: number;     // Vector search weight
-  ftsWeight?: number;        // FTS weight
-  ftsColumn?: string;        // Target column name for FTS
+  vectorWeight?: number; // Vector search weight
+  ftsWeight?: number; // FTS weight
+  ftsColumn?: string; // Target column name for FTS
 }
 ```
 

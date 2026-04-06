@@ -15,13 +15,14 @@ import { useEffect, useMemo } from "react";
 import type { EntityProp } from "sonamu";
 import { z } from "zod";
 import CodeIcon from "~icons/lucide/code";
+
 import { EntityIdSelect } from "../../components/EntityIdSelect";
 import { FormNumberInput } from "../../components/FormNumberInput";
 import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
-import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../../services/sonamu.shared";
 
 type RelationOn = z.infer<typeof EntityPropZodSchema.RelationOn>;
 

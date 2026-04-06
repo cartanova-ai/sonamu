@@ -63,9 +63,7 @@
     "src/application/tag/tag.types.ts",
     "src/application/tag/tag.workflow.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "TagModel": "태그 CRUD, 캐시 조회/무효화, 워크플로우 실행을 담당한다",
     "Tag Types": "태그 파라미터/엔티티 스키마를 정의한다",

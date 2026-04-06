@@ -34,12 +34,8 @@
   ],
   "lastModified": "2026-03-09",
   "status": "done",
-  "sources": [
-    "src/application/verification/verification.types.ts"
-  ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "sources": ["src/application/verification/verification.types.ts"],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "Verification": "이메일 검증 토큰 관리 엔티티"
   },

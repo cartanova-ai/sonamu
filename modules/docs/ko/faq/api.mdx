@@ -1,6 +1,6 @@
 ---
-title: 'API 개발'
-description: 'API 개발과 데코레이터 관련 질문'
+title: "API 개발"
+description: "API 개발과 데코레이터 관련 질문"
 ---
 
 ## @api 데코레이터
@@ -50,11 +50,13 @@ DELETE /user/deleteUser?id=1
 <Accordion title="@api 데코레이터의 옵션들은 무엇인가요?">
 
 **httpMethod (필수):**
+
 ```typescript
 @api({ httpMethod: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" })
 ```
 
 **guards (인증/권한):**
+
 ```typescript
 // 인증 및 권한 필요
 @api({
@@ -72,12 +74,14 @@ async publicApi() { }
 ```
 
 <Info>
-**공개 API 만들기**: `guards` 옵션을 생략하면 인증 없이 누구나 접근할 수 있는 공개 API가 됩니다. 로그인이나 권한 체크가 필요 없는 경우에 사용하세요.
+  **공개 API 만들기**: `guards` 옵션을 생략하면 인증 없이 누구나 접근할 수 있는 공개 API가 됩니다.
+  로그인이나 권한 체크가 필요 없는 경우에 사용하세요.
 </Info>
 
 **path (커스텀 경로):**
+
 ```typescript
-@api({ 
+@api({
   httpMethod: "GET",
   path: "/custom/path"  // /user/method 대신 /custom/path 사용
 })
@@ -127,7 +131,7 @@ async createUser(params: UserSaveParams): Promise<User> {
 ```typescript
 @api({ httpMethod: "POST" })
 async updateProfile(
-  userId: number, 
+  userId: number,
   profile: ProfileSaveParams
 ): Promise<Profile> {
   // POST /user/updateProfile
@@ -275,11 +279,11 @@ import { Sonamu } from "sonamu";
 async getMyProfile(): Promise<User> {
   const context = Sonamu.getContext();
   const userId = context.user?.id;
-  
+
   if (!userId) {
     throw new UnauthorizedException("로그인이 필요합니다");
   }
-  
+
   return this.findById(userId);
 }
 ```
@@ -292,19 +296,19 @@ async getMyProfile(): Promise<User> {
 const context = Sonamu.getContext();
 
 // 사용자 정보
-context.user           // 로그인한 사용자 객체
-context.userId         // 사용자 ID
+context.user; // 로그인한 사용자 객체
+context.userId; // 사용자 ID
 
 // 요청 정보
-context.ip             // 클라이언트 IP
-context.userAgent      // User-Agent 헤더
+context.ip; // 클라이언트 IP
+context.userAgent; // User-Agent 헤더
 
 // Fastify 객체
-context.request        // Fastify Request
-context.reply          // Fastify Reply
+context.request; // Fastify Request
+context.reply; // Fastify Reply
 
 // 세션
-context.session        // 세션 객체
+context.session; // 세션 객체
 ```
 
 </Accordion>
@@ -320,11 +324,11 @@ export default {
     session: {
       secret: process.env.SESSION_SECRET || "my-secret",
       cookie: {
-        maxAge: 24 * 60 * 60 * 1000,  // 24시간
-        secure: process.env.NODE_ENV === "production"
-      }
-    }
-  }
+        maxAge: 24 * 60 * 60 * 1000, // 24시간
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -354,11 +358,11 @@ async login(email: string, password: string): Promise<User> {
 async getMyInfo(): Promise<User> {
   const context = Sonamu.getContext();
   const userId = context.session.userId;
-  
+
   if (!userId) {
     throw new UnauthorizedException("로그인이 필요합니다");
   }
-  
+
   return this.findById(userId);
 }
 ```
@@ -401,10 +405,10 @@ export default {
           const user = request.session.user;
           if (!user || user.role !== "admin") return null;
           return user;
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -468,7 +472,7 @@ async getUserWithStats(id: number): Promise<{
   const user = await this.findById(id);
   const postCount = await PostModel.count({ user_id: id });
   const commentCount = await CommentModel.count({ user_id: id });
-  
+
   return {
     user,
     stats: { postCount, commentCount }
@@ -482,11 +486,11 @@ async getUserWithStats(id: number): Promise<{
 @api({ httpMethod: "GET" })
 async downloadFile(id: number): Promise<Buffer> {
   const file = await FileModel.findById(id);
-  
+
   const context = Sonamu.getContext();
   context.reply.header("Content-Type", "application/pdf");
   context.reply.header("Content-Disposition", `attachment; filename="${file.name}"`);
-  
+
   return file.buffer;
 }
 ```
@@ -535,11 +539,11 @@ export const UserService = {
     const response = await axios.get("/user/findById", { params: { id } });
     return response.data;
   },
-  
+
   async createUser(params: UserSaveParams): Promise<User> {
     const response = await axios.post("/user/createUser", params);
     return response.data;
-  }
+  },
 };
 ```
 
@@ -550,11 +554,11 @@ import { UserService } from "@/services/user/user.service";
 
 function UserProfile({ userId }: { userId: number }) {
   const [user, setUser] = useState<User | null>(null);
-  
+
   useEffect(() => {
     UserService.findById(userId).then(setUser);
   }, [userId]);
-  
+
   return <div>{user?.name}</div>;
 }
 ```
@@ -566,10 +570,10 @@ import { useUserFindById } from "@/services/user/user.service";
 
 function UserProfile({ userId }: { userId: number }) {
   const { data: user, error, isLoading } = useUserFindById({ id: userId });
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
-  
+
   return <div>{user?.name}</div>;
 }
 ```

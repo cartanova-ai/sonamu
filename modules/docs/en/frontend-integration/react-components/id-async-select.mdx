@@ -12,21 +12,25 @@ Learn how to use the ID Async Select component for handling foreign key relation
     API calls
 
     Autocomplete
+
   </Card>
   <Card title="Type Safe" icon="shield-check">
     Entity based
 
     ID type guaranteed
+
   </Card>
   <Card title="Search Support" icon="magnifying-glass">
     Real-time filtering
 
     Debounce
+
   </Card>
   <Card title="Multiple Selection" icon="list-check">
     Single/Multiple modes
 
     Array return
+
   </Card>
 </CardGroup>
 
@@ -37,6 +41,7 @@ Learn how to use the ID Async Select component for handling foreign key relation
 When handling foreign key relationships in databases, the frontend needs to **select related entities**.
 
 **Problems with traditional approach**:
+
 ```typescript
 // ❌ Load all users at once (inefficient)
 const [users, setUsers] = useState([]);
@@ -59,6 +64,7 @@ return (
 ```
 
 **Problems**:
+
 1. **Performance**: Loading time increases with more data
 2. **Memory**: All unnecessary data loaded into memory
 3. **UX**: Hard for users to find desired items
@@ -82,6 +88,7 @@ import { UserAsyncIdConfig } from "@/services/services.generated";
 ```
 
 **Benefits**:
+
 1. ✨ **Performance**: Load minimum initially, only what's needed on search
 2. ✨ **User experience**: Quick selection with autocomplete
 3. ✨ **Type safe**: Entity type automatically applied
@@ -137,6 +144,7 @@ function PostForm() {
 ```
 
 **How it works**:
+
 1. Call search API when user types
 2. Display search results in dropdown
 3. Only save ID when selected (memory efficient)
@@ -169,6 +177,7 @@ function PostForm() {
 ```
 
 **Multiple selection features**:
+
 - Display selected items as tags
 - Remove individually with X button
 - Return IDs as array (`number[]`)
@@ -194,6 +203,7 @@ function EditPostForm({ post }: { post: Post }) {
 ```
 
 **Initial value handling**:
+
 - Passing ID to `value` automatically loads the entity
 - Background single query for label display
 - Display only ID while loading
@@ -245,6 +255,7 @@ When `displayField` is omitted, an appropriate field is automatically detected.
 ```
 
 **Detection priority**:
+
 1. name-like fields: `name`, `title`, `label`, `display_name`, `username`
 2. First string type column (excluding id)
 3. fallback: `id`
@@ -316,9 +327,9 @@ The Config auto-generated from `services.generated.ts` has this structure:
 ```typescript
 // Auto-generated in services.generated.ts
 export const UserAsyncIdConfig: AsyncIdConfig<
-  "A" | "D",              // TSubsetKey - Available Subset keys
-  UserSubsetMapping,      // TSubsetMapping - Subset type mapping
-  UserListParams          // TListParams - Search parameter types
+  "A" | "D", // TSubsetKey - Available Subset keys
+  UserSubsetMapping, // TSubsetMapping - Subset type mapping
+  UserListParams // TListParams - Search parameter types
 > = {
   placeholderKey: "user.placeholder",
   useList: UserService.useList,
@@ -522,46 +533,60 @@ function CompanySelectForm() {
 
 ## Props Reference
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `config` | `AsyncIdConfig` | ✓ | Entity's AsyncIdConfig object |
-| `subset` | `string` | ✓ | Subset key to query |
-| `value` | `TValue \| TValue[] \| null` | | Selected value |
-| `onValueChange` | `(value) => void` | | Value change callback |
-| `onRowChange` | `(row) => void` | | Row data change callback |
-| `displayField` | `string \| ((row) => string)` | | Display field (auto-detected if omitted) |
-| `valueField` | `string` | | Value field (default: "id") |
-| `baseListParams` | `object` | | Additional parameters for search |
-| `multiple` | `boolean` | | Multiple selection mode |
-| `placeholder` | `string` | | Placeholder text |
-| `clearable` | `boolean` | | Whether selection can be cleared |
-| `disabled` | `boolean` | | Disabled state |
-| `className` | `string` | | Additional CSS class |
+| Prop             | Type                          | Required | Description                              |
+| ---------------- | ----------------------------- | -------- | ---------------------------------------- |
+| `config`         | `AsyncIdConfig`               | ✓        | Entity's AsyncIdConfig object            |
+| `subset`         | `string`                      | ✓        | Subset key to query                      |
+| `value`          | `TValue \| TValue[] \| null`  |          | Selected value                           |
+| `onValueChange`  | `(value) => void`             |          | Value change callback                    |
+| `onRowChange`    | `(row) => void`               |          | Row data change callback                 |
+| `displayField`   | `string \| ((row) => string)` |          | Display field (auto-detected if omitted) |
+| `valueField`     | `string`                      |          | Value field (default: "id")              |
+| `baseListParams` | `object`                      |          | Additional parameters for search         |
+| `multiple`       | `boolean`                     |          | Multiple selection mode                  |
+| `placeholder`    | `string`                      |          | Placeholder text                         |
+| `clearable`      | `boolean`                     |          | Whether selection can be cleared         |
+| `disabled`       | `boolean`                     |          | Disabled state                           |
+| `className`      | `string`                      |          | Additional CSS class                     |
 
 ## Cautions
 
 <Warning>
-**Cautions when using ID Async Select**:
-1. `config` should use objects auto-generated from `services.generated.ts`
-2. `subset` must be a valid Subset key defined in the Entity
-3. Verify **array type** for multiple selection
-4. Field specified in `displayField` must be included in the Subset
-5. Error handling required for initial value loading failure
+  **Cautions when using ID Async Select**: 1. `config` should use objects auto-generated from
+  `services.generated.ts` 2. `subset` must be a valid Subset key defined in the Entity 3. Verify
+  **array type** for multiple selection 4. Field specified in `displayField` must be included in the
+  Subset 5. Error handling required for initial value loading failure
 </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/en/frontend-integration/react-components/scaffolding-views">
+  <Card
+    title="View Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/en/frontend-integration/react-components/scaffolding-views"
+  >
     Auto view generation
   </Card>
-  <Card title="Search Input" icon="magnifying-glass" href="/en/frontend-integration/react-components/search-input">
+  <Card
+    title="Search Input"
+    icon="magnifying-glass"
+    href="/en/frontend-integration/react-components/search-input"
+  >
     Search component
   </Card>
-  <Card title="Custom Components" icon="sliders" href="/en/frontend-integration/react-components/custom-components">
+  <Card
+    title="Custom Components"
+    icon="sliders"
+    href="/en/frontend-integration/react-components/custom-components"
+  >
     Component customization
   </Card>
-  <Card title="Using Services" icon="code" href="/en/frontend-integration/generated-services/using-services">
+  <Card
+    title="Using Services"
+    icon="code"
+    href="/en/frontend-integration/generated-services/using-services"
+  >
     Service integration
   </Card>
 </CardGroup>

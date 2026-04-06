@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
+
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+
 import type { SonamuDevRunnerConfig } from "../api/config";
 import { Sonamu } from "../api/sonamu";
 import type { SerializedTrace } from "../naite/naite";

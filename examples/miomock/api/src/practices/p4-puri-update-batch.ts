@@ -1,6 +1,8 @@
 import assert from "assert";
+
 import { range } from "radashi";
 import { Sonamu } from "sonamu";
+
 import { EmployeeModel } from "../application/employee/employee.model";
 
 // UpdateBatch 예제

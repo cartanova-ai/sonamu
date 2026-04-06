@@ -3,6 +3,7 @@ import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
 import PlusIcon from "~icons/lucide/plus";
 import ScaleIcon from "~icons/lucide/scale";
+
 import { CddService } from "../service";
 import type { CddRuleEntry } from "../types";
 import { CddAddRuleModal } from "./cdd_add_rule_modal";

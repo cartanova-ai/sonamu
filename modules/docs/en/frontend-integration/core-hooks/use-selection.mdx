@@ -12,21 +12,25 @@ description: "Table multi-select and bulk operations management"
     Manage individual/all selection
 
     Set-based efficient state
+
   </Card>
   <Card title="Range Selection" icon="hand-pointer">
     Shift+click support
 
     Select consecutive items at once
+
   </Card>
   <Card title="Auto Validation" icon="shield-check">
     Auto cleanup on page change
 
     Keep only existing items
+
   </Card>
   <Card title="Type Safety" icon="code">
     Generic type support
 
     Use any type as key
+
   </Card>
 </CardGroup>
 
@@ -39,24 +43,25 @@ import { useSelection } from "@sonamu-kit/react-components";
 
 export function UserListPage() {
   const { data } = UserService.useUsers("A", listParams);
-  const allIds = data?.rows.map(row => row.id) ?? [];
+  const allIds = data?.rows.map((row) => row.id) ?? [];
 
   // Initialize useSelection
   const {
-    selectedKeys,      // Array of selected keys
-    getSelected,       // Check if specific key is selected
-    toggle,            // Toggle individual item selection
-    selectAll,         // Select all
-    deselectAll,       // Deselect all
-    isAllSelected,     // Check if all selected
+    selectedKeys, // Array of selected keys
+    getSelected, // Check if specific key is selected
+    toggle, // Toggle individual item selection
+    selectAll, // Select all
+    deselectAll, // Deselect all
+    isAllSelected, // Check if all selected
     handleCheckboxClick, // Shift+click range selection
-  } = useSelection(allIds, []);  // allIds: all keys, []: initial selection
+  } = useSelection(allIds, []); // allIds: all keys, []: initial selection
 
   // ...
 }
 ```
 
 **Parameter explanation**:
+
 - `allIds`: Array of all keys on current page (e.g., `[1, 2, 3, 4, 5]`)
 - `defaultSelectedKeys`: Initial selection state (optional, default: `[]`)
 
@@ -74,6 +79,7 @@ const { getSelected, toggle } = useSelection(allIds, []);
 ```
 
 **How it works**:
+
 - `getSelected(key)`: Returns `true` if key is selected, `false` otherwise
 - `toggle(key)`: Toggle selection state
 
@@ -95,6 +101,7 @@ const { isAllSelected, selectAll, deselectAll } = useSelection(allIds, []);
 ```
 
 **How it works**:
+
 - `isAllSelected`: Whether all items on current page are selected
 - `selectAll()`: Select all items on current page
 - `deselectAll()`: Deselect all selections
@@ -118,6 +125,7 @@ const { handleCheckboxClick } = useSelection(allIds, []);
 ```
 
 **How it works**:
+
 1. Normal click: Toggle individual item selection
 2. Shift+click: Select all items from last selection to current position
 
@@ -131,6 +139,7 @@ Items: [A, B, C, D, E]
 1. Click A → A selected
 2. Shift+click D → A, B, C, D all selected
 ```
+
 </Info>
 
 ## Real-world Examples
@@ -232,8 +241,8 @@ export function UserListPage() {
 ```typescript
 // Page 1: rows = [1, 2, 3]
 const selection1 = useSelection([1, 2, 3], []);
-selection1.toggle(1);  // Select 1
-selection1.toggle(2);  // Select 2
+selection1.toggle(1); // Select 1
+selection1.toggle(2); // Select 2
 // selectedKeys = [1, 2]
 
 // Move to page 2: rows = [4, 5, 6]
@@ -242,6 +251,7 @@ const selection2 = useSelection([4, 5, 6], []);
 ```
 
 **Validation logic**:
+
 ```typescript
 // Inside useSelection (list-helpers.ts:84-91)
 useEffect(() => {
@@ -250,7 +260,7 @@ useEffect(() => {
 
   // Update state only when changes are needed
   if (validKeys.length !== selectionKeys.length) {
-    setSelection(new Map(validKeys.map(key => [key, true])));
+    setSelection(new Map(validKeys.map((key) => [key, true])));
   }
 }, [allKeys, selection]);
 ```
@@ -259,6 +269,7 @@ useEffect(() => {
 **Why is auto validation needed?**
 
 When navigating pages or changing filters, `rows` changes. Items selected on the previous page may not exist on the new page, so invalid selections are automatically removed.
+
 </Info>
 
 ### Operations with Selected Items
@@ -267,23 +278,21 @@ When navigating pages or changing filters, `rows` changes. Items selected on the
 const { selectedKeys } = useSelection(allIds, []);
 
 // Get information of selected items
-const selectedRows = rows?.filter(row => selectedKeys.includes(row.id)) ?? [];
+const selectedRows = rows?.filter((row) => selectedKeys.includes(row.id)) ?? [];
 
 // Bulk update
 const handleBulkUpdate = async () => {
   await UserService.save({
-    params: selectedRows.map(row => ({
+    params: selectedRows.map((row) => ({
       id: row.id,
       status: "active",
-    }))
+    })),
   });
 };
 
 // Bulk export
 const handleBulkExport = () => {
-  const csv = selectedRows.map(row =>
-    `${row.id},${row.username},${row.email}`
-  ).join("\n");
+  const csv = selectedRows.map((row) => `${row.id},${row.username},${row.email}`).join("\n");
 
   // Download CSV
   const blob = new Blob([csv], { type: "text/csv" });
@@ -351,10 +360,10 @@ const handleToggle = (row: UserRow) => {
 // Internal state (simplified)
 const [selection, setSelection] = useState<Map<number, boolean>>(
   new Map([
-    [1, true],   // ID 1 selected
-    [2, false],  // ID 2 not selected
-    [3, true],   // ID 3 selected
-  ])
+    [1, true], // ID 1 selected
+    [2, false], // ID 2 not selected
+    [3, true], // ID 3 selected
+  ]),
 );
 
 // Extract selectedKeys
@@ -365,6 +374,7 @@ const selectedKeys = Array.from(selection)
 ```
 
 **Why use Map**:
+
 - O(1) time complexity for fast lookups
 - No type constraints on keys (number, string, object all possible)
 - More extensible than Set (can store additional metadata)
@@ -376,13 +386,13 @@ const selectedKeys = Array.from(selection)
 ```typescript
 // number type
 const selection1 = useSelection<number>([1, 2, 3], []);
-selection1.toggle(1);  // ✅ OK
-selection1.toggle("1");  // ❌ Type error
+selection1.toggle(1); // ✅ OK
+selection1.toggle("1"); // ❌ Type error
 
 // string type
 const selection2 = useSelection<string>(["a", "b", "c"], []);
-selection2.toggle("a");  // ✅ OK
-selection2.toggle(1);  // ❌ Type error
+selection2.toggle("a"); // ✅ OK
+selection2.toggle(1); // ❌ Type error
 
 // Complex object type
 type UserKey = { id: number; email: string };
@@ -399,10 +409,10 @@ const selection3 = useSelection<UserKey>(keys, []);
 
 ```typescript
 // ❌ Wrong usage
-const { selectedKeys } = useSelection([], []);  // Empty array
+const { selectedKeys } = useSelection([], []); // Empty array
 
 // ✅ Correct usage
-const allIds = rows?.map(row => row.id) ?? [];
+const allIds = rows?.map((row) => row.id) ?? [];
 const { selectedKeys } = useSelection(allIds, []);
 ```
 
@@ -416,7 +426,7 @@ const [globalSelectedIds, setGlobalSelectedIds] = useState<Set<number>>(new Set(
 
 // Sync with current page selection
 useEffect(() => {
-  const currentPageSelected = allIds.filter(id => globalSelectedIds.has(id));
+  const currentPageSelected = allIds.filter((id) => globalSelectedIds.has(id));
   // Sync with useSelection state
 }, [allIds, globalSelectedIds]);
 ```

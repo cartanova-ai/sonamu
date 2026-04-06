@@ -9,24 +9,16 @@ description: "세션과 토큰의 생명주기 관리"
 
 <CardGroup cols={2}>
   <Card title="세션 스토어" icon="database">
-    Redis, PostgreSQL
-    
-    확장 가능한 저장소
+    Redis, PostgreSQL 확장 가능한 저장소
   </Card>
   <Card title="세션 만료" icon="clock">
-    자동 만료
-    
-    슬라이딩 만료
+    자동 만료 슬라이딩 만료
   </Card>
   <Card title="토큰 갱신" icon="arrows-rotate">
-    Refresh Token
-    
-    Access Token 재발급
+    Refresh Token Access Token 재발급
   </Card>
   <Card title="로그아웃" icon="right-from-bracket">
-    세션 무효화
-    
-    토큰 블랙리스트
+    세션 무효화 토큰 블랙리스트
   </Card>
 </CardGroup>
 
@@ -37,17 +29,20 @@ description: "세션과 토큰의 생명주기 관리"
 세션 기반 인증은 서버가 사용자의 로그인 상태를 **서버 측에 저장**하는 방식입니다. 동작 방식을 이해하면 보안과 확장성 문제를 더 잘 다룰 수 있습니다.
 
 **세션 인증 흐름**:
+
 1. 사용자가 로그인하면 서버가 세션 ID를 생성
 2. 세션 데이터(사용자 ID 등)를 세션 스토어에 저장
 3. 세션 ID를 쿠키로 클라이언트에 전송
 4. 이후 요청마다 쿠키의 세션 ID로 사용자 인증
 
 **장점**:
+
 - 서버가 세션을 완전히 제어 (언제든 무효화 가능)
 - 민감한 정보가 클라이언트에 노출되지 않음
 - 구현이 간단하고 검증된 방식
 
 **단점**:
+
 - 서버에 상태를 저장하므로 확장성 고려 필요
 - 세션 스토어가 단일 실패 지점(SPOF)이 될 수 있음
 
@@ -80,11 +75,8 @@ app.register(fastifySession, {
 ```
 
 <Warning>
-**메모리 스토어의 문제점**:
-- 서버 재시작 시 모든 세션 손실
-- 여러 서버 인스턴스 간 세션 공유 불가
-- 메모리 사용량 증가로 성능 저하 가능
-- **프로덕션에서는 절대 사용 금지**
+  **메모리 스토어의 문제점**: - 서버 재시작 시 모든 세션 손실 - 여러 서버 인스턴스 간 세션 공유 불가
+  - 메모리 사용량 증가로 성능 저하 가능 - **프로덕션에서는 절대 사용 금지**
 </Warning>
 
 **Redis 스토어 (프로덕션)**:
@@ -139,12 +131,14 @@ app.register(fastifySession, {
 ```
 
 **Redis 설정 설명**:
+
 - `prefix`: 세션 키에 접두사를 붙여 다른 데이터와 구분
 - `ttl`: Time To Live, 세션 자동 만료 시간 (초 단위)
 - `client`: Redis 클라이언트 인스턴스
 
 <Info>
-Redis는 클러스터 모드를 지원하여 고가용성(HA)을 구현할 수 있습니다. AWS ElastiCache, Azure Cache for Redis 등의 관리형 서비스를 사용하면 운영이 더 편리합니다.
+  Redis는 클러스터 모드를 지원하여 고가용성(HA)을 구현할 수 있습니다. AWS ElastiCache, Azure Cache
+  for Redis 등의 관리형 서비스를 사용하면 운영이 더 편리합니다.
 </Info>
 
 **PostgreSQL 스토어 (대안)**:
@@ -230,20 +224,20 @@ class AuthModel extends BaseModelClass {
   }): Promise<{ user: User }> {
     const { email, password, rememberMe } = params;
     const context = Sonamu.getContext();
-    
+
     // 인증 로직...
     const user = await this.authenticateUser(email, password);
-    
+
     // Remember Me에 따라 세션 만료 시간 조정
     if (rememberMe) {
       context.request.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 30; // 30일
     } else {
       context.request.session.cookie.maxAge = 1000 * 60 * 60 * 2; // 2시간
     }
-    
+
     // 세션에 로그인 정보 저장
     await this.loginToSession(user);
-    
+
     return { user };
   }
 }
@@ -277,21 +271,18 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async getProfile(): Promise<{ user: User }> {
     const context = Sonamu.getContext();
-    
+
     // 세션에서 사용자 ID 가져오기
     const userId = context.request.session.userId;
-    
+
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // 데이터베이스에서 최신 정보 조회
     const rdb = this.getPuri("r");
-    const user = await rdb
-      .table("users")
-      .where("id", userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", userId).first();
+
     return { user };
   }
 }
@@ -304,6 +295,7 @@ class UserModel extends BaseModelClass {
 JWT(JSON Web Token)는 **상태를 저장하지 않는(stateless)** 인증 방식입니다. 서버가 토큰을 생성한 후에는 토큰 자체에 모든 정보가 포함되어 있어, 서버가 별도로 저장할 필요가 없습니다.
 
 **JWT 구조**:
+
 ```
 header.payload.signature
 ```
@@ -313,11 +305,13 @@ header.payload.signature
 - **Signature**: 토큰의 무결성을 검증하는 서명
 
 **JWT의 장점**:
+
 - 서버가 상태를 저장하지 않아 확장성이 좋음
 - 마이크로서비스 환경에 적합
 - 토큰 자체에 정보가 포함되어 있어 별도 조회 불필요
 
 **JWT의 단점**:
+
 - 토큰을 서버에서 강제로 무효화하기 어려움
 - 토큰 크기가 쿠키보다 큼
 - 토큰이 탈취되면 만료 전까지 사용 가능
@@ -331,10 +325,12 @@ header.payload.signature
 **왜 두 개의 토큰을 사용하나요?**
 
 만약 Access Token의 유효기간을 30일로 설정하면:
+
 - 토큰이 탈취되면 30일 동안 악용될 수 있음
 - 사용자 권한 변경이 즉시 반영되지 않음
 
 Access Token을 짧게 설정하고 Refresh Token으로 갱신하면:
+
 - 탈취된 Access Token은 짧은 시간만 유효
 - 권한 변경을 빠르게 반영 가능
 - Refresh Token은 서버에 저장하여 무효화 가능
@@ -359,7 +355,7 @@ export function generateAccessToken(user: User): string {
     ACCESS_TOKEN_SECRET,
     {
       expiresIn: "15m", // 15분
-    }
+    },
   );
 }
 
@@ -375,7 +371,7 @@ export function generateRefreshToken(user: User): string {
     REFRESH_TOKEN_SECRET,
     {
       expiresIn: "7d", // 7일
-    }
+    },
   );
 }
 
@@ -403,10 +399,9 @@ export function verifyRefreshToken(token: string) {
 ```
 
 <Warning>
-**보안 주의사항**:
-- Access Token과 Refresh Token의 Secret을 **반드시 다르게** 설정
-- Refresh Token은 서버에 저장하여 무효화 가능하게 만들기
-- XSS 공격을 막기 위해 토큰을 localStorage 대신 httpOnly 쿠키에 저장 권장
+  **보안 주의사항**: - Access Token과 Refresh Token의 Secret을 **반드시 다르게** 설정 - Refresh
+  Token은 서버에 저장하여 무효화 가능하게 만들기 - XSS 공격을 막기 위해 토큰을 localStorage 대신
+  httpOnly 쿠키에 저장 권장
 </Warning>
 
 ### Refresh Token 데이터베이스 스키마
@@ -418,7 +413,7 @@ CREATE TABLE refresh_tokens (
   token TEXT NOT NULL UNIQUE,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
-  
+
   INDEX idx_user_id (user_id),
   INDEX idx_token (token),
   INDEX idx_expires_at (expires_at)
@@ -431,26 +426,24 @@ CREATE TABLE refresh_tokens (
 class AuthModel extends BaseModelClass {
   /**
    * Access Token 갱신
-   * 
+   *
    * Refresh Token을 받아 새로운 Access Token을 발급합니다.
    * Refresh Token의 유효성과 데이터베이스 저장 여부를 모두 확인합니다.
    */
   @api({ httpMethod: "POST" })
-  async refreshToken(params: {
-    refreshToken: string;
-  }): Promise<{
+  async refreshToken(params: { refreshToken: string }): Promise<{
     accessToken: string;
     refreshToken?: string; // Refresh Token Rotation 시
   }> {
     const { refreshToken } = params;
-    
+
     // 1. Refresh Token 검증
     const payload = verifyRefreshToken(refreshToken);
-    
+
     if (!payload || typeof payload === "string") {
       throw new Error("Invalid refresh token");
     }
-    
+
     // 2. 데이터베이스에서 Refresh Token 확인
     const rdb = this.getPuri("r");
     const storedToken = await rdb
@@ -459,43 +452,37 @@ class AuthModel extends BaseModelClass {
       .where("user_id", payload.userId)
       .where("expires_at", ">", new Date())
       .first();
-    
+
     if (!storedToken) {
       throw new Error("Refresh token not found or expired");
     }
-    
+
     // 3. 사용자 정보 조회
-    const user = await rdb
-      .table("users")
-      .where("id", payload.userId)
-      .first();
-    
+    const user = await rdb.table("users").where("id", payload.userId).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 4. 새 Access Token 생성
     const accessToken = generateAccessToken(user);
-    
+
     // 5. Refresh Token Rotation (선택사항)
     // 보안 강화를 위해 Refresh Token도 함께 갱신
     const newRefreshToken = generateRefreshToken(user);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // 기존 Refresh Token 삭제
-    await wdb
-      .table("refresh_tokens")
-      .where("token", refreshToken)
-      .delete();
-    
+    await wdb.table("refresh_tokens").where("token", refreshToken).delete();
+
     // 새 Refresh Token 저장
     await wdb.table("refresh_tokens").insert({
       user_id: user.id,
       token: newRefreshToken,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일
     });
-    
+
     return {
       accessToken,
       refreshToken: newRefreshToken,
@@ -514,62 +501,56 @@ JWT는 기본적으로 만료 전까지 유효하지만, 블랙리스트를 사�
 class AuthModel extends BaseModelClass {
   /**
    * 로그아웃
-   * 
+   *
    * Refresh Token을 데이터베이스에서 삭제하고,
    * Access Token을 블랙리스트에 추가합니다.
    */
   @api({ httpMethod: "POST" })
   async logout(): Promise<{ success: boolean }> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Not authenticated");
     }
-    
+
     const wdb = this.getPuri("w");
-    
+
     // 1. 모든 Refresh Token 삭제
-    await wdb
-      .table("refresh_tokens")
-      .where("user_id", context.user.id)
-      .delete();
-    
+    await wdb.table("refresh_tokens").where("user_id", context.user.id).delete();
+
     // 2. 현재 Access Token을 블랙리스트에 추가
     const authHeader = context.request.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-      
+
       // Access Token의 남은 유효시간 계산
       const decoded = jwt.decode(token) as any;
       const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
-      
+
       // Redis에 블랙리스트 추가 (TTL은 토큰 남은 시간)
       const redis = getRedisClient();
       await redis.setex(`blacklist:${token}`, expiresIn, "1");
     }
-    
+
     return { success: true };
   }
-  
+
   /**
    * 모든 세션 로그아웃 (다른 기기 포함)
    */
   @api({ httpMethod: "POST" })
   async logoutAll(): Promise<{ success: boolean }> {
     const context = Sonamu.getContext();
-    
+
     if (!context.user) {
       throw new Error("Not authenticated");
     }
-    
+
     const wdb = this.getPuri("w");
-    
+
     // 모든 Refresh Token 삭제
-    await wdb
-      .table("refresh_tokens")
-      .where("user_id", context.user.id)
-      .delete();
-    
+    await wdb.table("refresh_tokens").where("user_id", context.user.id).delete();
+
     return { success: true };
   }
 }
@@ -581,22 +562,19 @@ class AuthModel extends BaseModelClass {
 // auth/jwt.middleware.ts
 import type { FastifyRequest, FastifyReply } from "fastify";
 
-export async function checkTokenBlacklist(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
+export async function checkTokenBlacklist(request: FastifyRequest, reply: FastifyReply) {
   const authHeader = request.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return;
   }
-  
+
   const token = authHeader.substring(7);
-  
+
   // Redis에서 블랙리스트 확인
   const redis = getRedisClient();
   const isBlacklisted = await redis.exists(`blacklist:${token}`);
-  
+
   if (isBlacklisted) {
     return reply.status(401).send({
       error: "Token has been revoked",
@@ -614,33 +592,27 @@ export async function checkTokenBlacklist(
 ```typescript
 class AuthModel extends BaseModelClass {
   @api({ httpMethod: "POST" })
-  async login(params: {
-    email: string;
-    password: string;
-  }): Promise<{ accessToken: string }> {
+  async login(params: { email: string; password: string }): Promise<{ accessToken: string }> {
     const { email, password } = params;
-    
+
     // 인증...
     const user = await this.authenticateUser(email, password);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // 기존 세션 모두 삭제 (강제 로그아웃)
-    await wdb
-      .table("refresh_tokens")
-      .where("user_id", user.id)
-      .delete();
-    
+    await wdb.table("refresh_tokens").where("user_id", user.id).delete();
+
     // 새 토큰 발급
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
-    
+
     await wdb.table("refresh_tokens").insert({
       user_id: user.id,
       token: refreshToken,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
-    
+
     return { accessToken };
   }
 }
@@ -660,12 +632,12 @@ import { task } from "sonamu";
 @task({ cron: "0 0 * * *" })
 export async function cleanupExpiredTokens() {
   const db = getDatabase();
-  
+
   const result = await db
     .table("refresh_tokens")
     .where("expires_at", "<", new Date())
     .delete();
-  
+
   console.log(`Deleted ${result} expired refresh tokens`);
 }
 ```
@@ -673,14 +645,10 @@ export async function cleanupExpiredTokens() {
 ## 주의사항
 
 <Warning>
-**세션/토큰 관리 주의사항**:
-1. 세션 Secret과 JWT Secret은 환경변수로 관리
-2. 프로덕션에서는 Redis 등 외부 세션 스토어 필수
-3. Refresh Token은 데이터베이스에 저장하여 무효화 가능하게
-4. Access Token은 짧게, Refresh Token은 길게 설정
-5. HTTPS 사용 시에만 `secure: true` 설정
-6. XSS 방지를 위해 `httpOnly: true` 필수
-7. 블랙리스트는 Redis의 TTL 기능 활용
+  **세션/토큰 관리 주의사항**: 1. 세션 Secret과 JWT Secret은 환경변수로 관리 2. 프로덕션에서는 Redis
+  등 외부 세션 스토어 필수 3. Refresh Token은 데이터베이스에 저장하여 무효화 가능하게 4. Access
+  Token은 짧게, Refresh Token은 길게 설정 5. HTTPS 사용 시에만 `secure: true` 설정 6. XSS 방지를
+  위해 `httpOnly: true` 필수 7. 블랙리스트는 Redis의 TTL 기능 활용
 </Warning>
 
 ## 다음 단계
@@ -689,7 +657,11 @@ export async function cleanupExpiredTokens() {
   <Card title="인증 설정" icon="gear" href="/ko/api-development/authentication/setup">
     인증 시스템 구축
   </Card>
-  <Card title="보호된 라우트" icon="shield-halved" href="/ko/api-development/authentication/protected-routes">
+  <Card
+    title="보호된 라우트"
+    icon="shield-halved"
+    href="/ko/api-development/authentication/protected-routes"
+  >
     Guards로 권한 제어
   </Card>
   <Card title="Context" icon="diagram-project" href="/ko/api-development/context/sonamu-context">

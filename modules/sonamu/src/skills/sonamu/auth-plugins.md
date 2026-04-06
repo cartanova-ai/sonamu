@@ -9,6 +9,7 @@ Sonamu wraps better-auth plugins with snake_case schema mapping.
 Use the `auth generate --plugins` command to auto-generate plugin entities.
 
 **Source code:**
+
 - Wrappers: `modules/sonamu/src/auth/plugins/wrappers/`
 - Entity definitions: `modules/sonamu/src/auth/plugins/entity-definitions/`
 - Generator: `modules/sonamu/src/auth/auth-generator.ts`
@@ -17,18 +18,18 @@ Use the `auth generate --plugins` command to auto-generate plugin entities.
 
 ## Supported Plugins
 
-| Plugin ID | Wrapper function | Package | Purpose |
-|-----------|-----------------|---------|---------|
-| `admin` | `admin()` | `better-auth/plugins` | Admin features, user ban/unban, session impersonation |
-| `organization` | `organization()` | `better-auth/plugins` | Organization, team, member, and invitation management |
-| `2fa` | `twoFactor()` | `better-auth/plugins` | TOTP-based two-factor authentication |
-| `username` | `username()` | `better-auth/plugins` | Username-based authentication |
-| `phone-number` | `phoneNumber()` | `better-auth/plugins` | Phone number authentication |
-| `api-key` | `apiKey()` | `better-auth/plugins` | API key issuance/management, rate limiting |
-| `jwt` | `jwt()` | `better-auth/plugins` | JWT tokens + JWKS key management |
-| `passkey` | `passkey()` | `@better-auth/passkey` | WebAuthn/Passkey authentication |
-| `sso` | `sso()` | `@better-auth/sso` | OIDC/SAML SSO integration |
-| `anonymous` | `anonymous()` | `better-auth/plugins` | Anonymous user support |
+| Plugin ID      | Wrapper function | Package                | Purpose                                               |
+| -------------- | ---------------- | ---------------------- | ----------------------------------------------------- |
+| `admin`        | `admin()`        | `better-auth/plugins`  | Admin features, user ban/unban, session impersonation |
+| `organization` | `organization()` | `better-auth/plugins`  | Organization, team, member, and invitation management |
+| `2fa`          | `twoFactor()`    | `better-auth/plugins`  | TOTP-based two-factor authentication                  |
+| `username`     | `username()`     | `better-auth/plugins`  | Username-based authentication                         |
+| `phone-number` | `phoneNumber()`  | `better-auth/plugins`  | Phone number authentication                           |
+| `api-key`      | `apiKey()`       | `better-auth/plugins`  | API key issuance/management, rate limiting            |
+| `jwt`          | `jwt()`          | `better-auth/plugins`  | JWT tokens + JWKS key management                      |
+| `passkey`      | `passkey()`      | `@better-auth/passkey` | WebAuthn/Passkey authentication                       |
+| `sso`          | `sso()`          | `@better-auth/sso`     | OIDC/SAML SSO integration                             |
+| `anonymous`    | `anonymous()`    | `better-auth/plugins`  | Anonymous user support                                |
 
 ---
 
@@ -68,12 +69,7 @@ export default defineConfig({
   server: {
     auth: {
       emailAndPassword: { enabled: true },
-      plugins: [
-        admin(),
-        organization(),
-        twoFactor(),
-        username(),
-      ],
+      plugins: [admin(), organization(), twoFactor(), username()],
     },
   },
 });
@@ -103,13 +99,14 @@ import { admin } from "sonamu/auth/plugins";
 import { admin } from "sonamu/auth/plugins";
 
 // Basic usage
-admin()
+admin();
 
 // Customize options (schema mapping is automatically merged)
-admin({ defaultRole: "user" })
+admin({ defaultRole: "user" });
 ```
 
 Schema mapping:
+
 - `banReason` → `ban_reason`
 - `banExpires` → `ban_expires`
 - `impersonatedBy` → `impersonated_by`
@@ -122,10 +119,11 @@ Schema mapping:
 ```typescript
 import { organization } from "sonamu/auth/plugins";
 
-organization()
+organization();
 ```
 
 Schema mapping:
+
 - All tables: `createdAt` → `created_at`
 - Member: `userId` → `user_id`, `organizationId` → `organization_id`
 - Invitation: `inviterId` → `inviter_id`, `organizationId` → `organization_id`, `teamId` → `team_id`, `expiresAt` → `expires_at`
@@ -141,10 +139,11 @@ Schema mapping:
 ```typescript
 import { twoFactor } from "sonamu/auth/plugins";
 
-twoFactor()
+twoFactor();
 ```
 
 Schema mapping:
+
 - User: `twoFactorEnabled` → `two_factor_enabled`
 - TwoFactor: `userId` → `user_id`, `backupCodes` → `backup_codes`
 
@@ -155,10 +154,11 @@ Schema mapping:
 ```typescript
 import { username } from "sonamu/auth/plugins";
 
-username()
+username();
 ```
 
 Schema mapping:
+
 - `displayUsername` → `display_username`
 
 ### phone-number
@@ -168,10 +168,15 @@ Schema mapping:
 ```typescript
 import { phoneNumber } from "sonamu/auth/plugins";
 
-phoneNumber({ sendOTP: async ({ phoneNumber, otp }) => { /* send SMS */ } })
+phoneNumber({
+  sendOTP: async ({ phoneNumber, otp }) => {
+    /* send SMS */
+  },
+});
 ```
 
 Schema mapping:
+
 - `phoneNumber` → `phone_number`
 - `phoneNumberVerified` → `phone_number_verified`
 
@@ -182,10 +187,11 @@ Schema mapping:
 ```typescript
 import { apiKey } from "sonamu/auth/plugins";
 
-apiKey()
+apiKey();
 ```
 
 Schema mapping:
+
 - `userId` → `user_id`, `lastRequest` → `last_request`, `requestCount` → `request_count`
 - `rateLimitEnabled` → `rate_limit_enabled`, `rateLimitTimeWindow` → `rate_limit_time_window`
 - `rateLimitMax` → `rate_limit_max`, `refillInterval` → `refill_interval`
@@ -199,10 +205,11 @@ Schema mapping:
 ```typescript
 import { jwt } from "sonamu/auth/plugins";
 
-jwt()
+jwt();
 ```
 
 Schema mapping:
+
 - `publicKey` → `public_key`, `privateKey` → `private_key`
 - `createdAt` → `created_at`, `expiresAt` → `expires_at`
 
@@ -218,10 +225,11 @@ pnpm add @better-auth/passkey
 ```typescript
 import { passkey } from "sonamu/auth/plugins";
 
-passkey({ rpID: "localhost", rpName: "My App" })
+passkey({ rpID: "localhost", rpName: "My App" });
 ```
 
 Schema mapping:
+
 - `publicKey` → `public_key`, `userId` → `user_id`, `credentialID` → `credential_id`
 - `deviceType` → `device_type`, `backedUp` → `backed_up`, `createdAt` → `created_at`
 
@@ -236,11 +244,12 @@ pnpm add @better-auth/sso
 ```typescript
 import { sso } from "sonamu/auth/plugins";
 
-sso()
+sso();
 ```
 
 Table: `sso_providers`
 Schema mapping:
+
 - `oidcConfig` → `oidc_config`, `samlConfig` → `saml_config`
 - `userId` → `user_id`, `providerId` → `provider_id`, `organizationId` → `organization_id`
 
@@ -251,10 +260,11 @@ Schema mapping:
 ```typescript
 import { anonymous } from "sonamu/auth/plugins";
 
-anonymous()
+anonymous();
 ```
 
 Schema mapping:
+
 - `isAnonymous` → `is_anonymous`
 
 ---
@@ -269,11 +279,11 @@ admin({
   schema: {
     user: {
       fields: {
-        customField: "custom_field",  // additional mapping
+        customField: "custom_field", // additional mapping
       },
     },
   },
-})
+});
 ```
 
 Internally, `merge(ADMIN_SCHEMA, options.schema)` is executed to preserve the Sonamu mapping.

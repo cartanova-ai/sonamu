@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { Sonamu } from "../../api";
 import { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";

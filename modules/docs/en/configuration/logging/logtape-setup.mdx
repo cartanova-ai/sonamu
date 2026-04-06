@@ -1,6 +1,6 @@
 ---
-title: 'LogTape Setup'
-description: 'logging options in sonamu.config.ts'
+title: "LogTape Setup"
+description: "logging options in sonamu.config.ts"
 ---
 
 Sonamu uses [LogTape](https://github.com/dahlia/logtape) to provide structured logging. You can configure logging behavior with the `logging` option in `sonamu.config.ts`.
@@ -12,12 +12,14 @@ LogTape is a structured logging library for TypeScript. Instead of simple string
 ### Regular Logging vs Structured Logging
 
 **Regular logging (string):**
+
 ```typescript
 console.log("User login failed: email=user@example.com, reason=invalid_password");
 // → Requires string parsing for analysis
 ```
 
 **Structured logging (LogTape):**
+
 ```typescript
 logger.error("User login failed", {
   email: "user@example.com",
@@ -48,6 +50,7 @@ Where logs are ultimately recorded.
 ```
 
 **A single log can be recorded to multiple Sinks simultaneously:**
+
 - Console: Real-time monitoring
 - File: Permanent storage
 - Sentry: Error notifications
@@ -87,7 +90,7 @@ flowchart TD
     B -->|"❌ Not matched"| E["🚫 Ignored"]
     C -->|"✅ Met"| D["💾 Sink<br/>Final output<br/>(console/file/Sentry)"]
     C -->|"❌ Not met"| E
-    
+
     style A fill:#e1f5ff
     style B fill:#fff3e0
     style C fill:#fff3e0
@@ -96,6 +99,7 @@ flowchart TD
 ```
 
 **Example:**
+
 ```typescript
 // 1. Fastify generates log
 logger.info("Request completed", { url: "/api/user" });
@@ -112,52 +116,62 @@ Log levels indicate the importance of logs.
 ### Meaning and Usage of Each Level
 
 **1. debug**
+
 - **Meaning**: Detailed debugging information
 - **When to use**: Problem tracking during development
 - **Examples**: Function call order, variable values
+
 ```typescript
 logger.debug("Processing order", { orderId, items });
 ```
 
 **2. info (default)**
+
 - **Meaning**: General operational information
 - **When to use**: Confirming normal operation
 - **Examples**: HTTP requests/responses, task completion
+
 ```typescript
 logger.info("User logged in", { userId });
 ```
 
 **3. warning**
+
 - **Meaning**: Potential problem warning
 - **When to use**: Not an error but needs attention
 - **Examples**: Slow responses, retries occurring
+
 ```typescript
 logger.warn("Slow query detected", { duration: 5000 });
 ```
 
 **4. error**
+
 - **Meaning**: Recoverable error
 - **When to use**: Exception handling, recoverable failures
 - **Examples**: Validation failure, API call failure
+
 ```typescript
 logger.error("Payment failed", { error: "card_declined" });
 ```
 
 **5. fatal**
+
 - **Meaning**: Critical failure (server shutdown level)
 - **When to use**: Unrecoverable serious problems
 - **Examples**: DB connection failure, out of memory
+
 ```typescript
 logger.fatal("Database connection lost", { error });
 ```
 
 ### Recommended Levels by Environment
 
-| Environment | Minimum Level | Reason |
-|-------------|---------------|--------|
-| Development | `debug` | Need all information |
-| Staging | `info` | Check operational info |
-| Production | `warning` | Performance consideration |
+| Environment | Minimum Level | Reason                    |
+| ----------- | ------------- | ------------------------- |
+| Development | `debug`       | Need all information      |
+| Staging     | `info`        | Check operational info    |
+| Production  | `warning`     | Performance consideration |
 
 **Level Hierarchy:**
 
@@ -167,7 +181,7 @@ graph LR
     B --> C["⚠️ warning<br/>Needs attention"]
     C --> D["❌ error<br/>Error occurred"]
     D --> E["💀 fatal<br/>Critical"]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#fff3e0
@@ -176,7 +190,8 @@ graph LR
 ```
 
 <Info>
-Setting a lower level outputs all higher levels. Example: Setting `lowestLevel: "warning"` outputs warning, error, and fatal.
+  Setting a lower level outputs all higher levels. Example: Setting `lowestLevel: "warning"` outputs
+  warning, error, and fatal.
 </Info>
 
 ## Why is it Designed This Way?
@@ -184,6 +199,7 @@ Setting a lower level outputs all higher levels. Example: Setting `lowestLevel: 
 ### 1. Default Values are Safe
 
 Sonamu's default configuration:
+
 ```typescript
 {
   category: ["fastify"],
@@ -194,6 +210,7 @@ Sonamu's default configuration:
 ```
 
 **Reasons:**
+
 - ✅ Only `/api` paths logged → Excludes unnecessary static file requests
 - ✅ `info` level → Not too much, not too little
 - ✅ Excludes healthcheck → Excludes repetitive requests from monitoring systems
@@ -247,6 +264,7 @@ export default defineConfig({
 ```
 
 **Default behavior:**
+
 - Logs Fastify requests/responses to console
 - Only logs `/api/*` paths (excluding healthcheck)
 - Pretty format output (timestamp, category, level)
@@ -266,8 +284,8 @@ type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
 
 ```typescript
 export default defineConfig({
-  logging: false,  // Disable all logging
-  
+  logging: false, // Disable all logging
+
   server: {
     // ...
   },
@@ -285,9 +303,9 @@ Specifies the category to use for Fastify HTTP logging.
 ```typescript
 export default defineConfig({
   logging: {
-    fastifyCategory: ["myapp", "http"],  // Custom category
+    fastifyCategory: ["myapp", "http"], // Custom category
   },
-  
+
   server: {
     // ...
   },
@@ -297,6 +315,7 @@ export default defineConfig({
 **Category format**: `["a", "b", "c"]` array represents hierarchy
 
 **Log output example:**
+
 ```
 [2025-01-09 12:34:56] [myapp.http] INFO: [GET:200] /api/user/list - Request completed
 ```
@@ -318,7 +337,7 @@ export default defineConfig({
       file: getFileSink("logs/app.log"),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -326,7 +345,8 @@ export default defineConfig({
 ```
 
 <Warning>
-The name `"fastify-console"` is the default sink automatically generated by Sonamu. Adding with this name will overwrite the default sink.
+  The name `"fastify-console"` is the default sink automatically generated by Sonamu. Adding with
+  this name will overwrite the default sink.
 </Warning>
 
 ## filters
@@ -345,7 +365,7 @@ export default defineConfig({
       "errors-only": (record: LogRecord) => record.level >= "error",
     },
   },
-  
+
   server: {
     // ...
   },
@@ -353,7 +373,8 @@ export default defineConfig({
 ```
 
 <Warning>
-The name `"fastify-console"` is the default filter automatically generated by Sonamu. Adding with this name will overwrite the default filter.
+  The name `"fastify-console"` is the default filter automatically generated by Sonamu. Adding with
+  this name will overwrite the default filter.
 </Warning>
 
 ## loggers
@@ -371,7 +392,7 @@ export default defineConfig({
     sinks: {
       console: getConsoleSink(),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -380,7 +401,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -388,7 +409,8 @@ export default defineConfig({
 ```
 
 <Note>
-If there's a logger configuration for the category set in `fastifyCategory`, Sonamu won't add the default logger.
+  If there's a logger configuration for the category set in `fastifyCategory`, Sonamu won't add the
+  default logger.
 </Note>
 
 ## Basic Examples
@@ -412,7 +434,7 @@ import { defineConfig } from "sonamu";
 
 export default defineConfig({
   logging: false,
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -428,7 +450,7 @@ export default defineConfig({
   logging: {
     fastifyCategory: ["app", "server", "http"],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -454,6 +476,7 @@ Sonamu automatically configures logging as follows:
 ```
 
 **Features:**
+
 - Shows HTTP method and response code: `[GET:200]`
 - Shows request URL: `/api/user/list`
 - Colors distinguish levels
@@ -464,9 +487,8 @@ Sonamu automatically configures logging as follows:
 // Auto-generated "fastify-console" filter
 (record) => {
   // Only paths starting with /api, excluding healthcheck
-  return request.url.startsWith("/api") && 
-         request.url !== "/api/healthcheck";
-}
+  return request.url.startsWith("/api") && request.url !== "/api/healthcheck";
+};
 ```
 
 ### 3. Logger Auto-Generation
@@ -520,7 +542,7 @@ LogTape log levels (in ascending order):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -531,6 +553,7 @@ LogTape log levels (in ascending order):
     - `debug` level to check all details
     - Console output for real-time viewing
     - Fast feedback loop
+
   </Tab>
 
   <Tab title="Staging" icon="flask">
@@ -544,7 +567,7 @@ LogTape log levels (in ascending order):
           console: getConsoleSink(),
           file: getFileSink("logs/app.log"),
         },
-        
+
         loggers: [
           {
             category: ["fastify"],
@@ -553,7 +576,7 @@ LogTape log levels (in ascending order):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -564,6 +587,7 @@ LogTape log levels (in ascending order):
     - `info` level to collect operational information
     - Dual recording to console + file
     - Testing production environment
+
   </Tab>
 
   <Tab title="Production" icon="server">
@@ -577,11 +601,11 @@ LogTape log levels (in ascending order):
           console: getConsoleSink(),
           errorLog: getFileSink("logs/errors.log"),
         },
-        
+
         filters: {
           "errors": (record) => record.level >= "error",
         },
-        
+
         loggers: [
           // Console: warning and above only
           {
@@ -598,7 +622,7 @@ LogTape log levels (in ascending order):
           },
         ],
       },
-      
+
       server: {
         listen: { port: 34900 },
       },
@@ -609,6 +633,7 @@ LogTape log levels (in ascending order):
     - `warning` level to check only issues
     - Errors saved to separate file
     - Minimal performance impact
+
   </Tab>
 </Tabs>
 
@@ -625,11 +650,11 @@ export default defineConfig({
       file: getFileSink("logs/app.log"),
       errorFile: getFileSink("logs/errors.log"),
     },
-    
+
     filters: {
       "errors-only": (record) => record.level >= "error",
     },
-    
+
     loggers: [
       // Console: all logs
       {
@@ -652,7 +677,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -671,11 +696,11 @@ export default defineConfig({
       console: getConsoleSink(),
       errorLog: getFileSink("logs/errors.log"),
     },
-    
+
     filters: {
-      "errors": (record) => record.level >= "error",
+      errors: (record) => record.level >= "error",
     },
-    
+
     loggers: [
       // Console: warning and above only
       {
@@ -692,7 +717,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -715,6 +740,7 @@ const server = fastify({
 ```
 
 **Automatically logged information:**
+
 - HTTP requests (method, URL)
 - Response codes
 - Response times
@@ -764,44 +790,28 @@ server: {
 
 ```typescript
 // ✅ Good example: Consistent category
-fastifyCategory: ["app", "http"]
+fastifyCategory: ["app", "http"];
 
 // ❌ Bad example: Meaningless category
-fastifyCategory: ["a", "b", "c"]
+fastifyCategory: ["a", "b", "c"];
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card 
-    title="Sinks & Filters" 
-    icon="filter" 
-    href="/en/configuration/logging/sinks-and-filters"
-  >
+  <Card title="Sinks & Filters" icon="filter" href="/en/configuration/logging/sinks-and-filters">
     Control log output precisely with custom Sinks and Filters
   </Card>
-  
-  <Card 
-    title="Category Logging" 
-    icon="folder-tree" 
-    href="/en/configuration/logging/category-logging"
-  >
-    Manage logs systematically with the category system
-  </Card>
-  
-  <Card 
-    title="Fastify Logging" 
-    icon="bolt" 
-    href="/en/configuration/logging/fastify-logging"
-  >
-    Customize HTTP request/response logging
-  </Card>
-  
-  <Card 
-    title="LogTape Documentation" 
-    icon="book-open" 
-    href="https://github.com/dahlia/logtape"
-  >
+
+<Card title="Category Logging" icon="folder-tree" href="/en/configuration/logging/category-logging">
+  Manage logs systematically with the category system
+</Card>
+
+<Card title="Fastify Logging" icon="bolt" href="/en/configuration/logging/fastify-logging">
+  Customize HTTP request/response logging
+</Card>
+
+  <Card title="LogTape Documentation" icon="book-open" href="https://github.com/dahlia/logtape">
     Learn advanced features in the official LogTape documentation
   </Card>
 </CardGroup>

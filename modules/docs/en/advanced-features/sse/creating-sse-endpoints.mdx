@@ -16,13 +16,13 @@ import { BaseModelClass, stream, z } from "sonamu";
 
 class NotificationModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       notification: z.object({
         id: z.number(),
         message: z.string(),
       }),
-    })
+    }),
   })
   async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
@@ -31,13 +31,13 @@ class NotificationModelClass extends BaseModelClass {
           id: z.number(),
           message: z.string(),
         }),
-      })
+      }),
     );
 
     // Send event
-    sse.publish('notification', {
+    sse.publish("notification", {
       id: 1,
-      message: 'Hello, World!'
+      message: "Hello, World!",
     });
 
     // Close connection
@@ -61,6 +61,7 @@ class NotificationModelClass extends BaseModelClass {
     **Supported types**:
     - `'sse'`: Server-Sent Events
     - (WebSocket support planned for future)
+
   </Tab>
 
   <Tab title="events" icon="calendar">
@@ -83,6 +84,7 @@ class NotificationModelClass extends BaseModelClass {
     ```
 
     **Purpose**: Ensures type safety + automatic code generation
+
   </Tab>
 
   <Tab title="path" icon="route">
@@ -99,6 +101,7 @@ class NotificationModelClass extends BaseModelClass {
     ```
 
     **Default**: `/{modelName}/{methodName}`
+
   </Tab>
 
   <Tab title="guards" icon="shield">
@@ -113,6 +116,7 @@ class NotificationModelClass extends BaseModelClass {
       guards: ['user']  // Logged-in users only
     })
     ```
+
   </Tab>
 </Tabs>
 
@@ -128,7 +132,7 @@ A read-only property indicating whether the connection has been closed. Becomes 
 if (sse.closed) {
   return;
 }
-sse.publish('status', { message: 'still alive' });
+sse.publish("status", { message: "still alive" });
 ```
 
 ### onClose(callback)
@@ -137,7 +141,7 @@ Registers a callback to be invoked when the connection closes. Fires on both cli
 
 ```typescript
 const interval = setInterval(() => {
-  sse.publish('heartbeat', { ts: Date.now() });
+  sse.publish("heartbeat", { ts: Date.now() });
 }, 5000);
 
 sse.onClose(() => {
@@ -150,13 +154,14 @@ sse.onClose(() => {
 Sends an event to the client.
 
 ```typescript
-sse.publish('notification', {
+sse.publish("notification", {
   id: 1,
-  message: 'New notification'
+  message: "New notification",
 });
 ```
 
 **Type safety**:
+
 ```typescript
 // ✅ Correct event
 sse.publish('notification', { id: 1, message: 'Hi' });
@@ -185,26 +190,26 @@ await sse.end();
 ```typescript
 class NotificationModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       notification: z.object({
         id: z.number(),
-        type: z.enum(['like', 'comment', 'follow']),
+        type: z.enum(["like", "comment", "follow"]),
         message: z.string(),
         createdAt: z.string(),
       }),
-    })
+    }),
   })
   async streamNotifications(userId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
       z.object({
         notification: z.object({
           id: z.number(),
-          type: z.enum(['like', 'comment', 'follow']),
+          type: z.enum(["like", "comment", "follow"]),
           message: z.string(),
           createdAt: z.string(),
         }),
-      })
+      }),
     );
 
     try {
@@ -213,15 +218,15 @@ class NotificationModelClass extends BaseModelClass {
         // Query new notifications from DB
         const notifications = await this.findMany({
           wq: [
-            ['user_id', userId],
-            ['created_at', '>', new Date(Date.now() - 5000)],  // Last 5 seconds
+            ["user_id", userId],
+            ["created_at", ">", new Date(Date.now() - 5000)], // Last 5 seconds
           ],
           num: 10,
         });
 
         // Send notifications
         for (const notification of notifications.data) {
-          sse.publish('notification', {
+          sse.publish("notification", {
             id: notification.id,
             type: notification.type,
             message: notification.message,
@@ -230,7 +235,7 @@ class NotificationModelClass extends BaseModelClass {
         }
 
         // Wait 5 seconds
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     } finally {
       await sse.end();
@@ -244,7 +249,7 @@ class NotificationModelClass extends BaseModelClass {
 ```typescript
 class TaskModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       progress: z.object({
         current: z.number(),
@@ -257,7 +262,7 @@ class TaskModelClass extends BaseModelClass {
       error: z.object({
         message: z.string(),
       }),
-    })
+    }),
   })
   async streamTaskProgress(taskId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
@@ -273,7 +278,7 @@ class TaskModelClass extends BaseModelClass {
         error: z.object({
           message: z.string(),
         }),
-      })
+      }),
     );
 
     try {
@@ -281,24 +286,24 @@ class TaskModelClass extends BaseModelClass {
 
       for (let current = 0; current <= total; current += 10) {
         // Send progress
-        sse.publish('progress', {
+        sse.publish("progress", {
           current,
           total,
           percentage: Math.round((current / total) * 100),
         });
 
         // Perform work (e.g., file processing)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       // Completion event
-      sse.publish('complete', {
-        result: 'Task completed successfully'
+      sse.publish("complete", {
+        result: "Task completed successfully",
       });
     } catch (error) {
       // Error event
-      sse.publish('error', {
-        message: error.message
+      sse.publish("error", {
+        message: error.message,
       });
     } finally {
       await sse.end();
@@ -312,7 +317,7 @@ class TaskModelClass extends BaseModelClass {
 ```typescript
 class PostModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       newPost: z.object({
         id: z.number(),
@@ -320,7 +325,7 @@ class PostModelClass extends BaseModelClass {
         author: z.string(),
         createdAt: z.string(),
       }),
-    })
+    }),
   })
   async streamNewPosts(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
@@ -331,7 +336,7 @@ class PostModelClass extends BaseModelClass {
           author: z.string(),
           createdAt: z.string(),
         }),
-      })
+      }),
     );
 
     try {
@@ -340,14 +345,14 @@ class PostModelClass extends BaseModelClass {
       while (true) {
         // Query new posts
         const posts = await this.findMany({
-          wq: [['created_at', '>', lastCheckTime]],
+          wq: [["created_at", ">", lastCheckTime]],
           num: 20,
-          order: [['created_at', 'DESC']],
+          order: [["created_at", "DESC"]],
         });
 
         // Send new posts
         for (const post of posts.data) {
-          sse.publish('newPost', {
+          sse.publish("newPost", {
             id: post.id,
             title: post.title,
             author: post.author_name,
@@ -361,7 +366,7 @@ class PostModelClass extends BaseModelClass {
         }
 
         // Wait 10 seconds
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     } finally {
       await sse.end();
@@ -375,7 +380,7 @@ class PostModelClass extends BaseModelClass {
 ```typescript
 class ChatModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       message: z.object({
         id: z.number(),
@@ -393,7 +398,7 @@ class ChatModelClass extends BaseModelClass {
       left: z.object({
         userId: z.number(),
       }),
-    })
+    }),
   })
   async streamChatRoom(roomId: number, ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
@@ -414,12 +419,12 @@ class ChatModelClass extends BaseModelClass {
         left: z.object({
           userId: z.number(),
         }),
-      })
+      }),
     );
 
     try {
       // Join event
-      sse.publish('joined', {
+      sse.publish("joined", {
         userId: ctx.user.id,
         username: ctx.user.name,
       });
@@ -429,18 +434,18 @@ class ChatModelClass extends BaseModelClass {
         const messages = await this.getNewMessages(roomId);
 
         for (const msg of messages) {
-          sse.publish('message', {
+          sse.publish("message", {
             id: msg.id,
             text: msg.text,
             sender: msg.sender_name,
           });
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } finally {
       // Leave event
-      sse.publish('left', {
+      sse.publish("left", {
         userId: ctx.user.id,
       });
 
@@ -455,7 +460,7 @@ class ChatModelClass extends BaseModelClass {
 ```typescript
 class MonitorModelClass extends BaseModelClass {
   @stream({
-    type: 'sse',
+    type: "sse",
     events: z.object({
       status: z.object({
         cpu: z.number(),
@@ -463,10 +468,10 @@ class MonitorModelClass extends BaseModelClass {
         disk: z.number(),
       }),
       alert: z.object({
-        level: z.enum(['warning', 'critical']),
+        level: z.enum(["warning", "critical"]),
         message: z.string(),
       }),
-    })
+    }),
   })
   async streamServerStatus(ctx: Context): Promise<void> {
     const sse = ctx.createSSE(
@@ -477,10 +482,10 @@ class MonitorModelClass extends BaseModelClass {
           disk: z.number(),
         }),
         alert: z.object({
-          level: z.enum(['warning', 'critical']),
+          level: z.enum(["warning", "critical"]),
           message: z.string(),
         }),
-      })
+      }),
     );
 
     try {
@@ -488,7 +493,7 @@ class MonitorModelClass extends BaseModelClass {
         const status = await this.getServerStatus();
 
         // Send status
-        sse.publish('status', {
+        sse.publish("status", {
           cpu: status.cpu,
           memory: status.memory,
           disk: status.disk,
@@ -496,18 +501,18 @@ class MonitorModelClass extends BaseModelClass {
 
         // Alert on threshold exceeded
         if (status.cpu > 90) {
-          sse.publish('alert', {
-            level: 'critical',
+          sse.publish("alert", {
+            level: "critical",
             message: `CPU usage is ${status.cpu}%`,
           });
         } else if (status.cpu > 70) {
-          sse.publish('alert', {
-            level: 'warning',
+          sse.publish("alert", {
+            level: "warning",
             message: `CPU usage is ${status.cpu}%`,
           });
         }
 
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     } finally {
       await sse.end();
@@ -633,6 +638,7 @@ async streamWithErrorHandling(ctx: Context): Promise<void> {
 **Important considerations when writing SSE endpoints**:
 
 1. **`@stream` and `@api` cannot be used together**: Use only the `@stream` decorator for SSE endpoints
+
    ```typescript
    // ✅ Use @stream only
    @stream({ type: 'sse', events: ... })
@@ -645,15 +651,17 @@ async streamWithErrorHandling(ctx: Context): Promise<void> {
    ```
 
 2. **Always call end()**: Connection closure is required
+
    ```typescript
    try {
      // Send events
    } finally {
-     await sse.end();  // Required!
+     await sse.end(); // Required!
    }
    ```
 
 3. **Beware of infinite loops**: Appropriate wait time needed
+
    ```typescript
    while (true) {
      sse.publish('data', ...);
@@ -662,15 +670,16 @@ async streamWithErrorHandling(ctx: Context): Promise<void> {
    ```
 
 4. **Event schema matching**: events and publish event names must match
+
    ```typescript
    // ✅ Match
    events: z.object({
      message: z.string(),
-   })
-   sse.publish('message', 'Hi');
+   });
+   sse.publish("message", "Hi");
 
    // ❌ Mismatch (compile error)
-   sse.publish('msg', 'Hi');
+   sse.publish("msg", "Hi");
    ```
 
 5. **Prevent memory leaks**: Clean up timers/listeners
@@ -683,7 +692,7 @@ async streamWithErrorHandling(ctx: Context): Promise<void> {
      await sse.end();
    }
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
@@ -691,7 +700,11 @@ async streamWithErrorHandling(ctx: Context): Promise<void> {
   <Card title="SSE Setup" icon="gear" href="/en/advanced-features/sse/sse-setup">
     Configure the SSE plugin
   </Card>
-  <Card title="Client Integration" icon="browser" href="/en/advanced-features/sse/client-integration">
+  <Card
+    title="Client Integration"
+    icon="browser"
+    href="/en/advanced-features/sse/client-integration"
+  >
     Using SSE in the frontend
   </Card>
 </CardGroup>

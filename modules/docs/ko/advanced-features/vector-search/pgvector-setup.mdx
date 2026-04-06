@@ -13,6 +13,7 @@ Sonamu로 웹 앱을 만들다 보면 이런 기능을 구현하게 됩니다:
 - **고객 지원**: "비슷한 질문 찾기"
 
 전통적인 키워드 검색(`LIKE '%keyword%'`)은 한계가 있습니다:
+
 - ❌ "TypeScript 프레임워크" 검색 시 "Node.js API 라이브러리" 못 찾음
 - ❌ 오타에 취약 ("타입스크립트" vs "타입스크립트")
 - ❌ 동의어 처리 안 됨 ("프레임워크" vs "라이브러리")
@@ -25,32 +26,36 @@ Sonamu로 웹 앱을 만들다 보면 이런 기능을 구현하게 됩니다:
 
 ### 선택지
 
-| 방식 | 장점 | 단점 | Sonamu 추천 |
-|------|------|------|-------------|
-| **pgvector** | PostgreSQL 그대로 사용, 추가 인프라 불필요, 기존 데이터와 JOIN 가능 | 전문 벡터 DB보다 성능 낮음 | ⭐⭐⭐⭐⭐ |
-| **Pinecone** | 벡터 검색 최적화, 관리형 서비스 | 추가 비용, 별도 동기화 필요 | ⭐⭐ |
-| **Elasticsearch** | 강력한 검색 기능 | 무거움, 설정 복잡 | ⭐⭐⭐ |
-| **Weaviate/Milvus** | 전문 벡터 DB | 별도 인프라, 학습 곡선 | ⭐⭐ |
+| 방식                | 장점                                                                | 단점                        | Sonamu 추천 |
+| ------------------- | ------------------------------------------------------------------- | --------------------------- | ----------- |
+| **pgvector**        | PostgreSQL 그대로 사용, 추가 인프라 불필요, 기존 데이터와 JOIN 가능 | 전문 벡터 DB보다 성능 낮음  | ⭐⭐⭐⭐⭐  |
+| **Pinecone**        | 벡터 검색 최적화, 관리형 서비스                                     | 추가 비용, 별도 동기화 필요 | ⭐⭐        |
+| **Elasticsearch**   | 강력한 검색 기능                                                    | 무거움, 설정 복잡           | ⭐⭐⭐      |
+| **Weaviate/Milvus** | 전문 벡터 DB                                                        | 별도 인프라, 학습 곡선      | ⭐⭐        |
 
 ### Sonamu 프로젝트에서 pgvector를 추천하는 이유
 
 **1. 이미 PostgreSQL을 쓰고 있습니다**
+
 ```typescript
 // sonamu.config.ts
 export default defineConfig({
   database: {
     client: "pg",
-    connection: { /* ... */ }
-  }
+    connection: {
+      /* ... */
+    },
+  },
 });
 ```
 
 Sonamu는 PostgreSQL + Knex 기반입니다. 벡터 검색을 위해 별도 데이터베이스를 추가할 필요가 없습니다.
 
 **2. 기존 데이터와 함께 쓸 수 있습니다**
+
 ```sql
 -- 기존 데이터와 JOIN
-SELECT 
+SELECT
   d.id, d.title, d.category,
   1 - (d.embedding <=> ?) AS similarity
 FROM documents d
@@ -62,13 +67,15 @@ ORDER BY similarity DESC;
 벡터 검색과 일반 SQL을 섞어서 쓸 수 있습니다. 별도 DB면 데이터 동기화가 필요합니다.
 
 **3. 인프라가 단순합니다**
+
 - Pinecone: 별도 API, 비용, 동기화
 - pgvector: 확장만 설치, 추가 비용 없음
 
 **4. Sonamu Model과 통합이 자연스럽습니다**
+
 ```typescript
 class DocumentModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string) {
     // Puri로 벡터 검색 SQL 작성
     const results = await this.getPuri().raw(`...`);
@@ -91,6 +98,7 @@ flowchart LR
 ```
 
 **주요 기능**:
+
 - `vector(N)` 데이터 타입 (N차원 벡터)
 - 유사도 연산자 (`<=>`, `<->`, `<#>`)
 - 인덱스 (IVFFlat, HNSW)
@@ -102,6 +110,7 @@ pnpm add pgvector voyageai
 ```
 
 **패키지**:
+
 - `pgvector`: PostgreSQL pgvector 타입 지원 (Knex와 함께 사용)
 - `voyageai`: Voyage AI 임베딩 (한국어 추천)
 - `@ai-sdk/openai`: OpenAI 임베딩 (선택)
@@ -112,57 +121,25 @@ pnpm add pgvector voyageai
 
 <Tabs>
   <Tab title="Ubuntu/Debian" icon="ubuntu">
-    ```bash
-    # PostgreSQL 개발 패키지
-    sudo apt-get install postgresql-server-dev-14
-    
-    # pgvector 빌드 및 설치
-    git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git
-    cd pgvector
-    make
-    sudo make install
-    ```
+    ```bash # PostgreSQL 개발 패키지 sudo apt-get install postgresql-server-dev-14 # pgvector 빌드
+    및 설치 git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git cd pgvector make sudo
+    make install ```
   </Tab>
-  
-  <Tab title="macOS (Homebrew)" icon="apple">
-    ```bash
-    brew install pgvector
-    ```
-    
-    가장 간단합니다. Homebrew가 자동으로 설치합니다.
-  </Tab>
-  
-  <Tab title="Docker" icon="docker">
-    공식 이미지 사용 (권장):
-    
-    ```yaml
-    # docker-compose.yml
-    services:
-      postgres:
-        image: pgvector/pgvector:pg14
-        environment:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - "5432:5432"
-        volumes:
-          - pgdata:/var/lib/postgresql/data
-    
-    volumes:
-      pgdata:
-    ```
-    
-    이미 pgvector가 포함되어 있습니다.
-  </Tab>
-  
+
+<Tab title="macOS (Homebrew)" icon="apple">
+  ```bash brew install pgvector ``` 가장 간단합니다. Homebrew가 자동으로 설치합니다.
+</Tab>
+
+<Tab title="Docker" icon="docker">
+  공식 이미지 사용 (권장): ```yaml # docker-compose.yml services: postgres: image:
+  pgvector/pgvector:pg14 environment: POSTGRES_PASSWORD: postgres ports: - "5432:5432" volumes: -
+  pgdata:/var/lib/postgresql/data volumes: pgdata: ``` 이미 pgvector가 포함되어 있습니다.
+</Tab>
+
   <Tab title="Cloud (Supabase/Neon)" icon="cloud">
-    **Supabase**, **Neon**, **Railway** 등은 pgvector를 기본 제공합니다.
-    
-    확장만 활성화하면 됩니다:
-    ```sql
-    CREATE EXTENSION IF NOT EXISTS vector;
-    ```
-    
-    Sonamu 프로젝트를 클라우드에 배포할 때 좋은 선택입니다.
+    **Supabase**, **Neon**, **Railway** 등은 pgvector를 기본 제공합니다. 확장만 활성화하면 됩니다:
+    ```sql CREATE EXTENSION IF NOT EXISTS vector; ``` Sonamu 프로젝트를 클라우드에 배포할 때 좋은
+    선택입니다.
   </Tab>
 </Tabs>
 
@@ -230,29 +207,30 @@ import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   // 1. pgvector 확장 활성화
-  await knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
-  
+  await knex.raw("CREATE EXTENSION IF NOT EXISTS vector");
+
   // 2. embedding 컬럼 추가
-  await knex.schema.table('documents', (table) => {
+  await knex.schema.table("documents", (table) => {
     // Voyage AI는 1024차원
-    table.specificType('embedding', 'vector(1024)');
+    table.specificType("embedding", "vector(1024)");
   });
-  
+
   // 3. 인덱스는 나중에 (데이터가 쌓인 후)
   // await knex.raw(`
-  //   CREATE INDEX ON documents 
+  //   CREATE INDEX ON documents
   //   USING hnsw (embedding vector_cosine_ops)
   // `);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.table('documents', (table) => {
-    table.dropColumn('embedding');
+  await knex.schema.table("documents", (table) => {
+    table.dropColumn("embedding");
   });
 }
 ```
 
 **실행**:
+
 ```bash
 pnpm sonamu migrate:latest
 ```
@@ -266,26 +244,26 @@ pnpm sonamu migrate:latest
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
-  
-  await knex.schema.createTable('knowledge_base', (table) => {
-    table.increments('id').primary();
-    table.text('title').notNullable();
-    table.text('content').notNullable();
-    table.string('category', 50);
-    
+  await knex.raw("CREATE EXTENSION IF NOT EXISTS vector");
+
+  await knex.schema.createTable("knowledge_base", (table) => {
+    table.increments("id").primary();
+    table.text("title").notNullable();
+    table.text("content").notNullable();
+    table.string("category", 50);
+
     // 벡터 컬럼
-    table.specificType('embedding', 'vector(1024)');
-    
+    table.specificType("embedding", "vector(1024)");
+
     table.timestamps(true, true);
-    
+
     // 일반 인덱스
-    table.index('category');
+    table.index("category");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists('knowledge_base');
+  await knex.schema.dropTableIfExists("knowledge_base");
 }
 ```
 
@@ -297,15 +275,16 @@ export async function down(knex: Knex): Promise<void> {
 import { Embedding } from "sonamu/vector";
 
 // Voyage AI: 1024차원
-const voyageDim = Embedding.getDimensions('voyage');
-console.log(voyageDim);  // 1024
+const voyageDim = Embedding.getDimensions("voyage");
+console.log(voyageDim); // 1024
 
 // OpenAI: 1536차원
-const openaiDim = Embedding.getDimensions('openai');
-console.log(openaiDim);  // 1536
+const openaiDim = Embedding.getDimensions("openai");
+console.log(openaiDim); // 1536
 ```
 
 **테이블 생성 시 차원 수를 맞춰야 합니다**:
+
 ```sql
 -- Voyage AI 사용 시
 CREATE TABLE docs (
@@ -326,12 +305,12 @@ CREATE TABLE docs (
 
 ```typescript
 // ❌ 나쁜 순서
-await knex.raw('CREATE INDEX ...');  // 먼저 인덱스
-await DocumentModel.saveOne({ embedding });  // 나중에 데이터
+await knex.raw("CREATE INDEX ..."); // 먼저 인덱스
+await DocumentModel.saveOne({ embedding }); // 나중에 데이터
 
 // ✅ 좋은 순서
-await DocumentModel.saveOne({ embedding });  // 먼저 데이터 (100개 이상)
-await knex.raw('CREATE INDEX ...');  // 나중에 인덱스
+await DocumentModel.saveOne({ embedding }); // 먼저 데이터 (100개 이상)
+await knex.raw("CREATE INDEX ..."); // 나중에 인덱스
 ```
 
 데이터가 없으면 인덱스가 최적화되지 않습니다.
@@ -353,6 +332,7 @@ export async function up(knex: Knex): Promise<void> {
 ```
 
 **파라미터**:
+
 - `m = 16`: 연결 수 (기본값, 대부분 OK)
 - `ef_construction = 64`: 구축 시 탐색 크기
 
@@ -361,8 +341,8 @@ export async function up(knex: Knex): Promise<void> {
 HNSW가 너무 느리면:
 
 ```sql
-CREATE INDEX idx_docs_embedding 
-ON documents 
+CREATE INDEX idx_docs_embedding
+ON documents
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
 ```
@@ -374,6 +354,7 @@ WITH (lists = 100);
 Sonamu로 사내 지식 베이스를 만들고 있습니다.
 
 **1단계: 테이블 설계**
+
 ```sql
 CREATE TABLE knowledge_base (
   id SERIAL PRIMARY KEY,
@@ -386,6 +367,7 @@ CREATE TABLE knowledge_base (
 ```
 
 **2단계: 데이터 입력 (나중에)**
+
 ```typescript
 // 임베딩 생성 후 저장 (embeddings.mdx 참고)
 await KnowledgeBaseModel.saveOne({
@@ -397,15 +379,17 @@ await KnowledgeBaseModel.saveOne({
 ```
 
 **3단계: 인덱스 생성 (데이터 100개 이상 쌓인 후)**
+
 ```sql
-CREATE INDEX ON knowledge_base 
+CREATE INDEX ON knowledge_base
 USING hnsw (embedding vector_cosine_ops);
 ```
 
 **4단계: 검색 API (나중에)**
+
 ```typescript
 class KnowledgeBaseModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async search(query: string) {
     // vector-search.mdx 참고
     const results = await this.getPuri().raw(`...`);
@@ -420,27 +404,31 @@ class KnowledgeBaseModelClass extends BaseModelClass {
 **pgvector 설정 시 주의사항**:
 
 1. **차원 수 일치**: 테이블과 임베딩 모델의 차원이 같아야 함
+
    ```sql
    -- Voyage AI (1024)
    CREATE TABLE docs (embedding vector(1024));
    ```
 
 2. **인덱스는 나중에**: 데이터 100개 이상 후 생성
+
    ```typescript
    // 1. 데이터 먼저
    await saveDocuments();
-   
+
    // 2. 인덱스 나중에
    await createIndex();
    ```
 
 3. **NULL 허용**: 모든 문서에 즉시 임베딩 못 만들 수 있음
+
    ```sql
    -- NULL 허용 (나중에 업데이트 가능)
    embedding vector(1024)
    ```
 
 4. **Migration으로 관리**: 직접 SQL보다 Migration 사용
+
    ```bash
    pnpm sonamu migrate:latest
    ```
@@ -449,7 +437,7 @@ class KnowledgeBaseModelClass extends BaseModelClass {
    ```sql
    SELECT vector_version();
    ```
-</Warning>
+   </Warning>
 
 ## 다음 단계
 
@@ -459,7 +447,11 @@ pgvector 설치가 완료되었습니다. 이제 임베딩을 생성하고 검�
   <Card title="임베딩 생성" icon="brain" href="/ko/advanced-features/vector-search/embeddings">
     Sonamu에서 Voyage AI로 임베딩 만들기
   </Card>
-  <Card title="벡터 검색" icon="magnifying-glass" href="/ko/advanced-features/vector-search/vector-search">
+  <Card
+    title="벡터 검색"
+    icon="magnifying-glass"
+    href="/ko/advanced-features/vector-search/vector-search"
+  >
     Sonamu Model에서 검색 API 구현하기
   </Card>
 </CardGroup>

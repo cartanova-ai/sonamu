@@ -1,4 +1,5 @@
 import { passkey as _passkey, type PasskeyOptions } from "@better-auth/passkey";
+
 import { merge } from "../../../utils/utils";
 
 export type { PasskeyOptions } from "@better-auth/passkey";

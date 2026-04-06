@@ -11,6 +11,8 @@ import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import z from "zod";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+
 import {
   CompanyAsyncIdConfig,
   CompanyService,
@@ -21,7 +23,6 @@ import {
   type CompanySubsetA,
   type EmployeeSubsetA,
 } from "@/services/sonamu.generated";
-import ListIcon from "~icons/mdi/format-list-bulleted";
 
 export const Route = createFileRoute("/admin/select-test/")({
   head: () => ({

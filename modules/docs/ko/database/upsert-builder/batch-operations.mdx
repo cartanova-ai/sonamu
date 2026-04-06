@@ -9,24 +9,16 @@ UpsertBuilder는 대량의 관계 데이터를 효율적으로 처리할 수 있
 
 <CardGroup cols={2}>
   <Card title="대량 등록" icon="database">
-    한 번에 여러 레코드
-    
-    반복문으로 등록
+    한 번에 여러 레코드 반복문으로 등록
   </Card>
   <Card title="일괄 저장" icon="bolt">
-    단일 쿼리로 저장
-    
-    성능 최적화
+    단일 쿼리로 저장 성능 최적화
   </Card>
   <Card title="관계 유지" icon="link">
-    UBRef로 관계 보존
-    
-    외래 키 자동 처리
+    UBRef로 관계 보존 외래 키 자동 처리
   </Card>
   <Card title="트랜잭션" icon="shield">
-    원자성 보장
-    
-    All or Nothing
+    원자성 보장 All or Nothing
   </Card>
 </CardGroup>
 
@@ -42,7 +34,7 @@ await db.transaction(async (trx) => {
     { email: "user2@test.com", username: "user2" },
     { email: "user3@test.com", username: "user3" },
   ];
-  
+
   for (const user of users) {
     trx.ubRegister("users", {
       email: user.email,
@@ -51,18 +43,16 @@ await db.transaction(async (trx) => {
       role: "normal",
     });
   }
-  
+
   // 2. 일괄 저장
   const userIds = await trx.ubUpsert("users");
-  
+
   console.log(userIds);
   // [1, 2, 3]
 });
 ```
 
-<Info>
-`ubUpsert`는 등록된 모든 레코드를 **단일 INSERT 쿼리**로 처리하여 성능을 최적화합니다.
-</Info>
+<Info>`ubUpsert`는 등록된 모든 레코드를 **단일 INSERT 쿼리**로 처리하여 성능을 최적화합니다.</Info>
 
 ## 관계가 있는 배치 등록
 
@@ -74,14 +64,14 @@ await db.transaction(async (trx) => {
   const deptRef = trx.ubRegister("departments", {
     name: "Engineering",
   });
-  
+
   // 2. 여러 Employee 등록
   const employees = [
     { name: "John", number: "E001", salary: "70000" },
     { name: "Jane", number: "E002", salary: "75000" },
     { name: "Bob", number: "E003", salary: "80000" },
   ];
-  
+
   for (const emp of employees) {
     const userRef = trx.ubRegister("users", {
       email: `${emp.name.toLowerCase()}@test.com`,
@@ -89,7 +79,7 @@ await db.transaction(async (trx) => {
       password: "pass",
       role: "normal",
     });
-    
+
     trx.ubRegister("employees", {
       user_id: userRef,
       department_id: deptRef, // ← 같은 Department
@@ -97,12 +87,12 @@ await db.transaction(async (trx) => {
       salary: emp.salary,
     });
   }
-  
+
   // 3. 순서대로 일괄 저장
   const [deptId] = await trx.ubUpsert("departments");
   const userIds = await trx.ubUpsert("users"); // [1, 2, 3]
   const empIds = await trx.ubUpsert("employees"); // [1, 2, 3]
-  
+
   console.log({
     deptId,
     userCount: userIds.length,
@@ -119,7 +109,7 @@ flowchart LR
     U1[User 1<br/>UBRef] --> E1
     U2[User 2<br/>UBRef] --> E2
     U3[User 3<br/>UBRef] --> E3
-    
+
     style D fill:#e8f5e9
     style E1 fill:#fff9c4
     style E2 fill:#fff9c4
@@ -142,9 +132,9 @@ await db.transaction(async (trx) => {
       username: name,
       password: "password",
       role: "normal",
-    })
+    }),
   );
-  
+
   // 2. 각 User에 대해 Profile 등록
   userRefs.forEach((userRef, index) => {
     trx.ubRegister("profiles", {
@@ -152,11 +142,11 @@ await db.transaction(async (trx) => {
       bio: `Hello, I'm user ${index + 1}`,
     });
   });
-  
+
   // 3. 저장
   const userIds = await trx.ubUpsert("users");
   await trx.ubUpsert("profiles");
-  
+
   console.log({ userCount: userIds.length });
 });
 ```
@@ -171,16 +161,16 @@ await db.transaction(async (trx) => {
   const companyRef = trx.ubRegister("companies", {
     name: "Tech Startup",
   });
-  
+
   // 2. 여러 Department 등록
   const departments = ["Engineering", "Sales", "Marketing"];
   const deptRefs = departments.map((name) =>
     trx.ubRegister("departments", {
       name,
       company_id: companyRef,
-    })
+    }),
   );
-  
+
   // 3. 각 Department에 Employee 배치
   const employeeData = [
     { dept: 0, name: "John", number: "E001" },
@@ -189,7 +179,7 @@ await db.transaction(async (trx) => {
     { dept: 1, name: "Bob", number: "E004" },
     { dept: 2, name: "Charlie", number: "E005" },
   ];
-  
+
   for (const emp of employeeData) {
     const userRef = trx.ubRegister("users", {
       email: `${emp.name.toLowerCase()}@startup.com`,
@@ -197,20 +187,20 @@ await db.transaction(async (trx) => {
       password: "pass",
       role: "normal",
     });
-    
+
     trx.ubRegister("employees", {
       user_id: userRef,
       department_id: deptRefs[emp.dept], // Department 선택
       employee_number: emp.number,
     });
   }
-  
+
   // 4. 순서대로 저장
   const [companyId] = await trx.ubUpsert("companies");
   const deptIds = await trx.ubUpsert("departments");
   const userIds = await trx.ubUpsert("users");
   const empIds = await trx.ubUpsert("employees");
-  
+
   console.log({
     companyId,
     deptCount: deptIds.length,
@@ -225,19 +215,19 @@ flowchart TD
     C[Company] --> D1[Department 1]
     C --> D2[Department 2]
     C --> D3[Department 3]
-    
+
     D1 --> E1[Employee 1]
     D1 --> E2[Employee 2]
     D2 --> E3[Employee 3]
     D2 --> E4[Employee 4]
     D3 --> E5[Employee 5]
-    
+
     U1[User 1] --> E1
     U2[User 2] --> E2
     U3[User 3] --> E3
     U4[User 4] --> E4
     U5[User 5] --> E5
-    
+
     style C fill:#e1f5ff
     style D1 fill:#e8f5e9
     style D2 fill:#e8f5e9
@@ -256,9 +246,9 @@ await db.transaction(async (trx) => {
     trx.ubRegister("projects", {
       name,
       status: "planning",
-    })
+    }),
   );
-  
+
   // 2. Employees 등록
   const employees = ["John", "Jane", "Bob"];
   const userRefs = employees.map((name) =>
@@ -267,16 +257,16 @@ await db.transaction(async (trx) => {
       username: name,
       password: "pass",
       role: "normal",
-    })
+    }),
   );
-  
+
   const empRefs = userRefs.map((userRef, i) =>
     trx.ubRegister("employees", {
       user_id: userRef,
       employee_number: `E${100 + i}`,
-    })
+    }),
   );
-  
+
   // 3. ManyToMany 관계 (모든 조합)
   for (const projectRef of projectRefs) {
     for (const empRef of empRefs) {
@@ -286,13 +276,13 @@ await db.transaction(async (trx) => {
       });
     }
   }
-  
+
   // 4. 저장
   const projectIds = await trx.ubUpsert("projects");
   const userIds = await trx.ubUpsert("users");
   const empIds = await trx.ubUpsert("employees");
   await trx.ubUpsert("projects__employees");
-  
+
   console.log({
     projectCount: projectIds.length,
     empCount: empIds.length,
@@ -330,7 +320,7 @@ async function importEmployees(data: typeof employeeData) {
   return await db.transaction(async (trx) => {
     // 1. 고유한 Department 추출
     const uniqueDepts = [...new Set(data.map((d) => d.department))];
-    
+
     // 2. Department 등록
     const deptRefMap = new Map<string, any>();
     for (const deptName of uniqueDepts) {
@@ -339,7 +329,7 @@ async function importEmployees(data: typeof employeeData) {
       });
       deptRefMap.set(deptName, deptRef);
     }
-    
+
     // 3. Employee 등록
     for (const emp of data) {
       const userRef = trx.ubRegister("users", {
@@ -348,9 +338,9 @@ async function importEmployees(data: typeof employeeData) {
         password: "default_password",
         role: "normal",
       });
-      
+
       const deptRef = deptRefMap.get(emp.department);
-      
+
       trx.ubRegister("employees", {
         user_id: userRef,
         department_id: deptRef,
@@ -358,12 +348,12 @@ async function importEmployees(data: typeof employeeData) {
         salary: emp.salary,
       });
     }
-    
+
     // 4. 저장
     await trx.ubUpsert("departments");
     await trx.ubUpsert("users");
     await trx.ubUpsert("employees");
-    
+
     return { importedCount: data.length };
   });
 }
@@ -402,14 +392,14 @@ for (let i = 0; i < 1000; i++) {
 async function importLargeDataset(data: any[], chunkSize = 100) {
   for (let i = 0; i < data.length; i += chunkSize) {
     const chunk = data.slice(i, i + chunkSize);
-    
+
     await db.transaction(async (trx) => {
       for (const item of chunk) {
         trx.ubRegister("users", item);
       }
       await trx.ubUpsert("users");
     });
-    
+
     console.log(`Processed ${i + chunk.length} / ${data.length}`);
   }
 }
@@ -427,14 +417,12 @@ async function seedDatabase() {
   await db.transaction(async (trx) => {
     // 1. Companies
     const companies = ["Tech Corp", "Startup Inc", "BigCo"];
-    const companyRefs = companies.map((name) =>
-      trx.ubRegister("companies", { name })
-    );
-    
+    const companyRefs = companies.map((name) => trx.ubRegister("companies", { name }));
+
     // 2. Departments (각 Company당 3개)
     const deptNames = ["Engineering", "Sales", "Marketing"];
     const deptRefs: any[] = [];
-    
+
     for (const companyRef of companyRefs) {
       for (const deptName of deptNames) {
         const ref = trx.ubRegister("departments", {
@@ -444,7 +432,7 @@ async function seedDatabase() {
         deptRefs.push(ref);
       }
     }
-    
+
     // 3. Users + Employees (각 Department당 5명)
     for (let i = 0; i < deptRefs.length; i++) {
       for (let j = 0; j < 5; j++) {
@@ -455,7 +443,7 @@ async function seedDatabase() {
           password: "password",
           role: "normal",
         });
-        
+
         trx.ubRegister("employees", {
           user_id: userRef,
           department_id: deptRefs[i],
@@ -463,13 +451,13 @@ async function seedDatabase() {
         });
       }
     }
-    
+
     // 4. 저장
     await trx.ubUpsert("companies");
     await trx.ubUpsert("departments");
     await trx.ubUpsert("users");
     await trx.ubUpsert("employees");
-    
+
     console.log("Seed data created!");
     console.log({
       companies: companies.length,
@@ -483,17 +471,11 @@ async function seedDatabase() {
 ### 팀 재편성
 
 ```typescript
-async function reorganizeTeams(
-  projectId: number,
-  newMemberIds: number[]
-) {
+async function reorganizeTeams(projectId: number, newMemberIds: number[]) {
   await db.transaction(async (trx) => {
     // 1. 기존 멤버 제거
-    await trx
-      .table("projects__employees")
-      .where("project_id", projectId)
-      .delete();
-    
+    await trx.table("projects__employees").where("project_id", projectId).delete();
+
     // 2. 새 멤버 추가
     for (const empId of newMemberIds) {
       trx.ubRegister("projects__employees", {
@@ -501,9 +483,9 @@ async function reorganizeTeams(
         employee_id: empId,
       });
     }
-    
+
     await trx.ubUpsert("projects__employees");
-    
+
     return { newMemberCount: newMemberIds.length };
   });
 }
@@ -522,7 +504,7 @@ async function importEmployeesWithValidation(data: any[]) {
     success: [] as number[],
     failed: [] as { index: number; error: string }[],
   };
-  
+
   for (let i = 0; i < data.length; i++) {
     try {
       await db.transaction(async (trx) => {
@@ -532,15 +514,15 @@ async function importEmployeesWithValidation(data: any[]) {
           password: "pass",
           role: "normal",
         });
-        
+
         trx.ubRegister("employees", {
           user_id: userRef,
           employee_number: data[i].employeeNumber,
         });
-        
+
         await trx.ubUpsert("users");
         const [empId] = await trx.ubUpsert("employees");
-        
+
         results.success.push(empId);
       });
     } catch (error) {
@@ -550,7 +532,7 @@ async function importEmployeesWithValidation(data: any[]) {
       });
     }
   }
-  
+
   return results;
 }
 ```
@@ -558,7 +540,11 @@ async function importEmployeesWithValidation(data: any[]) {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="고급 패턴" icon="wand-magic-sparkles" href="/ko/database/upsert-builder/advanced-patterns">
+  <Card
+    title="고급 패턴"
+    icon="wand-magic-sparkles"
+    href="/ko/database/upsert-builder/advanced-patterns"
+  >
     복잡한 데이터 구조
   </Card>
   <Card title="관계 데이터" icon="link" href="/ko/database/upsert-builder/relations">

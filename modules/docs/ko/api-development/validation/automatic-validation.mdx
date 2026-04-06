@@ -9,24 +9,16 @@ Sonamu는 Zod를 사용하여 API 파라미터를 자동으로 검증할 수 있
 
 <CardGroup cols={2}>
   <Card title="타입 안전성" icon="shield-check">
-    컴파일 타임 검증
-    
-    런타임 검증 자동화
+    컴파일 타임 검증 런타임 검증 자동화
   </Card>
   <Card title="자동 검증" icon="wand-magic-sparkles">
-    스키마 기반 검증
-    
-    에러 메시지 자동 생성
+    스키마 기반 검증 에러 메시지 자동 생성
   </Card>
   <Card title="타입 추론" icon="code">
-    TypeScript 타입 생성
-    
-    자동완성 지원
+    TypeScript 타입 생성 자동완성 지원
   </Card>
   <Card title="확장 가능" icon="puzzle-piece">
-    커스텀 검증 규칙
-    
-    변환(Transform) 지원
+    커스텀 검증 규칙 변환(Transform) 지원
   </Card>
 </CardGroup>
 
@@ -38,9 +30,7 @@ npm install zod
 pnpm add zod
 ```
 
-<Info>
-Sonamu는 Zod v4를 지원합니다. 최신 버전을 설치하세요.
-</Info>
+<Info>Sonamu는 Zod v4를 지원합니다. 최신 버전을 설치하세요.</Info>
 
 ## 기본 사용법
 
@@ -71,18 +61,15 @@ class UserModelClass extends BaseModelClass<
   constructor() {
     super("User", userSubsetQueries, userLoaderQueries);
   }
-  
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // 스키마로 검증
     const validated = CreateUserSchema.parse(params);
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -106,13 +93,10 @@ class UserModelClass extends BaseModelClass<
     try {
       // 검증
       const validated = CreateUserSchema.parse(params);
-      
+
       const wdb = this.getPuri("w");
-      const [user] = await wdb
-        .table("users")
-        .insert(validated)
-        .returning({ id: "id" });
-      
+      const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
       return { userId: user.id };
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -160,14 +144,18 @@ const UserSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(20),
   age: z.number().int().min(18).optional(),
-  profile: z.object({
-    bio: z.string().max(500).optional(),
-    avatarUrl: z.string().url().optional(),
-    socialLinks: z.object({
-      twitter: z.string().url().optional(),
-      github: z.string().url().optional(),
-    }).optional(),
-  }).optional(),
+  profile: z
+    .object({
+      bio: z.string().max(500).optional(),
+      avatarUrl: z.string().url().optional(),
+      socialLinks: z
+        .object({
+          twitter: z.string().url().optional(),
+          github: z.string().url().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 type User = z.infer<typeof UserSchema>;
@@ -197,7 +185,7 @@ const UserArraySchema = z.array(
   z.object({
     id: z.number(),
     name: z.string(),
-  })
+  }),
 );
 
 // 최소/최대 길이
@@ -218,11 +206,7 @@ type Role = z.infer<typeof RoleSchema>; // "admin" | "manager" | "normal"
 const StatusSchema = z.literal(["active", "inactive", "pending"]);
 
 // Union
-const RoleOrStatusSchema = z.union([
-  z.literal("admin"),
-  z.literal("user"),
-  z.literal("guest"),
-]);
+const RoleOrStatusSchema = z.union([z.literal("admin"), z.literal("user"), z.literal("guest")]);
 ```
 
 ### 옵셔널과 Nullable
@@ -249,27 +233,29 @@ const DefaultSchema = z.string().default("default value");
 ### 사용자 등록
 
 ```typescript
-const RegisterSchema = z.object({
-  email: z.string().email("유효한 이메일을 입력하세요"),
-  username: z
-    .string()
-    .min(3, "사용자명은 최소 3자 이상이어야 합니다")
-    .max(20, "사용자명은 최대 20자까지 가능합니다")
-    .regex(/^[a-zA-Z0-9_]+$/, "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다"),
-  password: z
-    .string()
-    .min(8, "비밀번호는 최소 8자 이상이어야 합니다")
-    .regex(/[A-Z]/, "비밀번호에 대문자가 최소 1개 포함되어야 합니다")
-    .regex(/[a-z]/, "비밀번호에 소문자가 최소 1개 포함되어야 합니다")
-    .regex(/[0-9]/, "비밀번호에 숫자가 최소 1개 포함되어야 합니다"),
-  confirmPassword: z.string(),
-  agreeToTerms: z.boolean().refine((val) => val === true, {
-    message: "이용약관에 동의해야 합니다",
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "비밀번호가 일치하지 않습니다",
-  path: ["confirmPassword"],
-});
+const RegisterSchema = z
+  .object({
+    email: z.string().email("유효한 이메일을 입력하세요"),
+    username: z
+      .string()
+      .min(3, "사용자명은 최소 3자 이상이어야 합니다")
+      .max(20, "사용자명은 최대 20자까지 가능합니다")
+      .regex(/^[a-zA-Z0-9_]+$/, "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다"),
+    password: z
+      .string()
+      .min(8, "비밀번호는 최소 8자 이상이어야 합니다")
+      .regex(/[A-Z]/, "비밀번호에 대문자가 최소 1개 포함되어야 합니다")
+      .regex(/[a-z]/, "비밀번호에 소문자가 최소 1개 포함되어야 합니다")
+      .regex(/[0-9]/, "비밀번호에 숫자가 최소 1개 포함되어야 합니다"),
+    confirmPassword: z.string(),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "이용약관에 동의해야 합니다",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "비밀번호가 일치하지 않습니다",
+    path: ["confirmPassword"],
+  });
 
 type RegisterParams = z.infer<typeof RegisterSchema>;
 
@@ -286,12 +272,12 @@ class AuthModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const validated = RegisterSchema.parse(params);
-    
+
     const wdb = this.getPuri("w");
-    
+
     // confirmPassword 제외하고 저장
     const { confirmPassword, agreeToTerms, ...userData } = validated;
-    
+
     const [user] = await wdb
       .table("users")
       .insert({
@@ -299,7 +285,7 @@ class AuthModelClass extends BaseModelClass<
         role: "normal",
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -341,31 +327,31 @@ class UserModelClass extends BaseModelClass<
     pageSize: number;
   }> {
     const validated = UserListSchema.parse(params);
-    
+
     const rdb = this.getPuri("r");
-    
+
     let query = rdb.table("users");
-    
+
     if (validated.search) {
       query = query.where("username", "like", `%${validated.search}%`);
     }
-    
+
     if (validated.role) {
       query = query.where("role", validated.role);
     }
-    
+
     if (validated.isActive !== undefined) {
       query = query.where("is_active", validated.isActive);
     }
-    
+
     const users = await query
       .orderBy(validated.sortBy || "created_at", validated.sortOrder)
       .limit(validated.pageSize)
       .offset((validated.page - 1) * validated.pageSize)
       .select("*");
-    
+
     const [{ count }] = await rdb.table("users").count({ count: "*" });
-    
+
     return {
       users,
       total: count,
@@ -379,16 +365,15 @@ class UserModelClass extends BaseModelClass<
 ### 날짜 범위 검증
 
 ```typescript
-const DateRangeSchema = z.object({
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
-}).refine(
-  (data) => new Date(data.startDate) < new Date(data.endDate),
-  {
+const DateRangeSchema = z
+  .object({
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+  })
+  .refine((data) => new Date(data.startDate) < new Date(data.endDate), {
     message: "시작일은 종료일보다 이전이어야 합니다",
     path: ["endDate"],
-  }
-);
+  });
 
 const ReportSchema = z.object({
   dateRange: DateRangeSchema,
@@ -411,7 +396,7 @@ class ReportModelClass extends BaseModelClass<
   @api({ httpMethod: "POST" })
   async generate(params: ReportParams): Promise<{ reportId: number }> {
     const validated = ReportSchema.parse(params);
-    
+
     // 리포트 생성 로직
     // ...
   }
@@ -431,7 +416,10 @@ const LowercaseEmailSchema = z
   .transform((val) => val.toLowerCase());
 
 const UserSchema = z.object({
-  email: z.string().email().transform((val) => val.toLowerCase()),
+  email: z
+    .string()
+    .email()
+    .transform((val) => val.toLowerCase()),
   username: z.string().transform((val) => val.trim()),
 });
 ```
@@ -545,7 +533,7 @@ const ComplexSchema = z
         path: ["endDate"],
       });
     }
-    
+
     // 참가자 수 검증
     if (data.participants.length < 2) {
       ctx.addIssue({
@@ -554,7 +542,7 @@ const ComplexSchema = z
         path: ["participants"],
       });
     }
-    
+
     // 중복 검증
     const uniqueParticipants = new Set(data.participants);
     if (uniqueParticipants.size !== data.participants.length) {
@@ -584,29 +572,26 @@ class UserModelClass extends BaseModelClass<
   async create(params: unknown): Promise<{ userId: number }> {
     // safeParse는 예외를 던지지 않음
     const result = CreateUserSchema.safeParse(params);
-    
+
     if (!result.success) {
       // 검증 실패
       const context = Sonamu.getContext();
       context.reply.status(400);
-      
+
       const errors = result.error.errors.map((e) => ({
         field: e.path.join("."),
         message: e.message,
       }));
-      
+
       throw new Error(JSON.stringify({ errors }));
     }
-    
+
     // 검증 성공
     const validated = result.data;
-    
+
     const wdb = this.getPuri("w");
-    const [user] = await wdb
-      .table("users")
-      .insert(validated)
-      .returning({ id: "id" });
-    
+    const [user] = await wdb.table("users").insert(validated).returning({ id: "id" });
+
     return { userId: user.id };
   }
 }
@@ -629,13 +614,13 @@ z.setErrorMap((issue, ctx) => {
       return { message: "숫자여야 합니다" };
     }
   }
-  
+
   if (issue.code === z.ZodIssueCode.too_small) {
     if (issue.type === "string") {
       return { message: `최소 ${issue.minimum}자 이상이어야 합니다` };
     }
   }
-  
+
   return { message: ctx.defaultError };
 });
 ```
@@ -644,27 +629,27 @@ z.setErrorMap((issue, ctx) => {
 
 ```typescript
 const UserSchema = z.object({
-  email: z.string({
-    required_error: "이메일은 필수입니다",
-    invalid_type_error: "이메일은 문자열이어야 합니다",
-  }).email("유효한 이메일 형식이 아닙니다"),
-  
-  age: z.number({
-    required_error: "나이는 필수입니다",
-    invalid_type_error: "나이는 숫자여야 합니다",
-  }).min(18, "18세 이상이어야 합니다"),
+  email: z
+    .string({
+      required_error: "이메일은 필수입니다",
+      invalid_type_error: "이메일은 문자열이어야 합니다",
+    })
+    .email("유효한 이메일 형식이 아닙니다"),
+
+  age: z
+    .number({
+      required_error: "나이는 필수입니다",
+      invalid_type_error: "나이는 숫자여야 합니다",
+    })
+    .min(18, "18세 이상이어야 합니다"),
 });
 ```
 
 ## 주의사항
 
 <Warning>
-**Zod 검증 사용 시 주의사항**:
-1. parse()는 검증 실패 시 예외 발생
-2. safeParse()는 결과 객체 반환
-3. Transform은 검증 후 실행됨
-4. refine()은 마지막에 실행됨
-5. 성능을 위해 스키마를 재사용
+  **Zod 검증 사용 시 주의사항**: 1. parse()는 검증 실패 시 예외 발생 2. safeParse()는 결과 객체 반환
+  3. Transform은 검증 후 실행됨 4. refine()은 마지막에 실행됨 5. 성능을 위해 스키마를 재사용
 </Warning>
 
 ## 다음 단계
@@ -673,7 +658,11 @@ const UserSchema = z.object({
   <Card title="커스텀 검증" icon="code" href="/ko/api-development/validation/custom-validation">
     커스텀 검증 로직 구현
   </Card>
-  <Card title="에러 처리" icon="triangle-exclamation" href="/ko/api-development/validation/error-handling">
+  <Card
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/ko/api-development/validation/error-handling"
+  >
     SonamuError 사용하기
   </Card>
   <Card title="파라미터" icon="sliders" href="/ko/api-development/creating-apis/parameters">

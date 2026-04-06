@@ -2,6 +2,7 @@
 
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import * as React from "react";
+
 import type { Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
@@ -20,7 +21,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
     const effectiveChecked = value !== undefined ? value : checked;
     const inputRef = React.useRef<HTMLInputElement>(null);
 
-    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
+    // oxlint-disable-next-line @typescript-eslint/no-non-null-assertion -- useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleCheckedChange = (newChecked: boolean) => {

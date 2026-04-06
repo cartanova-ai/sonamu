@@ -1,4 +1,5 @@
 import inflection from "inflection";
+
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp, type RelationProp } from "../types/types";
 

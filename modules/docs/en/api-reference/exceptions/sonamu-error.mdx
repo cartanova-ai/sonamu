@@ -1,6 +1,6 @@
 ---
-title: 'SoException'
-description: 'Base class for Sonamu exception handling system'
+title: "SoException"
+description: "Base class for Sonamu exception handling system"
 ---
 
 `SoException` is the abstract base class that all Sonamu exception classes inherit from. It can include HTTP status codes, messages, and additional payloads.
@@ -30,7 +30,7 @@ HTTP response status code. When an exception is thrown, Fastify responds with th
 ### message
 
 ```typescript
-message: LocalizedString
+message: LocalizedString;
 ```
 
 Exception message. Uses the `LocalizedString` type, delivering localized strings through Sonamu's i18n system.
@@ -49,7 +49,7 @@ Optional additional data. Used to convey detailed information related to the exc
 throw new BadRequestException("Invalid email format", {
   field: "email",
   providedValue: "invalid-email",
-  expectedFormat: "user@example.com"
+  expectedFormat: "user@example.com",
 });
 ```
 
@@ -60,7 +60,7 @@ throw new BadRequestException("Invalid email format", {
 Checks whether a given value is an instance of `SoException`.
 
 ```typescript
-function isSoException(err: unknown): err is SoException
+function isSoException(err: unknown): err is SoException;
 ```
 
 **Usage Example:**
@@ -308,8 +308,8 @@ When payload is present:
 throw new BadRequestException("Invalid data", {
   errors: [
     { field: "email", message: "Email format is invalid" },
-    { field: "age", message: "Age must be greater than 0" }
-  ]
+    { field: "age", message: "Age must be greater than 0" },
+  ],
 });
 
 // Client response:

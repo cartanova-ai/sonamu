@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+
 import { Badge, badgeVariantsConfig } from "./badge";
 
 const variantKeys = Object.keys(badgeVariantsConfig.variant);

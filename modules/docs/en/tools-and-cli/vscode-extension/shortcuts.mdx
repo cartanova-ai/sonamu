@@ -9,18 +9,18 @@ Available shortcuts and Command Palette commands in the Sonamu Extension.
 
 ### Navigation
 
-| Shortcut | Action | Description |
-|----------|--------|-------------|
-| F12 | Go to Definition | Jump to Naite key's definition location (`Naite.t()`) |
-| Shift+F12 | Go to References | Display all reference locations for Naite key (`Naite.get()`, `Naite.del()`) |
-| Cmd+Click | Go to Definition/References | Jump to definition or references based on VS Code settings |
-| Cmd+T | Workspace Symbol Search | Search for Naite keys in workspace |
+| Shortcut  | Action                      | Description                                                                  |
+| --------- | --------------------------- | ---------------------------------------------------------------------------- |
+| F12       | Go to Definition            | Jump to Naite key's definition location (`Naite.t()`)                        |
+| Shift+F12 | Go to References            | Display all reference locations for Naite key (`Naite.get()`, `Naite.del()`) |
+| Cmd+Click | Go to Definition/References | Jump to definition or references based on VS Code settings                   |
+| Cmd+T     | Workspace Symbol Search     | Search for Naite keys in workspace                                           |
 
 ### Autocomplete
 
-| Trigger | Action | Description |
-|---------|--------|-------------|
-| `Naite.t("` | Key autocomplete | Display all Naite key list |
+| Trigger       | Action           | Description                |
+| ------------- | ---------------- | -------------------------- |
+| `Naite.t("`   | Key autocomplete | Display all Naite key list |
 | `Naite.get("` | Key autocomplete | Display all Naite key list |
 | `Naite.del("` | Key autocomplete | Display all Naite key list |
 
@@ -48,9 +48,7 @@ Opens the Naite Trace Viewer. Check values recorded with `Naite.t()` during test
 Cmd+Shift+P → "Sonamu: Open Naite Trace Viewer"
 ```
 
-<Frame caption="Opening Trace Viewer">
-  {/* Running command from Command Palette */}
-</Frame>
+<Frame caption="Opening Trace Viewer">{/* Running command from Command Palette */}</Frame>
 
 ### Sonamu: Rescan Naite Keys
 
@@ -84,7 +82,11 @@ Right-clicking on a Naite key string displays the following menu:
 - **Peek References**: Preview references inline
 
 <Frame caption="Context Menu">
-  <img src="/images/vscode-extension18.png" alt="Context Menu" style={{ width: '70%', borderRadius: '8px' }} />
+  <img
+    src="/images/vscode-extension18.png"
+    alt="Context Menu"
+    style={{ width: "70%", borderRadius: "8px" }}
+  />
 </Frame>
 
 ## Changing Shortcuts in Settings
@@ -97,7 +99,11 @@ You can customize shortcuts in VS Code settings:
 4. Change to desired shortcuts
 
 <Frame caption="Shortcut Settings">
-  <img src="/images/vscode-extension19.png" alt="Shortcut Settings" style={{ width: '70%', borderRadius: '8px' }} />
+  <img
+    src="/images/vscode-extension19.png"
+    alt="Shortcut Settings"
+    style={{ width: "70%", borderRadius: "8px" }}
+  />
 </Frame>
 
 ## Common Workflows

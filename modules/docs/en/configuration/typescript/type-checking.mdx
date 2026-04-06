@@ -1,6 +1,6 @@
 ---
-title: 'Type Checking'
-description: 'Configuring compiler options'
+title: "Type Checking"
+description: "Configuring compiler options"
 ---
 
 TypeScript's type checking options determine the stability of your code. Sonamu **enables strict mode by default** to provide maximum type safety.
@@ -12,21 +12,19 @@ Sonamu enables all strict options.
 ```json
 {
   "compilerOptions": {
-    "strict": true,                          // Enable all strict options
-    "noImplicitAny": true,                   // Require explicit any type
-    "strictNullChecks": true,                // Strict null/undefined checking
-    "strictFunctionTypes": true,             // Strict function type checking
-    "strictBindCallApply": true,             // Strict bind/call/apply checking
-    "strictPropertyInitialization": true,    // Require class property initialization
-    "noImplicitThis": true,                  // Require explicit this type
-    "alwaysStrict": true                     // Auto-add 'use strict'
+    "strict": true, // Enable all strict options
+    "noImplicitAny": true, // Require explicit any type
+    "strictNullChecks": true, // Strict null/undefined checking
+    "strictFunctionTypes": true, // Strict function type checking
+    "strictBindCallApply": true, // Strict bind/call/apply checking
+    "strictPropertyInitialization": true, // Require class property initialization
+    "noImplicitThis": true, // Require explicit this type
+    "alwaysStrict": true // Auto-add 'use strict'
   }
 }
 ```
 
-<Info>
-`strict: true` is a shortcut that enables all the above options at once.
-</Info>
+<Info>`strict: true` is a shortcut that enables all the above options at once.</Info>
 
 ## Strict Options in Detail
 
@@ -60,6 +58,7 @@ Sonamu enables all strict options.
     <Tip>
     If typing is difficult, use `unknown`. It's safer than `any`.
     </Tip>
+
   </Tab>
 
   <Tab title="strictNullChecks" icon="ban">
@@ -131,6 +130,7 @@ Sonamu enables all strict options.
       }
     }
     ```
+
   </Tab>
 
   <Tab title="strictFunctionTypes" icon="function">
@@ -165,6 +165,7 @@ Sonamu enables all strict options.
     <Info>
     This option significantly improves function type safety, but may have compatibility issues with some libraries.
     </Info>
+
   </Tab>
 
   <Tab title="strictBindCallApply" icon="link">
@@ -194,6 +195,7 @@ Sonamu enables all strict options.
     // ✅ Correct argument count
     greet.apply(null, ["Alice", 30]);
     ```
+
   </Tab>
 
   <Tab title="strictPropertyInitialization" icon="check-circle">
@@ -260,6 +262,7 @@ Sonamu enables all strict options.
       }
     }
     ```
+
   </Tab>
 
   <Tab title="noImplicitThis" icon="cursor-arrow-rays">
@@ -296,6 +299,7 @@ Sonamu enables all strict options.
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -352,6 +356,7 @@ Sonamu enables additional check options beyond strict mode.
     <Tip>
     Parameters starting with `_` don't trigger warnings.
     </Tip>
+
   </Tab>
 
   <Tab title="Return Check" icon="arrow-uturn-left">
@@ -396,6 +401,7 @@ Sonamu enables additional check options beyond strict mode.
       throw new Error(`Unknown status code: ${code}`);
     }
     ```
+
   </Tab>
 
   <Tab title="Switch Check" icon="list-bullet">
@@ -440,6 +446,7 @@ Sonamu enables additional check options beyond strict mode.
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Catch Variables" icon="exclamation-triangle">
@@ -477,6 +484,7 @@ Sonamu enables additional check options beyond strict mode.
     <Tip>
     Using `unknown` instead of `any` enforces type checking.
     </Tip>
+
   </Tab>
 
   <Tab title="Index Access" icon="hashtag">
@@ -523,6 +531,7 @@ Sonamu enables additional check options beyond strict mode.
     <Warning>
     This option makes all array/object access return `T | undefined`. May require many code changes.
     </Warning>
+
   </Tab>
 </Tabs>
 
@@ -543,50 +552,54 @@ Options you can add as needed.
 <Accordion title="noPropertyAccessFromIndexSignature" icon="key">
   **Index signatures can only be accessed with brackets**
 
-  ```typescript
-  interface Options {
-    [key: string]: string;
-  }
+```typescript
+interface Options {
+  [key: string]: string;
+}
 
-  const options: Options = { color: "red" };
+const options: Options = { color: "red" };
 
-  // ❌ Error
-  const color = options.color;
+// ❌ Error
+const color = options.color;
 
-  // ✅ Use brackets
-  const color = options["color"];
-  ```
+// ✅ Use brackets
+const color = options["color"];
+```
 
-  **When to use:**
-  - When you want to make dynamic property access explicit
-</Accordion>
+**When to use:**
+
+- When you want to make dynamic property access explicit
+  </Accordion>
 
 <Accordion title="exactOptionalPropertyTypes" icon="question-circle">
   **Optional properties only allow undefined**
 
-  ```typescript
-  interface User {
-    name?: string;
-  }
+```typescript
+interface User {
+  name?: string;
+}
 
-  // ❌ Error
-  const user: User = { name: undefined };
+// ❌ Error
+const user: User = { name: undefined };
 
-  // ✅ Omit property
-  const user: User = {};
+// ✅ Omit property
+const user: User = {};
 
-  // ✅ To explicitly allow undefined
-  interface User {
-    name: string | undefined;
-  }
-  ```
+// ✅ To explicitly allow undefined
+interface User {
+  name: string | undefined;
+}
+```
 
-  **When to use:**
-  - When you want to strictly distinguish between optional and `| undefined`
+**When to use:**
 
-  <Warning>
+- When you want to strictly distinguish between optional and `| undefined`
+
+      <Warning>
+
   May have compatibility issues with many libraries.
-  </Warning>
+
+    </Warning>
 </Accordion>
 
 ## Disabling Type Checks
@@ -602,6 +615,7 @@ Sometimes you need to bypass type checks in specific situations.
     const value = "hello";
     value = 123;  // No error
     ```
+
   </Tab>
 
   <Tab title="Single Line" icon="minus">
@@ -617,6 +631,7 @@ Sometimes you need to bypass type checks in specific situations.
     <Tip>
     Use `@ts-expect-error` instead of `@ts-ignore` to get a warning when no error actually occurs.
     </Tip>
+
   </Tab>
 
   <Tab title="Type Assertion" icon="exclamation">
@@ -634,6 +649,7 @@ Sometimes you need to bypass type checks in specific situations.
     <Danger>
     Type assertions break type safety. Use only when absolutely certain.
     </Danger>
+
   </Tab>
 </Tabs>
 
@@ -657,6 +673,7 @@ Sometimes you need to bypass type checks in specific situations.
     ```
 
     For new projects, **enable all options**.
+
   </Tab>
 
   <Tab title="Existing Projects" icon="arrow-path">
@@ -678,6 +695,7 @@ Sometimes you need to bypass type checks in specific situations.
     2. `noUnusedLocals`, `noUnusedParameters`
     3. `noImplicitReturns`
     4. `noUncheckedIndexedAccess` (requires many changes)
+
   </Tab>
 
   <Tab title="Libraries" icon="cube">
@@ -694,6 +712,7 @@ Sometimes you need to bypass type checks in specific situations.
     ```
 
     For libraries, **type definition generation** is also essential.
+
   </Tab>
 </Tabs>
 
@@ -712,15 +731,17 @@ More type check options can increase compilation time.
   }
   ```
 
-  **skipLibCheck**
-  - Don't check `.d.ts` files in `node_modules`
-  - Significantly reduces compilation time
-  - Enabled by default in Sonamu
+**skipLibCheck**
 
-  **incremental**
-  - Only recompile changed files
-  - Cache stored in `.tsbuildinfo` file
-</Accordion>
+- Don't check `.d.ts` files in `node_modules`
+- Significantly reduces compilation time
+- Enabled by default in Sonamu
+
+**incremental**
+
+- Only recompile changed files
+- Cache stored in `.tsbuildinfo` file
+  </Accordion>
 
 ## Next Steps
 
@@ -733,21 +754,13 @@ More type check options can increase compilation time.
     Check the complete TypeScript configuration
   </Card>
 
-  <Card
-    title="Path Mapping"
-    icon="route"
-    href="/en/configuration/typescript/path-mappings"
-  >
-    Set up absolute path imports
-  </Card>
+<Card title="Path Mapping" icon="route" href="/en/configuration/typescript/path-mappings">
+  Set up absolute path imports
+</Card>
 
-  <Card
-    title="Entity Definition"
-    icon="database"
-    href="/en/core-concepts/entity/defining-entities"
-  >
-    Write type-safe Entities
-  </Card>
+<Card title="Entity Definition" icon="database" href="/en/core-concepts/entity/defining-entities">
+  Write type-safe Entities
+</Card>
 
   <Card
     title="Writing Tests"

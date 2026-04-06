@@ -1,4 +1,5 @@
 import assert from "assert";
+
 import { z } from "zod";
 import type { $ZodType } from "zod/v4/core";
 
@@ -25,7 +26,7 @@ function isZodNumberAnyway(zodType: $ZodType) {
 }
 
 // ZodType을 이용해 raw를 Type Coercing
-// biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
 export function caster(zodType: $ZodType, raw: any): any {
   if (isZodNumberAnyway(zodType) && typeof raw === "string") {
     // number
@@ -38,7 +39,7 @@ export function caster(zodType: $ZodType, raw: any): any {
     if (Array.isArray(raw)) {
       const numType = zodType.options.find((opt) => isNumberType(opt));
       assert(numType !== undefined);
-      // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
       return raw.map((elem: any) => caster(numType, elem));
     } else {
       return Number(raw);
@@ -48,7 +49,7 @@ export function caster(zodType: $ZodType, raw: any): any {
     return raw === "true";
   } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
-    // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
     return raw.map((elem: any) => caster(zodType.element, elem));
   } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
     // object
@@ -79,9 +80,9 @@ export function caster(zodType: $ZodType, raw: any): any {
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
 export function fastifyCaster(schema: z.ZodObject<any>) {
-  // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 캐스팅에는 any가 필요함.
   return z.preprocess((raw: any) => {
     return caster(schema, raw);
   }, schema);

@@ -45,9 +45,7 @@ SLACK_BOT_TOKEN=xoxb-...
 SLACK_CHANNEL_ID=C01234567
 ```
 
-<Info>
-`slackConfirm` 블록을 주석 처리하면 기존 동작(승인 없이 바로 실행)으로 동작합니다.
-</Info>
+<Info>`slackConfirm` 블록을 주석 처리하면 기존 동작(승인 없이 바로 실행)으로 동작합니다.</Info>
 
 ## Slack App 생성
 
@@ -62,11 +60,11 @@ SLACK_CHANNEL_ID=C01234567
 
 OAuth & Permissions → Scopes → Bot Token Scopes에서 다음 권한 추가:
 
-| Scope | 용도 |
-|-------|------|
-| `chat:write` | 메시지 발송, 스레드에 사유 남기기 |
-| `reactions:read` | 이모지 조회 |
-| `reactions:write` | force 시 본인이 ✅ 찍기 |
+| Scope             | 용도                              |
+| ----------------- | --------------------------------- |
+| `chat:write`      | 메시지 발송, 스레드에 사유 남기기 |
+| `reactions:read`  | 이모지 조회                       |
+| `reactions:write` | force 시 본인이 ✅ 찍기           |
 
 ### 3. 설치 및 설정
 
@@ -130,7 +128,7 @@ flowchart TD
 3. 마이그레이션 실행 (슬랙에 force 사유 기록)
 
 <Warning>
-Force 진행 시 슬랙 스레드에 사유가 기록됩니다. 나중에 감사 목적으로 추적 가능합니다.
+  Force 진행 시 슬랙 스레드에 사유가 기록됩니다. 나중에 감사 목적으로 추적 가능합니다.
 </Warning>
 
 ### 거절 처리
@@ -164,12 +162,12 @@ src/migrations/.slack-confirm-{hash}
 
 ### 사용하는 API
 
-| API | 용도 |
-|-----|------|
-| `chat.postMessage` | 승인 요청 메시지 발송 |
-| `reactions.get` | 이모지 조회 (Tier 3, 분당 50+회) |
-| `reactions.add` | force 시 ✅ 추가 |
-| `chat.postMessage` (thread_ts) | 스레드에 로그 남기기 |
+| API                            | 용도                             |
+| ------------------------------ | -------------------------------- |
+| `chat.postMessage`             | 승인 요청 메시지 발송            |
+| `reactions.get`                | 이모지 조회 (Tier 3, 분당 50+회) |
+| `reactions.add`                | force 시 ✅ 추가                 |
+| `chat.postMessage` (thread_ts) | 스레드에 로그 남기기             |
 
 ### Rate Limit
 
@@ -179,14 +177,14 @@ src/migrations/.slack-confirm-{hash}
 
 ## 테스트 시나리오
 
-| 시나리오 | 동작 |
-|----------|------|
-| 정상 플로우 | Apply → 슬랙 메시지 → 대기 → ✅ → 실행 |
+| 시나리오       | 동작                                         |
+| -------------- | -------------------------------------------- |
+| 정상 플로우    | Apply → 슬랙 메시지 → 대기 → ✅ → 실행       |
 | 기존 승인 있음 | Apply → 기존 ts로 조회 → ✅ 있음 → 바로 실행 |
-| 거절 | Apply → 대기 → ❌ → 거절 메시지 |
-| Force | Apply → 대기 → Force → 사유 입력 → 실행 |
-| 설정 없음 | 기존 동작과 동일 (바로 실행) |
-| 대상 아닌 DB | targets에 없는 DB는 승인 없이 바로 실행 |
+| 거절           | Apply → 대기 → ❌ → 거절 메시지              |
+| Force          | Apply → 대기 → Force → 사유 입력 → 실행      |
+| 설정 없음      | 기존 동작과 동일 (바로 실행)                 |
+| 대상 아닌 DB   | targets에 없는 DB는 승인 없이 바로 실행      |
 
 ## 다음 단계
 

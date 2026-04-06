@@ -10,6 +10,7 @@ import {
 } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeEach, describe, expect, vi } from "vitest";
+
 import { UserModel } from "../application/user/user.model";
 import {
   CompanyMigrationTestEntity,

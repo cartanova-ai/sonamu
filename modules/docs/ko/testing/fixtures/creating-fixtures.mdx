@@ -9,24 +9,16 @@ Sonamu의 createFixtureLoader를 사용하여 재사용 가능한 테스트 데�
 
 <CardGroup cols={2}>
   <Card title="createFixtureLoader" icon="code">
-    타입 안전한 정의
-    
-    자동완성 지원
+    타입 안전한 정의 자동완성 지원
   </Card>
   <Card title="재사용 가능" icon="recycle">
-    한 번 정의
-    
-    여러 테스트 공유
+    한 번 정의 여러 테스트 공유
   </Card>
   <Card title="관계 처리" icon="link">
-    BelongsTo 자동 해결
-    
-    중첩된 데이터
+    BelongsTo 자동 해결 중첩된 데이터
   </Card>
   <Card title="선택적 로딩" icon="filter">
-    필요한 것만
-    
-    빠른 테스트
+    필요한 것만 빠른 테스트
   </Card>
 </CardGroup>
 
@@ -51,7 +43,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   admin: async () => {
     const userModel = new UserModel();
     const { user } = await userModel.create({
@@ -73,22 +65,19 @@ export const loadFixtures = createFixtureLoader({
  *
  * 테스트에서 사용할 fixture를 로드하는 함수를 생성
  */
-export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(
-  loaders: T
-) {
+export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(loaders: T) {
   return async function loadFixtures<K extends keyof T>(
     names: K[],
   ): Promise<{ [P in K]: Awaited<ReturnType<T[P]>> }> {
     return Object.fromEntries(
-      await Promise.all(
-        names.map(async (name) => [name, await loaders[name]()])
-      ),
+      await Promise.all(names.map(async (name) => [name, await loaders[name]()])),
     );
   };
 }
 ```
 
 **특징**:
+
 - 타입 안전: TypeScript가 fixture 이름과 반환 타입을 추론
 - 병렬 로딩: `Promise.all`로 여러 fixture 동시 로드
 - 선택적: 필요한 fixture만 로드
@@ -114,7 +103,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 프리미엄 사용자
   premiumUser: async () => {
     const userModel = new UserModel();
@@ -127,7 +116,7 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 관리자
   adminUser: async () => {
     const userModel = new UserModel();
@@ -162,25 +151,25 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   // 작성자의 게시글 (author fixture 재사용)
   authorPost: async () => {
     // 다른 fixture 로드
     const { author } = await loadFixtures(["author"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Author's First Post",
       content: "This is the content",
-      author_id: author.id,  // 관계 설정
+      author_id: author.id, // 관계 설정
     });
     return post;
   },
-  
+
   // 게시글의 댓글 (authorPost fixture 재사용)
   postComment: async () => {
     const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-    
+
     const commentModel = new CommentModel();
     const { comment } = await commentModel.create({
       content: "Great post!",
@@ -200,7 +189,7 @@ export const loadFixtures = createFixtureLoader({
   users10: async () => {
     const userModel = new UserModel();
     const users = [];
-    
+
     for (let i = 1; i <= 10; i++) {
       const { user } = await userModel.create({
         username: `user${i}`,
@@ -209,21 +198,21 @@ export const loadFixtures = createFixtureLoader({
       });
       users.push(user);
     }
-    
+
     return users;
   },
-  
+
   // 사용자와 그의 게시글들
   userWith5Posts: async () => {
     const userModel = new UserModel();
     const postModel = new PostModel();
-    
+
     const { user } = await userModel.create({
       username: "blogger",
       email: "blogger@example.com",
       password: "password",
     });
-    
+
     const posts = [];
     for (let i = 1; i <= 5; i++) {
       const { post } = await postModel.create({
@@ -233,7 +222,7 @@ export const loadFixtures = createFixtureLoader({
       });
       posts.push(post);
     }
-    
+
     return { user, posts };
   },
 });
@@ -248,14 +237,14 @@ export const loadFixtures = createFixtureLoader({
     const userModel = new UserModel();
     const postModel = new PostModel();
     const commentModel = new CommentModel();
-    
+
     // 1. 작성자 생성
     const { user: author } = await userModel.create({
       username: "author",
       email: "author@example.com",
       password: "password",
     });
-    
+
     // 2. 독자들 생성
     const readers = await Promise.all([
       userModel.create({
@@ -269,14 +258,14 @@ export const loadFixtures = createFixtureLoader({
         password: "password",
       }),
     ]);
-    
+
     // 3. 게시글 생성
     const { post } = await postModel.create({
       title: "Popular Post",
       content: "This post has many comments",
       author_id: author.id,
     });
-    
+
     // 4. 댓글 생성
     const comments = await Promise.all([
       commentModel.create({
@@ -295,12 +284,12 @@ export const loadFixtures = createFixtureLoader({
         author_id: author.id,
       }),
     ]);
-    
+
     return {
       author,
-      readers: readers.map(r => r.user),
+      readers: readers.map((r) => r.user),
       post,
-      comments: comments.map(c => c.comment),
+      comments: comments.map((c) => c.comment),
     };
   },
 });
@@ -322,11 +311,11 @@ bootstrap(vi);
 test("작성자의 게시글 조회", async () => {
   // Fixtures 로드
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   // 테스트
   const postModel = new PostModel();
   const { posts } = await postModel.getPostsByAuthor(author.id);
-  
+
   expect(posts).toHaveLength(1);
   expect(posts[0].id).toBe(authorPost.id);
 });
@@ -338,11 +327,11 @@ test("작성자의 게시글 조회", async () => {
 test("타입 안전한 fixture 사용", async () => {
   // ✅ IDE가 fixture 이름 자동완성 제공
   const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
-  
+
   // ✅ 타입 추론
-  author.username;  // string
+  author.username; // string
   authorPost.title; // string
-  
+
   // ❌ 존재하지 않는 fixture
   const { invalid } = await loadFixtures(["invalid"]); // 타입 에러!
 });
@@ -354,7 +343,7 @@ test("타입 안전한 fixture 사용", async () => {
 test("필요한 fixture만 로드", async () => {
   // 필요한 것만
   const { author } = await loadFixtures(["author"]);
-  
+
   // authorPost는 로드하지 않음 → 생성 비용 절약
 });
 
@@ -365,7 +354,7 @@ test("여러 fixture 동시 로드", async () => {
     "premiumUser",
     "adminUser",
   ]);
-  
+
   expect(author.role).toBe("user");
   expect(premiumUser.role).toBe("premium");
   expect(adminUser.role).toBe("admin");
@@ -379,19 +368,37 @@ test("여러 fixture 동시 로드", async () => {
 ```typescript
 // ✅ 올바른 방법: 용도가 명확한 이름
 export const loadFixtures = createFixtureLoader({
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
-  premiumSubscription: async () => { /* ... */ },
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
+  premiumSubscription: async () => {
+    /* ... */
+  },
 });
 
 // ❌ 잘못된 방법: 불명확한 이름
 export const loadFixtures = createFixtureLoader({
-  user1: async () => { /* ... */ },
-  user2: async () => { /* ... */ },
-  post1: async () => { /* ... */ },
-  thing: async () => { /* ... */ },
+  user1: async () => {
+    /* ... */
+  },
+  user2: async () => {
+    /* ... */
+  },
+  post1: async () => {
+    /* ... */
+  },
+  thing: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -422,7 +429,9 @@ export const loadFixtures = createFixtureLoader({
       password: "password",
       bio: "Very long bio...",
       avatar: "https://...",
-      preferences: { /* 복잡한 객체 */ },
+      preferences: {
+        /* 복잡한 객체 */
+      },
       // 테스트에 필요하지 않은 필드들
     });
     return user;
@@ -445,11 +454,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return user;
   },
-  
+
   userPost: async () => {
     // user fixture 재사용
     const { user } = await loadFixtures(["user"]);
-    
+
     const postModel = new PostModel();
     const { post } = await postModel.create({
       title: "Post",
@@ -458,11 +467,11 @@ export const loadFixtures = createFixtureLoader({
     });
     return post;
   },
-  
+
   userPostComment: async () => {
     // userPost fixture 재사용 (user도 자동으로 포함됨)
     const { user, userPost } = await loadFixtures(["user", "userPost"]);
-    
+
     const commentModel = new CommentModel();
     const { comment } = await commentModel.create({
       content: "Comment",
@@ -480,17 +489,31 @@ export const loadFixtures = createFixtureLoader({
 // ✅ 올바른 방법: 일관된 네이밍과 구조
 export const loadFixtures = createFixtureLoader({
   // 사용자 관련
-  adminUser: async () => { /* ... */ },
-  guestUser: async () => { /* ... */ },
-  premiumUser: async () => { /* ... */ },
-  
+  adminUser: async () => {
+    /* ... */
+  },
+  guestUser: async () => {
+    /* ... */
+  },
+  premiumUser: async () => {
+    /* ... */
+  },
+
   // 게시글 관련
-  publishedPost: async () => { /* ... */ },
-  draftPost: async () => { /* ... */ },
-  
+  publishedPost: async () => {
+    /* ... */
+  },
+  draftPost: async () => {
+    /* ... */
+  },
+
   // 시나리오
-  blogScenario: async () => { /* ... */ },
-  forumScenario: async () => { /* ... */ },
+  blogScenario: async () => {
+    /* ... */
+  },
+  forumScenario: async () => {
+    /* ... */
+  },
 });
 ```
 
@@ -523,12 +546,9 @@ export const loadFixtures = createFixtureLoader({
 ## 주의사항
 
 <Warning>
-**Fixture 작성 시 주의사항**:
-1. **Transaction 기반**: 각 테스트마다 자동 롤백됨
-2. **최소 데이터**: 테스트에 필요한 최소한의 데이터만 생성
-3. **독립성**: Fixture는 서로 독립적이어야 함
-4. **재사용**: 공통 fixture를 적극 활용
-5. **명확한 이름**: fixture 이름은 용도를 명확하게 표현
+  **Fixture 작성 시 주의사항**: 1. **Transaction 기반**: 각 테스트마다 자동 롤백됨 2. **최소
+  데이터**: 테스트에 필요한 최소한의 데이터만 생성 3. **독립성**: Fixture는 서로 독립적이어야 함 4.
+  **재사용**: 공통 fixture를 적극 활용 5. **명확한 이름**: fixture 이름은 용도를 명확하게 표현
 </Warning>
 
 ## 다음 단계

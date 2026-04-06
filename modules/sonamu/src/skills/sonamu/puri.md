@@ -27,10 +27,10 @@ const users = await db.table({ u: "users" }).select({ id: "u.id" });
 >
 > ```typescript
 > // WRONG — character spread bug
-> db.table("files").select("files.entity_id", "files.file_type")
+> db.table("files").select("files.entity_id", "files.file_type");
 >
 > // CORRECT
-> db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" })
+> db.table("files").select({ entity_id: "files.entity_id", file_type: "files.file_type" });
 > ```
 
 ```typescript
@@ -46,7 +46,7 @@ db.select({
   parent: {
     id: "parent.id",
     name: "parent.name",
-  }
+  },
 });
 
 // Append to existing select
@@ -99,7 +99,7 @@ db.select({
 db.select({
   score: Puri.rawNumber(
     `word_similarity(?, items.title) * 5 + word_similarity(?, items.tags) * 2`,
-    [query, query]
+    [query, query],
   ),
   label: Puri.rawString(`COALESCE(??, ?)`, ["items.name", "Unspecified"]),
 });
@@ -109,23 +109,23 @@ db.select({
 
 ```typescript
 // Basic
-db.where("role", "admin")
-db.where("age", ">=", 18)
-db.where("deleted_at", null)           // IS NULL
-db.where("deleted_at", "!=", null)     // IS NOT NULL
+db.where("role", "admin");
+db.where("age", ">=", 18);
+db.where("deleted_at", null); // IS NULL
+db.where("deleted_at", "!=", null); // IS NOT NULL
 
 // Multiple conditions (AND)
-db.where("role", "admin").where("is_active", true)
+db.where("role", "admin").where("is_active", true);
 
 // IN / NOT IN
-db.whereIn("role", ["admin", "moderator"])
-db.whereNotIn("status", ["deleted", "banned"])
+db.whereIn("role", ["admin", "moderator"]);
+db.whereNotIn("status", ["deleted", "banned"]);
 
 // LIKE
-db.where("email", "like", `%${keyword}%`)
+db.where("email", "like", `%${keyword}%`);
 
 // Raw WHERE
-db.whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024])
+db.whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024]);
 ```
 
 ### WHERE Grouping (Parentheses)
@@ -137,10 +137,9 @@ db.whereGroup((g) => {
 }).where("is_active", true);
 
 // OR group
-db.where("status", "active")
-  .orWhereGroup((g) => {
-    g.where("role", "admin").where("is_verified", true);
-  });
+db.where("status", "active").orWhereGroup((g) => {
+  g.where("role", "admin").where("is_verified", true);
+});
 ```
 
 ## JOIN
@@ -149,26 +148,24 @@ db.where("status", "active")
 // INNER JOIN
 db.table("employees")
   .join("users", "employees.user_id", "users.id")
-  .select({ empId: "employees.id", userName: "users.username" })
+  .select({ empId: "employees.id", userName: "users.username" });
 
 // LEFT JOIN
-db.table("employees")
-  .leftJoin("departments", "employees.department_id", "departments.id")
+db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
 
 // Using aliases
 db.table({ e: "employees" })
   .join({ u: "users" }, "e.user_id", "u.id")
-  .leftJoin({ d: "departments" }, "e.department_id", "d.id")
+  .leftJoin({ d: "departments" }, "e.department_id", "d.id");
 
 // Complex JOIN conditions with callback
-db.table("orders")
-  .join("products", (j) => {
-    j.on("orders.product_id", "products.id")
-     .on("orders.store_id", "products.store_id");
-  })
+db.table("orders").join("products", (j) => {
+  j.on("orders.product_id", "products.id").on("orders.store_id", "products.store_id");
+});
 
 // Subquery JOIN
-const subquery = db.table("order_items")
+const subquery = db
+  .table("order_items")
   .select({ order_id: "order_id", total: Puri.sum("amount") })
   .groupBy("order_id");
 
@@ -180,9 +177,7 @@ db.table("orders")
 ## ORDER BY & LIMIT
 
 ```typescript
-db.orderBy("created_at", "desc")
-  .limit(20)
-  .offset(40)  // Page 3
+db.orderBy("created_at", "desc").limit(20).offset(40); // Page 3
 ```
 
 ## GROUP BY & HAVING
@@ -208,46 +203,41 @@ db.groupBy("user_id").having("count", ">", 10);
 await db.table("users").insert({ username: "john", email: "john@test.com" });
 
 // RETURNING
-const [{ id }] = await db.table("users")
-  .insert({ username: "john" })
-  .returning("id");
+const [{ id }] = await db.table("users").insert({ username: "john" }).returning("id");
 
 // Multiple columns RETURNING
-const [row] = await db.table("users")
-  .insert({ username: "john" })
-  .returning(["id", "created_at"]);
+const [row] = await db.table("users").insert({ username: "john" }).returning(["id", "created_at"]);
 
 // All columns RETURNING
-const [user] = await db.table("users")
-  .insert({ username: "john" })
-  .returning("*");
+const [user] = await db.table("users").insert({ username: "john" }).returning("*");
 ```
 
 ### INSERT onConflict (Upsert)
 
 ```typescript
 // DO NOTHING
-await db.table("users")
-  .insert({ id: 1, username: "john" })
-  .onConflict("id");  // or .onConflict("id", "nothing")
+await db.table("users").insert({ id: 1, username: "john" }).onConflict("id"); // or .onConflict("id", "nothing")
 
 // DO UPDATE - specific columns only
-await db.table("users")
+await db
+  .table("users")
   .insert({ id: 1, username: "john", email: "new@test.com" })
   .onConflict("id", { update: ["username", "email"] });
 
 // DO UPDATE - with specified values
-await db.table("users")
+await db
+  .table("users")
   .insert({ id: 1, username: "john" })
   .onConflict("id", {
     update: {
       username: "updated_john",
       updated_at: Puri.rawDate("NOW()"),
-    }
+    },
   });
 
 // Composite key conflict
-await db.table("user_settings")
+await db
+  .table("user_settings")
   .insert({ user_id: 1, key: "theme", value: "dark" })
   .onConflict(["user_id", "key"], { update: ["value"] });
 ```
@@ -270,15 +260,15 @@ await db.table("users").where("id", 1).delete();
 
 ## Result Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `await query` | `T[]` | Array result (Puri is Thenable) |
-| `first()` | `Promise<T \| undefined>` | First record |
-| `pluck("col")` | `Promise<V[]>` | Array of a specific column only |
+| Method         | Returns                   | Description                     |
+| -------------- | ------------------------- | ------------------------------- |
+| `await query`  | `T[]`                     | Array result (Puri is Thenable) |
+| `first()`      | `Promise<T \| undefined>` | First record                    |
+| `pluck("col")` | `Promise<V[]>`            | Array of a specific column only |
 
 ```typescript
-const users = await db.table("users").select({ id: "id" });           // T[]
-const user = await db.table("users").where("id", 1).first();          // T | undefined
+const users = await db.table("users").select({ id: "id" }); // T[]
+const user = await db.table("users").where("id", 1).first(); // T | undefined
 const ids = await db.table("users").where("role", "admin").pluck("id"); // number[]
 ```
 
@@ -297,13 +287,13 @@ const query1 = baseQuery.clone().where("role", "admin");
 const query2 = baseQuery.clone().where("role", "user");
 
 // Clear parts of a query
-db.clear("select")   // Clear SELECT clause
-db.clear("order")    // Clear ORDER BY
-db.clear("limit")    // Clear LIMIT
-db.clear("offset")   // Clear OFFSET
+db.clear("select"); // Clear SELECT clause
+db.clear("order"); // Clear ORDER BY
+db.clear("limit"); // Clear LIMIT
+db.clear("offset"); // Clear OFFSET
 
 // Remove a specific JOIN
-db.clearJoin("alias")
+db.clearJoin("alias");
 ```
 
 ## Transactions
@@ -324,16 +314,16 @@ await this.getPuri("w").transaction(async (trx) => {
 
 ```typescript
 // Basic search (websearch_to_tsquery, simple config)
-db.whereTsSearch("search_vector", "search term")
+db.whereTsSearch("search_vector", "search term");
 
 // Specify config
-db.whereTsSearch("search_vector", "search term", "korean")
+db.whereTsSearch("search_vector", "search term", "korean");
 
 // Detailed options
 db.whereTsSearch("search_vector", "search term", {
-  parser: "plainto_tsquery",  // websearch_to_tsquery | plainto_tsquery | phraseto_tsquery
+  parser: "plainto_tsquery", // websearch_to_tsquery | plainto_tsquery | phraseto_tsquery
   config: "korean",
-})
+});
 ```
 
 ### tsHighlight (Search Term Highlighting)
@@ -366,8 +356,8 @@ The first argument must be `Puri.toTsVector()` rather than a column name string.
 db.select({
   rank: Puri.tsRank(Puri.toTsVector("documents.search_vector"), "search term"),
 })
-.whereTsSearch("documents.search_vector", "search term")
-.orderBy("rank", "desc");
+  .whereTsSearch("documents.search_vector", "search term")
+  .orderBy("rank", "desc");
 
 // Specify config
 db.select({
@@ -377,8 +367,8 @@ db.select({
 // Options
 db.select({
   rank: Puri.tsRank(Puri.toTsVector("documents.title"), "search term", {
-    normalization: 1,        // Document length normalization
-    weights: [0.1, 0.2, 0.4, 1.0],  // D, C, B, A weights
+    normalization: 1, // Document length normalization
+    weights: [0.1, 0.2, 0.4, 1.0], // D, C, B, A weights
   }),
 });
 
@@ -404,15 +394,15 @@ db.select({
 
 ```typescript
 // Single column search
-db.whereSearch("title", "search term")
+db.whereSearch("title", "search term");
 
 // Multi-column search (requires same column composition as index)
-db.whereSearch(["title", "content"], "search term")
+db.whereSearch(["title", "content"], "search term");
 
 // Weight options
 db.whereSearch(["title", "content"], "search term", {
-  weights: [10, 1],  // 10x weight on title
-})
+  weights: [10, 1], // 10x weight on title
+});
 ```
 
 ### score (Search Score)
@@ -423,8 +413,8 @@ db.select({
   title: "title",
   score: Puri.score(),
 })
-.whereSearch("title", "search term")
-.orderBy("score", "desc");
+  .whereSearch("title", "search term")
+  .orderBy("score", "desc");
 ```
 
 ### highlight (Highlighting)
@@ -456,7 +446,8 @@ db.select({
 const embedding = await getEmbedding("search query");
 
 // Default (cosine similarity)
-const results = await db.table("documents")
+const results = await db
+  .table("documents")
   .select({ id: "id", title: "title" })
   .vectorSimilarity("embedding", embedding);
 // → SELECT *, 1 - (embedding <=> '[...]'::vector) as similarity
@@ -471,22 +462,22 @@ db.vectorSimilarity("embedding", embedding, { method: "inner_product" });
 // threshold filter
 db.vectorSimilarity("embedding", embedding, {
   method: "cosine",
-  threshold: 0.7,  // only similarity >= 0.7
+  threshold: 0.7, // only similarity >= 0.7
 });
 
 // distinctOn (deduplicate)
 db.vectorSimilarity("embedding", embedding, {
-  distinctOn: "document_id",  // best similarity per document_id only
+  distinctOn: "document_id", // best similarity per document_id only
 });
 ```
 
 **Return value**: `similarity` column is automatically added
 
-| method | similarity meaning | sort order |
-|--------|-------------------|------------|
-| cosine | 1 - distance (higher = more similar) | desc |
-| l2 | distance (lower = more similar) | asc |
-| inner_product | -distance (higher = more similar) | desc |
+| method        | similarity meaning                   | sort order |
+| ------------- | ------------------------------------ | ---------- |
+| cosine        | 1 - distance (higher = more similar) | desc       |
+| l2            | distance (lower = more similar)      | asc        |
+| inner_product | -distance (higher = more similar)    | desc       |
 
 ---
 
@@ -498,11 +489,11 @@ Requires `CREATE EXTENSION IF NOT EXISTS pg_trgm`. Typically used together with 
 
 The SQL operand order differs per operator:
 
-| operator | meaning | SQL |
-|----------|---------|-----|
-| `<%` (default) | word similarity | `'query' <% column` |
-| `%` | similarity | `column % 'query'` |
-| `<<%` | strict word similarity | `'query' <<% column` |
+| operator       | meaning                | SQL                  |
+| -------------- | ---------------------- | -------------------- |
+| `<%` (default) | word similarity        | `'query' <% column`  |
+| `%`            | similarity             | `column % 'query'`   |
+| `<<%`          | strict word similarity | `'query' <<% column` |
 
 ```typescript
 puri.whereFuzzy("items.search_text", query);
@@ -527,7 +518,7 @@ const results = await this.getPuri("r")
     title: "items.title_ko",
     score: Puri.rawNumber(
       `word_similarity(?, items.title_ko) * 5 + word_similarity(?, items.title_en) * 3`,
-      [query, query]
+      [query, query],
     ),
   })
   .orderByRaw("score DESC");
@@ -535,11 +526,11 @@ const results = await this.getPuri("r")
 
 ### Language-specific Characteristics
 
-| Language | Suitability | Notes |
-|----------|-------------|-------|
-| English | Excellent | Word-level splitting + word_similarity |
-| Korean | Good | Performance degrades for 1-2 character searches |
-| Japanese | Good | Performance degrades for 1-2 character searches |
+| Language | Suitability | Notes                                           |
+| -------- | ----------- | ----------------------------------------------- |
+| English  | Excellent   | Word-level splitting + word_similarity          |
+| Korean   | Good        | Performance degrades for 1-2 character searches |
+| Japanese | Good        | Performance degrades for 1-2 character searches |
 
 ---
 

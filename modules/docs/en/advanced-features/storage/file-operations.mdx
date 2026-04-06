@@ -43,11 +43,11 @@ class UserModelClass extends BaseModelClass {
     const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Save file
-    const url = await file.saveToDisk('fs', `avatars/${ctx.user.id}.png`);
+    const url = await file.saveToDisk("fs", `avatars/${ctx.user.id}.png`);
 
     return { url };
   }
@@ -55,12 +55,13 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **Client request**:
+
 ```typescript
 const formData = new FormData();
-formData.append('file', file);
+formData.append("file", file);
 
-await fetch('/api/user/uploadAvatar', {
-  method: 'POST',
+await fetch("/api/user/uploadAvatar", {
+  method: "POST",
   body: formData,
 });
 ```
@@ -74,15 +75,15 @@ class PostModelClass extends BaseModelClass {
     const { bufferedFiles } = Sonamu.getContext();
 
     if ((bufferedFiles?.length ?? 0) === 0) {
-      throw new Error('No files provided');
+      throw new Error("No files provided");
     }
 
     // Save all files
     const urls = await Promise.all(
       (bufferedFiles ?? []).map(async (file, index) => {
         const key = `posts/${postId}/image-${index}.${file.extname}`;
-        return await file.saveToDisk('fs', key);
-      })
+        return await file.saveToDisk("fs", key);
+      }),
     );
 
     return { urls };
@@ -91,14 +92,15 @@ class PostModelClass extends BaseModelClass {
 ```
 
 **Client request**:
+
 ```typescript
 const formData = new FormData();
-formData.append('file', file1);
-formData.append('file', file2);
-formData.append('file', file3);
+formData.append("file", file1);
+formData.append("file", file2);
+formData.append("file", file3);
 
-await fetch('/api/post/uploadImages?postId=1', {
-  method: 'POST',
+await fetch("/api/post/uploadImages?postId=1", {
+  method: "POST",
   body: formData,
 });
 ```
@@ -119,13 +121,15 @@ type Context = {
 ```
 
 **Single file access**: Use the first element of the array
+
 ```typescript
-const file = bufferedFiles?.[0];  // First file
+const file = bufferedFiles?.[0]; // First file
 ```
 
 **Multiple file access**: Iterate through the array
+
 ```typescript
-for (const file of (bufferedFiles ?? [])) {
+for (const file of bufferedFiles ?? []) {
   // Process each file
 }
 ```
@@ -166,6 +170,7 @@ A class that wraps uploaded files.
     const file = bufferedFiles?.[0]; // Use first file
     console.log(file.filename);  // 'avatar.png'
     ```
+
   </Tab>
 
   <Tab title="mimetype" icon="file-code">
@@ -177,6 +182,7 @@ A class that wraps uploaded files.
     // 'application/pdf'
     // 'video/mp4'
     ```
+
   </Tab>
 
   <Tab title="size" icon="weight">
@@ -186,6 +192,7 @@ A class that wraps uploaded files.
     console.log(file.size);  // 1024000 (1MB)
     console.log(`${(file.size / 1024 / 1024).toFixed(2)}MB`);  // '0.98MB'
     ```
+
   </Tab>
 
   <Tab title="extname" icon="file-zipper">
@@ -198,6 +205,7 @@ A class that wraps uploaded files.
     // 'mp4'
     // false (no extension)
     ```
+
   </Tab>
 
   <Tab title="url" icon="link">
@@ -209,6 +217,7 @@ A class that wraps uploaded files.
     // '/uploads/file.pdf' (fs)
     // 'https://bucket.s3.amazonaws.com/uploads/file.pdf' (s3)
     ```
+
   </Tab>
 
   <Tab title="signedUrl" icon="lock">
@@ -221,6 +230,7 @@ A class that wraps uploaded files.
     ```
 
     **Use case**: Temporary access URL (with expiration)
+
   </Tab>
 </Tabs>
 
@@ -235,8 +245,8 @@ const { bufferedFiles } = Sonamu.getContext();
 const file = bufferedFiles?.[0]; // Use first file
 const buffer = file.buffer;
 
-console.log(buffer instanceof Buffer);  // true
-console.log(buffer.length);  // File size (bytes)
+console.log(buffer instanceof Buffer); // true
+console.log(buffer.length); // File size (bytes)
 ```
 
 #### md5()
@@ -248,10 +258,11 @@ const { bufferedFiles } = Sonamu.getContext();
 const file = bufferedFiles?.[0]; // Use first file
 const hash = await file.md5();
 
-console.log(hash);  // '5d41402abc4b2a76b9719d911017c592'
+console.log(hash); // '5d41402abc4b2a76b9719d911017c592'
 ```
 
 **Use cases**:
+
 - File deduplication check
 - File integrity verification
 - Unique filename generation
@@ -265,10 +276,10 @@ const { bufferedFiles } = Sonamu.getContext();
 const file = bufferedFiles?.[0]; // Use first file
 
 // Save to fs disk
-const url = await file.saveToDisk('fs', 'uploads/file.pdf');
+const url = await file.saveToDisk("fs", "uploads/file.pdf");
 
 // Save to specific disk
-const url = await file.saveToDisk('s3', 'uploads/file.pdf');
+const url = await file.saveToDisk("s3", "uploads/file.pdf");
 ```
 
 **Return value**: URL of the saved file (unsigned)
@@ -285,30 +296,30 @@ class UserModelClass extends BaseModelClass {
     const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Allow only image files
-    if (!file.mimetype.startsWith('image/')) {
-      throw new Error('Only image files can be uploaded');
+    if (!file.mimetype.startsWith("image/")) {
+      throw new Error("Only image files can be uploaded");
     }
 
     // File size limit (5MB)
-    const maxSize = 5 * 1024 * 1024;  // 5MB
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      throw new Error('File size must be 5MB or less');
+      throw new Error("File size must be 5MB or less");
     }
 
     // Filename: user-{id}-{timestamp}.{ext}
     const timestamp = Date.now();
-    const ext = file.extname || 'png';
+    const ext = file.extname || "png";
     const key = `avatars/user-${ctx.user.id}-${timestamp}.${ext}`;
 
     // Save
-    const url = await file.saveToDisk('fs', key);
+    const url = await file.saveToDisk("fs", key);
 
     // Update DB
-    await this.updateOne(['id', ctx.user.id], {
+    await this.updateOne(["id", ctx.user.id], {
       avatar_url: url,
       updated_at: new Date(),
     });
@@ -328,26 +339,24 @@ class PostModelClass extends BaseModelClass {
 
     // Limit number of files
     if ((bufferedFiles?.length ?? 0) > 10) {
-      throw new Error('Maximum 10 files can be uploaded');
+      throw new Error("Maximum 10 files can be uploaded");
     }
 
     // Filter images only
-    const imageFiles = (bufferedFiles ?? []).filter(file =>
-      file.mimetype.startsWith('image/')
-    );
+    const imageFiles = (bufferedFiles ?? []).filter((file) => file.mimetype.startsWith("image/"));
 
     if (imageFiles.length === 0) {
-      throw new Error('No image files found');
+      throw new Error("No image files found");
     }
 
     // Save all images
     const urls = await Promise.all(
       imageFiles.map(async (file, index) => {
         const timestamp = Date.now();
-        const ext = file.extname || 'png';
+        const ext = file.extname || "png";
         const key = `posts/${postId}/image-${index}-${timestamp}.${ext}`;
-        return await file.saveToDisk('fs', key);
-      })
+        return await file.saveToDisk("fs", key);
+      }),
     );
 
     return { urls, count: urls.length };
@@ -360,24 +369,24 @@ class PostModelClass extends BaseModelClass {
 ```typescript
 class FileModelClass extends BaseModelClass {
   @upload()
-  async uploadDocument(type: 'pdf' | 'excel' | 'word') {
+  async uploadDocument(type: "pdf" | "excel" | "word") {
     const { bufferedFiles } = Sonamu.getContext();
     const file = bufferedFiles?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // MIME type validation
     const allowedMimeTypes = {
-      pdf: ['application/pdf'],
+      pdf: ["application/pdf"],
       excel: [
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       ],
       word: [
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       ],
     };
 
@@ -387,7 +396,7 @@ class FileModelClass extends BaseModelClass {
 
     // Save file
     const key = `documents/${type}/${Date.now()}-${file.filename}`;
-    const url = await file.saveToDisk('fs', key);
+    const url = await file.saveToDisk("fs", key);
 
     return { url, type, filename: file.filename };
   }
@@ -399,20 +408,20 @@ class FileModelClass extends BaseModelClass {
 ```typescript
 class MediaModelClass extends BaseModelClass {
   @upload()
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async uploadMedia() {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Calculate MD5 hash
     const hash = await file.md5();
 
     // Check if file already exists
-    const existing = await this.findOne(['md5_hash', hash]);
+    const existing = await this.findOne(["md5_hash", hash]);
 
     if (existing) {
       // Return existing URL if already exists
@@ -445,17 +454,17 @@ class MediaModelClass extends BaseModelClass {
 ```typescript
 class FileModelClass extends BaseModelClass {
   @upload()
-  @api({ httpMethod: 'POST' })
-  async upload(visibility: 'public' | 'private', ctx: Context) {
+  @api({ httpMethod: "POST" })
+  async upload(visibility: "public" | "private", ctx: Context) {
     const { files } = Sonamu.getContext();
     const file = files?.[0]; // Use first file
 
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     // Use different disk based on visibility
-    const disk = visibility === 'public' ? 'public' : 'private';
+    const disk = visibility === "public" ? "public" : "private";
     const key = `${visibility}/${ctx.user.id}/${Date.now()}-${file.filename}`;
 
     // Save
@@ -591,46 +600,51 @@ async deleteFile(key: string) {
 **Cautions when uploading files**:
 
 1. **File validation is required**: Validate type, size, and extension
+
    ```typescript
    // ✅ Validation
-   if (!file.mimetype.startsWith('image/')) {
-     throw new Error('Images only');
+   if (!file.mimetype.startsWith("image/")) {
+     throw new Error("Images only");
    }
    if (file.size > 5 * 1024 * 1024) {
-     throw new Error('5MB or less');
+     throw new Error("5MB or less");
    }
    ```
 
 2. **Use unique filenames**: Prevent overwrites
+
    ```typescript
    // ❌ Using original filename
-   await file.saveToDisk('fs', `uploads/${file.filename}`);
+   await file.saveToDisk("fs", `uploads/${file.filename}`);
 
    // ✅ Add timestamp
-   await file.saveToDisk('fs', `uploads/${Date.now()}-${file.filename}`);
+   await file.saveToDisk("fs", `uploads/${Date.now()}-${file.filename}`);
 
    // ✅ Use UUID
-   await file.saveToDisk('fs', `uploads/${uuid()}.${file.extname}`);
+   await file.saveToDisk("fs", `uploads/${uuid()}.${file.extname}`);
    ```
 
 3. **Path validation**: Prevent directory traversal
+
    ```typescript
    // ❌ Dangerous: Can access parent directories
-   const key = userInput;  // '../../../etc/passwd'
+   const key = userInput; // '../../../etc/passwd'
 
    // ✅ Safe: Path validation
-   const key = `uploads/${userInput.replace(/\.\./g, '')}`;
+   const key = `uploads/${userInput.replace(/\.\./g, "")}`;
    ```
 
 4. **File size limit**: Prevent memory overflow
+
    ```typescript
-   const maxSize = 10 * 1024 * 1024;  // 10MB
+   const maxSize = 10 * 1024 * 1024; // 10MB
    if (file.size > maxSize) {
-     throw new Error('File is too large');
+     throw new Error("File is too large");
    }
    ```
 
 5. **MIME type validation**: Don't trust only the extension
+
    ```typescript
    // ❌ Only checking extension
    if (file.filename.endsWith('.png')) { ... }
@@ -638,15 +652,24 @@ async deleteFile(key: string) {
    // ✅ Check MIME type
    if (file.mimetype === 'image/png') { ... }
    ```
-</Warning>
+
+   </Warning>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Storage Manager" icon="database" href="/en/advanced-features/storage/storage-manager">
+  <Card
+    title="Storage Manager"
+    icon="database"
+    href="/en/advanced-features/storage/storage-manager"
+  >
     Managing multiple disks
   </Card>
-  <Card title="Storage Drivers" icon="hard-drive" href="/en/advanced-features/storage/storage-drivers">
+  <Card
+    title="Storage Drivers"
+    icon="hard-drive"
+    href="/en/advanced-features/storage/storage-drivers"
+  >
     fs, S3 driver configuration
   </Card>
   <Card title="URL Builder" icon="link" href="/en/advanced-features/storage/url-builder">

@@ -1,6 +1,6 @@
 ---
-title: 'Context'
-description: 'Sonamu API Request Context Reference'
+title: "Context"
+description: "Sonamu API Request Context Reference"
 ---
 
 Context is an object that provides access to HTTP request-related information during Sonamu API method execution. It can be injected as a parameter to API methods and is managed through AsyncLocalStorage.
@@ -19,10 +19,12 @@ type Context = {
   bufferedFiles?: BufferedFile[];
   /** Files uploaded in stream mode */
   uploadedFiles?: UploadedFile[];
-} & AuthContext & ContextExtend;
+} & AuthContext &
+  ContextExtend;
 ```
 
 The Context type is composed of **Intersection Types (`&`)**:
+
 - Base Context object (request, reply, etc.)
 - `AuthContext`: Authentication-related properties (user, session)
 - `ContextExtend`: Project-specific extension properties
@@ -34,7 +36,7 @@ This structure allows Context to be extensible while maintaining type safety.
 ### request
 
 ```typescript
-request: FastifyRequest
+request: FastifyRequest;
 ```
 
 The Fastify Request object representing the current HTTP request. Provides access to request URL, method, query parameters, etc.
@@ -42,7 +44,7 @@ The Fastify Request object representing the current HTTP request. Provides acces
 ### reply
 
 ```typescript
-reply: FastifyReply
+reply: FastifyReply;
 ```
 
 The Fastify Reply object representing the current HTTP response. Used for setting response headers, changing status codes, etc.
@@ -50,7 +52,7 @@ The Fastify Reply object representing the current HTTP response. Used for settin
 ### headers
 
 ```typescript
-headers: IncomingHttpHeaders
+headers: IncomingHttpHeaders;
 ```
 
 HTTP request headers. Same value as `request.headers`, provided for convenience.
@@ -58,7 +60,7 @@ HTTP request headers. Same value as `request.headers`, provided for convenience.
 ### createSSE
 
 ```typescript
-createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>
+createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
 ```
 
 Function for creating Server-Sent Events (SSE) streams. Enables creating type-safe event streams using Zod schemas.
@@ -74,13 +76,13 @@ class MyModelClass extends BaseModelClass {
     type: "sse",
     events: z.object({
       progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() })
-    })
+      complete: z.object({ result: z.string() }),
+    }),
   })
   async processData(ctx: Context) {
     const sse = ctx.createSSE({
       progress: z.object({ percent: z.number() }),
-      complete: z.object({ result: z.string() })
+      complete: z.object({ result: z.string() }),
     });
 
     // Send progress
@@ -97,7 +99,7 @@ class MyModelClass extends BaseModelClass {
 ### naiteStore
 
 ```typescript
-naiteStore: NaiteStore
+naiteStore: NaiteStore;
 ```
 
 Storage used by the Naite testing framework. Used for storing mocked data or snapshot information during tests.
@@ -105,7 +107,7 @@ Storage used by the Naite testing framework. Used for storing mocked data or sna
 ### locale
 
 ```typescript
-locale: string
+locale: string;
 ```
 
 The locale (language setting) of the current request. This property always has a value.
@@ -119,8 +121,8 @@ Parses the `Accept-Language` header and automatically selects one of the support
 export default {
   i18n: {
     defaultLocale: "ko",
-    supportedLocales: ["ko", "en", "ja"]
-  }
+    supportedLocales: ["ko", "en", "ja"],
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -133,10 +135,7 @@ class PostModelClass extends BaseModelClass {
     const locale = ctx.locale; // "ko", "en", or "ja"
 
     // Return different responses based on locale
-    const posts = await this.getPuri("r")
-      .table("posts")
-      .where("locale", locale)
-      .select("*");
+    const posts = await this.getPuri("r").table("posts").where("locale", locale).select("*");
 
     return posts;
   }
@@ -158,15 +157,15 @@ Each file is loaded in memory, allowing flexible operations like MD5 calculation
 ```typescript
 interface BufferedFile {
   // File information
-  filename: string;       // Filename
-  mimetype: string;       // MIME type (e.g., "image/png", "application/pdf")
-  size: number;           // File size (bytes)
-  extname: string;        // Extension (e.g., "png", "pdf")
+  filename: string; // Filename
+  mimetype: string; // MIME type (e.g., "image/png", "application/pdf")
+  size: number; // File size (bytes)
+  extname: string; // Extension (e.g., "png", "pdf")
 
   // File processing methods
-  buffer: Buffer;                                          // File Buffer (getter)
-  md5(): Promise<string>;                                  // Generate MD5 hash
-  saveToDisk(diskName: string, key: string): Promise<string>;  // Save file and return URL
+  buffer: Buffer; // File Buffer (getter)
+  md5(): Promise<string>; // Generate MD5 hash
+  saveToDisk(diskName: string, key: string): Promise<string>; // Save file and return URL
 }
 ```
 
@@ -192,7 +191,7 @@ class FileModelClass extends BaseModelClass {
           mime_type: file.mimetype,
           size: file.size,
         };
-      })
+      }),
     );
 
     return { files: processedFiles };
@@ -217,10 +216,7 @@ class ImageModelClass extends BaseModelClass {
     const file = bufferedFiles[0];
 
     // Process image with Buffer (using getter)
-    const thumbnail = await sharp(file.buffer)
-      .resize(200, 200)
-      .jpeg({ quality: 80 })
-      .toBuffer();
+    const thumbnail = await sharp(file.buffer).resize(200, 200).jpeg({ quality: 80 }).toBuffer();
 
     // Save processed image
     const disk = Sonamu.storage.use("fs");
@@ -247,17 +243,17 @@ Files have already been streamed to storage, so only metadata like URL/key is ac
 ```typescript
 interface UploadedFile {
   // File information
-  filename: string;       // Filename
-  mimetype: string;       // MIME type (e.g., "image/png", "application/pdf")
-  size: number;           // File size (bytes)
-  extname: string;        // Extension (e.g., "png", "pdf")
-  url: string;            // URL of the stored file
-  signedUrl: string;      // Signed URL (with expiration)
-  key: string;            // Key in storage
-  diskName: string;       // Storage disk name
+  filename: string; // Filename
+  mimetype: string; // MIME type (e.g., "image/png", "application/pdf")
+  size: number; // File size (bytes)
+  extname: string; // Extension (e.g., "png", "pdf")
+  url: string; // URL of the stored file
+  signedUrl: string; // Signed URL (with expiration)
+  key: string; // Key in storage
+  diskName: string; // Storage disk name
 
   // File processing methods
-  download(): Promise<Buffer>;  // Download file from storage
+  download(): Promise<Buffer>; // Download file from storage
 }
 ```
 
@@ -287,11 +283,10 @@ class FileModelClass extends BaseModelClass {
 ```
 
 <Info>
-**File Upload Handling**:
-- Must be used with the `@upload` decorator
-- Buffer mode (default): Use `bufferedFiles` - loaded in memory, suitable for MD5 calculation/image processing
-- Stream mode: Use `uploadedFiles` - streamed directly to storage, suitable for large files
-- See [@upload decorator](/en/api-reference/decorators/upload) documentation for more details
+  **File Upload Handling**: - Must be used with the `@upload` decorator - Buffer mode (default): Use
+  `bufferedFiles` - loaded in memory, suitable for MD5 calculation/image processing - Stream mode:
+  Use `uploadedFiles` - streamed directly to storage, suitable for large files - See [@upload
+  decorator](/en/api-reference/decorators/upload) documentation for more details
 </Info>
 
 ### AuthContext Properties
@@ -326,11 +321,11 @@ export default {
         return {
           ...baseContext,
           customProperty: "custom value",
-          helperMethod: () => console.log("helper")
+          helperMethod: () => console.log("helper"),
         };
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 

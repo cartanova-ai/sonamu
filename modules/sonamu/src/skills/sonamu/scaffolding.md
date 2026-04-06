@@ -9,13 +9,13 @@ description: Reference for using Sonamu UI Scaffolding. Common errors and soluti
 
 **The following 5 items must all be scaffolded for every entity:**
 
-| Item | Description |
-|------|------|
-| `model` | CRUD model based on BaseModelClass |
-| `model_test` | Model test file |
-| `view_list` | List view component |
-| `view_search_input` | Search input component |
-| `view_form` | Create/edit form component |
+| Item                | Description                        |
+| ------------------- | ---------------------------------- |
+| `model`             | CRUD model based on BaseModelClass |
+| `model_test`        | Model test file                    |
+| `view_list`         | List view component                |
+| `view_search_input` | Search input component             |
+| `view_form`         | Create/edit form component         |
 
 **DO NOT:** scaffold only model and model_test and skip the view-related items
 
@@ -36,6 +36,7 @@ Run from the **`packages/api`** directory:
 **CRITICAL: After scaffolding is complete, you must perform the following steps.**
 
 ### 1. Build Test
+
 ```bash
 cd packages/api
 pnpm build
@@ -43,14 +44,17 @@ pnpm build
 cd packages/web
 pnpm build
 ```
+
 - [ ] API build succeeds
 - [ ] Web build succeeds
 
 ### 2. Restart Dev Server
+
 ```bash
 cd packages/api
 pnpm dev
 ```
+
 - [ ] Server running normally
 
 ### 3. If Relations Exist (Add i18n Keys)
@@ -61,19 +65,20 @@ pnpm dev
 // packages/api/src/i18n/ko.ts
 export default {
   // ... existing keys
-  
+
   // Add for each entity with relations
   "entity.Post.author_id": "Author",
   "entity.Question.collection_id": "Collection",
   "entity.Question.parent_id": "Parent Question",
   "entity.Employee.department_id": "Department",
   "entity.Task.principal_investigator_id": "Principal Investigator",
-  
+
   // ...
 } as const;
 ```
 
 **Pattern**: `entity.{EntityId}.{relation}_id`
+
 - Add `_id` suffix to the relation name
 - Example: `author` relation → `author_id` key
 
@@ -90,7 +95,7 @@ export default {
 if (params.orderBy === "id-desc") {
   qb.orderBy("posts.id", "desc");
 } else {
-  exhaustive(params.orderBy);  // type error!
+  exhaustive(params.orderBy); // type error!
 }
 
 // Fix: add the remaining cases
@@ -101,7 +106,7 @@ if (params.orderBy === "id-desc") {
 } else if (params.orderBy === "name-asc") {
   qb.orderBy("posts.name", "asc");
 } else {
-  exhaustive(params.orderBy);  // no more type errors
+  exhaustive(params.orderBy); // no more type errors
 }
 ```
 
@@ -121,19 +126,17 @@ export const PostSaveParams = PostBaseSchema.partial({
 });
 
 // Fix: add nullable fields
-export const PostSaveParams = PostBaseSchema
-  .partial({
-    id: true,
-    created_at: true,
-    updated_at: true,      // nullable field
-    category: true,        // nullable field
-    description: true,     // nullable field
-  })
-  .extend({
-    updated_at: z.date().nullish(),
-    category: z.string().nullish(),
-    description: z.string().nullish(),
-  });
+export const PostSaveParams = PostBaseSchema.partial({
+  id: true,
+  created_at: true,
+  updated_at: true, // nullable field
+  category: true, // nullable field
+  description: true, // nullable field
+}).extend({
+  updated_at: z.date().nullish(),
+  category: z.string().nullish(),
+  description: z.string().nullish(),
+});
 ```
 
 **Detailed guide**: See "Tasks to do immediately after entity creation" in `testing.md`
@@ -154,12 +157,12 @@ Post-scaffolding required checklist complete
 
 ## Common Errors
 
-| Error | Cause | Fix |
-|------|------|------|
-| "Non-existent module path requested {Type}" | types.ts not created or not compiled | Wait/create manually → build → restart dev |
-| exhaustive() type error | Only the first OrderBy value is handled automatically | See "4. Add OrderBy Cases" above |
-| Missing i18n key (relation) | `author_id` vs `author` | See "3. If Relations Exist" above |
-| IdAsyncSelect API mismatch | Old scaffolding template used | See "IdAsyncSelect API Migration" below |
+| Error                                       | Cause                                                 | Fix                                        |
+| ------------------------------------------- | ----------------------------------------------------- | ------------------------------------------ |
+| "Non-existent module path requested {Type}" | types.ts not created or not compiled                  | Wait/create manually → build → restart dev |
+| exhaustive() type error                     | Only the first OrderBy value is handled automatically | See "4. Add OrderBy Cases" above           |
+| Missing i18n key (relation)                 | `author_id` vs `author`                               | See "3. If Relations Exist" above          |
+| IdAsyncSelect API mismatch                  | Old scaffolding template used                         | See "IdAsyncSelect API Migration" below    |
 
 ## Detailed Explanations
 
@@ -194,14 +197,17 @@ if (entityId) {
 ```
 
 **Auto-generation conditions**:
+
 - When `parentId` is absent (top-level entity)
 - When the `types.ts` file does not yet exist
 
 **Causes of errors**:
+
 - Attempting scaffolding immediately after entity creation before the syncer has run
 - types.ts was created but the build has not completed so the `.js` file is missing
 
 **Resolution order** (run from `packages/api`):
+
 1. Wait briefly after entity creation for the syncer to generate types.ts (2-3 seconds)
 2. If types.ts is missing, create it manually (see template below)
 3. Create migration (Sonamu UI) and run it (`pnpm sonamu migrate run`)
@@ -256,7 +262,7 @@ The scaffolding template only handles the **first value** of the `OrderBy` enum 
 if (params.orderBy === "id-desc") {
   qb.orderBy("posts.id", "desc");
 } else {
-  exhaustive(params.orderBy);  // remaining cases unhandled → type error
+  exhaustive(params.orderBy); // remaining cases unhandled → type error
 }
 ```
 
@@ -288,6 +294,7 @@ An entity's relation prop is defined as `author`, and the i18n label in `sd.gene
 **Fix (choose one)**:
 
 1. **Manually add `_id` key to ko.ts** (recommended):
+
 ```typescript
 // packages/api/src/i18n/ko.ts
 export default {
@@ -300,9 +307,12 @@ export default {
 ```
 
 2. **Remove `_id` from form.tsx** (requires manual edit):
+
 ```typescript
 // Manual edit after scaffolding
-{SD("entity.Post.author")}  // remove _id
+{
+  SD("entity.Post.author");
+} // remove _id
 ```
 
 **Recommended**: First option - add the `_id` key to ko.ts. It is preserved during sync and can be reused across multiple forms.
@@ -318,6 +328,7 @@ Therefore, running `pnpm sonamu scaffold` generates wrapper components based on 
 #### Specific API Changes
 
 **Old API (code generated by scaffolding):**
+
 ```typescript
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,
@@ -350,6 +361,7 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
 ```
 
 **New API (actual package API):**
+
 ```typescript
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,

@@ -1,15 +1,13 @@
 ---
-title: 'Migration Tab'
-description: 'Create and run migrations'
+title: "Migration Tab"
+description: "Create and run migrations"
 ---
 
 In the Migration tab, you can visually manage migrations to **reflect Entity changes in the database**. It replaces the CLI `pnpm migrate` command with a UI.
 
 ## Migration Tab Structure
 
-<Frame caption="Migration Management Screen">
-  {/* TODO: Add Migration tab screenshot */}
-</Frame>
+<Frame caption="Migration Management Screen">{/* TODO: Add Migration tab screenshot */}</Frame>
 
 The Migration tab consists of two main areas:
 
@@ -22,11 +20,11 @@ The Migration tab consists of two main areas:
 
 Click the **[Check Status]** button to check the current migration status.
 
-| Status | Description | Display |
-|--------|-------------|---------|
-| **Pending** | Migrations not yet applied | 📋 Yellow |
-| **Applied** | Already applied migrations | ✅ Green |
-| **Failed** | Error occurred during execution | ❌ Red |
+| Status      | Description                     | Display   |
+| ----------- | ------------------------------- | --------- |
+| **Pending** | Migrations not yet applied      | 📋 Yellow |
+| **Applied** | Already applied migrations      | ✅ Green  |
+| **Failed**  | Error occurred during execution | ❌ Red    |
 
 ### Per-Database Status
 
@@ -46,13 +44,13 @@ Sonamu automatically generates migrations when you modify an Entity.
 
 When there are Entity changes like:
 
-| Change Type | Example |
-|-------------|---------|
-| **Table creation** | Add new Entity |
-| **Column addition** | Add Property |
-| **Column modification** | Change type/length |
-| **Column deletion** | Delete Property |
-| **Index addition** | Add Index |
+| Change Type              | Example                |
+| ------------------------ | ---------------------- |
+| **Table creation**       | Add new Entity         |
+| **Column addition**      | Add Property           |
+| **Column modification**  | Change type/length     |
+| **Column deletion**      | Delete Property        |
+| **Index addition**       | Add Index              |
 | **Foreign key addition** | Add belongsTo relation |
 
 ### Checking Migration Files
@@ -84,6 +82,7 @@ export async function down(knex: Knex): Promise<void> {
 3. Click **[Confirm]** in the confirmation modal
 
 **Execution process**:
+
 ```
 Development Master:
   ✓ 20240116_101530_add_user_phone (0.2s)
@@ -99,7 +98,7 @@ All migrations applied successfully!
 Click the **[Run All]** button to run all pending migrations in order.
 
 <Warning>
-**Production caution**: **Always backup** before running migrations on production databases.
+  **Production caution**: **Always backup** before running migrations on production databases.
 </Warning>
 
 ## Rolling Back Migrations
@@ -111,6 +110,7 @@ Click the **[Run All]** button to run all pending migrations in order.
 3. Click **[Confirm]** in the confirmation modal
 
 **Rollback process**:
+
 ```
 Rolling back last migration...
 
@@ -121,7 +121,7 @@ Rollback completed successfully!
 ```
 
 <Warning>
-**Data loss risk**: Rollback can delete tables or columns, which may result in **data loss**.
+  **Data loss risk**: Rollback can delete tables or columns, which may result in **data loss**.
 </Warning>
 
 ## Migration Preview
@@ -145,6 +145,7 @@ Changes:
 ```
 
 **Icon meanings**:
+
 - ✅ Addition: New tables/columns/indexes
 - 🔄 Modification: Existing column type/length changes
 - ⚠️ Deletion: Table/column deletion (potential data loss)
@@ -162,8 +163,8 @@ You can select target databases when running migrations:
 - ☐ Production (manual selection)
 
 <Info>
-By default, migrations are automatically applied to databases ending with `_master` and the `test` database.
-Production databases require **explicit selection** to apply.
+  By default, migrations are automatically applied to databases ending with `_master` and the `test`
+  database. Production databases require **explicit selection** to apply.
 </Info>
 
 ## Migration Order
@@ -186,8 +187,8 @@ If you need to change the order:
 3. Refresh in the UI
 
 <Warning>
-**Foreign key caution**: Referenced tables must be created first.
-Example: For `posts.user_id` → `users.id` relationship, `users` table must be created first
+  **Foreign key caution**: Referenced tables must be created first. Example: For `posts.user_id` →
+  `users.id` relationship, `users` table must be created first
 </Warning>
 
 ## Troubleshooting
@@ -198,17 +199,18 @@ Example: For `posts.user_id` → `users.id` relationship, `users` table must be 
 
 **Causes and solutions**:
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| Foreign key constraint | Referenced table doesn't exist | Create referenced table first |
-| Column already exists | Column already exists | Check migration file |
-| Cannot drop column | Data exists or constraints exist | Delete constraints first |
+| Error                  | Cause                            | Solution                      |
+| ---------------------- | -------------------------------- | ----------------------------- |
+| Foreign key constraint | Referenced table doesn't exist   | Create referenced table first |
+| Column already exists  | Column already exists            | Check migration file          |
+| Cannot drop column     | Data exists or constraints exist | Delete constraints first      |
 
 ### Migration Record Mismatch
 
 **Symptom**: Actual DB state differs from migration records
 
 **Solution**:
+
 ```bash
 # Run in CLI
 pnpm migrate clear  # Delete migration records
@@ -259,7 +261,11 @@ pnpm migrate status # Check current status
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Scaffolding Tab" icon="wand-magic-sparkles" href="/en/tools-and-cli/sonamu-ui/scaffolding-tab">
+  <Card
+    title="Scaffolding Tab"
+    icon="wand-magic-sparkles"
+    href="/en/tools-and-cli/sonamu-ui/scaffolding-tab"
+  >
     Auto-generate Model code
   </Card>
   <Card title="migrate CLI" icon="terminal" href="/en/tools-and-cli/sonamu-cli/migrate">

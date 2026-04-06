@@ -26,30 +26,33 @@ export const sendWelcomeEmail = workflow(
   { name: "send_welcome_email" },
   async ({ input, step, logger }) => {
     logger.info("Sending welcome email", { email: input.email });
-    
+
     // 이메일 발송
-    await step.define({ name: "send_email" }, async () => {
-      await sendEmail({
-        to: input.email,
-        subject: "Welcome!",
-        body: "...",
-      });
-    }).run();
-    
+    await step
+      .define({ name: "send_email" }, async () => {
+        await sendEmail({
+          to: input.email,
+          subject: "Welcome!",
+          body: "...",
+        });
+      })
+      .run();
+
     return { success: true };
-  }
+  },
 );
 ```
 
 **주요 파라미터**:
+
 - `name`: Workflow 식별자 (고유해야 함)
 - `input`: Workflow에 전달되는 입력 데이터
 - `step`: Step 실행 객체 (작업을 나누어 관리)
 - `logger`: 로깅 객체 (실행 상태 기록)
 
 <Tip>
-Workflow 이름을 생략하면 함수명을 snake_case로 변환하여 자동 설정합니다.
-예: `sendWelcomeEmail` → `send_welcome_email`
+  Workflow 이름을 생략하면 함수명을 snake_case로 변환하여 자동 설정합니다. 예: `sendWelcomeEmail` →
+  `send_welcome_email`
 </Tip>
 
 ## Workflow 실행
@@ -63,31 +66,32 @@ import { BaseModelClass, api, Sonamu } from "sonamu";
 import { sendWelcomeEmail } from "../workflows/email.workflow";
 
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async register(email: string, password: string) {
     // 사용자 저장
     const wdb = this.getPuri("w");
     wdb.ubRegister("users", { email, password });
-    
+
     const [userId] = await wdb.transaction(async (trx) => {
       return trx.ubUpsert("users");
     });
-    
+
     // Workflow 실행 (백그라운드)
     await Sonamu.workflows.run(
       {
         name: "send_welcome_email",
         version: null,
       },
-      { email }
+      { email },
     );
-    
+
     return userId;
   }
 }
 ```
 
 **실행 흐름**:
+
 1. API가 `Sonamu.workflows.run()`을 호출
 2. Workflow가 큐에 등록되고 즉시 리턴
 3. Worker가 큐에서 Workflow를 가져와 실행
@@ -105,16 +109,16 @@ const handle = await Sonamu.workflows.run(
     name: "send_welcome_email",
     version: null,
   },
-  { email: "user@example.com" }
+  { email: "user@example.com" },
 );
 
 // 결과 대기 (선택)
 const result = await handle.result();
-console.log(result);  // { success: true }
+console.log(result); // { success: true }
 ```
 
 <Info>
-`handle.result()`는 Workflow가 완료될 때까지 대기합니다. API 응답에서는 사용하지 마세요!
+  `handle.result()`는 Workflow가 완료될 때까지 대기합니다. API 응답에서는 사용하지 마세요!
 </Info>
 
 ## 스키마 검증
@@ -146,21 +150,24 @@ export const processPayment = workflow(
   async ({ input, step, logger }) => {
     // input은 자동으로 검증됨
     logger.info("Processing payment", { userId: input.userId });
-    
-    const orderId = await step.define({ name: "create_order" }, async () => {
-      return await createOrder(input.userId, input.amount);
-    }).run();
-    
+
+    const orderId = await step
+      .define({ name: "create_order" }, async () => {
+        return await createOrder(input.userId, input.amount);
+      })
+      .run();
+
     // output도 자동으로 검증됨
     return {
       orderId,
       status: "success" as const,
     };
-  }
+  },
 );
 ```
 
 **스키마 검증 장점**:
+
 - **타입 안전성**: TypeScript가 input/output 타입을 정확히 추론
 - **런타임 검증**: 실행 전에 데이터 형식 확인
 - **명확한 계약**: Workflow의 인터페이스가 명확해짐
@@ -176,8 +183,8 @@ export const sendWelcomeEmail = workflow(
     version: "v2",
   },
   async ({ input, step, version, logger }) => {
-    logger.info("Version", { version });  // "v2"
-    
+    logger.info("Version", { version }); // "v2"
+
     // 버전별 로직
     if (version === "v2") {
       // 새로운 로직: HTML 이메일
@@ -186,17 +193,19 @@ export const sendWelcomeEmail = workflow(
       // 이전 로직: Plain text
       await sendPlainEmail(input.email);
     }
-  }
+  },
 );
 ```
 
 **사용 시나리오**:
+
 - 이메일 템플릿 변경
 - 데이터 처리 로직 개선
 - 외부 API 연동 방식 변경
 
 <Warning>
-버전을 변경하면 기존 실행 중인 Workflow는 **코드에 이전 버전 로직이 있어야** 완료됩니다. 이전 버전 코드를 삭제하기 전에 모든 실행이 완료되었는지 확인하세요.
+  버전을 변경하면 기존 실행 중인 Workflow는 **코드에 이전 버전 로직이 있어야** 완료됩니다. 이전 버전
+  코드를 삭제하기 전에 모든 실행이 완료되었는지 확인하세요.
 </Warning>
 
 ## 스케줄링
@@ -210,44 +219,46 @@ export const dailyReport = workflow(
     schedules: [
       {
         name: "daily_at_9am",
-        expression: "0 9 * * *",  // 매일 오전 9시
+        expression: "0 9 * * *", // 매일 오전 9시
         input: () => ({
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split("T")[0],
         }),
       },
     ],
   },
   async ({ input, step, logger }) => {
     logger.info("Generating daily report", { date: input.date });
-    
+
     // 리포트 생성
-    const report = await step.define({ name: "generate_report" }, async () => {
-      return await generateReport(input.date);
-    }).run();
-    
+    const report = await step
+      .define({ name: "generate_report" }, async () => {
+        return await generateReport(input.date);
+      })
+      .run();
+
     // 이메일 발송
-    await step.define({ name: "send_report" }, async () => {
-      await sendReportEmail(report);
-    }).run();
-    
+    await step
+      .define({ name: "send_report" }, async () => {
+        await sendReportEmail(report);
+      })
+      .run();
+
     return { success: true };
-  }
+  },
 );
 ```
 
 **Cron 표현식 가이드**:
 
-| 표현식 | 실행 시기 | 사용 예시 |
-|--------|-----------|-----------|
-| `* * * * *` | 매 분 | 테스트용 |
-| `0 * * * *` | 매 시간 | 시간별 집계 |
-| `0 9 * * *` | 매일 오전 9시 | 일일 리포트 |
+| 표현식      | 실행 시기       | 사용 예시   |
+| ----------- | --------------- | ----------- |
+| `* * * * *` | 매 분           | 테스트용    |
+| `0 * * * *` | 매 시간         | 시간별 집계 |
+| `0 9 * * *` | 매일 오전 9시   | 일일 리포트 |
 | `0 9 * * 1` | 매주 월요일 9시 | 주간 리포트 |
-| `0 0 1 * *` | 매월 1일 자정 | 월간 정산 |
+| `0 0 1 * *` | 매월 1일 자정   | 월간 정산   |
 
-<Tip>
-`input` 파라미터에 함수를 제공하면 **실행 시점의 데이터**를 동적으로 생성할 수 있습니다.
-</Tip>
+<Tip>`input` 파라미터에 함수를 제공하면 **실행 시점의 데이터**를 동적으로 생성할 수 있습니다.</Tip>
 
 ### 여러 스케줄 등록
 
@@ -260,19 +271,19 @@ export const backupData = workflow(
     schedules: [
       {
         name: "hourly_backup",
-        expression: "0 * * * *",  // 매 시간
+        expression: "0 * * * *", // 매 시간
         input: { type: "incremental" },
       },
       {
         name: "daily_full_backup",
-        expression: "0 2 * * *",  // 매일 오전 2시
+        expression: "0 2 * * *", // 매일 오전 2시
         input: { type: "full" },
       },
     ],
   },
   async ({ input, step, logger }) => {
     logger.info("Backup started", { type: input.type });
-    
+
     if (input.type === "full") {
       // 전체 백업
       await fullBackup();
@@ -280,11 +291,12 @@ export const backupData = workflow(
       // 증분 백업
       await incrementalBackup();
     }
-  }
+  },
 );
 ```
 
 **실전 활용**:
+
 - **증분 백업**: 매 시간 변경된 데이터만
 - **전체 백업**: 매일 전체 데이터
 - **다른 타임존**: 지역별로 다른 시간에 실행
@@ -313,34 +325,36 @@ export const sendBulkEmail = workflow(
   },
   async ({ input, step, logger }) => {
     logger.info("Sending bulk email", { count: input.userIds.length });
-    
+
     // 사용자 조회
-    const users = await step.define({ name: "fetch_users" }, async () => {
-      return await UserModel.findMany({
-        wq: [['id', 'IN', input.userIds]],
-      });
-    }).run();
-    
+    const users = await step
+      .define({ name: "fetch_users" }, async () => {
+        return await UserModel.findMany({
+          wq: [["id", "IN", input.userIds]],
+        });
+      })
+      .run();
+
     // 이메일 발송
     for (const user of users) {
-      await step.define(
-        { name: `send_email_${user.id}` },
-        async () => {
+      await step
+        .define({ name: `send_email_${user.id}` }, async () => {
           await sendEmail({
             to: user.email,
             subject: input.subject,
             body: input.body,
           });
-        }
-      ).run();
+        })
+        .run();
     }
-    
+
     return { sent: users.length };
-  }
+  },
 );
 ```
 
 **핵심 포인트**:
+
 - 사용자 조회와 이메일 발송을 **별도 Step**으로 분리
 - 각 이메일마다 Step을 생성하여 **개별 재시도** 가능
 - 진행 상황을 DB에 기록하여 **모니터링** 가능
@@ -359,28 +373,35 @@ export const processUserData = workflow(
   },
   async ({ input, step, logger }) => {
     // 1단계: 데이터 수집
-    const rawData = await step.define({ name: "collect_data" }, async () => {
-      return await fetchRawData();
-    }).run();
-    
+    const rawData = await step
+      .define({ name: "collect_data" }, async () => {
+        return await fetchRawData();
+      })
+      .run();
+
     // 2단계: 변환
-    const transformed = await step.define({ name: "transform" }, async () => {
-      return transformData(rawData);
-    }).run();
-    
+    const transformed = await step
+      .define({ name: "transform" }, async () => {
+        return transformData(rawData);
+      })
+      .run();
+
     // 3단계: 저장
-    await step.define({ name: "save" }, async () => {
-      await saveToDatabase(transformed);
-    }).run();
-    
+    await step
+      .define({ name: "save" }, async () => {
+        await saveToDatabase(transformed);
+      })
+      .run();
+
     logger.info("Processing completed", { count: transformed.length });
-    
+
     return { processed: transformed.length };
-  }
+  },
 );
 ```
 
 **장점**:
+
 - 각 단계가 실패해도 **처음부터 다시 시작하지 않음**
 - 각 단계의 **실행 시간을 측정**하여 병목 구간 파악
 - 변환 로직 변경 시 **수집 단계는 스킵** 가능
@@ -399,7 +420,7 @@ export const cleanupOldData = workflow(
     schedules: [
       {
         name: "daily_cleanup",
-        expression: "0 3 * * *",  // 매일 오전 3시
+        expression: "0 3 * * *", // 매일 오전 3시
         input: {
           daysToKeep: 90,
         },
@@ -409,22 +430,23 @@ export const cleanupOldData = workflow(
   async ({ input, step, logger }) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - input.daysToKeep);
-    
+
     // 오래된 데이터 삭제
-    const deleted = await step.define({ name: "delete_old_records" }, async () => {
-      return await knex('logs')
-        .where('created_at', '<', cutoffDate)
-        .delete();
-    }).run();
-    
+    const deleted = await step
+      .define({ name: "delete_old_records" }, async () => {
+        return await knex("logs").where("created_at", "<", cutoffDate).delete();
+      })
+      .run();
+
     logger.info("Cleanup completed", { deleted });
-    
+
     return { deleted };
-  }
+  },
 );
 ```
 
 **사용 시나리오**:
+
 - 로그 데이터 정리
 - 임시 파일 삭제
 - 만료된 세션 제거
@@ -437,13 +459,13 @@ export const cleanupOldData = workflow(
 
 Workflow의 상태는 다음과 같이 전이됩니다:
 
-| 현재 상태 | 가능한 동작 | 결과 상태 |
-|----------|------------|----------|
-| `pending` | pause | `paused` |
-| `running` | pause | `paused` |
-| `sleeping` | pause | `paused` |
-| `paused` | resume | `pending` |
-| `completed`, `failed`, `canceled` | - | 변경 불가 (터미널 상태) |
+| 현재 상태                         | 가능한 동작 | 결과 상태               |
+| --------------------------------- | ----------- | ----------------------- |
+| `pending`                         | pause       | `paused`                |
+| `running`                         | pause       | `paused`                |
+| `sleeping`                        | pause       | `paused`                |
+| `paused`                          | resume      | `pending`               |
+| `completed`, `failed`, `canceled` | -           | 변경 불가 (터미널 상태) |
 
 ### Sonamu UI에서 사용
 
@@ -462,7 +484,7 @@ import { Sonamu } from "sonamu";
 // Workflow 실행
 const handle = await Sonamu.workflows.run(
   { name: "data_processing", version: null },
-  { dataId: 123 }
+  { dataId: 123 },
 );
 
 // 일시중지 (workflowRunId 사용)
@@ -519,7 +541,8 @@ export async function handleExternalApiRecovery() {
 ```
 
 <Tip>
-Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 계속 실행됩니다. 다음 Step을 시작하기 전에 Worker가 `paused` 상태를 확인하고 작업을 중단합니다.
+  Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 계속 실행됩니다. 다음 Step을 시작하기
+  전에 Worker가 `paused` 상태를 확인하고 작업을 중단합니다.
 </Tip>
 
 ## 주의사항
@@ -528,20 +551,23 @@ Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 
 **Workflow 사용 시 주의사항**:
 
 1. **Worker 필수**: Workflow를 실행하려면 Worker 프로세스가 실행 중이어야 합니다.
+
    ```bash
    pnpm worker
    ```
 
 2. **Step으로 나누기**: 긴 작업은 여러 Step으로 분할하세요. 실패 시 전체를 재실행하지 않아도 됩니다.
+
    ```typescript
    // ❌ Step 없이 긴 작업
    await longRunningTask();
-   
+
    // ✅ Step으로 분할
    await step.define({ name: "task" }, longRunningTask).run();
    ```
 
 3. **스케줄 이름 중복 방지**: 같은 Workflow 내에서 스케줄 이름은 고유해야 합니다.
+
    ```typescript
    schedules: [
      { name: "backup_hourly", ... },
@@ -550,6 +576,7 @@ Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 
    ```
 
 4. **타임존 설정**: 스케줄은 `Sonamu.config.api.timezone`을 따릅니다.
+
    ```typescript
    // sonamu.config.ts
    api: {
@@ -559,16 +586,18 @@ Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 
 
 5. **에러 처리**: Workflow가 실패하면 자동으로 재시도됩니다. 중요한 작업은 try-catch로 보호하세요.
    ```typescript
-   await step.define({ name: "task" }, async () => {
-     try {
-       await riskyOperation();
-     } catch (error) {
-       logger.error("Operation failed", { error });
-       throw error;
-     }
-   }).run();
+   await step
+     .define({ name: "task" }, async () => {
+       try {
+         await riskyOperation();
+       } catch (error) {
+         logger.error("Operation failed", { error });
+         throw error;
+       }
+     })
+     .run();
    ```
-</Warning>
+   </Warning>
 
 ## 다음 단계
 
@@ -576,7 +605,11 @@ Workflow가 일시중지되면 현재 실행 중인 Step은 완료될 때까지 
   <Card title="Step" icon="list" href="/ko/advanced-features/workflows/steps">
     Step으로 작업을 나누고 재시도 전략 구현하기
   </Card>
-  <Card title="에러 처리" icon="triangle-exclamation" href="/ko/advanced-features/workflows/error-handling">
+  <Card
+    title="에러 처리"
+    icon="triangle-exclamation"
+    href="/ko/advanced-features/workflows/error-handling"
+  >
     에러 처리 패턴과 보상 트랜잭션 배우기
   </Card>
   <Card title="Worker 설정" icon="gear" href="/ko/advanced-features/workflows/worker-setup">

@@ -1,6 +1,6 @@
 ---
-title: 'Compression'
-description: 'HTTP response compression settings'
+title: "Compression"
+description: "HTTP response compression settings"
 ---
 
 Sonamu can automatically compress HTTP responses using `@fastify/compress`. It supports various compression algorithms like gzip, deflate, and brotli, and you can control compression per API.
@@ -14,9 +14,9 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // Control per API
-        threshold: 1024,    // Compress only above 1KB
-        encodings: ["gzip", "br"],  // Supported algorithms
+        global: false, // Control per API
+        threshold: 1024, // Compress only above 1KB
+        encodings: ["gzip", "br"], // Supported algorithms
       },
     },
   },
@@ -34,7 +34,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     plugins: {
-      compress: true,  // Enable with default settings
+      compress: true, // Enable with default settings
     },
   },
 });
@@ -46,7 +46,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     plugins: {
-      compress: false,  // Disable compression
+      compress: false, // Disable compression
     },
   },
 });
@@ -67,7 +67,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,  // Manual control per API
+        global: false, // Manual control per API
       },
     },
   },
@@ -78,7 +78,8 @@ export default defineConfig({
 - `false`: Control per API with `@compress()` decorator
 
 <Tip>
-We recommend `global: false`. Small responses or already compressed files (images, videos) don't need compression.
+  We recommend `global: false`. Small responses or already compressed files (images, videos) don't
+  need compression.
 </Tip>
 
 ### threshold
@@ -94,7 +95,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        threshold: 1024,  // Compress only above 1KB
+        threshold: 1024, // Compress only above 1KB
       },
     },
   },
@@ -102,13 +103,12 @@ export default defineConfig({
 ```
 
 **Recommended values**:
+
 - `1024` (1KB) - General web apps
 - `512` (512B) - Compress small JSON responses too
 - `5120` (5KB) - Compress only large responses
 
-<Note>
-Compressing very small responses may have more overhead than benefit.
-</Note>
+<Note>Compressing very small responses may have more overhead than benefit.</Note>
 
 ### encodings
 
@@ -123,7 +123,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        encodings: ["gzip", "br"],  // gzip and brotli only
+        encodings: ["gzip", "br"], // gzip and brotli only
       },
     },
   },
@@ -131,6 +131,7 @@ export default defineConfig({
 ```
 
 **Supported algorithms**:
+
 - `"gzip"` - Most widely supported, fast compression
 - `"deflate"` - Similar to gzip
 - `"br"` (brotli) - High compression ratio, slower compression
@@ -138,7 +139,8 @@ export default defineConfig({
 **Priority**: Uses the first algorithm in the array that the client supports
 
 <Tip>
-Brotli has a higher compression ratio but uses more CPU. We recommend pre-compressing static files and using gzip for dynamic responses.
+  Brotli has a higher compression ratio but uses more CPU. We recommend pre-compressing static files
+  and using gzip for dynamic responses.
 </Tip>
 
 ## Basic Examples
@@ -152,8 +154,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // Control per API
-        threshold: 1024,    // Above 1KB only
+        global: false, // Control per API
+        threshold: 1024, // Above 1KB only
         encodings: ["gzip"], // gzip only (fast)
       },
     },
@@ -170,7 +172,7 @@ export default defineConfig({
       compress: {
         global: false,
         threshold: 1024,
-        encodings: ["br", "gzip"],  // Brotli preferred, gzip fallback
+        encodings: ["br", "gzip"], // Brotli preferred, gzip fallback
       },
     },
   },
@@ -184,8 +186,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: true,       // Auto-compress all responses
-        threshold: 512,     // Above 512B
+        global: true, // Auto-compress all responses
+        threshold: 512, // Above 512B
         encodings: ["gzip"],
       },
     },
@@ -231,8 +233,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,      // Control with @compress() decorator
-        threshold: 1024,    // Above 1KB only
+        global: false, // Control with @compress() decorator
+        threshold: 1024, // Above 1KB only
         encodings: ["gzip"],
       },
     },
@@ -244,19 +246,19 @@ export default defineConfig({
 
 ```typescript
 export class ArticleModel {
-  @compress()  // Large list response
+  @compress() // Large list response
   @api()
   static async list() {
     return this.getPuri().select("*");
   }
 
-  @compress()  // Large detail data
+  @compress() // Large detail data
   @api()
   static async detail(id: number) {
     return this.findById(id, ["**"]);
   }
 
-  @api()  // Don't compress small responses
+  @api() // Don't compress small responses
   static async save(data) {
     return { id: 123 };
   }
@@ -271,8 +273,8 @@ export default defineConfig({
     plugins: {
       compress: {
         global: false,
-        threshold: 2048,    // Above 2KB only (considering CDN)
-        encodings: ["br", "gzip"],  // Brotli preferred
+        threshold: 2048, // Above 2KB only (considering CDN)
+        encodings: ["br", "gzip"], // Brotli preferred
       },
     },
   },
@@ -288,7 +290,7 @@ export default defineConfig({
   server: {
     plugins: {
       compress: isDev
-        ? false  // Development: disable compression (easier debugging)
+        ? false // Development: disable compression (easier debugging)
         : {
             global: false,
             threshold: 1024,
@@ -307,11 +309,11 @@ export default defineConfig({
     plugins: {
       compress: {
         global: false,
-        threshold: 512,     // Compress small responses too
-        encodings: ["br"],  // Brotli only (highest compression ratio)
+        threshold: 512, // Compress small responses too
+        encodings: ["br"], // Brotli only (highest compression ratio)
         brotliOptions: {
           params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: 11,  // Maximum quality
+            [zlib.constants.BROTLI_PARAM_QUALITY]: 11, // Maximum quality
           },
         },
       },
@@ -321,7 +323,8 @@ export default defineConfig({
 ```
 
 <Warning>
-Increasing Brotli quality improves compression ratio but significantly increases CPU usage. Test before using in production.
+  Increasing Brotli quality improves compression ratio but significantly increases CPU usage. Test
+  before using in production.
 </Warning>
 
 ## Additional Options
@@ -339,7 +342,7 @@ export default defineConfig({
         threshold: 1024,
         encodings: ["gzip"],
         zlibOptions: {
-          level: zlib.constants.Z_BEST_COMPRESSION,  // Maximum compression
+          level: zlib.constants.Z_BEST_COMPRESSION, // Maximum compression
         },
       },
     },
@@ -348,6 +351,7 @@ export default defineConfig({
 ```
 
 **gzip levels**:
+
 - `Z_BEST_SPEED` (1) - Fast compression
 - `Z_DEFAULT_COMPRESSION` (6) - Default (recommended)
 - `Z_BEST_COMPRESSION` (9) - Maximum compression
@@ -362,7 +366,7 @@ export default defineConfig({
         global: true,
         threshold: 1024,
         encodings: ["gzip"],
-        customTypes: /^text\/|json$/,  // text/* and json only
+        customTypes: /^text\/|json$/, // text/* and json only
       },
     },
   },
@@ -382,7 +386,7 @@ export default defineConfig({
         removeContentLengthHeader: false,
         inflateIfDeflated: false,
         onUnsupportedEncoding: (encoding, request, reply) => {
-          reply.code(406);  // Not Acceptable
+          reply.code(406); // Not Acceptable
           return "Unsupported encoding";
         },
       },
@@ -427,11 +431,13 @@ curl -H "Accept-Encoding: br" http://localhost:34900/api/data -i
 ### Compression Trade-offs
 
 **Benefits**:
+
 - Bandwidth savings (50-80% reduction)
 - Faster transfer time (especially on slow networks)
 - CDN cost savings
 
 **Drawbacks**:
+
 - Increased CPU usage
 - Increased Time To First Byte (TTFB)
 - Increased memory usage
@@ -439,12 +445,14 @@ curl -H "Accept-Encoding: br" http://localhost:34900/api/data -i
 ### Recommendations
 
 **Should compress**:
+
 - JSON responses (API)
 - HTML, CSS, JavaScript
 - SVG, XML
 - Text files
 
 **Should not compress**:
+
 - Images (JPEG, PNG, WebP) - Already compressed
 - Videos (MP4, WebM) - Already compressed
 - Compressed files (ZIP, GZ) - Already compressed
@@ -489,10 +497,10 @@ compress: {
 
 ```typescript
 // ❌ Bad: Too low threshold
-threshold: 100  // 100B - Overhead may be larger
+threshold: 100; // 100B - Overhead may be larger
 
 // ✅ Good: Appropriate size
-threshold: 1024  // 1KB
+threshold: 1024; // 1KB
 ```
 
 ## Next Steps

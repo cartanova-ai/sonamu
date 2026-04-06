@@ -1,10 +1,11 @@
 import { describe, expectTypeOf, it } from "vitest";
+
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { Hydrate, InferAllSubsets, LoadersResult } from "./puri-subset.types";
 import type { PuriWrapper } from "./puri-wrapper";
 
-/** biome-ignore lint/suspicious/noExplicitAny: Puri Subset 타입 시스템에서 any를 허용함 */
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Puri Subset 타입 시스템에서 any를 허용함
 type MockPuri<T> = Puri<DatabaseSchemaExtend, any, T>;
 
 describe("Hydrate", () => {

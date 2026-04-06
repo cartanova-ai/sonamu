@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { ManagerStatus, RunResult } from "../dev-vitest-manager";
 
 // vi.hoisted를 사용하여 mock 객체를 vi.mock 호이스팅 이전에 초기화
@@ -12,7 +13,7 @@ const mockManager = vi.hoisted(() => ({
 
 // DevVitestManager를 모킹하여 new DevVitestManager()가 mockManager 인스턴스를 반환하도록 설정
 vi.mock("../dev-vitest-manager", () => {
-  // biome-ignore lint/complexity/useArrowFunction: vi.fn 생성자 모킹에는 function 키워드가 필요
+  // oxlint-disable-next-line prefer-arrow-callback -- vi.fn 생성자 모킹에는 function 키워드가 필요
   const MockDevVitestManager = vi.fn(function () {
     return mockManager;
   });

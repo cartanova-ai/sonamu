@@ -28,20 +28,23 @@ export const sendWelcomeEmail = workflow(
     logger.info("Sending welcome email", { email: input.email });
 
     // Send email
-    await step.define({ name: "send_email" }, async () => {
-      await sendEmail({
-        to: input.email,
-        subject: "Welcome!",
-        body: "...",
-      });
-    }).run();
+    await step
+      .define({ name: "send_email" }, async () => {
+        await sendEmail({
+          to: input.email,
+          subject: "Welcome!",
+          body: "...",
+        });
+      })
+      .run();
 
     return { success: true };
-  }
+  },
 );
 ```
 
 **Key Parameters**:
+
 - `name`: Workflow identifier (must be unique)
 - `input`: Input data passed to the Workflow
 - `step`: Step execution object (divides and manages tasks)
@@ -63,7 +66,7 @@ import { BaseModelClass, api, Sonamu } from "sonamu";
 import { sendWelcomeEmail } from "../workflows/email.workflow";
 
 class UserModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async register(email: string, password: string) {
     // Save user
     const wdb = this.getPuri("w");
@@ -79,7 +82,7 @@ class UserModelClass extends BaseModelClass {
         name: "send_welcome_email",
         version: null,
       },
-      { email }
+      { email },
     );
 
     return userId;
@@ -88,6 +91,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **Execution Flow**:
+
 1. API calls `Sonamu.workflows.run()`
 2. Workflow is added to the queue and returns immediately
 3. Worker picks up the Workflow from the queue and executes it
@@ -105,17 +109,15 @@ const handle = await Sonamu.workflows.run(
     name: "send_welcome_email",
     version: null,
   },
-  { email: "user@example.com" }
+  { email: "user@example.com" },
 );
 
 // Wait for result (optional)
 const result = await handle.result();
-console.log(result);  // { success: true }
+console.log(result); // { success: true }
 ```
 
-<Info>
-`handle.result()` waits until the Workflow completes. Don't use this in API responses!
-</Info>
+<Info>`handle.result()` waits until the Workflow completes. Don't use this in API responses!</Info>
 
 ## Schema Validation
 
@@ -147,20 +149,23 @@ export const processPayment = workflow(
     // input is automatically validated
     logger.info("Processing payment", { userId: input.userId });
 
-    const orderId = await step.define({ name: "create_order" }, async () => {
-      return await createOrder(input.userId, input.amount);
-    }).run();
+    const orderId = await step
+      .define({ name: "create_order" }, async () => {
+        return await createOrder(input.userId, input.amount);
+      })
+      .run();
 
     // output is also automatically validated
     return {
       orderId,
       status: "success" as const,
     };
-  }
+  },
 );
 ```
 
 **Schema Validation Benefits**:
+
 - **Type Safety**: TypeScript accurately infers input/output types
 - **Runtime Validation**: Verifies data format before execution
 - **Clear Contract**: Makes the Workflow interface explicit
@@ -176,7 +181,7 @@ export const sendWelcomeEmail = workflow(
     version: "v2",
   },
   async ({ input, step, version, logger }) => {
-    logger.info("Version", { version });  // "v2"
+    logger.info("Version", { version }); // "v2"
 
     // Version-specific logic
     if (version === "v2") {
@@ -186,17 +191,19 @@ export const sendWelcomeEmail = workflow(
       // Old logic: Plain text
       await sendPlainEmail(input.email);
     }
-  }
+  },
 );
 ```
 
 **Use Cases**:
+
 - Email template changes
 - Data processing logic improvements
 - External API integration changes
 
 <Warning>
-When changing versions, existing running Workflows need the **old version logic to still exist in the code** to complete. Verify all executions are completed before deleting old version code.
+  When changing versions, existing running Workflows need the **old version logic to still exist in
+  the code** to complete. Verify all executions are completed before deleting old version code.
 </Warning>
 
 ## Scheduling
@@ -210,9 +217,9 @@ export const dailyReport = workflow(
     schedules: [
       {
         name: "daily_at_9am",
-        expression: "0 9 * * *",  // Every day at 9 AM
+        expression: "0 9 * * *", // Every day at 9 AM
         input: () => ({
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split("T")[0],
         }),
       },
     ],
@@ -221,32 +228,37 @@ export const dailyReport = workflow(
     logger.info("Generating daily report", { date: input.date });
 
     // Generate report
-    const report = await step.define({ name: "generate_report" }, async () => {
-      return await generateReport(input.date);
-    }).run();
+    const report = await step
+      .define({ name: "generate_report" }, async () => {
+        return await generateReport(input.date);
+      })
+      .run();
 
     // Send email
-    await step.define({ name: "send_report" }, async () => {
-      await sendReportEmail(report);
-    }).run();
+    await step
+      .define({ name: "send_report" }, async () => {
+        await sendReportEmail(report);
+      })
+      .run();
 
     return { success: true };
-  }
+  },
 );
 ```
 
 **Cron Expression Guide**:
 
-| Expression | Execution Time | Use Case |
-|------------|----------------|----------|
-| `* * * * *` | Every minute | Testing |
-| `0 * * * *` | Every hour | Hourly aggregation |
-| `0 9 * * *` | Daily at 9 AM | Daily reports |
-| `0 9 * * 1` | Every Monday at 9 AM | Weekly reports |
+| Expression  | Execution Time                 | Use Case            |
+| ----------- | ------------------------------ | ------------------- |
+| `* * * * *` | Every minute                   | Testing             |
+| `0 * * * *` | Every hour                     | Hourly aggregation  |
+| `0 9 * * *` | Daily at 9 AM                  | Daily reports       |
+| `0 9 * * 1` | Every Monday at 9 AM           | Weekly reports      |
 | `0 0 1 * *` | First day of month at midnight | Monthly settlements |
 
 <Tip>
-Providing a function for the `input` parameter allows you to dynamically generate **data at execution time**.
+  Providing a function for the `input` parameter allows you to dynamically generate **data at
+  execution time**.
 </Tip>
 
 ### Multiple Schedules
@@ -260,12 +272,12 @@ export const backupData = workflow(
     schedules: [
       {
         name: "hourly_backup",
-        expression: "0 * * * *",  // Every hour
+        expression: "0 * * * *", // Every hour
         input: { type: "incremental" },
       },
       {
         name: "daily_full_backup",
-        expression: "0 2 * * *",  // Daily at 2 AM
+        expression: "0 2 * * *", // Daily at 2 AM
         input: { type: "full" },
       },
     ],
@@ -280,11 +292,12 @@ export const backupData = workflow(
       // Incremental backup
       await incrementalBackup();
     }
-  }
+  },
 );
 ```
 
 **Practical Applications**:
+
 - **Incremental backup**: Only changed data every hour
 - **Full backup**: All data daily
 - **Different timezones**: Run at different times by region
@@ -315,32 +328,34 @@ export const sendBulkEmail = workflow(
     logger.info("Sending bulk email", { count: input.userIds.length });
 
     // Fetch users
-    const users = await step.define({ name: "fetch_users" }, async () => {
-      return await UserModel.findMany({
-        wq: [['id', 'IN', input.userIds]],
-      });
-    }).run();
+    const users = await step
+      .define({ name: "fetch_users" }, async () => {
+        return await UserModel.findMany({
+          wq: [["id", "IN", input.userIds]],
+        });
+      })
+      .run();
 
     // Send emails
     for (const user of users) {
-      await step.define(
-        { name: `send_email_${user.id}` },
-        async () => {
+      await step
+        .define({ name: `send_email_${user.id}` }, async () => {
           await sendEmail({
             to: user.email,
             subject: input.subject,
             body: input.body,
           });
-        }
-      ).run();
+        })
+        .run();
     }
 
     return { sent: users.length };
-  }
+  },
 );
 ```
 
 **Key Points**:
+
 - User fetching and email sending are **separate Steps**
 - Each email creates a Step enabling **individual retries**
 - Progress is recorded in DB for **monitoring**
@@ -359,28 +374,35 @@ export const processUserData = workflow(
   },
   async ({ input, step, logger }) => {
     // Stage 1: Collect data
-    const rawData = await step.define({ name: "collect_data" }, async () => {
-      return await fetchRawData();
-    }).run();
+    const rawData = await step
+      .define({ name: "collect_data" }, async () => {
+        return await fetchRawData();
+      })
+      .run();
 
     // Stage 2: Transform
-    const transformed = await step.define({ name: "transform" }, async () => {
-      return transformData(rawData);
-    }).run();
+    const transformed = await step
+      .define({ name: "transform" }, async () => {
+        return transformData(rawData);
+      })
+      .run();
 
     // Stage 3: Save
-    await step.define({ name: "save" }, async () => {
-      await saveToDatabase(transformed);
-    }).run();
+    await step
+      .define({ name: "save" }, async () => {
+        await saveToDatabase(transformed);
+      })
+      .run();
 
     logger.info("Processing completed", { count: transformed.length });
 
     return { processed: transformed.length };
-  }
+  },
 );
 ```
 
 **Benefits**:
+
 - Even if a stage fails, **don't restart from the beginning**
 - **Measure execution time** of each stage to identify bottlenecks
 - When transform logic changes, **skip the collection stage**
@@ -399,7 +421,7 @@ export const cleanupOldData = workflow(
     schedules: [
       {
         name: "daily_cleanup",
-        expression: "0 3 * * *",  // Daily at 3 AM
+        expression: "0 3 * * *", // Daily at 3 AM
         input: {
           daysToKeep: 90,
         },
@@ -411,20 +433,21 @@ export const cleanupOldData = workflow(
     cutoffDate.setDate(cutoffDate.getDate() - input.daysToKeep);
 
     // Delete old data
-    const deleted = await step.define({ name: "delete_old_records" }, async () => {
-      return await knex('logs')
-        .where('created_at', '<', cutoffDate)
-        .delete();
-    }).run();
+    const deleted = await step
+      .define({ name: "delete_old_records" }, async () => {
+        return await knex("logs").where("created_at", "<", cutoffDate).delete();
+      })
+      .run();
 
     logger.info("Cleanup completed", { deleted });
 
     return { deleted };
-  }
+  },
 );
 ```
 
 **Use Cases**:
+
 - Log data cleanup
 - Temporary file deletion
 - Expired session removal
@@ -437,13 +460,13 @@ You can pause a running Workflow and resume it later. This feature is useful whe
 
 Workflow states transition as follows:
 
-| Current Status | Available Action | Result Status |
-|----------------|------------------|---------------|
-| `pending` | pause | `paused` |
-| `running` | pause | `paused` |
-| `sleeping` | pause | `paused` |
-| `paused` | resume | `pending` |
-| `completed`, `failed`, `canceled` | - | Cannot change (terminal states) |
+| Current Status                    | Available Action | Result Status                   |
+| --------------------------------- | ---------------- | ------------------------------- |
+| `pending`                         | pause            | `paused`                        |
+| `running`                         | pause            | `paused`                        |
+| `sleeping`                        | pause            | `paused`                        |
+| `paused`                          | resume           | `pending`                       |
+| `completed`, `failed`, `canceled` | -                | Cannot change (terminal states) |
 
 ### Using Sonamu UI
 
@@ -462,7 +485,7 @@ import { Sonamu } from "sonamu";
 // Run a Workflow
 const handle = await Sonamu.workflows.run(
   { name: "data_processing", version: null },
-  { dataId: 123 }
+  { dataId: 123 },
 );
 
 // Pause (using workflowRunId)
@@ -519,7 +542,8 @@ export async function handleExternalApiRecovery() {
 ```
 
 <Tip>
-When a Workflow is paused, the currently running Step continues until completion. Before starting the next Step, the Worker checks the `paused` status and stops the work.
+  When a Workflow is paused, the currently running Step continues until completion. Before starting
+  the next Step, the Worker checks the `paused` status and stops the work.
 </Tip>
 
 ## Important Notes
@@ -528,11 +552,13 @@ When a Workflow is paused, the currently running Step continues until completion
 **Workflow Best Practices**:
 
 1. **Worker Required**: A Worker process must be running to execute Workflows.
+
    ```bash
    pnpm worker
    ```
 
 2. **Divide into Steps**: Split long tasks into multiple Steps. On failure, you don't need to re-run everything.
+
    ```typescript
    // Bad: Long task without Steps
    await longRunningTask();
@@ -542,6 +568,7 @@ When a Workflow is paused, the currently running Step continues until completion
    ```
 
 3. **Avoid Duplicate Schedule Names**: Schedule names must be unique within the same Workflow.
+
    ```typescript
    schedules: [
      { name: "backup_hourly", ... },
@@ -550,6 +577,7 @@ When a Workflow is paused, the currently running Step continues until completion
    ```
 
 4. **Timezone Configuration**: Schedules follow `Sonamu.config.api.timezone`.
+
    ```typescript
    // sonamu.config.ts
    api: {
@@ -559,16 +587,18 @@ When a Workflow is paused, the currently running Step continues until completion
 
 5. **Error Handling**: Failed Workflows are automatically retried. Protect important tasks with try-catch.
    ```typescript
-   await step.define({ name: "task" }, async () => {
-     try {
-       await riskyOperation();
-     } catch (error) {
-       logger.error("Operation failed", { error });
-       throw error;
-     }
-   }).run();
+   await step
+     .define({ name: "task" }, async () => {
+       try {
+         await riskyOperation();
+       } catch (error) {
+         logger.error("Operation failed", { error });
+         throw error;
+       }
+     })
+     .run();
    ```
-</Warning>
+   </Warning>
 
 ## Next Steps
 
@@ -576,7 +606,11 @@ When a Workflow is paused, the currently running Step continues until completion
   <Card title="Step" icon="list" href="/en/advanced-features/workflows/steps">
     Divide tasks and implement retry strategies with Steps
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/advanced-features/workflows/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/advanced-features/workflows/error-handling"
+  >
     Learn error handling patterns and compensating transactions
   </Card>
   <Card title="Worker Setup" icon="gear" href="/en/advanced-features/workflows/worker-setup">

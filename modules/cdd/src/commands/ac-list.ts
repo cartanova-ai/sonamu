@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import chalk from "chalk";
 import fg from "fast-glob";
+
 import type { OutputResult } from "../utils/output.js";
 
 interface AcEntry {

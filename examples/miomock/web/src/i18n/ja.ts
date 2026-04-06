@@ -10,5 +10,5 @@ import { defineLocale } from "./sd.generated";
  */
 export default defineLocale({
   "test.jaOnly": "日本語のみ",
-  // biome-ignore lint/suspicious/noExplicitAny: ko에 없는 키로 supportedLocale fallback 테스트 시 필요
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ko에 없는 키로 supportedLocale fallback 테스트 시 필요
 } as any);

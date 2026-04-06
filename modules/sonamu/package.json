@@ -3,9 +3,25 @@
   "version": "0.8.26",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
-    "typescript",
     "framework",
-    "orm"
+    "orm",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "CartaNova <dev@cartanova.ai>",
+    "url": "https://cartanova.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
+  "bin": "./bin/cli.js",
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    ".swcrc.project-default"
   ],
   "type": "module",
   "exports": {
@@ -73,30 +89,12 @@
     "test:type": "vitest --typecheck test-d.ts",
     "test:unit": "vitest run --config vitest.config.ts"
   },
-  "license": "MIT",
-  "author": {
-    "name": "CartaNova <dev@cartanova.ai>",
-    "url": "https://cartanova.ai"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cartanova-ai/sonamu.git"
-  },
-  "bin": "./bin/cli.js",
-  "files": [
-    "dist",
-    "src",
-    "bin",
-    ".swcrc.project-default"
-  ],
   "dependencies": {
     "@aws-sdk/client-s3": "catalog:",
     "@aws-sdk/lib-storage": "catalog:",
     "@aws-sdk/s3-request-presigner": "catalog:",
     "@better-auth/passkey": "catalog:",
     "@better-auth/sso": "catalog:",
-    "oxfmt": "catalog:",
-    "oxlint": "catalog:",
     "@faker-js/faker": "catalog:",
     "@fastify/compress": "catalog:",
     "@fastify/cors": "catalog:",
@@ -133,6 +131,8 @@
     "minimatch": "catalog:",
     "node-cron": "catalog:",
     "node-sql-parser": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
     "pg": "catalog:",
     "prompts": "catalog:",
     "qs": "catalog:",
@@ -142,7 +142,6 @@
     "vitest": "catalog:"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@swc/cli": "catalog:",
     "@types/bcrypt": "catalog:",
     "@types/inflection": "catalog:",

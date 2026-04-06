@@ -1,6 +1,8 @@
 import path from "node:path";
+
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ViteDevServer } from "vite";
+
 import { applyCacheHeaders } from "../cache-control/cache-control";
 import type { CacheControlRequest } from "../cache-control/types";
 import type { SonamuFastifyConfig } from "../types/types";

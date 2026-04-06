@@ -1,5 +1,6 @@
 import inflection from "inflection";
 import { diff, unique } from "radashi";
+
 import { apiParamToTsCode, apiParamTypeToTsType } from "../../api/code-converters";
 import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
@@ -105,8 +106,7 @@ ${functions.join("\n\n")}
             " * @generated",
             " * 직접 수정하지 마세요.",
             " */",
-            "/** biome-ignore-all lint: generated는 무시 */",
-            "/** biome-ignore-all assist: generated는 무시 */",
+            "/* oxlint-disable */",
             "",
             `import type { SSRQuery } from 'sonamu/ssr';`,
             "",
@@ -116,15 +116,7 @@ ${functions.join("\n\n")}
             `}`,
             "",
           ]
-        : [
-            "/**",
-            " * @generated",
-            " * 직접 수정하지 마세요.",
-            " */",
-            "/** biome-ignore-all lint: generated는 무시 */",
-            "/** biome-ignore-all assist: generated는 무시 */",
-            "",
-          ],
+        : ["/**", " * @generated", " * 직접 수정하지 마세요.", " */", "/* oxlint-disable */", ""],
     };
   }
 }

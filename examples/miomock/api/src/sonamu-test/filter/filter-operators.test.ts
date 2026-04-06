@@ -1,5 +1,6 @@
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { DepartmentModel } from "../../application/department/department.model";
 import { ProjectModel } from "../../application/project/project.model";
 

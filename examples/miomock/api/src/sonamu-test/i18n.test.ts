@@ -1,10 +1,12 @@
-/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: template 테스트 시 사용 */
-import { Workbook } from "@sheetkit/node";
 import fs from "fs";
+
+/* oxlint-disable no-template-curly-in-string */ // template 테스트 시 사용
+import { Workbook } from "@sheetkit/node";
 import { Sonamu } from "sonamu";
 import { createFormat, type DictEntry, josa, plural, sonamuDictionary } from "sonamu/dict";
 import { bootstrap, runWithContext } from "sonamu/test";
 import { describe, expect, test, vi } from "vitest";
+
 import { BadRequestException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import { localizedColumn, SD } from "../i18n/sd.generated";
 
@@ -137,7 +139,7 @@ describe("i18n", () => {
         async () => {
           // "test.jaOnly"는 ja 딕셔너리에만 존재하는 키 (사실상 defineLocale을 이용하면 이런 경우 없긴 함.)
           // en에서 조회 → 없음 → ko(default)에서 조회 → 없음 → ja(supported)에서 찾음
-          // biome-ignore lint/suspicious/noExplicitAny: ko에 없는 키로 테스트 필요
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- ko에 없는 키로 테스트 필요
           expect(SD("test.jaOnly" as any)).toBe("日本語のみ");
         },
       );

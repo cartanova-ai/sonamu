@@ -1,9 +1,11 @@
 import crypto, { type BinaryLike } from "crypto";
-import equal from "fast-deep-equal";
 import { createReadStream, type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
+
+import equal from "fast-deep-equal";
 import { isEqual } from "radashi";
+
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";

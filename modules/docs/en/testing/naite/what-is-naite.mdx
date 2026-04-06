@@ -12,21 +12,25 @@ Learn about Naite, Sonamu's test logging and debugging system.
     Record logs during execution
 
     Systematic tracking
+
   </Card>
   <Card title="Query System" icon="magnifying-glass">
     Wildcard patterns
 
     Chaining queries
+
   </Card>
   <Card title="Callstack Tracking" icon="layer-group">
     Call path tracing
 
     Debugging support
+
   </Card>
   <Card title="VSCode Integration" icon="cube">
     Real-time visualization
 
     Extension support
+
   </Card>
 </CardGroup>
 
@@ -69,6 +73,7 @@ When writing tests, you often encounter situations like these:
     ```
 
     It's hard to tell which completed first as the order is mixed up.
+
   </Accordion>
 
   <Accordion title="Difficulty with Filtering">
@@ -81,6 +86,7 @@ When writing tests, you often encounter situations like these:
       // No way to see only Syncer-related logs
     });
     ```
+
   </Accordion>
 
   <Accordion title="Unknown Call Path">
@@ -93,6 +99,7 @@ When writing tests, you often encounter situations like these:
     // Called in order A → B → C → D but
     // Can't trace without callstack information
     ```
+
   </Accordion>
 
   <Accordion title="Mixed with Test Output">
@@ -105,6 +112,7 @@ When writing tests, you often encounter situations like these:
     Debug: another thing...
     ✗ test 3 (45ms)
     ```
+
   </Accordion>
 </AccordionGroup>
 
@@ -117,21 +125,23 @@ Naite systematically solves these problems:
     Assigns unique keys to each log for systematic management. You can clearly distinguish modules and functions like `user:create`, `syncer:render`.
   </Card>
 
-  <Card title="Wildcard Filtering" icon="filter">
-    You can query only user-related logs with `user:*` or all create logs with `*:create`. Find the information you want quickly.
-  </Card>
+<Card title="Wildcard Filtering" icon="filter">
+  You can query only user-related logs with `user:*` or all create logs with `*:create`. Find the
+  information you want quickly.
+</Card>
 
-  <Card title="Automatic Callstack Tracking" icon="route">
-    Automatically collects the callstack for each log recording. You can clearly understand the function call path.
-  </Card>
+<Card title="Automatic Callstack Tracking" icon="route">
+  Automatically collects the callstack for each log recording. You can clearly understand the
+  function call path.
+</Card>
 
-  <Card title="Test Isolation" icon="box">
-    Each test has an independent log store. Logs never get mixed with other tests.
-  </Card>
+<Card title="Test Isolation" icon="box">
+  Each test has an independent log store. Logs never get mixed with other tests.
+</Card>
 
-  <Card title="VSCode Integration" icon="window">
-    Visualize logs in real-time with VSCode Extension. View them cleanly, separated from test output.
-  </Card>
+<Card title="VSCode Integration" icon="window">
+  Visualize logs in real-time with VSCode Extension. View them cleanly, separated from test output.
+</Card>
 
   <Card title="Query System" icon="magnifying-glass">
     Easily find logs with complex conditions using chaining queries. Combine `fromFile()`, `fromFunction()`, `where()` and more.
@@ -157,11 +167,13 @@ Naite.t("user:create:done", { userId: user.id });
 ```
 
 **Key Naming Rules**:
+
 - Use colons (`:`) to separate hierarchies
 - Recommended format: `module:function:action`
 - Examples: `user:create:start`, `syncer:render:template`, `payment:charge:done`
 
 **Benefits**:
+
 - Queryable with wildcard patterns (`user:*`, `*:create`)
 - Group and manage by module
 - Improved readability with intuitive structure
@@ -190,8 +202,8 @@ You can chain multiple conditions for complex searches:
 
 ```typescript
 Naite.get("user:*")
-  .fromFile("user.model.test.ts")     // Only from specific file
-  .fromFunction("createUser")         // Only from specific function
+  .fromFile("user.model.test.ts") // Only from specific file
+  .fromFunction("createUser") // Only from specific function
   .where("data.username", "=", "john") // Only specific value
   .result();
 ```
@@ -206,16 +218,16 @@ Each test has an independent `NaiteStore`. This is of type `Map<string, NaiteTra
 type NaiteStore = Map<string, NaiteTrace[]>;
 
 interface NaiteTrace {
-  key: string;        // "user:create:start"
-  data: any;          // { username: "john" }
+  key: string; // "user:create:start"
+  data: any; // { username: "john" }
   stack: StackFrame[]; // Callstack information
-  at: Date;           // Recording time
+  at: Date; // Recording time
 }
 
 interface StackFrame {
-  functionName: string | null;  // "createUser"
-  filePath: string;              // "/Users/.../user.model.ts"
-  lineNumber: number;            // 123
+  functionName: string | null; // "createUser"
+  filePath: string; // "/Users/.../user.model.ts"
+  lineNumber: number; // 123
 }
 ```
 
@@ -282,6 +294,7 @@ Naite automatically collects the callstack at the time of `Naite.t()` call. This
       await createUser();
     });
     ```
+
   </Tab>
 
   <Tab title="Deep Call">
@@ -303,10 +316,12 @@ Naite automatically collects the callstack at the time of `Naite.t()` call. This
       await create();
     });
     ```
+
   </Tab>
 </Tabs>
 
 **Usage**:
+
 - Filter logs recorded in a specific function with `fromFunction("createUser")`
 - Click on callstack in VSCode Extension → navigate directly to code location
 - Debug complex call chains
@@ -350,7 +365,8 @@ test("post creation flow", async () => {
 ```
 
 <Tip>
-**Input/Output Pattern**: Using `:input` and `:output` suffixes helps clearly distinguish function inputs and outputs. This is useful for tracking data transformation processes.
+  **Input/Output Pattern**: Using `:input` and `:output` suffixes helps clearly distinguish function
+  inputs and outputs. This is useful for tracking data transformation processes.
 </Tip>
 
 ### Intermediate Usage - Conditional Tracking
@@ -416,7 +432,9 @@ test("invalid input handling", async () => {
 ```
 
 <Info>
-**Value of Error Tracking**: When an error occurs, you can clearly see what input values caused it and at which step it failed. Combined with VSCode Extension's callstack feature, you can pinpoint the exact error location.
+  **Value of Error Tracking**: When an error occurs, you can clearly see what input values caused it
+  and at which step it failed. Combined with VSCode Extension's callstack feature, you can pinpoint
+  the exact error location.
 </Info>
 
 ## How It Works
@@ -444,17 +462,17 @@ sequenceDiagram
     Checks if `NODE_ENV === "test"`. Immediately terminates if not in test environment.
   </Step>
 
-  <Step title="Context Check">
-    Gets the currently running Context with `Sonamu.getContext()`. Ignores if no Context exists.
-  </Step>
+<Step title="Context Check">
+  Gets the currently running Context with `Sonamu.getContext()`. Ignores if no Context exists.
+</Step>
 
-  <Step title="Callstack Collection">
-    Collects the current callstack with `new Error().stack` and parses it.
-  </Step>
+<Step title="Callstack Collection">
+  Collects the current callstack with `new Error().stack` and parses it.
+</Step>
 
-  <Step title="Trace Creation">
-    Creates a `NaiteTrace` object containing key, value, callstack, and time.
-  </Step>
+<Step title="Trace Creation">
+  Creates a `NaiteTrace` object containing key, value, callstack, and time.
+</Step>
 
   <Step title="Store Save">
     Adds to the array with `naiteStore.set(key, [...existing, trace])`.
@@ -501,7 +519,9 @@ sequenceDiagram
 ```
 
 <Info>
-**Importance of Serialization**: All values are serialized to JSON for transmission to VSCode Extension. If you pass functions or circular reference objects to `Naite.t()`, a warning is displayed, but it accepts any type for ease of use.
+  **Importance of Serialization**: All values are serialized to JSON for transmission to VSCode
+  Extension. If you pass functions or circular reference objects to `Naite.t()`, a warning is
+  displayed, but it accepts any type for ease of use.
 </Info>
 
 ## Key Features
@@ -515,6 +535,7 @@ sequenceDiagram
       return; // Immediate return, no cost
     }
     ```
+
   </Accordion>
 
   <Accordion title="2. Complete Test Isolation">
@@ -528,6 +549,7 @@ sequenceDiagram
       };
     }
     ```
+
   </Accordion>
 
   <Accordion title="3. Any Type Allowed">
@@ -542,6 +564,7 @@ sequenceDiagram
     ```
 
     However, values that cannot be serialized will show a warning when transmitted to the Extension.
+
   </Accordion>
 
   <Accordion title="4. Automatic Serialization">
@@ -556,6 +579,7 @@ sequenceDiagram
       at: trace.at.toISOString(),
     }));
     ```
+
   </Accordion>
 
   <Accordion title="5. Wildcard Pattern Matching">
@@ -566,6 +590,7 @@ sequenceDiagram
     - `user:*:done`: middle wildcard (same length)
 
     Uses intuitive patterns instead of complex regular expressions.
+
   </Accordion>
 </AccordionGroup>
 
@@ -583,7 +608,7 @@ sequenceDiagram
 4. **Key naming convention**: The `module:function:action` format is recommended. Consistent rules make finding things easier later.
 
 5. **Serializable values recommended**: Values must be JSON serializable to transmit to VSCode Extension. Avoid functions and circular references.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

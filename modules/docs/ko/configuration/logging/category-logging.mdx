@@ -1,6 +1,6 @@
 ---
-title: '카테고리 로깅'
-description: '로그 카테고리 시스템과 계층 구조'
+title: "카테고리 로깅"
+description: "로그 카테고리 시스템과 계층 구조"
 ---
 
 LogTape는 카테고리 시스템으로 로그를 구조화합니다. Sonamu는 Model, Frame, Workflow, Agent 클래스에 대해 자동으로 카테고리를 생성합니다.
@@ -12,6 +12,7 @@ LogTape는 카테고리 시스템으로 로그를 구조화합니다. Sonamu는 
 **형식**: `["a", "b", "c"]` 배열
 
 **예시:**
+
 - `["fastify"]` - Fastify 프레임워크
 - `["sonamu", "model", "user-model"]` - UserModel 클래스
 - `["sonamu", "workflow", "email-send"]` - EmailSendWorkflow
@@ -22,41 +23,42 @@ LogTape는 카테고리 시스템으로 로그를 구조화합니다. Sonamu는 
 카테고리는 로그를 체계적으로 관리하기 위해 필요합니다.
 
 **1. 로그 출처 식별**
+
 ```typescript
 // 어디서 발생한 로그인가?
-["fastify"]                    // HTTP 요청
-["sonamu", "model"]            // Model 레이어
-["app", "payment"]             // 결제 로직
+["fastify"][("sonamu", "model")][("app", "payment")]; // HTTP 요청 // Model 레이어 // 결제 로직
 ```
 
 **2. 선택적 로깅**
+
 ```typescript
 // 특정 부분만 로깅
 loggers: [
   {
-    category: ["sonamu", "model"],  // Model만 debug 레벨로
+    category: ["sonamu", "model"], // Model만 debug 레벨로
     lowestLevel: "debug",
   },
   {
-    category: ["fastify"],          // Fastify는 info 레벨로
+    category: ["fastify"], // Fastify는 info 레벨로
     lowestLevel: "info",
   },
-]
+];
 ```
 
 **3. 로그 분리 저장**
+
 ```typescript
 // 부분별로 다른 파일에
 loggers: [
   {
     category: ["sonamu", "model"],
-    sinks: ["modelLog"],           // models.log
+    sinks: ["modelLog"], // models.log
   },
   {
     category: ["app", "payment"],
-    sinks: ["paymentLog"],         // payment.log
+    sinks: ["paymentLog"], // payment.log
   },
-]
+];
 ```
 
 ### 계층 구조의 이점
@@ -64,8 +66,9 @@ loggers: [
 카테고리가 계층적인 이유:
 
 **1. 명확한 구조**
+
 ```typescript
-["sonamu", "model", "user-model"]
+["sonamu", "model", "user-model"];
 //  ↓        ↓        ↓
 //  프레임워크  타입    구체적 이름
 ```
@@ -73,23 +76,23 @@ loggers: [
 어디서 발생한 로그인지 한눈에 파악 가능
 
 **2. 유연한 필터링**
+
 ```typescript
 // 전체 Sonamu 로그
-category: ["sonamu"]
+category: ["sonamu"];
 
 // Model 레이어만
-category: ["sonamu", "model"]
+category: ["sonamu", "model"];
 
 // UserModel만
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 ```
 
 **3. 충돌 방지**
+
 ```typescript
 // 다른 프로젝트의 "user" 로그도 구분 가능
-["sonamu", "model", "user-model"]  // Sonamu의 user
-["app", "user", "service"]          // 애플리케이션의 user
-["external", "api", "user"]        // 외부 API의 user
+["sonamu", "model", "user-model"][("app", "user", "service")][("external", "api", "user")]; // Sonamu의 user // 애플리케이션의 user // 외부 API의 user
 ```
 
 ### 왜 정확한 매칭만 되나?
@@ -98,54 +101,55 @@ LogTape는 카테곣리를 **정확히 일치**하는 것만 매칭합니다.
 
 ```typescript
 // ❌ 부분 매칭 안 됨
-category: ["sonamu"]
+category: ["sonamu"];
 // → ["sonamu", "model", "user-model"] 로그는 매칭 안 됨
 
 // ✅ 정확히 일치해야 함
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → ["sonamu", "model", "user-model"] 로그만 매칭
 ```
 
 **이유:**
 
 1. **명확성**
+
 ```typescript
 // 부분 매칭이 된다면?
-category: ["sonamu"]
+category: ["sonamu"];
 // → ["sonamu", "model", "user-model"]
 // → ["sonamu", "workflow", "email-send"]
 // → ["sonamu", "agent", "payment-agent"]
 // → 너무 많은 로그가 매칭됨!
 
 // 정확한 매칭
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → 원하는 로그만 정확히 매칭
 ```
 
 2. **성능**
+
 ```typescript
 // 와일드카드 매칭이 된다면?
-category: ["sonamu", "*"]  // 모든 sonamu 하위 카테고리
+category: ["sonamu", "*"]; // 모든 sonamu 하위 카테고리
 // → 매번 패턴 매칭 필요 (느림)
 
 // 정확한 매칭
-category: ["sonamu", "model"]
+category: ["sonamu", "model"];
 // → 단순 문자열 비교 (빠름)
 ```
 
 3. **예측 가능성**
+
 ```typescript
 // 부분 매칭이라면 혼란
 loggers: [
   { category: ["sonamu"], lowestLevel: "info" },
   { category: ["sonamu", "model"], lowestLevel: "debug" },
-]
+];
 // → ["sonamu", "model", "user-model"] 로그는 어디에 매칭?
 
 // 정확한 매칭으로 명확
-loggers: [
-  { category: ["sonamu", "model"], lowestLevel: "debug" },
-]
+loggers: [{ category: ["sonamu", "model"], lowestLevel: "debug" }];
 // → ["sonamu", "model"]만 매칭, 명확함!
 ```
 
@@ -156,12 +160,13 @@ loggers: [
 카테고리는 점점 구체적으로 좁혀집니다.
 
 ```typescript
-["sonamu", "model", "user-model"]
+["sonamu", "model", "user-model"];
 //  ↓        ↓        ↓
 //  네임스페이스  타입    구체적 이름
 ```
 
 **설정 예시:**
+
 ```typescript
 export default defineConfig({
   logging: {
@@ -172,14 +177,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // Model만
       {
         category: ["sonamu", "model"],
         sinks: ["modelLog"],
         lowestLevel: "debug",
       },
-      
+
       // UserModel만
       {
         category: ["sonamu", "model", "user-model"],
@@ -188,7 +193,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -201,11 +206,11 @@ LogTape는 카테고리를 **정확히 일치**하는 것만 매칭합니다.
 
 ```typescript
 // ❌ 부분 매칭 안 됨
-category: ["sonamu"]
+category: ["sonamu"];
 // → ["sonamu", "model", "user-model"] 로그는 매칭 안 됨
 
 // ✅ 정확히 일치해야 함
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 // → ["sonamu", "model", "user-model"] 로그만 매칭
 ```
 
@@ -222,11 +227,13 @@ Sonamu는 특정 클래스에 대해 자동으로 카테고리를 생성합니�
 ```
 
 **변환 규칙:**
+
 1. 클래스 이름에서 `ModelClass` 제거
 2. PascalCase → snake_case 변환
 3. snake_case → kebab-case 변환
 
 **예시:**
+
 ```
 UserModelClass
 → User (ModelClass 제거)
@@ -256,11 +263,13 @@ OrderItemModelClass
 ```
 
 **변환 규칙:**
+
 1. 클래스 이름에서 `Workflow` 제거 (접미사만)
 2. PascalCase → snake_case 변환
 3. snake_case → kebab-case 변환
 
 **예시:**
+
 ```
 EmailSendWorkflow
 → EmailSend (Workflow 제거)
@@ -288,11 +297,13 @@ Naite 테스트 키는 특별한 카테고리 변환 규칙을 따릅니다.
 ```
 
 **변환 규칙:**
+
 1. `.`로 split
 2. 각 부분을 `:`로 split
 3. 평탄화 (flatten)
 
 **예시:**
+
 ```
 "user.findOne"
 → ["user", "findOne"]
@@ -317,7 +328,7 @@ export default defineConfig({
       userLog: getFileSink("logs/user-model.log"),
       postLog: getFileSink("logs/post-model.log"),
     },
-    
+
     loggers: [
       {
         category: ["sonamu", "model", "user-model"],
@@ -331,7 +342,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -350,14 +361,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "debug",
       },
-      
+
       // Workflow: info 레벨
       {
         category: ["sonamu", "workflow"],
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // Agent: warning 레벨
       {
         category: ["sonamu", "agent"],
@@ -366,7 +377,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -382,7 +393,7 @@ export default defineConfig({
       sonamuLog: getFileSink("logs/sonamu.log"),
       appLog: getFileSink("logs/app.log"),
     },
-    
+
     loggers: [
       // Sonamu 내부
       {
@@ -390,7 +401,7 @@ export default defineConfig({
         sinks: ["sonamuLog"],
         lowestLevel: "info",
       },
-      
+
       // 애플리케이션
       {
         category: ["app"],
@@ -399,7 +410,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -422,13 +433,14 @@ logger.error("Payment failed", { error: "timeout" });
 ```
 
 **설정:**
+
 ```typescript
 export default defineConfig({
   logging: {
     sinks: {
       paymentLog: getFileSink("logs/payment.log"),
     },
-    
+
     loggers: [
       {
         category: ["app", "payment", "processor"],
@@ -437,7 +449,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -457,7 +469,7 @@ export default defineConfig({
     sinks: {
       console: getConsoleSink(),
     },
-    
+
     loggers: [
       // Fastify: info
       {
@@ -465,14 +477,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "info",
       },
-      
+
       // 모든 Sonamu 내부: debug
       {
         category: ["sonamu"],
         sinks: ["console"],
         lowestLevel: "debug",
       },
-      
+
       // 앱 로직: debug
       {
         category: ["app"],
@@ -481,7 +493,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -501,7 +513,7 @@ export default defineConfig({
       workflowLog: getFileSink("logs/workflow.log"),
       errorLog: getFileSink("logs/error.log"),
     },
-    
+
     loggers: [
       // Fastify: warning 이상
       {
@@ -509,14 +521,14 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "warning",
       },
-      
+
       // Workflow: 전체 기록
       {
         category: ["sonamu", "workflow"],
         sinks: ["workflowLog"],
         lowestLevel: "info",
       },
-      
+
       // 에러만 별도 파일
       {
         category: ["sonamu"],
@@ -525,7 +537,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -545,7 +557,7 @@ export default defineConfig({
       orderDomain: getFileSink("logs/order-domain.log"),
       paymentDomain: getFileSink("logs/payment-domain.log"),
     },
-    
+
     loggers: [
       // User 관련
       {
@@ -558,7 +570,7 @@ export default defineConfig({
         sinks: ["userDomain"],
         lowestLevel: "debug",
       },
-      
+
       // Order 관련
       {
         category: ["sonamu", "model", "order-model"],
@@ -570,7 +582,7 @@ export default defineConfig({
         sinks: ["orderDomain"],
         lowestLevel: "debug",
       },
-      
+
       // Payment 관련
       {
         category: ["app", "payment"],
@@ -579,7 +591,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -589,7 +601,8 @@ export default defineConfig({
 ## 내부 동작 원리
 
 <Note>
-이 섹션은 Sonamu의 카테고리 시스템이 내부적으로 어떻게 동작하는지 설명합니다. 여기 나오는 함수들은 Sonamu가 자동으로 사용하며, 사용자가 직접 호출할 수 없습니다.
+  이 섹션은 Sonamu의 카테고리 시스템이 내부적으로 어떻게 동작하는지 설명합니다. 여기 나오는 함수들은
+  Sonamu가 자동으로 사용하며, 사용자가 직접 호출할 수 없습니다.
 </Note>
 
 ### isSameCategory()
@@ -629,9 +642,10 @@ convertDomainToCategory("PaymentAgentClass", "agent");
 **내부 용도:** Model, Frame, Workflow, Agent 클래스가 생성될 때 자동으로 카테고리를 할당합니다.
 
 **변환 로직:**
+
 1. 클래스 이름에서 접미사 제거 (`ModelClass`, `FrameClass`, `AgentClass`, `Workflow`)
 2. PascalCase → snake_case 변환
-3. snake_case → kebab-case 변환 (`_` → `-`)
+3. snake*case → kebab-case 변환 (`*`→`-`)
 4. `["sonamu", type, name]` 형식으로 구성
 
 ### convertNaiteKeyToCategory()
@@ -650,6 +664,7 @@ convertNaiteKeyToCategory("admin.company:detail");
 **내부 용도:** Naite 테스트 실행 시 로그 카테고리를 자동으로 생성합니다.
 
 **변환 로직:**
+
 1. `.`로 split
 2. 각 부분을 `:`로 split
 3. 평탄화 (flatten)
@@ -660,13 +675,13 @@ convertNaiteKeyToCategory("admin.company:detail");
 
 ```typescript
 // ❌ 와일드카드 없음
-category: ["sonamu", "*"]  // 작동 안 함
+category: ["sonamu", "*"]; // 작동 안 함
 
 // ❌ 부분 매칭 없음
-category: ["sonamu"]  // ["sonamu", "model"]과 매칭 안 됨
+category: ["sonamu"]; // ["sonamu", "model"]과 매칭 안 됨
 
 // ✅ 정확한 카테고리만
-category: ["sonamu", "model", "user-model"]
+category: ["sonamu", "model", "user-model"];
 ```
 
 ### 2. 카테고리는 readonly 배열
@@ -683,72 +698,56 @@ const category: string[] = ["app", "payment"];
 
 ```typescript
 // ✅ 올바른 이름
-class UserModelClass { }          // → ["sonamu", "model", "user-model"]
-class OrderItemModelClass { }     // → ["sonamu", "model", "order-item-model"]
-class EmailSendWorkflow { }       // → ["sonamu", "workflow", "email-send"]
+class UserModelClass {} // → ["sonamu", "model", "user-model"]
+class OrderItemModelClass {} // → ["sonamu", "model", "order-item-model"]
+class EmailSendWorkflow {} // → ["sonamu", "workflow", "email-send"]
 
 // ❌ 컨벤션 위반 (자동 변환 안 됨)
-class User { }                    // Model이 아님
-class UserModel { }               // "Class" 접미사 없음
-class WorkflowEmailSend { }       // "Workflow" 접두사 (접미사여야 함)
+class User {} // Model이 아님
+class UserModel {} // "Class" 접미사 없음
+class WorkflowEmailSend {} // "Workflow" 접두사 (접미사여야 함)
 ```
 
 ### 4. Fastify 카테고리 중복
 
 ```typescript
 // ❌ Fastify 카테고리와 충돌
-fastifyCategory: ["sonamu", "model"]
+fastifyCategory: ["sonamu", "model"];
 
 loggers: [
   {
-    category: ["sonamu", "model"],  // Fastify 로그와 섞임!
+    category: ["sonamu", "model"], // Fastify 로그와 섞임!
     // ...
   },
-]
+];
 
 // ✅ 분리된 카테고리
-fastifyCategory: ["fastify"]
+fastifyCategory: ["fastify"];
 
 loggers: [
   {
     category: ["sonamu", "model"],
     // ...
   },
-]
+];
 ```
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="Fastify 로깅" 
-    icon="bolt" 
-    href="/ko/configuration/logging/fastify-logging"
-  >
+  <Card title="Fastify 로깅" icon="bolt" href="/ko/configuration/logging/fastify-logging">
     HTTP 요청/응답 로깅을 커스터마이징하세요
   </Card>
-  
-  <Card 
-    title="Sinks & Filters" 
-    icon="filter" 
-    href="/ko/configuration/logging/sinks-and-filters"
-  >
-    커스텀 Sink와 Filter로 로그 출력을 제어하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 설정" 
-    icon="gear" 
-    href="/ko/configuration/logging/logtape-setup"
-  >
-    기본 로깅 설정과 개념을 학습하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 공식 문서" 
-    icon="book-open" 
-    href="https://github.com/dahlia/logtape"
-  >
+
+<Card title="Sinks & Filters" icon="filter" href="/ko/configuration/logging/sinks-and-filters">
+  커스텀 Sink와 Filter로 로그 출력을 제어하세요
+</Card>
+
+<Card title="LogTape 설정" icon="gear" href="/ko/configuration/logging/logtape-setup">
+  기본 로깅 설정과 개념을 학습하세요
+</Card>
+
+  <Card title="LogTape 공식 문서" icon="book-open" href="https://github.com/dahlia/logtape">
     LogTape의 고급 기능과 API를 확인하세요
   </Card>
 </CardGroup>

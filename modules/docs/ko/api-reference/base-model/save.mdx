@@ -1,12 +1,13 @@
 ---
-title: 'save'
-description: '레코드 저장 및 수정'
+title: "save"
+description: "레코드 저장 및 수정"
 ---
 
 `save`는 레코드를 저장하거나 수정하는 메서드입니다. UpsertBuilder를 사용하여 INSERT/UPDATE를 자동으로 처리하며, 트랜잭션 내에서 안전하게 실행됩니다.
 
 <Info>
-`save`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에 자동으로 생성하는 **표준 패턴**입니다.
+  `save`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에
+  자동으로 생성하는 **표준 패턴**입니다.
 </Info>
 
 ## 타입 시그니처
@@ -43,6 +44,7 @@ class UserModelClass extends BaseModelClass {
 ```
 
 **내부 동작:**
+
 1. **getPuri("w")**: BaseModelClass 메서드로 쓰기용 Puri 획득
 2. **ubRegister()**: UpsertBuilder에 레코드 등록
 3. **transaction()**: 트랜잭션 시작
@@ -58,22 +60,20 @@ class UserModelClass extends BaseModelClass {
 
 ```typescript
 type UserSaveParams = {
-  id?: number;         // 있으면 UPDATE, 없으면 INSERT
+  id?: number; // 있으면 UPDATE, 없으면 INSERT
   email: string;
   name: string;
   status?: string;
   // ... 기타 필드
-}
+};
 
 // 단일 레코드 저장
-await UserModel.save([
-  { email: "john@example.com", name: "John" }
-]);
+await UserModel.save([{ email: "john@example.com", name: "John" }]);
 
 // 여러 레코드 저장
 await UserModel.save([
   { email: "john@example.com", name: "John" },
-  { email: "jane@example.com", name: "Jane" }
+  { email: "jane@example.com", name: "Jane" },
 ]);
 ```
 
@@ -84,14 +84,10 @@ await UserModel.save([
 
 ```typescript
 // INSERT (id 없음)
-await UserModel.save([
-  { email: "new@example.com", name: "New User" }
-]);
+await UserModel.save([{ email: "new@example.com", name: "New User" }]);
 
 // UPDATE (id 있음)
-await UserModel.save([
-  { id: 1, email: "updated@example.com", name: "Updated Name" }
-]);
+await UserModel.save([{ id: 1, email: "updated@example.com", name: "Updated Name" }]);
 ```
 
 ## 반환값
@@ -102,23 +98,19 @@ await UserModel.save([
 
 ```typescript
 // INSERT
-const [id] = await UserModel.save([
-  { email: "john@example.com", name: "John" }
-]);
-console.log("Created ID:", id);  // 123
+const [id] = await UserModel.save([{ email: "john@example.com", name: "John" }]);
+console.log("Created ID:", id); // 123
 
 // UPDATE
-const [id] = await UserModel.save([
-  { id: 123, name: "John Smith" }
-]);
-console.log("Updated ID:", id);  // 123
+const [id] = await UserModel.save([{ id: 123, name: "John Smith" }]);
+console.log("Updated ID:", id); // 123
 
 // 여러 레코드
 const ids = await UserModel.save([
   { email: "a@example.com", name: "A" },
-  { email: "b@example.com", name: "B" }
+  { email: "b@example.com", name: "B" },
 ]);
-console.log("Created IDs:", ids);  // [124, 125]
+console.log("Created IDs:", ids); // [124, 125]
 ```
 
 ## 기본 사용법
@@ -135,10 +127,10 @@ class UserService {
         email,
         name,
         status: "active",
-        created_at: new Date()
-      }
+        created_at: new Date(),
+      },
     ]);
-    
+
     return { id };
   }
 }
@@ -155,7 +147,7 @@ async updateUser(userId: number, name: string) {
       updated_at: new Date()
     }
   ]);
-  
+
   return { id };
 }
 ```
@@ -165,7 +157,7 @@ async updateUser(userId: number, name: string) {
 ```typescript
 async upsertUser(userData: { id?: number; email: string; name: string }) {
   const [id] = await UserModel.save([userData]);
-  
+
   return { id };
 }
 ```
@@ -182,7 +174,7 @@ async save(spa: UserSaveParams[]): Promise<number[]> {
   spa.forEach((sp) => {
     wdb.ubRegister("users", sp);
   });
-  
+
   // ...
 }
 ```
@@ -203,15 +195,15 @@ UpsertBuilder는 `id` 필드의 유무에 따라 자동으로 INSERT 또는 UPDA
 
 ```sql
 -- id 없음: INSERT
-INSERT INTO users (email, name, status) 
+INSERT INTO users (email, name, status)
 VALUES ('john@example.com', 'John', 'active')
 RETURNING id;
 
 -- id 있음: UPDATE
-INSERT INTO users (id, email, name) 
+INSERT INTO users (id, email, name)
 VALUES (123, 'john@example.com', 'John Smith')
-ON CONFLICT (id) 
-DO UPDATE SET 
+ON CONFLICT (id)
+DO UPDATE SET
   email = EXCLUDED.email,
   name = EXCLUDED.name
 RETURNING id;
@@ -231,7 +223,7 @@ async bulkCreateUsers(users: { email: string; name: string }[]) {
       created_at: new Date()
     }))
   );
-  
+
   return { count: ids.length, ids };
 }
 ```
@@ -245,19 +237,19 @@ async bulkCreateUsers(users: { email: string; name: string }[]) {
 const postId = await PostModel.save([
   {
     title: "My Post",
-    content: "Content here"
-  }
+    content: "Content here",
+  },
 ]);
 
 await CommentModel.save([
   {
     post_id: postId[0],
-    content: "First comment"
+    content: "First comment",
   },
   {
     post_id: postId[0],
-    content: "Second comment"
-  }
+    content: "Second comment",
+  },
 ]);
 ```
 
@@ -268,19 +260,19 @@ await CommentModel.save([
 const userId = await UserModel.save([
   {
     email: "admin@example.com",
-    name: "Admin User"
-  }
+    name: "Admin User",
+  },
 ]);
 
 await UserRoleModel.save([
   {
     user_id: userId[0],
-    role_id: 1  // Admin
+    role_id: 1, // Admin
   },
   {
     user_id: userId[0],
-    role_id: 2  // Editor
-  }
+    role_id: 2, // Editor
+  },
 ]);
 ```
 
@@ -304,14 +296,14 @@ await UserRoleModel.save([
         const existing = await UserModel.findOne("A", {
           email: params.email
         });
-        
+
         if (existing) {
           throw new BadRequestException("이미 사용 중인 이메일입니다");
         }
-        
+
         // 비밀번호 해싱
         const hashedPassword = await bcrypt.hash(params.password, 10);
-        
+
         // 사용자 생성
         const [id] = await UserModel.save([
           {
@@ -323,7 +315,7 @@ await UserRoleModel.save([
             created_at: new Date()
           }
         ]);
-        
+
         return {
           id,
           email: params.email,
@@ -332,6 +324,7 @@ await UserRoleModel.save([
       }
     }
     ```
+
   </Tab>
 
   <Tab title="프로필 수정" icon="pen-to-square">
@@ -347,11 +340,11 @@ await UserRoleModel.save([
         avatar_url?: string;
       }) {
         const { user } = Sonamu.getContext();
-        
+
         if (!user) {
           throw new UnauthorizedException("로그인이 필요합니다");
         }
-        
+
         // 프로필 업데이트
         const [id] = await UserModel.save([
           {
@@ -360,14 +353,15 @@ await UserRoleModel.save([
             updated_at: new Date()
           }
         ]);
-        
+
         // 업데이트된 사용자 정보 조회
         const updated = await UserModel.findById("A", id);
-        
+
         return updated;
       }
     }
     ```
+
   </Tab>
 
   <Tab title="게시물 작성" icon="file-pen">
@@ -383,7 +377,7 @@ await UserRoleModel.save([
         tags?: string[];
       }) {
         const { user } = Sonamu.getContext();
-        
+
         // 게시물 생성
         const [postId] = await PostModel.save([
           {
@@ -394,7 +388,7 @@ await UserRoleModel.save([
             created_at: new Date()
           }
         ]);
-        
+
         // 태그 저장
         if (params.tags && params.tags.length > 0) {
           await TagModel.save(
@@ -404,7 +398,7 @@ await UserRoleModel.save([
             }))
           );
         }
-        
+
         return {
           id: postId,
           title: params.title
@@ -412,6 +406,7 @@ await UserRoleModel.save([
       }
     }
     ```
+
   </Tab>
 
   <Tab title="주문 생성" icon="cart-shopping">
@@ -431,13 +426,13 @@ await UserRoleModel.save([
         shipping_address: string;
       }) {
         const { user } = Sonamu.getContext();
-        
+
         // 총액 계산
         const total = params.items.reduce(
           (sum, item) => sum + (item.price * item.quantity),
           0
         );
-        
+
         // 주문 생성
         const [orderId] = await OrderModel.save([
           {
@@ -448,7 +443,7 @@ await UserRoleModel.save([
             created_at: new Date()
           }
         ]);
-        
+
         // 주문 항목 생성
         const itemIds = await OrderItemModel.save(
           params.items.map(item => ({
@@ -458,7 +453,7 @@ await UserRoleModel.save([
             price: item.price
           }))
         );
-        
+
         return {
           orderId,
           itemCount: itemIds.length,
@@ -467,6 +462,7 @@ await UserRoleModel.save([
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -479,9 +475,9 @@ await UserRoleModel.save([
 await UserModel.save([
   {
     id: 123,
-    name: "New Name"
+    name: "New Name",
     // 다른 필드는 그대로 유지
-  }
+  },
 ]);
 
 // 여러 필드 업데이트
@@ -490,13 +486,13 @@ await UserModel.save([
     id: 123,
     name: "New Name",
     email: "new@example.com",
-    updated_at: new Date()
-  }
+    updated_at: new Date(),
+  },
 ]);
 ```
 
 <Info>
-지정하지 않은 필드는 변경되지 않습니다. NULL로 설정하려면 명시적으로 `null`을 전달하세요.
+  지정하지 않은 필드는 변경되지 않습니다. NULL로 설정하려면 명시적으로 `null`을 전달하세요.
 </Info>
 
 ## 트랜잭션
@@ -519,27 +515,23 @@ import { api, transactional } from "sonamu";
 class UserFrame {
   @api({ httpMethod: "POST" })
   @transactional()
-  async createUserWithProfile(params: {
-    email: string;
-    name: string;
-    bio: string;
-  }) {
+  async createUserWithProfile(params: { email: string; name: string; bio: string }) {
     // User 생성
     const [userId] = await UserModel.save([
       {
         email: params.email,
-        name: params.name
-      }
+        name: params.name,
+      },
     ]);
-    
+
     // Profile 생성
     await ProfileModel.save([
       {
         user_id: userId,
-        bio: params.bio
-      }
+        bio: params.bio,
+      },
     ]);
-    
+
     // 둘 다 성공하거나 둘 다 실패 (원자성)
     return { userId };
   }
@@ -556,9 +548,9 @@ SaveParams는 Entity 정의에서 Zod 스키마로 자동 생성됩니다.
 // 자동으로 검증됨
 await UserModel.save([
   {
-    email: "invalid-email",  // ❌ 이메일 형식 검증 실패
-    name: "John"
-  }
+    email: "invalid-email", // ❌ 이메일 형식 검증 실패
+    name: "John",
+  },
 ]);
 ```
 
@@ -570,16 +562,16 @@ async createUser(params: UserSaveParams) {
   const existing = await UserModel.findOne("A", {
     email: params.email
   });
-  
+
   if (existing) {
     throw new BadRequestException("이미 사용 중인 이메일입니다");
   }
-  
+
   // 비밀번호 강도 확인
   if (params.password.length < 8) {
     throw new BadRequestException("비밀번호는 8자 이상이어야 합니다");
   }
-  
+
   return await UserModel.save([params]);
 }
 ```
@@ -607,8 +599,8 @@ import { UserService } from "@/services/UserService";
 const ids = await UserService.save([
   {
     email: "john@example.com",
-    name: "John"
-  }
+    name: "John",
+  },
 ]);
 ```
 
@@ -627,7 +619,7 @@ function CreateUserForm() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     createUser.mutate({
       email: formData.get("email") as string,
       name: formData.get("name") as string
@@ -641,11 +633,11 @@ function CreateUserForm() {
       <button type="submit" disabled={createUser.isPending}>
         {createUser.isPending ? "Creating..." : "Create User"}
       </button>
-      
+
       {createUser.isSuccess && (
         <p>User created with ID: {createUser.data[0]}</p>
       )}
-      
+
       {createUser.isError && (
         <p>Error: {createUser.error.message}</p>
       )}
@@ -663,11 +655,11 @@ UpsertBuilder는 Unique 제약조건을 자동으로 처리합니다.
 ```typescript
 // email이 unique인 경우
 await UserModel.save([
-  { email: "john@example.com", name: "John" }  // INSERT
+  { email: "john@example.com", name: "John" }, // INSERT
 ]);
 
 await UserModel.save([
-  { email: "john@example.com", name: "John Smith" }  // UPDATE (동일 이메일)
+  { email: "john@example.com", name: "John Smith" }, // UPDATE (동일 이메일)
 ]);
 ```
 
@@ -680,11 +672,11 @@ await UserModel.save([
     metadata: {
       preferences: {
         theme: "dark",
-        language: "ko"
+        language: "ko",
       },
-      tags: ["vip", "premium"]
-    }
-  }
+      tags: ["vip", "premium"],
+    },
+  },
 ]);
 ```
 
@@ -694,8 +686,8 @@ await UserModel.save([
 await PostModel.save([
   {
     id: 1,
-    tags: ["typescript", "node", "database"]
-  }
+    tags: ["typescript", "node", "database"],
+  },
 ]);
 ```
 
@@ -705,7 +697,9 @@ await PostModel.save([
 
 ```typescript
 // 대량 데이터 저장 시 청크 단위로 나누기
-const users = [/* 10000개 */];
+const users = [
+  /* 10000개 */
+];
 
 // 500개씩 나눠서 저장
 for (let i = 0; i < users.length; i += 500) {
@@ -724,7 +718,7 @@ async bulkOperation(data: LargeDataSet) {
   await UserModel.save(data.users);
   await PostModel.save(data.posts);
   await CommentModel.save(data.comments);
-  
+
   // 모두 성공하거나 모두 실패
 }
 ```
@@ -760,17 +754,17 @@ const [id1, id2, id3] = await UserModel.save([{ ... }, { ... }, { ... }]);
 await UserModel.save([
   {
     id: 1,
-    name: "New Name"
+    name: "New Name",
     // email 필드 없음 → null로 변경되지 않음 (기존 값 유지)
-  }
+  },
 ]);
 
 // ✅ 명시적으로 null 설정
 await UserModel.save([
   {
     id: 1,
-    email: null  // 명시적 null
-  }
+    email: null, // 명시적 null
+  },
 ]);
 ```
 
@@ -791,33 +785,21 @@ const [postId] = await PostModel.save([{ ... }]);
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="findById" 
-    icon="magnifying-glass" 
-    href="/ko/api-reference/base-model/find-by-id"
-  >
+  <Card title="findById" icon="magnifying-glass" href="/ko/api-reference/base-model/find-by-id">
     저장된 레코드 조회하기
   </Card>
-  
-  <Card 
-    title="del" 
-    icon="trash" 
-    href="/ko/api-reference/base-model/del"
-  >
-    레코드 삭제하기
-  </Card>
-  
-  <Card 
-    title="UpsertBuilder" 
-    icon="layer-group" 
-    href="/ko/database/upsert-builder/basic-usage"
-  >
-    UpsertBuilder 상세 가이드
-  </Card>
-  
-  <Card 
-    title="@transactional" 
-    icon="arrows-rotate" 
+
+<Card title="del" icon="trash" href="/ko/api-reference/base-model/del">
+  레코드 삭제하기
+</Card>
+
+<Card title="UpsertBuilder" icon="layer-group" href="/ko/database/upsert-builder/basic-usage">
+  UpsertBuilder 상세 가이드
+</Card>
+
+  <Card
+    title="@transactional"
+    icon="arrows-rotate"
     href="/ko/api-reference/decorators/transactional"
   >
     트랜잭션 사용하기

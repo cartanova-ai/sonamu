@@ -28,6 +28,7 @@ Claim YAML with `type: surface` (schema: `01_cdd.md#claim-format`).
 `worker_result` (schema: `04_worker_contract.md#worker-result`).
 
 Evidence fields are mandatory for this worker type:
+
 - `executed_cli_commands`: every Sonamu CLI command run.
 - `generated_targets`: files created by CLI.
 - `migration_status`: `not_needed|generated|run|blocked`.

@@ -12,11 +12,11 @@ During fixture generation, the LLM references `cone.note` to produce realistic, 
 
 ## Role of Cone
 
-| Purpose | Description |
-|---------|-------------|
+| Purpose                | Description                                                           |
+| ---------------------- | --------------------------------------------------------------------- |
 | **Fixture generation** | LLM generates contextually appropriate test data based on `cone.note` |
-| **Scaffolding** | Uses cone information to generate model and view templates |
-| **Documentation** | Metadata describing Entity structure and the meaning of each field |
+| **Scaffolding**        | Uses cone information to generate model and view templates            |
+| **Documentation**      | Metadata describing Entity structure and the meaning of each field    |
 
 ---
 
@@ -24,32 +24,32 @@ During fixture generation, the LLM references `cone.note` to produce realistic, 
 
 ### Entity cone
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `note` | string | Entity purpose, business context, and fixture generation guide |
-| `tags` | string[] | Classification tags |
+| Field  | Type     | Description                                                    |
+| ------ | -------- | -------------------------------------------------------------- |
+| `note` | string   | Entity purpose, business context, and fixture generation guide |
+| `tags` | string[] | Classification tags                                            |
 
 ### Prop cone
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `note` | string | **Highest priority.** Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
-| `fixtureGenerator` | string | **Fallback.** faker.js expression. Fallback when no API key is available |
-| `fixtureDefault` | any | Fixed default value |
-| `fixtureStrategy` | string | `"sequence"` — used when id is auto-assigned by a DB sequence |
-| `dataSource` | object | Strategy for fetching reference data for relation props |
+| Field              | Type   | Description                                                                                                                                    |
+| ------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `note`             | string | **Highest priority.** Business meaning of the field, concrete examples, value ranges, format constraints. Input the LLM reads to generate data |
+| `fixtureGenerator` | string | **Fallback.** faker.js expression. Fallback when no API key is available                                                                       |
+| `fixtureDefault`   | any    | Fixed default value                                                                                                                            |
+| `fixtureStrategy`  | string | `"sequence"` — used when id is auto-assigned by a DB sequence                                                                                  |
+| `dataSource`       | object | Strategy for fetching reference data for relation props                                                                                        |
 
 ### Subset cone
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field  | Type   | Description                                          |
+| ------ | ------ | ---------------------------------------------------- |
 | `note` | string | Subset purpose, included fields, and when it is used |
 
 ### Enum cone
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `note` | string | Meaning and usage context of the enum |
+| Field    | Type   | Description                            |
+| -------- | ------ | -------------------------------------- |
+| `note`   | string | Meaning and usage context of the enum  |
 | `values` | object | `{ note: string }` for each enum value |
 
 ---
@@ -97,10 +97,10 @@ pnpm sonamu cone gen Post --locale en
 
 #### Options
 
-| Option | Description |
-|--------|-------------|
-| `--all` | Generate cone for all Entities |
-| `--regenerate` | Overwrite existing cone (default: only generate for fields with no note) |
+| Option                  | Description                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `--all`                 | Generate cone for all Entities                                                       |
+| `--regenerate`          | Overwrite existing cone (default: only generate for fields with no note)             |
 | `--locale <ko\|en\|ja>` | Generation language (default: `i18n.defaultLocale` from `sonamu.config.ts`, or `ko`) |
 
 #### How it works
@@ -129,12 +129,12 @@ pnpm sonamu stub entity Post --no-cones
 
 #### Template cone vs LLM cone
 
-| Item | Template cone | LLM cone |
-|------|--------------|----------|
-| API key | Not required | Required |
+| Item    | Template cone                    | LLM cone                 |
+| ------- | -------------------------------- | ------------------------ |
+| API key | Not required                     | Required                 |
 | Quality | Defaults based on faker-mappings | Reflects project context |
-| Speed | Immediate | Takes a few seconds |
-| Upgrade | Can be upgraded with `cone gen` | — |
+| Speed   | Immediate                        | Takes a few seconds      |
+| Upgrade | Can be upgraded with `cone gen`  | —                        |
 
 ---
 
@@ -233,14 +233,14 @@ Using `fixtureStrategy: "sequence"` causes a `MAX(id::bigint)` error during fixt
 
 Specifies how reference data is fetched for relation props.
 
-| Strategy | Description |
-|----------|-------------|
+| Strategy | Description                      |
+| -------- | -------------------------------- |
 | `recent` | Most recent data (by created_at) |
-| `sample` | Uniform sampling |
-| `random` | Random sampling |
-| `ids` | Specific IDs |
-| `query` | Custom query |
-| `file` | Load from file |
+| `sample` | Uniform sampling                 |
+| `random` | Random sampling                  |
+| `ids`    | Specific IDs                     |
+| `query`  | Custom query                     |
+| `file`   | Load from file                   |
 
 ```json
 "dataSource": {
@@ -253,16 +253,16 @@ Specifies how reference data is fetched for relation props.
 
 **Source:** `modules/sonamu/src/testing/data-explorer.ts`
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `strategy` | string | — | Fetch strategy (see table above) |
-| `limit` | number | — | Maximum number of records to fetch |
-| `where` | object \| function | — | WHERE condition (object or Knex QueryBuilder function) |
-| `orderBy` | string | — | Sort criteria |
-| `ids` | number[] | — | Specific ID list for `ids` strategy |
-| `filePath` | string | — | File path for `file` strategy |
-| `useCache` | boolean | `false` | Whether to use caching |
-| `cacheTtl` | number | `300` | Cache TTL (in seconds) |
+| Option     | Type               | Default | Description                                            |
+| ---------- | ------------------ | ------- | ------------------------------------------------------ |
+| `strategy` | string             | —       | Fetch strategy (see table above)                       |
+| `limit`    | number             | —       | Maximum number of records to fetch                     |
+| `where`    | object \| function | —       | WHERE condition (object or Knex QueryBuilder function) |
+| `orderBy`  | string             | —       | Sort criteria                                          |
+| `ids`      | number[]           | —       | Specific ID list for `ids` strategy                    |
+| `filePath` | string             | —       | File path for `file` strategy                          |
+| `useCache` | boolean            | `false` | Whether to use caching                                 |
+| `cacheTtl` | number             | `300`   | Cache TTL (in seconds)                                 |
 
 **Example using a where condition:**
 
@@ -280,10 +280,10 @@ Specifies how reference data is fetched for relation props.
 
 Used in `fixture gen` to fetch related data alongside the target data.
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `includeRelations` | boolean | `true` | Whether to include related data |
-| `maxDepth` | number | `2` | Maximum depth for recursive traversal |
+| Option             | Type    | Default | Description                           |
+| ------------------ | ------- | ------- | ------------------------------------- |
+| `includeRelations` | boolean | `true`  | Whether to include related data       |
+| `maxDepth`         | number  | `2`     | Maximum depth for recursive traversal |
 
 ---
 

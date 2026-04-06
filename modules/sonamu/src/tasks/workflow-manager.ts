@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import { getLogger, type Logger } from "@logtape/logtape";
 import { BackendPostgres, OpenWorkflow, type Worker } from "@sonamu-kit/tasks";
 import {
@@ -10,10 +12,10 @@ import {
   type WorkflowRunHandle,
   type WorkflowSpec,
 } from "@sonamu-kit/tasks/internal";
-import assert from "assert";
 import type { Knex } from "knex";
 import { schedule as cronSchedule, type ScheduledTask } from "node-cron";
 import type { ZodObject } from "zod";
+
 import type { Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
 import { convertDomainToCategory } from "../logger/category";

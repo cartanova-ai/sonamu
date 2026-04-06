@@ -1,8 +1,9 @@
+import fs from "fs";
+import path from "path";
+
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import fs from "fs";
-import path from "path";
 import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";

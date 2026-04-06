@@ -1,6 +1,6 @@
 ---
-title: 'Migration 탭'
-description: '마이그레이션 생성 및 실행하기'
+title: "Migration 탭"
+description: "마이그레이션 생성 및 실행하기"
 ---
 
 Migration 탭에서는 **Entity 변경사항을 데이터베이스에 반영**하기 위한 마이그레이션을 시각적으로 관리할 수 있습니다. CLI의 `pnpm migrate` 명령어를 UI로 대체합니다.
@@ -23,11 +23,11 @@ Migration 탭은 두 가지 주요 영역으로 구성됩니다:
 
 **[Check Status]** 버튼을 클릭하면 현재 마이그레이션 상태를 확인할 수 있습니다.
 
-| 상태 | 설명 | 표시 |
-|------|------|------|
+| 상태        | 설명                            | 표시      |
+| ----------- | ------------------------------- | --------- |
 | **Pending** | 아직 적용되지 않은 마이그레이션 | 📋 노란색 |
-| **Applied** | 이미 적용된 마이그레이션 | ✅ 초록색 |
-| **Failed** | 실행 중 오류 발생 | ❌ 빨간색 |
+| **Applied** | 이미 적용된 마이그레이션        | ✅ 초록색 |
+| **Failed**  | 실행 중 오류 발생               | ❌ 빨간색 |
 
 ### 데이터베이스별 상태
 
@@ -47,13 +47,13 @@ Entity를 수정하면 Sonamu가 자동으로 마이그레이션을 생성합니
 
 다음과 같은 Entity 변경사항이 있을 때:
 
-| 변경 타입 | 예시 |
-|----------|------|
-| **테이블 생성** | 새 Entity 추가 |
-| **컬럼 추가** | Property 추가 |
-| **컬럼 수정** | 타입/길이 변경 |
-| **컬럼 삭제** | Property 삭제 |
-| **인덱스 추가** | Index 추가 |
+| 변경 타입       | 예시                |
+| --------------- | ------------------- |
+| **테이블 생성** | 새 Entity 추가      |
+| **컬럼 추가**   | Property 추가       |
+| **컬럼 수정**   | 타입/길이 변경      |
+| **컬럼 삭제**   | Property 삭제       |
+| **인덱스 추가** | Index 추가          |
 | **외래키 추가** | belongsTo 관계 추가 |
 
 ### 마이그레이션 파일 확인
@@ -85,6 +85,7 @@ export async function down(knex: Knex): Promise<void> {
 3. 확인 모달에서 **[Confirm]** 클릭
 
 **실행 과정**:
+
 ```
 Development Master:
   ✓ 20240116_101530_add_user_phone (0.2s)
@@ -100,7 +101,7 @@ All migrations applied successfully!
 **[Run All]** 버튼을 클릭하면 대기 중인 모든 마이그레이션을 순서대로 실행합니다.
 
 <Warning>
-**프로덕션 주의**: 프로덕션 데이터베이스에 마이그레이션을 실행하기 전에는 **반드시 백업**하세요.
+  **프로덕션 주의**: 프로덕션 데이터베이스에 마이그레이션을 실행하기 전에는 **반드시 백업**하세요.
 </Warning>
 
 ## 마이그레이션 롤백
@@ -112,6 +113,7 @@ All migrations applied successfully!
 3. 확인 모달에서 **[Confirm]** 클릭
 
 **롤백 과정**:
+
 ```
 Rolling back last migration...
 
@@ -122,7 +124,7 @@ Rollback completed successfully!
 ```
 
 <Warning>
-**데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **데이터가 손실**될 수 있습니다.
+  **데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **데이터가 손실**될 수 있습니다.
 </Warning>
 
 ## Migration Preview
@@ -139,13 +141,14 @@ Changes:
      + column: profile_image (string, nullable)
      + column: bio (text, nullable)
      + index: (email) unique
-  
+
   ⚠️ Table: posts
      - column: deprecated_field
      ⚠️ Warning: Data in this column will be lost!
 ```
 
 **아이콘 의미**:
+
 - ✅ 추가: 새로운 테이블/컬럼/인덱스
 - 🔄 수정: 기존 컬럼 타입/길이 변경
 - ⚠️ 삭제: 테이블/컬럼 삭제 (데이터 손실 가능)
@@ -163,8 +166,8 @@ Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
 - ☐ Production (수동 선택)
 
 <Info>
-기본적으로 `_master`로 끝나는 데이터베이스와 `test` 데이터베이스에 자동으로 적용됩니다.
-프로덕션 데이터베이스는 **명시적으로 선택**해야 적용됩니다.
+  기본적으로 `_master`로 끝나는 데이터베이스와 `test` 데이터베이스에 자동으로 적용됩니다. 프로덕션
+  데이터베이스는 **명시적으로 선택**해야 적용됩니다.
 </Info>
 
 ## 마이그레이션 순서
@@ -187,8 +190,8 @@ Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
 3. UI에서 새로고침
 
 <Warning>
-**외래키 관계 주의**: 참조하는 테이블이 먼저 생성되어야 합니다.
-예: `posts.user_id` → `users.id` 관계라면 `users` 테이블을 먼저 생성해야 함
+  **외래키 관계 주의**: 참조하는 테이블이 먼저 생성되어야 합니다. 예: `posts.user_id` → `users.id`
+  관계라면 `users` 테이블을 먼저 생성해야 함
 </Warning>
 
 ## 문제 해결
@@ -199,17 +202,18 @@ Sonamu는 여러 데이터베이스를 동시에 관리할 수 있습니다.
 
 **원인 및 해결**:
 
-| 오류 | 원인 | 해결 방법 |
-|------|------|----------|
-| Foreign key constraint | 참조 테이블이 없음 | 참조 테이블을 먼저 생성 |
-| Column already exists | 이미 존재하는 컬럼 | 마이그레이션 파일 확인 |
-| Cannot drop column | 데이터가 있거나 제약조건 존재 | 제약조건 먼저 삭제 |
+| 오류                   | 원인                          | 해결 방법               |
+| ---------------------- | ----------------------------- | ----------------------- |
+| Foreign key constraint | 참조 테이블이 없음            | 참조 테이블을 먼저 생성 |
+| Column already exists  | 이미 존재하는 컬럼            | 마이그레이션 파일 확인  |
+| Cannot drop column     | 데이터가 있거나 제약조건 존재 | 제약조건 먼저 삭제      |
 
 ### 마이그레이션 기록 불일치
 
 **증상**: 실제 DB 상태와 마이그레이션 기록이 다름
 
 **해결**:
+
 ```bash
 # CLI에서 실행
 pnpm migrate clear  # 마이그레이션 기록 삭제
@@ -260,7 +264,11 @@ pnpm migrate status # 현재 상태 확인
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="Scaffolding 탭" icon="wand-magic-sparkles" href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab">
+  <Card
+    title="Scaffolding 탭"
+    icon="wand-magic-sparkles"
+    href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab"
+  >
     Model 코드 자동 생성
   </Card>
   <Card title="migrate CLI" icon="terminal" href="/ko/tools-and-cli/sonamu-cli/migrate">

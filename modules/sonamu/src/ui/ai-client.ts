@@ -1,9 +1,11 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: AI SDK의 타입이 명확하지 않아 any를 허용함 */
-import type { LanguageModel, ModelMessage, StreamTextResult } from "ai";
 import assert from "assert";
 import fs from "fs";
 import path from "path";
+
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // AI SDK의 타입이 명확하지 않아 any를 허용함
+import type { LanguageModel, ModelMessage, StreamTextResult } from "ai";
 import { z } from "zod";
+
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
 import {

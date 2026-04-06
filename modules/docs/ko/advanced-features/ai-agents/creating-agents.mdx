@@ -20,9 +20,9 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
   userId: number;
 }> {
   constructor() {
-    super('CustomerSupportAgent');
+    super("CustomerSupportAgent");
   }
-  
+
   @tools({
     description: "주문 정보를 조회합니다",
     schema: {
@@ -34,14 +34,14 @@ class CustomerSupportAgentClass extends BaseAgentClass<{
         status: z.string(),
         items: z.array(z.string()),
       }),
-    }
+    },
   })
   async getOrder(input: { orderId: number }) {
     // 주문 조회 로직
     return {
       orderId: input.orderId,
-      status: 'shipped',
-      items: ['Product A', 'Product B'],
+      status: "shipped",
+      items: ["Product A", "Product B"],
     };
   }
 }
@@ -151,9 +151,9 @@ class HotelBookingAgentClass extends BaseAgentClass<{
   locale: string;
 }> {
   constructor() {
-    super('HotelBookingAgent');
+    super("HotelBookingAgent");
   }
-  
+
   @tools({
     description: "도시와 날짜로 사용 가능한 호텔을 검색합니다",
     schema: {
@@ -163,38 +163,35 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         checkOut: z.string().describe("체크아웃 날짜 (YYYY-MM-DD)"),
         guests: z.number().describe("투숙객 수"),
       }),
-      output: z.array(z.object({
-        hotelId: z.number(),
-        name: z.string(),
-        price: z.number(),
-        rating: z.number(),
-      })),
-    }
+      output: z.array(
+        z.object({
+          hotelId: z.number(),
+          name: z.string(),
+          price: z.number(),
+          rating: z.number(),
+        }),
+      ),
+    },
   })
-  async searchHotels(input: {
-    city: string;
-    checkIn: string;
-    checkOut: string;
-    guests: number;
-  }) {
+  async searchHotels(input: { city: string; checkIn: string; checkOut: string; guests: number }) {
     // DB에서 호텔 검색
     const hotels = await HotelModel.findMany({
       wq: [
-        ['city', input.city],
-        ['available_from', '<=', input.checkIn],
-        ['available_to', '>=', input.checkOut],
-        ['capacity', '>=', input.guests],
+        ["city", input.city],
+        ["available_from", "<=", input.checkIn],
+        ["available_to", ">=", input.checkOut],
+        ["capacity", ">=", input.guests],
       ],
     });
-    
-    return hotels.data.map(hotel => ({
+
+    return hotels.data.map((hotel) => ({
       hotelId: hotel.id,
       name: hotel.name,
       price: hotel.price_per_night,
       rating: hotel.rating,
     }));
   }
-  
+
   @tools({
     description: "호텔을 예약합니다",
     schema: {
@@ -210,16 +207,11 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         totalPrice: z.number(),
       }),
     },
-    needsApproval: true,  // 예약 전 사용자 승인
+    needsApproval: true, // 예약 전 사용자 승인
   })
-  async bookHotel(input: {
-    hotelId: number;
-    checkIn: string;
-    checkOut: string;
-    guests: number;
-  }) {
+  async bookHotel(input: { hotelId: number; checkIn: string; checkOut: string; guests: number }) {
     const userId = this.store?.userId;
-    
+
     // 예약 생성
     const booking = await BookingModel.saveOne({
       user_id: userId,
@@ -227,16 +219,16 @@ class HotelBookingAgentClass extends BaseAgentClass<{
       check_in: input.checkIn,
       check_out: input.checkOut,
       guests: input.guests,
-      status: 'confirmed',
+      status: "confirmed",
     });
-    
+
     return {
       bookingId: booking.id,
       confirmationNumber: booking.confirmation_number,
       totalPrice: booking.total_price,
     };
   }
-  
+
   @tools({
     description: "예약을 취소합니다",
     schema: {
@@ -248,19 +240,19 @@ class HotelBookingAgentClass extends BaseAgentClass<{
         refundAmount: z.number(),
       }),
     },
-    needsApproval: true,  // 취소 전 사용자 승인
+    needsApproval: true, // 취소 전 사용자 승인
   })
   async cancelBooking(input: { bookingId: number }) {
     const booking = await BookingModel.findById(input.bookingId);
-    
+
     // 취소 처리
-    await BookingModel.updateOne(['id', booking.id], {
-      status: 'cancelled',
+    await BookingModel.updateOne(["id", booking.id], {
+      status: "cancelled",
     });
-    
+
     // 환불 처리
-    const refundAmount = booking.total_price * 0.9;  // 10% 수수료
-    
+    const refundAmount = booking.total_price * 0.9; // 10% 수수료
+
     return {
       success: true,
       refundAmount,
@@ -281,9 +273,9 @@ class DataAnalystAgentClass extends BaseAgentClass<{
   sessionId: string;
 }> {
   constructor() {
-    super('DataAnalystAgent');
+    super("DataAnalystAgent");
   }
-  
+
   @tools({
     description: "SQL 쿼리를 실행하여 데이터를 조회합니다",
     schema: {
@@ -294,22 +286,22 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         rows: z.array(z.record(z.any())),
         rowCount: z.number(),
       }),
-    }
+    },
   })
   async executeQuery(input: { query: string }) {
     // 안전성 검증 (SELECT만 허용)
     if (!/^SELECT/i.test(input.query.trim())) {
-      throw new Error('SELECT 쿼리만 허용됩니다');
+      throw new Error("SELECT 쿼리만 허용됩니다");
     }
-    
+
     const result = await DB.query(input.query);
-    
+
     return {
       rows: result.rows,
       rowCount: result.rowCount,
     };
   }
-  
+
   @tools({
     description: "데이터를 시각화하기 위한 차트 설정을 생성합니다",
     schema: {
@@ -317,37 +309,39 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         data: z.array(z.record(z.any())),
         xAxis: z.string().describe("X축 컬럼명"),
         yAxis: z.string().describe("Y축 컬럼명"),
-        chartType: z.enum(['bar', 'line', 'pie']),
+        chartType: z.enum(["bar", "line", "pie"]),
       }),
       output: z.object({
         chartId: z.string(),
         config: z.any(),
       }),
-    }
+    },
   })
   async createChart(input: {
     data: Array<Record<string, any>>;
     xAxis: string;
     yAxis: string;
-    chartType: 'bar' | 'line' | 'pie';
+    chartType: "bar" | "line" | "pie";
   }) {
     const chartId = `chart_${Date.now()}`;
-    
+
     // 차트 설정 생성
     const config = {
       type: input.chartType,
       data: {
-        labels: input.data.map(row => row[input.xAxis]),
-        datasets: [{
-          label: input.yAxis,
-          data: input.data.map(row => row[input.yAxis]),
-        }],
+        labels: input.data.map((row) => row[input.xAxis]),
+        datasets: [
+          {
+            label: input.yAxis,
+            data: input.data.map((row) => row[input.yAxis]),
+          },
+        ],
       },
     };
-    
+
     return { chartId, config };
   }
-  
+
   @tools({
     description: "통계 요약을 계산합니다 (평균, 중앙값, 표준편차 등)",
     schema: {
@@ -361,21 +355,22 @@ class DataAnalystAgentClass extends BaseAgentClass<{
         min: z.number(),
         max: z.number(),
       }),
-    }
+    },
   })
   async calculateStats(input: { data: number[] }) {
     const sorted = [...input.data].sort((a, b) => a - b);
     const sum = input.data.reduce((a, b) => a + b, 0);
     const mean = sum / input.data.length;
-    
-    const median = sorted.length % 2 === 0
-      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
-      : sorted[Math.floor(sorted.length / 2)];
-    
-    const variance = input.data.reduce((acc, val) => 
-      acc + Math.pow(val - mean, 2), 0) / input.data.length;
+
+    const median =
+      sorted.length % 2 === 0
+        ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+        : sorted[Math.floor(sorted.length / 2)];
+
+    const variance =
+      input.data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / input.data.length;
     const stdDev = Math.sqrt(variance);
-    
+
     return {
       mean,
       median,
@@ -399,9 +394,9 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
   userId: number;
 }> {
   constructor() {
-    super('EmailAutomationAgent');
+    super("EmailAutomationAgent");
   }
-  
+
   @tools({
     description: "받은 편지함에서 이메일을 검색합니다",
     schema: {
@@ -409,26 +404,28 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
         query: z.string().describe("검색 쿼리"),
         limit: z.number().default(10),
       }),
-      output: z.array(z.object({
-        id: z.number(),
-        from: z.string(),
-        subject: z.string(),
-        preview: z.string(),
-        receivedAt: z.string(),
-      })),
-    }
+      output: z.array(
+        z.object({
+          id: z.number(),
+          from: z.string(),
+          subject: z.string(),
+          preview: z.string(),
+          receivedAt: z.string(),
+        }),
+      ),
+    },
   })
   async searchEmails(input: { query: string; limit: number }) {
     const emails = await EmailModel.findMany({
       wq: [
-        ['user_id', this.store?.userId],
-        ['subject', 'LIKE', `%${input.query}%`],
+        ["user_id", this.store?.userId],
+        ["subject", "LIKE", `%${input.query}%`],
       ],
       num: input.limit,
-      order: [['received_at', 'DESC']],
+      order: [["received_at", "DESC"]],
     });
-    
-    return emails.data.map(email => ({
+
+    return emails.data.map((email) => ({
       id: email.id,
       from: email.from_address,
       subject: email.subject,
@@ -436,27 +433,27 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
       receivedAt: email.received_at.toISOString(),
     }));
   }
-  
+
   @tools({
     description: "이메일을 특정 폴더로 이동합니다",
     schema: {
       input: z.object({
         emailId: z.number(),
-        folder: z.enum(['inbox', 'archive', 'trash', 'spam']),
+        folder: z.enum(["inbox", "archive", "trash", "spam"]),
       }),
       output: z.object({
         success: z.boolean(),
       }),
-    }
+    },
   })
   async moveEmail(input: { emailId: number; folder: string }) {
-    await EmailModel.updateOne(['id', input.emailId], {
+    await EmailModel.updateOne(["id", input.emailId], {
       folder: input.folder,
     });
-    
+
     return { success: true };
   }
-  
+
   @tools({
     description: "이메일에 라벨을 추가합니다",
     schema: {
@@ -467,19 +464,19 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
       output: z.object({
         success: z.boolean(),
       }),
-    }
+    },
   })
   async addLabels(input: { emailId: number; labels: string[] }) {
     const email = await EmailModel.findById(input.emailId);
     const currentLabels = email.labels || [];
-    
-    await EmailModel.updateOne(['id', input.emailId], {
+
+    await EmailModel.updateOne(["id", input.emailId], {
       labels: [...currentLabels, ...input.labels],
     });
-    
+
     return { success: true };
   }
-  
+
   @tools({
     description: "이메일을 보냅니다",
     schema: {
@@ -493,16 +490,12 @@ class EmailAutomationAgentClass extends BaseAgentClass<{
         sentAt: z.string(),
       }),
     },
-    needsApproval: true,  // 전송 전 승인
+    needsApproval: true, // 전송 전 승인
   })
-  async sendEmail(input: {
-    to: string;
-    subject: string;
-    body: string;
-  }) {
+  async sendEmail(input: { to: string; subject: string; body: string }) {
     // 이메일 전송 로직
     const result = await sendEmailService(input);
-    
+
     return {
       messageId: result.messageId,
       sentAt: new Date().toISOString(),
@@ -525,19 +518,19 @@ import { openai } from "@ai-sdk/openai";
 
 const result = await HotelBookingAgent.use(
   {
-    model: openai('gpt-4o'),
+    model: openai("gpt-4o"),
     instructions: "당신은 호텔 예약 도우미입니다.",
-    toolChoice: 'auto',
+    toolChoice: "auto",
   },
-  { userId: 123, locale: 'ko' },  // store 초기값
+  { userId: 123, locale: "ko" }, // store 초기값
   async (agent) => {
     // 에이전트 실행
     const response = await agent.generateText({
       prompt: "서울에서 내일부터 3일간 묵을 호텔을 찾아줘",
     });
-    
+
     return response.text;
-  }
+  },
 );
 ```
 
@@ -549,24 +542,24 @@ import { HotelBookingAgent } from "./agents/hotel-booking";
 import { openai } from "@ai-sdk/openai";
 
 class ChatModelClass extends BaseModelClass {
-  @api({ httpMethod: 'POST' })
+  @api({ httpMethod: "POST" })
   async chat(message: string, ctx: Context) {
     const result = await HotelBookingAgent.use(
       {
-        model: openai('gpt-4o'),
+        model: openai("gpt-4o"),
         instructions: "당신은 호텔 예약 도우미입니다.",
-        toolChoice: 'auto',
+        toolChoice: "auto",
       },
-      { userId: ctx.user.id, locale: ctx.locale || 'ko' },
+      { userId: ctx.user.id, locale: ctx.locale || "ko" },
       async (agent) => {
         const response = await agent.generateText({
           prompt: message,
         });
-        
+
         return response;
-      }
+      },
     );
-    
+
     return {
       text: result.text,
       toolCalls: result.toolCalls,
@@ -611,9 +604,9 @@ async getUserProfile() {
   // store 접근
   const userId = this.store?.userId;
   const language = this.store?.preferences.language;
-  
+
   const user = await UserModel.findById(userId);
-  
+
   return {
     userId: user.id,
     name: user.name,
@@ -627,23 +620,26 @@ async getUserProfile() {
 **Agent 작성 시 주의사항**:
 
 1. **도구 설명 명확성**: LLM이 이해할 수 있도록 자세히 작성
+
    ```typescript
    // ❌ 불명확
-   description: "주문 조회"
-   
+   description: "주문 조회";
+
    // ✅ 명확
-   description: "주문 ID를 입력받아 해당 주문의 상세 정보(상태, 아이템, 가격)를 반환합니다"
+   description: "주문 ID를 입력받아 해당 주문의 상세 정보(상태, 아이템, 가격)를 반환합니다";
    ```
 
 2. **입력 스키마 상세 설명**: describe() 사용
+
    ```typescript
    input: z.object({
      orderId: z.number().describe("조회할 주문의 고유 ID"),
      includeItems: z.boolean().describe("주문 아이템 목록 포함 여부"),
-   })
+   });
    ```
 
 3. **위험한 작업은 승인 필요**: needsApproval
+
    ```typescript
    @tools({
      description: "주문 취소",
@@ -653,6 +649,7 @@ async getUserProfile() {
    ```
 
 4. **에러 처리**: 명확한 에러 메시지
+
    ```typescript
    async getOrder(input: { orderId: number }) {
      const order = await OrderModel.findById(input.orderId);
@@ -664,10 +661,11 @@ async getUserProfile() {
    ```
 
 5. **store 접근 시 undefined 체크**
+
    ```typescript
    const userId = this.store?.userId;
    if (!userId) {
-     throw new Error('사용자 정보가 없습니다');
+     throw new Error("사용자 정보가 없습니다");
    }
    ```
 
@@ -678,7 +676,7 @@ async getUserProfile() {
      // ...
    })
    ```
-</Warning>
+   </Warning>
 
 ## 다음 단계
 

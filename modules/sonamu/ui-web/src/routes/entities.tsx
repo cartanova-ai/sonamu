@@ -5,6 +5,7 @@ import { useState } from "react";
 import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
+
 import EntityChatComponent from "../components/EntityChatComponent";
 import { useSonamuContext } from "../contexts/sonamu-provider";
 import { SonamuUIService } from "../services/sonamu-ui.service";

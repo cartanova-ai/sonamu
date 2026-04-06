@@ -1,9 +1,10 @@
 import { Button, EnumSelect, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
+import SearchIcon from "~icons/lucide/search";
+
 import { SD } from "@/i18n/sd.generated";
 import { DepartmentSearchField, DepartmentSearchFieldLabel } from "@/services/sonamu.generated";
-import SearchIcon from "~icons/lucide/search";
 export type DepartmentSearchInputProps = {
   input: {
     value?: string;

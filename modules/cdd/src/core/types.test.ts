@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { CddProject, RulesDocument, RulesNode } from "./types.js";
 
 describe("types", () => {

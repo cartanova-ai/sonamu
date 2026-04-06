@@ -9,24 +9,16 @@ Learn about Sonamu's test database system and how to configure it.
 
 <CardGroup cols={2}>
   <Card title="Isolated Environment" icon="shield">
-    Separate from production
-    
-    Safe testing
+    Separate from production Safe testing
   </Card>
   <Card title="Auto Rollback" icon="rotate-left">
-    Transaction-based
-    
-    Auto cleanup after tests
+    Transaction-based Auto cleanup after tests
   </Card>
   <Card title="Fixture Support" icon="database">
-    Copy real data
-    
-    Consistent test environment
+    Copy real data Consistent test environment
   </Card>
   <Card title="Easy Initialization" icon="wand-magic-sparkles">
-    Single command setup
-    
-    Auto schema copy
+    Single command setup Auto schema copy
   </Card>
 </CardGroup>
 
@@ -49,6 +41,7 @@ flowchart TD
 ```
 
 **Roles**:
+
 - **development_master**: DB used during development
 - **fixture**: Stores common data for testing (team shareable)
 - **test**: DB where actual tests run (transaction-based)
@@ -95,6 +88,7 @@ flowchart TD
 ```
 
 **Warning**:
+
 - `test` and `production_master` must **never use the same DB**
 - Sonamu automatically validates this during initialization
 
@@ -104,9 +98,11 @@ if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
   const tConn = Sonamu.dbConfig.test.connection;
   const pConn = Sonamu.dbConfig.production_master.connection;
 
-  if (`${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
-      `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`) {
-    throw new Error('Test DB and Production DB use the same database.');
+  if (
+    `${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
+    `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`
+  ) {
+    throw new Error("Test DB and Production DB use the same database.");
   }
 }
 ```
@@ -124,37 +120,41 @@ pnpm sonamu fixture init
 **Process**:
 
 1. **Development DB Dump**
+
    ```bash
    # Dump schema only (no data)
    pg_dump -d myapp_dev -s > /tmp/schema.sql
-   
+
    # Dump migration records
    pg_dump myapp_dev knex_migrations knex_migrations_lock > /tmp/migrations.sql
    ```
 
 2. **Create Fixture DB**
+
    ```bash
    # Create DB
    psql -c "DROP DATABASE IF EXISTS myapp_fixture"
    psql -c "CREATE DATABASE myapp_fixture"
-   
+
    # Restore schema
    psql myapp_fixture < /tmp/schema.sql
    psql myapp_fixture < /tmp/migrations.sql
    ```
 
 3. **Create Test DB**
+
    ```bash
    # Create DB
    psql -c "DROP DATABASE IF EXISTS myapp_test"
    psql -c "CREATE DATABASE myapp_test"
-   
+
    # Restore schema
    psql myapp_test < /tmp/schema.sql
    psql myapp_test < /tmp/migrations.sql
    ```
 
 **Result**:
+
 - Fixture DB: Empty schema (add data later)
 - Test DB: Empty schema (sync from Fixture per test)
 
@@ -186,8 +186,7 @@ Skips Test DB creation if Fixture DB and Test DB are the same:
 const toSkip = (() => {
   const remoteConn = Sonamu.dbConfig.fixture.connection;
   const localConn = Sonamu.dbConfig.test.connection;
-  return remoteConn.host === localConn.host && 
-         remoteConn.database === localConn.database;
+  return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
 })();
 ```
 
@@ -214,7 +213,7 @@ export function bootstrap(vi: VitestUtils) {
     // Before each test: Start transaction
     await DB.createTestTransaction();
   });
-  
+
   afterEach(async () => {
     // After each test: Auto rollback
     await DB.clearTestTransaction();
@@ -223,6 +222,7 @@ export function bootstrap(vi: VitestUtils) {
 ```
 
 **Flow**:
+
 ```typescript
 // Test 1 starts
 BEGIN TRANSACTION;
@@ -240,6 +240,7 @@ ROLLBACK;
 ### Benefits
 
 **Isolation**:
+
 ```typescript
 test("create user", async () => {
   const userModel = new UserModel();
@@ -250,11 +251,12 @@ test("create user", async () => {
 test("next test has clean DB", async () => {
   const userModel = new UserModel();
   const { users } = await userModel.getUsers();
-  expect(users).toHaveLength(0);  // john from previous test is gone
+  expect(users).toHaveLength(0); // john from previous test is gone
 });
 ```
 
 **Fast execution**:
+
 - No actual DELETE → just ROLLBACK
 - Saves DB cleanup time
 
@@ -286,14 +288,14 @@ Team can maintain consistent test environment by using the same Fixture DB:
   "fixture": {
     "client": "pg",
     "connection": {
-      "host": "fixture-db.company.com",  // Team shared server
+      "host": "fixture-db.company.com", // Team shared server
       "database": "myapp_fixture"
     }
   },
   "test": {
     "client": "pg",
     "connection": {
-      "host": "localhost",  // Local
+      "host": "localhost", // Local
       "database": "myapp_test"
     }
   }
@@ -321,6 +323,7 @@ Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
 **Solution**:
+
 - Check if PostgreSQL server is running
 - Verify connection info in `sonamu.config.json`
 
@@ -331,6 +334,7 @@ Error: permission denied for database myapp_test
 ```
 
 **Solution**:
+
 ```sql
 -- Grant permissions to DB user
 GRANT ALL PRIVILEGES ON DATABASE myapp_test TO postgres;
@@ -343,6 +347,7 @@ GRANT ALL PRIVILEGES ON DATABASE myapp_test TO postgres;
 ```
 
 **Solution**:
+
 ```bash
 # Manually drop to force recreate
 psql -c "DROP DATABASE myapp_test"
@@ -352,12 +357,11 @@ pnpm sonamu fixture init
 ## Cautions
 
 <Warning>
-**Cautions when using test DB**:
-1. **Never use production DB**: test DB must be completely separate from production
-2. **Schema sync**: Run fixture init after migrations
-3. **Transaction-based**: Isolation between tests is handled automatically
-4. **Shared Fixture**: Recommend using same Fixture DB with team
-5. **Regular initialization**: Re-initialize when dev DB schema changes
+  **Cautions when using test DB**: 1. **Never use production DB**: test DB must be completely
+  separate from production 2. **Schema sync**: Run fixture init after migrations 3.
+  **Transaction-based**: Isolation between tests is handled automatically 4. **Shared Fixture**:
+  Recommend using same Fixture DB with team 5. **Regular initialization**: Re-initialize when dev DB
+  schema changes
 </Warning>
 
 ## Next Steps

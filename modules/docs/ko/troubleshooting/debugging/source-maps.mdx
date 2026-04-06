@@ -1,6 +1,6 @@
 ---
-title: '소스 맵'
-description: '소스 맵 사용하기'
+title: "소스 맵"
+description: "소스 맵 사용하기"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -12,6 +12,7 @@ TypeScript 소스 맵을 활용한 효과적인 디버깅 방법을 다룹니다
 소스 맵(Source Map)은 컴파일된 JavaScript 코드를 원본 TypeScript 코드로 매핑하는 파일입니다. 이를 통해 에러 스택 트레이스와 디버거에서 원본 TypeScript 코드를 볼 수 있습니다.
 
 **활용:**
+
 - 에러 스택 트레이스에서 원본 TypeScript 위치 확인
 - 디버거에서 TypeScript 코드에 브레이크포인트 설정
 - 프로덕션 에러를 원본 코드와 매핑
@@ -23,9 +24,9 @@ TypeScript 소스 맵을 활용한 효과적인 디버깅 방법을 다룹니다
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true,           // 소스 맵 생성
-    "inlineSourceMap": false,    // 별도 파일로 생성
-    "inlineSources": false,      // 원본 소스 포함 안 함
+    "sourceMap": true, // 소스 맵 생성
+    "inlineSourceMap": false, // 별도 파일로 생성
+    "inlineSources": false, // 원본 소스 포함 안 함
     "outDir": "dist"
   }
 }
@@ -135,10 +136,7 @@ Sonamu는 tsx를 사용하므로 별도 설정 없이 소스 맵이 작동합니
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ]
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
     },
     {
       "type": "node",
@@ -180,12 +178,13 @@ Sonamu는 tsx를 사용하므로 별도 설정 없이 소스 맵이 작동합니
 {
   "compilerOptions": {
     "sourceMap": true,
-    "inlineSources": false  // 원본 소스 포함 안 함
+    "inlineSources": false // 원본 소스 포함 안 함
   }
 }
 ```
 
 **프로덕션 배포 시:**
+
 ```bash
 # 소스 맵 파일 제외
 dist/
@@ -221,7 +220,7 @@ ls -la dist/**/*.map
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true  // 명시적으로 활성화
+    "sourceMap": true // 명시적으로 활성화
   }
 }
 ```
@@ -247,9 +246,9 @@ pnpm tsx dist/index.js
 ```json
 // launch.json
 {
-  "sourceMaps": true,  // 활성화 확인
+  "sourceMaps": true, // 활성화 확인
   "outFiles": [
-    "${workspaceFolder}/dist/**/*.js"  // 올바른 경로
+    "${workspaceFolder}/dist/**/*.js" // 올바른 경로
   ]
 }
 ```
@@ -296,17 +295,15 @@ cat dist/index.js.map | jq .sources
 import { SourceMapConsumer } from "source-map";
 import fs from "fs";
 
-const rawSourceMap = JSON.parse(
-  fs.readFileSync("dist/index.js.map", "utf-8")
-);
+const rawSourceMap = JSON.parse(fs.readFileSync("dist/index.js.map", "utf-8"));
 
 SourceMapConsumer.with(rawSourceMap, null, (consumer) => {
   // 컴파일된 위치 -> 원본 위치
   const pos = consumer.originalPositionFor({
     line: 45,
-    column: 15
+    column: 15,
   });
-  
+
   console.log(pos);
   // {
   //   source: '../src/index.ts',
@@ -327,8 +324,8 @@ Vite는 자동으로 소스 맵을 생성하고 제공합니다:
 // vite.config.ts
 export default defineConfig({
   build: {
-    sourcemap: true  // 프로덕션 빌드에도 포함
-  }
+    sourcemap: true, // 프로덕션 빌드에도 포함
+  },
 });
 ```
 
@@ -353,7 +350,7 @@ export default defineConfig({
 ```json
 {
   "compilerOptions": {
-    "sourceMap": true  // 개발 시 필수
+    "sourceMap": true // 개발 시 필수
   }
 }
 ```
@@ -403,24 +400,24 @@ async function mapError(error: Error) {
   // 스택 트레이스 파싱
   const match = error.stack?.match(/dist\/(.+):(\d+):(\d+)/);
   if (!match) return error;
-  
+
   const [, file, line, column] = match;
   const mapFile = `sourcemaps/${file}.map`;
-  
+
   // 소스 맵으로 원본 위치 찾기
   const rawMap = JSON.parse(fs.readFileSync(mapFile, "utf-8"));
   const consumer = await new SourceMapConsumer(rawMap);
-  
+
   const original = consumer.originalPositionFor({
     line: parseInt(line),
-    column: parseInt(column)
+    column: parseInt(column),
   });
-  
+
   return {
     ...error,
     originalFile: original.source,
     originalLine: original.line,
-    originalColumn: original.column
+    originalColumn: original.column,
   };
 }
 ```

@@ -1,7 +1,9 @@
 import assert from "assert";
 import { readFile } from "fs/promises";
+
 import inflection from "inflection";
 import ts from "typescript";
+
 import { type ExtendedApi, registeredApis } from "../api/decorators";
 import { validateMethodName } from "../api/validator";
 import type { ApiParam, ApiParamType } from "../types/types";

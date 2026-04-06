@@ -1,5 +1,6 @@
 import * as assert from "node:assert/strict";
 import { describe, test } from "node:test";
+
 import { makeTestLoader } from "./__fixtures__/loader.js";
 
 await describe("outDir", async () => {
@@ -51,9 +52,9 @@ await describe("outDir", async () => {
     const { evaluate } = makeTestLoader({
       "tsconfig.json": JSON.stringify({
         compilerOptions: {
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
+          // oxlint-disable-next-line no-template-curly-in-string -- tsconfig.json의 ${configDir} 테스트용 문자열
           outDir: "${configDir}/dist",
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
+          // oxlint-disable-next-line no-template-curly-in-string -- tsconfig.json의 ${configDir} 테스트용 문자열
           rootDir: "${configDir}",
         },
       }),

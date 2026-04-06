@@ -10,6 +10,7 @@ import {
   type VectorColumns,
 } from "sonamu";
 import { Embedding } from "sonamu/vector";
+
 import { SD } from "../../i18n/sd.generated";
 import { AuditLogModel } from "../audit-log/audit-log.model";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";

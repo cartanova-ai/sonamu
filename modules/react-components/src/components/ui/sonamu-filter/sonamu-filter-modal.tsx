@@ -1,9 +1,10 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Zod 타입 접근 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Zod 타입 접근
 
 import { useEffect, useState } from "react";
 import PlusIcon from "~icons/lucide/plus";
-import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
+
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "../..";
+import { useSonamuBaseContext } from "../../../contexts/sonamu-context";
 import { RuleRowInput } from "./rule-row-input";
 import type { Rule, SonamuFilterModalProps } from "./types";
 import { extractFieldMetaFromSchema } from "./utils";

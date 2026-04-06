@@ -1,5 +1,6 @@
 #! /usr/bin/env zx
 import path from "node:path";
+
 import { DescribeImagesCommand, ECRPUBLICClient } from "@aws-sdk/client-ecr-public";
 import { $ } from "zx";
 

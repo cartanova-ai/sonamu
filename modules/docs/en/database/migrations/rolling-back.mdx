@@ -9,24 +9,16 @@ Rollback migrations to restore the database to a previous state.
 
 <CardGroup cols={2}>
   <Card title="rollback" icon="rotate-left">
-    Rollback recent batch
-    
-    Multiple at once
+    Rollback recent batch Multiple at once
   </Card>
   <Card title="rollback --all" icon="arrows-rotate">
-    Rollback all migrations
-    
-    Return to initial state
+    Rollback all migrations Return to initial state
   </Card>
   <Card title="down" icon="arrow-down">
-    One at a time
-    
-    Step-by-step rollback
+    One at a time Step-by-step rollback
   </Card>
   <Card title="status" icon="list-check">
-    Check status before rollback
-    
-    Verify batches
+    Check status before rollback Verify batches
   </Card>
 </CardGroup>
 
@@ -39,14 +31,13 @@ pnpm sonamu migrate rollback
 ```
 
 **Execution Result**:
+
 ```
 Batch 2 rolled back: 1 migration
 ✅ 20251220143200_alter_users_add1.ts
 ```
 
-<Info>
-`migrate rollback` rolls back all migrations in the most recent batch.
-</Info>
+<Info>`migrate rollback` rolls back all migrations in the most recent batch.</Info>
 
 ### Check Current Status
 
@@ -55,6 +46,7 @@ pnpm sonamu migrate status
 ```
 
 **Output**:
+
 ```
 Executed migrations (Batch 1):
   ✅ 20251220143022_create__users.ts
@@ -98,12 +90,14 @@ pnpm sonamu migrate down
 ```
 
 **First Run**:
+
 ```
 Batch 2 rolled back: 1 migration
 ✅ 20251220143200_alter_users_add1.ts
 ```
 
 **Second Run**:
+
 ```
 Batch 1 rolled back: 1 migration
 ✅ 20251220143100_create__posts.ts
@@ -116,6 +110,7 @@ pnpm sonamu migrate rollback --all
 ```
 
 **Execution Result**:
+
 ```
 Batch 2 rolled back: 1 migration
 ✅ 20251220143200_alter_users_add1.ts
@@ -127,10 +122,7 @@ Batch 1 rolled back: 2 migrations
 All migrations rolled back successfully
 ```
 
-<Warning>
-`rollback --all` deletes all tables!
-Never use in production.
-</Warning>
+<Warning>`rollback --all` deletes all tables! Never use in production.</Warning>
 
 ## The down Function
 
@@ -183,11 +175,7 @@ export async function down(knex: Knex): Promise<void> {
 // up: Add foreign key
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("employees", (table) => {
-    table
-      .foreign("user_id")
-      .references("users.id")
-      .onUpdate("CASCADE")
-      .onDelete("CASCADE");
+    table.foreign("user_id").references("users.id").onUpdate("CASCADE").onDelete("CASCADE");
   });
 }
 
@@ -254,10 +242,10 @@ flowchart TD
     A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[rollback command]
     C[Batch 2<br/>alter_users_add1] --> D[Continue retained]
     E[Batch 1<br/>create__users<br/>create__posts] --> D
-    
+
     B --> F[Batch 3 rolled back]
     D --> G[Batch 2, 1 retained]
-    
+
     style A fill:#ffcdd2
     style C fill:#c8e6c9
     style E fill:#c8e6c9
@@ -280,7 +268,7 @@ export async function up(knex: Knex): Promise<void> {
 // down: Drop column (data loss!)
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.dropColumns("phone");  // ← All phone data deleted
+    table.dropColumns("phone"); // ← All phone data deleted
   });
 }
 ```
@@ -290,6 +278,7 @@ export async function down(knex: Knex): Promise<void> {
 
 Data cannot be recovered when columns/tables are dropped.
 Backup is required in production!
+
 </Warning>
 
 ### Safe Rollback Pattern
@@ -321,7 +310,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(
     `ALTER TABLE users 
      ALTER COLUMN age TYPE integer 
-     USING age::integer`
+     USING age::integer`,
   );
 }
 
@@ -329,7 +318,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.raw(
     `ALTER TABLE users 
-     ALTER COLUMN age TYPE varchar(255)`
+     ALTER COLUMN age TYPE varchar(255)`,
   );
   // "25" → 25 → "25" (loss if original was "025")
 }
@@ -340,9 +329,7 @@ export async function down(knex: Knex): Promise<void> {
 ```typescript
 // up: Delete specific data
 export async function up(knex: Knex): Promise<void> {
-  await knex("users")
-    .where("is_deleted", true)
-    .delete();
+  await knex("users").where("is_deleted", true).delete();
 }
 
 // down: Deleted data cannot be restored
@@ -400,17 +387,20 @@ pnpm sonamu migrate rollback
 ```
 
 **Error**:
+
 ```
 ❌ Error rolling back 20251220143200_alter_users_add1.ts
    Error: column "phone" does not exist
 ```
 
 **Causes**:
+
 - Migration was only partially applied
 - down function doesn't match up
 - DB was modified manually
 
 **Solutions**:
+
 1. Manually verify DB state
 2. Modify knex_migrations table
 3. Fix down function and retry
@@ -419,7 +409,7 @@ pnpm sonamu migrate rollback
 
 ```sql
 -- Remove from knex_migrations
-DELETE FROM knex_migrations 
+DELETE FROM knex_migrations
 WHERE name = '20251220143200_alter_users_add1.ts';
 
 -- Manually undo changes
@@ -435,6 +425,7 @@ pnpm sonamu migrate rollback --verbose
 ```
 
 **Output**:
+
 ```
 Rolling back migration: 20251220143200_alter_users_add1.ts
 SQL: ALTER TABLE "users" DROP COLUMN "phone"
@@ -447,7 +438,7 @@ Batch 2 rolled back: 1 migration
 
 ```sql
 -- Check recently rolled back migrations
-SELECT * FROM knex_migrations 
+SELECT * FROM knex_migrations
 WHERE batch = (SELECT MAX(batch) + 1 FROM knex_migrations);
 ```
 
@@ -460,7 +451,7 @@ WHERE batch = (SELECT MAX(batch) + 1 FROM knex_migrations);
 test("migration reversibility", async () => {
   await migration.up(knex);
   await migration.down(knex);
-  await migration.up(knex);  // Should be runnable again
+  await migration.up(knex); // Should be runnable again
 });
 ```
 
@@ -472,14 +463,17 @@ test("migration reversibility", async () => {
 ## Migration: 20251220143200_alter_users_add1.ts
 
 ### Changes
+
 - Add column: users.phone
 
 ### Rollback Impact
+
 - Data loss: users.phone data deleted
 - Estimated time: 5 seconds
 - Downtime: None (nullable column)
 
 ### Rollback Steps
+
 1. `pnpm sonamu migrate rollback`
 2. Deploy previous app version
 3. Verify phone field not used

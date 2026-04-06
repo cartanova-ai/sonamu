@@ -1,9 +1,7 @@
-/** biome-ignore-all lint/correctness/noChildrenProp: 여기는 다 허용 */
-/** biome-ignore-all lint/performance/noAccumulatingSpread: 여기는 다 허용 */
-/** biome-ignore-all lint/suspicious/noExplicitAny: 여기는 다 허용 */
-/** biome-ignore-all lint/a11y/useKeyWithClickEvents: 여기는 다 허용 */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
-/** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
+/* oxlint-disable react/no-children-prop */ // 여기는 다 허용
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 여기는 다 허용
+/* oxlint-disable jsx-a11y/click-events-have-key-events */ // 여기는 다 허용
+/* oxlint-disable jsx-a11y/no-static-element-interactions */ // 여기는 다 허용
 
 import { Button, Checkbox, Select } from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
@@ -16,6 +14,7 @@ import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { FixtureImportResult } from "sonamu";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import ClipboardIcon from "~icons/lucide/clipboard";
+
 import type { ExtendedEntity } from "../../services/sonamu-ui.service";
 
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;

@@ -5,9 +5,9 @@ import type * as z4 from "zod/v4";
 export type ToolChoiceLimited = "auto" | "none" | "required";
 
 export interface ToolDecoratorSchema<INPUT, OUTPUT = unknown> {
-  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod type의 타입 추론에 필요
   input: z4.core.$ZodType<INPUT, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- zod type의 타입 추론에 필요
   output?: z4.core.$ZodType<OUTPUT, any>;
 }
 

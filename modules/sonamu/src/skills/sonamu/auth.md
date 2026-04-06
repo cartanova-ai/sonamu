@@ -10,6 +10,7 @@ description: Sonamu better-auth authentication system. Automatic entity generati
 ## Automatic Entity Generation
 
 **Source code:**
+
 - CLI: `modules/sonamu/src/bin/cli.ts` (auth_generate function)
 - Generation logic: `modules/sonamu/src/auth/auth-generator.ts`
 - Entity definitions: `modules/sonamu/src/auth/better-auth-entities.ts`
@@ -56,14 +57,15 @@ pnpm sonamu auth generate --plugins admin,2fa,username
 
 The 4 entities generated (`betterAuthV1` array):
 
-| Entity | Table | Key fields |
-|--------|--------|-----------|
-| User | users | id, name, email, email_verified, image |
-| Session | sessions | id, token, expires_at, user_id |
-| Account | accounts | id, provider_id, access_token, user_id |
-| Verification | verifications | id, identifier, value, expires_at |
+| Entity       | Table         | Key fields                             |
+| ------------ | ------------- | -------------------------------------- |
+| User         | users         | id, name, email, email_verified, image |
+| Session      | sessions      | id, token, expires_at, user_id         |
+| Account      | accounts      | id, provider_id, access_token, user_id |
+| Verification | verifications | id, identifier, value, expires_at      |
 
 **How it works:**
+
 - If the entity does not exist, it is created fresh
 - If the entity already exists, only missing fields are added
 - Fields with changed types are updated automatically
@@ -73,12 +75,12 @@ The 4 entities generated (`betterAuthV1` array):
 
 **Source code:** `modules/sonamu/src/auth/better-auth-entities.ts` (BASE_FIELD_MAPPINGS)
 
-| better-auth | Sonamu |
-|-------------|--------|
+| better-auth     | Sonamu           |
+| --------------- | ---------------- |
 | `emailVerified` | `email_verified` |
-| `createdAt` | `created_at` |
-| `userId` | `user_id` |
-| `expiresAt` | `expires_at` |
+| `createdAt`     | `created_at`     |
+| `userId`        | `user_id`        |
+| `expiresAt`     | `expires_at`     |
 
 ## Config Setup
 
@@ -102,12 +104,12 @@ server: {
 
 ## API Endpoints (Auto-registered)
 
-| Path | Method | Description |
-|------|--------|------|
-| `/api/auth/sign-up/email` | POST | Sign up |
-| `/api/auth/sign-in/email` | POST | Sign in |
-| `/api/auth/sign-out` | POST | Sign out |
-| `/api/auth/get-session` | GET | Get session |
+| Path                      | Method | Description |
+| ------------------------- | ------ | ----------- |
+| `/api/auth/sign-up/email` | POST   | Sign up     |
+| `/api/auth/sign-in/email` | POST   | Sign in     |
+| `/api/auth/sign-out`      | POST   | Sign out    |
+| `/api/auth/get-session`   | GET    | Get session |
 
 ## Accessing user/session from Context
 
@@ -119,9 +121,9 @@ import { Sonamu } from "sonamu";
 @api({ httpMethod: "GET", guards: ["user"] })
 async me(): Promise<UserSubsetA | null> {
   const { user, session } = Sonamu.getContext();
-  
+
   if (!user) return null;
-  
+
   // user.id, user.email, user.name, etc. are accessible
   return this.findById("A", user.id);
 }
@@ -134,6 +136,7 @@ async me(): Promise<UserSubsetA | null> {
 ### Built-in Guards
 
 Sonamu provides 3 default guards:
+
 - `query`: allows all users (including unauthenticated)
 - `user`: allows only authenticated users
 - `admin`: allows only users with admin privileges
@@ -202,35 +205,35 @@ import { Sonamu } from "sonamu";
 apiConfig: {
   guardHandler: (guard, request, api) => {
     const { user } = Sonamu.getContext();
-    
+
     switch (guard) {
       case "user":
         if (!user) {
           throw new Error("Login is required");
         }
         break;
-        
+
       case "admin":
         // Requires adding a role field to the User entity
         if (!user || (user as any).role !== "admin") {
           throw new Error("Only admins can access this");
         }
         break;
-      
+
       case "manager":
         // Custom guard: manager permission
         if (!user || !["admin", "manager"].includes((user as any).role)) {
           throw new Error("Manager permission is required");
         }
         break;
-      
+
       case "evaluator":
         // Custom guard: evaluator permission
         if (!user || !["admin", "evaluator"].includes((user as any).role)) {
           throw new Error("Evaluator permission is required");
         }
         break;
-        
+
       case "query":
         // Allow all users
         break;
@@ -278,6 +281,7 @@ Adding an enum:
 ## Checklist
 
 After setup, verify:
+
 - [ ] **[Before generate] Confirm with user whether plugins are needed**
   - If "later" → remember `plugins_deferred: true`, guide on optimal timing
 - [ ] Run `pnpm sonamu auth generate [--plugins ...]`
@@ -291,9 +295,11 @@ After setup, verify:
 ## Reference
 
 **Skills documentation:**
+
 - Detailed configuration: "server.auth details" section in `config.md`
 - Context API: "Context access" section in `api.md`
 
 **Official documentation:**
+
 - Korean: `modules/docs/ko/api-development/authentication/setup.mdx`
 - English: `modules/docs/en/api-development/authentication/setup.mdx`

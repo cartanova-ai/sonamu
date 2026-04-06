@@ -11,24 +11,16 @@ Enum defines a limited set of values to provide:
 
 <CardGroup cols={2}>
   <Card title="Type Safety" icon="shield-check">
-    Prevents undefined value input
-    
-    Automatically converts to Union type in TypeScript
+    Prevents undefined value input Automatically converts to Union type in TypeScript
   </Card>
   <Card title="Auto UI Generation" icon="list">
-    Automatic selection list configuration
-    
-    Immediately usable in Select, ButtonSet components
+    Automatic selection list configuration Immediately usable in Select, ButtonSet components
   </Card>
   <Card title="Label Management" icon="tag">
-    Separation of keys and display names
-    
-    Easy multi-language support
+    Separation of keys and display names Easy multi-language support
   </Card>
   <Card title="Maintainability" icon="wrench">
-    Centralized management
-    
-    Only one place to modify when values change
+    Centralized management Only one place to modify when values change
   </Card>
 </CardGroup>
 
@@ -72,6 +64,7 @@ Define as key-label pairs in the Entity's `enums` section.
 ```
 
 **Structure**:
+
 - **Enum ID**: PascalCase (e.g., `UserRole`, `PostStatus`)
 - **Key**: lowercase, numbers, underscores (e.g., `admin`, `draft_saved`)
 - **Label**: Display text (e.g., "Administrator", "Draft Saved")
@@ -83,33 +76,31 @@ Define as key-label pairs in the Entity's `enums` section.
 Select an Entity in Sonamu UI.
 </Step>
 
-<Step title="Scroll to Enums section">
-The Enums section is below Props, Indexes, Subsets.
-</Step>
+<Step title="Scroll to Enums section">The Enums section is below Props, Indexes, Subsets.</Step>
 
 <Step title="Click Add Enum">
 Add a new Enum.
 
 **Enter Enum ID**:
+
 - Enter in PascalCase
 - Use `{Entity}` pattern to associate with Entity
   - Example: `$ModelRole` → `UserRole` (auto-converted)
-</Step>
+    </Step>
 
 <Step title="Add Enum values">
 Each Enum is displayed as a separate tab, add key-label pairs with the **"Add Row"** button.
 
 - **Key**: lowercase letters, numbers, underscores only
 - **Label**: Display name
-</Step>
+  </Step>
 
 <Step title="Save">
 When you save the Entity, the Enum is saved together.
 </Step>
 </Steps>
 
-<Frame caption="📸 Needed: Sonamu UI Enums section - multiple Enums displayed as tabs">
-</Frame>
+<Frame caption="📸 Needed: Sonamu UI Enums section - multiple Enums displayed as tabs"></Frame>
 
 ## Auto-Generated Code
 
@@ -169,10 +160,12 @@ export function getUserRoleLabel(role: UserRole): string {
 ```
 
 **Database**:
+
 - Column type: `text`
 - Stored value: Key value (e.g., `"admin"`)
 
 **TypeScript**:
+
 ```typescript
 type User = {
   id: number;
@@ -209,6 +202,7 @@ export const UserUpdateParams = z.object({
 
 export type UserUpdateParams = z.infer<typeof UserUpdateParams>;
 ```
+
 </CodeGroup>
 
 ### Displaying Labels
@@ -220,7 +214,8 @@ import { getUserRoleLabel } from "./sonamu.generated";
 const user = await UserModel.findById(1);
 const roleLabel = getUserRoleLabel(user.role);
 // "Administrator"
-```
+
+````
 
 ```typescript title="Frontend"
 import { UserRoleLabels } from "@/services/sonamu.generated";
@@ -229,7 +224,8 @@ function UserBadge({ role }: { role: UserRole }) {
   return <span>{UserRoleLabels[role]}</span>;
   // "Administrator"
 }
-```
+````
+
 </CodeGroup>
 
 ## Common Enum Patterns
@@ -253,6 +249,7 @@ Define sorting options.
 ```
 
 **Usage**:
+
 ```typescript
 async findAll(orderBy: UserOrderBy = "id-desc") {
   const [field, direction] = orderBy.split("-");
@@ -279,6 +276,7 @@ Define searchable fields.
 ```
 
 **Usage**:
+
 ```typescript
 async search(field: UserSearchField, keyword: string) {
   return this.puri()
@@ -305,6 +303,7 @@ Define statuses.
 ```
 
 **Usage**:
+
 ```typescript
 async publish(postId: number) {
   await this.puri()
@@ -356,10 +355,12 @@ You can store multiple Enum values as an array.
 ```
 
 **Database**:
+
 - Column type: `text[]`
 - Stored value: `["read", "write"]`
 
 **TypeScript**:
+
 ```typescript
 type User = {
   id: number;
@@ -368,6 +369,7 @@ type User = {
 ```
 
 **Usage**:
+
 ```typescript
 // Check permission
 function hasPermission(user: User, permission: Permission): boolean {
@@ -396,16 +398,18 @@ async grantPermission(userId: number, permission: Permission) {
 import { UserRoleSelect } from "@/components/UserRoleSelect";
 
 function UserForm() {
-  const [role, setRole] = useState<UserRole>("normal");
-  
-  return (
-    <UserRoleSelect
+const [role, setRole] = useState<UserRole>("normal");
+
+return (
+
+<UserRoleSelect
       value={role}
       onChange={setRole}
     />
-  );
+);
 }
-```
+
+````
 
 ```tsx title="Manual Implementation"
 import { UserRole, UserRoleLabels } from "@/services/sonamu.generated";
@@ -421,7 +425,8 @@ function UserForm() {
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 ### ButtonSet Component
@@ -431,7 +436,7 @@ import { UserStatusButtonSet } from "@/components/UserStatusButtonSet";
 
 function StatusFilter() {
   const [status, setStatus] = useState<UserStatus | null>(null);
-  
+
   return (
     <UserStatusButtonSet
       value={status}
@@ -457,10 +462,11 @@ export const UpdateRoleParams = z.object({
 
 // When invalid value is input
 UpdateRoleParams.parse({
-  userId: 1,
-  role: "invalid_role" // Error!
+userId: 1,
+role: "invalid_role" // Error!
 });
-```
+
+````
 
 ```typescript title="Custom Validation"
 import { UserRole } from "./sonamu.generated";
@@ -472,22 +478,23 @@ export const AdminOnlyParams = z.object({
     { message: "Admin permission required" }
   ),
 });
-```
+````
+
 </CodeGroup>
 
 ## Enum Naming Conventions
 
 ### Recommended Patterns
 
-| Purpose | Pattern | Example |
-|---------|---------|---------|
-| Entity status | `{Entity}Status` | `PostStatus`, `OrderStatus` |
-| Entity type | `{Entity}Type` | `NotificationType`, `PaymentType` |
-| Entity role | `{Entity}Role` | `UserRole`, `MemberRole` |
-| Sort options | `{Entity}OrderBy` | `UserOrderBy`, `PostOrderBy` |
-| Search fields | `{Entity}SearchField` | `UserSearchField` |
-| Category | `{Entity}Category` | `ProductCategory` |
-| Permission | `{Entity}Permission` | `UserPermission` |
+| Purpose       | Pattern               | Example                           |
+| ------------- | --------------------- | --------------------------------- |
+| Entity status | `{Entity}Status`      | `PostStatus`, `OrderStatus`       |
+| Entity type   | `{Entity}Type`        | `NotificationType`, `PaymentType` |
+| Entity role   | `{Entity}Role`        | `UserRole`, `MemberRole`          |
+| Sort options  | `{Entity}OrderBy`     | `UserOrderBy`, `PostOrderBy`      |
+| Search fields | `{Entity}SearchField` | `UserSearchField`                 |
+| Category      | `{Entity}Category`    | `ProductCategory`                 |
+| Permission    | `{Entity}Permission`  | `UserPermission`                  |
 
 ### $Model Pattern
 
@@ -509,6 +516,7 @@ Use `$Model` to dynamically include the Entity name:
 ```
 
 **Conversion result**:
+
 - `User` Entity → `UserRole`, `UserStatus`
 - `Post` Entity → `PostRole`, `PostStatus`
 
@@ -520,44 +528,50 @@ Use `$Model` to dynamically include the Entity name:
 Changing an Enum key that's already stored in the database will cause mismatch with existing data.
 
 **How to change**:
+
 1. Add new key
 2. Data migration (old key → new key)
 3. Remove old key
-</Warning>
+   </Warning>
 
 <Warning>
 **Key Naming Restrictions**
 
 Enum Keys can only use:
+
 - Lowercase letters (a-z)
 - Numbers (0-9)
-- Underscores (_)
+- Underscores (\_)
 
 Hyphens (-) cannot be used.
+
 </Warning>
 
 <Tip>
 **Labels Can Be Changed Freely**
 
 Labels are for display purposes, so they can be changed anytime. Only Keys are stored in the database.
+
 </Tip>
 
 ## Enum vs Separate Table
 
-| Criteria | Enum | Separate Table |
-|----------|------|----------------|
-| Number of values | Few (< 20) | Many (> 20) |
-| Change frequency | Rarely | Frequently |
-| Additional info | Not needed | Needed (description, order, etc.) |
-| Performance | Fast (no JOIN) | Slower (JOIN needed) |
-| Recommended use | Status, role, type | Category, code tables |
+| Criteria         | Enum               | Separate Table                    |
+| ---------------- | ------------------ | --------------------------------- |
+| Number of values | Few (< 20)         | Many (> 20)                       |
+| Change frequency | Rarely             | Frequently                        |
+| Additional info  | Not needed         | Needed (description, order, etc.) |
+| Performance      | Fast (no JOIN)     | Slower (JOIN needed)              |
+| Recommended use  | Status, role, type | Category, code tables             |
 
 **Enum use examples**:
+
 - User roles (admin, user, guest)
 - Post status (draft, published, deleted)
 - Notification types (email, sms, push)
 
 **Separate table use examples**:
+
 - Region list (Seoul, Busan, ...)
 - Product categories (hierarchical structure)
 - Country codes (many additional info)
@@ -571,7 +585,11 @@ Labels are for display purposes, so they can be changed anytime. Only Keys are s
   <Card title="Validation" icon="shield-check" href="/en/api-development/validation/zod-schemas">
     Validate data with Zod
   </Card>
-  <Card title="Frontend Components" icon="browser" href="/en/frontend-integration/generated-services/using-services">
+  <Card
+    title="Frontend Components"
+    icon="browser"
+    href="/en/frontend-integration/generated-services/using-services"
+  >
     Use generated components
   </Card>
   <Card title="API Development" icon="code" href="/en/api-development/creating-apis/basic-crud">

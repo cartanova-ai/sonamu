@@ -3,6 +3,7 @@ import type { InitializeHook, LoadHook, ResolveHook } from "node:module";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { MessagePort } from "node:worker_threads";
+
 import chokidar, { type FSWatcher } from "chokidar";
 
 import debug from "./debug.js";
@@ -79,7 +80,7 @@ export class HotHookLoader {
   /**
    * When a message is received from the main thread
    */
-  // biome-ignore lint/suspicious/noExplicitAny: worker thread message는 런타임에 타입이 결정됨
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- worker thread message는 런타임에 타입이 결정됨
   async #onMessage(message: any) {
     if (message.type === "hmr-hook:dump") {
       return this.#messagePort?.postMessage({

@@ -12,6 +12,7 @@ You are the `cdd-planner`.
 4. Return `plan_document`, `claim_blueprint`, and `execution_graph`.
 
 Hard constraints:
+
 - No code or test edits.
 - No Claim YAML creation in `tmp/claims/`.
 - No nested spawns.

@@ -21,6 +21,7 @@
 import { z } from "zod";
 import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
+
 import { type ApiParam, ApiParamType } from "../types/types";
 import type { ExtendedApi } from "./decorators";
 
@@ -96,7 +97,7 @@ export function getZodTypeFromApiParamType(
             }
             const [obj, literalOrUnion] = refType.args.map(
               (arg) => getZodTypeFromApiParamType(arg, references),
-              // biome-ignore lint/suspicious/noExplicitAny: 생성되는 ZodUnion의 타입을 추적하기 어려움
+              // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 생성되는 ZodUnion의 타입을 추적하기 어려움
             ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
 
             let keys: string[] = [];
@@ -110,12 +111,12 @@ export function getZodTypeFromApiParamType(
             const keyRecord = Object.fromEntries(keys.map((key) => [key, true as const]));
             if (refType.id === "Pick") {
               if (obj.pick) {
-                // biome-ignore lint/suspicious/noExplicitAny: Zod 4.3.6 pick 타입 호환성
+                // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Zod 4.3.6 pick 타입 호환성
                 return obj.pick(keyRecord as any);
               }
             } else {
               if (obj.omit) {
-                // biome-ignore lint/suspicious/noExplicitAny: Zod 4.3.6 omit 타입 호환성
+                // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Zod 4.3.6 omit 타입 호환성
                 return obj.omit(keyRecord as any);
               }
             }
@@ -125,7 +126,7 @@ export function getZodTypeFromApiParamType(
               throw new Error(`잘못된 ${refType.id}`);
             }
             const obj = getZodTypeFromApiParamType(refType.args[0], references);
-            // biome-ignore lint/suspicious/noExplicitAny: Partial 인수 타입 캐스팅
+            // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Partial 인수 타입 캐스팅
             return (obj as z.ZodObject<any>).partial();
           }
           const reference = references[refType.id];
@@ -158,22 +159,19 @@ export function getZodTypeFromApiParamType(
             t: string;
             types: ApiParamType[];
           };
-          return intersectionType.types.reduce(
-            (result, type, index) => {
-              const resolvedType = getZodTypeFromApiParamType(type, references);
-              if (index === 0) {
-                return resolvedType;
-              } else {
-                return z.intersection(result, resolvedType);
-              }
-            },
-            z.unknown() as z.ZodType<unknown>,
-          );
+          return intersectionType.types.reduce((result, type, index) => {
+            const resolvedType = getZodTypeFromApiParamType(type, references);
+            if (index === 0) {
+              return resolvedType;
+            } else {
+              return z.intersection(result, resolvedType);
+            }
+          }, z.unknown() as z.ZodType<unknown>);
         }
         case "tuple-type": {
           const tupleType = paramType as ApiParamType.TupleType;
           return z.tuple(
-            // biome-ignore lint/suspicious/noExplicitAny: 생성되는 ZodTuple의 타입을 추적하기 어려움
+            // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 생성되는 ZodTuple의 타입을 추적하기 어려움
             tupleType.elements.map((elem) => getZodTypeFromApiParamType(elem, references)) as any,
           );
         }
@@ -223,7 +221,7 @@ export function getZodObjectFromApi(
         const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
 
         // FIXME: references는 글로벌 오브젝트로, typeParam.id("T" 등)를 key로 이렇게 덮어씌워버리면 loadedTypes가 오염됨.
-        // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- 레퍼런스 타입 캐스팅
         (references[typeParam.id] as z.ZodType<any>) = zodType;
       }
     }

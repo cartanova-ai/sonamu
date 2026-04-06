@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+
 import { type Options, transform } from "@swc/core";
 import JSON5 from "json5";
 

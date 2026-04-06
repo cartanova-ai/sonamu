@@ -1,6 +1,6 @@
 ---
-title: '시작하기'
-description: 'Sonamu UI 실행 및 접속하기'
+title: "시작하기"
+description: "Sonamu UI 실행 및 접속하기"
 ---
 
 Sonamu UI는 **Entity, Migration, Scaffolding, Fixture 관리를 위한 웹 기반 개발 도구**입니다. CLI로 수행하던 작업들을 시각적인 인터페이스로 더 쉽게 할 수 있으며, 테스트 결과 확인과 CDD 계약 관리 기능도 제공합니다.
@@ -9,16 +9,16 @@ Sonamu UI는 **Entity, Migration, Scaffolding, Fixture 관리를 위한 웹 기�
 
 Sonamu UI는 다음 기능을 제공합니다:
 
-| 기능 | 설명 | CLI 대체 |
-|------|------|----------|
-| **Entity 관리** | Entity 생성, 수정, 삭제 | `pnpm stub entity` |
-| **DB Migration** | 마이그레이션 생성 및 실행 | `pnpm migrate` |
-| **Scaffolding** | Model, 테스트 자동 생성 | `pnpm scaffold` |
-| **Fixture** | 테스트 데이터 관리 | `pnpm fixture` |
-| **i18n** | 국제화 문자열 관리 | 수동 편집 |
-| **Tasks** | 워크플로우 실행 모니터링 | - |
-| **Test Results** | 테스트 실행 결과 확인 | - |
-| **CDD** | Contract-Driven Development 계약/스펙 관리 | - |
+| 기능             | 설명                                       | CLI 대체           |
+| ---------------- | ------------------------------------------ | ------------------ |
+| **Entity 관리**  | Entity 생성, 수정, 삭제                    | `pnpm stub entity` |
+| **DB Migration** | 마이그레이션 생성 및 실행                  | `pnpm migrate`     |
+| **Scaffolding**  | Model, 테스트 자동 생성                    | `pnpm scaffold`    |
+| **Fixture**      | 테스트 데이터 관리                         | `pnpm fixture`     |
+| **i18n**         | 국제화 문자열 관리                         | 수동 편집          |
+| **Tasks**        | 워크플로우 실행 모니터링                   | -                  |
+| **Test Results** | 테스트 실행 결과 확인                      | -                  |
+| **CDD**          | Contract-Driven Development 계약/스펙 관리 | -                  |
 
 ## 실행 방법
 
@@ -36,9 +36,7 @@ API 서버가 실행되면 Sonamu UI가 자동으로 함께 제공됩니다.
 
 **기본 URL**: `http://localhost:34900/sonamu-ui`
 
-<Info>
-Sonamu UI는 별도의 포트 없이 **API 서버의 `/sonamu-ui` 경로**에서 제공됩니다.
-</Info>
+<Info>Sonamu UI는 별도의 포트 없이 **API 서버의 `/sonamu-ui` 경로**에서 제공됩니다.</Info>
 
 ### 일반적인 개발 워크플로우
 
@@ -63,17 +61,17 @@ Sonamu UI는 크게 세 가지 영역으로 구성됩니다:
 
 화면 상단에 위치하며 주요 기능에 빠르게 접근할 수 있습니다.
 
-| 메뉴 | 기능 |
-|------|------|
-| **Entities** | Entity 생성 및 편집 |
-| **DB Migration** | 마이그레이션 관리 |
-| **Scaffolding** | Model/Test 코드 생성 |
-| **Fixture** | 테스트 데이터 관리 |
-| **i18n** | 국제화 문자열 관리 |
-| **Tasks** | 워크플로우 실행 모니터링 |
-| **Test Results** | 테스트 실행 결과 확인 |
-| **CDD** | CDD 계약/스펙 관리 |
-| **Search** (`⌘K`) | 전체 검색 |
+| 메뉴              | 기능                     |
+| ----------------- | ------------------------ |
+| **Entities**      | Entity 생성 및 편집      |
+| **DB Migration**  | 마이그레이션 관리        |
+| **Scaffolding**   | Model/Test 코드 생성     |
+| **Fixture**       | 테스트 데이터 관리       |
+| **i18n**          | 국제화 문자열 관리       |
+| **Tasks**         | 워크플로우 실행 모니터링 |
+| **Test Results**  | 테스트 실행 결과 확인    |
+| **CDD**           | CDD 계약/스펙 관리       |
+| **Search** (`⌘K`) | 전체 검색                |
 
 ### 2. Sidebar
 
@@ -93,10 +91,10 @@ Sonamu UI는 크게 세 가지 영역으로 구성됩니다:
 
 ## 키보드 단축키
 
-| 단축키 | 기능 |
-|--------|------|
+| 단축키                          | 기능           |
+| ------------------------------- | -------------- |
 | `⌘K` (Mac) / `Ctrl+K` (Windows) | 검색 모달 열기 |
-| `Esc` | 모달 닫기 |
+| `Esc`                           | 모달 닫기      |
 
 ## 다음 단계
 
@@ -104,7 +102,11 @@ Sonamu UI는 크게 세 가지 영역으로 구성됩니다:
   <Card title="Entity 관리" icon="cube" href="/ko/tools-and-cli/sonamu-ui/entity-management">
     Entity 생성 및 편집하기
   </Card>
-  <Card title="Scaffolding" icon="wand-magic-sparkles" href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab">
+  <Card
+    title="Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/tools-and-cli/sonamu-ui/scaffolding-tab"
+  >
     코드 자동 생성하기
   </Card>
   <Card title="Tasks" icon="list-check" href="/ko/tools-and-cli/sonamu-ui/tasks-tab">

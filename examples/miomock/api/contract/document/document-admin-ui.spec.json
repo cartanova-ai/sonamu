@@ -79,13 +79,8 @@
     "../../../web/src/routes/admin/documents/index.tsx",
     "../../../web/src/routes/admin/documents/form.tsx"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
-  "dependsOnSpecs": [
-    "./document-creation.spec.json",
-    "./document-status.spec.json"
-  ],
+  "contracts": ["./main.contract.json"],
+  "dependsOnSpecs": ["./document-creation.spec.json", "./document-status.spec.json"],
   "modules": {
     "DocumentListPage": "문서 목록 페이지. 필터/검색/페이지네이션/삭제를 담당한다",
     "DocumentFormPage": "문서 생성/수정 폼 페이지. 제목, 본문, 상태 입력을 담당한다"

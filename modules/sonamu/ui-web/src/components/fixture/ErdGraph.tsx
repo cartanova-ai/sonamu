@@ -1,3 +1,4 @@
+import dagre from "@dagrejs/dagre";
 import {
   ConnectionLineType,
   type Edge,
@@ -6,12 +7,13 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { type SetStateAction, useEffect, useMemo } from "react";
+
 import "@xyflow/react/dist/style.css";
 import "./graph.scss";
-import dagre from "@dagrejs/dagre";
 import { group } from "radashi";
+import { type SetStateAction, useEffect, useMemo } from "react";
 import type { FixtureRecord } from "sonamu";
+
 import TableNode, { type TableNodeRFNode } from "../../components/fixture/TableNode";
 import { TableEdge } from "./TableEdge";
 

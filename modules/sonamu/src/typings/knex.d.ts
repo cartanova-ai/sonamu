@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/correctness/noUnusedImports: d.ts */
-/** biome-ignore-all lint/suspicious/noExplicitAny: d.ts */
-/** biome-ignore-all lint/correctness/noUnusedVariables: d.ts */
+/* oxlint-disable @typescript-eslint/no-unused-vars */ // d.ts
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // d.ts
+/* oxlint-disable @typescript-eslint/no-unused-vars */ // d.ts
 
 import type { Knex } from "knex";
 

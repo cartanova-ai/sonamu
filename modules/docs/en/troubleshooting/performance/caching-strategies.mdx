@@ -1,6 +1,6 @@
 ---
-title: 'Caching Strategies'
-description: 'Improving performance with caching'
+title: "Caching Strategies"
+description: "Improving performance with caching"
 ---
 
 This guide covers effective caching strategies using BentoCache in Sonamu.
@@ -10,6 +10,7 @@ This guide covers effective caching strategies using BentoCache in Sonamu.
 Sonamu provides powerful caching capabilities using [BentoCache](https://bentocache.dev/).
 
 **Key Features:**
+
 - Multiple drivers (memory, Redis, PostgreSQL, etc.)
 - TTL (Time To Live) configuration
 - Namespace-based management
@@ -29,14 +30,15 @@ export default {
     cache: {
       default: "memory",
       stores: {
-        memory: bentostore()
-          .useL1Layer(memoryDriver({
+        memory: bentostore().useL1Layer(
+          memoryDriver({
             maxItems: 10_000,
-            maxSize: 100_000_000  // 100MB
-          }))
-      }
-    }
-  }
+            maxSize: 100_000_000, // 100MB
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -51,17 +53,18 @@ export default {
     cache: {
       default: "redis",
       stores: {
-        redis: bentostore()
-          .useL1Layer(redisDriver({
+        redis: bentostore().useL1Layer(
+          redisDriver({
             connection: {
               host: process.env.REDIS_HOST || "localhost",
               port: 6379,
-              password: process.env.REDIS_PASSWORD
-            }
-          }))
-      }
-    }
-  }
+              password: process.env.REDIS_PASSWORD,
+            },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -73,15 +76,15 @@ export default {
     cache: {
       default: "memory",
       stores: {
-        memory: bentostore()
-          .useL1Layer(memoryDriver({ maxSize: 50_000_000 })),
-        redis: bentostore()
-          .useL1Layer(redisDriver({
-            connection: { host: "localhost", port: 6379 }
-          }))
-      }
-    }
-  }
+        memory: bentostore().useL1Layer(memoryDriver({ maxSize: 50_000_000 })),
+        redis: bentostore().useL1Layer(
+          redisDriver({
+            connection: { host: "localhost", port: 6379 },
+          }),
+        ),
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -94,11 +97,9 @@ import { cache, Puri } from "sonamu";
 
 class UserModelClass extends BaseModelClass {
   // Cache for 5 minutes
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri()
-      .select({ count: Puri.count() })
-      .where({ status: "active" });
+    const result = await this.getPuri().select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -109,31 +110,27 @@ class UserModelClass extends BaseModelClass {
 ```typescript
 class ProductModelClass extends BaseModelClass {
   // Cache for 1 hour
-  @cache({ ttl: '1h' })
+  @cache({ ttl: "1h" })
   async getFeaturedProducts() {
-    return this.getPuri()
-      .select("*")
-      .where({ featured: true });
+    return this.getPuri().select("*").where({ featured: true });
   }
 
   // Cache for 1 day
-  @cache({ ttl: '1d' })
+  @cache({ ttl: "1d" })
   async getCategoryCounts() {
-    return this.getPuri()
-      .select("category", knex.raw("COUNT(*) as count"))
-      .groupBy("category");
+    return this.getPuri().select("category", knex.raw("COUNT(*) as count")).groupBy("category");
   }
 
   // Permanent cache (requires manual invalidation)
   @cache({ ttl: 0 })
   async getProductCategories() {
-    return this.getPuri()
-      .select("DISTINCT category");
+    return this.getPuri().select("DISTINCT category");
   }
 }
 ```
 
 **TTL Formats:**
+
 - `'5s'`: 5 seconds
 - `'5m'`: 5 minutes
 - `'1h'`: 1 hour
@@ -145,16 +142,14 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class UserModelClass extends BaseModelClass {
   // Creates different cache entries per parameter
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   async getUsersByStatus(status: string) {
-    return this.getPuri()
-      .select("id", "name", "email")
-      .where({ status });
+    return this.getPuri().select("id", "name", "email").where({ status });
   }
 }
 
 // Each is stored with a different cache key
-await UserModel.getUsersByStatus("active");   // UserModel.getUsersByStatus:active
+await UserModel.getUsersByStatus("active"); // UserModel.getUsersByStatus:active
 await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inactive
 ```
 
@@ -163,8 +158,8 @@ await UserModel.getUsersByStatus("inactive"); // UserModel.getUsersByStatus:inac
 ```typescript
 class PostModelClass extends BaseModelClass {
   @cache({
-    ttl: '10m',
-    key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`
+    ttl: "10m",
+    key: (userId: number, page: number) => `posts:user:${userId}:page:${page}`,
   })
   async getUserPosts(userId: number, page: number = 1) {
     return this.getPuri()
@@ -199,7 +194,7 @@ class StatisticsService {
     const stats = await this.calculateDailyStats(date);
 
     // Store in cache (24 hours)
-    await Sonamu.cache.set(cacheKey, stats, { ttl: '24h' });
+    await Sonamu.cache.set(cacheKey, stats, { ttl: "24h" });
 
     return stats;
   }
@@ -209,22 +204,22 @@ class StatisticsService {
     const [userCount, orderCount, revenue] = await Promise.all([
       UserModel.getPuri()
         .select({ count: Puri.count() })
-        .then(r => r[0].count),
+        .then((r) => r[0].count),
       OrderModel.getPuri()
         .select({ count: Puri.count() })
         .where("created_at", ">=", date)
-        .then(r => r[0].count),
+        .then((r) => r[0].count),
       OrderModel.getPuri()
         .select({ total: Puri.sum("total") })
         .where("created_at", ">=", date)
-        .then(r => r[0].total)
+        .then((r) => r[0].total),
     ]);
 
     return {
       date,
       userCount,
       orderCount,
-      revenue
+      revenue,
     };
   }
 }
@@ -250,7 +245,7 @@ class UserModelClass extends BaseModelClass {
     await this.save({ id, status });
 
     // Invalidate related caches with pattern matching
-    await Sonamu.cache.clear();  // Caution: deletes entire cache
+    await Sonamu.cache.clear(); // Caution: deletes entire cache
   }
 }
 ```
@@ -262,16 +257,13 @@ class CacheService {
   async getWithCache(key: string, factory: () => Promise<any>) {
     return Sonamu.cache.getOrSet({
       key,
-      ttl: '1h',
-      factory
+      ttl: "1h",
+      factory,
     });
   }
 
   async getUser(userId: number) {
-    return this.getWithCache(
-      `user:${userId}`,
-      () => UserModel.findById(userId)
-    );
+    return this.getWithCache(`user:${userId}`, () => UserModel.findById(userId));
   }
 }
 ```
@@ -287,8 +279,8 @@ class ProductModelClass extends BaseModelClass {
 
     return Sonamu.cache.getOrSet({
       key: cacheKey,
-      ttl: '1h',
-      factory: () => this.findById(id)
+      ttl: "1h",
+      factory: () => this.findById(id),
     });
   }
 }
@@ -303,7 +295,7 @@ class ProductModelClass extends BaseModelClass {
     const product = await this.save({ id, ...params });
 
     // Update cache as well
-    await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
+    await Sonamu.cache.set(`product:${id}`, product, { ttl: "1h" });
 
     return product;
   }
@@ -324,7 +316,7 @@ class ProductModelClass extends BaseModelClass {
 
     // 3. Store in cache (async after response)
     setImmediate(async () => {
-      await Sonamu.cache.set(`product:${id}`, product, { ttl: '1h' });
+      await Sonamu.cache.set(`product:${id}`, product, { ttl: "1h" });
     });
 
     return product;
@@ -344,11 +336,7 @@ class ProductModelClass extends BaseModelClass {
       .orWhere("view_count", ">", 1000);
 
     for (const product of popularProducts) {
-      await Sonamu.cache.set(
-        `product:${product.id}`,
-        product,
-        { ttl: '1h' }
-      );
+      await Sonamu.cache.set(`product:${product.id}`, product, { ttl: "1h" });
     }
 
     console.log(`Cache warming complete for ${popularProducts.length} products`);
@@ -363,7 +351,7 @@ class ProductModelClass extends BaseModelClass {
 ```typescript
 class PostModelClass extends BaseModelClass {
   // List API - 10 minute cache
-  @cache({ ttl: '10m' })
+  @cache({ ttl: "10m" })
   @api({ httpMethod: "GET" })
   async listPosts(page: number = 1) {
     return this.getPuri()
@@ -374,14 +362,14 @@ class PostModelClass extends BaseModelClass {
   }
 
   // Detail API - 5 minute cache
-  @cache({ ttl: '5m' })
+  @cache({ ttl: "5m" })
   @api({ httpMethod: "GET" })
   async getPost(id: number) {
     const { qb } = this.getSubsetQueries("Detail");
     const result = await this.executeSubsetQuery({
       subset: "Detail",
       qb: qb.where({ id }),
-      params: { num: 1, page: 1 }
+      params: { num: 1, page: 1 },
     });
     return result.rows[0];
   }
@@ -409,29 +397,24 @@ class DashboardService {
 
     return Sonamu.cache.getOrSet({
       key: cacheKey,
-      ttl: '5m',
+      ttl: "5m",
       factory: async () => {
         // Execute multiple aggregation queries in parallel
-        const [
-          totalUsers,
-          activeUsers,
-          totalOrders,
-          todayRevenue
-        ] = await Promise.all([
+        const [totalUsers, activeUsers, totalOrders, todayRevenue] = await Promise.all([
           UserModel.getPuri()
             .select({ count: Puri.count() })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           UserModel.getPuri()
             .select({ count: Puri.count() })
             .where({ status: "active" })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           OrderModel.getPuri()
             .select({ count: Puri.count() })
-            .then(r => r[0].count),
+            .then((r) => r[0].count),
           OrderModel.getPuri()
             .select({ total: Puri.sum("total") })
             .where("created_at", ">=", new Date().toISOString().split("T")[0])
-            .then(r => r[0].total)
+            .then((r) => r[0].total),
         ]);
 
         return {
@@ -439,9 +422,9 @@ class DashboardService {
           activeUsers,
           totalOrders,
           todayRevenue,
-          cachedAt: new Date()
+          cachedAt: new Date(),
         };
-      }
+      },
     });
   }
 }
@@ -456,14 +439,10 @@ class AuthService {
     const sessionData = {
       userId,
       token,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
-    await Sonamu.cache.set(
-      `session:${token}`,
-      sessionData,
-      { ttl: '24h' }
-    );
+    await Sonamu.cache.set(`session:${token}`, sessionData, { ttl: "24h" });
   }
 
   // Get session
@@ -534,15 +513,15 @@ async getAppConfig() { }
 
 ```typescript
 // Clear and hierarchical keys
-"user:123"
-"user:123:posts"
-"stats:daily:2025-01-11"
-"product:category:electronics"
+"user:123";
+"user:123:posts";
+"stats:daily:2025-01-11";
+"product:category:electronics";
 
 // Unclear keys - avoid
-"u123"
-"data"
-"temp"
+"u123";
+"data";
+"temp";
 ```
 
 ### 3. Cache Size Management
@@ -572,9 +551,9 @@ export default {
         await ProductModel.warmPopularProducts();
         await CategoryModel.warmAllCategories();
         console.log("Cache warming complete");
-      }
-    }
-  }
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 

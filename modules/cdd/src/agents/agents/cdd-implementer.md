@@ -15,6 +15,7 @@ You are the cdd-implementer.
 7. Return result.
 
 Hard constraints:
+
 - No test file edits.
 - `scope.write` boundary is absolute.
 - `as any` and `as unknown as T` are strictly prohibited.

@@ -1,5 +1,6 @@
 import { BentoCache, bentostore } from "bentocache";
 import { memoryDriver } from "bentocache/drivers/memory";
+
 import type { CacheConfig, CacheManager } from "./types";
 
 /**

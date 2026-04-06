@@ -263,7 +263,7 @@ const appHtml = renderToString(
     <Main queryClient={queryClient}>
       <RouterProvider router={router} />
     </Main>
-  </Suspense>
+  </Suspense>,
 );
 ```
 
@@ -620,7 +620,7 @@ export async function renderSSR(
   request: FastifyRequest,
   reply: FastifyReply,
   config: SonamuFastifyConfig,
-  vite?: ViteDevServer
+  vite?: ViteDevServer,
 ): Promise<string> {
   const { Sonamu } = await import("../api/sonamu");
 
@@ -628,14 +628,9 @@ export async function renderSSR(
   const preloadConfig = route.preload ? route.preload(params) : [];
   const preloadedData: PreloadedData[] = [];
 
-  for (const {
-    modelName,
-    methodName,
-    params: apiParams,
-    serviceKey,
-  } of preloadConfig) {
+  for (const { modelName, methodName, params: apiParams, serviceKey } of preloadConfig) {
     const api = Sonamu.syncer.apis.find(
-      (a) => a.modelName === modelName && a.methodName === methodName
+      (a) => a.modelName === modelName && a.methodName === methodName,
     );
 
     if (!api) {
@@ -644,13 +639,7 @@ export async function renderSSR(
     }
 
     try {
-      const result = await Sonamu.invokeApiForSSR(
-        api,
-        apiParams,
-        config,
-        request,
-        reply
-      );
+      const result = await Sonamu.invokeApiForSSR(api, apiParams, config, request, reply);
       preloadedData.push({
         queryKey: [...serviceKey, ...apiParams],
         data: result,
@@ -664,7 +653,7 @@ export async function renderSSR(
   let viteScripts: string;
   let render: (
     url: string,
-    preloadedData: PreloadedData[]
+    preloadedData: PreloadedData[],
   ) => Promise<{ html: string; dehydratedState: unknown }>;
 
   if (vite) {
@@ -677,9 +666,7 @@ export async function renderSSR(
     // Vite가 주입한 스크립트 추출
     viteScripts = extractScriptTags(transformedHtml);
 
-    const entryModule = await vite.ssrLoadModule(
-      "/src/entry-server.generated.tsx"
-    );
+    const entryModule = await vite.ssrLoadModule("/src/entry-server.generated.tsx");
     render = entryModule.render;
   } else {
     // Prod: 빌드된 파일
@@ -688,29 +675,22 @@ export async function renderSSR(
     const ssrPath = path.join(Sonamu.apiRootPath, "web-dist", "server");
 
     // 빌드된 index.html에서 스크립트 추출
-    const builtHtml = fs.readFileSync(
-      path.join(webDistPath, "index.html"),
-      "utf-8"
-    );
+    const builtHtml = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");
     viteScripts = extractScriptTags(builtHtml);
 
-    const entryModule = await import(
-      path.join(ssrPath, "entry-server.generated.js")
-    );
+    const entryModule = await import(path.join(ssrPath, "entry-server.generated.js"));
     render = entryModule.render;
   }
 
   // 3. ➕ RouterProvider 렌더링 (full document)
-  const { html: fullDocHtml, dehydratedState } = await render(
-    url,
-    preloadedData
-  );
+  const { html: fullDocHtml, dehydratedState } = await render(url, preloadedData);
 
   // 4. ➕ SSR 데이터 스크립트 생성
   const ssrDataScript = dehydratedState
-    ? `<script>window.__SONAMU_SSR__ = ${JSON.stringify(
-        dehydratedState
-      ).replace(/</g, "\\u003c")};</script>`
+    ? `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(
+        /</g,
+        "\\u003c",
+      )};</script>`
     : "";
 
   // 5. ➕ SSR Config 스크립트 생성 (disableHydrate)
@@ -723,7 +703,7 @@ export async function renderSSR(
   // 6. ➕ Vite 스크립트와 SSR 데이터를 </body> 직전에 주입
   const finalHtml = fullDocHtml.replace(
     "</body>",
-    `${ssrConfigScript}\n${ssrDataScript}\n${viteScripts}\n</body>`
+    `${ssrConfigScript}\n${ssrDataScript}\n${viteScripts}\n</body>`,
   );
 
   return finalHtml;

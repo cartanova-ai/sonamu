@@ -6,6 +6,7 @@ description: Writing Sonamu Model classes. BaseModelClass inheritance, CRUD meth
 # Model Class
 
 **Reference working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
 - `sonamu/examples/miomock/api/src/application/employee/employee.model.ts` - basic CRUD pattern
 - `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - test examples
@@ -36,12 +37,12 @@ export const UserModel = new UserModelClass();
 
 Sonamu Model provides the following basic methods:
 
-| Method | Purpose | Notes |
-|--------|------|------|
-| `findById` | Retrieve single record | |
-| `findMany` | Retrieve list | |
-| `save` | Create/update | upsert behavior |
-| `del` | Delete | Note: not `delete` |
+| Method     | Purpose                | Notes              |
+| ---------- | ---------------------- | ------------------ |
+| `findById` | Retrieve single record |                    |
+| `findMany` | Retrieve list          |                    |
+| `save`     | Create/update          | upsert behavior    |
+| `del`      | Delete                 | Note: not `delete` |
 
 **Avoiding JavaScript reserved words:** `delete` is a JS reserved word, so it is named `del`. While TypeScript allows `delete` as a method name without a compile error, it can cause runtime issues, so Sonamu uses `del`.
 
@@ -103,13 +104,13 @@ async del(ids: number[]): Promise<number> {
 
 ## BaseModel Methods
 
-| Method | Description |
-|--------|------|
-| `getPuri("r")` | Read query builder |
-| `getPuri("w")` | Write query builder |
-| `getSubsetQueries(subset)` | Subset query builder (returns `{ qb, onSubset }`) |
-| `executeSubsetQuery(options)` | Execute subset query |
-| `createEnhancers(enhancers)` | Enhancer object creation helper (type inference) |
+| Method                        | Description                                       |
+| ----------------------------- | ------------------------------------------------- |
+| `getPuri("r")`                | Read query builder                                |
+| `getPuri("w")`                | Write query builder                               |
+| `getSubsetQueries(subset)`    | Subset query builder (returns `{ qb, onSubset }`) |
+| `executeSubsetQuery(options)` | Execute subset query                              |
+| `createEnhancers(enhancers)`  | Enhancer object creation helper (type inference)  |
 
 ## getSubsetQueries
 
@@ -120,19 +121,19 @@ const { qb, onSubset } = this.getSubsetQueries(subset);
 qb.where("users.status", "active");
 
 // onSubset: when you need the type for a specific subset
-const typedQb = onSubset("A");  // infers as subset A's type
+const typedQb = onSubset("A"); // infers as subset A's type
 ```
 
 ## executeSubsetQuery Options
 
 ```typescript
 return this.executeSubsetQuery({
-  subset,           // subset key
-  qb,               // query builder
-  params,           // ListParams (num, page, queryMode, sonamuFilter, etc.)
-  debug: true,      // print query log (default: false)
-  optimizeCountQuery: true,  // COUNT query optimization - removes unnecessary LEFT JOINs (default: false)
-  enhancers,        // Enhancer function object (optional)
+  subset, // subset key
+  qb, // query builder
+  params, // ListParams (num, page, queryMode, sonamuFilter, etc.)
+  debug: true, // print query log (default: false)
+  optimizeCountQuery: true, // COUNT query optimization - removes unnecessary LEFT JOINs (default: false)
+  enhancers, // Enhancer function object (optional)
 });
 ```
 
@@ -183,11 +184,11 @@ const params = {
   num: 10,
   page: 1,
   sonamuFilter: {
-    status: "active",              // eq (default)
-    age: { gte: 18 },              // >=
+    status: "active", // eq (default)
+    age: { gte: 18 }, // >=
     role: { in: ["admin", "user"] },
-    email: { contains: "@test" },  // LIKE %...%
-  }
+    email: { contains: "@test" }, // LIKE %...%
+  },
 };
 
 // Automatically applied in the Model
@@ -196,31 +197,31 @@ return this.executeSubsetQuery({ subset, qb, params });
 
 **Allowed operators by type:**
 
-| Type | Operators |
-|------|--------|
-| `string` | eq, ne, contains, startsWith, endsWith, in, notIn, isNull, isNotNull |
-| `integer` | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull |
-| `numeric` | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull |
-| `boolean` | eq, ne, isNull, isNotNull |
-| `date`/`datetime` | eq, ne, before, after, between, isNull, isNotNull |
-| `enum` | eq, ne, in, notIn, isNull, isNotNull |
-| `json` | isNull, isNotNull |
+| Type              | Operators                                                            |
+| ----------------- | -------------------------------------------------------------------- |
+| `string`          | eq, ne, contains, startsWith, endsWith, in, notIn, isNull, isNotNull |
+| `integer`         | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull      |
+| `numeric`         | eq, ne, gt, gte, lt, lte, in, notIn, between, isNull, isNotNull      |
+| `boolean`         | eq, ne, isNull, isNotNull                                            |
+| `date`/`datetime` | eq, ne, before, after, between, isNull, isNotNull                    |
+| `enum`            | eq, ne, in, notIn, isNull, isNotNull                                 |
+| `json`            | isNull, isNotNull                                                    |
 
 **Operator examples:**
 
-| Operator | SQL | Example |
-|--------|-----|------|
-| `eq` (default) | `=` | `{ status: "active" }` |
-| `ne` | `!=` | `{ status: { ne: "deleted" } }` |
-| `gt`, `gte` | `>`, `>=` | `{ age: { gte: 18 } }` |
-| `lt`, `lte` | `<`, `<=` | `{ price: { lte: 1000 } }` |
-| `in`, `notIn` | `IN`, `NOT IN` | `{ role: { in: ["a", "b"] } }` |
-| `contains` | `LIKE %...%` | `{ name: { contains: "kim" } }` |
-| `startsWith` | `LIKE ...%` | `{ code: { startsWith: "A" } }` |
-| `endsWith` | `LIKE %...` | `{ ext: { endsWith: ".pdf" } }` |
-| `isNull`, `isNotNull` | `IS NULL` | `{ deleted_at: { isNull: true } }` |
-| `before`, `after` | `<`, `>` (date) | `{ created_at: { after: "2024-01-01" } }` |
-| `between` | `BETWEEN` | `{ price: { between: [100, 500] } }` |
+| Operator              | SQL             | Example                                   |
+| --------------------- | --------------- | ----------------------------------------- |
+| `eq` (default)        | `=`             | `{ status: "active" }`                    |
+| `ne`                  | `!=`            | `{ status: { ne: "deleted" } }`           |
+| `gt`, `gte`           | `>`, `>=`       | `{ age: { gte: 18 } }`                    |
+| `lt`, `lte`           | `<`, `<=`       | `{ price: { lte: 1000 } }`                |
+| `in`, `notIn`         | `IN`, `NOT IN`  | `{ role: { in: ["a", "b"] } }`            |
+| `contains`            | `LIKE %...%`    | `{ name: { contains: "kim" } }`           |
+| `startsWith`          | `LIKE ...%`     | `{ code: { startsWith: "A" } }`           |
+| `endsWith`            | `LIKE %...`     | `{ ext: { endsWith: ".pdf" } }`           |
+| `isNull`, `isNotNull` | `IS NULL`       | `{ deleted_at: { isNull: true } }`        |
+| `before`, `after`     | `<`, `>` (date) | `{ created_at: { after: "2024-01-01" } }` |
+| `between`             | `BETWEEN`       | `{ price: { between: [100, 500] } }`      |
 
 **Type definition (`ApplySonamuFilter`):**
 
@@ -232,9 +233,9 @@ type ProjectListParams = {
   num: number;
   page: number;
   sonamuFilter?: ApplySonamuFilter<
-    ProjectSubsetA,       // entity type
-    "id" | "created_at",   // fields to exclude (TOmitKeys)
-    "budget"              // fields to treat as numeric (TNumericKeys)
+    ProjectSubsetA, // entity type
+    "id" | "created_at", // fields to exclude (TOmitKeys)
+    "budget" // fields to treat as numeric (TNumericKeys)
   >;
 };
 ```
@@ -265,7 +266,12 @@ return this.executeSubsetQuery({ subset, qb, params, enhancers });
 ```typescript
 // user.types.ts
 import { z } from "zod";
-import { UserOrderBy, UserSearchField, UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
+import {
+  UserOrderBy,
+  UserSearchField,
+  UserBaseSchema,
+  UserBaseListParams,
+} from "../sonamu.generated";
 
 export const UserListParams = UserBaseListParams;
 export type UserListParams = z.infer<typeof UserListParams>;
@@ -281,6 +287,7 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ### SaveParams Patterns
 
 **Basic pattern (no relations):**
+
 ```typescript
 import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
 
@@ -295,6 +302,7 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 ```
 
 **If a ManyToMany relation exists:**
+
 ```typescript
 // ManyToMany relation: add {relation_name}_ids array
 export const ProjectSaveParams = ProjectBaseSchema.partial({
@@ -313,23 +321,26 @@ export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 ```
 
 **Handling nullable fields in BelongsToOne relations:**
+
 ```typescript
 // Nullable relations are automatically optional, so no extra partial is needed
 export const ResponseSaveParams = ResponseBaseSchema.partial({
   id: true,
   created_at: true,
-  updated_at: true,  // also make timestamp fields partial
+  updated_at: true, // also make timestamp fields partial
 });
 export type ResponseSaveParams = z.infer<typeof ResponseSaveParams>;
 ```
 
 **Reference working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.types.ts` - ManyToMany SaveParams example
 - `sonamu/examples/miomock/api/src/application/employee/employee.types.ts` - BelongsToOne SaveParams example
 
 ### Handling Relations in the Model
 
 **Removing relation objects on update:**
+
 ```typescript
 // Pattern used in tests for updates
 const original = await UserModel.findById("A", userId);
@@ -340,13 +351,14 @@ const { institution, ...userData } = original;
 await UserModel.save([
   {
     ...userData,
-    institution_id: institution?.id ?? null,  // explicitly add FK
+    institution_id: institution?.id ?? null, // explicitly add FK
     name: "Updated Name",
   },
 ]);
 ```
 
 **ManyToMany save:**
+
 ```typescript
 // ManyToMany is passed as an _ids array
 await ProjectModel.save([
@@ -360,6 +372,7 @@ await ProjectModel.save([
 ```
 
 **Reference working code:**
+
 - `sonamu/examples/miomock/api/src/application/project/project.model.ts` - ManyToMany save implementation
 - `sonamu/examples/miomock/api/src/application/project/project.model.test.ts` - Save test example
 
@@ -385,19 +398,19 @@ async enroll(courseId: number, userId: number): Promise<Enrollment> {
     course_id: courseId,
     user_id: userId,
   });
-  
+
   if (existing) {
     throw new Error("Already enrolled in this course");
   }
-  
+
   // Step 2: Capacity check
   const course = await CourseModel.findById("A", courseId);
   const { total } = await this.findMany({ course_id: courseId });
-  
+
   if (total >= course.max_students) {
     throw new Error("The course is full");
   }
-  
+
   // Step 3: Execute
   const [id] = await this.save([{ course_id: courseId, user_id: userId }]);
   return this.findById("A", id);
@@ -415,17 +428,17 @@ async save(spa: TaskSaveParams[]): Promise<number[]> {
     if (sp.status === "completed" && !sp.completed_at) {
       throw new Error("A completion date is required for completed status");
     }
-    
+
     // Check amount range only when budget is present
     if (sp.budget !== null && sp.budget < 0) {
       throw new Error("Budget must be 0 or greater");
     }
   }
-  
+
   // Save after validation passes
   const wdb = this.getPuri("w");
   spa.forEach((sp) => wdb.ubRegister("tasks", sp));
-  
+
   return wdb.transaction(async (trx) => {
     return trx.ubUpsert("tasks");
   });
@@ -441,22 +454,22 @@ async save(spa: ResponseSaveParams[]): Promise<number[]> {
   for (const sp of spa) {
     // Check if the survey is still open
     const collection = await CollectionModel.findById("A", sp.collection_id);
-    
+
     if (collection.status === "closed") {
       throw new Error("This survey has already ended");
     }
-    
+
     // Check response period
     const now = new Date();
     if (now < collection.begin_date || now > collection.end_date) {
       throw new Error("This is not within the response period");
     }
   }
-  
+
   // Save after validation passes
   const wdb = this.getPuri("w");
   spa.forEach((sp) => wdb.ubRegister("responses", sp));
-  
+
   return wdb.transaction(async (trx) => {
     return trx.ubUpsert("responses");
   });
@@ -464,6 +477,7 @@ async save(spa: ResponseSaveParams[]): Promise<number[]> {
 ```
 
 **Key points:**
+
 - Clear error messages when validation fails
 - Only save after all validations pass
 - Enforce business rules through code
@@ -517,6 +531,7 @@ if (params.orderBy) {
 Use `this.modelName` instead of hardcoding the model name in error messages.
 
 **BAD: hardcoded model name**
+
 ```typescript
 // department.model.ts
 if (!rows[0]) {
@@ -530,6 +545,7 @@ if (!rows[0]) {
 ```
 
 **GOOD: use this.modelName**
+
 ```typescript
 // Common to all Models
 if (!rows[0]) {
@@ -538,6 +554,7 @@ if (!rows[0]) {
 ```
 
 **Benefits:**
+
 - Prevents copy-paste mistakes: no need to update the model name when copying from another model
 - Consistency: all models use the same pattern
 - Maintainability: changing modelName in the constructor automatically reflects in all error messages
@@ -547,6 +564,7 @@ if (!rows[0]) {
 Use the same i18n keys consistently for the same purpose across the entire project.
 
 **BAD: duplicate i18n keys**
+
 ```typescript
 // Different keys used across models
 throw new NotFoundException(SD("error.entityNotFound")(this.modelName, id));
@@ -559,6 +577,7 @@ throw new BadRequestException(SD("error.invalidSearchField")(params.search));
 ```
 
 **GOOD: use standard i18n keys**
+
 ```typescript
 // Entity lookup failure - short and clear
 throw new NotFoundException(SD("notFound")(this.modelName, id));
@@ -581,18 +600,21 @@ throw new BadRequestException(SD("search.invalidField")(params.search));
 When consistently modifying multiple model files, use sed for automation:
 
 **Step 1: Confirm pattern**
+
 ```bash
 # Find files to modify
 grep -r 'SD("error.entityNotFound")' packages/api/src/application/*/
 ```
 
 **Step 2: Validate changes (dry-run)**
+
 ```bash
 # Preview changes before applying
 sed -n 's/SD("error.entityNotFound")(\(.*\), id)/SD("notFound")(this.modelName, id)/p' file.ts
 ```
 
 **Step 3: Apply in bulk**
+
 ```bash
 # Modify all model files
 find packages/api/src/application -name "*.model.ts" -exec sed -i '' \
@@ -600,6 +622,7 @@ find packages/api/src/application -name "*.model.ts" -exec sed -i '' \
 ```
 
 **Step 4: Validate with build**
+
 ```bash
 # TypeScript type check
 pnpm typecheck
@@ -609,6 +632,7 @@ pnpm build
 ```
 
 **Cautions:**
+
 - Always run after a git commit (to allow rollback)
 - Confirm changes with dry-run first
 - Check for type errors with build
@@ -624,7 +648,7 @@ const params = {
   num: 24,
   page: 1,
   search: "id" as const,
-  orderBy: "wrong-value" as const,  // error not detected
+  orderBy: "wrong-value" as const, // error not detected
   ...rawParams,
 } as RoleListParams;
 
@@ -633,12 +657,13 @@ const params = {
   num: 24,
   page: 1,
   search: "id" as const,
-  orderBy: "wrong-value" as const,  // compile error!
+  orderBy: "wrong-value" as const, // compile error!
   ...rawParams,
 } satisfies RoleListParams;
 ```
 
 **Recommended usage locations:**
+
 - Default values for params in findMany
 - Complex object literals (where type checking is important)
 
@@ -651,6 +676,7 @@ The following three must always remain consistent. If any one is out of sync, th
 3. Filter/search handling code in `findMany` in `model.ts`
 
 **Checklist:**
+
 - [ ] Are all values declared in SearchField implemented in findMany?
 - [ ] If any filter branch is commented out, either remove it or implement it
 - [ ] Are "filter by ~", "search by ~" features from requirements reflected in ListParams?
@@ -673,6 +699,7 @@ if (params.submitter_id) qb.where("achievements.submitter_id", params.submitter_
 ```
 
 **DO NOT - declaration/implementation mismatch:**
+
 ```typescript
 // SearchField "title" declared in entity.json
 // model.ts only handles "id" case, "title" is commented out
@@ -686,17 +713,19 @@ if (params.search === "id") {
 ### Code Review Checklist
 
 When writing a new Model:
+
 - [ ] Use `this.modelName` (no hardcoding)
 - [ ] Use standard i18n keys (`notFound`, `search.invalidField`)
 - [ ] Use the `satisfies` keyword (type safety)
 - [ ] Do not unnecessarily specify the debug option
 - [ ] Exhaustively handle all orderBy cases
-- [ ] If a ManyToMany relation exists, add _ids array to SaveParams
+- [ ] If a ManyToMany relation exists, add \_ids array to SaveParams
 - [ ] Does the `@upload` method have `@api` on it? (`@upload` is used standalone; using both together causes a build error)
 - [ ] Do the SearchField enum and findMany implementation match?
 - [ ] For entities with approval workflows, are status/type filters present in both ListParams and findMany?
 
 When bulk-modifying 20+ Models:
+
 - [ ] Compare patterns with reference code like miomock
 - [ ] Prioritize inconsistent patterns
 - [ ] Write an automation script using sed or similar
@@ -711,12 +740,14 @@ When bulk-modifying 20+ Models:
 The `any` type neutralizes TypeScript's type safety and must **never be used**.
 
 **BAD: using any**
+
 ```typescript
 const { category_ids, ...data } = sp as any;
 function process(input: any) { ... }
 ```
 
 **GOOD: use precise types or unknown**
+
 ```typescript
 // Destructure with a precise type
 const { category_ids, ...data } = sp as QuestionCollectionSaveParams;
@@ -728,6 +759,7 @@ function process(input: unknown) {
 ```
 
 **Rules:**
+
 - `any` is prohibited
 - When the type is unknown, use `unknown` and narrow with a type guard
 - When a type assertion is needed during destructuring, specify the exact type name (`as ConcreteType`)

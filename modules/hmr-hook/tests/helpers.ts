@@ -1,4 +1,5 @@
 import path from "node:path";
+
 import { getActiveTest } from "@japa/runner";
 import { join } from "desm";
 import type { NodeOptions } from "execa";
@@ -26,7 +27,7 @@ export async function fakeInstall(destination: string) {
   } else {
     for (const [binName, binPath] of Object.entries(bin)) {
       await fs.ensureSymlink(
-        // biome-ignore lint/suspicious/noExplicitAny: package.json bin 필드는 런타임에 string으로 보장됨
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- package.json bin 필드는 런타임에 string으로 보장됨
         path.resolve(projectRoot, binPath as any),
         path.resolve(destination, "node_modules", ".bin", binName),
       );

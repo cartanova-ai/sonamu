@@ -1,8 +1,9 @@
+import type { Readable } from "stream";
+
 import { type ObjectCannedACL, S3Client } from "@aws-sdk/client-s3";
 import { type Options, Upload } from "@aws-sdk/lib-storage";
 import { S3Driver } from "flydrive/drivers/s3";
 import type { S3DriverOptions } from "flydrive/drivers/s3/types";
-import type { Readable } from "stream";
 
 /**
  * Sonamu용 S3 드라이버

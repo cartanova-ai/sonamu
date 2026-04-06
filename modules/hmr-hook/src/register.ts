@@ -1,4 +1,5 @@
 import { dirname, resolve } from "node:path";
+
 import { readPackageUp } from "read-package-up";
 
 import { hot } from "./hot.js";

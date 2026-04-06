@@ -9,24 +9,16 @@ Using the `transaction()` method allows fine-grained control over transactions.
 
 <CardGroup cols={2}>
   <Card title="Fine-Grained Control" icon="sliders">
-    Clear transaction boundaries
-    
-    Partial transactions possible
+    Clear transaction boundaries Partial transactions possible
   </Card>
   <Card title="Conditional Rollback" icon="code-branch">
-    Rollback based on conditions
-    
-    Validate before commit
+    Rollback based on conditions Validate before commit
   </Card>
   <Card title="Nested Transactions" icon="layer-group">
-    Savepoint support
-    
-    Partial rollback support
+    Savepoint support Partial rollback support
   </Card>
   <Card title="Explicit Management" icon="hand">
-    Clear transaction flow
-    
-    Easier debugging
+    Clear transaction flow Easier debugging
   </Card>
 </CardGroup>
 
@@ -38,12 +30,12 @@ Using the `transaction()` method allows fine-grained control over transactions.
 class UserModel extends BaseModelClass {
   async createUser(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // Use trx within transaction
       trx.ubRegister("users", data);
       const [userId] = await trx.ubUpsert("users");
-      
+
       // Auto-commit on success
       return userId;
     });
@@ -52,8 +44,8 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-When the `transaction()` callback function completes successfully, it automatically COMMITs.
-If an error occurs, it automatically ROLLBACKs.
+  When the `transaction()` callback function completes successfully, it automatically COMMITs. If an
+  error occurs, it automatically ROLLBACKs.
 </Info>
 
 ### Transaction Flow
@@ -67,7 +59,7 @@ flowchart TD
     D -->|Yes| F[ROLLBACK]
     E --> G[Return result]
     F --> H[Throw error]
-    
+
     style A fill:#e3f2fd
     style B fill:#e8f5e9
     style C fill:#e1f5ff
@@ -81,25 +73,16 @@ flowchart TD
 
 ```typescript
 class UserModel extends BaseModelClass {
-  async registerUser(
-    userData: UserSaveParams,
-    profileData: { bio: string }
-  ): Promise<number> {
+  async registerUser(userData: UserSaveParams, profileData: { bio: string }): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // 1. Create User
-      const [user] = await trx
-        .table("users")
-        .insert(userData)
-        .returning({ id: "id" });
-      
+      const [user] = await trx.table("users").insert(userData).returning({ id: "id" });
+
       // 2. Update Profile
-      await trx
-        .table("users")
-        .where("id", user.id)
-        .update({ bio: profileData.bio });
-      
+      await trx.table("users").where("id", user.id).update({ bio: profileData.bio });
+
       // Auto-commit on success
       return user.id;
     });
@@ -111,40 +94,31 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class OrderModel extends BaseModelClass {
-  async createOrder(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number> {
+  async createOrder(userId: number, items: OrderItem[]): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // 1. Check inventory
       for (const item of items) {
-        const product = await trx
-          .table("products")
-          .where("id", item.productId)
-          .first();
-        
+        const product = await trx.table("products").where("id", item.productId).first();
+
         if (!product || product.stock < item.quantity) {
           // Conditional rollback
           throw new Error(`Insufficient stock for product ${item.productId}`);
         }
       }
-      
+
       // 2. Create order
       const [order] = await trx
         .table("orders")
         .insert({ user_id: userId, status: "pending" })
         .returning({ id: "id" });
-      
+
       // 3. Decrement stock
       for (const item of items) {
-        await trx
-          .table("products")
-          .where("id", item.productId)
-          .decrement("stock", item.quantity);
+        await trx.table("products").where("id", item.productId).decrement("stock", item.quantity);
       }
-      
+
       return order.id;
     });
   }
@@ -160,13 +134,13 @@ class CompanyModel extends BaseModelClass {
     departments: string[];
   }): Promise<{ companyId: number; departmentIds: number[] }> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // 1. Register Company
       const companyRef = trx.ubRegister("companies", {
         name: data.companyName,
       });
-      
+
       // 2. Register Departments
       data.departments.forEach((name) => {
         trx.ubRegister("departments", {
@@ -174,11 +148,11 @@ class CompanyModel extends BaseModelClass {
           company_id: companyRef,
         });
       });
-      
+
       // 3. Save in order
       const [companyId] = await trx.ubUpsert("companies");
       const departmentIds = await trx.ubUpsert("departments");
-      
+
       return { companyId, departmentIds };
     });
   }
@@ -193,27 +167,21 @@ class CompanyModel extends BaseModelClass {
 class UserModel extends BaseModelClass {
   async complexOperation(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx1) => {
       console.log("Outer transaction started");
-      
+
       // Outer transaction work
-      await trx1
-        .table("users")
-        .where("id", userId)
-        .update({ last_login_at: new Date() });
-      
+      await trx1.table("users").where("id", userId).update({ last_login_at: new Date() });
+
       // Nested transaction (Savepoint)
       await trx1.transaction(async (trx2) => {
         console.log("Inner transaction started (savepoint)");
-        
+
         // Inner transaction work
-        await trx2
-          .table("users")
-          .where("id", userId)
-          .update({ is_verified: true });
+        await trx2.table("users").where("id", userId).update({ is_verified: true });
       });
-      
+
       console.log("Outer transaction completed");
     });
   }
@@ -234,7 +202,7 @@ flowchart TD
     I --> J
     J -->|Yes| K[COMMIT]
     J -->|No| L[ROLLBACK]
-    
+
     style A fill:#e8f5e9
     style D fill:#fff9c4
     style K fill:#c8e6c9
@@ -247,22 +215,16 @@ flowchart TD
 class UserModel extends BaseModelClass {
   async updateWithPartialRollback(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx1) => {
       // 1. Outer transaction work (preserved)
-      await trx1
-        .table("users")
-        .where("id", userId)
-        .update({ last_login_at: new Date() });
-      
+      await trx1.table("users").where("id", userId).update({ last_login_at: new Date() });
+
       try {
         // 2. Nested transaction (may fail)
         await trx1.transaction(async (trx2) => {
-          await trx2
-            .table("users")
-            .where("id", userId)
-            .update({ is_verified: true });
-          
+          await trx2.table("users").where("id", userId).update({ is_verified: true });
+
           // Intentional error
           throw new Error("Inner transaction failed");
         });
@@ -270,22 +232,17 @@ class UserModel extends BaseModelClass {
         console.log("Inner transaction rolled back");
         // Only inner transaction rolled back, outer continues
       }
-      
+
       // 3. Continue outer transaction (committed)
-      await trx1
-        .table("users")
-        .where("id", userId)
-        .update({ bio: "Updated after inner rollback" });
+      await trx1.table("users").where("id", userId).update({ bio: "Updated after inner rollback" });
     });
   }
 }
 ```
 
 <Info>
-**Benefits of Nested Transactions**:
-- Independent rollback of partial operations
-- Structure complex business logic
-- Error isolation possible
+  **Benefits of Nested Transactions**: - Independent rollback of partial operations - Structure
+  complex business logic - Error isolation possible
 </Info>
 
 ## Explicit Rollback
@@ -294,43 +251,38 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class OrderModel extends BaseModelClass {
-  async createOrderWithValidation(
-    userId: number,
-    items: OrderItem[]
-  ): Promise<number | null> {
+  async createOrderWithValidation(userId: number, items: OrderItem[]): Promise<number | null> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // 1. Create order
       const [order] = await trx
         .table("orders")
         .insert({ user_id: userId, status: "pending" })
         .returning({ id: "id" });
-      
+
       // 2. Validation
       const totalAmount = await this.calculateTotal(items);
-      
+
       if (totalAmount > 1000000) {
         // Explicit rollback
         await trx.rollback();
         return null;
       }
-      
+
       // 3. Save order details
       for (const item of items) {
-        await trx
-          .table("order_items")
-          .insert({
-            order_id: order.id,
-            product_id: item.productId,
-            quantity: item.quantity,
-          });
+        await trx.table("order_items").insert({
+          order_id: order.id,
+          product_id: item.productId,
+          quantity: item.quantity,
+        });
       }
-      
+
       return order.id;
     });
   }
-  
+
   private async calculateTotal(items: OrderItem[]): Promise<number> {
     // Total calculation logic
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -339,8 +291,8 @@ class OrderModel extends BaseModelClass {
 ```
 
 <Warning>
-Code continues to execute even after calling `rollback()`.
-You must explicitly `return` or `throw`.
+  Code continues to execute even after calling `rollback()`. You must explicitly `return` or
+  `throw`.
 </Warning>
 
 ## Transaction Isolation Levels
@@ -351,25 +303,19 @@ You must explicitly `return` or `throw`.
 class UserModel extends BaseModelClass {
   async updateWithIsolation(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // Supported by both PostgreSQL and MySQL
     return wdb.transaction(
       async (trx) => {
-        const user = await trx
-          .table("users")
-          .where("id", userId)
-          .first();
-        
+        const user = await trx.table("users").where("id", userId).first();
+
         if (!user) {
           throw new Error("User not found");
         }
-        
-        await trx
-          .table("users")
-          .where("id", userId)
-          .update({ last_login_at: new Date() });
+
+        await trx.table("users").where("id", userId).update({ last_login_at: new Date() });
       },
-      { isolation: "repeatable read" }
+      { isolation: "repeatable read" },
     );
   }
 }
@@ -377,18 +323,16 @@ class UserModel extends BaseModelClass {
 
 ### Isolation Level Characteristics
 
-| Level | Dirty Read | Non-repeatable Read | Phantom Read | Performance |
-|-------|------------|---------------------|--------------|-------------|
-| READ UNCOMMITTED | O | O | O | ⭐⭐⭐⭐⭐ |
-| READ COMMITTED | X | O | O | ⭐⭐⭐⭐ |
-| REPEATABLE READ | X | X | O | ⭐⭐⭐ |
-| SERIALIZABLE | X | X | X | ⭐⭐ |
+| Level            | Dirty Read | Non-repeatable Read | Phantom Read | Performance |
+| ---------------- | ---------- | ------------------- | ------------ | ----------- |
+| READ UNCOMMITTED | O          | O                   | O            | ⭐⭐⭐⭐⭐  |
+| READ COMMITTED   | X          | O                   | O            | ⭐⭐⭐⭐    |
+| REPEATABLE READ  | X          | X                   | O            | ⭐⭐⭐      |
+| SERIALIZABLE     | X          | X                   | X            | ⭐⭐        |
 
 <Tip>
-**Isolation Level Selection Guide**:
-- General read/write: READ COMMITTED
-- Consistency important: REPEATABLE READ (default)
-- Financial transactions: SERIALIZABLE
+  **Isolation Level Selection Guide**: - General read/write: READ COMMITTED - Consistency important:
+  REPEATABLE READ (default) - Financial transactions: SERIALIZABLE
 </Tip>
 
 ## Error Handling
@@ -403,28 +347,22 @@ class UserModel extends BaseModelClass {
     error?: string;
   }> {
     const wdb = this.getPuri("w");
-    
+
     try {
       const userId = await wdb.transaction(async (trx) => {
         // Duplicate check
-        const existing = await trx
-          .table("users")
-          .where("email", data.email)
-          .first();
-        
+        const existing = await trx.table("users").where("email", data.email).first();
+
         if (existing) {
           throw new Error("Email already exists");
         }
-        
+
         // Create User
-        const [user] = await trx
-          .table("users")
-          .insert(data)
-          .returning({ id: "id" });
-        
+        const [user] = await trx.table("users").insert(data).returning({ id: "id" });
+
         return user.id;
       });
-      
+
       return { success: true, userId };
     } catch (error) {
       return {
@@ -442,45 +380,36 @@ class UserModel extends BaseModelClass {
 class OrderModel extends BaseModelClass {
   async processOrder(orderId: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // 1. Get order
-      const order = await trx
-        .table("orders")
-        .where("id", orderId)
-        .first();
-      
+      const order = await trx.table("orders").where("id", orderId).first();
+
       if (!order) {
         throw new Error("Order not found");
       }
-      
+
       // 2. Validate status
       if (order.status !== "pending") {
         throw new Error(`Cannot process order with status: ${order.status}`);
       }
-      
+
       try {
         // 3. Process payment (external API)
         await this.processPayment(order);
       } catch (error) {
         // Update order status on payment failure
-        await trx
-          .table("orders")
-          .where("id", orderId)
-          .update({ status: "failed" });
-        
+        await trx.table("orders").where("id", orderId).update({ status: "failed" });
+
         // Re-throw error (transaction rollback)
         throw error;
       }
-      
+
       // 4. Complete order
-      await trx
-        .table("orders")
-        .where("id", orderId)
-        .update({ status: "completed" });
+      await trx.table("orders").where("id", orderId).update({ status: "completed" });
     });
   }
-  
+
   private async processPayment(order: any): Promise<void> {
     // Payment logic
   }
@@ -495,34 +424,33 @@ class OrderModel extends BaseModelClass {
 class UserModel extends BaseModelClass {
   async createUserWithLogging(data: UserSaveParams): Promise<number> {
     const wdb = this.getPuri("w");
-    
+
     console.log("[TRX] Starting transaction");
-    
-    return wdb.transaction(async (trx) => {
-      console.log("[TRX] Inside transaction");
-      
-      const [userId] = await trx
-        .table("users")
-        .insert(data)
-        .returning({ id: "id" });
-      
-      console.log("[TRX] User created:", userId);
-      
-      // Check transaction status (for debug)
-      await trx.debugTransaction();
-      
-      console.log("[TRX] Committing transaction");
-      return userId.id;
-    }).then(
-      (result) => {
-        console.log("[TRX] Transaction committed successfully");
-        return result;
-      },
-      (error) => {
-        console.log("[TRX] Transaction rolled back:", error.message);
-        throw error;
-      }
-    );
+
+    return wdb
+      .transaction(async (trx) => {
+        console.log("[TRX] Inside transaction");
+
+        const [userId] = await trx.table("users").insert(data).returning({ id: "id" });
+
+        console.log("[TRX] User created:", userId);
+
+        // Check transaction status (for debug)
+        await trx.debugTransaction();
+
+        console.log("[TRX] Committing transaction");
+        return userId.id;
+      })
+      .then(
+        (result) => {
+          console.log("[TRX] Transaction committed successfully");
+          return result;
+        },
+        (error) => {
+          console.log("[TRX] Transaction rolled back:", error.message);
+          throw error;
+        },
+      );
   }
 }
 ```
@@ -535,14 +463,14 @@ class UserModel extends BaseModelClass {
 // ❌ Bad: Long transaction
 async badPattern(userId: number): Promise<void> {
   const wdb = this.getPuri("w");
-  
+
   return wdb.transaction(async (trx) => {
     // Unnecessary query (can be done outside transaction)
     const user = await trx.table("users").where("id", userId).first();
-    
+
     // External API call (unnecessary inside transaction)
     await this.sendEmail(user.email);
-    
+
     // Actual update
     await trx.table("users").where("id", userId).update({ last_login_at: new Date() });
   });
@@ -552,17 +480,17 @@ async badPattern(userId: number): Promise<void> {
 async goodPattern(userId: number): Promise<void> {
   const rdb = this.getPuri("r");
   const wdb = this.getPuri("w");
-  
+
   // 1. Query (READ DB, outside transaction)
   const user = await rdb.table("users").where("id", userId).first();
-  
+
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   // 2. External work (outside transaction)
   await this.sendEmail(user.email);
-  
+
   // 3. Update (short transaction)
   return wdb.transaction(async (trx) => {
     await trx.table("users").where("id", userId).update({ last_login_at: new Date() });
@@ -571,25 +499,22 @@ async goodPattern(userId: number): Promise<void> {
 ```
 
 <Warning>
-**Transaction Optimization Principles**:
-- Keep transactions as short as possible
-- External API calls outside transactions
-- Read-only queries don't need transactions
-- Minimize lock wait time
+  **Transaction Optimization Principles**: - Keep transactions as short as possible - External API
+  calls outside transactions - Read-only queries don't need transactions - Minimize lock wait time
 </Warning>
 
 ## @transactional vs Manual Transaction
 
 ### Comparison
 
-| Feature | @transactional | Manual transaction() |
-|---------|----------------|---------------------|
-| Code Simplicity | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| Fine-Grained Control | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-| Partial Transactions | ❌ | ✅ |
-| Conditional Rollback | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-| Debugging | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| Reusability | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Feature              | @transactional | Manual transaction() |
+| -------------------- | -------------- | -------------------- |
+| Code Simplicity      | ⭐⭐⭐⭐⭐     | ⭐⭐⭐               |
+| Fine-Grained Control | ⭐⭐           | ⭐⭐⭐⭐⭐           |
+| Partial Transactions | ❌             | ✅                   |
+| Conditional Rollback | ⭐⭐           | ⭐⭐⭐⭐⭐           |
+| Debugging            | ⭐⭐⭐         | ⭐⭐⭐⭐             |
+| Reusability          | ⭐⭐⭐⭐⭐     | ⭐⭐⭐               |
 
 ### Selection Guide
 
@@ -603,18 +528,18 @@ class UserModel extends BaseModelClass {
     const [id] = await wdb.ubUpsert("users");
     return id;
   }
-  
+
   // ✅ Manual transaction - Complex control
   async complexCreate(data: UserSaveParams): Promise<number | null> {
     const wdb = this.getPuri("w");
-    
+
     return wdb.transaction(async (trx) => {
       // Conditional work
       if (await this.shouldCreateUser(data)) {
         const [id] = await trx.table("users").insert(data).returning({ id: "id" });
         return id.id;
       }
-      
+
       // Rollback if condition not met
       await trx.rollback();
       return null;

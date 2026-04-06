@@ -1,6 +1,6 @@
 ---
-title: 'pnpm Workspace Dependency Issues'
-description: 'Resolving dependency issues in pnpm workspace environments'
+title: "pnpm Workspace Dependency Issues"
+description: "Resolving dependency issues in pnpm workspace environments"
 ---
 
 This covers dependency-related problems that occur in pnpm workspace environments and how to resolve them.
@@ -98,7 +98,7 @@ pnpm ls -r --depth -1
 ```json
 {
   "dependencies": {
-    "sonamu": "workspace:*"  // sonamu package must exist in workspace
+    "sonamu": "workspace:*" // sonamu package must exist in workspace
   }
 }
 ```
@@ -127,7 +127,7 @@ Version defined in `pnpm-workspace.yaml` catalog differs from `package.json` ver
 ```json
 {
   "dependencies": {
-    "react": "catalog:"  // Use version from pnpm-workspace.yaml
+    "react": "catalog:" // Use version from pnpm-workspace.yaml
   }
 }
 ```
@@ -138,7 +138,7 @@ Version defined in `pnpm-workspace.yaml` catalog differs from `package.json` ver
 
 ```yaml
 catalog:
-  react: ^19.2.3  # Update to match package.json
+  react: ^19.2.3 # Update to match package.json
 ```
 
 #### 3. Unify All Workspace to Catalog Version
@@ -252,7 +252,7 @@ pnpm add -D tsconfig-paths
 A package imported directly in code doesn't exist in `package.json` but works.
 
 ```typescript
-import _ from "lodash-es";  // Not in package.json
+import _ from "lodash-es"; // Not in package.json
 ```
 
 Works locally but fails in CI or other environments.

@@ -14,9 +14,10 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
+
 import { useSonamuContext } from "../contexts/sonamu-provider";
-import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 
 type I18nDictionaryRow = SonamuUIService.I18nDictionaryRow;
 

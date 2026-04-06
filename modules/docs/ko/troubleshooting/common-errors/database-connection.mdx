@@ -1,6 +1,6 @@
 ---
-title: '데이터베이스 연결'
-description: 'DB 연결 문제 해결하기'
+title: "데이터베이스 연결"
+description: "DB 연결 문제 해결하기"
 ---
 
 Sonamu에서 자주 발생하는 데이터베이스 연결 관련 문제와 해결 방법을 다룹니다.
@@ -32,9 +32,9 @@ const db = createKnexInstance(config);
 
 // 여러 작업 수행
 await db.raw("SELECT ...");
-await db.raw("UPDATE ...");  // 여기서 에러 발생
+await db.raw("UPDATE ..."); // 여기서 에러 발생
 
-await db.destroy();  // 도달하지 못함
+await db.destroy(); // 도달하지 못함
 ```
 
 ### 해결 방법
@@ -49,7 +49,7 @@ try {
   await db.raw("UPDATE ...");
   return result;
 } finally {
-  await db.destroy();  // 에러 발생 여부와 관계없이 실행
+  await db.destroy(); // 에러 발생 여부와 관계없이 실행
 }
 ```
 
@@ -75,7 +75,7 @@ try {
 PostgreSQL에서 현재 연결 상태를 확인하려면:
 
 ```sql
-SELECT 
+SELECT
   datname,
   count(*) as connections,
   max_conn
@@ -170,12 +170,12 @@ export default {
       database: "miomock",
       pool: {
         min: 2,
-        max: 10,  // 기본값보다 증가
-        acquireTimeoutMillis: 30000,  // 타임아웃 증가
-        idleTimeoutMillis: 30000
-      }
-    }
-  }
+        max: 10, // 기본값보다 증가
+        acquireTimeoutMillis: 30000, // 타임아웃 증가
+        idleTimeoutMillis: 30000,
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -183,7 +183,7 @@ export default {
 
 ```sql
 -- 현재 실행 중인 쿼리 확인
-SELECT 
+SELECT
   pid,
   now() - query_start as duration,
   query
@@ -200,7 +200,7 @@ SELECT pg_terminate_backend(pid);  -- 강제 종료
 
 ```sql
 -- 오래된 트랜잭션 확인
-SELECT 
+SELECT
   pid,
   now() - xact_start as duration,
   state,
@@ -290,8 +290,8 @@ psql -U postgres -c "DROP DATABASE IF EXISTS miomock_test;"
 export default defineConfig({
   test: {
     globalSetup: "./test/setup.ts",
-    globalTeardown: "./test/teardown.ts"
-  }
+    globalTeardown: "./test/teardown.ts",
+  },
 });
 ```
 

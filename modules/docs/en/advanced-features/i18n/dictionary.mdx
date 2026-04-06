@@ -11,11 +11,11 @@ The `SD` (Sonamu Dictionary) function returns translated text matching the curre
 import { SD } from "../i18n/sd.generated";
 
 // Simple string
-const saveButton = SD("common.save");  // "저장" (ko) / "Save" (en)
+const saveButton = SD("common.save"); // "저장" (ko) / "Save" (en)
 
 // Function value (dynamic message)
-const message = SD("common.results")(42);  // "42개 결과"
-const error = SD("notFound")("User", 123);  // "존재하지 않는 User ID 123"
+const message = SD("common.results")(42); // "42개 결과"
+const error = SD("notFound")("User", 123); // "존재하지 않는 User ID 123"
 ```
 
 ## Type Safety
@@ -23,9 +23,9 @@ const error = SD("notFound")("User", 123);  // "존재하지 않는 User ID 123"
 Using a non-existent key results in a compile-time error:
 
 ```typescript
-SD("common.save")       // ✅ OK
-SD("common.savee")      // ❌ Compile error: key 'common.savee' does not exist
-SD("typo.key")          // ❌ Compile error
+SD("common.save"); // ✅ OK
+SD("common.savee"); // ❌ Compile error: key 'common.savee' does not exist
+SD("typo.key"); // ❌ Compile error
 ```
 
 ## Forcing a Specific Locale
@@ -36,8 +36,8 @@ Use `SD.locale()` to get values for a specific locale regardless of Context:
 const EN = SD.locale("en");
 const KO = SD.locale("ko");
 
-EN("common.save")  // "Save" (always English)
-KO("common.save")  // "저장" (always Korean)
+EN("common.save"); // "Save" (always English)
+KO("common.save"); // "저장" (always Korean)
 
 // Switch to recipient's locale when sending emails
 async function sendEmail(userLocale: string, email: string) {
@@ -112,8 +112,7 @@ export default {
   "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
 
   // Conditional text
-  "items.count": (count: number) =>
-    count === 0 ? "항목 없음" : `${count}개 항목`,
+  "items.count": (count: number) => (count === 0 ? "항목 없음" : `${count}개 항목`),
 
   // Using helper functions
   "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
@@ -150,7 +149,11 @@ class UserModelClass extends BaseModelClass {
 ```
 
 <CardGroup cols={2}>
-  <Card title="Helper Functions" icon="wand-magic-sparkles" href="/en/advanced-features/i18n/helpers">
+  <Card
+    title="Helper Functions"
+    icon="wand-magic-sparkles"
+    href="/en/advanced-features/i18n/helpers"
+  >
     Using josa, plural, format
   </Card>
   <Card title="Entity Labels" icon="tag" href="/en/advanced-features/i18n/entity-labels">

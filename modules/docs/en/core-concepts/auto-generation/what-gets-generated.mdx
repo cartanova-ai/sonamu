@@ -9,24 +9,16 @@ Sonamu automatically generates TypeScript types, Zod schemas, API clients, React
 
 <CardGroup cols={2}>
   <Card title="Types & Schemas" icon="brackets-curly">
-    TypeScript types and Zod schemas
-    
-    *.types.ts, sonamu.generated.ts
+    TypeScript types and Zod schemas *.types.ts, sonamu.generated.ts
   </Card>
   <Card title="API Clients" icon="code">
-    HTTP client functions
-    
-    services.generated.ts
+    HTTP client functions services.generated.ts
   </Card>
   <Card title="Query Helpers" icon="database">
-    Subset query functions
-    
-    sonamu.generated.sso.ts
+    Subset query functions sonamu.generated.sso.ts
   </Card>
   <Card title="React Components" icon="react">
-    Form, List, Select components
-    
-    view_*.tsx
+    Form, List, Select components view_*.tsx
   </Card>
 </CardGroup>
 
@@ -125,32 +117,19 @@ export const userSubsetQueries = {
   A: (puri: PuriWrapper) =>
     puri
       .table("users")
-      .select([
-        "users.id",
-        "users.email",
-        "users.username",
-        "users.role",
-        "users.created_at",
-      ]),
-      
+      .select(["users.id", "users.email", "users.username", "users.role", "users.created_at"]),
+
   P: (puri: PuriWrapper) =>
     puri
       .table("users")
-      .select([
-        "users.id",
-        "users.email",
-        "users.username",
-      ])
+      .select(["users.id", "users.email", "users.username"])
       .leftJoin("employees", "employees.user_id", "users.id")
       .select([
         "employees.id as employee__id",
         "employees.department_id as employee__department_id",
       ]),
-      
-  SS: (puri: PuriWrapper) =>
-    puri
-      .table("users")
-      .select(["users.id", "users.email"]),
+
+  SS: (puri: PuriWrapper) => puri.table("users").select(["users.id", "users.email"]),
 };
 
 // Loader query functions (HasMany, ManyToMany)
@@ -163,11 +142,7 @@ export const userLoaderQueries = {
         puri
           .table("posts")
           .whereIn("posts.user_id", ids)
-          .select([
-            "posts.id",
-            "posts.user_id as refId",
-            "posts.title",
-          ]),
+          .select(["posts.id", "posts.user_id as refId", "posts.title"]),
     },
   ],
 };
@@ -193,7 +168,7 @@ export async function findUserById(id: number): Promise<User> {
 }
 
 export async function findManyUsers(
-  params?: UserListParams
+  params?: UserListParams,
 ): Promise<ListResult<UserListParams, User>> {
   const { data } = await axios.get("/user/findMany", { params });
   return data;
@@ -232,7 +207,8 @@ export function useSaveUser() {
 **Editable**: ❌ Auto-regenerated
 
 <Info>
-**Target-specific generation**: Copied to each target specified in `sync.targets` in `sonamu.config.ts` (`web`, `app`, etc.).
+  **Target-specific generation**: Copied to each target specified in `sync.targets` in
+  `sonamu.config.ts` (`web`, `app`, etc.).
 </Info>
 
 ### 5. HTTP Test File (`sonamu.generated.http`)
@@ -290,36 +266,39 @@ export function UserList() {
   const [params, setParams] = useState({ num: 20, page: 1 });
   const { data, isLoading } = useUsers(params);
 
-  return (
-    <div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Email</th>
-            <th>Username</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.rows.map((user) => (
-            <tr key={user.id}>
-              <td>{user.id}</td>
-              <td>{user.email}</td>
-              <td>{user.username}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
+return (
+
+<div>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Email</th>
+<th>Username</th>
+</tr>
+</thead>
+<tbody>
+{data?.rows.map((user) => (
+<tr key={user.id}>
+<td>{user.id}</td>
+<td>{user.email}</td>
+<td>{user.username}</td>
+</tr>
+))}
+</tbody>
+</table>
+
       <Pagination
         total={data?.total ?? 0}
         page={params.page}
         onChange={(page) => setParams({ ...params, page })}
       />
     </div>
-  );
+
+);
 }
-```
+
+````
 
 ```tsx title="web/src/pages/user/UserSearchInput.tsx"
 export function UserSearchInput({
@@ -337,7 +316,8 @@ export function UserSearchInput({
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 **Generated when**: `pnpm sonamu generate view_list --entity User`
@@ -353,7 +333,7 @@ import { UserSaveParams } from "@/services/user/user.types";
 export function UserForm({ userId }: { userId?: number }) {
   const { data: user } = useUserById(userId);
   const { mutate: save } = useSaveUser();
-  
+
   const handleSubmit = (values: UserSaveParams) => {
     save([values], {
       onSuccess: () => {
@@ -364,17 +344,8 @@ export function UserForm({ userId }: { userId?: number }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <input
-        name="email"
-        type="email"
-        defaultValue={user?.email}
-        required
-      />
-      <input
-        name="username"
-        defaultValue={user?.username}
-        required
-      />
+      <input name="email" type="email" defaultValue={user?.email} required />
+      <input name="username" defaultValue={user?.username} required />
       <select name="role" defaultValue={user?.role ?? "normal"}>
         <option value="admin">Administrator</option>
         <option value="normal">Normal User</option>
@@ -404,19 +375,21 @@ export function UserIdAsyncSelect({
   const [keyword, setKeyword] = useState("");
   const { data } = useUsers({ keyword, num: 10 });
 
-  return (
-    <AsyncSelect
-      value={value}
-      onChange={onChange}
-      onSearch={setKeyword}
-      options={data?.rows.map((u) => ({
-        value: u.id,
-        label: u.email,
-      }))}
-    />
-  );
+return (
+
+<AsyncSelect
+value={value}
+onChange={onChange}
+onSearch={setKeyword}
+options={data?.rows.map((u) => ({
+value: u.id,
+label: u.email,
+}))}
+/>
+);
 }
-```
+
+````
 
 ```tsx title="web/src/components/user/UserRoleSelect.tsx"
 // Enum Select
@@ -434,7 +407,8 @@ export function UserRoleSelect({
     </select>
   );
 }
-```
+````
+
 </CodeGroup>
 
 ## SSR Related Files
@@ -453,7 +427,7 @@ export const userQueries = {
       queryKey: ["User", "findById", id],
       queryFn: () => findUserById(id),
     }),
-    
+
   findMany: (params?: UserListParams) =>
     queryOptions({
       queryKey: ["Users", "findMany", params],
@@ -477,9 +451,7 @@ export async function loader({ params }) {
 
   // SSR data prefetching
   if (params.userId) {
-    await queryClient.prefetchQuery(
-      userQueries.findById(Number(params.userId))
-    );
+    await queryClient.prefetchQuery(userQueries.findById(Number(params.userId)));
   }
 
   return {
@@ -523,24 +495,25 @@ export const SD = {
 
 ## Generated Files Summary Table
 
-| File | Location | Generated When | Editable |
-|------|----------|----------------|----------|
-| `{entity}.types.ts` | `api/src/application/{entity}/` | Entity save | ❌ |
-| `sonamu.generated.ts` | `api/src/application/` | Entity save | ❌ |
-| `sonamu.generated.sso.ts` | `api/src/application/` | Entity save | ❌ |
-| `services.generated.ts` | `web/src/services/` | Model change | ❌ |
-| `sonamu.generated.http` | `api/` | Model change | ❌ |
-| `queries.generated.ts` | `web/src/` | Model change | ❌ |
-| `entry-server.generated.tsx` | `web/src/` | Model change | ❌ |
-| `sd.generated.ts` | `api/src/`, `web/src/`, `app/src/` | Entity/i18n change | ❌ |
-| `{Entity}List.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}Form.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}SearchInput.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
-| `{Entity}IdAsyncSelect.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
-| `{EnumId}Select.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+| File                         | Location                           | Generated When     | Editable |
+| ---------------------------- | ---------------------------------- | ------------------ | -------- |
+| `{entity}.types.ts`          | `api/src/application/{entity}/`    | Entity save        | ❌       |
+| `sonamu.generated.ts`        | `api/src/application/`             | Entity save        | ❌       |
+| `sonamu.generated.sso.ts`    | `api/src/application/`             | Entity save        | ❌       |
+| `services.generated.ts`      | `web/src/services/`                | Model change       | ❌       |
+| `sonamu.generated.http`      | `api/`                             | Model change       | ❌       |
+| `queries.generated.ts`       | `web/src/`                         | Model change       | ❌       |
+| `entry-server.generated.tsx` | `web/src/`                         | Model change       | ❌       |
+| `sd.generated.ts`            | `api/src/`, `web/src/`, `app/src/` | Entity/i18n change | ❌       |
+| `{Entity}List.tsx`           | `web/src/pages/{entity}/`          | Scaffold           | ✅       |
+| `{Entity}Form.tsx`           | `web/src/pages/{entity}/`          | Scaffold           | ✅       |
+| `{Entity}SearchInput.tsx`    | `web/src/pages/{entity}/`          | Scaffold           | ✅       |
+| `{Entity}IdAsyncSelect.tsx`  | `web/src/components/{entity}/`     | Scaffold           | ✅       |
+| `{EnumId}Select.tsx`         | `web/src/components/{entity}/`     | Scaffold           | ✅       |
 
 <Warning>
-**Auto-regenerated files**: Never modify `*.generated.*` files. Changes will be automatically overwritten.
+  **Auto-regenerated files**: Never modify `*.generated.*` files. Changes will be automatically
+  overwritten.
 </Warning>
 
 ## Next Steps
@@ -549,10 +522,18 @@ export const SD = {
   <Card title="Syncer" icon="rotate" href="/en/core-concepts/auto-generation/syncer">
     Understanding the core Syncer system
   </Card>
-  <Card title="When Files Regenerate" icon="clock" href="/en/core-concepts/auto-generation/when-files-regenerate">
+  <Card
+    title="When Files Regenerate"
+    icon="clock"
+    href="/en/core-concepts/auto-generation/when-files-regenerate"
+  >
     Learn when files are regenerated
   </Card>
-  <Card title="Customizing Generated Code" icon="pen-to-square" href="/en/core-concepts/auto-generation/customizing-generated-code">
+  <Card
+    title="Customizing Generated Code"
+    icon="pen-to-square"
+    href="/en/core-concepts/auto-generation/customizing-generated-code"
+  >
     How to customize generated code
   </Card>
   <Card title="Creating Entities" icon="plus" href="/en/core-concepts/entity/defining-entities">

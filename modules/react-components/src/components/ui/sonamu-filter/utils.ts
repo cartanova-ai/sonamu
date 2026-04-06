@@ -1,5 +1,6 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: Zod 타입 접근 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // Zod 타입 접근
 import type { z } from "zod";
+
 import type { FilterPropType } from "../../../lib/types";
 import { zodTypeToFilterPropTypeMap } from "./constants";
 import type { FieldMeta, ZodWithDef } from "./types";

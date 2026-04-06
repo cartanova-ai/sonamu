@@ -16,6 +16,7 @@ pnpm stub practice <name>
 ```
 
 **예시**:
+
 ```bash
 pnpm stub practice test-api
 
@@ -26,6 +27,7 @@ pnpm stub practice test-api
 ```
 
 **생성된 파일**:
+
 ```typescript title="src/practices/p1-test-api.ts"
 import { Sonamu } from "sonamu";
 
@@ -38,6 +40,7 @@ Sonamu.runScript(async () => {
 ```
 
 **실행**:
+
 ```bash
 # 클립보드에서 붙여넣기 (Cmd+V)
 pnpm node -r dotenv/config --enable-source-maps dist/practices/p1-test-api.js
@@ -53,13 +56,14 @@ pnpm stub entity <entityId> [옵션]
 
 **옵션**:
 
-| 옵션 | 설명 | 예시 |
-|------|------|------|
-| (없음) | Entity 생성 후 템플릿 cone 자동 생성 (기본 동작) | `pnpm stub entity Product` |
-| `--ai` | Entity 생성 후 LLM으로 cone 생성 (`ANTHROPIC_API_KEY` 필요) | `pnpm stub entity Product --ai` |
-| `--no-cones` | Entity만 생성하고 cone 생성을 스킵 | `pnpm stub entity Product --no-cones` |
+| 옵션         | 설명                                                        | 예시                                  |
+| ------------ | ----------------------------------------------------------- | ------------------------------------- |
+| (없음)       | Entity 생성 후 템플릿 cone 자동 생성 (기본 동작)            | `pnpm stub entity Product`            |
+| `--ai`       | Entity 생성 후 LLM으로 cone 생성 (`ANTHROPIC_API_KEY` 필요) | `pnpm stub entity Product --ai`       |
+| `--no-cones` | Entity만 생성하고 cone 생성을 스킵                          | `pnpm stub entity Product --no-cones` |
 
 **예시**:
+
 ```bash
 # 기본: 템플릿 cone과 함께 Entity 생성
 pnpm stub entity Product
@@ -78,10 +82,12 @@ pnpm stub entity Product --no-cones
 ```
 
 <Note>
-템플릿 cone은 `ANTHROPIC_API_KEY` 없이도 생성할 수 있습니다. 나중에 `cone gen` 명령어로 AI를 활용해 업그레이드할 수 있습니다.
+  템플릿 cone은 `ANTHROPIC_API_KEY` 없이도 생성할 수 있습니다. 나중에 `cone gen` 명령어로 AI를
+  활용해 업그레이드할 수 있습니다.
 </Note>
 
 **생성된 파일**:
+
 ```typescript title="src/entities/Product.entity.ts"
 import type { EntityType } from "sonamu";
 
@@ -113,13 +119,13 @@ export const ProductEntity = {
 
 Practice 스크립트는 다음과 같은 작업에 활용됩니다:
 
-| 용도 | 설명 | 예시 |
-|------|------|------|
-| API 테스트 | 외부 API 호출 테스트 | `p1-test-payment-api.ts` |
-| 데이터 마이그레이션 | 일회성 데이터 변환 | `p2-migrate-user-data.ts` |
-| 디버깅 | 특정 로직 검증 | `p3-debug-cache-issue.ts` |
-| 데이터 생성 | 테스트 데이터 생성 | `p4-create-sample-posts.ts` |
-| 분석 | 데이터 통계 확인 | `p5-analyze-user-activity.ts` |
+| 용도                | 설명                 | 예시                          |
+| ------------------- | -------------------- | ----------------------------- |
+| API 테스트          | 외부 API 호출 테스트 | `p1-test-payment-api.ts`      |
+| 데이터 마이그레이션 | 일회성 데이터 변환   | `p2-migrate-user-data.ts`     |
+| 디버깅              | 특정 로직 검증       | `p3-debug-cache-issue.ts`     |
+| 데이터 생성         | 테스트 데이터 생성   | `p4-create-sample-posts.ts`   |
+| 분석                | 데이터 통계 확인     | `p5-analyze-user-activity.ts` |
 
 ### 순서 관리
 
@@ -149,13 +155,13 @@ console.log("p1-test-payment-api.ts");
 
 Sonamu.runScript(async () => {
   const paymentService = new PaymentService();
-  
+
   // 테스트 결제 시도
   const result = await paymentService.charge({
     amount: 10000,
     orderId: "TEST-001",
   });
-  
+
   console.log("결제 결과:", result);
 });
 ```
@@ -172,16 +178,16 @@ console.log("p2-migrate-user-data.ts");
 Sonamu.runScript(async () => {
   // 모든 사용자 조회
   const users = await UserModel.findAll();
-  
+
   for (const user of users) {
     // legacy 필드를 새 필드로 마이그레이션
     await UserModel.update(user.id, {
       new_field: transformData(user.legacy_field),
     });
-    
+
     console.log(`✓ Migrated user ${user.id}`);
   }
-  
+
   console.log(`\n✓ Total: ${users.length} users migrated`);
 });
 ```
@@ -200,9 +206,9 @@ Sonamu.runScript(async () => {
   const newUsers = await UserModel.findMany({
     where: { welcome_email_sent: false },
   });
-  
+
   console.log(`Sending welcome emails to ${newUsers.length} users...`);
-  
+
   for (const user of newUsers) {
     try {
       await sendWelcomeEmail(user.email);
@@ -243,26 +249,21 @@ export const ProductEntity = {
     // 기본 필드
     { name: "id", type: "int", primaryKey: true, autoIncrement: true },
     { name: "title", type: "string", length: 255 },
-    
+
     // 추가 필드
     { name: "description", type: "text", nullable: true },
     { name: "price", type: "decimal", precision: 10, scale: 2 },
     { name: "stock", type: "int", default: 0 },
     { name: "category_id", type: "int" },
-    
+
     // 타임스탬프
     { name: "created_at", type: "datetime", default: "CURRENT_TIMESTAMP" },
     { name: "updated_at", type: "datetime", onUpdate: "CURRENT_TIMESTAMP" },
   ],
-  
-  indexes: [
-    { fields: ["category_id"] },
-    { fields: ["title"], type: "fulltext" },
-  ],
-  
-  belongsTo: [
-    { entityId: "Category", as: "category" },
-  ],
+
+  indexes: [{ fields: ["category_id"] }, { fields: ["title"], type: "fulltext" }],
+
+  belongsTo: [{ entityId: "Category", as: "category" }],
 } satisfies EntityType;
 ```
 
@@ -335,7 +336,7 @@ Sonamu.runScript(async () => {
     await riskyOperation();
   } catch (error) {
     console.error("Error occurred:", error);
-    process.exit(1);  // 실패 시 종료
+    process.exit(1); // 실패 시 종료
   }
 });
 ```
@@ -345,10 +346,10 @@ Sonamu.runScript(async () => {
 ```typescript
 Sonamu.runScript(async () => {
   const users = await UserModel.findAll();
-  
+
   for (let i = 0; i < users.length; i++) {
     await processUser(users[i]);
-    
+
     // 진행률 표시
     const progress = Math.round(((i + 1) / users.length) * 100);
     console.log(`Progress: ${progress}% (${i + 1}/${users.length})`);
@@ -376,7 +377,7 @@ mv src/practices/p1-*.ts src/practices/archived/
 2. **백업**: 중요한 데이터 작업 전에는 반드시 백업하세요.
 3. **트랜잭션**: 데이터 변경 시 트랜잭션을 사용하세요.
 4. **테스트**: 프로덕션 실행 전 개발 환경에서 먼저 테스트하세요.
-</Warning>
+   </Warning>
 
 ## 다음 단계
 

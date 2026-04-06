@@ -1,6 +1,6 @@
 ---
-title: '쿼리 최적화'
-description: '데이터베이스 쿼리 최적화하기'
+title: "쿼리 최적화"
+description: "데이터베이스 쿼리 최적화하기"
 ---
 
 Puri 쿼리 빌더를 활용한 효과적인 쿼리 최적화 방법을 다룹니다.
@@ -18,6 +18,7 @@ const users = await UserModel.getPuri().select("id", "email", "name");
 ```
 
 **성능 차이:**
+
 - 네트워크 전송량 감소
 - 메모리 사용량 감소
 - 인덱스 온리 스캔 가능
@@ -26,14 +27,12 @@ const users = await UserModel.getPuri().select("id", "email", "name");
 
 ```typescript
 // ✅ 인덱스를 활용한 쿼리
-const activeUsers = await UserModel.getPuri()
-  .select("id", "email")
-  .where({ status: "active" });  // status 컬럼에 인덱스 필요
+const activeUsers = await UserModel.getPuri().select("id", "email").where({ status: "active" }); // status 컬럼에 인덱스 필요
 
 // ❌ 인덱스를 사용할 수 없는 쿼리
 const users = await UserModel.getPuri()
   .select("id", "email")
-  .whereRaw("LOWER(email) = ?", ["test@example.com"]);  // 함수 사용
+  .whereRaw("LOWER(email) = ?", ["test@example.com"]); // 함수 사용
 ```
 
 ### 3. LIMIT 사용
@@ -43,7 +42,7 @@ const users = await UserModel.getPuri()
 const recentUsers = await UserModel.getPuri()
   .select("id", "name", "created_at")
   .orderBy("created_at", "desc")
-  .limit(10);  // 상위 10개만
+  .limit(10); // 상위 10개만
 ```
 
 ## 인덱스 활용
@@ -73,7 +72,7 @@ const recentUsers = await UserModel.getPuri()
 // 인덱스를 활용한 쿼리
 const user = await UserModel.getPuri()
   .select("id", "name")
-  .where({ email: "test@example.com" })  // email 인덱스 사용
+  .where({ email: "test@example.com" }) // email 인덱스 사용
   .first();
 ```
 
@@ -104,22 +103,17 @@ const user = await UserModel.getPuri()
 
 ```typescript
 // ✅ 복합 인덱스 활용
-const userOrders = await OrderModel.getPuri()
-  .select("id", "total")
-  .where({ 
-    user_id: 1,
-    status: "completed"  // user_id + status 복합 인덱스 사용
-  });
+const userOrders = await OrderModel.getPuri().select("id", "total").where({
+  user_id: 1,
+  status: "completed", // user_id + status 복합 인덱스 사용
+});
 ```
 
 ### 인덱스 효과 확인
 
 ```typescript
 // PostgreSQL EXPLAIN으로 실행 계획 확인
-const query = UserModel.getPuri()
-  .select("id", "email")
-  .where({ status: "active" })
-  .toQuery();
+const query = UserModel.getPuri().select("id", "email").where({ status: "active" }).toQuery();
 
 console.log(query);
 
@@ -135,12 +129,12 @@ console.log(query);
 // ✅ INNER JOIN - 관계가 있는 데이터만
 const ordersWithUser = await OrderModel.getPuri()
   .select("orders.id", "orders.total", "users.name")
-  .join("users", "users.id", "orders.user_id");  // INNER JOIN
+  .join("users", "users.id", "orders.user_id"); // INNER JOIN
 
 // ✅ LEFT JOIN - 관계가 없어도 포함
 const usersWithOrders = await UserModel.getPuri()
   .select("users.id", "users.name", "orders.total")
-  .leftJoin("orders", "orders.user_id", "users.id");  // LEFT JOIN
+  .leftJoin("orders", "orders.user_id", "users.id"); // LEFT JOIN
 ```
 
 ### JOIN 조건 최적화
@@ -150,14 +144,12 @@ const usersWithOrders = await UserModel.getPuri()
 const result = await OrderModel.getPuri()
   .select("orders.*", "users.name")
   .join("users", "users.id", "orders.user_id")
-  .where({ "users.status": "active" });  // 조인 후 필터링
+  .where({ "users.status": "active" }); // 조인 후 필터링
 
 // ✅ 좋은 예 - 조인 전 필터링
 const result = await OrderModel.getPuri()
   .select("orders.*", "users.name")
-  .join(
-    knex.raw("users ON users.id = orders.user_id AND users.status = ?", ["active"])
-  );  // 조인 조건에 포함
+  .join(knex.raw("users ON users.id = orders.user_id AND users.status = ?", ["active"])); // 조인 조건에 포함
 ```
 
 ## 집계 쿼리 최적화
@@ -181,14 +173,10 @@ const count = result[0].count;
 ```typescript
 // 주문 통계
 const orderStats = await OrderModel.getPuri()
-  .select(
-    "user_id",
-    knex.raw("COUNT(*) as order_count"),
-    knex.raw("SUM(total) as total_amount")
-  )
+  .select("user_id", knex.raw("COUNT(*) as order_count"), knex.raw("SUM(total) as total_amount"))
   .where({ status: "completed" })
   .groupBy("user_id")
-  .having(knex.raw("COUNT(*) > ?", [10]));  // 주문 10개 이상
+  .having(knex.raw("COUNT(*) > ?", [10])); // 주문 10개 이상
 ```
 
 ## 페이지네이션 최적화
@@ -199,7 +187,7 @@ const orderStats = await OrderModel.getPuri()
 // 기본 페이지네이션
 async function getUsers(page: number, limit: number) {
   const offset = (page - 1) * limit;
-  
+
   return UserModel.getPuri()
     .select("id", "name", "email")
     .orderBy("created_at", "desc")
@@ -217,11 +205,11 @@ async function getUsersCursor(lastId?: number, limit: number = 20) {
     .select("id", "name", "email", "created_at")
     .orderBy("id", "desc")
     .limit(limit);
-  
+
   if (lastId) {
-    query.where("id", "<", lastId);  // 마지막 ID 이후
+    query.where("id", "<", lastId); // 마지막 ID 이후
   }
-  
+
   return query;
 }
 
@@ -231,6 +219,7 @@ const secondPage = await getUsersCursor(firstPage[firstPage.length - 1].id, 20);
 ```
 
 **장점:**
+
 - OFFSET이 커져도 성능 일정
 - 인덱스 스캔만 사용
 - 실시간 데이터 변경에 안정적
@@ -243,37 +232,29 @@ const secondPage = await getUsersCursor(firstPage[firstPage.length - 1].id, 20);
 // ❌ IN - 서브쿼리 결과를 메모리에 로드
 const usersWithOrders = await UserModel.getPuri()
   .select("id", "name")
-  .whereIn("id", 
-    knex.select("user_id").from("orders").where({ status: "completed" })
-  );
+  .whereIn("id", knex.select("user_id").from("orders").where({ status: "completed" }));
 
 // ✅ EXISTS - 존재 여부만 확인 (더 빠름)
 const usersWithOrders = await UserModel.getPuri()
   .select("id", "name")
-  .whereRaw(
-    "EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id AND orders.status = ?)",
-    ["completed"]
-  );
+  .whereRaw("EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id AND orders.status = ?)", [
+    "completed",
+  ]);
 ```
 
 ### 서브쿼리 대신 JOIN
 
 ```typescript
 // ❌ 서브쿼리
-const users = await UserModel.getPuri()
-  .select(
-    "id",
-    "name",
-    knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count")
-  );
+const users = await UserModel.getPuri().select(
+  "id",
+  "name",
+  knex.raw("(SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) as order_count"),
+);
 
 // ✅ LEFT JOIN + GROUP BY (더 빠름)
 const users = await UserModel.getPuri()
-  .select(
-    "users.id",
-    "users.name",
-    knex.raw("COUNT(orders.id) as order_count")
-  )
+  .select("users.id", "users.name", knex.raw("COUNT(orders.id) as order_count"))
   .leftJoin("orders", "orders.user_id", "users.id")
   .groupBy("users.id");
 ```
@@ -295,9 +276,7 @@ async function getUsersWithDetails(userIds: number[]) {
 
 // ✅ whereIn으로 한 번에 조회
 async function getUsersWithDetails(userIds: number[]) {
-  return UserModel.getPuri()
-    .select("*")
-    .whereIn("id", userIds);
+  return UserModel.getPuri().select("*").whereIn("id", userIds);
 }
 ```
 
@@ -308,18 +287,15 @@ async function getUsersWithDetails(userIds: number[]) {
 async function processAllUsers() {
   const chunkSize = 1000;
   let offset = 0;
-  
+
   while (true) {
-    const users = await UserModel.getPuri()
-      .select("id", "email")
-      .offset(offset)
-      .limit(chunkSize);
-    
+    const users = await UserModel.getPuri().select("id", "email").offset(offset).limit(chunkSize);
+
     if (users.length === 0) break;
-    
+
     // 처리 로직
     await processUsers(users);
-    
+
     offset += chunkSize;
   }
 }
@@ -333,11 +309,9 @@ async function processAllUsers() {
 import { cache } from "sonamu";
 
 class UserModelClass extends BaseModelClass {
-  @cache({ ttl: '5m' })  // 5분 캐싱
+  @cache({ ttl: "5m" }) // 5분 캐싱
   async getActiveUsersCount(): Promise<number> {
-    const result = await this.getPuri()
-      .select({ count: Puri.count() })
-      .where({ status: "active" });
+    const result = await this.getPuri().select({ count: Puri.count() }).where({ status: "active" });
     return result[0].count;
   }
 }
@@ -350,19 +324,17 @@ import { Sonamu } from "sonamu";
 
 async function getCachedUsers() {
   const cacheKey = "users:active";
-  
+
   // 캐시 확인
   const cached = await Sonamu.cache.get(cacheKey);
   if (cached) return cached;
-  
+
   // 캐시 미스 - DB 조회
-  const users = await UserModel.getPuri()
-    .select("id", "name")
-    .where({ status: "active" });
-  
+  const users = await UserModel.getPuri().select("id", "name").where({ status: "active" });
+
   // 캐시 저장 (5분)
-  await Sonamu.cache.set(cacheKey, users, { ttl: '5m' });
-  
+  await Sonamu.cache.set(cacheKey, users, { ttl: "5m" });
+
   return users;
 }
 ```
@@ -386,6 +358,7 @@ console.log("SQL:", query);
 ```
 
 **주요 확인 사항:**
+
 - Seq Scan vs Index Scan
 - 예상 rows vs 실제 rows
 - 실행 시간 (Execution Time)
@@ -400,9 +373,9 @@ console.log("SQL:", query);
 export default {
   database: {
     defaultOptions: {
-      debug: process.env.NODE_ENV === "development"  // 쿼리 로깅
-    }
-  }
+      debug: process.env.NODE_ENV === "development", // 쿼리 로깅
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -412,20 +385,18 @@ export default {
 class UserModelClass extends BaseModelClass {
   async findActiveUsers() {
     const start = Date.now();
-    
-    const users = await this.getPuri()
-      .select("*")
-      .where({ status: "active" });
-    
+
+    const users = await this.getPuri().select("*").where({ status: "active" });
+
     const duration = Date.now() - start;
-    
+
     if (duration > 1000) {
-      this.logger.warn("느린 쿼리 감지", { 
+      this.logger.warn("느린 쿼리 감지", {
         method: "findActiveUsers",
-        duration: `${duration}ms`
+        duration: `${duration}ms`,
       });
     }
-    
+
     return users;
   }
 }

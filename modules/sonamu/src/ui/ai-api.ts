@@ -1,5 +1,6 @@
 import { convertToModelMessages, type UIMessage } from "ai";
 import type { FastifyInstance } from "fastify";
+
 import { SD } from "../dict/sd";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import type { FixtureRecord } from "../types/types";

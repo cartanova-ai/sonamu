@@ -1,4 +1,5 @@
 import { Button, type ButtonProps } from "semantic-ui-react";
+
 import { useGoBack } from "../helpers/helpers";
 
 type BackLinkProps = ButtonProps & { to: string };

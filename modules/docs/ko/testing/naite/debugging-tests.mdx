@@ -9,24 +9,16 @@ Naite의 콜스택 추적 기능을 활용하여 테스트를 효과적으로 �
 
 <CardGroup cols={2}>
   <Card title="자동 수집" icon="gears">
-    Naite.t() 호출 시
-    
-    콜스택 자동 추적
+    Naite.t() 호출 시 콜스택 자동 추적
   </Card>
   <Card title="호출 경로" icon="route">
-    함수 호출 순서
-    
-    파일 위치 정보
+    함수 호출 순서 파일 위치 정보
   </Card>
   <Card title="디버깅 지원" icon="bug">
-    문제 위치 파악
-    
-    원인 추적
+    문제 위치 파악 원인 추적
   </Card>
   <Card title="Viewer 통합" icon="eye">
-    VSCode에서 시각화
-    
-    클릭으로 이동
+    VSCode에서 시각화 클릭으로 이동
   </Card>
 </CardGroup>
 
@@ -81,15 +73,15 @@ Naite가 수집하는 콜스택 정보는 다음과 같습니다:
 
 ```typescript
 interface StackFrame {
-  functionName: string | null;  // "createUser"
-  filePath: string;              // "/Users/.../user.model.ts"
-  lineNumber: number;            // 123
+  functionName: string | null; // "createUser"
+  filePath: string; // "/Users/.../user.model.ts"
+  lineNumber: number; // 123
 }
 
 interface NaiteTrace {
   key: string;
   data: any;
-  stack: StackFrame[];  // 콜스택 배열
+  stack: StackFrame[]; // 콜스택 배열
   at: Date;
 }
 ```
@@ -107,27 +99,29 @@ test("사용자 생성", async () => {
 ```
 
 **수집되는 콜스택**:
+
 ```typescript
 [
   {
     functionName: "createUser",
     filePath: "/Users/.../user.model.ts",
-    lineNumber: 15
+    lineNumber: 15,
   },
   {
     functionName: "test",
     filePath: "/Users/.../user.model.test.ts",
-    lineNumber: 42
+    lineNumber: 42,
   },
   {
     functionName: "runWithMockContext",
     filePath: "/Users/.../bootstrap.ts",
-    lineNumber: 58
-  }
-]
+    lineNumber: 58,
+  },
+];
 ```
 
 **의미**:
+
 1. `createUser` (15번 줄): 실제로 `Naite.t()`를 호출한 위치
 2. `test` (42번 줄): 테스트 코드에서 `createUser`를 호출
 3. `runWithMockContext`: Sonamu의 Context 래퍼 (여기서 종료)
@@ -154,36 +148,29 @@ function extractCallStack(): StackFrame[] {
   // [2]: "at Naite.t"
   // [3]: 실제 호출 위치부터 시작
   const frames = lines
-    .slice(3)  // 위 3개 제외
+    .slice(3) // 위 3개 제외
     .map(parseStackFrame)
     .filter((frame): frame is StackFrame => frame !== null);
 
   // runWithContext 발견 시 거기서 자르기
   const contextIndex = frames.findIndex(
     (f) =>
-      f.functionName?.includes("runWithContext") ||
-      f.functionName?.includes("runWithMockContext")
+      f.functionName?.includes("runWithContext") || f.functionName?.includes("runWithMockContext"),
   );
 
-  return contextIndex >= 0 
-    ? frames.slice(0, contextIndex + 1) 
-    : frames;
+  return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
 ```
 
 <Steps>
-  <Step title="Error 객체 생성">
-    `new Error().stack`으로 현재 콜스택을 문자열로 얻습니다.
-  </Step>
-  
-  <Step title="불필요한 프레임 제거">
-    `Error`, `extractCallStack`, `Naite.t` 프레임을 제외합니다 (`slice(3)`).
-  </Step>
-  
-  <Step title="파싱">
-    각 라인을 `StackFrame` 객체로 파싱합니다.
-  </Step>
-  
+  <Step title="Error 객체 생성">`new Error().stack`으로 현재 콜스택을 문자열로 얻습니다.</Step>
+
+<Step title="불필요한 프레임 제거">
+  `Error`, `extractCallStack`, `Naite.t` 프레임을 제외합니다 (`slice(3)`).
+</Step>
+
+<Step title="파싱">각 라인을 `StackFrame` 객체로 파싱합니다.</Step>
+
   <Step title="Context 경계에서 종료">
     `runWithContext`를 만나면 거기서 자릅니다. 그 이상은 Vitest 내부 코드로 의미가 없습니다.
   </Step>
@@ -247,7 +234,8 @@ function extractCallStack(): StackFrame[] {
 </Tabs>
 
 <Info>
-**runWithContext 종료 이유**: Naite는 의미 있는 콜스택만 유지합니다. `runWithContext`는 Sonamu의 Context 경계이며, 그 위는 Vitest의 내부 코드로 디버깅에 도움이 되지 않습니다.
+  **runWithContext 종료 이유**: Naite는 의미 있는 콜스택만 유지합니다. `runWithContext`는 Sonamu의
+  Context 경계이며, 그 위는 Vitest의 내부 코드로 디버깅에 도움이 되지 않습니다.
 </Info>
 
 ## 실전 디버깅 시나리오
@@ -259,11 +247,11 @@ function extractCallStack(): StackFrame[] {
 ```typescript
 async function processOrder(orderId: number) {
   Naite.t("order:process:start", { orderId });
-  
+
   await validateOrder(orderId);
   await chargePayment(orderId);
   await sendNotification(orderId);
-  
+
   Naite.t("order:process:done", { orderId });
 }
 
@@ -274,16 +262,16 @@ async function chargePayment(orderId: number) {
 
 test("주문 처리", async () => {
   await processOrder(123);
-  
+
   // payment:charge가 어디서 호출되었는지 확인
   const trace = Naite.get("payment:charge").getTraces()[0];
-  
+
   // 콜스택 출력
   console.log("콜스택:");
   trace.stack.forEach((frame, i) => {
     console.log(`${i + 1}. ${frame.functionName} (${frame.filePath}:${frame.lineNumber})`);
   });
-  
+
   // 출력:
   // 1. chargePayment (/Users/.../payment.ts:45)
   // 2. processOrder (/Users/.../order.ts:23)
@@ -293,7 +281,8 @@ test("주문 처리", async () => {
 ```
 
 <Tip>
-**VSCode에서 확인**: Naite Viewer에서 로그를 클릭하면 콜스택이 표시되고, 각 프레임을 클릭하면 해당 코드 위치로 바로 이동합니다.
+  **VSCode에서 확인**: Naite Viewer에서 로그를 클릭하면 콜스택이 표시되고, 각 프레임을 클릭하면 해당
+  코드 위치로 바로 이동합니다.
 </Tip>
 
 ### 2. 에러 발생 지점 파악
@@ -303,15 +292,15 @@ test("주문 처리", async () => {
 ```typescript
 async function createUser(data: UserCreateInput) {
   Naite.t("user:create:start", data);
-  
+
   try {
     // 유효성 검사
     await validateUser(data);
-    
+
     // DB 저장
     const user = await db.insert("users").values(data);
     Naite.t("user:create:success", { userId: user.id });
-    
+
     return user;
   } catch (error) {
     // 에러 발생 시 콜스택과 함께 기록
@@ -329,11 +318,11 @@ test("에러 추적", async () => {
   } catch (error) {
     // 에러 로그의 콜스택 확인
     const errorTrace = Naite.get("user:create:error").getTraces()[0];
-    
+
     // 에러가 발생한 파일과 라인 확인
     expect(errorTrace.stack[0].filePath).toContain("user.model.ts");
     expect(errorTrace.stack[0].lineNumber).toBeGreaterThan(0);
-    
+
     // VSCode Viewer에서 클릭하면 해당 위치로 이동 가능
   }
 });
@@ -349,6 +338,7 @@ test("에러 추적", async () => {
 4. **컨텍스트**: 에러 발생 시점의 데이터와 함께 저장
 
 예를 들어, `validateUser`에서 에러가 발생했다면:
+
 ```
 [
   { functionName: "validateUser", filePath: "...", lineNumber: 78 },
@@ -387,24 +377,24 @@ async function functionD() {
 
 test("호출 체인 분석", async () => {
   await functionA();
-  
+
   // 각 로그의 콜스택 길이 확인
   const traceA = Naite.get("flow:A").getTraces()[0];
   const traceD = Naite.get("flow:D").getTraces()[0];
-  
-  console.log("A의 콜스택 길이:", traceA.stack.length);  // 2 (A → test)
-  console.log("D의 콜스택 길이:", traceD.stack.length);  // 5 (D → C → B → A → test)
-  
+
+  console.log("A의 콜스택 길이:", traceA.stack.length); // 2 (A → test)
+  console.log("D의 콜스택 길이:", traceD.stack.length); // 5 (D → C → B → A → test)
+
   // D의 콜스택에 모든 함수가 포함되어 있는지 확인
-  const functions = traceD.stack.map(f => f.functionName);
+  const functions = traceD.stack.map((f) => f.functionName);
   expect(functions).toContain("functionD");
   expect(functions).toContain("functionC");
   expect(functions).toContain("functionB");
   expect(functions).toContain("functionA");
-  
+
   // 순서도 확인 가능
-  expect(functions[0]).toBe("functionD");  // 가장 안쪽
-  expect(functions[3]).toBe("functionA");  // 가장 바깥쪽
+  expect(functions[0]).toBe("functionD"); // 가장 안쪽
+  expect(functions[3]).toBe("functionA"); // 가장 바깥쪽
 });
 ```
 
@@ -415,12 +405,12 @@ graph TD
     A[functionA] --> B[functionB]
     B --> C[functionC]
     C --> D[functionD]
-    
+
     A1["Naite.t('flow:A')<br/>스택: [A, test]"] -. 기록 .- A
     B1["Naite.t('flow:B')<br/>스택: [B, A, test]"] -. 기록 .- B
     C1["Naite.t('flow:C')<br/>스택: [C, B, A, test]"] -. 기록 .- C
     D1["Naite.t('flow:D')<br/>스택: [D, C, B, A, test]"] -. 기록 .- D
-    
+
     style A1 fill:#e3f2fd
     style B1 fill:#e3f2fd
     style C1 fill:#e3f2fd
@@ -434,17 +424,13 @@ graph TD
 ```typescript
 test("특정 함수에서 호출된 로그만", async () => {
   await processOrder(123);
-  
+
   // chargePayment 함수에서 직접 호출된 로그만
-  const paymentLogs = Naite.get("*")
-    .fromFunction("chargePayment", { from: "direct" })
-    .result();
-  
+  const paymentLogs = Naite.get("*").fromFunction("chargePayment", { from: "direct" }).result();
+
   // chargePayment의 호출 체인에 있는 모든 로그
-  const allPaymentLogs = Naite.get("*")
-    .fromFunction("chargePayment", { from: "both" })
-    .result();
-  
+  const allPaymentLogs = Naite.get("*").fromFunction("chargePayment", { from: "both" }).result();
+
   console.log("직접 호출:", paymentLogs.length);
   console.log("체인 전체:", allPaymentLogs.length);
 });
@@ -525,6 +511,7 @@ user:create:start
 ```
 
 **인터랙션**:
+
 - 각 프레임을 클릭하면 VSCode 에디터가 해당 파일의 정확한 라인으로 이동
 - 코드 컨텍스트를 즉시 확인 가능
 - 디버깅 시간 단축
@@ -537,22 +524,19 @@ user:create:start
   <Step title="Viewer에서 로그 확인">
     테스트 실행 후 Naite Viewer에서 의심스러운 로그를 찾습니다.
   </Step>
-  
-  <Step title="콜스택 확인">
-    로그를 클릭하여 콜스택을 확인합니다. 어떤 함수들을 거쳐 왔는지 파악합니다.
-  </Step>
-  
-  <Step title="코드 위치로 이동">
-    콜스택의 각 프레임을 클릭하여 실제 코드를 확인합니다.
-  </Step>
-  
-  <Step title="문제 파악 및 수정">
-    콜스택을 따라가며 문제의 원인을 찾고 수정합니다.
-  </Step>
+
+<Step title="콜스택 확인">
+  로그를 클릭하여 콜스택을 확인합니다. 어떤 함수들을 거쳐 왔는지 파악합니다.
+</Step>
+
+<Step title="코드 위치로 이동">콜스택의 각 프레임을 클릭하여 실제 코드를 확인합니다.</Step>
+
+  <Step title="문제 파악 및 수정">콜스택을 따라가며 문제의 원인을 찾고 수정합니다.</Step>
 </Steps>
 
 <Tip>
-**프로 팁**: Viewer에서 여러 로그의 콜스택을 비교하면, 정상 경로와 비정상 경로의 차이를 빠르게 파악할 수 있습니다.
+  **프로 팁**: Viewer에서 여러 로그의 콜스택을 비교하면, 정상 경로와 비정상 경로의 차이를 빠르게
+  파악할 수 있습니다.
 </Tip>
 
 ## 고급 패턴
@@ -564,34 +548,34 @@ user:create:start
 ```typescript
 async function slowOperation() {
   Naite.t("perf:start", { at: Date.now() });
-  
+
   await step1(); // 느린 단계
   Naite.t("perf:step1", { at: Date.now() });
-  
+
   await step2();
   Naite.t("perf:step2", { at: Date.now() });
-  
+
   await step3();
   Naite.t("perf:step3", { at: Date.now() });
-  
+
   Naite.t("perf:end", { at: Date.now() });
 }
 
 test("성능 분석", async () => {
   await slowOperation();
-  
+
   const traces = Naite.get("perf:*").getTraces();
-  
+
   // 각 단계별 소요 시간과 호출 위치 출력
   for (let i = 1; i < traces.length; i++) {
     const prev = traces[i - 1];
     const curr = traces[i];
-    
+
     const duration = curr.at.getTime() - prev.at.getTime();
-    
+
     console.log(`${prev.key} → ${curr.key}: ${duration}ms`);
     console.log(`  호출 위치: ${curr.stack[0].filePath}:${curr.stack[0].lineNumber}`);
-    
+
     if (duration > 1000) {
       console.log(`  ⚠️ 병목 구간! (1초 초과)`);
     }
@@ -606,24 +590,24 @@ Syncer의 복잡한 템플릿 생성 과정을 추적합니다.
 ```typescript
 test("Syncer 템플릿 생성 추적", async () => {
   await Sonamu.syncer.generateTemplate("model", {
-    entityId: "User"
+    entityId: "User",
   });
-  
+
   // renderTemplate이 어디서 어떻게 호출되었는지
-  const renderLogs = Naite.get("syncer:*")
-    .fromFunction("renderTemplate")
-    .getTraces();
-  
+  const renderLogs = Naite.get("syncer:*").fromFunction("renderTemplate").getTraces();
+
   for (const trace of renderLogs) {
     console.log(`\n${trace.key}:`);
     console.log(`  데이터:`, trace.data);
     console.log(`  콜스택:`);
-    
+
     trace.stack.forEach((frame, i) => {
-      console.log(`    ${i + 1}. ${frame.functionName} (${frame.filePath.split('/').pop()}:${frame.lineNumber})`);
+      console.log(
+        `    ${i + 1}. ${frame.functionName} (${frame.filePath.split("/").pop()}:${frame.lineNumber})`,
+      );
     });
   }
-  
+
   // 출력 예시:
   // syncer:renderTemplate:
   //   데이터: { template: "model", entityId: "User" }
@@ -642,11 +626,11 @@ test("Syncer 템플릿 생성 추적", async () => {
 ```typescript
 async function recursiveFunction(depth: number) {
   Naite.t("recursive:call", { depth });
-  
+
   if (depth > 100) {
     throw new Error("Too deep!");
   }
-  
+
   if (depth < 10) {
     await recursiveFunction(depth + 1);
   }
@@ -654,21 +638,19 @@ async function recursiveFunction(depth: number) {
 
 test("재귀 깊이 확인", async () => {
   await recursiveFunction(0);
-  
+
   const traces = Naite.get("recursive:call").getTraces();
-  
+
   // 각 depth의 콜스택 길이 확인
   for (const trace of traces) {
     console.log(`Depth ${trace.data.depth}:`);
     console.log(`  콜스택 길이: ${trace.stack.length}`);
-    
+
     // 콜스택에 recursiveFunction이 몇 개인지
-    const recursiveCount = trace.stack.filter(
-      f => f.functionName === "recursiveFunction"
-    ).length;
-    
+    const recursiveCount = trace.stack.filter((f) => f.functionName === "recursiveFunction").length;
+
     console.log(`  재귀 깊이: ${recursiveCount}`);
-    
+
     if (recursiveCount > 50) {
       console.warn(`  ⚠️ 재귀가 너무 깊습니다!`);
     }
@@ -683,17 +665,17 @@ test("재귀 깊이 확인", async () => {
 ```typescript
 async function processData(data: any[]) {
   const TRACE_SUSPICIOUS = process.env.TRACE_SUSPICIOUS === "true";
-  
+
   for (let i = 0; i < data.length; i++) {
     const item = data[i];
-    
+
     // 의심스러운 데이터만 추적
     if (TRACE_SUSPICIOUS && item.suspicious) {
       Naite.t("data:suspicious", {
         index: i,
         item,
       });
-      
+
       // 콜스택으로 누가 이 데이터를 만들었는지 추적 가능
     }
   }
@@ -712,21 +694,19 @@ Naite는 `runWithContext` 또는 `runWithMockContext`를 만나면 콜스택 수
 ```typescript
 function extractCallStack(): StackFrame[] {
   // ...
-  
+
   // runWithContext 계열 함수 발견 시 거기서 자르기
   const contextIndex = frames.findIndex(
     (f) =>
-      f.functionName?.includes("runWithContext") ||
-      f.functionName?.includes("runWithMockContext")
+      f.functionName?.includes("runWithContext") || f.functionName?.includes("runWithMockContext"),
   );
 
-  return contextIndex >= 0 
-    ? frames.slice(0, contextIndex + 1) 
-    : frames;
+  return contextIndex >= 0 ? frames.slice(0, contextIndex + 1) : frames;
 }
 ```
 
 **이유**:
+
 - `runWithContext`는 Sonamu의 Context 경계
 - 그 위는 Vitest 내부 코드 (의미 없음)
 - 의미 있는 콜스택만 유지하여 가독성 향상
@@ -742,6 +722,7 @@ if (filePath.includes(":")) {
 ```
 
 **예시**:
+
 ```typescript
 {
   functionName: "processTicksAndRejections",
@@ -775,8 +756,9 @@ const handler = async () => {
 async function handleUser() { /* ... */ }
 
 // ❌ 나쁜 방법
-const handler = async () => { /* ... */ };
-```
+const handler = async () => {/* ... */};
+
+````
 </Tip>
 
 ## 베스트 프랙티스
@@ -787,7 +769,7 @@ const handler = async () => { /* ... */ };
     // ✅ 좋은 예: 중요한 분기점에
     async function processUser(user: User) {
       Naite.t("user:process:start", { userId: user.id });
-      
+
       if (user.isAdmin) {
         Naite.t("user:process:admin", { userId: user.id });
         await processAdmin(user);
@@ -795,12 +777,12 @@ const handler = async () => { /* ... */ };
         Naite.t("user:process:regular", { userId: user.id });
         await processRegular(user);
       }
-      
+
       Naite.t("user:process:done", { userId: user.id });
     }
     ```
   </Step>
-  
+
   <Step title="에러 상황에 로깅">
     ```typescript
     // ✅ 좋은 예: 에러 발생 시 콜스택 기록
@@ -818,21 +800,21 @@ const handler = async () => { /* ... */ };
     }
     ```
   </Step>
-  
+
   <Step title="명시적 함수명 사용">
     ```typescript
     // ✅ 좋은 예: 명시적 함수명
     async function createUser() {
       Naite.t("user:create", {});
     }
-    
+
     // ❌ 나쁜 예: 익명 함수
     const create = async () => {
       Naite.t("user:create", {});
     };
     ```
   </Step>
-  
+
   <Step title="VSCode Viewer 활용">
     로컬 개발 시 Naite Viewer를 켜두고, 로그를 클릭하여 콜스택을 확인하세요. 코드 위치로 바로 이동할 수 있어 디버깅 속도가 크게 향상됩니다.
   </Step>
@@ -870,3 +852,4 @@ const handler = async () => { /* ... */ };
     Naite 전체 개요로 돌아가세요.
   </Card>
 </CardGroup>
+````

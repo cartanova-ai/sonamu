@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: 훅이므로 필요 시 사용 */
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // 파싱 결과이므로 any 허용
+/* oxlint-disable react-hooks/exhaustive-deps */ // 훅이므로 필요 시 사용
 
 import { format } from "date-fns";
 import equal from "fast-deep-equal";
@@ -10,6 +10,7 @@ import { type ReactElement, useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
 import { z } from "zod";
+
 import { caster } from "./caster";
 
 export function hidden(condition: boolean | undefined): string {
@@ -28,7 +29,7 @@ export function paramsToSearchParams<T>(params: T): {
   [key in string]: string | string[];
 } {
   return Object.fromEntries(
-    // biome-ignore lint/complexity/useFlatMap: 여기는 flatMap 사용하면 깨짐
+    // oxlint-disable-next-line unicorn/prefer-array-flat-map -- 여기는 flatMap 사용하면 깨짐
     Object.entries(params as any)
       .filter(([, value]) => {
         return value !== undefined;

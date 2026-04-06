@@ -1,6 +1,6 @@
 ---
-title: 'Storage'
-description: 'File storage driver settings'
+title: "Storage"
+description: "File storage driver settings"
 ---
 
 import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
@@ -19,8 +19,12 @@ export default defineConfig({
     storage: {
       default: process.env.DRIVE_DISK ?? "fs",
       drivers: {
-        fs: drivers.fs({ /* ... */ }),
-        s3: drivers.s3({ /* ... */ }),
+        fs: drivers.fs({
+          /* ... */
+        }),
+        s3: drivers.s3({
+          /* ... */
+        }),
       },
     },
   },
@@ -38,7 +42,7 @@ Specifies the default storage driver to use.
 export default defineConfig({
   server: {
     storage: {
-      default: "fs",  // Use fs driver
+      default: "fs", // Use fs driver
       // ...
     },
   },
@@ -51,7 +55,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // Switch based on environment
+      default: process.env.DRIVE_DISK ?? "fs", // Switch based on environment
       // ...
     },
   },
@@ -68,9 +72,7 @@ DRIVE_DISK=fs
 DRIVE_DISK=s3
 ```
 
-<Tip>
-Using environment variables allows you to switch storage without code changes.
-</Tip>
+<Tip>Using environment variables allows you to switch storage without code changes.</Tip>
 
 ## drivers
 
@@ -86,8 +88,12 @@ export default defineConfig({
     storage: {
       default: "fs",
       drivers: {
-        fs: drivers.fs({ /* ... */ }),    // Local file system
-        s3: drivers.s3({ /* ... */ }),    // AWS S3
+        fs: drivers.fs({
+          /* ... */
+        }), // Local file system
+        s3: drivers.s3({
+          /* ... */
+        }), // AWS S3
       },
     },
   },
@@ -134,27 +140,27 @@ The directory path where files will be stored.
 drivers.fs({
   location: path.join(import.meta.dirname, "/../public/uploaded"),
   // ...
-})
+});
 ```
 
 **Path example**:
 
 <Card>
-<FileTree>
-  <FileItem name="project-root/">
-    <FileItem name="api/">
-      <FileItem name="src/">
-        <FileItem name="sonamu.config.ts" description="Runs here" />
+  <FileTree>
+    <FileItem name="project-root/">
+      <FileItem name="api/">
+        <FileItem name="src/">
+          <FileItem name="sonamu.config.ts" description="Runs here" />
+        </FileItem>
+      </FileItem>
+      <FileItem name="public/">
+        <FileItem name="uploaded/" description="File storage location">
+          <FileItem name="profile-images/" />
+          <FileItem name="documents/" />
+        </FileItem>
       </FileItem>
     </FileItem>
-    <FileItem name="public/">
-      <FileItem name="uploaded/" description="File storage location">
-        <FileItem name="profile-images/" />
-        <FileItem name="documents/" />
-      </FileItem>
-    </FileItem>
-  </FileItem>
-</FileTree>
+  </FileTree>
 </Card>
 
 #### visibility
@@ -169,9 +175,9 @@ Sets the access permissions for files.
 ```typescript
 drivers.fs({
   location: path.join(import.meta.dirname, "/../public/uploaded"),
-  visibility: "public",  // Public files
+  visibility: "public", // Public files
   // ...
-})
+});
 ```
 
 #### urlBuilder
@@ -193,7 +199,7 @@ drivers.fs({
       return `/api/public/uploaded/${key}`;
     },
   },
-})
+});
 ```
 
 **generateURL**: Generates the public URL for a file.
@@ -253,11 +259,11 @@ drivers.s3({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
   // ...
-})
+});
 ```
 
 <Warning>
-Always manage AWS credentials via environment variables. Never write them directly in code!
+  Always manage AWS credentials via environment variables. Never write them directly in code!
 </Warning>
 
 **.env**:
@@ -276,8 +282,8 @@ The AWS region where the S3 bucket is located.
 ```typescript
 drivers.s3({
   // ...
-  region: "ap-northeast-2",  // Seoul region
-})
+  region: "ap-northeast-2", // Seoul region
+});
 ```
 
 **Major regions**:
@@ -298,7 +304,7 @@ The S3 bucket name for storing files.
 drivers.s3({
   // ...
   bucket: "my-app-uploads",
-})
+});
 ```
 
 **Using different buckets per environment**:
@@ -307,7 +313,7 @@ drivers.s3({
 drivers.s3({
   // ...
   bucket: process.env.S3_BUCKET ?? "my-app-dev",
-})
+});
 ```
 
 #### visibility
@@ -319,8 +325,8 @@ Sets the ACL (Access Control List) for S3 objects.
 ```typescript
 drivers.s3({
   // ...
-  visibility: "private",  // Authentication required
-})
+  visibility: "private", // Authentication required
+});
 ```
 
 - `"public"`: Public read allowed (`public-read` ACL)
@@ -369,7 +375,7 @@ import { drivers } from "sonamu/storage";
 export default defineConfig({
   server: {
     storage: {
-      default: process.env.DRIVE_DISK ?? "fs",  // Switch via environment variable
+      default: process.env.DRIVE_DISK ?? "fs", // Switch via environment variable
 
       drivers: {
         // Development: Local file system
@@ -539,16 +545,8 @@ Sonamu needs appropriate IAM permissions to access S3.
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::my-app-uploads",
-        "arn:aws:s3:::my-app-uploads/*"
-      ]
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::my-app-uploads", "arn:aws:s3:::my-app-uploads/*"]
     }
   ]
 }
@@ -565,7 +563,7 @@ drivers.s3({
     accessKeyId: "AKIAXXXXXXXXXXXXXXXX",
     secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCY...",
   },
-})
+});
 
 // ✅ Good: Use environment variables
 drivers.s3({
@@ -573,17 +571,17 @@ drivers.s3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   },
-})
+});
 ```
 
 ### 2. Choosing visibility
 
 ```typescript
 // Public files (profile images, product images, etc.)
-visibility: "public"
+visibility: "public";
 
 // Private files (personal documents, receipts, contracts, etc.)
-visibility: "private"
+visibility: "private";
 ```
 
 ### 3. File Path Design

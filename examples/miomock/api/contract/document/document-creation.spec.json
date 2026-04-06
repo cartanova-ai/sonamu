@@ -46,9 +46,7 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "DocumentModel": "문서 생성/수정/삭제와 기본 조회를 담당한다",
     "Document Types": "문서 입력/출력 스키마와 파라미터를 정의한다"

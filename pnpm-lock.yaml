@@ -45,9 +45,6 @@ catalogs:
     '@better-auth/sso':
       specifier: ~1.4.18
       version: 1.4.18
-    '@biomejs/biome':
-      specifier: ^2.3.13
-      version: 2.3.13
     '@changesets/cli':
       specifier: ^2.29.4
       version: 2.29.8
@@ -636,9 +633,6 @@ importers:
       '@aws-sdk/client-ecr-public':
         specifier: 'catalog:'
         version: 3.958.0
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@types/node':
         specifier: 'catalog:'
         version: 25.0.7
@@ -651,6 +645,12 @@ importers:
       npm-run-all:
         specifier: 'catalog:'
         version: 4.1.5
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.43.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.58.0
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
@@ -721,9 +721,6 @@ importers:
         specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@fastify/compress':
         specifier: 'catalog:'
         version: 7.0.3
@@ -897,9 +894,6 @@ importers:
         specifier: 'catalog:'
         version: 1.2.8
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@swc/cli':
         specifier: 'catalog:'
         version: 0.7.9(@swc/core@1.15.7(@swc/helpers@0.5.18))(chokidar@4.0.3)
@@ -934,9 +928,6 @@ importers:
         specifier: 'catalog:'
         version: 2.4.2
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@types/minimist':
         specifier: ^1.2.5
         version: 1.2.5
@@ -976,9 +967,6 @@ importers:
       '@adonisjs/tsconfig':
         specifier: 'catalog:'
         version: 1.4.1
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@changesets/cli':
         specifier: 'catalog:'
         version: 2.29.8(@types/node@25.0.7)
@@ -1061,9 +1049,6 @@ importers:
       '@adonisjs/tsconfig':
         specifier: 'catalog:'
         version: 1.4.1
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@changesets/cli':
         specifier: 'catalog:'
         version: 2.29.8(@types/node@25.0.7)
@@ -1411,9 +1396,6 @@ importers:
         specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@types/inflection':
         specifier: 'catalog:'
         version: 2.0.0
@@ -1646,9 +1628,6 @@ importers:
         specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@swc/cli':
         specifier: 'catalog:'
         version: 0.7.9(@swc/core@1.15.7(@swc/helpers@0.5.18))(chokidar@4.0.3)
@@ -1840,9 +1819,6 @@ importers:
         specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.3.13
       '@swc/cli':
         specifier: 'catalog:'
         version: 0.7.9(@swc/core@1.15.7(@swc/helpers@0.5.18))(chokidar@4.0.3)
@@ -2300,63 +2276,6 @@ packages:
 
   '@better-fetch/fetch@1.1.21':
     resolution: {integrity: sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A==}
-
-  '@biomejs/biome@2.3.13':
-    resolution: {integrity: sha512-Fw7UsV0UAtWIBIm0M7g5CRerpu1eKyKAXIazzxhbXYUyMkwNrkX/KLkGI7b+uVDQ5cLUMfOC9vR60q9IDYDstA==}
-    engines: {node: '>=14.21.3'}
-    hasBin: true
-
-  '@biomejs/cli-darwin-arm64@2.3.13':
-    resolution: {integrity: sha512-0OCwP0/BoKzyJHnFdaTk/i7hIP9JHH9oJJq6hrSCPmJPo8JWcJhprK4gQlhFzrwdTBAW4Bjt/RmCf3ZZe59gwQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@biomejs/cli-darwin-x64@2.3.13':
-    resolution: {integrity: sha512-AGr8OoemT/ejynbIu56qeil2+F2WLkIjn2d8jGK1JkchxnMUhYOfnqc9sVzcRxpG9Ycvw4weQ5sprRvtb7Yhcw==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@biomejs/cli-linux-arm64-musl@2.3.13':
-    resolution: {integrity: sha512-TUdDCSY+Eo/EHjhJz7P2GnWwfqet+lFxBZzGHldrvULr59AgahamLs/N85SC4+bdF86EhqDuuw9rYLvLFWWlXA==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
-  '@biomejs/cli-linux-arm64@2.3.13':
-    resolution: {integrity: sha512-xvOiFkrDNu607MPMBUQ6huHmBG1PZLOrqhtK6pXJW3GjfVqJg0Z/qpTdhXfcqWdSZHcT+Nct2fOgewZvytESkw==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
-  '@biomejs/cli-linux-x64-musl@2.3.13':
-    resolution: {integrity: sha512-0bdwFVSbbM//Sds6OjtnmQGp4eUjOTt6kHvR/1P0ieR9GcTUAlPNvPC3DiavTqq302W34Ae2T6u5VVNGuQtGlQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
-  '@biomejs/cli-linux-x64@2.3.13':
-    resolution: {integrity: sha512-s+YsZlgiXNq8XkgHs6xdvKDFOj/bwTEevqEY6rC2I3cBHbxXYU1LOZstH3Ffw9hE5tE1sqT7U23C00MzkXztMw==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
-  '@biomejs/cli-win32-arm64@2.3.13':
-    resolution: {integrity: sha512-QweDxY89fq0VvrxME+wS/BXKmqMrOTZlN9SqQ79kQSIc3FrEwvW/PvUegQF6XIVaekncDykB5dzPqjbwSKs9DA==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@biomejs/cli-win32-x64@2.3.13':
-    resolution: {integrity: sha512-trDw2ogdM2lyav9WFQsdsfdVy1dvZALymRpgmWsvSez0BJzBjulhOT/t+wyKeh3pZWvwP3VMs1SoOKwO3wecMQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [win32]
 
   '@borewit/text-codec@0.1.1':
     resolution: {integrity: sha512-5L/uBxmjaCIX5h8Z+uu+kA9BQLkc/Wl06UGR5ajNRxu+/XjonB5i8JpgFMrPj3LXTCPA0pv8yxUvbUi+QthGGA==}
@@ -11844,41 +11763,6 @@ snapshots:
   '@better-auth/utils@0.3.0': {}
 
   '@better-fetch/fetch@1.1.21': {}
-
-  '@biomejs/biome@2.3.13':
-    optionalDependencies:
-      '@biomejs/cli-darwin-arm64': 2.3.13
-      '@biomejs/cli-darwin-x64': 2.3.13
-      '@biomejs/cli-linux-arm64': 2.3.13
-      '@biomejs/cli-linux-arm64-musl': 2.3.13
-      '@biomejs/cli-linux-x64': 2.3.13
-      '@biomejs/cli-linux-x64-musl': 2.3.13
-      '@biomejs/cli-win32-arm64': 2.3.13
-      '@biomejs/cli-win32-x64': 2.3.13
-
-  '@biomejs/cli-darwin-arm64@2.3.13':
-    optional: true
-
-  '@biomejs/cli-darwin-x64@2.3.13':
-    optional: true
-
-  '@biomejs/cli-linux-arm64-musl@2.3.13':
-    optional: true
-
-  '@biomejs/cli-linux-arm64@2.3.13':
-    optional: true
-
-  '@biomejs/cli-linux-x64-musl@2.3.13':
-    optional: true
-
-  '@biomejs/cli-linux-x64@2.3.13':
-    optional: true
-
-  '@biomejs/cli-win32-arm64@2.3.13':
-    optional: true
-
-  '@biomejs/cli-win32-x64@2.3.13':
-    optional: true
 
   '@borewit/text-codec@0.1.1': {}
 

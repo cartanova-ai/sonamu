@@ -30,9 +30,10 @@ export default defineConfig(({ isSsrBuild }) => ({
     emptyOutDir: true,
     rollupOptions: {
       output: isSsrBuild
-        ? {}  // SSR 빌드: manualChunks 사용 안 함
+        ? {} // SSR 빌드: manualChunks 사용 안 함
         : {
-            manualChunks: {  // Client 빌드: vendor splitting
+            manualChunks: {
+              // Client 빌드: vendor splitting
               "vendor-react": ["react", "react-dom"],
               "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
             },
@@ -46,11 +47,13 @@ export default defineConfig(({ isSsrBuild }) => ({
 ```
 
 **핵심 변경**:
+
 - `isSsrBuild` 파라미터로 빌드 타입 구분
 - SSR 빌드 시 `manualChunks` 제외 (external 충돌 방지)
 - **`ssr.noExternal: true`**: 모든 의존성을 번들에 포함하여 자체 완결적인 SSR entry 생성
 
 **이유**:
+
 - API 프로젝트와 Web 프로젝트가 분리되어 있음
 - SSR entry가 API 쪽으로 복사되어 실행되므로, Web의 node_modules를 찾을 수 없음
 - 따라서 모든 의존성(react, react-dom 등)을 SSR 번들에 포함시켜야 함
@@ -68,6 +71,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 ```
 
 **결과**:
+
 - `web/dist/client/` - 클라이언트 번들 (index.html, assets/)
 - `web/dist/server/` - SSR entry (entry-server.generated.js)
 
@@ -95,6 +99,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 ```
 
 **복사 결과**:
+
 - `api/web-dist/client/` - 클라이언트 정적 파일 (index.html, assets/)
 - `api/web-dist/server/` - SSR entry (entry-server.generated.js)
 
@@ -114,15 +119,18 @@ export async function renderSSR(
   request: FastifyRequest,
   reply: FastifyReply,
   config: SonamuFastifyConfig,
-  vite?: ViteDevServer,  // optional
-): Promise<string>
+  vite?: ViteDevServer, // optional
+): Promise<string>;
 ```
 
 #### 3.2 Dev/Prod 분기 처리
 
 ```typescript
 let template: string;
-let render: (url: string, preloadedData: PreloadedData[]) => Promise<{ html: string; dehydratedState: unknown }>;
+let render: (
+  url: string,
+  preloadedData: PreloadedData[],
+) => Promise<{ html: string; dehydratedState: unknown }>;
 
 if (vite) {
   // Dev: Vite Dev Server 사용
@@ -146,12 +154,12 @@ if (vite) {
 
 **핵심 차이점**:
 
-| 항목 | Dev | Prod |
-|------|-----|------|
-| template | Vite가 변환 (`transformIndexHtml`) | 빌드된 index.html 그대로 사용 |
-| entry | Vite가 동적 로드 (`ssrLoadModule`) | 빌드된 JS 파일 import |
-| 경로 | web 프로젝트 소스 | api/web-dist/client, api/web-dist/server |
-| CSS | 별도 링크 추가 필요 | index.html에 이미 포함 |
+| 항목     | Dev                                | Prod                                     |
+| -------- | ---------------------------------- | ---------------------------------------- |
+| template | Vite가 변환 (`transformIndexHtml`) | 빌드된 index.html 그대로 사용            |
+| entry    | Vite가 동적 로드 (`ssrLoadModule`) | 빌드된 JS 파일 import                    |
+| 경로     | web 프로젝트 소스                  | api/web-dist/client, api/web-dist/server |
+| CSS      | 별도 링크 추가 필요                | index.html에 이미 포함                   |
 
 #### 3.3 CSS 처리 조건부 추가
 
@@ -205,6 +213,7 @@ if (ssrAvailable) {
 ```
 
 **중요**:
+
 - Dev에서는 HMR을 위해 정적 import 사용 안 함
 - Prod에서만 빌드된 `api/dist/ssr/routes.js`를 동적 import
 - import 시점에 `registerSSR()` 호출이 실행됨
@@ -248,6 +257,7 @@ server.get("/assets/:filename", async (request, reply) => {
 ```
 
 **목적**:
+
 - 무중단 배포 시 asset hash 불일치 문제 해결
 - 클라이언트가 요청한 hash와 다르면 현재 버전의 파일 서빙
 
@@ -295,6 +305,7 @@ server.setNotFoundHandler(async (request, reply) => {
 ```
 
 **핵심 로직**:
+
 1. API 경로는 404 처리
 2. SSR 라우트 매칭 시도
 3. 매칭 성공 → `renderSSR()` 호출 (vite 파라미터 없음 = prod)
@@ -363,18 +374,19 @@ setupStaticWebServer.setNotFoundHandler()
 
 ### 1. Dev vs Prod 차이점
 
-| 항목 | Dev (setupViteDevServer) | Prod (setupStaticWebServer) |
-|------|--------------------------|------------------------------|
-| **Web Server** | Vite Dev Server | Fastify 정적 파일 서빙 |
-| **SSR Entry** | 소스에서 동적 로드 | 빌드된 JS import |
-| **Template** | Vite 변환 | 빌드된 HTML 사용 |
-| **HMR** | 지원 | 없음 |
-| **SSR Routes** | 정적 import 불가 | 빌드된 파일 동적 import |
-| **renderSSR 호출** | `vite` 파라미터 전달 | `vite` 없이 호출 |
+| 항목               | Dev (setupViteDevServer) | Prod (setupStaticWebServer) |
+| ------------------ | ------------------------ | --------------------------- |
+| **Web Server**     | Vite Dev Server          | Fastify 정적 파일 서빙      |
+| **SSR Entry**      | 소스에서 동적 로드       | 빌드된 JS import            |
+| **Template**       | Vite 변환                | 빌드된 HTML 사용            |
+| **HMR**            | 지원                     | 없음                        |
+| **SSR Routes**     | 정적 import 불가         | 빌드된 파일 동적 import     |
+| **renderSSR 호출** | `vite` 파라미터 전달     | `vite` 없이 호출            |
 
 ### 2. 왜 `ssr.noExternal: true`가 필요한가?
 
 **문제 상황**:
+
 ```
 api/web-dist/server/entry-server.generated.js
   └─ import { jsx } from "react/jsx-runtime"  ❌ Cannot find package 'react'
@@ -384,9 +396,10 @@ api/web-dist/server/entry-server.generated.js
 - SSR entry가 API 쪽으로 복사되어 실행되므로 `react`를 찾을 수 없음
 
 **해결책**:
+
 ```typescript
 ssr: {
-  noExternal: true  // 모든 의존성을 번들에 포함
+  noExternal: true; // 모든 의존성을 번들에 포함
 }
 ```
 
@@ -396,6 +409,7 @@ ssr: {
 ### 3. 왜 `api/web-dist/` 경로를 사용하는가?
 
 **디렉토리 구조**:
+
 ```
 api/
 ├─ src/          # API 소스 코드
@@ -408,6 +422,7 @@ api/
 ```
 
 **이유**:
+
 - `web-dist/` = web 빌드 결과물의 미러 (gitignore)
 - `web-dist/client/` = 클라이언트 정적 파일(HTML, CSS, JS) 서빙용
 - `web-dist/server/` = SSR entry 실행용
@@ -456,18 +471,22 @@ $ curl -s http://localhost:10280/admin/companies | grep -A 5 "<title>"
 ## 남은 과제
 
 ### 1. SSR 성능 최적화
+
 - 현재 SSR entry가 2MB로 큼
 - Code splitting 고려 필요 (일부 의존성만 external로)
 
 ### 2. 에러 처리 개선
+
 - SSR 에러 로깅 강화
 - 부분적 CSR fallback (특정 컴포넌트만 실패 시)
 
 ### 3. 캐싱 전략
+
 - SSR 결과 캐싱 (Redis 등)
 - 정적 페이지는 빌드 타임 생성 (SSG) 고려
 
 ### 4. 롤링 업데이트 고도화
+
 - Asset versioning 개선
 - 클라이언트 자동 리로드 메커니즘
 
@@ -478,6 +497,7 @@ $ curl -s http://localhost:10280/admin/companies | grep -A 5 "<title>"
 Phase 6를 통해 Sonamu SSR 시스템이 **Dev와 Prod 모두 지원**하게 되었습니다.
 
 **핵심 성과**:
+
 1. ✅ `renderSSR` 함수 통합 (dev/prod 재사용)
 2. ✅ Production 빌드 파이프라인 구축 (web → api 복사)
 3. ✅ 자체 완결적 SSR 번들 (`ssr.noExternal: true`)

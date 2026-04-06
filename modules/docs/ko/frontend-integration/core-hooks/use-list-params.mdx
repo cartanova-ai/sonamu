@@ -12,21 +12,25 @@ description: "URL 기반 리스트 필터링과 페이지네이션 관리"
     검색 파라미터를 URL에 저장
 
     북마크 가능한 상태
+
   </Card>
   <Card title="타입 안전" icon="shield-check">
     Zod 스키마 기반
 
     자동 타입 추론
+
   </Card>
   <Card title="자동 페이지 리셋" icon="rotate">
     필터 변경 시 1페이지로
 
     사용자 경험 개선
+
   </Card>
   <Card title="register 패턴" icon="hand-pointer">
     폼 컴포넌트 간편 연결
 
     보일러플레이트 제거
+
   </Card>
 </CardGroup>
 
@@ -41,16 +45,13 @@ import { UserListParams } from "@/services/sonamu.generated";
 
 export function UserListPage() {
   // URL에서 파라미터 파싱 및 초기화
-  const { listParams, setListParams, register } = useListParams(
-    UserListParams,
-    {
-      num: 24,
-      page: 1,
-      orderBy: "id-desc" as const,
-      search: "id" as const,
-      keyword: "",
-    }
-  );
+  const { listParams, setListParams, register } = useListParams(UserListParams, {
+    num: 24,
+    page: 1,
+    orderBy: "id-desc" as const,
+    search: "id" as const,
+    keyword: "",
+  });
 
   // API 호출 (listParams를 그대로 전달)
   const { data, isLoading } = UserService.useUsers("A", listParams);
@@ -60,6 +61,7 @@ export function UserListPage() {
 ```
 
 **파라미터 설명**:
+
 - `UserListParams`: Zod 스키마 (자동 생성됨)
 - 기본값 객체: URL에 값이 없을 때 사용할 초기값
 
@@ -68,6 +70,7 @@ export function UserListPage() {
 
 URL 검색 파라미터는 문자열이므로, 숫자나 boolean으로 파싱하려면 스키마가 필요합니다.
 `UserListParams`는 `sonamu.generated.ts`에 자동 생성되며, 백엔드의 타입 정의와 항상 동기화됩니다.
+
 </Info>
 
 ### listParams 사용
@@ -81,14 +84,15 @@ const { listParams } = useListParams(UserListParams, defaultValue);
 const { data } = UserService.useUsers("A", listParams);
 
 // 또는 특정 값 확인
-console.log(listParams.page);     // 1
-console.log(listParams.keyword);  // "admin"
-console.log(listParams.orderBy);  // "id-desc"
+console.log(listParams.page); // 1
+console.log(listParams.keyword); // "admin"
+console.log(listParams.orderBy); // "id-desc"
 ```
 
 **타입**:
+
 ```typescript
-listParams: Partial<z.infer<UserListParams>> & DefaultValue
+listParams: Partial<z.infer<UserListParams>> & DefaultValue;
 ```
 
 ### setListParams로 상태 변경
@@ -107,12 +111,13 @@ setListParams({ ...listParams, page: 1, orderBy: "created_at-desc" });
 // 검색 키워드 변경
 setListParams({
   ...listParams,
-  page: 1,  // 검색 시 항상 1페이지로
-  keyword: "admin"
+  page: 1, // 검색 시 항상 1페이지로
+  keyword: "admin",
 });
 ```
 
 **동작**:
+
 1. `listParams`와 `newParams`를 deep equal 비교
 2. 변경이 있으면 TanStack Router의 `navigate`로 URL 업데이트
 3. URL 변경 → `useSearch` 훅 재실행 → `listParams` 자동 갱신
@@ -129,6 +134,7 @@ setListParams({ ...listParams, page: 2 });
 ```
 
 기존 필터 값을 유지하려면 반드시 spread operator를 사용하세요.
+
 </Warning>
 
 ### register로 폼 바인딩
@@ -155,6 +161,7 @@ return (
 ```
 
 **register가 반환하는 값**:
+
 ```typescript
 {
   value: listParams[name] ?? defaultValue[name] ?? (name === "page" ? 1 : ""),
@@ -293,6 +300,7 @@ https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admi
 ```
 
 **북마크 가능한 상태의 이점**:
+
 - 사용자가 자주 사용하는 필터 조합을 북마크
 - URL을 공유하여 동료에게 동일한 뷰 전달
 - 브라우저 뒤로가기/앞으로가기로 필터 히스토리 탐색
@@ -304,20 +312,19 @@ https://example.com/users?page=2&keyword=admin&orderBy=created_at-desc&role=admi
 URL 동기화를 비활성화하고 로컬 상태로만 관리합니다.
 
 ```typescript
-const { listParams, setListParams, register } = useListParams(
-  UserListParams,
-  defaultValue,
-  { disableSearchParams: true }
-);
+const { listParams, setListParams, register } = useListParams(UserListParams, defaultValue, {
+  disableSearchParams: true,
+});
 ```
 
 **사용 케이스**:
+
 - 모달 안의 목록 (URL을 변경하고 싶지 않을 때)
 - 임베디드 위젯 (독립적인 상태 관리가 필요할 때)
 - 테스트 환경
 
 <Warning>
-`disableSearchParams: true`를 사용하면 북마크와 URL 공유 기능이 동작하지 않습니다.
+  `disableSearchParams: true`를 사용하면 북마크와 URL 공유 기능이 동작하지 않습니다.
 </Warning>
 
 ## 타입 안전성
@@ -355,6 +362,7 @@ register("
 ## TanStack Router 통합
 
 `useListParams`는 내부적으로 TanStack Router의 훅을 사용합니다:
+
 - `useSearch`: URL 검색 파라미터 읽기
 - `useNavigate`: URL 업데이트
 
@@ -381,6 +389,7 @@ export function useListParams<U, T>(zType: U, defaultValue: T) {
 
 `useSearch({ strict: false })`는 현재 라우트에 정의되지 않은 검색 파라미터도 읽을 수 있게 합니다.
 이를 통해 동적으로 추가되는 필터를 유연하게 처리할 수 있습니다.
+
 </Info>
 
 ## 주의사항
@@ -401,6 +410,7 @@ const { listParams } = useListParams(UserListParams, {
 ```
 
 **필수 필드**:
+
 - `num`: 페이지당 항목 수
 - `page`: 현재 페이지 (1부터 시작)
 

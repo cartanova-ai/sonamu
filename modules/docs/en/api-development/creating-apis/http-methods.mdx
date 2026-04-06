@@ -9,24 +9,16 @@ HTTP methods clearly express the intent of an API and help follow RESTful princi
 
 <CardGroup cols={2}>
   <Card title="GET" icon="magnifying-glass">
-    Data retrieval
-    
-    Safe and idempotent
+    Data retrieval Safe and idempotent
   </Card>
   <Card title="POST" icon="plus">
-    Data creation
-    
-    Non-idempotent
+    Data creation Non-idempotent
   </Card>
   <Card title="PUT" icon="pen">
-    Data modification
-    
-    Idempotent
+    Data modification Idempotent
   </Card>
   <Card title="DELETE" icon="trash">
-    Data deletion
-    
-    Idempotent
+    Data deletion Idempotent
   </Card>
 </CardGroup>
 
@@ -41,16 +33,13 @@ class UserModel extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async get(id: number): Promise<User> {
     const rdb = this.getPuri("r");
-    
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     return user;
   }
 }
@@ -79,43 +68,44 @@ class UserModel extends BaseModelClass {
     pageSize: number;
   }> {
     const rdb = this.getPuri("r");
-    
+
     // Set defaults
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;
     const sortBy = params.sortBy || "created_at";
     const sortOrder = params.sortOrder || "desc";
-    
+
     // Build query
     let query = rdb.table("users");
-    
+
     // Search conditions
     if (params.search) {
       query = query.where((qb) => {
-        qb.where("username", "like", `%${params.search}%`)
-          .orWhere("email", "like", `%${params.search}%`);
+        qb.where("username", "like", `%${params.search}%`).orWhere(
+          "email",
+          "like",
+          `%${params.search}%`,
+        );
       });
     }
-    
+
     // Role filter
     if (params.role) {
       query = query.where("role", params.role);
     }
-    
+
     // Sorting
     query = query.orderBy(sortBy, sortOrder);
-    
+
     // Pagination
     const users = await query
       .limit(pageSize)
       .offset((page - 1) * pageSize)
       .select("*");
-    
+
     // Total count
-    const [{ count }] = await rdb
-      .table("users")
-      .count({ count: "*" });
-    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+
     return {
       users,
       total: count,
@@ -139,30 +129,24 @@ class UserModel extends BaseModelClass {
     posts: Post[];
   }> {
     const rdb = this.getPuri("r");
-    
+
     // Get User
-    const user = await rdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await rdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Get Profile (1:1)
-    const profile = await rdb
-      .table("profiles")
-      .where("user_id", id)
-      .first();
-    
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+
     // Get Posts (1:N)
     const posts = await rdb
       .table("posts")
       .where("user_id", id)
       .orderBy("created_at", "desc")
       .select("*");
-    
+
     return {
       user,
       profile: profile || null,
@@ -173,11 +157,9 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**GET Method Characteristics**:
-- Safe: Does not modify server state
-- Idempotent: Same request multiple times yields same result
-- Cacheable: Can be cached by browser/proxy
-- Parameters are passed via URL query string
+  **GET Method Characteristics**: - Safe: Does not modify server state - Idempotent: Same request
+  multiple times yields same result - Cacheable: Can be cached by browser/proxy - Parameters are
+  passed via URL query string
 </Info>
 
 ## POST - Creation
@@ -201,17 +183,14 @@ class UserModel extends BaseModelClass {
     userId: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // Check duplicates
-    const existing = await wdb
-      .table("users")
-      .where("email", params.email)
-      .first();
-    
+    const existing = await wdb.table("users").where("email", params.email).first();
+
     if (existing) {
       throw new Error("Email already exists");
     }
-    
+
     // Create User
     const [user] = await wdb
       .table("users")
@@ -222,7 +201,7 @@ class UserModel extends BaseModelClass {
         role: params.role,
       })
       .returning({ id: "id" });
-    
+
     return { userId: user.id };
   }
 }
@@ -252,7 +231,7 @@ class UserModel extends BaseModelClass {
     profileId: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // Create User
     const userRef = wdb.ubRegister("users", {
       email: params.email,
@@ -260,18 +239,18 @@ class UserModel extends BaseModelClass {
       password: params.password,
       role: "normal",
     });
-    
+
     // Create Profile
     wdb.ubRegister("profiles", {
       user_id: userRef,
       bio: params.profile.bio,
       avatar_url: params.profile.avatarUrl || null,
     });
-    
+
     // Save
     const [userId] = await wdb.ubUpsert("users");
     const [profileId] = await wdb.ubUpsert("profiles");
-    
+
     return { userId, profileId };
   }
 }
@@ -288,7 +267,7 @@ class UserModel extends BaseModelClass {
     count: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     // Register all Users
     users.forEach((user) => {
       wdb.ubRegister("users", {
@@ -298,10 +277,10 @@ class UserModel extends BaseModelClass {
         role: user.role,
       });
     });
-    
+
     // Batch save
     const userIds = await wdb.ubUpsert("users");
-    
+
     return {
       userIds,
       count: userIds.length,
@@ -317,12 +296,9 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**POST Method Characteristics**:
-- Unsafe: Modifies server state
-- Non-idempotent: Same request multiple times may create duplicate resources
-- Not cacheable
-- Parameters are passed via Body
-- Typically returns the ID of the created resource
+  **POST Method Characteristics**: - Unsafe: Modifies server state - Non-idempotent: Same request
+  multiple times may create duplicate resources - Not cacheable - Parameters are passed via Body -
+  Typically returns the ID of the created resource
 </Info>
 
 ## PUT - Modification
@@ -342,32 +318,23 @@ interface UpdateUserParams {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "PUT" })
   @transactional()
-  async update(
-    id: number,
-    params: UpdateUserParams
-  ): Promise<void> {
+  async update(id: number, params: UpdateUserParams): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // Verify User exists
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Update all fields
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        email: params.email,
-        username: params.username,
-        role: params.role,
-        bio: params.bio,
-      });
+    await wdb.table("users").where("id", id).update({
+      email: params.email,
+      username: params.username,
+      role: params.role,
+      bio: params.bio,
+    });
   }
 }
 
@@ -381,35 +348,26 @@ class UserModel extends BaseModelClass {
 class UserModel extends BaseModelClass {
   @api({ httpMethod: "PUT" })
   @transactional()
-  async updatePartial(
-    id: number,
-    params: Partial<UpdateUserParams>
-  ): Promise<void> {
+  async updatePartial(id: number, params: Partial<UpdateUserParams>): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // Verify User exists
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Update only provided fields
     const updateData: any = {};
-    
+
     if (params.email !== undefined) updateData.email = params.email;
     if (params.username !== undefined) updateData.username = params.username;
     if (params.role !== undefined) updateData.role = params.role;
     if (params.bio !== undefined) updateData.bio = params.bio;
-    
+
     if (Object.keys(updateData).length > 0) {
-      await wdb
-        .table("users")
-        .where("id", id)
-        .update(updateData);
+      await wdb.table("users").where("id", id).update(updateData);
     }
   }
 }
@@ -426,34 +384,25 @@ class OrderModel extends BaseModelClass {
   @transactional()
   async updateStatus(
     orderId: number,
-    status: "pending" | "paid" | "shipped" | "delivered" | "cancelled"
+    status: "pending" | "paid" | "shipped" | "delivered" | "cancelled",
   ): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const order = await wdb
-      .table("orders")
-      .where("id", orderId)
-      .first();
-    
+
+    const order = await wdb.table("orders").where("id", orderId).first();
+
     if (!order) {
       throw new Error("Order not found");
     }
-    
+
     // Validate status transition
     if (!this.isValidStatusTransition(order.status, status)) {
       throw new Error(`Cannot change status from ${order.status} to ${status}`);
     }
-    
-    await wdb
-      .table("orders")
-      .where("id", orderId)
-      .update({ status });
+
+    await wdb.table("orders").where("id", orderId).update({ status });
   }
-  
-  private isValidStatusTransition(
-    from: string,
-    to: string
-  ): boolean {
+
+  private isValidStatusTransition(from: string, to: string): boolean {
     const transitions: Record<string, string[]> = {
       pending: ["paid", "cancelled"],
       paid: ["shipped", "cancelled"],
@@ -461,19 +410,16 @@ class OrderModel extends BaseModelClass {
       delivered: [],
       cancelled: [],
     };
-    
+
     return transitions[from]?.includes(to) || false;
   }
 }
 ```
 
 <Info>
-**PUT Method Characteristics**:
-- Unsafe: Modifies server state
-- Idempotent: Same request multiple times yields same result
-- Typically replaces the entire resource
-- Parameters are passed via Body
-- Returns empty response or updated resource on success
+  **PUT Method Characteristics**: - Unsafe: Modifies server state - Idempotent: Same request
+  multiple times yields same result - Typically replaces the entire resource - Parameters are passed
+  via Body - Returns empty response or updated resource on success
 </Info>
 
 ## DELETE - Deletion
@@ -488,22 +434,16 @@ class UserModel extends BaseModelClass {
   @transactional()
   async remove(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
+
     // Verify User exists
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Delete
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+    await wdb.table("users").where("id", id).delete();
   }
 }
 
@@ -518,48 +458,34 @@ class UserModel extends BaseModelClass {
   @transactional()
   async softDelete(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .whereNull("deleted_at")
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).whereNull("deleted_at").first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Set deleted_at (no actual deletion)
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        deleted_at: new Date(),
-      });
+    await wdb.table("users").where("id", id).update({
+      deleted_at: new Date(),
+    });
   }
-  
+
   // Restore soft deleted
   @api({ httpMethod: "PUT" })
   @transactional()
   async restore(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .whereNotNull("deleted_at")
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).whereNotNull("deleted_at").first();
+
     if (!user) {
       throw new Error("User not found or not deleted");
     }
-    
-    await wdb
-      .table("users")
-      .where("id", id)
-      .update({
-        deleted_at: null,
-      });
+
+    await wdb.table("users").where("id", id).update({
+      deleted_at: null,
+    });
   }
 }
 ```
@@ -572,33 +498,21 @@ class UserModel extends BaseModelClass {
   @transactional()
   async removeWithRelations(id: number): Promise<void> {
     const wdb = this.getPuri("w");
-    
-    const user = await wdb
-      .table("users")
-      .where("id", id)
-      .first();
-    
+
+    const user = await wdb.table("users").where("id", id).first();
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // 1. Delete Profile
-    await wdb
-      .table("profiles")
-      .where("user_id", id)
-      .delete();
-    
+    await wdb.table("profiles").where("user_id", id).delete();
+
     // 2. Delete Posts
-    await wdb
-      .table("posts")
-      .where("user_id", id)
-      .delete();
-    
+    await wdb.table("posts").where("user_id", id).delete();
+
     // 3. Delete User
-    await wdb
-      .table("users")
-      .where("id", id)
-      .delete();
+    await wdb.table("users").where("id", id).delete();
   }
 }
 ```
@@ -613,12 +527,9 @@ class UserModel extends BaseModelClass {
     deletedCount: number;
   }> {
     const wdb = this.getPuri("w");
-    
-    const deletedCount = await wdb
-      .table("users")
-      .whereIn("id", ids)
-      .delete();
-    
+
+    const deletedCount = await wdb.table("users").whereIn("id", ids).delete();
+
     return { deletedCount };
   }
 }
@@ -628,11 +539,9 @@ class UserModel extends BaseModelClass {
 ```
 
 <Info>
-**DELETE Method Characteristics**:
-- Unsafe: Modifies server state
-- Idempotent: Deleting an already deleted resource yields same result
-- Generally returns empty response on success (204 No Content)
-- Consider soft delete (using deleted_at column)
+  **DELETE Method Characteristics**: - Unsafe: Modifies server state - Idempotent: Deleting an
+  already deleted resource yields same result - Generally returns empty response on success (204 No
+  Content) - Consider soft delete (using deleted_at column)
 </Info>
 
 ## Method Selection Guide
@@ -643,21 +552,21 @@ flowchart TD
     A --> C[Creation]
     A --> D[Modification]
     A --> E[Deletion]
-    
+
     B --> F[GET]
     C --> G[POST]
     D --> H{Full Replacement?}
     E --> I[DELETE]
-    
+
     H -->|Yes| J[PUT]
     H -->|No| K[PUT with Partial]
-    
+
     F --> L[Safe, Idempotent]
     G --> M[Unsafe, Non-idempotent]
     J --> N[Unsafe, Idempotent]
     K --> N
     I --> N
-    
+
     style F fill:#e8f5e9
     style G fill:#fff9c4
     style J fill:#e3f2fd
@@ -667,14 +576,14 @@ flowchart TD
 
 ### Selection Criteria
 
-| Operation | Method | Example |
-|-----------|--------|---------|
-| Single retrieval | GET | `/api/user/get?id=1` |
-| List retrieval | GET | `/api/user/list?page=1` |
-| New creation | POST | `/api/user/create` |
-| Full update | PUT | `/api/user/update?id=1` |
-| Partial update | PUT | `/api/user/updatePartial?id=1` |
-| Deletion | DELETE | `/api/user/remove?id=1` |
+| Operation        | Method | Example                        |
+| ---------------- | ------ | ------------------------------ |
+| Single retrieval | GET    | `/api/user/get?id=1`           |
+| List retrieval   | GET    | `/api/user/list?page=1`        |
+| New creation     | POST   | `/api/user/create`             |
+| Full update      | PUT    | `/api/user/update?id=1`        |
+| Partial update   | PUT    | `/api/user/updatePartial?id=1` |
+| Deletion         | DELETE | `/api/user/remove?id=1`        |
 
 ## RESTful Principles
 
@@ -684,19 +593,27 @@ flowchart TD
 class UserModel extends BaseModelClass {
   // ✅ GET: Retrieval
   @api({ httpMethod: "GET" })
-  async list(): Promise<User[]> { /* ... */ }
-  
+  async list(): Promise<User[]> {
+    /* ... */
+  }
+
   // ✅ POST: Creation
   @api({ httpMethod: "POST" })
-  async create(params: CreateUserParams): Promise<{ userId: number }> { /* ... */ }
-  
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    /* ... */
+  }
+
   // ✅ PUT: Modification
   @api({ httpMethod: "PUT" })
-  async update(id: number, params: UpdateUserParams): Promise<void> { /* ... */ }
-  
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    /* ... */
+  }
+
   // ✅ DELETE: Deletion
   @api({ httpMethod: "DELETE" })
-  async remove(id: number): Promise<void> { /* ... */ }
+  async remove(id: number): Promise<void> {
+    /* ... */
+  }
 }
 ```
 
@@ -709,13 +626,13 @@ class UserModel extends BaseModelClass {
   async deleteUser(id: number): Promise<void> {
     // GET should be safe (no state change)
   }
-  
+
   // ❌ Using POST for retrieval
   @api({ httpMethod: "POST" })
   async getUser(id: number): Promise<User> {
     // POST is for creation
   }
-  
+
   // ❌ Using DELETE for modification
   @api({ httpMethod: "DELETE" })
   async updateUser(id: number, params: any): Promise<void> {
@@ -730,13 +647,21 @@ class UserModel extends BaseModelClass {
   <Card title="Parameters" icon="sliders" href="/en/api-development/creating-apis/parameters">
     Type definitions and validation
   </Card>
-  <Card title="Return Types" icon="arrow-turn-down-left" href="/en/api-development/creating-apis/return-types">
+  <Card
+    title="Return Types"
+    icon="arrow-turn-down-left"
+    href="/en/api-development/creating-apis/return-types"
+  >
     Defining response types
   </Card>
   <Card title="@api Decorator" icon="at" href="/en/api-development/creating-apis/api-decorator">
     Basic usage
   </Card>
-  <Card title="Error Handling" icon="triangle-exclamation" href="/en/api-development/error-handling">
+  <Card
+    title="Error Handling"
+    icon="triangle-exclamation"
+    href="/en/api-development/error-handling"
+  >
     API error handling
   </Card>
 </CardGroup>

@@ -124,9 +124,7 @@ export type UserSS = {
 import type { UserSubsetKey, UserSubsetMapping } from "./sonamu.generated";
 
 // Select Subset type with generics
-async function findMany<T extends UserSubsetKey>(
-  subset: T
-): Promise<UserSubsetMapping[T][]> {
+async function findMany<T extends UserSubsetKey>(subset: T): Promise<UserSubsetMapping[T][]> {
   // ...
 }
 
@@ -154,12 +152,7 @@ export const UserSearchField = z.enum(["id", "email", "username"]);
 export type UserSearchField = z.infer<typeof UserSearchField>;
 
 // OrderBy Enum
-export const UserOrderBy = z.enum([
-  "id-desc",
-  "id-asc",
-  "created_at-desc",
-  "created_at-asc",
-]);
+export const UserOrderBy = z.enum(["id-desc", "id-asc", "created_at-desc", "created_at-asc"]);
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
 
 // ListParams
@@ -220,12 +213,13 @@ export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 // Equivalent to:
 // type UserSaveParams = {
-//   id?: number;
-//   email: string;
-//   username: string;
-//   created_at: Date;
+// id?: number;
+// email: string;
+// username: string;
+// created_at: Date;
 // }
-```
+
+````
 
 ```typescript title="Usage example"
 // Create new (no id)
@@ -246,7 +240,7 @@ await saveUser([
     created_at: new Date(),
   }
 ]);
-```
+````
 
 </CodeGroup>
 
@@ -290,8 +284,8 @@ export function userRoleLabel(role: UserRole): string {
 // Reverse mapping (label → key)
 export function userRoleLabelToKey(label: string): UserRole | undefined {
   const map: Record<string, UserRole> = {
-    "Administrator": "admin",
-    "Moderator": "moderator",
+    Administrator: "admin",
+    Moderator: "moderator",
     "Normal User": "normal",
   };
   return map[label];
@@ -368,9 +362,7 @@ async register(params: UserRegisterParams): Promise<{ userId: number; token: str
 
 ```typescript
 // services.generated.ts
-export async function loginUser(
-  params: UserLoginParams
-): Promise<{ user: User; token: string }> {
+export async function loginUser(params: UserLoginParams): Promise<{ user: User; token: string }> {
   const { data } = await axios.post("/user/login", { params });
   return data;
 }
@@ -396,12 +388,13 @@ export type UserBulkDeleteParams = z.infer<typeof UserBulkDeleteParams>;
 
 // Status change parameters
 export const UserStatusUpdateParams = z.object({
-  ids: z.number().int().array().min(1),
-  status: z.enum(["active", "suspended", "deleted"]),
-  reason: z.string().optional(),
+ids: z.number().int().array().min(1),
+status: z.enum(["active", "suspended", "deleted"]),
+reason: z.string().optional(),
 });
 export type UserStatusUpdateParams = z.infer<typeof UserStatusUpdateParams>;
-```
+
+````
 
 ```typescript title="user.model.ts"
 @api({ httpMethod: "DELETE" })
@@ -421,7 +414,7 @@ async updateStatus(params: UserStatusUpdateParams): Promise<void> {
     .whereIn("id", ids)
     .update({ status, status_reason: reason });
 }
-```
+````
 
 </CodeGroup>
 
@@ -432,12 +425,12 @@ Type for list query results.
 ```typescript title="sonamu.shared.ts"
 export type ListResult<
   LP extends { num?: number; page?: number; queryMode?: string },
-  T
+  T,
 > = LP["queryMode"] extends "list"
   ? { rows: T[] }
   : LP["queryMode"] extends "count"
-  ? { total: number }
-  : { rows: T[]; total: number };
+    ? { total: number }
+    : { rows: T[]; total: number };
 ```
 
 **Usage example**:
@@ -459,7 +452,8 @@ const result = await findManyUsers({ queryMode: "count" });
 ```
 
 <Info>
-  **Conditional types**: `ListResult` uses TypeScript conditional types to return different types based on `queryMode`.
+  **Conditional types**: `ListResult` uses TypeScript conditional types to return different types
+  based on `queryMode`.
 </Info>
 
 ## Type Exports
@@ -481,12 +475,7 @@ export { PostModel } from "./post/post.model";
 
 ```typescript
 // Import from one place
-import {
-  User,
-  UserListParams,
-  UserSaveParams,
-  UserRole,
-} from "./sonamu.generated";
+import { User, UserListParams, UserSaveParams, UserRole } from "./sonamu.generated";
 
 // Or individual imports
 import type { User } from "./user/user.types";
@@ -525,9 +514,7 @@ Safer than regular `Omit` for Union types.
 ```typescript
 import type { DistributiveOmit } from "sonamu";
 
-type UserOrAdmin =
-  | { type: "user"; userId: number }
-  | { type: "admin"; adminId: number };
+type UserOrAdmin = { type: "user"; userId: number } | { type: "admin"; adminId: number };
 
 // DistributiveOmit is applied to each type individually
 type WithoutId = DistributiveOmit<UserOrAdmin, "userId" | "adminId">;
@@ -571,8 +558,8 @@ export type UserAWithStats = UserA & {
 export type UserByRole<T extends UserRole> = T extends "admin"
   ? UserA & { permissions: string[] }
   : T extends "normal"
-  ? UserSS
-  : User;
+    ? UserSS
+    : User;
 ```
 
 ## Practical Example
@@ -590,30 +577,34 @@ import type {
 } from "./user.types";
 
 class UserModelClass extends BaseModelClass<
-  UserSubsetKey,
-  UserSubsetMapping,
-  typeof userSubsetQueries,
-  typeof userLoaderQueries
+UserSubsetKey,
+UserSubsetMapping,
+typeof userSubsetQueries,
+typeof userLoaderQueries
+
 > {
-  @api({ httpMethod: "GET" })
-  async findMany<T extends UserSubsetKey>(
+> @api({ httpMethod: "GET" })
+> async findMany<T extends UserSubsetKey>(
+
     subset: T,
     params?: UserListParams
-  ): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
-    // Type-safe implementation
-  }
 
-  @api({ httpMethod: "POST" })
-  async save(params: UserSaveParams[]): Promise<number[]> {
-    // Type-safe implementation
-  }
-
-  @api({ httpMethod: "POST" })
-  async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
-    // Type-safe implementation
-  }
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+// Type-safe implementation
 }
-```
+
+@api({ httpMethod: "POST" })
+async save(params: UserSaveParams[]): Promise<number[]> {
+// Type-safe implementation
+}
+
+@api({ httpMethod: "POST" })
+async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+// Type-safe implementation
+}
+}
+
+````
 
 ```tsx title="UserList.tsx"
 import { useUsers } from "@/services/services.generated";
@@ -643,18 +634,14 @@ export function UserList() {
     </table>
   );
 }
-```
+````
 
 </CodeGroup>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/en/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/en/core-concepts/type-system/e2e-type-safety">
     Understanding end-to-end type safety
   </Card>
   <Card
@@ -664,11 +651,7 @@ export function UserList() {
   >
     Runtime validation with Zod
   </Card>
-  <Card
-    title="Entity Types"
-    icon="database"
-    href="/en/core-concepts/type-system/entity-types"
-  >
+  <Card title="Entity Types" icon="database" href="/en/core-concepts/type-system/entity-types">
     Entity type conversion in detail
   </Card>
   <Card title="Model" icon="cube" href="/en/core-concepts/model/what-is-model">

@@ -1,6 +1,6 @@
 ---
-title: '서버'
-description: 'Fastify 서버 기본 설정 및 플러그인'
+title: "서버"
+description: "Fastify 서버 기본 설정 및 플러그인"
 ---
 
 Sonamu는 Fastify를 기반으로 하는 고성능 HTTP 서버입니다. 서버 포트, 호스트, 플러그인, 라이프사이클 훅 등을 설정할 수 있습니다.
@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
-    
+
     plugins: {
       formbody: true,
       qs: true,
@@ -32,14 +32,14 @@ export default defineConfig({
         salt: process.env.SESSION_SALT,
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
         ip: request.ip,
       }),
     },
-    
+
     lifecycle: {
       onStart: () => console.log(`🌲 Server listening on http://${host}:${port}`),
       onShutdown: () => console.log("graceful shutdown"),
@@ -74,15 +74,13 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   server: {
-    baseUrl: "https://api.myapp.com",  // 프로덕션 URL
+    baseUrl: "https://api.myapp.com", // 프로덕션 URL
     listen: { port: 3000, host: "0.0.0.0" },
   },
 });
 ```
 
-<Tip>
-`baseUrl`은 파일 업로드 시 생성되는 URL, SSR 메타 태그 등에 사용됩니다.
-</Tip>
+<Tip>`baseUrl`은 파일 업로드 시 생성되는 URL, SSR 메타 태그 등에 사용됩니다.</Tip>
 
 ## listen
 
@@ -107,7 +105,7 @@ listen?: {
 export default defineConfig({
   server: {
     listen: {
-      port: 34900,  // 이 포트에서 수신
+      port: 34900, // 이 포트에서 수신
     },
   },
 });
@@ -138,7 +136,7 @@ export default defineConfig({
   server: {
     listen: {
       port: 34900,
-      host: "localhost",  // 로컬에서만 접근 가능
+      host: "localhost", // 로컬에서만 접근 가능
     },
   },
 });
@@ -151,15 +149,13 @@ export default defineConfig({
   server: {
     listen: {
       port: 34900,
-      host: "0.0.0.0",  // 외부 접근 허용
+      host: "0.0.0.0", // 외부 접근 허용
     },
   },
 });
 ```
 
-<Warning>
-프로덕션 환경에서 `0.0.0.0`을 사용할 때는 방화벽 설정을 확인하세요.
-</Warning>
+<Warning>프로덕션 환경에서 `0.0.0.0`을 사용할 때는 방화벽 설정을 확인하세요.</Warning>
 
 ## fastify
 
@@ -174,16 +170,14 @@ export default defineConfig({
       connectionTimeout: 30000,
       keepAliveTimeout: 5000,
       maxParamLength: 200,
-      trustProxy: true,  // 프록시 뒤에 있을 때
+      trustProxy: true, // 프록시 뒤에 있을 때
     },
     // ...
   },
 });
 ```
 
-<Note>
-로깅은 Sonamu의 `logging` 설정을 통해 별도로 구성합니다.
-</Note>
+<Note>로깅은 Sonamu의 `logging` 설정을 통해 별도로 구성합니다.</Note>
 
 ## plugins
 
@@ -199,7 +193,7 @@ Fastify 플러그인을 활성화하고 설정합니다.
 export default defineConfig({
   server: {
     plugins: {
-      formbody: true,  // 기본 설정으로 활성화
+      formbody: true, // 기본 설정으로 활성화
     },
   },
 });
@@ -212,7 +206,7 @@ export default defineConfig({
   server: {
     plugins: {
       formbody: {
-        bodyLimit: 1048576,  // 1MB
+        bodyLimit: 1048576, // 1MB
       },
     },
   },
@@ -229,7 +223,7 @@ export default defineConfig({
 export default defineConfig({
   server: {
     plugins: {
-      qs: true,  // ?filter[status]=active&sort[name]=asc 파싱
+      qs: true, // ?filter[status]=active&sort[name]=asc 파싱
     },
   },
 });
@@ -247,8 +241,8 @@ export default defineConfig({
     plugins: {
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 30,  // 30MB
-          files: 10,  // 최대 10개 파일
+          fileSize: 1024 * 1024 * 30, // 30MB
+          files: 10, // 최대 10개 파일
         },
       },
     },
@@ -264,7 +258,7 @@ export default defineConfig({
     plugins: {
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 100,  // 100MB
+          fileSize: 1024 * 1024 * 100, // 100MB
           files: 20,
         },
       },
@@ -287,7 +281,7 @@ export default defineConfig({
     plugins: {
       static: {
         root: path.join(import.meta.dirname, "/../", "public"),
-        prefix: "/api/public",  // /api/public/* 경로로 제공
+        prefix: "/api/public", // /api/public/* 경로로 제공
       },
     },
   },
@@ -312,7 +306,7 @@ export default defineConfig({
         cookie: {
           domain: "localhost",
           path: "/",
-          maxAge: 60 * 60 * 24 * 365 * 10,  // 10년
+          maxAge: 60 * 60 * 24 * 365 * 10, // 10년
         },
       },
     },
@@ -320,9 +314,7 @@ export default defineConfig({
 });
 ```
 
-<Warning>
-프로덕션 환경에서는 반드시 환경 변수로 `secret`과 `salt`를 설정하세요!
-</Warning>
+<Warning>프로덕션 환경에서는 반드시 환경 변수로 `secret`과 `salt`를 설정하세요!</Warning>
 
 **프로덕션 설정**:
 
@@ -331,13 +323,13 @@ export default defineConfig({
   server: {
     plugins: {
       session: {
-        secret: process.env.SESSION_SECRET,  // 필수!
-        salt: process.env.SESSION_SALT,      // 필수!
+        secret: process.env.SESSION_SECRET, // 필수!
+        salt: process.env.SESSION_SALT, // 필수!
         cookie: {
           domain: process.env.COOKIE_DOMAIN,
           path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30일
-          secure: true,  // HTTPS에서만
+          maxAge: 60 * 60 * 24 * 30, // 30일
+          secure: true, // HTTPS에서만
           httpOnly: true,
           sameSite: "strict",
         },
@@ -358,8 +350,8 @@ export default defineConfig({
   server: {
     plugins: {
       compress: {
-        global: false,  // API별로 제어
-        threshold: 1024,  // 1KB 이상만 압축
+        global: false, // API별로 제어
+        threshold: 1024, // 1KB 이상만 압축
         encodings: ["gzip"],
       },
     },
@@ -395,12 +387,13 @@ export default defineConfig({
 export default defineConfig({
   server: {
     plugins: {
-      cors: process.env.NODE_ENV === "development" 
-        ? { origin: true }  // 모든 origin 허용
-        : {
-            origin: ["https://myapp.com"],
-            credentials: true,
-          },
+      cors:
+        process.env.NODE_ENV === "development"
+          ? { origin: true } // 모든 origin 허용
+          : {
+              origin: ["https://myapp.com"],
+              credentials: true,
+            },
     },
   },
 });
@@ -439,7 +432,7 @@ export default defineConfig({
         server.addHook("onRequest", async (request, reply) => {
           console.log(`${request.method} ${request.url}`);
         });
-        
+
         // 커스텀 플러그인 등록
         server.register(myCustomPlugin);
       },
@@ -581,12 +574,10 @@ export default defineConfig({
     lifecycle: {
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, error);
-        
+
         reply.status(500).send({
           error: "Internal Server Error",
-          message: process.env.NODE_ENV === "development" 
-            ? error.message 
-            : undefined,
+          message: process.env.NODE_ENV === "development" ? error.message : undefined,
         });
       },
     },
@@ -609,7 +600,7 @@ export default defineConfig({
   server: {
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
-    
+
     plugins: {
       formbody: true,
       qs: true,
@@ -628,7 +619,7 @@ export default defineConfig({
         },
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
@@ -636,7 +627,7 @@ export default defineConfig({
         session: request.session,
       }),
     },
-    
+
     lifecycle: {
       onStart: () => console.log(`🌲 Server started at http://${host}:${port}`),
     },
@@ -657,58 +648,58 @@ const host = "0.0.0.0";
 export default defineConfig({
   server: {
     baseUrl: process.env.BASE_URL ?? "https://api.myapp.com",
-    
+
     listen: { port, host },
-    
+
     fastify: {
       trustProxy: true,
       connectionTimeout: 60000,
       keepAliveTimeout: 30000,
     },
-    
+
     plugins: {
       compress: {
         global: false,
         threshold: 1024,
         encodings: ["gzip", "br"],
       },
-      
+
       cors: {
         origin: [process.env.FRONTEND_URL ?? "https://myapp.com"],
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
       },
-      
+
       formbody: true,
       qs: true,
-      
+
       multipart: {
         limits: {
-          fileSize: 1024 * 1024 * 50,  // 50MB
+          fileSize: 1024 * 1024 * 50, // 50MB
           files: 20,
         },
       },
-      
+
       static: {
         root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
-        maxAge: 86400000,  // 1일
+        maxAge: 86400000, // 1일
       },
-      
+
       session: {
         secret: process.env.SESSION_SECRET!,
         salt: process.env.SESSION_SALT!,
         cookie: {
           domain: process.env.COOKIE_DOMAIN,
           path: "/",
-          maxAge: 60 * 60 * 24 * 30,  // 30일
+          maxAge: 60 * 60 * 24 * 30, // 30일
           secure: true,
           httpOnly: true,
           sameSite: "strict",
         },
       },
     },
-    
+
     apiConfig: {
       contextProvider: (defaultContext, request) => ({
         ...defaultContext,
@@ -716,31 +707,31 @@ export default defineConfig({
         session: request.session,
         userAgent: request.headers["user-agent"],
       }),
-      
+
       guardHandler: (guard, request) => {
         if (guard === "admin" && !request.session.isAdmin) {
           throw new UnauthorizedError("Admin access required");
         }
       },
     },
-    
+
     lifecycle: {
       onStart: () => {
         console.log(`🌲 Production server started`);
         console.log(`   Port: ${port}`);
         console.log(`   Base URL: ${process.env.BASE_URL}`);
       },
-      
+
       onShutdown: async () => {
         console.log("Shutting down gracefully...");
       },
-      
+
       onError: (error, request, reply) => {
         console.error(`[ERROR] ${request.method} ${request.url}`, {
           message: error.message,
           stack: error.stack,
         });
-        
+
         reply.status(500).send({
           error: "Internal Server Error",
         });
@@ -761,16 +752,16 @@ const port = Number(process.env.PORT ?? 3000);
 export default defineConfig({
   server: {
     baseUrl: process.env.BASE_URL ?? `http://localhost:${port}`,
-    
+
     listen: {
       port,
-      host: "0.0.0.0",  // 컨테이너 외부 접근 허용
+      host: "0.0.0.0", // 컨테이너 외부 접근 허용
     },
-    
+
     fastify: {
-      trustProxy: true,  // 리버스 프록시 뒤에 있을 때
+      trustProxy: true, // 리버스 프록시 뒤에 있을 때
     },
-    
+
     // ... 플러그인 설정
   },
   // ...

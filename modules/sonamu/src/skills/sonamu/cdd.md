@@ -12,6 +12,7 @@ description: CDD artifact technical reference. contract.md format, rules.json fo
 Documents domain rules and decision rationale in a cohesive form. Located at `contract/**/*.contract.md`.
 
 **Include:**
+
 - Domain rules and constraints ("Refunds are only allowed within 7 days of payment")
 - Decision rationale ("Due to PG provider policy")
 - Cross-module domain workflows ("Order status: pending → confirmed → shipped → completed")
@@ -20,6 +21,7 @@ Documents domain rules and decision rationale in a cohesive form. Located at `co
 - Edge cases and intended handling
 
 **Exclude:**
+
 - Implementation details (file paths, function names, class structure)
 - API endpoints or data schemas
 - UI layouts or component structure
@@ -62,13 +64,13 @@ Records code conventions and UI/API rules.
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `description` | Scope and intent of the rule-set |
-| `rules[].id` | Stable identifier |
-| `rules[].when` | Condition under which the rule applies |
-| `rules[].instruction` | Specific directive to follow |
-| `rules[].examples` | Optional code/usage examples |
+| Field                 | Description                            |
+| --------------------- | -------------------------------------- |
+| `description`         | Scope and intent of the rule-set       |
+| `rules[].id`          | Stable identifier                      |
+| `rules[].when`        | Condition under which the rule applies |
+| `rules[].instruction` | Specific directive to follow           |
+| `rules[].examples`    | Optional code/usage examples           |
 
 ### `*.known-issues.json`
 
@@ -94,14 +96,21 @@ Records known bugs, framework constraints, and temporary workarounds. Include in
 ACs are not managed as separate documents. The describe/test names in test files are the ACs themselves.
 
 **AC writing principles:**
+
 - **Small and specific**: one AC = one behavior/outcome
 - **Include input and expected result in the name**: `"Returns 409 when email is duplicate"` > `"Returns an error"`
 
 ```typescript
-describe('sign up', () => {
-  test('returns 409 when email is duplicate', () => { /* TODO */ });
-  test('returns 400 when password is shorter than 8 characters', () => { /* TODO */ });
-  test('returns the created user_id on success', () => { /* TODO */ });
+describe("sign up", () => {
+  test("returns 409 when email is duplicate", () => {
+    /* TODO */
+  });
+  test("returns 400 when password is shorter than 8 characters", () => {
+    /* TODO */
+  });
+  test("returns the created user_id on success", () => {
+    /* TODO */
+  });
 });
 ```
 
@@ -113,13 +122,13 @@ describe('sign up', () => {
 pnpm cdd <command>
 ```
 
-| Command | Description |
-|---------|-------------|
+| Command                         | Description                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `cdd ac add <file> <test-name>` | Add an empty test skeleton to a test file. Use `--describe <group>` to specify a describe block |
-| `cdd ac list [file]` | Print the describe/test tree of a test file. Parses `test()`, `it()`, and `testAs()` patterns |
-| `cdd rules validate` | Validate the format of `contract/rules/*.rules.json` |
-| `cdd agents init [--force]` | Initialize CDD agent setup in the project (creates `.agents/`, `AGENTS.md`, and symlinks) |
-| `cdd agents sync [--dry-run]` | Update CDD agent prompts to the latest version |
+| `cdd ac list [file]`            | Print the describe/test tree of a test file. Parses `test()`, `it()`, and `testAs()` patterns   |
+| `cdd rules validate`            | Validate the format of `contract/rules/*.rules.json`                                            |
+| `cdd agents init [--force]`     | Initialize CDD agent setup in the project (creates `.agents/`, `AGENTS.md`, and symlinks)       |
+| `cdd agents sync [--dry-run]`   | Update CDD agent prompts to the latest version                                                  |
 
 ### Common options
 

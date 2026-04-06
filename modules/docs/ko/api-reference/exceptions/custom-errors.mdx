@@ -1,6 +1,6 @@
 ---
-title: '커스텀 예외'
-description: '프로젝트에 맞는 커스텀 예외 클래스 만들기'
+title: "커스텀 예외"
+description: "프로젝트에 맞는 커스텀 예외 클래스 만들기"
 ---
 
 Sonamu의 내장 예외 클래스 외에 프로젝트에 특화된 예외를 만들어 사용할 수 있습니다. `SoException`을 상속하여 커스텀 HTTP 상태 코드와 메시지를 가진 예외를 만들 수 있습니다.
@@ -15,7 +15,7 @@ import { SoException } from "sonamu";
 
 export class PaymentFailedException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(402, message, payload);  // 402 Payment Required
+    super(402, message, payload); // 402 Payment Required
   }
 }
 ```
@@ -26,13 +26,13 @@ export class PaymentFailedException extends SoException {
 @api()
 async processPayment(orderId: number, paymentMethod: string) {
   const order = await OrderModel.findById(orderId);
-  
+
   try {
     const result = await paymentGateway.charge(
       order.amount,
       paymentMethod
     );
-    
+
     if (!result.success) {
       throw new PaymentFailedException(
         "결제에 실패했습니다",
@@ -43,7 +43,7 @@ async processPayment(orderId: number, paymentMethod: string) {
         }
       );
     }
-    
+
     return result;
   } catch (err) {
     throw new PaymentFailedException(
@@ -102,7 +102,7 @@ import { SoException } from "sonamu";
 
 export class OutOfStockException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(550, message, payload);  // 커스텀 상태 코드
+    super(550, message, payload); // 커스텀 상태 코드
   }
 }
 
@@ -183,7 +183,7 @@ async cancelOrder(orderId: number) {
 
   // 취소 가능한 상태인지 확인
   const cancellableStates = ["pending", "confirmed"];
-  
+
   if (!cancellableStates.includes(order.status)) {
     throw new InvalidStateTransitionException(
       "현재 상태에서는 주문을 취소할 수 없습니다",
@@ -217,7 +217,7 @@ import { SoException } from "sonamu";
 
 export class RateLimitExceededException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(429, message, payload);  // 429 Too Many Requests
+    super(429, message, payload); // 429 Too Many Requests
   }
 }
 
@@ -289,13 +289,13 @@ import { SoException } from "sonamu";
 
 export class ExternalServiceException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(502, message, payload);  // 502 Bad Gateway
+    super(502, message, payload); // 502 Bad Gateway
   }
 }
 
 export class ExternalServiceTimeoutException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(504, message, payload);  // 504 Gateway Timeout
+    super(504, message, payload); // 504 Gateway Timeout
   }
 }
 ```
@@ -349,24 +349,26 @@ import { SoException } from "sonamu";
 
 export class ValidationException extends SoException {
   static fieldRequired(fieldName: string) {
-    return new ValidationException(
-      `${fieldName}은(는) 필수 항목입니다`,
-      { field: fieldName, code: "REQUIRED" }
-    );
+    return new ValidationException(`${fieldName}은(는) 필수 항목입니다`, {
+      field: fieldName,
+      code: "REQUIRED",
+    });
   }
 
   static fieldInvalid(fieldName: string, reason: string) {
-    return new ValidationException(
-      `${fieldName}이(가) 유효하지 않습니다: ${reason}`,
-      { field: fieldName, code: "INVALID", reason }
-    );
+    return new ValidationException(`${fieldName}이(가) 유효하지 않습니다: ${reason}`, {
+      field: fieldName,
+      code: "INVALID",
+      reason,
+    });
   }
 
   static fieldTooShort(fieldName: string, minLength: number) {
-    return new ValidationException(
-      `${fieldName}은(는) 최소 ${minLength}자 이상이어야 합니다`,
-      { field: fieldName, code: "TOO_SHORT", minLength }
-    );
+    return new ValidationException(`${fieldName}은(는) 최소 ${minLength}자 이상이어야 합니다`, {
+      field: fieldName,
+      code: "TOO_SHORT",
+      minLength,
+    });
   }
 
   constructor(message: LocalizedString, payload?: unknown) {
@@ -407,11 +409,7 @@ import { SoException } from "sonamu";
 
 // 기본 결제 예외
 export class PaymentException extends SoException {
-  constructor(
-    statusCode: number,
-    message: LocalizedString,
-    payload?: unknown
-  ) {
+  constructor(statusCode: number, message: LocalizedString, payload?: unknown) {
     super(statusCode, message, payload);
   }
 }
@@ -419,31 +417,19 @@ export class PaymentException extends SoException {
 // 세부 결제 예외들
 export class CardDeclinedException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "카드가 거부되었습니다",
-      payload
-    );
+    super(402, message || "카드가 거부되었습니다", payload);
   }
 }
 
 export class InsufficientFundsException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "잔액이 부족합니다",
-      payload
-    );
+    super(402, message || "잔액이 부족합니다", payload);
   }
 }
 
 export class InvalidCardException extends PaymentException {
   constructor(message?: string, payload?: unknown) {
-    super(
-      402,
-      message || "유효하지 않은 카드입니다",
-      payload
-    );
+    super(402, message || "유효하지 않은 카드입니다", payload);
   }
 }
 ```
@@ -463,14 +449,14 @@ async processPayment(orderId: number, cardInfo: CardInfo) {
         { reason: err.decline_reason }
       );
     }
-    
+
     if (err.code === "insufficient_funds") {
       throw new InsufficientFundsException(
         undefined,
         { balance: err.available_balance }
       );
     }
-    
+
     if (err.code === "invalid_card") {
       throw new InvalidCardException(
         undefined,
@@ -517,13 +503,13 @@ export class PasswordMismatchException extends SoException {
 // src/exceptions/resource-exceptions.ts
 export class ResourceLockedException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(423, message, payload);  // 423 Locked
+    super(423, message, payload); // 423 Locked
   }
 }
 
 export class ResourceConflictException extends SoException {
   constructor(message: LocalizedString, payload?: unknown) {
-    super(409, message, payload);  // 409 Conflict
+    super(409, message, payload); // 409 Conflict
   }
 }
 ```
@@ -544,10 +530,11 @@ export class ResourceConflictException extends SoException {
 throw new CustomException("Error");
 
 // ✅ 좋은 예
-throw new CustomException(
-  "주문을 처리할 수 없습니다: 재고가 부족합니다",
-  { productId: 123, available: 5, requested: 10 }
-);
+throw new CustomException("주문을 처리할 수 없습니다: 재고가 부족합니다", {
+  productId: 123,
+  available: 5,
+  requested: 10,
+});
 ```
 
 ### payload 구조화
@@ -557,17 +544,19 @@ throw new CustomException(
 throw new CustomException("오류 메시지", {
   code: "ERROR_CODE",
   field: "fieldName",
-  details: { /* 추가 정보 */ },
-  suggestions: ["해결 방법 1", "해결 방법 2"]
+  details: {
+    /* 추가 정보 */
+  },
+  suggestions: ["해결 방법 1", "해결 방법 2"],
 });
 ```
 
 ### 예외 문서화
 
-```typescript
+````typescript
 /**
  * 재고가 부족한 경우 발생하는 예외
- * 
+ *
  * @example
  * ```typescript
  * throw new InsufficientStockException(
@@ -579,7 +568,7 @@ throw new CustomException("오류 메시지", {
 export class InsufficientStockException extends SoException {
   // ...
 }
-```
+````
 
 ## 관련 문서
 

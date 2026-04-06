@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     devRunner: {
       enabled: true,
-      routePrefix: "/__test__",            // 선택, 기본값
+      routePrefix: "/__test__", // 선택, 기본값
       vitestConfigPath: "vitest.config.ts", // 선택, api-root 상대경로
     },
   },
@@ -29,11 +29,11 @@ export default defineConfig({
 
 ### 설정 옵션
 
-| 옵션 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
-| `enabled` | `boolean` | `false` | DevRunner 활성화 여부 |
-| `routePrefix` | `string` | `"/__test__"` | 테스트 엔드포인트 경로 접두사 |
-| `vitestConfigPath` | `string` | - | vitest.config.ts 경로 (api-root 상대경로) |
+| 옵션               | 타입      | 기본값        | 설명                                      |
+| ------------------ | --------- | ------------- | ----------------------------------------- |
+| `enabled`          | `boolean` | `false`       | DevRunner 활성화 여부                     |
+| `routePrefix`      | `string`  | `"/__test__"` | 테스트 엔드포인트 경로 접두사             |
+| `vitestConfigPath` | `string`  | -             | vitest.config.ts 경로 (api-root 상대경로) |
 
 ## 기본 사용법
 
@@ -59,17 +59,15 @@ pnpm sonamu test --status
 
 ### 옵션
 
-| 옵션 | 단축 | 설명 |
-|------|------|------|
-| `--pattern <이름>` | `-p <이름>` | 테스트 이름 패턴으로 필터링 |
-| `--traces` | `-t` | 테스트에서 수집된 trace 정보를 출력 |
-| `--status` | `-s` | DevRunner 상태를 확인하고 종료 |
+| 옵션               | 단축        | 설명                                |
+| ------------------ | ----------- | ----------------------------------- |
+| `--pattern <이름>` | `-p <이름>` | 테스트 이름 패턴으로 필터링         |
+| `--traces`         | `-t`        | 테스트에서 수집된 trace 정보를 출력 |
+| `--status`         | `-s`        | DevRunner 상태를 확인하고 종료      |
 
 <Tip>
-파일 경로는 여러 개를 지정할 수 있습니다:
-```bash
-pnpm sonamu test src/application/user/user.test.ts src/application/post/post.test.ts
-```
+  파일 경로는 여러 개를 지정할 수 있습니다: ```bash pnpm sonamu test
+  src/application/user/user.test.ts src/application/post/post.test.ts ```
 </Tip>
 
 ## Trace 출력
@@ -131,19 +129,19 @@ sequenceDiagram
 
 ## `pnpm test`와의 비교
 
-| | `pnpm test` | `pnpm sonamu test` |
-|---|---|---|
-| 서버 필요 | 불필요 | `pnpm dev` 실행 중 필요 |
-| 실행 속도 | 매번 초기화 | Vitest 인스턴스 재사용 (빠름) |
-| HMR 연동 | 없음 | 코드 변경 즉시 반영 |
-| 용도 | CI, 전체 테스트 | 개발 중 빠른 피드백 |
+|           | `pnpm test`     | `pnpm sonamu test`            |
+| --------- | --------------- | ----------------------------- |
+| 서버 필요 | 불필요          | `pnpm dev` 실행 중 필요       |
+| 실행 속도 | 매번 초기화     | Vitest 인스턴스 재사용 (빠름) |
+| HMR 연동  | 없음            | 코드 변경 즉시 반영           |
+| 용도      | CI, 전체 테스트 | 개발 중 빠른 피드백           |
 
 <Info>
 **언제 어떤 것을 사용하나요?**
 
 - **개발 중**: `pnpm sonamu test`로 빠르게 피드백을 받으세요. 코드를 수정하고 바로 테스트를 실행할 수 있습니다.
 - **CI/CD**: `pnpm test`를 사용하세요. 독립적인 환경에서 전체 테스트를 실행합니다.
-</Info>
+  </Info>
 
 ## 상태 확인
 
@@ -166,11 +164,11 @@ curl http://localhost:3000/__test__/status
 }
 ```
 
-| 필드 | 설명 |
-|------|------|
-| `ready` | Vitest 인스턴스가 준비되었는지 여부 |
-| `running` | 현재 테스트가 실행 중인지 여부 |
-| `lastRunAt` | 마지막 테스트 실행 시각 |
+| 필드           | 설명                                                         |
+| -------------- | ------------------------------------------------------------ |
+| `ready`        | Vitest 인스턴스가 준비되었는지 여부                          |
+| `running`      | 현재 테스트가 실행 중인지 여부                               |
+| `lastRunAt`    | 마지막 테스트 실행 시각                                      |
 | `sseAvailable` | SSE(Server-Sent Events) 실시간 스트리밍이 사용 가능한지 여부 |
 
 ## 문제 해결

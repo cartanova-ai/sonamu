@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { type ReactNode, Suspense, useEffect } from "react";
+
 import Sidebar from "./components/Sidebar";
 import { SUPPORTED_LOCALES, setLocale } from "./i18n/sd.generated";
 

@@ -17,37 +17,37 @@ mkdir -p /Users/minsangk/Development/sonamu/examples/miomock/api/src/ssr
 ### 2. routes.ts 생성
 
 ```typescript
-import { registerSSR } from 'sonamu/ssr';
-import { UserService } from '@/queries.generated';
+import { registerSSR } from "sonamu/ssr";
+import { UserService } from "@/queries.generated";
 
 // 테스트용: 홈페이지 SSR
 registerSSR({
-  path: '/',
+  path: "/",
   preload: () => [],
   head: () => ({
-    title: 'Miomock - Home',
+    title: "Miomock - Home",
   }),
 });
 
 // 테스트용: 사용자 상세 페이지 SSR
 registerSSR({
-  path: '/users/:id',
+  path: "/users/:id",
   preload: (params) => [
-    UserService.getUser('A', Number(params.id))  // ← 타입 체크 완벽!
+    UserService.getUser("A", Number(params.id)), // ← 타입 체크 완벽!
   ],
   head: (dehydratedState) => {
     // dehydratedState.queries에서 데이터 찾기
     const queries = Object.values(dehydratedState.queries || {});
-    const userQuery = queries.find((q: any) => 
-      q.queryKey?.[0] === 'User' && q.queryKey?.[1] === 'getUser'
+    const userQuery = queries.find(
+      (q: any) => q.queryKey?.[0] === "User" && q.queryKey?.[1] === "getUser",
     );
     const user = userQuery?.state?.data;
-    
+
     return {
-      title: user ? `User: ${user.name}` : 'User',
+      title: user ? `User: ${user.name}` : "User",
       meta: [
-        { property: 'og:title', content: user?.name || 'User' },
-        { property: 'og:type', content: 'profile' },
+        { property: "og:title", content: user?.name || "User" },
+        { property: "og:type", content: "profile" },
       ],
     };
   },
@@ -57,31 +57,32 @@ registerSSR({
 ### 사용 예시: 복수 데이터 preload
 
 ```typescript
-import { UserService, EmployeeService } from '@/queries.generated';
+import { UserService, EmployeeService } from "@/queries.generated";
 
 registerSSR({
-  path: '/dashboard/:userId',
+  path: "/dashboard/:userId",
   preload: (params) => {
     const userId = Number(params.userId);
-    
+
     return [
       // 사용자 정보
-      UserService.getUser('A', userId),
-      
+      UserService.getUser("A", userId),
+
       // 사용자의 직원 목록
-      EmployeeService.getEmployees('B', { 
+      EmployeeService.getEmployees("B", {
         userId,
-        limit: 20 
+        limit: 20,
       }),
     ];
   },
   head: (dehydratedState) => ({
-    title: 'Dashboard',
+    title: "Dashboard",
   }),
 });
 ```
 
 ### 확인 사항
+
 - [ ] 파일 생성 후 HMR로 자동 로드
 - [ ] 콘솔에 'SSR config changed' 메시지 확인
 - [ ] TypeScript에서 UserService.getUser 자동완성 동작
@@ -98,11 +99,11 @@ registerSSR({
 ### renderer.ts 생성
 
 ```typescript
-import type { ViteDevServer } from 'vite';
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import path from 'path';
-import type { SSRRoute, PreloadedData } from './types';
-import type { SonamuFastifyConfig } from '../types/types';
+import type { ViteDevServer } from "vite";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import path from "path";
+import type { SSRRoute, PreloadedData } from "./types";
+import type { SonamuFastifyConfig } from "../types/types";
 
 export async function renderSSR(
   url: string,
@@ -113,37 +114,31 @@ export async function renderSSR(
   config: SonamuFastifyConfig,
   vite: ViteDevServer,
 ): Promise<string> {
-  const { Sonamu } = await import('../api/sonamu');
-  
+  const { Sonamu } = await import("../api/sonamu");
+
   // 1. preload 실행 → SSRQuery[] 획득
   const preloadConfig = route.preload ? route.preload(params) : [];
-  
+
   // 2. Sonamu.invokeApiForSSR로 API 직접 호출
   const preloadedData: PreloadedData[] = [];
-  
+
   for (const { modelName, methodName, params: apiParams } of preloadConfig) {
     // ExtendedApi 찾기
     const api = Sonamu.syncer.apis.find(
-      a => a.modelName === modelName && a.methodName === methodName
+      (a) => a.modelName === modelName && a.methodName === methodName,
     );
-    
+
     if (!api) {
       console.warn(`API not found: ${modelName}.${methodName}`);
       continue;
     }
-    
+
     try {
       // API 직접 호출 (HTTP 오버헤드 없음)
-      const result = await Sonamu.invokeApiForSSR(
-        api,
-        apiParams,
-        request,
-        reply,
-        config
-      );
-      
+      const result = await Sonamu.invokeApiForSSR(api, apiParams, request, reply, config);
+
       // queryKey 생성: [엔티티명, 메소드명, ...파라미터]
-      const entityName = modelName.replace('Model', '').replace('Frame', '');
+      const entityName = modelName.replace("Model", "").replace("Frame", "");
       preloadedData.push({
         queryKey: [entityName, methodName, ...apiParams],
         data: result,
@@ -153,76 +148,75 @@ export async function renderSSR(
       // 에러 발생 시 해당 쿼리는 스킵 (CSR로 fallback)
     }
   }
-  
+
   // 3. index.html 읽기
-  const fs = await import('fs/promises');
-  const indexHtmlPath = path.join(vite.config.root, 'index.html');
-  let template = await fs.readFile(indexHtmlPath, 'utf-8');
+  const fs = await import("fs/promises");
+  const indexHtmlPath = path.join(vite.config.root, "index.html");
+  let template = await fs.readFile(indexHtmlPath, "utf-8");
   template = await vite.transformIndexHtml(url, template);
-  
+
   // 4. entry-server 로드 및 렌더링
-  const { render } = await vite.ssrLoadModule('/src/entry-server.generated.tsx');
+  const { render } = await vite.ssrLoadModule("/src/entry-server.generated.tsx");
   const { html: appHtml, dehydratedState } = await render(url, preloadedData);
-  
+
   // 5. SSR 데이터 스크립트 생성
   const ssrDataScript = `
     <script>
-      window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, '\\u003c')};
+      window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")};
     </script>
   `;
-  
+
   // 6. head 생성
-  const headTags = route.head 
-    ? generateHeadTags(route.head(dehydratedState)) 
-    : '';
-  
+  const headTags = route.head ? generateHeadTags(route.head(dehydratedState)) : "";
+
   // 7. 치환
   const html = template
-    .replace('<!--app-head-->', headTags + '\n    ' + ssrDataScript)
-    .replace('<!--app-html-->', appHtml);
-  
+    .replace("<!--app-head-->", headTags + "\n    " + ssrDataScript)
+    .replace("<!--app-html-->", appHtml);
+
   return html;
 }
 
-function generateHeadTags(head: ReturnType<NonNullable<SSRRoute['head']>>): string {
+function generateHeadTags(head: ReturnType<NonNullable<SSRRoute["head"]>>): string {
   const tags: string[] = [];
-  
+
   if (head.title) {
     tags.push(`<title>${escapeHtml(head.title)}</title>`);
   }
-  
+
   if (head.meta) {
     for (const meta of head.meta) {
       const attrs: string[] = [];
       if (meta.name) attrs.push(`name="${escapeHtml(meta.name)}"`);
       if (meta.property) attrs.push(`property="${escapeHtml(meta.property)}"`);
       attrs.push(`content="${escapeHtml(meta.content)}"`);
-      tags.push(`<meta ${attrs.join(' ')} />`);
+      tags.push(`<meta ${attrs.join(" ")} />`);
     }
   }
-  
-  return tags.join('\n    ');
+
+  return tags.join("\n    ");
 }
 
 function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 ```
 
 ### ssr/index.ts에 export 추가
 
 ```typescript
-export { renderSSR } from './renderer';
-export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from './registry';
-export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from './types';
+export { renderSSR } from "./renderer";
+export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from "./registry";
+export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from "./types";
 ```
 
 ### 확인 사항
+
 - [ ] TypeScript 컴파일 에러 없음
 - [ ] 임포트 에러 없음
 
@@ -246,42 +240,42 @@ async withFastify(
   },
 ) {
   // ... 기존 코드
-  
+
   const { isLocal } = await import("../utils/controller");
-  
+
   if (isLocal()) {
     // Dev 모드: Vite dev server
     const vite = await this.createViteDevServer();
-    
+
     // Vite middleware 등록
     server.all('*', async (request, reply) => {
       // Sonamu UI는 skip
       if (request.url.startsWith('/sonamu-ui')) {
         return;
       }
-      
+
       // API는 skip
       if (request.url.startsWith(this.config.api.route.prefix)) {
         return;
       }
-      
+
       const url = request.url;
-      
+
       // SSR 라우트 체크
       const { matchSSRRoute } = await import('../ssr');
       const match = matchSSRRoute(url);
-      
+
       if (match) {
         // SSR 렌더링
         try {
           const { renderSSR } = await import('../ssr');
           const html = await renderSSR(
-            url, 
-            match.route, 
-            match.params, 
-            request, 
-            reply, 
-            config, 
+            url,
+            match.route,
+            match.params,
+            request,
+            reply,
+            config,
             vite
           );
           reply.type('text/html').send(html);
@@ -292,7 +286,7 @@ async withFastify(
           // fallback to CSR (아래 로직 실행)
         }
       }
-      
+
       // CSR (기존 로직)
       try {
         const fs = await import('fs/promises');
@@ -301,7 +295,7 @@ async withFastify(
           'utf-8'
         );
         template = await vite.transformIndexHtml(url, template);
-        
+
         reply.type('text/html').send(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
@@ -313,13 +307,14 @@ async withFastify(
     // Production 모드 (Phase 6에서 구현)
     // ...
   }
-  
+
   // API 라우팅 설정
   // ... 기존 코드
 }
 ```
 
 ### 확인 사항
+
 - [ ] TypeScript 컴파일 에러 없음
 - [ ] 서버 재시작 에러 없음
 
@@ -343,6 +338,7 @@ http://localhost:10280/
 ```
 
 **확인 사항**:
+
 - [ ] View Source에서 HTML에 컨텐츠 포함
 - [ ] title 태그: "Miomock - Home"
 - [ ] React 정상 hydrate
@@ -355,31 +351,33 @@ http://localhost:10280/users/1
 ```
 
 **확인 사항**:
+
 - [ ] View Source에서 사용자 데이터 포함
 - [ ] title 태그: "User: [사용자명]"
 - [ ] og:title meta 태그 존재
-- [ ] window.__SONAMU_SSR__ 확인 (개발자 도구)
+- [ ] window.**SONAMU_SSR** 확인 (개발자 도구)
 - [ ] 네트워크 탭: `/api/user/findById` 요청 없음 (SSR에서 처리됨)
 
 #### 4. 개발자 도구 확인
 
 ```javascript
 // 콘솔에서
-window.__SONAMU_SSR__
+window.__SONAMU_SSR__;
 // 확인: { queries: { ... }, mutations: { ... } }
 
 // queries 내부 구조 확인
-Object.keys(window.__SONAMU_SSR__.queries)
+Object.keys(window.__SONAMU_SSR__.queries);
 // 확인: queryHash 목록
 
 // 특정 쿼리 데이터 확인
 const queries = Object.values(window.__SONAMU_SSR__.queries);
-queries.find(q => q.queryKey[0] === 'User')
+queries.find((q) => q.queryKey[0] === "User");
 ```
 
 #### 5. Hydration 확인
 
 **체크 포인트**:
+
 - [ ] 페이지 로드 후 즉시 interactive
 - [ ] React Query Devtools에서 캐시된 데이터 확인
 - [ ] 네트워크 탭에서 중복 요청 없음
@@ -393,6 +391,7 @@ http://localhost:10280/employees
 ```
 
 **확인 사항**:
+
 - [ ] CSR로 정상 동작
 - [ ] View Source에는 빈 HTML (`<!--app-html-->`)
 - [ ] 클라이언트에서 데이터 fetch
@@ -401,6 +400,7 @@ http://localhost:10280/employees
 ### 네트워크 흐름 분석
 
 #### SSR 라우트 (/users/1)
+
 ```
 1. 브라우저 → GET /users/1
 2. Sonamu → SSR 렌더링
@@ -414,10 +414,12 @@ http://localhost:10280/employees
 ```
 
 **장점 확인**:
+
 - ✅ HTTP 오버헤드 없음 (서버 내부에서 직접 Model 호출)
 - ✅ 세션 정보 자동 동기화 (ALS 활용)
 
 #### CSR 라우트 (/employees)
+
 ```
 1. 브라우저 → GET /employees
 2. Sonamu → 빈 HTML 응답
@@ -429,6 +431,7 @@ http://localhost:10280/employees
 ### 디버깅 팁
 
 **SSR 에러 발생 시**:
+
 1. 콘솔에서 에러 메시지 확인
 2. `import.meta.env.SSR` 체크 누락 확인
 3. Browser API 사용 여부 확인 (window, document 등)
@@ -436,23 +439,27 @@ http://localhost:10280/employees
 5. Context 파라미터 위치 확인
 
 **Hydration mismatch 발생 시**:
+
 1. 서버와 클라이언트 렌더링 결과 비교
 2. 조건부 렌더링 제거 (useEffect로 이동)
 3. 동일한 초기 상태 보장
 4. Date.now() 같은 비결정적 값 제거
 
 **타입 에러 발생 시**:
+
 1. queries.generated.ts 재생성 확인
 2. modelName, methodName 정확한지 확인
 3. params 배열 순서 확인 (Context 제외)
 
 **데이터가 안 나올 때**:
+
 1. registerSSR의 preload 함수 리턴값 확인
 2. Sonamu.syncer.apis에서 API 찾아지는지 확인
 3. invokeApiForSSR 에러 로그 확인
 4. dehydratedState에 데이터 들어있는지 확인
 
 ### 확인 사항
+
 - [ ] SSR 라우트에서 HTML에 컨텐츠 포함
 - [ ] head 태그 정상 렌더링
 - [ ] preload된 데이터로 초기 렌더링
@@ -470,44 +477,44 @@ http://localhost:10280/employees
 
 ```typescript
 // api/src/ssr/routes.ts
-import { UserService, ProjectService, CommentService } from '@/queries.generated';
+import { UserService, ProjectService, CommentService } from "@/queries.generated";
 
 registerSSR({
-  path: '/projects/:projectId',
+  path: "/projects/:projectId",
   preload: (params) => {
     const projectId = Number(params.projectId);
-    
+
     return [
       // 프로젝트 정보
-      ProjectService.getProject('A', projectId),
-      
+      ProjectService.getProject("A", projectId),
+
       // 프로젝트 멤버들
-      UserService.getUsers('B', { 
+      UserService.getUsers("B", {
         projectId,
-        limit: 20 
+        limit: 20,
       }),
-      
+
       // 최근 댓글
-      CommentService.getComments('C', {
+      CommentService.getComments("C", {
         projectId,
         limit: 10,
-        orderBy: 'createdAt:desc'
+        orderBy: "createdAt:desc",
       }),
     ];
   },
   head: (dehydratedState) => {
     const queries = Object.values(dehydratedState.queries || {});
-    const projectQuery = queries.find((q: any) => 
-      q.queryKey?.[0] === 'Project' && q.queryKey?.[1] === 'getProject'
+    const projectQuery = queries.find(
+      (q: any) => q.queryKey?.[0] === "Project" && q.queryKey?.[1] === "getProject",
     );
     const project = projectQuery?.state?.data;
-    
+
     return {
-      title: project ? `${project.name} - Projects` : 'Project',
+      title: project ? `${project.name} - Projects` : "Project",
       meta: [
-        { property: 'og:title', content: project?.name || 'Project' },
-        { property: 'og:description', content: project?.description || '' },
-        { property: 'og:type', content: 'website' },
+        { property: "og:title", content: project?.name || "Project" },
+        { property: "og:description", content: project?.description || "" },
+        { property: "og:type", content: "website" },
       ],
     };
   },
@@ -518,7 +525,7 @@ registerSSR({
 
 ```typescript
 registerSSR({
-  path: '/my/profile',
+  path: "/my/profile",
   preload: (params) => [
     // ALS를 통해 Context가 자동 주입되므로
     // 현재 로그인한 사용자 정보를 가져올 수 있음
@@ -526,13 +533,13 @@ registerSSR({
   ],
   head: (dehydratedState) => {
     const queries = Object.values(dehydratedState.queries || {});
-    const meQuery = queries.find((q: any) => 
-      q.queryKey?.[0] === 'User' && q.queryKey?.[1] === 'getMe'
+    const meQuery = queries.find(
+      (q: any) => q.queryKey?.[0] === "User" && q.queryKey?.[1] === "getMe",
     );
     const me = meQuery?.state?.data;
-    
+
     return {
-      title: me ? `${me.name}'s Profile` : 'My Profile',
+      title: me ? `${me.name}'s Profile` : "My Profile",
     };
   },
 });
@@ -542,14 +549,11 @@ registerSSR({
 
 ```typescript
 registerSSR({
-  path: '/dashboard',
+  path: "/dashboard",
   preload: (params) => {
     // URL에서 query string 추출 불가능하므로
     // 기본 데이터만 preload
-    return [
-      UserService.getMe(),
-      ProjectService.getProjects('A', { limit: 10 }),
-    ];
+    return [UserService.getMe(), ProjectService.getProjects("A", { limit: 10 })];
   },
 });
 ```

@@ -1,5 +1,6 @@
-// biome-ignore-all lint/suspicious/noExplicitAny: test.each의 expectedPath 함수에서 동적 경로 접근을 위해 any 타입 필요
+/* oxlint-disable @typescript-eslint/no-explicit-any */ // test.each의 expectedPath 함수에서 동적 경로 접근을 위해 any 타입 필요
 import { describe, expect, test } from "vitest";
+
 import { withProp, withProps } from "../../../../../modules/sonamu/dist/utils/type-utils";
 
 // 타입 체크 헬퍼: TypeScript 컴파일러가 올바른 타입을 추론하는지 검증

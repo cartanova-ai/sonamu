@@ -1,6 +1,6 @@
 ---
-title: 'Sinks & Filters'
-description: '로그 출력 대상과 필터링 설정'
+title: "Sinks & Filters"
+description: "로그 출력 대상과 필터링 설정"
 ---
 
 Sink는 로그를 출력할 대상을, Filter는 어떤 로그를 출력할지 결정합니다. `sonamu.config.ts`의 `logging` 옵션에서 커스텀 sink와 filter를 추가할 수 있습니다.
@@ -10,6 +10,7 @@ Sink는 로그를 출력할 대상을, Filter는 어떤 로그를 출력할지 �
 Sink는 로그가 최종적으로 출력되는 곳입니다.
 
 **예시:**
+
 - 콘솔 (터미널)
 - 파일
 - 외부 로깅 서비스 (Sentry, Datadog 등)
@@ -20,6 +21,7 @@ Sink는 로그가 최종적으로 출력되는 곳입니다.
 로그는 목적에 따라 다른 곳에 기록되어야 합니다:
 
 **1. 실시간 모니터링 (콘솔)**
+
 ```typescript
 // 개발 중 즉시 확인
 logger.info("API called", { url: "/api/user" });
@@ -27,6 +29,7 @@ logger.info("API called", { url: "/api/user" });
 ```
 
 **2. 영구 보관 (파일)**
+
 ```typescript
 // 나중에 분석하기 위해
 logger.error("Payment failed", { orderId });
@@ -34,6 +37,7 @@ logger.error("Payment failed", { orderId });
 ```
 
 **3. 에러 알림 (외부 서비스)**
+
 ```typescript
 // 심각한 문제 즉시 통보
 logger.fatal("DB connection lost");
@@ -41,6 +45,7 @@ logger.fatal("DB connection lost");
 ```
 
 **4. 통계 분석 (데이터베이스)**
+
 ```typescript
 // 로그 데이터 분석
 logger.info("User action", { action: "purchase", amount });
@@ -55,13 +60,14 @@ logger.info("User action", { action: "purchase", amount });
 loggers: [
   {
     category: ["fastify"],
-    sinks: ["console", "file", "sentry"],  // 3곳에 동시 기록
+    sinks: ["console", "file", "sentry"], // 3곳에 동시 기록
     lowestLevel: "error",
   },
-]
+];
 ```
 
 **장점:**
+
 - 실시간 확인 (console)
 - 영구 보관 (file)
 - 즉시 알림 (sentry)
@@ -71,6 +77,7 @@ loggers: [
 Filter는 로그를 선택적으로 출력하기 위한 조건입니다.
 
 **예시:**
+
 - 특정 카테고리만
 - 특정 레벨 이상만
 - 특정 URL 패턴만
@@ -81,18 +88,26 @@ Filter는 로그를 선택적으로 출력하기 위한 조건입니다.
 모든 로그를 다 기록하면 문제가 발생합니다:
 
 **1. 성능 저하**
+
 ```typescript
 // Filter 없음: 모든 요청 로깅
-/favicon.ico  // 불필요
-/assets/logo.png  // 불필요
-/api/healthcheck  // 반복적, 불필요
-/api/user/list  // 필요!
-
-// Filter 있음: /api만 로깅
-/api/user/list  // 필요!
+/favicon.ico  / /
+  불필요 /
+  assets /
+  logo.png / // 불필요
+  api /
+  healthcheck / // 반복적, 불필요
+  api /
+  user /
+  list / // 필요!
+  // Filter 있음: /api만 로깅
+  api /
+  user /
+  list; // 필요!
 ```
 
 **2. 디스크 공간 낭비**
+
 ```typescript
 // 하루 100만 건의 요청
 // Filter 없음: 100만 건 모두 기록 → 수백 MB
@@ -100,6 +115,7 @@ Filter는 로그를 선택적으로 출력하기 위한 조건입니다.
 ```
 
 **3. 가독성 저하**
+
 ```
 [로그 파일]
 [INFO] /favicon.ico
@@ -130,12 +146,12 @@ filters: {
 
 두 개념은 서로 다른 목적을 가집니다:
 
-| 구분 | Sink | Filter |
-|------|------|--------|
-| **목적** | 어디에 기록? | 무엇을 기록? |
-| **타이밍** | 로그 출력 시 | 필터링 시 |
-| **예시** | 콘솔, 파일, Sentry | URL 패턴, 레벨, 시간 |
-| **역할** | 출력 형식 결정 | 출력 여부 결정 |
+| 구분       | Sink               | Filter               |
+| ---------- | ------------------ | -------------------- |
+| **목적**   | 어디에 기록?       | 무엇을 기록?         |
+| **타이밍** | 로그 출력 시       | 필터링 시            |
+| **예시**   | 콘솔, 파일, Sentry | URL 패턴, 레벨, 시간 |
+| **역할**   | 출력 형식 결정     | 출력 여부 결정       |
 
 ### 함께 사용하기
 
@@ -145,12 +161,12 @@ filters: {
     console: getConsoleSink(),      // 어디에?
     errorFile: getFileSink("..."),  // 어디에?
   },
-  
+
   filters: {
     "api-only": (record) => ...,   // 무엇을?
     "errors": (record) => ...,      // 무엇을?
   },
-  
+
   loggers: [
     {
       category: ["fastify"],
@@ -171,6 +187,7 @@ filters: {
 ### Sink를 추가할 때
 
 **1. 새로운 출력 대상이 필요할 때**
+
 ```typescript
 // 예: Slack으로 에러 알림
 sinks: {
@@ -179,6 +196,7 @@ sinks: {
 ```
 
 **2. 다른 형식으로 기록할 때**
+
 ```typescript
 // 예: JSON 형식으로 파일 저장
 sinks: {
@@ -187,17 +205,19 @@ sinks: {
 ```
 
 **3. 여러 곳에 동시 기록할 때**
+
 ```typescript
 loggers: [
   {
-    sinks: ["console", "file", "sentry"],  // 3곳에 동시
+    sinks: ["console", "file", "sentry"], // 3곳에 동시
   },
-]
+];
 ```
 
 ### Filter를 추가할 때
 
 **1. 특정 조건의 로그만 필요할 때**
+
 ```typescript
 // 예: 느린 요청만
 filters: {
@@ -206,6 +226,7 @@ filters: {
 ```
 
 **2. 성능을 개선하고 싶을 때**
+
 ```typescript
 // 예: 불필요한 로그 제외
 filters: {
@@ -214,17 +235,18 @@ filters: {
 ```
 
 **3. Sink별로 다른 로그를 보내고 싶을 때**
+
 ```typescript
 loggers: [
   {
     sinks: ["console"],
-    filters: ["all"],     // 콘솔: 모든 로그
+    filters: ["all"], // 콘솔: 모든 로그
   },
   {
     sinks: ["errorFile"],
-    filters: ["errors"],  // 파일: 에러만
+    filters: ["errors"], // 파일: 에러만
   },
-]
+];
 ```
 
 ## Sinks 설정 상세
@@ -246,7 +268,7 @@ export default defineConfig({
       "my-file": getFileSink("logs/app.log"),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -254,7 +276,8 @@ export default defineConfig({
 ```
 
 <Warning>
-`"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 Sink입니다. 이 이름으로 추가하면 기본 Sink를 덮어씁니다.
+  `"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 Sink입니다. 이 이름으로 추가하면 기본
+  Sink를 덮어씁니다.
 </Warning>
 
 ### 콘솔 Sink
@@ -276,7 +299,7 @@ export default defineConfig({
       }),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -296,7 +319,7 @@ export default defineConfig({
       accessLog: getFileSink("logs/access.log"),
       errorLog: getFileSink("logs/errors.log"),
     },
-    
+
     loggers: [
       // 모든 로그는 access.log에
       {
@@ -312,7 +335,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -335,7 +358,7 @@ export default defineConfig({
       stream: getStreamSink(stream),
     },
   },
-  
+
   server: {
     // ...
   },
@@ -364,16 +387,16 @@ export default defineConfig({
     sinks: {
       sentry: sentrySink,
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
-        sinks: ["fastify-console", "sentry"],  // 콘솔 + Sentry
+        sinks: ["fastify-console", "sentry"], // 콘솔 + Sentry
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -405,7 +428,7 @@ export default defineConfig({
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -413,7 +436,8 @@ export default defineConfig({
 ```
 
 <Warning>
-`"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 Filter입니다. 이 이름으로 추가하면 기본 Filter를 덮어씁니다.
+  `"fastify-console"` 이름은 Sonamu가 자동으로 생성하는 기본 Filter입니다. 이 이름으로 추가하면 기본
+  Filter를 덮어씁니다.
 </Warning>
 
 ### URL 기반 필터
@@ -432,17 +456,17 @@ export default defineConfig({
         return url?.startsWith("/api/user") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
         sinks: ["fastify-console"],
-        filters: ["user-api"],  // /api/user/* 만
+        filters: ["user-api"], // /api/user/* 만
         lowestLevel: "info",
       },
     ],
   },
-  
+
   server: {
     // ...
   },
@@ -459,7 +483,7 @@ export default defineConfig({
       "warning-or-higher": (record) => record.level >= "warning",
     },
   },
-  
+
   server: {
     // ...
   },
@@ -474,11 +498,11 @@ export default defineConfig({
     filters: {
       "business-hours": (record) => {
         const hour = new Date().getHours();
-        return hour >= 9 && hour < 18;  // 09:00 - 18:00만
+        return hour >= 9 && hour < 18; // 09:00 - 18:00만
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -493,11 +517,11 @@ export default defineConfig({
     filters: {
       "slow-requests": (record) => {
         const responseTime = record.properties.responseTime as number | undefined;
-        return responseTime ? responseTime > 1000 : false;  // 1초 이상만
+        return responseTime ? responseTime > 1000 : false; // 1초 이상만
       },
     },
   },
-  
+
   server: {
     // ...
   },
@@ -530,7 +554,7 @@ export default defineConfig({
             errorFile: getFileSink("logs/errors.log"),
           }),
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -548,7 +572,7 @@ export default defineConfig({
         : []),
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -570,7 +594,7 @@ export default defineConfig({
       accessLog: getFileSink("logs/access.log"),
       errorLog: getFileSink("logs/error.log"),
     },
-    
+
     filters: {
       "api-requests": (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
@@ -580,7 +604,7 @@ export default defineConfig({
       },
       "errors-only": (record: LogRecord) => record.level >= "error",
     },
-    
+
     loggers: [
       // 콘솔: 모든 로그
       {
@@ -604,7 +628,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -639,7 +663,7 @@ export default defineConfig({
       console: getConsoleSink(),
       sentry: sentrySink,
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -648,7 +672,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -670,7 +694,7 @@ export default defineConfig({
       adminLog: getFileSink("logs/admin.log"),
       userLog: getFileSink("logs/user.log"),
     },
-    
+
     filters: {
       "admin-routes": (record: LogRecord) => {
         const req = record.properties.req as FastifyRequest | undefined;
@@ -685,7 +709,7 @@ export default defineConfig({
         return url?.startsWith("/api/user") ?? false;
       },
     },
-    
+
     loggers: [
       {
         category: ["fastify"],
@@ -701,7 +725,7 @@ export default defineConfig({
       },
     ],
   },
-  
+
   server: {
     listen: { port: 34900 },
   },
@@ -723,6 +747,7 @@ type LogRecord = {
 ```
 
 **주요 프로퍼티:**
+
 - `category`: 로그 카테고리 (예: `["fastify"]`)
 - `level`: 로그 레벨 (`"debug"` | `"info"` | `"warning"` | `"error"` | `"fatal"`)
 - `message`: 로그 메시지 배열
@@ -730,6 +755,7 @@ type LogRecord = {
 - `properties`: 추가 정보 (Fastify의 경우 `req`, `res` 등)
 
 **Fastify의 properties:**
+
 ```typescript
 {
   req?: FastifyRequest;
@@ -805,35 +831,19 @@ filters: {
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card 
-    title="카테고리 로깅" 
-    icon="folder-tree" 
-    href="/ko/configuration/logging/category-logging"
-  >
+  <Card title="카테고리 로깅" icon="folder-tree" href="/ko/configuration/logging/category-logging">
     카테고리 시스템으로 로그를 체계적으로 관리하세요
   </Card>
-  
-  <Card 
-    title="Fastify 로깅" 
-    icon="bolt" 
-    href="/ko/configuration/logging/fastify-logging"
-  >
-    HTTP 요청/응답 로깅을 커스터마이징하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 설정" 
-    icon="gear" 
-    href="/ko/configuration/logging/logtape-setup"
-  >
-    기본 로깅 설정과 개념을 학습하세요
-  </Card>
-  
-  <Card 
-    title="LogTape 공식 문서" 
-    icon="book-open" 
-    href="https://github.com/dahlia/logtape"
-  >
+
+<Card title="Fastify 로깅" icon="bolt" href="/ko/configuration/logging/fastify-logging">
+  HTTP 요청/응답 로깅을 커스터마이징하세요
+</Card>
+
+<Card title="LogTape 설정" icon="gear" href="/ko/configuration/logging/logtape-setup">
+  기본 로깅 설정과 개념을 학습하세요
+</Card>
+
+  <Card title="LogTape 공식 문서" icon="book-open" href="https://github.com/dahlia/logtape">
     LogTape의 고급 기능과 API를 확인하세요
   </Card>
 </CardGroup>

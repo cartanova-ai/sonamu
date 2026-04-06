@@ -16,7 +16,7 @@ import { BaseFrameClass, api } from "sonamu";
 class HealthFrame extends BaseFrameClass {
   // Frame 이름 (URL 경로에 사용됨)
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{
     status: string;
@@ -33,11 +33,12 @@ export const HealthFrameInstance = new HealthFrame();
 ```
 
 **생성되는 엔드포인트**:
+
 - `GET /api/health/check`
 
 <Info>
-Frame은 `frameName` 속성으로 URL 경로가 결정됩니다.
-소문자로 변환되어 `/api/{frameName}/{methodName}` 형태가 됩니다.
+  Frame은 `frameName` 속성으로 URL 경로가 결정됩니다. 소문자로 변환되어 `/api/{frameName}/
+  {methodName}` 형태가 됩니다.
 </Info>
 
 ## 필수 요소
@@ -67,7 +68,7 @@ class HealthFrame extends BaseFrameClass {
 ```typescript
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   // @api 데코레이터 필수
   @api({ httpMethod: "GET" })
   async check(): Promise<{ status: string }> {
@@ -104,12 +105,12 @@ interface HealthCheckResponse {
 
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<HealthCheckResponse> {
     // DB 연결 체크
     let dbStatus: "connected" | "disconnected" = "disconnected";
-    
+
     try {
       const rdb = this.getPuri("r");
       await rdb.raw("SELECT 1");
@@ -117,10 +118,10 @@ class HealthFrame extends BaseFrameClass {
     } catch (error) {
       console.error("Database connection failed:", error);
     }
-    
+
     // 메모리 정보
     const memoryUsage = process.memoryUsage();
-    
+
     return {
       status: dbStatus === "connected" ? "ok" : "error",
       timestamp: new Date(),
@@ -133,7 +134,7 @@ class HealthFrame extends BaseFrameClass {
       database: dbStatus,
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async ping(): Promise<{ message: string; timestamp: Date }> {
     return {
@@ -141,7 +142,7 @@ class HealthFrame extends BaseFrameClass {
       timestamp: new Date(),
     };
   }
-  
+
   @api({ httpMethod: "GET" })
   async version(): Promise<{
     version: string;
@@ -183,58 +184,55 @@ interface DecryptParams {
 
 class UtilsFrame extends BaseFrameClass {
   frameName = "Utils";
-  
+
   @api({ httpMethod: "POST" })
   async hash(params: HashParams): Promise<{ hash: string }> {
-    const hash = crypto
-      .createHash(params.algorithm)
-      .update(params.text)
-      .digest("hex");
-    
+    const hash = crypto.createHash(params.algorithm).update(params.text).digest("hex");
+
     return { hash };
   }
-  
+
   @api({ httpMethod: "POST" })
   async uuid(): Promise<{ uuid: string }> {
     return {
       uuid: crypto.randomUUID(),
     };
   }
-  
+
   @api({ httpMethod: "POST" })
   async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
     const algorithm = "aes-256-cbc";
     const key = crypto.scryptSync(params.key, "salt", 32);
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipheriv(algorithm, key, iv);
-    
+
     let encrypted = cipher.update(params.text, "utf8", "hex");
     encrypted += cipher.final("hex");
-    
+
     // IV를 함께 반환 (복호화에 필요)
     return {
       encrypted: iv.toString("hex") + ":" + encrypted,
     };
   }
-  
+
   @api({ httpMethod: "POST" })
   async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
     const algorithm = "aes-256-cbc";
     const key = crypto.scryptSync(params.key, "salt", 32);
-    
+
     // IV와 암호문 분리
     const [ivHex, encrypted] = params.encrypted.split(":");
     const iv = Buffer.from(ivHex, "hex");
-    
+
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    
+
     let decrypted = decipher.update(encrypted, "hex", "utf8");
     decrypted += decipher.final("utf8");
-    
+
     return { decrypted };
   }
-  
+
   @api({ httpMethod: "POST" })
   async randomString(params: {
     length: number;
@@ -242,15 +240,21 @@ class UtilsFrame extends BaseFrameClass {
   }): Promise<{ random: string }> {
     const length = Math.min(params.length, 1024); // 최대 1024자
     const charset = params.charset || "alphanumeric";
-    
+
     let random: string;
-    
+
     switch (charset) {
       case "hex":
-        random = crypto.randomBytes(Math.ceil(length / 2)).toString("hex").slice(0, length);
+        random = crypto
+          .randomBytes(Math.ceil(length / 2))
+          .toString("hex")
+          .slice(0, length);
         break;
       case "base64":
-        random = crypto.randomBytes(Math.ceil(length * 3 / 4)).toString("base64").slice(0, length);
+        random = crypto
+          .randomBytes(Math.ceil((length * 3) / 4))
+          .toString("base64")
+          .slice(0, length);
         break;
       case "alphanumeric":
       default:
@@ -260,7 +264,7 @@ class UtilsFrame extends BaseFrameClass {
           .join("");
         break;
     }
-    
+
     return { random };
   }
 }
@@ -291,16 +295,14 @@ interface WeatherResponse {
 
 class WeatherFrame extends BaseFrameClass {
   frameName = "Weather";
-  
+
   private apiKey = process.env.WEATHER_API_KEY || "";
   private baseUrl = "https://api.openweathermap.org/data/2.5";
-  
+
   @api({ httpMethod: "GET" })
   async current(params: WeatherParams): Promise<WeatherResponse> {
-    const query = params.country
-      ? `${params.city},${params.country}`
-      : params.city;
-    
+    const query = params.country ? `${params.city},${params.country}` : params.city;
+
     try {
       const response = await axios.get(`${this.baseUrl}/weather`, {
         params: {
@@ -309,9 +311,9 @@ class WeatherFrame extends BaseFrameClass {
           units: "metric",
         },
       });
-      
+
       const data = response.data;
-      
+
       return {
         city: data.name,
         temperature: data.main.temp,
@@ -324,7 +326,7 @@ class WeatherFrame extends BaseFrameClass {
       throw new Error("Failed to fetch weather data");
     }
   }
-  
+
   @api({ httpMethod: "GET" })
   async forecast(params: WeatherParams): Promise<{
     city: string;
@@ -334,10 +336,8 @@ class WeatherFrame extends BaseFrameClass {
       condition: string;
     }>;
   }> {
-    const query = params.country
-      ? `${params.city},${params.country}`
-      : params.city;
-    
+    const query = params.country ? `${params.city},${params.country}` : params.city;
+
     try {
       const response = await axios.get(`${this.baseUrl}/forecast`, {
         params: {
@@ -347,9 +347,9 @@ class WeatherFrame extends BaseFrameClass {
           cnt: 5, // 5일 예보
         },
       });
-      
+
       const data = response.data;
-      
+
       return {
         city: data.city.name,
         forecast: data.list.map((item: any) => ({
@@ -376,7 +376,7 @@ Frame에서도 DB에 접근할 수 있습니다.
 ```typescript
 class StatsFrame extends BaseFrameClass {
   frameName = "Stats";
-  
+
   @api({ httpMethod: "GET" })
   async dashboard(): Promise<{
     totalUsers: number;
@@ -384,19 +384,13 @@ class StatsFrame extends BaseFrameClass {
     totalComments: number;
   }> {
     const rdb = this.getPuri("r");
-    
-    const [{ userCount }] = await rdb
-      .table("users")
-      .count({ userCount: "*" });
-    
-    const [{ postCount }] = await rdb
-      .table("posts")
-      .count({ postCount: "*" });
-    
-    const [{ commentCount }] = await rdb
-      .table("comments")
-      .count({ commentCount: "*" });
-    
+
+    const [{ userCount }] = await rdb.table("users").count({ userCount: "*" });
+
+    const [{ postCount }] = await rdb.table("posts").count({ postCount: "*" });
+
+    const [{ commentCount }] = await rdb.table("comments").count({ commentCount: "*" });
+
     return {
       totalUsers: userCount,
       totalPosts: postCount,
@@ -411,21 +405,19 @@ class StatsFrame extends BaseFrameClass {
 ```typescript
 class AdminFrame extends BaseFrameClass {
   frameName = "Admin";
-  
+
   @api({ httpMethod: "POST" })
   @transactional()
-  async clearOldLogs(params: {
-    beforeDate: Date;
-  }): Promise<{
+  async clearOldLogs(params: { beforeDate: Date }): Promise<{
     deletedCount: number;
   }> {
     const wdb = this.getPuri("w");
-    
+
     const deletedCount = await wdb
       .table("logs")
       .where("created_at", "<", params.beforeDate)
       .delete();
-    
+
     return { deletedCount };
   }
 }
@@ -438,14 +430,14 @@ class AdminFrame extends BaseFrameClass {
 ```typescript
 class ExternalApiFrame extends BaseFrameClass {
   frameName = "External";
-  
+
   @api({ httpMethod: "GET" })
   async fetchData(params: { url: string }): Promise<any> {
     try {
       const response = await axios.get(params.url, {
         timeout: 5000,
       });
-      
+
       return {
         success: true,
         data: response.data,
@@ -454,7 +446,7 @@ class ExternalApiFrame extends BaseFrameClass {
       if (axios.isAxiosError(error)) {
         throw new Error(`External API error: ${error.message}`);
       }
-      
+
       throw new Error("Unknown error occurred");
     }
   }
@@ -466,34 +458,32 @@ class ExternalApiFrame extends BaseFrameClass {
 ```typescript
 class ValidationFrame extends BaseFrameClass {
   frameName = "Validation";
-  
+
   @api({ httpMethod: "POST" })
-  async validateEmail(params: {
-    email: string;
-  }): Promise<{
+  async validateEmail(params: { email: string }): Promise<{
     valid: boolean;
     message?: string;
   }> {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
+
     if (!emailRegex.test(params.email)) {
       return {
         valid: false,
         message: "Invalid email format",
       };
     }
-    
+
     // 추가 검증 (도메인 체크 등)
     const domain = params.email.split("@")[1];
     const blockedDomains = ["tempmail.com", "throwaway.com"];
-    
+
     if (blockedDomains.includes(domain)) {
       return {
         valid: false,
         message: "Domain not allowed",
       };
     }
-    
+
     return { valid: true };
   }
 }
@@ -552,12 +542,8 @@ class UtilsFrame extends BaseFrameClass {
 ## 주의사항
 
 <Warning>
-**Frame 사용 시 주의사항**:
-1. `frameName` 속성 필수
-2. 메서드는 `async` 함수여야 함
-3. 인스턴스를 export 해야 함
-4. 복잡한 로직은 Model 사용 고려
-5. Entity가 필요하면 Model로 전환
+  **Frame 사용 시 주의사항**: 1. `frameName` 속성 필수 2. 메서드는 `async` 함수여야 함 3. 인스턴스를
+  export 해야 함 4. 복잡한 로직은 Model 사용 고려 5. Entity가 필요하면 Model로 전환
 </Warning>
 
 ### 흔한 실수
@@ -566,9 +552,11 @@ class UtilsFrame extends BaseFrameClass {
 // ❌ 잘못됨: frameName 없음
 class HealthFrame extends BaseFrameClass {
   // frameName = "Health"; // ← 필수!
-  
+
   @api({ httpMethod: "GET" })
-  async check() { /* ... */ }
+  async check() {
+    /* ... */
+  }
 }
 
 // ❌ 잘못됨: 인스턴스 export 없음
@@ -581,9 +569,10 @@ class HealthFrame extends BaseFrameClass {
 // ❌ 잘못됨: async 아님
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
-  check(): { status: string } { // ← async 필요
+  check(): { status: string } {
+    // ← async 필요
     return { status: "ok" };
   }
 }
@@ -591,7 +580,7 @@ class HealthFrame extends BaseFrameClass {
 // ✅ 올바름
 class HealthFrame extends BaseFrameClass {
   frameName = "Health";
-  
+
   @api({ httpMethod: "GET" })
   async check(): Promise<{ status: string }> {
     return { status: "ok" };

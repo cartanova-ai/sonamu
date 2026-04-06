@@ -57,8 +57,8 @@ type Post = {
 | `bigInteger[]` | `bigint[]`      | 큰 정수 배열         |
 
 <Info>
-  **bigInteger vs integer**: ID나 카운트는 `integer`로 충분하지만,
-  타임스탬프(milliseconds)나 매우 큰 숫자는 `bigInteger`를 사용하세요.
+  **bigInteger vs integer**: ID나 카운트는 `integer`로 충분하지만, 타임스탬프(milliseconds)나 매우
+  큰 숫자는 `bigInteger`를 사용하세요.
 </Info>
 
 ### 문자열 타입
@@ -90,8 +90,8 @@ type User = {
 | `string[]`  | `string[]`      | 문자열 배열 |
 
 <Tip>
-  `length` 속성은 TypeScript 타입에 영향을 주지 않지만, Zod validation에서
-  `.max(length)` 검증으로 변환됩니다.
+  `length` 속성은 TypeScript 타입에 영향을 주지 않지만, Zod validation에서 `.max(length)` 검증으로
+  변환됩니다.
 </Tip>
 
 ### 불린 타입
@@ -171,8 +171,8 @@ type Document = {
 </CodeGroup>
 
 <Info>
-  TypeScript에는 UUID 전용 타입이 없으므로 `string`으로 표현됩니다. Zod
-  validation에서 `.uuid()`로 형식을 검증합니다.
+  TypeScript에는 UUID 전용 타입이 없으므로 `string`으로 표현됩니다. Zod validation에서 `.uuid()`로
+  형식을 검증합니다.
 </Info>
 
 ## 숫자 정밀도 타입
@@ -485,8 +485,8 @@ type User = {
 </CodeGroup>
 
 <Info>
-  `HasMany`와 `ManyToMany`는 base 타입에 포함되지 않습니다. Subset을 정의하면
-  해당 타입이 Subset 타입에 포함됩니다.
+  `HasMany`와 `ManyToMany`는 base 타입에 포함되지 않습니다. Subset을 정의하면 해당 타입이 Subset
+  타입에 포함됩니다.
 </Info>
 
 ## Nullable 처리
@@ -668,18 +668,10 @@ export const User = z.object({
   >
     Zod로 런타임 검증하기
   </Card>
-  <Card
-    title="E2E Type Safety"
-    icon="link"
-    href="/ko/core-concepts/type-system/e2e-type-safety"
-  >
+  <Card title="E2E Type Safety" icon="link" href="/ko/core-concepts/type-system/e2e-type-safety">
     엔드투엔드 타입 안전성
   </Card>
-  <Card
-    title="Field Types"
-    icon="list"
-    href="/ko/core-concepts/entity/field-types"
-  >
+  <Card title="Field Types" icon="list" href="/ko/core-concepts/entity/field-types">
     Entity 필드 타입 전체 레퍼런스
   </Card>
 </CardGroup>

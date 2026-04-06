@@ -22,11 +22,11 @@ API 서버가 실행되면 자동으로 Sonamu UI도 함께 제공됩니다:
 http://localhost:34900/sonamu-ui
 ```
 
-<Info>
-Sonamu UI는 별도의 포트 없이 API 서버의 `/sonamu-ui` 경로에서 제공됩니다.
-</Info>
+<Info>Sonamu UI는 별도의 포트 없이 API 서버의 `/sonamu-ui` 경로에서 제공됩니다.</Info>
 
-<Frame caption="Sonamu UI Main"><img src="/modules/docs/images/sonamuUI1.png" alt="Sonamu UI" /></Frame>
+<Frame caption="Sonamu UI Main">
+  <img src="/modules/docs/images/sonamuUI1.png" alt="Sonamu UI" />
+</Frame>
 
 ## 주요 탭 구성
 
@@ -34,25 +34,15 @@ Sonamu UI는 4개의 주요 탭으로 구성됩니다:
 
 <Tabs>
   <Tab title="Entities">
-    Entity 정의와 관리
-    - Entity 생성, 수정, 삭제
-    - Props, Indexes, Subsets, Enums 설정
+    Entity 정의와 관리 - Entity 생성, 수정, 삭제 - Props, Indexes, Subsets, Enums 설정
   </Tab>
   <Tab title="Migrations">
-    데이터베이스 마이그레이션 관리
-    - 마이그레이션 실행 및 롤백
-    - 마이그레이션 히스토리 확인
+    데이터베이스 마이그레이션 관리 - 마이그레이션 실행 및 롤백 - 마이그레이션 히스토리 확인
   </Tab>
   <Tab title="Scaffolding">
-    코드 자동 생성
-    - Model, Types, Services 파일 생성
-    - 템플릿 기반 코드 생성
+    코드 자동 생성 - Model, Types, Services 파일 생성 - 템플릿 기반 코드 생성
   </Tab>
-  <Tab title="Fixture">
-    테스트 데이터 관리
-    - Fixture 데이터 생성 및 관리
-    - 데이터 Import/Export
-  </Tab>
+  <Tab title="Fixture">테스트 데이터 관리 - Fixture 데이터 생성 및 관리 - 데이터 Import/Export</Tab>
 </Tabs>
 
 ## Entity 생성하기
@@ -61,9 +51,12 @@ Sonamu UI는 4개의 주요 탭으로 구성됩니다:
 
 **Entities** 탭을 클릭하면 프로젝트의 모든 Entity 목록이 표시됩니다.
 
-<Frame caption="Entity List"><img src="/modules/docs/images/usingSonamuUI1.png" alt="Entity List" /></Frame>
+<Frame caption="Entity List">
+  <img src="/modules/docs/images/usingSonamuUI1.png" alt="Entity List" />
+</Frame>
 
 **표시 정보**:
+
 - Entity ID와 Title
 - 테이블명
 - Props 개수
@@ -96,7 +89,9 @@ Entity ID는 생성 후 변경할 수 없으므로 신중하게 입력하세요.
 </Step>
 </Steps>
 
-<Frame caption="Create Entity Dialog"><img src="/modules/docs/images/usingSonamuUI2.png" alt="Create Dialog" /></Frame>
+<Frame caption="Create Entity Dialog">
+  <img src="/modules/docs/images/usingSonamuUI2.png" alt="Create Dialog" />
+</Frame>
 
 ## Entity 편집하기
 
@@ -106,7 +101,9 @@ Entity를 클릭하면 상세 편집 페이지가 열립니다. 4개의 시트�
 
 Entity의 속성(컬럼)을 관리하는 메인 시트입니다.
 
-<Frame caption="Props Sheet"><img src="/modules/docs/images/sonamuUI-created-entity.png" alt="Props" /></Frame>
+<Frame caption="Props Sheet">
+  <img src="/modules/docs/images/sonamuUI-created-entity.png" alt="Props" />
+</Frame>
 
 #### Props 추가하기
 
@@ -126,44 +123,34 @@ Entity의 속성(컬럼)을 관리하는 메인 시트입니다.
 **타입별 추가 옵션**:
 
 <Accordion title="string / string[]">
-- `length`: 문자열 길이 (기본값: TEXT)
-- 예: `length: 255` → `VARCHAR(255)`
+  - `length`: 문자열 길이 (기본값: TEXT) - 예: `length: 255` → `VARCHAR(255)`
 </Accordion>
 
 <Accordion title="number / number[]">
-- `precision`: 전체 자릿수
-- `scale`: 소수점 자릿수  
-- `numberType`: `real` | `double precision` | `numeric` (기본값: numeric)
-- 예: `precision: 10, scale: 2` → `NUMERIC(10, 2)`
+  - `precision`: 전체 자릿수 - `scale`: 소수점 자릿수 - `numberType`: `real` | `double precision` |
+  `numeric` (기본값: numeric) - 예: `precision: 10, scale: 2` → `NUMERIC(10, 2)`
 </Accordion>
 
 <Accordion title="numeric / numeric[]">
-- `precision`: 전체 자릿수
-- `scale`: 소수점 자릿수
-- 주의: TypeScript에서 `string` 타입으로 처리됨 (정밀도 유지)
+  - `precision`: 전체 자릿수 - `scale`: 소수점 자릿수 - 주의: TypeScript에서 `string` 타입으로
+  처리됨 (정밀도 유지)
 </Accordion>
 
 <Accordion title="enum / enum[]">
-- `id`: Enum 타입 ID (예: `UserRole`)
-- Enum은 별도의 **Enums** 섹션에서 정의
+  - `id`: Enum 타입 ID (예: `UserRole`) - Enum은 별도의 **Enums** 섹션에서 정의
 </Accordion>
 
 <Accordion title="json">
-- `id`: JSON 스키마 타입 ID
-- TypeScript 타입을 `{entity}.types.ts`에서 정의
+  - `id`: JSON 스키마 타입 ID - TypeScript 타입을 `{entity}.types.ts`에서 정의
 </Accordion>
 
 <Accordion title="vector / vector[]">
-- `dimensions`: 벡터 차원 (예: 1536)
-- pgvector 확장 필요
+  - `dimensions`: 벡터 차원 (예: 1536) - pgvector 확장 필요
 </Accordion>
 
 <Accordion title="virtual">
-- `id`: Virtual 타입 ID
-- `virtualType`: `code` | `query`
-  - `code`: TypeScript 코드로 계산 (기본값)
-  - `query`: SQL 쿼리로 계산
-- 데이터베이스에 저장되지 않는 계산된 필드
+  - `id`: Virtual 타입 ID - `virtualType`: `code` | `query` - `code`: TypeScript 코드로 계산
+  (기본값) - `query`: SQL 쿼리로 계산 - 데이터베이스에 저장되지 않는 계산된 필드
 </Accordion>
 
 <Accordion title="relation">
@@ -181,24 +168,20 @@ Entity의 속성(컬럼)을 관리하는 메인 시트입니다.
 
 <Tabs>
   <Tab title="수정">
-    - Props 목록에서 수정할 행을 **더블클릭** 또는 `Enter` 키
-    - 또는 행 선택 후 우측의 **"Edit"** 버튼 클릭
-    - 폼에서 값 수정 후 저장
+    - Props 목록에서 수정할 행을 **더블클릭** 또는 `Enter` 키 - 또는 행 선택 후 우측의 **"Edit"**
+    버튼 클릭 - 폼에서 값 수정 후 저장
   </Tab>
   <Tab title="삭제">
-    - Props 목록에서 삭제할 행 선택
-    - `Cmd+Backspace` 단축키 사용
-    - 또는 우측의 **"Delete"** 버튼 클릭
-    - 확인 다이얼로그에서 삭제 확인
+    - Props 목록에서 삭제할 행 선택 - `Cmd+Backspace` 단축키 사용 - 또는 우측의 **"Delete"** 버튼
+    클릭 - 확인 다이얼로그에서 삭제 확인
   </Tab>
   <Tab title="순서 변경">
-    - Props 목록에서 행을 **드래그 앤 드롭**으로 순서 변경
-    - 변경된 순서는 즉시 저장됨
+    - Props 목록에서 행을 **드래그 앤 드롭**으로 순서 변경 - 변경된 순서는 즉시 저장됨
   </Tab>
 </Tabs>
 
 <Warning>
-Props를 삭제하면 해당 컬럼이 모든 Subset에서도 자동으로 제거됩니다. 복구할 수 없으므로 주의하세요.
+  Props를 삭제하면 해당 컬럼이 모든 Subset에서도 자동으로 제거됩니다. 복구할 수 없으므로 주의하세요.
 </Warning>
 
 ### Indexes 시트
@@ -206,7 +189,7 @@ Props를 삭제하면 해당 컬럼이 모든 Subset에서도 자동으로 제�
 데이터베이스 인덱스를 관리합니다.
 
 <Frame caption="Indexes 시트 화면">
-<img src="/images/usingSonamuUI3.png" alt="Indexes 시트 화면" />
+  <img src="/images/usingSonamuUI3.png" alt="Indexes 시트 화면" />
 </Frame>
 
 #### Index 추가하기
@@ -234,6 +217,7 @@ Props를 삭제하면 해당 컬럼이 모든 Subset에서도 자동으로 제�
   - `gist`
 
 **Vector 인덱스 추가 옵션**:
+
 - `vectorOps`: 거리 연산자
   - `vector_cosine_ops`: 코사인 거리 (권장)
   - `vector_ip_ops`: 내적 거리
@@ -241,21 +225,21 @@ Props를 삭제하면 해당 컬럼이 모든 Subset에서도 자동으로 제�
 - `m`: HNSW 그래프 연결 수 (기본값: 16)
 - `efConstruction`: HNSW 구성 품질 (기본값: 64)
 - `lists`: IVFFlat 클러스터 수 (기본값: 100)
-</Step>
-</Steps>
+  </Step>
+  </Steps>
 
 <Tip>
-**인덱스 네이밍 규칙**:
-- 일반 인덱스: `{table}_{columns}_idx`
-- 유니크 인덱스: `{table}_{columns}_unique`
-- 예: `users_email_unique`, `posts_created_at_idx`
+  **인덱스 네이밍 규칙**: - 일반 인덱스: `{table}_{columns}_idx` - 유니크 인덱스: `{table}_{columns}
+  _unique` - 예: `users_email_unique`, `posts_created_at_idx`
 </Tip>
 
 ### Subsets 시트
 
 API 응답을 위한 필드 조합을 정의합니다.
 
-<Frame caption="Relations and Subsets"><img src="/modules/docs/images/sonamuUI-relation-subsets.png" alt="Relations" /></Frame>
+<Frame caption="Relations and Subsets">
+  <img src="/modules/docs/images/sonamuUI-relation-subsets.png" alt="Relations" />
+</Frame>
 
 #### Subset 키 추가
 
@@ -277,35 +261,30 @@ API 응답을 위한 필드 조합을 정의합니다.
 
 <Tabs>
   <Tab title="일반 필드">
-    - 체크박스를 클릭하여 필드 포함/제외
-    - 여러 subset에서 동일 필드 선택 가능
+    - 체크박스를 클릭하여 필드 포함/제외 - 여러 subset에서 동일 필드 선택 가능
   </Tab>
   <Tab title="Relation 필드">
-    - Relation 필드는 **트리 구조**로 표시됨
-    - 화살표 아이콘을 클릭하여 펼치기/접기
-    - 하위 Entity의 필드도 선택 가능
-    - 예: `employee.department.name`
-    
-    <Info>
-    Relation 필드를 선택하면 Sonamu가 자동으로 JOIN 쿼리를 생성합니다.
-    </Info>
+    - Relation 필드는 **트리 구조**로 표시됨 - 화살표 아이콘을 클릭하여 펼치기/접기 - 하위 Entity의
+    필드도 선택 가능 - 예: `employee.department.name`
+    <Info>Relation 필드를 선택하면 Sonamu가 자동으로 JOIN 쿼리를 생성합니다.</Info>
   </Tab>
   <Tab title="Internal 필드">
-    - 필드를 우클릭하여 **"Mark as Internal"** 선택
-    - Internal 필드는 타입에는 포함되지만 일반 조회에서는 제외됨
-    - Loader나 특수한 경우에만 사용되는 필드에 활용
+    - 필드를 우클릭하여 **"Mark as Internal"** 선택 - Internal 필드는 타입에는 포함되지만 일반
+    조회에서는 제외됨 - Loader나 특수한 경우에만 사용되는 필드에 활용
   </Tab>
 </Tabs>
 
 <Warning>
-부모 Relation을 선택하면 하위 필드를 개별 선택할 수 없습니다. 전체 또는 특정 필드만 선택하세요.
+  부모 Relation을 선택하면 하위 필드를 개별 선택할 수 없습니다. 전체 또는 특정 필드만 선택하세요.
 </Warning>
 
 ### Enums 섹션
 
 Enum 타입의 키와 레이블을 정의합니다.
 
-<Frame caption="Enums Section"><img src="/modules/docs/images/sonamuUI-enums.png" alt="Enums" /></Frame>
+<Frame caption="Enums Section">
+  <img src="/modules/docs/images/sonamuUI-enums.png" alt="Enums" />
+</Frame>
 
 #### Enum 추가
 
@@ -345,9 +324,11 @@ Enum 타입의 키와 레이블을 정의합니다.
   }
 }
 ```
+
 </CodeGroup>
 
 **Enum 값 추가 방법**:
+
 - **"Add Row"** 버튼 클릭
 - 또는 Enum 탭에서 `Ctrl+Cmd+Shift+N`
 - Key와 Label 입력
@@ -355,10 +336,9 @@ Enum 타입의 키와 레이블을 정의합니다.
   - Label: 한글 또는 표시용 텍스트
 
 <Tip>
-**자주 사용되는 Enum 패턴**:
-- `{Entity}OrderBy`: 정렬 옵션 (예: `id-desc`, `created_at-desc`)
-- `{Entity}SearchField`: 검색 필드 (예: `email`, `username`)
-- `{Entity}Status`: 상태 (예: `active`, `inactive`, `deleted`)
+  **자주 사용되는 Enum 패턴**: - `{Entity}OrderBy`: 정렬 옵션 (예: `id-desc`, `created_at-desc`) - `
+  {Entity}SearchField`: 검색 필드 (예: `email`, `username`) - `{Entity}Status`: 상태 (예: `active`,
+  `inactive`, `deleted`)
 </Tip>
 
 ## 키보드 단축키
@@ -367,51 +347,47 @@ Sonamu UI는 효율적인 작업을 위한 다양한 단축키를 제공합니�
 
 ### 전역 단축키
 
-| 단축키 | 기능 |
-|--------|------|
-| `Cmd+S` | 현재 Entity 저장 |
-| `Cmd+K` | 검색 모드 진입 |
-| `Tab` | 다음 시트로 이동 |
-| `Shift+Tab` | 이전 시트로 이동 |
-| `Esc` | 다이얼로그 닫기 / 선택 해제 |
+| 단축키      | 기능                        |
+| ----------- | --------------------------- |
+| `Cmd+S`     | 현재 Entity 저장            |
+| `Cmd+K`     | 검색 모드 진입              |
+| `Tab`       | 다음 시트로 이동            |
+| `Shift+Tab` | 이전 시트로 이동            |
+| `Esc`       | 다이얼로그 닫기 / 선택 해제 |
 
 ### Props/Indexes 시트
 
-| 단축키 | 기능 |
-|--------|------|
-| `Ctrl+Cmd+Shift+N` | 새 항목 추가 |
-| `Enter` | 선택한 항목 수정 |
-| `Cmd+Backspace` | 선택한 항목 삭제 |
-| `↑` `↓` | 항목 선택 이동 |
-| `Cmd+↑` `Cmd+↓` | 항목 순서 변경 |
+| 단축키             | 기능             |
+| ------------------ | ---------------- |
+| `Ctrl+Cmd+Shift+N` | 새 항목 추가     |
+| `Enter`            | 선택한 항목 수정 |
+| `Cmd+Backspace`    | 선택한 항목 삭제 |
+| `↑` `↓`            | 항목 선택 이동   |
+| `Cmd+↑` `Cmd+↓`    | 항목 순서 변경   |
 
 ### 검색 모드
 
-| 단축키 | 기능 |
-|--------|------|
-| `Cmd+K` | 검색 시작 |
-| 타이핑 | 일치하는 항목으로 자동 이동 |
-| `Enter` | 검색 완료 |
-| `Esc` | 검색 취소 |
+| 단축키  | 기능                        |
+| ------- | --------------------------- |
+| `Cmd+K` | 검색 시작                   |
+| 타이핑  | 일치하는 항목으로 자동 이동 |
+| `Enter` | 검색 완료                   |
+| `Esc`   | 검색 취소                   |
 
 <Tip>
-검색 모드에서는 타이핑하는 즉시 일치하는 항목으로 커서가 이동합니다. 빠른 네비게이션에 활용하세요!
+  검색 모드에서는 타이핑하는 즉시 일치하는 항목으로 커서가 이동합니다. 빠른 네비게이션에 활용하세요!
 </Tip>
 
 ## Entity 삭제하기
 
-<Warning>
-Entity 삭제는 **되돌릴 수 없습니다**. 반드시 백업 후 진행하세요.
-</Warning>
+<Warning>Entity 삭제는 **되돌릴 수 없습니다**. 반드시 백업 후 진행하세요.</Warning>
 
 <Steps>
 <Step title="Entity 선택">
 삭제할 Entity의 상세 페이지로 이동
 </Step>
 
-<Step title="Delete Entity 버튼 클릭">
-우측 상단의 **"Delete Entity"** 버튼 클릭
-</Step>
+<Step title="Delete Entity 버튼 클릭">우측 상단의 **"Delete Entity"** 버튼 클릭</Step>
 
 <Step title="확인">
 확인 다이얼로그에서 Entity ID를 정확히 입력하여 삭제 확인
@@ -419,6 +395,7 @@ Entity 삭제는 **되돌릴 수 없습니다**. 반드시 백업 후 진행하�
 </Steps>
 
 **삭제 시 영향**:
+
 - `{entity}.entity.json` 파일 삭제
 - 관련된 Model, Types 파일은 수동으로 삭제 필요
 - 데이터베이스 테이블은 마이그레이션을 통해 별도로 삭제
@@ -442,9 +419,7 @@ Entity를 저장하면 다음 파일들이 생성됩니다:
   </FileTree.Folder>
 </FileTree>
 
-<Note>
-하이라이트된 파일들은 Sonamu가 자동으로 생성하는 파일입니다.
-</Note>
+<Note>하이라이트된 파일들은 Sonamu가 자동으로 생성하는 파일입니다.</Note>
 
 ## 실시간 유효성 검사
 
@@ -452,51 +427,33 @@ Sonamu UI는 입력 즉시 유효성을 검사합니다:
 
 <Tabs>
   <Tab title="Props">
-    - 예약어 체크 (JavaScript/TypeScript 키워드)
-    - 타입별 필수 옵션 체크
-    - 중복 이름 체크
+    - 예약어 체크 (JavaScript/TypeScript 키워드) - 타입별 필수 옵션 체크 - 중복 이름 체크
   </Tab>
   <Tab title="Indexes">
-    - 인덱스명 길이 체크 (최대 63자)
-    - 중복 인덱스 체크
-    - 컬럼 존재 여부 체크
+    - 인덱스명 길이 체크 (최대 63자) - 중복 인덱스 체크 - 컬럼 존재 여부 체크
   </Tab>
-  <Tab title="Subsets">
-    - 유효하지 않은 필드 참조 체크
-    - Relation 깊이 체크
-  </Tab>
-  <Tab title="Enums">
-    - Key 형식 체크 (소문자, 숫자, 언더스코어)
-    - 중복 Key 체크
-  </Tab>
+  <Tab title="Subsets">- 유효하지 않은 필드 참조 체크 - Relation 깊이 체크</Tab>
+  <Tab title="Enums">- Key 형식 체크 (소문자, 숫자, 언더스코어) - 중복 Key 체크</Tab>
 </Tabs>
 
 오류가 있으면 **빨간색 테두리**와 함께 오류 메시지가 표시됩니다.
 
-<Frame caption="Validation Errors"><img src="/modules/docs/images/usingSonamuUI4.png" alt="Validation" /></Frame>
+<Frame caption="Validation Errors">
+  <img src="/modules/docs/images/usingSonamuUI4.png" alt="Validation" />
+</Frame>
 
 ## 자동 완성 기능
 
 Sonamu UI는 컨텍스트에 맞는 자동 완성을 제공합니다:
 
 <AccordionGroup>
-  <Accordion title="Entity ID 입력 시">
-    - 기존 Entity 목록 제안
-    - 타이핑에 따라 필터링
-  </Accordion>
-  
-  <Accordion title="Relation 설정 시">
-    - `with` 필드에서 사용 가능한 Entity 목록 자동 완성
-  </Accordion>
-  
-  <Accordion title="Type ID 입력 시">
-    - JSON, Virtual 타입의 `id` 필드에서 타입 제안
-  </Accordion>
-  
-  <Accordion title="Enum ID 입력 시">
-    - 정의된 Enum 목록 제안
-    - 새 Enum 생성 옵션 제공
-  </Accordion>
+  <Accordion title="Entity ID 입력 시">- 기존 Entity 목록 제안 - 타이핑에 따라 필터링</Accordion>
+
+<Accordion title="Relation 설정 시">- `with` 필드에서 사용 가능한 Entity 목록 자동 완성</Accordion>
+
+<Accordion title="Type ID 입력 시">- JSON, Virtual 타입의 `id` 필드에서 타입 제안</Accordion>
+
+  <Accordion title="Enum ID 입력 시">- 정의된 Enum 목록 제안 - 새 Enum 생성 옵션 제공</Accordion>
 </AccordionGroup>
 
 ## 다음 단계
@@ -513,7 +470,11 @@ Sonamu UI의 기본 사용법을 익혔다면, 다음 주제를 학습하세요:
   <Card title="Migrations" icon="database" href="/ko/database/migrations/running-migrations">
     생성된 마이그레이션 실행하기
   </Card>
-  <Card title="Scaffolding" icon="wand-magic-sparkles" href="/ko/tools-and-cli/scaffolding/generate-code">
+  <Card
+    title="Scaffolding"
+    icon="wand-magic-sparkles"
+    href="/ko/tools-and-cli/scaffolding/generate-code"
+  >
     Model과 Types 파일 자동 생성
   </Card>
 </CardGroup>

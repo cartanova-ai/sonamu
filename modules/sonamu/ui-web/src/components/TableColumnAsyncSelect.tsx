@@ -1,7 +1,8 @@
 import { Select } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import { defaultCatch } from "../services/sonamu.shared";
+
 import { SonamuUIService } from "../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
 
 type TableColumnAsyncSelectProps = {
   entityId: string;

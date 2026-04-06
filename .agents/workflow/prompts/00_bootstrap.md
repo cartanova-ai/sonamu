@@ -3,15 +3,18 @@
 Follow `prompts/00_shared_contract.md`.
 
 ## Purpose
+
 Create a high-quality `bootstrap_context` that removes planning ambiguity before implementation starts.
 
 ## Upstream inputs
+
 - User request
 - Issue tracker context (if provided)
 - Specification path (if provided)
 - Repo/package scope candidates
 
 ## Required actions
+
 1. Read the initial specification/source material.
 2. Ask deep, non-obvious clarification questions until planning-critical ambiguity is closed.
 3. Lock scope boundaries:
@@ -30,6 +33,7 @@ Create a high-quality `bootstrap_context` that removes planning ambiguity before
 6. Record unresolved questions count. Do not finish bootstrap with unresolved planning-critical questions.
 
 ## Downstream output
+
 Produce `bootstrap_context` with this shape:
 
 ```yaml
@@ -61,4 +65,5 @@ bootstrap_context:
 ```
 
 ## Handoff contract
+
 - Pass `bootstrap_context` to `prompts/01_plan.md` without lossy summarization.

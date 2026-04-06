@@ -25,19 +25,19 @@ production/development master (live DB)
 
 ### Role of Each DB
 
-| DB | Purpose | Data origin |
-|----|---------|-------------|
-| `project` | Production/development live DB | Real user data |
+| DB                | Purpose                          | Data origin                             |
+| ----------------- | -------------------------------- | --------------------------------------- |
+| `project`         | Production/development live DB   | Real user data                          |
 | `project_fixture` | Reference data store for testing | Imported via fetch or generated via gen |
-| `project_test` | Test execution environment | Synced from fixture |
+| `project_test`    | Test execution environment       | Synced from fixture                     |
 
 ### Which DB Each Command Uses
 
-| Command | sourceDb | targetDb | Description |
-|---------|----------|----------|-------------|
-| `fixture gen` | fixture DB | fixture DB | Resolves and generates relations within the fixture DB |
-| `fixture fetch` | production master | fixture DB | Imports from live DB → fixture DB |
-| `fixture sync` | fixture DB | test DB | Synchronizes fixture DB → test DB (existing behavior) |
+| Command         | sourceDb          | targetDb   | Description                                            |
+| --------------- | ----------------- | ---------- | ------------------------------------------------------ |
+| `fixture gen`   | fixture DB        | fixture DB | Resolves and generates relations within the fixture DB |
+| `fixture fetch` | production master | fixture DB | Imports from live DB → fixture DB                      |
+| `fixture sync`  | fixture DB        | test DB    | Synchronizes fixture DB → test DB (existing behavior)  |
 
 **CRITICAL**: Incorrect sourceDb or targetDb settings will cause FK reference errors.
 
@@ -125,13 +125,14 @@ pnpm sonamu fixture fetch --all --strategy recent --limit 3
 
 #### Strategies
 
-| Strategy | Description | Example |
-|----------|-------------|---------|
+| Strategy | Description                      | Example                        |
+| -------- | -------------------------------- | ------------------------------ |
 | `recent` | Most recent data (by created_at) | `--strategy recent --limit 10` |
-| `sample` | Uniform sampling | `--strategy sample --limit 10` |
-| `random` | Random sampling | `--strategy random --limit 10` |
+| `sample` | Uniform sampling                 | `--strategy sample --limit 10` |
+| `random` | Random sampling                  | `--strategy random --limit 10` |
 
 **CRITICAL**: fetch retrieves related data **recursively** (maxDepth: 2)
+
 - Fetching User → also imports User's department and institution
 - Fetching Post → also imports Post's author (User)
 
@@ -229,10 +230,12 @@ pnpm sonamu fixture sync
 FixtureGenerator automatically generates Korean data for specific field names:
 
 **Fields with automatic Korean generation**:
+
 - `name`, `username`: Korean full name (`fakerKO.person.fullName()`)
 - Entity is `Department` and prop is `name`: Korean department name
 
 **Example output**:
+
 ```typescript
 // User
 { name: "김민준", username: "이서연" }
@@ -242,6 +245,7 @@ FixtureGenerator automatically generates Korean data for specific field names:
 ```
 
 **Customization**:
+
 ```typescript
 // Edit in fixture-generator.ts
 if (entity?.id === "Department" && prop.name === "name") {
@@ -255,21 +259,23 @@ if (entity?.id === "Department" && prop.name === "name") {
 Fields with unique constraints require a deduplication strategy.
 
 **Problem**:
+
 ```sql
 -- departments table
 UNIQUE (company_id, name)
 ```
 
 **Solution: Automatic variation**
+
 ```typescript
 // Prevents "개발팀" from being generated multiple times under the same company_id
 // Automatically adds prefix/suffix with 70% probability
 
 // Result:
-"개발팀"           // 30%
-"개발팀 1팀"       // 20%
-"개발팀 본부"      // 20%
-"글로벌 개발팀"    // 30%
+"개발팀"; // 30%
+"개발팀 1팀"; // 20%
+"개발팀 본부"; // 20%
+"글로벌 개발팀"; // 30%
 ```
 
 **Implementation location**: `generateDefaultValue()` in `fixture-generator.ts`
@@ -279,6 +285,7 @@ UNIQUE (company_id, name)
 BelongsToOne relations auto-generate a `{name}_id` column, so code must use the `_id` suffix.
 
 **Entity definition**:
+
 ```json
 {
   "type": "relation",
@@ -289,15 +296,17 @@ BelongsToOne relations auto-generate a `{name}_id` column, so code must use the 
 ```
 
 **Inside FixtureGenerator**:
+
 ```typescript
 // ✓ CORRECT
-fixture[`${prop.name}_id`] = relationValue;  // company_id
+fixture[`${prop.name}_id`] = relationValue; // company_id
 
 // ✗ WRONG
-fixture[prop.name] = relationValue;  // company (FK saved as NULL!)
+fixture[prop.name] = relationValue; // company (FK saved as NULL!)
 ```
 
 **Easy to get wrong because**:
+
 - Entity JSON defines `name: "company"`
 - DB column is auto-created as `company_id`
 - Code must use `company_id`
@@ -307,6 +316,7 @@ fixture[prop.name] = relationValue;  // company (FK saved as NULL!)
 fixture gen **automatically sorts by dependency order** (uses FixtureManager's RelationGraph).
 
 **Example**:
+
 ```bash
 # Department references Company, but no need to worry about order
 pnpm sonamu fixture gen --include Department,Company --count 5
@@ -327,6 +337,7 @@ pnpm sonamu fixture gen --include Department,Company --count 5
 After generating fixtures, ID sequences may be out of sync.
 
 **Check**:
+
 ```bash
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
 SELECT sequencename, last_value
@@ -337,6 +348,7 @@ ORDER BY sequencename;
 ```
 
 **Reset**:
+
 ```sql
 -- Per table
 SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments), true);
@@ -344,6 +356,7 @@ SELECT setval('companies_id_seq', (SELECT MAX(id) FROM companies), true);
 ```
 
 **Automated**:
+
 ```bash
 # Reset all sequences script
 PGPASSWORD=1234 psql -h 0.0.0.0 -U postgres -d project_fixture -c "
@@ -371,6 +384,7 @@ git commit -m "Add user fixtures for testing"
 ```
 
 **When to use**:
+
 - Consistent test data needed in CI/CD environments
 - Reproducing specific scenarios
 - Sharing test data across team members
@@ -404,6 +418,7 @@ Adding `cone` metadata to Entity JSON gives you finer control over fixture gener
 ```
 
 **Supported strategies**:
+
 - `sample`: Uniform sampling
 - `recent`: Most recent data (by created_at)
 - `random`: Random sampling
@@ -450,10 +465,12 @@ Adding `cone` metadata to Entity JSON gives you finer control over fixture gener
 ```
 
 **How it works**:
+
 - Without `--use-llm`: serves only as a reference description for developers/LLMs (used by cone-generator when generating metadata)
 - With `--use-llm`: fixture gen calls the Claude API and generates actual values based on the note content
 
 **Use cases**:
+
 - Contextual text that is hard to express with simple faker.js (self-introductions, descriptions, etc.)
 - Explaining the field's meaning and generation pattern to developers
 - No length limit (short patterns or long descriptions are both fine)
@@ -511,11 +528,11 @@ export default defineConfig({
 
 #### When to choose note vs fixtureGenerator
 
-| Situation | Recommended |
-|-----------|-------------|
-| Simple values such as email, name, number | `fixtureGenerator` (faker.js) |
-| Contextual text such as self-introductions or descriptions | `cone.note` + `--use-llm` (LLM) |
-| Selecting from a specific list of values | `fixtureGenerator` (arrayElement) |
+| Situation                                                  | Recommended                       |
+| ---------------------------------------------------------- | --------------------------------- |
+| Simple values such as email, name, number                  | `fixtureGenerator` (faker.js)     |
+| Contextual text such as self-introductions or descriptions | `cone.note` + `--use-llm` (LLM)   |
+| Selecting from a specific list of values                   | `fixtureGenerator` (arrayElement) |
 
 ---
 
@@ -523,12 +540,12 @@ export default defineConfig({
 
 **Source:** `modules/sonamu/src/testing/fixture-generator.ts`
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `locale` | `"ko"` \| `"en"` \| `"ja"` | `"ko"` | Locale for generated data |
-| `useLLM` | boolean | `false` | LLM-based data generation (`--use-llm`) |
-| `enableLLMCache` | boolean | `true` | Cache LLM results (disable with `--no-cache`) |
-| `llmModel` | string | `"claude-sonnet-4-5"` | LLM model to use |
+| Option           | Type                       | Default               | Description                                   |
+| ---------------- | -------------------------- | --------------------- | --------------------------------------------- |
+| `locale`         | `"ko"` \| `"en"` \| `"ja"` | `"ko"`                | Locale for generated data                     |
+| `useLLM`         | boolean                    | `false`               | LLM-based data generation (`--use-llm`)       |
+| `enableLLMCache` | boolean                    | `true`                | Cache LLM results (disable with `--no-cache`) |
+| `llmModel`       | string                     | `"claude-sonnet-4-5"` | LLM model to use                              |
 
 ---
 
@@ -539,6 +556,7 @@ export default defineConfig({
 **Cause**: BelongsToOne relation is non-nullable but there is no data to reference
 
 **Solution**:
+
 ```bash
 # Generate the referenced Entity first
 pnpm sonamu fixture gen --include Company --count 5
@@ -548,6 +566,7 @@ pnpm sonamu fixture gen --include Department --count 10
 ```
 
 Or:
+
 ```bash
 # Generate together (auto-sorted by dependency order)
 pnpm sonamu fixture gen --include Company,Department --count 5
@@ -558,6 +577,7 @@ pnpm sonamu fixture gen --include Company,Department --count 5
 **Cause**: Duplicate values generated for a field with a unique constraint
 
 **Solution**:
+
 1. Modify the per-field generation logic for that Entity in `fixture-generator.ts`
 2. Add prefix/suffix or use UUID
 3. Reduce count
@@ -567,6 +587,7 @@ pnpm sonamu fixture gen --include Company,Department --count 5
 **Cause**: Incorrect sourceDb/targetDb configuration
 
 **Check**:
+
 ```typescript
 // Verify in fixture.ts
 const fixtureDb = createKnexInstance(Sonamu.dbConfig.fixture);
@@ -574,6 +595,7 @@ const generator = new FixtureGenerator(fixtureDb, fixtureDb, "fixture", EntityMa
 ```
 
 **Correct configuration**:
+
 - `fixture gen`: sourceDb = fixtureDb, targetDb = fixtureDb
 - `fixture fetch`: sourceDb = production, targetDb = fixtureDb
 

@@ -11,8 +11,8 @@
 ### 1. Vite 관련 imports 추가
 
 ```typescript
-import type { ViteDevServer } from 'vite';
-import path from 'path';
+import type { ViteDevServer } from "vite";
+import path from "path";
 ```
 
 ### 2. SonamuClass에 viteDevServer 프로퍼티 추가
@@ -20,7 +20,7 @@ import path from 'path';
 ```typescript
 export class SonamuClass {
   // ... 기존 프로퍼티들
-  
+
   private _viteDevServer: ViteDevServer | null = null;
   get viteDevServer(): ViteDevServer | null {
     return this._viteDevServer;
@@ -34,7 +34,7 @@ export class SonamuClass {
 private async createViteDevServer(): Promise<ViteDevServer> {
   const { createServer } = await import('vite');
   const webRootPath = path.join(this.appRootPath, 'web');
-  
+
   const vite = await createServer({
     root: webRootPath,
     server: {
@@ -45,7 +45,7 @@ private async createViteDevServer(): Promise<ViteDevServer> {
     },
     appType: 'custom',
   });
-  
+
   this._viteDevServer = vite;
   return vite;
 }
@@ -63,31 +63,31 @@ async withFastify(
   },
 ) {
   // ... 기존 코드
-  
+
   // Sonamu UI API
   const { sonamuUIApiPlugin } = await import("../ui/api");
   server.register(sonamuUIApiPlugin);
 
   // === Web 서빙 추가 ===
-  
+
   const { isLocal } = await import("../utils/controller");
-  
+
   if (isLocal()) {
     // Dev 모드: Vite dev server
     const vite = await this.createViteDevServer();
-    
+
     // Vite middleware 등록
     server.all('*', async (request, reply) => {
       // Sonamu UI는 skip
       if (request.url.startsWith('/sonamu-ui')) {
         return;
       }
-      
+
       // API는 skip
       if (request.url.startsWith(this.config.api.route.prefix)) {
         return;
       }
-      
+
       // 나머지는 Vite로
       const url = request.url;
       try {
@@ -98,7 +98,7 @@ async withFastify(
           'utf-8'
         );
         template = await vite.transformIndexHtml(url, template);
-        
+
         reply.type('text/html').send(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
@@ -109,51 +109,51 @@ async withFastify(
   } else {
     // Production 모드: 빌드된 파일 서빙
     const webDistPath = path.join(this.apiRootPath, 'web-dist', 'client');
-    
+
     // 롤링 업데이트 대응: asset hash 불일치 처리
     server.get('/assets/index-*.js', async (request, reply) => {
       const fs = await import('fs/promises');
       const assetsDir = path.join(webDistPath, 'assets');
       const files = await fs.readdir(assetsDir);
       const indexJs = files.find(f => f.startsWith('index-') && f.endsWith('.js'));
-      
+
       if (indexJs) {
         return reply.redirect(`/assets/${indexJs}`);
       }
       reply.status(404).send('Not found');
     });
-    
+
     server.get('/assets/index-*.css', async (request, reply) => {
       const fs = await import('fs/promises');
       const assetsDir = path.join(webDistPath, 'assets');
       const files = await fs.readdir(assetsDir);
       const indexCss = files.find(f => f.startsWith('index-') && f.endsWith('.css'));
-      
+
       if (indexCss) {
         return reply.redirect(`/assets/${indexCss}`);
       }
       reply.status(404).send('Not found');
     });
-    
+
     // static files
     server.register(await import('@fastify/static'), {
       root: path.join(webDistPath, 'assets'),
       prefix: '/assets/',
       decorateReply: false,
     });
-    
+
     // SPA fallback
     server.all('*', async (request, reply) => {
       // Sonamu UI는 skip
       if (request.url.startsWith('/sonamu-ui')) {
         return;
       }
-      
+
       // API는 skip
       if (request.url.startsWith(this.config.api.route.prefix)) {
         return;
       }
-      
+
       // index.html
       const fs = await import('fs/promises');
       reply.type('text/html').send(
@@ -164,7 +164,7 @@ async withFastify(
       );
     });
   }
-  
+
   // API 라우팅 설정
   // ... 기존 코드
 }
@@ -179,7 +179,7 @@ async destroy(): Promise<void> {
   await this._workflows?.destroy();
   await this.watcher?.close();
   this.storage?.destroy();
-  
+
   // Vite dev server 종료
   if (this._viteDevServer) {
     await this._viteDevServer.close();
@@ -195,30 +195,26 @@ robots.txt, AASA 같은 특수 파일이 필요하면:
 // withFastify 메서드 안에서
 
 // robots.txt
-server.get('/robots.txt', async (request, reply) => {
+server.get("/robots.txt", async (request, reply) => {
   if (isProduction()) {
-    const fs = await import('fs/promises');
-    reply.type('text/plain').send(
-      await fs.readFile(path.join(webDistPath, 'robots.txt'), 'utf-8')
-    );
+    const fs = await import("fs/promises");
+    reply.type("text/plain").send(await fs.readFile(path.join(webDistPath, "robots.txt"), "utf-8"));
   } else {
-    reply.type('text/plain').send('User-agent: *\nDisallow: /');
+    reply.type("text/plain").send("User-agent: *\nDisallow: /");
   }
 });
 
 // AASA
-server.get('/.well-known/apple-app-site-association', async (request, reply) => {
-  const fs = await import('fs/promises');
-  reply.type('application/json').send(
-    await fs.readFile(
-      path.join(webDistPath, '.well-known/aasa'),
-      'utf-8'
-    )
-  );
+server.get("/.well-known/apple-app-site-association", async (request, reply) => {
+  const fs = await import("fs/promises");
+  reply
+    .type("application/json")
+    .send(await fs.readFile(path.join(webDistPath, ".well-known/aasa"), "utf-8"));
 });
 ```
 
 ### 확인 사항
+
 - [ ] miomock-api 서버 실행 (`pnpm dev`)
 - [ ] `http://localhost:10280` 접속 시 web 화면 표시
 - [ ] HMR 정상 동작 (파일 수정 시 자동 리로드)
@@ -238,14 +234,14 @@ server.get('/.well-known/apple-app-site-association', async (request, reply) => 
 export default defineConfig({
   // ... 기존 설정
   build: {
-    outDir: 'dist/client',
+    outDir: "dist/client",
     emptyOutDir: true,
     ssrManifest: true,
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-tanstack': ['@tanstack/react-query', '@tanstack/react-router'],
+          "vendor-react": ["react", "react-dom"],
+          "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
         },
       },
     },
@@ -306,6 +302,7 @@ NODE_ENV=production pnpm start
 ```
 
 ### 확인 사항
+
 - [ ] `web/dist/client` 폴더 생성 확인
 - [ ] `api/web-dist`에 파일 복사 확인
 - [ ] index.html, assets 폴더 확인
@@ -371,6 +368,7 @@ curl -I http://localhost:10280/assets/index-old.js
 ```
 
 ### 확인 사항
+
 - [ ] 모든 경로 분기 정상 동작
 - [ ] Dev 모드와 Production 모드 동일하게 동작
 - [ ] 404 페이지 정상 표시

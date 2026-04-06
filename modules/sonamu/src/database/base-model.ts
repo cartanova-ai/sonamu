@@ -2,6 +2,7 @@
 import { getLogger, type Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
 import { cloneDeep, cluster, group, isObject, omit, set } from "radashi";
+
 import { type ListResult, normalizeFilterQuery, validateSonamuFilters } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
@@ -13,9 +14,9 @@ import type { EnhancerMap, ResolveSubsetIntersection } from "./base-model.types"
 import type { DBPreset } from "./db";
 import { DB } from "./db";
 import { Puri } from "./puri";
-import type { UnionExtractedTTables } from "./puri.types";
 import type { InferAllSubsets, PuriLoaderQueries, PuriSubsetFn } from "./puri-subset.types";
 import { PuriWrapper } from "./puri-wrapper";
+import type { UnionExtractedTTables } from "./puri.types";
 import { UpsertBuilder } from "./upsert-builder";
 
 type UnknownDBRecord = Record<string, unknown>;

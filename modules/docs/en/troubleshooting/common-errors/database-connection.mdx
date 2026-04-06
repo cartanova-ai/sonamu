@@ -1,6 +1,6 @@
 ---
-title: 'Database Connection'
-description: 'Troubleshooting DB connection issues'
+title: "Database Connection"
+description: "Troubleshooting DB connection issues"
 ---
 
 This covers common database connection-related problems in Sonamu and how to resolve them.
@@ -32,9 +32,9 @@ const db = createKnexInstance(config);
 
 // Perform multiple operations
 await db.raw("SELECT ...");
-await db.raw("UPDATE ...");  // Error occurs here
+await db.raw("UPDATE ..."); // Error occurs here
 
-await db.destroy();  // Never reached
+await db.destroy(); // Never reached
 ```
 
 ### Solutions
@@ -49,7 +49,7 @@ try {
   await db.raw("UPDATE ...");
   return result;
 } finally {
-  await db.destroy();  // Executes regardless of error
+  await db.destroy(); // Executes regardless of error
 }
 ```
 
@@ -170,12 +170,12 @@ export default {
       database: "miomock",
       pool: {
         min: 2,
-        max: 10,  // Increase from default
-        acquireTimeoutMillis: 30000,  // Increase timeout
-        idleTimeoutMillis: 30000
-      }
-    }
-  }
+        max: 10, // Increase from default
+        acquireTimeoutMillis: 30000, // Increase timeout
+        idleTimeoutMillis: 30000,
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -290,8 +290,8 @@ psql -U postgres -c "DROP DATABASE IF EXISTS miomock_test;"
 export default defineConfig({
   test: {
     globalSetup: "./test/setup.ts",
-    globalTeardown: "./test/teardown.ts"
-  }
+    globalTeardown: "./test/teardown.ts",
+  },
 });
 ```
 

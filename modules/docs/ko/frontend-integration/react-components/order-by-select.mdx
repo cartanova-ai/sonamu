@@ -12,21 +12,25 @@ description: "정렬 옵션 선택 컴포넌트 사용법"
     Entity 정의에서 자동 생성
 
     OrderBy enum 기반
+
   </Card>
   <Card title="한글 레이블" icon="language">
     자동 레이블 매핑
 
     "ID최신순", "생성일오름차순" 등
+
   </Card>
   <Card title="useListParams 통합" icon="link">
     register 패턴 지원
 
     URL 동기화 자동
+
   </Card>
   <Card title="커스터마이징" icon="gear">
     스캐폴딩 파일
 
     자유로운 수정 가능
+
   </Card>
 </CardGroup>
 
@@ -59,6 +63,7 @@ export const UserListParams = UserBaseListParams.extend({
 **위치**: `web/src/components/user/UserOrderBySelect.tsx`
 
 **자동 생성되는 레이블**: `web/src/services/sonamu.generated.ts`
+
 ```typescript
 export const UserOrderByLabel = {
   "id-desc": "ID최신순",
@@ -78,6 +83,7 @@ export const UserOrderByLabel = {
 - `username-desc` → "이름내림차순"
 
 필드명과 정렬 방향(`asc`/`desc`)을 조합하여 자동 생성됩니다.
+
 </Info>
 
 ## 기본 사용법
@@ -105,6 +111,7 @@ export function UserListPage() {
 ```
 
 **동작**:
+
 1. 사용자가 정렬 옵션 선택
 2. `register("orderBy")`가 자동으로 URL 업데이트
 3. API 호출 시 `listParams.orderBy`가 전달됨
@@ -176,9 +183,11 @@ export function UserListPage() {
 **textPrefix 활용 예시**
 
 목록 페이지 상단에 현재 정렬을 명확히 표시하고 싶을 때 유용합니다:
+
 ```
 [정렬: ID최신순 ▼]
 ```
+
 </Info>
 
 ### clearable
@@ -199,6 +208,7 @@ export function UserListPage() {
 ```
 
 **사용 시나리오**:
+
 - 기본 정렬로 돌아가고 싶을 때
 - 정렬 없이 데이터베이스 순서대로 보고 싶을 때
 
@@ -481,6 +491,7 @@ pnpm dev
 **재생성 시 주의**
 
 커스터마이징한 내용은 재생성 시 사라집니다. 중요한 수정 사항은 별도로 백업하거나 문서화하세요.
+
 </Warning>
 
 ## 문제 해결
@@ -490,12 +501,10 @@ pnpm dev
 **원인**: 백엔드에 `OrderBy` enum이 정의되지 않음
 
 **해결**:
+
 ```typescript
 // user.types.ts (백엔드)에 추가
-export const UserOrderBy = z.enum([
-  "id-desc",
-  "id-asc",
-]);
+export const UserOrderBy = z.enum(["id-desc", "id-asc"]);
 
 export const UserListParams = UserBaseListParams.extend({
   orderBy: UserOrderBy.optional(),
@@ -507,6 +516,7 @@ export const UserListParams = UserBaseListParams.extend({
 **원인**: `sonamu.generated.ts`가 재생성되지 않음
 
 **해결**:
+
 ```bash
 # sonamu.lock 삭제 후 재동기화
 rm api/sonamu.lock

@@ -1,14 +1,16 @@
+import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
+
 import type { Session, User } from "better-auth";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
-import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
 import type { ZodObject } from "zod";
+
 import type { NaiteStore } from "../naite/naite";
 import type { BufferedFile } from "../storage/buffered-file";
 import type { UploadedFile } from "../storage/uploaded-file";
 import type { createSSEFactory } from "../stream/sse";
 
-// biome-ignore lint/suspicious/noEmptyInterface: Context 확장 타입
+// oxlint-disable-next-line @typescript-eslint/no-empty-interface -- Context 확장 타입
 export interface ContextExtend {}
 export type Context = {
   request: FastifyRequest;

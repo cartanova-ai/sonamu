@@ -44,6 +44,7 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 </FileTree>
 
 **Generated code**:
+
 ```typescript title="src/models/User.model.ts"
 import { BaseModelClass } from "sonamu";
 import type { InferSelectModel } from "sonamu";
@@ -86,6 +87,7 @@ pnpm scaffold model_test
 </FileTree>
 
 **Generated code**:
+
 ```typescript title="src/models/User.model.test.ts"
 import { beforeAll, describe, test } from "bun:test";
 import { expect } from "@jest/globals";
@@ -127,6 +129,7 @@ pnpm sonamu ui
 
 # Generate View in Scaffolding tab
 ```
+
 </Info>
 
 ## Generated Code Structure
@@ -151,20 +154,20 @@ class UserModelClass extends BaseModelClass<
 
   // Add methods here
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
 }
 ```
 
 **Auto-generated features**:
+
 - ✅ TypeScript types
 - ✅ Entity connection
 - ✅ BaseModel inheritance
 - ✅ Basic CRUD methods
 
 **You need to add**:
+
 - Business logic methods
 - Complex queries
 - Data validation
@@ -177,7 +180,7 @@ Generated test files include basic tests:
 ```typescript
 describe("User Model", () => {
   beforeAll(async () => {
-    await FixtureManager.sync();  // Load fixtures
+    await FixtureManager.sync(); // Load fixtures
   });
 
   test("findById", async () => {
@@ -191,6 +194,7 @@ describe("User Model", () => {
 ```
 
 **Extensible**:
+
 - Add business logic tests
 - Edge case tests
 - Performance tests
@@ -209,9 +213,7 @@ export const ProductEntity = {
     { name: "category_id", type: "int" },
     { name: "created_at", type: "datetime" },
   ],
-  belongsTo: [
-    { entityId: "Category", as: "category" },
-  ],
+  belongsTo: [{ entityId: "Category", as: "category" }],
 } satisfies EntityType;
 ```
 
@@ -246,15 +248,12 @@ class ProductModelClass extends BaseModelClass<
 
   // Find products by category
   async findByCategory(categoryId: number) {
-    return this.getPuri("r")
-      .where("category_id", categoryId)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("category_id", categoryId).where("deleted_at", null);
   }
 
   // Find products by price range
   async findByPriceRange(min: number, max: number) {
-    return this.getPuri("r")
-      .whereBetween("price", [min, max]);
+    return this.getPuri("r").whereBetween("price", [min, max]);
   }
 }
 ```
@@ -284,7 +283,7 @@ describe("Product Model", () => {
 
   test("findByPriceRange", async () => {
     const products = await ProductModel.findByPriceRange(10000, 50000);
-    products.forEach(product => {
+    products.forEach((product) => {
       expect(product.price).toBeGreaterThanOrEqual(10000);
       expect(product.price).toBeLessThanOrEqual(50000);
     });
@@ -329,16 +328,12 @@ class UserModelClass extends BaseModelClass<
 
   // Find user by email
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
 
   // Find only active users
   async findActiveUsers() {
-    return this.getPuri("r")
-      .where("is_active", true)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
   }
 
   // User statistics
@@ -376,7 +371,7 @@ describe("User Model - Extended", () => {
 
   test("findActiveUsers", async () => {
     const users = await UserModel.findActiveUsers();
-    users.forEach(user => {
+    users.forEach((user) => {
       expect(user.is_active).toBe(true);
       expect(user.deleted_at).toBeNull();
     });
@@ -475,6 +470,7 @@ git commit -m "Add User model and tests"
 **Problem**: Want to regenerate Model
 
 **Solution**:
+
 ```bash
 # Backup existing file
 cp src/models/User.model.ts src/models/User.model.ts.bak
@@ -490,6 +486,7 @@ pnpm scaffold model
 **Problem**: Update Model after Entity change
 
 **Solution**:
+
 ```bash
 # 1. Apply migration
 pnpm migrate run

@@ -49,7 +49,7 @@ plugins: {
 **Completely disables compression**.
 
 ```typescript
-CompressPresets.disabled
+CompressPresets.disabled;
 // Value: false
 ```
 
@@ -89,6 +89,7 @@ CompressPresets.disabled
       return this.sendImageFile();
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -115,11 +116,9 @@ CompressPresets.default
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - General API servers
-    - Most cases (recommended)
-    - When no special optimization is needed
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - General API servers - Most cases (recommended) - When no special optimization is needed
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -141,10 +140,12 @@ CompressPresets.default
       return this.findMany({});
     }
     ```
+
   </Tab>
 </Tabs>
 
 **Characteristics**:
+
 - Under 1KB: No compression (prevents overhead)
 - 1KB and above: Compression in order of brotli > gzip > deflate
 - Modern browsers: brotli (best compression ratio)
@@ -173,12 +174,10 @@ CompressPresets.aggressive
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Environments with expensive bandwidth
-    - Mobile network targets
-    - Minimizing CDN transfer volume
-    - Many small responses
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Environments with expensive bandwidth - Mobile network targets - Minimizing CDN transfer volume
+  - Many small responses
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -200,10 +199,12 @@ CompressPresets.aggressive
       return { status: "ok", timestamp: Date.now() };
     }
     ```
+
   </Tab>
 </Tabs>
 
 **Effects**:
+
 - Compresses everything 256 bytes and above
 - Minimizes network transfer volume
 - Slight increase in CPU overhead
@@ -231,12 +232,10 @@ CompressPresets.conservative
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Environments with limited CPU resources
-    - High TPS (Transactions Per Second)
-    - Minimizing response latency
-    - Compressing only large responses
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Environments with limited CPU resources - High TPS (Transactions Per Second) - Minimizing
+  response latency - Compressing only large responses
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -258,10 +257,12 @@ CompressPresets.conservative
       return this.findMany({ num: 10000 });
     }
     ```
+
   </Tab>
 </Tabs>
 
 **Characteristics**:
+
 - Under 4KB: No compression
 - Excludes brotli (saves CPU)
 - Uses gzip only (fast + compatible)
@@ -289,12 +290,10 @@ CompressPresets.gzipOnly
     ```
   </Tab>
 
-  <Tab title="When to Use" icon="lightbulb">
-    - Legacy browser support (IE)
-    - Stability priority
-    - Browser compatibility issues
-    - Real-time compression (fast processing)
-  </Tab>
+<Tab title="When to Use" icon="lightbulb">
+  - Legacy browser support (IE) - Stability priority - Browser compatibility issues - Real-time
+  compression (fast processing)
+</Tab>
 
   <Tab title="Example" icon="code">
     ```typescript
@@ -316,34 +315,36 @@ CompressPresets.gzipOnly
       return this.getRealTimeStats();
     }
     ```
+
   </Tab>
 </Tabs>
 
 **Characteristics**:
+
 - Fastest compression
 - Supported by all browsers
 - Stable
 
 ## Preset Comparison Table
 
-| Preset | Threshold | Algorithms | CPU Usage | Compression Ratio | Use Case |
-|--------|-----------|---------|-----------|--------|------|
-| `disabled` | - | None | Minimal | 0% | Development, already compressed content |
-| `default` | 1KB | br/gzip/deflate | Medium | High | General cases (recommended) |
-| `aggressive` | 256B | br/gzip/deflate | High | Best | Bandwidth optimization |
-| `conservative` | 4KB | gzip/deflate | Low | Medium | CPU saving, high performance |
-| `gzipOnly` | 1KB | gzip | Low | Medium | Legacy support, stability |
+| Preset         | Threshold | Algorithms      | CPU Usage | Compression Ratio | Use Case                                |
+| -------------- | --------- | --------------- | --------- | ----------------- | --------------------------------------- |
+| `disabled`     | -         | None            | Minimal   | 0%                | Development, already compressed content |
+| `default`      | 1KB       | br/gzip/deflate | Medium    | High              | General cases (recommended)             |
+| `aggressive`   | 256B      | br/gzip/deflate | High      | Best              | Bandwidth optimization                  |
+| `conservative` | 4KB       | gzip/deflate    | Low       | Medium            | CPU saving, high performance            |
+| `gzipOnly`     | 1KB       | gzip            | Low       | Medium            | Legacy support, stability               |
 
 ## Compression Ratio Comparison
 
 Based on actual 100KB JSON data:
 
-| Algorithm | Compressed Size | Compression Ratio | Speed |
-|---------|------------|--------|------|
-| No compression | 100KB | 0% | - |
-| deflate | 15KB | 85% | Fast |
-| gzip | 14KB | 86% | Fast |
-| brotli (br) | 12KB | 88% | Slow |
+| Algorithm      | Compressed Size | Compression Ratio | Speed |
+| -------------- | --------------- | ----------------- | ----- |
+| No compression | 100KB           | 0%                | -     |
+| deflate        | 15KB            | 85%               | Fast  |
+| gzip           | 14KB            | 86%               | Fast  |
+| brotli (br)    | 12KB            | 88%               | Slow  |
 
 ## Recommended Presets by Scenario
 
@@ -353,9 +354,9 @@ Based on actual 100KB JSON data:
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: CompressPresets.default,  // Balanced settings
-    }
-  }
+      compress: CompressPresets.default, // Balanced settings
+    },
+  },
 };
 ```
 
@@ -365,9 +366,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: CompressPresets.aggressive,  // Maximum compression
-    }
-  }
+      compress: CompressPresets.aggressive, // Maximum compression
+    },
+  },
 };
 ```
 
@@ -377,9 +378,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: CompressPresets.conservative,  // Save CPU
-    }
-  }
+      compress: CompressPresets.conservative, // Save CPU
+    },
+  },
 };
 ```
 
@@ -389,9 +390,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: CompressPresets.gzipOnly,  // Compatibility
-    }
-  }
+      compress: CompressPresets.gzipOnly, // Compatibility
+    },
+  },
 };
 ```
 
@@ -401,9 +402,9 @@ export const config: SonamuConfig = {
 export const config: SonamuConfig = {
   server: {
     plugins: {
-      compress: CompressPresets.disabled,  // Easier debugging
-    }
-  }
+      compress: CompressPresets.disabled, // Easier debugging
+    },
+  },
 };
 ```
 
@@ -435,7 +436,7 @@ plugins: {
 class DataModelClass extends BaseModelClass {
   // Small response: aggressive
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.aggressive,
   })
   async getStatus() {
@@ -444,7 +445,7 @@ class DataModelClass extends BaseModelClass {
 
   // Medium response: default
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.default,
   })
   async getList() {
@@ -453,7 +454,7 @@ class DataModelClass extends BaseModelClass {
 
   // Large response: conservative (save CPU)
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.conservative,
   })
   async exportData() {
@@ -462,11 +463,11 @@ class DataModelClass extends BaseModelClass {
 
   // Already compressed file: disabled
   @api({
-    httpMethod: 'GET',
+    httpMethod: "GET",
     compress: CompressPresets.disabled,
   })
   async downloadImage() {
-    return this.sendFile('image.png');
+    return this.sendFile("image.png");
   }
 }
 ```
@@ -474,19 +475,19 @@ class DataModelClass extends BaseModelClass {
 ## Environment-Based Presets
 
 ```typescript
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === "development";
+const isProduction = process.env.NODE_ENV === "production";
 
 export const config: SonamuConfig = {
   server: {
     plugins: {
       compress: isDevelopment
-        ? CompressPresets.disabled       // Development: no compression
+        ? CompressPresets.disabled // Development: no compression
         : isProduction
-        ? CompressPresets.aggressive     // Production: maximum compression
-        : CompressPresets.default        // Others: default settings
-    }
-  }
+          ? CompressPresets.aggressive // Production: maximum compression
+          : CompressPresets.default, // Others: default settings
+    },
+  },
 };
 ```
 
@@ -496,6 +497,7 @@ export const config: SonamuConfig = {
 **Precautions when using presets**:
 
 1. **Presets are starting points**: Adjust according to your situation
+
    ```typescript
    // Customizing based on preset
    compress: {
@@ -505,48 +507,58 @@ export const config: SonamuConfig = {
    ```
 
 2. **aggressive increases CPU load**: Monitor server performance
+
    ```typescript
    // Warning: High CPU usage
-   compress: CompressPresets.aggressive
+   compress: CompressPresets.aggressive;
    ```
 
 3. **conservative doesn't compress small responses**: Reduced network efficiency
+
    ```typescript
    // conservative: Does not compress under 4KB
-   compress: CompressPresets.conservative
+   compress: CompressPresets.conservative;
    ```
 
 4. **disabled disables all compression**: Increased transfer volume
    ```typescript
    // Avoid disabling in production
-   compress: CompressPresets.disabled
+   compress: CompressPresets.disabled;
    ```
-</Warning>
+   </Warning>
 
 ## Performance Measurement
 
 Performance comparison by preset (based on 100KB JSON):
 
-| Preset | Compression Time | Compressed Size | Network | Total Time |
-|--------|----------|----------|---------|---------|
-| `disabled` | 0ms | 100KB | 1000ms | 1000ms |
-| `gzipOnly` | 2ms | 14KB | 140ms | 142ms |
-| `conservative` | 2ms | 14KB | 140ms | 142ms |
-| `default` | 5ms | 12KB | 120ms | 125ms |
-| `aggressive` | 5ms | 12KB | 120ms | 125ms |
+| Preset         | Compression Time | Compressed Size | Network | Total Time |
+| -------------- | ---------------- | --------------- | ------- | ---------- |
+| `disabled`     | 0ms              | 100KB           | 1000ms  | 1000ms     |
+| `gzipOnly`     | 2ms              | 14KB            | 140ms   | 142ms      |
+| `conservative` | 2ms              | 14KB            | 140ms   | 142ms      |
+| `default`      | 5ms              | 12KB            | 120ms   | 125ms      |
+| `aggressive`   | 5ms              | 12KB            | 120ms   | 125ms      |
 
 **Conclusion**: brotli takes slightly longer to compress but is overall faster due to network time savings
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Compression Configuration" icon="gear" href="/en/advanced-features/compress/compress-configuration">
+  <Card
+    title="Compression Configuration"
+    icon="gear"
+    href="/en/advanced-features/compress/compress-configuration"
+  >
     Global compression plugin settings
   </Card>
   <Card title="Per-API Control" icon="code" href="/en/advanced-features/compress/per-api-control">
     Compression settings in @api decorator
   </Card>
-  <Card title="Performance Optimization" icon="gauge-high" href="/en/advanced-features/compress/performance-optimization">
+  <Card
+    title="Performance Optimization"
+    icon="gauge-high"
+    href="/en/advanced-features/compress/performance-optimization"
+  >
     Compression optimization strategies
   </Card>
 </CardGroup>

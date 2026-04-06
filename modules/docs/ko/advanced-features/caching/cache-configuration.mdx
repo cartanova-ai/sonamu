@@ -10,6 +10,7 @@ Sonamu는 [BentoCache](https://bentocache.dev/)를 기반으로 강력한 캐싱
 BentoCache는 Multi-tier 캐싱을 지원하는 TypeScript 캐시 라이브러리입니다.
 
 **주요 특징**:
+
 - **L1/L2 레이어**: 메모리(빠름) + 영구 저장소(느림하지만 공유 가능)
 - **다양한 드라이버**: Memory, Redis, File, Knex 지원
 - **Bus 시스템**: 분산 캐시 무효화
@@ -31,8 +32,7 @@ export const config: SonamuConfig = {
     cache: {
       default: "main",
       stores: {
-        main: store()
-          .useL1Layer(drivers.memory({ maxSize: "100mb" }))
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
       },
     },
   },
@@ -40,6 +40,7 @@ export const config: SonamuConfig = {
 ```
 
 **필수 필드**:
+
 - `default`: 기본으로 사용할 스토어 이름
 - `stores`: 스토어 설정 객체 (최소 1개 이상 필요)
 
@@ -49,24 +50,19 @@ Sonamu는 5가지 드라이버를 제공합니다:
 
 <CardGroup cols={2}>
   <Card title="memory" icon="microchip">
-    메모리 기반 캐시
-    (빠르지만 프로세스 재시작 시 삭제)
+    메모리 기반 캐시 (빠르지만 프로세스 재시작 시 삭제)
   </Card>
   <Card title="redis" icon="database">
-    Redis 기반 캐시
-    (여러 프로세스 간 공유 가능)
+    Redis 기반 캐시 (여러 프로세스 간 공유 가능)
   </Card>
   <Card title="file" icon="file">
-    파일 시스템 기반 캐시
-    (영구 저장)
+    파일 시스템 기반 캐시 (영구 저장)
   </Card>
   <Card title="knex" icon="table">
-    데이터베이스 기반 캐시
-    (기존 DB 활용)
+    데이터베이스 기반 캐시 (기존 DB 활용)
   </Card>
   <Card title="redisBus" icon="tower-broadcast">
-    분산 캐시 무효화 버스
-    (여러 서버 간 동기화)
+    분산 캐시 무효화 버스 (여러 서버 간 동기화)
   </Card>
 </CardGroup>
 
@@ -91,13 +87,16 @@ redisDriver({ connection: {...} });
 L1은 로컬 메모리에 저장되어 **가장 빠릅니다**.
 
 ```typescript
-store().useL1Layer(drivers.memory({ 
-  maxSize: "100mb",  // 최대 크기
-  maxItems: 1000,    // 최대 항목 수
-}))
+store().useL1Layer(
+  drivers.memory({
+    maxSize: "100mb", // 최대 크기
+    maxItems: 1000, // 최대 항목 수
+  }),
+);
 ```
 
 **특징**:
+
 - 프로세스 내에서만 유효
 - 서버 재시작 시 삭제됨
 - 네트워크 I/O 없음 (가장 빠름)
@@ -179,16 +178,18 @@ const redis = new Redis({ host: "localhost", port: 6379 });
 store()
   .useL1Layer(drivers.memory({ maxSize: "100mb" }))
   .useL2Layer(drivers.redis({ connection: redis }))
-  .useBus(drivers.redisBus({ connection: redis }))
+  .useBus(drivers.redisBus({ connection: redis }));
 ```
 
 **Bus 없이**:
+
 ```
 Server 1: deleteByTag("product") → L1/L2 삭제
 Server 2: 여전히 오래된 캐시 사용 ❌
 ```
 
 **Bus 사용**:
+
 ```
 Server 1: deleteByTag("product") → L1/L2 삭제 + Bus 알림
 Server 2: Bus 메시지 수신 → L1 삭제 ✅
@@ -202,18 +203,17 @@ Server 2: Bus 메시지 수신 → L1 삭제 ✅
 export const config: SonamuConfig = {
   server: {
     cache: {
-      default: "api",  // 기본 스토어
+      default: "api", // 기본 스토어
       stores: {
         // API 응답 캐싱 (짧은 TTL, 메모리만)
-        api: store()
-          .useL1Layer(drivers.memory({ maxSize: "200mb" })),
-        
+        api: store().useL1Layer(drivers.memory({ maxSize: "200mb" })),
+
         // 데이터베이스 쿼리 캐싱 (긴 TTL, Redis 공유)
         database: store()
           .useL1Layer(drivers.memory({ maxSize: "100mb" }))
           .useL2Layer(drivers.redis({ connection: redis }))
           .useBus(drivers.redisBus({ connection: redis })),
-        
+
         // 정적 설정 캐싱 (영구, 파일 저장)
         config: store()
           .useL1Layer(drivers.memory({ maxItems: 100 }))
@@ -243,13 +243,13 @@ class UserModelClass extends BaseModelClass {
   @cache({ store: "database", ttl: "1h" })
   @api()
   async findById(id: number) {
-    return this.findOne(['id', id]);
+    return this.findOne(["id", id]);
   }
-  
+
   // config 스토어 사용
   @cache({ store: "config", ttl: "forever" })
   async getSettings() {
-    return this.findOne(['key', 'settings']);
+    return this.findOne(["key", "settings"]);
   }
 }
 ```
@@ -265,10 +265,10 @@ export const config: SonamuConfig = {
       default: "main",
       stores: {
         main: store().useL1Layer(
-          drivers.memory({ 
+          drivers.memory({
             maxSize: "500mb",
             maxItems: 10000,
-          })
+          }),
         ),
       },
     },
@@ -277,6 +277,7 @@ export const config: SonamuConfig = {
 ```
 
 **적합한 경우**:
+
 - 단일 서버 운영
 - 캐시 재생성이 빠름
 - 서버 재시작이 드물음
@@ -308,6 +309,7 @@ export const config: SonamuConfig = {
 ```
 
 **적합한 경우**:
+
 - 로드 밸런서 + 여러 서버
 - 서버 간 캐시 공유 필요
 - 서버 재시작 후에도 캐시 유지
@@ -317,7 +319,9 @@ export const config: SonamuConfig = {
 ```typescript
 import Redis from "ioredis";
 
-const redis = new Redis({ /* ... */ });
+const redis = new Redis({
+  /* ... */
+});
 
 export const config: SonamuConfig = {
   server: {
@@ -325,15 +329,14 @@ export const config: SonamuConfig = {
       default: "main",
       stores: {
         // 빠른 조회 (API 응답)
-        main: store()
-          .useL1Layer(drivers.memory({ maxSize: "300mb" })),
-        
+        main: store().useL1Layer(drivers.memory({ maxSize: "300mb" })),
+
         // 공유 필요 (사용자 세션)
         shared: store()
           .useL1Layer(drivers.memory({ maxSize: "100mb" }))
           .useL2Layer(drivers.redis({ connection: redis }))
           .useBus(drivers.redisBus({ connection: redis })),
-        
+
         // 영구 저장 (설정, 템플릿)
         persistent: store()
           .useL1Layer(drivers.memory({ maxItems: 100 }))
@@ -350,10 +353,10 @@ export const config: SonamuConfig = {
 
 ```typescript
 drivers.memory({
-  maxSize: "100mb",     // 최대 크기 (문자열 또는 바이트 수)
-  maxItems: 1000,       // 최대 항목 수
-  maxItemSize: "10mb",  // 항목당 최대 크기
-})
+  maxSize: "100mb", // 최대 크기 (문자열 또는 바이트 수)
+  maxItems: 1000, // 최대 항목 수
+  maxItemSize: "10mb", // 항목당 최대 크기
+});
 ```
 
 **크기 단위**: `"10kb"`, `"5mb"`, `"1gb"` 또는 바이트 수(`1024`)
@@ -372,17 +375,17 @@ const redis = new Redis({
 
 drivers.redis({
   connection: redis,
-  keyPrefix: "cache:",  // 키 접두사 (선택)
-})
+  keyPrefix: "cache:", // 키 접두사 (선택)
+});
 ```
 
 ### File Driver
 
 ```typescript
 drivers.file({
-  directory: ".cache",  // 저장 디렉토리
-  prefix: "sonamu",     // 파일명 접두사 (선택)
-})
+  directory: ".cache", // 저장 디렉토리
+  prefix: "sonamu", // 파일명 접두사 (선택)
+});
 ```
 
 ### Knex Driver
@@ -392,11 +395,12 @@ import { DB } from "sonamu";
 
 drivers.knex({
   connection: DB.getDB("w"),
-  tableName: "cache_items",  // 테이블명 (기본값)
-})
+  tableName: "cache_items", // 테이블명 (기본값)
+});
 ```
 
 **테이블 스키마** (자동 생성):
+
 ```sql
 CREATE TABLE cache_items (
   key TEXT PRIMARY KEY,
@@ -410,8 +414,8 @@ CREATE TABLE cache_items (
 ```typescript
 drivers.redisBus({
   connection: redis,
-  channelPrefix: "cache:",  // 채널 접두사 (선택)
-})
+  channelPrefix: "cache:", // 채널 접두사 (선택)
+});
 ```
 
 ## 테스트 환경
@@ -425,13 +429,14 @@ import { Sonamu } from "sonamu";
 test("캐시 테스트", async () => {
   // 자동으로 메모리 캐시 사용
   await Sonamu.cache.set({ key: "test", value: "value" });
-  
+
   const result = await Sonamu.cache.get({ key: "test" });
   expect(result).toBe("value");
 });
 ```
 
 **내부 구현**:
+
 ```typescript
 // sonamu/src/api/sonamu.ts
 private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {
@@ -450,15 +455,17 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
 **캐시 설정 시 주의사항**:
 
 1. **메모리 제한**: `maxSize`를 너무 크게 설정하면 OOM(Out of Memory) 발생 가능
+
    ```typescript
    // ❌ 잘못된 예
-   drivers.memory({ maxSize: "10gb" })  // 서버 메모리보다 큼
-   
+   drivers.memory({ maxSize: "10gb" }); // 서버 메모리보다 큼
+
    // ✅ 올바른 예
-   drivers.memory({ maxSize: "500mb" })  // 적절한 크기
+   drivers.memory({ maxSize: "500mb" }); // 적절한 크기
    ```
 
 2. **Redis 연결 공유**: Redis 인스턴스는 driver와 bus에서 **같은 인스턴스** 사용
+
    ```typescript
    // ✅ 올바른 예
    const redis = new Redis({...});
@@ -468,34 +475,37 @@ private async initializeCache(config: CacheConfig | undefined, forTesting: boole
    ```
 
 3. **스토어 이름 일치**: 데코레이터의 `store` 옵션은 설정에 정의된 이름과 일치해야 함
+
    ```typescript
    // sonamu.config.ts
    stores: {
      myStore: store()...
    }
-   
+
    // ❌ 잘못된 예
    @cache({ store: "wrongName" })  // 에러 발생
-   
+
    // ✅ 올바른 예
    @cache({ store: "myStore" })
    ```
 
 4. **Bus 없이 L2만 사용**: 여러 서버에서 L2(Redis)만 사용하면 L1이 동기화되지 않음
+
    ```typescript
    // ❌ 위험: 서버 간 L1 불일치 가능
    store()
      .useL1Layer(drivers.memory({ maxSize: "100mb" }))
-     .useL2Layer(drivers.redis({ connection: redis }))
+     .useL2Layer(drivers.redis({ connection: redis }));
    // Bus 없음 → 무효화 시 다른 서버의 L1은 그대로
-   
+
    // ✅ 안전: Bus로 L1 동기화
    store()
      .useL1Layer(drivers.memory({ maxSize: "100mb" }))
      .useL2Layer(drivers.redis({ connection: redis }))
-     .useBus(drivers.redisBus({ connection: redis }))
+     .useBus(drivers.redisBus({ connection: redis }));
    ```
-</Warning>
+
+   </Warning>
 
 ## 다음 단계
 

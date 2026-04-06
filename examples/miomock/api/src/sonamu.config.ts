@@ -1,7 +1,8 @@
+import path from "path";
+
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import dotenv from "dotenv";
-import path from "path";
 import { CachePresets, defineConfig, passkey, twoFactor } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";

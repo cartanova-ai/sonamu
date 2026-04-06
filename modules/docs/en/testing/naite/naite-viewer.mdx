@@ -12,21 +12,25 @@ Learn how to use Naite Viewer, the VSCode Extension that visualizes logs recorde
     During test execution
 
     Immediate log display
+
   </Card>
   <Card title="Unix Socket Communication" icon="plug">
     Inter-process communication
 
     Fast transmission
+
   </Card>
   <Card title="Project Isolation" icon="folder">
     Separate socket files
 
     Independent operation
+
   </Card>
   <Card title="Auto Connection" icon="link">
     On Extension startup
 
     Automatic socket creation
+
   </Card>
 </CardGroup>
 
@@ -43,13 +47,15 @@ Naite transmits all data recorded with `Naite.t()` during test execution to the 
     Immediately displays all logs recorded with `Naite.t()` during test execution in the VSCode panel. View structured logs without searching through the console.
   </Step>
 
-  <Step title="Grouping by Test">
-    Automatically groups logs by test case. Also categorized by Suite, so you can quickly find desired logs even in large-scale tests.
-  </Step>
+<Step title="Grouping by Test">
+  Automatically groups logs by test case. Also categorized by Suite, so you can quickly find desired
+  logs even in large-scale tests.
+</Step>
 
-  <Step title="Callstack Tracking">
-    Displays the call location and full callstack information for each log. Click on a log to navigate directly to that code location.
-  </Step>
+<Step title="Callstack Tracking">
+  Displays the call location and full callstack information for each log. Click on a log to navigate
+  directly to that code location.
+</Step>
 
   <Step title="Filtering and Search">
     Filter logs from specific modules using wildcard patterns (`user:*`), or search log contents by keyword.
@@ -82,11 +88,13 @@ flowchart LR
 ```
 
 **Benefits of socket communication**:
+
 - **Fast transmission**: Much faster IPC (Inter-Process Communication) than HTTP or files
 - **Real-time**: Logs are delivered to Extension immediately as tests run
 - **Isolation**: Independent sockets per project prevent conflicts
 
 **Socket path rules**:
+
 <Tabs>
   <Tab title="macOS / Linux">
     ```bash
@@ -110,16 +118,14 @@ Each project generates a unique hash based on the absolute path of the `sonamu.c
 import { createHash } from "crypto";
 
 const configPath = "/project/api/src/sonamu.config.ts";
-const hash = createHash("md5")
-  .update(configPath)
-  .digest("hex")
-  .slice(0, 8);
+const hash = createHash("md5").update(configPath).digest("hex").slice(0, 8);
 
 // Example: "a1b2c3d4"
 // Final socket path: ~/.sonamu/naite-a1b2c3d4.sock
 ```
 
 This way, even when running multiple Sonamu projects simultaneously, each uses an independent socket so logs don't get mixed.
+
 </Accordion>
 
 ### 2. Message Protocol
@@ -144,7 +150,7 @@ Sent when a test run starts. The Extension clears all existing logs and prepares
 export const NaiteVitestReporter = {
   async onTestRunStart() {
     await NaiteReporter.startTestRun();
-  }
+  },
 };
 
 // Or beforeAll()
@@ -156,7 +162,8 @@ beforeAll(async () => {
 </CodeGroup>
 
 <Info>
-In watch mode, when you modify a file, tests are re-run, and a `run/start` message is sent each time, reinitializing the Viewer.
+  In watch mode, when you modify a file, tests are re-run, and a `run/start` message is sent each
+  time, reinitializing the Viewer.
 </Info>
 
 #### test/result - Test Result
@@ -204,6 +211,7 @@ afterEach(async ({ task }) => {
 </CodeGroup>
 
 **Included information**:
+
 - **Test metadata**: Suite name, file path, line number
 - **Test result**: Pass/fail status, duration, error info
 - **Naite traces**: All logs recorded with `Naite.t()`
@@ -226,7 +234,7 @@ Sent when all tests complete. The Extension recognizes the test run has ended wi
 export const NaiteVitestReporter = {
   async onTestRunEnd() {
     await NaiteReporter.endTestRun();
-  }
+  },
 };
 ```
 
@@ -309,7 +317,9 @@ afterAll(() => {
 </Accordion>
 
 <Tip>
-**Buffering Mechanism**: If the Extension hasn't started yet or socket connection is delayed, NaiteReporter stores messages in a buffer and sends them all at once when connection succeeds. This allows you to see previous test logs even if you start the Extension late.
+  **Buffering Mechanism**: If the Extension hasn't started yet or socket connection is delayed,
+  NaiteReporter stores messages in a buffer and sends them all at once when connection succeeds.
+  This allows you to see previous test logs even if you start the Extension late.
 </Tip>
 
 ## Installation and Setup
@@ -337,13 +347,13 @@ The Extension automatically starts the socket server when it runs:
     Finds the `sonamu.config.ts` file in the current workspace.
   </Step>
 
-  <Step title="Hash Calculation">
-    Generates an MD5 hash (first 8 characters) from the absolute path of `sonamu.config.ts`.
-  </Step>
+<Step title="Hash Calculation">
+  Generates an MD5 hash (first 8 characters) from the absolute path of `sonamu.config.ts`.
+</Step>
 
-  <Step title="Socket Server Start">
-    Starts a Unix Socket server at `~/.sonamu/naite-{hash}.sock`.
-  </Step>
+<Step title="Socket Server Start">
+  Starts a Unix Socket server at `~/.sonamu/naite-{hash}.sock`.
+</Step>
 
   <Step title="Wait for Test Process">
     NaiteReporter connects to this socket when tests run.
@@ -351,7 +361,9 @@ The Extension automatically starts the socket server when it runs:
 </Steps>
 
 <Info>
-The Extension creates sockets based on project path, so you must **open the project folder directly** for it to work properly. Opening a parent folder may result in different socket paths that don't connect.
+  The Extension creates sockets based on project path, so you must **open the project folder
+  directly** for it to work properly. Opening a parent folder may result in different socket paths
+  that don't connect.
 </Info>
 
 ### 3. Running Tests
@@ -364,12 +376,10 @@ The Extension creates sockets based on project path, so you must **open the proj
     Runs all tests once and exits.
   </Tab>
 
-  <Tab title="Watch Mode">
-    ```bash
-    pnpm test --watch
-    ```
-    Automatically re-runs related tests when files change. The most commonly used mode during development.
-  </Tab>
+<Tab title="Watch Mode">
+  ```bash pnpm test --watch ``` Automatically re-runs related tests when files change. The most
+  commonly used mode during development.
+</Tab>
 
   <Tab title="Specific File">
     ```bash
@@ -397,10 +407,9 @@ Tests automatically connect to the Extension and display logs in real-time.
     3. Enter
   </Tab>
 
-  <Tab title="Sidebar" icon="sidebar">
-    1. Click the Sonamu icon in VSCode's left Activity Bar
-    2. Select the "Naite Viewer" tab
-  </Tab>
+<Tab title="Sidebar" icon="sidebar">
+  1. Click the Sonamu icon in VSCode's left Activity Bar 2. Select the "Naite Viewer" tab
+</Tab>
 
   <Tab title="Keyboard Shortcut" icon="bolt">
     Set a keyboard shortcut for faster access:
@@ -445,6 +454,7 @@ Naite Viewer displays tests in a 3-level hierarchy:
         style Trace3 fill:#fff9c4
         style Trace4 fill:#fff9c4
     ```
+
   </Tab>
 
   <Tab title="Actual Screen" icon="window">
@@ -539,6 +549,7 @@ Naite Viewer displays tests in a 3-level hierarchy:
         </AccordionGroup>
       </Accordion>
     </AccordionGroup>
+
   </Tab>
 
   <Tab title="Structure Explanation" icon="info">
@@ -558,6 +569,7 @@ Naite Viewer displays tests in a 3-level hierarchy:
     - Click Suite/Test to expand/collapse
     - Click Trace to show callstack info
     - Click each callstack frame to navigate to code location
+
   </Tab>
 </Tabs>
 
@@ -567,7 +579,8 @@ Naite Viewer displays tests in a 3-level hierarchy:
 </Frame>
 
 <Info>
-**Real-time Updates**: In watch mode, when you modify a file, tests auto-rerun and the Viewer updates immediately. This lets you see the impact of code changes right away.
+  **Real-time Updates**: In watch mode, when you modify a file, tests auto-rerun and the Viewer
+  updates immediately. This lets you see the impact of code changes right away.
 </Info>
 
 ### 3. Checking Callstack
@@ -591,6 +604,7 @@ user:create:input
 ```
 
 **Callstack meaning**:
+
 1. `test` (line 20): Location where `Naite.t()` was called in test code
 2. `createUser` (line 45): Actual business logic called by test
 3. `runWithMockContext`: Sonamu's Context wrapper (displayed up to here)
@@ -603,7 +617,8 @@ user:create:input
 </Frame>
 
 <Tip>
-Clicking each item in the callstack navigates directly to the exact line in that file. This is especially useful for debugging complex call chains.
+  Clicking each item in the callstack navigates directly to the exact line in that file. This is
+  especially useful for debugging complex call chains.
 </Tip>
 
 ### 4. Filtering and Search
@@ -622,6 +637,7 @@ In large-scale tests, hundreds of logs can be generated. Use filtering to quickl
     ```
 
     Filtering happens in real-time as you type patterns in the input field.
+
   </Tab>
 
   <Tab title="Text Search" icon="magnifying-glass">
@@ -633,6 +649,7 @@ In large-scale tests, hundreds of logs can be generated. Use filtering to quickl
     - Function search: `createUser`
 
     Search results are highlighted.
+
   </Tab>
 
   <Tab title="Status Filter" icon="check">
@@ -642,6 +659,7 @@ In large-scale tests, hundreds of logs can be generated. Use filtering to quickl
     - ✗ Failed only: Only failed tests
     - ⊘ Skipped: Skipped tests
     - ⌛ Pending: Pending tests
+
   </Tab>
 </Tabs>
 
@@ -692,11 +710,13 @@ In the Viewer, it displays like this:
 ```
 
 If payment step failed:
+
 - Logs only up to `order:payment:start`
 - Clearly identify which step succeeded
 - Use callstack to confirm exact failure location
 
 **Using filters**:
+
 - `order:payment:*` → Show only payment-related logs
 - `order:*:start` → Show only start logs for all steps
 
@@ -734,6 +754,7 @@ Viewer shows all operations performed by Syncer:
 ```
 
 **Analysis**:
+
 - See order of file creation
 - Measure each template rendering time
 - Filter and check specific templates (`syncer:renderTemplate:*`)
@@ -755,26 +776,27 @@ test("create post → add comment → send notification", async () => {
   Naite.t("api:comment:create:request", { postId: post.id, content: "Nice!" });
   const { comment } = await commentModel.create({
     post_id: post.id,
-    content: "Nice!"
+    content: "Nice!",
   });
   Naite.t("api:comment:create:response", { commentId: comment.id });
 
   // 3. Notify author
   Naite.t("api:notification:send:request", {
     userId: post.author_id,
-    type: "new_comment"
+    type: "new_comment",
   });
   await notificationService.send({
     userId: post.author_id,
     type: "new_comment",
-    data: { commentId: comment.id }
+    data: { commentId: comment.id },
   });
   Naite.t("api:notification:send:response", { sent: true });
 });
 ```
 
 <Tip>
-**request/response Pattern**: Logging `:request` and `:response` before and after API calls allows clear tracking of each API's inputs and outputs. This is especially useful in integration tests.
+  **request/response Pattern**: Logging `:request` and `:response` before and after API calls allows
+  clear tracking of each API's inputs and outputs. This is especially useful in integration tests.
 </Tip>
 
 ### 4. Identifying Performance Bottlenecks
@@ -790,14 +812,14 @@ test("large data processing performance", async () => {
   const data = await fetchLargeData();
   Naite.t("perf:fetch:done", {
     timestamp: Date.now(),
-    dataSize: data.length
+    dataSize: data.length,
   });
 
   Naite.t("perf:process:start", { timestamp: Date.now() });
   const processed = await processData(data);
   Naite.t("perf:process:done", {
     timestamp: Date.now(),
-    processedCount: processed.length
+    processedCount: processed.length,
   });
 
   Naite.t("perf:save:start", { timestamp: Date.now() });
@@ -825,6 +847,7 @@ Comparing timestamps for each step in Viewer:
 ```
 
 **Analysis result**:
+
 - `processData` takes longest at 3.3 seconds (bottleneck)
 - `fetchLargeData` is acceptable at 1.5 seconds
 - `saveToDatabase` is fast at 0.4 seconds
@@ -847,7 +870,7 @@ test("invalid input handling", async () => {
     Naite.t("user:create:error", {
       errorType: error.constructor.name,
       errorMessage: error.message,
-      inputData: { username: "" }
+      inputData: { username: "" },
     });
 
     // The callstack of the error log shows exact failure location
@@ -856,7 +879,9 @@ test("invalid input handling", async () => {
 ```
 
 <Info>
-**Importance of Callstack for Errors**: The Viewer's callstack info shows the exact code line where the error occurred. This is especially useful for complex call chains that are hard to figure out with `console.log`.
+  **Importance of Callstack for Errors**: The Viewer's callstack info shows the exact code line
+  where the error occurred. This is especially useful for complex call chains that are hard to
+  figure out with `console.log`.
 </Info>
 
 ## Understanding Internal Structure
@@ -1002,6 +1027,7 @@ Isolate logs when working on multiple Sonamu projects simultaneously.
     const hashB = getProjectHash(projectB);
     // → "e5f6g7h8"
     ```
+
   </Tab>
 
   <Tab title="Socket Path">
@@ -1019,6 +1045,7 @@ Isolate logs when working on multiple Sonamu projects simultaneously.
         : join(homedir(), ".sonamu", `naite-${hash}.sock`);
     }
     ```
+
   </Tab>
 
   <Tab title="Result">
@@ -1034,10 +1061,12 @@ Isolate logs when working on multiple Sonamu projects simultaneously.
     # Each uses independent socket
     # Extension connects to different socket per project
     ```
+
   </Tab>
 </Tabs>
 
 **Benefits**:
+
 - Complete isolation of logs between projects
 - Simultaneous execution support (test A while testing B)
 - Stable operation without conflicts
@@ -1114,6 +1143,7 @@ afterEach(async ({ task }) => {
     1. Check Sonamu Extension in Extensions tab
     2. Click "Enable" or "Reload" button
     3. Restart VSCode: `Cmd+Shift+P` → "Reload Window"
+
   </Accordion>
 
   <Accordion title="Socket Path Mismatch">
@@ -1136,6 +1166,7 @@ afterEach(async ({ task }) => {
     # ✅ Correct way
     code ~/projects/my-sonamu-app  # Opening project folder directly
     ```
+
   </Accordion>
 
   <Accordion title="Socket File Permission Issue">
@@ -1153,14 +1184,13 @@ afterEach(async ({ task }) => {
 
     # Restart Extension and tests
     ```
+
   </Accordion>
 </AccordionGroup>
 
 ### Too Many Logs Causing Slowdown
 
-<Tip>
-**Logging Strategy**: Naite is designed for performance, but avoid excessive logging.
-</Tip>
+<Tip>**Logging Strategy**: Naite is designed for performance, but avoid excessive logging.</Tip>
 
 <Tabs>
   <Tab title="Bad Example" icon="xmark">
@@ -1181,6 +1211,7 @@ afterEach(async ({ task }) => {
       }
     }
     ```
+
   </Tab>
 
   <Tab title="Good Example" icon="check">
@@ -1206,6 +1237,7 @@ afterEach(async ({ task }) => {
       return results;
     }
     ```
+
   </Tab>
 
   <Tab title="Conditional Logging" icon="toggle-on">
@@ -1223,13 +1255,15 @@ afterEach(async ({ task }) => {
 
     // Usage: DEBUG_NAITE=true pnpm test
     ```
+
   </Tab>
 </Tabs>
 
 ### Socket Connection Error in CI Environment
 
 <Info>
-**Auto Disable**: NaiteReporter automatically detects CI environment and skips socket communication.
+  **Auto Disable**: NaiteReporter automatically detects CI environment and skips socket
+  communication.
 </Info>
 
 ```typescript
@@ -1244,10 +1278,12 @@ async startTestRun() {
 ```
 
 **CI detection conditions**:
+
 - `process.env.CI === "true"`
 - Automatically set in GitHub Actions, GitLab CI, CircleCI, etc.
 
 To test CI mode locally:
+
 ```bash
 CI=true pnpm test
 ```
@@ -1257,10 +1293,12 @@ CI=true pnpm test
 When modifying files multiple times in watch mode, previous test logs may remain.
 
 <Tip>
-**Auto Clear**: When `run/start` message is sent, Extension automatically clears previous logs. However, manual clearing may be needed when working on multiple projects simultaneously.
+  **Auto Clear**: When `run/start` message is sent, Extension automatically clears previous logs.
+  However, manual clearing may be needed when working on multiple projects simultaneously.
 </Tip>
 
 **Manual clear methods**:
+
 1. Click "Clear All" button at top of Naite Viewer panel
 2. Or Command Palette → "Naite: Clear Logs"
 
@@ -1280,7 +1318,7 @@ When modifying files multiple times in watch mode, previous test logs may remain
 5. **Serialization required**: Values sent to Extension are serialized to JSON. Passing functions or circular reference objects to `Naite.t()` will show a warning.
 
 6. **Avoid excessive logging**: Calling `Naite.t()` inside loops can create thousands of logs, degrading performance.
-</Warning>
+   </Warning>
 
 ## Next Steps
 

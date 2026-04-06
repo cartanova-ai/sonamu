@@ -38,9 +38,7 @@
     "src/application/project/project.model.ts",
     "src/application/project/project.model.test.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "ProjectModel": "이름/설명 기반 전문 검색을 담당한다"
   },

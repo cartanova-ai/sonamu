@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import type { ControlledModalProps } from "./types";
 
 export function useModal<T extends object>(

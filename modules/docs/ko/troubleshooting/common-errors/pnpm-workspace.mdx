@@ -1,6 +1,6 @@
 ---
-title: 'pnpm Workspace 의존성 문제'
-description: 'pnpm workspace 환경에서의 의존성 해결 문제'
+title: "pnpm Workspace 의존성 문제"
+description: "pnpm workspace 환경에서의 의존성 해결 문제"
 ---
 
 pnpm workspace 환경에서 발생하는 의존성 관련 문제와 해결 방법을 다룹니다.
@@ -63,9 +63,9 @@ auto-install-peers=true
 ### 증상
 
 ```bash
- ERR_PNPM_WORKSPACE_PKG_NOT_FOUND  
- 
-In sonamu: "workspace:*" is in the dependencies but no package 
+ ERR_PNPM_WORKSPACE_PKG_NOT_FOUND
+
+In sonamu: "workspace:*" is in the dependencies but no package
 named "sonamu" is present in the workspace
 ```
 
@@ -98,7 +98,7 @@ pnpm ls -r --depth -1
 ```json
 {
   "dependencies": {
-    "sonamu": "workspace:*"  // workspace에 sonamu 패키지 있어야 함
+    "sonamu": "workspace:*" // workspace에 sonamu 패키지 있어야 함
   }
 }
 ```
@@ -109,8 +109,8 @@ pnpm ls -r --depth -1
 
 ```bash
  ERR_PNPM_CATALOG_VERSION_MISMATCH
- 
-Package "react" has version "19.2.3" in catalog but "18.3.0" 
+
+Package "react" has version "19.2.3" in catalog but "18.3.0"
 in package.json
 ```
 
@@ -127,7 +127,7 @@ in package.json
 ```json
 {
   "dependencies": {
-    "react": "catalog:"  // pnpm-workspace.yaml의 버전 사용
+    "react": "catalog:" // pnpm-workspace.yaml의 버전 사용
   }
 }
 ```
@@ -138,7 +138,7 @@ in package.json
 
 ```yaml
 catalog:
-  react: ^19.2.3  # package.json에 맞춰 업데이트
+  react: ^19.2.3 # package.json에 맞춰 업데이트
 ```
 
 #### 3. 전체 workspace에서 catalog 버전으로 통일
@@ -252,7 +252,7 @@ pnpm add -D tsconfig-paths
 코드에서 직접 import하는 패키지가 `package.json`에 없는데도 작동합니다.
 
 ```typescript
-import _ from "lodash-es";  // package.json에 없음
+import _ from "lodash-es"; // package.json에 없음
 ```
 
 로컬에서는 작동하지만 CI나 다른 환경에서 실패합니다.
@@ -285,7 +285,7 @@ pnpm why <package-name>
 
 ```bash
  ERR_PNPM_CANNOT_RESOLVE_OPTIONAL_DEPENDENCY
- 
+
 Could not resolve optional dependency @parcel/watcher
 ```
 
@@ -378,8 +378,8 @@ pnpm why axios
 ### 증상
 
 ```bash
- ERR_PNPM_WORKSPACE_CYCLE  
- 
+ ERR_PNPM_WORKSPACE_CYCLE
+
 There is a circular dependency in the workspace:
   @sonamu-kit/react-sui -> @sonamu-kit/ui -> @sonamu-kit/react-sui
 ```

@@ -41,12 +41,12 @@ Threshold is the minimum size to compress.
 
 ### Effects by Threshold
 
-| Size | Threshold: 256 | Threshold: 1024 | Threshold: 4096 |
-|------|---------------|----------------|----------------|
-| 100B | No compression (overhead) | No compression | No compression |
-| 500B | Compress (small effect) | No compression | No compression |
-| 2KB | Compress | Compress | No compression |
-| 10KB | Compress | Compress | Compress |
+| Size | Threshold: 256            | Threshold: 1024 | Threshold: 4096 |
+| ---- | ------------------------- | --------------- | --------------- |
+| 100B | No compression (overhead) | No compression  | No compression  |
+| 500B | Compress (small effect)   | No compression  | No compression  |
+| 2KB  | Compress                  | Compress        | No compression  |
+| 10KB | Compress                  | Compress        | Compress        |
 
 ### Recommended Thresholds
 
@@ -65,6 +65,7 @@ Threshold is the minimum size to compress.
     - Most responses are small (< 10KB)
 
     **Disadvantage**: Increased CPU usage
+
   </Tab>
 
   <Tab title="Default (1KB)" icon="check">
@@ -80,6 +81,7 @@ Threshold is the minimum size to compress.
     - Balanced performance
 
     **Advantage**: Balance between compression benefit and overhead
+
   </Tab>
 
   <Tab title="Conservative (4KB)" icon="shield">
@@ -96,6 +98,7 @@ Threshold is the minimum size to compress.
     - Most responses are large (> 100KB)
 
     **Advantage**: Minimized CPU usage
+
   </Tab>
 </Tabs>
 
@@ -110,8 +113,8 @@ for (const threshold of thresholds) {
 
   // 100 requests
   for (let i = 0; i < 100; i++) {
-    await fetch('/api/products', {
-      headers: { 'Accept-Encoding': 'gzip' }
+    await fetch("/api/products", {
+      headers: { "Accept-Encoding": "gzip" },
     });
   }
 
@@ -125,12 +128,12 @@ for (const threshold of thresholds) {
 
 ### Brotli vs Gzip
 
-| Criteria | Brotli (br) | Gzip |
-|------|------------|------|
-| Compression ratio | Best (15-20% better) | Medium |
-| Compression speed | Slow (higher CPU usage) | Fast |
-| Decompression speed | Fast | Fast |
-| Browser support | Modern browsers | All browsers |
+| Criteria            | Brotli (br)             | Gzip         |
+| ------------------- | ----------------------- | ------------ |
+| Compression ratio   | Best (15-20% better)    | Medium       |
+| Compression speed   | Slow (higher CPU usage) | Fast         |
+| Decompression speed | Fast                    | Fast         |
+| Browser support     | Modern browsers         | All browsers |
 
 ### Usage Strategies
 
@@ -150,6 +153,7 @@ for (const threshold of thresholds) {
     - No compression time concerns (pre-compressed)
     - Best compression ratio (quality 11)
     - No runtime CPU load
+
   </Tab>
 
   <Tab title="Dynamic API" icon="bolt">
@@ -166,6 +170,7 @@ for (const threshold of thresholds) {
     - API responses differ each time (cannot pre-compress)
     - Gzip is faster than Brotli
     - Sufficient compression ratio (70-80%)
+
   </Tab>
 
   <Tab title="Hybrid" icon="layer-group">
@@ -192,14 +197,15 @@ for (const threshold of thresholds) {
       }
     }
     ```
+
   </Tab>
 </Tabs>
 
 ### Environment-Based Strategy
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
-const isFastNetwork = process.env.NETWORK_SPEED === 'fast';
+const isProduction = process.env.NODE_ENV === "production";
+const isFastNetwork = process.env.NETWORK_SPEED === "fast";
 
 export const config: SonamuConfig = {
   server: {
@@ -216,9 +222,9 @@ export const config: SonamuConfig = {
               threshold: 256,
               encodings: ["br", "gzip", "deflate"],
             }
-        : false  // Development: no compression
-    }
-  }
+        : false, // Development: no compression
+    },
+  },
 };
 ```
 
@@ -278,6 +284,7 @@ sequenceDiagram
 ```
 
 **Per-layer optimization**:
+
 1. **Browser cache**: 0ms (fastest)
 2. **CDN cache**: 10ms (network only)
 3. **Server cache**: 50ms (compression only, no DB)
@@ -306,6 +313,7 @@ async getData() {
 ```
 
 **CloudFront configuration**:
+
 - Receive compressed response from origin
 - CloudFront caches as-is
 - Serve quickly from edge
@@ -347,8 +355,8 @@ for (const file of files) {
     // Brotli (best compression ratio)
     const br = brotliCompressSync(content, {
       params: {
-        [zlib.constants.BROTLI_PARAM_QUALITY]: 11  // Highest quality
-      }
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 11, // Highest quality
+      },
     });
     writeFileSync(`${assetsDir}/${file}.br`, br);
 
@@ -365,34 +373,35 @@ for (const file of files) {
 
 ```typescript
 // Serve pre-compressed files
-server.get('/assets/:filename', async (req, reply) => {
+server.get("/assets/:filename", async (req, reply) => {
   const { filename } = req.params;
-  const acceptEncoding = req.headers['accept-encoding'] || '';
+  const acceptEncoding = req.headers["accept-encoding"] || "";
 
   // Brotli support
-  if (acceptEncoding.includes('br')) {
+  if (acceptEncoding.includes("br")) {
     const brFile = `./dist/assets/${filename}.br`;
     if (fs.existsSync(brFile)) {
-      reply.header('Content-Encoding', 'br');
-      return reply.sendFile(`${filename}.br`, { root: './dist/assets' });
+      reply.header("Content-Encoding", "br");
+      return reply.sendFile(`${filename}.br`, { root: "./dist/assets" });
     }
   }
 
   // Gzip support
-  if (acceptEncoding.includes('gzip')) {
+  if (acceptEncoding.includes("gzip")) {
     const gzFile = `./dist/assets/${filename}.gz`;
     if (fs.existsSync(gzFile)) {
-      reply.header('Content-Encoding', 'gzip');
-      return reply.sendFile(`${filename}.gz`, { root: './dist/assets' });
+      reply.header("Content-Encoding", "gzip");
+      return reply.sendFile(`${filename}.gz`, { root: "./dist/assets" });
     }
   }
 
   // No compression
-  return reply.sendFile(filename, { root: './dist/assets' });
+  return reply.sendFile(filename, { root: "./dist/assets" });
 });
 ```
 
 **Advantages**:
+
 - No runtime CPU load
 - Best compression ratio (quality 11)
 - Instant response
@@ -467,6 +476,7 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
     **Select algorithm**
     - Static: brotli (pre-compressed)
     - Dynamic: gzip (real-time)
+
   </Tab>
 
   <Tab title="API Optimization" icon="2">
@@ -487,6 +497,7 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
     @api({ compress: false })
     async getImage() { ... }
     ```
+
   </Tab>
 
   <Tab title="Combining Caching" icon="3">
@@ -512,6 +523,7 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
       vary: ['Accept-Encoding']
     }
     ```
+
   </Tab>
 
   <Tab title="Monitoring" icon="4">
@@ -526,6 +538,7 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
     **Measure response time**
     - Compare before and after compression
     - Review settings if slower
+
   </Tab>
 </Tabs>
 
@@ -535,15 +548,17 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
 **Mistakes to avoid**:
 
 1. **Compressing all responses**: Inefficient for small responses
+
    ```typescript
    // Bad example
-   threshold: 0  // Compress all responses
+   threshold: 0; // Compress all responses
 
    // Good example
-   threshold: 1024  // Only 1KB or larger
+   threshold: 1024; // Only 1KB or larger
    ```
 
 2. **Re-compressing already compressed files**: No benefit
+
    ```typescript
    // Compressing JPEG, PNG, MP4
    @api({ compress: true })
@@ -555,6 +570,7 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
    ```
 
 3. **Compressing streams**: Causes delays
+
    ```typescript
    // SSE compression
    @stream({ type: 'sse' })
@@ -567,39 +583,41 @@ ab -n 1000 -c 10 http://localhost:3000/api/products
    ```
 
 4. **Compression in development environment**: Difficult debugging
+
    ```typescript
    // Environment-based settings
-   compress: process.env.NODE_ENV === 'production'
-     ? CompressPresets.default
-     : false
+   compress: process.env.NODE_ENV === "production" ? CompressPresets.default : false;
    ```
 
 5. **Brotli for real-time compression**: High CPU load
+
    ```typescript
    // Warning: brotli for API responses
    compress: {
-     encodings: ["br"]  // Slow
+     encodings: ["br"]; // Slow
    }
 
    // Use gzip
    compress: {
-     encodings: ["gzip"]  // Fast
+     encodings: ["gzip"]; // Fast
    }
    ```
-</Warning>
+
+   </Warning>
 
 ## Performance Benchmark
 
 Based on actual 100KB JSON response:
 
-| Configuration | Compression Time | Transfer Size | Network Time | Total Time |
-|------|----------|----------|-------------|---------|
-| No compression | 0ms | 100KB | 1000ms | 1000ms |
-| Gzip | 2ms | 14KB | 140ms | 142ms |
-| Brotli | 5ms | 12KB | 120ms | 125ms |
-| Pre-compressed | 0ms | 12KB | 120ms | 120ms |
+| Configuration  | Compression Time | Transfer Size | Network Time | Total Time |
+| -------------- | ---------------- | ------------- | ------------ | ---------- |
+| No compression | 0ms              | 100KB         | 1000ms       | 1000ms     |
+| Gzip           | 2ms              | 14KB          | 140ms        | 142ms      |
+| Brotli         | 5ms              | 12KB          | 120ms        | 125ms      |
+| Pre-compressed | 0ms              | 12KB          | 120ms        | 120ms      |
 
 **Conclusion**:
+
 - Gzip: 85% time savings
 - Brotli: 87% time savings
 - Pre-compressed: 88% time savings (best)
@@ -607,10 +625,18 @@ Based on actual 100KB JSON response:
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Compression Configuration" icon="gear" href="/en/advanced-features/compress/compress-configuration">
+  <Card
+    title="Compression Configuration"
+    icon="gear"
+    href="/en/advanced-features/compress/compress-configuration"
+  >
     Global compression plugin settings
   </Card>
-  <Card title="Compression Presets" icon="list" href="/en/advanced-features/compress/compress-presets">
+  <Card
+    title="Compression Presets"
+    icon="list"
+    href="/en/advanced-features/compress/compress-presets"
+  >
     Predefined compression settings
   </Card>
   <Card title="Per-API Control" icon="code" href="/en/advanced-features/compress/per-api-control">

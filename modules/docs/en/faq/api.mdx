@@ -1,6 +1,6 @@
 ---
-title: 'API Development'
-description: 'Questions about API development and decorators'
+title: "API Development"
+description: "Questions about API development and decorators"
 ---
 
 ## @api Decorator
@@ -50,11 +50,13 @@ DELETE /user/deleteUser?id=1
 <Accordion title="What are the options for @api decorator?">
 
 **httpMethod (required):**
+
 ```typescript
 @api({ httpMethod: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" })
 ```
 
 **guards (authentication/authorization):**
+
 ```typescript
 // Authentication and authorization required
 @api({
@@ -72,10 +74,12 @@ async publicApi() { }
 ```
 
 <Info>
-**Creating Public APIs**: Omit the `guards` option to create a public API accessible to anyone without authentication. Use this for endpoints that don't require login or permission checks.
+  **Creating Public APIs**: Omit the `guards` option to create a public API accessible to anyone
+  without authentication. Use this for endpoints that don't require login or permission checks.
 </Info>
 
 **path (custom path):**
+
 ```typescript
 @api({
   httpMethod: "GET",
@@ -292,19 +296,19 @@ async getMyProfile(): Promise<User> {
 const context = Sonamu.getContext();
 
 // User info
-context.user           // Logged-in user object
-context.userId         // User ID
+context.user; // Logged-in user object
+context.userId; // User ID
 
 // Request info
-context.ip             // Client IP
-context.userAgent      // User-Agent header
+context.ip; // Client IP
+context.userAgent; // User-Agent header
 
 // Fastify objects
-context.request        // Fastify Request
-context.reply          // Fastify Reply
+context.request; // Fastify Request
+context.reply; // Fastify Reply
 
 // Session
-context.session        // Session object
+context.session; // Session object
 ```
 
 </Accordion>
@@ -320,11 +324,11 @@ export default {
     session: {
       secret: process.env.SESSION_SECRET || "my-secret",
       cookie: {
-        maxAge: 24 * 60 * 60 * 1000,  // 24 hours
-        secure: process.env.NODE_ENV === "production"
-      }
-    }
-  }
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -401,10 +405,10 @@ export default {
           const user = request.session.user;
           if (!user || user.role !== "admin") return null;
           return user;
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 } satisfies SonamuConfig;
 ```
 
@@ -539,7 +543,7 @@ export const UserService = {
   async createUser(params: UserSaveParams): Promise<User> {
     const response = await axios.post("/user/createUser", params);
     return response.data;
-  }
+  },
 };
 ```
 

@@ -22,29 +22,29 @@ function useSSEStream<T extends Record<string, any>>(
 
 **Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `url` | `string` | SSE endpoint path |
-| `params` | `Record<string, any>` | Query parameters |
-| `handlers` | `{ [K in keyof T]?: (data: T[K]) => void }` | Event type handlers |
-| `options` | `SSEStreamOptions` | Connection options (optional) |
+| Parameter  | Type                                        | Description                   |
+| ---------- | ------------------------------------------- | ----------------------------- |
+| `url`      | `string`                                    | SSE endpoint path             |
+| `params`   | `Record<string, any>`                       | Query parameters              |
+| `handlers` | `{ [K in keyof T]?: (data: T[K]) => void }` | Event type handlers           |
+| `options`  | `SSEStreamOptions`                          | Connection options (optional) |
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Whether the connection is active |
-| `retry` | `number` | `3` | Maximum retry count |
-| `retryInterval` | `number` | `3000` | Retry interval (ms) |
+| Option          | Type      | Default | Description                      |
+| --------------- | --------- | ------- | -------------------------------- |
+| `enabled`       | `boolean` | `true`  | Whether the connection is active |
+| `retry`         | `number`  | `3`     | Maximum retry count              |
+| `retryInterval` | `number`  | `3000`  | Retry interval (ms)              |
 
 **Return value (`SSEStreamState`):**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `isConnected` | `boolean` | Current connection status |
-| `error` | `string \| null` | Error message |
-| `retryCount` | `number` | Current retry count |
-| `isEnded` | `boolean` | Server sent `end` event (graceful termination) |
+| Field         | Type             | Description                                    |
+| ------------- | ---------------- | ---------------------------------------------- |
+| `isConnected` | `boolean`        | Current connection status                      |
+| `error`       | `string \| null` | Error message                                  |
+| `retryCount`  | `number`         | Current retry count                            |
+| `isEnded`     | `boolean`        | Server sent `end` event (graceful termination) |
 
 ### Usage Example
 
@@ -82,7 +82,8 @@ function NotificationList({ userId }: { userId: number }) {
 ```
 
 <Note>
-`useSSEStream` automatically sends the `Accept-Language` header, allowing the server to return locale-aware responses.
+  `useSSEStream` automatically sends the `Accept-Language` header, allowing the server to return
+  locale-aware responses.
 </Note>
 
 ## EventSource API (Direct Usage)
@@ -93,22 +94,22 @@ A built-in browser API for managing SSE connections.
 
 ```typescript
 // Create SSE connection
-const source = new EventSource('/stream/notifications?userId=1');
+const source = new EventSource("/stream/notifications?userId=1");
 
 // Register event listener
-source.addEventListener('notification', (event) => {
+source.addEventListener("notification", (event) => {
   const data = JSON.parse(event.data);
-  console.log('Notification:', data);
+  console.log("Notification:", data);
 });
 
 // Connection end event
-source.addEventListener('end', () => {
+source.addEventListener("end", () => {
   source.close();
 });
 
 // Error handling
 source.onerror = (error) => {
-  console.error('SSE Error:', error);
+  console.error("SSE Error:", error);
   source.close();
 };
 ```
@@ -120,7 +121,7 @@ Below shows how to work with EventSource directly without `useSSEStream`. Use th
 ### Custom Hook
 
 ```typescript
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 function useSSE<T>(url: string, eventName: string) {
   const [data, setData] = useState<T | null>(null);
@@ -143,13 +144,13 @@ function useSSE<T>(url: string, eventName: string) {
       }
     });
 
-    source.addEventListener('end', () => {
+    source.addEventListener("end", () => {
       source.close();
       setIsConnected(false);
     });
 
     source.onerror = (err) => {
-      setError(new Error('SSE connection failed'));
+      setError(new Error("SSE connection failed"));
       setIsConnected(false);
       source.close();
     };
@@ -538,7 +539,7 @@ function ReconnectingNotifications() {
 ## Vue Integration
 
 ```typescript
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from "vue";
 
 export function useSSE<T>(url: string, eventName: string) {
   const data = ref<T | null>(null);
@@ -556,7 +557,7 @@ export function useSSE<T>(url: string, eventName: string) {
       data.value = JSON.parse(event.data);
     });
 
-    source.addEventListener('end', () => {
+    source.addEventListener("end", () => {
       source?.close();
       isConnected.value = false;
     });
@@ -586,7 +587,7 @@ export function useSSE<T>(url: string, eventName: string) {
 
 ```typescript
 // EventSource automatically sends cookies
-const source = new EventSource('/stream/notifications');
+const source = new EventSource("/stream/notifications");
 ```
 
 **Note**: When using CORS, `credentials: 'include'` is not needed (automatic)
@@ -596,11 +597,12 @@ const source = new EventSource('/stream/notifications');
 Since EventSource does not support custom headers, use URL parameters:
 
 ```typescript
-const token = localStorage.getItem('token');
+const token = localStorage.getItem("token");
 const source = new EventSource(`/stream/notifications?token=${token}`);
 ```
 
 **Server side**:
+
 ```typescript
 @stream({
   type: 'sse',
@@ -624,19 +626,19 @@ async streamNotifications(token: string): Promise<void> {
 ### Connection Failure
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 
 source.onerror = (error) => {
-  console.error('Connection failed:', error);
+  console.error("Connection failed:", error);
 
   // EventSource doesn't provide status codes
   // Instead, the server sends error events
 };
 
 // Handle server-sent error events
-source.addEventListener('error', (event) => {
+source.addEventListener("error", (event) => {
   const data = JSON.parse(event.data);
-  console.error('Server error:', data.message);
+  console.error("Server error:", data.message);
   source.close();
 });
 ```
@@ -644,23 +646,23 @@ source.addEventListener('error', (event) => {
 ### Timeout Handling
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 let timeoutId: NodeJS.Timeout;
 
 // Set timeout (30 seconds)
 const resetTimeout = () => {
   clearTimeout(timeoutId);
   timeoutId = setTimeout(() => {
-    console.log('Connection timeout');
+    console.log("Connection timeout");
     source.close();
   }, 30000);
 };
 
-source.addEventListener('message', () => {
+source.addEventListener("message", () => {
   resetTimeout();
 });
 
-source.addEventListener('end', () => {
+source.addEventListener("end", () => {
   clearTimeout(timeoutId);
   source.close();
 });
@@ -694,23 +696,23 @@ EventStream tab:
 ### Logging
 
 ```typescript
-const source = new EventSource('/stream/data');
+const source = new EventSource("/stream/data");
 
 source.onopen = () => {
-  console.log('[SSE] Connected');
+  console.log("[SSE] Connected");
 };
 
-source.addEventListener('message', (event) => {
-  console.log('[SSE] Message:', event.data);
+source.addEventListener("message", (event) => {
+  console.log("[SSE] Message:", event.data);
 });
 
-source.addEventListener('end', () => {
-  console.log('[SSE] End');
+source.addEventListener("end", () => {
+  console.log("[SSE] End");
   source.close();
 });
 
 source.onerror = (error) => {
-  console.error('[SSE] Error:', error);
+  console.error("[SSE] Error:", error);
 };
 ```
 
@@ -720,25 +722,28 @@ source.onerror = (error) => {
 **Important considerations when using SSE on the client**:
 
 1. **Connection cleanup**: Always call close() when component unmounts
+
    ```typescript
    useEffect(() => {
-     const source = new EventSource('/stream/data');
+     const source = new EventSource("/stream/data");
      return () => {
-       source.close();  // Required!
+       source.close(); // Required!
      };
    }, []);
    ```
 
 2. **Event name matching**: Server and client event names must be identical
+
    ```typescript
    // Server: sse.publish('notification', ...)
    // Client: source.addEventListener('notification', ...)
    ```
 
 3. **JSON parsing**: Data is always transmitted as strings
+
    ```typescript
-   source.addEventListener('data', (event) => {
-     const data = JSON.parse(event.data);  // Parsing required
+   source.addEventListener("data", (event) => {
+     const data = JSON.parse(event.data); // Parsing required
    });
    ```
 
@@ -746,6 +751,7 @@ source.onerror = (error) => {
    - Solution: Reuse connections or use HTTP/2
 
 5. **Reconnection handling**: Implement auto-reconnection for network disconnections
+
    ```typescript
    source.onerror = () => {
      setTimeout(() => {
@@ -755,15 +761,16 @@ source.onerror = (error) => {
    ```
 
 6. **Memory leaks**: Clean up old data
+
    ```typescript
-   setNotifications(prev => prev.slice(0, 100));  // Max 100 items
+   setNotifications((prev) => prev.slice(0, 100)); // Max 100 items
    ```
 
 7. **CORS configuration**: Server CORS settings required when using from different domains
    ```typescript
    // Server: cors: { origin: 'https://example.com' }
    ```
-</Warning>
+   </Warning>
 
 ## Polyfill (IE Support)
 
@@ -774,12 +781,12 @@ npm install event-source-polyfill
 ```
 
 ```typescript
-import { EventSourcePolyfill } from 'event-source-polyfill';
+import { EventSourcePolyfill } from "event-source-polyfill";
 
-const source = new EventSourcePolyfill('/stream/data', {
+const source = new EventSourcePolyfill("/stream/data", {
   headers: {
-    'Authorization': `Bearer ${token}`
-  }
+    Authorization: `Bearer ${token}`,
+  },
 });
 ```
 
@@ -789,7 +796,11 @@ const source = new EventSourcePolyfill('/stream/data', {
   <Card title="SSE Setup" icon="gear" href="/en/advanced-features/sse/sse-setup">
     Configure the SSE plugin
   </Card>
-  <Card title="Creating SSE Endpoints" icon="code" href="/en/advanced-features/sse/creating-sse-endpoints">
+  <Card
+    title="Creating SSE Endpoints"
+    icon="code"
+    href="/en/advanced-features/sse/creating-sse-endpoints"
+  >
     Build SSE APIs with the @stream decorator
   </Card>
 </CardGroup>

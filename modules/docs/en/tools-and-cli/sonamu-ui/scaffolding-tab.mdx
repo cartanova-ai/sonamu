@@ -1,6 +1,6 @@
 ---
-title: 'Scaffolding Tab'
-description: 'Auto-generate code'
+title: "Scaffolding Tab"
+description: "Auto-generate code"
 ---
 
 In the Scaffolding tab, you can **auto-generate Model and test code based on Entities**. It provides the CLI `pnpm scaffold` command through a visual interface.
@@ -8,13 +8,21 @@ In the Scaffolding tab, you can **auto-generate Model and test code based on Ent
 ## Scaffolding Tab Structure
 
 <Columns cols={2}>
-<Frame><img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding Selection" /></Frame>
-<Frame><img src="/images/sonamuUI-scaffolding2.png" alt="Scaffolding Options" /></Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding Selection" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding2.png" alt="Scaffolding Options" />
+  </Frame>
 </Columns>
 
 <Columns cols={2}>
-<Frame><img src="/images/sonamuUI-scaffolding3.png" alt="Scaffolding Generation Result" /></Frame>
-<Frame><img src="/images/sonamuUI-scaffolding4.png" alt="Scaffolding Complete" /></Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding3.png" alt="Scaffolding Generation Result" />
+  </Frame>
+  <Frame>
+    <img src="/images/sonamuUI-scaffolding4.png" alt="Scaffolding Complete" />
+  </Frame>
 </Columns>
 
 The Scaffolding tab consists of two main areas:
@@ -24,16 +32,16 @@ The Scaffolding tab consists of two main areas:
 
 ## Available Code Types
 
-| Code Type | Description | Status | CLI Command |
-|-----------|-------------|--------|-------------|
-| **Model Class** | Model class for Entity | ✅ Available | `pnpm scaffold model` |
-| **Model Test** | Model test file | ✅ Available | `pnpm scaffold model_test` |
-| **View List** | List View component | 🚧 In Development | - |
-| **View Form** | Form View component | 🚧 In Development | - |
+| Code Type       | Description            | Status            | CLI Command                |
+| --------------- | ---------------------- | ----------------- | -------------------------- |
+| **Model Class** | Model class for Entity | ✅ Available      | `pnpm scaffold model`      |
+| **Model Test**  | Model test file        | ✅ Available      | `pnpm scaffold model_test` |
+| **View List**   | List View component    | 🚧 In Development | -                          |
+| **View Form**   | Form View component    | 🚧 In Development | -                          |
 
 <Info>
-View component generation is currently under development.
-You can generate React components through **other Sonamu UI features**.
+  View component generation is currently under development. You can generate React components
+  through **other Sonamu UI features**.
 </Info>
 
 ## Generating Model Class
@@ -43,6 +51,7 @@ You can generate React components through **other Sonamu UI features**.
 Select the Entity to generate a Model for from the left Entity list.
 
 **Single selection**:
+
 ```
 ☑ User
 □ Post
@@ -50,6 +59,7 @@ Select the Entity to generate a Model for from the left Entity list.
 ```
 
 **Multiple selection**:
+
 ```
 ☑ User
 ☑ Post
@@ -100,6 +110,7 @@ export const UserModel = new UserModelClass();
 ```
 
 **Auto-generated features**:
+
 - ✅ TypeScript type definitions
 - ✅ Entity connection
 - ✅ BaseModel inheritance
@@ -116,7 +127,8 @@ Select Entity same as for Model.
 Check the **☑ Model Test** checkbox.
 
 <Tip>
-**Generate Model and Test together**: You can select both Model Class and Model Test to generate them at once.
+  **Generate Model and Test together**: You can select both Model Class and Model Test to generate
+  them at once.
 </Tip>
 
 ### 3. Run Generate
@@ -161,6 +173,7 @@ describe("User Model", () => {
 ```
 
 **Auto-generated tests**:
+
 - ✅ `findById`: Query single record by ID
 - ✅ `findMany`: List query (pagination)
 
@@ -173,6 +186,7 @@ describe("User Model", () => {
 3. Click **[Generate]**
 
 **Result**:
+
 ```
 ✓ User.model.ts created
 ✓ User.model.test.ts created
@@ -187,6 +201,7 @@ describe("User Model", () => {
 ### Select Specific Entities Only
 
 For all Entities during initial project setup:
+
 ```
 ☑ User
 ☑ Post
@@ -198,6 +213,7 @@ For all Entities during initial project setup:
 ```
 
 For new Entity only when adding:
+
 ```
 □ User (already generated)
 □ Post (already generated)
@@ -237,13 +253,14 @@ The following files will be overwritten:
 ```
 
 **Options**:
+
 - **Cancel**: Cancel generation
 - **Backup & Overwrite**: Backup existing files as `.bak` then overwrite
 - **Overwrite**: Overwrite directly (caution!)
 
 <Warning>
-**Code loss caution**: Overwriting existing files may delete your business logic.
-Backup or avoid overwriting customized Models.
+  **Code loss caution**: Overwriting existing files may delete your business logic. Backup or avoid
+  overwriting customized Models.
 </Warning>
 
 ## View Generation (In Development)
@@ -259,7 +276,7 @@ Currently, you can manage Views through these methods:
 3. **Component library**: Use `@sonamu-kit/react-components`
 
 <Info>
-This document will be updated when View List and View Form generation features are added.
+  This document will be updated when View List and View Form generation features are added.
 </Info>
 
 ## Post-Generation Workflow
@@ -281,16 +298,12 @@ class UserModelClass extends BaseModelClass<
 
   // Find user by email
   async findByEmail(email: string): Promise<User | null> {
-    return this.getPuri("r")
-      .where("email", email)
-      .first();
+    return this.getPuri("r").where("email", email).first();
   }
 
   // Find only active users
   async findActiveUsers() {
-    return this.getPuri("r")
-      .where("is_active", true)
-      .where("deleted_at", null);
+    return this.getPuri("r").where("is_active", true).where("deleted_at", null);
   }
 }
 ```
@@ -309,7 +322,7 @@ describe("User Model - Extended", () => {
 
   test("findActiveUsers", async () => {
     const users = await UserModel.findActiveUsers();
-    users.forEach(user => {
+    users.forEach((user) => {
       expect(user.is_active).toBe(true);
     });
   });

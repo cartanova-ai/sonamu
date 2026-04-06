@@ -14,13 +14,14 @@ import { registerSSR, CachePresets } from "sonamu";
 import ProductList from "./pages/ProductList";
 
 registerSSR({
-  path: '/products',
+  path: "/products",
   Component: ProductList,
-  cacheControl: CachePresets.ssr,  // SSR optimized
+  cacheControl: CachePresets.ssr, // SSR optimized
 });
 ```
 
 **Result**:
+
 ```http
 HTTP/1.1 200 OK
 Cache-Control: public, max-age=10, stale-while-revalidate=30
@@ -38,13 +39,14 @@ Content-Type: text/html
 
 ```typescript
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   cacheControl: CachePresets.ssr,
 });
 ```
 
 **CachePresets.ssr**:
+
 ```typescript
 {
   visibility: 'public',
@@ -80,6 +82,7 @@ sequenceDiagram
 ```
 
 **Benefits**:
+
 - Most requests get instant response (CDN cache)
 - Fast response even during stale period
 - Background updates keep content fresh
@@ -105,6 +108,7 @@ sequenceDiagram
       cacheControl: CachePresets.noCache,  // Revalidate every time
     });
     ```
+
   </Tab>
 
   <Tab title="Semi-dynamic Pages" icon="clock">
@@ -129,6 +133,7 @@ sequenceDiagram
       }
     });
     ```
+
   </Tab>
 
   <Tab title="Static Pages" icon="file">
@@ -152,6 +157,7 @@ sequenceDiagram
       }
     });
     ```
+
   </Tab>
 
   <Tab title="Personalized Pages" icon="user">
@@ -172,6 +178,7 @@ sequenceDiagram
       cacheControl: CachePresets.noStore,  // No caching
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -182,42 +189,42 @@ sequenceDiagram
 ```typescript
 // Homepage: SSR optimized
 registerSSR({
-  path: '/',
+  path: "/",
   Component: HomePage,
-  cacheControl: CachePresets.ssr,  // 10 seconds + SWR 30 seconds
+  cacheControl: CachePresets.ssr, // 10 seconds + SWR 30 seconds
 });
 
 // Product list: Short cache
 registerSSR({
-  path: '/products',
+  path: "/products",
   Component: ProductList,
-  cacheControl: CachePresets.shortLived,  // 1 minute
+  cacheControl: CachePresets.shortLived, // 1 minute
 });
 
 // Product detail: SSR optimized
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   cacheControl: CachePresets.ssr,
 });
 
 // Category: Long cache
 registerSSR({
-  path: '/categories/:id',
+  path: "/categories/:id",
   Component: CategoryPage,
-  cacheControl: CachePresets.mediumLived,  // 5 minutes
+  cacheControl: CachePresets.mediumLived, // 5 minutes
 });
 
 // Shopping cart: Personalized
 registerSSR({
-  path: '/cart',
+  path: "/cart",
   Component: Cart,
   cacheControl: CachePresets.private,
 });
 
 // Order complete: No caching
 registerSSR({
-  path: '/orders/:id/complete',
+  path: "/orders/:id/complete",
   Component: OrderComplete,
   cacheControl: CachePresets.noStore,
 });
@@ -228,38 +235,38 @@ registerSSR({
 ```typescript
 // Homepage
 registerSSR({
-  path: '/',
+  path: "/",
   Component: HomePage,
   cacheControl: {
-    visibility: 'public',
-    maxAge: 300,  // 5 minutes
-    staleWhileRevalidate: 900,  // 15 minutes
-  }
+    visibility: "public",
+    maxAge: 300, // 5 minutes
+    staleWhileRevalidate: 900, // 15 minutes
+  },
 });
 
 // Category posts
 registerSSR({
-  path: '/category/:slug',
+  path: "/category/:slug",
   Component: CategoryPosts,
-  cacheControl: CachePresets.mediumLived,  // 5 minutes
+  cacheControl: CachePresets.mediumLived, // 5 minutes
 });
 
 // Post detail
 registerSSR({
-  path: '/posts/:slug',
+  path: "/posts/:slug",
   Component: PostDetail,
   cacheControl: {
-    visibility: 'public',
-    maxAge: 600,  // 10 minutes
-    staleWhileRevalidate: 1800,  // 30 minutes
-  }
+    visibility: "public",
+    maxAge: 600, // 10 minutes
+    staleWhileRevalidate: 1800, // 30 minutes
+  },
 });
 
 // Search results
 registerSSR({
-  path: '/search',
+  path: "/search",
   Component: SearchResults,
-  cacheControl: CachePresets.shortLived,  // 1 minute
+  cacheControl: CachePresets.shortLived, // 1 minute
 });
 ```
 
@@ -268,23 +275,23 @@ registerSSR({
 ```typescript
 // Public landing page
 registerSSR({
-  path: '/',
+  path: "/",
   Component: Landing,
-  cacheControl: CachePresets.longLived,  // 1 hour
+  cacheControl: CachePresets.longLived, // 1 hour
 });
 
 // Dashboard after login
 registerSSR({
-  path: '/dashboard',
+  path: "/dashboard",
   Component: Dashboard,
-  cacheControl: CachePresets.private,  // Browser only
+  cacheControl: CachePresets.private, // Browser only
 });
 
 // User settings
 registerSSR({
-  path: '/settings',
+  path: "/settings",
   Component: Settings,
-  cacheControl: CachePresets.noStore,  // No caching
+  cacheControl: CachePresets.noStore, // No caching
 });
 ```
 
@@ -295,13 +302,14 @@ All requests that don't match SSR routes are handled by CSR fallback.
 ```typescript
 // CSR fallback route (catch-all)
 registerSSR({
-  path: '/*',
+  path: "/*",
   Component: App,
-  cacheControl: CachePresets.shortLived,  // 1 minute
+  cacheControl: CachePresets.shortLived, // 1 minute
 });
 ```
 
 **How it works**:
+
 ```
 /products/1 → SSR route matched → Uses that cacheControl
 /random-page → SSR route not matched → Uses fallback cacheControl
@@ -320,28 +328,28 @@ export const config: SonamuConfig = {
     apiConfig: {
       cacheControlHandler: (req) => {
         // Only handle SSR requests
-        if (req.type !== 'ssr') {
+        if (req.type !== "ssr") {
           return undefined;
         }
 
         // Handle by path
-        if (req.path === '/') {
-          return CachePresets.ssr;  // Homepage
+        if (req.path === "/") {
+          return CachePresets.ssr; // Homepage
         }
 
-        if (req.path.startsWith('/admin/')) {
-          return CachePresets.noStore;  // Admin pages
+        if (req.path.startsWith("/admin/")) {
+          return CachePresets.noStore; // Admin pages
         }
 
-        if (req.path.startsWith('/my/')) {
-          return CachePresets.private;  // Personal pages
+        if (req.path.startsWith("/my/")) {
+          return CachePresets.private; // Personal pages
         }
 
         // Default: SSR preset
         return CachePresets.ssr;
-      }
-    }
-  }
+      },
+    },
+  },
 };
 ```
 
@@ -349,23 +357,23 @@ export const config: SonamuConfig = {
 
 ```typescript
 cacheControlHandler: (req) => {
-  if (req.type !== 'ssr') return undefined;
+  if (req.type !== "ssr") return undefined;
 
   // Use SSRRoute information
   if (req.route) {
     const { path } = req.route;
 
     // Check for dynamic routes
-    if (path.includes(':')) {
-      return CachePresets.ssr;  // Detail pages
+    if (path.includes(":")) {
+      return CachePresets.ssr; // Detail pages
     }
 
     // Static routes
-    return CachePresets.mediumLived;  // List pages
+    return CachePresets.mediumLived; // List pages
   }
 
   return CachePresets.shortLived;
-}
+};
 ```
 
 ## Priority Order
@@ -389,17 +397,18 @@ Use Vary header for multi-language SSR pages.
 
 ```typescript
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   cacheControl: {
-    visibility: 'public',
+    visibility: "public",
     maxAge: 300,
-    vary: ['Accept-Language'],  // Separate cache by language
-  }
+    vary: ["Accept-Language"], // Separate cache by language
+  },
 });
 ```
 
 **Result**:
+
 ```
 GET /products/1 (Accept-Language: ko) → Korean HTML cached
 GET /products/1 (Accept-Language: en) → English HTML cached
@@ -413,18 +422,19 @@ AWS CloudFront supports `stale-while-revalidate`.
 
 ```typescript
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   cacheControl: {
-    visibility: 'public',
-    maxAge: 60,  // 1 minute
-    sMaxAge: 300,  // CDN: 5 minutes
-    staleWhileRevalidate: 600,  // Use stale for 10 minutes
-  }
+    visibility: "public",
+    maxAge: 60, // 1 minute
+    sMaxAge: 300, // CDN: 5 minutes
+    staleWhileRevalidate: 600, // Use stale for 10 minutes
+  },
 });
 ```
 
 **Effect**:
+
 - Browser: Requests CDN every minute
 - CDN: Requests server every 5 minutes
 - Stale: Fast response for up to 15 minutes (5 min + 10 min)
@@ -434,20 +444,22 @@ registerSSR({
 ```typescript
 // SSR page
 registerSSR({
-  path: '/products/:id',
-  cacheControl: CachePresets.ssr,  // 10 seconds
+  path: "/products/:id",
+  cacheControl: CachePresets.ssr, // 10 seconds
 });
 
 // Static files (separate configuration)
-server.get('/assets/:filename', (req, reply) => {
-  if (req.params.filename.includes('-')) {  // Contains hash
-    applyCacheHeaders(reply, CachePresets.immutable);  // 1 year
+server.get("/assets/:filename", (req, reply) => {
+  if (req.params.filename.includes("-")) {
+    // Contains hash
+    applyCacheHeaders(reply, CachePresets.immutable); // 1 year
   }
   return reply.sendFile(req.params.filename);
 });
 ```
 
 **Result**:
+
 - HTML: Updates every 10 seconds (fresh content)
 - JS/CSS: 1 year cache (fast loading)
 
@@ -457,21 +469,22 @@ Combine SSR's `preload` feature with Cache-Control.
 
 ```typescript
 registerSSR({
-  path: '/products/:id',
+  path: "/products/:id",
   Component: ProductDetail,
   preload: (params) => [
     {
-      modelName: 'ProductModel',
-      methodName: 'findById',
-      params: ['A', Number(params.id)],
-      serviceKey: ['Product', 'getProduct'],
-    }
+      modelName: "ProductModel",
+      methodName: "findById",
+      params: ["A", Number(params.id)],
+      serviceKey: ["Product", "getProduct"],
+    },
   ],
   cacheControl: CachePresets.ssr,
 });
 ```
 
 **Effect**:
+
 1. **During SSR**: Preload data on server → Generate HTML → Cache
 2. **Cache hit**: CDN returns HTML instantly (fast)
 3. **Hydration**: Client uses preloaded data
@@ -483,14 +496,14 @@ registerSSR({
 ```typescript
 // Pages requiring login
 registerSSR({
-  path: '/my/profile',
+  path: "/my/profile",
   Component: MyProfile,
-  cacheControl: CachePresets.private,  // Browser only caching
+  cacheControl: CachePresets.private, // Browser only caching
 });
 
 // Or no caching
 registerSSR({
-  path: '/my/orders',
+  path: "/my/orders",
   Component: MyOrders,
   cacheControl: CachePresets.noStore,
 });
@@ -502,13 +515,13 @@ When rendering different pages based on user state:
 
 ```typescript
 registerSSR({
-  path: '/dashboard',
+  path: "/dashboard",
   Component: Dashboard,
   cacheControl: {
-    visibility: 'private',  // private required
-    noCache: true,  // Revalidate every time
-    vary: ['Cookie'],  // Separate cache by cookie
-  }
+    visibility: "private", // private required
+    noCache: true, // Revalidate every time
+    vary: ["Cookie"], // Separate cache by cookie
+  },
 });
 ```
 
@@ -518,57 +531,60 @@ registerSSR({
 **Precautions when using SSR Cache-Control**:
 
 1. **Personalized pages must be private or no-store**: Prevent CDN caching
+
    ```typescript
    // ❌ Dangerous: Personal page cached on CDN
    registerSSR({
-     path: '/my/profile',
-     cacheControl: { visibility: 'public', maxAge: 60 }
-   })
+     path: "/my/profile",
+     cacheControl: { visibility: "public", maxAge: 60 },
+   });
 
    // ✅ Safe
    registerSSR({
-     path: '/my/profile',
-     cacheControl: CachePresets.private
-   })
+     path: "/my/profile",
+     cacheControl: CachePresets.private,
+   });
    ```
 
 2. **Short TTL for dynamic content**: Prevent stale HTML
+
    ```typescript
    // ❌ Real-time dashboard but cached for 1 hour
    registerSSR({
-     path: '/dashboard',
-     cacheControl: CachePresets.longLived
-   })
+     path: "/dashboard",
+     cacheControl: CachePresets.longLived,
+   });
 
    // ✅ Short TTL or no-cache
    registerSSR({
-     path: '/dashboard',
-     cacheControl: CachePresets.shortLived
-   })
+     path: "/dashboard",
+     cacheControl: CachePresets.shortLived,
+   });
    ```
 
 3. **Consider authentication cookies**: Separate with Vary header
+
    ```typescript
    registerSSR({
-     path: '/dashboard',
+     path: "/dashboard",
      cacheControl: {
-       visibility: 'private',
+       visibility: "private",
        maxAge: 60,
-       vary: ['Cookie'],  // Separate cache by cookie
-     }
-   })
+       vary: ["Cookie"], // Separate cache by cookie
+     },
+   });
    ```
 
 4. **Configure CSR fallback**: Handle unmatched routes
    ```typescript
    // Add catch-all route at the end
    registerSSR({
-     path: '/*',
+     path: "/*",
      Component: App,
      cacheControl: CachePresets.shortLived,
-   })
+   });
    ```
-</Warning>
+   </Warning>
 
 ## Debugging
 
@@ -588,12 +604,14 @@ Response Headers:
 CDNs provide cache status headers:
 
 **CloudFront**:
+
 ```
 X-Cache: Hit from cloudfront
 Age: 5
 ```
 
 **Cloudflare**:
+
 ```
 CF-Cache-Status: HIT
 Age: 5
@@ -602,7 +620,11 @@ Age: 5
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="What is Cache-Control?" icon="circle-question" href="/en/advanced-features/cache-control/what-is-cache-control">
+  <Card
+    title="What is Cache-Control?"
+    icon="circle-question"
+    href="/en/advanced-features/cache-control/what-is-cache-control"
+  >
     HTTP caching fundamentals
   </Card>
   <Card title="Cache Presets" icon="list" href="/en/advanced-features/cache-control/cache-presets">

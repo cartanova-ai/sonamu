@@ -1,31 +1,35 @@
 {
   "name": "@sonamu-kit/hmr-runner",
-  "type": "module",
   "version": "0.1.1",
   "description": "Runner for applications that use hmr-hook (forked from hot-hook)",
+  "keywords": [
+    "hmr",
+    "hmr-hook",
+    "runner"
+  ],
+  "license": "MIT",
   "author": "CartaNova <dev@cartanova.ai>",
   "repository": {
     "type": "git",
     "url": "https://github.com/cartanova-ai/sonamu.git"
   },
-  "license": "MIT",
-  "keywords": [
-    "hmr-hook",
-    "runner",
-    "hmr"
-  ],
-  "main": "build/bin/run.js",
   "bin": "./bin/run.js",
   "files": [
     "build",
     "bin"
   ],
+  "type": "module",
+  "main": "build/bin/run.js",
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
   "scripts": {
     "clean": "del-cli build",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check",
-    "format": "biome format --write",
+    "lint": "oxlint",
+    "format": "oxfmt",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
     "test": "c8 pnpm quick:test",
     "prepublishOnly": "pnpm lint && pnpm build"
@@ -53,15 +57,10 @@
     "fs-extra": "catalog:",
     "p-event": "catalog:",
     "p-timeout": "catalog:",
-    "@biomejs/biome": "catalog:",
     "supertest": "catalog:",
     "ts-node": "catalog:",
     "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:"
-  },
-  "publishConfig": {
-    "access": "public",
-    "tag": "latest"
   }
 }

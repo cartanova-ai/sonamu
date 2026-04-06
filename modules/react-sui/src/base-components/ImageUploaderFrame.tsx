@@ -1,4 +1,4 @@
-/** biome-ignore-all lint: react-sui deprecated 예정이라 won't fix */
+/* oxlint-disable */ // react-sui deprecated 예정이라 won't fix
 
 import {
   closestCenter,

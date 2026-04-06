@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+
 import type { CacheManager } from "../cache/types";
 import type { Entity } from "../entity/entity";
 import type { EntityManager } from "../entity/entity-manager";

@@ -9,24 +9,16 @@ Sonamu의 `registerSSR`를 사용하여 서버에서 데이터를 미리 로드�
 
 <CardGroup cols={2}>
   <Card title="registerSSR" icon="code">
-    라우트별 preload 설정
-    
-    백엔드 직접 호출
+    라우트별 preload 설정 백엔드 직접 호출
   </Card>
   <Card title="SSRQuery" icon="brackets-curly">
-    타입 안전한 쿼리
-    
-    모델/메서드 지정
+    타입 안전한 쿼리 모델/메서드 지정
   </Card>
   <Card title="자동 주입" icon="droplet">
-    QueryClient에 자동 주입
-    
-    Hydration 처리
+    QueryClient에 자동 주입 Hydration 처리
   </Card>
   <Card title="No HTTP" icon="bolt">
-    네트워크 오버헤드 없음
-    
-    빠른 응답
+    네트워크 오버헤드 없음 빠른 응답
   </Card>
 </CardGroup>
 
@@ -52,6 +44,7 @@ registerSSR({
 ```
 
 **작동 과정**:
+
 1. 서버에서 `/users/123` 요청 받음
 2. `path` 매칭: `/users/:id` → `params = { id: "123" }`
 3. `preload` 함수 실행 → `SSRQuery[]` 반환
@@ -64,9 +57,9 @@ registerSSR({
 
 ```typescript
 type SSRQuery = {
-  modelName: string;        // "UserModel" - 백엔드 모델 클래스명
-  methodName: string;       // "getUser" - 모델 메서드명
-  params: unknown[];        // ["C", 123] - 메서드 파라미터 (Context 제외)
+  modelName: string; // "UserModel" - 백엔드 모델 클래스명
+  methodName: string; // "getUser" - 모델 메서드명
+  params: unknown[]; // ["C", 123] - 메서드 파라미터 (Context 제외)
   serviceKey: [string, string]; // ["User", "getUser"] - React Query queryKey 앞부분
 };
 ```
@@ -87,7 +80,7 @@ registerSSR({
     {
       modelName: "UserModel",
       methodName: "getUser",
-      params: ["C", parseInt(params.id)],  // subset, id 순서
+      params: ["C", parseInt(params.id)], // subset, id 순서
       serviceKey: ["User", "getUser"],
     },
   ],
@@ -105,7 +98,7 @@ export const Route = createFileRoute("/users/$id")({
 
 function UserPage() {
   const { id } = Route.useParams();
-  
+
   // 서버에서 프리로드된 데이터를 자동으로 사용
   // isLoading: false (이미 데이터가 있음)
   const { data } = UserService.useUser("C", parseInt(id));
@@ -158,7 +151,7 @@ export const Route = createFileRoute("/posts/$id")({
 
 function PostPage() {
   const { id } = Route.useParams();
-  
+
   // 두 데이터 모두 프리로드되어 있음
   const { data: post } = PostService.usePost("C", parseInt(id));
   const { data: comments } = CommentService.useCommentsByPost(parseInt(id));
@@ -169,7 +162,7 @@ function PostPage() {
         <h1>{post?.post.title}</h1>
         <p>{post?.post.content}</p>
       </article>
-      
+
       <section>
         <h2>Comments ({comments?.comments.length})</h2>
         {comments?.comments.map((comment) => (
@@ -192,7 +185,7 @@ registerSSR({
   preload: (params) => {
     // slug를 id로 변환하는 로직
     const categoryId = getCategoryIdBySlug(params.slug);
-    
+
     return [
       {
         modelName: "CategoryModel",
@@ -295,12 +288,15 @@ Hydration을 비활성화하고 클라이언트에서 새로 렌더링합니다.
 ```typescript
 registerSSR({
   path: "/admin/report",
-  preload: (params) => [/* ... */],
-  disableHydrate: true,  // Hydration 비활성화
+  preload: (params) => [
+    /* ... */
+  ],
+  disableHydrate: true, // Hydration 비활성화
 });
 ```
 
 **사용 사례**:
+
 - 서버/클라이언트 렌더링 결과가 다를 수 있는 경우
 - 실시간 데이터가 중요한 경우
 - Hydration mismatch 해결
@@ -312,11 +308,13 @@ SSR 응답의 Cache-Control 헤더를 설정합니다.
 ```typescript
 registerSSR({
   path: "/posts/:id",
-  preload: (params) => [/* ... */],
+  preload: (params) => [
+    /* ... */
+  ],
   cacheControl: {
-    maxAge: 3600,        // 1시간 캐시
-    sMaxAge: 7200,       // CDN에서 2시간 캐시
-    staleWhileRevalidate: 86400,  // 1일간 stale 컨텐츠 제공 가능
+    maxAge: 3600, // 1시간 캐시
+    sMaxAge: 7200, // CDN에서 2시간 캐시
+    staleWhileRevalidate: 86400, // 1일간 stale 컨텐츠 제공 가능
   },
 });
 ```
@@ -340,7 +338,7 @@ export async function renderSSR(url: string, route: SSRRoute, params: Record<str
 
     // 3. 백엔드 API 직접 호출 (HTTP 없음!)
     const result = await Sonamu.invokeApiForSSR(api, apiParams);
-    
+
     // 4. PreloadedData 저장
     preloadedData.push({
       queryKey: [...serviceKey, ...apiParams],
@@ -353,7 +351,7 @@ export async function renderSSR(url: string, route: SSRRoute, params: Record<str
 
   // 6. HTML에 데이터 주입
   const ssrDataScript = `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState)};</script>`;
-  
+
   return html.replace("</body>", `${ssrDataScript}\n</body>`);
 }
 ```
@@ -423,6 +421,7 @@ registerSSR({
 ```
 
 **서버 로그**:
+
 ```
 Failed to preload PostModel.getPost: Post not found
 ```
@@ -437,10 +436,10 @@ Failed to preload PostModel.getPost: Post not found
 
 ```typescript
 // ❌ 전체 필드 (느림)
-params: ["C", userId]  // 모든 필드
+params: ["C", userId]; // 모든 필드
 
 // ✅ 필요한 필드만 (빠름)
-params: ["A", userId]  // id, username, email만
+params: ["A", userId]; // id, username, email만
 ```
 
 ### 2. 병렬 로딩
@@ -463,15 +462,15 @@ preload: (params) => [
 ```typescript
 preload: (params) => {
   const queries = [];
-  
+
   // 기본 데이터
   queries.push({ modelName: "PageModel", methodName: "getPage", ... });
-  
+
   // 인증된 사용자만
   if (hasAuth(params)) {
     queries.push({ modelName: "UserModel", methodName: "getProfile", ... });
   }
-  
+
   return queries;
 }
 ```
@@ -479,12 +478,10 @@ preload: (params) => {
 ## 주의사항
 
 <Warning>
-**registerSSR 사용 시 주의사항**:
-1. **queryKey 정확히 매칭**: 서버와 클라이언트의 queryKey가 동일해야 함
-2. **params 순서 주의**: 백엔드 메서드 파라미터 순서를 정확히 따라야 함
-3. **Context 제외**: params에 Context는 포함하지 않습니다
-4. **타입 변환 주의**: `parseInt(params.id)` 등 타입 변환 필요
-5. **에러는 로그로**: 개별 쿼리 실패가 전체 SSR을 중단시키지 않음
+  **registerSSR 사용 시 주의사항**: 1. **queryKey 정확히 매칭**: 서버와 클라이언트의 queryKey가
+  동일해야 함 2. **params 순서 주의**: 백엔드 메서드 파라미터 순서를 정확히 따라야 함 3. **Context
+  제외**: params에 Context는 포함하지 않습니다 4. **타입 변환 주의**: `parseInt(params.id)` 등 타입
+  변환 필요 5. **에러는 로그로**: 개별 쿼리 실패가 전체 SSR을 중단시키지 않음
 </Warning>
 
 ## 다음 단계
@@ -493,13 +490,21 @@ preload: (params) => {
   <Card title="SSR 설정" icon="server" href="/ko/frontend-integration/ssr/ssr-setup">
     SSR 기본 구조
   </Card>
-  <Card title="Hydration 전략" icon="droplet" href="/ko/frontend-integration/ssr/hydration-strategies">
+  <Card
+    title="Hydration 전략"
+    icon="droplet"
+    href="/ko/frontend-integration/ssr/hydration-strategies"
+  >
     하이드레이션 최적화
   </Card>
   <Card title="캐시 제어" icon="database" href="/ko/frontend-integration/ssr/cache-control">
     캐싱 전략
   </Card>
-  <Card title="Subset System" icon="layer-group" href="/ko/core-concepts/entity-system/subset-system">
+  <Card
+    title="Subset System"
+    icon="layer-group"
+    href="/ko/core-concepts/entity-system/subset-system"
+  >
     데이터 최적화
   </Card>
 </CardGroup>

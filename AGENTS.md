@@ -3,6 +3,7 @@
 This file applies to current directory and all child directories unless overridden by a deeper `AGENTS.md`.
 
 ## Canonical control files
+
 - Primary instructions are `AGENTS.md` and `.agents/`.
 - `CLAUDE.md` exists only for compatibility and must be a symlink to `AGENTS.md`.
 - `.claude/` exists only for compatibility and must be a symlink to `.agents/`.
@@ -11,6 +12,7 @@ This file applies to current directory and all child directories unless overridd
 - Do not create additional `.claude/` or `.agents/` directories in subdirectories.
 
 ## Mandatory scope check before any task
+
 - Before starting any task, identify all directories affected by the planned changes.
 - You must read and follow the nearest applicable `AGENTS.md` in each affected path before making changes.
 - If `CLAUDE.md` exists in an affected path, treat it as required compatibility entry and verify it resolves to the same instructions.
@@ -18,6 +20,7 @@ This file applies to current directory and all child directories unless overridd
 - Do not proceed with edits until this scope check is completed.
 
 ## Mandatory common-policy preload (before workflow)
+
 - Before any implementation, review, or orchestration decision, always read and follow:
   - `.agents/workflow/prompts/00_shared_contract.md`
   - `.agents/workflow/subagents/00_agent_roles.md`
@@ -26,6 +29,7 @@ This file applies to current directory and all child directories unless overridd
 - If these files conflict with a deeper-path `AGENTS.md`, the deeper `AGENTS.md` still takes precedence.
 
 ## Integrated workflow protocol
+
 - Planning, implementation, orchestration, review, and handoff are prompt contracts under `.agents/workflow/prompts/`.
 - Start with `00_bootstrap.md`, then `01_plan.md`, then orchestration via `07_orchestrator.md`.
 - Use `02_implement.md` for implementation units.
@@ -35,6 +39,7 @@ This file applies to current directory and all child directories unless overridd
 - Review/session handling follows `.agents/workflow/prompts/06_codex_output_and_sessions.md`.
 
 ## Cross-agent subagent compatibility
+
 - Claude Code can use custom subagent presets from `.claude/agents/*.md`.
 - Other coding agents may not support preset subagents.
 - If preset subagents are unavailable, the orchestrator must use inline fallback instructions and file references.
@@ -55,6 +60,7 @@ This file applies to current directory and all child directories unless overridd
   - `execution_mode=inline_fallback`
 
 ## Language and output policy
+
 - Write prompts in English.
 - Reason in English.
 - Final user-facing output must follow user language preference. If unclear, use Korean.
@@ -65,18 +71,22 @@ This file applies to current directory and all child directories unless overridd
 - The policy applies to all output channels, including direct agent responses and external tool outputs (for example: Notion MCP, Linear MCP, GitHub Issues/PRs/comments).
 
 ## Writing quality policy
+
 When writing docs, messages, or direct agent responses (Notion, Linear, Slack, GitHub Issues/PR/comments, and similar):
+
 - Avoid generic AI-style phrasing, repetitive transitions, and padded summaries.
 - Prefer concrete facts, direct decisions, and explicit constraints.
 - Keep wording brief and specific.
 
 ## Absolute prohibitions
+
 - Do not force push.
 - Do not rely on arbitrary assumptions. If uncertainty remains after checking code/logs/history, ask the user unless autonomous mode is active.
 - Do not directly edit generated files (`*.generated.ts`, `sonamu.generated.*`, `queries.generated.ts`, generated client artifacts).
 - Do not claim deployment or migration execution unless the user explicitly instructed and confirmed.
 
 ## Commit message policy
+
 - Follow scope-first bracket conventional commit style.
 - Title format is mandatory: `[scope] type: short title`.
 - For work in progress, use: `[scope] type(wip): short title`.
@@ -91,6 +101,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - Do not add any Co-Authored-By trailer to commits.
 
 ## Core workflow policy
+
 - Planning-first execution is mandatory.
 - Planning must be performed by spawning the `planner` sub-agent. Do not use the built-in Plan Mode (EnterPlanMode).
 - The `planner` sub-agent must use Codex MCP by default for planning assistance unless Codex MCP is unavailable or encounters errors.
@@ -106,6 +117,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - Use commit-sized, conflict-minimizing task units.
 
 ## Orchestrator topology policy
+
 - Only the main agent (top-level conversation) can spawn sub-agents via the Task tool.
 - Sub-agents spawned via Task tool cannot spawn further sub-agents.
 - Therefore, the orchestrator role must always be assumed by the main agent itself. The orchestrator is never spawned as a sub-agent.
@@ -118,32 +130,38 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - All other preset files under `.agents/agents/` are spawnable sub-agent presets.
 
 ## Codex MCP human-in-the-loop policy
+
 - Sub-agents that interact with Codex MCP must run as foreground sub-agents (not background). Background sub-agents cannot use `AskUserQuestion` and therefore cannot support this policy.
 - Normal mode (`autonomous: false`): when a sub-agent uses Codex MCP and receives a response, do not auto-reply. Surface the response to the user via `AskUserQuestion`, wait for user input, then relay via `codex-reply`.
 - Autonomous mode (`autonomous: true`): process Codex MCP responses automatically without user confirmation, relay via `codex-reply` immediately, and log interaction in `review_metadata`.
 - This applies to all sub-agents that interact with Codex MCP, including the `planner` sub-agent.
 
 ## Work style policy
+
 - Plan-first execution is the default. Clarify scope and constraints before implementation.
 - For narrow explicit requests, execute directly but report any meaningful side effects discovered.
 - For ambiguous requests, resolve planning-critical questions first, then proceed.
 
 ## Problem escalation policy
+
 - If an unexpected blocker occurs, stop further risky edits and report facts to the user first.
 - Propose practical recovery options with trade-offs.
 - Prioritize rollback safety before attempting invasive recovery work.
 
 ## Refactoring policy
+
 - Actively remove confusing or inconsistent AI-generated structures when they reduce maintainability.
 - Keep conceptual consistency across connected files, not just local function/file cleanliness.
 
 ## TypeScript type safety policy
+
 - `as any` and `as unknown as T` are strictly prohibited in all TypeScript code unless the user explicitly requests it.
 - Type errors must be resolved through proper typing: correct type annotations, generic constraints, type narrowing, or interface extension.
 - If a third-party library's types are incomplete, use module augmentation or a local `.d.ts` declaration file instead of type casting.
 - Sub-agents must be explicitly instructed about this policy in every implementation spawn.
 
 ## Code comment policy
+
 - Only add comments where the logic is not self-evident. Keep comments concise.
 - Do not use region-marker comments that label code sections (for example: `// ===== Section =====`, `// --- Region ---`, `/* ========== */`).
 - Write comments in Korean honorific style.
@@ -154,12 +172,14 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - Outside that scope, use `console.log` minimally.
 
 ## Tooling policy
+
 - Prefer syntax-aware search/transform with `ast-grep` and `GritQL`.
 - Do not default to plain-text grep/rg when structural matching is needed.
 - For Web frontend tasks, Playwright MCP is required.
 - For React tasks, use React best-practice skills.
 
 ## Validation policy
+
 - Ensure monorepo root checks (lint/format) are included in plans.
 - `pnpm check` (Biome) must pass at the workspace root and in each affected subproject.
 - Ensure project-level build/test targets are included in plans.
@@ -169,6 +189,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
   - before push: test pass
 
 ## Review policy
+
 - Unit-level review: implementation sub-agent may close unit review inline only when unit-level Codex is explicitly enabled and available; otherwise orchestrator spawns a separate, context-isolated reviewer sub-agent.
 - Reviewer input contract for unit-level: diff, `must_verify_behaviors`, test/gate results, relevant `objective_packet` fields, and AST pre-scan results.
 - Review fast-path: trivial changes (<=30 lines, docs/formatting/config only, all gates pass) skip reviewer spawn.
@@ -183,6 +204,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - Human-in-the-loop for Codex MCP: enforced in normal mode, exempted in autonomous mode.
 
 ## Hotfix policy
+
 - Hotfix uses the same orchestration model as implementation:
   - Implement sub-agent(s) -> review sub-agent loop -> branch-level review loop -> user handoff.
 - Hotfix sub-agents may escalate to Codex MCP for problem-solving when self-attempts stall:
@@ -195,6 +217,7 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
   - Full protocol: `.agents/workflow/prompts/06_codex_output_and_sessions.md` section `Problem-solving escalation session protocol`.
 
 ## Safety and operational boundaries
+
 - Do not modify local databases directly. Read-only local DB access is allowed.
 - Do not connect/read/write remote databases directly.
 - Do not run mutating Terraform/AWS CLI operations. Read-only inspection only.
@@ -202,12 +225,14 @@ When writing docs, messages, or direct agent responses (Notion, Linear, Slack, G
 - DB migration execution requires explicit user intervention.
 
 ## Pre-task readiness
+
 1. Sync latest changes with `git pull`.
 2. After pull, run `pnpm install && pnpm build` at repo root.
 3. Ensure rollback safety before risky edits (`git stash` or equivalent checkpoint).
 4. If you are stuck for a long time without commits, recommend a checkpoint commit to the user.
 
 If the environment becomes inconsistent after the above, restart test DB container:
+
 ```bash
 cd examples/miomock/api/database
 docker compose down
@@ -215,11 +240,13 @@ docker compose up -d
 ```
 
 ## Branch strategy
+
 - Default strategy is committing directly to `master`.
 - Commit only after build success.
 - Push only after tests pass.
 
 ## Coding style
+
 - Prefer straightforward, immediately readable code over ornamental abstractions.
 - Avoid unnecessary OOP patterns. Use classes only when stateful containers are justified.
 - Keep related logic near related code.
@@ -227,33 +254,41 @@ docker compose up -d
 - Avoid unnecessary `return await`, but preserve `await` in assignment/try boundaries where stack trace quality matters.
 
 ## Sonamu generated/scaffolding policy
+
 - Real-time sync generated files are overwrite targets and must not be hand-edited.
 - Scaffolding files are developer-owned after first generation.
 - `sonamu.lock` tracks checksums for regeneration triggers.
 - Regeneration when needed:
+
 ```bash
 rm api/sonamu.lock
 pnpm sonamu sync
 ```
 
 ## Sonamu source-of-truth policy
+
 - `entity.json` and related core definitions are Single Source of Truth inputs.
 - Most `entity.json` edits and DB migration operations are user-driven through Sonamu UI.
 - If direct edits are unavoidable, ask user confirmation first.
 - In `miomock`, i18n changes must be applied in `examples/miomock/api` as the source package.
 
 ## Dependency policy
+
 - Before adding a package, verify necessity at monorepo level.
 - Register shared dependencies in `pnpm-workspace.yaml` catalog when appropriate.
 - Consider cross-module impact of version changes.
 
 ## Autonomous mode policy (`[자율주행]`)
+
 ### Trigger conditions
+
 Treat as autonomous mode when either is true:
+
 - The user message includes `[자율주행]`.
 - The user explicitly asks to proceed to completion without asking questions.
 
 ### Execution rules in autonomous mode
+
 1. Continue to completion without mid-task clarification requests.
 2. Absolute prohibitions still apply.
 3. Record uncertainty as `검토 필요 사항` in deliverables instead of blocking execution.
@@ -261,6 +296,7 @@ Treat as autonomous mode when either is true:
 5. Proceed when confidence is at least 60%; if lower, log as `검토 필요 사항` and move forward safely.
 
 ## Package map
+
 - `modules/sonamu`: Sonamu framework core.
 - `modules/sonamu/ui-web`: Sonamu UI web build package.
 - `modules/hmr-hook`, `modules/hmr-runner`, `modules/ts-loader`: HMR/tooling core modules.
@@ -271,6 +307,7 @@ Treat as autonomous mode when either is true:
 - `examples/miomock/api`, `examples/miomock/web`: integration sample/test application.
 
 ## Instruction lifecycle
+
 - Do not auto-update `AGENTS.md` when new ad-hoc instructions appear.
 - Update per-agent memory instead, then inform the user.
 - The user decides when to consolidate memory updates back into `AGENTS.md`.

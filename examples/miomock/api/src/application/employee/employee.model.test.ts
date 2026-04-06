@@ -1,7 +1,9 @@
 import assert from "assert";
+
 import { DB } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
+
 import { EmployeeModel } from "./employee.model";
 
 bootstrap(vi);

@@ -1,4 +1,5 @@
 import chalk from "chalk";
+
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import type { EntityIndex, EntityJson, EntityProp } from "../types/types";

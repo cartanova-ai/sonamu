@@ -30,9 +30,7 @@
     "src/application/document/document.model.ts",
     "src/application/document/document.types.ts"
   ],
-  "contracts": [
-    "./main.contract.json"
-  ],
+  "contracts": ["./main.contract.json"],
   "modules": {
     "DocumentModel": "상태 필드 저장/조회와 상태 변경을 담당한다",
     "Document Types": "상태 열거형(draft, published, archived)을 정의한다"

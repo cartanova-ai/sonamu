@@ -14,25 +14,17 @@ Sonamu development follows this cycle:
 Define the entity structure in Sonamu UI.
 </Step>
 
-<Step title="2. Migration">
-Create or modify database tables.
-</Step>
+<Step title="2. Migration">Create or modify database tables.</Step>
 
-<Step title="3. Scaffolding">
-Auto-generate Model and test files.
-</Step>
+<Step title="3. Scaffolding">Auto-generate Model and test files.</Step>
 
 <Step title="4. Business Logic Implementation">
-Add business logic to the generated Model files.
+  Add business logic to the generated Model files.
 </Step>
 
-<Step title="5. Synchronization (Sync)">
-Synchronize changes with the frontend.
-</Step>
+<Step title="5. Synchronization (Sync)">Synchronize changes with the frontend.</Step>
 
-<Step title="6. Testing">
-Test the code you've written.
-</Step>
+<Step title="6. Testing">Test the code you've written.</Step>
 
 <Step title="7. Frontend Integration">
 Implement UI using the auto-generated Services.
@@ -60,10 +52,9 @@ Access http://localhost:34900/sonamu-ui in your browser to:
 5. **Define Relations** - Set relationships with other entities
 
 <Tip>
-When you save an entity, the following files are auto-generated:
-- `{entity}.entity.json` - Entity definition
-- `{entity}.types.ts` - TypeScript types and Zod schemas
-- `sonamu.generated.ts` - Base schemas (all entities)
+  When you save an entity, the following files are auto-generated: - `{entity}.entity.json` - Entity
+  definition - `{entity}.types.ts` - TypeScript types and Zod schemas - `sonamu.generated.ts` - Base
+  schemas (all entities)
 </Tip>
 
 <Tabs>
@@ -115,13 +106,13 @@ pnpm sonamu stub entity User
 Then add and edit fields in Sonamu UI.
 
 <Info>
-**Learn More**
-- [Defining Entities](/en/core-concepts/entity/defining-entities) - Entity structure and configuration options
-- [Using Sonamu UI](/en/core-concepts/entity/using-sonamu-ui) - Managing entities in the UI
-- [Field Types](/en/core-concepts/entity/field-types) - All available field types
-- [Defining Relations](/en/core-concepts/entity/relations) - Setting up entity relationships
-- [Defining Enums](/en/core-concepts/entity/enums) - Managing enumeration types
-- [Entity Management](/en/tools-and-cli/sonamu-ui/entity-management) - Sonamu UI Entity tab guide
+  **Learn More** - [Defining Entities](/en/core-concepts/entity/defining-entities) - Entity
+  structure and configuration options - [Using Sonamu UI](/en/core-concepts/entity/using-sonamu-ui)
+  - Managing entities in the UI - [Field Types](/en/core-concepts/entity/field-types) - All
+  available field types - [Defining Relations](/en/core-concepts/entity/relations) - Setting up
+  entity relationships - [Defining Enums](/en/core-concepts/entity/enums) - Managing enumeration
+  types - [Entity Management](/en/tools-and-cli/sonamu-ui/entity-management) - Sonamu UI Entity tab
+  guide
 </Info>
 
 ## Step 2: Migration
@@ -135,8 +126,7 @@ Apply the entity definition to the database.
 3. Review generated SQL
 4. **Run Migration** - Apply to database
 
-<Frame caption="📸 Needed: Running migration in Migration tab">
-</Frame>
+<Frame caption="📸 Needed: Running migration in Migration tab"></Frame>
 
 ### Migration via CLI (Optional)
 
@@ -149,16 +139,16 @@ pnpm sonamu migrate run
 ```
 
 <Warning>
-Migrations may be irreversible operations. Be especially careful in production environments.
+  Migrations may be irreversible operations. Be especially careful in production environments.
 </Warning>
 
 <Info>
-**Learn More**
-- [How Migrations Work](/en/database/migrations/how-migrations-work) - Understanding the migration system
-- [Creating Migrations](/en/database/migrations/creating-migrations) - SQL auto-generation mechanism
-- [Running Migrations](/en/database/migrations/running-migrations) - Safe migration execution
-- [Migration Tab](/en/tools-and-cli/sonamu-ui/migration-tab) - Managing migrations in Sonamu UI
-- [migrate CLI](/en/tools-and-cli/sonamu-cli/migrate) - Controlling migrations via CLI
+  **Learn More** - [How Migrations Work](/en/database/migrations/how-migrations-work) -
+  Understanding the migration system - [Creating
+  Migrations](/en/database/migrations/creating-migrations) - SQL auto-generation mechanism -
+  [Running Migrations](/en/database/migrations/running-migrations) - Safe migration execution -
+  [Migration Tab](/en/tools-and-cli/sonamu-ui/migration-tab) - Managing migrations in Sonamu UI -
+  [migrate CLI](/en/tools-and-cli/sonamu-cli/migrate) - Controlling migrations via CLI
 </Info>
 
 ## Step 3: Scaffolding
@@ -175,8 +165,7 @@ After migration, auto-generate Model and test files.
 4. **Preview** (optional) - Preview code to be generated
 5. **Generate** - Create files
 
-<Frame caption="📸 Needed: Generating Model files in Scaffolding tab">
-</Frame>
+<Frame caption="📸 Needed: Generating Model files in Scaffolding tab"></Frame>
 
 ### Scaffolding via CLI (Optional)
 
@@ -194,13 +183,13 @@ pnpm sonamu scaffold model_test User
 - `{entity}.model.test.ts` - Test template
 
 Generated files can be modified anytime to add business logic.
+
 </Info>
 
 <Info>
-**Learn More**
-- [Scaffolding Tab](/en/tools-and-cli/sonamu-ui/scaffolding-tab) - Generating code in UI
-- [scaffold CLI](/en/tools-and-cli/sonamu-cli/scaffold) - File scaffolding via CLI
-- [Test Scaffolding](/en/testing/writing-tests/scaffolding-tests) - Auto-generating test files
+  **Learn More** - [Scaffolding Tab](/en/tools-and-cli/sonamu-ui/scaffolding-tab) - Generating code
+  in UI - [scaffold CLI](/en/tools-and-cli/sonamu-cli/scaffold) - File scaffolding via CLI - [Test
+  Scaffolding](/en/testing/writing-tests/scaffolding-tests) - Auto-generating test files
 </Info>
 
 ## Step 4: Business Logic Implementation
@@ -226,10 +215,7 @@ class UserModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     // Basic CRUD logic (generated by scaffolding)
   }
 
@@ -238,10 +224,8 @@ class UserModelClass extends BaseModelClass<
   async changePassword(userId: number, newPassword: string): Promise<void> {
     // Password change logic
     const hashedPassword = await this.hashPassword(newPassword);
-    
-    await this.db()
-      .where("id", userId)
-      .update({ password: hashedPassword });
+
+    await this.db().where("id", userId).update({ password: hashedPassword });
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -269,17 +253,17 @@ The `@api` decorator automatically registers methods as REST API endpoints:
 **HMR (Hot Module Replacement)**
 
 When you modify Model files, the API server automatically restarts. No manual server restart needed!
+
 </Check>
 
 <Info>
-**Learn More**
-- [What is a Model?](/en/core-concepts/model/what-is-model) - Role and structure of Models
-- [@api Decorator](/en/core-concepts/model/api-decorator) - Auto-generating API endpoints
-- [Writing Business Logic](/en/core-concepts/model/business-logic) - Implementing logic in Models
-- [BaseModel Methods](/en/core-concepts/model/basemodel-methods) - Built-in CRUD methods
-- [Creating APIs](/en/api-development/creating-apis/api-decorator) - Detailed API development guide
-- [Puri Query Builder](/en/database/puri/basic-queries) - Writing type-safe queries
-- [Transactions](/en/database/transactions/transactional-decorator) - Safe data handling
+  **Learn More** - [What is a Model?](/en/core-concepts/model/what-is-model) - Role and structure of
+  Models - [@api Decorator](/en/core-concepts/model/api-decorator) - Auto-generating API endpoints -
+  [Writing Business Logic](/en/core-concepts/model/business-logic) - Implementing logic in Models -
+  [BaseModel Methods](/en/core-concepts/model/basemodel-methods) - Built-in CRUD methods - [Creating
+  APIs](/en/api-development/creating-apis/api-decorator) - Detailed API development guide - [Puri
+  Query Builder](/en/database/puri/basic-queries) - Writing type-safe queries -
+  [Transactions](/en/database/transactions/transactional-decorator) - Safe data handling
 </Info>
 
 ## Step 5: Synchronization (Sync)
@@ -294,8 +278,7 @@ When running the dev server with `pnpm dev`, file changes are automatically sync
 - ✅ Types file change → Auto-copied to Web project
 - ✅ Entity definition change → Schema auto-regenerated
 
-<Frame caption="📸 Needed: Terminal showing HMR operation logs">
-</Frame>
+<Frame caption="📸 Needed: Terminal showing HMR operation logs"></Frame>
 
 ### Manual Sync
 
@@ -320,13 +303,14 @@ pnpm sync
 - When you think the sync state is broken
 
 In most cases, HMR handles this automatically, so manual sync is rarely needed.
+
 </Info>
 
 <Info>
-**Learn More**
-- [Understanding Syncer](/en/core-concepts/auto-generation/syncer) - Detailed synchronization mechanism
-- [What Gets Generated](/en/core-concepts/auto-generation/what-gets-generated) - Which files are generated
-- [How HMR Works](/en/tools-and-cli/hmr/how-hmr-works) - Understanding Hot Module Replacement
+  **Learn More** - [Understanding Syncer](/en/core-concepts/auto-generation/syncer) - Detailed
+  synchronization mechanism - [What Gets
+  Generated](/en/core-concepts/auto-generation/what-gets-generated) - Which files are generated -
+  [How HMR Works](/en/tools-and-cli/hmr/how-hmr-works) - Understanding Hot Module Replacement
 </Info>
 
 ## Step 6: Testing
@@ -354,7 +338,7 @@ describe("UserModel", () => {
 
   test("changePassword should update password", async () => {
     await UserModel.changePassword(1, "newPassword123");
-    
+
     // Verify password change
     const user = await UserModel.findById("A", 1);
     expect(user.password).not.toBe("oldPassword");
@@ -375,19 +359,18 @@ pnpm test user.model.test.ts
 pnpm test --watch
 ```
 
-<Frame caption="📸 Needed: Test execution results in terminal">
-</Frame>
+<Frame caption="📸 Needed: Test execution results in terminal"></Frame>
 
 <Tip>
-Sonamu uses Vitest. For details, see the [Writing Tests](/en/testing/writing-tests/test-structure) documentation.
+  Sonamu uses Vitest. For details, see the [Writing Tests](/en/testing/writing-tests/test-structure)
+  documentation.
 </Tip>
 
 <Info>
-**Learn More**
-- [Writing Tests](/en/testing/writing-tests/test-structure) - Vitest-based test structure
-- [Test Scaffolding](/en/testing/writing-tests/scaffolding-tests) - Using test templates
-- [Creating Fixtures](/en/testing/fixtures/creating-fixtures) - Managing test data
-- [What is Naite?](/en/testing/naite/what-is-naite) - Test logging system
+  **Learn More** - [Writing Tests](/en/testing/writing-tests/test-structure) - Vitest-based test
+  structure - [Test Scaffolding](/en/testing/writing-tests/scaffolding-tests) - Using test templates
+  - [Creating Fixtures](/en/testing/fixtures/creating-fixtures) - Managing test data - [What is
+  Naite?](/en/testing/naite/what-is-naite) - Test logging system
 </Info>
 
 ## Step 7: Frontend Integration
@@ -402,7 +385,7 @@ APIs defined in Models are automatically generated as frontend Services:
 export class UserService {
   static async findById(subset: UserSubsetKey, id: number) {
     const res = await axios.get(`/api/users/${id}`, {
-      params: { subset }
+      params: { subset },
     });
     return res.data;
   }
@@ -410,7 +393,7 @@ export class UserService {
   static async changePassword(userId: number, newPassword: string) {
     const res = await axios.post("/api/users/changePassword", {
       userId,
-      newPassword
+      newPassword,
     });
     return res.data;
   }
@@ -465,13 +448,15 @@ export function UserProfile({ userId }: { userId: number }) {
 **Type Safety**
 
 Services and types are auto-synchronized with the backend, so type mismatch errors can be caught at compile time!
+
 </Check>
 
 <Info>
-**Learn More**
-- [How Services Work](/en/frontend-integration/generated-services/how-services-work) - Auto-generation mechanism
-- [Using Services](/en/frontend-integration/generated-services/using-services) - Practical usage guide
-- [Shared Types](/en/frontend-integration/type-safety/shared-types) - Backend-frontend type synchronization
+  **Learn More** - [How Services
+  Work](/en/frontend-integration/generated-services/how-services-work) - Auto-generation mechanism -
+  [Using Services](/en/frontend-integration/generated-services/using-services) - Practical usage
+  guide - [Shared Types](/en/frontend-integration/type-safety/shared-types) - Backend-frontend type
+  synchronization
 </Info>
 
 ## Complete Workflow Example
@@ -492,12 +477,11 @@ Add `like_count` field to Post entity
   "dbDefault": "0"
 }
 ```
+
 </Step>
 
 <Step title="2. Migration">
-```sql
-ALTER TABLE posts ADD COLUMN like_count INTEGER DEFAULT 0;
-```
+  ```sql ALTER TABLE posts ADD COLUMN like_count INTEGER DEFAULT 0; ```
 </Step>
 
 <Step title="3. Add Business Logic to Model">
@@ -514,9 +498,7 @@ async addLike(postId: number): Promise<Post> {
 </Step>
 
 <Step title="4. Auto Sync">
-HMR automatically:
-- Copies `post.types.ts` → to Web
-- Adds `addLike` method to `PostService.ts`
+  HMR automatically: - Copies `post.types.ts` → to Web - Adds `addLike` method to `PostService.ts`
 </Step>
 
 <Step title="5. Frontend Implementation">
@@ -541,8 +523,7 @@ test("addLike should increment like_count", async () => {
 </Step>
 </Steps>
 
-<Frame caption="🎬 Needed: Video demonstrating the above 6 steps (complete process of adding like feature)">
-</Frame>
+<Frame caption="🎬 Needed: Video demonstrating the above 6 steps (complete process of adding like feature)"></Frame>
 
 ## Development Tips
 
@@ -573,6 +554,7 @@ During development, keep `pnpm dev` running and just modify files - they'll sync
 ### 6. When Problems Occur
 
 If sync state seems wrong:
+
 1. Restart dev server
 2. Run `pnpm sync` manually
 3. Delete `sonamu.lock` and restart
