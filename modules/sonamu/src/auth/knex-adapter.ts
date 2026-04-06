@@ -26,7 +26,7 @@ export const sonamuKnexAdapter = () => {
   const createCustomAdapter = (
     getDb: () => Knex | Knex.Transaction,
   ): AdapterFactoryCustomizeAdapterCreator => {
-    return () => ({
+    return ({ getFieldName }) => ({
       create: async ({ model, data }) => {
         const [row] = await getDb()(model).insert(data).returning("*");
         return row;
@@ -45,7 +45,8 @@ export const sonamuKnexAdapter = () => {
           query = applyWhere(query, where);
         }
         if (sortBy) {
-          query = query.orderBy(sortBy.field, sortBy.direction);
+          const dbField = getFieldName({ model, field: sortBy.field });
+          query = query.orderBy(dbField, sortBy.direction);
         }
         if (limit) {
           query = query.limit(limit);
