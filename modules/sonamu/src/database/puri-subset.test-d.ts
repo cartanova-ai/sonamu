@@ -160,6 +160,51 @@ describe("LoadersResult", () => {
     }>();
   });
 
+  it("중첩 로더의 as 경로도 hydrate한다", () => {
+    type IngredientLoaderQb = (
+      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      fromIds: number[] | string[],
+    ) => MockPuri<{ id: number; name: string; refId: number }>;
+
+    type PrescriptionItemLoaderQb = (
+      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      fromIds: number[] | string[],
+    ) => MockPuri<{
+      id: number;
+      test__id: number;
+      test__name: string;
+      refId: number;
+    }>;
+
+    type Loaders = [
+      {
+        as: "items";
+        refId: "id";
+        qb: PrescriptionItemLoaderQb;
+        loaders: [
+          {
+            as: "test__items";
+            refId: "test__id";
+            qb: IngredientLoaderQb;
+          },
+        ];
+      },
+    ];
+    type Result = LoadersResult<Loaders>;
+
+    const result = {} as Result;
+    expectTypeOf(result).toEqualTypeOf<{
+      items: {
+        id: number;
+        test: {
+          id: number;
+          name: string;
+          items: { id: number; name: string }[];
+        };
+      }[];
+    }>();
+  });
+
   it("여러 로더를 처리한다", () => {
     type ProjectLoader = {
       as: "projects";
@@ -346,6 +391,63 @@ describe("InferAllSubsets", () => {
               id: number;
               name: string;
               projects: { id: number; name: string; status: string }[];
+            }[];
+          };
+        };
+      }>();
+    });
+
+    it("중첩 로더 경로 alias를 포함한 Subset 결과를 추론한다", () => {
+      type SubsetFnA = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => MockPuri<{
+        id: number;
+        root__id: number;
+      }>;
+      type SubsetQueries = {
+        A: SubsetFnA;
+      };
+
+      type RootItemLoader = {
+        as: "root__items";
+        refId: "root__id";
+        qb: (
+          qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+          fromIds: number[] | string[],
+        ) => MockPuri<{
+          id: number;
+          test__id: number;
+          test__name: string;
+          refId: number;
+        }>;
+        loaders: [
+          {
+            as: "test__inner_items";
+            refId: "test__id";
+            qb: (
+              qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+              fromIds: number[] | string[],
+            ) => MockPuri<{ id: number; name: string; refId: number }>;
+          },
+        ];
+      };
+      type LoaderQueries = {
+        A: [RootItemLoader];
+      };
+
+      type Result = InferAllSubsets<SubsetQueries, LoaderQueries>;
+
+      const result = {} as Result;
+      expectTypeOf(result).toEqualTypeOf<{
+        A: {
+          id: number;
+          root: {
+            id: number;
+            items: {
+              id: number;
+              test: {
+                id: number;
+                name: string;
+                inner_items: { id: number; name: string }[];
+              };
             }[];
           };
         };

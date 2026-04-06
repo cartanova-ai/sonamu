@@ -134,7 +134,7 @@ export type LoadersResult<TLoaders extends GenericPuriLoader[]> = Expand<{
  * 기본 결과와 Loader 결과 병합
  */
 type WithLoaders<TBase, TLoaders> = TLoaders extends GenericPuriLoader[]
-  ? Expand<TBase & LoadersResult<TLoaders>>
+  ? Expand<Hydrate<TBase & LoadersResult<TLoaders>>>
   : TBase;
 
 // ============================================================================
