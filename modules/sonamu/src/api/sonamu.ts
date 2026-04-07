@@ -6,7 +6,7 @@ import os from "os";
 import path from "path";
 
 import { dispose as logtapeDispose } from "@logtape/logtape";
-import { type Auth } from "better-auth";
+import type { Auth, BetterAuthOptions } from "better-auth";
 import { type FSWatcher } from "chokidar";
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import mime, { lookup as mimeLookup } from "mime-types";
@@ -150,8 +150,8 @@ class SonamuClass {
     return this._workflows;
   }
 
-  private _auth: Auth | null = null;
-  get auth(): Auth {
+  private _auth: Auth<BetterAuthOptions> | null = null;
+  get auth(): Auth<BetterAuthOptions> {
     if (!this._auth) {
       throw new Error("Auth has not been initialized. Check auth config in sonamu.config.ts.");
     }
@@ -242,10 +242,11 @@ class SonamuClass {
       const { betterAuth } = await import("better-auth");
       const { sonamuKnexAdapter } = await import("../auth/knex-adapter");
 
-      this._auth = betterAuth({
+      const authOptions: BetterAuthOptions = {
         database: sonamuKnexAdapter(),
         ...mergedFieldMappings,
-      });
+      };
+      this._auth = betterAuth(authOptions);
     }
 
     // 테스팅인 경우 싱크 없이 중단
