@@ -45,5 +45,6 @@ export default defineConfig({
   platform: "node",
   sourcemap: "inline",
   target: "esnext",
+  treeshake: false,
   unbundle: true,
 });

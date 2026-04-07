@@ -1,27 +1,50 @@
+import { readdirSync, statSync } from "node:fs";
+import path from "node:path";
+
 import { defineConfig } from "tsdown";
+
+const srcRoot = path.resolve(import.meta.dirname, "src");
+const ignoredSuffixes = [".test.ts", ".test-d.ts", ".test-hold.ts", ".ignore.ts", ".d.ts"];
+const ignoredDirectories = new Set(["__mocks__", "_templates", "wasted_src"]);
+
+function collectEntries(directory: string): Record<string, string> {
+  const entries: Record<string, string> = {};
+
+  for (const entry of readdirSync(directory)) {
+    if (ignoredDirectories.has(entry)) {
+      continue;
+    }
+
+    const absolutePath = path.join(directory, entry);
+    const stats = statSync(absolutePath);
+
+    if (stats.isDirectory()) {
+      Object.assign(entries, collectEntries(absolutePath));
+      continue;
+    }
+
+    if (
+      !absolutePath.endsWith(".ts") ||
+      ignoredSuffixes.some((suffix) => absolutePath.endsWith(suffix))
+    ) {
+      continue;
+    }
+
+    const relativePath = path.relative(srcRoot, absolutePath);
+    const entryName = relativePath.replace(/\.ts$/, "").split(path.sep).join("/");
+    entries[entryName] = absolutePath;
+  }
+
+  return entries;
+}
 
 export default defineConfig({
   clean: true,
-  entry: {
-    "ai/index": "src/ai/index.ts",
-    "ai/providers/rtzr/index": "src/ai/providers/rtzr/index.ts",
-    "auth/plugins/index": "src/auth/plugins/index.ts",
-    "bin/cli": "src/bin/cli.ts",
-    "bin/hmr-hook-register": "src/bin/hmr-hook-register.ts",
-    "bin/ts-loader-register": "src/bin/ts-loader-register.ts",
-    "cache/index": "src/cache/index.ts",
-    "dict/index": "src/dict/index.ts",
-    "filter/index": "src/filter/index.ts",
-    index: "src/index.ts",
-    "ssr/index": "src/ssr/index.ts",
-    "storage/index": "src/storage/index.ts",
-    "testing/index": "src/testing/index.ts",
-    "ui/cdd-types": "src/ui/cdd-types.ts",
-    "vector/index": "src/vector/index.ts",
-  },
+  entry: collectEntries(srcRoot),
   format: "esm",
   platform: "node",
   sourcemap: "inline",
   target: "esnext",
+  treeshake: false,
   unbundle: true,
 });

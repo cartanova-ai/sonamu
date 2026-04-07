@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt",
-    "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
+    "quick:test": "node --import=./tsnode.esm.js --enable-source-maps src/bin/test.ts",
     "test": "c8 pnpm quick:test",
     "prepublishOnly": "pnpm lint && pnpm build"
   },

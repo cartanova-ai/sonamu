@@ -9,7 +9,7 @@ configure({
   files: ["tests/**/*.spec.ts"],
   plugins: [
     assert(),
-    fileSystem({ basePath: join(import.meta.url, "../tmp"), autoClean: true }),
+    fileSystem({ basePath: join(import.meta.url, "../../tmp"), autoClean: true }),
     snapshot(),
   ],
 });

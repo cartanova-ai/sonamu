@@ -16,6 +16,7 @@ export async function fakeInstall(destination: string) {
   );
 
   await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", packageName));
+  await fs.ensureSymlink(projectRoot, path.resolve(destination, "node_modules", "hot-hook"));
 
   if (typeof bin === "string") {
     const binPath = bin;
@@ -23,6 +24,10 @@ export async function fakeInstall(destination: string) {
     await fs.ensureSymlink(
       path.resolve(projectRoot, binPath),
       path.resolve(destination, "node_modules", ".bin", binName),
+    );
+    await fs.ensureSymlink(
+      path.resolve(projectRoot, binPath),
+      path.resolve(destination, "node_modules", ".bin", "hot-hook"),
     );
   } else {
     for (const [binName, binPath] of Object.entries(bin)) {

@@ -11,11 +11,6 @@ export function findAppRootPath(): AbsolutePath {
 }
 
 export function findApiRootPath(): AbsolutePath {
-  const cwdPackagePath = path.join(process.cwd(), "package.json");
-  if (fs.existsSync(cwdPackagePath)) {
-    return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
-  }
-
   // NOTE: for support npm / yarn / pnpm workspaces
   // 하지만 workspace 쓰면 process.cwd() 하면 되는데... 이건 나중에 협의 후 수정하는걸로
   const workspacePath = process.env.PNPM_SCRIPT_SRC_DIR ?? process.env.INIT_CWD;
@@ -24,6 +19,11 @@ export function findApiRootPath(): AbsolutePath {
   }
 
   if (nonNullable(process.env.PNPM_PACKAGE_NAME)) {
+    return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
+  }
+
+  const cwdPackagePath = path.join(process.cwd(), "package.json");
+  if (fs.existsSync(cwdPackagePath)) {
     return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
   }
 
